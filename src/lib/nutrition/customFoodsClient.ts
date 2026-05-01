@@ -19,12 +19,25 @@
  *    even when they typed the brand.
  */
 
-import type { CustomFood, CustomFoodServing } from "./customFoods";
+import type { CustomFood, CustomFoodServing, CustomFoodSource } from "./customFoods";
 import {
   dedupeServings,
   normaliseCustomFoodName,
   validateCustomFoodBarcode,
 } from "./customFoods";
+
+const VALID_CUSTOM_FOOD_SOURCES: ReadonlyArray<CustomFoodSource> = [
+  "manual",
+  "photo_correction",
+  "voice_correction",
+];
+
+function safeSource(raw: unknown): CustomFoodSource {
+  if (typeof raw === "string" && (VALID_CUSTOM_FOOD_SOURCES as readonly string[]).includes(raw)) {
+    return raw as CustomFoodSource;
+  }
+  return "manual";
+}
 
 /** Supabase-js-compatible shape. Typed as `any` on purpose — this file
  * must import from neither workspace's generated types. */
@@ -85,7 +98,7 @@ const DEDUPE_SUFFIX_LIMIT = 9; // appends " (2)" up to " (9)"
  * a future column is negligible. M7 (2026-04-21).
  */
 const CUSTOM_FOOD_LIST_COLUMNS =
-  "id, user_id, name, brand, base_grams, calories, protein, carbs, fat, fiber, servings, servings_per_container, sugar_g, saturated_fat_g, sodium_mg, barcode, created_at, updated_at";
+  "id, user_id, name, brand, base_grams, calories, protein, carbs, fat, fiber, servings, servings_per_container, sugar_g, saturated_fat_g, sodium_mg, barcode, source, created_at, updated_at";
 
 function safeNumber(n: unknown, fallback = 0): number {
   const v = typeof n === "number" ? n : Number(n);
@@ -146,7 +159,145 @@ function rowToCustomFood(row: any): CustomFood {
   if (typeof row.barcode === "string" && row.barcode.trim()) {
     food.barcode = row.barcode.trim();
   }
+  // `source` is non-null in the DB (defaults to "manual") but we still
+  // sanitise the read so a corrupt or missing value can never poison
+  // the field — `safeSource` falls back to "manual" on anything
+  // unrecognised. Older rows written before the source migration land
+  // as "manual" automatically via the column default.
+  if (row.source != null) {
+    food.source = safeSource(row.source);
+  }
   return food;
+}
+
+/**
+ * Macros payload for `upsertCustomFoodFromPhotoCorrection`. Stored as
+ * a "per-serving anchor" — the corrected macros describe the portion
+ * the user photographed, not a per-100g basis. We persist with
+ * `base_grams = 100` as a synthetic divisor only because the schema
+ * requires one; no scaling happens on the read path (the photo-log
+ * lookup uses the macros directly).
+ */
+export type PhotoCorrectionMacros = {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  /** Optional. Stored only when the corrected item carried a finite
+   *  fiber value (the project rule "never invent nutrition values"
+   *  bars us from defaulting unknown fiber to 0). */
+  fiber?: number;
+};
+
+/**
+ * Upsert a corrected food into the user's personal food bank, keyed
+ * on `(user_id, lower(name))`. Used by the photo-log review path:
+ * after the user confirms a photo log with corrections, this writes
+ * a `source: "photo_correction"` row so the next photo log of the
+ * same item can suggest the corrected macros directly without
+ * re-asking the AI.
+ *
+ * Idempotent — a second correction of the same food name overwrites
+ * the previous macros (the user's most-recent intent wins). The
+ * unique index `(user_id, lower(name))` enforces dedupe; we read the
+ * existing row first, then UPDATE or INSERT accordingly. We do NOT
+ * touch rows whose `source` is `manual` — a user's hand-curated
+ * "Granola" should never be silently overwritten by a photo-log
+ * correction with the same name. Manual rows return early with no
+ * write so the user's curated entry stays canonical; the photo-log
+ * still commits the meal because the helper is fire-and-forget.
+ *
+ * Returns the upserted row (or `null` when the user already has a
+ * manual row with the same name — see above). Errors propagate so
+ * the caller can fail-closed and skip the analytics emit.
+ */
+export async function upsertCustomFoodFromPhotoCorrection(
+  supabase: SupabaseLike,
+  userId: string,
+  rawName: string,
+  macros: PhotoCorrectionMacros,
+): Promise<CustomFood | null> {
+  if (!userId) throw new Error("upsertCustomFoodFromPhotoCorrection: userId is required");
+  const name = normaliseCustomFoodName(rawName);
+  if (!name) throw new Error("upsertCustomFoodFromPhotoCorrection: name is required");
+
+  const calories = Math.round(safeNonNegative(macros.calories));
+  const protein = Math.round(safeNonNegative(macros.protein) * 10) / 10;
+  const carbs = Math.round(safeNonNegative(macros.carbs) * 10) / 10;
+  const fat = Math.round(safeNonNegative(macros.fat) * 10) / 10;
+  const fiber =
+    macros.fiber != null && Number.isFinite(Number(macros.fiber))
+      ? Math.round(safeNonNegative(macros.fiber) * 10) / 10
+      : null;
+
+  // Look up existing row by (user_id, lower(name)) — the unique index.
+  // We can't use `ilike` here because Postgres `ilike` is case-fold but
+  // not equal-case-insensitive; an exact `lower(name) = lower($1)` via
+  // `ilike` with no wildcards is the same as a case-insensitive equality.
+  const { data: existingRows } = await supabase
+    .from("user_custom_foods")
+    .select("id, source")
+    .eq("user_id", userId)
+    .ilike("name", name);
+  const existing =
+    Array.isArray(existingRows) && existingRows.length > 0 ? existingRows[0] : null;
+
+  // Carve-out: never overwrite a `manual` row. The user's hand-curated
+  // food is the canonical record; an AI photo correction with the
+  // same name should not stomp it.
+  if (existing && safeSource((existing as { source?: unknown }).source) === "manual") {
+    return null;
+  }
+
+  const nowIso = new Date().toISOString();
+
+  if (existing) {
+    const update: Record<string, unknown> = {
+      calories,
+      protein,
+      carbs,
+      fat,
+      fiber,
+      source: "photo_correction" as CustomFoodSource,
+      updated_at: nowIso,
+    };
+    const { data, error } = await supabase
+      .from("user_custom_foods")
+      .update(update)
+      .eq("id", (existing as { id: string }).id)
+      .eq("user_id", userId)
+      .select("*")
+      .single();
+    if (error || !data) {
+      throw error ?? new Error("upsertCustomFoodFromPhotoCorrection: update returned no row");
+    }
+    return rowToCustomFood(data);
+  }
+
+  // Insert: synthetic `base_grams = 100` anchor — the macros describe
+  // the photographed portion; the read path uses them directly without
+  // scaling (see helper comment).
+  const insertRow: Record<string, unknown> = {
+    user_id: userId,
+    name,
+    base_grams: 100,
+    calories,
+    protein,
+    carbs,
+    fat,
+    servings: [],
+    source: "photo_correction" as CustomFoodSource,
+  };
+  if (fiber != null) insertRow.fiber = fiber;
+  const { data, error } = await supabase
+    .from("user_custom_foods")
+    .insert(insertRow)
+    .select("*")
+    .single();
+  if (error || !data) {
+    throw error ?? new Error("upsertCustomFoodFromPhotoCorrection: insert returned no row");
+  }
+  return rowToCustomFood(data);
 }
 
 /** Normalise + round the macro payload once so UI, tests, and DB all

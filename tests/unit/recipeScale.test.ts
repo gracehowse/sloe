@@ -38,12 +38,25 @@ import {
 } from "@/lib/nutrition/recipeScale";
 
 describe("COOK_SCALE_PRESETS", () => {
-  it("offers the five Paprika-matched presets in ascending order", () => {
+  it("offers the six presets in ascending order, with 1 as default", () => {
     // The presets are part of the user-facing UX (segmented control)
     // AND part of the persisted scale factor in recipe_cook_history.
     // Re-ordering or extending here MUST be coordinated with the DB
     // CHECK constraint allowance (currently 0..99).
-    expect(COOK_SCALE_PRESETS).toEqual([0.5, 1, 1.5, 2, 4]);
+    //
+    // User-sentiment audit (round 4, 2026-04-30): added 3x so a
+    // 2-serving recipe scales cleanly to 6 (a household pan)
+    // without forcing the user to pick 4x and over-cook.
+    expect(COOK_SCALE_PRESETS).toEqual([0.5, 1, 1.5, 2, 3, 4]);
+  });
+
+  it("always includes 1x — the unscaled default", () => {
+    // `1` must be a member because `clampCookScale` falls back to 1
+    // for any non-preset value. If the preset list ever drops 1,
+    // `clampCookScale(1)` would clamp to 1 anyway, but the
+    // segmented-control caller renders ONE pill per preset and
+    // would silently lose the unscaled option from the UI.
+    expect(COOK_SCALE_PRESETS).toContain(1);
   });
 });
 
@@ -55,7 +68,11 @@ describe("clampCookScale", () => {
   });
   it("falls back to 1 for non-preset numbers (no silent rounding)", () => {
     expect(clampCookScale(0.7)).toBe(1);
-    expect(clampCookScale(3)).toBe(1);
+    expect(clampCookScale(2.5)).toBe(1);
+    // 3 IS a preset now (round 4, 2026-04-30) — pinned so a future
+    // change to the preset list re-asserts the shape. If `3` is
+    // removed, this expectation must be updated explicitly.
+    expect(clampCookScale(3)).toBe(3);
   });
   it("falls back to 1 for non-finite / non-positive / non-number input", () => {
     expect(clampCookScale("0.5")).toBe(1);
@@ -219,11 +236,28 @@ describe("formatCookScaleLabel", () => {
 });
 
 describe("cookScaleCaption", () => {
-  it("reads as 'Original recipe' at 1x", () => {
-    expect(cookScaleCaption(1, 4)).toBe("Original recipe");
+  it("reads as 'Serves N' at 1x when baseServings is known", () => {
+    // User-sentiment audit (round 4, 2026-04-30): "Original recipe"
+    // hid the yield from solo cooks. Surface the actual servings
+    // count at 1x so "Serves 1" / "Serves 2" / "Serves 4" is
+    // prominent in the cook header.
+    expect(cookScaleCaption(1, 4)).toBe("Serves 4");
+    expect(cookScaleCaption(1, 1)).toBe("Serves 1");
+    expect(cookScaleCaption(1, 2)).toBe("Serves 2");
+  });
+  it("falls back to 'Original recipe' at 1x when servings unknown", () => {
+    expect(cookScaleCaption(1, null)).toBe("Original recipe");
+    expect(cookScaleCaption(1, undefined)).toBe("Original recipe");
+    expect(cookScaleCaption(1, 0)).toBe("Original recipe");
   });
   it("reads as 'Scaled to 8 servings' for 2x of 4 servings", () => {
     expect(cookScaleCaption(2, 4)).toBe("Scaled to 8 servings");
+  });
+  it("scales 3x cleanly (Mealime gap closure for 2-serving recipes)", () => {
+    // 3x of 2 servings → 6 (a household pan). Pre-fix the user had
+    // to pick 4x and over-cook; this caption confirms 3x lands
+    // accurately when picked.
+    expect(cookScaleCaption(3, 2)).toBe("Scaled to 6 servings");
   });
   it("singular for 1 serving", () => {
     expect(cookScaleCaption(0.5, 2)).toBe("Scaled to 1 serving");

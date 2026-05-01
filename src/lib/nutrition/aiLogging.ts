@@ -256,3 +256,36 @@ function finiteNumber(v: unknown): number | null {
   const n = typeof v === "number" ? v : Number(v);
   return Number.isFinite(n) ? n : null;
 }
+
+/**
+ * Detect whether the user's reviewed item meaningfully diverges from
+ * the original AI suggestion. Returns true when the name changed
+ * (case-insensitive trimmed) OR any macro differs by more than the
+ * rounding noise floor (2 kcal / 0.5 g). Used by the photo-log
+ * commit path to decide whether to persist the row to the user's
+ * personal food bank — round-tripping the AI's own values would
+ * pollute the bank with no learning, and would mean every photo log
+ * grows the bank by N rows even when the user accepted everything.
+ *
+ * The 2 kcal / 0.5 g thresholds match the smallest practical edit a
+ * user can make through the macro inputs (which round to whole kcal
+ * and 1 dp grams) — anything tighter is rounding noise.
+ */
+export function isMeaningfulPhotoCorrection(
+  original: Pick<AiLoggedItem, "name" | "calories" | "protein" | "carbs" | "fat" | "fiber">,
+  corrected: Pick<AiLoggedItem, "name" | "calories" | "protein" | "carbs" | "fat" | "fiber">,
+): boolean {
+  const a = String(original.name ?? "").trim().toLowerCase();
+  const b = String(corrected.name ?? "").trim().toLowerCase();
+  if (a !== b) return true;
+  if (Math.abs((corrected.calories ?? 0) - (original.calories ?? 0)) > 2) return true;
+  if (Math.abs((corrected.protein ?? 0) - (original.protein ?? 0)) > 0.5) return true;
+  if (Math.abs((corrected.carbs ?? 0) - (original.carbs ?? 0)) > 0.5) return true;
+  if (Math.abs((corrected.fat ?? 0) - (original.fat ?? 0)) > 0.5) return true;
+  const oFiber = original.fiber;
+  const cFiber = corrected.fiber;
+  if (oFiber == null && cFiber == null) return false;
+  if (oFiber == null || cFiber == null) return true;
+  if (Math.abs(cFiber - oFiber) > 0.5) return true;
+  return false;
+}

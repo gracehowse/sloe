@@ -207,10 +207,21 @@ export function TodayWeekView({
             <p className="text-[11px] text-muted-foreground">Daily avg</p>
           </div>
           <div>
-            <p className={`text-2xl font-extrabold tabular-nums ${under ? "text-success" : "text-destructive"}`}>
+            {/* User-sentiment audit (round 4, 2026-04-30): replaced the
+                punitive over/under-target labels with the canonical
+                "Net deficit"/"Net surplus" phrasing from
+                `src/lib/copy/today.ts`. UCL Oct 2025 study + r/loseit
+                data show that judgmental framing drives logging
+                avoidance; "deficit"/"surplus" reads as observation,
+                not judgment. Colour also softened — green stays for
+                under-target, but the over-target tone moves from red
+                (`text-destructive`) to amber (`text-warning`) per
+                project memory + spec §1.4. Red is reserved for truly
+                destructive actions; tracking copy never punishes. */}
+            <p className={`text-2xl font-extrabold tabular-nums ${under ? "text-success" : "text-warning"}`}>
               {diff}
             </p>
-            <p className="text-[11px] text-muted-foreground">{under ? "Under budget" : "Over budget"}</p>
+            <p className="text-[11px] text-muted-foreground">{under ? "Net deficit" : "Net surplus"}</p>
           </div>
         </div>
       </div>

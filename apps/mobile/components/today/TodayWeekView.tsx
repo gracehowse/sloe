@@ -187,14 +187,23 @@ export function TodayWeekView(props: TodayWeekViewProps) {
               style={{
                 fontSize: 24,
                 fontWeight: "800",
+                // Amber on over-target, never red — per project memory
+                // (`feedback_no_quick_temp_fixes.md` + spec §1.4).
                 color: weekEffectiveCalorieBudget > weekTotals.calories ? Accent.success : Accent.warning,
                 fontVariant: ["tabular-nums"],
               }}
             >
               {Math.round(Math.abs(weekEffectiveCalorieBudget - weekTotals.calories))}
             </Text>
+            {/* User-sentiment audit (round 4, 2026-04-30): retired the
+                punitive over/under-target labels in favour of the
+                canonical "Net deficit" / "Net surplus" phrasing from
+                `src/lib/copy/today.ts`. UCL Oct 2025 study + r/loseit
+                data show punitive framing drives logging avoidance +
+                ED-cohort harm. Web parity: same swap on
+                `today-week-view.tsx` in the same commit. */}
             <Text style={{ fontSize: 11, color: textSecondaryColor }}>
-              {weekEffectiveCalorieBudget > weekTotals.calories ? "Under budget" : "Over budget"}
+              {weekEffectiveCalorieBudget > weekTotals.calories ? "Net deficit" : "Net surplus"}
             </Text>
           </View>
         </View>

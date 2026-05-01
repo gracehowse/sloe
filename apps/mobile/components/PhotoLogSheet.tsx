@@ -12,9 +12,10 @@
  * Shares sanitisation / confidence classification / totals with web via
  * `src/lib/nutrition/aiLogging.ts`.
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Image,
   KeyboardAvoidingView,
   Modal,
@@ -22,8 +23,10 @@ import {
   Pressable,
   ScrollView,
   Text,
+  ToastAndroid,
   View,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { X } from "lucide-react-native";
 
@@ -34,10 +37,19 @@ import {
   sanitiseAiItems,
   type AiLoggedItem,
 } from "../../../src/lib/nutrition/aiLogging";
+import { persistPhotoCorrections } from "../../../src/lib/nutrition/photoCorrectionPersist";
+import { supabase } from "@/lib/supabase";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "../../../src/lib/analytics/events";
 import AiLogReviewItem from "./AiLogReviewItem";
 import AiLogReviewSummary from "./AiLogReviewSummary";
+
+/** AsyncStorage key for the one-time "we'll remember this for next
+ *  time" tooltip on the first persisted photo-log correction. The
+ *  flag is per-device, not per-user, because the tooltip is teaching
+ *  the model — once any signed-in user on the device has seen it,
+ *  we don't repeat. */
+export const PHOTO_CORRECTION_TOOLTIP_KEY = "suppr.photo-correction-tooltip-shown.v1";
 
 type Theme = {
   text: string;
@@ -81,6 +93,12 @@ export default function PhotoLogSheet({
   const [asset, setAsset] = useState<PickedAsset | null>(null);
   const [items, setItems] = useState<AiLoggedItem[]>([]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  /** Snapshot of the items the AI returned BEFORE the user edited any
+   *  field. Captured the moment the API response lands; used at
+   *  commit time to detect which rows the user actually corrected so
+   *  we only persist meaningful edits to the bank. Stored as a ref
+   *  (not state) because we never re-render off it. */
+  const originalItemsRef = useRef<AiLoggedItem[]>([]);
 
   useEffect(() => {
     if (visible) {
@@ -88,6 +106,7 @@ export default function PhotoLogSheet({
       setAsset(null);
       setItems([]);
       setErrorMsg(null);
+      originalItemsRef.current = [];
       track(AnalyticsEvents.ai_photo_log_started);
     }
   }, [visible]);
@@ -181,6 +200,11 @@ export default function PhotoLogSheet({
         setStage("error");
         return;
       }
+      // Snapshot the AI's original output so we can detect which rows
+      // the user edited at commit time. Deep clone via spread per-row
+      // because we don't want the user's later inline edits to mutate
+      // the snapshot.
+      originalItemsRef.current = cleaned.map((it) => ({ ...it }));
       setItems(cleaned);
       setStage("review");
     } catch {
@@ -199,15 +223,59 @@ export default function PhotoLogSheet({
     setItems((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleLogAll = () => {
+  const handleLogAll = useCallback(() => {
     if (items.length === 0) return;
     onCommit(items);
     track(AnalyticsEvents.ai_photo_log_committed, {
       itemCount: items.length,
       avgConfidence: averageConfidence(items),
     });
+
+    // Fire-and-forget: persist corrected items to the user's personal
+    // food bank so the next photo log of the same item uses these
+    // macros. Errors are swallowed inside `persistPhotoCorrections`
+    // (per-outcome) so the meal still commits even if the bank write
+    // fails. Surface a one-time native toast/alert on the FIRST
+    // persisted correction per device so the user knows the system
+    // is learning ("Got it — we'll remember this for next time.").
+    void (async () => {
+      try {
+        const { data: authData } = await supabase.auth.getUser();
+        const userId = authData?.user?.id ?? null;
+        if (!userId) return;
+        const result = await persistPhotoCorrections({
+          supabase: supabase as Parameters<typeof persistPhotoCorrections>[0]["supabase"],
+          userId,
+          originals: originalItemsRef.current,
+          corrected: items,
+          track: (event, payload) => {
+            // Bridge to the platform analytics shim; same payload
+            // shape as the web call site so the dashboard sees one
+            // signal per platform with identical fields.
+            track(event as never, payload as never);
+          },
+        });
+        if (!result.anyPersisted) return;
+        const flag = await AsyncStorage.getItem(PHOTO_CORRECTION_TOOLTIP_KEY);
+        if (flag === "1") return;
+        await AsyncStorage.setItem(PHOTO_CORRECTION_TOOLTIP_KEY, "1");
+        const message = "Got it — we'll remember this for next time.";
+        if (Platform.OS === "android") {
+          ToastAndroid.show(message, ToastAndroid.SHORT);
+        } else {
+          // iOS has no native toast; a single-button Alert is the
+          // ambient pattern we use elsewhere in the app (cook.tsx
+          // showToast). Title-only with no body so it dismisses
+          // quickly when the user taps OK.
+          Alert.alert(message);
+        }
+      } catch {
+        /* fail closed — the meal already committed; nothing else to do */
+      }
+    })();
+
     onClose();
-  };
+  }, [items, onCommit, onClose]);
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>

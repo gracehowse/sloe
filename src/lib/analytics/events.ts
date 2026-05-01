@@ -324,6 +324,16 @@ export const AnalyticsEvents = {
   /** Free-tier user tapped the photo-log entry point and was shown the
    * Pro paywall instead (Batch 5.13). No payload. */
   ai_photo_log_paywalled: "ai_photo_log_paywalled",
+  /** User-sentiment audit (round 4, 2026-04-30) — Cal AI's failure
+   * pattern, MacroFactor's emerging lead. Fires when a corrected
+   * photo-log item is persisted into the user's `user_custom_foods`
+   * bank so the next photo-log of the same item uses the corrected
+   * macros. Distinct from `ai_photo_log_committed`, which fires for
+   * every commit (including accept-as-is). Payload:
+   * `{ foodName, kind: "insert" | "update" | "skipped_manual" }`.
+   * Identical payload on both platforms (web `PhotoLogDialog` +
+   * mobile `PhotoLogSheet`) so the conversion funnel stays comparable. */
+  photo_log_correction_persisted: "photo_log_correction_persisted",
   /** User tapped the "Snap a meal" shortcut surfaced on Today
    * (audit 2026-04-30 — Lose It "Closer" parity). Fires regardless of
    * tier so we can measure how often the shortcut is the entry point
@@ -474,6 +484,17 @@ export const AnalyticsEvents = {
    * step_count: number, has_macro_overrides: boolean,
    * platform: "ios" | "android" | "web" }`. */
   recipe_create_wizard_saved: "recipe_create_wizard_saved",
+  /** "Export everything" data dump initiated by the user from
+   *  Settings. Fires server-side from `/api/export/me` after the
+   *  full payload has been assembled (so `sizeBytes` is real).
+   *  Payload: `{ sizeBytes: number, recipeCount: number,
+   *  mealLogCount: number, weightCount: number, customFoodCount:
+   *  number, planCount: number, shoppingCount: number,
+   *  schemaVersion: number, platform: "web" | "ios" }`.
+   *  Counters lock-in anxiety per user-sentiment audit
+   *  (2026-04-30) — visible export in Settings exceeds the GDPR
+   *  portability floor and is the moat-builder we attribute on. */
+  data_export_initiated: "data_export_initiated",
 } as const;
 
 export type AnalyticsEventName = (typeof AnalyticsEvents)[keyof typeof AnalyticsEvents];

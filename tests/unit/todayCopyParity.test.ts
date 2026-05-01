@@ -151,12 +151,47 @@ describe("forbidden Today phrases — web + mobile + landing", () => {
     expect(mobile.length).toBeGreaterThan(0);
   });
 
+  /**
+   * Strip `/* … *\/` block comments and `// …` line comments out of a
+   * source file before scanning for forbidden phrases.
+   *
+   * Why: comments routinely reference retired terms ("...replaced
+   * the punitive 'over budget' label...") to explain why the term
+   * was removed. The case-INSENSITIVE scan added in round 4
+   * (2026-04-30) over-matched those documentation traces; the
+   * original case-sensitive check coincidentally let them through.
+   *
+   * The strip is best-effort, not a parser — TS/JSX has true comment
+   * grammar (template-literal embedding, regex literals, `/* in
+   * strings, etc.) but for our scan-only purpose a simple replace is
+   * fine: if a forbidden phrase ever lives inside a `// or /*` that
+   * fits the JS comment grammar, it's not user-facing copy.
+   */
+  function stripComments(src: string): string {
+    return src
+      // Block comments — non-greedy so adjacent blocks don't collapse.
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      // Line comments — `//` to end of line. JSX `// comment` inside a
+      // string literal is handled by the comment-grammar caveat above.
+      .replace(/(^|[^:\\])\/\/[^\n]*/g, "$1");
+  }
+
   for (const phrase of FORBIDDEN_TODAY_PHRASES) {
-    it(`no source file contains \`${phrase}\``, () => {
+    it(`no source file contains \`${phrase}\` (case-insensitive, code only)`, () => {
+      // Calm-tone audit (round 4, 2026-04-30): match is case-
+      // INSENSITIVE so "Over budget" (capital O) is rejected even
+      // when the canonical entry is lower-case. Previously the
+      // includes() check let "Over budget" slip past — see the
+      // `today-week-view.tsx` finding in the audit notes.
+      //
+      // Comments are stripped before scanning so docs that reference
+      // the retired terms ("...replaced 'over budget' with...") don't
+      // trigger a false positive.
+      const lowerPhrase = phrase.toLowerCase();
       const offenders: string[] = [];
       for (const file of files) {
-        const content = readFileSync(file, "utf8");
-        if (content.includes(phrase)) {
+        const content = stripComments(readFileSync(file, "utf8"));
+        if (content.toLowerCase().includes(lowerPhrase)) {
           offenders.push(file.replace(REPO + "/", ""));
         }
       }

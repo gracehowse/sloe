@@ -91,13 +91,30 @@ export default function CookModeScreen() {
     // video (YouTube watch / shorts URLs are common).
     sourceVideoUrl: sourceVideoUrlParam,
     sourceUrl: sourceUrlParam,
+    // Round 4 user-sentiment audit (2026-04-30): the recipe yield is
+    // surfaced in the cook header so "Serves N" is prominent (and
+    // "Serves 1" appears verbatim for solo cooks — Mealime's locked
+    // 2/4/6 was a top complaint). Optional — skips the header line
+    // when not passed (e.g. cooking from a 3rd-party imported
+    // recipe with unknown yield). `servings` is parsed safely; any
+    // non-positive integer is treated as missing.
+    servings: servingsParam,
   } = useLocalSearchParams<{
     recipeId: string;
     title: string;
     steps: string;
     sourceVideoUrl?: string;
     sourceUrl?: string;
+    servings?: string;
   }>();
+  /** Base recipe yield, parsed once from the route query. Null when
+   *  unknown — the cook header simply omits the "Serves N" line. */
+  const baseServings: number | null = (() => {
+    if (typeof servingsParam !== "string" || !servingsParam.trim()) return null;
+    const parsed = Number.parseInt(servingsParam, 10);
+    if (!Number.isFinite(parsed) || parsed <= 0) return null;
+    return parsed;
+  })();
   const watchOriginalUrl =
     typeof sourceVideoUrlParam === "string" && sourceVideoUrlParam.trim() !== ""
       ? sourceVideoUrlParam
@@ -1226,7 +1243,12 @@ export default function CookModeScreen() {
               })}
             </View>
             <Text style={styles.scaleCaption}>
-              {cookScaleCaption(scale, null)}
+              {/* Round 4 user-sentiment audit (2026-04-30): pass
+                  baseServings so the caption reads "Scaled to N
+                  servings" (or "Serves 1" / "Serves N" for the
+                  unscaled case via the helper's "Original recipe"
+                  fallback — see scaleCaption test). */}
+              {cookScaleCaption(scale, baseServings)}
             </Text>
           </View>
 

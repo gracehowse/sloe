@@ -29,10 +29,19 @@
  * No React, no DOM, no React Native. Safe to import anywhere.
  */
 
-/** The scale presets the Cook screen offers (Paprika parity). 0.5x and
- *  4x are the practical extremes — outside this range users tend to
- *  want a different recipe rather than a scaled one. */
-export const COOK_SCALE_PRESETS: readonly number[] = [0.5, 1, 1.5, 2, 4];
+/** The scale presets the Cook screen offers. 0.5x and 4x are the
+ *  practical extremes — outside this range users tend to want a
+ *  different recipe rather than a scaled one. 1x is the default and
+ *  always present so a user without scaling needs sees their intended
+ *  recipe verbatim.
+ *
+ *  User-sentiment audit (round 4, 2026-04-30): added 3x explicitly so
+ *  a 2-serving recipe scales cleanly to 6 (a standard household pan)
+ *  without forcing the user to pick the next nearest preset (4x ⇒ 8)
+ *  and over-cook. Mealime's locked 2/4/6 was a top community
+ *  complaint; we now cover 1, 1.5, 2, 3, 4 plus a half (0.5) for the
+ *  solo-cook path. */
+export const COOK_SCALE_PRESETS: readonly number[] = [0.5, 1, 1.5, 2, 3, 4];
 
 /** AsyncStorage / localStorage key prefix for the chosen scale per
  *  (userId, recipeId). Keeps the scale across app reopen. */
@@ -478,16 +487,29 @@ export function formatCookScaleLabel(scale: number): string {
  * Paprika "Scaled to N servings" copy when a recipe yield is known;
  * falls back to the multiplier when not. `baseServings` of 0 / NaN /
  * negative is treated as missing.
+ *
+ * User-sentiment audit (round 4, 2026-04-30): when `baseServings` is
+ * known AND scale === 1, render "Serves N" (singular for 1) rather
+ * than the generic "Original recipe". The previous wording hid the
+ * yield from solo cooks — Mealime's locked 2/4/6 was a top community
+ * complaint and "Serves 1" being implicit (not surfaced) felt like
+ * the same gap. When the yield is unknown we still fall back to
+ * "Original recipe" so the caption never misrepresents the dish.
  */
 export function cookScaleCaption(
   scale: number,
   baseServings: number | null | undefined,
 ): string {
-  if (scale === 1) return "Original recipe";
   const base =
     typeof baseServings === "number" && Number.isFinite(baseServings) && baseServings > 0
       ? baseServings
       : null;
+  if (scale === 1) {
+    if (base != null) {
+      return `Serves ${base}`;
+    }
+    return "Original recipe";
+  }
   if (base != null) {
     const scaledServings = base * scale;
     const label = formatScaledAmount(scaledServings);

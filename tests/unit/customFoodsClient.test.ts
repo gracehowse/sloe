@@ -49,6 +49,10 @@ function makeSupabase(handlers: Partial<Record<string, Handler>>) {
         filters[`eq:${col}`] = val;
         return self;
       },
+      ilike(col: string, val: unknown) {
+        filters[`ilike:${col}`] = val;
+        return self;
+      },
       or(filter: string) {
         filters["or"] = filter;
         return self;
@@ -652,6 +656,220 @@ describe("searchCustomFoods", () => {
       user_custom_foods: () => ({ data: null, error: new Error("oops") }),
     });
     expect(await searchCustomFoods(sb as any, "u1", "granola")).toEqual([]);
+  });
+});
+
+// ── upsertCustomFoodFromPhotoCorrection (round 4 audit, 2026-04-30) ──
+
+import { upsertCustomFoodFromPhotoCorrection } from "@/lib/nutrition/customFoodsClient";
+
+describe("upsertCustomFoodFromPhotoCorrection", () => {
+  /**
+   * Tests below mock the helper's internal read+write loop:
+   *  - Initial `select(...).eq.ilike(name)` to discover an existing
+   *    row (used to decide insert vs update vs skip-manual).
+   *  - Branched `insert/update` finalising the row.
+   *
+   * The handler tracks whether a `select` has been seen (so the
+   * second call returns the post-write row shape if needed).
+   */
+
+  it("throws when userId is missing", async () => {
+    const sb = makeSupabase({});
+    await expect(
+      upsertCustomFoodFromPhotoCorrection(sb as any, "", "Salmon", {
+        calories: 200,
+        protein: 25,
+        carbs: 0,
+        fat: 12,
+      }),
+    ).rejects.toThrow(/userId is required/);
+  });
+
+  it("throws when name is empty / whitespace", async () => {
+    const sb = makeSupabase({});
+    await expect(
+      upsertCustomFoodFromPhotoCorrection(sb as any, "u1", "  ", {
+        calories: 200,
+        protein: 25,
+        carbs: 0,
+        fat: 12,
+      }),
+    ).rejects.toThrow(/name is required/);
+  });
+
+  it("inserts a new row with source=photo_correction when no row exists", async () => {
+    let insertPayload: any = null;
+    const sb = makeSupabase({
+      user_custom_foods: (op, ctx) => {
+        if (op === "select") {
+          // Helper reads via ilike(name) to peek for existing.
+          return { data: [], error: null };
+        }
+        if (op === "insert:single") {
+          insertPayload = ctx.payload;
+          return {
+            data: sampleRow({
+              source: "photo_correction",
+              calories: insertPayload.calories,
+              protein: insertPayload.protein,
+              carbs: insertPayload.carbs,
+              fat: insertPayload.fat,
+            }),
+            error: null,
+          };
+        }
+        return { data: null, error: null };
+      },
+    });
+    const out = await upsertCustomFoodFromPhotoCorrection(sb as any, "u1", "Salmon", {
+      calories: 250,
+      protein: 30,
+      carbs: 0,
+      fat: 14,
+    });
+    expect(out?.source).toBe("photo_correction");
+    expect(insertPayload.user_id).toBe("u1");
+    expect(insertPayload.name).toBe("Salmon");
+    expect(insertPayload.source).toBe("photo_correction");
+    expect(insertPayload.base_grams).toBe(100);
+    // Macros stored at full precision (kcal integer; grams 1dp).
+    expect(insertPayload.calories).toBe(250);
+    expect(insertPayload.protein).toBe(30);
+  });
+
+  it("returns null when a manual row blocks the overwrite", async () => {
+    let writeCalls = 0;
+    const sb = makeSupabase({
+      user_custom_foods: (op) => {
+        if (op === "select") {
+          return {
+            data: [{ id: "cf-manual-1", source: "manual" }],
+            error: null,
+          };
+        }
+        if (op === "insert:single" || op === "update:single") {
+          writeCalls += 1;
+        }
+        return { data: null, error: null };
+      },
+    });
+    const out = await upsertCustomFoodFromPhotoCorrection(sb as any, "u1", "Granola", {
+      calories: 300,
+      protein: 5,
+      carbs: 50,
+      fat: 8,
+    });
+    expect(out).toBeNull();
+    expect(writeCalls).toBe(0);
+  });
+
+  it("updates an existing photo_correction row in place", async () => {
+    let updatePayload: any = null;
+    const sb = makeSupabase({
+      user_custom_foods: (op, ctx) => {
+        if (op === "select") {
+          return {
+            data: [{ id: "cf-photo-1", source: "photo_correction" }],
+            error: null,
+          };
+        }
+        if (op === "update:single") {
+          updatePayload = ctx.payload;
+          return { data: sampleRow({ source: "photo_correction", calories: 280 }), error: null };
+        }
+        return { data: null, error: null };
+      },
+    });
+    const out = await upsertCustomFoodFromPhotoCorrection(sb as any, "u1", "Salmon", {
+      calories: 280,
+      protein: 33,
+      carbs: 0,
+      fat: 15,
+    });
+    expect(out?.source).toBe("photo_correction");
+    expect(updatePayload.calories).toBe(280);
+    expect(updatePayload.source).toBe("photo_correction");
+    // updated_at MUST be refreshed so the bank's most-recently-touched
+    // ordering surfaces the freshly-corrected row first in search.
+    expect(updatePayload.updated_at).toBeDefined();
+  });
+
+  it("normalises the name (trim + collapse internal whitespace)", async () => {
+    let insertPayload: any = null;
+    const sb = makeSupabase({
+      user_custom_foods: (op, ctx) => {
+        if (op === "select") return { data: [], error: null };
+        if (op === "insert:single") {
+          insertPayload = ctx.payload;
+          return { data: sampleRow({ name: "Salmon fillet" }), error: null };
+        }
+        return { data: null, error: null };
+      },
+    });
+    await upsertCustomFoodFromPhotoCorrection(sb as any, "u1", "  Salmon   fillet  ", {
+      calories: 220,
+      protein: 28,
+      carbs: 0,
+      fat: 11,
+    });
+    expect(insertPayload.name).toBe("Salmon fillet");
+  });
+
+  it("clamps negative macros to 0 (no negative nutrition values)", async () => {
+    let insertPayload: any = null;
+    const sb = makeSupabase({
+      user_custom_foods: (op, ctx) => {
+        if (op === "select") return { data: [], error: null };
+        if (op === "insert:single") {
+          insertPayload = ctx.payload;
+          return { data: sampleRow(), error: null };
+        }
+        return { data: null, error: null };
+      },
+    });
+    await upsertCustomFoodFromPhotoCorrection(sb as any, "u1", "Salmon", {
+      calories: -100,
+      protein: -5,
+      carbs: 0,
+      fat: 12,
+    });
+    expect(insertPayload.calories).toBe(0);
+    expect(insertPayload.protein).toBe(0);
+  });
+
+  it("only stores fiber when the input carries a finite fiber value", async () => {
+    let withFiber: any = null;
+    let withoutFiber: any = null;
+    const sb = makeSupabase({
+      user_custom_foods: (op, ctx) => {
+        if (op === "select") return { data: [], error: null };
+        if (op === "insert:single") {
+          if ("fiber" in (ctx.payload as Record<string, unknown>)) {
+            withFiber = ctx.payload;
+          } else {
+            withoutFiber = ctx.payload;
+          }
+          return { data: sampleRow(), error: null };
+        }
+        return { data: null, error: null };
+      },
+    });
+    await upsertCustomFoodFromPhotoCorrection(sb as any, "u1", "Lentils", {
+      calories: 230,
+      protein: 18,
+      carbs: 40,
+      fat: 1,
+      fiber: 8,
+    });
+    await upsertCustomFoodFromPhotoCorrection(sb as any, "u1", "Bread", {
+      calories: 240,
+      protein: 9,
+      carbs: 45,
+      fat: 3,
+    });
+    expect(withFiber?.fiber).toBe(8);
+    expect(withoutFiber?.fiber).toBeUndefined();
   });
 });
 
