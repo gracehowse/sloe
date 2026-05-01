@@ -20,11 +20,21 @@
  *   - Analytics event names carry over from the legacy recap card
  *     (`weekly_recap_*`) per open-question #11; this is deliberate
  *     and flagged in `docs/design/digest-primitive.md`.
+ *
+ * 2026-04-30 — MacroFactor parity (extended-competitor-audit):
+ *   The narrative section now optionally renders a Weekly Check-in
+ *   subsection (TDEE delta + why-line + intake/weight stats). The
+ *   host passes a pre-built `WeeklyCheckin` payload from the shared
+ *   `buildWeeklyCheckin` helper so web + mobile produce identical
+ *   copy. The subsection includes an "Adjust goal pace" link that
+ *   routes to `/settings#targets` — web's existing Targets edit
+ *   surface — rather than shipping a parallel modal sheet.
  */
 
 import * as React from "react";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { SavedMealItem } from "../../../lib/nutrition/savedMeals";
+import type { WeeklyCheckin } from "../../../lib/nutrition/weeklyCheckin";
 import { AnalyticsEvents } from "../../../lib/analytics/events";
 import { track } from "../../../lib/analytics/track";
 import { Icons } from "../ui/icons";
@@ -89,7 +99,23 @@ export interface DigestProps {
      *  when adaptive == formula or confidence is low. */
     maintenanceLine: string | null;
     usualMeal: DigestUsualMeal | null;
+    /**
+     * 2026-04-30 — Weekly Check-in subsection (MacroFactor parity).
+     * Pre-built by the host via `buildWeeklyCheckin`. When `null` the
+     * subsection is suppressed entirely — for users without enough
+     * data, the existing narrative carries the week. The host also
+     * suppresses by passing `null` when the Digest is in the
+     * `empty` state to avoid showing a TDEE delta over a zero-day
+     * week. */
+    weeklyCheckin?: WeeklyCheckin | null;
   };
+  /**
+   * 2026-04-30 — when supplied, the "Adjust goal pace" link inside the
+   * Weekly Check-in subsection becomes interactive and calls this
+   * handler. Typically routes to `/settings#targets` (web's existing
+   * Targets edit surface). When omitted the link is suppressed (the
+   * subsection still renders the read-only TDEE delta). */
+  onAdjustGoalPace?: () => void;
   /** Pre-formatted share string. Host computes via `formatRecapForShare`. */
   shareText: string;
   /**
@@ -133,6 +159,7 @@ export function Digest(props: DigestProps) {
     onDismiss,
     onOpenSaveCombo,
     onStartUsualMealSave,
+    onAdjustGoalPace,
     weightSurfaceMode = "show",
     className,
   } = props;
@@ -408,6 +435,73 @@ export function Digest(props: DigestProps) {
         >
           {narrative.maintenanceLine}
         </p>
+      ) : null}
+
+      {/* Weekly Check-in subsection — MacroFactor parity (2026-04-30).
+          Renders the TDEE delta + why-line + intake / weight stats.
+          The host pre-builds the payload via `buildWeeklyCheckin`. */}
+      {!isEmpty && narrative.weeklyCheckin ? (
+        <div
+          data-testid="digest-weekly-checkin"
+          data-checkin-kind={narrative.weeklyCheckin.kind}
+          className="rounded-card border border-border bg-muted/30 p-3 mb-3"
+        >
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">
+            Your TDEE this week
+          </p>
+          <p
+            data-testid="digest-weekly-checkin-headline"
+            className="text-[14px] font-bold text-foreground mb-1"
+          >
+            {narrative.weeklyCheckin.headline}
+          </p>
+          {narrative.weeklyCheckin.deltaLine ? (
+            <p
+              data-testid="digest-weekly-checkin-delta"
+              className="text-[12px] text-muted-foreground tabular-nums mb-1"
+            >
+              {narrative.weeklyCheckin.deltaLine}
+            </p>
+          ) : null}
+          {narrative.weeklyCheckin.whyLine ? (
+            <p
+              data-testid="digest-weekly-checkin-why"
+              className="text-[12px] text-muted-foreground mb-1 leading-relaxed"
+            >
+              {narrative.weeklyCheckin.whyLine}
+            </p>
+          ) : null}
+          {narrative.weeklyCheckin.intakeLine ? (
+            <p
+              data-testid="digest-weekly-checkin-intake"
+              className="text-[11px] text-muted-foreground/80 tabular-nums"
+            >
+              {narrative.weeklyCheckin.intakeLine}
+            </p>
+          ) : null}
+          {narrative.weeklyCheckin.weightLine ? (
+            <p
+              data-testid="digest-weekly-checkin-weight"
+              className="text-[11px] text-muted-foreground/80 tabular-nums"
+            >
+              {narrative.weeklyCheckin.weightLine}
+            </p>
+          ) : null}
+          {/* Adjust goal pace — only when the host wires the handler
+              AND the cascade has confident enough data for the
+              re-tune to be honest (kind != "first_week"). */}
+          {onAdjustGoalPace &&
+          narrative.weeklyCheckin.kind !== "first_week" ? (
+            <button
+              type="button"
+              onClick={onAdjustGoalPace}
+              data-testid="digest-weekly-checkin-retune-cta"
+              className="mt-2 inline-flex items-center text-[11px] font-semibold text-primary hover:text-primary/80"
+            >
+              Adjust goal pace →
+            </button>
+          ) : null}
+        </div>
       ) : null}
 
       {!isEmpty && usual?.kind === "celebration" ? (
