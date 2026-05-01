@@ -17,6 +17,9 @@ visual languages on one scroll. The bundle absorbs:
 
 - Tracking extras (caffeine + alcohol Today opt-in) into a new
   "Display & extras" section.
+- "Show net carbs" lens toggle into the same Display & extras
+  section (migrated from the legacy Journal display section so the
+  P3-30 preference doesn't disappear).
 - Manage subscription row + promo-code redemption into the
   Membership card so base/pro users can cancel and testers can
   redeem codes.
