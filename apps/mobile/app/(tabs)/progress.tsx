@@ -94,6 +94,7 @@ import { ProgressHeadline } from "@/components/today/ProgressHeadline";
 import { ProgressStoryGate } from "@/components/today/ProgressStoryGate";
 import { hasEnoughDataForStory } from "@/lib/progressStoryGate";
 import { DigestStoryCard } from "@/components/progress/DigestStoryCard";
+import { computeDayOfWeekPattern } from "../../../../src/lib/nutrition/dayOfWeekPattern";
 import { generateProgressCommentary } from "@/lib/progressCommentary";
 import { WeightChart } from "@/components/progress/WeightChart";
 import { WeightRangeToggle } from "@/components/progress/WeightRangeToggle";
@@ -1164,7 +1165,12 @@ export default function ProgressScreen() {
 
           {/* Week digest — narrative LEAD card. Replaces the 2x2 grid
               as the visual focus. customer-lens audit 2026-04-30 +
-              D-2026-04-27-17. */}
+              D-2026-04-27-17.
+
+              `dayOfWeekPattern` is the Lose It "Closer" parity slot
+              (audit 2026-04-30) — observational pattern across the
+              rolling 4-week window. Helper enforces the 14-day +
+              200-kcal-delta gates so we don't surface noise. */}
           <View style={{ marginBottom: 14 }}>
             <DigestStoryCard
               weekLabel={recap.weekLabel}
@@ -1181,6 +1187,7 @@ export default function ProgressScreen() {
                     protein: recap.bestDay.protein,
                   }
                 : null}
+              dayOfWeekPattern={computeDayOfWeekPattern(byDay as any)}
             />
           </View>
 

@@ -1,0 +1,79 @@
+"use client";
+
+import * as React from "react";
+import { Icons } from "../ui/icons";
+
+/**
+ * TodaySnapShortcut — small "Snap a meal" affordance rendered on
+ * Today (web) above the macro tiles.
+ *
+ * Authority: audit 2026-04-30 (Lose It "Closer" parity — speed
+ * loggers expect a one-tap photo entry point on Today, not buried
+ * inside the LogSheet's right-edge icon row).
+ *
+ * Behaviour:
+ *   - Click → host's `onPress` fires. Host decides Pro vs paywall.
+ *   - When `locked`, a small lock badge surfaces the gate before tap.
+ *   - Single-line, low-emphasis chrome — primary log entry stays the
+ *     centred raised "+" in the bottom tab bar (`<SupprTabBar>`).
+ *
+ * Mobile mirror: `apps/mobile/components/today/TodaySnapShortcut.tsx`.
+ */
+
+export interface TodaySnapShortcutProps {
+  onPress: () => void;
+  /** Surface a small lock badge for free + base tier users so the
+   *  Pro gate is visible before tap. The host still calls `onPress`
+   *  (which decides whether to open PhotoLog or the paywall). */
+  locked?: boolean;
+  /** Optional Maestro / continuity testID. Defaults to the canonical
+   *  `today-snap-shortcut` so cross-platform test suites can grep
+   *  one name. */
+  testID?: string;
+  className?: string;
+}
+
+export function TodaySnapShortcut({
+  onPress,
+  locked = false,
+  testID,
+  className,
+}: TodaySnapShortcutProps) {
+  return (
+    <button
+      type="button"
+      onClick={onPress}
+      data-testid={testID ?? "today-snap-shortcut"}
+      aria-label={locked ? "Snap a meal (Pro)" : "Snap a meal"}
+      className={[
+        "mb-3 w-full flex items-center gap-2 rounded-card border border-border bg-card px-3 py-2.5 text-left",
+        "hover:bg-muted/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+        className ?? "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      <span className="relative inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10">
+        <Icons.camera className="h-4 w-4 text-primary" aria-hidden />
+        {locked ? (
+          <span
+            data-testid="today-snap-shortcut-lock"
+            className="absolute -right-1 -top-1 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border-[1.5px] border-card bg-primary"
+          >
+            <Icons.lock className="h-2 w-2 text-primary-foreground" aria-hidden />
+          </span>
+        ) : null}
+      </span>
+      <span className="flex flex-col min-w-0">
+        <span className="text-[14px] font-bold text-foreground leading-tight">
+          Snap a meal
+        </span>
+        <span className="text-[12px] text-muted-foreground leading-tight mt-0.5">
+          One photo, full macros — no typing.
+        </span>
+      </span>
+    </button>
+  );
+}
+
+export default TodaySnapShortcut;

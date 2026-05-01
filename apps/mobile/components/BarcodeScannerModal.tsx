@@ -30,9 +30,19 @@ type Props = {
   visible: boolean;
   onScan: (barcode: string, product: BarcodeProduct) => void;
   onClose: () => void;
+  /**
+   * Audit 2026-04-30 (Lose It "Closer" parity, Fix 2). When a barcode
+   * resolves to "not found", surface a primary "Snap the label
+   * instead" CTA that hands off to the AI photo-log path. The host
+   * is responsible for closing this scanner and opening
+   * `<PhotoLogSheet>` (so Pro gating + analytics stay in one place).
+   * Optional — when omitted the fallback button is hidden and the
+   * legacy "Enter manually instead" button stays primary.
+   */
+  onPhotoFallback?: () => void;
 };
 
-export default function BarcodeScannerModal({ visible, onScan, onClose }: Props) {
+export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoFallback }: Props) {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
   const { session } = useAuth();
@@ -490,6 +500,20 @@ export default function BarcodeScannerModal({ visible, onScan, onClose }: Props)
       marginTop: Spacing.xs,
     },
     manualEntryBtnText: { color: Accent.primary, fontWeight: "600", textAlign: "center" },
+    // Audit 2026-04-30 — primary "Snap the label instead" CTA in the
+    // not-found branch. Filled tint marks it as the recommended next
+    // step; manual entry stays one tap away as a tinted-border ghost.
+    photoFallbackBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: Spacing.sm,
+      backgroundColor: Accent.primary,
+      borderRadius: Radius.md,
+      paddingHorizontal: Spacing.xl,
+      paddingVertical: 12,
+    },
+    photoFallbackBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
     // F-20 basis toggle — segmented-style chip row for Per 100 g / Per serving.
     basisRow: { flexDirection: "row", gap: Spacing.sm },
     basisChip: {
@@ -562,7 +586,43 @@ export default function BarcodeScannerModal({ visible, onScan, onClose }: Props)
               {error && !manualMode && (
                 <View style={styles.centered}>
                   <Ionicons name="alert-circle" size={32} color={Accent.destructive} />
-                  <Text style={styles.errorText}>{error}</Text>
+                  {/* Audit 2026-04-30 — friendlier "not found" copy.
+                      `error` from `lookupBarcode` is the only surface
+                      that drives this branch and only carries the
+                      single literal "Product not found in database.";
+                      we replace it inline with a softer line so the
+                      empty state doesn't read like a failure. The
+                      raw error string is still shown to anyone hitting
+                      a future variant ("Network failed", etc.) so we
+                      don't accidentally bury real diagnostics. */}
+                  <Text style={styles.errorText}>
+                    {error === "Product not found in database."
+                      ? "We don't have this product yet."
+                      : error}
+                  </Text>
+                  {/* Audit 2026-04-30 (Lose It "Closer" parity, Fix 2)
+                      — when the host wires `onPhotoFallback`, the
+                      photo CTA becomes primary and manual entry
+                      demotes to secondary. PhotoLogSheet's vision
+                      parser handles label text well, so this turns a
+                      dead-end into a soft handoff. */}
+                  {onPhotoFallback ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Snap the label instead"
+                      testID="barcode-not-found-photo-fallback"
+                      style={styles.photoFallbackBtn}
+                      onPress={() => {
+                        // Reset scanner state so reopening the modal
+                        // starts fresh, then hand off to the host.
+                        onReset();
+                        onPhotoFallback();
+                      }}
+                    >
+                      <Ionicons name="camera" size={18} color="#fff" />
+                      <Text style={styles.photoFallbackBtnText}>Snap the label instead</Text>
+                    </Pressable>
+                  ) : null}
                   <Pressable style={styles.retryBtn} onPress={onReset}>
                     <Text style={styles.retryBtnText}>Scan again</Text>
                   </Pressable>

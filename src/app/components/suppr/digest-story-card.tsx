@@ -96,6 +96,14 @@ export function DigestStoryCard(props: DigestStoryCardProps) {
               {story.closestLine}
             </p>
           ) : null}
+          {story.dayOfWeekPatternLine ? (
+            <p
+              data-testid="digest-story-dow-pattern-line"
+              className="text-[13px] leading-relaxed text-muted-foreground"
+            >
+              {story.dayOfWeekPatternLine}
+            </p>
+          ) : null}
         </div>
       )}
     </section>

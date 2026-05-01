@@ -83,6 +83,7 @@ import { TodayActivityBonusCard } from "./suppr/today-activity-bonus-card";
 import { TodayWeekView } from "./suppr/today-week-view";
 import { TodayDashboardMacroTiles } from "./suppr/today-dashboard-macro-tiles";
 import { TodayQuickLogStrip } from "./suppr/today-quick-log-strip";
+import { TodaySnapShortcut } from "./suppr/today-snap-shortcut";
 import { TodayMealsSection } from "./suppr/today-meals-section";
 import { TodayCompleteDayDialog } from "./suppr/today-complete-day-dialog";
 import { TodayAddMealDialog } from "./suppr/today-add-meal-dialog";
@@ -2022,6 +2023,30 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
           same day in apps/mobile/app/(tabs)/index.tsx. See
           feedback_no_duplicate_today_hero_content.md. */}
 
+      {/* Snap-a-meal shortcut (audit 2026-04-30, Lose It "Closer"
+          parity). Surfaces PhotoLog as a discoverable, one-tap
+          affordance on Today instead of burying it inside the
+          LogSheet's right-edge icon row. Secondary affordance —
+          primary log-entry stays the centred raised "+" in the bottom
+          tab bar. Mirrors the mobile placement (above macro tiles,
+          today-only). */}
+      {selectedDateKey === todayKey() && (
+        <TodaySnapShortcut
+          onPress={() => {
+            track(AnalyticsEvents.today_snap_shortcut_tapped, {
+              tier: userTier,
+            });
+            if (userTier === "pro") {
+              setPhotoLogOpen(true);
+            } else {
+              track(AnalyticsEvents.ai_photo_log_paywalled);
+              setAiPaywallFeature("photo_log");
+            }
+          }}
+          locked={userTier !== "pro"}
+        />
+      )}
+
       {/* 3. Dashboard macro tiles — profile `tracked_macros` (Settings),
           same keys as mobile. Phase 4 / Top-5 #2 (2026-04-28): the
           non-macro nutrient rows that previously rendered as a
@@ -2535,6 +2560,19 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
           setBarcodeOpen(false);
           toast.success("Logged from barcode");
           track(AnalyticsEvents.barcode_lookup, { ok: true, adjusted: payload.adjusted });
+        }}
+        onPhotoFallback={() => {
+          // Audit 2026-04-30 (Lose It "Closer" parity, Fix 2) — when
+          // the barcode lookup fails we offer a soft handoff to the
+          // AI photo log. Pro gating runs through the same paywall
+          // path as every other photo entry point.
+          setBarcodeOpen(false);
+          if (userTier === "pro") {
+            setPhotoLogOpen(true);
+          } else {
+            track(AnalyticsEvents.ai_photo_log_paywalled);
+            setAiPaywallFeature("photo_log");
+          }
         }}
       />
 

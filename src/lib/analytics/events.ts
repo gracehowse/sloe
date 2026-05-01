@@ -315,6 +315,15 @@ export const AnalyticsEvents = {
   /** Free-tier user tapped the photo-log entry point and was shown the
    * Pro paywall instead (Batch 5.13). No payload. */
   ai_photo_log_paywalled: "ai_photo_log_paywalled",
+  /** User tapped the "Snap a meal" shortcut surfaced on Today
+   * (audit 2026-04-30 — Lose It "Closer" parity). Fires regardless of
+   * tier so we can measure how often the shortcut is the entry point
+   * vs the LogSheet's right-edge camera icon. Payload:
+   * `{ tier: "free" | "base" | "pro" }`. The downstream Pro gate
+   * still emits `ai_photo_log_paywalled` (free/base) or
+   * `ai_photo_log_started` (pro) so the funnel stays comparable
+   * with the LogSheet entry point. Identical payload on web + mobile. */
+  today_snap_shortcut_tapped: "today_snap_shortcut_tapped",
   /** User changed the "Week starts on" preference in Settings (web) /
    * More (mobile). Fires once per committed change, not on initial
    * hydration. Payload: `{ from: "monday" | "sunday"; to: "monday" | "sunday" }`.

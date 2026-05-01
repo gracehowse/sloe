@@ -137,7 +137,56 @@ describe("buildDigestStory", () => {
   it("paragraph string concatenates the rendered sentences in order", () => {
     const out = buildDigestStory(baseInput);
     expect(out.paragraph).toBe(
-      [out.rangeLine, out.daysLine, out.caloriesLine, out.proteinLine, out.closestLine].join(" "),
+      [
+        out.rangeLine,
+        out.daysLine,
+        out.caloriesLine,
+        out.proteinLine,
+        out.closestLine,
+        out.dayOfWeekPatternLine,
+      ]
+        .filter(Boolean)
+        .join(" "),
+    );
+  });
+
+  it("renders the day-of-week pattern line when the host supplies it", () => {
+    const out = buildDigestStory({
+      ...baseInput,
+      dayOfWeekPattern: { highDay: "Saturday", lowDay: "Tuesday", deltaKcal: 250 },
+    });
+    expect(out.dayOfWeekPatternLine).toBe(
+      "You eat about 250 more kcal on Saturdays than Tuesdays.",
+    );
+    // Paragraph picks it up in the documented sentence order.
+    expect(out.paragraph.endsWith(out.dayOfWeekPatternLine!)).toBe(true);
+  });
+
+  it("suppresses the day-of-week line when no pattern was supplied", () => {
+    const out = buildDigestStory({ ...baseInput });
+    expect(out.dayOfWeekPatternLine).toBeNull();
+  });
+
+  it("suppresses the day-of-week line when the host explicitly passes null", () => {
+    const out = buildDigestStory({ ...baseInput, dayOfWeekPattern: null });
+    expect(out.dayOfWeekPatternLine).toBeNull();
+  });
+
+  it("suppresses the day-of-week line when delta is non-positive (defensive)", () => {
+    const out = buildDigestStory({
+      ...baseInput,
+      dayOfWeekPattern: { highDay: "Saturday", lowDay: "Tuesday", deltaKcal: 0 },
+    });
+    expect(out.dayOfWeekPatternLine).toBeNull();
+  });
+
+  it("formats the kcal delta with thousands separators", () => {
+    const out = buildDigestStory({
+      ...baseInput,
+      dayOfWeekPattern: { highDay: "Friday", lowDay: "Monday", deltaKcal: 1200 },
+    });
+    expect(out.dayOfWeekPatternLine).toBe(
+      "You eat about 1,200 more kcal on Fridays than Mondays.",
     );
   });
 });

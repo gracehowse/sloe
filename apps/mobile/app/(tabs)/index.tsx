@@ -175,6 +175,7 @@ import { TodayNutrientsModal } from "@/components/today/TodayNutrientsModal";
 import { TodayDateHeader } from "@/components/today/TodayDateHeader";
 import { TodayDashboardMacroTiles } from "@/components/today/TodayDashboardMacroTiles";
 import { TodayQuickLogStrip } from "@/components/today/TodayQuickLogStrip";
+import { TodaySnapShortcut } from "@/components/today/TodaySnapShortcut";
 import { OnboardingNudgeBanner } from "@/components/today/onboarding-nudges";
 // Activation hook (audit 2026-04-30) — first-log toast + push explainer.
 import { FirstLogAcknowledgment } from "@/components/today/FirstLogAcknowledgment";
@@ -3862,6 +3863,32 @@ export default function TrackerScreen() {
               />
             )}
 
+            {/* Snap-a-meal shortcut (audit 2026-04-30, Lose It "Closer"
+                parity). Surfaces PhotoLog as a discoverable, one-tap
+                affordance on Today instead of burying it inside the
+                LogSheet's right-edge icon row. Secondary affordance —
+                primary log-entry is still the centred raised "+" in
+                the tab bar. Tapping either opens PhotoLog directly
+                (Pro) or the AI paywall sheet (free / base) — same
+                routing the LogSheet `photo.onCapture` slot uses, so
+                Pro gating, paywall analytics, and the open-from-Today
+                analytics breadcrumb stay consistent. */}
+            {isToday && (
+              <TodaySnapShortcut
+                onPress={() => {
+                  track(AnalyticsEvents.today_snap_shortcut_tapped, {
+                    tier: userTier,
+                  });
+                  if (userTier === "pro") {
+                    setPhotoLogOpen(true);
+                  } else {
+                    setAiPaywall({ open: true, feature: "photo_log" });
+                  }
+                }}
+                locked={userTier !== "pro"}
+              />
+            )}
+
             {/* Macro tiles — 2x2 grid. The standalone all-nutrients
                 link that previously floated as a centred row below
                 the tiles now renders as a right-aligned "Nutrients"
@@ -4515,6 +4542,20 @@ export default function TrackerScreen() {
           Alert.alert("Logged", `${product.name} added to ${activeMealSlot}.`);
         }}
         onClose={() => setBarcodeOpen(false)}
+        onPhotoFallback={() => {
+          // Audit 2026-04-30 (Lose It "Closer" parity, Fix 2) — when
+          // the barcode lookup fails we offer a soft handoff to the
+          // AI photo log. Pro gating runs through the same paywall
+          // path as every other photo entry point so analytics +
+          // upgrade routing stay consistent.
+          setBarcodeOpen(false);
+          if (userTier === "pro") {
+            setPhotoLogOpen(true);
+          } else {
+            track(AnalyticsEvents.ai_photo_log_paywalled);
+            setAiPaywall({ open: true, feature: "photo_log" });
+          }
+        }}
       />
 
       {/* Quick add panel — Favourites / Frequent / Recent / My meals.

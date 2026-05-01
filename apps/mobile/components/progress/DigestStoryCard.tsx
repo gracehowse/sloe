@@ -120,6 +120,14 @@ export function DigestStoryCard(props: DigestStoryCardProps) {
               {story.closestLine}
             </Text>
           ) : null}
+          {story.dayOfWeekPatternLine ? (
+            <Text
+              testID="digest-story-dow-pattern-line"
+              style={[styles.body, { color: colors.textSecondary }]}
+            >
+              {story.dayOfWeekPatternLine}
+            </Text>
+          ) : null}
         </View>
       )}
     </View>

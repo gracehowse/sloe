@@ -54,6 +54,23 @@ export interface DigestStoryInput {
     calories: number;
     protein: number;
   } | null;
+  /**
+   * Day-of-week pattern (audit 2026-04-30, Lose It "Closer" parity).
+   * Computed from the rolling 4-week window via
+   * `computeDayOfWeekPattern`. The host suppresses the field when it
+   * has < 14 days of data or the high/low gap is < 200 kcal — when
+   * the field is present we render a calm, observational line
+   * ("You eat about 250 more kcal on Saturdays than Tuesdays."). No
+   * emoji. No motivational tone.
+   */
+  dayOfWeekPattern?: {
+    /** Highest-average weekday label, e.g. "Saturday". */
+    highDay: string;
+    /** Lowest-average weekday label, e.g. "Tuesday". */
+    lowDay: string;
+    /** Positive integer kcal delta (high - low), pre-rounded. */
+    deltaKcal: number;
+  } | null;
 }
 
 /** Resolved sentence list — host renders each as its own paragraph
@@ -69,6 +86,9 @@ export interface DigestStoryResult {
   proteinLine: string | null;
   /** Closest-to-target day. `null` when no day qualified. */
   closestLine: string | null;
+  /** Day-of-week pattern observation. `null` when the host did not
+   *  supply a pattern (insufficient data or sub-threshold delta). */
+  dayOfWeekPatternLine: string | null;
   /** Concatenated paragraph string for ScreenReader / share fallback. */
   paragraph: string;
 }
@@ -97,6 +117,7 @@ export function buildDigestStory(input: DigestStoryInput): DigestStoryResult {
     targetProtein,
     proteinOnTargetDays,
     closestToTarget,
+    dayOfWeekPattern,
   } = input;
 
   const safeDaysLogged = Number.isFinite(daysLogged) && daysLogged > 0
@@ -155,7 +176,32 @@ export function buildDigestStory(input: DigestStoryInput): DigestStoryResult {
     closestLine = `${closestToTarget.label} was your closest day (${Math.round(closestToTarget.calories).toLocaleString()} kcal vs ${Math.round(targetCalories).toLocaleString()} target).`;
   }
 
-  const paragraph = [rangeLine, daysLine, caloriesLine, proteinLine, closestLine]
+  // Audit 2026-04-30 — day-of-week pattern (Lose It parity). The host
+  // is responsible for the threshold + min-data-window gates; we only
+  // render the sentence when a non-null shape was passed in. Tone is
+  // observational: factual past-tense framing, plural weekday form
+  // ("Saturdays" / "Tuesdays") since we're describing a pattern not a
+  // single day. No emoji.
+  let dayOfWeekPatternLine: string | null = null;
+  if (
+    dayOfWeekPattern &&
+    dayOfWeekPattern.highDay &&
+    dayOfWeekPattern.lowDay &&
+    Number.isFinite(dayOfWeekPattern.deltaKcal) &&
+    dayOfWeekPattern.deltaKcal > 0
+  ) {
+    const delta = Math.round(dayOfWeekPattern.deltaKcal);
+    dayOfWeekPatternLine = `You eat about ${delta.toLocaleString()} more kcal on ${pluraliseWeekday(dayOfWeekPattern.highDay)} than ${pluraliseWeekday(dayOfWeekPattern.lowDay)}.`;
+  }
+
+  const paragraph = [
+    rangeLine,
+    daysLine,
+    caloriesLine,
+    proteinLine,
+    closestLine,
+    dayOfWeekPatternLine,
+  ]
     .filter((s): s is string => Boolean(s))
     .join(" ");
 
@@ -165,6 +211,30 @@ export function buildDigestStory(input: DigestStoryInput): DigestStoryResult {
     caloriesLine,
     proteinLine,
     closestLine,
+    dayOfWeekPatternLine,
     paragraph,
   };
+}
+
+/** Pluralise a weekday label for the day-of-week pattern sentence
+ *  ("Tuesday" → "Tuesdays"). Handles the "y → ies" exception. Used
+ *  only by the digest narrative; intentionally tiny + dependency-free. */
+function pluraliseWeekday(label: string): string {
+  if (!label) return label;
+  // Already plural — pass through unchanged.
+  if (label.endsWith("s")) return label;
+  // "Tuesday" / "Wednesday" / etc. all end with "y" preceded by a
+  // consonant in English; collapse to "ies" so we don't print
+  // "Saturdaysy" or "Tuesdays" inconsistently. Other forms (any
+  // future locale shift) just append "s".
+  if (label.endsWith("y") && label.length > 1) {
+    const prev = label.charAt(label.length - 2).toLowerCase();
+    const isVowel = prev === "a" || prev === "e" || prev === "i" || prev === "o" || prev === "u";
+    if (!isVowel) {
+      // English convention: weekday "Tuesday" → "Tuesdays" (NOT
+      // "Tuesdaies") — proper-noun exception. Keep the "y" + add "s".
+      return `${label}s`;
+    }
+  }
+  return `${label}s`;
 }
