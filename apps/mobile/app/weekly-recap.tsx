@@ -6,6 +6,15 @@
  * point to a focused weekly surface that holds the calm-streak
  * posture (D-2026-04-27-07).
  *
+ * 2026-04-30 (Weekly Check-in / MacroFactor parity):
+ *   The screen now also hosts the Weekly Check-in section — TDEE
+ *   delta + plain-English why-line + a goal-pace re-tune CTA. See
+ *   `src/lib/nutrition/weeklyCheckin.ts` for the cascade and
+ *   `src/lib/nutrition/goalPaceRetune.ts` for the math. The pip
+ *   route + the existing recap cards are unchanged; the check-in
+ *   sits above the streak/days/macros rollups so the user lands on
+ *   the most actionable signal first.
+ *
  * Posture rules pinned by `selectClosestToTargetDay` and the existing
  * Digest primitive:
  *   - Observational copy. "You logged 5 of 7 days." Never "You missed
@@ -23,19 +32,27 @@
  *     week is always in scope. Mirrors the Progress tab's window so
  *     a user landing here sees exactly the same numbers.
  *   - Reads `profiles.streak_freezes_*` for the freeze ledger.
+ *   - Reads `profiles.adaptive_tdee*` + body stats for the Check-in
+ *     section's TDEE rendering.
+ *   - Reads the previous-week TDEE snapshot from AsyncStorage (no
+ *     schema change). On exit we capture the current TDEE under the
+ *     *current* week's key so next week's visit has a baseline.
  *   - Builds the *current* week (not the previous week the Digest
  *     covers) — the user just tapped their live pip and expects to
  *     see "where I'm at this week".
  *
- * Web parity: intentionally mobile-only for now. Web's pip lives on
- * the single-page `NutritionTracker`; there's no `/weekly-recap` route
- * to navigate to and the existing <Digest/> Sunday card already
- * surfaces the same data. Documented in the file's StreakPip JSDoc.
+ * Web parity: intentionally partial. The check-in subsection is
+ * mirrored on web inside the <Digest/> card (see
+ * `src/app/components/suppr/digest.tsx`); the goal-pace re-tune on
+ * web routes to Settings → Targets (already shipped). Mobile gets
+ * the dedicated route + sheet because the entry point (StreakPip)
+ * and the modal-sheet pattern are mobile-native idioms.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Pressable,
   ScrollView,
   Text,
   View,
@@ -53,7 +70,11 @@ import {
   type JournalMeal,
 } from "@/lib/nutritionJournal";
 import { buildWeekStats } from "@/lib/progressWeekReport";
-import { selectClosestToTargetDay, formatWeekLabel } from "@/lib/weeklyRecap";
+import {
+  selectClosestToTargetDay,
+  formatWeekLabel,
+  weekKeyFor,
+} from "@/lib/weeklyRecap";
 import {
   availableFreezes,
   computeProtectedStreak,
@@ -61,6 +82,19 @@ import {
   type FreezeLedger,
 } from "@/lib/streakFreeze";
 import { StreakPip } from "@/components/today/StreakPip";
+import {
+  buildWeeklyCheckin,
+  type WeeklyCheckin,
+} from "@/lib/weeklyCheckin";
+import {
+  readTdeeSnapshot,
+  writeTdeeSnapshot,
+} from "@/lib/lastWeekTdee";
+import { calculateTDEE } from "@/lib/calcTargets";
+import { GoalPaceRetuneSheet } from "@/components/recap/GoalPaceRetuneSheet";
+import { track } from "@/lib/analytics";
+import { AnalyticsEvents } from "../../../src/lib/analytics/events";
+import type { Sex, NutritionStrategy } from "../../../src/lib/nutrition/tdee";
 
 type LoadState = "loading" | "ready" | "empty" | "error";
 
@@ -86,6 +120,25 @@ export default function WeeklyRecapScreen() {
     usedHistory: [],
   });
   const [freezeBudgetMax, setFreezeBudgetMax] = useState<number>(3);
+  // ── Weekly Check-in state (MacroFactor parity, 2026-04-30) ──
+  // We hold the full body-stats slice so the goal-pace re-tune sheet
+  // has everything it needs without a second profile fetch.
+  const [bodyStats, setBodyStats] = useState<{
+    weight_kg: number | null;
+    height_cm: number | null;
+    sex: Sex | null;
+    age: number | null;
+    activity_level: string | null;
+    goal: "cut" | "maintain" | "bulk" | null;
+    plan_pace: string | null;
+    nutrition_strategy: NutritionStrategy | null;
+    adaptive_tdee: number | null;
+    adaptive_tdee_confidence: string | null;
+    adaptive_tdee_updated_at: string | null;
+    weight_kg_by_day: Record<string, number>;
+  } | null>(null);
+  const [previousTdeeKcal, setPreviousTdeeKcal] = useState<number | null>(null);
+  const [retuneSheetVisible, setRetuneSheetVisible] = useState(false);
 
   const loadData = useCallback(async () => {
     if (!userId) {
@@ -113,7 +166,7 @@ export default function WeeklyRecapScreen() {
           supabase
             .from("profiles")
             .select(
-              "target_calories, target_protein, target_carbs, target_fat, week_start_day, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history",
+              "target_calories, target_protein, target_carbs, target_fat, week_start_day, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, weight_kg, height_cm, sex, age, dob, activity_level, goal, plan_pace, nutrition_strategy, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, weight_kg_by_day",
             )
             .eq("id", userId)
             .maybeSingle(),
@@ -125,23 +178,90 @@ export default function WeeklyRecapScreen() {
       }
 
       if (profile) {
+        const p = profile as Record<string, unknown>;
         setTargets({
-          calories: (profile.target_calories as number) ?? DEFAULT_TARGETS.calories,
-          protein: (profile.target_protein as number) ?? DEFAULT_TARGETS.protein,
-          carbs: (profile.target_carbs as number) ?? DEFAULT_TARGETS.carbs,
-          fat: (profile.target_fat as number) ?? DEFAULT_TARGETS.fat,
+          calories: (p.target_calories as number) ?? DEFAULT_TARGETS.calories,
+          protein: (p.target_protein as number) ?? DEFAULT_TARGETS.protein,
+          carbs: (p.target_carbs as number) ?? DEFAULT_TARGETS.carbs,
+          fat: (p.target_fat as number) ?? DEFAULT_TARGETS.fat,
         });
-        if (profile.week_start_day === "sunday" || profile.week_start_day === "monday") {
-          setWeekStartDay(profile.week_start_day);
+        if (p.week_start_day === "sunday" || p.week_start_day === "monday") {
+          setWeekStartDay(p.week_start_day);
         }
-        const rawBudget = Number((profile as any).streak_freeze_budget_max);
+        const rawBudget = Number(p.streak_freeze_budget_max);
         setFreezeBudgetMax(Number.isFinite(rawBudget) ? Math.max(0, Math.min(10, rawBudget)) : 3);
         setFreezeLedger(
           readFreezeLedger({
-            earnedAt: (profile as any).streak_freezes_earned_at,
-            usedHistory: (profile as any).streak_freezes_used_history,
+            earnedAt: p.streak_freezes_earned_at,
+            usedHistory: p.streak_freezes_used_history,
           }),
         );
+
+        // Body stats slice for the Check-in section + re-tune sheet.
+        // `age` falls back to dob when present (mirrors calcTargets).
+        let age: number | null = null;
+        if (typeof p.age === "number" && Number.isFinite(p.age)) {
+          age = p.age;
+        } else if (typeof p.dob === "string") {
+          const dobMs = new Date(p.dob).getTime();
+          if (Number.isFinite(dobMs)) {
+            age = Math.floor((Date.now() - dobMs) / 31_557_600_000);
+          }
+        }
+        const sex = (typeof p.sex === "string" ? p.sex : null) as Sex | null;
+        const weightByDay: Record<string, number> = {};
+        if (
+          p.weight_kg_by_day &&
+          typeof p.weight_kg_by_day === "object" &&
+          !Array.isArray(p.weight_kg_by_day)
+        ) {
+          for (const [k, v] of Object.entries(
+            p.weight_kg_by_day as Record<string, unknown>,
+          )) {
+            const n = typeof v === "number" ? v : Number(v);
+            if (Number.isFinite(n) && n > 0) weightByDay[k] = n;
+          }
+        }
+        const dbGoal = ((): "cut" | "maintain" | "bulk" | null => {
+          const g = typeof p.goal === "string" ? p.goal.toLowerCase() : "";
+          if (g === "cut" || g === "lose") return "cut";
+          if (g === "maintain" || g === "health") return "maintain";
+          if (g === "bulk" || g === "gain" || g === "strength") return "bulk";
+          return null;
+        })();
+        const strategy = ((): NutritionStrategy | null => {
+          const s = typeof p.nutrition_strategy === "string" ? p.nutrition_strategy : null;
+          if (
+            s === "balanced" ||
+            s === "high_protein" ||
+            s === "high_satisfaction" ||
+            s === "low_carb"
+          ) {
+            return s;
+          }
+          return null;
+        })();
+        setBodyStats({
+          weight_kg: typeof p.weight_kg === "number" ? p.weight_kg : null,
+          height_cm: typeof p.height_cm === "number" ? p.height_cm : null,
+          sex,
+          age,
+          activity_level: typeof p.activity_level === "string" ? p.activity_level : null,
+          goal: dbGoal,
+          plan_pace: typeof p.plan_pace === "string" ? p.plan_pace : null,
+          nutrition_strategy: strategy,
+          adaptive_tdee:
+            typeof p.adaptive_tdee === "number" ? p.adaptive_tdee : null,
+          adaptive_tdee_confidence:
+            typeof p.adaptive_tdee_confidence === "string"
+              ? p.adaptive_tdee_confidence
+              : null,
+          adaptive_tdee_updated_at:
+            typeof p.adaptive_tdee_updated_at === "string"
+              ? p.adaptive_tdee_updated_at
+              : null,
+          weight_kg_by_day: weightByDay,
+        });
       }
 
       const loaded: ByDay = {};
@@ -171,6 +291,28 @@ export default function WeeklyRecapScreen() {
   useEffect(() => {
     void loadData();
   }, [loadData]);
+
+  // ── Previous-week TDEE snapshot lookup (Weekly Check-in) ──
+  // We store one entry per (user, weekKey) in AsyncStorage. The
+  // "previous" week's value is what we want to compare today's
+  // adaptive TDEE against. We read after the profile has loaded so
+  // we know `weekStartDay`.
+  useEffect(() => {
+    if (state !== "ready" || !userId) return;
+    const previousWeekAnchor = new Date();
+    previousWeekAnchor.setDate(previousWeekAnchor.getDate() - 7);
+    const prevWeekKey = weekKeyFor(previousWeekAnchor, weekStartDay);
+    let cancelled = false;
+    void readTdeeSnapshot(userId, prevWeekKey).then((snap) => {
+      if (cancelled) return;
+      setPreviousTdeeKcal(
+        snap && Number.isFinite(snap.tdee) && snap.tdee > 0 ? snap.tdee : null,
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [state, userId, weekStartDay]);
 
   // Current-week stats. `buildWeekStats` defaults to "now" so we get
   // Mon–Sun (or Sun–Sat) of the active week — exactly what the user
@@ -222,6 +364,128 @@ export default function WeeklyRecapScreen() {
   }, [weekStats.avgProtein, daysLogged]);
 
   const todayKey = useMemo(() => dateKeyFromDate(new Date()), []);
+
+  // ── Weekly Check-in payload (MacroFactor parity, 2026-04-30) ──
+  const currentTdeeKcal = useMemo<number | null>(() => {
+    if (!bodyStats) return null;
+    // Prefer adaptive when present and confident; fallback to formula.
+    if (
+      bodyStats.adaptive_tdee != null &&
+      bodyStats.adaptive_tdee > 0 &&
+      (bodyStats.adaptive_tdee_confidence === "medium" ||
+        bodyStats.adaptive_tdee_confidence === "high")
+    ) {
+      return Math.round(bodyStats.adaptive_tdee);
+    }
+    // Formula fallback — only when all inputs are present.
+    if (
+      bodyStats.sex &&
+      bodyStats.weight_kg != null &&
+      bodyStats.height_cm != null &&
+      bodyStats.age != null &&
+      bodyStats.activity_level
+    ) {
+      return calculateTDEE(
+        bodyStats.sex,
+        bodyStats.weight_kg,
+        bodyStats.height_cm,
+        bodyStats.age,
+        bodyStats.activity_level,
+      );
+    }
+    return null;
+  }, [bodyStats]);
+
+  // Weight first/last in the recap window — same logic as
+  // `buildWeeklyRecap` (≥2 entries required), but we look at the
+  // *current* week the user is on, not the previous one.
+  const weeklyWeightStats = useMemo(() => {
+    if (!bodyStats || weekStats.days.length === 0) {
+      return {
+        startKg: null as number | null,
+        endKg: null as number | null,
+        weighIns: 0,
+      };
+    }
+    const firstKey = weekStats.days[0].key;
+    const lastKey = weekStats.days[weekStats.days.length - 1].key;
+    const within = Object.entries(bodyStats.weight_kg_by_day)
+      .filter(([k]) => k >= firstKey && k <= lastKey)
+      .sort(([a], [b]) => a.localeCompare(b));
+    if (within.length === 0) {
+      return { startKg: null, endKg: null, weighIns: 0 };
+    }
+    const startKg = within[0][1];
+    const endKg = within[within.length - 1][1];
+    return {
+      startKg: Number.isFinite(startKg) ? startKg : null,
+      endKg: Number.isFinite(endKg) ? endKg : null,
+      weighIns: within.length,
+    };
+  }, [bodyStats, weekStats.days]);
+
+  const weeklyIntakeKcal = useMemo(
+    () => weekStats.days.reduce((s, d) => s + (d.calories ?? 0), 0),
+    [weekStats.days],
+  );
+
+  const checkin = useMemo<WeeklyCheckin | null>(() => {
+    // Requires the body-stats slice to be present at all.
+    if (!bodyStats || currentTdeeKcal == null) return null;
+    return buildWeeklyCheckin({
+      previousTdeeKcal,
+      currentTdeeKcal,
+      weeklyIntakeKcal,
+      dailyTargetKcal: targets.calories,
+      weightStartKg: weeklyWeightStats.startKg,
+      weightEndKg: weeklyWeightStats.endKg,
+      weighInsThisWeek: weeklyWeightStats.weighIns,
+      daysLogged,
+    });
+  }, [
+    bodyStats,
+    currentTdeeKcal,
+    previousTdeeKcal,
+    weeklyIntakeKcal,
+    targets.calories,
+    weeklyWeightStats,
+    daysLogged,
+  ]);
+
+  // Fire `weekly_checkin_viewed` once per visible weekKey. Mirrors the
+  // legacy `weekly_recap_shown` gate on the Digest.
+  const weekKeyForView = useMemo(
+    () => weekKeyFor(new Date(), weekStartDay),
+    [weekStartDay],
+  );
+  const checkinViewedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (state !== "ready" || !checkin) return;
+    if (checkinViewedRef.current === weekKeyForView) return;
+    checkinViewedRef.current = weekKeyForView;
+    try {
+      track(AnalyticsEvents.weekly_checkin_viewed, {
+        weekKey: weekKeyForView,
+        kind: checkin.kind,
+        direction: checkin.direction,
+        tdeeDeltaKcal: checkin.tdeeDeltaKcal,
+      });
+    } catch {
+      /* fire-and-forget */
+    }
+  }, [state, checkin, weekKeyForView]);
+
+  // Capture the current TDEE under the *current* week's key when the
+  // screen unmounts (or the user changes weekStartDay). Next week,
+  // when the user lands here again, this value is the "previous"
+  // baseline. Idempotent and self-pruning (the read path only ever
+  // looks at the previous week's key).
+  useEffect(() => {
+    return () => {
+      if (!userId || currentTdeeKcal == null) return;
+      void writeTdeeSnapshot(userId, weekKeyForView, currentTdeeKcal);
+    };
+  }, [userId, currentTdeeKcal, weekKeyForView]);
 
   // ── Render ──
 
@@ -307,6 +571,7 @@ export default function WeeklyRecapScreen() {
   );
 
   return (
+    <>
     <ScrollView
       testID="weekly-recap-screen"
       style={{ flex: 1, backgroundColor: colors.background }}
@@ -348,6 +613,119 @@ export default function WeeklyRecapScreen() {
           <StreakPip days={streakDays} size="lg" />
         </View>
       </View>
+
+      {/* Weekly Check-in — TDEE delta + goal-pace re-tune (MacroFactor
+          parity, 2026-04-30). Shown above the existing recap rollups
+          so the user lands on the most actionable signal first. */}
+      {checkin
+        ? card(
+            <View testID="weekly-checkin-card">
+              {sectionLabel("Your TDEE this week")}
+              <Text
+                testID="weekly-checkin-headline"
+                style={{
+                  fontSize: 17,
+                  fontWeight: "700",
+                  color: colors.text,
+                  marginBottom: 4,
+                  letterSpacing: -0.2,
+                }}
+              >
+                {checkin.headline}
+              </Text>
+              {checkin.deltaLine ? (
+                <Text
+                  testID="weekly-checkin-delta"
+                  style={{
+                    fontSize: 14,
+                    color: colors.textSecondary,
+                    marginBottom: Spacing.sm,
+                    fontVariant: ["tabular-nums"],
+                  }}
+                >
+                  {checkin.deltaLine}
+                </Text>
+              ) : null}
+              {checkin.whyLine ? (
+                <Text
+                  testID="weekly-checkin-why"
+                  style={{
+                    fontSize: 13,
+                    color: colors.textSecondary,
+                    lineHeight: 19,
+                    marginBottom: Spacing.sm,
+                  }}
+                >
+                  {checkin.whyLine}
+                </Text>
+              ) : null}
+              {checkin.intakeLine ? (
+                <Text
+                  testID="weekly-checkin-intake"
+                  style={{
+                    fontSize: 13,
+                    color: colors.textTertiary,
+                    lineHeight: 19,
+                    fontVariant: ["tabular-nums"],
+                  }}
+                >
+                  {checkin.intakeLine}
+                </Text>
+              ) : null}
+              {checkin.weightLine ? (
+                <Text
+                  testID="weekly-checkin-weight"
+                  style={{
+                    fontSize: 13,
+                    color: colors.textTertiary,
+                    lineHeight: 19,
+                    fontVariant: ["tabular-nums"],
+                  }}
+                >
+                  {checkin.weightLine}
+                </Text>
+              ) : null}
+              {/* Adjust goal pace — only when the body-stats slice
+                  has enough data to make the re-tune sheet honest. We
+                  hide the CTA on first_week (no signal) but keep it
+                  available on low_confidence (the math still works,
+                  the user can still pick a new pace). */}
+              {checkin.kind !== "first_week" &&
+              bodyStats?.weight_kg != null &&
+              bodyStats?.sex &&
+              currentTdeeKcal != null &&
+              bodyStats.goal != null ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Adjust goal pace"
+                  onPress={() => setRetuneSheetVisible(true)}
+                  testID="weekly-checkin-retune-cta"
+                  style={{
+                    marginTop: Spacing.md,
+                    paddingVertical: Spacing.sm,
+                    paddingHorizontal: Spacing.md,
+                    borderRadius: Radius.md,
+                    borderWidth: 1.5,
+                    borderColor: Accent.primary,
+                    alignSelf: "flex-start",
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      fontWeight: "700",
+                      color: Accent.primary,
+                      letterSpacing: 0.2,
+                    }}
+                  >
+                    Adjust goal pace
+                  </Text>
+                </Pressable>
+              ) : null}
+            </View>,
+            "weekly-checkin-section",
+          )
+        : null}
 
       {isEmpty ? (
         // Empty state — explainer per audit Step 1. Calm copy, no
@@ -605,5 +983,35 @@ export default function WeeklyRecapScreen() {
         </>
       )}
     </ScrollView>
+
+    {/* Goal-pace re-tune sheet — opened by the "Adjust goal pace"
+        CTA inside the Check-in card. Mounted at the screen root so
+        the modal overlay can size itself against the full window
+        rather than the ScrollView's content height. */}
+    {bodyStats &&
+    userId &&
+    bodyStats.weight_kg != null &&
+    bodyStats.sex &&
+    bodyStats.goal != null &&
+    currentTdeeKcal != null ? (
+      <GoalPaceRetuneSheet
+        visible={retuneSheetVisible}
+        onClose={() => setRetuneSheetVisible(false)}
+        tdeeKcal={currentTdeeKcal}
+        dbGoal={bodyStats.goal}
+        strategy={bodyStats.nutrition_strategy}
+        weightKg={bodyStats.weight_kg}
+        sex={bodyStats.sex}
+        currentTargetKcal={targets.calories}
+        userId={userId}
+        onSaved={() => {
+          // Refetch so the screen reflects the new target
+          // immediately. The data load is cheap (a single profile
+          // row + the 90-day entries window the user just saw).
+          void loadData();
+        }}
+      />
+    ) : null}
+    </>
   );
 }

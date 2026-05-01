@@ -59,6 +59,7 @@ import { formatRecapForShare } from "../../lib/nutrition/weeklyRecap.ts";
 import {
   formatMaintenanceRecapLine,
 } from "../../lib/nutrition/resolveMaintenance.ts";
+import { buildWeeklyCheckin } from "../../lib/nutrition/weeklyCheckin.ts";
 import { selectMostFrequentSlotSeed } from "../../lib/nutrition/usualMealHint.ts";
 import { ProgressMetricDetail, type ProgressMetric } from "./ProgressMetricDetail.tsx";
 // HouseholdBar — 2026-04-20 Claude Design prototype port. Rendered at
@@ -154,6 +155,11 @@ function ProgressDashboardContent() {
   const [adaptiveConfidence, setAdaptiveConfidence] = useState<string | null>(null);
   const [adaptiveUpdatedAt, setAdaptiveUpdatedAt] = useState<string | null>(null);
   const [isAdaptive, setIsAdaptive] = useState(false);
+  // Weekly Check-in (MacroFactor parity, 2026-04-30) — TDEE recorded
+  // at the start of the previous week. Sourced from `daily_targets`
+  // snapshots so we don't need a parallel storage layer; falls back
+  // to `null` when the snapshot wasn't captured yet (first week).
+  const [previousWeekTdeeKcal, setPreviousWeekTdeeKcal] = useState<number | null>(null);
   // Profile basics cached so `resolveMaintenance` can fall back to the
   // formula when adaptive isn't confident enough (F-3, 2026-04-19).
   const [profileSexCached, setProfileSexCached] = useState<Sex>("unspecified");
@@ -322,6 +328,40 @@ function ProgressDashboardContent() {
         })
         .catch(() => {
           /* fallback already in place (empty map → current targets). */
+        });
+
+      // Weekly Check-in (MacroFactor parity, 2026-04-30) — read the
+      // *previous* week's snapshot so the Digest can show "TDEE moved
+      // from X → Y". We pull the FIRST day of the previous week
+      // (most reliable signal: that's the maintenance value on file
+      // when last week opened). Falls back gracefully to null when no
+      // snapshot exists, which lands the Digest on `first_week`.
+      const prevWeekFirst = new Date(weekFirst);
+      prevWeekFirst.setDate(weekFirst.getDate() - 7);
+      const prevWeekKeys: string[] = [];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(prevWeekFirst);
+        d.setDate(prevWeekFirst.getDate() + i);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        prevWeekKeys.push(`${y}-${m}-${day}`);
+      }
+      void getDailyTargets(supabase, authedUserId, prevWeekKeys)
+        .then((snapshots) => {
+          // Walk the prev-week keys in order; the first non-null
+          // `maintenanceTdee` we find is the baseline.
+          for (const k of prevWeekKeys) {
+            const snap = snapshots[k];
+            if (snap?.maintenanceTdee != null && snap.maintenanceTdee > 0) {
+              setPreviousWeekTdeeKcal(snap.maintenanceTdee);
+              return;
+            }
+          }
+          setPreviousWeekTdeeKcal(null);
+        })
+        .catch(() => {
+          setPreviousWeekTdeeKcal(null);
         });
     }
     } catch (err) {
@@ -1061,6 +1101,31 @@ function ProgressDashboardContent() {
         });
         const digestState: "success" | "empty" | "partial" =
           recap.daysLogged === 0 ? "empty" : recap.daysLogged < 4 ? "partial" : "success";
+
+        // Weekly Check-in payload — MacroFactor parity (2026-04-30).
+        // Inputs come from the existing recap + the prior-week TDEE
+        // snapshot we fetch alongside `daily_targets`. We pass
+        // `null` weight endpoints when the recap doesn't have ≥2
+        // weigh-ins (the cascade handles the missing-weight branch).
+        const currentTdeeForCheckin =
+          adaptiveTdee != null && adaptiveTdee > 0 &&
+          (adaptiveConfidence === "medium" || adaptiveConfidence === "high")
+            ? adaptiveTdee
+            : staticTdee;
+        const weeklyIntakeKcal = recap.avgCalories * recap.daysLogged;
+        const weighInsThisWeek = recap.weightDeltaKg != null ? 2 : 0; // ≥2 → has both endpoints
+        const weeklyCheckin = currentTdeeForCheckin
+          ? buildWeeklyCheckin({
+              previousTdeeKcal: previousWeekTdeeKcal,
+              currentTdeeKcal: currentTdeeForCheckin,
+              weeklyIntakeKcal,
+              dailyTargetKcal: targets.calories,
+              weightStartKg: recap.weightFirstKg,
+              weightEndKg: recap.weightLastKg,
+              weighInsThisWeek,
+              daysLogged: recap.daysLogged,
+            })
+          : null;
         return (
           <Digest
             weekKey={recap.weekKey}
@@ -1078,7 +1143,12 @@ function ProgressDashboardContent() {
               weightFirstKg: recap.weightFirstKg,
               weightLastKg: recap.weightLastKg,
             }}
-            narrative={{ closestToTarget, maintenanceLine, usualMeal }}
+            narrative={{ closestToTarget, maintenanceLine, usualMeal, weeklyCheckin }}
+            onAdjustGoalPace={() => {
+              // Web routes to existing Settings → Targets surface;
+              // we don't ship a parallel modal sheet on web.
+              router.push("/settings#targets");
+            }}
             shareText={formatRecapForShare(recap)}
             state={digestState}
             weightSurfaceMode={profileWeightSurfaceMode}

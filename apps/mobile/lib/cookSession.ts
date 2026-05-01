@@ -76,16 +76,50 @@ export const COOK_HISTORY_KEY_PREFIX = "suppr-cook-history-v1:";
  *  cannot balloon for a frequently-cooked recipe. */
 export const COOK_HISTORY_MAX_ENTRIES = 10;
 
-/** Shape of one persisted cook-history entry. */
+/** Shape of one persisted cook-history entry. Extended 2026-04-30 (Paprika
+ *  parity) with optional `scale`, `rating`, `note` fields plus an
+ *  optional `recipeCookHistoryId` once the row has been written to
+ *  Supabase (enables future "edit my last cook" flows). All new fields
+ *  are optional so a v1 entry (just `durationSec` + `ts`) still parses. */
 export type CookHistoryEntry = {
   /** Total seconds the user spent in cook mode for this session. */
   durationSec: number;
   /** Wall-clock ms timestamp of when the session ended. */
   ts: number;
+  /** Scale factor the user picked for this cook (Paprika parity). */
+  scale?: number;
+  /** 1..5 rating the user gave THIS cook. */
+  rating?: number;
+  /** Free-text per-cook note ("added more garlic"), capped at 500
+   *  chars by the writer. Empty / whitespace-only strings drop to
+   *  undefined on parse. */
+  note?: string;
+  /** UUID of the row written to `public.recipe_cook_history` if the
+   *  Supabase write succeeded. Local-only for sessions where the
+   *  network was offline. */
+  recipeCookHistoryId?: string;
 };
 
+/** Per-cook note cap. Mirrors the DB CHECK in
+ *  `supabase/migrations/20260504100000_recipe_cook_history.sql`. */
+export const COOK_NOTE_MAX_LEN = 500;
+
+/** Clamp + normalise a per-cook note string. Returns undefined for
+ *  empty / non-string input, otherwise returns a trimmed string
+ *  truncated to `COOK_NOTE_MAX_LEN`. */
+export function clampCookNote(raw: unknown): string | undefined {
+  if (typeof raw !== "string") return undefined;
+  const trimmed = raw.trim();
+  if (!trimmed) return undefined;
+  return trimmed.length > COOK_NOTE_MAX_LEN
+    ? trimmed.slice(0, COOK_NOTE_MAX_LEN)
+    : trimmed;
+}
+
 /** Validate + filter a raw `JSON.parse` result back into a typed
- *  history array. Returns `[]` for any malformed input — never throws. */
+ *  history array. Returns `[]` for any malformed input — never throws.
+ *  Backward-compat: v1 entries with only `{ durationSec, ts }` still
+ *  parse cleanly; new fields drop through when absent / malformed. */
 export function parseCookHistory(raw: unknown): CookHistoryEntry[] {
   if (!Array.isArray(raw)) return [];
   const out: CookHistoryEntry[] = [];
@@ -96,7 +130,22 @@ export function parseCookHistory(raw: unknown): CookHistoryEntry[] {
     const ts = typeof rec.ts === "number" ? rec.ts : NaN;
     if (!Number.isFinite(durationSec) || durationSec <= 0) continue;
     if (!Number.isFinite(ts) || ts <= 0) continue;
-    out.push({ durationSec, ts });
+    const entry: CookHistoryEntry = { durationSec, ts };
+
+    if (typeof rec.scale === "number" && Number.isFinite(rec.scale) && rec.scale > 0) {
+      entry.scale = rec.scale;
+    }
+    if (typeof rec.rating === "number" && Number.isFinite(rec.rating)) {
+      const r = Math.round(rec.rating);
+      if (r >= 1 && r <= 5) entry.rating = r;
+    }
+    const note = clampCookNote(rec.note);
+    if (note) entry.note = note;
+    if (typeof rec.recipeCookHistoryId === "string" && rec.recipeCookHistoryId) {
+      entry.recipeCookHistoryId = rec.recipeCookHistoryId;
+    }
+
+    out.push(entry);
   }
   return out;
 }

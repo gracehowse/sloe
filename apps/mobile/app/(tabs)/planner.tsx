@@ -20,6 +20,13 @@ import { useDiscoverRecipes, useSavedLibraryRecipes } from "@/lib/recipes";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
 import { upsertShoppingListJsonItems } from "../../../../src/lib/supabase/shoppingJsonFallback";
+import { getMyHousehold } from "../../../../src/lib/household/householdClient";
+import {
+  shoppingScopeFor,
+  shoppingScopeInsertStamp,
+  shoppingScopeClearFilters,
+  type ShoppingScope,
+} from "../../../../src/lib/household/shoppingScope";
 import { fetchMealPlanJson, upsertMealPlanJson } from "../../../../src/lib/supabase/phase1LegacyJsonb";
 import { dateKeyFromDate, newMealId } from "@/lib/nutritionJournal";
 import { snapshotDailyTargetIfMissing } from "../../../../src/lib/nutrition/dailyTargetSnapshot";
@@ -383,6 +390,29 @@ export default function PlannerScreen() {
   const [enabledSlots, setEnabledSlots] = useState<Set<string>>(new Set(ALL_MEAL_SLOTS));
   const [shoppingItemCount, setShoppingItemCount] = useState(0);
 
+  // Household-aware shopping (Honeydew parity, 2026-04-30) — resolved
+  // once when the user lands on Plan and refreshed if the user joins/
+  // leaves a household via the Manage screen. Drives `household_id` on
+  // shopping_items writes + the "shared" status on the summary row.
+  const [activeHouseholdId, setActiveHouseholdId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!userId) { setActiveHouseholdId(null); return; }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const { data } = await getMyHousehold(supabase as any, userId);
+        if (!cancelled) setActiveHouseholdId(data?.household?.id ?? null);
+      } catch {
+        if (!cancelled) setActiveHouseholdId(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [userId]);
+  const shoppingScope: ShoppingScope | null = useMemo(() => {
+    if (!userId) return null;
+    return shoppingScopeFor({ userId, householdId: activeHouseholdId });
+  }, [userId, activeHouseholdId]);
+
   // Batch 3.10 — plan templates state.
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [planTemplates, setPlanTemplates] = useState<PlanTemplate[]>([]);
@@ -449,7 +479,7 @@ export default function PlannerScreen() {
   // cleanup lives here.
   const priorPlanRef = useRef(plan);
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || !shoppingScope) return;
     const prev = priorPlanRef.current;
     priorPlanRef.current = plan;
     if (!plan) {
@@ -457,19 +487,39 @@ export default function PlannerScreen() {
       // Only hit the server when the plan actually transitioned to
       // null this render; avoids a delete on every cold start with
       // no plan (there's nothing to clean up then either).
+      // 2026-04-30 — household-aware: solo deletes (`user_id = me AND
+      // household_id IS NULL`) so we never wipe a *household* list when
+      // a single member's plan empties; household deletes (`household_id
+      // = active`) wipe the shared list deliberately when the cook
+      // who built it clears their plan.
       if (prev) {
-        void supabase.from("shopping_items").delete().eq("user_id", userId);
+        const filters = shoppingScopeClearFilters(shoppingScope);
+        let q = supabase.from("shopping_items").delete();
+        if (filters.household_id !== undefined && filters.household_id !== null) {
+          q = q.eq("household_id", filters.household_id);
+        }
+        if (filters.user_id !== undefined) {
+          q = q.eq("user_id", filters.user_id);
+        }
+        if (filters.household_id === null) {
+          q = q.is("household_id", null);
+        }
+        void q;
       }
       return;
     }
-    supabase
+    let countQ = supabase
       .from("shopping_items")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", userId)
-      .then(({ count }) => {
-        setShoppingItemCount(count ?? 0);
-      });
-  }, [userId, plan]);
+      .select("id", { count: "exact", head: true });
+    if (shoppingScope.kind === "household") {
+      countQ = countQ.eq("household_id", shoppingScope.householdId);
+    } else {
+      countQ = countQ.eq("user_id", shoppingScope.userId).is("household_id", null);
+    }
+    countQ.then(({ count }) => {
+      setShoppingItemCount(count ?? 0);
+    });
+  }, [userId, plan, shoppingScope]);
 
   /**
    * Persist a plan back to Supabase — relational tables first with legacy
@@ -1211,8 +1261,15 @@ export default function PlannerScreen() {
       }));
       items.sort((a, b) => a.category.localeCompare(b.category));
 
+      // Honeydew parity (2026-04-30) — stamp `household_id` so generated
+      // items show up for every household member instantly; solo users
+      // keep `household_id = null` and fall through the per-user RLS.
+      const stamp = shoppingScope
+        ? shoppingScopeInsertStamp(shoppingScope)
+        : { user_id: userId, household_id: null as string | null };
       const inserts = items.map((item) => ({
-        user_id: userId,
+        user_id: stamp.user_id,
+        household_id: stamp.household_id,
         name: item.name,
         amount: item.amount,
         unit: item.unit,
@@ -1221,7 +1278,16 @@ export default function PlannerScreen() {
         source: item.source,
       }));
 
-      const { error: delErr } = await supabase.from("shopping_items").delete().eq("user_id", userId);
+      // Scope-aware delete: household lists wipe by `household_id` so a
+      // member regenerating doesn't leave another member's stale items
+      // behind; solo lists wipe by `user_id` + `household_id IS NULL`.
+      let delQ = supabase.from("shopping_items").delete();
+      if (shoppingScope?.kind === "household") {
+        delQ = delQ.eq("household_id", shoppingScope.householdId);
+      } else {
+        delQ = delQ.eq("user_id", userId).is("household_id", null);
+      }
+      const { error: delErr } = await delQ;
       if (delErr) {
         const { error: upErr } = await upsertShoppingListJsonItems(supabase, userId, items);
         if (upErr) return { ok: false, error: upErr.message };
@@ -1236,7 +1302,7 @@ export default function PlannerScreen() {
       setShoppingItemCount(inserts.length);
       return { ok: true, count: inserts.length };
     },
-    [userId, savedRecipes, discoverRecipes],
+    [userId, savedRecipes, discoverRecipes, shoppingScope],
   );
 
   const generatePlan = useCallback(async () => {
@@ -1258,9 +1324,18 @@ export default function PlannerScreen() {
     // list against the new plan. Web parity: `AppDataContext.tsx`'s
     // shopping-clear effect already handles plan-cleared
     // transitions; this covers the plan-replaced case.
-    if (userId) {
+    if (userId && shoppingScope) {
       try {
-        await supabase.from("shopping_items").delete().eq("user_id", userId);
+        // 2026-04-30 (Honeydew parity): scope-aware wipe. Household
+        // members regenerating fresh-bin the *household* row set —
+        // not the cook's solo rows — so the shared list is consistent.
+        let q = supabase.from("shopping_items").delete();
+        if (shoppingScope.kind === "household") {
+          q = q.eq("household_id", shoppingScope.householdId);
+        } else {
+          q = q.eq("user_id", userId).is("household_id", null);
+        }
+        await q;
       } catch {
         /* best-effort — generation should still proceed */
       }
@@ -2706,9 +2781,15 @@ export default function PlannerScreen() {
                   items.sort((a, b) => a.category.localeCompare(b.category));
                   if (__DEV__) console.log("[shopping] Merged items:", items.length, items.slice(0, 3));
 
-                  // Build inserts — omit id so Supabase auto-generates UUIDs
+                  // Build inserts — omit id so Supabase auto-generates UUIDs.
+                  // 2026-04-30 (Honeydew parity): stamp `household_id`
+                  // when in a household so the list is shared.
+                  const stamp = shoppingScope
+                    ? shoppingScopeInsertStamp(shoppingScope)
+                    : { user_id: userId!, household_id: null as string | null };
                   const inserts = items.map((item) => ({
-                    user_id: userId,
+                    user_id: stamp.user_id,
+                    household_id: stamp.household_id,
                     name: item.name,
                     amount: item.amount,
                     unit: item.unit,
@@ -2716,9 +2797,14 @@ export default function PlannerScreen() {
                     checked: item.checked,
                     source: item.source,
                   }));
-                  // Clear existing then insert
-                  // Clear existing items then insert new ones
-                  const { error: delErr } = await supabase.from("shopping_items").delete().eq("user_id", userId!);
+                  // Clear existing items then insert new ones — scope-aware
+                  let inlineDelQ = supabase.from("shopping_items").delete();
+                  if (shoppingScope?.kind === "household") {
+                    inlineDelQ = inlineDelQ.eq("household_id", shoppingScope.householdId);
+                  } else {
+                    inlineDelQ = inlineDelQ.eq("user_id", userId!).is("household_id", null);
+                  }
+                  const { error: delErr } = await inlineDelQ;
                   if (delErr) {
                     console.log("[planner] shopping_items delete failed, trying legacy:", delErr.message);
                     // Relational table doesn't exist — try legacy JSONB fallback

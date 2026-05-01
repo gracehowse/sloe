@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import {
   Alert,
   View,
@@ -9,8 +9,8 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from "react-native";
-import * as Linking from "expo-linking";
 import { Ionicons } from "@expo/vector-icons";
+import { Users } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/context/auth";
@@ -29,6 +29,17 @@ import {
   isShoppingGroupFullyChecked,
   type ShoppingDisplayGroup,
 } from "../../../src/lib/planning/shoppingDisplayGroups";
+import { getMyHousehold, type HouseholdData } from "../../../src/lib/household/householdClient";
+import {
+  householdMemberAccent,
+  householdMemberFirstName,
+  householdMemberInitials,
+} from "../../../src/lib/household/memberAccents";
+import {
+  shoppingScopeFor,
+  shoppingScopeRealtimeFilter,
+  type ShoppingScope,
+} from "../../../src/lib/household/shoppingScope";
 import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
@@ -42,6 +53,8 @@ type ShoppingItem = {
   category: string;
   checked: boolean;
   from: string;
+  /** Honeydew parity: who toggled the check last (for member attribution chip). */
+  checkedBy: string | null;
 };
 
 export default function ShoppingListScreen() {
@@ -54,96 +67,203 @@ export default function ShoppingListScreen() {
 
   const [items, setItems] = useState<ShoppingItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [household, setHousehold] = useState<HouseholdData | null>(null);
+  const householdRef = useRef<HouseholdData | null>(null);
+  householdRef.current = household;
 
+  const scope: ShoppingScope | null = useMemo(() => {
+    if (!userId) return null;
+    return shoppingScopeFor({
+      userId,
+      householdId: household?.household?.id ?? null,
+    });
+  }, [userId, household?.household?.id]);
+
+  // Step 1 — resolve household once on mount so we know the scope before
+  // we read (avoids a flicker where solo items load and then the
+  // household items replace them).
   useEffect(() => {
-    if (!userId) { setLoading(false); return; }
+    if (!userId) {
+      setHousehold(null);
+      return;
+    }
     let cancelled = false;
-    (async () => {
-      // Try relational table first
-      const { data: rows, error: relErr } = await supabase
-        .from("shopping_items")
-        .select("id, name, amount, unit, category, checked, source")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: true });
-
-      if (!cancelled && rows && rows.length > 0 && !relErr) {
-        // G-2 reconciliation: drop rows whose `source` recipe is no
-        // longer in the live plan. Covers historical drift from
-        // pre-G-2 builds where regenerate didn't purge. Two small
-        // queries (plan_day ids, then meals) — cheaper than a
-        // cross-table join RLS-wise and easier to reason about.
-        const { data: dayRows } = await supabase
-          .from("meal_plan_days")
-          .select("id")
-          .eq("user_id", userId)
-          .eq("slot_id", "default");
-        const dayIds = Array.isArray(dayRows)
-          ? (dayRows as Array<{ id: string }>).map((d) => d.id)
-          : [];
-        let liveTitles: string[] = [];
-        if (dayIds.length > 0) {
-          const { data: planMeals } = await supabase
-            .from("meal_plan_meals")
-            .select("recipe_title")
-            .in("plan_day_id", dayIds);
-          if (Array.isArray(planMeals)) {
-            liveTitles = (planMeals as Array<{ recipe_title: string | null }>)
-              .map((m) => m.recipe_title ?? "")
-              .filter(Boolean);
-          }
-        }
-
-        const kept = liveTitles.length > 0
-          ? shoppingItemsTiedToCurrentPlan({
-              items: rows as Array<{ source: string | null } & Record<string, unknown>>,
-              currentPlanRecipeTitles: liveTitles,
-            })
-          : (rows as Array<Record<string, unknown>>);
-
-        const staleIds = (rows as Array<{ id: string }>)
-          .filter((r) => !kept.some((k) => (k as { id: string }).id === r.id))
-          .map((r) => r.id);
-        if (staleIds.length > 0) {
-          void supabase.from("shopping_items").delete().in("id", staleIds);
-        }
-
-        if (!cancelled) {
-          setItems(kept.map((r) => ({
-            id: (r as { id: string }).id,
-            name: ((r as { name?: string }).name) ?? "",
-            amount: ((r as { amount?: string }).amount) ?? "",
-            unit: ((r as { unit?: string }).unit) ?? "",
-            category: ((r as { category?: string }).category) ?? "Other",
-            checked: ((r as { checked?: boolean }).checked) ?? false,
-            from: ((r as { source?: string }).source) ?? "",
-          })));
-          setLoading(false);
-        }
-        return;
-      }
-
-      if (!cancelled) {
-        const { items: legacyItems } = await fetchShoppingListJsonItems(supabase, userId);
-        if (!cancelled) {
-          if (Array.isArray(legacyItems)) {
-            setItems(legacyItems as ShoppingItem[]);
-          }
-          setLoading(false);
-        }
+    void (async () => {
+      try {
+        const { data } = await getMyHousehold(supabase as any, userId);
+        if (!cancelled) setHousehold(data ?? null);
+      } catch {
+        if (!cancelled) setHousehold(null);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [userId]);
+
+  // Map a household member's userId → MemberSummary for attribution chips.
+  const memberById = useMemo(() => {
+    const m = new Map<string, { displayName: string; index: number }>();
+    (household?.members ?? []).forEach((member, idx) => {
+      m.set(member.userId, { displayName: member.displayName, index: idx });
+    });
+    return m;
+  }, [household]);
+
+  const loadItems = useCallback(async (s: ShoppingScope) => {
+    // Build the query in scope-aware fashion. Solo: user_id + null
+    // household; household: just household_id.
+    let q = supabase
+      .from("shopping_items")
+      .select("id, name, amount, unit, category, checked, source, checked_by")
+      .order("created_at", { ascending: true });
+
+    if (s.kind === "household") {
+      q = q.eq("household_id", s.householdId);
+    } else {
+      q = q.eq("user_id", s.userId).is("household_id", null);
+    }
+
+    const { data: rows, error } = await q;
+    if (error || !rows) return null;
+
+    // G-2 reconciliation only applies to per-user (solo) items — a
+    // household list is shared and it's NOT one user's job to prune
+    // entries that fell off another user's plan.
+    if (s.kind === "solo" && rows.length > 0) {
+      const { data: dayRows } = await supabase
+        .from("meal_plan_days")
+        .select("id")
+        .eq("user_id", s.userId)
+        .eq("slot_id", "default");
+      const dayIds = Array.isArray(dayRows)
+        ? (dayRows as Array<{ id: string }>).map((d) => d.id)
+        : [];
+      let liveTitles: string[] = [];
+      if (dayIds.length > 0) {
+        const { data: planMeals } = await supabase
+          .from("meal_plan_meals")
+          .select("recipe_title")
+          .in("plan_day_id", dayIds);
+        if (Array.isArray(planMeals)) {
+          liveTitles = (planMeals as Array<{ recipe_title: string | null }>)
+            .map((m) => m.recipe_title ?? "")
+            .filter(Boolean);
+        }
+      }
+
+      const kept = liveTitles.length > 0
+        ? shoppingItemsTiedToCurrentPlan({
+            items: rows as Array<{ source: string | null } & Record<string, unknown>>,
+            currentPlanRecipeTitles: liveTitles,
+          })
+        : (rows as Array<Record<string, unknown>>);
+
+      const staleIds = (rows as Array<{ id: string }>)
+        .filter((r) => !kept.some((k) => (k as { id: string }).id === r.id))
+        .map((r) => r.id);
+      if (staleIds.length > 0) {
+        void supabase.from("shopping_items").delete().in("id", staleIds);
+      }
+
+      return kept.map((r) => ({
+        id: (r as { id: string }).id,
+        name: ((r as { name?: string }).name) ?? "",
+        amount: ((r as { amount?: string }).amount) ?? "",
+        unit: ((r as { unit?: string }).unit) ?? "",
+        category: ((r as { category?: string }).category) ?? "Other",
+        checked: ((r as { checked?: boolean }).checked) ?? false,
+        from: ((r as { source?: string }).source) ?? "",
+        checkedBy: ((r as { checked_by?: string | null }).checked_by) ?? null,
+      })) as ShoppingItem[];
+    }
+
+    return rows.map((r) => ({
+      id: (r as { id: string }).id,
+      name: ((r as { name?: string }).name) ?? "",
+      amount: ((r as { amount?: string }).amount) ?? "",
+      unit: ((r as { unit?: string }).unit) ?? "",
+      category: ((r as { category?: string }).category) ?? "Other",
+      checked: ((r as { checked?: boolean }).checked) ?? false,
+      from: ((r as { source?: string }).source) ?? "",
+      checkedBy: ((r as { checked_by?: string | null }).checked_by) ?? null,
+    })) as ShoppingItem[];
+  }, []);
+
+  // Initial load.
+  useEffect(() => {
+    if (!userId) { setLoading(false); return; }
+    if (scope == null) return;
+    let cancelled = false;
+    (async () => {
+      const loaded = await loadItems(scope);
+      if (cancelled) return;
+      if (loaded == null) {
+        // Relational table missing → JSON fallback (solo only — household
+        // mode requires the relational schema, fallback would silently
+        // break sync so we leave the list empty there).
+        if (scope.kind === "solo") {
+          const { items: legacyItems } = await fetchShoppingListJsonItems(supabase, scope.userId);
+          if (!cancelled && Array.isArray(legacyItems)) {
+            setItems(legacyItems as ShoppingItem[]);
+          }
+        }
+      } else {
+        setItems(loaded);
+      }
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [userId, scope, loadItems]);
+
+  // Real-time subscription. Step 4 — items added/checked/removed by
+  // another household member propagate within ~1s. Solo users still
+  // benefit from cross-device sync (e.g. iPhone + iPad).
+  useEffect(() => {
+    if (!scope) return;
+    const filter = shoppingScopeRealtimeFilter(scope);
+    const channelName =
+      scope.kind === "household"
+        ? `mobile:shopping:hh:${scope.householdId}`
+        : `mobile:shopping:user:${scope.userId}`;
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "shopping_items", filter },
+        () => {
+          // Cheap reload — 50-row payload is fine, and this avoids the
+          // need to merge optimistic state with three event variants.
+          void (async () => {
+            const reloaded = await loadItems(scope);
+            if (reloaded != null) setItems(reloaded);
+          })();
+        },
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [scope, loadItems]);
 
   const toggleItem = useCallback((itemId: string) => {
     setItems((prev) => {
       const next = prev.map((i) =>
-        i.id === itemId ? { ...i, checked: !i.checked } : i,
+        i.id === itemId
+          ? { ...i, checked: !i.checked, checkedBy: !i.checked ? userId : null }
+          : i,
       );
       if (userId) {
         const target = next.find((x) => x.id === itemId);
         if (target) {
-          void supabase.from("shopping_items").update({ checked: target.checked }).eq("id", itemId)
+          void supabase
+            .from("shopping_items")
+            .update({
+              checked: target.checked,
+              checked_by: target.checked ? userId : null,
+              checked_at: target.checked ? new Date().toISOString() : null,
+            })
+            .eq("id", itemId)
             .then(({ error }) => {
               if (error) {
                 void upsertShoppingListJsonItems(supabase, userId, next);
@@ -171,27 +291,35 @@ export default function ShoppingListScreen() {
   }, [userId]);
 
   const clearAll = useCallback(() => {
-    Alert.alert("Clear shopping list", "Remove all items?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Clear All",
-        style: "destructive",
-        onPress: () => {
-          setItems([]);
-          if (userId) {
-            void supabase.from("shopping_items").delete().eq("user_id", userId)
-              .then(({ error }) => {
+    Alert.alert(
+      "Clear shopping list",
+      household?.household
+        ? `Remove all items? This affects everyone in ${household.household.name}.`
+        : "Remove all items?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Clear All",
+          style: "destructive",
+          onPress: () => {
+            setItems([]);
+            if (userId && scope) {
+              const del = scope.kind === "household"
+                ? supabase.from("shopping_items").delete().eq("household_id", scope.householdId)
+                : supabase.from("shopping_items").delete().eq("user_id", scope.userId).is("household_id", null);
+              void del.then(({ error }) => {
                 if (error) {
                   void supabase
                     .from("shopping_lists")
                     .upsert({ user_id: userId, items: [], updated_at: new Date().toISOString() }, { onConflict: "user_id" });
                 }
               });
-          }
+            }
+          },
         },
-      },
-    ]);
-  }, [userId]);
+      ],
+    );
+  }, [userId, scope, household?.household]);
 
   const clearChecked = useCallback(() => {
     setItems((prev) => {
@@ -220,8 +348,6 @@ export default function ShoppingListScreen() {
     for (const [cat, catItems] of grouped) {
       lines.push(`📌 ${cat}`);
       for (const i of catItems) {
-        // G-2: share the same dedupe path as the on-screen render,
-        // so exported text doesn't leak "60 g 60 g protein powder".
         const d = dedupeShoppingLabel({ amount: i.amount, unit: i.unit, name: i.name });
         lines.push(`  ☐ ${d.amount} ${d.unit} ${d.name}`.replace(/\s+/g, " ").trim());
       }
@@ -263,10 +389,6 @@ export default function ShoppingListScreen() {
       paddingVertical: Spacing.md,
     },
     backBtn: { color: colors.text, fontSize: 28, fontWeight: "600" },
-    // 2026-04-26 polish (round 2): match the canonical top-level screen
-    // title — large, bold, foreground-coloured, normal letter-spacing. The
-    // previous treatment (uppercase blue with 3px tracking) made Shopping
-    // list look like a different app from the rest of the tabs.
     headerTitle: {
       fontSize: 22,
       fontWeight: "800",
@@ -304,10 +426,6 @@ export default function ShoppingListScreen() {
       borderTopWidth: 1,
       borderTopColor: colors.border,
     },
-    // Circular checkbox — matches Claude Design prototype + web
-    // ShoppingList parity (2026-04-20). Square 6-radius box was a
-    // divergence from the web port's 22px circle; keeping mobile
-    // aligned so category rows read identically across platforms.
     checkbox: {
       width: 22,
       height: 22,
@@ -343,13 +461,55 @@ export default function ShoppingListScreen() {
       marginTop: Spacing.sm,
     },
     ctaBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+
+    // Honeydew parity (2026-04-30) — household sync banner.
+    syncBanner: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: Spacing.sm,
+      paddingVertical: Spacing.sm,
+      paddingHorizontal: Spacing.md,
+      backgroundColor: Accent.primary + "12",
+      borderRadius: Radius.md,
+    },
+    syncBannerText: {
+      flex: 1,
+      color: colors.text,
+      fontSize: 12,
+      fontWeight: "600",
+    },
+    syncBannerSub: {
+      color: colors.textSecondary,
+      fontSize: 11,
+    },
+    attributionChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 999,
+      marginTop: 2,
+    },
+    attributionInitials: {
+      width: 14,
+      height: 14,
+      borderRadius: 7,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    attributionText: {
+      fontSize: 10,
+      fontWeight: "700",
+      color: "#fff",
+    },
+    attributionLabel: {
+      fontSize: 10,
+      fontWeight: "600",
+      color: colors.textSecondary,
+    },
   }), [colors]);
 
-  // 2026-04-30 (#2): badge + progress now reflect *grouped* rows so
-  // the displayed count matches what the user sees on screen. Web has
-  // always counted groups; mobile counted raw items, so a list with
-  // two recipes contributing 50 ingredient rows each could show
-  // "99+" while only ~70 actual products needed buying.
   const groupedSections = useMemo(() => {
     const cats = [...new Set(items.map((i) => i.category))];
     return cats.map((category) => ({
@@ -359,10 +519,6 @@ export default function ShoppingListScreen() {
       ),
     }));
   }, [items]);
-  const categories = useMemo(
-    () => groupedSections.map((s) => s.name),
-    [groupedSections],
-  );
   const totalGroupCount = useMemo(
     () => groupedSections.reduce((n, s) => n + s.groups.length, 0),
     [groupedSections],
@@ -379,11 +535,22 @@ export default function ShoppingListScreen() {
   const progress = totalGroupCount > 0 ? checkedGroupCount / totalGroupCount : 0;
   const uncheckedCount = totalGroupCount - checkedGroupCount;
 
+  // Honeydew parity copy: "Shared with Sarah & Tom" — joined first
+  // names of every member that isn't the caller. Falls back to "your
+  // household" if name resolution turns up empty.
+  const sharedWithLabel = useMemo(() => {
+    if (!household?.household || !userId) return null;
+    const others = (household.members ?? [])
+      .filter((m) => m.userId !== userId)
+      .map((m) => householdMemberFirstName(m.displayName));
+    if (others.length === 0) return null;
+    if (others.length === 1) return `Shared with ${others[0]}`;
+    if (others.length === 2) return `Shared with ${others[0]} & ${others[1]}`;
+    return `Shared with ${others.slice(0, -1).join(", ")} & ${others[others.length - 1]}`;
+  }, [household, userId]);
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Phase 2 / B1.1 — Plan sub-tab pill bar (Plan default,
-          Shopping list as a sub-view). Tapping "This week" routes
-          back to /(tabs)/planner. */}
       <PlanSubTabHeader
         value="shopping"
         shoppingUncheckedCount={uncheckedCount}
@@ -399,9 +566,6 @@ export default function ShoppingListScreen() {
           <Pressable onPress={goBack} hitSlop={12}>
             <Text style={styles.backBtn}>‹</Text>
           </Pressable>
-          {/* 2026-04-26 polish (round 2): every other top-level screen
-              title is Sentence Case (Discover / Library / Plan / Progress
-              / More); SHOPPING LIST was the lone uppercase outlier. */}
           <Text style={styles.headerTitle}>Shopping list</Text>
           {items.length > 0 ? (
             <View style={{ flexDirection: "row", gap: Spacing.md }}>
@@ -416,6 +580,28 @@ export default function ShoppingListScreen() {
             <View style={{ width: 28 }} />
           )}
         </View>
+
+        {/* Honeydew parity banner — visible only when in a household.
+            Shows "Shared with Sarah & Tom" + a Users icon. Tapping it
+            jumps to household settings so the user can confirm who's
+            seeing their list. Hidden for solo users — never steals
+            real estate from the per-user surface. */}
+        {sharedWithLabel ? (
+          <Pressable
+            testID="shopping-household-banner"
+            accessibilityRole="button"
+            accessibilityLabel={`${sharedWithLabel}. Tap to manage household.`}
+            onPress={() => router.push("/household-settings" as never)}
+            style={styles.syncBanner}
+          >
+            <Users size={14} color={Accent.primary} aria-hidden />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.syncBannerText}>{sharedWithLabel}</Text>
+              <Text style={styles.syncBannerSub}>Synced live across your household</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={14} color={colors.textTertiary} />
+          </Pressable>
+        ) : null}
 
         {loading ? (
           <View style={styles.centered}>
@@ -434,7 +620,6 @@ export default function ShoppingListScreen() {
           </View>
         ) : (
           <>
-            {/* Progress */}
             <View style={styles.card}>
               <View style={styles.progressRow}>
                 <Text style={styles.progressLabel}>Progress</Text>
@@ -445,7 +630,6 @@ export default function ShoppingListScreen() {
               </View>
             </View>
 
-            {/* Clear checked button */}
             {checkedCount > 0 && (
               <Pressable
                 onPress={clearChecked}
@@ -457,23 +641,7 @@ export default function ShoppingListScreen() {
               </Pressable>
             )}
 
-            {/* Items by category — grouped by ingredient name to match
-                web (issue #2, 2026-04-30). Pre-fix two recipes adding
-                "Instant Oats" produced two separate rows like
-                "875 g Instant Oats" and "175 g Instant Oats"; with the
-                shape of `name` sometimes carrying a duplicate prefix,
-                this rendered as "875 g 175 g Instant Oats". The web
-                ShoppingList in src/app/components/ShoppingList.tsx has
-                always used `groupShoppingItemsByIngredientName` +
-                `formatMixedShoppingAmounts` to merge rows; mobile now
-                does the same so quantities like "Instant Oats (875 g
-                + 175 g)" show on a single line. */}
             {groupedSections.map((section) => {
-              // 2026-04-30 audit visual-qa P1 #8: section-level
-              // progress so the user feels each category complete
-              // as they shop. Counts items in this section's groups
-              // checked vs total. A group is "checked" when all its
-              // items are checked (matches the row-level toggle).
               const sectionTotal = section.groups.length;
               const sectionChecked = section.groups.filter((g) =>
                 isShoppingGroupFullyChecked(g),
@@ -529,13 +697,32 @@ export default function ShoppingListScreen() {
                           .filter(Boolean),
                       ),
                     ].join(", ");
+
+                    // Honeydew parity (2026-04-30): per-row check
+                    // attribution. When the group is checked AND we
+                    // have a household, surface the member that
+                    // toggled it last. Single household member only
+                    // — solo lists don't benefit from attribution
+                    // (always "you").
+                    const checkedByEntries = group.items
+                      .map((i) =>
+                        (i as ShoppingItem).checkedBy ?? null,
+                      )
+                      .filter((id): id is string => Boolean(id));
+                    const uniqueCheckedBy = [...new Set(checkedByEntries)];
+                    const showAttribution =
+                      household?.household != null &&
+                      allChecked &&
+                      uniqueCheckedBy.length === 1;
+                    const attributedMember = showAttribution
+                      ? memberById.get(uniqueCheckedBy[0]!)
+                      : null;
+
                     return (
                       <Pressable
                         key={group.key}
                         style={styles.itemRow}
                         onPress={() => {
-                          // Toggle the whole group as one — same behaviour
-                          // as web's `toggleGroupChecked`.
                           for (const item of group.items) {
                             if (allChecked) {
                               if (item.checked) toggleItem(item.id);
@@ -582,6 +769,38 @@ export default function ShoppingListScreen() {
                           </Text>
                           {fromLabel ? (
                             <Text style={styles.itemFrom}>{fromLabel}</Text>
+                          ) : null}
+                          {attributedMember ? (
+                            <View
+                              testID={`shopping-attribution-${group.key}`}
+                              style={[
+                                styles.attributionChip,
+                                { alignSelf: "flex-start" },
+                              ]}
+                            >
+                              <View
+                                style={[
+                                  styles.attributionInitials,
+                                  {
+                                    backgroundColor: householdMemberAccent(
+                                      attributedMember.index,
+                                    ),
+                                  },
+                                ]}
+                              >
+                                <Text style={styles.attributionText}>
+                                  {householdMemberInitials(
+                                    attributedMember.displayName,
+                                  )}
+                                </Text>
+                              </View>
+                              <Text style={styles.attributionLabel}>
+                                {householdMemberFirstName(
+                                  attributedMember.displayName,
+                                )}{" "}
+                                checked
+                              </Text>
+                            </View>
                           ) : null}
                         </View>
                       </Pressable>

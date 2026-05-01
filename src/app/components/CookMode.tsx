@@ -13,6 +13,22 @@ import {
   formatTimer,
   type ParsedTimer,
 } from "../../lib/nutrition/recipeTimers.ts";
+import {
+  COOK_SCALE_PRESETS,
+  clampCookScale,
+  cookScaleCaption,
+  cookScaleStorageKey,
+  formatCookScaleLabel,
+  scaleAmountText,
+} from "../../lib/nutrition/recipeScale.ts";
+import {
+  COOK_HISTORY_NOTE_MAX_LEN,
+  formatCookHistoryPreview,
+  insertCookHistory,
+  listRecentCookHistory,
+  type CookHistoryRow,
+} from "../../lib/nutrition/recipeCookHistoryClient.ts";
+import { supabase } from "../../lib/supabase/browserClient.ts";
 
 interface CookModeProps {
   recipe: RecipeCard;
@@ -81,7 +97,7 @@ function playChime() {
 }
 
 export function CookMode({ recipe, instructionSteps, ingredients, servings, onExit, onViewTracker }: CookModeProps) {
-  const { addLoggedMeal } = useAppData();
+  const { addLoggedMeal, userId } = useAppData();
   const [currentStep, setCurrentStep] = useState(0);
   const [showIngredients, setShowIngredients] = useState(false);
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set());
@@ -91,22 +107,126 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
   const timerTickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const firedTimerIdsRef = useRef<Set<string>>(new Set());
 
+  /** Active scale factor (Paprika parity, 2026-04-30). 0.5 / 1 / 1.5 /
+   *  2 / 4. Persisted per (userId, recipeId) to localStorage so
+   *  reopening the same recipe in cook mode remembers the last scale.
+   *  Initialised optimistically to 1; the hydration effect upgrades it
+   *  once we've read storage. */
+  const [scale, setScale] = useState<number>(1);
+  /** Free-text per-cook note, capped at COOK_HISTORY_NOTE_MAX_LEN. */
+  const [noteDraft, setNoteDraft] = useState<string>("");
+  /** Last 3 cook-history rows surfaced as a "Last time" preview. */
+  const [recentHistory, setRecentHistory] = useState<CookHistoryRow[]>([]);
+  /** 1..5 personal rating for THIS cook. Persisted on Save. */
+  const [rating, setRating] = useState<number | null>(null);
+  const [savingHistory, setSavingHistory] = useState(false);
+  const [historySaved, setHistorySaved] = useState(false);
+
   const totalSteps = instructionSteps.length;
   const isLastStep = currentStep >= totalSteps - 1;
   const isDone = currentStep >= totalSteps;
 
   const currentStepRaw = currentStep < totalSteps ? instructionSteps[currentStep]! : "";
-  const currentStepText = useMemo(
+  const currentStepCleaned = useMemo(
     () => cleanStepText(currentStepRaw),
     [currentStepRaw],
   );
-
-  /** Parse timers from the CURRENT step's cleaned text so the offsets
-   * align with the rendered substring. */
-  const stepTimers: ParsedTimer[] = useMemo(
-    () => parseTimersInStep(currentStepText),
-    [currentStepText],
+  /** Visible step text with amounts rewritten by the active scale.
+   *  Scaling lives behind `scaleAmountText` (shared with mobile) so
+   *  both platforms agree on what counts as a scalable token (cooking
+   *  units + count nouns) vs. what stays untouched (time / temp /
+   *  step-number prefixes). */
+  const currentStepText = useMemo(
+    () => scaleAmountText(currentStepCleaned, scale),
+    [currentStepCleaned, scale],
   );
+
+  /** Parse timers from the RAW cleaned step text, NOT the scaled
+   *  version — scaling is amount-only and never touches durations,
+   *  but indexing the timer pills against the unchanged string keeps
+   *  offsets stable as the user toggles scale. */
+  const stepTimers: ParsedTimer[] = useMemo(
+    () => parseTimersInStep(currentStepCleaned),
+    [currentStepCleaned],
+  );
+
+  /** Hydrate the persisted scale factor for this (userId, recipeId).
+   *  localStorage on web; falls back to 1 silently. */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const key = cookScaleStorageKey(userId, String(recipe.id));
+      const raw = window.localStorage.getItem(key);
+      if (!raw) return;
+      const parsed = Number.parseFloat(raw);
+      const clamped = clampCookScale(parsed);
+      if (clamped !== 1) setScale(clamped);
+    } catch {
+      /* localStorage unavailable / quota — leave scale at 1 */
+    }
+  }, [recipe.id, userId]);
+
+  /** Hydrate the latest 3 cook-history rows for the "Last time" card.
+   *  Skipped when not signed in. Network read; failures fall back
+   *  silently. */
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const rows = await listRecentCookHistory(supabase, userId, String(recipe.id), 3);
+        if (!cancelled) setRecentHistory(rows);
+      } catch {
+        /* network / RLS flaky — fail closed */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [recipe.id, userId]);
+
+  /** Persist a freshly-picked scale to localStorage. Fire-and-forget;
+   *  storage failures don't block the user. */
+  const persistScale = useCallback(
+    (next: number) => {
+      if (typeof window === "undefined") return;
+      try {
+        window.localStorage.setItem(
+          cookScaleStorageKey(userId, String(recipe.id)),
+          String(next),
+        );
+      } catch {
+        /* storage flaky — fail closed */
+      }
+    },
+    [recipe.id, userId],
+  );
+
+  const handleScaleChange = useCallback(
+    (next: number) => {
+      const clamped = clampCookScale(next);
+      if (clamped === scale) return;
+      setScale(clamped);
+      persistScale(clamped);
+      try {
+        track(AnalyticsEvents.recipe_scale_changed, {
+          recipeId: recipe.id,
+          scale: clamped,
+        });
+      } catch {
+        /* analytics fire-and-forget */
+      }
+    },
+    [scale, persistScale, recipe.id],
+  );
+
+  /** Capture the moment the user landed in cook mode so the completion
+   *  card can show "Took you Nm SSs". Set once per mount via the ref
+   *  init; never resets on step navigation. */
+  const sessionStartRef = useRef<number>(Date.now());
+  /** Captured cook duration in seconds, set when the user reaches the
+   *  done state. Null until then. */
+  const [cookDurationSec, setCookDurationSec] = useState<number | null>(null);
 
   // Track cook mode open — includes step count so analytics can see
   // how deep the recipes users cook are.
@@ -263,6 +383,13 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
       setCurrentStep(nextStep);
       if (nextStep >= totalSteps) {
         track(AnalyticsEvents.cook_mode_completed, { recipeTitle: recipe.title });
+        // Capture cook duration once when the user actually finishes.
+        // Idempotent — guarded by `cookDurationSec == null`.
+        const elapsedSec = Math.max(
+          0,
+          Math.round((Date.now() - sessionStartRef.current) / 1000),
+        );
+        setCookDurationSec((prev) => (prev == null ? elapsedSec : prev));
       }
     }
   }, [currentStep, totalSteps, recipe.title]);
@@ -288,28 +415,72 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
     const mealName = recipe.mealSlots?.[0] ?? fallbackMeal;
 
     const baseServings = recipe.servings > 0 ? recipe.servings : 1;
-    const portionMultiplier = servings / baseServings;
-    const scale = (v: number) => Math.round(v * portionMultiplier);
+    // Effective multiplier combines the user-picked servings with the
+    // Cook-screen scale (Paprika parity, 2026-04-30). Both feed the
+    // same macros multiplier so the journal entry matches whatever
+    // amounts the user saw on screen.
+    const portionMultiplier = (servings / baseServings) * scale;
+    const scaleVal = (v: number) => Math.round(v * portionMultiplier);
 
     addLoggedMeal({
       name: mealName,
       recipeTitle: recipe.title,
       time: mealName,
-      calories: scale(recipe.calories),
-      protein: scale(recipe.protein),
-      carbs: scale(recipe.carbs),
-      fat: scale(recipe.fat),
-      fiberG: recipe.fiberG != null ? scale(recipe.fiberG) : undefined,
+      calories: scaleVal(recipe.calories),
+      protein: scaleVal(recipe.protein),
+      carbs: scaleVal(recipe.carbs),
+      fat: scaleVal(recipe.fat),
+      fiberG: recipe.fiberG != null ? scaleVal(recipe.fiberG) : undefined,
       portionMultiplier: portionMultiplier !== 1 ? portionMultiplier : undefined,
     });
     setLogged(true);
     track(AnalyticsEvents.cook_mode_meal_logged, {
       recipeTitle: recipe.title,
-      calories: scale(recipe.calories),
+      calories: scaleVal(recipe.calories),
       portionMultiplier,
     });
     toast.success(`Logged ${mealName} to your tracker!`);
-  }, [addLoggedMeal, recipe, servings]);
+  }, [addLoggedMeal, recipe, servings, scale]);
+
+  /** Save the per-cook history row (Paprika parity, 2026-04-30).
+   *  Writes to `recipe_cook_history` with duration / scale / rating /
+   *  note. Idempotent — disables itself once the row exists. */
+  const handleSaveHistory = useCallback(async () => {
+    if (historySaved || savingHistory) return;
+    if (!userId) {
+      toast.error("Sign in to save your cook notes.");
+      return;
+    }
+    setSavingHistory(true);
+    try {
+      const note = noteDraft.trim();
+      await insertCookHistory(supabase, userId, {
+        recipeId: String(recipe.id),
+        durationSec: cookDurationSec,
+        scaleFactor: scale,
+        rating,
+        note: note ? note : null,
+      });
+      setHistorySaved(true);
+      toast.success("Saved this cook");
+      try {
+        track(AnalyticsEvents.cook_history_saved, {
+          recipeId: recipe.id,
+          scale,
+          rating,
+          hasNote: Boolean(note),
+          durationSec: cookDurationSec,
+        });
+      } catch {
+        /* analytics fire-and-forget */
+      }
+    } catch (err) {
+      console.warn("Cook history save failed", err);
+      toast.error("Couldn't save — try again?");
+    } finally {
+      setSavingHistory(false);
+    }
+  }, [userId, recipe.id, cookDurationSec, scale, rating, noteDraft, historySaved, savingHistory]);
 
   // Keyboard navigation — arrows and escape, space as "advance".
   useEffect(() => {
@@ -337,17 +508,51 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
   /**
    * Render the current step text with each timer-like phrase replaced
    * by a tappable pill. Offsets come from `parseTimersInStep`, which
-   * uses the same cleaned string we render.
+   * uses the same cleaned string we render — therefore the inline-pill
+   * branch reads from `currentStepCleaned`, NOT `currentStepText`.
+   * When `scale !== 1` we render the scaled text instead and surface
+   * any active timer phrases as standalone pill buttons below the
+   * paragraph (offsets in scaled text would be unstable as units
+   * resolve to different lengths). At 1x both render identically.
    */
   const renderedStep = useMemo(() => {
+    const isScaled = scale !== 1;
+    if (isScaled) {
+      // Scaled mode — pill buttons live below the paragraph because
+      // offsets in the rewritten text aren't safe to index against.
+      return (
+        <div className="text-2xl sm:text-3xl leading-relaxed text-white">
+          <p>{currentStepText}</p>
+          {stepTimers.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2 justify-center">
+              {stepTimers.map((t, i) => {
+                const rangeHint = t.isRange ? ` (timer uses upper bound)` : "";
+                return (
+                  <button
+                    key={`${i}:${t.startIndex}`}
+                    type="button"
+                    onClick={() => startTimer(t)}
+                    aria-label={`Start ${formatTimer(t.totalSeconds)} timer${rangeHint}`}
+                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-primary/15 text-primary border border-primary/30 hover:bg-primary/25 transition-colors text-base font-semibold"
+                  >
+                    <Play className="w-3.5 h-3.5" fill="currentColor" />
+                    <span>{t.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      );
+    }
     if (stepTimers.length === 0) {
-      return <p className="text-2xl sm:text-3xl leading-relaxed text-white">{currentStepText}</p>;
+      return <p className="text-2xl sm:text-3xl leading-relaxed text-white">{currentStepCleaned}</p>;
     }
     const nodes: React.ReactNode[] = [];
     let cursor = 0;
     stepTimers.forEach((t, i) => {
       if (t.startIndex > cursor) {
-        nodes.push(currentStepText.slice(cursor, t.startIndex));
+        nodes.push(currentStepCleaned.slice(cursor, t.startIndex));
       }
       const label = t.label;
       const rangeHint = t.isRange ? ` (timer uses upper bound)` : "";
@@ -365,15 +570,15 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
       );
       cursor = t.endIndex;
     });
-    if (cursor < currentStepText.length) {
-      nodes.push(currentStepText.slice(cursor));
+    if (cursor < currentStepCleaned.length) {
+      nodes.push(currentStepCleaned.slice(cursor));
     }
     return (
       <p className="text-2xl sm:text-3xl leading-relaxed text-white">
         {nodes}
       </p>
     );
-  }, [currentStepText, stepTimers, startTimer]);
+  }, [currentStepCleaned, currentStepText, scale, stepTimers, startTimer]);
 
   return (
     <div className="fixed inset-0 z-50 bg-background text-white flex flex-col">
@@ -479,6 +684,69 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
                 </div>
               </div>
 
+              {/* "Last time" preview card (Paprika parity, 2026-04-30).
+                  Surfaces the most recent cook-history row above the
+                  active step so users walk in reminded of last time's
+                  duration / rating / note. Only renders when the user
+                  has at least one prior cook on file. */}
+              {recentHistory.length > 0 && (
+                <div
+                  role="region"
+                  aria-label="Last time you cooked this"
+                  className="mb-6 max-w-lg w-full px-4 py-3 rounded-xl bg-card/50 border border-border"
+                >
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                    Last time
+                  </p>
+                  <p className="text-sm text-white font-medium mt-1">
+                    {formatCookHistoryPreview(recentHistory[0]!)}
+                  </p>
+                  {recentHistory.length > 1 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {recentHistory.length === 2
+                        ? "1 earlier cook on file."
+                        : `${recentHistory.length - 1} earlier cooks on file.`}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Recipe scale segmented control (Paprika parity,
+                  2026-04-30). Tap a preset to rewrite the visible
+                  amounts in the step text. Persisted per (userId,
+                  recipeId) to localStorage. */}
+              <div className="mb-6 flex flex-col items-center gap-1.5">
+                <div
+                  role="radiogroup"
+                  aria-label="Recipe scale"
+                  className="inline-flex p-1 rounded-full bg-card border border-border gap-1"
+                >
+                  {COOK_SCALE_PRESETS.map((preset) => {
+                    const active = Math.abs(scale - preset) < 1e-6;
+                    return (
+                      <button
+                        key={preset}
+                        role="radio"
+                        type="button"
+                        aria-checked={active}
+                        aria-label={`Scale ${formatCookScaleLabel(preset)}`}
+                        onClick={() => handleScaleChange(preset)}
+                        className={`min-w-[44px] px-3.5 py-1.5 rounded-full text-sm font-semibold tabular-nums transition-colors ${
+                          active
+                            ? "bg-primary text-white shadow"
+                            : "text-muted-foreground hover:text-white"
+                        }`}
+                      >
+                        {formatCookScaleLabel(preset)}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {cookScaleCaption(scale, recipe.servings || null)}
+                </p>
+              </div>
+
               {/* Step Text with inline timer pills */}
               <div className="max-w-lg text-center mb-8">
                 {renderedStep}
@@ -518,17 +786,101 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
               </p>
             </>
           ) : (
-            /* Done State */
-            <div className="text-center max-w-md">
+            /* Done State — Paprika parity 2026-04-30: rating + per-cook
+               notes input + Save persists to recipe_cook_history. */
+            <div className="text-center max-w-md w-full">
               <div className="w-20 h-20 rounded-full bg-success flex items-center justify-center mx-auto mb-6 shadow-lg shadow-success/30">
                 <Icons.cook className="w-10 h-10 text-white" />
               </div>
               <h2 className="text-2xl font-bold text-white mb-2">
                 Enjoy your meal!
               </h2>
-              <p className="text-muted-foreground mb-8">
-                {recipe.title} · {servings} serving{servings !== 1 ? "s" : ""} — {Math.round(recipe.calories * servings / (recipe.servings || 1))} kcal · {Math.round(recipe.protein * servings / (recipe.servings || 1))}g protein
+              <p className="text-muted-foreground mb-6">
+                {recipe.title} · {servings} serving{servings !== 1 ? "s" : ""}
+                {scale !== 1 ? ` (${formatCookScaleLabel(scale)})` : ""}
+                {" — "}
+                {Math.round((recipe.calories * servings * scale) / (recipe.servings || 1))} kcal ·{" "}
+                {Math.round((recipe.protein * servings * scale) / (recipe.servings || 1))}g protein
               </p>
+
+              {/* Rating row — 5 stars. Tap = stage in memory; Save
+                  commits the row to recipe_cook_history. */}
+              <div
+                role="radiogroup"
+                aria-label="Rate this cook"
+                className="flex justify-center gap-2 mb-4"
+              >
+                {[1, 2, 3, 4, 5].map((n) => {
+                  const filled = rating != null && n <= rating;
+                  return (
+                    <button
+                      key={n}
+                      role="radio"
+                      type="button"
+                      aria-checked={rating === n}
+                      aria-label={`Rate ${n} star${n === 1 ? "" : "s"}`}
+                      onClick={() => setRating(n)}
+                      disabled={historySaved}
+                      className="p-1 disabled:opacity-70"
+                    >
+                      <svg
+                        className={`w-7 h-7 transition-colors ${
+                          filled ? "text-warning" : "text-muted-foreground"
+                        }`}
+                        fill={filled ? "currentColor" : "none"}
+                        stroke="currentColor"
+                        strokeWidth={1.75}
+                        viewBox="0 0 24 24"
+                      >
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                      </svg>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Per-cook notes — free-form, capped at COOK_HISTORY_NOTE_MAX_LEN. */}
+              <textarea
+                aria-label="Notes for next time"
+                placeholder="Notes for next time (optional)"
+                value={noteDraft}
+                onChange={(e) => setNoteDraft(e.target.value)}
+                disabled={historySaved}
+                maxLength={COOK_HISTORY_NOTE_MAX_LEN}
+                className="w-full mb-2 px-3 py-2 rounded-lg bg-card border border-border text-sm text-white placeholder:text-muted-foreground resize-y min-h-[64px] disabled:opacity-70"
+                rows={3}
+              />
+              {noteDraft.length > Math.floor(COOK_HISTORY_NOTE_MAX_LEN * 0.8) && (
+                <p className="text-[11px] text-muted-foreground text-right mb-2">
+                  {noteDraft.length}/{COOK_HISTORY_NOTE_MAX_LEN}
+                </p>
+              )}
+
+              {/* Save button — writes the row to recipe_cook_history. */}
+              <button
+                type="button"
+                onClick={() => void handleSaveHistory()}
+                disabled={historySaved || savingHistory}
+                aria-label={historySaved ? "Saved this cook" : "Save this cook"}
+                className={`inline-flex items-center justify-center gap-2 w-full px-6 py-3 rounded-2xl font-semibold mb-6 transition-all ${
+                  historySaved
+                    ? "bg-success text-white"
+                    : savingHistory
+                      ? "bg-primary/60 text-white cursor-wait"
+                      : "bg-primary text-white hover:shadow-lg hover:shadow-primary/25"
+                } disabled:cursor-not-allowed`}
+              >
+                {historySaved ? (
+                  <>
+                    <Icons.success className="w-4 h-4" />
+                    Saved
+                  </>
+                ) : savingHistory ? (
+                  "Saving…"
+                ) : (
+                  "Save this cook"
+                )}
+              </button>
 
               {!logged ? (
                 <button

@@ -156,6 +156,12 @@ import { StreakPip } from "@/components/today/StreakPip";
 // `<LogFab>` import path while the web still ships its own FAB.
 import { LogSheet } from "@/components/today/LogSheet";
 import { TodayEatAgainBanner } from "@/components/today/TodayEatAgainBanner";
+import { WeeklyCheckinBanner } from "@/components/today/WeeklyCheckinBanner";
+import {
+  isCheckinBannerDismissed,
+  markCheckinBannerDismissed,
+} from "@/lib/weeklyCheckinBannerDismissal";
+import { weekKeyFor as weekKeyForCheckin } from "@/lib/weeklyRecap";
 import { TodayActivityCard } from "@/components/today/TodayActivityCard";
 import { TodayWeekView } from "@/components/today/TodayWeekView";
 import { TodayMealsSection } from "@/components/today/TodayMealsSection";
@@ -1277,6 +1283,64 @@ export default function TrackerScreen() {
     } catch { /* noop */ }
   }, []);
   const eatAgainDismissedForToday = !shouldShowEatAgain(eatAgainDismissState, new Date());
+
+  // ── Weekly Check-in banner (MacroFactor parity, 2026-04-30) ──
+  // Visible only on the first day of a fresh week (Sun for Sunday-
+  // start users, Mon for Monday-start) AND only when not dismissed
+  // for the current week key. The banner routes to /weekly-recap.
+  // The dismissal state hydrates lazily — it's `null` until the
+  // AsyncStorage read returns. We treat `null` as "not yet known"
+  // and DO NOT render the banner until we know — this avoids a flash
+  // of the banner that immediately disappears once the read resolves.
+  const [checkinBannerDismissed, setCheckinBannerDismissed] = useState<
+    boolean | null
+  >(null);
+  const checkinWeekKey = useMemo(
+    () => weekKeyForCheckin(new Date(), weekStartDay),
+    [weekStartDay],
+  );
+  useEffect(() => {
+    if (!userId) {
+      setCheckinBannerDismissed(true);
+      return;
+    }
+    let cancelled = false;
+    void isCheckinBannerDismissed(userId, checkinWeekKey).then((dismissed) => {
+      if (!cancelled) setCheckinBannerDismissed(dismissed);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, checkinWeekKey]);
+  const isCheckinBannerDay = useMemo(() => {
+    // First day of the user's week (so the banner reads "your week
+    // just ended, here's the recap"). The strict definition mirrors
+    // `weekKeyFor` — Sun for "sunday" users, Mon for "monday" users.
+    const dow = new Date().getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
+    return weekStartDay === "sunday" ? dow === 0 : dow === 1;
+  }, [weekStartDay]);
+  const dismissCheckinBanner = useCallback(async () => {
+    if (!userId) return;
+    setCheckinBannerDismissed(true);
+    try {
+      track(AnalyticsEvents.weekly_checkin_banner_dismissed, {
+        weekKey: checkinWeekKey,
+      });
+    } catch {
+      /* fire-and-forget */
+    }
+    await markCheckinBannerDismissed(userId, checkinWeekKey);
+  }, [userId, checkinWeekKey]);
+  const openCheckin = useCallback(() => {
+    try {
+      track(AnalyticsEvents.weekly_checkin_banner_tapped, {
+        weekKey: checkinWeekKey,
+      });
+    } catch {
+      /* fire-and-forget */
+    }
+    router.push("/weekly-recap" as never);
+  }, [router, checkinWeekKey]);
 
 
   const loadProfileTargets = useCallback(async () => {
@@ -3750,6 +3814,28 @@ export default function TrackerScreen() {
               // No context block fits this state.
               return null;
             })()}
+
+            {/* Weekly Check-in banner (MacroFactor parity, 2026-04-30).
+                One-day-per-week prompt that lands on the first day of a
+                fresh week (Sun for Sunday-start, Mon for Monday-start)
+                pointing the user at the Weekly Recap surface where the
+                TDEE delta + goal-pace re-tune live. AsyncStorage-gated
+                per (user, weekKey) so it's dismissible. Mobile-only —
+                web's Digest already runs the Sunday-cadence gate.
+                Hidden until the dismissal state has hydrated to avoid a
+                flash-then-vanish. */}
+            {isToday &&
+              isCheckinBannerDay &&
+              checkinBannerDismissed === false && (
+                <WeeklyCheckinBanner
+                  textColor={colors.text}
+                  textSecondaryColor={colors.textSecondary}
+                  onOpen={openCheckin}
+                  onDismiss={() => {
+                    void dismissCheckinBanner();
+                  }}
+                />
+              )}
 
             {/* Post-launch onboarding nudge banner (2026-04-30 follow-up
                 to the 15→12 onboarding shrink). Three nudges queued in

@@ -122,6 +122,13 @@ export interface ShoppingItem {
   category: string;
   checked: boolean;
   from: string;
+  /**
+   * Honeydew parity (2026-04-30): the userId of the household member
+   * that toggled the row last. `null` for solo lists, legacy rows, and
+   * anything that hasn't been checked yet. Surfaced as a coloured
+   * initials chip on multi-member household lists.
+   */
+  checkedBy?: string | null;
 }
 
 export interface LoggedMeal {
