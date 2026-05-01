@@ -49,7 +49,7 @@
  * Prop names + signatures kept identical for sync-enforcer cross-check.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Barcode, Loader2 } from "lucide-react";
 import { Icons } from "../ui/icons";
 import { Badge } from "../suppr/badge";
 import {
@@ -101,6 +101,8 @@ import {
 } from "../../../lib/nutrition/foodSearchHeadline";
 import { AnalyticsEvents } from "../../../lib/analytics/events";
 import { track } from "../../../lib/analytics/track";
+import { fetchFatSecretAutocomplete } from "@/lib/nutrition/fatsecretAutocompleteClient";
+import { shouldShowBarcodeFallbackHint } from "@/lib/nutrition/foodSearchLocale";
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -131,16 +133,18 @@ type SearchResult = {
   verified?: boolean;
   imageUrl?: string | null;
   primaryServing?: PrimaryServing | null;
-  _source: "USDA" | "OFF" | "CUSTOM" | "Edamam" | "GenericBeverage" | "GenericFood";
+  _source: "USDA" | "OFF" | "CUSTOM" | "Edamam" | "FatSecret" | "GenericBeverage" | "GenericFood";
   _fdcId?: number;
   _offCode?: string;
   _edamamFoodId?: string;
+  /** FatSecret food id — string. Used for the on-tap `food.get` detail fetch. */
+  _fatSecretFoodId?: string;
   _custom?: CustomFood;
 };
 
 export type FoodSearchSelection = {
   name: string;
-  source: "USDA" | "OFF" | "CUSTOM" | "Edamam";
+  source: "USDA" | "OFF" | "CUSTOM" | "Edamam" | "FatSecret";
   macrosPer100g: MacrosPer100g;
   microsPer100g?: Record<string, number>;
   portions: FoodPortion[];
@@ -185,6 +189,28 @@ export type FoodSearchPanelProps = {
    * Same data, same accessibility, same handlers — visual density only.
    */
   mode?: "full" | "compact";
+  /**
+   * Locale-aware empty-state hint (2026-04-26 — FatSecret Premier Free).
+   * Premier Free is a US-only dataset; UK / EU / AU users searching
+   * for a regional brand will hit the "No results" path. When this
+   * callback is supplied AND the user's locale is non-US, the empty
+   * state surfaces a "Brand not found? Try a barcode scan" CTA that
+   * fires this handler. Caller is responsible for opening the
+   * BarcodeScannerModal.
+   *
+   * If the host is already in barcode-scan mode (e.g. the LogSheet's
+   * scan-tab is active), pass `inBarcodeMode={true}` to suppress the
+   * hint and avoid the loop.
+   */
+  onScanBarcodePressed?: () => void;
+  /** Suppresses the barcode-fallback hint when the host is already in barcode mode. */
+  inBarcodeMode?: boolean;
+  /**
+   * Override for the resolved BCP-47 locale string. Defaults to
+   * `Intl.DateTimeFormat().resolvedOptions().locale`. Tests override
+   * this directly; production callers should leave it undefined.
+   */
+  localeOverride?: string;
 };
 
 // ── Standard units ──────────────────────────────────────────────────
@@ -387,6 +413,78 @@ async function searchEdamam(query: string, page: number = 1): Promise<SearchResu
   }
 }
 
+/**
+ * FatSecret search (4th source in the merge alongside USDA / OFF /
+ * Edamam). Wired 2026-04-30 — Premier Free creds were valid in
+ * production but no `/api/fatsecret/search` route existed, so the merge
+ * pipeline never carried FatSecret hits. See
+ * `app/api/fatsecret/search/route.ts` for the route shape.
+ *
+ * Resolves to an empty list on any failure so the merge keeps the other
+ * three sources rendering. Per-100g macros land directly when FatSecret
+ * shipped a "Per 100g" envelope; per-serving rows surface with no
+ * inline macros so the on-tap `food.get` path can fetch the canonical
+ * panel. We never invent macros.
+ */
+async function searchFatSecret(query: string, page: number = 1): Promise<SearchResult[]> {
+  const q = effectiveFoodSearchQuery(query);
+  if (!q.trim()) return [];
+  try {
+    const res = await fetch(`/api/fatsecret/search?q=${encodeURIComponent(q.trim())}&page=${page}`);
+    const json = await res.json();
+    if (!json.ok || !Array.isArray(json.hits)) return [];
+    return (json.hits as Array<{
+      foodId: string;
+      label: string;
+      brand: string | null;
+      macrosPer100g: { calories: number; protein: number; carbs: number; fat: number } | null;
+      servingLabel: string | null;
+      servingGrams: number | null;
+      macrosPerServing: { calories: number; protein: number; carbs: number; fat: number } | null;
+    }>).map((h) => {
+      const name = titleCase(h.label ?? "Unknown");
+      const macrosPer100g = h.macrosPer100g
+        ? {
+            calories: h.macrosPer100g.calories,
+            protein: h.macrosPer100g.protein,
+            carbs: h.macrosPer100g.carbs,
+            fat: h.macrosPer100g.fat,
+            fiberG: 0,
+            sugarG: 0,
+            sodiumMg: 0,
+          }
+        : undefined;
+      // Synthesise a primary serving when FatSecret described the row
+      // per a named portion AND embedded a gram weight (e.g. "1 sandwich
+      // (240g)"). Without the gram weight we can't scale, so we leave
+      // the row with a per-100g headline placeholder and let the on-tap
+      // `food.get` fetch land the real serving panel.
+      const primaryServing: PrimaryServing | null =
+        h.macrosPerServing && h.servingLabel && h.servingGrams && h.servingGrams > 0
+          ? {
+              label: h.servingLabel,
+              grams: h.servingGrams,
+              kcal: h.macrosPerServing.calories,
+              protein: h.macrosPerServing.protein,
+              carbs: h.macrosPerServing.carbs,
+              fat: h.macrosPerServing.fat,
+            }
+          : null;
+      return {
+        key: `fatsecret-${h.foodId}`,
+        name,
+        calsPer100g: macrosPer100g?.calories,
+        macrosPer100g,
+        primaryServing,
+        _source: "FatSecret" as const,
+        _fatSecretFoodId: h.foodId,
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
 async function fetchUsdaDetail(
   fdcId: number,
 ): Promise<{
@@ -396,6 +494,31 @@ async function fetchUsdaDetail(
 } | null> {
   try {
     const res = await fetch(`/api/usda/food?fdcId=${fdcId}`);
+    const json = await res.json();
+    if (!json.ok) return null;
+    return {
+      macrosPer100g: json.macrosPer100g,
+      portions: Array.isArray(json.portions) ? json.portions : [],
+      primaryPortion: json.primaryPortion ?? null,
+    };
+  } catch { return null; }
+}
+
+/**
+ * Fetch the canonical per-100g macro panel + portions for a FatSecret
+ * food. Mirrors `fetchUsdaDetail`. Returns null on failure so the
+ * on-tap handler quietly drops the row instead of surfacing a broken
+ * preview.
+ */
+async function fetchFatSecretDetail(
+  foodId: string,
+): Promise<{
+  macrosPer100g: MacrosPer100g;
+  portions: FoodPortion[];
+  primaryPortion?: PrimaryServing | null;
+} | null> {
+  try {
+    const res = await fetch(`/api/fatsecret/food?foodId=${encodeURIComponent(foodId)}`);
     const json = await res.json();
     if (!json.ok) return null;
     return {
@@ -584,17 +707,31 @@ export function FoodSearchPanel({
   userId,
   onSelect,
   mode = "full",
+  onScanBarcodePressed,
+  inBarcodeMode = false,
+  localeOverride,
 }: FoodSearchPanelProps) {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  /**
+   * Premier-tier autocomplete suggestions (2026-04-26 — FatSecret
+   * Premier Free). Surfaced as a fast typeahead row that renders
+   * BEFORE the full-search results. State is cleared whenever the
+   * query changes; never blocks the main search.
+   */
+  const [autocomplete, setAutocomplete] = useState<{ tier: "basic" | "premier"; suggestions: string[] }>(
+    { tier: "basic", suggestions: [] },
+  );
+  const autocompleteAbortRef = useRef<AbortController | null>(null);
+  const autocompleteDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pageRef = useRef(1);
   const hasMoreRef = useRef(true);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const [loadingKey, setLoadingKey] = useState<string | null>(null);
   const [preview, setPreview] = useState<{
     name: string;
-    source: "USDA" | "OFF" | "CUSTOM" | "Edamam";
+    source: "USDA" | "OFF" | "CUSTOM" | "Edamam" | "FatSecret";
     macrosPer100g: MacrosPer100g;
     microsPer100g?: Record<string, number>;
     portions: FoodPortion[];
@@ -657,6 +794,7 @@ export function FoodSearchPanel({
       usda: SearchResult[],
       off: SearchResult[],
       edamam: SearchResult[] = [],
+      fatsecret: SearchResult[] = [],
       customs: CustomFood[] = [],
       limit: number = 25,
       generics: SearchResult[] = [],
@@ -668,13 +806,17 @@ export function FoodSearchPanel({
         if (r._source === "USDA" && r.verified) return 0.10;
         if (r._source === "USDA") return -0.15;
         if (r._source === "Edamam") return -0.05;
+        // FatSecret: same trust band as Edamam — both are commercial
+        // sources with high brand coverage but community-edited generic
+        // rows. The merge still defers to verified USDA on tie.
+        if (r._source === "FatSecret") return -0.05;
         if (r._source === "OFF") {
           const hasBrand = /·/.test(r.name);
           return hasBrand ? -0.10 : -0.20;
         }
         return 0;
       };
-      const external = [...usda, ...off, ...edamam]
+      const external = [...usda, ...off, ...edamam, ...fatsecret]
         .map((r) => ({ ...r, _rel: Math.max(0, searchRelevance(q, r.name) + trustWeight(r)) }))
         .sort((a, b) => (b._rel as number) - (a._rel as number))
         .filter((r) => {
@@ -723,6 +865,37 @@ export function FoodSearchPanel({
     [],
   );
 
+  // ── Premier-tier autocomplete typeahead ────────────────────────────
+  //
+  // Debounced 250 ms so we fire ~5x faster than the full search (which
+  // sits on 400 ms). On Basic tier the route returns an empty list so
+  // this is effectively a no-op. Cancellation via AbortController so
+  // an in-flight autocomplete is cancelled when the user keeps typing.
+  useEffect(() => {
+    if (autocompleteDebounceRef.current) clearTimeout(autocompleteDebounceRef.current);
+    if (autocompleteAbortRef.current) {
+      autocompleteAbortRef.current.abort();
+      autocompleteAbortRef.current = null;
+    }
+    const q = query.trim();
+    if (!q) {
+      setAutocomplete({ tier: "basic", suggestions: [] });
+      return;
+    }
+    autocompleteDebounceRef.current = setTimeout(async () => {
+      const ctl = new AbortController();
+      autocompleteAbortRef.current = ctl;
+      const result = await fetchFatSecretAutocomplete(q, { signal: ctl.signal, maxResults: 4 });
+      // Discard a stale resolution if the user kept typing.
+      if (autocompleteAbortRef.current !== ctl) return;
+      setAutocomplete(result);
+    }, 250);
+    return () => {
+      if (autocompleteDebounceRef.current) clearTimeout(autocompleteDebounceRef.current);
+      if (autocompleteAbortRef.current) autocompleteAbortRef.current.abort();
+    };
+  }, [query]);
+
   // Re-run the multi-source search whenever `query` changes. Caller-owned
   // state — the panel is purely reactive. Debounced 400 ms.
   useEffect(() => {
@@ -748,17 +921,18 @@ export function FoodSearchPanel({
             q,
           )
         : Promise.resolve([] as CustomFood[]);
-      const [usda, off, edamam, custom] = await Promise.all([
+      const [usda, off, edamam, fatsecret, custom] = await Promise.all([
         searchUsda(q, 1),
         searchOff(q, 1),
         searchEdamam(q, 1),
+        searchFatSecret(q, 1),
         customPromise,
       ]);
       const generic = buildGenericMatchRow(q);
-      const merged = mergeAndDedup(rankQ, usda, off, edamam, custom, 25, generic ? [generic] : []);
+      const merged = mergeAndDedup(rankQ, usda, off, edamam, fatsecret, custom, 25, generic ? [generic] : []);
       setResults(merged);
       setLoading(false);
-      hasMoreRef.current = usda.length + off.length + edamam.length > 0;
+      hasMoreRef.current = usda.length + off.length + edamam.length + fatsecret.length > 0;
       backfillMissingMacros(merged);
     }, 400);
     return () => {
@@ -774,17 +948,18 @@ export function FoodSearchPanel({
     const nextPage = pageRef.current + 1;
     setLoadingMore(true);
     try {
-      const [usda, off, edamam] = await Promise.all([
+      const [usda, off, edamam, fatsecret] = await Promise.all([
         searchUsda(q, nextPage),
         searchOff(q, nextPage),
         searchEdamam(q, nextPage),
+        searchFatSecret(q, nextPage),
       ]);
-      if (usda.length + off.length + edamam.length === 0) {
+      if (usda.length + off.length + edamam.length + fatsecret.length === 0) {
         hasMoreRef.current = false;
         return;
       }
       const rankQ = effectiveFoodSearchQuery(q);
-      const pageMerged = mergeAndDedup(rankQ, usda, off, edamam, [], 50);
+      const pageMerged = mergeAndDedup(rankQ, usda, off, edamam, fatsecret, [], 50);
       if (pageMerged.length === 0) {
         hasMoreRef.current = false;
         return;
@@ -874,6 +1049,20 @@ export function FoodSearchPanel({
         ? { portion: portions[0], quantity: 1 }
         : resolveInitialPortion(portions, initialAmount, initialUnit);
       setPreview({ name: item.name, source: "Edamam", macrosPer100g: item.macrosPer100g, portions, chosenPortion: portion, quantity });
+    } else if (item._source === "FatSecret" && item._fatSecretFoodId) {
+      // Branded FatSecret rows usually surface in the search list with
+      // null per-100g macros (the row was per-serving). Fetch the full
+      // detail panel before opening the preview so the portion picker
+      // has real values to scale. Never invent macros.
+      const detail = await fetchFatSecretDetail(item._fatSecretFoodId);
+      setLoadingKey(null);
+      if (!detail) return;
+      const effectivePrimary = item.primaryServing ?? detail.primaryPortion ?? null;
+      const portions = buildPortions(detail.portions, effectivePrimary);
+      const { portion, quantity } = effectivePrimary
+        ? { portion: portions[0], quantity: 1 }
+        : resolveInitialPortion(portions, initialAmount, initialUnit);
+      setPreview({ name: item.name, source: "FatSecret", macrosPer100g: detail.macrosPer100g, portions, chosenPortion: portion, quantity });
     } else {
       setLoadingKey(null);
     }
@@ -1054,6 +1243,24 @@ export function FoodSearchPanel({
     return () => io.disconnect();
   }, [preview, results.length, loadMore]);
 
+  // Locale-resolved hint flag (2026-04-26 — Premier Free is US-only).
+  // Memoised so we don't re-evaluate Intl on every render. Hoisted
+  // ABOVE the preview-mode early return so React's hook-order
+  // invariant is preserved when the user toggles into the preview.
+  const showBarcodeFallbackHint = useMemo(() => {
+    if (inBarcodeMode) return false;
+    if (!onScanBarcodePressed) return false;
+    let locale = localeOverride;
+    if (!locale) {
+      try {
+        locale = typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().locale : undefined;
+      } catch {
+        locale = undefined;
+      }
+    }
+    return shouldShowBarcodeFallbackHint(locale ?? null);
+  }, [inBarcodeMode, onScanBarcodePressed, localeOverride]);
+
   // Preview takes over the panel when set.
   if (preview && scaled) {
     return (
@@ -1228,6 +1435,31 @@ export function FoodSearchPanel({
   return (
     <div className={`flex flex-col h-full ${px}`}>
       <div className="flex-1 overflow-y-auto pb-3">
+        {/* Premier-tier autocomplete typeahead row.
+            Only renders when the server has confirmed Premier tier AND
+            we have at least one suggestion. On Basic this stays empty
+            (no UI cost). The full-search results render below as
+            normal — autocomplete is additive, not replacement. */}
+        {autocomplete.tier === "premier" && autocomplete.suggestions.length > 0 && query.trim() && (
+          <div
+            data-testid="fatsecret-autocomplete-row"
+            className="mb-2 flex flex-wrap gap-1.5"
+            role="listbox"
+            aria-label="Suggested completions"
+          >
+            {autocomplete.suggestions.map((s) => (
+              <span
+                key={s}
+                role="option"
+                aria-selected="false"
+                className="rounded-full border border-border bg-muted/40 px-2.5 py-1 text-xs text-muted-foreground"
+              >
+                {s}
+              </span>
+            ))}
+          </div>
+        )}
+
         {loading && results.length === 0 && (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -1370,10 +1602,27 @@ export function FoodSearchPanel({
         )}
 
         {!loading && query.trim() && results.length === 0 && (
-          <p className="text-sm text-muted-foreground text-center py-8">
-            No results for &quot;{query}&quot;.
-            {customEnabled ? " Can't find it? Create your own." : " Try a simpler term."}
-          </p>
+          <>
+            <p className="text-sm text-muted-foreground text-center py-8">
+              No results for &quot;{query}&quot;.
+              {customEnabled ? " Can't find it? Create your own." : " Try a simpler term."}
+            </p>
+            {showBarcodeFallbackHint && (
+              <button
+                type="button"
+                onClick={onScanBarcodePressed}
+                data-testid="food-search-barcode-fallback-hint"
+                className="w-full flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-3 text-left hover:bg-muted/40 transition-colors"
+                aria-label="Scan a barcode — works for UK and EU products"
+              >
+                <Barcode className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+                <span className="flex-1 text-sm text-foreground">
+                  Brand not found? Try a barcode scan — works for UK &amp; EU products
+                </span>
+                <Icons.forward className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+              </button>
+            )}
+          </>
         )}
 
         {/* Persistent "+ Create custom food" entry point. */}

@@ -1,0 +1,134 @@
+import { NextResponse } from "next/server";
+import {
+  fatSecretConfigFromEnv,
+  fatSecretFoodSearch,
+} from "@/lib/fatsecret/client";
+import { parseFatSecretFoodDescription } from "@/lib/fatsecret/parseFoodDescription";
+import { rateLimit } from "@/lib/server/rateLimit";
+import { hasFatSecretConfig, misconfiguredFatSecretResponse } from "@/lib/server/serverEnv";
+import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
+
+/**
+ * GET /api/fatsecret/search?q=<query>&page=<n>
+ *
+ * FatSecret is the 4th source in the food-search merge alongside USDA,
+ * Open Food Facts and Edamam. Lane-A wire-up (2026-04-30) — Premier
+ * Free credentials are valid in production but no full-search route
+ * existed, so the merge pipeline never carried FatSecret hits and every
+ * tested query (`salmon`, `Big Mac`, `Starbucks`, etc) surfaced as
+ * USDA-only.
+ *
+ * Tier behaviour:
+ *   - `foods.search` works on Basic AND Premier — both tiers benefit
+ *     from FatSecret being merged into search results. Premier just
+ *     adds the wider nutrient panel to detail-view (`food.get`); the
+ *     search hits themselves are identical across tiers.
+ *
+ * Behaviour:
+ *   - Empty query → 400 `missing_q` (matches /api/usda/search shape).
+ *   - Missing creds → 503 `server_misconfigured` via the shared helper.
+ *   - Upstream failure (network, OAuth, rate limit) → 200 with
+ *     `{ ok: true, hits: [], page }` so the merge pipeline keeps the
+ *     other three sources rendering. Diagnostic detail surfaces in
+ *     server logs only.
+ *   - Per-row macros come from `food_description`; rows that don't parse
+ *     are still returned (with `macrosPer100g: null`) so the merge can
+ *     still show the title and trigger a `food.get` detail fetch on tap.
+ *
+ * Pagination: `page` is 1-indexed; FatSecret's API takes a 0-indexed
+ * `page_number`, which is mapped server-side. `max_results=25` aligns
+ * with the merge pipeline's per-page slice.
+ */
+export async function GET(req: Request) {
+  const userId = await getUserIdFromRequest(req);
+  if (!userId) {
+    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+  }
+
+  // FatSecret search is heavier than autocomplete (full payload). Match
+  // the USDA search rate limit (60/min/user).
+  const rl = await rateLimit({
+    keyPrefix: "api:fatsecret-search",
+    userId,
+    limit: 60,
+    windowMs: 60_000,
+  });
+  if (!rl.ok) {
+    return NextResponse.json(
+      { ok: false, error: "rate_limited", message: "Too many requests. Try again shortly." },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } },
+    );
+  }
+
+  const { searchParams } = new URL(req.url);
+  const q = (searchParams.get("q") ?? "").trim();
+  if (!q) return NextResponse.json({ ok: false, error: "missing_q" }, { status: 400 });
+
+  const rawPage = Number(searchParams.get("page") ?? "1");
+  const pageNumber = Number.isFinite(rawPage) && rawPage >= 1 ? Math.floor(rawPage) : 1;
+
+  if (!hasFatSecretConfig()) {
+    const missing = misconfiguredFatSecretResponse();
+    if (missing) return missing;
+  }
+
+  const cfg = fatSecretConfigFromEnv();
+
+  try {
+    // FatSecret's `page_number` is 0-indexed; map from the 1-indexed
+    // `page` we accept on the API surface so it lines up with USDA / OFF.
+    const results = await fatSecretFoodSearch(cfg, q, {
+      maxResults: 25,
+      pageNumber: pageNumber - 1,
+    });
+
+    const hits = results.map((r) => {
+      const parsed = parseFatSecretFoodDescription(r.food_description);
+      const brand = (r.brand_name ?? "").trim();
+      const name = (r.food_name ?? "Unknown").trim();
+      const displayName = brand ? `${brand} · ${name}` : name;
+      return {
+        foodId: r.food_id,
+        label: displayName,
+        brand: brand || null,
+        // Per-100g macros only when FatSecret returned a "Per 100g"
+        // basis. Per-serving rows surface with null per-100g macros —
+        // the client fetches the full detail on tap before scaling.
+        // Never invent: if FatSecret didn't ship macros, we don't either.
+        macrosPer100g:
+          parsed && parsed.basis === "100g"
+            ? {
+                calories: parsed.calories,
+                protein: parsed.protein,
+                carbs: parsed.carbs,
+                fat: parsed.fat,
+              }
+            : null,
+        servingLabel: parsed?.servingLabel ?? null,
+        servingGrams: parsed?.servingGrams ?? null,
+        // Per-serving inline payload — used by the search UI to render
+        // an honest "per serving" headline before the on-tap detail
+        // fetch. Null when basis is 100g (already covered by macrosPer100g).
+        macrosPerServing:
+          parsed && parsed.basis === "serving"
+            ? {
+                calories: parsed.calories,
+                protein: parsed.protein,
+                carbs: parsed.carbs,
+                fat: parsed.fat,
+              }
+            : null,
+      };
+    });
+
+    return NextResponse.json({ ok: true, hits, page: pageNumber });
+  } catch (e) {
+    // Log + return empty so the merge pipeline keeps USDA / OFF / Edamam
+    // rendering. FatSecret outages must never break food search overall.
+    console.error(
+      "[/api/fatsecret/search] failed:",
+      e instanceof Error ? e.message : e,
+    );
+    return NextResponse.json({ ok: true, hits: [], page: pageNumber });
+  }
+}

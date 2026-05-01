@@ -28,6 +28,7 @@ import {
   listRecentCookHistory,
   type CookHistoryRow,
 } from "../../lib/nutrition/recipeCookHistoryClient.ts";
+import { extractVideoHost } from "../../lib/recipes/heroImageFallback.ts";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 
 interface CookModeProps {
@@ -580,6 +581,32 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
     );
   }, [currentStepCleaned, currentStepText, scale, stepTimers, startTimer]);
 
+  /** Recime parity (2026-04-30): tap "Watch original" → opens the
+   *  source video URL in a new tab and emits the analytics event with
+   *  the host classification. URL itself stays on-device; only the
+   *  bucket (`youtube` / `instagram` / `tiktok` / `other`) is sent. */
+  const watchOriginalUrl =
+    typeof recipe.sourceUrl === "string" && recipe.sourceUrl.trim() !== ""
+      ? recipe.sourceUrl
+      : null;
+  const onWatchOriginalClick = useCallback(() => {
+    if (!watchOriginalUrl) return;
+    const host = extractVideoHost(watchOriginalUrl);
+    try {
+      track(AnalyticsEvents.cook_watch_original_tapped, {
+        recipeId: recipe.id,
+        videoHost: host,
+      });
+    } catch {
+      /* analytics fire-and-forget */
+    }
+    if (typeof window !== "undefined") {
+      // `noopener,noreferrer` so the source page can't reach back into
+      // the cook session via window.opener.
+      window.open(watchOriginalUrl, "_blank", "noopener,noreferrer");
+    }
+  }, [watchOriginalUrl, recipe.id]);
+
   return (
     <div className="fixed inset-0 z-50 bg-background text-white flex flex-col">
       {/* Header — always dark for kitchen context */}
@@ -592,21 +619,38 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
           <Icons.back className="w-4 h-4" />
           Exit Cook Mode
         </button>
-        <h2 className="text-sm font-semibold text-white truncate max-w-[50%]">
+        <h2 className="text-sm font-semibold text-white truncate max-w-[40%]">
           {recipe.title}
         </h2>
-        <button
-          type="button"
-          onClick={() => setShowIngredients(!showIngredients)}
-          className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
-            showIngredients
-              ? "bg-primary/10 text-primary"
-              : "text-muted-foreground hover:bg-muted/60"
-          }`}
-        >
-          <ListChecks className="w-4 h-4" />
-          <span className="hidden sm:inline">Ingredients</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Recime parity (2026-04-30) — "Watch original" pill,
+              renders only when `recipe.sourceUrl` is set. Mirrors the
+              mobile cook screen pill (Lucide `Play` + same label). */}
+          {watchOriginalUrl ? (
+            <button
+              type="button"
+              onClick={onWatchOriginalClick}
+              data-testid="cook-watch-original"
+              aria-label="Watch original video"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 transition-colors"
+            >
+              <Play className="w-4 h-4" />
+              <span className="hidden sm:inline">Watch original</span>
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => setShowIngredients(!showIngredients)}
+            className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
+              showIngredients
+                ? "bg-primary/10 text-primary"
+                : "text-muted-foreground hover:bg-muted/60"
+            }`}
+          >
+            <ListChecks className="w-4 h-4" />
+            <span className="hidden sm:inline">Ingredients</span>
+          </button>
+        </div>
       </div>
 
       {/* Active timer strip — shown whenever any timer is running, so

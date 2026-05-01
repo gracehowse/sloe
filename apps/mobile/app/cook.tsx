@@ -11,13 +11,14 @@ import {
   ToastAndroid,
   TextInput,
   Platform,
+  Linking,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useKeepAwake } from "expo-keep-awake";
 import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Star, Timer as TimerIcon, CheckCircle2 } from "lucide-react-native";
+import { Play, Star, Timer as TimerIcon, CheckCircle2 } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -53,6 +54,7 @@ import {
   parseCookHistory,
   pickDefaultRegularsSlot,
 } from "@/lib/cookSession";
+import { extractVideoHost } from "../../../src/lib/recipes/heroImageFallback";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -77,11 +79,31 @@ export default function CookModeScreen() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { recipeId, title, steps: stepsJson } = useLocalSearchParams<{
+  const {
+    recipeId,
+    title,
+    steps: stepsJson,
+    // Recime parity (2026-04-30) — when set, surfaces a "Watch
+    // original" pill in the header so the user can flip back to the
+    // source video while cooking. `sourceVideoUrl` is preferred (set
+    // by importer when distinct from the page URL); `sourceUrl` is
+    // the fallback for imports where the page URL itself is the
+    // video (YouTube watch / shorts URLs are common).
+    sourceVideoUrl: sourceVideoUrlParam,
+    sourceUrl: sourceUrlParam,
+  } = useLocalSearchParams<{
     recipeId: string;
     title: string;
     steps: string;
+    sourceVideoUrl?: string;
+    sourceUrl?: string;
   }>();
+  const watchOriginalUrl =
+    typeof sourceVideoUrlParam === "string" && sourceVideoUrlParam.trim() !== ""
+      ? sourceVideoUrlParam
+      : typeof sourceUrlParam === "string" && sourceUrlParam.trim() !== ""
+        ? sourceUrlParam
+        : null;
 
   // CM1 fix (2026-04-28): a malformed `steps` query param used to crash
   // the screen with no error UI — `JSON.parse` would throw on the
@@ -197,6 +219,31 @@ export default function CookModeScreen() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /** Recime parity (2026-04-30): tap the "Watch original" pill →
+   *  emit `cook_watch_original_tapped` with the host classification
+   *  (URL itself stays on-device) and open the link in the system
+   *  browser / native app. `Linking.openURL` returns a Promise that
+   *  rejects when nothing can handle the URL — we surface a soft
+   *  alert in that case rather than crashing the cook session. */
+  const onWatchOriginalPress = useCallback(() => {
+    if (!watchOriginalUrl) return;
+    const host = extractVideoHost(watchOriginalUrl);
+    try {
+      track(AnalyticsEvents.cook_watch_original_tapped, {
+        recipeId,
+        videoHost: host,
+      });
+    } catch {
+      /* analytics fire-and-forget */
+    }
+    Linking.openURL(watchOriginalUrl).catch(() => {
+      Alert.alert(
+        "Couldn't open video",
+        "The original video link couldn't be opened on this device.",
+      );
+    });
+  }, [watchOriginalUrl, recipeId]);
 
   /** Hydrate prior cook-history median for the optional "you usually
    *  cook this in N min" surface. Storage-only, no network. Failures
@@ -732,6 +779,28 @@ export default function CookModeScreen() {
     headerExit: { color: colors.text, fontSize: 16, fontWeight: "600" },
     headerCounter: { color: colors.textSecondary, fontSize: 14, fontWeight: "500" },
 
+    /** Recime parity (2026-04-30) — "Watch original" pill in the
+     *  cook-screen header. Only rendered when `watchOriginalUrl` is
+     *  set. Uses the primary-tinted ghost-pill pattern (matching the
+     *  active scale pill / paywall accent strip) so it reads as a
+     *  link, not a primary CTA. */
+    watchOriginalPill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      paddingHorizontal: Spacing.sm,
+      paddingVertical: 6,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: Accent.primary,
+      backgroundColor: Accent.primary + "14",
+    },
+    watchOriginalText: {
+      color: Accent.primary,
+      fontSize: 12,
+      fontWeight: "700",
+    },
+
     progressBar: {
       height: 3,
       backgroundColor: colors.border,
@@ -1055,7 +1124,27 @@ export default function CookModeScreen() {
           <Text style={styles.headerExit}>Exit</Text>
         </Pressable>
         <Text style={styles.headerCounter}>Step {current + 1} of {totalSteps}</Text>
-        <View style={{ width: 40 }} />
+        {/* Recime parity (2026-04-30): "Watch original" pill — only
+            renders when the recipe has a source video URL. Tap →
+            opens the link in the system handler. The right slot
+            previously held a 40-width spacer to balance the Exit
+            button width; we keep the same minimum reserve so the
+            counter stays centred when the pill is absent. */}
+        {watchOriginalUrl ? (
+          <Pressable
+            onPress={onWatchOriginalPress}
+            accessibilityRole="link"
+            accessibilityLabel="Watch original video"
+            testID="cook-watch-original"
+            hitSlop={6}
+            style={styles.watchOriginalPill}
+          >
+            <Play size={14} color={Accent.primary} />
+            <Text style={styles.watchOriginalText}>Watch original</Text>
+          </Pressable>
+        ) : (
+          <View style={{ width: 40 }} />
+        )}
       </View>
 
       {/* Progress bar */}

@@ -59,6 +59,7 @@ import {
   View,
 } from "react-native";
 import {
+  Barcode,
   Check,
   CheckCircle2,
   ChevronRight,
@@ -76,6 +77,7 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
   searchFoods,
   getFoodMacros,
+  getFatSecretFood,
   scaleMacros,
   type UnifiedSearchResult,
   type FoodPortion,
@@ -113,6 +115,8 @@ import CreateCustomFoodSheet, {
 import Badge from "../Badge";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
+import { fetchFatSecretAutocomplete } from "../../../../src/lib/nutrition/fatsecretAutocompleteClient";
+import { shouldShowBarcodeFallbackHint } from "../../../../src/lib/nutrition/foodSearchLocale";
 
 /** Standard units always available regardless of data source */
 const STANDARD_UNITS: FoodPortion[] = [
@@ -139,7 +143,7 @@ export type Macros = {
 
 export type SelectedFood = {
   name: string;
-  source: "USDA" | "OFF" | "CUSTOM" | "Edamam";
+  source: "USDA" | "OFF" | "CUSTOM" | "Edamam" | "FatSecret";
   macrosPer100g: Macros;
   microsPer100g?: Record<string, number>;
   portions: FoodPortion[];
@@ -148,6 +152,7 @@ export type SelectedFood = {
   fdcId?: number;
   barcode?: string;
   customFoodId?: string;
+  fatSecretFoodId?: string;
   servingLabel?: string;
 };
 
@@ -155,7 +160,7 @@ export type SupabaseLike = { from: (table: string) => unknown };
 
 /** Local superset of UnifiedSearchResult — see FoodSearchModal history. */
 type SearchRow = Omit<UnifiedSearchResult, "_source"> & {
-  _source: "USDA" | "OFF" | "CUSTOM" | "Edamam" | "GenericBeverage" | "GenericFood";
+  _source: "USDA" | "OFF" | "CUSTOM" | "Edamam" | "FatSecret" | "GenericBeverage" | "GenericFood";
   _custom?: CustomFood;
 };
 
@@ -190,6 +195,24 @@ export type FoodSearchPanelProps = {
    * is responsible — the panel never tells the host to close. This
    * keeps the panel host-agnostic.
    */
+  /**
+   * Locale-aware empty-state hint (2026-04-26 — FatSecret Premier Free).
+   * Premier Free is a US-only dataset; UK / EU / AU users searching
+   * for a regional brand will hit the "No results" path. When this
+   * callback is supplied AND the user's locale is non-US, the empty
+   * state surfaces a "Brand not found? Try a barcode scan" CTA that
+   * fires this handler. Caller is responsible for opening the
+   * BarcodeScannerModal.
+   */
+  onScanBarcodePressed?: () => void;
+  /** Suppresses the barcode-fallback hint when the host is already in barcode mode. */
+  inBarcodeMode?: boolean;
+  /**
+   * Override for the resolved BCP-47 locale string. Defaults to
+   * `Intl.DateTimeFormat().resolvedOptions().locale`. Tests override
+   * this directly; production callers should leave it undefined.
+   */
+  localeOverride?: string;
 };
 
 function buildPortionList(
@@ -317,17 +340,26 @@ export default function FoodSearchPanel({
   userId,
   onSelect,
   mode = "full",
+  onScanBarcodePressed,
+  inBarcodeMode = false,
+  localeOverride,
 }: FoodSearchPanelProps) {
   const colors = useThemeColors();
   const [results, setResults] = useState<SearchRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  /** Premier-tier autocomplete state (2026-04-26 — Premier Free upgrade). */
+  const [autocomplete, setAutocomplete] = useState<{ tier: "basic" | "premier"; suggestions: string[] }>(
+    { tier: "basic", suggestions: [] },
+  );
+  const autocompleteAbortRef = useRef<AbortController | null>(null);
+  const autocompleteDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pageRef = useRef(1);
   const hasMoreRef = useRef(true);
   const [loadingKey, setLoadingKey] = useState<string | null>(null);
   const [preview, setPreview] = useState<{
     name: string;
-    source: "USDA" | "OFF" | "CUSTOM" | "Edamam";
+    source: "USDA" | "OFF" | "CUSTOM" | "Edamam" | "FatSecret";
     macrosPer100g: Macros;
     microsPer100g?: Record<string, number>;
     portions: FoodPortion[];
@@ -337,6 +369,7 @@ export default function FoodSearchPanel({
     fdcId?: number;
     barcode?: string;
     customFoodId?: string;
+    fatSecretFoodId?: string;
   } | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const backfillRef = useRef(0);
@@ -394,6 +427,33 @@ export default function FoodSearchPanel({
     },
     [],
   );
+
+  // ── Premier-tier autocomplete typeahead (2026-04-26) ────────────
+  // Debounced 250 ms — fires faster than the full search (400 ms).
+  // On Basic tier the route returns an empty list so this is a no-op.
+  useEffect(() => {
+    if (autocompleteDebounceRef.current) clearTimeout(autocompleteDebounceRef.current);
+    if (autocompleteAbortRef.current) {
+      autocompleteAbortRef.current.abort();
+      autocompleteAbortRef.current = null;
+    }
+    const q = query.trim();
+    if (!q) {
+      setAutocomplete({ tier: "basic", suggestions: [] });
+      return;
+    }
+    autocompleteDebounceRef.current = setTimeout(async () => {
+      const ctl = new AbortController();
+      autocompleteAbortRef.current = ctl;
+      const result = await fetchFatSecretAutocomplete(q, { signal: ctl.signal, maxResults: 4 });
+      if (autocompleteAbortRef.current !== ctl) return;
+      setAutocomplete(result);
+    }, 250);
+    return () => {
+      if (autocompleteDebounceRef.current) clearTimeout(autocompleteDebounceRef.current);
+      if (autocompleteAbortRef.current) autocompleteAbortRef.current.abort();
+    };
+  }, [query]);
 
   // Re-run search whenever `query` changes. Caller-driven state — the
   // panel is purely reactive to its `query` prop. Debounced 400 ms to
@@ -540,6 +600,29 @@ export default function FoodSearchPanel({
           chosenPortion: portion,
           quantity,
           quantityText: String(quantity),
+        });
+      } else if (item._source === "FatSecret" && item._fatSecretFoodId) {
+        // Lane-A (2026-04-30) — branded FatSecret rows usually surface
+        // with null per-100g macros (the inline `food_description` was
+        // per-serving). Fetch the canonical panel before opening the
+        // preview so the portion picker has real values to scale.
+        const result = await getFatSecretFood(item._fatSecretFoodId);
+        setLoadingKey(null);
+        if (!result) return;
+        const effectivePrimary = item.primaryServing ?? result.primaryPortion ?? null;
+        const allPortions = buildPortionList(result.portions, effectivePrimary);
+        const { portion, quantity } = effectivePrimary
+          ? { portion: allPortions[0], quantity: 1 }
+          : resolveInitialPortion(allPortions, initialAmount, initialUnit);
+        setPreview({
+          name: item.name,
+          source: "FatSecret",
+          macrosPer100g: result.macrosPer100g,
+          portions: allPortions,
+          chosenPortion: portion,
+          quantity,
+          quantityText: String(quantity),
+          fatSecretFoodId: item._fatSecretFoodId,
         });
       } else if (item._source === "CUSTOM" && item._custom) {
         setLoadingKey(null);
@@ -746,6 +829,7 @@ export default function FoodSearchPanel({
         fdcId: preview.fdcId,
         barcode: preview.barcode,
         ...(preview.customFoodId ? { customFoodId: preview.customFoodId } : {}),
+        ...(preview.fatSecretFoodId ? { fatSecretFoodId: preview.fatSecretFoodId } : {}),
         ...(servingLabel ? { servingLabel } : {}),
       });
       setPreview(null);
@@ -902,6 +986,23 @@ export default function FoodSearchPanel({
     },
     [loadingKey, onPickResult, colors, openCustomFoodActions, styles],
   );
+
+  // Locale-resolved hint flag (2026-04-26 — Premier Free is US-only).
+  // Hoisted ABOVE the preview-mode early return so React's hook-order
+  // invariant survives the user toggling into and out of preview mode.
+  const showBarcodeFallbackHint = useMemo(() => {
+    if (inBarcodeMode) return false;
+    if (!onScanBarcodePressed) return false;
+    let locale = localeOverride;
+    if (!locale) {
+      try {
+        locale = typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().locale : undefined;
+      } catch {
+        locale = undefined;
+      }
+    }
+    return shouldShowBarcodeFallbackHint(locale ?? null);
+  }, [inBarcodeMode, onScanBarcodePressed, localeOverride]);
 
   // Preview overlays the list when set. Caller's wrapping View should
   // give the panel `flex: 1` so the FlatList / ScrollView can scroll
@@ -1124,6 +1225,38 @@ export default function FoodSearchPanel({
 
   return (
     <View style={{ flex: 1 }}>
+      {/* Premier-tier autocomplete typeahead row. Hidden on Basic. */}
+      {autocomplete.tier === "premier" && autocomplete.suggestions.length > 0 && query.trim() ? (
+        <View
+          testID="fatsecret-autocomplete-row"
+          accessibilityRole="list"
+          style={{
+            flexDirection: "row",
+            flexWrap: "wrap",
+            paddingHorizontal: Spacing.md,
+            paddingTop: Spacing.sm,
+            gap: 6,
+          }}
+        >
+          {autocomplete.suggestions.map((s) => (
+            <View
+              key={s}
+              accessibilityRole="text"
+              style={{
+                borderWidth: 1,
+                borderColor: colors.border,
+                backgroundColor: colors.cardBorder,
+                borderRadius: 999,
+                paddingVertical: 4,
+                paddingHorizontal: 10,
+              }}
+            >
+              <Text style={{ fontSize: 12, color: colors.textSecondary }}>{s}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+
       {loading && results.length === 0 ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={Accent.primary} />
@@ -1142,10 +1275,39 @@ export default function FoodSearchPanel({
           onEndReachedThreshold={0.4}
           ListEmptyComponent={
             !loading && query.trim() ? (
-              <Text style={styles.emptyText}>
-                No results for &quot;{query}&quot;.
-                {customEnabled ? " Can't find it? Create your own." : " Try a simpler or more specific term."}
-              </Text>
+              <View>
+                <Text style={styles.emptyText}>
+                  No results for &quot;{query}&quot;.
+                  {customEnabled ? " Can't find it? Create your own." : " Try a simpler or more specific term."}
+                </Text>
+                {showBarcodeFallbackHint ? (
+                  <Pressable
+                    testID="food-search-barcode-fallback-hint"
+                    accessibilityRole="button"
+                    accessibilityLabel="Scan a barcode — works for UK and EU products"
+                    onPress={onScanBarcodePressed}
+                    style={{
+                      marginTop: Spacing.md,
+                      marginHorizontal: Spacing.md,
+                      paddingVertical: 12,
+                      paddingHorizontal: 12,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      borderRadius: Radius.md,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: Spacing.sm,
+                      backgroundColor: colors.card,
+                    }}
+                  >
+                    <Barcode size={20} color={Accent.primary} />
+                    <Text style={{ flex: 1, fontSize: 14, color: colors.text }}>
+                      Brand not found? Try a barcode scan — works for UK &amp; EU products
+                    </Text>
+                    <ChevronRight size={16} color={colors.textTertiary} />
+                  </Pressable>
+                ) : null}
+              </View>
             ) : null
           }
           ListFooterComponent={

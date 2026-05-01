@@ -170,7 +170,25 @@ function ForwardShareIntentToImport() {
       resetShareIntent(true);
       return;
     }
-    router.replace({ pathname: "/import-shared", params: { url: u } });
+    /**
+     * IG/TT/YouTube share-sheet caption forwarding (2026-04-30):
+     * iOS's share sheet supplies BOTH a webUrl and the caption text when the
+     * source app provides them. We forward the caption text alongside the
+     * URL so the caption-text recipe importer (gated by IG_TT_IMPORT_ENABLED
+     * server-side) can extract a recipe without Suppr ever fetching the
+     * post body. Decision doc:
+     * `docs/decisions/2026-04-30-ig-tt-recipe-import-legal-posture.md`.
+     *
+     * Caption text is only meaningful when it differs from the URL itself
+     * — many sharer apps duplicate the URL into the text field. Strip
+     * url-only `text` to avoid showing a useless preview.
+     */
+    const params: Record<string, string> = { url: u };
+    const captionCandidate = text.trim();
+    if (captionCandidate && captionCandidate !== u && captionCandidate !== webUrl.trim()) {
+      params.captionText = captionCandidate;
+    }
+    router.replace({ pathname: "/import-shared", params });
     resetShareIntent(true);
   }, [hasShareIntent, isExpoGo, isReady, resetShareIntent, router, text, webUrl]);
 

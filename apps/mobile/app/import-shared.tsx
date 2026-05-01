@@ -41,6 +41,10 @@ import {
   urlFromDeepLink,
   urlFromRouterParams,
 } from "@/lib/resolveImportUrl";
+import {
+  detectSourcePlatform,
+  isCaptionTextPlatform,
+} from "@/lib/sourcePlatform";
 
 let ImagePicker: typeof import("expo-image-picker") | null = null;
 try { ImagePicker = require("expo-image-picker"); } catch { /* native build only */ }
@@ -122,7 +126,23 @@ function apiBase(): string {
   return (extra?.supprApiUrl ?? "").replace(/\/$/, "");
 }
 
-type ImportState = "idle" | "checking" | "importing" | "review" | "saving" | "success" | "error";
+type ImportState =
+  | "idle"
+  | "checking"
+  | "importing"
+  | "review"
+  | "saving"
+  | "success"
+  | "error"
+  /**
+   * `captionPreview` — IG/TT/YouTube share-sheet caption flow only.
+   * The user has shared a URL + caption text; we show them the caption
+   * before kicking off the LLM extractor so they can spot truncation
+   * (the iOS share sheet sometimes clips long captions) and confirm.
+   * Decision doc:
+   * `docs/decisions/2026-04-30-ig-tt-recipe-import-legal-posture.md`.
+   */
+  | "captionPreview";
 type ProgressStep = "ingredients" | "nutrition" | "macros";
 
 export default function ImportSharedScreen() {
@@ -150,6 +170,20 @@ export default function ImportSharedScreen() {
   const [servingsEditorOpen, setServingsEditorOpen] = useState(false);
   const [mealTags, setMealTags] = useState<string[]>([]);
   const [completedSteps, setCompletedSteps] = useState<ProgressStep[]>([]);
+  /**
+   * Caption-text path state (IG/TT/YouTube). When the iOS share sheet
+   * supplies BOTH a URL and the post caption, we hold the caption here
+   * so the user can review/edit it before the LLM extractor runs.
+   * `captionPlatform` is the detected platform classification used to
+   * label the preview header ("Import from Instagram"). When null, the
+   * caption-text path is inactive and the legacy URL path runs.
+   */
+  const [captionDraft, setCaptionDraft] = useState<string>("");
+  const [captionPlatform, setCaptionPlatform] = useState<
+    "instagram" | "tiktok" | "youtube" | null
+  >(null);
+  const [captionUrl, setCaptionUrl] = useState<string>("");
+  const [captionEditing, setCaptionEditing] = useState<boolean>(false);
   const base = apiBase();
   const runImportRef = useRef<(url: string) => Promise<void>>(async () => {});
   /** Same URL can be delivered via router + Linking + clipboard; avoid parallel duplicate imports. */
@@ -311,6 +345,99 @@ export default function ImportSharedScreen() {
       }
     },
     [base, userId],
+  );
+
+  /**
+   * Caption-text import path (IG/TT/YouTube). Sends `{url, captionText}` to
+   * `/api/recipe-import/caption`. Server enforces the `IG_TT_IMPORT_ENABLED`
+   * flag; when OFF the route returns 404 and we fall back to the legacy
+   * URL-based importer at `/api/recipe-import` so the user still gets some
+   * result (caption-less, possibly degraded). Decision doc:
+   * `docs/decisions/2026-04-30-ig-tt-recipe-import-legal-posture.md`.
+   */
+  const runCaptionImport = useCallback(
+    async (url: string, captionText: string) => {
+      const trimmedUrl = url.trim();
+      const trimmedCaption = captionText.trim();
+      if (!trimmedUrl || !trimmedCaption) return;
+
+      if (!base) {
+        setState("error");
+        setError("API not configured. Set supprApiUrl in app config.");
+        return;
+      }
+      if (!userId) {
+        setState("error");
+        setError("Sign in to save imported recipes to your library.");
+        return;
+      }
+
+      setState("importing");
+      setError(null);
+      setSavedRecipeId(null);
+      setCompletedSteps([]);
+
+      try {
+        const res = await authedFetch(`${base}/api/recipe-import/caption`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: trimmedUrl, captionText: trimmedCaption }),
+        });
+
+        // Feature-flag-off → 404. Fall back to URL importer (which today
+        // hits the legacy IG/TT path; in the long term that path is
+        // stripped, but for this PR it remains as the OFF fallback).
+        if (res.status === 404) {
+          await runImport(trimmedUrl);
+          return;
+        }
+
+        const data = (await res.json()) as {
+          ok?: boolean;
+          recipe?: ApiImportedRecipe;
+          message?: string;
+          sourcePlatform?: "instagram" | "tiktok" | "youtube";
+        };
+
+        if (!data.ok || !data.recipe) {
+          setState("error");
+          setError(data.message ?? "Could not extract a recipe from this caption.");
+          return;
+        }
+
+        const ingredients = Array.isArray(data.recipe.ingredients)
+          ? data.recipe.ingredients.map(String)
+          : [];
+        const fromApi = data.recipe.mealType;
+        const allowed = /^(breakfast|lunch|dinner|snack)$/;
+        const fromApiNorm =
+          Array.isArray(fromApi) && fromApi.every((x) => typeof x === "string")
+            ? fromApi
+                .map((x) => String(x).toLowerCase().trim())
+                .filter((x) => allowed.test(x))
+            : [];
+        const autoTags =
+          fromApiNorm.length > 0
+            ? fromApiNorm
+            : classifyMealType({
+                title: data.recipe.title ?? "",
+                ingredients,
+                caloriesPerServing: data.recipe.calories ?? null,
+                caption: trimmedCaption,
+              });
+        setMealTags(autoTags);
+        const normalized = normalizeApiImportedRecipe(data.recipe as Record<string, unknown>);
+        setPendingRecipe(normalized);
+        setTitle(
+          decodeEntities((normalized.title ?? "Imported recipe").trim() || "Imported recipe"),
+        );
+        setState("review");
+      } catch {
+        setState("error");
+        setError("Network error. Check your connection.");
+      }
+    },
+    [base, userId, runImport],
   );
 
   const runImageImport = useCallback(async () => {
@@ -508,6 +635,18 @@ export default function ImportSharedScreen() {
     ],
   );
 
+  /**
+   * Caption text passed alongside the URL via the iOS share sheet — we
+   * read it directly so we don't accidentally pick it up as a URL via
+   * `params.text` (which `urlFromRouterParams` already handles).
+   */
+  const routerCaptionText = useMemo(() => {
+    const raw = (params as Record<string, string | string[] | undefined>).captionText;
+    if (raw == null) return "";
+    const v = Array.isArray(raw) ? raw[0] : raw;
+    return typeof v === "string" ? v : "";
+  }, [(params as { captionText?: string | string[] }).captionText]);
+
   /** Keep pasted/deep link visible before sign-in so the URL survives the login flow mentally. */
   useEffect(() => {
     if (routerUrl) setManualUrl(routerUrl);
@@ -520,12 +659,28 @@ export default function ImportSharedScreen() {
     let cancelled = false;
     (async () => {
       setManualUrl(routerUrl);
+      // Caption-text path: when the share sheet provided caption text and the
+      // URL is IG/TT/YouTube, show the preview instead of running the
+      // legacy URL importer. The user can edit + confirm; on confirm we POST
+      // to /api/recipe-import/caption (gated by IG_TT_IMPORT_ENABLED).
+      const platform = detectSourcePlatform(routerUrl);
+      const captionTrimmed = routerCaptionText.trim();
+      if (captionTrimmed && isCaptionTextPlatform(platform)) {
+        // `platform` is now narrowed to "instagram" | "tiktok" | "youtube"
+        // by `isCaptionTextPlatform`'s type guard.
+        setCaptionUrl(routerUrl);
+        setCaptionDraft(captionTrimmed);
+        setCaptionPlatform(platform);
+        setCaptionEditing(false);
+        setState("captionPreview");
+        return;
+      }
       if (!cancelled) await runImportOnce(routerUrl);
     })();
     return () => {
       cancelled = true;
     };
-  }, [authLoading, userId, routerUrl, runImportOnce]);
+  }, [authLoading, userId, routerUrl, routerCaptionText, runImportOnce]);
 
   /**
    * No ?url= yet: read suppr:// initial link, then clipboard (delayed retries for iOS pasteboard).
@@ -1088,6 +1243,101 @@ export default function ImportSharedScreen() {
                 );
               })}
             </View>
+          </View>
+        )}
+
+        {state === "captionPreview" && captionPlatform && (
+          <View style={styles.panelCard}>
+            <Ionicons
+              name={
+                captionPlatform === "tiktok"
+                  ? "logo-tiktok"
+                  : captionPlatform === "youtube"
+                    ? "logo-youtube"
+                    : "logo-instagram"
+              }
+              size={36}
+              color={Accent.primary}
+            />
+            <Text style={styles.panelTitle}>
+              Import from {captionPlatform === "tiktok"
+                ? "TikTok"
+                : captionPlatform === "youtube"
+                  ? "YouTube"
+                  : "Instagram"}
+            </Text>
+            <Text style={styles.panelSub}>
+              We never fetch the post itself &mdash; this is the caption text
+              you shared. Check it looks right, then import.
+            </Text>
+
+            {!captionEditing ? (
+              <ScrollView
+                style={{
+                  alignSelf: "stretch",
+                  maxHeight: 240,
+                  backgroundColor: colors.inputBg,
+                  borderRadius: Radius.md,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  paddingHorizontal: Spacing.md,
+                  paddingVertical: Spacing.md,
+                }}
+                showsVerticalScrollIndicator={true}
+                accessibilityLabel="Shared caption text preview"
+                testID="caption-preview-scroll"
+              >
+                <Text style={{ color: colors.text, fontSize: 14, lineHeight: 20 }}>
+                  {captionDraft}
+                </Text>
+              </ScrollView>
+            ) : (
+              <TextInput
+                value={captionDraft}
+                onChangeText={setCaptionDraft}
+                multiline
+                style={{
+                  alignSelf: "stretch",
+                  minHeight: 160,
+                  maxHeight: 320,
+                  backgroundColor: colors.inputBg,
+                  borderRadius: Radius.md,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  paddingHorizontal: Spacing.md,
+                  paddingVertical: Spacing.md,
+                  color: colors.text,
+                  fontSize: 14,
+                  lineHeight: 20,
+                  textAlignVertical: "top",
+                }}
+                placeholder="Paste the post caption here..."
+                placeholderTextColor={colors.textTertiary}
+                accessibilityLabel="Edit caption text"
+                testID="caption-preview-editor"
+              />
+            )}
+
+            <Pressable
+              style={({ pressed }) => [styles.primaryBtn, pressed && styles.btnPressed]}
+              onPress={() => void runCaptionImport(captionUrl, captionDraft)}
+              accessibilityLabel="Looks right, import"
+              testID="caption-preview-confirm"
+            >
+              <Ionicons name="checkmark" size={18} color="#fff" />
+              <Text style={styles.primaryBtnText}>Looks right? Import</Text>
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [styles.outlineBtn, pressed && styles.outlineBtnPressed]}
+              onPress={() => setCaptionEditing((v) => !v)}
+              accessibilityLabel="Edit caption text"
+              testID="caption-preview-edit-toggle"
+            >
+              <Text style={styles.outlineBtnText}>
+                {captionEditing ? "Done editing" : "Edit caption"}
+              </Text>
+            </Pressable>
           </View>
         )}
 

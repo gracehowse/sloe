@@ -83,8 +83,54 @@ Grace applied for the **Premier Free** tier (FatSecret's startups/non-profits/st
 ### Status
 
 - [x] Premier Free applied (Grace, 2026-04-26)
-- [ ] Approval received — awaiting FatSecret response
-- [ ] Credentials swapped into prod env (Grace, 5-min ops task once approved)
-- [ ] Backfill script for already-imported recipes (engineering, post-approval)
-- [ ] Locale-aware empty-state copy (engineering, post-approval)
+- [x] Approval received (Grace, 2026-04-30)
+- [x] Credentials swapped into Vercel prod env (Grace, 2026-04-30)
+- [x] Premier-endpoint opt-in in `src/lib/fatsecret/client.ts` —
+      `fatSecretFoodsAutocomplete()` and `fatSecretFoodCategoriesGet()`
+      throw `FatSecretTierError` on Basic, no-op gracefully via
+      `/api/fatsecret/autocomplete` route (engineering, 2026-04-30)
+- [x] FoodSearchPanel typeahead wiring on web + mobile — 250 ms
+      debounce, AbortController cancellation, never blocks main search
+      (engineering, 2026-04-30)
+- [x] Backfill script `scripts/backfill-fatsecret-premier.mjs` —
+      idempotent, resumable, rate-limited 5/s (engineering, 2026-04-30)
+- [ ] **Grace: run `npm run backfill:fatsecret` once after merge** to
+      populate existing `recipe_ingredients` rows that were zeroed by
+      the 2026-04-25 Basic-tier compliance migration.
+- [x] Locale-aware empty-state copy on web + mobile (engineering,
+      2026-04-30)
 - [ ] Decision: paid Premier upgrade timing (Grace, post-launch revenue review)
+
+### Engineering implementation notes (2026-04-30)
+
+**Tier flag.** New env var `FATSECRET_TIER` read by
+`fatSecretTierFromEnv()`. Unset / unrecognised → `"basic"` (safe
+default — Basic-tier callers must keep working when the env var is
+absent). Premier-only methods on the client throw
+`FatSecretTierError` when called on Basic; the `/api/fatsecret/*`
+routes catch this and return `{ tier: "basic", suggestions: [] }`
+with HTTP 200 so client code can issue the request unconditionally.
+
+**Autocomplete UX.** `FoodSearchPanel` (web + mobile) fires a 250 ms
+debounced autocomplete request alongside the existing 400 ms full
+search. On Basic the response is empty and the typeahead row stays
+hidden. On Premier the suggestions render as chips above the search
+results. Cancellation via `AbortController` so an in-flight
+autocomplete is dropped when the user keeps typing. **The
+autocomplete is purely additive — it never replaces the full
+multi-source search (USDA + OFF + Edamam + custom).**
+
+**Locale fallback.** `shouldShowBarcodeFallbackHint(locale)` lives in
+`src/lib/nutrition/foodSearchLocale.ts`. US territories (US, PR, GU,
+AS, VI, MP) suppress the hint; everything else (including bare-
+language locales like `en` with no region tag) shows it. Tied into
+the BarcodeScannerModal via the panel's new `onScanBarcodePressed`
+callback.
+
+**Backfill safety.** The script refuses to run unless
+`FATSECRET_TIER=premier` is set — guards against accidentally re-
+caching macros under Basic-tier ToS. Idempotent (skips rows where
+`is_verified=true && calories>0`), resumable (progress at
+`scripts/.fatsecret-backfill-progress.json`), and never overwrites
+rows where the user manually re-verified to a different source
+(USDA / OFF / Edamam etc).

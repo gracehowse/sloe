@@ -34,6 +34,7 @@
     "smoke:production": "node --import tsx scripts/production-smoke.ts",
     "smoke:revenuecat": "node scripts/test-revenuecat-replay.mjs",
     "testflight:feedback": "node scripts/fetch-testflight-feedback.mjs",
+    "backfill:fatsecret": "node scripts/backfill-fatsecret-premier.mjs",
     "mobile:dev": "npm run start --prefix apps/mobile",
     "mobile:dev:clear": "npm run start:clear --prefix apps/mobile",
     "mobile:dev:tunnel": "npm run start:tunnel --prefix apps/mobile",

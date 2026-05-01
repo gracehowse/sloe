@@ -1,9 +1,33 @@
 import OAuth from "oauth-1.0a";
 import crypto from "node:crypto";
 
-type FatSecretConfig = {
+/**
+ * FatSecret Platform API client.
+ *
+ * Tiers (2026-04-30 — Premier Free approval):
+ *   - "basic"   : foods.search + food.get only. 7 nutrients per food.
+ *                 Macro caching prohibited by the Basic-tier ToS.
+ *   - "premier" : Premier Free unlocks /foods.autocomplete.v2,
+ *                 /food_categories.get, full nutrient panel (32+
+ *                 fields), barcode endpoints, and permits caching.
+ *
+ * The tier is read from `FATSECRET_TIER` (default `"basic"`). Premier-
+ * only methods throw {@link FatSecretTierError} when called on Basic so
+ * callers can fall back to the Basic-tier search path without leaking
+ * a Premier-only failure to the user.
+ *
+ * See `docs/decisions/2026-04-26-fatsecret-upgrade.md`.
+ */
+
+export type FatSecretTier = "basic" | "premier";
+
+export type FatSecretConfig = {
   consumerKey: string;
   consumerSecret: string;
+  /** "basic" (default) — foods.search + food.get only.
+   *  "premier" — Premier Free unlocks autocomplete, categories,
+   *  full nutrient panel, and permits macro caching. */
+  tier: FatSecretTier;
 };
 
 type FatSecretFoodSearchResult = {
@@ -26,12 +50,37 @@ export type FatSecretServing = {
   fiber?: string;
   sugar?: string;
   sodium?: string;
+  /** Premier-tier extended panel (only populated on Premier). */
+  saturated_fat?: string;
+  polyunsaturated_fat?: string;
+  monounsaturated_fat?: string;
+  trans_fat?: string;
+  cholesterol?: string;
+  potassium?: string;
+  iron?: string;
+  calcium?: string;
+  vitamin_a?: string;
+  vitamin_c?: string;
+  vitamin_d?: string;
 };
 
 export type FatSecretFood = {
   food_id: string;
   food_name: string;
   servings: { serving: FatSecretServing | FatSecretServing[] } | undefined;
+};
+
+/** Premier-only autocomplete suggestion. */
+export type FatSecretAutocompleteSuggestion = {
+  /** Suggested completion string. */
+  suggestion: string;
+};
+
+/** Premier-only food category. */
+export type FatSecretFoodCategory = {
+  food_category_id: string;
+  food_category_name: string;
+  food_category_description?: string;
 };
 
 const API_BASE = "https://platform.fatsecret.com/rest/server.api";
@@ -45,11 +94,33 @@ function requiredEnv(name: string): string {
   return v;
 }
 
+/**
+ * Read tier from `FATSECRET_TIER`. Unset or unrecognised → "basic"
+ * (safe default — Basic-tier callers must keep working when the env
+ * var is absent).
+ */
+export function fatSecretTierFromEnv(): FatSecretTier {
+  const raw = (process.env.FATSECRET_TIER ?? "").trim().toLowerCase();
+  return raw === "premier" ? "premier" : "basic";
+}
+
 export function fatSecretConfigFromEnv(): FatSecretConfig {
   return {
     consumerKey: requiredEnv("FATSECRET_CONSUMER_KEY"),
     consumerSecret: requiredEnv("FATSECRET_CONSUMER_SECRET"),
+    tier: fatSecretTierFromEnv(),
   };
+}
+
+/**
+ * Thrown when a Premier-only endpoint is invoked on a Basic-tier
+ * config. Callers should catch and fall back to the Basic search path.
+ */
+export class FatSecretTierError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "FatSecretTierError";
+  }
 }
 
 function oauthClient(cfg: FatSecretConfig) {
@@ -71,7 +142,13 @@ async function getOAuth2Token(cfg: FatSecretConfig): Promise<string | null> {
   const basic = Buffer.from(`${cfg.consumerKey}:${cfg.consumerSecret}`).toString("base64");
   const body = new URLSearchParams();
   body.set("grant_type", "client_credentials");
-  body.set("scope", "basic");
+  // Premier scope unlocks autocomplete + categories. Basic falls back to
+  // the "basic" scope. FatSecret accepts a multi-scope string for
+  // Premier accounts — when we ask for a scope the account doesn't have
+  // it errors at request time (not token time), so requesting "premier"
+  // on a Basic account would still issue a token but every Premier
+  // endpoint call would 401. The tier flag prevents that round trip.
+  body.set("scope", cfg.tier === "premier" ? "basic premier" : "basic");
 
   const res = await fetch(OAUTH2_TOKEN_URL, {
     method: "POST",
@@ -169,15 +246,26 @@ async function fatSecretGet<T>(cfg: FatSecretConfig, params: Record<string, stri
   return json as T;
 }
 
-export async function fatSecretFoodSearch(cfg: FatSecretConfig, query: string): Promise<FatSecretFoodSearchResult[]> {
-  const data = await fatSecretGet<{
-    foods?: { food?: FatSecretFoodSearchResult[] | FatSecretFoodSearchResult };
-  }>(cfg, {
+export async function fatSecretFoodSearch(
+  cfg: FatSecretConfig,
+  query: string,
+  opts?: { maxResults?: number; pageNumber?: number },
+): Promise<FatSecretFoodSearchResult[]> {
+  // Defaults preserve historical behaviour for `verifyIngredients` callers
+  // (10 results, page 1). The food-search merge pipeline overrides both —
+  // see `app/api/fatsecret/search/route.ts`.
+  const max = Math.max(1, Math.min(50, opts?.maxResults ?? 10));
+  const page = Math.max(0, Math.floor(opts?.pageNumber ?? 0));
+  const params: Record<string, string> = {
     method: "foods.search",
     format: "json",
     search_expression: query,
-    max_results: "10",
-  });
+    max_results: String(max),
+  };
+  if (page > 0) params.page_number = String(page);
+  const data = await fatSecretGet<{
+    foods?: { food?: FatSecretFoodSearchResult[] | FatSecretFoodSearchResult };
+  }>(cfg, params);
   const f = data.foods?.food;
   if (!f) return [];
   return Array.isArray(f) ? f : [f];
@@ -192,3 +280,76 @@ export async function fatSecretFoodGet(cfg: FatSecretConfig, foodId: string): Pr
   return data.food ?? null;
 }
 
+/**
+ * Premier-only typeahead suggestion endpoint. Returns a ranked list of
+ * suggestion strings — much faster + lighter than the full
+ * `foods.search` payload, suitable for keypress-driven UX.
+ *
+ * Throws {@link FatSecretTierError} on Basic tier so the caller can
+ * fall back to `fatSecretFoodSearch` without showing a user-facing
+ * failure.
+ *
+ * Spec: https://platform.fatsecret.com/api/Default.aspx?api=foods.autocomplete.v2
+ */
+export async function fatSecretFoodsAutocomplete(
+  cfg: FatSecretConfig,
+  query: string,
+  opts?: { maxResults?: number },
+): Promise<FatSecretAutocompleteSuggestion[]> {
+  if (cfg.tier !== "premier") {
+    throw new FatSecretTierError(
+      "fatSecretFoodsAutocomplete requires Premier tier (FATSECRET_TIER=premier).",
+    );
+  }
+  const q = query.trim();
+  if (!q) return [];
+  const max = Math.max(1, Math.min(10, opts?.maxResults ?? 4));
+  const data = await fatSecretGet<{
+    suggestions?: { suggestion?: string[] | string };
+  }>(cfg, {
+    method: "foods.autocomplete.v2",
+    format: "json",
+    expression: q,
+    max_results: String(max),
+  });
+  const raw = data.suggestions?.suggestion;
+  if (!raw) return [];
+  const list = Array.isArray(raw) ? raw : [raw];
+  return list.filter((s): s is string => typeof s === "string" && s.length > 0).map((suggestion) => ({ suggestion }));
+}
+
+/**
+ * Premier-only food categories endpoint. Useful for filter-chip UI
+ * (e.g. "Cereal", "Beverages"). Throws {@link FatSecretTierError} on
+ * Basic.
+ *
+ * Spec: https://platform.fatsecret.com/api/Default.aspx?api=food_categories.get
+ */
+export async function fatSecretFoodCategoriesGet(
+  cfg: FatSecretConfig,
+): Promise<FatSecretFoodCategory[]> {
+  if (cfg.tier !== "premier") {
+    throw new FatSecretTierError(
+      "fatSecretFoodCategoriesGet requires Premier tier (FATSECRET_TIER=premier).",
+    );
+  }
+  const data = await fatSecretGet<{
+    food_categories?: { food_category?: FatSecretFoodCategory[] | FatSecretFoodCategory };
+  }>(cfg, {
+    method: "food_categories.get",
+    format: "json",
+  });
+  const raw = data.food_categories?.food_category;
+  if (!raw) return [];
+  return Array.isArray(raw) ? raw : [raw];
+}
+
+/**
+ * Test-only hook — clears the OAuth2 token cache so unit tests can
+ * verify scope-string + tier flag behaviour without leaking state
+ * across cases. Not exported in production type-flows but available
+ * for `vi.spyOn`-style overrides via the named export.
+ */
+export function __resetFatSecretOAuth2CacheForTests(): void {
+  oauth2Cache = null;
+}

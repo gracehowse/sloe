@@ -26,6 +26,7 @@ import {
   Clock,
   Minus,
   MoreHorizontal,
+  Play,
   Plus,
   PlusCircle,
   Share2,
@@ -60,6 +61,10 @@ import { instagramHandleFromPostUrl, tiktokHandleFromPostUrl } from "../../../..
 import { normaliseMealSlot } from "../../../../src/lib/nutrition/mealSlots";
 import { normaliseInstructions } from "../../../../src/lib/recipes/normaliseInstructions";
 import { sanitizeRecipeDescription } from "../../../../src/lib/recipes/sanitizeRecipeDescription";
+import {
+  pickHeroImageUrl,
+  extractVideoHost,
+} from "../../../../src/lib/recipes/heroImageFallback";
 import { formatMacroValue } from "../../../../src/lib/nutrition/formatMacro";
 // GW-08 (audit 2026-04-28): `computeRecipeFitPercent` import dropped
 // when the always-85% pill was removed. Helper is still callable from
@@ -1034,16 +1039,58 @@ export default function RecipeDetailScreen() {
     void addRecipeToTodayJournal();
   }, [autoLog, recipe, userId, addRecipeToTodayJournal]);
 
-  // Clean up video thumbnail URLs (YouTube thumbnails have baked-in play buttons)
+  // Hero image fallback ladder (Recime parity, 2026-04-30):
+  //   1) recipe.image_url
+  //   2) YouTube thumbnail derived from source_url (when source_url
+  //      itself is a YouTube watch / shorts URL — common for recipes
+  //      imported from YT video pages)
+  //   3) DEFAULT_IMAGE (stock Unsplash) as the recipe-detail-screen
+  //      ultimate fallback. The deterministic gradient renderer is
+  //      reserved for Discover / Library cards where it reads as a
+  //      "no photo" cue; on the recipe detail hero a flat gradient
+  //      with no glyph would feel broken — keep the photo-shaped
+  //      placeholder here.
+  // Existing legacy upgrade (hqdefault → maxresdefault) is preserved
+  // for cached image_url values that came in at a lower resolution.
+  // See `src/lib/recipes/heroImageFallback.ts` for the helper.
   const heroImageUrl = useMemo(() => {
-    const raw = recipe?.image_url ?? DEFAULT_IMAGE;
-    // YouTube thumbnail: swap hqdefault/mqdefault for maxresdefault (no play button overlay)
+    const picked = pickHeroImageUrl({
+      image_url: recipe?.image_url,
+      source_url: recipe?.source_url,
+    });
+    const raw = picked ?? DEFAULT_IMAGE;
     if (raw.includes("img.youtube.com") || raw.includes("i.ytimg.com")) {
       return raw
         .replace(/\/(hqdefault|mqdefault|sddefault|default)\.(jpg|webp)/, "/maxresdefault.$2");
     }
     return raw;
-  }, [recipe?.image_url]);
+  }, [recipe?.image_url, recipe?.source_url]);
+
+  /** Recime parity (2026-04-30): "Watch original" affordance in the
+   *  inline cook overlay. Renders only when the recipe has a usable
+   *  source URL (we don't have a separate `source_video_url` column
+   *  yet — `source_url` carries the YT/IG/TT URL when the recipe
+   *  was imported from a video page). Tap → emit analytics with the
+   *  host classification, open the link in the system handler. */
+  const watchOriginalUrl = recipe?.source_url ?? null;
+  const onWatchOriginalPress = useCallback(() => {
+    if (!watchOriginalUrl || !recipe) return;
+    const host = extractVideoHost(watchOriginalUrl);
+    try {
+      track(AnalyticsEvents.cook_watch_original_tapped, {
+        recipeId: recipe.id,
+        videoHost: host,
+      });
+    } catch {
+      /* analytics fire-and-forget */
+    }
+    Linking.openURL(watchOriginalUrl).catch(() => {
+      Alert.alert(
+        "Couldn't open video",
+        "The original video link couldn't be opened on this device.",
+      );
+    });
+  }, [watchOriginalUrl, recipe]);
 
   // Defensive normalisation: some imports (and at least one historical
   // seed, TestFlight `AO4NtyNBpP4FJRgq7mCV5cs`) store newlines as literal
@@ -2340,17 +2387,49 @@ export default function RecipeDetailScreen() {
           <View>
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.lg }}>
               <Text style={{ fontSize: 13, fontWeight: "700", color: Accent.primary, letterSpacing: 2 }}>COOK MODE</Text>
-              <Pressable
-                onPress={() => {
-                  setCookMode(false);
-                  setCookStep(0);
-                }}
-                accessibilityRole="button"
-                accessibilityLabel="Exit cook mode"
-                hitSlop={12}
-              >
-                <X size={28} color={colors.textSecondary} strokeWidth={2.25} />
-              </Pressable>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
+                {/* Recime parity (2026-04-30): "Watch original" pill —
+                    only renders when `recipe.source_url` is set so the
+                    user can flip to the source video while cooking.
+                    See `src/lib/recipes/heroImageFallback.ts` for host
+                    classification used in the analytics payload. */}
+                {watchOriginalUrl ? (
+                  <Pressable
+                    onPress={onWatchOriginalPress}
+                    accessibilityRole="link"
+                    accessibilityLabel="Watch original video"
+                    testID="cook-watch-original"
+                    hitSlop={6}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 4,
+                      paddingHorizontal: Spacing.sm,
+                      paddingVertical: 6,
+                      borderRadius: 999,
+                      borderWidth: 1,
+                      borderColor: Accent.primary,
+                      backgroundColor: Accent.primary + "14",
+                    }}
+                  >
+                    <Play size={14} color={Accent.primary} />
+                    <Text style={{ color: Accent.primary, fontSize: 12, fontWeight: "700" }}>
+                      Watch original
+                    </Text>
+                  </Pressable>
+                ) : null}
+                <Pressable
+                  onPress={() => {
+                    setCookMode(false);
+                    setCookStep(0);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Exit cook mode"
+                  hitSlop={12}
+                >
+                  <X size={28} color={colors.textSecondary} strokeWidth={2.25} />
+                </Pressable>
+              </View>
             </View>
             <Text style={{ fontSize: 14, color: colors.textSecondary, marginBottom: 8 }}>
               Step {cookStep + 1} of {instructionSteps.length}
