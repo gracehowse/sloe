@@ -34,8 +34,12 @@ describe("PhotoLogSheet — corrections persist wiring (round 4 audit)", () => {
     // The originals snapshot is what `isMeaningfulPhotoCorrection`
     // diffs against — without it every commit would be detected as
     // "no change" (originals would equal the user's edits) and the
-    // bank would never grow. The snapshot deep-clones each row.
-    expect(PHOTO_SRC).toMatch(/originalItemsRef\.current\s*=\s*cleaned\.map/);
+    // bank would never grow. Range-first re-architecture (2026-05-01):
+    // items are projected from `PhotoLogItemRanged[]` to
+    // `AiLoggedItem[]` via `rangedItemToLogged` for the snapshot.
+    expect(PHOTO_SRC).toMatch(
+      /originalItemsRef\.current\s*=\s*ranged\.map\(\(it\)\s*=>\s*rangedItemToLogged\(it\)\)/,
+    );
   });
 
   it("calls persistPhotoCorrections at commit time", () => {
@@ -43,8 +47,11 @@ describe("PhotoLogSheet — corrections persist wiring (round 4 audit)", () => {
   });
 
   it("passes the captured originals + the user's corrected items to the helper", () => {
+    // Range-first re-architecture (2026-05-01): the corrected items
+    // are projected from the ranged items to the logged shape via
+    // `rangedItemToLogged` in a `projected` local before the call.
     expect(PHOTO_SRC).toMatch(/originals:\s*originalItemsRef\.current/);
-    expect(PHOTO_SRC).toMatch(/corrected:\s*items/);
+    expect(PHOTO_SRC).toMatch(/corrected:\s*projected/);
   });
 
   it("guards the persist on a resolved auth user (skips when signed-out)", () => {

@@ -1,5 +1,57 @@
 # Mobile App Changelog
 
+## 2026-05-01 — Photo-log re-architected: itemized breakdown with kcal ranges
+
+The previous photo-log pipeline blanket-failed (502 `verify_failed`)
+the moment any single item couldn't be matched against an external
+food database — which is most of the time on a real plate (the
+matchers are tuned for clean recipe ingredient strings, not vision
+output like "salami", "olives", "half egg"). The mobile sheet then
+showed a generic "Couldn't analyse this food" alert and the user got
+nothing, even when the model had correctly identified 8 of 10 items.
+
+Rewritten as a single GPT-4o vision call returning a ChatGPT-grade
+itemized breakdown:
+
+- Items grouped by macro role ("Bread + dips", "Protein + fats",
+  "Extras", "Drinks", "Sweets", or a custom group like "Pasta + sauce"
+  when the plate calls for it).
+- Per-item kcal RANGES (`~120–150 kcal`), not point estimates — honest
+  about vision uncertainty.
+- Verbal portion hints in plain language ("~40-50g", "1 piece").
+- Optional add-on chips for things NOT in the photo that commonly go
+  with what IS visible (a glass of wine with charcuterie, a bun for a
+  burger). Tap to add — chip moves into the items list and the plate
+  total updates.
+- Plate total banner with the same range format.
+- Free-text caveats from the model rendered italicised below the items
+  ("dressing not visible — likely +30-50 kcal").
+- Never blanket-fails on partial / low-confidence items. Low-confidence
+  rows are flagged amber but stay savable.
+- "Save to today" projects each ranged item to the journal's existing
+  `AiLoggedItem` shape: calories collapse to the range MIDPOINT for the
+  `meal_logs.calories` column; the full range is preserved on
+  `AiLoggedItem.range` for uncertainty-aware analytics.
+
+The optional per-item "Verify with database" affordance routes a
+single ingredient to `/api/nutrition/verify-recipe` to swap that one
+row from AI-estimated range to a USDA / OFF / FatSecret single-number
+match — preserved for users who want a verified row.
+
+Web dialog (`src/app/components/suppr/photo-log-dialog.tsx`) ships the
+identical grouped layout — same response shape, same en-dash range
+format, same add-on chips, same "Save to today" CTA copy. Only styling
+diverges: sonner toast on web vs AsyncStorage + ToastAndroid +
+Alert.alert on mobile (existing platform-native pattern).
+
+Two new analytics events: `ai_photo_log_addon_added` and
+`ai_photo_log_item_verified`. Existing `ai_photo_log_started`,
+`_committed`, `_paywalled`, and `photo_log_correction_persisted`
+unchanged.
+
+See `docs/decisions/2026-05-01-photo-log-rangefirst.md` for the full
+rationale, prompt strategy, and target output (Grace's screenshot bar).
+
 ## 2026-05-01 — Build 41 P0 batch (TestFlight Build 40 feedback)
 
 Four P0 fixes consolidated for TestFlight Build 41. All sourced from

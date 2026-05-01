@@ -34,39 +34,53 @@ const ITEM_SRC = readFileSync(ITEM_PATH, "utf8");
 const SUMMARY_SRC = readFileSync(SUMMARY_PATH, "utf8");
 
 describe("AI log review parity (audit B5)", () => {
-  describe("PhotoLogSheet", () => {
-    it("imports the shared AiLogReviewItem component", () => {
+  describe("PhotoLogSheet (range-first re-architecture, 2026-05-01)", () => {
+    // The photo-log sheet was rebuilt 2026-05-01 around the new
+    // range-first ChatGPT-grade itemized breakdown shape (per
+    // Grace's screenshot bar in
+    // `docs/decisions/2026-05-01-photo-log-rangefirst.md`):
+    // grouped by macro role, kcal RANGES per item, opt-in addon
+    // chips, plate total banner. The voice-log sheet keeps the
+    // single-row-per-item shape because voice transcription gives
+    // structured output (not a photo + uncertainty), so the
+    // shared `AiLogReviewItem` / `AiLogReviewSummary` row pattern
+    // still fits voice but no longer fits photo.
+    //
+    // Photo-log parity now lives in
+    // `tests/unit/photoLogSheetGrouping.test.ts` (mobile structural)
+    // and `tests/unit/photoLogDialogGrouping.test.tsx` (web render),
+    // which pin the new shared range-aware helpers
+    // (`groupItemsByCategory`, `formatRangeKcal`, `sumRanges`,
+    // `rangedItemToLogged`).
+    it("imports the range-aware helpers from the shared lib", () => {
+      expect(PHOTO_SRC).toMatch(/groupItemsByCategory/);
+      expect(PHOTO_SRC).toMatch(/formatRangeKcal/);
+      expect(PHOTO_SRC).toMatch(/rangedItemToLogged/);
+    });
+
+    it("renders the grouped breakdown (groups.map -> group.items.map)", () => {
+      expect(PHOTO_SRC).toMatch(/groups\.map\(\(group\)/);
+      expect(PHOTO_SRC).toMatch(/group\.items\.map\(\(item\)/);
+    });
+
+    it("flags low-confidence items with the amber 'verify before logging' note", () => {
+      expect(PHOTO_SRC).toMatch(/Low confidence — verify before logging/);
+    });
+
+    it("'Save to today' projects items via rangedItemToLogged before onCommit", () => {
       expect(PHOTO_SRC).toMatch(
-        /import\s+AiLogReviewItem\s+from\s+["']\.\/AiLogReviewItem["']/,
+        /projected\s*=\s*items\.map\(\(it\)\s*=>\s*rangedItemToLogged\(it\)\)/,
       );
+      expect(PHOTO_SRC).toMatch(/onCommit\(projected/);
     });
 
-    it("imports the shared AiLogReviewSummary component", () => {
-      expect(PHOTO_SRC).toMatch(
-        /import\s+AiLogReviewSummary\s+from\s+["']\.\/AiLogReviewSummary["']/,
-      );
+    it("uses 'Save to today' as the primary CTA copy (matches Grace's screenshot brief)", () => {
+      expect(PHOTO_SRC).toMatch(/Save to today/);
     });
 
-    it("renders review rows via the shared component", () => {
-      expect(PHOTO_SRC).toMatch(/<AiLogReviewItem\b/);
-    });
-
-    it("renders the totals summary via the shared component", () => {
-      expect(PHOTO_SRC).toMatch(/<AiLogReviewSummary\b/);
-    });
-
-    it("does not roll its own confidence chip — must come from shared item", () => {
-      // The bespoke local "Low" / "Med" / "High" rendering is what
-      // drifted. Catch any inline reintroduction.
-      expect(PHOTO_SRC).not.toMatch(/classifyConfidence\(item\.confidence\)\s*===\s*["']high["']/);
-    });
-
-    it("uses the 'Log anyway' label when any item is low confidence", () => {
-      expect(PHOTO_SRC).toMatch(/hasLowConfidence\s*\?\s*"Log anyway"/);
-    });
-
-    it("uses 'Review the {N} items we identified' subtitle pattern (matches voice copy shape)", () => {
-      expect(PHOTO_SRC).toMatch(/Review the \$\{items\.length\} item/);
+    it("renders add-on chips that promote into items[] on tap", () => {
+      expect(PHOTO_SRC).toMatch(/addons\.map\(\(addon\)/);
+      expect(PHOTO_SRC).toMatch(/setItems\(\(prev\)\s*=>\s*\[/);
     });
   });
 

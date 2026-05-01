@@ -27,7 +27,15 @@ describe("PhotoLogDialog (web) — corrections persist wiring (round 4)", () => 
   });
 
   it("snapshots originals on review entry (mirror of mobile)", () => {
-    expect(DIALOG_SRC).toMatch(/originalItemsRef\.current\s*=\s*cleaned\.map/);
+    // Range-first re-architecture (2026-05-01): items are projected
+    // from `PhotoLogItemRanged[]` (the new API shape) into
+    // `AiLoggedItem[]` via `rangedItemToLogged` for the snapshot, so
+    // `persistPhotoCorrections` can still diff name/macro deltas
+    // against the user's edited rows. The line uses `data.items.map`
+    // (the parsed response) and projects each ranged item.
+    expect(DIALOG_SRC).toMatch(
+      /originalItemsRef\.current\s*=\s*data\.items\.map\(\(it\)\s*=>\s*rangedItemToLogged\(it\)\)/,
+    );
   });
 
   it("calls persistPhotoCorrections at commit time", () => {
