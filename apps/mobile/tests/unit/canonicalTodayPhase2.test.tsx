@@ -9,11 +9,15 @@
  * Scope:
  *   - <StreakPip>: rendering rules at zero / 1 / N days.
  *   - <LogFab>: visibility, position, no-op default tap, custom
- *     onPress override.
+ *     onPress override. Component still ships (preserved for parity
+ *     with web's LogFab and Maestro continuity) but is no longer
+ *     rendered in Today's composition root — see the `?openLog=1`
+ *     pin below.
  *   - Today index source pin: the variant picker is suppressed
  *     (`hidePicker` set on TodayHero), the QuickLogStrip is no
- *     longer rendered, and the LogFab is wired into the
- *     composition root.
+ *     longer rendered, and the canonical LogSheet is opened either
+ *     by meal-slot taps or by the global `<SupprTabBar>` raised
+ *     button (which routes to `/(tabs)?openLog=1`).
  */
 
 import { describe, it, expect, vi } from "vitest";
@@ -42,9 +46,9 @@ vi.mock("@/hooks/use-theme-colors", () => ({
 }));
 
 describe("StreakPip", () => {
-  it("renders 'Start your streak' label at zero days", () => {
+  it("renders 'Start streak' label at zero days", () => {
     const { getByText } = render(<StreakPip days={0} />);
-    expect(getByText("Start your streak")).toBeTruthy();
+    expect(getByText("Start streak")).toBeTruthy();
   });
 
   it("renders '1 day' (singular) at one day", () => {
@@ -62,10 +66,10 @@ describe("StreakPip", () => {
 
   it("clamps non-finite or negative inputs to 0 (defensive)", () => {
     const { getByText } = render(<StreakPip days={Number.NaN} />);
-    expect(getByText("Start your streak")).toBeTruthy();
+    expect(getByText("Start streak")).toBeTruthy();
 
     const { getByText: getNeg } = render(<StreakPip days={-3} />);
-    expect(getNeg("Start your streak")).toBeTruthy();
+    expect(getNeg("Start streak")).toBeTruthy();
   });
 
   it("exposes a stable accessibility label", () => {
@@ -128,8 +132,12 @@ describe("(tabs)/index.tsx — canonical Today composition root pin", () => {
     expect(indexSrc).toContain("import { StreakPip }");
   });
 
-  it("imports the new <LogFab> primitive", () => {
-    expect(indexSrc).toContain("import { LogFab }");
+  it("no longer imports the side <LogFab> (retired 2026-04-30 — the centered raised Log button lives in <SupprTabBar>)", () => {
+    // The LogFab.tsx component file still ships (deferred deletion;
+    // see header comment). The pin here is that Today's composition
+    // root no longer pulls it in — proving the side-FAB render path
+    // is gone. The new entry-point pin below replaces it.
+    expect(indexSrc).not.toMatch(/^import\s*\{\s*LogFab\s*\}/m);
   });
 
   it("renders the <StreakPip> on day-view (with streakDays passed in)", () => {
@@ -161,8 +169,20 @@ describe("(tabs)/index.tsx — canonical Today composition root pin", () => {
     expect(indexSrc).not.toMatch(/<TodayQuickLogStrip[\s\S]+?\/>/);
   });
 
-  it("renders the canonical <LogFab> wired to open the canonical LogSheet (was TodayFabSheet pre-Phase-3)", () => {
-    expect(indexSrc).toMatch(/<LogFab[\s\S]+?onPress=\{\(\)\s*=>\s*setFabSheetOpen\(true\)\}/);
+  it("opens the canonical LogSheet via the `?openLog=1` deep-link from <SupprTabBar> (replaces the side <LogFab> render, 2026-04-30)", () => {
+    // The Today screen consumes `params.openLog === "1"` and opens
+    // the LogSheet via setFabSheetOpen(true). Pin the consumer here
+    // so a future contributor who removes the deep-link wiring fails
+    // CI before the centered raised Log button stops working.
+    expect(indexSrc).toMatch(
+      /params\.openLog\s*===\s*"1"[\s\S]+?setFabSheetOpen\(true\)/,
+    );
+    // Side FAB JSX render is gone (the comment-block reference to
+    // `<LogFab>` in backticks must not match this — we only want to
+    // catch a real JSX open tag, identified by the JSX-attribute
+    // syntax that immediately follows the tag name with whitespace).
+    expect(indexSrc).not.toMatch(/<LogFab\s+visible=/);
+    expect(indexSrc).not.toMatch(/<LogFab\s+onPress=/);
   });
 
   it("Phase 3: replaces TodayFabSheet with the canonical <LogSheet>", () => {

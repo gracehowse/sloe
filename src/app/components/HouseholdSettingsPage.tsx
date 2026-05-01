@@ -139,6 +139,19 @@ export function HouseholdSettingsPage({ onBack }: HouseholdSettingsPageProps) {
   const [savedToast, setSavedToast] = useState(false);
   const [shareTargetsSaving, setShareTargetsSaving] = useState(false);
 
+  // Modal-dismissibility audit (2026-04-30) — member-picker bottom
+  // sheet previously dismissed via backdrop click only. Wire Escape
+  // so keyboard users can close it (the X button below covers the
+  // visible-affordance gap; backdrop tap is preserved).
+  useEffect(() => {
+    if (!editingCell) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setEditingCell(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [editingCell]);
+
   // Load household + hydrate sharing state.
   useEffect(() => {
     let cancelled = false;
@@ -635,10 +648,21 @@ export function HouseholdSettingsPage({ onBack }: HouseholdSettingsPageProps) {
           aria-label={`Members for ${editingMeta.slotFull} on ${editingMeta.dayLabel}`}
         >
           <div
-            className="w-full max-w-md rounded-t-3xl border border-border bg-background p-5 pb-7"
+            className="w-full max-w-md rounded-t-3xl border border-border bg-background p-5 pb-7 relative"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="w-10 h-1 rounded-full bg-muted mx-auto mb-4 opacity-60" />
+            {/* Modal-dismissibility audit (2026-04-30) — visible close
+                affordance so the sheet doesn't feel trapped on touch
+                devices where the backdrop area is small. */}
+            <button
+              type="button"
+              onClick={() => setEditingCell(null)}
+              aria-label="Close member picker"
+              className="absolute top-4 right-4 w-8 h-8 rounded-full grid place-items-center text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+            >
+              <Icons.close className="w-4 h-4" aria-hidden />
+            </button>
             <p className="text-sm font-bold text-foreground mb-1">Who&apos;s eating?</p>
             <p className="text-xs text-muted-foreground mb-4">
               {editingMeta.slotFull} · {editingMeta.dayLabel}

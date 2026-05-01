@@ -1,0 +1,22 @@
+# @cases TC-FIX-COOK-ACTIVE
+# @screen cook
+appId: com.supprclub.supprapp
+name: "Fixture — Cook mode entry + scrolled"
+---
+
+- launchApp:
+    appId: com.supprclub.supprapp
+- waitForAnimationToEnd
+
+- openLink: suppr:///cook
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/state-80-cook-entry
+- swipe:
+    direction: UP
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/state-81-cook-scrolled

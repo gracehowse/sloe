@@ -46,7 +46,7 @@ export function StreakPip({ days, accessibilityHint, style }: StreakPipProps) {
 
   const label =
     safeDays === 0
-      ? "Start your streak"
+      ? "Start streak"
       : `${safeDays}-day${safeDays === 1 ? "" : ""} streak`;
 
   return (
@@ -70,6 +70,7 @@ export function StreakPip({ days, accessibilityHint, style }: StreakPipProps) {
     >
       <Flame size={12} color={fg} strokeWidth={2.25} />
       <Text
+        numberOfLines={1}
         style={{
           fontSize: 11,
           fontWeight: "700",

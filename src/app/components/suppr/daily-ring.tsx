@@ -180,22 +180,43 @@ function DailyRing({
         viewBox={`0 0 ${size} ${size}`}
         className="-rotate-90"
       >
-        {/* Main calorie ring track */}
+        {/* Brand gradient — same indigo→pink stops as the mobile
+            CalorieRing (`apps/mobile/components/charts/CalorieRing.tsx`)
+            and the onboarding reveal ring. Audit 2026-04-30 ui-critic
+            flagged that the solid green ring read as functional rather
+            than aesthetic. Pulling the gradient onto web closes the
+            cross-platform visual-language gap. Over-budget keeps the
+            destructive solid colour so the "you went over" signal stays
+            unambiguous. Stops use the literal hex from `Accent.primaryLight`
+            (#6c8cff) → `MacroColors.fat` (#e04888). */}
+        <defs>
+          <linearGradient id="daily-ring-gradient" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor="#6c8cff" />
+            <stop offset="1" stopColor="#e04888" />
+          </linearGradient>
+        </defs>
+        {/* Main calorie ring track. Empty state (consumed=0,
+            displayMode="consumed") draws the track with the brand
+            gradient at low opacity so the brand is always present;
+            mirrors mobile `CalorieRing.tsx` ~L298-306. */}
         <circle
           cx={cx}
           cy={cx}
           r={radius}
           fill="none"
-          stroke="var(--ring-bg)"
+          stroke={isEmpty ? "url(#daily-ring-gradient)" : "var(--ring-bg)"}
           strokeWidth={strokeWidth}
+          opacity={isEmpty ? 0.18 : 1}
         />
-        {/* Main calorie ring progress */}
+        {/* Main calorie ring progress. Over-budget keeps the
+            destructive (warning-amber) solid stroke; otherwise the
+            gradient is used for parity with mobile. */}
         <circle
           cx={cx}
           cy={cx}
           r={radius}
           fill="none"
-          stroke={ringColor}
+          stroke={isOverBudget ? ringColor : "url(#daily-ring-gradient)"}
           strokeWidth={strokeWidth}
           strokeLinecap="round"
           strokeDasharray={circumference}

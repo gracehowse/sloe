@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { Plus } from "lucide-react";
 import { AnalyticsEvents, type PaywallViewedFrom } from "../lib/analytics/events.ts";
 import { track } from "../lib/analytics/track.ts";
 import { Icons } from "./components/ui/icons";
@@ -255,6 +256,50 @@ export default function App() {
     },
     [router, searchParams],
   );
+
+  /**
+   * openLogSheetFromTabBar — handler for the centered raised Plus
+   * button that lives between the Recipes and Plan tabs in the
+   * mobile-web bottom `<nav>`.
+   *
+   * 2026-04-30 (web mobile-web parity with mobile commit `6633d2d`):
+   * the side `<LogFab>` (right:18 / bottom:100) is replaced by a
+   * centered raised tab-bar button matching the new mobile pattern
+   * (`<SupprTabBar>` + `<LogTabBarButton>`). The 4-tab IA from
+   * D-2026-04-27-02 is preserved — the raised button is purely a UI
+   * element, not a 5th view.
+   *
+   * Behaviour mirrors mobile's `router.push({ pathname: "/(tabs)",
+   *  params: { openLog: "1" } })`: navigate to Today and stamp
+   * `?openLog=1` on the URL. `<NutritionTracker>` consumes the param
+   * via `useSearchParams`, opens the canonical `<LogSheet>`, and
+   * clears the param so a back-nav doesn't re-open the sheet.
+   *
+   * Routing the trigger through the URL (vs a CustomEvent or shared
+   * state) means the raised button works from any tab — even when
+   * `<NutritionTracker>` is not yet mounted (Plan / You / Recipes).
+   * The `view=today` switch unmounts the current view and mounts
+   * NutritionTracker, which then sees `openLog=1` on first render
+   * and opens the sheet.
+   *
+   * Desktop (≥ md) does not render the raised button per
+   * D-2026-04-27-11 (web is the long-form companion; daily logging
+   * is a phone activity), so this handler only fires from
+   * mobile-web. The raised button itself is gated by `md:hidden` on
+   * the host `<nav>` block.
+   *
+   * Analytics: the legacy `<LogFab>` did not fire any tracking event
+   * of its own (open-of-LogSheet is captured downstream by the
+   * LogSheet's own analytics), so there is no event to migrate.
+   */
+  const openLogSheetFromTabBar = useCallback(() => {
+    setCurrentView("today");
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("view", "today");
+    params.set("openLog", "1");
+    const q = params.toString();
+    router.replace(`/home?${q}`, { scroll: false });
+  }, [router, searchParams]);
 
   const shoppingUncheckedCount = useMemo(
     () => shoppingItems.filter((i) => !i.checked).length,
@@ -532,7 +577,18 @@ export default function App() {
             the new mobile structure (Today / Recipes / Plan / You).
             Each primary entry maps to its default leaf view; the
             highlighted state is computed from `resolvePrimaryFromView`
-            so being on /library still highlights "Recipes". */}
+            so being on /library still highlights "Recipes".
+
+            2026-04-30 (parity with mobile commit `6633d2d`): a
+            centered raised Plus button is injected between Recipes
+            (visible-index 1) and Plan (visible-index 2) — the
+            canonical Log entry point, replacing the side `<LogFab>`
+            (right:18 / bottom:100) on mobile-web. Mirrors the mobile
+            `<SupprTabBar>` + `<LogTabBarButton>` pattern so the two
+            platforms look and behave the same. Desktop (≥ md) does
+            not render the bottom nav at all (sidebar takes over),
+            so the raised button is mobile-web only — consistent with
+            D-2026-04-27-11 ("daily logging is a phone activity"). */}
         <nav
           aria-label="Main navigation"
           className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card/95 backdrop-blur-xl pb-[env(safe-area-inset-bottom)] md:hidden"
@@ -543,24 +599,62 @@ export default function App() {
               { primary: "recipes" as const, defaultLeaf: "library" as const, icon: <Icons.recipe className="w-5 h-5" />, label: "Recipes" },
               { primary: "plan" as const, defaultLeaf: "plan" as const, icon: <Icons.plan className="w-5 h-5" />, label: "Plan" },
               { primary: "you" as const, defaultLeaf: "progress" as const, icon: <Icons.user className="w-5 h-5" />, label: "You" },
-            ] as const).map((tab) => {
+            ] as const).map((tab, tabIndex) => {
               const activePrimary = resolvePrimaryFromView(currentView as SidebarView);
               const isActive = activePrimary === tab.primary;
+              // Inject the raised Log button between visible-index 1
+              // (Recipes) and visible-index 2 (Plan). Render the tab
+              // first, then the button, then the next tabs follow.
+              // Mirrors the mobile `<SupprTabBar>` raised-button slot.
+              const showLogButtonAfterThis = tabIndex === 1;
               return (
-                <button
-                  key={tab.primary}
-                  type="button"
-                  role="tab"
-                  aria-selected={isActive}
-                  aria-current={isActive ? "page" : undefined}
-                  onClick={() => navigateToView(tab.defaultLeaf as View)}
-                  className={`flex-1 flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium ${
-                    isActive ? "text-primary" : "text-muted-foreground"
-                  }`}
-                >
-                  {tab.icon}
-                  {tab.label}
-                </button>
+                <Fragment key={tab.primary}>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    aria-current={isActive ? "page" : undefined}
+                    onClick={() => navigateToView(tab.defaultLeaf as View)}
+                    className={`flex-1 flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium ${
+                      isActive ? "text-primary" : "text-muted-foreground"
+                    }`}
+                  >
+                    {tab.icon}
+                    {tab.label}
+                  </button>
+                  {showLogButtonAfterThis ? (
+                    /* Centered raised Log button — fills a 5th slot in
+                       the bar via `flex-1` so the four real tabs flow
+                       around it on equal-width terms. The inner
+                       `<button>` is positioned with `relative` +
+                       `-top-4` so it visually projects 16px above the
+                       bar fill line. `bg-primary` + drop-shadow
+                       matches the mobile `<LogTabBarButton>`. */
+                    <div
+                      className="flex-1 flex items-center justify-center"
+                      role="presentation"
+                    >
+                      <button
+                        type="button"
+                        onClick={openLogSheetFromTabBar}
+                        aria-label="Log a meal"
+                        title="Log a meal"
+                        data-testid="mobile-web-tab-log-button"
+                        className={[
+                          "relative -top-4",
+                          "w-14 h-14 rounded-full",
+                          "bg-primary text-primary-foreground",
+                          "grid place-items-center",
+                          "shadow-[0_4px_16px_rgba(76,108,224,0.4)]",
+                          "transition-transform duration-150 active:scale-[0.94]",
+                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                        ].join(" ")}
+                      >
+                        <Plus className="h-6 w-6" strokeWidth={2.5} aria-hidden />
+                      </button>
+                    </div>
+                  ) : null}
+                </Fragment>
               );
             })}
           </div>

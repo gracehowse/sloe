@@ -110,9 +110,9 @@ export function OverrideIngredientDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-card border-border max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-foreground">Override nutrition</DialogTitle>
+          <DialogTitle className="text-foreground">Edit nutrition</DialogTitle>
           <DialogDescription className="text-muted-foreground">
-            {`Enter label values for "${ingredientName}". These replace the matched macros for this row.`}
+            {`Use the values from the ${ingredientName} label.`}
           </DialogDescription>
         </DialogHeader>
 

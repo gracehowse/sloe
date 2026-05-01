@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -322,6 +322,38 @@ export default function SettingsScreen() {
     setActivityPickerOpen(true);
   }, [activityLevel]);
 
+  // Audit 2026-04-30 modal-dismiss sweep: an in-flight save used to lock
+  // the Cancel button + backdrop, so a hung request trapped the user in
+  // the picker. We now (a) always allow dismissal, (b) cap the visible
+  // saving flag at 10s in case the request hangs.
+  const activitySaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const activitySaveCancelledRef = useRef(false);
+
+  const clearActivitySaveTimeout = useCallback(() => {
+    if (activitySaveTimeoutRef.current) {
+      clearTimeout(activitySaveTimeoutRef.current);
+      activitySaveTimeoutRef.current = null;
+    }
+  }, []);
+
+  // Always allow dismiss. If a save is in flight, we mark it cancelled
+  // so the in-flight request's resolution becomes a no-op for UI state,
+  // and we clear the watchdog timeout.
+  const dismissActivityPicker = useCallback(() => {
+    activitySaveCancelledRef.current = true;
+    clearActivitySaveTimeout();
+    setActivityPickerSaving(false);
+    setActivityPickerOpen(false);
+  }, [clearActivitySaveTimeout]);
+
+  useEffect(() => {
+    return () => {
+      clearActivitySaveTimeout();
+    };
+  }, [clearActivitySaveTimeout]);
+
   const saveActivityLevel = useCallback(async () => {
     if (!userId) return;
     const nextLevel = activityPickerSelection;
@@ -329,7 +361,22 @@ export default function SettingsScreen() {
       setActivityPickerOpen(false);
       return;
     }
+    activitySaveCancelledRef.current = false;
     setActivityPickerSaving(true);
+
+    // 10s watchdog — if the network hangs, auto-clear the saving flag
+    // so the picker stops looking frozen. The actual request may still
+    // resolve later; we no-op its UI effects via the cancelled ref.
+    clearActivitySaveTimeout();
+    activitySaveTimeoutRef.current = setTimeout(() => {
+      activitySaveCancelledRef.current = true;
+      setActivityPickerSaving(false);
+      activitySaveTimeoutRef.current = null;
+      Alert.alert(
+        "Still saving…",
+        "We didn't hear back in time. Check your connection and try again.",
+      );
+    }, 10_000);
 
     const recomputed =
       profileWeightKg != null && profileHeightCm != null && profileAge != null
@@ -365,6 +412,15 @@ export default function SettingsScreen() {
       .from("profiles")
       .update(writeable)
       .eq("id", userId);
+
+    clearActivitySaveTimeout();
+
+    // If the user already dismissed (cancel / backdrop / Android back) or
+    // the watchdog fired, skip all UI state writes — they belong to a
+    // dead session.
+    if (activitySaveCancelledRef.current) {
+      return;
+    }
     setActivityPickerSaving(false);
     if (uErr) {
       Alert.alert("Couldn't save", "Please try again.");
@@ -391,6 +447,7 @@ export default function SettingsScreen() {
     profilePlanPace,
     profileSex,
     profileWeightKg,
+    clearActivitySaveTimeout,
   ]);
 
   const handleChangePassword = useCallback(async () => {
@@ -928,20 +985,24 @@ export default function SettingsScreen() {
         <SettingsBundleContent context="settings" />
       </ScrollView>
 
-      {/* Activity-level picker modal (build 10 fix E-2, 2026-04-19). */}
+      {/* Activity-level picker modal (build 10 fix E-2, 2026-04-19;
+          dismiss-while-saving fixed 2026-04-30 modal-dismiss sweep). */}
       <Modal
         visible={activityPickerOpen}
         animationType="slide"
         transparent
-        onRequestClose={() => setActivityPickerOpen(false)}
+        onRequestClose={dismissActivityPicker}
       >
-        <View
-          style={{
-            flex: 1,
-            justifyContent: "flex-end",
-            backgroundColor: "rgba(0,0,0,0.5)",
-          }}
-        >
+        <View style={{ flex: 1, justifyContent: "flex-end" }}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Dismiss activity level picker"
+            onPress={dismissActivityPicker}
+            style={{
+              ...StyleSheet.absoluteFillObject,
+              backgroundColor: "rgba(0,0,0,0.5)",
+            }}
+          />
           <View
             style={{
               backgroundColor: colors.background,
@@ -962,9 +1023,10 @@ export default function SettingsScreen() {
               }}
             >
               <Pressable
-                onPress={() => setActivityPickerOpen(false)}
-                disabled={activityPickerSaving}
+                onPress={dismissActivityPicker}
                 hitSlop={12}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel"
               >
                 <Text style={{ color: colors.textSecondary, fontSize: 15 }}>Cancel</Text>
               </Pressable>

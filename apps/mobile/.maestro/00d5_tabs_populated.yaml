@@ -1,0 +1,68 @@
+# @cases TC-INT-TABS
+# @screen multiple
+appId: com.supprclub.supprapp
+name: "Interactive — Library/Discover/Plan/Today populated + scrolled"
+---
+# Pure deeplink + screenshot + scroll. No modals, low XCUI crash risk.
+#
+# 2026-04-30 patch: extended settle period (5x waitForAnimationToEnd
+# = ~2.5s minimum) before each takeScreenshot. Without this the
+# Supabase queries powering Library / Plan / Shopping haven't returned
+# yet and we capture the "S" splash placeholder rather than real
+# content. waitForAnimationToEnd is a no-op once nothing is animating
+# but each call has a ~500ms floor on iOS, so stacking gives data
+# time to land.
+
+- launchApp:
+    appId: com.supprclub.supprapp
+- waitForAnimationToEnd
+
+# E. Library saved state
+- openLink: suppr:///library
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/state-30-library-saved
+
+# F. Discover hero + scrolled
+- openLink: suppr:///discover
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/state-40-discover-hero
+- swipe:
+    direction: UP
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/state-41-discover-scrolled
+
+# G. Plan tab base
+- openLink: suppr:///planner
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/state-50-plan-week
+
+# H. Today populated + scrolled
+- openLink: suppr://
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/state-60-today-current
+# Larger swipe (twice) so the bottom of Today is in view for state-61
+- swipe:
+    direction: UP
+- waitForAnimationToEnd
+- swipe:
+    direction: UP
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/state-61-today-scrolled

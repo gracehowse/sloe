@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Pressable, Text, View } from "react-native";
-import Svg, { Circle, G } from "react-native-svg";
+import Svg, {
+  Circle,
+  Defs,
+  G,
+  LinearGradient as SvgLinearGradient,
+  Stop,
+} from "react-native-svg";
 import Animated, {
   useSharedValue,
   useAnimatedProps,
@@ -258,21 +264,52 @@ export default function CalorieRing({
         }}
       >
         <Svg width={SIZE} height={SIZE} style={{ position: "absolute" }}>
-          {/* Main calorie ring track */}
+          {/* Brand gradient — same indigo→pink stops as the
+              onboarding reveal ring (`steps/reveal.tsx`). Audit
+              2026-04-30 ui-critic flagged that the solid green ring
+              was reading as functional ("you hit your target") rather
+              than aesthetic, while the onboarding reveal at step 12
+              uses the brand gradient that's the design ceiling. Pulling
+              the same gradient into the daily ring closes the
+              visual-language gap between first-time delight and daily
+              use. Over-budget keeps the destructive solid red so the
+              "you went over" signal stays unambiguous. */}
+          <Defs>
+            <SvgLinearGradient
+              id="calorie-ring-gradient"
+              x1="0"
+              y1="0"
+              x2="1"
+              y2="1"
+            >
+              <Stop offset="0" stopColor={Accent.primaryLight} />
+              <Stop offset="1" stopColor={MacroColors.fat} />
+            </SvgLinearGradient>
+          </Defs>
+          {/* Main calorie ring track. Zero/near-zero state previously
+              showed a flat grey track (gradient only became visible
+              once the user logged something), which read as "the
+              brand hasn't loaded yet" on first-launch captures. Audit
+              2026-04-30 ui-critic re-run flagged it as an A1 conversion
+              blocker. Fix: when consumed is exactly 0, draw the track
+              with the same gradient at low opacity so the brand is
+              always present; the empty arc still has zero length, so
+              progress reads identically once the user logs. */}
           <Circle
             cx={CX}
             cy={CX}
             r={R}
             fill="none"
-            stroke={trackColor}
+            stroke={isEmpty ? "url(#calorie-ring-gradient)" : trackColor}
             strokeWidth={STROKE}
+            opacity={isEmpty ? 0.18 : 1}
           />
           {/* Main calorie ring progress */}
           <AnimatedCircle
             cx={CX}
             cy={CX}
             r={R}
-            stroke={isOver ? Accent.destructive : Accent.success}
+            stroke={isOver ? Accent.destructive : "url(#calorie-ring-gradient)"}
             strokeWidth={STROKE}
             fill="none"
             strokeDasharray={`${mainCirc}`}
@@ -281,28 +318,36 @@ export default function CalorieRing({
             rotation="-90"
             origin={`${CX},${CX}`}
           />
-          {/* Macro rings (shown when expanded) */}
-          {expanded && (
+          {/* Macro rings (shown when expanded AND not empty).
+              Empty + expanded previously rendered three nested grey
+              tracks plus the unfilled calorie ring — four concentric
+              empty rings that read as a wireframe placeholder rather
+              than an intentional "ready to start" state. Audit
+              2026-04-30 ui-critic flagged this as the single biggest
+              first-impression gap vs Cal AI / Lifesum / MFP. Hiding
+              the macro rings in the empty state collapses the visual
+              to one clean track + the soft "Start your day" copy. */}
+          {expanded && !isEmpty && (
             <MacroRing
               radius={MACRO_R[0]}
               pct={proteinPct}
               color={MacroColors.protein}
               trackColor={trackColor}
               delay={80}
-  
+
             />
           )}
-          {expanded && (
+          {expanded && !isEmpty && (
             <MacroRing
               radius={MACRO_R[1]}
               pct={carbsPct}
               color={MacroColors.carbs}
               trackColor={trackColor}
               delay={160}
-  
+
             />
           )}
-          {expanded && (
+          {expanded && !isEmpty && (
             <MacroRing
               radius={MACRO_R[2]}
               pct={fatPct}

@@ -493,7 +493,12 @@ export default function BarcodeScannerModal({ visible, onScan, onClose }: Props)
   }), [colors]);
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="fullScreen">
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="fullScreen"
+      onRequestClose={handleClose}
+    >
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.header}>
           <Text style={styles.title}>Scan Barcode</Text>

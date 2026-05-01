@@ -37,6 +37,22 @@ export interface TodayDeficitInsightProps {
     dk: string,
   ) => number;
   textSecondaryColor: string;
+  /**
+   * Neutral surface tokens (added 2026-04-30 visual-qa medium polish).
+   * The banner is informational, not an action. Using the same blue
+   * tint as the hero ring + fasting pill + duplicate-day chip pushed
+   * Today into a 4-5 blue-card monochrome stack. Neutral chrome lets
+   * the deficit *number* keep its blue accent without painting the
+   * whole card blue.
+   */
+  surfaceBackgroundColor?: string;
+  surfaceBorderColor?: string;
+  /**
+   * Label colour (for the leading "~XXX kcal" line). Defaults to
+   * `Accent.primary` so the deficit number still carries the brand
+   * cue.
+   */
+  labelColor?: string;
 }
 
 export function TodayDeficitInsight({
@@ -53,6 +69,9 @@ export function TodayDeficitInsight({
   maintenanceKcal,
   dayActivityBudgetAddon,
   textSecondaryColor,
+  surfaceBackgroundColor,
+  surfaceBorderColor,
+  labelColor,
 }: TodayDeficitInsightProps) {
   const keys = weekSummaryDateKeys(weekSummaryMode, selectedDate, weekStartDay);
   const keysWithMeals = keys.filter((k) => (byDay[k] ?? []).length > 0);
@@ -84,17 +103,21 @@ export function TodayDeficitInsight({
         }, 0) / keysWithMeals.length,
       );
 
+  const resolvedBg = surfaceBackgroundColor ?? Accent.primary + "08";
+  const resolvedBorder = surfaceBorderColor ?? Accent.primary + "30";
+  const resolvedLabel = labelColor ?? Accent.primary;
+
   return (
     <View
       style={{
-        backgroundColor: Accent.primary + "08",
+        backgroundColor: resolvedBg,
         borderRadius: Radius.md,
         padding: Spacing.md,
         borderWidth: 1,
-        borderColor: Accent.primary + "30",
+        borderColor: resolvedBorder,
       }}
     >
-      <Text style={{ fontSize: 13, fontWeight: "600", color: Accent.primary }}>
+      <Text style={{ fontSize: 13, fontWeight: "600", color: resolvedLabel }}>
         ~{remaining} kcal {NET_DEFICIT_LABEL} so far today
       </Text>
       {/* F-83 (2026-04-25) — hide the rolling-average sub-line when it

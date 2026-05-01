@@ -91,11 +91,52 @@ describe("SettingsBundleContent — parity contract", () => {
     expect(bundle).toContain('!== "delete"');
   });
 
-  it("reset modal still surfaces both reset-plan and erase-data paths", () => {
-    expect(bundle).toContain("Reset Plan (Keep My Data)");
-    expect(bundle).toContain("Erase all app data");
+  it("reset modal still surfaces both reset-targets and erase-everything paths", () => {
+    // 2026-04-30 (issue #16): "Reset Plan (Keep My Data)" → "Reset targets",
+    // "Erase all app data" → "Erase everything". Reset is now inline
+    // (NUTRITION_DEFAULTS, no re-onboarding) so it no longer wipes the
+    // planner via clearStructuredMealPlans. Erase still calls
+    // nukeAllUserAppData.
+    expect(bundle).toContain("Reset targets");
+    expect(bundle).toContain("Erase everything");
     expect(bundle).toContain("nukeAllUserAppData");
-    expect(bundle).toContain("clearStructuredMealPlans");
+  });
+
+  it("reset-targets path is inline — no re-onboarding, no planner wipe (issue #16)", () => {
+    // Reset must NOT re-run onboarding (would re-trigger the 15-step v2
+    // flow for a user who only wanted fresh defaults). Reset must NOT
+    // clear the planner (Keep My Data should mean it).
+    expect(bundle).not.toContain("clearStructuredMealPlans");
+    expect(bundle).toContain("Targets reset to defaults");
+    expect(bundle).toContain('"/targets"');
+  });
+
+  it("erase routes to canonical /onboarding (post-rename, was /onboarding-v2 — issue #13)", () => {
+    // The legacy `/onboarding` route was deleted 2026-04-30 and the
+    // v2 flow promoted to the canonical name. `router.replace` must
+    // point at the canonical path.
+    expect(bundle).toContain('"/onboarding"');
+  });
+
+  it("erase clears suppr.onboarding-v2.state AsyncStorage scratchpad (issue #14)", () => {
+    // Without this, the next session pre-fills the onboarding form
+    // with the deleted user's answers — violating the "Erase" promise.
+    // KEY NAME PRESERVED: the storage key still uses the `-v2` suffix
+    // because renaming it would orphan in-flight onboarding state for
+    // existing users. Live data — keep verbatim.
+    expect(bundle).toContain('"suppr.onboarding-v2.state"');
+  });
+
+  it("erase confirm dialog enumerates the full delete list (issue #19)", () => {
+    // Section paragraph and confirm dialog must agree on what gets wiped.
+    // Pre-fix the confirm dialog only mentioned "food log, saved recipes,
+    // and meal plans" while the paragraph promised six categories.
+    expect(bundle).toContain("Erase everything?");
+    expect(bundle).toMatch(/journal/i);
+    expect(bundle).toMatch(/library saves/i);
+    expect(bundle).toMatch(/shopping lists/i);
+    expect(bundle).toMatch(/imported recipes/i);
+    expect(bundle).toMatch(/synced activity/i);
   });
 
   it("/settings imports and mounts the bundle", () => {

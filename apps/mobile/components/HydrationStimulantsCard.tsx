@@ -101,9 +101,9 @@ function Row({
   return (
     <View style={{ paddingVertical: Spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border }}>
       <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, width: 104 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 0, maxWidth: 140 }}>
           <Ionicons name={icon} size={16} color={COLORS[tone]} />
-          <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }}>{label}</Text>
+          <Text numberOfLines={1} style={{ fontSize: 13, fontWeight: "600", color: colors.text }}>{label}</Text>
         </View>
         <View style={{ flex: 1, alignItems: "flex-end", gap: 4 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>

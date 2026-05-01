@@ -11,6 +11,7 @@ import {
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { X } from "lucide-react-native";
 import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
@@ -109,6 +110,18 @@ export default function NotificationsPromptScreen() {
       justifyContent: "center", alignItems: "center",
       paddingHorizontal: Spacing.xxl,
     },
+    // Audit 2026-04-30: top-right escape hatch. The screen runs with
+    // `headerShown: false`, so without this X the user has zero way to
+    // back out without engaging with the prompt — first-time users
+    // perceived this as forced enrolment.
+    closeBtn: {
+      position: "absolute",
+      right: Spacing.xl,
+      width: 36, height: 36, borderRadius: 18,
+      backgroundColor: colors.card,
+      borderWidth: 1, borderColor: colors.border,
+      alignItems: "center", justifyContent: "center",
+    },
     badge: {
       width: 100, height: 100, borderRadius: 50,
       backgroundColor: Accent.success + "15",
@@ -133,8 +146,19 @@ export default function NotificationsPromptScreen() {
       marginTop: Spacing.xxxl,
     },
     enableBtnText: { color: "#fff", fontWeight: "700", fontSize: 17 },
-    skipBtn: { paddingVertical: Spacing.lg },
-    skipText: { color: colors.textTertiary, fontSize: 15 },
+    // Audit 2026-04-30: was tiny tertiary text reading "Skip" — looked
+    // ignorable and didn't communicate persistence. Now sized closer to
+    // the primary CTA with honest "Maybe later" copy.
+    skipBtn: {
+      paddingVertical: Spacing.md,
+      paddingHorizontal: Spacing.lg,
+      marginTop: Spacing.sm,
+    },
+    skipText: {
+      color: colors.textSecondary,
+      fontSize: 16,
+      fontWeight: "600",
+    },
   }), [colors]);
 
   // Render nothing until the suppression check resolves so we never
@@ -143,6 +167,18 @@ export default function NotificationsPromptScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
+      {/* Audit 2026-04-30: visible escape hatch. Routes to /(tabs) and
+          marks the prompt as dismissed, mirroring `onSkip`. */}
+      <Pressable
+        style={[styles.closeBtn, { top: insets.top + Spacing.md }]}
+        onPress={() => void onSkip()}
+        accessibilityRole="button"
+        accessibilityLabel="Close"
+        hitSlop={8}
+      >
+        <X size={20} color={colors.textSecondary} strokeWidth={2.25} />
+      </Pressable>
+
       <View style={styles.badge}>
         <Ionicons name="notifications" size={48} color={Accent.success} />
         <View style={styles.notifBadge}>
@@ -161,7 +197,7 @@ export default function NotificationsPromptScreen() {
         <Text style={styles.enableBtnText}>Turn on notifications</Text>
       </Pressable>
       <Pressable style={styles.skipBtn} onPress={() => void onSkip()}>
-        <Text style={styles.skipText}>Skip</Text>
+        <Text style={styles.skipText}>Maybe later</Text>
       </Pressable>
     </View>
   );

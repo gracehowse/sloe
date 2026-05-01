@@ -1,14 +1,17 @@
-import React from "react";
-import { Alert, Pressable, Text, View } from "react-native";
+import React, { useState } from "react";
+import { Pressable, Text, View } from "react-native";
 import { Accent } from "@/constants/theme";
 import { formatPlannedMealKcalMacrosLine } from "../../../../src/lib/nutrition/plannedMealDisplay";
+import { PortionPickerSheet } from "./PortionPickerSheet";
 
 /**
  * TodayPlannedMealsCard — "Planned" list on the Today screen when the
  * user has a meal plan row for the day.
  *
  * Extracted from `apps/mobile/app/(tabs)/index.tsx` (audit H3,
- * 2026-04-18).
+ * 2026-04-18). 2026-04-30: replaced system `Alert.alert` portion picker
+ * with the in-app `PortionPickerSheet` (customer-lens audit — system
+ * iOS alerts mid-flow read as prototype-tier).
  */
 export type TodayPlannedMealEntry = {
   name?: string;
@@ -32,6 +35,8 @@ export function TodayPlannedMealsCard({
   onLogPlannedMealWithPortion,
   styles,
 }: TodayPlannedMealsCardProps) {
+  const [picker, setPicker] = useState<{ meal: TodayPlannedMealEntry } | null>(null);
+
   return (
     <View style={styles.card}>
       <View style={styles.mealSlotHeader}>
@@ -51,21 +56,23 @@ export function TodayPlannedMealsCard({
             </Text>
           </View>
           <Pressable
-            onPress={() => {
-              Alert.alert("Log planned meal", "Pick portion vs the planned serving.", [
-                { text: "Cancel", style: "cancel" },
-                { text: "½×", onPress: () => onLogPlannedMealWithPortion(pm, 0.5) },
-                { text: "1×", onPress: () => onLogPlannedMealWithPortion(pm, 1) },
-                { text: "1½×", onPress: () => onLogPlannedMealWithPortion(pm, 1.5) },
-                { text: "2×", onPress: () => onLogPlannedMealWithPortion(pm, 2) },
-              ]);
-            }}
+            onPress={() => setPicker({ meal: pm })}
+            accessibilityRole="button"
+            accessibilityLabel={`Log ${pm.recipe_title ?? pm.name ?? "planned meal"} today`}
             style={{ paddingHorizontal: 8, paddingVertical: 12 }}
           >
             <Text style={{ fontSize: 12, fontWeight: "700", color: Accent.primary }}>Log today</Text>
           </Pressable>
         </View>
       ))}
+      <PortionPickerSheet
+        visible={picker !== null}
+        onClose={() => setPicker(null)}
+        mealName={picker?.meal.recipe_title ?? picker?.meal.name ?? ""}
+        onPick={(portion) => {
+          if (picker) onLogPlannedMealWithPortion(picker.meal, portion);
+        }}
+      />
     </View>
   );
 }

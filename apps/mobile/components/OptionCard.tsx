@@ -108,6 +108,8 @@ export function OptionCard({
         {typeof title === "string" ? (
           <Text
             numberOfLines={2}
+            adjustsFontSizeToFit
+            minimumFontScale={0.85}
             style={{
               color: colors.text,
               fontSize: compact ? 14 : 15,

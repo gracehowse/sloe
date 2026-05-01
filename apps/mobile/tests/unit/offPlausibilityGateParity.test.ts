@@ -12,9 +12,16 @@ import { describe, expect, it } from "vitest";
 
 const MOBILE_VERIFY = resolve(__dirname, "../../lib/verifyRecipe.ts");
 const MOBILE_BARCODE = resolve(__dirname, "../../app/(tabs)/barcode.tsx");
+/**
+ * 2026-04-30 — web FoodSearch.tsx (1568 LOC) was extracted into
+ * `food-search/FoodSearchPanel.tsx` (commit `cb1317f`). The wrapper
+ * keeps only the dialog shell; the OFF Atwater plausibility gate and
+ * `mergeAndDedup` trustWeight ranking live in the panel. Source-pin
+ * parity reads the panel directly.
+ */
 const WEB_FOOD_SEARCH = resolve(
   __dirname,
-  "../../../../src/app/components/FoodSearch.tsx",
+  "../../../../src/app/components/food-search/FoodSearchPanel.tsx",
 );
 const WEB_OFF_SEARCH = resolve(
   __dirname,

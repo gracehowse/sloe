@@ -28,6 +28,7 @@ import { supabase } from "@/lib/supabase";
 import { computeRecipeFitPercent } from "../../../../src/lib/nutrition/recipeFitPercent";
 import { DISCOVER_POPULAR_MIN_SAVES } from "../../../../src/lib/recipes/fetchPublicRecipeSaveCounts";
 import { recipeSearchMatch } from "../../../../src/lib/recipes/recipeSearchMatch";
+import { displayAttribution } from "../../../../src/lib/recipes/displayAttribution";
 // GW-08 (audit 2026-04-28): `TrustChip` + `recipeLevelTrust` imports
 // dropped — the Discover hero card no longer renders the chip because
 // the underlying source signal is fabricated (see the comment by the
@@ -387,12 +388,12 @@ export default function DiscoverScreen() {
                   style={{ fontSize: 12, color: colors.textSecondary, textDecorationLine: "underline" }}
                   numberOfLines={1}
                 >
-                  {item.creatorName || item.source || ""}
+                  {displayAttribution({ creatorName: item.creatorName, source: item.source })}
                 </Text>
               </Pressable>
             ) : (
               <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 4 }} numberOfLines={1}>
-                {item.creatorName || item.source || ""}
+                {displayAttribution({ creatorName: item.creatorName, source: item.source })}
               </Text>
             )}
             {/* Polish (2026-04-25 visual-qa): pre-fix, only kcal and
@@ -503,7 +504,7 @@ export default function DiscoverScreen() {
               {decodeEntities(item.title)}
             </Text>
             <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 1 }} numberOfLines={1}>
-              {item.creatorName || item.source || ""}
+              {displayAttribution({ creatorName: item.creatorName, source: item.source })}
               {item.cookTime ? ` · ${item.cookTime}` : ""}
             </Text>
           </View>

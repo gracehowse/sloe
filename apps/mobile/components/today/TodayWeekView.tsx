@@ -123,7 +123,11 @@ export function TodayWeekView(props: TodayWeekViewProps) {
                 onPress={() => onSelectDay(day.date)}
                 style={{ alignItems: "center", flex: 1, gap: 4 }}
               >
-                <Text style={{ fontSize: 10, color: textTertiaryColor, fontVariant: ["tabular-nums"] }}>
+                <Text
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  style={{ fontSize: 10, color: textTertiaryColor, fontVariant: ["tabular-nums"], textAlign: "center" }}
+                >
                   {day.totals.calories > 0 ? Math.round(day.totals.calories) : ""}
                 </Text>
                 <View

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Icons } from "./ui/icons";
 import { useAppData } from "../../context/AppDataContext.tsx";
 
@@ -20,6 +20,18 @@ export function NotificationsBell({
   const [open, setOpen] = useState(false);
 
   const rows = useMemo(() => notificationsInbox.slice(0, 20), [notificationsInbox]);
+
+  // Modal-dismissibility audit (2026-04-30) — popover dismisses via
+  // backdrop click; also wire Escape so keyboard users (and anyone
+  // with a physical keyboard on web) can close it without mousing.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
 
   return (
     <div className="relative">

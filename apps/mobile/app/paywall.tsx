@@ -1227,7 +1227,11 @@ function TierCard({
           <ActivityIndicator color="#fff" />
         ) : (
           <Text style={[styles.cardCtaText, ctaDisabled && styles.cardCtaDisabledText]}>
-            {ctaDisabled && !ctaLoading ? `${ctaLabel} (unavailable)` : ctaLabel}
+            {/* Audit 2026-04-30: was `${ctaLabel} (unavailable)` which
+                concatenated "(unavailable)" onto the price string and read
+                like part of the SKU. Now we render a clean fallback when
+                the package is missing — never compound with the price. */}
+            {ctaDisabled ? "Loading plans…" : ctaLabel}
           </Text>
         )}
       </Pressable>

@@ -23,6 +23,9 @@ import {
   buildPlanWeekSummarySubtitle,
   computePlanWeekSummaryScore,
 } from "../../lib/planning/planWeekSummary.ts";
+import { Dialog, DialogContent, DialogTitle } from "./ui/dialog";
+import { DestructiveConfirmDialog } from "./suppr/destructive-confirm-dialog";
+import { TextPromptDialog } from "./suppr/text-prompt-dialog";
 import { HouseholdBar } from "./HouseholdBar.tsx";
 import {
   buildDayTotalVsGoalLine,
@@ -163,6 +166,21 @@ export const MealPlanner = memo(function MealPlanner({
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [swapFor, setSwapFor] = useState<SwapTarget | null>(null);
+  // Audit 2026-04-30 — themed-dialog migration. Replaces the prior
+  // `window.prompt` (rename + new plan) and `window.confirm` (delete
+  // plan) calls with `TextPromptDialog` + `DestructiveConfirmDialog`.
+  // Native browser dialogs were unthemed (broken in dark mode), fired
+  // twice on some iOS Safari versions for `window.confirm`, and were
+  // blocked outright in cross-origin iframes.
+  const [renameSlotTarget, setRenameSlotTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [deleteSlotTarget, setDeleteSlotTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [newPlanOpen, setNewPlanOpen] = useState(false);
   // F2-B (audit 2026-04-28) — day-count picker. Mobile parity:
   // `apps/mobile/app/(tabs)/planner.tsx` exposes 1 / 3 / 7 day options.
   // Default to 7 so the existing 7-column grid layout stays the
@@ -554,13 +572,11 @@ export const MealPlanner = memo(function MealPlanner({
                 key={s.id}
                 type="button"
                 onClick={() => switchMealPlanSlot(s.id)}
-                onDoubleClick={() => {
-                  const next = window.prompt("Rename plan", s.name);
-                  if (next != null && next.trim() && next.trim() !== s.name) {
-                    renameMealPlanSlot(s.id, next.trim());
-                  }
-                }}
+                onDoubleClick={() =>
+                  setRenameSlotTarget({ id: s.id, name: s.name })
+                }
                 title="Click to switch · double-click to rename"
+                data-testid={`planner-slot-chip-${s.id}`}
                 className={[
                   "inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-semibold border transition-all",
                   active
@@ -574,18 +590,16 @@ export const MealPlanner = memo(function MealPlanner({
                     role="button"
                     tabIndex={0}
                     aria-label={`Delete ${s.name}`}
+                    data-testid={`planner-slot-delete-${s.id}`}
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (window.confirm(`Delete "${s.name}"? Your other plans stay intact.`)) {
-                        deleteMealPlanSlot(s.id);
-                      }
+                      setDeleteSlotTarget({ id: s.id, name: s.name });
                     }}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
-                        if (window.confirm(`Delete "${s.name}"? Your other plans stay intact.`)) {
-                          deleteMealPlanSlot(s.id);
-                        }
+                        e.stopPropagation();
+                        setDeleteSlotTarget({ id: s.id, name: s.name });
                       }
                     }}
                     className="ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full hover:bg-destructive/15 hover:text-destructive cursor-pointer"
@@ -598,12 +612,8 @@ export const MealPlanner = memo(function MealPlanner({
           })}
           <button
             type="button"
-            onClick={() => {
-              const name = window.prompt("Name your new plan", `Plan ${mealPlanSlots.length + 1}`);
-              if (name != null && name.trim()) {
-                createMealPlanSlot(name.trim());
-              }
-            }}
+            onClick={() => setNewPlanOpen(true)}
+            data-testid="planner-slot-new"
             className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-semibold border border-dashed border-border text-muted-foreground hover:bg-muted/60 transition-all"
           >
             + New
@@ -773,12 +783,16 @@ export const MealPlanner = memo(function MealPlanner({
           return (
             <div
               key={`day-${dp.day}`}
-              className={`rounded-2xl border flex flex-col ${
+              // Audit 2026-04-30 visual-qa P1 #13 — moved spacing
+              // tokens from inline style (`padding: 14`, `gap: 10`)
+              // to Tailwind utilities (`p-3.5`, `gap-2.5`) so spacing
+              // is consistent with the rest of the system and easier
+              // to track via the design tokens.
+              className={`rounded-2xl border flex flex-col p-3.5 gap-2.5 ${
                 isTodayCol
                   ? "bg-primary/10 border-primary/30"
                   : "bg-card border-border"
               }`}
-              style={{ padding: 14, gap: 10 }}
             >
               <div className="flex items-center justify-between">
                 <p className="text-foreground" style={{ fontSize: 13, fontWeight: 700 }}>
@@ -878,8 +892,10 @@ export const MealPlanner = memo(function MealPlanner({
                   return (
                     <div
                       key={slot}
-                      className="rounded-xl bg-muted relative"
-                      style={{ padding: 10 }}
+                      // Audit 2026-04-30 visual-qa P1 #13 — `p-2.5`
+                      // replaces inline `padding: 10` for token parity
+                      // with the surrounding day-card spacing.
+                      className="rounded-xl bg-muted relative p-2.5"
                     >
                       <p
                         className="text-muted-foreground uppercase inline-flex items-center gap-1.5"
@@ -931,8 +947,9 @@ export const MealPlanner = memo(function MealPlanner({
                 return (
                   <div
                     key={slot}
-                    className="rounded-xl bg-muted relative"
-                    style={{ padding: 10 }}
+                    // Audit 2026-04-30 visual-qa P1 #13 — `p-2.5`
+                    // replaces inline `padding: 10` for token parity.
+                    className="rounded-xl bg-muted relative p-2.5"
                   >
                     <button
                       type="button"
@@ -1120,7 +1137,11 @@ export const MealPlanner = memo(function MealPlanner({
           way to regenerate or open the shopping list. */}
       <div
         data-testid="planner-desktop-cta-row"
-        className={`flex ${showSummaryCard ? "hidden" : ""}`}
+        // Audit 2026-04-30 visual-qa P1 #7 — Tailwind JIT can purge
+        // a class only injected via interpolation (`${... ? "hidden" : ""}`).
+        // Both branches are explicit literals now so the class always
+        // ends up in the production CSS.
+        className={showSummaryCard ? "hidden" : "flex"}
         style={{ gap: 8, marginTop: 20 }}
       >
         <button
@@ -1148,125 +1169,153 @@ export const MealPlanner = memo(function MealPlanner({
         </button>
       </div>
 
-      {swapFor ? (
-        <div
-          onClick={() => setSwapFor(null)}
-          className="fixed inset-0 grid place-items-center"
-          style={{
-            background: "var(--overlay, rgba(0,0,0,0.5))",
-            zIndex: 1000,
-            padding: 20,
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="bg-card border border-border rounded-2xl"
-            style={{
-              width: 440,
-              maxWidth: "100%",
-              maxHeight: "80vh",
-              overflowY: "auto",
-              padding: 20,
-            }}
-          >
-            <div
-              className="flex items-center justify-between"
-              style={{ marginBottom: 14 }}
+      {/* Modal-dismissibility audit (2026-04-30) — migrated from a
+          custom fixed-overlay div to Radix Dialog so the swap picker
+          dismisses via Escape, the visible Radix close X, AND
+          backdrop click (including iOS Safari touch, where the prior
+          synthetic-click + stopPropagation combo silently swallowed
+          backdrop taps). DialogContent ships its own corner X, so the
+          custom close button was removed to avoid a double-X. */}
+      <Dialog
+        open={swapFor !== null}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) setSwapFor(null);
+        }}
+      >
+        <DialogContent className="max-w-[440px] w-[calc(100vw-2rem)] p-5 gap-0 max-h-[80vh] overflow-y-auto bg-card">
+          <div style={{ marginBottom: 14 }}>
+            <p
+              className="text-muted-foreground uppercase"
+              style={{
+                fontSize: 10,
+                fontWeight: 600,
+                letterSpacing: "0.1em",
+              }}
             >
-              <div>
-                <p
-                  className="text-muted-foreground uppercase"
-                  style={{
-                    fontSize: 10,
-                    fontWeight: 600,
-                    letterSpacing: "0.1em",
-                  }}
-                >
-                  Swap
-                </p>
-                <h3
-                  className="text-foreground capitalize"
-                  style={{ margin: "4px 0 0", fontSize: 16 }}
-                >
-                  {shortWeekdayLabel(
+              Swap
+            </p>
+            <DialogTitle
+              className="text-foreground capitalize"
+              style={{ margin: "4px 0 0", fontSize: 16 }}
+            >
+              {swapFor
+                ? `${shortWeekdayLabel(
                     planCalendarDateForIndex(
                       Math.max(
                         0,
                         plan.findIndex((d) => d.day === swapFor.day),
                       ),
                     ),
-                  )}{" "}
-                  · {swapFor.slot}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSwapFor(null)}
-                className="bg-muted text-foreground grid place-items-center"
-                style={{
-                  border: 0,
-                  width: 30,
-                  height: 30,
-                  borderRadius: 8,
-                  cursor: "pointer",
-                }}
-                aria-label="Close swap picker"
-              >
-                <X size={14} />
-              </button>
-            </div>
-            <div className="flex flex-col" style={{ gap: 6 }}>
-              {swapPool.length === 0 ? (
-                <p className="text-muted-foreground" style={{ fontSize: 13 }}>
-                  No recipes available to swap in.
-                </p>
-              ) : (
-                swapPool.map((r) => (
-                  <button
-                    key={r.id}
-                    type="button"
-                    onClick={() => pickSwap(r.id)}
-                    className="grid bg-muted text-foreground text-left"
-                    style={{
-                      gridTemplateColumns: "1fr auto",
-                      gap: 10,
-                      padding: "12px 14px",
-                      border: 0,
-                      borderRadius: 10,
-                      cursor: "pointer",
-                      fontFamily: "inherit",
-                    }}
-                  >
-                    <div>
-                      <p style={{ fontSize: 13, fontWeight: 600 }}>{r.title}</p>
-                      <p
-                        className="text-muted-foreground"
-                        style={{ fontSize: 11, marginTop: 2 }}
-                      >
-                        {r.servings ?? 1} serving{(r.servings ?? 1) === 1 ? "" : "s"}
-                      </p>
-                    </div>
-                    <div
-                      className="tabular-nums text-right"
-                      style={{ fontVariantNumeric: "tabular-nums" }}
-                    >
-                      <p style={{ fontSize: 13, fontWeight: 700 }}>
-                        {Math.round(r.calories)}
-                      </p>
-                      <p
-                        className="text-muted-foreground"
-                        style={{ fontSize: 10 }}
-                      >
-                        {Math.round(r.protein)} P · {Math.round(r.carbs)} C
-                      </p>
-                    </div>
-                  </button>
-                ))
-              )}
-            </div>
+                  )} · ${swapFor.slot}`
+                : "Swap meal"}
+            </DialogTitle>
           </div>
-        </div>
-      ) : null}
+          <div className="flex flex-col" style={{ gap: 6 }}>
+            {swapPool.length === 0 ? (
+              <p className="text-muted-foreground" style={{ fontSize: 13 }}>
+                No recipes available to swap in.
+              </p>
+            ) : (
+              swapPool.map((r) => (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => pickSwap(r.id)}
+                  className="grid bg-muted text-foreground text-left"
+                  style={{
+                    gridTemplateColumns: "1fr auto",
+                    gap: 10,
+                    padding: "12px 14px",
+                    border: 0,
+                    borderRadius: 10,
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  <div>
+                    <p style={{ fontSize: 13, fontWeight: 600 }}>{r.title}</p>
+                    <p
+                      className="text-muted-foreground"
+                      style={{ fontSize: 11, marginTop: 2 }}
+                    >
+                      {r.servings ?? 1} serving{(r.servings ?? 1) === 1 ? "" : "s"}
+                    </p>
+                  </div>
+                  <div
+                    className="tabular-nums text-right"
+                    style={{ fontVariantNumeric: "tabular-nums" }}
+                  >
+                    <p style={{ fontSize: 13, fontWeight: 700 }}>
+                      {Math.round(r.calories)}
+                    </p>
+                    <p
+                      className="text-muted-foreground"
+                      style={{ fontSize: 10 }}
+                    >
+                      {Math.round(r.protein)} P · {Math.round(r.carbs)} C
+                    </p>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Audit 2026-04-30 — themed dialogs replace the prior
+          `window.prompt` (rename + new plan) and `window.confirm`
+          (delete plan) calls. Native browser prompts were unthemed
+          (broken in dark mode), inconsistent across browsers (iOS
+          Safari fires `confirm` twice on some versions), and blocked
+          in cross-origin iframes. */}
+      <TextPromptDialog
+        open={renameSlotTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setRenameSlotTarget(null);
+        }}
+        title="Rename plan"
+        description="Give this plan a new name."
+        inputLabel="Plan name"
+        placeholder="e.g. Cutting"
+        currentValue={renameSlotTarget?.name ?? ""}
+        confirmLabel="Save"
+        onConfirm={(nextName) => {
+          if (renameSlotTarget && nextName !== renameSlotTarget.name) {
+            renameMealPlanSlot(renameSlotTarget.id, nextName);
+          }
+        }}
+      />
+      <TextPromptDialog
+        open={newPlanOpen}
+        onOpenChange={setNewPlanOpen}
+        title="New plan"
+        description="Name your new plan so you can switch between it and your other plans."
+        inputLabel="Plan name"
+        placeholder={`Plan ${mealPlanSlots.length + 1}`}
+        currentValue=""
+        confirmLabel="Create"
+        onConfirm={(name) => {
+          createMealPlanSlot(name);
+        }}
+      />
+      <DestructiveConfirmDialog
+        open={deleteSlotTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteSlotTarget(null);
+        }}
+        title={
+          deleteSlotTarget
+            ? `Delete "${deleteSlotTarget.name}"?`
+            : "Delete plan?"
+        }
+        description="Your other plans stay intact. This can't be undone."
+        confirmLabel="Delete"
+        onConfirm={() => {
+          if (deleteSlotTarget) {
+            deleteMealPlanSlot(deleteSlotTarget.id);
+          }
+        }}
+      />
     </div>
   );
 });

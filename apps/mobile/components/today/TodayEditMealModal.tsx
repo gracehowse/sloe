@@ -1,7 +1,8 @@
 import React from "react";
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { X } from "lucide-react-native";
+import { Accent, IconSize, Radius, Spacing } from "@/constants/theme";
 import type { JournalMeal } from "@/lib/nutritionJournal";
 
 /**
@@ -103,7 +104,26 @@ export function TodayEditMealModal(props: TodayEditMealModalProps) {
               marginBottom: Spacing.lg,
             }}
           />
-          <Text style={{ fontSize: 16, fontWeight: "700", color: textColor, marginBottom: Spacing.md }}>Edit Entry</Text>
+          {/* Header row: title + X close (audit 2026-04-30 modal-dismiss
+              sweep — keyboard-up on iOS can hide the backdrop). */}
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: Spacing.md,
+            }}
+          >
+            <Text style={{ flex: 1, fontSize: 16, fontWeight: "700", color: textColor }}>Edit Entry</Text>
+            <Pressable
+              onPress={onClose}
+              accessibilityRole="button"
+              accessibilityLabel="Close"
+              hitSlop={12}
+            >
+              <X size={IconSize.hero} color={textSecondaryColor} strokeWidth={2.25} />
+            </Pressable>
+          </View>
 
           <View style={{ flexDirection: "row", gap: Spacing.xs, marginBottom: Spacing.md }}>
             {slots.map((s) => (
@@ -118,7 +138,10 @@ export function TodayEditMealModal(props: TodayEditMealModalProps) {
                   backgroundColor: editSlot === s ? Accent.primary : borderColor + "30",
                 }}
               >
-                <Text style={{ fontSize: 11, fontWeight: "700", color: editSlot === s ? "#fff" : textSecondaryColor }}>
+                <Text
+                  numberOfLines={1}
+                  style={{ fontSize: 11, fontWeight: "700", color: editSlot === s ? "#fff" : textSecondaryColor }}
+                >
                   {s}
                 </Text>
               </Pressable>

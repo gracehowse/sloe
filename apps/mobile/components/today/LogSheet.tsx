@@ -1,6 +1,8 @@
 import * as React from "react";
 import {
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -29,37 +31,49 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { SourceDot, type SourceDotSource } from "@/components/ui/SourceDot";
 import { FatSecretBadge } from "@/components/ui/FatSecretBadge";
 import { TrustChip } from "@/components/ui/TrustChip";
+import FoodSearchPanel, {
+  type SelectedFood as InlineSelectedFood,
+  type SupabaseLike as InlineSupabaseLike,
+} from "@/components/food-search/FoodSearchPanel";
+import type { MacroConsumed, MacroTargets } from "../../../../src/lib/nutrition/remainingMacros";
+
+/** Re-exported for hosts that want the inline-search payload type. */
+export type LogSheetInlineSelectedFood = InlineSelectedFood;
 
 /**
  * Mobile `<LogSheet>` — canonical log-entry sheet, search-first.
  *
  * Production design spec — 2026-04-27 Surface B (post-2026-04-28
  * search-first refactor — see `docs/ux/teardown-2026-04-28-daily-loop.md`
- * Next-10 #12).
+ * Next-10 #12, then 2026-04-30 nested-modal teardown — see customer-lens
+ * note in `apps/mobile/components/food-search/FoodSearchPanel.tsx`).
  *
- * Pre-refactor structure: a 6-pill horizontal tab strip (Search / Scan /
+ * Pre-2026-04-28 structure: a 6-pill horizontal tab strip (Search / Scan /
  * Recent / Saved / Voice / Photo) where each tab rendered a different
- * content area. The tab strip read as a "power-user feature menu":
- * first-time users had to read six labels and choose one before
- * logging anything, and Voice + Photo (the Pro features) were
- * frequently clipped off-screen on narrow viewports.
+ * content area.
  *
- * Post-refactor: search is the canonical primary input. The other
- * three input modes (scan, voice, photo) ride along as small right-
- * edge icons inside the search row. Recent + Saved render inline as
- * the default browse content via a 2-pill toggle below the search
- * row. The 6-tab strip is gone. The user opens the sheet and
- * IMMEDIATELY sees the input they want plus their recent meals — no
- * navigation cost.
+ * 2026-04-28 refactor: search became the canonical primary input as a
+ * tap-to-open `Pressable`. The "tap" handler closed LogSheet and
+ * opened a separate `<FoodSearchModal>` whose first job was rendering
+ * an actual `<TextInput>`. Two modals stacked.
  *
- * Why callbacks not flows: the existing search / barcode / voice /
- * photo pipelines live in dedicated components (FoodSearchModal,
- * BarcodeScannerModal, VoiceLogSheet, PhotoLogSheet). The LogSheet's
- * job is consolidation of access, not rebuilding nutrition logic.
- * Tapping the search input → host closes LogSheet and opens
- * FoodSearchModal. Tapping a right-edge icon → host opens the
- * dedicated modal. Recent / Saved row pick → host logs the meal
- * directly into the current slot.
+ * 2026-04-30 refactor (CURRENT): the search row is now a real
+ * `<TextInput>`. The user opens LogSheet and starts typing
+ * IMMEDIATELY. Results render INLINE within the same sheet via a
+ * mounted `<FoodSearchPanel>` (the same panel `<FoodSearchModal>`
+ * mounts in its full-screen variant). No nested modal, no second
+ * animation, no learning step.
+ *
+ * Wiring fallback: if a host wires the legacy `search.onOpen` but
+ * not `search.onSelect`, the search row stays as a tap-to-open
+ * `Pressable` and the host's `onOpen` callback fires (preserves the
+ * old contract for any sheet that hasn't been migrated yet). Once
+ * `search.onSelect` is wired, the sheet flips to inline mode.
+ *
+ * Right-edge input modes (scan / voice / photo) are unchanged — they
+ * still tap-to-open the dedicated modals. Recent + Saved render below
+ * the search row WHEN the query is empty; once the user starts typing
+ * the panel takes over the content area and Recent/Saved are hidden.
  *
  * Pro gating: voice + photo are Pro-only on free + base tiers. The
  * host passes `locked: true` to surface a small lock badge on those
@@ -71,10 +85,12 @@ import { TrustChip } from "@/components/ui/TrustChip";
  * points 50%/92%. That dependency is not yet in the project; rather
  * than introduce it for one component, we use the RN `Modal` pattern
  * that all other Suppr sheets use. Snap behaviour is approximated
- * via a height-controlled inner content. Documented at
- * `docs/journeys/log-sheet-2026-04-27.md`.
+ * via a height-controlled inner content. A `KeyboardAvoidingView`
+ * wraps the sheet card so the inline results region scrolls above
+ * the keyboard. Documented at `docs/journeys/log-sheet-2026-04-27.md`.
  *
- * Web mirror: `src/app/components/suppr/log-sheet.tsx`.
+ * Web mirror: `src/app/components/suppr/log-sheet.tsx` (web inline
+ * lift is a follow-up commit).
  */
 
 /**
@@ -135,13 +151,33 @@ export interface LogSheetProps {
   onClose: () => void;
   /** Ignored post-2026-04-28 — kept for backwards compat only. */
   initialTab?: LogSheetTab;
-  /** Search foods. Tap the search row → host closes LogSheet and
-   *  opens FoodSearchModal. Other fields (`query`, `results`, etc.)
-   *  are tolerated for backwards compat but not rendered — the
-   *  LogSheet is no longer an inline-search surface. When `onOpen`
-   *  is undefined the search row renders but is non-interactive
-   *  (the host has opted out of search). */
+  /** Search foods.
+   *
+   *  INLINE MODE (preferred, 2026-04-30):
+   *    Wire `onSelect` (and budget context if you want fit-this-in).
+   *    The search row renders as a real `<TextInput>` with `autoFocus`,
+   *    and as the user types, results render inline within the same
+   *    sheet via `<FoodSearchPanel>`. When the user confirms a portion,
+   *    `onSelect` fires with the canonical `SelectedFood` payload.
+   *
+   *  LEGACY TAP-TO-OPEN MODE (kept for hosts that haven't migrated):
+   *    Wire `onOpen` only. The search row renders as a tap-to-open
+   *    `Pressable` that calls `onOpen` — host is responsible for
+   *    closing the LogSheet and opening its own `<FoodSearchModal>`.
+   *
+   *  When neither is wired the search row renders but is non-interactive
+   *  (host has opted out of search entirely). */
   search?: {
+    /** Inline mode — fired when the user picks a portion + quantity. */
+    onSelect?: (result: LogSheetInlineSelectedFood) => void;
+    /** Inline mode — daily targets for fit-this-in projection. */
+    macroTargets?: MacroTargets;
+    /** Inline mode — today's running totals for fit-this-in projection. */
+    macroConsumed?: MacroConsumed;
+    /** Inline mode — Supabase client + userId for custom foods. */
+    supabase?: InlineSupabaseLike;
+    userId?: string | null;
+    /** Legacy mode — tap-to-open the host's separate FoodSearchModal. */
     onOpen?: () => void;
     /** @deprecated */ query?: string;
     /** @deprecated */ onQueryChange?: (q: string) => void;
@@ -243,56 +279,68 @@ export function LogSheet({
           onPress={onClose}
           style={[StyleSheet.absoluteFillObject, { backgroundColor: "rgba(0,0,0,0.4)" }]}
         />
-        <View
-          accessibilityViewIsModal
-          accessibilityLabel="Log a meal"
-          style={[
-            styles.sheet,
-            {
-              backgroundColor: colors.background,
-              paddingBottom: insets.bottom,
-            },
-          ]}
+        {/* iOS keyboard-avoidance — when the user focuses the inline
+            search TextInput, the sheet card lifts above the keyboard
+            so result rows remain tappable. `behavior="padding"` is
+            the iOS-standard for sheet-style layouts (see
+            `KeyboardSafeView` docstring). */}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={styles.keyboardAvoid}
+          pointerEvents="box-none"
         >
-          {/* Drag handle */}
-          <View style={[styles.handle, { backgroundColor: colors.border }]} accessible={false} />
+          <View
+            accessibilityViewIsModal
+            accessibilityLabel="Log a meal"
+            style={[
+              styles.sheet,
+              {
+                backgroundColor: colors.background,
+                paddingBottom: insets.bottom,
+              },
+            ]}
+          >
+            {/* Drag handle */}
+            <View style={[styles.handle, { backgroundColor: colors.border }]} accessible={false} />
 
-          {/* Header */}
-          <View style={[styles.header, { borderBottomColor: colors.border }]}>
-            <Text style={[Type.headline, { color: colors.text }]}>Log a meal</Text>
-            <Pressable
-              onPress={onClose}
-              accessibilityRole="button"
-              accessibilityLabel="Close log sheet"
-              hitSlop={8}
-              style={({ pressed }) => [
-                styles.closeBtn,
-                { opacity: pressed ? 0.6 : 1 },
-              ]}
-            >
-              <X size={IconSize.hero} color={colors.textSecondary} strokeWidth={2.25} />
-            </Pressable>
+            {/* Header */}
+            <View style={[styles.header, { borderBottomColor: colors.border }]}>
+              <Text style={[Type.headline, { color: colors.text }]}>Log a meal</Text>
+              <Pressable
+                onPress={onClose}
+                accessibilityRole="button"
+                accessibilityLabel="Close log sheet"
+                hitSlop={8}
+                style={({ pressed }) => [
+                  styles.closeBtn,
+                  { opacity: pressed ? 0.6 : 1 },
+                ]}
+              >
+                <X size={IconSize.hero} color={colors.textSecondary} strokeWidth={2.25} />
+              </Pressable>
+            </View>
+
+            {inManualEntryMode ? (
+              <BarcodeManualEntry
+                entry={barcode!.manualEntry!}
+                onConfirm={barcode?.onConfirmManual}
+              />
+            ) : (
+              <DefaultComposition
+                visible={visible}
+                search={search}
+                barcode={barcode}
+                recent={recent}
+                saved={saved}
+                voice={voice}
+                photo={photo}
+                browseTab={browseTab}
+                onBrowseTabChange={setBrowseTab}
+                onAddManually={onAddManually}
+              />
+            )}
           </View>
-
-          {inManualEntryMode ? (
-            <BarcodeManualEntry
-              entry={barcode!.manualEntry!}
-              onConfirm={barcode?.onConfirmManual}
-            />
-          ) : (
-            <DefaultComposition
-              search={search}
-              barcode={barcode}
-              recent={recent}
-              saved={saved}
-              voice={voice}
-              photo={photo}
-              browseTab={browseTab}
-              onBrowseTabChange={setBrowseTab}
-              onAddManually={onAddManually}
-            />
-          )}
-        </View>
+        </KeyboardAvoidingView>
       </View>
     </Modal>
   );
@@ -301,6 +349,7 @@ export function LogSheet({
 /* -------------------------- Default composition -------------------------- */
 
 function DefaultComposition({
+  visible,
   search,
   barcode,
   recent,
@@ -311,6 +360,7 @@ function DefaultComposition({
   onBrowseTabChange,
   onAddManually,
 }: {
+  visible: boolean;
   search: LogSheetProps["search"];
   barcode: LogSheetProps["barcode"];
   recent: LogSheetProps["recent"];
@@ -326,38 +376,153 @@ function DefaultComposition({
   const showSaved = !!saved;
   const showBrowseToggle = showRecent && showSaved;
 
+  // Inline-search mode is active when the host wired `search.onSelect`.
+  // In that case the search row is a real `<TextInput>` and results
+  // render via `<FoodSearchPanel>` within this same sheet. Without
+  // `onSelect` we fall back to the legacy tap-to-open path that
+  // routes to a separate `<FoodSearchModal>` (preserves any host
+  // that hasn't migrated yet).
+  const inlineMode = !!search?.onSelect;
+
+  // Local query state — owned by LogSheet so the TextInput is
+  // controlled and `<FoodSearchPanel>` reacts in lock-step. Reset
+  // every time the sheet opens so a returning user lands on an
+  // empty input, not their previous query.
+  const [query, setQuery] = React.useState("");
+  React.useEffect(() => {
+    if (!visible) {
+      setQuery("");
+    }
+  }, [visible]);
+
   return (
     <View style={{ flex: 1 }}>
       {/* Search row — primary input. Right-edge icons (scan / voice
           / photo) ride along when the host wires the corresponding
-          callbacks. Each icon is tap-to-open: the host closes
-          LogSheet and opens the dedicated modal. */}
+          callbacks. In inline mode the row is a real `<TextInput>`
+          (focused on first appearance); in legacy tap-to-open mode
+          it's a `Pressable` that fires `search.onOpen`. */}
       <View style={{ paddingHorizontal: Spacing.md, paddingTop: Spacing.md }}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Search foods"
-          accessibilityHint="Opens the food search where you can find foods, brands, and recipes"
-          testID="log-sheet-search-row"
-          onPress={() => search?.onOpen?.()}
-          style={({ pressed }) => [
-            styles.searchInputWrap,
-            {
-              backgroundColor: colors.inputBg,
-              opacity: pressed ? 0.85 : 1,
-            },
-          ]}
-        >
-          <Search size={IconSize.base} color={colors.textSecondary} />
-          <Text
-            style={{ flex: 1, color: colors.textSecondary, fontSize: 14 }}
-            numberOfLines={1}
+        {inlineMode ? (
+          <View
+            testID="log-sheet-search-row"
+            style={[
+              styles.searchInputWrap,
+              { backgroundColor: colors.inputBg },
+            ]}
           >
-            Search foods, brands, or recipes
-          </Text>
-          <RightEdgeIcons barcode={barcode} voice={voice} photo={photo} />
-        </Pressable>
+            <Search size={IconSize.base} color={colors.textSecondary} />
+            <TextInput
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Search foods, brands, or recipes"
+              placeholderTextColor={colors.textSecondary}
+              accessibilityLabel="Search foods"
+              testID="log-sheet-search-input"
+              autoFocus
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="search"
+              style={{
+                flex: 1,
+                color: colors.text,
+                fontSize: 14,
+                paddingVertical: 0,
+              }}
+            />
+            <RightEdgeIcons barcode={barcode} voice={voice} photo={photo} />
+          </View>
+        ) : (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Search foods"
+            accessibilityHint="Opens the food search where you can find foods, brands, and recipes"
+            testID="log-sheet-search-row"
+            onPress={() => search?.onOpen?.()}
+            style={({ pressed }) => [
+              styles.searchInputWrap,
+              {
+                backgroundColor: colors.inputBg,
+                opacity: pressed ? 0.85 : 1,
+              },
+            ]}
+          >
+            <Search size={IconSize.base} color={colors.textSecondary} />
+            <Text
+              style={{ flex: 1, color: colors.textSecondary, fontSize: 14 }}
+              numberOfLines={1}
+            >
+              Search foods, brands, or recipes
+            </Text>
+            <RightEdgeIcons barcode={barcode} voice={voice} photo={photo} />
+          </Pressable>
+        )}
       </View>
 
+      {/* Inline search results — only mounted when the user has
+          actually started typing. Empty query keeps the existing
+          Recent / Saved browse content visible so the sheet doesn't
+          look "blank" on open. */}
+      {inlineMode && query.trim().length > 0 ? (
+        <View style={{ flex: 1, marginTop: Spacing.sm }}>
+          <FoodSearchPanel
+            query={query}
+            macroTargets={search?.macroTargets}
+            macroConsumed={search?.macroConsumed}
+            supabase={search?.supabase}
+            userId={search?.userId}
+            onSelect={(result) => {
+              search?.onSelect?.(result);
+              // After a successful pick the user has logged something —
+              // clear the input so the sheet returns to Recent / Saved
+              // view (or the host may close the sheet via its own
+              // `onSelect` handler).
+              setQuery("");
+            }}
+            mode="compact"
+          />
+        </View>
+      ) : (
+        <BrowseAndFooter
+          showBrowseToggle={showBrowseToggle}
+          showRecent={showRecent}
+          showSaved={showSaved}
+          recent={recent}
+          saved={saved}
+          browseTab={browseTab}
+          onBrowseTabChange={onBrowseTabChange}
+          onAddManually={onAddManually}
+        />
+      )}
+    </View>
+  );
+}
+
+/* -------------------------- Browse + footer (empty-query mode) -------------------------- */
+
+function BrowseAndFooter({
+  showBrowseToggle,
+  showRecent,
+  showSaved,
+  recent,
+  saved,
+  browseTab,
+  onBrowseTabChange,
+  onAddManually,
+}: {
+  showBrowseToggle: boolean;
+  showRecent: boolean;
+  showSaved: boolean;
+  recent: LogSheetProps["recent"];
+  saved: LogSheetProps["saved"];
+  browseTab: BrowseTab;
+  onBrowseTabChange: (tab: BrowseTab) => void;
+  onAddManually?: () => void;
+}) {
+  const colors = useThemeColors();
+
+  return (
+    <>
       {/* Browse pill toggle — Recent / Saved. Hidden when only one
           source is available; the available one renders directly. */}
       {showBrowseToggle ? (
@@ -433,7 +598,7 @@ function DefaultComposition({
           <ChevronRight size={IconSize.base} color={colors.textTertiary} />
         </Pressable>
       ) : null}
-    </View>
+    </>
   );
 }
 
@@ -448,6 +613,7 @@ function RightEdgeIcons({
   voice: LogSheetProps["voice"];
   photo: LogSheetProps["photo"];
 }) {
+  const colors = useThemeColors();
   // Render the icons in the documented order: Scan → Voice → Photo
   // (matches the prior tab order to preserve user muscle memory from
   // the 6-tab era). Each icon only renders when the host wires its
@@ -502,7 +668,7 @@ function RightEdgeIcons({
               { opacity: pressed ? 0.55 : 1 },
             ]}
           >
-            <Icon size={IconSize.base} color="#0f172a99" strokeWidth={2} />
+            <Icon size={IconSize.base} color={colors.textSecondary} strokeWidth={2} />
             {locked ? (
               <View style={styles.lockBadge}>
                 <Lock size={8} color="#fff" strokeWidth={2.5} />
@@ -754,9 +920,17 @@ function BarcodeManualEntry({
           style={[inputStyle, { width: 100 }]}
         />
       </View>
+      <Text style={[Type.caption, { color: colors.textSecondary, fontWeight: "600" }]}>
+        Macros (g)
+      </Text>
       <View style={{ flexDirection: "row", gap: Spacing.sm }}>
         <View style={{ flex: 1 }}>
-          <Text style={[Type.caption, { color: colors.textSecondary, marginBottom: 4 }]}>Protein (g)</Text>
+          <Text
+            numberOfLines={1}
+            style={[Type.caption, { color: colors.textSecondary, marginBottom: 4 }]}
+          >
+            Protein
+          </Text>
           <TextInput
             accessibilityLabel="Protein grams"
             keyboardType="decimal-pad"
@@ -766,7 +940,12 @@ function BarcodeManualEntry({
           />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={[Type.caption, { color: colors.textSecondary, marginBottom: 4 }]}>Carbs (g)</Text>
+          <Text
+            numberOfLines={1}
+            style={[Type.caption, { color: colors.textSecondary, marginBottom: 4 }]}
+          >
+            Carbs
+          </Text>
           <TextInput
             accessibilityLabel="Carbs grams"
             keyboardType="decimal-pad"
@@ -776,7 +955,12 @@ function BarcodeManualEntry({
           />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={[Type.caption, { color: colors.textSecondary, marginBottom: 4 }]}>Fat (g)</Text>
+          <Text
+            numberOfLines={1}
+            style={[Type.caption, { color: colors.textSecondary, marginBottom: 4 }]}
+          >
+            Fat
+          </Text>
           <TextInput
             accessibilityLabel="Fat grams"
             keyboardType="decimal-pad"
@@ -820,6 +1004,10 @@ function BarcodeManualEntry({
 
 const styles = StyleSheet.create({
   modalRoot: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  keyboardAvoid: {
     flex: 1,
     justifyContent: "flex-end",
   },

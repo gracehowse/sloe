@@ -25,7 +25,13 @@
  *     single mutually-exclusive dispatch IIFE, never as separate
  *     stacking conditionals.
  *   - The "Includes N AI-estimated meals" sentinel text is NOT in
- *     the host file (it moved into `TodayHero` via `aiSourcedCount`).
+ *     the host file. Phase 4 / Top-5 #2B briefly folded it INTO
+ *     `TodayHero` via `aiSourcedCount`; Phase 5 (2026-04-30) deleted
+ *     the sentinel entirely after customer-lens flagged it as a
+ *     defensive disclaimer that contradicted the 2026-04-27 macro-
+ *     first strategic direction. Replaced with the one-time
+ *     `AiFirstLogTooltip` rendered below the first AI-sourced meal
+ *     row.
  *   - The standalone "View all nutrients" Pressable is NOT in the
  *     host file (it moved into `TodayDashboardMacroTiles`).
  *   - The host renders the canonical 4-block primitives:
@@ -73,14 +79,22 @@ describe("Today above-meals cap (mobile) — context block dispatch", () => {
 });
 
 describe("Today above-meals cap (mobile) — folded primitives", () => {
-  it("AI-sentinel 'Includes N AI-estimated meals' text is NOT in the host (folded into TodayHero)", () => {
+  it("AI-sentinel 'Includes N AI-estimated meals' text is NOT in the host (deleted Phase 5, replaced by AiFirstLogTooltip)", () => {
     // Pre-Phase-4 the host rendered a standalone <View> pill above
     // the macro tiles with this exact copy. Phase 4 / Top-5 #2B
     // moved the sentinel into the TodayHero card via the
-    // `aiSourcedCount` prop. If a future sweep re-adds the
-    // standalone pill, this pin fires.
+    // `aiSourcedCount` prop. Phase 5 (2026-04-30) deleted the
+    // sentinel altogether — customer-lens flagged it as a defensive
+    // disclaimer that contradicted the 2026-04-27 macro-first
+    // strategic direction. The signal now ships once via the
+    // AiFirstLogTooltip on the first AI-sourced meal row, gated by
+    // AsyncStorage. If a future sweep re-adds the daily caption,
+    // this pin fires.
     expect(HOST_SRC).not.toMatch(/Includes \{?aiSourcedTodayCount/);
     expect(HOST_SRC).not.toMatch(/Includes \{[^}]+\} AI-estimated meal/);
+    // Phase 5 — the prop and helper-derived count are gone too.
+    expect(HOST_SRC).not.toMatch(/aiSourcedCount=/);
+    expect(HOST_SRC).not.toMatch(/aiSourcedTodayCount\s*=/);
   });
 
   it("standalone 'View all nutrients' Pressable is NOT in the host (folded into TodayDashboardMacroTiles)", () => {

@@ -27,6 +27,7 @@ import {
   ArrowUpDown,
   Search as SearchIcon,
   BookOpen,
+  MoreHorizontal,
 } from "lucide-react-native";
 import { useAuth } from "@/context/auth";
 import { useSavedLibraryRecipes, useSavedRecipes } from "@/lib/recipes";
@@ -306,6 +307,27 @@ export default function LibraryScreen() {
       alignItems: "center",
       justifyContent: "center",
     },
+    // Audit 2026-04-30: reinstate a discoverable delete affordance.
+    // P2-32 hid trash behind long-press, but customer-lens flagged this
+    // as undiscoverable on iOS where long-press is not a learned
+    // gesture for "delete". `MoreHorizontal` is the universal neutral
+    // overflow glyph; tap opens an Alert sheet with Remove + Cancel
+    // (which is what `confirmRemove` already does).
+    cardOverflowBtn: {
+      position: "absolute",
+      top: Spacing.sm,
+      // Sit immediately to the LEFT of the bookmarkDot (which lives at
+      // `right: Spacing.sm` and is 30wide). 30 + Spacing.sm gap.
+      right: Spacing.sm + 30 + 6,
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
+      alignItems: "center",
+      justifyContent: "center",
+    },
     cardBody: {
       paddingHorizontal: Spacing.lg,
       paddingVertical: Spacing.md,
@@ -369,8 +391,10 @@ export default function LibraryScreen() {
           onPress={() => router.push(`/recipe/${item.id}`)}
           // P2-32 (2026-04-25): long-press → confirm-remove flow now
           // owns deletion (replacing the always-visible trash button).
+          // Audit 2026-04-30: long-press kept as a power-user shortcut
+          // but is no longer the only path — see overflow button below.
           onLongPress={() => confirmRemove(item)}
-          accessibilityLabel={`${item.title}, ${Math.round(item.calories)} calories. Long-press to remove from library.`}
+          accessibilityLabel={`${item.title}, ${Math.round(item.calories)} calories.`}
         >
           <View style={styles.cardImageWrap}>
             <Image source={{ uri: item.image }} style={styles.cardImage} resizeMode="cover" />
@@ -380,12 +404,20 @@ export default function LibraryScreen() {
                 <Bookmark size={14} color={Accent.primary} fill={Accent.primary} />
               </View>
             ) : null}
-            {/* P2-32 (2026-04-25 ui-critic): the trash-can in the
-                top-left of every library card was a hostile destructive
-                default — destructive action sitting where the eye lands
-                first, on every row. Move delete behind a long-press
-                instead, and drop the visible trash icon. The bookmark
-                dot on the right remains the friendly affordance. */}
+            {/* Audit 2026-04-30: discoverable overflow menu for delete.
+                Sits to the left of the bookmark dot. Tapping opens the
+                same Alert sheet long-press already triggers, so we
+                preserve P2-32's "delete is confirmed, never one-tap"
+                rule while making it visible to first-time users. */}
+            <Pressable
+              style={styles.cardOverflowBtn}
+              onPress={() => confirmRemove(item)}
+              accessibilityRole="button"
+              accessibilityLabel={`More options for ${item.title}`}
+              hitSlop={8}
+            >
+              <MoreHorizontal size={16} color={colors.textSecondary} strokeWidth={2.25} />
+            </Pressable>
           </View>
           <View style={styles.cardBody}>
             <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
@@ -494,6 +526,18 @@ export default function LibraryScreen() {
       >
         {LIBRARY_FILTER_PILLS.map((f) => {
           const active = pill === f.id;
+          // 2026-04-30 audit visual-qa P1 #7: show counts on the
+          // entry-kind pills (All / Saved) so the user knows the
+          // size of each bucket at a glance. Other pills are
+          // filters (High-Protein / Quick / Vegetarian) and don't
+          // need counts — the filtered list itself shows what's left.
+          const count =
+            f.id === "all"
+              ? savedRecipes.length
+              : f.id === "saved"
+                ? savedCount
+                : null;
+          const label = count != null ? `${f.label} · ${count}` : f.label;
           return (
             <Pressable
               key={f.id}
@@ -501,13 +545,13 @@ export default function LibraryScreen() {
               style={[styles.filterPill, active && styles.filterPillActive]}
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
-              accessibilityLabel={`Filter: ${f.label}`}
+              accessibilityLabel={`Filter: ${f.label}${count != null ? `, ${count} recipes` : ""}`}
             >
               <Text
                 style={[styles.filterPillText, active && styles.filterPillTextActive]}
                 maxFontSizeMultiplier={1.2}
               >
-                {f.label}
+                {label}
               </Text>
             </Pressable>
           );

@@ -96,6 +96,23 @@ export const Library = memo(function Library({ userTier, onUpgrade, onGoDiscover
   const sortLabel = sortKey === "recent" ? "Recent" : sortKey === "calories" ? "Calories" : "Protein";
 
   const savedCount = savedRecipesForLibrary.length;
+  // 2026-04-30 audit visual-qa P1 #7 (mobile parity with
+  // `apps/mobile/app/(tabs)/library.tsx` L495-525): show counts on
+  // the entry-kind pills (All / Saved) so the user knows the size of
+  // each bucket at a glance. Other pills (high-protein / quick /
+  // vegetarian / created / imported) get no count — they're filters,
+  // not buckets.
+  // "All" = total saved-library size (matches the desktop subtitle).
+  // "Saved" = entries classified as kind="saved" by the shared
+  // `classifyLibraryEntry` predicate so the count never disagrees
+  // with what the "Saved" pill actually filters down to.
+  const savedOnlyCount = useMemo(
+    () =>
+      savedRecipesForLibrary.filter(
+        (r) => entryKindForRecipe(r, libraryEntryKindByRecipeId[r.id], uid) === "saved",
+      ).length,
+    [savedRecipesForLibrary, libraryEntryKindByRecipeId, uid],
+  );
 
   const filteredRecipes = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -170,8 +187,14 @@ export const Library = memo(function Library({ userTier, onUpgrade, onGoDiscover
         </div>
 
         {/* Search and Filter */}
-        <div className="flex gap-3 mt-6">
-          <div className="flex-1 relative group">
+        {/* Audit 2026-04-30 visual-qa P1 #10 — at md+, the prior
+            `flex gap-3` placed the search input and the pill row
+            side-by-side. When pills wrapped to two rows, the search
+            input stayed at one row, so the heights diverged and the
+            layout looked broken. Stack vertically at every breakpoint
+            now: search on row 1, filter pills on row 2. */}
+        <div className="flex flex-col gap-3 mt-6">
+          <div className="relative group">
             <Icons.search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" />
             <input
               type="text"
@@ -185,21 +208,31 @@ export const Library = memo(function Library({ userTier, onUpgrade, onGoDiscover
             data-testid="library-filter-pills"
             className="flex flex-nowrap md:flex-wrap gap-2 items-center overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
           >
-            {LIBRARY_FILTER_PILLS.map((f) => (
-              <button
-                key={f.id}
-                type="button"
-                onClick={() => setPill(f.id)}
-                className={[
-                  "shrink-0 px-3 py-1.5 rounded-full text-sm font-semibold border transition-all whitespace-nowrap",
-                  pill === f.id
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border text-foreground hover:bg-muted/60",
-                ].join(" ")}
-              >
-                {f.label}
-              </button>
-            ))}
+            {LIBRARY_FILTER_PILLS.map((f) => {
+              const count =
+                f.id === "all"
+                  ? savedCount
+                  : f.id === "saved"
+                    ? savedOnlyCount
+                    : null;
+              const label = count != null ? `${f.label} · ${count}` : f.label;
+              return (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => setPill(f.id)}
+                  className={[
+                    "shrink-0 px-3 py-1.5 rounded-full text-sm font-semibold border transition-all whitespace-nowrap",
+                    pill === f.id
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border text-foreground hover:bg-muted/60",
+                  ].join(" ")}
+                  aria-label={`Filter: ${f.label}${count != null ? `, ${count} recipes` : ""}`}
+                >
+                  {label}
+                </button>
+              );
+            })}
             {/* Sort cycle button — mobile parity
                 (`apps/mobile/app/(tabs)/library.tsx` `cycleSort`). Cycles
                 Recent → Calories → Protein → Recent. Web previously had
@@ -456,11 +489,16 @@ export const Library = memo(function Library({ userTier, onUpgrade, onGoDiscover
                   </div>
                 </div>
                 <div className="p-5">
+                  {/* Audit 2026-04-30 visual-qa P0 #4 — long titles on the
+                      mobile-web card path used to wrap to 4-5 lines and
+                      blow out card height. Match the desktop grid path
+                      (line-clamp:2) so card heights stay consistent and
+                      the meta row underneath remains visible. */}
                   <h4 className="mb-3">
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); setSelectedRecipe(recipe); }}
-                      className="text-foreground group-hover:text-primary transition-colors text-left font-inherit hover:underline focus:outline-none focus:ring-2 focus:ring-primary/50 rounded"
+                      className="line-clamp-2 text-foreground group-hover:text-primary transition-colors text-left font-inherit hover:underline focus:outline-none focus:ring-2 focus:ring-primary/50 rounded"
                     >
                       {recipe.title}
                     </button>

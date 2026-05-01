@@ -4,6 +4,15 @@
  * Authority: D-2026-04-27-15 (canonical FAB).
  * Source: src/app/components/suppr/log-fab.tsx
  *
+ * STATUS (2026-04-30): the side `<LogFab>` is no longer rendered on
+ * mobile-web. The canonical Log entry point is now the centered
+ * raised Plus button in the App.tsx mobile-web `<nav>` (parity with
+ * mobile commit `6633d2d`). The `<LogFab>` component file is
+ * preserved for deferred deletion, and these tests still assert the
+ * primitive's contract for the component itself — not its production
+ * use. The "no longer rendered" pin lives in
+ * `tests/unit/mobileWebRaisedLogButton.test.ts`.
+ *
  * Pins:
  *   - placement (right-18, bottom-100, 56pt circle, primary tint).
  *   - mobile-web only by default (md:hidden); desktop hides the FAB.

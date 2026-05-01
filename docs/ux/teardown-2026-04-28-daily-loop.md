@@ -459,6 +459,30 @@ I'm not dumping a backlog. These are the actual moves.
 
 **Net code change:** ~353 LOC removed from LogSheet implementations across both platforms, 2 host files updated with new prop wiring, 2 test files rewritten to match the new contract. 0 new dependencies. The LogSheet now models a single mental concept — "log a meal, search-first" — instead of presenting a menu of six entry points.
 
+### 2026-04-30 — inline-search refactor (mobile, follow-up to Next-10 #12)
+
+**Done.** Customer-lens flagged that the 2026-04-28 search-first refactor still nested two modals: tapping the search row CLOSED the LogSheet and OPENED a separate `<FoodSearchModal>` whose first job was rendering an actual `<TextInput>`. Cal AI (the closest competitor) shows a real `<TextInput>` you can type into immediately — Suppr's nested-modal pattern was a learning step no competitor required. Grace explicitly chose option (a) (real lift) over a header-strip palliative ("we don't want temp hacks").
+
+**Mobile (`apps/mobile/`):**
+
+- `components/food-search/FoodSearchPanel.tsx` — new file. Lifted the entire body of `<FoodSearchModal>` (debounced search effect, results list with pagination + USDA macro backfill, custom-foods CRUD with merge-at-top + long-press action sheet, the preview portion picker with chips + stepper + nutrition lines + fit-this-in projection, and the create-custom-food sub-sheet) into a presentational, host-agnostic component. Caller provides `query` + `onSelect`; panel does the rest. `mode="full"` matches FoodSearchModal density; `mode="compact"` is for LogSheet's tighter vertical budget.
+- `components/FoodSearchModal.tsx` — rewritten as a thin wrapper. Modal page-sheet shell + autoFocus `<TextInput>` + close button + `<FoodSearchPanel mode="full">`. From ~1,400 LOC to ~140. All six existing call sites (Today, discover, search tab, recipe verify, create-recipe, import-shared) keep working unchanged — same prop surface.
+- `components/today/LogSheet.tsx` — search row is now a real `<TextInput>` with `autoFocus` when the host wires `search.onSelect` (inline mode). Empty query keeps Recent / Saved visible; non-empty query mounts `<FoodSearchPanel mode="compact">` inline. Wraps in `<KeyboardAvoidingView behavior="padding">` so results scroll above the iOS keyboard. Hosts that wire only `search.onOpen` (legacy mode) keep the tap-to-open Pressable for backwards compat.
+- `app/(tabs)/index.tsx` — host wiring updated: extracted the FoodSearchModal `onSelect` commit logic into a shared `handleFoodSearchSelect` callback (mirrors web's NutritionTracker shape). LogSheet's `search` prop now wires `onSelect`, `macroTargets`, `macroConsumed`, `supabase`, `userId` for the inline path. The standalone `<FoodSearchModal>` mount stays (still used by the "search instead" path inside `<TodayAddFoodForm>`) but now points to the same shared handler.
+- `tests/unit/logSheetPhase3.test.tsx` — added 6 tests for inline-search mode: real `<TextInput>` rendering, query-empty-vs-non-empty branching with Recent / Saved hidden when query is non-empty, legacy `onOpen` fallback path, query reset on close+re-open, right-edge icons preserved in inline mode. Existing 21 tests still pass (legacy mode untouched).
+- `tests/unit/foodSearchPagination.test.ts` — source-pin assertions moved from MODAL_SRC to PANEL_SRC (pagination state lives in the panel now).
+- `tests/unit/foodSearchPrimaryServingParity.test.ts`, `tests/unit/offMicrosPullThroughParity.test.ts` — read modal + panel concatenated so either file can host the canonical wiring.
+
+**API contract changes (additive, fully backwards-compatible).**
+
+- `LogSheetProps.search` gains `onSelect`, `macroTargets`, `macroConsumed`, `supabase`, `userId`. When `onSelect` is wired the search row flips to inline mode; otherwise it stays as the 2026-04-28 tap-to-open Pressable.
+- `LogSheetInlineSelectedFood` re-exported from LogSheet for hosts that want the type without reaching into `FoodSearchPanel` directly.
+- `FoodSearchModal`'s public prop surface unchanged — modal is now a wrapper, not a rewrite.
+
+**Verified.** `npx tsc --noEmit` clean on both `apps/mobile/tsconfig.json` and root `tsconfig.json`. Mobile vitest: **789 passed (82 files)**. Web vitest: **3361 passed (294 files)**. Mobile lint: 0 errors, ~155 pre-existing token-hygiene warnings on the migrated panel (inherited from the modal byte-for-byte). The Maestro `00d3_today_fab_log_sheet.yaml` flow's `today-log-fab` + `log-sheet-root` + `log-sheet-search-row` testIDs preserved.
+
+**Web parity flag.** Web has the same nested-modal smell (`<LogSheet>` opens `<FoodSearch>` modal on search-row click). Lifting `<FoodSearch>` into a `<FoodSearchPanel>` is a substantial follow-up — the web FoodSearch is ~1,500 LOC of similarly intertwined preview / portion / custom-food / pagination logic. Flagged for `sync-enforcer` as a deferred parity commit. Until that ships, mobile and web have an intentional UX divergence at the LogSheet → search transition: mobile is inline, web still hops modals.
+
 ### 2026-04-28 — Next-10 #15 + #11 done (token alias cleanup)
 
 **Done.** Both Next-10 token-cleanup items shipped together. Net effect: every duplicate token path that an agent sweep could pick the wrong side of has been removed.
@@ -678,3 +702,28 @@ The existing `<div className="max-w-2xl mx-auto px-pm-5 py-pm-5">` outer wrapper
 **Verified.** Web typecheck clean. Lint clean for the new wiring (`NutritionTracker.tsx` lint output is just pre-existing unused-import warnings unrelated to this change). Component renders only at `xl+`, so mobile-web is unaffected.
 
 **Net code change:** 1 import + ~15 LOC of JSX. 0 layout regressions on mobile-web.
+
+### 2026-04-30 — Phase 5: drop daily AI sentinel, replace with one-time first-log tooltip (mobile)
+
+**Done.** The "Includes N AI-estimated meals" caption that Phase 4 / Top-5 #2B folded inside the `TodayHero` card has been deleted entirely. customer-lens flagged the daily caption as a defensive disclaimer that contradicted the 2026-04-27 strategic direction (macro-tracker-first, not AI-first) — the user opens Today and the very first thing under the calorie ring was an apology for using AI. That's the wrong posture for a macro tracker that ships AI as one input mode among several.
+
+**The replacement.** A one-time `AiFirstLogTooltip` rendered below the user's first AI-sourced meal row in `TodayMealsSection`. Copy: "We fill in nutrition for photos & voice. Tap to verify or edit." X close + 6-second auto-fade both dismiss; AsyncStorage key `suppr.ai-explainer-shown.v1` gates the lifecycle so it never fires twice on the same device. After the one-time bubble, AI-sourced meals continue to carry the existing SourceDot pill on their row — that's the signal that survives.
+
+**Mobile changes (`apps/mobile/`):**
+
+- `components/today/TodayHero.tsx` — removed `aiSourcedCount` and `sourceAiColor` props from the type and the JSX. Removed the inline `<Sparkles>` + caption block beneath the ring. Imports of `Sparkles` and `Spacing` dropped (now unused).
+- `components/today/TodayHeroRing.tsx` — dropped the `footerContent` slot (added Phase 4) since nothing renders into it any more.
+- `components/today/AiFirstLogTooltip.tsx` — **new**. Self-contained inline bubble (Sparkles icon + copy + X close). Auto-fades after 6 s via a host-driven `onDismiss`. Theme-tokenised. Accessibility labels: `AI estimation explanation` on the bubble, `Dismiss tooltip` on the X (with `accessibilityRole="button"`).
+- `components/today/TodayMealsSection.tsx` — added `aiFirstLogTooltipMealId` and `onDismissAiFirstLogTooltip` props; renders `AiFirstLogTooltip` directly below the matching meal row inside the existing `meals.map`. Wrapped each row in a `<React.Fragment>` so the tooltip can sit between the `<Swipeable>` and the next iteration without disturbing the slot card chrome.
+- `app/(tabs)/index.tsx` — removed `aiSourcedTodayCount` derivation (and the comment that justified the daily sentinel). Added `aiTooltipShown` state hydrated from AsyncStorage, `dismissAiFirstLogTooltip` callback, and `aiFirstLogTooltipMealId` `useMemo` that picks the first AI-sourced meal id when the gate is open. Passed both new props to `<TodayMealsSection>`. The `isAiSourcedFoodHistoryItem` import stays — re-used by the memo.
+
+**Tests.**
+
+- `apps/mobile/tests/unit/aiFirstLogTooltip.test.tsx` — **new** (~7 assertions): pins `visible=false` renders nothing, the canonical copy on `visible=true`, accessibility labels, X-tap fires `onDismiss` once, the 6-second auto-fade fires `onDismiss` once, the timer is cancelled when visibility flips false, and the timer is cancelled on unmount.
+- `apps/mobile/tests/unit/todayAboveMealsCap.test.ts` — header comment updated to record the Phase 5 deletion. The negative pin (`Includes N AI-estimated meals` text not in host) now also asserts `aiSourcedCount=` and `aiSourcedTodayCount =` are absent — both regression modes for re-introducing the daily caption are blocked.
+
+**Web parity.** Web's `today-hero-ring.tsx` was already single-variant and never carried the sentinel pill (Phase 4 introduced it on web inside `today-hero-stats.tsx` via `<AiSentinelInline>`). Web's `aiSourcedCount` / `<AiSentinelInline>` carry the same defensive-disclaimer problem and should be deleted in a follow-up so the surfaces match — flagged for `sync-enforcer` rather than expanded into this commit so the worktree stays scoped to the Today mobile change. Mobile is now the canonical posture; web follows.
+
+**Verified.** `npx tsc --noEmit` clean on root + mobile. `npx vitest run --no-coverage` (mobile): all 81 test files / 771 tests green, including the 7 new `aiFirstLogTooltip.test.tsx` cases and the updated `todayAboveMealsCap.test.ts` pins.
+
+**Net code change:** ~50 LOC removed from `TodayHero.tsx` + `TodayHeroRing.tsx` + the host derivation. ~110 LOC added across `AiFirstLogTooltip.tsx` (component) and the host gate. ~115 LOC added in the new test file. 0 new dependencies.

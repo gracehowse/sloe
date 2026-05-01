@@ -15,11 +15,18 @@
  * the new contract; the old tests have been deleted in this rewrite.
  * The file name is kept for git history continuity.
  *
+ * **Updated 2026-04-30 for the nested-modal teardown (web parity with
+ * mobile commit `1968953`).** When the host wires `search.onSelect`
+ * the search row flips from a tap-to-open `<button>` to a real
+ * `<Input>` and `<FoodSearchPanel>` mounts inline within the same
+ * sheet. Legacy `onOpen`-only callers continue to work — the new
+ * tests below pin both shapes.
+ *
  * Mirror of `apps/mobile/tests/unit/logSheetPhase3.test.tsx`.
  */
 
 import * as React from "react";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 
 import {
@@ -28,6 +35,29 @@ import {
   type LogSheetRecentEntry,
   type LogSheetSavedMeal,
 } from "../../src/app/components/suppr/log-sheet";
+
+/**
+ * 2026-04-30 — `LogSheet.tsx` now imports `<FoodSearchPanel>` so the
+ * search row can render real results inline (the customer-lens
+ * nested-modal teardown). The panel debounces and fans out to USDA /
+ * OFF / Edamam via `fetch`. None of the inline-mode tests below
+ * exercise the network — but the debounce timer + fetch ref still
+ * fire, so we stub `fetch` to a permanent no-op. The tests pin the
+ * structural contract (input shape, browse-vs-panel switch, query
+ * reset on close) — the panel's own behaviour belongs to the
+ * foodSearch* test suites.
+ */
+beforeEach(() => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      new Response(JSON.stringify({ ok: true, hits: [], products: [] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    ),
+  );
+});
 
 function open(props?: Partial<LogSheetProps>) {
   return render(
@@ -50,6 +80,153 @@ describe("LogSheet (web) — primitive shape", () => {
     open();
     expect(screen.getByText("Log a meal")).toBeDefined();
     expect(screen.getByRole("button", { name: "Close log sheet" })).toBeDefined();
+  });
+});
+
+describe("LogSheet (web) — inline-search mode (2026-04-30, customer-lens nested-modal teardown)", () => {
+  // Inline-search mode is active when the host wires `search.onSelect`.
+  // The button-faking-input is replaced by a real `<Input type="text">`
+  // and `<FoodSearchPanel>` mounts inside the sheet to render results
+  // — no nested dialog hop. These tests pin the structural contract;
+  // the panel's own behaviour is covered by the foodSearch* test
+  // suites and the web FoodSearch tests.
+
+  it("renders a real text input (not a button) when search.onSelect is wired", () => {
+    render(
+      <LogSheet
+        open
+        onOpenChange={() => {}}
+        search={{ onSelect: () => {} }}
+      />,
+    );
+    // The <Input> owns the `Search foods` accessibility label in
+    // inline mode. The dedicated testID lets RTL find the input
+    // directly, matching mobile.
+    const input = screen.getByLabelText("Search foods");
+    expect(input).toBeDefined();
+    expect((input as HTMLInputElement).tagName).toBe("INPUT");
+    expect(screen.getByTestId("log-sheet-search-input")).toBeDefined();
+    // The legacy tap-to-open button is NOT rendered in inline mode.
+    expect(screen.queryByRole("button", { name: "Search foods" })).toBeNull();
+  });
+
+  it("does NOT mount FoodSearchPanel when query is empty (Recent / Saved stays visible)", () => {
+    const recentEntry: LogSheetRecentEntry = {
+      id: "r1",
+      title: "Greek yogurt",
+      kcal: 130,
+      source: "off",
+      bucket: "today",
+    };
+    render(
+      <LogSheet
+        open
+        onOpenChange={() => {}}
+        search={{ onSelect: () => {} }}
+        recent={{ entries: [recentEntry], onPick: () => {} }}
+      />,
+    );
+    // Empty-query state surfaces the Recent group label — proves the
+    // browse area still renders when query is empty.
+    expect(screen.getByText("Today’s recents")).toBeDefined();
+  });
+
+  it("hides Recent / Saved when query is non-empty (panel takes over)", () => {
+    const recentEntry: LogSheetRecentEntry = {
+      id: "r1",
+      title: "Greek yogurt",
+      kcal: 130,
+      source: "off",
+      bucket: "today",
+    };
+    render(
+      <LogSheet
+        open
+        onOpenChange={() => {}}
+        search={{ onSelect: () => {} }}
+        recent={{ entries: [recentEntry], onPick: () => {} }}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("Search foods"), {
+      target: { value: "yog" },
+    });
+    // Recent group label disappears once the panel takes over the
+    // content area.
+    expect(screen.queryByText("Today’s recents")).toBeNull();
+  });
+
+  it("falls back to legacy tap-to-open button when only search.onOpen is wired", () => {
+    // Backwards-compat: a host that hasn't migrated yet can still wire
+    // `onOpen`; the row stays a `<button>` that fires `onOpen` on click.
+    const onOpen = vi.fn();
+    render(
+      <LogSheet
+        open
+        onOpenChange={() => {}}
+        search={{ onOpen }}
+      />,
+    );
+    expect(screen.queryByTestId("log-sheet-search-input")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Search foods" }));
+    expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it("right-edge icons still tap-to-open in inline mode (preserved behaviour)", () => {
+    const onScanOpen = vi.fn();
+    render(
+      <LogSheet
+        open
+        onOpenChange={() => {}}
+        search={{ onSelect: () => {} }}
+        barcode={{ onOpen: onScanOpen }}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Scan barcode" }));
+    expect(onScanOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it("clears the query state when the sheet is closed and re-opened", () => {
+    // Returning users land on an empty input, not their previous
+    // query — same hygiene the legacy Recent / Saved tab used.
+    const recentEntry: LogSheetRecentEntry = {
+      id: "r1",
+      title: "Greek yogurt",
+      kcal: 130,
+      source: "off",
+      bucket: "today",
+    };
+    const { rerender } = render(
+      <LogSheet
+        open
+        onOpenChange={() => {}}
+        search={{ onSelect: () => {} }}
+        recent={{ entries: [recentEntry], onPick: () => {} }}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("Search foods"), {
+      target: { value: "yog" },
+    });
+    expect(screen.queryByText("Today’s recents")).toBeNull();
+    // Close…
+    rerender(
+      <LogSheet
+        open={false}
+        onOpenChange={() => {}}
+        search={{ onSelect: () => {} }}
+        recent={{ entries: [recentEntry], onPick: () => {} }}
+      />,
+    );
+    // …and re-open. Query should be cleared → Recent / Saved visible
+    // again.
+    rerender(
+      <LogSheet
+        open
+        onOpenChange={() => {}}
+        search={{ onSelect: () => {} }}
+        recent={{ entries: [recentEntry], onPick: () => {} }}
+      />,
+    );
+    expect(screen.getByText("Today’s recents")).toBeDefined();
   });
 });
 

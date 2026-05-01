@@ -1,0 +1,20 @@
+# @cases TC-INT-LOG-SHEET
+# @screen today
+appId: com.supprclub.supprapp
+name: "Interactive — Today FAB → Log sheet"
+---
+# Direct tap on the FAB testID; capture; exit. Probing modal hierarchies
+# crashes XCUITest on iOS 26 (kAXErrorInvalidUIElement).
+
+- launchApp:
+    appId: com.supprclub.supprapp
+- waitForAnimationToEnd
+
+- openLink: suppr:///(tabs)
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- tapOn:
+    id: "today-log-fab"
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/state-10-log-sheet-default

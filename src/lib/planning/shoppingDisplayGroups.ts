@@ -1,5 +1,5 @@
-import type { ShoppingItem } from "../../types/recipe.ts";
-import { normalizeIngredientNameKey } from "./ingredientNameKey.ts";
+import type { ShoppingItem } from "../../types/recipe";
+import { normalizeIngredientNameKey } from "./ingredientNameKey";
 
 export type ShoppingDisplayGroup = {
   /** Stable id for React keys (underlying item ids). */

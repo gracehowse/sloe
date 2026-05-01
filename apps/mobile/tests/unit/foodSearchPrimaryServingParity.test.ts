@@ -17,8 +17,28 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const MOBILE_MODAL_PATH = resolve(__dirname, "../../components/FoodSearchModal.tsx");
+/**
+ * 2026-04-30 — the search results + preview body lifted out of
+ * `FoodSearchModal.tsx` into a shared `FoodSearchPanel.tsx` so the
+ * same component can mount inline inside `<LogSheet>` (no nested
+ * modal). The headline / primary-serving wiring lives in the panel
+ * now; this test reads it as the primary mobile source.
+ */
+const MOBILE_PANEL_PATH = resolve(
+  __dirname,
+  "../../components/food-search/FoodSearchPanel.tsx",
+);
 const MOBILE_VERIFY_PATH = resolve(__dirname, "../../lib/verifyRecipe.ts");
-const WEB_PATH = resolve(__dirname, "../../../../src/app/components/FoodSearch.tsx");
+/**
+ * 2026-04-30 — web FoodSearch.tsx (1568 LOC) was extracted into
+ * `food-search/FoodSearchPanel.tsx` (commit `cb1317f`). The wrapper
+ * keeps only the dialog shell; primary-serving + headline imports
+ * + row JSX all live in the panel. Source-pin parity reads the panel.
+ */
+const WEB_PATH = resolve(
+  __dirname,
+  "../../../../src/app/components/food-search/FoodSearchPanel.tsx",
+);
 const HELPER_PATH = resolve(
   __dirname,
   "../../../../src/lib/nutrition/primaryServing.ts",
@@ -29,10 +49,18 @@ const HEADLINE_HELPER_PATH = resolve(
 );
 
 const MOBILE_MODAL_SRC = readFileSync(MOBILE_MODAL_PATH, "utf8");
+const MOBILE_PANEL_SRC = readFileSync(MOBILE_PANEL_PATH, "utf8");
 const MOBILE_VERIFY_SRC = readFileSync(MOBILE_VERIFY_PATH, "utf8");
 const WEB_SRC = readFileSync(WEB_PATH, "utf8");
 const HELPER_SRC = readFileSync(HELPER_PATH, "utf8");
 const HEADLINE_HELPER_SRC = readFileSync(HEADLINE_HELPER_PATH, "utf8");
+/**
+ * Combined mobile source — primary-serving / headline wiring now
+ * lives in the panel, but the modal still mounts the panel. Either
+ * file can host the import as long as the canonical helper is the
+ * one being used.
+ */
+const MOBILE_COMBINED_SRC = `${MOBILE_MODAL_SRC}\n${MOBILE_PANEL_SRC}`;
 
 const SOURCE_HELPERS = [
   "pickEdamamPrimaryServing",
@@ -59,11 +87,11 @@ describe("food search primary-serving parity (TestFlight APo0qS9vcFvmBJEJJ_-61YA
     }
   });
 
-  it("mobile FoodSearchModal.tsx imports the portion-chip adapter from the shared module", () => {
-    expect(MOBILE_MODAL_SRC).toMatch(
-      /from\s+["'][^"']*src\/lib\/nutrition\/primaryServing["']/,
+  it("mobile food-search surface imports the portion-chip adapter from the shared module", () => {
+    expect(MOBILE_COMBINED_SRC).toMatch(
+      /from\s+["'][^"']*lib\/nutrition\/primaryServing["']/,
     );
-    expect(MOBILE_MODAL_SRC).toMatch(/\bprimaryServingToPortionChip\b/);
+    expect(MOBILE_COMBINED_SRC).toMatch(/\bprimaryServingToPortionChip\b/);
   });
 
   it("web FoodSearch.tsx imports every inference helper from the shared module", () => {
@@ -79,7 +107,7 @@ describe("food search primary-serving parity (TestFlight APo0qS9vcFvmBJEJJ_-61YA
     expect(HEADLINE_HELPER_SRC).toMatch(/FOOD_SEARCH_PER_SERVING_BADGE\s*=\s*"per serving"/);
     expect(HEADLINE_HELPER_SRC).toMatch(/FOOD_SEARCH_PER_100G_BADGE\s*=\s*"per 100g"/);
 
-    for (const src of [MOBILE_MODAL_SRC, WEB_SRC]) {
+    for (const src of [MOBILE_COMBINED_SRC, WEB_SRC]) {
       expect(src).toMatch(
         /from\s+["'][^"']*lib\/nutrition\/foodSearchHeadline["']/,
       );
@@ -99,7 +127,7 @@ describe("food search primary-serving parity (TestFlight APo0qS9vcFvmBJEJJ_-61YA
     // the helper — if either surface reintroduces its own copy, the
     // assertion below will flag it.
     expect(HEADLINE_HELPER_SRC).toMatch(/kcal \/ 100 g/);
-    expect(MOBILE_MODAL_SRC).not.toMatch(/kcal \/ 100 g/);
+    expect(MOBILE_COMBINED_SRC).not.toMatch(/kcal \/ 100 g/);
     expect(WEB_SRC).not.toMatch(/kcal \/ 100 g/);
   });
 });

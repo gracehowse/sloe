@@ -20,6 +20,7 @@
  */
 
 import { calcGoalTimeline } from "../weightProjection";
+import { carbsLabel, netCarbsForRow } from "../nutrition/netCarbs";
 
 export type ActivityLevel =
   | "sedentary"
@@ -118,15 +119,29 @@ function tile(label: string, key: MacroKey, current: number, target: number): Ma
  * Build the four macro tiles in prototype order. Callers pass
  * today's consumed totals (from `nutritionByDay[todayKey]` summed
  * or similar) and the daily targets.
+ *
+ * 2026-04-30 (#1): the optional `netCarbsLensEnabled` flag aligns
+ * this view with the Today macro tiles so the carbs target shown on
+ * Today and on /targets never disagree. When the lens is on AND a
+ * fibre target is set, the carbs tile renders "NET CARBS" with
+ * (carbs − fibre) as both current and target. Without this, the two
+ * surfaces showed different numbers (Today 75g vs Targets 91g) which
+ * the user could only resolve by reading source.
  */
 export function buildMacroTiles(opts: {
   targets: { protein: number; carbs: number; fat: number; fiber: number };
   consumed: { protein: number; carbs: number; fat: number; fiber: number };
+  netCarbsLensEnabled?: boolean;
 }): readonly MacroTileVM[] {
-  const { targets, consumed } = opts;
+  const { targets, consumed, netCarbsLensEnabled } = opts;
+  const lensOn = Boolean(netCarbsLensEnabled);
+  const carbsTileLabel =
+    carbsLabel(targets.fiber, lensOn) === "Net carbs" ? "NET CARBS" : "CARBS";
+  const carbsCurrent = netCarbsForRow(consumed.carbs, consumed.fiber, lensOn);
+  const carbsTarget = netCarbsForRow(targets.carbs, targets.fiber, lensOn);
   return [
     tile("PROTEIN", "protein", consumed.protein, targets.protein),
-    tile("CARBS", "carbs", consumed.carbs, targets.carbs),
+    tile(carbsTileLabel, "carbs", carbsCurrent, carbsTarget),
     tile("FAT", "fat", consumed.fat, targets.fat),
     tile("FIBER", "fiber", consumed.fiber, targets.fiber),
   ] as const;

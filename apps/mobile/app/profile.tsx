@@ -12,11 +12,11 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import { Check, Circle } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
-import { Accent, Spacing, Radius } from "@/constants/theme";
+import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets } from "@/lib/calcTargets";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -32,7 +32,10 @@ export default function ProfileScreen() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const goBack = useSafeBack("/(tabs)/more");
+  // /(tabs)/more was collapsed to a redirect → /(tabs)/settings (Group G
+  // Batch D, 2026-04-29). Targeting the live destination directly avoids
+  // the redirect chain when the user taps Back.
+  const goBack = useSafeBack("/(tabs)/settings");
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
 
@@ -97,7 +100,10 @@ export default function ProfileScreen() {
       paddingVertical: Spacing.md,
     },
     backBtn: { color: colors.text, fontSize: 28, fontWeight: "600" },
-    headerTitle: { fontSize: 22, fontWeight: "800", color: Accent.primary, letterSpacing: 3 },
+    // 2026-04-30 (visual-qa #5, ui-critic): drop the all-caps + tracked
+    // accent-blue title — every other nav header is title-case neutral.
+    // Aligns with Claude Design phone-top spec (24/700/-0.02em, fg).
+    headerTitle: { fontSize: 22, fontWeight: "700", color: colors.text, letterSpacing: -0.4 },
 
     card: {
       backgroundColor: colors.card,
@@ -371,7 +377,7 @@ export default function ProfileScreen() {
           <Pressable onPress={goBack} hitSlop={12}>
             <Text style={styles.backBtn}>‹</Text>
           </Pressable>
-          <Text style={styles.headerTitle}>PROFILE</Text>
+          <Text style={styles.headerTitle}>Profile</Text>
           <View style={{ width: 28 }} />
         </View>
 
@@ -379,10 +385,16 @@ export default function ProfileScreen() {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Daily Targets</Text>
           <View style={styles.targetsRow}>
-            <TargetStat value={Number(calories) || 0} label="kcal" color={Accent.primary} />
-            <TargetStat value={Number(protein) || 0} label="Protein" color={Accent.destructive} />
-            <TargetStat value={Number(carbs) || 0} label="Carbs" color={Accent.info} />
-            <TargetStat value={Number(fat) || 0} label="Fat" color={Accent.warning} />
+            {/* 2026-04-30 (#17, design-system-enforcer): retoken to
+                MacroColors.* so this surface honours the canonical macro
+                colour map (carryover rule #3). Pre-fix had Protein=red
+                (destructive), Carbs=blue (info), Fat=amber (warning) —
+                breaks the across-app convention where Protein=blue,
+                Carbs=amber, Fat=magenta. */}
+            <TargetStat value={Number(calories) || 0} label="kcal" color={MacroColors.calories} />
+            <TargetStat value={Number(protein) || 0} label="Protein" color={MacroColors.protein} />
+            <TargetStat value={Number(carbs) || 0} label="Carbs" color={MacroColors.carbs} />
+            <TargetStat value={Number(fat) || 0} label="Fat" color={MacroColors.fat} />
           </View>
         </View>
 
@@ -474,11 +486,15 @@ export default function ProfileScreen() {
                   style={[styles.dietaryChip, active && styles.dietaryChipActive]}
                   onPress={() => toggleDietary(pref.id)}
                 >
-                  <Ionicons
-                    name={active ? "checkmark-circle" : "ellipse-outline"}
-                    size={18}
-                    color={active ? Accent.success : colors.textTertiary}
-                  />
+                  {active ? (
+                    <Check size={16} color={Accent.success} strokeWidth={2.5} />
+                  ) : (
+                    <Circle
+                      size={16}
+                      color={colors.textTertiary}
+                      strokeWidth={1.75}
+                    />
+                  )}
                   <Text style={[styles.dietaryLabel, active && { color: colors.text }]}>
                     {pref.label}
                   </Text>

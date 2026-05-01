@@ -1,0 +1,287 @@
+import * as React from "react";
+import { Platform, Pressable, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { Accent, MacroColors } from "@/constants/theme";
+import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useAuth } from "@/context/auth";
+import { requestHealthPermissions } from "@/lib/healthSync";
+import {
+  markNotificationsPromptDismissed,
+  registerExpoPushTokenForUser,
+} from "@/lib/expoPushToken";
+import { useOnboarding } from "../context";
+import { MobileStepBody, MobileStepHeader, useStepOverline } from "../scaffold";
+
+export function MobilePermissionsStep() {
+  const { state, set } = useOnboarding();
+  const overline = useStepOverline();
+  const { session } = useAuth();
+  const userId = session?.user?.id ?? null;
+  const [healthBusy, setHealthBusy] = React.useState(false);
+  const [healthError, setHealthError] = React.useState<string | null>(null);
+  const [notifBusy, setNotifBusy] = React.useState(false);
+  const [notifError, setNotifError] = React.useState<string | null>(null);
+
+  // Real Apple Health prompt — wraps `requestHealthPermissions` so the
+  // user actually sees the iOS HealthKit sheet. We treat any non-OK
+  // outcome as "denied / unavailable" (e.g. Expo Go, simulator without
+  // a dev build, restricted device); the user can still continue.
+  const onAllowHealth = React.useCallback(async () => {
+    if (healthBusy) return;
+    setHealthBusy(true);
+    setHealthError(null);
+    try {
+      // Health is iOS-only; on Android there is nothing to grant.
+      if (Platform.OS !== "ios") {
+        set({ healthGranted: false });
+        setHealthError("Apple Health is only available on iOS.");
+        return;
+      }
+      const outcome = await requestHealthPermissions();
+      if (outcome.ok) {
+        set({ healthGranted: true });
+      } else {
+        set({ healthGranted: false });
+        setHealthError(outcome.userMessage);
+      }
+    } catch (e) {
+      set({ healthGranted: false });
+      setHealthError(
+        "We couldn't show the Health permission sheet. You can connect later in Settings.",
+      );
+    } finally {
+      setHealthBusy(false);
+    }
+  }, [healthBusy, set]);
+
+  // Real iOS/Android notifications prompt via expo-notifications.
+  // Lazy-import keeps Expo Go (no native module) from crashing on mount.
+  const onAllowNotifications = React.useCallback(async () => {
+    if (notifBusy) return;
+    setNotifBusy(true);
+    setNotifError(null);
+    try {
+      const Notifications = await import("expo-notifications");
+      if (Platform.OS === "android") {
+        await Notifications.setNotificationChannelAsync("default", {
+          name: "Default",
+          importance: Notifications.AndroidImportance.DEFAULT,
+        });
+      }
+      const existing = await Notifications.getPermissionsAsync();
+      const next =
+        existing.status === "granted"
+          ? existing
+          : await Notifications.requestPermissionsAsync();
+      if (next.status === "granted") {
+        set({ notifGranted: true });
+        // Register the Expo push token now that we have permission, so the
+        // server has an address to push to. Also mark the standalone
+        // /notifications-prompt screen as dismissed so the post-paywall
+        // routing falls straight through to /(tabs) instead of re-asking.
+        await registerExpoPushTokenForUser(userId);
+        await markNotificationsPromptDismissed();
+      } else {
+        set({ notifGranted: false });
+        setNotifError(
+          "Notifications are off. You can enable them later in Settings → Suppr → Notifications.",
+        );
+        // The user has answered the OS prompt — even with "Don't Allow"
+        // we should not re-ask via /notifications-prompt; honour their
+        // choice. They can re-enable from Settings.
+        await markNotificationsPromptDismissed();
+      }
+    } catch {
+      set({ notifGranted: false });
+      setNotifError(
+        "System notifications need a full Suppr install (not Expo Go).",
+      );
+    } finally {
+      setNotifBusy(false);
+    }
+  }, [notifBusy, set, userId]);
+
+  return (
+    <MobileStepBody>
+      <MobileStepHeader
+        overline={overline}
+        title="A couple of permissions"
+        subtitle="Both are optional and you can change them later in Settings."
+      />
+      <PermissionCard
+        icon="heart-outline"
+        iconColor={MacroColors.fat}
+        title="Apple Health"
+        body="Read your active energy and steps to refine your adaptive TDEE. Suppr does not write to Health."
+        granted={state.healthGranted}
+        busy={healthBusy}
+        errorMessage={healthError}
+        onAllow={() => void onAllowHealth()}
+        onSkip={() => {
+          set({ healthGranted: false });
+          setHealthError(null);
+        }}
+      />
+      <PermissionCard
+        icon="notifications-outline"
+        iconColor={Accent.warning}
+        title="Notifications"
+        body="Gentle reminders only — an evening nudge when you're off-target, plus a Sunday recap of your week."
+        granted={state.notifGranted}
+        busy={notifBusy}
+        errorMessage={notifError}
+        onAllow={() => void onAllowNotifications()}
+        onSkip={() => {
+          set({ notifGranted: false });
+          setNotifError(null);
+          // Informed decision — don't re-prompt via /notifications-prompt.
+          void markNotificationsPromptDismissed();
+        }}
+      />
+    </MobileStepBody>
+  );
+}
+
+function PermissionCard({
+  icon,
+  iconColor,
+  title,
+  body,
+  granted,
+  busy = false,
+  errorMessage = null,
+  onAllow,
+  onSkip,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  iconColor: string;
+  title: string;
+  body: string;
+  granted: boolean | null;
+  busy?: boolean;
+  errorMessage?: string | null;
+  onAllow: () => void;
+  onSkip: () => void;
+}) {
+  const colors = useThemeColors();
+  return (
+    <View
+      style={{
+        backgroundColor: colors.card,
+        borderRadius: 14,
+        padding: 16,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: granted === true ? Accent.success + "66" : colors.border,
+      }}
+    >
+      <View
+        style={{ flexDirection: "row", gap: 12, alignItems: "flex-start", marginBottom: 12 }}
+      >
+        <View
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 12,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: iconColor + "26",
+          }}
+        >
+          <Ionicons name={icon} size={20} color={iconColor} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text
+            style={{
+              fontSize: 15,
+              fontWeight: "700",
+              color: colors.text,
+              letterSpacing: -0.2,
+            }}
+          >
+            {title}
+          </Text>
+          <Text
+            style={{
+              fontSize: 12,
+              color: colors.textSecondary,
+              marginTop: 4,
+              lineHeight: 18,
+            }}
+          >
+            {body}
+          </Text>
+        </View>
+      </View>
+      {granted === true ? (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <Ionicons name="checkmark" size={14} color={Accent.successLight} />
+          <Text style={{ fontSize: 12, fontWeight: "700", color: Accent.successLight }}>
+            Allowed
+          </Text>
+        </View>
+      ) : granted === false ? (
+        <View>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <Text style={{ fontSize: 12, color: colors.textSecondary, flex: 1 }}>
+              {errorMessage ?? "Skipped — you can allow later"}
+            </Text>
+            <Pressable onPress={onAllow} disabled={busy}>
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontWeight: "700",
+                  color: busy ? colors.textTertiary : Accent.primaryLight,
+                }}
+              >
+                {busy ? "Asking…" : errorMessage ? "Try again" : "Undo"}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : (
+        <View style={{ flexDirection: "row", gap: 10 }}>
+          <Pressable
+            onPress={onAllow}
+            disabled={busy}
+            accessibilityRole="button"
+            accessibilityLabel="Allow"
+            accessibilityState={{ disabled: busy }}
+            style={({ pressed }) => ({
+              flex: 1,
+              height: 40,
+              borderRadius: 12,
+              backgroundColor: Accent.primary,
+              alignItems: "center",
+              justifyContent: "center",
+              opacity: busy ? 0.6 : pressed ? 0.85 : 1,
+            })}
+          >
+            <Text style={{ color: "#0a0a0f", fontSize: 13, fontWeight: "700" }}>
+              {busy ? "Asking…" : "Allow"}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={onSkip}
+            disabled={busy}
+            accessibilityRole="button"
+            accessibilityLabel="Not now"
+            style={({ pressed }) => ({
+              flex: 1,
+              height: 40,
+              borderRadius: 12,
+              backgroundColor: colors.inputBg,
+              alignItems: "center",
+              justifyContent: "center",
+              opacity: busy ? 0.6 : pressed ? 0.85 : 1,
+            })}
+          >
+            <Text style={{ color: colors.text, fontSize: 13, fontWeight: "700" }}>
+              Not now
+            </Text>
+          </Pressable>
+        </View>
+      )}
+    </View>
+  );
+}

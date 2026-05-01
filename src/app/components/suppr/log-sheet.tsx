@@ -5,23 +5,35 @@
  *
  * Production design spec — 2026-04-27 Surface B (post-2026-04-28
  * search-first refactor — see `docs/ux/teardown-2026-04-28-daily-loop.md`
- * Next-10 #12).
+ * Next-10 #12, then 2026-04-30 nested-modal teardown — see customer-lens
+ * note in `src/app/components/food-search/FoodSearchPanel.tsx`).
  *
- * Pre-refactor structure: a 6-pill horizontal tab strip (Search /
+ * Pre-2026-04-28 structure: a 6-pill horizontal tab strip (Search /
  * Scan / Recent / Saved / Voice / Photo) where each tab rendered a
- * different content area. The tab strip read as a "power-user
- * feature menu": first-time users had to read six labels and choose
- * one before logging anything.
+ * different content area.
  *
- * Post-refactor: search is the canonical primary input. The other
- * three input modes (scan, voice, photo) ride along as small right-
- * edge icons inside the search row. Recent + Saved render inline as
- * the default browse content via a 2-pill toggle below the search
- * row. The 6-tab strip is gone.
+ * 2026-04-28 refactor: search became the canonical primary input as a
+ * tap-to-open `button`. The "tap" handler closed LogSheet and opened
+ * a separate `<FoodSearch>` dialog whose first job was rendering an
+ * `<Input type="text" />`. Two modals stacked.
  *
- * Why callbacks not flows: the existing search / barcode / voice /
- * photo pipelines live in dedicated components. The LogSheet's job
- * is consolidation of access, not rebuilding nutrition logic.
+ * 2026-04-30 refactor (CURRENT, web parity with mobile commit
+ * `1968953`): the search row is now a real `<Input>`. The user opens
+ * LogSheet and starts typing IMMEDIATELY. Results render INLINE within
+ * the same sheet via a mounted `<FoodSearchPanel>` (the same panel
+ * `<FoodSearch>` mounts in its dialog variant). No nested modal, no
+ * second animation, no learning step.
+ *
+ * Wiring fallback: if a host wires the legacy `search.onOpen` but not
+ * `search.onSelect`, the search row stays as a tap-to-open `button`
+ * and the host's `onOpen` callback fires (preserves the old contract
+ * for any sheet that hasn't been migrated yet). Once `search.onSelect`
+ * is wired, the sheet flips to inline mode.
+ *
+ * Right-edge input modes (scan / voice / photo) are unchanged — they
+ * still tap-to-open the dedicated modals. Recent + Saved render below
+ * the search row WHEN the query is empty; once the user starts typing
+ * the panel takes over the content area and Recent/Saved are hidden.
  *
  * Pro gating: voice + photo are Pro-only on free + base tiers. The
  * host passes `locked: true` to surface a small lock badge on those
@@ -52,6 +64,16 @@ import { cn } from "../ui/utils";
 import { SourceDot, type SourceDotSource } from "../ui/source-dot";
 import { FatSecretBadge } from "../ui/FatSecretBadge";
 import { TrustChip } from "../ui/trust-chip";
+import { Input } from "../ui/input";
+import {
+  FoodSearchPanel,
+  type FoodSearchSelection as InlineSelectedFood,
+  type SupabaseLike as InlineSupabaseLike,
+} from "../food-search/FoodSearchPanel";
+import type { MacroConsumed, MacroTargets } from "@/lib/nutrition/remainingMacros";
+
+/** Re-exported for hosts that want the inline-search payload type. */
+export type LogSheetInlineSelectedFood = InlineSelectedFood;
 
 /**
  * Legacy tab-id type retained for backwards compat with deep test
@@ -110,10 +132,34 @@ export interface LogSheetProps {
   onOpenChange: (open: boolean) => void;
   /** Ignored post-2026-04-28 — kept for backwards compat only. */
   initialTab?: LogSheetTab;
-  /** Search foods. Click the search row → host closes LogSheet and
-   *  opens the dedicated FoodSearch modal. The other fields are
-   *  tolerated for backwards compat but not rendered. */
+  /** Search foods.
+   *
+   *  INLINE MODE (preferred, 2026-04-30):
+   *    Wire `onSelect` (and budget context if you want fit-this-in).
+   *    The search row renders as a real `<Input>` with `autoFocus`,
+   *    and as the user types, results render inline within the same
+   *    sheet via `<FoodSearchPanel>`. When the user confirms a portion,
+   *    `onSelect` fires with the canonical `FoodSearchSelection`
+   *    payload — same shape the dialog `<FoodSearch>` emits.
+   *
+   *  LEGACY TAP-TO-OPEN MODE (kept for hosts that haven't migrated):
+   *    Wire `onOpen` only. The search row renders as a tap-to-open
+   *    `button` that calls `onOpen` — host is responsible for closing
+   *    the LogSheet and opening its own `<FoodSearch>` dialog.
+   *
+   *  When neither is wired the search row renders but is non-interactive
+   *  (host has opted out of search entirely). */
   search?: {
+    /** Inline mode — fired when the user picks a portion + quantity. */
+    onSelect?: (result: LogSheetInlineSelectedFood) => void;
+    /** Inline mode — daily targets for fit-this-in projection. */
+    macroTargets?: MacroTargets;
+    /** Inline mode — today's running totals for fit-this-in projection. */
+    macroConsumed?: MacroConsumed;
+    /** Inline mode — Supabase client + userId for custom foods. */
+    supabase?: InlineSupabaseLike;
+    userId?: string | null;
+    /** Legacy mode — tap-to-open the host's separate FoodSearch dialog. */
     onOpen?: () => void;
     /** @deprecated */ query?: string;
     /** @deprecated */ onQueryChange?: (q: string) => void;
@@ -263,6 +309,7 @@ export function LogSheet({
             />
           ) : (
             <DefaultComposition
+              open={open}
               search={search}
               barcode={barcode}
               recent={recent}
@@ -283,6 +330,7 @@ export function LogSheet({
 /* -------------------------- Default composition -------------------------- */
 
 function DefaultComposition({
+  open,
   search,
   barcode,
   recent,
@@ -293,6 +341,7 @@ function DefaultComposition({
   onBrowseTabChange,
   onAddManually,
 }: {
+  open: boolean;
   search: LogSheetProps["search"];
   barcode: LogSheetProps["barcode"];
   recent: LogSheetProps["recent"];
@@ -307,101 +356,184 @@ function DefaultComposition({
   const showSaved = !!saved;
   const showBrowseToggle = showRecent && showSaved;
 
+  // Inline-search mode is active when the host wired `search.onSelect`.
+  // In that case the search row is a real `<Input>` and results render
+  // via `<FoodSearchPanel>` within this same sheet. Without `onSelect`
+  // we fall back to the legacy tap-to-open path that routes to a
+  // separate `<FoodSearch>` dialog (preserves any host that hasn't
+  // migrated yet — e.g. test harnesses calling `LogSheet` with only
+  // `onOpen`).
+  const inlineMode = !!search?.onSelect;
+
+  // Local query state — owned by LogSheet so the input is controlled
+  // and `<FoodSearchPanel>` reacts in lock-step. Reset every time the
+  // sheet opens so a returning user lands on an empty input, not the
+  // previous query.
+  const [query, setQuery] = React.useState("");
+  React.useEffect(() => {
+    if (!open) setQuery("");
+  }, [open]);
+
   return (
     <>
       {/* Search row — primary input. Right-edge icons (scan / voice /
           photo) ride along when the host wires the corresponding
-          callbacks. Each icon is tap-to-open: the host closes
-          LogSheet and opens the dedicated modal. */}
+          callbacks. In inline mode the row is a real `<Input>` (focused
+          on first appearance); in legacy tap-to-open mode it's a
+          `<button>` that fires `search.onOpen`. */}
       <div className="px-3 pt-3">
-        <button
-          type="button"
-          onClick={() => search?.onOpen?.()}
-          aria-label="Search foods"
-          className={cn(
-            "relative flex h-12 w-full items-center gap-2 rounded-lg bg-muted pl-3 pr-1 text-left text-[14px] text-muted-foreground",
-            "hover:bg-muted/80 transition-colors",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-          )}
-        >
-          <Search
-            aria-hidden
-            width={16}
-            height={16}
-            className="text-muted-foreground"
+        {inlineMode ? (
+          <div
+            data-testid="log-sheet-search-row"
+            className={cn(
+              "relative flex h-12 w-full items-center gap-2 rounded-lg bg-muted pl-3 pr-1",
+              "focus-within:outline-none focus-within:ring-2 focus-within:ring-primary",
+            )}
+          >
+            <Search
+              aria-hidden
+              width={16}
+              height={16}
+              className="text-muted-foreground shrink-0"
+            />
+            <Input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search foods, brands, or recipes"
+              aria-label="Search foods"
+              data-testid="log-sheet-search-input"
+              autoFocus
+              autoCapitalize="off"
+              autoCorrect="off"
+              autoComplete="off"
+              spellCheck={false}
+              className={cn(
+                "h-9 flex-1 min-w-0 border-0 bg-transparent px-0 shadow-none",
+                "focus-visible:ring-0 focus-visible:border-0",
+                "placeholder:text-muted-foreground",
+              )}
+            />
+            <RightEdgeIcons barcode={barcode} voice={voice} photo={photo} />
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => search?.onOpen?.()}
+            aria-label="Search foods"
+            className={cn(
+              "relative flex h-12 w-full items-center gap-2 rounded-lg bg-muted pl-3 pr-1 text-left text-[14px] text-muted-foreground",
+              "hover:bg-muted/80 transition-colors",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+            )}
+          >
+            <Search
+              aria-hidden
+              width={16}
+              height={16}
+              className="text-muted-foreground"
+            />
+            <span className="flex-1 truncate">Search foods, brands, or recipes</span>
+            <RightEdgeIcons barcode={barcode} voice={voice} photo={photo} />
+          </button>
+        )}
+      </div>
+
+      {/* Inline search results — only mounted when the user has actually
+          started typing. Empty query keeps the existing Recent / Saved
+          browse content visible so the sheet doesn't look "blank" on
+          open. */}
+      {inlineMode && query.trim().length > 0 ? (
+        <div className="flex flex-1 min-h-0 flex-col pt-2">
+          <FoodSearchPanel
+            query={query}
+            macroTargets={search?.macroTargets}
+            macroConsumed={search?.macroConsumed}
+            supabase={search?.supabase}
+            userId={search?.userId}
+            mode="compact"
+            onSelect={(result) => {
+              search?.onSelect?.(result);
+              // After a successful pick the user has logged something —
+              // clear the input so the sheet returns to Recent / Saved
+              // view (the host typically also closes the sheet via its
+              // own `onSelect` handler).
+              setQuery("");
+            }}
           />
-          <span className="flex-1 truncate">Search foods, brands, or recipes</span>
-          <RightEdgeIcons barcode={barcode} voice={voice} photo={photo} />
-        </button>
-      </div>
-
-      {/* Browse pill toggle — Recent / Saved. Hidden when only one
-          source is available; the available one renders directly. */}
-      {showBrowseToggle ? (
-        <div
-          role="tablist"
-          aria-label="Browse meals"
-          className="mx-3 mt-3 flex rounded-lg bg-muted p-0.5"
-        >
-          {(["recent", "saved"] as const).map((id) => {
-            const active = browseTab === id;
-            return (
-              <button
-                key={id}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                aria-label={id === "recent" ? "Recent" : "Saved meals"}
-                onClick={() => onBrowseTabChange(id)}
-                className={cn(
-                  "flex-1 rounded-md py-2 text-[13px] font-semibold transition-colors",
-                  active
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-                )}
-              >
-                {id === "recent" ? "Recent" : "Saved meals"}
-              </button>
-            );
-          })}
         </div>
-      ) : null}
+      ) : (
+        <>
+          {/* Browse pill toggle — Recent / Saved. Hidden when only one
+              source is available; the available one renders directly. */}
+          {showBrowseToggle ? (
+            <div
+              role="tablist"
+              aria-label="Browse meals"
+              className="mx-3 mt-3 flex rounded-lg bg-muted p-0.5"
+            >
+              {(["recent", "saved"] as const).map((id) => {
+                const active = browseTab === id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    aria-label={id === "recent" ? "Recent" : "Saved meals"}
+                    onClick={() => onBrowseTabChange(id)}
+                    className={cn(
+                      "flex-1 rounded-md py-2 text-[13px] font-semibold transition-colors",
+                      active
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                    )}
+                  >
+                    {id === "recent" ? "Recent" : "Saved meals"}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
 
-      {/* Browse content */}
-      <div className="flex-1 overflow-y-auto px-3 pb-2 pt-3">
-        {showRecent && (browseTab === "recent" || !showSaved) ? (
-          <RecentList recent={recent!} />
-        ) : null}
-        {showSaved && (browseTab === "saved" || !showRecent) ? (
-          <SavedList saved={saved!} />
-        ) : null}
-        {!showRecent && !showSaved ? (
-          <p className="py-12 text-center text-[12px] text-muted-foreground">
-            Search above for foods, or scan / speak / snap a photo.
-          </p>
-        ) : null}
-      </div>
+          {/* Browse content */}
+          <div className="flex-1 overflow-y-auto px-3 pb-2 pt-3">
+            {showRecent && (browseTab === "recent" || !showSaved) ? (
+              <RecentList recent={recent!} />
+            ) : null}
+            {showSaved && (browseTab === "saved" || !showRecent) ? (
+              <SavedList saved={saved!} />
+            ) : null}
+            {!showRecent && !showSaved ? (
+              <p className="py-12 text-center text-[12px] text-muted-foreground">
+                Search above for foods, or scan / speak / snap a photo.
+              </p>
+            ) : null}
+          </div>
 
-      {/* Footer: "Or add manually" — escape hatch for users who want
-          to type macros directly. Host wires this to the manual
-          quick-add form. */}
-      {onAddManually ? (
-        <button
-          type="button"
-          onClick={onAddManually}
-          aria-label="Or add manually"
-          className={cn(
-            "flex w-full items-center gap-2 border-t px-4 py-3 text-left text-[14px] text-muted-foreground",
-            "hover:bg-muted/40 transition-colors",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-          )}
-        >
-          <PencilLine width={16} height={16} aria-hidden />
-          <span className="flex-1">Or add manually</span>
-          <ChevronRight width={16} height={16} aria-hidden />
-        </button>
-      ) : null}
+          {/* Footer: "Or add manually" — escape hatch for users who want
+              to type macros directly. Host wires this to the manual
+              quick-add form. Hidden in inline-search mode (the panel
+              owns the bottom of the sheet). */}
+          {onAddManually ? (
+            <button
+              type="button"
+              onClick={onAddManually}
+              aria-label="Or add manually"
+              className={cn(
+                "flex w-full items-center gap-2 border-t px-4 py-3 text-left text-[14px] text-muted-foreground",
+                "hover:bg-muted/40 transition-colors",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+              )}
+            >
+              <PencilLine width={16} height={16} aria-hidden />
+              <span className="flex-1">Or add manually</span>
+              <ChevronRight width={16} height={16} aria-hidden />
+            </button>
+          ) : null}
+        </>
+      )}
     </>
   );
 }

@@ -1,0 +1,24 @@
+# @cases TC-INT-FASTING
+# @screen fasting
+appId: com.supprclub.supprapp
+name: "Interactive — Fasting active state (then end the fast)"
+---
+# Start a fast, capture active state, then attempt to end. End-fast
+# may crash on iOS 26 view-hierarchy probe through the confirm
+# dialog; that's accepted — the captures land first.
+# Net effect: a fast is started. The 00d4_end_fast.yaml flow ends it.
+# Run that one separately so this flow's captures aren't lost if the
+# end crashes.
+
+- launchApp:
+    appId: com.supprclub.supprapp
+- waitForAnimationToEnd
+
+- openLink: suppr:///fasting
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/state-20-fasting-idle
+- tapOn: "Start Fast"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/state-21-fasting-active

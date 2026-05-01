@@ -108,16 +108,22 @@ export function TodayAddMealDialog(props: TodayAddMealDialogProps) {
     onOpenSearch,
   } = props;
 
+  // Audit 2026-04-30 visual-qa P0 #5 — the dialog used to put the
+  // submit button directly inside an `overflow-y-auto` content. With
+  // a soft keyboard plus 6 manual-food fields the submit scrolled out
+  // of reach. Now the DialogContent is a flex column with a fixed
+  // header, a `flex-1 overflow-y-auto` body, and a sticky `border-t`
+  // footer that holds Cancel + Add meal. Mirrors P0 #1 (FoodSearch).
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-card border-border max-h-[90vh] min-h-[28rem] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="bg-card border-border max-h-[90vh] min-h-[28rem] flex flex-col p-0 gap-0">
+        <DialogHeader className="px-6 pt-6 pb-3 shrink-0">
           <DialogTitle className="text-foreground">Log a meal</DialogTitle>
           <DialogDescription className="text-muted-foreground">
             Add macros for {selectedDate.toLocaleDateString()} from a saved recipe or enter food manually.
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-2">
+        <div className="grid gap-4 py-2 px-6 flex-1 overflow-y-auto">
           <div className="flex rounded-lg border border-border p-1 bg-muted/50">
             {(["recipe", "manual"] as const).map((mode) => {
               const label = mode === "recipe" ? "Recipe" : "Manual food";
@@ -301,7 +307,7 @@ export function TodayAddMealDialog(props: TodayAddMealDialogProps) {
             />
           </label>
         </div>
-        <DialogFooter>
+        <DialogFooter className="border-t border-border bg-card px-6 py-4 shrink-0">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>

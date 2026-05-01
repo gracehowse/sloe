@@ -168,10 +168,10 @@ export default function OverrideIngredientSheet({
           </View>
 
           <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text, marginBottom: 4 }}>
-            Override nutrition
+            Edit nutrition
           </Text>
           <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: Spacing.md }}>
-            {`Label values for "${ingredientName}" — these replace the matched macros for this row.`}
+            {`Use the values from the ${ingredientName} label.`}
           </Text>
 
           <ScrollView keyboardShouldPersistTaps="handled">
@@ -185,7 +185,7 @@ export default function OverrideIngredientSheet({
                   keyboardType="decimal-pad"
                   inputMode="decimal"
                   autoFocus
-                  accessibilityLabel="Calories override"
+                  accessibilityLabel="Calories from label"
                 />
               </View>
               <View style={styles.half}>
@@ -196,7 +196,7 @@ export default function OverrideIngredientSheet({
                   onChangeText={setP}
                   keyboardType="decimal-pad"
                   inputMode="decimal"
-                  accessibilityLabel="Protein override"
+                  accessibilityLabel="Protein from label"
                 />
               </View>
             </View>
@@ -209,7 +209,7 @@ export default function OverrideIngredientSheet({
                   onChangeText={setC}
                   keyboardType="decimal-pad"
                   inputMode="decimal"
-                  accessibilityLabel="Carbs override"
+                  accessibilityLabel="Carbs from label"
                 />
               </View>
               <View style={styles.half}>
@@ -220,7 +220,7 @@ export default function OverrideIngredientSheet({
                   onChangeText={setF}
                   keyboardType="decimal-pad"
                   inputMode="decimal"
-                  accessibilityLabel="Fat override"
+                  accessibilityLabel="Fat from label"
                 />
               </View>
             </View>
@@ -232,7 +232,7 @@ export default function OverrideIngredientSheet({
                 onChangeText={setFiber}
                 keyboardType="decimal-pad"
                 inputMode="decimal"
-                accessibilityLabel="Fiber override"
+                accessibilityLabel="Fiber from label"
               />
             </View>
           </ScrollView>
@@ -244,9 +244,9 @@ export default function OverrideIngredientSheet({
                 onPress={() => void handleReset()}
                 disabled={saving}
                 accessibilityRole="button"
-                accessibilityLabel="Reset override to matched macros"
+                accessibilityLabel="Reset to matched macros"
               >
-                <Text style={styles.btnDestructiveText}>Reset</Text>
+                <Text style={styles.btnDestructiveText}>Reset to match</Text>
               </Pressable>
             ) : null}
             <Pressable
@@ -254,7 +254,7 @@ export default function OverrideIngredientSheet({
               onPress={onClose}
               disabled={saving}
               accessibilityRole="button"
-              accessibilityLabel="Cancel override"
+              accessibilityLabel="Cancel edit"
             >
               <Text style={styles.btnGhostText}>Cancel</Text>
             </Pressable>
@@ -263,7 +263,7 @@ export default function OverrideIngredientSheet({
               onPress={() => void handleSave()}
               disabled={saving}
               accessibilityRole="button"
-              accessibilityLabel="Save override"
+              accessibilityLabel="Save nutrition values"
             >
               <Text style={styles.btnPrimaryText}>{saving ? "Saving…" : "Save"}</Text>
             </Pressable>

@@ -3,7 +3,7 @@
  * onboarding "Pick 5 recipes" final-step selection logic.
  *
  * Authority: D-2026-04-27-14 (onboarding produces first plan).
- * Source: src/lib/onboarding/v2/finalStep.ts
+ * Source: src/lib/onboarding/finalStep.ts
  *
  * What's pinned:
  *   - togglePick adds / removes ids without mutating the input.
@@ -23,7 +23,7 @@ import {
   derivePickerState,
   pickCounterLabel,
   ONBOARDING_PICK_MIN,
-} from "../../src/lib/onboarding/v2/finalStep";
+} from "../../src/lib/onboarding/finalStep";
 import { NORTH_STAR_LIBRARY_MIN } from "../../src/lib/nutrition/northStarSuggestion";
 
 describe("togglePick", () => {

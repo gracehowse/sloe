@@ -1,5 +1,6 @@
 import React from "react";
 import { Pressable, Text, View } from "react-native";
+import { useRouter } from "expo-router";
 import {
   ChevronLeft,
   ChevronRight,
@@ -61,6 +62,7 @@ export function TodayDateHeader({
   cardColor,
   cardBorderColor,
 }: TodayDateHeaderProps) {
+  const router = useRouter();
   return (
     <View style={{ gap: 8 }}>
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
@@ -83,11 +85,12 @@ export function TodayDateHeader({
           </Pressable>
           <Pressable onPress={onTapTitle} hitSlop={8}>
             <Text
+              numberOfLines={1}
               style={{
                 fontSize: 11,
-                fontWeight: "600",
+                fontWeight: "500",
                 color: textTertiaryColor,
-                letterSpacing: 1,
+                letterSpacing: 0.5,
                 textTransform: "uppercase",
               }}
             >
@@ -171,18 +174,26 @@ export function TodayDateHeader({
               />
             </Pressable>
           </View>
-          <View
-            style={{
+          {/* Audit 2026-04-30: avatar pill is the universal profile-entry
+              affordance (Cal AI / MFP / Lifesum all do this). Was a static
+              `<View>` with no onPress — now routes to /profile. */}
+          <Pressable
+            onPress={() => router.push("/profile")}
+            accessibilityRole="button"
+            accessibilityLabel="Open profile"
+            hitSlop={8}
+            style={({ pressed }) => ({
               width: 32,
               height: 32,
               borderRadius: 8,
               backgroundColor: Accent.primary + "08",
               alignItems: "center",
               justifyContent: "center",
-            }}
+              opacity: pressed ? 0.7 : 1,
+            })}
           >
             <Text style={{ fontSize: 12, fontWeight: "700", color: Accent.primary }}>{avatarLetter}</Text>
-          </View>
+          </Pressable>
         </View>
       </View>
       {viewMode === "day" && (

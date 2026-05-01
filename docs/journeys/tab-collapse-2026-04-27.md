@@ -95,6 +95,73 @@ custom `tabPress` listener and replaces the route with `/library` so
 the primary press always lands on the default sub-tab. Same for
 You / `/settings` / `/more` → `/progress`.
 
+### Centered raised Log button (2026-04-30 update)
+
+The four-tab IA above is unchanged, but the tab bar itself is now
+rendered by a custom `<SupprTabBar>` component (passed to `<Tabs>`
+via the `tabBar={...}` prop). The custom bar renders the same four
+primary tabs PLUS a centered raised Plus button between Recipes and
+Plan — the canonical Log entry point.
+
+Why custom: the `<LogFab>` previously sat at `right:18 / bottom:100`
+on Today, overlapping right-edge meal cards + macro tile column.
+Customer-lens flagged it as breaking iOS genre convention (Cal AI /
+Lifesum / MyFitnessPal / Twitter X all converged on a centered raised
+tab-bar button). Moving the button into the tab bar:
+
+- preserves the four-tab IA (no fifth `Tabs.Screen`);
+- makes the Log entry global to all tabs (the user can open the
+  LogSheet from Recipes / Plan / You without backing out to Today
+  first);
+- removes the right-edge overlap on Today;
+- matches the Cal AI / Lifesum genre.
+
+Wire-up:
+- `apps/mobile/components/tabs/SupprTabBar.tsx` — custom tab bar.
+  Filters out hidden routes (`href: null`), renders 4 visible tabs,
+  and injects `<LogTabBarButton>` between visible-index 1 (Recipes)
+  and visible-index 2 (Plan).
+- `apps/mobile/components/tabs/LogTabBarButton.tsx` — 56pt raised
+  Plus, `top:-16` so it overflows above the tab bar fill line.
+  `testID="today-log-fab"` retained from the old FAB so existing
+  Maestro flows keep matching.
+- The button's onPress calls `router.push({ pathname: "/(tabs)",
+  params: { openLog: "1" } })`. `(tabs)/index.tsx` consumes
+  `params.openLog === "1"` via a `useEffect` and opens the LogSheet
+  (`setFabSheetOpen(true)`), then clears the param so a back-nav
+  doesn't re-open the sheet.
+- The legacy `<LogFab>` component file (`apps/mobile/components/
+  today/LogFab.tsx`) is preserved for now (deferred deletion) but is
+  no longer rendered in Today's composition root.
+
+Web mobile-web parity (2026-04-30): the same raised-button pattern
+ships in `src/app/App.tsx` — between Recipes and Plan in the
+mobile-web `<nav>` block. Implementation:
+
+- Lucide `Plus` glyph (`lucide-react`), 24px, strokeWidth 2.5,
+  white-on-`bg-primary`, 56pt circle (`w-14 h-14 rounded-full`),
+  drop-shadow `0 4px 16px rgba(76,108,224,0.4)`, projected 16px
+  above the bar fill line via `relative -top-4`. Mobile parity:
+  identical visual contract to `<LogTabBarButton>`.
+- Tap calls `openLogSheetFromTabBar()` which stamps `view=today` +
+  `openLog=1` on the URL (mirrors mobile's
+  `router.push({ pathname: "/(tabs)", params: { openLog: "1" } })`).
+- `<NutritionTracker>` reads `openLog=1` via `useSearchParams`
+  (added 2026-04-30), opens the canonical `<LogSheet>` via
+  `setLogSheetOpen(true)`, then clears the param via
+  `router.replace`. Mirrors the mobile `(tabs)/index.tsx` consumer.
+- The legacy `<LogFab>` (`src/app/components/suppr/log-fab.tsx`) is
+  no longer rendered in `NutritionTracker`. Component file is
+  preserved for deferred deletion (a follow-up sweep removes both
+  the web and mobile primitive files together).
+- Desktop (≥ md) keeps the sidebar with no FAB per
+  D-2026-04-27-11. The host `<nav>` is `md:hidden`, so the raised
+  button is mobile-web only.
+
+Pin: `tests/unit/mobileWebRaisedLogButton.test.ts` covers the
+App.tsx render + the NutritionTracker consumer (17 source-pin
+assertions).
+
 ---
 
 ## Web implementation
@@ -272,8 +339,8 @@ behind a Settings opt-in. The implementation:
 
 | Surface | Mobile | Web | Reason |
 |---|---|---|---|
-| LogFab tap | Opens TodayFabSheet | Surfaces "Coming in Phase 3" alert | Mobile has the sheet primitive in-tree; web's logging entries are different surfaces. Phase 3 unifies behind `<LogSheet>` |
-| LogFab visibility | Always on day-view | Mobile-web only (`md:hidden`) | Daily logging is a phone activity (D-2026-04-27-11) |
+| Log button placement | Centered raised Plus in tab bar (between Recipes + Plan) | Centered raised Plus in mobile-web `<nav>` (between Recipes + Plan) | Parity restored 2026-04-30 (mobile commit `6633d2d` + web parity-close commit). Desktop keeps the sidebar with no FAB per D-2026-04-27-11 |
+| Log button visibility | Always visible across all tabs | Mobile-web only (host `<nav>` is `md:hidden`); desktop has no FAB | Daily logging is a phone activity (D-2026-04-27-11); the desktop sidebar uses the in-app surfaces directly |
 | Plan ↔ Shopping | Cross-route navigation (`router.push("/shopping")`) | State toggle within `<MealPlanner>` (existing pattern preserved) | Pre-existing parity gap; mobile shopping has its own back stack |
 | Sub-tab haptic | Selection haptic on iOS | None | Web has no haptic API |
 
@@ -340,3 +407,36 @@ Explicitly out of scope for B1.1 / B1.2 / B1.4:
 
 If the Notion MCP isn't connected at the time of this commit, Grace
 should re-run the above when next online.
+
+---
+
+## Addendum (2026-04-30) — Side FAB → centered raised tab-bar button
+
+Customer-lens audit (2026-04-30) flagged the side `<LogFab>`
+(`right:18 / bottom:100`) as overlapping right-edge meal cards and
+as the wrong genre for iOS — Cal AI / Lifesum / MyFitnessPal /
+Twitter X all use a centered raised tab-bar button. Two-commit
+rollout:
+
+1. **Mobile** (commit `6633d2d`, 2026-04-30) — replaced the side
+   FAB with a custom `<SupprTabBar>` + `<LogTabBarButton>` that
+   render the four primary tabs PLUS a centered raised Plus
+   between Recipes and Plan. The 4-tab IA from D-2026-04-27-02 is
+   preserved (the raised button is purely a UI element, not a 5th
+   `Tabs.Screen`). Tap navigates Today with `?openLog=1`; the
+   Today screen consumes the param and opens the canonical
+   `<LogSheet>`.
+2. **Web mobile-web parity** (this commit) — the same pattern
+   ships in `src/app/App.tsx`'s mobile-web `<nav>` block. Lucide
+   `Plus` glyph (web uses `lucide-react`), 56pt `bg-primary`
+   circle, projected 16px above the bar fill line via
+   `relative -top-4`. Tap stamps `view=today` + `openLog=1` on
+   the URL; `<NutritionTracker>` consumes the param via
+   `useSearchParams` and opens the `<LogSheet>`. The legacy
+   `<LogFab>` is no longer rendered (component file preserved
+   for deferred deletion). Desktop (≥ md) is unchanged — the
+   sidebar takes over and there is no FAB per D-2026-04-27-11.
+
+Pin: `tests/unit/mobileWebRaisedLogButton.test.ts` (17
+source-pin assertions covering the App.tsx render + the
+NutritionTracker openLog consumer).

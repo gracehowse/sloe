@@ -70,29 +70,11 @@ export function isFeatureEnabled(flag: string): boolean {
   }
 }
 
-/** Convenience wrapper for the `onboarding_v2` PostHog flag.
- *  Centralised so every callsite agrees on the flag key and there's
- *  a single place to flip it for forced rollouts. */
-export function isOnboardingV2Enabled(): boolean {
-  return isFeatureEnabled("onboarding_v2");
-}
-
-/** Subscribe to flag-load events (mirror of the web helper at
- *  `src/lib/analytics/track.ts#subscribeToFlags`). Necessary because
- *  posthog-react-native fetches flags asynchronously after `identify`,
- *  and the redirect from `apps/mobile/app/onboarding.tsx` would
- *  otherwise miss the first flag load.
- *
- *  Returns an unsubscribe function suitable for `useEffect` cleanup. */
-export function subscribeToFlags(callback: () => void): () => void {
-  const c = getPostHogClient();
-  if (!c) return () => {};
-  try {
-    return c.onFeatureFlags(callback);
-  } catch {
-    return () => {};
-  }
-}
+// `isOnboardingV2Enabled` + `subscribeToFlags` were removed 2026-04-30
+// once the onboarding_v2 flag hit 100% and the legacy
+// /onboarding redirect was replaced by the canonical route. The
+// PostHog flag itself stays — it's the source of truth for the
+// rollout history.
 
 async function maybeMarkFirstLog(c: PostHog): Promise<void> {
   try {

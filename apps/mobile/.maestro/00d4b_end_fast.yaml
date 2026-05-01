@@ -1,0 +1,19 @@
+# @cases TC-INT-END-FAST
+# @screen fasting
+appId: com.supprclub.supprapp
+name: "Interactive — End the fast started by 00d4 (cleanup)"
+---
+# Cleanup-only: not capturing, just reverts state from 00d4. Runs
+# AFTER the rest of the audit so its potential crash doesn't lose
+# any other captures.
+
+- launchApp:
+    appId: com.supprclub.supprapp
+- waitForAnimationToEnd
+
+- openLink: suppr:///fasting
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- tapOn: "End Fast"
+- waitForAnimationToEnd
+- tapOn: "End"

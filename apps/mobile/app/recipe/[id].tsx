@@ -21,6 +21,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle } from "react-native-svg";
 import {
   Bookmark,
+  Check,
   ChevronLeft,
   Clock,
   Minus,
@@ -249,7 +250,7 @@ export default function RecipeDetailScreen() {
   const lowConfidenceAutoNudgeShown = useRef<Set<string>>(new Set());
   const [cookMode, setCookMode] = useState(false);
   const [cookStep, setCookStep] = useState(0);
-  const [userTargets, setUserTargets] = useState({ protein: NUTRITION_DEFAULTS.protein, carbs: NUTRITION_DEFAULTS.carbs, fat: NUTRITION_DEFAULTS.fat, fiber: NUTRITION_DEFAULTS.fiber });
+  const [userTargets, setUserTargets] = useState({ calories: NUTRITION_DEFAULTS.calories, protein: NUTRITION_DEFAULTS.protein, carbs: NUTRITION_DEFAULTS.carbs, fat: NUTRITION_DEFAULTS.fat, fiber: NUTRITION_DEFAULTS.fiber });
   const [trackedMacros, setTrackedMacros] = useState<string[]>([...DEFAULT_TRACKED_MACROS]);
   const [activeTab, setActiveTab] = useState<"ingredients" | "steps" | "nutrition">("ingredients");
   const [logPortion, setLogPortion] = useState(1);
@@ -274,11 +275,12 @@ export default function RecipeDetailScreen() {
     }
     const { data } = await supabase
       .from("profiles")
-      .select("tracked_macros, target_protein, target_carbs, target_fat, target_fiber_g")
+      .select("tracked_macros, target_calories, target_protein, target_carbs, target_fat, target_fiber_g")
       .eq("id", userId)
       .maybeSingle();
     if (!data) return;
     setUserTargets({
+      calories: (data.target_calories as number) ?? NUTRITION_DEFAULTS.calories,
       protein: (data.target_protein as number) ?? NUTRITION_DEFAULTS.protein,
       carbs: (data.target_carbs as number) ?? NUTRITION_DEFAULTS.carbs,
       fat: (data.target_fat as number) ?? NUTRITION_DEFAULTS.fat,
@@ -1593,6 +1595,70 @@ export default function RecipeDetailScreen() {
             );
           })()}
 
+          {/* "Fits your day" badge — 2026-04-30 audit visual-qa P1 #4.
+              Ties the recipe back to the user's daily calorie target,
+              the killer differentiator vs MFP / Lifesum.
+
+              Verdict treatment (audit re-run 2026-04-30 ui-critic A3:
+              the original `≈ 30% of your day` was just a number, not a
+              verdict — same colour regardless of whether the recipe
+              fits a sensible portion of the day or blows through it).
+                ≤ 50%   → "Fits your day" with checkmark, success-green
+                51–99%  → `≈ X% of your day`, amber warning tinge
+                ≥ 100%  → `≈ X% of your day · over a full day`, red
+              Skipped when nutrition is unknown or the target is the
+              app default (suggests the user hasn't set their target). */}
+          {(() => {
+            const kcalNum = Math.round(macros.calories);
+            const targetCals = userTargets.calories;
+            if (kcalNum <= 0 || !targetCals || targetCals <= 0) return null;
+            const rawPct = (kcalNum / targetCals) * 100;
+            const pct = Math.max(1, Math.round(rawPct / 5) * 5);
+            const fits = pct <= 50;
+            const overDay = pct >= 100;
+            const tone = fits
+              ? { bg: Accent.success + "1A", fg: Accent.success }
+              : overDay
+                ? { bg: Accent.destructive + "1A", fg: Accent.destructive }
+                : { bg: Accent.warning + "1A", fg: Accent.warning };
+            const label = fits
+              ? "Fits your day"
+              : overDay
+                ? `≈ ${pct}% of your day · over a full day`
+                : `≈ ${pct}% of your day`;
+            const a11y = fits
+              ? `Fits your day. Approximately ${pct} percent of your daily calorie target.`
+              : overDay
+                ? `Over a full day. Approximately ${pct} percent of your daily calorie target.`
+                : `Approximately ${pct} percent of your daily calorie target.`;
+            return (
+              <View
+                style={{
+                  alignSelf: "center",
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 6,
+                  paddingHorizontal: Spacing.md,
+                  paddingVertical: 6,
+                  borderRadius: Radius.full,
+                  backgroundColor: tone.bg,
+                  marginBottom: Spacing.lg,
+                }}
+                accessibilityLabel={a11y}
+              >
+                {fits ? <Check size={14} color={tone.fg} strokeWidth={2.5} /> : null}
+                <Text style={{ fontSize: 12, fontWeight: "700", color: tone.fg }}>
+                  {label}
+                </Text>
+                {fits ? (
+                  <Text style={{ fontSize: 12, fontWeight: "500", color: tone.fg, opacity: 0.7 }}>
+                    · ≈ {pct}%
+                  </Text>
+                ) : null}
+              </View>
+            );
+          })()}
+
           {/* Polish (2026-04-25 visual-qa): the redundant "MACROS" overline
               was visually dead weight — every tile below already self-labels
               with a coloured chip + label. Removing it tightens the gap
@@ -2240,14 +2306,32 @@ export default function RecipeDetailScreen() {
         </View>
       </Modal>
 
-      {/* Cook Mode Overlay */}
-      {cookMode && instructionSteps.length > 0 && (
-        <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.background, paddingTop: insets.top + 20, paddingHorizontal: Spacing.xl, justifyContent: "space-between", paddingBottom: insets.bottom + 20 }}>
+      {/* Cook Mode Overlay — Modal so Android hardware-back dismisses
+          the overlay instead of navigating the router away from the
+          recipe screen entirely (audit 2026-04-30 modal-dismiss sweep). */}
+      <Modal
+        visible={cookMode && instructionSteps.length > 0}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => {
+          setCookMode(false);
+          setCookStep(0);
+        }}
+      >
+        <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top + 20, paddingHorizontal: Spacing.xl, justifyContent: "space-between", paddingBottom: insets.bottom + 20 }}>
           <View>
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.lg }}>
               <Text style={{ fontSize: 13, fontWeight: "700", color: Accent.primary, letterSpacing: 2 }}>COOK MODE</Text>
-              <Pressable onPress={() => setCookMode(false)}>
-                <X size={28} color={colors.textSecondary} />
+              <Pressable
+                onPress={() => {
+                  setCookMode(false);
+                  setCookStep(0);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Exit cook mode"
+                hitSlop={12}
+              >
+                <X size={28} color={colors.textSecondary} strokeWidth={2.25} />
               </Pressable>
             </View>
             <Text style={{ fontSize: 14, color: colors.textSecondary, marginBottom: 8 }}>
@@ -2275,14 +2359,17 @@ export default function RecipeDetailScreen() {
             ) : (
               <Pressable
                 style={{ flex: 1, backgroundColor: Accent.success, borderRadius: Radius.md, paddingVertical: 16, alignItems: "center" }}
-                onPress={() => setCookMode(false)}
+                onPress={() => {
+                  setCookMode(false);
+                  setCookStep(0);
+                }}
               >
                 <Text style={{ fontWeight: "700", color: "#fff" }}>Done!</Text>
               </Pressable>
             )}
           </View>
         </View>
-      )}
+      </Modal>
     </View>
   );
 }

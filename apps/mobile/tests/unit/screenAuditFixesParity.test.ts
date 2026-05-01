@@ -22,7 +22,16 @@ const MOBILE_VERIFY = resolve(__dirname, "../../lib/verifyRecipe.ts");
 const MOBILE_MEAL = resolve(__dirname, "../../app/meal-nutrition.tsx");
 const MOBILE_RECIPE = resolve(__dirname, "../../app/recipe/[id].tsx");
 const WEB_RECIPE = resolve(__dirname, "../../../../src/app/components/RecipeDetail.tsx");
-const WEB_FOOD_SEARCH = resolve(__dirname, "../../../../src/app/components/FoodSearch.tsx");
+/**
+ * 2026-04-30 — web FoodSearch.tsx (1568 LOC) was extracted into
+ * `food-search/FoodSearchPanel.tsx` (commit `cb1317f`). The wrapper
+ * keeps only the dialog shell; F-89 / F-90 / F-91 inference + filter
+ * imports live in the panel. Source-pin parity reads the panel.
+ */
+const WEB_FOOD_SEARCH = resolve(
+  __dirname,
+  "../../../../src/app/components/food-search/FoodSearchPanel.tsx",
+);
 const WEB_DATE_HEADER = resolve(__dirname, "../../../../src/app/components/suppr/today-date-header.tsx");
 const SHARED_CONFIDENCE = resolve(__dirname, "../../../../src/lib/nutrition/macroSplitConfidence.ts");
 const SHARED_TITLE = resolve(__dirname, "../../../../src/lib/recipe/normaliseDisplayTitle.ts");
@@ -186,7 +195,13 @@ describe("F-89 + F-90 — bare-noun + low-relevance filters applied at merge", (
   it("web mergeAndDedup applies the same filters", () => {
     expect(SRC.webSearch).toMatch(/import\s*\{[^}]*isBareGenericNounRow[^}]*\}/s);
     expect(SRC.webSearch).toMatch(/isBareGenericNounRow\(r\.name,\s*isVerified\)/);
-    expect(SRC.webSearch).toMatch(/isLowRelevanceNonVerifiedRow\(r\._rel,\s*isVerified\)/);
+    // After the FoodSearchPanel extraction the `_rel` field is widened
+    // to `unknown` on the panel's local type, so the call site casts
+    // (`r._rel as number`). Same semantics — gate the row on relevance
+    // when the source isn't verified.
+    expect(SRC.webSearch).toMatch(
+      /isLowRelevanceNonVerifiedRow\(r\._rel(?:\s+as\s+number)?,\s*isVerified\)/,
+    );
   });
 });
 

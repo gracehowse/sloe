@@ -61,55 +61,63 @@ describe("density-refusal hint on recipe verify screen (P0-2 + polish A.3)", () 
   });
 });
 
-describe("onboarding_completed event fires from both mobile paths (P1-13 + polish A.4)", () => {
+describe("onboarding_completed event fires from both platforms (P1-13 + polish A.4)", () => {
   it("the analytics events catalog declares onboarding_completed (shared name across web + mobile)", () => {
     const src = read("src/lib/analytics/events.ts");
     expect(src).toMatch(/onboarding_completed:\s*["']onboarding_completed["']/);
   });
 
-  describe("mobile onboarding.tsx", () => {
-    const src = read("apps/mobile/app/onboarding.tsx");
+  describe("mobile mobile-flow.tsx", () => {
+    // 2026-04-30: legacy `apps/mobile/app/onboarding.tsx` (1102-line
+    // form) was deleted as part of the v2 → canonical rename. The
+    // entry route is now a thin route mount; the actual completion
+    // handler — and the `track(onboarding_completed)` call — lives
+    // in `apps/mobile/components/onboarding/mobile-flow.tsx`. The
+    // legacy "skip" path is gone (v2 has a terminal recipes-picker,
+    // not a skip-to-paywall short-circuit). What remains is the
+    // full-completion path with the three cohort properties.
+    const src = read("apps/mobile/components/onboarding/mobile-flow.tsx");
 
-    it("fires the event from the skip path with `path: \"skip\"`", () => {
-      // Skip path fires before navigating to /paywall?from=onboarding.
-      // Pattern: track(AnalyticsEvents.onboarding_completed, { path: "skip" })
-      expect(src).toMatch(
-        /track\(\s*AnalyticsEvents\.onboarding_completed\s*,\s*\{[^}]*path:\s*["']skip["']/,
+    it("fires the event with the v2 cohort properties (parity with web-flow.tsx)", () => {
+      // Property shape was renamed during the v2 → canonical rename
+      // (2026-04-30). Old keys: goal_type / plan_pace / nutrition_strategy.
+      // New keys: flow / goal / recipes_picked / recipes_resolved /
+      // plan_built / weight_skipped — identical to web-flow.tsx's
+      // payload so funnels reconcile across platforms.
+      expect(src).toMatch(/track\(\s*AnalyticsEvents\.onboarding_completed/);
+      expect(src).toMatch(/flow:\s*["']v2["']/);
+      expect(src).toMatch(/goal:\s*state\.goal/);
+      expect(src).toMatch(/recipes_picked/);
+      expect(src).toMatch(/plan_built/);
+    });
+
+    it("the authed-completion track call is wrapped in try/catch so analytics SDK errors never block onboarding", () => {
+      // There are two track sites in the file: one in the unauthed
+      // early-return (line ~106) and the canonical one in the
+      // authed-completion handler. The latter is the worst possible
+      // failure point for the user (they've finished onboarding —
+      // they expect Today, not a stuck button), so it MUST be in a
+      // try/catch.
+      //
+      // Find the SECOND occurrence — that's the authed-completion
+      // path. The unauthed early-return does not need wrapping
+      // because it returns immediately on track() error.
+      const firstIdx = src.indexOf("AnalyticsEvents.onboarding_completed");
+      expect(firstIdx).toBeGreaterThan(0);
+      const secondIdx = src.indexOf("AnalyticsEvents.onboarding_completed", firstIdx + 1);
+      expect(secondIdx).toBeGreaterThan(firstIdx);
+      const ctx = src.slice(
+        Math.max(0, secondIdx - 200),
+        secondIdx + 500,
       );
-    });
-
-    it("fires the event from the saveAndFinish path with `path: \"full\"` plus three onboarding-decision properties", () => {
-      // Full path includes goal_type, plan_pace, nutrition_strategy for cohort analysis.
-      expect(src).toMatch(/path:\s*["']full["']/);
-      expect(src).toMatch(/goal_type:\s*data\.goalType/);
-      expect(src).toMatch(/plan_pace:\s*data\.planPace/);
-      expect(src).toMatch(/nutrition_strategy:\s*data\.strategy/);
-    });
-
-    it("the event fire is wrapped in try/catch so analytics SDK errors never block onboarding completion", () => {
-      // Both onboarding paths must wrap the track() call in try/catch
-      // because a thrown PostHog error during onboarding would be the
-      // worst possible UX moment for the user.
-      const skipMatchIdx = src.indexOf('path: "skip"');
-      const fullMatchIdx = src.indexOf('path: "full"');
-      expect(skipMatchIdx).toBeGreaterThan(0);
-      expect(fullMatchIdx).toBeGreaterThan(0);
-
-      // 500-char window on each side. The full-completion path's
-      // try/catch wraps a multi-property payload so the closing
-      // `} catch` lands ~270 chars after `path: "full"`.
-      const skipCtx = src.slice(Math.max(0, skipMatchIdx - 500), skipMatchIdx + 500);
-      const fullCtx = src.slice(Math.max(0, fullMatchIdx - 500), fullMatchIdx + 500);
-      expect(skipCtx).toMatch(/try\s*\{/);
-      expect(skipCtx).toMatch(/\}\s*catch/);
-      expect(fullCtx).toMatch(/try\s*\{/);
-      expect(fullCtx).toMatch(/\}\s*catch/);
+      expect(ctx).toMatch(/try\s*\{/);
+      expect(ctx).toMatch(/\}\s*catch/);
     });
   });
 
   describe("web equivalent (parity check)", () => {
     it("web web-flow.tsx fires the same event so funnels reconcile across platforms", () => {
-      const src = read("src/app/components/onboarding-v2/web-flow.tsx");
+      const src = read("src/app/components/onboarding/web-flow.tsx");
       expect(src).toMatch(/track\(\s*AnalyticsEvents\.onboarding_completed/);
     });
   });

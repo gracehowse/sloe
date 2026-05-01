@@ -1,7 +1,7 @@
 import React from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
+import { X } from "lucide-react-native";
 
 /**
  * TodayNutrientsModal — "View all nutrients" day sheet.
@@ -57,8 +57,8 @@ export function TodayNutrientsModal({
             }}
           >
             <Text style={{ fontSize: 17, fontWeight: "700", color: textColor }}>Day nutrients</Text>
-            <Pressable onPress={onClose} hitSlop={12} accessibilityRole="button">
-              <Ionicons name="close" size={28} color={textSecondaryColor} />
+            <Pressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Close">
+              <X size={24} color={textSecondaryColor} strokeWidth={2.25} />
             </Pressable>
           </View>
           <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 }}>

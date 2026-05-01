@@ -282,8 +282,14 @@ export function TodayMealsSection({
                   {sectionMeals.map((meal) => (
                     <div
                       key={meal.id}
+                      // Audit 2026-04-30 visual-qa P1 #11 — the inline
+                      // 56px padding overrode the Tailwind `px-4` and
+                      // diverged from the slot header (`px-3.5` = 14px),
+                      // creating a 42px nesting indent without any
+                      // visual connector. Align to the slot header so
+                      // meals read as flat list items under the header.
                       className="flex items-center justify-between px-4 py-2.5 border-b border-border/10"
-                      style={{ paddingLeft: 56 }}
+                      style={{ paddingLeft: 14 }}
                     >
                       <div className="flex items-center gap-1.5 min-w-0 flex-1">
                         {/* Phase 3 / B2.4 (D-2026-04-27-16) — source dot

@@ -41,8 +41,15 @@ describe("LogSheet entry-point consolidation (mobile)", () => {
     expect(indexSrc).toMatch(/<LogSheet[\s\S]+?visible=\{fabSheetOpen\}/);
   });
 
-  it("LogFab onPress opens the canonical sheet (no Phase 2 alert path)", () => {
-    expect(indexSrc).toMatch(/<LogFab[\s\S]+?onPress=\{\(\)\s*=>\s*setFabSheetOpen\(true\)\}/);
+  it("centered raised Log button opens the canonical sheet via `?openLog=1` (replaces the side <LogFab>, 2026-04-30)", () => {
+    // The side `<LogFab>` was retired 2026-04-30 (customer-lens
+    // audit). The new entry point is the centered raised button in
+    // `<SupprTabBar>`, which routes Today with `?openLog=1`. Pin the
+    // consumer effect here so a regression that drops the deep-link
+    // wiring (and therefore breaks the tab bar Log button) fails CI.
+    expect(indexSrc).toMatch(
+      /params\.openLog\s*===\s*"1"[\s\S]+?setFabSheetOpen\(true\)/,
+    );
   });
 });
 
@@ -59,18 +66,54 @@ describe("Today composition root — tracking-extras prefs (P0-3, 2026-04-28)", 
   });
 });
 
-describe("LogSheet web wiring (NutritionTracker)", () => {
+describe("LogSheet web wiring (NutritionTracker + raised tab-bar button)", () => {
   const trackerPath = path.resolve(__dirname, "../../../../src/app/components/NutritionTracker.tsx");
   const trackerSrc = fs.readFileSync(trackerPath, "utf8");
+  // 2026-04-30 (commits `a95fa30` + `cb1317f`) — the side `<LogFab>`
+  // (right:18 / bottom:100) was retired on web in favour of the
+  // centered raised tab-bar button (mirrors mobile commit `6633d2d`).
+  // The button lives in `App.tsx` and dispatches a `?openLog=1` URL
+  // param; `NutritionTracker` consumes that param and opens the
+  // canonical `<LogSheet>` — so the canonical Log entry point still
+  // resolves to the same sheet, just via a URL-stamp rather than a
+  // direct ref.
+  const appPath = path.resolve(__dirname, "../../../../src/app/App.tsx");
+  const appSrc = fs.readFileSync(appPath, "utf8");
 
   it("imports the canonical <LogSheet>", () => {
     expect(trackerSrc).toContain('import { LogSheet }');
   });
 
-  it("LogFab onPress opens the canonical web LogSheet", () => {
-    expect(trackerSrc).toMatch(
-      /<LogFab[\s\S]+?onPress=\{\(\)\s*=>\s*setLogSheetOpen\(true\)\}/,
+  it("the raised tab-bar Plus button stamps ?openLog=1 on the URL", () => {
+    // App.tsx defines `openLogSheetFromTabBar` which sets `openLog=1`
+    // and routes to Today. The button itself wires `onClick` to that
+    // handler.
+    expect(appSrc).toMatch(
+      /openLogSheetFromTabBar\s*=\s*useCallback\(\s*\(\s*\)\s*=>\s*\{[\s\S]+?params\.set\(["']openLog["'],\s*["']1["']\)/,
     );
+    expect(appSrc).toMatch(
+      /<button[\s\S]+?onClick=\{openLogSheetFromTabBar\}[\s\S]+?aria-label="Log a meal"/,
+    );
+  });
+
+  it("NutritionTracker consumes ?openLog=1 and opens the canonical LogSheet", () => {
+    // The URL param consumer flips `setLogSheetOpen(true)` and clears
+    // the param so back-nav doesn't re-open the sheet — this is the
+    // single canonical path from the raised button into the sheet.
+    expect(trackerSrc).toMatch(
+      /trackerSearchParams\.get\(["']openLog["']\)/,
+    );
+    expect(trackerSrc).toMatch(
+      /if\s*\(openLogParam\s*!==\s*["']1["']\)\s*return;\s*\n\s*setLogSheetOpen\(true\)/,
+    );
+    expect(trackerSrc).toMatch(/params\.delete\(["']openLog["']\)/);
+  });
+
+  it("the legacy <LogFab> JSX is no longer rendered", () => {
+    // `<LogFab>` is retired on web (commit `a95fa30`). Comments
+    // referencing the legacy component are fine; an actual render
+    // (`<LogFab` followed by whitespace or a self-close) is not.
+    expect(trackerSrc).not.toMatch(/<LogFab[\s\n]/);
   });
 
   it("renders <LogSheet> wired to logSheetOpen", () => {

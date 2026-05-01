@@ -34,6 +34,10 @@ import {
   getLatestChangelog,
   groupChangelogItems,
 } from "../../../src/lib/changelog/entries";
+import {
+  formatInstalledBuildLabel,
+  readInstalledBuild,
+} from "@/lib/installedBuild";
 
 function formatReleaseDate(iso: string): string {
   // Defensive: if the ISO is malformed, fall back to the raw string
@@ -55,6 +59,18 @@ export default function WhatsNewScreen() {
 
   const entry = useMemo(() => getLatestChangelog(), []);
   const groups = useMemo(() => groupChangelogItems(entry), [entry]);
+  // 2026-04-30 (#12): source the build label from the running Expo
+  // runtime so it can never disagree with what the device actually has
+  // installed. The changelog entry remains the source of truth for
+  // release date and *content* — only the chrome label is live.
+  const buildLabel = useMemo(
+    () =>
+      formatInstalledBuildLabel(readInstalledBuild(), {
+        appVersion: entry.appVersion,
+        buildNumber: entry.buildNumber,
+      }),
+    [entry.appVersion, entry.buildNumber],
+  );
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -161,7 +177,7 @@ export default function WhatsNewScreen() {
       >
         <View style={styles.headerCard} testID="whats-new-header">
           <Text style={styles.buildTitle} testID="whats-new-title">
-            {`Build ${entry.buildNumber} (${entry.appVersion} #${entry.buildNumber})`}
+            {buildLabel}
           </Text>
           <Text style={styles.buildMeta} testID="whats-new-date">
             {formatReleaseDate(entry.releaseDate)}

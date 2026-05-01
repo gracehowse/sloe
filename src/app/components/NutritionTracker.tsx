@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { WifiOff } from "lucide-react";
 import { Icons } from "./ui/icons";
 import { toast } from "sonner";
@@ -49,7 +50,13 @@ import { CopyMealDialog } from "./suppr/copy-meal-dialog";
 import { DuplicateDayDialog } from "./suppr/duplicate-day-dialog";
 import { HydrationStimulantsCard } from "./suppr/hydration-stimulants-card";
 import { StreakPip } from "./suppr/streak-pip";
-import { LogFab } from "./suppr/log-fab";
+// `<LogFab>` (./suppr/log-fab) is no longer rendered on mobile-web.
+// The canonical Log entry point is now the centered raised Plus
+// button in the mobile-web `<nav>` (App.tsx), mirroring the mobile
+// `<SupprTabBar>` + `<LogTabBarButton>` pattern from commit
+// `6633d2d`. The component file is preserved for now (deferred
+// deletion) so any external reference (tests, type imports) keeps
+// resolving until a follow-up sweep.
 import { LogSheet } from "./suppr/log-sheet";
 // Phase 4 / B3.Y — desktop modal mode for the LogSheet.
 import { useIsDesktop } from "./ui/use-mobile";
@@ -462,6 +469,25 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
   // re-implementing them. Opening the sheet replaces the Phase 2
   // "Coming in Phase 3" alert path.
   const [logSheetOpen, setLogSheetOpen] = useState(false);
+  // 2026-04-30 (web mobile-web parity with mobile commit `6633d2d`):
+  // consume the `?openLog=1` URL param dispatched by the centered
+  // raised Plus button in the App.tsx mobile-web `<nav>` (mirrors the
+  // mobile `<SupprTabBar>` raised-button pattern). The button lives
+  // globally across all tabs; tapping it from Recipes / Plan / You
+  // routes to Today and stamps `openLog=1`. We open the canonical
+  // `<LogSheet>` here (which owns the journal write path) and clear
+  // the param so a back-nav doesn't re-open the sheet.
+  const trackerRouter = useRouter();
+  const trackerSearchParams = useSearchParams();
+  const openLogParam = trackerSearchParams.get("openLog");
+  useEffect(() => {
+    if (openLogParam !== "1") return;
+    setLogSheetOpen(true);
+    const params = new URLSearchParams(trackerSearchParams.toString());
+    params.delete("openLog");
+    const q = params.toString();
+    trackerRouter.replace(q ? `/home?${q}` : "/home", { scroll: false });
+  }, [openLogParam, trackerRouter, trackerSearchParams]);
   // Phase 4 / B3.Y — desktop (≥1024px) renders the LogSheet as a
   // centred 480×640 modal per spec §Surface B; below that, the
   // primitive falls back to the mobile bottom-sheet layout.
@@ -1298,6 +1324,74 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
     [addLoggedMeal, mealSlot],
   );
 
+  /**
+   * Canonical food-search selection commit. Used by both the
+   * `<FoodSearch>` dialog and the inline `<FoodSearchPanel>` mounted
+   * inside `<LogSheet>`. Both surfaces produce the exact same
+   * `FoodSearchSelection` payload so the journal row, source label,
+   * caffeine/alcohol auto-track, and OFF micro persistence stay
+   * byte-for-byte identical regardless of entry point. Mirrors the
+   * mobile Today FoodSearchModal commit flow byte-for-byte.
+   */
+  const commitFoodSearchSelection = useCallback(
+    (selection: FoodSearchSelection) => {
+      const grams = selection.chosenPortion.gramWeight * selection.quantity;
+      const f = grams / 100;
+      // Mirror mobile's attribution — USDA / Open Food Facts / Custom
+      // foods all show a human-readable `source` in the journal row so
+      // the user can tell where the numbers came from after the fact.
+      const sourceLabel =
+        selection.source === "CUSTOM"
+          ? "Custom food"
+          : selection.source === "OFF"
+          ? "Open Food Facts"
+          : selection.source === "Edamam"
+          ? "Edamam"
+          : "USDA FoodData Central";
+      const fiberG = Math.round(selection.macrosPer100g.fiberG * f * 10) / 10;
+      // F-13 (2026-04-19) — auto-track caffeine + alcohol. Stash scaled
+      // values on the meal's `micros` map so the insert path in
+      // `useNutritionJournalState` can bump
+      // `profiles.extra_caffeine_by_day` / `extra_alcohol_g_by_day` and
+      // the delete path can decrement by the same delta. Null per-100g
+      // → 0 (never invented).
+      const { caffeineMg, alcoholG } = scaleCaffeineAlcohol({
+        grams,
+        caffeineMgPer100g: selection.macrosPer100g.caffeineMgPer100g ?? null,
+        alcoholGPer100g: selection.macrosPer100g.alcoholGPer100g ?? null,
+      });
+      // F-79 (2026-04-25) — full OFF micro set scaled for `grams`,
+      // merged with caffeine/alcohol overrides.
+      const explicitMicros: Record<string, number> = {};
+      if (caffeineMg > 0) explicitMicros.caffeineMg = caffeineMg;
+      if (alcoholG > 0) explicitMicros.alcoholG = alcoholG;
+      const micros = scaleMicrosForGrams(
+        (selection as { microsPer100g?: Record<string, number> }).microsPer100g ?? {},
+        grams,
+        explicitMicros,
+      );
+      addLoggedMeal(
+        {
+          name: mealSlot,
+          recipeTitle: selection.name,
+          time: timeLabel,
+          calories: Math.max(0, Math.round(selection.macrosPer100g.calories * f)),
+          protein: Math.max(0, Math.round(selection.macrosPer100g.protein * f * 10) / 10),
+          carbs: Math.max(0, Math.round(selection.macrosPer100g.carbs * f * 10) / 10),
+          fat: Math.max(0, Math.round(selection.macrosPer100g.fat * f * 10) / 10),
+          source: sourceLabel,
+          ...(fiberG > 0 ? { fiberG } : {}),
+          ...(Object.keys(micros).length > 0 ? { micros } : {}),
+        },
+        // Mirror mobile's `food_logged.source` mapping: custom food
+        // logs fire with `"custom_food"`, USDA/OFF/Edamam with
+        // `"manual"` (the canonical shared-food source).
+        selection.source === "CUSTOM" ? "custom_food" : "manual",
+      );
+    },
+    [addLoggedMeal, mealSlot, timeLabel],
+  );
+
   const recipeOptions = useMemo((): RecipeCard[] => {
     return savedRecipesForLibrary.map((r) => ({ ...r, isSaved: true }));
   }, [savedRecipesForLibrary]);
@@ -1938,12 +2032,14 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
           docs/specs/2026-04-27-b4-today-screen-phase3.md and is
           revertable in 1 PostHog click without a deploy. */}
       {/* Phase 2 / B1.2 (D-2026-04-27-15) — TodayQuickLogStrip
-          removed from Today's composition root. The persistent <LogFab>
-          (rendered at the root of the tracker on mobile-web) is the
-          canonical logging-entry affordance going forward; Phase 3
-          wires the unified <LogSheet> behind it. The strip component
-          file stays in the tree for reference and tests but no
-          production caller renders it on Today. */}
+          removed from Today's composition root. The canonical
+          logging-entry affordance is now the centered raised Plus
+          button in the mobile-web `<nav>` (App.tsx), which opens the
+          unified `<LogSheet>` via the `?openLog=1` URL param consumer
+          above (mirrors mobile `<SupprTabBar>` + `<LogTabBarButton>`,
+          commit `6633d2d`). The strip component file stays in the
+          tree for reference and tests but no production caller
+          renders it on Today. */}
 
       {/* TodayStreakInsightCard removed 2026-04-20 (Grace's call per
           Today alignment pass). Mobile removed same commit. Streak
@@ -2238,10 +2334,13 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         }}
       />
 
-      {/* Post-ship #5 (C1a, 2026-04-18) — shared FoodSearch modal.
-          Replaces the former inline USDA-only search inside
-          TodayAddMealDialog. Custom foods surface at the top; USDA +
-          OFF below. Mirrors mobile's Today FoodSearchModal wiring. */}
+      {/* Post-ship #5 (C1a, 2026-04-18) — shared FoodSearch dialog.
+          As of 2026-04-30 (web parity with mobile commit `1968953`)
+          the dialog is a thin wrapper over `<FoodSearchPanel>`. The
+          same panel is also mounted INLINE inside `<LogSheet>` (see
+          the LogSheet block below) — both surfaces share
+          `commitFoodSearchSelection` so the food-logging flow is
+          identical regardless of entry point. */}
       <FoodSearch
         open={foodSearchOpen}
         onClose={() => setFoodSearchOpen(false)}
@@ -2262,61 +2361,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
           fiber: totals.fiber,
         }}
         onSelect={(selection: FoodSearchSelection) => {
-          const grams = selection.chosenPortion.gramWeight * selection.quantity;
-          const f = grams / 100;
-          // Mirror mobile's attribution — USDA / Open Food Facts /
-          // Custom foods all show a human-readable `source` in the
-          // journal row so the user can tell where the numbers came
-          // from after the fact.
-          const sourceLabel =
-            selection.source === "CUSTOM"
-              ? "Custom food"
-              : selection.source === "OFF"
-              ? "Open Food Facts"
-              : selection.source === "Edamam"
-              ? "Edamam"
-              : "USDA FoodData Central";
-          const fiberG = Math.round(selection.macrosPer100g.fiberG * f * 10) / 10;
-          // F-13 (2026-04-19) — auto-track caffeine + alcohol. Stash
-          // scaled values on the meal's `micros` map so the insert path
-          // in `useNutritionJournalState` can bump
-          // `profiles.extra_caffeine_by_day` / `extra_alcohol_g_by_day`
-          // and the delete path can decrement by the same delta. Null
-          // per-100 g → 0 (never invented). Mirrors the mobile Today
-          // FoodSearchModal commit flow byte-for-byte.
-          const { caffeineMg, alcoholG } = scaleCaffeineAlcohol({
-            grams,
-            caffeineMgPer100g: selection.macrosPer100g.caffeineMgPer100g ?? null,
-            alcoholGPer100g: selection.macrosPer100g.alcoholGPer100g ?? null,
-          });
-          // F-79 (2026-04-25) — full OFF micro set scaled for `grams`,
-          // merged with caffeine/alcohol overrides. Mirrors mobile Today.
-          const explicitMicros: Record<string, number> = {};
-          if (caffeineMg > 0) explicitMicros.caffeineMg = caffeineMg;
-          if (alcoholG > 0) explicitMicros.alcoholG = alcoholG;
-          const micros = scaleMicrosForGrams(
-            (selection as { microsPer100g?: Record<string, number> }).microsPer100g ?? {},
-            grams,
-            explicitMicros,
-          );
-          addLoggedMeal(
-            {
-              name: mealSlot,
-              recipeTitle: selection.name,
-              time: timeLabel,
-              calories: Math.max(0, Math.round(selection.macrosPer100g.calories * f)),
-              protein: Math.max(0, Math.round(selection.macrosPer100g.protein * f * 10) / 10),
-              carbs: Math.max(0, Math.round(selection.macrosPer100g.carbs * f * 10) / 10),
-              fat: Math.max(0, Math.round(selection.macrosPer100g.fat * f * 10) / 10),
-              source: sourceLabel,
-              ...(fiberG > 0 ? { fiberG } : {}),
-              ...(Object.keys(micros).length > 0 ? { micros } : {}),
-            },
-            // Mirror mobile's `food_logged.source` mapping: custom food
-            // logs fire with `"custom_food"`, USDA/OFF with `"manual"`
-            // (the canonical shared-food source).
-            selection.source === "CUSTOM" ? "custom_food" : "manual",
-          );
+          commitFoodSearchSelection(selection);
           setFoodSearchOpen(false);
         }}
       />
@@ -2551,15 +2596,16 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         suggestedName={saveComboSuggestedName}
       />
 
-      {/* Phase 2 / B1.2 (D-2026-04-27-15) — canonical Log FAB on
-          mobile-web Today. Hidden on desktop web (D-2026-04-27-11:
-          web is the long-form companion, daily logging is a phone
-          activity). Phase 2 ships placement only with a no-op tap;
-          Phase 3 wires the unified <LogSheet>. */}
-      <LogFab
-        visible={viewMode === "day"}
-        onPress={() => setLogSheetOpen(true)}
-      />
+      {/* 2026-04-30 (web mobile-web parity with mobile commit
+          `6633d2d`): the side `<LogFab>` (right:18 / bottom:100,
+          `md:hidden`) is no longer rendered. The canonical Log entry
+          point on mobile-web is now the centered raised Plus button
+          in the bottom `<nav>` (App.tsx), mirroring the mobile
+          `<SupprTabBar>` raised-button slot. Desktop web (≥ md) has
+          no FAB per D-2026-04-27-11 — desktop layout is unchanged.
+          Tapping the raised button stamps `?openLog=1` on the URL;
+          the `useEffect` above (search-param consumer) opens the
+          `<LogSheet>` and clears the param. */}
 
       {/* Phase 3 / B2.1 (D-2026-04-27-15) — canonical LogSheet.
           The 6 sub-tabs are presentation-only; tabs that need full
@@ -2581,12 +2627,39 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         // Phase 4 / B3.Y — desktop modal mode kicks in at ≥1024px.
         desktop={isDesktop}
         search={{
-          // Click the search row → close LogSheet, open FoodSearch.
-          // The LogSheet is router-only; the real search lives in
-          // the dedicated modal.
-          onOpen: () => {
+          // 2026-04-30 (web parity with mobile commit `1968953`) —
+          // INLINE-SEARCH MODE. Wiring `onSelect` flips `<LogSheet>`
+          // from the legacy "tap a button to open the FoodSearch
+          // dialog" pattern to a real `<Input>` that types directly
+          // into a mounted `<FoodSearchPanel>`. The same panel the
+          // dialog uses, just in `mode="compact"` for the LogSheet's
+          // tighter vertical budget. Budget context + custom-foods
+          // wiring are the same as the dialog so fit-this-in lights
+          // up and Custom foods surface at the top.
+          //
+          // After a successful pick the panel emits the canonical
+          // `FoodSearchSelection`; we commit it through the shared
+          // `commitFoodSearchSelection` helper (same path the dialog
+          // uses) and close the sheet.
+          macroTargets: {
+            calories: effectiveCalorieTarget,
+            protein: targets.protein,
+            carbs: targets.carbs,
+            fat: targets.fat,
+            fiber: targets.fiber,
+          },
+          macroConsumed: {
+            calories: totals.calories,
+            protein: totals.protein,
+            carbs: totals.carbs,
+            fat: totals.fat,
+            fiber: totals.fiber,
+          },
+          supabase,
+          userId: authedUserId ?? null,
+          onSelect: (selection) => {
+            commitFoodSearchSelection(selection);
             setLogSheetOpen(false);
-            setFoodSearchOpen(true);
           },
         }}
         barcode={{
@@ -2606,15 +2679,25 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
           // last-logged date so the LogSheet renders two groups.
           entries: (() => {
             const todayKey = dateKeyFromDate(new Date());
-            return computeRecentMeals(nutritionByDay, 12).map((item) => ({
-              id: foodHistoryKey(item.recipeTitle, item.calories),
-              title: item.recipeTitle,
-              kcal: Math.round(item.calories),
-              source: mapMealSourceToDot(item.source),
-              bucket: (item.lastLoggedAt ?? "").startsWith(todayKey)
-                ? ("today" as const)
-                : ("week" as const),
-            }));
+            // Mobile parity (`apps/mobile/app/(tabs)/index.tsx` ~L3693):
+            // strip the MyFitnessPal HealthKit fallback rows
+            // ("Food log (NNN kcal)") so Recents doesn't fill with
+            // identical-looking, low-information entries. The fallback
+            // string lives in `apps/mobile/lib/healthSync.ts:905`; the
+            // regex must stay identical to mobile to keep the filter in
+            // sync across surfaces.
+            const FOOD_LOG_FALLBACK = /^food log \(\d+ kcal\)$/i;
+            return computeRecentMeals(nutritionByDay, 12)
+              .filter((item) => !FOOD_LOG_FALLBACK.test(item.recipeTitle.trim()))
+              .map((item) => ({
+                id: foodHistoryKey(item.recipeTitle, item.calories),
+                title: item.recipeTitle,
+                kcal: Math.round(item.calories),
+                source: mapMealSourceToDot(item.source),
+                bucket: (item.lastLoggedAt ?? "").startsWith(todayKey)
+                  ? ("today" as const)
+                  : ("week" as const),
+              }));
           })(),
           onPick: (picked) => {
             setLogSheetOpen(false);

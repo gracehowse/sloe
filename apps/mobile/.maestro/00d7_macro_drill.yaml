@@ -1,0 +1,23 @@
+# @cases TC-INT-MACRO-DRILL
+# @screen today
+appId: com.supprclub.supprapp
+name: "Interactive — Today scrolled → tap Protein tile → macro detail"
+---
+# Stretch capture — Today populated + tap Protein macro tile to drill
+# to /macro-detail. Run separately so a navigation-time hierarchy
+# crash doesn't lose state-60/61.
+
+- launchApp:
+    appId: com.supprclub.supprapp
+- waitForAnimationToEnd
+
+- openLink: suppr:///(tabs)
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- swipe:
+    direction: UP
+- waitForAnimationToEnd
+- tapOn: "Protein"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/state-62-macro-detail-from-today

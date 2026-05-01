@@ -2,6 +2,7 @@ import React from "react";
 import { Modal, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { X } from "lucide-react-native";
 import { Accent, Radius, Spacing } from "@/constants/theme";
 import { projectWeight } from "@/lib/weightProjection";
 
@@ -71,8 +72,8 @@ export function TodayCompleteDayModal({
             alignItems: "center",
           }}
         >
-          <Pressable onPress={onClose} style={{ position: "absolute", top: 16, left: 20 }}>
-            <Ionicons name="close" size={24} color={textTertiaryColor} />
+          <Pressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Close" style={{ position: "absolute", top: 16, right: 20 }}>
+            <X size={24} color={textSecondaryColor} strokeWidth={2.25} />
           </Pressable>
           <Text style={{ fontSize: 18, fontWeight: "700", color: textColor, marginBottom: 24 }}>
             {isToday ? "Day logged!" : "Day complete"}

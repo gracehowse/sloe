@@ -1,0 +1,30 @@
+# @cases TC-INT-SETTINGS
+# @screen settings
+appId: com.supprclub.supprapp
+name: "Interactive — Reset modal capture"
+---
+# 2026-04-30 (audit comprehensive coverage). Capture-and-exit only —
+# any Cancel/dismiss tap after the screenshot triggers iOS 26's
+# kAXErrorInvalidUIElement on view-hierarchy probes through RN modal
+# trees, which crashes the entire Maestro session. The next sub-flow
+# in the suite calls `launchApp` which resets navigation state, so we
+# don't need to clean up here.
+
+- launchApp:
+    appId: com.supprclub.supprapp
+- waitForAnimationToEnd
+
+- openLink: suppr:///settings
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: "settings-bundle-reset-row"
+    direction: DOWN
+    timeout: 30000
+    speed: 30
+    visibilityPercentage: 50
+- tapOn:
+    id: "settings-bundle-reset-row"
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/state-01-reset-modal

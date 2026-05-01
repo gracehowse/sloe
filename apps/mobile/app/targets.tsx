@@ -9,7 +9,19 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import {
+  ChevronLeft,
+  Beef,
+  Wheat,
+  Droplets,
+  Leaf,
+} from "lucide-react-native";
+import Svg, {
+  Circle,
+  Defs,
+  LinearGradient as SvgLinearGradient,
+  Stop,
+} from "react-native-svg";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
@@ -58,6 +70,11 @@ export default function TargetsScreen() {
   const [activityLevel, setActivityLevel] = useState<string | null>(null);
   const [goal, setGoal] = useState<string | null>(null);
   const [tdeeKcal, setTdeeKcal] = useState<number | null>(null);
+  // 2026-04-30 (#1): mirror the net-carbs lens decision used on Today.
+  // Without this, Today and /targets disagreed on the carbs target
+  // (Today rendered net carbs while /targets always showed gross),
+  // creating the appearance of a profile-targets divergence bug.
+  const [netCarbsLensEnabled, setNetCarbsLensEnabled] = useState(false);
   const [weightKg, setWeightKg] = useState<number | null>(null);
   const [goalWeightKg, setGoalWeightKg] = useState<number | null>(null);
   const [weightKgByDay, setWeightKgByDay] = useState<Record<string, number>>({});
@@ -72,7 +89,7 @@ export default function TargetsScreen() {
       const { data } = await supabase
         .from("profiles")
         .select(
-          "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, weight_kg, goal_weight_kg, weight_kg_by_day, height_cm, sex, activity_level, goal, dob, age, plan_pace",
+          "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, weight_kg, goal_weight_kg, weight_kg_by_day, height_cm, sex, activity_level, goal, dob, age, plan_pace, net_carbs_lens_enabled",
         )
         .eq("id", userId)
         .maybeSingle();
@@ -107,6 +124,7 @@ export default function TargetsScreen() {
         fat: resolved.fat,
         fiber: resolved.fiber,
       });
+      setNetCarbsLensEnabled(Boolean((d as Record<string, unknown>).net_carbs_lens_enabled));
       const lvl = typeof d.activity_level === "string" ? d.activity_level : null;
       setActivityLevel(lvl);
       setGoal(typeof d.goal === "string" ? d.goal : null);
@@ -157,8 +175,8 @@ export default function TargetsScreen() {
   }, [userId]);
 
   const macroTiles = useMemo(
-    () => buildMacroTiles({ targets, consumed }),
-    [targets, consumed],
+    () => buildMacroTiles({ targets, consumed, netCarbsLensEnabled }),
+    [targets, consumed, netCarbsLensEnabled],
   );
   const goalCard = useMemo(
     () =>
@@ -193,17 +211,22 @@ export default function TargetsScreen() {
     }
   };
 
-  const macroIconFor = (key: string): keyof typeof Ionicons.glyphMap => {
-    switch (key) {
+  // 2026-04-30 (#20, design-system-enforcer): retoken to lucide-react-native
+  // per carryover rule #2 (prototype icon set). The previous Ionicon
+  // names mapped 1:1 to the lucide equivalents already used on Today.
+  const MacroIconFor = ({ macroKey, color }: { macroKey: string; color: string }) => {
+    const size = 16;
+    const stroke = 1.75;
+    switch (macroKey) {
       case "protein":
-        return "fitness-outline";
+        return <Beef size={size} color={color} strokeWidth={stroke} />;
       case "carbs":
-        return "fast-food-outline";
+        return <Wheat size={size} color={color} strokeWidth={stroke} />;
       case "fat":
-        return "water-outline";
+        return <Droplets size={size} color={color} strokeWidth={stroke} />;
       case "fiber":
       default:
-        return "leaf-outline";
+        return <Leaf size={size} color={color} strokeWidth={stroke} />;
     }
   };
 
@@ -376,7 +399,7 @@ export default function TargetsScreen() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.topBar}>
         <Pressable onPress={goBack} hitSlop={12} style={styles.backHit} accessibilityLabel="Back">
-          <Ionicons name="chevron-back" size={24} color={colors.text} />
+          <ChevronLeft size={24} color={colors.text} strokeWidth={2} />
         </Pressable>
         <Text style={styles.title}>Targets</Text>
         <Pressable
@@ -389,14 +412,61 @@ export default function TargetsScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        {/* Daily calorie target */}
-        <View style={styles.card}>
+        {/* Daily calorie target — 2026-04-30 audit visual-qa P1 #10:
+            mirror the onboarding reveal's gradient ring so the
+            "what's my target" surface has the same premium-tier
+            visual ceiling as the first-time delight moment. The
+            ring renders at 100% (full sweep) since this is a
+            target display, not a progress display — Today owns
+            the "how am I doing" view. */}
+        <View style={[styles.card, { alignItems: "center" }]}>
           <Text style={styles.overline}>DAILY CALORIE TARGET</Text>
-          <View style={{ flexDirection: "row", alignItems: "baseline" }}>
-            <Text style={styles.bigNumber}>{targets.calories.toLocaleString()}</Text>
-            <Text style={styles.kcalUnit}>kcal</Text>
+          <View
+            style={{
+              width: 200,
+              height: 200,
+              alignItems: "center",
+              justifyContent: "center",
+              marginVertical: Spacing.md,
+            }}
+          >
+            <Svg
+              width={200}
+              height={200}
+              style={{ position: "absolute", transform: [{ rotate: "-90deg" }] }}
+            >
+              <Defs>
+                <SvgLinearGradient id="targets-grad" x1="0" y1="0" x2="1" y2="1">
+                  <Stop offset="0" stopColor={Accent.primaryLight} />
+                  <Stop offset="1" stopColor={MacroColors.fat} />
+                </SvgLinearGradient>
+              </Defs>
+              <Circle
+                cx={100}
+                cy={100}
+                r={84}
+                stroke={colors.inputBg}
+                strokeWidth={10}
+                fill="none"
+              />
+              <Circle
+                cx={100}
+                cy={100}
+                r={84}
+                stroke="url(#targets-grad)"
+                strokeWidth={10}
+                fill="none"
+                strokeLinecap="round"
+              />
+            </Svg>
+            <View style={{ alignItems: "center" }}>
+              <Text style={styles.bigNumber}>{targets.calories.toLocaleString()}</Text>
+              <Text style={[styles.kcalUnit, { marginLeft: 0, marginTop: 2 }]}>
+                kcal / day
+              </Text>
+            </View>
           </View>
-          <Text style={styles.caption}>{tdeeCaption}</Text>
+          <Text style={[styles.caption, { textAlign: "center" }]}>{tdeeCaption}</Text>
         </View>
 
         {/* Macros */}
@@ -408,7 +478,7 @@ export default function TargetsScreen() {
               <View key={m.key} style={styles.macroTile}>
                 <View style={styles.macroHead}>
                   <Text style={styles.macroLabel}>{m.label}</Text>
-                  <Ionicons name={macroIconFor(m.key)} size={16} color={color} />
+                  <MacroIconFor macroKey={m.key} color={color} />
                 </View>
                 <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6 }}>
                   <Text style={styles.macroValue}>

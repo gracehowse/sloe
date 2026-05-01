@@ -20,8 +20,27 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const MODAL_PATH = resolve(__dirname, "../../components/FoodSearchModal.tsx");
+/**
+ * 2026-04-30 — pagination state + result rendering moved into the
+ * shared `FoodSearchPanel.tsx` (so the same panel can render inline
+ * inside `<LogSheet>`). All mobile assertions now read the panel.
+ */
+const PANEL_PATH = resolve(
+  __dirname,
+  "../../components/food-search/FoodSearchPanel.tsx",
+);
 const VERIFY_PATH = resolve(__dirname, "../../lib/verifyRecipe.ts");
-const WEB_PATH = resolve(__dirname, "../../../../src/app/components/FoodSearch.tsx");
+/**
+ * 2026-04-30 — web FoodSearch.tsx (1568 LOC) was extracted into a
+ * shared `FoodSearchPanel.tsx` (~1429 LOC) inside `food-search/` in
+ * commit `cb1317f`. The wrapper kept only the dialog shell; pagination
+ * state + source helpers + row JSX all live in the panel now (mirrors
+ * mobile commit `1968953`). Source-pin parity reads the panel.
+ */
+const WEB_PATH = resolve(
+  __dirname,
+  "../../../../src/app/components/food-search/FoodSearchPanel.tsx",
+);
 const USDA_ROUTE_PATH = resolve(
   __dirname,
   "../../../../app/api/usda/search/route.ts",
@@ -36,6 +55,7 @@ const FDC_CLIENT_PATH = resolve(
 );
 
 const MODAL_SRC = readFileSync(MODAL_PATH, "utf8");
+const PANEL_SRC = readFileSync(PANEL_PATH, "utf8");
 const VERIFY_SRC = readFileSync(VERIFY_PATH, "utf8");
 const WEB_SRC = readFileSync(WEB_PATH, "utf8");
 const USDA_ROUTE_SRC = readFileSync(USDA_ROUTE_PATH, "utf8");
@@ -87,46 +107,46 @@ describe("F-10 food search pagination — shared helper", () => {
   });
 });
 
-describe("F-10 food search pagination — mobile FoodSearchModal wiring", () => {
+describe("F-10 food search pagination — mobile FoodSearchPanel wiring", () => {
   it("declares pageRef / hasMoreRef / loadingMore state for infinite scroll", () => {
-    expect(MODAL_SRC).toMatch(/const pageRef = useRef\(1\)/);
-    expect(MODAL_SRC).toMatch(/const hasMoreRef = useRef\(true\)/);
-    expect(MODAL_SRC).toMatch(/setLoadingMore/);
+    expect(PANEL_SRC).toMatch(/const pageRef = useRef\(1\)/);
+    expect(PANEL_SRC).toMatch(/const hasMoreRef = useRef\(true\)/);
+    expect(PANEL_SRC).toMatch(/setLoadingMore/);
   });
 
-  it("resets page + hasMore on new query (visible and onChangeText paths)", () => {
-    // Both reset sites set pageRef to 1 and hasMoreRef to true.
-    const resets = MODAL_SRC.match(/pageRef\.current = 1/g) ?? [];
-    expect(resets.length).toBeGreaterThanOrEqual(2);
-    const hasMoreTrueResets = MODAL_SRC.match(/hasMoreRef\.current = true/g) ?? [];
-    expect(hasMoreTrueResets.length).toBeGreaterThanOrEqual(2);
+  it("resets page + hasMore on new query (the query-effect path)", () => {
+    // Post-2026-04-30 the panel takes `query` as a prop and the
+    // single useEffect resets pageRef/hasMoreRef on every change.
+    // (The standalone Modal previously had two reset sites — visible
+    // and onChangeText — but the panel collapsed them into one
+    // because `query` is now caller-driven.)
+    expect(PANEL_SRC).toMatch(/pageRef\.current = 1/);
+    expect(PANEL_SRC).toMatch(/hasMoreRef\.current = true/);
   });
 
   it("defines loadMore + wires FlatList onEndReached", () => {
-    expect(MODAL_SRC).toMatch(/const loadMore = useCallback/);
-    expect(MODAL_SRC).toMatch(/onEndReached=\{\(\) => \{[\s\S]*?void loadMore\(\)/);
-    expect(MODAL_SRC).toMatch(/onEndReachedThreshold=\{0\.4\}/);
+    expect(PANEL_SRC).toMatch(/const loadMore = useCallback/);
+    expect(PANEL_SRC).toMatch(/onEndReached=\{\(\) => \{[\s\S]*?void loadMore\(\)/);
+    expect(PANEL_SRC).toMatch(/onEndReachedThreshold=\{0\.4\}/);
   });
 
   it("dedupes newly-fetched pages by row key (no duplicate entries when pages overlap)", () => {
     // appendPage filters already-seen keys.
-    expect(MODAL_SRC).toMatch(/const appendPage = useCallback/);
-    expect(MODAL_SRC).toMatch(
+    expect(PANEL_SRC).toMatch(/const appendPage = useCallback/);
+    expect(PANEL_SRC).toMatch(
       /new Set<string>\(prev\.map\(\(r\)\s*=>\s*r\.key\)\)/,
     );
-    expect(MODAL_SRC).toMatch(/!seen\.has\(r\.key\)/);
+    expect(PANEL_SRC).toMatch(/!seen\.has\(r\.key\)/);
   });
 
   it("flips hasMoreRef to false when a page returns empty OR fully-duplicated rows", () => {
-    // Terminal latch — two branches land both in loadMore and the initial
-    // query handlers.
-    expect(MODAL_SRC).toMatch(/hasMoreRef\.current = false/);
-    expect(MODAL_SRC).toMatch(/appended\.length === prev\.length/);
+    expect(PANEL_SRC).toMatch(/hasMoreRef\.current = false/);
+    expect(PANEL_SRC).toMatch(/appended\.length === prev\.length/);
   });
 
   it("shows a footer spinner while a page is in flight", () => {
-    expect(MODAL_SRC).toMatch(/loadingMore \? \(\s*<View/);
-    expect(MODAL_SRC).toMatch(/ActivityIndicator\s+size="small"/);
+    expect(PANEL_SRC).toMatch(/loadingMore \? \(\s*<View/);
+    expect(PANEL_SRC).toMatch(/ActivityIndicator\s+size="small"/);
   });
 });
 
@@ -139,9 +159,19 @@ describe("F-10 food search pagination — web/mobile parity", () => {
     expect(WEB_SRC).toMatch(/setLoadingMore/);
   });
 
-  it("web resets pagination state on new query (two call sites)", () => {
+  it("web resets pagination state when the query changes", () => {
+    // Pre-`cb1317f` the wrapper had two separate reset sites (open
+    // toggle + onChangeText). The lift into <FoodSearchPanel> made
+    // `query` a caller-owned prop, so a single useEffect now resets
+    // both `pageRef` and `hasMoreRef` whenever the query changes —
+    // single source of truth, harder to drift.
     const resets = WEB_SRC.match(/pageRef\.current = 1/g) ?? [];
-    expect(resets.length).toBeGreaterThanOrEqual(2);
+    expect(resets.length).toBeGreaterThanOrEqual(1);
+    // The reset must sit inside the `[query, ...]`-keyed effect so a
+    // new search does not append to the previous result set.
+    expect(WEB_SRC).toMatch(
+      /pageRef\.current = 1;\s*\n\s*hasMoreRef\.current = true;/,
+    );
   });
 
   it("web forwards `page` to all three source helpers", () => {
@@ -167,25 +197,25 @@ describe("F-10 food search pagination — web/mobile parity", () => {
   });
 
   it("mobile resets loadingMore in `finally` too", () => {
-    expect(MODAL_SRC).toMatch(/\} finally \{\s*setLoadingMore\(false\)/);
+    expect(PANEL_SRC).toMatch(/\} finally \{\s*setLoadingMore\(false\)/);
   });
 });
 
 describe("F-10 food search — search row image removal (image consistency)", () => {
-  it("mobile FoodSearchModal no longer imports Image from react-native", () => {
+  it("mobile FoodSearchPanel no longer imports Image from react-native", () => {
     // Pre-F-10 the file imported `Image` alongside other RN primitives.
-    // Post-F-10 the import line must not list it.
-    const rnImportBlock = MODAL_SRC.match(
+    // Post-F-10 the import line must not list it. The panel inherited
+    // the post-F-10 absence of the Image import.
+    const rnImportBlock = PANEL_SRC.match(
       /import \{[\s\S]*?\} from "react-native";/,
     );
     expect(rnImportBlock).not.toBeNull();
     expect(rnImportBlock![0]).not.toMatch(/\bImage\b/);
   });
 
-  it("mobile FoodSearchModal does not render the per-row product image", () => {
-    // The old JSX path was `item.imageUrl && <Image source={{ uri: … }} />`.
-    expect(MODAL_SRC).not.toMatch(/<Image source=\{\{\s*uri:\s*item\.imageUrl/);
-    expect(MODAL_SRC).not.toMatch(/styles\.productImage/);
+  it("mobile FoodSearchPanel does not render the per-row product image", () => {
+    expect(PANEL_SRC).not.toMatch(/<Image source=\{\{\s*uri:\s*item\.imageUrl/);
+    expect(PANEL_SRC).not.toMatch(/styles\.productImage/);
   });
 
   it("web FoodSearch does not render any <img> in the search-row list", () => {

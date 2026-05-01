@@ -183,18 +183,37 @@ export const ShoppingList = memo(function ShoppingList({
           className="grid grid-cols-1 md:grid-cols-3 gap-4"
           style={{ maxWidth: 900 }}
         >
-          {categorySections.map((section) => (
+          {categorySections.map((section) => {
+            // 2026-04-30 audit visual-qa P1 #8 (mobile parity with
+            // `apps/mobile/app/shopping.tsx` L471-503): section-level
+            // progress so the user feels each category complete as
+            // they shop. A group is "checked" when all its items are
+            // checked — same `isShoppingGroupFullyChecked` predicate
+            // used elsewhere in this file for the row toggle.
+            const sectionTotal = section.groups.length;
+            const sectionChecked = section.groups.filter((g) =>
+              isShoppingGroupFullyChecked(g),
+            ).length;
+            return (
             <div
               key={section.name}
               className="bg-card border border-border rounded-2xl"
               style={{ padding: 14 }}
             >
-              <p
-                className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground"
+              <div
+                className="flex items-center justify-between"
                 style={{ marginBottom: 10 }}
               >
-                {section.name}
-              </p>
+                <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                  {section.name}
+                </p>
+                <span
+                  className="text-[11px] font-bold tabular-nums text-muted-foreground"
+                  style={{ letterSpacing: 0.5 }}
+                >
+                  {sectionChecked}/{sectionTotal}
+                </span>
+              </div>
               <ul className="flex flex-col">
                 {section.groups.map((group) => {
                   const allChecked = isShoppingGroupFullyChecked(group);
@@ -212,9 +231,15 @@ export const ShoppingList = memo(function ShoppingList({
                   const displayName = dedupedSingle
                     ? dedupedSingle.name
                     : group.displayName;
-                  const rowLabel = qtyLine
-                    ? `${displayName} (${qtyLine})`
-                    : displayName;
+                  // Audit 2026-04-30 visual-qa P2 #16 — the row used to
+                  // render "2 cups flour (2 cups)" when the ingredient
+                  // display name already had the qty inlined. Skip the
+                  // parenthetical when `qtyLine` is already a substring
+                  // of `displayName` (case-insensitive).
+                  const rowLabel =
+                    qtyLine && !displayName.toLowerCase().includes(qtyLine.toLowerCase())
+                      ? `${displayName} (${qtyLine})`
+                      : displayName;
                   return (
                     <li
                       key={group.key}
@@ -263,7 +288,8 @@ export const ShoppingList = memo(function ShoppingList({
                 })}
               </ul>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

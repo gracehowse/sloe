@@ -113,7 +113,8 @@
 | `today/TodayEditMealModal` | **Audit H3 (2026-04-18)** — Sub-card of the mobile Today composition root. Edit-entry bottom sheet (slot toggle, portion chips, 4 macro inputs, Save / Delete). |
 | `today/TodayNutrientsModal` | **Audit H3 (2026-04-18)** — Sub-card of the mobile Today composition root. "Day nutrients" bottom sheet listing micros in 2-col grid. |
 | `today/TodayDeficitInsight` | **Audit H3 (2026-04-18)** — Sub-card of the mobile Today composition root. Small "X kcal under budget so far today" banner + 7-day / week-avg rollup line. |
-| `today/TodayPlannedMealsCard` | **Audit H3 (2026-04-18)** — Sub-card of the mobile Today composition root. "Planned" list when the user has a meal plan for the day. Fires the portion-picker `Alert` on tap. |
+| `today/TodayPlannedMealsCard` | **Audit H3 (2026-04-18)** — Sub-card of the mobile Today composition root. "Planned" list when the user has a meal plan for the day. **2026-04-30 (customer-lens):** "Log today" now opens the in-app `today/PortionPickerSheet` bottom sheet (½×, 1×, 1½×, 2×) instead of the system `Alert.alert` — system iOS alerts mid-flow read as prototype-tier. |
+| `today/PortionPickerSheet` | **2026-04-30** — Bottom sheet used by `TodayPlannedMealsCard` to pick a portion when logging a planned meal. Visual pattern matches `CopyMealSheet` / `DuplicateDaySheet` (modal + scrim + drag handle + sheet card + close X + Cancel). Props: `{ visible, onClose, mealName, onPick(portion) }`. |
 | `today/TodayAddFoodForm` | **Audit H3 (2026-04-18)** — Sub-card of the mobile Today composition root. Inline quick-add card (slot toggle + title + 4 macro inputs + Submit / Search hand-off). |
 | `BarcodeScannerModal` | Camera overlay for barcode scanning with product lookup |
 | `MealTypePicker` | Multi-select chips for meal type tagging (Breakfast/Lunch/Dinner/Snack) |

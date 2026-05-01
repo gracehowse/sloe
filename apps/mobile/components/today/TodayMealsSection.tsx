@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Alert, Modal, Pressable, Text, View } from "react-native";
+import { Alert, Modal, Pressable, ScrollView, Text, View } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import {
   Bookmark,
@@ -21,6 +21,7 @@ import { mapMealSourceToDot } from "../../../../src/lib/nutrition/sourceMap";
 import type { JournalMeal } from "@/lib/nutritionJournal";
 import type { SavedMeal } from "../../../../src/lib/nutrition/savedMeals";
 import { summariseSavedMeal } from "../../../../src/lib/nutrition/savedMealsLogic";
+import { AiFirstLogTooltip } from "./AiFirstLogTooltip";
 
 /**
  * TodayMealsSection — per-slot meal list with swipe-to-delete, long-press
@@ -72,6 +73,19 @@ export interface TodayMealsSectionProps {
   onDismissUsualMealHint: (slot: string) => void;
   /** Ship M1 — user tapped "Save as usual" on the hint for `slot`. */
   onAcceptUsualMealHint: (slot: string) => void;
+  /**
+   * Phase 5 (2026-04-30) — AI-first-log tooltip lifecycle. The host
+   * resolves the meal id of the FIRST AI-sourced row to anchor the
+   * tooltip below; this component renders the tooltip below that row
+   * when set. `null` (or unset) means no tooltip. The tooltip is a
+   * one-time event gated by AsyncStorage in the host; once the user
+   * dismisses or the bubble auto-fades, host clears this and writes
+   * the storage key so it never fires again.
+   */
+  aiFirstLogTooltipMealId?: string | null;
+  /** Phase 5 (2026-04-30) — fired on X tap or auto-fade. Host
+   *  persists the storage key and clears `aiFirstLogTooltipMealId`. */
+  onDismissAiFirstLogTooltip?: () => void;
 }
 
 /**
@@ -167,11 +181,14 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
     hintVisibleForSlot,
     onDismissUsualMealHint,
     onAcceptUsualMealHint,
+    aiFirstLogTooltipMealId,
+    onDismissAiFirstLogTooltip,
   } = props;
 
   const [usualPicker, setUsualPicker] = useState<
     { slot: string; options: SavedMeal[] } | null
   >(null);
+  const [usualPickerShowAll, setUsualPickerShowAll] = useState(false);
 
   return (
     <View>
@@ -370,8 +387,8 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
               {hasMeals &&
                 isOpen &&
                 meals.map((m) => (
+                  <React.Fragment key={m.id}>
                   <Swipeable
-                    key={m.id}
                     overshootRight={false}
                     friction={2}
                     renderRightActions={() => (
@@ -381,12 +398,18 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                             void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                             onDeleteMeal(m.id);
                           }}
+                          // 2026-04-30 visual-qa: removed `paddingVertical: 8`
+                          // so the destructive zone stretches to the meal
+                          // row's natural height (3 lines: name +
+                          // timestamp + source badge). Without this, the
+                          // red zone showed bg padding top + bottom and
+                          // looked misaligned. The Swipeable parent flex
+                          // row + sibling's natural height handle the rest.
                           style={{
                             width: 88,
                             backgroundColor: Accent.destructive,
                             justifyContent: "center",
                             alignItems: "center",
-                            paddingVertical: 8,
                           }}
                           accessibilityRole="button"
                           accessibilityLabel="Remove meal"
@@ -419,7 +442,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                         backgroundColor: cardColor,
                       }}
                     >
-                      <View style={{ flex: 1, gap: 2 }}>
+                      <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                           <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: Accent.success }} />
                           <Text style={{ fontSize: 12, color: textColor }} numberOfLines={1}>
@@ -463,6 +486,21 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                       </View>
                     </Pressable>
                   </Swipeable>
+                  {/* Phase 5 (2026-04-30) — one-time AI-first-log
+                      tooltip. Anchored below the row whose id matches
+                      `aiFirstLogTooltipMealId`. Host gates this on
+                      AsyncStorage so it ever fires once per device.
+                      Both X tap and the 6s auto-fade route through
+                      `onDismissAiFirstLogTooltip` so persistence
+                      stays in one place. */}
+                  {aiFirstLogTooltipMealId === m.id &&
+                    onDismissAiFirstLogTooltip != null && (
+                      <AiFirstLogTooltip
+                        visible
+                        onDismiss={onDismissAiFirstLogTooltip}
+                      />
+                    )}
+                  </React.Fragment>
                 ))}
               {/* Ship M1 — first-run hint inside the slot body. Teaches
                   the feature once per slot then stops. */}
@@ -557,15 +595,24 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
         </Pressable>
       </View>
 
-      {/* Ship M1 — usual-meal picker for slots with 2+ matches. */}
+      {/* Ship M1 — usual-meal picker for slots with 2+ matches.
+          Audit P1 #12 (2026-04-30): show 3 by default + a "Show all"
+          footer when there are more, instead of silently dropping
+          options past index 3. */}
       <Modal
         visible={usualPicker != null}
         transparent
         animationType="fade"
-        onRequestClose={() => setUsualPicker(null)}
+        onRequestClose={() => {
+          setUsualPicker(null);
+          setUsualPickerShowAll(false);
+        }}
       >
         <Pressable
-          onPress={() => setUsualPicker(null)}
+          onPress={() => {
+            setUsualPicker(null);
+            setUsualPickerShowAll(false);
+          }}
           style={{ flex: 1, backgroundColor: "#00000066", justifyContent: "flex-end" }}
         >
           <Pressable
@@ -576,6 +623,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
               borderTopRightRadius: Radius.lg,
               padding: Spacing.lg,
               paddingBottom: Spacing.xl,
+              maxHeight: "80%",
             }}
           >
             <Text style={{ fontSize: 15, fontWeight: "700", color: textColor, marginBottom: 2 }}>
@@ -584,41 +632,72 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
             <Text style={{ fontSize: 12, color: textSecondaryColor, marginBottom: Spacing.md }}>
               Pick which saved meal to log. Newest logged first.
             </Text>
-            {(usualPicker?.options ?? []).slice(0, 3).map((m) => {
-              const summary = summariseSavedMeal(m);
-              const itemsLabel =
-                summary.itemCount === 1 ? "1 item" : `${summary.itemCount} items`;
+            {(() => {
+              const allOptions = usualPicker?.options ?? [];
+              const total = allOptions.length;
+              const collapsedLimit = 3;
+              const showCollapsed = total > 5 && !usualPickerShowAll;
+              const visible = showCollapsed ? allOptions.slice(0, collapsedLimit) : allOptions;
               return (
-                <Pressable
-                  key={m.id}
-                  onPress={() => {
-                    if (usualPicker) {
-                      onLogSavedMeal(m, usualPicker.slot);
-                    }
-                    setUsualPicker(null);
-                  }}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Log ${m.name} — ${itemsLabel}, ${summary.totalCalories} kcal`}
-                  style={{
-                    padding: Spacing.md,
-                    borderRadius: Radius.lg,
-                    borderWidth: 1,
-                    borderColor: cardBorderColor,
-                    marginBottom: Spacing.sm,
-                  }}
-                >
-                  <Text style={{ fontSize: 14, fontWeight: "700", color: textColor }} numberOfLines={1}>
-                    {m.name}
-                  </Text>
-                  <Text style={{ fontSize: 11, color: textSecondaryColor, marginTop: 2 }}>
-                    {itemsLabel} · {summary.totalCalories} kcal · P {Math.round(summary.totalProtein)}g · C{" "}
-                    {Math.round(summary.totalCarbs)}g · F {Math.round(summary.totalFat)}g
-                  </Text>
-                </Pressable>
+                <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
+                  {visible.map((m) => {
+                    const summary = summariseSavedMeal(m);
+                    const itemsLabel =
+                      summary.itemCount === 1 ? "1 item" : `${summary.itemCount} items`;
+                    return (
+                      <Pressable
+                        key={m.id}
+                        onPress={() => {
+                          if (usualPicker) {
+                            onLogSavedMeal(m, usualPicker.slot);
+                          }
+                          setUsualPicker(null);
+                          setUsualPickerShowAll(false);
+                        }}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Log ${m.name} — ${itemsLabel}, ${summary.totalCalories} kcal`}
+                        style={{
+                          padding: Spacing.md,
+                          borderRadius: Radius.lg,
+                          borderWidth: 1,
+                          borderColor: cardBorderColor,
+                          marginBottom: Spacing.sm,
+                        }}
+                      >
+                        <Text style={{ fontSize: 14, fontWeight: "700", color: textColor }} numberOfLines={1}>
+                          {m.name}
+                        </Text>
+                        <Text style={{ fontSize: 11, color: textSecondaryColor, marginTop: 2 }}>
+                          {itemsLabel} · {summary.totalCalories} kcal · P {Math.round(summary.totalProtein)}g · C{" "}
+                          {Math.round(summary.totalCarbs)}g · F {Math.round(summary.totalFat)}g
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                  {showCollapsed ? (
+                    <Pressable
+                      onPress={() => setUsualPickerShowAll(true)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Show all ${total} saved meals`}
+                      style={{
+                        paddingVertical: 10,
+                        alignItems: "center",
+                        marginBottom: Spacing.sm,
+                      }}
+                    >
+                      <Text style={{ fontSize: 13, fontWeight: "600", color: Accent.primary }}>
+                        {`Show all ${total} saved meals →`}
+                      </Text>
+                    </Pressable>
+                  ) : null}
+                </ScrollView>
               );
-            })}
+            })()}
             <Pressable
-              onPress={() => setUsualPicker(null)}
+              onPress={() => {
+                setUsualPicker(null);
+                setUsualPickerShowAll(false);
+              }}
               accessibilityRole="button"
               accessibilityLabel="Cancel"
               style={{

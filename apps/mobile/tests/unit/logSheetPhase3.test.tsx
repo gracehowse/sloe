@@ -39,6 +39,25 @@ vi.mock("expo-haptics", () => ({
   NotificationFeedbackType: { Success: "success" },
 }));
 
+/**
+ * 2026-04-30 — `LogSheet.tsx` now imports `<FoodSearchPanel>` so the
+ * search row can render real results inline (the customer-lens
+ * nested-modal teardown). The panel pulls `searchFoods` from
+ * `@/lib/verifyRecipe`, which top-level-instantiates a Supabase
+ * client (`lib/supabase.ts`) and explodes when no `SUPABASE_URL` is
+ * set in the test env. This file pins legacy `onOpen`-only mode +
+ * Recent / Saved + the manual-entry recovery — none of which
+ * exercise the search backend — so a narrow stub is enough.
+ */
+vi.mock("@/lib/verifyRecipe", () => ({
+  searchFoods: vi.fn(async () => []),
+  getFoodMacros: vi.fn(async () => null),
+  scaleMacros: vi.fn(() => ({
+    calories: 0, protein: 0, carbs: 0, fat: 0,
+    fiberG: 0, sugarG: 0, sodiumMg: 0,
+  })),
+}));
+
 vi.mock("@/hooks/use-theme-colors", () => ({
   useThemeColors: () => ({
     text: "#000",
@@ -105,6 +124,153 @@ describe("LogSheet (mobile) — primitive shape", () => {
     const { getByLabelText } = open({ onClose });
     fireEvent.press(getByLabelText("Close log sheet"));
     expect(onClose).toHaveBeenCalled();
+  });
+});
+
+describe("LogSheet (mobile) — inline-search mode (2026-04-30, customer-lens nested-modal teardown)", () => {
+  // Inline-search mode is active when the host wires `search.onSelect`.
+  // The Pressable-faking-input is replaced by a real `<TextInput>` and
+  // `<FoodSearchPanel>` mounts inside the sheet to render results — no
+  // nested modal hop. These tests pin the structural contract; the
+  // panel's own behaviour is covered by the foodSearch* test suites.
+
+  it("renders a real TextInput (not a Pressable) when search.onSelect is wired", () => {
+    const { getByLabelText, getByTestId } = render(
+      <LogSheet
+        visible
+        onClose={() => {}}
+        search={{ onSelect: () => {} }}
+      />,
+    );
+    // The TextInput owns the `Search foods` accessibility label in
+    // inline mode. The dedicated testID lets Maestro / RNTL find the
+    // input directly.
+    const input = getByLabelText("Search foods");
+    expect(input).toBeTruthy();
+    expect(getByTestId("log-sheet-search-input")).toBeTruthy();
+  });
+
+  it("does NOT mount FoodSearchPanel when query is empty (Recent / Saved stays visible)", () => {
+    const recentEntry: LogSheetRecentEntry = {
+      id: "r1",
+      title: "Greek yogurt",
+      kcal: 130,
+      source: "off",
+      bucket: "today",
+    };
+    const { getByText } = render(
+      <LogSheet
+        visible
+        onClose={() => {}}
+        search={{ onSelect: () => {} }}
+        recent={{ entries: [recentEntry], onPick: () => {} }}
+      />,
+    );
+    // Empty-query state surfaces the Recent group label — proves the
+    // browse area still renders when query is empty.
+    expect(getByText("Today's recents")).toBeTruthy();
+  });
+
+  it("hides Recent / Saved and shows the search panel when query is non-empty", () => {
+    const recentEntry: LogSheetRecentEntry = {
+      id: "r1",
+      title: "Greek yogurt",
+      kcal: 130,
+      source: "off",
+      bucket: "today",
+    };
+    const { getByLabelText, queryByText } = render(
+      <LogSheet
+        visible
+        onClose={() => {}}
+        search={{ onSelect: () => {} }}
+        recent={{ entries: [recentEntry], onPick: () => {} }}
+      />,
+    );
+    fireEvent.changeText(getByLabelText("Search foods"), "yog");
+    // Recent group label disappears once the panel takes over the
+    // content area.
+    expect(queryByText("Today's recents")).toBeNull();
+  });
+
+  it("falls back to legacy tap-to-open Pressable when only search.onOpen is wired", () => {
+    // Backwards-compat: a host that hasn't migrated yet can still wire
+    // `onOpen`; the row stays a Pressable that fires `onOpen` on tap.
+    const onOpen = vi.fn();
+    const { getByLabelText, queryByTestId } = render(
+      <LogSheet
+        visible
+        onClose={() => {}}
+        search={{ onOpen }}
+      />,
+    );
+    expect(queryByTestId("log-sheet-search-input")).toBeNull();
+    fireEvent.press(getByLabelText("Search foods"));
+    expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it("right-edge icons still tap-to-open in inline mode (preserved behaviour)", () => {
+    const onScanOpen = vi.fn();
+    const { getByLabelText } = render(
+      <LogSheet
+        visible
+        onClose={() => {}}
+        search={{ onSelect: () => {} }}
+        barcode={{ onOpen: onScanOpen }}
+      />,
+    );
+    fireEvent.press(getByLabelText("Scan barcode"));
+    expect(onScanOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it("clears the query state when the sheet is closed and re-opened", () => {
+    // Returning users land on an empty input, not their previous
+    // query — same hygiene the legacy Recent / Saved tab used.
+    const { getByLabelText, queryByText, rerender } = render(
+      <LogSheet
+        visible
+        onClose={() => {}}
+        search={{ onSelect: () => {} }}
+        recent={{
+          entries: [
+            { id: "r1", title: "Greek yogurt", kcal: 130, source: "off", bucket: "today" },
+          ],
+          onPick: () => {},
+        }}
+      />,
+    );
+    fireEvent.changeText(getByLabelText("Search foods"), "yog");
+    expect(queryByText("Today's recents")).toBeNull();
+    // Close…
+    rerender(
+      <LogSheet
+        visible={false}
+        onClose={() => {}}
+        search={{ onSelect: () => {} }}
+        recent={{
+          entries: [
+            { id: "r1", title: "Greek yogurt", kcal: 130, source: "off", bucket: "today" },
+          ],
+          onPick: () => {},
+        }}
+      />,
+    );
+    // …and re-open. Query should be cleared → Recent / Saved visible
+    // again.
+    rerender(
+      <LogSheet
+        visible
+        onClose={() => {}}
+        search={{ onSelect: () => {} }}
+        recent={{
+          entries: [
+            { id: "r1", title: "Greek yogurt", kcal: 130, source: "off", bucket: "today" },
+          ],
+          onPick: () => {},
+        }}
+      />,
+    );
+    expect(queryByText("Today's recents")).toBeTruthy();
   });
 });
 

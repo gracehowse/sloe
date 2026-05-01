@@ -35,7 +35,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
 import { Accent, Spacing, Radius } from "@/constants/theme";
-import FoodSearchModal from "@/components/FoodSearchModal";
+import FoodSearchModal, { type SelectedFood as FoodSearchSelectedFood } from "@/components/FoodSearchModal";
 import BarcodeScannerModal from "@/components/BarcodeScannerModal";
 
 import DayStrip from "@/components/charts/DayStrip";
@@ -146,7 +146,12 @@ import { PROFILE_TARGETS_DIRTY_KEY } from "@/lib/profileTargetsDirtyFlag";
 import { TodayHero } from "@/components/today/TodayHero";
 import { TodayFastingPill } from "@/components/today/TodayFastingPill";
 import { StreakPip } from "@/components/today/StreakPip";
-import { LogFab } from "@/components/today/LogFab";
+// `LogFab` is retired on mobile (2026-04-30) — the centered raised
+// Log button now lives inside the global `<SupprTabBar>` via
+// `<LogTabBarButton>`. The component file is preserved (deferred
+// deletion) for: (a) test history continuity in
+// canonicalTodayPhase2.test.tsx, and (b) parity with the web
+// `<LogFab>` import path while the web still ships its own FAB.
 import { LogSheet } from "@/components/today/LogSheet";
 import { TodayEatAgainBanner } from "@/components/today/TodayEatAgainBanner";
 import { TodayActivityCard } from "@/components/today/TodayActivityCard";
@@ -283,7 +288,7 @@ function formatMealTimeDisplay(time: string | undefined, createdAt?: string | nu
 
 export default function TrackerScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ date?: string; _t?: string; editMealId?: string }>();
+  const params = useLocalSearchParams<{ date?: string; _t?: string; editMealId?: string; openLog?: string }>();
   const insets = useSafeAreaInsets();
   const { session } = useAuth();
   const userId = session?.user.id;
@@ -528,6 +533,19 @@ export default function TrackerScreen() {
     // _t is a cache-buster so re-navigating to the same date still fires
   }, [params.date, params._t]);
 
+  // 2026-04-30 — `?openLog=1` deep-link from the centered raised Log
+  // button in `<SupprTabBar>`. The button lives in the global tab bar
+  // so the user can tap it from any tab; it routes to Today and we
+  // consume the param here to open the canonical LogSheet (which owns
+  // the journal write-path). Clear the param afterwards so a back-nav
+  // doesn't re-open the sheet on the next focus.
+  useEffect(() => {
+    if (params.openLog === "1") {
+      setFabSheetOpen(true);
+      router.setParams({ openLog: undefined } as Record<string, undefined>);
+    }
+  }, [params.openLog, router]);
+
   useEffect(() => subscribeOffline(setIsOffline), []);
 
   // P3-30 (2026-04-25): one-shot fetch of the net-carbs lens flag.
@@ -634,6 +652,51 @@ export default function TrackerScreen() {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  /**
+   * Phase 5 (2026-04-30) — AI-first-log tooltip gate. Replaces the
+   * per-day "Includes N AI-estimated meals" sentinel that used to
+   * render inside `TodayHero`. customer-lens flagged the daily
+   * caption as a defensive disclaimer that contradicted the
+   * 2026-04-27 strategic direction (macro-tracker-first, not AI-
+   * first). The replacement: one tooltip below the user's first AI-
+   * sourced meal row ever, then never again.
+   *
+   * Three states:
+   *   - `null` (initial): AsyncStorage hasn't hydrated yet — render
+   *     no tooltip. Avoids a flash when the storage key is set.
+   *   - `false`: storage says we have NOT shown the tooltip yet —
+   *     the first AI-sourced meal row will trigger it.
+   *   - `true`: we have shown the tooltip already (or the user just
+   *     dismissed it this session) — never show again.
+   */
+  const AI_TOOLTIP_STORAGE_KEY = "suppr.ai-explainer-shown.v1";
+  const [aiTooltipShown, setAiTooltipShown] = useState<boolean | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    AsyncStorage.getItem(AI_TOOLTIP_STORAGE_KEY)
+      .then((raw) => {
+        if (!cancelled) setAiTooltipShown(raw != null);
+      })
+      .catch(() => {
+        if (!cancelled) setAiTooltipShown(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const dismissAiFirstLogTooltip = useCallback(() => {
+    setAiTooltipShown(true);
+    void AsyncStorage.setItem(
+      AI_TOOLTIP_STORAGE_KEY,
+      new Date().toISOString(),
+    ).catch(() => {
+      /* storage denied — in-session state still hides the tooltip;
+         worst case it shows again on next launch, never twice in
+         the same session. */
+    });
   }, []);
 
   const savedMealSlots = useMemo(() => {
@@ -1226,20 +1289,100 @@ export default function TrackerScreen() {
     [dayKey],
   );
 
+  /**
+   * Shared food-search commit path — fires when the user picks a
+   * portion + quantity from either:
+   *   - the inline `<FoodSearchPanel>` mounted inside `<LogSheet>`
+   *     (2026-04-30, primary surface), or
+   *   - the standalone `<FoodSearchModal>` (still mounted for the
+   *     "search instead" path inside `<TodayAddFoodForm>`).
+   *
+   * Mirrors web's FoodSearch onSelect commit byte-for-byte. Hosts
+   * the F-13 (caffeine + alcohol) + F-79 (full per-100g micros)
+   * branches because both flows commit through the same journal
+   * shape.
+   */
+  const handleFoodSearchSelect = useCallback(
+    (result: FoodSearchSelectedFood) => {
+      const grams = result.chosenPortion.gramWeight * result.quantity;
+      const f = grams / 100;
+      const source =
+        result.source === "CUSTOM"
+          ? "Custom food"
+          : result.source === "OFF"
+          ? "Open Food Facts"
+          : result.source === "Edamam"
+          ? "Edamam"
+          : "USDA FoodData Central";
+      const { caffeineMg, alcoholG } = scaleCaffeineAlcohol({
+        grams,
+        caffeineMgPer100g: result.macrosPer100g.caffeineMgPer100g ?? null,
+        alcoholGPer100g: result.macrosPer100g.alcoholGPer100g ?? null,
+      });
+      const explicitMicros: Record<string, number> = {};
+      if (caffeineMg > 0) explicitMicros.caffeineMg = caffeineMg;
+      if (alcoholG > 0) explicitMicros.alcoholG = alcoholG;
+      const micros = scaleMicrosForGrams(
+        result.microsPer100g ?? {},
+        grams,
+        explicitMicros,
+      );
+      const meal: JournalMeal = {
+        id: newMealId(),
+        name: activeMealSlot,
+        recipeTitle: result.name,
+        time: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
+        calories: Math.round(result.macrosPer100g.calories * f),
+        protein: Math.round(result.macrosPer100g.protein * f * 10) / 10,
+        carbs: Math.round(result.macrosPer100g.carbs * f * 10) / 10,
+        fat: Math.round(result.macrosPer100g.fat * f * 10) / 10,
+        source,
+        ...(Object.keys(micros).length > 0 ? { micros } : {}),
+      };
+      setByDay((prev) => ({
+        ...prev,
+        [dayKey]: [...(prev[dayKey] ?? []), meal],
+      }));
+      if (userId && (caffeineMg > 0 || alcoholG > 0)) {
+        void updateStimulantsForDay(supabase, userId, dayKey, {
+          caffeineMg,
+          alcoholG,
+        });
+      }
+      try {
+        track(AnalyticsEvents.food_logged, {
+          source: result.source === "CUSTOM" ? "custom_food" : "manual",
+          calories: meal.calories,
+          slot: activeMealSlot,
+        });
+      } catch { /* noop */ }
+    },
+    [activeMealSlot, dayKey, userId, supabase],
+  );
+
   const trackerWeekSummaryKeys = useMemo(
     () => weekSummaryDateKeys(weekSummaryMode, selectedDate, weekStartDay),
     [weekSummaryMode, selectedDate, weekStartDay],
   );
   const mealsToday = byDay[dayKey] ?? [];
-  // PL-01 fix (audit 2026-04-28): when any of today's meals were
-  // logged via voice/photo AI, surface that on the day's totals.
-  // Per CLAUDE.md: "If nutrition / ingredient matching is uncertain,
-  // do not guess." AI photo / voice estimates are inherently
-  // uncertain — they were previously visible only inside the
-  // voice/photo dialog, which closed on commit. Today's headline kcal
-  // total absorbed AI-sourced macros without any badge so the user
-  // had no way to tell which slice of the day was estimated.
-  const aiSourcedTodayCount = mealsToday.filter(isAiSourcedFoodHistoryItem).length;
+
+  /**
+   * Phase 5 (2026-04-30) — id of the first AI-sourced meal row to
+   * anchor the AI-first-log tooltip below. `null` until AsyncStorage
+   * hydrates (`aiTooltipShown === null`), or when the user has
+   * already seen the tooltip on a prior launch (`aiTooltipShown ===
+   * true`), or when there is no AI-sourced meal on the active day.
+   */
+  const aiFirstLogTooltipMealId = useMemo<string | null>(() => {
+    if (aiTooltipShown !== false) return null;
+    for (const m of mealsToday) {
+      if (isAiSourcedFoodHistoryItem({ source: m.source ?? null })) {
+        return m.id;
+      }
+    }
+    return null;
+  }, [mealsToday, aiTooltipShown]);
+
   const targets = profileTargets;
   const isToday = dayKey === dateKeyFromDate(new Date());
 
@@ -3179,22 +3322,25 @@ export default function TrackerScreen() {
                 `docs/ux/teardown-2026-04-28-daily-loop.md` §F1 + Top-5
                 #2.
 
-                Hero — single ring. AI-estimated-meal count surfaces
-                inline as a caption inside the hero card via
-                `aiSourcedCount` (was a standalone pill above the macro
-                tiles pre-Phase-4). */}
+                Hero — single ring. Phase 5 (2026-04-30): the inline
+                "Includes N AI-estimated meals" sentinel inside the
+                hero card was removed — customer-lens flagged it as a
+                defensive disclaimer that contradicted the 2026-04-27
+                strategic direction (macro-tracker-first, not AI-
+                first). The signal is now delivered once via
+                `AiFirstLogTooltip` on the user's first AI meal row in
+                `TodayMealsSection`, gated by AsyncStorage so it never
+                fires twice. */}
             <TodayHero
               consumed={totals.calories}
               goal={effectiveCalorieGoal}
               baseGoal={todayActivityBudgetAddon > 0 ? targets.calories : undefined}
-              aiSourcedCount={aiSourcedTodayCount}
               textColor={colors.text}
               textSecondaryColor={colors.textSecondary}
               textTertiaryColor={colors.textTertiary}
               cardBackgroundColor={colors.card}
               borderColor={colors.border}
               trackColor={colors.border}
-              sourceAiColor={colors.sourceAi}
               proteinPct={targets.protein > 0 ? Math.min(totals.protein / targets.protein, 1) : 0}
               carbsPct={targets.carbs > 0 ? Math.min(totals.carbs / targets.carbs, 1) : 0}
               fatPct={targets.fat > 0 ? Math.min(totals.fat / targets.fat, 1) : 0}
@@ -3279,6 +3425,14 @@ export default function TrackerScreen() {
                     maintenanceKcal={maintenanceKcal}
                     dayActivityBudgetAddon={dayActivityBudgetAddon}
                     textSecondaryColor={colors.textSecondary}
+                    // 2026-04-30 visual-qa: Today was 4-5 blue-tinted cards
+                    // stacked (hero ring, fasting pill, duplicate-day chip,
+                    // deficit banner). Banner is informational so its
+                    // chrome is now neutral; the leading "~X kcal" line
+                    // still carries the primary blue so the number reads
+                    // as the focal point.
+                    surfaceBackgroundColor={colors.cardBorder}
+                    surfaceBorderColor={colors.border}
                   />
                 );
               }
@@ -3369,7 +3523,7 @@ export default function TrackerScreen() {
               <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
                 <Ionicons name="flash-outline" size={18} color={Accent.primary} />
                 <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>Quick add</Text>
-                <Text style={{ fontSize: 12, color: colors.textTertiary }}>
+                <Text numberOfLines={1} style={{ flexShrink: 1, fontSize: 12, color: colors.textTertiary }}>
                   Usual meals, recent, frequent, favourites
                 </Text>
               </View>
@@ -3426,6 +3580,8 @@ export default function TrackerScreen() {
             hintVisibleForSlot={hintVisibleForSlot}
             onDismissUsualMealHint={dismissUsualMealHint}
             onAcceptUsualMealHint={acceptUsualMealHint}
+            aiFirstLogTooltipMealId={aiFirstLogTooltipMealId}
+            onDismissAiFirstLogTooltip={dismissAiFirstLogTooltip}
           />
         )}
 
@@ -3631,21 +3787,21 @@ export default function TrackerScreen() {
         textTertiaryColor={colors.textTertiary}
       />
 
-      {/* Phase 3 / B2.1 (D-2026-04-27-15) — canonical Log FAB +
-          unified LogSheet. The FAB opens the new LogSheet primitive,
-          which replaces the legacy TodayFabSheet. The 6 sub-tabs of
-          LogSheet route to existing flows (search modal, barcode
-          dialog, voice/photo sheets) — the LogSheet is consolidated
-          access; the underlying nutrition logic is unchanged.
+      {/* Phase 3 / B2.1 (D-2026-04-27-15) — canonical Log button +
+          unified LogSheet. 2026-04-30: the side `<LogFab>` (right: 18,
+          bottom: 100) was retired; the Log button now lives as a
+          centered raised Plus inside the global `<SupprTabBar>` (see
+          `apps/mobile/components/tabs/LogTabBarButton.tsx`). The tab
+          bar button navigates Today with `?openLog=1`, which the
+          effect above consumes to open this LogSheet. Meal-slot taps
+          and other in-screen call sites still call
+          `setFabSheetOpen(true)` directly, so no other wiring
+          changed.
 
-          The legacy `fabSheetOpen` state stays as the LogSheet's open
-          state so existing meal-slot tap → "open log sheet" wiring
-          across the file continues to work without 30+ call-site
-          edits. */}
-      <LogFab
-        visible={viewMode === "day" && !addOpen && !showPrevious && !fabSheetOpen}
-        onPress={() => setFabSheetOpen(true)}
-      />
+          The legacy `fabSheetOpen` state name is intentionally kept
+          (rather than renamed to `logSheetOpen`) so existing meal-slot
+          tap call sites and the source-pin tests continue to work
+          without 30+ call-site edits. */}
 
       {/* Search-first LogSheet (Next-10 #12, 2026-04-28). The 6-tab
           strip is gone; search is the always-visible primary input
@@ -3658,13 +3814,29 @@ export default function TrackerScreen() {
         visible={fabSheetOpen}
         onClose={() => setFabSheetOpen(false)}
         search={{
-          // Tap the search row → close LogSheet, open FoodSearchModal.
-          // The LogSheet is router-only; the real search experience
-          // lives in the dedicated modal.
-          onOpen: () => {
-            setFabSheetOpen(false);
-            setSearchOpen(true);
+          // INLINE-SEARCH MODE (2026-04-30): the search row is a real
+          // `<TextInput>` with autoFocus, and results render INSIDE the
+          // LogSheet via `<FoodSearchPanel>`. No nested-modal hop. The
+          // legacy `onOpen` route stays in the LogSheet API as a
+          // fallback for hosts that haven't migrated yet — Today uses
+          // the inline path.
+          onSelect: handleFoodSearchSelect,
+          macroTargets: {
+            calories: effectiveCalorieGoal,
+            protein: targets.protein,
+            carbs: targets.carbs,
+            fat: targets.fat,
+            fiber: targets.fiber,
           },
+          macroConsumed: {
+            calories: totals.calories,
+            protein: totals.protein,
+            carbs: totals.carbs,
+            fat: totals.fat,
+            fiber: totals.fiber,
+          },
+          supabase: supabase as unknown as { from: (table: string) => unknown },
+          userId: userId ?? null,
         }}
         barcode={{
           // Tap the scan icon → close LogSheet, open BarcodeScannerModal.
@@ -3681,17 +3853,29 @@ export default function TrackerScreen() {
           // P0-2b (2026-04-28) — hydrate from food-history. Recent is
           // capped at 12 rows; bucket "today" / "week" splits by
           // last-logged date so the LogSheet can render two groups.
+          //
+          // 2026-04-30 audit visual-qa: filter out HealthKit-imported
+          // entries that resolved to the `Food log (X kcal)` fallback
+          // because their source app (MFP, etc.) didn't expose a food
+          // name through the HealthKit metadata. These rows have no
+          // useful identity for re-logging — they're just calorie
+          // totals — so showing 9+ identical-looking "Food log (XXX kcal)
+          // (via MyFitnessPal)" rows in Recents is noise. The fallback
+          // string lives in `apps/mobile/lib/healthSync.ts:905`.
           entries: (() => {
             const todayKey = dateKeyFromDate(new Date());
-            return computeRecentMeals(byDay, 12).map((item) => ({
-              id: foodHistoryKey(item.recipeTitle, item.calories),
-              title: item.recipeTitle,
-              kcal: Math.round(item.calories),
-              source: mapMealSourceToDot(item.source),
-              bucket: (item.lastLoggedAt ?? "").startsWith(todayKey)
-                ? ("today" as const)
-                : ("week" as const),
-            }));
+            const FOOD_LOG_FALLBACK = /^food log \(\d+ kcal\)$/i;
+            return computeRecentMeals(byDay, 12)
+              .filter((item) => !FOOD_LOG_FALLBACK.test(item.recipeTitle.trim()))
+              .map((item) => ({
+                id: foodHistoryKey(item.recipeTitle, item.calories),
+                title: item.recipeTitle,
+                kcal: Math.round(item.calories),
+                source: mapMealSourceToDot(item.source),
+                bucket: (item.lastLoggedAt ?? "").startsWith(todayKey)
+                  ? ("today" as const)
+                  : ("week" as const),
+              }));
           })(),
           onPick: (picked) => {
             setFabSheetOpen(false);
@@ -3846,86 +4030,13 @@ export default function TrackerScreen() {
           fat: totals.fat,
           fiber: totals.fiber,
         }}
-        onSelect={(result) => {
-          const grams = result.chosenPortion.gramWeight * result.quantity;
-          const f = grams / 100;
-          // Resolve the attribution source per source type so the journal
-          // shows "Custom · <food name>" rather than a misleading USDA tag.
-          const source =
-            result.source === "CUSTOM"
-              ? "Custom food"
-              : result.source === "OFF"
-              ? "Open Food Facts"
-              : result.source === "Edamam"
-              ? "Edamam"
-              : "USDA FoodData Central";
-          // F-13 (2026-04-19) — auto-track caffeine + alcohol for this
-          // portion. Stashed under `micros.caffeineMg` / `micros.alcoholG`
-          // so a future delete can decrement by the same delta. Null
-          // per-100 g -> 0 (never invent). Mirrors web's FoodSearch
-          // onSelect commit path byte-for-byte.
-          const { caffeineMg, alcoholG } = scaleCaffeineAlcohol({
-            grams,
-            caffeineMgPer100g: result.macrosPer100g.caffeineMgPer100g ?? null,
-            alcoholGPer100g: result.macrosPer100g.alcoholGPer100g ?? null,
-          });
-          // F-79 (2026-04-25) — scale the full OFF micro set for `grams` and
-          // merge with caffeine/alcohol overrides (F-13). Empty when the
-          // source didn't expose any micros (USDA / Edamam / custom rows).
-          const explicitMicros: Record<string, number> = {};
-          if (caffeineMg > 0) explicitMicros.caffeineMg = caffeineMg;
-          if (alcoholG > 0) explicitMicros.alcoholG = alcoholG;
-          const micros = scaleMicrosForGrams(
-            result.microsPer100g ?? {},
-            grams,
-            explicitMicros,
-          );
-          const meal: JournalMeal = {
-            id: newMealId(),
-            name: activeMealSlot,
-            recipeTitle: result.name,
-            time: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
-            calories: Math.round(result.macrosPer100g.calories * f),
-            protein: Math.round(result.macrosPer100g.protein * f * 10) / 10,
-            carbs: Math.round(result.macrosPer100g.carbs * f * 10) / 10,
-            fat: Math.round(result.macrosPer100g.fat * f * 10) / 10,
-            source,
-            ...(Object.keys(micros).length > 0 ? { micros } : {}),
-          };
-          setByDay((prev) => ({
-            ...prev,
-            [dayKey]: [...(prev[dayKey] ?? []), meal],
-          }));
-          // F-13 — bump `profiles.extra_caffeine_by_day` /
-          // `extra_alcohol_g_by_day` for this day. Fire-and-forget; a
-          // failure here never rolls back the local log. The debounced
-          // sync effect will upsert the meal row + its micros shortly.
-          if (userId && (caffeineMg > 0 || alcoholG > 0)) {
-            void updateStimulantsForDay(supabase, userId, dayKey, {
-              caffeineMg,
-              alcoholG,
-            });
-          }
-          // L6 G1 (2026-04-18) — the Today FoodSearchModal commit was
-          // the only `food_logged` emit site on mobile without a
-          // source. Fire the canonical event with `custom_food` when
-          // the hit is from the user's custom food library, otherwise
-          // `manual` (USDA / Open Food Facts). Recipe-verify flows
-          // that also mount this modal do NOT emit `food_logged` —
-          // this host is the logging surface.
-          try {
-            track(AnalyticsEvents.food_logged, {
-              source: result.source === "CUSTOM" ? "custom_food" : "manual",
-              calories: meal.calories,
-              slot: activeMealSlot,
-            });
-          } catch { /* noop */ }
-          // F-38 (2026-04-21): keep modal open so the user can add
-          // multiple items to the same meal without tapping back through
-          // the FAB. Tester reported "can't add anything else to
-          // breakfast after yogurt" — the old auto-close meant each item
-          // needed a separate round-trip. The X button still dismisses.
-        }}
+        // Shared commit path — same logic the inline `<FoodSearchPanel>`
+        // inside `<LogSheet>` runs (handleFoodSearchSelect). F-13 +
+        // F-79 + L6 G1 all live in the shared callback.
+        // F-38 (2026-04-21): keep modal open so the user can add
+        // multiple items to the same meal without tapping back through
+        // the FAB. The X button still dismisses.
+        onSelect={handleFoodSearchSelect}
         onClose={() => setSearchOpen(false)}
       />
 
