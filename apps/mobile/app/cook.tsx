@@ -18,7 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useKeepAwake } from "expo-keep-awake";
 import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Play, Star, Timer as TimerIcon, CheckCircle2 } from "lucide-react-native";
+import { Mic, MicOff, Play, Star, Timer as TimerIcon, CheckCircle2 } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -55,6 +55,10 @@ import {
   pickDefaultRegularsSlot,
 } from "@/lib/cookSession";
 import { extractVideoHost } from "../../../src/lib/recipes/heroImageFallback";
+import {
+  readHandsfreeEnabled,
+  writeHandsfreeEnabled,
+} from "@/lib/cookHandsfree";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
