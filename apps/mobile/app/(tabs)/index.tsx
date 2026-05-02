@@ -175,6 +175,7 @@ import { TodayEditMealModal } from "@/components/today/TodayEditMealModal";
 import { TodayNutrientsModal } from "@/components/today/TodayNutrientsModal";
 import { TodayDateHeader } from "@/components/today/TodayDateHeader";
 import { TodayDashboardMacroTiles } from "@/components/today/TodayDashboardMacroTiles";
+import { TodayMicrosWidget } from "@/components/today/TodayMicrosWidget";
 import { TodayQuickLogStrip } from "@/components/today/TodayQuickLogStrip";
 import { TodaySnapShortcut } from "@/components/today/TodaySnapShortcut";
 import { OnboardingNudgeBanner } from "@/components/today/onboarding-nudges";
@@ -1934,10 +1935,14 @@ export default function TrackerScreen() {
     };
   }, [mealsToday]);
 
+  /** Day-summed nutrition_micros — shared by the all-nutrients modal
+   *  rows AND the new TodayMicrosWidget (which pulls fiber/iron/vit D/
+   *  sodium for headline tiles). Computed once so both surfaces agree. */
+  const dayMicroSum = useMemo(() => sumMicrosFromLoggedMeals(mealsToday), [mealsToday]);
+
   const dayNutrientDetailRows = useMemo(() => {
-    const microSum = sumMicrosFromLoggedMeals(mealsToday);
-    return buildDayNutrientDetailRows(totals.fiber, microSum);
-  }, [mealsToday, totals.fiber]);
+    return buildDayNutrientDetailRows(totals.fiber, dayMicroSum);
+  }, [dayMicroSum, totals.fiber]);
 
   /** Fiber is already shown in the macro widget row when enabled in Dashboard Widgets — avoid duplicating it here. */
   const dayNutrientDetailRowsWithoutMacroDupes = useMemo(() => {
@@ -3948,6 +3953,22 @@ export default function TrackerScreen() {
               textTertiaryColor={colors.textTertiary}
               mutedColor={colors.border}
               netCarbsLensEnabled={netCarbsLensEnabled}
+            />
+
+            {/* Micronutrient headline widget (audit gap #1, 2026-05-01).
+                Surfaces fibre / iron / vitamin D / sodium against FDA
+                2020 DV references so the Cronometer power-user persona
+                doesn't bounce on "Suppr is just a macro tracker". The
+                full all-nutrients modal still ships via the Nutrients
+                link inside TodayDashboardMacroTiles above. */}
+            <TodayMicrosWidget
+              microSum={dayMicroSum}
+              fiberG={totals.fiber}
+              cardColor={colors.card}
+              cardBorderColor={colors.cardBorder}
+              textColor={colors.text}
+              textSecondaryColor={colors.textSecondary}
+              textTertiaryColor={colors.textTertiary}
             />
           </>
         )}

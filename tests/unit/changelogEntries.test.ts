@@ -32,9 +32,10 @@ describe("changelog/entries", () => {
   it("getLatestChangelog returns the highest build number that has items (skips placeholders)", () => {
     const latest = getLatestChangelog();
     // 2026-05-01: build 11 picked up its first bullet (recipe detail
-    // v3 redesign) — it's no longer a placeholder and is now the
-    // latest user-visible entry.
-    expect(latest.buildNumber).toBe(11);
+    // v3 redesign), and PR #30 added build 12 (Today micros widget) —
+    // build 12 is now the latest user-visible entry. When a future
+    // build N+1 ships items, bump the expectation here in lockstep.
+    expect(latest.buildNumber).toBe(12);
     expect(latest.items.length).toBeGreaterThan(0);
   });
 
