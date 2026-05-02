@@ -1262,7 +1262,7 @@ export default function FoodSearchPanel({
                   }}
                 >
                   <Text style={{ fontSize: 14, fontWeight: "600", color: colors.textSecondary }}>
-                    Tell us we're missing this
+                    Tell us we&apos;re missing this
                   </Text>
                 </Pressable>
               </View>
