@@ -1,5 +1,15 @@
 # Mobile App Changelog
 
+## 2026-05-02 — Weekly TDEE check-in ritual modal
+
+### Today
+- **`WeeklyCheckinModal`** (`apps/mobile/components/today/WeeklyCheckinModal.tsx`) — MacroFactor-style soft prompt that surfaces the adaptive-vs-formula TDEE delta + a suggested new daily target. Two CTAs: "Accept new target" applies the delta (preserves the user's existing deficit/surplus, never below 1200 kcal floor) and persists `target_calories_source = "digest_recalibration"`; "Keep current" stamps `last_weekly_checkin_decision = "kept_current"` and leaves the target alone. The close X + backdrop tap also route through Keep current.
+- **Gate** (`src/lib/nutrition/weeklyCheckin.ts`) — fires when adaptive-TDEE confidence is medium/high AND ≥5 days logged in the current week AND the modal hasn't shown in the last 6 days. Pure module re-exported via `apps/mobile/lib/weeklyCheckin.ts` so web + mobile share the gate exactly.
+- **Persistence** (migration `20260504100000_weekly_checkin_state.sql`) — adds `profiles.last_weekly_checkin_shown_at` + `profiles.last_weekly_checkin_decision` (CHECK constraint: `accepted | kept_current | dismissed`).
+
+### Analytics
+- New events: `weekly_checkin_shown`, `weekly_checkin_accepted`, `weekly_checkin_dismissed`. All carry `platform: "web" | "ios" | "android"`. Shown event payload includes `confidence`, `tdeeDeltaKcal`, `daysLoggedThisWeek` so the funnel can slice acceptance rate by delta size.
+
 ## 2026-04-20 — RevenueCat Customer Center + v2 API key support
 
 ### RevenueCat

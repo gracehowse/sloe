@@ -389,6 +389,26 @@ export const AnalyticsEvents = {
    *   platform?: "web" | "ios" | "android", avgIngredientConfidence?, minIngredientConfidence? }`.
    * `recipe_id` omitted on create paste; set on recipe detail / verify flows when the recipe exists. */
   recipe_verify_needs_review: "recipe_verify_needs_review",
+  /** Weekly TDEE check-in modal rendered on Today (PR claude/weekly-checkin-ritual,
+   * 2026-05-02). Fires once per show — gate enforces a 6-day cooldown via
+   * `profiles.last_weekly_checkin_shown_at`. Payload:
+   *   - `confidence`: "medium" | "high" — adaptive-TDEE confidence at show time.
+   *   - `tdeeDeltaKcal`: number | null — adaptive minus prior; null when prior
+   *     formula TDEE is unavailable.
+   *   - `daysLoggedThisWeek`: number — gate input (≥5 to fire).
+   *   - `platform`: "web" | "ios" | "android". */
+  weekly_checkin_shown: "weekly_checkin_shown",
+  /** User tapped "Accept new target" on the weekly check-in modal. Payload:
+   *   - `tdeeDeltaKcal`: number | null,
+   *   - `suggestedTargetKcal`: number,
+   *   - `previousTargetKcal`: number,
+   *   - `platform`: "web" | "ios" | "android". */
+  weekly_checkin_accepted: "weekly_checkin_accepted",
+  /** User tapped "Keep current" or otherwise dismissed the weekly check-in
+   * modal. Payload: `{ reason: "kept_current" | "dismissed", platform }`.
+   * `dismissed` is reserved for future swipe/backdrop dismiss; today only
+   * `kept_current` fires from the explicit CTA. */
+  weekly_checkin_dismissed: "weekly_checkin_dismissed",
 } as const;
 
 export type AnalyticsEventName = (typeof AnalyticsEvents)[keyof typeof AnalyticsEvents];

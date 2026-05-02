@@ -7,6 +7,11 @@ import { useAppData } from "../../context/AppDataContext.tsx";
 import { normalizeMacroTargets, DEFAULT_STEPS_GOAL } from "../../types/profile.ts";
 import { calculateTDEE } from "../../lib/nutrition/tdee.ts";
 import { resolveMaintenance } from "../../lib/nutrition/resolveMaintenance.ts";
+import {
+  buildWeeklyCheckinContent,
+  shouldShowWeeklyCheckin,
+} from "../../lib/nutrition/weeklyCheckin.ts";
+import { WeeklyCheckinDialog } from "./suppr/weekly-checkin-dialog";
 import type { RecipeCard, UserTier } from "../../types/recipe.ts";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import { fetchPlannedMealMicros, type SupabaseLike } from "../../lib/planning/plannedMealMicros.ts";
@@ -417,6 +422,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
     profileDisplayName,
     authEmail,
     netCarbsLensEnabled,
+    setNutritionTargets,
   } = useAppData();
   // Suppress unused warning for caffeine-by-day (currently shown only via
   // today's number; weekly caffeine view is a separate roadmap item).
@@ -532,6 +538,21 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
   const [profileWeightKg, setProfileWeightKg] = useState<number | null>(null);
   const [profileGoal, setProfileGoal] = useState<string | null>(null);
   const [profileMaintenanceTdee, setProfileMaintenanceTdee] = useState<number | null>(null);
+  // Weekly check-in ritual (PR claude/weekly-checkin-ritual, 2026-05-02).
+  // Extracted adaptive-TDEE values + formula baseline + last-shown
+  // timestamp so `shouldShowWeeklyCheckin` can run on Today first-load.
+  // Mirrors mobile `apps/mobile/app/(tabs)/index.tsx`.
+  const [adaptiveTdeeKcal, setAdaptiveTdeeKcal] = useState<number | null>(null);
+  const [adaptiveTdeeConfidence, setAdaptiveTdeeConfidence] = useState<
+    "low" | "medium" | "high" | null
+  >(null);
+  const [formulaTdeeKcal, setFormulaTdeeKcal] = useState<number | null>(null);
+  const [weeklyCheckinShownAt, setWeeklyCheckinShownAt] = useState<string | null>(null);
+  const [weeklyCheckinOpen, setWeeklyCheckinOpen] = useState(false);
+  const [weeklyCheckinContent, setWeeklyCheckinContent] = useState<
+    import("../../lib/nutrition/weeklyCheckin").WeeklyCheckinContent | null
+  >(null);
+  const weeklyCheckinHandledRef = useRef(false);
   // F-3 (2026-04-19) — track the source + confidence so the Activity
   // Bonus card's info popover can render the canonical copy shared
   // with Progress. `null` source means "popover will fall back to the
@@ -1151,7 +1172,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
     supabase
       .from("profiles")
       .select(
-        "weight_kg, goal, sex, age, height_cm, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, week_start_day, steps_by_day, daily_steps_goal, fasting_sessions, tracked_macros, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history",
+        "weight_kg, goal, sex, age, height_cm, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, week_start_day, steps_by_day, daily_steps_goal, fasting_sessions, tracked_macros, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, last_weekly_checkin_shown_at",
       )
       .eq("id", authedUserId)
       .maybeSingle()
@@ -1234,7 +1255,20 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
           setProfileMaintenanceTdee(resolved.kcal);
           setProfileMaintenanceSource(resolved.source);
           setProfileMaintenanceConfidence(resolved.confidence);
+          setFormulaTdeeKcal(resolved.formulaKcal ?? null);
         }
+        // Weekly check-in ritual hydration. Shape mirrors mobile
+        // `loadProfileTargets`. Extracted adaptive values feed
+        // `shouldShowWeeklyCheckin` directly so the gate is identical.
+        const aTdeeRaw = (data as { adaptive_tdee?: unknown }).adaptive_tdee;
+        const aTdee = typeof aTdeeRaw === "number" && Number.isFinite(aTdeeRaw) ? aTdeeRaw : null;
+        setAdaptiveTdeeKcal(aTdee);
+        const aConfRaw = (data as { adaptive_tdee_confidence?: unknown }).adaptive_tdee_confidence;
+        setAdaptiveTdeeConfidence(
+          aConfRaw === "low" || aConfRaw === "medium" || aConfRaw === "high" ? aConfRaw : null,
+        );
+        const lastShown = (data as { last_weekly_checkin_shown_at?: unknown }).last_weekly_checkin_shown_at;
+        setWeeklyCheckinShownAt(typeof lastShown === "string" ? lastShown : null);
       });
   }, [authedUserId]);
 
@@ -1569,6 +1603,115 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
       label: `${weekStartLabel} – ${weekEndLabel}`,
     };
   }, [selectedDate, nutritionByDay, weekStartDay, extraWaterByDay, stepsByDay]);
+
+  // Weekly check-in ritual gate (PR claude/weekly-checkin-ritual,
+  // 2026-05-02). Mirrors mobile `apps/mobile/app/(tabs)/index.tsx`.
+  // Runs once per Today first-load — `weeklyCheckinHandledRef`
+  // suppresses re-fires for the rest of the session.
+  useEffect(() => {
+    if (selectedDateKey !== todayKey()) return;
+    if (weeklyCheckinHandledRef.current) return;
+    if (!authedUserId) return;
+    const conf =
+      adaptiveTdeeConfidence === "medium" || adaptiveTdeeConfidence === "high"
+        ? adaptiveTdeeConfidence
+        : adaptiveTdeeConfidence == null
+          ? null
+          : "low";
+    const eligible = shouldShowWeeklyCheckin({
+      adaptiveTdeeConfidence: conf as never,
+      adaptiveTdee: adaptiveTdeeKcal,
+      daysLoggedThisWeek: weekData.loggedDaysInWeek,
+      lastShownAt: weeklyCheckinShownAt,
+    });
+    if (!eligible) return;
+    if (!Number.isFinite(targets.calories) || targets.calories <= 0) return;
+    weeklyCheckinHandledRef.current = true;
+
+    const content = buildWeeklyCheckinContent({
+      adaptiveTdee: adaptiveTdeeKcal as number,
+      priorTdee: formulaTdeeKcal,
+      currentTargetKcal: targets.calories,
+      avgCaloriesThisWeek: weekData.weekAvg.calories,
+      weightDeltaKg: null,
+    });
+    setWeeklyCheckinContent(content);
+    setWeeklyCheckinOpen(true);
+
+    const nowIso = new Date().toISOString();
+    setWeeklyCheckinShownAt(nowIso);
+    void supabase
+      .from("profiles")
+      .update({ last_weekly_checkin_shown_at: nowIso } as never)
+      .eq("id", authedUserId);
+
+    try {
+      track(AnalyticsEvents.weekly_checkin_shown, {
+        confidence: conf,
+        tdeeDeltaKcal: content.tdeeDeltaKcal,
+        daysLoggedThisWeek: weekData.loggedDaysInWeek,
+        platform: "web",
+      });
+    } catch {
+      /* noop */
+    }
+  }, [
+    selectedDateKey,
+    authedUserId,
+    adaptiveTdeeKcal,
+    adaptiveTdeeConfidence,
+    formulaTdeeKcal,
+    weekData,
+    targets.calories,
+    weeklyCheckinShownAt,
+  ]);
+
+  const handleWeeklyCheckinAccept = useCallback(() => {
+    if (!authedUserId || !weeklyCheckinContent) {
+      setWeeklyCheckinOpen(false);
+      return;
+    }
+    const newTarget = weeklyCheckinContent.suggestedTargetKcal;
+    const previous = targets.calories;
+    setWeeklyCheckinOpen(false);
+    try {
+      track(AnalyticsEvents.weekly_checkin_accepted, {
+        tdeeDeltaKcal: weeklyCheckinContent.tdeeDeltaKcal,
+        suggestedTargetKcal: newTarget,
+        previousTargetKcal: previous,
+        platform: "web",
+      });
+    } catch {
+      /* noop */
+    }
+    setNutritionTargets((prev) => ({ ...prev, calories: newTarget }));
+    void supabase
+      .from("profiles")
+      .update({
+        target_calories: newTarget,
+        target_calories_set_at: new Date().toISOString(),
+        target_calories_source: "digest_recalibration",
+        last_weekly_checkin_decision: "accepted",
+      } as never)
+      .eq("id", authedUserId);
+  }, [authedUserId, weeklyCheckinContent, targets.calories, setNutritionTargets]);
+
+  const handleWeeklyCheckinDismiss = useCallback(() => {
+    setWeeklyCheckinOpen(false);
+    if (!authedUserId) return;
+    try {
+      track(AnalyticsEvents.weekly_checkin_dismissed, {
+        reason: "kept_current",
+        platform: "web",
+      });
+    } catch {
+      /* noop */
+    }
+    void supabase
+      .from("profiles")
+      .update({ last_weekly_checkin_decision: "kept_current" } as never)
+      .eq("id", authedUserId);
+  }, [authedUserId]);
 
   const maintenanceForWeek = profileMaintenanceTdee ?? baseCalorieTarget;
 
@@ -2317,6 +2460,16 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
 
       </>
       )}
+
+      {/* Weekly check-in ritual dialog (PR claude/weekly-checkin-ritual,
+          2026-05-02). Web parity with mobile WeeklyCheckinModal. */}
+      <WeeklyCheckinDialog
+        open={weeklyCheckinOpen}
+        content={weeklyCheckinContent}
+        currentTargetKcal={targets.calories}
+        onAccept={handleWeeklyCheckinAccept}
+        onDismiss={handleWeeklyCheckinDismiss}
+      />
 
       {/* Complete Day Dialog */}
       <TodayCompleteDayDialog
