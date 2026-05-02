@@ -56,6 +56,21 @@ export const CHANGELOG_BULLET_MAX_CHARS = 120;
  * correctly. Never trim the array — keep the full history.
  */
 const CHANGELOGS: ChangelogEntry[] = [
+  {
+    buildNumber: 12,
+    appVersion: "1.0.0",
+    releaseDate: "2026-05-01",
+    items: [
+      {
+        kind: "new",
+        text: "Discover now ships with a 15-recipe curated set so the tab feels alive while we ramp community uploads.",
+      },
+      {
+        kind: "coming_soon",
+        text: "Cuisine carousels and Latin / Comfort clusters land in the next Discover pass.",
+      },
+    ],
+  },
   // Placeholder for the next build. Kept deliberately empty so a
   // renderer that fetches "latest" before new bullets land doesn't
   // break; `getLatestChangelog()` prefers the most recent entry that
