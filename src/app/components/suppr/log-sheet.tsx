@@ -45,6 +45,7 @@
 
 import * as React from "react";
 import {
+  BookmarkCheck,
   Camera,
   ChevronRight,
   Clock,
@@ -103,6 +104,33 @@ export interface LogSheetSavedMeal {
   title: string;
   kcal: number;
   source: SourceDotSource;
+}
+
+/**
+ * Library tab row (TestFlight Build 40 feedback `AECfotBlQgwfgxYHr4dDaM8` +
+ * "no way to add from library here", 2026-05-01) -- mirrors the mobile
+ * `LogSheetLibraryRecipe` shape so the host can pass the same payload
+ * to either platform's LogSheet.
+ *
+ * Surfaces the user's saved recipes inline in the LogSheet so a one-tap
+ * log no longer requires routing through Recipes -> Library -> Detail
+ * -> Log. Distinct from `LogSheetSavedMeal` (which represents a "saved
+ * combo of foods") -- Library rows are recipe-level entries with a
+ * canonical meal-type tag and per-portion kcal.
+ */
+export interface LogSheetLibraryRecipe {
+  id: string;
+  title: string;
+  /** Per-portion kcal (recipe.calories / recipe.servings, rounded). */
+  kcalPerPortion: number;
+  /** Optional thumbnail URL -- falls back to a coloured placeholder. */
+  thumbnail?: string | null;
+  /** Optional meal-type tag (Breakfast / Lunch / Dinner / Snacks).
+   *  Resolved from `recipes.meal_type` via the canonical
+   *  `journalSlotFromMealTypes` helper at the host. Surfaced as a
+   *  small pill on the row so the user knows which slot the one-tap
+   *  log will land in. */
+  mealTag?: "Breakfast" | "Lunch" | "Dinner" | "Snacks" | null;
 }
 
 export interface LogSheetRecentEntry {
@@ -197,6 +225,29 @@ export interface LogSheetProps {
     onPick: (meal: LogSheetSavedMeal) => void;
     state?: LogSheetTabState;
   };
+  /** Library tab -- user's saved recipes, surfaced inline so one-tap
+   *  logging no longer requires routing through Recipes -> Library ->
+   *  Detail. Sourced from TestFlight Build 40 feedback
+   *  `AECfotBlQgwfgxYHr4dDaM8` ("No way to add recipes saved to
+   *  library from here") + sibling reports, 2026-05-01. Mirror of the
+   *  mobile `library` prop on the same primitive.
+   *
+   *  Browse-tab order is Recent / Library / Saved meals -- Recent
+   *  remains the most-frequent default (eat-again loop); Library
+   *  sits next so the saved-recipe path is discoverable but doesn't
+   *  steal first-tap from the eat-again user.
+   *
+   *  When `library` is undefined the tab is hidden entirely. When
+   *  `library` is provided with an empty list, the empty state with
+   *  a "Browse recipes" CTA renders. */
+  library?: {
+    recipes: LogSheetLibraryRecipe[];
+    onPick: (recipe: LogSheetLibraryRecipe) => void;
+    /** Empty-state CTA -- typically routes to /recipes. When
+     *  undefined, the empty state hides the button. */
+    onBrowseRecipes?: () => void;
+    state?: LogSheetTabState;
+  };
   /** Voice log. Click the mic icon → host closes LogSheet and opens
    *  VoiceLogDialog (or the AI paywall for free / base tiers). */
   voice?: {
@@ -223,7 +274,7 @@ export interface LogSheetProps {
   desktop?: boolean;
 }
 
-type BrowseTab = "recent" | "saved";
+type BrowseTab = "recent" | "library" | "saved";
 
 export function LogSheet({
   open,
@@ -232,6 +283,7 @@ export function LogSheet({
   barcode,
   recent,
   saved,
+  library,
   voice,
   photo,
   onAddManually,
@@ -314,6 +366,7 @@ export function LogSheet({
               barcode={barcode}
               recent={recent}
               saved={saved}
+              library={library}
               voice={voice}
               photo={photo}
               browseTab={browseTab}
@@ -335,6 +388,7 @@ function DefaultComposition({
   barcode,
   recent,
   saved,
+  library,
   voice,
   photo,
   browseTab,
@@ -346,6 +400,7 @@ function DefaultComposition({
   barcode: LogSheetProps["barcode"];
   recent: LogSheetProps["recent"];
   saved: LogSheetProps["saved"];
+  library: LogSheetProps["library"];
   voice: LogSheetProps["voice"];
   photo: LogSheetProps["photo"];
   browseTab: BrowseTab;
@@ -354,7 +409,22 @@ function DefaultComposition({
 }) {
   const showRecent = !!recent;
   const showSaved = !!saved;
-  const showBrowseToggle = showRecent && showSaved;
+  const showLibrary = !!library;
+  // Show the multi-tab toggle whenever 2+ browse sources are wired.
+  // With Library added (2026-05-01), order is Recent / Library / Saved.
+  const visibleTabs = React.useMemo<BrowseTab[]>(() => {
+    const tabs: BrowseTab[] = [];
+    if (showRecent) tabs.push("recent");
+    if (showLibrary) tabs.push("library");
+    if (showSaved) tabs.push("saved");
+    return tabs;
+  }, [showRecent, showLibrary, showSaved]);
+  const showBrowseToggle = visibleTabs.length >= 2;
+  const activeTab: BrowseTab = visibleTabs.includes(browseTab)
+    ? browseTab
+    : (visibleTabs[0] ?? "recent");
+  const labelFor = (id: BrowseTab) =>
+    id === "recent" ? "Recent" : id === "library" ? "Library" : "Saved meals";
 
   // Inline-search mode is active when the host wired `search.onSelect`.
   // In that case the search row is a real `<Input>` and results render
@@ -464,23 +534,24 @@ function DefaultComposition({
         </div>
       ) : (
         <>
-          {/* Browse pill toggle — Recent / Saved. Hidden when only one
-              source is available; the available one renders directly. */}
+          {/* Browse pill toggle -- Recent / Library / Saved. Hidden
+              when only one source is available; the available one
+              renders directly. */}
           {showBrowseToggle ? (
             <div
               role="tablist"
               aria-label="Browse meals"
               className="mx-3 mt-3 flex rounded-lg bg-muted p-0.5"
             >
-              {(["recent", "saved"] as const).map((id) => {
-                const active = browseTab === id;
+              {visibleTabs.map((id) => {
+                const active = activeTab === id;
                 return (
                   <button
                     key={id}
                     type="button"
                     role="tab"
                     aria-selected={active}
-                    aria-label={id === "recent" ? "Recent" : "Saved meals"}
+                    aria-label={labelFor(id)}
                     onClick={() => onBrowseTabChange(id)}
                     className={cn(
                       "flex-1 rounded-md py-2 text-[13px] font-semibold transition-colors",
@@ -490,7 +561,7 @@ function DefaultComposition({
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                     )}
                   >
-                    {id === "recent" ? "Recent" : "Saved meals"}
+                    {labelFor(id)}
                   </button>
                 );
               })}
@@ -499,13 +570,16 @@ function DefaultComposition({
 
           {/* Browse content */}
           <div className="flex-1 overflow-y-auto px-3 pb-2 pt-3">
-            {showRecent && (browseTab === "recent" || !showSaved) ? (
+            {showRecent && activeTab === "recent" ? (
               <RecentList recent={recent!} />
             ) : null}
-            {showSaved && (browseTab === "saved" || !showRecent) ? (
+            {showLibrary && activeTab === "library" ? (
+              <LibraryList library={library!} />
+            ) : null}
+            {showSaved && activeTab === "saved" ? (
               <SavedList saved={saved!} />
             ) : null}
-            {!showRecent && !showSaved ? (
+            {!showRecent && !showSaved && !showLibrary ? (
               <p className="py-12 text-center text-[12px] text-muted-foreground">
                 Search above for foods, or scan / speak / snap a photo.
               </p>
@@ -715,6 +789,96 @@ function SavedList({ saved }: { saved: NonNullable<LogSheetProps["saved"]> }) {
         />
       ))}
     </div>
+  );
+}
+
+/* -------------------------- Library list -------------------------- */
+
+function LibraryList({ library }: { library: NonNullable<LogSheetProps["library"]> }) {
+  const { recipes, onPick, onBrowseRecipes, state } = library;
+
+  if (state?.loading) return <SkeletonList />;
+
+  if (recipes.length === 0) {
+    return (
+      <div className="rounded-lg border border-dashed p-8 text-center">
+        <BookmarkCheck width={28} height={28} className="mx-auto text-muted-foreground" aria-hidden />
+        <p className="mt-2 text-[14px] font-semibold text-foreground">No saved recipes yet</p>
+        <p className="mt-1 text-[12px] text-muted-foreground">
+          Save recipes from the Recipes tab to see them here. We&rsquo;ll show your most-cooked recipes first.
+        </p>
+        {onBrowseRecipes ? (
+          <button
+            type="button"
+            onClick={onBrowseRecipes}
+            aria-label="Browse recipes"
+            className={cn(
+              "mt-3 h-10 rounded-md bg-primary px-5 text-[14px] font-bold text-primary-foreground",
+              "hover:bg-primary/90 transition-colors",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+            )}
+          >
+            Browse recipes
+          </button>
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {recipes.map((r) => (
+        <LibraryRow key={r.id} recipe={r} onPick={() => onPick(r)} />
+      ))}
+    </div>
+  );
+}
+
+/* -------------------------- Library row -------------------------- */
+
+function LibraryRow({
+  recipe,
+  onPick,
+}: {
+  recipe: LogSheetLibraryRecipe;
+  onPick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onPick}
+      aria-label={`Log ${recipe.title}`}
+      className={cn(
+        "flex w-full items-center rounded-md py-2 px-1 text-left",
+        "hover:bg-muted/50 active:bg-muted transition-colors",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+      )}
+    >
+      {recipe.thumbnail ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={recipe.thumbnail}
+          alt=""
+          aria-hidden
+          className="size-9 rounded-md bg-muted object-cover shrink-0"
+        />
+      ) : (
+        <div className="size-9 rounded-md bg-muted shrink-0" aria-hidden />
+      )}
+      <div className="ml-2 flex-1 min-w-0">
+        <p className="truncate text-[14px] text-foreground">{recipe.title}</p>
+        <div className="mt-0.5 flex items-center gap-1.5">
+          <span className="text-[11px] tabular-nums text-muted-foreground">
+            {recipe.kcalPerPortion} kcal
+          </span>
+          {recipe.mealTag ? (
+            <span className="rounded border border-border bg-muted px-1.5 py-px text-[10px] font-semibold text-muted-foreground">
+              {recipe.mealTag}
+            </span>
+          ) : null}
+        </div>
+      </div>
+    </button>
   );
 }
 
