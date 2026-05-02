@@ -1,15 +1,14 @@
 # Mobile App Changelog
 
-## 2026-05-01 — TodayQuickLogStrip primary-action sizing
+## 2026-05-02 — 30-day logging milestone moment
 
 ### Today
-- **Today's quick-log row** lifted from a 28pt tinted square + 10pt label to a 56pt tile + 36pt tinted square (`IconBox size="md"` mirror) + `IconSize.lg` (18pt) glyph + `Type.caption` (12pt) label (ui-critic finding #1, P0). Primary action affordance must read as primary.
-- The redundant `cardColor` outer border is gone — the tinted icon container carries the colour identity (same model as web `IconBox`).
-- Tabular-nums on labels for vertical rhythm with the surrounding macro tiles.
-- Web parity applied to `src/app/components/suppr/today-quick-log-strip.tsx` (`min-h-14`, `IconBox size="md"`, `text-xs`).
-- Lock-in tests:
-  - `apps/mobile/tests/unit/todayQuickLogStripSizing.test.tsx` pins minHeight ≥ 56, IconSize.lg, Type.caption, no outer border.
-  - `tests/unit/todayQuickLogStripParity.test.ts` enforces the matching web classes.
+- **`Milestone30DayModal`** (`apps/mobile/components/today/Milestone30DayModal.tsx`) — Lifesum/MacroFactor-style trust moment that fires once when the user crosses 30 *distinct* logged days (gaps don't cost the badge). Surfaces avg daily kcal, top 3 most-logged foods, longest streak, and total weight delta first→last (when ≥2 weigh-ins). Single CTA: "Keep going". No paywall, no upsell.
+- **Gate** (`src/lib/nutrition/milestone30Day.ts`) — once-and-done via `profiles.milestone_30_shown_at`. Pure module re-exported from `apps/mobile/lib/milestone30Day.ts` so web + mobile share the gate exactly. Top-foods list deterministic (count desc, then alphabetical tie-break).
+- **Persistence** (migration `20260507100000_milestone_state.sql`) — adds nullable `profiles.milestone_30_shown_at`.
+
+### Analytics
+- New events: `milestone_30_shown`, `milestone_30_dismissed`. Shown event payload: `{ daysLogged, longestStreak, topFoodCount, platform }`.
 
 ## 2026-05-01 — LogSheet: 3-tab discoverability (journey-architect P1)
 
