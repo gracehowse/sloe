@@ -1154,6 +1154,47 @@ export default function CookModeScreen() {
       borderRadius: Radius.md,
     },
     doneBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+
+    // Voice handsfree toggle (Paprika parity, 2026-05-01). The mic
+    // sits in the right slot of the header where the layout
+    // previously held a 40-width spacer balancing the Exit button.
+    // Hit area matches the spacer width so the counter stays
+    // visually centred whether the toggle is on or off.
+    micToggle: {
+      width: 40,
+      height: 32,
+      borderRadius: Radius.sm,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    // Subtle muted tint when off — present so users know it's
+    // tappable, not so loud that it competes with the step text.
+    micToggleOff: { backgroundColor: colors.card },
+    // Accent tint when on so the active state is unmistakable
+    // even from across the kitchen.
+    micToggleOn: { backgroundColor: Accent.primary + "22" },
+    handsfreeBanner: {
+      marginHorizontal: Spacing.xl,
+      marginTop: Spacing.sm,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.sm,
+      borderRadius: Radius.sm,
+      backgroundColor: Accent.primary + "10",
+      borderWidth: 1,
+      borderColor: Accent.primary + "30",
+    },
+    handsfreeBannerText: {
+      color: colors.text,
+      fontSize: 12,
+      lineHeight: 17,
+      fontWeight: "600",
+    },
+    handsfreeBannerSub: {
+      color: colors.textSecondary,
+      fontSize: 11,
+      lineHeight: 15,
+      marginTop: 2,
+    },
   }), [colors]);
 
   if (steps.length === 0) {
@@ -1185,27 +1226,47 @@ export default function CookModeScreen() {
           <Text style={styles.headerExit}>Exit</Text>
         </Pressable>
         <Text style={styles.headerCounter}>Step {current + 1} of {totalSteps}</Text>
-        {/* Recime parity (2026-04-30): "Watch original" pill — only
-            renders when the recipe has a source video URL. Tap →
-            opens the link in the system handler. The right slot
-            previously held a 40-width spacer to balance the Exit
-            button width; we keep the same minimum reserve so the
-            counter stays centred when the pill is absent. */}
-        {watchOriginalUrl ? (
+        {/* Right slot: Watch Original (when available) + voice
+            handsfree toggle. Recime parity (2026-04-30) for watch-
+            original; Paprika parity (2026-05-01) for the mic toggle. */}
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          {watchOriginalUrl ? (
+            <Pressable
+              onPress={onWatchOriginalPress}
+              accessibilityRole="link"
+              accessibilityLabel="Watch original video"
+              testID="cook-watch-original"
+              hitSlop={6}
+              style={styles.watchOriginalPill}
+            >
+              <Play size={14} color={Accent.primary} />
+              <Text style={styles.watchOriginalText}>Watch original</Text>
+            </Pressable>
+          ) : null}
+          {/* Voice handsfree toggle (Paprika parity, 2026-05-01). v1
+              ships the toggle + persistence + banner — the listener
+              itself is queued for v2 (see decision doc). */}
           <Pressable
-            onPress={onWatchOriginalPress}
-            accessibilityRole="link"
-            accessibilityLabel="Watch original video"
-            testID="cook-watch-original"
-            hitSlop={6}
-            style={styles.watchOriginalPill}
+            accessibilityRole="switch"
+            accessibilityState={{ checked: handsfreeOn }}
+            accessibilityLabel={
+              handsfreeOn ? "Voice handsfree on" : "Voice handsfree off"
+            }
+            testID="cook-handsfree-toggle"
+            onPress={handleHandsfreeToggle}
+            hitSlop={8}
+            style={[
+              styles.micToggle,
+              handsfreeOn ? styles.micToggleOn : styles.micToggleOff,
+            ]}
           >
-            <Play size={14} color={Accent.primary} />
-            <Text style={styles.watchOriginalText}>Watch original</Text>
+            {handsfreeOn ? (
+              <Mic size={18} color={Accent.primary} strokeWidth={2} />
+            ) : (
+              <MicOff size={18} color={colors.textSecondary} strokeWidth={2} />
+            )}
           </Pressable>
-        ) : (
-          <View style={{ width: 40 }} />
-        )}
+        </View>
       </View>
 
       {/* Progress bar */}
@@ -1219,6 +1280,28 @@ export default function CookModeScreen() {
           ]}
         />
       </View>
+
+      {/* Voice handsfree banner — only renders when the toggle is ON.
+          v1 transparency: tells the user voice listening isn't live
+          yet, but the screen-stays-on bit IS. Better to ship honest
+          copy than to fake a pulsing mic the listener can't fulfil
+          (CLAUDE.md: never fake-implement). v2 swap-in: replace the
+          banner with a "Listening — say next, repeat, pause…" hint
+          + a real pulse on the mic icon when the listener is active. */}
+      {handsfreeOn && (
+        <View
+          style={styles.handsfreeBanner}
+          accessibilityLiveRegion="polite"
+          testID="cook-handsfree-banner"
+        >
+          <Text style={styles.handsfreeBannerText}>
+            Screen stays awake while you cook.
+          </Text>
+          <Text style={styles.handsfreeBannerSub}>
+            Voice control (say &quot;next&quot;, &quot;back&quot;, &quot;repeat&quot;) is coming soon. We don&apos;t record audio yet.
+          </Text>
+        </View>
+      )}
 
       {/* "Last time" preview card — only when we have prior cook history.
           Renders above the active step so the user walks in reminded of
