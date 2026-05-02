@@ -23,8 +23,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { X } from "lucide-react-native";
+import { Mic, Sparkles, X, XCircle } from "lucide-react-native";
 
 import { Accent, IconSize, Radius, Spacing } from "@/constants/theme";
 import {
@@ -276,7 +275,7 @@ export default function VoiceLogSheet({
               }}
             >
               <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 8 }}>
-                <Ionicons name="mic" size={20} color={Accent.success} />
+                <Mic size={IconSize.xl} color={Accent.success} strokeWidth={2.25} />
                 <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text }}>Voice log</Text>
               </View>
               <Pressable
@@ -314,7 +313,11 @@ export default function VoiceLogSheet({
                       borderColor: Accent.success + "55",
                     }}
                   >
-                    <Ionicons name="mic" size={24} color={isRecording ? "#fff" : Accent.success} />
+                    <Mic
+                      size={IconSize.hero}
+                      color={isRecording ? "#fff" : Accent.success}
+                      strokeWidth={2.25}
+                    />
                   </Pressable>
                   <Text style={{ flex: 1, fontSize: 12, color: colors.textSecondary }}>
                     {isRecording
@@ -432,7 +435,7 @@ export default function VoiceLogSheet({
                           <Badge
                             variant="ai"
                             accessibilityLabel="AI estimated nutrition"
-                            icon={<Ionicons name="sparkles-outline" size={10} color="#8b5cf6" />}
+                            icon={<Sparkles size={IconSize.xs} color="#8b5cf6" strokeWidth={2.25} />}
                           >
                             AI estimate
                           </Badge>
@@ -443,7 +446,7 @@ export default function VoiceLogSheet({
                           onPress={() => removeItem(i)}
                           hitSlop={8}
                         >
-                          <Ionicons name="close-circle" size={20} color={colors.textTertiary} />
+                          <XCircle size={IconSize.xl} color={colors.textTertiary} strokeWidth={2.25} />
                         </Pressable>
                       </View>
                       <View style={{ flexDirection: "row", gap: 6, marginTop: Spacing.sm }}>

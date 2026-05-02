@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FlatList, LayoutChangeEvent, Pressable, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Calendar, Check, Snowflake } from "lucide-react-native";
 
-import { Accent, Spacing } from "@/constants/theme";
+import { Accent, IconSize, Spacing } from "@/constants/theme";
 import {
   addDaysLocal,
   clampJournalDate,
@@ -146,7 +146,7 @@ export default function DayStrip({
                 }}
               >
                 {hasLogs && !isSelected ? (
-                  <Ionicons name="checkmark" size={15} color={Accent.success} />
+                  <Check size={15} color={Accent.success} strokeWidth={2.5} />
                 ) : (
                   <Text
                     style={{
@@ -174,7 +174,7 @@ export default function DayStrip({
                       backgroundColor: Accent.cyan + "33",
                     }}
                   >
-                    <Ionicons name="snow-outline" size={10} color={Accent.cyan} />
+                    <Snowflake size={IconSize.xs} color={Accent.cyan} strokeWidth={2.25} />
                   </View>
                 ) : null}
               </View>
@@ -233,7 +233,7 @@ export default function DayStrip({
           hitSlop={10}
           style={{ padding: 8 }}
         >
-          <Ionicons name="calendar-outline" size={22} color={Accent.primary} />
+          <Calendar size={22} color={Accent.primary} strokeWidth={2} />
         </Pressable>
       </View>
     </View>

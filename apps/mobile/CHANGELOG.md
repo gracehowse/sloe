@@ -1,5 +1,12 @@
 # Mobile App Changelog
 
+## 2026-05-01 — Icon-language sweep (Ionicons → lucide)
+
+### Design language
+- **Voice / Photo / Quick-add / Day-strip** now route every glyph through `lucide-react-native`. The remaining `@expo/vector-icons` Ionicons leak in `VoiceLogSheet.tsx`, `PhotoLogSheet.tsx`, `QuickAddPanel.tsx` and `charts/DayStrip.tsx` is removed (ui-critic finding #3, P1).
+- Sizes routed through the canonical `IconSize` token in `apps/mobile/constants/theme.ts` so a future review can audit the ladder in one place.
+- Lock-in test: `apps/mobile/tests/unit/iconLanguageNoIonicons.test.ts` scans the four files and fails if `Ionicons` re-appears.
+
 ## 2026-04-20 — RevenueCat Customer Center + v2 API key support
 
 ### RevenueCat
