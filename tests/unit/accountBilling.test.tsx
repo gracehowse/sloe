@@ -48,16 +48,67 @@ describe("resolveBillingPortalOutcome", () => {
     });
   });
 
-  it("2. redirects to /pricing?ref=billing when the user has no Stripe customer id", async () => {
+  it("2. redirects to /pricing?ref=billing when the user has no Stripe customer id (Free / no tier)", async () => {
     const outcome = await resolveBillingPortalOutcome({
       userId: "user-uuid",
       stripeCustomerId: null,
+      // userTier omitted → falsy → /pricing branch.
       openPortal: async () => makePortalSession("https://billing.stripe.com/p/y"),
     });
     expect(outcome).toEqual({
       kind: "redirect",
       url: "/pricing?ref=billing",
     });
+  });
+
+  it("2. redirects to /pricing?ref=billing when the user is explicitly Free", async () => {
+    const outcome = await resolveBillingPortalOutcome({
+      userId: "user-uuid",
+      stripeCustomerId: null,
+      userTier: "free",
+      openPortal: async () => makePortalSession("https://billing.stripe.com/p/y"),
+    });
+    expect(outcome).toEqual({
+      kind: "redirect",
+      url: "/pricing?ref=billing",
+    });
+  });
+
+  it("2. (P0-1, 2026-04-30) returns app_store_managed fallback when a Pro user has no Stripe customer id", async () => {
+    // App Store / RevenueCat path — the user has Pro entitlement
+    // (synced from RevenueCat → profiles.user_tier) but no Stripe
+    // customer because they paid via IAP. Server can't open a Stripe
+    // portal for them; we route to the static fallback which already
+    // carries the iOS Settings → Apple ID → Subscriptions copy.
+    const outcome = await resolveBillingPortalOutcome({
+      userId: "user-uuid",
+      stripeCustomerId: null,
+      userTier: "pro",
+      openPortal: null,
+    });
+    expect(outcome.kind).toBe("fallback");
+    if (outcome.kind === "fallback") {
+      expect(outcome.reason).toBe("app_store_managed");
+    }
+  });
+
+  it("2. App Store path takes priority over Stripe-not-configured (Pro + no customer + no opener)", async () => {
+    // Defence-in-depth: even if STRIPE_SECRET_KEY is unset (openPortal
+    // null), a Pro user without a customer id still resolves to the
+    // App Store reason, not stripe_not_configured. The user-facing
+    // fallback JSX is the same surface, but the reason string is what
+    // server logs key off of.
+    const outcome = await resolveBillingPortalOutcome({
+      userId: "user-uuid",
+      stripeCustomerId: null,
+      userTier: "pro",
+      openPortal: null,
+    });
+    if (outcome.kind === "fallback") {
+      expect(outcome.reason).toBe("app_store_managed");
+    } else {
+      throw new Error("expected fallback outcome");
+    }
   });
 
   it("3. returns fallback when STRIPE_SECRET_KEY is unset (openPortal === null)", async () => {

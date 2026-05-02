@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useTheme } from "next-themes";
 import { Icons } from "./ui/icons";
 import { Switch } from "./ui/switch";
+import { SettingsSegmented } from "./ui/settings-segmented";
 import { toast } from "sonner";
 import { STORAGE_KEY } from "../../context/appData/persistence.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
@@ -56,6 +57,7 @@ import {
   serializeTrackingExtras,
   type TrackingExtras,
 } from "../../lib/nutrition/trackingExtras.ts";
+import { MACRO_COLOR_VARS } from "../../lib/theme/macroColors.ts";
 
 const THEME_OPTIONS = [
   { value: "system", label: "Auto" },
@@ -63,14 +65,21 @@ const THEME_OPTIONS = [
   { value: "dark", label: "Dark" },
 ] as const;
 
+/**
+ * Audit 2026-04-30 P0-3 — Dashboard widget swatches now read from the
+ * canonical `--macro-*` CSS custom properties so they match the rings,
+ * tiles, and charts everywhere else on the surface (and dark-mode flips
+ * happen for free). Hex literals below were drift; the source of truth
+ * is `src/styles/theme.css` mirrored in `src/lib/theme/macroColors.ts`.
+ */
 const WIDGET_MACRO_OPTIONS = [
-  { key: "protein", label: "Protein", color: "#5B8DEF" },
-  { key: "carbs", label: "Carbs", color: "#F5A623" },
-  { key: "fat", label: "Fat", color: "#E05C5C" },
-  { key: "fiber", label: "Fiber", color: "#22c55e" },
-  { key: "sugar", label: "Sugar", color: "#D87FE8" },
-  { key: "sodium", label: "Sodium", color: "#7FB5E8" },
-  { key: "water", label: "Water", color: "#4FC3F7" },
+  { key: "protein", label: "Protein", color: MACRO_COLOR_VARS.protein },
+  { key: "carbs", label: "Carbs", color: MACRO_COLOR_VARS.carbs },
+  { key: "fat", label: "Fat", color: MACRO_COLOR_VARS.fat },
+  { key: "fiber", label: "Fiber", color: MACRO_COLOR_VARS.fiber },
+  { key: "sugar", label: "Sugar", color: MACRO_COLOR_VARS.sugar },
+  { key: "sodium", label: "Sodium", color: MACRO_COLOR_VARS.sodium },
+  { key: "water", label: "Water", color: MACRO_COLOR_VARS.water },
 ] as const;
 
 /** Human-readable labels for notification toggle keys, matching mobile. */
@@ -516,13 +525,19 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
-      {/* Header */}
+      {/* Header.
+          Audit 2026-04-30 P1-5 — Stripped the `bg-clip-text text-transparent`
+          combo (no gradient was set, so the text was being clipped against
+          a solid foreground for no reason). The cog icon also lost its
+          `bg-primary/30` background — it stuck out against the otherwise
+          neutral page chrome — and now sits on the same muted surface the
+          rest of the section headings use. */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 bg-primary/30 rounded-xl">
-            <Icons.settings className="w-5 h-5 text-white" />
+          <div className="p-2 bg-muted rounded-xl">
+            <Icons.settings className="w-5 h-5 text-muted-foreground" />
           </div>
-          <h1 className="text-foreground bg-clip-text text-transparent">Settings</h1>
+          <h1 className="text-foreground">Settings</h1>
         </div>
         <p className="text-muted-foreground">Manage your account and preferences</p>
       </div>
@@ -593,6 +608,26 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
               className="text-sm font-medium text-success hover:text-success/80"
             >
               View plans
+            </Link>
+          )}
+          {/* P0-1 (audit 2026-04-30): Pro users finally have an in-app
+              cancel path on web. The link routes to /account/billing,
+              which is the existing server-side shell that opens a
+              single-use Stripe Customer Portal session, falls back to
+              email-support copy when Stripe is unavailable, and now
+              also surfaces the App Store "manage on iOS" pathway when
+              the user has no `stripe_customer_id` (i.e. paid via
+              RevenueCat → App Store). Copy stays "Manage subscription"
+              — Stripe / iOS Settings own the word "Cancel" so we don't
+              duplicate it here. Mobile parity at
+              `apps/mobile/app/(tabs)/settings.tsx:622-650`. */}
+          {userTier === "pro" && (
+            <Link
+              href="/account/billing"
+              data-testid="settings-manage-subscription-link"
+              className="text-sm font-medium text-success hover:text-success/80"
+            >
+              Manage subscription
             </Link>
           )}
         </div>
@@ -706,30 +741,22 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           <h3 className="text-foreground">Preferences</h3>
         </div>
         <div className="space-y-6">
+          {/* Measurement system — P1-7 (audit 2026-04-30) consolidated
+              into the SettingsSegmented primitive. */}
           <div>
             <label className="block mb-3 text-sm font-medium text-foreground">Measurement System</label>
-            <div className="flex gap-3">
-              <button
-                onClick={() => { setMeasurementSystem("metric"); void savePref({ measurement_system: "metric" }); }}
-                className={`flex-1 px-4 py-3 rounded-xl border-2 transition-all ${
-                  measurementSystem === "metric"
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border hover:border-primary/30"
-                }`}
-              >
-                Metric (g, kg, ml)
-              </button>
-              <button
-                onClick={() => { setMeasurementSystem("imperial"); void savePref({ measurement_system: "imperial" }); }}
-                className={`flex-1 px-4 py-3 rounded-xl border-2 transition-all ${
-                  measurementSystem === "imperial"
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border hover:border-primary/30"
-                }`}
-              >
-                Imperial (oz, lb, cups)
-              </button>
-            </div>
+            <SettingsSegmented<"metric" | "imperial">
+              ariaLabel="Measurement system"
+              value={measurementSystem === "imperial" ? "imperial" : "metric"}
+              onChange={(next) => {
+                setMeasurementSystem(next);
+                void savePref({ measurement_system: next });
+              }}
+              options={[
+                { value: "metric", label: "Metric (g, kg, ml)" },
+                { value: "imperial", label: "Imperial (oz, lb, cups)" },
+              ]}
+            />
           </div>
           {/*
             T13 (2026-04-24) — Digest + Progress + weight-chart opt-out.
@@ -744,70 +771,56 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             <p className="text-xs text-muted-foreground mb-3 max-w-xl">
               Soften how weight appears on the Digest, Progress, and weight chart. We still save the data you log — this only changes what you see.
             </p>
-            <div className="grid grid-cols-3 gap-2" data-testid="weight-surface-mode-picker">
-              {(
-                [
-                  { mode: "show" as const, label: "Show numbers", hint: "±kg, chart, weigh-ins" },
-                  { mode: "trends_only" as const, label: "Trends only", hint: "direction, no kg" },
-                  { mode: "hide" as const, label: "Hide", hint: "swap for logging stat" },
-                ]
-              ).map(({ mode, label, hint }) => {
-                const selected = profileWeightSurfaceMode === mode;
-                return (
-                  <button
-                    key={mode}
-                    type="button"
-                    data-testid={`weight-surface-mode-${mode}`}
-                    aria-pressed={selected}
-                    onClick={() => {
-                      const next: WeightSurfaceMode = mode;
-                      setProfileWeightSurfaceMode(next);
-                      void savePref({ weight_surface_mode: next });
-                    }}
-                    className={`px-3 py-3 rounded-xl border-2 transition-all text-left ${
-                      selected
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border hover:border-primary/30 text-foreground"
-                    }`}
-                  >
-                    <div className="text-sm font-medium">{label}</div>
-                    <div className="text-[11px] text-muted-foreground mt-0.5">{hint}</div>
-                  </button>
-                );
-              })}
-            </div>
+            {/* P1-7 (audit 2026-04-30) — three-up segmented surface
+                consolidated into SettingsSegmented (grid-3 layout). */}
+            <SettingsSegmented<WeightSurfaceMode>
+              ariaLabel="How weight shows up"
+              layout="grid-3"
+              testId="weight-surface-mode-picker"
+              value={profileWeightSurfaceMode}
+              onChange={(next) => {
+                setProfileWeightSurfaceMode(next);
+                void savePref({ weight_surface_mode: next });
+              }}
+              options={[
+                {
+                  value: "show",
+                  label: "Show numbers",
+                  hint: "±kg, chart, weigh-ins",
+                  testId: "weight-surface-mode-show",
+                },
+                {
+                  value: "trends_only",
+                  label: "Trends only",
+                  hint: "direction, no kg",
+                  testId: "weight-surface-mode-trends_only",
+                },
+                {
+                  value: "hide",
+                  label: "Hide",
+                  hint: "swap for logging stat",
+                  testId: "weight-surface-mode-hide",
+                },
+              ]}
+            />
           </div>
           <div>
             <label className="block mb-3 text-sm font-medium text-foreground">Burn / deficit summary</label>
             <p className="text-xs text-muted-foreground mb-3 max-w-xl">
               On the nutrition tracker, when you expand your calorie ring: show averages for the last seven days ending on the day you view, or for the current calendar week (Monday–Sunday).
             </p>
-            <div className="flex gap-3">
-              {(
-                [
-                  // Audit 2026-04-30 round-2 fix #3 — imperative
-                  // labels in lockstep with mobile settings.
-                  { mode: "rolling" as const, label: "Last 7 days" },
-                  { mode: "calendar_week" as const, label: "Mon–Sun" },
-                ] as const
-              ).map(({ mode, label }) => {
-                const active = normalizeWeekSummaryMode(notifications.weekSummaryMode) === mode;
-                return (
-                  <button
-                    key={mode}
-                    type="button"
-                    onClick={() => setNotifications({ ...notifications, weekSummaryMode: mode })}
-                    className={`flex-1 px-4 py-3 rounded-xl border-2 transition-all text-sm font-semibold ${
-                      active
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border hover:border-primary/30 text-foreground"
-                    }`}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
+            {/* P1-7 (audit 2026-04-30) — burn-deficit window picker
+                migrated to SettingsSegmented. Imperative labels stay
+                in lockstep with mobile settings. */}
+            <SettingsSegmented<"rolling" | "calendar_week">
+              ariaLabel="Burn / deficit summary window"
+              value={normalizeWeekSummaryMode(notifications.weekSummaryMode) === "calendar_week" ? "calendar_week" : "rolling"}
+              onChange={(next) => setNotifications({ ...notifications, weekSummaryMode: next })}
+              options={[
+                { value: "rolling", label: "Last 7 days" },
+                { value: "calendar_week", label: "Mon–Sun" },
+              ]}
+            />
           </div>
           {/* Activity level self-edit (build 10 fix E-2, 2026-04-19 —
               TestFlight `AIIm60n` / `AHCSYMATS`). Opens a picker with a
@@ -839,28 +852,33 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden />
           </button>
 
-          {/* Activity toggle */}
+          {/* Activity toggle.
+              P1-8 (audit 2026-04-30) — switched from the inline
+              peer-checked CSS variant to the shadcn `Switch` primitive
+              so all toggles in Settings render identically (and the
+              tracking-extras + weekly-recap rows already use it). */}
           <div className="flex items-center justify-between">
             <div className="flex-1 mr-4">
-              <label className="block text-sm font-medium text-foreground">Adjust goal for activity</label>
+              <label
+                htmlFor="prefer-activity-adjusted-toggle"
+                className="block text-sm font-medium text-foreground cursor-pointer"
+              >
+                Adjust goal for activity
+              </label>
               <p className="text-xs text-muted-foreground mt-1">
                 Adds bonus calories when you burn more than your estimated maintenance
               </p>
             </div>
-            <label className="relative cursor-pointer">
-              <input
-                type="checkbox"
-                checked={preferActivityAdjustedCalories}
-                onChange={(e) => {
-                  const v = e.target.checked;
-                  setPreferActivityAdjustedCalories(v);
-                  void savePref({ prefer_activity_adjusted_calories: v });
-                }}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-muted rounded-full peer-checked:bg-primary transition-all peer-focus:ring-2 peer-focus:ring-primary/50"></div>
-              <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-all peer-checked:translate-x-5"></div>
-            </label>
+            <Switch
+              id="prefer-activity-adjusted-toggle"
+              aria-label="Adjust goal for activity"
+              checked={preferActivityAdjustedCalories}
+              onCheckedChange={(next) => {
+                const v = !!next;
+                setPreferActivityAdjustedCalories(v);
+                void savePref({ prefer_activity_adjusted_calories: v });
+              }}
+            />
           </div>
 
           {/* P3-30 (2026-04-25): Net-carbs lens toggle. Backed by
@@ -870,99 +888,90 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
               `netCarbsForRow(carbs, fibre, true)`. Helpers refuse the
               "Net carbs" label when fibre is unknown so the user
               never sees a misleading headline. */}
+          {/* Net carbs lens.
+              P1-8 (audit 2026-04-30) — same shadcn migration as
+              the Activity toggle above. The `data-testid` was renamed
+              from the input element to the Switch root. */}
           <div className="flex items-center justify-between">
             <div className="flex-1 mr-4">
-              <label className="block text-sm font-medium text-foreground">Show net carbs</label>
+              <label
+                htmlFor="net-carbs-lens-toggle"
+                className="block text-sm font-medium text-foreground cursor-pointer"
+              >
+                Show net carbs
+              </label>
               <p className="text-xs text-muted-foreground mt-1">
                 Display "Net carbs" (carbs &minus; fibre) on the Tracker and recipe pages. Useful for keto / low-carb tracking.
               </p>
             </div>
-            <label className="relative cursor-pointer">
-              <input
-                type="checkbox"
-                checked={netCarbsLensEnabled}
-                onChange={(e) => {
-                  const v = e.target.checked;
-                  setNetCarbsLensEnabled(v);
-                  void savePref({ net_carbs_lens_enabled: v });
-                }}
-                className="sr-only peer"
-                data-testid="settings-net-carbs-lens-toggle"
-              />
-              <div className="w-11 h-6 bg-muted rounded-full peer-checked:bg-primary transition-all peer-focus:ring-2 peer-focus:ring-primary/50"></div>
-              <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-all peer-checked:translate-x-5"></div>
-            </label>
+            <Switch
+              id="net-carbs-lens-toggle"
+              aria-label="Show net carbs"
+              data-testid="settings-net-carbs-lens-toggle"
+              checked={netCarbsLensEnabled}
+              onCheckedChange={(next) => {
+                const v = !!next;
+                setNetCarbsLensEnabled(v);
+                void savePref({ net_carbs_lens_enabled: v });
+              }}
+            />
           </div>
 
-          {/* Theme picker */}
+          {/* Theme picker.
+              P1-7 (audit 2026-04-30) — migrated to SettingsSegmented
+              for visual consistency with the rest of the Preferences
+              card. */}
           <div>
             <label className="block mb-3 text-sm font-medium text-foreground">Theme</label>
-            <div className="flex gap-0 rounded-xl border-2 border-border overflow-hidden">
-              {THEME_OPTIONS.map((opt) => {
-                const isActive = theme === opt.value;
-                return (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setTheme(opt.value)}
-                    className={`flex-1 px-4 py-3 transition-all text-sm font-semibold ${
-                      isActive
-                        ? "bg-primary/10 text-primary"
-                        : "hover:bg-muted/50 text-foreground"
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                );
-              })}
-            </div>
+            <SettingsSegmented<"system" | "light" | "dark">
+              ariaLabel="Theme"
+              value={theme === "light" || theme === "dark" ? theme : "system"}
+              onChange={(next) => setTheme(next)}
+              options={THEME_OPTIONS.map((opt) => ({ value: opt.value, label: opt.label }))}
+            />
           </div>
 
-          {/* Week start picker */}
+          {/* Week start picker.
+              P1-7 (audit 2026-04-30) — migrated to SettingsSegmented.
+              The existing analytics + roundtrip flow is preserved
+              (saveWeekStartDay locks the SQL shape pinned by tests). */}
           <div>
             <label className="block mb-3 text-sm font-medium text-foreground">Week starts on</label>
-            <div className="flex gap-3">
-              {(["monday", "sunday"] as const).map((day) => (
-                <button
-                  key={day}
-                  type="button"
-                  onClick={() => {
-                    // Only fire analytics on an actual change — hydration
-                    // from Supabase and no-op re-taps must stay silent.
-                    if (day === weekStartDay) return;
-                    const previous = weekStartDay;
-                    setWeekStartDay(day);
-                    // Route through the shared helper so the exact
-                    // `profiles.update({ week_start_day }).eq("id", uid)`
-                    // shape is locked in by unit tests (G8, M11 audit)
-                    // and stays in sync with mobile.
-                    void (async () => {
-                      const { data: session } = await supabase.auth.getSession();
-                      const uid = session.session?.user.id;
-                      if (!uid) return;
-                      try {
-                        await saveWeekStartDay(supabase, uid, day);
-                      } catch {
-                        toast.error("Failed to save preference");
-                        setWeekStartDay(previous);
-                        return;
-                      }
-                      track(AnalyticsEvents.week_start_day_changed, {
-                        from: previous,
-                        to: day,
-                      });
-                    })();
-                  }}
-                  className={`flex-1 px-4 py-3 rounded-xl border-2 transition-all ${
-                    weekStartDay === day
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border hover:border-primary/30 text-foreground"
-                  }`}
-                >
-                  {day === "monday" ? "Monday" : "Sunday"}
-                </button>
-              ))}
-            </div>
+            <SettingsSegmented<"monday" | "sunday">
+              ariaLabel="Week starts on"
+              value={weekStartDay}
+              onChange={(day) => {
+                // Only fire analytics on an actual change — hydration
+                // from Supabase and no-op re-taps must stay silent.
+                if (day === weekStartDay) return;
+                const previous = weekStartDay;
+                setWeekStartDay(day);
+                // Route through the shared helper so the exact
+                // `profiles.update({ week_start_day }).eq("id", uid)`
+                // shape is locked in by unit tests (G8, M11 audit)
+                // and stays in sync with mobile.
+                void (async () => {
+                  const { data: session } = await supabase.auth.getSession();
+                  const uid = session.session?.user.id;
+                  if (!uid) return;
+                  try {
+                    await saveWeekStartDay(supabase, uid, day);
+                  } catch {
+                    toast.error("Failed to save preference");
+                    setWeekStartDay(previous);
+                    return;
+                  }
+                  track(AnalyticsEvents.week_start_day_changed, {
+                    from: previous,
+                    to: day,
+                  });
+                })();
+              }}
+              options={[
+                { value: "monday", label: "Monday" },
+                { value: "sunday", label: "Sunday" },
+              ]}
+            />
           </div>
 
           {/* Phase 2 / B1.4 (D-2026-04-27-08) — Tracking extras
@@ -1147,25 +1156,32 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           <h3 className="text-foreground">Notifications</h3>
         </div>
         <div className="space-y-4">
+          {/* P1-8 (audit 2026-04-30) — notification toggles use the
+              shadcn Switch primitive so all toggles in Settings share
+              the same active / inactive treatment. */}
           {(Object.entries(notifications) as [keyof NotificationPrefs, NotificationPrefs[keyof NotificationPrefs]][])
             .filter((e): e is [keyof NotificationPrefs, boolean] => typeof e[1] === "boolean")
-            .map(([key, value]) => (
-            <label key={key} className="flex items-center justify-between cursor-pointer group">
-              <span className="text-foreground">
-                {NOTIFICATION_LABELS[key] ?? key}
-              </span>
-              <div className="relative">
-                <input
-                  type="checkbox"
-                  checked={value}
-                  onChange={(e) => setNotifications({ ...notifications, [key]: e.target.checked })}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-muted rounded-full peer-checked:bg-primary transition-all peer-focus:ring-2 peer-focus:ring-primary/50"></div>
-                <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-all peer-checked:translate-x-5"></div>
-              </div>
-            </label>
-          ))}
+            .map(([key, value]) => {
+              const label = NOTIFICATION_LABELS[key] ?? key;
+              return (
+                <div key={key} className="flex items-center justify-between gap-4">
+                  <label
+                    htmlFor={`notification-${key}-toggle`}
+                    className="flex-1 text-foreground cursor-pointer"
+                  >
+                    {label}
+                  </label>
+                  <Switch
+                    id={`notification-${key}-toggle`}
+                    aria-label={label}
+                    checked={value}
+                    onCheckedChange={(next) =>
+                      setNotifications({ ...notifications, [key]: !!next })
+                    }
+                  />
+                </div>
+              );
+            })}
           {/* Weekly recap push (Batch 4.11 toggle — H6 audit fix, 2026-04-18).
             * Controls `profiles.weekly_recap_push_enabled`. On mobile the
             * Progress-visit scheduler reads the same column and cancels /
@@ -1413,14 +1429,29 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
               planner, and saved recipes.
             </p>
           </button>
+          {/* P0-4 (audit 2026-04-30): Destructive-zone visual ladder.
+              Three rows used to sit on the same red plate, which made
+              "Delete local data & sign out" — a fully reversible action
+              — read as catastrophic next to permanent account deletion.
+              The new ladder:
+                - Erase everything (amber / warning)  — server data wipe,
+                  but account + subscription stay. Recoverable from an
+                  exported JSON backup.
+                - Delete local data & sign out (neutral) — reversible:
+                  sign back in and re-sync from the server.
+                - Delete account (destructive / red) — irreversible, the
+                  only action that warrants the red plate.
+              Tokens (`--warning`, `--muted`, `--destructive`) flow from
+              `src/styles/theme.css` so dark-mode swaps for free. */}
           <button
             type="button"
             onClick={() => setEraseEverythingOpen(true)}
             disabled={resetting}
-            className="w-full text-left px-4 py-3 bg-destructive/5 hover:bg-destructive/10 disabled:opacity-50 rounded-lg transition-all text-destructive border border-destructive/30"
+            data-testid="settings-erase-everything-button"
+            className="w-full text-left px-4 py-3 bg-warning/10 hover:bg-warning/15 disabled:opacity-50 rounded-lg transition-all text-foreground border border-warning/30"
           >
-            <p className="font-medium">Erase everything</p>
-            <p className="text-xs mt-0.5 text-destructive/70">
+            <p className="font-medium" style={{ color: "var(--warning)" }}>Erase everything</p>
+            <p className="text-xs mt-0.5 text-muted-foreground">
               Deletes food log, journal, library saves, shopping lists,
               imported recipes, and synced activity. Sends you through
               setup again.
@@ -1429,16 +1460,24 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           <button
             type="button"
             onClick={() => setClearLocalOpen(true)}
-            className="w-full text-left px-4 py-3 bg-red-50 dark:bg-red-950/20 hover:bg-red-100 dark:hover:bg-red-950/30 rounded-lg transition-all text-red-600 dark:text-red-400"
+            data-testid="settings-clear-local-button"
+            className="w-full text-left px-4 py-3 bg-muted hover:bg-muted/80 rounded-lg transition-all text-foreground"
           >
-            Delete local data &amp; sign out
+            <p className="font-medium">Delete local data &amp; sign out</p>
+            <p className="text-xs mt-0.5 text-muted-foreground">
+              Reversible — sign back in and your data syncs from the server.
+            </p>
           </button>
           <button
             type="button"
             onClick={() => setAccountDeletionStage("first")}
-            className="w-full text-left px-4 py-3 bg-red-50 dark:bg-red-950/20 hover:bg-red-100 dark:hover:bg-red-950/30 rounded-lg transition-all text-red-700 dark:text-red-300 font-medium"
+            data-testid="settings-delete-account-button"
+            className="w-full text-left px-4 py-3 bg-destructive/10 hover:bg-destructive/15 rounded-lg transition-all text-destructive border border-destructive/30"
           >
-            Delete my account permanently
+            <p className="font-medium">Delete my account permanently</p>
+            <p className="text-xs mt-0.5 text-destructive/80">
+              Irreversible. Removes your account, recipes, logs, and plans.
+            </p>
           </button>
         </div>
       </div>
@@ -1462,15 +1501,17 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
         nutritionStrategy={profileNutritionStrategy}
         onConfirm={handleActivityLevelConfirm}
       />
-      {/* 2026-04-30 (#15 + #19): Erase Everything confirm. Mirrors the
-          mobile dialog at SettingsBundleContent.tsx:1357 — every category
-          listed in the section copy must also appear in the confirm
-          body so the user knows exactly what they're agreeing to. */}
+      {/* P1-6 (audit 2026-04-30): Calmed the Erase confirm copy in
+          lockstep with the mobile rewrite. The previous block listed
+          every category in the body, which read as shame energy ("look
+          how much you'll lose"). The new copy points at the recovery
+          path (re-import from your export) and lists categories
+          lowercase if the user wants a reminder. */}
       <DestructiveConfirmDialog
         open={eraseEverythingOpen}
         onOpenChange={setEraseEverythingOpen}
-        title="Erase everything?"
-        description="This will permanently delete your food log, journal, library saves, shopping lists, imported recipes, and synced activity. Your account and subscription stay. This cannot be undone."
+        title="Delete your data and start fresh?"
+        description="You can re-import from your export file anytime. Affects: food log, journal, library saves, shopping lists, imported recipes, synced activity. Your account and subscription stay."
         confirmLabel="Erase everything"
         onConfirm={handleEraseEverything}
       />
