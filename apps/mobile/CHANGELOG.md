@@ -1,5 +1,18 @@
 # Mobile App Changelog
 
+## 2026-05-01 — Recipe detail: Type ladder cleanup + dead hero-pill removal
+
+### ui-critic findings #4 + #8 (recipe detail)
+- **Typography ladder consolidation** — `apps/mobile/app/recipe/[id].tsx` carried 14 inline `fontSize` literals (24/22/16/14/13/12/11/10/9) while the canonical `Type.{title, headline, body, caption, label}` ladder defined at `apps/mobile/constants/theme.ts:209-226` was unused. Every numeric `fontSize` is now either a `Type.<role>` spread or a documented hand-tuned hero numeral. Two explicit numerics survive with in-line comments:
+  - `calorieNumber` (26/800) — F-23 hand-tuned per-portion numeral.
+  - `nutritionValue` (28/700) — Discover-style stat tile.
+- **Dead hero-pill style removed** — `headerBtn` / `headerBtnText` described a 38pt circular pill with `shadowOpacity: 0.22` (the 2019-iOS hero-pill pattern), but had zero JSX consumers since the 2026-04-20 prototype port replaced floating-over-hero buttons with the sticky `topBar`. Removed entirely so future readers don't mistake the dead style for a live one.
+- **Web parity** — `src/app/components/RecipeDetail.tsx` had two `style={{ fontSize: 12 }}` literals on the "Fits your day" badge; both swapped for the canonical Tailwind `text-xs` utility. Web's hero already uses a sticky `backdrop-blur-xl bg-card/80` top bar above the hero (no floating pills) plus a `bg-gradient-to-t from-black/40` scrim — both are now pinned by tests so a future sweep can't quietly regress to the pre-cleanup pattern.
+
+### Tests
+- `apps/mobile/tests/unit/recipeDetailTypographyLadder.test.ts` (NEW) — 10 cases. Source-grep bans inline `style={{ fontSize: N }}` JSX literals, asserts ≤ 2 numeric `fontSize` survivors (the documented hero numerals), pins `headerBtn` removal, and pins the canonical `topBar` / `topBarIconBtn` styles as the surviving header pattern.
+- `tests/unit/recipeDetailTypographyLadder.test.ts` (NEW) — 5 cases. Web mirror: bans inline `fontSize` literals, pins `text-xs` on the Fits-your-day badge, pins the sticky `backdrop-blur-xl` top bar and the hero-photo scrim gradient.
+
 ## 2026-05-01 — Food DB breadth: cortado families + fiber surfacing
 
 ### Food search (TestFlight Build 40 feedback)

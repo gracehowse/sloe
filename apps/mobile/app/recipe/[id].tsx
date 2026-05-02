@@ -48,7 +48,7 @@ import {
 import { decodeEntities } from "@/lib/decodeEntities";
 import { normaliseRecipeDisplayTitle } from "../../../../src/lib/recipe/normaliseDisplayTitle";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
-import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
+import { Accent, MacroColors, Spacing, Radius, Type, FontWeight } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { getSupprApiBase } from "@/lib/supprWeb";
@@ -201,9 +201,10 @@ function MacroRing({ value, goal, color, label, size = 56, ringBgColor, labelCol
             strokeDasharray={`${circ}`} strokeDashoffset={circ*(1-pct)} strokeLinecap="round"
             rotation="-90" origin={`${size/2},${size/2}`} />
         </Svg>
-        <Text style={{ color, fontSize: 12, fontWeight: "700" }}>{Math.round(value)}g</Text>
+        <Text style={[Type.caption, { color, fontWeight: FontWeight.bold }]}>{Math.round(value)}g</Text>
       </View>
-      <Text style={{ color: labelColor, fontSize: 10, fontWeight: "600" }}>{label}</Text>
+      {/* 10 → caption (11) per ladder cleanup; +1px sub-pixel drift accepted. */}
+      <Text style={[Type.caption, { color: labelColor, fontWeight: FontWeight.semibold }]}>{label}</Text>
     </View>
   );
 }
@@ -1039,12 +1040,23 @@ export default function RecipeDetailScreen() {
     .map((s) => s.trim())
     .filter(Boolean);
 
+  // 2026-05-01 typography ladder cleanup (ui-critic finding #4):
+  // every numeric `fontSize` literal in this StyleSheet now spreads
+  // `Type.<role>` from `apps/mobile/constants/theme.ts` so any future
+  // ladder change ripples here automatically. Local overrides
+  // (color, fontVariant, fontWeight where it diverges from the
+  // token's default) are explicit + commented. The two numeric
+  // exceptions are documented in-line:
+  //   - `calorieNumber` (26/800) — F-23 hand-tuned numeral, larger
+  //     than `Type.title` and bolder than the ladder allows.
+  //   - `nutritionValue` (28/700) — discover-style stat tile.
+  // Everything else picks up the canonical token weight + line-height.
   const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     centered: { flex: 1, justifyContent: "center", alignItems: "center", gap: Spacing.md },
-    errorText: { color: colors.text, fontSize: 16 },
+    errorText: { ...Type.headline, color: colors.text, fontWeight: FontWeight.medium },
     backBtn: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: Radius.md, borderWidth: 1, borderColor: colors.border },
-    backBtnText: { color: colors.text, fontWeight: "600" },
+    backBtnText: { ...Type.body, color: colors.text, fontWeight: FontWeight.semibold },
 
     // 2026-04-20 prototype port — sticky top bar (light bg, dark
     // text, full-width). Replaces the floating overlay buttons
@@ -1070,10 +1082,10 @@ export default function RecipeDetailScreen() {
       alignItems: "center",
     },
     topBarTitle: {
+      ...Type.headline,
       flex: 1,
       textAlign: "center",
-      fontSize: 16,
-      fontWeight: "600",
+      fontWeight: FontWeight.semibold,
       color: colors.text,
     },
     topBarActions: { flexDirection: "row", alignItems: "center", gap: 2 },
@@ -1092,37 +1104,26 @@ export default function RecipeDetailScreen() {
       borderRadius: 999,
       backgroundColor: colors.border,
     },
-    tagPillText: { fontSize: 12, fontWeight: "600", color: colors.textSecondary },
+    tagPillText: { ...Type.caption, fontWeight: FontWeight.semibold, color: colors.textSecondary },
     tagPillPrimary: { backgroundColor: Accent.primary + "22" },
     tagPillTextPrimary: { color: Accent.primary },
 
     hero: { width: "100%", height: 280, backgroundColor: colors.border },
-    // Header buttons — circular icon buttons that sit over the hero
-    // image. P3 dark-mode fix (2026-04-28): the previous hard-coded
-    // `rgba(255,255,255,0.94)` left them as bright white pills on
-    // every dark-mode hero, the only light element on the screen.
-    // Now uses `colors.card` so the pill picks up the surface tier
-    // for the active scheme (white in light, dark surface in dark).
-    headerBtn: {
-      width: 38,
-      height: 38,
-      borderRadius: 19,
-      backgroundColor: colors.card,
-      borderWidth: 1,
-      borderColor: colors.cardBorder,
-      justifyContent: "center",
-      alignItems: "center",
-      shadowColor: "#000",
-      shadowOpacity: 0.22,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: 2 },
-    },
-    headerBtnText: { color: colors.text, fontSize: 22, fontWeight: "600" },
+    // 2026-05-01 (ui-critic finding #8): `headerBtn` / `headerBtnText`
+    // were dead styles describing a 38pt circular pill with
+    // `shadowOpacity: 0.22` that floated over the hero. The
+    // 2026-04-20 prototype port already replaced the floating
+    // pattern with a sticky top bar (`topBarIconBtn` above), so
+    // those styles had zero JSX consumers. Removed to keep the
+    // hero buttons honest with the rendered code path. The
+    // top-bar `backdrop-blur` parity with web is implicit in the
+    // sticky `topBar` background — RN doesn't need a BlurView for
+    // an opaque top bar that sits above the hero (no overlap).
 
     body: { padding: Spacing.xl, gap: Spacing.lg },
 
-    title: { fontSize: 24, fontWeight: "700", color: colors.text },
-    authorName: { fontSize: 14, color: colors.textSecondary },
+    title: { ...Type.title, color: colors.text },
+    authorName: { ...Type.body, color: colors.textSecondary, fontWeight: FontWeight.regular },
     mealTypeBadge: {
       alignSelf: "flex-start",
       backgroundColor: Accent.primary + "20",
@@ -1130,15 +1131,17 @@ export default function RecipeDetailScreen() {
       paddingVertical: Spacing.xs,
       borderRadius: Radius.sm,
     },
-    mealTypeText: { color: Accent.primary, fontSize: 12, fontWeight: "600", textTransform: "capitalize" },
+    mealTypeText: { ...Type.caption, color: Accent.primary, fontWeight: FontWeight.semibold, textTransform: "capitalize" },
 
     calorieHero: { alignItems: "center", paddingVertical: Spacing.lg },
     // F-23 (2026-04-21): calories hero was consuming ~a third of the screen
     // on the recipe detail (TestFlight AIf4Z6q1KL2j). Shrink the numeral and
     // trim the surrounding card padding so the macro tiles below get their
-    // breathing room back.
-    calorieNumber: { fontSize: 26, fontWeight: "800", color: colors.text, fontVariant: ["tabular-nums"] },
-    calorieLabel: { fontSize: 12, color: colors.textSecondary, marginTop: -2 },
+    // breathing room back. The 26/800 sits between `Type.title` (24/700)
+    // and `Type.display` (32/800); kept as an explicit numeric because
+    // it's a hand-tuned hero numeral, not body copy.
+    calorieNumber: { fontSize: 26, lineHeight: 28, fontWeight: FontWeight.heavy, color: colors.text, fontVariant: ["tabular-nums"] },
+    calorieLabel: { ...Type.caption, color: colors.textSecondary, marginTop: -2 },
 
     card: {
       backgroundColor: colors.card,
@@ -1148,13 +1151,15 @@ export default function RecipeDetailScreen() {
       padding: Spacing.xl,
       gap: Spacing.md,
     },
-    cardTitle: { fontSize: 16, fontWeight: "700", color: colors.text },
+    // 16 → headline (17/22/700) — accept +1px sub-pixel drift per
+    // ui-critic mapping table.
+    cardTitle: { ...Type.headline, color: colors.text },
 
     macroRingsRow: { flexDirection: "row", justifyContent: "space-around", paddingVertical: Spacing.sm },
-    servings: { fontSize: 12, color: colors.textTertiary, textAlign: "center" },
-    totalLine: { fontSize: 11, color: colors.textTertiary, textAlign: "center", marginTop: 4, fontStyle: "italic" },
+    servings: { ...Type.caption, color: colors.textTertiary, textAlign: "center" },
+    totalLine: { ...Type.caption, color: colors.textTertiary, textAlign: "center", marginTop: 4, fontStyle: "italic" },
 
-    descText: { fontSize: 14, color: colors.textSecondary, lineHeight: 20 },
+    descText: { ...Type.body, color: colors.textSecondary },
 
     ingredientRow: {
       flexDirection: "row",
@@ -1165,10 +1170,10 @@ export default function RecipeDetailScreen() {
       gap: Spacing.sm,
     },
     ingredientDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Accent.primary, marginTop: 6 },
-    ingredientText: { fontSize: 14, color: colors.text },
-    ingredientAmount: { fontWeight: "600" },
+    ingredientText: { ...Type.body, color: colors.text },
+    ingredientAmount: { fontWeight: FontWeight.semibold },
     ingMacroRow: { flexDirection: "row", gap: Spacing.sm, marginTop: 4 },
-    ingMacro: { fontSize: 11, color: colors.textTertiary, fontWeight: "600", fontVariant: ["tabular-nums"] as any },
+    ingMacro: { ...Type.caption, color: colors.textTertiary, fontWeight: FontWeight.semibold, fontVariant: ["tabular-nums"] as any },
 
     stepRow: { flexDirection: "row", gap: Spacing.md, paddingVertical: Spacing.sm },
     stepNumber: {
@@ -1179,8 +1184,10 @@ export default function RecipeDetailScreen() {
       justifyContent: "center",
       alignItems: "center",
     },
-    stepNumberText: { color: "#fff", fontSize: 13, fontWeight: "700" },
-    stepText: { flex: 1, fontSize: 14, color: colors.text, lineHeight: 20 },
+    // 13 → body (14/20/500) per ui-critic mapping; keep bold weight for
+    // the step-number numeral.
+    stepNumberText: { ...Type.body, color: "#fff", fontWeight: FontWeight.bold },
+    stepText: { ...Type.body, flex: 1, color: colors.text },
 
     sourceCard: {
       backgroundColor: colors.card,
@@ -1190,8 +1197,11 @@ export default function RecipeDetailScreen() {
       padding: Spacing.xl,
       gap: Spacing.sm,
     },
-    sourceLabel: { fontSize: 11, fontWeight: "800", color: colors.textTertiary, letterSpacing: 2 },
-    sourceName: { fontSize: 16, fontWeight: "600", color: colors.text },
+    // 11 → label (uppercase + 0.88 letterSpacing). The original 2-em
+    // letterSpacing here is ~3x stronger than the canonical token —
+    // accept the token's tighter spacing as part of ladder cleanup.
+    sourceLabel: { ...Type.label, fontWeight: FontWeight.heavy, color: colors.textTertiary },
+    sourceName: { ...Type.headline, fontWeight: FontWeight.semibold, color: colors.text },
     sourceNameLink: { color: Accent.primary, textDecorationLine: "underline" },
     sourceLinkBtn: {
       marginTop: Spacing.xs,
@@ -1202,7 +1212,7 @@ export default function RecipeDetailScreen() {
       borderWidth: 1,
       borderColor: Accent.primary + "55",
     },
-    sourceLinkText: { color: Accent.primary, fontSize: 14, fontWeight: "600" },
+    sourceLinkText: { ...Type.body, color: Accent.primary, fontWeight: FontWeight.semibold },
 
     actionsRow: { gap: Spacing.sm, paddingBottom: 20 },
     actionBtn: {
@@ -1212,18 +1222,20 @@ export default function RecipeDetailScreen() {
       alignItems: "center",
       justifyContent: "center",
     },
-    actionBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+    actionBtnText: { ...Type.body, color: "#fff", fontWeight: FontWeight.bold },
 
     infoRow: { flexDirection: "row", justifyContent: "space-around", paddingVertical: Spacing.lg, gap: Spacing.md, marginBottom: Spacing.lg },
     infoItem: { alignItems: "center", flex: 1 },
     infoIcon: { marginBottom: 6 },
-    infoValue: { fontSize: 14, fontWeight: "700", color: colors.text },
-    infoLabel: { fontSize: 11, color: colors.textTertiary, marginTop: 2 },
+    infoValue: { ...Type.body, fontWeight: FontWeight.bold, color: colors.text },
+    // 11 → label was uppercase, but `infoLabel` ("min", "kcal") is
+    // sentence-case copy — use `caption` to stay non-uppercase.
+    infoLabel: { ...Type.caption, color: colors.textTertiary, marginTop: 2 },
 
     tabBar: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: colors.border, marginBottom: Spacing.lg, gap: 0 },
     tab: { flex: 1, paddingVertical: 12, alignItems: "center", borderBottomWidth: 2, borderBottomColor: "transparent" },
-    tabText: { fontSize: 14, fontWeight: "600", color: colors.textTertiary },
-    tabTextActive: { fontSize: 14, fontWeight: "600", color: Accent.primary },
+    tabText: { ...Type.body, fontWeight: FontWeight.semibold, color: colors.textTertiary },
+    tabTextActive: { ...Type.body, fontWeight: FontWeight.semibold, color: Accent.primary },
 
     ingredientRowNew: { flexDirection: "row", alignItems: "flex-start", paddingVertical: Spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border, gap: Spacing.sm },
     confidenceDot: { width: 6, height: 6, borderRadius: 3, marginTop: 6, flexShrink: 0 },
@@ -1235,25 +1247,28 @@ export default function RecipeDetailScreen() {
     // kcal off-screen. Cap name with `flex: 1, flexShrink: 1` and
     // give it a gap from the kcal; let the name wrap to 2 lines.
     ingredientNameRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 8 },
-    ingredientName: { fontSize: 14, color: colors.text, fontWeight: "500", flex: 1, flexShrink: 1 },
-    ingredientCalories: { fontSize: 12, color: colors.textSecondary, fontWeight: "600", flexShrink: 0 },
-    ingredientQty: { fontSize: 12, color: colors.textSecondary, marginTop: 4 },
+    ingredientName: { ...Type.body, color: colors.text, flex: 1, flexShrink: 1 },
+    ingredientCalories: { ...Type.caption, color: colors.textSecondary, fontWeight: FontWeight.semibold, flexShrink: 0 },
+    ingredientQty: { ...Type.caption, color: colors.textSecondary, marginTop: 4 },
     macroBar: { height: 3, borderRadius: 2, flexDirection: "row", marginTop: 6, overflow: "hidden" },
 
     nutritionGrid: { gap: Spacing.md, marginBottom: Spacing.lg },
     nutritionGridRow: { flexDirection: "row", gap: Spacing.md },
     nutritionCard: { flex: 1, backgroundColor: colors.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: colors.border, padding: Spacing.lg, alignItems: "center" },
-    nutritionValue: { fontSize: 28, fontWeight: "700", marginBottom: 4 },
-    nutritionLabel: { fontSize: 12, color: colors.textSecondary, fontWeight: "600" },
+    // 28/700 numeric stat tile — sits between Type.title (24) and
+    // Type.display (32); kept as explicit numeric (hand-tuned hero
+    // stat, not body copy).
+    nutritionValue: { fontSize: 28, lineHeight: 32, fontWeight: FontWeight.bold, marginBottom: 4 },
+    nutritionLabel: { ...Type.caption, color: colors.textSecondary, fontWeight: FontWeight.semibold },
 
     micronutrientsSection: { marginTop: Spacing.lg },
-    microLabel: { fontSize: 12, fontWeight: "700", color: colors.textTertiary, marginBottom: Spacing.md, letterSpacing: 0.5 },
+    microLabel: { ...Type.caption, fontWeight: FontWeight.bold, color: colors.textTertiary, marginBottom: Spacing.md, letterSpacing: 0.5 },
     microRow: { flexDirection: "row", alignItems: "center", gap: Spacing.md, paddingVertical: Spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
-    microName: { fontSize: 14, color: colors.text, fontWeight: "500", flex: 1 },
+    microName: { ...Type.body, color: colors.text, flex: 1 },
     microBarContainer: { flex: 1.5 },
     progressBar: { height: 4, borderRadius: 2, overflow: "hidden", backgroundColor: colors.border },
     progressBarFill: { height: "100%", backgroundColor: Accent.primary },
-    microValue: { fontSize: 12, fontWeight: "600", color: colors.textSecondary, width: 50, textAlign: "right" },
+    microValue: { ...Type.caption, fontWeight: FontWeight.semibold, color: colors.textSecondary, width: 50, textAlign: "right" },
   }), [colors, insets.top]);
 
   if (loading) {
@@ -1582,12 +1597,12 @@ export default function RecipeDetailScreen() {
                     <Text style={[styles.calorieNumber, { color: colors.text }]}>
                       {kcalNum}
                     </Text>
-                    <Text style={{ fontSize: 12, color: colors.textSecondary }}>
+                    <Text style={[Type.caption, { color: colors.textSecondary }]}>
                       kcal per portion
                     </Text>
                   </>
                 ) : (
-                  <Text style={{ fontSize: 13, color: colors.textSecondary, fontWeight: "600" }}>
+                  <Text style={[Type.body, { color: colors.textSecondary, fontWeight: FontWeight.semibold }]}>
                     Calories not yet computed — open the Ingredients tab to verify
                   </Text>
                 )}
@@ -1647,11 +1662,11 @@ export default function RecipeDetailScreen() {
                 accessibilityLabel={a11y}
               >
                 {fits ? <Check size={14} color={tone.fg} strokeWidth={2.5} /> : null}
-                <Text style={{ fontSize: 12, fontWeight: "700", color: tone.fg }}>
+                <Text style={[Type.caption, { fontWeight: FontWeight.bold, color: tone.fg }]}>
                   {label}
                 </Text>
                 {fits ? (
-                  <Text style={{ fontSize: 12, fontWeight: "500", color: tone.fg, opacity: 0.7 }}>
+                  <Text style={[Type.caption, { color: tone.fg, opacity: 0.7 }]}>
                     · ≈ {pct}%
                   </Text>
                 ) : null}
@@ -1716,9 +1731,10 @@ export default function RecipeDetailScreen() {
                 >
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 5 }}>
                     <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: m.color }} />
-                    <Text style={{ fontSize: 10, fontWeight: "600", color: colors.textTertiary, letterSpacing: 0.5 }}>{m.label}</Text>
+                    {/* 10 → caption (11) per ladder cleanup. */}
+                    <Text style={[Type.caption, { fontWeight: FontWeight.semibold, color: colors.textTertiary, letterSpacing: 0.5 }]}>{m.label}</Text>
                   </View>
-                  <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"] }}>
+                  <Text style={[Type.headline, { color: colors.text, fontVariant: ["tabular-nums"] }]}>
                     {displayAmount}
                     {m.unit}
                   </Text>
@@ -1732,7 +1748,7 @@ export default function RecipeDetailScreen() {
                       }}
                     />
                   </View>
-                  <Text style={{ fontSize: 10, color: colors.textTertiary, marginTop: 3, fontVariant: ["tabular-nums"] }}>
+                  <Text style={[Type.caption, { color: colors.textTertiary, marginTop: 3, fontVariant: ["tabular-nums"] }]}>
                     of {macro === "sugar" ? m.tgt : macro === "sodium" ? m.tgt : Math.round(m.tgt)}
                     {m.unit}
                   </Text>
@@ -1772,21 +1788,24 @@ export default function RecipeDetailScreen() {
                 testID="recipe-allergen-callout"
               >
                 <Text
-                  style={{
-                    fontSize: 13,
-                    fontWeight: "700",
-                    color: colors.text,
-                    marginBottom: 4,
-                  }}
+                  style={[
+                    Type.body,
+                    {
+                      fontWeight: FontWeight.bold,
+                      color: colors.text,
+                      marginBottom: 4,
+                    },
+                  ]}
                 >
                   {containsLine ?? "Not tagged for allergens"}
                 </Text>
                 <Text
-                  style={{
-                    fontSize: 12,
-                    color: colors.textSecondary,
-                    lineHeight: 17,
-                  }}
+                  style={[
+                    Type.caption,
+                    {
+                      color: colors.textSecondary,
+                    },
+                  ]}
                 >
                   We tag recipes from matched ingredients at import and verify time. Always verify ingredients against the original source if an allergen is a safety concern.
                 </Text>
@@ -1797,7 +1816,7 @@ export default function RecipeDetailScreen() {
           {/* Portion adjustment banner */}
           {portionMultiplier !== 1 && (
             <View style={{ backgroundColor: Accent.primary + "15", borderRadius: Radius.md, padding: Spacing.md, borderWidth: 1, borderColor: Accent.primary + "30" }}>
-              <Text style={{ color: Accent.primary, fontWeight: "700", fontSize: 14, textAlign: "center" }}>
+              <Text style={[Type.body, { color: Accent.primary, fontWeight: FontWeight.bold, textAlign: "center" }]}>
                 Planned portion: {portionMultiplier}x — quantities below are adjusted
               </Text>
             </View>
@@ -1831,17 +1850,18 @@ export default function RecipeDetailScreen() {
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.md }}>
                 <Text style={styles.cardTitle}>Ingredients</Text>
                 <Pressable onPress={() => router.push(`/recipe/verify?id=${recipeId}`)}>
-                  <Text style={{ color: Accent.primary, fontSize: 13, fontWeight: "600" }}>Edit</Text>
+                  <Text style={[Type.body, { color: Accent.primary, fontWeight: FontWeight.semibold }]}>Edit</Text>
                 </Pressable>
               </View>
               {autoVerifyingIngredients && (
                 <Text
-                  style={{
-                    fontSize: 12,
-                    color: colors.textSecondary,
-                    marginBottom: Spacing.md,
-                    lineHeight: 17,
-                  }}
+                  style={[
+                    Type.caption,
+                    {
+                      color: colors.textSecondary,
+                      marginBottom: Spacing.md,
+                    },
+                  ]}
                 >
                   Matching each line against the food database (USDA / Open Food Facts / FatSecret / Edamam when
                   configured)…
@@ -1852,16 +1872,17 @@ export default function RecipeDetailScreen() {
                 recipe != null &&
                 (recipe.calories > 0 || recipe.protein > 0 || recipe.carbs > 0 || recipe.fat > 0) && (
                   <Text
-                    style={{
-                      fontSize: 12,
-                      color: colors.textSecondary,
-                      marginBottom: Spacing.md,
-                      lineHeight: 17,
-                    }}
+                    style={[
+                      Type.caption,
+                      {
+                        color: colors.textSecondary,
+                        marginBottom: Spacing.md,
+                      },
+                    ]}
                   >
                     Per-line calories below are a local fallback (staples + scaling) when the database lookup could not
                     run — open this screen signed in with the API reachable, or use the{" "}
-                    <Text style={{ fontWeight: "700" }}>Nutrition</Text> tab for totals.
+                    <Text style={{ fontWeight: FontWeight.bold }}>Nutrition</Text> tab for totals.
                   </Text>
                 )}
               {ingredientsForIngredientsTab.map((ing, i) => {
@@ -1934,14 +1955,15 @@ export default function RecipeDetailScreen() {
                           </Text>
                         ) : null}
                         {confPct != null && (
-                          <Text style={{ fontSize: 10, color: confColor, fontWeight: "600" }}>
+                          <Text style={[Type.caption, { color: confColor, fontWeight: FontWeight.semibold }]}>
                             {/* 2026-04-26 polish (round 2): pre-fix the
                                 row showed bare "35%" / "98%" with no
                                 indication of what the percentage meant.
                                 Tapping opens a full explanation but the
                                 inline label is the at-a-glance signal.
                                 Verified ≥75% / Partial 50–74% / Estimated
-                                <50%. */}
+                                <50%.
+                                10 → caption (11) per ladder cleanup. */}
                             {confPct}% · {confLabel}
                           </Text>
                         )}
@@ -1980,11 +2002,13 @@ export default function RecipeDetailScreen() {
                             testID={`ingredient-verify-cta-${i}`}
                           >
                             <Text
-                              style={{
-                                fontSize: 11,
-                                fontWeight: "700",
-                                color: Accent.primary,
-                              }}
+                              style={[
+                                Type.caption,
+                                {
+                                  fontWeight: FontWeight.bold,
+                                  color: Accent.primary,
+                                },
+                              ]}
                             >
                               Verify →
                             </Text>
@@ -2106,7 +2130,7 @@ export default function RecipeDetailScreen() {
           {/* Log to journal — portion vs one recipe serving */}
           {userId && (
             <View style={[styles.card, { gap: Spacing.sm }]}>
-              <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>Log to journal</Text>
+              <Text style={[Type.body, { fontWeight: FontWeight.bold, color: colors.text }]}>Log to journal</Text>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                 <Pressable
                   onPress={() => setLogPortion((p) => Math.max(0.125, Math.round((p - 0.25) * 1000) / 1000))}
@@ -2114,7 +2138,9 @@ export default function RecipeDetailScreen() {
                 >
                   <Minus size={16} color={colors.text} />
                 </Pressable>
-                <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text, minWidth: 40, textAlign: "center", fontVariant: ["tabular-nums"] }}>
+                {/* 15 → headline (17) per ladder cleanup; portion stepper
+                    numeral keeps tabular-nums for stable width. */}
+                <Text style={[Type.headline, { color: colors.text, minWidth: 40, textAlign: "center", fontVariant: ["tabular-nums"] }]}>
                   {(Math.round(logPortion * 1000) / 1000).toString()}×
                 </Text>
                 <Pressable
@@ -2124,7 +2150,7 @@ export default function RecipeDetailScreen() {
                   <Plus size={16} color={colors.text} />
                 </Pressable>
                 <View style={{ flex: 1 }} />
-                <Text style={{ fontSize: 11, color: colors.textTertiary, fontVariant: ["tabular-nums"] }}>
+                <Text style={[Type.caption, { color: colors.textTertiary, fontVariant: ["tabular-nums"] }]}>
                   {scaledForLog.calories} kcal
                 </Text>
               </View>
@@ -2150,7 +2176,7 @@ export default function RecipeDetailScreen() {
                         borderColor: active ? Accent.primary : colors.border,
                       }}
                     >
-                      <Text style={{ fontSize: 12, fontWeight: "600", color: active ? "#fff" : colors.text }}>{p}×</Text>
+                      <Text style={[Type.caption, { fontWeight: FontWeight.semibold, color: active ? "#fff" : colors.text }]}>{p}×</Text>
                     </Pressable>
                   );
                 })}
@@ -2174,7 +2200,7 @@ export default function RecipeDetailScreen() {
                 ) : (
                   <>
                     <PlusCircle size={16} color="#fff" />
-                    <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14 }}>Log</Text>
+                    <Text style={[Type.body, { color: "#fff", fontWeight: FontWeight.bold }]}>Log</Text>
                   </>
                 )}
               </Pressable>
@@ -2252,8 +2278,8 @@ export default function RecipeDetailScreen() {
               gap: Spacing.sm,
             }}
           >
-            <Text style={{ fontSize: 16, fontWeight: "800", color: colors.text }}>Servings</Text>
-            <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 18 }}>
+            <Text style={[Type.headline, { fontWeight: FontWeight.heavy, color: colors.text }]}>Servings</Text>
+            <Text style={[Type.body, { color: colors.textSecondary }]}>
               Portions the full dish makes (1–48). Macros per portion update automatically.
             </Text>
             <TextInput
@@ -2261,17 +2287,19 @@ export default function RecipeDetailScreen() {
               onChangeText={setRecipeYieldDraft}
               keyboardType="number-pad"
               editable={!recipeYieldSaving}
-              style={{
-                borderWidth: 1,
-                borderColor: colors.border,
-                borderRadius: Radius.md,
-                paddingVertical: 10,
-                paddingHorizontal: 12,
-                fontSize: 17,
-                fontWeight: "700",
-                color: colors.text,
-                backgroundColor: colors.background,
-              }}
+              style={[
+                Type.headline,
+                {
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  borderRadius: Radius.md,
+                  paddingVertical: 10,
+                  paddingHorizontal: 12,
+                  fontWeight: FontWeight.bold,
+                  color: colors.text,
+                  backgroundColor: colors.background,
+                },
+              ]}
             />
             <View style={{ flexDirection: "row", gap: Spacing.sm, marginTop: Spacing.xs }}>
               <Pressable
@@ -2285,7 +2313,8 @@ export default function RecipeDetailScreen() {
                   alignItems: "center",
                 }}
               >
-                <Text style={{ fontWeight: "700", color: colors.text, fontSize: 15 }}>Cancel</Text>
+                {/* 15 → headline (17) per ladder cleanup; +2px drift accepted. */}
+                <Text style={[Type.headline, { fontWeight: FontWeight.bold, color: colors.text }]}>Cancel</Text>
               </Pressable>
               <Pressable
                 onPress={() => void saveRecipeYield()}
@@ -2299,7 +2328,7 @@ export default function RecipeDetailScreen() {
                   opacity: recipeYieldSaving ? 0.65 : 1,
                 }}
               >
-                <Text style={{ fontWeight: "800", color: "#fff", fontSize: 15 }}>{recipeYieldSaving ? "Saving…" : "Save"}</Text>
+                <Text style={[Type.headline, { fontWeight: FontWeight.heavy, color: "#fff" }]}>{recipeYieldSaving ? "Saving…" : "Save"}</Text>
               </Pressable>
             </View>
           </View>
@@ -2321,7 +2350,9 @@ export default function RecipeDetailScreen() {
         <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top + 20, paddingHorizontal: Spacing.xl, justifyContent: "space-between", paddingBottom: insets.bottom + 20 }}>
           <View>
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.lg }}>
-              <Text style={{ fontSize: 13, fontWeight: "700", color: Accent.primary, letterSpacing: 2 }}>COOK MODE</Text>
+              {/* 13 → label (uppercase + spaced) — semantically the
+                  cook-mode badge IS an uppercase label. */}
+              <Text style={[Type.label, { color: Accent.primary, letterSpacing: 2 }]}>COOK MODE</Text>
               <Pressable
                 onPress={() => {
                   setCookMode(false);
@@ -2334,10 +2365,12 @@ export default function RecipeDetailScreen() {
                 <X size={28} color={colors.textSecondary} strokeWidth={2.25} />
               </Pressable>
             </View>
-            <Text style={{ fontSize: 14, color: colors.textSecondary, marginBottom: 8 }}>
+            <Text style={[Type.body, { color: colors.textSecondary, marginBottom: 8 }]}>
               Step {cookStep + 1} of {instructionSteps.length}
             </Text>
-            <Text style={{ fontSize: 22, fontWeight: "600", color: colors.text, lineHeight: 32 }}>
+            {/* 22 → title (24) per ladder cleanup; cook-mode step copy is
+                large reading text — title fits the role. */}
+            <Text style={[Type.title, { fontWeight: FontWeight.semibold, color: colors.text, lineHeight: 32 }]}>
               {instructionSteps[cookStep]?.replace(/^\d+[\.\)\-]\s*/, "")}
             </Text>
           </View>

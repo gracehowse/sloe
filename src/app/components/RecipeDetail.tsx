@@ -1502,11 +1502,14 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                 aria-label={a11y}
               >
                 {fits ? <Icons.check className="w-3.5 h-3.5" strokeWidth={2.5} aria-hidden /> : null}
-                <span className="font-bold" style={{ fontSize: 12 }}>
-                  {label}
-                </span>
+                {/* 2026-05-01 typography ladder cleanup (ui-critic finding #4):
+                    inline `fontSize: 12` literals replaced with the
+                    canonical Tailwind `text-xs` token (12px) so the
+                    ladder is the source of truth on web. Mobile mirrors
+                    via `Type.caption` in `apps/mobile/app/recipe/[id].tsx`. */}
+                <span className="text-xs font-bold">{label}</span>
                 {fits ? (
-                  <span className="font-medium" style={{ fontSize: 12, opacity: 0.7 }}>
+                  <span className="text-xs font-medium opacity-70">
                     · ≈ {pct}%
                   </span>
                 ) : null}
