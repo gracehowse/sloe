@@ -1,5 +1,21 @@
 # Mobile App Changelog
 
+## 2026-05-01 — LogSheet Library tab (one-tap log from saved recipes)
+
+### Today screen / LogSheet
+- **Library tab** added to the LogSheet browse strip (between Recent and Saved meals). Surfaces the user's saved recipes inline so logging from the saved set no longer routes through Recipes → Library → Detail → Log. Sourced from TestFlight Build 40 feedback `AECfotBlQgwfgxYHr4dDaM8` ("No way to add recipes saved to library from here") + sibling reports.
+- Each Library row shows a thumbnail, title, kcal-per-portion, and a meal-type pill (Breakfast / Lunch / Dinner / Snacks) so the user knows which slot a one-tap log will land in.
+- Tapping a row routes through `logPlannedMealWithPortion` so the macro-coercion guard (P0-3 / T4) fires identically to the Recipe → Add to today path — recipes with kcal but no ingredient-resolved P/C/F surface the Verify prompt rather than persisting estimates.
+- Empty state renders friendly copy ("Save recipes from the Recipes tab to see them here. We'll show your most-cooked recipes first.") plus a "Browse recipes" CTA that routes to the in-app Library tab.
+- Browse-tab order is Recent / Library / Saved meals — Recent stays first to preserve the eat-again default; Library sits next so the saved-recipe path is discoverable.
+- Tab bar adapts: hidden when only one source is wired; renders 2-up or 3-up depending on which props the host passes.
+
+### Shared
+- **`journalSlotFromMealTypes` helper** lifted from `apps/mobile/app/recipe/[id].tsx` to `src/lib/nutrition/journalSlotFromMealTypes.ts` so the LogSheet Library tab pick handler (mobile + web), Recipe detail "Add to today", and any future surface all share one slot-resolution rule. Recipe detail now imports the shared version.
+
+### Web parity
+- Same Library tab on web (`src/app/components/suppr/log-sheet.tsx` + wired in `src/app/components/NutritionTracker.tsx`). Pick handler routes through `fetchPlannedMealMicros` for the same macro-coercion guard.
+
 ## 2026-04-20 — RevenueCat Customer Center + v2 API key support
 
 ### RevenueCat

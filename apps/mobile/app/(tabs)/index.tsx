@@ -91,6 +91,7 @@ import {
 } from "../../../../src/lib/nutrition/foodHistory";
 import { mapMealSourceToDot } from "../../../../src/lib/nutrition/sourceMap";
 import { isMealSlot } from "../../../../src/lib/nutrition/mealSlots";
+import { journalSlotFromMealTypes } from "../../../../src/lib/nutrition/journalSlotFromMealTypes";
 import {
   LEGACY_STORAGE_KEY_V1 as EAT_AGAIN_LEGACY_KEY_V1,
   STORAGE_KEY as EAT_AGAIN_STORAGE_KEY,
@@ -3910,6 +3911,66 @@ export default function TrackerScreen() {
             if (!meal) return;
             const slot = meal.defaultMealSlot ?? currentSlotFromTime;
             logSavedMealFromPanel(meal, slot);
+          },
+        }}
+        library={{
+          // 2026-05-01 (TestFlight Build 40 feedback `AECfotBlQgwfgxYHr4dDaM8`
+          // + "no way to add from library here") -- surface the user's
+          // saved recipes inline in the LogSheet so a one-tap log no
+          // longer requires routing through Recipes -> Library ->
+          // Detail. Source: shared `useSavedLibraryRecipes` hook
+          // (already wired further up for the NorthStar suggestion
+          // picker, so we get the same set Library shows for free --
+          // no second fetch).
+          recipes: savedLibraryRecipes.map((r) => ({
+            id: r.id,
+            title: r.title,
+            kcalPerPortion: Math.round(r.calories ?? 0),
+            thumbnail: r.image ?? null,
+            // mealSlots is `recipes.meal_type` mapped into RecipeCard
+            // shape. Re-resolve through the shared helper so the pill
+            // tag, the slot we route to on tap, and the recipe-detail
+            // "Add to today" all use the same rule.
+            mealTag: r.mealSlots
+              ? journalSlotFromMealTypes(r.mealSlots as string[])
+              : null,
+          })),
+          onPick: (picked) => {
+            setFabSheetOpen(false);
+            const recipe = savedLibraryRecipes.find((r) => r.id === picked.id);
+            if (!recipe) return;
+            // Route through `logPlannedMealWithPortion` so the macro-
+            // coercion guard (P0-3 / T4) fires identically to the
+            // Recipe -> Add to today path: a recipe with kcal but no
+            // ingredient-resolved P/C/F is refused with the Verify
+            // prompt. Project rule: "if nutrition is uncertain, do
+            // not guess".
+            void logPlannedMealWithPortion(
+              {
+                name: journalSlotFromMealTypes(
+                  (recipe.mealSlots ?? []) as string[],
+                  currentSlotFromTime as
+                    | "Breakfast"
+                    | "Lunch"
+                    | "Dinner"
+                    | "Snacks",
+                ),
+                recipe_title: recipe.title,
+                calories: recipe.calories ?? 0,
+                protein: recipe.protein ?? 0,
+                carbs: recipe.carbs ?? 0,
+                fat: recipe.fat ?? 0,
+                recipe_id: recipe.id,
+              },
+              1,
+            );
+          },
+          onBrowseRecipes: () => {
+            // Route to the in-app Library tab (mobile equivalent of
+            // /recipes on web) so the user can save more recipes when
+            // their list is empty.
+            setFabSheetOpen(false);
+            router.push("/(tabs)/library" as any);
           },
         }}
         voice={{

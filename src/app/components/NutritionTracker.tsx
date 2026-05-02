@@ -106,6 +106,7 @@ import {
   type SavedMealItem,
 } from "../../lib/nutrition/savedMeals";
 import { isMealSlot, type MealSlot } from "../../lib/nutrition/mealSlots";
+import { journalSlotFromMealTypes } from "../../lib/nutrition/journalSlotFromMealTypes";
 import {
   parseDismissedSlots,
   serializeDismissedSlots,
@@ -2731,6 +2732,80 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
             if (!meal) return;
             const slot = meal.defaultMealSlot ?? currentSlotFromTime;
             logSavedMeal(meal, slot);
+          },
+        }}
+        library={{
+          // 2026-05-01 (TestFlight Build 40 feedback `AECfotBlQgwfgxYHr4dDaM8`
+          // + "no way to add from library here") -- surface the user's
+          // saved recipes inline in the LogSheet so a one-tap log no
+          // longer requires routing through Recipes -> Library ->
+          // Detail. Mobile parity:
+          // `apps/mobile/app/(tabs)/index.tsx` `library={{...}}`.
+          recipes: savedRecipesForLibrary.map((r) => ({
+            id: r.id,
+            title: r.title,
+            kcalPerPortion: Math.round(r.calories ?? 0),
+            thumbnail: r.image ?? null,
+            mealTag: r.mealSlots
+              ? journalSlotFromMealTypes(r.mealSlots as readonly string[])
+              : null,
+          })),
+          onPick: async (picked) => {
+            const recipe = savedRecipesForLibrary.find((r) => r.id === picked.id);
+            if (!recipe) return;
+            setLogSheetOpen(false);
+            // Route through the shared planned-meal-log path so the
+            // macro-coercion guard (P0-3 / T4) fires identically to
+            // Recipe -> Add to today and Planner row -> Log: a recipe
+            // with kcal but no ingredient-resolved P/C/F is refused
+            // with the Verify prompt.
+            const microsRes = await fetchPlannedMealMicros(
+              supabase as unknown as SupabaseLike,
+              recipe.id,
+              1,
+            );
+            if (microsRes.macrosAreCoerced) {
+              if (typeof window !== "undefined") {
+                window.alert(
+                  "Verify this recipe first.\n\nThis recipe has calories but no ingredient macros yet. Logging now would save estimated values. Open the recipe and tap Verify to match ingredients for accurate nutrition.",
+                );
+              }
+              return;
+            }
+            const slot = recipe.mealSlots
+              ? journalSlotFromMealTypes(
+                  recipe.mealSlots as readonly string[],
+                  currentSlotFromTime as MealSlot,
+                )
+              : (currentSlotFromTime as MealSlot);
+            const timeLabel = new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+            addLoggedMealForDate(
+              selectedDateKey,
+              {
+                name: slot,
+                recipeTitle: recipe.title,
+                time: timeLabel,
+                calories: Math.round(recipe.calories ?? 0),
+                protein: Math.round((recipe.protein ?? 0) * 10) / 10,
+                carbs: Math.round((recipe.carbs ?? 0) * 10) / 10,
+                fat: Math.round((recipe.fat ?? 0) * 10) / 10,
+                ...(microsRes.fiberG != null ? { fiberG: microsRes.fiberG } : {}),
+                ...(Object.keys(microsRes.micros).length > 0 ? { micros: microsRes.micros } : {}),
+                source: "Recipe",
+              },
+              "recipe",
+            );
+            try {
+              toast.success(`Logged ${recipe.title} to ${slot}.`);
+            } catch {
+              /* toast availability is not a blocker for the journal write */
+            }
+          },
+          onBrowseRecipes: () => {
+            // Route to the in-app Recipes / Library page so the user
+            // can save more recipes when their list is empty.
+            setLogSheetOpen(false);
+            trackerRouter.push("/recipes");
           },
         }}
         voice={{

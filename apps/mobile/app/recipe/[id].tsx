@@ -56,7 +56,7 @@ import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
 import { webRecipeDeepLink } from "../../../../src/lib/share/recipeDeepLink";
 import { instagramHandleFromPostUrl, tiktokHandleFromPostUrl } from "../../../../src/lib/recipe-import/extractSocialRecipe";
-import { normaliseMealSlot } from "../../../../src/lib/nutrition/mealSlots";
+import { journalSlotFromMealTypes } from "../../../../src/lib/nutrition/journalSlotFromMealTypes";
 import { normaliseInstructions } from "../../../../src/lib/recipes/normaliseInstructions";
 import { sanitizeRecipeDescription } from "../../../../src/lib/recipes/sanitizeRecipeDescription";
 import { formatMacroValue } from "../../../../src/lib/nutrition/formatMacro";
@@ -139,16 +139,11 @@ type FullRecipe = {
   allergens: string[] | null;
 };
 
-function journalSlotFromMealTypes(mealType: string[] | null | undefined): string {
-  if (!mealType?.length) return "Lunch";
-  const joined = mealType.map((t) => t.toLowerCase()).join(" ");
-  if (joined.includes("breakfast")) return "Breakfast";
-  if (joined.includes("lunch")) return "Lunch";
-  if (joined.includes("dinner") || joined.includes("supper")) return "Dinner";
-  if (joined.includes("snack")) return "Snacks";
-  // Audit L5 (2026-04-18): shared canonical slot helper.
-  return normaliseMealSlot(mealType[0]) ?? "Lunch";
-}
+// 2026-05-01 -- `journalSlotFromMealTypes` lifted to
+// `src/lib/nutrition/journalSlotFromMealTypes.ts` so the LogSheet
+// Library tab pick handler (mobile + web) shares the exact same slot-
+// resolution rules as this file. See that helper for the full rule
+// table.
 
 type Ingredient = {
   name: string;
