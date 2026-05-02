@@ -8,7 +8,7 @@ import {
   Search,
   type LucideIcon,
 } from "lucide-react-native";
-import { Accent } from "@/constants/theme";
+import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
 
 /**
  * TodayQuickLogStrip — 4 chips: Search / Voice / Snap / Scan.
@@ -19,7 +19,21 @@ import { Accent } from "@/constants/theme";
  *
  * 2026-04-27 — production design spec §1.5: Ionicons → lucide
  * (Search / Mic / Camera / ScanBarcode / Lock).
+ *
+ * 2026-05-01 — ui-critic finding #1 (P0). Lifted from a 28pt tinted
+ * square + 10pt label into a 56pt tile + 36pt tinted icon container
+ * (`IconSize.lg` = 18pt glyph) + 12pt `Type.caption` label. The tile
+ * is the primary log-affordance under the hero ring; "primary" should
+ * read primary. The redundant `cardColor` outer border was dropped —
+ * the tinted icon container now carries the colour identity, which
+ * is the same model the web `IconBox` uses.
  */
+/** Outer tile minimum height — matches the web `<button>` after the
+ *  2026-05-01 sizing lift (`IconBox size="md"` + `text-sm` label). */
+const TILE_MIN_HEIGHT = 56;
+/** Tinted icon-container size — large enough to host an 18pt glyph
+ *  with breathing room. Mirrors web `IconBox size="md"` (`size-9` = 36px). */
+const ICON_TILE = 36;
 export interface TodayQuickLogStripProps {
   userTier: "free" | "base" | "pro";
   onOpenSearch: () => void;
@@ -39,10 +53,14 @@ export function TodayQuickLogStrip({
   onOpenPhoto,
   onOpenBarcode,
   cardColor,
-  cardBorderColor,
+  cardBorderColor: _cardBorderColor,
   textSecondaryColor,
   textTertiaryColor,
 }: TodayQuickLogStripProps) {
+  // The redundant outer border was dropped 2026-05-01 (ui-critic #1) —
+  // the tinted icon container carries the colour identity. Prop kept on
+  // the public contract for caller compatibility / future opt-in.
+  void _cardBorderColor;
   const proLocked = userTier !== "pro";
   const entries: readonly {
     label: string;
@@ -57,7 +75,14 @@ export function TodayQuickLogStrip({
     { label: "Scan", Glyph: ScanBarcode, color: Accent.magenta, onPress: onOpenBarcode, locked: false },
   ];
   return (
-    <View style={{ flexDirection: "row", gap: 8, marginBottom: 20 }}>
+    <View
+      style={{
+        flexDirection: "row",
+        gap: Spacing.sm,
+        marginTop: Spacing.md,
+        marginBottom: Spacing.lg,
+      }}
+    >
       {entries.map(({ label, Glyph, color, onPress, locked }) => (
         <Pressable
           key={label}
@@ -67,31 +92,39 @@ export function TodayQuickLogStrip({
           onPress={onPress}
           style={{
             flex: 1,
+            minHeight: TILE_MIN_HEIGHT,
             alignItems: "center",
-            gap: 5,
-            paddingVertical: 10,
-            paddingHorizontal: 4,
-            borderRadius: 12,
+            justifyContent: "center",
+            gap: Spacing.xs,
+            paddingVertical: Spacing.sm,
+            paddingHorizontal: Spacing.xs,
+            borderRadius: Radius.md,
             backgroundColor: cardColor,
-            borderWidth: 1,
-            borderColor: cardBorderColor,
           }}
         >
           <View
             style={{
-              width: 28,
-              height: 28,
-              borderRadius: 8,
+              width: ICON_TILE,
+              height: ICON_TILE,
+              borderRadius: Radius.sm,
               backgroundColor: color + "18",
               alignItems: "center",
               justifyContent: "center",
             }}
           >
-            <Glyph size={14} color={color} />
+            <Glyph size={IconSize.lg} color={color} strokeWidth={2.25} />
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
-            <Text style={{ fontSize: 10, fontWeight: "500", color: textSecondaryColor }}>{label}</Text>
-            {locked && <Lock size={9} color={textTertiaryColor} />}
+            <Text
+              style={{
+                ...Type.caption,
+                color: textSecondaryColor,
+                fontVariant: ["tabular-nums"],
+              }}
+            >
+              {label}
+            </Text>
+            {locked && <Lock size={9} color={textTertiaryColor} strokeWidth={2.25} />}
           </View>
         </Pressable>
       ))}

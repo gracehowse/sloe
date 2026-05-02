@@ -1,5 +1,16 @@
 # Mobile App Changelog
 
+## 2026-05-01 — TodayQuickLogStrip primary-action sizing
+
+### Today
+- **Today's quick-log row** lifted from a 28pt tinted square + 10pt label to a 56pt tile + 36pt tinted square (`IconBox size="md"` mirror) + `IconSize.lg` (18pt) glyph + `Type.caption` (12pt) label (ui-critic finding #1, P0). Primary action affordance must read as primary.
+- The redundant `cardColor` outer border is gone — the tinted icon container carries the colour identity (same model as web `IconBox`).
+- Tabular-nums on labels for vertical rhythm with the surrounding macro tiles.
+- Web parity applied to `src/app/components/suppr/today-quick-log-strip.tsx` (`min-h-14`, `IconBox size="md"`, `text-xs`).
+- Lock-in tests:
+  - `apps/mobile/tests/unit/todayQuickLogStripSizing.test.tsx` pins minHeight ≥ 56, IconSize.lg, Type.caption, no outer border.
+  - `tests/unit/todayQuickLogStripParity.test.ts` enforces the matching web classes.
+
 ## 2026-05-01 — LogSheet: 3-tab discoverability (journey-architect P1)
 
 ### LogSheet
