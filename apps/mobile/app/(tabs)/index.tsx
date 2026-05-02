@@ -1502,6 +1502,13 @@ export default function TrackerScreen() {
    * panel + Eat-again card so the persist/event shape stays aligned. */
   const logHistoryItemToSlot = useCallback(
     (item: FoodHistoryItem, slot: string) => {
+      // Tracking-extras autoupdate (2026-05-01) — re-attach caffeine /
+      // alcohol micros so re-logging a coffee / wine / beer from
+      // Recents / Frequent / Eat-again still bumps the daily totals.
+      // Mirrors web `logHistoryItem`. Missing → no `micros` key.
+      const micros: Record<string, number> = {};
+      if (item.caffeineMg != null && item.caffeineMg > 0) micros.caffeineMg = item.caffeineMg;
+      if (item.alcoholG != null && item.alcoholG > 0) micros.alcoholG = item.alcoholG;
       const meal: JournalMeal = {
         id: newMealId(),
         name: slot,
@@ -1513,13 +1520,25 @@ export default function TrackerScreen() {
         fat: item.fat,
         ...(item.fiber != null ? { fiberG: item.fiber } : {}),
         ...(item.source ? { source: item.source } : {}),
+        ...(Object.keys(micros).length > 0 ? { micros } : {}),
       };
       setByDay((prev) => ({ ...prev, [dayKey]: [...(prev[dayKey] ?? []), meal] }));
       // 2026-04-28 (teardown Top-5 #5): light haptic on log.
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      // Tracking-extras autoupdate (2026-05-01) — bump daily caffeine /
+      // alcohol totals on `profiles` so the chips reflect the re-log
+      // within ~1s of commit. Mirrors `handleFoodSearchSelect`.
+      const caffeineMg = micros.caffeineMg ?? 0;
+      const alcoholG = micros.alcoholG ?? 0;
+      if (userId && (caffeineMg > 0 || alcoholG > 0)) {
+        void updateStimulantsForDay(supabase, userId, dayKey, {
+          caffeineMg,
+          alcoholG,
+        });
+      }
       try { track(AnalyticsEvents.food_logged, { source: "quick_add", slot }); } catch { /* noop */ }
     },
-    [dayKey],
+    [dayKey, userId],
   );
 
   /**
@@ -3504,6 +3523,19 @@ export default function TrackerScreen() {
           source: "Meal plan",
           origin: "plan",
         });
+        // Tracking-extras autoupdate (2026-05-01) — when the planned
+        // meal's verified ingredients carried caffeine / alcohol, bump
+        // the daily totals so the Today chips reflect the log. Pulled
+        // from `microsRes.micros` (already scaled by `mult` inside
+        // `fetchPlannedMealMicros`).
+        const caffeineMg = Number(microsRes.micros?.caffeineMg ?? 0) || 0;
+        const alcoholG = Number(microsRes.micros?.alcoholG ?? 0) || 0;
+        if (caffeineMg > 0 || alcoholG > 0) {
+          void updateStimulantsForDay(supabase, userId, dk, {
+            caffeineMg,
+            alcoholG,
+          });
+        }
       }
     },
     [userId, selectedDate, loadJournal],

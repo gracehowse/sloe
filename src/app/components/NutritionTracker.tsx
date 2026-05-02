@@ -774,6 +774,16 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
       // so we pass "quick_add" here instead of double-emitting. Drops
       // the prior secondary `track(food_logged, { source: "quick_add", slot })`
       // call that could desync from the primitive's payload.
+      //
+      // Tracking-extras autoupdate (2026-05-01) — re-attach caffeine /
+      // alcohol micros so the journal-state insert path picks up the
+      // F-13 daily bump. `computeRecentMeals` / `computeFrequentMeals` /
+      // `computeEatAgainForSlot` average per-occurrence stimulant
+      // contribution into `item.caffeineMg` / `item.alcoholG`. Missing
+      // → no key in `micros` (and `addLoggedMeal` skips the bump).
+      const micros: Record<string, number> = {};
+      if (item.caffeineMg != null && item.caffeineMg > 0) micros.caffeineMg = item.caffeineMg;
+      if (item.alcoholG != null && item.alcoholG > 0) micros.alcoholG = item.alcoholG;
       addLoggedMeal(
         {
           name: slot,
@@ -785,6 +795,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
           fat: item.fat,
           ...(item.fiber != null ? { fiberG: item.fiber } : {}),
           ...(item.source ? { source: item.source } : {}),
+          ...(Object.keys(micros).length > 0 ? { micros } : {}),
         },
         "quick_add",
       );
