@@ -1,5 +1,20 @@
 # Mobile App Changelog
 
+## 2026-05-02 — MyFitnessPal CSV bulk import (close MFP-refugee bridge gap)
+
+### Onboarding / data bridges
+- **MFP CSV import card** added to the onboarding data-bridges step (`apps/mobile/components/onboarding/steps/data-bridges.tsx`). Picker uses `expo-document-picker` (added as `~14.0.7` for SDK 54), accepts `.csv` only, and uploads to the new `POST /api/imports/mfp-csv` route via `authedFetch`. Same component lives at `src/app/components/onboarding/steps/data-bridges.tsx` on web — file picker is `<input type="file">` there; everything else (states, copy, analytics) is identical.
+- **5-imports/day rate limit** per user, **1000 rows/request** cap, **5 MB** file size cap. Above 1000 rows the route accepts the first 1000 and reports `truncated: true` so the user knows to upload the rest in a second pass.
+- **Idempotent re-uploads** — uses the existing `(user_id, source, source_id)` partial unique index added 2026-04-21. A re-uploaded CSV does not duplicate rows.
+- **Macros are persisted verbatim from the CSV** — we do NOT re-derive against USDA / OFF / FatSecret. The CSV macros are the user's MFP-confirmed totals; weak fuzzy matches overriding them would regress data trust. See `docs/decisions/2026-05-02-mfp-csv-import.md` for why background enrichment is a follow-up.
+
+### Analytics
+- New events `mfp_csv_import_started`, `mfp_csv_import_completed`, `mfp_csv_import_failed` (web + mobile, identical payload shape). Surface tag `"onboarding"` today; Settings post-onboarding entry will reuse the same events with `surface: "settings"`.
+
+### Decisions captured in this change
+- Per-row USDA/OFF/FatSecret enrichment **deferred** to a future async/background pass. Synchronous enrichment for a 1k-row import would blow the Vercel `maxDuration` budget several times over and risks silently overriding user-confirmed values. The threshold for any future enrichment is fixed at ≥ 0.7 (`MFP_MATCH_CONFIDENCE_THRESHOLD`).
+- Lose It! / Cronometer / Paprika imports **not in scope** for this PR — different export shapes, separate follow-ups.
+
 ## 2026-04-20 — RevenueCat Customer Center + v2 API key support
 
 ### RevenueCat

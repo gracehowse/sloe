@@ -24,6 +24,16 @@ describe("AnalyticsEvents registry", () => {
     expect(AnalyticsEvents.recipe_verify_needs_review).toBe("recipe_verify_needs_review");
   });
 
+  it("registers mfp_csv_import_{started,completed,failed} for the MFP-refugee bulk-import funnel", () => {
+    // Added 2026-05-02 alongside `/api/imports/mfp-csv`. Identical
+    // event names on web + mobile so PostHog funnels can slice
+    // `surface ∈ { "onboarding", "settings" }` and
+    // `platform ∈ { "web", "ios", "android" }` from one named event.
+    expect(AnalyticsEvents.mfp_csv_import_started).toBe("mfp_csv_import_started");
+    expect(AnalyticsEvents.mfp_csv_import_completed).toBe("mfp_csv_import_completed");
+    expect(AnalyticsEvents.mfp_csv_import_failed).toBe("mfp_csv_import_failed");
+  });
+
   it("registers week_start_day_changed with the canonical value", () => {
     expect(AnalyticsEvents.week_start_day_changed).toBe("week_start_day_changed");
   });

@@ -389,6 +389,27 @@ export const AnalyticsEvents = {
    *   platform?: "web" | "ios" | "android", avgIngredientConfidence?, minIngredientConfidence? }`.
    * `recipe_id` omitted on create paste; set on recipe detail / verify flows when the recipe exists. */
   recipe_verify_needs_review: "recipe_verify_needs_review",
+  /** User started a MyFitnessPal CSV bulk import from the onboarding
+   * data-bridges step (or from Settings post-onboarding). Fires when
+   * the file is selected, before the upload begins. Payload:
+   *   `{ surface: "onboarding" | "settings", platform: "web" | "ios" | "android" }`.
+   * Closes the MFP-refugee history-bridge gap (P1 customer-lens).
+   * Added 2026-05-02 alongside `/api/imports/mfp-csv`. */
+  mfp_csv_import_started: "mfp_csv_import_started",
+  /** MFP CSV bulk import completed successfully (`POST /api/imports/mfp-csv`
+   * returned `{ ok: true }`). Payload:
+   *   `{ imported: number, unmatched: number, truncated: boolean,
+   *      surface: "onboarding" | "settings", platform: "web" | "ios" | "android" }`.
+   * Counts come from the API response; the client emits at the
+   * receiving boundary. Added 2026-05-02. */
+  mfp_csv_import_completed: "mfp_csv_import_completed",
+  /** MFP CSV bulk import failed (parse error, rate limit, oversize, or
+   * insert error). Payload:
+   *   `{ error: string, status: number,
+   *      surface: "onboarding" | "settings", platform: "web" | "ios" | "android" }`.
+   * `error` is the route's machine-readable code (e.g. `rate_limited`,
+   * `file_too_large`, `no_rows`). Added 2026-05-02. */
+  mfp_csv_import_failed: "mfp_csv_import_failed",
 } as const;
 
 export type AnalyticsEventName = (typeof AnalyticsEvents)[keyof typeof AnalyticsEvents];
