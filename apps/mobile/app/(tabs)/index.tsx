@@ -2351,16 +2351,19 @@ export default function TrackerScreen() {
       if (!userId) return;
       const add = Math.max(0, Math.round(ml));
       if (add === 0) return;
-      let persisted: Record<string, number> | null = null;
-      setExtraWaterByDay((prev) => {
-        const next = pruneByDay({ ...prev, [dayKey]: (prev[dayKey] ?? 0) + add });
-        persisted = next;
-        return next;
-      });
+      // Build 41 (2026-05-01) — same React 18 functional-updater
+      // closure-capture trap as `addCaffeineMg` / `addAlcoholG`. The
+      // previous `setExtraWaterByDay((prev) => { persisted = next;
+      // return next; })` pattern left `persisted` as `null` when the
+      // `if (persisted)` branch ran, so the supabase write was
+      // silently skipped. Same root cause and same fix: compute
+      // `next` from the closure-captured `prev` map before calling
+      // setState, then persist with the directly-captured value.
+      const prev = extraWaterByDay;
+      const next = pruneByDay({ ...prev, [dayKey]: (prev[dayKey] ?? 0) + add });
+      setExtraWaterByDay(next);
       // Await the persist so it completes before any re-fetch can race
-      if (persisted) {
-        await supabase.from("profiles").update({ extra_water_by_day: persisted }).eq("id", userId);
-      }
+      await supabase.from("profiles").update({ extra_water_by_day: next }).eq("id", userId);
       track(AnalyticsEvents.hydration_logged, {
         type: "water",
         amount: add,
@@ -2375,7 +2378,7 @@ export default function TrackerScreen() {
         via: "quick_chip",
       });
     },
-    [userId, dayKey],
+    [userId, dayKey, extraWaterByDay],
   );
 
   /** Batch 5.12 — start a fast from a deep link (Siri / Shortcuts app).
@@ -2455,37 +2458,49 @@ export default function TrackerScreen() {
    * because nothing was actually saved server-side. Now: capture the
    * error, roll back local state, surface a toast so the user knows
    * the chip didn't take. Fixes the symptom of "added a coffee, came
-   * back to the screen, count is back at 0". */
+   * back to the screen, count is back at 0".
+   *
+   * Build 41 (TestFlight `AEsaeOW2Qw-BQa29teBp-Ns`, 2026-05-01):
+   * tester reported the same symptom is back ("Adding alcohol or
+   * coffee still not impacting these numbers"). Root cause was the
+   * round-3 fix relied on capturing `next` inside a `setState((prev)
+   * => ...)` updater, then reading `persisted` on the next line —
+   * but React 18 invokes functional updaters lazily during the next
+   * commit, so `persisted` was still `null` when the persist branch
+   * checked it. The supabase write therefore never fired, the
+   * round-3 error path never ran, and the round-3 toast never
+   * surfaced even though no save happened. On next focus / app
+   * relaunch the local state hydrated from the (still-zero) server
+   * row and the count appeared to "reset".
+   *
+   * Fix: compute `next` synchronously from the latest map captured
+   * in the closure, persist with that value, and use a direct
+   * (non-functional) setState call so the value is immediately
+   * available outside the updater. The persist now fires, errors
+   * surface, and the local state matches what's actually saved. */
   const addCaffeineMg = useCallback(
     async (mg: number, preset: string | null = null) => {
       if (!userId) return;
       const add = Math.max(0, Math.round(mg));
       if (add === 0) return;
-      let persisted: Record<string, number> | null = null;
-      setExtraCaffeineByDay((prev) => {
-        const next = pruneByDay({ ...prev, [dayKey]: (prev[dayKey] ?? 0) + add });
-        persisted = next;
-        return next;
-      });
-      if (persisted) {
-        const { error } = await supabase
-          .from("profiles")
-          .update({ extra_caffeine_by_day: persisted })
-          .eq("id", userId);
-        if (error) {
-          // Roll back local state so display matches what's actually saved.
-          setExtraCaffeineByDay((prev) => {
-            const reverted = { ...prev };
-            const current = reverted[dayKey] ?? 0;
-            const after = Math.max(0, current - add);
-            if (after === 0) delete reverted[dayKey];
-            else reverted[dayKey] = after;
-            return reverted;
-          });
-          console.error("[addCaffeineMg] persist failed:", error.message, error);
-          Alert.alert("Couldn't save caffeine", error.message ?? "Try again.");
-          return;
-        }
+      // Snapshot the previous map for rollback BEFORE we mutate state
+      // so a network failure can't leave the UI ahead of the server.
+      const prev = extraCaffeineByDay;
+      const next = pruneByDay({ ...prev, [dayKey]: (prev[dayKey] ?? 0) + add });
+      setExtraCaffeineByDay(next);
+      const { error } = await supabase
+        .from("profiles")
+        .update({ extra_caffeine_by_day: next })
+        .eq("id", userId);
+      if (error) {
+        // Roll back to the captured `prev` — direct restore, no
+        // functional updater, so the rollback definitely uses the
+        // pre-add value (not whatever the latest state was, which
+        // could include other in-flight chip taps).
+        setExtraCaffeineByDay(prev);
+        console.error("[addCaffeineMg] persist failed:", error.message, error);
+        Alert.alert("Couldn't save caffeine", error.message ?? "Try again.");
+        return;
       }
       track(AnalyticsEvents.stimulant_logged, {
         type: "caffeine",
@@ -2499,41 +2514,31 @@ export default function TrackerScreen() {
         via: preset ? "quick_chip" : "manual",
       });
     },
-    [userId, dayKey],
+    [userId, dayKey, extraCaffeineByDay],
   );
 
   /** Batch 2.5 — alcohol quick-add (grams ethanol) for the selected day.
    *  Same persist-error rollback hardening as addCaffeineMg above
-   *  (2026-04-26 round 3). */
+   *  (2026-04-26 round 3). Build 41 fix: same closure-capture
+   *  workaround — see the long doc on `addCaffeineMg` for the
+   *  React 18 functional-updater rationale. */
   const addAlcoholG = useCallback(
     async (grams: number, preset: string | null = null) => {
       if (!userId) return;
       const add = Math.max(0, Math.round(grams));
       if (add === 0) return;
-      let persisted: Record<string, number> | null = null;
-      setExtraAlcoholGByDay((prev) => {
-        const next = pruneByDay({ ...prev, [dayKey]: (prev[dayKey] ?? 0) + add });
-        persisted = next;
-        return next;
-      });
-      if (persisted) {
-        const { error } = await supabase
-          .from("profiles")
-          .update({ extra_alcohol_g_by_day: persisted })
-          .eq("id", userId);
-        if (error) {
-          setExtraAlcoholGByDay((prev) => {
-            const reverted = { ...prev };
-            const current = reverted[dayKey] ?? 0;
-            const after = Math.max(0, current - add);
-            if (after === 0) delete reverted[dayKey];
-            else reverted[dayKey] = after;
-            return reverted;
-          });
-          console.error("[addAlcoholG] persist failed:", error.message, error);
-          Alert.alert("Couldn't save alcohol", error.message ?? "Try again.");
-          return;
-        }
+      const prev = extraAlcoholGByDay;
+      const next = pruneByDay({ ...prev, [dayKey]: (prev[dayKey] ?? 0) + add });
+      setExtraAlcoholGByDay(next);
+      const { error } = await supabase
+        .from("profiles")
+        .update({ extra_alcohol_g_by_day: next })
+        .eq("id", userId);
+      if (error) {
+        setExtraAlcoholGByDay(prev);
+        console.error("[addAlcoholG] persist failed:", error.message, error);
+        Alert.alert("Couldn't save alcohol", error.message ?? "Try again.");
+        return;
       }
       track(AnalyticsEvents.stimulant_logged, {
         type: "alcohol",
@@ -2546,10 +2551,16 @@ export default function TrackerScreen() {
         via: preset ? "quick_chip" : "manual",
       });
     },
-    [userId, dayKey],
+    [userId, dayKey, extraAlcoholGByDay],
   );
 
-  /** Batch 2.5 — reset today's value for one of the three hydration rows. */
+  /** Batch 2.5 — reset today's value for one of the three hydration rows.
+   *
+   * Build 41 (2026-05-01) — same React 18 functional-updater
+   * closure-capture trap as `addCaffeineMg` / `addAlcoholG` /
+   * `addWaterMl`. Compute `next` from the closure-captured map
+   * before calling setState so the persist branch sees the value
+   * directly. */
   const resetHydrationStimulantsForDay = useCallback(
     async (kind: "water" | "caffeine" | "alcohol") => {
       if (!userId) return;
@@ -2565,29 +2576,21 @@ export default function TrackerScreen() {
         delete next[dayKey];
         return next;
       };
-      let persisted: Record<string, number> | null = null;
+      let next: Record<string, number>;
       if (kind === "water") {
-        setExtraWaterByDay((prev) => {
-          const next = apply(prev);
-          persisted = next;
-          return next;
-        });
+        next = apply(extraWaterByDay);
+        if (next === extraWaterByDay) return; // no-op when day already empty
+        setExtraWaterByDay(next);
       } else if (kind === "caffeine") {
-        setExtraCaffeineByDay((prev) => {
-          const next = apply(prev);
-          persisted = next;
-          return next;
-        });
+        next = apply(extraCaffeineByDay);
+        if (next === extraCaffeineByDay) return;
+        setExtraCaffeineByDay(next);
       } else {
-        setExtraAlcoholGByDay((prev) => {
-          const next = apply(prev);
-          persisted = next;
-          return next;
-        });
+        next = apply(extraAlcoholGByDay);
+        if (next === extraAlcoholGByDay) return;
+        setExtraAlcoholGByDay(next);
       }
-      if (persisted) {
-        await supabase.from("profiles").update({ [column]: persisted }).eq("id", userId);
-      }
+      await supabase.from("profiles").update({ [column]: next }).eq("id", userId);
       // L6 G6 (2026-04-18) — reset paths stay backwards-compatible
       // (amount: 0, preset: "reset") and add the explicit enum
       // fields. `via: "manual"` because reset is always a deliberate
@@ -2613,7 +2616,7 @@ export default function TrackerScreen() {
         });
       }
     },
-    [userId, dayKey],
+    [userId, dayKey, extraWaterByDay, extraCaffeineByDay, extraAlcoholGByDay],
   );
 
   const styles = useMemo(

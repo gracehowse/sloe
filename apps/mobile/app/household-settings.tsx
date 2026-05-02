@@ -29,7 +29,17 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Stack, useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import {
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Coffee,
+  Cookie,
+  Moon,
+  Plus,
+  UtensilsCrossed,
+  type LucideIcon,
+} from "lucide-react-native";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -86,12 +96,19 @@ const DAY_LABELS: Record<HouseholdDayId, string> = {
 
 const SLOT_META: Record<
   HouseholdSlotId,
-  { full: string; icon: keyof typeof Ionicons.glyphMap }
+  { full: string; icon: LucideIcon }
 > = {
-  breakfast: { full: "Breakfast", icon: "cafe-outline" },
-  lunch: { full: "Lunch", icon: "restaurant-outline" },
-  dinner: { full: "Dinner", icon: "moon-outline" },
-  snack: { full: "Snack", icon: "nutrition-outline" },
+  // P0-4 (2026-05-01) — lucide swap. Mapping:
+  //   cafe-outline       → Coffee
+  //   restaurant-outline → UtensilsCrossed
+  //   moon-outline       → Moon
+  //   nutrition-outline  → Cookie
+  // Ionicons are gone from this file — every glyph now matches the
+  // rest of the mobile surface (lucide-react-native).
+  breakfast: { full: "Breakfast", icon: Coffee },
+  lunch: { full: "Lunch", icon: UtensilsCrossed },
+  dinner: { full: "Dinner", icon: Moon },
+  snack: { full: "Snack", icon: Cookie },
 };
 
 /** AsyncStorage adapter — conforms to the shared SharingStorageAdapter. */
@@ -374,7 +391,7 @@ export default function HouseholdSettingsScreen() {
             hitSlop={10}
             style={{ width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" }}
           >
-            <Ionicons name="chevron-back" size={22} color={colors.text} />
+            <ChevronLeft size={22} color={colors.text} strokeWidth={1.75} />
           </Pressable>
           <Text style={{ fontSize: 20, fontWeight: "700", color: colors.text, letterSpacing: -0.2 }}>
             Household
@@ -449,7 +466,7 @@ export default function HouseholdSettingsScreen() {
                   hitSlop={6}
                   style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
                 >
-                  <Ionicons name="add" size={14} color={Accent.primary} />
+                  <Plus size={14} color={Accent.primary} strokeWidth={2} />
                   <Text style={{ fontSize: 12, fontWeight: "600", color: Accent.primary }}>Add</Text>
                 </Pressable>
               </View>
@@ -510,7 +527,7 @@ export default function HouseholdSettingsScreen() {
                           {macroCopy}
                         </Text>
                       </View>
-                      <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+                      <ChevronRight size={16} color={colors.textTertiary} strokeWidth={1.75} />
                     </View>
                   );
                 })}
@@ -697,7 +714,16 @@ export default function HouseholdSettingsScreen() {
                 {HOUSEHOLD_SLOT_IDS.map((s) => (
                   <View key={s} style={{ flexDirection: "row", gap: 6, marginBottom: 6 }}>
                     <View style={{ width: 28, alignItems: "center", justifyContent: "center" }}>
-                      <Ionicons name={SLOT_META[s].icon} size={14} color={colors.textSecondary} />
+                      {(() => {
+                        const Icon = SLOT_META[s].icon;
+                        return (
+                          <Icon
+                            size={14}
+                            color={colors.textSecondary}
+                            strokeWidth={1.75}
+                          />
+                        );
+                      })()}
                     </View>
                     {HOUSEHOLD_DAY_IDS.map((d) => {
                       const mem = cellMembers(sharing.grid, d, s);
@@ -941,7 +967,7 @@ export default function HouseholdSettingsScreen() {
                           justifyContent: "center",
                         }}
                       >
-                        {on ? <Ionicons name="checkmark" size={12} color="#fff" /> : null}
+                        {on ? <Check size={12} color="#fff" strokeWidth={3} /> : null}
                       </View>
                     </Pressable>
                   );

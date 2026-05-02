@@ -30,6 +30,10 @@ import {
 } from "../../lib/nutrition/recipeCookHistoryClient.ts";
 import { extractVideoHost } from "../../lib/recipes/heroImageFallback.ts";
 import { supabase } from "../../lib/supabase/browserClient.ts";
+import {
+  fallbackSlotFromTimeOfDay,
+  journalSlotFromMealTypes,
+} from "../../lib/nutrition/recipeJournalSlot.ts";
 
 interface CookModeProps {
   recipe: RecipeCard;
@@ -411,9 +415,14 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
   }, []);
 
   const handleLogMeal = useCallback(() => {
-    const hour = new Date().getHours();
-    const fallbackMeal = hour < 11 ? "Breakfast" : hour < 15 ? "Lunch" : hour < 17 ? "Snacks" : "Dinner";
-    const mealName = recipe.mealSlots?.[0] ?? fallbackMeal;
+    // Build 41 (TestFlight `AB1PYpfPjbd9li7jtnlAsIE`, 2026-05-01) —
+    // route through the shared `journalSlotFromMealTypes` helper so
+    // mobile and web pick the same slot for the same recipe + clock.
+    // The shared helper normalises common variants ("breakfast",
+    // "Brunch", "supper" → Dinner) before falling back to time-of-day.
+    const mealName = recipe.mealSlots?.length
+      ? journalSlotFromMealTypes(recipe.mealSlots as string[])
+      : fallbackSlotFromTimeOfDay();
 
     const baseServings = recipe.servings > 0 ? recipe.servings : 1;
     // Effective multiplier combines the user-picked servings with the
