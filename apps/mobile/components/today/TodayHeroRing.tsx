@@ -1,7 +1,8 @@
 import React from "react";
 import { Pressable, Text, View } from "react-native";
+import { HelpCircle } from "lucide-react-native";
 import CalorieRing from "@/components/charts/CalorieRing";
-import { FontWeight, Radius, Spacing } from "@/constants/theme";
+import { Accent, FontWeight, Radius, Spacing } from "@/constants/theme";
 
 /**
  * TodayHeroRing — ring hero variant.
@@ -52,6 +53,13 @@ export interface TodayHeroRingProps {
   /** Chip tap sets the mode explicitly. Wave 8a parity with web. */
   onSetDisplayMode: (mode: "remaining" | "consumed") => void;
   textTertiaryColor: string;
+
+  /** Audit gap #10 transparency moat (2026-05-01). When provided, a
+   *  small "Why this number?" pill button renders directly under the
+   *  ring; tapping it should open the host-owned `WhyThisNumberSheet`.
+   *  Sized + spaced so it does not interfere with the ring's tap /
+   *  long-press affordances. */
+  onPressWhy?: () => void;
 }
 
 export function TodayHeroRing({
@@ -72,6 +80,7 @@ export function TodayHeroRing({
   onToggleDisplayMode,
   onSetDisplayMode,
   textTertiaryColor: _textTertiaryColor,
+  onPressWhy,
 }: TodayHeroRingProps) {
   return (
     <View
@@ -157,6 +166,34 @@ export function TodayHeroRing({
           );
         })}
       </View>
+      {/* Audit gap #10 transparency moat (2026-05-01) — small "Why this
+          number?" pill that opens the WhyThisNumberSheet. Renders only
+          when the host passes `onPressWhy`; sized so it doesn't fight
+          the ring's tap target. Sits below the segmented control so the
+          two affordances stack rather than compete for the same line. */}
+      {onPressWhy ? (
+        <Pressable
+          testID="today-hero-why-this-number"
+          accessibilityRole="button"
+          accessibilityLabel="Why this number? Open calorie target explanation"
+          onPress={onPressWhy}
+          hitSlop={6}
+          style={({ pressed }) => ({
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 4,
+            paddingHorizontal: Spacing.md,
+            paddingVertical: 6,
+            borderRadius: Radius.full,
+            backgroundColor: pressed ? `${Accent.primary}30` : `${Accent.primary}14`,
+          })}
+        >
+          <HelpCircle size={12} color={Accent.primary} strokeWidth={2.25} />
+          <Text style={{ fontSize: 11, fontWeight: "700", color: Accent.primary, letterSpacing: 0.2 }}>
+            Why this number?
+          </Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }

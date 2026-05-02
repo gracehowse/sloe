@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { HelpCircle } from "lucide-react";
 import { DailyRing, type CalorieRingDisplayMode } from "./daily-ring";
 
 /**
@@ -23,6 +24,11 @@ export interface TodayHeroRingProps {
   onToggleExpanded: () => void;
   displayMode: CalorieRingDisplayMode;
   onDisplayModeChange: (mode: CalorieRingDisplayMode) => void;
+
+  /** Audit gap #10 transparency moat (2026-05-01). When provided, a
+   *  small "Why this number?" pill renders below the ring + mode
+   *  toggle; tapping it opens the host-owned `WhyThisNumberDialog`. */
+  onPressWhy?: () => void;
 }
 
 export function TodayHeroRing({
@@ -35,6 +41,7 @@ export function TodayHeroRing({
   onToggleExpanded,
   displayMode,
   onDisplayModeChange,
+  onPressWhy,
 }: TodayHeroRingProps) {
   return (
     <div className="flex flex-col items-center mb-4">
@@ -77,6 +84,21 @@ export function TodayHeroRing({
           </button>
         ))}
       </div>
+      {/* Audit gap #10 transparency moat (2026-05-01) — small "Why this
+          number?" pill that opens the WhyThisNumberDialog. Sized so it
+          doesn't fight the ring tap target. */}
+      {onPressWhy ? (
+        <button
+          type="button"
+          data-testid="today-hero-why-this-number"
+          aria-label="Why this number? Open calorie target explanation"
+          onClick={onPressWhy}
+          className="mt-2 inline-flex items-center gap-1 rounded-full bg-primary/15 hover:bg-primary/25 transition-colors px-3 py-1 text-[11px] font-bold tracking-wide text-primary"
+        >
+          <HelpCircle size={12} strokeWidth={2.25} />
+          Why this number?
+        </button>
+      ) : null}
     </div>
   );
 }

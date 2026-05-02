@@ -21,6 +21,15 @@ _(none — micros breadth release)_
   + web (`src/app/components/suppr/{today-micros-widget,full-nutrient-panel-sheet}.tsx`)
   ship the same composition. DV table at
   `src/lib/nutrition/dailyValues.ts` cites 21 CFR 101.9(c).
+- **Today — "Why this number?" tap-to-explain (audit gap #10).** Tap
+  the small pill under the calorie ring to see how today's target was
+  derived: maintenance TDEE (adaptive when we have it, formula
+  otherwise), your stated goal & weekly pace, and the resulting
+  daily kcal deficit / surplus. Closes the transparency moat
+  competitors leave open. "Adjust target" CTA on mobile routes to the
+  weekly check-in flow; web ships read-only until the profile-edit
+  page lands. Mobile + web (`apps/mobile/components/today/WhyThisNumberSheet.tsx`,
+  `src/app/components/suppr/why-this-number-dialog.tsx`).
 
 ## Coming soon
 

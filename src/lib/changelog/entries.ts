@@ -74,6 +74,10 @@ const CHANGELOGS: ChangelogEntry[] = [
         kind: "new",
         text: "Tap \"View all nutrients\" to see every vitamin and mineral against the FDA Daily Value, sorted by %DV.",
       },
+      {
+        kind: "new",
+        text: "Tap the pill under your calorie ring on Today to see why today's target is what it is.",
+      },
     ],
   },
   {

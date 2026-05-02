@@ -52,6 +52,10 @@ export interface TodayHeroProps {
   cardBackgroundColor: string;
   borderColor: string;
   trackColor: string;
+
+  /** Audit gap #10 (2026-05-01) — when provided, a small "Why this
+   *  number?" pill renders below the ring; tap fires this handler. */
+  onPressWhy?: () => void;
 }
 
 export function TodayHero(props: TodayHeroProps) {
@@ -73,6 +77,7 @@ export function TodayHero(props: TodayHeroProps) {
     cardBackgroundColor,
     borderColor,
     trackColor,
+    onPressWhy,
   } = props;
 
   return (
@@ -95,6 +100,7 @@ export function TodayHero(props: TodayHeroProps) {
         onToggleDisplayMode={onToggleDisplayMode}
         onSetDisplayMode={onSetDisplayMode}
         textTertiaryColor={textTertiaryColor}
+        onPressWhy={onPressWhy}
       />
     </View>
   );
