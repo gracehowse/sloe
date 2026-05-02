@@ -34,6 +34,17 @@ export type FoodHistoryMealLike = {
   fiber?: number;
   source?: string | null;
   createdAt?: string | null;
+  /**
+   * Tracking-extras autoupdate (2026-05-01) — surface caffeine + alcohol
+   * micros from the original journal row so re-logging from Quick Add /
+   * Eat-again carries the same per-serving stimulant payload that the
+   * search-result commit captured. The bucket builder reads
+   * `micros.caffeineMg` / `micros.alcoholG` first and falls back to the
+   * top-level fields, so callers from either platform fit.
+   */
+  micros?: Record<string, number> | null;
+  caffeineMg?: number;
+  alcoholG?: number;
 };
 
 /** Normalised history item used by the Quick Add panel rows. */
@@ -49,6 +60,16 @@ export type FoodHistoryItem = {
   count: number;
   /** ISO timestamp or `YYYY-MM-DD` of the most recent logging, if available. */
   lastLoggedAt?: string;
+  /**
+   * Tracking-extras autoupdate (2026-05-01) — average per-serving caffeine /
+   * alcohol contribution across occurrences. Set when ANY of the bucket's
+   * journal rows carried `micros.caffeineMg` / `micros.alcoholG`. Quick
+   * Add commit paths re-attach these to `meal.micros` so the F-13 daily
+   * bump fires on a re-log. Averaged (not summed) so a 3x-logged cortado
+   * surfaces as ~128 mg per tap, not 384 mg.
+   */
+  caffeineMg?: number;
+  alcoholG?: number;
 };
 
 const UNNAMED = "Unnamed food";
@@ -69,6 +90,37 @@ function fiberOf(m: FoodHistoryMealLike): number | undefined {
   return undefined;
 }
 
+/**
+ * Tracking-extras autoupdate (2026-05-01) — caffeine extraction from a
+ * journal-meal-like row. Reads `micros.caffeineMg` first (canonical for
+ * meals committed via the food-search / barcode / voice / photo paths)
+ * and falls back to a top-level `caffeineMg` for legacy / synthetic
+ * shapes. Returns `undefined` for missing / non-positive / non-finite so
+ * the bucket can distinguish "no caffeine info" from "0 mg".
+ */
+function caffeineOf(m: FoodHistoryMealLike): number | undefined {
+  const micro = m.micros && typeof m.micros === "object" ? m.micros.caffeineMg : undefined;
+  const candidates = [micro, m.caffeineMg];
+  for (const raw of candidates) {
+    if (raw == null) continue;
+    const n = typeof raw === "number" ? raw : Number(raw);
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+  return undefined;
+}
+
+/** Same shape as `caffeineOf` for ethanol grams. */
+function alcoholOf(m: FoodHistoryMealLike): number | undefined {
+  const micro = m.micros && typeof m.micros === "object" ? m.micros.alcoholG : undefined;
+  const candidates = [micro, m.alcoholG];
+  for (const raw of candidates) {
+    if (raw == null) continue;
+    const n = typeof raw === "number" ? raw : Number(raw);
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+  return undefined;
+}
+
 /** Canonical dedupe key matching the DB unique index. */
 export function foodHistoryKey(title: string, calories: number): string {
   return `${title.trim().toLowerCase()}|${Math.round(safeNumber(calories))}`;
@@ -85,6 +137,18 @@ type Bucket = {
   fatSum: number;
   fiberSum: number;
   fiberCount: number;
+  /**
+   * Tracking-extras autoupdate (2026-05-01) — caffeine + alcohol running
+   * sums + counts so finalised buckets average the per-occurrence value.
+   * Counts are tracked separately from `count` because not every
+   * occurrence carries a stimulant payload (a generic "Coffee" row that
+   * was logged once via search and once manually averages from one
+   * sample, not two).
+   */
+  caffeineMgSum: number;
+  caffeineCount: number;
+  alcoholGSum: number;
+  alcoholCount: number;
   /** Most recent provenance seen for this bucket. */
   source?: string;
   count: number;
@@ -104,6 +168,10 @@ function emptyBucket(title: string, calories: number, key: string): Bucket {
     fatSum: 0,
     fiberSum: 0,
     fiberCount: 0,
+    caffeineMgSum: 0,
+    caffeineCount: 0,
+    alcoholGSum: 0,
+    alcoholCount: 0,
     count: 0,
     lastSortKey: "",
   };
@@ -118,6 +186,20 @@ function addToBucket(b: Bucket, m: FoodHistoryMealLike, dayKey: string, indexInD
   if (fib != null) {
     b.fiberSum += fib;
     b.fiberCount += 1;
+  }
+  // Tracking-extras autoupdate (2026-05-01) — fold caffeine + alcohol
+  // contributions when present. Missing → bucket count stays at 0 so
+  // the finalised item omits the field entirely (no "0 mg caffeine"
+  // false positive on a steak log).
+  const caff = caffeineOf(m);
+  if (caff != null) {
+    b.caffeineMgSum += caff;
+    b.caffeineCount += 1;
+  }
+  const alc = alcoholOf(m);
+  if (alc != null) {
+    b.alcoholGSum += alc;
+    b.alcoholCount += 1;
   }
   if (m.source) b.source = String(m.source);
   // Pad the index so "day#10" sorts after "day#2".
@@ -140,6 +222,16 @@ function finaliseBucket(b: Bucket): FoodHistoryItem {
   };
   if (b.fiberCount > 0) {
     item.fiber = Math.round((b.fiberSum / b.fiberCount) * 10) / 10;
+  }
+  // Tracking-extras autoupdate (2026-05-01) — caffeine snaps to integer
+  // mg (matches scaleCaffeineAlcohol output shape + stored daily-bucket
+  // precision). Alcohol snaps to 1 dp g for the same reason. Only
+  // surfaced when at least one occurrence carried the nutrient.
+  if (b.caffeineCount > 0) {
+    item.caffeineMg = Math.round(b.caffeineMgSum / b.caffeineCount);
+  }
+  if (b.alcoholCount > 0) {
+    item.alcoholG = Math.round((b.alcoholGSum / b.alcoholCount) * 10) / 10;
   }
   if (b.source) item.source = b.source;
   if (b.lastLoggedAt) item.lastLoggedAt = b.lastLoggedAt;
