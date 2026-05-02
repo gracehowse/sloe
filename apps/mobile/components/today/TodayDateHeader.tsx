@@ -8,6 +8,7 @@ import {
   Sun,
 } from "lucide-react-native";
 import { Accent } from "@/constants/theme";
+import { useThemeColors } from "@/hooks/use-theme-colors";
 import DayStrip from "@/components/charts/DayStrip";
 
 /**
@@ -63,6 +64,7 @@ export function TodayDateHeader({
   cardBorderColor,
 }: TodayDateHeaderProps) {
   const router = useRouter();
+  const themeColors = useThemeColors();
   return (
     <View style={{ gap: 8 }}>
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
@@ -152,7 +154,7 @@ export function TodayDateHeader({
             >
               <Sun
                 size={14}
-                color={viewMode === "day" ? "#fff" : textSecondaryColor}
+                color={viewMode === "day" ? themeColors.primaryForeground : textSecondaryColor}
               />
             </Pressable>
             <Pressable
@@ -170,7 +172,7 @@ export function TodayDateHeader({
             >
               <LayoutGrid
                 size={14}
-                color={viewMode === "week" ? "#fff" : textSecondaryColor}
+                color={viewMode === "week" ? themeColors.primaryForeground : textSecondaryColor}
               />
             </Pressable>
           </View>

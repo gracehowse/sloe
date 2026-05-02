@@ -1,5 +1,12 @@
 # Mobile App Changelog
 
+## 2026-05-01 — Hex sweep through theme tokens
+
+### Design system
+- **Badge / VoiceLogSheet / PhotoLogSheet / TodayDateHeader / recipe/[id]** route destructive (`#EF4444` / `#B91C1C`), warning (`#F59E0B` / `#B45309`), and primary-foreground (`#fff`) hex literals through `Accent.destructive`, `Accent.warning`, and `colors.primaryForeground` (ui-critic finding #2, P1).
+- **VoiceLogSheet + PhotoLogSheet** add `primaryForeground: string` to their local `Theme` prop contract; the caller in `app/(tabs)/index.tsx` now passes `colors.primaryForeground` through.
+- Lock-in test: `apps/mobile/tests/unit/hexTokenSweep.test.ts` scans the four touched files and fails if a raw `#XXXXXX` hex re-appears outside the two documented anchor exceptions in `Badge.tsx` (`#94a3b8` slate-400 and `#8b5cf6` AI violet) and the `#00000066` modal-overlay tint shared with web.
+
 ## 2026-04-20 — RevenueCat Customer Center + v2 API key support
 
 ### RevenueCat

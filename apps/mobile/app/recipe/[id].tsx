@@ -1179,7 +1179,7 @@ export default function RecipeDetailScreen() {
       justifyContent: "center",
       alignItems: "center",
     },
-    stepNumberText: { color: "#fff", fontSize: 13, fontWeight: "700" },
+    stepNumberText: { color: colors.primaryForeground, fontSize: 13, fontWeight: "700" },
     stepText: { flex: 1, fontSize: 14, color: colors.text, lineHeight: 20 },
 
     sourceCard: {
@@ -1212,7 +1212,7 @@ export default function RecipeDetailScreen() {
       alignItems: "center",
       justifyContent: "center",
     },
-    actionBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+    actionBtnText: { color: colors.primaryForeground, fontWeight: "700", fontSize: 14 },
 
     infoRow: { flexDirection: "row", justifyContent: "space-around", paddingVertical: Spacing.lg, gap: Spacing.md, marginBottom: Spacing.lg },
     infoItem: { alignItems: "center", flex: 1 },

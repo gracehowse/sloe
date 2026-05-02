@@ -50,6 +50,10 @@ type Theme = {
   background: string;
   inputBg: string;
   border: string;
+  /** Foreground tone for primary buttons + the active mic. Routed
+   *  through `Colors.{light,dark}.primaryForeground` rather than
+   *  hard-coded `#fff` so dark-mode contrast is one token away. */
+  primaryForeground: string;
 };
 
 type PickedAsset = {
@@ -247,7 +251,7 @@ export default function PhotoLogSheet({
     const level = classifyConfidence(c);
     if (level === "high") return Accent.success;
     if (level === "medium") return Accent.warning;
-    return "#EF4444";
+    return Accent.destructive;
   };
 
   return (
@@ -395,13 +399,13 @@ export default function PhotoLogSheet({
                 accessibilityRole="alert"
                 style={{
                   borderWidth: 1,
-                  borderColor: "#EF444466",
-                  backgroundColor: "#EF444410",
+                  borderColor: Accent.destructive + "66",
+                  backgroundColor: Accent.destructive + "10",
                   borderRadius: Radius.md,
                   padding: Spacing.md,
                 }}
               >
-                <Text style={{ fontSize: 13, color: "#B91C1C" }}>{errorMsg ?? "Something went wrong."}</Text>
+                <Text style={{ fontSize: 13, color: Accent.destructive }}>{errorMsg ?? "Something went wrong."}</Text>
               </View>
             )}
 
@@ -427,8 +431,8 @@ export default function PhotoLogSheet({
                       key={`${item.name}-${i}`}
                       style={{
                         borderWidth: 1,
-                        borderColor: low ? "#F59E0B55" : colors.cardBorder,
-                        backgroundColor: low ? "#F59E0B0F" : colors.background,
+                        borderColor: low ? Accent.warning + "55" : colors.cardBorder,
+                        backgroundColor: low ? Accent.warning + "0F" : colors.background,
                         borderRadius: Radius.md,
                         padding: Spacing.md,
                         marginBottom: Spacing.sm,
@@ -503,7 +507,7 @@ export default function PhotoLogSheet({
                       {low && (
                         <Text
                           accessibilityRole="alert"
-                          style={{ fontSize: 11, color: "#B45309", marginTop: 6 }}
+                          style={{ fontSize: 11, color: Accent.warning, marginTop: 6 }}
                         >
                           Low confidence — please verify portion and macros before logging.
                         </Text>
@@ -560,7 +564,7 @@ export default function PhotoLogSheet({
                     backgroundColor: asset ? Accent.primary : colors.cardBorder,
                   }}
                 >
-                  <Text style={{ fontSize: 14, fontWeight: "700", color: "#fff" }}>Analyse</Text>
+                  <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primaryForeground }}>Analyse</Text>
                 </Pressable>
               )}
               {stage === "error" && (
@@ -576,7 +580,7 @@ export default function PhotoLogSheet({
                     backgroundColor: Accent.primary,
                   }}
                 >
-                  <Text style={{ fontSize: 14, fontWeight: "700", color: "#fff" }}>Try again</Text>
+                  <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primaryForeground }}>Try again</Text>
                 </Pressable>
               )}
               {stage === "review" && (
@@ -593,7 +597,7 @@ export default function PhotoLogSheet({
                     backgroundColor: items.length === 0 ? colors.cardBorder : Accent.primary,
                   }}
                 >
-                  <Text style={{ fontSize: 14, fontWeight: "700", color: "#fff" }}>
+                  <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primaryForeground }}>
                     {hasLowConfidence ? "Log anyway" : "Log all"}
                   </Text>
                 </Pressable>
