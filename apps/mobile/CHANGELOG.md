@@ -1,5 +1,15 @@
 # Mobile App Changelog
 
+## 2026-05-01 — Cook handsfree v1 shell shipped dark behind a feature flag
+
+### Cook
+- **`COOK_HANDSFREE_FEATURE_ENABLED` feature flag** (`apps/mobile/lib/cookHandsfree.ts`) gates whether the in-cook header mic toggle renders at all. Defaults to **OFF**.
+- The v1 shell ships dark because the audio listener is queued for v2 (see `docs/decisions/2026-05-01-cook-voice-handsfree.md`). Shipping the toggle live would let users tap it, see no microphone behaviour, and conclude the app is broken (journey-architect P1 friction risk).
+- Flag is wired to `EXPO_PUBLIC_COOK_HANDSFREE_ENABLED=true`; flipping it requires a JS reload (kill-switch, not a per-user toggle). When v2 ships the listener, flip the default to `true` and remove the guard at the same commit.
+- Header layout: a same-size invisible spacer renders when the flag is off so the centered step counter stays visually centred either way.
+- The AsyncStorage hydration effect short-circuits when the flag is off — no unused storage round-trip on cook-mode mount.
+- Lock-in test: `apps/mobile/tests/unit/cookHandsfreeFeatureFlag.test.tsx`.
+
 ## 2026-04-20 — RevenueCat Customer Center + v2 API key support
 
 ### RevenueCat

@@ -31,6 +31,29 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 /** AsyncStorage key for the per-device opt-in. */
 export const COOK_HANDSFREE_ENABLED_KEY = "suppr.cook.handsfree.enabled";
 
+/**
+ * Feature flag — gates whether the in-cook header toggle renders at
+ * all. Defaults to **OFF** because v1 ships the SHELL only; the audio
+ * listener itself is queued for v2 (see
+ * `docs/decisions/2026-05-01-cook-voice-handsfree.md`). Shipping the
+ * toggle dark avoids the journey-architect concern that users will
+ * tap it, see no microphone behaviour, and conclude the app is
+ * broken.
+ *
+ * Opt-in via `EXPO_PUBLIC_COOK_HANDSFREE_ENABLED=true`. The flag is
+ * read once at module load — flipping it requires a JS reload (or
+ * an OTA update), which is the point: this is a kill-switch for the
+ * v1 shell, not a per-user toggle. The per-user toggle is the
+ * AsyncStorage-backed `readHandsfreeEnabled()` below, which already
+ * defaults to OFF.
+ *
+ * When v2 lights up the listener, flip the default to `true` here
+ * and remove this guard at the same commit (the persisted
+ * AsyncStorage pref then becomes the user-facing on/off).
+ */
+export const COOK_HANDSFREE_FEATURE_ENABLED: boolean =
+  process.env.EXPO_PUBLIC_COOK_HANDSFREE_ENABLED === "true";
+
 /** Canonical command set the listener will eventually emit. */
 export type HandsfreeCommand =
   | "next"
