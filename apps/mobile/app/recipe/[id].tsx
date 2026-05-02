@@ -95,6 +95,7 @@ import { classifyRecipeGluten } from "@/lib/recipeTrust";
 import { mapMealSourceToDot } from "../../../../src/lib/nutrition/sourceMap";
 import {
   composeSubtitleParts,
+  computeFitsYourDayVerdict,
   shouldRenderTimeStats,
 } from "../../lib/recipe/recipeDetailLayout";
 
@@ -1203,6 +1204,10 @@ export default function RecipeDetailScreen() {
       marginTop: 4,
     },
     subtitleText: { fontSize: 13, color: colors.textSecondary },
+    // v3 (2026-05-01): kcal token gets weight + foreground colour so
+    // the user can read calories at the same glance as the title.
+    // The bordered "329 kcal per portion" hero card is gone.
+    subtitleTextStrong: { fontWeight: "700" as const, color: colors.text, fontVariant: ["tabular-nums"] as ["tabular-nums"] },
     subtitleSeparator: { fontSize: 13, color: colors.textTertiary },
     timeStatsRow: {
       flexDirection: "row",
@@ -1543,18 +1548,23 @@ export default function RecipeDetailScreen() {
             })()}
           </View>
           {/* 2026-04-30 ui-product-designer recipe-detail audit Fix 1 —
-              the prior layout had two separate rows ("by {author}"
-              underline + ALL-CAPS-ish "Lunch" pill) followed by a big
-              icon-circle stats row. Tester read this as four stacked
-              cards. We collapse attribution + slot + serves into one
-              flex-wrap subtitle joined by `·` separators. Author is
-              tappable (no underline) when `recipeByline.href` is
-              present; otherwise it's plain secondary text. */}
+              collapsed attribution + slot + serves into one flex-wrap
+              subtitle joined by `·` separators. Author is tappable
+              (no underline) when `recipeByline.href` is present.
+
+              2026-05-01 v3: kcal joined the subtitle as a bold inline
+              token (slot · serves · kcal · author). This removes the
+              bordered "329 kcal per portion" hero card that was
+              competing with the title and pushing macros below the
+              fold. The kcal token renders bold + foreground colour so
+              it's still scannable as the primary nutrition number. */}
           {(() => {
+            const kcalForSubtitle = Math.round(macros.calories);
             const subtitleParts = composeSubtitleParts({
               authorLabel: recipeByline.label || null,
               slots: recipe.meal_type ?? null,
               servings: recipe.servings,
+              kcal: kcalForSubtitle,
             });
             if (subtitleParts.length === 0) return null;
             return (
@@ -1566,6 +1576,14 @@ export default function RecipeDetailScreen() {
                 {subtitleParts.map((part, idx) => {
                   const isAuthor =
                     part.key === "by" && Boolean(recipeByline.href);
+                  // v3 (2026-05-01): the kcal token renders bold +
+                  // foreground colour so it's the most scannable
+                  // number on the meta line, not just another grey
+                  // separator-joined word.
+                  const partTextStyle =
+                    part.key === "kcal"
+                      ? [styles.subtitleText, styles.subtitleTextStrong]
+                      : styles.subtitleText;
                   return (
                     <View
                       key={part.key}
@@ -1583,10 +1601,15 @@ export default function RecipeDetailScreen() {
                           accessibilityRole="link"
                           accessibilityLabel={`Open source: ${recipeByline.label}`}
                         >
-                          <Text style={styles.subtitleText}>{part.label}</Text>
+                          <Text style={partTextStyle}>{part.label}</Text>
                         </Pressable>
                       ) : (
-                        <Text style={styles.subtitleText}>{part.label}</Text>
+                        <Text
+                          style={partTextStyle}
+                          testID={part.key === "kcal" ? "recipe-subtitle-kcal" : undefined}
+                        >
+                          {part.label}
+                        </Text>
                       )}
                     </View>
                   );
@@ -1648,131 +1671,54 @@ export default function RecipeDetailScreen() {
             );
           })()}
 
-          {/* 2026-04-30 ui-product-designer audit Fix 3 — the verdict
-              ("Fits your day") and the kcal hero had become two
-              adjacent cards with a stripe of empty space between
-              them. Fused into a single `recipe-calorie-hero` block:
-              the verdict pill is now a CHILD of the hero, not a
-              sibling. Tests assert the parent/child relationship via
-              `within(getByTestId('recipe-calorie-hero')).getByTestId
-              ('recipe-fits-your-day')`. Verdict logic unchanged.
+          {/* 2026-05-01 v3 redesign — the bordered "329 kcal per
+              portion" hero card is gone. kcal now lives inline in
+              the subtitle row above (key `kcal`, bold + foreground).
+              The macro tiles below ARE the visual hero now — bigger
+              numbers, more breathing room, the only coloured surface
+              above the fold.
 
-              P1-16 zero-nutrition behaviour preserved: when import-
-              time nutrition fails (kcal=0 + macros=0), render a
-              dimmed "not yet computed" state instead of a confident
-              "0 kcal". */}
+              When nutrition is not yet computed (kcal=0 + all macros
+              zero) we still render a single dimmed line so the user
+              can tell the difference between "this recipe is 0 kcal"
+              and "we haven't computed it yet". P1-16 behaviour
+              preserved. */}
           {(() => {
             const kcalNum = Math.round(macros.calories);
             const hasNutrition =
               kcalNum > 0 || macros.protein > 0 || macros.carbs > 0 || macros.fat > 0;
-            const targetCals = userTargets.calories;
-            const showVerdict =
-              hasNutrition && Boolean(targetCals) && targetCals > 0;
-            const rawPct = showVerdict ? (kcalNum / targetCals) * 100 : 0;
-            const pct = showVerdict
-              ? Math.max(1, Math.round(rawPct / 5) * 5)
-              : 0;
-            const fits = pct > 0 && pct <= 50;
-            const overDay = pct >= 100;
-            const verdictTone = fits
-              ? { bg: Accent.success + "1A", fg: Accent.success }
-              : overDay
-                ? { bg: Accent.destructive + "1A", fg: Accent.destructive }
-                : { bg: Accent.warning + "1A", fg: Accent.warning };
-            const verdictLabel = fits
-              ? "Fits your day"
-              : overDay
-                ? `≈ ${pct}% of your day · over a full day`
-                : `≈ ${pct}% of your day`;
-            const verdictA11y = fits
-              ? `Fits your day. Approximately ${pct} percent of your daily calorie target.`
-              : overDay
-                ? `Over a full day. Approximately ${pct} percent of your daily calorie target.`
-                : `Approximately ${pct} percent of your daily calorie target.`;
+            if (hasNutrition) return null;
             return (
               <View
-                testID="recipe-calorie-hero"
+                testID="recipe-nutrition-pending"
                 style={{
-                  alignItems: "center",
                   paddingVertical: Spacing.sm,
                   paddingHorizontal: Spacing.lg,
                   borderRadius: Radius.lg,
                   borderWidth: 1,
-                  borderColor: hasNutrition
-                    ? MacroColors.calories + "55"
-                    : colors.border,
-                  backgroundColor: hasNutrition
-                    ? MacroColors.calories + "14"
-                    : "transparent",
-                  opacity: hasNutrition ? 1 : 0.7,
-                  gap: 6,
+                  borderColor: colors.border,
+                  backgroundColor: "transparent",
+                  opacity: 0.7,
                 }}
-                accessibilityLabel={
-                  hasNutrition
-                    ? `${kcalNum} kcal per portion`
-                    : "Calories not yet computed for this recipe"
-                }
+                accessibilityLabel="Calories not yet computed for this recipe"
               >
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "baseline",
-                    justifyContent: "center",
-                    gap: 6,
-                  }}
-                >
-                  {hasNutrition ? (
-                    <>
-                      <Text style={[styles.calorieNumber, { color: colors.text }]}>
-                        {kcalNum}
-                      </Text>
-                      <Text style={{ fontSize: 12, color: colors.textSecondary }}>
-                        kcal per portion
-                      </Text>
-                    </>
-                  ) : (
-                    <Text style={{ fontSize: 13, color: colors.textSecondary, fontWeight: "600" }}>
-                      Calories not yet computed — open the Ingredients tab to verify
-                    </Text>
-                  )}
-                </View>
-                {showVerdict ? (
-                  <View
-                    testID="recipe-fits-your-day"
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 6,
-                      paddingHorizontal: Spacing.md,
-                      paddingVertical: 4,
-                      borderRadius: Radius.full,
-                      backgroundColor: verdictTone.bg,
-                    }}
-                    accessibilityLabel={verdictA11y}
-                  >
-                    {fits ? (
-                      <Check size={14} color={verdictTone.fg} strokeWidth={2.5} />
-                    ) : null}
-                    <Text style={{ fontSize: 12, fontWeight: "700", color: verdictTone.fg }}>
-                      {verdictLabel}
-                    </Text>
-                    {fits ? (
-                      <Text style={{ fontSize: 12, fontWeight: "500", color: verdictTone.fg, opacity: 0.7 }}>
-                        · ≈ {pct}%
-                      </Text>
-                    ) : null}
-                  </View>
-                ) : null}
+                <Text style={{ fontSize: 13, color: colors.textSecondary, fontWeight: "600", textAlign: "center" }}>
+                  Calories not yet computed — open the Ingredients tab to verify
+                </Text>
               </View>
             );
           })()}
 
-          {/* Polish (2026-04-25 visual-qa): the redundant "MACROS" overline
-              was visually dead weight — every tile below already self-labels
-              with a coloured chip + label. Removing it tightens the gap
-              between the calories hero and the macro tiles, which testers
-              flagged as "big gaps between cals and macros". */}
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: Spacing.lg }}>
+          {/* v3 macro tiles — visual hero of the screen. Bigger value
+              font (20pt vs 16), more padding (14 vs 10), 11pt label.
+              The kcal hero card is gone, so these tiles get to be the
+              colour anchor. Layout (2x2 flex-wrap) unchanged so the
+              tile-rendering keeps working for users with extra
+              tracked macros (sugar/sodium/fiber). */}
+          <View
+            style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: Spacing.md }}
+            testID="recipe-macros-grid"
+          >
             {recipeMacrosToShow.map((macro) => {
               const fiberG = macros.fiber_g ?? 0;
               const sugarG = macros.sugar_g ?? 0;
@@ -1815,22 +1761,22 @@ export default function RecipeDetailScreen() {
                     flexGrow: 1,
                     minWidth: 76,
                     maxWidth: "48%",
-                    padding: 10,
-                    borderRadius: 12,
+                    padding: 14,
+                    borderRadius: 14,
                     backgroundColor: colors.card,
                     borderWidth: 1,
                     borderColor: colors.border,
                   }}
                 >
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 5 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 6 }}>
                     <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: m.color }} />
-                    <Text style={{ fontSize: 10, fontWeight: "600", color: colors.textTertiary, letterSpacing: 0.5 }}>{m.label}</Text>
+                    <Text style={{ fontSize: 11, fontWeight: "700", color: colors.textSecondary, letterSpacing: 0.5 }}>{m.label}</Text>
                   </View>
-                  <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"] }}>
+                  <Text style={{ fontSize: 20, fontWeight: "800", color: colors.text, fontVariant: ["tabular-nums"], lineHeight: 24 }}>
                     {displayAmount}
                     {m.unit}
                   </Text>
-                  <View style={{ marginTop: 5, height: 4, borderRadius: 2, backgroundColor: colors.border }}>
+                  <View style={{ marginTop: 8, height: 4, borderRadius: 2, backgroundColor: colors.border }}>
                     <View
                       style={{
                         width: `${Math.min(m.cur / Math.max(m.tgt, 1), 1) * 100}%`,
@@ -1840,7 +1786,7 @@ export default function RecipeDetailScreen() {
                       }}
                     />
                   </View>
-                  <Text style={{ fontSize: 10, color: colors.textTertiary, marginTop: 3, fontVariant: ["tabular-nums"] }}>
+                  <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 4, fontVariant: ["tabular-nums"] }}>
                     of {macro === "sugar" ? m.tgt : macro === "sodium" ? m.tgt : Math.round(m.tgt)}
                     {m.unit}
                   </Text>
@@ -1848,6 +1794,48 @@ export default function RecipeDetailScreen() {
               );
             })}
           </View>
+
+          {/* v3 (2026-05-01) — "Fits your day" verdict softened to a
+              single text line below the macro tiles. No card, no pill
+              background — just a coloured glyph + label. The audit
+              note that the previous treatment "competed with the
+              macros below" stops being true when the verdict reads
+              like a footnote of the macro grid, not a separate band.
+              Logic delegated to `computeFitsYourDayVerdict` so web
+              and mobile share the percent / tone / copy rules. */}
+          {(() => {
+            const verdict = computeFitsYourDayVerdict({
+              kcal: macros.calories,
+              targetCals: userTargets.calories,
+            });
+            if (!verdict) return null;
+            const tonePalette = {
+              success: Accent.success,
+              warning: Accent.warning,
+              destructive: Accent.destructive,
+            } as const;
+            const fg = tonePalette[verdict.tone];
+            return (
+              <View
+                testID="recipe-fits-your-day"
+                accessibilityLabel={verdict.a11y}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  alignSelf: "flex-start",
+                  gap: 6,
+                  marginBottom: Spacing.lg,
+                }}
+              >
+                {verdict.fits ? (
+                  <Check size={14} color={fg} strokeWidth={2.5} />
+                ) : null}
+                <Text style={{ fontSize: 13, fontWeight: "600", color: fg }}>
+                  {verdict.label}
+                </Text>
+              </View>
+            );
+          })()}
 
 
           {/* Description */}
