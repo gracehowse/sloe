@@ -1,5 +1,15 @@
 # Mobile App Changelog
 
+## 2026-05-01 — cancel flow: surface "take your data with you" upstream
+
+### Settings
+- **CancelExportPromptSheet** (`apps/mobile/components/settings/CancelExportPromptSheet.tsx`) surfaces between the "Manage subscription" tap and the RevenueCat customerCenter handoff so the export option is proactive rather than buried 4-5 taps deep in Settings.
+- **Two equal-weight cards**: "Take your data with you" (runs the existing CSV export and leaves the sheet open so the user can still continue if they want) / "Continue to manage" (closes sheet, routes to RC's customerCenter with the App Store / Play Store fallback). The X icon dismisses without taking action.
+- Closes the journey-architect P1 finding "The export prompt is buried deep in Settings. A user who taps 'Manage subscription' and cancels never sees the export prompt unless they actively look for it."
+
+### Web parity
+- `src/app/components/suppr/cancel-export-prompt-dialog.tsx` ships the matching dialog. `src/app/components/Settings.tsx` adds a "Manage subscription" row inside the Plan card for non-free users that opens the dialog before routing to `/account/billing` (Stripe Customer Portal). Closes a parity gap where the web Settings had the billing portal route but no UI to reach it.
+
 ## 2026-04-20 — RevenueCat Customer Center + v2 API key support
 
 ### RevenueCat

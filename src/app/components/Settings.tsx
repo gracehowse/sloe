@@ -33,6 +33,7 @@ import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { track } from "../../lib/analytics/track.ts";
 import { DestructiveConfirmDialog } from "./suppr/destructive-confirm-dialog";
 import { ActivityLevelPickerDialog } from "./suppr/activity-level-picker-dialog";
+import { CancelExportPromptDialog } from "./suppr/cancel-export-prompt-dialog";
 import {
   ACTIVITY_SHORT_LABELS,
   type ActivityLevel,
@@ -123,6 +124,13 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
   const [accountDeletionStage, setAccountDeletionStage] = useState<
     "idle" | "first" | "second"
   >("idle");
+  /**
+   * 2026-05-01 (journey-architect P1) — cancel-flow export prompt.
+   * Surfaces a Suppr-owned dialog BEFORE routing to the Stripe billing
+   * portal so the export option is proactive, not buried in Settings.
+   * Mobile parity: `apps/mobile/app/(tabs)/settings.tsx`.
+   */
+  const [cancelPromptOpen, setCancelPromptOpen] = useState(false);
   // 2026-04-30 (#15): Reset/Erase parity with mobile. Two destructive
   // actions kept distinct from the account deletion below: "Reset
   // targets" is inline (set defaults, stay in app), "Erase everything"
@@ -590,6 +598,25 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             </Link>
           )}
         </div>
+        {/* 2026-05-01 (journey-architect P1) — Manage subscription row
+            for paid users. Tap surfaces the Suppr-owned export prompt
+            FIRST so the user sees "Take your data with you" before any
+            handoff to Stripe. Mobile parity in
+            `apps/mobile/app/(tabs)/settings.tsx`. */}
+        {userTier !== "free" && (
+          <div className="mt-4 border-t border-border pt-4">
+            <button
+              type="button"
+              data-testid="settings-manage-subscription-row"
+              onClick={() => setCancelPromptOpen(true)}
+              className="w-full flex items-center justify-between text-left text-sm text-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              aria-label="Manage subscription"
+            >
+              <span className="font-medium">Manage subscription</span>
+              <Icons.forward className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Promo code (e.g. testing / partner access) */}
@@ -1479,6 +1506,56 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           } catch {
             toast.error("Account deletion failed. Please try again.");
           }
+        }}
+      />
+
+      {/* 2026-05-01 (journey-architect P1) — cancel-flow export prompt.
+          Surfaces between "Manage subscription" tap and the Stripe
+          billing portal so the export option is proactive, not buried
+          in Settings. Mobile parity in
+          `apps/mobile/app/(tabs)/settings.tsx`. */}
+      <CancelExportPromptDialog
+        open={cancelPromptOpen}
+        onDismiss={() => setCancelPromptOpen(false)}
+        onExport={async () => {
+          try {
+            const { data: session } = await supabase.auth.getSession();
+            const uid = session.session?.user.id;
+            if (!uid) {
+              toast.error("Please sign in to export.");
+              return;
+            }
+            const { data, error } = await supabase
+              .from("nutrition_entries")
+              .select(
+                "date_key, time_label, name, recipe_title, portion_multiplier, calories, protein, carbs, fat, fiber_g, source",
+              )
+              .eq("user_id", uid)
+              .order("date_key", { ascending: true })
+              .order("created_at", { ascending: true });
+            if (error) {
+              toast.error("Could not build CSV export.");
+              return;
+            }
+            const csv = nutritionLogToCsv(data ?? []);
+            const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = nutritionLogCsvFilename();
+            a.click();
+            URL.revokeObjectURL(url);
+            toast.success("CSV download started.");
+          } catch {
+            toast.error("Could not build CSV export.");
+          }
+        }}
+        onContinueToManage={() => {
+          setCancelPromptOpen(false);
+          // Route to /account/billing — server-side decision helper
+          // redirects to the Stripe portal or its fallback. Same path
+          // any future direct-cancel CTA should use.
+          window.location.href = "/account/billing";
         }}
       />
     </div>

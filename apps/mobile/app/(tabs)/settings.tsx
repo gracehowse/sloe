@@ -40,6 +40,11 @@ import {
 import { recomputeTargetsForActivity } from "../../../../src/lib/nutrition/recomputeTargetsForActivity";
 import { YouSubTabHeader } from "@/components/tabs/YouSubTabHeader";
 import { SettingsBundleContent } from "@/components/settings/SettingsBundleContent";
+import { CancelExportPromptSheet } from "@/components/settings/CancelExportPromptSheet";
+import {
+  nutritionLogToCsv,
+  nutritionLogCsvFilename,
+} from "../../../../src/lib/export/nutritionLogToCsv";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   DEFAULT_TRACKING_EXTRAS,
@@ -96,6 +101,15 @@ export default function SettingsScreen() {
   const [error, setError] = useState<string | null>(null);
   const [userTier, setUserTier] = useState<string>("free");
   const [activityAdjust, setActivityAdjust] = useState(false);
+  /**
+   * 2026-05-01 (journey-architect P1) — cancel-flow export prompt.
+   * Surfaces a Suppr-owned bottom sheet BEFORE routing to RC's
+   * customerCenter so the export option is proactive, not buried in
+   * Settings. Two equal-weight cards: "Take your data with you"
+   * (export CSV first) / "Continue to manage" (route to RC). The X
+   * dismisses without action.
+   */
+  const [cancelPromptOpen, setCancelPromptOpen] = useState(false);
   // P3-30 (2026-04-25): net-carbs lens opt-in. Source of truth:
   // `profiles.net_carbs_lens_enabled` (migration 20260503103000).
   const [netCarbsLensEnabled, setNetCarbsLensEnabled] = useState(false);
@@ -465,6 +479,59 @@ export default function SettingsScreen() {
     if (result.ok) setUserTier(result.tier);
   }, [redeemPromo]);
 
+  /**
+   * 2026-05-01 (journey-architect P1) — cancel-flow handlers.
+   *
+   * `routeToManage` is the canonical RC handoff. Pulled out so both
+   * the "Continue to manage" card on the prompt sheet AND any future
+   * direct-cancel path can reuse the same fallback chain.
+   *
+   * `exportThenManage` runs the existing CSV export FIRST, then leaves
+   * the prompt sheet open so the user can still tap "Continue to
+   * manage" if they want. We never silently route them away after
+   * export — the user is in charge of "I'm done with this" so they
+   * can also just tap the X.
+   */
+  const routeToManage = useCallback(async () => {
+    const result = await presentCustomerCenter();
+    if (result.presented) return;
+    const url = Platform.OS === "ios"
+      ? "https://apps.apple.com/account/subscriptions"
+      : "https://play.google.com/store/account/subscriptions";
+    await Linking.openURL(url).catch(() => {
+      Alert.alert(
+        "Couldn't open subscription settings",
+        "Manage your Suppr subscription from the App Store / Play Store app.",
+      );
+    });
+  }, []);
+
+  const exportNutritionLogCsvAtCancel = useCallback(async () => {
+    if (!userId) return;
+    try {
+      const { data: entries, error } = await supabase
+        .from("nutrition_entries")
+        .select(
+          "date_key, time_label, name, recipe_title, portion_multiplier, calories, protein, carbs, fat, fiber_g, source",
+        )
+        .eq("user_id", userId)
+        .order("date_key", { ascending: true })
+        .order("created_at", { ascending: true });
+      if (error) {
+        Alert.alert("Export failed", error.message);
+        return;
+      }
+      const csv = nutritionLogToCsv(entries ?? []);
+      const filename = nutritionLogCsvFilename();
+      await Share.share({ message: csv, title: filename });
+    } catch (e) {
+      Alert.alert(
+        "Export failed",
+        e instanceof Error ? e.message : "Unknown error",
+      );
+    }
+  }, [userId]);
+
   const persist = useCallback(
     async (next: NotificationPrefs) => {
       if (!userId) return;
@@ -550,23 +617,13 @@ export default function SettingsScreen() {
             <Pressable
               testID="settings-manage-subscription-row"
               style={styles.row}
-              onPress={async () => {
-                const result = await presentCustomerCenter();
-                if (result.presented) return;
-                // Fallback: send the user to the platform's native
-                // subscription-management surface so "manage my plan"
-                // is never a dead end. `reason === "no_api_key"` hits
-                // this path in builds where RC isn't provisioned, and
-                // `"ui_unavailable"` hits it in Expo Go or on web.
-                const url = Platform.OS === "ios"
-                  ? "https://apps.apple.com/account/subscriptions"
-                  : "https://play.google.com/store/account/subscriptions";
-                await Linking.openURL(url).catch(() => {
-                  Alert.alert(
-                    "Couldn't open subscription settings",
-                    "Manage your Suppr subscription from the App Store / Play Store app.",
-                  );
-                });
+              onPress={() => {
+                // 2026-05-01 (journey-architect P1) — surface the
+                // export prompt at the cancel touchpoint instead of
+                // routing straight to RC. The user can still continue
+                // to manage in one tap; the export becomes proactive
+                // rather than buried in Settings.
+                setCancelPromptOpen(true);
               }}
               accessibilityRole="button"
               accessibilityLabel="Manage subscription"
@@ -1075,6 +1132,24 @@ export default function SettingsScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* 2026-05-01 (journey-architect P1) — cancel-flow prompt sheet.
+          Surfaces between "Manage subscription" tap and the RC handoff
+          so the export option is proactive, not buried in Settings.
+          See `apps/mobile/components/settings/CancelExportPromptSheet.tsx`. */}
+      <CancelExportPromptSheet
+        visible={cancelPromptOpen}
+        onDismiss={() => setCancelPromptOpen(false)}
+        onExport={async () => {
+          // Run export FIRST. Leave the prompt open so the user can
+          // still tap "Continue to manage" or dismiss after.
+          await exportNutritionLogCsvAtCancel();
+        }}
+        onContinueToManage={async () => {
+          setCancelPromptOpen(false);
+          await routeToManage();
+        }}
+      />
     </View>
   );
 }
