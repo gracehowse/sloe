@@ -1,5 +1,21 @@
 # Mobile App Changelog
 
+## 2026-05-02 — Photo-log free taster (3 free taps/day)
+
+### What changed
+
+- **Free + Base users now get 3 free photo logs per rolling 24h** before the paywall lands. The 4th attempt returns 403 and routes to the in-flow `AiPaywallSheet`. Decision doc: [`docs/decisions/2026-05-02-photo-log-free-taster.md`](../../docs/decisions/2026-05-02-photo-log-free-taster.md).
+- **`PhotoLogSheet`** — accepts new `userTier` + `onUpgradeRequired` props. Renders a thin "X free logs remaining today" line under the caption when `userTier !== "pro"` (optimistic 3 until the first server response, then authoritative `freeQuotaRemaining`). On 403, calls `onUpgradeRequired` so the host opens the AI paywall.
+- **`apps/mobile/app/(tabs)/index.tsx`** — `handleOpenPhotoLog` always opens the sheet now (no client-side tier check). The LogSheet photo entry no longer renders a lock badge. `ai_photo_log_paywalled` fires from `onUpgradeRequired` (semantics shifted: "first-tap gate" → "quota-exhausted gate"; event name unchanged so existing funnels keep reporting).
+
+### Why
+
+Cal AI's growth model is one free shot before the paywall. We had the better feature (kcal ranges + verified DB) and were gating it before the user could taste it. Two final audits confirmed the call: gate the second photo, not the first.
+
+### Parity
+
+Web mirrors the same shape — `src/app/components/suppr/photo-log-dialog.tsx` + `src/app/components/NutritionTracker.tsx`. No carve-out.
+
 ## 2026-04-20 — RevenueCat Customer Center + v2 API key support
 
 ### RevenueCat

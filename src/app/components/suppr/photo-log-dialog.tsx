@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * PhotoLogDialog (Batch 5.13) — Pro-tier AI photo logging.
+ * PhotoLogDialog (Batch 5.13) — AI photo logging.
  *
  * Flow:
  *  1. User picks a photo via `<input type="file" accept="image/*" capture="environment" />`
@@ -12,8 +12,16 @@
  *
  * Parity: mirrors the mobile `PhotoLogSheet` and shares `sanitiseAiItems`,
  * `classifyConfidence`, `aggregateTotals`, and the `/api/nutrition/photo-log`
- * endpoint. Pro gating lives in the API (403 with `error: "upgrade_required"`)
- * and is surfaced before the user can upload (see NutritionTracker button).
+ * endpoint.
+ *
+ * Free taster (2026-05-02 — `docs/decisions/2026-05-02-photo-log-free-taster.md`):
+ *  - Non-Pro users get 3 free photo logs per rolling 24h.
+ *  - The dialog ALWAYS opens for any tier — the gate is the SECOND photo
+ *    after exhaustion (server returns 403 upgrade_required), not the first.
+ *  - When `userTier !== "pro"`, a thin "X free logs remaining today" line
+ *    renders under the description.
+ *  - On 403 from the server, the dialog calls `onUpgradeRequired` so the
+ *    host can dismiss the dialog and open the AiPaywallDialog.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -38,25 +46,59 @@ import {
   sanitiseAiItems,
   type AiLoggedItem,
 } from "../../../lib/nutrition/aiLogging";
+import { FREE_PHOTO_LOG_DAILY_LIMIT } from "../../../lib/nutrition/photoLogQuota";
 import { track } from "../../../lib/analytics/track";
 import { AnalyticsEvents } from "../../../lib/analytics/events";
+
+// FREE_PHOTO_LOG_DAILY_LIMIT is imported above from the shared
+// `src/lib/nutrition/photoLogQuota.ts` module — single source of truth
+// shared with the server route + mobile sheet. Used to render an
+// *optimistic* "X free logs remaining today" line before the first
+// server response lands (then the authoritative `freeQuotaRemaining`
+// from the response takes over).
 
 export type PhotoLogDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   activeSlot: string;
   onCommit: (items: AiLoggedItem[]) => void;
+  /**
+   * 2026-05-02 — free-taster gating. Non-Pro users see "X free logs
+   * remaining today" under the description; on a 403 from the server the
+   * dialog calls `onUpgradeRequired` so the host can route to the
+   * AiPaywallDialog. Defaults to "pro" so existing call sites that
+   * don't pass it preserve old behaviour.
+   */
+  userTier?: "free" | "base" | "pro";
+  /**
+   * Called when the server returns 403 upgrade_required (free-quota
+   * exhausted on the current request). Host dismisses this dialog and
+   * opens the AiPaywallDialog with `feature: "photo_log"`.
+   */
+  onUpgradeRequired?: () => void;
 };
 
 type Stage = "pick" | "analysing" | "review" | "error";
 
-export function PhotoLogDialog({ open, onOpenChange, activeSlot, onCommit }: PhotoLogDialogProps) {
+export function PhotoLogDialog({
+  open,
+  onOpenChange,
+  activeSlot,
+  onCommit,
+  userTier = "pro",
+  onUpgradeRequired,
+}: PhotoLogDialogProps) {
   const [stage, setStage] = useState<Stage>("pick");
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [items, setItems] = useState<AiLoggedItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  // `null` = unknown (no successful response yet — show optimistic
+  // FREE_PHOTO_LOG_DAILY_LIMIT). After a 200, we set it to the
+  // authoritative value the server returned.
+  const [quotaRemaining, setQuotaRemaining] = useState<number | null>(null);
+  const isFreeTier = userTier !== "pro";
 
   useEffect(() => {
     if (open) {
@@ -64,6 +106,7 @@ export function PhotoLogDialog({ open, onOpenChange, activeSlot, onCommit }: Pho
       setFile(null);
       setItems([]);
       setError(null);
+      setQuotaRemaining(null);
       if (previewUrl) URL.revokeObjectURL(previewUrl);
       setPreviewUrl(null);
       track(AnalyticsEvents.ai_photo_log_started);
@@ -109,10 +152,20 @@ export function PhotoLogDialog({ open, onOpenChange, activeSlot, onCommit }: Pho
       });
       const data = await resp.json();
       if (resp.status === 403 && data?.error === "upgrade_required") {
+        // 2026-05-02 — free-taster quota exhausted. Hand off to the host
+        // so it can close this dialog and open the AiPaywallDialog (the
+        // paywall is the SECOND-photo experience, not in-dialog copy).
+        if (onUpgradeRequired) {
+          onUpgradeRequired();
+          return;
+        }
+        // Back-compat: if the host didn't wire the upgrade callback,
+        // fall through to the in-dialog error so we never silently
+        // swallow the gate.
         setError(
           typeof data.message === "string"
             ? data.message
-            : "AI photo logging is a Pro feature. Upgrade to use it.",
+            : "You've used your free photo logs for today. Upgrade to Pro for unlimited.",
         );
         setStage("error");
         return;
@@ -132,13 +185,18 @@ export function PhotoLogDialog({ open, onOpenChange, activeSlot, onCommit }: Pho
         setStage("error");
         return;
       }
+      // Capture the authoritative remaining-quota signal from the server
+      // (only meaningful for non-Pro). `null` for Pro.
+      if (typeof data.freeQuotaRemaining === "number") {
+        setQuotaRemaining(data.freeQuotaRemaining);
+      }
       setItems(cleaned);
       setStage("review");
     } catch {
       setError("Photo logging failed. Check your connection and try again.");
       setStage("error");
     }
-  }, [file]);
+  }, [file, onUpgradeRequired]);
 
   const totals = useMemo(() => aggregateTotals(items), [items]);
   const hasLowConfidence = items.some((i) => isLowConfidence(i));
@@ -174,6 +232,20 @@ export function PhotoLogDialog({ open, onOpenChange, activeSlot, onCommit }: Pho
               ? `We identified ${items.length} item${items.length === 1 ? "" : "s"}. Review, edit or remove before logging.`
               : "Snap a photo of your meal and we'll identify foods, estimate portions, and match against our verified nutrition database."}
           </DialogDescription>
+          {/* 2026-05-02 — free-taster quota line. Renders only for
+              non-Pro users. Optimistic FREE_PHOTO_LOG_DAILY_LIMIT until
+              the first analyse call returns the authoritative
+              `freeQuotaRemaining`. Mirrors the mobile sheet copy. */}
+          {isFreeTier && (
+            <p
+              role="status"
+              aria-label={`${quotaRemaining ?? FREE_PHOTO_LOG_DAILY_LIMIT} free photo logs remaining today`}
+              className="text-[11px] font-semibold text-muted-foreground"
+            >
+              {(quotaRemaining ?? FREE_PHOTO_LOG_DAILY_LIMIT)} free log
+              {(quotaRemaining ?? FREE_PHOTO_LOG_DAILY_LIMIT) === 1 ? "" : "s"} remaining today
+            </p>
+          )}
         </DialogHeader>
 
         {stage === "pick" && (

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { rateLimit } from "@/lib/server/rateLimit";
 import { getUserIdFromRequest, getUserTier } from "@/lib/supabase/serverAnonClient";
 import { verifyIngredients } from "@/lib/nutrition/verifyIngredients";
+import { FREE_PHOTO_LOG_DAILY_LIMIT } from "@/lib/nutrition/photoLogQuota";
 
 export const runtime = "nodejs";
 
@@ -26,6 +27,16 @@ export type PhotoLogResponse = {
   totalCarbs: number;
   totalFat: number;
   confidenceTier: "high" | "medium" | "low";
+  /**
+   * Free-taster quota signal (2026-05-02 — see
+   * `docs/decisions/2026-05-02-photo-log-free-taster.md`). Non-Pro users
+   * get `FREE_PHOTO_LOG_DAILY_LIMIT` photo logs per rolling 24h. The
+   * value is the *remaining* count after this request was billed; clients
+   * use it to render "X free logs remaining today" copy and to decide
+   * whether to show the paywall on the *next* attempt. Pro users see
+   * `null` — no quota is surfaced to them.
+   */
+  freeQuotaRemaining: number | null;
 };
 
 export async function POST(req: Request) {
@@ -35,20 +46,38 @@ export async function POST(req: Request) {
   }
 
   const tier = await getUserTier(userId);
-  // Photo meal recognition is Pro-only by product intent (mirrors the
-  // client gates in `apps/mobile/app/(tabs)/index.tsx` + photo-log
-  // dialog, and the `PRICING_TIERS` Pro bullet "AI photo meal
-  // recognition (100/day)"). Close the previous Base + Free loophole
-  // (2026-04-19 sync-enforcer finding — documented in
-  // `docs/product/landing-maintenance.md`) so the server matches what
-  // the UI tells Free + Base users. Voice-log was closed the same
-  // day (`app/api/nutrition/voice-log/route.ts` L36–L47); pattern
-  // replicated here verbatim.
+  // 2026-05-02 — photo-log free taster (P0). Non-Pro users get
+  // `FREE_PHOTO_LOG_DAILY_LIMIT` photo logs per rolling 24h before the
+  // paywall lands. Cal AI's growth comes from one free shot; we have
+  // the better feature (kcal ranges + verified DB) and previously gated
+  // it before the user could taste it. Decision doc:
+  // `docs/decisions/2026-05-02-photo-log-free-taster.md`.
+  //
+  // Server-side enforcement is a separate Upstash bucket
+  // (`api:photo-log:free-quota:user:<uid>:<ip>`) so it drains
+  // independently of the Pro per-user 100/day bucket below. The Pro
+  // bucket still applies on top for Pro users (no double-counting:
+  // non-Pro never hits the Pro limiter).
+  let freeQuotaRemaining: number | null = null;
   if (tier !== "pro") {
-    return NextResponse.json(
-      { ok: false, error: "upgrade_required", message: "AI photo logging is a Pro feature." },
-      { status: 403 },
-    );
+    const freeQuota = await rateLimit({
+      keyPrefix: "api:photo-log:free-quota",
+      userId,
+      limit: FREE_PHOTO_LOG_DAILY_LIMIT,
+      windowMs: 24 * 60 * 60_000,
+    });
+    if (!freeQuota.ok) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "upgrade_required",
+          message: `You've used your ${FREE_PHOTO_LOG_DAILY_LIMIT} free photo logs for today. Upgrade to Pro for unlimited.`,
+          freeQuotaRemaining: 0,
+        },
+        { status: 403 },
+      );
+    }
+    freeQuotaRemaining = freeQuota.remaining;
   }
 
   // P0-6 (2026-04-25): scope per-user via the new `userId` field rather
@@ -56,6 +85,12 @@ export async function POST(req: Request) {
   // `api:photo-log:user:<uid>:<ip>` — drains independently for each
   // (user, IP) tuple, closing both the IP-rotation bypass and the
   // shared-NAT starvation case.
+  //
+  // 2026-05-02 — applies to ALL tiers (free 3/day taster + Pro 100/day
+  // ceiling). For non-Pro, the free-quota above is the binding cap (3
+  // < 100), so this 100/day bucket effectively only constrains Pro.
+  // We still apply it universally for defence-in-depth (an attacker
+  // who somehow bypasses the free quota still hits this).
   const limited = await rateLimit({
     keyPrefix: "api:photo-log",
     userId,
@@ -233,6 +268,7 @@ Rules:
       totalCarbs,
       totalFat,
       confidenceTier,
+      freeQuotaRemaining,
     } satisfies PhotoLogResponse);
   } catch (e) {
     return NextResponse.json(

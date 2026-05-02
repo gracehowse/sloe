@@ -1286,12 +1286,11 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
   };
 
   const handlePhotoLogClick = () => {
-    // Batch 5.13 — Pro gate for AI photo logging.
-    if (userTier !== "pro") {
-      track(AnalyticsEvents.ai_photo_log_paywalled);
-      setAiPaywallFeature("photo_log");
-      return;
-    }
+    // 2026-05-02 — free-taster gate moved to the SECOND photo (server-
+    // enforced 3/day for non-Pro). The dialog now opens for all tiers;
+    // the AiPaywallDialog only appears after the server returns 403
+    // upgrade_required on photo 4. See
+    // `docs/decisions/2026-05-02-photo-log-free-taster.md`.
     setPhotoLogOpen(true);
   };
 
@@ -2520,12 +2519,25 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         onCommit={commitAiLoggedItems}
       />
 
-      {/* Batch 5.13 — AI photo log (Pro). */}
+      {/* Batch 5.13 — AI photo log. 2026-05-02: free taster (3 free
+          logs/day for non-Pro). On 403, the dialog calls
+          `onUpgradeRequired` and we route to the AiPaywallDialog. */}
       <PhotoLogDialog
         open={photoLogOpen}
         onOpenChange={setPhotoLogOpen}
         activeSlot={mealSlot}
         onCommit={commitAiLoggedItems}
+        userTier={userTier}
+        onUpgradeRequired={() => {
+          // Server says quota exhausted. Close the photo dialog and
+          // open the in-flow AI paywall — same surface as voice-log so
+          // the funnel reads cleanly. Track the dedicated paywalled
+          // event so funnels can distinguish "first-tap" gate (no
+          // longer fires on photo) from "quota-exhausted" gate.
+          track(AnalyticsEvents.ai_photo_log_paywalled);
+          setPhotoLogOpen(false);
+          setAiPaywallFeature("photo_log");
+        }}
       />
 
       {/* Batch 5.13 — Factual Pro paywall for voice / photo logging. */}
@@ -2750,14 +2762,16 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         }}
         photo={{
           onCapture: () => {
+            // 2026-05-02 — free taster: photo-log is no longer Pro-only.
+            // All tiers open the dialog; the paywall is the second-photo
+            // experience (after the server's 3/day quota for free).
             setLogSheetOpen(false);
-            if (userTier === "pro") {
-              setPhotoLogOpen(true);
-            } else {
-              setAiPaywallFeature("photo_log");
-            }
+            setPhotoLogOpen(true);
           },
-          locked: userTier !== "pro",
+          // No lock badge — free users now get 3 free taps before the
+          // gate. The lock would imply zero access on a feature we've
+          // intentionally opened up.
+          locked: false,
         }}
         onAddManually={() => {
           // Footer "Or add manually" → close LogSheet, open the
