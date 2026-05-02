@@ -130,6 +130,32 @@ export const AnalyticsEvents = {
    *  imports are pulling users away from the Cook flow at different
    *  rates. The URL itself is never sent — host classification only. */
   cook_watch_original_tapped: "cook_watch_original_tapped",
+  /** Paprika parity (2026-05-01): user toggled the "Voice handsfree"
+   *  preference. Payload: `{ enabled }`.
+   *  v1 ships the opt-in shell only — actual audio capture is queued
+   *  for a follow-up release per
+   *  `docs/decisions/2026-05-01-cook-voice-handsfree.md`. The pref
+   *  fires from settings AND the in-cook surface so the funnel doesn't
+   *  have to UNION two events to count opt-ins. */
+  cook_handsfree_pref_changed: "cook_handsfree_pref_changed",
+  /** Paprika parity (2026-05-01): user tapped the in-cook mic toggle
+   *  to enable/disable handsfree mode for the active session. Payload:
+   *    `{ recipeId, enabled }`.
+   *  Distinct from `cook_handsfree_pref_changed` so we can tell whether
+   *  users discover voice via the settings switch or the cook header.
+   *  In v1 (no listener) this still fires so we can size the audience
+   *  for v2 before paying the binary-size + privacy cost of shipping
+   *  speech recognition. */
+  cook_handsfree_session_toggled: "cook_handsfree_session_toggled",
+  /** Paprika parity (2026-05-01): a recognised handsfree keyword
+   *  ("next" / "previous" / "repeat" / "pause" / "resume") triggered
+   *  a navigation/timer action in cook mode. Payload:
+   *    `{ recipeId, command }` where command is one of the canonical
+   *  handsfree commands. Not yet emitted in v1 — registered ahead of
+   *  the listener so the registry rollout has the event name pinned.
+   *  Same name on web should voice ever ship there (browser kitchens
+   *  are uncommon — see decision doc for why mobile-only is intentional). */
+  cook_handsfree_command_received: "cook_handsfree_command_received",
   /** User created a new custom food row (Batch 3.9). Payload: `{ hasBrand, servingCount }`. */
   custom_food_created: "custom_food_created",
   /** User edited an existing custom food row (Batch 3.9). */
