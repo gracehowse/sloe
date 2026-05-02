@@ -40,7 +40,10 @@ export interface TodayHeroProps {
 
   // Remaining/consumed toggle (host-owned)
   displayMode: "remaining" | "consumed";
+  /** Long-press toggles the mode (legacy gesture). */
   onToggleDisplayMode: () => void;
+  /** Chip tap sets the mode explicitly. Wave 8a web parity. */
+  onSetDisplayMode: (mode: "remaining" | "consumed") => void;
 
   // Theme colours (from host's theme hook)
   textColor: string;
@@ -63,6 +66,7 @@ export function TodayHero(props: TodayHeroProps) {
     onToggleExpanded,
     displayMode,
     onToggleDisplayMode,
+    onSetDisplayMode,
     textColor,
     textSecondaryColor,
     textTertiaryColor,
@@ -89,6 +93,7 @@ export function TodayHero(props: TodayHeroProps) {
         onToggleExpanded={onToggleExpanded}
         displayMode={displayMode}
         onToggleDisplayMode={onToggleDisplayMode}
+        onSetDisplayMode={onSetDisplayMode}
         textTertiaryColor={textTertiaryColor}
       />
     </View>
