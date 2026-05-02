@@ -82,6 +82,7 @@ import { TodayStepsCard } from "./suppr/today-steps-card";
 import { TodayActivityBonusCard } from "./suppr/today-activity-bonus-card";
 import { TodayWeekView } from "./suppr/today-week-view";
 import { TodayDashboardMacroTiles } from "./suppr/today-dashboard-macro-tiles";
+import { TodayMicrosWidget } from "./suppr/today-micros-widget";
 import { TodayQuickLogStrip } from "./suppr/today-quick-log-strip";
 import { TodaySnapShortcut } from "./suppr/today-snap-shortcut";
 import { TodayMealsSection } from "./suppr/today-meals-section";
@@ -1484,10 +1485,18 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
     };
   })();
 
+  /** Day-summed nutrition_micros — shared by the all-nutrients section
+   *  on the macro tiles AND the new TodayMicrosWidget (which surfaces
+   *  fiber/iron/vit D/sodium %DV tiles). One source of truth keeps
+   *  both views in agreement. */
+  const dayMicroSum = useMemo(
+    () => sumMicrosFromLoggedMeals(mealsForSelectedDate),
+    [mealsForSelectedDate],
+  );
+
   const dayNutrientDetailRows = useMemo(() => {
-    const microSum = sumMicrosFromLoggedMeals(mealsForSelectedDate);
-    return buildDayNutrientDetailRows(totals.fiber, microSum);
-  }, [mealsForSelectedDate, totals.fiber]);
+    return buildDayNutrientDetailRows(totals.fiber, dayMicroSum);
+  }, [dayMicroSum, totals.fiber]);
 
   const dayMicroSumForTracker = useMemo(() => {
     let sugarG = 0;
@@ -2084,6 +2093,14 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         netCarbsLensEnabled={netCarbsLensEnabled}
         nutrientRows={dayNutrientDetailRows}
       />
+
+      {/* Micronutrient headline widget (audit gap #1, 2026-05-01).
+          Surfaces fibre / iron / vitamin D / sodium against FDA 2020 DV
+          references so the Cronometer power-user persona doesn't bounce
+          on "Suppr is just a macro tracker". The full all-nutrients
+          rows still ship inline in TodayDashboardMacroTiles above via
+          `nutrientRows`. Mirrors mobile `TodayMicrosWidget`. */}
+      <TodayMicrosWidget microSum={dayMicroSum} fiberG={totals.fiber} />
 
       {/* 4. Quick Log Strip: Search, Voice (Pro), Snap (Pro), Scan. Voice +
           Snap are gated; free-tier users see a lock icon and tapping

@@ -62,6 +62,17 @@ const CHANGELOGS: ChangelogEntry[] = [
   // actually has items, falling back to the placeholder only if
   // nothing shipped yet.
   {
+    buildNumber: 12,
+    appVersion: "1.0.0",
+    releaseDate: "2026-05-01",
+    items: [
+      {
+        kind: "new",
+        text: "Today now shows fibre, iron, vitamin D and sodium tiles below the macros — see your micronutrient day at a glance.",
+      },
+    ],
+  },
+  {
     buildNumber: 11,
     appVersion: "1.0.0",
     releaseDate: "2026-04-20",
