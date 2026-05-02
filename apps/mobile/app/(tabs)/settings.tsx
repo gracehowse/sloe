@@ -16,7 +16,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ChevronRight, LogOut, Mail } from "lucide-react-native";
+import { ChevronRight, LogOut, Mail, Search } from "lucide-react-native";
 import { useAuth } from "@/context/auth";
 import { useTheme, type ThemePreference } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -554,9 +554,18 @@ export default function SettingsScreen() {
             gap: 8,
           }}
         >
-          <Text style={{ color: colors.textTertiary, fontSize: 14 }} accessibilityElementsHidden>
-            🔍
-          </Text>
+          {/* P0-3 (2026-05-01, TestFlight Build 40 — feedback ALCot9q4E4UFAtVubO6GlHo).
+              Lucide Search replaces the bare emoji magnifier Text node which
+              rendered as a colour glyph (Apple emoji) and was off-baseline
+              against the input. Matches the rest of Settings (lucide
+              everywhere). `accessibilityElementsHidden` keeps it out of
+              the a11y tree — the input owns the "Search settings" label. */}
+          <Search
+            size={16}
+            color={colors.textTertiary}
+            strokeWidth={1.75}
+            accessibilityElementsHidden
+          />
           <TextInput
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -649,7 +658,12 @@ export default function SettingsScreen() {
             </Pressable>
           )}
           <View style={{ paddingHorizontal: Spacing.lg, paddingBottom: Spacing.lg, paddingTop: Spacing.sm, gap: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border }}>
-            <Text style={{ fontSize: 12, fontWeight: "700", color: colors.textSecondary, letterSpacing: 0.6 }}>PROMO CODE</Text>
+            {/* P1 (2026-05-01, TestFlight Build 40 polish). Drop the
+                ALL-CAPS micro-header — it diverged from the bundle's
+                SectionHeading pattern (14/700, -0.1 tracking, sentence
+                case) and read as a stylistic outlier inside the Plan
+                card. */}
+            <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text, letterSpacing: -0.1 }}>Promo code</Text>
             <Text style={{ fontSize: 13, color: colors.textSecondary }}>
               Enter your code exactly as provided (letters are not case-sensitive).
             </Text>
@@ -657,7 +671,13 @@ export default function SettingsScreen() {
               <TextInput
                 value={promoCode}
                 onChangeText={setPromoCode}
-                placeholder="e.g. SUPPR_TEST_PREMIUM"
+                // P0-2 (2026-05-01, TestFlight Build 40 polish). The
+                // previous placeholder (an internal SKU example)
+                // leaked an internal SKU naming convention to every
+                // user who opened Settings → Promo code. Neutral hint
+                // copy; the helper Text above already explains what to
+                // enter ("Enter your code exactly as provided…").
+                placeholder="Enter code"
                 placeholderTextColor={colors.textTertiary}
                 autoCapitalize="characters"
                 autoCorrect={false}
@@ -744,7 +764,24 @@ export default function SettingsScreen() {
         ) : (
           <>
             {error ? <Text style={styles.err}>{error}</Text> : null}
-            {matchesSearch(["Body & activity", "Activity level", "TDEE", "active", "sedentary"]) ? (
+            {matchesSearch([
+              "Body & activity",
+              "Activity level",
+              "TDEE",
+              "active",
+              "sedentary",
+              // P1 (2026-05-01, TestFlight Build 40 feedback
+              // AFHtAQRAWad1w8bDvSgZkUg — "Searched 'fast' in Settings,
+              // got No matches"). The Fasting destination lived only on
+              // Today (the active-fast pill); no Settings entry meant
+              // there was no way to reach it from a cold start. Adding
+              // a row + the search keywords makes it findable.
+              "Fasting",
+              "fast",
+              "intermittent",
+              "16:8",
+              "eating window",
+            ]) ? (
             <>
             <Text style={styles.sectionTitle}>Body & activity</Text>
             <View style={styles.card}>
@@ -754,7 +791,7 @@ export default function SettingsScreen() {
                   recomputed target_calories via the shared helper. */}
               <Pressable
                 testID="settings-activity-level-row"
-                style={[styles.row, styles.rowLast]}
+                style={styles.row}
                 onPress={openActivityPicker}
               >
                 <View style={{ flex: 1 }}>
@@ -774,6 +811,28 @@ export default function SettingsScreen() {
                 >
                   {activityLevel ? ACTIVITY_SHORT_LABELS[activityLevel] : "Not set"}
                 </Text>
+                <ChevronRight size={16} color={colors.textTertiary} strokeWidth={1.75} />
+              </Pressable>
+              {/* P1 (2026-05-01, TestFlight Build 40, feedback
+                  AFHtAQRAWad1w8bDvSgZkUg). Pre-fix, the only way to
+                  reach the Fasting screen was the active-fast pill on
+                  Today. Searching "fast" in Settings returned "No
+                  matches" because no row referenced it. Added an entry
+                  row that pushes `/fasting`; the screen owns the
+                  window picker (16:8, etc.) and session start/stop. */}
+              <Pressable
+                testID="settings-fasting-row"
+                style={[styles.row, styles.rowLast]}
+                onPress={() => router.push("/fasting" as any)}
+                accessibilityRole="button"
+                accessibilityLabel="Intermittent fasting"
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.rowLabel}>Intermittent fasting</Text>
+                  <Text style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 17, marginTop: 2 }}>
+                    Pick a window (e.g. 16:8) and start a fast. Active fasts surface on Today.
+                  </Text>
+                </View>
                 <ChevronRight size={16} color={colors.textTertiary} strokeWidth={1.75} />
               </Pressable>
             </View>

@@ -1,5 +1,23 @@
 # Mobile App Changelog
 
+## 2026-05-01 — Settings polish 2 (TestFlight Build 40)
+
+### Settings screen
+- **Lucide `Search` replaces the bare emoji magnifier** in the Settings search bar (`apps/mobile/app/(tabs)/settings.tsx`). The emoji rendered as a colour glyph and was off-baseline with the input. Closes TestFlight feedback `ALCot9q4E4UFAtVubO6GlHo`.
+- **`Promo code` micro-header drops ALL CAPS** — was 12/700 letterSpacing 0.6, now 14/700 letterSpacing -0.1, sentence case. Aligns with the bundle's `SectionHeading` pattern.
+- **Promo code placeholder no longer leaks the internal SKU** — replaced with neutral `Enter code`. The helper Text already explains the format.
+- **Fasting findable in Settings search** — adds `Fasting`, `fast`, `intermittent`, `16:8`, `eating window` keywords to the Body & activity section, plus a new `settings-fasting-row` that pushes `/fasting`. Closes TestFlight feedback `AFHtAQRAWad1w8bDvSgZkUg` ("typed 'fast', got No matches"). The fasting destination + persistence already existed; this PR closes the discoverability gap.
+
+### Today / meal-nutrition
+- **"Tap meal for full nutrition doesn't show full nutrition"** — TestFlight Build 40. Lifted Sugar and Sodium from the buried "Vitamins, minerals & more" panel to the always-visible extras strip on the meal-nutrition screen (`apps/mobile/app/meal-nutrition.tsx`); they now render alongside Fiber and Water. Same source of truth (`meal.micros`); the full micros table remains. Hint copy on Today (`apps/mobile/components/today/TodayMealsSection.tsx`) tightened from "tap an item for nutrition" → "tap for full nutrition" so the hint signals what the screen shows.
+
+### Web parity
+- Items 1–3 are mobile-only (web Settings has no search bar; web has no in-product promo-code redemption row in the same shape — Stripe handles codes via checkout).
+- Item 4 is mobile-only on the same basis (no Settings search to "no-match" against on web).
+- Item 5 hint copy is mobile-only (web has no equivalent hint). The extras-hoist on the meal-nutrition screen is mobile-only because web has no equivalent screen. Web meal rows are not currently clickable; that is a pre-existing gap, deferred.
+
+Decision: `docs/decisions/2026-05-01-settings-mobile-polish-2.md`.
+
 ## 2026-04-20 — RevenueCat Customer Center + v2 API key support
 
 ### RevenueCat

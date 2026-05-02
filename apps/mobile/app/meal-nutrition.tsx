@@ -111,6 +111,17 @@ export default function MealNutritionScreen() {
 
   const microRows = useMemo(() => listMicroNutrientsCompleteDisplay(meal?.micros ?? null), [meal?.micros]);
   const fiberDisplay = meal ? mealContributedFiberG(meal) : 0;
+  // P0-5 (2026-05-01, TestFlight Build 40). Sugar + Sodium values lifted
+  // from the micros table to the always-visible extras row. Same source
+  // of truth as `microRows` so the two views can never disagree.
+  const sugarDisplay = (() => {
+    const v = meal?.micros?.sugarG;
+    return typeof v === "number" && Number.isFinite(v) && v > 0 ? v : 0;
+  })();
+  const sodiumDisplay = (() => {
+    const v = meal?.micros?.sodiumMg;
+    return typeof v === "number" && Number.isFinite(v) && v > 0 ? v : 0;
+  })();
   const split = useMemo(
     () => (meal ? macroCalorieSplit(meal) : { proteinPct: 0, carbsPct: 0, fatPct: 0, proteinKcal: 0, carbsKcal: 0, fatKcal: 0 }),
     [meal],
@@ -244,10 +255,32 @@ export default function MealNutritionScreen() {
         )}
 
         <View style={[styles.extras, { borderTopColor: colors.cardBorder }]}>
+          {/* P0-5 (2026-05-01, TestFlight Build 40 — "Tap meal for full
+              nutrition doesn't show full nutrition"). Pre-fix the
+              extras section showed only Fiber + Water, and Sugar /
+              Sodium were buried inside the "Vitamins, minerals & more"
+              card below. Lift Sugar + Sodium up so the four most-asked
+              extras (Fiber / Sugar / Sodium / Water) are visible
+              without scrolling, matching what the user expects from a
+              "full nutrition" tap. The values stay in sync with the
+              detailed micros table — both read from the same
+              `meal.micros` map. */}
           <Text style={[styles.extraLine, { color: colors.textSecondary }]}>
             Fiber{" "}
             <Text style={{ fontWeight: "700", color: colors.text }}>
               {fiberDisplay > 0 ? `${Math.round(fiberDisplay * 10) / 10}g` : "—"}
+            </Text>
+          </Text>
+          <Text style={[styles.extraLine, { color: colors.textSecondary }]}>
+            Sugar{" "}
+            <Text style={{ fontWeight: "700", color: colors.text }}>
+              {sugarDisplay > 0 ? `${Math.round(sugarDisplay * 10) / 10}g` : "—"}
+            </Text>
+          </Text>
+          <Text style={[styles.extraLine, { color: colors.textSecondary }]}>
+            Sodium{" "}
+            <Text style={{ fontWeight: "700", color: colors.text }}>
+              {sodiumDisplay > 0 ? `${Math.round(sodiumDisplay)} mg` : "—"}
             </Text>
           </Text>
           <Text style={[styles.extraLine, { color: colors.textSecondary }]}>

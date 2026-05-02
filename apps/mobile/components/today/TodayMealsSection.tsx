@@ -284,7 +284,14 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                       style={{ fontSize: 11, color: textTertiaryColor }}
                       numberOfLines={1}
                     >
-                      {meals.length} item{meals.length > 1 ? "s" : ""} · tap an item for nutrition
+                      {/* P0-5 (2026-05-01, TestFlight Build 40 — "tap
+                          for full nutrition didn't show full
+                          nutrition"). Tightened from "tap an item for
+                          nutrition" → "tap for full nutrition" so the
+                          link between hint and what the meal-nutrition
+                          screen shows (macros + extras + micros +
+                          source) is unambiguous. */}
+                      {meals.length} item{meals.length > 1 ? "s" : ""} · tap for full nutrition
                     </Text>
                   ) : (
                     <Text style={{ fontSize: 11, color: textTertiaryColor }} numberOfLines={1}>
