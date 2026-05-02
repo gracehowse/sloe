@@ -604,6 +604,18 @@ export function FoodSearchPanel({
   } | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const backfillRef = useRef(0);
+  // PR2 (audit move-blocker #2, 2026-04-30): dedupe the
+  // `food_search_no_result` event per (trimmed) query so a re-render
+  // doesn't double-fire. See identical mobile shape in
+  // `apps/mobile/components/food-search/FoodSearchPanel.tsx`.
+  const lastNoResultQueryRef = useRef<string | null>(null);
+  // Tracks dictionary-add CTA confirmations to avoid spammy re-fires
+  // if the user double-clicks.
+  const dictionaryAddRequestedRef = useRef<string | null>(null);
+  // Lightweight inline confirmation message shown after the user taps
+  // "Tell us we're missing this" — no toast dependency to avoid
+  // pulling sonner into a tight render path.
+  const [dictionaryAddRequested, setDictionaryAddRequested] = useState<string | null>(null);
 
   const customEnabled = Boolean(supabase && userId);
   const [createOpen, setCreateOpen] = useState(false);
@@ -760,6 +772,22 @@ export function FoodSearchPanel({
       setLoading(false);
       hasMoreRef.current = usda.length + off.length + edamam.length > 0;
       backfillMissingMacros(merged);
+      // PR2 (audit move-blocker #2, 2026-04-30): when the merged
+      // search returns 0 hits across every source, emit a
+      // `food_search_no_result` event so backfill prioritisation
+      // sees the dictionary gaps. Dedup'd per query.
+      if (merged.length === 0 && lastNoResultQueryRef.current !== q) {
+        lastNoResultQueryRef.current = q;
+        dictionaryAddRequestedRef.current = null;
+        setDictionaryAddRequested(null);
+        track(AnalyticsEvents.food_search_no_result, {
+          query: q,
+          len: q.length,
+          source: "web",
+        });
+      } else if (merged.length > 0 && lastNoResultQueryRef.current === q) {
+        lastNoResultQueryRef.current = null;
+      }
     }, 400);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -1370,10 +1398,71 @@ export function FoodSearchPanel({
         )}
 
         {!loading && query.trim() && results.length === 0 && (
-          <p className="text-sm text-muted-foreground text-center py-8">
-            No results for &quot;{query}&quot;.
-            {customEnabled ? " Can't find it? Create your own." : " Try a simpler term."}
-          </p>
+          <div
+            className="py-6 px-4 flex flex-col gap-3"
+            data-testid="food-search-no-result-empty-state"
+          >
+            <p className="text-sm text-muted-foreground text-center">
+              No results for &quot;{query}&quot;.
+            </p>
+            <p className="text-xs text-muted-foreground/80 text-center -mt-2">
+              {customEnabled
+                ? "Add it yourself, or let us know we should."
+                : "Try a simpler or more specific term."}
+            </p>
+            {/* PR2 (2026-04-30 competitor audit move-blocker #2):
+                two-CTA empty state. The "Add as custom food" CTA
+                opens the existing CreateCustomFoodDialog (same path
+                the persistent footer button uses, but here it's the
+                primary action because the user clearly didn't find
+                what they wanted). The "Tell us we're missing this"
+                CTA fires a dictionary-add event so the backfill
+                workstream knows which queries to prioritise. */}
+            {customEnabled ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingFood(undefined);
+                  setCreateOpen(true);
+                }}
+                aria-label={`Add "${query}" as a custom food`}
+                data-testid="food-search-no-result-add-custom"
+                className="w-full flex items-center gap-2 justify-center py-2.5 rounded-lg border border-primary bg-primary/10 text-sm font-bold text-primary hover:bg-primary/15 transition-colors"
+              >
+                <span aria-hidden="true" className="text-base leading-none">+</span>
+                Add as custom food
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => {
+                const q = query.trim();
+                if (!q) return;
+                if (dictionaryAddRequestedRef.current === q) return;
+                dictionaryAddRequestedRef.current = q;
+                setDictionaryAddRequested(q);
+                track(AnalyticsEvents.food_search_request_dictionary_add, {
+                  query: q,
+                  len: q.length,
+                  source: "web",
+                });
+              }}
+              aria-label="Tell us we're missing this food"
+              data-testid="food-search-no-result-request-add"
+              className="w-full flex items-center gap-2 justify-center py-2.5 rounded-lg border border-dashed border-border text-sm font-medium text-muted-foreground hover:bg-muted/40 transition-colors"
+            >
+              Tell us we're missing this
+            </button>
+            {dictionaryAddRequested === query.trim() ? (
+              <p
+                className="text-xs text-success text-center"
+                data-testid="food-search-no-result-request-confirmation"
+                role="status"
+              >
+                Thanks — we'll prioritise adding this to our food database.
+              </p>
+            ) : null}
+          </div>
         )}
 
         {/* Persistent "+ Create custom food" entry point. */}

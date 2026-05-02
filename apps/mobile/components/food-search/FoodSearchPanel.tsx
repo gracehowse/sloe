@@ -340,6 +340,16 @@ export default function FoodSearchPanel({
   } | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const backfillRef = useRef(0);
+  // PR2 (audit move-blocker #2, 2026-04-30): dedupe the
+  // `food_search_no_result` PostHog event per (trimmed) query so a
+  // mid-typing pause + re-render doesn't double-fire. Cleared
+  // implicitly when the user types a new query (the ref's last
+  // value won't match), and reset on unmount via the cleanup below.
+  const lastNoResultQueryRef = useRef<string | null>(null);
+  // Tracks whether the user has already fired the
+  // `food_search_request_dictionary_add` event for the current
+  // empty-state — avoids spammy re-fires if they tap repeatedly.
+  const dictionaryAddRequestedRef = useRef<string | null>(null);
 
   const customEnabled = Boolean(supabase && userId);
   const [createOpen, setCreateOpen] = useState(false);
@@ -432,6 +442,29 @@ export default function FoodSearchPanel({
       setLoading(false);
       hasMoreRef.current = r.length > 0;
       backfillMissingMacros(merged);
+      // PR2 (audit move-blocker #2, 2026-04-30): when the merged
+      // search returns 0 hits across every source — USDA, OFF,
+      // Edamam, FatSecret, generic, and the user's custom foods —
+      // emit a single `food_search_no_result` event for the trimmed
+      // query so backfill prioritisation has visibility into the
+      // dictionary gaps testers are hitting. Dedup'd per query via
+      // `lastNoResultQueryRef` so re-renders don't double-emit.
+      if (merged.length === 0 && lastNoResultQueryRef.current !== q) {
+        lastNoResultQueryRef.current = q;
+        // Reset the user-confirmed signal so a fresh empty state
+        // can register a fresh dictionary-add request.
+        dictionaryAddRequestedRef.current = null;
+        track(AnalyticsEvents.food_search_no_result, {
+          query: q,
+          len: q.length,
+          source: "mobile",
+        });
+      } else if (merged.length > 0 && lastNoResultQueryRef.current === q) {
+        // The current query had zero hits a tick ago but now does
+        // (custom-food write landed, network resolved late, etc.).
+        // Clear the ref so a future zero-result query can re-fire.
+        lastNoResultQueryRef.current = null;
+      }
     }, 400);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -1142,10 +1175,97 @@ export default function FoodSearchPanel({
           onEndReachedThreshold={0.4}
           ListEmptyComponent={
             !loading && query.trim() ? (
-              <Text style={styles.emptyText}>
-                No results for &quot;{query}&quot;.
-                {customEnabled ? " Can't find it? Create your own." : " Try a simpler or more specific term."}
-              </Text>
+              <View
+                style={{ paddingHorizontal: Spacing.lg, paddingVertical: Spacing.lg, gap: Spacing.md }}
+                testID="food-search-no-result-empty-state"
+              >
+                <Text style={styles.emptyText}>
+                  No results for &quot;{query}&quot;.
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 13,
+                    color: colors.textTertiary,
+                    textAlign: "center",
+                    marginTop: -Spacing.sm,
+                  }}
+                >
+                  {customEnabled
+                    ? "Add it yourself, or let us know we should."
+                    : "Try a simpler or more specific term."}
+                </Text>
+                {/* PR2 (2026-04-30 competitor audit move-blocker #2):
+                    two-CTA empty state. The "Add as custom food" CTA
+                    routes to the existing CreateCustomFoodSheet flow
+                    (the same path the persistent footer button uses).
+                    The "Tell us we're missing this" CTA fires a
+                    dedicated PostHog event so the dictionary-backfill
+                    workstream knows which queries to prioritise — it
+                    is NOT a bug report; the user can keep going by
+                    adding the food themselves below. */}
+                {customEnabled ? (
+                  <Pressable
+                    onPress={() => {
+                      setEditingFood(undefined);
+                      setCreateOpen(true);
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Add "${query}" as a custom food`}
+                    testID="food-search-no-result-add-custom"
+                    style={{
+                      paddingVertical: Spacing.md,
+                      alignItems: "center",
+                      flexDirection: "row",
+                      justifyContent: "center",
+                      gap: Spacing.sm,
+                      borderWidth: 1,
+                      borderColor: Accent.primary,
+                      borderRadius: Radius.md,
+                      backgroundColor: Accent.primary + "10",
+                    }}
+                  >
+                    <Plus size={16} color={Accent.primary} />
+                    <Text style={{ fontSize: 14, fontWeight: "700", color: Accent.primary }}>
+                      Add as custom food
+                    </Text>
+                  </Pressable>
+                ) : null}
+                <Pressable
+                  onPress={() => {
+                    const q = query.trim();
+                    if (!q) return;
+                    if (dictionaryAddRequestedRef.current === q) return;
+                    dictionaryAddRequestedRef.current = q;
+                    track(AnalyticsEvents.food_search_request_dictionary_add, {
+                      query: q,
+                      len: q.length,
+                      source: "mobile",
+                    });
+                    Alert.alert(
+                      "Got it",
+                      "Thanks — we'll prioritise adding this to our food database.",
+                    );
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Tell us we're missing this food"
+                  testID="food-search-no-result-request-add"
+                  style={{
+                    paddingVertical: Spacing.md,
+                    alignItems: "center",
+                    flexDirection: "row",
+                    justifyContent: "center",
+                    gap: Spacing.sm,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    borderStyle: "dashed",
+                    borderRadius: Radius.md,
+                  }}
+                >
+                  <Text style={{ fontSize: 14, fontWeight: "600", color: colors.textSecondary }}>
+                    Tell us we're missing this
+                  </Text>
+                </Pressable>
+              </View>
             ) : null
           }
           ListFooterComponent={

@@ -1,5 +1,36 @@
 # Mobile App Changelog
 
+## 2026-04-30 — Food search "no result" loop (MFP-refugee retention)
+
+### New
+- **Two-CTA empty state.** When food search returns zero hits across
+  every source (USDA + Open Food Facts + Edamam + FatSecret + custom +
+  generic fallback), the empty state now shows two actions instead of
+  one paragraph: a primary "Add as custom food" button (opens the
+  existing custom-food create flow with the query pre-filled) and a
+  secondary "Tell us we're missing this" button. Mobile + web parity
+  (`apps/mobile/components/food-search/FoodSearchPanel.tsx`,
+  `src/app/components/food-search/FoodSearchPanel.tsx`).
+- **Two new PostHog events** for backfill prioritisation:
+  `food_search_no_result` (auto, deduped per query) and
+  `food_search_request_dictionary_add` (user-confirmed tap on
+  "Tell us we're missing this"). Both carry
+  `{ query, len, source: "mobile" | "web" }`.
+- **Inline confirmation** (web) and Alert confirmation (mobile) after
+  the user taps the dictionary-add CTA, so the action feels
+  acknowledged. Dictionary-add events are deduped per query — a
+  triple-tap is one emit.
+
+### Decisions captured in this change
+- The "Add as custom food" CTA reuses the existing
+  `CreateCustomFoodSheet` / `CreateCustomFoodDialog` paths — no new
+  flow. The empty state is a stronger surface for the same action,
+  not a parallel one.
+- "Tell us we're missing this" does NOT open a free-text input. The
+  signal we need is the (anonymous, debounced) PostHog event payload
+  of the search query that whiffed; a textarea would invite low-
+  signal noise and add a moderation surface.
+
 ## 2026-04-20 — RevenueCat Customer Center + v2 API key support
 
 ### RevenueCat
