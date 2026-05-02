@@ -8,7 +8,10 @@ import {
 } from "../../../src/lib/openFoodFacts/offServingPortions";
 import { scaleFromPer100gGrams } from "../../../src/lib/openFoodFacts/scaleFromPer100g";
 import { effectiveFoodSearchQuery } from "../../../src/lib/nutrition/foodSearchQuery";
-import { matchGenericBeverage } from "../../../src/lib/nutrition/genericBeverages";
+import {
+  matchGenericBeverage,
+  matchGenericBeverages,
+} from "../../../src/lib/nutrition/genericBeverages";
 import { matchGenericFood } from "../../../src/lib/nutrition/genericFoods";
 import {
   pickEdamamPrimaryServing,
@@ -126,6 +129,16 @@ export type FoodSearchResult = {
   protein?: number;
   fat?: number;
   carbs?: number;
+  /**
+   * Build-40 (2026-05-01) — fiber, sugar, sodium per 100g from the USDA
+   * inline `foodNutrients[]` envelope. TestFlight feedback "Fibre and
+   * other nutrients not pulling in" — previously hard-coded to 0 in
+   * the merge pipeline. Undefined when USDA didn't publish; the merge
+   * layer maps undefined → 0.
+   */
+  fiberG?: number;
+  sugarG?: number;
+  sodiumMg?: number;
   /**
    * F-13 (2026-04-19) — caffeine (mg) + alcohol (g of ethanol) per 100 g
    * from the USDA inline nutrient envelope. Null when USDA didn't
@@ -410,6 +423,13 @@ export async function searchUsda(query: string, opts?: { page?: number }): Promi
       protein: h.protein,
       fat: h.fat,
       carbs: h.carbs,
+      // Build-40 (2026-05-01) — TestFlight feedback "Fibre and other
+      // nutrients not pulling in". Pass fiber/sugar/sodium through
+      // from the USDA inline envelope. Undefined when USDA didn't
+      // publish; the merge layer maps undefined → 0.
+      ...(typeof h.fiberG === "number" ? { fiberG: h.fiberG } : {}),
+      ...(typeof h.sugarG === "number" ? { sugarG: h.sugarG } : {}),
+      ...(typeof h.sodiumMg === "number" ? { sodiumMg: h.sodiumMg } : {}),
       // F-13 (2026-04-19) — pass caffeine + alcohol per 100 g through
       // from the USDA inline envelope so the Today log path can auto-track.
       caffeineMgPer100g: typeof h.caffeineMgPer100g === "number" ? h.caffeineMgPer100g : null,
@@ -739,8 +759,13 @@ export async function searchFoods(
   // match first because of how query-overlap shakes out (e.g. typing
   // "milk" matches a beverage; nothing in the food table aliases on
   // bare "milk"); guard not strictly needed but keeps order stable.
-  const genericBeverage = matchGenericBeverage(t);
-  const genericFood = genericBeverage ? null : matchGenericFood(t);
+  // Build-40 (2026-05-01) — TestFlight feedback "cortado should have
+  // lots of options" — `matchGenericBeverages` returns ALL family
+  // siblings (size + dairy variants) for a beverage query, not just
+  // one canonical row. The matched row leads; siblings follow.
+  // Falls back to a single generic-food match for solid-food queries.
+  const genericBeverages = matchGenericBeverages(t);
+  const genericFood = genericBeverages.length > 0 ? null : matchGenericFood(t);
 
   const usdaP = searchUsda(t, { page });
   const offP = searchOpenFoodFacts(t, { page });
@@ -753,8 +778,8 @@ export async function searchFoods(
   // F-73: when a generic match landed, surface it synchronously (no
   // async wait) so the user sees the right answer instantly. Other
   // sources still load and append below.
-  const genericRows: UnifiedSearchResult[] = genericBeverage
-    ? [genericBeverageToUnifiedResult(genericBeverage)]
+  const genericRows: UnifiedSearchResult[] = genericBeverages.length > 0
+    ? genericBeverages.map(genericBeverageToUnifiedResult)
     : genericFood
       ? [genericFoodToUnifiedResult(genericFood)]
       : [];
@@ -919,9 +944,16 @@ function mergeResults(
         protein: item.protein ?? 0,
         carbs: item.carbs ?? 0,
         fat: item.fat ?? 0,
-        fiberG: 0,
-        sugarG: 0,
-        sodiumMg: 0,
+        // Build-40 (2026-05-01) — TestFlight feedback "Fibre and other
+        // nutrients not pulling in". Use USDA inline values when
+        // present; fall back to 0 (not "missing") since callers treat 0
+        // as "not tracked" on display. Foundation / SR Legacy rows
+        // publish all three; Branded rows publish whatever the
+        // manufacturer registered — usually fiber + sodium, sometimes
+        // sugar.
+        fiberG: item.fiberG ?? 0,
+        sugarG: item.sugarG ?? 0,
+        sodiumMg: item.sodiumMg ?? 0,
         // F-13 — carry USDA caffeine/alcohol per 100 g through from the
         // search envelope so auto-track fires on first tap.
         caffeineMgPer100g: item.caffeineMgPer100g ?? null,

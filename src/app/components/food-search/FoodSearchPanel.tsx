@@ -59,7 +59,11 @@ import {
 import { DestructiveConfirmDialog } from "../suppr/destructive-confirm-dialog";
 
 import { effectiveFoodSearchQuery } from "@/lib/nutrition/foodSearchQuery";
-import { matchGenericBeverage } from "@/lib/nutrition/genericBeverages";
+import {
+  matchGenericBeverage,
+  matchGenericBeverages,
+  type GenericBeverage,
+} from "@/lib/nutrition/genericBeverages";
 import { matchGenericFood } from "@/lib/nutrition/genericFoods";
 import { isPlausibleMacrosPer100g } from "@/lib/nutrition/macroPlausibility";
 import {
@@ -270,7 +274,20 @@ async function searchUsda(query: string, page: number = 1): Promise<SearchResult
         key: `usda-${h.fdcId}`,
         name: titleCase(h.description ?? "Unknown"),
         calsPer100g: h.calories,
-        macrosPer100g: h.calories != null ? { calories: h.calories, protein: h.protein ?? 0, carbs: h.carbs ?? 0, fat: h.fat ?? 0, fiberG: 0, sugarG: 0, sodiumMg: 0 } : undefined,
+        // Build-40 (2026-05-01) — TestFlight feedback "Fibre and other
+        // nutrients not pulling in". `fdcFoodsSearch` now extracts
+        // fiber/sugar/sodium from the USDA inline `foodNutrients[]`
+        // envelope; pass them through here so the search row carries
+        // them without waiting for the on-tap food-detail fetch.
+        macrosPer100g: h.calories != null ? {
+          calories: h.calories,
+          protein: h.protein ?? 0,
+          carbs: h.carbs ?? 0,
+          fat: h.fat ?? 0,
+          fiberG: typeof h.fiberG === "number" ? h.fiberG : 0,
+          sugarG: typeof h.sugarG === "number" ? h.sugarG : 0,
+          sodiumMg: typeof h.sodiumMg === "number" ? h.sodiumMg : 0,
+        } : undefined,
         verified: isVerified,
         primaryServing,
         _source: "USDA" as const,
@@ -480,43 +497,64 @@ function customFoodToSearchResult(food: CustomFood): SearchResult {
   };
 }
 
-function buildGenericMatchRow(query: string): SearchResult | null {
+/**
+ * Build-40 (2026-05-01) — convert a single generic beverage to a search
+ * row. Extracted so `buildGenericMatchRows` can map a whole family
+ * (size + dairy variants) into the prepended results without
+ * duplicating the field plumbing.
+ */
+function genericBeverageToRow(beverage: GenericBeverage): SearchResult {
+  const servingG = beverage.servingMl;
+  return {
+    key: `generic-beverage:${beverage.id}`,
+    name: beverage.name,
+    subtitle: beverage.subtitle,
+    _source: "GenericBeverage",
+    verified: true,
+    macrosPer100g: {
+      calories: beverage.per100ml.calories,
+      protein: beverage.per100ml.protein,
+      carbs: beverage.per100ml.carbs,
+      fat: beverage.per100ml.fat,
+      fiberG: 0,
+      sugarG: 0,
+      sodiumMg: 0,
+      caffeineMgPer100g: beverage.caffeineMgPer100ml,
+      alcoholGPer100g: beverage.alcoholGPer100ml ?? 0,
+    },
+    calsPer100g: beverage.per100ml.calories,
+    primaryServing: {
+      label: `${beverage.servingMl} ml`,
+      grams: servingG,
+      kcal: Math.round((beverage.per100ml.calories * servingG) / 100),
+      protein: Math.round((beverage.per100ml.protein * servingG) / 100 * 10) / 10,
+      carbs: Math.round((beverage.per100ml.carbs * servingG) / 100 * 10) / 10,
+      fat: Math.round((beverage.per100ml.fat * servingG) / 100 * 10) / 10,
+    },
+  };
+}
+
+/**
+ * Build-40 (2026-05-01) — return ALL rows that should be prepended for
+ * the query. For a beverage query that resolves to a family (cortado,
+ * latte, flat white, americano, …) returns the canonical row first
+ * followed by every family sibling. For a food query (apple, chicken
+ * breast, …) returns the single matching food row.
+ *
+ * Replaces the legacy single-row `buildGenericMatchRow` for the search
+ * pipeline. TestFlight Build 40 feedback ("cortado should have lots of
+ * options") drove this — surfacing one row per family member gives
+ * the user the size + dairy ladder they're choosing from. Mobile
+ * mirror lives in `apps/mobile/lib/verifyRecipe.ts:searchFoods`.
+ */
+function buildGenericMatchRows(query: string): SearchResult[] {
   const q = query.trim();
-  if (!q) return null;
-  const beverage = matchGenericBeverage(q);
-  if (beverage) {
-    const servingG = beverage.servingMl;
-    return {
-      key: `generic-beverage:${beverage.id}`,
-      name: beverage.name,
-      subtitle: beverage.subtitle,
-      _source: "GenericBeverage",
-      verified: true,
-      macrosPer100g: {
-        calories: beverage.per100ml.calories,
-        protein: beverage.per100ml.protein,
-        carbs: beverage.per100ml.carbs,
-        fat: beverage.per100ml.fat,
-        fiberG: 0,
-        sugarG: 0,
-        sodiumMg: 0,
-        caffeineMgPer100g: beverage.caffeineMgPer100ml,
-        alcoholGPer100g: beverage.alcoholGPer100ml ?? 0,
-      },
-      calsPer100g: beverage.per100ml.calories,
-      primaryServing: {
-        label: `${beverage.servingMl} ml`,
-        grams: servingG,
-        kcal: Math.round((beverage.per100ml.calories * servingG) / 100),
-        protein: Math.round((beverage.per100ml.protein * servingG) / 100 * 10) / 10,
-        carbs: Math.round((beverage.per100ml.carbs * servingG) / 100 * 10) / 10,
-        fat: Math.round((beverage.per100ml.fat * servingG) / 100 * 10) / 10,
-      },
-    };
-  }
+  if (!q) return [];
+  const beverages = matchGenericBeverages(q);
+  if (beverages.length > 0) return beverages.map(genericBeverageToRow);
   const food = matchGenericFood(q);
   if (food) {
-    return {
+    return [{
       key: `generic-food:${food.id}`,
       name: food.name,
       subtitle: food.subtitle,
@@ -542,9 +580,20 @@ function buildGenericMatchRow(query: string): SearchResult | null {
         carbs: Math.round((food.per100g.carbs * food.servingG) / 100 * 10) / 10,
         fat: Math.round((food.per100g.fat * food.servingG) / 100 * 10) / 10,
       },
-    };
+    }];
   }
-  return null;
+  return [];
+}
+
+/**
+ * Back-compat single-row entry point. Preserved for any caller still
+ * expecting one row; internally delegates to `buildGenericMatchRows`
+ * and returns the first result. The single-row direct match is also
+ * still available via the underlying `matchGenericBeverage` import.
+ */
+function buildGenericMatchRow(query: string): SearchResult | null {
+  const rows = buildGenericMatchRows(query);
+  return rows[0] ?? null;
 }
 
 function buildPortions(
@@ -754,8 +803,12 @@ export function FoodSearchPanel({
         searchEdamam(q, 1),
         customPromise,
       ]);
-      const generic = buildGenericMatchRow(q);
-      const merged = mergeAndDedup(rankQ, usda, off, edamam, custom, 25, generic ? [generic] : []);
+      // Build-40 (2026-05-01) — returns ALL family siblings for a
+      // beverage query (size + dairy ladder), not just the canonical
+      // row. TestFlight Build 40 feedback: "cortado should have lots
+      // of options".
+      const generics = buildGenericMatchRows(q);
+      const merged = mergeAndDedup(rankQ, usda, off, edamam, custom, 25, generics);
       setResults(merged);
       setLoading(false);
       hasMoreRef.current = usda.length + off.length + edamam.length > 0;

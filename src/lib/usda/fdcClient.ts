@@ -14,6 +14,20 @@ export type FdcFoodSearchHit = {
   fat?: number;
   carbs?: number;
   /**
+   * Build-40 (2026-05-01) — fiber, sugar and sodium per 100g extracted
+   * from the search hit's `foodNutrients[]` envelope. USDA Foundation +
+   * SR Legacy + Survey rows publish these inline, but the previous
+   * extractor stopped at calories/protein/fat/carbs and the merge
+   * pipeline hard-coded `fiberG: 0` for every USDA row.
+   *
+   * TestFlight Build 40 feedback: "Fibre and other nutrients not
+   * pulling in." Now surfaced directly without waiting for the on-tap
+   * `food.get` round-trip.
+   */
+  fiberG?: number;
+  sugarG?: number;
+  sodiumMg?: number;
+  /**
    * Branded-food per-serving size (number + unit). USDA exposes these
    * directly on branded search hits so we pass them through — the
    * display layer uses them to show a per-portion kcal line alongside
@@ -184,7 +198,9 @@ export async function fdcFoodsSearch(
     .map((f) => {
       // Extract inline nutrients from search results (per 100g).
       // Match by nutrientNumber (stable across data types) OR nutrientName (fallback).
-      // Numbers: 1008/208 = Energy(kcal), 2047/2048 = Energy(kJ), 203 = Protein, 204 = Fat, 205 = Carbs
+      // Numbers: 1008/208 = Energy(kcal), 2047/2048 = Energy(kJ), 203 = Protein, 204 = Fat, 205 = Carbs.
+      // Build-40 (2026-05-01): also extract 291 = Fiber (total dietary), 269 = Sugars (total), 307 = Sodium, Na.
+      // TestFlight Build 40 feedback: "Fibre and other nutrients not pulling in".
       const nutrients = (f as any).foodNutrients as {
         nutrientName?: string; value?: number; unitName?: string;
         nutrientNumber?: string | number; nutrientId?: number;
@@ -193,6 +209,9 @@ export async function fdcFoodsSearch(
       let protein: number | undefined;
       let fat: number | undefined;
       let carbs: number | undefined;
+      let fiberG: number | undefined;
+      let sugarG: number | undefined;
+      let sodiumMg: number | undefined;
       if (Array.isArray(nutrients)) {
         for (const n of nutrients) {
           const name = (n.nutrientName ?? "").toLowerCase();
@@ -210,6 +229,30 @@ export async function fdcFoodsSearch(
             fat = Math.round(val * 10) / 10;
           } else if (num === "205" || name.includes("carbohydrate")) {
             carbs = Math.round(val * 10) / 10;
+          } else if (num === "291" || (name.includes("fiber") && name.includes("total dietary"))) {
+            // USDA SR Legacy / Foundation use "Fiber, total dietary".
+            // Branded foods sometimes use "Fiber" only — guard with `fiberG == null`
+            // so the more specific match wins when both rows exist.
+            if (fiberG == null) fiberG = Math.round(val * 10) / 10;
+          } else if (num === "269" || name === "sugars, total including nlea" || (name.includes("sugars") && name.includes("total"))) {
+            // 269 = Sugars, total — both old SR Legacy and branded use this number.
+            if (sugarG == null) sugarG = Math.round(val * 10) / 10;
+          } else if (num === "307" || name === "sodium, na") {
+            // Sodium published in mg by USDA inline.
+            const mg = unit === "g" ? val * 1000 : unit === "mcg" || unit === "ug" ? val / 1000 : val;
+            sodiumMg = Math.round(mg);
+          }
+        }
+        // Branded foods often only carry "Fiber" (no "total dietary" suffix).
+        // Run a second pass to pick that up if the strict match missed.
+        if (fiberG == null) {
+          for (const n of nutrients) {
+            const name = (n.nutrientName ?? "").toLowerCase();
+            const val = n.value ?? 0;
+            if (name === "fiber" || (name.startsWith("fiber") && val > 0)) {
+              fiberG = Math.round(val * 10) / 10;
+              break;
+            }
           }
         }
       }
@@ -263,6 +306,9 @@ export async function fdcFoodsSearch(
         protein,
         fat,
         carbs,
+        ...(fiberG != null ? { fiberG } : {}),
+        ...(sugarG != null ? { sugarG } : {}),
+        ...(sodiumMg != null ? { sodiumMg } : {}),
         ...(servingSize != null ? { servingSize } : {}),
         ...(servingSizeUnit != null ? { servingSizeUnit } : {}),
         ...(householdServingFullText != null ? { householdServingFullText } : {}),
