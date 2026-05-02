@@ -555,6 +555,19 @@ export const AnalyticsEvents = {
    *  (2026-04-30) — visible export in Settings exceeds the GDPR
    *  portability floor and is the moat-builder we attribute on. */
   data_export_initiated: "data_export_initiated",
+  /** 30-day logging milestone moment rendered on Today (PR
+   * claude/today-30-day-milestone, 2026-05-02). Fires once per user —
+   * gated by `profiles.milestone_30_shown_at`. Pure trust moment, no
+   * paywall, no upsell. Payload:
+   *   - `daysLogged`: number — distinct logged days at show time (≥30).
+   *   - `longestStreak`: number — all-time longest consecutive streak.
+   *   - `topFoodCount`: number — number of "top foods" surfaced (0–3).
+   *   - `platform`: "web" | "ios" | "android". */
+  milestone_30_shown: "milestone_30_shown",
+  /** User dismissed the 30-day milestone modal via the "Keep going" CTA
+   * or the close X. No payload beyond `platform` — there's only one
+   * decision path. */
+  milestone_30_dismissed: "milestone_30_dismissed",
 } as const;
 
 export type AnalyticsEventName = (typeof AnalyticsEvents)[keyof typeof AnalyticsEvents];

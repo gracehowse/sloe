@@ -168,6 +168,12 @@ import { TodayWeekView } from "@/components/today/TodayWeekView";
 import { TodayMealsSection } from "@/components/today/TodayMealsSection";
 import { TodayActivityBonusCard } from "@/components/today/TodayActivityBonusCard";
 import { TodayCompleteDayModal } from "@/components/today/TodayCompleteDayModal";
+import { Milestone30DayModal } from "@/components/today/Milestone30DayModal";
+import {
+  buildMilestone30DayContent,
+  shouldShowMilestone30Day,
+  type Milestone30DayContent,
+} from "@/lib/milestone30Day";
 // Phase 3 (B2.1, 2026-04-27) — TodayFabSheet replaced by LogSheet.
 // The component file remains for any deep test references (sweep
 // docs/journeys/log-sheet-2026-04-27.md for migration notes).
@@ -506,6 +512,15 @@ export default function TrackerScreen() {
   const [adaptiveTdee, setAdaptiveTdee] = useState<number | null>(null);
   const [adaptiveTdeeConfidence, setAdaptiveTdeeConfidence] = useState<string | null>(null);
   const [adaptiveTdeeUpdatedAt, setAdaptiveTdeeUpdatedAt] = useState<string | null>(null);
+  // 30-day milestone moment (PR claude/today-30-day-milestone, 2026-05-02).
+  // Fires once per user when they cross 30 distinct logged days. The
+  // gate + content build live in `src/lib/nutrition/milestone30Day.ts`
+  // and are pure / shared across web + mobile.
+  const [milestone30ShownAt, setMilestone30ShownAt] = useState<string | null>(null);
+  const [milestone30Open, setMilestone30Open] = useState(false);
+  const [milestone30Content, setMilestone30Content] = useState<Milestone30DayContent | null>(null);
+  const [profileWeightKgByDay, setProfileWeightKgByDay] = useState<Record<string, number>>({});
+  const milestone30HandledRef = useRef(false);
   const targetHitPrevByDayRef = useRef<Record<string, boolean>>({});
   /** Once we celebrate (or user was already at goal on first load), do not celebrate again that calendar day if they dip and re-hit. */
   const targetsCelebratedForDayRef = useRef<Record<string, boolean>>({});
@@ -1358,7 +1373,7 @@ export default function TrackerScreen() {
     let resp = await supabase
       .from("profiles")
       .select(
-        "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, target_caffeine_mg, target_alcohol_g_weekly, extra_water_by_day, extra_caffeine_by_day, extra_alcohol_g_by_day, steps_by_day, activity_burn_by_day, workouts_by_day, basal_burn_by_day, daily_steps_goal, prefer_activity_adjusted_calories, fasting_sessions, fasting_window, tracked_macros, week_start_day, measurement_system, weight_kg, height_cm, sex, activity_level, goal, goal_weight_kg, dob, age, notification_prefs, plan_pace, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history",
+        "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, target_caffeine_mg, target_alcohol_g_weekly, extra_water_by_day, extra_caffeine_by_day, extra_alcohol_g_by_day, steps_by_day, activity_burn_by_day, workouts_by_day, basal_burn_by_day, daily_steps_goal, prefer_activity_adjusted_calories, fasting_sessions, fasting_window, tracked_macros, week_start_day, measurement_system, weight_kg, weight_kg_by_day, height_cm, sex, activity_level, goal, goal_weight_kg, dob, age, notification_prefs, plan_pace, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, milestone_30_shown_at",
       )
       .eq("id", userId)
       .maybeSingle();
@@ -1492,6 +1507,24 @@ export default function TrackerScreen() {
     setAdaptiveTdeeUpdatedAt(
       typeof (d as any).adaptive_tdee_updated_at === "string" ? (d as any).adaptive_tdee_updated_at : null,
     );
+    // 30-day milestone state — `milestone_30_shown_at` ungates the
+    // moment once and only once. `weight_kg_by_day` feeds the total
+    // weight delta line. Both are null-safe; missing columns leave
+    // the surface honest (delta line is suppressed when empty).
+    setMilestone30ShownAt(
+      typeof (d as any).milestone_30_shown_at === "string"
+        ? (d as any).milestone_30_shown_at
+        : null,
+    );
+    const wkbdRaw = (d as any).weight_kg_by_day;
+    if (wkbdRaw && typeof wkbdRaw === "object" && !Array.isArray(wkbdRaw)) {
+      const out: Record<string, number> = {};
+      for (const [k, v] of Object.entries(wkbdRaw as Record<string, unknown>)) {
+        const n = typeof v === "number" ? v : Number(v);
+        if (Number.isFinite(n) && n > 0) out[k] = n;
+      }
+      setProfileWeightKgByDay(out);
+    }
     const np = d.notification_prefs as {
       showMealTimestamps?: boolean;
       weekSummaryMode?: string;
@@ -1917,6 +1950,63 @@ export default function TrackerScreen() {
       next.setDate(next.getDate() + offset * 7);
       return clampJournalDate(next);
     });
+  }, []);
+
+  // 30-day milestone moment gate (PR claude/today-30-day-milestone,
+  // 2026-05-02). Runs once per Today first-load AFTER the journal has
+  // hydrated — `milestone30HandledRef` suppresses re-fires within the
+  // session. The persisted `milestone_30_shown_at` flag suppresses
+  // re-fires across sessions: the moment is once and done, by design.
+  useEffect(() => {
+    if (!isToday) return;
+    if (milestone30HandledRef.current) return;
+    if (!userId) return;
+    if (milestone30ShownAt) return;
+    // The journal has loaded once `byDay` has at least one key. We
+    // bail when empty rather than render the surface against a stale
+    // empty map on first paint.
+    if (Object.keys(byDay).length === 0) return;
+    const eligible = shouldShowMilestone30Day({
+      nutritionByDay: byDay as never,
+      shownAt: milestone30ShownAt,
+    });
+    if (!eligible) return;
+    milestone30HandledRef.current = true;
+    const content = buildMilestone30DayContent({
+      nutritionByDay: byDay as never,
+      weightKgByDay: profileWeightKgByDay,
+    });
+    setMilestone30Content(content);
+    setMilestone30Open(true);
+
+    // Optimistic stamp — never re-fire even if the analytics call
+    // fails. Server is source of truth on next refetch.
+    const nowIso = new Date().toISOString();
+    setMilestone30ShownAt(nowIso);
+    void supabase
+      .from("profiles")
+      .update({ milestone_30_shown_at: nowIso } as never)
+      .eq("id", userId);
+
+    try {
+      track(AnalyticsEvents.milestone_30_shown, {
+        daysLogged: content.daysLogged,
+        longestStreak: content.longestStreak,
+        topFoodCount: content.topFoods.length,
+        platform: "ios",
+      });
+    } catch {
+      /* noop */
+    }
+  }, [isToday, userId, byDay, profileWeightKgByDay, milestone30ShownAt]);
+
+  const handleMilestone30Dismiss = useCallback(() => {
+    setMilestone30Open(false);
+    try {
+      track(AnalyticsEvents.milestone_30_dismissed, { platform: "ios" });
+    } catch {
+      /* noop */
+    }
   }, []);
 
   const totals = useMemo(() => {
@@ -4277,6 +4367,19 @@ export default function TrackerScreen() {
         )}
 
       </ScrollView>
+
+      {/* 30-day milestone moment (PR claude/today-30-day-milestone,
+          2026-05-02). Fires once per user when they cross 30 distinct
+          logged days. Pure trust moment — single CTA, no paywall. */}
+      <Milestone30DayModal
+        visible={milestone30Open}
+        content={milestone30Content}
+        onDismiss={handleMilestone30Dismiss}
+        cardColor={colors.card}
+        textColor={colors.text}
+        textSecondaryColor={colors.textSecondary}
+        borderColor={colors.border}
+      />
 
       {/* Complete Day Modal */}
       <TodayCompleteDayModal
