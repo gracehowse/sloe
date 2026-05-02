@@ -38,6 +38,21 @@ export default function HealthSyncScreen() {
   const [exportEnabled, setExportEnabled] = useState(false);
   const available = isHealthSyncAvailable();
 
+  // F-57 follow-up (Build 41, 2026-05-01) — persistent error state
+  // with recovery affordances. Previously a connect/sync failure left
+  // the user with only a dismissed Alert + a one-line "Sync failed"
+  // text. Grace re-flagged "same apple health error message" on
+  // TestFlight `ALlGgnDVP-rzqUojRWknayY` (2026-04-23) — same message,
+  // no obvious next step. We now show an inline banner with two
+  // affordances: "Try again" (re-runs whichever flow failed) and
+  // "Open iOS Settings" (deep-links to Settings → Privacy → Health
+  // → Suppr where the user can grant or re-grant permissions).
+  type HealthErrorKind = "connect" | "sync" | null;
+  const [errorState, setErrorState] = useState<{
+    kind: HealthErrorKind;
+    message: string;
+  } | null>(null);
+
   // Persist import/export prefs + whether Apple Health connect completed (UI only).
   // HS-01 (2026-04-28): the cached `health_sync_apple_connected` flag is
   // only trusted as a starting signal — we then probe HealthKit on
@@ -159,6 +174,7 @@ export default function HealthSyncScreen() {
     }
     setConnecting(true);
     setLastResult(null);
+    setErrorState(null);
     try {
       const outcome = await requestHealthPermissions();
       if (outcome.ok) {
@@ -209,6 +225,10 @@ export default function HealthSyncScreen() {
       } else {
         const body = `${outcome.userMessage}${outcome.debugDetail ? `\n\nTechnical detail:\n${outcome.debugDetail}` : ""}`;
         setLastResult("Could not finish Health setup. See the alert for details.");
+        setErrorState({
+          kind: "connect",
+          message: outcome.userMessage || "We couldn't finish setting up Apple Health.",
+        });
         Alert.alert("Permission or Health access", body, [
           { text: "Cancel", style: "cancel" },
           { text: "Open Settings", onPress: () => void Linking.openSettings() },
@@ -218,6 +238,10 @@ export default function HealthSyncScreen() {
       const msg = e instanceof Error ? e.message : String(e);
       console.warn("[health-sync] handleConnect", e);
       setLastResult("Something went wrong while connecting to Health.");
+      setErrorState({
+        kind: "connect",
+        message: "Something went wrong while connecting to Apple Health.",
+      });
       Alert.alert("Health connect failed", msg, [{ text: "OK" }]);
     } finally {
       setConnecting(false);
@@ -227,6 +251,7 @@ export default function HealthSyncScreen() {
   const handleSync = useCallback(async () => {
     if (!userId) return;
     setSyncing(true);
+    setErrorState(null);
     try {
       const result = await syncHealthData(userId);
       const parts: string[] = [];
@@ -253,16 +278,61 @@ export default function HealthSyncScreen() {
         } catch {
           const errLine = "Meal import from Health failed.";
           bodyMsg = `${bodyMsg} ${errLine}`;
+          setErrorState({
+            kind: "sync",
+            message:
+              "Meal import from Apple Health failed. Most likely cause: Health permissions for dietary data weren't fully granted.",
+          });
         }
       }
 
       setLastResult(bodyMsg.trim());
     } catch {
       setLastResult("Sync failed");
+      setErrorState({
+        kind: "sync",
+        message:
+          "Sync from Apple Health failed. Check that Suppr still has permission in iOS Settings.",
+      });
     } finally {
       setSyncing(false);
     }
   }, [userId, importEnabled]);
+
+  /**
+   * F-57 follow-up — recovery affordance: deep-link to iOS Settings →
+   * Privacy → Health → Suppr where the user can grant or re-grant
+   * permissions. `app-settings:` opens Suppr's app-settings page;
+   * Apple Health permissions are reached from there in two taps. We
+   * deliberately don't try to open Health.app directly because there
+   * is no public scheme for "Health permissions for app X" and the
+   * generic `x-apple-health://` jumps to Health's home screen which
+   * is even less helpful.
+   */
+  const handleOpenIOSSettings = useCallback(async () => {
+    try {
+      await Linking.openURL("app-settings:");
+    } catch {
+      try {
+        await Linking.openSettings();
+      } catch {
+        Alert.alert(
+          "Couldn't open Settings",
+          "Open the Settings app, scroll to Suppr, then tap Health to manage permissions.",
+        );
+      }
+    }
+  }, []);
+
+  const handleRetryAfterError = useCallback(() => {
+    const kind = errorState?.kind;
+    setErrorState(null);
+    if (kind === "sync") {
+      void handleSync();
+    } else {
+      void handleConnect();
+    }
+  }, [errorState?.kind, handleConnect, handleSync]);
 
   const handleClearImported = useCallback(() => {
     if (!userId) return;
@@ -450,6 +520,82 @@ export default function HealthSyncScreen() {
             {isExpoGoRuntime()
               ? "Install the Suppr development build (not the Expo Go app), then return here."
               : "Rebuild with native modules: from apps/mobile run `npx expo prebuild --platform ios`, open ios/Suppr.xcworkspace, build to your iPhone, and start Metro (`npx expo start` or `npm run ios:device:tunnel`)."}
+          </Text>
+        </View>
+      )}
+
+      {/* F-57 Build 41 — persistent error banner with recovery
+          affordances. Renders only when a connect or sync attempt
+          failed, replacing the previous one-line "Sync failed" text
+          with a labelled banner + two buttons: "Try again" (re-runs
+          the failed flow) and "Open iOS Settings" (deep-links to the
+          Suppr → Privacy → Health permissions page). Pinned by
+          apps/mobile/tests/unit/healthSyncErrorRecovery.test.tsx. */}
+      {errorState && (
+        <View
+          testID="health-sync-error-banner"
+          style={{
+            marginHorizontal: Spacing.xl,
+            marginBottom: Spacing.md,
+            padding: Spacing.lg,
+            backgroundColor: Accent.destructive + "12",
+            borderColor: Accent.destructive + "40",
+            borderWidth: 1,
+            borderRadius: Radius.md,
+            gap: Spacing.sm,
+          }}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <Ionicons name="alert-circle" size={18} color={Accent.destructive} />
+            <Text style={{ fontSize: 14, fontWeight: "700", color: Accent.destructive }}>
+              {errorState.kind === "sync" ? "Sync didn't complete" : "Couldn't connect to Apple Health"}
+            </Text>
+          </View>
+          <Text style={{ fontSize: 13, color: colors.text, lineHeight: 18 }}>
+            {errorState.message}
+          </Text>
+          <View style={{ flexDirection: "row", gap: Spacing.sm, marginTop: 4 }}>
+            <Pressable
+              testID="health-sync-error-retry"
+              onPress={handleRetryAfterError}
+              accessibilityRole="button"
+              accessibilityLabel="Try again"
+              style={({ pressed }) => ({
+                flex: 1,
+                paddingVertical: 12,
+                borderRadius: Radius.md,
+                backgroundColor: Accent.primary,
+                alignItems: "center",
+                opacity: pressed ? 0.85 : 1,
+              })}
+            >
+              <Text style={{ fontSize: 14, fontWeight: "700", color: "#fff" }}>
+                Try again
+              </Text>
+            </Pressable>
+            <Pressable
+              testID="health-sync-error-open-settings"
+              onPress={handleOpenIOSSettings}
+              accessibilityRole="button"
+              accessibilityLabel="Open iOS Settings to manage Apple Health permissions"
+              style={({ pressed }) => ({
+                flex: 1,
+                paddingVertical: 12,
+                borderRadius: Radius.md,
+                borderWidth: 1,
+                borderColor: Accent.primary,
+                alignItems: "center",
+                opacity: pressed ? 0.85 : 1,
+              })}
+            >
+              <Text style={{ fontSize: 14, fontWeight: "700", color: Accent.primary }}>
+                Open iOS Settings
+              </Text>
+            </Pressable>
+          </View>
+          <Text style={{ fontSize: 11, color: colors.textTertiary, lineHeight: 14, marginTop: 2 }}>
+            In Settings: tap Privacy & Security → Health → Suppr → enable
+            every category you want to share.
           </Text>
         </View>
       )}
