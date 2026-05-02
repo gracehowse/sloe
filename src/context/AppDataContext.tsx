@@ -69,6 +69,18 @@ import { isAuthLockAbort } from "../lib/supabase/isAuthLockAbort.ts";
 import { filterOrphanSaves } from "../lib/recipes/filterOrphanSaves.ts";
 import { composeLibraryEntries } from "../lib/recipes/composeLibraryEntries.ts";
 import { shoppingListShouldClear } from "../lib/planning/shoppingListLifecycle.ts";
+// PR plan-realtime-sync (2026-05-02 — closes Honeydew couples-loop
+// gap raised against shop-realtime PR #39). Subscribes to a Supabase
+// Realtime channel scoped to the active household so meal-plan edits
+// from any member surface live with a sonner toast (parity with the
+// existing shop-realtime helper, `shoppingRealtime.ts`).
+import {
+  formatPlanChangeToast,
+  subscribePlanChannel,
+  type PlanChangeEvent,
+  type PlanDayLookup,
+} from "../lib/household/planRealtime.ts";
+import { getMyHousehold } from "../lib/household/householdClient.ts";
 
 export type RedeemPromoResult =
   | { ok: true; tier: UserTier; alreadyRedeemed?: boolean }
@@ -616,89 +628,216 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return { ok: true, tier, alreadyRedeemed: Boolean(payload!.already_redeemed) };
   }, [authedUserId]);
 
+  // Reload meal plan from DB. Extracted into a callback (was inlined
+  // in the load useEffect below) so the realtime subscription can
+  // re-pull after another household member changes a row. Tries
+  // relational tables first, falls back to legacy JSONB.
+  const reloadMealPlanFromDb = useCallback(async () => {
+    if (!authedUserId) return;
+    if (!dbMealPlanEnabled) return;
+
+    const { data: dayRows, error: dayErr } = await supabase
+      .from("meal_plan_days")
+      .select("id, day, slot_id, start_date")
+      .eq("user_id", authedUserId)
+      .eq("slot_id", "default")
+      .order("day", { ascending: true });
+
+    if (dayRows && dayRows.length > 0 && !dayErr) {
+      const dayIds = dayRows.map((d: { id: string }) => d.id);
+      const { data: mealRows } = await supabase
+        .from("meal_plan_meals")
+        .select("plan_day_id, slot_index, name, recipe_title, calories, protein, carbs, fat, portion_multiplier, is_placeholder")
+        .in("plan_day_id", dayIds)
+        .order("slot_index", { ascending: true });
+
+      if (mealRows) {
+        const mealsByDay = new Map<string, typeof mealRows>();
+        for (const m of mealRows) {
+          const arr = mealsByDay.get(m.plan_day_id) ?? [];
+          arr.push(m);
+          mealsByDay.set(m.plan_day_id, arr);
+        }
+        const plans: DayPlan[] = dayRows.map((d: { id: string; day: number }) => {
+          const meals = (mealsByDay.get(d.id) ?? [])
+            .map((m): import("../types/recipe.ts").DayPlanMeal => ({
+              name: m.name,
+              recipeTitle: m.recipe_title,
+              calories: m.calories,
+              protein: m.protein,
+              carbs: m.carbs,
+              fat: m.fat,
+              portionMultiplier: m.portion_multiplier,
+              isPlaceholder: m.is_placeholder || undefined,
+            }))
+            .filter(
+              (m) =>
+                typeof m.recipeTitle === "string" &&
+                !isMealPlanPlaceholderLikeTitle(m.recipeTitle, { isPlaceholder: m.isPlaceholder }),
+            );
+          const totals = meals.reduce(
+            (acc, m) => ({
+              calories: acc.calories + m.calories,
+              protein: acc.protein + m.protein,
+              carbs: acc.carbs + m.carbs,
+              fat: acc.fat + m.fat,
+            }),
+            { calories: 0, protein: 0, carbs: 0, fat: 0 },
+          );
+          return { day: d.day, meals, totals };
+        });
+        const slotId = activeMealPlanSlotIdRef.current;
+        setMealPlanSlots((prev) => prev.map((s) => (s.id === slotId ? { ...s, plan: plans } : s)));
+        return;
+      }
+    }
+
+    const planJson = await fetchMealPlanJson(supabase, authedUserId);
+    if (planJson != null) {
+      const normalized =
+        normalizeDayPlans(planJson) ?? (Array.isArray(planJson) ? (planJson as DayPlan[]) : null);
+      const slotId = activeMealPlanSlotIdRef.current;
+      setMealPlanSlots((prev) => prev.map((s) => (s.id === slotId ? { ...s, plan: normalized } : s)));
+    }
+  }, [authedUserId, dbMealPlanEnabled]);
+
   // Load persisted meal plan from Supabase (tries relational table, falls back to legacy JSONB).
   useEffect(() => {
     if (!authedUserId) return;
     let cancelled = false;
     (async () => {
-      if (!dbMealPlanEnabled) return;
+      try {
+        await reloadMealPlanFromDb();
+      } catch {
+        /* swallow — best-effort load, falls back to local state */
+      }
+      if (cancelled) return;
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [authedUserId, dbMealPlanEnabled, dbMealPlanWarned, reloadMealPlanFromDb]);
 
-      // Try relational tables first. T7 (2026-04-24): SELECT start_date
-      // so downstream resolvers (Today's planned meals, "which day is
-      // today?" lookups) read the persisted anchor.
-      const { data: dayRows, error: dayErr } = await supabase
-        .from("meal_plan_days")
-        .select("id, day, slot_id, start_date")
-        .eq("user_id", authedUserId)
-        .eq("slot_id", "default")
-        .order("day", { ascending: true });
+  // PR plan-realtime-sync (2026-05-02): household + member-name lookup
+  // for the realtime toast. Solo users skip the channel entirely (the
+  // helper returns a no-op unsubscribe) — there is no second device.
+  const [planHouseholdId, setPlanHouseholdId] = useState<string | null>(null);
+  const [planHouseholdMembers, setPlanHouseholdMembers] = useState<Map<string, string>>(
+    () => new Map(),
+  );
+  const planHouseholdMembersRef = useRef(planHouseholdMembers);
+  useEffect(() => {
+    planHouseholdMembersRef.current = planHouseholdMembers;
+  }, [planHouseholdMembers]);
 
-      if (!cancelled && dayRows && dayRows.length > 0 && !dayErr) {
-        const dayIds = dayRows.map((d: { id: string }) => d.id);
-        const { data: mealRows } = await supabase
-          .from("meal_plan_meals")
-          .select("plan_day_id, slot_index, name, recipe_title, calories, protein, carbs, fat, portion_multiplier, is_placeholder")
-          .in("plan_day_id", dayIds)
-          .order("slot_index", { ascending: true });
-
-        if (!cancelled && mealRows) {
-          const mealsByDay = new Map<string, typeof mealRows>();
-          for (const m of mealRows) {
-            const arr = mealsByDay.get(m.plan_day_id) ?? [];
-            arr.push(m);
-            mealsByDay.set(m.plan_day_id, arr);
-          }
-          const plans: DayPlan[] = dayRows.map((d: { id: string; day: number }) => {
-            const meals = (mealsByDay.get(d.id) ?? [])
-              .map((m): import("../types/recipe.ts").DayPlanMeal => ({
-                name: m.name,
-                recipeTitle: m.recipe_title,
-                calories: m.calories,
-                protein: m.protein,
-                carbs: m.carbs,
-                fat: m.fat,
-                portionMultiplier: m.portion_multiplier,
-                isPlaceholder: m.is_placeholder || undefined,
-              }))
-              .filter(
-                (m) =>
-                  typeof m.recipeTitle === "string" &&
-                  !isMealPlanPlaceholderLikeTitle(m.recipeTitle, { isPlaceholder: m.isPlaceholder }),
-              );
-            const totals = meals.reduce(
-              (acc, m) => ({
-                calories: acc.calories + m.calories,
-                protein: acc.protein + m.protein,
-                carbs: acc.carbs + m.carbs,
-                fat: acc.fat + m.fat,
-              }),
-              { calories: 0, protein: 0, carbs: 0, fat: 0 },
-            );
-            return { day: d.day, meals, totals };
-          });
-          const slotId = activeMealPlanSlotIdRef.current;
-          setMealPlanSlots((prev) => prev.map((s) => (s.id === slotId ? { ...s, plan: plans } : s)));
+  useEffect(() => {
+    if (!authedUserId) {
+      setPlanHouseholdId(null);
+      setPlanHouseholdMembers(new Map());
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const result = await getMyHousehold(supabase as any, authedUserId);
+        if (cancelled) return;
+        if (result.error || !result.data?.household) {
+          setPlanHouseholdId(null);
+          setPlanHouseholdMembers(new Map());
           return;
         }
-      }
-
-      // Fall back to legacy JSONB table (`meal_plans` or `meal_plans_legacy`)
-      if (!cancelled) {
-        const planJson = await fetchMealPlanJson(supabase, authedUserId);
-        if (!cancelled) {
-          if (planJson != null) {
-            const normalized =
-              normalizeDayPlans(planJson) ?? (Array.isArray(planJson) ? (planJson as DayPlan[]) : null);
-            const slotId = activeMealPlanSlotIdRef.current;
-            setMealPlanSlots((prev) => prev.map((s) => (s.id === slotId ? { ...s, plan: normalized } : s)));
-          }
+        setPlanHouseholdId(result.data.household.id);
+        const map = new Map<string, string>();
+        for (const m of result.data.members ?? []) {
+          if (m.userId && m.displayName) map.set(m.userId, m.displayName);
         }
+        setPlanHouseholdMembers(map);
+      } catch {
+        // Best-effort — degrade to solo if the lookup fails.
+        setPlanHouseholdId(null);
+        setPlanHouseholdMembers(new Map());
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [authedUserId, dbMealPlanEnabled, dbMealPlanWarned]);
+  }, [authedUserId]);
+
+  // Build the plan_day_id → { day, dayLabel, ownerUserId } lookup the
+  // realtime helper needs for toast formatting + self-filter. Refreshes
+  // when the active slot's plan changes (regenerate / save creates new
+  // plan_day_id rows that the existing lookup wouldn't know about).
+  const planDayLookupRef = useRef<Map<string, PlanDayLookup>>(new Map());
+  const activeSlotPlan = useMemo(() => {
+    return mealPlanSlots.find((s) => s.id === activeMealPlanSlotId)?.plan ?? null;
+  }, [mealPlanSlots, activeMealPlanSlotId]);
+  useEffect(() => {
+    if (!authedUserId) {
+      planDayLookupRef.current = new Map();
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { data: dayRows } = await supabase
+        .from("meal_plan_days")
+        .select("id, day, user_id")
+        .eq("slot_id", "default");
+      if (cancelled || !Array.isArray(dayRows)) return;
+      const WEEKDAY_LONG = [
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+      ] as const;
+      const next = new Map<string, PlanDayLookup>();
+      for (const d of dayRows as Array<{
+        id: string;
+        day: number;
+        user_id: string | null;
+      }>) {
+        const dayLabel = WEEKDAY_LONG[(d.day ?? 1) - 1] ?? "";
+        next.set(d.id, {
+          day: d.day,
+          dayLabel,
+          ownerUserId: d.user_id ?? null,
+        });
+      }
+      planDayLookupRef.current = next;
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [authedUserId, activeSlotPlan]);
+
+  // Subscribe to realtime change events on `meal_plan_meals`. INSERT /
+  // UPDATE / DELETE from any household member surfaces as a sonner
+  // toast and triggers a refetch so the planner UI reflects the change
+  // without a manual refresh. Solo users (no household) get a no-op.
+  useEffect(() => {
+    if (!authedUserId) return;
+    const unsub = subscribePlanChannel({
+      supabase: supabase as any,
+      householdId: planHouseholdId,
+      currentUserId: authedUserId,
+      dayLookup: planDayLookupRef.current,
+      onChange: (event: PlanChangeEvent) => {
+        const message = formatPlanChangeToast({
+          event,
+          members: planHouseholdMembersRef.current,
+          dayLookup: planDayLookupRef.current,
+          ownUserId: authedUserId,
+        });
+        if (message) {
+          toast(message, { duration: 4000 });
+        }
+        void reloadMealPlanFromDb().catch(() => undefined);
+      },
+    });
+    return unsub;
+  }, [authedUserId, planHouseholdId, reloadMealPlanFromDb]);
 
   const signOut = useCallback(async () => {
     const { error } = await supabase.auth.signOut();

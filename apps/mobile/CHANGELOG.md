@@ -1,5 +1,22 @@
 # Mobile App Changelog
 
+## 2026-05-02 — Real-time meal-plan editing (Honeydew couples-loop parity)
+
+### Plan realtime sync (NEW)
+- **`src/lib/household/planRealtime.ts`** — pure helper, mirrors the shop-realtime helper from PR #39. `subscribePlanChannel` wires a Supabase Realtime channel filtered by `household_id=eq.<id>` on `meal_plan_meals`; INSERT / UPDATE / DELETE events fan out via `onChange` after self-events are filtered.
+- **`apps/mobile/app/(tabs)/planner.tsx`** — subscribes on mount when the user is in a household. INSERT/UPDATE/DELETE from another member triggers a refetch + toast (`ToastAndroid` on Android, `Alert.alert` on iOS).
+- **`src/context/AppDataContext.tsx`** — web equivalent. Same subscribe-on-mount; sonner toast on events; refetch via the shared `reloadMealPlanFromDb` callback.
+- **`supabase/migrations/20260504100000_meal_plan_household_id.sql`** — staged. Adds `meal_plan_days.household_id` and `meal_plan_meals.household_id`, replaces "Own plan days" / "Own plan meals" with explicit per-action policies (per-user fallback for `household_id IS NULL`; member-scoped for `IS NOT NULL`), and adds `meal_plan_meals` to the `supabase_realtime` publication. STAGED ONLY per CLAUDE.md — Grace runs `supabase db push --linked`, never via MCP.
+
+### Decisions captured in this change
+- **Save-path follow-up tracked** — `save_meal_plan` RPC does NOT yet stamp `household_id`, so until that follow-up lands, household members' writes continue to land with `household_id IS NULL` and the realtime broadcast doesn't fire. The migration + helper are in place; the writer-side update is a separate PR routed via `data-integrity`.
+- **Self-attribution heuristic** — actor id resolves from the parent day's `user_id` (today's planner only lets a user edit their own days, so this is correct). A `last_edited_by` column on `meal_plan_meals` is the follow-up if we ever let members edit each other's days.
+- **Solo users** — get a no-op `subscribePlanChannel` (no channel created, no websocket frame). One device by definition; nothing to sync.
+
+### Cross-platform parity
+- Same helper. Same migration. Same RLS contract. Same toast copy via `formatPlanChangeToast`.
+- Web → sonner toast; mobile → Android ToastAndroid / iOS Alert.
+
 ## 2026-04-20 — RevenueCat Customer Center + v2 API key support
 
 ### RevenueCat
