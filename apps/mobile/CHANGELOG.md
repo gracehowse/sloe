@@ -1,5 +1,18 @@
 # Mobile App Changelog
 
+## 2026-05-01 — Food DB breadth: cortado families + fiber surfacing
+
+### Food search (TestFlight Build 40 feedback)
+- **Beverage family expansion** in `src/lib/nutrition/genericBeverages.ts` — popular drinks (cortado, latte, flat white, americano, espresso, cappuccino, mocha, matcha latte, chai latte, drip coffee, black tea) now ship with size + dairy variants instead of a single canonical row. 30 → 66 entries. New `matchGenericBeverages()` returns the full family ladder for a query so a user typing "cortado" sees 5 options (whole / skim / oat / almond / soy), "latte" sees 8 (medium, large, iced, plus dairy variants), "americano" sees 4 (small / regular / large / iced). Closes the canonical "cortado should have lots of options" feedback.
+- **Family-aware search wiring** — `apps/mobile/lib/verifyRecipe.ts:searchFoods()` and `src/app/components/food-search/FoodSearchPanel.tsx` now prepend every family sibling above the USDA / OFF / Edamam / FatSecret merge, with the matched canonical row leading. The legacy single-row `matchGenericBeverage()` is preserved for back-compat callers.
+- **USDA fiber + sugar + sodium surfacing** in `src/lib/usda/fdcClient.ts` — `fdcFoodsSearch` now extracts nutrient numbers 291 (fiber, total dietary), 269 (sugars, total) and 307 (sodium, Na) from the inline `foodNutrients[]` envelope. Previously these landed as zeros in the search row macros until the on-tap food-detail fetch ran. TestFlight feedback "Fibre and other nutrients not pulling in" — apple search rows now carry 2.4g fiber from the first paint instead of waiting for a network round-trip. Branded products that use bare "Fiber" (no "total dietary" suffix) are picked up by a fallback name match.
+- **Mobile + web parity** — both surfaces import `matchGenericBeverages` and forward fiber/sugar/sodium identically. Pinned by `tests/unit/genericBeverageFamilyWiring.test.ts` and `tests/unit/fdcFiberExtraction.test.ts`.
+
+### Tests
+- `tests/unit/genericBeverages.test.ts` — extended from 9 to 27 cases; pins family-expansion contracts (5+ cortado, 4+ latte sizes, 5+ oat-milk variants, alias uniqueness across 252 aliases).
+- `tests/unit/fdcFiberExtraction.test.ts` (NEW) — 12 cases. Source-grep pins the extraction shape; behavioural tests mock `fetch` with a USDA SR Legacy apple fixture and assert fiber (2.4g) / sugar (10.4g) / sodium (1mg) per 100g land on the returned hit. Includes a no-fiber-published case (preserves `undefined` vs zero) and a branded "Fiber" fallback case.
+- `tests/unit/genericBeverageFamilyWiring.test.ts` (NEW) — 8 cases. Pins that mobile `searchFoods` and web `FoodSearchPanel` both wire to `matchGenericBeverages` (multi-result) and prepend every family sibling.
+
 ## 2026-04-20 — RevenueCat Customer Center + v2 API key support
 
 ### RevenueCat
