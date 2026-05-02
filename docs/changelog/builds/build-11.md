@@ -47,19 +47,6 @@ builds. See `docs/changelog/README.md` for the authoring workflow.
   matching the prototype. Deeper card-level restructure (sparkline
   weight card, calories / protein bar cards) is deferred.
 
-- **Today ring — central calorie number is now the dominant metric.**
-  Lifted from 22 / 28pt to `Type.ringValueLg` (56pt) on mobile and
-  56px on web per the Cal AI flagship convention, so the ring's
-  central value reads as the primary number on Today rather than a
-  peer of the macro tile values (~22pt) below. Drops to 48pt for
-  4-digit goals (e.g. 1,847 kcal) so the centre never clips the
-  inner-most macro-ring band. Mobile keeps `numberOfLines=1` +
-  `adjustsFontSizeToFit` (down to `Type.ringValue` 36pt) as a
-  belt-and-braces safety net for freak 5-digit values. Closes
-  ui-critic finding #7. Mobile + web
-  (`apps/mobile/components/charts/CalorieRing.tsx`,
-  `src/app/components/suppr/daily-ring.tsx`).
-
 ## Coming soon
 
 _(none yet)_
