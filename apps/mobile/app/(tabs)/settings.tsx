@@ -22,6 +22,13 @@ import { useTheme, type ThemePreference } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { presentCustomerCenter } from "@/lib/purchases";
 import { supabase } from "@/lib/supabase";
+import { CancelExportPromptSheet } from "@/components/settings/CancelExportPromptSheet";
+import {
+  nutritionLogToCsv,
+  nutritionLogCsvFilename,
+} from "../../../../src/lib/export/nutritionLogToCsv";
+import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
+import { track } from "@/lib/analytics";
 import { usePromoCode, normalizeUserTier as normalizeUserTierShared } from "@/hooks/usePromoCode";
 import { Accent, Radius, Spacing } from "@/constants/theme";
 import { normalizeWeekSummaryMode, type WeekSummaryMode } from "../../../../src/lib/nutrition/weekSummaryWindow";
@@ -124,6 +131,13 @@ export default function SettingsScreen() {
   const [profilePlanPace, setProfilePlanPace] = useState<PlanPace | null>(null);
   const [profileNutritionStrategy, setProfileNutritionStrategy] =
     useState<NutritionStrategy | null>(null);
+  // Cancel-flow export prompt sheet (PR claude/cancel-flow-export-prompt,
+  // 2026-05-02). Shown when the user taps "Manage subscription" so they
+  // can grab their data on the way out. `cancelExportedFirst` tracks
+  // whether the user used the export CTA before continuing — payload
+  // for the `cancel_proceeded` event.
+  const [cancelExportSheetOpen, setCancelExportSheetOpen] = useState(false);
+  const cancelExportedFirstRef = useRef(false);
 
   // Phase 2 / B1.4 (D-2026-04-27-08) — Tracking extras opt-in.
   // Defaults OFF. AsyncStorage-only (no schema change). Toggling
@@ -550,23 +564,12 @@ export default function SettingsScreen() {
             <Pressable
               testID="settings-manage-subscription-row"
               style={styles.row}
-              onPress={async () => {
-                const result = await presentCustomerCenter();
-                if (result.presented) return;
-                // Fallback: send the user to the platform's native
-                // subscription-management surface so "manage my plan"
-                // is never a dead end. `reason === "no_api_key"` hits
-                // this path in builds where RC isn't provisioned, and
-                // `"ui_unavailable"` hits it in Expo Go or on web.
-                const url = Platform.OS === "ios"
-                  ? "https://apps.apple.com/account/subscriptions"
-                  : "https://play.google.com/store/account/subscriptions";
-                await Linking.openURL(url).catch(() => {
-                  Alert.alert(
-                    "Couldn't open subscription settings",
-                    "Manage your Suppr subscription from the App Store / Play Store app.",
-                  );
-                });
+              onPress={() => {
+                cancelExportedFirstRef.current = false;
+                setCancelExportSheetOpen(true);
+                try {
+                  track(AnalyticsEvents.cancel_export_prompt_shown, { platform: "ios" });
+                } catch { /* noop */ }
               }}
               accessibilityRole="button"
               accessibilityLabel="Manage subscription"
@@ -984,6 +987,77 @@ export default function SettingsScreen() {
             B–D, the duplicates are removed in the post-D cleanup. */}
         <SettingsBundleContent context="settings" />
       </ScrollView>
+
+      {/* Cancel-flow export prompt sheet (PR claude/cancel-flow-export-prompt,
+          2026-05-02). Surfaced before the platform billing / customer-
+          center hop so users can grab their data on the way out.
+          Calm-tone trust posture; never blocks the cancel path. */}
+      <CancelExportPromptSheet
+        visible={cancelExportSheetOpen}
+        onExport={async () => {
+          if (!userId) return null;
+          try {
+            const { data: entries, error } = await supabase
+              .from("nutrition_entries")
+              .select(
+                "date_key, time_label, name, recipe_title, portion_multiplier, calories, protein, carbs, fat, fiber_g, source",
+              )
+              .eq("user_id", userId)
+              .order("date_key", { ascending: true })
+              .order("created_at", { ascending: true });
+            if (error) {
+              Alert.alert("Export failed", error.message);
+              return null;
+            }
+            const rows = entries ?? [];
+            const csv = nutritionLogToCsv(rows);
+            const filename = nutritionLogCsvFilename();
+            await Share.share({ message: csv, title: filename });
+            cancelExportedFirstRef.current = true;
+            try {
+              track(AnalyticsEvents.cancel_export_chosen, {
+                rowCount: rows.length,
+                platform: "ios",
+              });
+            } catch { /* noop */ }
+            return { rowCount: rows.length };
+          } catch (e) {
+            Alert.alert(
+              "Export failed",
+              e instanceof Error ? e.message : "Unknown error",
+            );
+            return null;
+          }
+        }}
+        onContinueCancelling={async () => {
+          setCancelExportSheetOpen(false);
+          try {
+            track(AnalyticsEvents.cancel_proceeded, {
+              exportedFirst: cancelExportedFirstRef.current,
+              platform: "ios",
+            });
+          } catch { /* noop */ }
+          // Same RC customer-center routing as before, just deferred
+          // by one sheet. The fallback to App Store / Play Store URLs
+          // mirrors the pre-extraction behaviour byte-for-byte.
+          const result = await presentCustomerCenter();
+          if (result.presented) return;
+          const url = Platform.OS === "ios"
+            ? "https://apps.apple.com/account/subscriptions"
+            : "https://play.google.com/store/account/subscriptions";
+          await Linking.openURL(url).catch(() => {
+            Alert.alert(
+              "Couldn't open subscription settings",
+              "Manage your Suppr subscription from the App Store / Play Store app.",
+            );
+          });
+        }}
+        onClose={() => setCancelExportSheetOpen(false)}
+        cardColor={colors.card}
+        textColor={colors.text}
+        textSecondaryColor={colors.textSecondary}
+        borderColor={colors.border}
+      />
 
       {/* Activity-level picker modal (build 10 fix E-2, 2026-04-19;
           dismiss-while-saving fixed 2026-04-30 modal-dismiss sweep). */}

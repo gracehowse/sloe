@@ -389,6 +389,24 @@ export const AnalyticsEvents = {
    *   platform?: "web" | "ios" | "android", avgIngredientConfidence?, minIngredientConfidence? }`.
    * `recipe_id` omitted on create paste; set on recipe detail / verify flows when the recipe exists. */
   recipe_verify_needs_review: "recipe_verify_needs_review",
+  /** User opened the Suppr-owned cancel-export prompt sheet (PR
+   * claude/cancel-flow-export-prompt, 2026-05-02). Fires when the user
+   * taps "Manage subscription" on Settings — the sheet appears BEFORE
+   * we route to the platform's billing / customer-center surface so
+   * they can grab their data on the way out. Calm-tone trust posture,
+   * not retention-via-friction. Payload: `{ platform }`. */
+  cancel_export_prompt_shown: "cancel_export_prompt_shown",
+  /** User tapped "Take your data with you" on the cancel-export sheet
+   * (PR claude/cancel-flow-export-prompt). Fires alongside the actual
+   * `Share.share` invocation on mobile / blob download on web. Payload:
+   * `{ rowCount: number, platform }`. The sheet remains open so the
+   * user can still tap "Continue cancelling" after exporting. */
+  cancel_export_chosen: "cancel_export_chosen",
+  /** User tapped "Continue cancelling" on the cancel-export sheet,
+   * routing through to the platform billing / customer-center surface.
+   * Payload: `{ exportedFirst: boolean, platform }` — whether they
+   * also tapped the export CTA in the same flow. */
+  cancel_proceeded: "cancel_proceeded",
 } as const;
 
 export type AnalyticsEventName = (typeof AnalyticsEvents)[keyof typeof AnalyticsEvents];

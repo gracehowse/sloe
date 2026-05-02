@@ -32,6 +32,7 @@ import type { NotificationPrefs } from "../../types/notifications.ts";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { track } from "../../lib/analytics/track.ts";
 import { DestructiveConfirmDialog } from "./suppr/destructive-confirm-dialog";
+import { CancelExportPromptDialog } from "./suppr/cancel-export-prompt-dialog";
 import { ActivityLevelPickerDialog } from "./suppr/activity-level-picker-dialog";
 import {
   ACTIVITY_SHORT_LABELS,
@@ -120,6 +121,12 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
   // the pre-M7 double-confirm UX so a stray click can't drop the
   // account.
   const [clearLocalOpen, setClearLocalOpen] = useState(false);
+  // Cancel-flow export prompt dialog (PR claude/cancel-flow-export-prompt,
+  // 2026-05-02). Surfaced before the Stripe billing portal hop so the
+  // user can grab their data on the way out. Calm-tone trust posture,
+  // not retention-via-friction.
+  const [cancelExportOpen, setCancelExportOpen] = useState(false);
+  const cancelExportedFirstRef = useRef(false);
   const [accountDeletionStage, setAccountDeletionStage] = useState<
     "idle" | "first" | "second"
   >("idle");
@@ -588,6 +595,26 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             >
               View plans
             </Link>
+          )}
+          {userTier !== "free" && (
+            <button
+              type="button"
+              data-testid="settings-manage-subscription-row"
+              onClick={() => {
+                cancelExportedFirstRef.current = false;
+                setCancelExportOpen(true);
+                try {
+                  track(AnalyticsEvents.cancel_export_prompt_shown, {
+                    platform: "web",
+                  });
+                } catch { /* noop */ }
+              }}
+              className="text-sm font-medium text-foreground hover:text-foreground/80 inline-flex items-center gap-1"
+              aria-label="Manage subscription"
+            >
+              Manage subscription
+              <Icons.forward className="w-4 h-4" aria-hidden />
+            </button>
           )}
         </div>
       </div>
@@ -1407,6 +1434,70 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
         nutritionStrategy={profileNutritionStrategy}
         onConfirm={handleActivityLevelConfirm}
       />
+      {/* Cancel-flow export prompt (PR claude/cancel-flow-export-prompt,
+          2026-05-02). Web parity with the mobile sheet — surfaces
+          before the Stripe billing portal hop so the user can grab
+          their data on the way out. */}
+      <CancelExportPromptDialog
+        open={cancelExportOpen}
+        onExport={async () => {
+          try {
+            const { data: session } = await supabase.auth.getSession();
+            const uid = session.session?.user.id;
+            if (!uid) {
+              toast.error("Please sign in to export.");
+              return null;
+            }
+            const { data, error } = await supabase
+              .from("nutrition_entries")
+              .select(
+                "date_key, time_label, name, recipe_title, portion_multiplier, calories, protein, carbs, fat, fiber_g, source",
+              )
+              .eq("user_id", uid)
+              .order("date_key", { ascending: true })
+              .order("created_at", { ascending: true });
+            if (error) {
+              toast.error("Could not build CSV export.");
+              return null;
+            }
+            const rows = data ?? [];
+            const csv = nutritionLogToCsv(rows);
+            const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = nutritionLogCsvFilename();
+            a.click();
+            URL.revokeObjectURL(url);
+            cancelExportedFirstRef.current = true;
+            try {
+              track(AnalyticsEvents.cancel_export_chosen, {
+                rowCount: rows.length,
+                platform: "web",
+              });
+            } catch { /* noop */ }
+            toast.success("CSV download started.");
+            return { rowCount: rows.length };
+          } catch {
+            toast.error("Could not build CSV export.");
+            return null;
+          }
+        }}
+        onContinueCancelling={() => {
+          setCancelExportOpen(false);
+          try {
+            track(AnalyticsEvents.cancel_proceeded, {
+              exportedFirst: cancelExportedFirstRef.current,
+              platform: "web",
+            });
+          } catch { /* noop */ }
+          // Same-tab navigation so the Stripe portal opens in place
+          // and the back button returns to Settings naturally.
+          window.location.href = "/account/billing";
+        }}
+        onClose={() => setCancelExportOpen(false)}
+      />
+
       {/* 2026-04-30 (#15 + #19): Erase Everything confirm. Mirrors the
           mobile dialog at SettingsBundleContent.tsx:1357 — every category
           listed in the section copy must also appear in the confirm

@@ -1,5 +1,14 @@
 # Mobile App Changelog
 
+## 2026-05-02 — Cancel-flow "take your data with you" prompt
+
+### Settings
+- **`CancelExportPromptSheet`** (`apps/mobile/components/settings/CancelExportPromptSheet.tsx`) — Suppr-owned bottom sheet shown before the RevenueCat customer-center hop on the Manage-subscription row. Two equal-weight options: "Take your data with you" calls `nutritionLogToCsv` and presents the share sheet; "Continue cancelling" routes through to `presentCustomerCenter()` with the same App Store / Play Store fallback as before. Calm-tone trust posture, not retention-via-friction. See `docs/decisions/2026-05-02-cancel-export-prompt.md`.
+- **Web parity** in `src/app/components/Settings.tsx` — adds a "Manage subscription" link on the Plan card for non-free users that opens the parallel web dialog and routes to `/account/billing` after the user opts to continue cancelling.
+
+### Analytics
+- New events: `cancel_export_prompt_shown`, `cancel_export_chosen` (`{ rowCount }`), `cancel_proceeded` (`{ exportedFirst }`). All carry `platform: "web" | "ios" | "android"`.
+
 ## 2026-04-20 — RevenueCat Customer Center + v2 API key support
 
 ### RevenueCat
