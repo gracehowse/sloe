@@ -18,7 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useKeepAwake } from "expo-keep-awake";
 import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Play, Star, Timer as TimerIcon, CheckCircle2 } from "lucide-react-native";
+import { Mic, MicOff, Play, Star, Timer as TimerIcon, CheckCircle2 } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -55,6 +55,11 @@ import {
   pickDefaultRegularsSlot,
 } from "@/lib/cookSession";
 import { extractVideoHost } from "../../../src/lib/recipes/heroImageFallback";
+import {
+  COOK_HANDSFREE_FEATURE_ENABLED,
+  readHandsfreeEnabled,
+  writeHandsfreeEnabled,
+} from "@/lib/cookHandsfree";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -192,6 +197,17 @@ export default function CookModeScreen() {
    *  true, the Save button stays disabled. */
   const [historySaved, setHistorySaved] = useState(false);
 
+  /** Voice handsfree (Paprika parity, 2026-05-01). v1 ships the
+   *  opt-in shell only — the toggle, the persistence, and an
+   *  explanatory banner. Real audio capture is intentionally deferred
+   *  per `docs/decisions/2026-05-01-cook-voice-handsfree.md` so the
+   *  TestFlight build doesn't ship a mic permission prompt + binary
+   *  bloat for a feature with zero users yet (solo-tester posture).
+   *  The toggle still mirrors to AsyncStorage so v2 lights up
+   *  listening without re-onboarding the user.
+   *  Hydrated from storage on mount; defaults to OFF. */
+  const [handsfreeOn, setHandsfreeOn] = useState(false);
+
   const totalSteps = steps.length;
   const isDone = current >= totalSteps;
   const rawStepText = current < totalSteps ? steps[current]!.replace(/^\d+[\.\)\-]\s*/, "") : "";
@@ -286,6 +302,24 @@ export default function CookModeScreen() {
       cancelled = true;
     };
   }, [recipeId]);
+
+  // Hydrate the persisted handsfree preference once on mount. Storage
+  // failures fall back to OFF — privacy-safe default.
+  // 2026-05-01 (PR 5) — when the v1 shell is gated off, skip the read
+  // entirely so we don't grow an unused AsyncStorage round-trip on
+  // every cook-mode mount. The toggle isn't rendered, so the
+  // hydrated value would never be visible.
+  useEffect(() => {
+    if (!COOK_HANDSFREE_FEATURE_ENABLED) return;
+    let cancelled = false;
+    void (async () => {
+      const enabled = await readHandsfreeEnabled();
+      if (!cancelled) setHandsfreeOn(enabled);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   /** Hydrate the auth user id once on mount. We need it for the per-
    *  user scale storage key and the cook-history Supabase write. Both
@@ -384,6 +418,22 @@ export default function CookModeScreen() {
     },
     [scale, persistScale, recipeId],
   );
+
+  /** Flip the in-cook handsfree toggle. Persists the new value to the
+   *  shared pref so the Settings switch stays in sync, and fires both
+   *  analytics events: the session toggle (so we can slice cook-surface
+   *  discovery) and the pref-changed (so the funnel doesn't have to
+   *  UNION two surfaces to count opt-ins). */
+  const handleHandsfreeToggle = () => {
+    const next = !handsfreeOn;
+    setHandsfreeOn(next);
+    void writeHandsfreeEnabled(next);
+    track(AnalyticsEvents.cook_handsfree_session_toggled, {
+      recipeId,
+      enabled: next,
+    });
+    track(AnalyticsEvents.cook_handsfree_pref_changed, { enabled: next });
+  };
 
   // Timer tick — supports both stopwatch (count-up) and parsed-duration
   // (count-down) modes. When `timerDurationSec > 0`, fires a one-shot
@@ -1110,6 +1160,47 @@ export default function CookModeScreen() {
       borderRadius: Radius.md,
     },
     doneBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+
+    // Voice handsfree toggle (Paprika parity, 2026-05-01). The mic
+    // sits in the right slot of the header where the layout
+    // previously held a 40-width spacer balancing the Exit button.
+    // Hit area matches the spacer width so the counter stays
+    // visually centred whether the toggle is on or off.
+    micToggle: {
+      width: 40,
+      height: 32,
+      borderRadius: Radius.sm,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    // Subtle muted tint when off — present so users know it's
+    // tappable, not so loud that it competes with the step text.
+    micToggleOff: { backgroundColor: colors.card },
+    // Accent tint when on so the active state is unmistakable
+    // even from across the kitchen.
+    micToggleOn: { backgroundColor: Accent.primary + "22" },
+    handsfreeBanner: {
+      marginHorizontal: Spacing.xl,
+      marginTop: Spacing.sm,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.sm,
+      borderRadius: Radius.sm,
+      backgroundColor: Accent.primary + "10",
+      borderWidth: 1,
+      borderColor: Accent.primary + "30",
+    },
+    handsfreeBannerText: {
+      color: colors.text,
+      fontSize: 12,
+      lineHeight: 17,
+      fontWeight: "600",
+    },
+    handsfreeBannerSub: {
+      color: colors.textSecondary,
+      fontSize: 11,
+      lineHeight: 15,
+      marginTop: 2,
+    },
   }), [colors]);
 
   if (steps.length === 0) {
@@ -1141,27 +1232,57 @@ export default function CookModeScreen() {
           <Text style={styles.headerExit}>Exit</Text>
         </Pressable>
         <Text style={styles.headerCounter}>Step {current + 1} of {totalSteps}</Text>
-        {/* Recime parity (2026-04-30): "Watch original" pill — only
-            renders when the recipe has a source video URL. Tap →
-            opens the link in the system handler. The right slot
-            previously held a 40-width spacer to balance the Exit
-            button width; we keep the same minimum reserve so the
-            counter stays centred when the pill is absent. */}
-        {watchOriginalUrl ? (
-          <Pressable
-            onPress={onWatchOriginalPress}
-            accessibilityRole="link"
-            accessibilityLabel="Watch original video"
-            testID="cook-watch-original"
-            hitSlop={6}
-            style={styles.watchOriginalPill}
-          >
-            <Play size={14} color={Accent.primary} />
-            <Text style={styles.watchOriginalText}>Watch original</Text>
-          </Pressable>
-        ) : (
-          <View style={{ width: 40 }} />
-        )}
+        {/* Right slot: Watch Original (when available) + voice
+            handsfree toggle. Recime parity (2026-04-30) for watch-
+            original; Paprika parity (2026-05-01) for the mic toggle.
+            The mic toggle is gated behind `COOK_HANDSFREE_FEATURE_ENABLED`
+            so the v1 shell ships dark — the audio capture + state
+            code stays in this file but is unreachable until the flag
+            flips (journey-architect P1). */}
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          {watchOriginalUrl ? (
+            <Pressable
+              onPress={onWatchOriginalPress}
+              accessibilityRole="link"
+              accessibilityLabel="Watch original video"
+              testID="cook-watch-original"
+              hitSlop={6}
+              style={styles.watchOriginalPill}
+            >
+              <Play size={14} color={Accent.primary} />
+              <Text style={styles.watchOriginalText}>Watch original</Text>
+            </Pressable>
+          ) : null}
+          {COOK_HANDSFREE_FEATURE_ENABLED ? (
+            <Pressable
+              accessibilityRole="switch"
+              accessibilityState={{ checked: handsfreeOn }}
+              accessibilityLabel={
+                handsfreeOn ? "Voice handsfree on" : "Voice handsfree off"
+              }
+              testID="cook-handsfree-toggle"
+              onPress={handleHandsfreeToggle}
+              hitSlop={8}
+              style={[
+                styles.micToggle,
+                handsfreeOn ? styles.micToggleOn : styles.micToggleOff,
+              ]}
+            >
+              {handsfreeOn ? (
+                <Mic size={18} color={Accent.primary} strokeWidth={2} />
+              ) : (
+                <MicOff size={18} color={colors.textSecondary} strokeWidth={2} />
+              )}
+            </Pressable>
+          ) : (
+            // Spacer keeps the centered step counter centred when
+            // the toggle is hidden behind the feature flag.
+            <View
+              style={{ width: 40, height: 32 }}
+              testID="cook-handsfree-toggle-placeholder"
+            />
+          )}
+        </View>
       </View>
 
       {/* Progress bar */}
@@ -1175,6 +1296,28 @@ export default function CookModeScreen() {
           ]}
         />
       </View>
+
+      {/* Voice handsfree banner — only renders when the toggle is ON.
+          v1 transparency: tells the user voice listening isn't live
+          yet, but the screen-stays-on bit IS. Better to ship honest
+          copy than to fake a pulsing mic the listener can't fulfil
+          (CLAUDE.md: never fake-implement). v2 swap-in: replace the
+          banner with a "Listening — say next, repeat, pause…" hint
+          + a real pulse on the mic icon when the listener is active. */}
+      {handsfreeOn && (
+        <View
+          style={styles.handsfreeBanner}
+          accessibilityLiveRegion="polite"
+          testID="cook-handsfree-banner"
+        >
+          <Text style={styles.handsfreeBannerText}>
+            Screen stays awake while you cook.
+          </Text>
+          <Text style={styles.handsfreeBannerSub}>
+            Voice control (say &quot;next&quot;, &quot;back&quot;, &quot;repeat&quot;) is coming soon. We don&apos;t record audio yet.
+          </Text>
+        </View>
+      )}
 
       {/* "Last time" preview card — only when we have prior cook history.
           Renders above the active step so the user walks in reminded of
