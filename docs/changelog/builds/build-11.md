@@ -10,6 +10,23 @@ builds. See `docs/changelog/README.md` for the authoring workflow.
 
 ## Fixed
 
+- **Recipe detail layout v3 — kcal inline, macros lead, empty time-stats hidden.**
+  TestFlight feedback `AKzwcchbHQ14Z3FncjWo-LU` (Build 40, 2026-04-30):
+  even after the v2 redesign the page still read as five visually
+  competing cards stacked on top of each other. v3 collapses the
+  bordered "329 kcal per portion" hero card into a bold inline kcal
+  token in the subtitle row (`lunch · serves 3 · 329 kcal · by author`)
+  so the kcal number lives at the same glance as the title. The macro
+  tiles below now ARE the visual hero — bigger value font (20pt vs
+  16pt), more padding (14 vs 10), 11pt labels — the only coloured
+  surface above the fold. "Fits your day" softens to a single
+  coloured text line beneath the macros (no card, no pill background).
+  When nutrition isn't yet computed, a single dimmed placeholder
+  takes the kcal hero's place so users can still tell "we haven't
+  computed it" from "this recipe is 0 kcal" (P1-16 preserved).
+  Mobile + web parity (`apps/mobile/app/recipe/[id].tsx`,
+  `src/app/components/RecipeDetail.tsx`).
+
 - **Progress — skeleton no longer pins indefinitely on a failed load.**
   `loadData` / `load` are now wrapped in `try/finally`, so a thrown
   supabase error (network blip, auth expiry mid-call) flips `loading`

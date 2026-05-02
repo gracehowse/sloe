@@ -29,11 +29,12 @@ import {
 } from "../../src/lib/changelog/entries";
 
 describe("changelog/entries", () => {
-  it("getLatestChangelog returns the highest build number that has items (skips placeholder)", () => {
+  it("getLatestChangelog returns the highest build number that has items (skips placeholders)", () => {
     const latest = getLatestChangelog();
-    // Build 11 is a placeholder with `items: []`. The latest user-
-    // visible entry must be build 10, not build 11.
-    expect(latest.buildNumber).toBe(10);
+    // 2026-05-01: build 11 picked up its first bullet (recipe detail
+    // v3 redesign) — it's no longer a placeholder and is now the
+    // latest user-visible entry.
+    expect(latest.buildNumber).toBe(11);
     expect(latest.items.length).toBeGreaterThan(0);
   });
 
@@ -99,9 +100,15 @@ describe("changelog/entries", () => {
     }
   });
 
-  it("groupChangelogItems returns [] for the empty placeholder entry (build 11)", () => {
-    const placeholder = getAllChangelogs().find((e) => e.buildNumber === 11);
-    expect(placeholder).toBeDefined();
-    expect(groupChangelogItems(placeholder!)).toEqual([]);
+  it("groupChangelogItems returns the canonical order for the populated entries", () => {
+    // 2026-05-01: build 11 graduated from placeholder to real entry.
+    // Pre-fix this test pinned build 11 as `[]`. Now it carries a
+    // single `fixed` bullet. The canonical-order assertion still
+    // applies — sections render `new` → `fixed` → `coming_soon`.
+    const entry = getAllChangelogs().find((e) => e.buildNumber === 11);
+    expect(entry).toBeDefined();
+    const groups = groupChangelogItems(entry!);
+    expect(groups.map((g) => g.kind)).toEqual(["fixed"]);
+    expect(groups[0].items.length).toBe(1);
   });
 });
