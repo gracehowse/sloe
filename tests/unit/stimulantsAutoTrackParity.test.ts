@@ -30,10 +30,18 @@ const REPO_ROOT = resolve(__dirname, "../..");
  * Some files span both roles — (tabs)/index does the commit + delete on
  * mobile, (tabs)/barcode does the commit + bump inline.
  *
- * Deliberately narrow: recipe-log and meal-plan-log paths don't auto-
- * track today because recipes / planned meals don't carry aggregated
- * caffeine/alcohol nutrients; they stay out of this pin until the
- * ingredient-level verifier surfaces them (follow-up in resolved.md).
+ * Deliberately narrow: recipe-log paths don't auto-track today
+ * because recipes don't carry aggregated caffeine/alcohol nutrients
+ * (the verifier surfaces them per-ingredient — see scope cap doc at
+ * docs/decisions/2026-05-01-tracking-extras-autoupdate.md). Meal-plan
+ * logs DO bump now (2026-05-01) because the verifier-fed
+ * `nutrition_micros` map carries scaled caffeine / alcohol when the
+ * underlying recipe has them.
+ *
+ * Quick-add / Eat-again paths are covered indirectly: web piggybacks
+ * on `addLoggedMeal` (which already imports `updateStimulantsForDay`)
+ * and mobile inlines the call inside `(tabs)/index.tsx`, which is
+ * already pinned below.
  */
 const SITES: Array<{
   path: string;
