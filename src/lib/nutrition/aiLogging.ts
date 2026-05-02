@@ -57,6 +57,26 @@ export type AiLoggedItem = {
   /** Match confidence in [0, 1]. Values <0.5 are flagged as low. */
   confidence: number;
   source: AiLoggingSource;
+  /** Photo-log only (2026-05-01 range-first re-architecture):
+   *  preserves the model's kcal / macro RANGES so the review UI can
+   *  display "~120-150 kcal" instead of the lossy midpoint, and the
+   *  commit pipeline can stash low/high in `meal_logs.metadata` for
+   *  uncertainty-aware analytics. Voice path leaves this unset. */
+  range?: {
+    calories: { low: number; high: number };
+    protein: { low: number; high: number } | null;
+    carbs: { low: number; high: number } | null;
+    fat: { low: number; high: number } | null;
+  };
+  /** Macro-role grouping label assigned by the photo-log model
+   *  (e.g. "Bread + dips", "Protein + fats", "Extras"). Voice path
+   *  leaves this unset; absent => render flat without grouping. */
+  category?: string;
+  /** Verbal portion hint from the photo-log model — "~40-50g",
+   *  "1 piece". Distinct from `unit` (which historical voice rows
+   *  also use); duplicated here for the photo-log review UI so a
+   *  later refactor of `unit`'s semantics can't strip it. */
+  quantityHint?: string;
 };
 
 export type ConfidenceLevel = "low" | "medium" | "high";

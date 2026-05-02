@@ -1,18 +1,30 @@
 /**
- * PhotoLogSheet (Batch 5.13) — mobile Pro-tier AI photo logging sheet.
+ * PhotoLogSheet — mobile Pro-tier AI photo logging sheet.
  *
- * Mirrors `src/app/components/suppr/photo-log-dialog.tsx` behaviour:
+ * Re-architected 2026-05-01 (`docs/decisions/2026-05-01-photo-log-rangefirst.md`).
+ *
+ * Renders a ChatGPT-grade itemized breakdown of a meal photo: items
+ * grouped by macro role ("Bread + dips", "Protein + fats", "Extras"),
+ * per-item kcal RANGES (~120-150 kcal — honest about vision uncertainty),
+ * an optional add-on chip strip ("Add Glass of red wine: +120-150 kcal"),
+ * and a plate total range. Replaces the previous single-number-per-item
+ * UI which forced the user to live with a (lossy) point estimate.
+ *
+ * Mirrors `src/app/components/suppr/photo-log-dialog.tsx` exactly:
  *  1. Camera / library picker via expo-image-picker.
  *  2. Preview the selected image.
  *  3. "Analyse" POSTs multipart form-data to `/api/nutrition/photo-log`.
- *  4. Review list with per-item confidence badge + inline macro edit.
- *  5. Tap "Log all" → caller commits each item as a `JournalMeal` with
- *     source `"AI photo"`.
+ *  4. Items render grouped by category, with kcal ranges + Remove button per item.
+ *  5. Tapping an addon chip moves it into the items list and updates the plate total.
+ *  6. "Save to today" projects each ranged item to the existing
+ *     `AiLoggedItem` shape via `rangedItemToLogged` and calls onCommit.
  *
- * Shares sanitisation / confidence classification / totals with web via
- * `src/lib/nutrition/aiLogging.ts`.
+ * The web/mobile divergence is intentionally minimal: identical
+ * response shape, identical grouping, identical en-dash range format.
+ * Only styling differs (sonner toast on web; AsyncStorage +
+ * ToastAndroid + Alert.alert on mobile).
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -28,21 +40,26 @@ import {
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
-import { X } from "lucide-react-native";
+import { Plus, X } from "lucide-react-native";
 
 import { Accent, IconSize, Radius, Spacing } from "@/constants/theme";
 import {
   averageConfidence,
-  isLowConfidence,
-  sanitiseAiItems,
   type AiLoggedItem,
 } from "../../../src/lib/nutrition/aiLogging";
+import {
+  formatRange,
+  formatRangeKcal,
+  groupItemsByCategory,
+  rangedItemToLogged,
+  sumRanges,
+  type PhotoLogAddon,
+  type PhotoLogItemRanged,
+} from "../../../src/lib/nutrition/photoLogRanges";
 import { persistPhotoCorrections } from "../../../src/lib/nutrition/photoCorrectionPersist";
 import { supabase } from "@/lib/supabase";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "../../../src/lib/analytics/events";
-import AiLogReviewItem from "./AiLogReviewItem";
-import AiLogReviewSummary from "./AiLogReviewSummary";
 
 /** AsyncStorage key for the one-time "we'll remember this for next
  *  time" tooltip on the first persisted photo-log correction. The
@@ -91,13 +108,14 @@ export default function PhotoLogSheet({
 }: Props) {
   const [stage, setStage] = useState<Stage>("pick");
   const [asset, setAsset] = useState<PickedAsset | null>(null);
-  const [items, setItems] = useState<AiLoggedItem[]>([]);
+  const [items, setItems] = useState<PhotoLogItemRanged[]>([]);
+  const [addons, setAddons] = useState<PhotoLogAddon[]>([]);
+  const [notes, setNotes] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  /** Snapshot of the items the AI returned BEFORE the user edited any
-   *  field. Captured the moment the API response lands; used at
-   *  commit time to detect which rows the user actually corrected so
-   *  we only persist meaningful edits to the bank. Stored as a ref
-   *  (not state) because we never re-render off it. */
+  /** Snapshot of the AI's items in `AiLoggedItem` form so the photo-
+   *  corrections-persist helper can diff user edits at commit time
+   *  (the helper expects that shape). Stored as a ref because we
+   *  never re-render off it. Mirror of web dialog. */
   const originalItemsRef = useRef<AiLoggedItem[]>([]);
 
   useEffect(() => {
@@ -105,6 +123,8 @@ export default function PhotoLogSheet({
       setStage("pick");
       setAsset(null);
       setItems([]);
+      setAddons([]);
+      setNotes(null);
       setErrorMsg(null);
       originalItemsRef.current = [];
       track(AnalyticsEvents.ai_photo_log_started);
@@ -185,27 +205,23 @@ export default function PhotoLogSheet({
         setStage("error");
         return;
       }
-      if (!data?.ok || !Array.isArray(data.items)) {
+      if (!data?.ok || !Array.isArray(data.items) || data.items.length === 0) {
         setErrorMsg(
           typeof data?.message === "string"
             ? data.message
-            : "Could not identify food in that photo. Try a clearer angle.",
+            : "Couldn't read the photo. Try a clearer angle or better light.",
         );
         setStage("error");
         return;
       }
-      const cleaned = sanitiseAiItems(data.items, "ai_photo");
-      if (cleaned.length === 0) {
-        setErrorMsg("No food items were identified. Try a clearer, well-lit photo.");
-        setStage("error");
-        return;
-      }
-      // Snapshot the AI's original output so we can detect which rows
-      // the user edited at commit time. Deep clone via spread per-row
-      // because we don't want the user's later inline edits to mutate
-      // the snapshot.
-      originalItemsRef.current = cleaned.map((it) => ({ ...it }));
-      setItems(cleaned);
+      // Snapshot the AI's items in `AiLoggedItem` form so the photo-
+      // corrections-persist helper can diff user edits at commit time
+      // (the helper expects that shape). Mirror of web dialog.
+      const ranged = data.items as PhotoLogItemRanged[];
+      originalItemsRef.current = ranged.map((it) => rangedItemToLogged(it));
+      setItems(ranged);
+      setAddons(Array.isArray(data.addons) ? data.addons : []);
+      setNotes(typeof data.notes === "string" ? data.notes : null);
       setStage("review");
     } catch {
       setErrorMsg("Photo logging failed. Check your connection and try again.");
@@ -213,22 +229,50 @@ export default function PhotoLogSheet({
     }
   }, [accessToken, apiBase, asset]);
 
-  const hasLowConfidence = items.some((i) => isLowConfidence(i));
+  const groups = useMemo(() => groupItemsByCategory(items), [items]);
+  const totalKcal = useMemo(
+    () => sumRanges(items.map((i) => i.calories)),
+    [items],
+  );
 
-  const updateItem = (index: number, patch: Partial<AiLoggedItem>) => {
-    setItems((prev) => prev.map((it, i) => (i === index ? { ...it, ...patch } : it)));
+  const removeItem = (id: string) => {
+    setItems((prev) => prev.filter((i) => i.id !== id));
   };
 
-  const removeItem = (index: number) => {
-    setItems((prev) => prev.filter((_, i) => i !== index));
+  const addAddon = (addon: PhotoLogAddon) => {
+    // Move the addon into the items list as a Drinks-category item (the
+    // most common addon is wine; user can edit category later). Mirror
+    // of web dialog.
+    setItems((prev) => [
+      ...prev,
+      {
+        id: addon.id,
+        name: addon.name,
+        category: "Drinks",
+        calories: addon.calories,
+        protein: null,
+        carbs: null,
+        fat: null,
+        confidence: "medium" as const,
+        source: "ai" as const,
+        ...(addon.hint ? { quantityHint: addon.hint } : {}),
+      },
+    ]);
+    setAddons((prev) => prev.filter((a) => a.id !== addon.id));
+    track(AnalyticsEvents.ai_photo_log_addon_added, {
+      name: addon.name,
+      kcalLow: addon.calories.low,
+      kcalHigh: addon.calories.high,
+    });
   };
 
-  const handleLogAll = useCallback(() => {
+  const handleSaveToday = useCallback(() => {
     if (items.length === 0) return;
-    onCommit(items);
+    const projected = items.map((it) => rangedItemToLogged(it));
+    onCommit(projected as AiLoggedItem[]);
     track(AnalyticsEvents.ai_photo_log_committed, {
-      itemCount: items.length,
-      avgConfidence: averageConfidence(items),
+      itemCount: projected.length,
+      avgConfidence: averageConfidence(projected as AiLoggedItem[]),
     });
 
     // Fire-and-forget: persist corrected items to the user's personal
@@ -247,11 +291,8 @@ export default function PhotoLogSheet({
           supabase: supabase as Parameters<typeof persistPhotoCorrections>[0]["supabase"],
           userId,
           originals: originalItemsRef.current,
-          corrected: items,
+          corrected: projected as AiLoggedItem[],
           track: (event, payload) => {
-            // Bridge to the platform analytics shim; same payload
-            // shape as the web call site so the dashboard sees one
-            // signal per platform with identical fields.
             track(event as never, payload as never);
           },
         });
@@ -263,14 +304,10 @@ export default function PhotoLogSheet({
         if (Platform.OS === "android") {
           ToastAndroid.show(message, ToastAndroid.SHORT);
         } else {
-          // iOS has no native toast; a single-button Alert is the
-          // ambient pattern we use elsewhere in the app (cook.tsx
-          // showToast). Title-only with no body so it dismisses
-          // quickly when the user taps OK.
           Alert.alert(message);
         }
       } catch {
-        /* fail closed — the meal already committed; nothing else to do */
+        /* fail closed — the meal already committed */
       }
     })();
 
@@ -301,8 +338,7 @@ export default function PhotoLogSheet({
             <View style={{ alignItems: "center", marginBottom: Spacing.sm }}>
               <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.cardBorder }} />
             </View>
-            {/* Header row: title + X close (audit 2026-04-30 modal-dismiss
-                sweep — keyboard-up on iOS can hide the backdrop strip). */}
+            {/* Header row: title + X close */}
             <View
               style={{
                 flexDirection: "row",
@@ -326,8 +362,8 @@ export default function PhotoLogSheet({
             </View>
             <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: Spacing.md }}>
               {stage === "review"
-                ? `Review the ${items.length} item${items.length === 1 ? "" : "s"} we identified. Edit or remove before logging.`
-                : "Snap a photo of your meal and we'll estimate portions and macros."}
+                ? `${items.length} item${items.length === 1 ? "" : "s"} on the plate. Tap any to verify or remove.`
+                : "Snap a photo. We'll itemize it with kcal ranges grouped by macro role."}
             </Text>
 
             {stage === "pick" && (
@@ -404,8 +440,8 @@ export default function PhotoLogSheet({
                   </Pressable>
                 </View>
                 <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: Spacing.md }}>
-                  AI estimates. Photo is sent to our servers and processed by OpenAI.
-                  Low-confidence items will be flagged for verification.
+                  AI estimates with ranges. Tap any item after to verify against our food database.
+                  Low-confidence items are flagged.
                 </Text>
               </View>
             )}
@@ -433,7 +469,7 @@ export default function PhotoLogSheet({
             )}
 
             {stage === "review" && (
-              <ScrollView style={{ maxHeight: 440 }} showsVerticalScrollIndicator={false}>
+              <ScrollView style={{ maxHeight: 460 }} showsVerticalScrollIndicator={false}>
                 {asset && (
                   <Image
                     source={{ uri: asset.uri }}
@@ -446,21 +482,185 @@ export default function PhotoLogSheet({
                     resizeMode="cover"
                   />
                 )}
-                {items.map((item, i) => (
-                  <AiLogReviewItem
-                    key={`${item.name}-${i}`}
-                    item={item}
-                    index={i}
-                    onChange={(patch) => updateItem(i, patch)}
-                    onRemove={() => removeItem(i)}
-                    colors={colors}
-                  />
+                {/* Items grouped by macro role */}
+                {groups.map((group) => (
+                  <View
+                    key={group.category}
+                    style={{ marginBottom: Spacing.md }}
+                    accessibilityLabel={`Group ${group.category}`}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        fontWeight: "700",
+                        color: colors.textSecondary,
+                        textTransform: "uppercase",
+                        letterSpacing: 0.5,
+                        marginBottom: 4,
+                      }}
+                    >
+                      {group.category}
+                    </Text>
+                    {group.items.map((item) => {
+                      const low = item.confidence === "low";
+                      return (
+                        <View
+                          key={item.id}
+                          accessibilityLabel={`Item ${item.name} ${formatRangeKcal(item.calories)}`}
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 8,
+                            paddingHorizontal: 10,
+                            paddingVertical: 8,
+                            borderWidth: 1,
+                            borderColor: low ? "#F59E0B55" : colors.cardBorder,
+                            backgroundColor: low ? "#F59E0B0F" : colors.background,
+                            borderRadius: Radius.sm,
+                            marginBottom: 4,
+                          }}
+                        >
+                          <View style={{ flex: 1, minWidth: 0 }}>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                              <Text
+                                style={{ fontSize: 14, fontWeight: "600", color: colors.text }}
+                                numberOfLines={1}
+                              >
+                                {item.name}
+                              </Text>
+                              {item.quantityHint && (
+                                <Text style={{ fontSize: 11, color: colors.textTertiary }} numberOfLines={1}>
+                                  ({item.quantityHint})
+                                </Text>
+                              )}
+                            </View>
+                            {low && (
+                              <Text
+                                accessibilityRole="alert"
+                                style={{ fontSize: 11, color: "#B45309", marginTop: 2 }}
+                              >
+                                Low confidence — verify before logging.
+                              </Text>
+                            )}
+                          </View>
+                          <Text
+                            style={{
+                              fontSize: 13,
+                              color: colors.text,
+                              fontVariant: ["tabular-nums"],
+                            }}
+                          >
+                            {formatRangeKcal(item.calories)}
+                          </Text>
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={`Remove ${item.name}`}
+                            onPress={() => removeItem(item.id)}
+                            hitSlop={8}
+                          >
+                            <X size={16} color={colors.textTertiary} strokeWidth={2} />
+                          </Pressable>
+                        </View>
+                      );
+                    })}
+                  </View>
                 ))}
-                <AiLogReviewSummary
-                  items={items}
-                  slotLabel={activeSlot}
-                  colors={colors}
-                />
+
+                {/* Plate total banner */}
+                <View
+                  accessibilityLabel={`Plate total ${formatRangeKcal(totalKcal)}`}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    backgroundColor: Accent.primary + "1A",
+                    paddingHorizontal: 12,
+                    paddingVertical: 10,
+                    borderRadius: Radius.md,
+                    marginBottom: Spacing.sm,
+                  }}
+                >
+                  <Text style={{ fontSize: 16, marginRight: 6 }}>👉</Text>
+                  <Text style={{ flex: 1, fontSize: 13, fontWeight: "600", color: colors.text }}>
+                    Plate total
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 14,
+                      fontWeight: "700",
+                      color: colors.text,
+                      fontVariant: ["tabular-nums"],
+                    }}
+                  >
+                    {formatRangeKcal(totalKcal)}
+                  </Text>
+                </View>
+
+                {/* Add-on chips */}
+                {addons.length > 0 && (
+                  <View style={{ marginBottom: Spacing.sm }}>
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        fontWeight: "700",
+                        color: colors.textSecondary,
+                        textTransform: "uppercase",
+                        letterSpacing: 0.5,
+                        marginBottom: 4,
+                      }}
+                    >
+                      Add-ons
+                    </Text>
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                      {addons.map((addon) => (
+                        <Pressable
+                          key={addon.id}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Add ${addon.name} ${formatRange(addon.calories)} kcal`}
+                          onPress={() => addAddon(addon)}
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 4,
+                            paddingHorizontal: 10,
+                            paddingVertical: 6,
+                            borderRadius: 999,
+                            borderWidth: 1,
+                            borderColor: colors.cardBorder,
+                            backgroundColor: colors.background,
+                          }}
+                        >
+                          <Plus size={12} color={colors.text} strokeWidth={2.25} />
+                          <Text style={{ fontSize: 12, fontWeight: "600", color: colors.text }}>
+                            Add {addon.name}
+                          </Text>
+                          <Text style={{ fontSize: 11, color: colors.textTertiary }}>
+                            +{formatRange(addon.calories)} kcal
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  </View>
+                )}
+
+                {/* Caveats */}
+                {notes && (
+                  <Text
+                    accessibilityLabel={`Notes: ${notes}`}
+                    style={{
+                      fontSize: 11,
+                      color: colors.textTertiary,
+                      fontStyle: "italic",
+                      marginBottom: Spacing.sm,
+                    }}
+                  >
+                    {notes}
+                  </Text>
+                )}
+
+                <Text style={{ fontSize: 11, color: colors.textTertiary }}>
+                  Logging to <Text style={{ fontWeight: "700", color: colors.text }}>{activeSlot}</Text>.
+                  Calories saved use the midpoint of each range.
+                </Text>
               </ScrollView>
             )}
 
@@ -519,8 +719,8 @@ export default function PhotoLogSheet({
               {stage === "review" && (
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Log all items"
-                  onPress={handleLogAll}
+                  accessibilityLabel="Save to today"
+                  onPress={handleSaveToday}
                   disabled={items.length === 0}
                   style={{
                     flex: 1,
@@ -531,7 +731,7 @@ export default function PhotoLogSheet({
                   }}
                 >
                   <Text style={{ fontSize: 14, fontWeight: "700", color: "#fff" }}>
-                    {hasLowConfidence ? "Log anyway" : "Log all"}
+                    Save to today
                   </Text>
                 </Pressable>
               )}

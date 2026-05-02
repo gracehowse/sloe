@@ -1,32 +1,103 @@
 import { NextResponse } from "next/server";
 import { rateLimit } from "@/lib/server/rateLimit";
 import { getUserIdFromRequest, getUserTier } from "@/lib/supabase/serverAnonClient";
-import { verifyIngredients } from "@/lib/nutrition/verifyIngredients";
+import {
+  parsePhotoLogRangedResponse,
+  type PhotoLogRangedResponse,
+} from "@/lib/nutrition/photoLogRanges";
 
 export const runtime = "nodejs";
 
 const MAX_BYTES = 6 * 1024 * 1024;
 
-export type PhotoLogItem = {
-  name: string;
-  quantity: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  confidence?: number;
-  source?: string;
-};
+/**
+ * Re-architected 2026-05-01 (`docs/decisions/2026-05-01-photo-log-rangefirst.md`).
+ *
+ * Single GPT-4o vision call that returns an itemized breakdown grouped
+ * by macro role, with per-item kcal RANGES (not point estimates),
+ * optional add-on suggestions, and a plate total range.
+ *
+ * The previous "identify -> verifyIngredients" pipeline blanket-failed
+ * (502 `verify_failed` / 422 `no_food_detected`) the moment any single
+ * item couldn't be matched against USDA / OFF / FatSecret. This route
+ * never blanket-fails on partial matches — if the model returns ANY
+ * items, we return them. The optional per-item "Verify with database"
+ * action lives client-side and POSTs the single ingredient back to
+ * `/api/nutrition/verify-recipe` to swap that one row to a database-
+ * matched single-number row.
+ *
+ * Response shape: see `PhotoLogRangedResponse`.
+ */
 
-export type PhotoLogResponse = {
-  ok: true;
-  items: PhotoLogItem[];
-  totalCalories: number;
-  totalProtein: number;
-  totalCarbs: number;
-  totalFat: number;
-  confidenceTier: "high" | "medium" | "low";
-};
+// Re-export the canonical types so existing imports
+// (`import type { PhotoLogResponse } from "app/api/nutrition/photo-log/route"`)
+// still resolve. The legacy point-estimate shape is gone — keep the
+// type alias name for code-search continuity but point it at the new
+// range-first contract.
+export type { PhotoLogRangedResponse as PhotoLogResponse } from "@/lib/nutrition/photoLogRanges";
+export type {
+  PhotoLogItemRanged as PhotoLogItem,
+  PhotoLogAddon,
+  Range as KcalRange,
+} from "@/lib/nutrition/photoLogRanges";
+
+const MODEL_VERSION = "gpt-4o";
+
+const SYSTEM_PROMPT = `You are a nutrition coach reading a photo of a meal.
+
+Return a single JSON object describing the items on the plate. Group items by macro role and give each item a calorie RANGE (not a single number) — wider range when you're less sure.
+
+EXACT JSON SHAPE (no markdown fences, no prose):
+{
+  "items": [
+    {
+      "name": "string — e.g. 'Pita', 'Hummus', 'Cheese', 'Half egg'",
+      "category": "string — one of 'Bread + dips', 'Protein + fats', 'Extras', 'Drinks', 'Sweets'. Pick the one that fits best, OR supply your own short label if a different role fits the plate (e.g. 'Pasta + sauce', 'Rice + curry').",
+      "quantityHint": "string — verbal portion hint, e.g. '~40-50g', '1 piece', '1/2 cup', 'small handful'. OPTIONAL — omit if you can't tell.",
+      "calories": { "low": number, "high": number },
+      "protein": { "low": number, "high": number } | null,
+      "carbs": { "low": number, "high": number } | null,
+      "fat": { "low": number, "high": number } | null,
+      "confidence": "high" | "medium" | "low"
+    }
+  ],
+  "addons": [
+    {
+      "name": "string — common pairing NOT in the photo, e.g. 'Glass of wine', 'Bun', 'Butter'",
+      "hint": "string — short reason or condition, e.g. 'if also drinking wine'. OPTIONAL.",
+      "calories": { "low": number, "high": number }
+    }
+  ],
+  "notes": "string — short caveats, e.g. 'dressing not visible — likely +30-50 kcal'. OPTIONAL."
+}
+
+RULES:
+- ONE item per visible food (don't merge "salami + cheese" — break them out).
+- Calorie ranges should be tight when you're sure (within ~15% of midpoint), wider when you're not. NEVER widen ranges to "feel safer" — be honest about uncertainty.
+- "confidence" reflects how sure you are this item is the food you named at the portion you guessed:
+   high: I'd bet money on this — clear visual, common food, standard portion.
+   medium: probably correct, plausible alternatives exist.
+   low: ambiguous — could be one of several things; portion is hard to read.
+- Macros (protein/carbs/fat) are OPTIONAL per item. Return null when you can't reasonably estimate.
+- "addons" are foods NOT visible in the photo that commonly go with what IS visible. Examples: a charcuterie plate -> wine; a burger photo with no bun -> bun; bread with no spread -> butter. SKIP this field (or return []) when nothing obvious applies.
+- "notes" is for short caveats only — "dressing not visible", "olive oil glaze likely +30 kcal". Skip when there's nothing to say.
+- DO NOT return totals — the client computes them from items.
+
+CALIBRATION EXAMPLES (use these as reference points):
+- 1 piece of pita bread: 120-150 kcal
+- 2 tbsp hummus: 70-100 kcal
+- 2 tbsp tzatziki: 40-60 kcal
+- 2 tbsp tapenade: 60-90 kcal
+- 40-50g hard cheese (cheddar / manchego): 160-200 kcal
+- 4 slices salami: 120-150 kcal
+- 1 boiled egg: 70 kcal (so half = 35)
+- 10 olives: 35-50 kcal
+- Small Greek salad (feta + olive oil): 80-150 kcal
+- Glass of red wine (175ml): 120-150 kcal
+- 1 burger bun: 120-160 kcal
+- 1 tbsp butter: 100 kcal
+
+Return ONLY the JSON object.`;
 
 export async function POST(req: Request) {
   const userId = await getUserIdFromRequest(req);
@@ -41,9 +112,7 @@ export async function POST(req: Request) {
   // recognition (100/day)"). Close the previous Base + Free loophole
   // (2026-04-19 sync-enforcer finding — documented in
   // `docs/product/landing-maintenance.md`) so the server matches what
-  // the UI tells Free + Base users. Voice-log was closed the same
-  // day (`app/api/nutrition/voice-log/route.ts` L36–L47); pattern
-  // replicated here verbatim.
+  // the UI tells Free + Base users.
   if (tier !== "pro") {
     return NextResponse.json(
       { ok: false, error: "upgrade_required", message: "AI photo logging is a Pro feature." },
@@ -51,11 +120,10 @@ export async function POST(req: Request) {
     );
   }
 
-  // P0-6 (2026-04-25): scope per-user via the new `userId` field rather
-  // than embedding it in the prefix. Bucket key is now
-  // `api:photo-log:user:<uid>:<ip>` — drains independently for each
-  // (user, IP) tuple, closing both the IP-rotation bypass and the
-  // shared-NAT starvation case.
+  // P0-6 (2026-04-25): scope per-user via the `userId` field rather
+  // than embedding it in the prefix. Bucket key drains independently
+  // for each (user, IP) tuple, closing both the IP-rotation bypass
+  // and the shared-NAT starvation case.
   const limited = await rateLimit({
     keyPrefix: "api:photo-log",
     userId,
@@ -102,30 +170,6 @@ export async function POST(req: Request) {
   const b64 = buf.toString("base64");
   const dataUrl = `data:${mime};base64,${b64}`;
 
-  // ── Step 1: Use GPT-4o to IDENTIFY foods and portions (not estimate nutrition) ──
-  const identifyPrompt = `Analyze this photo of a meal or food items.
-
-For each distinct food item visible, identify the food and estimate the portion size.
-
-Return a single JSON object (no markdown fences):
-{
-  "items": [
-    {
-      "name": "specific food name (e.g. 'grilled chicken breast' not just 'chicken')",
-      "amount": "numeric amount (e.g. '200', '1', '2')",
-      "unit": "unit of measure (e.g. 'g', 'cup', 'medium', 'slice', 'piece')"
-    }
-  ]
-}
-
-Rules:
-- Be specific about food items (e.g. "grilled chicken breast" not "chicken")
-- Use reasonable portion estimates based on visual cues (plate size, utensils for scale)
-- Separate amount and unit (amount should be a number, unit should be the measure)
-- Include condiments, sauces, and sides if visible
-- If you cannot identify a food item with reasonable confidence, include it with name prefixed with "unknown: "
-- Do NOT estimate calories or macros — only identify foods and portions`;
-
   let res: Response;
   try {
     res = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -135,14 +179,28 @@ Rules:
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o",
-        temperature: 0.2,
-        max_tokens: 1500,
+        model: MODEL_VERSION,
+        // 0.3 — deterministic enough; not so cold the ranges collapse
+        // to point estimates. 0.0 made the model emit `low === high`
+        // in early testing.
+        temperature: 0.3,
+        max_tokens: 2500,
+        // JSON object mode forces the model to emit a single JSON
+        // object — eliminates "I am happy to help, here is the JSON"
+        // preamble that broke the previous parser.
+        response_format: { type: "json_object" },
         messages: [
+          {
+            role: "system",
+            content: SYSTEM_PROMPT,
+          },
           {
             role: "user",
             content: [
-              { type: "text", text: identifyPrompt },
+              {
+                type: "text",
+                text: "Identify every food item on this plate. Return the JSON described in the system message.",
+              },
               { type: "image_url", image_url: { url: dataUrl } },
             ],
           },
@@ -168,80 +226,54 @@ Rules:
   };
   const raw = data.choices?.[0]?.message?.content?.trim() ?? "";
 
-  let parsed: { items?: Array<{ name?: string; amount?: string; unit?: string }> };
+  let parsedJson: unknown;
   try {
+    // JSON object mode means we expect raw JSON. Strip a stray code
+    // fence just in case the model regressed (this happens
+    // occasionally on older snapshots).
     const cleaned = raw.replace(/^```json?\s*/i, "").replace(/```\s*$/, "");
-    parsed = JSON.parse(cleaned) as typeof parsed;
+    parsedJson = JSON.parse(cleaned);
   } catch {
-    return NextResponse.json(
-      { ok: false, error: "unparseable_model_output", message: "The AI returned an unexpected format. Please try again." },
-      { status: 502 },
-    );
-  }
-
-  const identified = (parsed.items ?? []).map((item) => ({
-    name: String(item.name ?? "Unknown food").trim(),
-    amount: String(item.amount ?? "1").trim(),
-    unit: String(item.unit ?? "serving").trim(),
-  }));
-
-  if (identified.length === 0) {
-    return NextResponse.json(
-      { ok: false, error: "no_food_detected", message: "No food items detected in the photo. Try a clearer angle." },
-      { status: 422 },
-    );
-  }
-
-  // ── Step 2: Run identified foods through verified nutrition pipeline ──
-  // This matches against USDA, Open Food Facts, FatSecret with confidence scoring
-  try {
-    const result = await verifyIngredients({
-      ingredients: identified,
-      servings: 1,
-      provider: "auto",
-      overrides: [],
-    });
-
-    const items: PhotoLogItem[] = result.verified.map((ing) => ({
-      name: ing.matchedName ?? ing.resolved.name ?? "Unknown",
-      quantity: `${ing.resolved.amount ?? ""} ${ing.resolved.unit ?? ""}`.trim() || "1 serving",
-      calories: Math.round(ing.macros?.calories ?? 0),
-      protein: Math.round(ing.macros?.protein ?? 0),
-      carbs: Math.round(ing.macros?.carbs ?? 0),
-      fat: Math.round(ing.macros?.fat ?? 0),
-      confidence: ing.confidence,
-      source: ing.source,
-    }));
-
-    const totalCalories = items.reduce((a, i) => a + i.calories, 0);
-    const totalProtein = items.reduce((a, i) => a + i.protein, 0);
-    const totalCarbs = items.reduce((a, i) => a + i.carbs, 0);
-    const totalFat = items.reduce((a, i) => a + i.fat, 0);
-
-    const confidenceTier =
-      result.avgIngredientConfidence >= 0.75
-        ? "high"
-        : result.avgIngredientConfidence >= 0.5
-          ? "medium"
-          : "low";
-
-    return NextResponse.json({
-      ok: true,
-      items,
-      totalCalories,
-      totalProtein,
-      totalCarbs,
-      totalFat,
-      confidenceTier,
-    } satisfies PhotoLogResponse);
-  } catch (e) {
     return NextResponse.json(
       {
         ok: false,
-        error: "verify_failed",
-        message: "Food was identified but nutrition lookup failed. Please try again.",
+        error: "model_unparseable",
+        message: "Couldn't read the AI's reply. Try a different angle.",
       },
       { status: 502 },
     );
   }
+
+  const outcome = parsePhotoLogRangedResponse(parsedJson, MODEL_VERSION);
+  if (outcome.kind === "unparseable") {
+    // The model returned JSON we can't fit into the schema (missing
+    // `items` array or top-level not an object). Distinct from the
+    // upstream JSON.parse failure above — that one is a string-level
+    // failure ("model returned 'sorry I can't help'"); this one is a
+    // schema regression ("model returned the right top-level shape
+    // but the wrong inside").
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "model_unparseable",
+        message: "Couldn't read the AI's reply. Try a different angle.",
+      },
+      { status: 502 },
+    );
+  }
+  if (outcome.kind === "no_items") {
+    // Model returned a valid shape but zero recognizable food items.
+    // This is the only "no food detected" path — partial matches
+    // ALWAYS succeed (see decision doc).
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "no_food_detected",
+        message: "No food detected in the photo. Try a clearer, well-lit shot.",
+      },
+      { status: 422 },
+    );
+  }
+
+  return NextResponse.json(outcome.response satisfies PhotoLogRangedResponse);
 }

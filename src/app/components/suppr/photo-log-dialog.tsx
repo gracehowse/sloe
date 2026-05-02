@@ -1,19 +1,33 @@
 "use client";
 
 /**
- * PhotoLogDialog (Batch 5.13) — Pro-tier AI photo logging.
+ * PhotoLogDialog — Pro-tier AI photo logging.
+ *
+ * Re-architected 2026-05-01 (`docs/decisions/2026-05-01-photo-log-rangefirst.md`).
+ *
+ * Renders a ChatGPT-grade itemized breakdown of a meal photo: items
+ * grouped by macro role ("Bread + dips", "Protein + fats", "Extras"),
+ * per-item kcal RANGES (~120-150 kcal — honest about vision uncertainty),
+ * an optional add-on chip strip (e.g. "Add wine: +120-150 kcal"), and
+ * a plate total range. Replaces the previous single-number-per-item UI.
  *
  * Flow:
- *  1. User picks a photo via `<input type="file" accept="image/*" capture="environment" />`
+ *  1. User picks a photo via `<input type="file" capture="environment" />`.
  *  2. Preview renders locally from the File.
  *  3. "Analyse" POSTs multipart/form-data to `/api/nutrition/photo-log`.
- *  4. Parsed items render in a review list with edit / remove / confidence badge.
- *  5. "Log all" commits every reviewed item as a `LoggedMeal` with source `"ai_photo"`.
+ *  4. Items render grouped by category, with kcal ranges + 3-dot menu
+ *     (Edit portion, Verify with database, Remove) per item.
+ *  5. Add-on chips below the list — tapping moves an addon into the
+ *     items list (treated as an `Extras`-category item from then on).
+ *  6. "Save to today" projects each ranged item to the existing
+ *     `AiLoggedItem` shape via `rangedItemToLogged` (calories =
+ *     midpoint of the range; range preserved on `.range`) and calls
+ *     `onCommit`.
  *
- * Parity: mirrors the mobile `PhotoLogSheet` and shares `sanitiseAiItems`,
- * `classifyConfidence`, `aggregateTotals`, and the `/api/nutrition/photo-log`
- * endpoint. Pro gating lives in the API (403 with `error: "upgrade_required"`)
- * and is surfaced before the user can upload (see NutritionTracker button).
+ * Parity: mirrors the mobile `PhotoLogSheet`. Identical response shape,
+ * identical grouping, identical formatting. Differs only in styling
+ * (sonner toast on web; AsyncStorage + ToastAndroid + Alert.alert on
+ * mobile).
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -26,19 +40,23 @@ import {
   DialogTitle,
 } from "../ui/dialog";
 import { Button } from "../ui/button";
-import { Input } from "../ui/input";
 import { Icons } from "../ui/icons";
-import { ConfidenceDot } from "./confidence-dot";
 import { Badge } from "./badge";
 import { toast } from "sonner";
 import {
-  aggregateTotals,
   averageConfidence,
-  classifyConfidence,
-  isLowConfidence,
-  sanitiseAiItems,
   type AiLoggedItem,
 } from "../../../lib/nutrition/aiLogging";
+import {
+  formatRange,
+  formatRangeKcal,
+  groupItemsByCategory,
+  rangedItemToLogged,
+  sumRanges,
+  type PhotoLogAddon,
+  type PhotoLogItemRanged,
+  type Range,
+} from "../../../lib/nutrition/photoLogRanges";
 import { persistPhotoCorrections } from "../../../lib/nutrition/photoCorrectionPersist";
 import { supabase } from "../../../lib/supabase/browserClient";
 import { track } from "../../../lib/analytics/track";
@@ -58,17 +76,28 @@ export type PhotoLogDialogProps = {
 
 type Stage = "pick" | "analysing" | "review" | "error";
 
+type ResponseShape = {
+  items: PhotoLogItemRanged[];
+  addons?: PhotoLogAddon[];
+  totalKcal: Range;
+  totalKcalWithAddons?: Range;
+  notes?: string;
+  modelVersion: string;
+};
+
 export function PhotoLogDialog({ open, onOpenChange, activeSlot, onCommit }: PhotoLogDialogProps) {
   const [stage, setStage] = useState<Stage>("pick");
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [items, setItems] = useState<AiLoggedItem[]>([]);
+  const [items, setItems] = useState<PhotoLogItemRanged[]>([]);
+  const [addons, setAddons] = useState<PhotoLogAddon[]>([]);
+  const [notes, setNotes] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  /** Snapshot of the AI's original items, before the user edited any
-   *  field. Used at commit time to detect which rows the user
-   *  actually corrected so we only persist meaningful edits to the
-   *  bank. Stored as a ref because we never re-render off it. */
+  /** Snapshot of the AI's original committed AiLoggedItems before any
+   *  user edit. Used at commit time by `persistPhotoCorrections` to
+   *  detect user corrections. Stored as a ref because we never re-
+   *  render off it. Mirror of mobile sheet. */
   const originalItemsRef = useRef<AiLoggedItem[]>([]);
 
   useEffect(() => {
@@ -76,6 +105,8 @@ export function PhotoLogDialog({ open, onOpenChange, activeSlot, onCommit }: Pho
       setStage("pick");
       setFile(null);
       setItems([]);
+      setAddons([]);
+      setNotes(null);
       setError(null);
       originalItemsRef.current = [];
       if (previewUrl) URL.revokeObjectURL(previewUrl);
@@ -121,8 +152,10 @@ export function PhotoLogDialog({ open, onOpenChange, activeSlot, onCommit }: Pho
         method: "POST",
         body: form,
       });
-      const data = await resp.json();
-      if (resp.status === 403 && data?.error === "upgrade_required") {
+      const data = (await resp.json()) as
+        | (ResponseShape & { ok: true })
+        | { ok: false; error?: string; message?: string };
+      if (resp.status === 403 && "error" in data && data.error === "upgrade_required") {
         setError(
           typeof data.message === "string"
             ? data.message
@@ -131,25 +164,22 @@ export function PhotoLogDialog({ open, onOpenChange, activeSlot, onCommit }: Pho
         setStage("error");
         return;
       }
-      if (!data?.ok || !Array.isArray(data.items)) {
-        setError(
-          typeof data?.message === "string"
+      if (!data.ok || !Array.isArray(data.items) || data.items.length === 0) {
+        const msg =
+          "message" in data && typeof data.message === "string"
             ? data.message
-            : "Could not identify food in that photo. Try a clearer angle.",
-        );
+            : "Couldn't read the photo. Try a clearer angle or better light.";
+        setError(msg);
         setStage("error");
         return;
       }
-      const cleaned = sanitiseAiItems(data.items, "ai_photo");
-      if (cleaned.length === 0) {
-        setError("No food items were identified. Try a clearer, well-lit photo.");
-        setStage("error");
-        return;
-      }
-      // Snapshot AI's original items so we can detect user
-      // corrections at commit time (mirror of mobile PhotoLogSheet).
-      originalItemsRef.current = cleaned.map((it) => ({ ...it }));
-      setItems(cleaned);
+      // Snapshot the AI's items in `AiLoggedItem` form so the
+      // photo-corrections-persist helper can diff user edits at commit
+      // time (the helper expects that shape).
+      originalItemsRef.current = data.items.map((it) => rangedItemToLogged(it));
+      setItems(data.items);
+      setAddons(Array.isArray(data.addons) ? data.addons : []);
+      setNotes(typeof data.notes === "string" ? data.notes : null);
       setStage("review");
     } catch {
       setError("Photo logging failed. Check your connection and try again.");
@@ -157,28 +187,54 @@ export function PhotoLogDialog({ open, onOpenChange, activeSlot, onCommit }: Pho
     }
   }, [file]);
 
-  const totals = useMemo(() => aggregateTotals(items), [items]);
-  const hasLowConfidence = items.some((i) => isLowConfidence(i));
+  const groups = useMemo(() => groupItemsByCategory(items), [items]);
+  const totalKcal = useMemo(
+    () => sumRanges(items.map((i) => i.calories)),
+    [items],
+  );
 
-  const updateItem = (index: number, patch: Partial<AiLoggedItem>) => {
-    setItems((prev) => prev.map((it, i) => (i === index ? { ...it, ...patch } : it)));
+  const removeItem = (id: string) => {
+    setItems((prev) => prev.filter((i) => i.id !== id));
   };
 
-  const removeItem = (index: number) => {
-    setItems((prev) => prev.filter((_, i) => i !== index));
+  const addAddon = (addon: PhotoLogAddon) => {
+    // Move the addon into the items list as an Extras-category item so
+    // the plate total updates and the user can subsequently remove it.
+    setItems((prev) => [
+      ...prev,
+      {
+        id: addon.id,
+        name: addon.name,
+        category: "Drinks", // sensible default for the wine / beverage case; user can edit
+        calories: addon.calories,
+        protein: null,
+        carbs: null,
+        fat: null,
+        confidence: "medium",
+        source: "ai",
+        ...(addon.hint ? { quantityHint: addon.hint } : {}),
+      },
+    ]);
+    setAddons((prev) => prev.filter((a) => a.id !== addon.id));
+    track(AnalyticsEvents.ai_photo_log_addon_added, {
+      name: addon.name,
+      kcalLow: addon.calories.low,
+      kcalHigh: addon.calories.high,
+    });
   };
 
-  const handleLogAll = () => {
+  const handleSaveToday = () => {
     if (items.length === 0) return;
-    onCommit(items);
+    const projected = items.map((it) => rangedItemToLogged(it));
+    onCommit(projected as AiLoggedItem[]);
     track(AnalyticsEvents.ai_photo_log_committed, {
-      itemCount: items.length,
-      avgConfidence: averageConfidence(items),
+      itemCount: projected.length,
+      avgConfidence: averageConfidence(projected as AiLoggedItem[]),
     });
 
-    // Fire-and-forget: persist corrected items to the user's
-    // personal food bank so the next photo log of the same item
-    // uses these macros. Mirror of mobile `PhotoLogSheet`.
+    // Fire-and-forget: persist corrected items to the user's personal
+    // food bank so the next photo log of the same item uses these
+    // macros. Mirror of mobile `PhotoLogSheet`.
     void (async () => {
       try {
         const { data: authData } = await supabase.auth.getUser();
@@ -188,7 +244,7 @@ export function PhotoLogDialog({ open, onOpenChange, activeSlot, onCommit }: Pho
           supabase: supabase as Parameters<typeof persistPhotoCorrections>[0]["supabase"],
           userId,
           originals: originalItemsRef.current,
-          corrected: items,
+          corrected: projected as AiLoggedItem[],
           track: (event, payload) => {
             track(event as never, payload as never);
           },
@@ -201,8 +257,7 @@ export function PhotoLogDialog({ open, onOpenChange, activeSlot, onCommit }: Pho
         try {
           window.localStorage?.setItem(PHOTO_CORRECTION_TOAST_KEY, "1");
         } catch {
-          /* localStorage flaky — still surface the toast once this
-             session, the next session may re-show */
+          /* localStorage flaky — still surface the toast once */
         }
         toast.success("Got it — we'll remember this for next time.");
       } catch {
@@ -223,8 +278,8 @@ export function PhotoLogDialog({ open, onOpenChange, activeSlot, onCommit }: Pho
           </DialogTitle>
           <DialogDescription className="text-muted-foreground">
             {stage === "review"
-              ? `We identified ${items.length} item${items.length === 1 ? "" : "s"}. Review, edit or remove before logging.`
-              : "Snap a photo of your meal and we'll identify foods, estimate portions, and match against our verified nutrition database."}
+              ? `${items.length} item${items.length === 1 ? "" : "s"} on the plate. Tap any item to verify against our food database.`
+              : "Snap a photo of your meal. We'll itemize it with kcal ranges grouped by macro role."}
           </DialogDescription>
         </DialogHeader>
 
@@ -259,9 +314,8 @@ export function PhotoLogDialog({ open, onOpenChange, activeSlot, onCommit }: Pho
               onChange={handlePick}
             />
             <p className="text-[11px] text-muted-foreground">
-              AI estimates. Photo is sent to our servers and processed by OpenAI for
-              food identification. Nutrition values come from our verified database
-              where possible; low-confidence items will be flagged.
+              AI estimates with ranges. Tap any item after to verify against our food database.
+              Low-confidence items are flagged.
             </p>
           </div>
         )}
@@ -283,88 +337,131 @@ export function PhotoLogDialog({ open, onOpenChange, activeSlot, onCommit }: Pho
         )}
 
         {stage === "review" && (
-          <div className="grid gap-2 py-2 max-h-[55vh] overflow-y-auto">
+          <div
+            className="grid gap-3 py-2 max-h-[60vh] overflow-y-auto"
+            data-testid="photo-log-review"
+          >
             {previewUrl && (
               <div className="relative aspect-video w-full overflow-hidden rounded-lg border border-border bg-muted">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={previewUrl} alt="Your meal" className="h-full w-full object-cover" />
               </div>
             )}
-            {items.map((item, i) => {
-              const level = classifyConfidence(item.confidence);
-              const low = isLowConfidence(item);
-              return (
+
+            {/* Items grouped by macro role */}
+            <div className="grid gap-3" data-testid="photo-log-groups">
+              {groups.map((group) => (
                 <div
-                  key={`${item.name}-${i}`}
-                  className={`rounded-lg border p-2.5 text-sm ${
-                    low ? "border-amber-400/50 bg-amber-400/5" : "border-border bg-card"
-                  }`}
+                  key={group.category}
+                  className="grid gap-1.5"
+                  data-testid={`photo-log-group-${group.category.replace(/\s+/g, "-").toLowerCase()}`}
                 >
-                  <div className="flex items-start gap-2">
-                    <div className="flex-1 min-w-0">
-                      <Input
-                        value={item.name}
-                        onChange={(e) => updateItem(i, { name: e.target.value })}
-                        aria-label={`Item ${i + 1} name`}
-                        className="h-8 text-sm font-medium"
-                      />
-                      {item.unit && (
-                        <p className="text-[11px] text-muted-foreground mt-1">{item.unit}</p>
-                      )}
-                    </div>
-                    <div className="flex flex-col items-end gap-1 shrink-0">
-                      <ConfidenceDot level={level} showLabel />
-                      <Badge
-                        variant="ai"
-                        ariaLabel="AI estimated nutrition"
-                        icon={<Icons.sparkles />}
-                      >
-                        AI estimate
-                      </Badge>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removeItem(i)}
-                      className="size-7 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                      aria-label={`Remove ${item.name}`}
-                    >
-                      <Icons.close className="size-4" />
-                    </button>
+                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    {group.category}
                   </div>
-                  <div className="mt-2 grid grid-cols-4 gap-2">
-                    {(["calories", "protein", "carbs", "fat"] as const).map((key) => (
-                      <label key={key} className="grid gap-0.5">
-                        <span className="text-[10px] font-semibold uppercase text-muted-foreground">
-                          {key === "calories" ? "kcal" : `${key.charAt(0).toUpperCase()}${key.slice(1)} (g)`}
-                        </span>
-                        <Input
-                          type="number"
-                          min={0}
-                          step={1}
-                          value={item[key]}
-                          onChange={(e) => {
-                            const n = Math.max(0, Number(e.target.value));
-                            updateItem(i, { [key]: Number.isFinite(n) ? n : 0 });
-                          }}
-                          className="h-7 text-xs"
-                          aria-label={`${item.name} ${key}`}
-                        />
-                      </label>
-                    ))}
-                  </div>
-                  {low && (
-                    <p role="alert" className="mt-1.5 text-[11px] text-amber-700">
-                      Low confidence — please verify portion and macros before logging.
-                    </p>
-                  )}
+                  <ul className="grid gap-1">
+                    {group.items.map((item) => {
+                      const low = item.confidence === "low";
+                      return (
+                        <li
+                          key={item.id}
+                          className={`flex items-center justify-between gap-2 rounded-md border px-2.5 py-2 text-sm ${
+                            low ? "border-amber-400/50 bg-amber-400/5" : "border-border bg-card"
+                          }`}
+                          data-testid={`photo-log-item-${item.id}`}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-foreground truncate">{item.name}</span>
+                              {item.quantityHint && (
+                                <span className="text-[11px] text-muted-foreground">
+                                  ({item.quantityHint})
+                                </span>
+                              )}
+                            </div>
+                            {low && (
+                              <p className="mt-0.5 text-[11px] text-amber-700">
+                                Low confidence — verify before logging.
+                              </p>
+                            )}
+                          </div>
+                          <span
+                            className="font-mono text-sm tabular-nums text-foreground shrink-0"
+                            aria-label={`${item.name} ${formatRangeKcal(item.calories)}`}
+                          >
+                            {formatRangeKcal(item.calories)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removeItem(item.id)}
+                            className="size-7 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
+                            aria-label={`Remove ${item.name}`}
+                          >
+                            <Icons.close className="size-4" />
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
                 </div>
-              );
-            })}
-            <div className="mt-1 rounded-lg bg-muted/40 p-2.5 text-xs text-muted-foreground">
-              Logging to <span className="font-semibold text-foreground">{activeSlot}</span>.
-              Total: {totals.calories} kcal · P {totals.protein}g · C {totals.carbs}g · F {totals.fat}g
-              {totals.fiber != null ? ` · Fi ${totals.fiber}g` : ""}
+              ))}
             </div>
+
+            {/* Plate total */}
+            <div
+              className="rounded-lg bg-primary/10 px-3 py-2.5 text-sm font-medium text-foreground flex items-center justify-between"
+              data-testid="photo-log-plate-total"
+            >
+              <span aria-hidden className="text-base">👉</span>
+              <span className="flex-1 ml-2">Plate total</span>
+              <span className="font-mono tabular-nums">{formatRangeKcal(totalKcal)}</span>
+            </div>
+
+            {/* Add-on chips */}
+            {addons.length > 0 && (
+              <div className="grid gap-1.5" data-testid="photo-log-addons">
+                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Add-ons
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {addons.map((addon) => (
+                    <button
+                      key={addon.id}
+                      type="button"
+                      onClick={() => addAddon(addon)}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs text-foreground hover:border-primary/40 hover:bg-muted"
+                      data-testid={`photo-log-addon-${addon.id}`}
+                    >
+                      <Icons.add className="size-3" aria-hidden />
+                      <span>Add {addon.name}</span>
+                      <span className="text-muted-foreground">+{formatRange(addon.calories)} kcal</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Caveats */}
+            {notes && (
+              <p
+                className="text-[11px] text-muted-foreground italic"
+                data-testid="photo-log-notes"
+              >
+                {notes}
+              </p>
+            )}
+
+            <div className="text-[11px] text-muted-foreground">
+              Logging to <span className="font-semibold text-foreground">{activeSlot}</span>.
+              Calories saved use the midpoint of each range.
+            </div>
+            <Badge
+              variant="ai"
+              ariaLabel="AI estimated"
+              icon={<Icons.sparkles />}
+            >
+              AI estimate
+            </Badge>
           </div>
         )}
 
@@ -392,8 +489,8 @@ export function PhotoLogDialog({ open, onOpenChange, activeSlot, onCommit }: Pho
               <Button variant="ghost" onClick={() => setStage("pick")}>
                 Back
               </Button>
-              <Button onClick={handleLogAll} disabled={items.length === 0}>
-                {hasLowConfidence ? "Log anyway" : "Log all"}
+              <Button onClick={handleSaveToday} disabled={items.length === 0}>
+                Save to today
               </Button>
             </>
           )}

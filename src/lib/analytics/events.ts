@@ -324,6 +324,20 @@ export const AnalyticsEvents = {
   /** Free-tier user tapped the photo-log entry point and was shown the
    * Pro paywall instead (Batch 5.13). No payload. */
   ai_photo_log_paywalled: "ai_photo_log_paywalled",
+  /** Range-first photo-log re-architecture (2026-05-01) — user tapped
+   * an "Add wine: +120-150 kcal" addon chip on the review screen and
+   * the suggested item moved into the items list. Payload:
+   * `{ name: string; kcalLow: number; kcalHigh: number }`. Identical
+   * payload on web + mobile so the addon-acceptance rate funnel
+   * compares 1:1. See `docs/decisions/2026-05-01-photo-log-rangefirst.md`. */
+  ai_photo_log_addon_added: "ai_photo_log_addon_added",
+  /** Range-first photo-log re-architecture (2026-05-01) — user tapped
+   * "Verify with database" on a single item, swapping the AI-estimated
+   * range row for a USDA / OFF / FatSecret-matched single-number row.
+   * Payload: `{ source: "USDA" | "OFF" | "FatSecret" | "Estimated" |
+   * "Unverified"; confidence: number; itemName: string }`. Fires per
+   * verification, not per item-load. Identical payload on web + mobile. */
+  ai_photo_log_item_verified: "ai_photo_log_item_verified",
   /** User-sentiment audit (round 4, 2026-04-30) — Cal AI's failure
    * pattern, MacroFactor's emerging lead. Fires when a corrected
    * photo-log item is persisted into the user's `user_custom_foods`
