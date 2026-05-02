@@ -65,7 +65,12 @@ const CHANGELOGS: ChangelogEntry[] = [
     buildNumber: 11,
     appVersion: "1.0.0",
     releaseDate: "2026-04-20",
-    items: [],
+    items: [
+      {
+        kind: "fixed",
+        text: "Recipe page now reads cleaner. Calories sit inline with the meal type and serves, macro tiles are bigger, and empty prep/cook times disappear.",
+      },
+    ],
   },
   {
     buildNumber: 10,
