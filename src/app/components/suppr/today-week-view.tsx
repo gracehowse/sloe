@@ -10,9 +10,54 @@ import { todayKey } from "../../../lib/nutrition/trackerDate";
  *
  * Rendered when `viewMode === "week"`. All data is derived in the
  * composition root (`NutritionTracker`) and passed in — the component
- * holds no state and fires no side effects beyond `onSelectDayKey`,
- * which tells the parent to jump to a day and flip back to day mode.
+ * holds no state apart from the optional scrubber tooltip and fires
+ * no side effects beyond `onSelectDayKey`, which tells the parent to
+ * jump to a day and flip back to day mode.
+ *
+ * 2026-05-01 (ui-critic finding #5, P1) — chart upgraded from
+ * unstyled bars to MacroFactor-tier:
+ *   - bars carry top-only rounded corners so they read as
+ *     bars-from-the-baseline rather than floating pills.
+ *   - a horizontal dashed target rule sits at the calorie-target
+ *     y-position so over/under is readable at a glance.
+ *   - bars animate in via CSS height transition on mount /
+ *     mode-change.
+ *   - clicking a bar reveals a floating tooltip with day name,
+ *     kcal logged, kcal target, delta. Click elsewhere or the same
+ *     bar again dismisses.
+ *   - above the chart: "7-day avg: X kcal · closest to target: [day]".
+ *   - mobile parity: `apps/mobile/components/today/TodayWeekView.tsx`.
  */
+
+const PLOT_HEIGHT_PX = 110;
+
+function targetRulePctFromBottom(target: number, maxCal: number): number | null {
+  if (!Number.isFinite(target) || target <= 0) return null;
+  if (!Number.isFinite(maxCal) || maxCal <= 0) return null;
+  if (target > maxCal) return null;
+  return (target / maxCal) * 100;
+}
+
+function closestToTargetIndexWeb(
+  days: TodayWeekDay[],
+  dayGoals: number[],
+  fallbackTarget: number,
+): number | null {
+  let bestIdx: number | null = null;
+  let bestDelta = Infinity;
+  for (let i = 0; i < days.length; i++) {
+    const day = days[i];
+    if (!day || day.totals.calories <= 0) continue;
+    const goal = dayGoals[i] ?? fallbackTarget;
+    if (!Number.isFinite(goal) || goal <= 0) continue;
+    const delta = Math.abs(day.totals.calories - goal);
+    if (delta < bestDelta) {
+      bestDelta = delta;
+      bestIdx = i;
+    }
+  }
+  return bestIdx;
+}
 
 export interface TodayWeekDay {
   key: string;
@@ -98,41 +143,149 @@ export function TodayWeekView({
   const under = weekEffectiveCalorieBudget > weekTotals.calories;
   const diff = Math.round(Math.abs(weekEffectiveCalorieBudget - weekTotals.calories));
 
+  // 2026-05-01 (ui-critic #5) — scrubber state + closest-to-target.
+  const [scrubIndex, setScrubIndex] = React.useState<number | null>(null);
+  const bestIdx = React.useMemo(
+    () => closestToTargetIndexWeb(days, dayGoals, calorieTarget),
+    [days, dayGoals, calorieTarget],
+  );
+  const bestDayLabel = bestIdx != null ? days[bestIdx]?.short ?? null : null;
+  const targetRulePct = React.useMemo(
+    () => targetRulePctFromBottom(calorieTarget, maxCal),
+    [calorieTarget, maxCal],
+  );
+
   return (
     <div className="flex flex-col gap-4 mb-4">
       <div className="rounded-card bg-card border border-border p-4">
-        <p className="text-sm font-semibold text-foreground mb-3">Weekly calories</p>
-        <div className="flex justify-between items-end gap-1 h-36">
+        <p className="text-sm font-semibold text-foreground mb-1">Weekly calories</p>
+        {/* Above-chart summary — only when at least one day was logged. */}
+        {loggedDaysInWeek > 0 && (
+          <p
+            data-testid="today-week-chart-summary"
+            className="mb-3 text-[11px] text-muted-foreground"
+          >
+            {`7-day avg: ${Math.round(weekAvg.calories)} kcal`}
+            {bestDayLabel ? ` · closest to target: ${bestDayLabel}` : ""}
+          </p>
+        )}
+        <div
+          data-testid="today-week-chart"
+          className="relative flex justify-between items-end gap-1"
+          style={{ height: `${PLOT_HEIGHT_PX + 18 + 14}px` }}
+        >
           {days.map((day, i) => {
             const dayGoal = dayGoals[i] ?? calorieTarget;
-            const barH = maxCal > 0 ? Math.max(4, (day.totals.calories / maxCal) * 110) : 4;
+            const barH = maxCal > 0 ? Math.max(4, (day.totals.calories / maxCal) * PLOT_HEIGHT_PX) : 4;
             const over = day.totals.calories > dayGoal;
             const isCurrentDay = day.key === todayKey();
+            const isScrubbed = scrubIndex === i;
             return (
               <button
                 key={day.key}
                 type="button"
-                onClick={() => onSelectDayKey(day.key)}
-                className="flex flex-col items-center flex-1 gap-1 min-w-0"
+                data-testid={`today-week-chart-bar-${i}`}
+                onClick={() =>
+                  setScrubIndex((prev) => (prev === i ? null : i))
+                }
+                onDoubleClick={() => onSelectDayKey(day.key)}
+                aria-label={`${day.short} — ${Math.round(day.totals.calories)} kcal of ${Math.round(dayGoal)} kcal target`}
+                className="relative z-10 flex flex-col items-center flex-1 gap-1 min-w-0"
               >
                 <span className="text-[10px] text-muted-foreground tabular-nums h-4">
                   {day.totals.calories > 0 ? Math.round(day.totals.calories) : ""}
                 </span>
                 <div
-                  className="w-full max-w-[28px] rounded-md transition-colors mx-auto"
+                  className="w-full max-w-[28px] mx-auto transition-[height,width,background-color] duration-500 ease-out"
                   style={{
                     height: barH,
-                    backgroundColor: over ? "var(--warning)" : day.totals.calories > 0 ? "var(--primary)" : "var(--muted)",
+                    width: isScrubbed ? 32 : undefined,
+                    borderTopLeftRadius: 6,
+                    borderTopRightRadius: 6,
+                    borderBottomLeftRadius: 0,
+                    borderBottomRightRadius: 0,
+                    backgroundColor: isScrubbed
+                      ? "var(--primary)"
+                      : over
+                        ? "var(--warning)"
+                        : day.totals.calories > 0
+                          ? "var(--primary)"
+                          : "var(--muted)",
                   }}
                 />
                 <span
-                  className={`text-[11px] font-semibold ${isCurrentDay ? "text-primary" : "text-muted-foreground"}`}
+                  className={`text-[11px] font-semibold ${isCurrentDay || isScrubbed ? "text-primary" : "text-muted-foreground"}`}
                 >
                   {day.short}
                 </span>
               </button>
             );
           })}
+          {/* Target rule — dashed horizontal line at the day-target
+              y-position. `bottom: 18px` matches the day-label row;
+              the line then translates up by `targetRulePct` of the
+              plot height. */}
+          {targetRulePct != null && (
+            <div
+              data-testid="today-week-chart-target-rule"
+              aria-hidden="true"
+              className="pointer-events-none absolute left-0 right-0 border-t border-dashed border-primary/40"
+              style={{
+                bottom: `calc(18px + ${(targetRulePct / 100) * PLOT_HEIGHT_PX}px)`,
+              }}
+            />
+          )}
+          {/* Floating scrubber tooltip — surfaces day details. */}
+          {scrubIndex != null && days[scrubIndex] && (() => {
+            const day = days[scrubIndex]!;
+            const goal = dayGoals[scrubIndex] ?? calorieTarget;
+            const delta = Math.round(day.totals.calories - goal);
+            const deltaLabel =
+              delta === 0
+                ? "On target"
+                : delta > 0
+                  ? `${delta} kcal over`
+                  : `${Math.abs(delta)} kcal under`;
+            const colCenterPct = ((scrubIndex + 0.5) / days.length) * 100;
+            const isLeftHalf = colCenterPct < 50;
+            return (
+              <div
+                data-testid="today-week-chart-tooltip-backdrop"
+                role="button"
+                aria-label="Dismiss day details"
+                tabIndex={0}
+                onClick={() => setScrubIndex(null)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") setScrubIndex(null);
+                }}
+                className="absolute inset-0 z-20"
+              >
+                <div
+                  data-testid="today-week-chart-tooltip"
+                  role="status"
+                  aria-label={`${day.short} — ${Math.round(day.totals.calories)} kcal of ${Math.round(goal)} kcal target — ${deltaLabel}`}
+                  className={`absolute top-0 ${isLeftHalf ? "left-0" : "right-0"} rounded-md border border-border bg-card px-3 py-2 shadow-sm`}
+                  style={{ minWidth: 140 }}
+                >
+                  <p className="text-[12px] font-bold text-foreground">{day.short}</p>
+                  <p className="text-[11px] text-muted-foreground tabular-nums">
+                    {Math.round(day.totals.calories)} / {Math.round(goal)} kcal
+                  </p>
+                  <p
+                    className={`text-[11px] font-bold ${
+                      delta === 0
+                        ? "text-success"
+                        : delta > 0
+                          ? "text-warning"
+                          : "text-success"
+                    }`}
+                  >
+                    {deltaLabel}
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
         </div>
         <p className="text-[10px] text-muted-foreground text-right mt-1">
           {preferActivityAdjustedCalories

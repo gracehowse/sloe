@@ -10,6 +10,19 @@
 ### Analytics
 - New events: `milestone_30_shown`, `milestone_30_dismissed`. Shown event payload: `{ daysLogged, longestStreak, topFoodCount, platform }`.
 
+## 2026-05-01 — Today week chart: target rule + animated entrance + tap-scrubber (MacroFactor-tier)
+
+### Today (week mode)
+- **Top-only rounded bars** (radius 6) — bars now read as bars-from-the-baseline rather than floating pills.
+- **Horizontal dashed target rule** at the calorie-target y-position so over/under is readable at a glance. Hidden when the target is invalid (e.g. 0 kcal — would render as the baseline and read as noise).
+- **Animated bar entrance** via Reanimated's `withTiming` on mount / mode-change, with a 40ms-per-bar stagger so the chart paints in left-to-right. Skipped when the user has Reduce Motion on.
+- **Tap-scrubber tooltip** — tapping a bar opens a floating card with day name, kcal logged, kcal target, and a signed delta ("400 kcal over" / "20 kcal under" / "On target"). Tap the same bar again or anywhere outside the chart to dismiss. Long-press still routes to the day-detail view.
+- **Above-chart summary line** "7-day avg: X kcal · closest to target: [day]". The closest-to-target day matches the project's "Best Day" direction (per `project_progress_direction` memory, 2026-04-30).
+- Closes the ui-critic finding #5 (P1) on Today's week chart.
+
+### Web parity
+- `src/app/components/suppr/today-week-view.tsx` ships the matching upgrades using CSS height transitions (no Reanimated dependency on web). Same target rule, same scrubber, same closest-to-target summary line.
+
 ## 2026-05-01 — LogSheet: 3-tab discoverability (journey-architect P1)
 
 ### LogSheet
