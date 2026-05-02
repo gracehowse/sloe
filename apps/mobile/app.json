@@ -16,6 +16,8 @@
         "NSLocalNetworkUsageDescription": "Suppr uses the local network in development to discover the Metro JavaScript bundler running on your Mac (Expo Dev Client).",
         "NSHealthShareUsageDescription": "Suppr reads your steps, active energy, basal energy, workouts, weight, body fat, and any dietary entries you have in Apple Health so your Suppr tracker stays in sync with the rest of your Health data.",
         "NSHealthUpdateUsageDescription": "Suppr writes the calories, protein, carbohydrates, fat, and fibre of the meals you log so other apps on your phone can read your nutrition from Apple Health.",
+        "NSMicrophoneUsageDescription": "Suppr listens for cooking commands like \"next\", \"back\", and \"repeat\" only while you turn on Voice Control inside Cook Mode. Audio is never saved.",
+        "NSSpeechRecognitionUsageDescription": "Suppr converts cooking commands like \"next\", \"back\", and \"repeat\" to text on your device while Voice Control is on inside Cook Mode. Recognition runs on-device; nothing is sent to our servers.",
         "ITSAppUsesNonExemptEncryption": false,
         "SupprBuildTag": "2026-04-23-healthkit-foodcorrelation-stage1"
       },

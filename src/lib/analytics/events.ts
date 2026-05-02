@@ -135,6 +135,32 @@ export const AnalyticsEvents = {
    *  Same name on web should voice ever ship there (browser kitchens
    *  are uncommon — see decision doc for why mobile-only is intentional). */
   cook_handsfree_command_received: "cook_handsfree_command_received",
+  /** v2 (2026-05-02): the speech recogniser produced a transcript that
+   *  matched one of the canonical commands. Emitted from
+   *  `apps/mobile/app/cook.tsx` once per match, alongside the action
+   *  the command triggered (step advance / back / TTS readback /
+   *  timer pause-resume). Payload:
+   *    `{ recipeId, command, latencyMs }`
+   *  where `latencyMs` is the time between the listener registering
+   *  the final transcript and the JS handler firing — used to size
+   *  the on-device-vs-cloud latency tradeoff captured in the decision
+   *  doc. Distinct from the v1-registered `cook_handsfree_command_received`
+   *  (which is the legacy "we registered this name early" event); the
+   *  v2 listener fires `_detected` instead. The v1 event stays in the
+   *  registry for now so any pre-v2 dual-emit code won't break, but
+   *  no callers reference it. */
+  cook_handsfree_command_detected: "cook_handsfree_command_detected",
+  /** v2 (2026-05-02): the user has hit the soft-cap threshold of three
+   *  consecutive misses (defined as: tap on a manual nav button within
+   *  4s of an unmatched utterance) and the de-escalation strip
+   *  rendered. Payload:
+   *    `{ recipeId, missCount, action: "kept" | "turned_off" }`
+   *  where `action` is set when the user resolves the strip — `"kept"`
+   *  if they tap "Keep listening", `"turned_off"` if they tap "Turn
+   *  voice off". Fires once per resolution, not per render. Drives
+   *  the "did the listener help or annoy?" question for the post-flip
+   *  funnel review. */
+  cook_handsfree_miss_threshold_hit: "cook_handsfree_miss_threshold_hit",
   /** User created a new custom food row (Batch 3.9). Payload: `{ hasBrand, servingCount }`. */
   custom_food_created: "custom_food_created",
   /** User edited an existing custom food row (Batch 3.9). */

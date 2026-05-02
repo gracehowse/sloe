@@ -458,4 +458,30 @@ describe("paywall_viewed contract (L6 G9 + 2026-04-19 round-2)", () => {
 
     expect(offenders).toEqual([]);
   });
+
+  it("registers cook handsfree v1 + v2 events with canonical snake_case values", () => {
+    // v1 (2026-05-01): pref + session toggle. Stay registered so the
+    // funnel that sized the v1 audience pre-flag-flip doesn't break.
+    expect(AnalyticsEvents.cook_handsfree_pref_changed).toBe(
+      "cook_handsfree_pref_changed",
+    );
+    expect(AnalyticsEvents.cook_handsfree_session_toggled).toBe(
+      "cook_handsfree_session_toggled",
+    );
+
+    // v1 (2026-05-01): pre-registered name for the listener emit. Stays
+    // in the registry — no caller fires it post-v2.
+    expect(AnalyticsEvents.cook_handsfree_command_received).toBe(
+      "cook_handsfree_command_received",
+    );
+
+    // v2 (2026-05-02): the live listener emits these. A rename here
+    // breaks the post-flip dashboards.
+    expect(AnalyticsEvents.cook_handsfree_command_detected).toBe(
+      "cook_handsfree_command_detected",
+    );
+    expect(AnalyticsEvents.cook_handsfree_miss_threshold_hit).toBe(
+      "cook_handsfree_miss_threshold_hit",
+    );
+  });
 });

@@ -33,3 +33,22 @@ builds. See `docs/changelog/README.md` for the authoring workflow.
 ## Coming soon
 
 _(none yet)_
+
+## Engineering notes (not surfaced to testers)
+
+- **Cook handsfree v2 — merged dark behind feature flag.** On-device
+  speech recognition for "next" / "back" / "repeat" / "pause" / "resume"
+  now ships in the binary but is gated by `COOK_HANDSFREE_FEATURE_ENABLED`
+  in `apps/mobile/lib/cookHandsfree.ts` (default `false`). Flag-off
+  users see the unchanged v1 transparency banner. Flipping the flag is
+  a separate one-line PR pending Grace's review of the merged code.
+  See `docs/decisions/2026-05-01-cook-voice-handsfree.md` for the
+  Option-A rationale, the legal review's six requirements (age gate,
+  privacy notice, Info.plist strings, consent sheet, decision doc,
+  banner copy swap), and the deliberate web-parity carve-out.
+- **Privacy policy section added.** `app/privacy/page.tsx` now carries
+  a "Voice control in Cook Mode" section explaining the on-device
+  recognition + zero-retention posture. Surfaces today even though
+  the listener is dark — the legal reviewer required the policy to
+  pre-date any flag flip so installed-base users see the disclosure
+  before the prompt.

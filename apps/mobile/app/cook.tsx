@@ -1,16 +1,18 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
   Pressable,
   StyleSheet,
   Dimensions,
-  Alert,
   Animated,
+  Easing,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useKeepAwake } from "expo-keep-awake";
+import * as Haptics from "expo-haptics";
 import { Mic, MicOff } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { Accent, Spacing, Radius } from "@/constants/theme";
@@ -18,17 +20,54 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "../../../src/lib/analytics/events";
 import {
+  COOK_HANDSFREE_FEATURE_ENABLED,
+  ageGateTooltip,
+  readHandsfreeConsent,
   readHandsfreeEnabled,
+  readHandsfreeHintSeen,
+  resolveHandsfreeAgeGate,
   writeHandsfreeEnabled,
+  writeHandsfreeHintSeen,
+  type AgeGateResult,
+  type HandsfreeCommand,
 } from "@/lib/cookHandsfree";
+import {
+  isOnDeviceRecognitionSupported,
+  startCookHandsfreeListener,
+  type HandsfreeListener,
+} from "@/lib/cookHandsfreeListener";
+import CookHandsfreeConsentSheet from "@/components/cook/CookHandsfreeConsentSheet";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
+/** Soft-cap: number of consecutive misses before we surface the
+ *  de-escalation strip. A "miss" is an unmatched final transcript
+ *  followed by a manual nav-button tap within MISS_TAP_WINDOW_MS. */
+const HANDSFREE_MISS_THRESHOLD = 3;
+
+/** Window after an unmatched transcript during which a manual tap on
+ *  a nav button is treated as evidence the listener missed the user.
+ *  4 seconds matches the legal-review spec section 7. */
+const MISS_TAP_WINDOW_MS = 4000;
+
+/** How long the "Heard: <command>" transcript chip stays on screen
+ *  after a successful match. 220ms per design spec. */
+const TRANSCRIPT_CHIP_DURATION_MS = 220;
+
+/** How long the mic icon flashes to "detected" tint when a command
+ *  is recognised. 180ms per design spec. */
+const DETECTED_FLASH_DURATION_MS = 180;
 
 function formatTimer(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
+
+/** Mic-toggle visual state. Distinct from the boolean toggle value
+ *  because the listener has additional sub-states (listening vs.
+ *  detected vs. error) the UI needs to reflect. */
+type MicVisualState = "off" | "listening" | "detected" | "error";
 
 export default function CookModeScreen() {
   useKeepAwake();
@@ -62,16 +101,71 @@ export default function CookModeScreen() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const progressWidthRef = useRef(new Animated.Value(0)).current;
 
-  /** Voice handsfree (Paprika parity, 2026-05-01). v1 ships the
-   *  opt-in shell only — the toggle, the persistence, and an
-   *  explanatory banner. Real audio capture is intentionally deferred
-   *  per `docs/decisions/2026-05-01-cook-voice-handsfree.md` so the
-   *  TestFlight build doesn't ship a mic permission prompt + binary
-   *  bloat for a feature with zero users yet (solo-tester posture).
-   *  The toggle still mirrors to AsyncStorage so v2 lights up
-   *  listening without re-onboarding the user.
-   *  Hydrated from storage on mount; defaults to OFF. */
+  // -- Handsfree state (v1 + v2 share the same persisted opt-in pref) --
+  /** Master toggle (mirrors `suppr.cook.handsfree.enabled` AsyncStorage
+   *  key). Defaults to OFF until hydrated; user-flipped values write
+   *  back to storage so the Settings switch and the in-cook surface
+   *  stay in sync. */
   const [handsfreeOn, setHandsfreeOn] = useState(false);
+
+  /** Mic icon visual state — only meaningful when `handsfreeOn` is
+   *  true. v1 stays at "off" (no listener) so the icon paints in the
+   *  primary tint with no pulse. v2 transitions through listening /
+   *  detected / error as the recogniser runs. */
+  const [micVisual, setMicVisual] = useState<MicVisualState>("off");
+
+  /** Age-gate result resolved from the user's `profiles.age` field.
+   *  Defaults to `blocked_unknown` so the toggle stays disabled until
+   *  the profile load resolves — privacy-safe failure mode. */
+  const [ageGate, setAgeGate] = useState<AgeGateResult>("blocked_unknown");
+
+  /** On-device recognition support, resolved on mount. Undefined ==
+   *  "not yet checked", false == "device unsupported, disable
+   *  toggle", true == "OK, can proceed". v1 ignores this (no
+   *  listener); v2 reads it before allowing the consent sheet to
+   *  open. */
+  const [onDeviceSupported, setOnDeviceSupported] = useState<boolean | null>(
+    null,
+  );
+
+  /** Whether the pre-permission explainer sheet has been shown +
+   *  acknowledged for this device. Drives the flow on first toggle-
+   *  ON: false → show sheet → wait for OS permission → start
+   *  listener; true → skip straight to listener (or to OS Settings
+   *  hint if iOS perm was denied). */
+  const [consentGiven, setConsentGiven] = useState(false);
+  const [consentSheetVisible, setConsentSheetVisible] = useState(false);
+
+  /** Listening hint banner — one-shot per device. Defaults to
+   *  showing; once dismissed, persists `hint_seen=1` and stays
+   *  hidden. */
+  const [hintVisible, setHintVisible] = useState(true);
+
+  /** Last "Heard: <command>" transcript chip — drives the 220ms
+   *  feedback after a match. Cleared by a timeout. */
+  const [lastTranscript, setLastTranscript] = useState<string | null>(null);
+  const transcriptTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /** Soft-cap miss tracking. `lastMissAt` is the timestamp of the
+   *  most recent unmatched final transcript; if the user taps a nav
+   *  button within `MISS_TAP_WINDOW_MS` of that, we count it as a
+   *  miss. After three consecutive misses the de-escalation strip
+   *  appears. */
+  const lastMissAtRef = useRef<number | null>(null);
+  const [missCount, setMissCount] = useState(0);
+  const [deescalationVisible, setDeescalationVisible] = useState(false);
+
+  /** Mic icon pulse animation (1.0 → 1.08, 1.6s ease-in-out, loops
+   *  while listening). */
+  const pulseRef = useRef(new Animated.Value(1)).current;
+
+  /** Listener handle. Held in a ref so the cleanup effect can stop
+   *  it without depending on render state. */
+  const listenerRef = useRef<HandsfreeListener | null>(null);
+
+  /** Holds the timestamp of the last final-result event so we can
+   *  compute latencyMs in the analytics payload. */
+  const lastResultStartRef = useRef<number | null>(null);
 
   const totalSteps = steps.length;
   const isDone = current >= totalSteps;
@@ -89,34 +183,193 @@ export default function CookModeScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Hydrate the persisted handsfree preference once on mount. Storage
-  // failures fall back to OFF — privacy-safe default.
+  // Hydrate persisted state once on mount. Storage failures fall back
+  // to OFF / no-consent — privacy-safe defaults. Also hydrates the
+  // age gate from `profiles.age` so the toggle reaches its final
+  // disabled-or-not state without an extra render.
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const enabled = await readHandsfreeEnabled();
-      if (!cancelled) setHandsfreeOn(enabled);
+      const [enabled, consent, hintSeen] = await Promise.all([
+        readHandsfreeEnabled(),
+        readHandsfreeConsent(),
+        readHandsfreeHintSeen(),
+      ]);
+      if (cancelled) return;
+      setHandsfreeOn(enabled);
+      setConsentGiven(consent);
+      setHintVisible(!hintSeen);
+
+      // On-device-recognition capability — synchronous, no await.
+      // Wrapped in try so a misconfigured device never throws out of
+      // the effect.
+      try {
+        setOnDeviceSupported(isOnDeviceRecognitionSupported());
+      } catch {
+        setOnDeviceSupported(false);
+      }
+
+      // Age gate: read `profiles.age` from Supabase. The cook screen
+      // doesn't otherwise consume the profile, so we do a single
+      // targeted read here rather than wiring a context.
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (cancelled) return;
+        if (!user) {
+          setAgeGate("blocked_unknown");
+          return;
+        }
+        const { data } = await supabase
+          .from("profiles")
+          .select("age")
+          .eq("id", user.id)
+          .maybeSingle();
+        if (cancelled) return;
+        const ageValue = data?.age;
+        const age = typeof ageValue === "number" ? ageValue : null;
+        setAgeGate(resolveHandsfreeAgeGate(age));
+      } catch {
+        if (!cancelled) setAgeGate("blocked_unknown");
+      }
     })();
     return () => {
       cancelled = true;
     };
   }, []);
 
-  /** Flip the in-cook handsfree toggle. Persists the new value to the
-   *  shared pref so the Settings switch stays in sync, and fires both
-   *  analytics events: the session toggle (so we can slice cook-surface
-   *  discovery) and the pref-changed (so the funnel doesn't have to
-   *  UNION two surfaces to count opt-ins). */
-  const handleHandsfreeToggle = () => {
-    const next = !handsfreeOn;
-    setHandsfreeOn(next);
-    void writeHandsfreeEnabled(next);
-    track(AnalyticsEvents.cook_handsfree_session_toggled, {
-      recipeId,
-      enabled: next,
+  // Pulse the mic icon while listening. Loops indefinitely; stops
+  // when the visual state leaves "listening".
+  useEffect(() => {
+    if (micVisual !== "listening") {
+      pulseRef.stopAnimation();
+      pulseRef.setValue(1);
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseRef, {
+          toValue: 1.08,
+          duration: 800,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseRef, {
+          toValue: 1.0,
+          duration: 800,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    loop.start();
+    return () => {
+      loop.stop();
+    };
+  }, [micVisual, pulseRef]);
+
+  // -- Listener lifecycle (v2 only) ---------------------------------
+  /** Start the listener. Called when the toggle flips ON, the consent
+   *  sheet has been acknowledged, and the iOS permission has been
+   *  granted. Idempotent — bails if a listener is already active. */
+  const beginListening = useCallback(() => {
+    if (listenerRef.current) return;
+    if (!COOK_HANDSFREE_FEATURE_ENABLED) return;
+
+    setMicVisual("listening");
+    const listener = startCookHandsfreeListener({
+      onStart: () => {
+        setMicVisual("listening");
+      },
+      onCommand: (command, transcript) => {
+        const startedAt = lastResultStartRef.current;
+        const latencyMs =
+          startedAt != null ? Math.max(0, Date.now() - startedAt) : 0;
+        lastResultStartRef.current = Date.now();
+        track(AnalyticsEvents.cook_handsfree_command_detected, {
+          recipeId,
+          command,
+          latencyMs,
+        });
+
+        // 180ms detected flash on the mic icon, then back to listening.
+        setMicVisual("detected");
+        setTimeout(() => setMicVisual("listening"), DETECTED_FLASH_DURATION_MS);
+
+        // 220ms transcript chip — show "Heard: <verb>" so the user
+        // sees their command was understood even if the action takes
+        // a frame to render.
+        if (transcriptTimerRef.current) {
+          clearTimeout(transcriptTimerRef.current);
+        }
+        setLastTranscript(transcript);
+        transcriptTimerRef.current = setTimeout(() => {
+          setLastTranscript(null);
+        }, TRANSCRIPT_CHIP_DURATION_MS + 600);
+
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {
+          /* haptics best-effort */
+        });
+
+        applyHandsfreeCommand(command);
+      },
+      onMiss: () => {
+        // Stash the miss timestamp; if a manual tap follows within
+        // MISS_TAP_WINDOW_MS we'll bump the miss counter.
+        lastMissAtRef.current = Date.now();
+      },
+      onError: () => {
+        setMicVisual("error");
+      },
     });
-    track(AnalyticsEvents.cook_handsfree_pref_changed, { enabled: next });
-  };
+
+    if (listener) {
+      listenerRef.current = listener;
+    } else {
+      // Listener failed to start — most commonly because the device
+      // doesn't expose on-device recognition. Revert to OFF.
+      setMicVisual("error");
+      setHandsfreeOn(false);
+      void writeHandsfreeEnabled(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recipeId]);
+
+  /** Stop the listener. Safe to call multiple times. The 200ms-stop
+   *  contract is met by `module.stop()` being synchronous — we call
+   *  it on the same tick as the user action. */
+  const stopListening = useCallback(() => {
+    listenerRef.current?.stop();
+    listenerRef.current = null;
+    setMicVisual("off");
+  }, []);
+
+  // Always tear down the listener on unmount or screen blur. The
+  // privacy claim depends on this — if the listener leaks past the
+  // cook screen we're recording audio outside the cook surface.
+  useEffect(() => {
+    return () => {
+      stopListening();
+      if (transcriptTimerRef.current) {
+        clearTimeout(transcriptTimerRef.current);
+      }
+    };
+  }, [stopListening]);
+
+  useFocusEffect(
+    useCallback(() => {
+      // No-op on focus. Cleanup runs on blur — stops the listener
+      // when the user navigates away mid-cook.
+      return () => {
+        stopListening();
+      };
+    }, [stopListening]),
+  );
+
+  // Stop the listener when the recipe is done — honours the legal
+  // contract that the listener is only live during active cooking.
+  useEffect(() => {
+    if (isDone) stopListening();
+  }, [isDone, stopListening]);
 
   // Timer count up
   useEffect(() => {
@@ -140,15 +393,15 @@ export default function CookModeScreen() {
     }).start();
   }, [current, totalSteps, progressWidthRef]);
 
-  const goNext = () => {
+  const goNext = useCallback(() => {
     stopTimer();
     if (current < totalSteps) setCurrent((c) => c + 1);
-  };
+  }, [current, totalSteps]);
 
-  const goPrev = () => {
+  const goPrev = useCallback(() => {
     stopTimer();
     if (current > 0) setCurrent((c) => c - 1);
-  };
+  }, [current]);
 
   const startTimer = () => {
     setTimerElapsed(0);
@@ -168,6 +421,188 @@ export default function CookModeScreen() {
     setTimerActive(false);
     setTimerElapsed(0);
   };
+
+  /** Apply a recognised command. Wired to the same nav/timer
+   *  primitives the manual buttons use so v2 behaviour matches
+   *  v1-with-tapping-buttons exactly. */
+  const applyHandsfreeCommand = useCallback(
+    (command: HandsfreeCommand) => {
+      switch (command) {
+        case "next":
+          goNext();
+          break;
+        case "previous":
+          goPrev();
+          break;
+        case "repeat":
+          // Speak the current step text. Wrapped in a require so the
+          // module is only loaded when the listener actually fires —
+          // saves bundle eval on flag-off.
+          try {
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
+            const Speech = require("expo-speech") as {
+              speak: (text: string, opts?: { language?: string }) => void;
+            };
+            Speech.speak(stepText, { language: "en-US" });
+          } catch {
+            /* TTS best-effort — fail quietly */
+          }
+          break;
+        case "pause":
+          if (timerActive) setTimerActive(false);
+          break;
+        case "resume":
+          if (!timerActive && timerElapsed > 0) setTimerActive(true);
+          break;
+      }
+    },
+    [goNext, goPrev, stepText, timerActive, timerElapsed],
+  );
+
+  /** Account a manual nav-button tap against the soft-cap miss
+   *  counter. Called from the wrapped onPress handlers below. */
+  const accountManualTap = useCallback(() => {
+    if (!COOK_HANDSFREE_FEATURE_ENABLED) return;
+    if (!handsfreeOn) return;
+    const lastMiss = lastMissAtRef.current;
+    if (lastMiss == null) return;
+    const elapsed = Date.now() - lastMiss;
+    if (elapsed > MISS_TAP_WINDOW_MS) return;
+    lastMissAtRef.current = null;
+    setMissCount((prev) => {
+      const next = prev + 1;
+      if (next >= HANDSFREE_MISS_THRESHOLD) {
+        setDeescalationVisible(true);
+      }
+      return next;
+    });
+  }, [handsfreeOn]);
+
+  // -- Toggle handler -------------------------------------------------
+  const ageGateMessage = ageGateTooltip(ageGate);
+  const ageGateBlocked = ageGate !== "allowed";
+  const deviceUnsupported =
+    COOK_HANDSFREE_FEATURE_ENABLED && onDeviceSupported === false;
+  const toggleDisabled =
+    COOK_HANDSFREE_FEATURE_ENABLED && (ageGateBlocked || deviceUnsupported);
+  const toggleTooltip = ageGateBlocked
+    ? ageGateMessage
+    : deviceUnsupported
+      ? "Voice control isn't supported on this device."
+      : null;
+
+  const handleHandsfreeToggle = useCallback(() => {
+    // v1 path — flip the boolean, persist, fire analytics. No listener.
+    if (!COOK_HANDSFREE_FEATURE_ENABLED) {
+      const next = !handsfreeOn;
+      setHandsfreeOn(next);
+      void writeHandsfreeEnabled(next);
+      track(AnalyticsEvents.cook_handsfree_session_toggled, {
+        recipeId,
+        enabled: next,
+      });
+      track(AnalyticsEvents.cook_handsfree_pref_changed, { enabled: next });
+      return;
+    }
+
+    // v2 path — gates: age, device support, consent.
+    if (toggleDisabled) return;
+
+    const next = !handsfreeOn;
+    track(AnalyticsEvents.cook_handsfree_session_toggled, {
+      recipeId,
+      enabled: next,
+    });
+    track(AnalyticsEvents.cook_handsfree_pref_changed, { enabled: next });
+
+    if (!next) {
+      // Toggling OFF — stop listener, persist, done.
+      setHandsfreeOn(false);
+      void writeHandsfreeEnabled(false);
+      stopListening();
+      return;
+    }
+
+    // Toggling ON — first-time users see the explainer; returning
+    // users skip straight to the listener.
+    if (!consentGiven) {
+      setConsentSheetVisible(true);
+      return;
+    }
+    setHandsfreeOn(true);
+    void writeHandsfreeEnabled(true);
+    beginListening();
+  }, [
+    beginListening,
+    consentGiven,
+    handsfreeOn,
+    recipeId,
+    stopListening,
+    toggleDisabled,
+  ]);
+
+  /** Resolve the consent-sheet outcome: granted → start listener;
+   *  denied → revert toggle state. */
+  const handleConsentResolved = useCallback(
+    (granted: boolean) => {
+      setConsentSheetVisible(false);
+      setConsentGiven(true);
+      if (!granted) {
+        setHandsfreeOn(false);
+        void writeHandsfreeEnabled(false);
+        return;
+      }
+      setHandsfreeOn(true);
+      void writeHandsfreeEnabled(true);
+      beginListening();
+    },
+    [beginListening],
+  );
+
+  const handleConsentDismissed = useCallback(() => {
+    setConsentSheetVisible(false);
+    // Toggle was optimistically OFF before the sheet — keep it OFF.
+    setHandsfreeOn(false);
+    void writeHandsfreeEnabled(false);
+  }, []);
+
+  // Wrapped nav handlers that account for the soft-cap miss counter.
+  const onPressNext = useCallback(() => {
+    accountManualTap();
+    goNext();
+  }, [accountManualTap, goNext]);
+  const onPressPrev = useCallback(() => {
+    accountManualTap();
+    goPrev();
+  }, [accountManualTap, goPrev]);
+
+  const handleDeescalationKeep = useCallback(() => {
+    setDeescalationVisible(false);
+    setMissCount(0);
+    track(AnalyticsEvents.cook_handsfree_miss_threshold_hit, {
+      recipeId,
+      missCount: HANDSFREE_MISS_THRESHOLD,
+      action: "kept",
+    });
+  }, [recipeId]);
+
+  const handleDeescalationTurnOff = useCallback(() => {
+    setDeescalationVisible(false);
+    setMissCount(0);
+    setHandsfreeOn(false);
+    void writeHandsfreeEnabled(false);
+    stopListening();
+    track(AnalyticsEvents.cook_handsfree_miss_threshold_hit, {
+      recipeId,
+      missCount: HANDSFREE_MISS_THRESHOLD,
+      action: "turned_off",
+    });
+  }, [recipeId, stopListening]);
+
+  const handleHintDismiss = useCallback(() => {
+    setHintVisible(false);
+    void writeHandsfreeHintSeen();
+  }, []);
 
   const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
@@ -305,6 +740,11 @@ export default function CookModeScreen() {
     // Accent tint when on so the active state is unmistakable
     // even from across the kitchen.
     micToggleOn: { backgroundColor: Accent.primary + "22" },
+    // 180ms flash to a stronger tint on a recognised command.
+    micToggleDetected: { backgroundColor: Accent.primary + "44" },
+    // Destructive tint + amber dot accent on listener errors.
+    micToggleError: { backgroundColor: Accent.destructive + "22" },
+    micToggleDisabled: { opacity: 0.4 },
     handsfreeBanner: {
       marginHorizontal: Spacing.xl,
       marginTop: Spacing.sm,
@@ -314,18 +754,86 @@ export default function CookModeScreen() {
       backgroundColor: Accent.primary + "10",
       borderWidth: 1,
       borderColor: Accent.primary + "30",
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
     },
     handsfreeBannerText: {
       color: colors.text,
       fontSize: 12,
       lineHeight: 17,
       fontWeight: "600",
+      flex: 1,
     },
     handsfreeBannerSub: {
       color: colors.textSecondary,
       fontSize: 11,
       lineHeight: 15,
       marginTop: 2,
+    },
+    handsfreeBannerDismiss: {
+      paddingHorizontal: Spacing.sm,
+      paddingVertical: Spacing.xs,
+    },
+    handsfreeBannerDismissText: {
+      color: colors.textSecondary,
+      fontSize: 12,
+      fontWeight: "600",
+    },
+    transcriptChip: {
+      alignSelf: "center",
+      marginTop: Spacing.sm,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.xs,
+      borderRadius: Radius.full,
+      backgroundColor: Accent.primary + "30",
+    },
+    transcriptChipText: {
+      color: Accent.primary,
+      fontSize: 12,
+      fontWeight: "600",
+    },
+    deescalationStrip: {
+      marginHorizontal: Spacing.xl,
+      marginTop: Spacing.sm,
+      padding: Spacing.md,
+      borderRadius: Radius.sm,
+      backgroundColor: Accent.warning + "16",
+      borderWidth: 1,
+      borderColor: Accent.warning + "44",
+    },
+    deescalationText: {
+      color: colors.text,
+      fontSize: 13,
+      lineHeight: 18,
+      fontWeight: "600",
+    },
+    deescalationCtaRow: {
+      flexDirection: "row",
+      gap: Spacing.sm,
+      marginTop: Spacing.sm,
+    },
+    deescalationCta: {
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.xs,
+      borderRadius: Radius.sm,
+      backgroundColor: colors.card,
+    },
+    deescalationCtaPrimary: { backgroundColor: Accent.primary },
+    deescalationCtaText: {
+      color: colors.text,
+      fontSize: 12,
+      fontWeight: "600",
+    },
+    deescalationCtaPrimaryText: { color: "#fff" },
+    micErrorDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: Accent.warning,
+      position: "absolute",
+      top: 4,
+      right: 4,
     },
   }), [colors]);
 
@@ -350,6 +858,36 @@ export default function CookModeScreen() {
     outputRange: ["0%", "100%"],
   });
 
+  // Decide which mic icon + tint to render. v1 (flag off) keeps the
+  // simple two-state on/off icon with no listener decoration. v2
+  // (flag on) reflects the listener's live state.
+  const showFeatureV2 = COOK_HANDSFREE_FEATURE_ENABLED;
+  const micToggleStyle = showFeatureV2
+    ? handsfreeOn
+      ? micVisual === "detected"
+        ? styles.micToggleDetected
+        : micVisual === "error"
+          ? styles.micToggleError
+          : styles.micToggleOn
+      : styles.micToggleOff
+    : handsfreeOn
+      ? styles.micToggleOn
+      : styles.micToggleOff;
+  const micIconColor = showFeatureV2 && micVisual === "error"
+    ? Accent.destructive
+    : handsfreeOn
+      ? Accent.primary
+      : colors.textSecondary;
+  const renderMicIcon = handsfreeOn && (!showFeatureV2 || micVisual !== "error");
+
+  // Render the toggle only if we won't violate the "don't show the
+  // toggle at all if the build can't determine age safely" rule.
+  // For v1 (flag off), the legacy toggle ships unchanged — the legal
+  // gate doesn't apply because the feature itself isn't running.
+  const showMicToggle = showFeatureV2
+    ? ageGate !== "blocked_unknown" || onDeviceSupported !== null
+    : true;
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
@@ -359,30 +897,52 @@ export default function CookModeScreen() {
         </Pressable>
         <Text style={styles.headerCounter}>Step {current + 1} of {totalSteps}</Text>
         {/* Voice handsfree toggle (Paprika parity, 2026-05-01). v1
-            ships the toggle + persistence + banner — the listener
-            itself is queued for v2 (see decision doc). The toggle
-            is rendered in the right slot of the header so the
-            counter stays centred. */}
-        <Pressable
-          accessibilityRole="switch"
-          accessibilityState={{ checked: handsfreeOn }}
-          accessibilityLabel={
-            handsfreeOn ? "Voice handsfree on" : "Voice handsfree off"
-          }
-          testID="cook-handsfree-toggle"
-          onPress={handleHandsfreeToggle}
-          hitSlop={8}
-          style={[
-            styles.micToggle,
-            handsfreeOn ? styles.micToggleOn : styles.micToggleOff,
-          ]}
-        >
-          {handsfreeOn ? (
-            <Mic size={18} color={Accent.primary} strokeWidth={2} />
-          ) : (
-            <MicOff size={18} color={colors.textSecondary} strokeWidth={2} />
-          )}
-        </Pressable>
+            shipped the toggle + persistence + transparency banner.
+            v2 (flag-gated) wires in the on-device listener, age
+            gate, and consent sheet. Counter stays centred. */}
+        {showMicToggle ? (
+          <Animated.View
+            style={{
+              transform: [{ scale: showFeatureV2 && handsfreeOn && micVisual === "listening" ? pulseRef : 1 }],
+            }}
+          >
+            <Pressable
+              accessibilityRole="switch"
+              accessibilityState={{
+                checked: handsfreeOn,
+                disabled: toggleDisabled,
+              }}
+              accessibilityLabel={
+                toggleTooltip
+                  ? toggleTooltip
+                  : handsfreeOn
+                    ? "Voice handsfree on"
+                    : "Voice handsfree off"
+              }
+              accessibilityHint={toggleTooltip ?? undefined}
+              testID="cook-handsfree-toggle"
+              onPress={handleHandsfreeToggle}
+              hitSlop={8}
+              disabled={toggleDisabled}
+              style={[
+                styles.micToggle,
+                micToggleStyle,
+                toggleDisabled && styles.micToggleDisabled,
+              ]}
+            >
+              {renderMicIcon ? (
+                <Mic size={18} color={micIconColor} strokeWidth={2} />
+              ) : (
+                <MicOff size={18} color={micIconColor} strokeWidth={2} />
+              )}
+              {showFeatureV2 && micVisual === "error" ? (
+                <View style={styles.micErrorDot} />
+              ) : null}
+            </Pressable>
+          </Animated.View>
+        ) : (
+          <View style={{ width: 40 }} />
+        )}
       </View>
 
       {/* Progress bar */}
@@ -397,27 +957,89 @@ export default function CookModeScreen() {
         />
       </View>
 
-      {/* Voice handsfree banner — only renders when the toggle is ON.
-          v1 transparency: tells the user voice listening isn't live
-          yet, but the screen-stays-on bit IS. Better to ship honest
-          copy than to fake a pulsing mic the listener can't fulfil
-          (CLAUDE.md: never fake-implement). v2 swap-in: replace the
-          banner with a "Listening — say next, repeat, pause…" hint
-          + a real pulse on the mic icon when the listener is active. */}
-      {handsfreeOn && (
-        <View
-          style={styles.handsfreeBanner}
-          accessibilityLiveRegion="polite"
-          testID="cook-handsfree-banner"
-        >
-          <Text style={styles.handsfreeBannerText}>
-            Screen stays awake while you cook.
-          </Text>
-          <Text style={styles.handsfreeBannerSub}>
-            Voice control (say &quot;next&quot;, &quot;back&quot;, &quot;repeat&quot;) is coming soon. We don&apos;t record audio yet.
-          </Text>
-        </View>
+      {/* Voice handsfree banner. v1 (flag-off) renders the original
+          transparency copy explaining the listener isn't live yet.
+          v2 (flag-on, consent given) renders the "Listening — say
+          next, back, repeat, pause, or resume" hint as a one-shot
+          dismissible banner. */}
+      {showFeatureV2 ? (
+        handsfreeOn && consentGiven && hintVisible ? (
+          <View
+            style={styles.handsfreeBanner}
+            accessibilityLiveRegion="polite"
+            testID="cook-handsfree-banner"
+          >
+            <Text style={styles.handsfreeBannerText}>
+              Listening. Say next, back, repeat, pause, or resume.
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Dismiss listening hint"
+              testID="cook-handsfree-banner-dismiss"
+              onPress={handleHintDismiss}
+              style={styles.handsfreeBannerDismiss}
+            >
+              <Text style={styles.handsfreeBannerDismissText}>Got it</Text>
+            </Pressable>
+          </View>
+        ) : null
+      ) : (
+        handsfreeOn ? (
+          <View
+            style={styles.handsfreeBanner}
+            accessibilityLiveRegion="polite"
+            testID="cook-handsfree-banner"
+          >
+            <View style={{ flex: 1 }}>
+              <Text style={styles.handsfreeBannerText}>
+                Screen stays awake while you cook.
+              </Text>
+              <Text style={styles.handsfreeBannerSub}>
+                Voice control (say &quot;next&quot;, &quot;back&quot;, &quot;repeat&quot;) is coming soon. We don&apos;t record audio yet.
+              </Text>
+            </View>
+          </View>
+        ) : null
       )}
+
+      {/* De-escalation strip — three-miss soft cap (v2 only). */}
+      {showFeatureV2 && deescalationVisible ? (
+        <View style={styles.deescalationStrip} testID="cook-handsfree-deescalation">
+          <Text style={styles.deescalationText}>
+            Trouble hearing you. Tap Next or Previous any time, or move closer to the phone.
+          </Text>
+          <View style={styles.deescalationCtaRow}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Keep listening"
+              testID="cook-handsfree-deescalation-keep"
+              onPress={handleDeescalationKeep}
+              style={[styles.deescalationCta, styles.deescalationCtaPrimary]}
+            >
+              <Text style={[styles.deescalationCtaText, styles.deescalationCtaPrimaryText]}>
+                Keep listening
+              </Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Turn voice off"
+              testID="cook-handsfree-deescalation-off"
+              onPress={handleDeescalationTurnOff}
+              style={styles.deescalationCta}
+            >
+              <Text style={styles.deescalationCtaText}>Turn voice off</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
+
+      {/* Transcript feedback chip — fires on every recognised
+          command. (v2 only.) */}
+      {showFeatureV2 && lastTranscript ? (
+        <View style={styles.transcriptChip} testID="cook-handsfree-transcript">
+          <Text style={styles.transcriptChipText}>Heard: {lastTranscript}</Text>
+        </View>
+      ) : null}
 
       {!isDone ? (
         <View style={styles.stepContainer}>
@@ -449,12 +1071,12 @@ export default function CookModeScreen() {
           <View style={styles.navRow}>
             <Pressable
               style={[styles.navBtn, current === 0 && styles.navBtnDisabled]}
-              onPress={goPrev}
+              onPress={onPressPrev}
               disabled={current === 0}
             >
               <Text style={styles.navBtnText}>Previous</Text>
             </Pressable>
-            <Pressable style={styles.nextBtn} onPress={goNext}>
+            <Pressable style={styles.nextBtn} onPress={onPressNext}>
               <Text style={styles.nextBtnText}>
                 {current === totalSteps - 1 ? "Done!" : "Next Step"}
               </Text>
@@ -493,6 +1115,16 @@ export default function CookModeScreen() {
           </Pressable>
         </View>
       )}
+
+      {/* Pre-permission explainer (v2 only). Renders above all other
+          surfaces via Modal. */}
+      {showFeatureV2 ? (
+        <CookHandsfreeConsentSheet
+          visible={consentSheetVisible}
+          onConsentGranted={handleConsentResolved}
+          onDismiss={handleConsentDismissed}
+        />
+      ) : null}
     </View>
   );
 }

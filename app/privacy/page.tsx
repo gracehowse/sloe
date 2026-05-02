@@ -85,6 +85,14 @@ export default function PrivacyPage() {
               flows.
             </li>
           </ul>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Voice control in Cook Mode</h2>
+          <p>
+            <strong>Voice control in Cook Mode.</strong> When you turn on Voice Control inside Cook Mode, your device listens
+            for short keywords (&ldquo;next&rdquo;, &ldquo;back&rdquo;, &ldquo;repeat&rdquo;, &ldquo;pause&rdquo;,
+            &ldquo;resume&rdquo;) so you can navigate steps without touching the screen. Recognition runs entirely on your
+            device using the iOS Speech framework. We do not record, store, or transmit your voice. You can turn Voice Control
+            off at any time from the Cook Mode header or your device&rsquo;s microphone settings.
+          </p>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Sub-processors</h2>
           <p>
             We use the following third-party service providers to operate Suppr. Each is bound by a data-processing
