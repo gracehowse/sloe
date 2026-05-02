@@ -48,7 +48,9 @@ describe("dailyValuePercent", () => {
   });
 
   it("returns null for nutrients without a DV", () => {
-    expect(dailyValuePercent("riboflavinMg", 1.3)).toBeNull();
+    // PR #47 expanded the DV table to 34 nutrients; riboflavin now
+    // has a DV (1.3mg). Stick to nutrients that genuinely have no
+    // FDA DV — caffeine and total sugar (only ADDED sugar has a DV).
     expect(dailyValuePercent("caffeineMg", 200)).toBeNull();
     expect(dailyValuePercent("sugarG", 50)).toBeNull();
   });

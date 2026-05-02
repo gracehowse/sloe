@@ -1,54 +1,69 @@
 import React from "react";
-import { ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
+import { ChevronRight } from "lucide-react-native";
 import { Accent, Radius, Spacing } from "@/constants/theme";
 import {
   dailyValuePercent,
   isLimitNutrient,
 } from "../../../../src/lib/nutrition/dailyValues";
+import {
+  FullNutrientPanelSheet,
+  type FullNutrientPanelSheetColors,
+} from "./FullNutrientPanelSheet";
+import { FULL_NUTRIENT_PANEL_ROW_COUNT } from "../../../../src/lib/nutrition/fullNutrientPanel";
 
 /**
  * TodayMicrosWidget — 4 horizontal-scroll micronutrient tiles for Today.
  *
  * Closes audit gap #1 (Cronometer-grade micros). Suppr already logs 35+
- * micronutrients via `sumMicrosFromLoggedMeals`; this widget surfaces the
- * 4 most diet-relevant ones (fibre intake, iron, vitamin D status,
- * sodium budget) so the macro-only persona switching from MyFitnessPal /
- * MacroFactor can see at a glance that Suppr does not stop at protein.
+ * micronutrients via `sumMicrosFromLoggedMeals`; this widget surfaces
+ * the 4 most diet-relevant ones (fibre intake, iron, vitamin D status,
+ * sodium budget) so the macro-only persona switching from MyFitnessPal
+ * / MacroFactor sees at a glance that Suppr does not stop at protein.
  *
- * Scope is intentionally narrow:
- *  - 4 tiles: Fibre, Iron, Vitamin D, Sodium.
- *  - %DV bar derived from `dailyValuePercent` (FDA 2020 reference table).
- *  - No bottom sheet, no settings toggle, no full nutrient panel — those
- *    surfaces already exist via `TodayNutrientsModal` (the existing
- *    Nutrients link in `TodayDashboardMacroTiles`).
+ * Below the tile row sits a "View all 35 nutrients" CTA — tapping it
+ * opens the `FullNutrientPanelSheet` (audit gap #1 follow-up,
+ * 2026-05-01) which renders ALL 35 curated nutrients across Macros /
+ * Vitamins / Minerals with %DV bars sorted descending so deficiencies
+ * surface first.
  *
  * Sodium colour ramp: success up to 80% of the 2300mg limit, warning
- * 80%-99%, danger at 100%+. Other nutrients stay on the success ramp;
- * over-target is fine for fibre/iron/vitamin D so we cap the bar at
- * 100% width but leave the colour green.
+ * 80%-99%, danger at 100%+. Other tile-headline nutrients stay on the
+ * success ramp; over-target is fine for fibre/iron/vitamin D so we cap
+ * the bar at 100% width but leave the colour green.
  *
  * Web parity: `src/app/components/suppr/today-micros-widget.tsx`.
  */
 
 export interface TodayMicrosWidgetProps {
   /**
-   * Day-summed micros — use the result of
-   * `sumMicrosFromLoggedMeals(mealsToday)` directly. Missing keys are
-   * treated as zero.
+   * Day-summed micros — pass `sumMicrosFromLoggedMeals(mealsToday)`
+   * directly. Missing keys are treated as zero.
    */
   microSum: Record<string, number> | null | undefined;
   /**
-   * Day-totalled fibre in grams. Comes from the dedicated `fiberG` meal
-   * column path (see `mealContributedFiberG`); the widget reads it
-   * separately so it survives meals that store fibre on the column but
-   * have no `micros.fiberG` key.
+   * Day-totalled fibre in grams. Comes from the dedicated `fiberG`
+   * meal column path (see `mealContributedFiberG`).
    */
   fiberG: number;
+  /** Optional macro day totals — passed straight through to the panel
+   *  sheet so its Macros section reflects the same totals shown on the
+   *  macro tiles. The 4-tile row above uses only fibre + sodium. */
+  totalFatG?: number;
+  saturatedFatG?: number;
+  totalCarbsG?: number;
+  proteinG?: number;
+  sugarG?: number;
+  cholesterolMg?: number;
   cardColor: string;
   cardBorderColor: string;
   textColor: string;
   textSecondaryColor: string;
   textTertiaryColor: string;
+  /** Sheet colors. Defaults to widget colors when omitted, but Today
+   *  passes the full theme palette so the sheet matches the screen
+   *  background, not the card chip. */
+  sheetColors?: FullNutrientPanelSheetColors;
 }
 
 type TileKey = "fiberG" | "ironMg" | "vitaminDMcg" | "sodiumMg";
@@ -69,12 +84,6 @@ const TILE_SPECS: ReadonlyArray<TileSpec> = [
   { key: "sodiumMg", label: "Sodium", unit: "mg", reference: 2300 },
 ];
 
-/**
- * Pick the bar colour for a tile. Limit nutrients (sodium) ramp from
- * success → warning → danger as %DV climbs; target nutrients stay
- * success regardless of overshoot (going over fibre / iron / vit D is
- * not a warning).
- */
 function tileColorForPercent(key: TileKey, pct: number | null): string {
   if (pct === null) return Accent.success;
   if (!isLimitNutrient(key)) return Accent.success;
@@ -83,28 +92,39 @@ function tileColorForPercent(key: TileKey, pct: number | null): string {
   return Accent.success;
 }
 
-/** Format the headline value for a tile (e.g. "24g"). */
 function formatAmount(amount: number, unit: TileSpec["unit"]): string {
-  if (unit === "g") {
-    // Fibre rounded to nearest whole gram.
-    return `${Math.round(amount)}g`;
-  }
-  if (unit === "mg") {
-    return `${Math.round(amount)}mg`;
-  }
+  if (unit === "g") return `${Math.round(amount)}g`;
+  if (unit === "mg") return `${Math.round(amount)}mg`;
   return `${Math.round(amount)}mcg`;
 }
 
 export function TodayMicrosWidget({
   microSum,
   fiberG,
+  totalFatG,
+  saturatedFatG,
+  totalCarbsG,
+  proteinG,
+  sugarG,
+  cholesterolMg,
   cardColor,
   cardBorderColor,
   textColor,
   textSecondaryColor,
   textTertiaryColor,
+  sheetColors,
 }: TodayMicrosWidgetProps) {
   const sum = microSum ?? {};
+  const [panelOpen, setPanelOpen] = React.useState(false);
+
+  const resolvedSheetColors: FullNutrientPanelSheetColors = sheetColors ?? {
+    background: cardColor,
+    card: cardColor,
+    cardBorder: cardBorderColor,
+    text: textColor,
+    textSecondary: textSecondaryColor,
+    textTertiary: textTertiaryColor,
+  };
 
   return (
     <View style={{ marginBottom: Spacing.md }} accessibilityLabel="Micronutrients">
@@ -126,8 +146,6 @@ export function TodayMicrosWidget({
         contentContainerStyle={{ gap: Spacing.sm, paddingRight: Spacing.md }}
       >
         {TILE_SPECS.map((spec) => {
-          // Fibre comes from the dedicated meal-column path so the
-          // widget agrees with the existing Today fibre headline.
           const amount =
             spec.key === "fiberG"
               ? fiberG
@@ -136,9 +154,6 @@ export function TodayMicrosWidget({
                 : 0;
           const pct = dailyValuePercent(spec.key, amount);
           const color = tileColorForPercent(spec.key, pct);
-          // Cap the bar fill at 100% so over-target sodium doesn't
-          // overflow the track. The %DV caption still reads >100% so
-          // the user sees the actual value.
           const barWidthPct = Math.min(100, Math.max(0, pct ?? 0));
 
           return (
@@ -177,8 +192,15 @@ export function TodayMicrosWidget({
                 numberOfLines={1}
               >
                 {formatAmount(amount, spec.unit)}{" "}
-                <Text style={{ fontSize: 12, fontWeight: "500", color: textSecondaryColor }}>
-                  / {spec.reference}{spec.unit}
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: "500",
+                    color: textSecondaryColor,
+                  }}
+                >
+                  / {spec.reference}
+                  {spec.unit}
                 </Text>
               </Text>
               <View
@@ -189,8 +211,6 @@ export function TodayMicrosWidget({
                   overflow: "hidden",
                 }}
                 testID={`today-micros-bar-${spec.key}`}
-                // Track colour exposed via accessibilityValue so tests
-                // can assert the colour ramp without traversing styles.
                 accessibilityValue={{ now: pct ?? 0, min: 0, max: 100 }}
               >
                 <View
@@ -217,6 +237,53 @@ export function TodayMicrosWidget({
           );
         })}
       </ScrollView>
+
+      {/* CTA chip — opens the full nutrient panel sheet. */}
+      <Pressable
+        testID="today-micros-view-all-cta"
+        accessibilityRole="button"
+        accessibilityLabel={`View all ${FULL_NUTRIENT_PANEL_ROW_COUNT} nutrients`}
+        onPress={() => setPanelOpen(true)}
+        style={({ pressed }) => ({
+          alignSelf: "flex-start",
+          marginTop: Spacing.sm,
+          paddingHorizontal: Spacing.md,
+          paddingVertical: Spacing.xs + 2,
+          borderRadius: 999,
+          backgroundColor: cardColor,
+          borderWidth: 1,
+          borderColor: cardBorderColor,
+          opacity: pressed ? 0.7 : 1,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 4,
+        })}
+      >
+        <Text
+          style={{
+            fontSize: 12,
+            fontWeight: "600",
+            color: textColor,
+          }}
+        >
+          View all {FULL_NUTRIENT_PANEL_ROW_COUNT} nutrients
+        </Text>
+        <ChevronRight size={14} color={textSecondaryColor} strokeWidth={2.25} />
+      </Pressable>
+
+      <FullNutrientPanelSheet
+        visible={panelOpen}
+        onClose={() => setPanelOpen(false)}
+        microSum={microSum}
+        fiberG={fiberG}
+        totalFatG={totalFatG}
+        saturatedFatG={saturatedFatG}
+        totalCarbsG={totalCarbsG}
+        proteinG={proteinG}
+        sugarG={sugarG}
+        cholesterolMg={cholesterolMg}
+        colors={resolvedSheetColors}
+      />
     </View>
   );
 }
