@@ -1,5 +1,34 @@
 # Mobile App Changelog
 
+## 2026-04-30 — Recipe detail "Servings to view" stepper (Paprika parity)
+
+### New
+- **Recipe detail — viewing-servings stepper.** Mobile +/- stepper near
+  the top of the screen lets the viewer dial the number of portions
+  they're looking at (1..99). Ingredient grams scale proportionally and
+  a secondary "X kcal total for N portions" line surfaces below the
+  per-portion calorie hero when the user has dialled away from the
+  recipe's authored yield. Bounds + 200ms debounce live in the shared
+  `src/lib/nutrition/recipeViewScale.ts` helper so web (`RecipeDetail.tsx`)
+  and mobile (`apps/mobile/app/recipe/[id].tsx`) share one contract.
+- **Web parity.** The pre-existing web stepper now respects the same
+  1..99 bounds (was unbounded on the `+` side), gets the same 200ms
+  debounce, and emits `data-testid` hooks for parity tests.
+- **`?portion=N` deep-link continuity.** Planner / log-flow links that
+  pass `?portion=1.5` still seed the stepper at `recipe.servings × 1.5`
+  on first mount, so the detail screen reflects the deep-link intent
+  without losing the new manual control.
+
+### Decisions captured in this change
+- Per-portion macros are invariant under the stepper (per-portion is
+  per-portion regardless of how many you cook). Only ingredient grams
+  and an optional batch-total line scale. The previous web behaviour
+  (rendering `perPortion × multiplier` as "Calories per portion")
+  conflated these two and is corrected on web alongside the mobile add.
+- The stand-alone "Planned portion: Nx — quantities below are adjusted"
+  banner that mobile previously showed when deep-linked is removed —
+  the visible stepper itself is the canonical surface for that signal.
+
 ## 2026-04-20 — RevenueCat Customer Center + v2 API key support
 
 ### RevenueCat

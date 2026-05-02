@@ -67,6 +67,16 @@ import { SourceDot } from "./ui/source-dot";
 import { classifyRecipeGluten } from "../../lib/nutrition/recipeTrust.ts";
 import { mapMealSourceToDot } from "../../lib/nutrition/sourceMap.ts";
 import { FatSecretBadge } from "./ui/FatSecretBadge";
+// PR1 (Paprika parity, 2026-04-30 customer-lens audit) — shared
+// stepper helpers. Mobile uses the same module so bounds + clamp +
+// debounce stay in lock-step.
+import {
+  RECIPE_VIEW_SERVINGS_MAX,
+  RECIPE_VIEW_SERVINGS_MIN,
+  RECIPE_VIEW_STEPPER_DEBOUNCE_MS,
+  initialViewServings,
+  stepViewServings,
+} from "../../lib/nutrition/recipeViewScale.ts";
 
 async function shareRecipeDeepLink(recipeId: string) {
   if (typeof window === "undefined") return;
@@ -189,11 +199,45 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
   } = useAppData();
   const router = useRouter();
   const saved = isRecipeSaved(recipe.id);
-  const [servings, setServings] = useState(
-    initialServings != null && initialServings > 0
-      ? Math.round(recipe.servings * initialServings * 10) / 10
-      : recipe.servings,
+  // PR1 (2026-04-30): the viewing-servings stepper is the
+  // canonical "how many portions am I looking at" state. Bounds
+  // (1..99) + the deep-link `initialServings` honouring live in the
+  // shared `recipeViewScale.ts` so mobile uses the exact same
+  // contract.
+  const [servings, setServings] = useState<number>(() =>
+    initialViewServings({
+      baseServings: recipe.servings,
+      portionParam:
+        typeof initialServings === "number" && Number.isFinite(initialServings) && initialServings > 0
+          ? initialServings
+          : null,
+    }),
   );
+  // Stepper debounce — coalesces a burst of `+`/`-` clicks (or held
+  // keys via keyboard repeat) into a single state update at the tail
+  // of the burst. 200ms matches the mobile cadence.
+  const stepperPendingDelta = useRef(0);
+  const stepperPendingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleViewServingsStep = useCallback((delta: number) => {
+    stepperPendingDelta.current += delta;
+    if (stepperPendingTimer.current) clearTimeout(stepperPendingTimer.current);
+    stepperPendingTimer.current = setTimeout(() => {
+      const accum = stepperPendingDelta.current;
+      stepperPendingDelta.current = 0;
+      stepperPendingTimer.current = null;
+      setServings((prev) => stepViewServings(prev, accum));
+    }, RECIPE_VIEW_STEPPER_DEBOUNCE_MS);
+  }, []);
+  // Cancel pending stepper timer on unmount so a late tick doesn't
+  // call setState after teardown.
+  useEffect(() => {
+    return () => {
+      if (stepperPendingTimer.current) {
+        clearTimeout(stepperPendingTimer.current);
+        stepperPendingTimer.current = null;
+      }
+    };
+  }, []);
   const [activeTab, setActiveTab] = useState<"ingredients" | "steps" | "nutrition">("ingredients");
   const [cookModeOpen, setCookModeOpen] = useState(Boolean(autoOpenCookMode));
 
@@ -1384,22 +1428,40 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           </div>
         </div>
 
-        {/* Servings Selector — how many portions you are viewing / logging */}
-        <div className="bg-card rounded-2xl p-4 flex items-center justify-between border border-border">
-          <span className="font-semibold text-foreground text-sm">Portions to view</span>
+        {/* Servings Selector — how many portions you are viewing / logging.
+            PR1 (Paprika parity, 2026-04-30): bounded 1..99, debounced
+            200ms via `handleViewServingsStep` to coalesce held-key
+            bursts into one state update. Same contract as mobile. */}
+        <div
+          className="bg-card rounded-2xl p-4 flex items-center justify-between border border-border"
+          data-testid="recipe-view-servings-stepper"
+        >
+          <span className="font-semibold text-foreground text-sm">Servings to view</span>
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => setServings(Math.max(1, servings - 1))}
-              className="w-8 h-8 rounded-lg bg-muted border border-border hover:bg-muted/80 transition-all flex items-center justify-center"
+              onClick={() => handleViewServingsStep(-1)}
+              disabled={servings <= RECIPE_VIEW_SERVINGS_MIN}
+              aria-label="Decrease servings"
+              data-testid="recipe-view-servings-minus"
+              className="w-8 h-8 rounded-lg bg-muted border border-border hover:bg-muted/80 transition-all flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed"
             >
               −
             </button>
-            <span className="w-8 text-center font-bold text-foreground tabular-nums">{servings}</span>
+            <span
+              className="w-8 text-center font-bold text-foreground tabular-nums"
+              data-testid="recipe-view-servings-value"
+              aria-live="polite"
+            >
+              {servings}
+            </span>
             <button
               type="button"
-              onClick={() => setServings(servings + 1)}
-              className="w-8 h-8 rounded-lg bg-muted border border-border hover:bg-muted/80 transition-all flex items-center justify-center"
+              onClick={() => handleViewServingsStep(1)}
+              disabled={servings >= RECIPE_VIEW_SERVINGS_MAX}
+              aria-label="Increase servings"
+              data-testid="recipe-view-servings-plus"
+              className="w-8 h-8 rounded-lg bg-muted border border-border hover:bg-muted/80 transition-all flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed"
             >
               +
             </button>
