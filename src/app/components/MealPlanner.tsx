@@ -360,10 +360,11 @@ export const MealPlanner = memo(function MealPlanner({
     const fat = Math.max(0, Math.round(Number(meal.fat) || 0));
     // Tracking-extras autoupdate (2026-05-01) — forward caffeine /
     // alcohol micros if the planner row carries them so the F-13 daily
-    // bump fires inside `addLoggedMeal`. Mirrors the mobile
-    // `logPlannedMealWithPortion` wiring. The planner row carries
-    // `micros` only when the underlying recipe was verified with
-    // ingredient-level caffeine / alcohol; fallback is no-op.
+    // bump fires inside `addLoggedMeal`. Mirrors the mobile planner
+    // tap-to-log wiring at `apps/mobile/app/(tabs)/index.tsx`. The
+    // planner row carries `micros` only when the underlying recipe was
+    // verified with ingredient-level caffeine / alcohol; fallback is
+    // no-op.
     const plannerMicros = (meal as { micros?: Record<string, number> | null }).micros;
     const micros: Record<string, number> = {};
     const caff = plannerMicros && typeof plannerMicros === "object" ? Number(plannerMicros.caffeineMg ?? 0) : 0;
