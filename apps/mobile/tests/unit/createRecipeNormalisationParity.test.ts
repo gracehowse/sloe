@@ -109,3 +109,45 @@ describe("web recipe upload — parity with mobile create on normalise (E-1)", (
     expect(WEB_UPLOAD_SRC).not.toMatch(/instructions:\s*instructions\.trim\(\)/);
   });
 });
+
+describe("web recipe upload — F-72 macro rounding parity with mobile wizard", () => {
+  // F-72 (2026-05-08): `recipes.{calories,protein,carbs,fat}` and the
+  // matching `recipe_ingredients` columns were widened from INTEGER to
+  // NUMERIC(10, 2) by migration 20260508100000_recipes_macros_numeric.
+  // Both write surfaces must use `roundCalories` / `roundMacro` from
+  // the shared helper so values land at the same precision the schema
+  // and UI expose. If web drifts off the helper, this test breaks.
+
+  it("imports the shared roundMacro / roundCalories helpers", () => {
+    expect(WEB_UPLOAD_SRC).toMatch(
+      /import\s*\{\s*roundCalories,\s*roundMacro\s*\}\s*from\s*["'][^"']*lib\/recipes\/createRecipeWizard/,
+    );
+  });
+
+  it("rounds the per-recipe macros at the recipes-upsert boundary", () => {
+    expect(WEB_UPLOAD_SRC).toMatch(/calories:\s*roundCalories\(/);
+    expect(WEB_UPLOAD_SRC).toMatch(/protein:\s*roundMacro\(/);
+    expect(WEB_UPLOAD_SRC).toMatch(/carbs:\s*roundMacro\(/);
+    expect(WEB_UPLOAD_SRC).toMatch(/fat:\s*roundMacro\(/);
+  });
+
+  it("rounds the per-ingredient macros at the recipe_ingredients-insert boundary", () => {
+    // The ingredient row builder uses the same helpers so rows land at
+    // identical precision regardless of source (verified FatSecret floats
+    // vs estimated USDA per-100 g math).
+    expect(WEB_UPLOAD_SRC).toMatch(/calories:\s*roundCalories\(macros\?\.calories\s*\?\?\s*est\.calories\)/);
+    expect(WEB_UPLOAD_SRC).toMatch(/protein:\s*roundMacro\(macros\?\.protein\s*\?\?\s*est\.protein\)/);
+    expect(WEB_UPLOAD_SRC).toMatch(/carbs:\s*roundMacro\(macros\?\.carbs\s*\?\?\s*est\.carbs\)/);
+    expect(WEB_UPLOAD_SRC).toMatch(/fat:\s*roundMacro\(macros\?\.fat\s*\?\?\s*est\.fat\)/);
+    expect(WEB_UPLOAD_SRC).toMatch(/fiber_g:\s*roundMacro\(macros\?\.fiberG\s*\?\?\s*0\)/);
+  });
+
+  it("no longer writes raw chosenPerServing values without a round wrapper", () => {
+    // Pre-fix shape: `calories: aggregateScrub ? aggregateScrub.calories : chosenPerServing.calories,`.
+    // The new shape wraps the whole ternary in `roundCalories(...)`.
+    // If a refactor reverts to the bare assignment, this catches it.
+    expect(WEB_UPLOAD_SRC).not.toMatch(
+      /calories:\s*aggregateScrub\s*\?\s*aggregateScrub\.calories\s*:\s*chosenPerServing\.calories,/,
+    );
+  });
+});

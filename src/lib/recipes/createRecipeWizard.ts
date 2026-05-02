@@ -207,6 +207,40 @@ export function prevStep(id: CreateRecipeStepId): CreateRecipeStepId | null {
   return CREATE_RECIPE_STEP_IDS[idx - 1] ?? null;
 }
 
+/** Round a macro value to 1 decimal place, defensively. Used at the
+ *  recipe-save boundary on both web and mobile so values written to
+ *  `recipes.{calories,protein,carbs,fat}` and the matching
+ *  `recipe_ingredients` columns never carry more precision than the
+ *  schema or UI exposes.
+ *
+ *  History: F-72 (2026-05-08). Before migration
+ *  `20260508100000_recipes_macros_numeric` widened the columns from
+ *  `integer` to `NUMERIC(10, 2)`, raw float input (e.g. an override
+ *  of `2.3` typed into the macros step) crashed the insert with
+ *  `invalid input syntax for type integer: "2.3"`. Even with the
+ *  widened schema, we still round at write time because the UI
+ *  displays 1-decimal precision and the backfill migration uses
+ *  1-decimal rounding — keeping write-time rounding consistent
+ *  prevents a "1.49 vs 1.5" mismatch between rows backfilled by SQL
+ *  and rows created via the wizard.
+ *
+ *  Returns 0 for non-finite input — same defensive shape as
+ *  `computeRecipeTotals`.
+ */
+export function roundMacro(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.round(value * 10) / 10;
+}
+
+/** Round calories to a whole number — `recipes.calories` is per-
+ *  serving and 0.1 kcal precision is meaningless on a serving (USDA
+ *  rounds calories to whole kcal too). NUMERIC(10, 2) accepts decimal
+ *  input but we keep calories visibly whole. */
+export function roundCalories(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.round(value);
+}
+
 /** Sum the per-recipe totals from the ingredient rows. Mirrors the
  *  reduce in `create-recipe.tsx` so both surfaces compute identical
  *  numbers from identical inputs. */
@@ -240,19 +274,30 @@ export function computePerServing(
   const totals = computeRecipeTotals(state.ingredients);
   const srv = clampServings(state.servings);
   const auto = {
-    calories: Math.round(totals.calories / srv),
-    protein: Math.round((totals.protein / srv) * 10) / 10,
-    carbs: Math.round((totals.carbs / srv) * 10) / 10,
-    fat: Math.round((totals.fat / srv) * 10) / 10,
-    fiberG: Math.round((totals.fiberG / srv) * 10) / 10,
+    calories: roundCalories(totals.calories / srv),
+    protein: roundMacro(totals.protein / srv),
+    carbs: roundMacro(totals.carbs / srv),
+    fat: roundMacro(totals.fat / srv),
+    fiberG: roundMacro(totals.fiberG / srv),
   };
+  // Overrides are user-typed numbers (e.g. "2.3" for fat). They get
+  // the same 1-decimal rounding as the auto-computed values so the
+  // write-side schema (NUMERIC(10, 2)) and read-side UI agree, and
+  // so an override of `2.345` doesn't sneak more precision into the
+  // DB than any other code path produces.
   const o = state.macroOverrides;
   return {
-    calories: Number.isFinite(o.calories) ? Number(o.calories) : auto.calories,
-    protein: Number.isFinite(o.protein) ? Number(o.protein) : auto.protein,
-    carbs: Number.isFinite(o.carbs) ? Number(o.carbs) : auto.carbs,
-    fat: Number.isFinite(o.fat) ? Number(o.fat) : auto.fat,
-    fiberG: Number.isFinite(o.fiberG) ? Number(o.fiberG) : auto.fiberG,
+    calories: Number.isFinite(o.calories)
+      ? roundCalories(Number(o.calories))
+      : auto.calories,
+    protein: Number.isFinite(o.protein)
+      ? roundMacro(Number(o.protein))
+      : auto.protein,
+    carbs: Number.isFinite(o.carbs) ? roundMacro(Number(o.carbs)) : auto.carbs,
+    fat: Number.isFinite(o.fat) ? roundMacro(Number(o.fat)) : auto.fat,
+    fiberG: Number.isFinite(o.fiberG)
+      ? roundMacro(Number(o.fiberG))
+      : auto.fiberG,
   };
 }
 
