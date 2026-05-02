@@ -142,8 +142,26 @@ export type ClientResult<T> = { data: T | null; error: string | null };
 const MAX_MEMBERS = 8;
 const MAX_NAME_LEN = 50;
 
+/**
+ * Local-calendar today key. Build 41 (2026-05-01) household-calories
+ * fix: previously used `new Date().toISOString().slice(0, 10)` which
+ * is the UTC date, but `nutrition_entries.date_key` and
+ * `household_meals.date_key` are written from the user's LOCAL date
+ * (`dateKeyFromDate(new Date())` everywhere else in the app). The
+ * mismatch between UTC and local calendar dates around midnight (or
+ * any non-zero offset) made `getMyHousehold` either miss today's
+ * entries or pull yesterday's, producing the "calories wildly high
+ * vs target" feedback (TestFlight `AJ_dfDvM2j6rnkOAgHTpwig`).
+ *
+ * Use the same local-calendar derivation as the rest of the app so
+ * every read sees the same key the writer wrote.
+ */
 function todayKey(): string {
-  return new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  const y = d.getFullYear();
+  const mo = String(d.getMonth() + 1).padStart(2, "0");
+  const da = String(d.getDate()).padStart(2, "0");
+  return `${y}-${mo}-${da}`;
 }
 
 function roundTo1(n: number): number {
