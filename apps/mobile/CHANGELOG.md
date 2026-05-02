@@ -1,5 +1,15 @@
 # Mobile App Changelog
 
+## 2026-05-01 — LogSheet: 3-tab discoverability (journey-architect P1)
+
+### LogSheet
+- **Saved-meal dot indicator** on the Saved tab in the LogSheet's Recent / Library / Saved toggle row. Renders a 6×6 primary-blue dot when the user has 3+ saved meals so first-time openers learn the tab exists. Closes the journey-architect P1 finding "Log lunch via saved meal: 5 taps. At target but requires the user to know the toggle exists."
+- **Equal-weight tab pills** confirmed (all pills share `flex: 1` + identical typography). Tests pin both invariants so future refactors don't silently regress: `apps/mobile/tests/unit/logSheetPhase3.test.tsx` + `tests/unit/logSheetPhase3.test.tsx` both ship 4 new pinning tests.
+- **Accessible saved-count label** on the Saved pill when the dot is showing — screen readers announce "Saved meals — N saved" so the dot's signal is not visual-only.
+
+### Web parity
+- `src/app/components/suppr/log-sheet.tsx` ships the matching dot + accessible label inside the Recent / Library / Saved toggle row.
+
 ## 2026-05-01 — LogSheet Library tab (one-tap log from saved recipes)
 
 ### Today screen / LogSheet

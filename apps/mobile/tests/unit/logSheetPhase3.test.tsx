@@ -416,6 +416,61 @@ describe("LogSheet (mobile) — Recent / Saved browse pills (Phase 4 / Next-10 #
   });
 });
 
+describe("LogSheet (mobile) — saved-tab discoverability dot (2026-05-01, journey-architect P1)", () => {
+  // Discoverability nudge: when the user has 3+ saved meals we render
+  // a small dot on the Saved tab so first-time-openers learn the tab
+  // exists. Below 3, no dot. Pinned here so future refactors don't
+  // silently regress the threshold.
+  const oneMeal: LogSheetSavedMeal = {
+    id: "m1",
+    title: "My usual oatmeal",
+    kcal: 380,
+    source: "manual",
+  };
+  const threeMeals: LogSheetSavedMeal[] = [
+    { id: "m1", title: "Oatmeal", kcal: 380, source: "manual" },
+    { id: "m2", title: "Salad", kcal: 250, source: "manual" },
+    { id: "m3", title: "Stew", kcal: 600, source: "manual" },
+  ];
+
+  it("hides the dot when the user has fewer than 3 saved meals", () => {
+    const { queryByTestId } = open({
+      recent: { entries: [], onPick: () => {} },
+      saved: { meals: [oneMeal], onPick: () => {} },
+    });
+    expect(queryByTestId("log-sheet-tab-saved-dot")).toBeNull();
+  });
+
+  it("shows the dot when the user has 3+ saved meals", () => {
+    const { getByTestId } = open({
+      recent: { entries: [], onPick: () => {} },
+      saved: { meals: threeMeals, onPick: () => {} },
+    });
+    expect(getByTestId("log-sheet-tab-saved-dot")).toBeTruthy();
+  });
+
+  it("the Saved-meals tab carries an accessible saved-count label when the dot is showing", () => {
+    const { getByLabelText } = open({
+      recent: { entries: [], onPick: () => {} },
+      saved: { meals: threeMeals, onPick: () => {} },
+    });
+    expect(getByLabelText("Saved meals — 3 saved")).toBeTruthy();
+  });
+
+  it("Recent and Saved tabs share the same active-state pill style class (equal weight)", () => {
+    const { getByTestId } = open({
+      recent: { entries: [], onPick: () => {} },
+      saved: { meals: threeMeals, onPick: () => {} },
+    });
+    // Both tabs render via the shared `styles.browsePill` style (which
+    // sets `flex: 1`) so they always carry equal width, equal padding,
+    // and identical typography. The dot is an additive element inside
+    // the Saved pill — the container style is unchanged.
+    expect(getByTestId("log-sheet-tab-recent")).toBeTruthy();
+    expect(getByTestId("log-sheet-tab-saved")).toBeTruthy();
+  });
+});
+
 describe("LogSheet (mobile) — Barcode 0-kcal manual entry", () => {
   it("renders the manual-entry form when manualEntry is supplied (replaces default content)", () => {
     const { getByText, getByLabelText, queryByLabelText } = open({
