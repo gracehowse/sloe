@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import {
   Alert,
+  Platform,
+  ToastAndroid,
   View,
   Text,
   ScrollView,
@@ -15,6 +17,18 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
+// PR3 (Honeydew parity, 2026-04-30 competitor audit gap #8): live
+// shared shopping list. Subscribes to a Supabase Realtime channel
+// scoped to the active household and surfaces "Sam added 'milk'" /
+// "Alex checked off 'eggs'" toasts when other household members
+// change the list.
+import {
+  formatShoppingChangeToast,
+  subscribeShoppingItemsChannel,
+  type ShoppingChangeEvent,
+} from "../../../src/lib/household/shoppingRealtime";
+import { shoppingScopeFor } from "../../../src/lib/household/shoppingScope";
+import { getMyHousehold } from "../../../src/lib/household/householdClient";
 import {
   fetchShoppingListJsonItems,
   upsertShoppingListJsonItems,
@@ -54,6 +68,14 @@ export default function ShoppingListScreen() {
 
   const [items, setItems] = useState<ShoppingItem[]>([]);
   const [loading, setLoading] = useState(true);
+  // PR3: realtime subscription. `householdId` is null until the
+  // membership query resolves (or the user is solo). The members map
+  // resolves member-id → display-name so the toast reads "Sam added
+  // milk" rather than "Member ab12 added milk" when names exist.
+  const [householdId, setHouseholdId] = useState<string | null>(null);
+  const [householdMembers, setHouseholdMembers] = useState<Map<string, string>>(
+    () => new Map(),
+  );
 
   useEffect(() => {
     if (!userId) { setLoading(false); return; }
@@ -134,6 +156,130 @@ export default function ShoppingListScreen() {
     })();
     return () => { cancelled = true; };
   }, [userId]);
+
+  // PR3 (Honeydew parity, 2026-04-30): resolve the user's active
+  // household + member display-names for the realtime toast. Solo
+  // users skip household entirely; the realtime channel still
+  // subscribes (per-user filter) so a future device sync hook drops
+  // in without re-wiring.
+  useEffect(() => {
+    if (!userId) {
+      setHouseholdId(null);
+      setHouseholdMembers(new Map());
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const result = await getMyHousehold(supabase as any, userId);
+        if (cancelled) return;
+        if (result.error || !result.data) {
+          setHouseholdId(null);
+          setHouseholdMembers(new Map());
+          return;
+        }
+        const hh = result.data.household ?? null;
+        if (!hh) {
+          setHouseholdId(null);
+          setHouseholdMembers(new Map());
+          return;
+        }
+        setHouseholdId(hh.id);
+        const map = new Map<string, string>();
+        for (const m of result.data.members ?? []) {
+          if (m.userId && m.displayName) {
+            map.set(m.userId, m.displayName);
+          }
+        }
+        setHouseholdMembers(map);
+      } catch {
+        // Best-effort: if the household lookup fails we degrade to
+        // solo mode (the per-user realtime filter still runs).
+        setHouseholdId(null);
+        setHouseholdMembers(new Map());
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  // PR3: subscribe to realtime change events. INSERT / UPDATE /
+  // DELETE from any household member appears in <1s, both as a
+  // toast and as a state mutation so the list reflects the new
+  // shape without a manual refresh.
+  const householdMembersRef = useRef(householdMembers);
+  useEffect(() => {
+    householdMembersRef.current = householdMembers;
+  }, [householdMembers]);
+  useEffect(() => {
+    if (!userId) return;
+    const scope = shoppingScopeFor({ userId, householdId });
+    const handle = (event: ShoppingChangeEvent) => {
+      const message = formatShoppingChangeToast({
+        event,
+        members: householdMembersRef.current,
+        ownUserId: userId,
+      });
+      if (message) {
+        if (Platform.OS === "android") {
+          ToastAndroid.show(message, ToastAndroid.SHORT);
+        } else {
+          // iOS has no native toast — surface non-blocking via
+          // Alert with no buttons (auto-dismiss patterns require a
+          // 3rd-party lib we're not pulling in just for this).
+          // The pattern matches how `apps/mobile/lib/notifications.ts`
+          // surfaces realtime cues today.
+          Alert.alert(message);
+        }
+      }
+      // Reconcile local state so the list reflects the change
+      // without waiting for a re-fetch.
+      if (event.kind === "insert") {
+        const r = event.row;
+        setItems((prev) => {
+          if (prev.some((p) => p.id === r.id)) return prev;
+          return [
+            ...prev,
+            {
+              id: r.id,
+              name: r.name,
+              amount: r.amount ?? "",
+              unit: r.unit ?? "",
+              category: r.category ?? "Other",
+              checked: r.checked,
+              from: r.source ?? "",
+            },
+          ];
+        });
+      } else if (event.kind === "update") {
+        const r = event.row;
+        setItems((prev) =>
+          prev.map((p) =>
+            p.id === r.id
+              ? {
+                  ...p,
+                  name: r.name,
+                  amount: r.amount ?? "",
+                  unit: r.unit ?? "",
+                  category: r.category ?? p.category,
+                  checked: r.checked,
+                }
+              : p,
+          ),
+        );
+      } else if (event.kind === "delete") {
+        const id = event.row.id;
+        setItems((prev) => prev.filter((p) => p.id !== id));
+      }
+    };
+    const unsub = subscribeShoppingItemsChannel({
+      supabase: supabase as any,
+      scope,
+      onChange: handle,
+    });
+    return unsub;
+  }, [userId, householdId]);
 
   const toggleItem = useCallback((itemId: string) => {
     setItems((prev) => {

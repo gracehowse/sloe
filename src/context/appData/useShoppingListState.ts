@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import type { ShoppingItem } from "../../types/recipe.ts";
@@ -9,6 +9,17 @@ import {
 } from "../../lib/supabase/shoppingJsonFallback.ts";
 import { newId } from "./persistence.ts";
 import { useRetryEnableDbTable } from "./useRetryEnableDbTable.ts";
+// PR3 (Honeydew parity, 2026-04-30 competitor audit gap #8): realtime
+// shared shopping cart. Subscribes to a Supabase Realtime channel
+// scoped to the active household so INSERT / UPDATE / DELETE from any
+// member shows up in <1s with a "Sam added milk" toast.
+import {
+  formatShoppingChangeToast,
+  subscribeShoppingItemsChannel,
+  type ShoppingChangeEvent,
+} from "../../lib/household/shoppingRealtime.ts";
+import { shoppingScopeFor } from "../../lib/household/shoppingScope.ts";
+import { getMyHousehold } from "../../lib/household/householdClient.ts";
 
 type ShoppingItemRow = {
   id: string;
@@ -37,6 +48,17 @@ export function useShoppingListState(opts: { authedUserId: string | null; initia
   const [shoppingItems, setShoppingItems] = useState<ShoppingItem[]>(() => initialItems);
   const [dbShoppingEnabled, setDbShoppingEnabled] = useState(true);
   const [dbShoppingWarned, setDbShoppingWarned] = useState(false);
+  // PR3: active household + member-name lookup table for the
+  // realtime toast. Both nullable until the membership query
+  // resolves; solo users skip household resolution entirely.
+  const [householdId, setHouseholdId] = useState<string | null>(null);
+  const [householdMembers, setHouseholdMembers] = useState<Map<string, string>>(
+    () => new Map(),
+  );
+  const householdMembersRef = useRef(householdMembers);
+  useEffect(() => {
+    householdMembersRef.current = householdMembers;
+  }, [householdMembers]);
 
   const tryEnableDbShopping = useCallback(async () => {
     if (!authedUserId) return false;
@@ -93,6 +115,111 @@ export function useShoppingListState(opts: { authedUserId: string | null; initia
     })();
     return () => { cancelled = true; };
   }, [authedUserId, dbShoppingEnabled, dbShoppingWarned]);
+
+  // PR3 (2026-04-30 Honeydew parity): resolve household + member
+  // names for the realtime toast. Solo users land with householdId
+  // null; the realtime channel still subscribes (per-user filter)
+  // so future device-sync hooks land without a re-wire.
+  useEffect(() => {
+    if (!authedUserId) {
+      setHouseholdId(null);
+      setHouseholdMembers(new Map());
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const result = await getMyHousehold(supabase as any, authedUserId);
+        if (cancelled) return;
+        if (result.error || !result.data) {
+          setHouseholdId(null);
+          setHouseholdMembers(new Map());
+          return;
+        }
+        const hh = result.data.household ?? null;
+        if (!hh) {
+          setHouseholdId(null);
+          setHouseholdMembers(new Map());
+          return;
+        }
+        setHouseholdId(hh.id);
+        const map = new Map<string, string>();
+        for (const m of result.data.members ?? []) {
+          if (m.userId && m.displayName) {
+            map.set(m.userId, m.displayName);
+          }
+        }
+        setHouseholdMembers(map);
+      } catch {
+        setHouseholdId(null);
+        setHouseholdMembers(new Map());
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [authedUserId]);
+
+  // PR3: subscribe to realtime change events. Mutations from any
+  // household member surface as a sonner toast + as a local-state
+  // patch so the UI reflects the change without a re-fetch.
+  useEffect(() => {
+    if (!authedUserId) return;
+    const scope = shoppingScopeFor({ userId: authedUserId, householdId });
+    const handle = (event: ShoppingChangeEvent) => {
+      const message = formatShoppingChangeToast({
+        event,
+        members: householdMembersRef.current,
+        ownUserId: authedUserId,
+      });
+      if (message) {
+        toast(message, { duration: 4000 });
+      }
+      if (event.kind === "insert") {
+        const r = event.row;
+        setShoppingItems((prev) => {
+          if (prev.some((p) => p.id === r.id)) return prev;
+          return [
+            ...prev,
+            {
+              id: r.id,
+              name: r.name,
+              amount: r.amount ?? "",
+              unit: r.unit ?? "",
+              category: r.category ?? "Other",
+              checked: r.checked,
+              from: r.source ?? "",
+            },
+          ];
+        });
+      } else if (event.kind === "update") {
+        const r = event.row;
+        setShoppingItems((prev) =>
+          prev.map((p) =>
+            p.id === r.id
+              ? {
+                  ...p,
+                  name: r.name,
+                  amount: r.amount ?? "",
+                  unit: r.unit ?? "",
+                  category: r.category ?? p.category,
+                  checked: r.checked,
+                }
+              : p,
+          ),
+        );
+      } else if (event.kind === "delete") {
+        const id = event.row.id;
+        setShoppingItems((prev) => prev.filter((p) => p.id !== id));
+      }
+    };
+    const unsub = subscribeShoppingItemsChannel({
+      supabase: supabase as any,
+      scope,
+      onChange: handle,
+    });
+    return unsub;
+  }, [authedUserId, householdId]);
 
   const toggleShoppingChecked = useCallback((itemId: string) => {
     setShoppingItems((prev) => {

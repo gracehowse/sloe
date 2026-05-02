@@ -1,5 +1,42 @@
 # Mobile App Changelog
 
+## 2026-04-30 — Real-time shared shopping cart (Honeydew parity)
+
+### New
+- **Live shared shopping list.** When the user is in a household,
+  the shopping list now subscribes to a Supabase Realtime channel
+  scoped to the household (`household_id=eq.<id>`). INSERT / UPDATE /
+  DELETE events from any other member appear within ~1s — items
+  added by one phone show up on the other; check-offs strike through;
+  removals delete the row. Solo users still subscribe (per-user
+  filter) so device-sync hooks land cleanly later.
+- **Attributed toasts.** Each remote change surfaces an in-app cue:
+  "Sam added 'milk' to the list", "Alex checked off 'eggs'", "Sam
+  removed 'old-bread' from the list". Names resolve from the
+  household members map; falls back to "Member ab12" when display
+  names are missing rather than "undefined".
+- **Self-event filtering.** Realtime delivers the user's own changes
+  back to them by default — Suppr filters those out so Sam doesn't
+  see "Sam added 'milk'" when she just added it. The check-toggle
+  case attributes from `checked_by` (the toggler), not the row's
+  original creator.
+
+### Decisions captured in this change
+- Supabase Realtime is free at low volume; this use case is well
+  inside the envelope (≤1 connection per session, low-thousands
+  events / household / month). The same pipe powers in-app
+  notifications today — no new infra surface.
+- iOS surfaces the toast via `Alert.alert` (no native toast
+  primitive); Android uses `ToastAndroid.SHORT`. Matches the
+  existing notification realtime path.
+- Out of scope: cursor presence ("Sam is on row 12"), conflict
+  resolution beyond last-writer-wins, system push for shopping
+  changes (would be too noisy).
+
+See `docs/decisions/2026-05-02-realtime-shopping-cart.md` for
+the full rationale + cost note + RLS contract + apply-path
+(`supabase db push --linked`, never MCP).
+
 ## 2026-04-20 — RevenueCat Customer Center + v2 API key support
 
 ### RevenueCat
