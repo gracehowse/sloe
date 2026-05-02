@@ -57,6 +57,28 @@ export type AiLoggedItem = {
   /** Match confidence in [0, 1]. Values <0.5 are flagged as low. */
   confidence: number;
   source: AiLoggingSource;
+  /**
+   * Optional explicit lower bound on the calorie midpoint reported by
+   * the server. When present (and >= 1 kcal lower than `calories`),
+   * `rangeFor` returns `{ low, high }` directly; otherwise the helper
+   * derives a band from the confidence tier (see `rangeFor` doc).
+   *
+   * NOTE 2026-05-02: the photo-log API currently returns only a point
+   * estimate for `calories`. The bands are derived from confidence
+   * tiers as a deliberate placeholder until `nutrition-engine` ships
+   * real per-item variance metrics. See
+   * `docs/decisions/2026-05-02-photo-log-confidence-framing.md`.
+   */
+  caloriesLow?: number;
+  /** Optional explicit upper bound on the calorie midpoint. See `caloriesLow`. */
+  caloriesHigh?: number;
+  /**
+   * Verification flag. Set to `true` after the user matches the item
+   * against the verified database (USDA / Open Food Facts) — the row
+   * is then logged with full-confidence chrome and the range caption
+   * drops. Edit-without-verify must NOT auto-set this.
+   */
+  verified?: boolean;
 };
 
 export type ConfidenceLevel = "low" | "medium" | "high";
@@ -255,4 +277,140 @@ function finiteNumber(v: unknown): number | null {
   if (v == null) return null;
   const n = typeof v === "number" ? v : Number(v);
   return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * The midpoint calorie value to display as the headline number for an
+ * AI-logged item or a plate aggregate. Currently this is just the
+ * stored `calories` field — but callers MUST go through this helper
+ * (rather than reading `.calories` directly) so that, when the
+ * `nutrition-engine` follow-up lands a true mean-of-distribution per
+ * item, every photo-log surface picks up the upgrade in lock-step.
+ *
+ * Returns 0 for non-finite inputs (matches `aggregateTotals`).
+ */
+export function midpoint(item: Pick<AiLoggedItem, "calories">): number {
+  const c = Number.isFinite(item.calories) ? item.calories : 0;
+  return Math.round(c);
+}
+
+/**
+ * Compute a `{ low, high }` calorie range to render under the midpoint
+ * as the "Range 780–960 · medium confidence" caption.
+ *
+ * Resolution order:
+ *  1. If the API returned explicit `caloriesLow` / `caloriesHigh`
+ *     bounds (and `low <= mid <= high`, both finite, both > 0), use
+ *     them verbatim — the server is the authority.
+ *  2. Otherwise derive a placeholder band from the confidence tier:
+ *       - high   (>=0.75) → ±5%
+ *       - medium (>=0.5)  → ±12%
+ *       - low    (<0.5)   → ±20%
+ *
+ * The derived bands are a deliberate placeholder per the 2026-05-02
+ * decision doc. `nutrition-engine` owns the follow-up to replace this
+ * with real per-item variance.
+ *
+ * Both endpoints are rounded to whole kcal. `low` is floored to 0 so
+ * a negative low never appears in the UI.
+ */
+export function rangeFor(
+  item: Pick<AiLoggedItem, "calories" | "confidence" | "caloriesLow" | "caloriesHigh">,
+): { low: number; high: number } {
+  const mid = midpoint(item);
+
+  const explicitLow = Number.isFinite(item.caloriesLow) ? Number(item.caloriesLow) : null;
+  const explicitHigh = Number.isFinite(item.caloriesHigh) ? Number(item.caloriesHigh) : null;
+  if (
+    explicitLow != null &&
+    explicitHigh != null &&
+    explicitLow >= 0 &&
+    explicitHigh >= explicitLow &&
+    explicitLow <= mid &&
+    explicitHigh >= mid
+  ) {
+    return {
+      low: Math.max(0, Math.round(explicitLow)),
+      high: Math.max(0, Math.round(explicitHigh)),
+    };
+  }
+
+  // Placeholder band derivation — keep in sync with `aiLogging.test.ts`
+  // and the decision doc. Symmetrical around the midpoint.
+  let pct: number;
+  const level = classifyConfidence(item.confidence);
+  if (level === "high") pct = 0.05;
+  else if (level === "medium") pct = 0.12;
+  else pct = 0.2;
+
+  const low = Math.max(0, Math.round(mid * (1 - pct)));
+  const high = Math.max(low, Math.round(mid * (1 + pct)));
+  return { low, high };
+}
+
+/**
+ * Aggregate `rangeFor` across a list of items to produce a plate-level
+ * range. Sums lower bounds and upper bounds independently, returning
+ * the rounded { low, high } pair the plate hero card displays under
+ * the midpoint.
+ *
+ * Empty input returns `{ low: 0, high: 0 }` — callers should suppress
+ * the range caption when both endpoints are 0.
+ */
+export function aggregateRange(items: readonly AiLoggedItem[]): { low: number; high: number } {
+  let low = 0;
+  let high = 0;
+  for (const item of items) {
+    if (!item || typeof item !== "object") continue;
+    const r = rangeFor(item);
+    low += r.low;
+    high += r.high;
+  }
+  return { low: Math.round(low), high: Math.round(high) };
+}
+
+/**
+ * Plate-level confidence tier. Returns the lowest tier across items
+ * (any low → low, any medium → medium, else high). An empty list is
+ * treated as low — there's nothing to be confident about.
+ *
+ * Used by the plate hero card meter and the "medium confidence"
+ * caption suffix.
+ */
+export function plateConfidence(items: readonly AiLoggedItem[]): ConfidenceLevel {
+  if (!items.length) return "low";
+  let sawMedium = false;
+  for (const item of items) {
+    const level = classifyConfidence(item.confidence);
+    if (level === "low") return "low";
+    if (level === "medium") sawMedium = true;
+  }
+  return sawMedium ? "medium" : "high";
+}
+
+/**
+ * Tri-state save-button copy for the photo-log review footer. Pinned
+ * by `tests/unit/photoLogSaveCopy.test.ts`.
+ *
+ *  - all items verified            → "Log verified"
+ *  - some verified, some not       → "Log meal"     + subcaption "K of N verified"
+ *  - none verified (or empty list) → "Log estimate"
+ */
+export type PhotoLogSaveCopy = {
+  primary: "Log verified" | "Log meal" | "Log estimate";
+  subcaption?: string;
+};
+
+export function photoLogSaveCopy(items: readonly AiLoggedItem[]): PhotoLogSaveCopy {
+  if (!items.length) return { primary: "Log estimate" };
+  let verified = 0;
+  for (const item of items) {
+    if (item?.verified === true) verified += 1;
+  }
+  if (verified === 0) return { primary: "Log estimate" };
+  if (verified === items.length) return { primary: "Log verified" };
+  return {
+    primary: "Log meal",
+    subcaption: `${verified} of ${items.length} verified`,
+  };
 }

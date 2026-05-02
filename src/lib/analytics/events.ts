@@ -259,6 +259,23 @@ export const AnalyticsEvents = {
   /** Free-tier user tapped the photo-log entry point and was shown the
    * Pro paywall instead (Batch 5.13). No payload. */
   ai_photo_log_paywalled: "ai_photo_log_paywalled",
+  /** User tapped "Verify with database" on a photo-log review item to
+   * match it against USDA / Open Food Facts. Fires per-item (not per
+   * plate). Payload: `{ confidenceBefore: "low" | "medium" | "high",
+   * itemIndex: number }`. Added 2026-05-02 — drives the "Cal AI convert"
+   * funnel: confident first impression (midpoint) → user voluntarily
+   * tightens to verified. Fires on the tap, before the database call,
+   * so we capture intent regardless of network outcome. */
+  ai_photo_log_verify_tapped: "ai_photo_log_verify_tapped",
+  /** Database verification succeeded for a photo-log item. Payload:
+   * `{ itemIndex: number }`. Paired with `ai_photo_log_verify_tapped`
+   * — the difference between the two counts is the verify-failure
+   * rate (offline / no match). Added 2026-05-02. */
+  ai_photo_log_verify_succeeded: "ai_photo_log_verify_succeeded",
+  /** Database verification failed for a photo-log item (offline, no
+   * match, or server error). Payload: `{ itemIndex: number, reason:
+   * "offline" | "no_match" | "server_error" }`. Added 2026-05-02. */
+  ai_photo_log_verify_failed: "ai_photo_log_verify_failed",
   /** User changed the "Week starts on" preference in Settings (web) /
    * More (mobile). Fires once per committed change, not on initial
    * hydration. Payload: `{ from: "monday" | "sunday"; to: "monday" | "sunday" }`.

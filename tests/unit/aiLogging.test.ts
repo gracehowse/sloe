@@ -7,6 +7,7 @@
  */
 import { describe, it, expect } from "vitest";
 import {
+  aggregateRange,
   aggregateTotals,
   aiLoggingSourceLabel,
   AI_PHOTO_SOURCE,
@@ -15,6 +16,10 @@ import {
   classifyConfidence,
   isLowConfidence,
   LOW_CONFIDENCE_THRESHOLD,
+  midpoint,
+  photoLogSaveCopy,
+  plateConfidence,
+  rangeFor,
   sanitiseAiItem,
   sanitiseAiItems,
   type AiLoggedItem,
@@ -331,5 +336,176 @@ describe("sanitiseAiItems", () => {
   it("non-array input returns empty", () => {
     expect(sanitiseAiItems("not an array" as unknown, "voice")).toEqual([]);
     expect(sanitiseAiItems(undefined, "voice")).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------
+// 2026-05-02 — photo-log midpoint + range + plate confidence helpers.
+// Pinned by `docs/decisions/2026-05-02-photo-log-confidence-framing.md`.
+// The placeholder bands (±5% / ±12% / ±20%) live in `rangeFor`; replace
+// them when `nutrition-engine` ships real per-item variance metrics —
+// these tests will need to update in lockstep.
+
+describe("midpoint (2026-05-02)", () => {
+  const base = (calories: number): AiLoggedItem => ({
+    name: "x",
+    calories,
+    protein: 0,
+    carbs: 0,
+    fat: 0,
+    confidence: 0.6,
+    source: "ai_photo",
+  });
+
+  it("returns the rounded calorie value", () => {
+    expect(midpoint(base(135.4))).toBe(135);
+    expect(midpoint(base(135.6))).toBe(136);
+  });
+
+  it("returns 0 for non-finite calories (never NaN)", () => {
+    expect(midpoint({ calories: Number.NaN } as Pick<AiLoggedItem, "calories">)).toBe(0);
+    expect(midpoint({ calories: Number.POSITIVE_INFINITY } as Pick<AiLoggedItem, "calories">)).toBe(0);
+  });
+});
+
+describe("rangeFor (2026-05-02)", () => {
+  const base = (overrides: Partial<AiLoggedItem>): AiLoggedItem => ({
+    name: "x",
+    calories: 100,
+    protein: 0,
+    carbs: 0,
+    fat: 0,
+    confidence: 0.6,
+    source: "ai_photo",
+    ...overrides,
+  });
+
+  it("uses ±5% for high confidence", () => {
+    const r = rangeFor(base({ calories: 200, confidence: 0.9 }));
+    expect(r).toEqual({ low: 190, high: 210 });
+  });
+
+  it("uses ±12% for medium confidence (matches spec '780–960' for ~870)", () => {
+    // 870 ± 12% = 765.6 → 766 / 974.4 → 974. The spec example is
+    // illustrative only — pins our derived bands at the documented %.
+    const r = rangeFor(base({ calories: 870, confidence: 0.6 }));
+    expect(r.low).toBe(766);
+    expect(r.high).toBe(974);
+  });
+
+  it("uses ±20% for low confidence", () => {
+    const r = rangeFor(base({ calories: 100, confidence: 0.3 }));
+    expect(r).toEqual({ low: 80, high: 120 });
+  });
+
+  it("uses explicit caloriesLow / caloriesHigh when both bracket the midpoint", () => {
+    const r = rangeFor(
+      base({ calories: 800, caloriesLow: 700, caloriesHigh: 900, confidence: 0.6 }),
+    );
+    expect(r).toEqual({ low: 700, high: 900 });
+  });
+
+  it("ignores explicit bounds that don't bracket the midpoint", () => {
+    // low > mid → derived bands win.
+    const r = rangeFor(
+      base({ calories: 100, caloriesLow: 200, caloriesHigh: 250, confidence: 0.9 }),
+    );
+    expect(r).toEqual({ low: 95, high: 105 });
+  });
+
+  it("never returns a negative low", () => {
+    // Confidence 0.3 → ±20%. 5 * 0.8 = 4, but ensure floor.
+    const r = rangeFor(base({ calories: 1, confidence: 0.3 }));
+    expect(r.low).toBeGreaterThanOrEqual(0);
+    expect(r.high).toBeGreaterThanOrEqual(r.low);
+  });
+
+  it("0 calories returns { low: 0, high: 0 }", () => {
+    const r = rangeFor(base({ calories: 0, confidence: 0.6 }));
+    expect(r).toEqual({ low: 0, high: 0 });
+  });
+});
+
+describe("aggregateRange (2026-05-02)", () => {
+  it("sums per-item ranges across items", () => {
+    const items: AiLoggedItem[] = [
+      // medium → ±12%: 100 → 88..112
+      { name: "a", calories: 100, protein: 0, carbs: 0, fat: 0, confidence: 0.6, source: "ai_photo" },
+      // high → ±5%: 200 → 190..210
+      { name: "b", calories: 200, protein: 0, carbs: 0, fat: 0, confidence: 0.9, source: "ai_photo" },
+    ];
+    expect(aggregateRange(items)).toEqual({ low: 88 + 190, high: 112 + 210 });
+  });
+
+  it("empty list returns { low: 0, high: 0 }", () => {
+    expect(aggregateRange([])).toEqual({ low: 0, high: 0 });
+  });
+});
+
+describe("plateConfidence (2026-05-02)", () => {
+  const mk = (c: number): AiLoggedItem => ({
+    name: "x",
+    calories: 0,
+    protein: 0,
+    carbs: 0,
+    fat: 0,
+    confidence: c,
+    source: "ai_photo",
+  });
+
+  it("any low item drops the plate to low", () => {
+    expect(plateConfidence([mk(0.9), mk(0.4), mk(0.95)])).toBe("low");
+  });
+
+  it("any medium with no low → medium", () => {
+    expect(plateConfidence([mk(0.9), mk(0.6), mk(0.95)])).toBe("medium");
+  });
+
+  it("all high → high", () => {
+    expect(plateConfidence([mk(0.8), mk(0.95)])).toBe("high");
+  });
+
+  it("empty list → low (nothing to be confident about)", () => {
+    expect(plateConfidence([])).toBe("low");
+  });
+});
+
+describe("photoLogSaveCopy (2026-05-02 tri-state)", () => {
+  // Pins the exact strings that ship under both platform save buttons.
+  // Drifting any of these breaks the photo-log convert-Cal-AI funnel.
+  const mk = (verified?: boolean): AiLoggedItem => ({
+    name: "x",
+    calories: 100,
+    protein: 0,
+    carbs: 0,
+    fat: 0,
+    confidence: 0.7,
+    source: "ai_photo",
+    verified,
+  });
+
+  it("all items verified → 'Log verified', no subcaption", () => {
+    expect(photoLogSaveCopy([mk(true), mk(true)])).toEqual({ primary: "Log verified" });
+  });
+
+  it("none verified → 'Log estimate', no subcaption", () => {
+    expect(photoLogSaveCopy([mk(false), mk(false)])).toEqual({ primary: "Log estimate" });
+  });
+
+  it("undefined-verified treated as not verified", () => {
+    expect(photoLogSaveCopy([mk(undefined), mk(undefined)])).toEqual({
+      primary: "Log estimate",
+    });
+  });
+
+  it("mixed verified → 'Log meal' + 'K of N verified' subcaption", () => {
+    expect(photoLogSaveCopy([mk(true), mk(false), mk(true), mk(false)])).toEqual({
+      primary: "Log meal",
+      subcaption: "2 of 4 verified",
+    });
+  });
+
+  it("empty list → 'Log estimate' (defensive, button is disabled in UI)", () => {
+    expect(photoLogSaveCopy([])).toEqual({ primary: "Log estimate" });
   });
 });

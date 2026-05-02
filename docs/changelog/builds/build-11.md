@@ -29,6 +29,14 @@ builds. See `docs/changelog/README.md` for the authoring workflow.
   already consumed `rangeDays` on web. Default range is `30d`,
   matching the prototype. Deeper card-level restructure (sparkline
   weight card, calories / protein bar cards) is deferred.
+- **Photo log — clearer big number, smarter confidence meter.** The
+  review screen now leads with a single midpoint kcal number for the
+  whole plate plus a 4-segment confidence meter, with the range hidden
+  in a tappable caption. Each item collapses to a one-line summary
+  with its own meter; expand to edit macros or tap "Verify with
+  database" to lock the values to a known USDA / Open Food Facts
+  match. The save button reads "Log verified" / "Log meal" / "Log
+  estimate" depending on how many items you've verified.
 
 ## Coming soon
 

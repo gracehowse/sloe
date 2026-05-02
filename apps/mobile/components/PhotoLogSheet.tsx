@@ -1,45 +1,71 @@
 /**
- * PhotoLogSheet (Batch 5.13) — mobile Pro-tier AI photo logging sheet.
+ * PhotoLogSheet (Batch 5.13 + 2026-05-02 confidence-framing port).
  *
- * Mirrors `src/app/components/suppr/photo-log-dialog.tsx` behaviour:
+ * Mobile Pro-tier AI photo logging review sheet. Mirrors the web
+ * dialog at `src/app/components/suppr/photo-log-dialog.tsx`.
+ *
+ * Flow:
  *  1. Camera / library picker via expo-image-picker.
  *  2. Preview the selected image.
  *  3. "Analyse" POSTs multipart form-data to `/api/nutrition/photo-log`.
- *  4. Review list with per-item confidence badge + inline macro edit.
- *  5. Tap "Log all" → caller commits each item as a `JournalMeal` with
- *     source `"AI photo"`.
+ *  4. Review:
+ *     - Plate hero card: midpoint kcal headline + plate-level confidence
+ *       meter + tappable range caption.
+ *     - Item list: collapsed by default (name + midpoint + meter +
+ *       chevron + remove). Expand to edit macros / verify against USDA
+ *       / Open Food Facts.
+ *     - "AI estimate" badge swaps to a green "database · verified"
+ *       badge after the user matches against the database.
+ *  5. Tri-state save copy ("Log verified" / "Log meal" / "Log estimate").
  *
- * Shares sanitisation / confidence classification / totals with web via
- * `src/lib/nutrition/aiLogging.ts`.
+ * Why midpoint-with-confidence-meter framing? See
+ * `docs/decisions/2026-05-02-photo-log-confidence-framing.md` — keeps
+ * the honest-uncertainty posture the customer-lens P1 caveat called
+ * for, presented in a way that converts Cal AI users.
+ *
+ * Shares sanitisation / confidence classification / totals / midpoint /
+ * range / tri-state save copy with web via `src/lib/nutrition/aiLogging.ts`.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Image,
   KeyboardAvoidingView,
+  LayoutAnimation,
   Modal,
   Platform,
   Pressable,
   ScrollView,
   Text,
   TextInput,
+  UIManager,
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { X } from "lucide-react-native";
+import { Check, ChevronDown, ChevronUp, MoreHorizontal, ShieldCheck, X } from "lucide-react-native";
 
 import { Accent, IconSize, Radius, Spacing } from "@/constants/theme";
 import {
+  aggregateRange,
   aggregateTotals,
   averageConfidence,
   classifyConfidence,
-  isLowConfidence,
+  midpoint,
+  photoLogSaveCopy,
+  plateConfidence,
+  rangeFor,
   sanitiseAiItems,
   type AiLoggedItem,
+  type ConfidenceLevel,
 } from "../../../src/lib/nutrition/aiLogging";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "../../../src/lib/analytics/events";
 import Badge from "./Badge";
+
+// Enable LayoutAnimation on Android (no-op on iOS where it's always on).
+if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 type Theme = {
   text: string;
@@ -70,6 +96,98 @@ type Props = {
 
 type Stage = "pick" | "analysing" | "review" | "error";
 
+/**
+ * 4-segment confidence meter — 12px wide × 28px tall on mobile (vs
+ * 16×40 on web), 2px gaps between segments.
+ *
+ *  - high (>=0.75): 4/4 filled, Accent.success
+ *  - medium (0.5–0.75): 2/4 filled, Accent.warning
+ *  - low (<0.5): 1/4 filled, Accent.destructive
+ *  - verified: 4/4 Accent.success + leading 10px check glyph
+ */
+function ConfidenceMeter({
+  level,
+  verified = false,
+  onPress,
+  accessibilityLabel,
+}: {
+  level: ConfidenceLevel;
+  verified?: boolean;
+  onPress?: () => void;
+  accessibilityLabel?: string;
+}) {
+  const filled = verified || level === "high" ? 4 : level === "medium" ? 2 : 1;
+  const color = verified || level === "high"
+    ? Accent.success
+    : level === "medium"
+      ? Accent.warning
+      : Accent.destructive;
+
+  const meterContent = (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+      {verified && <Check size={10} color={Accent.success} strokeWidth={3} />}
+      <View
+        style={{
+          width: 12,
+          height: 28,
+          flexDirection: "column",
+          justifyContent: "space-between",
+        }}
+      >
+        {[0, 1, 2, 3].map((idx) => {
+          // Fill from the bottom up — segment idx 0 is bottom.
+          const isFilled = idx < filled;
+          return (
+            <View
+              key={idx}
+              style={{
+                width: 12,
+                height: (28 - 6) / 4, // 4 bars + 3 × 2px gaps = 22 / 4 = 5.5
+                backgroundColor: isFilled ? color : "#94a3b822",
+                borderRadius: 2,
+              }}
+            />
+          );
+        })}
+      </View>
+    </View>
+  );
+
+  const a11y =
+    accessibilityLabel ??
+    (verified
+      ? "Verified against database"
+      : level === "high"
+        ? "High confidence"
+        : level === "medium"
+          ? "Medium confidence"
+          : "Low confidence");
+
+  if (onPress) {
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={a11y}
+        onPress={onPress}
+        hitSlop={6}
+      >
+        {meterContent}
+      </Pressable>
+    );
+  }
+  return (
+    <View accessible accessibilityLabel={a11y} accessibilityRole="image">
+      {meterContent}
+    </View>
+  );
+}
+
+function levelLabel(level: ConfidenceLevel): string {
+  if (level === "high") return "high confidence";
+  if (level === "medium") return "medium confidence";
+  return "low confidence";
+}
+
 export default function PhotoLogSheet({
   visible,
   onClose,
@@ -82,6 +200,10 @@ export default function PhotoLogSheet({
   const [stage, setStage] = useState<Stage>("pick");
   const [asset, setAsset] = useState<PickedAsset | null>(null);
   const [items, setItems] = useState<AiLoggedItem[]>([]);
+  const [expanded, setExpanded] = useState<Record<number, boolean>>({});
+  const [verifyingIndex, setVerifyingIndex] = useState<number | null>(null);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
+  const [tooltipOpen, setTooltipOpen] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
@@ -89,6 +211,10 @@ export default function PhotoLogSheet({
       setStage("pick");
       setAsset(null);
       setItems([]);
+      setExpanded({});
+      setVerifyingIndex(null);
+      setVerifyError(null);
+      setTooltipOpen(false);
       setErrorMsg(null);
       track(AnalyticsEvents.ai_photo_log_started);
     }
@@ -184,6 +310,7 @@ export default function PhotoLogSheet({
         return;
       }
       setItems(cleaned);
+      setExpanded({});
       setStage("review");
     } catch {
       setErrorMsg("Photo logging failed. Check your connection and try again.");
@@ -192,15 +319,136 @@ export default function PhotoLogSheet({
   }, [accessToken, apiBase, asset]);
 
   const totals = useMemo(() => aggregateTotals(items), [items]);
-  const hasLowConfidence = items.some((i) => isLowConfidence(i));
+  const plateRange = useMemo(() => aggregateRange(items), [items]);
+  const plateConf = useMemo(() => plateConfidence(items), [items]);
+  const allVerified = useMemo(
+    () => items.length > 0 && items.every((i) => i.verified === true),
+    [items],
+  );
+  const saveCopy = useMemo(() => photoLogSaveCopy(items), [items]);
 
   const updateItem = (index: number, patch: Partial<AiLoggedItem>) => {
-    setItems((prev) => prev.map((it, i) => (i === index ? { ...it, ...patch } : it)));
+    setItems((prev) =>
+      prev.map((it, i) => {
+        if (i !== index) return it;
+        const next = { ...it, ...patch };
+        // Edit-without-verify must NOT auto-set `verified`.
+        const editingMacroOrName =
+          "name" in patch ||
+          "calories" in patch ||
+          "protein" in patch ||
+          "carbs" in patch ||
+          "fat" in patch ||
+          "fiber" in patch;
+        if (editingMacroOrName && !("verified" in patch)) {
+          next.verified = false;
+        }
+        return next;
+      }),
+    );
   };
 
   const removeItem = (index: number) => {
     setItems((prev) => prev.filter((_, i) => i !== index));
+    setExpanded((prev) => {
+      const next: Record<number, boolean> = {};
+      Object.entries(prev).forEach(([k, v]) => {
+        const idx = Number(k);
+        if (idx < index) next[idx] = v;
+        if (idx > index) next[idx - 1] = v;
+      });
+      return next;
+    });
   };
+
+  const toggleExpand = (index: number) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpanded((prev) => ({ ...prev, [index]: !prev[index] }));
+  };
+
+  const expandAll = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    const next: Record<number, boolean> = {};
+    items.forEach((_, i) => {
+      next[i] = true;
+    });
+    setExpanded(next);
+  };
+
+  const handleVerify = useCallback(
+    async (index: number) => {
+      const item = items[index];
+      if (!item) return;
+      const before = classifyConfidence(item.confidence);
+      track(AnalyticsEvents.ai_photo_log_verify_tapped, {
+        confidenceBefore: before,
+        itemIndex: index,
+      });
+      setVerifyingIndex(index);
+      setVerifyError(null);
+      try {
+        // Reuse the existing recipe-line verifier (USDA → OFF → Edamam
+        // → FatSecret → estimation) with a single-ingredient payload.
+        const amountStr =
+          item.grams != null && Number.isFinite(item.grams)
+            ? String(item.grams)
+            : "100";
+        const resp = await fetch(`${apiBase}/api/nutrition/verify-recipe`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+          },
+          body: JSON.stringify({
+            ingredients: [{ name: item.name, amount: amountStr, unit: "g" }],
+            servings: 1,
+          }),
+        });
+        if (!resp.ok) throw new Error(`status_${resp.status}`);
+        const data = await resp.json();
+        const verified = data?.verified?.[0];
+        const macros = verified?.macros;
+        if (!data?.ok || !verified || !macros || verified.confidence < 0.5) {
+          track(AnalyticsEvents.ai_photo_log_verify_failed, {
+            itemIndex: index,
+            reason: "no_match",
+          });
+          setVerifyError("No high-confidence match in our database — keep the AI estimate or edit manually.");
+          return;
+        }
+        setItems((prev) =>
+          prev.map((it, i) => {
+            if (i !== index) return it;
+            const next: AiLoggedItem = {
+              ...it,
+              verified: true,
+              confidence: 1,
+            };
+            if (Number.isFinite(macros.calories)) next.calories = Math.round(Number(macros.calories));
+            if (Number.isFinite(macros.protein)) next.protein = Math.round(Number(macros.protein));
+            if (Number.isFinite(macros.carbs)) next.carbs = Math.round(Number(macros.carbs));
+            if (Number.isFinite(macros.fat)) next.fat = Math.round(Number(macros.fat));
+            if (macros.fiber != null && Number.isFinite(macros.fiber)) {
+              next.fiber = Math.round(Number(macros.fiber));
+            }
+            next.caloriesLow = undefined;
+            next.caloriesHigh = undefined;
+            return next;
+          }),
+        );
+        track(AnalyticsEvents.ai_photo_log_verify_succeeded, { itemIndex: index });
+      } catch {
+        track(AnalyticsEvents.ai_photo_log_verify_failed, {
+          itemIndex: index,
+          reason: "server_error",
+        });
+        setVerifyError("Can't reach database — try again.");
+      } finally {
+        setVerifyingIndex(null);
+      }
+    },
+    [accessToken, apiBase, items],
+  );
 
   const handleLogAll = () => {
     if (items.length === 0) return;
@@ -217,6 +465,7 @@ export default function PhotoLogSheet({
     value: number,
     onChange: (n: number) => void,
     accessibilityLabel: string,
+    editable: boolean,
   ) => (
     <View style={{ flex: 1 }}>
       <Text style={{ fontSize: 10, color: colors.textTertiary, fontWeight: "700", textTransform: "uppercase" }}>
@@ -225,6 +474,7 @@ export default function PhotoLogSheet({
       <TextInput
         accessibilityLabel={accessibilityLabel}
         keyboardType="numeric"
+        editable={editable}
         value={String(value)}
         onChangeText={(t) => {
           const n = Math.max(0, Number(t.replace(/[^0-9.]/g, "")));
@@ -238,17 +488,11 @@ export default function PhotoLogSheet({
           fontSize: 13,
           color: colors.text,
           marginTop: 2,
+          opacity: editable ? 1 : 0.6,
         }}
       />
     </View>
   );
-
-  const confidenceColor = (c: number) => {
-    const level = classifyConfidence(c);
-    if (level === "high") return Accent.success;
-    if (level === "medium") return Accent.warning;
-    return "#EF4444";
-  };
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -299,8 +543,10 @@ export default function PhotoLogSheet({
             </View>
             <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: Spacing.md }}>
               {stage === "review"
-                ? `We identified ${items.length} item${items.length === 1 ? "" : "s"}. Review, edit or remove before logging.`
-                : "Snap a photo of your meal and we'll estimate portions and macros."}
+                ? `We identified ${items.length} item${items.length === 1 ? "" : "s"}. Review, edit or verify before logging.`
+                : stage === "analysing"
+                  ? "Identifying items and estimating portions…"
+                  : "Snap a photo of your meal and we'll estimate portions and macros."}
             </Text>
 
             {stage === "pick" && (
@@ -386,7 +632,9 @@ export default function PhotoLogSheet({
             {stage === "analysing" && (
               <View style={{ alignItems: "center", paddingVertical: Spacing.xl, gap: 10 }}>
                 <ActivityIndicator size="small" color={Accent.primary} />
-                <Text style={{ fontSize: 13, color: colors.textSecondary }}>Analysing your photo…</Text>
+                <Text style={{ fontSize: 13, color: colors.textSecondary }}>
+                  Identifying items and estimating portions…
+                </Text>
               </View>
             )}
 
@@ -395,18 +643,20 @@ export default function PhotoLogSheet({
                 accessibilityRole="alert"
                 style={{
                   borderWidth: 1,
-                  borderColor: "#EF444466",
-                  backgroundColor: "#EF444410",
+                  borderColor: Accent.destructive + "66",
+                  backgroundColor: Accent.destructive + "10",
                   borderRadius: Radius.md,
                   padding: Spacing.md,
                 }}
               >
-                <Text style={{ fontSize: 13, color: "#B91C1C" }}>{errorMsg ?? "Something went wrong."}</Text>
+                <Text style={{ fontSize: 13, color: Accent.destructive }}>
+                  {errorMsg ?? "Something went wrong."}
+                </Text>
               </View>
             )}
 
             {stage === "review" && (
-              <ScrollView style={{ maxHeight: 440 }} showsVerticalScrollIndicator={false}>
+              <ScrollView style={{ maxHeight: 460 }} showsVerticalScrollIndicator={false}>
                 {asset && (
                   <Image
                     source={{ uri: asset.uri }}
@@ -419,22 +669,128 @@ export default function PhotoLogSheet({
                     resizeMode="cover"
                   />
                 )}
+
+                {/* Plate hero card — midpoint headline + meter + range. */}
+                <View
+                  accessible
+                  accessibilityLabel={`Plate total ${totals.calories} kilocalories, ${items.length} item${items.length === 1 ? "" : "s"}`}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    borderWidth: 1,
+                    borderColor: colors.cardBorder,
+                    backgroundColor: colors.background,
+                    borderRadius: Radius.md,
+                    padding: Spacing.md,
+                    marginBottom: Spacing.sm,
+                  }}
+                >
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text
+                      style={{
+                        fontSize: 28,
+                        fontWeight: "700",
+                        color: colors.text,
+                        lineHeight: 30,
+                      }}
+                    >
+                      ~{totals.calories} kcal
+                    </Text>
+                    <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
+                      plate total · {items.length} item{items.length === 1 ? "" : "s"}
+                    </Text>
+                    {(plateRange.low > 0 || plateRange.high > 0) && !allVerified && (
+                      <Pressable
+                        onPress={expandAll}
+                        accessibilityRole="button"
+                        accessibilityLabel="Expand all items"
+                        hitSlop={4}
+                        style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 }}
+                      >
+                        <Text style={{ fontSize: 11, color: colors.textTertiary }}>
+                          Range {plateRange.low}–{plateRange.high} · {levelLabel(plateConf)}
+                        </Text>
+                        <ChevronDown size={12} color={colors.textTertiary} />
+                      </Pressable>
+                    )}
+                    {allVerified && (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 }}>
+                        <Check size={12} color={Accent.success} strokeWidth={3} />
+                        <Text style={{ fontSize: 11, color: Accent.success }}>all items verified</Text>
+                      </View>
+                    )}
+                  </View>
+                  <View style={{ marginLeft: Spacing.sm }}>
+                    <ConfidenceMeter
+                      level={plateConf}
+                      verified={allVerified}
+                      onPress={() => setTooltipOpen((v) => !v)}
+                      accessibilityLabel={
+                        allVerified
+                          ? "All items verified"
+                          : `Plate ${levelLabel(plateConf)}. Tap for details.`
+                      }
+                    />
+                  </View>
+                </View>
+                {tooltipOpen && (
+                  <View
+                    accessibilityRole="alert"
+                    style={{
+                      borderWidth: 1,
+                      borderColor: colors.cardBorder,
+                      backgroundColor: colors.card,
+                      borderRadius: Radius.sm,
+                      padding: Spacing.sm,
+                      marginBottom: Spacing.sm,
+                      marginTop: -Spacing.xs,
+                    }}
+                  >
+                    <Text style={{ fontSize: 11, color: colors.text }}>
+                      Estimated from photo. Tap &ldquo;Verify&rdquo; to match against
+                      USDA / Open Food Facts.
+                    </Text>
+                  </View>
+                )}
+
                 {items.map((item, i) => {
-                  const low = isLowConfidence(item);
-                  const cColor = confidenceColor(item.confidence);
+                  const level = classifyConfidence(item.confidence);
+                  const verified = item.verified === true;
+                  const range = rangeFor(item);
+                  const isExpanded = !!expanded[i];
+                  const isVerifying = verifyingIndex === i;
+                  const itemMid = midpoint(item);
+
+                  const borderColor = verified
+                    ? Accent.success + "66"
+                    : level === "low"
+                      ? Accent.destructive + "66"
+                      : level === "medium"
+                        ? Accent.warning + "66"
+                        : colors.cardBorder;
+                  const bgColor = verified
+                    ? Accent.success + "0F"
+                    : level === "low"
+                      ? Accent.destructive + "0F"
+                      : level === "medium"
+                        ? Accent.warning + "0F"
+                        : colors.background;
+
                   return (
                     <View
                       key={`${item.name}-${i}`}
                       style={{
                         borderWidth: 1,
-                        borderColor: low ? "#F59E0B55" : colors.cardBorder,
-                        backgroundColor: low ? "#F59E0B0F" : colors.background,
+                        borderColor,
+                        backgroundColor: bgColor,
                         borderRadius: Radius.md,
                         padding: Spacing.md,
                         marginBottom: Spacing.sm,
                       }}
                     >
-                      <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
+                      {/* Row 1: name + midpoint + meter + chevron + remove */}
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                         <View style={{ flex: 1 }}>
                           <TextInput
                             accessibilityLabel={`Item ${i + 1} name`}
@@ -450,33 +806,61 @@ export default function PhotoLogSheet({
                               color: colors.text,
                             }}
                           />
-                          {item.unit && (
-                            <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 4 }}>
-                              {item.unit}
-                            </Text>
-                          )}
                         </View>
-                        <View style={{ alignItems: "flex-end", gap: 4 }}>
-                          <View
-                            style={{
-                              flexDirection: "row",
-                              alignItems: "center",
-                              gap: 4,
-                              borderRadius: 999,
-                              paddingHorizontal: 6,
-                              paddingVertical: 2,
-                              backgroundColor: cColor + "22",
-                            }}
+                        <Text
+                          style={{
+                            fontSize: 17,
+                            fontWeight: "700",
+                            color: colors.text,
+                          }}
+                        >
+                          ~{itemMid} kcal
+                        </Text>
+                        <ConfidenceMeter level={level} verified={verified} />
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={isExpanded ? `Collapse ${item.name}` : `Expand ${item.name}`}
+                          onPress={() => toggleExpand(i)}
+                          hitSlop={6}
+                        >
+                          {isExpanded ? (
+                            <ChevronUp size={18} color={colors.textSecondary} />
+                          ) : (
+                            <ChevronDown size={18} color={colors.textSecondary} />
+                          )}
+                        </Pressable>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={`Remove ${item.name}`}
+                          onPress={() => removeItem(i)}
+                          hitSlop={6}
+                        >
+                          <MoreHorizontal size={18} color={colors.textTertiary} />
+                        </Pressable>
+                      </View>
+                      {/* Row 2: range caption + chip */}
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 6,
+                          marginTop: 6,
+                        }}
+                      >
+                        {!verified && (
+                          <Text style={{ fontSize: 11, color: colors.textTertiary, flex: 1 }}>
+                            range {range.low}–{range.high} ·
+                          </Text>
+                        )}
+                        {verified ? (
+                          <Badge
+                            variant="added"
+                            accessibilityLabel="Verified against database"
+                            icon={<Check size={10} color={Accent.success} strokeWidth={3} />}
                           >
-                            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: cColor }} />
-                            <Text style={{ fontSize: 10, fontWeight: "700", color: cColor }}>
-                              {classifyConfidence(item.confidence) === "high"
-                                ? "High"
-                                : classifyConfidence(item.confidence) === "medium"
-                                  ? "Med"
-                                  : "Low"}
-                            </Text>
-                          </View>
+                            database · verified
+                          </Badge>
+                        ) : (
                           <Badge
                             variant="ai"
                             accessibilityLabel="AI estimated nutrition"
@@ -484,33 +868,80 @@ export default function PhotoLogSheet({
                           >
                             AI estimate
                           </Badge>
-                        </View>
-                        <Pressable
-                          accessibilityRole="button"
-                          accessibilityLabel={`Remove ${item.name}`}
-                          onPress={() => removeItem(i)}
-                          hitSlop={8}
-                        >
-                          <Ionicons name="close-circle" size={20} color={colors.textTertiary} />
-                        </Pressable>
+                        )}
                       </View>
-                      <View style={{ flexDirection: "row", gap: 6, marginTop: Spacing.sm }}>
-                        {numField("kcal", item.calories, (n) => updateItem(i, { calories: n }), `${item.name} calories`)}
-                        {numField("P (g)", item.protein, (n) => updateItem(i, { protein: n }), `${item.name} protein`)}
-                        {numField("C (g)", item.carbs, (n) => updateItem(i, { carbs: n }), `${item.name} carbs`)}
-                        {numField("F (g)", item.fat, (n) => updateItem(i, { fat: n }), `${item.name} fat`)}
-                      </View>
-                      {low && (
-                        <Text
-                          accessibilityRole="alert"
-                          style={{ fontSize: 11, color: "#B45309", marginTop: 6 }}
-                        >
-                          Low confidence — please verify portion and macros before logging.
-                        </Text>
+                      {/* Row 3 (expanded): macro inputs + verify CTA */}
+                      {isExpanded && (
+                        <>
+                          <View style={{ flexDirection: "row", gap: 6, marginTop: Spacing.sm }}>
+                            {numField("kcal", item.calories, (n) => updateItem(i, { calories: n }), `${item.name} calories`, !isVerifying)}
+                            {numField("P (g)", item.protein, (n) => updateItem(i, { protein: n }), `${item.name} protein`, !isVerifying)}
+                            {numField("C (g)", item.carbs, (n) => updateItem(i, { carbs: n }), `${item.name} carbs`, !isVerifying)}
+                            {numField("F (g)", item.fat, (n) => updateItem(i, { fat: n }), `${item.name} fat`, !isVerifying)}
+                          </View>
+                          {!verified && (
+                            <Pressable
+                              accessibilityRole="button"
+                              accessibilityLabel={`Verify ${item.name} with database`}
+                              disabled={isVerifying}
+                              onPress={() => handleVerify(i)}
+                              style={{
+                                marginTop: Spacing.sm,
+                                alignSelf: "flex-start",
+                                flexDirection: "row",
+                                alignItems: "center",
+                                gap: 6,
+                                paddingHorizontal: 12,
+                                paddingVertical: 8,
+                                borderRadius: Radius.md,
+                                borderWidth: 1,
+                                borderColor: Accent.primary + "55",
+                                backgroundColor: Accent.primary + "11",
+                                opacity: isVerifying ? 0.6 : 1,
+                              }}
+                            >
+                              {isVerifying ? (
+                                <ActivityIndicator size="small" color={Accent.primary} />
+                              ) : (
+                                <ShieldCheck size={14} color={Accent.primary} />
+                              )}
+                              <Text
+                                style={{
+                                  fontSize: 12,
+                                  fontWeight: "700",
+                                  color: Accent.primary,
+                                }}
+                              >
+                                {isVerifying ? "Verifying…" : "Verify with database"}
+                              </Text>
+                            </Pressable>
+                          )}
+                          {!verified && verifyingIndex === null && verifyError && (
+                            <Text
+                              accessibilityRole="alert"
+                              style={{ fontSize: 11, color: Accent.destructive, marginTop: 6 }}
+                            >
+                              {verifyError}
+                            </Text>
+                          )}
+                        </>
                       )}
                     </View>
                   );
                 })}
+
+                <Text
+                  style={{
+                    fontSize: 11,
+                    fontStyle: "italic",
+                    color: colors.textTertiary,
+                    marginTop: 4,
+                    marginBottom: 4,
+                  }}
+                >
+                  AI estimates. Verify with the database to lock macros to a known source.
+                </Text>
+
                 <View
                   style={{
                     backgroundColor: colors.inputBg,
@@ -520,7 +951,8 @@ export default function PhotoLogSheet({
                   }}
                 >
                   <Text style={{ fontSize: 12, color: colors.textSecondary }}>
-                    Logging to <Text style={{ color: colors.text, fontWeight: "700" }}>{activeSlot}</Text>. Total: {totals.calories} kcal · P {totals.protein}g · C {totals.carbs}g · F {totals.fat}g
+                    Logging to <Text style={{ color: colors.text, fontWeight: "700" }}>{activeSlot}</Text> · midpoints shown.
+                    Total: {totals.calories} kcal · P {totals.protein}g · C {totals.carbs}g · F {totals.fat}g
                     {totals.fiber != null ? ` · Fi ${totals.fiber}g` : ""}
                   </Text>
                 </View>
@@ -582,20 +1014,36 @@ export default function PhotoLogSheet({
               {stage === "review" && (
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Log all items"
+                  accessibilityLabel={
+                    saveCopy.subcaption
+                      ? `${saveCopy.primary}. ${saveCopy.subcaption}`
+                      : saveCopy.primary
+                  }
                   onPress={handleLogAll}
                   disabled={items.length === 0}
                   style={{
                     flex: 1,
-                    paddingVertical: 12,
+                    paddingVertical: 10,
                     alignItems: "center",
                     borderRadius: Radius.md,
-                    backgroundColor: items.length === 0 ? colors.cardBorder : Accent.primary,
+                    backgroundColor:
+                      items.length === 0
+                        ? colors.cardBorder
+                        : saveCopy.primary === "Log verified"
+                          ? Accent.success
+                          : Accent.primary,
                   }}
                 >
                   <Text style={{ fontSize: 14, fontWeight: "700", color: "#fff" }}>
-                    {hasLowConfidence ? "Log anyway" : "Log all"}
+                    {saveCopy.primary}
                   </Text>
+                  {saveCopy.subcaption && (
+                    <Text
+                      style={{ fontSize: 10, fontWeight: "500", color: "#ffffffcc", marginTop: 2 }}
+                    >
+                      {saveCopy.subcaption}
+                    </Text>
+                  )}
                 </Pressable>
               )}
             </View>

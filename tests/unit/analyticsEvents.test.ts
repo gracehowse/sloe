@@ -50,6 +50,24 @@ describe("AnalyticsEvents registry", () => {
     );
   });
 
+  it("registers the photo-log verify-flow events (2026-05-02 confidence-framing)", () => {
+    // Added 2026-05-02: midpoint-with-confidence-meter framing on
+    // PhotoLogSheet / photo-log-dialog. Three events drive the funnel:
+    //   - tapped (intent)
+    //   - succeeded (DB match)
+    //   - failed { reason } (no_match | offline | server_error)
+    // Drifting these breaks the "Cal AI convert" measurement plan.
+    expect(AnalyticsEvents.ai_photo_log_verify_tapped).toBe(
+      "ai_photo_log_verify_tapped",
+    );
+    expect(AnalyticsEvents.ai_photo_log_verify_succeeded).toBe(
+      "ai_photo_log_verify_succeeded",
+    );
+    expect(AnalyticsEvents.ai_photo_log_verify_failed).toBe(
+      "ai_photo_log_verify_failed",
+    );
+  });
+
   it("registers the three M2 in-flow AI paywall events with canonical snake_case values", () => {
     // Ship M2 (2026-04-18): web `AiPaywallDialog` and mobile
     // `AiPaywallSheet` both fire these three events with identical
