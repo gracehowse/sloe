@@ -247,7 +247,7 @@ describe("getMyHousehold", () => {
   });
 
   it("fetches household, members with remaining macros, and today's meals", async () => {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; })();
     const sb = makeSupabase({
       household_members: (op, ctx) => {
         if (op === "select:maybeSingle") {
@@ -376,7 +376,7 @@ describe("getMyHousehold", () => {
     // returned". The defensive read (`order joined_at desc + limit 1
     // + maybeSingle`) must pick the most recent membership and
     // return it without throwing.
-    const today = new Date().toISOString().slice(0, 10);
+    const today = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; })();
     const sb = makeSupabase({
       household_members: (op, ctx) => {
         if (op === "select:maybeSingle") {
@@ -438,7 +438,7 @@ describe("getMyHousehold", () => {
     // trans user post-transition), other members of the household must
     // see the current name, NEVER the legacy snapshot. The client must
     // prefer `profiles.display_name` over the membership snapshot.
-    const today = new Date().toISOString().slice(0, 10);
+    const today = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; })();
     const sb = makeSupabase({
       household_members: (op, ctx) => {
         if (op === "select:maybeSingle") {
@@ -668,3 +668,88 @@ describe("leaveHousehold", () => {
     expect(ops).not.toContain("households:delete:LEAKED");
   });
 });
+
+/**
+ * Build 41 (2026-05-01) — household calorie-aggregation date-key bug.
+ *
+ * Background: `nutrition_entries.date_key` and `household_meals.date_key`
+ * are written from the user's LOCAL calendar date everywhere else in
+ * the app. Until this build, `getMyHousehold` queried with the UTC
+ * date (`new Date().toISOString().slice(0,10)`). When local-date and
+ * UTC-date diverged (late evening / early morning, or any non-zero
+ * UTC-offset), the query missed today's entries and sometimes pulled
+ * yesterday's — producing the "calories wildly high vs target"
+ * feedback (TestFlight `AJ_dfDvM2j6rnkOAgHTpwig`).
+ *
+ * The fix is in `todayKey()`: now uses local-calendar derivation
+ * (matches `dateKeyFromDate` in src/lib/nutrition/journalNavigation).
+ */
+describe("getMyHousehold — Build 41 local-calendar date_key", () => {
+  it("queries with the LOCAL date_key, not the UTC date_key", async () => {
+    let observedEntriesKey: unknown = "<<unset>>";
+    let observedMealsKey: unknown = "<<unset>>";
+    const sb = makeSupabase({
+      household_members: (op, _ctx) => {
+        if (op === "select:maybeSingle") return { data: { household_id: "h1", role: "owner" }, error: null };
+        if (op === "select") {
+          return {
+            data: [{ id: "m1", user_id: "u1", role: "owner", display_name: "G", joined_at: "2026-01-01" }],
+            error: null,
+          };
+        }
+        return { data: null, error: null };
+      },
+      households: (op) => {
+        if (op === "select:single") {
+          return {
+            data: { id: "h1", name: "F", owner_id: "u1", invite_code: "i", created_at: "2026-01-01" },
+            error: null,
+          };
+        }
+        return { data: null, error: null };
+      },
+      household_meals: (op, ctx) => {
+        if (op === "select") {
+          observedMealsKey = ctx.filters["gte:date_key"];
+          return { data: [], error: null };
+        }
+        return { data: null, error: null };
+      },
+      profiles: (op) => {
+        if (op === "select") {
+          return {
+            data: [{ id: "u1", target_calories: 2200, target_protein: 150, target_carbs: 250, target_fat: 70, display_name: "G" }],
+            error: null,
+          };
+        }
+        return { data: null, error: null };
+      },
+      nutrition_entries: (op, ctx) => {
+        if (op === "select") {
+          observedEntriesKey = ctx.filters["eq:date_key"];
+          return { data: [], error: null };
+        }
+        return { data: null, error: null };
+      },
+    });
+
+    await getMyHousehold(sb as any, "u1");
+
+    const now = new Date();
+    const localToday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    const yesterday = new Date(now.getTime() - 86_400_000);
+    const localYesterday = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
+
+    // Either today or yesterday-by-1ms is acceptable around midnight.
+    expect([localToday, localYesterday]).toContain(observedEntriesKey as string);
+    expect([localToday, localYesterday]).toContain(observedMealsKey as string);
+
+    // When UTC and local dates differ today, the new code MUST emit the local one.
+    const utcToday = now.toISOString().slice(0, 10);
+    if (utcToday !== localToday) {
+      expect(observedEntriesKey).toBe(localToday);
+      expect(observedMealsKey).toBe(localToday);
+    }
+  });
+});
+

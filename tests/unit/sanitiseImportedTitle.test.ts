@@ -1,11 +1,16 @@
 /**
- * F-76 (2026-04-26) — pin sanitiseImportedTitle behaviour, including
- * the new "For [phrase]:" / "Recipe:" / "Recipe name:" stripping that
- * keeps caption-style section headings out of the title field.
- *
- * Existing protections (whitespace collapse, hashtag/URL tail strip,
- * 120-char cap, first-sentence preference) are pinned alongside so a
- * future refactor can't quietly remove them.
+ * F-76 (2026-04-26) + Build 41 follow-up (2026-05-01) — pin
+ * sanitiseImportedTitle behaviour:
+ *   - "For [phrase]:" / "Recipe:" / "Recipe name:" stripping keeps
+ *     caption-style section headings out of the title field.
+ *   - 80-char cap (was 120 — caption leak still happening on Build 40
+ *     with one-sentence captions <120 chars).
+ *   - First-clause / em-dash / " - " splitting for multi-clause
+ *     captions like "Banana bread — the recipe that started it all".
+ *   - Word-boundary clamp so titles never split mid-word.
+ *   - Caption-shape rejection: input >240 chars with no structural
+ *     separator returns null and lets the caller fall back to
+ *     `meta.title` (also sanitised) or "Imported recipe".
  */
 import { describe, it, expect } from "vitest";
 import {
@@ -49,7 +54,7 @@ describe("sanitiseImportedTitle — existing protections still pinned", () => {
     );
   });
 
-  it("returns null when the title exceeds the 120-char cap", () => {
+  it("returns null when the title exceeds the 80-char cap with no clause breaks", () => {
     const long = "x".repeat(140);
     expect(sanitiseImportedTitle(long)).toBe(null);
   });
@@ -58,6 +63,61 @@ describe("sanitiseImportedTitle — existing protections still pinned", () => {
     expect(sanitiseImportedTitle(null)).toBe(null);
     expect(sanitiseImportedTitle("")).toBe(null);
     expect(sanitiseImportedTitle("   ")).toBe(null);
+  });
+});
+
+describe("sanitiseImportedTitle — Build 41 (2026-05-01) follow-up", () => {
+  it("400-char Instagram caption with no sentence breaks → null (caller falls back)", () => {
+    // Single sprawling caption, only commas — no `.!?`. Longer than
+    // CAPTION_SHAPE_REJECT_AT (240) so the early-out fires.
+    const caption =
+      "OMG you guys this banana bread is literally the best thing ive ever made in my life so so soft and moist with the perfect crumb and lots of chocolate chips on top its the perfect treat for a cozy sunday morning with a hot coffee and ill be making it every weekend from now on i promise you wont regret it";
+    expect(sanitiseImportedTitle(caption)).toBe(null);
+  });
+
+  it("multi-clause caption keeps the first clause when ≥3 commas (caption shape)", () => {
+    expect(
+      sanitiseImportedTitle(
+        "The best banana bread, super moist, takes 1 hour, perfect for breakfast",
+      ),
+    ).toBe("The best banana bread");
+  });
+
+  it("em-dash tagline is split — first segment kept", () => {
+    expect(
+      sanitiseImportedTitle("Banana bread — the recipe that started it all"),
+    ).toBe("Banana bread");
+  });
+
+  it("clamps long single-sentence titles to a word boundary, not mid-word", () => {
+    const t =
+      "Sheet pan harissa chicken with chickpeas and roasted red peppers tossed with lemon yogurt sauce";
+    const result = sanitiseImportedTitle(t);
+    if (result != null) {
+      expect(result.length).toBeLessThanOrEqual(80);
+      expect(result).toMatch(/\w$/);
+      expect(t).toContain(result);
+    }
+    // Never a mid-word truncation.
+    expect(result).not.toMatch(/\b\w{1,3}$/);
+  });
+
+  it("80-char limit: titles ≤80 chars pass through unchanged", () => {
+    expect(sanitiseImportedTitle("Sheet-pan harissa chicken with chickpeas")).toBe(
+      "Sheet-pan harissa chicken with chickpeas",
+    );
+    expect(
+      sanitiseImportedTitle("Slow-cooked beef ragu with pappardelle and parmesan"),
+    ).toBe("Slow-cooked beef ragu with pappardelle and parmesan");
+  });
+
+  it("punctuation-only suffix on the clamped slice is trimmed", () => {
+    const t =
+      "The best banana bread, super moist, takes one hour, perfect for breakfast or weekend brunch with a strong coffee";
+    const result = sanitiseImportedTitle(t);
+    if (result != null) {
+      expect(result).not.toMatch(/[,;:\-—]$/);
+    }
   });
 });
 

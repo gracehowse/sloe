@@ -380,13 +380,38 @@ export function socialImportSourceName(
  * GPT sometimes returns the entire caption as `title` when the post lacks an
  * explicit headline, which produces recipes with 500+ character "titles".
  * TestFlight feedback `AOHTbpXsKXz9e63LN0j58FQ` (2026-04-18): "Some recipes
- * pulling the whole caption in as the title."
+ * pulling the whole caption in as the title." Re-flagged on Build 40
+ * (2026-05-01) — captions still leaking through when the LLM returns a
+ * single ≤120-char caption-style sentence (under the prior cap) and when
+ * `meta.title` (Instagram og:title) is itself the full caption.
  *
- * Clamp to one line, strip trailing hashtag/URL runs, cap length.
- * Null out when the result would be too long to be a plausible title —
- * caller will fall back to `meta.title` / "Imported recipe".
+ * Strategy:
+ *   1. Strip cosmetic noise (whitespace, hashtag/URL tails, section headings).
+ *   2. Caption-shape early-out — refuse when input is much longer than
+ *      the cap and has no structural separator we can split on.
+ *   3. Prefer first sentence, then split on em-dash / " - " (taglines),
+ *      then split on `,;` if over-cap or has 3+ comma-clauses.
+ *   4. Word-boundary clamp at 80 chars. No-spaces residual → refuse.
+ *   5. Refuse outputs still over 80 chars; caller falls back to
+ *      `meta.title` (also sanitised at the API boundary) or "Imported
+ *      recipe".
+ *
+ * 80-char cap is deliberate: real recipe titles in our DB are 8–65 chars
+ * (p99 = 62) per a 2026-05-01 audit; titles >80 chars are always
+ * caption-leak in the wild.
  */
-const IMPORTED_TITLE_MAX_CHARS = 120;
+const IMPORTED_TITLE_MAX_CHARS = 80;
+const CAPTION_SHAPE_REJECT_AT = 240;
+
+function clampToWordBoundary(s: string, max: number): string {
+  if (s.length <= max) return s;
+  const sliced = s.slice(0, max);
+  const lastSpace = sliced.lastIndexOf(" ");
+  if (lastSpace > 0 && lastSpace > max * 0.5) {
+    return sliced.slice(0, lastSpace).replace(/[.,;:\-—]+$/, "").trim();
+  }
+  return sliced.replace(/[.,;:\-—]+$/, "").trim();
+}
 
 export function sanitiseImportedTitle(raw: unknown): string | null {
   if (raw == null) return null;
@@ -396,26 +421,44 @@ export function sanitiseImportedTitle(raw: unknown): string | null {
   s = s.replace(/\s+/g, " ");
   // Strip trailing tails: hashtag runs, "Follow @x", URL tails.
   s = s.replace(/(\s*(#[\w-]+|@[\w.]+|https?:\/\/\S+))+\s*$/g, "").trim();
-  // F-76 (2026-04-26): also strip leading "For [phrase]:" section
-  // headings — same pattern stripSectionPrefix handles for ingredient
-  // rows. The LLM sometimes returns titles like "For the creamy
-  // cucumber salad: 1 tbsp miso" when it picks the first line of a
-  // structured caption. Strip the "For X:" prefix; if the remainder
-  // is empty (the entire title was a section header) the caller
-  // falls back to "Imported recipe".
+  // F-76 (2026-04-26): strip leading "For [phrase]:" section headings.
   s = stripSectionPrefix(s);
-  // F-76 — also strip leading "Recipe:" / "Recipe name:" lead-in
-  // labels that appear on some publisher templates ("Recipe: Banana
-  // bread" → "Banana bread").
+  // F-76: strip leading "Recipe:" / "Recipe name:" lead-ins.
   s = s.replace(/^\s*(?:recipe|recipe name|title|dish|name)\s*[:\-]\s*/i, "").trim();
-  // If first sentence exists and fits, prefer it.
-  const firstSentence = s.split(/(?<=[.!?])\s+/)[0]?.trim();
-  if (firstSentence && firstSentence.length <= IMPORTED_TITLE_MAX_CHARS) s = firstSentence;
-  if (s.length > IMPORTED_TITLE_MAX_CHARS) {
-    // Still too long → reject; caller falls back.
-    return null;
+  if (!s) return null;
+
+  // Build 41: caption-shape early-out.
+  if (s.length > CAPTION_SHAPE_REJECT_AT) {
+    const hasSentenceBreak = /[.!?]\s/.test(s);
+    const hasClauseBreak = /[,;]|—|\s-\s/.test(s);
+    if (!hasSentenceBreak && !hasClauseBreak) return null;
   }
-  return s || null;
+
+  // Prefer first sentence over the whole input.
+  const firstSentence = s.split(/(?<=[.!?])\s+/)[0]?.trim() ?? s;
+  if (firstSentence) s = firstSentence;
+  // Tagline split: em-dash / " - " — almost always tagline punctuation.
+  const taglineSplit = s.split(/\s*(?:—|\s-\s)\s*/);
+  if (taglineSplit.length > 1 && taglineSplit[0]!.trim().length >= 4) {
+    s = taglineSplit[0]!.trim();
+  }
+  // Comma/semicolon split: only when over-cap OR 3+ clauses (caption shape).
+  const commaParts = s.split(/\s*[,;]\s*/);
+  const tooLong = s.length > IMPORTED_TITLE_MAX_CHARS;
+  const captionShape = commaParts.length >= 3;
+  if ((tooLong || captionShape) && commaParts[0]!.trim().length >= 4) {
+    s = commaParts[0]!.trim();
+  }
+
+  // Word-boundary clamp. No-spaces residual → refuse.
+  if (s.length > IMPORTED_TITLE_MAX_CHARS) {
+    if (!s.includes(" ")) return null;
+    s = clampToWordBoundary(s, IMPORTED_TITLE_MAX_CHARS);
+  }
+
+  if (s.length > IMPORTED_TITLE_MAX_CHARS) return null;
+  if (!s) return null;
+  return s;
 }
 
 /**

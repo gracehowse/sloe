@@ -7,6 +7,7 @@ import {
   extractRecipeFromCaption,
   socialImportSourceName,
   extractCommentsFromHtml,
+  sanitiseImportedTitle,
 } from "@/lib/recipe-import/extractSocialRecipe";
 import { rateLimit } from "@/lib/server/rateLimit";
 import { verifyIngredients, parseRawIngredients } from "@/lib/nutrition/verifyIngredients";
@@ -352,11 +353,18 @@ export async function POST(req: Request) {
         name: socialImportSourceName(socialPlatform, trimmed, meta.authorDisplay ?? null, captionText),
       });
 
+      // Build 41 (2026-05-01) F-76 follow-up: also sanitise `meta.title`
+      // before using it as fallback. Instagram's og:title for a Reel is
+      // frequently the entire caption (with hashtags) — without this
+      // pass, a null `recipe.title` fell back to that raw caption.
+      const safeTitle =
+        recipe.title ?? sanitiseImportedTitle(meta.title) ?? "Imported recipe";
+
       return NextResponse.json({
         ok: true,
         source: socialPlatform,
         recipe: {
-          title: recipe.title ?? meta.title ?? "Imported recipe",
+          title: safeTitle,
           description: null,
           ingredients: recipe.ingredients,
           instructions: recipe.steps,
