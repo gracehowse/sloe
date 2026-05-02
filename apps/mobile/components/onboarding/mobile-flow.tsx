@@ -64,13 +64,11 @@ export function MobileFlow() {
   const isWelcome = currentStepId === "welcome";
   const [completing, setCompleting] = React.useState(false);
 
-  // Customer-lens shrink (2026-04-30): `reveal` is the new terminal
-  // step — the linear flow ends after the aha moment and the user
-  // lands on Today three screens sooner. The seed-and-plan path in
-  // `handleComplete` still runs but `pickedRecipeSlugs` is empty for
-  // a normal completion (it'll be populated when the post-launch
-  // recipes nudge lands).
-  const isTerminal = currentStepId === "reveal";
+  // Build-40 (2026-05-01): `data-bridges` is the new terminal step.
+  // Reveal advances on Continue → data-bridges; data-bridges fires
+  // the `handleComplete` write path on its "Build my plan" CTA. See
+  // `state.ts` STEP_IDS comment for rationale.
+  const isTerminal = currentStepId === "data-bridges";
   const isSignup = currentStepId === "signup";
 
   // MV-02 auto-skip (audit 2026-04-28): when an already-authed user
@@ -170,6 +168,15 @@ export function MobileFlow() {
         }
       }
 
+      // Build-40 — `data_bridge_chosen` carries the LAST card actioned
+      // on the data-bridges terminal step (`null` = never touched).
+      // `manual_targets_set` is true only when all four manual fields
+      // are populated (the override-eligible state).
+      const manualTargetsSet =
+        state.manualTargetsKcal != null &&
+        state.manualTargetsProteinG != null &&
+        state.manualTargetsCarbsG != null &&
+        state.manualTargetsFatG != null;
       try {
         track(AnalyticsEvents.onboarding_completed, {
           flow: "v2",
@@ -182,6 +189,8 @@ export function MobileFlow() {
           // hit the curated-default fallback vs hand-picked. Used to
           // monitor the activation lift after the seed-defaults ship.
           used_default_seeds: usedDefaults,
+          data_bridge_chosen: state.dataBridgeChosen,
+          manual_targets_set: manualTargetsSet,
         });
       } catch {
         /* analytics is fire-and-forget */

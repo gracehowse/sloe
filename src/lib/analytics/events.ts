@@ -433,6 +433,26 @@ export const AnalyticsEvents = {
    *      projected_target_kcal: number,
    *      sex: "male" | "female" | "unspecified" } */
   onboarding_pace_below_safety_floor: "onboarding_pace_below_safety_floor",
+  /** Build-40 (2026-05-01) — user actioned a card on the data-bridges
+   *  step (manual targets / Apple Health / notifications / recipe URL).
+   *  Multiple cards can fire — this event lets analytics measure
+   *  per-bridge adoption, while `onboarding_completed.data_bridge_chosen`
+   *  carries the LAST card actioned for funnel slicing.
+   *
+   *  Payload:
+   *    { option: "manual" | "apple-health" | "notifications" | "recipe",
+   *      url_provided?: boolean   // recipe option only
+   *    }
+   *  Registered alongside the data-bridges step re-introduction; the
+   *  customer-lens audit (2026-05-01) found three competitor-refugee
+   *  personas bouncing day-1 because no path existed to bring their
+   *  data with them. */
+  onboarding_data_bridge_chosen: "onboarding_data_bridge_chosen",
+  /** Build-40 (2026-05-01) — user explicitly tapped "Maybe later" on
+   *  the data-bridges step. Distinct from never-touched (which fires
+   *  `data_bridge_chosen: null` on `onboarding_completed`). Payload:
+   *    { reason: "card_tap" } */
+  onboarding_data_bridge_skipped: "onboarding_data_bridge_skipped",
   /** User created a new account (email+password or Apple SSO) on web.
    * Fires once, after Supabase `signUp` / `signInWithOAuth` succeeds.
    * Payload: `{ method: "email" | "apple" }`.

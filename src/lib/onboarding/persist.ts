@@ -167,23 +167,110 @@ export interface ProfileUpsertRow {
   onboarding_completed: true;
 }
 
+/**
+ * Build-40 (2026-05-01) — resolve the targets to persist, honouring
+ * a manual override from the data-bridges step.
+ *
+ * Three-way decision:
+ *   1. All four manual fields set + finite + > 0 → synthesise a
+ *      `V2Targets` from them (kcal + P/C/F). Macro fiber is computed
+ *      via the same 14g/1000kcal heuristic the production calc uses
+ *      (`calculateMacros` in tdee.ts). Other fields (`bmr`, `tdee`,
+ *      `pace`, `kcalAdj`, `strategy`, `belowSafetyFloor`, `safety`)
+ *      are best-effort — copied from `computed` when present, set to
+ *      sane defaults otherwise.
+ *   2. computed != null → return computed (the normal flow).
+ *   3. neither → return null (caller writes a partial profile, same
+ *      as the `weightSkipped` path).
+ *
+ * The manual override path is the MFP / MacroFactor refugee scenario:
+ * the user already knows their targets and pasting them in skips the
+ * BMR estimate that's going to be wrong for them anyway. We capture
+ * `strategy: "balanced"` as a defensive default so the macro-style
+ * field on `profiles` isn't null (a few read sites switch on it).
+ *
+ * Pure function — exported separately so tests assert the precedence
+ * rule without round-tripping through `buildProfileUpsertRow`.
+ */
+export function effectiveTargetsForPersist(
+  state: OnboardingState,
+  computed: V2Targets | null,
+): V2Targets | null {
+  const m = {
+    kcal: state.manualTargetsKcal,
+    protein: state.manualTargetsProteinG,
+    carbs: state.manualTargetsCarbsG,
+    fat: state.manualTargetsFatG,
+  };
+  const allFiniteAndPositive =
+    m.kcal != null && Number.isFinite(m.kcal) && m.kcal > 0 &&
+    m.protein != null && Number.isFinite(m.protein) && m.protein > 0 &&
+    m.carbs != null && Number.isFinite(m.carbs) && m.carbs > 0 &&
+    m.fat != null && Number.isFinite(m.fat) && m.fat > 0;
+
+  if (!allFiniteAndPositive) return computed;
+
+  // Synthesise a V2Targets shape from manual inputs. Fiber: 14g per
+  // 1000kcal (NHS / DRI guideline; same heuristic `calculateMacros`
+  // applies). Round to whole-gram for display parity.
+  const fiberG = Math.round((m.kcal! / 1000) * 14);
+  return {
+    bmr: computed?.bmr ?? 0,
+    tdee: computed?.tdee ?? m.kcal!,
+    target: Math.round(m.kcal!),
+    proteinG: Math.round(m.protein!),
+    carbsG: Math.round(m.carbs!),
+    fatG: Math.round(m.fat!),
+    fiberG,
+    pace: computed?.pace ?? 0,
+    kcalAdj: computed?.kcalAdj ?? 0,
+    // Default strategy when the user never reached the strategy step
+    // in a manual-target flow. Read sites that switch on this field
+    // (Today screen macro tile copy) treat "balanced" as the no-op.
+    strategy: computed?.strategy ?? "balanced",
+    belowSafetyFloor: computed?.belowSafetyFloor ?? false,
+    safety: computed?.safety ?? "safe",
+  };
+}
+
 /** Build the `profiles` upsert row from v2 state + computed targets.
  *  Pure function — extracted so tests can assert the schema mapping
- *  without mocking Supabase. */
+ *  without mocking Supabase.
+ *
+ *  Build-40 (2026-05-01) — `effectiveTargetsForPersist` is consulted
+ *  first so a manual override from the data-bridges step wins over
+ *  the computed targets. The `weightSkipped` honest-partial-profile
+ *  branch still applies, BUT a user who skipped the weight step AND
+ *  set all four manual targets has both a partial profile (no weight)
+ *  AND concrete targets — `hasTargets` falls through to the manual
+ *  override below for that case so the Today screen has numbers to
+ *  show against. */
 export function buildProfileUpsertRow(args: {
   userId: string;
   state: OnboardingState;
   targets: V2Targets | null;
   now?: Date;
 }): ProfileUpsertRow {
-  const { userId, state, targets } = args;
+  const { userId, state } = args;
   const now = args.now ?? new Date();
 
+  // Build-40: manual override wins. effectiveTargetsForPersist returns
+  // a synthetic V2Targets when the user pasted in their own kcal /
+  // P / C / F on the data-bridges step; otherwise it returns
+  // `args.targets` unchanged.
+  const targets = effectiveTargetsForPersist(state, args.targets);
+
   // weightSkipped path — keep the partial profile honest. weight_kg
-  // and all target_* columns nulled out. The Today screen renders
-  // calibrate-from-logs copy when target_calories is null (existing
-  // empty-state branch).
-  const hasTargets = !state.weightSkipped && targets != null;
+  // is nulled out always. Targets are nulled UNLESS the user
+  // overrode them manually (Build-40): the manual-target path
+  // implies they know their numbers, regardless of whether they put
+  // a weight on the scale.
+  const manualOverride =
+    state.manualTargetsKcal != null &&
+    state.manualTargetsProteinG != null &&
+    state.manualTargetsCarbsG != null &&
+    state.manualTargetsFatG != null;
+  const hasTargets = (manualOverride || !state.weightSkipped) && targets != null;
 
   return {
     id: userId,

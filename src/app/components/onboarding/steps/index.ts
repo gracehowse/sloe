@@ -9,6 +9,11 @@
  * discovery surfaces that absorb their affordances. The component
  * files are kept on disk — re-export them so the post-launch nudge
  * queue (follow-up PR) can mount them out of the linear shell.
+ *
+ * Build-40 (2026-05-01): the new `data-bridges` step replaces those
+ * affordances with a single optional terminal step that bundles the
+ * bridges most personas land at the door with (manual targets,
+ * notifications, recipe URL — Apple Health on mobile only).
  */
 import type { ComponentType } from "react";
 import type { StepId } from "@/lib/onboarding/state";
@@ -24,6 +29,7 @@ import { PaceStep } from "./pace";
 import { DietStep } from "./diet";
 import { StrategyStep } from "./strategy";
 import { RevealStep } from "./reveal";
+import { DataBridgesStep } from "./data-bridges";
 import { PermissionsStep } from "./permissions";
 import { ImportStep } from "./import";
 import { RecipePickerStep } from "./recipes";
@@ -48,6 +54,7 @@ export const STEP_COMPONENTS: Record<StepId, ComponentType<StepComponentProps>> 
   diet: DietStep,
   strategy: StrategyStep,
   reveal: RevealStep,
+  "data-bridges": DataBridgesStep,
 };
 
 export {
@@ -63,6 +70,7 @@ export {
   DietStep,
   StrategyStep,
   RevealStep,
+  DataBridgesStep,
   // Out-of-flow components — kept for the post-launch nudge queue.
   PermissionsStep,
   ImportStep,
