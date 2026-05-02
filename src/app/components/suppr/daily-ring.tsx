@@ -281,10 +281,32 @@ function DailyRing({
           </span>
         ) : (
           <>
+            {/*
+             * Centre value typography — 2026-05-01 ui-critic finding #7.
+             *
+             * Lifted from 22px (expanded) / 36px (var(--text-display),
+             * collapsed) to a flat 56px so the ring's central number
+             * dominates its real estate per the Cal AI flagship
+             * convention. 56 / 22 (macro tile values below) gives a
+             * comfortable ~2.5× ratio so the ring reads as the primary
+             * metric on the screen, not a peer of the tiles.
+             *
+             * 4-digit fallback: a goal of 1,847 kcal at the full 56px
+             * clips the inner-most macro-ring band (radius 38 → ~76px
+             * inner diameter on the 160px ring) when expanded. We drop
+             * to 48px for 4-digit values, which keeps the dominant
+             * treatment while staying inside the band. Mirrors the
+             * mobile fallback in `apps/mobile/components/charts/CalorieRing.tsx`.
+             *
+             * Web doesn't have RN's `adjustsFontSizeToFit` shorthand,
+             * so we don't bother with a 5-digit safety net here — kcal
+             * goals above 9,999 aren't a real-world case.
+             */}
             <span
               className="tabular-nums font-bold leading-none transition-[font-size] duration-300 text-foreground"
               style={{
-                fontSize: expanded ? "22px" : "var(--text-display)",
+                fontSize: animatedCenterValue >= 1000 ? "48px" : "56px",
+                letterSpacing: "-1.2px",
                 color: centerValueColor,
               }}
             >
