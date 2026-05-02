@@ -58,6 +58,28 @@ export const MacroColors = {
 };
 
 /**
+ * Meal-slot tint roles — aligned with web `--slot-*` CSS custom properties.
+ *
+ * 2026-05-01 (ui-critic P2 #10): Snacks previously borrowed
+ * `MacroColors.fat` (magenta) for its slot-header tint, which collided
+ * 1:1 with the Fat macro tile on the same Today screen. Same hue, two
+ * unrelated meanings — confusing to scan. Snacks now ships its own
+ * cyan token; macro tokens stay reserved for the Macro tile row.
+ *
+ * Roles:
+ *   - Breakfast → amber  (Accent.warning)
+ *   - Lunch     → green  (Accent.success)
+ *   - Dinner    → blue   (Accent.primary)
+ *   - Snack     → cyan   (`#06b6d4`) — distinct from `MacroColors.fat`
+ */
+export const SlotColors = {
+  breakfast: Accent.warning,      // web: --slot-breakfast (amber)
+  lunch: Accent.success,          // web: --slot-lunch     (green)
+  dinner: Accent.primary,         // web: --slot-dinner    (brand blue)
+  snack: '#06b6d4',               // web: --slot-snack     (cyan)
+};
+
+/**
  * Brand tokens. The `violet` and `pink` deprecated aliases were
  * deleted 2026-04-28 (Next-10 #15) — zero production code
  * referenced them. Use `Brand.primary` (`#4c6ce0` blue) and

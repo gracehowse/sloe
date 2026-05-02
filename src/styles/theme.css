@@ -93,6 +93,20 @@
   --macro-water: #06b6d4;
   --macro-water-soft: #06b6d412;
 
+  /** Meal-slot tints — production design spec (ui-critic P2 #10, 2026-05-01).
+   *  Snacks previously borrowed `--macro-fat` (magenta) which collided
+   *  1:1 with the Fat macro tile on Today. Snacks now ships its own
+   *  cyan token; macro tokens stay reserved for the Macro tile row.
+   *  Mirrors mobile `SlotColors` in `apps/mobile/constants/theme.ts`. */
+  --slot-breakfast: #e8a020;        /* amber  ↔ Accent.warning */
+  --slot-breakfast-soft: #e8a02012;
+  --slot-lunch: #22a860;             /* green  ↔ Accent.success */
+  --slot-lunch-soft: #22a86012;
+  --slot-dinner: #4c6ce0;            /* blue   ↔ Accent.primary */
+  --slot-dinner-soft: #4c6ce012;
+  --slot-snack: #06b6d4;             /* cyan — distinct from --macro-fat */
+  --slot-snack-soft: #06b6d412;
+
   /** Stimulant tracker colours (Batch 2.5 hydration & stimulants).
    *  Caffeine: violet (not a macro role). Alcohol: amber — intentionally
    *  shares the --warning hue because "approaching weekly limit" is the
@@ -216,6 +230,18 @@
   --macro-water: #22d3ee;
   --macro-water-soft: #22d3ee15;
 
+  /** Meal-slot tints — dark. Mirrors light-mode roles with OLED-lifted
+   *  hues. Snack stays cyan family (distinct from --macro-fat which
+   *  is magenta in dark too). */
+  --slot-breakfast: #ffc04c;         /* amber-light */
+  --slot-breakfast-soft: #ffc04c15;
+  --slot-lunch: #4cd080;              /* green-light */
+  --slot-lunch-soft: #4cd08015;
+  --slot-dinner: #6c8cff;             /* blue-light */
+  --slot-dinner-soft: #6c8cff15;
+  --slot-snack: #22d3ee;              /* cyan-light */
+  --slot-snack-soft: #22d3ee15;
+
   /** Stimulant tracker colours — dark. Kept at the same hex as light
    *  for now; the hydration cards render chips on a --muted surface so
    *  the violet/amber tones hold up against dark backgrounds. */
@@ -331,6 +357,16 @@
   --color-macro-calories: var(--macro-calories);
   --color-macro-water: var(--macro-water);
   --color-macro-water-soft: var(--macro-water-soft);
+
+  /* Meal-slot tints — ui-critic P2 #10 (2026-05-01) */
+  --color-slot-breakfast: var(--slot-breakfast);
+  --color-slot-breakfast-soft: var(--slot-breakfast-soft);
+  --color-slot-lunch: var(--slot-lunch);
+  --color-slot-lunch-soft: var(--slot-lunch-soft);
+  --color-slot-dinner: var(--slot-dinner);
+  --color-slot-dinner-soft: var(--slot-dinner-soft);
+  --color-slot-snack: var(--slot-snack);
+  --color-slot-snack-soft: var(--slot-snack-soft);
 
   /* Confidence */
   --color-confidence-high: var(--confidence-high);

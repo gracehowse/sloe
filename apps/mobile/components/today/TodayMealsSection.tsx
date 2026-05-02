@@ -15,7 +15,7 @@ import {
   type LucideIcon,
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
-import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
+import { Accent, Radius, SlotColors, Spacing } from "@/constants/theme";
 import { SourceDot } from "@/components/ui/SourceDot";
 import { mapMealSourceToDot } from "../../../../src/lib/nutrition/sourceMap";
 import type { JournalMeal } from "@/lib/nutritionJournal";
@@ -111,12 +111,20 @@ const SLOT_ICON: Record<string, LucideIcon> = {
   Snack: Cookie,
 };
 
+/**
+ * Per-slot tint. Sourced from `SlotColors` (mobile) / `--slot-*` (web).
+ *
+ * 2026-05-01 (ui-critic P2 #10): Snacks previously inlined
+ * `MacroColors.fat` (magenta) which collided 1:1 with the Fat macro
+ * tile on Today. Snack now uses its own cyan token; macro tokens are
+ * reserved for the Macro tile row.
+ */
 const SLOT_COLOR: Record<string, string> = {
-  Breakfast: Accent.warning,
-  Lunch: Accent.success,
-  Dinner: Accent.primary,
-  Snacks: MacroColors.fat,
-  Snack: MacroColors.fat,
+  Breakfast: SlotColors.breakfast,
+  Lunch: SlotColors.lunch,
+  Dinner: SlotColors.dinner,
+  Snacks: SlotColors.snack,
+  Snack: SlotColors.snack,
 };
 
 function slotIcon(s: string): LucideIcon {
