@@ -51,6 +51,7 @@ import { MoreVertical } from "lucide-react";
 import { formatRecipeMinutes } from "../../lib/recipe/formatRecipeMinutes.ts";
 import {
   composeSubtitleParts,
+  computeFitsYourDayVerdict,
   shouldRenderTimeStats,
 } from "../../lib/recipe/recipeDetailLayout.ts";
 import { webRecipeDeepLink } from "../../lib/share/recipeDeepLink.ts";
@@ -1247,10 +1248,16 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           const slots: string[] = Array.isArray(recipe.mealSlots)
             ? (recipe.mealSlots as readonly string[]).map(String)
             : [];
+          // 2026-05-01 v3: kcal joins the subtitle as a bold inline
+          // token (slot · serves · kcal · author). The bordered
+          // "Calories per portion" hero card below is removed —
+          // macros become the visual hero, the user can still read
+          // calories at a glance from the subtitle.
           const subtitleParts = composeSubtitleParts({
             authorLabel: bylineLabel,
             slots,
             servings: baseServings,
+            kcal: scaledMacros.calories,
           });
           return (
             <div className="space-y-1">
@@ -1267,6 +1274,10 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                 >
                   {subtitleParts.map((part, idx) => {
                     const isAuthor = part.key === "by" && Boolean(bylineHref);
+                    // v3: kcal token renders bold + foreground colour
+                    // so calories are scannable as the primary
+                    // nutrition number on the meta line.
+                    const isKcal = part.key === "kcal";
                     return (
                       <span key={part.key} className="inline-flex items-center">
                         {idx > 0 ? (
@@ -1283,6 +1294,13 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                           >
                             {part.label}
                           </a>
+                        ) : isKcal ? (
+                          <span
+                            className="font-bold text-foreground tabular-nums"
+                            data-testid="recipe-subtitle-kcal"
+                          >
+                            {part.label}
+                          </span>
                         ) : (
                           <span>{part.label}</span>
                         )}
@@ -1492,17 +1510,18 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           </div>
         </div>
 
-        {/* 2026-04-30 ui-product-designer recipe-detail audit Fix 3 —
-            web parity. Pre-fix the kcal hero and the "Fits your day"
-            verdict were two adjacent cards with `mb-3` / `mb-4`
-            stacking, reading as separate widgets. Fused into one
-            `recipe-calorie-hero` block with the verdict pill rendered
-            as a CHILD of the hero (not a sibling). Tests assert the
-            parent/child relationship. Verdict logic unchanged.
+        {/* 2026-05-01 v3 redesign — the bordered "Calories per portion"
+            hero card that lived here is gone. kcal moved to the
+            subtitle row above as a bold inline token (slot · serves
+            · kcal · author). The macro tiles below now ARE the visual
+            hero. The "Fits your day" verdict drops to a single text
+            line below the macro grid (no card, no pill background) so
+            it reads as a footnote of the macros, not a separate band.
 
-            P1-16 zero-nutrition behaviour preserved: when import-time
-            nutrition fails (kcal=0 + macros=0), render a dimmed "not
-            yet computed" state instead of a confident "0 kcal". */}
+            When nutrition is not yet computed we still render a single
+            dimmed line so the user can tell the difference between
+            "this recipe is 0 kcal" and "we haven't computed it yet"
+            (P1-16 behaviour preserved). */}
         {(() => {
           const kcalNum = Math.round(scaledMacros.calories);
           const hasNutrition =
@@ -1510,95 +1529,25 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             scaledMacros.protein > 0 ||
             scaledMacros.carbs > 0 ||
             scaledMacros.fat > 0;
-          const targetCals = nutritionTargets.calories;
-          const showVerdict =
-            hasNutrition && Boolean(targetCals) && targetCals > 0;
-          const rawPct = showVerdict ? (kcalNum / targetCals) * 100 : 0;
-          const pct = showVerdict
-            ? Math.max(1, Math.round(rawPct / 5) * 5)
-            : 0;
-          const fits = pct > 0 && pct <= 50;
-          const overDay = pct >= 100;
-          const toneVar = fits
-            ? "var(--success)"
-            : overDay
-              ? "var(--destructive)"
-              : "var(--warning)";
-          const verdictLabel = fits
-            ? "Fits your day"
-            : overDay
-              ? `≈ ${pct}% of your day · over a full day`
-              : `≈ ${pct}% of your day`;
-          const verdictA11y = fits
-            ? `Fits your day. Approximately ${pct} percent of your daily calorie target.`
-            : overDay
-              ? `Over a full day. Approximately ${pct} percent of your daily calorie target.`
-              : `Approximately ${pct} percent of your daily calorie target.`;
-          if (!hasNutrition) {
-            return (
-              <div
-                data-testid="recipe-calorie-hero"
-                className="rounded-2xl border px-5 py-5 text-center text-muted-foreground border-border bg-muted/30"
-              >
-                <div className="text-[11px] font-extrabold uppercase tracking-wider">
-                  Calories per portion
-                </div>
-                <div className="mt-2 text-sm font-semibold">
-                  Not yet computed — open the Ingredients tab to verify
-                </div>
-              </div>
-            );
-          }
+          if (hasNutrition) return null;
           return (
             <div
-              data-testid="recipe-calorie-hero"
-              className="rounded-2xl border px-5 py-5 text-center flex flex-col items-center gap-2"
-              style={{
-                borderColor: "color-mix(in srgb, var(--macro-calories) 45%, var(--border))",
-                backgroundColor: "color-mix(in srgb, var(--macro-calories) 14%, transparent)",
-              }}
+              data-testid="recipe-nutrition-pending"
+              className="rounded-xl border px-5 py-3 text-center text-sm font-semibold text-muted-foreground border-border bg-muted/30"
             >
-              <div
-                className="text-[11px] font-extrabold uppercase tracking-wider"
-                style={{ color: "var(--macro-calories)" }}
-              >
-                Calories per portion
-              </div>
-              <div className="text-4xl font-extrabold tabular-nums text-foreground leading-none">
-                {kcalNum}
-              </div>
-              <div className="text-xs text-muted-foreground">kcal</div>
-              {showVerdict ? (
-                <div
-                  data-testid="recipe-fits-your-day"
-                  className="inline-flex items-center gap-1.5 rounded-full"
-                  style={{
-                    paddingLeft: 12,
-                    paddingRight: 12,
-                    paddingTop: 4,
-                    paddingBottom: 4,
-                    backgroundColor: `color-mix(in srgb, ${toneVar} 10%, transparent)`,
-                    color: toneVar,
-                  }}
-                  role="status"
-                  aria-label={verdictA11y}
-                >
-                  {fits ? <Icons.check className="w-3.5 h-3.5" strokeWidth={2.5} aria-hidden /> : null}
-                  <span className="font-bold" style={{ fontSize: 12 }}>
-                    {verdictLabel}
-                  </span>
-                  {fits ? (
-                    <span className="font-medium" style={{ fontSize: 12, opacity: 0.7 }}>
-                      · ≈ {pct}%
-                    </span>
-                  ) : null}
-                </div>
-              ) : null}
+              Calories not yet computed — open the Ingredients tab to verify
             </div>
           );
         })()}
-        <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Macros</p>
-        <div className="mb-4 flex flex-wrap gap-2">
+        {/* v3 macro tiles — visual hero. Bigger value font (text-xl
+            from text-base), more padding (p-3.5 from p-2.5), cleaner
+            border-radius, and a properly weighted label. The kcal
+            hero card is gone, so these tiles get to be the colour
+            anchor on first paint. */}
+        <div
+          data-testid="recipe-macros-grid"
+          className="mb-2 flex flex-wrap gap-2.5"
+        >
           {recipeMacrosToShow.map((macro) => {
             const REF_SUGAR_G = 50;
             const REF_SODIUM_MG = 2300;
@@ -1657,17 +1606,17 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             return (
               <div
                 key={macro}
-                className="min-w-[76px] max-w-[48%] flex-1 rounded-xl border border-border bg-card p-2.5"
+                className="min-w-[76px] max-w-[48%] flex-1 rounded-2xl border border-border bg-card p-3.5"
               >
-                <div className="mb-1 flex items-center gap-1">
+                <div className="mb-1.5 flex items-center gap-1.5">
                   <div className="h-2 w-2 rounded-sm" style={{ background: m.color }} />
-                  <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{m.label}</span>
+                  <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{m.label}</span>
                 </div>
-                <div className="text-base font-bold tabular-nums text-foreground">
+                <div className="text-xl font-extrabold tabular-nums text-foreground leading-tight">
                   {displayAmount}
                   {m.unit}
                 </div>
-                <div className="mt-1.5 h-1 w-full overflow-hidden rounded-sm bg-muted">
+                <div className="mt-2 h-1 w-full overflow-hidden rounded-sm bg-muted">
                   <div
                     className="h-full rounded-sm transition-all"
                     style={{
@@ -1676,7 +1625,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                     }}
                   />
                 </div>
-                <div className="mt-0.5 text-[10px] tabular-nums text-muted-foreground">
+                <div className="mt-1 text-[11px] tabular-nums text-muted-foreground">
                   of {m.tgt}
                   {m.unit}
                 </div>
@@ -1684,6 +1633,38 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             );
           })}
         </div>
+        {/* v3 (2026-05-01) — "Fits your day" verdict softened to a
+            single text line below the macro tiles. No card, no pill
+            background — just a coloured glyph + label. Logic
+            delegated to `computeFitsYourDayVerdict` so web and mobile
+            share the percent / tone / copy rules. */}
+        {(() => {
+          const verdict = computeFitsYourDayVerdict({
+            kcal: scaledMacros.calories,
+            targetCals: nutritionTargets.calories,
+          });
+          if (!verdict) return null;
+          const toneVar =
+            verdict.tone === "success"
+              ? "var(--success)"
+              : verdict.tone === "destructive"
+                ? "var(--destructive)"
+                : "var(--warning)";
+          return (
+            <div
+              data-testid="recipe-fits-your-day"
+              role="status"
+              aria-label={verdict.a11y}
+              className="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold"
+              style={{ color: toneVar }}
+            >
+              {verdict.fits ? (
+                <Icons.check className="w-3.5 h-3.5" strokeWidth={2.5} aria-hidden />
+              ) : null}
+              <span>{verdict.label}</span>
+            </div>
+          );
+        })()}
 
         {/* Creator Discrepancy */}
         {isCatalogRecipe &&
