@@ -361,6 +361,16 @@ ui-critic P2 #10. Snacks meal-slot tint previously borrowed `MacroColors.fat` (m
 - Pinned by `tests/unit/slotColorTokensParity.test.ts` (12 tests, source-grep + token-export invariants) and `tests/unit/todayMealsSectionSlotColors.test.tsx` (3 render tests, 4 canonical slot tints render and the magenta hex is absent from any wrapper bg).
 - Decision: `docs/decisions/2026-05-01-slot-colors-token-fix-magenta-collision.md`. Doc: `docs/ux/brand-tokens.md` (new "Meal-slot colours" section).
 
+## 2026-05-01 — Today: first-meal empty-state CTA (journey-architect P1)
+
+### Today
+- **First-meal empty-state card** on Today (`apps/mobile/components/today/TodayFirstMealEmptyState.tsx`). Renders only when the user has logged 0 meals today AND has zero journal history at all. Headline "Ready to log your first meal?" + a single primary CTA "Log a meal" that opens the unified `LogSheet` (same surface as the centred raised tab-bar plus button). Closes the journey-architect P1 finding "Empty states are silent. No journey has an empty state with a clear 'do this next' action."
+- **IG/TT recipe-paste tip line** for brand-new accounts only (`auth.users.created_at < 24h ago`). Single dismissable line, persisted via AsyncStorage under `suppr.first-meal-tip-dismissed.v1`. Returning users (account ≥ 24h) never see the tip.
+- **Analytics**: existing `empty_state_cta_clicked` event fires on CTA tap with `surface: "today"` so the funnel matches other empty-state surfaces.
+
+### Web parity
+- `src/app/components/suppr/today-first-meal-empty-state.tsx` ships the matching surface inside `NutritionTracker.tsx`. Same gate (today selected + zero today + zero history), same brand-new check (< 24h), same tip + localStorage key.
+
 ## 2026-05-01 — LogSheet: 3-tab discoverability (journey-architect P1)
 
 ### LogSheet
