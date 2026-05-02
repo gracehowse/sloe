@@ -56,6 +56,7 @@ import {
 } from "@/lib/cookSession";
 import { extractVideoHost } from "../../../src/lib/recipes/heroImageFallback";
 import {
+  COOK_HANDSFREE_FEATURE_ENABLED,
   readHandsfreeEnabled,
   writeHandsfreeEnabled,
 } from "@/lib/cookHandsfree";
@@ -304,7 +305,12 @@ export default function CookModeScreen() {
 
   // Hydrate the persisted handsfree preference once on mount. Storage
   // failures fall back to OFF — privacy-safe default.
+  // 2026-05-01 (PR 5) — when the v1 shell is gated off, skip the read
+  // entirely so we don't grow an unused AsyncStorage round-trip on
+  // every cook-mode mount. The toggle isn't rendered, so the
+  // hydrated value would never be visible.
   useEffect(() => {
+    if (!COOK_HANDSFREE_FEATURE_ENABLED) return;
     let cancelled = false;
     void (async () => {
       const enabled = await readHandsfreeEnabled();
@@ -1228,7 +1234,11 @@ export default function CookModeScreen() {
         <Text style={styles.headerCounter}>Step {current + 1} of {totalSteps}</Text>
         {/* Right slot: Watch Original (when available) + voice
             handsfree toggle. Recime parity (2026-04-30) for watch-
-            original; Paprika parity (2026-05-01) for the mic toggle. */}
+            original; Paprika parity (2026-05-01) for the mic toggle.
+            The mic toggle is gated behind `COOK_HANDSFREE_FEATURE_ENABLED`
+            so the v1 shell ships dark — the audio capture + state
+            code stays in this file but is unreachable until the flag
+            flips (journey-architect P1). */}
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
           {watchOriginalUrl ? (
             <Pressable
@@ -1243,29 +1253,35 @@ export default function CookModeScreen() {
               <Text style={styles.watchOriginalText}>Watch original</Text>
             </Pressable>
           ) : null}
-          {/* Voice handsfree toggle (Paprika parity, 2026-05-01). v1
-              ships the toggle + persistence + banner — the listener
-              itself is queued for v2 (see decision doc). */}
-          <Pressable
-            accessibilityRole="switch"
-            accessibilityState={{ checked: handsfreeOn }}
-            accessibilityLabel={
-              handsfreeOn ? "Voice handsfree on" : "Voice handsfree off"
-            }
-            testID="cook-handsfree-toggle"
-            onPress={handleHandsfreeToggle}
-            hitSlop={8}
-            style={[
-              styles.micToggle,
-              handsfreeOn ? styles.micToggleOn : styles.micToggleOff,
-            ]}
-          >
-            {handsfreeOn ? (
-              <Mic size={18} color={Accent.primary} strokeWidth={2} />
-            ) : (
-              <MicOff size={18} color={colors.textSecondary} strokeWidth={2} />
-            )}
-          </Pressable>
+          {COOK_HANDSFREE_FEATURE_ENABLED ? (
+            <Pressable
+              accessibilityRole="switch"
+              accessibilityState={{ checked: handsfreeOn }}
+              accessibilityLabel={
+                handsfreeOn ? "Voice handsfree on" : "Voice handsfree off"
+              }
+              testID="cook-handsfree-toggle"
+              onPress={handleHandsfreeToggle}
+              hitSlop={8}
+              style={[
+                styles.micToggle,
+                handsfreeOn ? styles.micToggleOn : styles.micToggleOff,
+              ]}
+            >
+              {handsfreeOn ? (
+                <Mic size={18} color={Accent.primary} strokeWidth={2} />
+              ) : (
+                <MicOff size={18} color={colors.textSecondary} strokeWidth={2} />
+              )}
+            </Pressable>
+          ) : (
+            // Spacer keeps the centered step counter centred when
+            // the toggle is hidden behind the feature flag.
+            <View
+              style={{ width: 40, height: 32 }}
+              testID="cook-handsfree-toggle-placeholder"
+            />
+          )}
         </View>
       </View>
 
