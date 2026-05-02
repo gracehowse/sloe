@@ -11,11 +11,16 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useKeepAwake } from "expo-keep-awake";
+import { Mic, MicOff } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "../../../src/lib/analytics/events";
+import {
+  readHandsfreeEnabled,
+  writeHandsfreeEnabled,
+} from "@/lib/cookHandsfree";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
