@@ -154,7 +154,9 @@ type FullRecipe = {
 // Priority is now: explicit `recipe.meal_type` → time-of-day fallback
 // → normaliseMealSlot last-chance. Pre-fix the helper hard-fell-back
 // to "Lunch", which logged a 7pm dinner recipe as Lunch when the
-// recipe had no meal_type set.
+// recipe had no meal_type set. The helper is also reused by the
+// LogSheet Library tab pick handler (mobile + web) so all surfaces
+// share one slot-resolution contract.
 
 type Ingredient = {
   name: string;

@@ -1,5 +1,6 @@
 import * as React from "react";
 import {
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -12,6 +13,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
+  BookmarkCheck,
   Camera,
   ChevronRight,
   Clock,
@@ -132,6 +134,31 @@ export interface LogSheetSavedMeal {
   source: SourceDotSource;
 }
 
+/**
+ * Library tab row (TestFlight Build 40 feedback `AECfotBlQgwfgxYHr4dDaM8` +
+ * "no way to add from library here", 2026-05-01).
+ *
+ * Surfaces the user's saved recipes inline in the LogSheet so a one-tap
+ * log no longer requires routing through Recipes -> Library -> Detail
+ * -> Log. Distinct from `LogSheetSavedMeal` (which represents a "saved
+ * combo of foods") -- Library rows are recipe-level entries with a
+ * canonical meal-type tag and per-portion kcal.
+ */
+export interface LogSheetLibraryRecipe {
+  id: string;
+  title: string;
+  /** Per-portion kcal (recipe.calories / recipe.servings, rounded). */
+  kcalPerPortion: number;
+  /** Optional thumbnail URL -- falls back to a coloured placeholder. */
+  thumbnail?: string | null;
+  /** Optional meal-type tag (Breakfast / Lunch / Dinner / Snacks).
+   *  Resolved from `recipes.meal_type` via the canonical
+   *  `journalSlotFromMealTypes` helper at the host. Surfaced as a
+   *  small pill on the row so the user knows which slot the one-tap
+   *  log will land in. */
+  mealTag?: "Breakfast" | "Lunch" | "Dinner" | "Snacks" | null;
+}
+
 export interface LogSheetBarcodeManualEntry {
   productName: string;
   brand?: string;
@@ -215,6 +242,28 @@ export interface LogSheetProps {
     onPick: (meal: LogSheetSavedMeal) => void;
     state?: LogSheetTabState;
   };
+  /** Library tab -- user's saved recipes, surfaced inline so one-tap
+   *  logging no longer requires routing through Recipes -> Library ->
+   *  Detail. Sourced from TestFlight Build 40 feedback
+   *  `AECfotBlQgwfgxYHr4dDaM8` ("No way to add recipes saved to
+   *  library from here") + sibling reports, 2026-05-01.
+   *
+   *  Browse-tab order is Recent / Library / Saved meals -- Recent
+   *  remains the most-frequent default (eat-again loop); Library
+   *  sits next so the saved-recipe path is discoverable but doesn't
+   *  steal first-tap from the eat-again user.
+   *
+   *  When `library` is undefined the tab is hidden entirely. When
+   *  `library` is provided with an empty list, the empty state with
+   *  a "Browse recipes" CTA renders. */
+  library?: {
+    recipes: LogSheetLibraryRecipe[];
+    onPick: (recipe: LogSheetLibraryRecipe) => void;
+    /** Empty-state CTA -- typically routes to /recipes. When
+     *  undefined, the empty state hides the button. */
+    onBrowseRecipes?: () => void;
+    state?: LogSheetTabState;
+  };
   /** Voice log. Tap the mic icon → host closes LogSheet and opens
    *  VoiceLogSheet (or the AI paywall sheet for free/base tiers). */
   voice?: {
@@ -237,7 +286,7 @@ export interface LogSheetProps {
   onAddManually?: () => void;
 }
 
-type BrowseTab = "recent" | "saved";
+type BrowseTab = "recent" | "library" | "saved";
 
 export function LogSheet({
   visible,
@@ -246,6 +295,7 @@ export function LogSheet({
   barcode,
   recent,
   saved,
+  library,
   voice,
   photo,
   onAddManually,
@@ -332,6 +382,7 @@ export function LogSheet({
                 barcode={barcode}
                 recent={recent}
                 saved={saved}
+                library={library}
                 voice={voice}
                 photo={photo}
                 browseTab={browseTab}
@@ -354,6 +405,7 @@ function DefaultComposition({
   barcode,
   recent,
   saved,
+  library,
   voice,
   photo,
   browseTab,
@@ -365,6 +417,7 @@ function DefaultComposition({
   barcode: LogSheetProps["barcode"];
   recent: LogSheetProps["recent"];
   saved: LogSheetProps["saved"];
+  library: LogSheetProps["library"];
   voice: LogSheetProps["voice"];
   photo: LogSheetProps["photo"];
   browseTab: BrowseTab;
@@ -374,7 +427,17 @@ function DefaultComposition({
   const colors = useThemeColors();
   const showRecent = !!recent;
   const showSaved = !!saved;
-  const showBrowseToggle = showRecent && showSaved;
+  const showLibrary = !!library;
+  // Show the multi-tab toggle whenever 2+ browse sources are wired.
+  // With Library added (2026-05-01), order is Recent / Library / Saved.
+  const visibleTabs = React.useMemo<BrowseTab[]>(() => {
+    const tabs: BrowseTab[] = [];
+    if (showRecent) tabs.push("recent");
+    if (showLibrary) tabs.push("library");
+    if (showSaved) tabs.push("saved");
+    return tabs;
+  }, [showRecent, showLibrary, showSaved]);
+  const showBrowseToggle = visibleTabs.length >= 2;
 
   // Inline-search mode is active when the host wired `search.onSelect`.
   // In that case the search row is a real `<TextInput>` and results
@@ -485,10 +548,13 @@ function DefaultComposition({
       ) : (
         <BrowseAndFooter
           showBrowseToggle={showBrowseToggle}
+          visibleTabs={visibleTabs}
           showRecent={showRecent}
           showSaved={showSaved}
+          showLibrary={showLibrary}
           recent={recent}
           saved={saved}
+          library={library}
           browseTab={browseTab}
           onBrowseTabChange={onBrowseTabChange}
           onAddManually={onAddManually}
@@ -502,38 +568,54 @@ function DefaultComposition({
 
 function BrowseAndFooter({
   showBrowseToggle,
+  visibleTabs,
   showRecent,
   showSaved,
+  showLibrary,
   recent,
   saved,
+  library,
   browseTab,
   onBrowseTabChange,
   onAddManually,
 }: {
   showBrowseToggle: boolean;
+  visibleTabs: BrowseTab[];
   showRecent: boolean;
   showSaved: boolean;
+  showLibrary: boolean;
   recent: LogSheetProps["recent"];
   saved: LogSheetProps["saved"];
+  library: LogSheetProps["library"];
   browseTab: BrowseTab;
   onBrowseTabChange: (tab: BrowseTab) => void;
   onAddManually?: () => void;
 }) {
   const colors = useThemeColors();
+  // The active tab can become stale if a host removes one of its
+  // sources mid-flight (rare). Snap back to the first visible tab to
+  // keep the content area legible.
+  const activeTab: BrowseTab = visibleTabs.includes(browseTab)
+    ? browseTab
+    : (visibleTabs[0] ?? "recent");
+
+  const labelFor = (id: BrowseTab) =>
+    id === "recent" ? "Recent" : id === "library" ? "Library" : "Saved meals";
 
   return (
     <>
-      {/* Browse pill toggle — Recent / Saved. Hidden when only one
-          source is available; the available one renders directly. */}
+      {/* Browse pill toggle -- Recent / Library / Saved. Hidden when
+          only one source is available; the available one renders
+          directly. */}
       {showBrowseToggle ? (
         <View style={[styles.browsePillRow, { backgroundColor: colors.inputBg }]}>
-          {(["recent", "saved"] as const).map((id) => {
-            const active = browseTab === id;
+          {visibleTabs.map((id) => {
+            const active = activeTab === id;
             return (
               <Pressable
                 key={id}
                 onPress={() => {
-                  if (id === browseTab) return;
+                  if (id === activeTab) return;
                   onBrowseTabChange(id);
                   if (process.env.EXPO_OS === "ios") {
                     void Haptics.selectionAsync();
@@ -541,7 +623,7 @@ function BrowseAndFooter({
                 }}
                 accessibilityRole="tab"
                 accessibilityState={{ selected: active }}
-                accessibilityLabel={id === "recent" ? "Recent" : "Saved meals"}
+                accessibilityLabel={labelFor(id)}
                 style={[
                   styles.browsePill,
                   { backgroundColor: active ? colors.background : "transparent" },
@@ -553,7 +635,7 @@ function BrowseAndFooter({
                     { color: active ? colors.text : colors.textSecondary },
                   ]}
                 >
-                  {id === "recent" ? "Recent" : "Saved meals"}
+                  {labelFor(id)}
                 </Text>
               </Pressable>
             );
@@ -563,13 +645,16 @@ function BrowseAndFooter({
 
       {/* Browse content */}
       <View style={{ flex: 1 }}>
-        {showRecent && (browseTab === "recent" || !showSaved) ? (
+        {showRecent && activeTab === "recent" ? (
           <RecentList recent={recent!} />
         ) : null}
-        {showSaved && (browseTab === "saved" || !showRecent) ? (
+        {showLibrary && activeTab === "library" ? (
+          <LibraryList library={library!} />
+        ) : null}
+        {showSaved && activeTab === "saved" ? (
           <SavedList saved={saved!} />
         ) : null}
-        {!showRecent && !showSaved ? (
+        {!showRecent && !showSaved && !showLibrary ? (
           <View style={{ flex: 1, padding: Spacing.lg, alignItems: "center", justifyContent: "center" }}>
             <Text style={[Type.caption, { color: colors.textSecondary, textAlign: "center" }]}>
               Search above for foods, or scan / speak / snap a photo.
@@ -772,6 +857,126 @@ function SavedList({ saved }: { saved: NonNullable<LogSheetProps["saved"]> }) {
         />
       ))}
     </ScrollView>
+  );
+}
+
+/* -------------------------- Library list -------------------------- */
+
+function LibraryList({ library }: { library: NonNullable<LogSheetProps["library"]> }) {
+  const colors = useThemeColors();
+  const { recipes, onPick, onBrowseRecipes, state } = library;
+
+  if (state?.loading) {
+    return <SkeletonList colors={colors} />;
+  }
+
+  if (recipes.length === 0) {
+    return (
+      <View style={[styles.emptyBlock, { borderColor: colors.border, margin: Spacing.md }]}>
+        <BookmarkCheck size={32} color={colors.textTertiary} />
+        <Text style={[Type.body, { color: colors.text, marginTop: 8, fontWeight: "600" }]}>
+          No saved recipes yet
+        </Text>
+        <Text style={[Type.caption, { color: colors.textSecondary, marginTop: 4, textAlign: "center" }]}>
+          Save recipes from the Recipes tab to see them here. We&rsquo;ll show your most-cooked recipes first.
+        </Text>
+        {onBrowseRecipes ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Browse recipes"
+            onPress={() => {
+              if (process.env.EXPO_OS === "ios") {
+                void Haptics.selectionAsync();
+              }
+              onBrowseRecipes();
+            }}
+            style={({ pressed }) => [
+              styles.libraryEmptyCta,
+              {
+                backgroundColor: Accent.primary,
+                opacity: pressed ? 0.85 : 1,
+              },
+            ]}
+          >
+            <Text style={styles.libraryEmptyCtaText}>Browse recipes</Text>
+          </Pressable>
+        ) : null}
+      </View>
+    );
+  }
+
+  return (
+    <ScrollView contentContainerStyle={{ padding: Spacing.md, paddingBottom: Spacing.xxl }}>
+      {recipes.map((r) => (
+        <LibraryRow key={r.id} recipe={r} onPick={() => onPick(r)} />
+      ))}
+    </ScrollView>
+  );
+}
+
+/* -------------------------- Library row -------------------------- */
+
+function LibraryRow({
+  recipe,
+  onPick,
+}: {
+  recipe: LogSheetLibraryRecipe;
+  onPick: () => void;
+}) {
+  const colors = useThemeColors();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Log ${recipe.title}`}
+      onPress={() => {
+        if (process.env.EXPO_OS === "ios") {
+          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        }
+        onPick();
+      }}
+      style={({ pressed }) => [styles.resultRow, { opacity: pressed ? 0.6 : 1 }]}
+    >
+      {recipe.thumbnail ? (
+        // The recipe row uses a real thumbnail when one's available
+        // (recipes typically have an `image_url`); falls back to the
+        // shared coloured placeholder when not. <Image> is fine for
+        // small (~36x36) cells -- no FastImage dependency.
+        <Image
+          source={{ uri: recipe.thumbnail }}
+          style={[styles.resultThumb, { backgroundColor: colors.inputBg }]}
+          accessibilityIgnoresInvertColors
+        />
+      ) : (
+        <View style={[styles.resultThumb, { backgroundColor: colors.inputBg }]} />
+      )}
+      <View style={{ flex: 1, marginLeft: Spacing.sm, minWidth: 0 }}>
+        <Text style={[Type.body, { color: colors.text }]} numberOfLines={1}>
+          {recipe.title}
+        </Text>
+        <View style={{ flexDirection: "row", alignItems: "center", marginTop: 2 }}>
+          <Text
+            style={[
+              Type.caption,
+              { color: colors.textSecondary, fontVariant: ["tabular-nums"] },
+            ]}
+          >
+            {recipe.kcalPerPortion} kcal
+          </Text>
+          {recipe.mealTag ? (
+            <View
+              style={[
+                styles.libraryMealTag,
+                { backgroundColor: colors.inputBg, borderColor: colors.border },
+              ]}
+            >
+              <Text style={[styles.libraryMealTagText, { color: colors.textSecondary }]}>
+                {recipe.mealTag}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+      </View>
+    </Pressable>
   );
 }
 
@@ -1126,6 +1331,28 @@ const styles = StyleSheet.create({
     paddingVertical: 32,
     paddingHorizontal: Spacing.lg,
     alignItems: "center",
+  },
+  libraryEmptyCta: {
+    marginTop: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: 10,
+    borderRadius: Radius.md,
+  },
+  libraryEmptyCtaText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  libraryMealTag: {
+    marginLeft: Spacing.sm,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  libraryMealTagText: {
+    fontSize: 10,
+    fontWeight: "600",
   },
   resultRow: {
     flexDirection: "row",
