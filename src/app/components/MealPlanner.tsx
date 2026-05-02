@@ -358,6 +358,19 @@ export const MealPlanner = memo(function MealPlanner({
     const protein = Math.max(0, Math.round(Number(meal.protein) || 0));
     const carbs = Math.max(0, Math.round(Number(meal.carbs) || 0));
     const fat = Math.max(0, Math.round(Number(meal.fat) || 0));
+    // Tracking-extras autoupdate (2026-05-01) — forward caffeine /
+    // alcohol micros if the planner row carries them so the F-13 daily
+    // bump fires inside `addLoggedMeal`. Mirrors the mobile planner
+    // tap-to-log wiring at `apps/mobile/app/(tabs)/index.tsx`. The
+    // planner row carries `micros` only when the underlying recipe was
+    // verified with ingredient-level caffeine / alcohol; fallback is
+    // no-op.
+    const plannerMicros = (meal as { micros?: Record<string, number> | null }).micros;
+    const micros: Record<string, number> = {};
+    const caff = plannerMicros && typeof plannerMicros === "object" ? Number(plannerMicros.caffeineMg ?? 0) : 0;
+    const alc = plannerMicros && typeof plannerMicros === "object" ? Number(plannerMicros.alcoholG ?? 0) : 0;
+    if (Number.isFinite(caff) && caff > 0) micros.caffeineMg = caff;
+    if (Number.isFinite(alc) && alc > 0) micros.alcoholG = alc;
     addLoggedMeal({
       name: slotName,
       recipeTitle: meal.recipeTitle,
@@ -369,6 +382,7 @@ export const MealPlanner = memo(function MealPlanner({
       ...(typeof (meal as { fiberG?: number }).fiberG === "number"
         ? { fiberG: (meal as { fiberG?: number }).fiberG }
         : {}),
+      ...(Object.keys(micros).length > 0 ? { micros } : {}),
     });
     toast.success(`Logged ${slotName} to today`);
   };
