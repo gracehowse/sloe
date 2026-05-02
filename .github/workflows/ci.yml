@@ -1,8 +1,19 @@
 name: CI
 
 on:
+  # Push runs only on main (and any future release branches added here).
+  # PR-targeted branches use the `pull_request` trigger below — listing
+  # both unconditionally would double-spend Actions minutes on every
+  # same-repo PR push.
   push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
   pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
 
 # Cancel older runs when a new commit lands (avoids zombie jobs stuck on E2E, etc.)
 concurrency:
