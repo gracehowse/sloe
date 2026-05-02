@@ -62,6 +62,17 @@ export default function CookModeScreen() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const progressWidthRef = useRef(new Animated.Value(0)).current;
 
+  /** Voice handsfree (Paprika parity, 2026-05-01). v1 ships the
+   *  opt-in shell only — the toggle, the persistence, and an
+   *  explanatory banner. Real audio capture is intentionally deferred
+   *  per `docs/decisions/2026-05-01-cook-voice-handsfree.md` so the
+   *  TestFlight build doesn't ship a mic permission prompt + binary
+   *  bloat for a feature with zero users yet (solo-tester posture).
+   *  The toggle still mirrors to AsyncStorage so v2 lights up
+   *  listening without re-onboarding the user.
+   *  Hydrated from storage on mount; defaults to OFF. */
+  const [handsfreeOn, setHandsfreeOn] = useState(false);
+
   const totalSteps = steps.length;
   const isDone = current >= totalSteps;
   const stepText = current < totalSteps ? steps[current]!.replace(/^\d+[\.\)\-]\s*/, "") : "";
@@ -77,6 +88,35 @@ export default function CookModeScreen() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Hydrate the persisted handsfree preference once on mount. Storage
+  // failures fall back to OFF — privacy-safe default.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const enabled = await readHandsfreeEnabled();
+      if (!cancelled) setHandsfreeOn(enabled);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  /** Flip the in-cook handsfree toggle. Persists the new value to the
+   *  shared pref so the Settings switch stays in sync, and fires both
+   *  analytics events: the session toggle (so we can slice cook-surface
+   *  discovery) and the pref-changed (so the funnel doesn't have to
+   *  UNION two surfaces to count opt-ins). */
+  const handleHandsfreeToggle = () => {
+    const next = !handsfreeOn;
+    setHandsfreeOn(next);
+    void writeHandsfreeEnabled(next);
+    track(AnalyticsEvents.cook_handsfree_session_toggled, {
+      recipeId,
+      enabled: next,
+    });
+    track(AnalyticsEvents.cook_handsfree_pref_changed, { enabled: next });
+  };
 
   // Timer count up
   useEffect(() => {
