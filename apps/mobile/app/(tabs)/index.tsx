@@ -337,7 +337,11 @@ export default function TrackerScreen() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<"day" | "week">("day");
   const [ringExpanded, setRingExpanded] = useState(true);
-  const [calorieDisplayMode, setCalorieDisplayMode] = useState<"remaining" | "consumed">("consumed");
+  // Default "remaining" matches web's `NutritionTracker.tsx` initial state
+  // (Wave 8a parity, 2026-05-01). Earlier mobile default was "consumed";
+  // unifying with web here so first-time users see the same headline metric
+  // on both surfaces. Long-press + the new chip control both flip it.
+  const [calorieDisplayMode, setCalorieDisplayMode] = useState<"remaining" | "consumed">("remaining");
   // Phase 3 (2026-04-28, D-2026-04-27-03 finished): canonical Today is
   // the ring hero. The 3-variant picker (ring / bar / number) was
   // removed in this phase — TodayHero is now a thin wrapper around
@@ -3758,6 +3762,7 @@ export default function TrackerScreen() {
               onToggleExpanded={() => setRingExpanded((e) => !e)}
               displayMode={calorieDisplayMode}
               onToggleDisplayMode={() => setCalorieDisplayMode((m) => m === "remaining" ? "consumed" : "remaining")}
+              onSetDisplayMode={setCalorieDisplayMode}
             />
 
             {/* Single context block — priority order: fasting >

@@ -1,7 +1,7 @@
 import React from "react";
-import { Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import CalorieRing from "@/components/charts/CalorieRing";
-import { Radius, Spacing } from "@/constants/theme";
+import { FontWeight, Radius, Spacing } from "@/constants/theme";
 
 /**
  * TodayHeroRing — ring hero variant.
@@ -20,8 +20,13 @@ import { Radius, Spacing } from "@/constants/theme";
  *   - Tap → expands into concentric protein/carbs/fat rings (handled
  *     by `CalorieRing`); no text row is added under the ring.
  *   - Long-press → toggles the central number between "Remaining" and
- *     "Logged" kcal.
- *   - Helper text below names both gestures.
+ *     "Logged" kcal (legacy gesture preserved — no regression).
+ *   - Two-chip segmented control under the ring → discoverable parity
+ *     with web's `today-hero-ring.tsx` "Remaining / Consumed" pill
+ *     (Wave 8a finding #9, 2026-05-01). Long-press is undiscoverable
+ *     on mobile and the chips give first-time users a visible
+ *     affordance for the same state. Chip taps and long-press write
+ *     the same host-owned state; default is "remaining" (matches web).
  */
 export interface TodayHeroRingProps {
   consumed: number;
@@ -42,7 +47,10 @@ export interface TodayHeroRingProps {
   expanded: boolean;
   onToggleExpanded: () => void;
   displayMode: "remaining" | "consumed";
+  /** Long-press toggles the mode (legacy gesture, kept for power users). */
   onToggleDisplayMode: () => void;
+  /** Chip tap sets the mode explicitly. Wave 8a parity with web. */
+  onSetDisplayMode: (mode: "remaining" | "consumed") => void;
   textTertiaryColor: string;
 }
 
@@ -62,6 +70,7 @@ export function TodayHeroRing({
   onToggleExpanded,
   displayMode,
   onToggleDisplayMode,
+  onSetDisplayMode,
   textTertiaryColor: _textTertiaryColor,
 }: TodayHeroRingProps) {
   return (
@@ -94,9 +103,60 @@ export function TodayHeroRing({
         displayMode={displayMode}
         onToggleDisplayMode={onToggleDisplayMode}
       />
-      {/* F-47 (2026-04-22): gesture caption removed — tester flagged
-          "middle section cluttered with 3 prompts". Tap affordance is
-          discoverable via the ring itself. */}
+      {/* Display-mode segmented control — Wave 8a parity with web's
+          `today-hero-ring.tsx` (lines 61-79). Two subtle chips under
+          the ring give first-time users a visible affordance for the
+          remaining/consumed toggle that was previously gated behind an
+          undiscoverable long-press. Visual treatment intentionally
+          subtle (small caps, secondary text on inactive) so the chips
+          stay secondary to the ring's headline number.
+          F-47 (2026-04-22): gesture caption removed — tester flagged
+          "middle section cluttered". Chips replace it with a control
+          rather than a caption, so we're not regressing that finding. */}
+      <View
+        accessibilityRole="radiogroup"
+        accessibilityLabel="Calorie ring display"
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          backgroundColor: borderColor,
+          borderRadius: Radius.sm,
+          padding: 2,
+          gap: 2,
+        }}
+      >
+        {(["remaining", "consumed"] as const).map((mode) => {
+          const active = displayMode === mode;
+          return (
+            <Pressable
+              key={mode}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: active }}
+              accessibilityLabel={mode === "remaining" ? "Remaining" : "Consumed"}
+              testID={`today-hero-ring-chip-${mode}`}
+              onPress={() => onSetDisplayMode(mode)}
+              style={{
+                paddingHorizontal: Spacing.md,
+                paddingVertical: Spacing.xs,
+                borderRadius: Radius.sm - 2,
+                backgroundColor: active ? cardBackgroundColor : "transparent",
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.6,
+                  textTransform: "uppercase",
+                  color: active ? textColor : secondaryColor,
+                }}
+              >
+                {mode === "remaining" ? "Remaining" : "Consumed"}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
     </View>
   );
 }

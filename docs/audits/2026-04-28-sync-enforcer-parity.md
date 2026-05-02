@@ -46,7 +46,7 @@ Verdict: **CONDITIONAL PASS** pending fix of D4 (LogFab) and scheduling of D9 (o
 | Feature | Native iOS | Mobile-web | Desktop web |
 |---|---|---|---|
 | Calorie ring | `CalorieRing` 140pt inside bordered card `TodayHeroRing.tsx:68-100` | `DailyRing` 160px `today-hero-ring.tsx:41-52` | `DailyRing` 160px in 2-col grid `today-hero-stats.tsx:133-147` |
-| Ring tap | Expand macros; long-press toggle remaining/consumed | Click expand; separate segment toggle | Click expand; toggle absolutely positioned |
+| Ring tap | Expand macros; long-press toggle + Remaining/Consumed segmented control under ring (Wave 8a 2026-05-01) | Click expand; separate segment toggle | Click expand; toggle absolutely positioned |
 | Ring helper text | Removed F-47 `TodayHeroRing.tsx:97-100` | "Click the ring to hide macros" `today-hero-ring.tsx:53-55` | Same as mobile-web |
 | Stat tiles (Logged/Target/Burned/Net) | No | No | Yes `today-hero-stats.tsx:153-158` |
 | NorthStarBlock | Yes (`NorthStarBlockHost`) | Yes | Yes |
