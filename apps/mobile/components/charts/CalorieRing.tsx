@@ -15,7 +15,7 @@ import Animated, {
   Easing,
 } from "react-native-reanimated";
 
-import { Accent, MacroColors, Type } from "@/constants/theme";
+import { Accent, MacroColors } from "@/constants/theme";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
 import { RING_LABELS } from "../../../../src/lib/copy/today";
 
@@ -391,49 +391,12 @@ export default function CalorieRing({
             Start your day
           </Text>
         ) : (
-          /*
-           * Centre value typography — 2026-05-01 ui-critic finding #7.
-           *
-           * Lifted from a flat 22pt (expanded) / 28pt (collapsed) to
-           * `Type.ringValueLg` (56pt) per the Cal AI flagship convention:
-           * the central number should dominate the ring's real estate,
-           * not blend into the macro tile values (~22pt) below. 56 / 22
-           * gives a comfortable ~2.5× ratio so the ring reads as the
-           * primary metric on the screen.
-           *
-           * 4-digit fallback: a goal of 1,847 kcal at full 56pt clips
-           * the inner-most macro-ring band (radius 32 → ~64px diameter)
-           * once the ring is expanded. We drop to 48pt for 4-digit
-           * values and rely on `numberOfLines={1}` + `adjustsFontSizeToFit`
-           * (with `minimumFontScale` derived from `Type.ringValue`'s 36pt
-           * floor so a freak 5-digit value still scales without
-           * truncating). 48 is the explicit sweet-spot called out in the
-           * task brief — still ~2.2× the macro tile values, no clipping.
-           *
-           * Type.ringValue (36) is reserved for compact ring contexts
-           * (e.g. the week-view bars / compact summary chips). The
-           * default Today hero uses ringValueLg unconditionally because
-           * collapsed and expanded both want the dominant treatment.
-           */
           <Text
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            // RN's minimumFontScale takes a fraction of the supplied
-            // fontSize. Set to 36/56 so the lower bound is `Type.ringValue`
-            // (36pt) — the canonical small-ring token — and never below.
-            minimumFontScale={Type.ringValue.fontSize / Type.ringValueLg.fontSize}
             style={{
-              fontSize: animatedCenterValue >= 1000
-                ? 48
-                : Type.ringValueLg.fontSize,
-              lineHeight: animatedCenterValue >= 1000
-                ? 48
-                : Type.ringValueLg.lineHeight,
-              fontWeight: Type.ringValueLg.fontWeight,
-              letterSpacing: Type.ringValueLg.letterSpacing,
+              fontSize: expanded ? 22 : 28,
+              fontWeight: "700",
               color: isOver && displayMode !== "consumed" ? Accent.destructive : textColor,
               fontVariant: ["tabular-nums"],
-              textAlign: "center",
             }}
           >
             {animatedCenterValue}
