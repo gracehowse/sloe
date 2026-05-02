@@ -17,10 +17,13 @@ import {
  * Onboarding v2 — state shape, step ordering, and `canAdvance`
  * validation rules. Locks in the decision-doc invariants:
  *
- *  - 12 steps in fixed order; `pace` auto-skips when goal = maintain.
+ *  - 13 steps in fixed order; `pace` auto-skips when goal = maintain.
  *    (Was 15 pre customer-lens shrink 2026-04-30 — `permissions`,
  *    `import`, `recipes` were moved off the linear flow. Components
- *    kept on disk for the post-launch nudge queue.)
+ *    kept on disk for the post-launch nudge queue.
+ *    Build-40 (2026-05-01) — re-added `data-bridges` as the new
+ *    terminal step bundling manual-targets / Apple Health /
+ *    notifications / recipe URL cards. See state.ts STEP_IDS.)
  *  - Pace safety floor is SOFT-WARN — `canAdvance("pace", …)` returns
  *    true even when projected target falls below 1,200/1,500 kcal.
  *    Only the *banner* policy lives in `targets.ts`.
@@ -37,8 +40,8 @@ const baseState = (overrides: Partial<OnboardingState> = {}): OnboardingState =>
 });
 
 describe("onboarding v2 — step ordering", () => {
-  it("ships exactly 12 steps in the documented order (customer-lens shrink 2026-04-30: permissions/import/recipes off-flow)", () => {
-    expect(TOTAL_STEPS).toBe(12);
+  it("ships exactly 13 steps in the documented order (customer-lens shrink 2026-04-30 + Build-40 data-bridges re-add)", () => {
+    expect(TOTAL_STEPS).toBe(13);
     expect(STEP_IDS).toEqual([
       "welcome",
       "signup",
@@ -52,20 +55,21 @@ describe("onboarding v2 — step ordering", () => {
       "diet",
       "strategy",
       "reveal",
+      "data-bridges",
     ]);
   });
 
   it("does NOT include the off-flow steps (permissions/import/recipes) in STEP_IDS", () => {
-    // These step components still exist on disk (and are still
-    // exported from steps/index.ts for the post-launch nudge queue),
-    // but they must not be reachable via the linear shell anymore.
-    // Locking this in protects against an accidental re-introduction
-    // of the 15-step counter that customer-lens flagged as the highest
-    // single-friction signal in onboarding.
+    // The legacy step components still exist on disk (and are still
+    // exported from steps/index.ts for back-compat), but they must
+    // not be reachable via the linear shell. Build-40 replaced their
+    // canonical role with the new `data-bridges` step.
     const ids: readonly string[] = STEP_IDS;
     expect(ids).not.toContain("permissions");
     expect(ids).not.toContain("import");
     expect(ids).not.toContain("recipes");
+    // The new canonical bridge step IS in the linear flow.
+    expect(ids).toContain("data-bridges");
   });
 
   it("has a label for every step id", () => {
@@ -161,9 +165,29 @@ describe("onboarding v2 — canAdvance per step", () => {
     ["activity", baseState({ activity: "moderate" }), true, "moderate"],
     // diet — optional
     ["diet", baseState(), true, "always advances (optional)"],
-    // reveal — informational, terminal step (was: permissions / import
-    // also lived here pre customer-lens shrink 2026-04-30).
+    // reveal — informational, penultimate step. Build-40 — `reveal`
+    // advances to `data-bridges`, the new terminal step.
     ["reveal", baseState(), true, ""],
+    // data-bridges — terminal, all cards optional, "skip" is valid.
+    ["data-bridges", baseState(), true, "always advances (every card optional)"],
+    [
+      "data-bridges",
+      baseState({ dataBridgeChosen: "skip" }),
+      true,
+      "skip is a first-class choice",
+    ],
+    [
+      "data-bridges",
+      baseState({
+        manualTargetsKcal: 1900,
+        manualTargetsProteinG: 145,
+        manualTargetsCarbsG: 180,
+        manualTargetsFatG: 65,
+        dataBridgeChosen: "manual",
+      }),
+      true,
+      "manual targets path",
+    ],
   ];
 
   for (const [step, state, expected, label] of cases) {

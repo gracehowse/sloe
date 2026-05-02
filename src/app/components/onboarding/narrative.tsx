@@ -97,10 +97,15 @@ export const NARRATIVE: Partial<Record<StepId, NarrativeBlock>> = {
         </div>
       ) : null,
   },
-  // Customer-lens shrink (2026-04-30): `permissions` / `import` /
-  // `recipes` narrative entries were removed alongside their step IDs.
-  // The post-launch nudge queue (follow-up PR) will surface these
-  // affordances as in-app banners on Today, not as flow steps.
+  // Build-40 (2026-05-01) — data-bridges step. Customer-lens audit
+  // found three competitor-refugee personas bouncing on day 1 because
+  // there was no path to bring their existing data with them; this
+  // step bundles the bridges most likely to land that hand-off.
+  "data-bridges": {
+    eyebrow: "Step 13 · Bring your data",
+    head: "Skip what you don't need.",
+    body: "Already know your targets? Paste them in. Want gentle reminders or to try a recipe import? Tap a card. Or skip the lot — none of this is required.",
+  },
 };
 
 function NarrativeStat({

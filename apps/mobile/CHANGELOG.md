@@ -1,5 +1,20 @@
 # Mobile App Changelog
 
+## 2026-05-01 — Onboarding: restore data-bridges step
+
+### Onboarding (re-introduces a data-bridge path; mobile + web parity)
+- **New `data-bridges` step** at position 13 (after Reveal) bundling four bridge cards: Manual targets (paste-in kcal/P/C/F), Apple Health (HealthKit + first sync), Notifications, Recipe URL. Each card is independently skippable; a "Maybe later" affordance lets the user advance the empty path. Decision doc: `docs/decisions/2026-05-01-onboarding-data-bridges.md`.
+- **Manual-target override** — when all four manual fields are set + finite + > 0, the new `effectiveTargetsForPersist()` helper synthesises a `V2Targets` (with 14g/1000kcal fiber heuristic) and writes it to `profiles` instead of the BMR-computed values. Partial overrides fall through to computed (half a target is worse than none). The override path also works on the `weightSkipped` branch — if the user knows their numbers, scale interaction isn't required.
+- **Apple Health (iOS-only)** — `requestHealthPermissions` → `syncHealthData(userId)` on grant; opens iOS Settings via `Linking.openURL("app-settings:")` on deny. Per `project_ios_only_no_android.md`, web omits this card (intentional parity carve-out).
+- **STEP_IDS** — 12 → 13. The displayed step counter still tops out at 12 because Reveal remains the aha; `data-bridges` is purely additive.
+- **Analytics** — two new events registered: `onboarding_data_bridge_chosen { option }` and `onboarding_data_bridge_skipped { reason }`. `onboarding_completed` payload extends with `data_bridge_chosen` (LAST card actioned) and `manual_targets_set`.
+
+### Tests
+- `tests/unit/onboardingState.test.ts` — extended for 13 steps + new `data-bridges` `canAdvance` cases.
+- `tests/unit/onboardingDataBridgesPersist.test.ts` (NEW, 13 cases) — `effectiveTargetsForPersist` precedence + manual-override branch of `buildProfileUpsertRow`.
+- `tests/unit/onboardingDataBridgesWeb.test.tsx` (NEW, 8 cases) — manual entry / partial entry / skip behaviour on web.
+- `apps/mobile/tests/unit/onboardingDataBridges.test.tsx` (NEW, 5 cases) — manual entry / skip behaviour on mobile.
+
 ## 2026-05-01 — Photo-log re-architected: itemized breakdown with kcal ranges
 
 The previous photo-log pipeline blanket-failed (502 `verify_failed`)

@@ -37,13 +37,27 @@ export type Goal = "lose" | "maintain" | "gain" | "recomp";
  *    - HealthKit + notifications → Settings → Health sync (always-on)
  *    - Recipe import → /(tabs)/library → Import button + /import-shared
  *    - Recipe seeding → /(tabs)/library browse + Today empty-state CTA
- *  Reveal is now the terminal "aha + finish" step — the seed-and-plan
- *  persistence path in `web-flow.tsx#handleComplete` and
- *  `mobile-flow.tsx#handleComplete` still runs but `pickedSeeds.length
- *  === 0` is the steady state, so it gracefully degrades to a
- *  targets-only completion. Step component files
- *  (`steps/permissions.tsx`, `steps/import.tsx`, `steps/recipes.tsx`)
- *  are kept on disk — they're the building blocks for the post-launch
+ *
+ *  Re-add `data-bridges` (2026-05-01): customer-lens audit found that
+ *  three competitor-refugee personas (MFP, MacroFactor, Paprika) bounced
+ *  on day 1 because the flow ended at the Reveal aha without offering
+ *  *any* path to bring their existing data with them. Data bridges
+ *  re-introduces a single optional step that bundles the bridges most
+ *  competitors give up on completing:
+ *    1. Manual targets — paste-in 4-input form for users who already
+ *       know their kcal / P / C / F (MFP / MacroFactor refugees).
+ *    2. Apple Health — wraps `requestHealthPermissions` →
+ *       `syncHealthData` so the user can see their adaptive-TDEE
+ *       running on real active-energy data from day 1 (mobile only).
+ *    3. Notifications — gentle reminders on by default for retention.
+ *    4. Recipe URL — preserves the legacy `import.tsx` Instagram-link
+ *       parser as one card inside the new step.
+ *  Each card is independently skippable; the user can pick any one,
+ *  several, or none. `dataBridgeChosen` is the audit signal capturing
+ *  which path they took (or "skip"). data-bridges is the new terminal
+ *  step (was: reveal); reveal becomes "show targets, then advance".
+ *  Step files for the legacy `permissions.tsx` / `import.tsx` /
+ *  `recipes.tsx` are kept on disk — building blocks for the post-launch
  *  nudge queue follow-up. */
 export const STEP_IDS = [
   "welcome", // 01
@@ -57,7 +71,8 @@ export const STEP_IDS = [
   "pace", // 09 — auto-skipped when goal = maintain
   "diet", // 10
   "strategy", // 11 — macro split (parity with legacy nutrition_strategy)
-  "reveal", // 12 — terminal "aha + finish" (was: aha; recipes was 15)
+  "reveal", // 12 — penultimate aha
+  "data-bridges", // 13 — terminal: bring your data with you (Build-40)
 ] as const;
 
 export type StepId = (typeof STEP_IDS)[number];
@@ -76,6 +91,7 @@ export const STEP_LABELS: Record<StepId, string> = {
   diet: "Diet",
   strategy: "Macro style",
   reveal: "Your targets",
+  "data-bridges": "Bring your data",
 };
 
 export const TOTAL_STEPS = STEP_IDS.length;
@@ -92,6 +108,29 @@ export type PermissionGrant = boolean | null;
 
 /** Recipe import source picked in step 13. Demo-only state for v2 launch. */
 export type ImportSource = "instagram" | "tiktok" | "blog" | null;
+
+/**
+ * Build-40 (2026-05-01) — which data-bridge card the user actioned on
+ * the data-bridges step.
+ *   - "manual"        — entered manual kcal/P/C/F targets
+ *   - "apple-health"  — granted HealthKit permissions (mobile only)
+ *   - "notifications" — granted push notifications
+ *   - "recipe"        — pasted a recipe URL
+ *   - "skip"          — picked "Maybe later" / hit Build my plan empty
+ *   - null            — hasn't touched the step yet
+ *
+ * Multiple cards can fire — the field captures the LAST card the user
+ * actioned (used by analytics for funnel slicing). data-bridges is the
+ * terminal step; advance is allowed regardless of which card (or none)
+ * was picked.
+ */
+export type DataBridgeOption =
+  | "manual"
+  | "apple-health"
+  | "notifications"
+  | "recipe"
+  | "skip"
+  | null;
 
 /** The whole onboarding state. Flat by design — easier to persist
  *  across tabs/refreshes and easier to round-trip through analytics. */
@@ -158,6 +197,27 @@ export interface OnboardingState {
    * between the two shapes.
    */
   pickedRecipeSlugs: string[];
+  /**
+   * Build-40 (2026-05-01) — manual-target inputs from the data-bridges
+   * step. Captured when the user opts to paste their existing kcal /
+   * macro targets straight in (the MFP / MacroFactor refugee path).
+   *
+   * Persistence rule: if all four are set + finite, they OVERRIDE the
+   * computed targets in `effectiveTargetsForPersist()`. Otherwise the
+   * computed targets win. Partial overrides are intentionally NOT
+   * supported — half a target is worse than none for downstream
+   * macro-tracking accuracy. `null` is the unset value.
+   */
+  manualTargetsKcal: number | null;
+  manualTargetsProteinG: number | null;
+  manualTargetsCarbsG: number | null;
+  manualTargetsFatG: number | null;
+  /**
+   * Build-40 (2026-05-01) — last data-bridge card the user actioned.
+   * See `DataBridgeOption` above. Drives the Reveal-stage analytics
+   * payload + future post-launch nudge sequencing.
+   */
+  dataBridgeChosen: DataBridgeOption;
 }
 
 /** Default pace per goal — applied when the user hasn't dragged the
@@ -236,6 +296,11 @@ export const DEFAULT_ONBOARDING_STATE: OnboardingState = {
   paceDangerAcknowledged: false,
   weightSkipped: false,
   pickedRecipeSlugs: [],
+  manualTargetsKcal: null,
+  manualTargetsProteinG: null,
+  manualTargetsCarbsG: null,
+  manualTargetsFatG: null,
+  dataBridgeChosen: null,
 };
 
 /** Resolve the step index a navigation should land on, accounting for
@@ -335,11 +400,17 @@ export function canAdvance(
       // macro split even if they don't tap a card.
       return true;
     case "reveal":
-      // Customer-lens shrink (2026-04-30) — `reveal` is now the
-      // terminal step. The shell's footer CTA fires the
-      // `handleComplete` write path (persist targets + optionally
-      // seed-and-plan if `pickedRecipeSlugs` is non-empty, which only
-      // happens when the post-launch nudge queue lands).
+      // Build-40 (2026-05-01) — `reveal` is now the penultimate step
+      // (was terminal). User taps Continue to land on `data-bridges`,
+      // which is the new terminal step where the `handleComplete`
+      // write path fires.
+      return true;
+    case "data-bridges":
+      // Build-40 (2026-05-01) — terminal step. Every card is
+      // independently optional; "skip" is a valid first-class choice
+      // (see DataBridgeOption). Advance is always permitted so the
+      // user can land on Today after Reveal even if they haven't
+      // touched a single bridge card.
       return true;
     default:
       return true;

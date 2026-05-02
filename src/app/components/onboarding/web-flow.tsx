@@ -13,7 +13,11 @@ import { type UserProfile } from "@/types/profile";
 import { useOnboarding } from "./context";
 import { STEP_COMPONENTS } from "./steps";
 import { NARRATIVE } from "./narrative";
-import { mapV2GoalToLegacy, persistOnboarding } from "@/lib/onboarding/persist";
+import {
+  effectiveTargetsForPersist,
+  mapV2GoalToLegacy,
+  persistOnboarding,
+} from "@/lib/onboarding/persist";
 import {
   ONBOARDING_SEEDS,
   type OnboardingSeed,
@@ -42,14 +46,11 @@ export function WebFlow() {
   const StepComponent = STEP_COMPONENTS[currentStepId];
   const isWelcome = currentStepId === "welcome";
   const isSignup = currentStepId === "signup";
-  // Customer-lens shrink (2026-04-30): `reveal` is the new terminal
-  // step — `permissions`, `import`, `recipes` were moved off the
-  // linear flow per the audit (15-step counter was the highest-friction
-  // signal vs Cal AI / MFP / Lifesum). The seed-and-plan write path
-  // below still runs but `pickedRecipeSlugs` is empty for a normal
-  // completion; it'll re-populate when the post-launch nudge queue
-  // lands. See state.ts for rationale + organic discovery surfaces.
-  const isTerminal = currentStepId === "reveal";
+  // Build-40 (2026-05-01): `data-bridges` is the new terminal step.
+  // Reveal advances on Continue; data-bridges fires the
+  // `handleComplete` write path on its "Build my plan" CTA. See
+  // `state.ts` STEP_IDS comment for the customer-lens audit drivers.
+  const isTerminal = currentStepId === "data-bridges";
   const [completing, setCompleting] = React.useState(false);
   // completionStatus is set just before window.location.href fires —
   // useful for tests (the bounce navigates immediately so no UI
@@ -88,6 +89,10 @@ export function WebFlow() {
   const handleComplete = React.useCallback(async () => {
     setCompleting(true);
     try {
+      // Build-40 (2026-05-01) — local profile mirrors the manual-target
+      // override path. `effectiveTargetsForPersist` returns the manual
+      // values when all four are set, otherwise the computed targets.
+      const effective = effectiveTargetsForPersist(state, targets);
       // Always save local first — UX still works if Supabase is down
       // or the user is unauthenticated.
       const localProfile: UserProfile = {
@@ -103,13 +108,13 @@ export function WebFlow() {
         sex: state.sex,
         activityLevel: state.activity,
         goal: state.goal ? mapV2GoalToLegacy(state.goal) : null,
-        targets: targets
+        targets: effective
           ? {
-              calories: targets.target,
-              protein: targets.proteinG,
-              carbs: targets.carbsG,
-              fat: targets.fatG,
-              fiber: targets.fiberG,
+              calories: effective.target,
+              protein: effective.proteinG,
+              carbs: effective.carbsG,
+              fat: effective.fatG,
+              fiber: effective.fiberG,
               waterMl: 2400,
             }
           : null,
@@ -171,6 +176,15 @@ export function WebFlow() {
           recipes_picked: pickedSeeds.length,
           recipes_resolved: pickedSeeds.length - missingCount,
           plan_built: !planFailed,
+          // Build-40 (2026-05-01) — which data-bridge the user
+          // actioned on the terminal step. `null` = never touched
+          // a card; "skip" = explicitly tapped Maybe later.
+          data_bridge_chosen: state.dataBridgeChosen,
+          manual_targets_set:
+            state.manualTargetsKcal != null &&
+            state.manualTargetsProteinG != null &&
+            state.manualTargetsCarbsG != null &&
+            state.manualTargetsFatG != null,
         });
         // WEB-01 (2026-04-28): clear persisted onboarding state on
         // successful completion. Without this, the next signup on the
