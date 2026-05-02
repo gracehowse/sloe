@@ -182,6 +182,8 @@ import { TodayNutrientsModal } from "@/components/today/TodayNutrientsModal";
 import { TodayDateHeader } from "@/components/today/TodayDateHeader";
 import { TodayDashboardMacroTiles } from "@/components/today/TodayDashboardMacroTiles";
 import { TodayMicrosWidget } from "@/components/today/TodayMicrosWidget";
+import { WhyThisNumberSheet } from "@/components/today/WhyThisNumberSheet";
+import { paceKgPerWeekFromPreset } from "../../../../src/lib/nutrition/whyThisNumber";
 import { TodayQuickLogStrip } from "@/components/today/TodayQuickLogStrip";
 import { TodaySnapShortcut } from "@/components/today/TodaySnapShortcut";
 import { OnboardingNudgeBanner } from "@/components/today/onboarding-nudges";
@@ -451,6 +453,9 @@ export default function TrackerScreen() {
   // → "Net carbs" via the shared netCarbs.ts helper.
   const [netCarbsLensEnabled, setNetCarbsLensEnabled] = useState(false);
   const [nutrientsModalOpen, setNutrientsModalOpen] = useState(false);
+  /** Audit gap #10 (2026-05-01) — "Why this number?" sheet visibility.
+   *  Opened by the small pill under the calorie ring. */
+  const [whyThisNumberOpen, setWhyThisNumberOpen] = useState(false);
   const [dailyStepsGoal, setDailyStepsGoal] = useState(NUTRITION_DEFAULTS.steps);
   const [plannedMeals, setPlannedMeals] = useState<Array<{name?: string; recipe_title?: string; calories?: number; protein?: number; carbs?: number; fat?: number; recipe_id?: string | null}>>([]);
   const [activeFastStart, setActiveFastStart] = useState<string | null>(null);
@@ -3854,6 +3859,7 @@ export default function TrackerScreen() {
               displayMode={calorieDisplayMode}
               onToggleDisplayMode={() => setCalorieDisplayMode((m) => m === "remaining" ? "consumed" : "remaining")}
               onSetDisplayMode={setCalorieDisplayMode}
+              onPressWhy={() => setWhyThisNumberOpen(true)}
             />
 
             {/* Single context block — priority order: fasting >
@@ -4863,6 +4869,47 @@ export default function TrackerScreen() {
         visible={nutrientsModalOpen}
         onClose={() => setNutrientsModalOpen(false)}
         rows={dayNutrientDetailRowsWithoutMacroDupes}
+        backgroundColor={colors.background}
+        cardColor={colors.card}
+        cardBorderColor={colors.cardBorder}
+        textColor={colors.text}
+        textSecondaryColor={colors.textSecondary}
+        textTertiaryColor={colors.textTertiary}
+      />
+
+      {/* Audit gap #10 — "Why this number?" sheet (2026-05-01).
+          Reads adaptive_tdee + goal + plan_pace from the profile state
+          we already hydrate; recomp folds into "lose" semantics for
+          the panel because the user-facing direction is identical. */}
+      <WhyThisNumberSheet
+        visible={whyThisNumberOpen}
+        onClose={() => setWhyThisNumberOpen(false)}
+        targetCalories={effectiveCalorieGoal}
+        maintenanceTdee={adaptiveTdee}
+        confidence={
+          adaptiveTdeeConfidence === "low" ||
+          adaptiveTdeeConfidence === "medium" ||
+          adaptiveTdeeConfidence === "high"
+            ? adaptiveTdeeConfidence
+            : null
+        }
+        loggingDays={null}
+        goal={
+          profileGoal === "gain"
+            ? "gain"
+            : profileGoal === "maintain"
+              ? "maintain"
+              : "lose" // covers "lose" + "recomp" + null
+        }
+        paceKgPerWeek={paceKgPerWeekFromPreset(
+          profilePlanPace,
+          profileGoal === "gain"
+            ? "gain"
+            : profileGoal === "maintain"
+              ? "maintain"
+              : "lose",
+        )}
+        onPressAdjustTarget={() => router.push("/profile?focus=plan")}
         backgroundColor={colors.background}
         cardColor={colors.card}
         cardBorderColor={colors.cardBorder}

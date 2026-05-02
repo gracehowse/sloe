@@ -89,6 +89,8 @@ import { TodayActivityBonusCard } from "./suppr/today-activity-bonus-card";
 import { TodayWeekView } from "./suppr/today-week-view";
 import { TodayDashboardMacroTiles } from "./suppr/today-dashboard-macro-tiles";
 import { TodayMicrosWidget } from "./suppr/today-micros-widget";
+import { WhyThisNumberDialog } from "./suppr/why-this-number-dialog";
+import { paceKgPerWeekFromPreset } from "../../lib/nutrition/whyThisNumber";
 import { TodayQuickLogStrip } from "./suppr/today-quick-log-strip";
 import { TodaySnapShortcut } from "./suppr/today-snap-shortcut";
 import { TodayMealsSection } from "./suppr/today-meals-section";
@@ -559,8 +561,15 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
   const [photoLogOpen, setPhotoLogOpen] = useState(false);
   const [aiPaywallFeature, setAiPaywallFeature] = useState<AiPaywallFeature | null>(null);
   const [completeDayOpen, setCompleteDayOpen] = useState(false);
+  /** Audit gap #10 (2026-05-01) — "Why this number?" dialog visibility.
+   *  Opened by the small pill under the calorie ring. */
+  const [whyThisNumberOpen, setWhyThisNumberOpen] = useState(false);
   const [profileWeightKg, setProfileWeightKg] = useState<number | null>(null);
   const [profileGoal, setProfileGoal] = useState<string | null>(null);
+  /** `plan_pace` preset enum from `profiles.plan_pace` — used by the
+   *  WhyThisNumberDialog to compute the user's weekly kg pace. Stored
+   *  loosely as `string | null` to mirror the column's nullable nature. */
+  const [profilePlanPace, setProfilePlanPace] = useState<string | null>(null);
   const [profileMaintenanceTdee, setProfileMaintenanceTdee] = useState<number | null>(null);
   // 30-day milestone moment (PR claude/today-30-day-milestone, 2026-05-02).
   // Mirrors mobile state shape. `milestone30HandledRef` suppresses
@@ -1200,7 +1209,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
     supabase
       .from("profiles")
       .select(
-        "weight_kg, weight_kg_by_day, goal, sex, age, height_cm, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, week_start_day, steps_by_day, daily_steps_goal, fasting_sessions, tracked_macros, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, milestone_30_shown_at",
+        "weight_kg, weight_kg_by_day, goal, plan_pace, sex, age, height_cm, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, week_start_day, steps_by_day, daily_steps_goal, fasting_sessions, tracked_macros, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, milestone_30_shown_at",
       )
       .eq("id", authedUserId)
       .maybeSingle()
@@ -1237,6 +1246,9 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         const w = data.weight_kg != null ? Number(data.weight_kg) : null;
         setProfileWeightKg(Number.isFinite(w) ? w : null);
         setProfileGoal((data as any).goal ?? null);
+        setProfilePlanPace(
+          typeof (data as any).plan_pace === "string" ? (data as any).plan_pace : null,
+        );
         // Cache basics for the activity-bonus info popover (TestFlight
         // `AAtW7dYcCBPyBdsMU6UqiQQ`, 2026-04-18).
         const sexRaw = (data.sex ?? null) as string | null;
@@ -2049,6 +2061,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         onToggleExpanded={() => setRingExpanded((v) => !v)}
         displayMode={ringDisplayMode}
         onDisplayModeChange={setRingDisplayMode}
+        onPressWhy={() => setWhyThisNumberOpen(true)}
       />
 
       {/* Single context block — priority order: fasting > eat-again >
@@ -2497,6 +2510,37 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
       />
 
       {/* Complete Day Dialog */}
+      {/* Audit gap #10 — "Why this number?" dialog (2026-05-01).
+          Reads adaptive_tdee + goal + plan_pace from the profile state
+          we already hydrate; recomp folds into "lose" semantics for
+          the panel because the user-facing direction is identical.
+          "Adjust target" is intentionally omitted on web for now: the
+          web settings surface that lives at /account is billing-only;
+          target editing on web ships once the profile-edit page lands. */}
+      <WhyThisNumberDialog
+        open={whyThisNumberOpen}
+        onOpenChange={setWhyThisNumberOpen}
+        targetCalories={Math.round(effectiveCalorieTarget)}
+        maintenanceTdee={profileMaintenanceTdee}
+        confidence={profileMaintenanceConfidence}
+        loggingDays={null}
+        goal={
+          profileGoal === "gain"
+            ? "gain"
+            : profileGoal === "maintain"
+              ? "maintain"
+              : "lose" // covers "lose" + "recomp" + null
+        }
+        paceKgPerWeek={paceKgPerWeekFromPreset(
+          profilePlanPace,
+          profileGoal === "gain"
+            ? "gain"
+            : profileGoal === "maintain"
+              ? "maintain"
+              : "lose",
+        )}
+      />
+
       <TodayCompleteDayDialog
         open={completeDayOpen}
         onOpenChange={setCompleteDayOpen}
