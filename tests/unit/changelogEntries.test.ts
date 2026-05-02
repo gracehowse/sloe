@@ -31,10 +31,10 @@ import {
 describe("changelog/entries", () => {
   it("getLatestChangelog returns the highest build number that has items (skips placeholders)", () => {
     const latest = getLatestChangelog();
-    // 2026-05-01: build 11 picked up its first bullet (recipe detail
-    // v3 redesign), and PR #30 added build 12 (Today micros widget) —
-    // build 12 is now the latest user-visible entry. When a future
-    // build N+1 ships items, bump the expectation here in lockstep.
+    // v3 redesign), and PR #30 + PR #47 jointly built out build 12
+    // (Today micros widget + full-nutrient panel). Build 12 is now
+    // the latest user-visible entry. When a future build N+1 ships
+    // items, bump the expectation here in lockstep.
     expect(latest.buildNumber).toBe(12);
     expect(latest.items.length).toBeGreaterThan(0);
   });
@@ -47,7 +47,7 @@ describe("changelog/entries", () => {
     }
     // The currently-shipped builds in the data file.
     expect(all.map((e) => e.buildNumber)).toEqual(
-      expect.arrayContaining([10, 11]),
+      expect.arrayContaining([10, 11, 12]),
     );
   });
 

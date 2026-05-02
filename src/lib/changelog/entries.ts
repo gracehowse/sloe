@@ -70,6 +70,10 @@ const CHANGELOGS: ChangelogEntry[] = [
         kind: "new",
         text: "Today now shows fibre, iron, vitamin D and sodium tiles below the macros — see your micronutrient day at a glance.",
       },
+      {
+        kind: "new",
+        text: "Tap \"View all nutrients\" to see every vitamin and mineral against the FDA Daily Value, sorted by %DV.",
+      },
     ],
   },
   {

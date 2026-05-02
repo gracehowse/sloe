@@ -2030,8 +2030,9 @@ export default function TrackerScreen() {
   }, [mealsToday]);
 
   /** Day-summed nutrition_micros — shared by the all-nutrients modal
-   *  rows AND the new TodayMicrosWidget (which pulls fiber/iron/vit D/
-   *  sodium for headline tiles). Computed once so both surfaces agree. */
+   *  rows AND the new TodayMicrosWidget (which surfaces fiber/iron/
+   *  vit D/sodium tiles + opens the FullNutrientPanelSheet). Computed
+   *  once so every surface agrees. */
   const dayMicroSum = useMemo(() => sumMicrosFromLoggedMeals(mealsToday), [mealsToday]);
 
   const dayNutrientDetailRows = useMemo(() => {
@@ -4051,19 +4052,31 @@ export default function TrackerScreen() {
             />
 
             {/* Micronutrient headline widget (audit gap #1, 2026-05-01).
-                Surfaces fibre / iron / vitamin D / sodium against FDA
-                2020 DV references so the Cronometer power-user persona
-                doesn't bounce on "Suppr is just a macro tracker". The
-                full all-nutrients modal still ships via the Nutrients
-                link inside TodayDashboardMacroTiles above. */}
+                4 headline tiles (fibre / iron / vit D / sodium) + a
+                "View all 35 nutrients" CTA that opens the full panel
+                sheet. Closes the Cronometer power-user persona gap so
+                the macro-only persona switching from MyFitnessPal /
+                MacroFactor sees that Suppr does not stop at protein.
+                Web parity: `src/app/components/suppr/today-micros-widget.tsx`. */}
             <TodayMicrosWidget
               microSum={dayMicroSum}
               fiberG={totals.fiber}
+              totalFatG={totals.fat}
+              totalCarbsG={totals.carbs}
+              proteinG={totals.protein}
               cardColor={colors.card}
               cardBorderColor={colors.cardBorder}
               textColor={colors.text}
               textSecondaryColor={colors.textSecondary}
               textTertiaryColor={colors.textTertiary}
+              sheetColors={{
+                background: colors.background,
+                card: colors.card,
+                cardBorder: colors.cardBorder,
+                text: colors.text,
+                textSecondary: colors.textSecondary,
+                textTertiary: colors.textTertiary,
+              }}
             />
           </>
         )}

@@ -1,32 +1,43 @@
 "use client";
 
 import * as React from "react";
+import { ChevronRight } from "lucide-react";
 import {
   dailyValuePercent,
   isLimitNutrient,
 } from "../../../lib/nutrition/dailyValues";
+import { FULL_NUTRIENT_PANEL_ROW_COUNT } from "../../../lib/nutrition/fullNutrientPanel";
+import { FullNutrientPanelSheet } from "./full-nutrient-panel-sheet";
 
 /**
  * TodayMicrosWidget — 4 horizontal-scroll micronutrient tiles for Today (web).
  *
- * Mirrors `apps/mobile/components/today/TodayMicrosWidget.tsx`. Audit
- * gap #1: surface fibre / iron / vitamin D / sodium %DV so the
- * Cronometer power-user persona doesn't bounce on "Suppr is just a
- * macro tracker".
- *
- * Scope is intentionally narrow:
- *  - 4 tiles: Fibre, Iron, Vitamin D, Sodium.
- *  - %DV bar derived from `dailyValuePercent` (FDA 2020 reference).
- *  - No bottom sheet, no settings toggle, no full nutrient panel.
+ * Mirrors `apps/mobile/components/today/TodayMicrosWidget.tsx`. Closes
+ * audit gap #1: surface fibre / iron / vitamin D / sodium %DV plus a
+ * CTA into the full-panel sheet (35 nutrients) so the Cronometer
+ * power-user persona doesn't bounce on "Suppr is just a macro tracker".
  *
  * Sodium colour ramp: success below 80% of the 2300mg limit, warning
- * 80%-99%, danger 100%+. Other nutrients stay green.
+ * 80%-99%, danger 100%+. Other tile-headline nutrients stay green.
+ *
+ * The "View all 35 nutrients" CTA opens `FullNutrientPanelSheet`,
+ * which renders all 35 curated nutrients across Macros / Vitamins /
+ * Minerals %DV-sorted descending so deficiencies surface first.
  */
+
 export interface TodayMicrosWidgetProps {
   /** Day-summed micros — pass `sumMicrosFromLoggedMeals(meals)` directly. */
   microSum: Record<string, number> | null | undefined;
   /** Day-totalled fibre in grams (uses the dedicated meal-column path). */
   fiberG: number;
+  /** Optional macro day totals — passed through to the panel sheet so its
+   *  Macros section reflects the same totals shown on the macro tiles. */
+  totalFatG?: number;
+  saturatedFatG?: number;
+  totalCarbsG?: number;
+  proteinG?: number;
+  sugarG?: number;
+  cholesterolMg?: number;
 }
 
 type TileKey = "fiberG" | "ironMg" | "vitaminDMcg" | "sodiumMg";
@@ -59,8 +70,18 @@ function formatAmount(amount: number, unit: TileSpec["unit"]): string {
   return `${Math.round(amount)}mcg`;
 }
 
-export function TodayMicrosWidget({ microSum, fiberG }: TodayMicrosWidgetProps) {
+export function TodayMicrosWidget({
+  microSum,
+  fiberG,
+  totalFatG,
+  saturatedFatG,
+  totalCarbsG,
+  proteinG,
+  sugarG,
+  cholesterolMg,
+}: TodayMicrosWidgetProps) {
   const sum = microSum ?? {};
+  const [panelOpen, setPanelOpen] = React.useState(false);
 
   return (
     <div className="mb-4" aria-label="Micronutrients">
@@ -126,6 +147,30 @@ export function TodayMicrosWidget({ microSum, fiberG }: TodayMicrosWidgetProps) 
           );
         })}
       </div>
+
+      <button
+        type="button"
+        data-testid="today-micros-view-all-cta"
+        aria-label={`View all ${FULL_NUTRIENT_PANEL_ROW_COUNT} nutrients`}
+        onClick={() => setPanelOpen(true)}
+        className="mt-2 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-card border border-border text-xs font-semibold text-foreground hover:bg-muted transition-colors"
+      >
+        View all {FULL_NUTRIENT_PANEL_ROW_COUNT} nutrients
+        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={2.25} />
+      </button>
+
+      <FullNutrientPanelSheet
+        open={panelOpen}
+        onOpenChange={setPanelOpen}
+        microSum={microSum}
+        fiberG={fiberG}
+        totalFatG={totalFatG}
+        saturatedFatG={saturatedFatG}
+        totalCarbsG={totalCarbsG}
+        proteinG={proteinG}
+        sugarG={sugarG}
+        cholesterolMg={cholesterolMg}
+      />
     </div>
   );
 }

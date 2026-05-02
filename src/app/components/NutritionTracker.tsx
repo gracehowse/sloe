@@ -1514,8 +1514,8 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
 
   /** Day-summed nutrition_micros — shared by the all-nutrients section
    *  on the macro tiles AND the new TodayMicrosWidget (which surfaces
-   *  fiber/iron/vit D/sodium %DV tiles). One source of truth keeps
-   *  both views in agreement. */
+   *  fibre/iron/vit D/sodium %DV tiles + opens the FullNutrientPanelSheet).
+   *  One source of truth keeps every surface in agreement. */
   const dayMicroSum = useMemo(
     () => sumMicrosFromLoggedMeals(mealsForSelectedDate),
     [mealsForSelectedDate],
@@ -2178,12 +2178,19 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
       />
 
       {/* Micronutrient headline widget (audit gap #1, 2026-05-01).
-          Surfaces fibre / iron / vitamin D / sodium against FDA 2020 DV
-          references so the Cronometer power-user persona doesn't bounce
-          on "Suppr is just a macro tracker". The full all-nutrients
+          4 headline tiles (fibre / iron / vit D / sodium) + a "View
+          all 35 nutrients" CTA opening the full panel sheet. Closes
+          the Cronometer power-user persona gap. The full all-nutrients
           rows still ship inline in TodayDashboardMacroTiles above via
           `nutrientRows`. Mirrors mobile `TodayMicrosWidget`. */}
-      <TodayMicrosWidget microSum={dayMicroSum} fiberG={totals.fiber} />
+      <TodayMicrosWidget
+        microSum={dayMicroSum}
+        fiberG={totals.fiber}
+        totalFatG={totals.fat}
+        totalCarbsG={totals.carbs}
+        proteinG={totals.protein}
+        sugarG={dayMicroSumForTracker.sugarG}
+      />
 
       {/* 4. Quick Log Strip: Search, Voice (Pro), Snap (Pro), Scan. Voice +
           Snap are gated; free-tier users see a lock icon and tapping
