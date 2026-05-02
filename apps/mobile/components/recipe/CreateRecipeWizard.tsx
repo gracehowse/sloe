@@ -94,6 +94,8 @@ import {
   isTitleStepValid,
   nextStep,
   prevStep,
+  roundCalories,
+  roundMacro,
   stepCounterAnnouncement,
   stepIndex,
   type CreateRecipeStepId,
@@ -408,6 +410,10 @@ export default function CreateRecipeWizard() {
           .map((s) => s.text.trim())
           .filter(Boolean)
           .join("\n\n");
+        // F-72: round at the boundary even though `computePerServing`
+        // already rounds. Defensive against future code paths that
+        // bypass the helper, and aligns with the NUMERIC(10, 2) column
+        // type widened in migration 20260508100000_recipes_macros_numeric.
         const { data: row, error: insErr } = await supabase
           .from("recipes")
           .insert({
@@ -417,10 +423,10 @@ export default function CreateRecipeWizard() {
             instructions: normaliseInstructions(instructionsString) || null,
             servings: srv,
             published: publishOnSave,
-            calories: perServing.calories,
-            protein: perServing.protein,
-            carbs: perServing.carbs,
-            fat: perServing.fat,
+            calories: roundCalories(perServing.calories),
+            protein: roundMacro(perServing.protein),
+            carbs: roundMacro(perServing.carbs),
+            fat: roundMacro(perServing.fat),
           })
           .select("id")
           .single();
@@ -439,16 +445,21 @@ export default function CreateRecipeWizard() {
             .eq("id", recipeId);
         }
 
+        // F-72: ingredient macro columns were widened to NUMERIC(10, 2)
+        // alongside the per-recipe columns. We previously `Math.round`-ed
+        // these to fit the integer column; now we 1-decimal-round to
+        // match the per-recipe write shape. fiber_g was already numeric
+        // and stays untouched.
         const ingRows = ingredients.map((ing) => ({
           recipe_id: recipeId,
           name: ing.name,
           amount: parseFloat(ing.amount) || null,
           unit: ing.unit || null,
-          calories: Math.round(ing.calories),
-          protein: Math.round(ing.protein),
-          carbs: Math.round(ing.carbs),
-          fat: Math.round(ing.fat),
-          fiber_g: ing.fiberG,
+          calories: roundCalories(ing.calories),
+          protein: roundMacro(ing.protein),
+          carbs: roundMacro(ing.carbs),
+          fat: roundMacro(ing.fat),
+          fiber_g: roundMacro(ing.fiberG),
           is_verified: true,
           source: ing.source,
         }));

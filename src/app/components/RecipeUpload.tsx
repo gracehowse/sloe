@@ -21,6 +21,7 @@ import { track } from "../../lib/analytics/track.ts";
 import { GoPublicDialog } from "./GoPublicDialog.tsx";
 import { normalizeMacroTargets } from "../../types/profile.ts";
 import { normaliseInstructions } from "../../lib/recipes/normaliseInstructions.ts";
+import { roundCalories, roundMacro } from "../../lib/recipes/createRecipeWizard.ts";
 import { normaliseSource } from "../../lib/recipes/persistSourceAttribution.ts";
 import { normalizeRecipeTitle } from "../../lib/recipes/normalizeRecipeTitle.ts";
 import { parseRawIngredients } from "../../lib/recipe-ingredients/parseRawIngredients.ts";
@@ -1052,25 +1053,35 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
                 : null,
             source_url: attributionUrl,
             source_name: attributionName,
-            calories: aggregateScrub ? aggregateScrub.calories : chosenPerServing.calories,
-            protein: aggregateScrub ? aggregateScrub.protein : chosenPerServing.protein,
-            carbs: aggregateScrub ? aggregateScrub.carbs : chosenPerServing.carbs,
-            fat: aggregateScrub ? aggregateScrub.fat : chosenPerServing.fat,
-            fiber_g: aggregateScrub
-              ? aggregateScrub.fiber_g
-              : verifiedOk
-                ? verifiedTotals.perServing.fiberG
-                : 0,
-            sugar_g: aggregateScrub
-              ? aggregateScrub.sugar_g
-              : verifiedOk
-                ? verifiedTotals.perServing.sugarG
-                : 0,
-            sodium_mg: aggregateScrub
-              ? aggregateScrub.sodium_mg
-              : verifiedOk
-                ? verifiedTotals.perServing.sodiumMg
-                : 0,
+            // F-72 (2026-05-08) — recipes.{calories,protein,carbs,fat}
+            // are NUMERIC(10, 2). Round at the boundary to 1 decimal so
+            // values written from web match the wizard write shape and
+            // the seeded-recipes backfill rounding.
+            calories: roundCalories(aggregateScrub ? aggregateScrub.calories : chosenPerServing.calories),
+            protein: roundMacro(aggregateScrub ? aggregateScrub.protein : chosenPerServing.protein),
+            carbs: roundMacro(aggregateScrub ? aggregateScrub.carbs : chosenPerServing.carbs),
+            fat: roundMacro(aggregateScrub ? aggregateScrub.fat : chosenPerServing.fat),
+            fiber_g: roundMacro(
+              aggregateScrub
+                ? aggregateScrub.fiber_g
+                : verifiedOk
+                  ? verifiedTotals.perServing.fiberG
+                  : 0,
+            ),
+            sugar_g: roundMacro(
+              aggregateScrub
+                ? aggregateScrub.sugar_g
+                : verifiedOk
+                  ? verifiedTotals.perServing.sugarG
+                  : 0,
+            ),
+            sodium_mg: roundMacro(
+              aggregateScrub
+                ? aggregateScrub.sodium_mg
+                : verifiedOk
+                  ? verifiedTotals.perServing.sodiumMg
+                  : 0,
+            ),
             allergens: allergensPayload,
           },
           { onConflict: "id" },
@@ -1106,19 +1117,23 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
         const v = verifiedOk ? verifiedLines![idx] : null;
         const macros = v?.macros ?? null;
         const rowSource = v?.source ?? (macros ? "FatSecret" : "Estimated");
+        // F-72 — recipe_ingredients macro columns are NUMERIC(10, 2).
+        // Round to 1 decimal at the write boundary so verified macros
+        // (FatSecret floats) and estimated macros (USDA per-100 g math)
+        // both land at the same precision the schema and UI expose.
         const baseRow = {
           recipe_id: id,
           ingredient_id: null,
           name: i.name,
           amount: amountToNumeric(i.amount),
           unit: i.unit || null,
-          calories: macros?.calories ?? est.calories,
-          protein: macros?.protein ?? est.protein,
-          carbs: macros?.carbs ?? est.carbs,
-          fat: macros?.fat ?? est.fat,
-          fiber_g: macros?.fiberG ?? 0,
-          sugar_g: macros?.sugarG ?? 0,
-          sodium_mg: macros?.sodiumMg ?? 0,
+          calories: roundCalories(macros?.calories ?? est.calories),
+          protein: roundMacro(macros?.protein ?? est.protein),
+          carbs: roundMacro(macros?.carbs ?? est.carbs),
+          fat: roundMacro(macros?.fat ?? est.fat),
+          fiber_g: roundMacro(macros?.fiberG ?? 0),
+          sugar_g: roundMacro(macros?.sugarG ?? 0),
+          sodium_mg: roundMacro(macros?.sodiumMg ?? 0),
           fatsecret_food_id: v?.fatSecretFoodId ?? null,
           confidence: v?.confidence ?? null,
           is_verified: Boolean(macros),

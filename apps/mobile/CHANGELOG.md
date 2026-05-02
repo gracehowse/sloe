@@ -1,5 +1,23 @@
 # Mobile App Changelog
 
+## 2026-05-02 — F-72: recipe save crash on non-integer macros
+
+### Recipes (create + import)
+- **Schema** (migration `20260508100000_recipes_macros_numeric.sql`) — widens `recipes.{calories,protein,carbs,fat}` and `recipe_ingredients.{calories,protein,carbs,fat}` from `INTEGER` to `NUMERIC(10, 2)`. Fixes `invalid input syntax for type integer: "2.3"` on save when fractional per-serving macros (or a typed override like `fat: 2.3`) hit the columns.
+- **Client rounding** — `roundMacro` (1 dp) and `roundCalories` (whole kcal) helpers exported from `src/lib/recipes/createRecipeWizard.ts`. Both the mobile wizard (`apps/mobile/components/recipe/CreateRecipeWizard.tsx`) and the web upload form (`src/app/components/RecipeUpload.tsx`) round at the recipes / recipe_ingredients insert boundary. Defensive against future code paths that bypass `computePerServing` and aligned with the seeded-recipes backfill rounding.
+- **Override hardening** — `computePerServing` now rounds user-typed overrides too (an over-precise input like `2.345` is collapsed to `2.3`).
+
+### Web parity
+- `src/app/components/RecipeUpload.tsx` imports the same helpers and applies them at both insert sites (per-recipe row + per-ingredient rows).
+
+### Tests
+- New `tests/unit/recipesMacrosNumericMigration.test.ts` pins the migration shape (8 columns altered, USING clause, PostgREST NOTIFY, CLAUDE.md apply-path note).
+- `apps/mobile/tests/unit/createRecipeWizard.test.ts` extended with rounding-helper unit tests + integration-shape pin (recipe payload with `fat: 2.3` survives the round → insert pipeline) + structural pins on the wizard save handler.
+- `apps/mobile/tests/unit/createRecipeNormalisationParity.test.ts` extended with web parity pins (RecipeUpload imports the helpers + uses them on both insert sites).
+
+### Decision
+- `docs/decisions/2026-05-02-recipe-macros-numeric.md`.
+
 ## 2026-05-02 — 30-day logging milestone moment
 
 ### Today

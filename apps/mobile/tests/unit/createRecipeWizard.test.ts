@@ -39,6 +39,8 @@ import {
   isTitleStepValid,
   nextStep,
   prevStep,
+  roundCalories,
+  roundMacro,
   stepCounterAnnouncement,
   stepIndex,
   type WizardIngredient,
@@ -270,6 +272,110 @@ describe("createRecipeWizard — macro overrides (CR-04)", () => {
   });
 });
 
+describe("createRecipeWizard — F-72 macro rounding helpers (NUMERIC(10, 2) save boundary)", () => {
+  it("roundMacro rounds to 1 decimal place — the precision the schema and UI both expose", () => {
+    // Pre-fix (2026-05-08), `recipes.{calories,protein,carbs,fat}` were
+    // INTEGER columns and any non-integer write — including a typed
+    // override of `2.3` for fat — failed Postgres input validation
+    // with `invalid input syntax for type integer: "2.3"`. After the
+    // 20260508100000_recipes_macros_numeric migration the columns are
+    // NUMERIC(10, 2); we still 1-decimal-round at the boundary so all
+    // write paths agree on precision.
+    expect(roundMacro(2.3)).toBe(2.3);
+    expect(roundMacro(2.34)).toBe(2.3);
+    expect(roundMacro(2.35)).toBe(2.4);
+    expect(roundMacro(0)).toBe(0);
+  });
+
+  it("roundMacro returns 0 for non-finite input — matches computeRecipeTotals defensive shape", () => {
+    expect(roundMacro(Number.NaN)).toBe(0);
+    expect(roundMacro(Number.POSITIVE_INFINITY)).toBe(0);
+    expect(roundMacro(Number.NEGATIVE_INFINITY)).toBe(0);
+  });
+
+  it("roundCalories rounds to a whole kcal — per-serving 0.1 kcal is meaningless", () => {
+    expect(roundCalories(199.4)).toBe(199);
+    expect(roundCalories(199.5)).toBe(200);
+    expect(roundCalories(0)).toBe(0);
+  });
+
+  it("roundCalories returns 0 for non-finite input", () => {
+    expect(roundCalories(Number.NaN)).toBe(0);
+    expect(roundCalories(Number.POSITIVE_INFINITY)).toBe(0);
+  });
+
+  it("computePerServing rounds an override of 2.3 to 2.3 (regression for the F-72 crash)", () => {
+    // The user types "2.3" on the macros step, the wizard saves the
+    // recipe row with `fat: 2.3`. Pre-fix, this hit Postgres as an
+    // integer-typed column and crashed. Post-fix, the value is rounded
+    // (idempotent on 2.3) AND the schema accepts it.
+    const ps = computePerServing({
+      ingredients: [ing()],
+      servings: 1,
+      macroOverrides: { fat: 2.3 },
+    });
+    expect(ps.fat).toBe(2.3);
+  });
+
+  it("computePerServing collapses an over-precise override (2.345) to 1 decimal", () => {
+    // Defensive: an override of `2.345` should not sneak more
+    // precision into the DB than any other code path produces. The
+    // backfill migration uses 1-decimal rounding too, so write-side
+    // overrides match SUM-from-ingredients output.
+    const ps = computePerServing({
+      ingredients: [ing()],
+      servings: 1,
+      macroOverrides: { fat: 2.345 },
+    });
+    expect(ps.fat).toBe(2.3);
+  });
+
+  it("computePerServing rounds an auto-computed value (totals math) to 1 decimal", () => {
+    // 1g protein over 3 servings = 0.333... → 0.3.
+    const ps = computePerServing({
+      ingredients: [ing({ protein: 1, calories: 0, carbs: 0, fat: 0, fiberG: 0 })],
+      servings: 3,
+      macroOverrides: {},
+    });
+    expect(ps.protein).toBe(0.3);
+  });
+});
+
+describe("createRecipeWizard — F-72 mocked-Supabase save (recipe with fat: 2.3 succeeds)", () => {
+  it("the recipe insert payload sent to Supabase carries 1-decimal fat (not raw float, not integer-truncated)", () => {
+    // Integration-style assertion against the helper that builds the
+    // payload — full RNTL render of the wizard isn't possible in
+    // vitest/jsdom (Expo Router screen, RN imports). Instead we
+    // exercise the same compute → round pipeline the wizard's save
+    // handler uses, and assert the shape that lands on
+    // `supabase.from("recipes").insert(...)`.
+    const ps = computePerServing({
+      ingredients: [
+        ing({ id: "a", calories: 0, protein: 0, carbs: 0, fat: 0, fiberG: 0 }),
+      ],
+      servings: 1,
+      macroOverrides: { fat: 2.3, protein: 12, carbs: 30, calories: 250 },
+    });
+    const payload = {
+      calories: roundCalories(ps.calories),
+      protein: roundMacro(ps.protein),
+      carbs: roundMacro(ps.carbs),
+      fat: roundMacro(ps.fat),
+    };
+
+    // The exact shape that previously crashed Postgres.
+    expect(payload.fat).toBe(2.3);
+    // No integer truncation — schema is now NUMERIC(10, 2).
+    expect(Number.isInteger(payload.fat)).toBe(false);
+    // Calories stays whole kcal.
+    expect(payload.calories).toBe(250);
+    expect(Number.isInteger(payload.calories)).toBe(true);
+    // No NaN / Infinity sneaking through.
+    expect(Number.isFinite(payload.protein)).toBe(true);
+    expect(Number.isFinite(payload.carbs)).toBe(true);
+  });
+});
+
 // ----- Structural pins (vitest can't render the wizard component) -----
 describe("createRecipeWizard — structural pins for the wizard component", () => {
   const ROUTE_PATH = resolve(__dirname, "../../app/recipe/create.tsx");
@@ -337,6 +443,26 @@ describe("createRecipeWizard — structural pins for the wizard component", () =
     expect(COMPONENT_SRC).toMatch(
       /AnalyticsEvents\.recipe_create_wizard_saved/,
     );
+  });
+
+  it("the wizard rounds macros at the recipes-insert boundary (F-72 belt-and-braces vs NUMERIC(10, 2) column)", () => {
+    // Even after migration 20260508100000_recipes_macros_numeric
+    // widened the columns, we round at write time so all macro values
+    // hitting `recipes` and `recipe_ingredients` carry the same
+    // 1-decimal precision (calories: whole kcal). Match the literal
+    // shape so a refactor that drops the helper is visible in CI.
+    expect(COMPONENT_SRC).toMatch(/calories:\s*roundCalories\(perServing\.calories\)/);
+    expect(COMPONENT_SRC).toMatch(/protein:\s*roundMacro\(perServing\.protein\)/);
+    expect(COMPONENT_SRC).toMatch(/carbs:\s*roundMacro\(perServing\.carbs\)/);
+    expect(COMPONENT_SRC).toMatch(/fat:\s*roundMacro\(perServing\.fat\)/);
+  });
+
+  it("the wizard rounds ingredient macros at the recipe_ingredients-insert boundary (F-72)", () => {
+    expect(COMPONENT_SRC).toMatch(/calories:\s*roundCalories\(ing\.calories\)/);
+    expect(COMPONENT_SRC).toMatch(/protein:\s*roundMacro\(ing\.protein\)/);
+    expect(COMPONENT_SRC).toMatch(/carbs:\s*roundMacro\(ing\.carbs\)/);
+    expect(COMPONENT_SRC).toMatch(/fat:\s*roundMacro\(ing\.fat\)/);
+    expect(COMPONENT_SRC).toMatch(/fiber_g:\s*roundMacro\(ing\.fiberG\)/);
   });
 });
 
