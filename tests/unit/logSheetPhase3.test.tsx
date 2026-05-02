@@ -350,6 +350,65 @@ describe("LogSheet (web) — Recent / Saved browse pills (Phase 4 / Next-10 #12)
   });
 });
 
+describe("LogSheet (web) — saved-tab discoverability dot (2026-05-01, journey-architect P1)", () => {
+  // Discoverability nudge: when the user has 3+ saved meals we render
+  // a small dot on the Saved tab so first-time-openers learn the tab
+  // exists. Below 3, no dot. Pinned here so future refactors don't
+  // silently regress the threshold. Mobile parity in
+  // `apps/mobile/tests/unit/logSheetPhase3.test.tsx`.
+  const oneMeal: LogSheetSavedMeal = {
+    id: "m1",
+    title: "My usual oatmeal",
+    kcal: 380,
+    source: "manual",
+  };
+  const threeMeals: LogSheetSavedMeal[] = [
+    { id: "m1", title: "Oatmeal", kcal: 380, source: "manual" },
+    { id: "m2", title: "Salad", kcal: 250, source: "manual" },
+    { id: "m3", title: "Stew", kcal: 600, source: "manual" },
+  ];
+
+  it("hides the dot when the user has fewer than 3 saved meals", () => {
+    open({
+      recent: { entries: [], onPick: () => {} },
+      saved: { meals: [oneMeal], onPick: () => {} },
+    });
+    expect(screen.queryByTestId("log-sheet-tab-saved-dot")).toBeNull();
+  });
+
+  it("shows the dot when the user has 3+ saved meals", () => {
+    open({
+      recent: { entries: [], onPick: () => {} },
+      saved: { meals: threeMeals, onPick: () => {} },
+    });
+    expect(screen.getByTestId("log-sheet-tab-saved-dot")).toBeDefined();
+  });
+
+  it("the Saved-meals tab carries an accessible saved-count label when the dot is showing", () => {
+    open({
+      recent: { entries: [], onPick: () => {} },
+      saved: { meals: threeMeals, onPick: () => {} },
+    });
+    expect(
+      screen.getByRole("tab", { name: "Saved meals — 3 saved" }),
+    ).toBeDefined();
+  });
+
+  it("Recent and Saved tabs share the same flex-1 sizing class (equal weight)", () => {
+    open({
+      recent: { entries: [], onPick: () => {} },
+      saved: { meals: threeMeals, onPick: () => {} },
+    });
+    const recentTab = screen.getByTestId("log-sheet-tab-recent");
+    const savedTab = screen.getByTestId("log-sheet-tab-saved");
+    // Both pills carry the `flex-1` utility — equal width inside the
+    // toggle row regardless of label length. The dot is an additive
+    // child element so its presence does not change the pill layout.
+    expect(recentTab.className).toMatch(/\bflex-1\b/);
+    expect(savedTab.className).toMatch(/\bflex-1\b/);
+  });
+});
+
 describe("LogSheet (web) — Barcode 0-kcal manual entry", () => {
   it("renders the manual-entry form when manualEntry is supplied (replaces default content)", () => {
     open({

@@ -534,9 +534,15 @@ function DefaultComposition({
         </div>
       ) : (
         <>
-          {/* Browse pill toggle -- Recent / Library / Saved. Hidden
+          {/* Browse pill toggle — Recent / Library / Saved. Hidden
               when only one source is available; the available one
-              renders directly. */}
+              renders directly.
+              2026-05-01 (journey-architect P1): all pills carry equal
+              weight (font / active-state / hit area) and the Saved
+              pill carries a small dot indicator when the user has 3+
+              saved meals to nudge first-time users to the tab they
+              don't know exists yet. Mobile parity in
+              `apps/mobile/components/today/LogSheet.tsx`. */}
           {showBrowseToggle ? (
             <div
               role="tablist"
@@ -545,13 +551,25 @@ function DefaultComposition({
             >
               {visibleTabs.map((id) => {
                 const active = activeTab === id;
+                const savedCount = saved?.meals?.length ?? 0;
+                const showSavedDot = id === "saved" && savedCount >= 3;
+                const baseLabel = labelFor(id);
                 return (
                   <button
                     key={id}
                     type="button"
                     role="tab"
                     aria-selected={active}
-                    aria-label={labelFor(id)}
+                    aria-label={
+                      showSavedDot ? `${baseLabel} — ${savedCount} saved` : baseLabel
+                    }
+                    data-testid={
+                      id === "recent"
+                        ? "log-sheet-tab-recent"
+                        : id === "library"
+                          ? "log-sheet-tab-library"
+                          : "log-sheet-tab-saved"
+                    }
                     onClick={() => onBrowseTabChange(id)}
                     className={cn(
                       "flex-1 rounded-md py-2 text-[13px] font-semibold transition-colors",
@@ -561,7 +579,16 @@ function DefaultComposition({
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                     )}
                   >
-                    {labelFor(id)}
+                    <span className="inline-flex items-center justify-center gap-1.5">
+                      {baseLabel}
+                      {showSavedDot ? (
+                        <span
+                          data-testid="log-sheet-tab-saved-dot"
+                          aria-hidden="true"
+                          className="h-1.5 w-1.5 rounded-full bg-primary"
+                        />
+                      ) : null}
+                    </span>
                   </button>
                 );
               })}

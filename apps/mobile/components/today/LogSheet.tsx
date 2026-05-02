@@ -604,13 +604,24 @@ function BrowseAndFooter({
 
   return (
     <>
-      {/* Browse pill toggle -- Recent / Library / Saved. Hidden when
+      {/* Browse pill toggle — Recent / Library / Saved. Hidden when
           only one source is available; the available one renders
-          directly. */}
+          directly.
+          2026-05-01 (journey-architect P1): all pills carry equal
+          weight (font / active-state / touch target) and the Saved
+          pill carries a small dot indicator when the user has 3+
+          saved meals to nudge first-time users to the tab they don't
+          know exists yet. */}
       {showBrowseToggle ? (
-        <View style={[styles.browsePillRow, { backgroundColor: colors.inputBg }]}>
+        <View
+          style={[styles.browsePillRow, { backgroundColor: colors.inputBg }]}
+          accessibilityRole="tablist"
+        >
           {visibleTabs.map((id) => {
             const active = activeTab === id;
+            const savedCount = saved?.meals?.length ?? 0;
+            const showSavedDot = id === "saved" && savedCount >= 3;
+            const baseLabel = labelFor(id);
             return (
               <Pressable
                 key={id}
@@ -623,20 +634,49 @@ function BrowseAndFooter({
                 }}
                 accessibilityRole="tab"
                 accessibilityState={{ selected: active }}
-                accessibilityLabel={labelFor(id)}
+                accessibilityLabel={
+                  showSavedDot ? `${baseLabel} — ${savedCount} saved` : baseLabel
+                }
+                testID={
+                  id === "recent"
+                    ? "log-sheet-tab-recent"
+                    : id === "library"
+                      ? "log-sheet-tab-library"
+                      : "log-sheet-tab-saved"
+                }
                 style={[
                   styles.browsePill,
                   { backgroundColor: active ? colors.background : "transparent" },
                 ]}
               >
-                <Text
-                  style={[
-                    styles.browsePillLabel,
-                    { color: active ? colors.text : colors.textSecondary },
-                  ]}
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                  }}
                 >
-                  {labelFor(id)}
-                </Text>
+                  <Text
+                    style={[
+                      styles.browsePillLabel,
+                      { color: active ? colors.text : colors.textSecondary },
+                    ]}
+                  >
+                    {baseLabel}
+                  </Text>
+                  {showSavedDot ? (
+                    <View
+                      testID="log-sheet-tab-saved-dot"
+                      style={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: 3,
+                        backgroundColor: Accent.primary,
+                      }}
+                    />
+                  ) : null}
+                </View>
               </Pressable>
             );
           })}
