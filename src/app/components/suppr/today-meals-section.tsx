@@ -106,11 +106,24 @@ export interface TodayMealsSectionProps {
   onAcceptUsualMealHint: (slot: string) => void;
 }
 
-function getMealIcon(name: string): { icon: React.ComponentType<React.SVGProps<SVGSVGElement>>; tone: "warning" | "success" | "primary" | "fat" } {
-  if (name === "Breakfast") return { icon: Icons.breakfast as React.ComponentType<React.SVGProps<SVGSVGElement>>, tone: "warning" };
-  if (name === "Lunch") return { icon: Icons.lunch as React.ComponentType<React.SVGProps<SVGSVGElement>>, tone: "success" };
-  if (name === "Dinner") return { icon: Icons.dinner as React.ComponentType<React.SVGProps<SVGSVGElement>>, tone: "primary" };
-  if (name === "Snacks") return { icon: Icons.snack as React.ComponentType<React.SVGProps<SVGSVGElement>>, tone: "fat" };
+/**
+ * Per-slot icon + tint. Tones map to `IconBox` slot variants which
+ * resolve to the `--slot-*` CSS custom properties.
+ *
+ * 2026-05-01 (ui-critic P2 #10): Snacks previously used `tone: "fat"`
+ * which routed to `--macro-fat` (magenta). On the Today screen this
+ * collided 1:1 with the Fat macro tile — same hue, two unrelated
+ * meanings. Snacks now uses `tone: "slot-snack"` (cyan); macro tones
+ * stay reserved for the Macro tile row.
+ */
+function getMealIcon(name: string): {
+  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  tone: "slot-breakfast" | "slot-lunch" | "slot-dinner" | "slot-snack" | "primary";
+} {
+  if (name === "Breakfast") return { icon: Icons.breakfast as React.ComponentType<React.SVGProps<SVGSVGElement>>, tone: "slot-breakfast" };
+  if (name === "Lunch") return { icon: Icons.lunch as React.ComponentType<React.SVGProps<SVGSVGElement>>, tone: "slot-lunch" };
+  if (name === "Dinner") return { icon: Icons.dinner as React.ComponentType<React.SVGProps<SVGSVGElement>>, tone: "slot-dinner" };
+  if (name === "Snacks") return { icon: Icons.snack as React.ComponentType<React.SVGProps<SVGSVGElement>>, tone: "slot-snack" };
   return { icon: Icons.add as React.ComponentType<React.SVGProps<SVGSVGElement>>, tone: "primary" };
 }
 

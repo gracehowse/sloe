@@ -23,6 +23,16 @@
 ### Web parity
 - `src/app/components/suppr/today-week-view.tsx` ships the matching upgrades using CSS height transitions (no Reanimated dependency on web). Same target rule, same scrubber, same closest-to-target summary line.
 
+## 2026-05-01 — `SlotColors` token (resolve magenta=fat=snack collision)
+
+ui-critic P2 #10. Snacks meal-slot tint previously borrowed `MacroColors.fat` (magenta `#e04888`), colliding 1:1 with the Fat macro tile on Today. Same hue, two unrelated meanings.
+
+- New `SlotColors` export in `apps/mobile/constants/theme.ts` (roles: breakfast / lunch / dinner / snack). Snack is cyan `#06b6d4` — distinct from `MacroColors.fat`.
+- `TodayMealsSection.tsx` and `app/(tabs)/planner.tsx` swap `MacroColors.fat` for `SlotColors.snack` in slot-color contexts. Macro tokens stay reserved for the Macro tile row.
+- Web parity: matching `--slot-{breakfast,lunch,dinner,snack}` (+ `-soft`) tokens in `src/styles/theme.css`, four `slot-*` tones added to `IconBox`, web `today-meals-section.tsx` Snacks slot uses `tone: "slot-snack"`.
+- Pinned by `tests/unit/slotColorTokensParity.test.ts` (12 tests, source-grep + token-export invariants) and `tests/unit/todayMealsSectionSlotColors.test.tsx` (3 render tests, 4 canonical slot tints render and the magenta hex is absent from any wrapper bg).
+- Decision: `docs/decisions/2026-05-01-slot-colors-token-fix-magenta-collision.md`. Doc: `docs/ux/brand-tokens.md` (new "Meal-slot colours" section).
+
 ## 2026-05-01 — LogSheet: 3-tab discoverability (journey-architect P1)
 
 ### LogSheet

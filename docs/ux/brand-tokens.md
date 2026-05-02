@@ -16,8 +16,8 @@ Single reference for **accent roles** so colours do not drift between the Next.j
 | **Warning light** | `#ffc04c` | `Accent.warningLight` | `--warning` (dark) | Dark mode warning tint |
 | **Destructive** | `#e04848` | `Accent.destructive` | `--destructive` | Errors, dangerous actions only — never for over-budget |
 | **Destructive light** | `#ff6c6c` | `Accent.destructiveLight` | `--destructive` (dark) | Dark mode destructive tint |
-| **Magenta** | `#e04888` | `Accent.magenta` | `--macro-fat` | Fat macro, gradient accent — not for standalone body UI |
-| **Cyan** | `#06b6d4` | `Accent.cyan` | `--macro-water` | Water tracking, exercise/activity |
+| **Magenta** | `#e04888` | `Accent.magenta` | `--macro-fat` | Fat macro, gradient accent — not for standalone body UI, **never for the Snacks slot** |
+| **Cyan** | `#06b6d4` | `Accent.cyan` / `SlotColors.snack` | `--macro-water` / `--slot-snack` | Water tracking, exercise/activity, **Snacks meal-slot tint** |
 | **Orange** | `#f97316` | `Accent.orange` | n/a | Sodium macro |
 | **Info** | `#0ea5e9` | `Accent.info` | n/a | Informational accents |
 
@@ -35,6 +35,21 @@ Fixed across all screens. Never hardcode — always reference `MacroColors` (mob
 | Sugar | Primary light (blue) | `#6c8cff` |
 | Sodium | Orange | `#f97316` |
 | Water | Cyan | `#06b6d4` |
+
+## Meal-slot colours
+
+Per-slot tint applied to the slot-header icon wrapper on Today's meal section and the slot-header column on Plan. **Never use macro tokens here** — slot tints are a separate role from macro tints, and reusing one for the other creates a 1:1 colour collision (the Snacks-slot vs Fat-macro bug fixed 2026-05-01, ui-critic P2 #10).
+
+| Slot | Light | Dark | Mobile token | Web CSS variable |
+|------|-------|------|--------------|------------------|
+| Breakfast | `#e8a020` (amber) | `#ffc04c` | `SlotColors.breakfast` | `--slot-breakfast` |
+| Lunch | `#22a860` (green) | `#4cd080` | `SlotColors.lunch` | `--slot-lunch` |
+| Dinner | `#4c6ce0` (blue) | `#6c8cff` | `SlotColors.dinner` | `--slot-dinner` |
+| Snack(s) | `#06b6d4` (cyan) | `#22d3ee` | `SlotColors.snack` | `--slot-snack` |
+
+Each slot also exposes a `--slot-<name>-soft` variant (12% alpha, matches the `--macro-*-soft` pattern) for tinted backgrounds (chip pills, icon wrappers).
+
+_Added 2026-05-01 (ui-critic P2 #10) — replaces the prior pattern where `Snacks` borrowed `MacroColors.fat` (magenta `#e04888`) and collided 1:1 with the Fat macro tile on the same Today screen. Source-grep + render parity tests live at `apps/mobile/tests/unit/slotColorTokensParity.test.ts` and `apps/mobile/tests/unit/todayMealsSectionSlotColors.test.tsx`._
 
 ## Stimulant tracker colours
 
@@ -98,7 +113,7 @@ _Added 2026-04-18 (audit M9) — replaces the hardcoded hex values previously du
 
 1. **No hardcoded hex values in components.** All colours must come from theme tokens or `useThemeColors()`.
 2. **One primary per screen region.** Do not mix `primary` and `primaryLight` as competing accents.
-3. **Magenta is not a standalone accent** — only for fat macro and gradient endpoints.
+3. **Magenta is not a standalone accent** — only for fat macro and gradient endpoints. Specifically: **never use `MacroColors.fat` / `--macro-fat` as a meal-slot tint** (the Snacks slot uses `SlotColors.snack` / `--slot-snack`). Macro tokens are reserved for the Macro tile row.
 4. **Over-budget = warning (amber), never destructive (red).** Red implies failure.
 5. **Macro colours are immutable.** They must not change per-screen or per-context.
 6. **Surface tints use `color + "08"` consistently.** Do not mix "08", "12", "18", "20" for the same role.

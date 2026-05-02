@@ -44,7 +44,7 @@ import {
   UtensilsCrossed,
   type LucideIcon,
 } from "lucide-react-native";
-import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
+import { Accent, MacroColors, SlotColors, Spacing, Radius } from "@/constants/theme";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets } from "@/lib/calcTargets";
 import {
@@ -166,12 +166,14 @@ const SLOT_ICON_MOBILE: Record<PlanSlotIconKey, LucideIcon> = {
   snacks: Cookie,
 };
 
-// Colour parity with `TodayMealsSection.tsx` `SLOT_COLOR`.
+// Colour parity with `TodayMealsSection.tsx` `SLOT_COLOR`. Sourced from
+// `SlotColors` so the Snacks tint cannot drift back to magenta and
+// collide with `MacroColors.fat` (ui-critic P2 #10, 2026-05-01).
 const SLOT_COLOR_MOBILE: Record<PlanSlotIconKey, string> = {
-  breakfast: Accent.warning,
-  lunch: Accent.success,
-  dinner: Accent.primary,
-  snacks: MacroColors.fat,
+  breakfast: SlotColors.breakfast,
+  lunch: SlotColors.lunch,
+  dinner: SlotColors.dinner,
+  snacks: SlotColors.snack,
 };
 
 type PlanMeal = {
