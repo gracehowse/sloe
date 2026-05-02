@@ -19,6 +19,10 @@ import { classifyConfidence } from "../../lib/nutrition/aiLogging";
 import { AddIngredientDialog, type AddIngredientPayload } from "./suppr/add-ingredient-dialog";
 import { OverrideIngredientDialog } from "./suppr/override-ingredient-dialog";
 import { normaliseRecipeDisplayTitle } from "../../lib/recipe/normaliseDisplayTitle";
+import {
+  findSeedRecipeById,
+  isSeedRecipeId,
+} from "../../lib/recipes/seedRecipesV2";
 import { RecipeNotesCard } from "./suppr/recipe-notes-card";
 import { Badge } from "./suppr/badge";
 import {
@@ -197,7 +201,16 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
   const [activeTab, setActiveTab] = useState<"ingredients" | "steps" | "nutrition">("ingredients");
   const [cookModeOpen, setCookModeOpen] = useState(Boolean(autoOpenCookMode));
 
-  const isCatalogRecipe = false;
+  // Audit gap #3 (2026-05-01) — static seed recipes have no Supabase
+  // backing row; treat them like a catalogue entry so the existing
+  // catalogue-only short-circuits in this component (DB fetches +
+  // saves) all skip cleanly. The seed's ingredients + instructions
+  // are hydrated into the dbIngredients / dbInstructionsText state
+  // below so the existing render paths (Steps tab + Ingredients tab)
+  // work without a second branch in the JSX.
+  const isCatalogRecipe = isSeedRecipeId(recipe.id);
+  const seedRecipe = isCatalogRecipe ? findSeedRecipeById(recipe.id) : null;
+  void seedRecipe;
   const [publishedOverride, setPublishedOverride] = useState<boolean | null>(null);
   const isPublished = publishedOverride ?? (recipe.isPublished ?? null);
 
@@ -542,6 +555,35 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
       cancelled = true;
     };
   }, [recipe.id, isCatalogRecipe]);
+
+  /** Audit gap #3 (2026-05-01) — hydrate the seed-recipe content into
+   *  the same state slots the DB-backed path writes to, so the
+   *  Ingredients + Steps tabs render without bespoke seed branches. */
+  useEffect(() => {
+    if (!seedRecipe) return;
+    setDbInstructionsText(seedRecipe.steps.join("\n"));
+    setDbServings(seedRecipe.servings);
+    setDbPrepMin(seedRecipe.prepTimeMin > 0 ? seedRecipe.prepTimeMin : null);
+    setDbCookMin(seedRecipe.cookTimeMin > 0 ? seedRecipe.cookTimeMin : null);
+    setDbIngredients(
+      seedRecipe.ingredients.map((i): IngredientRow => ({
+        name: i.name,
+        amount: String(i.grams),
+        unit: "g",
+        // Seed cards display ingredient lines but never claim macro
+        // values for them — log-time ingredient pipeline owns nutrition.
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fat: 0,
+        fiberG: 0,
+        sugarG: 0,
+        sodiumMg: 0,
+        isVerified: true,
+        source: "Suppr Kitchen",
+      })),
+    );
+  }, [seedRecipe]);
 
   useEffect(() => {
     const s = dbServings ?? recipe.servings;

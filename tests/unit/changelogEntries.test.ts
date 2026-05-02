@@ -31,9 +31,11 @@ import {
 describe("changelog/entries", () => {
   it("getLatestChangelog returns the highest build number that has items (skips placeholder)", () => {
     const latest = getLatestChangelog();
-    // Build 11 is a placeholder with `items: []`. The latest user-
-    // visible entry must be build 10, not build 11.
-    expect(latest.buildNumber).toBe(10);
+    // Build 11 is a placeholder with `items: []` — the resolver must
+    // never return it. Build 12 is the latest user-visible entry
+    // (Discover seed Wave 4). When a future build N+1 ships items,
+    // bump the expectation here in lockstep.
+    expect(latest.buildNumber).toBe(12);
     expect(latest.items.length).toBeGreaterThan(0);
   });
 
@@ -45,7 +47,7 @@ describe("changelog/entries", () => {
     }
     // The currently-shipped builds in the data file.
     expect(all.map((e) => e.buildNumber)).toEqual(
-      expect.arrayContaining([10, 11]),
+      expect.arrayContaining([10, 11, 12]),
     );
   });
 

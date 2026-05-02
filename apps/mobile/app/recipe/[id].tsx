@@ -65,6 +65,10 @@ import { formatMacroValue } from "../../../../src/lib/nutrition/formatMacro";
 // other surfaces (web Library card) where targets are passed for real.
 import { allocateIngredientMacrosFromLines } from "../../../../src/lib/nutrition/allocateIngredientMacrosFromLines";
 import {
+  findSeedRecipeById,
+  isSeedRecipeId,
+} from "../../../../src/lib/recipes/seedRecipesV2";
+import {
   flatMacroRowsFromVerifyJson,
   overallConfidenceFromVerifyJson,
   perServingFromVerifyJson,
@@ -492,6 +496,53 @@ export default function RecipeDetailScreen() {
 
   useEffect(() => {
     if (!recipeId) { setLoading(false); return; }
+    // Audit gap #3 (2026-05-01) — seed recipes (`seed-v2-*` ids) have
+    // no backing Supabase row. Short-circuit the network query and
+    // hydrate from the static seed file. Logging from a seed still
+    // funnels through the standard ingredient-matching pipeline at
+    // log time, so per-meal nutrition is never invented.
+    if (isSeedRecipeId(recipeId)) {
+      const seed = findSeedRecipeById(recipeId);
+      if (seed) {
+        setRecipe({
+          id: seed.id,
+          title: seed.title,
+          description: seed.shortDescription,
+          instructions: seed.steps.join("\n"),
+          image_url: seed.heroImageUrl,
+          servings: seed.servings,
+          prep_time_min: seed.prepTimeMin > 0 ? seed.prepTimeMin : null,
+          cook_time_min: seed.cookTimeMin > 0 ? seed.cookTimeMin : null,
+          calories: seed.kcalPerPortion,
+          protein: seed.proteinG,
+          carbs: seed.carbsG,
+          fat: seed.fatG,
+          fiber_g: seed.fiberG,
+          meal_type: null,
+          source_url: null,
+          source_name: "Suppr Kitchen",
+          author_id: null,
+          author: null,
+          allergens: [],
+        });
+        setIngredients(
+          seed.ingredients.map((i) => ({
+            name: i.name,
+            amount: i.grams,
+            unit: "g",
+            // Static seed cards display ingredient lines but never
+            // claim macro values for them — the standard log-time
+            // ingredient pipeline owns nutrition.
+            calories: 0,
+            protein: 0,
+            carbs: 0,
+            fat: 0,
+          })),
+        );
+      }
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     (async () => {
       // Try with source columns; fall back without if they don't exist yet (migration pending).

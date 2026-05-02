@@ -115,10 +115,13 @@ describe("Discover tab — three-section layout (2026-04-20 prototype port)", ()
 
   describe("empty-state parity", () => {
     it("web still renders a 'No recipes / Nothing to show' empty state when there are no filtered recipes", () => {
-      // Either `recipes.length === 0` (old shape) or `recipes.length > 0 ? …`
-      // ternary (new shape) is fine — the contract is that the
+      // Either `recipes.length === 0` (old shape), `recipes.length > 0 ? …`
+      // ternary (mid shape), or `displayRecipes.length …` (post-Wave-4
+      // cluster carousels) is fine — the contract is that the
       // `Nothing to show` branch still exists.
-      expect(WEB_SRC).toMatch(/recipes\.length\s*(?:===?\s*0|>\s*0)/);
+      expect(WEB_SRC).toMatch(
+        /(?:displayRecipes|recipes)\.length\s*(?:===?\s*0|>\s*0|>\s*2)/,
+      );
       expect(WEB_SRC).toMatch(/Nothing to show/);
     });
 

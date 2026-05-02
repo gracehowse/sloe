@@ -54,6 +54,8 @@ import { DEFAULT_UPLOADED_RECIPE_IMAGE, FREE_SAVE_LIMIT } from "./appData/consta
 import { NEUTRAL_AVATAR_DATA_URI } from "@/lib/ui/neutralAvatar";
 import { fetchPublicRecipeSaveCounts } from "../lib/recipes/fetchPublicRecipeSaveCounts.ts";
 import { normalizeRecipeTitle } from "../lib/recipes/normalizeRecipeTitle.ts";
+import { SEED_RECIPES_V2 } from "../lib/recipes/seedRecipesV2.ts";
+import { seedsToRecipeCards } from "../lib/recipes/seedRecipesToCard.ts";
 import {
   looksLikeMissingTableError,
   syncDisabledBecauseSchemaMessage,
@@ -1809,7 +1811,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       isSaved: savedRecipeIds.includes(r.id),
       feedSource: "community" as const,
     }));
-    return uploaded;
+    // Audit gap #3 (2026-05-01) — prepend the curated static seed
+    // (`seedRecipesV2`) so Discover never feels empty at the solo-
+    // tester stage. Mirrors the mobile useDiscoverRecipes hook.
+    const seeds = seedsToRecipeCards(SEED_RECIPES_V2) as unknown as RecipeCard[];
+    return [...seeds, ...uploaded];
   }, [savedRecipeIds, uploadedRecipes]);
 
   const communityFeedCount = uploadedRecipes.length;
