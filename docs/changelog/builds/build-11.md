@@ -17,6 +17,16 @@ builds. See `docs/changelog/README.md` for the authoring workflow.
   rather than staying stuck on the skeleton loader. Mobile +
   web (`apps/mobile/app/(tabs)/progress.tsx`,
   `src/app/components/ProgressDashboard.tsx`).
+- **Cook mode — step instructions now match the scaled-to serving count.**
+  Previously, scaling a 4-serving recipe to 8 still showed step text
+  with the original quantities ("Add 4 tbsp olive oil"), and auto-log
+  on Done used the recipe's original yield rather than the scaled
+  value. Cook mode now shows a "Scaled for N servings" banner,
+  multiplies recognised (number unit) pairs in step text by the same
+  factor the recipe page uses, and the meal logged on Done matches
+  the calories the user actually cooked. Mobile + web
+  (`apps/mobile/app/recipe/[id].tsx`, `src/app/components/CookMode.tsx`,
+  `src/app/components/RecipeDetail.tsx`).
 
 ## New
 

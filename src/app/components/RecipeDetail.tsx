@@ -963,7 +963,16 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
         recipe={displayRecipe}
         instructionSteps={instructionSteps}
         ingredients={ingredients}
-        servings={baseServings}
+        // Servings handoff (P0, 2026-05-01) — pass the user's
+        // scaled-to value (`servings`), not the recipe's original
+        // yield (`baseServings`). Previously CookMode received
+        // `baseServings`, which dropped the scale at cook-mode entry —
+        // so a user who scaled to 8 servings cooked from "4 tbsp"
+        // step instructions and the auto-log under-counted calories
+        // by half. CookMode now receives both and computes
+        // `scaleFactor = servings / baseServings` internally.
+        servings={servings}
+        baseServings={baseServings}
         onExit={() => setCookModeOpen(false)}
         onViewTracker={onViewTracker}
       />

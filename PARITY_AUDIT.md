@@ -38,7 +38,7 @@
 | **Nutrition tracker** | `NutritionTracker`: daily logging, meal slots, quick-add, food search, macro progress rings, streaks, weekly view | `(tabs)/index.tsx`: day logging, food search, barcode, water/steps tracking | Both functional; mobile has water/steps |
 | **Progress / wellness** | `ProgressDashboard`: weight projection, deficit insight | `progress.tsx`: weight/steps/body-fat logging, imperial unit support | Both functional |
 | **Shopping list** | `ShoppingList`: from plan, category grouping, check-off, export | `shopping.tsx`: from plan, categories, check-off, share/copy export | In sync |
-| **Cook mode** | `CookMode`: step-by-step, timer extraction | `cook.tsx`: same + keep-awake | In sync |
+| **Cook mode** | `CookMode`: step-by-step, timer extraction, servings-scaled step text + auto-log | `cook.tsx` / `recipe/[id].tsx` modal: same + keep-awake, servings-scaled step text + auto-log | In sync |
 | **First-run checklist** | `FirstRunChecklist`: save 3 recipes → plan → log | `FirstRunChecklist` on Discover | In sync |
 | **Notifications** | `NotificationsBell` + `NotificationsCenter` | `notifications.tsx`: tab-based inbox + push permission | In sync |
 | **Profile / settings** | `Profile` (null-safe body stats) + `Settings` (persisted dietary, measurement, password reset) | `profile.tsx` (dietary prefs) + `settings.tsx` (theme, notifications) | In sync |

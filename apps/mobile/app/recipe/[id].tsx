@@ -77,6 +77,7 @@ import {
 } from "../../../../src/constants/regulatedAllergens";
 import { ingredientVerifyNeedsReview } from "../../../../src/lib/nutrition/verifyConfidencePolicy";
 import { wouldCoerceMacros } from "../../../../src/lib/nutrition/coerceRecipeMacrosForPlanning";
+import { scaleStepText } from "../../../../src/lib/nutrition/scaleStepText";
 import { carbsLabel, netCarbsForRow } from "../../../../src/lib/nutrition/netCarbs";
 import { RecipeNotesCard } from "../../components/RecipeNotesCard";
 // Phase 4 / B3.X — trust posture sweep (D-2026-04-27-16).
@@ -2308,68 +2309,115 @@ export default function RecipeDetailScreen() {
 
       {/* Cook Mode Overlay — Modal so Android hardware-back dismisses
           the overlay instead of navigating the router away from the
-          recipe screen entirely (audit 2026-04-30 modal-dismiss sweep). */}
-      <Modal
-        visible={cookMode && instructionSteps.length > 0}
-        animationType="slide"
-        presentationStyle="fullScreen"
-        onRequestClose={() => {
-          setCookMode(false);
-          setCookStep(0);
-        }}
-      >
-        <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top + 20, paddingHorizontal: Spacing.xl, justifyContent: "space-between", paddingBottom: insets.bottom + 20 }}>
-          <View>
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.lg }}>
-              <Text style={{ fontSize: 13, fontWeight: "700", color: Accent.primary, letterSpacing: 2 }}>COOK MODE</Text>
-              <Pressable
-                onPress={() => {
-                  setCookMode(false);
-                  setCookStep(0);
-                }}
-                accessibilityRole="button"
-                accessibilityLabel="Exit cook mode"
-                hitSlop={12}
-              >
-                <X size={28} color={colors.textSecondary} strokeWidth={2.25} />
-              </Pressable>
+          recipe screen entirely (audit 2026-04-30 modal-dismiss sweep).
+
+          Servings handoff (P0, 2026-05-01) — when the user has scaled
+          the recipe via the portion stepper (`logPortion`), the inline
+          step text still references the original quantities ("4 tbsp")
+          which makes the doubled batch under-seasoned. We compute
+          `cookScaleFactor = logPortion` (a 4-serving recipe at
+          `logPortion=2` is a doubled batch → scaleFactor 2) and pass
+          every step through `scaleStepText` before rendering. The
+          banner at the top names the actual serving count the user is
+          cooking (`recipe.servings × logPortion`) so the user can
+          confirm at a glance. Auto-log on Done already uses
+          `logPortion`, so calories logged match what was actually
+          cooked. */}
+      {(() => {
+        const cookScaleFactor = Number.isFinite(logPortion) && logPortion > 0 ? logPortion : 1;
+        const cookViewServings = Math.max(
+          1,
+          Math.round((recipe?.servings ?? 1) * cookScaleFactor * 100) / 100,
+        );
+        const rawStep = instructionSteps[cookStep] ?? "";
+        const cleanedStep = rawStep.replace(/^\d+[\.\)\-]\s*/, "");
+        const scaledStep =
+          cookScaleFactor !== 1
+            ? scaleStepText(cleanedStep, cookScaleFactor)
+            : cleanedStep;
+        return (
+          <Modal
+            visible={cookMode && instructionSteps.length > 0}
+            animationType="slide"
+            presentationStyle="fullScreen"
+            onRequestClose={() => {
+              setCookMode(false);
+              setCookStep(0);
+            }}
+          >
+            <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top + 20, paddingHorizontal: Spacing.xl, justifyContent: "space-between", paddingBottom: insets.bottom + 20 }}>
+              <View>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.lg }}>
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: Accent.primary, letterSpacing: 2 }}>COOK MODE</Text>
+                  <Pressable
+                    onPress={() => {
+                      setCookMode(false);
+                      setCookStep(0);
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Exit cook mode"
+                    hitSlop={12}
+                  >
+                    <X size={28} color={colors.textSecondary} strokeWidth={2.25} />
+                  </Pressable>
+                </View>
+                {cookScaleFactor !== 1 && (
+                  <View
+                    accessibilityRole="text"
+                    accessibilityLabel={`Recipe scaled for ${cookViewServings} servings`}
+                    style={{
+                      backgroundColor: Accent.primary + "15",
+                      borderRadius: Radius.md,
+                      borderWidth: 1,
+                      borderColor: Accent.primary + "30",
+                      paddingVertical: 8,
+                      paddingHorizontal: 12,
+                      marginBottom: Spacing.md,
+                    }}
+                  >
+                    <Text style={{ color: Accent.primary, fontWeight: "700", fontSize: 13, textAlign: "center" }}>
+                      Scaled for {cookViewServings} serving{cookViewServings !== 1 ? "s" : ""}
+                    </Text>
+                  </View>
+                )}
+                <Text style={{ fontSize: 14, color: colors.textSecondary, marginBottom: 8 }}>
+                  Step {cookStep + 1} of {instructionSteps.length}
+                </Text>
+                <Text style={{ fontSize: 22, fontWeight: "600", color: colors.text, lineHeight: 32 }}>
+                  {scaledStep}
+                </Text>
+              </View>
+              <View style={{ flexDirection: "row", gap: Spacing.md }}>
+                <Pressable
+                  style={{ flex: 1, backgroundColor: cookStep > 0 ? colors.card : colors.border, borderRadius: Radius.md, paddingVertical: 16, alignItems: "center", borderWidth: 1, borderColor: colors.border }}
+                  onPress={() => setCookStep((s) => Math.max(0, s - 1))}
+                  disabled={cookStep === 0}
+                >
+                  <Text style={{ fontWeight: "700", color: cookStep > 0 ? colors.text : colors.textTertiary }}>Previous</Text>
+                </Pressable>
+                {cookStep < instructionSteps.length - 1 ? (
+                  <Pressable
+                    style={{ flex: 1, backgroundColor: Accent.primary, borderRadius: Radius.md, paddingVertical: 16, alignItems: "center" }}
+                    onPress={() => setCookStep((s) => s + 1)}
+                  >
+                    <Text style={{ fontWeight: "700", color: "#fff" }}>Next</Text>
+                  </Pressable>
+                ) : (
+                  <Pressable
+                    style={{ flex: 1, backgroundColor: Accent.success, borderRadius: Radius.md, paddingVertical: 16, alignItems: "center" }}
+                    onPress={() => {
+                      setCookMode(false);
+                      setCookStep(0);
+                    }}
+                  >
+                    <Text style={{ fontWeight: "700", color: "#fff" }}>Done!</Text>
+                  </Pressable>
+                )}
+              </View>
             </View>
-            <Text style={{ fontSize: 14, color: colors.textSecondary, marginBottom: 8 }}>
-              Step {cookStep + 1} of {instructionSteps.length}
-            </Text>
-            <Text style={{ fontSize: 22, fontWeight: "600", color: colors.text, lineHeight: 32 }}>
-              {instructionSteps[cookStep]?.replace(/^\d+[\.\)\-]\s*/, "")}
-            </Text>
-          </View>
-          <View style={{ flexDirection: "row", gap: Spacing.md }}>
-            <Pressable
-              style={{ flex: 1, backgroundColor: cookStep > 0 ? colors.card : colors.border, borderRadius: Radius.md, paddingVertical: 16, alignItems: "center", borderWidth: 1, borderColor: colors.border }}
-              onPress={() => setCookStep((s) => Math.max(0, s - 1))}
-              disabled={cookStep === 0}
-            >
-              <Text style={{ fontWeight: "700", color: cookStep > 0 ? colors.text : colors.textTertiary }}>Previous</Text>
-            </Pressable>
-            {cookStep < instructionSteps.length - 1 ? (
-              <Pressable
-                style={{ flex: 1, backgroundColor: Accent.primary, borderRadius: Radius.md, paddingVertical: 16, alignItems: "center" }}
-                onPress={() => setCookStep((s) => s + 1)}
-              >
-                <Text style={{ fontWeight: "700", color: "#fff" }}>Next</Text>
-              </Pressable>
-            ) : (
-              <Pressable
-                style={{ flex: 1, backgroundColor: Accent.success, borderRadius: Radius.md, paddingVertical: 16, alignItems: "center" }}
-                onPress={() => {
-                  setCookMode(false);
-                  setCookStep(0);
-                }}
-              >
-                <Text style={{ fontWeight: "700", color: "#fff" }}>Done!</Text>
-              </Pressable>
-            )}
-          </View>
-        </View>
-      </Modal>
+          </Modal>
+        );
+      })()}
     </View>
   );
 }
