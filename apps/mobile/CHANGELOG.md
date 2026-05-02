@@ -1,5 +1,18 @@
 # Mobile App Changelog
 
+## 2026-05-01 — EmptyState upgrade (illustration disc + headline ladder + CTA)
+
+### Design system
+- **`<EmptyState>` primitive** lifted from a 13pt-bold-and-thats-it shape to: optional 72pt `Accent.primary + "10"` tinted illustration disc + `Type.headline` (17pt) title + `Type.body` (14pt) description + `Spacing.md` rhythm + optional `cta` slot below (ui-critic finding #6, P1).
+- New `illustration` slot accepts a 32pt-class lucide glyph; existing `icon` slot still works for back-compat (rendered as the legacy small leading icon when `illustration` is absent).
+- New `cta` prop is the canonical name for the button slot below the description; the legacy `action` prop still works (alias) and `cta` wins if both are passed.
+- **Call sites updated** with appropriate illustrations:
+  - `QuickAddPanel` (mobile + web): `Star` (favourites), `History` (frequent), `Clock` (recent).
+  - `SavedMealsTab` (web): `LogIn` (signed-out), `Bookmark` (no saved meals).
+  - Mobile `QuickAddPanel` saved-meals empty: `LogIn` / `Bookmark` parity.
+- Web mirror in `src/app/components/suppr/empty-state.tsx` matches the same shape (`size-[72px] rounded-full bg-primary/10`, `text-[17px] font-semibold leading-[22px]`, `text-sm text-muted-foreground`).
+- Lock-in tests: `apps/mobile/tests/unit/emptyStateUpgrade.test.tsx` and `tests/unit/emptyStateUpgrade.test.tsx`.
+
 ## 2026-04-20 — RevenueCat Customer Center + v2 API key support
 
 ### RevenueCat
