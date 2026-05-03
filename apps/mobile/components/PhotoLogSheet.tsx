@@ -1,7 +1,8 @@
 /**
- * PhotoLogSheet — mobile Pro-tier AI photo logging sheet.
+ * PhotoLogSheet — mobile AI photo logging sheet.
  *
- * Re-architected 2026-05-01 (`docs/decisions/2026-05-01-photo-log-rangefirst.md`).
+ * Re-architected 2026-05-01 (`docs/decisions/2026-05-01-photo-log-rangefirst.md`)
+ * + free-taster 2026-05-02 (`docs/decisions/2026-05-02-photo-log-free-taster.md`).
  *
  * Renders a ChatGPT-grade itemized breakdown of a meal photo: items
  * grouped by macro role ("Bread + dips", "Protein + fats", "Extras"),
@@ -9,6 +10,18 @@
  * an optional add-on chip strip ("Add Glass of red wine: +120-150 kcal"),
  * and a plate total range. Replaces the previous single-number-per-item
  * UI which forced the user to live with a (lossy) point estimate.
+ *
+ * Free taster (2026-05-02):
+ *  - Non-Pro users (Free + Base) get FREE_PHOTO_LOG_WEEKLY_LIMIT (=5)
+ *    free photo logs per rolling 7-day window before the AI paywall.
+ *  - The sheet ALWAYS opens for any tier — the gate is the SECOND
+ *    photo after exhaustion (server returns 403 upgrade_required),
+ *    not the FIRST.
+ *  - When `userTier !== "pro"`, a thin "X free logs remaining this
+ *    week" line renders under the caption (optimistic until the first
+ *    server response, then authoritative `freeQuotaRemaining`).
+ *  - On 403 from the server, the sheet calls `onUpgradeRequired` so
+ *    the host can dismiss the sheet and open the AiPaywallSheet.
  *
  * Mirrors `src/app/components/suppr/photo-log-dialog.tsx` exactly:
  *  1. Camera / library picker via expo-image-picker.
@@ -57,6 +70,7 @@ import {
   type PhotoLogItemRanged,
 } from "../../../src/lib/nutrition/photoLogRanges";
 import { persistPhotoCorrections } from "../../../src/lib/nutrition/photoCorrectionPersist";
+import { FREE_PHOTO_LOG_WEEKLY_LIMIT } from "../../../src/lib/nutrition/photoLogQuota";
 import { supabase } from "@/lib/supabase";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "../../../src/lib/analytics/events";
@@ -93,6 +107,20 @@ type Props = {
   apiBase: string;
   onCommit: (items: AiLoggedItem[]) => void;
   colors: Theme;
+  /**
+   * 2026-05-02 — free-taster gating. Non-Pro users see "X free logs
+   * remaining this week" under the caption; on a 403 from the server
+   * the sheet calls `onUpgradeRequired` so the host can route to the
+   * AiPaywallSheet. Defaults to "pro" so existing call sites that
+   * don't pass it (web mirror, tests) preserve old behaviour.
+   */
+  userTier?: "free" | "base" | "pro";
+  /**
+   * Called when the server returns 403 upgrade_required (free-quota
+   * exhausted on the current request). Host dismisses this sheet and
+   * opens the AiPaywallSheet with `feature: "photo_log"`.
+   */
+  onUpgradeRequired?: () => void;
 };
 
 type Stage = "pick" | "analysing" | "review" | "error";
@@ -105,6 +133,8 @@ export default function PhotoLogSheet({
   apiBase,
   onCommit,
   colors,
+  userTier = "pro",
+  onUpgradeRequired,
 }: Props) {
   const [stage, setStage] = useState<Stage>("pick");
   const [asset, setAsset] = useState<PickedAsset | null>(null);
@@ -112,6 +142,15 @@ export default function PhotoLogSheet({
   const [addons, setAddons] = useState<PhotoLogAddon[]>([]);
   const [notes, setNotes] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  /**
+   * 2026-05-02 — authoritative free-taster quota signal returned by
+   * the server. `null` = no successful response yet; we render the
+   * optimistic FREE_PHOTO_LOG_WEEKLY_LIMIT until the first 200 lands,
+   * then this takes over. Pro users never see the line at all (the
+   * `isFreeTier` guard short-circuits below).
+   */
+  const [quotaRemaining, setQuotaRemaining] = useState<number | null>(null);
+  const isFreeTier = userTier !== "pro";
   /** Snapshot of the AI's items in `AiLoggedItem` form so the photo-
    *  corrections-persist helper can diff user edits at commit time
    *  (the helper expects that shape). Stored as a ref because we
@@ -126,6 +165,9 @@ export default function PhotoLogSheet({
       setAddons([]);
       setNotes(null);
       setErrorMsg(null);
+      // Reset the quota signal on each fresh open. The first analyse
+      // call populates it from the server response.
+      setQuotaRemaining(null);
       originalItemsRef.current = [];
       track(AnalyticsEvents.ai_photo_log_started);
     }
@@ -197,10 +239,23 @@ export default function PhotoLogSheet({
       });
       const data = await resp.json();
       if (resp.status === 403 && data?.error === "upgrade_required") {
+        // 2026-05-02 — free-taster quota exhausted. Hand off to the
+        // host so it can close this sheet and open the AiPaywallSheet
+        // (the paywall is the SECOND-photo experience, not in-sheet
+        // upgrade copy). Fire the funnel event so dashboards keep
+        // reporting.
+        if (onUpgradeRequired) {
+          track(AnalyticsEvents.ai_photo_log_paywalled);
+          onUpgradeRequired();
+          return;
+        }
+        // Back-compat: if the host didn't wire the upgrade callback
+        // (older callers), fall through to the in-sheet error so the
+        // gate is never silently swallowed.
         setErrorMsg(
           typeof data.message === "string"
             ? data.message
-            : "AI photo logging is a Pro feature. Upgrade to use it.",
+            : "You've used your free photo logs for this week. Upgrade to Pro for unlimited.",
         );
         setStage("error");
         return;
@@ -213,6 +268,11 @@ export default function PhotoLogSheet({
         );
         setStage("error");
         return;
+      }
+      // Authoritative remaining-quota signal from the server (only
+      // meaningful for non-Pro). `null` for Pro.
+      if (typeof data.freeQuotaRemaining === "number") {
+        setQuotaRemaining(data.freeQuotaRemaining);
       }
       // Snapshot the AI's items in `AiLoggedItem` form so the photo-
       // corrections-persist helper can diff user edits at commit time
@@ -227,7 +287,7 @@ export default function PhotoLogSheet({
       setErrorMsg("Photo logging failed. Check your connection and try again.");
       setStage("error");
     }
-  }, [accessToken, apiBase, asset]);
+  }, [accessToken, apiBase, asset, onUpgradeRequired]);
 
   const groups = useMemo(() => groupItemsByCategory(items), [items]);
   const totalKcal = useMemo(
@@ -360,11 +420,36 @@ export default function PhotoLogSheet({
                 <X size={IconSize.hero} color={colors.textSecondary} strokeWidth={2.25} />
               </Pressable>
             </View>
-            <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: Spacing.md }}>
+            <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 4 }}>
               {stage === "review"
                 ? `${items.length} item${items.length === 1 ? "" : "s"} on the plate. Tap any to verify or remove.`
                 : "Snap a photo. We'll itemize it with kcal ranges grouped by macro role."}
             </Text>
+            {/*
+             * 2026-05-02 — free-taster quota line. Renders for
+             * non-Pro tiers only. Optimistic FREE_PHOTO_LOG_WEEKLY_LIMIT
+             * before the first server response; authoritative
+             * `quotaRemaining` after. `accessibilityLabel` pins the
+             * count without being brittle to whitespace / interpunct.
+             */}
+            {isFreeTier &&
+              (() => {
+                const shown = quotaRemaining ?? FREE_PHOTO_LOG_WEEKLY_LIMIT;
+                const noun = shown === 1 ? "log" : "logs";
+                return (
+                  <Text
+                    accessibilityLabel={`${shown} free photo ${noun} remaining this week`}
+                    style={{
+                      fontSize: 11,
+                      color: colors.textTertiary,
+                      marginBottom: Spacing.md,
+                    }}
+                  >
+                    {shown} free {noun} remaining this week
+                  </Text>
+                );
+              })()}
+            {!isFreeTier && <View style={{ marginBottom: Spacing.sm }} />}
 
             {stage === "pick" && (
               <View>

@@ -5,6 +5,10 @@ import {
   parsePhotoLogRangedResponse,
   type PhotoLogRangedResponse,
 } from "@/lib/nutrition/photoLogRanges";
+import {
+  FREE_PHOTO_LOG_WEEKLY_LIMIT,
+  FREE_PHOTO_LOG_WINDOW_MS,
+} from "@/lib/nutrition/photoLogQuota";
 
 export const runtime = "nodejs";
 
@@ -106,35 +110,69 @@ export async function POST(req: Request) {
   }
 
   const tier = await getUserTier(userId);
-  // Photo meal recognition is Pro-only by product intent (mirrors the
-  // client gates in `apps/mobile/app/(tabs)/index.tsx` + photo-log
-  // dialog, and the `PRICING_TIERS` Pro bullet "AI photo meal
-  // recognition (100/day)"). Close the previous Base + Free loophole
-  // (2026-04-19 sync-enforcer finding — documented in
-  // `docs/product/landing-maintenance.md`) so the server matches what
-  // the UI tells Free + Base users.
-  if (tier !== "pro") {
-    return NextResponse.json(
-      { ok: false, error: "upgrade_required", message: "AI photo logging is a Pro feature." },
-      { status: 403 },
-    );
-  }
+  // 2026-05-02 — photo-log is no longer Pro-only. Free + Base get
+  // FREE_PHOTO_LOG_WEEKLY_LIMIT (=5) free photo logs per rolling 7-day
+  // window via a separate `api:photo-log:free-quota` bucket; Pro keeps
+  // the existing `api:photo-log` 100/day cap. The previous blanket
+  // `tier !== "pro"` 403 is gone — the gate is the SECOND photo after
+  // exhaustion, not the FIRST. See
+  // `docs/decisions/2026-05-02-photo-log-free-taster.md`.
+  const isFree = tier !== "pro";
 
-  // P0-6 (2026-04-25): scope per-user via the `userId` field rather
-  // than embedding it in the prefix. Bucket key drains independently
-  // for each (user, IP) tuple, closing both the IP-rotation bypass
-  // and the shared-NAT starvation case.
-  const limited = await rateLimit({
-    keyPrefix: "api:photo-log",
-    userId,
-    limit: 100,
-    windowMs: 24 * 60 * 60_000,
-  });
-  if (!limited.ok) {
-    return NextResponse.json(
-      { ok: false, error: "rate_limited", retryAfterSec: limited.retryAfterSec },
-      { status: 429, headers: { "Retry-After": String(limited.retryAfterSec) } },
-    );
+  // `freeQuotaRemaining` is `null` for Pro (uncapped at the
+  // user-visible level — the 100/day bucket is plumbing) and a
+  // non-negative integer for Free / Base. The success response
+  // surfaces this so the client renders an authoritative "X free
+  // logs remaining this week" line.
+  let freeQuotaRemaining: number | null = null;
+
+  if (isFree) {
+    // Free-taster bucket — drains independently of the Pro 100/day
+    // bucket. We increment up-front so an attacker who deliberately
+    // exhausts the quota cannot also drain our OpenAI budget. The
+    // tradeoff (a network/parse failure burns one of the user's 5
+    // weekly logs) is documented in the decision doc as a known v1
+    // limitation; see "Quota burn on upstream error" in
+    // `docs/decisions/2026-05-02-photo-log-free-taster.md`. Revisit
+    // with a credit-on-error counter table if the cohort metric
+    // shows real-world friction.
+    const freeLimited = await rateLimit({
+      keyPrefix: "api:photo-log:free-quota",
+      userId,
+      limit: FREE_PHOTO_LOG_WEEKLY_LIMIT,
+      windowMs: FREE_PHOTO_LOG_WINDOW_MS,
+    });
+    if (!freeLimited.ok) {
+      // Free-taster exhausted — host opens the AiPaywallSheet/Dialog
+      // on this 403. We DELIBERATELY do not also call the Pro 100/day
+      // limiter so its bucket isn't touched by non-Pro traffic.
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "upgrade_required",
+          message:
+            "You've used your free photo logs for this week. Upgrade to Pro for unlimited.",
+          freeQuotaRemaining: 0,
+        },
+        { status: 403 },
+      );
+    }
+    freeQuotaRemaining = freeLimited.remaining;
+  } else {
+    // Pro path — the existing per-user 100/day bucket. Untouched by
+    // the free-taster work (P0-6, 2026-04-25 — per-user scoping).
+    const limited = await rateLimit({
+      keyPrefix: "api:photo-log",
+      userId,
+      limit: 100,
+      windowMs: 24 * 60 * 60_000,
+    });
+    if (!limited.ok) {
+      return NextResponse.json(
+        { ok: false, error: "rate_limited", retryAfterSec: limited.retryAfterSec },
+        { status: 429, headers: { "Retry-After": String(limited.retryAfterSec) } },
+      );
+    }
   }
 
   const key = process.env.OPENAI_API_KEY?.trim();
@@ -275,5 +313,12 @@ export async function POST(req: Request) {
     );
   }
 
-  return NextResponse.json(outcome.response satisfies PhotoLogRangedResponse);
+  // 2026-05-02 — surface `freeQuotaRemaining` on the success response
+  // so the client's quota line is authoritative after the first
+  // successful analyse. `null` for Pro (uncapped at the user-visible
+  // level); a non-negative integer for Free + Base.
+  return NextResponse.json({
+    ...(outcome.response satisfies PhotoLogRangedResponse),
+    freeQuotaRemaining,
+  });
 }

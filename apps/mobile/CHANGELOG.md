@@ -53,6 +53,71 @@ Disc tint differs numerically — mobile = 6.25% alpha (`+ "10"` hex),
 web = 10% alpha (`bg-primary/10` Tailwind) — visually similar enough
 that any drift is captured by visual-qa, not numeric tests.
 
+## 2026-05-02 — photo-log free taster (5/week) replaces blanket Pro gate
+
+Photo-log was Pro-only — Free + Base users hit the AI paywall before
+they could tap the camera once. Two final audits confirmed the gate
+should land on the SECOND photo, not the first; Cal AI's runaway
+growth model is built on giving every user free shots of the AI
+before asking for money, and we have the better feature (kcal ranges
++ verified DB) but were gating it before users could taste it.
+
+### Server (Next.js route, shared with web)
+- New shared module `src/lib/nutrition/photoLogQuota.ts` exporting
+  `FREE_PHOTO_LOG_WEEKLY_LIMIT = 5` and `FREE_PHOTO_LOG_WINDOW_MS =
+  168h`. Single source of truth — imported by route + mobile sheet
+  + web dialog + integration test so the number cannot drift.
+- `app/api/nutrition/photo-log/route.ts`: removed the blanket `tier
+  !== "pro"` 403; non-Pro now goes through a separate
+  `api:photo-log:free-quota` rate-limit bucket (5 per rolling 168h
+  via Upstash sliding window). Pro keeps the existing `api:photo-log`
+  100/day bucket — untouched. 200 responses now include
+  `freeQuotaRemaining: number | null`.
+
+### Mobile sheet
+- `apps/mobile/components/PhotoLogSheet.tsx`: accepts new `userTier`
+  + `onUpgradeRequired` props. Non-Pro renders "X free logs remaining
+  this week" under the caption (optimistic 5 until first response,
+  authoritative `freeQuotaRemaining` after). On 403 from the server,
+  fires `ai_photo_log_paywalled` and calls `onUpgradeRequired`.
+- `apps/mobile/app/(tabs)/index.tsx`: `handleOpenPhotoLog` no longer
+  checks tier — opens the sheet for any tier. `TodaySnapShortcut`
+  + LogSheet photo entry + barcode-not-found photo fallback all
+  drop their `locked` flag. `PhotoLogSheet` now wired with
+  `onUpgradeRequired` that closes the sheet and opens
+  `AiPaywallSheet { feature: "photo_log" }`.
+
+### Paywall copy (mobile + web, identical)
+- `AiPaywallSheet.tsx` + `src/app/components/suppr/ai-paywall-dialog.tsx`:
+  `photo_log` `FEATURE_COPY` updated to "Get unlimited photo logs
+  with Pro" / "You've used all 5 of your free photo logs this week.
+  Pro unlocks unlimited AI photo logging (100/day) — …" so the
+  conversion moment names the experience the user just had. The
+  paywall now lands ONLY on quota exhaustion.
+
+### Pricing copy
+- `src/lib/landing/pricingTiers.ts`: Free tier gains "AI photo
+  logging (5 per week)" bullet; Pro bullet sharpened to "Unlimited
+  AI photo meal recognition (100/day)" so the gap is explicit.
+- `docs/product/landing-maintenance.md`: photo-log row flipped from
+  "Server-gated Pro" to "Free taster (5/week) + Pro 100/day".
+
+### Tests
+- `tests/integration/photoLogRoute.test.ts`: 8 scenarios pinning
+  the new behaviour — unauthenticated, free-with-quota, free-
+  exhausted, base-treated-as-free, pro-bypasses-free-quota, pro-
+  100/day-exhausted, no OpenAI key, non-multipart.
+- `tests/unit/photoLogDialogFreeTaster.test.tsx` (web) +
+  `apps/mobile/tests/unit/photoLogSheetFreeTaster.test.tsx` (mobile)
+  pin the quota line + back-compat-to-Pro default + 403-handoff
+  contract on both platforms.
+
+### Decision doc
+- `docs/decisions/2026-05-02-photo-log-free-taster.md` — full
+  rationale (5/week vs 1 vs 3/day, rolling 7d vs midnight TZ, two
+  buckets vs lower-cap, quota-burn-on-error tradeoff, parity
+  matrix, follow-ups).
+
 ## 2026-05-02 — parity: web "All nutrients" + LogSheet meals empty state
 
 User feedback: (1) web's "All nutrients" panel was the desired pattern and

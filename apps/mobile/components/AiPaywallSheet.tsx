@@ -54,15 +54,23 @@ import Badge from "./Badge";
 
 export type AiPaywallFeature = "voice_log" | "photo_log";
 
-/** Shared copy constants. Mirrors `FEATURE_COPY` in the web dialog. */
+/**
+ * Shared copy constants. Mirrors `FEATURE_COPY` in the web dialog.
+ *
+ * 2026-05-02 — `photo_log` copy updated to reference the user's
+ * just-experienced free taster (5/week). The sheet now lands ONLY
+ * after exhaustion (PhotoLogSheet calls `onUpgradeRequired` on 403),
+ * so the copy can name the experience the user just had. See
+ * `docs/decisions/2026-05-02-photo-log-free-taster.md`.
+ */
 const FEATURE_COPY: Record<AiPaywallFeature, { title: string; body: string }> = {
   voice_log: {
     title: "Voice logging is a Pro feature",
     body: "Describe what you ate, and we'll estimate macros using our verified nutrition database. Voice logging is included with a Pro subscription.",
   },
   photo_log: {
-    title: "AI photo logging is a Pro feature",
-    body: "Snap a photo of your meal and we'll identify foods, estimate portions, and match against our verified nutrition database. AI photo logging is included with a Pro subscription.",
+    title: "Get unlimited photo logs with Pro",
+    body: "You've used all 5 of your free photo logs this week. Pro unlocks unlimited AI photo logging (100/day) — snap any meal and we'll identify foods, estimate portions, and match against our verified nutrition database.",
   },
 };
 
