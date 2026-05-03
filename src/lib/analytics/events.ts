@@ -568,6 +568,37 @@ export const AnalyticsEvents = {
    * or the close X. No payload beyond `platform` — there's only one
    * decision path. */
   milestone_30_dismissed: "milestone_30_dismissed",
+  /** Food search returned zero hits across all enabled sources
+   *  (USDA + Open Food Facts + Edamam + FatSecret + custom + generic
+   *  fallback). Fires once per debounced search that completes with
+   *  no rows. Used to identify dictionary gaps for backfill
+   *  prioritisation; complements `food_search_request_dictionary_add`
+   *  (which is the user-confirmed "we are missing this" signal).
+   *
+   *  Payload:
+   *    { query: string,
+   *      len: number,                  // query.trim().length
+   *      source: "mobile" | "web" }
+   *
+   *  Added 2026-05-02 per competitor audit move-blocker #2 ("MFP
+   *  refugees don't bounce on missing SKU"). Authority:
+   *  docs/decisions/2026-04-30-audit-vs-competitors-wave2.md.
+   *  Replaces stale PR #36 — rebuilt on current main. */
+  food_search_no_result: "food_search_no_result",
+  /** User explicitly asked us to add a missing food to the
+   *  dictionary via the no-result empty-state CTA ("Tell us we're
+   *  missing this"). Higher-signal than `food_search_no_result` —
+   *  the user took the deliberate action vs simply hitting an empty
+   *  state. Drives backfill prioritisation directly. Deduped per
+   *  query so triple-tap is a single emit.
+   *
+   *  Payload:
+   *    { query: string,
+   *      len: number,
+   *      source: "mobile" | "web" }
+   *
+   *  Added 2026-05-02 alongside `food_search_no_result`. */
+  food_search_request_dictionary_add: "food_search_request_dictionary_add",
 } as const;
 
 export type AnalyticsEventName = (typeof AnalyticsEvents)[keyof typeof AnalyticsEvents];
