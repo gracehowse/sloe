@@ -46,6 +46,10 @@ type Theme = {
   background: string;
   inputBg: string;
   border: string;
+  /** Foreground colour for primary-tinted CTAs (Parse / Try again /
+   *  Log all) and the active mic. Wired through from the host so we
+   *  don't hardcode `#fff` here — see Colors.{light,dark}. */
+  primaryForeground: string;
 };
 
 type Props = {
@@ -275,7 +279,7 @@ export default function VoiceLogSheet({
                   >
                     <Mic
                       size={IconSize.hero}
-                      color={isRecording ? "#fff" : Accent.success}
+                      color={isRecording ? colors.primaryForeground : Accent.success}
                       strokeWidth={2.25}
                     />
                   </Pressable>
@@ -322,13 +326,13 @@ export default function VoiceLogSheet({
                 accessibilityRole="alert"
                 style={{
                   borderWidth: 1,
-                  borderColor: "#EF444466",
-                  backgroundColor: "#EF444410",
+                  borderColor: Accent.destructive + "66",
+                  backgroundColor: Accent.destructive + "10",
                   borderRadius: Radius.md,
                   padding: Spacing.md,
                 }}
               >
-                <Text style={{ fontSize: 13, color: "#B91C1C" }}>{errorMsg ?? "Something went wrong."}</Text>
+                <Text style={{ fontSize: 13, color: Accent.destructive }}>{errorMsg ?? "Something went wrong."}</Text>
               </View>
             )}
 
@@ -385,7 +389,7 @@ export default function VoiceLogSheet({
                     backgroundColor: transcript.trim() ? Accent.primary : colors.cardBorder,
                   }}
                 >
-                  <Text style={{ fontSize: 14, fontWeight: "700", color: "#fff" }}>Parse</Text>
+                  <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primaryForeground }}>Parse</Text>
                 </Pressable>
               )}
               {stage === "error" && (
@@ -401,7 +405,7 @@ export default function VoiceLogSheet({
                     backgroundColor: Accent.primary,
                   }}
                 >
-                  <Text style={{ fontSize: 14, fontWeight: "700", color: "#fff" }}>Try again</Text>
+                  <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primaryForeground }}>Try again</Text>
                 </Pressable>
               )}
               {stage === "review" && (
@@ -418,7 +422,7 @@ export default function VoiceLogSheet({
                     backgroundColor: items.length === 0 ? colors.cardBorder : Accent.primary,
                   }}
                 >
-                  <Text style={{ fontSize: 14, fontWeight: "700", color: "#fff" }}>
+                  <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primaryForeground }}>
                     {hasLowConfidence ? "Log anyway" : "Log all"}
                   </Text>
                 </Pressable>

@@ -65,6 +65,7 @@ const COLORS = {
   background: "#0a0a0f",
   inputBg: "#1a1a24",
   border: "#2a2a3a",
+  primaryForeground: "#ffffff",
 };
 
 describe("PhotoLogSheet (mobile) — free-taster quota line", () => {

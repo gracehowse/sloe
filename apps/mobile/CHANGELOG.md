@@ -70,6 +70,63 @@ Sizes route through canonical `IconSize` token in `apps/mobile/constants/theme.t
 
 Lock-in regression test `apps/mobile/tests/unit/iconLanguageNoIonicons.test.ts` fails CI if any of the four files re-imports `@expo/vector-icons` or references `Ionicons`.
 
+## 2026-05-02 — Hex literals → theme tokens
+
+ui-critic finding #2 (P1). Mixed raw hex literals (`#EF4444` / `#B91C1C`
+destructive, `#F59E0B` / `#B45309` warning, `#fff` primary-foreground)
+were sitting next to `Accent.*` token consumers in five mobile surfaces.
+The hue-by-hue divergence makes dark-mode contrast brittle and lets
+palette tweaks silently miss four files at a time. Suppr's
+`Accent.destructive` is `#e04848`, not Tailwind's `#EF4444` — close
+hue, distinct value.
+
+### What changed
+
+- `apps/mobile/components/VoiceLogSheet.tsx` — error banner border /
+  background / text now use `Accent.destructive + "66"` / `+ "10"` /
+  `Accent.destructive`. Active-mic icon + Parse / Try again / Log all
+  CTA labels now use `colors.primaryForeground`. Local `Theme` prop
+  contract gained `primaryForeground: string`.
+- `apps/mobile/components/PhotoLogSheet.tsx` — same destructive
+  banner sweep. Low-confidence item border / background switched to
+  `Accent.warning + "55"` / `+ "0F"`; the "Low confidence — verify"
+  caption switched to `Accent.warning`. Analyse / Try again / Save
+  to today CTA labels now use `colors.primaryForeground`. Local
+  `Theme` prop contract gained `primaryForeground: string`.
+- `apps/mobile/components/today/TodayDateHeader.tsx` — Day / Week
+  glyph active-state colour now reads `primaryForegroundColor` from
+  a new required prop (matches the existing
+  `textColor`/`textSecondaryColor`/etc. flat-prop convention).
+- `apps/mobile/app/recipe/[id].tsx` — `stepNumberText`,
+  `actionBtnText`, the portion-stepper active label, the Start
+  Cooking icon, the Save (yield modal) text, the recipe Log row
+  (icon + spinner + label), and the Cook Mode Next / Done labels
+  now route through `colors.primaryForeground`.
+- `apps/mobile/app/(tabs)/index.tsx` — call sites for
+  `<VoiceLogSheet>`, `<PhotoLogSheet>`, and `<TodayDateHeader>` now
+  pass `colors.primaryForeground` through.
+
+### Documented anchor exceptions (NOT swept)
+
+- `Badge.tsx` `#94a3b8` slate-400 neutral variant anchor
+- `Badge.tsx` `#8b5cf6` AI violet variant anchor (mirrors web `--chart-5`)
+- `#00000066` modal-overlay tint shared with the web dialog
+
+### Tests
+
+- `apps/mobile/tests/unit/hexTokenSweep.test.ts` — new lock-in suite.
+  Reads each guarded file's source (comment-stripped) and fails if
+  any banned hex (`#EF4444` / `#B91C1C` / `#F59E0B` / `#B45309` /
+  `#fff` / `#FFFFFF`) reappears outside the documented anchors. Also
+  pins the three anchor exceptions so they don't get accidentally
+  removed by an over-eager future sweep.
+
+### Parity
+
+Mobile-only surface — the web equivalents already use CSS custom
+properties (`--destructive`, `--warning`, `--primary-foreground`)
+and need no changes.
+
 ## 2026-05-02 — EmptyState: 72pt disc + headline/body type ladder + optional CTA
 
 ui-critic finding #6 (P1). The pre-2026-05-02 `<EmptyState>` primitive
