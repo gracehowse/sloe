@@ -179,6 +179,16 @@ import {
   shouldShowMilestone30Day,
   type Milestone30DayContent,
 } from "@/lib/milestone30Day";
+// Weekly check-in ritual (PR claude/weekly-checkin-ritual-v2, 2026-05-02 —
+// rebuild of #26). MacroFactor-style soft prompt that surfaces the
+// adaptive-vs-formula TDEE delta + a suggested new daily target.
+import { WeeklyCheckinModal } from "@/components/today/WeeklyCheckinModal";
+import {
+  buildWeeklyCheckinContent,
+  shouldShowWeeklyCheckin,
+  type WeeklyCheckinContent,
+  type WeeklyCheckinConfidence,
+} from "@/lib/weeklyCheckin";
 // Phase 3 (B2.1, 2026-04-27) — TodayFabSheet replaced by LogSheet.
 // The component file remains for any deep test references (sweep
 // docs/journeys/log-sheet-2026-04-27.md for migration notes).
@@ -527,6 +537,19 @@ export default function TrackerScreen() {
   const [milestone30ShownAt, setMilestone30ShownAt] = useState<string | null>(null);
   const [milestone30Open, setMilestone30Open] = useState(false);
   const [milestone30Content, setMilestone30Content] = useState<Milestone30DayContent | null>(null);
+  // Weekly TDEE check-in ritual (PR claude/weekly-checkin-ritual-v2,
+  // 2026-05-02 — rebuild of #26). The MacroFactor-style modal that
+  // surfaces the adaptive-vs-formula TDEE delta once a week. Gating +
+  // content build live in `src/lib/nutrition/weeklyCheckin.ts`. State
+  // is hydrated alongside the other profile fields below; the show
+  // effect runs once on first eligible Today first-load. Modal NEVER
+  // blocks — every dismiss path persists the decision and clears the
+  // open state.
+  const [weeklyCheckinShownAt, setWeeklyCheckinShownAt] = useState<string | null>(null);
+  const [weeklyCheckinOpen, setWeeklyCheckinOpen] = useState(false);
+  const [weeklyCheckinContent, setWeeklyCheckinContent] =
+    useState<WeeklyCheckinContent | null>(null);
+  const weeklyCheckinHandledRef = useRef(false);
   const [profileWeightKgByDay, setProfileWeightKgByDay] = useState<Record<string, number>>({});
   const milestone30HandledRef = useRef(false);
   const targetHitPrevByDayRef = useRef<Record<string, boolean>>({});
@@ -1421,7 +1444,7 @@ export default function TrackerScreen() {
     let resp = await supabase
       .from("profiles")
       .select(
-        "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, target_caffeine_mg, target_alcohol_g_weekly, extra_water_by_day, extra_caffeine_by_day, extra_alcohol_g_by_day, steps_by_day, activity_burn_by_day, workouts_by_day, basal_burn_by_day, daily_steps_goal, prefer_activity_adjusted_calories, fasting_sessions, fasting_window, tracked_macros, week_start_day, measurement_system, weight_kg, weight_kg_by_day, height_cm, sex, activity_level, goal, goal_weight_kg, dob, age, notification_prefs, plan_pace, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, milestone_30_shown_at, net_carbs_lens_enabled",
+        "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, target_caffeine_mg, target_alcohol_g_weekly, extra_water_by_day, extra_caffeine_by_day, extra_alcohol_g_by_day, steps_by_day, activity_burn_by_day, workouts_by_day, basal_burn_by_day, daily_steps_goal, prefer_activity_adjusted_calories, fasting_sessions, fasting_window, tracked_macros, week_start_day, measurement_system, weight_kg, weight_kg_by_day, height_cm, sex, activity_level, goal, goal_weight_kg, dob, age, notification_prefs, plan_pace, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, milestone_30_shown_at, last_weekly_checkin_shown_at, net_carbs_lens_enabled",
       )
       .eq("id", userId)
       .maybeSingle();
@@ -1562,6 +1585,13 @@ export default function TrackerScreen() {
     setMilestone30ShownAt(
       typeof (d as any).milestone_30_shown_at === "string"
         ? (d as any).milestone_30_shown_at
+        : null,
+    );
+    // Weekly check-in ritual — `last_weekly_checkin_shown_at` drives
+    // the 6-day cooldown gate. Missing column ⇒ null ⇒ gate is open.
+    setWeeklyCheckinShownAt(
+      typeof (d as any).last_weekly_checkin_shown_at === "string"
+        ? (d as any).last_weekly_checkin_shown_at
         : null,
     );
     const wkbdRaw = (d as any).weight_kg_by_day;
@@ -2066,6 +2096,139 @@ export default function TrackerScreen() {
       /* noop */
     }
   }, []);
+
+  // Weekly check-in ritual gate (PR claude/weekly-checkin-ritual-v2,
+  // 2026-05-02 — rebuild of #26). Runs once per Today first-load —
+  // `weeklyCheckinHandledRef` suppresses re-fires for the rest of the
+  // session even if `weekData` recomputes. Honest weight delta: we pass
+  // `null` for `weightDeltaKg` until a downstream change wires real
+  // weigh-in data through (`profileWeightKgByDay` + a 7-day window
+  // resolver). The modal suppresses the row rather than fabricate
+  // "+0.0 kg" — see PR body "Risks / follow-ups" entry.
+  useEffect(() => {
+    if (!isToday) return;
+    if (weeklyCheckinHandledRef.current) return;
+    if (!userId) return;
+    // Map adaptive confidence string into the gate's typed enum. Any
+    // unrecognised value (legacy / null / future addition) routes to
+    // null which the gate treats as "math hasn't resolved" → no fire.
+    const conf: WeeklyCheckinConfidence | null =
+      adaptiveTdeeConfidence === "medium" || adaptiveTdeeConfidence === "high"
+        ? adaptiveTdeeConfidence
+        : adaptiveTdeeConfidence === "low"
+          ? "low"
+          : null;
+    const daysLoggedThisWeek = weekData.days.filter(
+      (d) => d.totals.calories > 0,
+    ).length;
+    const eligible = shouldShowWeeklyCheckin({
+      adaptiveTdeeConfidence: conf,
+      adaptiveTdee,
+      daysLoggedThisWeek,
+      lastShownAt: weeklyCheckinShownAt,
+    });
+    if (!eligible) return;
+    if (!Number.isFinite(targets.calories) || targets.calories <= 0) return;
+    weeklyCheckinHandledRef.current = true;
+
+    const content = buildWeeklyCheckinContent({
+      adaptiveTdee: adaptiveTdee as number,
+      // Prefer the shared `formulaKcal` resolver output as the prior
+      // baseline. When the user's profile is incomplete the resolver
+      // returns null; the content builder honestly suppresses the
+      // delta line.
+      priorTdee: resolvedMaintenance?.formulaKcal ?? null,
+      currentTargetKcal: targets.calories,
+      avgCaloriesThisWeek: weekData.weekAvg.calories,
+      // weightDeltaKg follow-up: see PR body. Honest null for now.
+      weightDeltaKg: null,
+    });
+    setWeeklyCheckinContent(content);
+    setWeeklyCheckinOpen(true);
+
+    // Optimistically stamp the shown-at on the row so we don't re-fire
+    // on a hot reload, even if the analytics emit fails. Server is
+    // source of truth — refetch on next loadProfileTargets() will
+    // overwrite with the canonical value.
+    const nowIso = new Date().toISOString();
+    setWeeklyCheckinShownAt(nowIso);
+    void supabase
+      .from("profiles")
+      .update({ last_weekly_checkin_shown_at: nowIso } as never)
+      .eq("id", userId);
+
+    try {
+      track(AnalyticsEvents.weekly_checkin_shown, {
+        confidence: conf,
+        tdeeDeltaKcal: content.tdeeDeltaKcal,
+        daysLoggedThisWeek,
+        platform: "ios",
+      });
+    } catch {
+      /* noop */
+    }
+  }, [
+    isToday,
+    userId,
+    adaptiveTdee,
+    adaptiveTdeeConfidence,
+    weekData,
+    targets.calories,
+    resolvedMaintenance,
+    weeklyCheckinShownAt,
+  ]);
+
+  const handleWeeklyCheckinAccept = useCallback(() => {
+    if (!userId || !weeklyCheckinContent) {
+      setWeeklyCheckinOpen(false);
+      return;
+    }
+    const newTarget = weeklyCheckinContent.suggestedTargetKcal;
+    const previous = targets.calories;
+    setWeeklyCheckinOpen(false);
+    try {
+      track(AnalyticsEvents.weekly_checkin_accepted, {
+        tdeeDeltaKcal: weeklyCheckinContent.tdeeDeltaKcal,
+        previousTargetKcal: previous,
+        suggestedTargetKcal: newTarget,
+        platform: "ios",
+      });
+    } catch {
+      /* noop */
+    }
+    // Optimistic local update so the rings reflect the new target
+    // without waiting for the round-trip.
+    setProfileTargets((prev) => ({ ...prev, calories: newTarget }));
+    void supabase
+      .from("profiles")
+      .update({
+        target_calories: newTarget,
+        target_calories_set_at: new Date().toISOString(),
+        // Same enum value the maintenance-recalibration suggestion
+        // already uses, so the existing 21-day Rule 2 cooldown
+        // works correctly.
+        target_calories_source: "digest_recalibration",
+        last_weekly_checkin_decision: "accepted",
+      } as never)
+      .eq("id", userId);
+  }, [userId, weeklyCheckinContent, targets.calories]);
+
+  const handleWeeklyCheckinDismiss = useCallback(() => {
+    setWeeklyCheckinOpen(false);
+    try {
+      track(AnalyticsEvents.weekly_checkin_dismissed, {
+        reason: "kept_current",
+        platform: "ios",
+      });
+    } catch {
+      /* noop */
+    }
+    if (!userId) return;
+    void supabase
+      .from("profiles")
+      .update({ last_weekly_checkin_decision: "kept_current" } as never)
+      .eq("id", userId);
+  }, [userId]);
 
   const totals = useMemo(() => {
     const raw = mealsToday.reduce(
@@ -4526,6 +4689,23 @@ export default function TrackerScreen() {
         visible={milestone30Open}
         content={milestone30Content}
         onDismiss={handleMilestone30Dismiss}
+        cardColor={colors.card}
+        textColor={colors.text}
+        textSecondaryColor={colors.textSecondary}
+        borderColor={colors.border}
+      />
+
+      {/* Weekly TDEE check-in ritual (PR claude/weekly-checkin-ritual-v2,
+          2026-05-02 — rebuild of #26). MacroFactor-style soft prompt
+          that surfaces the adaptive-vs-formula TDEE delta + a suggested
+          new daily target. Soft prompt — every dismiss path persists
+          the decision. */}
+      <WeeklyCheckinModal
+        visible={weeklyCheckinOpen}
+        content={weeklyCheckinContent}
+        currentTargetKcal={targets.calories}
+        onAccept={handleWeeklyCheckinAccept}
+        onDismiss={handleWeeklyCheckinDismiss}
         cardColor={colors.card}
         textColor={colors.text}
         textSecondaryColor={colors.textSecondary}

@@ -629,6 +629,40 @@ export const AnalyticsEvents = {
    *
    *  Payload: `{ source: "mobile" | "web", tier: string }`. */
   cancel_proceeded: "cancel_proceeded",
+  /** Weekly TDEE check-in ritual modal rendered on Today
+   *  (PR claude/weekly-checkin-ritual-v2, 2026-05-02 — rebuild of #26).
+   *  MacroFactor-style soft prompt that surfaces the adaptive-vs-formula
+   *  TDEE delta and the suggested new daily target. Fires once per
+   *  Today first-load when the gate (`shouldShowWeeklyCheckin`) passes.
+   *  Payload:
+   *    - `confidence`: "medium" | "high" — adaptive TDEE confidence at
+   *      show time. Gate forbids "low" / null.
+   *    - `tdeeDeltaKcal`: number | null — signed delta (adaptive − prior).
+   *      `null` when the prior/formula TDEE wasn't computable.
+   *    - `daysLoggedThisWeek`: number — distinct days with calories
+   *      logged in the user's current week (≥5 by gate).
+   *    - `platform`: "web" | "ios" | "android". */
+  weekly_checkin_shown: "weekly_checkin_shown",
+  /** User accepted the suggested new target from the weekly check-in
+   *  modal. The "Accept new target" CTA. Persists
+   *  `target_calories = suggestedTargetKcal` and `target_calories_source
+   *  = "digest_recalibration"` (same enum value the maintenance-recal
+   *  suggestion already uses, so the existing 21-day Rule 2 cooldown
+   *  works correctly). Payload:
+   *    - `tdeeDeltaKcal`: number | null — see shown event.
+   *    - `previousTargetKcal`: number — calorie target before accept.
+   *    - `suggestedTargetKcal`: number — calorie target after accept.
+   *    - `platform`: "web" | "ios" | "android". */
+  weekly_checkin_accepted: "weekly_checkin_accepted",
+  /** User kept their current target — fires from the "Keep current" CTA,
+   *  the close X, the backdrop tap, and Escape. Persists
+   *  `last_weekly_checkin_decision = "kept_current"` so we can later
+   *  attribute decisions without re-deriving from analytics. Payload:
+   *    - `reason`: "kept_current" — reserved field for future
+   *      swipe/backdrop dismiss UX (today the modal only emits
+   *      `kept_current`).
+   *    - `platform`: "web" | "ios" | "android". */
+  weekly_checkin_dismissed: "weekly_checkin_dismissed",
 } as const;
 
 export type AnalyticsEventName = (typeof AnalyticsEvents)[keyof typeof AnalyticsEvents];
