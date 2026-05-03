@@ -178,10 +178,12 @@ import {
 // The component file remains for any deep test references (sweep
 // docs/journeys/log-sheet-2026-04-27.md for migration notes).
 import { TodayEditMealModal } from "@/components/today/TodayEditMealModal";
-import { TodayNutrientsModal } from "@/components/today/TodayNutrientsModal";
+// TodayNutrientsModal replaced by FullNutrientPanelSheet on 2026-05-02
+// (revert of PR #30). The Nutrients link in TodayDashboardMacroTiles
+// now opens the richer Cronometer-parity panel from PR #47.
 import { TodayDateHeader } from "@/components/today/TodayDateHeader";
 import { TodayDashboardMacroTiles } from "@/components/today/TodayDashboardMacroTiles";
-import { TodayMicrosWidget } from "@/components/today/TodayMicrosWidget";
+import { FullNutrientPanelSheet } from "@/components/today/FullNutrientPanelSheet";
 import { WhyThisNumberSheet } from "@/components/today/WhyThisNumberSheet";
 import { paceKgPerWeekFromPreset } from "../../../../src/lib/nutrition/whyThisNumber";
 import { TodayQuickLogStrip } from "@/components/today/TodayQuickLogStrip";
@@ -2030,15 +2032,16 @@ export default function TrackerScreen() {
     };
   }, [mealsToday]);
 
-  /** Day-summed nutrition_micros — shared by the all-nutrients modal
-   *  rows AND the new TodayMicrosWidget (which surfaces fiber/iron/
-   *  vit D/sodium tiles + opens the FullNutrientPanelSheet). Computed
-   *  once so every surface agrees. */
+  /** Day-summed nutrition_micros — shared by the all-nutrients sheet
+   *  (`FullNutrientPanelSheet`, opened from the Nutrients link in
+   *  `TodayDashboardMacroTiles`) and the legacy nutrient-rows modal.
+   *  Computed once so both surfaces agree. */
   const dayMicroSum = useMemo(() => sumMicrosFromLoggedMeals(mealsToday), [mealsToday]);
 
   const dayNutrientDetailRows = useMemo(() => {
-    return buildDayNutrientDetailRows(totals.fiber, dayMicroSum);
-  }, [dayMicroSum, totals.fiber]);
+    const microSum = sumMicrosFromLoggedMeals(mealsToday);
+    return buildDayNutrientDetailRows(totals.fiber, microSum);
+  }, [mealsToday, totals.fiber]);
 
   /** Fiber is already shown in the macro widget row when enabled in Dashboard Widgets — avoid duplicating it here. */
   const dayNutrientDetailRowsWithoutMacroDupes = useMemo(() => {
@@ -4060,34 +4063,13 @@ export default function TrackerScreen() {
               mutedColor={colors.border}
               netCarbsLensEnabled={netCarbsLensEnabled}
             />
-
-            {/* Micronutrient headline widget (audit gap #1, 2026-05-01).
-                4 headline tiles (fibre / iron / vit D / sodium) + a
-                "View all 35 nutrients" CTA that opens the full panel
-                sheet. Closes the Cronometer power-user persona gap so
-                the macro-only persona switching from MyFitnessPal /
-                MacroFactor sees that Suppr does not stop at protein.
-                Web parity: `src/app/components/suppr/today-micros-widget.tsx`. */}
-            <TodayMicrosWidget
-              microSum={dayMicroSum}
-              fiberG={totals.fiber}
-              totalFatG={totals.fat}
-              totalCarbsG={totals.carbs}
-              proteinG={totals.protein}
-              cardColor={colors.card}
-              cardBorderColor={colors.cardBorder}
-              textColor={colors.text}
-              textSecondaryColor={colors.textSecondary}
-              textTertiaryColor={colors.textTertiary}
-              sheetColors={{
-                background: colors.background,
-                card: colors.card,
-                cardBorder: colors.cardBorder,
-                text: colors.text,
-                textSecondary: colors.textSecondary,
-                textTertiary: colors.textTertiary,
-              }}
-            />
+            {/* TodayMicrosWidget removed 2026-05-02 (revert PR #30) —
+                user feedback: 4-tile widget on Today canvas duplicated
+                fibre and over-cluttered the screen. Micronutrient depth
+                is preserved inside the FullNutrientPanelSheet (PR #47),
+                opened via the "Nutrients" link in
+                TodayDashboardMacroTiles. See
+                `docs/decisions/2026-05-02-revert-today-ui-changes.md`. */}
           </>
         )}
 
@@ -4869,16 +4851,27 @@ export default function TrackerScreen() {
         }}
       />
 
-      <TodayNutrientsModal
+      {/* "View all nutrients" sheet — opened from the Nutrients link
+          inside TodayDashboardMacroTiles. Replaced the legacy
+          TodayNutrientsModal on 2026-05-02 (revert of PR #30) so the
+          richer Cronometer-parity panel from PR #47 keeps shipping
+          even after the Today-canvas micros widget was removed. */}
+      <FullNutrientPanelSheet
         visible={nutrientsModalOpen}
         onClose={() => setNutrientsModalOpen(false)}
-        rows={dayNutrientDetailRowsWithoutMacroDupes}
-        backgroundColor={colors.background}
-        cardColor={colors.card}
-        cardBorderColor={colors.cardBorder}
-        textColor={colors.text}
-        textSecondaryColor={colors.textSecondary}
-        textTertiaryColor={colors.textTertiary}
+        microSum={dayMicroSum}
+        fiberG={totals.fiber}
+        totalFatG={totals.fat}
+        totalCarbsG={totals.carbs}
+        proteinG={totals.protein}
+        colors={{
+          background: colors.background,
+          card: colors.card,
+          cardBorder: colors.cardBorder,
+          text: colors.text,
+          textSecondary: colors.textSecondary,
+          textTertiary: colors.textTertiary,
+        }}
       />
 
       {/* Audit gap #10 — "Why this number?" sheet (2026-05-01).

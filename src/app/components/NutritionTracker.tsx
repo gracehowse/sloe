@@ -88,7 +88,8 @@ import { TodayStepsCard } from "./suppr/today-steps-card";
 import { TodayActivityBonusCard } from "./suppr/today-activity-bonus-card";
 import { TodayWeekView } from "./suppr/today-week-view";
 import { TodayDashboardMacroTiles } from "./suppr/today-dashboard-macro-tiles";
-import { TodayMicrosWidget } from "./suppr/today-micros-widget";
+import { FullNutrientPanelSheet } from "./suppr/full-nutrient-panel-sheet";
+import { FULL_NUTRIENT_PANEL_ROW_COUNT } from "../../lib/nutrition/fullNutrientPanel";
 import { WhyThisNumberDialog } from "./suppr/why-this-number-dialog";
 import { paceKgPerWeekFromPreset } from "../../lib/nutrition/whyThisNumber";
 import { TodayQuickLogStrip } from "./suppr/today-quick-log-strip";
@@ -564,6 +565,11 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
   /** Audit gap #10 (2026-05-01) — "Why this number?" dialog visibility.
    *  Opened by the small pill under the calorie ring. */
   const [whyThisNumberOpen, setWhyThisNumberOpen] = useState(false);
+  /** Full-nutrient panel sheet (PR #47, re-wired 2026-05-02) — opened
+   *  from the "View all N nutrients" pill inside
+   *  `TodayDashboardMacroTiles` after the Today-canvas
+   *  `TodayMicrosWidget` was removed (revert PR #30). */
+  const [fullNutrientPanelOpen, setFullNutrientPanelOpen] = useState(false);
   const [profileWeightKg, setProfileWeightKg] = useState<number | null>(null);
   const [profileGoal, setProfileGoal] = useState<string | null>(null);
   /** `plan_pace` preset enum from `profiles.plan_pace` — used by the
@@ -1524,18 +1530,19 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
     };
   })();
 
-  /** Day-summed nutrition_micros — shared by the all-nutrients section
-   *  on the macro tiles AND the new TodayMicrosWidget (which surfaces
-   *  fibre/iron/vit D/sodium %DV tiles + opens the FullNutrientPanelSheet).
-   *  One source of truth keeps every surface in agreement. */
+  /** Day-summed nutrition_micros — shared by the FullNutrientPanelSheet
+   *  ("View all nutrients" link in TodayDashboardMacroTiles) and any
+   *  legacy nutrient-row consumers. One source of truth so every
+   *  surface agrees. */
   const dayMicroSum = useMemo(
     () => sumMicrosFromLoggedMeals(mealsForSelectedDate),
     [mealsForSelectedDate],
   );
 
   const dayNutrientDetailRows = useMemo(() => {
-    return buildDayNutrientDetailRows(totals.fiber, dayMicroSum);
-  }, [dayMicroSum, totals.fiber]);
+    const microSum = sumMicrosFromLoggedMeals(mealsForSelectedDate);
+    return buildDayNutrientDetailRows(totals.fiber, microSum);
+  }, [mealsForSelectedDate, totals.fiber]);
 
   const dayMicroSumForTracker = useMemo(() => {
     let sugarG = 0;
@@ -2188,15 +2195,18 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         onAddWaterMl={addWaterMlForSelectedDay}
         netCarbsLensEnabled={netCarbsLensEnabled}
         nutrientRows={dayNutrientDetailRows}
+        onPressViewAllNutrients={() => setFullNutrientPanelOpen(true)}
+        viewAllNutrientsCount={FULL_NUTRIENT_PANEL_ROW_COUNT}
       />
 
-      {/* Micronutrient headline widget (audit gap #1, 2026-05-01).
-          4 headline tiles (fibre / iron / vit D / sodium) + a "View
-          all 35 nutrients" CTA opening the full panel sheet. Closes
-          the Cronometer power-user persona gap. The full all-nutrients
-          rows still ship inline in TodayDashboardMacroTiles above via
-          `nutrientRows`. Mirrors mobile `TodayMicrosWidget`. */}
-      <TodayMicrosWidget
+      {/* PR #47 full-nutrient panel — opened from the
+          TodayDashboardMacroTiles "View all N nutrients" pill above.
+          Re-wired 2026-05-02 (revert PR #30) so the panel keeps
+          shipping after the TodayMicrosWidget that previously hosted
+          the trigger CTA was removed from Today's canvas. */}
+      <FullNutrientPanelSheet
+        open={fullNutrientPanelOpen}
+        onOpenChange={setFullNutrientPanelOpen}
         microSum={dayMicroSum}
         fiberG={totals.fiber}
         totalFatG={totals.fat}
@@ -2204,6 +2214,13 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         proteinG={totals.protein}
         sugarG={dayMicroSumForTracker.sugarG}
       />
+
+      {/* TodayMicrosWidget removed 2026-05-02 (revert PR #30) —
+          user feedback: 4-tile widget on Today canvas duplicated
+          fibre and over-cluttered the screen. Micronutrient depth is
+          preserved inside FullNutrientPanelSheet (PR #47), opened
+          via the "Nutrients" link in TodayDashboardMacroTiles. See
+          `docs/decisions/2026-05-02-revert-today-ui-changes.md`. */}
 
       {/* 4. Quick Log Strip: Search, Voice (Pro), Snap (Pro), Scan. Voice +
           Snap are gated; free-tier users see a lock icon and tapping

@@ -64,15 +64,11 @@ const CHANGELOGS: ChangelogEntry[] = [
   {
     buildNumber: 12,
     appVersion: "1.0.0",
-    releaseDate: "2026-05-01",
+    releaseDate: "2026-05-02",
     items: [
       {
         kind: "new",
-        text: "Today now shows fibre, iron, vitamin D and sodium tiles below the macros — see your micronutrient day at a glance.",
-      },
-      {
-        kind: "new",
-        text: "Tap \"View all nutrients\" to see every vitamin and mineral against the FDA Daily Value, sorted by %DV.",
+        text: "Tap \"View all nutrients\" on Today to see every vitamin and mineral against the FDA Daily Value, sorted by %DV.",
       },
       {
         kind: "new",
