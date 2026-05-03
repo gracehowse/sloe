@@ -4851,7 +4851,7 @@ export default function TrackerScreen() {
         }}
       />
 
-      {/* "View all nutrients" sheet — opened from the Nutrients link
+      {/* Full-nutrient panel sheet — opened from the Nutrients link
           inside TodayDashboardMacroTiles. Replaced the legacy
           TodayNutrientsModal on 2026-05-02 (revert of PR #30) so the
           richer Cronometer-parity panel from PR #47 keeps shipping
