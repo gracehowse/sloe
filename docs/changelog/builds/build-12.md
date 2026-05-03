@@ -12,6 +12,20 @@
   depth is preserved inside the full-nutrient panel sheet (see below)
   rather than on the Today canvas itself. See
   `docs/decisions/2026-05-02-revert-today-ui-changes.md`.
+- **Recipe detail — calories on their own headline line + 4-up macro
+  grid.** Two visual fixes against v3 from user feedback (2026-05-02):
+  (1) "the widgets should be the same size and fit on one row" — the
+  macro tiles previously wrapped 3-up + fiber alone on row 2 at half
+  width; now they share a width and fit 4 across (Protein / Net carbs
+  / Fat / Fiber) with the same layout on web (`grid grid-cols-4`)
+  and mobile (`flex: 1` with `flexWrap` preserved for narrow widths
+  and 5–6-tracked-macro users). (2) "cals need to be clearer" — kcal
+  was buried in the v3 subtitle ("lunch · serves 3 · 329 kcal · by
+  emthenutritionist"); now it sits on its own dedicated 17-pt
+  headline line directly under the title ("329 kcal · per portion"),
+  with the meta row ("lunch · serves 3 · by author") smaller below.
+  Mobile (`apps/mobile/app/recipe/[id].tsx`) + web
+  (`src/app/components/RecipeDetail.tsx`).
 
 ## New
 

@@ -1239,10 +1239,31 @@ export default function RecipeDetailScreen() {
 
     title: { fontSize: 24, fontWeight: "700", color: colors.text },
     authorName: { fontSize: 14, color: colors.textSecondary },
+    // 2026-05-02 v4 polish (recipe-detail-tiles-and-kcal): kcal got
+    // promoted out of the subtitle into its own dedicated headline
+    // line below the title. The subtitle row now reads as the meta
+    // line only ("lunch · serves 3 · by author"). The `kcalLine`
+    // style below pins kcal as a 17-pt headline, tabular-nums, with
+    // a softer "per portion" qualifier separated by `·`.
+    kcalLine: {
+      flexDirection: "row",
+      alignItems: "baseline",
+      gap: 6,
+      marginTop: 6,
+    },
+    kcalNumber: {
+      fontSize: 17,
+      fontWeight: "700" as const,
+      color: colors.text,
+      fontVariant: ["tabular-nums"] as ["tabular-nums"],
+    },
+    kcalQualifier: { fontSize: 13, color: colors.textSecondary },
     // 2026-04-30 ui-product-designer recipe-detail audit: subtitle is
     // a single flex-wrap row joined by `·` separators ("by author ·
     // lunch · serves 3"). The standalone `mealTypeBadge` pill +
     // separate `authorName` row are gone — this row replaces both.
+    // 2026-05-02 v4: kcal removed from this row (moved to its own
+    // headline). This row is the meta line again.
     subtitleRow: {
       flexDirection: "row",
       flexWrap: "wrap",
@@ -1251,9 +1272,9 @@ export default function RecipeDetailScreen() {
       marginTop: 4,
     },
     subtitleText: { fontSize: 13, color: colors.textSecondary },
-    // v3 (2026-05-01): kcal token gets weight + foreground colour so
-    // the user can read calories at the same glance as the title.
-    // The bordered "329 kcal per portion" hero card is gone.
+    // 2026-05-02 v4 (recipe-detail-tiles-and-kcal): kept for any
+    // remaining bold inline tokens; kcal no longer uses this style
+    // because it lives on its own dedicated line above the meta row.
     subtitleTextStrong: { fontWeight: "700" as const, color: colors.text, fontVariant: ["tabular-nums"] as ["tabular-nums"] },
     subtitleSeparator: { fontSize: 13, color: colors.textTertiary },
     timeStatsRow: {
@@ -1594,24 +1615,47 @@ export default function RecipeDetailScreen() {
               ) : null;
             })()}
           </View>
+          {/* 2026-05-02 v4 (recipe-detail-tiles-and-kcal): user feedback
+              "cals need to be clearer" — kcal got promoted out of the
+              subtitle row (where it was buried at 13-pt grey-with-bold
+              alongside slot / serves / by) into its own dedicated
+              headline line directly under the title. Reads as
+              "329 kcal · per portion" at 17-pt headline, tabular-nums,
+              foreground colour. The subtitle below stays as the meta
+              line ("lunch · serves 3 · by author"). */}
+          {(() => {
+            const kcalForLine = Math.round(macros.calories);
+            if (kcalForLine <= 0) return null;
+            return (
+              <View
+                style={styles.kcalLine}
+                testID="recipe-kcal-line"
+                accessibilityLabel={`${kcalForLine} kilocalories per portion`}
+              >
+                <Text style={styles.kcalNumber} testID="recipe-kcal-number">
+                  {kcalForLine} kcal
+                </Text>
+                <Text style={styles.subtitleSeparator}>·</Text>
+                <Text style={styles.kcalQualifier}>per portion</Text>
+              </View>
+            );
+          })()}
+
           {/* 2026-04-30 ui-product-designer recipe-detail audit Fix 1 —
               collapsed attribution + slot + serves into one flex-wrap
               subtitle joined by `·` separators. Author is tappable
               (no underline) when `recipeByline.href` is present.
 
-              2026-05-01 v3: kcal joined the subtitle as a bold inline
-              token (slot · serves · kcal · author). This removes the
-              bordered "329 kcal per portion" hero card that was
-              competing with the title and pushing macros below the
-              fold. The kcal token renders bold + foreground colour so
-              it's still scannable as the primary nutrition number. */}
+              2026-05-02 v4: kcal moved out of this row to its own
+              dedicated headline line above. The meta line is back to
+              "{slot} · serves {N} · by {author}" — kcal is no longer
+              passed to composeSubtitleParts, so the helper drops the
+              token cleanly. */}
           {(() => {
-            const kcalForSubtitle = Math.round(macros.calories);
             const subtitleParts = composeSubtitleParts({
               authorLabel: recipeByline.label || null,
               slots: recipe.meal_type ?? null,
               servings: recipe.servings,
-              kcal: kcalForSubtitle,
             });
             if (subtitleParts.length === 0) return null;
             return (
@@ -1623,14 +1667,6 @@ export default function RecipeDetailScreen() {
                 {subtitleParts.map((part, idx) => {
                   const isAuthor =
                     part.key === "by" && Boolean(recipeByline.href);
-                  // v3 (2026-05-01): the kcal token renders bold +
-                  // foreground colour so it's the most scannable
-                  // number on the meta line, not just another grey
-                  // separator-joined word.
-                  const partTextStyle =
-                    part.key === "kcal"
-                      ? [styles.subtitleText, styles.subtitleTextStrong]
-                      : styles.subtitleText;
                   return (
                     <View
                       key={part.key}
@@ -1648,15 +1684,10 @@ export default function RecipeDetailScreen() {
                           accessibilityRole="link"
                           accessibilityLabel={`Open source: ${recipeByline.label}`}
                         >
-                          <Text style={partTextStyle}>{part.label}</Text>
+                          <Text style={styles.subtitleText}>{part.label}</Text>
                         </Pressable>
                       ) : (
-                        <Text
-                          style={partTextStyle}
-                          testID={part.key === "kcal" ? "recipe-subtitle-kcal" : undefined}
-                        >
-                          {part.label}
-                        </Text>
+                        <Text style={styles.subtitleText}>{part.label}</Text>
                       )}
                     </View>
                   );
@@ -1756,14 +1787,19 @@ export default function RecipeDetailScreen() {
             );
           })()}
 
-          {/* v3 macro tiles — visual hero of the screen. Bigger value
-              font (20pt vs 16), more padding (14 vs 10), 11pt label.
-              The kcal hero card is gone, so these tiles get to be the
-              colour anchor. Layout (2x2 flex-wrap) unchanged so the
-              tile-rendering keeps working for users with extra
-              tracked macros (sugar/sodium/fiber). */}
+          {/* v3 macro tiles — visual hero of the screen. 2026-05-02 v4
+              user feedback "the widgets should be the same size and
+              fit on one row" — switched the wrap layout (which let
+              fiber stand alone on row 2 at 48% width while p/c/f
+              shared row 1) to a flex-1 4-up row at 8-pt gap. All
+              tiles now share width and read as one coherent grid.
+              `flexWrap: "wrap"` is preserved so users with 5–6
+              tracked macros (e.g. + sugar/sodium) still spill onto a
+              second row at the same per-tile width, and so narrow
+              widths (<360pt) wrap naturally below the minWidth floor
+              instead of clipping. */}
           <View
-            style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: Spacing.md }}
+            style={{ flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm, marginBottom: Spacing.md }}
             testID="recipe-macros-grid"
           >
             {recipeMacrosToShow.map((macro) => {
@@ -1804,11 +1840,11 @@ export default function RecipeDetailScreen() {
               return (
                 <View
                   key={macro}
+                  testID={`recipe-macro-tile-${macro}`}
                   style={{
-                    flexGrow: 1,
-                    minWidth: 76,
-                    maxWidth: "48%",
-                    padding: 14,
+                    flex: 1,
+                    minWidth: 70,
+                    padding: 12,
                     borderRadius: 14,
                     backgroundColor: colors.card,
                     borderWidth: 1,
@@ -1819,11 +1855,15 @@ export default function RecipeDetailScreen() {
                     <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: m.color }} />
                     <Text style={{ fontSize: 11, fontWeight: "700", color: colors.textSecondary, letterSpacing: 0.5 }}>{m.label}</Text>
                   </View>
-                  <Text style={{ fontSize: 20, fontWeight: "800", color: colors.text, fontVariant: ["tabular-nums"], lineHeight: 24 }}>
+                  <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text, fontVariant: ["tabular-nums"], lineHeight: 22 }}>
                     {displayAmount}
                     {m.unit}
                   </Text>
-                  <View style={{ marginTop: 8, height: 4, borderRadius: 2, backgroundColor: colors.border }}>
+                  <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 4, fontVariant: ["tabular-nums"] }}>
+                    of {macro === "sugar" ? m.tgt : macro === "sodium" ? m.tgt : Math.round(m.tgt)}
+                    {m.unit}
+                  </Text>
+                  <View style={{ marginTop: 6, height: 3, borderRadius: 2, backgroundColor: colors.border }}>
                     <View
                       style={{
                         width: `${Math.min(m.cur / Math.max(m.tgt, 1), 1) * 100}%`,
@@ -1833,10 +1873,6 @@ export default function RecipeDetailScreen() {
                       }}
                     />
                   </View>
-                  <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 4, fontVariant: ["tabular-nums"] }}>
-                    of {macro === "sugar" ? m.tgt : macro === "sodium" ? m.tgt : Math.round(m.tgt)}
-                    {m.unit}
-                  </Text>
                 </View>
               );
             })}

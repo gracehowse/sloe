@@ -20,6 +20,21 @@
  *   - "Fits your day" verdict drops to a single text line directly
  *     below the macro tiles (no card, no pill background)
  *
+ * 2026-05-02 v4 polish (recipe-detail-tiles-and-kcal): user feedback
+ * flagged the v3 inline kcal as still buried ("cals need to be
+ * clearer"). v4:
+ *   - kcal moves to its own dedicated 17-pt headline line directly
+ *     under the title ("329 kcal · per portion") — its own surface,
+ *     not a bold-styled separator-joined word in the meta row
+ *   - call sites no longer pass `kcal` to composeSubtitleParts; the
+ *     helper still accepts the arg (and drops the token when omitted
+ *     / null / 0) so older fixtures keep working, but production
+ *     subtitles render slot · serves · by only
+ *   - macro tiles switch from a flex-wrap layout (which left fiber
+ *     alone on row 2 at half-width) to a 4-up layout — `grid grid-
+ *     cols-4` on web, `flex: 1` (with `flexWrap` preserved for narrow
+ *     widths and 5–6-tracked-macro users) on mobile
+ *
  * These helpers exist so the presentation logic is testable
  * independently of RN/RTL renders.
  */
@@ -44,6 +59,13 @@ export function shouldRenderTimeStats(
  *     glance as the title — the bordered hero card is removed.
  *   - Author moved to last so the title row reads as
  *     "what · for whom · how dense", with attribution as a footnote.
+ *
+ * v4 (2026-05-02): production call sites omit the `kcal` arg — kcal
+ * now lives on its own dedicated headline line above the subtitle.
+ * The helper still emits a `kcal` part when the caller passes a
+ * non-zero value, so fixtures and any future caller wanting the
+ * inline form keep working. Default subtitle reads
+ * "{slot} · serves N · by {author}".
  */
 export function composeSubtitleParts(args: {
   authorLabel: string | null;

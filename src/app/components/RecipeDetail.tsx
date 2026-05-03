@@ -1253,17 +1253,19 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           const slots: string[] = Array.isArray(recipe.mealSlots)
             ? (recipe.mealSlots as readonly string[]).map(String)
             : [];
-          // 2026-05-01 v3: kcal joins the subtitle as a bold inline
-          // token (slot · serves · kcal · author). The bordered
-          // "Calories per portion" hero card below is removed —
-          // macros become the visual hero, the user can still read
-          // calories at a glance from the subtitle.
+          // 2026-05-02 v4 (recipe-detail-tiles-and-kcal): user feedback
+          // "cals need to be clearer" — kcal got promoted out of the
+          // subtitle row into its own dedicated headline line directly
+          // under the title. The subtitle below stays as the meta line
+          // ("lunch · serves 3 · by author"). composeSubtitleParts is
+          // no longer passed `kcal`, so the helper drops the token
+          // cleanly (the unit-tested "drops kcal when omitted" path).
           const subtitleParts = composeSubtitleParts({
             authorLabel: bylineLabel,
             slots,
             servings: baseServings,
-            kcal: scaledMacros.calories,
           });
+          const kcalForLine = Math.round(scaledMacros.calories);
           return (
             <div className="space-y-1">
               <h1
@@ -1272,6 +1274,22 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
               >
                 {normaliseRecipeDisplayTitle(recipe.title)}
               </h1>
+              {kcalForLine > 0 ? (
+                <div
+                  className="mt-1.5 flex items-baseline gap-1.5"
+                  data-testid="recipe-kcal-line"
+                  aria-label={`${kcalForLine} kilocalories per portion`}
+                >
+                  <span
+                    className="text-[17px] font-bold text-foreground tabular-nums leading-none"
+                    data-testid="recipe-kcal-number"
+                  >
+                    {kcalForLine} kcal
+                  </span>
+                  <span aria-hidden className="text-muted-foreground/70 text-sm">·</span>
+                  <span className="text-sm text-muted-foreground">per portion</span>
+                </div>
+              ) : null}
               {subtitleParts.length > 0 ? (
                 <div
                   className="flex flex-wrap items-center gap-x-1 text-sm text-muted-foreground"
@@ -1279,10 +1297,6 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                 >
                   {subtitleParts.map((part, idx) => {
                     const isAuthor = part.key === "by" && Boolean(bylineHref);
-                    // v3: kcal token renders bold + foreground colour
-                    // so calories are scannable as the primary
-                    // nutrition number on the meta line.
-                    const isKcal = part.key === "kcal";
                     return (
                       <span key={part.key} className="inline-flex items-center">
                         {idx > 0 ? (
@@ -1299,13 +1313,6 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                           >
                             {part.label}
                           </a>
-                        ) : isKcal ? (
-                          <span
-                            className="font-bold text-foreground tabular-nums"
-                            data-testid="recipe-subtitle-kcal"
-                          >
-                            {part.label}
-                          </span>
                         ) : (
                           <span>{part.label}</span>
                         )}
@@ -1544,14 +1551,17 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             </div>
           );
         })()}
-        {/* v3 macro tiles — visual hero. Bigger value font (text-xl
-            from text-base), more padding (p-3.5 from p-2.5), cleaner
-            border-radius, and a properly weighted label. The kcal
-            hero card is gone, so these tiles get to be the colour
-            anchor on first paint. */}
+        {/* v3 macro tiles — visual hero. 2026-05-02 v4 user feedback
+            "the widgets should be the same size and fit on one row" —
+            switched the wrap layout (which let fiber stand alone on
+            row 2 at 48% width while p/c/f shared row 1) to a
+            `grid grid-cols-4` layout. All tiles share width and read
+            as one coherent grid. Users with extra tracked macros
+            (sugar/sodium) spill onto row 2 at the same per-tile
+            width, not at a different size. */}
         <div
           data-testid="recipe-macros-grid"
-          className="mb-2 flex flex-wrap gap-2.5"
+          className="mb-2 grid grid-cols-4 gap-2"
         >
           {recipeMacrosToShow.map((macro) => {
             const REF_SUGAR_G = 50;
@@ -1611,17 +1621,22 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             return (
               <div
                 key={macro}
-                className="min-w-[76px] max-w-[48%] flex-1 rounded-2xl border border-border bg-card p-3.5"
+                data-testid={`recipe-macro-tile-${macro}`}
+                className="rounded-2xl border border-border bg-card p-3"
               >
                 <div className="mb-1.5 flex items-center gap-1.5">
                   <div className="h-2 w-2 rounded-sm" style={{ background: m.color }} />
                   <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{m.label}</span>
                 </div>
-                <div className="text-xl font-extrabold tabular-nums text-foreground leading-tight">
+                <div className="text-lg font-extrabold tabular-nums text-foreground leading-tight">
                   {displayAmount}
                   {m.unit}
                 </div>
-                <div className="mt-2 h-1 w-full overflow-hidden rounded-sm bg-muted">
+                <div className="mt-1 text-[11px] tabular-nums text-muted-foreground">
+                  of {m.tgt}
+                  {m.unit}
+                </div>
+                <div className="mt-1.5 h-1 w-full overflow-hidden rounded-sm bg-muted">
                   <div
                     className="h-full rounded-sm transition-all"
                     style={{
@@ -1629,10 +1644,6 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                       backgroundColor: m.color,
                     }}
                   />
-                </div>
-                <div className="mt-1 text-[11px] tabular-nums text-muted-foreground">
-                  of {m.tgt}
-                  {m.unit}
                 </div>
               </div>
             );
