@@ -345,11 +345,7 @@ export default function TrackerScreen() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<"day" | "week">("day");
   const [ringExpanded, setRingExpanded] = useState(true);
-  // Default "remaining" matches web's `NutritionTracker.tsx` initial state
-  // (Wave 8a parity, 2026-05-01). Earlier mobile default was "consumed";
-  // unifying with web here so first-time users see the same headline metric
-  // on both surfaces. Long-press + the new chip control both flip it.
-  const [calorieDisplayMode, setCalorieDisplayMode] = useState<"remaining" | "consumed">("remaining");
+  const [calorieDisplayMode, setCalorieDisplayMode] = useState<"remaining" | "consumed">("consumed");
   // Phase 3 (2026-04-28, D-2026-04-27-03 finished): canonical Today is
   // the ring hero. The 3-variant picker (ring / bar / number) was
   // removed in this phase — TodayHero is now a thin wrapper around
@@ -3857,8 +3853,16 @@ export default function TrackerScreen() {
               expanded={ringExpanded}
               onToggleExpanded={() => setRingExpanded((e) => !e)}
               displayMode={calorieDisplayMode}
-              onToggleDisplayMode={() => setCalorieDisplayMode((m) => m === "remaining" ? "consumed" : "remaining")}
-              onSetDisplayMode={setCalorieDisplayMode}
+              // User feedback 2026-05-02: long-press should toggle
+              // display-mode AND show/hide the macro sub-rings in
+              // lock-step (the original "click-and-hold" UX). The
+              // segmented chip control from PR #50 was reverted in
+              // the same change; long-press is now the single
+              // gesture that drives both pieces of ring state.
+              onToggleDisplayMode={() => {
+                setCalorieDisplayMode((m) => m === "remaining" ? "consumed" : "remaining");
+                setRingExpanded((e) => !e);
+              }}
               onPressWhy={() => setWhyThisNumberOpen(true)}
             />
 
