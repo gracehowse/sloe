@@ -62,15 +62,18 @@ describe("AiPaywallSheet module contract (Ship M2)", () => {
     expect(SHEET_SOURCE).toContain(
       '"Voice logging is a Pro feature"',
     );
+    // 2026-05-02 — photo_log copy updated to reference the just-
+    // experienced free taster (5/week). See
+    // `docs/decisions/2026-05-02-photo-log-free-taster.md`.
     expect(SHEET_SOURCE).toContain(
-      '"AI photo logging is a Pro feature"',
+      '"Get unlimited photo logs with Pro"',
     );
 
     // Body prefix assertions — enough to catch accidental rewrites
     // without being brittle to whitespace / wrapping.
     expect(SHEET_SOURCE).toContain("Describe what you ate");
     expect(SHEET_SOURCE).toContain(
-      "Snap a photo of your meal and we'll identify foods",
+      "You've used all 5 of your free photo logs this week",
     );
   });
 
@@ -157,13 +160,23 @@ describe("Today host adopts AiPaywallSheet (Ship M2)", () => {
     );
   });
 
-  it("keeps firing voice_log_paywalled + ai_photo_log_paywalled at the caller (pre-M2 funnel-entry events)", () => {
+  it("keeps firing voice_log_paywalled + ai_photo_log_paywalled (pre-M2 funnel-entry events)", () => {
     // The new sheet events are additive — existing per-feature
     // funnel-entry events must still fire for pre-M2 dashboards.
+    //
+    // Voice still gates up-front in TODAY_SOURCE (Pro-only with no
+    // free taster). 2026-05-02: photo-log gate moved INSIDE the sheet
+    // (5/week free taster + 403-on-exhaustion handoff). The
+    // `ai_photo_log_paywalled` event therefore fires from
+    // `PhotoLogSheet.tsx` now, not the host. We assert against both
+    // sources so a regression that drops the event still trips this
+    // test.
     expect(TODAY_SOURCE).toMatch(
       /track\(\s*AnalyticsEvents\.voice_log_paywalled\b/,
     );
-    expect(TODAY_SOURCE).toMatch(
+    const SHEET_PATH_LOCAL = resolve(__dirname, "../../components/PhotoLogSheet.tsx");
+    const SHEET_SOURCE_LOCAL = readFileSync(SHEET_PATH_LOCAL, "utf8");
+    expect(SHEET_SOURCE_LOCAL).toMatch(
       /track\(\s*AnalyticsEvents\.ai_photo_log_paywalled\b/,
     );
   });

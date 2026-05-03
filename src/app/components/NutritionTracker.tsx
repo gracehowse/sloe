@@ -1414,12 +1414,12 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
   };
 
   const handlePhotoLogClick = () => {
-    // Batch 5.13 — Pro gate for AI photo logging.
-    if (userTier !== "pro") {
-      track(AnalyticsEvents.ai_photo_log_paywalled);
-      setAiPaywallFeature("photo_log");
-      return;
-    }
+    // 2026-05-02 — photo-log is no longer Pro-only. Free + Base get
+    // FREE_PHOTO_LOG_WEEKLY_LIMIT (=5) free photo logs per rolling 7
+    // days; the dialog opens for any tier. The gate is the SECOND
+    // photo after exhaustion (server returns 403, dialog calls
+    // `onUpgradeRequired` to route to the AiPaywallDialog). See
+    // `docs/decisions/2026-05-02-photo-log-free-taster.md`.
     setPhotoLogOpen(true);
   };
 
@@ -2233,14 +2233,14 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
             track(AnalyticsEvents.today_snap_shortcut_tapped, {
               tier: userTier,
             });
-            if (userTier === "pro") {
-              setPhotoLogOpen(true);
-            } else {
-              track(AnalyticsEvents.ai_photo_log_paywalled);
-              setAiPaywallFeature("photo_log");
-            }
+            // 2026-05-02 — open for any tier; the in-dialog quota
+            // line shows the free-taster window, and on exhaustion
+            // the dialog routes to the AiPaywallDialog itself.
+            setPhotoLogOpen(true);
           }}
-          locked={userTier !== "pro"}
+          // Lock badge removed (2026-05-02) — photo-log is no longer
+          // Pro-only at the entry point.
+          locked={false}
         />
       )}
 
@@ -2838,15 +2838,10 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         onPhotoFallback={() => {
           // Audit 2026-04-30 (Lose It "Closer" parity, Fix 2) — when
           // the barcode lookup fails we offer a soft handoff to the
-          // AI photo log. Pro gating runs through the same paywall
-          // path as every other photo entry point.
+          // AI photo log. 2026-05-02: open for any tier; the in-dialog
+          // quota line + 403 paywall handoff handle gating now.
           setBarcodeOpen(false);
-          if (userTier === "pro") {
-            setPhotoLogOpen(true);
-          } else {
-            track(AnalyticsEvents.ai_photo_log_paywalled);
-            setAiPaywallFeature("photo_log");
-          }
+          setPhotoLogOpen(true);
         }}
       />
 
@@ -2858,12 +2853,20 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         onCommit={commitAiLoggedItems}
       />
 
-      {/* Batch 5.13 — AI photo log (Pro). */}
+      {/* Batch 5.13 — AI photo log. 2026-05-02: Free + Base get 5 photo
+          logs per rolling 7 days via a server-enforced free-taster
+          bucket; on exhaustion the dialog calls onUpgradeRequired and
+          we open the AiPaywallDialog. */}
       <PhotoLogDialog
         open={photoLogOpen}
         onOpenChange={setPhotoLogOpen}
         activeSlot={mealSlot}
         onCommit={commitAiLoggedItems}
+        userTier={userTier}
+        onUpgradeRequired={() => {
+          setPhotoLogOpen(false);
+          setAiPaywallFeature("photo_log");
+        }}
       />
 
       {/* Batch 5.13 — Factual Pro paywall for voice / photo logging. */}
@@ -3167,14 +3170,16 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         }}
         photo={{
           onCapture: () => {
+            // 2026-05-02 — photo-log opens for any tier. The dialog's
+            // own free-taster line + 403 handoff route to the
+            // AiPaywallDialog when the user exhausts their weekly
+            // quota.
             setLogSheetOpen(false);
-            if (userTier === "pro") {
-              setPhotoLogOpen(true);
-            } else {
-              setAiPaywallFeature("photo_log");
-            }
+            setPhotoLogOpen(true);
           },
-          locked: userTier !== "pro",
+          // Lock badge removed (2026-05-02) — photo-log is no longer
+          // Pro-only at the entry point.
+          locked: false,
         }}
         onAddManually={() => {
           // Footer "Or add manually" → close LogSheet, open the

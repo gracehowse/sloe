@@ -2570,13 +2570,14 @@ export default function TrackerScreen() {
   }, [userTier]);
 
   const handleOpenPhotoLog = useCallback(() => {
-    if (userTier !== "pro") {
-      track(AnalyticsEvents.ai_photo_log_paywalled);
-      setAiPaywall({ open: true, feature: "photo_log" });
-      return;
-    }
+    // 2026-05-02 — photo-log is no longer Pro-only. Free + Base get
+    // FREE_PHOTO_LOG_WEEKLY_LIMIT (=5) free photo logs per rolling 7
+    // days; the sheet opens for any tier. The gate is the SECOND
+    // photo after exhaustion (server returns 403, sheet calls
+    // `onUpgradeRequired` -> AiPaywallSheet). See
+    // `docs/decisions/2026-05-02-photo-log-free-taster.md`.
     setPhotoLogOpen(true);
-  }, [userTier]);
+  }, []);
 
   const addWaterMl = useCallback(
     async (ml: number) => {
@@ -4140,13 +4141,12 @@ export default function TrackerScreen() {
                   track(AnalyticsEvents.today_snap_shortcut_tapped, {
                     tier: userTier,
                   });
-                  if (userTier === "pro") {
-                    setPhotoLogOpen(true);
-                  } else {
-                    setAiPaywall({ open: true, feature: "photo_log" });
-                  }
+                  // 2026-05-02 — open for any tier; the in-sheet
+                  // quota line + 403 paywall handoff handle gating.
+                  setPhotoLogOpen(true);
                 }}
-                locked={userTier !== "pro"}
+                // Lock badge removed (2026-05-02).
+                locked={false}
               />
             )}
 
@@ -4758,14 +4758,15 @@ export default function TrackerScreen() {
         }}
         photo={{
           onCapture: () => {
+            // 2026-05-02 — photo-log opens for any tier. The sheet's
+            // own free-taster line + 403 handoff route to the
+            // AiPaywallSheet when the user exhausts their weekly
+            // quota.
             setFabSheetOpen(false);
-            if (userTier === "pro") {
-              setPhotoLogOpen(true);
-            } else {
-              setAiPaywall({ open: true, feature: "photo_log" });
-            }
+            setPhotoLogOpen(true);
           },
-          locked: userTier !== "pro",
+          // Lock badge removed (2026-05-02).
+          locked: false,
         }}
         onAddManually={() => {
           // Footer "Or add manually" link → escape hatch into the
@@ -4922,16 +4923,10 @@ export default function TrackerScreen() {
         onPhotoFallback={() => {
           // Audit 2026-04-30 (Lose It "Closer" parity, Fix 2) — when
           // the barcode lookup fails we offer a soft handoff to the
-          // AI photo log. Pro gating runs through the same paywall
-          // path as every other photo entry point so analytics +
-          // upgrade routing stay consistent.
+          // AI photo log. 2026-05-02: open for any tier; the in-sheet
+          // quota line + 403 paywall handoff handle gating now.
           setBarcodeOpen(false);
-          if (userTier === "pro") {
-            setPhotoLogOpen(true);
-          } else {
-            track(AnalyticsEvents.ai_photo_log_paywalled);
-            setAiPaywall({ open: true, feature: "photo_log" });
-          }
+          setPhotoLogOpen(true);
         }}
       />
 
@@ -5182,7 +5177,10 @@ export default function TrackerScreen() {
         }}
       />
 
-      {/* Batch 5.13 — AI photo log sheet (Pro). */}
+      {/* AI photo log sheet. 2026-05-02: Free + Base get 5 photo logs
+          per rolling 7 days via a server-enforced free-taster bucket;
+          on exhaustion the sheet calls onUpgradeRequired and we open
+          the AiPaywallSheet. */}
       <PhotoLogSheet
         visible={photoLogOpen}
         onClose={() => setPhotoLogOpen(false)}
@@ -5190,6 +5188,11 @@ export default function TrackerScreen() {
         accessToken={session?.access_token ?? null}
         apiBase={apiBase}
         onCommit={commitAiLoggedItems}
+        userTier={userTier}
+        onUpgradeRequired={() => {
+          setPhotoLogOpen(false);
+          setAiPaywall({ open: true, feature: "photo_log" });
+        }}
         colors={{
           text: colors.text,
           textSecondary: colors.textSecondary,

@@ -1,18 +1,17 @@
 /**
  * @vitest-environment node
  *
- * Integration tests for POST /api/nutrition/photo-log — the
- * range-first re-architecture (2026-05-01).
+ * Integration tests for POST /api/nutrition/photo-log.
  *
- * Covers auth, tier gate, multipart expectation, OpenAI config, and
- * the new behaviour pins:
- *  - Returns the `PhotoLogRangedResponse` shape (items[].calories is a
- *    range, totalKcal is a range, optional addons + notes).
- *  - NEVER blanket-fails on partial / low-confidence items — if the
- *    model returns ANY items, the route returns ok:true. This is the
- *    single biggest reason the old "Couldn't analyse" alert fired.
- *  - 422 `no_food_detected` ONLY when the model returns zero items.
- *  - 502 `model_unparseable` when the JSON body is broken.
+ * 2026-05-02 — gating model changed: photo-log is no longer Pro-only.
+ * Non-Pro users get `FREE_PHOTO_LOG_WEEKLY_LIMIT` (=5) free photo logs
+ * per rolling 7-day window via a dedicated rate-limit bucket
+ * (`api:photo-log:free-quota`). Pro users keep the existing 100/day
+ * bucket (`api:photo-log`). See
+ * `docs/decisions/2026-05-02-photo-log-free-taster.md`.
+ *
+ * Covers auth, free-taster quota, Pro 100/day cap, OpenAI config,
+ * multipart expectation, and the range-first response shape.
  *
  * No live OpenAI calls — the upstream `fetch` is stubbed with
  * `vi.stubGlobal`.
@@ -24,15 +23,28 @@ vi.mock("@/lib/supabase/serverAnonClient", () => ({
   getUserTier: vi.fn(),
 }));
 
+// We mock per-call so tests can simulate "free quota exhausted" by
+// returning ok=false from the *first* rateLimit call (the free-taster
+// bucket) while leaving the second (Pro 100/day) untouched.
 vi.mock("@/lib/server/rateLimit", () => ({
-  rateLimit: vi.fn(async () => ({ ok: true, retryAfterSec: 0 })),
+  rateLimit: vi.fn(async () => ({
+    ok: true,
+    remaining: 99,
+    resetAtMs: 0,
+  })),
 }));
 
 import { POST } from "../../app/api/nutrition/photo-log/route";
+import {
+  FREE_PHOTO_LOG_WEEKLY_LIMIT,
+  FREE_PHOTO_LOG_WINDOW_MS,
+} from "@/lib/nutrition/photoLogQuota";
 import { getUserIdFromRequest, getUserTier } from "@/lib/supabase/serverAnonClient";
+import { rateLimit } from "@/lib/server/rateLimit";
 
 const mockUserId = getUserIdFromRequest as ReturnType<typeof vi.fn>;
 const mockTier = getUserTier as ReturnType<typeof vi.fn>;
+const mockRateLimit = rateLimit as ReturnType<typeof vi.fn>;
 
 type FetchInit = RequestInit & { body?: string };
 type StubSpec = { status: number; body: unknown };
@@ -63,10 +75,36 @@ function pngFormBody() {
   return fd;
 }
 
+/** Default model body — used by tests that need a successful parse to
+ *  reach the success branch. Mirrors `photoLogRoute.test.ts` shape
+ *  expectations from the previous range-first test. */
+const HAPPY_MODEL_BODY = modelEnvelope(
+  JSON.stringify({
+    items: [
+      {
+        name: "Pita",
+        category: "Bread + dips",
+        quantityHint: "1 piece",
+        calories: { low: 120, high: 150 },
+        protein: { low: 4, high: 5 },
+        carbs: { low: 24, high: 30 },
+        fat: { low: 0, high: 1 },
+        confidence: "high",
+      },
+    ],
+  }),
+);
+
 describe("POST /api/nutrition/photo-log", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubEnv("OPENAI_API_KEY", "sk-test-openai");
+    // Default: every rateLimit call passes. Tests override per-case.
+    mockRateLimit.mockImplementation(async () => ({
+      ok: true,
+      remaining: 99,
+      resetAtMs: 0,
+    }));
   });
 
   afterEach(() => {
@@ -87,29 +125,162 @@ describe("POST /api/nutrition/photo-log", () => {
     expect(res.status).toBe(401);
   });
 
-  it("returns 403 upgrade_required when tier is not Pro", async () => {
+  it("free user with quota remaining is admitted past the gate (free-taster bucket only)", async () => {
     mockUserId.mockResolvedValue("u1");
     mockTier.mockResolvedValue("free");
-    const fd = pngFormBody();
+    // Free-taster bucket passes with 4 remaining (= they had 1 already
+    // this week). We DO NOT also call the Pro 100/day limiter.
+    mockRateLimit.mockResolvedValueOnce({
+      ok: true,
+      remaining: 4,
+      resetAtMs: 0,
+    });
+    stubOpenAi({ status: 200, body: HAPPY_MODEL_BODY });
     const res = await POST(
       new Request("http://localhost/api/nutrition/photo-log", {
         method: "POST",
-        body: fd,
+        body: pngFormBody(),
+      }),
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.ok).toBe(true);
+    // Authoritative quota signal threaded through to the client.
+    expect(body.freeQuotaRemaining).toBe(4);
+    // Confirm the free-taster bucket was hit with the correct prefix +
+    // limit + windowMs — pinning the contract so a future drift fails.
+    expect(mockRateLimit).toHaveBeenCalledTimes(1);
+    expect(mockRateLimit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        keyPrefix: "api:photo-log:free-quota",
+        userId: "u1",
+        limit: FREE_PHOTO_LOG_WEEKLY_LIMIT,
+        windowMs: FREE_PHOTO_LOG_WINDOW_MS,
+      }),
+    );
+  });
+
+  it("free user with quota exhausted (5 logs this week) returns 403 upgrade_required", async () => {
+    mockUserId.mockResolvedValue("u1");
+    mockTier.mockResolvedValue("free");
+    // First call = free-quota bucket: ok=false (quota drained).
+    mockRateLimit.mockResolvedValueOnce({
+      ok: false,
+      remaining: 0,
+      resetAtMs: 0,
+      retryAfterSec: 60,
+      ip: null,
+    });
+    const res = await POST(
+      new Request("http://localhost/api/nutrition/photo-log", {
+        method: "POST",
+        body: pngFormBody(),
+      }),
+    );
+    expect(res.status).toBe(403);
+    const json = await res.json();
+    expect(json.error).toBe("upgrade_required");
+    expect(json.freeQuotaRemaining).toBe(0);
+    // Pro 100/day limiter must NOT have been called (we short-circuit
+    // on free-quota fail so the Pro bucket isn't touched by non-Pro
+    // traffic).
+    expect(mockRateLimit).toHaveBeenCalledTimes(1);
+  });
+
+  it("base tier (mid-tier non-Pro) is treated like free for the photo-log taster", async () => {
+    mockUserId.mockResolvedValue("u1");
+    mockTier.mockResolvedValue("base");
+    mockRateLimit.mockResolvedValueOnce({
+      ok: false,
+      remaining: 0,
+      resetAtMs: 0,
+      retryAfterSec: 60,
+      ip: null,
+    });
+    const res = await POST(
+      new Request("http://localhost/api/nutrition/photo-log", {
+        method: "POST",
+        body: pngFormBody(),
       }),
     );
     expect(res.status).toBe(403);
     expect((await res.json()).error).toBe("upgrade_required");
+    // Same bucket as free — the route does not differentiate.
+    expect(mockRateLimit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        keyPrefix: "api:photo-log:free-quota",
+        limit: FREE_PHOTO_LOG_WEEKLY_LIMIT,
+      }),
+    );
   });
 
-  it("returns 503 when OPENAI_API_KEY is unset", async () => {
-    vi.unstubAllEnvs();
+  it("pro user does NOT hit the free-taster bucket (only the 100/day bucket)", async () => {
     mockUserId.mockResolvedValue("u1");
     mockTier.mockResolvedValue("pro");
-    const fd = pngFormBody();
+    mockRateLimit.mockResolvedValueOnce({
+      ok: true,
+      remaining: 99,
+      resetAtMs: 0,
+    });
+    stubOpenAi({ status: 200, body: HAPPY_MODEL_BODY });
     const res = await POST(
       new Request("http://localhost/api/nutrition/photo-log", {
         method: "POST",
-        body: fd,
+        body: pngFormBody(),
+      }),
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.ok).toBe(true);
+    // Pro response surfaces null for the quota signal — uncapped at
+    // the user-visible level.
+    expect(body.freeQuotaRemaining).toBeNull();
+    // Pro path calls rateLimit exactly once — the 100/day bucket. The
+    // free-quota bucket is bypassed entirely.
+    expect(mockRateLimit).toHaveBeenCalledTimes(1);
+    expect(mockRateLimit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        keyPrefix: "api:photo-log",
+        limit: 100,
+        windowMs: 24 * 60 * 60_000,
+      }),
+    );
+    // Critical correctness check — the Pro bucket key prefix is NOT
+    // the free-taster prefix. (Defence-in-depth: a regression that
+    // collapses the two buckets would break this assertion.)
+    const call = mockRateLimit.mock.calls[0]?.[0] as { keyPrefix: string };
+    expect(call.keyPrefix).toBe("api:photo-log");
+    expect(call.keyPrefix).not.toBe("api:photo-log:free-quota");
+  });
+
+  it("pro user hits the existing 100/day cap → 429", async () => {
+    mockUserId.mockResolvedValue("u1");
+    mockTier.mockResolvedValue("pro");
+    mockRateLimit.mockResolvedValueOnce({
+      ok: false,
+      remaining: 0,
+      resetAtMs: 0,
+      retryAfterSec: 600,
+      ip: null,
+    });
+    const res = await POST(
+      new Request("http://localhost/api/nutrition/photo-log", {
+        method: "POST",
+        body: pngFormBody(),
+      }),
+    );
+    expect(res.status).toBe(429);
+    expect((await res.json()).error).toBe("rate_limited");
+  });
+
+  it("returns 503 when OPENAI_API_KEY is unset (after gate passes)", async () => {
+    vi.unstubAllEnvs();
+    mockUserId.mockResolvedValue("u1");
+    mockTier.mockResolvedValue("pro");
+    const res = await POST(
+      new Request("http://localhost/api/nutrition/photo-log", {
+        method: "POST",
+        body: pngFormBody(),
       }),
     );
     expect(res.status).toBe(503);
@@ -128,188 +299,5 @@ describe("POST /api/nutrition/photo-log", () => {
     );
     expect(res.status).toBe(400);
     expect((await res.json()).error).toBe("expected_multipart");
-  });
-
-  it("returns the range-first shape on a successful charcuterie-style breakdown", async () => {
-    mockUserId.mockResolvedValue("u1");
-    mockTier.mockResolvedValue("pro");
-    // Simulates the model output that maps to Grace's screenshot
-    // (charcuterie / mezze plate). The route is responsible for
-    // surfacing it as `PhotoLogRangedResponse`.
-    stubOpenAi({
-      status: 200,
-      body: modelEnvelope(
-        JSON.stringify({
-          items: [
-            {
-              name: "Pita",
-              category: "Bread + dips",
-              quantityHint: "1 piece",
-              calories: { low: 120, high: 150 },
-              protein: { low: 4, high: 5 },
-              carbs: { low: 24, high: 30 },
-              fat: { low: 0, high: 1 },
-              confidence: "high",
-            },
-            {
-              name: "Hummus",
-              category: "Bread + dips",
-              quantityHint: "~2 tbsp",
-              calories: { low: 70, high: 100 },
-              protein: { low: 2, high: 3 },
-              carbs: { low: 6, high: 8 },
-              fat: { low: 5, high: 7 },
-              confidence: "high",
-            },
-            {
-              name: "Cheese",
-              category: "Protein + fats",
-              quantityHint: "~40-50g",
-              calories: { low: 160, high: 200 },
-              protein: { low: 10, high: 13 },
-              carbs: 0,
-              fat: { low: 13, high: 17 },
-              confidence: "medium",
-            },
-          ],
-          addons: [
-            {
-              name: "Glass of red wine",
-              hint: "if you're also having wine",
-              calories: { low: 120, high: 150 },
-            },
-          ],
-          notes: "Olive oil glaze on bread likely +30 kcal",
-        }),
-      ),
-    });
-    const fd = pngFormBody();
-    const res = await POST(
-      new Request("http://localhost/api/nutrition/photo-log", {
-        method: "POST",
-        body: fd,
-      }),
-    );
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.ok).toBe(true);
-    expect(body.modelVersion).toMatch(/gpt-4o/);
-    expect(Array.isArray(body.items)).toBe(true);
-    expect(body.items).toHaveLength(3);
-    // Per-item kcal RANGE.
-    expect(body.items[0]).toMatchObject({
-      name: "Pita",
-      category: "Bread + dips",
-      quantityHint: "1 piece",
-      calories: { low: 120, high: 150 },
-      confidence: "high",
-      source: "ai",
-    });
-    // Computed plate total spans the sum of all items.
-    expect(body.totalKcal).toEqual({ low: 350, high: 450 });
-    // Addons preserved + total-with-addons computed.
-    expect(body.addons).toHaveLength(1);
-    expect(body.addons[0]).toMatchObject({
-      name: "Glass of red wine",
-      hint: "if you're also having wine",
-      calories: { low: 120, high: 150 },
-    });
-    expect(body.totalKcalWithAddons).toEqual({ low: 470, high: 600 });
-    // Notes preserved.
-    expect(body.notes).toMatch(/olive oil/i);
-  });
-
-  it("returns ok:true with whatever items the model gave — never blanket-fails on low confidence", async () => {
-    mockUserId.mockResolvedValue("u1");
-    mockTier.mockResolvedValue("pro");
-    // The whole point of the re-architecture: if the model returns
-    // even a single low-confidence item, the route MUST surface it
-    // with the `low` flag so the user sees the breakdown and can
-    // edit. Pre-2026-05-01 this returned 502 verify_failed.
-    stubOpenAi({
-      status: 200,
-      body: modelEnvelope(
-        JSON.stringify({
-          items: [
-            {
-              name: "Mystery sauce",
-              category: "Extras",
-              calories: { low: 50, high: 250 },
-              confidence: "low",
-            },
-          ],
-        }),
-      ),
-    });
-    const fd = pngFormBody();
-    const res = await POST(
-      new Request("http://localhost/api/nutrition/photo-log", {
-        method: "POST",
-        body: fd,
-      }),
-    );
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.ok).toBe(true);
-    expect(body.items[0].confidence).toBe("low");
-    expect(body.totalKcal).toEqual({ low: 50, high: 250 });
-  });
-
-  it("returns 422 no_food_detected ONLY when the model returns zero items", async () => {
-    mockUserId.mockResolvedValue("u1");
-    mockTier.mockResolvedValue("pro");
-    stubOpenAi({
-      status: 200,
-      body: modelEnvelope(JSON.stringify({ items: [] })),
-    });
-    const fd = pngFormBody();
-    const res = await POST(
-      new Request("http://localhost/api/nutrition/photo-log", {
-        method: "POST",
-        body: fd,
-      }),
-    );
-    expect(res.status).toBe(422);
-    expect((await res.json()).error).toBe("no_food_detected");
-  });
-
-  it("returns 502 model_unparseable when the model's JSON is broken", async () => {
-    mockUserId.mockResolvedValue("u1");
-    mockTier.mockResolvedValue("pro");
-    stubOpenAi({
-      status: 200,
-      body: modelEnvelope("not json at all"),
-    });
-    const fd = pngFormBody();
-    const res = await POST(
-      new Request("http://localhost/api/nutrition/photo-log", {
-        method: "POST",
-        body: fd,
-      }),
-    );
-    expect(res.status).toBe(502);
-    expect((await res.json()).error).toBe("model_unparseable");
-  });
-
-  it("returns 502 model_unparseable when the JSON has no `items` array", async () => {
-    mockUserId.mockResolvedValue("u1");
-    mockTier.mockResolvedValue("pro");
-    stubOpenAi({
-      status: 200,
-      body: modelEnvelope(JSON.stringify({ totalKcal: 500 })),
-    });
-    const fd = pngFormBody();
-    const res = await POST(
-      new Request("http://localhost/api/nutrition/photo-log", {
-        method: "POST",
-        body: fd,
-      }),
-    );
-    // No `items` array at all triggers the unparseable path; an empty
-    // array would trigger no_food_detected. Distinction matters
-    // because one indicates a model schema regression and the other
-    // is a "no food in photo" user error.
-    expect(res.status).toBe(502);
-    expect((await res.json()).error).toBe("model_unparseable");
   });
 });

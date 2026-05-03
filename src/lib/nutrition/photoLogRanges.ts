@@ -84,6 +84,16 @@ export type PhotoLogRangedResponse = {
   notes?: string;
   /** Model identifier for debugging / drift detection. */
   modelVersion: string;
+  /**
+   * 2026-05-02 — free-taster quota signal. `null` for Pro (uncapped
+   * at the user-visible level); a non-negative integer for Free +
+   * Base, representing the number of free photo logs left in the
+   * current rolling-7-day window after this successful call. Optional
+   * because the parser populates the rest of the shape — the route
+   * adds this field after parse. See
+   * `docs/decisions/2026-05-02-photo-log-free-taster.md`.
+   */
+  freeQuotaRemaining?: number | null;
 };
 
 /** Default category set the prompt instructs the model to prefer. */
