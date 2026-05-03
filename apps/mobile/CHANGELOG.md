@@ -55,6 +55,21 @@ we are not the gatekeeper.
 - `tests/unit/nutritionLogToCsv.test.ts` (existing) — pinned bytes
   continue to match for both entry points.
 
+## 2026-05-02 — Ionicons → lucide sweep on Voice/Photo/QuickAdd/DayStrip
+
+ui-critic finding #3 (P1). Replaces stale PR #32, rebuilt on current main per PR-staleness-prevention sweep.
+
+Swept the remaining `@expo/vector-icons` Ionicons leak from four mobile surfaces to `lucide-react-native`:
+
+- `VoiceLogSheet.tsx` — `mic` → `Mic`, `close-circle` → `XCircle`
+- `PhotoLogSheet.tsx` — `camera` / `camera-outline` → `Camera`, `images` → `Images`, `sparkles-outline` → `Sparkles`, `close-circle` → `XCircle`
+- `QuickAddPanel.tsx` — `ellipsis-vertical` → `MoreVertical`, `add-circle` → `PlusCircle`, `star` → `Star` (with `fill` for filled state)
+- `charts/DayStrip.tsx` — `checkmark` → `Check`, `snow-outline` → `Snowflake`, `calendar-outline` → `Calendar`
+
+Sizes route through canonical `IconSize` token in `apps/mobile/constants/theme.ts` (xs/sm/md/base/lg/xl/hero) instead of pixel literals. Stroke widths set deliberately for visual rhythm match.
+
+Lock-in regression test `apps/mobile/tests/unit/iconLanguageNoIonicons.test.ts` fails CI if any of the four files re-imports `@expo/vector-icons` or references `Ionicons`.
+
 ## 2026-05-02 — EmptyState: 72pt disc + headline/body type ladder + optional CTA
 
 ui-critic finding #6 (P1). The pre-2026-05-02 `<EmptyState>` primitive

@@ -52,8 +52,7 @@ import {
   View,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Ionicons } from "@expo/vector-icons";
-import { Plus, X } from "lucide-react-native";
+import { Camera, Images, Plus, X } from "lucide-react-native";
 
 import { Accent, IconSize, Radius, Spacing } from "@/constants/theme";
 import {
@@ -408,7 +407,7 @@ export default function PhotoLogSheet({
               }}
             >
               <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 8 }}>
-                <Ionicons name="camera" size={20} color={Accent.primary} />
+                <Camera size={IconSize.xl} color={Accent.primary} strokeWidth={2.25} />
                 <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text }}>Photo log</Text>
               </View>
               <Pressable
@@ -481,7 +480,7 @@ export default function PhotoLogSheet({
                       gap: 6,
                     }}
                   >
-                    <Ionicons name="camera-outline" size={28} color={colors.textTertiary} />
+                    <Camera size={28} color={colors.textTertiary} strokeWidth={1.75} />
                     <Text style={{ fontSize: 13, color: colors.textTertiary }}>Pick a photo to analyse</Text>
                   </View>
                 )}
@@ -501,7 +500,7 @@ export default function PhotoLogSheet({
                       gap: 6,
                     }}
                   >
-                    <Ionicons name="camera" size={16} color={Accent.primary} />
+                    <Camera size={IconSize.base} color={Accent.primary} strokeWidth={2.25} />
                     <Text style={{ fontSize: 13, fontWeight: "700", color: Accent.primary }}>Camera</Text>
                   </Pressable>
                   <Pressable
@@ -520,7 +519,7 @@ export default function PhotoLogSheet({
                       gap: 6,
                     }}
                   >
-                    <Ionicons name="images" size={16} color={colors.text} />
+                    <Images size={IconSize.base} color={colors.text} strokeWidth={2.25} />
                     <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text }}>Library</Text>
                   </Pressable>
                 </View>
