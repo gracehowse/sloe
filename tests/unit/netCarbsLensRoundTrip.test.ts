@@ -142,4 +142,42 @@ describe("net-carbs lens round-trip (P2-26 + P3-30 + polish A.2)", () => {
       expect(src).toMatch(/add column if not exists net_carbs_lens_enabled boolean not null default false/);
     });
   });
+
+  describe("mobile lens refresh on focus (2026-05-02)", () => {
+    // Pre-fix: the lens flag was loaded once on userId mount and
+    // never refreshed, so toggling "Show net carbs" in Settings did
+    // nothing visible on Today / /targets / Recipe Detail until the
+    // app cold-started. The fix wires the flag through each
+    // screen's existing focus-refresh path so a tab return picks
+    // up the new value.
+    it("Today tab fetches net_carbs_lens_enabled inside loadProfileTargets", () => {
+      const src = read("apps/mobile/app/(tabs)/index.tsx");
+      // The select string passed to loadProfileTargets must include the
+      // column so the focus-effect refresh repropagates the toggle.
+      const loadProfileTargetsBlock =
+        src.match(/const loadProfileTargets[\s\S]+?\}\s*,\s*\[userId\]\)/);
+      expect(loadProfileTargetsBlock).not.toBeNull();
+      expect(loadProfileTargetsBlock![0]).toMatch(/net_carbs_lens_enabled/);
+    });
+
+    it("/targets refreshes the lens flag on screen focus", () => {
+      const src = read("apps/mobile/app/targets.tsx");
+      // Must import + call useFocusEffect AND read the column inside it.
+      expect(src).toMatch(/useFocusEffect/);
+      expect(src).toMatch(/net_carbs_lens_enabled/);
+    });
+
+    it("Recipe Detail refreshes the lens flag on screen focus", () => {
+      const src = read("apps/mobile/app/recipe/[id].tsx");
+      // The recipe detail screen mounts once when navigated to; a
+      // useFocusEffect refresh is what flips the carb label after the
+      // user toggles Settings and returns.
+      expect(src).toMatch(/useFocusEffect/);
+      // The pre-fix one-shot useEffect stays as the cold-start
+      // hydration; the focus refresh is on top of it.
+      const focusBlock = src.match(/useFocusEffect[\s\S]+?\)\s*\)\s*;/);
+      expect(focusBlock).not.toBeNull();
+      expect(focusBlock![0]).toMatch(/net_carbs_lens_enabled|refreshNetCarbsLens/);
+    });
+  });
 });

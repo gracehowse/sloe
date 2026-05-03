@@ -247,7 +247,22 @@ export default function RecipeDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [recipe, setRecipe] = useState<FullRecipe | null>(null);
   // P3-30 (2026-04-25): net-carbs lens flag for swapping the carbs row label.
+  // 2026-05-02 fix: re-read on every screen focus (not just userId change)
+  // so toggling "Show net carbs" in the Settings sheet swaps the recipe
+  // detail's Carbs ↔ Net carbs label without requiring a remount. Tester
+  // feedback: "toggling net carbs on and off in setting not working".
   const [netCarbsLensEnabled, setNetCarbsLensEnabled] = useState(false);
+  const refreshNetCarbsLens = useCallback(async () => {
+    if (!userId) return;
+    const { data } = await supabase
+      .from("profiles")
+      .select("net_carbs_lens_enabled")
+      .eq("id", userId)
+      .maybeSingle();
+    setNetCarbsLensEnabled(
+      Boolean((data as { net_carbs_lens_enabled?: boolean } | null)?.net_carbs_lens_enabled),
+    );
+  }, [userId]);
   useEffect(() => {
     if (!userId) return;
     let cancelled = false;
@@ -264,6 +279,11 @@ export default function RecipeDetailScreen() {
       cancelled = true;
     };
   }, [userId]);
+  useFocusEffect(
+    useCallback(() => {
+      refreshNetCarbsLens().catch(() => { /* preserve default */ });
+    }, [refreshNetCarbsLens]),
+  );
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [reverifying, setReverifying] = useState(false);
   /** USDA / FatSecret / OFF / Edamam / Suppr DB path via `/api/nutrition/verify-recipe` (not local staples). */
@@ -991,6 +1011,16 @@ export default function RecipeDetailScreen() {
       const micros: Record<string, number> = {};
       if (scaledForLog.sugar_g != null) micros.sugarG = scaledForLog.sugar_g;
       if (scaledForLog.sodium_mg != null) micros.sodiumMg = scaledForLog.sodium_mg;
+      // Tracking-extras autoupdate (2026-05-02) — recipes table doesn't
+      // currently carry caffeine_mg / alcohol_g per recipe (would
+      // require schema migration + per-ingredient roll-up). When that
+      // lands, set `micros.caffeineMg` / `micros.alcoholG` here from
+      // the verified ingredient roll-up and the inserted meal will
+      // auto-bump the daily totals via the debounced journal sync's
+      // `bumpStimulantsForLoggedMeal` (or wire a direct call here for
+      // the immediate-bump UX). Until then a recipe containing
+      // wine / coffee logged via "Add to today" leaves the chip
+      // totals unchanged — known gap, scoped to a follow-up.
       const newId = newMealId();
       const { error } = await supabase.from("nutrition_entries").insert({
         id: newId,
