@@ -59,6 +59,7 @@ import {
   type TrackingExtras,
 } from "../../lib/nutrition/trackingExtras.ts";
 import { MACRO_COLOR_VARS } from "../../lib/theme/macroColors.ts";
+import { MfpCsvImportCard } from "./imports/MfpCsvImportCard";
 
 const THEME_OPTIONS = [
   { value: "system", label: "Auto" },
@@ -1444,6 +1445,12 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
               weights, plans. Downloads as a JSON file.
             </p>
           </button>
+          {/* 2026-05-02 — MFP CSV bulk-import card. Closes the
+              MFP-refugee history-bridge gap (P1 customer-lens). Mirrors
+              the same card on mobile Settings (App section) and on
+              the onboarding data-bridges step. See
+              `docs/decisions/2026-05-02-mfp-csv-import.md`. */}
+          <MfpCsvImportCard surface="settings" />
           <Link
             href="/privacy"
             className="block w-full text-left px-4 py-3 bg-muted hover:bg-muted/80 rounded-lg transition-all text-foreground"

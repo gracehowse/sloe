@@ -59,6 +59,18 @@ vi.mock("@/lib/expoPushToken", () => ({
   markNotificationsPromptDismissed: vi.fn(async () => undefined),
 }));
 
+// 2026-05-02 — `data-bridges` now mounts `MobileMfpCsvImportCard`,
+// which transitively imports `@/lib/authedFetch` -> `@/lib/supabase`.
+// The supabase client validates its URL at construction; without a
+// stub the module-level `createClient` call throws under vitest.
+vi.mock("@/lib/authedFetch", () => ({
+  authedFetch: vi.fn(async () => new Response(JSON.stringify({ ok: false }))),
+}));
+vi.mock("@/lib/supprWeb", () => ({
+  getSupprApiBase: () => "https://suppr-club.com",
+  getSupprWebBase: () => "https://suppr-club.com",
+}));
+
 // AsyncStorage shim already lives in the workspace; the provider's
 // localStorage hydration short-circuits when `initial` is supplied.
 

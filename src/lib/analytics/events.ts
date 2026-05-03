@@ -479,6 +479,37 @@ export const AnalyticsEvents = {
    *  `data_bridge_chosen: null` on `onboarding_completed`). Payload:
    *    { reason: "card_tap" } */
   onboarding_data_bridge_skipped: "onboarding_data_bridge_skipped",
+  /** 2026-05-02 — user picked an MFP CSV file in the importer card.
+   *  Closes the MFP-refugee history-bridge gap (P1 customer-lens).
+   *  Fires once per file pick on both web and mobile.
+   *  Payload:
+   *    {
+   *      surface: "onboarding" | "settings",
+   *      platform: "web" | "ios"
+   *    }
+   *  See `docs/decisions/2026-05-02-mfp-csv-import.md`. */
+  mfp_csv_import_started: "mfp_csv_import_started",
+  /** 2026-05-02 — MFP CSV import finished successfully (HTTP 200 with
+   *  `ok: true`). Identical payload on web + mobile so funnels read the
+   *  same.
+   *  Payload:
+   *    {
+   *      imported: number,    // rows that landed
+   *      unmatched: number,   // rows skipped (e.g. missing calories)
+   *      truncated: boolean,  // true when input had >1000 rows
+   *      surface: "onboarding" | "settings",
+   *      platform: "web" | "ios"
+   *    } */
+  mfp_csv_import_completed: "mfp_csv_import_completed",
+  /** 2026-05-02 — MFP CSV import failed (HTTP non-2xx, network drop, or
+   *  client-side picker error). Payload:
+   *    {
+   *      error: string,        // route error code or "fetch_failed"
+   *      status: number,       // HTTP status; 0 for network/client errors
+   *      surface: "onboarding" | "settings",
+   *      platform: "web" | "ios"
+   *    } */
+  mfp_csv_import_failed: "mfp_csv_import_failed",
   /** User created a new account (email+password or Apple SSO) on web.
    * Fires once, after Supabase `signUp` / `signInWithOAuth` succeeds.
    * Payload: `{ method: "email" | "apple" }`.
