@@ -20,7 +20,7 @@
  * full set of offenders and is verified visually in the sim.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { renderHook, waitFor } from "@testing-library/react";
+import { renderHook, waitFor } from "@testing-library/react-native";
 
 // Mock supabase so the `await supabase.from(...)` chain rejects.
 const supabaseFromMock = vi.fn();
