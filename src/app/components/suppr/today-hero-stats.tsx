@@ -193,7 +193,26 @@ function DesktopHeroStats({
           <StatTile
             label={TODAY_STAT_LABELS.net}
             value={netStr}
-            valueTone={net < 0 ? "positive" : "neutral"}
+            // N4 (2026-05-03): three-way tone instead of two.
+            //   - loggedKcal === 0 → neutral grey: nothing logged means
+            //     nothing earned. Previously rendered "−1,132" in green
+            //     because `net = 0 − 1132 < 0`, which read as "good
+            //     deficit" when the user had simply not logged yet.
+            //   - net < 0 with food logged → success green: real deficit.
+            //   - net > 0 → over (amber/warning): over the target. The
+            //     prototype-carryover rule (memory: project_prototype_
+            //     carryover_rules) sets over-budget = amber across the
+            //     app; previously this tile rendered over as plain
+            //     foreground colour, which understated the signal.
+            valueTone={
+              loggedKcal === 0
+                ? "neutral"
+                : net < 0
+                  ? "positive"
+                  : net > 0
+                    ? "over"
+                    : "neutral"
+            }
           />
         </div>
       </div>
@@ -208,9 +227,14 @@ function StatTile({
 }: {
   label: string;
   value: string;
-  valueTone?: "neutral" | "positive";
+  valueTone?: "neutral" | "positive" | "over";
 }) {
-  const valueColor = valueTone === "positive" ? "text-success" : "text-foreground";
+  const valueColor =
+    valueTone === "positive"
+      ? "text-success"
+      : valueTone === "over"
+        ? "text-warning"
+        : "text-foreground";
   return (
     <div>
       <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">

@@ -121,14 +121,27 @@ function DailyRing({
   const circumference = 2 * Math.PI * radius;
   const pct = target > 0 ? Math.min(consumed / target, 1) : 0;
   const offset = circumference * (1 - pct);
-  const remaining = Math.max(Math.round(target - consumed), 0);
   const isOverBudget = consumed > target;
   // Build 41 (2026-05-01) — the legacy `ringColor` ladder (warning /
   // success / macro-calories per displayMode + over-budget) was used
   // to colour the ring stroke before the gradient was introduced.
   // Post-59cc821 the stroke is gradient-or-success, so the ladder is
   // unused. Centre text colour still flips to warning when over.
-  const centerValue = displayMode === "consumed" ? Math.round(consumed) : remaining;
+  //
+  // B6 (2026-05-03): when over-budget in `remaining` mode, show the
+  // *amount over* (positive integer). Previous code rendered the
+  // clamped `remaining` value (always 0 once over-budget) beneath
+  // the "OVER" label — Grace's screenshot showed `0 / OVER / of
+  // 1,132 kcal` when she was actually 506 kcal over. "0 OVER" reads
+  // as "you're at goal", which is the opposite of the truth.
+  const overBy = Math.max(Math.round(consumed - target), 0);
+  const remaining = Math.max(Math.round(target - consumed), 0);
+  const centerValue =
+    displayMode === "consumed"
+      ? Math.round(consumed)
+      : isOverBudget
+        ? overBy
+        : remaining;
   const centerLabel =
     displayMode === "consumed"
       ? RING_LABELS.logged
@@ -139,11 +152,15 @@ function DailyRing({
   const centerLabelColor = isOverBudget ? "var(--warning)" : undefined;
   // Premium-feel papercut #2 (audit 2026-04-29): empty-state ring
   // dominated Today's first impression. Soft-mode the centre when
-  // consumed is exactly 0 (in "consumed" displayMode) so the
-  // suggestion card + macro tiles can lead the visual hierarchy
-  // instead of a giant `0`. Mirror of the same change in mobile
-  // `CalorieRing.tsx`.
-  const isEmpty = consumed === 0 && displayMode === "consumed";
+  // consumed is exactly 0 so the suggestion card + macro tiles can
+  // lead the visual hierarchy instead of a giant ring number.
+  // N5 (2026-05-03): extended to fire in `remaining` mode too — the
+  // original guard only triggered in `consumed` mode, which left the
+  // default Today view (REMAINING) showing `1,132 / REMAINING / of
+  // 1,132 kcal` for users who hadn't logged yet. The empty state
+  // should look the same regardless of which display mode the user
+  // has selected. Mirror of the same change in mobile `CalorieRing.tsx`.
+  const isEmpty = consumed === 0;
 
   // Tween the displayed centre value over 800ms / cubic-out — same
   // curve as the SVG ring sweep so the number and arc finish
@@ -288,7 +305,7 @@ function DailyRing({
                 color: centerValueColor,
               }}
             >
-              {animatedCenterValue}
+              {animatedCenterValue.toLocaleString()}
             </span>
             {/* Centre label ("REMAINING" / "LOGGED" / "OVER"). Grace
                 2026-04-28: mobile flagged the label clipping inner-most

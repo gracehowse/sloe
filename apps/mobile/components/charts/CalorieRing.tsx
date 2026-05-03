@@ -379,7 +379,14 @@ export default function CalorieRing({
             toggle. Empty state (audit 2026-04-29 papercut #2)
             replaces the giant "0" with a softer "Start your day"
             invitation so the empty ring stops dominating the screen. */}
-        {isEmpty && displayMode === "consumed" ? (
+        {/* N5 (2026-05-03): empty-state soft copy now fires in BOTH
+            display modes (was previously gated to `consumed` only,
+            which left the default REMAINING view showing a giant
+            ring number that read as a wireframe placeholder before
+            the user had logged anything). N3 (2026-05-03): centre
+            value renders with `.toLocaleString()` so 4-digit kcal
+            ("1,832") matches the budget line below. */}
+        {isEmpty ? (
           <Text
             style={{
               fontSize: expanded ? 14 : 16,
@@ -399,7 +406,7 @@ export default function CalorieRing({
               fontVariant: ["tabular-nums"],
             }}
           >
-            {animatedCenterValue}
+            {animatedCenterValue.toLocaleString()}
           </Text>
         )}
         {/* Center label ("REMAINING" / "LOGGED" / "OVER"). Grace
@@ -413,7 +420,7 @@ export default function CalorieRing({
             original 10pt + tracking for readability.
             Hidden in empty state — the "Start your day" copy above
             already invites action; LOGGED beneath would be redundant. */}
-        {!(isEmpty && displayMode === "consumed") && (
+        {!isEmpty && (
           <Text
             style={{
               fontSize: expanded ? 8 : 10,

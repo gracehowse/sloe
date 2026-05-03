@@ -84,4 +84,45 @@ describe("TodayHeroStats", () => {
     expect(text).toContain(TODAY_STAT_LABELS.burned);
     expect(text).toContain("—");
   });
+
+  // N4 (2026-05-03) — NET tone is now three-state. Previously the
+  // valueTone was `net < 0 ? "positive" : "neutral"` which painted
+  // the value green any time consumed was below target — including
+  // when nothing had been logged. The empty-state -1,132 in green
+  // read as "good deficit" when the user had simply not started.
+  describe("Net tile colour tone (N4)", () => {
+    function netColorClass(loggedKcal: number, targetKcal: number): string {
+      const { container } = renderStats({ loggedKcal, targetKcal, burnedKcal: 0 });
+      // Find the Net tile by label, then read its sibling value div.
+      const tiles = container.querySelectorAll("div > div > .text-\\[10px\\]");
+      const tileMap: Record<string, Element | null> = {};
+      tiles.forEach((label) => {
+        const txt = (label.textContent ?? "").trim();
+        // The value is the next sibling div with `text-2xl`.
+        tileMap[txt] = label.parentElement?.querySelector(".text-2xl") ?? null;
+      });
+      const netValue = tileMap[TODAY_STAT_LABELS.net];
+      if (!netValue) throw new Error("Net tile not found in render");
+      return netValue.className;
+    }
+
+    it("renders Net in neutral foreground when nothing has been logged", () => {
+      // loggedKcal === 0 → NEVER green, even though net < 0.
+      expect(netColorClass(0, 1132)).toContain("text-foreground");
+      expect(netColorClass(0, 1132)).not.toContain("text-success");
+      expect(netColorClass(0, 1132)).not.toContain("text-warning");
+    });
+
+    it("renders Net in success when under target with food logged", () => {
+      expect(netColorClass(1000, 1800)).toContain("text-success");
+    });
+
+    it("renders Net in warning (amber) when over target", () => {
+      expect(netColorClass(2000, 1800)).toContain("text-warning");
+    });
+
+    it("renders Net in neutral when exactly at target", () => {
+      expect(netColorClass(1800, 1800)).toContain("text-foreground");
+    });
+  });
 });
