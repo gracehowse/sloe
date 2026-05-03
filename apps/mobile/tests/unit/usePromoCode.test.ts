@@ -124,7 +124,7 @@ describe("paywall promo expander — source-level wiring", () => {
   it("exposes TextInput + Apply button when expanded", () => {
     expect(src).toContain('testID="paywall-promo-input"');
     expect(src).toContain('testID="paywall-promo-apply"');
-    expect(src).toContain('"e.g. SUPPR_TEST_PREMIUM"');
+    expect(src).toContain('"Enter code"');
     expect(src).toContain('autoCapitalize="characters"');
   });
 

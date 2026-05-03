@@ -1127,7 +1127,7 @@ export default function PaywallScreen() {
                   testID="paywall-promo-input"
                   value={promoCode}
                   onChangeText={setPromoCode}
-                  placeholder="e.g. SUPPR_TEST_PREMIUM"
+                  placeholder="Enter code"
                   placeholderTextColor={colors.textTertiary}
                   autoCapitalize="characters"
                   autoCorrect={false}

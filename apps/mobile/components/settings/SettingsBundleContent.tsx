@@ -1081,13 +1081,13 @@ export function SettingsBundleContent({ context }: { context: Context }) {
         >
           <Text
             style={{
-              fontSize: 11,
+              fontSize: 14,
               fontWeight: "700",
-              color: colors.textSecondary,
-              letterSpacing: 0.6,
+              color: colors.text,
+              letterSpacing: -0.1,
             }}
           >
-            PROMO CODE
+            Promo code
           </Text>
           <Text style={{ fontSize: 12, color: colors.textSecondary }}>
             Enter your code exactly as provided (letters are not
@@ -1098,7 +1098,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
               testID="settings-bundle-promo-code-input"
               value={promoCode}
               onChangeText={setPromoCode}
-              placeholder="e.g. SUPPR_TEST_PREMIUM"
+              placeholder="Enter code"
               placeholderTextColor={colors.textTertiary}
               autoCapitalize="characters"
               autoCorrect={false}
