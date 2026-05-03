@@ -87,6 +87,17 @@ import {
   ingredientShouldShowVerifyCta,
 } from "../../../../src/lib/recipe-ingredients/ingredientVerificationStatus";
 import { wouldCoerceMacros } from "../../../../src/lib/nutrition/coerceRecipeMacrosForPlanning";
+// PR1 (Paprika parity, 2026-05-02 customer-lens audit) — viewing-
+// servings stepper helpers. Mobile uses the same module as web so
+// bounds + clamp + debounce stay in lock-step.
+import {
+  RECIPE_VIEW_SERVINGS_MAX,
+  RECIPE_VIEW_SERVINGS_MIN,
+  RECIPE_VIEW_STEPPER_DEBOUNCE_MS,
+  initialViewServings,
+  stepViewServings,
+  viewMultiplier as computeViewMultiplier,
+} from "../../../../src/lib/nutrition/recipeViewScale";
 import { carbsLabel, netCarbsForRow } from "../../../../src/lib/nutrition/netCarbs";
 import { RecipeNotesCard } from "../../components/RecipeNotesCard";
 // Phase 4 / B3.X — trust posture sweep (D-2026-04-27-16).
@@ -234,7 +245,12 @@ function MacroRing({ value, goal, color, label, size = 56, ringBgColor, labelCol
 
 export default function RecipeDetailScreen() {
   const { id, portion, autoLog } = useLocalSearchParams<{ id: string; portion?: string; autoLog?: string }>();
-  const portionMultiplier = portion ? parseFloat(String(portion)) : 1;
+  // PR1 (Paprika parity, 2026-05-02): the deep-link `?portion=N` value
+  // is now consumed by the viewing-servings stepper seed (effect
+  // below) — there is no separate `portionMultiplier` const here.
+  // Ingredient amounts and the secondary "X kcal total for N portions"
+  // line scale by `viewMultiplier(viewServings, recipe.servings)`.
+  // `logPortion` (the "Add to today" target) follows the stepper.
   const router = useRouter();
   const goBack = useSafeBack("/(tabs)/discover");
   const insets = useSafeAreaInsets();
@@ -302,6 +318,16 @@ export default function RecipeDetailScreen() {
   const [recipeYieldDraft, setRecipeYieldDraft] = useState("");
   const [recipeYieldSaving, setRecipeYieldSaving] = useState(false);
   const [yieldEditOpen, setYieldEditOpen] = useState(false);
+  // PR1 (Paprika parity, 2026-05-02): viewing-servings stepper. Defaults
+  // to the recipe's authored yield. The multiplier
+  // (`viewServings / recipe.servings`) drives ingredient amount
+  // scaling and the secondary "X kcal total for N portions" line.
+  // Pure helper enforces the 1..99 clamp + the 200ms debounce cadence.
+  const [viewServings, setViewServings] = useState<number>(1);
+  const [viewServingsInitialized, setViewServingsInitialized] = useState(false);
+  const stepperPendingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stepperPendingDelta = useRef(0);
+  const lastSeededRecipeId = useRef<string | null>(null);
 
   useEffect(() => {
     const p = portion ? parseFloat(String(portion)) : NaN;
@@ -311,6 +337,84 @@ export default function RecipeDetailScreen() {
   useEffect(() => {
     if (recipe) setRecipeYieldDraft(String(Math.max(1, recipe.servings)));
   }, [recipe?.id, recipe?.servings]);
+
+  // PR1 (Paprika parity, 2026-05-02): seed the viewing-servings stepper
+  // once the recipe loads. If the screen was deep-linked with
+  // `?portion=N` (the planner / log flow propagates the portion the
+  // user picked), honour that as the initial multiplier so the detail
+  // screen reflects the deep-link intent. Otherwise default to 1×
+  // (recipe's authored yield). Reset on recipe id change so navigating
+  // A → B re-seeds from B's yield (otherwise the stepper would carry
+  // A's value into B).
+  useEffect(() => {
+    if (!recipe) return;
+    if (lastSeededRecipeId.current === recipe.id) return;
+    const portionParam = portion != null ? parseFloat(String(portion)) : null;
+    setViewServings(
+      initialViewServings({
+        baseServings: recipe.servings,
+        portionParam:
+          Number.isFinite(portionParam ?? Number.NaN) && (portionParam ?? 0) > 0
+            ? (portionParam as number)
+            : null,
+      }),
+    );
+    lastSeededRecipeId.current = recipe.id;
+    setViewServingsInitialized(true);
+  }, [recipe, portion]);
+
+  // Clean up any pending stepper debounce timer on unmount so a late
+  // tap doesn't fire setState after the screen is gone.
+  useEffect(() => {
+    return () => {
+      if (stepperPendingTimer.current) {
+        clearTimeout(stepperPendingTimer.current);
+        stepperPendingTimer.current = null;
+      }
+    };
+  }, []);
+
+  /**
+   * Stepper handler with 200ms debounce. Each `+`/`−` press accumulates
+   * a pending delta; the next render fires only when the user pauses
+   * for the debounce window. Holding the button rapidly therefore
+   * coalesces into one state update at the tail of the burst — no
+   * flicker, no excessive layout work, no transient out-of-range
+   * states. Pressing past the bounds is a no-op (the helper clamps).
+   */
+  const handleViewServingsStep = useCallback((delta: number) => {
+    stepperPendingDelta.current += delta;
+    if (stepperPendingTimer.current) {
+      clearTimeout(stepperPendingTimer.current);
+    }
+    stepperPendingTimer.current = setTimeout(() => {
+      const accum = stepperPendingDelta.current;
+      stepperPendingDelta.current = 0;
+      stepperPendingTimer.current = null;
+      setViewServings((prev) => stepViewServings(prev, accum));
+    }, RECIPE_VIEW_STEPPER_DEBOUNCE_MS);
+  }, []);
+
+  // Multiplier applied to ingredient amounts and to the secondary
+  // batch-total kcal line. Always > 0 (helper is defensive against
+  // 0-yield recipes).
+  const recipeBaseServings = recipe?.servings ?? 1;
+  const viewMultiplier = computeViewMultiplier(viewServings, recipeBaseServings);
+
+  // PR1 (Paprika parity, 2026-05-02): keep the "Add to today" portion
+  // in sync with the viewing-servings stepper. If the user dialled to
+  // 6 of a 4-serving recipe, the journal write should record 1.5× —
+  // not the deep-link value or the original 1×. The deep-link
+  // `?portion` seed still wins on first mount via
+  // `viewServingsInitialized`; subsequent stepper changes propagate
+  // here. Cook-mode (PR #72) reads `logPortion` as `cookScaleFactor`
+  // for step-text scaling and auto-log calorie math, so the same
+  // stepper drives all three downstream surfaces (ingredients, log,
+  // cook).
+  useEffect(() => {
+    if (!viewServingsInitialized) return;
+    setLogPortion(viewMultiplier);
+  }, [viewServingsInitialized, viewMultiplier]);
 
   const loadProfileMacroPrefs = useCallback(async () => {
     if (!userId) {
@@ -1750,6 +1854,130 @@ export default function RecipeDetailScreen() {
             );
           })()}
 
+          {/* PR1 (Paprika parity, 2026-05-02 customer-lens audit) —
+              viewing-servings stepper. Lets the viewer dial the number
+              of portions the screen represents up / down without
+              touching the recipe's authored yield (which the recipe
+              owner edits via "Edit servings" on the time-stats row
+              above). Ingredient grams + the secondary "X kcal total
+              for N portions" line rescale in real time. Bounds
+              (1..99) and 200ms debounce live in `recipeViewScale.ts`
+              so web + mobile share the same contract. The stepper
+              sits between the info row (time-stats) and the calorie /
+              macro hero, where Paprika and Recime put theirs. */}
+          {recipe ? (
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                paddingHorizontal: Spacing.lg,
+                paddingVertical: Spacing.md,
+                borderRadius: Radius.lg,
+                borderWidth: 1,
+                borderColor: colors.border,
+                backgroundColor: colors.card,
+                marginTop: Spacing.sm,
+              }}
+              testID="recipe-view-servings-stepper"
+            >
+              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>
+                Servings to view
+              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.md }}>
+                <Pressable
+                  onPress={() => handleViewServingsStep(-1)}
+                  disabled={viewServings <= RECIPE_VIEW_SERVINGS_MIN}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Decrease servings to view"
+                  accessibilityState={{ disabled: viewServings <= RECIPE_VIEW_SERVINGS_MIN }}
+                  testID="recipe-view-servings-minus"
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 8,
+                    backgroundColor: colors.background,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    justifyContent: "center",
+                    alignItems: "center",
+                    opacity: viewServings <= RECIPE_VIEW_SERVINGS_MIN ? 0.4 : 1,
+                  }}
+                >
+                  <Minus size={18} color={colors.text} />
+                </Pressable>
+                <Text
+                  style={{
+                    minWidth: 32,
+                    textAlign: "center",
+                    fontSize: 16,
+                    fontWeight: "700",
+                    color: colors.text,
+                    fontVariant: ["tabular-nums"],
+                  }}
+                  testID="recipe-view-servings-value"
+                  accessibilityLiveRegion="polite"
+                  accessibilityLabel={`${viewServings} servings to view`}
+                >
+                  {viewServings}
+                </Text>
+                <Pressable
+                  onPress={() => handleViewServingsStep(1)}
+                  disabled={viewServings >= RECIPE_VIEW_SERVINGS_MAX}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Increase servings to view"
+                  accessibilityState={{ disabled: viewServings >= RECIPE_VIEW_SERVINGS_MAX }}
+                  testID="recipe-view-servings-plus"
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 8,
+                    backgroundColor: colors.background,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    justifyContent: "center",
+                    alignItems: "center",
+                    opacity: viewServings >= RECIPE_VIEW_SERVINGS_MAX ? 0.4 : 1,
+                  }}
+                >
+                  <Plus size={18} color={colors.text} />
+                </Pressable>
+              </View>
+            </View>
+          ) : null}
+
+          {/* PR1 (Paprika parity, 2026-05-02): secondary "X kcal total
+              for N portions" line. Per-portion kcal stays invariant
+              under the stepper (per-portion is per-portion), so we
+              surface the batch total as a small secondary line when
+              the user has dialled away from the authored yield. The
+              visible number then tracks the multiplier honestly
+              without pretending per-portion has changed. Hidden at
+              the base yield (no second line when nothing is being
+              scaled) and when nutrition is unknown. */}
+          {(() => {
+            const perPortionKcal = Math.round(macros.calories);
+            const totalKcal = Math.round(perPortionKcal * viewServings);
+            const hasScaledAway = viewServings !== recipeBaseServings;
+            if (!hasScaledAway || perPortionKcal <= 0 || totalKcal <= 0) return null;
+            return (
+              <Text
+                testID="recipe-kcal-total-line"
+                accessibilityLabel={`${totalKcal} kilocalories total for ${viewServings} portions`}
+                style={{
+                  fontSize: 12,
+                  color: colors.textSecondary,
+                  fontVariant: ["tabular-nums"],
+                  marginTop: -Spacing.xs,
+                }}
+              >
+                {totalKcal} kcal total for {viewServings} portions
+              </Text>
+            );
+          })()}
+
           {/* 2026-05-01 v3 redesign — the bordered "329 kcal per
               portion" hero card is gone. kcal now lives inline in
               the subtitle row above (key `kcal`, bold + foreground).
@@ -1974,14 +2202,13 @@ export default function RecipeDetailScreen() {
             );
           })()}
 
-          {/* Portion adjustment banner */}
-          {portionMultiplier !== 1 && (
-            <View style={{ backgroundColor: Accent.primary + "15", borderRadius: Radius.md, padding: Spacing.md, borderWidth: 1, borderColor: Accent.primary + "30" }}>
-              <Text style={{ color: Accent.primary, fontWeight: "700", fontSize: 14, textAlign: "center" }}>
-                Planned portion: {portionMultiplier}x — quantities below are adjusted
-              </Text>
-            </View>
-          )}
+          {/* PR1 (Paprika parity, 2026-05-02): the old "Planned
+              portion: Nx — quantities below are adjusted" banner is
+              gone. The visible "Servings to view" stepper above is now
+              the canonical surface for that signal — when the viewer
+              has dialled away from the recipe's authored yield they
+              can see both the chosen portion count and the resulting
+              ingredient grams without an extra explanatory band. */}
 
           {/* Tab Bar */}
           <View style={styles.tabBar}>
@@ -2147,7 +2374,7 @@ export default function RecipeDetailScreen() {
                         {ing.amount != null ? (
                           <Text style={styles.ingredientQty}>
                             {formatIngredientAmountUnit(
-                              Math.round(ing.amount * portionMultiplier * 100) / 100,
+                              Math.round(ing.amount * viewMultiplier * 100) / 100,
                               ing.unit,
                             )}
                           </Text>

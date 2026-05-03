@@ -107,13 +107,18 @@ describe("Bug 2 — amount renders without duplicated tokens", () => {
     expect(SRC.mobileRecipe).toMatch(
       /import\s*\{\s*formatIngredientAmountUnit\s*\}\s*from\s*"[^"]*recipe-ingredients\/formatIngredientAmount"/,
     );
+    // PR1 (2026-05-02): the multiplier identifier moved from
+    // `portionMultiplier` (deep-link only) to `viewMultiplier`
+    // (stepper-driven, deep-link-seeded). The behaviour this test
+    // protects (route through `formatIngredientAmountUnit` with
+    // 2-decimal rounding) is unchanged.
     expect(SRC.mobileRecipe).toMatch(
-      /formatIngredientAmountUnit\(\s*\n?\s*Math\.round\(ing\.amount\s*\*\s*portionMultiplier\s*\*\s*100\)\s*\/\s*100,\s*\n?\s*ing\.unit,?\s*\n?\s*\)/,
+      /formatIngredientAmountUnit\(\s*\n?\s*Math\.round\(ing\.amount\s*\*\s*viewMultiplier\s*\*\s*100\)\s*\/\s*100,\s*\n?\s*ing\.unit,?\s*\n?\s*\)/,
     );
     // Pre-fix the row used a bare template string `${amount} ${unit}`
     // — that line is gone now that we route through the helper.
     expect(SRC.mobileRecipe).not.toMatch(
-      /\$\{Math\.round\(ing\.amount \* portionMultiplier \* 100\) \/ 100\} \$\{ing\.unit \?\? ""\}/,
+      /\$\{Math\.round\(ing\.amount \* viewMultiplier \* 100\) \/ 100\} \$\{ing\.unit \?\? ""\}/,
     );
   });
 
