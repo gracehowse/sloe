@@ -50,6 +50,7 @@ import { decode } from "base64-arraybuffer";
 import {
   ArrowDown,
   ArrowUp,
+  Calculator,
   Camera,
   Check,
   ChevronLeft,
@@ -1021,19 +1022,27 @@ export default function CreateRecipeWizard() {
                 Per serving, computed from your {ingredients.length}{" "}
                 {ingredients.length === 1 ? "ingredient" : "ingredients"} ÷{" "}
                 {servings} {servings === 1 ? "serving" : "servings"}. Override
-                any field if the auto-compute looks wrong.
+                any macro if the auto-compute looks wrong — calories stay
+                calculated.
               </Text>
             </View>
             <View style={styles.totalsCard}>
+              {/* Calories — read-only, derived from ingredient sum / servings.
+                  Locked because P*4+C*4+F*9 (Atwater) is an approximation
+                  and inventing kcal independent of the ingredient data is
+                  a nutrition-accuracy risk. The user can still override
+                  P / C / F / Fiber per row below. */}
               <MacroOverrideRow
                 label="Calories"
                 color={MacroColors.calories}
                 suffix="kcal"
                 value={perServing.calories}
-                override={macroOverrides.calories}
-                onChange={(raw) => setOverride("calories", raw)}
+                override={undefined}
+                onChange={() => {}}
                 styles={styles}
                 colors={colors}
+                readOnly
+                helperText={`Calculated from your ingredients · ${perServing.calories} kcal`}
               />
               <MacroOverrideRow
                 label="Protein"
@@ -1193,10 +1202,26 @@ export default function CreateRecipeWizard() {
   );
 }
 
-/** Single field row on the macro-confirm step. Renders the auto-
- *  computed value as the placeholder; if the user types something the
- *  override is active and we display that value instead. Empty-out
- *  reverts to auto. */
+/** Single field row on the macro-confirm step.
+ *
+ *  Display rules (per user feedback 2026-05-02):
+ *  - The displayed value (auto-computed OR user override) renders in
+ *    `colors.text` at weight 600 — same strength as any other resolved
+ *    value in the app. Previously the value rode in the input's
+ *    `placeholder` slot, which renders in `colors.textTertiary` on RN
+ *    and read like a hint, not an actual figure.
+ *  - The placeholder slot is reserved for the literal "auto" cue —
+ *    only ever visible if the input is blanked AND the auto value is
+ *    not a number. With per-serving math producing finite numbers in
+ *    every realistic case, the placeholder is effectively unused; the
+ *    cue lives instead in the helper text under the row.
+ *  - `readOnly` flips the row to derived/locked: input is non-editable,
+ *    a Calculator glyph sits next to the label, the value is dimmed to
+ *    0.6 opacity, and `helperText` (e.g. "Calculated from your
+ *    ingredients · 40 kcal") renders below the row to make the
+ *    derivation explicit. Used for Calories — kcal is computed from
+ *    the ingredient sum and is not a user-editable independent
+ *    variable. */
 type MacroOverrideRowStyles = {
   macroFieldRow: StyleProp<ViewStyle>;
   macroFieldLabel: StyleProp<TextStyle>;
@@ -1213,6 +1238,8 @@ function MacroOverrideRow({
   styles,
   colors,
   last,
+  readOnly,
+  helperText,
 }: {
   label: string;
   color: string;
@@ -1223,25 +1250,112 @@ function MacroOverrideRow({
   styles: MacroOverrideRowStyles;
   colors: ReturnType<typeof useThemeColors>;
   last?: boolean;
+  /** Disables the input + dims it + shows a Calculator glyph next to
+   *  the label. The displayed value is then the immutable derived
+   *  total; no user typing is accepted. */
+  readOnly?: boolean;
+  /** Single-line caption below the row, in textSecondary. Used to
+   *  spell out where the value comes from when `readOnly`. */
+  helperText?: string;
 }) {
-  const overrideStr = override === undefined ? "" : String(override);
-  return (
+  // Resolved per-serving display — override wins, otherwise auto.
+  // Rendered as the input's `value` prop (controlled), so it inherits
+  // the input's full-strength text colour rather than the placeholder
+  // colour (which read as a placeholder hint to users — the bug we're
+  // fixing here).
+  const displayedNumber = override ?? value;
+  // Editable rows show the raw number (no suffix in the editable
+  // string — the suffix only ever appeared as part of the placeholder
+  // before, and once we move to a controlled value users would have
+  // to delete the unit chars to type). Read-only rows still render
+  // the suffix because the user can't edit them.
+  const displayedString = readOnly
+    ? `${displayedNumber}${suffix}`
+    : String(displayedNumber);
+  const row = (
     <View
       style={[
         styles.macroFieldRow,
         last ? { borderBottomWidth: 0 } : null,
+        // When there's helper text, the parent stacks vertically and
+        // we drop the horizontal row's bottom border (the wrapper
+        // owns separation instead).
+        helperText ? { borderBottomWidth: 0, paddingBottom: 0 } : null,
       ]}
     >
-      <Text style={[styles.macroFieldLabel, { color }]}>{label}</Text>
+      <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 6 }}>
+        <Text style={[styles.macroFieldLabel, { color, flex: 0 }]}>{label}</Text>
+        {readOnly ? (
+          <Calculator
+            size={14}
+            color={colors.textTertiary}
+            accessibilityLabel="Calculated from ingredients"
+          />
+        ) : null}
+      </View>
       <TextInput
-        style={styles.macroFieldInput}
-        value={overrideStr}
+        style={[
+          styles.macroFieldInput,
+          // Resolved value — full text colour, weight 600 — so 40kcal /
+          // 1.6g / 0g read as actuals, not placeholders.
+          { color: colors.text, fontWeight: "600" },
+          readOnly
+            ? {
+                opacity: 0.6,
+                // Subtle disabled treatment: muted bg + no border
+                // pop, so the field reads as derived rather than an
+                // input the user could tap.
+                backgroundColor: "transparent",
+                borderColor: "transparent",
+              }
+            : null,
+        ]}
+        value={displayedString}
         onChangeText={onChange}
-        placeholder={`${value}${suffix}`}
+        placeholder="auto"
         placeholderTextColor={colors.textTertiary}
         keyboardType="decimal-pad"
-        accessibilityLabel={`${label} per serving (auto: ${value}${suffix})`}
+        // `editable={false}` is the canonical RN-native lock; `readOnly`
+        // (RN 0.71+) is the parity-friendly mirror that react-native-web
+        // forwards to the underlying <input>. We set both so the lock
+        // is honoured on iOS native AND on the web build.
+        editable={!readOnly}
+        readOnly={readOnly}
+        accessibilityLabel={
+          readOnly
+            ? `${label} per serving — calculated · ${displayedNumber}${suffix}`
+            : `${label} per serving (auto: ${value}${suffix})`
+        }
+        accessibilityState={{ disabled: !!readOnly }}
       />
+    </View>
+  );
+  if (!helperText) return row;
+  return (
+    <View
+      style={[
+        // Wrap the row + helper caption under a shared bottom border,
+        // matching the per-row separators used when no caption is
+        // present.
+        {
+          borderBottomWidth: last ? 0 : StyleSheet.hairlineWidth,
+          borderBottomColor: colors.border,
+          paddingVertical: Spacing.sm,
+        },
+      ]}
+    >
+      {row}
+      <Text
+        style={{
+          fontSize: 11,
+          color: colors.textSecondary,
+          textAlign: "right",
+          marginTop: 4,
+        }}
+        accessibilityLabel={helperText}
+      >
+        {helperText}
+      </Text>
     </View>
   );
 }

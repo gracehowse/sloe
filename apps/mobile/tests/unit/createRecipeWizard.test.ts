@@ -464,6 +464,96 @@ describe("createRecipeWizard — structural pins for the wizard component", () =
     expect(COMPONENT_SRC).toMatch(/fat:\s*roundMacro\(ing\.fat\)/);
     expect(COMPONENT_SRC).toMatch(/fiber_g:\s*roundMacro\(ing\.fiberG\)/);
   });
+
+  // -------------------------------------------------------------------
+  // Macros step — value-text + read-only Calories (user feedback 2026-05-02).
+  //
+  // Bugs fixed:
+  //   1. The auto-computed value rode in the input's `placeholder` slot,
+  //      which renders in `colors.textTertiary`. Users read the figures
+  //      ("40kcal", "1.6g") as placeholder hints, not actuals. The fix
+  //      moves the resolved value into the controlled `value` slot so
+  //      it inherits `colors.text` (full strength) at weight 600.
+  //   2. The Calories field accepted user typing. Calories is derived
+  //      from ingredient sum / servings — it's not an independent
+  //      variable. The fix makes that row read-only with a Calculator
+  //      glyph + helper caption.
+  //
+  // These pins assert the load-bearing wiring in the component file
+  // because vitest/jsdom can't render the Expo Router screen end-to-end
+  // (same constraint as the other structural pins in this file).
+  // -------------------------------------------------------------------
+
+  it("MacroOverrideRow renders the resolved value via the controlled `value` prop (not via placeholder)", () => {
+    // The displayed number is `override ?? value`, surfaced as the
+    // input's `value` prop so it picks up `colors.text` weight 600 —
+    // not the placeholder colour. This is the exact line the user
+    // feedback ("the light grey text makes the values look like
+    // placeholders but they are actuals") was about.
+    expect(COMPONENT_SRC).toMatch(/const\s+displayedNumber\s*=\s*override\s*\?\?\s*value/);
+    expect(COMPONENT_SRC).toMatch(/value=\{displayedString\}/);
+  });
+
+  it("MacroOverrideRow paints the value in colors.text at fontWeight 600 (full strength, not textTertiary)", () => {
+    // Style override applied on the input layered on top of the base
+    // `styles.macroFieldInput`. Match the literal shape so a refactor
+    // that drops the override style is caught in CI.
+    expect(COMPONENT_SRC).toMatch(
+      /\{\s*color:\s*colors\.text,\s*fontWeight:\s*"600"\s*\}/,
+    );
+  });
+
+  it("MacroOverrideRow exposes a `readOnly` flag that disables editing + dims the input", () => {
+    // Both the RN-native lock (`editable={false}`) and the
+    // react-native-web mirror (`readOnly`) are set, so the lock is
+    // honoured on iOS native AND on the web build.
+    expect(COMPONENT_SRC).toMatch(/readOnly\?:\s*boolean/);
+    expect(COMPONENT_SRC).toMatch(/editable=\{!readOnly\}/);
+    expect(COMPONENT_SRC).toMatch(/readOnly=\{readOnly\}/);
+    // 0.6 opacity is the agreed subtle disabled treatment.
+    expect(COMPONENT_SRC).toMatch(/opacity:\s*0\.6/);
+  });
+
+  it("the Calories row on the macros step is rendered with `readOnly` and a Calculator helper caption", () => {
+    // Calories = ingredient sum / servings — never a user-editable
+    // independent variable. The row imports the lucide `Calculator`
+    // glyph and renders a "Calculated from your ingredients · …kcal"
+    // helper caption below the field.
+    expect(COMPONENT_SRC).toMatch(
+      /import[\s\S]*?\bCalculator\b[\s\S]*?from\s*"lucide-react-native"/,
+    );
+    expect(COMPONENT_SRC).toMatch(
+      /label="Calories"[\s\S]*?readOnly[\s\S]*?helperText=\{`Calculated from your ingredients · \$\{perServing\.calories\} kcal`\}/,
+    );
+  });
+
+  it("the Calories MacroOverrideRow ignores any stored override (passes `override={undefined}`)", () => {
+    // Because the row is read-only, no user input can land in
+    // `macroOverrides.calories`. Defensive: pass `undefined` so even
+    // a stale override from a previous code path can't be displayed.
+    expect(COMPONENT_SRC).toMatch(
+      /label="Calories"[\s\S]*?override=\{undefined\}/,
+    );
+  });
+
+  it("only Protein / Carbs / Fat / Fiber rows wire `setOverride` (Calories is locked)", () => {
+    expect(COMPONENT_SRC).toMatch(/setOverride\("protein",\s*raw\)/);
+    expect(COMPONENT_SRC).toMatch(/setOverride\("carbs",\s*raw\)/);
+    expect(COMPONENT_SRC).toMatch(/setOverride\("fat",\s*raw\)/);
+    expect(COMPONENT_SRC).toMatch(/setOverride\("fiberG",\s*raw\)/);
+    // Calories must NOT call setOverride — the row is read-only and
+    // its onChange is a no-op. Match the negative case literally:
+    // `setOverride("calories"` would fail the next assertion.
+    expect(COMPONENT_SRC).not.toMatch(/setOverride\("calories"/);
+  });
+
+  it("the macros step subtitle copy reflects 'calories stay calculated'", () => {
+    // Copy update from user feedback — frames the Calories lock for
+    // the user before they even see the row.
+    expect(COMPONENT_SRC).toMatch(
+      /Override\s+any\s+macro\s+if\s+the\s+auto-compute\s+looks\s+wrong[\s\S]*?calories\s+stay\s+calculated/,
+    );
+  });
 });
 
 describe("createRecipeWizard — Library entry-point pin", () => {
