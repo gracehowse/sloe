@@ -1,0 +1,69 @@
+# @cases TC-BUNDLE1A-01
+# @screen dev/calorie-ring-states
+appId: com.supprclub.supprapp
+name: "Bundle 1A — visual validation (CalorieRing 4 states on iOS)"
+---
+# Captures CalorieRing in 4 controlled states for Bundle 1A's N3 + N5
+# fixes. Skips login (the dev screen mounts CalorieRing directly with
+# controlled props — no auth required).
+#
+# Run with:
+#   maestro test apps/mobile/.maestro/00f_bundle_1a_validation.yaml
+#
+# Output:
+#   apps/mobile/screenshots/latest/bundle-1a-mobile-*.png
+
+- launchApp
+- waitForAnimationToEnd
+
+# Dismiss the Expo dev-client menu if it's the first launch on this build.
+- runFlow:
+    when:
+      visible:
+        text: "Continue"
+    commands:
+      - tapOn: "Continue"
+      - waitForAnimationToEnd
+
+# Deeplink straight to the dev screen (skips auth + tab navigation).
+- openLink: suppr:///dev/calorie-ring-states
+
+# iOS prompts "Open in Suppr?" when an `openurl` triggers a custom-scheme
+# deeplink from outside the app. Tap Open to proceed.
+- runFlow:
+    when:
+      visible:
+        text: "Open"
+    commands:
+      - tapOn: "Open"
+      - waitForAnimationToEnd
+
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# Dev-client menu sometimes auto-opens after the deeplink settles.
+# Dismiss by tapping above the sheet (top 8% of the screen).
+- runFlow:
+    when:
+      visible:
+        text: "Toggle performance monitor"
+    commands:
+      - tapOn:
+          point: "10%,8%"
+      - waitForAnimationToEnd
+
+# Whole-screen baseline — all 4 states visible after scroll.
+- takeScreenshot: screenshots/latest/bundle-1a-mobile-all-states-top
+
+# Scroll to capture the lower states (over-budget at the bottom).
+- swipe:
+    direction: UP
+    duration: 600
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/bundle-1a-mobile-all-states-bottom
+
+# Scroll back to the top so subsequent runs from clean state are repeatable.
+- swipe:
+    direction: DOWN
+    duration: 600
+- waitForAnimationToEnd
