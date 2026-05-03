@@ -4,6 +4,11 @@
  * The check-in card on the Weekly Recap screen + the Today Sunday
  * banner both pull from the shared module so web + mobile produce
  * identical copy from identical inputs.
+ *
+ * 2026-05-02 (PR claude/weekly-checkin-ritual-v2, rebuild of #26):
+ * additionally re-exports the modal-ritual gate + content builder so
+ * `WeeklyCheckinModal` and the Today wire-up share a single source of
+ * truth with the web parity dialog.
  */
 export {
   buildWeeklyCheckin,
@@ -16,4 +21,13 @@ export {
   type WeeklyCheckinDirection,
   type WeeklyCheckinInput,
   type WeeklyCheckinKind,
+  // Modal-ritual surface (rebuild of #26)
+  buildWeeklyCheckinContent,
+  shouldShowWeeklyCheckin,
+  MIN_DAYS_LOGGED_FOR_CHECKIN,
+  type WeeklyCheckinConfidence,
+  type WeeklyCheckinContent,
+  type WeeklyCheckinContentInput,
+  type WeeklyCheckinDecision,
+  type WeeklyCheckinGateInput,
 } from "../../../src/lib/nutrition/weeklyCheckin";
