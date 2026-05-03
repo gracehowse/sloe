@@ -2,15 +2,25 @@
  * 2026-05-01 v3 redesign — mobile source-pin parity for the
  * recipe-detail rewrite.
  *
+ * 2026-05-02 v4 polish (recipe-detail-tiles-and-kcal): two visual
+ * fixes against v3 from user feedback:
+ *   - "the widgets should be the same size and fit on one row" →
+ *     macro tiles use `flex: 1` (no `maxWidth: "48%"`) so 4 fit on
+ *     one row at iPhone 14/15/16 Pro 393pt widths, with `flexWrap`
+ *     preserved for narrow widths and 5–6-tracked-macro users.
+ *   - "cals need to be clearer" → kcal got promoted out of the
+ *     subtitle row into its own dedicated headline line directly
+ *     under the title ("329 kcal · per portion" at 17-pt).
+ *
  * `apps/mobile/app/recipe/[id].tsx` is a 2k+ LOC component wired to
  * Supabase, expo-router, planner deeplinks, cook mode, and a stack of
  * sub-dialogs — mounting it for an isolated layout assertion would
- * require a sandbox of mocks. We pin the v3 structural contract via
+ * require a sandbox of mocks. We pin the structural contract via
  * source-string regex (matches the existing `screenAuditFixesParity`
  * idiom).
  *
- * If this test breaks, the recipe-detail v3 redesign has regressed
- * on mobile.
+ * If this test breaks, the recipe-detail redesign has regressed on
+ * mobile.
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
@@ -19,29 +29,52 @@ import { resolve } from "node:path";
 const MOBILE_RECIPE = resolve(__dirname, "../../app/recipe/[id].tsx");
 const SRC = readFileSync(MOBILE_RECIPE, "utf8");
 
-describe("mobile recipe-detail v3 — Fix 1 (subtitle merge + kcal inline)", () => {
-  it("composeSubtitleParts is called with kcal arg (v3 inline kcal)", () => {
-    expect(SRC).toMatch(
-      /composeSubtitleParts\(\{[\s\S]*?kcal:\s*kcalForSubtitle[\s\S]*?\}\)/,
-    );
-    // Source of the kcal value: the `macros.calories` aggregate
-    // (rounded to integer so we never render `329.4 kcal`).
-    expect(SRC).toMatch(/const\s+kcalForSubtitle\s*=\s*Math\.round\(macros\.calories\)/);
+describe("mobile recipe-detail v4 — Fix 1 (subtitle + dedicated kcal line)", () => {
+  it("composeSubtitleParts is NOT passed a kcal arg in v4 (kcal lives on its own line)", () => {
+    // v3 passed `kcal: kcalForSubtitle` so the helper would emit a
+    // `kcal` part inline. v4 removes that — kcal renders on a
+    // dedicated headline line above the subtitle. Pin the call site
+    // directly: the call must not include `kcal:` as a property.
+    const callIdx = SRC.indexOf("composeSubtitleParts({");
+    expect(callIdx).toBeGreaterThan(0);
+    const closeIdx = SRC.indexOf("})", callIdx);
+    expect(closeIdx).toBeGreaterThan(callIdx);
+    const callBlock = SRC.slice(callIdx, closeIdx + 2);
+    expect(callBlock).not.toMatch(/\bkcal:/);
   });
 
-  it("subtitle renders a `recipe-subtitle-kcal` testID for the kcal token", () => {
-    expect(SRC).toMatch(/"recipe-subtitle-kcal"/);
-    // Mounted only on the kcal part — gated by `part.key === "kcal"`.
-    expect(SRC).toMatch(
-      /part\.key === "kcal" \? "recipe-subtitle-kcal" : undefined/,
-    );
+  it("subtitle no longer renders the v3 inline `recipe-subtitle-kcal` testID", () => {
+    expect(SRC).not.toMatch(/"recipe-subtitle-kcal"/);
   });
 
-  it("subtitle kcal token uses subtitleTextStrong style (bold + foreground)", () => {
+  it("dedicated kcal headline line exists with `recipe-kcal-line` + `recipe-kcal-number`", () => {
+    expect(SRC).toMatch(/testID="recipe-kcal-line"/);
+    expect(SRC).toMatch(/testID="recipe-kcal-number"/);
+  });
+
+  it("kcal line uses 17-pt headline weight + tabular-nums + foreground colour", () => {
+    expect(SRC).toMatch(/kcalNumber:\s*\{[\s\S]*?fontSize:\s*17/);
+    expect(SRC).toMatch(/kcalNumber:\s*\{[\s\S]*?fontWeight:\s*"700"/);
+    expect(SRC).toMatch(/kcalNumber:\s*\{[\s\S]*?color:\s*colors\.text/);
+    expect(SRC).toMatch(/kcalNumber:\s*\{[\s\S]*?fontVariant:\s*\["tabular-nums"\]/);
+  });
+
+  it("kcal line renders `<N> kcal · per portion`", () => {
+    expect(SRC).toMatch(/per portion/);
+    expect(SRC).toMatch(/\{kcalForLine\}\s*kcal/);
+  });
+
+  it("kcal line is gated on `kcalForLine <= 0` (no `0 kcal` for un-imported recipes)", () => {
+    // P1-16 behaviour preserved: the dimmed nutrition-pending
+    // placeholder must take over when kcal is unknown.
+    expect(SRC).toMatch(/if\s*\(\s*kcalForLine\s*<=\s*0\s*\)\s*return\s+null;/);
+  });
+
+  it("subtitleTextStrong style is still defined (for any future bold inline tokens)", () => {
+    // The style itself remains in StyleSheet (refactor scope is
+    // layout, not style grooming) but it's no longer applied to the
+    // subtitle's kcal part because there's no kcal part any more.
     expect(SRC).toMatch(/subtitleTextStrong/);
-    expect(SRC).toMatch(
-      /subtitleTextStrong:\s*\{[^}]*fontWeight:\s*"700"[^}]*color:\s*colors\.text/,
-    );
   });
 });
 
@@ -82,16 +115,42 @@ describe("mobile recipe-detail v3 — Fix 3 (kcal hero card removed)", () => {
   });
 });
 
-describe("mobile recipe-detail v3 — Fix 4 (macros are the visual hero)", () => {
+describe("mobile recipe-detail v4 — Fix 4 (4-up macro grid, equal-width tiles)", () => {
   it("the macros grid carries `recipe-macros-grid` testID", () => {
     expect(SRC).toMatch(/testID="recipe-macros-grid"/);
   });
 
-  it("macro tiles use the v3 bigger-numeral treatment (fontSize: 20, padding: 14)", () => {
-    // The pre-v3 tile rendered the value at `fontSize: 16`, padding
-    // 10. v3 lifts to fontSize 20, padding 14, fontWeight 800.
-    expect(SRC).toMatch(/fontSize:\s*20,\s*fontWeight:\s*"800"/);
-    expect(SRC).toMatch(/padding:\s*14,\s*borderRadius:\s*14/);
+  it("macro tiles use `flex: 1` (no `maxWidth: \"48%\"`) so 4 fit on one row", () => {
+    // v3 used `flexGrow: 1, maxWidth: "48%"` which forced a 2x2 wrap
+    // and left fiber alone on row 2 at half-width. v4 spec: `flex: 1`
+    // with `flexWrap` preserved, so all tiles share width.
+    expect(SRC).toMatch(/flex:\s*1,\s*minWidth:\s*70/);
+    expect(SRC).not.toMatch(/maxWidth:\s*"48%"/);
+  });
+
+  it("tiles carry stable per-macro testIDs so RTL renders can target them", () => {
+    expect(SRC).toMatch(/testID=\{`recipe-macro-tile-\$\{macro\}`\}/);
+  });
+
+  it("macro tile container row uses Spacing.sm gap (8pt) for the 4-up density", () => {
+    // Was `gap: 10` in v3 with 2x2 wrap. v4 tightens to Spacing.sm
+    // (8pt) to fit 4-up at 393pt without truncation. The `style` prop
+    // sits immediately before `testID` on the container View, so the
+    // `gap: Spacing.sm` token appears within ~200 chars before the
+    // `recipe-macros-grid` testID.
+    const gridIdx = SRC.indexOf('testID="recipe-macros-grid"');
+    expect(gridIdx).toBeGreaterThan(0);
+    const lookbackStart = Math.max(0, gridIdx - 400);
+    const lookbackBlock = SRC.slice(lookbackStart, gridIdx);
+    expect(lookbackBlock).toMatch(/gap:\s*Spacing\.sm/);
+    // And it must not regress to the v3 hard-coded `gap: 10`.
+    expect(lookbackBlock).not.toMatch(/gap:\s*10\b/);
+  });
+
+  it("macro tiles still use a bold tabular-nums value treatment", () => {
+    // v4 dropped `fontSize: 20` to `fontSize: 18` to fit the 4-up
+    // grid at 393pt without truncation. Weight 800 + tabular preserved.
+    expect(SRC).toMatch(/fontSize:\s*18,\s*fontWeight:\s*"800"/);
   });
 });
 

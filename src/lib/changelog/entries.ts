@@ -74,6 +74,10 @@ const CHANGELOGS: ChangelogEntry[] = [
         kind: "new",
         text: "Tap the pill under your calorie ring on Today to see why today's target is what it is.",
       },
+      {
+        kind: "fixed",
+        text: "Recipe page calories are now on their own headline line, and the macro tiles all share width on a single row.",
+      },
     ],
   },
   {
