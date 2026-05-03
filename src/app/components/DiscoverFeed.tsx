@@ -12,6 +12,11 @@ import type { RecipeCard } from "../../types/recipe.ts";
 import { computeRecipeFitPercent } from "../../lib/nutrition/recipeFitPercent.ts";
 import { DISCOVER_POPULAR_MIN_SAVES } from "../../lib/recipes/fetchPublicRecipeSaveCounts.ts";
 import { recipeSearchMatch } from "../../lib/recipes/recipeSearchMatch.ts";
+import {
+  SEED_CLUSTERS,
+  isSeedRecipeId,
+  type SeedCuisineCluster,
+} from "../../lib/recipes/seedRecipesV2.ts";
 import { RecipeHeroFallback } from "./suppr/RecipeHeroFallback";
 // Phase 4 / B3.X — trust posture sweep (D-2026-04-27-16).
 // GW-08 (audit 2026-04-28): `TrustChip` + `recipeLevelTrust` dropped
@@ -430,6 +435,53 @@ export const DiscoverFeed = memo(function DiscoverFeed({
     followedCreatorIds,
   ]);
 
+  // Wave 4 (2026-05-02) — group seed entries by cluster for the
+  // cluster carousels (Mediterranean → Asian → Latin → Comfort →
+  // Healthy bowls). Non-seed (community) entries flow through to
+  // the legacy flat layout below the carousels so community uploads
+  // are never hidden behind seeds. Cluster carousels render only
+  // when no search/filter narrows the feed (otherwise the cluster
+  // grouping fights the active query). Mobile parity:
+  // `apps/mobile/app/(tabs)/discover.tsx`.
+  const seedRecipesByCluster = useMemo(() => {
+    const map = new Map<SeedCuisineCluster, RecipeCard[]>();
+    for (const c of SEED_CLUSTERS) map.set(c.id, []);
+    for (const r of recipes) {
+      if (!isSeedRecipeId(r.id)) continue;
+      const after = r.id.slice("seed-v2-".length);
+      let clusterId: SeedCuisineCluster | null = null;
+      for (const c of SEED_CLUSTERS) {
+        if (after.startsWith(`${c.id}-`)) {
+          clusterId = c.id;
+          break;
+        }
+      }
+      if (!clusterId) continue;
+      map.get(clusterId)?.push(r);
+    }
+    return map;
+  }, [recipes]);
+
+  const nonSeedRecipes = useMemo(
+    () => recipes.filter((r) => !isSeedRecipeId(r.id)),
+    [recipes],
+  );
+
+  const showClusterCarousels =
+    !searchQuery.trim() &&
+    quickFilter === "For You" &&
+    feedScope === "forYou" &&
+    !activeCollectionId &&
+    !filters.verified &&
+    filters.maxCalories === "" &&
+    filters.minProtein === "";
+
+  // What the legacy flat grid + 3-section layout reads from. When
+  // cluster carousels are showing, seeds are already rendered above
+  // — the layout below should only show community uploads to avoid
+  // duplication.
+  const displayRecipes = showClusterCarousels ? nonSeedRecipes : recipes;
+
   if (selectedRecipe) {
     return (
       <RecipeDetail recipe={selectedRecipe} userTier={userTier} onBack={() => setSelectedRecipe(null)} autoOpenCookMode={initialCookMode} initialServings={initialPortions} onViewTracker={onViewTracker} />
@@ -609,13 +661,113 @@ export const DiscoverFeed = memo(function DiscoverFeed({
             mobile-web experience. Both paths read from the same
             `recipes` list so search / filter behaviour stays
             consistent across widths. Empty state falls through to
-            the single shared "Nothing to show" block below. */}
-        {recipes.length > 0 ? (
+            the single shared "Nothing to show" block below.
+
+            Wave 4 (2026-05-02): when cluster carousels render above,
+            the flat grid + 3-section layout below shows only
+            community uploads (`displayRecipes` = `nonSeedRecipes`)
+            so seeds aren't duplicated. */}
+
+        {/* Wave 4 (2026-05-02) — cuisine cluster carousels. Five
+            horizontal carousels (Mediterranean → Asian → Latin →
+            Comfort → Healthy bowls) render when no search/filter
+            narrows the feed. Mobile parity:
+            `apps/mobile/app/(tabs)/discover.tsx` cluster sections.
+            Below the carousels, the existing flat grid / 3-section
+            layout still renders for any community uploads
+            (`nonSeedRecipes`) so community content is never hidden
+            behind seeds. */}
+        {showClusterCarousels ? (
+          <div data-testid="discover-cluster-carousels" className="mt-4 space-y-6">
+            {SEED_CLUSTERS.map((cluster) => {
+              const items = seedRecipesByCluster.get(cluster.id) ?? [];
+              if (items.length === 0) return null;
+              return (
+                <section
+                  key={cluster.id}
+                  data-testid={`discover-cluster-${cluster.id}`}
+                  aria-label={cluster.title}
+                >
+                  <h2 className="text-[14px] font-bold text-foreground -tracking-[0.01em] px-4 md:px-0 mb-2.5">
+                    {cluster.title}
+                  </h2>
+                  <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
+                    <div className="flex gap-3 pb-2" style={{ minWidth: "max-content" }}>
+                      {items.map((recipe) => {
+                        const kcal = Math.round(recipe.calories);
+                        const protein = Math.round(recipe.protein);
+                        const cookTime =
+                          recipe.cookTime ?? (recipe.cookTimeMin ? `${recipe.cookTimeMin} min` : null);
+                        return (
+                          <button
+                            key={`cluster-${recipe.id}`}
+                            type="button"
+                            onClick={() => setSelectedRecipe(recipe)}
+                            className="shrink-0 w-[220px] text-left rounded-xl bg-card border border-border overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all"
+                          >
+                            <div
+                              className="relative overflow-hidden"
+                              style={{ aspectRatio: recipe.image ? "16 / 10" : "8 / 1" }}
+                            >
+                              {recipe.image ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={recipe.image} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <RecipeHeroFallback id={recipe.id} title={recipe.title} iconSize={24} />
+                              )}
+                            </div>
+                            <div className="p-2.5">
+                              <p
+                                className="text-[13px] font-bold text-foreground leading-snug -tracking-[0.01em]"
+                                style={{
+                                  display: "-webkit-box",
+                                  WebkitLineClamp: 2,
+                                  WebkitBoxOrient: "vertical",
+                                  overflow: "hidden",
+                                }}
+                              >
+                                {recipe.title}
+                              </p>
+                              <div className="flex flex-wrap gap-x-2 gap-y-1 mt-1.5 text-[11px] text-muted-foreground tabular-nums">
+                                <span className="inline-flex items-center gap-1">
+                                  <Icons.calories
+                                    className="w-[11px] h-[11px]"
+                                    style={{ color: "var(--macro-calories)" }}
+                                  />
+                                  {kcal} kcal
+                                </span>
+                                <span className="inline-flex items-center gap-1">
+                                  <Icons.protein
+                                    className="w-[11px] h-[11px]"
+                                    style={{ color: "var(--macro-protein)" }}
+                                  />
+                                  {protein}g
+                                </span>
+                                {cookTime ? (
+                                  <span className="inline-flex items-center gap-1">
+                                    <Icons.time className="w-[11px] h-[11px] text-muted-foreground" />
+                                    {cookTime}
+                                  </span>
+                                ) : null}
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+        ) : null}
+
+        {displayRecipes.length > 0 ? (
           <div
             data-testid="discover-desktop-grid"
             className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-5 mt-6"
           >
-            {recipes.map((recipe) => {
+            {displayRecipes.map((recipe) => {
               const kcal = Math.round(recipe.calories);
               const protein = Math.round(recipe.protein);
               const carbs = Math.round(recipe.carbs);
@@ -744,15 +896,18 @@ export const DiscoverFeed = memo(function DiscoverFeed({
         {/* Section 1 + 2: recipe sections — only when there's content
             MOBILE-WEB ONLY (below `md`). Desktop uses the flat grid
             above; this three-section structure matches the mobile app
-            layout so narrow web feels like the native app. */}
-        {recipes.length > 0 ? (
+            layout so narrow web feels like the native app.
+
+            Wave 4 (2026-05-02): reads `displayRecipes` (community
+            uploads only when cluster carousels are active above). */}
+        {displayRecipes.length > 0 ? (
           <div className="md:hidden">
             {/* ── Matches your day (hero cards) ── */}
             <h3 className="text-[14px] font-bold text-foreground -tracking-[0.01em] mt-[22px] mb-2.5 px-4">
               Matches your day
             </h3>
             <div className="grid gap-3 px-4">
-              {recipes.slice(0, 2).map((recipe) => {
+              {displayRecipes.slice(0, 2).map((recipe) => {
                 const kcal = Math.round(recipe.calories);
                 const protein = Math.round(recipe.protein);
                 const carbs = Math.round(recipe.carbs);
@@ -841,13 +996,13 @@ export const DiscoverFeed = memo(function DiscoverFeed({
             </div>
 
             {/* ── More ideas (compact list) — only when there's a 3rd+ */}
-            {recipes.length > 2 ? (
+            {displayRecipes.length > 2 ? (
               <>
                 <h3 className="text-[14px] font-bold text-foreground -tracking-[0.01em] mt-[22px] mb-2.5 px-4">
                   More ideas
                 </h3>
                 <div className="mx-4 rounded-xl border border-border bg-card overflow-hidden">
-                  {recipes.slice(2).map((recipe, idx) => {
+                  {displayRecipes.slice(2).map((recipe, idx) => {
                     const kcal = Math.round(recipe.calories);
                     const protein = Math.round(recipe.protein);
                     const carbs = Math.round(recipe.carbs);
@@ -886,7 +1041,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
               </>
             ) : null}
           </div>
-        ) : (
+        ) : showClusterCarousels ? null : (
           <div className="mt-6 mx-4 rounded-2xl border border-dashed border-border bg-card/60 p-8 text-center md:mx-0">
             <p className="text-foreground font-medium mb-2">Nothing to show</p>
             <p className="text-sm text-muted-foreground mb-4">

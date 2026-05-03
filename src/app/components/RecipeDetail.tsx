@@ -19,6 +19,10 @@ import { classifyConfidence } from "../../lib/nutrition/aiLogging";
 import { AddIngredientDialog, type AddIngredientPayload } from "./suppr/add-ingredient-dialog";
 import { OverrideIngredientDialog } from "./suppr/override-ingredient-dialog";
 import { normaliseRecipeDisplayTitle } from "../../lib/recipe/normaliseDisplayTitle";
+import {
+  findSeedRecipeById,
+  isSeedRecipeId,
+} from "../../lib/recipes/seedRecipesV2";
 import { pickHeroImageUrl } from "../../lib/recipes/heroImageFallback.ts";
 import { DEFAULT_UPLOADED_RECIPE_IMAGE } from "../../context/appData/constants.ts";
 import { RecipeNotesCard } from "./suppr/recipe-notes-card";
@@ -79,6 +83,17 @@ import { SourceDot } from "./ui/source-dot";
 import { classifyRecipeGluten } from "../../lib/nutrition/recipeTrust.ts";
 import { mapMealSourceToDot } from "../../lib/nutrition/sourceMap.ts";
 import { FatSecretBadge } from "./ui/FatSecretBadge";
+// Recipe-detail viewing-servings stepper (Paprika parity, 2026-05-02
+// customer-lens audit). Shared bounds / clamp / debounce / seed
+// helpers — mobile uses the same module so the contract stays in
+// lock-step. See `src/lib/nutrition/recipeViewScale.ts`.
+import {
+  RECIPE_VIEW_SERVINGS_MAX,
+  RECIPE_VIEW_SERVINGS_MIN,
+  RECIPE_VIEW_STEPPER_DEBOUNCE_MS,
+  initialViewServings,
+  stepViewServings,
+} from "../../lib/nutrition/recipeViewScale.ts";
 
 async function shareRecipeDeepLink(recipeId: string) {
   if (typeof window === "undefined") return;
@@ -201,15 +216,61 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
   } = useAppData();
   const router = useRouter();
   const saved = isRecipeSaved(recipe.id);
-  const [servings, setServings] = useState(
-    initialServings != null && initialServings > 0
-      ? Math.round(recipe.servings * initialServings * 10) / 10
-      : recipe.servings,
+  // PR1 (Paprika parity, 2026-05-02): the viewing-servings stepper
+  // is the canonical "how many portions am I looking at" state.
+  // Bounds (1..99) + the deep-link `initialServings` honouring live
+  // in the shared `recipeViewScale.ts` so mobile uses the exact same
+  // contract. The stepper deals only in whole portions — fractional
+  // cook-mode multipliers (0.5x / 1x / 1.5x / 2x / 4x) live in
+  // `recipeScale.ts` and are composed on top inside the CookMode
+  // component (PR #72).
+  const [servings, setServings] = useState<number>(() =>
+    initialViewServings({
+      baseServings: recipe.servings,
+      portionParam:
+        typeof initialServings === "number" && Number.isFinite(initialServings) && initialServings > 0
+          ? initialServings
+          : null,
+    }),
   );
+  // Stepper debounce — coalesces a burst of `+`/`-` clicks (or held
+  // keys via keyboard auto-repeat) into a single state update at the
+  // tail of the burst. 200ms matches the mobile cadence so a held
+  // key on the web stepper feels the same as a held tap on mobile.
+  const stepperPendingDelta = useRef(0);
+  const stepperPendingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleViewServingsStep = useCallback((delta: number) => {
+    stepperPendingDelta.current += delta;
+    if (stepperPendingTimer.current) clearTimeout(stepperPendingTimer.current);
+    stepperPendingTimer.current = setTimeout(() => {
+      const accum = stepperPendingDelta.current;
+      stepperPendingDelta.current = 0;
+      stepperPendingTimer.current = null;
+      setServings((prev) => stepViewServings(prev, accum));
+    }, RECIPE_VIEW_STEPPER_DEBOUNCE_MS);
+  }, []);
+  // Cancel pending stepper timer on unmount so a late tick doesn't
+  // call setState after teardown.
+  useEffect(() => {
+    return () => {
+      if (stepperPendingTimer.current) {
+        clearTimeout(stepperPendingTimer.current);
+        stepperPendingTimer.current = null;
+      }
+    };
+  }, []);
   const [activeTab, setActiveTab] = useState<"ingredients" | "steps" | "nutrition">("ingredients");
   const [cookModeOpen, setCookModeOpen] = useState(Boolean(autoOpenCookMode));
 
-  const isCatalogRecipe = false;
+  // Audit gap #3 (Wave 4, 2026-05-02) — static seed recipes have no
+  // Supabase backing row; treat them like a catalogue entry so the
+  // existing catalogue-only short-circuits in this component (DB
+  // fetches + saves) all skip cleanly. The seed's ingredients +
+  // instructions are hydrated into the dbIngredients / dbInstructionsText
+  // state below so the existing render paths (Steps tab + Ingredients
+  // tab) work without a second branch in the JSX.
+  const isCatalogRecipe = isSeedRecipeId(recipe.id);
+  const seedRecipe = isCatalogRecipe ? findSeedRecipeById(recipe.id) : null;
   const [publishedOverride, setPublishedOverride] = useState<boolean | null>(null);
   const isPublished = publishedOverride ?? (recipe.isPublished ?? null);
 
@@ -554,6 +615,36 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
       cancelled = true;
     };
   }, [recipe.id, isCatalogRecipe]);
+
+  /** Audit gap #3 (Wave 4, 2026-05-02) — hydrate the seed-recipe
+   *  content into the same state slots the DB-backed path writes to,
+   *  so the Ingredients + Steps tabs render without bespoke seed
+   *  branches. Mobile parity: `apps/mobile/app/recipe/[id].tsx`. */
+  useEffect(() => {
+    if (!seedRecipe) return;
+    setDbInstructionsText(seedRecipe.steps.join("\n"));
+    setDbServings(seedRecipe.servings);
+    setDbPrepMin(seedRecipe.prepTimeMin > 0 ? seedRecipe.prepTimeMin : null);
+    setDbCookMin(seedRecipe.cookTimeMin > 0 ? seedRecipe.cookTimeMin : null);
+    setDbIngredients(
+      seedRecipe.ingredients.map((i): IngredientRow => ({
+        name: i.name,
+        amount: String(i.grams),
+        unit: "g",
+        // Seed cards display ingredient lines but never claim macro
+        // values for them — log-time ingredient pipeline owns nutrition.
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fat: 0,
+        fiberG: 0,
+        sugarG: 0,
+        sodiumMg: 0,
+        isVerified: true,
+        source: seedRecipe.attribution.author,
+      })),
+    );
+  }, [seedRecipe]);
 
   useEffect(() => {
     const s = dbServings ?? recipe.servings;
@@ -1266,7 +1357,15 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             slots,
             servings: baseServings,
           });
-          const kcalForLine = Math.round(scaledMacros.calories);
+          // PR1 (Paprika parity, 2026-05-02): per-portion kcal stays
+          // invariant under the viewing-servings stepper — per-portion
+          // is per-portion. The secondary "X kcal total for N portions"
+          // line below tracks the multiplier honestly, so the visible
+          // batch number tracks the user's chosen scale without
+          // pretending the per-portion value has changed.
+          const kcalForLine = Math.round(perServingBase.calories);
+          const hasScaledAway = servings !== baseServings;
+          const totalKcalForView = Math.round(perServingBase.calories * servings);
           return (
             <div className="space-y-1">
               <h1
@@ -1289,6 +1388,15 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                   </span>
                   <span aria-hidden className="text-muted-foreground/70 text-sm">·</span>
                   <span className="text-sm text-muted-foreground">per portion</span>
+                </div>
+              ) : null}
+              {kcalForLine > 0 && hasScaledAway && totalKcalForView > 0 ? (
+                <div
+                  className="text-xs text-muted-foreground tabular-nums"
+                  data-testid="recipe-kcal-total-line"
+                  aria-label={`${totalKcalForView} kilocalories total for ${servings} portions`}
+                >
+                  {totalKcalForView} kcal total for {servings} portions
                 </div>
               ) : null}
               {subtitleParts.length > 0 ? (
@@ -1426,7 +1534,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             of whether the timings were known. Replaced with a compact
             single-line form. Hidden entirely when both prep and cook
             are unknown (servings already lives in the subtitle and the
-            "Portions to view" stepper below covers per-serving sizing).
+            "Servings to view" stepper below covers per-serving sizing).
             Confidence tile removed — backstage signal, no actionable
             interpretation for a user. Mobile parity in
             `apps/mobile/app/recipe/[id].tsx` (timeStatsRow). */}
@@ -1501,22 +1609,44 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           );
         })()}
 
-        {/* Servings Selector — how many portions you are viewing / logging */}
-        <div className="bg-card rounded-2xl p-4 flex items-center justify-between border border-border">
-          <span className="font-semibold text-foreground text-sm">Portions to view</span>
+        {/* Servings to view — how many portions you are looking at /
+            logging. Bounded 1..99, debounced 200ms, +/- with disabled
+            states at the bounds (mirrors mobile). The label is
+            aligned with mobile to "Servings to view" so the
+            cross-platform copy stays in sync. PR1 (Paprika parity,
+            2026-05-02). */}
+        <div
+          className="bg-card rounded-2xl p-4 flex items-center justify-between border border-border"
+          data-testid="recipe-view-servings-stepper"
+        >
+          <span className="font-semibold text-foreground text-sm">Servings to view</span>
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => setServings(Math.max(1, servings - 1))}
-              className="w-8 h-8 rounded-lg bg-muted border border-border hover:bg-muted/80 transition-all flex items-center justify-center"
+              onClick={() => handleViewServingsStep(-1)}
+              disabled={servings <= RECIPE_VIEW_SERVINGS_MIN}
+              aria-label="Decrease servings to view"
+              data-testid="recipe-view-servings-decrement"
+              className="w-8 h-8 rounded-lg bg-muted border border-border hover:bg-muted/80 transition-all flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed"
             >
               −
             </button>
-            <span className="w-8 text-center font-bold text-foreground tabular-nums">{servings}</span>
+            <span
+              className="w-8 text-center font-bold text-foreground tabular-nums"
+              role="status"
+              aria-live="polite"
+              aria-label={`${servings} servings to view`}
+              data-testid="recipe-view-servings-value"
+            >
+              {servings}
+            </span>
             <button
               type="button"
-              onClick={() => setServings(servings + 1)}
-              className="w-8 h-8 rounded-lg bg-muted border border-border hover:bg-muted/80 transition-all flex items-center justify-center"
+              onClick={() => handleViewServingsStep(1)}
+              disabled={servings >= RECIPE_VIEW_SERVINGS_MAX}
+              aria-label="Increase servings to view"
+              data-testid="recipe-view-servings-increment"
+              className="w-8 h-8 rounded-lg bg-muted border border-border hover:bg-muted/80 transition-all flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed"
             >
               +
             </button>

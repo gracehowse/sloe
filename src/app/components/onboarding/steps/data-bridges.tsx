@@ -5,18 +5,18 @@
  *
  * Mobile counterpart at
  * `apps/mobile/components/onboarding/steps/data-bridges.tsx`. The web
- * version is intentionally narrower: three cards instead of four,
- * because Apple Health is iOS-only and there is no equivalent web
- * surface for HealthKit. Per `project_ios_only_no_android.md` +
- * `feedback_mobile_decisions_apply_to_web.md`, the parity rule allows a
- * carve-out where the platform genuinely cannot deliver an equivalent
- * affordance.
+ * version is intentionally narrower than mobile: it omits the Apple
+ * Health card (iOS-only, no equivalent web HealthKit surface), per
+ * `project_ios_only_no_android.md` +
+ * `feedback_mobile_decisions_apply_to_web.md`.
  *
- * Three cards on web:
+ * Cards on web (4):
  *   1. Manual targets — paste-in 4-input form (MFP / MacroFactor refugee)
  *   2. Notifications — browser push (kept simple — `permissions.tsx`
  *      step's existing logic is the right level)
  *   3. Recipe URL — preserves the legacy `import.tsx` parser flow
+ *   4. MFP CSV — bulk-import history (added 2026-05-02; closes the
+ *      MFP-refugee history-bridge gap surfaced in customer-lens P1)
  *
  * Plus the same "Maybe later" affordance as mobile so the user can
  * advance the empty path. `dataBridgeChosen` is captured for analytics.
@@ -29,6 +29,7 @@ import { useOnboarding } from "../context";
 import { StepBody, StepHeader, useStepOverline } from "../scaffold";
 import { track } from "@/lib/analytics/track";
 import { AnalyticsEvents } from "@/lib/analytics/events";
+import { MfpCsvImportCard } from "@/app/components/imports/MfpCsvImportCard";
 
 type RecipePhase = "idle" | "parsing" | "done";
 
@@ -48,6 +49,7 @@ export function DataBridgesStep() {
         <ManualTargetsCard />
         <NotificationsCard />
         <RecipeUrlCard />
+        <MfpCsvImportCard surface="onboarding" />
       </div>
 
       <button

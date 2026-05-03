@@ -175,6 +175,202 @@ Mobile-only surface — the web equivalents already use CSS custom
 properties (`--destructive`, `--warning`, `--primary-foreground`)
 and need no changes.
 
+## 2026-05-02 — Recipe detail servings stepper
+
+Customer-lens audit gap (Paprika persona): "open recipe, dial servings
+4 → 6, ingredient grams update." Pre-2026-05-02 the recipe-detail
+screen had no inline servings control on mobile — scaling was only
+available via the planner / log-flow `?portion=N` deep-link, which is
+not a surface the user can drive from the recipe page itself. Web had
+a stepper but it was unbounded on the plus side (`setServings(servings + 1)`)
+and undebounced. Both platforms now ship the same Paprika-tier control.
+
+### What changed
+- New shared module `src/lib/nutrition/recipeViewScale.ts` (pure, no
+  React, no DOM, no React Native) — bounds (1..99), debounce window
+  (200ms), `clampViewServings`, `stepViewServings`, `viewMultiplier`,
+  and `initialViewServings`. One contract, two consumers.
+- `apps/mobile/app/recipe/[id].tsx`:
+  - New "Servings to view" stepper between the time-stats info row
+    and the calorie / macro hero. Bounded 1..99, debounced 200ms,
+    +/- pressables with `hitSlop={8}` and visible disabled-at-bounds
+    states.
+  - Ingredient amounts now multiply by
+    `viewMultiplier(viewServings, recipe.servings)` instead of the
+    raw `?portion=N` query param.
+  - Per-portion kcal hero stays invariant under the stepper. A
+    secondary "X kcal total for N portions" line appears below when
+    the user has dialled away from the authored yield, so the visible
+    number tracks the multiplier honestly.
+  - `logPortion` (the "Add to today" target) now follows the stepper,
+    so a journal write from the detail screen reflects the chosen
+    portion count.
+  - The old "Planned portion: Nx — quantities below are adjusted"
+    banner is removed; the visible stepper is now the canonical
+    surface for that signal.
+  - Recipe id change resets the stepper seed (no carry-over A → B).
+- `src/app/components/RecipeDetail.tsx` (web parity):
+  - Stepper now bounded (was unbounded on the `+` side); 200ms
+    debounce; label aligned to "Servings to view"; explicit
+    `aria-label` on +/- buttons; `role="status"` + `aria-live="polite"`
+    on the value readout; visible disabled-at-bounds styling.
+  - Per-portion kcal headline binds to `perServingBase.calories`
+    directly (was `scaledMacros.calories`, which silently scaled with
+    the stepper) so per-portion truly stays per-portion.
+  - Same secondary "X kcal total for N portions" line as mobile.
+
+### Cook-mode (PR #72) interaction
+The cook-mode flow already takes the user's scaled servings via the
+PR #72 handoff (mobile reads `cookScaleFactor = logPortion`; web
+takes `<CookMode servings={...} baseServings={...} />` and computes
+`scaleFactor` internally). PR1's stepper just controls what those
+inputs are when the user enters cook mode. PR #72's contract is
+preserved by construction — the source-pin test
+(`tests/unit/cookModeServingsHandoff.test.ts`) is unchanged and
+still passes.
+
+### Tests
+- `tests/unit/recipeViewScale.test.ts` — 29 pure-helper tests pinning
+  bounds, clamp, step, multiplier, and seed math (incl. the spec
+  example: chicken 400g → 600g when stepping a 4-serving recipe to 6).
+- `tests/unit/recipeViewScaleScreens.test.tsx` — 28 cross-platform
+  source-pin tests plus a platform-agnostic RTL harness that exercises
+  the `+`/`−` → state → display loop using the same shared helper
+  both screens consume (chicken 400g → 600g via two `+` taps; minus
+  disabled at 1; plus disabled at 99; deep-link `?portion=1.5` on a
+  4-serving recipe seeds at 6).
+
+### Parity
+Web and mobile share the helper module, the bounds, the debounce
+cadence, the label copy ("Servings to view"), the secondary kcal-total
+line text ("X kcal total for N portions"), and the deep-link seed
+behaviour. Visual differences are scoped to the per-platform primitive
+(web `<button>` + Tailwind / mobile `<Pressable>` + `Spacing` tokens);
+the contract surface is identical.
+
+## 2026-05-02 — MFP CSV import
+
+Closes the MFP-refugee history-bridge gap (P1 customer-lens). Bulk-import
+MyFitnessPal CSV exports without re-deriving macros; idempotent on retry
+via the existing `nutrition_entries_source_dedup` index.
+
+### What changed
+- **New screen surface (mobile):** `MobileMfpCsvImportCard` mounted in
+  - the onboarding data-bridges step (5th card after manual targets /
+    Apple Health / Notifications / Recipe URL)
+  - Settings -> App section (below "Export everything")
+- **Picker:** `expo-document-picker@~14.0.7` (new mobile dependency).
+  CSV-only MIME filter (`text/csv`,
+  `text/comma-separated-values`,
+  `public.comma-separated-values-text`).
+- **Upload payload:** multipart/form-data via `authedFetch` to
+  `${getSupprApiBase()}/api/imports/mfp-csv` with the React Native
+  `{ uri, name, type }` file shape.
+- **States covered:** idle -> uploading -> success | error. Error has
+  a retry button that re-opens the picker — no silent drops.
+
+### Why
+MFP refugees arriving on Suppr lose months of history if they don't
+have a bridge. CSV is the most universal export format MFP supports
+(MacroFactor refugees benefit too — same shape). The original
+proposal involved per-row enrichment against USDA/OFF/FatSecret;
+that's deferred (Vercel `maxDuration` budget + CLAUDE.md "no
+guessing" policy — see decision doc).
+
+### Parity with web
+Web mirror lives at `src/app/components/imports/MfpCsvImportCard.tsx`
+and is wired into:
+- the onboarding data-bridges step (4th card; web has no Apple Health
+  card)
+- Settings -> Privacy & Security (next to "Export everything")
+
+Same copy, same phases, same analytics events
+(`mfp_csv_import_{started,completed,failed}`) on both platforms.
+
+### Tests
+- `apps/mobile/tests/unit/mfpCsvImportCardMobile.test.tsx` — render
+  + upload flow (picker cancel / success / 429 rate limit).
+- Web tests: `tests/unit/parseMfpCsv.test.ts` (24 cases),
+  `tests/integration/mfpCsvImportRoute.test.ts` (10 cases),
+  `tests/unit/mfpCsvImportCardWeb.test.tsx`.
+
+### Decision doc
+`docs/decisions/2026-05-02-mfp-csv-import.md`.
+
+## 2026-05-02 — Discover seed: 50 recipes / 5 clusters
+
+Wave 4 of the curated Discover seed. Closes the Recime parity caveat
+flagged in the competitor audit ("Discovery still feels seeded, not
+living"). Pre-Wave-4 the seed shipped 15 recipes across 3 clusters
+(PR #35); Wave 4 lifts that to 50 recipes across 5 cuisine clusters,
+with cluster carousels on the Discover tab.
+
+### What changed
+- `src/lib/recipes/seedRecipesV2.ts` — 50 SeedRecipe entries split
+  into 5 clusters (Mediterranean 10, Asian 10, Latin 8, Comfort 10,
+  Healthy bowls 12). Each entry carries id, cluster, hero image,
+  6-12 ingredients (grams), 4-8 steps, prep+cook times, per-portion
+  macro estimates, and a per-row `attribution` block (path-2 AI-
+  generated-and-edited under Suppr authorship per
+  `docs/decisions/2026-04-27-onboarding-seed-copyright-review.md`).
+- `src/lib/recipes/seedRecipesToCard.ts` — pure adapter; one
+  source, both platforms consume it (with optional `tags` pass-
+  through and the `attribution.author` byline).
+- Web `DiscoverFeed.tsx` — renders 5 cluster carousels
+  (Mediterranean → Asian → Latin → Comfort → Healthy bowls) on the
+  unfiltered "For You" view; legacy flat layout fed by
+  `displayRecipes` (community uploads only) below. An active
+  search/filter falls back to the legacy flat layout so cluster
+  grouping never fights an active query.
+- Mobile `(tabs)/discover.tsx` — same 5 cluster carousels with
+  `discover-cluster-{id}` testids and a smaller `renderCarouselCard`
+  helper for horizontal scrollers. Same gating as web.
+- Recipe-detail (mobile + web) — seed-id short-circuit so seed
+  recipes hydrate from the static file without a Supabase round-
+  trip (seeds have no DB row by design).
+
+### Macros stay deliberate ROUND ESTIMATES
+Production nutrition still funnels through `nutrition-engine`
+ingredient resolution at log time per the CLAUDE.md rule "never
+invent confident nutrition values for production paths". Discover
+cards display the seed macros only as a preview.
+
+### Attribution / IP posture
+Every seed recipe carries a structured `attribution` block:
+- `author: "Suppr Kitchen"` — Suppr-owned prose (path-1 or path-2).
+- `origin: "ai-generated-edited"` — explicit per-row provenance.
+- `imageSource: { provider: "unsplash", url }` — Unsplash CDN under
+  the Unsplash license; URL recorded so any future image-rights
+  audit has a per-row pointer.
+
+`tests/unit/discoverSeedCopyright.test.ts` pins this contract; if
+attribution is missing on any recipe, CI breaks before ship.
+
+### Tests
+- `tests/unit/discoverSeedShape.test.ts` — pins exact 50-recipe
+  count, exact 10/10/8/10/12 cluster sizes, canonical reading
+  order, required fields, ingredient/step bounds, id-cluster
+  shape used by the carousel grouper.
+- `tests/unit/discoverSeedCopyright.test.ts` — pins the attribution
+  contract per the legal review.
+- `tests/unit/seedRecipesToCard.test.ts` — pins the adapter shape
+  and that creatorName flows from `attribution.author`.
+- `tests/unit/discoverClusterCarousels.test.ts` — pins web + mobile
+  Discover wiring (cluster testid, SEED_CLUSTERS.map, gating to
+  the unfiltered "For You" view).
+- Updated `tests/unit/discoverThreeSectionLayout.test.ts` to accept
+  the new `displayRecipes` binding alongside the legacy `recipes`
+  binding.
+
+### Cross-platform parity
+Mobile and web both render 5 carousels in the same canonical order
+via the shared `SEED_CLUSTERS` array. Both gate on the unfiltered
+default view (`!search.trim() && filter === "For You"` on mobile,
+the equivalent predicate on web). Both fall back to the existing
+flat layout when search/filter is active.
+
+---
+
 ## 2026-05-02 — EmptyState: 72pt disc + headline/body type ladder + optional CTA
 
 ui-critic finding #6 (P1). The pre-2026-05-02 `<EmptyState>` primitive

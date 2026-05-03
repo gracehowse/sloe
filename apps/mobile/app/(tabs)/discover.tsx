@@ -29,6 +29,11 @@ import { computeRecipeFitPercent } from "../../../../src/lib/nutrition/recipeFit
 import { DISCOVER_POPULAR_MIN_SAVES } from "../../../../src/lib/recipes/fetchPublicRecipeSaveCounts";
 import { recipeSearchMatch } from "../../../../src/lib/recipes/recipeSearchMatch";
 import { displayAttribution } from "../../../../src/lib/recipes/displayAttribution";
+import {
+  SEED_CLUSTERS,
+  isSeedRecipeId,
+  type SeedCuisineCluster,
+} from "../../../../src/lib/recipes/seedRecipesV2";
 // GW-08 (audit 2026-04-28): `TrustChip` + `recipeLevelTrust` imports
 // dropped — the Discover hero card no longer renders the chip because
 // the underlying source signal is fabricated (see the comment by the
@@ -460,6 +465,119 @@ export default function DiscoverScreen() {
     [router, colors, heroColor, t.accent, targets],
   );
 
+  // ── Compact carousel card — used inside the cluster carousels
+  // (Mediterranean / Asian / Latin / Comfort / Healthy bowls). Fixed
+  // width (220) so several cards fit on screen and horizontal scroll
+  // is the obvious affordance. Title + kcal/protein metadata; tap
+  // routes to the same recipe detail screen as a hero card.
+  // Mobile parity: web `DiscoverFeed.tsx` cluster carousels.
+  const renderCarouselCard = useCallback(
+    (item: RecipeCard) => {
+      const kcal = Math.round(item.calories);
+      const protein = Math.round(item.protein);
+      const cookTimeText =
+        item.cookTime ?? (item.cookTimeMin ? `${item.cookTimeMin} min` : null);
+      return (
+        <Pressable
+          key={item.id}
+          onPress={() => router.push(`/recipe/${item.id}`)}
+          accessibilityRole="button"
+          accessibilityLabel={item.title}
+          style={{
+            width: 220,
+            borderRadius: 14,
+            backgroundColor: colors.card,
+            borderWidth: 1,
+            borderColor: colors.cardBorder,
+            overflow: "hidden",
+          }}
+        >
+          <View
+            style={{
+              aspectRatio: item.image ? 16 / 10 : 8,
+              alignItems: "center",
+              justifyContent: "center",
+              overflow: "hidden",
+              backgroundColor: colors.cardBorder,
+            }}
+          >
+            {item.image ? (
+              <Image source={{ uri: item.image }} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
+            ) : (
+              <RecipeHeroFallback id={item.id} title={item.title} iconSize={24} />
+            )}
+          </View>
+          <View style={{ padding: 10 }}>
+            <Text
+              style={{ fontSize: 13, fontWeight: "700", color: colors.text, lineHeight: 16 }}
+              numberOfLines={2}
+            >
+              {item.title}
+            </Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 6 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+                <Flame size={11} color={MacroColors.calories} />
+                <Text style={{ fontSize: 11, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
+                  {kcal} kcal
+                </Text>
+              </View>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+                <Beef size={11} color={MacroColors.protein} />
+                <Text style={{ fontSize: 11, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
+                  {protein}g
+                </Text>
+              </View>
+              {cookTimeText ? (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+                  <Clock size={11} color={colors.textTertiary} />
+                  <Text style={{ fontSize: 11, color: colors.textSecondary }}>{cookTimeText}</Text>
+                </View>
+              ) : null}
+            </View>
+          </View>
+        </Pressable>
+      );
+    },
+    [router, colors],
+  );
+
+  // Group seed entries (catalogue cards) by cluster for the cluster
+  // carousels. Order is fixed: Mediterranean → Asian → Latin →
+  // Comfort → Healthy bowls (the canonical reading order pinned by
+  // `SEED_CLUSTERS`). Non-seed (community) entries are routed
+  // through the legacy "Matches your day" + "More ideas" sections so
+  // existing imports + community uploads still surface.
+  const seedRecipesByCluster = (() => {
+    const map = new Map<SeedCuisineCluster, RecipeCard[]>();
+    for (const cluster of SEED_CLUSTERS) {
+      map.set(cluster.id, []);
+    }
+    for (const r of filtered) {
+      if (!isSeedRecipeId(r.id)) continue;
+      // Recover cluster from the seed id (`seed-v2-{cluster}-...`).
+      // Multi-word cluster slugs (e.g. "healthy-bowls") need a
+      // longest-prefix match against SEED_CLUSTERS, not a regex
+      // greedy split — so walk the canonical cluster list.
+      const after = r.id.slice("seed-v2-".length);
+      let clusterId: SeedCuisineCluster | null = null;
+      for (const c of SEED_CLUSTERS) {
+        if (after.startsWith(`${c.id}-`)) {
+          clusterId = c.id;
+          break;
+        }
+      }
+      if (!clusterId) continue;
+      map.get(clusterId)?.push(r);
+    }
+    return map;
+  })();
+
+  const nonSeedFiltered = filtered.filter((r) => !isSeedRecipeId(r.id));
+  // Cluster carousels render only when no search/filter narrows the
+  // feed (otherwise the cluster grouping fights the active query).
+  // "For You" is the default; treat it as the unfiltered case.
+  const showClusterCarousels = !search.trim() && filter === "For You";
+
   // ── Compact list row — "More ideas" section. 40×40 icon-box on the
   // left, title + source·time in the middle, trailing kcal / P / C.
   // Each row after the first gets a top-border so the parent card
@@ -709,34 +827,96 @@ export default function DiscoverScreen() {
           </View>
         ) : (
           <>
-            {/* Section 1 — Matches your day */}
-            <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text, letterSpacing: -0.1, marginTop: 8, marginBottom: 10 }}>
-              Matches your day
-            </Text>
-            <View style={{ gap: 12 }}>
-              {filtered.slice(0, 2).map((r) => renderHeroCard(r))}
-            </View>
-
-            {/* Section 2 — More ideas.
-                F-61 (2026-04-22): tester `AEq5NTi0n…` + `APpAKhhR…`
-                flagged that "More ideas" compact list rows felt
-                second-class next to the big hero cards and asked for
-                a uniform social-feed render. Promote this section to
-                hero-card style — same layout, same image treatment,
-                just stacked below Matches-your-day with a 12px gap.
-                `renderMoreIdeaRow` is retained in case a future
-                density toggle re-enables the compact variant, but
-                nothing calls it right now. */}
-            {filtered.length > 2 ? (
+            {/* Wave 4 (2026-05-02) — cuisine cluster carousels.
+                Five horizontal carousels (Mediterranean → Asian →
+                Latin → Comfort → Healthy bowls) when no search/filter
+                narrows the feed. Each carousel has a header above and
+                renders the curated seed entries for that cluster.
+                Community uploads still surface below in the original
+                "Matches your day" + "More ideas" sections so
+                community content is never hidden behind seeds.
+                Web parity: src/app/components/DiscoverFeed.tsx. */}
+            {showClusterCarousels ? (
               <>
-                <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text, letterSpacing: -0.1, marginTop: 22, marginBottom: 10 }}>
-                  More ideas
+                {SEED_CLUSTERS.map((cluster) => {
+                  const items = seedRecipesByCluster.get(cluster.id) ?? [];
+                  if (items.length === 0) return null;
+                  return (
+                    <View
+                      key={cluster.id}
+                      testID={`discover-cluster-${cluster.id}`}
+                      style={{ marginTop: 8 }}
+                    >
+                      <Text
+                        accessibilityRole="header"
+                        style={{
+                          fontSize: 14,
+                          fontWeight: "700",
+                          color: colors.text,
+                          letterSpacing: -0.1,
+                          marginBottom: 8,
+                        }}
+                      >
+                        {cluster.title}
+                      </Text>
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={{ gap: 12, paddingRight: 4 }}
+                      >
+                        {items.map((r) => renderCarouselCard(r))}
+                      </ScrollView>
+                    </View>
+                  );
+                })}
+
+                {/* Community uploads — only when user has imported /
+                    published recipes; pre-existing flat hero layout. */}
+                {nonSeedFiltered.length > 0 ? (
+                  <>
+                    <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text, letterSpacing: -0.1, marginTop: 22, marginBottom: 10 }}>
+                      Matches your day
+                    </Text>
+                    <View style={{ gap: 12 }}>
+                      {nonSeedFiltered.map((r) => renderHeroCard(r))}
+                    </View>
+                  </>
+                ) : null}
+              </>
+            ) : (
+              <>
+                {/* Search / filter active — fall back to the legacy
+                    flat layout so the active query isn't masked by
+                    cluster grouping. */}
+                <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text, letterSpacing: -0.1, marginTop: 8, marginBottom: 10 }}>
+                  Matches your day
                 </Text>
                 <View style={{ gap: 12 }}>
-                  {filtered.slice(2).map((r) => renderHeroCard(r))}
+                  {filtered.slice(0, 2).map((r) => renderHeroCard(r))}
                 </View>
+
+                {/* Section 2 — More ideas.
+                    F-61 (2026-04-22): tester `AEq5NTi0n…` + `APpAKhhR…`
+                    flagged that "More ideas" compact list rows felt
+                    second-class next to the big hero cards and asked for
+                    a uniform social-feed render. Promote this section to
+                    hero-card style — same layout, same image treatment,
+                    just stacked below Matches-your-day with a 12px gap.
+                    `renderMoreIdeaRow` is retained in case a future
+                    density toggle re-enables the compact variant, but
+                    nothing calls it right now. */}
+                {filtered.length > 2 ? (
+                  <>
+                    <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text, letterSpacing: -0.1, marginTop: 22, marginBottom: 10 }}>
+                      More ideas
+                    </Text>
+                    <View style={{ gap: 12 }}>
+                      {filtered.slice(2).map((r) => renderHeroCard(r))}
+                    </View>
+                  </>
+                ) : null}
               </>
-            ) : null}
+            )}
           </>
         )}
 

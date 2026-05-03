@@ -57,6 +57,7 @@ import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "../../../../../src/lib/analytics/events";
 import { useOnboarding } from "../context";
 import { MobileStepBody, MobileStepHeader, useStepOverline } from "../scaffold";
+import { MobileMfpCsvImportCard } from "../../imports/MfpCsvImportCard";
 
 type RecipePhase = "idle" | "parsing" | "done";
 
@@ -79,6 +80,7 @@ export function MobileDataBridgesStep() {
       {Platform.OS === "ios" ? <AppleHealthCard userId={userId} /> : null}
       <NotificationsCard userId={userId} />
       <RecipeUrlCard />
+      <MobileMfpCsvImportCard surface="onboarding" />
 
       <Pressable
         onPress={() => {
