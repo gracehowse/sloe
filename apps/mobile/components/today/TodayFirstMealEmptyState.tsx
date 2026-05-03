@@ -1,0 +1,131 @@
+import React from "react";
+import { Pressable, Text, View } from "react-native";
+import { Plus, Sparkles } from "lucide-react-native";
+import { Accent, Radius, Spacing } from "@/constants/theme";
+
+/**
+ * TodayFirstMealEmptyState — friendly empty card surfaced under the
+ * calorie ring when the user has logged 0 meals today AND has no
+ * journal history. Closes journey-architect P1 ("Empty states are
+ * silent. No journey has an empty state with a clear 'do this next'
+ * action.") for the day-1 / cold-start surface.
+ *
+ * Props:
+ *  - `isBrandNew` — true when `auth.users.created_at < 24h ago`. When
+ *    true, we render a single dismissable tip line under the CTA that
+ *    teaches the IG/TT recipe URL paste path. The host owns the
+ *    dismissal state (AsyncStorage) so the tip never re-renders.
+ *
+ * Web parity: `src/app/components/suppr/today-first-meal-empty-state.tsx`.
+ */
+export interface TodayFirstMealEmptyStateProps {
+  /** Open the unified LogSheet so the user can log their first meal. */
+  onLogMeal: () => void;
+  /** True iff `auth.users.created_at < 24h ago` (brand-new account). */
+  isBrandNew: boolean;
+  /** True iff the user has previously dismissed the IG/TT recipe-paste tip. */
+  tipDismissed: boolean;
+  /** Fires when the user taps the X on the tip line. Host persists. */
+  onDismissTip: () => void;
+  textColor: string;
+  textSecondaryColor: string;
+  cardColor: string;
+  cardBorderColor: string;
+}
+
+export function TodayFirstMealEmptyState({
+  onLogMeal,
+  isBrandNew,
+  tipDismissed,
+  onDismissTip,
+  textColor,
+  textSecondaryColor,
+  cardColor,
+  cardBorderColor,
+}: TodayFirstMealEmptyStateProps) {
+  const showTip = isBrandNew && !tipDismissed;
+  return (
+    <View
+      accessibilityRole="summary"
+      accessibilityLabel="Ready to log your first meal?"
+      style={{
+        backgroundColor: cardColor,
+        borderRadius: Radius.lg,
+        borderWidth: 1,
+        borderColor: cardBorderColor,
+        padding: Spacing.lg,
+        marginBottom: Spacing.lg,
+        alignItems: "center",
+        gap: 10,
+      }}
+    >
+      <Text style={{ fontSize: 15, fontWeight: "700", color: textColor, textAlign: "center" }}>
+        Ready to log your first meal?
+      </Text>
+      <Text
+        style={{
+          fontSize: 12,
+          color: textSecondaryColor,
+          textAlign: "center",
+          paddingHorizontal: 8,
+        }}
+      >
+        Search a food, scan a barcode, or paste a recipe — your day starts here.
+      </Text>
+      <Pressable
+        onPress={onLogMeal}
+        accessibilityRole="button"
+        accessibilityLabel="Log a meal"
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 6,
+          paddingHorizontal: 16,
+          paddingVertical: 10,
+          borderRadius: Radius.md,
+          backgroundColor: Accent.primary,
+          marginTop: 4,
+        }}
+      >
+        <Plus size={16} color="#fff" />
+        <Text style={{ fontSize: 13, fontWeight: "700", color: "#fff" }}>Log a meal</Text>
+      </Pressable>
+      {showTip && (
+        <View
+          accessibilityRole="text"
+          accessibilityLabel="Tip: paste an Instagram or TikTok recipe URL — we'll break it down for you."
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+            marginTop: 6,
+            paddingHorizontal: 4,
+          }}
+        >
+          <Sparkles size={11} color={textSecondaryColor} />
+          <Text
+            style={{
+              fontSize: 11,
+              color: textSecondaryColor,
+              flexShrink: 1,
+              textAlign: "center",
+            }}
+          >
+            Tip: paste an Instagram or TikTok recipe URL — we&apos;ll break it down for you.
+          </Text>
+          <Pressable
+            onPress={onDismissTip}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel="Dismiss tip"
+            style={{ paddingHorizontal: 4 }}
+          >
+            <Text style={{ fontSize: 14, color: textSecondaryColor, fontWeight: "600" }}>×</Text>
+          </Pressable>
+        </View>
+      )}
+    </View>
+  );
+}
+
+export default TodayFirstMealEmptyState;

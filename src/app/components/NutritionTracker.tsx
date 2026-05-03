@@ -95,6 +95,7 @@ import { paceKgPerWeekFromPreset } from "../../lib/nutrition/whyThisNumber";
 import { TodayQuickLogStrip } from "./suppr/today-quick-log-strip";
 import { TodaySnapShortcut } from "./suppr/today-snap-shortcut";
 import { TodayMealsSection } from "./suppr/today-meals-section";
+import { TodayFirstMealEmptyState } from "./suppr/today-first-meal-empty-state";
 import { TodayCompleteDayDialog } from "./suppr/today-complete-day-dialog";
 import { TodayAddMealDialog } from "./suppr/today-add-meal-dialog";
 import { FoodSearch, type FoodSearchSelection } from "./FoodSearch.tsx";
@@ -794,6 +795,53 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
   const eatAgainSuggestion = useMemo(() => {
     return computeEatAgainForSlot(nutritionByDay, currentSlotFromTime, new Date());
   }, [nutritionByDay, currentSlotFromTime]);
+
+  /**
+   * 2026-05-01 (journey-architect P1) — first-meal empty-state state.
+   * Two pieces:
+   *  - `userCreatedAt`: pulled once from `supabase.auth.getSession`.
+   *    Drives the "brand-new account" flag (< 24h) for the IG/TT tip line.
+   *  - `firstMealTipDismissed`: localStorage-backed boolean so the tip
+   *    line never reappears once dismissed.
+   *
+   * Mobile parity: same logic in `apps/mobile/app/(tabs)/index.tsx`
+   * (AsyncStorage backed there, same versioned key).
+   */
+  const FIRST_MEAL_TIP_DISMISSED_KEY = "suppr.first-meal-tip-dismissed.v1";
+  const [userCreatedAt, setUserCreatedAt] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void supabase.auth.getSession().then(({ data }) => {
+      if (cancelled) return;
+      setUserCreatedAt(data.session?.user?.created_at ?? null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const isBrandNewUser = useMemo(() => {
+    if (!userCreatedAt) return false;
+    const t = Date.parse(userCreatedAt);
+    if (!Number.isFinite(t)) return false;
+    return Date.now() - t < 24 * 60 * 60 * 1000;
+  }, [userCreatedAt]);
+  const [firstMealTipDismissed, setFirstMealTipDismissed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return window.localStorage.getItem(FIRST_MEAL_TIP_DISMISSED_KEY) != null;
+    } catch {
+      return false;
+    }
+  });
+  const dismissFirstMealTip = useCallback(() => {
+    setFirstMealTipDismissed(true);
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(FIRST_MEAL_TIP_DISMISSED_KEY, new Date().toISOString());
+    } catch {
+      /* storage denied — in-session state hides tip */
+    }
+  }, []);
 
   /** Log a history row (Favourite / Frequent / Recent / Eat again) into
    * the active meal slot. Shared by QuickAddPanel + Eat-again card so
@@ -2195,6 +2243,33 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
           locked={userTier !== "pro"}
         />
       )}
+
+      {/* 2026-05-01 (journey-architect P1) — first-meal empty state.
+          Renders only on Today (selected === today) when the user has
+          logged 0 meals today AND has zero journal history at all
+          (returning users with prior days never see the card). The CTA
+          opens the unified LogSheet — same surface as the centred
+          raised tab-bar plus button. Mobile parity in
+          `apps/mobile/app/(tabs)/index.tsx`. */}
+      {selectedDateKey === todayKey() &&
+        mealsForSelectedDate.length === 0 &&
+        loggedDays.size === 0 && (
+          <TodayFirstMealEmptyState
+            isBrandNew={isBrandNewUser}
+            tipDismissed={firstMealTipDismissed}
+            onDismissTip={dismissFirstMealTip}
+            onLogMeal={() => {
+              try {
+                track(AnalyticsEvents.empty_state_cta_clicked, {
+                  surface: "today",
+                });
+              } catch {
+                /* analytics fire-and-forget */
+              }
+              setLogSheetOpen(true);
+            }}
+          />
+        )}
 
       {/* 3. Dashboard macro tiles — profile `tracked_macros` (Settings),
           same keys as mobile. Phase 4 / Top-5 #2 (2026-04-28): the

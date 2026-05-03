@@ -170,6 +170,7 @@ import { weekKeyFor as weekKeyForCheckin } from "@/lib/weeklyRecap";
 import { TodayActivityCard } from "@/components/today/TodayActivityCard";
 import { TodayWeekView } from "@/components/today/TodayWeekView";
 import { TodayMealsSection } from "@/components/today/TodayMealsSection";
+import { TodayFirstMealEmptyState } from "@/components/today/TodayFirstMealEmptyState";
 import { TodayActivityBonusCard } from "@/components/today/TodayActivityBonusCard";
 import { TodayCompleteDayModal } from "@/components/today/TodayCompleteDayModal";
 import { Milestone30DayModal } from "@/components/today/Milestone30DayModal";
@@ -783,6 +784,28 @@ export default function TrackerScreen() {
     };
   }, []);
 
+  /**
+   * 2026-05-01 (journey-architect P1) — first-meal-empty-state IG/TT
+   * tip dismissal. Persisted under a versioned AsyncStorage key. The
+   * empty card itself is unconditional when zero today + zero history;
+   * only the trailing IG/TT tip line is dismissable.
+   */
+  const FIRST_MEAL_TIP_DISMISSED_KEY = "suppr.first-meal-tip-dismissed.v1";
+  const [firstMealTipDismissed, setFirstMealTipDismissed] = useState<boolean>(false);
+  useEffect(() => {
+    let cancelled = false;
+    AsyncStorage.getItem(FIRST_MEAL_TIP_DISMISSED_KEY)
+      .then((raw) => {
+        if (!cancelled) setFirstMealTipDismissed(raw != null);
+      })
+      .catch(() => {
+        /* storage denied — keep tip visible, host re-renders correctly */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const dismissFirstLogToast = useCallback(() => {
     setFirstLogToastVisible(false);
     setFirstLogAckShown(true);
@@ -901,6 +924,17 @@ export default function TrackerScreen() {
   const onPostOnbPushSkip = useCallback(() => {
     void dismissPostOnbPush(false);
   }, [dismissPostOnbPush]);
+
+  const dismissFirstMealTip = useCallback(() => {
+    setFirstMealTipDismissed(true);
+    void AsyncStorage.setItem(
+      FIRST_MEAL_TIP_DISMISSED_KEY,
+      new Date().toISOString(),
+    ).catch(() => {
+      /* storage denied — in-session state hides tip; may resurface next launch */
+    });
+  }, []);
+
 
   const savedMealSlots = useMemo(() => {
     const s = new Set<string>();
@@ -2243,6 +2277,23 @@ export default function TrackerScreen() {
     }
     return s;
   }, [byDay]);
+
+  /**
+   * 2026-05-01 (journey-architect P1) — brand-new-account check for
+   * the Today empty-state IG/TT tip line. True iff `auth.users.created_at`
+   * is < 24h ago. Returns false if the timestamp is missing or unparseable
+   * (safe-default to "not brand new" → no tip shown).
+   */
+  const isBrandNewUser = useMemo(() => {
+    const createdAtRaw = session?.user?.created_at;
+    if (!createdAtRaw) return false;
+    const t = Date.parse(createdAtRaw);
+    if (!Number.isFinite(t)) return false;
+    return Date.now() - t < 24 * 60 * 60 * 1000;
+  }, [session?.user?.created_at]);
+
+  /** 2026-05-01 — true iff the user has logged any meal on any day. */
+  const hasAnyJournalHistory = useMemo(() => loggedDays.size > 0, [loggedDays]);
 
   const streakDays = useMemo(
     () => computeLoggingStreak(byDay as any),
@@ -4098,6 +4149,41 @@ export default function TrackerScreen() {
                 locked={userTier !== "pro"}
               />
             )}
+
+            {/* 2026-05-01 (journey-architect P1) — first-meal empty
+                state. Renders only when the user has logged 0 meals
+                today AND has zero journal history at all (no point
+                pestering returning users with a "first meal" CTA).
+                Brand-new accounts (auth.users.created_at < 24h) get
+                an additional dismissable IG/TT tip line. The CTA
+                opens the unified LogSheet (same surface as the
+                centred raised tab-bar plus button + meal-slot taps).
+                Web parity in `src/app/components/NutritionTracker.tsx`. */}
+            {isToday &&
+              hydrated &&
+              mealsToday.length === 0 &&
+              !hasAnyJournalHistory && (
+                <TodayFirstMealEmptyState
+                  isBrandNew={isBrandNewUser}
+                  tipDismissed={firstMealTipDismissed}
+                  onDismissTip={dismissFirstMealTip}
+                  onLogMeal={() => {
+                    try {
+                      track(AnalyticsEvents.empty_state_cta_clicked, {
+                        surface: "today",
+                      });
+                    } catch {
+                      /* analytics fire-and-forget */
+                    }
+                    setFabSheetOpen(true);
+                  }}
+                  textColor={colors.text}
+                  textSecondaryColor={colors.textSecondary}
+                  cardColor={colors.card}
+                  cardBorderColor={colors.cardBorder}
+                />
+              )}
+
 
             {/* Macro tiles — 2x2 grid. The standalone all-nutrients
                 link that previously floated as a centred row below
