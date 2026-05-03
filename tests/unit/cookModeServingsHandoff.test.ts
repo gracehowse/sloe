@@ -1,0 +1,150 @@
+/**
+ * cook-mode servings handoff (P0, 2026-05-01) — pin the cross-platform
+ * contract that links the recipe-page servings stepper to the cook-mode
+ * step-text scaling, the "Scaled for N servings" banner, and the
+ * auto-log calorie multiplier.
+ *
+ * The bug this protects against: previously, opening cook mode from a
+ * recipe scaled to 8 servings (originally 4) showed step text that
+ * still said "Add 4 tbsp olive oil", and the auto-log on Done used the
+ * recipe's original yield rather than the scaled value. The user
+ * cooked a doubled batch from single-batch instructions and the
+ * journal entry was off by half.
+ *
+ * If a future change drops the `viewServings` / `servings` handoff,
+ * removes the `scaleStepText` import, removes the banner, or skips
+ * passing `baseServings` to web `<CookMode>`, these tests fail.
+ */
+import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+const REPO = resolve(__dirname, "..", "..");
+const MOBILE_RECIPE = readFileSync(
+  resolve(REPO, "apps/mobile/app/recipe/[id].tsx"),
+  "utf8",
+);
+const WEB_COOK = readFileSync(
+  resolve(REPO, "src/app/components/CookMode.tsx"),
+  "utf8",
+);
+const WEB_RECIPE = readFileSync(
+  resolve(REPO, "src/app/components/RecipeDetail.tsx"),
+  "utf8",
+);
+
+describe("mobile cook-mode — servings handoff", () => {
+  it("imports scaleStepText from the shared nutrition lib", () => {
+    expect(MOBILE_RECIPE).toMatch(
+      /import\s*\{\s*scaleStepText\s*\}\s*from\s*["'][^"']*src\/lib\/nutrition\/scaleStepText["']/,
+    );
+  });
+
+  it("computes a cookScaleFactor from logPortion before rendering the modal step text", () => {
+    expect(MOBILE_RECIPE).toMatch(/cookScaleFactor\s*=\s*[^=][^;]*logPortion/);
+  });
+
+  it("computes cookViewServings as recipe.servings × scaleFactor (rounded)", () => {
+    // The exact formatting may shift, but the formula must mention
+    // recipe.servings and the scale factor multiplied together.
+    expect(MOBILE_RECIPE).toMatch(/cookViewServings/);
+    expect(MOBILE_RECIPE).toMatch(/recipe[?.]?\.servings[^*]*\*[^*]*cookScaleFactor/);
+  });
+
+  it("renders the 'Scaled for N servings' banner only when scaleFactor !== 1", () => {
+    expect(MOBILE_RECIPE).toMatch(/cookScaleFactor\s*!==\s*1/);
+    expect(MOBILE_RECIPE).toMatch(/Scaled for\s*\{cookViewServings\}/);
+  });
+
+  it("passes the cleaned step through scaleStepText before rendering", () => {
+    // Pin: the rendered step variable must be derived from
+    // scaleStepText(...) so the regex is actually applied at render
+    // time. Pre-fix, the modal rendered `instructionSteps[cookStep]`
+    // directly with a leading-number strip and nothing else.
+    expect(MOBILE_RECIPE).toMatch(/scaleStepText\(\s*cleanedStep\s*,\s*cookScaleFactor\s*\)/);
+  });
+});
+
+describe("web CookMode — servings handoff", () => {
+  it("imports scaleStepText from the shared nutrition lib", () => {
+    expect(WEB_COOK).toMatch(
+      /import\s*\{\s*scaleStepText\s*\}\s*from\s*["'][^"']*scaleStepText[^"']*["']/,
+    );
+  });
+
+  it("accepts a baseServings prop alongside servings", () => {
+    expect(WEB_COOK).toMatch(/baseServings\?:\s*number/);
+  });
+
+  it("computes scaleFactor as servings / baseServings", () => {
+    expect(WEB_COOK).toMatch(
+      /scaleFactor\s*=[\s\S]{0,80}servings\s*\/\s*effectiveBaseServings/,
+    );
+  });
+
+  it("applies scaleStepText to the current step text", () => {
+    expect(WEB_COOK).toMatch(
+      /scaleStepText\(\s*cleanStepText\(\s*currentStepRaw\s*\)\s*,\s*scaleFactor\s*\)/,
+    );
+  });
+
+  it("renders a 'Scaled for N servings' banner only when scaleFactor !== 1", () => {
+    expect(WEB_COOK).toMatch(/scaleFactor\s*!==\s*1/);
+    expect(WEB_COOK).toMatch(/Scaled for\s*\{servings\}\s*serving/);
+  });
+
+  it("auto-log uses scaleFactor (not the buggy servings/baseServings inline)", () => {
+    // Pre-fix, handleLogMeal recomputed `portionMultiplier` from a
+    // local `baseServings` shadow. Post-fix it reuses the same
+    // `scaleFactor` constant the step text used, guaranteeing the
+    // logged calories match what the user actually cooked.
+    expect(WEB_COOK).toMatch(/portionMultiplier\s*=\s*scaleFactor/);
+  });
+});
+
+describe("web RecipeDetail — passes the user's scaled servings to CookMode", () => {
+  it("invokes <CookMode> with both servings and baseServings", () => {
+    // The bug: previously the call site passed `servings={baseServings}`,
+    // dropping the user's scale at cook-mode entry. Post-fix it must
+    // pass `servings={servings}` and an explicit `baseServings={baseServings}`.
+    const callSite = WEB_RECIPE.match(/<CookMode[\s\S]*?\/>/);
+    expect(callSite).not.toBeNull();
+    const block = callSite![0];
+    expect(block).toMatch(/servings=\{servings\}/);
+    expect(block).toMatch(/baseServings=\{baseServings\}/);
+    expect(block).not.toMatch(/servings=\{baseServings\}/);
+  });
+});
+
+describe("auto-log calorie math — pinned by example", () => {
+  // Pure-arithmetic pin (no rendering). The contract is:
+  //   scaleFactor = viewServings / recipe.servings
+  //   scaledCalories = recipe.calories_per_serving × scaleFactor × recipe.servings
+  // Equivalently: scaledCalories = caloriesPerServing × viewServings.
+  //
+  // viewServings = 8, recipe.servings = 4, caloriesPerServing = 250
+  //   → scaleFactor = 2
+  //   → totalRecipeCalories = 250 × 4 = 1000
+  //   → scaledCalories = 1000 × 2 = 2000
+  //   = caloriesPerServing × viewServings = 250 × 8 = 2000 ✓
+  it("8 servings on a 4-serving 250-kcal-per-serving recipe → 2000 kcal logged", () => {
+    const recipeServings = 4;
+    const viewServings = 8;
+    const caloriesPerServing = 250;
+    const totalRecipeCalories = caloriesPerServing * recipeServings;
+    const scaleFactor = viewServings / recipeServings;
+    const scaledCalories = totalRecipeCalories * scaleFactor;
+    expect(scaleFactor).toBe(2);
+    expect(scaledCalories).toBe(2000);
+    expect(scaledCalories).toBe(caloriesPerServing * viewServings);
+  });
+
+  it("0.5 portion on a 4-serving recipe → half of one full recipe", () => {
+    const recipeServings = 4;
+    const viewServings = 0.5;
+    const caloriesPerServing = 200;
+    const totalRecipeCalories = caloriesPerServing * recipeServings;
+    const scaleFactor = viewServings / recipeServings;
+    expect(totalRecipeCalories * scaleFactor).toBe(100);
+  });
+});

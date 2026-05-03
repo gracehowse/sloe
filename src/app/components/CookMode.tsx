@@ -19,8 +19,8 @@ import {
   cookScaleCaption,
   cookScaleStorageKey,
   formatCookScaleLabel,
-  scaleAmountText,
 } from "../../lib/nutrition/recipeScale.ts";
+import { scaleStepText } from "../../lib/nutrition/scaleStepText.ts";
 import {
   COOK_HISTORY_NOTE_MAX_LEN,
   formatCookHistoryPreview,
@@ -39,7 +39,21 @@ interface CookModeProps {
   recipe: RecipeCard;
   instructionSteps: string[];
   ingredients: IngredientRow[];
+  /**
+   * The user's scaled-to serving count (the value of the servings
+   * stepper on the recipe page). Drives the calorie multiplier on
+   * "Log this meal" and the step-text scaling. **NOT** the recipe's
+   * original yield — that's `baseServings`.
+   */
   servings: number;
+  /**
+   * The recipe's original yield (`recipe.servings`). Required so
+   * CookMode can compute `scaleFactor = servings / baseServings`
+   * for the step-text quantities. Defaults to `recipe.servings` for
+   * call sites that haven't been updated yet, but new call sites
+   * should pass it explicitly.
+   */
+  baseServings?: number;
   onExit: () => void;
   /** Navigate to the nutrition tracker after logging a meal. */
   onViewTracker?: () => void;
@@ -101,7 +115,7 @@ function playChime() {
   }
 }
 
-export function CookMode({ recipe, instructionSteps, ingredients, servings, onExit, onViewTracker }: CookModeProps) {
+export function CookMode({ recipe, instructionSteps, ingredients, servings, baseServings, onExit, onViewTracker }: CookModeProps) {
   const { addLoggedMeal, userId } = useAppData();
   const [currentStep, setCurrentStep] = useState(0);
   const [showIngredients, setShowIngredients] = useState(false);
@@ -131,19 +145,35 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
   const isLastStep = currentStep >= totalSteps - 1;
   const isDone = currentStep >= totalSteps;
 
+  // Servings handoff (P0, 2026-05-01) — `servings` is the user's
+  // scaled-to value (set via the recipe-page stepper); `baseServings`
+  // is the recipe's original yield. The step text gets multiplied by
+  // `scaleFactor = (servings / baseServings) × paprikaScale`. The
+  // `paprikaScale` (0.5 / 1 / 1.5 / 2 / 4 segmented control below)
+  // composes on top so a user who scaled the recipe page to 8 servings
+  // and then taps the cook-mode 0.5x preset cooks for 4. Falls back
+  // to `recipe.servings` when no explicit `baseServings` is passed
+  // (older call sites).
+  const effectiveBaseServings = Math.max(
+    1,
+    baseServings ?? (recipe.servings > 0 ? recipe.servings : 1),
+  );
+  const scaleFactor = (Number.isFinite(servings) && servings > 0
+    ? servings / effectiveBaseServings
+    : 1) * scale;
+
   const currentStepRaw = currentStep < totalSteps ? instructionSteps[currentStep]! : "";
   const currentStepCleaned = useMemo(
     () => cleanStepText(currentStepRaw),
     [currentStepRaw],
   );
   /** Visible step text with amounts rewritten by the active scale.
-   *  Scaling lives behind `scaleAmountText` (shared with mobile) so
-   *  both platforms agree on what counts as a scalable token (cooking
-   *  units + count nouns) vs. what stays untouched (time / temp /
-   *  step-number prefixes). */
+   *  `scaleStepText` is shared with mobile so both platforms agree on
+   *  what counts as a scalable token (cooking units + count nouns)
+   *  vs. what stays untouched (time / temp / step-number prefixes). */
   const currentStepText = useMemo(
-    () => scaleAmountText(currentStepCleaned, scale),
-    [currentStepCleaned, scale],
+    () => scaleStepText(cleanStepText(currentStepRaw), scaleFactor),
+    [currentStepRaw, scaleFactor],
   );
 
   /** Parse timers from the RAW cleaned step text, NOT the scaled
@@ -424,12 +454,12 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
       ? journalSlotFromMealTypes(recipe.mealSlots as string[])
       : fallbackSlotFromTimeOfDay();
 
-    const baseServings = recipe.servings > 0 ? recipe.servings : 1;
-    // Effective multiplier combines the user-picked servings with the
-    // Cook-screen scale (Paprika parity, 2026-04-30). Both feed the
-    // same macros multiplier so the journal entry matches whatever
-    // amounts the user saw on screen.
-    const portionMultiplier = (servings / baseServings) * scale;
+    // Use the same `scaleFactor` that drove step-text scaling so the
+    // calories logged match what the user actually cooked. A 4-serving
+    // recipe at servings=8 → scaleFactor=2 → calories x 2. The Paprika
+    // segmented control (0.5/1/1.5/2/4) is already composed into
+    // `scaleFactor` above.
+    const portionMultiplier = scaleFactor;
     const scaleVal = (v: number) => Math.round(v * portionMultiplier);
 
     addLoggedMeal({
@@ -526,7 +556,7 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
    * resolve to different lengths). At 1x both render identically.
    */
   const renderedStep = useMemo(() => {
-    const isScaled = scale !== 1;
+    const isScaled = scaleFactor !== 1;
     if (isScaled) {
       // Scaled mode — pill buttons live below the paragraph because
       // offsets in the rewritten text aren't safe to index against.
@@ -588,7 +618,7 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
         {nodes}
       </p>
     );
-  }, [currentStepCleaned, currentStepText, scale, stepTimers, startTimer]);
+  }, [currentStepCleaned, currentStepText, scaleFactor, stepTimers, startTimer]);
 
   /** Recime parity (2026-04-30): tap "Watch original" → opens the
    *  source video URL in a new tab and emits the analytics event with
@@ -712,6 +742,21 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
         <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 overflow-y-auto">
           {!isDone ? (
             <>
+              {/* Scaled-for-N-servings banner — only when the user has
+                  actually scaled the recipe via the servings stepper
+                  (or composed with the cook-mode Paprika scale).
+                  Servings handoff (P0, 2026-05-01): step text below
+                  reflects the scaled quantities, so the banner names
+                  the count to confirm at a glance. */}
+              {scaleFactor !== 1 && (
+                <div
+                  role="status"
+                  aria-label={`Recipe scaled for ${servings} servings`}
+                  className="mb-4 px-3 py-2 rounded-lg bg-primary/10 border border-primary/30 text-primary text-xs font-semibold tracking-wide"
+                >
+                  Scaled for {servings} serving{servings !== 1 ? "s" : ""}
+                </div>
+              )}
               {/* Step Counter */}
               <div className="mb-6">
                 <span className="px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-semibold">
@@ -852,8 +897,8 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
                 {recipe.title} · {servings} serving{servings !== 1 ? "s" : ""}
                 {scale !== 1 ? ` (${formatCookScaleLabel(scale)})` : ""}
                 {" — "}
-                {Math.round((recipe.calories * servings * scale) / (recipe.servings || 1))} kcal ·{" "}
-                {Math.round((recipe.protein * servings * scale) / (recipe.servings || 1))}g protein
+                {Math.round(recipe.calories * scaleFactor)} kcal ·{" "}
+                {Math.round(recipe.protein * scaleFactor)}g protein
               </p>
 
               {/* Rating row — 5 stars. Tap = stage in memory; Save
@@ -991,24 +1036,37 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, onEx
               </button>
             </div>
             <ul className="space-y-2">
-              {ingredients.map((ing, idx) => (
-                <li key={idx}>
-                  <button
-                    type="button"
-                    onClick={() => toggleIngredientChecked(idx)}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                      checkedIngredients.has(idx)
-                        ? "line-through text-muted-foreground bg-muted"
-                        : "text-muted-foreground hover:bg-muted/60"
-                    }`}
-                  >
-                    <span className="font-medium">
-                      {ing.amount} {ing.unit}
-                    </span>{" "}
-                    {ing.name}
-                  </button>
-                </li>
-              ))}
+              {ingredients.map((ing, idx) => {
+                // Scale the structured amount when it parses as a real
+                // number; fall back to the raw string for free-text
+                // amounts ("a pinch", "to taste"). Mirrors the
+                // step-text scaling so the sidebar and the step
+                // content stay in sync.
+                const numericAmount =
+                  typeof ing.amount === "string" ? parseFloat(ing.amount) : NaN;
+                const scaledAmountText =
+                  Number.isFinite(numericAmount) && scaleFactor !== 1
+                    ? String(Math.round(numericAmount * scaleFactor * 100) / 100)
+                    : ing.amount;
+                return (
+                  <li key={idx}>
+                    <button
+                      type="button"
+                      onClick={() => toggleIngredientChecked(idx)}
+                      className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                        checkedIngredients.has(idx)
+                          ? "line-through text-muted-foreground bg-muted"
+                          : "text-muted-foreground hover:bg-muted/60"
+                      }`}
+                    >
+                      <span className="font-medium">
+                        {scaledAmountText} {ing.unit}
+                      </span>{" "}
+                      {ing.name}
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         )}

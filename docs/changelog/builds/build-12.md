@@ -2,6 +2,23 @@
 
 ## Fixed
 
+- **Cook mode — step text and auto-log now scale to the user's chosen
+  serving count.** P0 accuracy gap (2026-05-01): scaling a 4-serving
+  recipe to 8 via the recipe-page stepper used to enter cook mode
+  showing unchanged step text ("Add 4 tbsp olive oil") and auto-logged
+  the recipe's original yield, so the user cooked a doubled batch
+  from single-batch instructions and the journal entry was off by
+  half. Cook mode now multiplies every recognised `(number unit)`
+  pair in step text by `scaleFactor = servings / baseServings`, shows
+  a "Scaled for N servings" banner when the factor is non-1, and the
+  auto-log uses the same factor so logged calories match what was
+  actually cooked. Shared regex helper at
+  `src/lib/nutrition/scaleStepText.ts` (multi-character units only —
+  no single-letter `c`/`F`/`C` to avoid temperature collisions). Web
+  (`src/app/components/CookMode.tsx` + call-site fix in
+  `src/app/components/RecipeDetail.tsx` which previously dropped the
+  user's scale at hand-off) + mobile (`apps/mobile/app/recipe/[id].tsx`
+  inline cook modal). Replaces stale PR #45.
 - **Today — undid the segmented Remaining/Consumed chip + the 4-tile
   micros widget.** User feedback (2026-05-02) flagged both as
   cluttering Today: the chip duplicated what the long-press already
