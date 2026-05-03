@@ -3143,6 +3143,15 @@ export default function TrackerScreen() {
   const loadJournal = useCallback(async () => {
     if (!userId) return;
 
+    // Defence (2026-05-03): wrap the whole load in try/finally so
+    // `hydrated` ALWAYS flips true, even if a supabase call throws
+    // (network failure, RLS denial). Without this guarantee Today
+    // sits on a perpetual skeleton on the sad path. setLoadError is
+    // only called inside the explicit error-object branch — not in
+    // a thrown-rejection path — so the visible recovery used to be
+    // "skeleton forever" rather than "Couldn't load + retry".
+    try {
+
     const loadLegacyByDay = async (): Promise<ByDay | null> => {
       const raw = await fetchNutritionJournalByDay(supabase, userId);
       if (!raw) return null;
@@ -3324,6 +3333,16 @@ export default function TrackerScreen() {
       } else {
         setPlannedMeals([]);
       }
+    }
+
+    } catch (err) {
+      console.error("[loadJournal] threw:", err);
+      setLoadError("Could not load your journal.");
+    } finally {
+      // Always flip hydrated true so the skeleton clears even on the
+      // sad path. Falls through to either the loadError retry UI or
+      // an empty Today shell rather than skeleton-forever.
+      setHydrated(true);
     }
   }, [userId, selectedDate]);
 
