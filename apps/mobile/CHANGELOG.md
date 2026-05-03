@@ -297,6 +297,80 @@ Same copy, same phases, same analytics events
 ### Decision doc
 `docs/decisions/2026-05-02-mfp-csv-import.md`.
 
+## 2026-05-02 — Discover seed: 50 recipes / 5 clusters
+
+Wave 4 of the curated Discover seed. Closes the Recime parity caveat
+flagged in the competitor audit ("Discovery still feels seeded, not
+living"). Pre-Wave-4 the seed shipped 15 recipes across 3 clusters
+(PR #35); Wave 4 lifts that to 50 recipes across 5 cuisine clusters,
+with cluster carousels on the Discover tab.
+
+### What changed
+- `src/lib/recipes/seedRecipesV2.ts` — 50 SeedRecipe entries split
+  into 5 clusters (Mediterranean 10, Asian 10, Latin 8, Comfort 10,
+  Healthy bowls 12). Each entry carries id, cluster, hero image,
+  6-12 ingredients (grams), 4-8 steps, prep+cook times, per-portion
+  macro estimates, and a per-row `attribution` block (path-2 AI-
+  generated-and-edited under Suppr authorship per
+  `docs/decisions/2026-04-27-onboarding-seed-copyright-review.md`).
+- `src/lib/recipes/seedRecipesToCard.ts` — pure adapter; one
+  source, both platforms consume it (with optional `tags` pass-
+  through and the `attribution.author` byline).
+- Web `DiscoverFeed.tsx` — renders 5 cluster carousels
+  (Mediterranean → Asian → Latin → Comfort → Healthy bowls) on the
+  unfiltered "For You" view; legacy flat layout fed by
+  `displayRecipes` (community uploads only) below. An active
+  search/filter falls back to the legacy flat layout so cluster
+  grouping never fights an active query.
+- Mobile `(tabs)/discover.tsx` — same 5 cluster carousels with
+  `discover-cluster-{id}` testids and a smaller `renderCarouselCard`
+  helper for horizontal scrollers. Same gating as web.
+- Recipe-detail (mobile + web) — seed-id short-circuit so seed
+  recipes hydrate from the static file without a Supabase round-
+  trip (seeds have no DB row by design).
+
+### Macros stay deliberate ROUND ESTIMATES
+Production nutrition still funnels through `nutrition-engine`
+ingredient resolution at log time per the CLAUDE.md rule "never
+invent confident nutrition values for production paths". Discover
+cards display the seed macros only as a preview.
+
+### Attribution / IP posture
+Every seed recipe carries a structured `attribution` block:
+- `author: "Suppr Kitchen"` — Suppr-owned prose (path-1 or path-2).
+- `origin: "ai-generated-edited"` — explicit per-row provenance.
+- `imageSource: { provider: "unsplash", url }` — Unsplash CDN under
+  the Unsplash license; URL recorded so any future image-rights
+  audit has a per-row pointer.
+
+`tests/unit/discoverSeedCopyright.test.ts` pins this contract; if
+attribution is missing on any recipe, CI breaks before ship.
+
+### Tests
+- `tests/unit/discoverSeedShape.test.ts` — pins exact 50-recipe
+  count, exact 10/10/8/10/12 cluster sizes, canonical reading
+  order, required fields, ingredient/step bounds, id-cluster
+  shape used by the carousel grouper.
+- `tests/unit/discoverSeedCopyright.test.ts` — pins the attribution
+  contract per the legal review.
+- `tests/unit/seedRecipesToCard.test.ts` — pins the adapter shape
+  and that creatorName flows from `attribution.author`.
+- `tests/unit/discoverClusterCarousels.test.ts` — pins web + mobile
+  Discover wiring (cluster testid, SEED_CLUSTERS.map, gating to
+  the unfiltered "For You" view).
+- Updated `tests/unit/discoverThreeSectionLayout.test.ts` to accept
+  the new `displayRecipes` binding alongside the legacy `recipes`
+  binding.
+
+### Cross-platform parity
+Mobile and web both render 5 carousels in the same canonical order
+via the shared `SEED_CLUSTERS` array. Both gate on the unfiltered
+default view (`!search.trim() && filter === "For You"` on mobile,
+the equivalent predicate on web). Both fall back to the existing
+flat layout when search/filter is active.
+
+---
+
 ## 2026-05-02 — EmptyState: 72pt disc + headline/body type ladder + optional CTA
 
 ui-critic finding #6 (P1). The pre-2026-05-02 `<EmptyState>` primitive

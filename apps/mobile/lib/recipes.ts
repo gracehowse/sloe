@@ -7,6 +7,8 @@ import type { RecipeCard } from "./types";
 import { NEUTRAL_AVATAR_DATA_URI } from "../../../src/lib/ui/neutralAvatar";
 import { fetchPublicRecipeSaveCounts } from "../../../src/lib/recipes/fetchPublicRecipeSaveCounts";
 import { normalizeRecipeTitle } from "../../../src/lib/recipes/normalizeRecipeTitle";
+import { SEED_RECIPES_V2 } from "../../../src/lib/recipes/seedRecipesV2";
+import { seedsToRecipeCards } from "../../../src/lib/recipes/seedRecipesToCard";
 
 // F-21 (2026-04-21): when a recipe has no image_url we previously fell back to
 // a single shared Unsplash salad, so every placeholder recipe looked identical
@@ -123,15 +125,24 @@ export function useDiscoverRecipes() {
       } catch (e) {
         console.warn("[useDiscoverRecipes] public save counts failed:", e);
       }
-      setRecipes(enriched);
-      if (enriched.length > 0) {
+      // Audit gap #3 (Wave 4, 2026-05-02) — prepend the curated static
+      // seed (`seedRecipesV2`) so Discover never feels empty at the
+      // solo-tester stage. Seeds are content-curated, not algorithmic;
+      // they take stable precedence ahead of any DB-sourced rows.
+      // Each seed entry carries `feedSource: "catalog"` so downstream
+      // UI can distinguish them from community uploads when needed.
+      const seeds = seedsToRecipeCards(SEED_RECIPES_V2) as unknown as RecipeCard[];
+      const merged: RecipeCard[] = [...seeds, ...enriched];
+      setRecipes(merged);
+      if (merged.length > 0) {
         // Persist counts too so offline / cold-cache Popular matches online (P-P2-3).
-        void cacheDiscoverRecipes(enriched);
+        void cacheDiscoverRecipes(merged);
       }
     } else if (error) {
       // Network failure — try offline cache
       console.error("[useDiscoverRecipes] DB failed, trying cache:", error.message);
       const cached = await getCachedDiscoverRecipes();
+      const seeds = seedsToRecipeCards(SEED_RECIPES_V2) as unknown as RecipeCard[];
       if (cached && Array.isArray(cached)) {
         let list = cached as RecipeCard[];
         // If we're online enough for Supabase RPC, refresh global save counts on top of cache.
@@ -147,7 +158,15 @@ export function useDiscoverRecipes() {
         } catch (e) {
           console.warn("[useDiscoverRecipes] save counts on cache path failed:", e);
         }
-        setRecipes(list);
+        // De-dupe — cached entries may already include seeds from a
+        // previous successful fetch.
+        const seedIds = new Set(seeds.map((s) => s.id));
+        const fromCache = list.filter((r) => !seedIds.has(r.id));
+        setRecipes([...seeds, ...fromCache]);
+      } else {
+        // No cache available — at least show the curated seeds so the
+        // user never sees an empty Discover.
+        setRecipes(seeds);
       }
     }
     setLoading(false);
