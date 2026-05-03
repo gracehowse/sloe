@@ -25,11 +25,17 @@ const COOK_MODE_PATH = resolve(__dirname, "../../src/app/components/CookMode.tsx
 const SOURCE = readFileSync(COOK_MODE_PATH, "utf8");
 
 describe("Web CookMode — recipe scaling source structure", () => {
-  it("imports the shared scaleAmountText / COOK_SCALE_PRESETS helpers (parity with mobile)", () => {
+  it("imports the shared scaleStepText helper + Paprika COOK_SCALE_PRESETS (parity with mobile)", () => {
+    // Servings handoff (P0, 2026-05-01): step-text scaling moved off
+    // the Paprika-only `scaleAmountText` and onto `scaleStepText`,
+    // which composes the recipe-page-stepper scale factor with the
+    // Paprika preset scale. The Paprika preset state is preserved.
     expect(SOURCE).toMatch(
       /COOK_SCALE_PRESETS[^;]*from\s+["'][^"']+recipeScale\.ts?["']/,
     );
-    expect(SOURCE).toMatch(/\bscaleAmountText\b/);
+    expect(SOURCE).toMatch(
+      /scaleStepText[^;]*from\s+["'][^"']+scaleStepText[^"']*["']/,
+    );
     expect(SOURCE).toMatch(/cookScaleStorageKey/);
     expect(SOURCE).toMatch(/cookScaleCaption/);
   });
@@ -41,18 +47,26 @@ describe("Web CookMode — recipe scaling source structure", () => {
     expect(SOURCE).toMatch(/role="radio"/);
     expect(SOURCE).toMatch(/aria-checked=\{active\}/);
   });
-  it("rewrites step text via scaleAmountText (parser stays on cleaned)", () => {
-    expect(SOURCE).toMatch(/scaleAmountText\(currentStepCleaned,\s*scale\)/);
+  it("rewrites step text via scaleStepText (composing servings-handoff + Paprika scale)", () => {
+    expect(SOURCE).toMatch(
+      /scaleStepText\(\s*cleanStepText\(\s*currentStepRaw\s*\)\s*,\s*scaleFactor\s*\)/,
+    );
     expect(SOURCE).toMatch(/parseTimersInStep\(currentStepCleaned\)/);
   });
   it("emits recipe_scale_changed analytics on commit", () => {
     expect(SOURCE).toMatch(/AnalyticsEvents\.recipe_scale_changed/);
   });
-  it("includes scale in the Log this meal portionMultiplier", () => {
-    // The journal entry's `portionMultiplier` already combines
-    // `servings / baseServings`; multiplying by `scale` ensures the
-    // entry reflects the cooked-as-scaled portion.
-    expect(SOURCE).toMatch(/servings\s*\/\s*baseServings\)\s*\*\s*scale/);
+  it("includes the Paprika scale in the Log this meal portionMultiplier (composed via scaleFactor)", () => {
+    // Servings handoff (P0, 2026-05-01): the journal entry's
+    // `portionMultiplier` reuses the same `scaleFactor` constant the
+    // step-text scaling used. `scaleFactor` is computed as
+    // `(servings / effectiveBaseServings) * scale`, so the Paprika
+    // preset still flows through — guaranteeing the journal entry
+    // matches what the user actually cooked.
+    expect(SOURCE).toMatch(/portionMultiplier\s*=\s*scaleFactor/);
+    expect(SOURCE).toMatch(
+      /scaleFactor\s*=[\s\S]{0,120}servings\s*\/\s*effectiveBaseServings[\s\S]{0,40}\*\s*scale/,
+    );
   });
 });
 

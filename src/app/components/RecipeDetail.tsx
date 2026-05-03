@@ -975,7 +975,8 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
         recipe={displayRecipe}
         instructionSteps={instructionSteps}
         ingredients={ingredients}
-        servings={baseServings}
+        servings={servings}
+        baseServings={baseServings}
         onExit={() => setCookModeOpen(false)}
         onViewTracker={onViewTracker}
       />
