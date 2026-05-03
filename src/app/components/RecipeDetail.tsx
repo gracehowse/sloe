@@ -28,6 +28,11 @@ import {
   hasOverride,
   recomputeRecipeTotals,
 } from "../../lib/nutrition/ingredientOverrides.ts";
+import { formatIngredientAmountUnit } from "../../lib/recipe-ingredients/formatIngredientAmount.ts";
+import {
+  deriveIngredientVerificationTier,
+  ingredientShouldShowVerifyCta,
+} from "../../lib/recipe-ingredients/ingredientVerificationStatus.ts";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { track } from "../../lib/analytics/track.ts";
 import {
@@ -1718,9 +1723,28 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                   const macroTotal = ingP + ingC + ingF || 1;
                   const rowHasOverride = hasOverride(ingredient);
                   const rowAddedByUser = Boolean(ingredient.addedByUser);
+                  /**
+                   * 2026-05-02 fix — derive verification tier from
+                   * the persisted `{is_verified, confidence, source}`
+                   * triple so the dot, badge, and Verify CTA agree
+                   * with what the row actually represents. Pre-fix,
+                   * the dot used `isVerified` but the recipe-row
+                   * "Verify →" CTA only suppressed when `isVerified`
+                   * was true — which is correct for web today, but
+                   * we route through the shared helper so web/mobile
+                   * stay in sync if the rule shifts (e.g. trusting a
+                   * USDA `source` even on legacy rows where
+                   * `is_verified` was missed).
+                   */
+                  const verificationTier = deriveIngredientVerificationTier({
+                    isVerified: ingredient.isVerified ?? null,
+                    confidence: ingredient.confidence ?? null,
+                    source: ingredient.source ?? null,
+                  });
+                  const showVerifyCta = ingredientShouldShowVerifyCta(verificationTier);
                   return (
                     <div key={index} className="px-4 py-3 flex items-center gap-3 group">
-                      <ConfidenceDot level={ingredient.isVerified ? "high" : "medium"} />
+                      <ConfidenceDot level={verificationTier === "verified" ? "high" : "medium"} />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
                           <p className="text-sm font-medium text-foreground truncate">{ingredient.name}</p>
@@ -1742,8 +1766,17 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                           ) : null}
                         </div>
                         <p className="text-[11px] text-muted-foreground">
+                          {/* 2026-05-02 fix — defensive amount/unit
+                              formatter dedupes "1 1 breast" when
+                              USDA/FatSecret persists a count-prefixed
+                              portion label like "1 breast" into the
+                              unit column. Mirrors the mobile fix in
+                              `apps/mobile/app/recipe/[id].tsx`. */}
                           {ingredient.amount
-                            ? `${formatIngredientAmount((parseFloat(ingredient.amount) * servings) / baseServings)} ${ingredient.unit}`.trim()
+                            ? formatIngredientAmountUnit(
+                                formatIngredientAmount((parseFloat(ingredient.amount) * servings) / baseServings),
+                                ingredient.unit,
+                              )
                             : ingredient.unit}
                         </p>
                       </div>
@@ -1775,8 +1808,14 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                           existing Fix/Override hover affordances and
                           is always visible for unverified rows so
                           users don't have to discover it through
-                          hover (mobile parity). */}
-                      {dbIngredientIds[index] && !ingredient.isVerified ? (
+                          hover (mobile parity).
+
+                          2026-05-02 — visibility now follows the
+                          shared verification tier (is_verified ||
+                          trusted source) so the CTA disappears as
+                          soon as the user has resolved the row,
+                          mirroring the mobile fix. */}
+                      {dbIngredientIds[index] && showVerifyCta ? (
                         <button
                           type="button"
                           onClick={() => { setVerifyIndex(index); setVerifySearchOpen(true); }}
@@ -1976,6 +2015,12 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
               sodium_mg: Math.round(selection.macrosPer100g.sodiumMg * f),
               is_verified: true,
               source: selection.source,
+              // 2026-05-02 fix — also persist `confidence: 1.0` so
+              // the recipe-detail row UI can't fall back to a stale
+              // pre-verify confidence (e.g. 0.69 from the AI parse)
+              // and keep showing "Partial match" after the user has
+              // already resolved the row.
+              confidence: 1.0,
             })
             .eq("id", ingId);
 
@@ -1984,11 +2029,12 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             return;
           }
 
-          // Update local state
+          // Update local state — mirror the DB write so the in-
+          // memory row matches the persisted row on the next render.
           setDbIngredients((prev) =>
             prev.map((ing, i) =>
               i === verifyIndex
-                ? { ...ing, name: selection.name, amount: String(selection.quantity), unit: selection.chosenPortion.label, ...macros, isVerified: true, source: selection.source }
+                ? { ...ing, name: selection.name, amount: String(selection.quantity), unit: selection.chosenPortion.label, ...macros, isVerified: true, source: selection.source, confidence: 1.0 }
                 : ing,
             ),
           );

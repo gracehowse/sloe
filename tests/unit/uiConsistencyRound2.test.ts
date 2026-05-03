@@ -96,7 +96,12 @@ describe("Round 2 — colour token alignment", () => {
 describe("Round 2 — copy / discoverability", () => {
   it("D22: confidence row labels the percentage so 35% / 98% are self-explanatory", () => {
     const SRC = read("apps/mobile/app/recipe/[id].tsx");
-    expect(SRC).toMatch(/\{confPct\}% · \{confLabel\}/);
+    // 2026-05-02 fix renamed `confLabel` to `tierLabel` because the
+    // row label is now derived from a tier (verified / partial /
+    // estimated / unverified) rather than from the raw confidence
+    // bucket alone. The "%·label" form is preserved on non-verified
+    // rows so the percentage stays self-explanatory.
+    expect(SRC).toMatch(/\{confPct\}% · \{tierLabel\}/);
   });
 
   it("D21: Progress page weight card header is Sentence Case (matches Daily Calories / Macro Adherence)", () => {

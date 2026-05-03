@@ -1,0 +1,126 @@
+/**
+ * Pin tests for the 2026-05-02 recipe-ingredient bug fix:
+ *   1. "Partial match" persists after user manually verifies.
+ *   2. Amount renders "1 1 breast" (duplicated tokens).
+ *
+ * Tests are source-string pins (mirroring the existing parity test
+ * pattern at `apps/mobile/tests/unit/journeyFixes20260427.test.ts`)
+ * because the mobile recipe-detail screen and the web RecipeDetail
+ * component depend on render contexts (Expo Router / Next.js) that
+ * the vitest/jsdom env cannot host. The pins protect the call-site
+ * wiring of the shared helpers; behaviour of the helpers themselves
+ * is covered by `formatIngredientAmountUnit.test.ts` and
+ * `ingredientVerificationStatus.test.ts`.
+ */
+
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { describe, expect, it } from "vitest";
+
+const MOBILE_RECIPE = resolve(__dirname, "../../apps/mobile/app/recipe/[id].tsx");
+const MOBILE_VERIFY_LIB = resolve(__dirname, "../../apps/mobile/lib/verifyRecipe.ts");
+const WEB_RECIPE_DETAIL = resolve(__dirname, "../../src/app/components/RecipeDetail.tsx");
+
+const SRC = {
+  mobileRecipe: readFileSync(MOBILE_RECIPE, "utf8"),
+  mobileVerifyLib: readFileSync(MOBILE_VERIFY_LIB, "utf8"),
+  webRecipe: readFileSync(WEB_RECIPE_DETAIL, "utf8"),
+};
+
+describe("Bug 1 — verified state persists past manual verify", () => {
+  it("mobile recipe-detail row reads is_verified from the DB SELECT", () => {
+    // Pre-fix the SELECT only pulled `confidence, source` — leaving
+    // the row UI to derive its label from the stale numeric column.
+    expect(SRC.mobileRecipe).toMatch(
+      /\.select\("name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, confidence, source, is_verified[^"]*"\)/,
+    );
+  });
+
+  it("mobile recipe-detail row routes through the shared verification-tier helper", () => {
+    expect(SRC.mobileRecipe).toMatch(
+      /import\s*\{[\s\S]*?deriveIngredientVerificationTier[\s\S]*?\}\s*from[\s\S]*?recipe-ingredients\/ingredientVerificationStatus/,
+    );
+    expect(SRC.mobileRecipe).toMatch(/deriveIngredientVerificationTier\(\s*\{/);
+    expect(SRC.mobileRecipe).toMatch(/isVerified:\s*ing\.is_verified\s*\?\?\s*null/);
+  });
+
+  it("mobile recipe-detail Verify → CTA gating uses ingredientShouldShowVerifyCta", () => {
+    expect(SRC.mobileRecipe).toMatch(
+      /ingredientShouldShowVerifyCta\b/,
+    );
+    expect(SRC.mobileRecipe).toMatch(/showVerifyCta\s*&&\s*recipeId/);
+    // Pre-fix gating used `confPct < 75` directly; that path is gone.
+    expect(SRC.mobileRecipe).not.toMatch(/\(confPct\s*==\s*null\s*\|\|\s*confPct\s*<\s*75\)\s*&&\s*recipeId/);
+  });
+
+  it("mobile saveVerifiedIngredients persists confidence on the per-row update", () => {
+    // Pre-fix the per-row update wrote is_verified + source but NOT
+    // confidence, so a re-verified row landed back in the DB with
+    // the original AI score (e.g. 0.69) and the recipe-detail UI
+    // kept rendering "69% · Partial match".
+    expect(SRC.mobileVerifyLib).toMatch(
+      /confidence:\s*\n?\s*typeof ing\.confidence === "number"[\s\S]*?:\s*null,?\s*\n[\s\S]*?override_macros/,
+    );
+  });
+
+  it("web recipe-detail row routes through the shared verification-tier helper", () => {
+    expect(SRC.webRecipe).toMatch(
+      /import\s*\{[\s\S]*?deriveIngredientVerificationTier[\s\S]*?\}\s*from[\s\S]*?recipe-ingredients\/ingredientVerificationStatus/,
+    );
+    expect(SRC.webRecipe).toMatch(/deriveIngredientVerificationTier\(\s*\{/);
+  });
+
+  it("web recipe-detail Verify → CTA gating uses ingredientShouldShowVerifyCta", () => {
+    expect(SRC.webRecipe).toMatch(/ingredientShouldShowVerifyCta\b/);
+    // Pre-fix gating used `!ingredient.isVerified` directly; that
+    // form is replaced with the shared helper so any future change
+    // to the verified-tier policy ripples to web automatically.
+    expect(SRC.webRecipe).toMatch(
+      /dbIngredientIds\[index\]\s*&&\s*showVerifyCta/,
+    );
+  });
+
+  it("web inline-verify update also persists confidence: 1.0", () => {
+    // Symmetry with the mobile fix — once the user re-verifies a row
+    // through the web FoodSearch picker, the persisted confidence
+    // should agree with the new is_verified flag.
+    expect(SRC.webRecipe).toMatch(
+      /is_verified:\s*true,\s*\n\s*source:\s*selection\.source,\s*\n[\s\S]{0,400}?confidence:\s*1\.0,/,
+    );
+    // Local state mirror — keep in-memory row in sync with DB row.
+    expect(SRC.webRecipe).toMatch(
+      /isVerified:\s*true,\s*source:\s*selection\.source,\s*confidence:\s*1\.0/,
+    );
+  });
+
+  it("mobile dot colour now follows verification tier rather than raw confidence", () => {
+    // The dot used to be conditional on `confPct != null`, hiding it
+    // for unscored rows; post-fix it always renders with a tier
+    // colour so verified rows show green even when confidence is
+    // missing on legacy data.
+    expect(SRC.mobileRecipe).toMatch(/backgroundColor:\s*tierColor/);
+  });
+});
+
+describe("Bug 2 — amount renders without duplicated tokens", () => {
+  it("mobile recipe-detail row routes amount/unit through formatIngredientAmountUnit", () => {
+    expect(SRC.mobileRecipe).toMatch(
+      /import\s*\{\s*formatIngredientAmountUnit\s*\}\s*from\s*"[^"]*recipe-ingredients\/formatIngredientAmount"/,
+    );
+    expect(SRC.mobileRecipe).toMatch(
+      /formatIngredientAmountUnit\(\s*\n?\s*Math\.round\(ing\.amount\s*\*\s*portionMultiplier\s*\*\s*100\)\s*\/\s*100,\s*\n?\s*ing\.unit,?\s*\n?\s*\)/,
+    );
+    // Pre-fix the row used a bare template string `${amount} ${unit}`
+    // — that line is gone now that we route through the helper.
+    expect(SRC.mobileRecipe).not.toMatch(
+      /\$\{Math\.round\(ing\.amount \* portionMultiplier \* 100\) \/ 100\} \$\{ing\.unit \?\? ""\}/,
+    );
+  });
+
+  it("web recipe-detail row routes amount/unit through formatIngredientAmountUnit", () => {
+    expect(SRC.webRecipe).toMatch(
+      /import\s*\{\s*formatIngredientAmountUnit\s*\}\s*from\s*"[^"]*recipe-ingredients\/formatIngredientAmount(?:\.ts)?"/,
+    );
+    expect(SRC.webRecipe).toMatch(/formatIngredientAmountUnit\(/);
+  });
+});
