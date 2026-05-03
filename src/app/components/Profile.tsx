@@ -19,7 +19,8 @@ import {
   type NutritionStrategy,
 } from "../../lib/nutrition/tdee.ts";
 import { DIETARY_PREFERENCE_ENTRIES, normaliseDietaryFromProfile } from "../../constants/dietaryPreferences.ts";
-// Household summary for the "Everything else" row — 2026-04-20 Claude
+// Household summary for the "People" row (renamed from "Everything
+// else" 2026-05-02) — 2026-04-20 Claude
 // Design prototype port. Uses the shared client so the count and
 // sharing-preset subtitle stay in lockstep with what the bar and the
 // settings page read. The row hides itself when the user isn't in a
@@ -67,8 +68,8 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
     "carbs",
     "fat",
   ]);
-  /** Household summary for the "Everything else → Household" row. `null`
-   * means "not in a household" → row hidden. */
+  /** Household summary for the "People → Household" row. `null` means
+   * "not in a household" → row hidden. */
   const [householdSummary, setHouseholdSummary] = useState<
     | { memberCount: number; subtitle: string }
     | null
@@ -456,15 +457,21 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
       {/* P1-20 web parity (2026-04-25): Suppr Score info popover
           removed alongside the Score pill. */}
 
-      {/* Everything else — prototype "More → Household" row. Renders
-          only when the user is in a household (mirrors mobile
-          `(tabs)/more.tsx` and `screens-mobile.jsx` L723). The row
-          hands off to `?view=household-settings` which mounts the
-          prototype HouseholdSettingsPage. */}
+      {/* People — prototype "More → Household" row. Renders only when
+          the user is in a household (mirrors mobile `(tabs)/more.tsx`
+          and `screens-mobile.jsx` L723). The row hands off to
+          `?view=household-settings` which mounts the prototype
+          HouseholdSettingsPage.
+
+          2026-05-02 — section was "Everything else" until a single
+          Household row made the catch-all label feel arbitrary (user
+          feedback). Renamed to "People" to describe the row that
+          lives here today. Mobile mirror in
+          `apps/mobile/components/settings/SettingsBundleContent.tsx`. */}
       {householdSummary ? (
         <div className="mb-4">
           <h3 className="text-[14px] font-bold text-foreground -tracking-[0.01em] mt-[22px] mb-2.5">
-            Everything else
+            People
           </h3>
           <div className="bg-card rounded-xl border border-border overflow-hidden">
             <a

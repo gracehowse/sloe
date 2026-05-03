@@ -122,6 +122,8 @@ import {
   Monitor,
   LayoutGrid,
   Users,
+  PanelLeftClose,
+  PanelLeftOpen,
   type LucideIcon,
 } from "lucide-react";
 
@@ -252,6 +254,11 @@ export const Icons = {
   layoutGrid: LayoutGrid,
   users: Users,
   household: Users,
+  // Sidebar collapse toggle — 2026-05-02 (web sidebar collapse).
+  // PanelLeftClose = currently expanded → tap to collapse.
+  // PanelLeftOpen  = currently collapsed → tap to expand.
+  panelClose: PanelLeftClose,
+  panelOpen: PanelLeftOpen,
 } as const satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof Icons;

@@ -1138,7 +1138,12 @@ export function SettingsBundleContent({ context }: { context: Context }) {
       {/* Household — hides when the user isn't in a household */}
       {householdSummary ? (
         <>
-          <SectionHeading title="Everything else" />
+          {/* 2026-05-02 — section was "Everything else" until a single
+              Household row made the catch-all label feel arbitrary
+              (user feedback). Renamed to "People" to describe the row
+              that lives here today. Web mirror in
+              `src/app/components/Profile.tsx`. */}
+          <SectionHeading title="People" />
           <View
             style={{
               backgroundColor: colors.card,

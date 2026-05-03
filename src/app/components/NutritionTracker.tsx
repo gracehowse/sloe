@@ -2565,7 +2565,16 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         targetCalories={Math.round(effectiveCalorieTarget)}
         maintenanceTdee={profileMaintenanceTdee}
         confidence={profileMaintenanceConfidence}
-        loggingDays={loggedDays.size}
+        // Streak alignment (2026-05-02 user feedback,
+        // claude/household-section-streak-sidebar-bundle): the panel
+        // reads the SAME consecutive-logging-streak number the
+        // StreakPip shows, so users don't see "26-day streak" on the
+        // header and "40 days of logging" inside the panel and ask
+        // "which is it?". `streakDays` is the canonical metric for
+        // both the early-estimate qualifier and the calibrating ask
+        // gate — `loggedDays.size` (distinct-day count) is no longer
+        // surfaced here.
+        loggingDays={streakDays}
         goal={
           profileGoal === "gain"
             ? "gain"
@@ -2586,7 +2595,9 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         // meal-log days). Without these the panel falls back to a
         // generic "keep logging" line that lies after 40 days of meals
         // with no weights — see PR claude/why-this-number-data-fix.
-        mealLogDays={loggedDays.size}
+        // 2026-05-02 — `mealLogDays` now uses the streak so the gate
+        // matches what the user sees on the pip.
+        mealLogDays={streakDays}
         weightLogCount={Object.keys(profileWeightKgByDay).length}
       />
 

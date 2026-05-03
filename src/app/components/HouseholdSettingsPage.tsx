@@ -412,11 +412,14 @@ export function HouseholdSettingsPage({ onBack }: HouseholdSettingsPageProps) {
               : m.role === "owner"
                 ? "Owner"
                 : "Member";
-            return (
-              <div
-                key={m.userId}
-                className="flex items-center gap-3 px-4 py-3 border-b border-border last:border-b-0"
-              >
+            // 2026-05-02 chevron-fix: own row routes to ?view=targets so
+            // the affordance no longer leads nowhere (user feedback,
+            // claude/household-section-streak-sidebar-bundle). Other
+            // members render a non-interactive row without a chevron
+            // until a read-only member detail surface ships — matching
+            // mobile parity.
+            const inner = (
+              <>
                 <span
                   aria-hidden
                   className="inline-grid place-items-center w-9 h-9 rounded-full text-xs font-bold text-white shrink-0"
@@ -434,7 +437,31 @@ export function HouseholdSettingsPage({ onBack }: HouseholdSettingsPageProps) {
                   </p>
                   <p className="text-[11px] text-muted-foreground truncate mt-0.5">{macroCopy}</p>
                 </div>
-                <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden />
+                {isSelf ? (
+                  <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden />
+                ) : null}
+              </>
+            );
+            if (isSelf) {
+              return (
+                <a
+                  key={m.userId}
+                  href="/home?view=targets"
+                  data-testid={`household-settings-member-row-${m.userId}`}
+                  aria-label={`Edit your targets — ${m.displayName}`}
+                  className="flex items-center gap-3 px-4 py-3 border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors"
+                >
+                  {inner}
+                </a>
+              );
+            }
+            return (
+              <div
+                key={m.userId}
+                data-testid={`household-settings-member-row-${m.userId}`}
+                className="flex items-center gap-3 px-4 py-3 border-b border-border last:border-b-0"
+              >
+                {inner}
               </div>
             );
           })}
