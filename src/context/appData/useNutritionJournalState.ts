@@ -15,6 +15,10 @@ import { refreshAdaptiveTdeeForUser } from "../../lib/nutrition/refreshAdaptiveT
 import { cloneMealWithoutId, sanitizeCopyTargets } from "../../lib/nutrition/copyMeals.ts";
 import { snapshotDailyTargetIfMissing } from "../../lib/nutrition/dailyTargetSnapshot.ts";
 import { updateStimulantsForDay } from "../../lib/nutrition/updateStimulantsForDay.ts";
+import {
+  bumpStimulantsForLoggedMeal,
+  bumpStimulantsForLoggedMeals,
+} from "../../lib/nutrition/bumpStimulantsForLoggedMeal.ts";
 
 type NutritionEntryRow = {
   id: string;
@@ -204,19 +208,13 @@ export function useNutritionJournalState(opts: {
           // snapshot write failure must never roll back the log.
           void snapshotDailyTargetIfMissing(supabase, authedUserId);
           // F-13 (2026-04-19) — auto-track caffeine / alcohol on every
-          // successful log. The scaled values live in the meal's
-          // `micros` map (set by the host before calling addLoggedMeal).
-          // Null / 0 → no-op; positive → proportionally bump the daily
-          // totals on `profiles`. Fire-and-forget: a failure here never
-          // rolls back the meal row.
-          const caffeineMg = Number(newMeal.micros?.caffeineMg ?? 0) || 0;
-          const alcoholG = Number(newMeal.micros?.alcoholG ?? 0) || 0;
-          if (caffeineMg > 0 || alcoholG > 0) {
-            void updateStimulantsForDay(supabase, authedUserId, dayKey, {
-              caffeineMg,
-              alcoholG,
-            });
-          }
+          // successful log. Centralised via
+          // `bumpStimulantsForLoggedMeal` (2026-05-02) so web + mobile
+          // share the same null/positive guard. Reads from the meal's
+          // `micros` map (set by the host before calling addLoggedMeal);
+          // 0 / null → no-op, positive → bump. Fire-and-forget: a
+          // failure here never rolls back the meal row.
+          void bumpStimulantsForLoggedMeal(supabase, authedUserId, dayKey, newMeal);
         });
     }
 
@@ -289,18 +287,9 @@ export function useNutritionJournalState(opts: {
       // F-13 — sum every meal's caffeine/alcohol contributions and
       // post a single bump. Duplicate-day of a day that contained
       // "1 espresso" carries the micros forward via cloneMealWithoutId.
-      let caffeineMgTotal = 0;
-      let alcoholGTotal = 0;
-      for (const m of withIds) {
-        caffeineMgTotal += Number(m.micros?.caffeineMg ?? 0) || 0;
-        alcoholGTotal += Number(m.micros?.alcoholG ?? 0) || 0;
-      }
-      if (caffeineMgTotal > 0 || alcoholGTotal > 0) {
-        void updateStimulantsForDay(supabase, authedUserId, dayKey, {
-          caffeineMg: caffeineMgTotal,
-          alcoholG: Math.round(alcoholGTotal * 10) / 10,
-        });
-      }
+      // 2026-05-02: centralised via `bumpStimulantsForLoggedMeals` so
+      // web + mobile share the same sum + round logic.
+      void bumpStimulantsForLoggedMeals(supabase, authedUserId, dayKey, withIds);
       return withIds;
     },
     [authedUserId, dbNutritionEnabled, buildNutritionEntryRow],

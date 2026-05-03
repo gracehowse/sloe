@@ -1,5 +1,27 @@
 # Mobile App Changelog
 
+## 2026-05-02 — Stimulant bump centralisation + net-carbs lens focus refresh
+
+### Today (caffeine + alcohol chips)
+- **`bumpStimulantsForLoggedMeal`** (`src/lib/nutrition/bumpStimulantsForLoggedMeal.ts`) — shared helper that any meal-log commit path can call to bump the daily caffeine + alcohol totals on `profiles.extra_caffeine_by_day` / `extra_alcohol_g_by_day`. Reads from `meal.micros` first, falls back to top-level `caffeineMg` / `alcoholG` for legacy / synthetic shapes. Bulk variant sums across an array and fires one supabase round-trip.
+- **`insertClonedRowsIntoDay`** (mobile) — now bumps the target day's stimulant totals on duplicate-day / copy-meal-to-range. Pre-fix the cloned meal carried `micros.caffeineMg` forward via `cloneMealWithoutId` but `profiles.extra_caffeine_by_day` was never updated for the target day. Closes a parity gap with web's `addLoggedMealsForDate`.
+- **`commitAiLoggedItems`** (web + mobile) — forwards optional `caffeineMg` / `alcoholG` from `AiLoggedItem` into the meal's `micros` map so future API revisions that resolve "cortado" → 95 mg caffeine flow through the existing commit path without further code changes. Per CLAUDE.md "no invented values" rule, the AI pipeline must source these deterministically — this PR adds the plumbing only.
+- **`logHistoryItemToSlot` / `handleFoodSearchSelect` / `logPlannedMealWithPortion`** (mobile) and **`useNutritionJournalState`** (web) — refactored to call the shared helper. Same behaviour, one source of truth for the "skip on 0 / non-finite, sum + round on bulk" rule.
+
+### Settings → "Show net carbs" toggle
+- **Mobile lens flag refresh on focus** — pre-fix, `(tabs)/index.tsx`, `app/recipe/[id].tsx`, and `app/targets.tsx` each loaded `net_carbs_lens_enabled` once on `userId` change and never refreshed. Toggling "Show net carbs" in Settings persisted correctly but the consumers stayed frozen on the launch-time value until cold start. Now the flag is folded into each screen's existing focus refresh path:
+  - Today: included in `loadProfileTargets`'s select.
+  - /targets + Recipe Detail: small `useFocusEffect` re-reads the column on screen focus.
+- Web is unchanged — `AppDataContext.setNetCarbsLensEnabled` already broadcasts to every consumer.
+
+### Tests
+- New `tests/unit/bumpStimulantsForLoggedMeal.test.ts` (17 tests) — covers single + bulk paths, missing / non-finite / negative inputs, integer caffeine + 1dp alcohol rounding.
+- New `tests/unit/bumpStimulantsParity.test.ts` (8 tests) — parity pin keeping web + mobile aligned on the helper, plus per-path assertions for the AI commit + clone-rows fixes.
+- `tests/unit/netCarbsLensRoundTrip.test.ts` — extended with three pins for the mobile focus-refresh fix (Today, /targets, Recipe Detail).
+
+### Decision
+- `docs/decisions/2026-05-02-stimulant-bump-helper-and-net-carbs-focus-refresh.md`.
+
 ## 2026-05-02 — F-72: recipe save crash on non-integer macros
 
 ### Recipes (create + import)

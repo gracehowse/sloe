@@ -1384,6 +1384,30 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         // dashboard slices correctly.
         const analyticsSource: FoodLoggedSource =
           item.source === "voice" ? "voice" : "photo";
+        // Tracking-extras autoupdate (2026-05-02) — forward optional
+        // caffeine / alcohol from the AI item to the meal's `micros`
+        // map. The downstream `addLoggedMeal` insert path inside
+        // `useNutritionJournalState` reads `meal.micros.caffeineMg` /
+        // `alcoholG` and calls `updateStimulantsForDay` on a positive
+        // value, so the daily chip totals reflect the log without
+        // needing a parallel bump call here. No-op when the AI pipe
+        // doesn't surface stimulants (current baseline). Project
+        // rule: only forward what the pipeline actually provided.
+        const micros: Record<string, number> = {};
+        if (
+          typeof item.caffeineMg === "number" &&
+          Number.isFinite(item.caffeineMg) &&
+          item.caffeineMg > 0
+        ) {
+          micros.caffeineMg = Math.round(item.caffeineMg);
+        }
+        if (
+          typeof item.alcoholG === "number" &&
+          Number.isFinite(item.alcoholG) &&
+          item.alcoholG > 0
+        ) {
+          micros.alcoholG = Math.round(item.alcoholG * 10) / 10;
+        }
         addLoggedMeal(
           {
             name: mealSlot,
@@ -1394,6 +1418,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
             carbs: Math.round(item.carbs),
             fat: Math.round(item.fat),
             source: aiLoggingSourceLabel(item.source),
+            ...(Object.keys(micros).length > 0 ? { micros } : {}),
           },
           analyticsSource,
         );

@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import {
   View,
   Text,
@@ -173,6 +174,34 @@ export default function TargetsScreen() {
       cancelled = true;
     };
   }, [userId]);
+
+  // 2026-05-02 (net-carbs toggle fix) — refresh the lens flag on every
+  // screen focus so toggling "Show net carbs" in Settings flips the
+  // /targets carb tile label + value without requiring a remount.
+  // Cheap one-row select; runs after the bigger initial load on userId.
+  useFocusEffect(
+    useCallback(() => {
+      if (!userId) return;
+      let cancelled = false;
+      (async () => {
+        const { data } = await supabase
+          .from("profiles")
+          .select("net_carbs_lens_enabled")
+          .eq("id", userId)
+          .maybeSingle();
+        if (cancelled) return;
+        setNetCarbsLensEnabled(
+          Boolean(
+            (data as { net_carbs_lens_enabled?: boolean } | null)
+              ?.net_carbs_lens_enabled,
+          ),
+        );
+      })().catch(() => { /* preserve prior state on error */ });
+      return () => {
+        cancelled = true;
+      };
+    }, [userId]),
+  );
 
   const macroTiles = useMemo(
     () => buildMacroTiles({ targets, consumed, netCarbsLensEnabled }),

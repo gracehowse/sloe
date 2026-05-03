@@ -77,6 +77,24 @@ export type AiLoggedItem = {
    *  also use); duplicated here for the photo-log review UI so a
    *  later refactor of `unit`'s semantics can't strip it. */
   quantityHint?: string;
+  /**
+   * Tracking-extras autoupdate (2026-05-02) — optional caffeine + alcohol
+   * payload an AI pipeline MAY surface when the recognised food has a
+   * known reference (e.g. "espresso" maps to a generic-beverage row in
+   * `genericBeverages.ts`). Both fields are absolute per-serving values
+   * (not per-100g) so the commit path can pass them straight to
+   * `bumpStimulantsForLoggedMeal` without re-scaling.
+   *
+   * Per CLAUDE.md "no invented nutrition values" rule — these MUST come
+   * from a deterministic upstream lookup, never from the LLM's free-text
+   * inference. When the pipeline cannot resolve a reference value, both
+   * fields are left undefined and the commit path skips the daily bump.
+   * The chips will still reflect the meal's caffeine / alcohol if the
+   * AI populates `meal.micros.caffeineMg` via a future API revision; the
+   * top-level fields here are the staging slot for that path.
+   */
+  caffeineMg?: number;
+  alcoholG?: number;
 };
 
 export type ConfidenceLevel = "low" | "medium" | "high";

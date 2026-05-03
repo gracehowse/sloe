@@ -121,6 +121,10 @@ import { aiLoggingSourceLabel } from "../../../../src/lib/nutrition/aiLogging";
 import { scaleCaffeineAlcohol } from "../../../../src/lib/nutrition/scaleCaffeineAlcoholForGrams";
 import { scaleMicrosForGrams } from "../../../../src/lib/openFoodFacts/parseOffMicros";
 import { updateStimulantsForDay } from "../../../../src/lib/nutrition/updateStimulantsForDay";
+import {
+  bumpStimulantsForLoggedMeal,
+  bumpStimulantsForLoggedMeals,
+} from "../../../../src/lib/nutrition/bumpStimulantsForLoggedMeal";
 import { HydrationStimulantsCard } from "@/components/HydrationStimulantsCard";
 import SaveMealSheet from "@/components/SaveMealSheet";
 import QuickAddPanel from "@/components/QuickAddPanel";
@@ -1373,10 +1377,17 @@ export default function TrackerScreen() {
     // Batch 2.5: include new `target_caffeine_mg` + `target_alcohol_g_weekly` +
     // the two per-day maps. If the migration hasn't landed yet on this env,
     // fall through to the legacy select so quick-add water keeps working.
+    //
+    // 2026-05-02: also fetch `net_carbs_lens_enabled` here so the
+    // existing focus-effect that re-runs `loadProfileTargets` picks up
+    // toggle changes from the Settings sheet without needing a
+    // separate refetch path. Pre-fix the lens flag was loaded once on
+    // userId mount and never refreshed, so toggling "Show net carbs"
+    // in Settings did nothing visible until the app cold-started.
     let resp = await supabase
       .from("profiles")
       .select(
-        "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, target_caffeine_mg, target_alcohol_g_weekly, extra_water_by_day, extra_caffeine_by_day, extra_alcohol_g_by_day, steps_by_day, activity_burn_by_day, workouts_by_day, basal_burn_by_day, daily_steps_goal, prefer_activity_adjusted_calories, fasting_sessions, fasting_window, tracked_macros, week_start_day, measurement_system, weight_kg, weight_kg_by_day, height_cm, sex, activity_level, goal, goal_weight_kg, dob, age, notification_prefs, plan_pace, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, milestone_30_shown_at",
+        "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, target_caffeine_mg, target_alcohol_g_weekly, extra_water_by_day, extra_caffeine_by_day, extra_alcohol_g_by_day, steps_by_day, activity_burn_by_day, workouts_by_day, basal_burn_by_day, daily_steps_goal, prefer_activity_adjusted_calories, fasting_sessions, fasting_window, tracked_macros, week_start_day, measurement_system, weight_kg, weight_kg_by_day, height_cm, sex, activity_level, goal, goal_weight_kg, dob, age, notification_prefs, plan_pace, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, milestone_30_shown_at, net_carbs_lens_enabled",
       )
       .eq("id", userId)
       .maybeSingle();
@@ -1536,6 +1547,17 @@ export default function TrackerScreen() {
     setShowMealTimestamps(Boolean(np?.showMealTimestamps));
     setWeekSummaryMode(normalizeWeekSummaryMode(np?.weekSummaryMode));
     setActivityBonusCaloriesOnly(Boolean(np?.activity_bonus_calories));
+    // 2026-05-02 (net-carbs toggle fix) — pull the lens flag through
+    // the focus-effect refresh path so toggling "Show net carbs" in
+    // Settings flips the Today macro tile label + value within the
+    // next focus event (return-to-Today, slot-edit, etc.) instead of
+    // requiring a cold start. The standalone one-shot useEffect on
+    // mount stays as a belt-and-braces fallback for the very first
+    // load before `loadProfileTargets` has run.
+    const lensRaw = (d as { net_carbs_lens_enabled?: unknown }).net_carbs_lens_enabled;
+    if (typeof lensRaw === "boolean") {
+      setNetCarbsLensEnabled(lensRaw);
+    }
   }, [userId]);
 
   const dayKey = dateKeyFromDate(selectedDate);
@@ -1567,16 +1589,13 @@ export default function TrackerScreen() {
       setByDay((prev) => ({ ...prev, [dayKey]: [...(prev[dayKey] ?? []), meal] }));
       // 2026-04-28 (teardown Top-5 #5): light haptic on log.
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      // Tracking-extras autoupdate (2026-05-01) — bump daily caffeine /
-      // alcohol totals on `profiles` so the chips reflect the re-log
-      // within ~1s of commit. Mirrors `handleFoodSearchSelect`.
-      const caffeineMg = micros.caffeineMg ?? 0;
-      const alcoholG = micros.alcoholG ?? 0;
-      if (userId && (caffeineMg > 0 || alcoholG > 0)) {
-        void updateStimulantsForDay(supabase, userId, dayKey, {
-          caffeineMg,
-          alcoholG,
-        });
+      // Tracking-extras autoupdate (2026-05-02) — centralised via
+      // `bumpStimulantsForLoggedMeal`. Pre-helper this block read
+      // `micros.caffeineMg` / `micros.alcoholG` inline; the helper
+      // does the same null/positive guard so the behaviour is
+      // byte-equivalent. Mirrors `handleFoodSearchSelect`.
+      if (userId) {
+        void bumpStimulantsForLoggedMeal(supabase, userId, dayKey, meal);
       }
       try { track(AnalyticsEvents.food_logged, { source: "quick_add", slot }); } catch { /* noop */ }
     },
@@ -1637,11 +1656,13 @@ export default function TrackerScreen() {
         ...prev,
         [dayKey]: [...(prev[dayKey] ?? []), meal],
       }));
-      if (userId && (caffeineMg > 0 || alcoholG > 0)) {
-        void updateStimulantsForDay(supabase, userId, dayKey, {
-          caffeineMg,
-          alcoholG,
-        });
+      // Tracking-extras autoupdate (2026-05-02) — centralised via
+      // `bumpStimulantsForLoggedMeal`. Reads from the meal's `micros`
+      // map which we just set, so a wine / coffee log persists the
+      // bump on `profiles.extra_caffeine_by_day` /
+      // `extra_alcohol_g_by_day` for cross-device durability.
+      if (userId) {
+        void bumpStimulantsForLoggedMeal(supabase, userId, dayKey, meal);
       }
       try {
         track(AnalyticsEvents.food_logged, {
@@ -2419,21 +2440,57 @@ export default function TrackerScreen() {
         hour: "numeric",
         minute: "2-digit",
       });
-      const newMeals: JournalMeal[] = aiItems.map((item) => ({
-        id: newMealId(),
-        name: activeMealSlot,
-        recipeTitle: item.name,
-        time: timeLabel,
-        calories: Math.round(item.calories),
-        protein: Math.round(item.protein),
-        carbs: Math.round(item.carbs),
-        fat: Math.round(item.fat),
-        source: aiLoggingSourceLabel(item.source),
-      }));
+      const newMeals: JournalMeal[] = aiItems.map((item) => {
+        // Tracking-extras autoupdate (2026-05-02) — forward optional
+        // caffeine / alcohol from the AI item to the journal meal's
+        // `micros` map so (a) the chip totals (which read
+        // `m.micros.caffeineMg` / `alcoholG` directly off `byDay`)
+        // reflect the log immediately and (b) the bulk
+        // `bumpStimulantsForLoggedMeals` call below persists the
+        // bump on `profiles`. Per project rule: only forward values
+        // the AI pipeline actually provided — never invent.
+        const micros: Record<string, number> = {};
+        if (
+          typeof item.caffeineMg === "number" &&
+          Number.isFinite(item.caffeineMg) &&
+          item.caffeineMg > 0
+        ) {
+          micros.caffeineMg = Math.round(item.caffeineMg);
+        }
+        if (
+          typeof item.alcoholG === "number" &&
+          Number.isFinite(item.alcoholG) &&
+          item.alcoholG > 0
+        ) {
+          micros.alcoholG = Math.round(item.alcoholG * 10) / 10;
+        }
+        const meal: JournalMeal = {
+          id: newMealId(),
+          name: activeMealSlot,
+          recipeTitle: item.name,
+          time: timeLabel,
+          calories: Math.round(item.calories),
+          protein: Math.round(item.protein),
+          carbs: Math.round(item.carbs),
+          fat: Math.round(item.fat),
+          source: aiLoggingSourceLabel(item.source),
+          ...(Object.keys(micros).length > 0 ? { micros } : {}),
+        };
+        return meal;
+      });
       setByDay((prev) => ({
         ...prev,
         [dayKey]: [...(prev[dayKey] ?? []), ...newMeals],
       }));
+      // Tracking-extras autoupdate (2026-05-02) — single bulk bump
+      // when ANY committed AI item carried caffeine / alcohol. No-op
+      // when the upstream API hasn't been extended yet (current
+      // baseline — voice + photo routes don't surface stimulants).
+      // The helper short-circuits on a 0 sum so this is free in the
+      // common case.
+      if (userId) {
+        void bumpStimulantsForLoggedMeals(supabase, userId, dayKey, newMeals);
+      }
       // 2026-04-28 (teardown Top-5 #5): light haptic on log.
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       track(AnalyticsEvents.food_logged, {
@@ -2441,7 +2498,7 @@ export default function TrackerScreen() {
         count: newMeals.length,
       });
     },
-    [activeMealSlot, dayKey],
+    [activeMealSlot, dayKey, userId],
   );
 
   // Batch 5.13 — Pro gate for Voice and AI photo logging. Free + Base
@@ -3326,6 +3383,15 @@ export default function TrackerScreen() {
       // F-2 — snapshot today's target regardless of `targetDayKey`
       // (back-dating a snapshot would defeat the purpose).
       void snapshotDailyTargetIfMissing(supabase, userId);
+      // Tracking-extras autoupdate (2026-05-02) — close the mobile
+      // parity gap with web's `addLoggedMealsForDate`: when the
+      // cloned rows carried per-meal caffeine / alcohol micros (e.g.
+      // duplicating a day that contained "1 espresso" or "1 glass
+      // of wine"), bump the TARGET day's persisted totals so the
+      // chips on the target day reflect the duplicate within ~1s.
+      // Single round-trip (sums across `withIds`) instead of N
+      // sequential bumps. Mirrors web byte-for-byte.
+      void bumpStimulantsForLoggedMeals(supabase, userId, targetDayKey, withIds);
       // Audit/2026-04-30 — per-meal HK write for the copied rows.
       // Cloned meals are minted with fresh ids so the dedupe set
       // doesn't suppress them; the user just logged a real meal on
@@ -3628,19 +3694,13 @@ export default function TrackerScreen() {
           source: "Meal plan",
           origin: "plan",
         });
-        // Tracking-extras autoupdate (2026-05-01) — when the planned
-        // meal's verified ingredients carried caffeine / alcohol, bump
-        // the daily totals so the Today chips reflect the log. Pulled
-        // from `microsRes.micros` (already scaled by `mult` inside
-        // `fetchPlannedMealMicros`).
-        const caffeineMg = Number(microsRes.micros?.caffeineMg ?? 0) || 0;
-        const alcoholG = Number(microsRes.micros?.alcoholG ?? 0) || 0;
-        if (caffeineMg > 0 || alcoholG > 0) {
-          void updateStimulantsForDay(supabase, userId, dk, {
-            caffeineMg,
-            alcoholG,
-          });
-        }
+        // Tracking-extras autoupdate (2026-05-02) — centralised via
+        // `bumpStimulantsForLoggedMeal`. Reads from the optimistic
+        // meal's `micros` map (populated above from
+        // `fetchPlannedMealMicros`, already scaled by `mult`) so the
+        // helper sees the same per-portion values the chip totals
+        // will sum on the next render.
+        void bumpStimulantsForLoggedMeal(supabase, userId, dk, optimisticMeal);
       }
     },
     [userId, selectedDate, loadJournal],
