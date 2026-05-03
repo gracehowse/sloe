@@ -373,6 +373,25 @@ export default function FoodSearchPanel({
   } | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const backfillRef = useRef(0);
+  // No-result loop (audit move-blocker #2, 2026-05-02 — replaces
+  // stale PR #36): dedupe the `food_search_no_result` PostHog event
+  // per (trimmed, lowercase) query so a mid-typing pause + re-render
+  // doesn't double-fire. Cleared implicitly when the user types a
+  // new query (the ref's last value won't match). Mirrors the
+  // identical web shape — see
+  // `src/app/components/food-search/FoodSearchPanel.tsx`.
+  const lastNoResultQueryRef = useRef<string | null>(null);
+  // Tracks whether the user has already fired the
+  // `food_search_request_dictionary_add` event for the current
+  // empty-state — avoids spammy re-fires if they tap repeatedly.
+  // Per-query (case-insensitive, trimmed); resets when a new
+  // empty-state for a different query mounts.
+  const dictionaryAddRequestedRef = useRef<string | null>(null);
+  // Inline confirmation row state — softer than a native Alert
+  // (Grace, 2026-05-02). Holds the trimmed query the user just
+  // confirmed so the row can render right under the CTA and
+  // disappear when the query changes.
+  const [dictionaryAddRequested, setDictionaryAddRequested] = useState<string | null>(null);
 
   const customEnabled = Boolean(supabase && userId);
   const [createOpen, setCreateOpen] = useState(false);
@@ -492,6 +511,33 @@ export default function FoodSearchPanel({
       setLoading(false);
       hasMoreRef.current = r.length > 0;
       backfillMissingMacros(merged);
+      // No-result loop (audit move-blocker #2, 2026-05-02): when the
+      // merged search returns 0 hits across every source — USDA, OFF,
+      // Edamam, FatSecret, generic, and the user's custom foods —
+      // emit a single `food_search_no_result` event for the trimmed
+      // query so backfill prioritisation has visibility into the
+      // dictionary gaps testers are hitting. Dedup'd per
+      // (case-insensitive) query via `lastNoResultQueryRef` so a
+      // re-render with the same query does NOT double-emit.
+      const dedupKey = q.toLowerCase();
+      if (merged.length === 0 && lastNoResultQueryRef.current !== dedupKey) {
+        lastNoResultQueryRef.current = dedupKey;
+        // Reset the user-confirmed signal + inline confirmation so
+        // a fresh empty state can register a fresh dictionary-add
+        // request.
+        dictionaryAddRequestedRef.current = null;
+        setDictionaryAddRequested(null);
+        track(AnalyticsEvents.food_search_no_result, {
+          query: q,
+          len: q.length,
+          source: "mobile",
+        });
+      } else if (merged.length > 0 && lastNoResultQueryRef.current === dedupKey) {
+        // The current query had zero hits a tick ago but now does
+        // (custom-food write landed, network resolved late, etc.).
+        // Clear the ref so a future zero-result query can re-fire.
+        lastNoResultQueryRef.current = null;
+      }
     }, 400);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -1275,11 +1321,131 @@ export default function FoodSearchPanel({
           onEndReachedThreshold={0.4}
           ListEmptyComponent={
             !loading && query.trim() ? (
-              <View>
+              <View
+                testID="food-search-no-result-empty-state"
+                style={{ paddingHorizontal: Spacing.lg, paddingVertical: Spacing.lg, gap: Spacing.md }}
+              >
                 <Text style={styles.emptyText}>
                   No results for &quot;{query}&quot;.
-                  {customEnabled ? " Can't find it? Create your own." : " Try a simpler or more specific term."}
                 </Text>
+                <Text
+                  style={{
+                    fontSize: 13,
+                    color: colors.textTertiary,
+                    textAlign: "center",
+                    marginTop: -Spacing.sm,
+                  }}
+                >
+                  {customEnabled
+                    ? "Add it yourself, or let us know we should."
+                    : "Try a simpler or more specific term."}
+                </Text>
+                {/* No-result loop (audit move-blocker #2, 2026-05-02 —
+                    replaces stale PR #36): two-CTA empty state. The
+                    "Add as custom food" CTA routes to the existing
+                    CreateCustomFoodSheet flow (the same path the
+                    persistent footer button uses) with the query
+                    pre-filled. The "Tell us we&apos;re missing this"
+                    CTA fires a dedicated PostHog event so the
+                    dictionary-backfill workstream knows which queries
+                    to prioritise. It is NOT a bug report — the user
+                    can keep going by adding the food themselves. */}
+                {customEnabled ? (
+                  <Pressable
+                    onPress={() => {
+                      setEditingFood(undefined);
+                      setCreateOpen(true);
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Add "${query}" as a custom food`}
+                    testID="food-search-no-result-add-custom"
+                    style={{
+                      paddingVertical: Spacing.md,
+                      alignItems: "center",
+                      flexDirection: "row",
+                      justifyContent: "center",
+                      gap: Spacing.sm,
+                      borderWidth: 1,
+                      borderColor: Accent.primary,
+                      borderRadius: Radius.md,
+                      backgroundColor: Accent.primary + "10",
+                    }}
+                  >
+                    <Plus size={16} color={Accent.primary} />
+                    <Text style={{ fontSize: 14, fontWeight: "700", color: Accent.primary }}>
+                      Add as custom food
+                    </Text>
+                  </Pressable>
+                ) : null}
+                <Pressable
+                  onPress={() => {
+                    const q = query.trim();
+                    if (!q) return;
+                    const dedupKey = q.toLowerCase();
+                    if (dictionaryAddRequestedRef.current === dedupKey) return;
+                    dictionaryAddRequestedRef.current = dedupKey;
+                    setDictionaryAddRequested(q);
+                    track(AnalyticsEvents.food_search_request_dictionary_add, {
+                      query: q,
+                      len: q.length,
+                      source: "mobile",
+                    });
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Tell us we're missing this food"
+                  testID="food-search-no-result-request-add"
+                  style={{
+                    paddingVertical: Spacing.md,
+                    alignItems: "center",
+                    flexDirection: "row",
+                    justifyContent: "center",
+                    gap: Spacing.sm,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    borderStyle: "dashed",
+                    borderRadius: Radius.md,
+                  }}
+                >
+                  <Text style={{ fontSize: 14, fontWeight: "600", color: colors.textSecondary }}>
+                    Tell us we&apos;re missing this
+                  </Text>
+                </Pressable>
+                {/* Inline confirmation row — softer than a native
+                    Alert (Grace, 2026-05-02). Dismisses implicitly
+                    when the query changes (the ref + state both
+                    reset on a fresh empty state for a new query). */}
+                {dictionaryAddRequested && dictionaryAddRequested === query.trim() ? (
+                  <View
+                    accessibilityRole="text"
+                    accessible
+                    testID="food-search-no-result-request-confirmation"
+                    style={{
+                      paddingVertical: Spacing.sm,
+                      paddingHorizontal: Spacing.md,
+                      borderRadius: Radius.md,
+                      backgroundColor: Accent.success + "15",
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: Spacing.sm,
+                    }}
+                  >
+                    <Text style={{ flex: 1, fontSize: 12, color: Accent.success, fontWeight: "600" }}>
+                      Thanks — we&apos;ll prioritise adding this to our food database.
+                    </Text>
+                    <Pressable
+                      onPress={() => setDictionaryAddRequested(null)}
+                      accessibilityRole="button"
+                      accessibilityLabel="Dismiss confirmation"
+                      hitSlop={8}
+                      testID="food-search-no-result-request-confirmation-dismiss"
+                    >
+                      <Text style={{ fontSize: 12, color: Accent.success, fontWeight: "700" }}>
+                        Dismiss
+                      </Text>
+                    </Pressable>
+                  </View>
+                ) : null}
                 {showBarcodeFallbackHint ? (
                   <Pressable
                     testID="food-search-barcode-fallback-hint"
@@ -1287,8 +1453,7 @@ export default function FoodSearchPanel({
                     accessibilityLabel="Scan a barcode — works for UK and EU products"
                     onPress={onScanBarcodePressed}
                     style={{
-                      marginTop: Spacing.md,
-                      marginHorizontal: Spacing.md,
+                      marginTop: Spacing.sm,
                       paddingVertical: 12,
                       paddingHorizontal: 12,
                       borderWidth: 1,

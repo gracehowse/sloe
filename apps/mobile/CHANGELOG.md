@@ -118,6 +118,44 @@ before asking for money, and we have the better feature (kcal ranges
   buckets vs lower-cap, quota-burn-on-error tradeoff, parity
   matrix, follow-ups).
 
+## 2026-05-02 — Food search "no result" loop (MFP-refugee retention)
+
+### New
+- **Two-CTA empty state.** When food search returns zero hits across
+  every source (USDA + Open Food Facts + Edamam + FatSecret + custom +
+  generic fallback), the empty state now shows two actions instead of
+  one paragraph: a primary "Add as custom food" button (opens the
+  existing custom-food create flow with the query pre-filled) and a
+  secondary "Tell us we're missing this" button. Mobile + web parity
+  (`apps/mobile/components/food-search/FoodSearchPanel.tsx`,
+  `src/app/components/food-search/FoodSearchPanel.tsx`).
+- **Two new PostHog events** for backfill prioritisation:
+  `food_search_no_result` (auto, deduped per query) and
+  `food_search_request_dictionary_add` (user-confirmed tap on
+  "Tell us we're missing this"). Both carry
+  `{ query, len, source: "mobile" | "web" }`. Dedupe keys are
+  case-insensitive + trimmed, so type-pause-resume on the same query
+  is one emit.
+- **Inline confirmation row** (mobile + web) after the user taps the
+  dictionary-add CTA, so the action feels acknowledged. Mobile uses a
+  dismissable inline row (NOT a native `Alert.alert`, per Grace's
+  2026-05-02 softer-pattern call); web uses an inline `role="status"`
+  paragraph. Dictionary-add events are deduped per query — a triple-
+  tap is one emit.
+
+### Decisions captured in this change
+- The "Add as custom food" CTA reuses the existing
+  `CreateCustomFoodSheet` / `CreateCustomFoodDialog` paths — no new
+  flow, no pre-create. The empty state is a stronger surface for the
+  same action, not a parallel one. The user still confirms creation
+  in the sheet/dialog.
+- "Tell us we're missing this" does NOT open a free-text input. The
+  signal we need is the (anonymous, debounced) PostHog event payload
+  of the search query that whiffed; a textarea would invite low-
+  signal noise and add a moderation surface.
+- Replaces stale PR #36 (41 commits behind main) — rebuilt from
+  intent on current main per the PR-staleness-prevention sweep.
+
 ## 2026-05-02 — parity: web "All nutrients" + LogSheet meals empty state
 
 User feedback: (1) web's "All nutrients" panel was the desired pattern and
