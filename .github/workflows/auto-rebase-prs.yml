@@ -100,11 +100,8 @@ jobs:
               # Already flagged?
               has_marker="$(gh pr view "$num" --json comments --jq "[.comments[].body | select(contains(\"$MARKER\"))] | length")"
               if [ "${has_marker:-0}" -eq 0 ]; then
-                gh pr comment "$num" --body "$MARKER
-
-This PR could not be rebased onto current \`main\` automatically. It is now flagged as **stale-rebase**. Reasons that block auto-rebase include conflicting edits, deleted files, or moved code paths.
-
-Action: rebuild on top of current \`main\` from intent, or close. PRs left in this state for 7 days will be auto-closed."
+                COMMENT_BODY=$(printf '%s\n\nThis PR could not be rebased onto current `main` automatically. It is now flagged as **stale-rebase**. Reasons that block auto-rebase include conflicting edits, deleted files, or moved code paths.\n\nAction: rebuild on top of current `main` from intent, or close. PRs left in this state for 7 days will be auto-closed.' "$MARKER")
+                gh pr comment "$num" --body "$COMMENT_BODY"
                 gh pr edit "$num" --add-label stale-rebase 2>/dev/null || gh label create stale-rebase --color B60205 --description "PR could not be auto-rebased onto main" && gh pr edit "$num" --add-label stale-rebase
               else
                 echo "PR #$num already flagged stale; skipping comment."
