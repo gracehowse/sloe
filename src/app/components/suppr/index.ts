@@ -104,7 +104,6 @@ export {
   TodayMealsSection,
   type TodayMealsSectionProps,
   type TodayMealSectionMeal,
-  type TodayMealSectionPlanEntry,
 } from "./today-meals-section";
 export {
   TodayCompleteDayDialog,

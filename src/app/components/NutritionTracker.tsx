@@ -2348,46 +2348,14 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         onOpenDuplicateDay={() => setDuplicateDayOpen(true)}
         onRequestCopyMeal={setCopyMealTargetId}
         onDeleteMeal={(mealId) => removeLoggedMeal(mealId)}
-        mealPlanFirstDay={mealPlan && mealPlan.length > 0 ? mealPlan[0]! : null}
-        onLogPlanMeal={async (meal) => {
-          const microsRes = await fetchPlannedMealMicros(
-            supabase as unknown as SupabaseLike,
-            meal.recipeId ?? null,
-            1,
-          );
-          // T4 (full-sweep 2026-04-24): refuse to log when the underlying
-          // recipe has kcal but no ingredient macros — `meal` values are
-          // the neutral 28/42/30 split from the planner coerce helper,
-          // not real nutrition. Route the user to Verify first.
-          if (microsRes.macrosAreCoerced) {
-            if (typeof window !== "undefined") {
-              window.alert(
-                "Verify this recipe first.\n\nThis recipe has calories but no ingredient macros yet. Logging now would save estimated values. Open the recipe and tap Verify to match ingredients for accurate nutrition.",
-              );
-            }
-            return;
-          }
-          addLoggedMealForDate(
-            selectedDateKey,
-            {
-              name: normalizeJournalSlotName(meal.name),
-              recipeTitle: meal.recipeTitle,
-              time: normalizeJournalSlotName(meal.name),
-              calories: meal.calories,
-              protein: meal.protein,
-              carbs: meal.carbs,
-              fat: meal.fat,
-              ...(microsRes.fiberG != null ? { fiberG: microsRes.fiberG } : {}),
-              ...(Object.keys(microsRes.micros).length > 0 ? { micros: microsRes.micros } : {}),
-              source: "Meal plan",
-            },
-            "planner",
-          );
-        }}
-        onOpenAddCustom={() => setAddOpen(true)}
-        onOpenPhotoLog={handlePhotoLogClick}
-        onOpenVoiceLog={handleVoiceLog}
-        userTier={userTier}
+        // 2026-05-02 parity sweep — empty-state collage (Add custom /
+        // Photo / Voice / "Log from today's plan" rows) replaced by a
+        // single primary CTA that routes into the unified `<LogSheet>`.
+        // Mobile equivalent: raised "+" + per-slot "Tap to add" + the
+        // standalone `<TodayPlannedMealsCard>` rendered above. Planned
+        // meals still render via `<TodayPlannedMealsCard>` directly
+        // below (gated on `mealPlan` truthy with ≥1 non-placeholder).
+        onOpenLogSheet={() => setLogSheetOpen(true)}
         savedMeals={hostSavedMeals}
         onLogSavedMeal={logSavedMealFromSlotHeader}
         hintVisibleForSlot={hintVisibleForSlot}
