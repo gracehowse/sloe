@@ -12,6 +12,15 @@
   depth is preserved inside the full-nutrient panel sheet (see below)
   rather than on the Today canvas itself. See
   `docs/decisions/2026-05-02-revert-today-ui-changes.md`.
+- **Library filter pills — text no longer squished against border.**
+  Tester (2026-05-02) flagged the "All · 21", "Saved · 13",
+  "High-Protein", "Quick" pills as having descenders kissing the
+  border on iOS. Bumped vertical padding (`paddingVertical: 7 → 8`)
+  and pinned an explicit `minHeight: 32` floor on mobile; web mirror
+  goes from `px-3 py-1.5` → `px-3.5 py-1.5 min-h-8`. Horizontal
+  padding already satisfied the 14pt floor — this was a vertical
+  breathing-room fix. Mobile (`apps/mobile/app/(tabs)/library.tsx`) +
+  web (`src/app/components/Library.tsx`).
 - **Recipe detail — calories on their own headline line + 4-up macro
   grid.** Two visual fixes against v3 from user feedback (2026-05-02):
   (1) "the widgets should be the same size and fit on one row" — the

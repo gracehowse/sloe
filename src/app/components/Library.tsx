@@ -221,8 +221,17 @@ export const Library = memo(function Library({ userTier, onUpgrade, onGoDiscover
                   key={f.id}
                   type="button"
                   onClick={() => setPill(f.id)}
+                  // 2026-05-02 (build-12): tester reported the pill
+                  // text was squished against the border. Bumped
+                  // horizontal padding (`px-3` → `px-3.5` == 14px) and
+                  // pinned a `min-h-8` (32px) floor so descenders no
+                  // longer kiss the border. `inline-flex items-center`
+                  // keeps the label optically centred when the row
+                  // grows past the text's intrinsic height. Mobile
+                  // parity: `apps/mobile/app/(tabs)/library.tsx`
+                  // `filterPill` style.
                   className={[
-                    "shrink-0 px-3 py-1.5 rounded-full text-sm font-semibold border transition-all whitespace-nowrap",
+                    "shrink-0 inline-flex items-center px-3.5 py-1.5 min-h-8 rounded-full text-sm font-semibold border transition-all whitespace-nowrap",
                     pill === f.id
                       ? "border-primary bg-primary/10 text-primary"
                       : "border-border text-foreground hover:bg-muted/60",
