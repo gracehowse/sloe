@@ -6,18 +6,18 @@
  * states so Playwright (or Grace) can screenshot them to confirm
  * the fixes match what's expected.
  *
- * Renders mock data only — no PII. Gated against real Vercel
- * production deploys via VERCEL_ENV (NODE_ENV is "production" in
- * CI's `next start`, so it can't be the gate or Playwright 404s).
+ * Renders mock data only — no PII. Production exposure is handled by
+ * a Vercel route block on /dev/* rather than an in-component gate
+ * (the gate was unreliable: NODE_ENV/VERCEL_ENV inlining behaviour
+ * differed between `next start` in CI and Vercel runtime, breaking
+ * Playwright).
  */
 
 import * as React from "react";
-import { notFound } from "next/navigation";
 import { DailyRing } from "@/app/components/suppr/daily-ring";
 import { TodayHeroStats } from "@/app/components/suppr/today-hero-stats";
 
 export default function DailyRingStatesPage() {
-  if (process.env.VERCEL_ENV === "production") notFound();
 
   const states = [
     {
