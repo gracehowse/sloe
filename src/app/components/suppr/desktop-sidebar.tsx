@@ -30,6 +30,18 @@ import { Icons } from "../ui/icons";
  * `currentView` keeps a wider `SidebarView` union so callers can route
  * to any leaf (e.g. `setCurrentView("library")`); the sidebar maps
  * each leaf to its parent group for highlight purposes.
+ *
+ * 2026-05-02 — Collapse affordance (user feedback,
+ * `claude/household-section-streak-sidebar-bundle`). The sidebar can
+ * shrink to a 64px icon rail and re-expand to its 248px default. State
+ * persists to `localStorage` under `suppr.sidebar.collapsed` so the
+ * choice survives reloads. Cmd/Ctrl+B toggles globally — same shortcut
+ * VS Code, Linear, Notion all use, so it's a learned reflex. Width
+ * change animates over 200ms ease-in-out. Sub-tabs hide while
+ * collapsed (the icon rail is single-column). The toggle lives in the
+ * sidebar header so it's reachable by mouse + readable to screen
+ * readers (button + aria-expanded). Mobile-web ignores all of this —
+ * the sidebar is `hidden md:flex`, collapse only matters on desktop.
  */
 
 // The view union here is kept in sync with the one in `App.tsx`.
@@ -136,28 +148,162 @@ export function resolvePrimaryFromView(view: SidebarView): PrimaryView {
   return "today";
 }
 
+/**
+ * localStorage key for the collapsed-state preference. Centralised so
+ * the test file can clear it between cases without copy-pasting the
+ * literal — when this key changes, both prod + tests update together.
+ */
+export const SIDEBAR_COLLAPSED_STORAGE_KEY = "suppr.sidebar.collapsed";
+
+/** Read the persisted collapse preference safely. SSR-safe — when
+ *  `window` is missing we default to expanded so the server render
+ *  matches the most common state and hydration doesn't pop. */
+function readCollapsedPref(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === "true";
+  } catch {
+    // localStorage unavailable (private mode, sandbox iframe). Don't
+    // crash — just default to expanded.
+    return false;
+  }
+}
+
+function writeCollapsedPref(value: boolean): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      SIDEBAR_COLLAPSED_STORAGE_KEY,
+      value ? "true" : "false",
+    );
+  } catch {
+    // Best-effort persistence. The in-memory state is still correct
+    // for the current session.
+  }
+}
+
+/** Width tokens — single source per state. */
+const WIDTH_EXPANDED_PX = 248;
+const WIDTH_COLLAPSED_PX = 64;
+
 export function DesktopSidebar(props: DesktopSidebarProps) {
   const { currentView, onNavigate } = props;
   const activePrimary = resolvePrimaryFromView(currentView);
 
+  // Collapsed state — initialised lazily from localStorage so SSR is
+  // safe (read returns false on the server, then hydrates to the real
+  // value once `window` exists). See `readCollapsedPref` for SSR
+  // posture; the choice to default expanded matches most users + the
+  // first-paint frame for collapsed-pref users carries a 200ms slide
+  // we accept as the cost of avoiding hydration mismatches.
+  const [collapsed, setCollapsed] = React.useState<boolean>(() =>
+    readCollapsedPref(),
+  );
+
+  const toggleCollapsed = React.useCallback(() => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      writeCollapsedPref(next);
+      return next;
+    });
+  }, []);
+
+  // Cmd/Ctrl+B keyboard shortcut. Matches the same toggle Linear,
+  // Notion, and VS Code use — the muscle memory carries over.
+  // `metaKey` covers macOS Cmd; `ctrlKey` covers everything else. We
+  // explicitly skip when the user is typing into an input/textarea/
+  // contenteditable so search inputs that bind ⌘B for "Bold" still
+  // win. preventDefault stops the browser's default Cmd+B (which
+  // toggles the bookmarks bar in Chrome on some platforms) from
+  // firing alongside.
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = (event: KeyboardEvent) => {
+      const isToggleCombo =
+        (event.metaKey || event.ctrlKey) &&
+        !event.shiftKey &&
+        !event.altKey &&
+        (event.key === "b" || event.key === "B");
+      if (!isToggleCombo) return;
+      const target = event.target as HTMLElement | null;
+      if (target) {
+        const tag = target.tagName?.toLowerCase();
+        if (
+          tag === "input" ||
+          tag === "textarea" ||
+          target.isContentEditable
+        ) {
+          return;
+        }
+      }
+      event.preventDefault();
+      toggleCollapsed();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [toggleCollapsed]);
+
   return (
     <aside
-      className="hidden md:flex md:flex-col md:w-[248px] md:shrink-0 md:h-screen md:sticky md:top-0 md:border-r md:border-border md:bg-background"
+      data-testid="desktop-sidebar"
+      data-collapsed={collapsed ? "true" : "false"}
+      style={{
+        // Inline width so the 200ms transition reads off a single
+        // animatable property; tailwind's arbitrary value would work
+        // but inline keeps the token + transition in one place.
+        width: collapsed ? WIDTH_COLLAPSED_PX : WIDTH_EXPANDED_PX,
+        transition: "width 200ms ease-in-out",
+      }}
+      className="hidden md:flex md:flex-col md:shrink-0 md:h-screen md:sticky md:top-0 md:border-r md:border-border md:bg-background md:overflow-hidden"
       aria-label="Primary"
     >
-      {/* Brand */}
-      <div className="flex items-center gap-2.5 px-5 py-4 border-b border-border">
-        <span
-          aria-hidden
-          className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-primary-foreground text-sm font-extrabold tracking-tight"
+      {/* Brand + collapse toggle */}
+      <div
+        className={`flex items-center border-b border-border ${collapsed ? "justify-center px-2 py-4" : "justify-between gap-2.5 px-5 py-4"}`}
+      >
+        {!collapsed ? (
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span
+              aria-hidden
+              className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-primary-foreground text-sm font-extrabold tracking-tight shrink-0"
+            >
+              S
+            </span>
+            <span className="text-[15px] font-bold tracking-tight truncate">
+              Suppr
+            </span>
+          </div>
+        ) : null}
+        <button
+          type="button"
+          data-testid="desktop-sidebar-collapse-toggle"
+          onClick={toggleCollapsed}
+          aria-expanded={!collapsed}
+          aria-controls="desktop-sidebar-nav"
+          aria-label={
+            collapsed ? "Expand navigation" : "Collapse navigation"
+          }
+          title={
+            collapsed
+              ? "Expand navigation (Cmd+B)"
+              : "Collapse navigation (Cmd+B)"
+          }
+          className="grid h-8 w-8 place-items-center rounded-md text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors shrink-0"
         >
-          S
-        </span>
-        <span className="text-[15px] font-bold tracking-tight">Suppr</span>
+          {collapsed ? (
+            <Icons.panelOpen className="h-4 w-4" aria-hidden />
+          ) : (
+            <Icons.panelClose className="h-4 w-4" aria-hidden />
+          )}
+        </button>
       </div>
 
-      <nav className="flex-1 overflow-y-auto py-3" aria-label="Sidebar navigation">
-        <ul className="px-3 space-y-1">
+      <nav
+        id="desktop-sidebar-nav"
+        className={`flex-1 overflow-y-auto ${collapsed ? "py-3" : "py-3"}`}
+        aria-label="Sidebar navigation"
+      >
+        <ul className={collapsed ? "px-2 space-y-1" : "px-3 space-y-1"}>
           {PRIMARY_ITEMS.map((item) => {
             const isActive = activePrimary === item.view;
             return (
@@ -166,8 +312,15 @@ export function DesktopSidebar(props: DesktopSidebarProps) {
                   item={item}
                   isActive={isActive}
                   onNavigate={onNavigate}
+                  collapsed={collapsed}
                 />
-                {isActive && SUB_TABS[item.view].length > 0 ? (
+                {/* Sub-tabs hide while collapsed — the icon rail is a
+                    single column, leaves are reached by clicking the
+                    primary (which routes to the default leaf) and then
+                    expanding. */}
+                {isActive &&
+                !collapsed &&
+                SUB_TABS[item.view].length > 0 ? (
                   <ul className="mt-1 mb-2 ml-7 space-y-0.5 border-l border-border/60 pl-3">
                     {SUB_TABS[item.view].map((sub) => (
                       <li key={sub.view}>
@@ -194,10 +347,12 @@ function PrimarySidebarItem({
   item,
   isActive,
   onNavigate,
+  collapsed,
 }: {
   item: PrimaryItem;
   isActive: boolean;
   onNavigate: (v: SidebarView) => void;
+  collapsed: boolean;
 }) {
   const Icon = Icons[item.icon];
   return (
@@ -212,7 +367,16 @@ function PrimarySidebarItem({
         onNavigate(item.defaultLeaf);
       }}
       aria-current={isActive ? "page" : undefined}
-      className={`group relative flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+      // When collapsed, expose the label as accessible-name + tooltip
+      // so screen-reader users still hear "Today" / "Recipes" / etc.
+      // when the visible label is hidden.
+      aria-label={collapsed ? item.label : undefined}
+      title={collapsed ? item.label : undefined}
+      className={`group relative flex w-full items-center rounded-lg text-sm font-medium transition-colors ${
+        collapsed
+          ? "justify-center h-10 px-0"
+          : "gap-2.5 px-3 py-2"
+      } ${
         isActive
           ? "bg-accent-muted text-primary"
           : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
@@ -222,7 +386,9 @@ function PrimarySidebarItem({
         className={`h-4 w-4 shrink-0 ${isActive ? "" : "text-muted-foreground group-hover:text-foreground"}`}
         aria-hidden
       />
-      <span className="flex-1 text-left">{item.label}</span>
+      {!collapsed ? (
+        <span className="flex-1 text-left">{item.label}</span>
+      ) : null}
     </button>
   );
 }

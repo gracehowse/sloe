@@ -489,19 +489,27 @@ export default function HouseholdSettingsScreen() {
                     : m.role === "owner"
                       ? "Owner"
                       : "Member";
-                  return (
-                    <View
-                      key={m.userId}
-                      style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        gap: 12,
-                        paddingHorizontal: 14,
-                        paddingVertical: 12,
-                        borderBottomWidth: isLast ? 0 : 1,
-                        borderBottomColor: colors.cardBorder,
-                      }}
-                    >
+                  // 2026-05-02 chevron-fix: own row routes to /targets so
+                  // the chevron is no longer dead on tap (user feedback,
+                  // claude/household-section-streak-sidebar-bundle). For
+                  // other members the row is non-interactive — no
+                  // chevron, no Pressable — until a read-only member
+                  // detail surface ships. Removing the affordance
+                  // matches the lack of destination so we don't lie
+                  // about tappability.
+                  const rowProps = {
+                    style: {
+                      flexDirection: "row" as const,
+                      alignItems: "center" as const,
+                      gap: 12,
+                      paddingHorizontal: 14,
+                      paddingVertical: 12,
+                      borderBottomWidth: isLast ? 0 : 1,
+                      borderBottomColor: colors.cardBorder,
+                    },
+                  };
+                  const inner = (
+                    <>
                       <View
                         style={{
                           width: 36,
@@ -527,7 +535,32 @@ export default function HouseholdSettingsScreen() {
                           {macroCopy}
                         </Text>
                       </View>
-                      <ChevronRight size={16} color={colors.textTertiary} strokeWidth={1.75} />
+                      {isSelf ? (
+                        <ChevronRight size={16} color={colors.textTertiary} strokeWidth={1.75} />
+                      ) : null}
+                    </>
+                  );
+                  if (isSelf) {
+                    return (
+                      <Pressable
+                        key={m.userId}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Edit your targets — ${m.displayName}`}
+                        testID={`household-settings-member-row-${m.userId}`}
+                        onPress={() => router.push("/targets" as any)}
+                        {...rowProps}
+                      >
+                        {inner}
+                      </Pressable>
+                    );
+                  }
+                  return (
+                    <View
+                      key={m.userId}
+                      testID={`household-settings-member-row-${m.userId}`}
+                      {...rowProps}
+                    >
+                      {inner}
                     </View>
                   );
                 })}

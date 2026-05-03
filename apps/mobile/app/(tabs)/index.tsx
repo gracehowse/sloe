@@ -4950,7 +4950,17 @@ export default function TrackerScreen() {
             ? adaptiveTdeeConfidence
             : null
         }
-        loggingDays={Object.keys(byDay).filter((k) => (byDay[k] ?? []).length > 0).length}
+        // Streak alignment (2026-05-02 user feedback,
+        // claude/household-section-streak-sidebar-bundle): the panel
+        // reads the SAME consecutive-logging-streak number the
+        // StreakPip shows, so users don't see "26-day streak" on the
+        // header and "40 days of logging" inside the panel and ask
+        // "which is it?". `streakDays` is the canonical metric — both
+        // the early-estimate qualifier and the calibrating ask gate on
+        // it. Distinct-day count (Object.keys(byDay).filter…) is no
+        // longer surfaced here; if a future panel wants both metrics,
+        // add an explicit "X consecutive of Y total" line.
+        loggingDays={streakDays}
         goal={
           profileGoal === "gain"
             ? "gain"
@@ -4971,7 +4981,11 @@ export default function TrackerScreen() {
         // meal-log days). Without these the panel falls back to a
         // generic "keep logging" line that lies after 40 days of meals
         // with no weights — see PR claude/why-this-number-data-fix.
-        mealLogDays={Object.keys(byDay).filter((k) => (byDay[k] ?? []).length > 0).length}
+        // 2026-05-02 — `mealLogDays` now uses the streak so the gate
+        // matches what the user sees on the pip; for a 26-day streak
+        // the gate has long since cleared so the surface impact is on
+        // sub-7-day users (more conservative calibrating ask = honest).
+        mealLogDays={streakDays}
         weightLogCount={Object.keys(profileWeightKgByDay).length}
         onPressAdjustTarget={() => router.push("/profile?focus=plan")}
         backgroundColor={colors.background}

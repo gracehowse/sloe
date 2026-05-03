@@ -10,10 +10,14 @@
  * test set pins both the primary structure and the sub-tab behaviour.
  */
 
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 
-import { DesktopSidebar, resolvePrimaryFromView } from "../../src/app/components/suppr/desktop-sidebar";
+import {
+  DesktopSidebar,
+  resolvePrimaryFromView,
+  SIDEBAR_COLLAPSED_STORAGE_KEY,
+} from "../../src/app/components/suppr/desktop-sidebar";
 
 describe("DesktopSidebar — Phase 2 (4 primary tabs)", () => {
   it("renders exactly four primary nav items in the canonical order", () => {
@@ -156,5 +160,133 @@ describe("resolvePrimaryFromView — leaf-to-primary mapping", () => {
     // notifications / create / import are routed via deep links, not
     // the sidebar — they don't claim a primary highlight by design.
     expect(resolvePrimaryFromView("notifications")).toBe("today");
+  });
+});
+
+/**
+ * Collapse affordance — 2026-05-02 (user feedback,
+ * `claude/household-section-streak-sidebar-bundle`). Pins:
+ *   - Default = expanded (248px) when no localStorage value.
+ *   - Toggle button in the header collapses to 64px and back.
+ *   - Width animates via inline `style.width` so the 200ms CSS
+ *     transition reads off a single animatable property.
+ *   - Cmd/Ctrl+B keyboard shortcut toggles the same state.
+ *   - `localStorage.suppr.sidebar.collapsed` round-trips across
+ *     re-mounts (re-render covers the "reload preserves state" case
+ *     because both runs share the same window/localStorage).
+ *   - Sub-tabs hide while collapsed.
+ *   - The toggle exposes aria-expanded + aria-label so screen
+ *     readers announce the action and current state.
+ */
+describe("DesktopSidebar — collapse affordance", () => {
+  beforeEach(() => {
+    window.localStorage.removeItem(SIDEBAR_COLLAPSED_STORAGE_KEY);
+  });
+
+  afterEach(() => {
+    window.localStorage.removeItem(SIDEBAR_COLLAPSED_STORAGE_KEY);
+  });
+
+  it("defaults to expanded (width 248px) when no localStorage preference", () => {
+    render(<DesktopSidebar currentView="today" onNavigate={() => {}} />);
+    const aside = screen.getByTestId("desktop-sidebar");
+    expect(aside.getAttribute("data-collapsed")).toBe("false");
+    expect(aside.style.width).toBe("248px");
+  });
+
+  it("collapses to 64px when the toggle is clicked, expands again on a second click", () => {
+    render(<DesktopSidebar currentView="today" onNavigate={() => {}} />);
+    const aside = screen.getByTestId("desktop-sidebar");
+    const toggle = screen.getByTestId("desktop-sidebar-collapse-toggle");
+    expect(aside.style.width).toBe("248px");
+
+    fireEvent.click(toggle);
+    expect(aside.getAttribute("data-collapsed")).toBe("true");
+    expect(aside.style.width).toBe("64px");
+    // Brand wordmark hides when collapsed (icon rail is single-col).
+    expect(screen.queryByText("Suppr")).toBeNull();
+
+    fireEvent.click(toggle);
+    expect(aside.getAttribute("data-collapsed")).toBe("false");
+    expect(aside.style.width).toBe("248px");
+    expect(screen.getByText("Suppr")).toBeDefined();
+  });
+
+  it("persists the collapsed state to localStorage and rehydrates on remount", () => {
+    const { unmount } = render(
+      <DesktopSidebar currentView="today" onNavigate={() => {}} />,
+    );
+    fireEvent.click(screen.getByTestId("desktop-sidebar-collapse-toggle"));
+    expect(window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY)).toBe("true");
+    unmount();
+
+    // Fresh mount = same as a page reload. Should read the persisted
+    // pref and start collapsed.
+    render(<DesktopSidebar currentView="today" onNavigate={() => {}} />);
+    expect(screen.getByTestId("desktop-sidebar").style.width).toBe("64px");
+    expect(screen.getByTestId("desktop-sidebar").getAttribute("data-collapsed")).toBe("true");
+  });
+
+  it("toggles via Cmd+B and Ctrl+B keyboard shortcut", () => {
+    render(<DesktopSidebar currentView="today" onNavigate={() => {}} />);
+    const aside = screen.getByTestId("desktop-sidebar");
+    expect(aside.style.width).toBe("248px");
+
+    fireEvent.keyDown(window, { key: "b", metaKey: true });
+    expect(aside.style.width).toBe("64px");
+
+    fireEvent.keyDown(window, { key: "b", ctrlKey: true });
+    expect(aside.style.width).toBe("248px");
+  });
+
+  it("ignores the shortcut while focus is in an input (so Cmd+B can still mean Bold)", () => {
+    const { container } = render(
+      <div>
+        <input data-testid="probe-input" />
+        <DesktopSidebar currentView="today" onNavigate={() => {}} />
+      </div>,
+    );
+    const aside = screen.getByTestId("desktop-sidebar");
+    const input = screen.getByTestId("probe-input");
+    input.focus();
+
+    // KeyboardEvent dispatched on the input — handler must skip it.
+    fireEvent.keyDown(input, { key: "b", metaKey: true });
+    expect(aside.style.width).toBe("248px");
+    // sanity: container still mounted
+    expect(container.querySelector("aside")).not.toBeNull();
+  });
+
+  it("hides sub-tabs while collapsed even when their primary is active", () => {
+    render(<DesktopSidebar currentView="library" onNavigate={() => {}} />);
+    // Expanded — sub-tabs visible.
+    expect(screen.getByRole("button", { name: /^Library/ })).toBeDefined();
+    expect(screen.getByRole("button", { name: /^Discover/ })).toBeDefined();
+
+    fireEvent.click(screen.getByTestId("desktop-sidebar-collapse-toggle"));
+    expect(screen.queryByRole("button", { name: /^Library/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Discover/ })).toBeNull();
+  });
+
+  it("exposes aria-expanded + aria-label on the toggle for screen readers", () => {
+    render(<DesktopSidebar currentView="today" onNavigate={() => {}} />);
+    const toggle = screen.getByTestId("desktop-sidebar-collapse-toggle");
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect(toggle.getAttribute("aria-label")).toBe("Collapse navigation");
+
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(toggle.getAttribute("aria-label")).toBe("Expand navigation");
+  });
+
+  it("preserves Today/Recipes/Plan/You labels as accessible names while collapsed", () => {
+    render(<DesktopSidebar currentView="today" onNavigate={() => {}} />);
+    fireEvent.click(screen.getByTestId("desktop-sidebar-collapse-toggle"));
+    // Each primary button still announces its label even though the
+    // visible text is hidden — aria-label takes over.
+    expect(screen.getByRole("button", { name: /^Today$/ })).toBeDefined();
+    expect(screen.getByRole("button", { name: /^Recipes$/ })).toBeDefined();
+    expect(screen.getByRole("button", { name: /^Plan$/ })).toBeDefined();
+    expect(screen.getByRole("button", { name: /^You$/ })).toBeDefined();
   });
 });

@@ -54,6 +54,99 @@ change the fasting window after onboarding. Today screen showed a "Fasting
   had the four-preset chip row since launch.
 - No change to `FastingTimer.tsx` itself — its `WINDOW_PRESETS` array is
   the canonical source the mobile picker mirrors.
+## 2026-05-02 — UX consistency bundle: household chevron + section rename + streak alignment + web sidebar collapse
+
+User feedback (TestFlight + web, 2026-05-02). Three small UX fixes
+shipped as one PR (`claude/household-section-streak-sidebar-bundle`).
+
+### Fix 1 — Household member-row chevron is wired
+
+User report: "clicking on the arrow next to my name (you) doesn't go
+anywhere".
+
+- **Mobile** (`apps/mobile/app/household-settings.tsx`) — the own
+  ("you") row is now a `Pressable` that pushes `/targets`, the
+  existing targets editor. The chevron renders only on the self row
+  so other-member rows (which have no destination today) don't carry
+  a misleading affordance. Each row now exposes
+  `testID="household-settings-member-row-${userId}"`.
+- **Web** (`src/app/components/HouseholdSettingsPage.tsx`) — own row
+  becomes an `<a href="/home?view=targets">`. Chevron is gated on
+  `isSelf` to match mobile. Same testID convention.
+
+### Fix 2 — Section header rename: "Everything else" → "People"
+
+User report: "title 'everything else' for one thing doesn't make
+sense" — the section wrapped only a Household row.
+
+- **Mobile** (`apps/mobile/components/settings/SettingsBundleContent.tsx`):
+  `<SectionHeading title="Everything else" />` →
+  `<SectionHeading title="People" />`.
+- **Web** (`src/app/components/Profile.tsx`): heading text updated
+  from "Everything else" to "People". Comments + a few inline doc
+  references were also refreshed so future readers don't grep the
+  old name.
+
+### Fix 3A — "Why this number?" panel reads the streak value
+
+User report: "this screenshot says logging for 26 days (which is
+it?)" — the StreakPip showed a 26-day consecutive streak while the
+panel called the user "calibrating" referencing distinct-day counts
+(40+).
+
+- **Both platforms** — the `WhyThisNumberSheet` (mobile) and
+  `WhyThisNumberDialog` (web) now receive `streakDays` (the same
+  consecutive-streak number the StreakPip pip renders) for both the
+  `loggingDays` and `mealLogDays` props. Distinct-day counts via
+  `Object.keys(byDay).filter((k) => (byDay[k] ?? []).length > 0).length`
+  / `loggedDays.size` are no longer surfaced through the panel — if a
+  future panel wants both, it must surface them explicitly ("X
+  consecutive of Y total").
+- **Behavioural impact** — for users with high streaks (e.g. 26)
+  both metrics already cleared the calibrating gate so the visible
+  copy is unchanged. For sub-7-day streaks the gate becomes
+  marginally more conservative (we trigger the "keep logging meals"
+  ask off the streak rather than off total distinct days). That's
+  honest given the new label means streak.
+
+### Fix 3B — Web sidebar collapse
+
+User report: "I can't get this side bar to collapse".
+
+- **Web** (`src/app/components/suppr/desktop-sidebar.tsx`) — the
+  desktop sidebar gains a collapse toggle in its header. Tapping
+  collapses to a 64 px icon-only rail; tapping again expands to the
+  248 px default. Sub-tabs hide while collapsed (the icon rail is
+  single-column). Width animates over 200 ms ease-in-out via inline
+  `style.width`.
+- **Persistence** — preference stored under
+  `localStorage.suppr.sidebar.collapsed` so the choice survives
+  reloads. SSR-safe: read defaults to expanded when `window` is
+  missing.
+- **Keyboard shortcut** — Cmd+B / Ctrl+B toggles the same state.
+  Bypassed when focus is in an `<input>` / `<textarea>` /
+  contenteditable so search inputs that bind ⌘B for "Bold" still
+  win.
+- **Accessibility** — toggle exposes `aria-expanded` +
+  `aria-controls` + `aria-label="Collapse navigation" /
+  "Expand navigation"`. Primary nav buttons gain `aria-label` while
+  collapsed so VoiceOver still announces "Today" / "Recipes" / "Plan"
+  / "You" with the visible labels hidden.
+- **Mobile-web** — unchanged; the sidebar is `hidden md:flex` so
+  collapse only matters at >= 768 px.
+
+### Tests
+- `tests/unit/desktopSidebar.test.tsx` — extended with eight new
+  pins for the collapse behaviour (default expanded, click toggle,
+  localStorage round-trip across re-mount, Cmd/Ctrl+B shortcut,
+  input-focus shortcut bypass, sub-tabs hidden while collapsed,
+  aria-expanded toggling, accessible names while collapsed).
+- `tests/unit/householdSectionStreakBundle.test.ts` (new) —
+  source-grep pins for all three bundle fixes: own-row Pressable +
+  testID, isSelf-gated chevron on both platforms, "People" heading
+  on both platforms with no remaining literal "Everything else", and
+  `loggingDays={streakDays}` / `mealLogDays={streakDays}` wiring at
+  both call sites.
 
 ## 2026-05-02 — Recipe wizard step 4: lock Calories field + restore actuals to full text colour
 
