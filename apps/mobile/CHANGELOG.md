@@ -1,5 +1,62 @@
 # Mobile App Changelog
 
+## 2026-05-02 — parity: web "All nutrients" + LogSheet meals empty state
+
+User feedback: (1) web's "All nutrients" panel was the desired pattern and
+should ship on mobile; (2) the web Today meals card's empty-state collage
+("Log from today's plan" rows + Add custom meal / Photo log / Voice log)
+"makes no sense" — it diverged from mobile, which has no in-card empty
+collage and instead routes through the canonical raised "+" Log button
+into the unified `<LogSheet>`.
+
+### Parity 1 — `FullNutrientPanelSheet` (mobile == web, no code change)
+- Investigation confirmed the mobile `FullNutrientPanelSheet`
+  (`apps/mobile/components/today/FullNutrientPanelSheet.tsx`) and web
+  (`src/app/components/suppr/full-nutrient-panel-sheet.tsx`) already share
+  the canonical `buildFullNutrientPanelRows` helper, identical
+  Macros / Vitamins / Minerals section taxonomy, the same %DV-descending
+  sort rule, the same limit-tier color ramp (sodium / sat fat /
+  cholesterol), and the same `DAILY_VALUES_SOURCE_LABEL` footer. Both
+  ship with their own component-level unit tests
+  (`tests/unit/fullNutrientPanelSheetWeb.test.tsx`,
+  `apps/mobile/tests/unit/fullNutrientPanelSheet.test.tsx`).
+- Added a structural source-grep parity test
+  (`tests/unit/logSheetWebMobileParity.test.ts`) pinning both platforms to
+  the shared row builder, count constant, footer label, section/row
+  testID prefixes, and limit-tier ramp thresholds — so a regression on
+  either side fails CI.
+
+### Parity 2 — web Today meals empty state (web → mobile pattern)
+- `src/app/components/suppr/today-meals-section.tsx`: removed the
+  empty-state collage that diverged from mobile. It rendered:
+  - a duplicated "Log from today's plan" rows block (already shown by
+    `<TodayPlannedMealsCard>` directly above the meals card), and
+  - 3 parallel CTAs (Add custom meal / Photo log / Voice log) which
+    reproduced the LogSheet's right-edge icons.
+- New empty state: a single primary "Log a meal" CTA that opens the
+  unified `<LogSheet>` — the same entry as the bottom-bar raised "+" on
+  mobile-web. The LogSheet's own scan / voice / photo icons cover the
+  removed input modes; mobile is unchanged because mobile already
+  omitted the collage.
+- Props slimmed: `onOpenAddCustom`, `onOpenPhotoLog`, `onOpenVoiceLog`,
+  `userTier`, `mealPlanFirstDay`, `onLogPlanMeal` removed; replaced by
+  a single `onOpenLogSheet` callback. `TodayMealSectionPlanEntry` type
+  removed (no longer referenced).
+- Caller (`src/app/components/NutritionTracker.tsx`) updated to pass
+  `onOpenLogSheet={() => setLogSheetOpen(true)}` — same handler the
+  raised "+" button uses.
+- Tests:
+  - `tests/unit/todayMealsSectionEmptyState.test.tsx` — empty state
+    renders the single CTA, hides the legacy collage strings, fires
+    `onOpenLogSheet`, and disappears once meals are logged.
+  - `tests/unit/logSheetWebMobileParity.test.ts` — pins web ↔ mobile
+    `LogSheet` 3-tab structure (Recent / Library / Saved), the
+    saved-tab dot indicator, scan/voice/photo icon order, the inline
+    search testIDs, the "Or add manually" footer, AND that the web
+    `today-meals-section` no longer carries the legacy collage hooks
+    (`onOpenAddCustom` / `onOpenPhotoLog` / `onOpenVoiceLog` /
+    `onLogPlanMeal`) — so a regression fails CI immediately.
+
 ## 2026-05-02 — Settings: make fasting findable + tap-to-configure
 
 User report (TestFlight Build 40 outstanding feedback): typed "fast" in the

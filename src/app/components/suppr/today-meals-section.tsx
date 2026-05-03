@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { toast } from "sonner";
 import { Icons } from "../ui/icons";
 import { IconBox } from "../ui/icon-box";
 import {
@@ -13,13 +12,8 @@ import {
 import NutritionSourceBadge from "../../../components/NutritionSourceBadge";
 import { SourceDot } from "../ui/source-dot";
 import { mapMealSourceToDot } from "../../../lib/nutrition/sourceMap";
-import type { UserTier } from "../../../types/recipe";
 import { distributeMealBudget } from "../../../lib/nutrition/mealBudget";
-import {
-  isMealPlanPlaceholderLikeTitle,
-  scaledMacro,
-} from "../../../lib/nutrition/portionMultiplier";
-import { normalizeJournalSlotName } from "../../../lib/nutrition/journalSlot";
+import { scaledMacro } from "../../../lib/nutrition/portionMultiplier";
 import { DestructiveConfirmDialog } from "./destructive-confirm-dialog";
 import {
   Dialog,
@@ -62,18 +56,6 @@ export type TodayMealSectionMeal = {
   source?: string | null;
 };
 
-export type TodayMealSectionPlanEntry = {
-  name: string;
-  recipeTitle: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  isPlaceholder?: boolean;
-  /** Lets the Today log path pull fiber/sugar/sodium from the saved recipe. */
-  recipeId?: string | null;
-};
-
 export interface TodayMealsSectionProps {
   mealsGrouped: Array<{ name: string; meals: TodayMealSectionMeal[] }>;
   mealsForSelectedDate: TodayMealSectionMeal[];
@@ -87,12 +69,24 @@ export interface TodayMealsSectionProps {
   onOpenDuplicateDay: () => void;
   onRequestCopyMeal: (mealId: string) => void;
   onDeleteMeal: (mealId: string, recipeTitle: string) => void;
-  mealPlanFirstDay: { meals: TodayMealSectionPlanEntry[] } | null;
-  onLogPlanMeal: (meal: TodayMealSectionPlanEntry) => void;
-  onOpenAddCustom: () => void;
-  onOpenPhotoLog: () => void;
-  onOpenVoiceLog: () => void;
-  userTier: UserTier;
+  /**
+   * Empty-state primary CTA — opens the unified `<LogSheet>`.
+   *
+   * 2026-05-02 parity sweep: the prior empty state collage (3 buttons —
+   * Add custom meal / Photo log / Voice log — plus a duplicate
+   * "Log from today's plan" rows block) diverged from mobile, which
+   * has no in-meals-card empty-state collage at all (mobile uses the
+   * raised "+" tab-bar button + per-slot "Tap to add" affordances +
+   * the standalone `<TodayPlannedMealsCard>` rendered above). Web
+   * now matches: a single primary CTA that opens the canonical
+   * LogSheet — same entry the bottom-bar raised "+" uses on
+   * mobile-web. The LogSheet's right-edge icons cover the
+   * scan / voice / photo modes.
+   *
+   * Mirror: `apps/mobile/components/today/TodayMealsSection.tsx` (no
+   * collage rendered; raised "+" + per-slot rows do the same job).
+   */
+  onOpenLogSheet: () => void;
   /** Ship M1 — all saved meals the authed user owns, sorted newest-logged-first. */
   savedMeals: SavedMeal[];
   /** Ship M1 — log a saved meal into a specific slot. */
@@ -164,12 +158,7 @@ export function TodayMealsSection({
   onOpenDuplicateDay,
   onRequestCopyMeal,
   onDeleteMeal,
-  mealPlanFirstDay,
-  onLogPlanMeal,
-  onOpenAddCustom,
-  onOpenPhotoLog,
-  onOpenVoiceLog,
-  userTier,
+  onOpenLogSheet,
   savedMeals,
   onLogSavedMeal,
   hintVisibleForSlot,
@@ -416,81 +405,34 @@ export function TodayMealsSection({
           );
         })}
 
+        {/* Empty-state primary CTA — opens the unified `<LogSheet>`.
+            2026-05-02 parity sweep: the prior empty state collage
+            (3 buttons — Add custom meal / Photo log / Voice log — plus
+            a duplicate "Log from today's plan" rows block) diverged
+            from mobile, which has no in-meals-card empty-state collage
+            (mobile uses raised "+" + per-slot "Tap to add" rows + the
+            standalone `<TodayPlannedMealsCard>` rendered above the
+            meals card). Web now matches: a single primary CTA, same
+            entry the bottom-bar raised "+" uses on mobile-web. The
+            LogSheet's right-edge icons cover scan / voice / photo. */}
         {mealsForSelectedDate.length === 0 && (
-          <div className="py-8">
-            {/* Quick-log from plan if plan exists for day 1 */}
-            {mealPlanFirstDay &&
-            mealPlanFirstDay.meals.filter(
-              (m) => !isMealPlanPlaceholderLikeTitle(m.recipeTitle, { isPlaceholder: m.isPlaceholder }),
-            ).length > 0 ? (
-              <div className="mb-6">
-                <p className="text-sm font-medium text-muted-foreground mb-3 text-center">Log from today&apos;s plan</p>
-                <div className="space-y-2">
-                  {mealPlanFirstDay.meals
-                    .filter(
-                      (m) => !isMealPlanPlaceholderLikeTitle(m.recipeTitle, { isPlaceholder: m.isPlaceholder }),
-                    )
-                    .map((meal, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => {
-                          onLogPlanMeal(meal);
-                          toast.success(`Logged ${meal.recipeTitle}`);
-                        }}
-                        className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-border bg-card hover:border-primary/30 transition-colors text-left"
-                      >
-                        <div>
-                          <span className="text-xs font-medium text-primary">{normalizeJournalSlotName(meal.name)}</span>
-                          <p className="text-sm font-medium text-foreground">{meal.recipeTitle}</p>
-                        </div>
-                        <span className="text-xs font-mono tabular-nums text-muted-foreground">{Math.round(meal.calories)} kcal</span>
-                      </button>
-                    ))}
-                </div>
-              </div>
-            ) : null}
-            <div className="text-center">
-              <p className="mb-4 text-muted-foreground">
-                {mealPlanFirstDay ? "Or add a custom meal" : "No meals logged on this day"}
-              </p>
-              <div className="flex flex-wrap items-center justify-center gap-3">
-                <button
-                  type="button"
-                  onClick={onOpenAddCustom}
-                  className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 font-semibold text-white transition-pm hover:bg-primary/90"
-                >
-                  <Icons.add className="h-5 w-5" />
-                  {mealPlanFirstDay ? "Add custom meal" : "Log your first meal"}
-                </button>
-                <button
-                  type="button"
-                  onClick={onOpenPhotoLog}
-                  aria-label={
-                    userTier === "pro"
-                      ? "AI photo log — snap a meal for nutrition estimates"
-                      : "AI photo log — Pro feature"
-                  }
-                  title="Photos are sent to our servers and processed with AI to estimate nutrition. Pro only."
-                  className="inline-flex items-center gap-2 rounded-xl border border-primary/30 px-5 py-3 font-semibold text-primary hover:bg-primary/5 transition-colors"
-                >
-                  <Icons.camera className="h-5 w-5" />
-                  Photo log
-                  {userTier !== "pro" && <Icons.lock className="h-3.5 w-3.5" aria-hidden />}
-                </button>
-                <button
-                  type="button"
-                  onClick={onOpenVoiceLog}
-                  aria-label={userTier === "pro" ? "Record voice log" : "Voice log — Pro feature"}
-                  title="Voice and typed descriptions are processed with AI on our servers. Pro only."
-                  className="inline-flex items-center gap-2 rounded-xl border border-primary/30 px-5 py-3 font-semibold text-primary hover:bg-primary/5 transition-colors"
-                >
-                  <Icons.mic className="h-5 w-5" />
-                  Voice log
-                  {userTier !== "pro" && <Icons.lock className="h-3.5 w-3.5" aria-hidden />}
-                </button>
-              </div>
-            </div>
+          <div
+            data-testid="today-meals-empty-state"
+            className="px-4 py-8 text-center"
+          >
+            <p className="mb-4 text-sm text-muted-foreground">
+              No meals logged on this day
+            </p>
+            <button
+              type="button"
+              onClick={onOpenLogSheet}
+              data-testid="today-meals-empty-cta"
+              aria-label="Log a meal"
+              className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 font-semibold text-white transition-pm hover:bg-primary/90"
+            >
+              <Icons.add className="h-5 w-5" />
+              Log a meal
+            </button>
           </div>
         )}
       </div>
