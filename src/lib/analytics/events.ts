@@ -599,6 +599,36 @@ export const AnalyticsEvents = {
    *
    *  Added 2026-05-02 alongside `food_search_no_result`. */
   food_search_request_dictionary_add: "food_search_request_dictionary_add",
+  /** Cancel-flow export prompt rendered (PR replaces #43, 2026-05-02).
+   *  Closes journey-architect P1: the export prompt was buried in
+   *  Settings; a user who tapped "Manage subscription" and cancelled
+   *  never saw it. The Suppr-owned interstitial now surfaces between
+   *  the cancel touchpoint and the RC / Stripe handoff so export is
+   *  proactive, not reactive.
+   *
+   *  Fires once per open (host gates with a state flag — re-opening
+   *  the sheet fires a fresh event).
+   *
+   *  Payload: `{ source: "mobile" | "web", tier: string }`.
+   *  `tier` carries the user's current tier at the cancel touchpoint
+   *  ("free" | "base" | "pro" | any future SKU label) so the funnel
+   *  can slice export-uptake by who's actually about to leave. */
+  cancel_export_prompt_shown: "cancel_export_prompt_shown",
+  /** User tapped "Take your data with you" on the cancel-flow export
+   *  prompt. Fires before the CSV write so it's recorded even if the
+   *  share sheet / browser download fails downstream. The sheet stays
+   *  open after — fires once per tap.
+   *
+   *  Payload: `{ source: "mobile" | "web", tier: string }`. */
+  cancel_export_chosen: "cancel_export_chosen",
+  /** User tapped "Continue to manage" on the cancel-flow export
+   *  prompt. Fires immediately before the host routes to
+   *  `presentCustomerCenter()` (mobile) / `/account/billing` (web).
+   *  Distinct from `cancel_export_chosen` so the funnel can split
+   *  "exported then continued" vs "continued without exporting".
+   *
+   *  Payload: `{ source: "mobile" | "web", tier: string }`. */
+  cancel_proceeded: "cancel_proceeded",
 } as const;
 
 export type AnalyticsEventName = (typeof AnalyticsEvents)[keyof typeof AnalyticsEvents];

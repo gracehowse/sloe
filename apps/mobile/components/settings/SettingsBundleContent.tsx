@@ -22,6 +22,7 @@ import Constants from "expo-constants";
 // the canonical Membership card so the bundle is the single source
 // of truth.
 import { presentCustomerCenter } from "@/lib/purchases";
+import { CancelExportPromptSheet } from "@/components/settings/CancelExportPromptSheet";
 import { usePromoCode } from "@/hooks/usePromoCode";
 import {
   Bell,
@@ -510,6 +511,15 @@ export function SettingsBundleContent({ context }: { context: Context }) {
   // Replaces the silent broken Share.share({ message: csv }) path
   // (P0-2 — `claude/settings-mobile-structural-fix` 2026-05-01).
   const [exportingCsv, setExportingCsv] = useState(false);
+  /**
+   * Cancel-flow export prompt (PR replaces #43, 2026-05-02). Surfaces
+   * a Suppr-owned bottom sheet BEFORE routing to RC's customerCenter
+   * so the export option is proactive, not buried 4-5 taps deep in
+   * Settings. Two equal-weight cards: "Take your data with you"
+   * (export CSV first) / "Continue to manage" (route to RC). The X
+   * dismisses without action. Closes journey-architect P1.
+   */
+  const [cancelPromptOpen, setCancelPromptOpen] = useState(false);
 
   // P0-1 / Tracking extras (2026-05-01,
   // `claude/settings-mobile-structural-fix`) — caffeine + alcohol
@@ -631,7 +641,14 @@ export function SettingsBundleContent({ context }: { context: Context }) {
       loadProfileData();
     }
   }, [redeemPromo, loadProfileData]);
-  const handleManageSubscription = useCallback(async () => {
+  /**
+   * Routes to RevenueCat's customerCenter. Used by the cancel-flow
+   * export prompt's "Continue to manage" CTA after the user has
+   * either exported their data or chosen to skip it. Falls back to
+   * the platform's native subscription surface when RC isn't
+   * provisioned (Expo Go, missing key, web).
+   */
+  const routeToCustomerCenter = useCallback(async () => {
     const result = await presentCustomerCenter();
     if (result.presented) return;
     // Fallback: send the user to the platform's native subscription
@@ -649,6 +666,23 @@ export function SettingsBundleContent({ context }: { context: Context }) {
       );
     });
   }, []);
+  /**
+   * Opens the cancel-flow export prompt sheet (PR replaces #43,
+   * 2026-05-02). Closes journey-architect P1 — the CSV-export prompt
+   * was buried 4-5 taps deep in Settings; tapping "Manage
+   * subscription" never surfaced it. Now we render a Suppr-owned
+   * interstitial with two equal-weight cards before handing off to
+   * RC's customerCenter. The export CTA fires the same `runExportCsv`
+   * the standalone Settings row uses, so the byte shape is identical
+   * (pin: `tests/unit/nutritionLogToCsv.test.ts`).
+   */
+  const handleManageSubscription = useCallback(() => {
+    track(AnalyticsEvents.cancel_export_prompt_shown, {
+      source: "mobile",
+      tier: profileData.userTier,
+    });
+    setCancelPromptOpen(true);
+  }, [profileData.userTier]);
 
   const runExportEverything = useCallback(async () => {
     if (!userId) return;
@@ -691,6 +725,112 @@ export function SettingsBundleContent({ context }: { context: Context }) {
       setExportingEverything(false);
     }
   }, [userId, exportingEverything]);
+
+  /**
+   * CSV export runner — extracted 2026-05-02 (PR replaces #43) so
+   * both the standalone Settings export row AND the cancel-flow
+   * export prompt sheet's "Take your data with you" CTA call the same
+   * helper. Same Supabase select, same `nutritionLogToCsv` bytes, same
+   * filename shape — keeps the pinned-bytes test
+   * (`tests/unit/nutritionLogToCsv.test.ts`) passing for both entry
+   * points. Fails gracefully when the cache directory or
+   * `expo-file-system` is unavailable (vitest / unprovisioned builds).
+   */
+  const runExportCsv = useCallback(async () => {
+    if (!userId) return;
+    if (exportingCsv) return;
+    setExportingCsv(true);
+    try {
+      const { data: entries, error } = await supabase
+        .from("nutrition_entries")
+        .select(
+          "date_key, time_label, name, recipe_title, portion_multiplier, calories, protein, carbs, fat, fiber_g, source",
+        )
+        .eq("user_id", userId)
+        .order("date_key", { ascending: true })
+        .order("created_at", { ascending: true });
+      if (error) {
+        Alert.alert("Export failed", error.message);
+        return;
+      }
+      const csv = nutritionLogToCsv(entries ?? []);
+      const filename = nutritionLogCsvFilename();
+
+      let fsModule: unknown;
+      try {
+        fsModule = await import("expo-file-system");
+      } catch {
+        Alert.alert(
+          "Export failed",
+          "We couldn't access local storage to save the file.",
+        );
+        return;
+      }
+      const fsModAny = fsModule as {
+        cacheDirectory?: unknown;
+        writeAsStringAsync?: unknown;
+        default?: {
+          cacheDirectory?: unknown;
+          writeAsStringAsync?: unknown;
+        };
+      };
+      const cacheDir =
+        (typeof fsModAny.cacheDirectory === "string"
+          ? fsModAny.cacheDirectory
+          : null) ??
+        (typeof fsModAny.default?.cacheDirectory === "string"
+          ? fsModAny.default?.cacheDirectory
+          : null);
+      const writeAsStringAsync =
+        (typeof fsModAny.writeAsStringAsync === "function"
+          ? fsModAny.writeAsStringAsync
+          : null) ??
+        (typeof fsModAny.default?.writeAsStringAsync === "function"
+          ? fsModAny.default?.writeAsStringAsync
+          : null);
+      if (!cacheDir || !writeAsStringAsync) {
+        Alert.alert(
+          "Export failed",
+          "We couldn't access local storage to save the file.",
+        );
+        return;
+      }
+      const fileUri = `${(cacheDir as string).replace(/\/$/, "")}/${filename}`;
+      try {
+        await (
+          writeAsStringAsync as (
+            uri: string,
+            body: string,
+          ) => Promise<void>
+        )(fileUri, csv);
+      } catch (e) {
+        Alert.alert(
+          "Export failed",
+          e instanceof Error
+            ? `Couldn't save to your device: ${e.message}`
+            : "Couldn't save the export to your device.",
+        );
+        return;
+      }
+      try {
+        await Share.share({ url: fileUri, title: filename });
+      } catch (e) {
+        Alert.alert(
+          "Couldn't open share sheet",
+          e instanceof Error
+            ? e.message
+            : "The file was saved but the share sheet didn't open.",
+        );
+      }
+    } catch (e) {
+      Alert.alert(
+        "Export failed",
+        e instanceof Error ? e.message : "Unknown error",
+      );
+    } finally {
+      setExportingCsv(false);
+    }
+  }, [userId, exportingCsv]);
 
   useEffect(() => {
     if (!userId) return;
@@ -1551,110 +1691,8 @@ export function SettingsBundleContent({ context }: { context: Context }) {
               ? "Preparing your file…"
               : "Spreadsheet-friendly. Opens in Numbers, Excel, or Google Sheets."
           }
-          onPress={async () => {
-            if (!userId) return;
-            if (exportingCsv) return;
-            // P0-2 (2026-05-01) — write the CSV to the cache directory
-            // and surface the iOS share sheet via Share.share({ url }).
-            // The legacy path used Share.share copy-paste payload which
-            // routes through pasteboard and silently truncates above
-            // ~64KB; a real user with a few months of logs hit the
-            // limit on day 1. Mirrors the export-everything pattern in
-            // `lib/exportEverything.ts`.
-            setExportingCsv(true);
-            try {
-              const { data: entries, error } = await supabase
-                .from("nutrition_entries")
-                .select(
-                  "date_key, time_label, name, recipe_title, portion_multiplier, calories, protein, carbs, fat, fiber_g, source",
-                )
-                .eq("user_id", userId)
-                .order("date_key", { ascending: true })
-                .order("created_at", { ascending: true });
-              if (error) {
-                Alert.alert("Export failed", error.message);
-                return;
-              }
-              const csv = nutritionLogToCsv(entries ?? []);
-              const filename = nutritionLogCsvFilename();
-
-              // Dynamic import keeps unit tests under vitest from
-              // failing on the optional native module — same pattern
-              // as `exportEverythingToFile`.
-              let fsModule: unknown;
-              try {
-                fsModule = await import("expo-file-system");
-              } catch {
-                Alert.alert(
-                  "Export failed",
-                  "We couldn't access local storage to save the file.",
-                );
-                return;
-              }
-              const fsModAny = fsModule as {
-                cacheDirectory?: unknown;
-                writeAsStringAsync?: unknown;
-                default?: {
-                  cacheDirectory?: unknown;
-                  writeAsStringAsync?: unknown;
-                };
-              };
-              const cacheDir =
-                (typeof fsModAny.cacheDirectory === "string"
-                  ? fsModAny.cacheDirectory
-                  : null) ??
-                (typeof fsModAny.default?.cacheDirectory === "string"
-                  ? fsModAny.default?.cacheDirectory
-                  : null);
-              const writeAsStringAsync =
-                (typeof fsModAny.writeAsStringAsync === "function"
-                  ? fsModAny.writeAsStringAsync
-                  : null) ??
-                (typeof fsModAny.default?.writeAsStringAsync === "function"
-                  ? fsModAny.default?.writeAsStringAsync
-                  : null);
-              if (!cacheDir || !writeAsStringAsync) {
-                Alert.alert(
-                  "Export failed",
-                  "We couldn't access local storage to save the file.",
-                );
-                return;
-              }
-              const fileUri = `${(cacheDir as string).replace(/\/$/, "")}/${filename}`;
-              try {
-                await (
-                  writeAsStringAsync as (
-                    uri: string,
-                    body: string,
-                  ) => Promise<void>
-                )(fileUri, csv);
-              } catch (e) {
-                Alert.alert(
-                  "Export failed",
-                  e instanceof Error
-                    ? `Couldn't save to your device: ${e.message}`
-                    : "Couldn't save the export to your device.",
-                );
-                return;
-              }
-              try {
-                await Share.share({ url: fileUri, title: filename });
-              } catch (e) {
-                Alert.alert(
-                  "Couldn't open share sheet",
-                  e instanceof Error
-                    ? e.message
-                    : "The file was saved but the share sheet didn't open.",
-                );
-              }
-            } catch (e) {
-              Alert.alert(
-                "Export failed",
-                e instanceof Error ? e.message : "Unknown error",
-              );
-            } finally {
-              setExportingCsv(false);
-            }
+          onPress={() => {
+            void runExportCsv();
           }}
         />
         {/* "Export everything" — counters lock-in anxiety per the
@@ -2732,6 +2770,37 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           </View>
         </View>
       </Modal>
+      {/* Cancel-flow export prompt (PR replaces #43, 2026-05-02).
+          Closes journey-architect P1 — surfaces the data-export prompt
+          AT the cancel touchpoint so users with active subscriptions
+          aren't routed to RC's customerCenter without ever seeing the
+          option to take their data with them first. Equal-weight CTAs,
+          calm tone, no retention-via-friction. Web parity at
+          `src/app/components/suppr/cancel-export-prompt-dialog.tsx`. */}
+      <CancelExportPromptSheet
+        visible={cancelPromptOpen}
+        exporting={exportingCsv}
+        onDismiss={() => setCancelPromptOpen(false)}
+        onExport={() => {
+          track(AnalyticsEvents.cancel_export_chosen, {
+            source: "mobile",
+            tier: profileData.userTier,
+          });
+          // Sheet stays open after the CSV runner returns so the user
+          // can still tap "Continue to manage" or dismiss without a
+          // second round-trip through Settings. Don't auto-dismiss on
+          // export success.
+          void runExportCsv();
+        }}
+        onContinueToManage={() => {
+          track(AnalyticsEvents.cancel_proceeded, {
+            source: "mobile",
+            tier: profileData.userTier,
+          });
+          setCancelPromptOpen(false);
+          void routeToCustomerCenter();
+        }}
+      />
     </>
   );
 }

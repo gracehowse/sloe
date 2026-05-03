@@ -1,5 +1,60 @@
 # Mobile App Changelog
 
+## 2026-05-02 — Cancel-flow export prompt (replaces stale PR #43)
+
+journey-architect P1. Pre-2026-05-02 the CSV-export prompt was buried
+4-5 taps deep in Settings → Data; tapping "Manage subscription" routed
+straight to RevenueCat's customerCenter without ever surfacing the
+option. Users who cancelled and lost their backups had a justified
+support claim. Now a Suppr-owned bottom sheet (mobile) / dialog (web)
+surfaces between the Manage tap and the platform handoff.
+
+Posture: calm trust, not retention-via-friction. Two equal-weight cards
+(matched border, background, icon-tile treatment), no offers, no
+upsells, no last-minute discount. The user came to manage their plan;
+we are not the gatekeeper.
+
+### What changed
+
+- `apps/mobile/components/settings/CancelExportPromptSheet.tsx` (new)
+  — mobile bottom sheet, two equal-weight cards.
+- `apps/mobile/components/settings/SettingsBundleContent.tsx` —
+  `handleManageSubscription` now opens the sheet first; CSV runner
+  extracted into `runExportCsv` so the sheet and the standalone "Export
+  nutrition log (CSV)" row share one code path.
+- `src/app/components/suppr/cancel-export-prompt-dialog.tsx` (new) —
+  web parity dialog.
+- `src/app/components/Settings.tsx` — "Manage subscription" Link
+  replaced with a button that opens the dialog; gate widened from
+  `userTier === "pro"` to `userTier !== "free"` per spec; CSV runner
+  extracted into `runCsvExport`.
+- `src/lib/analytics/events.ts` — three new events:
+  `cancel_export_prompt_shown`, `cancel_export_chosen`,
+  `cancel_proceeded`. All carry `{ source: "mobile" | "web", tier: string }`.
+- `docs/decisions/2026-05-02-cancel-export-prompt.md` — posture +
+  non-goals + parity matrix.
+
+### Behaviour
+
+- **Take your data with you** → fires the existing `nutritionLogToCsv`
+  export. Sheet stays open after success so the user can still
+  continue or dismiss without a second round-trip.
+- **Continue to manage** → closes the sheet; mobile routes to
+  `presentCustomerCenter()` (with App Store / Play Store fallback);
+  web hard-navigates to `/account/billing`.
+- **X / backdrop tap** → dismiss without action. No event fires —
+  silence is the signal.
+
+### Tests
+
+- `apps/mobile/tests/unit/cancelExportPromptSheet.test.tsx` — 5 RTL
+  tests: equal-weight rendering, single-fire export CTA, success-state
+  row count, close-vs-continue intent separation, null-export resilience.
+- `tests/unit/cancelExportPromptDialog.test.tsx` — 6 RTL tests
+  mirroring mobile coverage + state-reset on dialog close/re-open.
+- `tests/unit/nutritionLogToCsv.test.ts` (existing) — pinned bytes
+  continue to match for both entry points.
+
 ## 2026-05-02 — EmptyState: 72pt disc + headline/body type ladder + optional CTA
 
 ui-critic finding #6 (P1). The pre-2026-05-02 `<EmptyState>` primitive
