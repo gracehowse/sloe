@@ -66,6 +66,13 @@ export function WhyThisNumberDialog({
             <p className="text-xs italic text-muted-foreground mt-1">
               Early estimate — keep logging and we&apos;ll calibrate.
             </p>
+          ) : result.calibratingAsk ? (
+            <p
+              data-testid="why-this-number-calibrating-ask"
+              className="text-xs text-muted-foreground mt-1 leading-snug"
+            >
+              {result.calibratingAsk}
+            </p>
           ) : null}
         </div>
 

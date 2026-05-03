@@ -38,12 +38,33 @@ export interface WhyThisNumberInput {
   goal: WhyThisNumberGoal;
   /**
    * Weekly weight-change pace target in kg/week. Negative for losing,
-   * positive for gaining, 0 for maintaining. We don't infer sign from
-   * `goal` — `plan_pace` is stored separately and may be 0 even when
-   * goal=lose (paused / maintenance mode). The helper trusts whatever
-   * the caller passed.
+   * positive for gaining, 0 for explicit maintain.
+   *
+   * IMPORTANT: this field has three distinct states and the renderer
+   * relies on all three:
+   *   - non-zero number → "Lose / Gain X kg/wk"
+   *   - exactly 0       → "Maintain" (explicitly chosen by the user)
+   *   - null            → "Goal not set" (no plan_pace stored on the
+   *                        profile yet — we cannot infer direction)
+   *
+   * Callers MUST pass `null` when the source is genuinely unknown
+   * (e.g. profile.plan_pace is null and the user hasn't picked a
+   * preset). Returning 0 in that case would mislabel the user as
+   * maintaining when they're actually mid-onboarding.
    */
-  paceKgPerWeek: number;
+  paceKgPerWeek: number | null;
+  /**
+   * Optional context to give a SPECIFIC calibrating ask when the
+   * adaptive TDEE gate hasn't fired yet. Both fields are independent
+   * — pass either, both, or neither. When both are absent we fall
+   * back to generic "calibrating — keep logging" copy.
+   *
+   * Numbers reflect the calendar window the adaptive engine looks at
+   * (default 28-day rolling). Caller pre-computes from the byDay
+   * shapes it already hydrates (`nutritionByDay`, `weight_kg_by_day`).
+   */
+  mealLogDays?: number | null;
+  weightLogCount?: number | null;
 }
 
 export interface WhyThisNumberLine {
@@ -69,11 +90,26 @@ export interface WhyThisNumberResult {
    *  (loggingDays < 14 OR confidence = "low"). Renderer can use this to
    *  add a calibrating chip / italic qualifier. */
   isEarlyEstimate: boolean;
+  /**
+   * Specific copy for the "what to do to unlock adaptive TDEE" ask.
+   * Present only when `maintenanceTdee` is null AND we received at
+   * least one of `mealLogDays` / `weightLogCount`. Renderer shows this
+   * INSTEAD of the generic calibrating qualifier.
+   */
+  calibratingAsk: string | null;
 }
 
 /** ~7700 kcal per kg of body fat. Conservative round. */
 const KCAL_PER_KG_FAT = 7700;
 const KCAL_PER_DAY_PER_WEEKLY_KG = KCAL_PER_KG_FAT / 7;
+
+/** Mirrors `MIN_LOGGING_DAYS` and `MIN_WEIGH_INS` in
+ *  `src/lib/nutrition/adaptiveTdee.ts`. Duplicated here (rather than
+ *  imported) so the helper stays React-Native-safe and dependency-free.
+ *  When those constants move, update here in lockstep — the test
+ *  `whyThisNumber.test.ts` pins the gate values. */
+const MIN_MEAL_LOG_DAYS_FOR_TDEE = 7;
+const MIN_WEIGHT_LOGS_FOR_TDEE = 3;
 
 /**
  * Map the legacy `plan_pace` preset enum stored on `profiles.plan_pace`
@@ -81,11 +117,15 @@ const KCAL_PER_DAY_PER_WEEKLY_KG = KCAL_PER_KG_FAT / 7;
  * gain → positive, maintain → 0). Mirrors the constants in
  * `src/lib/nutrition/tdee.ts:PACE_WEEKLY_KG` — when those move, update
  * here in lockstep.
+ *
+ * Returns `null` for unknown / null preset on a non-maintain goal,
+ * which the renderer surfaces as "Goal not set". This is deliberate:
+ * a missing preset is NOT the same as explicit maintenance.
  */
 export function paceKgPerWeekFromPreset(
   preset: string | null | undefined,
   goal: WhyThisNumberGoal,
-): number {
+): number | null {
   if (goal === "maintain") return 0;
   let mag: number;
   switch (preset) {
@@ -102,7 +142,7 @@ export function paceKgPerWeekFromPreset(
       mag = 1.0;
       break;
     default:
-      return 0;
+      return null;
   }
   return goal === "lose" ? -mag : mag;
 }
@@ -119,10 +159,53 @@ function fmtPaceKg(paceKg: number): string {
   return `${sign}${rounded.toFixed(2).replace(/0+$/, "").replace(/\.$/, "")} kg/wk`;
 }
 
-function goalLabel(goal: WhyThisNumberGoal, paceKg: number): string {
+function goalLabel(
+  goal: WhyThisNumberGoal,
+  paceKg: number | null,
+): string {
+  // Unknown pace → user has not picked a preset. Don't lie about it.
+  if (paceKg === null) return "Goal not set";
   if (goal === "maintain" || paceKg === 0) return "Maintain";
   if (goal === "lose") return `Lose ${fmtPaceKg(Math.abs(paceKg))}`.replace("+", "");
   return `Gain ${fmtPaceKg(Math.abs(paceKg))}`.replace("+", "");
+}
+
+/**
+ * Build a SPECIFIC calibrating ask telling the user exactly what's
+ * missing for adaptive TDEE to compute. Returns `null` when neither
+ * `mealLogDays` nor `weightLogCount` was supplied (caller hasn't wired
+ * them up yet) — render the generic "calibrating" line instead.
+ */
+function buildCalibratingAsk(
+  mealLogDays: number | null,
+  weightLogCount: number | null,
+): string | null {
+  if (mealLogDays == null && weightLogCount == null) return null;
+
+  const needsMeals =
+    mealLogDays != null && mealLogDays < MIN_MEAL_LOG_DAYS_FOR_TDEE;
+  const needsWeights =
+    weightLogCount != null && weightLogCount < MIN_WEIGHT_LOGS_FOR_TDEE;
+
+  if (!needsMeals && !needsWeights) {
+    // Both gates are satisfied but maintenance is still null — must be
+    // a transient compute miss. Don't render an ask.
+    return null;
+  }
+
+  const parts: string[] = [];
+  if (needsWeights) {
+    parts.push(
+      `Log your weight ${MIN_WEIGHT_LOGS_FOR_TDEE}+ times for an accurate maintenance estimate.`,
+    );
+  }
+  if (needsMeals) {
+    parts.push(
+      `Keep logging meals — we'll calibrate after ${MIN_MEAL_LOG_DAYS_FOR_TDEE} days.`,
+    );
+  }
+  parts.push("Until then, your target is based on your stated goal.");
+  return parts.join(" ");
 }
 
 /**
@@ -133,13 +216,15 @@ export function buildWhyThisNumber(
 ): WhyThisNumberResult {
   const { targetCalories, maintenanceTdee, confidence, goal, paceKgPerWeek } = input;
   const loggingDays = input.loggingDays ?? null;
+  const mealLogDays = input.mealLogDays ?? null;
+  const weightLogCount = input.weightLogCount ?? null;
 
   const isEarlyEstimate =
     maintenanceTdee != null &&
     (confidence === "low" || (loggingDays != null && loggingDays < 14));
 
   // -- Row 1: TDEE / maintenance estimate --------------------------
-  let tdeeLabel = "Maintenance (TDEE)";
+  const tdeeLabel = "Maintenance (TDEE)";
   let tdeeValue: string;
   if (maintenanceTdee != null && maintenanceTdee > 0) {
     if (isEarlyEstimate) {
@@ -149,7 +234,6 @@ export function buildWhyThisNumber(
     }
   } else {
     tdeeValue = "calibrating — keep logging";
-    tdeeLabel = "Maintenance (TDEE)";
   }
 
   // -- Row 2: Goal & pace ------------------------------------------
@@ -170,6 +254,10 @@ export function buildWhyThisNumber(
     } else {
       resultValue = "no deficit (maintaining)";
     }
+  } else if (paceKgPerWeek == null) {
+    // No TDEE AND no pace preset — we genuinely can't compute a
+    // direction. Don't lie about "maintaining".
+    resultValue = "—";
   } else {
     // No TDEE yet → derive from pace.
     const impliedDelta = paceKgPerWeek * KCAL_PER_DAY_PER_WEEKLY_KG;
@@ -185,6 +273,13 @@ export function buildWhyThisNumber(
     { key: "result", label: "Result", value: resultValue },
   ];
 
+  // Specific calibrating ask (replaces generic "Early estimate"
+  // qualifier whenever TDEE is null AND caller supplied counts).
+  const calibratingAsk =
+    maintenanceTdee == null || maintenanceTdee <= 0
+      ? buildCalibratingAsk(mealLogDays, weightLogCount)
+      : null;
+
   // Summary — one sentence that strings the same numbers together for
   // screen readers and the sheet subhead.
   let summary: string;
@@ -198,6 +293,11 @@ export function buildWhyThisNumber(
     summary = `Your target sits ${direction} your estimated maintenance of ${fmtKcal(
       maintenanceTdee,
     )} so you trend toward your ${goalValue.toLowerCase()} goal.`;
+  } else if (calibratingAsk) {
+    // Lift the SPECIFIC ask into the summary so screen readers and
+    // the bottom-sheet subhead announce something actionable instead
+    // of generic "still calibrating" copy.
+    summary = calibratingAsk;
   } else {
     summary =
       "We're still calibrating your maintenance — your target is based on your stated goal and weekly pace.";
@@ -208,5 +308,6 @@ export function buildWhyThisNumber(
     lines,
     summary,
     isEarlyEstimate: Boolean(isEarlyEstimate),
+    calibratingAsk,
   };
 }

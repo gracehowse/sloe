@@ -99,4 +99,33 @@ describe("WhyThisNumberDialog (web)", () => {
     );
     expect(screen.getByText("calibrating — keep logging")).toBeTruthy();
   });
+
+  // Failure 1 / 2 / 3 from TestFlight feedback 2026-05-02 ----------
+  it("renders 'Goal not set' when paceKgPerWeek is null (regression)", () => {
+    render(
+      <WhyThisNumberDialog
+        {...BASE_PROPS}
+        paceKgPerWeek={null}
+      />,
+    );
+    expect(screen.getByTestId("why-this-number-line-goal").textContent).toContain(
+      "Goal not set",
+    );
+  });
+
+  it("renders the SPECIFIC weight-logging ask when meals are logged but weights aren't", () => {
+    render(
+      <WhyThisNumberDialog
+        {...BASE_PROPS}
+        maintenanceTdee={null}
+        confidence={null}
+        mealLogDays={40}
+        weightLogCount={0}
+      />,
+    );
+    expect(screen.getByTestId("why-this-number-calibrating-ask")).toBeTruthy();
+    expect(
+      screen.getByTestId("why-this-number-calibrating-ask").textContent,
+    ).toContain("Log your weight 3+ times");
+  });
 });

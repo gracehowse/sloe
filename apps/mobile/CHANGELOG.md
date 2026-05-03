@@ -21,6 +21,61 @@
 
 ### Decision
 - `docs/decisions/2026-05-02-stimulant-bump-helper-and-net-carbs-focus-refresh.md`.
+## 2026-05-02 — Why-this-number panel: correct goal label + specific calibrating ask
+
+User report (TestFlight, 2026-05-02):
+- "this is wildly incorrect"
+- "I'm not maintaining" — panel showed `Goal: Maintain` for a Lose user
+- "40 days of logging but still calibrating" — panel said
+  `calibrating — keep logging` with no hint that **weight** logs were
+  the missing input.
+
+### Helper (`src/lib/nutrition/whyThisNumber.ts`)
+- **`paceKgPerWeek` is now `number | null`.** `null` means the user
+  hasn't picked a `plan_pace` preset yet — distinct from explicit
+  `Maintain` (=0). The renderer surfaces null as **"Goal not set"**
+  rather than mislabelling the user as maintaining.
+- **`paceKgPerWeekFromPreset(preset, "lose"|"gain")`** now returns
+  `null` for unknown / null presets (was `0`). This was the upstream
+  source of the "Goal: Maintain" mislabel — both web + mobile callers
+  pass through this helper and were collapsing every unset preset into
+  the maintain branch.
+- **New optional inputs `mealLogDays` / `weightLogCount`.** When TDEE
+  is null and either is supplied, the helper builds a SPECIFIC ask
+  ("Log your weight 3+ times for an accurate maintenance estimate.",
+  "Keep logging meals — we'll calibrate after 7 days.") instead of the
+  generic "calibrating — keep logging" tail. Both can be supplied; the
+  copy lists each missing gate. The ask also lifts into the `summary`
+  sentence so screen readers + the bottom-sheet subhead announce it.
+- **Result row no longer says "no deficit (maintaining)" when goal is
+  unknown.** Renders `—` instead of lying about a deficit when both
+  TDEE and pace are missing.
+
+### Mobile sheet (`apps/mobile/components/today/WhyThisNumberSheet.tsx`)
+- Renders `result.calibratingAsk` as a compact tertiary line under the
+  headline when present (replaces the `Early estimate` qualifier in the
+  no-TDEE branch). Carries the `why-this-number-calibrating-ask`
+  testID for screen-reader and test verification.
+- Caller (`apps/mobile/app/(tabs)/index.tsx`) now passes
+  `mealLogDays = count of byDay entries with ≥1 meal` and
+  `weightLogCount = Object.keys(profileWeightKgByDay).length`.
+
+### Web dialog (`src/app/components/suppr/why-this-number-dialog.tsx`)
+- Mirrors the mobile change: same `data-testid` on the ask paragraph,
+  same conditional ordering. Caller (`NutritionTracker.tsx`) wires
+  `mealLogDays = loggedDays.size` and
+  `weightLogCount = Object.keys(profileWeightKgByDay).length`.
+
+### Tests
+- `tests/unit/whyThisNumber.test.ts` (shared) — pins the new null-pace
+  → "Goal not set" branch, the spec fixture
+  (`weekly_pace_kg=-0.5, meal_log_days=40, weight_logs=0`), and the
+  three calibrating-ask permutations (only weight short, only meals
+  short, both short, both satisfied). Pins that the ask is lifted into
+  `summary` for accessibility.
+- `tests/unit/whyThisNumberDialog.test.tsx` (web) +
+  `apps/mobile/tests/unit/whyThisNumberSheet.test.tsx` (mobile) — pin
+  that `Goal not set` and the specific weight-logging ask both render.
 
 ## 2026-05-02 — F-72: recipe save crash on non-integer macros
 

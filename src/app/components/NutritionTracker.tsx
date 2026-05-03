@@ -2565,7 +2565,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         targetCalories={Math.round(effectiveCalorieTarget)}
         maintenanceTdee={profileMaintenanceTdee}
         confidence={profileMaintenanceConfidence}
-        loggingDays={null}
+        loggingDays={loggedDays.size}
         goal={
           profileGoal === "gain"
             ? "gain"
@@ -2581,6 +2581,13 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
               ? "maintain"
               : "lose",
         )}
+        // Specific calibrating ask: when adaptive TDEE hasn't fired
+        // we tell the user EXACTLY what's missing (3+ weight logs, 7+
+        // meal-log days). Without these the panel falls back to a
+        // generic "keep logging" line that lies after 40 days of meals
+        // with no weights — see PR claude/why-this-number-data-fix.
+        mealLogDays={loggedDays.size}
+        weightLogCount={Object.keys(profileWeightKgByDay).length}
       />
 
       <TodayCompleteDayDialog
