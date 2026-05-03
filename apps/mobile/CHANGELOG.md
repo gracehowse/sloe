@@ -1,5 +1,60 @@
 # Mobile App Changelog
 
+## 2026-05-02 — Settings: make fasting findable + tap-to-configure
+
+User report (TestFlight Build 40 outstanding feedback): typed "fast" in the
+Settings search box → "No matches for 'fast'", with no other in-app way to
+change the fasting window after onboarding. Today screen showed a "Fasting
+— 24h 58m" pill (so fasting was active) but no accessible config path.
+
+### Settings bundle (`apps/mobile/components/settings/SettingsBundleContent.tsx`)
+- New **Intermittent fasting** row in Goals & targets (testID
+  `settings-bundle-fasting-row`), uses lucide `Timer` icon, routes to
+  `/fasting`. Sub copy reflects the user's stored window
+  (`profiles.fasting_window`, e.g. "16:8 window · 16h fast / 8h eat") so
+  the row is honest at a glance without forcing a tap.
+- Bundle now reads `fasting_window` alongside the existing
+  `tracked_macros, week_start_day, target_caffeine_mg, …` profile select,
+  with a regex guard (`/^\d+:\d+$/`) before applying.
+
+### Fasting screen (`apps/mobile/app/fasting.tsx`)
+- **In-app window picker** added — pill row with the 16:8 / 18:6 / 20:4 /
+  14:10 presets (matches the web `FastingTimer.tsx` `WINDOW_PRESETS`
+  exactly so values round-trip cross-platform). Picker is hidden while a
+  fast is active so we don't silently rebase the goal time mid-session.
+- Tapping a preset persists immediately to `profiles.fasting_window` and
+  re-renders the ring + ETA + Goal timestamp against the new fast length.
+- Tests: `apps/mobile/tests/unit/settingsFastingFindable.test.ts`.
+
+### Settings search (`apps/mobile/app/(tabs)/settings.tsx`)
+- New `apps/mobile/lib/settingsSearchIndex.ts` keyword index with entries
+  for Fasting, Daily targets, Notifications, Apple Health (only routable
+  destinations indexed; toggles/modal-rows deferred — tapping a search
+  hit must lead to a real config screen).
+- The screen no longer renders an unconditional "No matches" for any
+  non-empty query. It runs `filterSettingsIndex(trimmedQuery)` and:
+  - empty query → existing canonical bundle body + Sign Out;
+  - non-empty + ≥1 match → list of routable result rows
+    (`testID="settings-search-results"`, each row's
+    `testID="settings-search-result-{id}"` taps through to its route);
+  - non-empty + 0 matches → existing empty-state copy.
+- Keywords for Fasting include "fast", "fasting", "intermittent", "fasting
+  window", "16:8", "18:6", "20:4", "14:10", so the literal user query
+  ("fast") now surfaces the row.
+- Tests: `apps/mobile/tests/unit/settingsSearchIndex.test.ts`,
+  `apps/mobile/tests/unit/settingsFastingFindable.test.ts`. Existing
+  `settingsSearch.test.ts` and `settingsBundleParity.test.ts` updated
+  (parity row added; existing search-gate regex still matches).
+
+### Web parity (`src/app/components/Settings.tsx`)
+- New **Intermittent fasting** link inside the existing Preferences card
+  (`data-testid="settings-fasting-link"`) routing to `/fasting`. Web
+  Settings has no search box and no bundle, so the lightest-touch parity
+  is a single Link; `/fasting` already renders `FastingTimer` which has
+  had the four-preset chip row since launch.
+- No change to `FastingTimer.tsx` itself — its `WINDOW_PRESETS` array is
+  the canonical source the mobile picker mirrors.
+
 ## 2026-05-02 — Recipe wizard step 4: lock Calories field + restore actuals to full text colour
 
 User report (TestFlight, 2026-05-02), step 4 of the create-recipe wizard ("Macros look right?"):

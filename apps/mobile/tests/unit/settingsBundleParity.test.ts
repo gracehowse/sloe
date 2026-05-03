@@ -49,6 +49,13 @@ describe("SettingsBundleContent — parity contract", () => {
       "settings-bundle-week-start-row",
       "settings-bundle-caffeine-row",
       "settings-bundle-alcohol-row",
+      // 2026-05-02 (`claude/fasting-findable-urgent`) — Build 40
+      // feedback: typing "fast" in Settings search returned "No
+      // matches" and the fasting window had no in-app config path
+      // outside onboarding. The Fasting row in Goals & targets is
+      // now the canonical entry to /fasting (which hosts the
+      // window picker matching the web FastingTimer presets).
+      "settings-bundle-fasting-row",
       "settings-bundle-apple-health-row",
       "settings-bundle-notifications-row",
       "settings-bundle-weekly-recap-row",

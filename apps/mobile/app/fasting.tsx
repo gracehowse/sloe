@@ -32,6 +32,15 @@ const CIRC = 2 * Math.PI * R;
 
 const MAX_SESSIONS = 90;
 
+/**
+ * Window presets — kept in sync with the web FastingTimer
+ * (`src/app/components/FastingTimer.tsx`) so the user sees the same
+ * options regardless of platform. Order: 16:8 first (most common),
+ * then ascending fast hours. Stored as the literal `"FF:EE"` string
+ * in `profiles.fasting_window`.
+ */
+const WINDOW_PRESETS = ["16:8", "18:6", "20:4", "14:10"] as const;
+
 function parseFastingWindow(window: string): { fastHours: number; eatHours: number } {
   const parts = window.split(":");
   if (parts.length === 2) {
@@ -117,6 +126,32 @@ export default function FastingScreen() {
     await supabase.from("profiles").update({ fasting_sessions: pruned }).eq("id", userId);
   }, [userId]);
 
+  /**
+   * Change the user's preferred fasting window. Persists to
+   * `profiles.fasting_window` and updates the local state so the
+   * ring + ETA + "Goal" timestamp re-render against the new fast
+   * length immediately. Mirrors the web FastingTimer's `changeWindow`
+   * — both platforms must accept the same preset strings so the
+   * stored value round-trips between web and mobile.
+   *
+   * Pre-2026-05-02 there was no in-app way to change the window
+   * after onboarding (Build 40 feedback: user typed "fast" in
+   * Settings search → "No matches" with no other configure path).
+   * This is the entry point that closes that gap.
+   */
+  const changeWindow = useCallback(
+    (next: string) => {
+      if (next === fastingWindow) return;
+      setFastingWindow(next);
+      if (!userId) return;
+      void supabase
+        .from("profiles")
+        .update({ fasting_window: next })
+        .eq("id", userId);
+    },
+    [fastingWindow, userId],
+  );
+
   const startFast = useCallback(() => {
     const s: FastingSession = { start: new Date().toISOString(), end: null };
     persist([...sessions, s]);
@@ -159,6 +194,34 @@ export default function FastingScreen() {
         label: { fontSize: 11, fontWeight: "600", color: colors.textSecondary, letterSpacing: 1, textAlign: "center" },
         stateLabel: { fontSize: 18, fontWeight: "800", textAlign: "center", marginTop: Spacing.sm },
         windowLabel: { fontSize: 13, color: colors.textSecondary, textAlign: "center", marginTop: 4 },
+        // Window picker — pill row matching the web FastingTimer
+        // preset chips. Compact tabular-nums labels keep the four
+        // pills visually balanced (`16:8` is narrower than `14:10`).
+        presetRow: {
+          flexDirection: "row",
+          gap: 8,
+          marginHorizontal: Spacing.xl,
+          marginBottom: Spacing.lg,
+          justifyContent: "center",
+        },
+        presetPill: {
+          paddingHorizontal: 14,
+          paddingVertical: 8,
+          borderRadius: Radius.md,
+          borderWidth: 1,
+        },
+        presetPillText: {
+          fontSize: 13,
+          fontWeight: "700",
+          fontVariant: ["tabular-nums"],
+        },
+        presetHelp: {
+          fontSize: 12,
+          color: colors.textTertiary,
+          textAlign: "center",
+          marginHorizontal: Spacing.xl,
+          marginBottom: Spacing.lg,
+        },
         btn: {
           marginHorizontal: Spacing.xl,
           paddingVertical: 16,
@@ -266,6 +329,57 @@ export default function FastingScreen() {
           </View>
         )}
       </View>
+
+      {/* Fasting window picker — 2026-05-02 (Build 40 outstanding
+          feedback "Settings search 'fast' → no matches"). Pre-fix the
+          window was set in onboarding and never editable in-app on
+          mobile, despite the web FastingTimer offering 16:8 / 18:6 /
+          20:4 / 14:10 chips since launch. Picker hides while a fast
+          is active so we don't silently rebase the goal time
+          mid-session — finish or end the current fast first. */}
+      {!isFasting && (
+        <>
+          <View style={styles.presetRow} testID="fasting-window-picker">
+            {WINDOW_PRESETS.map((w) => {
+              const selected = w === fastingWindow;
+              return (
+                <Pressable
+                  key={w}
+                  testID={`fasting-window-preset-${w}`}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Set fasting window to ${w}`}
+                  accessibilityState={{ selected }}
+                  onPress={() => changeWindow(w)}
+                  style={[
+                    styles.presetPill,
+                    {
+                      backgroundColor: selected
+                        ? Accent.primary
+                        : colors.card,
+                      borderColor: selected
+                        ? Accent.primary
+                        : colors.border,
+                    },
+                  ]}
+                  hitSlop={6}
+                >
+                  <Text
+                    style={[
+                      styles.presetPillText,
+                      { color: selected ? "#fff" : colors.text },
+                    ]}
+                  >
+                    {w}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          <Text style={styles.presetHelp}>
+            Tap a preset to change your fasting window.
+          </Text>
+        </>
+      )}
 
       {/* Start / End button — 2026-04-30 audit visual-qa P1 #5:
           End Fast was rendered as a full-width destructive red,

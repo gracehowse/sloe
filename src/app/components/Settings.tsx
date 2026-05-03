@@ -1146,6 +1146,28 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
               ))}
             </div>
           </div>
+
+          {/* Intermittent fasting — 2026-05-02 web parity for the
+              `claude/fasting-findable-urgent` mobile fix. The mobile
+              Settings → Goals & targets bundle now has a Fasting row
+              that routes to /fasting; web's Settings is structurally
+              different (no bundle, no search) so the lightest-touch
+              parity is a single Link inside the existing Preferences
+              card. /fasting renders the FastingTimer with the
+              16:8 / 18:6 / 20:4 / 14:10 preset chips already. */}
+          <div>
+            <label className="block mb-3 text-sm font-medium text-foreground">Intermittent fasting</label>
+            <Link
+              href="/fasting"
+              data-testid="settings-fasting-link"
+              className="block w-full text-left px-4 py-3 bg-muted hover:bg-muted/80 rounded-lg transition-all text-foreground"
+            >
+              <p className="font-medium">Fasting timer & window</p>
+              <p className="text-xs mt-0.5 text-muted-foreground">
+                Pick your fast / eat window (16:8, 18:6, 20:4, 14:10), start a fast, see history.
+              </p>
+            </Link>
+          </div>
         </div>
       </div>
 

@@ -8,13 +8,15 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { LogOut, Search } from "lucide-react-native";
+import { useRouter } from "expo-router";
+import { ChevronRight, LogOut, Search } from "lucide-react-native";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
 import { Radius, Spacing } from "@/constants/theme";
 import { YouSubTabHeader } from "@/components/tabs/YouSubTabHeader";
 import { SettingsBundleContent } from "@/components/settings/SettingsBundleContent";
+import { filterSettingsIndex } from "@/lib/settingsSearchIndex";
 
 /**
  * `/(tabs)/settings` — single source of truth for Settings.
@@ -50,17 +52,32 @@ import { SettingsBundleContent } from "@/components/settings/SettingsBundleConte
  */
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { session } = useAuth();
   const userId = session?.user.id ?? null;
   const colors = useThemeColors();
 
   // Wave-2 (2026-04-30 audit-vs-competitors) — Settings search.
   // Empty query shows the canonical bundle body. Non-empty query
-  // hides the bundle and shows the empty-state row. Search is
-  // intentional, not sticky — cleared on tab navigation away by the
-  // parent navigator.
+  // runs the filter against the routable settings index
+  // (`apps/mobile/lib/settingsSearchIndex.ts`); matched rows are
+  // shown directly, no-match falls back to the empty-state copy.
+  // Search is intentional, not sticky — cleared on tab navigation
+  // away by the parent navigator.
+  //
+  // 2026-05-02 (Build 40 outstanding feedback): pre-fix, ANY
+  // non-empty query showed "No matches" because the gate hid the
+  // entire bundle without filtering. Typing "fast" — even though
+  // the user has a fasting pill on Today and a /fasting screen —
+  // returned a dead-end. The keyword index (Fasting, Daily targets,
+  // Notifications, Apple Health, …) closes that gap; a tap on a
+  // search result routes to the destination screen.
   const [searchQuery, setSearchQuery] = useState("");
   const trimmedQuery = searchQuery.trim();
+  const searchResults = useMemo(
+    () => filterSettingsIndex(trimmedQuery),
+    [trimmedQuery],
+  );
 
   const styles = useMemo(
     () =>
@@ -191,6 +208,70 @@ export default function SettingsScreen() {
               />
             </Pressable>
           </>
+        ) : searchResults.length > 0 ? (
+          /* Search results — only routable destinations are indexed
+             today (see `lib/settingsSearchIndex.ts` for the
+             rationale). Each match links straight to a full-screen
+             config surface so a tap from the search result is a
+             real tap-to-configure path, not a dead end. */
+          <View
+            testID="settings-search-results"
+            style={{
+              backgroundColor: colors.card,
+              borderRadius: 14,
+              borderWidth: 1,
+              borderColor: colors.border,
+              overflow: "hidden",
+              marginTop: 8,
+            }}
+          >
+            {searchResults.map((entry, idx) => (
+              <Pressable
+                key={entry.id}
+                testID={`settings-search-result-${entry.id}`}
+                accessibilityRole="button"
+                accessibilityLabel={entry.label}
+                onPress={() => router.push(entry.route as never)}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  paddingVertical: 14,
+                  paddingHorizontal: 14,
+                  borderTopWidth: idx === 0 ? 0 : 1,
+                  borderTopColor: colors.border,
+                }}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={{
+                      fontSize: 14,
+                      fontWeight: "600",
+                      color: colors.text,
+                      lineHeight: 18,
+                    }}
+                  >
+                    {entry.label}
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      color: colors.textSecondary,
+                      marginTop: 2,
+                      lineHeight: 16,
+                    }}
+                    numberOfLines={2}
+                  >
+                    {entry.section} · {entry.sub}
+                  </Text>
+                </View>
+                <ChevronRight
+                  size={16}
+                  color={colors.textTertiary}
+                  strokeWidth={1.75}
+                />
+              </Pressable>
+            ))}
+          </View>
         ) : (
           <Text
             testID="settings-search-empty"
