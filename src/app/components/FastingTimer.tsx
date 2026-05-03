@@ -47,26 +47,35 @@ export function FastingTimer() {
 
   // Load from Supabase
   useEffect(() => {
-    if (!authedUserId) return;
-    supabase
-      .from("profiles")
-      .select("fasting_sessions, fasting_window, fasting_enabled")
-      .eq("id", authedUserId)
-      .maybeSingle()
-      .then(({ data }) => {
+    let cancelled = false;
+    (async () => {
+      if (!authedUserId) {
+        setLoading(false);
+        return;
+      }
+      // try/finally so loading flips false even if supabase throws —
+      // without this the panel sits on a perpetual spinner. Using
+      // async/await rather than the promise-chain `.catch/.finally`
+      // because supabase's PostgrestBuilder returns a PromiseLike,
+      // which has `.then` only.
+      try {
+        const { data } = await supabase
+          .from("profiles")
+          .select("fasting_sessions, fasting_window, fasting_enabled")
+          .eq("id", authedUserId)
+          .maybeSingle();
+        if (cancelled) return;
         if (data) {
           if (Array.isArray(data.fasting_sessions)) setSessions(data.fasting_sessions as FastingSession[]);
           if (typeof data.fasting_window === "string") setFastingWindow(data.fasting_window);
         }
-      })
-      .catch(() => {
+      } catch {
         // Network / RLS failure — leave defaults in place.
-      })
-      .finally(() => {
-        // Always flip loading false so the timer renders even on the
-        // sad path; without this the panel sits on a perpetual spinner.
-        setLoading(false);
-      });
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
   }, [authedUserId]);
 
   // Live timer

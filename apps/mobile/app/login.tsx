@@ -70,26 +70,30 @@ export default function LoginScreen() {
 
   useEffect(() => {
     if (!session) { setOnboardingChecked(false); return; }
-    supabase
-      .from("profiles")
-      .select("onboarding_completed")
-      .eq("id", session.user.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        setNeedsOnboarding(!data?.onboarding_completed);
-      })
-      .catch(() => {
+    let cancelled = false;
+    (async () => {
+      // try/finally so checked flips true even if supabase throws —
+      // without this guarantee a returning user with a restored
+      // session sees a blank screen (line 206 returns null) if the
+      // supabase fetch hangs / rejects.
+      // Async/await rather than `.then().catch().finally()` because
+      // supabase's PostgrestBuilder is a PromiseLike (no .catch).
+      try {
+        const { data } = await supabase
+          .from("profiles")
+          .select("onboarding_completed")
+          .eq("id", session.user.id)
+          .maybeSingle();
+        if (!cancelled) setNeedsOnboarding(!data?.onboarding_completed);
+      } catch {
         // Network / RLS failure — keep `needsOnboarding` at default
         // false so the redirect at line 203 sends the user into the
         // app rather than back through onboarding.
-      })
-      .finally(() => {
-        // Always flip checked true so login.tsx stops returning null
-        // (line 206) — without this guarantee a returning user with a
-        // restored session sees a blank screen if the supabase fetch
-        // hangs / rejects (TypeError: Network request failed).
-        setOnboardingChecked(true);
-      });
+      } finally {
+        if (!cancelled) setOnboardingChecked(true);
+      }
+    })();
+    return () => { cancelled = true; };
   }, [session]);
 
   const styles = useMemo(() => StyleSheet.create({
