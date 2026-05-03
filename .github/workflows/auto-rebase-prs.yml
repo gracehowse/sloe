@@ -1,0 +1,138 @@
+name: auto-rebase-prs
+
+# Daily sweep that rebases every open PR onto current main.
+#
+# Why: on 2026-05-02 we discovered 14 open PRs all sitting 41 commits
+# behind main, predating the v2→canonical onboarding rename. They could
+# not be rebased without manual intent reconstruction. Root cause: PRs
+# were opened in parallel and never refreshed against main as new work
+# landed. This workflow stops that drift before it accumulates.
+#
+# Behaviour:
+# - Runs every 6 hours and on manual dispatch.
+# - For each open PR on a `claude/*` branch from this repo (skips forks):
+#     1. Try `git rebase origin/main`.
+#     2. Clean → force-with-lease push back to the PR branch.
+#     3. Conflict → post a single comment flagging the PR as stale,
+#        label `stale-rebase`, and skip. Repeat-comment guard checks for
+#        the marker before posting again.
+# - Auto-closes any PR labelled `stale-rebase` that has not landed a
+#   new commit in 7 days.
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  rebase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name "auto-rebase-bot"
+          git config user.email "auto-rebase-bot@users.noreply.github.com"
+
+      - name: Rebase + push every open claude/* PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          MARKER="<!-- auto-rebase-bot:stale -->"
+
+          # Same-repo PRs only (no forks). Filter to claude/* head refs.
+          mapfile -t PRS < <(
+            gh pr list \
+              --state open \
+              --limit 100 \
+              --json number,headRefName,headRepositoryOwner,isCrossRepository \
+              --jq '.[] | select(.isCrossRepository==false) | select(.headRefName|startswith("claude/")) | "\(.number)\t\(.headRefName)"'
+          )
+
+          if [ "${#PRS[@]}" -eq 0 ]; then
+            echo "No open claude/* PRs to rebase."
+            exit 0
+          fi
+
+          git fetch origin main --quiet
+
+          for entry in "${PRS[@]}"; do
+            num="${entry%%	*}"
+            ref="${entry##*	}"
+            echo "::group::PR #$num ($ref)"
+
+            git fetch origin "$ref" --quiet || { echo "fetch failed; skipping"; echo "::endgroup::"; continue; }
+            git checkout -B "rebase-$num" "origin/$ref"
+
+            # Already up to date with main? Nothing to do.
+            behind="$(git rev-list --count "HEAD..origin/main" || echo 0)"
+            if [ "$behind" -eq 0 ]; then
+              echo "PR #$num already on top of main."
+              echo "::endgroup::"
+              continue
+            fi
+
+            if git rebase origin/main; then
+              # Clean rebase. Force-with-lease keeps it safe if a human
+              # pushed concurrently.
+              if git push --force-with-lease origin "HEAD:$ref"; then
+                echo "Rebased + pushed PR #$num."
+                # If it was previously flagged stale, drop the label.
+                gh pr edit "$num" --remove-label stale-rebase 2>/dev/null || true
+              else
+                echo "Push refused (lease lost); skipping PR #$num."
+              fi
+            else
+              git rebase --abort || true
+              echo "Conflict on PR #$num."
+
+              # Already flagged?
+              has_marker="$(gh pr view "$num" --json comments --jq "[.comments[].body | select(contains(\"$MARKER\"))] | length")"
+              if [ "${has_marker:-0}" -eq 0 ]; then
+                gh pr comment "$num" --body "$MARKER
+
+This PR could not be rebased onto current \`main\` automatically. It is now flagged as **stale-rebase**. Reasons that block auto-rebase include conflicting edits, deleted files, or moved code paths.
+
+Action: rebuild on top of current \`main\` from intent, or close. PRs left in this state for 7 days will be auto-closed."
+                gh pr edit "$num" --add-label stale-rebase 2>/dev/null || gh label create stale-rebase --color B60205 --description "PR could not be auto-rebased onto main" && gh pr edit "$num" --add-label stale-rebase
+              else
+                echo "PR #$num already flagged stale; skipping comment."
+              fi
+            fi
+
+            echo "::endgroup::"
+          done
+
+  prune-stuck:
+    runs-on: ubuntu-latest
+    needs: rebase
+    steps:
+      - name: Auto-close PRs stuck stale-rebase for 7+ days
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          cutoff="$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || python3 -c "from datetime import datetime,timedelta,timezone; print((datetime.now(timezone.utc)-timedelta(days=7)).strftime('%Y-%m-%dT%H:%M:%SZ'))")"
+          mapfile -t STUCK < <(
+            gh pr list \
+              --state open \
+              --label stale-rebase \
+              --limit 100 \
+              --json number,updatedAt \
+              --jq ".[] | select(.updatedAt < \"$cutoff\") | .number"
+          )
+          for num in "${STUCK[@]}"; do
+            gh pr close "$num" --comment "Auto-closing — flagged stale-rebase for 7+ days without progress. Rebuild from intent on current main if still desired."
+            echo "Closed PR #$num."
+          done
