@@ -16,7 +16,7 @@
  */
 
 import { useState } from "react";
-import { Loader2, MoreVertical, Plus } from "lucide-react";
+import { Bookmark, Loader2, LogIn, MoreVertical, Plus } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -74,7 +74,10 @@ export function SavedMealsTab({
 
   if (!signedIn) {
     return (
-      <EmptyState title="Sign in to save a usual meal for one-tap re-logging." />
+      <EmptyState
+        illustration={<LogIn aria-hidden />}
+        title="Sign in to save a usual meal for one-tap re-logging."
+      />
     );
   }
 
@@ -84,6 +87,7 @@ export function SavedMealsTab({
     // user at the canonical save entry point.
     return (
       <EmptyState
+        illustration={<Bookmark aria-hidden />}
         title={
           <>
             Log 2 or more items in a slot, then tap{" "}

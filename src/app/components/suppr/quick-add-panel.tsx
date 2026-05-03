@@ -16,8 +16,9 @@
  *    with a Sonner toast on Supabase error.
  */
 
+import type * as React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Star, Plus, Loader2 } from "lucide-react";
+import { Clock, History, Star, Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   computeFrequentMeals,
@@ -137,6 +138,18 @@ const EMPTY_COPY: Record<Exclude<Tab, "saved">, { title: string; description?: s
     title: "Nothing to re-log yet.",
     description: "Start logging meals to build your history.",
   },
+};
+
+/**
+ * 2026-05-02 (ui-critic #6) — illustration glyph per non-saved tab.
+ * Each tab gets its own anchor so the empty card communicates which
+ * surface the user is looking at. The `<EmptyState>` primitive renders
+ * these inside a 72px primary-tinted disc.
+ */
+const EMPTY_ILLUSTRATION: Record<Exclude<Tab, "saved">, React.ReactNode> = {
+  favourites: <Star aria-hidden />,
+  frequent: <History aria-hidden />,
+  recent: <Clock aria-hidden />,
 };
 
 export function QuickAddPanel({
@@ -521,6 +534,7 @@ export function QuickAddPanel({
 
           {rows.length === 0 && !(tab === "favourites" && favoritesLoading) && (
             <EmptyState
+              illustration={EMPTY_ILLUSTRATION[tab as Exclude<Tab, "saved">]}
               title={EMPTY_COPY[tab as Exclude<Tab, "saved">].title}
               description={EMPTY_COPY[tab as Exclude<Tab, "saved">].description}
             />

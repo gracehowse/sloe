@@ -1,3 +1,4 @@
+import * as React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -10,6 +11,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { Bookmark, Clock, History, LogIn, Star as StarIcon } from "lucide-react-native";
 import { Accent, Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import Badge from "@/components/Badge";
@@ -141,6 +143,24 @@ const EMPTY_COPY: Record<Exclude<Tab, "saved">, { title: string; description?: s
     description: "Start logging meals to build your history.",
   },
 };
+
+/**
+ * 2026-05-02 (ui-critic #6) — illustration glyph per non-saved tab.
+ * Each tab gets its own anchor so the empty card communicates which
+ * surface the user is looking at. Rendered inside the `<EmptyState>`
+ * primitive's 72pt primary-tinted disc.
+ */
+const ILLUSTRATION_SIZE = 32;
+function emptyIllustrationFor(tab: Exclude<Tab, "saved">): React.ReactNode {
+  switch (tab) {
+    case "favourites":
+      return <StarIcon size={ILLUSTRATION_SIZE} color={Accent.primary} strokeWidth={2.25} />;
+    case "frequent":
+      return <History size={ILLUSTRATION_SIZE} color={Accent.primary} strokeWidth={2.25} />;
+    case "recent":
+      return <Clock size={ILLUSTRATION_SIZE} color={Accent.primary} strokeWidth={2.25} />;
+  }
+}
 
 export function QuickAddPanel({
   byDay,
@@ -541,10 +561,18 @@ export function QuickAddPanel({
             </View>
           )}
           {!savedMealsLoading && !userId && (
-            <EmptyState title="Sign in to save a usual meal for one-tap re-logging." />
+            <EmptyState
+              illustration={
+                <LogIn size={ILLUSTRATION_SIZE} color={Accent.primary} strokeWidth={2.25} />
+              }
+              title="Sign in to save a usual meal for one-tap re-logging."
+            />
           )}
           {!savedMealsLoading && userId && savedMeals.length === 0 && (
             <EmptyState
+              illustration={
+                <Bookmark size={ILLUSTRATION_SIZE} color={Accent.primary} strokeWidth={2.25} />
+              }
               title={`Log 2 or more items in a slot, then tap "Save {Slot} as a meal" to re-log it in one tap.`}
             />
           )}
@@ -643,6 +671,7 @@ export function QuickAddPanel({
           )}
           {rows.length === 0 && !(tab === "favourites" && favoritesLoading) && (
             <EmptyState
+              illustration={emptyIllustrationFor(tab as Exclude<Tab, "saved">)}
               title={EMPTY_COPY[tab as Exclude<Tab, "saved">].title}
               description={EMPTY_COPY[tab as Exclude<Tab, "saved">].description}
             />
