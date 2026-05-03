@@ -1578,6 +1578,18 @@ export async function saveVerifiedIngredients(
       sodium_mg: Math.round(ing.sodiumMg),
       is_verified: rowIsVerified,
       source: ing.source,
+      // 2026-05-02 fix — pre-fix `confidence` was NOT written on the
+      // verify save path, so a row that the user re-verified through
+      // the search picker (which sets in-memory `confidence: 1.0`)
+      // landed back in the DB with the original AI score (e.g. 0.69).
+      // The recipe-detail row UI then kept rendering "69% · Partial
+      // match" + a Verify CTA forever. Persisting the live confidence
+      // closes the loop so the row's stored state agrees with the
+      // user's resolution.
+      confidence:
+        typeof ing.confidence === "number" && Number.isFinite(ing.confidence)
+          ? ing.confidence
+          : null,
       // Allow caller to clear an override by setting `overrideMacros` to
       // undefined on a dirty row — we pass `null` to wipe the jsonb column.
       override_macros: ing.overrideMacros ?? null,

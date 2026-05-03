@@ -80,6 +80,11 @@ import {
   normaliseAllergenIds,
 } from "../../../../src/constants/regulatedAllergens";
 import { ingredientVerifyNeedsReview } from "../../../../src/lib/nutrition/verifyConfidencePolicy";
+import { formatIngredientAmountUnit } from "../../../../src/lib/recipe-ingredients/formatIngredientAmount";
+import {
+  deriveIngredientVerificationTier,
+  ingredientShouldShowVerifyCta,
+} from "../../../../src/lib/recipe-ingredients/ingredientVerificationStatus";
 import { wouldCoerceMacros } from "../../../../src/lib/nutrition/coerceRecipeMacrosForPlanning";
 import { carbsLabel, netCarbsForRow } from "../../../../src/lib/nutrition/netCarbs";
 import { RecipeNotesCard } from "../../components/RecipeNotesCard";
@@ -171,6 +176,16 @@ type Ingredient = {
   sodium_mg?: number;
   confidence?: number | null;
   source?: string | null;
+  /**
+   * 2026-05-02 fix — DB-level verified flag. The recipe-detail row UI
+   * was rendering "Partial match" + Verify CTA forever for rows that
+   * the user had already verified, because the per-row label was
+   * derived from the stale numeric `confidence` column alone. Reading
+   * `is_verified` lets the UI trust the user's resolution (and the
+   * trusted-source fallback in `deriveIngredientVerificationTier`
+   * picks up rows where `is_verified` was missed).
+   */
+  is_verified?: boolean | null;
   /** T19 Path B (2026-04-25) — kept on the row even when macros are zeroed
       under Basic-tier ToS, so the recipe-detail render path can detect a
       zeroed FatSecret cache and trigger a runtime re-fetch. */
@@ -419,7 +434,7 @@ export default function RecipeDetailScreen() {
       if (opts.reloadAfter && opts.persist && !persistHadError) {
         let reloadRes = await supabase
           .from("recipe_ingredients")
-          .select("name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, confidence, source, fatsecret_food_id")
+          .select("name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, confidence, source, is_verified, fatsecret_food_id")
           .eq("recipe_id", recipeId)
           .order("created_at", { ascending: true });
         if (reloadRes.error && String(reloadRes.error.message).includes("column")) {
@@ -522,7 +537,7 @@ export default function RecipeDetailScreen() {
       // Try with confidence/source columns, fall back without if columns don't exist yet
       let ingRes = await supabase
         .from("recipe_ingredients")
-        .select("name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, confidence, source")
+        .select("name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, confidence, source, is_verified")
         .eq("recipe_id", recipeId);
       if (ingRes.error && String(ingRes.error.message).includes("column")) {
         ingRes = await supabase
@@ -1974,12 +1989,44 @@ export default function RecipeDetailScreen() {
 
                 const conf = ing.confidence != null ? Number(ing.confidence) : null;
                 const confPct = conf != null && Number.isFinite(conf) ? Math.round(conf * 100) : null;
-                const confColor = confPct != null
-                  ? confPct >= 75 ? Accent.success : confPct >= 50 ? Accent.warning : Accent.destructive
-                  : colors.textTertiary;
-                const confLabel = confPct != null
-                  ? confPct >= 75 ? "Verified" : confPct >= 50 ? "Partial match" : "Estimated"
-                  : "Unverified";
+                /**
+                 * 2026-05-02 fix — derive label/dot from `is_verified`
+                 * + source first, falling back to confidence buckets.
+                 * Pre-fix, the row trusted only the numeric `confidence`
+                 * column; once a user manually verified a row through
+                 * the verify flow we wrote `is_verified=true` but did
+                 * NOT update `confidence`, so a row at the original AI
+                 * 0.69 score kept rendering "Partial match" + Verify
+                 * CTA forever. Shared helper keeps web in sync.
+                 */
+                const verificationTier = deriveIngredientVerificationTier({
+                  isVerified: ing.is_verified ?? null,
+                  confidence: conf,
+                  source: ing.source ?? null,
+                });
+                const showVerifyCta = ingredientShouldShowVerifyCta(verificationTier);
+                const tierColor =
+                  verificationTier === "verified"
+                    ? Accent.success
+                    : verificationTier === "partial"
+                      ? Accent.warning
+                      : verificationTier === "estimated"
+                        ? Accent.destructive
+                        : colors.textTertiary;
+                const tierLabel =
+                  verificationTier === "verified"
+                    ? "Verified"
+                    : verificationTier === "partial"
+                      ? "Partial match"
+                      : verificationTier === "estimated"
+                        ? "Estimated"
+                        : "Unverified";
+                /** 2026-05-02 fix — render the inline "%·label" only
+                    when the row hasn't been verified yet. A verified
+                    row should display "Verified" without contradicting
+                    the user with the original AI confidence number. */
+                const showInlineConfidence =
+                  verificationTier !== "verified" && confPct != null;
                 const sourceLabel = ing.source ?? "Local estimate";
 
                 return (
@@ -1988,26 +2035,24 @@ export default function RecipeDetailScreen() {
                     onPress={() => {
                       Alert.alert(
                         `${decodeEntities(ing.name)}`,
-                        `Confidence: ${confPct != null ? `${confPct}% — ${confLabel}` : "Not scored"}\n` +
+                        `Status: ${tierLabel}${confPct != null ? ` (${confPct}%)` : ""}\n` +
                         `Source: ${sourceLabel}\n\n` +
                         `${Math.round(rowCal)} kcal · P ${Math.round(rowPro)}g · C ${Math.round(rowCarbs)}g · F ${Math.round(rowFat)}g\n\n` +
                         (!ingredientsHaveNutrition
                           ? recipe != null && (recipe.calories ?? 0) > 0
                             ? "These per-line macros are locally estimated from the ingredient text and scaled to the recipe’s calorie total. Use the Nutrition tab for full-dish aggregates."
                             : "This recipe doesn't have per-ingredient nutrition in the database — use the Nutrition tab for recipe-level totals."
-                          : confPct != null && confPct < 75
-                          ? "This ingredient had a weaker match. The macros may be approximate. You can edit this recipe to improve accuracy."
-                          : confPct != null
-                            ? "This ingredient was matched to a verified food database entry."
+                          : verificationTier === "verified"
+                          ? "This ingredient was matched to a verified food database entry."
+                          : verificationTier === "partial" || verificationTier === "estimated"
+                            ? "This ingredient had a weaker match. The macros may be approximate. Tap Verify → to refine it."
                             : "This ingredient was estimated from our staples database and hasn't been verified against external sources."),
                       );
                     }}
                     style={styles.ingredientRowNew}
                   >
                     {/* Confidence dot */}
-                    {confPct != null && (
-                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: confColor, marginTop: 6, marginRight: 8 }} />
-                    )}
+                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: tierColor, marginTop: 6, marginRight: 8 }} />
                     <View style={styles.ingredientNameAndCal}>
                       <View style={styles.ingredientNameRow}>
                         <Text style={styles.ingredientName}>{decodeEntities(ing.name)}</Text>
@@ -2025,24 +2070,43 @@ export default function RecipeDetailScreen() {
                         {/* P2-30: also suppress the "as needed" parser
                             fallback when no amount was extracted —
                             it's not a real instruction, it's a parser
-                            shrug. */}
+                            shrug.
+
+                            2026-05-02 fix — defensive amount/unit
+                            formatter dedupes the "1 1 breast" double-
+                            count when USDA/FatSecret persists a
+                            count-prefixed portion label like
+                            "1 breast" into the unit column. */}
                         {ing.amount != null ? (
                           <Text style={styles.ingredientQty}>
-                            {`${Math.round(ing.amount * portionMultiplier * 100) / 100} ${ing.unit ?? ""}`}
+                            {formatIngredientAmountUnit(
+                              Math.round(ing.amount * portionMultiplier * 100) / 100,
+                              ing.unit,
+                            )}
                           </Text>
                         ) : null}
-                        {confPct != null && (
-                          <Text style={{ fontSize: 10, color: confColor, fontWeight: "600" }}>
-                            {/* 2026-04-26 polish (round 2): pre-fix the
-                                row showed bare "35%" / "98%" with no
-                                indication of what the percentage meant.
-                                Tapping opens a full explanation but the
-                                inline label is the at-a-glance signal.
-                                Verified ≥75% / Partial 50–74% / Estimated
-                                <50%. */}
-                            {confPct}% · {confLabel}
+                        {/* 2026-04-26 polish (round 2): pre-fix the
+                            row showed bare "35%" / "98%" with no
+                            indication of what the percentage meant.
+                            Tapping opens a full explanation but the
+                            inline label is the at-a-glance signal.
+
+                            2026-05-02 — verified rows render the bare
+                            "Verified" tier label so we never expose
+                            the stale original AI confidence number
+                            after the user has resolved the row. Non-
+                            verified rows keep the "%·label" form so
+                            the user can see why the row needs
+                            attention. */}
+                        {verificationTier === "verified" ? (
+                          <Text style={{ fontSize: 10, color: tierColor, fontWeight: "600" }}>
+                            {tierLabel}
                           </Text>
-                        )}
+                        ) : showInlineConfidence ? (
+                          <Text style={{ fontSize: 10, color: tierColor, fontWeight: "600" }}>
+                            {confPct}% · {tierLabel}
+                          </Text>
+                        ) : null}
                         {/* Phase 4 / B3.X — SourceDot per ingredient row
                             (D-2026-04-27-16). Sized 6pt to match the
                             spec §1.6 row treatment. */}
@@ -2057,11 +2121,15 @@ export default function RecipeDetailScreen() {
                             secondary text-button takes the user straight
                             to /recipe/verify so they can resolve the
                             row without going through the explainer
-                            first. Surfaces only when the row is below
-                            the verified threshold (confPct < 75 or
-                            unverified). Production design spec §1.6 +
-                            Surface H §Ingredients. */}
-                        {(confPct == null || confPct < 75) && recipeId ? (
+                            first. Production design spec §1.6 +
+                            Surface H §Ingredients.
+
+                            2026-05-02 — visibility now follows the
+                            shared verification tier rather than a raw
+                            confidence threshold so once a row is
+                            verified (via `is_verified` or trusted
+                            `source`) the CTA disappears for good. */}
+                        {showVerifyCta && recipeId ? (
                           <Pressable
                             accessibilityRole="link"
                             accessibilityLabel={`Verify ${ing.name}`}
