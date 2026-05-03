@@ -77,6 +77,17 @@ export default function LoginScreen() {
       .maybeSingle()
       .then(({ data }) => {
         setNeedsOnboarding(!data?.onboarding_completed);
+      })
+      .catch(() => {
+        // Network / RLS failure — keep `needsOnboarding` at default
+        // false so the redirect at line 203 sends the user into the
+        // app rather than back through onboarding.
+      })
+      .finally(() => {
+        // Always flip checked true so login.tsx stops returning null
+        // (line 206) — without this guarantee a returning user with a
+        // restored session sees a blank screen if the supabase fetch
+        // hangs / rejects (TypeError: Network request failed).
         setOnboardingChecked(true);
       });
   }, [session]);

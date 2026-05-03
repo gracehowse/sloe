@@ -197,8 +197,13 @@ export default function NotificationsScreen() {
     let cancelled = false;
     (async () => {
       setLoading(true);
-      await loadInbox();
-      if (!cancelled) setLoading(false);
+      // try/finally so loading flips false even if loadInbox throws —
+      // see app/(tabs)/_layout.tsx for the same pattern + rationale.
+      try {
+        await loadInbox();
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     })();
     return () => {
       cancelled = true;

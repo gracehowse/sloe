@@ -58,6 +58,13 @@ export function FastingTimer() {
           if (Array.isArray(data.fasting_sessions)) setSessions(data.fasting_sessions as FastingSession[]);
           if (typeof data.fasting_window === "string") setFastingWindow(data.fasting_window);
         }
+      })
+      .catch(() => {
+        // Network / RLS failure — leave defaults in place.
+      })
+      .finally(() => {
+        // Always flip loading false so the timer renders even on the
+        // sad path; without this the panel sits on a perpetual spinner.
         setLoading(false);
       });
   }, [authedUserId]);
