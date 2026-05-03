@@ -63,6 +63,18 @@ export interface TodayDashboardMacroTilesProps {
    *  macro tiles". Document divergence in
    *  `docs/ux/teardown-2026-04-28-daily-loop.md` execution log. */
   nutrientRows?: ReadonlyArray<{ key: string; label: string; value: string }>;
+  /** When provided, renders a "View all N nutrients" pill below the
+   *  inline `nutrientRows` that opens the host-owned full-nutrient
+   *  panel sheet. Wired in 2026-05-02 (revert PR #30) so the
+   *  Cronometer-parity panel from PR #47 still has an entry point on
+   *  web after the TodayMicrosWidget was removed from Today's canvas.
+   *  Mirrors the mobile "Nutrients" link → `FullNutrientPanelSheet`
+   *  flow. */
+  onPressViewAllNutrients?: () => void;
+  /** The total nutrient count surfaced by the panel — used in the
+   *  CTA copy ("View all 34 nutrients"). Defaults to a generic
+   *  "View all nutrients" when omitted. */
+  viewAllNutrientsCount?: number;
 }
 
 type TileMeta = {
@@ -213,7 +225,7 @@ function buildMacroTile(
 }
 
 export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
-  const { trackedMacros, onAddWaterMl, nutrientRows } = props;
+  const { trackedMacros, onAddWaterMl, nutrientRows, onPressViewAllNutrients, viewAllNutrientsCount } = props;
 
   return (
     <div className="mb-4">
@@ -314,6 +326,29 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
             </div>
           ))}
         </div>
+        {/* "View all N nutrients" CTA pill — opens the
+            FullNutrientPanelSheet (PR #47) on web. Wired 2026-05-02
+            (revert PR #30) so the rich Cronometer-parity panel still
+            has an entry point after the TodayMicrosWidget was removed.
+            Mirrors mobile's "Nutrients" link → panel-sheet flow. */}
+        {onPressViewAllNutrients ? (
+          <button
+            type="button"
+            onClick={onPressViewAllNutrients}
+            data-testid="today-view-all-nutrients-cta"
+            aria-label={
+              viewAllNutrientsCount
+                ? `View all ${viewAllNutrientsCount} nutrients`
+                : "View all nutrients"
+            }
+            className="mt-3 inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1.5 text-[12px] font-semibold text-foreground hover:bg-muted/50 transition-colors"
+          >
+            {viewAllNutrientsCount
+              ? `View all ${viewAllNutrientsCount} nutrients`
+              : "View all nutrients"}
+            <span aria-hidden className="text-muted-foreground">›</span>
+          </button>
+        ) : null}
       </div>
     ) : null}
     </div>

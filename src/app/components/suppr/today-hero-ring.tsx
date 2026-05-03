@@ -5,7 +5,7 @@ import { HelpCircle } from "lucide-react";
 import { DailyRing, type CalorieRingDisplayMode } from "./daily-ring";
 
 /**
- * TodayHeroRing — Today-screen calorie ring wrapper + display-mode toggle.
+ * TodayHeroRing — Today-screen calorie ring wrapper.
  *
  * Extracted from `NutritionTracker.tsx` (audit H3, 2026-04-18). This is
  * a pure presentation wrapper — it holds no state of its own beyond what
@@ -13,6 +13,19 @@ import { DailyRing, type CalorieRingDisplayMode } from "./daily-ring";
  * change still flows through the composition root.
  *
  * Mirrors the mobile `TodayHeroRing` wrapper around `CalorieRing`.
+ *
+ * 2026-05-02 — segmented "Remaining / Consumed" chips removed for
+ * mobile-web parity after user feedback that the chip control on
+ * mobile felt redundant. Web is touch-driven on mobile-web and
+ * mouse-driven on desktop; in both cases the canonical mode toggle
+ * lives in the ring's own click affordance + the existing power-user
+ * gesture (long-press on touch, click-and-hold on desktop). The chip
+ * control did not survive the same UX bar that took it off mobile.
+ * See `docs/decisions/2026-05-02-revert-today-ui-changes.md`.
+ *
+ * `onDisplayModeChange` is still threaded through the host so the
+ * tap-on-ring path can flip the mode if the host wires it; today the
+ * host (NutritionTracker) only flips on explicit gesture, not tap.
  */
 export interface TodayHeroRingProps {
   consumed: number;
@@ -23,11 +36,14 @@ export interface TodayHeroRingProps {
   expanded: boolean;
   onToggleExpanded: () => void;
   displayMode: CalorieRingDisplayMode;
+  /** Reserved for the long-press / click-and-hold gesture handlers
+   *  inside `DailyRing`. Wired through the host so any future click
+   *  affordance has a single mutation point. */
   onDisplayModeChange: (mode: CalorieRingDisplayMode) => void;
 
   /** Audit gap #10 transparency moat (2026-05-01). When provided, a
-   *  small "Why this number?" pill renders below the ring + mode
-   *  toggle; tapping it opens the host-owned `WhyThisNumberDialog`. */
+   *  small "Why this number?" pill renders below the ring; tapping it
+   *  opens the host-owned `WhyThisNumberDialog`. */
   onPressWhy?: () => void;
 }
 
@@ -40,7 +56,7 @@ export function TodayHeroRing({
   expanded,
   onToggleExpanded,
   displayMode,
-  onDisplayModeChange,
+  onDisplayModeChange: _onDisplayModeChange,
   onPressWhy,
 }: TodayHeroRingProps) {
   return (
@@ -57,33 +73,6 @@ export function TodayHeroRing({
         onToggle={onToggleExpanded}
         displayMode={displayMode}
       />
-      {/* Helper caption removed for mobile-web parity (2026-04-28) — mobile
-          dropped this string at F-47 because "Click" is the wrong verb on a
-          touch screen and the ring's affordance is already self-evident. */}
-      {/* Mode toggle — prototype port (2026-04-20, mobile parity):
-          subtle tint instead of a heavy primary fill so the control
-          matches the ring's understated look (see ui-critic note on
-          mobile's 28x28 picker in `TodayHero.tsx`). Active chip reads
-          as foreground-on-card; inactive chip inherits muted. */}
-      <div
-        className="flex justify-center gap-0.5 mt-2 rounded-lg bg-muted/50 p-0.5"
-        role="group"
-        aria-label="Calorie ring display"
-      >
-        {(["remaining", "consumed"] as const).map((mode) => (
-          <button
-            key={mode}
-            type="button"
-            onClick={() => onDisplayModeChange(mode)}
-            aria-pressed={displayMode === mode}
-            className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide transition-colors ${
-              displayMode === mode ? "bg-card text-foreground" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {mode === "remaining" ? "Remaining" : "Consumed"}
-          </button>
-        ))}
-      </div>
       {/* Audit gap #10 transparency moat (2026-05-01) — small "Why this
           number?" pill that opens the WhyThisNumberDialog. Sized so it
           doesn't fight the ring tap target. */}

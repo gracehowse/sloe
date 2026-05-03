@@ -124,8 +124,8 @@ function formatAmount(amount: number, unit: RowSpec["unit"], decimal: boolean): 
  * for those even when individual meal `micros` maps don't carry them.
  *
  * `fiberG` likewise comes from the dedicated `fiberG` column path
- * (see `mealContributedFiberG`) so the panel agrees with the
- * `TodayMicrosWidget` headline tile.
+ * (see `mealContributedFiberG`) so the panel agrees with the macro
+ * tile shown on Today.
  *
  * Everything else is read out of `microSum` — the result of
  * `sumMicrosFromLoggedMeals(meals)`.

@@ -118,7 +118,14 @@ function DesktopHeroStats({
           a subtle `bg-muted/50` tint and no border — mirrors mobile's
           ui-critic fix where the bordered circle was visually
           overpowering the ring. The active chip keeps a light
-          foreground tint so the mode is still scannable. */}
+          foreground tint so the mode is still scannable.
+          Intentional desktop-vs-mobile divergence (2026-05-02 revert
+          of #50): mobile + mobile-web removed the chip control
+          because the ring's long-press already covers the toggle and
+          the chip felt redundant. Desktop is mouse-driven with no
+          long-press equivalent, so the chip stays as the canonical
+          mode switch on viewports >= md. See
+          `docs/decisions/2026-05-02-revert-today-ui-changes.md`. */}
       <div
         className="absolute top-2.5 right-2.5 inline-flex rounded-md bg-muted/50 p-0.5"
         role="group"

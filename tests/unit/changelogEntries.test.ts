@@ -31,11 +31,12 @@ import {
 describe("changelog/entries", () => {
   it("getLatestChangelog returns the highest build number that has items (skips placeholders)", () => {
     const latest = getLatestChangelog();
-    // v3 redesign), and PR #30 + PR #47 + PR #31 jointly built out
-    // build 12 (Today micros widget + full-nutrient panel + "Why this
-    // number?" tap-to-explain). Build 12 is now the latest
-    // user-visible entry. When a future build N+1 ships items, bump
-    // the expectation here in lockstep.
+    // 2026-05-02: PR #30 (Today micros 4-tile widget) was reverted
+    // per user feedback, but PR #47 (full-nutrient panel) and PR #31
+    // ("Why this number?") still ship build 12 with two user-facing
+    // bullets. Build 12 is therefore the latest user-visible entry.
+    // When a future build N+1 ships items, bump the expectation here
+    // in lockstep.
     expect(latest.buildNumber).toBe(12);
     expect(latest.items.length).toBeGreaterThan(0);
   });
