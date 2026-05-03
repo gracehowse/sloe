@@ -1,5 +1,58 @@
 # Mobile App Changelog
 
+## 2026-05-02 — EmptyState: 72pt disc + headline/body type ladder + optional CTA
+
+ui-critic finding #6 (P1). The pre-2026-05-02 `<EmptyState>` primitive
+surfaced empty tabs as 13pt bold over a tiny gap — too quiet to read
+as a state, and visually indistinguishable from a row separator. Lifted
+on both platforms (mobile + web) to a richer composition while staying
+backward compatible.
+
+### What changed
+- `apps/mobile/components/EmptyState.tsx` (and web mirror
+  `src/app/components/suppr/empty-state.tsx`) gained three additive
+  props:
+  - `illustration?: ReactNode` — optional ~32pt lucide glyph rendered
+    inside a 72pt circular `Accent.primary + "10"` (mobile) /
+    `bg-primary/10` (web) tinted disc.
+  - `cta?: ReactNode` — optional primary CTA below the description.
+    Aliases the legacy `action` prop; `cta` wins if both are passed.
+  - Title routes through `Type.headline` (17pt / 22 lh) on mobile and
+    `text-[17px] font-semibold leading-[22px]` on web.
+  - Description routes through `Type.body` (14pt / 20 lh) on mobile and
+    `text-sm leading-5 text-muted-foreground` on web.
+- The disc is **only rendered when `illustration` is set** — no empty
+  ring on legacy callers.
+- `icon`, `title`, `description`, `action`, `style`, `titleStyle`,
+  `descriptionStyle` and `className` (web) keep working unchanged. A
+  caller of `<EmptyState title="..." />` renders identically to before
+  except for the title type-ladder bump.
+
+### Call sites updated
+- `apps/mobile/components/QuickAddPanel.tsx` and
+  `src/app/components/suppr/quick-add-panel.tsx`: Favourites tab gets
+  `Star`, Frequent gets `History`, Recent gets `Clock`.
+- `apps/mobile/components/QuickAddPanel.tsx` saved-meals branch and
+  `src/app/components/suppr/saved-meals-tab.tsx`: signed-out empty
+  state gets `LogIn`; no-saved-meals empty state gets `Bookmark`.
+
+### Tests
+- `apps/mobile/tests/unit/emptyStateUpgrade.test.tsx` — 7 RTL tests
+  pinning back-compat, disc-only-when-illustration, 72pt size + 6.25%
+  primary tint, headline/body type ladder, all four slots together,
+  and CTA `onPress` wiring.
+- `tests/unit/emptyStateUpgrade.test.tsx` — 6 web mirror tests pinning
+  back-compat, disc shape (`size-[72px] rounded-full bg-primary/10`),
+  17px / leading-[22px] title, `text-sm` description, all four slots
+  together, and `cta`-vs-`action` precedence.
+
+### Parity
+Mobile and web ship the same prop contract, the same empty-state copy
+(unchanged from before), and the same illustration glyphs per surface.
+Disc tint differs numerically — mobile = 6.25% alpha (`+ "10"` hex),
+web = 10% alpha (`bg-primary/10` Tailwind) — visually similar enough
+that any drift is captured by visual-qa, not numeric tests.
+
 ## 2026-05-02 — parity: web "All nutrients" + LogSheet meals empty state
 
 User feedback: (1) web's "All nutrients" panel was the desired pattern and

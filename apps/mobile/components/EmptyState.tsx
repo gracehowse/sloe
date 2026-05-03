@@ -1,28 +1,55 @@
 import * as React from "react";
 import { StyleSheet, Text, View, type TextStyle, type ViewStyle } from "react-native";
-import { Spacing } from "@/constants/theme";
+import { Accent, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
  * Mobile `<EmptyState />` — RN mirror of web
  * `src/app/components/suppr/empty-state.tsx` (audit M5, 2026-04-18).
  *
- * Prop contract mirrors the web primitive:
- *  - `icon`: optional slot (usually an `<Ionicons />`).
- *  - `title`: short title — typically a plain string, but accepts any
- *    React node so callers can preserve existing inline emphasis.
- *  - `description`: optional multi-sentence factual description.
- *  - `action`: optional action node (usually a `Pressable`).
+ * 2026-05-02 (ui-critic finding #6, P1) — type ladder + illustration
+ * upgrade. The previous primitive surfaced empty tabs as 13pt bold
+ * over a tiny gap — too quiet to read as a state. The new primitive:
+ *   - Optional `illustration` slot rendered inside a 72pt circular
+ *     `Accent.primary + "10"` (6.25% alpha) primary-tinted disc.
+ *   - Title routed through `Type.headline` (17pt / 22 lh).
+ *   - Description routed through `Type.body` (14pt / 20 lh).
+ *   - 12pt rhythm between elements; 20pt paddingTop/Bottom.
+ *   - Optional `cta` prop (alias for `action`) — primary button below.
  *
- * Copy stays at the call site — the component enforces no rules beyond
- * a factual, non-shame voice.
+ * Prop contract stays backward compatible — `icon`, `title`,
+ * `description`, `action`, `style`, `titleStyle`, `descriptionStyle`
+ * still accepted. New props are additive: a caller of
+ * `<EmptyState title="..." />` still renders correctly.
+ *
+ * Copy stays at the call site — the component enforces no rules
+ * beyond a factual, non-shame voice.
  */
 
+/** Diameter (and tinted background size) of the optional illustration
+ *  disc. 72pt is the production design spec §1.5 hero-icon container
+ *  size — large enough to read as a state, small enough not to
+ *  dominate the parent surface. */
+const ILLUSTRATION_DISC = 72;
+
 export interface EmptyStateProps {
+  /** Backwards-compat — small leading icon rendered above the title.
+   *  New callers should prefer `illustration` for the 72pt disc. */
   icon?: React.ReactNode;
+  /** Optional ~32pt lucide glyph rendered inside a 72pt
+   *  `Accent.primary + "10"` tinted disc. */
+  illustration?: React.ReactNode;
+  /** Short title — typically a plain string, but accepts any React
+   *  node so callers can preserve existing inline emphasis. */
   title: React.ReactNode;
+  /** Optional multi-sentence factual description. */
   description?: React.ReactNode;
+  /** Backwards-compat alias for `cta`. Either prop renders the same
+   *  slot — the component prefers `cta` if both are passed. */
   action?: React.ReactNode;
+  /** Optional primary CTA below the description. Same slot as
+   *  `action`; alias added 2026-05-02 for parity with the web spec. */
+  cta?: React.ReactNode;
   style?: ViewStyle;
   /** Optional override for the title text style (e.g. for callers that
    *  need a different size). Applied after the default style. */
@@ -33,9 +60,11 @@ export interface EmptyStateProps {
 
 export function EmptyState({
   icon,
+  illustration,
   title,
   description,
   action,
+  cta,
   style,
   titleStyle,
   descriptionStyle,
@@ -43,9 +72,28 @@ export function EmptyState({
   const colors = useThemeColors();
   const isStringTitle = typeof title === "string";
   const isStringDescription = typeof description === "string";
+  // `cta` wins when both are passed — keeps the API forward-looking
+  // while preserving every legacy `action`-only call site.
+  const ctaNode = cta ?? action;
   return (
     <View style={[styles.container, style]} accessibilityRole="summary">
-      {icon ? <View style={styles.icon}>{icon}</View> : null}
+      {illustration ? (
+        <View
+          style={[
+            styles.illustrationDisc,
+            // Literal `+ "10"` concatenation — the trailing "10" is the
+            // alpha channel hex (6.25% on mobile; web uses
+            // `bg-primary/10` which is the Tailwind 10% alpha). Visual
+            // parity is close enough that any drift is captured by
+            // visual-qa, not numeric tests.
+            { backgroundColor: Accent.primary + "10" },
+          ]}
+        >
+          {illustration}
+        </View>
+      ) : icon ? (
+        <View style={styles.icon}>{icon}</View>
+      ) : null}
       {isStringTitle ? (
         <Text
           style={[
@@ -74,7 +122,7 @@ export function EmptyState({
           <View style={styles.descriptionWrap}>{description}</View>
         )
       ) : null}
-      {action ? <View style={styles.action}>{action}</View> : null}
+      {ctaNode ? <View style={styles.action}>{ctaNode}</View> : null}
     </View>
   );
 }
@@ -83,30 +131,37 @@ const styles = StyleSheet.create({
   container: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: Spacing.xl,
+    paddingTop: Spacing.xl,
+    paddingBottom: Spacing.xl,
     paddingHorizontal: Spacing.lg,
-    gap: 6,
+    gap: Spacing.md,
   },
   icon: {
     marginBottom: 4,
   },
+  illustrationDisc: {
+    width: ILLUSTRATION_DISC,
+    height: ILLUSTRATION_DISC,
+    borderRadius: ILLUSTRATION_DISC / 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   title: {
-    fontSize: 13,
-    fontWeight: "600",
+    ...Type.headline,
     textAlign: "center",
   },
   titleWrap: {
     alignItems: "center",
   },
   description: {
-    fontSize: 12,
+    ...Type.body,
     textAlign: "center",
   },
   descriptionWrap: {
     alignItems: "center",
   },
   action: {
-    marginTop: 4,
+    marginTop: Spacing.sm,
   },
 });
 
