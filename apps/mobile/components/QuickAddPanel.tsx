@@ -10,9 +10,16 @@ import {
   View,
   type ViewStyle,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { Bookmark, Clock, History, LogIn, Star as StarIcon } from "lucide-react-native";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import {
+  Bookmark,
+  Clock,
+  History,
+  LogIn,
+  MoreVertical,
+  PlusCircle,
+  Star as StarIcon,
+} from "lucide-react-native";
+import { Accent, IconSize, Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import Badge from "@/components/Badge";
 import { SourceDot } from "@/components/ui/SourceDot";
@@ -644,13 +651,17 @@ export function QuickAddPanel({
                     accessibilityLabel={`More actions for ${meal.name}`}
                     style={{ paddingHorizontal: 6 }}
                   >
-                    <Ionicons
-                      name="ellipsis-vertical"
-                      size={18}
+                    <MoreVertical
+                      size={IconSize.lg}
                       color={colors.textSecondary}
+                      strokeWidth={2.25}
                     />
                   </Pressable>
-                  <Ionicons name="add-circle" size={24} color={Accent.primary} />
+                  <PlusCircle
+                    size={IconSize.hero}
+                    color={Accent.primary}
+                    strokeWidth={2.25}
+                  />
                 </Pressable>
               );
             })}
@@ -746,13 +757,18 @@ export function QuickAddPanel({
                   accessibilityState={{ selected: starred, disabled: pending }}
                   style={{ paddingHorizontal: 6, opacity: pending ? 0.5 : 1 }}
                 >
-                  <Ionicons
-                    name={starred ? "star" : "star-outline"}
+                  <StarIcon
                     size={22}
                     color={starred ? "#f59e0b" : colors.textSecondary}
+                    fill={starred ? "#f59e0b" : "transparent"}
+                    strokeWidth={2.25}
                   />
                 </Pressable>
-                <Ionicons name="add-circle" size={24} color={Accent.primary} />
+                <PlusCircle
+                  size={IconSize.hero}
+                  color={Accent.primary}
+                  strokeWidth={2.25}
+                />
               </Pressable>
             );
           })}
