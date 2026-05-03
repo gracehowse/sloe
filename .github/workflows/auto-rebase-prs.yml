@@ -57,7 +57,7 @@ jobs:
               --state open \
               --limit 100 \
               --json number,headRefName,headRepositoryOwner,isCrossRepository \
-              --jq '.[] | select(.isCrossRepository==false) | select(.headRefName|startswith("claude/")) | "\(.number)\t\(.headRefName)"'
+              --jq '.[] | select(.isCrossRepository==false) | select(.headRefName|startswith("claude/")) | "\(.number)|\(.headRefName)"'
           )
 
           if [ "${#PRS[@]}" -eq 0 ]; then
@@ -68,8 +68,8 @@ jobs:
           git fetch origin main --quiet
 
           for entry in "${PRS[@]}"; do
-            num="${entry%%	*}"
-            ref="${entry##*	}"
+            num="${entry%%|*}"
+            ref="${entry##*|}"
             echo "::group::PR #$num ($ref)"
 
             git fetch origin "$ref" --quiet || { echo "fetch failed; skipping"; echo "::endgroup::"; continue; }
