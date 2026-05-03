@@ -45,6 +45,18 @@ For ingredient matching:
 - reject low-confidence matches
 - only ask for clarification when uncertainty materially affects nutrition
 
+## PR hygiene — non-negotiable
+
+On 2026-05-02 we discovered 14 open PRs that had drifted 41 commits behind `main`, predating the v2→canonical onboarding rename. None could be rebased without manual intent reconstruction; all were closed or rebuilt from intent. Root cause: PRs were opened in parallel and never refreshed against `main` as new work landed.
+
+Three rules to keep this from recurring:
+
+1. **Cap of 3 open PRs in flight at any time.** Before opening a new PR, check `gh pr list --state open` — if 3+ are already open, merge or close one first. Spinning up agents in parallel is fine; opening their PRs in parallel is not.
+2. **Rebase before push, every push.** `git fetch origin main && git rebase origin/main` before `git push`. If main moved >5 commits since branch point, rebase regardless of conflicts — easier now than later.
+3. **The auto-rebase workflow** (`.github/workflows/auto-rebase-prs.yml`) runs every 6h, force-pushes clean rebases, and flags PRs it can't rebase as `stale-rebase`. Stuck-stale PRs auto-close after 7 days. **Treat the `stale-rebase` label as a P1 — fix or close that day.**
+
+Plus a hook safety net: `scripts/auto-push-on-stop.sh` runs at end-of-turn and pushes any unpushed commits on `claude/*` branches, so chat closes can never strand commits locally.
+
 ## CI hygiene — non-negotiable
 
 CI runs more gates than a single `npm test` does. Failures are
