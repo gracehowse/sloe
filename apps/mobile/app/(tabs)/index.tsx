@@ -4016,6 +4016,7 @@ export default function TrackerScreen() {
           textTertiaryColor={colors.textTertiary}
           cardColor={colors.card}
           cardBorderColor={colors.cardBorder}
+          primaryForegroundColor={colors.primaryForeground}
         />
 
         {isOffline && (
@@ -5354,6 +5355,7 @@ export default function TrackerScreen() {
           background: colors.background,
           inputBg: colors.inputBg,
           border: colors.border,
+          primaryForeground: colors.primaryForeground,
         }}
       />
 
@@ -5382,6 +5384,7 @@ export default function TrackerScreen() {
           background: colors.background,
           inputBg: colors.inputBg,
           border: colors.border,
+          primaryForeground: colors.primaryForeground,
         }}
       />
 

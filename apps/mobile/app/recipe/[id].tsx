@@ -1333,7 +1333,7 @@ export default function RecipeDetailScreen() {
       justifyContent: "center",
       alignItems: "center",
     },
-    stepNumberText: { color: "#fff", fontSize: 13, fontWeight: "700" },
+    stepNumberText: { color: colors.primaryForeground, fontSize: 13, fontWeight: "700" },
     stepText: { flex: 1, fontSize: 14, color: colors.text, lineHeight: 20 },
 
     sourceCard: {
@@ -1366,7 +1366,7 @@ export default function RecipeDetailScreen() {
       alignItems: "center",
       justifyContent: "center",
     },
-    actionBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+    actionBtnText: { color: colors.primaryForeground, fontWeight: "700", fontSize: 14 },
 
     // 2026-04-30 ui-product-designer audit: the three big icon-circle
     // stat tiles (Prep / Cook / Servings) are gone — replaced by a
@@ -2383,7 +2383,7 @@ export default function RecipeDetailScreen() {
                         borderColor: active ? Accent.primary : colors.border,
                       }}
                     >
-                      <Text style={{ fontSize: 12, fontWeight: "600", color: active ? "#fff" : colors.text }}>{p}×</Text>
+                      <Text style={{ fontSize: 12, fontWeight: "600", color: active ? colors.primaryForeground : colors.text }}>{p}×</Text>
                     </Pressable>
                   );
                 })}
@@ -2403,11 +2403,11 @@ export default function RecipeDetailScreen() {
                 }}
               >
                 {loggingJournal ? (
-                  <ActivityIndicator color="#fff" />
+                  <ActivityIndicator color={colors.primaryForeground} />
                 ) : (
                   <>
-                    <PlusCircle size={16} color="#fff" />
-                    <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14 }}>Log</Text>
+                    <PlusCircle size={16} color={colors.primaryForeground} />
+                    <Text style={{ color: colors.primaryForeground, fontWeight: "700", fontSize: 14 }}>Log</Text>
                   </>
                 )}
               </Pressable>
@@ -2420,7 +2420,7 @@ export default function RecipeDetailScreen() {
               style={[styles.actionBtn, { backgroundColor: Accent.primary, flex: 1 }]}
               onPress={() => { setCookStep(0); setCookMode(true); }}
             >
-              <UtensilsCrossed size={18} color="#fff" style={{ marginRight: 6 }} />
+              <UtensilsCrossed size={18} color={colors.primaryForeground} style={{ marginRight: 6 }} />
               <Text style={styles.actionBtnText}>Start Cooking</Text>
             </Pressable>
           </View>
@@ -2532,7 +2532,7 @@ export default function RecipeDetailScreen() {
                   opacity: recipeYieldSaving ? 0.65 : 1,
                 }}
               >
-                <Text style={{ fontWeight: "800", color: "#fff", fontSize: 15 }}>{recipeYieldSaving ? "Saving…" : "Save"}</Text>
+                <Text style={{ fontWeight: "800", color: colors.primaryForeground, fontSize: 15 }}>{recipeYieldSaving ? "Saving…" : "Save"}</Text>
               </Pressable>
             </View>
           </View>
@@ -2664,7 +2664,7 @@ export default function RecipeDetailScreen() {
                     style={{ flex: 1, backgroundColor: Accent.primary, borderRadius: Radius.md, paddingVertical: 16, alignItems: "center" }}
                     onPress={() => setCookStep((s) => s + 1)}
                   >
-                    <Text style={{ fontWeight: "700", color: "#fff" }}>Next</Text>
+                    <Text style={{ fontWeight: "700", color: colors.primaryForeground }}>Next</Text>
                   </Pressable>
                 ) : (
                   <Pressable
@@ -2674,7 +2674,7 @@ export default function RecipeDetailScreen() {
                       setCookStep(0);
                     }}
                   >
-                    <Text style={{ fontWeight: "700", color: "#fff" }}>Done!</Text>
+                    <Text style={{ fontWeight: "700", color: colors.primaryForeground }}>Done!</Text>
                   </Pressable>
                 )}
               </View>

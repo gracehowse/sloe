@@ -38,6 +38,10 @@ export interface TodayDateHeaderProps {
   textTertiaryColor: string;
   cardColor: string;
   cardBorderColor: string;
+  /** Foreground for the primary-tinted active toggle pill (Day / Week
+   *  glyph). Wired through from the host to avoid hardcoding `#fff`
+   *  here — see Colors.{light,dark}.primaryForeground. */
+  primaryForegroundColor: string;
 }
 
 export function TodayDateHeader({
@@ -61,6 +65,7 @@ export function TodayDateHeader({
   textTertiaryColor,
   cardColor,
   cardBorderColor,
+  primaryForegroundColor,
 }: TodayDateHeaderProps) {
   const router = useRouter();
   return (
@@ -152,7 +157,7 @@ export function TodayDateHeader({
             >
               <Sun
                 size={14}
-                color={viewMode === "day" ? "#fff" : textSecondaryColor}
+                color={viewMode === "day" ? primaryForegroundColor : textSecondaryColor}
               />
             </Pressable>
             <Pressable
@@ -170,7 +175,7 @@ export function TodayDateHeader({
             >
               <LayoutGrid
                 size={14}
-                color={viewMode === "week" ? "#fff" : textSecondaryColor}
+                color={viewMode === "week" ? primaryForegroundColor : textSecondaryColor}
               />
             </Pressable>
           </View>
