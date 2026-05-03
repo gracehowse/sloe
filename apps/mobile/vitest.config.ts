@@ -132,6 +132,12 @@ export default defineConfig({
       { find: /^@react-native-async-storage\/async-storage$/, replacement: path.resolve(__dirname, "./tests/shims/async-storage.ts") },
       { find: /^expo-haptics$/, replacement: path.resolve(__dirname, "./tests/shims/expo-haptics.ts") },
       { find: /^expo-constants$/, replacement: path.resolve(__dirname, "./tests/shims/expo-constants.ts") },
+      // 2026-05-02 (MFP CSV import) — `expo-document-picker` ships
+      // native bindings that don't survive vitest's vmThreads pool.
+      // Tests that need scenario-specific picker behaviour should
+      // `vi.doMock("expo-document-picker", ...)` to override the
+      // default "user cancelled" result the shim returns.
+      { find: /^expo-document-picker$/, replacement: path.resolve(__dirname, "./tests/shims/expo-document-picker.ts") },
       // Stub the mobile analytics wrapper (which transitively imports
       // `posthog-react-native` and `react-native-svg`) so tests never
       // touch the PostHog client or load SVG's native Touchable mixin.

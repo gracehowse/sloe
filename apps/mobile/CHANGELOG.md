@@ -175,6 +175,55 @@ Mobile-only surface — the web equivalents already use CSS custom
 properties (`--destructive`, `--warning`, `--primary-foreground`)
 and need no changes.
 
+## 2026-05-02 — MFP CSV import
+
+Closes the MFP-refugee history-bridge gap (P1 customer-lens). Bulk-import
+MyFitnessPal CSV exports without re-deriving macros; idempotent on retry
+via the existing `nutrition_entries_source_dedup` index.
+
+### What changed
+- **New screen surface (mobile):** `MobileMfpCsvImportCard` mounted in
+  - the onboarding data-bridges step (5th card after manual targets /
+    Apple Health / Notifications / Recipe URL)
+  - Settings -> App section (below "Export everything")
+- **Picker:** `expo-document-picker@~14.0.7` (new mobile dependency).
+  CSV-only MIME filter (`text/csv`,
+  `text/comma-separated-values`,
+  `public.comma-separated-values-text`).
+- **Upload payload:** multipart/form-data via `authedFetch` to
+  `${getSupprApiBase()}/api/imports/mfp-csv` with the React Native
+  `{ uri, name, type }` file shape.
+- **States covered:** idle -> uploading -> success | error. Error has
+  a retry button that re-opens the picker — no silent drops.
+
+### Why
+MFP refugees arriving on Suppr lose months of history if they don't
+have a bridge. CSV is the most universal export format MFP supports
+(MacroFactor refugees benefit too — same shape). The original
+proposal involved per-row enrichment against USDA/OFF/FatSecret;
+that's deferred (Vercel `maxDuration` budget + CLAUDE.md "no
+guessing" policy — see decision doc).
+
+### Parity with web
+Web mirror lives at `src/app/components/imports/MfpCsvImportCard.tsx`
+and is wired into:
+- the onboarding data-bridges step (4th card; web has no Apple Health
+  card)
+- Settings -> Privacy & Security (next to "Export everything")
+
+Same copy, same phases, same analytics events
+(`mfp_csv_import_{started,completed,failed}`) on both platforms.
+
+### Tests
+- `apps/mobile/tests/unit/mfpCsvImportCardMobile.test.tsx` — render
+  + upload flow (picker cancel / success / 429 rate limit).
+- Web tests: `tests/unit/parseMfpCsv.test.ts` (24 cases),
+  `tests/integration/mfpCsvImportRoute.test.ts` (10 cases),
+  `tests/unit/mfpCsvImportCardWeb.test.tsx`.
+
+### Decision doc
+`docs/decisions/2026-05-02-mfp-csv-import.md`.
+
 ## 2026-05-02 — EmptyState: 72pt disc + headline/body type ladder + optional CTA
 
 ui-critic finding #6 (P1). The pre-2026-05-02 `<EmptyState>` primitive

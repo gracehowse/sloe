@@ -73,6 +73,7 @@ import {
   nutritionLogCsvFilename,
 } from "../../../../src/lib/export/nutritionLogToCsv";
 import { exportEverythingToFile } from "@/lib/exportEverything";
+import { MobileMfpCsvImportCard } from "../imports/MfpCsvImportCard";
 import {
   DEFAULT_TRACKING_EXTRAS,
   TRACKING_EXTRAS_STORAGE_KEY,
@@ -1747,6 +1748,17 @@ export function SettingsBundleContent({ context }: { context: Context }) {
             else void Linking.openURL("mailto:privacy@suppr-club.com").catch(() => {});
           }}
         />
+      </View>
+
+      {/* 2026-05-02 — MFP CSV bulk-import card. Closes the
+          MFP-refugee history-bridge gap (P1 customer-lens). Mirrors the
+          web Settings -> Privacy & Security entry and the onboarding
+          data-bridges step card. The card carries its own chrome (icon,
+          title, body, button) so it sits as a standalone sibling block
+          rather than as a `SettingsRow`. See
+          `docs/decisions/2026-05-02-mfp-csv-import.md`. */}
+      <View style={{ marginTop: Spacing.md }}>
+        <MobileMfpCsvImportCard surface="settings" />
       </View>
 
       {/* Legal */}
