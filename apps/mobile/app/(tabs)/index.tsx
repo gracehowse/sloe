@@ -91,6 +91,7 @@ import {
   isAiSourcedFoodHistoryItem,
   type FoodHistoryItem,
 } from "../../../../src/lib/nutrition/foodHistory";
+import { isHealthImportFallbackTitle } from "../../../../src/lib/nutrition/healthImportLabels";
 import { mapMealSourceToDot } from "../../../../src/lib/nutrition/sourceMap";
 import { isMealSlot } from "../../../../src/lib/nutrition/mealSlots";
 import { journalSlotFromMealTypes } from "../../../../src/lib/nutrition/recipeJournalSlot";
@@ -4805,14 +4806,18 @@ export default function TrackerScreen() {
           // because their source app (MFP, etc.) didn't expose a food
           // name through the HealthKit metadata. These rows have no
           // useful identity for re-logging — they're just calorie
-          // totals — so showing 9+ identical-looking "Food log (XXX kcal)
-          // (via MyFitnessPal)" rows in Recents is noise. The fallback
-          // string lives in `apps/mobile/lib/healthSync.ts:905`.
+          // totals — so showing 9+ identical-looking entries in Recents
+          // is noise. Fallback string lives in
+          // `apps/mobile/lib/healthSync.ts` (`resolveFoodLabelFromHealthMetadata`).
+          // 2026-05-03 (N1): inline regex replaced by the shared
+          // `isHealthImportFallbackTitle` predicate which matches BOTH
+          // the legacy "Food log (NNN kcal)" form and the new
+          // "<Source> entry · NNN kcal" form, so existing TestFlight
+          // user data + new builds both stay filtered.
           entries: (() => {
             const todayKey = dateKeyFromDate(new Date());
-            const FOOD_LOG_FALLBACK = /^food log \(\d+ kcal\)$/i;
             return computeRecentMeals(byDay, 12)
-              .filter((item) => !FOOD_LOG_FALLBACK.test(item.recipeTitle.trim()))
+              .filter((item) => !isHealthImportFallbackTitle(item.recipeTitle))
               .map((item) => ({
                 id: foodHistoryKey(item.recipeTitle, item.calories),
                 title: item.recipeTitle,

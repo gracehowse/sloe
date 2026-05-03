@@ -19,6 +19,10 @@ import {
 } from "./healthDietaryNutrients";
 import { stringifyBridgeUnknown } from "./healthSyncBridgeString";
 import {
+  formatHealthImportFallbackTitle,
+  isHealthImportFallbackTitle,
+} from "./healthImportLabels";
+import {
   bucketEnergyShares,
   buildQuantityIdToCorrelationId,
   type CorrelationParentRow,
@@ -902,7 +906,18 @@ function resolveFoodLabelFromHealthMetadata(
 
   if (!label) label = meta ? longestPlausibleFoodMetadataValue(meta, sourceApp) : null;
 
-  return label ?? `Food log (${calories} kcal)`;
+  // N1 (2026-05-03): the legacy fallback `Food log (250 kcal)` reads
+  // as a literal food item ("a thing called Food log"). For users
+  // pulling MFP / Lose It history through HealthKit (where the
+  // metadata rarely carries a food name), the surface filled with
+  // identical "Food log (X kcal) (via MyFitnessPal)" rows — broke
+  // "Eat again", "Most-logged foods", and the meals list. The new
+  // fallback names the source naturally and uses a `·` separator so
+  // the string reads as metadata, not a food name. Centralised in
+  // `src/lib/nutrition/healthImportLabels.ts` so the predicate can
+  // recognise BOTH the legacy and new shapes (existing TestFlight
+  // user data still contains the legacy form).
+  return label ?? formatHealthImportFallbackTitle({ sourceApp, calories });
 }
 
 /**
@@ -1663,7 +1678,15 @@ async function syncNutritionFromHealthImpl(
       ? `Imported food (${cal} kcal)`
       : resolveFoodLabelFromHealthMetadata(meta, cal, sourceApp);
 
-    const recipeTitle = genericHealthImportLabels ? foodLabel : `${foodLabel} (via ${sourceApp})`;
+    // N1 (2026-05-03): when the foodLabel is itself the source-named
+    // fallback ("MyFitnessPal entry · 250 kcal"), appending
+    // " (via MyFitnessPal)" double-prints the source. Skip the suffix
+    // in that case — the fallback already names the source naturally.
+    const recipeTitle = genericHealthImportLabels
+      ? foodLabel
+      : isHealthImportFallbackTitle(foodLabel)
+        ? foodLabel
+        : `${foodLabel} (via ${sourceApp})`;
     const minuteBucket = Math.floor(when.getTime() / 60000);
     const dedupKey = `${dk}|${recipeTitle}|${cal}|${minuteBucket}`;
     if (!sample.id && existingSet.has(dedupKey)) continue;

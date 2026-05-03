@@ -20,6 +20,7 @@
  */
 
 import { normaliseMealSlot } from "./mealSlots";
+import { isHealthImportFallbackTitle } from "./healthImportLabels";
 
 /** Shape of a journal meal that this helper can consume. Narrow on
  * purpose so both `JournalMeal` (mobile) and `LoggedMeal` (web) fit. */
@@ -313,6 +314,13 @@ export function computeRecentMeals<M extends FoodHistoryMealLike>(
  * Today is excluded on purpose: the card suggests re-logging something
  * the user has already eaten on another day, not the meal they just
  * logged. Callers pass `now` so this function stays pure.
+ *
+ * N1 (2026-05-03): synthetic HealthKit-import-fallback rows are skipped.
+ * Re-logging a row literally titled "MyFitnessPal entry · 250 kcal"
+ * (or the legacy "Food log (250 kcal)") gives the user no leverage —
+ * it's a placeholder for an unknown food, not a real recipe to re-log.
+ * If every prior meal in the slot is a fallback, return null rather
+ * than promote a meaningless suggestion.
  */
 export function computeEatAgainForSlot<M extends FoodHistoryMealLike & { name?: string }>(
   byDay: Record<string, M[]>,
@@ -331,17 +339,18 @@ export function computeEatAgainForSlot<M extends FoodHistoryMealLike & { name?: 
     if (dk >= todayKey) continue;
     const meals = byDay[dk];
     if (!Array.isArray(meals) || meals.length === 0) continue;
-    // Last meal in that slot on that day.
+    // Last meal in that slot on that day. Synthetic HealthKit-import
+    // fallback rows are skipped (N1 — they have no real food identity).
     for (let i = meals.length - 1; i >= 0; i -= 1) {
       const m = meals[i]!;
-      if (normaliseMealSlot(m.name) === targetSlot) {
-        const title = titleOf(m);
-        const cal = Math.round(safeNumber(m.calories));
-        const key = foodHistoryKey(title, cal);
-        const bucket = emptyBucket(title, cal, key);
-        addToBucket(bucket, m, dk, i);
-        return finaliseBucket(bucket);
-      }
+      if (normaliseMealSlot(m.name) !== targetSlot) continue;
+      const title = titleOf(m);
+      if (isHealthImportFallbackTitle(title)) continue;
+      const cal = Math.round(safeNumber(m.calories));
+      const key = foodHistoryKey(title, cal);
+      const bucket = emptyBucket(title, cal, key);
+      addToBucket(bucket, m, dk, i);
+      return finaliseBucket(bucket);
     }
   }
   return null;

@@ -118,6 +118,7 @@ import {
   isAiSourcedFoodHistoryItem,
   type FoodHistoryItem,
 } from "../../lib/nutrition/foodHistory";
+import { isHealthImportFallbackTitle } from "../../lib/nutrition/healthImportLabels";
 import { mapMealSourceToDot } from "../../lib/nutrition/sourceMap";
 import { buildMealEntriesFromSavedMeal } from "../../lib/nutrition/savedMealsLogic";
 import {
@@ -3200,16 +3201,16 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
           // last-logged date so the LogSheet renders two groups.
           entries: (() => {
             const todayKey = dateKeyFromDate(new Date());
-            // Mobile parity (`apps/mobile/app/(tabs)/index.tsx` ~L3693):
-            // strip the MyFitnessPal HealthKit fallback rows
-            // ("Food log (NNN kcal)") so Recents doesn't fill with
-            // identical-looking, low-information entries. The fallback
-            // string lives in `apps/mobile/lib/healthSync.ts:905`; the
-            // regex must stay identical to mobile to keep the filter in
-            // sync across surfaces.
-            const FOOD_LOG_FALLBACK = /^food log \(\d+ kcal\)$/i;
+            // Mobile parity: strip HealthKit-import fallback rows
+            // (legacy "Food log (NNN kcal)" + new "<Source> entry · NNN kcal")
+            // so Recents doesn't fill with identical-looking,
+            // low-information entries. Source of truth:
+            // `src/lib/nutrition/healthImportLabels.ts`. Inline regex
+            // replaced 2026-05-03 (N1) — the predicate now matches both
+            // legacy and new fallback shapes so existing TestFlight user
+            // data + new builds both stay filtered.
             return computeRecentMeals(nutritionByDay, 12)
-              .filter((item) => !FOOD_LOG_FALLBACK.test(item.recipeTitle.trim()))
+              .filter((item) => !isHealthImportFallbackTitle(item.recipeTitle))
               .map((item) => ({
                 id: foodHistoryKey(item.recipeTitle, item.calories),
                 title: item.recipeTitle,
