@@ -34,7 +34,7 @@ import { useAuth } from "@/context/auth";
 import { useSavedLibraryRecipes, useSavedRecipes } from "@/lib/recipes";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
-import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
+import { Accent, MacroColors, Spacing, Radius, Type } from "@/constants/theme";
 import type { RecipeCard } from "@/lib/types";
 import {
   LIBRARY_FILTER_PILLS,
@@ -244,20 +244,37 @@ export default function LibraryScreen() {
       flexGrow: 0,
       minHeight: 44,
     },
+    // 2026-05-02 (build-12): tester reported pill text was visually
+     // squished against the borders ("All · 21", "Saved · 13",
+     // "High-Protein", "Quick"). The previous `paddingVertical: 7`
+     // with no `minHeight` left a ~30pt-tall pill where the descenders
+     // touched the bottom border on iOS. Bumped vertical padding to 8
+     // and added an explicit `minHeight: 32` (iOS HIG hit-target floor
+     // for inline pills) plus `justifyContent: "center"` so the
+     // `Type.body` text sits in the optical centre. Horizontal
+     // padding stays at 14 (== Spacing.sm + Spacing.xs) which already
+     // satisfies the brief floor; the squish was vertical.
     filterPill: {
       paddingHorizontal: 14,
-      paddingVertical: 7,
+      paddingVertical: 8,
+      minHeight: 32,
       borderRadius: 999,
       borderWidth: 1,
       borderColor: colors.border,
       backgroundColor: colors.card,
+      justifyContent: "center",
+      alignItems: "center",
     },
     filterPillActive: {
       backgroundColor: Accent.primary + "1A",
       borderColor: Accent.primary,
     },
     filterPillText: {
-      fontSize: 13,
+      // Type.body (14/20) — brief said use `Type.caption` or
+      // `Type.body`; body wins for readability of count suffixes
+      // ("All · 21" needs to stay legible at thumb-glance distance).
+      fontSize: Type.body.fontSize,
+      lineHeight: Type.body.lineHeight,
       fontWeight: "600",
       color: colors.text,
     },

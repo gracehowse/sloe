@@ -78,6 +78,10 @@ const CHANGELOGS: ChangelogEntry[] = [
         kind: "fixed",
         text: "Recipe page calories are now on their own headline line, and the macro tiles all share width on a single row.",
       },
+      {
+        kind: "fixed",
+        text: "Library filter pills no longer have text squished against the border — taller, more breathable taps.",
+      },
     ],
   },
   {
