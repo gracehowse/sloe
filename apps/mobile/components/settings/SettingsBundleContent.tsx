@@ -44,6 +44,7 @@ import {
   RefreshCw,
   Sparkles,
   Square,
+  Timer,
   Trash2,
   Users,
   Wine,
@@ -482,6 +483,13 @@ export function SettingsBundleContent({ context }: { context: Context }) {
   const [weekStartDay, setWeekStartDay] = useState<"sunday" | "monday">(
     "monday",
   );
+  // Fasting window — read from `profiles.fasting_window` so the
+  // Settings row can show the current preference (e.g. "16:8 — 16h
+  // fast / 8h eat") without forcing the user to tap through to
+  // /fasting just to see what they picked. Default mirrors the
+  // /fasting screen + onboarding step (`16:8`). Editing happens on
+  // /fasting via the preset chips (2026-05-02 Build 40 fix).
+  const [fastingWindow, setFastingWindow] = useState<string>("16:8");
   const [caffeineTargetPickerOpen, setCaffeineTargetPickerOpen] = useState(false);
   const [alcoholTargetPickerOpen, setAlcoholTargetPickerOpen] = useState(false);
   const [targetCaffeineMg, setTargetCaffeineMg] = useState<number>(400);
@@ -691,7 +699,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
       let resp = await supabase
         .from("profiles")
         .select(
-          "tracked_macros, week_start_day, target_caffeine_mg, target_alcohol_g_weekly, weekly_recap_push_enabled",
+          "tracked_macros, week_start_day, target_caffeine_mg, target_alcohol_g_weekly, weekly_recap_push_enabled, fasting_window",
         )
         .eq("id", userId)
         .maybeSingle();
@@ -726,6 +734,15 @@ export function SettingsBundleContent({ context }: { context: Context }) {
       const wrp = (data as any).weekly_recap_push_enabled;
       if (wrp !== undefined) {
         setWeeklyRecapPushEnabled(wrp !== false);
+      }
+      // 2026-05-02 (Build 40 outstanding feedback) — mirror the
+      // user's stored fasting window so the Settings row sub copy
+      // is honest. Format guard: `parseFastingWindow` on /fasting
+      // already falls back to 16:8 for anything malformed; we just
+      // need a non-empty string here.
+      const fw = (data as any).fasting_window;
+      if (typeof fw === "string" && /^\d+:\d+$/.test(fw)) {
+        setFastingWindow(fw);
       }
     })();
   }, [userId]);
@@ -1215,6 +1232,35 @@ export function SettingsBundleContent({ context }: { context: Context }) {
               : "Off · set a target to show the row"
           }
           onPress={() => setAlcoholTargetPickerOpen(true)}
+        />
+        {/* Intermittent fasting — 2026-05-02 (Build 40 outstanding
+            feedback: typing "fast" in Settings search returned "No
+            matches", with no other in-app entry point to change the
+            fasting window after onboarding). Routes to /fasting
+            which now hosts the timer ring, start/end, history AND
+            the 16:8 / 18:6 / 20:4 / 14:10 preset picker, matching
+            the web FastingTimer. Sub copy mirrors the stored window
+            so the user can see at a glance what they picked. */}
+        <SettingsRow
+          testID="settings-bundle-fasting-row"
+          icon={Timer}
+          iconColor={t.accent}
+          label="Intermittent fasting"
+          sub={(() => {
+            const parts = fastingWindow.split(":");
+            const fast = parseInt(parts[0] ?? "", 10);
+            const eat = parseInt(parts[1] ?? "", 10);
+            if (
+              Number.isFinite(fast) &&
+              Number.isFinite(eat) &&
+              fast > 0 &&
+              eat > 0
+            ) {
+              return `${fast}:${eat} window · ${fast}h fast / ${eat}h eat`;
+            }
+            return "Tap to set fast / eat window";
+          })()}
+          onPress={() => router.push("/fasting" as any)}
         />
       </View>
 

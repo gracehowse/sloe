@@ -3,12 +3,15 @@ name: "Fasting — timer ring, start/end, history"
 ---
 - runFlow: shared/login.yaml
 
-# PRODUCT GAP (flagged 2026-04-29): Fasting screen has no entrypoint
-# from More or Settings after the IA 6→4 collapse. The only in-product
-# path is the TodayFastingPill in the unified context block on Today,
-# which only renders when a fast is *already active*. Until a stable
-# entrypoint is restored, navigate via deeplink so this flow can still
-# verify the fasting screen renders correctly.
+# PRODUCT GAP CLOSED (2026-05-02, `claude/fasting-findable-urgent`):
+# The Fasting screen now has a stable entrypoint from Settings →
+# Goals & targets → "Intermittent fasting" (testID
+# `settings-bundle-fasting-row`), AND the Settings search index
+# resolves "fast" / "fasting" / "intermittent" to the same row.
+# Deeplink stays the canonical Maestro entrypoint for this suite
+# because (a) it's faster and (b) the sub-screen renders the same
+# regardless of how the user got there. The Settings entry path is
+# pinned by `settingsFastingFindable.test.ts` instead.
 - openLink: suppr:///fasting
 - waitForAnimationToEnd
 - waitForAnimationToEnd
