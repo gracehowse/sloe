@@ -5,12 +5,12 @@
  *
  * Mirrors `apps/mobile/app/dev/health-import-labels.tsx`.
  *
- * Renders mock data only — no PII. Gated against real Vercel
- * production deploys via VERCEL_ENV (NODE_ENV is "production" in
- * CI's `next start`, so it can't be the gate or Playwright 404s).
+ * Renders mock data only — no PII. Production exposure is handled
+ * by a Vercel route block on /dev/* rather than an in-component
+ * gate (env-var inlining behaviour differed between `next start`
+ * in CI and Vercel runtime, breaking Playwright).
  */
 import * as React from "react";
-import { notFound } from "next/navigation";
 import {
   formatHealthImportFallbackTitle,
   isHealthImportFallbackTitle,
@@ -28,8 +28,6 @@ const SAMPLE_RECENTS = [
 ] as const;
 
 export default function HealthImportLabelsPage() {
-  if (process.env.VERCEL_ENV === "production") notFound();
-
   const filtered = SAMPLE_RECENTS.filter((r) => !isHealthImportFallbackTitle(r.title));
 
   return (
