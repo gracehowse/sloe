@@ -1,5 +1,33 @@
 # Mobile App Changelog
 
+## 2026-05-02 — Recipe wizard step 4: lock Calories field + restore actuals to full text colour
+
+User report (TestFlight, 2026-05-02), step 4 of the create-recipe wizard ("Macros look right?"):
+- "the light grey text makes the values look like placeholders but they are actuals"
+- "shouldn't be able to edit the cals they are calculated from the ingredients selected"
+
+### Wizard component (`apps/mobile/components/recipe/CreateRecipeWizard.tsx`)
+- **`MacroOverrideRow` no longer surfaces the resolved value via the input's `placeholder` slot.** The auto-computed (or override) value now feeds the input's controlled `value` prop, picking up `colors.text` at fontWeight 600 — same strength as any other resolved figure in the app. Previously every per-serving number rendered in `colors.textTertiary`, making 40kcal / 1.6g / 0g read like greyed-out hints rather than actuals. The `placeholder` slot is now reserved for an "auto" cue that's only ever visible if the input is blanked out (rare in practice — per-serving math always produces a finite number).
+- **Calories row is read-only.** Calories per serving is derived from the ingredient sum / servings — it is not a user-editable independent variable, and inventing a kcal that diverges from the underlying USDA / OFF / Edamam data is a nutrition-accuracy violation per CLAUDE.md. The row now passes `readOnly` to `MacroOverrideRow`, which:
+  - sets both `editable={false}` (RN-native lock) and `readOnly` (react-native-web mirror) on the `TextInput`;
+  - dims the input to `opacity: 0.6` and drops its border, so it reads as derived rather than tappable;
+  - renders a small lucide `Calculator` glyph next to the "Calories" label;
+  - prints a helper caption — `Calculated from your ingredients · {N} kcal` — under the row.
+- **`override={undefined}` is forced for the Calories row** so any stale `macroOverrides.calories` value from an older code path can never display.
+- **Subtitle copy update** on the macros step: "…Override any **macro** if the auto-compute looks wrong — calories stay calculated." (was "Override any **field**…").
+
+### Tests (`apps/mobile/tests/unit/createRecipeWizard.test.ts`)
+- New structural pins under "structural pins for the wizard component":
+  - `MacroOverrideRow` resolves `displayedNumber = override ?? value` and passes it to the input's `value` prop (full-strength colour, not placeholder colour).
+  - The override style applied to the input is `{ color: colors.text, fontWeight: "600" }`.
+  - `readOnly` propagates to `editable={false}` AND `readOnly`, with 0.6 opacity for the disabled treatment.
+  - The Calories row is rendered with `readOnly` + a `helperText` of `Calculated from your ingredients · ${perServing.calories} kcal`, and pulls in lucide's `Calculator` icon.
+  - The Calories row passes `override={undefined}` and never wires `setOverride("calories", …)`.
+  - Step-4 subtitle includes "calories stay calculated".
+
+### Web parity
+The web equivalent (`src/app/components/RecipeUpload.tsx`, `mode="create"`) is a single-screen form, not a 5-step wizard — there is no editable Calories input on web. Fix is mobile-only by surface; the shared step-machine in `src/lib/recipes/createRecipeWizard.ts` is untouched (Calories override slot remains in `WizardMacroOverrides` for type-shape compatibility but is no longer reachable from the wizard UI).
+
 ## 2026-05-02 — Stimulant bump centralisation + net-carbs lens focus refresh
 
 ### Today (caffeine + alcohol chips)
