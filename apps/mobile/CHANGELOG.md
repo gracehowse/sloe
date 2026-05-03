@@ -175,6 +175,79 @@ Mobile-only surface — the web equivalents already use CSS custom
 properties (`--destructive`, `--warning`, `--primary-foreground`)
 and need no changes.
 
+## 2026-05-02 — Recipe detail servings stepper
+
+Customer-lens audit gap (Paprika persona): "open recipe, dial servings
+4 → 6, ingredient grams update." Pre-2026-05-02 the recipe-detail
+screen had no inline servings control on mobile — scaling was only
+available via the planner / log-flow `?portion=N` deep-link, which is
+not a surface the user can drive from the recipe page itself. Web had
+a stepper but it was unbounded on the plus side (`setServings(servings + 1)`)
+and undebounced. Both platforms now ship the same Paprika-tier control.
+
+### What changed
+- New shared module `src/lib/nutrition/recipeViewScale.ts` (pure, no
+  React, no DOM, no React Native) — bounds (1..99), debounce window
+  (200ms), `clampViewServings`, `stepViewServings`, `viewMultiplier`,
+  and `initialViewServings`. One contract, two consumers.
+- `apps/mobile/app/recipe/[id].tsx`:
+  - New "Servings to view" stepper between the time-stats info row
+    and the calorie / macro hero. Bounded 1..99, debounced 200ms,
+    +/- pressables with `hitSlop={8}` and visible disabled-at-bounds
+    states.
+  - Ingredient amounts now multiply by
+    `viewMultiplier(viewServings, recipe.servings)` instead of the
+    raw `?portion=N` query param.
+  - Per-portion kcal hero stays invariant under the stepper. A
+    secondary "X kcal total for N portions" line appears below when
+    the user has dialled away from the authored yield, so the visible
+    number tracks the multiplier honestly.
+  - `logPortion` (the "Add to today" target) now follows the stepper,
+    so a journal write from the detail screen reflects the chosen
+    portion count.
+  - The old "Planned portion: Nx — quantities below are adjusted"
+    banner is removed; the visible stepper is now the canonical
+    surface for that signal.
+  - Recipe id change resets the stepper seed (no carry-over A → B).
+- `src/app/components/RecipeDetail.tsx` (web parity):
+  - Stepper now bounded (was unbounded on the `+` side); 200ms
+    debounce; label aligned to "Servings to view"; explicit
+    `aria-label` on +/- buttons; `role="status"` + `aria-live="polite"`
+    on the value readout; visible disabled-at-bounds styling.
+  - Per-portion kcal headline binds to `perServingBase.calories`
+    directly (was `scaledMacros.calories`, which silently scaled with
+    the stepper) so per-portion truly stays per-portion.
+  - Same secondary "X kcal total for N portions" line as mobile.
+
+### Cook-mode (PR #72) interaction
+The cook-mode flow already takes the user's scaled servings via the
+PR #72 handoff (mobile reads `cookScaleFactor = logPortion`; web
+takes `<CookMode servings={...} baseServings={...} />` and computes
+`scaleFactor` internally). PR1's stepper just controls what those
+inputs are when the user enters cook mode. PR #72's contract is
+preserved by construction — the source-pin test
+(`tests/unit/cookModeServingsHandoff.test.ts`) is unchanged and
+still passes.
+
+### Tests
+- `tests/unit/recipeViewScale.test.ts` — 29 pure-helper tests pinning
+  bounds, clamp, step, multiplier, and seed math (incl. the spec
+  example: chicken 400g → 600g when stepping a 4-serving recipe to 6).
+- `tests/unit/recipeViewScaleScreens.test.tsx` — 28 cross-platform
+  source-pin tests plus a platform-agnostic RTL harness that exercises
+  the `+`/`−` → state → display loop using the same shared helper
+  both screens consume (chicken 400g → 600g via two `+` taps; minus
+  disabled at 1; plus disabled at 99; deep-link `?portion=1.5` on a
+  4-serving recipe seeds at 6).
+
+### Parity
+Web and mobile share the helper module, the bounds, the debounce
+cadence, the label copy ("Servings to view"), the secondary kcal-total
+line text ("X kcal total for N portions"), and the deep-link seed
+behaviour. Visual differences are scoped to the per-platform primitive
+(web `<button>` + Tailwind / mobile `<Pressable>` + `Spacing` tokens);
+the contract surface is identical.
+
 ## 2026-05-02 — EmptyState: 72pt disc + headline/body type ladder + optional CTA
 
 ui-critic finding #6 (P1). The pre-2026-05-02 `<EmptyState>` primitive
