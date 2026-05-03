@@ -125,6 +125,18 @@ export function WhyThisNumberSheet({
               >
                 Early estimate — keep logging and we&apos;ll calibrate.
               </Text>
+            ) : result.calibratingAsk ? (
+              <Text
+                testID="why-this-number-calibrating-ask"
+                style={{
+                  fontSize: 12,
+                  color: textTertiaryColor,
+                  marginTop: Spacing.xs,
+                  lineHeight: 17,
+                }}
+              >
+                {result.calibratingAsk}
+              </Text>
             ) : null}
           </View>
 

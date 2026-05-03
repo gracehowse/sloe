@@ -108,4 +108,28 @@ describe("WhyThisNumberSheet", () => {
     );
     expect(getByText("calibrating — keep logging")).toBeTruthy();
   });
+
+  // Failure 1 / 2 / 3 from TestFlight feedback 2026-05-02 ----------
+  it("renders 'Goal not set' when paceKgPerWeek is null (regression)", () => {
+    const { getByText } = render(
+      <WhyThisNumberSheet {...BASE_PROPS} paceKgPerWeek={null} />,
+    );
+    expect(getByText("Goal not set")).toBeTruthy();
+  });
+
+  it("renders the SPECIFIC weight-logging ask when meals are logged but weights aren't", () => {
+    const { getAllByText, getByTestId } = render(
+      <WhyThisNumberSheet
+        {...BASE_PROPS}
+        maintenanceTdee={null}
+        confidence={null}
+        mealLogDays={40}
+        weightLogCount={0}
+      />,
+    );
+    // The ask appears both as the inline qualifier under the headline
+    // and lifted into the summary sentence — both must render.
+    expect(getAllByText(/Log your weight 3\+ times/).length).toBeGreaterThanOrEqual(1);
+    expect(getByTestId("why-this-number-calibrating-ask")).toBeTruthy();
+  });
 });

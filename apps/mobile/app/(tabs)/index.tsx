@@ -4950,7 +4950,7 @@ export default function TrackerScreen() {
             ? adaptiveTdeeConfidence
             : null
         }
-        loggingDays={null}
+        loggingDays={Object.keys(byDay).filter((k) => (byDay[k] ?? []).length > 0).length}
         goal={
           profileGoal === "gain"
             ? "gain"
@@ -4966,6 +4966,13 @@ export default function TrackerScreen() {
               ? "maintain"
               : "lose",
         )}
+        // Specific calibrating ask: when adaptive TDEE hasn't fired
+        // we tell the user EXACTLY what's missing (3+ weight logs, 7+
+        // meal-log days). Without these the panel falls back to a
+        // generic "keep logging" line that lies after 40 days of meals
+        // with no weights — see PR claude/why-this-number-data-fix.
+        mealLogDays={Object.keys(byDay).filter((k) => (byDay[k] ?? []).length > 0).length}
+        weightLogCount={Object.keys(profileWeightKgByDay).length}
         onPressAdjustTarget={() => router.push("/profile?focus=plan")}
         backgroundColor={colors.background}
         cardColor={colors.card}

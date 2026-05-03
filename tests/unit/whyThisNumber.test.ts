@@ -29,10 +29,13 @@ describe("paceKgPerWeekFromPreset", () => {
     expect(paceKgPerWeekFromPreset(null, "maintain")).toBe(0);
   });
 
-  it("returns 0 for unknown / null presets", () => {
-    expect(paceKgPerWeekFromPreset(null, "lose")).toBe(0);
-    expect(paceKgPerWeekFromPreset("frenetic", "lose")).toBe(0);
-    expect(paceKgPerWeekFromPreset(undefined, "gain")).toBe(0);
+  it("returns null for unknown / null presets on lose / gain goals", () => {
+    // Distinguishes "user picked Maintain explicitly" (=0) from "user
+    // hasn't picked a pace yet" (=null). The renderer surfaces the
+    // null case as "Goal not set" rather than mislabelling Maintain.
+    expect(paceKgPerWeekFromPreset(null, "lose")).toBeNull();
+    expect(paceKgPerWeekFromPreset("frenetic", "lose")).toBeNull();
+    expect(paceKgPerWeekFromPreset(undefined, "gain")).toBeNull();
   });
 });
 
@@ -64,6 +67,7 @@ describe("buildWhyThisNumber", () => {
       value: "−350 kcal/day deficit",
     });
     expect(r.isEarlyEstimate).toBe(false);
+    expect(r.calibratingAsk).toBeNull();
   });
 
   it("flags early estimate when loggingDays < 14", () => {
@@ -232,5 +236,165 @@ describe("buildWhyThisNumber", () => {
       paceKgPerWeek: 0,
     });
     expect(at.summary).toContain("at your estimated maintenance");
+  });
+
+  // ---- Failure 1 (TestFlight feedback 2026-05-02) -----------------
+  // "this is wildly incorrect" / "I'm not maintaining" — the panel
+  // mislabelled a lose user as Maintain because plan_pace was unset.
+  // Distinguish "Goal not set" (paceKgPerWeek=null) from explicit
+  // Maintain (paceKgPerWeek=0).
+  it("renders 'Goal not set' when paceKgPerWeek is null", () => {
+    const r = buildWhyThisNumber({
+      targetCalories: 1800,
+      maintenanceTdee: 2150,
+      confidence: "medium",
+      loggingDays: 30,
+      goal: "lose",
+      paceKgPerWeek: null,
+    });
+    expect(r.lines[1].value).toBe("Goal not set");
+  });
+
+  it("does NOT mislabel a lose-goal user as Maintain when pace is null", () => {
+    // Regression for TestFlight feedback 2026-05-02: panel showed
+    // "Goal: Maintain" for a user who explicitly chose lose. The
+    // helper used to fold paceKg===0 into "Maintain" — but the caller
+    // was passing 0 even when the source preset was unknown.
+    const r = buildWhyThisNumber({
+      targetCalories: 1800,
+      maintenanceTdee: null,
+      confidence: null,
+      loggingDays: 40,
+      goal: "lose",
+      paceKgPerWeek: null,
+    });
+    expect(r.lines[1].value).not.toBe("Maintain");
+    expect(r.lines[1].value).toBe("Goal not set");
+    // And the result row must not lie about "no deficit".
+    expect(r.lines[2].value).not.toBe("no deficit (maintaining)");
+    expect(r.lines[2].value).toBe("—");
+  });
+
+  // ---- Failure 2 (TestFlight feedback 2026-05-02) -----------------
+  // "40 days of logging but still calibrating" — the gate also needs
+  // 3+ weight logs, but the panel didn't say so. Render a SPECIFIC
+  // ask telling the user what to do.
+  it("renders a specific 'log weight 3+ times' ask when only weights are missing", () => {
+    const r = buildWhyThisNumber({
+      targetCalories: 1800,
+      maintenanceTdee: null,
+      confidence: null,
+      goal: "lose",
+      paceKgPerWeek: -0.5,
+      mealLogDays: 40,
+      weightLogCount: 0,
+    });
+    expect(r.calibratingAsk).toContain("Log your weight 3+ times");
+    expect(r.calibratingAsk).toContain("based on your stated goal");
+    expect(r.calibratingAsk).not.toContain("Keep logging meals");
+  });
+
+  it("renders a specific 'keep logging meals' ask when only meals are short", () => {
+    const r = buildWhyThisNumber({
+      targetCalories: 1800,
+      maintenanceTdee: null,
+      confidence: null,
+      goal: "lose",
+      paceKgPerWeek: -0.5,
+      mealLogDays: 4,
+      weightLogCount: 5,
+    });
+    expect(r.calibratingAsk).toContain("Keep logging meals");
+    expect(r.calibratingAsk).toContain("after 7 days");
+    expect(r.calibratingAsk).not.toContain("Log your weight");
+  });
+
+  it("lists BOTH asks when neither gate has fired", () => {
+    const r = buildWhyThisNumber({
+      targetCalories: 1800,
+      maintenanceTdee: null,
+      confidence: null,
+      goal: "lose",
+      paceKgPerWeek: -0.5,
+      mealLogDays: 2,
+      weightLogCount: 0,
+    });
+    expect(r.calibratingAsk).toContain("Log your weight");
+    expect(r.calibratingAsk).toContain("Keep logging meals");
+  });
+
+  it("does NOT render an ask once both gates are satisfied (transient null TDEE)", () => {
+    const r = buildWhyThisNumber({
+      targetCalories: 1800,
+      maintenanceTdee: null,
+      confidence: null,
+      goal: "lose",
+      paceKgPerWeek: -0.5,
+      mealLogDays: 14,
+      weightLogCount: 5,
+    });
+    expect(r.calibratingAsk).toBeNull();
+  });
+
+  it("falls back to the generic line when caller didn't supply counts", () => {
+    const r = buildWhyThisNumber({
+      targetCalories: 1800,
+      maintenanceTdee: null,
+      confidence: null,
+      goal: "lose",
+      paceKgPerWeek: -0.5,
+    });
+    expect(r.calibratingAsk).toBeNull();
+    expect(r.summary).toContain("still calibrating");
+  });
+
+  it("lifts the specific ask into the summary so screen readers announce it", () => {
+    const r = buildWhyThisNumber({
+      targetCalories: 1800,
+      maintenanceTdee: null,
+      confidence: null,
+      goal: "lose",
+      paceKgPerWeek: -0.5,
+      mealLogDays: 40,
+      weightLogCount: 0,
+    });
+    expect(r.summary).toContain("Log your weight 3+ times");
+  });
+
+  // ---- Failure 3 — fixture from spec ------------------------------
+  // weekly_pace_kg = -0.5, meal_log_days = 40, weight_logs = 0
+  it("renders all three rows correctly for the verbatim spec fixture", () => {
+    const r = buildWhyThisNumber({
+      targetCalories: 1800,
+      maintenanceTdee: null,
+      confidence: null,
+      goal: "lose",
+      paceKgPerWeek: -0.5,
+      mealLogDays: 40,
+      weightLogCount: 0,
+    });
+    // TDEE row: still calibrating but renders the SPECIFIC ask.
+    expect(r.lines[0].value).toBe("calibrating — keep logging");
+    expect(r.calibratingAsk).toContain("Log your weight 3+ times");
+    // Goal row: actual goal preserved (Lose 0.5 kg/wk), not Maintain.
+    expect(r.lines[1].value).toBe("Lose 0.5 kg/wk");
+    // Result row: implied deficit from pace, not lying "no deficit".
+    expect(r.lines[2].value).toBe("−550 kcal/day deficit (target)");
+  });
+
+  it("renders the actual TDEE row once 3+ weight logs + 14+ meal log days are present", () => {
+    const r = buildWhyThisNumber({
+      targetCalories: 1800,
+      maintenanceTdee: 2150,
+      confidence: "medium",
+      loggingDays: 14,
+      goal: "lose",
+      paceKgPerWeek: -0.5,
+      mealLogDays: 14,
+      weightLogCount: 3,
+    });
+    // No longer calibrating — actual computed value renders.
+    expect(r.lines[0].value).toBe("2,150 kcal (adaptive, last 7 days)");
+    expect(r.calibratingAsk).toBeNull();
   });
 });
