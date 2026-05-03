@@ -40,6 +40,7 @@ import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { track } from "../../lib/analytics/track.ts";
 import { DestructiveConfirmDialog } from "./suppr/destructive-confirm-dialog";
 import { ActivityLevelPickerDialog } from "./suppr/activity-level-picker-dialog";
+import { CancelExportPromptDialog } from "./suppr/cancel-export-prompt-dialog";
 import {
   ACTIVITY_SHORT_LABELS,
   type ActivityLevel,
@@ -145,6 +146,19 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
   // Mobile equivalent in `apps/mobile/components/settings/SettingsBundleContent.tsx`.
   const [eraseEverythingOpen, setEraseEverythingOpen] = useState(false);
   const [resetting, setResetting] = useState(false);
+  /**
+   * Cancel-flow export prompt (PR replaces #43, 2026-05-02). Closes
+   * journey-architect P1 — surfaces a Suppr-owned dialog BEFORE
+   * routing to the Stripe billing portal so the export option is
+   * proactive, not buried in Settings. Two equal-weight cards: "Take
+   * your data with you" runs the existing CSV download; "Continue to
+   * manage" navigates to /account/billing. The dialog stays open
+   * after the export CTA fires so the user can still continue or
+   * dismiss. Mobile parity at
+   * `apps/mobile/components/settings/SettingsBundleContent.tsx`.
+   */
+  const [cancelPromptOpen, setCancelPromptOpen] = useState(false);
+  const [cancelPromptExporting, setCancelPromptExporting] = useState(false);
 
   useEffect(() => {
     if (!scrollToPromoOnOpen) return;
@@ -496,6 +510,49 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
     else toast.success("Password reset email sent — check your inbox.");
   }, [authEmail]);
 
+  /**
+   * CSV export runner — extracted 2026-05-02 (PR replaces #43) so
+   * both the standalone "Export nutrition log (CSV)" button AND the
+   * cancel-flow export prompt dialog's "Take your data with you" CTA
+   * call the same path. Same Supabase select, same `nutritionLogToCsv`
+   * bytes, same filename shape — keeps the pinned-bytes test
+   * (`tests/unit/nutritionLogToCsv.test.ts`) passing for both entry
+   * points. Cancel-flow callers pass `silent` so we don't double-toast.
+   */
+  const runCsvExport = useCallback(async () => {
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      const uid = session.session?.user.id;
+      if (!uid) {
+        toast.error("Please sign in to export.");
+        return;
+      }
+      const { data, error } = await supabase
+        .from("nutrition_entries")
+        .select(
+          "date_key, time_label, name, recipe_title, portion_multiplier, calories, protein, carbs, fat, fiber_g, source",
+        )
+        .eq("user_id", uid)
+        .order("date_key", { ascending: true })
+        .order("created_at", { ascending: true });
+      if (error) {
+        toast.error("Could not build CSV export.");
+        return;
+      }
+      const csv = nutritionLogToCsv(data ?? []);
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = nutritionLogCsvFilename();
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("CSV download started.");
+    } catch {
+      toast.error("Could not build CSV export.");
+    }
+  }, []);
+
   // PR-01 (audit 2026-04-28): Base tier excised from user-facing
   // surfaces. Internal `userTier === "base"` rows still exist as a
   // safety branch for any legacy Stripe webhook events; they render
@@ -602,7 +659,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
               <span className="text-sm text-muted-foreground">{authEmail}</span>
             )}
           </div>
-          {userTier !== "pro" && (
+          {userTier === "free" && (
             <Link
               href="/pricing"
               className="text-sm font-medium text-success hover:text-success/80"
@@ -610,25 +667,29 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
               View plans
             </Link>
           )}
-          {/* P0-1 (audit 2026-04-30): Pro users finally have an in-app
-              cancel path on web. The link routes to /account/billing,
-              which is the existing server-side shell that opens a
-              single-use Stripe Customer Portal session, falls back to
-              email-support copy when Stripe is unavailable, and now
-              also surfaces the App Store "manage on iOS" pathway when
-              the user has no `stripe_customer_id` (i.e. paid via
-              RevenueCat → App Store). Copy stays "Manage subscription"
-              — Stripe / iOS Settings own the word "Cancel" so we don't
-              duplicate it here. Mobile parity at
-              `apps/mobile/app/(tabs)/settings.tsx:622-650`. */}
-          {userTier === "pro" && (
-            <Link
-              href="/account/billing"
-              data-testid="settings-manage-subscription-link"
+          {/* PR replaces #43 (2026-05-02): Manage subscription now
+              opens the Suppr-owned cancel-flow export prompt dialog
+              FIRST, instead of routing straight to /account/billing.
+              Two equal-weight cards surface the data-export prompt at
+              the cancel touchpoint so it's proactive, not buried in
+              Settings. Closes journey-architect P1. Mobile parity at
+              `apps/mobile/components/settings/SettingsBundleContent.tsx`
+              (`handleManageSubscription`). */}
+          {userTier !== "free" && (
+            <button
+              type="button"
+              data-testid="settings-manage-subscription-button"
+              onClick={() => {
+                track(AnalyticsEvents.cancel_export_prompt_shown, {
+                  source: "web",
+                  tier: userTier,
+                });
+                setCancelPromptOpen(true);
+              }}
               className="text-sm font-medium text-success hover:text-success/80"
             >
               Manage subscription
-            </Link>
+            </button>
           )}
         </div>
       </div>
@@ -1299,39 +1360,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           <button
             type="button"
             onClick={() => {
-              void (async () => {
-                try {
-                  const { data: session } = await supabase.auth.getSession();
-                  const uid = session.session?.user.id;
-                  if (!uid) {
-                    toast.error("Please sign in to export.");
-                    return;
-                  }
-                  const { data, error } = await supabase
-                    .from("nutrition_entries")
-                    .select(
-                      "date_key, time_label, name, recipe_title, portion_multiplier, calories, protein, carbs, fat, fiber_g, source",
-                    )
-                    .eq("user_id", uid)
-                    .order("date_key", { ascending: true })
-                    .order("created_at", { ascending: true });
-                  if (error) {
-                    toast.error("Could not build CSV export.");
-                    return;
-                  }
-                  const csv = nutritionLogToCsv(data ?? []);
-                  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = nutritionLogCsvFilename();
-                  a.click();
-                  URL.revokeObjectURL(url);
-                  toast.success("CSV download started.");
-                } catch {
-                  toast.error("Could not build CSV export.");
-                }
-              })();
+              void runCsvExport();
             }}
             className="w-full text-left px-4 py-3 bg-muted hover:bg-muted/80 rounded-lg transition-all text-foreground"
           >
@@ -1503,6 +1532,52 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           </button>
         </div>
       </div>
+
+      {/* Cancel-flow export prompt (PR replaces #43, 2026-05-02).
+          Closes journey-architect P1 — surfaces the data-export prompt
+          AT the cancel touchpoint so users with active subscriptions
+          aren't routed to /account/billing without ever seeing the
+          option to take their data with them first. Equal-weight CTAs,
+          calm tone, no retention-via-friction. Mobile parity at
+          `apps/mobile/components/settings/CancelExportPromptSheet.tsx`. */}
+      <CancelExportPromptDialog
+        open={cancelPromptOpen}
+        exporting={cancelPromptExporting}
+        onDismiss={() => {
+          setCancelPromptOpen(false);
+          // State-reset on close: the next open starts from a clean
+          // exporting=false slate so a previous in-flight export
+          // doesn't leave the dialog disabled on the next render.
+          setCancelPromptExporting(false);
+        }}
+        onExport={() => {
+          track(AnalyticsEvents.cancel_export_chosen, {
+            source: "web",
+            tier: userTier,
+          });
+          setCancelPromptExporting(true);
+          // Dialog stays open after the CSV download fires so the
+          // user can still tap "Continue to manage" or dismiss.
+          // Don't auto-close on success.
+          void runCsvExport().finally(() => {
+            setCancelPromptExporting(false);
+          });
+        }}
+        onContinueToManage={() => {
+          track(AnalyticsEvents.cancel_proceeded, {
+            source: "web",
+            tier: userTier,
+          });
+          setCancelPromptOpen(false);
+          setCancelPromptExporting(false);
+          // Route to the existing /account/billing Stripe Customer
+          // Portal shell. Hard nav (not Link) because the user is
+          // committing to a destination outside the SPA shell.
+          if (typeof window !== "undefined") {
+            window.location.href = "/account/billing";
+          }
+        }}
+      />
 
       {/* Themed destructive-confirm dialogs (audit M7, 2026-04-18).
           Replace three native `window.confirm` calls. Account deletion
