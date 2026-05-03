@@ -42,7 +42,7 @@ const STATES = [
   },
   {
     id: "over",
-    title: "OVER BUDGET",
+    title: "OVER",
     consumed: 2338,
     goal: 1832,
     note: "Already correct on mobile (uses Math.abs(diff))",
