@@ -28,5 +28,5 @@ while IFS= read -r b; do
 done < <(git for-each-ref refs/heads --format '%(refname:short)')
 
 if [[ "$pruned" -eq 0 ]]; then
-  echo "No extra local branches to prune (all remaining tips are not ancestors of origin/main)."
+  echo "No local branches pruned (nothing to remove, or every non-main tip is still not fully on origin/main)."
 fi
