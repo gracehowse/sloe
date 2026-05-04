@@ -47,6 +47,30 @@ export function useDiscoverRecipes() {
     // object branch below is preserved; the wrap is defence against
     // raw rejections too — see useSavedLibraryRecipes for rationale.
     try {
+    // 2026-05-03 — hung PostgREST never settles → `await` never returns →
+    // `finally` never runs → perpetual "Loading recipes…". Same pattern
+    // as Library `useSavedLibraryRecipes`.
+    const discoverRaceTimeout = Symbol("discover_fetch_timeout");
+    async function raceDiscover<T>(
+      p: Promise<T>,
+      ms: number,
+      label: string,
+    ): Promise<T | typeof discoverRaceTimeout> {
+      const out = await Promise.race([
+        p,
+        new Promise<typeof discoverRaceTimeout>((resolve) => {
+          setTimeout(() => resolve(discoverRaceTimeout), ms);
+        }),
+      ]);
+      if (out === discoverRaceTimeout) {
+        console.warn(`[useDiscoverRecipes] ${label} timed out (${ms}ms)`);
+      }
+      return out;
+    }
+    const DISCOVER_QUERY_TIMEOUT_MS = 35_000;
+    const DISCOVER_COUNTS_TIMEOUT_MS = 18_000;
+    const DISCOVER_CACHE_READ_TIMEOUT_MS = 12_000;
+
     // GW-03/GW-04 fix (audit 2026-04-28): the prior `.not("author_id",
     // "is", null)` filter was a workaround for a long-resolved
     // tombstoning behaviour. After 2026-04-28 the seeder writes
@@ -54,14 +78,27 @@ export function useDiscoverRecipes() {
     // `supabase/migrations/20260503112000_unpoison_seed_author_ids.sql`
     // + the patched `scripts/seed-discover-recipes.ts`). Keeping the
     // filter would now hide every seeded recipe from Discover.
-    const { data, error } = await supabase
-      .from("recipes")
-      .select(
-        "id, title, image_url, servings, calories, protein, carbs, fat, fiber_g, is_verified, created_at, author_id, creator_id, meal_type, source_url, source_name, prep_time_min, cook_time_min, allergens, dietary_flags",
-      )
-      .eq("published", true)
-      .order("created_at", { ascending: false })
-      .limit(200);
+    const queryOut = await raceDiscover(
+      (async () =>
+        await supabase
+          .from("recipes")
+          .select(
+            "id, title, image_url, servings, calories, protein, carbs, fat, fiber_g, is_verified, created_at, author_id, creator_id, meal_type, source_url, source_name, prep_time_min, cook_time_min, allergens, dietary_flags",
+          )
+          .eq("published", true)
+          .order("created_at", { ascending: false })
+          .limit(200))(),
+      DISCOVER_QUERY_TIMEOUT_MS,
+      "published recipes",
+    );
+
+    if (queryOut === discoverRaceTimeout) {
+      const seeds = seedsToRecipeCards(SEED_RECIPES_V2) as unknown as RecipeCard[];
+      setRecipes(seeds);
+      return;
+    }
+
+    const { data, error } = queryOut;
 
     // F-59 (2026-04-22): TestFlight build-28 AEwoLmeE / AKcZwsip /
     // AJr60qsyV ("recipes still not seeded") despite prod having 20
@@ -122,11 +159,18 @@ export function useDiscoverRecipes() {
       });
       let enriched = mapped;
       try {
-        const counts = await fetchPublicRecipeSaveCounts(supabase, mapped.map((r) => r.id));
-        enriched = mapped.map((r) => {
-          const n = counts.get(r.id) ?? 0;
-          return { ...r, savedCount: n, saves: n };
-        });
+        const countsOut = await raceDiscover(
+          fetchPublicRecipeSaveCounts(supabase, mapped.map((r) => r.id)),
+          DISCOVER_COUNTS_TIMEOUT_MS,
+          "public save counts",
+        );
+        if (countsOut !== discoverRaceTimeout) {
+          const counts = countsOut;
+          enriched = mapped.map((r) => {
+            const n = counts.get(r.id) ?? 0;
+            return { ...r, savedCount: n, saves: n };
+          });
+        }
       } catch (e) {
         console.warn("[useDiscoverRecipes] public save counts failed:", e);
       }
@@ -146,7 +190,12 @@ export function useDiscoverRecipes() {
     } else if (error) {
       // Network failure — try offline cache
       console.error("[useDiscoverRecipes] DB failed, trying cache:", error.message);
-      const cached = await getCachedDiscoverRecipes();
+      const cachedRaw = await raceDiscover(
+        getCachedDiscoverRecipes(),
+        DISCOVER_CACHE_READ_TIMEOUT_MS,
+        "offline discover cache read",
+      );
+      const cached = cachedRaw === discoverRaceTimeout ? null : cachedRaw;
       const seeds = seedsToRecipeCards(SEED_RECIPES_V2) as unknown as RecipeCard[];
       if (cached && Array.isArray(cached)) {
         let list = cached as RecipeCard[];
@@ -154,11 +203,18 @@ export function useDiscoverRecipes() {
         try {
           const ids = list.map((r) => r.id).filter(Boolean);
           if (ids.length > 0) {
-            const counts = await fetchPublicRecipeSaveCounts(supabase, ids);
-            list = list.map((r) => {
-              const n = counts.get(r.id) ?? r.saves ?? 0;
-              return { ...r, savedCount: n, saves: n };
-            });
+            const countsOut = await raceDiscover(
+              fetchPublicRecipeSaveCounts(supabase, ids),
+              DISCOVER_COUNTS_TIMEOUT_MS,
+              "public save counts (cache path)",
+            );
+            if (countsOut !== discoverRaceTimeout) {
+              const counts = countsOut;
+              list = list.map((r) => {
+                const n = counts.get(r.id) ?? r.saves ?? 0;
+                return { ...r, savedCount: n, saves: n };
+              });
+            }
           }
         } catch (e) {
           console.warn("[useDiscoverRecipes] save counts on cache path failed:", e);
@@ -337,20 +393,43 @@ export function useSavedLibraryRecipes(userId: string | null) {
     // Parallel fetch: saves + author-owned recipes. Either can be
     // empty independently (brand-new user with one created draft, or
     // a user who only bookmarks community recipes).
-    const [savesRes, authoredRes] = await Promise.all([
-      supabase
-        .from("saves")
-        .select("recipe_id, created_at")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("recipes")
-        .select(
-          "id, title, image_url, servings, calories, protein, carbs, fat, fiber_g, is_verified, author_id, creator_id, meal_type, source_url, source_name, prep_time_min, cook_time_min, created_at, allergens, dietary_flags, author:profiles!author_id(display_name, avatar_url)",
-        )
-        .eq("author_id", userId)
-        .order("created_at", { ascending: false }),
+    //
+    // 2026-05-03 — if either PostgREST call hangs (same class of issue
+    // as Today `loadJournal`), `await` never completes and `finally`
+    // never runs → Library shows a perpetual spinner. Race the batch.
+    const LIBRARY_INITIAL_TIMEOUT_MS = 30_000;
+    const LIBRARY_EXTRA_RECIPES_TIMEOUT_MS = 20_000;
+    const libraryRaceTimeout = Symbol("library_saved_recipes_timeout");
+
+    const initialOut = await Promise.race([
+      Promise.all([
+        (async () =>
+          await supabase
+            .from("saves")
+            .select("recipe_id, created_at")
+            .eq("user_id", userId)
+            .order("created_at", { ascending: false }))(),
+        (async () =>
+          await supabase
+            .from("recipes")
+            .select(
+              "id, title, image_url, servings, calories, protein, carbs, fat, fiber_g, is_verified, author_id, creator_id, meal_type, source_url, source_name, prep_time_min, cook_time_min, created_at, allergens, dietary_flags, author:profiles!author_id(display_name, avatar_url)",
+            )
+            .eq("author_id", userId)
+            .order("created_at", { ascending: false }))(),
+      ]),
+      new Promise<typeof libraryRaceTimeout>((resolve) => {
+        setTimeout(() => resolve(libraryRaceTimeout), LIBRARY_INITIAL_TIMEOUT_MS);
+      }),
     ]);
+
+    if (initialOut === libraryRaceTimeout) {
+      console.warn("[useSavedLibraryRecipes] saves+recipes batch timed out");
+      setRecipes([]);
+      return;
+    }
+
+    const [savesRes, authoredRes] = initialOut;
 
     const saves = savesRes.data ?? [];
     const authoredRows = authoredRes.data ?? [];
@@ -372,21 +451,33 @@ export function useSavedLibraryRecipes(userId: string | null) {
 
     let savedOnlyRows: any[] = [];
     if (extraIds.length > 0) {
-      const { data: extraRows, error: recErr } = await supabase
-        .from("recipes")
-        .select(
-          "id, title, image_url, servings, calories, protein, carbs, fat, fiber_g, is_verified, author_id, creator_id, meal_type, source_url, source_name, prep_time_min, cook_time_min, created_at, allergens, dietary_flags, author:profiles!author_id(display_name, avatar_url)",
-        )
-        .in("id", extraIds);
-      if (!recErr && Array.isArray(extraRows)) {
-        savedOnlyRows = extraRows;
-        if (extraRows.length < extraIds.length) {
-          // F-8 telemetry: orphan saves referenced a deleted recipe.
-          // Silent log only — no user-facing error.
-          console.info(
-            "[useSavedLibraryRecipes] dropping orphan save rows:",
-            extraIds.length - extraRows.length,
-          );
+      const extraOut = await Promise.race([
+        (async () =>
+          await supabase
+            .from("recipes")
+            .select(
+              "id, title, image_url, servings, calories, protein, carbs, fat, fiber_g, is_verified, author_id, creator_id, meal_type, source_url, source_name, prep_time_min, cook_time_min, created_at, allergens, dietary_flags, author:profiles!author_id(display_name, avatar_url)",
+            )
+            .in("id", extraIds))(),
+        new Promise<typeof libraryRaceTimeout>((resolve) => {
+          setTimeout(() => resolve(libraryRaceTimeout), LIBRARY_EXTRA_RECIPES_TIMEOUT_MS);
+        }),
+      ]);
+      if (extraOut === libraryRaceTimeout) {
+        console.warn("[useSavedLibraryRecipes] extra saved recipe rows timed out");
+        savedOnlyRows = [];
+      } else {
+        const { data: extraRows, error: recErr } = extraOut;
+        if (!recErr && Array.isArray(extraRows)) {
+          savedOnlyRows = extraRows;
+          if (extraRows.length < extraIds.length) {
+            // F-8 telemetry: orphan saves referenced a deleted recipe.
+            // Silent log only — no user-facing error.
+            console.info(
+              "[useSavedLibraryRecipes] dropping orphan save rows:",
+              extraIds.length - extraRows.length,
+            );
+          }
         }
       }
     }

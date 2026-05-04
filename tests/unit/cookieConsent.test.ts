@@ -5,7 +5,7 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, beforeEach } from "vitest";
-import { getConsentChoice, type ConsentChoice } from "@/app/components/CookieConsent";
+import { getConsentChoice } from "@/app/components/CookieConsent";
 
 describe("Cookie consent", () => {
   beforeEach(() => {

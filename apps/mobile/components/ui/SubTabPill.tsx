@@ -54,7 +54,7 @@ export type SubTabItem<TId extends string = string> = {
 };
 
 export interface SubTabPillProps<TId extends string = string> {
-  items: ReadonlyArray<SubTabItem<TId>>;
+  items: readonly SubTabItem<TId>[];
   activeId: TId;
   onSelect: (id: TId) => void;
   /** Group accessibility label — announced to screen readers as the

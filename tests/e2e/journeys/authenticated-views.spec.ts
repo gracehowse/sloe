@@ -7,7 +7,7 @@ import { hasE2ECredentials, loginWithTestUser } from "../utils/auth";
  * Requires E2E_EMAIL + E2E_PASSWORD and a fully onboarded Supabase profile.
  */
 test.describe("Authenticated app view matrix", () => {
-  test.beforeEach(({ page }) => {
+  test.beforeEach(() => {
     test.skip(!hasE2ECredentials(), "Set E2E_EMAIL and E2E_PASSWORD to run authenticated journeys.");
   });
 

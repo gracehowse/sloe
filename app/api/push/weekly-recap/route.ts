@@ -58,7 +58,7 @@ import { timingSafeEqual } from "crypto";
 import { sendExpoPush, type ExpoPushMessage } from "@/lib/push/expoPush";
 import { sendWebPushFanout } from "@/lib/push/webPushSend";
 import { getSupabaseAdminClient } from "@/lib/supabase/serverAdminClient";
-import { buildWeeklyRecap, weekKeyFor } from "@/lib/nutrition/weeklyRecap";
+import { buildWeeklyRecap } from "@/lib/nutrition/weeklyRecap";
 import { buildWeekStats } from "@/lib/nutrition/progressWeekReport";
 import { resolveMaintenance } from "@/lib/nutrition/resolveMaintenance";
 import { formatWeeklyRecapPushBody } from "@/lib/nutrition/weeklyRecapPushBody";

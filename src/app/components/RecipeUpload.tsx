@@ -184,7 +184,7 @@ function resolveStructuredIngredient(i: { name: string; amount: string; unit: st
   return { name: foodName, amount, unit };
 }
 
-export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSwitchToCreate }: RecipeUploadProps) {
+export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchToImport, onSwitchToCreate }: RecipeUploadProps) {
   const { refreshDiscoverRecipes, ensureRecipeInLibraryWithKind, refreshMyLibraryRecipes, nutritionTargets } = useAppData();
   const searchParams = useSearchParams();
   const [title, setTitle] = useState("");
@@ -200,7 +200,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
   const [dietary, setDietary] = useState<string[]>([]);
   const [recipeId, setRecipeId] = useState<string | null>(null);
   const [saving, setSaving] = useState<"draft" | "publish" | null>(null);
-  const [loadingRecipe, setLoadingRecipe] = useState(false);
+  const [, setLoadingRecipe] = useState(false);
   const [importUrl, setImportUrl] = useState("");
   const [importBusy, setImportBusy] = useState(false);
   // Captured at URL-import time so the upsert persists `recipes.source_url` +
@@ -300,7 +300,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
     }
   };
 
-  const runBarcodeLookup = async (code?: string) => {
+  const runBarcodeLookup = useCallback(async (code?: string) => {
     const c = (code ?? barcode).trim();
     if (!c) return;
     setBarcodeLoading(true);
@@ -319,7 +319,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
     } finally {
       setBarcodeLoading(false);
     }
-  };
+  }, [barcode]);
 
   const stopScanner = useCallback(() => {
     scanStopRef.current?.();
@@ -910,6 +910,9 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
       void verifyWithProvider("auto", { silent: true });
     }, 700);
     return () => clearTimeout(t);
+    // verifyWithProvider is intentionally excluded: it closes over fresh
+    // ingredients state each render; listing it would retrigger every tick.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- verifyWithProvider omitted deliberately (comment above)
   }, [ingredients, servings, isCreator, lineOverrides]);
 
   const saveRecipe = async (published: boolean) => {
@@ -1411,6 +1414,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
           className="border-2 border-dashed border-border rounded-xl p-6 text-center hover:border-primary transition-all bg-muted/40"
         >
           {coverImageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- user-chosen blob/data URLs before upload
             <img
               src={coverImageUrl}
               alt="Recipe cover preview"

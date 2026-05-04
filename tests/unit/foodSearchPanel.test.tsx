@@ -750,8 +750,7 @@ describe("FoodSearchPanel — Premier-tier autocomplete row", () => {
   });
 
   it("does not call autocomplete on empty query", async () => {
-    const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
-      const url = typeof input === "string" ? input : input.toString();
+    const fetchSpy = vi.fn(async (_input: RequestInfo | URL) => {
       return new Response(JSON.stringify({ ok: true, hits: [], products: [] }), {
         status: 200,
         headers: { "Content-Type": "application/json" },

@@ -228,32 +228,26 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
     return { bmr, tdee, calories, protein: macros.protein, carbs: macros.carbs, fat: macros.fat, fiber: macros.fiber, waterMl };
   }, [hasBodyStats, sex, weight, height, age, activityLevel, planPace, goal, nutritionStrategy]);
 
-  const displayTargets = normalizeMacroTargets(
-    nutritionTargets?.calories && nutritionTargets?.protein
-      ? nutritionTargets
-      : computedTargets ?? {
-          calories: 0,
-          protein: 0,
-          carbs: 0,
-          fat: 0,
-          fiber: 0,
-          waterMl: 0,
-        },
-  );
+  const displayTargets = useMemo(() => {
+    const raw =
+      nutritionTargets?.calories && nutritionTargets?.protein
+        ? nutritionTargets
+        : computedTargets ?? {
+            calories: 0,
+            protein: 0,
+            carbs: 0,
+            fat: 0,
+            fiber: 0,
+            waterMl: 0,
+          };
+    return normalizeMacroTargets(raw);
+  }, [nutritionTargets, computedTargets]);
 
   useEffect(() => {
     if (!isEditingTargets) {
       setManualTargets({ ...displayTargets });
     }
-  }, [
-    displayTargets.calories,
-    displayTargets.protein,
-    displayTargets.carbs,
-    displayTargets.fat,
-    displayTargets.fiber,
-    displayTargets.waterMl,
-    isEditingTargets,
-  ]);
+  }, [displayTargets, isEditingTargets]);
 
   const canSave = useMemo(() => {
     return (

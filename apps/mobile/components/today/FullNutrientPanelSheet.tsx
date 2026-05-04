@@ -238,7 +238,7 @@ export function FullNutrientPanelSheet({
 }: FullNutrientPanelSheetProps) {
   const insets = useSafeAreaInsets();
   const sections = React.useMemo<
-    Array<{ section: FullNutrientPanelSection; rows: FullNutrientPanelRow[] }>
+    { section: FullNutrientPanelSection; rows: FullNutrientPanelRow[] }[]
   >(() => {
     const input: FullNutrientPanelInput = {
       microSum: microSum ?? {},

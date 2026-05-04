@@ -44,7 +44,7 @@ export type DigestUsualMeal =
       kind: "prompt";
       suggestedSlot: DigestSlot;
       repeats?: number;
-      seedItems?: Array<Omit<SavedMealItem, "id" | "position">>;
+      seedItems?: Omit<SavedMealItem, "id" | "position">[];
     };
 
 export interface DigestProps {
@@ -80,7 +80,7 @@ export interface DigestProps {
   onDismiss: () => void;
   onOpenSaveCombo?: (
     slot: DigestSlot,
-    seedItems: Array<Omit<SavedMealItem, "id" | "position">>,
+    seedItems: Omit<SavedMealItem, "id" | "position">[],
   ) => void;
   onStartUsualMealSave?: (slot: DigestSlot) => void;
   /** T13 (2026-04-24): weight surface mode. Mirrors web Digest prop;

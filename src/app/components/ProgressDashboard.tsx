@@ -398,8 +398,6 @@ function ProgressDashboardContent() {
     return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
   }, [weeksToGoalVal]);
 
-  const todaySteps = stepsByDay[todayKey()] ?? 0;
-
   const rangeDays = range === "7d" ? 7 : range === "30d" ? 30 : range === "90d" ? 90 : 9999;
 
   const weightChartData = useMemo(() => {
@@ -458,15 +456,6 @@ function ProgressDashboardContent() {
     setStepsInput("");
     await persistProfilePatch({ steps_by_day: nextMap });
   }, [stepsInput, stepsByDay, persistProfilePatch]);
-
-  const saveStepsGoal = useCallback(
-    async (next: number) => {
-      const g = Math.max(1000, Math.round(next));
-      setDailyStepsGoal(g);
-      await persistProfilePatch({ daily_steps_goal: g });
-    },
-    [persistProfilePatch],
-  );
 
   const saveBodyFat = useCallback(async () => {
     const v = Number.parseFloat(bodyFatInput.replace(",", "."));

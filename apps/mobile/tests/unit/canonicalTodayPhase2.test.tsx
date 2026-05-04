@@ -51,17 +51,17 @@ describe("StreakPip", () => {
     expect(getByText("Start streak")).toBeTruthy();
   });
 
-  it("renders '1 day' (singular) at one day", () => {
+  it("renders '1-day streak' at one day", () => {
     const { getByText } = render(<StreakPip days={1} />);
-    expect(getByText("1 day")).toBeTruthy();
+    expect(getByText("1-day streak")).toBeTruthy();
   });
 
-  it("renders 'N days' (plural) at two or more days", () => {
+  it("renders 'N-day streak' at two or more days", () => {
     const { getByText: get5 } = render(<StreakPip days={5} />);
-    expect(get5("5 days")).toBeTruthy();
+    expect(get5("5-day streak")).toBeTruthy();
 
     const { getByText: get42 } = render(<StreakPip days={42} />);
-    expect(get42("42 days")).toBeTruthy();
+    expect(get42("42-day streak")).toBeTruthy();
   });
 
   it("clamps non-finite or negative inputs to 0 (defensive)", () => {

@@ -12,7 +12,7 @@ import { X } from "lucide-react-native";
 export interface TodayNutrientsModalProps {
   visible: boolean;
   onClose: () => void;
-  rows: Array<{ key: string; label: string; value: string }>;
+  rows: { key: string; label: string; value: string }[];
   backgroundColor: string;
   cardColor: string;
   cardBorderColor: string;

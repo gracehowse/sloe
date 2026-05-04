@@ -9,7 +9,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../ui/dialog";
-import type { Milestone30DayContent } from "../../../lib/nutrition/milestone30Day";
+import {
+  MILESTONE_30_DAY_THRESHOLD,
+  type Milestone30DayContent,
+} from "../../../lib/nutrition/milestone30Day";
 
 /**
  * Milestone30DayDialog — web parity for the mobile Milestone30DayModal
@@ -54,8 +57,9 @@ export function Milestone30DayDialog({
               {content.headline}
             </DialogTitle>
             <DialogDescription className="text-sm text-center text-muted-foreground px-2 mt-1">
-              You&apos;ve logged {content.daysLogged} days. Here&apos;s what
-              your month looks like.
+              You crossed {MILESTONE_30_DAY_THRESHOLD}+ distinct days with meals
+              logged — here&apos;s a snapshot (averages, favourites, and your best
+              consecutive run).
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -69,7 +73,7 @@ export function Milestone30DayDialog({
           />
           <StatTile
             icon={<Sparkles className="w-4 h-4 text-primary" />}
-            label="Longest streak"
+            label="Best consecutive run"
             value={`${content.longestStreak} day${content.longestStreak === 1 ? "" : "s"}`}
           />
         </div>
@@ -109,7 +113,7 @@ export function Milestone30DayDialog({
           <div className="flex items-center rounded-xl border border-border px-4 py-3 mt-3">
             <Scale className="w-4 h-4 text-primary" />
             <span className="text-sm text-muted-foreground ml-2 flex-1">
-              Total weight change
+              Weight (first→last log day)
             </span>
             <span
               className="text-sm font-bold text-foreground"

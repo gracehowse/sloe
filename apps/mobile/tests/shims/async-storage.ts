@@ -19,7 +19,7 @@ const AsyncStorage = {
   async clear(): Promise<void> {
     store.clear();
   },
-  async multiGet(keys: readonly string[]): Promise<Array<[string, string | null]>> {
+  async multiGet(keys: readonly string[]): Promise<[string, string | null][]> {
     return keys.map((k) => [k, store.has(k) ? store.get(k)! : null]);
   },
   async multiSet(entries: readonly [string, string][]): Promise<void> {

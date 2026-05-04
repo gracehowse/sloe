@@ -11,6 +11,9 @@ import {
   type HouseholdData,
 } from "../../../src/lib/household/householdClient";
 
+const HOUSEHOLD_SUMMARY_FETCH_TIMEOUT_MS = 18_000;
+const householdFetchTimedOut = Symbol("household_summary_timeout");
+
 /**
  * P1-12 / P1-13 (TestFlight `ALQQyjCHjzbtxaCSPW18glk`,
  * `ALpppRnGzIx9Avg_bntZZfs`, `AK91aaRcQ6ILWgQIvCatZXI`,
@@ -50,8 +53,21 @@ export function HouseholdSummaryRow() {
     let cancelled = false;
     void (async () => {
       try {
-        const { data: result } = await getMyHousehold(supabase as any, userId);
+        const pack = await Promise.race([
+          getMyHousehold(supabase as any, userId),
+          new Promise<typeof householdFetchTimedOut>((resolve) => {
+            setTimeout(() => resolve(householdFetchTimedOut), HOUSEHOLD_SUMMARY_FETCH_TIMEOUT_MS);
+          }),
+        ]);
         if (cancelled) return;
+        if (pack === householdFetchTimedOut) {
+          console.warn(
+            `[HouseholdSummaryRow] getMyHousehold timed out (${HOUSEHOLD_SUMMARY_FETCH_TIMEOUT_MS}ms)`,
+          );
+          setData(null);
+          return;
+        }
+        const { data: result } = pack;
         setData(result ?? null);
       } catch {
         if (!cancelled) setData(null);

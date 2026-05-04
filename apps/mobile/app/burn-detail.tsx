@@ -45,7 +45,7 @@ export default function BurnDetailScreen() {
     restingBurn: number;
     steps: number;
     maintenanceKcal: number;
-    workouts: Array<{ type: string; minutes: number; calories: number; source: string }>;
+    workouts: { type: string; minutes: number; calories: number; source: string }[];
   } | null>(null);
   // 2026-04-26 polish (round 2): pre-fix the screen rendered a static
   // "Loading..." text with no spinner and no terminal state — if userId

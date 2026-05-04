@@ -93,12 +93,12 @@ const FALLBACK_PRICES = {
 /** Render timing of the Day-7-trial-ends timeline — only shown when
  *  the user is looking at the Pro annual package, which is the only
  *  SKU that carries the 7-day trial (pricing v1). */
-const TIMELINE: Array<{
+const TIMELINE: {
   icon: LucideIcon;
   color: string;
   title: string;
   desc: string;
-}> = [
+}[] = [
   {
     icon: CheckCircle2,
     color: Accent.success,
@@ -1230,7 +1230,7 @@ type TierCardProps = {
   ctaLoading: boolean;
   onPress: () => void;
   colors: ReturnType<typeof useThemeColors>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   styles: any;
 };
 

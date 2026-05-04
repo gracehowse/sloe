@@ -41,7 +41,7 @@ import {
   weightJourneyProgress,
 } from "@/lib/weightProjection";
 import { calculateTDEE, getEffectiveTDEE } from "@/lib/calcTargets";
-import { resolveMaintenance } from "../../../../src/lib/nutrition/resolveMaintenance";
+import { resolveMaintenance , formatMaintenanceRecapLine } from "../../../../src/lib/nutrition/resolveMaintenance";
 import { buildMaintenanceChain } from "../../../../src/lib/nutrition/maintenanceChain";
 import type { PlanPace } from "../../../../src/lib/nutrition/tdee";
 import {
@@ -83,7 +83,6 @@ import {
   serializePendingUsualMealSave,
 } from "../../../../src/lib/nutrition/pendingUsualMealSave";
 import { formatRecapForShare } from "@/lib/weeklyRecap";
-import { formatMaintenanceRecapLine } from "../../../../src/lib/nutrition/resolveMaintenance";
 import { resolveDigestHeadline } from "../../../../src/lib/nutrition/digest";
 import { Digest, type DigestUsualMeal } from "@/components/Digest";
 import { HouseholdBar } from "@/components/HouseholdBar";
@@ -481,7 +480,7 @@ export default function ProgressScreen() {
       // Skeleton-gate fix (2026-04-20): surface failures so we still
       // flip `loading` → false and the user gets the empty state +
       // a pull-to-refresh path rather than an indefinite skeleton.
-      // eslint-disable-next-line no-console
+       
       console.warn("Progress loadData failed", err);
     } finally {
       setLoading(false);
@@ -613,7 +612,7 @@ export default function ProgressScreen() {
         if (!cancelled) setHostSavedMealsForRecap(rows);
       })
       .catch((err) => {
-        // eslint-disable-next-line no-console
+         
         console.warn("Progress listSavedMeals (recap) failed", err);
       });
     return () => {
@@ -2501,7 +2500,7 @@ function AppleHealthCardHost({
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [userId, reloadKey, stepsToday, latestWeightKg]);
 
   return (

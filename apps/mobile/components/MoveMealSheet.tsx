@@ -51,7 +51,7 @@ export function MoveMealSheet({
   // sheet is readable on narrow phones and accessible via VoiceOver row-by-row.
   const rows = useMemo(() => {
     if (!plan) return [];
-    const out: Array<{
+    const out: {
       day: number;
       slotIndex: number;
       dayLabel: string;
@@ -59,7 +59,7 @@ export function MoveMealSheet({
       recipeTitle: string;
       isSource: boolean;
       isEmpty: boolean;
-    }> = [];
+    }[] = [];
     plan.forEach((dp, di) => {
       const dayLabel = dayLabels[di] ?? `Day ${dp.day}`;
       dp.meals.forEach((m, si) => {

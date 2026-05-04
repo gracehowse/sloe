@@ -82,10 +82,12 @@ export function FastingTimer() {
   useEffect(() => {
     if (activeFast) {
       timerRef.current = setInterval(() => setNow(Date.now()), 1000);
-      return () => { if (timerRef.current) clearInterval(timerRef.current); };
+      return () => {
+        if (timerRef.current) clearInterval(timerRef.current);
+      };
     }
     if (timerRef.current) clearInterval(timerRef.current);
-  }, [!!activeFast]);
+  }, [activeFast]);
 
   const persist = useCallback(
     async (updated: FastingSession[], window?: string) => {

@@ -3,7 +3,10 @@ import { Modal, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X, Sparkles, Flame, Utensils, Scale } from "lucide-react-native";
 import { Accent, Radius, Spacing } from "@/constants/theme";
-import type { Milestone30DayContent } from "@/lib/milestone30Day";
+import {
+  MILESTONE_30_DAY_THRESHOLD,
+  type Milestone30DayContent,
+} from "@/lib/milestone30Day";
 
 /**
  * Milestone30DayModal — the "30 days of logging" trust moment.
@@ -72,8 +75,8 @@ export function Milestone30DayModal({
             borderTopLeftRadius: 24,
             borderTopRightRadius: 24,
             paddingTop: Spacing.xl,
-            paddingBottom: insets.bottom + Spacing.xl,
             paddingHorizontal: Spacing.xl,
+            paddingBottom: Spacing.md,
             maxHeight: "85%",
           }}
         >
@@ -82,14 +85,16 @@ export function Milestone30DayModal({
             hitSlop={12}
             accessibilityRole="button"
             accessibilityLabel="Close"
-            style={{ position: "absolute", top: 16, right: 20 }}
+            style={{ position: "absolute", top: 16, right: 20, zIndex: 2 }}
           >
             <X size={24} color={textSecondaryColor} strokeWidth={2.25} />
           </Pressable>
 
           <ScrollView
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingTop: Spacing.sm }}
+            keyboardShouldPersistTaps="handled"
+            style={{ flexGrow: 0 }}
+            contentContainerStyle={{ paddingTop: Spacing.sm, paddingBottom: Spacing.sm }}
           >
             <View
               style={{
@@ -131,8 +136,9 @@ export function Milestone30DayModal({
                 paddingHorizontal: 8,
               }}
             >
-              You&apos;ve logged {content.daysLogged} days. Here&apos;s what
-              your month looks like.
+              You crossed {MILESTONE_30_DAY_THRESHOLD}+ distinct days with meals
+              logged — here&apos;s a snapshot (averages, favourites, and your best
+              consecutive run).
             </Text>
 
             {/* Stats card 1: avg kcal + longest streak */}
@@ -154,7 +160,7 @@ export function Milestone30DayModal({
               />
               <StatTile
                 icon={<Sparkles size={18} color={Accent.primary} strokeWidth={2.25} />}
-                label="Longest streak"
+                label="Best consecutive run"
                 value={`${content.longestStreak} day${content.longestStreak === 1 ? "" : "s"}`}
                 textColor={textColor}
                 textSecondaryColor={textSecondaryColor}
@@ -257,7 +263,7 @@ export function Milestone30DayModal({
                     flex: 1,
                   }}
                 >
-                  Total weight change
+                  Weight (first→last log day)
                 </Text>
                 <Text
                   style={[
@@ -269,27 +275,27 @@ export function Milestone30DayModal({
                 </Text>
               </View>
             ) : null}
-
-            <Pressable
-              onPress={onDismiss}
-              accessibilityRole="button"
-              accessibilityLabel="Keep going"
-              style={{
-                width: "100%",
-                paddingVertical: 16,
-                borderRadius: Radius.md,
-                backgroundColor: Accent.primary,
-                alignItems: "center",
-                marginTop: Spacing.sm,
-              }}
-            >
-              <Text
-                style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}
-              >
-                Keep going
-              </Text>
-            </Pressable>
           </ScrollView>
+
+          {/* Outside ScrollView so the CTA always receives taps (Fabric modal + long scroll). */}
+          <Pressable
+            onPress={onDismiss}
+            accessibilityRole="button"
+            accessibilityLabel="Keep going"
+            style={{
+              width: "100%",
+              paddingVertical: 16,
+              borderRadius: Radius.md,
+              backgroundColor: Accent.primary,
+              alignItems: "center",
+              marginTop: Spacing.sm,
+              marginBottom: insets.bottom > 0 ? insets.bottom : Spacing.md,
+            }}
+          >
+            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>
+              Keep going
+            </Text>
+          </Pressable>
         </View>
       </View>
     </Modal>

@@ -242,7 +242,7 @@ export async function syncTierToSupabase(
   const { next, write, reason } = resolveNextTier({ rc, promo, current });
   if (!write) {
     if (__DEV__ && reason === "downgrade-blocked") {
-      // eslint-disable-next-line no-console
+       
       console.warn(
         `[syncTierToSupabase] refusing to downgrade ${current} → computed (RC=${rc}, promo=${promo})`,
       );

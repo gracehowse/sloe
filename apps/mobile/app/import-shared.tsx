@@ -38,8 +38,7 @@ import MealTypePicker from "@/components/MealTypePicker";
 import FoodSearchModal, { type SelectedFood } from "@/components/FoodSearchModal";
 import OverrideIngredientSheet from "@/components/OverrideIngredientSheet";
 import { SupprMark } from "@/components/SupprMark";
-import { scaleMacros } from "@/lib/verifyRecipe";
-import { parseIngredientForSearch } from "@/lib/verifyRecipe";
+import { scaleMacros , parseIngredientForSearch } from "@/lib/verifyRecipe";
 import {
   extractUrlFromShareText,
   urlFromDeepLink,

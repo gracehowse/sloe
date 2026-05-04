@@ -5,7 +5,6 @@ import { Icons } from "./ui/icons";
 import { toast } from "sonner";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { normalizeMacroTargets, DEFAULT_STEPS_GOAL } from "../../types/profile.ts";
-import { calculateTDEE } from "../../lib/nutrition/tdee.ts";
 import { resolveMaintenance } from "../../lib/nutrition/resolveMaintenance.ts";
 import {
   buildMilestone30DayContent,
@@ -27,14 +26,10 @@ import { supabase } from "../../lib/supabase/browserClient.ts";
 import { fetchPlannedMealMicros, type SupabaseLike } from "../../lib/planning/plannedMealMicros.ts";
 import { useAuthSession } from "../../context/AuthSessionContext.tsx";
 import { AnalyticsEvents, type FoodLoggedSource } from "../../lib/analytics/events.ts";
-import { track, isFeatureEnabled } from "../../lib/analytics/track.ts";
+import { track } from "../../lib/analytics/track.ts";
 import { type OffProductMacros } from "../../lib/openFoodFacts/fetchProductByBarcode.ts";
+import { computeLoggingStreak } from "../../lib/nutrition/trackerStats.ts";
 import {
-  computeLoggingStreak,
-  computeWeekFiberWaterHits,
-} from "../../lib/nutrition/trackerStats.ts";
-import {
-  availableFreezes,
   computeProtectedStreak,
   readFreezeLedger,
   type FreezeLedger,
@@ -44,14 +39,9 @@ import {
   normalizeWeekSummaryMode,
   weekSummaryDateKeys,
 } from "../../lib/nutrition/weekSummaryWindow.ts";
-import { buildNutritionCsvForDay, downloadCsvFile } from "../../lib/nutrition/exportNutritionCsv.ts";
 import { scaleCaffeineAlcohol } from "../../lib/nutrition/scaleCaffeineAlcoholForGrams.ts";
 import { scaleMicrosForGrams } from "../../lib/openFoodFacts/parseOffMicros.ts";
-import {
-  clampPortionMultiplier,
-  effectivePortionMultiplier,
-  scaledMacro,
-} from "../../lib/nutrition/portionMultiplier.ts";
+import { clampPortionMultiplier, scaledMacro } from "../../lib/nutrition/portionMultiplier.ts";
 import { formatWaterMl } from "../../lib/units/imperial.ts";
 import {
   buildDayNutrientDetailRows,
@@ -101,7 +91,6 @@ import { FullNutrientPanelSheet } from "./suppr/full-nutrient-panel-sheet";
 import { FULL_NUTRIENT_PANEL_ROW_COUNT } from "../../lib/nutrition/fullNutrientPanel";
 import { WhyThisNumberDialog } from "./suppr/why-this-number-dialog";
 import { paceKgPerWeekFromPreset } from "../../lib/nutrition/whyThisNumber";
-import { TodayQuickLogStrip } from "./suppr/today-quick-log-strip";
 import { TodaySnapShortcut } from "./suppr/today-snap-shortcut";
 import { TodayMealsSection } from "./suppr/today-meals-section";
 import { TodayFirstMealEmptyState } from "./suppr/today-first-meal-empty-state";
@@ -150,13 +139,7 @@ import {
   type DismissState as EatAgainDismissState,
 } from "../../lib/nutrition/eatAgainDismiss";
 import { SaveMealDialog } from "./suppr/save-meal-dialog";
-import {
-  parseDateKey,
-  shiftDateKey,
-  todayKey,
-  formatDateLabel,
-  clampDateKey,
-} from "../../lib/nutrition/trackerDate.ts";
+import { parseDateKey, shiftDateKey, todayKey, clampDateKey } from "../../lib/nutrition/trackerDate.ts";
 import { dateKeyFromDate, journalRangeBounds } from "../../lib/nutrition/journalNavigation.ts";
 import {
   QUICK_ADD_COLLAPSED_STORAGE_KEY,
@@ -439,10 +422,8 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
     mealPlan,
     savedRecipesForLibrary,
     preferActivityAdjustedCalories,
-    activityBurnKcal,
     activityBurnForSelectedDay,
     activityBurnByDay,
-    setActivityBurnForSelectedDay,
     addWaterMlForSelectedDay,
     extraWaterMlForSelectedDay,
     addCaffeineMgForSelectedDay,
@@ -479,17 +460,6 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
     }
     return s;
   }, [nutritionByDay]);
-  const weekFiberWater = useMemo(
-    () =>
-      computeWeekFiberWaterHits(
-        nutritionByDay,
-        extraWaterByDay,
-        normalizeMacroTargets(nutritionTargets).fiber,
-        normalizeMacroTargets(nutritionTargets).waterMl,
-      ),
-    [nutritionByDay, extraWaterByDay, nutritionTargets],
-  );
-
   const [ringExpanded, setRingExpanded] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
   /** Batch 1.4 — meal row context menu: target meal id for the Copy dialog. */
@@ -643,12 +613,6 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
     usedHistory: [],
   });
   const [freezeBudgetMax, setFreezeBudgetMax] = useState<number>(3);
-  // Batch 4.11 — freeze sub-label on Today streak card. Safe to default
-  // to 0 when the ledger hasn't loaded; the sub-label is hidden then.
-  const freezesAvailableToday = useMemo(
-    () => availableFreezes(freezeLedger, freezeBudgetMax),
-    [freezeLedger, freezeBudgetMax],
-  );
   // 2026-04-18 audit H7 — `DayStrip` renders a ❄ glyph on each tile whose
   // date was absorbed by a freeze. The parent computes the set once so
   // both DayStrip instances (day + week view) read the same value.
@@ -686,50 +650,6 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
       }
     }
   }, [protectedStreakLength]);
-  // 2026-04-18 audit H7 — "You earned a freeze" row. Newest earnedAt ISO
-  // from the ledger; the row shows once until the user taps "Got it",
-  // which writes today's timestamp to localStorage. No migration.
-  const newestFreezeEarnedAt = useMemo(() => {
-    if (!Array.isArray(freezeLedger.earnedAt) || freezeLedger.earnedAt.length === 0) return null;
-    let newest = "";
-    for (const entry of freezeLedger.earnedAt) {
-      if (typeof entry?.earnedAt === "string" && entry.earnedAt > newest) newest = entry.earnedAt;
-    }
-    return newest || null;
-  }, [freezeLedger]);
-  const [lastSeenFreezeEarnedAt, setLastSeenFreezeEarnedAt] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
-    try {
-      return window.localStorage.getItem("suppr-last-seen-freeze-earned-at");
-    } catch {
-      return null;
-    }
-  });
-  const hasUnseenFreezeEarned =
-    freezesAvailableToday > 0 &&
-    newestFreezeEarnedAt !== null &&
-    (lastSeenFreezeEarnedAt === null || newestFreezeEarnedAt > lastSeenFreezeEarnedAt);
-  const dismissFreezeEarned = useCallback(() => {
-    if (!newestFreezeEarnedAt) return;
-    setLastSeenFreezeEarnedAt(newestFreezeEarnedAt);
-    try {
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem("suppr-last-seen-freeze-earned-at", newestFreezeEarnedAt);
-      }
-    } catch {
-      /* storage denied — UI still hides for the session */
-    }
-    try {
-      // Dual-emit during rename cycle 2026-04-18 → 2026-05-18. The "_seen"
-      // suffix is inconsistent with the rest of the registry — new
-      // canonical name is `streak_freeze_earned_acknowledged`. See plan doc §4.
-      const seenPayload = { earnedAt: newestFreezeEarnedAt };
-      track(AnalyticsEvents.streak_freeze_earned_seen, seenPayload);
-      track(AnalyticsEvents.streak_freeze_earned_acknowledged, seenPayload);
-    } catch {
-      /* noop */
-    }
-  }, [newestFreezeEarnedAt]);
   const [ringDisplayMode, setRingDisplayMode] = useState<CalorieRingDisplayMode>("remaining");
   const [stepsByDay, setStepsByDay] = useState<Record<string, number>>({});
   const [dailyStepsGoal, setDailyStepsGoal] = useState(DEFAULT_STEPS_GOAL);
@@ -1456,30 +1376,6 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
     };
   }, []);
 
-  const handleVoiceLog = () => {
-    // Batch 5.13 — Pro gate. Free users see the paywall dialog; Base users
-    // currently have voice via the server's existing Base+ check, but the
-    // product spec gates on Pro specifically.
-    if (userTier !== "pro") {
-      // Dual-emit during rename cycle 2026-04-18 → 2026-05-18. See plan doc §4.
-      track(AnalyticsEvents.voice_log_paywalled);
-      track(AnalyticsEvents.ai_voice_log_paywalled);
-      setAiPaywallFeature("voice_log");
-      return;
-    }
-    setVoiceLogOpen(true);
-  };
-
-  const handlePhotoLogClick = () => {
-    // 2026-05-02 — photo-log is no longer Pro-only. Free + Base get
-    // FREE_PHOTO_LOG_WEEKLY_LIMIT (=5) free photo logs per rolling 7
-    // days; the dialog opens for any tier. The gate is the SECOND
-    // photo after exhaustion (server returns 403, dialog calls
-    // `onUpgradeRequired` to route to the AiPaywallDialog). See
-    // `docs/decisions/2026-05-02-photo-log-free-taster.md`.
-    setPhotoLogOpen(true);
-  };
-
   const commitAiLoggedItems = useCallback(
     (items: AiLoggedItem[]) => {
       if (items.length === 0) return;
@@ -1687,9 +1583,6 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
     }
     return { sugarG, sodiumMg };
   }, [mealsForSelectedDate]);
-
-  const REF_SUGAR_G = 50;
-  const REF_SODIUM_MG = 2300;
 
   const mealsGrouped = useMemo(() => {
     const map = new Map<string, typeof mealsForSelectedDate>();
@@ -2094,32 +1987,6 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
     ? (stepsByDay[selectedDateKey] ?? 0)
     : null;
   const hasBurnData = activityBurnForSelectedDay > 0 || basalBurnKcal > 0 || dayWorkouts.length > 0;
-
-  const getProgress = (current: number, target: number) => {
-    return Math.min((current / target) * 100, 100);
-  };
-
-  const getProgressTextClass = (current: number, target: number) => {
-    const percentage = (current / target) * 100;
-    if (percentage >= 90 && percentage <= 110) {
-      return "text-success";
-    }
-    if (percentage > 110) {
-      return "text-warning";
-    }
-    return "text-primary";
-  };
-
-  const getProgressBarClass = (current: number, target: number) => {
-    const percentage = (current / target) * 100;
-    if (percentage >= 90 && percentage <= 110) {
-      return "bg-success";
-    }
-    if (percentage > 110) {
-      return "bg-warning";
-    }
-    return "bg-primary";
-  };
 
   const handleAddMeal = () => {
     if (addMode === "manual") {

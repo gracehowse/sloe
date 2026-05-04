@@ -223,6 +223,9 @@ export async function writeMealToHealthKitIfEnabled(
  *
  * Idempotent — safe to call repeatedly.
  */
+// Keep main's userId-scoped signature (audit Y02, 2026-05-05) — see
+// the function header comment above. PR #93 had pre-Y02 signature
+// (no userId); resolved in favour of main on rebase.
 export async function primeWrittenMealIds(userId: string | null | undefined, ids: ReadonlyArray<string>): Promise<void> {
   if (!userId || !ids || ids.length === 0) return;
   await hydrateWrittenIds(userId);

@@ -29,6 +29,11 @@ import * as React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, fireEvent } from "@testing-library/react-native";
 
+// ── Imports (after mocks) ──────────────────────────────────────────
+import { StreakPip } from "../../components/today/StreakPip";
+import WeeklyRecapScreen from "../../app/weekly-recap";
+import { selectClosestToTargetDay } from "../../../../src/lib/nutrition/weeklyRecap";
+
 void React;
 
 // ── Module-scoped supabase mock harness ─────────────────────────────
@@ -40,7 +45,7 @@ void React;
 type MockMode = "ready" | "empty" | "error" | "pending";
 const harness: {
   mode: MockMode;
-  rows: Array<Record<string, unknown>>;
+  rows: Record<string, unknown>[];
   profile: Record<string, unknown> | null;
 } = {
   mode: "ready",
@@ -113,11 +118,6 @@ vi.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
-// ── Imports (after mocks) ──────────────────────────────────────────
-import { StreakPip } from "../../components/today/StreakPip";
-import WeeklyRecapScreen from "../../app/weekly-recap";
-import { selectClosestToTargetDay } from "../../../../src/lib/nutrition/weeklyRecap";
-
 // ── Helpers ────────────────────────────────────────────────────────
 function setMode(mode: MockMode) {
   harness.mode = mode;
@@ -146,16 +146,16 @@ function loadFixture5of7() {
     return `${y}-${m}-${day}`;
   };
 
-  const rows: Array<Record<string, unknown>> = [];
+  const rows: Record<string, unknown>[] = [];
   // Days Mon (offset 0) through Fri (offset 4) logged. Sat / Sun blank.
   // Tue (offset 1) is closest to the 2100 kcal / 150g protein target.
-  const dayMacros: Array<{
+  const dayMacros: {
     offset: number;
     calories: number;
     protein: number;
     carbs: number;
     fat: number;
-  }> = [
+  }[] = [
     { offset: 0, calories: 1500, protein: 90, carbs: 150, fat: 50 },   // Mon — under
     { offset: 1, calories: 2105, protein: 152, carbs: 230, fat: 75 }, // Tue — closest
     { offset: 2, calories: 2400, protein: 180, carbs: 260, fat: 95 }, // Wed — over

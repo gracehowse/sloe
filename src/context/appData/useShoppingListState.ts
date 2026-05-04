@@ -135,7 +135,7 @@ export function useShoppingListState(opts: {
       }
     })();
     return () => { cancelled = true; };
-  }, [authedUserId, dbShoppingEnabled, dbShoppingWarned, scope?.kind, scope?.kind === "household" ? scope.householdId : null]);
+  }, [authedUserId, dbShoppingEnabled, dbShoppingWarned, scope]);
 
   // Honeydew parity (2026-04-30): real-time subscription so checks /
   // adds / removes from another device or another member propagate
@@ -176,7 +176,7 @@ export function useShoppingListState(opts: {
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [authedUserId, dbShoppingEnabled, scope?.kind, scope?.kind === "household" ? scope.householdId : scope?.userId]);
+  }, [authedUserId, dbShoppingEnabled, scope]);
 
   const toggleShoppingChecked = useCallback((itemId: string) => {
     setShoppingItems((prev) => {
@@ -237,7 +237,7 @@ export function useShoppingListState(opts: {
         });
       }
     },
-    [authedUserId, dbShoppingEnabled, scope?.kind, scope?.kind === "household" ? scope.householdId : null],
+    [authedUserId, dbShoppingEnabled, scope],
   );
 
   return {

@@ -15,7 +15,7 @@ import { X } from "lucide-react-native";
 import { Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
-const PORTIONS: Array<{ value: number; label: string }> = [
+const PORTIONS: { value: number; label: string }[] = [
   { value: 0.5, label: "½ ×" },
   { value: 1, label: "1 ×" },
   { value: 1.5, label: "1½ ×" },

@@ -142,13 +142,13 @@ export type FoodSearchResult = {
   servingSizeUnit?: string;
   householdServingFullText?: string;
   /** Non-branded portions; empty for branded hits. */
-  foodPortions?: Array<{
+  foodPortions?: {
     gramWeight?: number;
     amount?: number;
     modifier?: string;
     portionDescription?: string;
     measureUnit?: { name?: string; abbreviation?: string };
-  }>;
+  }[];
 };
 
 export type BarcodeProduct = {
@@ -653,7 +653,7 @@ export type EdamamSearchResult = {
    * a Pret sandwich). Passed straight through from the API route so the
    * primary-serving inference helper can pick the non-"Gram" entry.
    */
-  servingSizes?: Array<{ uri?: string; label?: string; quantity?: number }>;
+  servingSizes?: { uri?: string; label?: string; quantity?: number }[];
 };
 
 /**

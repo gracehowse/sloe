@@ -71,7 +71,7 @@ function kindLabel(kind: LibraryEntryKind): string {
   }
 }
 
-export const Library = memo(function Library({ userTier, onUpgrade, onGoDiscover }: LibraryProps) {
+export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, onGoDiscover }: LibraryProps) {
   const { savedRecipesForLibrary, libraryEntryKindByRecipeId, userId, duplicateRecipeToCreatedDraft, nutritionTargets } = useAppData();
   const uid = userId;
   const router = useRouter();
@@ -351,6 +351,7 @@ export const Library = memo(function Library({ userTier, onUpgrade, onGoDiscover
                         API (Firefox today) ignore the property — no
                         regression. The matching name lives on the
                         detail hero (RecipeDetail.tsx). */}
+                    {/* eslint-disable-next-line @next/next/no-img-element -- viewTransitionName + arbitrary recipe image URLs */}
                     <img
                       src={recipe.image}
                       alt=""
@@ -481,6 +482,7 @@ export const Library = memo(function Library({ userTier, onUpgrade, onGoDiscover
                 onClick={() => setSelectedRecipe(recipe)}
               >
                 <div className="relative overflow-hidden">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- arbitrary recipe image URLs */}
                   <img src={recipe.image} alt={recipe.title} className="w-full aspect-[4/3] object-cover group-hover:scale-110 transition-transform duration-500" />
                   <div
                     className={`absolute top-3 left-3 px-2.5 py-1 rounded-lg text-xs font-semibold shadow-md border border-white/30 ${kindBadgeClasses(entryKindForRecipe(recipe, libraryEntryKindByRecipeId[recipe.id], uid))}`}
@@ -546,6 +548,7 @@ export const Library = memo(function Library({ userTier, onUpgrade, onGoDiscover
                     </button>
                   ) : null}
                   <div className="flex items-center gap-2 mb-4">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- creator avatar URLs */}
                     <img
                       src={recipe.creatorImage}
                       alt={recipe.creatorName}

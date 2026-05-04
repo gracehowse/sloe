@@ -52,61 +52,61 @@ type AppleHealthKitNative = {
   ): void;
   getDailyStepCountSamples(
     options: { startDate: string; endDate: string },
-    callback: (err: string, results: Array<{ value: number; startDate: string }>) => void,
+    callback: (err: string, results: { value: number; startDate: string }[]) => void,
   ): void;
   getWeightSamples(
     options: { startDate: string; endDate: string; unit: string },
-    callback: (err: string, results: Array<{ value: number; startDate: string }>) => void,
+    callback: (err: string, results: { value: number; startDate: string }[]) => void,
   ): void;
   getBodyFatPercentageSamples(
     options: { startDate: string; endDate: string; ascending?: boolean; limit?: number },
-    callback: (err: string, results: Array<{ value: number; startDate: string; endDate?: string }>) => void,
+    callback: (err: string, results: { value: number; startDate: string; endDate?: string }[]) => void,
   ): void;
   getActiveEnergyBurned(
     options: { startDate: string; endDate: string },
-    callback: (err: string, results: Array<{ value: number; startDate: string }>) => void,
+    callback: (err: string, results: { value: number; startDate: string }[]) => void,
   ): void;
   getEnergyConsumedSamples(
     options: { startDate: string; endDate: string },
-    callback: (err: string, results: Array<{ value: number; startDate: string; metadata?: { HKFoodType?: string }; sourceName?: string; sourceBundleId?: string }>) => void,
+    callback: (err: string, results: { value: number; startDate: string; metadata?: { HKFoodType?: string }; sourceName?: string; sourceBundleId?: string }[]) => void,
   ): void;
   getProteinSamples(
     options: { startDate: string; endDate: string; unit: string },
-    callback: (err: string, results: Array<{ value: number; startDate: string; sourceName?: string; sourceBundleId?: string }>) => void,
+    callback: (err: string, results: { value: number; startDate: string; sourceName?: string; sourceBundleId?: string }[]) => void,
   ): void;
   getCarbohydratesSamples(
     options: { startDate: string; endDate: string; unit: string },
-    callback: (err: string, results: Array<{ value: number; startDate: string; sourceName?: string; sourceBundleId?: string }>) => void,
+    callback: (err: string, results: { value: number; startDate: string; sourceName?: string; sourceBundleId?: string }[]) => void,
   ): void;
   getFatTotalSamples(
     options: { startDate: string; endDate: string; unit: string },
-    callback: (err: string, results: Array<{ value: number; startDate: string; sourceName?: string; sourceBundleId?: string }>) => void,
+    callback: (err: string, results: { value: number; startDate: string; sourceName?: string; sourceBundleId?: string }[]) => void,
   ): void;
   getFiberSamples(
     options: { startDate: string; endDate: string; unit: string },
-    callback: (err: string, results: Array<{ value: number; startDate: string; endDate?: string; id?: string; sourceName?: string; sourceBundleId?: string; sourceId?: string; metadata?: Record<string, unknown> }>) => void,
+    callback: (err: string, results: { value: number; startDate: string; endDate?: string; id?: string; sourceName?: string; sourceBundleId?: string; sourceId?: string; metadata?: Record<string, unknown> }[]) => void,
   ): void;
   getSugarSamples(
     options: { startDate: string; endDate: string; unit: string },
-    callback: (err: string, results: Array<{ value: number; startDate: string; endDate?: string; id?: string; sourceName?: string; sourceBundleId?: string; sourceId?: string; metadata?: Record<string, unknown> }>) => void,
+    callback: (err: string, results: { value: number; startDate: string; endDate?: string; id?: string; sourceName?: string; sourceBundleId?: string; sourceId?: string; metadata?: Record<string, unknown> }[]) => void,
   ): void;
   getSodiumSamples(
     options: { startDate: string; endDate: string; unit: string },
-    callback: (err: string, results: Array<{ value: number; startDate: string; endDate?: string; id?: string; sourceName?: string; sourceBundleId?: string; sourceId?: string; metadata?: Record<string, unknown> }>) => void,
+    callback: (err: string, results: { value: number; startDate: string; endDate?: string; id?: string; sourceName?: string; sourceBundleId?: string; sourceId?: string; metadata?: Record<string, unknown> }[]) => void,
   ): void;
   getFatSaturatedSamples(
     options: { startDate: string; endDate: string; unit: string },
-    callback: (err: string, results: Array<{ value: number; startDate: string; endDate?: string; id?: string; sourceName?: string; sourceBundleId?: string; sourceId?: string; metadata?: Record<string, unknown> }>) => void,
+    callback: (err: string, results: { value: number; startDate: string; endDate?: string; id?: string; sourceName?: string; sourceBundleId?: string; sourceId?: string; metadata?: Record<string, unknown> }[]) => void,
   ): void;
   getCholesterolSamples(
     options: { startDate: string; endDate: string; unit: string },
-    callback: (err: string, results: Array<{ value: number; startDate: string; endDate?: string; id?: string; sourceName?: string; sourceBundleId?: string; sourceId?: string; metadata?: Record<string, unknown> }>) => void,
+    callback: (err: string, results: { value: number; startDate: string; endDate?: string; id?: string; sourceName?: string; sourceBundleId?: string; sourceId?: string; metadata?: Record<string, unknown> }[]) => void,
   ): void;
   getDietaryQuantitySamplesForPermission?: (
     options: { startDate: string; endDate: string; permissionKey: string; unit: string },
     callback: (
       err: string,
-      results: Array<{
+      results: {
         value: number;
         startDate: string;
         endDate?: string;
@@ -115,7 +115,7 @@ type AppleHealthKitNative = {
         sourceBundleId?: string;
         sourceId?: string;
         metadata?: Record<string, unknown>;
-      }>,
+      }[],
     ) => void,
   ) => void;
   getFoodCorrelationSamples?: (
@@ -139,15 +139,15 @@ type AppleHealthKitNative = {
   ): void;
   getSamples(
     options: { startDate: string; endDate: string; type: string },
-    callback: (err: string, results: Array<{
+    callback: (err: string, results: {
       start: string; end: string; value: number;
       activityName?: string; sourceName?: string; sourceBundleId?: string;
       calories?: number; distance?: number;
-    }>) => void,
+    }[]) => void,
   ): void;
   getBasalEnergyBurned(
     options: { startDate: string; endDate: string },
-    callback: (err: string, results: Array<{ value: number; startDate: string }>) => void,
+    callback: (err: string, results: { value: number; startDate: string }[]) => void,
   ): void;
 };
 
@@ -271,7 +271,7 @@ function initHealthKitPromiseWithTimeout(
 function getDailyStepCountSamplesPromise(
   hk: AppleHealthKitNative,
   options: { startDate: string; endDate: string },
-): Promise<Array<{ value: number; startDate: string }>> {
+): Promise<{ value: number; startDate: string }[]> {
   return new Promise((resolve, reject) => {
     hk.getDailyStepCountSamples(options, (err, results) => {
       if (err) reject(new Error(String(err)));
@@ -283,7 +283,7 @@ function getDailyStepCountSamplesPromise(
 function getWeightSamplesPromise(
   hk: AppleHealthKitNative,
   options: { startDate: string; endDate: string; unit: string },
-): Promise<Array<{ value: number; startDate: string }>> {
+): Promise<{ value: number; startDate: string }[]> {
   return new Promise((resolve, reject) => {
     hk.getWeightSamples(options, (err, results) => {
       if (err) reject(new Error(String(err)));
@@ -295,7 +295,7 @@ function getWeightSamplesPromise(
 function getBodyFatPercentageSamplesPromise(
   hk: AppleHealthKitNative,
   options: { startDate: string; endDate: string; ascending?: boolean; limit?: number },
-): Promise<Array<{ value: number; startDate: string; endDate?: string }>> {
+): Promise<{ value: number; startDate: string; endDate?: string }[]> {
   return new Promise((resolve, reject) => {
     if (!hk.getBodyFatPercentageSamples) {
       resolve([]);
@@ -319,7 +319,7 @@ function bodyFatPercentFromHealthKitValue(raw: number): number | null {
 function getActiveEnergyBurnedPromise(
   hk: AppleHealthKitNative,
   options: { startDate: string; endDate: string },
-): Promise<Array<{ value: number; startDate: string }>> {
+): Promise<{ value: number; startDate: string }[]> {
   return new Promise((resolve, reject) => {
     hk.getActiveEnergyBurned(options, (err, results) => {
       if (err) reject(new Error(String(err)));
@@ -350,7 +350,7 @@ function getWorkoutSamplesPromise(
 function getBasalEnergyBurnedPromise(
   hk: AppleHealthKitNative,
   options: { startDate: string; endDate: string },
-): Promise<Array<{ value: number; startDate: string }>> {
+): Promise<{ value: number; startDate: string }[]> {
   return new Promise((resolve, reject) => {
     if (!hk.getBasalEnergyBurned) { resolve([]); return; }
     hk.getBasalEnergyBurned(options, (err, results) => {
@@ -1656,7 +1656,7 @@ async function syncNutritionFromHealthImpl(
   }
 
   // Batch inserts for efficiency
-  const toInsert: Array<{
+  const toInsert: {
     user_id: string;
     date_key: string;
     name: string;
@@ -1672,7 +1672,7 @@ async function syncNutritionFromHealthImpl(
     source: string;
     created_at: string;
     health_sample_id: string | null;
-  }> = [];
+  }[] = [];
 
   for (const sample of extEnergy) {
     const sourceApp = sample.sourceName?.trim() || sourceBundleIdOf(sample) || "Unknown app";

@@ -83,7 +83,7 @@ export function PricingTiersGrid({
   stripeTaxEnabled = false,
   paywallFrom,
   regionVatNote = "",
-  regionCurrency = "GBP",
+  regionCurrency: _regionCurrency = "GBP",
   regionNote = "",
 }: {
   tiers: Tier[];

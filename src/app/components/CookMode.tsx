@@ -480,7 +480,7 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
       portionMultiplier,
     });
     toast.success(`Logged ${mealName} to your tracker!`);
-  }, [addLoggedMeal, recipe, servings, scale]);
+  }, [addLoggedMeal, recipe, scaleFactor]);
 
   /** Save the per-cook history row (Paprika parity, 2026-04-30).
    *  Writes to `recipe_cook_history` with duration / scale / rating /

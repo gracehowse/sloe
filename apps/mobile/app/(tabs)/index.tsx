@@ -71,7 +71,7 @@ import { coerceMacrosWhenCaloriesButNoGrams } from "../../../../src/lib/nutritio
 import { fetchPlannedMealMicros, type SupabaseLike } from "../../../../src/lib/planning/plannedMealMicros";
 import { refreshAdaptiveTdeeForUser } from "@/lib/refreshAdaptiveTdee";
 import { snapshotDailyTargetIfMissing } from "../../../../src/lib/nutrition/dailyTargetSnapshot";
-import { refreshExpoPushTokenIfChanged } from "@/lib/expoPushToken";
+import { refreshExpoPushTokenIfChanged , registerExpoPushTokenForUser } from "@/lib/expoPushToken";
 import { subscribeOffline } from "@/lib/subscribeOffline";
 import { NUTRITION_DEFAULTS, type NutritionDefaults } from "@/constants/nutritionDefaults";
 import { calculateTDEE, maintenanceIntakeFromTargetCalories, resolveTargets } from "@/lib/calcTargets";
@@ -208,7 +208,6 @@ import { OnboardingNudgeBanner } from "@/components/today/onboarding-nudges";
 // Activation hook (audit 2026-04-30) — first-log toast + push explainer.
 import { FirstLogAcknowledgment } from "@/components/today/FirstLogAcknowledgment";
 import { PostOnboardingPushExplainer } from "@/components/today/PostOnboardingPushExplainer";
-import { registerExpoPushTokenForUser } from "@/lib/expoPushToken";
 // Phase 5 / B3.M (2026-04-27) — wire the NorthStarBlockHost on Today.
 import { NorthStarBlockHost } from "@/components/today/NorthStarBlockHost";
 import { useSavedLibraryRecipes } from "@/lib/recipes";
@@ -296,7 +295,7 @@ function dayActivityBudgetAddon(
   basalByDay: Record<string, number>,
   maintenanceKcal: number,
   dk: string,
-  workoutsByDay?: Record<string, Array<{ type: string; minutes: number; calories: number; source: string }>>,
+  workoutsByDay?: Record<string, { type: string; minutes: number; calories: number; source: string }[]>,
 ): number {
   if (!prefer) return 0;
   const active = Math.round(activityByDay[dk] ?? 0);
@@ -457,7 +456,7 @@ export default function TrackerScreen() {
   );
   const [stepsByDay, setStepsByDay] = useState<Record<string, number>>({});
   const [activityBurnByDay, setActivityBurnByDay] = useState<Record<string, number>>({});
-  const [workoutsByDay, setWorkoutsByDay] = useState<Record<string, Array<{ type: string; minutes: number; calories: number; source: string }>>>({});
+  const [workoutsByDay, setWorkoutsByDay] = useState<Record<string, { type: string; minutes: number; calories: number; source: string }[]>>({});
   const [basalBurnByDay, setBasalBurnByDay] = useState<Record<string, number>>({});
   const [preferActivityAdjustedCalories, setPreferActivityAdjustedCalories] = useState(false);
   /** surplus-only: add only burn above maintenance TDEE (needs resting + active from Health). */
@@ -471,7 +470,7 @@ export default function TrackerScreen() {
    *  Opened by the small pill under the calorie ring. */
   const [whyThisNumberOpen, setWhyThisNumberOpen] = useState(false);
   const [dailyStepsGoal, setDailyStepsGoal] = useState(NUTRITION_DEFAULTS.steps);
-  const [plannedMeals, setPlannedMeals] = useState<Array<{name?: string; recipe_title?: string; calories?: number; protein?: number; carbs?: number; fat?: number; recipe_id?: string | null}>>([]);
+  const [plannedMeals, setPlannedMeals] = useState<{name?: string; recipe_title?: string; calories?: number; protein?: number; carbs?: number; fat?: number; recipe_id?: string | null}[]>([]);
   const [activeFastStart, setActiveFastStart] = useState<string | null>(null);
   // Target fast length in hours, parsed from `profiles.fasting_window`
   // (stored as "16:8" style). Defaults to 16 until the profile loads.
@@ -502,8 +501,6 @@ export default function TrackerScreen() {
   const [editPortion, setEditPortion] = useState("1");
   const waterActivityInitialLoadDone = useRef(false);
   const editCanonicalRef = useRef({ cal: 0, p: 0, cb: 0, f: 0 });
-  /** Avoid double-fetch on mount (useFocusEffect already loads the journal). */
-  const skipJournalReloadOnFirstDateEffect = useRef(true);
   const [fastingTick, setFastingTick] = useState(Date.now());
   const [isOffline, setIsOffline] = useState(false);
   const [targetCelebration, setTargetCelebration] = useState(false);
@@ -685,7 +682,7 @@ export default function TrackerScreen() {
   // Ship M1 (2026-04-18) — the host also owns the full saved-meals list
   // so the meal-slot section can render the `Log usual` pill directly.
   const [saveMealSheetOpen, setSaveMealSheetOpen] = useState(false);
-  const [saveMealSheetItems, setSaveMealSheetItems] = useState<Array<Omit<SavedMealItem, "id" | "position">>>([]);
+  const [saveMealSheetItems, setSaveMealSheetItems] = useState<Omit<SavedMealItem, "id" | "position">[]>([]);
   const [saveMealSheetDefaultSlot, setSaveMealSheetDefaultSlot] = useState<"Breakfast" | "Lunch" | "Dinner" | "Snacks" | undefined>(undefined);
   /** Bumped after a new saved meal is persisted so `QuickAddPanel` refetches
    *  its "Usual meals" tab and jumps to it (mirrors the web host). */
@@ -706,7 +703,7 @@ export default function TrackerScreen() {
         if (!cancelled) setHostSavedMeals(rows);
       })
       .catch((err) => {
-        // eslint-disable-next-line no-console
+         
         console.warn("Today listSavedMeals failed", err);
       });
     return () => {
@@ -1040,7 +1037,7 @@ export default function TrackerScreen() {
         );
         return;
       }
-      const items: Array<Omit<SavedMealItem, "id" | "position">> = slotMeals.map((m) => {
+      const items: Omit<SavedMealItem, "id" | "position">[] = slotMeals.map((m) => {
         const item: Omit<SavedMealItem, "id" | "position"> = {
           recipeTitle: m.recipeTitle,
           calories: Math.max(0, Math.round(m.calories)),
@@ -1073,7 +1070,7 @@ export default function TrackerScreen() {
   const openSaveMealSheetWithSeed = useCallback(
     (
       slot: "Breakfast" | "Lunch" | "Dinner" | "Snacks",
-      items: Array<Omit<SavedMealItem, "id" | "position">>,
+      items: Omit<SavedMealItem, "id" | "position">[],
     ) => {
       if (!userId) {
         Alert.alert("Sign in", "Sign in to save a usual meal.");
@@ -1136,7 +1133,7 @@ export default function TrackerScreen() {
     async (payload: {
       name: string;
       defaultMealSlot?: "Breakfast" | "Lunch" | "Dinner" | "Snacks";
-      items: Array<Omit<SavedMealItem, "id" | "position">>;
+      items: Omit<SavedMealItem, "id" | "position">[];
     }) => {
       if (!userId) return;
       try {
@@ -1154,7 +1151,7 @@ export default function TrackerScreen() {
         setSavedMealsRefreshToken((n) => n + 1);
       } catch (err) {
         Alert.alert("Could not save", "We couldn't save that meal. Try again.");
-        // eslint-disable-next-line no-console
+         
         console.warn("Saved-meal create failed", err);
       }
     },
@@ -1225,7 +1222,7 @@ export default function TrackerScreen() {
       } catch { /* analytics fire-and-forget */ }
       // Fire-and-forget counter bump. Panel fires the analytics event.
       void incrementLogCount(supabase, userId, meal.id).catch((err) => {
-        // eslint-disable-next-line no-console
+         
         console.warn("Saved-meal log-count bump failed", err);
       });
       setShowPrevious(false);
@@ -1309,7 +1306,7 @@ export default function TrackerScreen() {
         return next;
       });
       void incrementLogCount(supabase, userId, meal.id).catch((err) => {
-        // eslint-disable-next-line no-console
+         
         console.warn("Today slot-header usual-meal log bump failed", err);
       });
       setSavedMealsRefreshToken((n) => n + 1);
@@ -1508,14 +1505,14 @@ export default function TrackerScreen() {
     setStepsByDay(parseByDayNumberMap(data.steps_by_day));
     setActivityBurnByDay(parseByDayNumberMap(data.activity_burn_by_day));
     if (d.workouts_by_day && typeof d.workouts_by_day === "object" && !Array.isArray(d.workouts_by_day)) {
-      setWorkoutsByDay(d.workouts_by_day as Record<string, Array<{ type: string; minutes: number; calories: number; source: string }>>);
+      setWorkoutsByDay(d.workouts_by_day as Record<string, { type: string; minutes: number; calories: number; source: string }[]>);
     }
     setBasalBurnByDay(parseByDayNumberMap(d.basal_burn_by_day));
     setPreferActivityAdjustedCalories(Boolean(d.prefer_activity_adjusted_calories));
     const sg = data.daily_steps_goal != null ? Number(data.daily_steps_goal) : NUTRITION_DEFAULTS.steps;
     setDailyStepsGoal(Number.isFinite(sg) && sg > 0 ? Math.round(sg) : NUTRITION_DEFAULTS.steps);
     if (Array.isArray(data.fasting_sessions)) {
-      const active = (data.fasting_sessions as Array<{start: string; end: string | null}>).find((s) => s.end === null);
+      const active = (data.fasting_sessions as {start: string; end: string | null}[]).find((s) => s.end === null);
       setActiveFastStart(active?.start ?? null);
     }
     // Parse `profiles.fasting_window` (stored as "16:8" style; fast hours
@@ -2789,10 +2786,10 @@ export default function TrackerScreen() {
         .select("fasting_sessions")
         .eq("id", userId)
         .maybeSingle();
-      const existing: Array<{ start: string; end: string | null }> = Array.isArray(
+      const existing: { start: string; end: string | null }[] = Array.isArray(
         data?.fasting_sessions,
       )
-        ? (data.fasting_sessions as Array<{ start: string; end: string | null }>)
+        ? (data.fasting_sessions as { start: string; end: string | null }[])
         : [];
       if (existing.some((s) => s.end === null)) {
         // Already fasting — do not stack sessions.
@@ -3142,7 +3139,13 @@ export default function TrackerScreen() {
   );
 
   const loadJournal = useCallback(async () => {
-    if (!userId) return;
+    // Without a uid there is nothing to fetch — still flip `hydrated`
+    // so we never strand the user on the skeleton if a focus/effect
+    // ordering bug calls `loadJournal` before `session.user.id` exists.
+    if (!userId) {
+      setHydrated(true);
+      return;
+    }
 
     // Defence (2026-05-03): wrap the whole load in try/finally so
     // `hydrated` ALWAYS flips true, even if a supabase call throws
@@ -3182,31 +3185,79 @@ export default function TrackerScreen() {
       return out;
     };
 
-    // M9 (2026-04-21) — `nutrition_entries` and all `meal_plan_days`
-    // rows load in parallel; `meal_plan_meals` still follows in a
-    // second round-trip once we know which plan-day id matches the
-    // journal `selectedDate` (plan index ≠ weekday — see
-    // `planCalendarAnchor.ts`).
-    const [
-      { data: rows, error },
-      { data: planDayRows },
-    ] = await Promise.all([
-      supabase
+    const LEGACY_JOURNAL_TIMEOUT_MS = 18_000;
+    const PLANNED_MEALS_TIMEOUT_MS = 18_000;
+    const journalRaceTimeout = Symbol("journal_race_timeout");
+    async function raceJournal<T>(
+      label: string,
+      ms: number,
+      p: Promise<T>,
+    ): Promise<T | typeof journalRaceTimeout> {
+      const out = await Promise.race([
+        p,
+        new Promise<typeof journalRaceTimeout>((resolve) => {
+          setTimeout(() => resolve(journalRaceTimeout), ms);
+        }),
+      ]);
+      if (out === journalRaceTimeout) {
+        console.warn(`[tracker] ${label} timed out (${ms}ms)`);
+      }
+      return out;
+    }
+
+    // M9 (2026-04-21) — `nutrition_entries` + `meal_plan_days` for the
+    // journal; `meal_plan_meals` follows once `planDayId` is known.
+    //
+    // 2026-05-03 — a single `Promise.race` on `Promise.all([…])` meant
+    // ANY hung query failed BOTH: e.g. a stuck `meal_plan_days` call
+    // torched a healthy `nutrition_entries` result. Race each query
+    // independently (still `Promise.all` so wall time is max of the two
+    // caps, not the sum).
+    const JOURNAL_ENTRIES_TIMEOUT_MS = 45_000;
+    const MEAL_PLAN_DAYS_TIMEOUT_MS = 15_000;
+    const entriesPromise = (async () =>
+      await supabase
         .from("nutrition_entries")
         .select("id, date_key, name, recipe_title, time_label, calories, protein, carbs, fat, fiber_g, water_ml, portion_multiplier, source, created_at, nutrition_micros")
         .eq("user_id", userId)
         .order("date_key", { ascending: true })
         .order("created_at", { ascending: true })
-        .limit(20_000),
-      supabase
+        .limit(20_000))();
+    const planDaysPromise = (async () =>
+      await supabase
         .from("meal_plan_days")
         // T7 (2026-04-24): SELECT start_date so the resolver uses the
         // persisted anchor instead of iterating [0,1,7] offsets.
         .select("id, day, start_date")
         .eq("user_id", userId)
         .eq("slot_id", "default")
-        .order("day", { ascending: true }),
+        .order("day", { ascending: true }))();
+
+    const [entriesPack, planDaysPack] = await Promise.all([
+      raceJournal("nutrition_entries", JOURNAL_ENTRIES_TIMEOUT_MS, entriesPromise),
+      raceJournal("meal_plan_days", MEAL_PLAN_DAYS_TIMEOUT_MS, planDaysPromise),
     ]);
+
+    const entriesTimedOut = entriesPack === journalRaceTimeout;
+    const rows =
+      entriesTimedOut ? [] : (entriesPack.data ?? []);
+    const error = entriesTimedOut ? null : entriesPack.error;
+
+    if (entriesTimedOut) {
+      console.warn("[tracker] nutrition_entries timed out");
+      setLoadError(
+        "Your journal is taking too long to load. Check your network, then switch tabs and return to Today.",
+      );
+    }
+
+    const planDayRows =
+      planDaysPack === journalRaceTimeout
+        ? null
+        : ((planDaysPack.data ?? []) as { id: string; day: number; start_date?: string | null }[]);
+    if (planDaysPack === journalRaceTimeout) {
+      console.warn("[tracker] meal_plan_days timed out");
+    }
+
     const planDayId =
       planDayRows && planDayRows.length > 0
         ? findPlanDayIdForCalendarDate(
@@ -3220,15 +3271,17 @@ export default function TrackerScreen() {
     if (error) {
       const msg = error.message ?? "";
       if (looksLikeMissingTableError(msg)) {
-        const legacy = await loadLegacyByDay();
-        setByDay(legacy ?? {});
+        const legacyResult = await raceJournal("legacy journal by_day", LEGACY_JOURNAL_TIMEOUT_MS, loadLegacyByDay());
+        setByDay(legacyResult === journalRaceTimeout ? {} : (legacyResult ?? {}));
       } else {
         console.error("[tracker] load failed:", msg);
         setLoadError("Could not load your journal.");
         setByDay({});
       }
     } else {
-      setLoadError(null);
+      if (!entriesTimedOut) {
+        setLoadError(null);
+      }
       for (const r of rows ?? []) {
         const k = r.date_key as string;
         if (!loaded[k]) loaded[k] = [];
@@ -3249,9 +3302,11 @@ export default function TrackerScreen() {
           createdAt: (r as { created_at?: string }).created_at ?? undefined,
         });
       }
-      if (Object.keys(loaded).length === 0) {
-        const legacy = await loadLegacyByDay();
-        if (legacy && Object.keys(legacy).length > 0) loaded = legacy;
+      if (Object.keys(loaded).length === 0 && !entriesTimedOut) {
+        const legacyResult = await raceJournal("legacy journal by_day (empty nutrition_entries)", LEGACY_JOURNAL_TIMEOUT_MS, loadLegacyByDay());
+        if (legacyResult !== journalRaceTimeout && legacyResult && Object.keys(legacyResult).length > 0) {
+          loaded = legacyResult;
+        }
       }
       setByDay(loaded);
       // Audit/2026-04-30 — pre-populate the HealthKit-meal-write dedupe
@@ -3264,42 +3319,65 @@ export default function TrackerScreen() {
         .filter((id): id is string => typeof id === "string" && id.length > 0);
       void primeWrittenMealIds(userId, existingIds);
     }
-    setHydrated(true);
 
     // Planned meals for the journal `selectedDate`: `meal_plan_days.day`
     // is plan index 1..7 (same as Plan tab), not weekday — match via
     // calendar date + start offsets (today / tomorrow / next week).
+    // 2026-05-03 — race each await: a setTimeout-only "timeout" does NOT
+    // unblock the JS call stack — if PostgREST never settles, we never
+    // reach the outer `finally` and `hydrated` stays false (skeleton).
+    const plannedMealsRaceTimeout = Symbol("planned_meals_race_timeout");
+    async function racePlannedMeals<T>(
+      p: Promise<T>,
+    ): Promise<T | typeof plannedMealsRaceTimeout> {
+      return await Promise.race([
+        p,
+        new Promise<typeof plannedMealsRaceTimeout>((resolve) => {
+          setTimeout(() => resolve(plannedMealsRaceTimeout), PLANNED_MEALS_TIMEOUT_MS);
+        }),
+      ]);
+    }
+
     if (planDayId) {
-      const { data: mealRows } = await supabase
-        .from("meal_plan_meals")
-        .select("name, recipe_title, calories, protein, carbs, fat, recipe_id")
-        .eq("plan_day_id", planDayId)
-        .order("slot_index", { ascending: true });
-      if (mealRows && mealRows.length > 0) {
-        setPlannedMeals(
-          mealRows.map((m) => {
-            const coerced = coerceMacrosWhenCaloriesButNoGrams({
-              calories: (m.calories as number) ?? 0,
-              protein: (m.protein as number) ?? 0,
-              carbs: (m.carbs as number) ?? 0,
-              fat: (m.fat as number) ?? 0,
-            });
-            return {
-              name: (m.name as string) ?? "",
-              recipe_title: (m.recipe_title as string) ?? "",
-              calories: coerced.calories,
-              protein: coerced.protein,
-              carbs: coerced.carbs,
-              fat: coerced.fat,
-              recipe_id: (m.recipe_id as string | null) ?? null,
-            };
-          }),
-        );
-      } else {
+      const mealRes = await racePlannedMeals(
+        (async () =>
+          await supabase
+            .from("meal_plan_meals")
+            .select("name, recipe_title, calories, protein, carbs, fat, recipe_id")
+            .eq("plan_day_id", planDayId)
+            .order("slot_index", { ascending: true }))(),
+      );
+      if (mealRes === plannedMealsRaceTimeout) {
+        console.warn(`[tracker] meal_plan_meals timed out (${PLANNED_MEALS_TIMEOUT_MS}ms)`);
         setPlannedMeals([]);
+      } else {
+        const { data: mealRows } = mealRes;
+        if (mealRows && mealRows.length > 0) {
+          setPlannedMeals(
+            mealRows.map((m) => {
+              const coerced = coerceMacrosWhenCaloriesButNoGrams({
+                calories: (m.calories as number) ?? 0,
+                protein: (m.protein as number) ?? 0,
+                carbs: (m.carbs as number) ?? 0,
+                fat: (m.fat as number) ?? 0,
+              });
+              return {
+                name: (m.name as string) ?? "",
+                recipe_title: (m.recipe_title as string) ?? "",
+                calories: coerced.calories,
+                protein: coerced.protein,
+                carbs: coerced.carbs,
+                fat: coerced.fat,
+                recipe_id: (m.recipe_id as string | null) ?? null,
+              };
+            }),
+          );
+        } else {
+          setPlannedMeals([]);
+        }
       }
     } else {
-      const planJson = await fetchMealPlanJson(supabase, userId);
+      const jsonRes = await racePlannedMeals(fetchMealPlanJson(supabase, userId));
       type LegacyMeal = {
         name?: string;
         recipeTitle?: string;
@@ -3310,29 +3388,35 @@ export default function TrackerScreen() {
         fat?: number;
       };
       type LegacyDay = { day: number; meals?: LegacyMeal[] };
-      if (planJson != null && Array.isArray(planJson)) {
-        const dayPlan = findLegacyPlanDayForCalendarDate(planJson as LegacyDay[], selectedDate);
-        const meals = dayPlan?.meals ?? [];
-        setPlannedMeals(
-          meals.map((m) => {
-            const coerced = coerceMacrosWhenCaloriesButNoGrams({
-              calories: Number(m.calories) || 0,
-              protein: Number(m.protein) || 0,
-              carbs: Number(m.carbs) || 0,
-              fat: Number(m.fat) || 0,
-            });
-            return {
-              name: m.name,
-              recipe_title: m.recipeTitle ?? m.recipe_title,
-              calories: coerced.calories,
-              protein: coerced.protein,
-              carbs: coerced.carbs,
-              fat: coerced.fat,
-            };
-          }),
-        );
-      } else {
+      if (jsonRes === plannedMealsRaceTimeout) {
+        console.warn(`[tracker] fetchMealPlanJson timed out (${PLANNED_MEALS_TIMEOUT_MS}ms)`);
         setPlannedMeals([]);
+      } else {
+        const planJson = jsonRes;
+        if (planJson != null && Array.isArray(planJson)) {
+          const dayPlan = findLegacyPlanDayForCalendarDate(planJson as LegacyDay[], selectedDate);
+          const meals = dayPlan?.meals ?? [];
+          setPlannedMeals(
+            meals.map((m) => {
+              const coerced = coerceMacrosWhenCaloriesButNoGrams({
+                calories: Number(m.calories) || 0,
+                protein: Number(m.protein) || 0,
+                carbs: Number(m.carbs) || 0,
+                fat: Number(m.fat) || 0,
+              });
+              return {
+                name: m.name,
+                recipe_title: m.recipeTitle ?? m.recipe_title,
+                calories: coerced.calories,
+                protein: coerced.protein,
+                carbs: coerced.carbs,
+                fat: coerced.fat,
+              };
+            }),
+          );
+        } else {
+          setPlannedMeals([]);
+        }
       }
     }
 
@@ -3350,10 +3434,6 @@ export default function TrackerScreen() {
   // Re-resolve planned meals when the journal date changes (focus alone
   // does not re-run when the user stays on this tab and swipes dates).
   useEffect(() => {
-    if (skipJournalReloadOnFirstDateEffect.current) {
-      skipJournalReloadOnFirstDateEffect.current = false;
-      return;
-    }
     if (!userId) return;
     void loadJournal();
   }, [selectedDate, userId, loadJournal]);
@@ -3575,7 +3655,7 @@ export default function TrackerScreen() {
    * id on them yet; a fresh `newMealId()` is minted per row.
    */
   const insertClonedRowsIntoDay = useCallback(
-    async (targetDayKey: string, clones: Array<Omit<JournalMeal, "id">>): Promise<number> => {
+    async (targetDayKey: string, clones: Omit<JournalMeal, "id">[]): Promise<number> => {
       if (clones.length === 0) return 0;
       const withIds: JournalMeal[] = clones.map((c) => ({ ...c, id: newMealId() } as JournalMeal));
       setByDay((prev) => ({
@@ -4057,7 +4137,8 @@ export default function TrackerScreen() {
           >
             <Ionicons name="alert-circle" size={18} color={Accent.destructive} />
             <Text style={{ flex: 1, fontSize: 13, color: Accent.destructive, fontWeight: "600" }}>
-              Could not load journal. Tap to retry.
+              {loadError}
+              {" Tap to retry."}
             </Text>
           </Pressable>
         )}

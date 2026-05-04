@@ -21,7 +21,6 @@ import {
   Download,
   Flame,
   Globe,
-  HeartPulse,
   Home,
   Instagram,
   Laptop,

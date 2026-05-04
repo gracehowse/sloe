@@ -376,7 +376,6 @@ describe("getMyHousehold", () => {
     // returned". The defensive read (`order joined_at desc + limit 1
     // + maybeSingle`) must pick the most recent membership and
     // return it without throwing.
-    const today = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; })();
     const sb = makeSupabase({
       household_members: (op, ctx) => {
         if (op === "select:maybeSingle") {
@@ -438,9 +437,8 @@ describe("getMyHousehold", () => {
     // trans user post-transition), other members of the household must
     // see the current name, NEVER the legacy snapshot. The client must
     // prefer `profiles.display_name` over the membership snapshot.
-    const today = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; })();
     const sb = makeSupabase({
-      household_members: (op, ctx) => {
+      household_members: (op, _ctx) => {
         if (op === "select:maybeSingle") {
           return { data: { household_id: "h1", role: "member" }, error: null };
         }
@@ -509,7 +507,7 @@ describe("joinHouseholdByInviteCode", () => {
   });
 
   it("calls the security-definer RPC with trimmed code + display name", async () => {
-    const sb = makeSupabase({}, (params) => ({
+    const sb = makeSupabase({}, (_params) => ({
       data: { ok: true, household_id: "h1", household_name: "Fam", already_member: false },
       error: null,
     }));

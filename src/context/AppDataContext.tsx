@@ -45,7 +45,6 @@ import { useAuthSession } from "./AuthSessionContext.tsx";
 import {
   dateKey,
   DEFAULT_MEAL_PLAN_SLOT_ID,
-  defaultSnapshot,
   loadSnapshot,
   newId,
   type MealPlanNamedSlot,
@@ -368,7 +367,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [profileWeightSurfaceMode, setProfileWeightSurfaceMode] = useState<WeightSurfaceMode>("show");
   const [dbSavesEnabled, setDbSavesEnabled] = useState(true);
   const [dbSavesWarned, setDbSavesWarned] = useState(false);
-  const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
+  const [, setIsGeneratingPlan] = useState(false);
   const [dbMealPlanEnabled, setDbMealPlanEnabled] = useState(true);
   const [dbMealPlanWarned, setDbMealPlanWarned] = useState(false);
   const [selectedDateKey, setSelectedDateKey] = useState<string>(() => dateKey(new Date()));
@@ -1167,6 +1166,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       pushNotification,
       savedRecipeIds,
       uploadedRecipes,
+      setMealPlan,
     ],
   );
 
@@ -1260,7 +1260,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
     toast.success("Shopping list generated");
     track(AnalyticsEvents.shopping_list_generated, { itemCount: list.length });
-  }, [mealPlan, uploadedRecipes, authedUserId]);
+  }, [mealPlan, uploadedRecipes, authedUserId, shoppingScope, setShoppingItems]);
 
   // Sync DB-backed saves (Phase 0). Other state remains local for now.
   useEffect(() => {

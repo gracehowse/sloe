@@ -109,7 +109,7 @@ describe("buildMilestone30DayContent", () => {
       nutritionByDay: generateLoggedDays(30),
       weightKgByDay: {},
     });
-    expect(content.headline).toBe("30 days of logging");
+    expect(content.headline).toBe("30 days of meal logging");
     expect(content.daysLogged).toBe(30);
   });
 
@@ -234,6 +234,28 @@ describe("buildMilestone30DayContent", () => {
     });
     // First (80) → last (78.6) = -1.4
     expect(content.totalWeightDeltaKg).toBe(-1.4);
+  });
+
+  it("ignores weigh-ins outside the meal-diary date span (no lifetime skew)", () => {
+    const byDay = generateLoggedDays(30);
+    const content = buildMilestone30DayContent({
+      nutritionByDay: byDay,
+      weightKgByDay: {
+        "2020-01-01": 70,
+        "2026-04-01": 80,
+        "2026-04-30": 78.6,
+      },
+    });
+    expect(content.totalWeightDeltaKg).toBe(-1.4);
+  });
+
+  it("returns null weight delta when only out-of-span weigh-ins exist", () => {
+    const byDay = generateLoggedDays(30);
+    const content = buildMilestone30DayContent({
+      nutritionByDay: byDay,
+      weightKgByDay: { "2020-01-01": 70, "2020-06-01": 78 },
+    });
+    expect(content.totalWeightDeltaKg).toBeNull();
   });
 
   it("rounds total weight delta to 0.1 kg precision", () => {

@@ -10,10 +10,10 @@
  */
 
 /** Shown under the voice-log sheet when users type instead of dictating. */
+import { Platform } from "react-native";
+
 export const VOICE_LOG_NATIVE_BUILD_HINT =
   "Expo Go: type here. For spoken dictation, use a dev build with expo-speech-recognition (EAS).";
-
-import { Platform } from "react-native";
 
 type SpeechModule = {
   requestPermissionsAsync: () => Promise<{ granted: boolean }>;

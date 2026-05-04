@@ -167,7 +167,7 @@ export function buildWhyLine(input: {
   intakeVsExpected: number | null;
   direction: WeeklyCheckinDirection;
 }): string {
-  const { tdeeDeltaKcal, weightDeltaKg, intakeVsExpected, direction } = input;
+  const { weightDeltaKg, intakeVsExpected, direction } = input;
 
   // Direction-flat branch — explicit "no meaningful change" copy. We
   // don't try to explain noise, we just say it.

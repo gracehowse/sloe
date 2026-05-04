@@ -1,7 +1,6 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
 import {
   tukeyRobustMaxKg,
-  tukeyRobustMinKg,
   weightJourneyBaselineKg,
   weightJourneyProgress,
   weightsInLookbackKg,

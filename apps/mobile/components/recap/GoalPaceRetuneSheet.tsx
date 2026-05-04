@@ -75,7 +75,7 @@ export interface GoalPaceRetuneSheetProps {
   onSaved?: () => void;
 }
 
-const PACE_OPTIONS: ReadonlyArray<RetunePace> = [
+const PACE_OPTIONS: readonly RetunePace[] = [
   0,
   ...RETUNE_PACE_PRESETS_KG_PER_WEEK,
 ];

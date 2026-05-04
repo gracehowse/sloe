@@ -3,9 +3,10 @@
  * expansion: Discover renders 5 horizontal carousels, one per cuisine
  * cluster (Mediterranean → Asian → Latin → Comfort → Healthy bowls).
  *
- * Both the web `DiscoverFeed.tsx` and the mobile `(tabs)/discover.tsx`
- * read from the shared `seedRecipesV2` source, group entries by
- * cluster, and render a header above each horizontal scroller.
+ * Web `DiscoverFeed.tsx` reads from the shared `seedRecipesV2` source,
+ * groups entries by cluster, and renders a header above each horizontal
+ * scroller. Mobile `(tabs)/discover.tsx` uses a single stacked-hero
+ * layout for all filters (2026-05-03) — cluster carousels are web-only.
  *
  * Structural test (reads source) — runs cheaply in the shared web
  * vitest run and applies to both platforms from one spec. Same
@@ -79,23 +80,17 @@ describe("Discover cluster carousels (Wave 4 — 2026-05-02)", () => {
     });
   });
 
-  describe("mobile Discover wires the cluster carousels", () => {
-    it("imports SEED_CLUSTERS + isSeedRecipeId from the seed module", () => {
-      expect(MOBILE_SRC).toMatch(/SEED_CLUSTERS/);
-      expect(MOBILE_SRC).toMatch(/isSeedRecipeId/);
+  describe("mobile Discover — flat feed (no cluster carousels)", () => {
+    it("does not wire per-cluster carousel testids (web-only pattern)", () => {
+      expect(MOBILE_SRC).not.toMatch(/discover-cluster-\$\{cluster\.id\}/);
     });
 
-    it("renders a per-cluster testid that includes the cluster id", () => {
-      expect(MOBILE_SRC).toMatch(/discover-cluster-\$\{cluster\.id\}/);
+    it("does not map SEED_CLUSTERS in the screen module", () => {
+      expect(MOBILE_SRC).not.toMatch(/SEED_CLUSTERS\.map/);
     });
 
-    it("maps over SEED_CLUSTERS to render per-cluster sections", () => {
-      expect(MOBILE_SRC).toMatch(/SEED_CLUSTERS\.map/);
-    });
-
-    it("only shows cluster carousels on the unfiltered 'For You' default view", () => {
-      expect(MOBILE_SRC).toMatch(/showClusterCarousels/);
-      expect(MOBILE_SRC).toMatch(/filter === "For You"/);
+    it("documents single-layout parity choice vs web carousels", () => {
+      expect(MOBILE_SRC).toMatch(/mobile dropped the carousel branch/);
     });
   });
 

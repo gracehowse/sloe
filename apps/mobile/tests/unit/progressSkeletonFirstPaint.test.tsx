@@ -33,6 +33,9 @@ import * as React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react-native";
 
+// Defer the import until mocks are installed.
+import ProgressScreen from "../../app/(tabs)/progress";
+
 void React;
 
 // --- Supabase mock: never resolves, so `loadData` stays in flight. ---
@@ -102,7 +105,7 @@ vi.mock("@react-navigation/native", async () => {
       ReactMod.useEffect(() => {
         const cleanup = cb();
         return typeof cleanup === "function" ? cleanup : undefined;
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+         
       }, []);
     },
   };
@@ -147,9 +150,6 @@ vi.mock("@/lib/analytics", () => ({
 vi.mock("@/components/Digest", () => ({
   Digest: () => null,
 }));
-
-// Defer the import until mocks are installed.
-import ProgressScreen from "../../app/(tabs)/progress";
 
 describe("Progress tab — skeleton-first paint (H-4 regression pin)", () => {
   afterEach(() => {
