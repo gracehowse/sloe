@@ -49,11 +49,18 @@ describe("useSavedLibraryRecipes — perpetual spinner regression", () => {
   it("flips loading=false when the supabase query rejects (try/finally)", async () => {
     // Build a chain that throws on the awaited terminal operation.
     // The hook calls `Promise.all([saves.order(...), recipes.order(...)])`
-    // — both inner chains must reject for the outer Promise.all to reject.
+    // — Promise.all short-circuits on the first rejection, leaving the
+    // second rejected promise "unhandled" from Node's perspective. Pre-
+    // attaching a no-op .catch silences the unhandled-rejection warning
+    // without changing what the awaiter (the hook) actually observes.
     const rejectingChain = {
       select: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
-      order: vi.fn().mockRejectedValue(new TypeError("Network request failed")),
+      order: vi.fn().mockImplementation(() => {
+        const p = Promise.reject(new TypeError("Network request failed"));
+        p.catch(() => {});
+        return p;
+      }),
     };
     supabaseFromMock.mockReturnValue(rejectingChain);
 
