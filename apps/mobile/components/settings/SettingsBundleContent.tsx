@@ -919,8 +919,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           } catch {
             /* ignore */
           }
-          // Route to v2 (issue #13). Legacy `/onboarding` is on a deletion
-          // countdown — this avoids the legacy-form flicker.
+          // Canonical onboarding route (post-rename; issue #13).
           router.replace("/onboarding" as any);
         } else {
           // Reset targets — inline. Per 2026-04-30 product call (issue #16),

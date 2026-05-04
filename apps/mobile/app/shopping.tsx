@@ -510,6 +510,8 @@ export default function ShoppingListScreen() {
     },
   }), [colors]);
 
+  // 2026-04-30 (#2): badge + progress reflect *grouped* rows so counts
+  // match on-screen groups (web parity).
   const groupedSections = useMemo(() => {
     const cats = [...new Set(items.map((i) => i.category))];
     return cats.map((category) => ({
@@ -642,6 +644,11 @@ export default function ShoppingListScreen() {
             )}
 
             {groupedSections.map((section) => {
+              // 2026-04-30 audit visual-qa P1 #8: section-level
+              // progress so the user feels each category complete
+              // as they shop. Counts items in this section's groups
+              // checked vs total. A group is "checked" when all its
+              // items are checked (matches the row-level toggle).
               const sectionTotal = section.groups.length;
               const sectionChecked = section.groups.filter((g) =>
                 isShoppingGroupFullyChecked(g),
