@@ -1,0 +1,41 @@
+# @cases TC-BUNDLE1B-01
+# @screen dev/health-import-labels
+appId: com.supprclub.supprapp
+name: "Bundle 1B — visual validation (HealthKit-import fallback labels)"
+---
+# Captures the dev screen showing:
+#   - old vs new fallback string format
+#   - mock Recents list with mix of real + fallback rows (unfiltered)
+#   - same list after the predicate filter fires (fixed state)
+#
+# Run with:
+#   maestro test apps/mobile/.maestro/00g_bundle_1b_validation.yaml
+#
+# Output:
+#   apps/mobile/screenshots/latest/bundle-1b-mobile-*.png
+
+- launchApp
+- waitForAnimationToEnd
+
+- openLink: suppr:///dev/health-import-labels
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+- takeScreenshot: screenshots/latest/bundle-1b-mobile-format-comparison
+
+- swipe:
+    direction: UP
+    duration: 600
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/bundle-1b-mobile-recents-unfiltered
+
+- swipe:
+    direction: UP
+    duration: 600
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/bundle-1b-mobile-recents-filtered
+
+- swipe:
+    direction: DOWN
+    duration: 600
+- waitForAnimationToEnd

@@ -218,6 +218,53 @@ describe("computeEatAgainForSlot", () => {
     };
     expect(computeEatAgainForSlot(byDay, "Lunch", new Date("nope"))).toBeNull();
   });
+
+  describe("N1 (2026-05-03) — skips HealthKit-import fallback titles", () => {
+    it("skips a meal whose title is the legacy 'Food log (NNN kcal)' fallback", () => {
+      const byDay: Record<string, M[]> = {
+        "2026-04-13": [{ ...meal("Food log (250 kcal)", 250), name: "Lunch" }],
+      };
+      const now = new Date(2026, 3, 14, 12, 0, 0);
+      // Re-logging "Food log (250 kcal)" gives the user nothing — the
+      // row is a placeholder for an unknown food, not a real meal.
+      expect(computeEatAgainForSlot(byDay, "Lunch", now)).toBeNull();
+    });
+
+    it("skips a meal whose title is the new '<Source> entry · NNN kcal' fallback", () => {
+      const byDay: Record<string, M[]> = {
+        "2026-04-13": [{ ...meal("MyFitnessPal entry · 250 kcal", 250), name: "Lunch" }],
+      };
+      const now = new Date(2026, 3, 14, 12, 0, 0);
+      expect(computeEatAgainForSlot(byDay, "Lunch", now)).toBeNull();
+    });
+
+    it("falls back to the next-most-recent prior day with a real meal", () => {
+      const byDay: Record<string, M[]> = {
+        // Older prior day: real meal.
+        "2026-04-11": [{ ...meal("Real Salad", 400), name: "Lunch" }],
+        // More-recent prior day: only a fallback row → skip.
+        "2026-04-13": [{ ...meal("Food log (250 kcal)", 250), name: "Lunch" }],
+      };
+      const now = new Date(2026, 3, 14, 12, 0, 0);
+      const out = computeEatAgainForSlot(byDay, "Lunch", now);
+      expect(out).not.toBeNull();
+      expect(out!.recipeTitle).toBe("Real Salad");
+    });
+
+    it("if multiple meals exist that day, picks the most recent NON-fallback row", () => {
+      const byDay: Record<string, M[]> = {
+        "2026-04-13": [
+          { ...meal("Real Lunch", 500), name: "Lunch" },
+          // The most-recent in array order is a fallback — must skip.
+          { ...meal("MyFitnessPal entry · 80 kcal", 80), name: "Lunch" },
+        ],
+      };
+      const now = new Date(2026, 3, 14, 12, 0, 0);
+      const out = computeEatAgainForSlot(byDay, "Lunch", now);
+      expect(out).not.toBeNull();
+      expect(out!.recipeTitle).toBe("Real Lunch");
+    });
+  });
 });
 
 describe("isAiSourcedFoodHistoryItem (M10 backwards-compat, 2026-04-18)", () => {
