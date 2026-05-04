@@ -37,11 +37,25 @@ vi.mock("@/lib/recipes/pickDefaultImage", () => ({
   pickDefaultImage: () => "data:image/png;base64,",
 }));
 
+// Promise.all([saves.order(), recipes.order()]) short-circuits on the
+// first rejection, leaving the second rejected promise without a handler
+// from Promise.all's perspective. We attach a no-op listener for the
+// duration of the test file so Node/Vitest don't flag it as a true
+// unhandled rejection (the BEHAVIOUR under test — try/finally must still
+// flip loading=false on rejection — is unaffected).
+const swallowNetworkRejection = (reason: unknown) => {
+  if (reason instanceof TypeError && reason.message === "Network request failed") return;
+  // Anything else is a real test failure — re-raise.
+  throw reason;
+};
+
 beforeEach(() => {
   supabaseFromMock.mockReset();
+  process.on("unhandledRejection", swallowNetworkRejection);
 });
 
 afterEach(() => {
+  process.off("unhandledRejection", swallowNetworkRejection);
   vi.clearAllMocks();
 });
 
@@ -49,18 +63,13 @@ describe("useSavedLibraryRecipes — perpetual spinner regression", () => {
   it("flips loading=false when the supabase query rejects (try/finally)", async () => {
     // Build a chain that throws on the awaited terminal operation.
     // The hook calls `Promise.all([saves.order(...), recipes.order(...)])`
-    // — Promise.all short-circuits on the first rejection, leaving the
-    // second rejected promise "unhandled" from Node's perspective. Pre-
-    // attaching a no-op .catch silences the unhandled-rejection warning
-    // without changing what the awaiter (the hook) actually observes.
+    // — both inner chains must reject for the outer Promise.all to reject.
+    // The `process.on("unhandledRejection")` listener at the top of the
+    // file swallows the orphan-second-rejection noise.
     const rejectingChain = {
       select: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
-      order: vi.fn().mockImplementation(() => {
-        const p = Promise.reject(new TypeError("Network request failed"));
-        p.catch(() => {});
-        return p;
-      }),
+      order: vi.fn().mockRejectedValue(new TypeError("Network request failed")),
     };
     supabaseFromMock.mockReturnValue(rejectingChain);
 
