@@ -17,6 +17,9 @@ tsconfig.tsbuildinfo
 # Per-user Claude Code skills — installed on demand from the marketplace,
 # not part of the repo. CLAUDE.md (project rules) IS tracked.
 .claude/skills/
+# Local patch bundles / git worktrees created by tooling (machine-specific).
+.claude/patches/
+.claude/worktrees/
 
 # Office
 ~$*.docx
