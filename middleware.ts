@@ -27,22 +27,20 @@ const PUBLIC_ROUTES = new Set([
   "/onboarding/v2",
 ]);
 
-/** Dev-only preview routes. Reachable without auth in development so
- *  Grace + reviewers can interact with in-flight redesign work
- *  (Phase 1 primitives at `/dev/primitives`). The page components
- *  themselves still call `notFound()` when `NODE_ENV === "production"`,
- *  so even if these paths slip into the production middleware allowlist
- *  by accident the user gets a 404, not the page.
+/** Dev-only preview routes. Reachable without auth in development,
+ *  CI (`next start` with no VERCEL_ENV), and Vercel preview deployments
+ *  so Grace + reviewers can interact with in-flight redesign work
+ *  (Phase 1 primitives at `/dev/primitives`, visual-validation harnesses
+ *  for launch bundles).
  *
- *  2026-04-27: removed the `/onboarding/v2` entry — onboarding-v2 is
- *  now the canonical sign-up entry point and already lives in
- *  PUBLIC_ROUTES (line 27). The dev-preview entry was a leftover from
- *  the testflight ramp window and added a second authority gating the
- *  same path. Public-route allowlist is now the single source of truth.
+ *  Gate is `VERCEL_ENV === "production"` not `NODE_ENV` because CI runs
+ *  `next start` (NODE_ENV=production) but has no VERCEL_ENV — gating on
+ *  NODE_ENV blocks the validation harnesses Playwright needs.
+ *  VERCEL_ENV=production is only ever set on the suppr.club deployment.
  */
 const DEV_PREVIEW_PREFIXES = ["/dev/"];
 function isDevPreview(pathname: string): boolean {
-  if (process.env.NODE_ENV === "production") return false;
+  if (process.env.VERCEL_ENV === "production") return false;
   return DEV_PREVIEW_PREFIXES.some(
     (p) => pathname === p.replace(/\/$/, "") || pathname.startsWith(p),
   );
