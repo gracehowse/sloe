@@ -57,7 +57,8 @@
     "mobile:test:e2e:watch": "npm run test:e2e:watch --prefix apps/mobile",
     "mobile:test:screens:diff": "npm run test:screens:diff --prefix apps/mobile",
     "mobile:test:screens:update-baseline": "npm run test:screens:update-baseline --prefix apps/mobile",
-    "mobile:verify": "npm run mobile:lint && npm run mobile:typecheck && npm run mobile:test && npm run mobile:test:e2e:verify-suite"
+    "mobile:verify": "npm run mobile:lint && npm run mobile:typecheck && npm run mobile:test && npm run mobile:test:e2e:verify-suite",
+    "git:prune-locals": "bash scripts/git-prune-merged-locals.sh"
   },
   "dependencies": {
     "@popperjs/core": "2.11.8",

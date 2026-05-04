@@ -6,6 +6,12 @@
 
 All scripts run from the project root with `npx tsx scripts/<name>.ts`. They load `.env.local` automatically.
 
+### Git / branches
+
+| Script | Purpose | Usage |
+|--------|---------|-------|
+| `git-prune-merged-locals.sh` | Removes **local** topic branches whose tips are already on `origin/main` (safe after squash merges). Does not delete `main`. | `npm run git:prune-locals` — see [git-branch-hygiene.md](./git-branch-hygiene.md) |
+
 ### Recipe Data
 
 | Script | Purpose | Usage |
