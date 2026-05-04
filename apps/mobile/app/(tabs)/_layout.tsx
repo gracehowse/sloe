@@ -55,14 +55,29 @@ export default function TabLayout() {
     if (!session?.user?.id) return;
     let cancelled = false;
     (async () => {
-      const { data } = await supabase
-        .from('profiles')
-        .select('onboarding_completed')
-        .eq('id', session.user.id)
-        .maybeSingle();
-      if (cancelled) return;
-      setOnboardingCompleted(data?.onboarding_completed === true);
-      setOnboardingChecked(true);
+      // Wrap in try/finally so `onboardingChecked` ALWAYS flips true,
+      // even if the supabase call throws (network failure, RLS denial,
+      // PostgREST hang). Without this guarantee a returning user with a
+      // restored session sees a perpetual spinner if anything goes wrong
+      // on the network — the gate at line 70 below never opens.
+      // On the sad path we leave `onboardingCompleted` at its default
+      // (`true`), letting the user into the app rather than bouncing
+      // them to /onboarding. They've already completed onboarding once
+      // (their session exists); a transient fetch failure shouldn't
+      // re-route them through it.
+      try {
+        const { data } = await supabase
+          .from('profiles')
+          .select('onboarding_completed')
+          .eq('id', session.user.id)
+          .maybeSingle();
+        if (cancelled) return;
+        setOnboardingCompleted(data?.onboarding_completed === true);
+      } catch {
+        // Silent — `onboardingCompleted` stays at its default true.
+      } finally {
+        if (!cancelled) setOnboardingChecked(true);
+      }
     })();
     return () => { cancelled = true; };
   }, [session?.user?.id]);

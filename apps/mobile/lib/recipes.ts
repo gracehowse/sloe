@@ -42,6 +42,11 @@ export function useDiscoverRecipes() {
 
   const refresh = useCallback(async () => {
     setLoading(true);
+    // try/finally so loading flips false even if `await supabase`
+    // throws (vs just returning `{ data: null, error }`). The error-
+    // object branch below is preserved; the wrap is defence against
+    // raw rejections too — see useSavedLibraryRecipes for rationale.
+    try {
     // GW-03/GW-04 fix (audit 2026-04-28): the prior `.not("author_id",
     // "is", null)` filter was a workaround for a long-resolved
     // tombstoning behaviour. After 2026-04-28 the seeder writes
@@ -169,7 +174,9 @@ export function useDiscoverRecipes() {
         setRecipes(seeds);
       }
     }
-    setLoading(false);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -203,15 +210,20 @@ export function useSavedRecipes(userId: string | null) {
 
   const refresh = useCallback(async () => {
     if (!userId) { setSavedIds(new Set()); setLoading(false); return; }
-    const { data } = await supabase
-      .from("saves")
-      .select("recipe_id")
-      .eq("user_id", userId);
+    // try/finally so loading flips false even if supabase throws —
+    // see useSavedLibraryRecipes below for the same pattern + rationale.
+    try {
+      const { data } = await supabase
+        .from("saves")
+        .select("recipe_id")
+        .eq("user_id", userId);
 
-    if (data) {
-      setSavedIds(new Set(data.map((r: any) => r.recipe_id)));
+      if (data) {
+        setSavedIds(new Set(data.map((r: any) => r.recipe_id)));
+      }
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [userId]);
 
   useEffect(() => {
@@ -314,6 +326,13 @@ export function useSavedLibraryRecipes(userId: string | null) {
       return;
     }
     setLoading(true);
+
+    // Wrap the whole fetch+hydrate path in try/finally so `loading`
+    // ALWAYS flips false, even if a supabase call throws (network
+    // failure, RLS denial, request abort). Without this guarantee the
+    // Library tab renders a perpetual spinner whenever the network
+    // hiccups — see `progress.tsx` for the same pattern.
+    try {
 
     // Parallel fetch: saves + author-owned recipes. Either can be
     // empty independently (brand-new user with one created draft, or
@@ -455,7 +474,10 @@ export function useSavedLibraryRecipes(userId: string | null) {
     }
 
     setRecipes(ordered);
-    setLoading(false);
+
+    } finally {
+      setLoading(false);
+    }
   }, [userId]);
 
   useEffect(() => {
