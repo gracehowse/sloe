@@ -1,0 +1,130 @@
+/**
+ * dailyRing — circular progress ring rendered on the Today hero.
+ *
+ * These tests pin three correctness rules surfaced by Grace's
+ * 2026-05-03 web screenshots:
+ *
+ *   B6 — When over-budget in `remaining` display mode, the centre
+ *        value must be the *amount over* (a positive integer), not
+ *        a `0` left over from a `Math.max(0, …)` clamp. Previously
+ *        the ring read `0 / OVER / of 1,132 kcal` even when the
+ *        user was 506 kcal over.
+ *
+ *   N3 — The centre value must use thousands-separators (`1,132`),
+ *        matching the budget line directly beneath it. The mismatch
+ *        between `1132` and `of 1,132 kcal` was a same-component
+ *        format drift.
+ *
+ *   N5 — The empty-state soft copy ("Start your day") must fire in
+ *        BOTH `remaining` and `consumed` display modes. Previously
+ *        the soft copy was gated to `consumed` only, leaving the
+ *        default REMAINING view rendering a giant `1,132` for
+ *        first-time users who hadn't logged yet — which read as
+ *        a wireframe placeholder rather than an intentional empty
+ *        state.
+ */
+
+import { describe, it, expect } from "vitest";
+import { render } from "@testing-library/react";
+
+import { DailyRing } from "../../src/app/components/suppr/daily-ring";
+
+function renderRing(props: {
+  consumed: number;
+  target: number;
+  displayMode?: "remaining" | "consumed";
+}) {
+  return render(
+    <DailyRing
+      consumed={props.consumed}
+      target={props.target}
+      displayMode={props.displayMode ?? "remaining"}
+    />,
+  );
+}
+
+describe("DailyRing — centre value", () => {
+  describe("B6 — over-budget shows the amount over, not 0", () => {
+    it("renders the kcal amount over target when consumed > target in remaining mode", () => {
+      const { container } = renderRing({
+        consumed: 1638,
+        target: 1132,
+        displayMode: "remaining",
+      });
+      const text = container.textContent ?? "";
+      // 1,638 − 1,132 = 506 over. Must show "506", not "0".
+      expect(text).toContain("506");
+      expect(text).not.toMatch(/\b0\s+OVER\b/i);
+    });
+
+    it("still labels the over state with the OVER copy", () => {
+      const { container } = renderRing({
+        consumed: 1638,
+        target: 1132,
+        displayMode: "remaining",
+      });
+      expect((container.textContent ?? "").toUpperCase()).toContain("OVER");
+    });
+
+    it("renders the consumed amount in consumed mode regardless of over-budget", () => {
+      const { container } = renderRing({
+        consumed: 1638,
+        target: 1132,
+        displayMode: "consumed",
+      });
+      expect(container.textContent).toContain("1,638");
+    });
+  });
+
+  describe("N3 — centre value uses thousands separators", () => {
+    it("formats 4-digit kcal with a comma in remaining mode", () => {
+      const { container } = renderRing({ consumed: 200, target: 1832 });
+      // remaining = 1,632
+      expect(container.textContent).toContain("1,632");
+    });
+
+    it("formats 4-digit kcal with a comma when over-budget", () => {
+      const { container } = renderRing({
+        consumed: 3450,
+        target: 1832,
+        displayMode: "remaining",
+      });
+      // over by 1,618
+      expect(container.textContent).toContain("1,618");
+    });
+  });
+
+  describe("N5 — empty-state soft copy fires in both display modes", () => {
+    it("renders 'Start your day' instead of a 0 in remaining mode when nothing logged", () => {
+      const { container } = renderRing({
+        consumed: 0,
+        target: 1832,
+        displayMode: "remaining",
+      });
+      const text = container.textContent ?? "";
+      expect(text).toContain("Start your day");
+      // Centre must NOT show the giant "1,832 / REMAINING" pattern.
+      expect(text).not.toMatch(/REMAINING/i);
+    });
+
+    it("renders 'Start your day' in consumed mode when nothing logged", () => {
+      const { container } = renderRing({
+        consumed: 0,
+        target: 1832,
+        displayMode: "consumed",
+      });
+      const text = container.textContent ?? "";
+      expect(text).toContain("Start your day");
+      expect(text).not.toMatch(/LOGGED/i);
+    });
+
+    it("does not render 'Start your day' once anything is logged", () => {
+      const { container } = renderRing({
+        consumed: 50,
+        target: 1832,
+        displayMode: "remaining",
+      });
+      expect(container.textContent).not.toContain("Start your day");
+    });
+  });
+});

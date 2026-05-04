@@ -9,8 +9,10 @@
  *
  * This page exists so Grace can interact with the primitives on real
  * data + theming without waiting for Phase 2's onboarding rewrite.
- * Returns a 404 when `NODE_ENV === "production"` so it never ships to
- * end users — see `notFound()` guard at the top of the component.
+ * Returns a 404 only on the suppr.club deployment (VERCEL_ENV=production)
+ * so CI's `next start` and Vercel preview deployments can both reach it.
+ * NODE_ENV gate was breaking Playwright in CI (NODE_ENV=production but
+ * no VERCEL_ENV) — see middleware.ts for the matching gate.
  */
 
 import * as React from "react";
@@ -55,7 +57,7 @@ const ACTIVITIES: { id: Activity; title: string; subtitle: string; icon: React.R
 const DIETS = ["Vegetarian", "Vegan", "Pescatarian", "Keto", "Mediterranean", "Anything"];
 
 export default function PrimitivesPreview() {
-  if (process.env.NODE_ENV === "production") notFound();
+  if (process.env.VERCEL_ENV === "production") notFound();
 
   const [theme, setTheme] = React.useState<"light" | "dark">("dark");
   React.useEffect(() => {
