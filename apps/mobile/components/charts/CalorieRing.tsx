@@ -415,7 +415,12 @@ export default function CalorieRing({
         ) : (
           <Text
             style={{
-              fontSize: expanded ? 22 : 28,
+              // Grace 2026-05-05: 4-digit values like "1,516" at fontSize 22
+              // bold are ~80px wide and overlap the innermost macro ring
+              // (diameter ~64). Drop expanded centre to 18 so 4–5 char
+              // values fit cleanly inside the inner ring band. Collapsed
+              // mode (no macro rings) keeps the original 28 for readability.
+              fontSize: expanded ? 18 : 28,
               fontWeight: "700",
               color: isOver && displayMode !== "consumed" ? Accent.destructive : textColor,
               fontVariant: ["tabular-nums"],

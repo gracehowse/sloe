@@ -316,7 +316,11 @@ function DailyRing({
             <span
               className="tabular-nums font-bold leading-none transition-[font-size] duration-300 text-foreground"
               style={{
-                fontSize: expanded ? "22px" : "var(--text-display)",
+                // Grace 2026-05-05: 4-digit values like "1,516" at 22px
+                // bold overlapped the innermost macro ring band; drop
+                // expanded to 18px so 4–5 char values fit. Mirrors mobile
+                // CalorieRing.tsx.
+                fontSize: expanded ? "18px" : "var(--text-display)",
                 color: centerValueColor,
               }}
             >
