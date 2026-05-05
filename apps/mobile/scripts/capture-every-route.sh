@@ -119,8 +119,8 @@ cap "suppr:///meal-nutrition" "meal-nutrition"
 cap "suppr:///notifications-prompt" "notifications-prompt"
 cap "suppr:///recipe/verify" "recipe-verify"
 cap "suppr:///login" "login"
-cap "suppr:///onboarding-v2" "onboarding-v2-entry"
-cap "suppr:///onboarding" "onboarding-legacy-entry"
+cap "suppr:///onboarding-v2" "onboarding-v2-redirect"
+cap "suppr:///onboarding" "onboarding-canonical"
 
 # Macro detail per macro
 cap "suppr:///macro-detail?macro=protein" "macro-detail-protein"
