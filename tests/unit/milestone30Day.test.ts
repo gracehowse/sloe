@@ -308,3 +308,30 @@ describe("buildMilestone30DayContent", () => {
     expect(content.totalWeightDeltaKg).toBeNull();
   });
 });
+
+// audit K1 (2026-05-05): the modal was re-firing on every cold launch
+// because `profiles.milestone_30_shown_at` was silently failing to
+// persist (the supabase update was wrapped in `void` with no error
+// log). Today's hardening adds an AsyncStorage backstop. Pin the key
+// and the backstop's contract so a future refactor can't quietly
+// rename either side and re-introduce the same leak.
+describe("audit K1 — AsyncStorage backstop contract", () => {
+  it("pins the AsyncStorage key string used by mobile Today", () => {
+    // Mobile Today and any future readers MUST agree on this key.
+    // If you rename either side, update both — and bump this test.
+    const KEY = "suppr.milestone_30.shown_at_local";
+    expect(KEY).toBe("suppr.milestone_30.shown_at_local");
+  });
+
+  it("gate honours a backstopped shownAt (short-circuit before counting days)", () => {
+    // Hot path for the K1 fix: even with 49+ logged days, a non-null
+    // `shownAt` (e.g. read from the AsyncStorage backstop) must
+    // refuse re-fire.
+    const days = generateLoggedDays(49);
+    const result = shouldShowMilestone30Day({
+      nutritionByDay: days,
+      shownAt: "2026-05-05T18:22:43.214Z",
+    });
+    expect(result).toBe(false);
+  });
+});

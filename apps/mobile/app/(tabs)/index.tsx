@@ -2040,10 +2040,22 @@ export default function TrackerScreen() {
   }, []);
 
   // 30-day milestone moment gate (PR claude/today-30-day-milestone,
-  // 2026-05-02). Runs once per Today first-load AFTER the journal has
-  // hydrated — `milestone30HandledRef` suppresses re-fires within the
-  // session. The persisted `milestone_30_shown_at` flag suppresses
-  // re-fires across sessions: the moment is once and done, by design.
+  // 2026-05-02; persistence hardening 2026-05-05 audit K1).
+  //
+  // Runs once per Today first-load AFTER the journal has hydrated.
+  // Three-layer suppression:
+  //   1. `milestone30HandledRef` — within-session ref guard.
+  //   2. AsyncStorage `suppr.milestone_30.shown_at_local` — local
+  //      persistence, survives cold launch even if the server write
+  //      fails (audit K1: server write was silently failing under
+  //      `void` and Grace's column stayed null across 49+ days,
+  //      causing the modal to re-fire every cold launch).
+  //   3. `profiles.milestone_30_shown_at` — server source of truth
+  //      on next refetch.
+  //
+  // Order matters: the local AsyncStorage write happens FIRST and is
+  // synchronous-after-await; the server update logs its error
+  // explicitly instead of swallowing under `void`.
   useEffect(() => {
     if (!isToday) return;
     if (milestone30HandledRef.current) return;
@@ -2066,14 +2078,29 @@ export default function TrackerScreen() {
     setMilestone30Content(content);
     setMilestone30Open(true);
 
-    // Optimistic stamp — never re-fire even if the analytics call
-    // fails. Server is source of truth on next refetch.
     const nowIso = new Date().toISOString();
     setMilestone30ShownAt(nowIso);
-    void supabase
-      .from("profiles")
-      .update({ milestone_30_shown_at: nowIso } as never)
-      .eq("id", userId);
+
+    // Layer 2: persist locally first — can't fail silently the way
+    // the supabase update did under `void` (audit K1).
+    void AsyncStorage.setItem("suppr.milestone_30.shown_at_local", nowIso).catch(
+      (err) => {
+        console.warn("[milestone30] AsyncStorage write failed:", err);
+      },
+    );
+
+    // Layer 3: server stamp. `await` + explicit error log so a
+    // future RLS / column / network failure surfaces in dev/Sentry
+    // instead of leaving the user re-firing the modal every launch.
+    void (async () => {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ milestone_30_shown_at: nowIso } as never)
+        .eq("id", userId);
+      if (error) {
+        console.warn("[milestone30] server stamp failed:", error.message);
+      }
+    })();
 
     try {
       track(AnalyticsEvents.milestone_30_shown, {
@@ -2086,6 +2113,28 @@ export default function TrackerScreen() {
       /* noop */
     }
   }, [isToday, userId, byDay, profileWeightKgByDay, milestone30ShownAt]);
+
+  // Hydrate the local backstop. If a previous session wrote
+  // `suppr.milestone_30.shown_at_local` (e.g. server stamp failed),
+  // honour it before the server-fetched `milestone30ShownAt` lands.
+  // Without this, a cold launch with `milestone30ShownAt = null`
+  // (server NULL) would re-fire the modal even though the user has
+  // seen + dismissed it locally.
+  useEffect(() => {
+    if (milestone30ShownAt) return;
+    let cancelled = false;
+    void AsyncStorage.getItem("suppr.milestone_30.shown_at_local").then(
+      (raw) => {
+        if (cancelled) return;
+        if (typeof raw === "string" && raw) {
+          setMilestone30ShownAt(raw);
+        }
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [milestone30ShownAt]);
 
   const handleMilestone30Dismiss = useCallback(() => {
     setMilestone30Open(false);
