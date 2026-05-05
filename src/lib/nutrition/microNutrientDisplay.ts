@@ -39,6 +39,12 @@ export type MealNutritionDisplayInput = {
 type MicroLine = { label: string; key: string; format: (n: number) => string };
 
 const MICRO_LINES: MicroLine[] = [
+  // Fiber leads the table — Grace 2026-05-05 audit feedback. Fiber is
+  // tracked but isn't a hero macro on the meal-detail page, and it
+  // belongs with the rest of the per-entry nutrient breakdown rather
+  // than next to "Water" on a separate row above. Callers that don't
+  // want fiber surfaced here can omit `micros.fiberG`.
+  { key: "fiberG", label: "Fiber", format: (n) => `${round1(n)}g` },
   { key: "sugarG", label: "Sugar", format: (n) => `${round1(n)}g` },
   { key: "sodiumMg", label: "Sodium", format: (n) => `${Math.round(n)}mg` },
   { key: "saturatedFatG", label: "Sat. fat", format: (n) => `${round1(n)}g` },

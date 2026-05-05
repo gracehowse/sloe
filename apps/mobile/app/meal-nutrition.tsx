@@ -148,8 +148,21 @@ export default function MealNutritionScreen() {
     void load();
   }, [load]);
 
-  const microRows = useMemo(() => listMicroNutrientsCompleteDisplay(meal?.micros ?? null), [meal?.micros]);
   const fiberDisplay = meal ? mealContributedFiberG(meal) : 0;
+  // Audit 2026-05-05 (Grace): Fiber moved from the macro-summary card
+  // extras row into the "Vitamins, minerals & more" table where it
+  // belongs alongside the rest of the per-entry breakdown. Inject the
+  // resolved fiber value into the micros payload so the shared helper
+  // surfaces it as the first row (`MICRO_LINES` puts `fiberG` first).
+  // Falls back to "—" when zero, same as every other curated row.
+  const microRows = useMemo(
+    () =>
+      listMicroNutrientsCompleteDisplay({
+        ...(meal?.micros ?? {}),
+        fiberG: fiberDisplay > 0 ? fiberDisplay : (meal?.micros?.fiberG ?? 0),
+      }),
+    [meal?.micros, fiberDisplay],
+  );
   const split = useMemo(
     () => (meal ? macroCalorieSplit(meal) : { proteinPct: 0, carbsPct: 0, fatPct: 0, proteinKcal: 0, carbsKcal: 0, fatKcal: 0 }),
     [meal],
@@ -310,20 +323,10 @@ export default function MealNutritionScreen() {
           </>
         )}
 
-        <View style={[styles.extras, { borderTopColor: colors.cardBorder }]}>
-          <Text style={[styles.extraLine, { color: colors.textSecondary }]}>
-            Fiber{" "}
-            <Text style={{ fontWeight: "700", color: colors.text }}>
-              {fiberDisplay > 0 ? `${Math.round(fiberDisplay * 10) / 10}g` : "—"}
-            </Text>
-          </Text>
-          <Text style={[styles.extraLine, { color: colors.textSecondary }]}>
-            Water{" "}
-            <Text style={{ fontWeight: "700", color: colors.text }}>
-              {meal.waterMl != null && meal.waterMl > 0 ? `${Math.round(meal.waterMl)} ml` : "—"}
-            </Text>
-          </Text>
-        </View>
+        {/* Audit 2026-05-05 (Grace): the Fiber + Water rows that
+            previously lived here have moved (Fiber → "Vitamins,
+            minerals & more" table below) or been cut (Water — not
+            relevant to the per-entry meal nutrition view). */}
       </View>
 
       <View style={[styles.card, { marginTop: Spacing.md, backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
@@ -427,8 +430,6 @@ const styles = StyleSheet.create({
   macroSeg: { minWidth: 2 },
   macroGrid: { flexDirection: "row", justifyContent: "space-between", gap: 8 },
   macroCell: { flex: 1 },
-  extras: { marginTop: Spacing.md, paddingTop: Spacing.md, borderTopWidth: StyleSheet.hairlineWidth },
-  extraLine: { fontSize: 14, marginTop: 4 },
   sectionTitle: { fontSize: 15, fontWeight: "700", marginBottom: 4 },
   sectionSub: { fontSize: 12, lineHeight: 17, marginBottom: Spacing.sm },
   microRow: {
