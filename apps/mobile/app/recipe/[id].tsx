@@ -26,6 +26,7 @@ import {
   Clock,
   Minus,
   MoreHorizontal,
+  Pencil,
   Play,
   Plus,
   PlusCircle,
@@ -63,6 +64,7 @@ import {
   pickHeroImageUrl,
   extractVideoHost,
 } from "../../../../src/lib/recipes/heroImageFallback";
+import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { formatMacroValue } from "../../../../src/lib/nutrition/formatMacro";
 // GW-08 (audit 2026-04-28): `computeRecipeFitPercent` import dropped
 // when the always-85% pill was removed. Helper is still callable from
@@ -319,6 +321,17 @@ export default function RecipeDetailScreen() {
     }, [refreshNetCarbsLens]),
   );
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+  // Audit C1 (2026-05-05): Instagram / TikTok CDN URLs use signed
+  // tokens that expire and broken-image URLs come back as a 280pt
+  // grey rectangle from <Image> — visually indistinguishable from
+  // "no image at all" but worse because it consumes the full hero
+  // height. Track load errors so we can swap to the gradient
+  // fallback in those cases. Reset on recipe id change so navigating
+  // between recipes doesn't carry the prior error state.
+  const [heroImageBroken, setHeroImageBroken] = useState(false);
+  useEffect(() => {
+    setHeroImageBroken(false);
+  }, [id]);
   const [reverifying, setReverifying] = useState(false);
   /** USDA / FatSecret / OFF / Edamam / Suppr DB path via `/api/nutrition/verify-recipe` (not local staples). */
   const [autoVerifyingIngredients, setAutoVerifyingIngredients] = useState(false);
@@ -1271,17 +1284,25 @@ export default function RecipeDetailScreen() {
   // Existing legacy upgrade (hqdefault → maxresdefault) is preserved
   // for cached image_url values that came in at a lower resolution.
   // See `src/lib/recipes/heroImageFallback.ts` for the helper.
-  const heroImageUrl = useMemo(() => {
+  // Audit C1 (2026-05-05): when no real image is available, return
+  // null so the hero renders the deterministic `RecipeHeroFallback`
+  // gradient at half height (140pt) instead of the 280pt Unsplash
+  // stock photo. The stock photo of stranger food was reading as
+  // "empty hero" for ~40% of the screen and was Grace's primary
+  // recipe-detail complaint. The gradient + a small glyph signals
+  // "no photo" honestly without lying with stock imagery, and
+  // matches the pattern Library cards already use.
+  const heroImageUrl = useMemo<string | null>(() => {
     const picked = pickHeroImageUrl({
       image_url: recipe?.image_url,
       source_url: recipe?.source_url,
     });
-    const raw = picked ?? DEFAULT_IMAGE;
-    if (raw.includes("img.youtube.com") || raw.includes("i.ytimg.com")) {
-      return raw
+    if (!picked) return null;
+    if (picked.includes("img.youtube.com") || picked.includes("i.ytimg.com")) {
+      return picked
         .replace(/\/(hqdefault|mqdefault|sddefault|default)\.(jpg|webp)/, "/maxresdefault.$2");
     }
-    return raw;
+    return picked;
   }, [recipe?.image_url, recipe?.source_url]);
 
   /** Recime parity (2026-04-30): "Watch original" affordance in the
@@ -1380,6 +1401,9 @@ export default function RecipeDetailScreen() {
     tagPillTextPrimary: { color: Accent.primary },
 
     hero: { width: "100%", height: 280, backgroundColor: colors.border },
+    // Audit C1 (2026-05-05): half-height fallback so the no-photo
+    // case doesn't dominate the screen the way 280pt of stock photo did.
+    heroFallback: { width: "100%", height: 140, overflow: "hidden" },
     // Header buttons — circular icon buttons that sit over the hero
     // image. P3 dark-mode fix (2026-04-28): the previous hard-coded
     // `rgba(255,255,255,0.94)` left them as bright white pills on
@@ -1744,8 +1768,27 @@ export default function RecipeDetailScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Hero image — now sits below the top bar (no overlap). */}
-        <Image source={{ uri: heroImageUrl }} style={styles.hero} />
+        {/* Hero image — now sits below the top bar (no overlap).
+            Audit C1 (2026-05-05): when no real image is available the
+            screen previously rendered an Unsplash stock photo at 280pt
+            (DEFAULT_IMAGE) — read as "empty hero" because it was
+            stranger food. Now: 280pt photo when present, 140pt
+            deterministic gradient via RecipeHeroFallback when not. */}
+        {heroImageUrl && !heroImageBroken ? (
+          <Image
+            source={{ uri: heroImageUrl }}
+            style={styles.hero}
+            onError={() => setHeroImageBroken(true)}
+          />
+        ) : (
+          <View style={styles.heroFallback}>
+            <RecipeHeroFallback
+              id={recipe?.id ?? "unknown"}
+              title={recipe?.title ?? ""}
+              tags={recipe?.meal_type ?? []}
+            />
+          </View>
+        )}
 
         {/* GW-08 (audit 2026-04-28): pre-fix this row rendered a primary-
             tinted "{fitPercent}% match" pill, but the mobile fit-percent
@@ -1813,20 +1856,21 @@ export default function RecipeDetailScreen() {
           })()}
 
           {/* 2026-04-30 ui-product-designer recipe-detail audit Fix 1 —
-              collapsed attribution + slot + serves into one flex-wrap
-              subtitle joined by `·` separators. Author is tappable
-              (no underline) when `recipeByline.href` is present.
+              collapsed attribution + slot into one flex-wrap subtitle
+              joined by `·` separators. Author is tappable (no
+              underline) when `recipeByline.href` is present.
 
               2026-05-02 v4: kcal moved out of this row to its own
-              dedicated headline line above. The meta line is back to
-              "{slot} · serves {N} · by {author}" — kcal is no longer
-              passed to composeSubtitleParts, so the helper drops the
-              token cleanly. */}
+              dedicated headline line above.
+              C5 (audit 2026-05-05): "serves N" dropped — the stepper
+              card directly below is the canonical source of truth for
+              servings. Saying it twice was noise. The composeSubtitleParts
+              helper drops the token cleanly when servings is null. */}
           {(() => {
             const subtitleParts = composeSubtitleParts({
               authorLabel: recipeByline.label || null,
               slots: recipe.meal_type ?? null,
-              servings: recipe.servings,
+              servings: null,
             });
             if (subtitleParts.length === 0) return null;
             return (
@@ -1867,19 +1911,20 @@ export default function RecipeDetailScreen() {
             );
           })()}
 
-          {/* 2026-04-30 ui-product-designer audit Fix 2 — the old
-              icon-circle stats row (Prep / Cook / Servings) consumed a
-              third of the screen on a recipe with no times. Replaced
-              with a compact one-line form that hides entirely when
-              both prep and cook are unknown (servings already lives in
-              the subtitle above). When the recipe owner is viewing
-              their own recipe, an `Edit servings` affordance trails
-              the row. */}
+          {/* 2026-04-30 ui-product-designer audit Fix 2 — compact
+              one-line stats. C3 (audit 2026-05-05): the old "Edit
+              servings" text link that trailed this row was redundant
+              with the stepper directly below. Cut here; the owner-only
+              ✏ pencil button now sits on the stepper card itself
+              (stronger spatial association with what it edits). The
+              row hides entirely when both prep and cook are unknown
+              and the user is not the owner — preserving the original
+              empty-row hide rule. */}
           {(() => {
             const prepMin = recipe.prep_time_min;
             const cookMin = recipe.cook_time_min;
             const showRow = shouldRenderTimeStats(prepMin, cookMin);
-            if (!showRow && !isRecipeOwner) return null;
+            if (!showRow) return null;
             const parts: string[] = [];
             if (prepMin != null && prepMin > 0)
               parts.push(`${formatMinutes(prepMin)} prep`);
@@ -1887,35 +1932,8 @@ export default function RecipeDetailScreen() {
               parts.push(`${formatMinutes(cookMin)} cook`);
             return (
               <View style={styles.timeStatsRow} testID="recipe-time-stats">
-                {showRow ? (
-                  <>
-                    <Clock size={13} color={colors.textTertiary} />
-                    <Text style={styles.timeStatsText}>{parts.join(" · ")}</Text>
-                  </>
-                ) : null}
-                {isRecipeOwner ? (
-                  <Pressable
-                    onPress={() => {
-                      setRecipeYieldDraft(String(Math.max(1, recipe.servings)));
-                      setYieldEditOpen(true);
-                    }}
-                    accessibilityRole="button"
-                    accessibilityLabel="Edit servings"
-                    accessibilityHint="Opens editor to change how many portions the full recipe makes"
-                    style={
-                      showRow ? { marginLeft: Spacing.sm } : undefined
-                    }
-                  >
-                    <Text
-                      style={[
-                        styles.timeStatsText,
-                        { color: Accent.primary, fontWeight: "600" },
-                      ]}
-                    >
-                      Edit servings
-                    </Text>
-                  </Pressable>
-                ) : null}
+                <Clock size={13} color={colors.textTertiary} />
+                <Text style={styles.timeStatsText}>{parts.join(" · ")}</Text>
               </View>
             );
           })()}
@@ -1947,8 +1965,12 @@ export default function RecipeDetailScreen() {
               }}
               testID="recipe-view-servings-stepper"
             >
+              {/* C4 (audit 2026-05-05): "Servings to view" → "Servings".
+                  Stepper context already implies "to view"; the pencil
+                  trailing the stepper (owner-only) disambiguates the
+                  authored-yield edit path. */}
               <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>
-                Servings to view
+                Servings
               </Text>
               <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.md }}>
                 <Pressable
@@ -2010,6 +2032,38 @@ export default function RecipeDetailScreen() {
                 >
                   <Plus size={18} color={colors.text} />
                 </Pressable>
+                {/* C3 (audit 2026-05-05): owner-only pencil to edit
+                    the recipe's authored yield (replaces the "Edit
+                    servings" text link that used to live above the
+                    time-stats row). Spatial association with the
+                    stepper makes the relationship between view-scaling
+                    and yield-editing immediate. */}
+                {isRecipeOwner ? (
+                  <Pressable
+                    onPress={() => {
+                      setRecipeYieldDraft(String(Math.max(1, recipe.servings)));
+                      setYieldEditOpen(true);
+                    }}
+                    hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityLabel="Edit recipe yield"
+                    accessibilityHint="Opens editor to change how many portions the full recipe makes"
+                    testID="recipe-edit-yield-pencil"
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 8,
+                      backgroundColor: colors.background,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      justifyContent: "center",
+                      alignItems: "center",
+                      marginLeft: Spacing.sm,
+                    }}
+                  >
+                    <Pencil size={14} color={colors.textSecondary} />
+                  </Pressable>
+                ) : null}
               </View>
             </View>
           ) : null}
@@ -2082,36 +2136,12 @@ export default function RecipeDetailScreen() {
             );
           })()}
 
-          {/* "Fits your day" badge — 2026-04-30 audit visual-qa P1 #4.
-              Ties the recipe back to the user's daily calorie target.
-              Rounded to nearest 5%. Skipped when nutrition is unknown. */}
-          {(() => {
-            const kcalNum = Math.round(macros.calories);
-            const targetCals = userTargets.calories;
-            if (kcalNum <= 0 || !targetCals || targetCals <= 0) return null;
-            const rawPct = (kcalNum / targetCals) * 100;
-            const pct = Math.max(1, Math.round(rawPct / 5) * 5);
-            return (
-              <View
-                style={{
-                  alignSelf: "center",
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 6,
-                  paddingHorizontal: Spacing.md,
-                  paddingVertical: 6,
-                  borderRadius: Radius.full,
-                  backgroundColor: Accent.primary + "14",
-                  marginBottom: Spacing.lg,
-                }}
-                accessibilityLabel={`Approximately ${pct} percent of your daily calorie target`}
-              >
-                <Text style={{ fontSize: 12, fontWeight: "700", color: Accent.primary }}>
-                  ≈ {pct}% of your day
-                </Text>
-              </View>
-            );
-          })()}
+          {/* Audit C2 (2026-05-05): the "≈ X% of your day" pill that
+              previously rendered here was a duplicate of the
+              "Fits your day · ≈ X%" footer below the macro tiles.
+              Two surfaces saying the same percentage was visual noise.
+              Footer line is now the single source of truth for the
+              percentage. */}
 
           {/* v3 macro tiles — visual hero of the screen. 2026-05-02 v4
               user feedback "the widgets should be the same size and
@@ -2185,9 +2215,14 @@ export default function RecipeDetailScreen() {
                     {displayAmount}
                     {m.unit}
                   </Text>
-                  <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 4, fontVariant: ["tabular-nums"] }}>
+                  {/* C6 (audit 2026-05-05): caption demoted from
+                      11pt at full opacity to 9pt at 0.6 — the value
+                      line above already shows the unit, so the cap
+                      line dropping the redundant unit suffix removes
+                      visual noise across all 4 (or 6) tiles without
+                      losing the target reference. */}
+                  <Text style={{ fontSize: 9, color: colors.textTertiary, opacity: 0.6, marginTop: 4, fontVariant: ["tabular-nums"] }}>
                     of {macro === "sugar" ? m.tgt : macro === "sodium" ? m.tgt : Math.round(m.tgt)}
-                    {m.unit}
                   </Text>
                   <View style={{ marginTop: 6, height: 3, borderRadius: 2, backgroundColor: colors.border }}>
                     <View

@@ -70,7 +70,15 @@ export function shouldRenderTimeStats(
 export function composeSubtitleParts(args: {
   authorLabel: string | null;
   slots: string[] | null | undefined;
-  servings: number;
+  /**
+   * Servings to surface in the subtitle. Pass `null` to drop the
+   * `serves N` token entirely — needed by callers that have a
+   * dedicated servings affordance elsewhere on the screen (e.g.
+   * the recipe detail mobile screen, where a stepper card directly
+   * under the subtitle is the canonical source of truth and the
+   * subtitle token would be a duplicate). Audit C5 (2026-05-05).
+   */
+  servings: number | null;
   /**
    * Calories per portion. Pass `null` (or 0) when nutrition has not
    * been computed yet — the part is dropped so we never render a
@@ -82,7 +90,7 @@ export function composeSubtitleParts(args: {
   if (args.slots && args.slots.length > 0) {
     out.push({ key: "slot", label: args.slots.join(", ").toLowerCase() });
   }
-  if (args.servings > 0) {
+  if (args.servings != null && args.servings > 0) {
     out.push({ key: "serves", label: `serves ${args.servings}` });
   }
   if (args.kcal != null && args.kcal > 0) {
