@@ -651,9 +651,12 @@ export async function POST(req: Request) {
     if (msg.includes("abort")) {
       return NextResponse.json(importErrorResponse("timeout"), { status: 504 });
     }
-    // Audit I01 (2026-05-05) — never echo `${msg}` to the user; raw
-    // error strings have leaked vendor names and HTTP status. Log
-    // for telemetry, return central copy.
+    // Take main's version: PR #95's central `importErrorResponse`
+    // mapper (audit I01, 2026-05-05) supersedes PR #93's inline
+    // ai_rate_limited / ai_unavailable / ai_request_failed branches,
+    // which are now handled by the typed `CaptionExtractionError`
+    // catch above. Stops vendor names and HTTP statuses from leaking
+    // into user copy.
     console.error("[recipe-import] failed:", msg);
     return NextResponse.json(importErrorResponse("import_failed"), { status: 502 });
   } finally {

@@ -1,20 +1,25 @@
 /**
- * Build 41 (TestFlight `AEvjNTAVsipFKDysDkJD2g4`, 2026-05-01) —
- * structural-pin test for the calorie ring stroke logic.
+ * Three-state ring colour mapping (Grace 2026-05-05 audit feedback) —
+ * structural-pin test for the calorie ring stroke logic on web + mobile.
  *
- * User report: "Why is the ring now gradient even when the user has
- * logged instead of green?". The post-59cc821 gradient ran across the
- * whole consumed-vs-target range, so users never saw the "you're done"
- * solid-success signal once they hit their target.
+ * Supersedes the Build 41 two-state mapping (gradient-while-progressing,
+ * solid-green-from-target-onward), which inverted the visual cue: a
+ * user who'd gone OVER target saw a green ring while the centre digit
+ * read destructive/warning, and a user who'd logged UNDER target saw
+ * the welcome gradient as if they hadn't started yet.
  *
- * Build 41 fix: keep gradient while in progress (`consumed < goal`),
- * switch to solid `Accent.success` (mobile) / `var(--success)` (web)
- * once consumed >= goal. Going over is part of normal calorie
- * tracking, not destructive — green stays through over-budget.
+ * Three states the ring stroke must distinguish:
+ *   1. Empty (consumed === 0) → brand gradient. "Welcome / haven't
+ *      started yet."
+ *   2. Logged-and-under (0 < consumed <= goal) → `Accent.success` /
+ *      `var(--success)` solid green. "Logging, on track."
+ *   3. Logged-and-over (consumed > goal) → `Accent.destructive` /
+ *      `var(--destructive)` solid red. "Over budget." Matches the
+ *      centre-digit colour, which already flips when over.
  *
  * This file pins the structural wiring on both platforms so a future
- * refactor that re-introduces the always-gradient stroke fails CI.
- * Source-grep style mirrors `foodSearchFatSecretMerge.test.ts`.
+ * refactor that re-introduces always-gradient or two-state branching
+ * fails CI. Source-grep style mirrors `foodSearchFatSecretMerge.test.ts`.
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -32,43 +37,40 @@ const WEB_PATH = resolve(
 const MOBILE_SRC = readFileSync(MOBILE_PATH, "utf8");
 const WEB_SRC = readFileSync(WEB_PATH, "utf8");
 
-describe("Build 41 — mobile CalorieRing solid green at-or-above target", () => {
-  it("uses Accent.success when consumed >= goal", () => {
+describe("Three-state ring — mobile CalorieRing", () => {
+  it("empty → gradient, over → destructive, under → success", () => {
     expect(MOBILE_SRC).toMatch(
+      /stroke=\{[\s\S]*?isEmpty[\s\S]*?\?\s*"url\(#calorie-ring-gradient\)"[\s\S]*?:\s*consumed > goal && goal > 0[\s\S]*?\?\s*Accent\.destructive[\s\S]*?:\s*Accent\.success[\s\S]*?\}/,
+    );
+  });
+
+  it("does NOT use the old Build 41 two-state mapping (success-when-at-or-above-goal)", () => {
+    expect(MOBILE_SRC).not.toMatch(
       /stroke=\{consumed >= goal && goal > 0\s*\?\s*Accent\.success\s*:\s*"url\(#calorie-ring-gradient\)"\}/,
     );
   });
 
-  it("does NOT branch on isOver for the ring stroke (over keeps green, not destructive)", () => {
-    // Build 41 dropped the `isOver ? Accent.destructive : ...` branch
-    // on the main calorie ring. The `isOver` ref is still used for
-    // the centre TEXT colour, but never to decide the ring stroke.
-    expect(MOBILE_SRC).not.toMatch(
-      /stroke=\{isOver \? Accent\.destructive : "url\(#calorie-ring-gradient\)"\}/,
-    );
-  });
-
-  it("retains the brand gradient definition so the in-progress stroke still uses it", () => {
+  it("retains the brand gradient definition so the empty-state stroke still uses it", () => {
     expect(MOBILE_SRC).toMatch(/id="calorie-ring-gradient"/);
     expect(MOBILE_SRC).toMatch(/Accent\.primaryLight/);
     expect(MOBILE_SRC).toMatch(/MacroColors\.fat/);
   });
 });
 
-describe("Build 41 — web DailyRing solid green at-or-above target", () => {
-  it("uses var(--success) when consumed >= target", () => {
+describe("Three-state ring — web DailyRing", () => {
+  it("empty → gradient, over → destructive, under → success", () => {
     expect(WEB_SRC).toMatch(
+      /stroke=\{[\s\S]*?isEmpty[\s\S]*?\?\s*"url\(#daily-ring-gradient\)"[\s\S]*?:\s*isOverBudget[\s\S]*?\?\s*"var\(--destructive\)"[\s\S]*?:\s*"var\(--success\)"[\s\S]*?\}/,
+    );
+  });
+
+  it("does NOT use the old Build 41 two-state mapping (success-when-at-or-above-target)", () => {
+    expect(WEB_SRC).not.toMatch(
       /stroke=\{consumed >= target && target > 0\s*\?\s*"var\(--success\)"\s*:\s*"url\(#daily-ring-gradient\)"\}/,
     );
   });
 
-  it("does NOT branch on isOverBudget for the ring stroke (over keeps green, not destructive)", () => {
-    expect(WEB_SRC).not.toMatch(
-      /stroke=\{isOverBudget \? ringColor : "url\(#daily-ring-gradient\)"\}/,
-    );
-  });
-
-  it("retains the brand gradient definition so the in-progress stroke still uses it", () => {
+  it("retains the brand gradient definition so the empty-state stroke still uses it", () => {
     expect(WEB_SRC).toMatch(/id="daily-ring-gradient"/);
     // Stops use the literal hex from `Accent.primaryLight` →
     // `MacroColors.fat`. Preserve so a colour migration fails this

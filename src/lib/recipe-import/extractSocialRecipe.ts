@@ -718,8 +718,12 @@ Rules:
   }
 
   if (!res.ok) {
-    // Drain the body so the connection releases. Don't echo upstream
-    // text — would leak vendor name + status to the user (audit I01).
+    // Take main's version: PR #95 introduced the typed
+    // `CaptionExtractionError` class (audit I02, 2026-05-05) which
+    // carries the upstream status + Retry-After header so the route
+    // handler can surface a 429 with countdown to the client.
+    // PR #93's earlier `throw new Error("ai_rate_limited")` form is
+    // superseded.
     void res.text().catch(() => "");
     const retryAfterHeader = res.headers.get("Retry-After");
     const retryAfterSec = retryAfterHeader
