@@ -80,7 +80,10 @@ export function TodayActivityCard({
         </View>
         {activityBurnKcal == null && (
           <Text style={{ fontSize: 11, color: textTertiaryColor }}>
-            Active calories appear here once a source is connected (More → Connected).
+            {/* Debug audit 2026-05-04 (visual-qa): "More → Connected"
+                referenced a tab that no longer exists post-IA-collapse.
+                Settings now hosts Connections under the same path. */}
+            Active calories appear here once a source is connected (Settings → Connections).
           </Text>
         )}
       </View>

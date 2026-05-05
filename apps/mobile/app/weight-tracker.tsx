@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -251,13 +252,22 @@ export default function ProgressScreen() {
     [weightKgByDay, weightKg],
   );
 
+  // Debug audit 2026-05-04 (code-quality #14): persist used to swallow
+  // the supabase error and not return it. The save callbacks called
+  // `await persist(...)` and didn't check anything. A silent failure
+  // (RLS / network) left the local state ahead of the DB; the next
+  // focus would re-read from DB and the weight/steps/bf appeared to
+  // disappear. Now: persist returns the error, callers check it,
+  // restore the snapshotted state on failure, and Alert the user
+  // (mirrors the Today addCaffeineMg pattern).
   const persist = useCallback(
     async (patch: Record<string, unknown>) => {
-      if (!userId) return;
+      if (!userId) return null;
       const { error } = await supabase.from("profiles").update(patch).eq("id", userId);
       if (!error && "weight_kg_by_day" in patch) {
         void refreshAdaptiveTdeeForUser(supabase, userId);
       }
+      return error ?? null;
     },
     [userId],
   );
@@ -266,32 +276,52 @@ export default function ProgressScreen() {
     const v = Number.parseFloat(weightInput.replace(",", "."));
     if (!Number.isFinite(v) || v <= 0 || !userId) return;
     const kg = isImperial ? lbToKg(v) : v;
+    const prevByDay = weightKgByDay;
+    const prevWeight = weightKg;
     const next = pruneByDay({ ...weightKgByDay, [todayKey]: kg });
     setWeightKgByDay(next);
     setWeightKg(kg);
     setWeightInput("");
     weightInputUserEdited.current = false;
-    await persist({ weight_kg: kg, weight_kg_by_day: next });
-  }, [weightInput, weightKgByDay, todayKey, persist, userId, isImperial]);
+    const err = await persist({ weight_kg: kg, weight_kg_by_day: next });
+    if (err) {
+      setWeightKgByDay(prevByDay);
+      setWeightKg(prevWeight);
+      console.error("[saveWeight] persist failed:", err.message);
+      Alert.alert("Couldn't save weight", err.message ?? "Try again.");
+    }
+  }, [weightInput, weightKgByDay, weightKg, todayKey, persist, userId, isImperial]);
 
   const saveSteps = useCallback(async () => {
     const v = Math.round(Number.parseFloat(stepsInput.replace(",", ".")));
     if (!Number.isFinite(v) || v < 0 || !userId) return;
+    const prevByDay = stepsByDay;
     const next = pruneByDay({ ...stepsByDay, [todayKey]: v });
     setStepsByDay(next);
     setStepsInput("");
     stepsInputUserEdited.current = false;
-    await persist({ steps_by_day: next });
+    const err = await persist({ steps_by_day: next });
+    if (err) {
+      setStepsByDay(prevByDay);
+      console.error("[saveSteps] persist failed:", err.message);
+      Alert.alert("Couldn't save steps", err.message ?? "Try again.");
+    }
   }, [stepsInput, stepsByDay, todayKey, persist, userId]);
 
   const saveBf = useCallback(async () => {
     const v = Number.parseFloat(bfInput.replace(",", "."));
     if (!Number.isFinite(v) || v <= 0 || v > 60 || !userId) return;
+    const prevBf = bodyFatPct;
     setBodyFatPct(v);
     setBfInput("");
     bfInputUserEdited.current = false;
-    await persist({ body_fat_pct: v });
-  }, [bfInput, persist, userId]);
+    const err = await persist({ body_fat_pct: v });
+    if (err) {
+      setBodyFatPct(prevBf);
+      console.error("[saveBf] persist failed:", err.message);
+      Alert.alert("Couldn't save body fat", err.message ?? "Try again.");
+    }
+  }, [bfInput, bodyFatPct, persist, userId]);
 
   // Chart data derived from time range
   const weightData = useMemo(() => {

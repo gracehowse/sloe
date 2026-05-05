@@ -880,10 +880,14 @@ export default function ProgressScreen() {
       {/* Header — 2026-04-20 Claude Design prototype port.
           Uppercase overline reflects the currently-selected range,
           large "Progress" title (28pt / -0.6 tracking), round
-          calendar-icon button top-right. The pill button currently
-          routes to the weight-tracker screen (nearest existing surface
-          that owns a date picker) as a temporary destination; a
-          dedicated date-range picker modal is a follow-up. */}
+          icon button top-right.
+
+          Debug audit 2026-05-04 (visual-qa P1): the icon was
+          `CalendarDays` routing to /weight-tracker — a calendar glyph
+          that opens a weight log is a false affordance. Until a
+          dedicated date-range picker is built, the icon now matches
+          its destination (`Scale`) so the user gets what the icon
+          promises. */}
       <View
         testID="progress-header"
         style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}
@@ -895,7 +899,7 @@ export default function ProgressScreen() {
         <Pressable
           testID="progress-calendar-button"
           accessibilityRole="button"
-          accessibilityLabel="Open calendar"
+          accessibilityLabel="Open weight tracker"
           onPress={() => router.push("/weight-tracker" as const)}
           style={({ pressed }) => [{
             width: 36,
@@ -909,7 +913,7 @@ export default function ProgressScreen() {
             opacity: pressed ? 0.7 : 1,
           }]}
         >
-          <CalendarDays size={16} color={t.text} strokeWidth={1.75} />
+          <Scale size={16} color={t.text} strokeWidth={1.75} />
         </Pressable>
       </View>
 

@@ -93,6 +93,13 @@ export default function MealNutritionScreen() {
     }
     setLoading(true);
     setError(null);
+    // Debug audit 2026-05-04 (code-quality #8): the supabase select
+    // had `qErr` destructure handling but a *thrown* rejection (network
+    // disconnect, RLS deadlock) bypassed that branch and threw out of
+    // the callback before `setLoading(false)`. Spinner stuck. Now:
+    // full-body try/catch with `setError` in catch + setLoading in
+    // finally so the screen always recovers.
+    try {
     const { data, error: qErr } = await supabase
       .from("nutrition_entries")
       .select(
@@ -126,7 +133,15 @@ export default function MealNutritionScreen() {
         source: (data.source as string) ?? undefined,
       });
     }
-    setLoading(false);
+    } catch (err) {
+      if (typeof console !== "undefined") {
+        console.warn("[meal-nutrition] load failed:", err instanceof Error ? err.message : err);
+      }
+      setError(err instanceof Error ? err.message : "Could not load meal");
+      setMeal(null);
+    } finally {
+      setLoading(false);
+    }
   }, [userId, id]);
 
   useEffect(() => {

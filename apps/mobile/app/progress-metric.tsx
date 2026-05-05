@@ -62,6 +62,11 @@ export default function ProgressMetricDetailScreen() {
       return;
     }
     setLoading(true);
+    // Debug audit 2026-05-04 (code-quality #6): the body had no
+    // try/catch around the two serial supabase awaits. A rejection on
+    // either threw out and `setLoading(false)` (line ~145) never ran.
+    // Now: full-body try/finally so the spinner always resolves.
+    try {
     if (isHealthSyncAvailable()) {
       try {
         await syncHealthDataThrottled(userId);
@@ -141,8 +146,13 @@ export default function ProgressMetricDetailScreen() {
     }
     const snapshots = await getDailyTargets(supabase, userId, weekKeys);
     setDailyTargetsByDay(snapshots);
-
-    setLoading(false);
+    } catch (err) {
+      if (typeof console !== "undefined") {
+        console.warn("[progress-metric] load failed:", err instanceof Error ? err.message : err);
+      }
+    } finally {
+      setLoading(false);
+    }
   }, [userId]);
 
   useEffect(() => {

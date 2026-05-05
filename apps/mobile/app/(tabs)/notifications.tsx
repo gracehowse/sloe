@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Pressable,
   RefreshControl,
@@ -245,25 +246,49 @@ export default function NotificationsScreen() {
     };
   }, [userId, loadInbox]);
 
+  // Debug audit 2026-05-04 (code-quality #12): pull-to-refresh left
+  // the spinner stuck if `loadInbox` rejected. Now wrapped so the
+  // ring always stops.
   const onRefresh = useCallback(async () => {
     if (!userId) return;
     setRefreshing(true);
-    await loadInbox();
-    setRefreshing(false);
+    try {
+      await loadInbox();
+    } finally {
+      setRefreshing(false);
+    }
   }, [userId, loadInbox]);
 
+  // Debug audit 2026-05-04 (code-quality #13): markAllRead optimistic
+  // update had no rollback. Both supabase update calls failing left
+  // the UI ahead of the server; on next focus the unread items
+  // returned, looking like the action didn't take. Now: snapshot the
+  // pre-mark items, restore on failure.
   async function markAllRead() {
     if (!userId) return;
     const now = new Date().toISOString();
-    setItems((prev) => prev.map((n) => (n.readAt ? n : { ...n, readAt: now })));
-    await Promise.all([
-      supabase.from("app_notifications").update({ read_at: now }).eq("user_id", userId).is("read_at", null),
-      supabase
-        .from("creator_publish_notifications")
-        .update({ read_at: now })
-        .eq("user_id", userId)
-        .is("read_at", null),
-    ]);
+    const prev = items;
+    setItems((cur) => cur.map((n) => (n.readAt ? n : { ...n, readAt: now })));
+    try {
+      const [appRes, creatorRes] = await Promise.all([
+        supabase.from("app_notifications").update({ read_at: now }).eq("user_id", userId).is("read_at", null),
+        supabase
+          .from("creator_publish_notifications")
+          .update({ read_at: now })
+          .eq("user_id", userId)
+          .is("read_at", null),
+      ]);
+      if (appRes.error || creatorRes.error) {
+        setItems(prev);
+        const msg = appRes.error?.message ?? creatorRes.error?.message ?? "Try again.";
+        console.error("[markAllRead] persist failed:", msg);
+        Alert.alert("Couldn't mark all read", msg);
+      }
+    } catch (err) {
+      setItems(prev);
+      console.error("[markAllRead] threw:", err instanceof Error ? err.message : err);
+      Alert.alert("Couldn't mark all read", "Try again.");
+    }
   }
 
   const markOneRead = useCallback(

@@ -534,8 +534,11 @@ export default function PaywallScreen() {
     if (paywallFrom === "voice_log" || paywallFrom === "photo_log") return "Unlock AI logging";
     return "Pick the plan that fits";
   })();
+  // Debug audit 2026-05-04 (visual-qa P1): the proFlavoured subtitle
+  // referenced "Base" — a tier removed in PR-01. Now references the
+  // current product structure (Free + Pro).
   const headerSubtitle = proFlavoured
-    ? "Includes everything in Base, plus AI photo and voice logging."
+    ? "Includes all Free features, plus AI photo and voice logging."
     : "Cancel anytime. Price in your currency, taxes included.";
 
   // ─── Disclosure copy ────────────────────────────────────────────

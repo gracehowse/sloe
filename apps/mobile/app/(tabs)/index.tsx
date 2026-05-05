@@ -2757,8 +2757,22 @@ export default function TrackerScreen() {
       const prev = extraWaterByDay;
       const next = pruneByDay({ ...prev, [dayKey]: (prev[dayKey] ?? 0) + add });
       setExtraWaterByDay(next);
-      // Await the persist so it completes before any re-fetch can race
-      await supabase.from("profiles").update({ extra_water_by_day: next }).eq("id", userId);
+      // Debug audit 2026-05-04 (code-quality #2): caffeine + alcohol
+      // already had persist-error rollback (round 3, 2026-04-26); water
+      // was missed. Without rollback, an offline / RLS-denied write
+      // left the UI ahead of the server, and the next focus refresh
+      // re-read from DB and the bump appeared to "evaporate". Same
+      // shape as the addCaffeineMg path now.
+      const { error } = await supabase
+        .from("profiles")
+        .update({ extra_water_by_day: next })
+        .eq("id", userId);
+      if (error) {
+        setExtraWaterByDay(prev);
+        console.error("[addWaterMl] persist failed:", error.message, error);
+        Alert.alert("Couldn't save water", error.message ?? "Try again.");
+        return;
+      }
       track(AnalyticsEvents.hydration_logged, {
         type: "water",
         amount: add,

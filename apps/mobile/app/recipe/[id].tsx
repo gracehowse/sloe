@@ -240,7 +240,20 @@ function MacroRing({ value, goal, color, label, size = 56, ringBgColor, labelCol
             strokeDasharray={`${circ}`} strokeDashoffset={circ*(1-pct)} strokeLinecap="round"
             rotation="-90" origin={`${size/2},${size/2}`} />
         </Svg>
-        <Text style={{ color, fontSize: 12, fontWeight: "700" }}>{Math.round(value)}g</Text>
+        {/* Debug audit 2026-05-04 (visual-qa P1): for recipes with
+            high-protein values like 128g, the 4-character + unit
+            string overflowed the 56pt ring's ~44pt usable inner
+            diameter and wrapped to two lines, breaking the unit
+            display ("128" + "g"). `numberOfLines={1}` plus
+            `adjustsFontSizeToFit` keeps the value on one line. */}
+        <Text
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.6}
+          style={{ color, fontSize: 12, fontWeight: "700" }}
+        >
+          {Math.round(value)}g
+        </Text>
       </View>
       <Text style={{ color: labelColor, fontSize: 10, fontWeight: "600" }}>{label}</Text>
     </View>

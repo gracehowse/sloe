@@ -6,6 +6,7 @@ import {
   Pressable,
   StatusBar,
   Text,
+  useColorScheme,
   View,
 } from "react-native";
 import { useRouter } from "expo-router";
@@ -57,6 +58,15 @@ export function MobileFlow() {
     warning,
   } = useOnboarding();
   const colors = useThemeColors();
+  // Debug audit 2026-05-04 (visual-qa): the welcome step uses a dark
+  // gradient where `light-content` (white status-bar icons) is correct,
+  // but every subsequent step renders on `colors.background` — light
+  // grey in light mode, near-black in dark mode. Hardcoding
+  // `light-content` made the status-bar time/battery/wifi invisible on
+  // 11 of 12 steps for users in light mode. Now we follow the system
+  // theme for non-welcome steps.
+  const colorScheme = useColorScheme();
+  const isDarkSystem = colorScheme === "dark";
   const router = useRouter();
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
@@ -276,7 +286,7 @@ export function MobileFlow() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle={isDarkSystem ? "light-content" : "dark-content"} />
 
       {/* Top bar */}
       <View

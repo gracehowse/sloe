@@ -63,55 +63,67 @@ export default function BurnDetailScreen() {
     }
     let cancelled = false;
     setLoadError(null);
+    // Debug audit 2026-05-04 (code-quality #3): the IIFE was wrapping
+    // a single try/catch around the HealthKit sync only — a thrown
+    // rejection from the supabase select fell through, the IIFE
+    // silently died, and `setLoadError` never fired. The screen sat on
+    // the loading spinner forever. Now: full-body try/catch with an
+    // explicit empty-state error so the user always has a recovery
+    // affordance.
     (async () => {
-      // Ensure HealthKit data is synced to Supabase before reading
-      if (isHealthSyncAvailable()) {
-        try { await syncHealthDataThrottled(userId); } catch { /* ignore */ }
-      }
-      if (cancelled) return;
-      const { data: profile, error: profileErr } = await supabase
-        .from("profiles")
-        .select(
-          "activity_burn_by_day, basal_burn_by_day, steps_by_day, workouts_by_day, target_calories, goal, plan_pace, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, sex, height_cm, weight_kg, age, dob, activity_level",
-        )
-        .eq("id", userId)
-        .maybeSingle();
-      if (cancelled) return;
-      if (profileErr) {
+      try {
+        // Ensure HealthKit data is synced to Supabase before reading
+        if (isHealthSyncAvailable()) {
+          try { await syncHealthDataThrottled(userId); } catch { /* ignore */ }
+        }
+        if (cancelled) return;
+        const { data: profile, error: profileErr } = await supabase
+          .from("profiles")
+          .select(
+            "activity_burn_by_day, basal_burn_by_day, steps_by_day, workouts_by_day, target_calories, goal, plan_pace, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, sex, height_cm, weight_kg, age, dob, activity_level",
+          )
+          .eq("id", userId)
+          .maybeSingle();
+        if (cancelled) return;
+        if (profileErr) {
+          setLoadError("Could not load activity data. Pull to retry.");
+          return;
+        }
+        if (!profile) {
+          setLoadError("No profile found. Complete onboarding to see your activity bonus.");
+          return;
+        }
+        const p = profile as any;
+        const targetCal = Number(p.target_calories) || 0;
+        const ageYears = profileAgeYears({ dob: p.dob, age: p.age });
+        const resolved = resolveMaintenance({
+          adaptive_tdee: p.adaptive_tdee != null ? Number(p.adaptive_tdee) : null,
+          adaptive_tdee_confidence: p.adaptive_tdee_confidence ?? null,
+          adaptive_tdee_updated_at: p.adaptive_tdee_updated_at ?? null,
+          sex: p.sex ?? null,
+          weight_kg: p.weight_kg != null ? Number(p.weight_kg) : null,
+          height_cm: p.height_cm != null ? Number(p.height_cm) : null,
+          age: ageYears,
+          activity_level: p.activity_level ?? null,
+        });
+        const maintenanceKcal =
+          resolved != null && resolved.kcal > 0
+            ? resolved.kcal
+            : maintenanceIntakeFromTargetCalories(targetCal, p.goal, p.plan_pace);
+        setData({
+          activeBurn: Math.round(Number((p.activity_burn_by_day ?? {})[viewKey]) || 0),
+          restingBurn: Math.round(Number((p.basal_burn_by_day ?? {})[viewKey]) || 0),
+          steps: Math.round(Number((p.steps_by_day ?? {})[viewKey]) || 0),
+          maintenanceKcal,
+          workouts: Array.isArray((p.workouts_by_day ?? {})[viewKey]) ? (p.workouts_by_day ?? {})[viewKey] : [],
+        });
+      } catch (err) {
+        if (cancelled) return;
+        if (typeof console !== "undefined") {
+          console.warn("[burn-detail] load failed:", err instanceof Error ? err.message : err);
+        }
         setLoadError("Could not load activity data. Pull to retry.");
-        return;
       }
-      if (!profile) {
-        // Profile exists in auth.users but not in public.profiles — usually
-        // means onboarding wasn't completed. Surface the empty state instead
-        // of an infinite spinner.
-        setLoadError("No profile found. Complete onboarding to see your activity bonus.");
-        return;
-      }
-      const p = profile as any;
-      const targetCal = Number(p.target_calories) || 0;
-      const ageYears = profileAgeYears({ dob: p.dob, age: p.age });
-      const resolved = resolveMaintenance({
-        adaptive_tdee: p.adaptive_tdee != null ? Number(p.adaptive_tdee) : null,
-        adaptive_tdee_confidence: p.adaptive_tdee_confidence ?? null,
-        adaptive_tdee_updated_at: p.adaptive_tdee_updated_at ?? null,
-        sex: p.sex ?? null,
-        weight_kg: p.weight_kg != null ? Number(p.weight_kg) : null,
-        height_cm: p.height_cm != null ? Number(p.height_cm) : null,
-        age: ageYears,
-        activity_level: p.activity_level ?? null,
-      });
-      const maintenanceKcal =
-        resolved != null && resolved.kcal > 0
-          ? resolved.kcal
-          : maintenanceIntakeFromTargetCalories(targetCal, p.goal, p.plan_pace);
-      setData({
-        activeBurn: Math.round(Number((p.activity_burn_by_day ?? {})[viewKey]) || 0),
-        restingBurn: Math.round(Number((p.basal_burn_by_day ?? {})[viewKey]) || 0),
-        steps: Math.round(Number((p.steps_by_day ?? {})[viewKey]) || 0),
-        maintenanceKcal,
-        workouts: Array.isArray((p.workouts_by_day ?? {})[viewKey]) ? (p.workouts_by_day ?? {})[viewKey] : [],
-      });
     })();
     return () => { cancelled = true; };
   }, [userId, viewKey]);

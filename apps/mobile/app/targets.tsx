@@ -97,7 +97,15 @@ export default function TargetsScreen() {
       return;
     }
     let cancelled = false;
+    // Debug audit 2026-05-04 (code-quality #4): the IIFE used to dive
+    // straight into supabase awaits with no try/catch. Either the
+    // profile select or the `meals` fallback select rejecting silently
+    // killed the IIFE before `setLoading(false)`, leaving the screen
+    // stuck on the skeleton. Now: full-body try/finally so loading
+    // always resolves, and an error is logged + surfaced via the
+    // existing empty/loaded state instead of the spinner.
     (async () => {
+      try {
       const { data } = await supabase
         .from("profiles")
         .select(
@@ -106,7 +114,6 @@ export default function TargetsScreen() {
         .eq("id", userId)
         .maybeSingle();
       if (cancelled || !data) {
-        if (!cancelled) setLoading(false);
         return;
       }
       const d = data as Record<string, unknown>;
@@ -181,8 +188,13 @@ export default function TargetsScreen() {
         );
         setConsumed(sum);
       }
-
-      setLoading(false);
+      } catch (err) {
+        if (typeof console !== "undefined") {
+          console.warn("[targets] load failed:", err instanceof Error ? err.message : err);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     })();
     return () => {
       cancelled = true;

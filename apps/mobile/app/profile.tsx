@@ -204,6 +204,12 @@ export default function ProfileScreen() {
       setLoading(false);
       return;
     }
+    // Debug audit 2026-05-04 (code-quality #5): the body had no
+    // try/catch. A rejected supabase select threw out of the callback
+    // before `setLoading(false)` ran — the screen sat on the skeleton
+    // and pull-to-refresh wasn't wired to clear it. Now: full-body
+    // try/finally so loading always resolves.
+    try {
     const { data } = await supabase
       .from("profiles")
       .select(
@@ -262,7 +268,13 @@ export default function ProfileScreen() {
         dietary: [...diet],
       };
     }
-    setLoading(false);
+    } catch (err) {
+      if (typeof console !== "undefined") {
+        console.warn("[profile] load failed:", err instanceof Error ? err.message : err);
+      }
+    } finally {
+      setLoading(false);
+    }
   }, [userId]);
 
   useFocusEffect(
