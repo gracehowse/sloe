@@ -323,19 +323,52 @@ export default function ProgressScreen() {
         )
       : (setStepsSyncStatus("success"), Promise.resolve());
 
-    const [{ data: rows }, { data: profile }] = await Promise.all([
-      supabase
+    // Debug audit 2026-05-04 (code-quality #1 CRITICAL): the existing
+    // try/finally protects against rejected promises but NOT against a
+    // hung PostgREST (NAT/Cloudflare wedge or RLS deadlock — the same
+    // class of bug fixed on Today via `raceJournal`). A non-settling
+    // await never reaches the finally block. Now: wrap each query in a
+    // 30s timeout race. On timeout we surface a sentinel and fall
+    // through to the empty/hasData branches with `setLoadError` set so
+    // the user sees a recovery affordance instead of perpetual skeleton.
+    const PROGRESS_QUERY_TIMEOUT_MS = 30_000;
+    const progressTimeoutSentinel = Symbol("progress_query_timeout");
+    async function raceProgress<T>(label: string, p: Promise<T>): Promise<T | typeof progressTimeoutSentinel> {
+      const out = await Promise.race([
+        p,
+        new Promise<typeof progressTimeoutSentinel>((resolve) => {
+          setTimeout(() => resolve(progressTimeoutSentinel), PROGRESS_QUERY_TIMEOUT_MS);
+        }),
+      ]);
+      if (out === progressTimeoutSentinel) {
+        console.warn(`[progress] ${label} timed out (${PROGRESS_QUERY_TIMEOUT_MS}ms)`);
+      }
+      return out;
+    }
+    const entriesPromise = (async () =>
+      await supabase
         .from("nutrition_entries")
         .select("date_key, calories, protein, carbs, fat")
         .eq("user_id", userId)
         .gte("date_key", ninetyDaysAgo)
-        .order("created_at", { ascending: true }),
-      supabase
+        .order("created_at", { ascending: true }))();
+    const profilePromise = (async () =>
+      await supabase
         .from("profiles")
         .select("target_calories, target_protein, target_carbs, target_fat, weight_kg, goal_weight_kg, weight_kg_by_day, steps_by_day, daily_steps_goal, week_start_day, goal, plan_pace, sex, height_cm, age, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, weekly_recap_last_seen_week_key, weekly_recap_push_enabled, measurement_system, weight_surface_mode")
         .eq("id", userId)
-        .maybeSingle(),
+        .maybeSingle())();
+    const [entriesResult, profileResult] = await Promise.all([
+      raceProgress("nutrition_entries", entriesPromise),
+      raceProgress("profiles", profilePromise),
     ]);
+    if (entriesResult === progressTimeoutSentinel || profileResult === progressTimeoutSentinel) {
+      // Hung query — bail out of hydrate path so the spinner clears
+      // and the user sees the existing empty/hasData fallback.
+      return;
+    }
+    const { data: rows } = entriesResult;
+    const { data: profile } = profileResult;
 
     // Re-read `steps_by_day` after the background HK sync completes so
     // today's steps are accurate even though we didn't await sync above.

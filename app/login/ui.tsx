@@ -16,7 +16,10 @@ export type LoginClientProps = {
   hideTabs?: boolean;
 };
 
-export function LoginClient({ initialMode = "signup", hideTabs = false }: LoginClientProps) {
+// Debug audit 2026-05-04 (customer-lens #8): default flipped from
+// "signup" → "signin". Canonical signup lives at /onboarding; this
+// route is the signin destination from the landing's "Sign in" link.
+export function LoginClient({ initialMode = "signin", hideTabs = false }: LoginClientProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [mode, setMode] = useState<"signin" | "signup">(initialMode);

@@ -57,6 +57,7 @@ import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
 import { GradientAvatar } from "@/components/GradientAvatar";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets, type ResolvedTargets } from "@/lib/calcTargets";
+import { computeProtectedStreak, readFreezeLedger } from "@/lib/streakFreeze";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
@@ -305,7 +306,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
         const { data: profile, error: profileErr } = await supabase
           .from("profiles")
           .select(
-            "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, dietary, notification_prefs, user_tier, weight_kg, height_cm, sex, activity_level, goal, dob, age, plan_pace",
+            "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, dietary, notification_prefs, user_tier, weight_kg, height_cm, sex, activity_level, goal, dob, age, plan_pace, streak_freezes_earned_at, streak_freezes_used_history, streak_freeze_budget_max",
           )
           .eq("id", userId)
           .maybeSingle();
@@ -334,6 +335,18 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           savedCount = 0;
         }
 
+        // Debug audit 2026-05-04 (customer-lens P0 #1): Settings used
+        // to compute streak via a hand-rolled algorithm against
+        // nutrition_entries (limit 60, local date math, no freeze
+        // ledger). Today / Progress / Recap all compute via the shared
+        // `computeProtectedStreak` helper fed by the journal byDay
+        // map. Result: same user, same day, two different streak
+        // counts (Today "28-day streak", Settings "0 Streak"). Trust
+        // killer flagged in customer-lens debug audit.
+        // Now: hydrate a byDay map from nutrition_entries date_keys
+        // (each row counted as one meal), pull the freeze ledger from
+        // the profile select above, and route through the canonical
+        // shared helpers — same path Today uses.
         let streak = 0;
         try {
           const { data: logs } = await supabase
@@ -341,22 +354,25 @@ export function SettingsBundleContent({ context }: { context: Context }) {
             .select("date_key")
             .eq("user_id", userId)
             .order("date_key", { ascending: false })
-            .limit(60);
+            .limit(400);
+          const byDay: Record<string, Array<{ calories: number }>> = {};
           if (logs && logs.length > 0) {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const uniqueDays = [
-              ...new Set(logs.map((l: { date_key: string }) => l.date_key)),
-            ].sort((a: string, b: string) => b.localeCompare(a));
-            for (const dayStr of uniqueDays) {
-              const d = new Date(`${dayStr}T00:00:00`);
-              const diff = Math.round(
-                (today.getTime() - d.getTime()) / 86400000,
-              );
-              if (diff === streak) streak++;
-              else break;
+            for (const l of logs as Array<{ date_key: string }>) {
+              if (!l.date_key) continue;
+              if (!byDay[l.date_key]) byDay[l.date_key] = [];
+              byDay[l.date_key].push({ calories: 1 });
             }
           }
+          const ledger = readFreezeLedger({
+            earnedAt: (profile as { streak_freezes_earned_at?: unknown }).streak_freezes_earned_at,
+            usedHistory: (profile as { streak_freezes_used_history?: unknown }).streak_freezes_used_history,
+          });
+          const budgetMaxRaw = (profile as { streak_freeze_budget_max?: unknown }).streak_freeze_budget_max;
+          const budgetMax =
+            typeof budgetMaxRaw === "number" && Number.isFinite(budgetMaxRaw) && budgetMaxRaw >= 0
+              ? budgetMaxRaw
+              : 3;
+          streak = computeProtectedStreak(byDay as never, ledger, budgetMax).streakLength;
         } catch {
           streak = 0;
         }

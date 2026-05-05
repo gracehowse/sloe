@@ -248,12 +248,43 @@ export default function HealthSyncScreen() {
     }
   }, [available]);
 
+  // Debug audit 2026-05-04 (code-quality #9): the HealthKit calls had
+  // no timeout. A native-bridge hang (HealthKit deadlock on a flaky
+  // build) left `setSyncing(true)` stuck and the user locked out of
+  // the action until app restart with a spinning button forever.
+  // 18s race matches the pattern used elsewhere (`raceJournal`); on
+  // timeout we surface the same error UI the catch branch uses.
+  const HEALTH_CALL_TIMEOUT_MS = 18_000;
+  const healthSyncTimeoutSentinel = Symbol("health_sync_timeout");
+  async function raceHealth<T>(label: string, p: Promise<T>): Promise<T | typeof healthSyncTimeoutSentinel> {
+    const out = await Promise.race([
+      p,
+      new Promise<typeof healthSyncTimeoutSentinel>((resolve) => {
+        setTimeout(() => resolve(healthSyncTimeoutSentinel), HEALTH_CALL_TIMEOUT_MS);
+      }),
+    ]);
+    if (out === healthSyncTimeoutSentinel) {
+      console.warn(`[health-sync] ${label} timed out (${HEALTH_CALL_TIMEOUT_MS}ms)`);
+    }
+    return out;
+  }
+
   const handleSync = useCallback(async () => {
     if (!userId) return;
     setSyncing(true);
     setErrorState(null);
     try {
-      const result = await syncHealthData(userId);
+      const raced = await raceHealth("syncHealthData", syncHealthData(userId));
+      if (raced === healthSyncTimeoutSentinel) {
+        setLastResult("Sync timed out");
+        setErrorState({
+          kind: "sync",
+          message:
+            "Health is taking too long to respond. Try again, or open iOS Settings → Privacy → Health → Suppr to confirm permissions.",
+        });
+        return;
+      }
+      const result = raced;
       const parts: string[] = [];
       if (result.stepsUpdated) parts.push("steps");
       if (result.weightUpdated) parts.push("weight");
