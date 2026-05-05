@@ -5,7 +5,7 @@ import { supabase } from "../../lib/supabase/browserClient.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { toast } from "sonner";
 import { normalizeMacroTargets } from "../../types/profile.ts";
-import { computeLoggingStreak } from "../../lib/nutrition/trackerStats.ts";
+import { computeProtectedStreak, readFreezeLedger, type FreezeLedger } from "../../lib/nutrition/streakFreeze.ts";
 import { cmToFeetInches, feetInchesToCm, kgToLb, lbToKg } from "../../lib/units/imperial.ts";
 import { Checkbox } from "./ui/checkbox.tsx";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
@@ -82,7 +82,18 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
     return { daysWithLogs: daysWithLogs.length, totalMeals, recentDayKeys };
   }, [nutritionByDay]);
 
-  const streakDays = useMemo(() => computeLoggingStreak(nutritionByDay), [nutritionByDay]);
+  // Numbers audit 2026-05-04 #4: Profile streak must apply freezes. Today,
+  // Progress, and Weekly Recap all render `computeProtectedStreak` (with
+  // ledger). Profile was using the raw `computeLoggingStreak`, so right
+  // after a freeze auto-applied to a missed day Today read "26-day streak"
+  // while Profile read "25-day streak" for the same user at the same
+  // moment. Now both surfaces compute the same number.
+  const [freezeLedger, setFreezeLedger] = useState<FreezeLedger>({ earnedAt: [], usedHistory: [] });
+  const [freezeBudgetMax, setFreezeBudgetMax] = useState<number>(3);
+  const streakDays = useMemo(
+    () => computeProtectedStreak(nutritionByDay as never, freezeLedger, freezeBudgetMax).streakLength,
+    [nutritionByDay, freezeLedger, freezeBudgetMax],
+  );
   const recipeCount = savedRecipesForLibrary?.length ?? 0;
   // Dynamic profile metadata
   const [dietaryRestrictions, setDietaryRestrictions] = useState<string[]>([]);
@@ -116,11 +127,24 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
       const { data: profile } = await supabase
         .from("profiles")
         .select(
-          "sex, age, height_cm, weight_kg, activity_level, goal, plan_pace, nutrition_strategy, measurement_system, dietary, notification_prefs, week_start_day, tracked_macros",
+          "sex, age, height_cm, weight_kg, activity_level, goal, plan_pace, nutrition_strategy, measurement_system, dietary, notification_prefs, week_start_day, tracked_macros, streak_freezes_earned_at, streak_freezes_used_history, streak_freeze_budget_max",
         )
         .eq("id", uid)
         .maybeSingle();
       if (!profile || cancelled) return;
+
+      // Numbers audit 2026-05-04 #4: hydrate streak-freeze state so the
+      // protected streak helper sees the same ledger Today + Progress
+      // already see.
+      const ledger = readFreezeLedger({
+        earnedAt: (profile as { streak_freezes_earned_at?: unknown }).streak_freezes_earned_at,
+        usedHistory: (profile as { streak_freezes_used_history?: unknown }).streak_freezes_used_history,
+      });
+      setFreezeLedger(ledger);
+      const budget = (profile as { streak_freeze_budget_max?: unknown }).streak_freeze_budget_max;
+      if (typeof budget === "number" && Number.isFinite(budget) && budget >= 0) {
+        setFreezeBudgetMax(budget);
+      }
 
       // Goals & Targets parity rows (Pass 6, 2026-04-18). Same DB
       // shape Settings.tsx reads.

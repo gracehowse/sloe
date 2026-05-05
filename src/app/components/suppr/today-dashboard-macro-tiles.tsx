@@ -142,7 +142,14 @@ function buildMacroTile(
     const tgt = netCarbsForRow(tgtRaw, fiberTarget, lensOn);
     const pct = tgt > 0 ? Math.min(100, Math.round((cur / tgt) * 100)) : 0;
     return {
-      label: carbsLabel(fiberCurrent, lensOn),
+      // Numbers audit 2026-05-04 #8: arbiter must be `fiberTarget`, not
+      // `fiberCurrent`. With the net-carbs lens on and zero meals yet
+      // logged today, `fiberCurrent` is 0 and `carbsLabel` falls back to
+      // "Carbs" — so the user saw "Carbs 0 / 75g" with target net but
+      // label gross. The target's fibre column tells us whether net-carbs
+      // math is *defined* for this user, which is what the label should
+      // track. Mobile fixed the same bug on 2026-04-30.
+      label: carbsLabel(fiberTarget, lensOn),
       Icon: Wheat,
       valueText: formatMacro(cur, "carbs"),
       targetText: `/ ${formatMacro(tgt, "carbs")} g`,

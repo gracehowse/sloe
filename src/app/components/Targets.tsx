@@ -42,9 +42,10 @@ import { supabase } from "../../lib/supabase/browserClient.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { useAuthSession } from "../../context/AuthSessionContext.tsx";
 import { normalizeMacroTargets } from "../../types/profile.ts";
-import { calcGoalTimeline } from "../../lib/weightProjection.ts";
+import { calcGoalTimeline, resolveLatestWeightKg } from "../../lib/weightProjection.ts";
 import { todayKey } from "../../lib/nutrition/trackerDate.ts";
 import { kgToLb } from "../../lib/units/imperial.ts";
+import { carbsLabel, netCarbsForRow } from "../../lib/nutrition/netCarbs.ts";
 
 export interface TargetsProps {
   /**
@@ -101,7 +102,7 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
     if (onEdit) onEdit();
     else onNavigate?.("profile");
   };
-  const { nutritionTargets, nutritionByDay, profileMeasurementSystem } = useAppData();
+  const { nutritionTargets, nutritionByDay, profileMeasurementSystem, netCarbsLensEnabled } = useAppData();
   const { authedUserId } = useAuthSession();
 
   const [weightKg, setWeightKg] = useState<number | null>(null);
@@ -186,15 +187,26 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
     return "kcal / day";
   }, [targets.calories, maintenanceTdee]);
 
+  // Numbers audit 2026-05-04 #1 (cross-platform parity): "current weight"
+  // must mirror Progress + mobile Targets, both of which read the latest
+  // entry in `weight_kg_by_day` (Health Sync writes the by-day map first;
+  // `profile.weight_kg` lags). Without this, web Targets shows the stale
+  // value while web Progress and every mobile surface show the fresh one
+  // — the original symptom from full-sweep audit #5.
+  const latestWeightKg = useMemo(
+    () => resolveLatestWeightKg(weightKgByDay, weightKg),
+    [weightKgByDay, weightKg],
+  );
+
   // Projected reach-date: use the same shared `calcGoalTimeline` helper
   // Progress uses. When we don't have enough weight history to infer a
   // trend, we suppress the estimate (honest empty state) rather than
   // invent a linear default.
   const projectedDateLabel = useMemo<string | null>(() => {
-    if (weightKg == null || goalWeightKg == null) return null;
-    if (weightKg === goalWeightKg) return "You are at your goal";
+    if (latestWeightKg == null || goalWeightKg == null) return null;
+    if (latestWeightKg === goalWeightKg) return "You are at your goal";
     const timeline = calcGoalTimeline({
-      currentWeightKg: weightKg,
+      currentWeightKg: latestWeightKg,
       goalWeightKg,
       weightKgByDay,
     });
@@ -205,7 +217,7 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
     const d = new Date();
     d.setDate(d.getDate() + timeline.daysToGoal);
     return d.toLocaleDateString("en-US", { day: "numeric", month: "long" });
-  }, [weightKg, goalWeightKg, weightKgByDay]);
+  }, [latestWeightKg, goalWeightKg, weightKgByDay]);
 
   const formatWeight = (kg: number): string => {
     if (profileMeasurementSystem === "imperial") {
@@ -226,10 +238,19 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
       },
       {
         key: "carbs",
-        label: "Carbs",
+        // Numbers audit 2026-05-04 #7: web Targets carb tile previously
+        // showed gross carbs target/value regardless of the net-carbs
+        // lens. Mobile Targets fixed this on 2026-04-30; web was missed.
+        // With lens on the user saw gross carbs on Targets while every
+        // other web surface (Today macro tile, Recipe detail) showed net.
+        // Mirror the mobile rule: subtract fibre from both `current` and
+        // `target` when the lens is on (using `netCarbsForRow`), and use
+        // the *target* fibre value as label arbiter so the label doesn't
+        // flicker to "Carbs" while no fibre has been logged yet (cf. #8).
+        label: carbsLabel(targets.fiber, netCarbsLensEnabled),
         Icon: Wheat,
-        current: todayMacros.carbs,
-        target: targets.carbs,
+        current: netCarbsForRow(todayMacros.carbs, todayMacros.fiber, netCarbsLensEnabled),
+        target: netCarbsForRow(targets.carbs, targets.fiber, netCarbsLensEnabled),
         fillVar: "var(--macro-carbs)",
       },
       {
@@ -353,7 +374,7 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
                 Reach {formatWeight(goalWeightKg)}
               </p>
               <p className="text-[13px] text-muted-foreground mt-1">
-                {weightKg != null ? `Currently ${formatWeight(weightKg)}` : "Log a weight to start tracking"}
+                {latestWeightKg != null ? `Currently ${formatWeight(latestWeightKg)}` : "Log a weight to start tracking"}
                 {projectedDateLabel ? ` · could reach by ≈ ${projectedDateLabel}` : ""}
               </p>
             </>

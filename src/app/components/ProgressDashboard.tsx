@@ -18,8 +18,8 @@ import {
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import { refreshAdaptiveTdeeForUser } from "../../lib/nutrition/refreshAdaptiveTdee.ts";
 import { useAuthSession } from "../../context/AuthSessionContext.tsx";
-import { weeksToGoal, kgToLb, calculateTDEE, getEffectiveTDEE, type PlanPace, type Sex, type ActivityLevel } from "../../lib/nutrition/tdee.ts";
-import { calcGoalTimeline, computeWeightJourneyProgressPct, formatWeightJourneyProgressCopy, projectWeight, shouldRenderDailyProjection } from "../../lib/weightProjection.ts";
+import { kgToLb, calculateTDEE, getEffectiveTDEE, type PlanPace, type Sex, type ActivityLevel } from "../../lib/nutrition/tdee.ts";
+import { calcGoalTimeline, computeWeightJourneyProgressPct, formatWeightJourneyProgressCopy, projectWeight, resolveLatestWeightKg, shouldRenderDailyProjection } from "../../lib/weightProjection.ts";
 import { resolveMaintenance } from "../../lib/nutrition/resolveMaintenance.ts";
 import { buildMaintenanceChain } from "../../lib/nutrition/maintenanceChain.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
@@ -379,24 +379,41 @@ function ProgressDashboardContent() {
     void load();
   }, [load]);
 
-  const latestWeightKg = useMemo(() => {
-    const fromLog = Object.entries(weightKgByDay).sort(([a], [b]) => (a < b ? 1 : a > b ? -1 : 0))[0]?.[1];
-    if (fromLog != null && Number.isFinite(fromLog)) return fromLog;
-    return weightKg;
-  }, [weightKgByDay, weightKg]);
+  // Numbers audit 2026-05-04 #15: route through shared `resolveLatestWeightKg`
+  // helper so behaviour stays in lockstep if the resolver evolves (e.g. to
+  // filter zero-valued days). Inline implementation was functionally
+  // equivalent but invisible to refactors.
+  const latestWeightKg = useMemo(
+    () => resolveLatestWeightKg(weightKgByDay, weightKg ?? null),
+    [weightKgByDay, weightKg],
+  );
 
-  const weeksToGoalVal = useMemo(() => {
+  // Numbers audit 2026-05-04 #2: headline ETA was computing
+  // `weeksToGoal(currentKg, goalKg, planPace)` — a *prescriptive* rate
+  // from the pace preset (e.g. "steady" → 0.5 kg/wk). Every other goal-date
+  // surface (mobile Targets, mobile Progress, web Targets, the deeper
+  // projection card on this same page at line ~1730) uses
+  // `calcGoalTimeline`, which derives the rate from actual `weight_kg_by_day`
+  // entries. Result: a user losing faster than prescribed saw an *earlier*
+  // ETA on mobile vs a *later* prescriptive ETA on web — and two ETAs on
+  // this same web page once the deeper card rendered. Now both call sites
+  // route through the same observed-rate helper.
+  const goalTimeline = useMemo(() => {
     if (latestWeightKg == null || goalWeightKg == null) return null;
-    if (latestWeightKg <= goalWeightKg) return 0;
-    return weeksToGoal(latestWeightKg, goalWeightKg, planPace);
-  }, [latestWeightKg, goalWeightKg, planPace]);
+    return calcGoalTimeline({
+      currentWeightKg: latestWeightKg,
+      goalWeightKg,
+      weightKgByDay,
+    });
+  }, [latestWeightKg, goalWeightKg, weightKgByDay]);
 
   const goalDateLabel = useMemo(() => {
-    if (weeksToGoalVal == null || weeksToGoalVal <= 0) return null;
+    if (!goalTimeline || goalTimeline.daysToGoal == null) return null;
+    if (goalTimeline.daysToGoal <= 0) return null;
     const d = new Date();
-    d.setDate(d.getDate() + weeksToGoalVal * 7);
+    d.setDate(d.getDate() + goalTimeline.daysToGoal);
     return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-  }, [weeksToGoalVal]);
+  }, [goalTimeline]);
 
   const rangeDays = range === "7d" ? 7 : range === "30d" ? 30 : range === "90d" ? 90 : 9999;
 

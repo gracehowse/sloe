@@ -13,7 +13,7 @@ import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { dateKeyFromDate, type ByDay, type JournalMeal } from "@/lib/nutritionJournal";
 import { buildWeekStats, getStreakContributingDays } from "@/lib/progressWeekReport";
 import { getDailyTargets, type DailyTarget } from "../../../src/lib/nutrition/dailyTargetRead";
-import { computeLoggingStreak } from "@/lib/trackerStats";
+import { computeProtectedStreak, readFreezeLedger, type FreezeLedger } from "@/lib/streakFreeze";
 import { syncHealthDataThrottled, isHealthSyncAvailable } from "@/lib/healthSync";
 
 const DEFAULT_TARGETS = {
@@ -47,6 +47,9 @@ export default function ProgressMetricDetailScreen() {
   const [targets, setTargets] = useState(DEFAULT_TARGETS);
   const [byDay, setByDay] = useState<ByDay>({});
   const [weekStartDay, setWeekStartDay] = useState<"monday" | "sunday">("monday");
+  // Numbers audit 2026-05-04 #4 — load alongside targets below.
+  const [freezeLedger, setFreezeLedger] = useState<FreezeLedger>({ earnedAt: [], usedHistory: [] });
+  const [freezeBudgetMax, setFreezeBudgetMax] = useState<number>(3);
   // F-2 — daily target snapshots so past days render against the
   // target that was active on that day (TestFlight `AEyOuUJrB4l`).
   const [dailyTargetsByDay, setDailyTargetsByDay] = useState<Record<string, DailyTarget | null>>({});
@@ -68,7 +71,9 @@ export default function ProgressMetricDetailScreen() {
     }
     const { data: profile } = await supabase
       .from("profiles")
-      .select("target_calories, target_protein, target_carbs, target_fat, week_start_day")
+      .select(
+        "target_calories, target_protein, target_carbs, target_fat, week_start_day, streak_freezes_earned_at, streak_freezes_used_history, streak_freeze_budget_max",
+      )
       .eq("id", userId)
       .maybeSingle();
     if (profile) {
@@ -80,6 +85,20 @@ export default function ProgressMetricDetailScreen() {
       });
       if (profile.week_start_day === "sunday" || profile.week_start_day === "monday") {
         setWeekStartDay(profile.week_start_day);
+      }
+      // Numbers audit 2026-05-04 #4: hydrate freeze ledger so streak math
+      // matches Today / Progress / Recap. Without this, opening the
+      // "Logging streak" detail dropped the displayed count after a
+      // freeze auto-applied.
+      setFreezeLedger(
+        readFreezeLedger({
+          earnedAt: (profile as { streak_freezes_earned_at?: unknown }).streak_freezes_earned_at,
+          usedHistory: (profile as { streak_freezes_used_history?: unknown }).streak_freezes_used_history,
+        }),
+      );
+      const budget = (profile as { streak_freeze_budget_max?: unknown }).streak_freeze_budget_max;
+      if (typeof budget === "number" && Number.isFinite(budget) && budget >= 0) {
+        setFreezeBudgetMax(budget);
       }
     }
     const { data: rows } = await supabase
@@ -149,7 +168,10 @@ export default function ProgressMetricDetailScreen() {
     () => buildWeekStats(byDay, targets, weekStartDay, new Date(), weekTargetsByDay),
     [byDay, targets, weekStartDay, weekTargetsByDay],
   );
-  const streakDays = useMemo(() => computeLoggingStreak(byDay as any), [byDay]);
+  const streakDays = useMemo(
+    () => computeProtectedStreak(byDay as never, freezeLedger, freezeBudgetMax).streakLength,
+    [byDay, freezeLedger, freezeBudgetMax],
+  );
   const streakDaysDetail = useMemo(() => getStreakContributingDays(byDay), [byDay]);
 
   const t = useMemo(

@@ -7,7 +7,7 @@ import { useAppData } from "../../context/AppDataContext.tsx";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import { useAuthSession } from "../../context/AuthSessionContext.tsx";
 import { normalizeMacroTargets } from "../../types/profile.ts";
-import { computeLoggingStreak } from "../../lib/nutrition/trackerStats.ts";
+import { computeProtectedStreak, readFreezeLedger, type FreezeLedger } from "../../lib/nutrition/streakFreeze.ts";
 import { buildWeekStats, getStreakContributingDays } from "../../lib/nutrition/progressWeekReport.ts";
 import { todayKey } from "../../lib/nutrition/trackerDate.ts";
 import { getDailyTargets, type DailyTarget } from "../../lib/nutrition/dailyTargetRead.ts";
@@ -84,7 +84,43 @@ export function ProgressMetricDetail({ metric, weekStartDay, onClose }: Props) {
     () => buildWeekStats(nutritionByDay, targets, weekStartDay, new Date(), weekTargetsByDay),
     [nutritionByDay, targets, weekStartDay, weekTargetsByDay],
   );
-  const streakDays = useMemo(() => computeLoggingStreak(nutritionByDay), [nutritionByDay]);
+
+  // Numbers audit 2026-05-04 #4: this surface was rendering raw streak
+  // (`computeLoggingStreak`) while Today / Progress / Recap render the
+  // protected streak (with freezes applied). After a freeze auto-applied,
+  // tapping "Logging streak" from Progress dropped the user from "26 days"
+  // to "25 days" mid-flow. Now both surfaces compute the same number.
+  const [freezeLedger, setFreezeLedger] = useState<FreezeLedger>({ earnedAt: [], usedHistory: [] });
+  const [freezeBudgetMax, setFreezeBudgetMax] = useState<number>(3);
+  useEffect(() => {
+    if (!authedUserId) return;
+    let cancelled = false;
+    void supabase
+      .from("profiles")
+      .select("streak_freezes_earned_at, streak_freezes_used_history, streak_freeze_budget_max")
+      .eq("id", authedUserId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled || !data) return;
+        setFreezeLedger(
+          readFreezeLedger({
+            earnedAt: (data as { streak_freezes_earned_at?: unknown }).streak_freezes_earned_at,
+            usedHistory: (data as { streak_freezes_used_history?: unknown }).streak_freezes_used_history,
+          }),
+        );
+        const budget = (data as { streak_freeze_budget_max?: unknown }).streak_freeze_budget_max;
+        if (typeof budget === "number" && Number.isFinite(budget) && budget >= 0) {
+          setFreezeBudgetMax(budget);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [authedUserId]);
+  const streakDays = useMemo(
+    () => computeProtectedStreak(nutritionByDay as never, freezeLedger, freezeBudgetMax).streakLength,
+    [nutritionByDay, freezeLedger, freezeBudgetMax],
+  );
   const streakDaysDetail = useMemo(() => getStreakContributingDays(nutritionByDay), [nutritionByDay]);
 
   const title =
