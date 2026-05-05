@@ -78,6 +78,14 @@ export function Milestone30DayModal({
             paddingHorizontal: Spacing.xl,
             paddingBottom: Spacing.md,
             maxHeight: "85%",
+            // Audit 2026-05-04 #33: soft shadow gives the sheet a
+            // raised feel against the dimmed backdrop instead of
+            // looking pasted on.
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: -8 },
+            shadowOpacity: 0.18,
+            shadowRadius: 24,
+            elevation: 16,
           }}
         >
           <Pressable
@@ -160,7 +168,11 @@ export function Milestone30DayModal({
               />
               <StatTile
                 icon={<Sparkles size={18} color={Accent.primary} strokeWidth={2.25} />}
-                label="Best consecutive run"
+                // Audit 2026-05-04 #26: "Best consecutive run" upper-cased
+                // to "BEST CONSECUTIVE R…" with a trailing ellipsis at
+                // the available column width on iPhone 16 Pro. Shorter
+                // label fits cleanly without changing meaning.
+                label="Best run"
                 value={`${content.longestStreak} day${content.longestStreak === 1 ? "" : "s"}`}
                 textColor={textColor}
                 textSecondaryColor={textSecondaryColor}

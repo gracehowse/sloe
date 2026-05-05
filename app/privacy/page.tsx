@@ -24,9 +24,8 @@ export default function PrivacyPage() {
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Data controller</h2>
           <ul className="list-disc pl-5 space-y-1">
             <li>
-              <strong>Controller:</strong> [PLACEHOLDER &mdash; pending incorporation; Suppr is currently operated by Grace Howse as a
-              sole operator pending the entity decision tracked in{" "}
-              <code className="text-xs bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded">docs/decisions/2026-04-20-incorporation-jurisdiction-pending.md</code>].
+              <strong>Controller:</strong> Suppr is currently operated by Grace Howse as a sole operator pending
+              incorporation. We will update this notice when the operating entity is formed.
             </li>
             <li>
               <strong>Privacy contact:</strong>{" "}
@@ -35,12 +34,12 @@ export default function PrivacyPage() {
               </a>
             </li>
             <li>
-              <strong>UK Representative (UK GDPR Art. 27):</strong> [PLACEHOLDER &mdash; to be appointed before UK public launch. Required
-              for non-UK controllers offering goods or services to individuals in the UK.]
+              <strong>UK Representative (UK GDPR Art. 27):</strong> To be appointed before UK public launch.
+              Required for non-UK controllers offering goods or services to individuals in the UK.
             </li>
             <li>
-              <strong>EU Representative (EU GDPR Art. 27):</strong> [PLACEHOLDER &mdash; to be appointed before EU public launch. Required
-              for non-EU controllers offering goods or services to individuals in the EU.]
+              <strong>EU Representative (EU GDPR Art. 27):</strong> To be appointed before EU public launch.
+              Required for non-EU controllers offering goods or services to individuals in the EU.
             </li>
           </ul>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">What we collect</h2>

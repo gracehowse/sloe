@@ -17,6 +17,7 @@
  */
 
 import type { LoggedMeal } from "../../types/recipe";
+import { isHealthImportFallbackTitle } from "./healthImportLabels";
 
 /** Distinct days threshold to fire the moment. Pinned by tests. */
 export const MILESTONE_30_DAY_THRESHOLD = 30;
@@ -134,12 +135,19 @@ export function buildMilestone30DayContent(
   // Top foods by raw log count of `recipeTitle`. Empty / unknown
   // titles fall through to `name`; if both are missing the row is
   // skipped (we don't want to crown an unnamed entry).
+  //
+  // Audit 2026-05-04 #2: skip HealthKit-import fallback titles
+  // (`Food log (X kcal)`, `<Source> entry · X kcal`) so the
+  // celebration modal doesn't crown an MFP / Lose It! placeholder
+  // as the user's "most-logged food" — that read as broken data
+  // to first-impression users on Grace's screenshots.
   const counts = new Map<string, number>();
   for (const meals of Object.values(nutritionByDay)) {
     if (!Array.isArray(meals)) continue;
     for (const m of meals) {
       const title = (m.recipeTitle || m.name || "").trim();
       if (!title) continue;
+      if (isHealthImportFallbackTitle(title)) continue;
       counts.set(title, (counts.get(title) ?? 0) + 1);
     }
   }

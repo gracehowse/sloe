@@ -29,6 +29,7 @@ import {
   Search as SearchIcon,
   BookOpen,
   MoreHorizontal,
+  UtensilsCrossed,
 } from "lucide-react-native";
 import { useAuth } from "@/context/auth";
 import { useSavedLibraryRecipes, useSavedRecipes } from "@/lib/recipes";
@@ -432,7 +433,19 @@ export default function LibraryScreen() {
           accessibilityLabel={`${item.title}, ${Math.round(item.calories)} calories.`}
         >
           <View style={styles.cardImageWrap}>
-            <Image source={{ uri: item.image }} style={styles.cardImage} resizeMode="cover" />
+            {/* Audit 2026-05-04 #28: when a recipe has no image (e.g.
+                user-imported recipe with no thumbnail captured), the
+                blank white area read as a broken card next to siblings
+                that did have photos. Render a neutral placeholder
+                surface (soft grey + utensils glyph) for missing /
+                blank images so cards stay visually consistent. */}
+            {item.image ? (
+              <Image source={{ uri: item.image }} style={styles.cardImage} resizeMode="cover" />
+            ) : (
+              <View style={[styles.cardImage, { backgroundColor: colors.cardBorder, alignItems: "center", justifyContent: "center" }]}>
+                <UtensilsCrossed size={32} color={colors.textTertiary} strokeWidth={1.5} />
+              </View>
+            )}
             <View style={styles.cardGradient} pointerEvents="none" />
             {item.isSaved ? (
               <View style={styles.bookmarkDot} accessibilityLabel="Saved">

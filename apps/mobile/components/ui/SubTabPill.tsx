@@ -220,17 +220,24 @@ function Pill({
       {badge !== undefined && badge > 0 ? (
         <View
           style={{
-            minWidth: 18,
+            minWidth: 22,
             height: 18,
-            paddingHorizontal: 5,
+            paddingHorizontal: 6,
             borderRadius: 9,
             backgroundColor: Accent.primary,
             alignItems: "center",
             justifyContent: "center",
           }}
         >
+          {/*
+            Audit 2026-05-04 #20: the previous "99+" cap read as an
+            unread-notifications alert on the Shopping tab, alarming for
+            new users with full ingredient lists (123 items is normal,
+            not an emergency). Show the real count up to 3 digits;
+            cap at "999+" only beyond that.
+          */}
           <Text style={{ fontSize: 10, fontWeight: "700", color: "#fff" }}>
-            {badge > 99 ? "99+" : badge}
+            {badge > 999 ? "999+" : badge}
           </Text>
         </View>
       ) : null}

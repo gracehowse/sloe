@@ -441,7 +441,13 @@ export default function DiscoverScreen() {
                 feedback: "on the discover page protein has an icon but
                 none of the other macro nutrients do". Each macro now
                 gets its own icon + value pair, matching the prototype's
-                visual treatment. Fibre joins when the recipe carries it. */}
+                visual treatment. Fibre joins when the recipe carries it.
+
+                Audit 2026-05-04 #15: customer-lens called out that 5
+                numbers in a row without P/C/F letter labels reads as
+                "memorize the order". Add a low-emphasis macro letter
+                after each value (e.g. `Beef 13g P`) so the row is
+                self-explanatory without losing icon redundancy. */}
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 10 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                 <Flame size={11} color={MacroColors.calories} />
@@ -452,19 +458,19 @@ export default function DiscoverScreen() {
               <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                 <Beef size={11} color={MacroColors.protein} />
                 <Text style={{ fontSize: 11, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
-                  {protein}g
+                  {protein}g <Text style={{ color: colors.textTertiary }}>P</Text>
                 </Text>
               </View>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                 <Wheat size={11} color={MacroColors.carbs} />
                 <Text style={{ fontSize: 11, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
-                  {carbs}g
+                  {carbs}g <Text style={{ color: colors.textTertiary }}>C</Text>
                 </Text>
               </View>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                 <Droplets size={11} color={MacroColors.fat} />
                 <Text style={{ fontSize: 11, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
-                  {fat}g
+                  {fat}g <Text style={{ color: colors.textTertiary }}>F</Text>
                 </Text>
               </View>
               {Number.isFinite(item.fiberG) && (item.fiberG ?? 0) > 0 ? (
@@ -626,8 +632,20 @@ export default function DiscoverScreen() {
           />
         </View>
 
-        {/* Filter pills */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }} contentContainerStyle={{ gap: 6 }}>
+        {/* Filter pills.
+            Audit 2026-05-04 #27: previously the row's last pill ("High
+            Protein") got clipped mid-word by the viewport edge with no
+            scroll cue — read as a broken truncation rather than a
+            scrollable row. `paddingRight` past the viewport gives the
+            user explicit "more pills off the right" affordance, and
+            `numberOfLines={1}` prevents any single pill text from
+            wrapping to two lines on narrow devices. */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={{ marginBottom: 12 }}
+          contentContainerStyle={{ gap: 6, paddingRight: 24 }}
+        >
           {FILTERS.map((f) => (
             <Pressable
               key={f}
@@ -641,7 +659,12 @@ export default function DiscoverScreen() {
                 backgroundColor: filter === f ? t.accent + "10" : "transparent",
               }}
             >
-              <Text style={{ fontSize: 11, fontWeight: "500", color: filter === f ? t.accent : colors.textSecondary }}>{f}</Text>
+              <Text
+                numberOfLines={1}
+                style={{ fontSize: 11, fontWeight: "500", color: filter === f ? t.accent : colors.textSecondary }}
+              >
+                {f}
+              </Text>
             </Pressable>
           ))}
         </ScrollView>

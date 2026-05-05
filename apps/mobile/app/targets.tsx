@@ -31,6 +31,7 @@ import { resolveTargets, calculateTDEE } from "@/lib/calcTargets";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { dateKeyFromDate } from "../../../src/lib/nutrition/trackerStats";
+import { resolveLatestWeightKg } from "../../../src/lib/weightProjection";
 import {
   activityLevelCaption,
   deficitSurplusCaption,
@@ -207,14 +208,23 @@ export default function TargetsScreen() {
     () => buildMacroTiles({ targets, consumed, netCarbsLensEnabled }),
     [targets, consumed, netCarbsLensEnabled],
   );
+  // Audit 2026-05-04 #5: prefer the freshest weigh-in (latest entry in
+  // `weight_kg_by_day`) over the profile snapshot — Progress already does
+  // this via `resolveLatestWeightKg`. Without parity here, Targets shows
+  // the lagging `profiles.weight_kg` (e.g. 55.3) while Progress shows the
+  // latest weigh-in (e.g. 55.2), looking inconsistent on adjacent tabs.
+  const latestWeightKg = useMemo(
+    () => resolveLatestWeightKg(weightKgByDay, weightKg),
+    [weightKgByDay, weightKg],
+  );
   const goalCard = useMemo(
     () =>
       buildGoalCard({
-        currentWeightKg: weightKg,
+        currentWeightKg: latestWeightKg,
         goalWeightKg,
         weightKgByDay,
       }),
-    [weightKg, goalWeightKg, weightKgByDay],
+    [latestWeightKg, goalWeightKg, weightKgByDay],
   );
   const tdeeCaption = useMemo(() => {
     const base = `Estimated TDEE based on Mifflin-St Jeor · ${activityLevelCaption(activityLevel)}`;
@@ -516,12 +526,27 @@ export default function TargetsScreen() {
                   <Text style={styles.macroValueUnit}>/ {m.target} g</Text>
                 </View>
                 <View style={styles.barTrack}>
-                  <View
-                    style={[
-                      styles.barFill,
-                      { width: `${Math.round(m.pct * 100)}%`, backgroundColor: color },
-                    ]}
-                  />
+                  {/* Audit 2026-05-04 #30: at 0% the fill collapsed to
+                      width: 0 and the track-grey blended with the card
+                      background, making it look like the progress bar
+                      was missing entirely. Render a minimum 4-pixel
+                      "starting tick" of the macro colour at low pct so
+                      the bar's start anchor is always visible. */}
+                  {m.pct > 0 ? (
+                    <View
+                      style={[
+                        styles.barFill,
+                        { width: `${Math.round(m.pct * 100)}%`, backgroundColor: color },
+                      ]}
+                    />
+                  ) : (
+                    <View
+                      style={[
+                        styles.barFill,
+                        { width: 4, backgroundColor: color, opacity: 0.45 },
+                      ]}
+                    />
+                  )}
                 </View>
                 <Text style={styles.macroRemaining}>{m.remainingLabel}</Text>
               </View>

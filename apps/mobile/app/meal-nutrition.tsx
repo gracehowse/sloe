@@ -205,11 +205,39 @@ export default function MealNutritionScreen() {
   }
 
   if (error || !meal) {
+    // Audit 2026-05-04 #6: previously this was bare "Missing meal" + bare
+    // "Go back" link with no chrome — read as a crashed route. Mirror the
+    // cook-mode empty-state pattern (heading + subtitle + styled CTA) so
+    // the user has a clear recovery path that looks like a designed surface.
+    const heading = error === "Missing meal" || error === "Invalid meal id" ? "Meal not found" : "Couldn't load meal";
+    const subtitle =
+      error === "Missing meal"
+        ? "We couldn't find that meal. It may have been deleted or the link is missing an id."
+        : error === "Invalid meal id"
+          ? "That meal link doesn't look right. Open the meal again from Today."
+          : "Something went wrong loading this meal. Check your connection and try again.";
     return (
       <View style={[styles.center, { backgroundColor: colors.background, padding: Spacing.lg }]}>
-        <Text style={{ color: colors.textSecondary, textAlign: "center" }}>{error ?? "Could not load meal."}</Text>
-        <Pressable onPress={goBack} style={{ marginTop: Spacing.md }}>
-          <Text style={{ color: Accent.primary, fontWeight: "600" }}>Go back</Text>
+        <Ionicons name="alert-circle-outline" size={44} color={colors.textTertiary} style={{ marginBottom: Spacing.md }} />
+        <Text style={{ color: colors.text, fontSize: 20, fontWeight: "700", textAlign: "center", marginBottom: Spacing.sm }}>
+          {heading}
+        </Text>
+        <Text style={{ color: colors.textSecondary, fontSize: 14, lineHeight: 20, textAlign: "center", maxWidth: 320 }}>
+          {subtitle}
+        </Text>
+        <Pressable
+          onPress={goBack}
+          style={{
+            marginTop: Spacing.lg,
+            paddingHorizontal: 22,
+            paddingVertical: 12,
+            borderRadius: Radius.md,
+            backgroundColor: Accent.primary,
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
+          <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Go back</Text>
         </Pressable>
       </View>
     );

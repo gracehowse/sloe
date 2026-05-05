@@ -381,8 +381,14 @@ export default function ProfileScreen() {
           <View style={{ width: 28 }} />
         </View>
 
-        {/* Current targets summary */}
-        <View style={styles.card}>
+        {/* Current targets summary.
+            Audit 2026-05-04 #29: previously the outer card border + 4
+            inner coloured tile borders made for 6 visible borders in
+            one region (cage-within-cage). The colour-coded numbers
+            already carry macro identity, so drop the outer card
+            border; keep the inner tile borders for the macro colour
+            cue. */}
+        <View style={[styles.card, { borderWidth: 0 }]}>
           <Text style={styles.cardTitle}>Daily Targets</Text>
           <View style={styles.targetsRow}>
             {/* 2026-04-30 (#17, design-system-enforcer): retoken to

@@ -110,7 +110,6 @@ export function NorthStarBlock({
       <SupprCard
         testID={testID ?? "north-star-library-empty"}
         tone="primary"
-        gradient
         padding="md"
         style={styles.row}
       >
@@ -239,7 +238,7 @@ function NorthStarDefault({
 
   return (
     <View {...responder.panHandlers} testID={testID ?? "north-star-default"}>
-      <SupprCard tone="primary" gradient padding="md" style={styles.defaultCard}>
+      <SupprCard tone="primary" padding="md" style={styles.defaultCard}>
         {reduceMotion && onSkip ? (
           <Pressable
             accessibilityRole="button"

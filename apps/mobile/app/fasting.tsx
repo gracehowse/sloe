@@ -302,8 +302,14 @@ export default function FastingScreen() {
               );
             })()}
           </Svg>
-          <Text style={{ fontSize: 40, fontWeight: "800", color: isFasting ? colors.text : colors.textTertiary, fontVariant: ["tabular-nums"] }}>
-            {isFasting ? dur.display : "—"}
+          {/* Audit 2026-05-04 #32: idle ring centred a flat grey "—"
+              that read as an unfinished UI element. Use the canonical
+              fasting copy ("Ready") inside the ring when idle so the
+              centre always carries meaning; the duration display takes
+              over once a fast starts. The full "Ready when you are"
+              still lives just below as a subtitle. */}
+          <Text style={{ fontSize: isFasting ? 40 : 22, fontWeight: "800", color: isFasting ? colors.text : colors.textTertiary, fontVariant: ["tabular-nums"], letterSpacing: isFasting ? 0 : 0.5 }}>
+            {isFasting ? dur.display : "Ready"}
           </Text>
         </View>
 

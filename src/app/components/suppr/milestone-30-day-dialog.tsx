@@ -73,7 +73,7 @@ export function Milestone30DayDialog({
           />
           <StatTile
             icon={<Sparkles className="w-4 h-4 text-primary" />}
-            label="Best consecutive run"
+            label="Best run"
             value={`${content.longestStreak} day${content.longestStreak === 1 ? "" : "s"}`}
           />
         </div>

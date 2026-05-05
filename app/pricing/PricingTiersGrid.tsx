@@ -117,7 +117,14 @@ export function PricingTiersGrid({
   // was removed from PRICING_TIERS in batch 19. Kept as a defensive
   // identity pass so the pre-fix grid behaviour is preserved if any
   // legacy tier name slips back into the SSOT during migration.
-  const visibleTiers = tiers;
+  // Audit 2026-05-04 #23: anchor Pro on the left (default eye-path)
+  // — Free anchored left was the wrong conversion anchor for cold
+  // traffic. Sort `highlighted: true` first; remaining tiers preserve
+  // their SSOT order. Free reads as a legitimate fallback in the
+  // right-hand position, not de-emphasised beyond positional weight.
+  const visibleTiers = [...tiers].sort((a, b) =>
+    Number(Boolean(b.highlighted)) - Number(Boolean(a.highlighted)),
+  );
 
   function onPeriodCommit(next: BillingPeriod) {
     if (next === billing) return;
@@ -156,16 +163,23 @@ export function PricingTiersGrid({
           return (
             <div
               key={tier.name}
-              className={`relative rounded-2xl p-8 flex flex-col ${
+              className={`relative rounded-2xl flex flex-col ${
                 tier.highlighted
-                  ? "bg-gradient-to-b from-violet-50 to-indigo-50 dark:from-violet-950/30 dark:to-indigo-950/30 border-2 border-violet-300 dark:border-violet-700 shadow-xl shadow-violet-500/10 md:scale-105 md:-my-2"
+                  ? // Audit 2026-05-04 #23: deeper background, heavier
+                    // border, bigger shadow so Pro reads as the primary
+                    // path at first glance vs. the white Free card.
+                    // `pt-10` clears the full-width ribbon at top.
+                    "bg-gradient-to-b from-violet-100 to-indigo-100 dark:from-violet-950/50 dark:to-indigo-950/50 border-2 border-violet-500 dark:border-violet-500 shadow-2xl shadow-violet-500/20 md:scale-105 md:-my-2 pt-10 pb-8 px-8"
                   : tier.name === "Pro"
-                    ? "bg-slate-900 dark:bg-slate-800 border border-slate-700 shadow-lg"
-                    : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm"
+                    ? "bg-slate-900 dark:bg-slate-800 border border-slate-700 shadow-lg p-8"
+                    : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm p-8"
               }`}
             >
               {tier.highlighted && (
-                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-5 py-1.5 rounded-full bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-xs font-bold shadow-md">
+                // Audit 2026-05-04 #23: full-width ribbon spans the
+                // card top edge — industry-standard "recommended tier"
+                // signal, unambiguous vs. the previous centred pill.
+                <div className="absolute -top-px left-0 right-0 h-8 flex items-center justify-center rounded-t-2xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-xs font-bold tracking-wide">
                   Most popular
                 </div>
               )}
@@ -198,6 +212,23 @@ export function PricingTiersGrid({
                   );
                 })() : null}
               </div>
+              {/* Audit 2026-05-04 #23: surface the annual savings in
+                  the Monthly default view too — the previous design
+                  hid the whole savings signal until the user flipped
+                  the toggle, which most cold-traffic users never
+                  reach. Informational line, not a default change:
+                  monthly price stays the displayed price. Only renders
+                  on tiers that actually have an annual SKU + savings
+                  string to substantiate the claim. */}
+              {!showAnnual && tier.annualPrice && tier.annualSavings ? (
+                <p
+                  data-testid={`pricing-monthly-savings-nudge-${tier.name.toLowerCase()}`}
+                  className={`-mt-1 mb-2 text-xs ${tier.name === "Pro" ? "text-emerald-300" : "text-emerald-700 dark:text-emerald-400"}`}
+                >
+                  {tier.annualSavings} with annual — {tier.annualPrice}
+                  {tier.annualPeriod ? `${tier.annualPeriod}` : ""}
+                </p>
+              ) : null}
               {showAnnual ? (() => {
                 const refLine = computeAnnualReferenceLine(tier);
                 if (!refLine) return null;

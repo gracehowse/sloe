@@ -1204,16 +1204,35 @@ export default function CookModeScreen() {
   }), [colors]);
 
   if (steps.length === 0) {
+    // Audit 2026-05-04 #37: previously this state had no top app bar
+    // and the back CTA was a narrow primary pill mid-screen. Add a
+    // proper top bar (matching the active-cook header pattern) and
+    // promote the CTA to button-lg full-width so the empty state
+    // looks like a designed surface, not a prototype dropout.
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.centered}>
+        <View style={styles.header}>
+          <Pressable onPress={() => router.back()} hitSlop={12} accessibilityRole="button" accessibilityLabel="Exit cook mode">
+            <Text style={styles.headerExit}>Exit</Text>
+          </Pressable>
+          <Text style={[styles.emptyHeading, { fontSize: 16, flex: 1, textAlign: "center" }]} numberOfLines={1}>
+            Cook
+          </Text>
+          <View style={{ width: 40 }} />
+        </View>
+        <View style={[styles.centered, { paddingHorizontal: Spacing.xl }]}>
           <Text style={styles.emptyHeading}>No cook steps yet</Text>
           <Text style={styles.emptySub}>
             {
               "This recipe doesn't have step-by-step instructions. You can still log it from the recipe page."
             }
           </Text>
-          <Pressable style={styles.backBtn} onPress={() => router.back()}>
+          <Pressable
+            style={[styles.backBtn, { alignSelf: "stretch", alignItems: "center", paddingVertical: 14, marginTop: Spacing.xl }]}
+            onPress={() => router.back()}
+            accessibilityRole="button"
+            accessibilityLabel="Back to recipe"
+          >
             <Text style={styles.backBtnText}>Back to recipe</Text>
           </Pressable>
         </View>

@@ -63,6 +63,18 @@ export default function MacroDetailScreen() {
   useEffect(() => {
     if (!userId) return;
     let cancelled = false;
+    // Audit 2026-05-04 #16: previous code had no error/timeout handling
+    // — when the request rejected (network wedge, RLS, hung PostgREST),
+    // `setLoading(false)` never ran and the screen stayed on "Loading…"
+    // forever. Same network-resilience pattern as the c9ebfac perpetual-
+    // spinner fix: race the fetch against an 8s deadline so the gate
+    // always opens, then either render the list (success) or the empty
+    // state (timeout / failure).
+    const TIMEOUT_MS = 8_000;
+    const finish = () => {
+      if (!cancelled) setLoading(false);
+    };
+    const timer = setTimeout(finish, TIMEOUT_MS);
     supabase
       .from("nutrition_entries")
       .select("name, recipe_title, calories, protein, carbs, fat, fiber_g, water_ml")
@@ -71,6 +83,7 @@ export default function MacroDetailScreen() {
       .order("created_at", { ascending: true })
       .then(({ data: rows }) => {
         if (cancelled) return;
+        clearTimeout(timer);
         setMeals(
           (rows ?? []).map((r: any) => ({
             name: r.name ?? "",
@@ -83,9 +96,22 @@ export default function MacroDetailScreen() {
             waterMl: r.water_ml != null ? Number(r.water_ml) : 0,
           })),
         );
-        setLoading(false);
+        finish();
+      }, (err: unknown) => {
+        if (cancelled) return;
+        clearTimeout(timer);
+        if (typeof console !== "undefined") {
+          console.warn(
+            "[macro-detail] nutrition_entries fetch failed:",
+            err instanceof Error ? err.message : err,
+          );
+        }
+        finish();
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [userId, dateKey]);
 
   const total = meals.reduce((sum, m) => sum + (Number(m[config.field]) || 0), 0);

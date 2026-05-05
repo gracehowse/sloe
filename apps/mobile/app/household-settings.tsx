@@ -25,6 +25,7 @@ import {
   Modal,
   Alert,
   Switch,
+  ActivityIndicator,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -347,9 +348,34 @@ export default function HouseholdSettingsScreen() {
   }
 
   if (loading) {
+    // Audit 2026-05-04 #17: previous loading state was a single line of
+    // grey text top-left with no spinner, no back chevron, no tab bar —
+    // looked like a hung route with no escape. Now: centred indicator
+    // and a back affordance so the user can always retreat.
     return (
-      <View style={{ flex: 1, paddingTop: insets.top + 20, paddingHorizontal: 20, backgroundColor: colors.background }}>
-        <Text style={{ color: colors.textSecondary, fontSize: 14 }}>Loading household…</Text>
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <View
+          style={{
+            paddingTop: insets.top + 8,
+            paddingHorizontal: 12,
+            paddingBottom: 8,
+            flexDirection: "row",
+            alignItems: "center",
+          }}
+        >
+          <Pressable
+            onPress={() => router.back()}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+          >
+            <ChevronLeft size={26} color={colors.text} strokeWidth={1.75} />
+          </Pressable>
+        </View>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12 }}>
+          <ActivityIndicator size="large" color={Accent.primary} />
+          <Text style={{ color: colors.textSecondary, fontSize: 14 }}>Loading household…</Text>
+        </View>
       </View>
     );
   }

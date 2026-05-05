@@ -1018,7 +1018,12 @@ export default function ImportSharedScreen() {
       justifyContent: "center",
     },
     sourceLabel: {
-      fontSize: 13,
+      // Audit 2026-05-04 #35: at 13pt the "Instagram" label still
+      // truncated to "Instagr…" on narrower iPhones (16 Pro at 390pt
+      // gives ~80pt per button after grid gaps). Drop one step to
+      // 12pt — tighter than ideal but unambiguous, and the icon
+      // already carries the brand identity.
+      fontSize: 12,
       fontWeight: "600",
       color: colors.text,
     },

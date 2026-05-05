@@ -72,7 +72,7 @@ describe("Milestone30DayModal", () => {
     );
     expect(getByText("Avg daily kcal")).toBeTruthy();
     expect(getByText("1,850")).toBeTruthy();
-    expect(getByText("Best consecutive run")).toBeTruthy();
+    expect(getByText("Best run")).toBeTruthy();
     expect(getByText("11 days")).toBeTruthy();
   });
 

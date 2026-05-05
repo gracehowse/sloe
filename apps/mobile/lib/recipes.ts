@@ -188,8 +188,12 @@ export function useDiscoverRecipes() {
         void cacheDiscoverRecipes(merged);
       }
     } else if (error) {
-      // Network failure — try offline cache
-      console.error("[useDiscoverRecipes] DB failed, trying cache:", error.message);
+      // Network failure — try offline cache. We have a deliberate
+      // cache+seed fallback path below; this is an expected-degraded
+      // state, not an unhandled error. Use `console.warn` so dev-mode
+      // LogBox doesn't flag it as a red toast (same fix-pattern as
+      // F-81 in `verifyRecipe.ts:425-433` for benign aborts).
+      console.warn("[useDiscoverRecipes] DB failed, trying cache:", error.message);
       const cachedRaw = await raceDiscover(
         getCachedDiscoverRecipes(),
         DISCOVER_CACHE_READ_TIMEOUT_MS,

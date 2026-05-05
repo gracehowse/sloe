@@ -38,6 +38,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Accent, Spacing, Radius } from "@/constants/theme";
 import FoodSearchModal, { type SelectedFood as FoodSearchSelectedFood } from "@/components/FoodSearchModal";
 import BarcodeScannerModal from "@/components/BarcodeScannerModal";
+import { Shimmer } from "@/components/ui/SkeletonRow";
 
 import DayStrip from "@/components/charts/DayStrip";
 import JournalDatePickerModal from "@/components/JournalDatePickerModal";
@@ -3121,18 +3122,23 @@ export default function TrackerScreen() {
         },
         submitBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
 
+        // Audit 2026-05-04 #34: previously a full-card offline banner
+        // crowded the Today top and looked like a content row. Slim pill
+        // (~36pt height) sits above the hero ring without stealing
+        // vertical rhythm from the macro tiles below.
         offlineBanner: {
           flexDirection: "row",
           alignItems: "center",
-          gap: Spacing.sm,
+          gap: Spacing.xs,
           backgroundColor: colors.card,
-          borderRadius: Radius.md,
-          paddingVertical: Spacing.md,
-          paddingHorizontal: Spacing.lg,
+          borderRadius: 999,
+          paddingVertical: Spacing.xs,
+          paddingHorizontal: Spacing.md,
           borderWidth: 1,
           borderColor: Accent.primary + "30",
+          alignSelf: "flex-start",
         },
-        offlineBannerText: { flex: 1, fontSize: 13, fontWeight: "600", color: colors.text },
+        offlineBannerText: { fontSize: 12, fontWeight: "600", color: colors.text },
 
       }),
     [colors],
@@ -4045,17 +4051,23 @@ export default function TrackerScreen() {
   }, []);
 
   if (!hydrated && !loadError) {
+    // Audit 2026-05-04 #7: previously the skeleton was static grey
+    // blocks — visually indistinguishable from a crashed empty screen
+    // (visual-qa called this out on the captured `state-03` shot). The
+    // shared `<Shimmer>` primitive adds a 700ms opacity pulse that
+    // unmistakably reads as "loading" rather than "broken". Reduce-
+    // motion users get a static 0.6-opacity render automatically.
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.scroll}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-            <View style={{ width: 80, height: 20, backgroundColor: colors.border, borderRadius: Radius.sm }} />
-            <View style={{ width: 72, height: 16, backgroundColor: colors.border, borderRadius: Radius.sm }} />
+            <Shimmer style={{ width: 80, height: 20, borderRadius: Radius.sm }} />
+            <Shimmer style={{ width: 72, height: 16, borderRadius: Radius.sm }} />
           </View>
-          <View style={{ height: 160, backgroundColor: colors.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: colors.border }} />
-          <View style={{ height: 80, backgroundColor: colors.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: colors.border }} />
+          <Shimmer style={{ height: 160, borderRadius: Radius.lg }} />
+          <Shimmer style={{ height: 80, borderRadius: Radius.lg }} />
           {[1, 2, 3, 4].map((i) => (
-            <View key={i} style={{ height: 64, backgroundColor: colors.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: colors.border }} />
+            <Shimmer key={i} style={{ height: 64, borderRadius: Radius.lg }} />
           ))}
         </View>
       </View>
@@ -4088,8 +4100,16 @@ export default function TrackerScreen() {
             2026-04-30 — pip now opens the weekly-recap surface (audit
             "cut OR finish" verdict). Zero-streak users land on the
             same screen which renders an explainer instead of a
-            broken card. */}
-        {viewMode === "day" && (
+            broken card.
+
+            Audit 2026-05-04 #1 (ui-product-designer spec): hide the
+            streak pip on day 0 / day 1 — fresh users with a streak of
+            "0" or "1" should not see a streak chip at all (it reads
+            as fabricated when the user has just installed and the
+            milestone modal already filters import-fallback titles per
+            #2 fix). Pip appears once the user has 2+ actual logged
+            days. Existing-user streaks unchanged. */}
+        {viewMode === "day" && streakDays >= 2 && (
           <View style={{ alignItems: "flex-end", paddingTop: 6, marginBottom: -4 }}>
             <StreakPip
               days={protectedStreakLength}
@@ -4124,8 +4144,8 @@ export default function TrackerScreen() {
 
         {isOffline && (
           <View style={styles.offlineBanner} accessibilityRole="alert">
-            <Ionicons name="cloud-offline-outline" size={18} color={Accent.primary} />
-            <Text style={styles.offlineBannerText}>{"You're offline. Changes sync when you reconnect."}</Text>
+            <Ionicons name="cloud-offline-outline" size={14} color={Accent.primary} />
+            <Text style={styles.offlineBannerText}>{"Offline · syncing when you reconnect"}</Text>
           </View>
         )}
 

@@ -171,6 +171,29 @@ describe("buildMilestone30DayContent", () => {
     expect(content.topFoods).toHaveLength(MILESTONE_TOP_FOODS_COUNT);
   });
 
+  it("skips HealthKit-import fallback titles (audit 2026-05-04 #2)", () => {
+    // Importing from MFP / Lose It! generates synthetic titles when the
+    // source app didn't write a real food name to HealthKit metadata.
+    // The "Most-logged foods" surface must not crown those placeholders.
+    const byDay: Record<string, LoggedMeal[]> = {
+      "2026-04-01": [
+        // Legacy fallback from pre-2026-05-03 imports — must be filtered
+        makeMeal({ id: "1", recipeTitle: "Food log (250 kcal)", calories: 250 }),
+        makeMeal({ id: "2", recipeTitle: "Food log (80 kcal)", calories: 80 }),
+        // New fallback from 2026-05-03 imports — also filtered
+        makeMeal({ id: "3", recipeTitle: "MyFitnessPal entry · 250 kcal", calories: 250 }),
+        makeMeal({ id: "4", recipeTitle: "Lose It! entry · 80 kcal", calories: 80 }),
+        // A real food name should still come through
+        makeMeal({ id: "5", recipeTitle: "Greek Salad", calories: 380 }),
+      ],
+    };
+    const content = buildMilestone30DayContent({
+      nutritionByDay: byDay,
+      weightKgByDay: {},
+    });
+    expect(content.topFoods).toEqual([{ name: "Greek Salad", count: 1 }]);
+  });
+
   it("skips unnamed entries (empty title falls through to name; missing both → skipped)", () => {
     const byDay: Record<string, LoggedMeal[]> = {
       "2026-04-01": [

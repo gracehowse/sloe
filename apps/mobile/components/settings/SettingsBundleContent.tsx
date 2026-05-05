@@ -1058,12 +1058,15 @@ export function SettingsBundleContent({ context }: { context: Context }) {
         </View>
       </View>
 
-      {/* Stats strip — Recipes / Streak */}
+      {/* Stats strip — Recipes / Streak.
+          Audit 2026-05-04 #21: streak=0 styled identically to a positive
+          streak (green) was misleading. Default text colour for 0;
+          green only when the user genuinely has a streak ≥ 1. */}
       <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
         {(
           [
             [String(profileData.savedCount), "Recipes", t.accent],
-            [String(profileData.streak), "Streak", t.green],
+            [String(profileData.streak), "Streak", profileData.streak > 0 ? t.green : colors.text],
           ] as [string, string, string][]
         ).map(([v, l, c]) => (
           <Pressable

@@ -5,7 +5,26 @@ import * as Linking from 'expo-linking';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { StatusBar } from 'expo-status-bar';
-import { AccessibilityInfo, AppState, Platform, Text, View } from 'react-native';
+import { AccessibilityInfo, AppState, LogBox, Platform, Text, View } from 'react-native';
+
+// 2026-05-04 audit (#3 in `docs/audits/2026-05-04-full-sweep-audit.md`):
+// `TypeError: Network request failed` from the bundled whatwg-fetch polyfill
+// surfaces as a red LogBox pill in dev whenever a Supabase / Expo / push-token
+// fetch transiently fails. The handled fallbacks (offline cache, tolerable
+// tz-sync skip, push-token retry) all warn-and-continue. Suppress the noisy
+// dev pill so screenshot captures during sim NAT wedge / cold-boot don't
+// leak handled-error chrome onto otherwise-clean screens. Production builds
+// disable LogBox entirely so this is dev-only.
+if (__DEV__) {
+  LogBox.ignoreLogs([
+    /TypeError: Network request failed/,
+    /\[expo-notifications\] Error thrown while updating the device push token/,
+    /\[expoPushToken\].*Network request failed/,
+    /\[tzSync\] profiles\.tz_iana update failed/,
+    /\[tracker\] (?:meal_plan_days|nutrition_entries|fetchMealPlanJson) timed out/,
+    /\[useSavedLibraryRecipes\] saves\+recipes batch timed out/,
+  ]);
+}
 import { useShareIntent } from 'expo-share-intent';
 import { useCallback, useEffect, useRef } from 'react';
 import 'react-native-reanimated';

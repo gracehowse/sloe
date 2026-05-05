@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { View, Text, Pressable, ActivityIndicator } from "react-native";
+import { View, Text, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/context/auth";
@@ -80,20 +80,15 @@ export function HouseholdSummaryRow() {
     };
   }, [userId]);
 
-  if (loading) {
-    return (
-      <View
-        style={{
-          marginHorizontal: Spacing.xl,
-          marginTop: Spacing.sm,
-          paddingVertical: Spacing.sm,
-          alignItems: "center",
-        }}
-      >
-        <ActivityIndicator size="small" color={Accent.primary} />
-      </View>
-    );
-  }
+  // Audit 2026-05-04 #18: previously the loading state rendered a lone
+  // centred spinner above "Plan setup" while the rest of the page filled
+  // in below — read as a stuck partial-load. Most users have no
+  // household and the resolved row is `null`, so a transient spinner
+  // implies content arriving that never does. Suppress entirely until
+  // either the household resolves or the load fails — match the
+  // "this row is invisible by default" mental model the resolved-null
+  // branch already produces.
+  if (loading) return null;
 
   if (!data || !data.household) return null;
 

@@ -168,6 +168,16 @@ export function formatGoalDate(d: Date): string {
 }
 
 /**
+ * Format a far-future Date as "May 2027" (month name + year). Used for
+ * 1+ year projections where the day-month-only `formatGoalDate` reads
+ * as a near-term date and contradicts the "1+ year out" qualifier next
+ * to it (audit 2026-05-04 #5: "10 May" + "1+ year out" was confusing).
+ */
+export function formatGoalDateWithYear(d: Date): string {
+  return d.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+}
+
+/**
  * Compose the Goal card. Reuses `calcGoalTimeline` from
  * `src/lib/weightProjection.ts` so the "could reach by" date stays
  * consistent with ProgressDashboard.
@@ -214,7 +224,10 @@ export function buildGoalCard(opts: {
     const target = new Date(now.getTime() + timeline.daysToGoalUncapped * 86400000);
     const years = Math.floor(timeline.daysToGoalUncapped / 365);
     const yearQualifier = years >= 2 ? `${years}+ years out` : "1+ year out";
-    dateFragment = `on track for ≈ ${formatGoalDate(target)} · ${yearQualifier}`;
+    // Audit 2026-05-04 #5: when projection is 1+ year out, format with
+    // year so "May 2027" is unambiguous. Day-month only ("10 May") was
+    // read as near-term and contradicted the qualifier next to it.
+    dateFragment = `on track for ≈ ${formatGoalDateWithYear(target)} · ${yearQualifier}`;
   } else if (timeline.cappedAtMaxDays) {
     // Defensive fallback — uncapped projection unavailable.
     dateFragment = "more than a year at current rate";
