@@ -148,8 +148,8 @@ function DailyRing({
       : isOverBudget
         ? RING_LABELS.over
         : RING_LABELS.remaining;
-  const centerValueColor = isOverBudget ? "var(--warning)" : undefined;
-  const centerLabelColor = isOverBudget ? "var(--warning)" : undefined;
+  const centerValueColor = isOverBudget ? "var(--destructive)" : undefined;
+  const centerLabelColor = isOverBudget ? "var(--destructive)" : undefined;
   // Premium-feel papercut #2 (audit 2026-04-29): empty-state ring
   // dominated Today's first impression. Soft-mode the centre when
   // consumed is exactly 0 so the suggestion card + macro tiles can
@@ -228,23 +228,32 @@ function DailyRing({
           strokeWidth={strokeWidth}
           opacity={isEmpty ? 0.18 : 1}
         />
-        {/* Main calorie ring progress. Build 41 (TestFlight feedback
-            `AEvjNTAVsipFKDysDkJD2g4`, 2026-05-01): the post-59cc821
-            gradient ran across the whole consumed-vs-target range,
-            so users never saw the "you're done" success signal once
-            they hit their target. Mirrors mobile `CalorieRing.tsx`:
-            keep gradient while in progress (`consumed < target`),
-            switch to solid `--success` once consumed >= target. Going
-            over is normal calorie tracking, not a destructive event
-            — green stays through over-budget. */}
+        {/* Main calorie ring progress.
+            Three-state colour mapping (Grace 2026-05-05 audit feedback —
+            supersedes Build 41 two-state):
+              1. Empty (consumed === 0) → brand gradient at full opacity
+              2. Logged-and-under (0 < consumed <= target) → `--success`
+              3. Logged-and-over (consumed > target) → `--warning`
+                 (matches the centre digit, which already flips to
+                 `--warning` when over via centerValueColor above).
+
+            Build 41's mapping had under = gradient + over = green which
+            inverted the cue: a user who'd gone OVER saw a green ring
+            while the centre digit read amber, and a user who'd logged
+            UNDER saw the welcome gradient as if they hadn't started.
+            Mirrored in mobile `CalorieRing.tsx`. */}
         <circle
           cx={cx}
           cy={cx}
           r={radius}
           fill="none"
-          stroke={consumed >= target && target > 0
-            ? "var(--success)"
-            : "url(#daily-ring-gradient)"}
+          stroke={
+            isEmpty
+              ? "url(#daily-ring-gradient)"
+              : isOverBudget
+                ? "var(--destructive)"
+                : "var(--success)"
+          }
           strokeWidth={strokeWidth}
           strokeLinecap="round"
           strokeDasharray={circumference}
