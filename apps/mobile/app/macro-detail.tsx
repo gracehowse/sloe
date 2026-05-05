@@ -127,9 +127,16 @@ export default function MacroDetailScreen() {
           <Text style={{ fontSize: 22, fontWeight: "700", color: colors.text }}>{config.label}</Text>
           <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>{formatDateLabel(dateKey)}</Text>
         </View>
+        {/* Numbers audit 2026-05-04 #10 (cross-cuts full-sweep #16):
+            header pill was rendering `Math.round(total * 10) / 10` against
+            an empty `meals[]` array on first paint — `0g` shown while the
+            body said "Loading...". Same screen, two different states for
+            the same metric at the same instant. Now: render an em-dash
+            placeholder while loading; total only paints once data resolves
+            (or empty state triggers). */}
         <View style={{ backgroundColor: config.color + "20", paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.sm }}>
           <Text style={{ fontSize: 16, fontWeight: "800", color: config.color, fontVariant: ["tabular-nums"] }}>
-            {Math.round(total * 10) / 10}{config.unit}
+            {loading ? `—${config.unit}` : `${Math.round(total * 10) / 10}${config.unit}`}
           </Text>
         </View>
       </View>

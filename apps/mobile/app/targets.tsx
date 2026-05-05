@@ -72,6 +72,16 @@ export default function TargetsScreen() {
   const [activityLevel, setActivityLevel] = useState<string | null>(null);
   const [goal, setGoal] = useState<string | null>(null);
   const [tdeeKcal, setTdeeKcal] = useState<number | null>(null);
+  // Numbers audit 2026-05-04 #3 — surface a small breadcrumb when the
+  // user has activity-adjusted calories on. Today's ring goal silently
+  // adds an activity bonus to the stored target, so a user with
+  // `prefer_activity_adjusted_calories=true` and a 350 kcal active burn
+  // sees Today say "of 1,950 kcal" while Targets says "1,800 kcal" —
+  // looks like a divergence bug. We don't recompute the bonus here
+  // (that's owed by the shared `activityBudgetAddon` helper extraction
+  // in finding #13); we just tell the user *why* the numbers might
+  // differ so they don't read the gap as a math error.
+  const [preferActivityAdjustedCalories, setPreferActivityAdjustedCalories] = useState(false);
   // 2026-04-30 (#1): mirror the net-carbs lens decision used on Today.
   // Without this, Today and /targets disagreed on the carbs target
   // (Today rendered net carbs while /targets always showed gross),
@@ -91,7 +101,7 @@ export default function TargetsScreen() {
       const { data } = await supabase
         .from("profiles")
         .select(
-          "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, weight_kg, goal_weight_kg, weight_kg_by_day, height_cm, sex, activity_level, goal, dob, age, plan_pace, net_carbs_lens_enabled",
+          "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, weight_kg, goal_weight_kg, weight_kg_by_day, height_cm, sex, activity_level, goal, dob, age, plan_pace, net_carbs_lens_enabled, prefer_activity_adjusted_calories",
         )
         .eq("id", userId)
         .maybeSingle();
@@ -127,6 +137,9 @@ export default function TargetsScreen() {
         fiber: resolved.fiber,
       });
       setNetCarbsLensEnabled(Boolean((d as Record<string, unknown>).net_carbs_lens_enabled));
+      setPreferActivityAdjustedCalories(
+        Boolean((d as Record<string, unknown>).prefer_activity_adjusted_calories),
+      );
       const lvl = typeof d.activity_level === "string" ? d.activity_level : null;
       setActivityLevel(lvl);
       setGoal(typeof d.goal === "string" ? d.goal : null);
@@ -506,6 +519,20 @@ export default function TargetsScreen() {
             </View>
           </View>
           <Text style={[styles.caption, { textAlign: "center" }]}>{tdeeCaption}</Text>
+          {/* Numbers audit 2026-05-04 #3: when activity-adjusted calories
+              are on, Today's ring goal is `targets.calories +
+              dayActivityBudgetAddon(...)`. The Targets number above is
+              the *static* base. Without this note, a user with a 350
+              kcal active burn would see "1800" here and "1950" on Today
+              and read it as an inconsistency. The full delta number
+              would require duplicating the addon math; that's owed by
+              the shared-helper extraction in audit finding #13. For now
+              we tell the user *why* the numbers can differ. */}
+          {preferActivityAdjustedCalories ? (
+            <Text style={[styles.caption, { textAlign: "center", marginTop: 4 }]}>
+              Today&apos;s goal adjusts upward by your active-burn calories.
+            </Text>
+          ) : null}
         </View>
 
         {/* Macros */}

@@ -46,6 +46,7 @@ import { calcGoalTimeline, resolveLatestWeightKg } from "../../lib/weightProject
 import { todayKey } from "../../lib/nutrition/trackerDate.ts";
 import { kgToLb } from "../../lib/units/imperial.ts";
 import { carbsLabel, netCarbsForRow } from "../../lib/nutrition/netCarbs.ts";
+import { activityLevelCaption, deficitSurplusCaption, type Goal } from "../../lib/targets/targetsView.ts";
 
 export interface TargetsProps {
   /**
@@ -84,13 +85,14 @@ function parseNumMap(raw: unknown): Record<string, number> {
   return out;
 }
 
-const ACTIVITY_LABEL: Record<string, string> = {
-  sedentary: "sedentary",
-  light: "lightly active",
-  moderate: "moderate activity",
-  active: "very active",
-  very_active: "athletic activity",
-};
+// Numbers audit 2026-05-04 #18: web previously had its own
+// ACTIVITY_LABEL with different wording from mobile (`light` →
+// "lightly active" vs "light activity"; `active` → "very active" vs
+// "active lifestyle"). Same `activity_level=active` rendered as
+// "very active" on web but "active lifestyle" on mobile — the same
+// level read as a different intensity bucket on each surface. Now both
+// platforms route through `activityLevelCaption` from the shared
+// `targetsView` helper.
 
 export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
   // `onBack` kept for future mobile-web narrow-width treatment; not
@@ -102,7 +104,7 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
     if (onEdit) onEdit();
     else onNavigate?.("profile");
   };
-  const { nutritionTargets, nutritionByDay, profileMeasurementSystem, netCarbsLensEnabled } = useAppData();
+  const { nutritionTargets, nutritionByDay, profileMeasurementSystem, netCarbsLensEnabled, preferActivityAdjustedCalories } = useAppData();
   const { authedUserId } = useAuthSession();
 
   const [weightKg, setWeightKg] = useState<number | null>(null);
@@ -129,7 +131,9 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
       setGoalWeightKg(Number.isFinite(gw) ? gw : null);
       setWeightKgByDay(parseNumMap((data as { weight_kg_by_day?: unknown }).weight_kg_by_day));
       const act = (data as { activity_level?: string }).activity_level;
-      if (typeof act === "string" && act in ACTIVITY_LABEL) setActivityLevel(act);
+      if (act === "sedentary" || act === "light" || act === "moderate" || act === "active" || act === "very_active") {
+        setActivityLevel(act);
+      }
       const aTdee = (data as { adaptive_tdee?: unknown }).adaptive_tdee;
       const aConf = (data as { adaptive_tdee_confidence?: string }).adaptive_tdee_confidence;
       // Use adaptive TDEE when the confidence bucket is meaningful
@@ -171,19 +175,23 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
     return d.toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short" });
   }, []);
 
-  // "500 kcal deficit" / "500 kcal surplus" / "maintenance" line. When
-  // we have a real maintenance TDEE, diff target − TDEE. Otherwise we
-  // leave the calorie qualifier off rather than invent a number
-  // (CLAUDE.md: "Never invent nutrition values").
+  // Numbers audit 2026-05-04 #17: "500 kcal deficit" / "500 kcal
+  // surplus" / "maintenance" line was computed inline on web with
+  // integer rounding + ±100 maintenance-band, while mobile (via the
+  // shared `deficitSurplusCaption`) used nearest-50 rounding + ±50 band.
+  // Same target/maintenance produced different captions on web vs
+  // mobile — at delta=75 mobile said "100 kcal deficit", web said
+  // "kcal / day" (suppressed). Now both platforms share the helper.
+  // Goal arg currently doesn't change output text — passed null.
   const calorieSubline = useMemo(() => {
     const cal = targets.calories;
     if (!Number.isFinite(cal) || cal <= 0) return "kcal / day";
-    if (typeof maintenanceTdee === "number" && maintenanceTdee > 0) {
-      const delta = Math.round(cal - maintenanceTdee);
-      if (delta <= -100) return `kcal / day · ${Math.abs(delta)} kcal deficit`;
-      if (delta >= 100) return `kcal / day · ${Math.abs(delta)} kcal surplus`;
-      return "kcal / day · maintenance";
-    }
+    const fragment = deficitSurplusCaption({
+      targetCalories: cal,
+      tdeeKcal: maintenanceTdee,
+      goal: null as Goal | null,
+    });
+    if (fragment) return `kcal / day · ${fragment}`;
     return "kcal / day";
   }, [targets.calories, maintenanceTdee]);
 
@@ -293,7 +301,7 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
           Targets
         </h1>
         <p className="text-[13px] text-muted-foreground mt-1">
-          Estimated TDEE based on Mifflin-St Jeor · {ACTIVITY_LABEL[activityLevel] ?? "moderate activity"}
+          Estimated TDEE based on Mifflin-St Jeor · {activityLevelCaption(activityLevel)}
         </p>
       </div>
 
@@ -361,6 +369,16 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
             </div>
           </div>
           <p className="text-[13px] text-muted-foreground mt-1 text-center">{calorieSubline}</p>
+          {/* Numbers audit 2026-05-04 #3 — see mobile Targets for the
+              same breadcrumb. When activity-adjustment is on, Today's
+              ring goal silently adds an active-burn bonus on top of
+              this static base, which a user can mis-read as a number
+              divergence. */}
+          {preferActivityAdjustedCalories ? (
+            <p className="text-[12px] text-muted-foreground mt-1 text-center">
+              Today&apos;s goal adjusts upward by your active-burn calories.
+            </p>
+          ) : null}
         </div>
 
         {/* Goal */}

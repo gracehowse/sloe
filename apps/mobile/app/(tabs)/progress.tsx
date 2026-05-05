@@ -580,6 +580,12 @@ export default function ProgressScreen() {
     () => weekKeyFor(new Date(), weekStartDay),
     [weekStartDay],
   );
+  // Numbers audit 2026-05-04 #9: pass per-day target snapshots into the
+  // recap. `weekStats` above already uses `weekTargetsByDay`; without
+  // mirroring the same arg here, a user who edited targets mid-week saw
+  // one adherence value on the recap card and a different one on
+  // Progress for the same week. Now both surfaces use the same per-day
+  // judgement.
   const recap = useMemo(
     () =>
       buildWeeklyRecap({
@@ -589,8 +595,9 @@ export default function ProgressScreen() {
         weekStartDay,
         ledger: freezeLedger,
         budgetMax: freezeBudgetMax,
+        dayTargetOverrides: weekTargetsByDay,
       }),
-    [byDay, weightKgByDay, targets, weekStartDay, freezeLedger, freezeBudgetMax],
+    [byDay, weightKgByDay, targets, weekStartDay, freezeLedger, freezeBudgetMax, weekTargetsByDay],
   );
   const recapVisible = useMemo(
     () =>

@@ -186,12 +186,10 @@ Severity levels:
 - Fix: inject `nutritionByDay` from shared context, or wire realtime
 - Flagged by: data-integrity #11
 
-#### 22. Mobile profile-edit doesn't recompute targets; web Settings does
-- Web Settings: calls `recomputeTargetsForActivity` on activity-level change
-- Mobile profile.tsx: persists raw fields; relies on next read to re-derive via 30/40/30 fallback
-- Same activity-level edit → different persisted target on each platform
-- Fix: mobile calls `recomputeTargetsForActivity` on save
-- Flagged by: data-integrity #10
+#### 22. ~~Mobile profile-edit doesn't recompute targets~~ — N/A on inspection
+- Verified 2026-05-04: mobile has no activity-level self-edit surface. `apps/mobile/components/ActivityLevelPreview.tsx` exists but is not imported anywhere. Mobile profile.tsx is the manual-target editor (user types calories/macros directly), not an activity-level edit. The recompute path is web-Settings-only — which is correct, since web is the only surface exposing the dropdown. The audit agent's flag was based on a misread of mobile profile.tsx's purpose.
+- Action: none. If we ever expose activity-level edit on mobile, we must call `recomputeTargetsForActivity` (the web path is the template).
+- Flagged by: data-integrity #10 (resolved as misdiagnosis)
 
 #### 23. `KCAL_PER_KG = 7700` declared 5 times across codebase
 - `adaptiveTdee.ts`, `onboarding/targets.ts`, `whyThisNumber.ts`, `maintenanceChain.ts`, `weightProjection.ts`

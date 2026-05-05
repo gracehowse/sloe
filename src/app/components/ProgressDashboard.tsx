@@ -161,6 +161,10 @@ function ProgressDashboardContent() {
   // snapshots so we don't need a parallel storage layer; falls back
   // to `null` when the snapshot wasn't captured yet (first week).
   const [previousWeekTdeeKcal, setPreviousWeekTdeeKcal] = useState<number | null>(null);
+  // Numbers audit 2026-05-04 #9 — full prev-week snapshot map for recap.
+  const [previousWeekDailyTargetsByDay, setPreviousWeekDailyTargetsByDay] = useState<
+    Record<string, DailyTarget | null>
+  >({});
   // Profile basics cached so `resolveMaintenance` can fall back to the
   // formula when adaptive isn't confident enough (F-3, 2026-04-19).
   const [profileSexCached, setProfileSexCached] = useState<Sex>("unspecified");
@@ -350,6 +354,12 @@ function ProgressDashboardContent() {
       }
       void getDailyTargets(supabase, authedUserId, prevWeekKeys)
         .then((snapshots) => {
+          // Numbers audit 2026-05-04 #9: cache the prev-week snapshots
+          // so `buildWeeklyRecap` can score each day against the target
+          // that was active that day, not the user's *current* target.
+          // Without this, a mid-week target edit produced one adherence
+          // value on the recap card and a different one on Progress.
+          setPreviousWeekDailyTargetsByDay(snapshots);
           // Walk the prev-week keys in order; the first non-null
           // `maintenanceTdee` we find is the baseline.
           for (const k of prevWeekKeys) {
@@ -363,6 +373,7 @@ function ProgressDashboardContent() {
         })
         .catch(() => {
           setPreviousWeekTdeeKcal(null);
+          setPreviousWeekDailyTargetsByDay({});
         });
     }
     } catch (err) {
@@ -604,6 +615,29 @@ function ProgressDashboardContent() {
     () => weekKeyFor(new Date(), weekStartDay),
     [weekStartDay],
   );
+  // Numbers audit 2026-05-04 #9 — shape prev-week snapshots into the
+  // override map `buildWeekStats` consumes. Without this the recap
+  // judged past days against the user's *current* target, while
+  // Progress judged them against the per-day snapshot — same week,
+  // different "% adherence".
+  const prevWeekTargetsByDay = useMemo(() => {
+    const out: Record<
+      string,
+      { targetCalories: number | null; targetProtein: number | null; targetCarbs: number | null; targetFat: number | null } | null
+    > = {};
+    for (const [k, v] of Object.entries(previousWeekDailyTargetsByDay)) {
+      out[k] = v
+        ? {
+            targetCalories: v.targetCalories,
+            targetProtein: v.targetProteinG,
+            targetCarbs: v.targetCarbsG,
+            targetFat: v.targetFatG,
+          }
+        : null;
+    }
+    return out;
+  }, [previousWeekDailyTargetsByDay]);
+
   const recap = useMemo(
     () =>
       buildWeeklyRecap({
@@ -613,8 +647,9 @@ function ProgressDashboardContent() {
         weekStartDay,
         ledger: freezeLedger,
         budgetMax: freezeBudgetMax,
+        dayTargetOverrides: prevWeekTargetsByDay,
       }),
-    [nutritionByDay, weightKgByDay, targets, weekStartDay, freezeLedger, freezeBudgetMax],
+    [nutritionByDay, weightKgByDay, targets, weekStartDay, freezeLedger, freezeBudgetMax, prevWeekTargetsByDay],
   );
   const recapVisible = useMemo(
     () =>
