@@ -5,7 +5,6 @@ import {
   View,
   Text,
   FlatList,
-  Image,
   Pressable,
   StyleSheet,
   TextInput,
@@ -29,10 +28,10 @@ import {
   Search as SearchIcon,
   BookOpen,
   MoreHorizontal,
-  UtensilsCrossed,
 } from "lucide-react-native";
 import { useAuth } from "@/context/auth";
 import { useSavedLibraryRecipes, useSavedRecipes } from "@/lib/recipes";
+import { RecipeCardImage } from "@/components/library/RecipeCardImage";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { Accent, MacroColors, Spacing, Radius, Type } from "@/constants/theme";
@@ -434,18 +433,24 @@ export default function LibraryScreen() {
         >
           <View style={styles.cardImageWrap}>
             {/* Audit 2026-05-04 #28: when a recipe has no image (e.g.
-                user-imported recipe with no thumbnail captured), the
-                blank white area read as a broken card next to siblings
-                that did have photos. Render a neutral placeholder
-                surface (soft grey + utensils glyph) for missing /
-                blank images so cards stay visually consistent. */}
-            {item.image ? (
-              <Image source={{ uri: item.image }} style={styles.cardImage} resizeMode="cover" />
-            ) : (
-              <View style={[styles.cardImage, { backgroundColor: colors.cardBorder, alignItems: "center", justifyContent: "center" }]}>
-                <UtensilsCrossed size={32} color={colors.textTertiary} strokeWidth={1.5} />
-              </View>
-            )}
+                user-imported recipe with no thumbnail captured) OR the
+                fetched image fails to load (network blip, expired
+                Unsplash URL), the blank white area reads as a broken
+                card next to siblings that did have photos. Render a
+                neutral placeholder surface (soft grey + utensils glyph)
+                so cards stay visually consistent in both cases.
+
+                NOTE: `useSavedLibraryRecipes` resolves `item.image` to a
+                stock URL via `pickDefaultImage` when `image_url` is
+                missing, so the empty-string branch only fires for
+                pathological data; the on-error branch is the actually-
+                live fallback path. */}
+            <RecipeCardImage
+              uri={item.image}
+              cardImageStyle={styles.cardImage}
+              fallbackBg={colors.cardBorder}
+              fallbackTint={colors.textTertiary}
+            />
             <View style={styles.cardGradient} pointerEvents="none" />
             {item.isSaved ? (
               <View style={styles.bookmarkDot} accessibilityLabel="Saved">

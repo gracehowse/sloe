@@ -67,9 +67,16 @@ export function formatHealthImportFallbackTitle({
  * Case-insensitive on the literal portions; surrounding whitespace
  * tolerated.
  */
+// Audit 2026-05-04 (third pass): Grace's actual TestFlight data carries
+// titles like `Food log (250 kcal) (via MyFitnessPal)` — the ` (via X)`
+// source-suffix is appended downstream of the fallback formatter. The
+// original regex required the title to end with `(\d+ kcal)`, so the
+// real-world rows slipped through and crowned the milestone modal's
+// "Most-logged foods" list. Patterns now anchor only the leading shape
+// and allow optional trailing source-suffix or any whitespace tail.
 const HEALTH_IMPORT_FALLBACK_PATTERNS: readonly RegExp[] = [
-  /^food log \(\d+ kcal\)$/i,
-  /^.+\s+entry\s+·\s+\d+\s+kcal$/i,
+  /^food log \(\d+ kcal\)(?:\s*\(via .+\))?\s*$/i,
+  /^.+\s+entry\s+·\s+\d+\s+kcal(?:\s*\(via .+\))?\s*$/i,
 ];
 
 export function isHealthImportFallbackTitle(title: string | null | undefined): boolean {

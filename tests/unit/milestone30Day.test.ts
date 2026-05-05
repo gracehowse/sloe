@@ -180,9 +180,15 @@ describe("buildMilestone30DayContent", () => {
         // Legacy fallback from pre-2026-05-03 imports — must be filtered
         makeMeal({ id: "1", recipeTitle: "Food log (250 kcal)", calories: 250 }),
         makeMeal({ id: "2", recipeTitle: "Food log (80 kcal)", calories: 80 }),
+        // Real-world TestFlight shape (audit 2026-05-04 third pass):
+        // titles include the source suffix appended downstream of the
+        // fallback formatter. Both legacy + new shapes must filter.
+        makeMeal({ id: "1b", recipeTitle: "Food log (250 kcal) (via MyFitnessPal)", calories: 250 }),
+        makeMeal({ id: "2b", recipeTitle: "Food log (80 kcal) (via Lose It!)", calories: 80 }),
         // New fallback from 2026-05-03 imports — also filtered
         makeMeal({ id: "3", recipeTitle: "MyFitnessPal entry · 250 kcal", calories: 250 }),
         makeMeal({ id: "4", recipeTitle: "Lose It! entry · 80 kcal", calories: 80 }),
+        makeMeal({ id: "4b", recipeTitle: "MyFitnessPal entry · 250 kcal (via MyFitnessPal)", calories: 250 }),
         // A real food name should still come through
         makeMeal({ id: "5", recipeTitle: "Greek Salad", calories: 380 }),
       ],
