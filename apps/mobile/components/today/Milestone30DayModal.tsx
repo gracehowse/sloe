@@ -3,10 +3,7 @@ import { Modal, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X, Sparkles, Flame, Utensils, Scale } from "lucide-react-native";
 import { Accent, Radius, Spacing } from "@/constants/theme";
-import {
-  MILESTONE_30_DAY_THRESHOLD,
-  type Milestone30DayContent,
-} from "@/lib/milestone30Day";
+import { type Milestone30DayContent } from "@/lib/milestone30Day";
 
 /**
  * Milestone30DayModal — the "30 days of logging" trust moment.
@@ -144,9 +141,19 @@ export function Milestone30DayModal({
                 paddingHorizontal: 8,
               }}
             >
-              You crossed {MILESTONE_30_DAY_THRESHOLD}+ distinct days with meals
-              logged — here&apos;s a snapshot (averages, favourites, and your best
-              consecutive run).
+              {/* Debug audit 2026-05-05 (Grace): subtitle used to read
+                  "You crossed {MILESTONE_30_DAY_THRESHOLD}+ distinct days
+                  with meals logged" — but the headline already shows the
+                  user's actual count (e.g. "49 days of meal logging").
+                  Two numbers about the same metric on adjacent lines
+                  read as a contradiction (49 ≠ 30+) and made the third
+                  number ("Best Run 28 days" — a different metric, the
+                  longest *consecutive* run) feel like noise. Subtitle
+                  now drops the threshold reference and just frames the
+                  three stats below; the headline owns "distinct days"
+                  and the Best Run tile owns "consecutive run". */}
+              Here&apos;s a snapshot of your sustained logging — averages,
+              favourites, and your best consecutive run.
             </Text>
 
             {/* Stats card 1: avg kcal + longest streak */}

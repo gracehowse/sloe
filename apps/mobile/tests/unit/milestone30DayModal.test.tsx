@@ -56,8 +56,10 @@ describe("Milestone30DayModal", () => {
       />,
     );
     expect(getByText("30 days of meal logging")).toBeTruthy();
+    // Debug audit 2026-05-05: subtitle no longer references the
+    // threshold constant; the headline owns "distinct days".
     expect(
-      getByText(/30\+ distinct days with meals logged/i),
+      getByText(/snapshot of your sustained logging/i),
     ).toBeTruthy();
   });
 
