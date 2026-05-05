@@ -11,6 +11,7 @@
 import { fireEvent, render } from "@testing-library/react-native";
 import React from "react";
 import { Image, View } from "react-native";
+import { describe, expect, it, vi } from "vitest";
 
 vi.mock("lucide-react-native", () => ({
   UtensilsCrossed: ({ testID }: { testID?: string }) => (
