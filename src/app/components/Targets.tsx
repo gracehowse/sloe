@@ -270,7 +270,7 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
         fillVar: "var(--success)",
       },
     ],
-    [todayMacros, targets],
+    [todayMacros, targets, netCarbsLensEnabled],
   );
 
   return (
