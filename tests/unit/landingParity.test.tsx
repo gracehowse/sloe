@@ -64,6 +64,7 @@ import {
   TDEE_MIN_LOGGING_DAYS,
   TDEE_MIN_WEIGH_INS,
   FREE_SAVE_LIMIT,
+  computeAnnualSavingsBadge,
   currentAppVersionLabel,
 } from "../../src/lib/landing/content";
 
@@ -127,12 +128,17 @@ describe("landing page — pricing tier parity with /pricing route", () => {
     }
   });
 
-  it("paid tiers carry an annualPrice, annualPeriod, and annualSavings", () => {
+  it("paid tiers carry an annualPrice + annualPeriod, and a derivable savings badge", () => {
+    // Audit P04 (2026-05-05) — `annualSavings` is now optional on the
+    // tier shape; the badge copy is computed at render time from
+    // `price` + `annualPrice` via `computeAnnualSavingsBadge`. The
+    // pin here is that every paid tier must produce a non-null badge,
+    // either via the optional override or via the derived calc.
     for (const tier of PRICING_TIERS) {
       if (tier.checkoutTier === null) continue; // Free has no annual
       expect(tier.annualPrice, `${tier.name} annualPrice`).toBeTruthy();
       expect(tier.annualPeriod, `${tier.name} annualPeriod`).toBeTruthy();
-      expect(tier.annualSavings, `${tier.name} annualSavings`).toBeTruthy();
+      expect(computeAnnualSavingsBadge(tier), `${tier.name} derivable savings badge`).toBeTruthy();
     }
   });
 

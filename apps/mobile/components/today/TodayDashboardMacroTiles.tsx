@@ -177,11 +177,19 @@ export function TodayDashboardMacroTiles({
         // calories+sodium stay integer. Trailing ".0" trimmed for readability.
         const value = formatMacro(def.current, macro);
         const pct = def.target > 0 ? Math.min(100, Math.round((def.current / def.target) * 100)) : 0;
-        const remain = def.target - def.current;
-        const overBy = Math.round(Math.abs(remain));
+        // Audit T03 (2026-05-05) — caption "X g remaining" used to
+        // round `def.target − def.current` directly, which produced
+        // off-by-≤1g drift vs the displayed `value / target g` numerator
+        // (formatMacro rounds protein/carbs/fat to 1 decimal). Compute
+        // remaining from the rounded displayed values so what the
+        // caption claims matches what the user reads above it.
+        const displayedCurrent = parseFloat(value);
+        const displayedTarget = def.target;
+        const remainDisplayed = displayedTarget - (Number.isFinite(displayedCurrent) ? displayedCurrent : def.current);
+        const overBy = Math.round(Math.abs(remainDisplayed));
         const captionText = def.referenceOnly
           ? `ref ${def.target} ${def.unit}`
-          : remain >= 0
+          : remainDisplayed >= 0
             ? `${overBy} ${def.unit} remaining`
             : `${overBy} ${def.unit} over`;
 
