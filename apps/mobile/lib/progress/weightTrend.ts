@@ -309,8 +309,22 @@ export function computeWeightTrend(
 
   // Bucket according to range — keeps the chart readable on long
   // ranges by collapsing daily weigh-ins into weekly / monthly means.
-  const bucket = bucketFor(range);
-  const bucketed = bucketPoints(filtered, bucket);
+  //
+  // 2026-05-06: with smart fallback. If the selected bucket would
+  // collapse the data more aggressively than is useful (e.g. user
+  // picked "1Y" but only has 30 days of weigh-ins → 1 monthly
+  // bucket), step down through monthly → weekly → daily until the
+  // bucketed count matches min(3, raw count). This preserves the
+  // user's range *intent* (a 1Y x-axis showing 30 days of recent
+  // data is still useful) while avoiding the "not enough data"
+  // empty-state trap.
+  let bucket: "daily" | "weekly" | "monthly" = bucketFor(range);
+  let bucketed = bucket === "daily" ? filtered : bucketPoints(filtered, bucket);
+  const targetCount = Math.min(3, filtered.length);
+  while (bucketed.length < targetCount && bucket !== "daily") {
+    bucket = bucket === "monthly" ? "weekly" : "daily";
+    bucketed = bucket === "daily" ? filtered : bucketPoints(filtered, bucket);
+  }
 
   const movingAvg = computeMovingAvg(bucketed, maWindowDaysFor(range));
   const yDomain =
