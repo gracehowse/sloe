@@ -330,51 +330,68 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
           <Text style={{ fontSize: 12, fontWeight: "700", color: textColor, marginBottom: 6 }}>
             {weekSummaryHeading(weekSummaryMode)}
           </Text>
-          <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-            <Text style={{ fontSize: 12, color: textSecondaryColor }}>
-              Avg daily {isWeekDeficit ? "deficit" : "surplus"}
-            </Text>
-            <Text
-              style={{
-                fontSize: 12,
-                fontWeight: "700",
-                color: isWeekDeficit ? Accent.success : Accent.warning,
-                fontVariant: ["tabular-nums"],
-              }}
-            >
-              {Math.abs(dailyAvgDeficit).toLocaleString()} kcal
-            </Text>
-          </View>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 2 }}>
-            <Text style={{ fontSize: 12, color: textSecondaryColor }}>
-              Weekly {isWeekDeficit ? "deficit" : "surplus"}
-            </Text>
-            <Text
-              style={{
-                fontSize: 12,
-                fontWeight: "700",
-                color: isWeekDeficit ? Accent.success : Accent.warning,
-                fontVariant: ["tabular-nums"],
-              }}
-            >
-              {Math.abs(weekDeficit).toLocaleString()} kcal
-            </Text>
-          </View>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 2 }}>
-            <Text style={{ fontSize: 12, color: textSecondaryColor }}>
-              Projected weekly {isWeekDeficit ? "loss" : "gain"}
-            </Text>
-            <Text
-              style={{
-                fontSize: 12,
-                fontWeight: "700",
-                color: isWeekDeficit ? Accent.success : Accent.warning,
-                fontVariant: ["tabular-nums"],
-              }}
-            >
-              {weeklyKgRate.toFixed(2)} kg
-            </Text>
-          </View>
+          {/* Audit T13 (2026-05-05) — neutral grey when weekConsumed === 0
+              so a user with burn data but zero food logged across the
+              window doesn't see "Avg daily deficit: 2,400 kcal" green
+              affirming a degenerate state (false success). Mirrors
+              the same rule the today-tile got 2026-04-25. */}
+          {(() => {
+            const isCalibrating = weekConsumed === 0;
+            const valueColor = isCalibrating
+              ? textSecondaryColor
+              : isWeekDeficit
+                ? Accent.success
+                : Accent.warning;
+            return (
+              <>
+                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                  <Text style={{ fontSize: 12, color: textSecondaryColor }}>
+                    Avg daily {isWeekDeficit ? "deficit" : "surplus"}
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontWeight: "700",
+                      color: valueColor,
+                      fontVariant: ["tabular-nums"],
+                    }}
+                  >
+                    {Math.abs(dailyAvgDeficit).toLocaleString()} kcal
+                  </Text>
+                </View>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 2 }}>
+                  <Text style={{ fontSize: 12, color: textSecondaryColor }}>
+                    Weekly {isWeekDeficit ? "deficit" : "surplus"}
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontWeight: "700",
+                      color: valueColor,
+                      fontVariant: ["tabular-nums"],
+                    }}
+                  >
+                    {Math.abs(weekDeficit).toLocaleString()} kcal
+                  </Text>
+                </View>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 2 }}>
+                  <Text style={{ fontSize: 12, color: textSecondaryColor }}>
+                    Projected weekly {isWeekDeficit ? "loss" : "gain"}
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontWeight: "700",
+                      color: valueColor,
+                      fontVariant: ["tabular-nums"],
+                    }}
+                  >
+                    {weeklyKgRate.toFixed(2)} kg
+                  </Text>
+                </View>
+              </>
+            );
+          })()}
         </View>
       )}
 

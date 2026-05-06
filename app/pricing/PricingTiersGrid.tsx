@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Check } from "lucide-react";
 import type { BillingPeriod, PricingTier } from "../../src/lib/landing/content.ts";
+import { computeAnnualSavingsBadge } from "../../src/lib/landing/content.ts";
 import { AnalyticsEvents, type PaywallViewedFrom } from "../../src/lib/analytics/events.ts";
 import { track } from "../../src/lib/analytics/track.ts";
 import { CurrentTierBadge } from "./CurrentTierBadge.tsx";
@@ -143,7 +144,7 @@ export function PricingTiersGrid({
           {regionNote}
         </div>
       ) : null}
-      <BillingToggle billing={billing} onChange={onPeriodCommit} />
+      <BillingToggle billing={billing} onChange={onPeriodCommit} tiers={tiers} />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start max-w-3xl mx-auto">
         {visibleTiers.map((tier) => {
@@ -183,11 +184,19 @@ export function PricingTiersGrid({
                 <span className={`text-sm ${tier.name === "Pro" ? "text-slate-400" : "text-slate-500 dark:text-slate-400"}`}>
                   {period}
                 </span>
-                {showAnnual && tier.annualSavings ? (
-                  <span className="ml-auto text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
-                    {tier.annualSavings}
-                  </span>
-                ) : null}
+                {showAnnual ? (() => {
+                  // Audit P04 (2026-05-05) — derive from prices instead
+                  // of using a hardcoded "Save 37%" string. Falls back
+                  // to `tier.annualSavings` if a manual override was
+                  // set (none today).
+                  const badge = computeAnnualSavingsBadge(tier);
+                  if (!badge) return null;
+                  return (
+                    <span className="ml-auto text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                      {badge}
+                    </span>
+                  );
+                })() : null}
               </div>
               {showAnnual ? (() => {
                 const refLine = computeAnnualReferenceLine(tier);
@@ -271,10 +280,17 @@ export function PricingTiersGrid({
 function BillingToggle({
   billing,
   onChange,
+  tiers,
 }: {
   billing: BillingPeriod;
   onChange: (next: BillingPeriod) => void;
+  tiers: PricingTier[];
 }) {
+  // Audit P04 (2026-05-05) — derive the badge from the headline paid
+  // tier (i.e. the first tier with `annualPrice` set), not a hardcoded
+  // string. Falls through to no badge if no tier has annual pricing.
+  const headlineTier = tiers.find((t) => Boolean(t.annualPrice));
+  const annualBadge = headlineTier ? computeAnnualSavingsBadge(headlineTier) : null;
   return (
     <div className="flex justify-center mb-10">
       <div
@@ -307,9 +323,11 @@ function BillingToggle({
           }`}
         >
           Annual
-          <span className="text-xs font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
-            Save 37%
-          </span>
+          {annualBadge ? (
+            <span className="text-xs font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+              {annualBadge}
+            </span>
+          ) : null}
         </button>
       </div>
     </div>

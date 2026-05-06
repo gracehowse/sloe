@@ -1389,8 +1389,22 @@ export async function syncHealthData(userId: string): Promise<{
       });
 
       type WorkoutEntry = { type: string; minutes: number; calories: number; source: string };
+      // Audit B03 (2026-05-05) — sort each day's workouts most-recent-
+      // first so burn-detail render order matches Apple Health's own
+      // day view. Was undefined-by-`react-native-health`-callback,
+      // which produced inconsistent ordering across syncs and didn't
+      // match what users see in Apple Health (a trust-erosion when
+      // they cross-check). We sort at write time on the source array,
+      // so the persisted shape stays identical — only the order
+      // changes.
+      type WorkoutSampleWithStart = { sample: typeof workoutSamples[number]; startMs: number };
+      const samplesWithStart: WorkoutSampleWithStart[] = workoutSamples
+        .map((s) => ({ sample: s, startMs: new Date(s.start).getTime() }))
+        .filter((x) => Number.isFinite(x.startMs))
+        .sort((a, b) => b.startMs - a.startMs); // newest first
+
       const fromHealthWorkouts: Record<string, WorkoutEntry[]> = {};
-      for (const w of workoutSamples) {
+      for (const { sample: w } of samplesWithStart) {
         const dk = dateKey(w.start);
         const startMs = new Date(w.start).getTime();
         const endMs = new Date(w.end).getTime();

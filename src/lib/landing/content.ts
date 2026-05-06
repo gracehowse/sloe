@@ -85,7 +85,7 @@ export type {
   BillingPeriod,
   PricingTier,
 } from "./pricingTiers";
-export { PRICING_TIERS } from "./pricingTiers";
+export { PRICING_TIERS, computeAnnualSavingsBadge } from "./pricingTiers";
 
 /* ─────────────── How-it-works ─────────────── */
 

@@ -246,23 +246,39 @@ export function TodayActivityBonusCard({
         </div>
       )}
 
-      {/* Weekly deficit summary */}
+      {/* Weekly deficit summary.
+          Audit T13 (2026-05-05) — neutral muted text when
+          `weekConsumed === 0` so a user with burn data but no logged
+          food across the window doesn't see green "Avg daily deficit:
+          2,400 kcal" affirming a degenerate state (false success).
+          Mirrors the today-tile rule shipped 2026-04-25 + the mobile
+          `TodayActivityBonusCard` change in the same PR. */}
       {showWeekly && (
-        <div className="mt-3 pt-3 border-t border-border space-y-1 text-xs">
-          <p className="font-semibold text-foreground mb-1.5">{weekSummaryHeading(weekSummaryMode)}</p>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Avg daily {isWeekDeficit ? "deficit" : "surplus"}</span>
-            <span className={`font-semibold tabular-nums ${isWeekDeficit ? "text-success" : "text-warning"}`}>{Math.abs(dailyAvgDeficit).toLocaleString()} kcal</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Weekly {isWeekDeficit ? "deficit" : "surplus"}</span>
-            <span className={`font-semibold tabular-nums ${isWeekDeficit ? "text-success" : "text-warning"}`}>{Math.abs(weekDeficit).toLocaleString()} kcal</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Projected weekly {isWeekDeficit ? "loss" : "gain"}</span>
-            <span className={`font-semibold tabular-nums ${isWeekDeficit ? "text-success" : "text-warning"}`}>{weeklyMassLabel}</span>
-          </div>
-        </div>
+        (() => {
+          const isCalibrating = weekConsumed === 0;
+          const valueClasses = isCalibrating
+            ? "text-muted-foreground"
+            : isWeekDeficit
+              ? "text-success"
+              : "text-warning";
+          return (
+            <div className="mt-3 pt-3 border-t border-border space-y-1 text-xs">
+              <p className="font-semibold text-foreground mb-1.5">{weekSummaryHeading(weekSummaryMode)}</p>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Avg daily {isWeekDeficit ? "deficit" : "surplus"}</span>
+                <span className={`font-semibold tabular-nums ${valueClasses}`}>{Math.abs(dailyAvgDeficit).toLocaleString()} kcal</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Weekly {isWeekDeficit ? "deficit" : "surplus"}</span>
+                <span className={`font-semibold tabular-nums ${valueClasses}`}>{Math.abs(weekDeficit).toLocaleString()} kcal</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Projected weekly {isWeekDeficit ? "loss" : "gain"}</span>
+                <span className={`font-semibold tabular-nums ${valueClasses}`}>{weeklyMassLabel}</span>
+              </div>
+            </div>
+          );
+        })()
       )}
     </div>
   );

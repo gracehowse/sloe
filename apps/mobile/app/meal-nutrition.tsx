@@ -33,10 +33,34 @@ function macroCalorieSplit(m: Pick<JournalMeal, "protein" | "carbs" | "fat">): {
   if (sum <= 0) {
     return { proteinPct: 0, carbsPct: 0, fatPct: 0, proteinKcal: 0, carbsKcal: 0, fatKcal: 0 };
   }
+  // Audit M01 (2026-05-05) — largest-remainder (Hamilton) rounding so
+  // the three displayed percentages always sum to exactly 100. Plain
+  // `Math.round` per macro produced sums of 99 / 101 on near-equal
+  // splits (e.g. 33.4 / 33.4 / 33.3 → 33+33+33=99; 33.5 / 33.5 / 33.0 →
+  // 34+34+33=101). This method floors each, then adds 1 to the macros
+  // with the largest fractional remainders until the sum hits 100.
+  const exact = [
+    { key: "protein", value: (proteinKcal / sum) * 100 },
+    { key: "carbs", value: (carbsKcal / sum) * 100 },
+    { key: "fat", value: (fatKcal / sum) * 100 },
+  ] as const;
+  const floored = exact.map((e) => ({ key: e.key, floor: Math.floor(e.value), remainder: e.value - Math.floor(e.value) }));
+  let residual = 100 - floored.reduce((acc, e) => acc + e.floor, 0);
+  // Sort indices by remainder descending, ties go to original macro
+  // order (protein → carbs → fat) so output is deterministic.
+  const indicesByRemainder = floored
+    .map((e, i) => ({ i, remainder: e.remainder }))
+    .sort((a, b) => b.remainder - a.remainder)
+    .map((x) => x.i);
+  const allocated = floored.map((e) => e.floor);
+  for (let n = 0; n < indicesByRemainder.length && residual > 0; n++) {
+    allocated[indicesByRemainder[n]!] += 1;
+    residual -= 1;
+  }
   return {
-    proteinPct: Math.round((proteinKcal / sum) * 100),
-    carbsPct: Math.round((carbsKcal / sum) * 100),
-    fatPct: Math.round((fatKcal / sum) * 100),
+    proteinPct: allocated[0]!,
+    carbsPct: allocated[1]!,
+    fatPct: allocated[2]!,
     proteinKcal,
     carbsKcal,
     fatKcal,

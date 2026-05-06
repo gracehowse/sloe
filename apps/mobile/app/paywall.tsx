@@ -37,7 +37,7 @@ import { supabase } from "@/lib/supabase";
 import { usePromoCode } from "@/hooks/usePromoCode";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents, type PaywallViewedFrom } from "../../../src/lib/analytics/events";
-import { PRICING_TIERS, type PricingTier } from "../../../src/lib/landing/pricingTiers";
+import { PRICING_TIERS, type PricingTier, computeAnnualSavingsBadge } from "../../../src/lib/landing/pricingTiers";
 import { PAYWALL_TRUST_CHIPS, buildReceiptTrustCopy } from "../../../src/lib/landing/paywallTrust";
 
 /**
@@ -979,9 +979,26 @@ export default function PaywallScreen() {
                 >
                   Annual
                 </Text>
-                <Badge variant="added" accessibilityLabel="Save 37 percent on annual">
-                  Save 37%
-                </Badge>
+                {(() => {
+                  // Audit P04 (2026-05-05) — derive from PRICING_TIERS
+                  // instead of a hardcoded "Save 37%" string. The
+                  // headline tier is the first one with annual pricing
+                  // (Pro). Falls through to no badge if pricing changes
+                  // make the savings <= 0%.
+                  const headline = PRICING_TIERS.find((t) => Boolean(t.annualPrice));
+                  const badge = headline ? computeAnnualSavingsBadge(headline) : null;
+                  if (!badge) return null;
+                  // Strip the "Save " prefix for the a11y label so it
+                  // reads "Save 37 percent on annual" — same shape as
+                  // before, generated from the derived value.
+                  const pctMatch = badge.match(/(\d+)/);
+                  const pctText = pctMatch ? pctMatch[1] : "";
+                  return (
+                    <Badge variant="added" accessibilityLabel={`Save ${pctText} percent on annual`}>
+                      {badge}
+                    </Badge>
+                  );
+                })()}
               </Pressable>
             </View>
           </View>
