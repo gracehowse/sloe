@@ -88,12 +88,6 @@ const OAUTH2_TOKEN_URL = "https://oauth.fatsecret.com/connect/token";
 
 let oauth2Cache: { token: string; expiresAtMs: number } | null = null;
 
-function requiredEnv(name: string): string {
-  const v = process.env[name];
-  if (!v) throw new Error(`Missing env var ${name}`);
-  return v;
-}
-
 /**
  * Return the first non-empty env var value out of the provided list.
  * Used to support both the canonical OAuth 2.0 env var names
