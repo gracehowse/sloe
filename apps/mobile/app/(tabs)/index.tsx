@@ -1692,28 +1692,58 @@ export default function TrackerScreen() {
           : result.source === "FatSecret"
           ? "FatSecret"
           : "USDA FoodData Central";
-      const { caffeineMg, alcoholG } = scaleCaffeineAlcohol({
-        grams,
-        caffeineMgPer100g: result.macrosPer100g.caffeineMgPer100g ?? null,
-        alcoholGPer100g: result.macrosPer100g.alcoholGPer100g ?? null,
-      });
-      const explicitMicros: Record<string, number> = {};
-      if (caffeineMg > 0) explicitMicros.caffeineMg = caffeineMg;
-      if (alcoholG > 0) explicitMicros.alcoholG = alcoholG;
-      const micros = scaleMicrosForGrams(
-        result.microsPer100g ?? {},
-        grams,
-        explicitMicros,
-      );
+      // 2026-05-06: per-serving-only path. When FatSecret has no metric
+      // grounding for a food (e.g. McDonald's Big Mac), `macrosPer100g`
+      // is null and `chosenPortion.gramWeight` is 0. Use
+      // `macrosPerServing × quantity` directly — no scaling by grams.
+      // Micros are skipped because there's no per-100g panel to scale.
+      const isPerServingOnly =
+        result.macrosPer100g === null &&
+        Boolean(result.macrosPerServing) &&
+        result.chosenPortion.gramWeight === 0;
+      let mealCalories: number;
+      let mealProtein: number;
+      let mealCarbs: number;
+      let mealFat: number;
+      let micros: Record<string, number> = {};
+      if (isPerServingOnly) {
+        const ps = result.macrosPerServing!;
+        const q = result.quantity;
+        mealCalories = Math.round(ps.calories * q);
+        mealProtein = Math.round(ps.protein * q * 10) / 10;
+        mealCarbs = Math.round(ps.carbs * q * 10) / 10;
+        mealFat = Math.round(ps.fat * q * 10) / 10;
+        // No caffeine/alcohol scaling (no per-100g basis), no micros
+        // pull-through.
+      } else {
+        const m = result.macrosPer100g!;
+        const { caffeineMg, alcoholG } = scaleCaffeineAlcohol({
+          grams,
+          caffeineMgPer100g: m.caffeineMgPer100g ?? null,
+          alcoholGPer100g: m.alcoholGPer100g ?? null,
+        });
+        const explicitMicros: Record<string, number> = {};
+        if (caffeineMg > 0) explicitMicros.caffeineMg = caffeineMg;
+        if (alcoholG > 0) explicitMicros.alcoholG = alcoholG;
+        micros = scaleMicrosForGrams(
+          result.microsPer100g ?? {},
+          grams,
+          explicitMicros,
+        );
+        mealCalories = Math.round(m.calories * f);
+        mealProtein = Math.round(m.protein * f * 10) / 10;
+        mealCarbs = Math.round(m.carbs * f * 10) / 10;
+        mealFat = Math.round(m.fat * f * 10) / 10;
+      }
       const meal: JournalMeal = {
         id: newMealId(),
         name: activeMealSlot,
         recipeTitle: result.name,
         time: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
-        calories: Math.round(result.macrosPer100g.calories * f),
-        protein: Math.round(result.macrosPer100g.protein * f * 10) / 10,
-        carbs: Math.round(result.macrosPer100g.carbs * f * 10) / 10,
-        fat: Math.round(result.macrosPer100g.fat * f * 10) / 10,
+        calories: mealCalories,
+        protein: mealProtein,
+        carbs: mealCarbs,
+        fat: mealFat,
         source,
         ...(Object.keys(micros).length > 0 ? { micros } : {}),
       };

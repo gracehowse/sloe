@@ -1367,11 +1367,22 @@ export async function getFoodMacros(
 export async function getFatSecretFood(
   foodId: string,
 ): Promise<{
-  macrosPer100g: MacrosPer100g;
+  /**
+   * Per-100g panel — null when FatSecret's `food.get` ships only a
+   * "1 serving" entry with no `metric_serving_amount` (e.g. McDonald's
+   * Big Mac). Caller should fall back to `macrosPerServing` in that
+   * case rather than invent a per-100g denominator.
+   */
+  macrosPer100g: MacrosPer100g | null;
+  /**
+   * 2026-05-06 — populated when `macrosPer100g` is null. Lets the
+   * caller commit a meal as "N × 1 serving" honestly.
+   */
+  macrosPerServing?: { calories: number; protein: number; carbs: number; fat: number } | null;
   /**
    * 2026-05-06 — Premier-tier per-100g panel (sat/poly/mono/trans fat,
    * cholesterol, calcium, iron, potassium). Empty / absent on Basic
-   * tier or when FatSecret didn't publish those fields for this food.
+   * tier, or when there's no metric grounding to scale by.
    */
   microsPer100g?: Record<string, number>;
   portions: FoodPortion[];
@@ -1395,8 +1406,13 @@ export async function getFatSecretFood(
       json.microsPer100g && typeof json.microsPer100g === "object"
         ? (json.microsPer100g as Record<string, number>)
         : undefined;
+    const macrosPerServing =
+      json.macrosPerServing && typeof json.macrosPerServing === "object"
+        ? (json.macrosPerServing as { calories: number; protein: number; carbs: number; fat: number })
+        : null;
     return {
-      macrosPer100g: json.macrosPer100g,
+      macrosPer100g: json.macrosPer100g ?? null,
+      ...(macrosPerServing ? { macrosPerServing } : {}),
       ...(microsPer100g ? { microsPer100g } : {}),
       portions,
       primaryPortion,

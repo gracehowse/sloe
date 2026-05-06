@@ -553,8 +553,25 @@ export default function ImportSharedScreen() {
       if (idx == null) return;
       setPendingRecipe((prev) => {
         if (!prev || !Array.isArray(prev.ingredientMacros)) return prev;
-        const grams = result.chosenPortion.gramWeight * result.quantity;
-        const scaled = scaleMacros(result.macrosPer100g, grams);
+        // 2026-05-06: per-serving-only FatSecret foods don't have a
+        // per-100g basis. Compute scaled macros from `macrosPerServing
+        // × quantity` directly when that's the case.
+        const isPerServingOnly =
+          result.macrosPer100g === null && Boolean(result.macrosPerServing);
+        const ps = result.macrosPerServing;
+        const q = result.quantity;
+        const grams = isPerServingOnly ? 0 : result.chosenPortion.gramWeight * result.quantity;
+        const scaled = isPerServingOnly && ps
+          ? {
+              calories: Math.round(ps.calories * q),
+              protein: Math.round(ps.protein * q * 10) / 10,
+              carbs: Math.round(ps.carbs * q * 10) / 10,
+              fat: Math.round(ps.fat * q * 10) / 10,
+              fiberG: 0,
+              sugarG: 0,
+              sodiumMg: 0,
+            }
+          : scaleMacros(result.macrosPer100g!, grams);
         const next = prev.ingredientMacros.map((row, i) =>
           i === idx
             ? {
