@@ -1383,6 +1383,12 @@ export default function RecipeDetailScreen() {
     topBarActions: { flexDirection: "row", alignItems: "center", gap: 2 },
 
     // Tag pill row under the hero.
+    // 2026-05-06 (Grace) — paddingVertical:5 + fontSize:12 with no
+    // minHeight let descenders touch the pill border (same squish
+    // pattern Library + Discover already had). Bumped to
+    // paddingVertical:8 + minHeight:32 + justifyContent:center so
+    // the text sits in the optical centre of the pill, matching the
+    // canonical filter-pill geometry across the app.
     tagRow: {
       flexDirection: "row",
       flexWrap: "wrap",
@@ -1391,12 +1397,15 @@ export default function RecipeDetailScreen() {
       paddingTop: Spacing.md,
     },
     tagPill: {
-      paddingHorizontal: 10,
-      paddingVertical: 5,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      minHeight: 32,
       borderRadius: 999,
       backgroundColor: colors.border,
+      justifyContent: "center",
+      alignItems: "center",
     },
-    tagPillText: { fontSize: 12, fontWeight: "600", color: colors.textSecondary },
+    tagPillText: { fontSize: 12, lineHeight: 16, fontWeight: "600", color: colors.textSecondary },
     tagPillPrimary: { backgroundColor: Accent.primary + "22" },
     tagPillTextPrimary: { color: Accent.primary },
 
