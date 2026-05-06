@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { rateLimit } from "@/lib/server/rateLimit";
 import { getUserIdFromRequest, getUserTier } from "@/lib/supabase/serverAnonClient";
 import { verifyIngredients, parseRawIngredients } from "@/lib/nutrition/verifyIngredients";
+import { importErrorResponse } from "@/lib/recipes/importErrorCopy";
 
 export const runtime = "nodejs";
 
@@ -14,54 +15,50 @@ const MAX_BYTES = 6 * 1024 * 1024;
 export async function POST(req: Request) {
   const userId = await getUserIdFromRequest(req);
   if (!userId) {
-    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+    return NextResponse.json(importErrorResponse("unauthorized"), { status: 401 });
   }
 
   const tier = await getUserTier(userId);
   if (tier === "free") {
-    return NextResponse.json({ ok: false, error: "pro_required", message: "Image import is a Pro feature." }, { status: 403 });
+    return NextResponse.json(importErrorResponse("pro_required"), { status: 403 });
   }
 
   // P0-6 (2026-04-25): per-user scoping; renamed prefix for parity.
   const limited = await rateLimit({ keyPrefix: "api:recipe-import-image", userId, limit: 15, windowMs: 60_000 });
   if (!limited.ok) {
     return NextResponse.json(
-      { ok: false, error: "rate_limited", retryAfterSec: limited.retryAfterSec },
+      { ...importErrorResponse("rate_limited"), retryAfterSec: limited.retryAfterSec },
       { status: 429, headers: { "Retry-After": String(limited.retryAfterSec) } },
     );
   }
 
   const key = process.env.OPENAI_API_KEY?.trim();
   if (!key) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error: "openai_not_configured",
-        message: "Set OPENAI_API_KEY on the server to enable image recipe import.",
-      },
-      { status: 503 },
-    );
+    return NextResponse.json(importErrorResponse("openai_not_configured"), { status: 503 });
   }
 
   const ct = req.headers.get("content-type") ?? "";
   if (!ct.toLowerCase().includes("multipart/form-data")) {
-    return NextResponse.json({ ok: false, error: "expected_multipart" }, { status: 400 });
+    return NextResponse.json(importErrorResponse("expected_multipart"), { status: 400 });
   }
 
   let form: FormData;
   try {
     form = await req.formData();
   } catch {
-    return NextResponse.json({ ok: false, error: "invalid_body" }, { status: 400 });
+    return NextResponse.json(importErrorResponse("invalid_body"), { status: 400 });
   }
 
   const file = form.get("image");
   if (!(file instanceof File)) {
-    return NextResponse.json({ ok: false, error: "missing_image" }, { status: 400 });
+    return NextResponse.json(importErrorResponse("missing_image"), { status: 400 });
   }
 
   if (file.size > MAX_BYTES) {
-    return NextResponse.json({ ok: false, error: "file_too_large", maxBytes: MAX_BYTES }, { status: 413 });
+    return NextResponse.json(
+      { ...importErrorResponse("file_too_large"), maxBytes: MAX_BYTES },
+      { status: 413 },
+    );
   }
 
   const buf = Buffer.from(await file.arrayBuffer());
@@ -104,11 +101,20 @@ Rules:
   });
 
   if (!res.ok) {
-    const errText = await res.text().catch(() => "");
-    return NextResponse.json(
-      { ok: false, error: "openai_http_error", status: res.status, detail: errText.slice(0, 500) },
-      { status: 502 },
-    );
+    // Drain the body so the connection can be released. Don't echo
+    // the upstream error text to the client — it would leak vendor
+    // names + raw status. Audit I01 (2026-05-05).
+    void res.text().catch(() => "");
+    // 429 from upstream is a vendor rate-limit; surface the calmer
+    // copy so users know to retry. All other failures collapse to
+    // the generic "couldn't read that image" copy.
+    if (res.status === 429) {
+      return NextResponse.json(
+        importErrorResponse("ai_rate_limited"),
+        { status: 429, headers: { "Retry-After": "30" } },
+      );
+    }
+    return NextResponse.json(importErrorResponse("openai_http_error"), { status: 502 });
   }
 
   const data = (await res.json()) as {
@@ -119,10 +125,9 @@ Rules:
   try {
     parsed = JSON.parse(raw) as typeof parsed;
   } catch {
-    return NextResponse.json(
-      { ok: false, error: "unparseable_model_output", raw: raw.slice(0, 2000) },
-      { status: 502 },
-    );
+    // Don't echo `raw` — model output occasionally contains chunks of
+    // the prompt or vendor identifiers (audit I01, 2026-05-05).
+    return NextResponse.json(importErrorResponse("unparseable_model_output"), { status: 502 });
   }
 
   const ingredients = Array.isArray(parsed.ingredients)

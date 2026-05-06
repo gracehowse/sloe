@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { classifyMealType } from "@/lib/recipe-import/classifyMealType";
 import { parseRecipeFromHtml, siteNameFromUrl } from "@/lib/recipe-import/parseRecipeFromHtml";
 import {
+  CaptionExtractionError,
   detectSocialPlatform,
   fetchSocialPostMeta,
   extractRecipeFromCaption,
@@ -14,6 +15,7 @@ import { verifyIngredients, parseRawIngredients } from "@/lib/nutrition/verifyIn
 import { extractCaptionNutrition } from "@/lib/recipe-import/extractCaptionNutrition";
 import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
 import { normaliseSource } from "@/lib/recipes/persistSourceAttribution";
+import { importErrorResponse } from "@/lib/recipes/importErrorCopy";
 
 /** Block private/reserved IP ranges to prevent SSRF attacks. */
 function isPrivateHost(hostname: string): boolean {
@@ -360,14 +362,32 @@ export async function POST(req: Request) {
       const safeTitle =
         recipe.title ?? sanitiseImportedTitle(meta.title) ?? "Imported recipe";
 
+      // Audit I03 (2026-05-05) — filter empty / whitespace-only entries
+      // before the empty-recipe check is meaningful. The LLM occasionally
+      // emits `[""]` which is truthy on `.length` but renders as a blank
+      // line in the saved recipe.
+      const filteredIngredients = recipe.ingredients.filter(
+        (s) => typeof s === "string" && s.trim().length > 0,
+      );
+      const filteredSteps = recipe.steps.filter(
+        (s) => typeof s === "string" && s.trim().length > 0,
+      );
+
       return NextResponse.json({
         ok: true,
         source: socialPlatform,
+        // Audit I05 (2026-05-05) — surface whether the image was
+        // actually analysed, vs the silent text-only fallback that
+        // OpenAI's CDN-rejection branch produces. `false` means the
+        // recipe was extracted from caption alone even though an image
+        // was supplied. Mobile/web previews flag this so users can
+        // judge confidence.
+        imageUsed: recipe.imageUsed,
         recipe: {
           title: safeTitle,
           description: null,
-          ingredients: recipe.ingredients,
-          instructions: recipe.steps,
+          ingredients: filteredIngredients,
+          instructions: filteredSteps,
           servings,
           prepTimeMin: recipe.prepTimeMin ?? null,
           cookTimeMin: recipe.cookTimeMin ?? null,
@@ -616,17 +636,26 @@ export async function POST(req: Request) {
       );
     }
   } catch (e) {
+    // Audit I02 (2026-05-05) — preserve AI-side rate-limit signal so
+    // clients can read `Retry-After` and surface a countdown, instead
+    // of flattening every CaptionExtractionError into "import_failed".
+    if (e instanceof CaptionExtractionError) {
+      const status = e.code === "ai_rate_limited" ? 429 : 502;
+      const headers: Record<string, string> = {};
+      if (e.retryAfterSec != null) headers["Retry-After"] = String(e.retryAfterSec);
+      else if (e.code === "ai_rate_limited") headers["Retry-After"] = "30";
+      console.error("[recipe-import] extractor failed:", e.code, e.upstreamStatus);
+      return NextResponse.json(importErrorResponse(e.code), { status, headers });
+    }
     const msg = e instanceof Error ? e.message : "unknown";
     if (msg.includes("abort")) {
-      return NextResponse.json(
-        { ok: false, error: "timeout", message: "The recipe page took too long to load. The site may be slow or blocking imports. Try again, or paste the recipe manually." },
-        { status: 504 },
-      );
+      return NextResponse.json(importErrorResponse("timeout"), { status: 504 });
     }
-    return NextResponse.json(
-      { ok: false, error: "import_failed", message: `Import failed: ${msg}. Try a different URL or paste ingredients manually.` },
-      { status: 502 },
-    );
+    // Audit I01 (2026-05-05) — never echo `${msg}` to the user; raw
+    // error strings have leaked vendor names and HTTP status. Log
+    // for telemetry, return central copy.
+    console.error("[recipe-import] failed:", msg);
+    return NextResponse.json(importErrorResponse("import_failed"), { status: 502 });
   } finally {
     clearTimeout(t);
   }
