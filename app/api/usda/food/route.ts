@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { fdcConfigFromEnv, fdcFoodGet } from "@/lib/usda/fdcClient";
-import { fdcFoodMacrosPer100g } from "@/lib/nutrition/usdaNormalize";
+import { fdcFoodMacrosPer100g, fdcFoodMicrosPer100g } from "@/lib/nutrition/usdaNormalize";
 import { rateLimit } from "@/lib/server/rateLimit";
 import { misconfiguredUsdaResponse } from "@/lib/server/serverEnv";
 import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
@@ -39,6 +39,10 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: "not_found", message: "Food not found." }, { status: 404 });
     }
     const macrosPer100g = fdcFoodMacrosPer100g(food);
+    // 2026-05-06: extract the wider micro panel so the meal-detail
+    // "Vitamins, minerals & more" surface populates for USDA-sourced
+    // logs. Empty object → caller treats as "USDA didn't publish".
+    const microsPer100g = fdcFoodMicrosPer100g(food);
 
     // F-88 (2026-04-25) — strip out USDA "standard serving" rows
     // (NLEA / household reference / undetermined) that look like
@@ -89,6 +93,7 @@ export async function GET(req: Request) {
       fdcId,
       description: food.description,
       macrosPer100g,
+      ...(Object.keys(microsPer100g).length > 0 ? { microsPer100g } : {}),
       portions,
       ...(primaryPortion ? { primaryPortion } : {}),
     });

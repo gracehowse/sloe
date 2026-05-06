@@ -55,6 +55,39 @@ function findAmount(food: FdcFood, matcher: (name: string) => boolean): { amount
   return null;
 }
 
+/**
+ * Same as `findAmount` but matches by USDA nutrient *number* (the
+ * stable id, e.g. `"301"` for Calcium). USDA names are inconsistent
+ * across SR Legacy / Foundation / Branded (e.g. "Iron, Fe" vs "Iron"),
+ * but the nutrient number is canonical, so the micro extractor pins
+ * by number first and only falls back to name when no number-match is
+ * found.
+ */
+function findAmountByNumber(
+  food: FdcFood,
+  num: string,
+  nameFallback?: (name: string) => boolean,
+): { amount: number; unit: string } | null {
+  const list = food.foodNutrients ?? [];
+  for (const n of list) {
+    const candidate = String(n.nutrient?.number ?? "").trim();
+    if (candidate === num) {
+      const { unit, amount } = nutrientLabel(n);
+      return { amount, unit };
+    }
+  }
+  if (nameFallback) return findAmount(food, nameFallback);
+  return null;
+}
+
+function toMcg(amount: number, unit: string): number {
+  const u = unit.toLowerCase();
+  if (u === "µg" || u === "ug" || u === "mcg") return amount;
+  if (u === "mg") return amount * 1000;
+  if (u === "g") return amount * 1_000_000;
+  return amount;
+}
+
 function toGrams(amount: number, unit: string): number {
   const u = unit.toLowerCase();
   if (u === "g") return amount;
@@ -113,5 +146,103 @@ export function fdcFoodMacrosPer100g(food: FdcFood): VerifiedMacros {
         ? Math.max(0, toGrams(alcohol.amount, alcohol.unit ?? "g"))
         : null,
   };
+}
+
+/**
+ * Extract the per-100g micronutrient panel from a USDA FDC food into
+ * the canonical `nutrition_micros` shape (same key set as
+ * `parseOffMicrosPer100g` and `MICRO_LINES`).
+ *
+ * Why per-100g? USDA FDC always returns nutrients on a per-100g basis
+ * (canonical FDC convention). The downstream `scaleMicrosForGrams`
+ * helper scales this map by `grams / 100` at log time.
+ *
+ * Lookup is by USDA nutrient *number* first (stable across data types),
+ * with name-match fallbacks for the rare row that ships only the name.
+ * Zero / non-finite values are dropped — never invent.
+ *
+ * 2026-05-06: TestFlight feedback — every USDA-sourced meal showed
+ * "USDA FoodData Central did not publish vitamin or mineral data".
+ * Diagnosis: only the macro extractor (`fdcFoodMacrosPer100g`) was
+ * being called; the micro panel was discarded. This extractor + the
+ * route/client/UI plumbing closes that gap.
+ */
+export function fdcFoodMicrosPer100g(food: FdcFood): Record<string, number> {
+  const out: Record<string, number> = {};
+
+  function emit(key: string, raw: number | null | undefined, decimals: number): void {
+    if (raw == null || !Number.isFinite(raw) || raw <= 0) return;
+    const factor = 10 ** decimals;
+    const rounded = Math.round(raw * factor) / factor;
+    if (rounded > 0) out[key] = rounded;
+  }
+
+  // Convenience wrappers — read the curated nutrient and convert to
+  // the canonical unit before emit.
+  function readG(key: string, num: string, names: string[], decimals = 1): void {
+    const r = findAmountByNumber(food, num, (n) => names.some((x) => n.includes(x)));
+    if (!r) return;
+    emit(key, toGrams(r.amount, r.unit ?? "g"), decimals);
+  }
+  function readMg(key: string, num: string, names: string[], decimals = 1): void {
+    const r = findAmountByNumber(food, num, (n) => names.some((x) => n.includes(x)));
+    if (!r) return;
+    emit(key, toMg(r.amount, r.unit ?? "mg"), decimals);
+  }
+  function readMcg(key: string, num: string, names: string[], decimals = 0): void {
+    const r = findAmountByNumber(food, num, (n) => names.some((x) => n.includes(x)));
+    if (!r) return;
+    emit(key, toMcg(r.amount, r.unit ?? "µg"), decimals);
+  }
+
+  // Macros that double as micros (already in macros block too — emit
+  // here so OFF/Edamam/USDA paths produce a uniform map).
+  readG("fiberG", "291", ["fiber"], 1);
+  readG("sugarG", "269", ["sugars, total", "sugars"], 1);
+  readMg("sodiumMg", "307", ["sodium, na", "sodium"], 0);
+
+  // Fat breakdown.
+  readG("saturatedFatG", "606", ["fatty acids, total saturated", "saturated"], 1);
+  readG("monoFatG", "645", ["fatty acids, total monounsaturated", "monounsaturated"], 1);
+  readG("polyFatG", "646", ["fatty acids, total polyunsaturated", "polyunsaturated"], 1);
+  readG("transFatG", "605", ["fatty acids, total trans", "trans"], 1);
+
+  // Cholesterol.
+  readMg("cholesterolMg", "601", ["cholesterol"], 0);
+
+  // Major minerals.
+  readMg("calciumMg", "301", ["calcium"], 0);
+  readMg("ironMg", "303", ["iron"], 1);
+  readMg("magnesiumMg", "304", ["magnesium"], 0);
+  readMg("phosphorusMg", "305", ["phosphorus"], 0);
+  readMg("potassiumMg", "306", ["potassium"], 0);
+  readMg("zincMg", "309", ["zinc"], 1);
+  readMg("copperMg", "312", ["copper"], 2);
+  readMg("manganeseMg", "315", ["manganese"], 2);
+
+  // Trace minerals (mcg).
+  readMcg("seleniumMcg", "317", ["selenium"], 0);
+  readMcg("iodineMcg", "314", ["iodine"], 0);
+
+  // B vitamins.
+  readMg("thiaminMg", "404", ["thiamin"], 2);
+  readMg("riboflavinMg", "405", ["riboflavin"], 2);
+  readMg("niacinMg", "406", ["niacin"], 1);
+  readMg("pantothenicAcidMg", "410", ["pantothenic"], 2);
+  readMg("vitaminB6Mg", "415", ["vitamin b-6", "vitamin b6"], 2);
+  readMcg("biotinMcg", "416", ["biotin"], 0);
+  readMcg("folateMcg", "435", ["folate, dfe"], 0);
+  // Folate fallback: use raw "folate, total" (id 417) when DFE missing.
+  if (!out.folateMcg) readMcg("folateMcg", "417", ["folate, total"], 0);
+  readMcg("vitaminB12Mcg", "418", ["vitamin b-12", "vitamin b12"], 1);
+
+  // Other vitamins.
+  readMg("vitaminCMg", "401", ["vitamin c"], 1);
+  readMcg("vitaminDMcg", "328", ["vitamin d (d2 + d3)", "vitamin d"], 1);
+  readMg("vitaminEMg", "323", ["vitamin e (alpha-tocopherol)", "vitamin e"], 1);
+  readMcg("vitaminKMcg", "430", ["vitamin k (phylloquinone)", "vitamin k"], 1);
+  readMcg("vitaminAMcgRae", "320", ["vitamin a, rae"], 0);
+
+  return out;
 }
 

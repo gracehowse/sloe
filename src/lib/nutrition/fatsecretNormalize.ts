@@ -37,6 +37,67 @@ export function pickBestServing(serving: FatSecretServing | FatSecretServing[]):
 }
 
 /**
+ * Extract the per-100g micronutrient panel from a picked FatSecret
+ * serving. Premier-tier responses ship the wider panel
+ * (saturated/poly/mono/trans fat, cholesterol, potassium, calcium,
+ * iron); Basic responses don't, so most fields will be absent.
+ *
+ * Returns an empty object if `gramsPerServing` is non-positive (no
+ * metric grounding to scale by), or if every Premier field is absent.
+ *
+ * 2026-05-06: TestFlight feedback — FatSecret-sourced meals showed
+ * "FatSecret did not publish vitamin or mineral data" because the
+ * food route never plumbed micros through. This extractor closes that
+ * gap. Vitamins (A/C/D) are intentionally skipped — FatSecret returns
+ * them in inconsistent units across response shapes, so we'd risk
+ * fabricated mcg-vs-IU values.
+ */
+export function fatSecretServingMicrosPer100g(
+  s: FatSecretServing,
+  gramsPerServing: number,
+): Record<string, number> {
+  if (!gramsPerServing || gramsPerServing <= 0) return {};
+  const factor = 100 / gramsPerServing;
+  const out: Record<string, number> = {};
+
+  function emit(key: string, perServing: number, decimals: number): void {
+    if (!Number.isFinite(perServing) || perServing <= 0) return;
+    const per100 = perServing * factor;
+    if (!Number.isFinite(per100) || per100 <= 0) return;
+    const f = 10 ** decimals;
+    const rounded = Math.round(per100 * f) / f;
+    if (rounded > 0) out[key] = rounded;
+  }
+
+  // Macros that double as micros — keeps the map shape uniform with
+  // OFF/USDA so the meal-detail panel renders fiber/sugar/sodium
+  // rows from FatSecret too.
+  emit("fiberG", num(s.fiber), 1);
+  emit("sugarG", num(s.sugar), 1);
+  emit("sodiumMg", num(s.sodium), 0);
+
+  // Fat breakdown — grams (Premier).
+  emit("saturatedFatG", num(s.saturated_fat), 1);
+  emit("monoFatG", num(s.monounsaturated_fat), 1);
+  emit("polyFatG", num(s.polyunsaturated_fat), 1);
+  emit("transFatG", num(s.trans_fat), 1);
+
+  // Cholesterol + minerals — mg (Premier).
+  emit("cholesterolMg", num(s.cholesterol), 0);
+  emit("potassiumMg", num(s.potassium), 0);
+  emit("calciumMg", num(s.calcium), 0);
+  emit("ironMg", num(s.iron), 1);
+
+  // Vitamins (A / C / D) — intentionally NOT emitted. FatSecret
+  // returns these in inconsistent units (sometimes %DV, sometimes
+  // raw IU/mcg/mg) and the canonical micro keys expect specific
+  // units (mcg RAE for A, mg for C, mcg for D). Emitting without
+  // unit certainty would produce wrong numbers.
+
+  return out;
+}
+
+/**
  * Extract gram weight from a FatSecret serving.
  * Tries metric fields first, then parses the serving_description
  * (e.g. "1 cup", "2 oz") using measureToGrams as fallback.

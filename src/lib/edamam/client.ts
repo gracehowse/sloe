@@ -138,6 +138,38 @@ export function edamamFoodMacrosPer100g(food: EdamamFoodHit["food"]): {
   };
 }
 
+/**
+ * Extract the per-100g micronutrient panel from an Edamam food hit.
+ *
+ * Edamam Food Database (`/parser`) is intentionally minimal — the
+ * `nutrients` block on a hit only carries
+ * `ENERC_KCAL/PROCNT/FAT/CHOCDF/FIBTG/SUGAR/NA`. There is no fat
+ * breakdown, no cholesterol, no vitamins, no minerals beyond sodium.
+ *
+ * So this extractor only emits `fiberG/sugarG/sodiumMg` — the meal
+ * detail panel will still show the empty-state copy ("Edamam did not
+ * publish vitamin or mineral data") because that's accurate: Edamam
+ * Food Database genuinely does not publish them on this endpoint.
+ * The richer `Nutrition Analysis` API does, but it's a separate
+ * paid product and uses ingredient-line input, not food IDs.
+ */
+export function edamamFoodMicrosPer100g(
+  food: EdamamFoodHit["food"],
+): Record<string, number> {
+  const n = food.nutrients ?? {};
+  const out: Record<string, number> = {};
+  function emit(key: string, raw: number | undefined, decimals: number): void {
+    if (typeof raw !== "number" || !Number.isFinite(raw) || raw <= 0) return;
+    const f = 10 ** decimals;
+    const rounded = Math.round(raw * f) / f;
+    if (rounded > 0) out[key] = rounded;
+  }
+  emit("fiberG", n.FIBTG, 1);
+  emit("sugarG", n.SUGAR, 1);
+  emit("sodiumMg", n.NA, 0);
+  return out;
+}
+
 /* ────────────────────────────────────────────────────
  * Edamam Nutrition Analysis API — full recipe-level
  * analysis from a list of ingredient lines.

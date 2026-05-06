@@ -17,8 +17,8 @@
  *     flow again.
  *
  * Required env (in `.env.local`):
- *   FATSECRET_CONSUMER_KEY
- *   FATSECRET_CONSUMER_SECRET
+ *   FATSECRET_CLIENT_ID            (or legacy FATSECRET_CONSUMER_KEY)
+ *   FATSECRET_CLIENT_SECRET        (or legacy FATSECRET_CONSUMER_SECRET)
  *   FATSECRET_TIER=premier         (script aborts if not "premier")
  *   NEXT_PUBLIC_SUPABASE_URL  (or  SUPABASE_URL)
  *   SUPABASE_SERVICE_ROLE_KEY
@@ -71,8 +71,15 @@ const isCli =
 
 if (isCli) {
   loadDotEnv(resolve(REPO_ROOT, ".env.local"));
-  FATSECRET_CONSUMER_KEY = process.env.FATSECRET_CONSUMER_KEY;
-  FATSECRET_CONSUMER_SECRET = process.env.FATSECRET_CONSUMER_SECRET;
+  // Accept both the canonical OAuth 2.0 names and the legacy
+  // OAuth 1.0a names. Internal field names stay as
+  // CONSUMER_KEY/CONSUMER_SECRET because the OAuth 1.0a signing path
+  // below uses them as OAuth 1.0a consumer credentials when OAuth 2.0
+  // token exchange isn't available.
+  FATSECRET_CONSUMER_KEY =
+    process.env.FATSECRET_CLIENT_ID || process.env.FATSECRET_CONSUMER_KEY;
+  FATSECRET_CONSUMER_SECRET =
+    process.env.FATSECRET_CLIENT_SECRET || process.env.FATSECRET_CONSUMER_SECRET;
   supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
   SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const FATSECRET_TIER = process.env.FATSECRET_TIER;

@@ -99,6 +99,21 @@ describe("/api/fatsecret/search — auth + validation", () => {
     const json = await res.json();
     expect(json).toMatchObject({ ok: false, error: "server_misconfigured" });
   });
+
+  it("accepts canonical OAuth 2.0 env names (FATSECRET_CLIENT_ID/CLIENT_SECRET) without legacy ones", async () => {
+    // 2026-05-06 — pin the env-var rename. After dropping the legacy
+    // OAuth 1.0a-era CONSUMER_KEY/SECRET names, only the OAuth 2.0
+    // CLIENT_ID/CLIENT_SECRET pair must satisfy `hasFatSecretConfig()`.
+    vi.unstubAllEnvs();
+    vi.stubEnv("FATSECRET_CLIENT_ID", "k");
+    vi.stubEnv("FATSECRET_CLIENT_SECRET", "s");
+    fatSecretFoodSearchMock.mockResolvedValueOnce([]);
+    const GET = await loadRoute();
+    const res = await GET(makeReq("http://localhost/api/fatsecret/search?q=milk"));
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json).toEqual({ ok: true, hits: [], page: 1 });
+  });
 });
 
 describe("/api/fatsecret/search — result mapping", () => {

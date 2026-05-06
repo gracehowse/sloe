@@ -47,6 +47,18 @@
 
 import type { PrimaryServing } from "./primaryServing";
 
+/**
+ * Round macros to 1dp for the search-row preview strip. USDA Branded
+ * and Edamam often ship per-100g macros as raw floats (e.g.
+ * `7.967347722423224`); the search row renders them as
+ * `P {n}g`, so without rounding the row reads "P 7.967347722423224g".
+ * 1dp matches the food-card standard (see microNutrientDisplay.ts).
+ */
+function round1(n: number): number {
+  if (typeof n !== "number" || !Number.isFinite(n)) return 0;
+  return Math.round(n * 10) / 10;
+}
+
 export type FoodSearchMacroPreview = {
   calories: number;
   protein: number;
@@ -126,9 +138,9 @@ export function resolveFoodSearchHeadline(
       headlineKcal: primary.kcal,
       macros: {
         calories: primary.kcal,
-        protein: primary.protein,
-        carbs: primary.carbs,
-        fat: primary.fat,
+        protein: round1(primary.protein),
+        carbs: round1(primary.carbs),
+        fat: round1(primary.fat),
       },
       badge: FOOD_SEARCH_PER_SERVING_BADGE,
       servingLabel: `${primary.label} (${primary.grams} g)`,
@@ -148,10 +160,10 @@ export function resolveFoodSearchHeadline(
       mode: "per-100g",
       headlineKcal: Math.round(m!.calories),
       macros: {
-        calories: m!.calories,
-        protein: m!.protein,
-        carbs: m!.carbs,
-        fat: m!.fat,
+        calories: Math.round(m!.calories),
+        protein: round1(m!.protein),
+        carbs: round1(m!.carbs),
+        fat: round1(m!.fat),
       },
       badge: FOOD_SEARCH_PER_100G_BADGE,
     };
