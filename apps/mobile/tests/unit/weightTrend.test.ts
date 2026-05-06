@@ -196,6 +196,37 @@ describe("computeWeightTrend", () => {
     expect(typeof last).toBe("number");
   });
 
+  // 2026-05-06: smart bucket fallback. If the selected range would
+  // bucket data into <3 points (e.g. "1Y" range with only 30 days
+  // of weigh-ins → 1 monthly bucket), step down to a finer bucket
+  // (monthly → weekly → daily) so the chart still renders.
+  it("falls back from monthly to weekly when 1Y range has too few months of data", () => {
+    // 30 days of daily entries → 1 monthly bucket but ~5 weekly
+    // buckets, so weekly is the right fallback.
+    const pts = makePoints(30);
+    const r = computeWeightTrend(pts, "1y", null, BASE_ISO);
+    expect(r.bucket).toBe("weekly");
+    expect(r.points.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("falls back further to daily when even weekly is too sparse", () => {
+    // 10 days of daily entries → 1-2 weekly buckets, so must drop
+    // to daily for the chart to render.
+    const pts = makePoints(10);
+    const r = computeWeightTrend(pts, "1y", null, BASE_ISO);
+    expect(r.bucket).toBe("daily");
+    expect(r.points.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("does not fall back when raw data is also <3 points (sparse-state path)", () => {
+    // 2 entries total — even daily can't reach 3 points. Caller
+    // uses the bucket value to decide layout, so it shouldn't
+    // synthesise extra points.
+    const pts = makePoints(2);
+    const r = computeWeightTrend(pts, "1y", null, BASE_ISO);
+    expect(r.points.length).toBe(2);
+  });
+
   it("yDomain handles a 10000-point history without stack overflow (iterative min/max)", () => {
     // Math.min(...arr) rest-spread crashes on >~7000 args; the
     // iterative implementation must handle large histories cleanly.

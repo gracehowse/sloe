@@ -1893,7 +1893,15 @@ export default function ProgressScreen() {
             </View>
             <WeightRangeToggle value={weightChartRange} onChange={setWeightChartRange} />
             <View style={{ marginTop: 12 }}>
-              {weightChartTrend.points.length >= 3 ? (
+              {/*
+                2026-05-06: relaxed >=3 → >=2 so the chart renders a
+                line as soon as the user has two weigh-ins. The chart
+                code already handles low-count cases (no MA below 3
+                points), and the smart bucket fallback in
+                computeWeightTrend prevents long ranges from
+                collapsing short histories into <3 buckets.
+              */}
+              {weightChartTrend.points.length >= 2 ? (
                 <WeightChart trend={weightChartTrend} goalKg={goalWeightKg} />
               ) : (
                 <WeightSparseState
@@ -1902,7 +1910,7 @@ export default function ProgressScreen() {
                 />
               )}
             </View>
-            {weightChartTrend.points.length >= 3 && (
+            {weightChartTrend.points.length >= 2 && (
               <Text style={{ fontSize: 12, color: t.sub, marginTop: 6 }}>
                 {weightChartTrend.trendCopy} {weightChartTrend.sinceLabel}.
               </Text>
