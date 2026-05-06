@@ -592,6 +592,32 @@ export function extractCommentsFromHtml(html: string): string | null {
  * of service. Recipe extraction now runs from the caption (and any public
  * URL found in the caption) only.
  */
+/**
+ * Stable error class so route handlers can catch a vendor-side
+ * failure and surface it through the central import-error mapper
+ * instead of echoing the raw "OpenAI API error: 429" string at the
+ * user (audit I01 + I02, 2026-05-05). The `code` field is one of
+ * `ImportErrorCode`'s AI-side codes.
+ */
+export class CaptionExtractionError extends Error {
+  readonly code: "ai_rate_limited" | "ai_unavailable" | "ai_request_failed";
+  /** Upstream HTTP status, useful for telemetry (NOT shown to users). */
+  readonly upstreamStatus: number;
+  /** Suggested Retry-After seconds when the upstream returned one. */
+  readonly retryAfterSec: number | null;
+  constructor(args: {
+    code: "ai_rate_limited" | "ai_unavailable" | "ai_request_failed";
+    upstreamStatus: number;
+    retryAfterSec?: number | null;
+  }) {
+    super(args.code);
+    this.name = "CaptionExtractionError";
+    this.code = args.code;
+    this.upstreamStatus = args.upstreamStatus;
+    this.retryAfterSec = args.retryAfterSec ?? null;
+  }
+}
+
 export async function extractRecipeFromCaption(
   caption: string,
   openaiKey: string,
@@ -604,6 +630,16 @@ export async function extractRecipeFromCaption(
   servings: number | null;
   prepTimeMin: number | null;
   cookTimeMin: number | null;
+  /**
+   * `false` when an `imageUrl` was provided but OpenAI rejected it
+   * and the function fell back to a text-only prompt. `true` when
+   * the image was actually used. `undefined` when no image was
+   * supplied. Audit I05 (2026-05-05) — the previous return shape
+   * gave callers no way to know the image was silently dropped, so
+   * the import preview claimed the recipe came from the image when
+   * it didn't.
+   */
+  imageUsed?: boolean;
 }> {
   const prompt = `You are extracting a recipe from a social media post caption.
 
@@ -659,7 +695,10 @@ Rules:
   });
 
   // If the image URL is invalid/expired (common with Instagram CDN URLs),
-  // OpenAI returns 400. Retry without the image.
+  // OpenAI returns 400. Retry without the image. Track that we did so
+  // (audit I05, 2026-05-05) so callers can surface "image couldn't be
+  // analysed — text only" rather than silently degrade.
+  let imageUsed: boolean | undefined = imageUrl ? true : undefined;
   if (!res.ok && imageUrl) {
     const textOnlyBody = {
       ...body,
@@ -673,10 +712,26 @@ Rules:
       },
       body: JSON.stringify(textOnlyBody),
     });
+    if (res.ok) {
+      imageUsed = false;
+    }
   }
 
   if (!res.ok) {
-    throw new Error(`OpenAI API error: ${res.status}`);
+    // Drain the body so the connection releases. Don't echo upstream
+    // text — would leak vendor name + status to the user (audit I01).
+    void res.text().catch(() => "");
+    const retryAfterHeader = res.headers.get("Retry-After");
+    const retryAfterSec = retryAfterHeader
+      ? Math.max(1, Math.min(600, Number.parseInt(retryAfterHeader, 10) || 30))
+      : null;
+    if (res.status === 429) {
+      throw new CaptionExtractionError({ code: "ai_rate_limited", upstreamStatus: res.status, retryAfterSec });
+    }
+    if (res.status >= 500) {
+      throw new CaptionExtractionError({ code: "ai_unavailable", upstreamStatus: res.status, retryAfterSec });
+    }
+    throw new CaptionExtractionError({ code: "ai_request_failed", upstreamStatus: res.status, retryAfterSec });
   }
 
   const data = (await res.json()) as {
@@ -715,6 +770,7 @@ Rules:
       servings: typeof parsed.servings === "number" ? parsed.servings : null,
       prepTimeMin: prepFromModel ?? heur.prepTimeMin,
       cookTimeMin: cookFromModel ?? heur.cookTimeMin,
+      imageUsed,
     };
   } catch {
     const heur = parsePrepCookMinutesFromCaption(caption);
@@ -722,10 +778,15 @@ Rules:
       title: null,
       ingredients: [],
       steps: [],
-      notes: raw.slice(0, 500),
+      // Don't echo raw model output — past sanity check failures
+      // have included vendor identifiers / prompt fragments
+      // (audit I01, 2026-05-05). The notes panel was the surface
+      // where this leaked into recipe drafts.
+      notes: null,
       servings: null,
       prepTimeMin: heur.prepTimeMin,
       cookTimeMin: heur.cookTimeMin,
+      imageUsed,
     };
   }
 }

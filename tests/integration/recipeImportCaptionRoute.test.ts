@@ -184,7 +184,10 @@ describe("POST /api/recipe-import/caption", () => {
       );
       expect(res.status).toBe(422);
       const data = (await res.json()) as { error: string };
-      expect(data.error).toBe("no_recipe");
+      // 2026-05-05 (audit I01) — error code renamed from `no_recipe`
+      // to the more specific `no_recipe_extracted` to match the
+      // central import-error code map in `src/lib/recipes/importErrorCopy.ts`.
+      expect(data.error).toBe("no_recipe_extracted");
     });
 
     it("returns 200 with a normalised recipe when caption parses", async () => {

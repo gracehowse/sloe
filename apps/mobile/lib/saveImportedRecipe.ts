@@ -4,6 +4,10 @@ import { normaliseInstructions } from "../../../src/lib/recipes/normaliseInstruc
 import { normaliseSource } from "../../../src/lib/recipes/persistSourceAttribution";
 import { normalizeRecipeTitle } from "../../../src/lib/recipes/normalizeRecipeTitle";
 import { isStructuredSource } from "../../../src/lib/nutrition/structuredSourceGate";
+import {
+  IMPORT_ERROR_COPY,
+  mapPersistenceError,
+} from "../../../src/lib/recipes/importErrorCopy";
 
 /** Shape returned from `POST /api/recipe-import` (social + HTML paths). */
 export type ApiImportedRecipe = {
@@ -193,7 +197,11 @@ export async function saveImportedRecipe(
     .single();
 
   if (insErr || !row) {
-    return { error: insErr?.message ?? "Could not save recipe to your account." };
+    // Audit I01 (2026-05-05) — never echo `insErr.message`; Postgrest
+    // surfaces table names + RLS hints + JWT references in `.message`.
+    // Map to a stable code, render via the central copy table.
+    console.error("[saveImport] recipe insert failed:", insErr?.message ?? "no row returned");
+    return { error: IMPORT_ERROR_COPY[mapPersistenceError(insErr ?? null)] };
   }
 
   const recipeId = (row as { id: string }).id;
@@ -241,10 +249,22 @@ export async function saveImportedRecipe(
 
     const { error: ingErr } = await supabase.from("recipe_ingredients").insert(ingRows);
     if (ingErr) {
-      // Ingredient insert failed — delete the orphaned recipe to prevent inconsistent data
+      // Ingredient insert failed — delete the orphaned recipe to prevent
+      // inconsistent data. Audit I06 (2026-05-05): wrap the rollback in
+      // try/catch and log so a transient delete failure (rare RLS edge
+      // case, network blip) doesn't go silent.
       console.error("[saveImport] ingredient insert failed, rolling back recipe:", ingErr.message);
-      await supabase.from("recipes").delete().eq("id", recipeId);
-      return { error: `Failed to save ingredients: ${ingErr.message}` };
+      try {
+        const { error: rbErr } = await supabase.from("recipes").delete().eq("id", recipeId);
+        if (rbErr) {
+          console.error("[saveImport] rollback delete failed (orphan recipe row):", rbErr.message, "recipeId:", recipeId);
+        }
+      } catch (rbCaught) {
+        console.error("[saveImport] rollback delete threw (orphan recipe row):", rbCaught instanceof Error ? rbCaught.message : rbCaught, "recipeId:", recipeId);
+      }
+      // Audit I01 (2026-05-05) — `ingErr.message` may include the
+      // `recipe_ingredients` relation name + column names; map to copy.
+      return { error: IMPORT_ERROR_COPY[mapPersistenceError(ingErr)] };
     }
   }
 
@@ -262,7 +282,13 @@ export async function saveImportedRecipe(
         error: "Free plan is limited to 10 saved recipes. Upgrade to save more.",
       };
     }
-    return { error: saveErr.message ?? "Recipe saved but could not add to library." };
+    // Audit I01 (2026-05-05) — never echo `saveErr.message` directly.
+    // Postgrest leaks JWT / RLS / table names. The library-link save
+    // failure also leaves the recipe + ingredients persisted (audit
+    // I06 — half-saved state); the central code communicates the
+    // user can retry without surfacing internal error shapes.
+    console.error("[saveImport] saves-table insert failed:", saveErr.message, "recipeId:", recipeId);
+    return { error: IMPORT_ERROR_COPY[mapPersistenceError(saveErr)] };
   }
 
   return { recipeId };

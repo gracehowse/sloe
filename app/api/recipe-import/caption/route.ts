@@ -25,7 +25,9 @@ import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
 import { verifyIngredients, parseRawIngredients } from "@/lib/nutrition/verifyIngredients";
 import { classifyMealType } from "@/lib/recipe-import/classifyMealType";
 import { extractCaptionNutrition } from "@/lib/recipe-import/extractCaptionNutrition";
+import { CaptionExtractionError } from "@/lib/recipe-import/extractSocialRecipe";
 import { normaliseSource } from "@/lib/recipes/persistSourceAttribution";
+import { importErrorResponse } from "@/lib/recipes/importErrorCopy";
 
 export const maxDuration = 30;
 
@@ -53,7 +55,7 @@ export async function POST(req: Request) {
 
   const userId = await getUserIdFromRequest(req);
   if (!userId) {
-    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+    return NextResponse.json(importErrorResponse("unauthorized"), { status: 401 });
   }
 
   // Same per-user budget as the URL importer — caption parsing also burns
@@ -61,7 +63,7 @@ export async function POST(req: Request) {
   const rl = await rateLimit({ keyPrefix: "api:recipe-import:caption", userId, limit: 20, windowMs: 60_000 });
   if (!rl.ok) {
     return NextResponse.json(
-      { ok: false, error: "rate_limited", message: "Too many imports. Try again shortly." },
+      { ...importErrorResponse("rate_limited"), retryAfterSec: rl.retryAfterSec },
       { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } },
     );
   }
@@ -70,17 +72,14 @@ export async function POST(req: Request) {
   try {
     body = (await req.json()) as Payload;
   } catch {
-    return NextResponse.json({ ok: false, error: "invalid_json" }, { status: 400 });
+    return NextResponse.json(importErrorResponse("invalid_json"), { status: 400 });
   }
 
   const url = typeof body.url === "string" ? body.url.trim() : "";
   const captionText = typeof body.captionText === "string" ? body.captionText : "";
 
   if (!url) {
-    return NextResponse.json(
-      { ok: false, error: "invalid_url", message: "URL is required." },
-      { status: 400 },
-    );
+    return NextResponse.json(importErrorResponse("invalid_url"), { status: 400 });
   }
   const platform = detectSourcePlatform(url);
   if (!isCaptionTextPlatform(platform)) {
@@ -89,7 +88,7 @@ export async function POST(req: Request) {
       {
         ok: false,
         error: "wrong_platform",
-        message: "This URL doesn't need the caption path. Use /api/recipe-import instead.",
+        message: "This URL doesn't need the caption path. Use a regular link import instead.",
       },
       { status: 400 },
     );
@@ -100,7 +99,7 @@ export async function POST(req: Request) {
       {
         ok: false,
         error: "caption_too_long",
-        message: `Caption exceeds the ${MAX_CAPTION_LEN}-character cap.`,
+        message: `That caption is longer than ${MAX_CAPTION_LEN.toLocaleString()} characters. Trim it and try again.`,
       },
       { status: 413 },
     );
@@ -108,27 +107,12 @@ export async function POST(req: Request) {
 
   const trimmed = captionText.trim();
   if (trimmed.length < MIN_CAPTION_LEN) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error: "caption_too_short",
-        message:
-          "We couldn't read a recipe from the caption you shared. If the post used a video without text, try sharing one with a written caption.",
-      },
-      { status: 422 },
-    );
+    return NextResponse.json(importErrorResponse("caption_too_short"), { status: 422 });
   }
 
   const openaiKey = process.env.OPENAI_API_KEY?.trim();
   if (!openaiKey) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error: "openai_not_configured",
-        message: "Set OPENAI_API_KEY to enable caption import.",
-      },
-      { status: 503 },
-    );
+    return NextResponse.json(importErrorResponse("openai_not_configured"), { status: 503 });
   }
 
   let parsed;
@@ -141,34 +125,34 @@ export async function POST(req: Request) {
     });
   } catch (e) {
     if (e instanceof CaptionTooShortError) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: "caption_too_short",
-          message:
-            "We couldn't read a recipe from the caption you shared. Try sharing a post with a more detailed caption.",
-        },
-        { status: 422 },
-      );
+      return NextResponse.json(importErrorResponse("caption_too_short"), { status: 422 });
+    }
+    // Audit I02 (2026-05-05) — preserve the AI-side rate-limit signal
+    // so clients can read `Retry-After` and surface a countdown.
+    // Previously every CaptionExtractionError was flattened into
+    // `parse_failed`, hiding the upstream 429 from the user.
+    if (e instanceof CaptionExtractionError) {
+      const status = e.code === "ai_rate_limited" ? 429 : 502;
+      const headers: Record<string, string> = {};
+      if (e.retryAfterSec != null) headers["Retry-After"] = String(e.retryAfterSec);
+      else if (e.code === "ai_rate_limited") headers["Retry-After"] = "30";
+      console.error("[recipe-import:caption] extractor failed:", e.code, e.upstreamStatus);
+      return NextResponse.json(importErrorResponse(e.code), { status, headers });
     }
     const msg = e instanceof Error ? e.message : "unknown";
     console.error("[recipe-import:caption] parse failed:", msg);
-    return NextResponse.json(
-      { ok: false, error: "parse_failed", message: "Couldn't extract a recipe from this caption." },
-      { status: 502 },
-    );
+    return NextResponse.json(importErrorResponse("ai_request_failed"), { status: 502 });
   }
 
+  // Audit I03 (2026-05-05) — filter empty / whitespace-only entries
+  // before the empty-recipe check. The LLM occasionally emits
+  // `[""]` or `["  "]` which is truthy on `.length` but renders as
+  // a blank line in the user-visible recipe.
+  parsed.ingredients = parsed.ingredients.filter((s) => typeof s === "string" && s.trim().length > 0);
+  parsed.instructions = parsed.instructions.filter((s) => typeof s === "string" && s.trim().length > 0);
+
   if (parsed.ingredients.length === 0 && parsed.instructions.length === 0) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error: "no_recipe",
-        message:
-          "This caption doesn't appear to contain a recipe. Try sharing a different post or paste ingredients manually.",
-      },
-      { status: 422 },
-    );
+    return NextResponse.json(importErrorResponse("no_recipe_extracted"), { status: 422 });
   }
 
   const servings = parsed.servings ?? 1;

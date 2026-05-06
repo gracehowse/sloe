@@ -29,6 +29,11 @@ import { splitPastedIngredientLines } from "../../lib/recipe-ingredients/splitPa
 import { ingredientVerifyNeedsReview } from "../../lib/nutrition/verifyConfidencePolicy.ts";
 import { stripSectionPrefix } from "../../lib/recipe-import/extractSocialRecipe.ts";
 import {
+  IMPORT_ERROR_COPY,
+  mapPersistenceError,
+  userFacingImportError,
+} from "../../lib/recipes/importErrorCopy.ts";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -585,7 +590,9 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
         .eq("id", id)
         .maybeSingle();
       if (rErr || !row) {
-        toast.error(rErr?.message ?? "Could not load recipe.");
+        // Audit I01 (2026-05-05) — Postgrest leak (table/RLS/JWT).
+        console.error("[RecipeUpload] load recipe failed:", rErr?.message ?? "no row");
+        toast.error(rErr ? IMPORT_ERROR_COPY[mapPersistenceError(rErr)] : "Could not load recipe.");
         return;
       }
       setRecipeId(row.id as string);
@@ -609,7 +616,9 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
         .eq("recipe_id", id)
         .order("created_at", { ascending: true });
       if (iErr) {
-        toast.error(iErr.message);
+        // Audit I01 (2026-05-05) — Postgrest leak.
+        console.error("[RecipeUpload] load ingredients failed:", iErr.message);
+        toast.error(IMPORT_ERROR_COPY[mapPersistenceError(iErr)]);
         return;
       }
       if (ings?.length) {
@@ -774,7 +783,10 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
         });
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Verification failed");
+      // Audit I01 (2026-05-05) — sanitise via central mapper so any
+      // Postgrest / vendor leak in the thrown Error is stripped.
+      console.error("[RecipeUpload] verify failed:", e instanceof Error ? e.message : e);
+      toast.error(userFacingImportError(e));
     } finally {
       setVerifying(false);
     }
@@ -880,7 +892,10 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
         },
       );
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Verification failed");
+      // Audit I01 (2026-05-05) — sanitise via central mapper so any
+      // Postgrest / vendor leak in the thrown Error is stripped.
+      console.error("[RecipeUpload] verify failed:", e instanceof Error ? e.message : e);
+      toast.error(userFacingImportError(e));
     } finally {
       setVerifying(false);
     }
@@ -934,7 +949,10 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
     try {
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       if (sessionError) {
-        toast.error(sessionError.message);
+        // Audit I01 (2026-05-05) — Supabase auth errors include JWT
+        // refs; never echo `.message` directly.
+        console.error("[RecipeUpload] getSession failed:", sessionError.message);
+        toast.error("Please sign in again.");
         return;
       }
       const uid = sessionData.session?.user.id ?? null;
@@ -1090,7 +1108,9 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
         .single();
 
       if (recipeError) {
-        toast.error(recipeError.message);
+        // Audit I01 (2026-05-05) — Postgrest leak.
+        console.error("[RecipeUpload] upsert recipe failed:", recipeError.message);
+        toast.error(IMPORT_ERROR_COPY[mapPersistenceError(recipeError)]);
         return;
       }
 
@@ -1101,7 +1121,9 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
       // Replace ingredient rows (simple and reliable for Phase 0).
       const { error: deleteError } = await supabase.from("recipe_ingredients").delete().eq("recipe_id", id);
       if (deleteError) {
-        toast.error(deleteError.message);
+        // Audit I01 (2026-05-05) — Postgrest leak.
+        console.error("[RecipeUpload] delete ingredients failed:", deleteError.message);
+        toast.error(IMPORT_ERROR_COPY[mapPersistenceError(deleteError)]);
         return;
       }
 
@@ -1144,7 +1166,9 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
 
       const { error: insertError } = await supabase.from("recipe_ingredients").insert(inserts);
       if (insertError) {
-        toast.error(insertError.message);
+        // Audit I01 (2026-05-05) — Postgrest leak.
+        console.error("[RecipeUpload] insert ingredients failed:", insertError.message);
+        toast.error(IMPORT_ERROR_COPY[mapPersistenceError(insertError)]);
         return;
       }
 

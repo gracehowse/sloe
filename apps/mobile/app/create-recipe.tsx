@@ -35,6 +35,11 @@ import { decodeEntities } from "@/lib/decodeEntities";
 import { supabase } from "@/lib/supabase";
 import { authedFetch } from "@/lib/authedFetch";
 import { getSupprApiBase } from "@/lib/supprWeb";
+import {
+  IMPORT_ERROR_COPY,
+  mapPersistenceError,
+  userFacingImportError,
+} from "../../../src/lib/recipes/importErrorCopy";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "../../../src/lib/analytics/events";
 import FoodSearchModal, { type SelectedFood } from "@/components/FoodSearchModal";
@@ -308,7 +313,10 @@ export default function CreateRecipeScreen() {
         apply("replace");
       }
     } catch (e) {
-      Alert.alert("Error", e instanceof Error ? e.message : "Match failed");
+      // Audit I01 (2026-05-05) — sanitise via central mapper so any
+      // Postgrest / vendor leak in the thrown Error is stripped.
+      console.error("[create-recipe] bulk match failed:", e instanceof Error ? e.message : e);
+      Alert.alert("Error", userFacingImportError(e));
     } finally {
       setBulkMatching(false);
     }
@@ -554,7 +562,10 @@ export default function CreateRecipeScreen() {
         .single();
 
       if (insErr || !row) {
-        Alert.alert("Error", insErr?.message ?? "Could not save recipe.");
+        // Audit I01 (2026-05-05) — never echo `insErr.message`;
+        // Postgrest leaks table names + JWT + RLS hints.
+        console.error("[create-recipe] insert failed:", insErr?.message ?? "no row");
+        Alert.alert("Error", IMPORT_ERROR_COPY[mapPersistenceError(insErr ?? null)]);
         setSaving(false);
         return;
       }
