@@ -34,7 +34,7 @@ import { useSavedLibraryRecipes, useSavedRecipes } from "@/lib/recipes";
 import { RecipeCardImage } from "@/components/library/RecipeCardImage";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
-import { Accent, MacroColors, Spacing, Radius, Type } from "@/constants/theme";
+import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import type { RecipeCard } from "@/lib/types";
 import {
   LIBRARY_FILTER_PILLS,
@@ -265,7 +265,14 @@ export default function LibraryScreen() {
      // padding stays at 14 (== Spacing.sm + Spacing.xs) which already
      // satisfies the brief floor; the squish was vertical.
     filterPill: {
-      paddingHorizontal: 14,
+      // 2026-05-06 (Grace) — shrunk paddingHorizontal 14 → 11 so
+      // the 4 most-used pills (All / Saved / High-Protein / Quick)
+      // fit a 393pt iPhone width without "Quick" clipping at the
+      // trailing edge. With Type.body (14pt) the row was ~454pt,
+      // wider than every iPhone except Pro Max — so "Quick" always
+      // sat half-off-screen. Vertical geometry (paddingVertical:8 +
+      // minHeight:32) preserved.
+      paddingHorizontal: 11,
       paddingVertical: 8,
       minHeight: 32,
       borderRadius: 999,
@@ -280,11 +287,13 @@ export default function LibraryScreen() {
       borderColor: Accent.primary,
     },
     filterPillText: {
-      // Type.body (14/20) — brief said use `Type.caption` or
-      // `Type.body`; body wins for readability of count suffixes
-      // ("All · 21" needs to stay legible at thumb-glance distance).
-      fontSize: Type.body.fontSize,
-      lineHeight: Type.body.lineHeight,
+      // 2026-05-06 (Grace): dropped from Type.body (14/20) to a
+      // dedicated 13/18 so "Quick" doesn't get clipped at the
+      // screen edge on a stock 393pt iPhone. Still well above the
+      // legibility floor — "All · 21" reads cleanly at thumb-glance
+      // distance.
+      fontSize: 13,
+      lineHeight: 18,
       fontWeight: "600",
       color: colors.text,
     },
