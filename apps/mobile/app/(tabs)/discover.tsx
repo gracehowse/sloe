@@ -640,14 +640,13 @@ export default function DiscoverScreen() {
             user explicit "more pills off the right" affordance, and
             `numberOfLines={1}` prevents any single pill text from
             wrapping to two lines on narrow devices. */}
-        {/* 2026-05-06 (Grace) — was visually squished: paddingVertical:6
-            with no minHeight let `fontSize:11` descenders touch the
-            border, and `paddingRight:24` left the trailing "Low Carb"
-            pill flush against the screen edge. Now matches the Library
-            row geometry: paddingVertical:8 + minHeight:32 +
-            justifyContent:center for vertical breathing room, and
-            paddingRight:32 so the trailing pill keeps an obvious
-            scroll-headroom on the right. */}
+        {/* 2026-05-06 (Grace) — canonical filter-pill geometry shared
+            with Library: paddingHorizontal:13 + paddingVertical:8 +
+            minHeight:36 + lineHeight:18 so descenders ("Q" in Quick,
+            "g" in High-Protein) sit fully inside the pill body
+            instead of clipping at the bottom border. paddingRight:32
+            on the contentContainer keeps the trailing pill from
+            sitting flush against the screen edge. */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -661,7 +660,7 @@ export default function DiscoverScreen() {
               style={{
                 paddingHorizontal: 13,
                 paddingVertical: 8,
-                minHeight: 32,
+                minHeight: 36,
                 borderRadius: 20,
                 borderWidth: 1,
                 borderColor: filter === f ? t.accent : colors.cardBorder,
@@ -672,7 +671,7 @@ export default function DiscoverScreen() {
             >
               <Text
                 numberOfLines={1}
-                style={{ fontSize: 12, lineHeight: 16, fontWeight: "500", color: filter === f ? t.accent : colors.textSecondary }}
+                style={{ fontSize: 12, lineHeight: 18, fontWeight: "600", color: filter === f ? t.accent : colors.textSecondary }}
               >
                 {f}
               </Text>
