@@ -21,7 +21,9 @@ Data source: `docs/testflight-feedback/data/feedback-YYYY-MM-DD.json` (deduped A
 
 ## Snapshot (2026-05-06, build 42 uploaded to ASC; 2026-05-06T21:14Z ASC pull)
 
-ASC pull totals: 159 screenshot / 6 crash threads (+20 new screenshots vs the 2026-04-25 pull). Build 42 (`d85faa0` + downstream fixes) was just uploaded to App Store Connect — Apple processing in flight; tester verification pending. The 7 PRs that landed today (#98 → #109) closed a focused cluster of food-search + weight-chart threads listed in the **2026-05-06 PR closures** section below.
+ASC pull totals: 159 screenshot / 6 crash threads. Build 42 (`d85faa0` + downstream fixes) was just uploaded to App Store Connect — Apple processing in flight; tester verification pending.
+
+**Coverage:** every one of the 165 items (159 screenshot + 6 crash) now has an F-number assigned and a status. Of today's 159 screenshots, 139 were already line-itemed against earlier ASC pulls; the remaining **20 unmapped items have been bulk-assigned F-102 → F-121 in the section below** (9 from build 40 / 2026-05-01, 11 from today's pull). The 7 PRs that landed today (#98 → #109) closed a focused cluster of food-search + weight-chart threads — see **2026-05-06 PR closures (F-95 → F-101)** + the bulk-pass entries that point back to those PRs.
 
 ## Snapshot (2026-04-22, build 29 live; 2026-04-22T21:00Z ASC pull)
 
@@ -56,6 +58,40 @@ Single TestFlight session this morning surfaced 4 distinct food-search + weight-
 | **F-99** | ✅ | #106 | "Need to be able to zoom in / move a marker to see exact weight on exact days" — tap-and-drag scrubber on the WeightChart renders a crosshair + bucket-aware tooltip ("76.2 kg · w/c 5 May" / "76.2 kg · May" / "76.2 kg · Tue 5 May" depending on bucket). |
 | **F-100** | ✅ | #106 | "Weight chart still not accurate clicking 3, 6, 9 months etc doesn't actually change the months shown on the graph" — calendar-aware x-axis ticks now render month labels at month boundaries on bucketed views (3M / 1Y / All), instead of just first + last day labels. |
 | **F-101** | ✅ | #106 + #107 | "Weight for all time is too scrunched up" / "Weight graph still wrong" — MFP-style bucket aggregation (1W/1M = daily, 3M = weekly Monday-anchored, 1Y/All = monthly) plus smart bucket fallback (monthly → weekly → daily until ≥ min(3, raw count)). 30 days on 1Y now buckets weekly, not "1 monthly point → empty state". |
+
+---
+
+**2026-05-06 ASC pull bulk pass (build 42; `npm run testflight:feedback`):** 159 screenshot / 6 crash threads. **+20 unmapped rows** vs the 2026-04-25 pull (139 mapped already by ASC ID match). Of the 20 new: 9 came in on build 40 (2026-05-01) and weren't yet line-itemed; 11 are fresh from today's pull. Status assigned per item below.
+
+**2026-05-01 build-40 items (9, F-102 → F-110)**
+
+| ID | F# | Status | Description / Closed by |
+|----|----|--------|--------------------------|
+| `AKhE2_le-T2m` | F-102 | ✅ closed by F-95 (PR #98 + #102) | "Still no fat secret option showing for big mac" — recurrence of the same FatSecret production-empty issue closed today. |
+| `AEsaeOW2Qw-B` | F-103 | ⏳ partial overlap with F-74 | "Adding alcohol or coffee still not impacting these numbers" — same architectural ask as F-74 (derive caffeine/alcohol from logged foods). Stays open under F-74. |
+| `AEvjNTAVsipF` | F-104 | ⏳ — see `docs/decisions/2026-05-05-calorie-ring-colour-mapping.md` | "Why is the ring now gradient even when the user has logged instead of green?" — calorie-ring colour mapping decision exists; rendering may not yet match. Audit-deferred; verify against build 42. |
+| `AB1PYpfPjbd9` | F-105 | ⏳ outstanding | "Doesn't give me an option of which meal to log this for and it ended up logging it as lunch. Also this was a breakfast recipe and I marked it as such when I imported it." — recipe-log path defaults to current-time slot regardless of `meal_type` on the recipe. Need a meal-slot picker on quick-log + honour stored `meal_type` as default. |
+| `AECfotBlQgwf` | F-106 | ⏳ outstanding | "No way to add recipes saved to library from here I have to go to recipes then to library then click the recipe then scroll down then log it." — Today + Plan + LogSheet need a "From library" entry point. UX change. |
+| `ALCot9q4E4UF` | F-107 | ⏳ outstanding | "Emoji here instead of lucid icon. Always use icons." — recurrence of the icon-registry rule (Pattern #7 in this doc); some surfaces still ship emoji. Sweep needed. |
+| `ABM2nBZTJf9W` | F-108 | ⏳ outstanding | "Couldn't analyse this food even though it's pretty clear" — AI-photo analysis fail without a screenshot of which item; need to inspect logs. |
+| `AFHtAQRAWad1` | F-109 | ⏳ outstanding | "Can't see how to turn fasting on and off" — fasting-window UI control buried; needs a Settings or quick-toggle surface. |
+| `AKzwcchbHQ14` | F-110 | 🔍 vague | "Still don't like the layout look of this page" — needs screenshot triage to pin which surface. |
+
+**2026-05-06 fresh items (11, F-111 → F-121)**
+
+| ID | F# | Status | Description / Closed by |
+|----|----|--------|--------------------------|
+| `AGthJykAoNdx` | F-111 | ⏳ outstanding | "Clicking add to add someone to your household doesn't actually work" — household *invite* path broken (separate from "Nothing happens when I try to create a household" which is on the create path). Both wedge the household feature. |
+| `AFD46jr1lR3m` | F-112 | 🔄 in-flight (PR #106 deployed; verify) | "Says all but graph is showing 3 months" — weight chart range-label vs render mismatch. PR #106 added bucket-aware x-axis ticks; this report is from before deploy or surfacing a different render path. Re-verify on build 42. |
+| `AMg4BaMwZWZ8` | F-113 | ⏳ outstanding | "Journey numbers are wrong" — weight-journey progress (`weightProjection.ts` / `computeWeightJourneyProgressPct`) returning wrong %. Need to inspect tester's actual numbers vs computed. |
+| `AHOkMJ8yu5hA` | F-114 | ⏳ outstanding | "Gets stuck trying to get more data" — likely Apple Health pagination / cold-load on Progress tab; possibly related to the 6 HK crash threads (G-1) and Pattern #10 (Progress cold-load). |
+| `AGq70YLY1hmZ` | F-115 | 🔍 needs context | "Current weight is actually 54.3" — implies app shows wrong current weight. Could be: (a) HealthKit not pulling latest reading, (b) stale display cache, (c) weight not yet logged that day. Need screenshot. |
+| `AHhIn-dZMpKt` | F-116 | 🔄 in-flight (PR #107 deployed; verify) | "There should be enough data" — weight chart "not enough data" empty state firing despite history. PR #107's smart bucket fallback was supposed to fix this; tester reported pre-deploy. Re-verify on build 42. |
+| `ABIRVwgsxJo5` | F-117 | ⏳ outstanding | "Words can't be seen next to fat" — Today macro tile / nutrition row contrast or truncation issue. Needs visual triage from the screenshot. |
+| `AB5wdTxKw-fA` | F-118 | 🔄 in-flight (PR #106 + #107) | "Impossible to read this chart" — weight chart legibility; bucketing + scrubber address this on build 42. Re-verify. |
+| `AMNFCofaR6cw` | F-119 | ⏳ outstanding | "All of these are orange like they need to be verified but most of them already have been" — recipe ingredient list visual state stuck on "needs verify" colour despite `is_verified=true`. Likely the row-level state read path or a stale colour-token rule. Inspect `RecipeDetail` ingredient row + `recipe_ingredients.is_verified` / `confidence` columns. |
+| `AOhsQeGDzvSr` | F-120 | ⏳ outstanding | "Don't really understand what 88% verified means it sounds made up" — verify-confidence percentage is opaque. Either replace with a categorical state ("verified" / "AI-matched" / "needs review") or hide the number. Copy + IA decision. |
+| `AJK4VIZdlOwU` | F-121 | ⏳ outstanding | "Still having issues importing" — recipe-import error without specifics. Could be Insta/TikTok caption flow (F-76 family) or a different surface. Need screenshot context. |
 
 ---
 
