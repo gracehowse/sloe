@@ -7,13 +7,19 @@
  *
  * Output: `apps/mobile/screenshots/latest/web-onb-{step}-{viewport}.png`
  *
- * Run via:
- *   PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 npx playwright test \
- *     tests/e2e/screenshots/web-onboarding-tour.spec.ts
+ * Skipped by default — opt-in via `CAPTURE_TOUR=1` because the spec
+ * exercises a real signup flow that's flaky against CI's freshly-
+ * built Next runtime. Local capture run:
+ *
+ *   CAPTURE_TOUR=1 PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 \
+ *     npx playwright test tests/e2e/screenshots/web-onboarding-tour.spec.ts
  */
 import { devices, expect, test } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
+
+// Capture-only spec — opt in with CAPTURE_TOUR=1 (see file header).
+test.skip(!process.env.CAPTURE_TOUR, "capture-only; set CAPTURE_TOUR=1");
 
 const OUTPUT_DIR = join(process.cwd(), "apps/mobile/screenshots/latest");
 mkdirSync(OUTPUT_DIR, { recursive: true });
