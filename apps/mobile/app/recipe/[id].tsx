@@ -2533,13 +2533,21 @@ export default function RecipeDetailScreen() {
                             verified rows keep the "%·label" form so
                             the user can see why the row needs
                             attention. */}
-                        {verificationTier === "verified" ? (
+                        {/* 2026-05-06 audit (F-120): drop the
+                            opaque "88% · Partial match" rendering.
+                            Tester quote: "Don't really understand
+                            what 88% verified means it sounds made
+                            up." Categorical label alone reads
+                            cleaner ("Verified" / "Partial match" /
+                            "Estimated" / "Unverified") and the
+                            color carries the same semantic. The
+                            numeric confidence is still surfaced via
+                            the long-press accessibility hint
+                            ("Status: Partial match (88%)") so power
+                            users + screen-readers retain it. */}
+                        {verificationTier === "verified" || showInlineConfidence ? (
                           <Text style={{ fontSize: 10, color: tierColor, fontWeight: "600" }}>
                             {tierLabel}
-                          </Text>
-                        ) : showInlineConfidence ? (
-                          <Text style={{ fontSize: 10, color: tierColor, fontWeight: "600" }}>
-                            {confPct}% · {tierLabel}
                           </Text>
                         ) : null}
                         {/* Phase 4 / B3.X — SourceDot per ingredient row
