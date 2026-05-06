@@ -176,6 +176,45 @@ describe("importErrorResponse", () => {
   });
 });
 
+describe("client-side error codes (audit I07, 2026-05-05)", () => {
+  it("includes copy for every client-side state used by mobile import-shared", () => {
+    const required = [
+      "client_signin_required",
+      "client_signin_required_to_save",
+      "client_clipboard_empty",
+      "client_paste_empty",
+      "client_url_required",
+      "client_unsupported_url",
+      "client_image_pick_failed",
+      "client_offline",
+    ] as const;
+    for (const code of required) {
+      expect(IMPORT_ERROR_COPY[code], `missing copy for ${code}`).toBeTruthy();
+    }
+  });
+
+  it("client-side copy never names a vendor or HTTP status", () => {
+    const clientCodes = Object.keys(IMPORT_ERROR_COPY).filter((k) => k.startsWith("client_")) as (keyof typeof IMPORT_ERROR_COPY)[];
+    for (const code of clientCodes) {
+      const message = IMPORT_ERROR_COPY[code];
+      expect(message, `code=${code}`).not.toMatch(/openai|supabase|fatsecret|instagram|tiktok|RLS|JWT|postgres/i);
+      expect(message, `code=${code}`).not.toMatch(/\b\d{3}\b/);
+    }
+  });
+
+  it("client-side copy is action-shaped (each starts with a verb or call to action)", () => {
+    // Defensive — these strings ARE the user's call to action; pin
+    // that they don't drift into passive / dev-jargon copy. Each one
+    // should fit the pattern "[Verb] ..." or "[You're / Your] ...".
+    const clientCodes = Object.keys(IMPORT_ERROR_COPY).filter((k) => k.startsWith("client_")) as (keyof typeof IMPORT_ERROR_COPY)[];
+    for (const code of clientCodes) {
+      const message = IMPORT_ERROR_COPY[code];
+      expect(message, `code=${code}`).toMatch(/^[A-Z]/);
+      expect(message.length, `code=${code}`).toBeLessThan(200);
+    }
+  });
+});
+
 describe("mapPersistenceError", () => {
   it("maps Postgres unique-violation (23505) to duplicate_recipe", () => {
     expect(mapPersistenceError({ code: "23505", message: "duplicate key" })).toBe("duplicate_recipe");

@@ -63,7 +63,18 @@ export type ImportErrorCode =
   // Generic fallthroughs
   | "import_failed"
   | "network_error"
-  | "unknown";
+  | "unknown"
+  // Client-side states (audit I07, 2026-05-05) — used for messages
+  // that don't originate from the server but still need consistent
+  // copy across mobile + web.
+  | "client_signin_required"
+  | "client_signin_required_to_save"
+  | "client_clipboard_empty"
+  | "client_paste_empty"
+  | "client_url_required"
+  | "client_unsupported_url"
+  | "client_image_pick_failed"
+  | "client_offline";
 
 /**
  * User-facing copy keyed by stable error code. Tone: calm,
@@ -101,6 +112,17 @@ export const IMPORT_ERROR_COPY: Record<ImportErrorCode, string> = {
   import_failed: "We couldn't import that recipe. Try again, or paste it manually.",
   network_error: "Network error. Check your connection and try again.",
   unknown: "Something went wrong. Try again.",
+  // Client-side copy (audit I07, 2026-05-05). Used by mobile + web
+  // import flows for non-server-originated states. Keep these short
+  // and action-shaped — the user-facing string IS the call to action.
+  client_signin_required: "Sign in to import recipes.",
+  client_signin_required_to_save: "Sign in to save imported recipes to your library.",
+  client_clipboard_empty: "Your clipboard is empty. Copy a recipe URL or text first.",
+  client_paste_empty: "Add at least one ingredient line (e.g. 2 cups diced tomatoes).",
+  client_url_required: "Paste a recipe URL first.",
+  client_unsupported_url: "We don't support that link. Paste a recipe URL or use image import.",
+  client_image_pick_failed: "We couldn't open the image picker. Try again.",
+  client_offline: "You're offline. Reconnect and try again.",
 };
 
 /**

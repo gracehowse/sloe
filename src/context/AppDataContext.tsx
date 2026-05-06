@@ -621,6 +621,46 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
   }, [authedUserId]);
 
+  /**
+   * P05 (audit 2026-05-05) — Supabase Realtime subscription on the
+   * current user's `profiles` row.
+   *
+   * Background: web users completing a Stripe Checkout land on
+   * `/home?checkout=success` before the Stripe webhook has finished
+   * writing `profiles.user_tier = "pro"` to the database. The mount
+   * fetches an old "free" tier; the UI shows Free until the user
+   * happens to refresh. Mobile is fine — RevenueCat tells the app
+   * directly. Web has no equivalent signal without polling or
+   * subscribing.
+   *
+   * Realtime is the structurally-right answer: the moment the
+   * webhook commits the row update, Supabase pushes the change here
+   * and we re-fetch profile basics. No timer, no guess at how slow
+   * Stripe is on a given day.
+   */
+  useEffect(() => {
+    if (!authedUserId) return;
+    const channel = supabase
+      .channel(`profiles:${authedUserId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "profiles",
+          filter: `id=eq.${authedUserId}`,
+        },
+        () => {
+          void refreshProfileBasics();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [authedUserId, refreshProfileBasics]);
+
   const redeemPromoCode = useCallback(async (code: string): Promise<RedeemPromoResult> => {
     if (!authedUserId) {
       return { ok: false, error: "not_authenticated" };
