@@ -2,6 +2,22 @@
 
 Short log of tester-reported issues that were fixed in production (or schema), with enough context for release notes and drift audits.
 
+## 2026-05-06 — TestFlight build 42: FatSecret search end-to-end + weight chart MFP-style bucketing
+
+- **Context:** Single TestFlight session this morning surfaced four compounding food-search + weight-chart threads. Tracker entries [F-95 → F-101](./tracker.md). Closed by 7 PRs (#98 → #109) all landed + deployed today; tester verification pending against build 42 once Apple finishes processing.
+- **What shipped:** see `docs/decisions/2026-05-06-fatsecret-search-end-to-end-fix.md` for the full PR-by-PR breakdown. Headline closures:
+  - **F-95** FatSecret search empty in production — three compounding bugs (env-var rename, cross-source dedup dropping FatSecret, FatSecret IP allowlist). PRs #98 + #99 + #101 + #102.
+  - **F-96** Edamam not pulling in — wrong API product wired up. Grace swapped Food Database keys.
+  - **F-97** "Lots of foods still defaulting to 100g" — Edamam ships `quantity: 1` for poorly-curated branded items. PR #100 rejects implausibly-tiny serving sizes.
+  - **F-98** Vitamins/minerals never populated — only OFF was passing micros through. PRs #98 + #103 + #105 wired USDA / Edamam / FatSecret end-to-end (route → client → preview → commit), with FatSecret per-serving-only foods covered separately via `microsPerServing`. Calcium/iron/vitamins NOT emitted from FatSecret (units are inconsistent — accurate "did not publish" beats fabricated values).
+  - **F-99** Weight chart needed scrubber — PR #106 added tap-and-drag with bucket-aware tooltip.
+  - **F-100** Weight chart x-axis didn't change with range — PR #106 added calendar-aware ticks (month names on bucketed views).
+  - **F-101** Weight chart "all time too scrunched up" — PR #106 + #107 introduced MFP-style bucket aggregation (1W/1M=daily, 3M=weekly, 1Y/All=monthly), calendar-day MA, same-day dedup, smart bucket fallback, iterative `minMax` for 10k+ histories.
+- **Pre-flight audit (PR #108 + #109):** Orchestrator-full-sweep before TestFlight push surfaced 10 follow-ups; all 7 actionable items shipped same session — security cleanup (B1 hash-not-tail, B2 strip body echo, B3 gate `_diag` on `SUPPR_DEBUG`), copy + UX (C1 vendor-neutral 404/502 messages, C2 toast on tap fail, D3 preview tile zeros), web parity (D1 FatSecret per-serving on web — 3 commit sites, D2 weight chart math lifted to `src/lib/progress/`), test pins (E1 web per-serving-only commit, E2 shared `scaleMicrosPerServing` helper).
+- **Tests:** 240+ web tests + 25+ new mobile weight-trend pins. New: `scaleMicrosPerServing.test.ts`, extended `usdaNormalize.test.ts` / `fatsecretNormalize.test.ts` / `foodSearchHeadline.test.ts` / `weightTrend.test.ts` / `foodSearchPanelFatSecret.test.tsx` / `fatsecretSearchRoute.test.ts`.
+- **TestFlight push:** Build 42 uploaded to App Store Connect at ~22:49 UTC 2026-05-06 (`apps/mobile/app.json` runtime version pinned to "1.0.7" for the bare-workflow EAS build). Apple processing in flight.
+- **Outstanding from the audit:** B2-deeper (theoretical Authorization echo on token error), P1 (`computeMovingAvg` perf — bounded, acceptable). 5 pre-existing P0s from yesterday's full sweep (A1 DMCA, A3 onboarding-v2 deeplink, C1 Today empty-state, K1 milestone modal, N1 Search status-bar) NOT introduced or closed today; remain open under solo-tester carve-out.
+
 ## 2026-04-19 — Sunday push body now content-specific (cascade headline + recap summary)
 
 - **Context:** the Sunday-evening weekly recap push currently fires generic body copy ("Tap to see your weekly recap — avg calories, protein, streak, and weight trend.") for every user via the server-fanout cron at `app/api/push/weekly-recap/route.ts`. Generic body has near-zero open-rate signal — every user gets the same line regardless of what their week actually looked like. Sunday push rewrite (planner, 2026-04-19) decided to compose a content-specific body that carries the Weekly Digest cascade headline + the recap data summary.
