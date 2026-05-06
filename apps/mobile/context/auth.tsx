@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { syncProfileTimezone } from "../../../src/lib/profile/tzSync";
 import { setUser as sentrySetUser, clearUser as sentryClearUser } from "@/lib/errorTracking";
 import { identify as posthogIdentify, reset as posthogReset } from "@/lib/analytics";
+import { clearUserScopedAsyncStorage } from "@/lib/clearUserScopedStorage";
 
 /**
  * P1-13 (2026-04-25): keep Sentry + PostHog user context in sync with
@@ -99,13 +100,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     // Listen for auth changes (sign in, sign out, token refresh)
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);
       // P1-13: keep observability identity in sync with auth state.
       // Covers SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED, USER_UPDATED.
       syncObservabilityUser(s);
       if (s?.user?.id) {
         void syncProfileTimezone(supabase, s.user.id);
+      }
+      // 2026-05-05 (audit Y02) — clear non-profile AsyncStorage keys
+      // when the user signs out so the next sign-in (potentially as a
+      // different user on the same device) starts with an empty
+      // cached_user_tier, fresh push-prompt-dismissed state, fresh
+      // HealthKit-written-IDs in memory, etc. Fire-and-forget — sign-
+      // out must complete even if the wipe fails.
+      if (event === "SIGNED_OUT") {
+        void clearUserScopedAsyncStorage();
       }
     });
 

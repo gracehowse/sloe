@@ -127,4 +127,37 @@ describe("DailyRing — centre value", () => {
       expect(container.textContent).not.toContain("Start your day");
     });
   });
+
+  describe("R03 — `target <= 0` no-profile case renders the calibrating-empty state", () => {
+    it("renders 'Start your day' instead of OVER when target=0 and consumed>0", () => {
+      const { container } = renderRing({
+        consumed: 500,
+        target: 0,
+        displayMode: "remaining",
+      });
+      const text = container.textContent ?? "";
+      // Must NOT render the "500 / OVER / of 0 kcal" pattern that the
+      // pre-fix `isOverBudget` branch produced.
+      expect(text).toContain("Start your day");
+      expect(text).not.toMatch(/OVER/i);
+      expect(text).not.toContain("of 0 kcal");
+    });
+
+    it("renders 'Start your day' when target=0 and consumed=0 (cold start, no profile)", () => {
+      const { container } = renderRing({
+        consumed: 0,
+        target: 0,
+        displayMode: "remaining",
+      });
+      expect(container.textContent).toContain("Start your day");
+    });
+
+    it("hides the budget line when target<=0 (no 'of 0 kcal' anchor)", () => {
+      const { container } = renderRing({
+        consumed: 0,
+        target: 0,
+      });
+      expect(container.textContent).not.toContain("of 0 kcal");
+    });
+  });
 });

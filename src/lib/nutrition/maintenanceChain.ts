@@ -46,6 +46,22 @@ import type { ResolvedMaintenance } from "./resolveMaintenance";
 /** 7700 kcal ≈ 1 kg of body fat — the standard conversion used across the app. */
 export const KCAL_PER_KG_FAT = 7700;
 
+/**
+ * Convert a weekly calorie deficit to kg of body fat.
+ *
+ * Single source for any "you're projected to lose X kg/week" surface.
+ * Use absolute weekDeficit; sign is the caller's job to surface (deficit
+ * vs surplus). Returns 0 for non-finite or zero input — no NaN leaks.
+ *
+ * 2026-05-05 — replaces the per-surface `weekDeficit / 3500 * 0.4536`
+ * pattern that was drifting ~0.2% from the 7700-basis used in onboarding
+ * pace promises, why-this-number explainer, and weight projection.
+ */
+export function weekDeficitToKg(weekDeficit: number): number {
+  if (!Number.isFinite(weekDeficit)) return 0;
+  return Math.abs(weekDeficit) / KCAL_PER_KG_FAT;
+}
+
 export type ChainStepKind =
   | "bmr"
   | "activity"

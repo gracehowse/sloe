@@ -1206,6 +1206,7 @@ export default function RecipeDetailScreen() {
         // errors must not block the logged-meal alert.
         void writeMealToHealthKitIfEnabled({
           mealId: newId,
+          userId,
           name: recipe.title,
           calories: scaledForLog.calories,
           protein: scaledForLog.protein,

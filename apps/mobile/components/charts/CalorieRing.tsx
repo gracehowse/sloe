@@ -210,7 +210,13 @@ export default function CalorieRing({
   // a chance to. Soft-mode the centre when consumed is exactly 0 so
   // the suggestion card + macro tiles can lead the visual hierarchy
   // instead. Once the user logs anything, normal treatment resumes.
-  const isEmpty = consumed === 0;
+  // 2026-05-05 (audit R03) — also treat `goal <= 0` as empty (no
+  // profile target yet). Without this guard, mobile renders gradient
+  // stroke ("calibrating") while web renders destructive red over for
+  // the same input — cross-platform contradiction. Both platforms now
+  // fall into the calibrating-empty state until a profile target is
+  // set.
+  const isEmpty = consumed === 0 || goal <= 0;
   const centerValue = displayMode === "consumed"
     ? Math.round(consumed)
     : Math.abs(diff);
@@ -434,8 +440,10 @@ export default function CalorieRing({
           </Text>
         )}
         {/* Budget line hidden when the concentric macro rings are
-            showing — Grace 2026-04-20: text + rings looked squished. */}
-        {!expanded ? (
+            showing — Grace 2026-04-20: text + rings looked squished.
+            Also hidden when goal <= 0 (no profile target yet) so the
+            ring doesn't render "of 0 kcal" — 2026-05-05 audit R03. */}
+        {!expanded && goal > 0 ? (
           <Text
             style={{
               fontSize: 10,
