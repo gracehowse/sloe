@@ -640,11 +640,19 @@ export default function DiscoverScreen() {
             user explicit "more pills off the right" affordance, and
             `numberOfLines={1}` prevents any single pill text from
             wrapping to two lines on narrow devices. */}
+        {/* 2026-05-06 (Grace) — was visually squished: paddingVertical:6
+            with no minHeight let `fontSize:11` descenders touch the
+            border, and `paddingRight:24` left the trailing "Low Carb"
+            pill flush against the screen edge. Now matches the Library
+            row geometry: paddingVertical:8 + minHeight:32 +
+            justifyContent:center for vertical breathing room, and
+            paddingRight:32 so the trailing pill keeps an obvious
+            scroll-headroom on the right. */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           style={{ marginBottom: 12 }}
-          contentContainerStyle={{ gap: 6, paddingRight: 24 }}
+          contentContainerStyle={{ gap: 6, paddingRight: 32, alignItems: "center" }}
         >
           {FILTERS.map((f) => (
             <Pressable
@@ -652,16 +660,19 @@ export default function DiscoverScreen() {
               onPress={() => setFilter(f)}
               style={{
                 paddingHorizontal: 13,
-                paddingVertical: 6,
+                paddingVertical: 8,
+                minHeight: 32,
                 borderRadius: 20,
                 borderWidth: 1,
                 borderColor: filter === f ? t.accent : colors.cardBorder,
                 backgroundColor: filter === f ? t.accent + "10" : "transparent",
+                justifyContent: "center",
+                alignItems: "center",
               }}
             >
               <Text
                 numberOfLines={1}
-                style={{ fontSize: 11, fontWeight: "500", color: filter === f ? t.accent : colors.textSecondary }}
+                style={{ fontSize: 12, lineHeight: 16, fontWeight: "500", color: filter === f ? t.accent : colors.textSecondary }}
               >
                 {f}
               </Text>
