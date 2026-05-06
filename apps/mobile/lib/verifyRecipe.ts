@@ -1266,13 +1266,29 @@ function mergeResults(
     return true;
   });
 
-  // Deduplicate — skip items with same normalized name
+  // Deduplicate within a source, not across sources.
+  //
+  // 2026-05-06: TestFlight feedback — "still no fat secret result at
+  // all". Diagnosis: production logs showed FatSecret API returning
+  // hits (no `[fatsecret foods.search] no food entries` warnings), but
+  // the cross-source dedup was dropping them. For "big mac",
+  // USDA's "Mcdonald's, Big Mac" and FatSecret's "McDonald's · Big
+  // Mac" both normalize to the same string ("mcdonaldsbigmac"), so
+  // FatSecret's entry got eliminated even though it carries a
+  // different macro panel.
+  //
+  // Per-source dedup (key = `${source}|${normalized}`) gives the user
+  // explicit choice between USDA / OFF / Edamam / FatSecret for the
+  // same named food, matching MFP / Cronometer / Lose It UX. Same-
+  // source duplicates (e.g. five Edamam Pret entries that all
+  // normalize to "pretchefsalad") still collapse to one.
   const seen = new Set<string>();
   const deduped: UnifiedSearchResult[] = [];
   for (const r of filtered) {
     const norm = r.name.toLowerCase().replace(/[^a-z0-9]/g, "");
-    if (seen.has(norm)) continue;
-    seen.add(norm);
+    const key = `${r._source}|${norm}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
     deduped.push(r);
     if (deduped.length >= limit) break;
   }

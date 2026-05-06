@@ -838,6 +838,13 @@ export function FoodSearchPanel({
           if (isLowRelevanceNonVerifiedRow(r._rel as number, isVerified)) return false;
           return true;
         });
+      // 2026-05-06: Per-source dedup (not cross-source). Same-named
+      // foods from different sources (USDA "Mcdonald's, Big Mac" vs
+      // FatSecret "McDonald's · Big Mac" both normalising to
+      // "mcdonaldsbigmac") used to collapse to a single row, which
+      // hid FatSecret entries entirely from "big mac" searches.
+      // Per-source dedup gives the user explicit choice between
+      // sources, matching MFP / Cronometer / Lose It UX.
       const seen = new Set<string>();
       const deduped: SearchResult[] = [];
       for (const r of [...customResults, ...generics, ...external]) {
@@ -845,7 +852,7 @@ export function FoodSearchPanel({
           ? `custom:${r._custom?.id ?? r.key}`
           : r._source === "GenericBeverage" || r._source === "GenericFood"
             ? `generic:${r.key}`
-            : r.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+            : `${r._source}|${r.name.toLowerCase().replace(/[^a-z0-9]/g, "")}`;
         if (seen.has(norm)) continue;
         seen.add(norm);
         deduped.push(r);
@@ -859,18 +866,21 @@ export function FoodSearchPanel({
   const appendPage = useCallback(
     (prev: SearchResult[], next: SearchResult[]): SearchResult[] => {
       const seenKeys = new Set<string>(prev.map((r) => r.key));
-      const seenNames = new Set<string>(
+      // Per-source name dedup so source-crossing overlap on
+      // pagination doesn't drop FatSecret/Edamam hits that share a
+      // normalized name with a USDA hit on a previous page.
+      const seenSourceNames = new Set<string>(
         prev
           .filter((r) => r._source !== "CUSTOM")
-          .map((r) => r.name.toLowerCase().replace(/[^a-z0-9]/g, "")),
+          .map((r) => `${r._source}|${r.name.toLowerCase().replace(/[^a-z0-9]/g, "")}`),
       );
       const fresh: SearchResult[] = [];
       for (const r of next) {
         if (seenKeys.has(r.key)) continue;
-        const norm = r.name.toLowerCase().replace(/[^a-z0-9]/g, "");
-        if (seenNames.has(norm)) continue;
+        const sourceName = `${r._source}|${r.name.toLowerCase().replace(/[^a-z0-9]/g, "")}`;
+        if (seenSourceNames.has(sourceName)) continue;
         seenKeys.add(r.key);
-        seenNames.add(norm);
+        seenSourceNames.add(sourceName);
         fresh.push(r);
       }
       return [...prev, ...fresh];

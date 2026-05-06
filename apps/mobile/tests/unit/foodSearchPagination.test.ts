@@ -186,9 +186,13 @@ describe("F-10 food search pagination — web/mobile parity", () => {
     expect(WEB_SRC).toMatch(/data-testid="food-search-load-more-sentinel"/);
   });
 
-  it("web appendPage also dedupes by name (not just key) so source-crossing overlap is caught", () => {
+  it("web appendPage dedupes by (source|name), not just name, so source-crossing entries (FatSecret + USDA Big Mac) both survive", () => {
+    // 2026-05-06: replaced cross-source name-dedup with per-source
+    // dedup. Same-named foods from different sources are KEPT so
+    // the user can pick between FatSecret / USDA / Edamam panels —
+    // matches MFP / Cronometer / Lose It.
     expect(WEB_SRC).toMatch(
-      /seenNames\.has\(norm\)/,
+      /seenSourceNames\.has\(sourceName\)/,
     );
   });
 
