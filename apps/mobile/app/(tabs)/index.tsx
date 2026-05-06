@@ -1713,8 +1713,23 @@ export default function TrackerScreen() {
         mealProtein = Math.round(ps.protein * q * 10) / 10;
         mealCarbs = Math.round(ps.carbs * q * 10) / 10;
         mealFat = Math.round(ps.fat * q * 10) / 10;
-        // No caffeine/alcohol scaling (no per-100g basis), no micros
-        // pull-through.
+        // 2026-05-06: no caffeine/alcohol scaling (no per-100g
+        // basis), but DO pull through `microsPerServing × quantity`
+        // so the meal-detail "Vitamins, minerals & more" panel
+        // populates fiber / sugar / sodium / sat fat / cholesterol
+        // / potassium etc. for FatSecret no-metric foods.
+        if (result.microsPerServing) {
+          for (const [k, v] of Object.entries(result.microsPerServing)) {
+            if (typeof v !== "number" || !Number.isFinite(v) || v <= 0) continue;
+            // Match the per-100g scaling decimal convention:
+            // grams → 1dp, mg → 0dp.
+            const decimals = k.endsWith("G") ? 1 : 0;
+            const scaled = v * q;
+            const factor = 10 ** decimals;
+            const rounded = Math.round(scaled * factor) / factor;
+            if (rounded > 0) micros[k] = rounded;
+          }
+        }
       } else {
         const m = result.macrosPer100g!;
         const { caffeineMg, alcoholG } = scaleCaffeineAlcohol({

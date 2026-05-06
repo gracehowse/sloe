@@ -153,6 +153,11 @@ export type SelectedFood = {
   macrosPer100g: Macros | null;
   macrosPerServing?: { calories: number; protein: number; carbs: number; fat: number } | null;
   microsPer100g?: Record<string, number>;
+  /**
+   * 2026-05-06: per-serving micros (absolute) for FatSecret no-metric
+   * foods. Commit path uses `microsPerServing × quantity`.
+   */
+  microsPerServing?: Record<string, number>;
   portions: FoodPortion[];
   chosenPortion: FoodPortion;
   quantity: number;
@@ -377,6 +382,11 @@ export default function FoodSearchPanel({
     macrosPer100g: Macros | null;
     macrosPerServing?: { calories: number; protein: number; carbs: number; fat: number } | null;
     microsPer100g?: Record<string, number>;
+    /**
+     * 2026-05-06: per-serving micros (absolute) for FatSecret
+     * no-metric foods. Commit path uses `microsPerServing × quantity`.
+     */
+    microsPerServing?: Record<string, number>;
     portions: FoodPortion[];
     chosenPortion: FoodPortion;
     quantity: number;
@@ -693,10 +703,13 @@ export default function FoodSearchPanel({
           // can log "N × 1 serving" without scaling by grams.
           ...(result.macrosPerServing ? { macrosPerServing: result.macrosPerServing } : {}),
           // 2026-05-06 — pull through FatSecret Premier's wider
-          // per-100g panel (sat/poly/mono fat, cholesterol, calcium,
-          // iron, potassium) so the meal-detail "Vitamins, minerals
-          // & more" surface populates for FatSecret-sourced logs.
+          // per-100g panel (sat/poly/mono fat, cholesterol, sodium,
+          // potassium) so the meal-detail "Vitamins, minerals & more"
+          // surface populates for FatSecret-sourced logs.
           ...(result.microsPer100g ? { microsPer100g: result.microsPer100g } : {}),
+          // 2026-05-06 — per-serving micros for the no-metric path,
+          // commit applies `× quantity` directly without gram scaling.
+          ...(result.microsPerServing ? { microsPerServing: result.microsPerServing } : {}),
           portions: allPortions,
           chosenPortion: portion,
           quantity,
@@ -903,6 +916,7 @@ export default function FoodSearchPanel({
         macrosPer100g: preview.macrosPer100g,
         ...(preview.macrosPerServing ? { macrosPerServing: preview.macrosPerServing } : {}),
         ...(preview.microsPer100g ? { microsPer100g: preview.microsPer100g } : {}),
+        ...(preview.microsPerServing ? { microsPerServing: preview.microsPerServing } : {}),
         portions: preview.portions,
         chosenPortion: preview.chosenPortion,
         quantity: preview.quantity,

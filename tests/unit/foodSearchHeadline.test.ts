@@ -219,4 +219,36 @@ describe("resolveFoodSearchHeadline — edge cases", () => {
       fat: 9.9,
     });
   });
+
+  // 2026-05-06: per-serving-only foods (FatSecret no-metric path)
+  // synthesise a primaryServing with `grams: 0` as a sentinel —
+  // nutrition is per-serving, no gram grounding. The label must NOT
+  // include "(0 g)" and the per-100g reference must be omitted.
+  it("renders a per-serving-only row (grams=0) without the '(0 g)' suffix and without per-100g reference", () => {
+    const h = resolveFoodSearchHeadline({
+      primaryServing: {
+        label: "1 serving",
+        grams: 0,
+        kcal: 580,
+        protein: 25,
+        carbs: 45,
+        fat: 34,
+      },
+      // calsPer100g intentionally provided — should still NOT
+      // surface as a "/ 100 g" reference because the row has no
+      // gram grounding.
+      calsPer100g: 200,
+    });
+    if (h.mode !== "per-serving") throw new Error("wrong mode");
+    expect(h.servingLabel).toBe("1 serving");
+    expect(h.servingLabel).not.toContain("0 g");
+    expect(h.per100gReference).toBeNull();
+    expect(h.headlineKcal).toBe(580);
+    expect(h.macros).toEqual({
+      calories: 580,
+      protein: 25,
+      carbs: 45,
+      fat: 34,
+    });
+  });
 });

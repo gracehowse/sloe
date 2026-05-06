@@ -133,6 +133,14 @@ export function resolveFoodSearchHeadline(
             row.macrosPer100g.calories > 0
           ? Math.round(row.macrosPer100g.calories)
           : null;
+    // 2026-05-06: `grams === 0` is the sentinel for per-serving-only
+    // foods (FatSecret no-metric path, e.g. McDonald's Big Mac).
+    // Render just the label without a "(0 g)" suffix, and skip the
+    // "/ 100 g" reference since there's no per-100g basis.
+    const isPerServingOnly = primary.grams <= 0;
+    const servingLabel = isPerServingOnly
+      ? primary.label
+      : `${primary.label} (${primary.grams} g)`;
     return {
       mode: "per-serving",
       headlineKcal: primary.kcal,
@@ -143,9 +151,11 @@ export function resolveFoodSearchHeadline(
         fat: round1(primary.fat),
       },
       badge: FOOD_SEARCH_PER_SERVING_BADGE,
-      servingLabel: `${primary.label} (${primary.grams} g)`,
+      servingLabel,
       per100gReference:
-        per100gKcal != null ? `${per100gKcal} kcal / 100 g` : null,
+        !isPerServingOnly && per100gKcal != null
+          ? `${per100gKcal} kcal / 100 g`
+          : null,
     };
   }
 

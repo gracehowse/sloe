@@ -75,9 +75,18 @@ describe("Lane-A — FatSecret food detail route", () => {
     expect(FATSECRET_FOOD_ROUTE_SRC).toMatch(/100\s*\/\s*grams/);
   });
 
-  it("returns 422 when the food has no metric-grounded serving (no invented denominator)", () => {
-    expect(FATSECRET_FOOD_ROUTE_SRC).toMatch(/no_metric_serving/);
-    expect(FATSECRET_FOOD_ROUTE_SRC).toMatch(/status:\s*422/);
+  it("supports per-serving-only foods when FatSecret has no metric grounding (e.g. McDonald's Big Mac)", () => {
+    // 2026-05-06: previously the route 422'd when grams<=0, making
+    // FatSecret per-serving entries silently un-tappable from search.
+    // Now it sets `macrosPer100g: null` + adds `macrosPerServing` so
+    // the client can commit "1 serving = 580 kcal" honestly without
+    // scaling. Pin the per-serving-only path:
+    expect(FATSECRET_FOOD_ROUTE_SRC).toMatch(/isPerServingOnly/);
+    expect(FATSECRET_FOOD_ROUTE_SRC).toMatch(/macrosPerServing/);
+    expect(FATSECRET_FOOD_ROUTE_SRC).toMatch(/microsPerServing/);
+    // No more 422 for missing metric serving — the route accepts
+    // them and returns the per-serving payload instead.
+    expect(FATSECRET_FOOD_ROUTE_SRC).not.toMatch(/no_metric_serving/);
   });
 });
 

@@ -82,18 +82,65 @@ export function fatSecretServingMicrosPer100g(
   emit("polyFatG", num(s.polyunsaturated_fat), 1);
   emit("transFatG", num(s.trans_fat), 1);
 
-  // Cholesterol + minerals — mg (Premier).
+  // Cholesterol + sodium + potassium — mg (Premier).
   emit("cholesterolMg", num(s.cholesterol), 0);
   emit("potassiumMg", num(s.potassium), 0);
-  emit("calciumMg", num(s.calcium), 0);
-  emit("ironMg", num(s.iron), 1);
 
-  // Vitamins (A / C / D) — intentionally NOT emitted. FatSecret
-  // returns these in inconsistent units (sometimes %DV, sometimes
-  // raw IU/mcg/mg) and the canonical micro keys expect specific
-  // units (mcg RAE for A, mg for C, mcg for D). Emitting without
-  // unit certainty would produce wrong numbers.
+  // Calcium + iron + vitamins (A / C / D) — intentionally NOT
+  // emitted.
+  //
+  // 2026-05-06: TestFlight verification of McDonald's Big Mac (food
+  // id 3145844) `food.get` returns calcium="9" and iron="22".
+  // Treating these as mg-per-serving gives 9 mg calcium (real Big
+  // Mac is ~280 mg) and 22 mg iron (real is ~4 mg). The "22" only
+  // matches reality if interpreted as %DV (DV=18 mg → 22% = 4 mg).
+  // FatSecret returns these in inconsistent units across foods
+  // (sometimes %DV, sometimes absolute mg, sometimes IU for
+  // vitamins) with no flag in the response. Emitting blindly
+  // fabricates values, which violates the project "never invent"
+  // rule.
+  //
+  // Net: FatSecret-sourced meals will show "FatSecret did not
+  // publish" for calcium / iron / vitamins in the meal-detail
+  // panel. That's accurate — we don't have unit-safe extractions
+  // for these fields, and an honest gap is better than a wrong
+  // number.
 
+  return out;
+}
+
+/**
+ * Return the per-serving (absolute, NOT per-100g) micronutrient
+ * panel from a FatSecret serving. Used when the food has no metric
+ * grounding (`metric_serving_amount` absent, e.g. McDonald's Big
+ * Mac). The values are committed × quantity at log time, no gram
+ * scaling.
+ *
+ * Same unit-safety rules as the per-100g extractor: only emit
+ * fields whose units are reliably absolute (g for fat breakdown +
+ * fiber + sugar, mg for cholesterol + sodium + potassium). Skip
+ * calcium / iron / vitamins for unit ambiguity (see comment in the
+ * per-100g extractor above).
+ */
+export function fatSecretServingMicrosAbsolute(
+  s: FatSecretServing,
+): Record<string, number> {
+  const out: Record<string, number> = {};
+  function emit(key: string, raw: number, decimals: number): void {
+    if (!Number.isFinite(raw) || raw <= 0) return;
+    const f = 10 ** decimals;
+    const rounded = Math.round(raw * f) / f;
+    if (rounded > 0) out[key] = rounded;
+  }
+  emit("fiberG", num(s.fiber), 1);
+  emit("sugarG", num(s.sugar), 1);
+  emit("sodiumMg", num(s.sodium), 0);
+  emit("saturatedFatG", num(s.saturated_fat), 1);
+  emit("monoFatG", num(s.monounsaturated_fat), 1);
+  emit("polyFatG", num(s.polyunsaturated_fat), 1);
+  emit("transFatG", num(s.trans_fat), 1);
+  emit("cholesterolMg", num(s.cholesterol), 0);
+  emit("potassiumMg", num(s.potassium), 0);
   return out;
 }
 
