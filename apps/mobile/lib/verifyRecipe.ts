@@ -668,6 +668,14 @@ export type EdamamSearchResult = {
   caffeineMgPer100g?: number | null;
   alcoholGPer100g?: number | null;
   /**
+   * 2026-05-06 — Edamam Food Database publishes only fiber/sugar/sodium
+   * (no vitamins/minerals on this endpoint), so this map only ever
+   * contains those three keys. Routed through so the meal-detail
+   * "Vitamins, minerals & more" surface populates them; the rest of
+   * the panel will still show "Edamam did not publish" rows.
+   */
+  microsPer100g?: Record<string, number>;
+  /**
    * `servingSizes[]` — Edamam often exposes the "real" gram weight of
    * the natural portion here (e.g. `{label:"Serving", quantity:230}` for
    * a Pret sandwich). Passed straight through from the API route so the
@@ -1172,6 +1180,11 @@ function mergeResults(
         caffeineMgPer100g: item.caffeineMgPer100g ?? null,
         alcoholGPer100g: item.alcoholGPer100g ?? null,
       },
+      // 2026-05-06 — thread Edamam's fiber/sugar/sodium micros through
+      // so the meal-detail panel populates them. Edamam Food Database
+      // doesn't ship richer micros on this endpoint; the rest of the
+      // panel will read "Edamam did not publish".
+      ...(item.microsPer100g ? { microsPer100g: item.microsPer100g } : {}),
       imageUrl: item.imageUrl,
       primaryServing,
       _source: "Edamam",
@@ -1272,6 +1285,14 @@ export async function getFoodMacros(
   fdcId: number,
 ): Promise<{
   macrosPer100g: MacrosPer100g;
+  /**
+   * 2026-05-06 — wider per-100g micronutrient panel from USDA
+   * (sat/poly/mono fat, cholesterol, calcium, iron, B-vitamins,
+   * vitamin C/D/E/K/A, etc) so the meal-detail "Vitamins, minerals
+   * & more" surface populates for USDA-sourced logs. Empty / absent
+   * when USDA didn't publish micros for this food.
+   */
+  microsPer100g?: Record<string, number>;
   portions: FoodPortion[];
   /**
    * F-88 (2026-04-25) — best-fit natural-portion ("1 medium" / "1 large")
@@ -1291,7 +1312,16 @@ export async function getFoodMacros(
     if (!json.ok) return null;
     const portions: FoodPortion[] = Array.isArray(json.portions) ? json.portions : [];
     const primaryPortion: PrimaryServing | null = json.primaryPortion ?? null;
-    return { macrosPer100g: json.macrosPer100g, portions, primaryPortion };
+    const microsPer100g =
+      json.microsPer100g && typeof json.microsPer100g === "object"
+        ? (json.microsPer100g as Record<string, number>)
+        : undefined;
+    return {
+      macrosPer100g: json.macrosPer100g,
+      ...(microsPer100g ? { microsPer100g } : {}),
+      portions,
+      primaryPortion,
+    };
   } catch (e) {
     if (isBenignAbort(e)) return null;
     console.error("[getFoodMacros] failed for fdcId", fdcId, ":", e instanceof Error ? e.message : e);
@@ -1312,6 +1342,12 @@ export async function getFatSecretFood(
   foodId: string,
 ): Promise<{
   macrosPer100g: MacrosPer100g;
+  /**
+   * 2026-05-06 — Premier-tier per-100g panel (sat/poly/mono/trans fat,
+   * cholesterol, calcium, iron, potassium). Empty / absent on Basic
+   * tier or when FatSecret didn't publish those fields for this food.
+   */
+  microsPer100g?: Record<string, number>;
   portions: FoodPortion[];
   primaryPortion?: PrimaryServing | null;
 } | null> {
@@ -1329,7 +1365,16 @@ export async function getFatSecretFood(
     if (!json.ok) return null;
     const portions: FoodPortion[] = Array.isArray(json.portions) ? json.portions : [];
     const primaryPortion: PrimaryServing | null = json.primaryPortion ?? null;
-    return { macrosPer100g: json.macrosPer100g, portions, primaryPortion };
+    const microsPer100g =
+      json.microsPer100g && typeof json.microsPer100g === "object"
+        ? (json.microsPer100g as Record<string, number>)
+        : undefined;
+    return {
+      macrosPer100g: json.macrosPer100g,
+      ...(microsPer100g ? { microsPer100g } : {}),
+      portions,
+      primaryPortion,
+    };
   } catch (e) {
     if (isBenignAbort(e)) return null;
     console.error("[getFatSecretFood] failed for foodId", foodId, ":", e instanceof Error ? e.message : e);

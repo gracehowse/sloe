@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   edamamConfigFromEnv,
   edamamFoodMacrosPer100g,
+  edamamFoodMicrosPer100g,
   edamamFoodSearch,
 } from "@/lib/edamam/client";
 import { rateLimit } from "@/lib/server/rateLimit";
@@ -84,6 +85,13 @@ export async function GET(req: Request) {
       : raw;
     const hits = filtered.map((h) => {
       const m = edamamFoodMacrosPer100g(h.food);
+      // 2026-05-06: emit fiber/sugar/sodium under the canonical
+      // micros shape too, so the meal-detail panel's
+      // `nutrition_micros` map populates for Edamam logs. Edamam
+      // Food Database doesn't publish vitamins/minerals beyond
+      // sodium — the empty rows in the panel will still read
+      // "Edamam did not publish".
+      const microsPer100g = edamamFoodMicrosPer100g(h.food);
       return {
         foodId: h.food.foodId,
         label: h.food.label,
@@ -99,6 +107,7 @@ export async function GET(req: Request) {
         fiberG: m.fiberG,
         sugarG: m.sugarG,
         sodiumMg: m.sodiumMg,
+        ...(Object.keys(microsPer100g).length > 0 ? { microsPer100g } : {}),
         servingSizes: h.food.servingSizes ?? [],
       };
     });

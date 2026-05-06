@@ -5,6 +5,7 @@ import {
   type FatSecretServing,
 } from "@/lib/fatsecret/client";
 import {
+  fatSecretServingMicrosPer100g,
   normalizeServingToMacros,
   pickBestServing,
   servingMassGrams,
@@ -109,6 +110,13 @@ export async function GET(req: Request) {
       sodiumMg: Math.max(0, Math.round(perServing.sodiumMg * factor)),
     };
 
+    // 2026-05-06: also pull the wider Premier panel (sat/poly/mono fat,
+    // cholesterol, calcium, iron, potassium) so the meal-detail
+    // "Vitamins, minerals & more" surface populates for FatSecret-
+    // sourced logs. Empty object on Basic-tier responses (no fields
+    // shipped) — caller treats as "FatSecret didn't publish".
+    const microsPer100g = fatSecretServingMicrosPer100g(best, grams);
+
     // Build a portion list from FatSecret's serving rows. Each named
     // serving becomes a portion option (e.g. "1 sandwich (240 g)") so
     // the user can pick "1 sandwich" without manually entering grams.
@@ -144,6 +152,7 @@ export async function GET(req: Request) {
     return NextResponse.json({
       ok: true,
       macrosPer100g,
+      ...(Object.keys(microsPer100g).length > 0 ? { microsPer100g } : {}),
       portions,
       primaryPortion,
     });

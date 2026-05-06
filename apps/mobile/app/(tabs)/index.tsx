@@ -1689,6 +1689,8 @@ export default function TrackerScreen() {
           ? "Open Food Facts"
           : result.source === "Edamam"
           ? "Edamam"
+          : result.source === "FatSecret"
+          ? "FatSecret"
           : "USDA FoodData Central";
       const { caffeineMg, alcoholG } = scaleCaffeineAlcohol({
         grams,

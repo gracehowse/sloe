@@ -609,6 +609,10 @@ export default function FoodSearchPanel({
           name: item.name,
           source: "USDA",
           macrosPer100g: result.macrosPer100g,
+          // 2026-05-06 — pull through USDA's wider per-100g panel
+          // so the meal-detail "Vitamins, minerals & more" surface
+          // populates after this food is logged.
+          ...(result.microsPer100g ? { microsPer100g: result.microsPer100g } : {}),
           portions: allPortions,
           chosenPortion: portion,
           quantity,
@@ -642,6 +646,10 @@ export default function FoodSearchPanel({
           name: item.name,
           source: "Edamam",
           macrosPer100g: item.macrosPer100g,
+          // 2026-05-06 — Edamam Food Database only ships fiber/sugar/
+          // sodium on this endpoint, but pulling those through still
+          // populates the first three rows of the meal-detail panel.
+          ...(item.microsPer100g ? { microsPer100g: item.microsPer100g } : {}),
           portions: allPortions,
           chosenPortion: portion,
           quantity,
@@ -664,6 +672,11 @@ export default function FoodSearchPanel({
           name: item.name,
           source: "FatSecret",
           macrosPer100g: result.macrosPer100g,
+          // 2026-05-06 — pull through FatSecret Premier's wider
+          // per-100g panel (sat/poly/mono fat, cholesterol, calcium,
+          // iron, potassium) so the meal-detail "Vitamins, minerals
+          // & more" surface populates for FatSecret-sourced logs.
+          ...(result.microsPer100g ? { microsPer100g: result.microsPer100g } : {}),
           portions: allPortions,
           chosenPortion: portion,
           quantity,
