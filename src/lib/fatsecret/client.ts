@@ -95,6 +95,21 @@ function requiredEnv(name: string): string {
 }
 
 /**
+ * Return the first non-empty env var value out of the provided list.
+ * Used to support both the canonical OAuth 2.0 env var names
+ * (FATSECRET_CLIENT_ID / FATSECRET_CLIENT_SECRET) and the legacy
+ * OAuth 1.0a names (FATSECRET_CONSUMER_KEY / FATSECRET_CONSUMER_SECRET)
+ * during the rename rollout.
+ */
+function firstEnv(...names: string[]): string {
+  for (const n of names) {
+    const v = process.env[n];
+    if (typeof v === "string" && v.trim().length > 0) return v;
+  }
+  throw new Error(`Missing env var (none of: ${names.join(", ")})`);
+}
+
+/**
  * Read tier from `FATSECRET_TIER`. Unset or unrecognised → "basic"
  * (safe default — Basic-tier callers must keep working when the env
  * var is absent).
@@ -105,9 +120,14 @@ export function fatSecretTierFromEnv(): FatSecretTier {
 }
 
 export function fatSecretConfigFromEnv(): FatSecretConfig {
+  // OAuth 2.0 names take precedence; fall back to the OAuth 1.0a-era
+  // names so envs that haven't been renamed yet keep working. Internal
+  // config field names stay as `consumerKey`/`consumerSecret` because
+  // the OAuth 1.0a fallback path inside this client uses them as
+  // OAuth 1.0a consumer credentials when OAuth 2.0 token exchange fails.
   return {
-    consumerKey: requiredEnv("FATSECRET_CONSUMER_KEY"),
-    consumerSecret: requiredEnv("FATSECRET_CONSUMER_SECRET"),
+    consumerKey: firstEnv("FATSECRET_CLIENT_ID", "FATSECRET_CONSUMER_KEY"),
+    consumerSecret: firstEnv("FATSECRET_CLIENT_SECRET", "FATSECRET_CONSUMER_SECRET"),
     tier: fatSecretTierFromEnv(),
   };
 }

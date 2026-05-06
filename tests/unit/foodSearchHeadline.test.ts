@@ -175,4 +175,48 @@ describe("resolveFoodSearchHeadline — edge cases", () => {
     if (h.mode !== "per-100g") throw new Error("wrong mode");
     expect(h.headlineKcal).toBe(120);
   });
+
+  it("rounds per-100g macros to 1dp so search rows don't render USDA Branded raw floats", () => {
+    // 2026-05-06 — TestFlight feedback ("lots of random decimals on
+    // some entries"): USDA Branded ships per-100g protein as raw
+    // floats (e.g. 7.967347722423224). The search row renders
+    // `P {macros.protein}g` directly, so anything past 1dp leaks
+    // into the UI. Pin: macros come back rounded to 1dp.
+    const h = resolveFoodSearchHeadline({
+      primaryServing: null,
+      macrosPer100g: {
+        calories: 141.234,
+        protein: 7.967347722423224,
+        carbs: 14.500830618896225,
+        fat: 5.876200094747999,
+      },
+    });
+    if (h.mode !== "per-100g" || !h.macros) throw new Error("wrong mode");
+    expect(h.macros).toEqual({
+      calories: 141,
+      protein: 8,
+      carbs: 14.5,
+      fat: 5.9,
+    });
+  });
+
+  it("rounds per-serving macros to 1dp so primary-serving rows don't render raw floats", () => {
+    const h = resolveFoodSearchHeadline({
+      primaryServing: {
+        label: "1 patty",
+        grams: 92,
+        kcal: 257,
+        protein: 25.6789,
+        carbs: 12.34567,
+        fat: 9.87654321,
+      },
+    });
+    if (h.mode !== "per-serving") throw new Error("wrong mode");
+    expect(h.macros).toEqual({
+      calories: 257,
+      protein: 25.7,
+      carbs: 12.3,
+      fat: 9.9,
+    });
+  });
 });
