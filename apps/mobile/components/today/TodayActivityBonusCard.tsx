@@ -17,6 +17,7 @@ import {
   type MaintenanceConfidence,
   type MaintenanceSource,
 } from "../../../../src/lib/nutrition/resolveMaintenance";
+import { weekDeficitToKg } from "../../../../src/lib/nutrition/maintenanceChain";
 import type { JournalMeal } from "@/lib/nutritionJournal";
 
 /**
@@ -159,8 +160,11 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
   const showWeekly = weekBurn > 0;
   const weekDeficit = weekBurn - weekConsumed;
   const dailyAvgDeficit = Math.round(weekDeficit / 7);
-  const weeklyLbsRate = Math.abs(weekDeficit) / 3500;
-  const weeklyKgRate = weeklyLbsRate * 0.4536;
+  // 2026-05-05 — single 7700 kcal/kg path; matches onboarding pace
+  // promises and whyThisNumber explainer. Was 3500/lb * 0.4536/kg
+  // (~0.2% drift across surfaces).
+  const weeklyKgRate = weekDeficitToKg(weekDeficit);
+  const weeklyLbsRate = weeklyKgRate / 0.4536;
   const isWeekDeficit = weekDeficit >= 0;
 
   return (

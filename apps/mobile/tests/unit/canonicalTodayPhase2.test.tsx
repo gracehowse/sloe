@@ -140,8 +140,21 @@ describe("(tabs)/index.tsx — canonical Today composition root pin", () => {
     expect(indexSrc).not.toMatch(/^import\s*\{\s*LogFab\s*\}/m);
   });
 
-  it("renders the <StreakPip> on day-view (with streakDays passed in)", () => {
-    expect(indexSrc).toMatch(/<StreakPip\s+days=\{streakDays\}/);
+  it("renders the <StreakPip> on day-view (with protectedStreakLength passed in — audit S01, 2026-05-05)", () => {
+    // S01 fix: Today now consumes the freeze-protected streak so the
+    // pip matches Settings + weekly-recap + push-body, all of which
+    // already used the protected count. Was `streakDays` (raw
+    // computeLoggingStreak) until 2026-05-05.
+    expect(indexSrc).toMatch(/<StreakPip\s+days=\{protectedStreakLength\}/);
+    expect(indexSrc).not.toMatch(/<StreakPip\s+days=\{streakDays\}/);
+  });
+
+  it("renders the <TodaySnapShortcut> only when today AND no meals logged (audit T08, 2026-05-05)", () => {
+    // T08 fix: snap shortcut treats itself as an empty-day prompt
+    // rather than an always-on speed-logger. Without this gate, four
+    // logging entry points (FAB, snap shortcut, meal-slot taps,
+    // quick-log strip) competed for the same action all day.
+    expect(indexSrc).toMatch(/isToday\s*&&\s*mealsToday\.length\s*===\s*0\s*&&\s*\(\s*<TodaySnapShortcut/);
   });
 
   it("Phase 3 (2026-04-28): the variant picker has been removed entirely (no variant / hidePicker / onVariantChange props)", () => {

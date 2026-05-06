@@ -210,6 +210,7 @@ export default function BarcodeScreen() {
       // not block the logged-meal alert.
       void writeMealToHealthKitIfEnabled({
         mealId,
+        userId,
         name: `${product.name} (${portionSummary})`,
         calories: scaled.calories,
         protein: scaled.protein,
@@ -264,6 +265,7 @@ export default function BarcodeScreen() {
       if (last) void recordPortion(last, 100);
       void writeMealToHealthKitIfEnabled({
         mealId,
+        userId,
         name: manualName.trim(),
         calories: cal,
         protein: Math.round((Number(manualProtein) || 0) * 10) / 10,

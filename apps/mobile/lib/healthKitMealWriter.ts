@@ -32,19 +32,35 @@
 import { writeNutritionToHealth } from "./healthSync";
 
 const FLAG_KEY = "health_export_nutrition";
-const WRITTEN_IDS_KEY = "health_export_written_ids";
+/**
+ * 2026-05-05 (audit Y02) — userId-scoped key. Was a global
+ * `health_export_written_ids` until today; that meant when User A signed
+ * out and User B signed in on the same device, B's writes were silently
+ * suppressed because A's id set was still in AsyncStorage. Now scoped:
+ * User A's set lives at `health_export_written_ids:<A.id>`, User B's at
+ * `:<B.id>`. The `clearUserScopedAsyncStorage` helper called on signOut
+ * removes the previous user's set.
+ */
+const WRITTEN_IDS_KEY_PREFIX = "health_export_written_ids";
+function writtenIdsKeyForUser(userId: string): string {
+  return `${WRITTEN_IDS_KEY_PREFIX}:${userId}`;
+}
 const WRITTEN_IDS_CAP = 5_000;
 
 /** In-memory dedupe — cleared on app restart, AsyncStorage backs it. */
 const writtenIdsMemory: Set<string> = new Set();
-let writtenIdsHydrated = false;
+/** Tracks which userId the in-memory set belongs to so a re-signin under
+    a different user invalidates correctly. `null` until first hydrate. */
+let writtenIdsHydratedFor: string | null = null;
 
-async function hydrateWrittenIds(): Promise<void> {
-  if (writtenIdsHydrated) return;
-  writtenIdsHydrated = true;
+async function hydrateWrittenIds(userId: string): Promise<void> {
+  if (writtenIdsHydratedFor === userId) return;
+  // Different user (or first hydrate) — wipe in-memory set and re-load.
+  writtenIdsMemory.clear();
+  writtenIdsHydratedFor = userId;
   try {
     const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
-    const raw = await AsyncStorage.getItem(WRITTEN_IDS_KEY);
+    const raw = await AsyncStorage.getItem(writtenIdsKeyForUser(userId));
     if (!raw) return;
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return;
@@ -56,7 +72,7 @@ async function hydrateWrittenIds(): Promise<void> {
   }
 }
 
-async function persistWrittenIds(): Promise<void> {
+async function persistWrittenIds(userId: string): Promise<void> {
   try {
     const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
     // Drop oldest entries when over cap (Set preserves insertion order).
@@ -69,10 +85,19 @@ async function persistWrittenIds(): Promise<void> {
         writtenIdsMemory.delete(next.value);
       }
     }
-    await AsyncStorage.setItem(WRITTEN_IDS_KEY, JSON.stringify(Array.from(writtenIdsMemory)));
+    await AsyncStorage.setItem(writtenIdsKeyForUser(userId), JSON.stringify(Array.from(writtenIdsMemory)));
   } catch {
     // ignore — best effort
   }
+}
+
+/**
+ * Reset the in-memory dedupe set. Called from auth signOut so the next
+ * sign-in (potentially as a different user) starts clean.
+ */
+export function resetHealthKitMealWriterCache(): void {
+  writtenIdsMemory.clear();
+  writtenIdsHydratedFor = null;
 }
 
 async function isExportEnabled(): Promise<boolean> {
@@ -94,6 +119,13 @@ function isLowConfidenceSource(source: string | null | undefined): boolean {
 export type WriteMealToHealthKitInput = {
   /** Stable meal id used for idempotency; usually the `nutrition_entries.id` UUID. */
   mealId: string;
+  /**
+   * Authenticated user id. Required so the AsyncStorage dedupe set is
+   * userId-scoped and a sign-out + sign-in as a different user starts
+   * with an empty set instead of inheriting the previous user's writes.
+   * If undefined, the call is treated as disabled (no write).
+   */
+  userId?: string | null;
   name: string;
   /** Required — the only macro guaranteed to be present on every log path. */
   calories: number;
@@ -132,11 +164,17 @@ export async function writeMealToHealthKitIfEnabled(
   if (isLowConfidenceSource(input.source)) {
     return { ok: true, written: false, reason: "low-confidence" };
   }
+  // 2026-05-05 — userId required for the dedupe set to be userId-scoped.
+  // Missing userId means the caller doesn't have a session yet; skip
+  // rather than write to a global key (audit Y02 cross-user leak).
+  if (!input.userId) {
+    return { ok: true, written: false, reason: "disabled" };
+  }
 
   const enabled = await isExportEnabled();
   if (!enabled) return { ok: true, written: false, reason: "disabled" };
 
-  await hydrateWrittenIds();
+  await hydrateWrittenIds(input.userId);
   if (writtenIdsMemory.has(input.mealId)) {
     return { ok: true, written: false, reason: "duplicate" };
   }
@@ -167,7 +205,7 @@ export async function writeMealToHealthKitIfEnabled(
   // Persist after every successful write so a restart inherits the
   // dedupe set. Wait until persist for cap eviction so the first 5k
   // writes are a single cheap set-add per call.
-  await persistWrittenIds();
+  await persistWrittenIds(input.userId);
 
   if (bridgeWroteCount === 0) {
     return { ok: true, written: false, reason: "hk-failed" };
@@ -185,9 +223,9 @@ export async function writeMealToHealthKitIfEnabled(
  *
  * Idempotent — safe to call repeatedly.
  */
-export async function primeWrittenMealIds(ids: ReadonlyArray<string>): Promise<void> {
-  if (!ids || ids.length === 0) return;
-  await hydrateWrittenIds();
+export async function primeWrittenMealIds(userId: string | null | undefined, ids: ReadonlyArray<string>): Promise<void> {
+  if (!userId || !ids || ids.length === 0) return;
+  await hydrateWrittenIds(userId);
   let added = 0;
   for (const id of ids) {
     if (typeof id === "string" && id.length > 0 && !writtenIdsMemory.has(id)) {
@@ -195,16 +233,17 @@ export async function primeWrittenMealIds(ids: ReadonlyArray<string>): Promise<v
       added++;
     }
   }
-  if (added > 0) await persistWrittenIds();
+  if (added > 0) await persistWrittenIds(userId);
 }
 
-/** Test-only — reset in-memory + AsyncStorage dedupe state. */
-export async function _resetHealthKitMealWriterForTests(): Promise<void> {
+/** Test-only — reset in-memory + AsyncStorage dedupe state for a userId. */
+export async function _resetHealthKitMealWriterForTests(userId?: string): Promise<void> {
   writtenIdsMemory.clear();
-  writtenIdsHydrated = false;
+  writtenIdsHydratedFor = null;
+  if (!userId) return;
   try {
     const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
-    await AsyncStorage.removeItem(WRITTEN_IDS_KEY);
+    await AsyncStorage.removeItem(writtenIdsKeyForUser(userId));
   } catch {
     // ignore
   }

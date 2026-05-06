@@ -3262,7 +3262,7 @@ export default function TrackerScreen() {
       const existingIds = (rows ?? [])
         .map((r) => r.id as string)
         .filter((id): id is string => typeof id === "string" && id.length > 0);
-      void primeWrittenMealIds(existingIds);
+      void primeWrittenMealIds(userId, existingIds);
     }
     setHydrated(true);
 
@@ -3458,6 +3458,7 @@ export default function TrackerScreen() {
               for (const m of todayMeals) {
                 void writeMealToHealthKitIfEnabled({
                   mealId: UUID_RE.test(m.id) ? m.id : "",
+                  userId,
                   name: m.recipeTitle || m.name,
                   calories: m.calories,
                   protein: m.protein,
@@ -3634,6 +3635,7 @@ export default function TrackerScreen() {
       for (const m of withIds) {
         void writeMealToHealthKitIfEnabled({
           mealId: m.id,
+          userId,
           name: m.recipeTitle || m.name,
           calories: m.calories,
           protein: m.protein,
@@ -3919,6 +3921,7 @@ export default function TrackerScreen() {
         // Audit/2026-04-30 — per-meal HK write for plan-tap log.
         void writeMealToHealthKitIfEnabled({
           mealId: entryId,
+          userId,
           name: pm.recipe_title ?? pm.name ?? "Meal plan",
           calories: optimisticMeal.calories,
           protein: optimisticMeal.protein,
@@ -4009,7 +4012,7 @@ export default function TrackerScreen() {
         {viewMode === "day" && (
           <View style={{ alignItems: "flex-end", paddingTop: 6, marginBottom: -4 }}>
             <StreakPip
-              days={streakDays}
+              days={protectedStreakLength}
               onPress={() => router.push("/weekly-recap" as never)}
             />
           </View>
@@ -4319,7 +4322,7 @@ export default function TrackerScreen() {
                 routing the LogSheet `photo.onCapture` slot uses, so
                 Pro gating, paywall analytics, and the open-from-Today
                 analytics breadcrumb stay consistent. */}
-            {isToday && (
+            {isToday && mealsToday.length === 0 && (
               <TodaySnapShortcut
                 onPress={() => {
                   track(AnalyticsEvents.today_snap_shortcut_tapped, {

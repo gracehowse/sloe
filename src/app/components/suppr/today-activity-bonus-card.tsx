@@ -17,6 +17,7 @@ import {
   type MaintenanceConfidence,
   type MaintenanceSource,
 } from "../../../lib/nutrition/resolveMaintenance";
+import { weekDeficitToKg } from "../../../lib/nutrition/maintenanceChain";
 
 /**
  * TodayActivityBonusCard — summary + per-workout + weekly deficit.
@@ -116,7 +117,9 @@ export function TodayActivityBonusCard({
   const showWeekly = weekBurn > 0;
   const weekDeficit = weekBurn - weekConsumed;
   const dailyAvgDeficit = Math.round(weekDeficit / 7);
-  const weeklyKgRate = (Math.abs(weekDeficit) / 3500) * 0.4536;
+  // 2026-05-05 — single 7700 kcal/kg path; mirrors onboarding pace
+  // promises + whyThisNumber explainer. Was 3500/lb * 0.4536/kg.
+  const weeklyKgRate = weekDeficitToKg(weekDeficit);
   const weeklyMassLabel =
     profileMeasurementSystem === "imperial"
       ? `${(Math.round(kgToLb(weeklyKgRate) * 10) / 10).toFixed(1)} lb`

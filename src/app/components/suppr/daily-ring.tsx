@@ -160,7 +160,13 @@ function DailyRing({
   // 1,132 kcal` for users who hadn't logged yet. The empty state
   // should look the same regardless of which display mode the user
   // has selected. Mirror of the same change in mobile `CalorieRing.tsx`.
-  const isEmpty = consumed === 0;
+  // 2026-05-05 (audit R03) — also treat `target <= 0` as empty (no
+  // profile target yet). Without this guard, mobile renders gradient
+  // stroke ("calibrating") while web renders destructive red over for
+  // the same input — cross-platform contradiction. Both platforms now
+  // fall into the calibrating-empty state until a profile target is
+  // set.
+  const isEmpty = consumed === 0 || target <= 0;
 
   // Tween the displayed centre value over 800ms / cubic-out — same
   // curve as the SVG ring sweep so the number and arc finish
@@ -328,10 +334,14 @@ function DailyRing({
                 ui-critic called out that the expanded view hid the
                 denominator and left the user looking at a number with no
                 anchor. We keep the same 10px tabular caption in both
-                modes so the centre of the ring always carries its target. */}
-            <span className="text-[10px] text-muted-foreground mt-0.5 tabular-nums">
-              of {Math.round(target).toLocaleString()} kcal
-            </span>
+                modes so the centre of the ring always carries its target.
+                Hidden when target <= 0 (no profile target yet) so the
+                ring doesn't render "of 0 kcal" — 2026-05-05 audit R03. */}
+            {target > 0 ? (
+              <span className="text-[10px] text-muted-foreground mt-0.5 tabular-nums">
+                of {Math.round(target).toLocaleString()} kcal
+              </span>
+            ) : null}
           </>
         )}
       </div>
