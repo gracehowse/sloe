@@ -1916,8 +1916,16 @@ export default function PlannerScreen() {
                         style={[styles.dayBtn, active && styles.dayBtnActive]}
                         onPress={() => toggleSlot(slot)}
                       >
+                        {/* 2026-05-06 (Grace) — was `color="#fff"` on
+                            an `Accent.primary + "15"` tinted background
+                            (~8% opacity). White-on-very-light-blue made
+                            the check icon invisible. Both states now
+                            use a colour that contrasts against the
+                            chip's tinted background: active uses the
+                            primary blue (matches `dayBtnTextActive`);
+                            inactive stays muted text-secondary. */}
                         {active ? (
-                          <CheckCircle2 size={14} color="#fff" strokeWidth={1.75} style={{ marginRight: 4 }} />
+                          <CheckCircle2 size={14} color={Accent.primary} strokeWidth={2} style={{ marginRight: 4 }} />
                         ) : (
                           <Circle size={14} color={colors.textSecondary} strokeWidth={1.75} style={{ marginRight: 4 }} />
                         )}

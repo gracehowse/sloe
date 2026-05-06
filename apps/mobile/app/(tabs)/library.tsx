@@ -224,7 +224,17 @@ export default function LibraryScreen() {
     createBtnText: { fontSize: 12, fontWeight: "700", color: "#fff" },
     searchRow: { paddingHorizontal: Spacing.xl, paddingVertical: Spacing.sm },
     filterScroll: {
-      paddingHorizontal: Spacing.xl,
+      // 2026-05-06 (Grace) — "Quick" pill was clipping at the right
+      // edge: a single `paddingHorizontal: Spacing.xl` left the
+      // rightmost pill flush against the trailing padding so its
+      // border/text touched the screen edge with no breathing room.
+      // Splitting into explicit `paddingLeft` (preserve original
+      // edge alignment with the section header) + a generous
+      // `paddingRight: Spacing.xl * 2` so the trailing pill always
+      // has visible scroll-headroom and doesn't sit on the screen
+      // edge.
+      paddingLeft: Spacing.xl,
+      paddingRight: Spacing.xl * 2,
       // F-63b (2026-04-22): tester AAUNt / ALvjyW flagged the Library
       // filter pills as "scrunched" / "format layout still terrible"
       // — on iOS the horizontal ScrollView was rendering at just
