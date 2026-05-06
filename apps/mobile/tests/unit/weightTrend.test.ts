@@ -33,10 +33,44 @@ describe("computeWeightTrend", () => {
     expect(r.points.length).toBeGreaterThan(0);
   });
 
-  it("all points pass through on 'all' range", () => {
+  // 2026-05-06: 'all' range now buckets to monthly means (MFP-style)
+  // so 120 days of daily weigh-ins collapse to 4-5 monthly points,
+  // not 120 raw points. The bucket strategy is exposed on the result
+  // so callers (WeightChart) can hide raw dots and render only the
+  // smoothed line. Pin the new behaviour.
+  it("all range buckets daily points into monthly means", () => {
     const pts = makePoints(120);
     const r = computeWeightTrend(pts, "all", null, BASE_ISO);
-    expect(r.points).toHaveLength(120);
+    expect(r.bucket).toBe("monthly");
+    // 120 days starting Dec 2025 → Dec, Jan, Feb, Mar, Apr (5 months).
+    expect(r.points.length).toBeGreaterThanOrEqual(4);
+    expect(r.points.length).toBeLessThanOrEqual(6);
+    // Anchor dates are start-of-month.
+    for (const p of r.points) {
+      expect(p.dateISO.endsWith("-01")).toBe(true);
+    }
+  });
+
+  it("3m range buckets daily points into weekly means (Monday-anchored)", () => {
+    const pts = makePoints(60);
+    const r = computeWeightTrend(pts, "3m", null, BASE_ISO);
+    expect(r.bucket).toBe("weekly");
+    // 60 days → ~9 weekly buckets.
+    expect(r.points.length).toBeGreaterThanOrEqual(8);
+    expect(r.points.length).toBeLessThanOrEqual(10);
+    // Each anchor must be a Monday.
+    for (const p of r.points) {
+      const day = new Date(p.dateISO + "T12:00:00").getDay();
+      expect(day).toBe(1);
+    }
+  });
+
+  it("1w / 1m ranges keep daily granularity (no bucketing)", () => {
+    const pts = makePoints(30);
+    const wkly = computeWeightTrend(pts, "1w", null, BASE_ISO);
+    const monthly = computeWeightTrend(pts, "1m", null, BASE_ISO);
+    expect(wkly.bucket).toBe("daily");
+    expect(monthly.bucket).toBe("daily");
   });
 
   it("yDomain always spans at least 0.8 kg", () => {
@@ -110,6 +144,68 @@ describe("computeWeightTrend", () => {
     const pts = makePoints(15, 70, 0.15);
     const r = computeWeightTrend(pts, "1m", 68, BASE_ISO);
     expect(r.trendDirection).toBe("worsening");
+  });
+
+  // 2026-05-06 pins for the rewrite:
+
+  it("dedupes same-day weigh-ins into a single point (mean)", () => {
+    // User logs at 7am (HealthKit) AND at 7pm (manual) on the same
+    // day. Should collapse into one point at the mean — was previously
+    // not deduped, so the point appeared twice with double-counted MA.
+    const pts: WeightPoint[] = [
+      { dateISO: "2026-04-22", kg: 75.0, source: "healthkit" },
+      { dateISO: "2026-04-22", kg: 75.4, source: "manual" },
+    ];
+    const r = computeWeightTrend(pts, "1m", null, BASE_ISO);
+    expect(r.points).toHaveLength(1);
+    expect(r.points[0]!.kg).toBeCloseTo(75.2, 1);
+  });
+
+  it("MA window is calendar-day-based (7 days for short ranges, 28 for long)", () => {
+    // 5 weigh-ins, one every 14 days — under the old index-based
+    // "last 7 points" rule, the MA at point 5 would average all 5
+    // points (~70 days span). Under the new calendar-day rule, only
+    // points within the trailing 7 (or 28) calendar days count, so
+    // the MA at point 5 is just point 5 alone — fewer than 3 in
+    // window → null. Pin both behaviours.
+    const pts: WeightPoint[] = [
+      { dateISO: "2026-02-01", kg: 75.0 },
+      { dateISO: "2026-02-15", kg: 74.7 },
+      { dateISO: "2026-03-01", kg: 74.4 },
+      { dateISO: "2026-03-15", kg: 74.1 },
+      { dateISO: "2026-04-01", kg: 73.8 },
+    ];
+    // 1m → 7-day window. Each point is 14 days apart → window of 1
+    // point → null MA throughout.
+    const r1m = computeWeightTrend(pts, "1m", null, "2026-04-22");
+    expect(r1m.movingAvg.every((v) => v === null)).toBe(true);
+    // all → 28-day window. Each point picks up the previous point in
+    // the window when they're 14 days apart, but that's only 2 → still
+    // < 3 needed → null. Demonstrates the calendar-day floor.
+    const rAll = computeWeightTrend(pts, "all", null, "2026-04-22");
+    expect(rAll.movingAvg.every((v) => v === null)).toBe(true);
+  });
+
+  it("MA produces non-null when 3+ entries fall within the window calendar days", () => {
+    // 5 daily points, MA window = 7 days → from point 3 onward each
+    // window has 3+ entries.
+    const pts = makePoints(7);
+    const r = computeWeightTrend(pts, "1m", null, BASE_ISO);
+    // Last MA value should be a real number.
+    const last = r.movingAvg[r.movingAvg.length - 1];
+    expect(typeof last).toBe("number");
+  });
+
+  it("yDomain handles a 10000-point history without stack overflow (iterative min/max)", () => {
+    // Math.min(...arr) rest-spread crashes on >~7000 args; the
+    // iterative implementation must handle large histories cleanly.
+    const pts: WeightPoint[] = [];
+    const start = new Date("2010-01-01T12:00:00").getTime();
+    for (let i = 0; i < 10000; i++) {
+      const d = new Date(start + i * 86400000).toISOString().slice(0, 10);
+      pts.push({ dateISO: d, kg: 70 + Math.sin(i / 100) });
+    }
+    expect(() => computeWeightTrend(pts, "all", null, "2026-04-22")).not.toThrow();
   });
 });
 
