@@ -166,8 +166,27 @@ export default function VerifyScreen() {
   const onFoodSelected = useCallback(
     (result: SelectedFood) => {
       if (searchIndex == null) return;
-      const grams = result.chosenPortion.gramWeight * result.quantity;
-      const scaled = scaleMacros(result.macrosPer100g, grams);
+      // 2026-05-06: per-serving-only FatSecret foods don't have a
+      // per-100g basis. Compute the scaled values from
+      // `macrosPerServing × quantity` directly and persist
+      // `macrosPer100g: null` so subsequent quantity edits skip
+      // gram-based re-scaling.
+      const isPerServingOnly =
+        result.macrosPer100g === null && Boolean(result.macrosPerServing);
+      const grams = isPerServingOnly ? 0 : result.chosenPortion.gramWeight * result.quantity;
+      const ps = result.macrosPerServing;
+      const q = result.quantity;
+      const scaled = isPerServingOnly && ps
+        ? {
+            calories: Math.round(ps.calories * q),
+            protein: Math.round(ps.protein * q * 10) / 10,
+            carbs: Math.round(ps.carbs * q * 10) / 10,
+            fat: Math.round(ps.fat * q * 10) / 10,
+            fiberG: 0,
+            sugarG: 0,
+            sodiumMg: 0,
+          }
+        : scaleMacros(result.macrosPer100g!, grams);
       updateIngredient(searchIndex, {
         matchedName: result.name,
         source: result.source,

@@ -144,7 +144,14 @@ export type Macros = {
 export type SelectedFood = {
   name: string;
   source: "USDA" | "OFF" | "CUSTOM" | "Edamam" | "FatSecret";
-  macrosPer100g: Macros;
+  /**
+   * 2026-05-06: nullable for per-serving-only FatSecret foods (no
+   * metric serving in `food.get`). When null, `macrosPerServing`
+   * carries the values and `chosenPortion.gramWeight` will be 0
+   * (sentinel). The commit site treats this as "log N × 1 serving".
+   */
+  macrosPer100g: Macros | null;
+  macrosPerServing?: { calories: number; protein: number; carbs: number; fat: number } | null;
   microsPer100g?: Record<string, number>;
   portions: FoodPortion[];
   chosenPortion: FoodPortion;
@@ -360,7 +367,15 @@ export default function FoodSearchPanel({
   const [preview, setPreview] = useState<{
     name: string;
     source: "USDA" | "OFF" | "CUSTOM" | "Edamam" | "FatSecret";
-    macrosPer100g: Macros;
+    /**
+     * 2026-05-06: nullable for per-serving-only FatSecret foods (e.g.
+     * McDonald's Big Mac, where FatSecret ships no metric serving so
+     * we can't scale by grams). When null, `macrosPerServing` carries
+     * the values and the only valid portion is the inline serving
+     * (gramWeight: 0 sentinel).
+     */
+    macrosPer100g: Macros | null;
+    macrosPerServing?: { calories: number; protein: number; carbs: number; fat: number } | null;
     microsPer100g?: Record<string, number>;
     portions: FoodPortion[];
     chosenPortion: FoodPortion;
@@ -672,6 +687,11 @@ export default function FoodSearchPanel({
           name: item.name,
           source: "FatSecret",
           macrosPer100g: result.macrosPer100g,
+          // 2026-05-06 — when `macrosPer100g` is null (FatSecret has
+          // no metric grounding for this food, e.g. McDonald's Big
+          // Mac), thread the per-serving payload so the commit path
+          // can log "N × 1 serving" without scaling by grams.
+          ...(result.macrosPerServing ? { macrosPerServing: result.macrosPerServing } : {}),
           // 2026-05-06 — pull through FatSecret Premier's wider
           // per-100g panel (sat/poly/mono fat, cholesterol, calcium,
           // iron, potassium) so the meal-detail "Vitamins, minerals
@@ -881,6 +901,7 @@ export default function FoodSearchPanel({
         name: preview.name,
         source: preview.source,
         macrosPer100g: preview.macrosPer100g,
+        ...(preview.macrosPerServing ? { macrosPerServing: preview.macrosPerServing } : {}),
         ...(preview.microsPer100g ? { microsPer100g: preview.microsPer100g } : {}),
         portions: preview.portions,
         chosenPortion: preview.chosenPortion,
@@ -897,6 +918,27 @@ export default function FoodSearchPanel({
 
   const previewMacros = useMemo(() => {
     if (!preview) return null;
+    // 2026-05-06: per-serving-only path (FatSecret no-metric foods).
+    // gramWeight: 0 + macrosPer100g: null + macrosPerServing populated
+    // → scale by quantity directly without per-100g math.
+    if (
+      preview.macrosPer100g === null &&
+      preview.macrosPerServing &&
+      preview.chosenPortion.gramWeight === 0
+    ) {
+      const q = preview.quantity;
+      const ps = preview.macrosPerServing;
+      return {
+        calories: Math.round(ps.calories * q),
+        protein: Math.round(ps.protein * q * 10) / 10,
+        carbs: Math.round(ps.carbs * q * 10) / 10,
+        fat: Math.round(ps.fat * q * 10) / 10,
+        fiberG: 0,
+        sugarG: 0,
+        sodiumMg: 0,
+      };
+    }
+    if (!preview.macrosPer100g) return null;
     const grams = preview.chosenPortion.gramWeight * preview.quantity;
     return scaleMacros(preview.macrosPer100g, grams);
   }, [preview]);
@@ -1192,7 +1234,12 @@ export default function FoodSearchPanel({
               <Plus size={18} color={colors.text} />
             </Pressable>
             <Text style={{ fontSize: 13, color: colors.textSecondary, flex: 1 }}>
-              = {totalGrams} g
+              {/* 2026-05-06: per-serving-only foods don't have gram
+                  grounding (FatSecret no-metric path). Show the
+                  serving count instead of "= 0 g". */}
+              {preview.chosenPortion.gramWeight === 0
+                ? `= ${preview.quantity} ${preview.chosenPortion.label}`
+                : `= ${totalGrams} g`}
             </Text>
           </View>
 

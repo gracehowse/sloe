@@ -245,17 +245,34 @@ export default function CreateRecipeWizard() {
   // ---- Step 2 helpers ---------------------------------------------------
   const onFoodSelected = useCallback(
     (result: SelectedFood) => {
-      const grams = result.chosenPortion.gramWeight * result.quantity;
-      const f = grams / 100;
+      // 2026-05-06: per-serving-only FatSecret foods don't have a
+      // per-100g basis. Use `macrosPerServing × quantity` directly for
+      // the recipe-ingredient totals.
+      const isPerServingOnly =
+        result.macrosPer100g === null && Boolean(result.macrosPerServing);
+      const grams = isPerServingOnly ? 0 : result.chosenPortion.gramWeight * result.quantity;
+      const f = isPerServingOnly ? 0 : grams / 100;
+      const ps = result.macrosPerServing;
+      const q = result.quantity;
       const patch = {
         name: result.name,
         amount: String(result.quantity),
         unit: result.chosenPortion.label,
-        calories: Math.round(result.macrosPer100g.calories * f),
-        protein: Math.round(result.macrosPer100g.protein * f * 10) / 10,
-        carbs: Math.round(result.macrosPer100g.carbs * f * 10) / 10,
-        fat: Math.round(result.macrosPer100g.fat * f * 10) / 10,
-        fiberG: Math.round((result.macrosPer100g.fiberG ?? 0) * f * 10) / 10,
+        calories: isPerServingOnly && ps
+          ? Math.round(ps.calories * q)
+          : Math.round((result.macrosPer100g?.calories ?? 0) * f),
+        protein: isPerServingOnly && ps
+          ? Math.round(ps.protein * q * 10) / 10
+          : Math.round((result.macrosPer100g?.protein ?? 0) * f * 10) / 10,
+        carbs: isPerServingOnly && ps
+          ? Math.round(ps.carbs * q * 10) / 10
+          : Math.round((result.macrosPer100g?.carbs ?? 0) * f * 10) / 10,
+        fat: isPerServingOnly && ps
+          ? Math.round(ps.fat * q * 10) / 10
+          : Math.round((result.macrosPer100g?.fat ?? 0) * f * 10) / 10,
+        fiberG: isPerServingOnly
+          ? 0
+          : Math.round((result.macrosPer100g?.fiberG ?? 0) * f * 10) / 10,
         source: result.source,
       };
       setIngredients((prev) => {

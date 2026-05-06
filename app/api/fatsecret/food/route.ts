@@ -90,55 +90,67 @@ export async function GET(req: Request) {
     const perServing = normalizeServingToMacros(best);
     const grams = servingMassGrams(best) ?? 0;
 
-    if (grams <= 0) {
-      // No metric grounding — we can't scale to per-100g without it.
-      // Surface an honest 404 rather than invent a denominator.
-      return NextResponse.json(
-        { ok: false, error: "no_metric_serving", message: "FatSecret food has no gram-grounded serving." },
-        { status: 422 },
-      );
-    }
+    // 2026-05-06: previously returned 422 here when FatSecret didn't
+    // publish a metric-grounded serving (e.g. McDonald's Big Mac:
+    // food.get returns "1 serving" with no `metric_serving_amount`).
+    // The 422 made every per-serving-only FatSecret entry silently
+    // un-tappable from the search panel. Now we surface a
+    // per-serving-only response shape so the client can render a
+    // "1 serving = 580 kcal" preview without trying to scale by grams.
+    const isPerServingOnly = grams <= 0;
 
-    const factor = 100 / grams;
-    const macrosPer100g = {
-      calories: Math.max(0, Math.round(perServing.calories * factor)),
-      protein: Math.max(0, Math.round(perServing.protein * factor * 10) / 10),
-      carbs: Math.max(0, Math.round(perServing.carbs * factor * 10) / 10),
-      fat: Math.max(0, Math.round(perServing.fat * factor * 10) / 10),
-      fiberG: Math.max(0, Math.round(perServing.fiberG * factor * 10) / 10),
-      sugarG: Math.max(0, Math.round(perServing.sugarG * factor * 10) / 10),
-      sodiumMg: Math.max(0, Math.round(perServing.sodiumMg * factor)),
-    };
+    const macrosPer100g = isPerServingOnly
+      ? null
+      : {
+          calories: Math.max(0, Math.round(perServing.calories * (100 / grams))),
+          protein: Math.max(0, Math.round(perServing.protein * (100 / grams) * 10) / 10),
+          carbs: Math.max(0, Math.round(perServing.carbs * (100 / grams) * 10) / 10),
+          fat: Math.max(0, Math.round(perServing.fat * (100 / grams) * 10) / 10),
+          fiberG: Math.max(0, Math.round(perServing.fiberG * (100 / grams) * 10) / 10),
+          sugarG: Math.max(0, Math.round(perServing.sugarG * (100 / grams) * 10) / 10),
+          sodiumMg: Math.max(0, Math.round(perServing.sodiumMg * (100 / grams))),
+        };
 
     // 2026-05-06: also pull the wider Premier panel (sat/poly/mono fat,
     // cholesterol, calcium, iron, potassium) so the meal-detail
     // "Vitamins, minerals & more" surface populates for FatSecret-
-    // sourced logs. Empty object on Basic-tier responses (no fields
-    // shipped) — caller treats as "FatSecret didn't publish".
-    const microsPer100g = fatSecretServingMicrosPer100g(best, grams);
+    // sourced logs. Empty object on Basic-tier responses, OR when
+    // there's no metric grounding to scale by (per-serving-only path).
+    const microsPer100g = isPerServingOnly
+      ? {}
+      : fatSecretServingMicrosPer100g(best, grams);
 
     // Build a portion list from FatSecret's serving rows. Each named
     // serving becomes a portion option (e.g. "1 sandwich (240 g)") so
     // the user can pick "1 sandwich" without manually entering grams.
+    // For per-serving-only foods, also include an entry with
+    // gramWeight: 0 (sentinel meaning "no metric — log as-is").
     type PortionOption = { label: string; gramWeight: number; amount: number };
     const portions: PortionOption[] = [];
     const seen = new Set<string>();
     for (const s of list) {
       const g = servingMassGrams(s);
-      if (!g || g <= 0) continue;
       const label = (s.serving_description ?? "").trim();
       if (!label) continue;
       const key = label.toLowerCase();
       if (seen.has(key)) continue;
       seen.add(key);
-      portions.push({ label, gramWeight: g, amount: 1 });
+      portions.push({ label, gramWeight: g ?? 0, amount: 1 });
+    }
+    // Make sure there's always at least one entry for per-serving-only
+    // foods so the preview portion picker has something to render.
+    if (portions.length === 0 && isPerServingOnly) {
+      const label = (best.serving_description ?? "").trim() || "1 serving";
+      portions.push({ label, gramWeight: 0, amount: 1 });
     }
 
     // Primary portion: surface the best metric-grounded serving so the
     // preview defaults to "1 sandwich" rather than "100 g" when the user
-    // taps a per-serving FatSecret row.
+    // taps a per-serving FatSecret row. For per-serving-only foods the
+    // grams field is set to 0 (sentinel) and the client is expected to
+    // skip gram-based scaling and use `macrosPerServing` directly.
     const primaryLabel = (best.serving_description ?? "").trim();
-    const primaryPortion = primaryLabel && grams > 0
+    const primaryPortion = primaryLabel
       ? {
           label: primaryLabel,
           grams,
@@ -149,9 +161,22 @@ export async function GET(req: Request) {
         }
       : null;
 
+    // Per-serving payload for the per-serving-only path. Always
+    // populated when `macrosPer100g` is null so the client knows what
+    // values to commit when the user picks "1 serving".
+    const macrosPerServing = isPerServingOnly
+      ? {
+          calories: Math.max(0, Math.round(perServing.calories)),
+          protein: Math.max(0, Math.round(perServing.protein * 10) / 10),
+          carbs: Math.max(0, Math.round(perServing.carbs * 10) / 10),
+          fat: Math.max(0, Math.round(perServing.fat * 10) / 10),
+        }
+      : null;
+
     return NextResponse.json({
       ok: true,
       macrosPer100g,
+      ...(macrosPerServing ? { macrosPerServing } : {}),
       ...(Object.keys(microsPer100g).length > 0 ? { microsPer100g } : {}),
       portions,
       primaryPortion,
