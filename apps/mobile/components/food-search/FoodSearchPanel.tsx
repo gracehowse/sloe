@@ -687,7 +687,16 @@ export default function FoodSearchPanel({
         // preview so the portion picker has real values to scale.
         const result = await getFatSecretFood(item._fatSecretFoodId);
         setLoadingKey(null);
-        if (!result) return;
+        if (!result) {
+          // 2026-05-06 audit (C2): give the user feedback when the
+          // detail fetch fails. Previously a silent return — user
+          // taps Big Mac, nothing happens, taps again, still nothing.
+          Alert.alert(
+            "Couldn't load this item",
+            "Please check your connection and try again, or pick another option.",
+          );
+          return;
+        }
         const effectivePrimary = item.primaryServing ?? result.primaryPortion ?? null;
         const allPortions = buildPortionList(result.portions, effectivePrimary);
         const { portion, quantity } = effectivePrimary
@@ -942,14 +951,24 @@ export default function FoodSearchPanel({
     ) {
       const q = preview.quantity;
       const ps = preview.macrosPerServing;
+      // 2026-05-06 audit (D3): pull fiber / sugar / sodium from
+      // `microsPerServing` when available so the preview tile
+      // matches the meal-detail panel that ultimately gets persisted.
+      // Was hardcoded to 0 — preview tile reads "Fiber 0g · Sugar 0g
+      // · Sodium 0mg" momentarily for FatSecret per-serving foods
+      // even though those values exist in the Premier panel.
+      const m = preview.microsPerServing ?? {};
+      const fiberPerServing = typeof m.fiberG === "number" ? m.fiberG : 0;
+      const sugarPerServing = typeof m.sugarG === "number" ? m.sugarG : 0;
+      const sodiumPerServing = typeof m.sodiumMg === "number" ? m.sodiumMg : 0;
       return {
         calories: Math.round(ps.calories * q),
         protein: Math.round(ps.protein * q * 10) / 10,
         carbs: Math.round(ps.carbs * q * 10) / 10,
         fat: Math.round(ps.fat * q * 10) / 10,
-        fiberG: 0,
-        sugarG: 0,
-        sodiumMg: 0,
+        fiberG: Math.round(fiberPerServing * q * 10) / 10,
+        sugarG: Math.round(sugarPerServing * q * 10) / 10,
+        sodiumMg: Math.round(sodiumPerServing * q),
       };
     }
     if (!preview.macrosPer100g) return null;
