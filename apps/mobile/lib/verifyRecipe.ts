@@ -713,6 +713,18 @@ export async function searchEdamam(
       );
       return [];
     }
+    // 2026-05-06 (Grace) — the route returns ok:true with hits:[]
+    // when the upstream call fails. Surface its `_diag` echo so prod
+    // failures show up in Metro logs.
+    if (Array.isArray(json.hits) && json.hits.length === 0 && json._diag) {
+      const upstream = typeof json._diag?.upstream === "string" ? json._diag.upstream : "unknown";
+      const upstreamMsg = typeof json._diag?.message === "string" ? json._diag.message : "";
+      console.warn(
+        `[searchEdamam] upstream ${upstream} (route returned ok+empty)${
+          upstreamMsg ? ` — ${upstreamMsg}` : ""
+        }`,
+      );
+    }
     // Route already shapes each hit to the EdamamSearchResult envelope
     // (including `servingSizes`), so we pass the array through.
     return json.hits as EdamamSearchResult[];
@@ -792,6 +804,20 @@ export async function searchFatSecret(
         }`,
       );
       return [];
+    }
+    // 2026-05-06 (Grace) — the route returns ok:true with hits:[] when
+    // the upstream call fails (so the merge keeps USDA/OFF rendering).
+    // The route now also echoes a `_diag` field on that fallback path.
+    // Surface it in Metro logs so prod-side failures don't require
+    // chasing Vercel runtime logs.
+    if (Array.isArray(json.hits) && json.hits.length === 0 && json._diag) {
+      const upstream = typeof json._diag?.upstream === "string" ? json._diag.upstream : "unknown";
+      const upstreamMsg = typeof json._diag?.message === "string" ? json._diag.message : "";
+      console.warn(
+        `[searchFatSecret] upstream ${upstream} (route returned ok+empty)${
+          upstreamMsg ? ` — ${upstreamMsg}` : ""
+        }`,
+      );
     }
     return json.hits as FatSecretSearchResult[];
   } catch (e) {
