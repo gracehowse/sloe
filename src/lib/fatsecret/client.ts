@@ -175,7 +175,21 @@ async function getOAuth2Token(cfg: FatSecretConfig): Promise<string | null> {
     body,
     cache: "no-store",
   });
-  if (!res.ok) return null;
+  if (!res.ok) {
+    // 2026-05-06 — surface the failure mode so production logs say
+    // *why* we fell through to OAuth 1.0a signing (which then fails
+    // with "Invalid consumer key" because the OAuth 2.0 client
+    // secret is not a valid OAuth 1.0a consumer secret).
+    //   401 / invalid_client → credentials wrong in this env
+    //   403 / forbidden      → likely IP allowlist on token endpoint
+    //   429                  → token endpoint rate limit
+    const txt = await res.text().catch(() => "");
+    const keyTail = cfg.consumerKey ? cfg.consumerKey.slice(-6) : "";
+    console.warn(
+      `[fatsecret oauth2] token request failed — status=${res.status} key_tail=${keyTail} body=${txt.slice(0, 160)}`,
+    );
+    return null;
+  }
   const json = (await res.json()) as unknown;
   if (typeof json !== "object" || json === null) return null;
   const token = (json as Record<string, unknown>).access_token;
