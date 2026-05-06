@@ -82,6 +82,18 @@ export async function GET(req: Request) {
       pageNumber: pageNumber - 1,
     });
 
+    // 2026-05-06: log search returns when hits are zero so we can
+    // distinguish "FatSecret API rejected our IP and returned empty"
+    // from "the query genuinely had no matches". Vercel's egress IPs
+    // are rotating AWS lambda IPs that may not be on FatSecret's
+    // allowlist for the data endpoint (separate from the token
+    // endpoint).
+    if (results.length === 0) {
+      console.warn(
+        `[/api/fatsecret/search] empty result — q="${q.slice(0, 40)}" page=${pageNumber}`,
+      );
+    }
+
     const hits = results.map((r) => {
       const parsed = parseFatSecretFoodDescription(r.food_description);
       const brand = (r.brand_name ?? "").trim();

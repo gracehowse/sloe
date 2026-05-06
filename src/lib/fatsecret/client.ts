@@ -292,10 +292,30 @@ export async function fatSecretFoodSearch(
   };
   if (page > 0) params.page_number = String(page);
   const data = await fatSecretGet<{
-    foods?: { food?: FatSecretFoodSearchResult[] | FatSecretFoodSearchResult };
+    foods?: {
+      food?: FatSecretFoodSearchResult[] | FatSecretFoodSearchResult;
+      total_results?: string;
+      max_results?: string;
+      page_number?: string;
+    };
   }>(cfg, params);
   const f = data.foods?.food;
-  if (!f) return [];
+  if (!f) {
+    // 2026-05-06: log when FatSecret returns success but no food
+    // entries — distinguishes "FatSecret rejected the request silently"
+    // (no `foods` key at all) from "FatSecret returned 0 matches"
+    // (foods.total_results === "0"). Vercel's rotating egress IPs may
+    // hit FatSecret's data-endpoint allowlist while the token endpoint
+    // remains open; a missing `foods` key would point at that.
+    const shape =
+      data.foods === undefined
+        ? "no_foods_key"
+        : `total_results=${data.foods.total_results ?? "?"}`;
+    console.warn(
+      `[fatsecret foods.search] no food entries — query="${query.slice(0, 40)}" shape=${shape}`,
+    );
+    return [];
+  }
   return Array.isArray(f) ? f : [f];
 }
 
