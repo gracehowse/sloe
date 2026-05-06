@@ -30,6 +30,10 @@ import { decodeEntities } from "@/lib/decodeEntities";
 import { resolveTargets } from "@/lib/calcTargets";
 import { saveImportedRecipe, type ApiImportedRecipe, coercePositiveMinutes } from "@/lib/saveImportedRecipe";
 import { classifyMealType } from "@/lib/classifyMealType";
+import {
+  IMPORT_ERROR_COPY,
+  userFacingImportError,
+} from "../../../src/lib/recipes/importErrorCopy";
 import MealTypePicker from "@/components/MealTypePicker";
 import FoodSearchModal, { type SelectedFood } from "@/components/FoodSearchModal";
 import OverrideIngredientSheet from "@/components/OverrideIngredientSheet";
@@ -160,6 +164,12 @@ export default function ImportSharedScreen() {
   const [error, setError] = useState<string | null>(null);
   const [manualUrl, setManualUrl] = useState("");
   const [pendingRecipe, setPendingRecipe] = useState<ApiImportedRecipe | null>(null);
+  // Audit I05 (2026-05-05) — `false` when the server-side OpenAI
+  // image step rejected the image and silently fell back to text-only.
+  // `true` when the image was actually used. `undefined` when no image
+  // was supplied. Surfaces the dropped-image fact on the import
+  // preview so users know the recipe was extracted from caption alone.
+  const [imageUsed, setImageUsed] = useState<boolean | undefined>(undefined);
   // Index of the ingredient row currently being edited via the
   // food-search modal (tap) or the override sheet (long-press). Null
   // when no sheet is open. Kept separate from `pendingRecipe` so
@@ -274,13 +284,18 @@ export default function ImportSharedScreen() {
 
       if (!base) {
         setState("error");
-        setError("API not configured. Set supprApiUrl in app config.");
+        // Audit I07 (2026-05-05) — was a dev-jargon string ("Set
+        // supprApiUrl in app config"). Surface a user-actionable
+        // message instead; the dev-only diagnostic should be a log,
+        // not toast copy.
+        console.warn("[import-shared] API base URL not configured");
+        setError(IMPORT_ERROR_COPY.import_failed);
         return;
       }
 
       if (!userId) {
         setState("error");
-        setError("Sign in to save imported recipes to your library.");
+        setError(IMPORT_ERROR_COPY.client_signin_required_to_save);
         return;
       }
 
@@ -300,13 +315,17 @@ export default function ImportSharedScreen() {
           ok?: boolean;
           recipe?: ApiImportedRecipe;
           message?: string;
+          imageUsed?: boolean;
         };
 
         if (!data.ok || !data.recipe) {
           setState("error");
-          setError(data.message ?? "Could not extract a recipe from this link.");
+          setError(userFacingImportError(data));
           return;
         }
+        // Audit I05 (2026-05-05) — record the imageUsed signal so the
+        // preview can flag silent text-only fallback to the user.
+        setImageUsed(data.imageUsed);
 
         console.log("[import] API response - calories:", data.recipe.calories,
           "ingredientMacros:", data.recipe.ingredientMacros?.length,
@@ -341,7 +360,7 @@ export default function ImportSharedScreen() {
         setState("review");
       } catch {
         setState("error");
-        setError("Network error. Check your connection.");
+        setError(IMPORT_ERROR_COPY.network_error);
       }
     },
     [base, userId],
@@ -363,12 +382,13 @@ export default function ImportSharedScreen() {
 
       if (!base) {
         setState("error");
-        setError("API not configured. Set supprApiUrl in app config.");
+        console.warn("[import-shared] API base URL not configured");
+        setError(IMPORT_ERROR_COPY.import_failed);
         return;
       }
       if (!userId) {
         setState("error");
-        setError("Sign in to save imported recipes to your library.");
+        setError(IMPORT_ERROR_COPY.client_signin_required_to_save);
         return;
       }
 
@@ -434,7 +454,7 @@ export default function ImportSharedScreen() {
         setState("review");
       } catch {
         setState("error");
-        setError("Network error. Check your connection.");
+        setError(IMPORT_ERROR_COPY.network_error);
       }
     },
     [base, userId, runImport],
@@ -485,7 +505,7 @@ export default function ImportSharedScreen() {
       };
       if (!data.ok || !data.ingredients?.length) {
         setState("error");
-        setError(data.message ?? data.error ?? "Could not extract a recipe from this image.");
+        setError(userFacingImportError(data));
         return;
       }
 
@@ -512,7 +532,7 @@ export default function ImportSharedScreen() {
       setState("review");
     } catch {
       setState("error");
-      setError("Network error during image import.");
+      setError(IMPORT_ERROR_COPY.network_error);
     }
   }, [base, userId]);
 
@@ -603,7 +623,11 @@ export default function ImportSharedScreen() {
     const saved = await saveImportedRecipe(userId, recipeWithTags);
     if ("error" in saved) {
       setState("error");
-      setError(saved.error);
+      // Audit I01 (2026-05-05) — saveImportedRecipe now returns a
+      // pre-mapped string from IMPORT_ERROR_COPY (PR 2). Defensively
+      // re-sanitise via userFacingImportError to catch any future
+      // path that bypasses the mapper.
+      setError(userFacingImportError(saved.error));
       return;
     }
     setSavedRecipeId(saved.recipeId);
@@ -749,7 +773,7 @@ export default function ImportSharedScreen() {
   const onManualImport = () => {
     const url = extractUrlFromShareText(manualUrl.trim());
     if (!url) {
-      setError("Paste a full URL (Instagram, TikTok, or a recipe page).");
+      setError(IMPORT_ERROR_COPY.client_url_required);
       setState("error");
       return;
     }
@@ -759,7 +783,11 @@ export default function ImportSharedScreen() {
   const onPasteFromClipboard = async () => {
     const t = await safeGetClipboardString();
     if (!t) {
-      setError("Clipboard isn't available in this build. Run a fresh native build (expo run:ios / run:android) or paste a URL manually.");
+      // Audit I07 (2026-05-05) — was a multi-line dev-jargon string
+      // ("Run a fresh native build (expo run:ios / run:android)").
+      // Surface a calm user-facing message; the dev hint stays in the log.
+      console.warn("[import-shared] safeClipboard returned empty (Expo Go or unsupported build)");
+      setError(IMPORT_ERROR_COPY.client_clipboard_empty);
       setState("error");
       return;
     }
@@ -772,7 +800,7 @@ export default function ImportSharedScreen() {
       return;
     }
     setManualUrl(t.trim());
-    setError("Clipboard doesn't contain a link we can use.");
+    setError(IMPORT_ERROR_COPY.client_unsupported_url);
     setState("error");
   };
 
@@ -1421,6 +1449,59 @@ export default function ImportSharedScreen() {
               </View>
             )}
 
+            {/* Confidence banner (audit I04 + I05, 2026-05-05).
+                Aggregates the two ways an import preview can leave
+                the user with a draft they should review before saving:
+                  * verifyIngredients failed or returned all-zero macros
+                    (primarySource = Unverified) — banner says "estimates only"
+                  * the OpenAI image step rejected the post image and
+                    silently fell back to text-only (imageUsed === false)
+                Tapping the banner does nothing — it's an inline
+                advisory; users can still save and edit individual
+                rows below. */}
+            {(() => {
+              const macros = Array.isArray(pendingRecipe.ingredientMacros) ? pendingRecipe.ingredientMacros : [];
+              const aggregateUnverified =
+                pendingRecipe.primarySource === "Unverified" ||
+                pendingRecipe.primarySource === "Estimated" ||
+                (macros.length > 0 && macros.every((m) => (m.calories ?? 0) === 0));
+              const imageDropped = imageUsed === false;
+              if (!aggregateUnverified && !imageDropped) return null;
+              const headline = imageDropped
+                ? "Image couldn't be analysed"
+                : "Estimates only — review before saving";
+              const body = imageDropped
+                ? "The recipe was extracted from the caption alone. Macros are best-effort — review or replace before saving."
+                : "We couldn't verify these ingredients against a nutrition database. Tap a row to swap matches, or long-press to edit macros manually.";
+              return (
+                <View
+                  testID="import-preview-confidence-banner"
+                  accessibilityRole="text"
+                  style={{
+                    marginTop: Spacing.md,
+                    padding: Spacing.md,
+                    borderRadius: Radius.md,
+                    backgroundColor: Accent.warning + "1A",
+                    borderWidth: 1,
+                    borderColor: Accent.warning + "55",
+                    flexDirection: "row",
+                    alignItems: "flex-start",
+                    gap: 10,
+                  }}
+                >
+                  <Ionicons name="alert-circle-outline" size={20} color={Accent.warning} style={{ marginTop: 1 }} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: colors.text, fontWeight: "700", fontSize: 14, marginBottom: 2 }}>
+                      {headline}
+                    </Text>
+                    <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 18 }}>
+                      {body}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })()}
+
             {/* Macro breakdown */}
             {previewNutrition != null && pendingRecipe.calories != null && (
               <View style={styles.macroCardContainer}>
@@ -1647,6 +1728,46 @@ export default function ImportSharedScreen() {
                 autoCorrect={false}
                 keyboardType="url"
               />
+              {/* Audit I08 (2026-05-05) — when the pasted URL is
+                  Instagram / TikTok / YouTube, surface an inline hint
+                  pointing the user at the share-sheet flow. The
+                  legacy URL importer still works (server scrapes
+                  og:title / og:description), but the share-sheet
+                  caption flow respects the IG/TT legal posture in
+                  docs/decisions/2026-04-30-ig-tt-recipe-import-legal-posture.md
+                  by only feeding the LLM text the user actually shared.
+                  Detection runs live on every keystroke via the derived
+                  platform token. */}
+              {(() => {
+                const trimmed = manualUrl.trim();
+                if (!trimmed) return null;
+                const platform = detectSourcePlatform(trimmed);
+                if (platform !== "instagram" && platform !== "tiktok" && platform !== "youtube") return null;
+                const platformLabel =
+                  platform === "instagram" ? "Instagram" : platform === "tiktok" ? "TikTok" : "YouTube";
+                return (
+                  <View
+                    testID={`import-platform-hint-${platform}`}
+                    style={{
+                      marginTop: -Spacing.xs,
+                      marginBottom: Spacing.xs,
+                      padding: Spacing.sm,
+                      borderRadius: Radius.sm,
+                      backgroundColor: Accent.primary + "12",
+                      borderWidth: 1,
+                      borderColor: Accent.primary + "33",
+                      flexDirection: "row",
+                      alignItems: "flex-start",
+                      gap: 8,
+                    }}
+                  >
+                    <Ionicons name="share-outline" size={16} color={Accent.primary} style={{ marginTop: 2 }} />
+                    <Text style={{ flex: 1, color: colors.text, fontSize: 13, lineHeight: 18 }}>
+                      {platformLabel} link detected. For best results, open the post in {platformLabel} and use the share sheet → Suppr — that captures the caption text directly.
+                    </Text>
+                  </View>
+                );
+              })()}
               <Pressable style={styles.primaryBtn} onPress={onManualImport}>
                 <Text style={styles.primaryBtnText}>Import</Text>
               </Pressable>
