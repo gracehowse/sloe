@@ -89,6 +89,18 @@ const OAUTH2_TOKEN_URL = "https://oauth.fatsecret.com/connect/token";
 let oauth2Cache: { token: string; expiresAtMs: number } | null = null;
 
 /**
+ * Hash a string with SHA-256 and return the hex digest. Used to log a
+ * deterministic-but-non-revealing fingerprint of the FatSecret
+ * client_id when OAuth 2.0 token requests fail. SHA-256 over a 32-char
+ * hex client_id has uniform 64-char hex output; we slice the first 8
+ * for log compactness — that's 32 bits of entropy, enough to correlate
+ * "is this the rotated key?" without exposing the literal value.
+ */
+async function sha256Hex(input: string): Promise<string> {
+  return crypto.createHash("sha256").update(input).digest("hex");
+}
+
+/**
  * Return the first non-empty env var value out of the provided list.
  * Used to support both the canonical OAuth 2.0 env var names
  * (FATSECRET_CLIENT_ID / FATSECRET_CLIENT_SECRET) and the legacy
@@ -183,10 +195,38 @@ async function getOAuth2Token(cfg: FatSecretConfig): Promise<string | null> {
     //   401 / invalid_client → credentials wrong in this env
     //   403 / forbidden      → likely IP allowlist on token endpoint
     //   429                  → token endpoint rate limit
-    const txt = await res.text().catch(() => "");
-    const keyTail = cfg.consumerKey ? cfg.consumerKey.slice(-6) : "";
+    //
+    // 2026-05-06 audit (B1, B2): credential-safety hardening.
+    //   - log a SHA-256 hash prefix of the client_id, not the
+    //     literal tail. Hash is deterministic across runs (lets us
+    //     correlate logs to "yes, this is the rotated key") but
+    //     reveals zero substring of the secret prefix.
+    //   - parse the response body for known OAuth-error fields
+    //     (`error`, `error_description`) instead of dumping raw
+    //     text. FatSecret normally returns
+    //     `{"error":"invalid_client"}` — known JSON shape — but
+    //     belt-and-braces against a future server change that might
+    //     echo the request (some OAuth providers do this on
+    //     `invalid_grant`, which would surface the base64
+    //     `client_id:client_secret` from the Authorization header).
+    let bodyForLog = "";
+    try {
+      const txt = await res.text();
+      try {
+        const j = JSON.parse(txt) as Record<string, unknown>;
+        const errCode = typeof j.error === "string" ? j.error : "";
+        const errDesc = typeof j.error_description === "string" ? j.error_description : "";
+        bodyForLog = `error=${errCode}${errDesc ? ` desc=${errDesc.slice(0, 80)}` : ""}`;
+      } catch {
+        // Non-JSON response — emit length only, not contents.
+        bodyForLog = `non_json len=${txt.length}`;
+      }
+    } catch {
+      bodyForLog = "body_read_failed";
+    }
+    const keyHash = await sha256Hex(cfg.consumerKey ?? "");
     console.warn(
-      `[fatsecret oauth2] token request failed — status=${res.status} key_tail=${keyTail} body=${txt.slice(0, 160)}`,
+      `[fatsecret oauth2] token request failed — status=${res.status} key_hash=${keyHash.slice(0, 8)} ${bodyForLog}`,
     );
     return null;
   }

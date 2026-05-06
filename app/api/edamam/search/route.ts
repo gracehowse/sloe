@@ -117,14 +117,21 @@ export async function GET(req: Request) {
     // the merge contract is preserved (other 3 sources keep
     // rendering) AND the mobile / web client diagnostic surfaces the
     // upstream cause without having to chase Vercel runtime logs.
+    //
+    // 2026-05-06 audit (B3): gate `_diag` on `SUPPR_DEBUG=1` so authed
+    // users in production can't read raw upstream payloads via the
+    // Network panel. Server logs keep the full message.
     const msg = e instanceof Error ? e.message : String(e);
     console.error("[/api/edamam/search] failed:", msg);
+    const includeDiag = process.env.SUPPR_DEBUG === "1";
     return NextResponse.json({
       ok: true,
       mode,
       page: pageNumber,
       hits: [],
-      _diag: { upstream: "failed", message: msg.slice(0, 200) },
+      ...(includeDiag
+        ? { _diag: { upstream: "failed", message: msg.slice(0, 200) } }
+        : {}),
     });
   }
 }
