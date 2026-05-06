@@ -93,3 +93,4 @@ test.describe("Unauthenticated app shell", () => {
     });
   });
 });
+// trigger CI 2026-05-06
