@@ -5,6 +5,7 @@ import {
   type FatSecretServing,
 } from "@/lib/fatsecret/client";
 import {
+  fatSecretServingMicrosAbsolute,
   fatSecretServingMicrosPer100g,
   normalizeServingToMacros,
   pickBestServing,
@@ -173,11 +174,21 @@ export async function GET(req: Request) {
         }
       : null;
 
+    // 2026-05-06: per-serving micros (absolute values, not per-100g)
+    // for the per-serving-only path. Same unit-safety filter as the
+    // per-100g extractor (no calcium/iron/vitamins). Lets the
+    // commit path scale by quantity to populate the meal-detail
+    // panel for FatSecret per-serving logs.
+    const microsPerServing = isPerServingOnly
+      ? fatSecretServingMicrosAbsolute(best)
+      : {};
+
     return NextResponse.json({
       ok: true,
       macrosPer100g,
       ...(macrosPerServing ? { macrosPerServing } : {}),
       ...(Object.keys(microsPer100g).length > 0 ? { microsPer100g } : {}),
+      ...(Object.keys(microsPerServing).length > 0 ? { microsPerServing } : {}),
       portions,
       primaryPortion,
     });

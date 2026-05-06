@@ -1212,15 +1212,25 @@ function mergeResults(
       brand && item.label.startsWith(`${brand} · `) ? item.label.slice(brand.length + 3) : item.label,
     );
     const displayName = brand ? `${brand} · ${cleanLabel}` : cleanLabel;
-    // Synthesise primary serving when FatSecret embedded both a label
-    // AND a gram weight ("(N g)"). Per-serving rows without a gram
-    // weight surface as per-100g-only — the on-tap detail fetch lands
-    // the canonical panel before the preview opens.
+    // Synthesise primary serving from whatever FatSecret provides:
+    //   - With grams ("Per 1 sandwich (240g)") → label + gram-grounded
+    //     serving, so the search row renders kcal + macros AND the
+    //     portion picker can scale by grams.
+    //   - Without grams ("Per 1 serving") → label-only serving with
+    //     `grams: 0` (sentinel meaning "per-serving only, no gram
+    //     scaling"). The search row still renders kcal + macros so
+    //     the user knows what they're picking; the on-tap commit
+    //     uses `macrosPerServing × quantity` directly.
+    //
+    // 2026-05-06: previously only the with-grams path synthesised a
+    // primaryServing, so per-serving-only FatSecret rows like
+    // McDonald's Big Mac surfaced as placeholder ("Tap for nutrition
+    // info") in the search list — invisible kcal headline.
     const primaryServing: PrimaryServing | null =
-      item.macrosPerServing && item.servingLabel && item.servingGrams && item.servingGrams > 0
+      item.macrosPerServing && item.servingLabel
         ? {
             label: item.servingLabel,
-            grams: item.servingGrams,
+            grams: item.servingGrams && item.servingGrams > 0 ? item.servingGrams : 0,
             kcal: item.macrosPerServing.calories,
             protein: item.macrosPerServing.protein,
             carbs: item.macrosPerServing.carbs,
@@ -1381,10 +1391,19 @@ export async function getFatSecretFood(
   macrosPerServing?: { calories: number; protein: number; carbs: number; fat: number } | null;
   /**
    * 2026-05-06 — Premier-tier per-100g panel (sat/poly/mono/trans fat,
-   * cholesterol, calcium, iron, potassium). Empty / absent on Basic
-   * tier, or when there's no metric grounding to scale by.
+   * cholesterol, sodium, potassium). Calcium/iron/vitamins NOT
+   * included for unit ambiguity (FatSecret returns these as %DV
+   * sometimes, mg sometimes). Empty / absent on Basic tier, or
+   * when there's no metric grounding to scale by.
    */
   microsPer100g?: Record<string, number>;
+  /**
+   * 2026-05-06 — per-serving (absolute) Premier panel, used when
+   * `macrosPer100g` is null. Same unit-safety filter as the per-100g
+   * extractor. Caller commits `microsPerServing × quantity` directly
+   * — no gram scaling.
+   */
+  microsPerServing?: Record<string, number>;
   portions: FoodPortion[];
   primaryPortion?: PrimaryServing | null;
 } | null> {
@@ -1406,6 +1425,10 @@ export async function getFatSecretFood(
       json.microsPer100g && typeof json.microsPer100g === "object"
         ? (json.microsPer100g as Record<string, number>)
         : undefined;
+    const microsPerServing =
+      json.microsPerServing && typeof json.microsPerServing === "object"
+        ? (json.microsPerServing as Record<string, number>)
+        : undefined;
     const macrosPerServing =
       json.macrosPerServing && typeof json.macrosPerServing === "object"
         ? (json.macrosPerServing as { calories: number; protein: number; carbs: number; fat: number })
@@ -1414,6 +1437,7 @@ export async function getFatSecretFood(
       macrosPer100g: json.macrosPer100g ?? null,
       ...(macrosPerServing ? { macrosPerServing } : {}),
       ...(microsPer100g ? { microsPer100g } : {}),
+      ...(microsPerServing ? { microsPerServing } : {}),
       portions,
       primaryPortion,
     };
