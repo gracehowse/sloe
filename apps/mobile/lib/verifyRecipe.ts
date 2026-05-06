@@ -1153,6 +1153,16 @@ function mergeResults(
   }
 
   for (const item of edamam) {
+    // 2026-05-06 — drop Edamam rows whose per-100g panel is entirely
+    // unusable (no kcal AND no macros). TestFlight feedback: branded
+    // McDonald's variants like "Big Mac Salad" surfaced with no kcal
+    // headline + "Tap for nutrition info" + un-clickable. Those rows
+    // are Edamam stubs with calories=0 and protein+carbs+fat=0 — there
+    // is nothing the user can do with them, and the existing tap path
+    // requires `item.macrosPer100g` to be present so they're inert
+    // anyway.
+    const macroMass = (item.protein ?? 0) + (item.carbs ?? 0) + (item.fat ?? 0);
+    if ((item.calories ?? 0) <= 1 && macroMass < 0.5) continue;
     const brand = item.brand ? titleCase(item.brand) : "";
     const cleanLabel = titleCase(item.label);
     const displayName = brand ? `${brand} · ${cleanLabel}` : cleanLabel;
