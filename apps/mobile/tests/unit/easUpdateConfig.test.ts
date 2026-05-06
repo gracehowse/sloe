@@ -3,17 +3,25 @@
  *
  * OTA depends on three pieces of static config staying in lockstep:
  *   1. `expo-updates` installed at the SDK-aligned version.
- *   2. `app.json` declaring `runtimeVersion.policy: "appVersion"` and
- *      `updates.url` pointing at the EAS Update endpoint for this
- *      project's `extra.eas.projectId`.
+ *   2. `app.json` declaring a `runtimeVersion` that matches `version`
+ *      (so OTA updates only ship to binaries with the same native
+ *      code), and `updates.url` pointing at the EAS Update endpoint
+ *      for this project's `extra.eas.projectId`.
  *   3. `eas.json` declaring a `channel` for every build profile so
  *      published updates route to the right binaries.
  *
- * If any of these silently drift (e.g. a careless edit removes
- * `runtimeVersion`), users on the affected binaries silently stop
- * receiving OTA updates — and we wouldn't know until someone tried to
- * publish. These tests fail fast at CI time so the regression never
- * ships.
+ * 2026-05-06: previously the pin asserted
+ * `runtimeVersion: { policy: "appVersion" }` — the
+ * Expo-managed-workflow shape. EAS Build rejected that on this
+ * project (bare workflow), so the value is now a literal string
+ * matching `expo.version` (e.g. "1.0.7"). The pin asserts the
+ * lockstep relationship instead so a careless `version` bump that
+ * forgets to bump `runtimeVersion` still fails at CI.
+ *
+ * If any of these silently drift, users on the affected binaries
+ * silently stop receiving OTA updates — and we wouldn't know until
+ * someone tried to publish. These tests fail fast at CI time so the
+ * regression never ships.
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
@@ -69,12 +77,17 @@ describe("expo-updates package", () => {
 });
 
 describe("app.json — runtimeVersion", () => {
-  it("uses the appVersion policy", () => {
-    // appVersion is the safe default: an OTA update only ships to a
-    // binary whose `expo.version` matches the `runtimeVersion` at the
-    // time of publish. Bumping native code → bump expo.version → old
-    // binaries automatically refuse stale-incompatible updates.
-    expect(appJson.expo.runtimeVersion).toEqual({ policy: "appVersion" });
+  it("is a literal string that matches expo.version (bare-workflow appVersion equivalent)", () => {
+    // Bare-workflow EAS Build rejects `{ policy: "appVersion" }`, so
+    // the value must be a literal string. We pin "string equal to
+    // expo.version" to preserve the original intent of the
+    // appVersion policy: an OTA update only ships to a binary whose
+    // `expo.version` matches the `runtimeVersion` at the time of
+    // publish. Bumping native code → bump expo.version → bump
+    // runtimeVersion → old binaries automatically refuse stale-
+    // incompatible updates.
+    expect(typeof appJson.expo.runtimeVersion).toBe("string");
+    expect(appJson.expo.runtimeVersion).toBe(appJson.expo.version);
   });
 });
 
