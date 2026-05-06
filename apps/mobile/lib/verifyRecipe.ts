@@ -747,7 +747,22 @@ export async function searchFatSecret(
     );
     clearTimeout(t);
     const json = await res.json();
-    if (!json.ok || !Array.isArray(json.hits)) return [];
+    // 2026-05-06 (Grace) — production smoke test showed no FatSecret
+    // hits surfacing in the merge. Was: silently returned [] on any
+    // non-ok shape, so the cause (server_misconfigured / OAuth
+    // expired / rate-limited / etc.) was invisible from
+    // mobile/TestFlight logs. Now surfaces the route's `error` token
+    // + status so the failure mode is greppable in device logs.
+    if (!json.ok || !Array.isArray(json.hits)) {
+      const errCode = typeof json?.error === "string" ? json.error : "unknown";
+      const sampleMsg = typeof json?.message === "string" ? json.message.slice(0, 120) : null;
+      console.warn(
+        `[searchFatSecret] empty result — status=${res.status} error=${errCode}${
+          sampleMsg ? ` msg="${sampleMsg}"` : ""
+        }`,
+      );
+      return [];
+    }
     return json.hits as FatSecretSearchResult[];
   } catch (e) {
     if (isBenignAbort(e)) return [];

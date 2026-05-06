@@ -1,10 +1,12 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback, useMemo, useState } from "react";
 import {
+  ActionSheetIOS,
   Alert,
   View,
   Text,
   FlatList,
+  Platform,
   Pressable,
   StyleSheet,
   TextInput,
@@ -167,6 +169,47 @@ export default function LibraryScreen() {
       );
     },
     [persistSaveToggle, refresh],
+  );
+
+  /**
+   * 2026-05-06 (Grace) — the `…` overflow icon used to open the
+   * `confirmRemove` Alert directly, which violated the convention
+   * that `…` means "more options" not "delete". Now opens an
+   * iOS-native action sheet (or RN Alert on Android) with three
+   * choices: View recipe (primary), Remove from library
+   * (destructive), Cancel. The destructive path still chains into
+   * `confirmRemove` so the user gets the existing two-step delete
+   * confirmation — no silent one-tap delete.
+   */
+  const openCardActions = useCallback(
+    (item: RecipeCard) => {
+      const labels = ["View recipe", "Remove from library", "Cancel"] as const;
+      const viewRecipe = () => router.push(`/recipe/${item.id}`);
+      if (Platform.OS === "ios") {
+        ActionSheetIOS.showActionSheetWithOptions(
+          {
+            title: item.title,
+            options: [...labels],
+            destructiveButtonIndex: 1,
+            cancelButtonIndex: 2,
+          },
+          (idx) => {
+            if (idx === 0) viewRecipe();
+            else if (idx === 1) confirmRemove(item);
+          },
+        );
+        return;
+      }
+      // Android (and any non-iOS platform) — RN Alert serves as a
+      // simple action-sheet equivalent. Order intentionally matches
+      // the iOS sheet so muscle memory carries.
+      Alert.alert(item.title, undefined, [
+        { text: "View recipe", onPress: viewRecipe },
+        { text: "Remove from library", style: "destructive", onPress: () => confirmRemove(item) },
+        { text: "Cancel", style: "cancel" },
+      ]);
+    },
+    [router, confirmRemove],
   );
 
   const styles = useMemo(() => StyleSheet.create({
@@ -519,14 +562,15 @@ export default function LibraryScreen() {
                 <Bookmark size={14} color={Accent.primary} fill={Accent.primary} />
               </View>
             ) : null}
-            {/* Audit 2026-04-30: discoverable overflow menu for delete.
-                Sits to the left of the bookmark dot. Tapping opens the
-                same Alert sheet long-press already triggers, so we
-                preserve P2-32's "delete is confirmed, never one-tap"
-                rule while making it visible to first-time users. */}
+            {/* 2026-05-06 (Grace) — `…` is "more options", not
+                "delete one-tap". Tapping now opens an action sheet
+                (iOS) or RN Alert menu (Android) with View / Remove /
+                Cancel. The Remove path still chains into the existing
+                `confirmRemove` two-step prompt so destructive actions
+                stay confirmed. */}
             <Pressable
               style={styles.cardOverflowBtn}
-              onPress={() => confirmRemove(item)}
+              onPress={() => openCardActions(item)}
               accessibilityRole="button"
               accessibilityLabel={`More options for ${item.title}`}
               hitSlop={8}
