@@ -153,6 +153,22 @@ export function scalePrimaryServingFromPer100g(
  * Returns `null` when the array is empty or only contains the per-gram
  * fallback.
  */
+/**
+ * Minimum gram weight we'll accept from Edamam's `servingSizes[*].quantity`
+ * for a non-"Gram" label. Edamam's data is supposed to ship `quantity` in
+ * grams, but for a meaningful slice of branded items
+ * (Pret A Manger sandwiches, wraps, bowls) it ships `quantity: 1` —
+ * the *count* of items, not the gram weight. Without a floor, the search
+ * row defaults to "1 sandwich (1 g)" and the kcal headline reads "2 kcal"
+ * for a 200 kcal/100g sandwich. 3 g is well below any real food serving
+ * (a single garlic clove is ~3 g, an olive is ~5 g) and well above
+ * Edamam's count-as-grams placeholder of 1.
+ *
+ * 2026-05-06 — TestFlight feedback: "actually a lot are coming up with
+ * crazy low cals" — every Pret entry surfaced as 2-4 kcal headline.
+ */
+const EDAMAM_MIN_SERVING_GRAMS = 3;
+
 export function pickEdamamPrimaryServing(
   per100g: MacrosPer100gLite,
   servingSizes: EdamamServingSize[] | null | undefined,
@@ -164,6 +180,12 @@ export function pickEdamamPrimaryServing(
     if (!label) continue;
     if (label.toLowerCase() === "gram") continue;
     if (!Number.isFinite(qty) || qty <= 0) continue;
+    // Reject implausibly small quantities — Edamam ships `quantity: 1`
+    // for "1 Sandwich"/"1 Wrap"/"1 Bowl" on poorly-curated branded
+    // entries, which would otherwise produce a 1g default portion.
+    // Falling through returns null → caller falls back to the per-100g
+    // basis so the kcal headline is plausible.
+    if (qty < EDAMAM_MIN_SERVING_GRAMS) continue;
     // Edamam labels are usually "Serving" / "Sandwich" / "Slice" — they
     // describe ONE portion so we always prefix with "1 " for clarity.
     const display = `1 ${label.toLowerCase()}`;

@@ -85,6 +85,46 @@ describe("pickEdamamPrimaryServing", () => {
     expect(ps).not.toBeNull();
     expect(ps!.label).toBe("1 sandwich");
   });
+
+  // 2026-05-06 — TestFlight feedback: every Pret entry surfaced as
+  // "1 sandwich (1 g)" with a 2 kcal headline because Edamam ships
+  // `quantity: 1` for "Serving" / "Sandwich" / "Wrap" / "Bowl" labels
+  // on poorly-curated branded items (treating it as a count, not the
+  // gram weight). Pin the floor at 3 g so:
+  //   - bogus 1 g entries fall through and the caller defaults to
+  //     per-100g (plausible kcal headline)
+  //   - real entries (≥3 g) still flow through unchanged
+  it("rejects implausibly small quantity (1 g) — falls back to per-100g basis", () => {
+    const ps = pickEdamamPrimaryServing(pretPer100g, [
+      { label: "Serving", quantity: 1 },
+    ]);
+    expect(ps).toBeNull();
+  });
+
+  it("falls through quantity=1 entries to find a usable larger entry later in the list", () => {
+    const ps = pickEdamamPrimaryServing(pretPer100g, [
+      { label: "Serving", quantity: 1 },
+      { label: "Sandwich", quantity: 230 },
+    ]);
+    expect(ps).not.toBeNull();
+    expect(ps!.label).toBe("1 sandwich");
+    expect(ps!.grams).toBe(230);
+  });
+
+  it("rejects quantity=2 (still too small to be a real serving)", () => {
+    const ps = pickEdamamPrimaryServing(pretPer100g, [
+      { label: "Slice", quantity: 2 },
+    ]);
+    expect(ps).toBeNull();
+  });
+
+  it("accepts quantity=3 (the floor — preserves any genuinely-tiny serving)", () => {
+    const ps = pickEdamamPrimaryServing(pretPer100g, [
+      { label: "Garlic clove", quantity: 3 },
+    ]);
+    expect(ps).not.toBeNull();
+    expect(ps!.grams).toBe(3);
+  });
 });
 
 describe("pickUsdaBrandedPrimaryServing", () => {
