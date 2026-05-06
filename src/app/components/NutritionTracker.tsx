@@ -40,6 +40,7 @@ import {
   weekSummaryDateKeys,
 } from "../../lib/nutrition/weekSummaryWindow.ts";
 import { scaleCaffeineAlcohol } from "../../lib/nutrition/scaleCaffeineAlcoholForGrams.ts";
+import { scaleMicrosPerServing } from "../../lib/nutrition/scaleMicrosPerServing.ts";
 import { scaleMicrosForGrams } from "../../lib/openFoodFacts/parseOffMicros.ts";
 import { clampPortionMultiplier, scaledMacro } from "../../lib/nutrition/portionMultiplier.ts";
 import { formatWaterMl } from "../../lib/units/imperial.ts";
@@ -1453,45 +1454,88 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
           ? "Open Food Facts"
           : selection.source === "Edamam"
           ? "Edamam"
+          : selection.source === "FatSecret"
+          ? "FatSecret"
           : "USDA FoodData Central";
-      const fiberG = Math.round(selection.macrosPer100g.fiberG * f * 10) / 10;
-      // F-13 (2026-04-19) — auto-track caffeine + alcohol. Stash scaled
-      // values on the meal's `micros` map so the insert path in
-      // `useNutritionJournalState` can bump
-      // `profiles.extra_caffeine_by_day` / `extra_alcohol_g_by_day` and
-      // the delete path can decrement by the same delta. Null per-100g
-      // → 0 (never invented).
-      const { caffeineMg, alcoholG } = scaleCaffeineAlcohol({
-        grams,
-        caffeineMgPer100g: selection.macrosPer100g.caffeineMgPer100g ?? null,
-        alcoholGPer100g: selection.macrosPer100g.alcoholGPer100g ?? null,
-      });
-      // F-79 (2026-04-25) — full OFF micro set scaled for `grams`,
-      // merged with caffeine/alcohol overrides.
-      const explicitMicros: Record<string, number> = {};
-      if (caffeineMg > 0) explicitMicros.caffeineMg = caffeineMg;
-      if (alcoholG > 0) explicitMicros.alcoholG = alcoholG;
-      const micros = scaleMicrosForGrams(
-        (selection as { microsPer100g?: Record<string, number> }).microsPer100g ?? {},
-        grams,
-        explicitMicros,
-      );
+
+      // 2026-05-06 audit (D1): per-serving-only path (FatSecret no-
+      // metric foods). When `macrosPer100g` is null,
+      // `macrosPerServing` carries the values and gramWeight is 0.
+      // Use `macrosPerServing × quantity` directly. Mirrors mobile.
+      const isPerServingOnly =
+        selection.macrosPer100g === null &&
+        Boolean(selection.macrosPerServing) &&
+        selection.chosenPortion.gramWeight === 0;
+
+      let mealCalories: number;
+      let mealProtein: number;
+      let mealCarbs: number;
+      let mealFat: number;
+      let mealFiberG = 0;
+      let micros: Record<string, number> = {};
+
+      if (isPerServingOnly) {
+        const ps = selection.macrosPerServing!;
+        const q = selection.quantity;
+        mealCalories = Math.max(0, Math.round(ps.calories * q));
+        mealProtein = Math.max(0, Math.round(ps.protein * q * 10) / 10);
+        mealCarbs = Math.max(0, Math.round(ps.carbs * q * 10) / 10);
+        mealFat = Math.max(0, Math.round(ps.fat * q * 10) / 10);
+        // Per-serving micros × quantity via shared helper (audit
+        // E2 — pinned in `tests/unit/scaleMicrosPerServing.test.ts`).
+        // No caffeine/alcohol here — FatSecret doesn't ship those,
+        // and we have no per-100g basis to scale them anyway.
+        const ms = (selection as { microsPerServing?: Record<string, number> }).microsPerServing;
+        micros = scaleMicrosPerServing(ms, q);
+        const fiberFromMicros = micros.fiberG;
+        if (typeof fiberFromMicros === "number") mealFiberG = fiberFromMicros;
+      } else {
+        const m = selection.macrosPer100g!;
+        mealCalories = Math.max(0, Math.round(m.calories * f));
+        mealProtein = Math.max(0, Math.round(m.protein * f * 10) / 10);
+        mealCarbs = Math.max(0, Math.round(m.carbs * f * 10) / 10);
+        mealFat = Math.max(0, Math.round(m.fat * f * 10) / 10);
+        mealFiberG = Math.round(m.fiberG * f * 10) / 10;
+        // F-13 (2026-04-19) — auto-track caffeine + alcohol. Stash
+        // scaled values on the meal's `micros` map so the insert
+        // path in `useNutritionJournalState` can bump
+        // `profiles.extra_caffeine_by_day` /
+        // `extra_alcohol_g_by_day` and the delete path can
+        // decrement by the same delta. Null per-100g → 0
+        // (never invented).
+        const { caffeineMg, alcoholG } = scaleCaffeineAlcohol({
+          grams,
+          caffeineMgPer100g: m.caffeineMgPer100g ?? null,
+          alcoholGPer100g: m.alcoholGPer100g ?? null,
+        });
+        const explicitMicros: Record<string, number> = {};
+        if (caffeineMg > 0) explicitMicros.caffeineMg = caffeineMg;
+        if (alcoholG > 0) explicitMicros.alcoholG = alcoholG;
+        // F-79 (2026-04-25) — full micro set scaled for `grams`,
+        // merged with caffeine/alcohol overrides.
+        micros = scaleMicrosForGrams(
+          (selection as { microsPer100g?: Record<string, number> }).microsPer100g ?? {},
+          grams,
+          explicitMicros,
+        );
+      }
+
       addLoggedMeal(
         {
           name: mealSlot,
           recipeTitle: selection.name,
           time: timeLabel,
-          calories: Math.max(0, Math.round(selection.macrosPer100g.calories * f)),
-          protein: Math.max(0, Math.round(selection.macrosPer100g.protein * f * 10) / 10),
-          carbs: Math.max(0, Math.round(selection.macrosPer100g.carbs * f * 10) / 10),
-          fat: Math.max(0, Math.round(selection.macrosPer100g.fat * f * 10) / 10),
+          calories: mealCalories,
+          protein: mealProtein,
+          carbs: mealCarbs,
+          fat: mealFat,
           source: sourceLabel,
-          ...(fiberG > 0 ? { fiberG } : {}),
+          ...(mealFiberG > 0 ? { fiberG: mealFiberG } : {}),
           ...(Object.keys(micros).length > 0 ? { micros } : {}),
         },
         // Mirror mobile's `food_logged.source` mapping: custom food
-        // logs fire with `"custom_food"`, USDA/OFF/Edamam with
-        // `"manual"` (the canonical shared-food source).
+        // logs fire with `"custom_food"`, USDA/OFF/Edamam/FatSecret
+        // with `"manual"` (the canonical shared-food source).
         selection.source === "CUSTOM" ? "custom_food" : "manual",
       );
     },

@@ -121,6 +121,7 @@ import {
 } from "../../../../src/lib/nutrition/todayProgressiveDisclosure";
 import { aiLoggingSourceLabel } from "../../../../src/lib/nutrition/aiLogging";
 import { scaleCaffeineAlcohol } from "../../../../src/lib/nutrition/scaleCaffeineAlcoholForGrams";
+import { scaleMicrosPerServing } from "../../../../src/lib/nutrition/scaleMicrosPerServing";
 import { scaleMicrosForGrams } from "../../../../src/lib/openFoodFacts/parseOffMicros";
 import { updateStimulantsForDay } from "../../../../src/lib/nutrition/updateStimulantsForDay";
 import {
@@ -1717,19 +1718,10 @@ export default function TrackerScreen() {
         // basis), but DO pull through `microsPerServing × quantity`
         // so the meal-detail "Vitamins, minerals & more" panel
         // populates fiber / sugar / sodium / sat fat / cholesterol
-        // / potassium etc. for FatSecret no-metric foods.
-        if (result.microsPerServing) {
-          for (const [k, v] of Object.entries(result.microsPerServing)) {
-            if (typeof v !== "number" || !Number.isFinite(v) || v <= 0) continue;
-            // Match the per-100g scaling decimal convention:
-            // grams → 1dp, mg → 0dp.
-            const decimals = k.endsWith("G") ? 1 : 0;
-            const scaled = v * q;
-            const factor = 10 ** decimals;
-            const rounded = Math.round(scaled * factor) / factor;
-            if (rounded > 0) micros[k] = rounded;
-          }
-        }
+        // / potassium etc. for FatSecret no-metric foods. Shared
+        // helper used by web + mobile + audit-pinned for rounding
+        // conventions.
+        micros = scaleMicrosPerServing(result.microsPerServing, q);
       } else {
         const m = result.macrosPer100g!;
         const { caffeineMg, alcoholG } = scaleCaffeineAlcohol({
