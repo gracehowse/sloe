@@ -1153,6 +1153,16 @@ function mergeResults(
   }
 
   for (const item of edamam) {
+    // 2026-05-06 — drop Edamam rows whose per-100g panel is entirely
+    // unusable (no kcal AND no macros). TestFlight feedback: branded
+    // McDonald's variants like "Big Mac Salad" surfaced with no kcal
+    // headline + "Tap for nutrition info" + un-clickable. Those rows
+    // are Edamam stubs with calories=0 and protein+carbs+fat=0 — there
+    // is nothing the user can do with them, and the existing tap path
+    // requires `item.macrosPer100g` to be present so they're inert
+    // anyway.
+    const macroMass = (item.protein ?? 0) + (item.carbs ?? 0) + (item.fat ?? 0);
+    if ((item.calories ?? 0) <= 1 && macroMass < 0.5) continue;
     const brand = item.brand ? titleCase(item.brand) : "";
     const cleanLabel = titleCase(item.label);
     const displayName = brand ? `${brand} · ${cleanLabel}` : cleanLabel;
@@ -1266,13 +1276,29 @@ function mergeResults(
     return true;
   });
 
-  // Deduplicate — skip items with same normalized name
+  // Deduplicate within a source, not across sources.
+  //
+  // 2026-05-06: TestFlight feedback — "still no fat secret result at
+  // all". Diagnosis: production logs showed FatSecret API returning
+  // hits (no `[fatsecret foods.search] no food entries` warnings), but
+  // the cross-source dedup was dropping them. For "big mac",
+  // USDA's "Mcdonald's, Big Mac" and FatSecret's "McDonald's · Big
+  // Mac" both normalize to the same string ("mcdonaldsbigmac"), so
+  // FatSecret's entry got eliminated even though it carries a
+  // different macro panel.
+  //
+  // Per-source dedup (key = `${source}|${normalized}`) gives the user
+  // explicit choice between USDA / OFF / Edamam / FatSecret for the
+  // same named food, matching MFP / Cronometer / Lose It UX. Same-
+  // source duplicates (e.g. five Edamam Pret entries that all
+  // normalize to "pretchefsalad") still collapse to one.
   const seen = new Set<string>();
   const deduped: UnifiedSearchResult[] = [];
   for (const r of filtered) {
     const norm = r.name.toLowerCase().replace(/[^a-z0-9]/g, "");
-    if (seen.has(norm)) continue;
-    seen.add(norm);
+    const key = `${r._source}|${norm}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
     deduped.push(r);
     if (deduped.length >= limit) break;
   }
