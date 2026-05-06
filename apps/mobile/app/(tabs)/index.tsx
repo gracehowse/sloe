@@ -38,6 +38,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Accent, Spacing, Radius } from "@/constants/theme";
 import FoodSearchModal, { type SelectedFood as FoodSearchSelectedFood } from "@/components/FoodSearchModal";
 import BarcodeScannerModal from "@/components/BarcodeScannerModal";
+import { Shimmer } from "@/components/ui/SkeletonRow";
 
 import DayStrip from "@/components/charts/DayStrip";
 import JournalDatePickerModal from "@/components/JournalDatePickerModal";
@@ -71,7 +72,7 @@ import { coerceMacrosWhenCaloriesButNoGrams } from "../../../../src/lib/nutritio
 import { fetchPlannedMealMicros, type SupabaseLike } from "../../../../src/lib/planning/plannedMealMicros";
 import { refreshAdaptiveTdeeForUser } from "@/lib/refreshAdaptiveTdee";
 import { snapshotDailyTargetIfMissing } from "../../../../src/lib/nutrition/dailyTargetSnapshot";
-import { refreshExpoPushTokenIfChanged } from "@/lib/expoPushToken";
+import { refreshExpoPushTokenIfChanged , registerExpoPushTokenForUser } from "@/lib/expoPushToken";
 import { subscribeOffline } from "@/lib/subscribeOffline";
 import { NUTRITION_DEFAULTS, type NutritionDefaults } from "@/constants/nutritionDefaults";
 import { calculateTDEE, maintenanceIntakeFromTargetCalories, resolveTargets } from "@/lib/calcTargets";
@@ -208,7 +209,6 @@ import { OnboardingNudgeBanner } from "@/components/today/onboarding-nudges";
 // Activation hook (audit 2026-04-30) — first-log toast + push explainer.
 import { FirstLogAcknowledgment } from "@/components/today/FirstLogAcknowledgment";
 import { PostOnboardingPushExplainer } from "@/components/today/PostOnboardingPushExplainer";
-import { registerExpoPushTokenForUser } from "@/lib/expoPushToken";
 // Phase 5 / B3.M (2026-04-27) — wire the NorthStarBlockHost on Today.
 import { NorthStarBlockHost } from "@/components/today/NorthStarBlockHost";
 import { useSavedLibraryRecipes } from "@/lib/recipes";
@@ -296,7 +296,7 @@ function dayActivityBudgetAddon(
   basalByDay: Record<string, number>,
   maintenanceKcal: number,
   dk: string,
-  workoutsByDay?: Record<string, Array<{ type: string; minutes: number; calories: number; source: string }>>,
+  workoutsByDay?: Record<string, { type: string; minutes: number; calories: number; source: string }[]>,
 ): number {
   if (!prefer) return 0;
   const active = Math.round(activityByDay[dk] ?? 0);
@@ -457,7 +457,7 @@ export default function TrackerScreen() {
   );
   const [stepsByDay, setStepsByDay] = useState<Record<string, number>>({});
   const [activityBurnByDay, setActivityBurnByDay] = useState<Record<string, number>>({});
-  const [workoutsByDay, setWorkoutsByDay] = useState<Record<string, Array<{ type: string; minutes: number; calories: number; source: string }>>>({});
+  const [workoutsByDay, setWorkoutsByDay] = useState<Record<string, { type: string; minutes: number; calories: number; source: string }[]>>({});
   const [basalBurnByDay, setBasalBurnByDay] = useState<Record<string, number>>({});
   const [preferActivityAdjustedCalories, setPreferActivityAdjustedCalories] = useState(false);
   /** surplus-only: add only burn above maintenance TDEE (needs resting + active from Health). */
@@ -471,7 +471,7 @@ export default function TrackerScreen() {
    *  Opened by the small pill under the calorie ring. */
   const [whyThisNumberOpen, setWhyThisNumberOpen] = useState(false);
   const [dailyStepsGoal, setDailyStepsGoal] = useState(NUTRITION_DEFAULTS.steps);
-  const [plannedMeals, setPlannedMeals] = useState<Array<{name?: string; recipe_title?: string; calories?: number; protein?: number; carbs?: number; fat?: number; recipe_id?: string | null}>>([]);
+  const [plannedMeals, setPlannedMeals] = useState<{name?: string; recipe_title?: string; calories?: number; protein?: number; carbs?: number; fat?: number; recipe_id?: string | null}[]>([]);
   const [activeFastStart, setActiveFastStart] = useState<string | null>(null);
   // Target fast length in hours, parsed from `profiles.fasting_window`
   // (stored as "16:8" style). Defaults to 16 until the profile loads.
@@ -502,8 +502,6 @@ export default function TrackerScreen() {
   const [editPortion, setEditPortion] = useState("1");
   const waterActivityInitialLoadDone = useRef(false);
   const editCanonicalRef = useRef({ cal: 0, p: 0, cb: 0, f: 0 });
-  /** Avoid double-fetch on mount (useFocusEffect already loads the journal). */
-  const skipJournalReloadOnFirstDateEffect = useRef(true);
   const [fastingTick, setFastingTick] = useState(Date.now());
   const [isOffline, setIsOffline] = useState(false);
   const [targetCelebration, setTargetCelebration] = useState(false);
@@ -685,7 +683,7 @@ export default function TrackerScreen() {
   // Ship M1 (2026-04-18) — the host also owns the full saved-meals list
   // so the meal-slot section can render the `Log usual` pill directly.
   const [saveMealSheetOpen, setSaveMealSheetOpen] = useState(false);
-  const [saveMealSheetItems, setSaveMealSheetItems] = useState<Array<Omit<SavedMealItem, "id" | "position">>>([]);
+  const [saveMealSheetItems, setSaveMealSheetItems] = useState<Omit<SavedMealItem, "id" | "position">[]>([]);
   const [saveMealSheetDefaultSlot, setSaveMealSheetDefaultSlot] = useState<"Breakfast" | "Lunch" | "Dinner" | "Snacks" | undefined>(undefined);
   /** Bumped after a new saved meal is persisted so `QuickAddPanel` refetches
    *  its "Usual meals" tab and jumps to it (mirrors the web host). */
@@ -706,7 +704,7 @@ export default function TrackerScreen() {
         if (!cancelled) setHostSavedMeals(rows);
       })
       .catch((err) => {
-        // eslint-disable-next-line no-console
+         
         console.warn("Today listSavedMeals failed", err);
       });
     return () => {
@@ -1040,7 +1038,7 @@ export default function TrackerScreen() {
         );
         return;
       }
-      const items: Array<Omit<SavedMealItem, "id" | "position">> = slotMeals.map((m) => {
+      const items: Omit<SavedMealItem, "id" | "position">[] = slotMeals.map((m) => {
         const item: Omit<SavedMealItem, "id" | "position"> = {
           recipeTitle: m.recipeTitle,
           calories: Math.max(0, Math.round(m.calories)),
@@ -1073,7 +1071,7 @@ export default function TrackerScreen() {
   const openSaveMealSheetWithSeed = useCallback(
     (
       slot: "Breakfast" | "Lunch" | "Dinner" | "Snacks",
-      items: Array<Omit<SavedMealItem, "id" | "position">>,
+      items: Omit<SavedMealItem, "id" | "position">[],
     ) => {
       if (!userId) {
         Alert.alert("Sign in", "Sign in to save a usual meal.");
@@ -1136,7 +1134,7 @@ export default function TrackerScreen() {
     async (payload: {
       name: string;
       defaultMealSlot?: "Breakfast" | "Lunch" | "Dinner" | "Snacks";
-      items: Array<Omit<SavedMealItem, "id" | "position">>;
+      items: Omit<SavedMealItem, "id" | "position">[];
     }) => {
       if (!userId) return;
       try {
@@ -1154,7 +1152,7 @@ export default function TrackerScreen() {
         setSavedMealsRefreshToken((n) => n + 1);
       } catch (err) {
         Alert.alert("Could not save", "We couldn't save that meal. Try again.");
-        // eslint-disable-next-line no-console
+         
         console.warn("Saved-meal create failed", err);
       }
     },
@@ -1225,7 +1223,7 @@ export default function TrackerScreen() {
       } catch { /* analytics fire-and-forget */ }
       // Fire-and-forget counter bump. Panel fires the analytics event.
       void incrementLogCount(supabase, userId, meal.id).catch((err) => {
-        // eslint-disable-next-line no-console
+         
         console.warn("Saved-meal log-count bump failed", err);
       });
       setShowPrevious(false);
@@ -1309,7 +1307,7 @@ export default function TrackerScreen() {
         return next;
       });
       void incrementLogCount(supabase, userId, meal.id).catch((err) => {
-        // eslint-disable-next-line no-console
+         
         console.warn("Today slot-header usual-meal log bump failed", err);
       });
       setSavedMealsRefreshToken((n) => n + 1);
@@ -1508,14 +1506,14 @@ export default function TrackerScreen() {
     setStepsByDay(parseByDayNumberMap(data.steps_by_day));
     setActivityBurnByDay(parseByDayNumberMap(data.activity_burn_by_day));
     if (d.workouts_by_day && typeof d.workouts_by_day === "object" && !Array.isArray(d.workouts_by_day)) {
-      setWorkoutsByDay(d.workouts_by_day as Record<string, Array<{ type: string; minutes: number; calories: number; source: string }>>);
+      setWorkoutsByDay(d.workouts_by_day as Record<string, { type: string; minutes: number; calories: number; source: string }[]>);
     }
     setBasalBurnByDay(parseByDayNumberMap(d.basal_burn_by_day));
     setPreferActivityAdjustedCalories(Boolean(d.prefer_activity_adjusted_calories));
     const sg = data.daily_steps_goal != null ? Number(data.daily_steps_goal) : NUTRITION_DEFAULTS.steps;
     setDailyStepsGoal(Number.isFinite(sg) && sg > 0 ? Math.round(sg) : NUTRITION_DEFAULTS.steps);
     if (Array.isArray(data.fasting_sessions)) {
-      const active = (data.fasting_sessions as Array<{start: string; end: string | null}>).find((s) => s.end === null);
+      const active = (data.fasting_sessions as {start: string; end: string | null}[]).find((s) => s.end === null);
       setActiveFastStart(active?.start ?? null);
     }
     // Parse `profiles.fasting_window` (stored as "16:8" style; fast hours
@@ -2042,10 +2040,22 @@ export default function TrackerScreen() {
   }, []);
 
   // 30-day milestone moment gate (PR claude/today-30-day-milestone,
-  // 2026-05-02). Runs once per Today first-load AFTER the journal has
-  // hydrated — `milestone30HandledRef` suppresses re-fires within the
-  // session. The persisted `milestone_30_shown_at` flag suppresses
-  // re-fires across sessions: the moment is once and done, by design.
+  // 2026-05-02; persistence hardening 2026-05-05 audit K1).
+  //
+  // Runs once per Today first-load AFTER the journal has hydrated.
+  // Three-layer suppression:
+  //   1. `milestone30HandledRef` — within-session ref guard.
+  //   2. AsyncStorage `suppr.milestone_30.shown_at_local` — local
+  //      persistence, survives cold launch even if the server write
+  //      fails (audit K1: server write was silently failing under
+  //      `void` and Grace's column stayed null across 49+ days,
+  //      causing the modal to re-fire every cold launch).
+  //   3. `profiles.milestone_30_shown_at` — server source of truth
+  //      on next refetch.
+  //
+  // Order matters: the local AsyncStorage write happens FIRST and is
+  // synchronous-after-await; the server update logs its error
+  // explicitly instead of swallowing under `void`.
   useEffect(() => {
     if (!isToday) return;
     if (milestone30HandledRef.current) return;
@@ -2068,14 +2078,29 @@ export default function TrackerScreen() {
     setMilestone30Content(content);
     setMilestone30Open(true);
 
-    // Optimistic stamp — never re-fire even if the analytics call
-    // fails. Server is source of truth on next refetch.
     const nowIso = new Date().toISOString();
     setMilestone30ShownAt(nowIso);
-    void supabase
-      .from("profiles")
-      .update({ milestone_30_shown_at: nowIso } as never)
-      .eq("id", userId);
+
+    // Layer 2: persist locally first — can't fail silently the way
+    // the supabase update did under `void` (audit K1).
+    void AsyncStorage.setItem("suppr.milestone_30.shown_at_local", nowIso).catch(
+      (err) => {
+        console.warn("[milestone30] AsyncStorage write failed:", err);
+      },
+    );
+
+    // Layer 3: server stamp. `await` + explicit error log so a
+    // future RLS / column / network failure surfaces in dev/Sentry
+    // instead of leaving the user re-firing the modal every launch.
+    void (async () => {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ milestone_30_shown_at: nowIso } as never)
+        .eq("id", userId);
+      if (error) {
+        console.warn("[milestone30] server stamp failed:", error.message);
+      }
+    })();
 
     try {
       track(AnalyticsEvents.milestone_30_shown, {
@@ -2088,6 +2113,28 @@ export default function TrackerScreen() {
       /* noop */
     }
   }, [isToday, userId, byDay, profileWeightKgByDay, milestone30ShownAt]);
+
+  // Hydrate the local backstop. If a previous session wrote
+  // `suppr.milestone_30.shown_at_local` (e.g. server stamp failed),
+  // honour it before the server-fetched `milestone30ShownAt` lands.
+  // Without this, a cold launch with `milestone30ShownAt = null`
+  // (server NULL) would re-fire the modal even though the user has
+  // seen + dismissed it locally.
+  useEffect(() => {
+    if (milestone30ShownAt) return;
+    let cancelled = false;
+    void AsyncStorage.getItem("suppr.milestone_30.shown_at_local").then(
+      (raw) => {
+        if (cancelled) return;
+        if (typeof raw === "string" && raw) {
+          setMilestone30ShownAt(raw);
+        }
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [milestone30ShownAt]);
 
   const handleMilestone30Dismiss = useCallback(() => {
     setMilestone30Open(false);
@@ -2759,8 +2806,22 @@ export default function TrackerScreen() {
       const prev = extraWaterByDay;
       const next = pruneByDay({ ...prev, [dayKey]: (prev[dayKey] ?? 0) + add });
       setExtraWaterByDay(next);
-      // Await the persist so it completes before any re-fetch can race
-      await supabase.from("profiles").update({ extra_water_by_day: next }).eq("id", userId);
+      // Debug audit 2026-05-04 (code-quality #2): caffeine + alcohol
+      // already had persist-error rollback (round 3, 2026-04-26); water
+      // was missed. Without rollback, an offline / RLS-denied write
+      // left the UI ahead of the server, and the next focus refresh
+      // re-read from DB and the bump appeared to "evaporate". Same
+      // shape as the addCaffeineMg path now.
+      const { error } = await supabase
+        .from("profiles")
+        .update({ extra_water_by_day: next })
+        .eq("id", userId);
+      if (error) {
+        setExtraWaterByDay(prev);
+        console.error("[addWaterMl] persist failed:", error.message, error);
+        Alert.alert("Couldn't save water", error.message ?? "Try again.");
+        return;
+      }
       track(AnalyticsEvents.hydration_logged, {
         type: "water",
         amount: add,
@@ -2789,10 +2850,10 @@ export default function TrackerScreen() {
         .select("fasting_sessions")
         .eq("id", userId)
         .maybeSingle();
-      const existing: Array<{ start: string; end: string | null }> = Array.isArray(
+      const existing: { start: string; end: string | null }[] = Array.isArray(
         data?.fasting_sessions,
       )
-        ? (data.fasting_sessions as Array<{ start: string; end: string | null }>)
+        ? (data.fasting_sessions as { start: string; end: string | null }[])
         : [];
       if (existing.some((s) => s.end === null)) {
         // Already fasting — do not stack sessions.
@@ -3124,25 +3185,36 @@ export default function TrackerScreen() {
         },
         submitBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
 
+        // Audit 2026-05-04 #34: previously a full-card offline banner
+        // crowded the Today top and looked like a content row. Slim pill
+        // (~36pt height) sits above the hero ring without stealing
+        // vertical rhythm from the macro tiles below.
         offlineBanner: {
           flexDirection: "row",
           alignItems: "center",
-          gap: Spacing.sm,
+          gap: Spacing.xs,
           backgroundColor: colors.card,
-          borderRadius: Radius.md,
-          paddingVertical: Spacing.md,
-          paddingHorizontal: Spacing.lg,
+          borderRadius: 999,
+          paddingVertical: Spacing.xs,
+          paddingHorizontal: Spacing.md,
           borderWidth: 1,
           borderColor: Accent.primary + "30",
+          alignSelf: "flex-start",
         },
-        offlineBannerText: { flex: 1, fontSize: 13, fontWeight: "600", color: colors.text },
+        offlineBannerText: { fontSize: 12, fontWeight: "600", color: colors.text },
 
       }),
     [colors],
   );
 
   const loadJournal = useCallback(async () => {
-    if (!userId) return;
+    // Without a uid there is nothing to fetch — still flip `hydrated`
+    // so we never strand the user on the skeleton if a focus/effect
+    // ordering bug calls `loadJournal` before `session.user.id` exists.
+    if (!userId) {
+      setHydrated(true);
+      return;
+    }
 
     // Defence (2026-05-03): wrap the whole load in try/finally so
     // `hydrated` ALWAYS flips true, even if a supabase call throws
@@ -3182,31 +3254,79 @@ export default function TrackerScreen() {
       return out;
     };
 
-    // M9 (2026-04-21) — `nutrition_entries` and all `meal_plan_days`
-    // rows load in parallel; `meal_plan_meals` still follows in a
-    // second round-trip once we know which plan-day id matches the
-    // journal `selectedDate` (plan index ≠ weekday — see
-    // `planCalendarAnchor.ts`).
-    const [
-      { data: rows, error },
-      { data: planDayRows },
-    ] = await Promise.all([
-      supabase
+    const LEGACY_JOURNAL_TIMEOUT_MS = 18_000;
+    const PLANNED_MEALS_TIMEOUT_MS = 18_000;
+    const journalRaceTimeout = Symbol("journal_race_timeout");
+    async function raceJournal<T>(
+      label: string,
+      ms: number,
+      p: Promise<T>,
+    ): Promise<T | typeof journalRaceTimeout> {
+      const out = await Promise.race([
+        p,
+        new Promise<typeof journalRaceTimeout>((resolve) => {
+          setTimeout(() => resolve(journalRaceTimeout), ms);
+        }),
+      ]);
+      if (out === journalRaceTimeout) {
+        console.warn(`[tracker] ${label} timed out (${ms}ms)`);
+      }
+      return out;
+    }
+
+    // M9 (2026-04-21) — `nutrition_entries` + `meal_plan_days` for the
+    // journal; `meal_plan_meals` follows once `planDayId` is known.
+    //
+    // 2026-05-03 — a single `Promise.race` on `Promise.all([…])` meant
+    // ANY hung query failed BOTH: e.g. a stuck `meal_plan_days` call
+    // torched a healthy `nutrition_entries` result. Race each query
+    // independently (still `Promise.all` so wall time is max of the two
+    // caps, not the sum).
+    const JOURNAL_ENTRIES_TIMEOUT_MS = 45_000;
+    const MEAL_PLAN_DAYS_TIMEOUT_MS = 15_000;
+    const entriesPromise = (async () =>
+      await supabase
         .from("nutrition_entries")
         .select("id, date_key, name, recipe_title, time_label, calories, protein, carbs, fat, fiber_g, water_ml, portion_multiplier, source, created_at, nutrition_micros")
         .eq("user_id", userId)
         .order("date_key", { ascending: true })
         .order("created_at", { ascending: true })
-        .limit(20_000),
-      supabase
+        .limit(20_000))();
+    const planDaysPromise = (async () =>
+      await supabase
         .from("meal_plan_days")
         // T7 (2026-04-24): SELECT start_date so the resolver uses the
         // persisted anchor instead of iterating [0,1,7] offsets.
         .select("id, day, start_date")
         .eq("user_id", userId)
         .eq("slot_id", "default")
-        .order("day", { ascending: true }),
+        .order("day", { ascending: true }))();
+
+    const [entriesPack, planDaysPack] = await Promise.all([
+      raceJournal("nutrition_entries", JOURNAL_ENTRIES_TIMEOUT_MS, entriesPromise),
+      raceJournal("meal_plan_days", MEAL_PLAN_DAYS_TIMEOUT_MS, planDaysPromise),
     ]);
+
+    const entriesTimedOut = entriesPack === journalRaceTimeout;
+    const rows =
+      entriesTimedOut ? [] : (entriesPack.data ?? []);
+    const error = entriesTimedOut ? null : entriesPack.error;
+
+    if (entriesTimedOut) {
+      console.warn("[tracker] nutrition_entries timed out");
+      setLoadError(
+        "Your journal is taking too long to load. Check your network, then switch tabs and return to Today.",
+      );
+    }
+
+    const planDayRows =
+      planDaysPack === journalRaceTimeout
+        ? null
+        : ((planDaysPack.data ?? []) as { id: string; day: number; start_date?: string | null }[]);
+    if (planDaysPack === journalRaceTimeout) {
+      console.warn("[tracker] meal_plan_days timed out");
+    }
+
     const planDayId =
       planDayRows && planDayRows.length > 0
         ? findPlanDayIdForCalendarDate(
@@ -3220,15 +3340,17 @@ export default function TrackerScreen() {
     if (error) {
       const msg = error.message ?? "";
       if (looksLikeMissingTableError(msg)) {
-        const legacy = await loadLegacyByDay();
-        setByDay(legacy ?? {});
+        const legacyResult = await raceJournal("legacy journal by_day", LEGACY_JOURNAL_TIMEOUT_MS, loadLegacyByDay());
+        setByDay(legacyResult === journalRaceTimeout ? {} : (legacyResult ?? {}));
       } else {
         console.error("[tracker] load failed:", msg);
         setLoadError("Could not load your journal.");
         setByDay({});
       }
     } else {
-      setLoadError(null);
+      if (!entriesTimedOut) {
+        setLoadError(null);
+      }
       for (const r of rows ?? []) {
         const k = r.date_key as string;
         if (!loaded[k]) loaded[k] = [];
@@ -3249,9 +3371,11 @@ export default function TrackerScreen() {
           createdAt: (r as { created_at?: string }).created_at ?? undefined,
         });
       }
-      if (Object.keys(loaded).length === 0) {
-        const legacy = await loadLegacyByDay();
-        if (legacy && Object.keys(legacy).length > 0) loaded = legacy;
+      if (Object.keys(loaded).length === 0 && !entriesTimedOut) {
+        const legacyResult = await raceJournal("legacy journal by_day (empty nutrition_entries)", LEGACY_JOURNAL_TIMEOUT_MS, loadLegacyByDay());
+        if (legacyResult !== journalRaceTimeout && legacyResult && Object.keys(legacyResult).length > 0) {
+          loaded = legacyResult;
+        }
       }
       setByDay(loaded);
       // Audit/2026-04-30 — pre-populate the HealthKit-meal-write dedupe
@@ -3264,42 +3388,65 @@ export default function TrackerScreen() {
         .filter((id): id is string => typeof id === "string" && id.length > 0);
       void primeWrittenMealIds(userId, existingIds);
     }
-    setHydrated(true);
 
     // Planned meals for the journal `selectedDate`: `meal_plan_days.day`
     // is plan index 1..7 (same as Plan tab), not weekday — match via
     // calendar date + start offsets (today / tomorrow / next week).
+    // 2026-05-03 — race each await: a setTimeout-only "timeout" does NOT
+    // unblock the JS call stack — if PostgREST never settles, we never
+    // reach the outer `finally` and `hydrated` stays false (skeleton).
+    const plannedMealsRaceTimeout = Symbol("planned_meals_race_timeout");
+    async function racePlannedMeals<T>(
+      p: Promise<T>,
+    ): Promise<T | typeof plannedMealsRaceTimeout> {
+      return await Promise.race([
+        p,
+        new Promise<typeof plannedMealsRaceTimeout>((resolve) => {
+          setTimeout(() => resolve(plannedMealsRaceTimeout), PLANNED_MEALS_TIMEOUT_MS);
+        }),
+      ]);
+    }
+
     if (planDayId) {
-      const { data: mealRows } = await supabase
-        .from("meal_plan_meals")
-        .select("name, recipe_title, calories, protein, carbs, fat, recipe_id")
-        .eq("plan_day_id", planDayId)
-        .order("slot_index", { ascending: true });
-      if (mealRows && mealRows.length > 0) {
-        setPlannedMeals(
-          mealRows.map((m) => {
-            const coerced = coerceMacrosWhenCaloriesButNoGrams({
-              calories: (m.calories as number) ?? 0,
-              protein: (m.protein as number) ?? 0,
-              carbs: (m.carbs as number) ?? 0,
-              fat: (m.fat as number) ?? 0,
-            });
-            return {
-              name: (m.name as string) ?? "",
-              recipe_title: (m.recipe_title as string) ?? "",
-              calories: coerced.calories,
-              protein: coerced.protein,
-              carbs: coerced.carbs,
-              fat: coerced.fat,
-              recipe_id: (m.recipe_id as string | null) ?? null,
-            };
-          }),
-        );
-      } else {
+      const mealRes = await racePlannedMeals(
+        (async () =>
+          await supabase
+            .from("meal_plan_meals")
+            .select("name, recipe_title, calories, protein, carbs, fat, recipe_id")
+            .eq("plan_day_id", planDayId)
+            .order("slot_index", { ascending: true }))(),
+      );
+      if (mealRes === plannedMealsRaceTimeout) {
+        console.warn(`[tracker] meal_plan_meals timed out (${PLANNED_MEALS_TIMEOUT_MS}ms)`);
         setPlannedMeals([]);
+      } else {
+        const { data: mealRows } = mealRes;
+        if (mealRows && mealRows.length > 0) {
+          setPlannedMeals(
+            mealRows.map((m) => {
+              const coerced = coerceMacrosWhenCaloriesButNoGrams({
+                calories: (m.calories as number) ?? 0,
+                protein: (m.protein as number) ?? 0,
+                carbs: (m.carbs as number) ?? 0,
+                fat: (m.fat as number) ?? 0,
+              });
+              return {
+                name: (m.name as string) ?? "",
+                recipe_title: (m.recipe_title as string) ?? "",
+                calories: coerced.calories,
+                protein: coerced.protein,
+                carbs: coerced.carbs,
+                fat: coerced.fat,
+                recipe_id: (m.recipe_id as string | null) ?? null,
+              };
+            }),
+          );
+        } else {
+          setPlannedMeals([]);
+        }
       }
     } else {
-      const planJson = await fetchMealPlanJson(supabase, userId);
+      const jsonRes = await racePlannedMeals(fetchMealPlanJson(supabase, userId));
       type LegacyMeal = {
         name?: string;
         recipeTitle?: string;
@@ -3310,29 +3457,35 @@ export default function TrackerScreen() {
         fat?: number;
       };
       type LegacyDay = { day: number; meals?: LegacyMeal[] };
-      if (planJson != null && Array.isArray(planJson)) {
-        const dayPlan = findLegacyPlanDayForCalendarDate(planJson as LegacyDay[], selectedDate);
-        const meals = dayPlan?.meals ?? [];
-        setPlannedMeals(
-          meals.map((m) => {
-            const coerced = coerceMacrosWhenCaloriesButNoGrams({
-              calories: Number(m.calories) || 0,
-              protein: Number(m.protein) || 0,
-              carbs: Number(m.carbs) || 0,
-              fat: Number(m.fat) || 0,
-            });
-            return {
-              name: m.name,
-              recipe_title: m.recipeTitle ?? m.recipe_title,
-              calories: coerced.calories,
-              protein: coerced.protein,
-              carbs: coerced.carbs,
-              fat: coerced.fat,
-            };
-          }),
-        );
-      } else {
+      if (jsonRes === plannedMealsRaceTimeout) {
+        console.warn(`[tracker] fetchMealPlanJson timed out (${PLANNED_MEALS_TIMEOUT_MS}ms)`);
         setPlannedMeals([]);
+      } else {
+        const planJson = jsonRes;
+        if (planJson != null && Array.isArray(planJson)) {
+          const dayPlan = findLegacyPlanDayForCalendarDate(planJson as LegacyDay[], selectedDate);
+          const meals = dayPlan?.meals ?? [];
+          setPlannedMeals(
+            meals.map((m) => {
+              const coerced = coerceMacrosWhenCaloriesButNoGrams({
+                calories: Number(m.calories) || 0,
+                protein: Number(m.protein) || 0,
+                carbs: Number(m.carbs) || 0,
+                fat: Number(m.fat) || 0,
+              });
+              return {
+                name: m.name,
+                recipe_title: m.recipeTitle ?? m.recipe_title,
+                calories: coerced.calories,
+                protein: coerced.protein,
+                carbs: coerced.carbs,
+                fat: coerced.fat,
+              };
+            }),
+          );
+        } else {
+          setPlannedMeals([]);
+        }
       }
     }
 
@@ -3350,10 +3503,6 @@ export default function TrackerScreen() {
   // Re-resolve planned meals when the journal date changes (focus alone
   // does not re-run when the user stays on this tab and swipes dates).
   useEffect(() => {
-    if (skipJournalReloadOnFirstDateEffect.current) {
-      skipJournalReloadOnFirstDateEffect.current = false;
-      return;
-    }
     if (!userId) return;
     void loadJournal();
   }, [selectedDate, userId, loadJournal]);
@@ -3575,7 +3724,7 @@ export default function TrackerScreen() {
    * id on them yet; a fresh `newMealId()` is minted per row.
    */
   const insertClonedRowsIntoDay = useCallback(
-    async (targetDayKey: string, clones: Array<Omit<JournalMeal, "id">>): Promise<number> => {
+    async (targetDayKey: string, clones: Omit<JournalMeal, "id">[]): Promise<number> => {
       if (clones.length === 0) return 0;
       const withIds: JournalMeal[] = clones.map((c) => ({ ...c, id: newMealId() } as JournalMeal));
       setByDay((prev) => ({
@@ -3965,17 +4114,23 @@ export default function TrackerScreen() {
   }, []);
 
   if (!hydrated && !loadError) {
+    // Audit 2026-05-04 #7: previously the skeleton was static grey
+    // blocks — visually indistinguishable from a crashed empty screen
+    // (visual-qa called this out on the captured `state-03` shot). The
+    // shared `<Shimmer>` primitive adds a 700ms opacity pulse that
+    // unmistakably reads as "loading" rather than "broken". Reduce-
+    // motion users get a static 0.6-opacity render automatically.
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.scroll}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-            <View style={{ width: 80, height: 20, backgroundColor: colors.border, borderRadius: Radius.sm }} />
-            <View style={{ width: 72, height: 16, backgroundColor: colors.border, borderRadius: Radius.sm }} />
+            <Shimmer style={{ width: 80, height: 20, borderRadius: Radius.sm }} />
+            <Shimmer style={{ width: 72, height: 16, borderRadius: Radius.sm }} />
           </View>
-          <View style={{ height: 160, backgroundColor: colors.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: colors.border }} />
-          <View style={{ height: 80, backgroundColor: colors.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: colors.border }} />
+          <Shimmer style={{ height: 160, borderRadius: Radius.lg }} />
+          <Shimmer style={{ height: 80, borderRadius: Radius.lg }} />
           {[1, 2, 3, 4].map((i) => (
-            <View key={i} style={{ height: 64, backgroundColor: colors.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: colors.border }} />
+            <Shimmer key={i} style={{ height: 64, borderRadius: Radius.lg }} />
           ))}
         </View>
       </View>
@@ -4008,8 +4163,16 @@ export default function TrackerScreen() {
             2026-04-30 — pip now opens the weekly-recap surface (audit
             "cut OR finish" verdict). Zero-streak users land on the
             same screen which renders an explainer instead of a
-            broken card. */}
-        {viewMode === "day" && (
+            broken card.
+
+            Audit 2026-05-04 #1 (ui-product-designer spec): hide the
+            streak pip on day 0 / day 1 — fresh users with a streak of
+            "0" or "1" should not see a streak chip at all (it reads
+            as fabricated when the user has just installed and the
+            milestone modal already filters import-fallback titles per
+            #2 fix). Pip appears once the user has 2+ actual logged
+            days. Existing-user streaks unchanged. */}
+        {viewMode === "day" && streakDays >= 2 && (
           <View style={{ alignItems: "flex-end", paddingTop: 6, marginBottom: -4 }}>
             <StreakPip
               days={protectedStreakLength}
@@ -4044,8 +4207,8 @@ export default function TrackerScreen() {
 
         {isOffline && (
           <View style={styles.offlineBanner} accessibilityRole="alert">
-            <Ionicons name="cloud-offline-outline" size={18} color={Accent.primary} />
-            <Text style={styles.offlineBannerText}>{"You're offline. Changes sync when you reconnect."}</Text>
+            <Ionicons name="cloud-offline-outline" size={14} color={Accent.primary} />
+            <Text style={styles.offlineBannerText}>{"Offline · syncing when you reconnect"}</Text>
           </View>
         )}
 
@@ -4057,7 +4220,8 @@ export default function TrackerScreen() {
           >
             <Ionicons name="alert-circle" size={18} color={Accent.destructive} />
             <Text style={{ flex: 1, fontSize: 13, color: Accent.destructive, fontWeight: "600" }}>
-              Could not load journal. Tap to retry.
+              {loadError}
+              {" Tap to retry."}
             </Text>
           </Pressable>
         )}

@@ -82,9 +82,21 @@ export interface FullNutrientPanelSheetProps {
   colors: FullNutrientPanelSheetColors;
 }
 
-/** Pick the bar colour for a row using the limit-vs-target ramp. */
-function rowColor(row: FullNutrientPanelRow): string {
-  if (row.percentDv === null) return Accent.successLight;
+/**
+ * Pick the bar colour for a row using the limit-vs-target ramp.
+ *
+ * Debug audit 2026-05-04 (visual-qa P1): rows with `percentDv === null`
+ * (i.e. data not available) used to render in `Accent.successLight`
+ * (medium green) — same family as the "on-target" colour, which
+ * communicated "good" for an unknown value. A user scanning the panel
+ * would see green bars for iron / zinc / potassium (common no-data
+ * micros) and assume they were on track. The %DV column already
+ * renders "—" for these rows; the bar should agree by being neutral,
+ * not green. Returning `null` here lets the caller resolve to a
+ * theme-aware muted tint (low-opacity primary).
+ */
+function rowColor(row: FullNutrientPanelRow): string | null {
+  if (row.percentDv === null) return null;
   if (!row.isLimit) return Accent.success;
   if (row.percentDv >= 100) return Accent.destructive;
   if (row.percentDv >= 80) return Accent.warning;
@@ -98,7 +110,10 @@ function PanelRow({
   row: FullNutrientPanelRow;
   colors: FullNutrientPanelSheetColors;
 }) {
-  const color = rowColor(row);
+  // Audit 2026-05-04: when %DV is null, render a muted neutral fill
+  // instead of green. `colors.cardBorder` reads as a subtle inactive
+  // track without communicating "achievement" or "danger".
+  const color = rowColor(row) ?? colors.cardBorder;
   const barWidthPct = Math.min(100, Math.max(0, row.percentDv ?? 0));
   return (
     <View
@@ -238,7 +253,7 @@ export function FullNutrientPanelSheet({
 }: FullNutrientPanelSheetProps) {
   const insets = useSafeAreaInsets();
   const sections = React.useMemo<
-    Array<{ section: FullNutrientPanelSection; rows: FullNutrientPanelRow[] }>
+    { section: FullNutrientPanelSection; rows: FullNutrientPanelRow[] }[]
   >(() => {
     const input: FullNutrientPanelInput = {
       microSum: microSum ?? {},

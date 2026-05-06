@@ -439,36 +439,17 @@ describe("fan-out flow", () => {
 // Per-user nutrition fetch, content-specific body, server-side analytics.
 // ───────────────────────────────────────────────────────────────────
 
-/**
- * Compute a date-key offset in days from `now`. Used to seed
- * nutrition_entries fixtures inside the "previous completed week"
- * window (Mon-start, 7 days back from last Monday).
- *
- * `daysBack` semantics: 0 = today; this helper exists to support
- * legacy callsites and arbitrary offsets, but most fixture seeds
- * should prefer `dateKeyInPreviousWeek(0..6)` instead — that helper
- * handles the calendar-day-of-week trap that broke CI.
- *
- * The 9 / 8 / 7 magic numbers used to be "always inside the previous
- * Mon-start week" — but on Mondays the previous-week window is
- * [today-7..today-1] (7 days), and 8+ days back is the week BEFORE
- * the previous one. That made every test using `dateKeyOffsetDays(8..)`
- * silently produce zero_days fixtures any time CI ran on a Monday.
+/*
+ * Historical note: a `dateKeyOffsetDays(daysBack)` helper used to seed
+ * nutrition_entries fixtures, but arbitrary offsets broke CI on Mondays
+ * (8+ days back left the "previous Mon-start week" window). Fixture
+ * seeds should use `dateKeyInPreviousWeek(0..6)` instead.
  */
-function dateKeyOffsetDays(daysBack: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() - daysBack);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
 
 /**
  * Pick a specific day of the previous-completed Mon-start week.
  * `weekdayOffset` 0..6 maps to Mon..Sun of that week. Always lands
- * inside the route's window regardless of which weekday CI runs on,
- * which `dateKeyOffsetDays(8..N)` doesn't (see header comment above).
+ * inside the route's window regardless of which weekday CI runs on.
  */
 function dateKeyInPreviousWeek(weekdayOffset: number): string {
   const today = new Date();

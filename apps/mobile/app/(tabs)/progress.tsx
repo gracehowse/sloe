@@ -41,7 +41,7 @@ import {
   weightJourneyProgress,
 } from "@/lib/weightProjection";
 import { calculateTDEE, getEffectiveTDEE } from "@/lib/calcTargets";
-import { resolveMaintenance } from "../../../../src/lib/nutrition/resolveMaintenance";
+import { resolveMaintenance , formatMaintenanceRecapLine } from "../../../../src/lib/nutrition/resolveMaintenance";
 import { buildMaintenanceChain } from "../../../../src/lib/nutrition/maintenanceChain";
 import type { PlanPace } from "../../../../src/lib/nutrition/tdee";
 import {
@@ -83,7 +83,6 @@ import {
   serializePendingUsualMealSave,
 } from "../../../../src/lib/nutrition/pendingUsualMealSave";
 import { formatRecapForShare } from "@/lib/weeklyRecap";
-import { formatMaintenanceRecapLine } from "../../../../src/lib/nutrition/resolveMaintenance";
 import { resolveDigestHeadline } from "../../../../src/lib/nutrition/digest";
 import { Digest, type DigestUsualMeal } from "@/components/Digest";
 import { HouseholdBar } from "@/components/HouseholdBar";
@@ -324,19 +323,52 @@ export default function ProgressScreen() {
         )
       : (setStepsSyncStatus("success"), Promise.resolve());
 
-    const [{ data: rows }, { data: profile }] = await Promise.all([
-      supabase
+    // Debug audit 2026-05-04 (code-quality #1 CRITICAL): the existing
+    // try/finally protects against rejected promises but NOT against a
+    // hung PostgREST (NAT/Cloudflare wedge or RLS deadlock — the same
+    // class of bug fixed on Today via `raceJournal`). A non-settling
+    // await never reaches the finally block. Now: wrap each query in a
+    // 30s timeout race. On timeout we surface a sentinel and fall
+    // through to the empty/hasData branches with `setLoadError` set so
+    // the user sees a recovery affordance instead of perpetual skeleton.
+    const PROGRESS_QUERY_TIMEOUT_MS = 30_000;
+    const progressTimeoutSentinel = Symbol("progress_query_timeout");
+    async function raceProgress<T>(label: string, p: Promise<T>): Promise<T | typeof progressTimeoutSentinel> {
+      const out = await Promise.race([
+        p,
+        new Promise<typeof progressTimeoutSentinel>((resolve) => {
+          setTimeout(() => resolve(progressTimeoutSentinel), PROGRESS_QUERY_TIMEOUT_MS);
+        }),
+      ]);
+      if (out === progressTimeoutSentinel) {
+        console.warn(`[progress] ${label} timed out (${PROGRESS_QUERY_TIMEOUT_MS}ms)`);
+      }
+      return out;
+    }
+    const entriesPromise = (async () =>
+      await supabase
         .from("nutrition_entries")
         .select("date_key, calories, protein, carbs, fat")
         .eq("user_id", userId)
         .gte("date_key", ninetyDaysAgo)
-        .order("created_at", { ascending: true }),
-      supabase
+        .order("created_at", { ascending: true }))();
+    const profilePromise = (async () =>
+      await supabase
         .from("profiles")
         .select("target_calories, target_protein, target_carbs, target_fat, weight_kg, goal_weight_kg, weight_kg_by_day, steps_by_day, daily_steps_goal, week_start_day, goal, plan_pace, sex, height_cm, age, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, weekly_recap_last_seen_week_key, weekly_recap_push_enabled, measurement_system, weight_surface_mode")
         .eq("id", userId)
-        .maybeSingle(),
+        .maybeSingle())();
+    const [entriesResult, profileResult] = await Promise.all([
+      raceProgress("nutrition_entries", entriesPromise),
+      raceProgress("profiles", profilePromise),
     ]);
+    if (entriesResult === progressTimeoutSentinel || profileResult === progressTimeoutSentinel) {
+      // Hung query — bail out of hydrate path so the spinner clears
+      // and the user sees the existing empty/hasData fallback.
+      return;
+    }
+    const { data: rows } = entriesResult;
+    const { data: profile } = profileResult;
 
     // Re-read `steps_by_day` after the background HK sync completes so
     // today's steps are accurate even though we didn't await sync above.
@@ -481,7 +513,7 @@ export default function ProgressScreen() {
       // Skeleton-gate fix (2026-04-20): surface failures so we still
       // flip `loading` → false and the user gets the empty state +
       // a pull-to-refresh path rather than an indefinite skeleton.
-      // eslint-disable-next-line no-console
+       
       console.warn("Progress loadData failed", err);
     } finally {
       setLoading(false);
@@ -581,6 +613,12 @@ export default function ProgressScreen() {
     () => weekKeyFor(new Date(), weekStartDay),
     [weekStartDay],
   );
+  // Numbers audit 2026-05-04 #9: pass per-day target snapshots into the
+  // recap. `weekStats` above already uses `weekTargetsByDay`; without
+  // mirroring the same arg here, a user who edited targets mid-week saw
+  // one adherence value on the recap card and a different one on
+  // Progress for the same week. Now both surfaces use the same per-day
+  // judgement.
   const recap = useMemo(
     () =>
       buildWeeklyRecap({
@@ -590,8 +628,9 @@ export default function ProgressScreen() {
         weekStartDay,
         ledger: freezeLedger,
         budgetMax: freezeBudgetMax,
+        dayTargetOverrides: weekTargetsByDay,
       }),
-    [byDay, weightKgByDay, targets, weekStartDay, freezeLedger, freezeBudgetMax],
+    [byDay, weightKgByDay, targets, weekStartDay, freezeLedger, freezeBudgetMax, weekTargetsByDay],
   );
   const recapVisible = useMemo(
     () =>
@@ -613,7 +652,7 @@ export default function ProgressScreen() {
         if (!cancelled) setHostSavedMealsForRecap(rows);
       })
       .catch((err) => {
-        // eslint-disable-next-line no-console
+         
         console.warn("Progress listSavedMeals (recap) failed", err);
       });
     return () => {
@@ -874,10 +913,14 @@ export default function ProgressScreen() {
       {/* Header — 2026-04-20 Claude Design prototype port.
           Uppercase overline reflects the currently-selected range,
           large "Progress" title (28pt / -0.6 tracking), round
-          calendar-icon button top-right. The pill button currently
-          routes to the weight-tracker screen (nearest existing surface
-          that owns a date picker) as a temporary destination; a
-          dedicated date-range picker modal is a follow-up. */}
+          icon button top-right.
+
+          Debug audit 2026-05-04 (visual-qa P1): the icon was
+          `CalendarDays` routing to /weight-tracker — a calendar glyph
+          that opens a weight log is a false affordance. Until a
+          dedicated date-range picker is built, the icon now matches
+          its destination (`Scale`) so the user gets what the icon
+          promises. */}
       <View
         testID="progress-header"
         style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}
@@ -889,7 +932,7 @@ export default function ProgressScreen() {
         <Pressable
           testID="progress-calendar-button"
           accessibilityRole="button"
-          accessibilityLabel="Open calendar"
+          accessibilityLabel="Open weight tracker"
           onPress={() => router.push("/weight-tracker" as const)}
           style={({ pressed }) => [{
             width: 36,
@@ -903,7 +946,7 @@ export default function ProgressScreen() {
             opacity: pressed ? 0.7 : 1,
           }]}
         >
-          <CalendarDays size={16} color={t.text} strokeWidth={1.75} />
+          <Scale size={16} color={t.text} strokeWidth={1.75} />
         </Pressable>
       </View>
 
@@ -2501,7 +2544,7 @@ function AppleHealthCardHost({
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [userId, reloadKey, stepsToday, latestWeightKg]);
 
   return (

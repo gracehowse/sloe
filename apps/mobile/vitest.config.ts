@@ -1,14 +1,14 @@
 import { defineConfig } from "vitest/config";
 import path from "path";
 
-const RN_SHIM = path.resolve(__dirname, "./tests/shims/react-native.cjs");
-
 // Diagnostic vite plugin: rewrites every bare `react-native` specifier to
 // the shim path, INCLUDING when the specifier appears inside a node_modules
 // package (where `resolve.alias` alone is sometimes skipped in vitest's
 // externalised CJS path). Uses `enforce: "pre"` so it runs before vite's
 // built-in alias resolver.
 import { readFileSync } from "node:fs";
+
+const RN_SHIM = path.resolve(__dirname, "./tests/shims/react-native.cjs");
 
 function reactNativeShimPlugin() {
   const normalise = (p: string) => p.replace(/\\/g, "/");
@@ -17,7 +17,7 @@ function reactNativeShimPlugin() {
     enforce: "pre" as const,
     async resolveId(source: string, importer: string | undefined) {
       if (process.env.VITEST_RN_SHIM_DEBUG) {
-        // eslint-disable-next-line no-console
+         
         console.log("[rn-shim] resolveId:", source, "from", importer);
       }
       // Bare specifier — standard alias path.
@@ -42,7 +42,7 @@ function reactNativeShimPlugin() {
         !ns.endsWith(".map")
       ) {
         if (process.env.VITEST_RN_SHIM_DEBUG) {
-          // eslint-disable-next-line no-console
+           
           console.log("[rn-shim] load redirect:", id);
         }
         return readFileSync(RN_SHIM, "utf8");

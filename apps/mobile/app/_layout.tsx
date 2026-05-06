@@ -1,12 +1,30 @@
-import 'react-native-gesture-handler';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack, usePathname, useRouter } from 'expo-router';
 import * as Linking from 'expo-linking';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { StatusBar } from 'expo-status-bar';
-import { AccessibilityInfo, AppState, Platform } from 'react-native';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { AccessibilityInfo, AppState, LogBox, Platform, Text, View } from 'react-native';
+
+// 2026-05-04 audit (#3 in `docs/audits/2026-05-04-full-sweep-audit.md`):
+// `TypeError: Network request failed` from the bundled whatwg-fetch polyfill
+// surfaces as a red LogBox pill in dev whenever a Supabase / Expo / push-token
+// fetch transiently fails. The handled fallbacks (offline cache, tolerable
+// tz-sync skip, push-token retry) all warn-and-continue. Suppress the noisy
+// dev pill so screenshot captures during sim NAT wedge / cold-boot don't
+// leak handled-error chrome onto otherwise-clean screens. Production builds
+// disable LogBox entirely so this is dev-only.
+if (__DEV__) {
+  LogBox.ignoreLogs([
+    /TypeError: Network request failed/,
+    /\[expo-notifications\] Error thrown while updating the device push token/,
+    /\[expoPushToken\].*Network request failed/,
+    /\[tzSync\] profiles\.tz_iana update failed/,
+    /\[tracker\] (?:meal_plan_days|nutrition_entries|fetchMealPlanJson) timed out/,
+    /\[useSavedLibraryRecipes\] saves\+recipes batch timed out/,
+  ]);
+}
 import { useShareIntent } from 'expo-share-intent';
 import { useCallback, useEffect, useRef } from 'react';
 import 'react-native-reanimated';
@@ -17,6 +35,7 @@ import { ThemeProvider as SupprThemeProvider, useTheme } from '@/context/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { consumeNewSocialRecipeUrlFromClipboard } from '@/lib/clipboardShareForward';
 import { initErrorTracking } from '@/lib/errorTracking';
+import { hasSupabaseConfig } from '@/lib/supabase';
 import { RootErrorBoundary } from '@/components/ui/RootErrorBoundary';
 import { configurePurchases } from '@/lib/purchases';
 import { configureNotificationPresentation } from '@/lib/pushNotificationsSetup';
@@ -381,6 +400,26 @@ function stackTitleForRoute(routeName: string): string {
 
 function RootLayoutInner() {
   const { resolved } = useTheme();
+
+  // Misconfigured dev builds use `createClient("", "")` — every fetch
+  // fails with RN's generic "Network request failed" and the UI can
+  // look like a blank grey screen with only a dev toast. Surface the
+  // real problem up front (same signal as `app/login.tsx`).
+  if (!hasSupabaseConfig()) {
+    const bg = resolved === 'dark' ? '#0a0a0f' : '#f4f5f7';
+    const fg = resolved === 'dark' ? '#e4e4e8' : '#111118';
+    const sub = resolved === 'dark' ? '#94a3b8' : '#475569';
+    return (
+      <GestureHandlerRootView style={{ flex: 1, backgroundColor: bg }}>
+        <View style={{ flex: 1, paddingHorizontal: 28, justifyContent: 'center', gap: 12 }}>
+          <Text style={{ fontSize: 20, fontWeight: '700', color: fg }}>Supabase is not configured</Text>
+          <Text style={{ fontSize: 15, lineHeight: 22, color: sub }}>
+            This build is missing `supabaseUrl` and `supabaseAnonKey` under `expo.extra` (see `app.json` or your local `app.config`). Rebuild the dev client after fixing env.
+          </Text>
+        </View>
+      </GestureHandlerRootView>
+    );
+  }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

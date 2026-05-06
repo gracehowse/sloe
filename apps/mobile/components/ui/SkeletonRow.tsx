@@ -116,10 +116,14 @@ export function SkeletonCard({
 }
 
 /**
- * Internal shimmer component — opacity tween 1 → 0.5 → 1 over 700ms.
+ * Shimmer component — opacity tween 1 → 0.5 → 1 over 700ms.
  * Reduce-motion: skips the loop and renders static at 0.6 opacity.
+ *
+ * Exported (audit 2026-05-04 #7) so other surfaces — Today skeleton,
+ * delete-account staged skeleton — can adopt the same pulse without
+ * each writing its own Animated boilerplate.
  */
-function Shimmer({ style }: { style: ViewStyle }) {
+export function Shimmer({ style }: { style: ViewStyle }) {
   const colors = useThemeColors();
   const opacity = React.useRef(new Animated.Value(1)).current;
   const [reduceMotion, setReduceMotion] = React.useState(false);

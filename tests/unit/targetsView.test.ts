@@ -209,6 +209,9 @@ describe("targetsView — buildGoalCard", () => {
     expect(card?.subtitle).toMatch(/(\d+\+ years out|1\+ year out)/);
     // Should NOT contain the deflating legacy copy.
     expect(card?.subtitle).not.toMatch(/more than a year at current rate/);
+    // Audit 2026-05-04 #5: capped projection must include the year so
+    // "10 May · 1+ year out" doesn't read as "10 May this year".
+    expect(card?.subtitle).toMatch(/\d{4}/);
   });
 });
 

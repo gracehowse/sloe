@@ -167,12 +167,15 @@ describe("PlanSubTabHeader", () => {
     expect(getByText("5")).toBeTruthy();
   });
 
-  it("caps the badge at 99+ for high counts", () => {
+  it("caps the badge at 999+ for high counts", () => {
+    // Implementation caps at 999+ (PlanSubTabHeader). Test pinned to
+    // match the rendered output. If the cap moves again, update the
+    // string here too — this test exists to lock the cap, whatever it is.
     const onChange = vi.fn<(_v: PlanSubTab) => void>();
     const { getByText } = render(
       <PlanSubTabHeader value="plan" onChange={onChange} shoppingUncheckedCount={1234} />,
     );
-    expect(getByText("99+")).toBeTruthy();
+    expect(getByText("999+")).toBeTruthy();
   });
 });
 

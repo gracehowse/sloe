@@ -51,7 +51,7 @@ describe("fetchFatSecretAutocomplete", () => {
           json: async () => ({
             ok: true,
             tier: "premier",
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+             
             suggestions: ["whole milk", 42, null, "skim milk", ""] as any,
           }),
         }) as Response,

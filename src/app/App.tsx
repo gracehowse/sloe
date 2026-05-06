@@ -42,10 +42,6 @@ const Targets = dynamic(
   () => import("./components/Targets.tsx").then((m) => ({ default: m.Targets })),
   { ssr: false, loading: () => <AppLoadingSkeleton label="Loading targets..." /> },
 );
-const HouseholdPanel = dynamic(
-  () => import("./components/HouseholdPanel.tsx").then((m) => ({ default: m.HouseholdPanel })),
-  { ssr: false },
-);
 const Settings = dynamic(
   () => import("./components/Settings.tsx").then((m) => ({ default: m.Settings })),
   { ssr: false, loading: () => <AppLoadingSkeleton label="Loading settings..." /> },
@@ -151,7 +147,6 @@ export default function App() {
     profileTier: userTier,
     profileDisplayName: displayName,
     authEmail,
-    signOut,
     refreshProfileBasics,
     shoppingItems,
   } = useAppData();

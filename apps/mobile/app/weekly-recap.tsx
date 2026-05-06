@@ -70,6 +70,7 @@ import {
   type JournalMeal,
 } from "@/lib/nutritionJournal";
 import { buildWeekStats } from "@/lib/progressWeekReport";
+import { getDailyTargets, type DailyTarget } from "../../../src/lib/nutrition/dailyTargetRead";
 import {
   selectClosestToTargetDay,
   formatWeekLabel,
@@ -314,12 +315,59 @@ export default function WeeklyRecapScreen() {
     };
   }, [state, userId, weekStartDay]);
 
+  // Numbers audit 2026-05-04 #9 — per-day target snapshots so a
+  // mid-week target edit doesn't retroactively re-judge past days.
+  // Mirrors the same path Progress + ProgressMetricDetail already use.
+  const [dailyTargetsByDay, setDailyTargetsByDay] = useState<Record<string, DailyTarget | null>>({});
+  useEffect(() => {
+    if (!userId) {
+      setDailyTargetsByDay({});
+      return;
+    }
+    const nowD = new Date();
+    const dow = nowD.getDay();
+    const startOffset = weekStartDay === "monday" ? (dow === 0 ? -6 : 1 - dow) : -dow;
+    const weekFirst = new Date(nowD);
+    weekFirst.setDate(nowD.getDate() + startOffset);
+    const weekKeys: string[] = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(weekFirst);
+      d.setDate(weekFirst.getDate() + i);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      weekKeys.push(`${y}-${m}-${day}`);
+    }
+    let cancelled = false;
+    void getDailyTargets(supabase, userId, weekKeys).then((snapshots) => {
+      if (!cancelled) setDailyTargetsByDay(snapshots);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, weekStartDay]);
+
+  const weekTargetsByDay = useMemo(() => {
+    const out: Record<string, { targetCalories: number | null; targetProtein: number | null; targetCarbs: number | null; targetFat: number | null } | null> = {};
+    for (const [k, v] of Object.entries(dailyTargetsByDay)) {
+      out[k] = v
+        ? {
+            targetCalories: v.targetCalories,
+            targetProtein: v.targetProteinG,
+            targetCarbs: v.targetCarbsG,
+            targetFat: v.targetFatG,
+          }
+        : null;
+    }
+    return out;
+  }, [dailyTargetsByDay]);
+
   // Current-week stats. `buildWeekStats` defaults to "now" so we get
   // Mon–Sun (or Sun–Sat) of the active week — exactly what the user
   // expects when they tap a live pip.
   const weekStats = useMemo(
-    () => buildWeekStats(byDay, targets, weekStartDay, new Date()),
-    [byDay, targets, weekStartDay],
+    () => buildWeekStats(byDay, targets, weekStartDay, new Date(), weekTargetsByDay),
+    [byDay, targets, weekStartDay, weekTargetsByDay],
   );
 
   const protectedStreak = useMemo(

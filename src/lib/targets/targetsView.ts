@@ -168,6 +168,26 @@ export function formatGoalDate(d: Date): string {
 }
 
 /**
+ * Format a far-future Date as "May 2027" (month name + year). Used for
+ * 1+ year projections where the day-month-only `formatGoalDate` reads
+ * as a near-term date and contradicts the "1+ year out" qualifier next
+ * to it (audit 2026-05-04 #5: "10 May" + "1+ year out" was confusing).
+ */
+export function formatGoalDateWithYear(d: Date): string {
+  return d.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+}
+
+/**
+ * Format a medium-horizon Date as "14 July 2026" — keeps day specificity
+ * but disambiguates the year. Used for projections >30 days but <1 year
+ * out, where "14 July" alone could be misread as this year (numbers
+ * audit 2026-05-04 #19).
+ */
+export function formatGoalDateDayMonthYear(d: Date): string {
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+}
+
+/**
  * Compose the Goal card. Reuses `calcGoalTimeline` from
  * `src/lib/weightProjection.ts` so the "could reach by" date stays
  * consistent with ProgressDashboard.
@@ -206,15 +226,32 @@ export function buildGoalCard(opts: {
   // "1+ year(s) out" qualifier so the user understands the projection
   // horizon. `daysToGoalUncapped` preserves the raw computation that
   // `daysToGoal` nulls out at the 1-year cap.
+  // Numbers audit 2026-05-04 #19: previously the day-month-only format
+  // ("14 July") was used for any sub-365-day projection. Result: a user
+  // 360 days out read "10 May" with no year — looks like THIS year (10
+  // days away). Past the 365-day cap the format flipped to "May 2027 ·
+  // 1+ year out", a discontinuity at the threshold. Fix: include the
+  // year whenever the projection is more than ~30 days out so a user is
+  // never misled about the time horizon. Within 30 days the year is
+  // implicit ("14 July" cannot reasonably read as next year), so we keep
+  // the tighter day-month form for near-term ETAs.
+  const NEAR_TERM_DAYS = 30;
   let dateFragment: string | null = null;
   if (typeof timeline.daysToGoal === "number" && timeline.daysToGoal > 0 && !timeline.cappedAtMaxDays) {
     const target = new Date(now.getTime() + timeline.daysToGoal * 86400000);
-    dateFragment = `could reach by ≈ ${formatGoalDate(target)}`;
+    // Within 30 days the year is implicit; 30-365 days needs day-month-year
+    // so the user can't misread it as this year (cf. #19).
+    const formatter =
+      timeline.daysToGoal > NEAR_TERM_DAYS ? formatGoalDateDayMonthYear : formatGoalDate;
+    dateFragment = `could reach by ≈ ${formatter(target)}`;
   } else if (timeline.cappedAtMaxDays && typeof timeline.daysToGoalUncapped === "number") {
     const target = new Date(now.getTime() + timeline.daysToGoalUncapped * 86400000);
     const years = Math.floor(timeline.daysToGoalUncapped / 365);
     const yearQualifier = years >= 2 ? `${years}+ years out` : "1+ year out";
-    dateFragment = `on track for ≈ ${formatGoalDate(target)} · ${yearQualifier}`;
+    // Audit 2026-05-04 #5: when projection is 1+ year out, format with
+    // year so "May 2027" is unambiguous. Day-month only ("10 May") was
+    // read as near-term and contradicted the qualifier next to it.
+    dateFragment = `on track for ≈ ${formatGoalDateWithYear(target)} · ${yearQualifier}`;
   } else if (timeline.cappedAtMaxDays) {
     // Defensive fallback — uncapped projection unavailable.
     dateFragment = "more than a year at current rate";

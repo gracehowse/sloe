@@ -31,10 +31,7 @@ import {
 } from "../../lib/export/nutritionLogToCsv.ts";
 import { normalizeWeekSummaryMode } from "../../lib/nutrition/weekSummaryWindow.ts";
 import type { WeightSurfaceMode } from "../../lib/nutrition/weightSurfaceMode.ts";
-import {
-  loadWeekStartDay,
-  saveWeekStartDay,
-} from "../../lib/nutrition/weekStartDayClient.ts";
+import { saveWeekStartDay } from "../../lib/nutrition/weekStartDayClient.ts";
 import type { NotificationPrefs } from "../../types/notifications.ts";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { track } from "../../lib/analytics/track.ts";

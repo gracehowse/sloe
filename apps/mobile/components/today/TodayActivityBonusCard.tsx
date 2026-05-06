@@ -37,7 +37,7 @@ export interface TodayActivityBonusCardProps {
   basalBurnKcal: number;
   activityBurnKcal: number | null;
   todayActivityBudgetAddon: number;
-  dayWorkouts: Array<{ type: string; minutes: number; calories: number; source: string }>;
+  dayWorkouts: { type: string; minutes: number; calories: number; source: string }[];
   trackerWeekSummaryKeys: string[];
   activityBurnByDay: Record<string, number>;
   basalBurnByDay: Record<string, number>;

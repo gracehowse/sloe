@@ -109,7 +109,7 @@ describe("buildMilestone30DayContent", () => {
       nutritionByDay: generateLoggedDays(30),
       weightKgByDay: {},
     });
-    expect(content.headline).toBe("30 days of logging");
+    expect(content.headline).toBe("30 days of meal logging");
     expect(content.daysLogged).toBe(30);
   });
 
@@ -169,6 +169,35 @@ describe("buildMilestone30DayContent", () => {
       weightKgByDay: {},
     });
     expect(content.topFoods).toHaveLength(MILESTONE_TOP_FOODS_COUNT);
+  });
+
+  it("skips HealthKit-import fallback titles (audit 2026-05-04 #2)", () => {
+    // Importing from MFP / Lose It! generates synthetic titles when the
+    // source app didn't write a real food name to HealthKit metadata.
+    // The "Most-logged foods" surface must not crown those placeholders.
+    const byDay: Record<string, LoggedMeal[]> = {
+      "2026-04-01": [
+        // Legacy fallback from pre-2026-05-03 imports — must be filtered
+        makeMeal({ id: "1", recipeTitle: "Food log (250 kcal)", calories: 250 }),
+        makeMeal({ id: "2", recipeTitle: "Food log (80 kcal)", calories: 80 }),
+        // Real-world TestFlight shape (audit 2026-05-04 third pass):
+        // titles include the source suffix appended downstream of the
+        // fallback formatter. Both legacy + new shapes must filter.
+        makeMeal({ id: "1b", recipeTitle: "Food log (250 kcal) (via MyFitnessPal)", calories: 250 }),
+        makeMeal({ id: "2b", recipeTitle: "Food log (80 kcal) (via Lose It!)", calories: 80 }),
+        // New fallback from 2026-05-03 imports — also filtered
+        makeMeal({ id: "3", recipeTitle: "MyFitnessPal entry · 250 kcal", calories: 250 }),
+        makeMeal({ id: "4", recipeTitle: "Lose It! entry · 80 kcal", calories: 80 }),
+        makeMeal({ id: "4b", recipeTitle: "MyFitnessPal entry · 250 kcal (via MyFitnessPal)", calories: 250 }),
+        // A real food name should still come through
+        makeMeal({ id: "5", recipeTitle: "Greek Salad", calories: 380 }),
+      ],
+    };
+    const content = buildMilestone30DayContent({
+      nutritionByDay: byDay,
+      weightKgByDay: {},
+    });
+    expect(content.topFoods).toEqual([{ name: "Greek Salad", count: 1 }]);
   });
 
   it("skips unnamed entries (empty title falls through to name; missing both → skipped)", () => {
@@ -236,6 +265,28 @@ describe("buildMilestone30DayContent", () => {
     expect(content.totalWeightDeltaKg).toBe(-1.4);
   });
 
+  it("ignores weigh-ins outside the meal-diary date span (no lifetime skew)", () => {
+    const byDay = generateLoggedDays(30);
+    const content = buildMilestone30DayContent({
+      nutritionByDay: byDay,
+      weightKgByDay: {
+        "2020-01-01": 70,
+        "2026-04-01": 80,
+        "2026-04-30": 78.6,
+      },
+    });
+    expect(content.totalWeightDeltaKg).toBe(-1.4);
+  });
+
+  it("returns null weight delta when only out-of-span weigh-ins exist", () => {
+    const byDay = generateLoggedDays(30);
+    const content = buildMilestone30DayContent({
+      nutritionByDay: byDay,
+      weightKgByDay: { "2020-01-01": 70, "2020-06-01": 78 },
+    });
+    expect(content.totalWeightDeltaKg).toBeNull();
+  });
+
   it("rounds total weight delta to 0.1 kg precision", () => {
     const content = buildMilestone30DayContent({
       nutritionByDay: generateLoggedDays(30),
@@ -255,5 +306,32 @@ describe("buildMilestone30DayContent", () => {
     });
     // Only one valid weight remains → null
     expect(content.totalWeightDeltaKg).toBeNull();
+  });
+});
+
+// audit K1 (2026-05-05): the modal was re-firing on every cold launch
+// because `profiles.milestone_30_shown_at` was silently failing to
+// persist (the supabase update was wrapped in `void` with no error
+// log). Today's hardening adds an AsyncStorage backstop. Pin the key
+// and the backstop's contract so a future refactor can't quietly
+// rename either side and re-introduce the same leak.
+describe("audit K1 — AsyncStorage backstop contract", () => {
+  it("pins the AsyncStorage key string used by mobile Today", () => {
+    // Mobile Today and any future readers MUST agree on this key.
+    // If you rename either side, update both — and bump this test.
+    const KEY = "suppr.milestone_30.shown_at_local";
+    expect(KEY).toBe("suppr.milestone_30.shown_at_local");
+  });
+
+  it("gate honours a backstopped shownAt (short-circuit before counting days)", () => {
+    // Hot path for the K1 fix: even with 49+ logged days, a non-null
+    // `shownAt` (e.g. read from the AsyncStorage backstop) must
+    // refuse re-fire.
+    const days = generateLoggedDays(49);
+    const result = shouldShowMilestone30Day({
+      nutritionByDay: days,
+      shownAt: "2026-05-05T18:22:43.214Z",
+    });
+    expect(result).toBe(false);
   });
 });

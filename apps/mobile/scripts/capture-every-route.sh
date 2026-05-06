@@ -12,6 +12,20 @@ set -e
 SCREENSHOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/screenshots/latest"
 mkdir -p "$SCREENSHOT_DIR"
 
+# Audit 2026-05-04 #11: Claude Design prototype is dark-first but our
+# capture set has been light. Setting `SUPPR_CAPTURE_DARK=1` flips the
+# simulator appearance + adds a `dark-` prefix to capture filenames so
+# both modes can coexist in `screenshots/latest/`. Default stays light
+# so the existing audit baseline doesn't shift unexpectedly.
+if [ "${SUPPR_CAPTURE_DARK:-0}" = "1" ]; then
+  echo "→ Switching simulator to dark appearance for this capture run"
+  xcrun simctl ui booted appearance dark 2>/dev/null || true
+  CAPTURE_PREFIX="dark-"
+else
+  xcrun simctl ui booted appearance light 2>/dev/null || true
+  CAPTURE_PREFIX=""
+fi
+
 # Guardrail (added 2026-04-30 after a silent failure): without Metro on
 # :8081 the dev-client app sits on the Expo Dev Launcher and every
 # `simctl openurl` lands on the launcher menu, not the real Suppr UI.
@@ -41,8 +55,39 @@ cap() {
   local name="$2"
   echo "→ $name ($route)"
   xcrun simctl openurl booted "$route" 2>/dev/null
-  sleep 2
-  xcrun simctl io booted screenshot "$SCREENSHOT_DIR/route-$name.png" 2>/dev/null
+
+  # Audit 2026-05-04 #25: previously a fixed 2s sleep meant captures
+  # could fire mid-Metro-rebundle, producing PNGs of the dev launcher's
+  # "Downloading 100%…" splash instead of the target route. Poll up to
+  # 10s for the launcher's grey top bar to be gone before screenshotting.
+  # Heuristic: the dev launcher renders a dark grey bar at the very top
+  # of the simulator window. Sample a 1px wide column at y=5 (status
+  # bar should be black on light bg in the actual app) and check it's
+  # not the launcher grey. Fall through to the screenshot anyway after
+  # the 10s deadline so a stuck route still produces something for the
+  # audit trail.
+  local deadline=$(($(date +%s) + 10))
+  while [ $(date +%s) -lt $deadline ]; do
+    xcrun simctl io booted screenshot --type=png /tmp/.suppr-cap-probe.png 2>/dev/null
+    # Use ImageMagick `identify -format` if available; otherwise fall
+    # back to a flat 2s wait. The probe is best-effort, not strict.
+    if command -v identify >/dev/null 2>&1; then
+      local px
+      px=$(identify -quiet -format "%[pixel:p{50,5}]" /tmp/.suppr-cap-probe.png 2>/dev/null || echo "unknown")
+      # Launcher splash bar is dark grey (~#2a2a2a). Anything else
+      # means we're past the splash.
+      if [[ "$px" != *"srgb(42,42,42)"* && "$px" != *"srgb(40,40,40)"* && "$px" != *"srgb(38,38,38)"* ]]; then
+        break
+      fi
+    else
+      sleep 2
+      break
+    fi
+    sleep 0.5
+  done
+  rm -f /tmp/.suppr-cap-probe.png 2>/dev/null
+
+  xcrun simctl io booted screenshot "$SCREENSHOT_DIR/${CAPTURE_PREFIX}route-$name.png" 2>/dev/null
 }
 
 # Tab roots
@@ -74,8 +119,8 @@ cap "suppr:///meal-nutrition" "meal-nutrition"
 cap "suppr:///notifications-prompt" "notifications-prompt"
 cap "suppr:///recipe/verify" "recipe-verify"
 cap "suppr:///login" "login"
-cap "suppr:///onboarding-v2" "onboarding-v2-entry"
-cap "suppr:///onboarding" "onboarding-legacy-entry"
+cap "suppr:///onboarding-v2" "onboarding-v2-redirect"
+cap "suppr:///onboarding" "onboarding-canonical"
 
 # Macro detail per macro
 cap "suppr:///macro-detail?macro=protein" "macro-detail-protein"

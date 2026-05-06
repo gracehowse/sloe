@@ -1,5 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Linking, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  ActivityIndicator,
+  Linking,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { Redirect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as AppleAuthentication from "expo-apple-authentication";
@@ -39,7 +48,7 @@ function formatAuthError(err: unknown): string {
     lower.includes("host lookup") ||
     lower.includes("connection")
   ) {
-    return "Can't reach the server. Check your connection and try again.";
+    return "Can't reach Suppr's servers. Try Wi‑Fi or cellular, turn off VPN or iCloud Private Relay, or confirm the Supabase project isn't paused.";
   }
   return msg;
 }
@@ -71,24 +80,32 @@ export default function LoginScreen() {
   useEffect(() => {
     if (!session) { setOnboardingChecked(false); return; }
     let cancelled = false;
+    const PROFILE_TIMEOUT_MS = 12_000;
+    const timedOut = Symbol("profile_onboarding_timeout");
     (async () => {
-      // try/finally so checked flips true even if supabase throws —
-      // without this guarantee a returning user with a restored
-      // session sees a blank screen (line 206 returns null) if the
-      // supabase fetch hangs / rejects.
-      // Async/await rather than `.then().catch().finally()` because
-      // supabase's PostgrestBuilder is a PromiseLike (no .catch).
+      // Race so `finally` always runs: a hung PostgREST await never
+      // resolves, which previously left `onboardingChecked` false and
+      // this screen returning `null` (blank white).
       try {
-        const { data } = await supabase
-          .from("profiles")
-          .select("onboarding_completed")
-          .eq("id", session.user.id)
-          .maybeSingle();
-        if (!cancelled) setNeedsOnboarding(!data?.onboarding_completed);
+        const result = await Promise.race([
+          supabase
+            .from("profiles")
+            .select("onboarding_completed")
+            .eq("id", session.user.id)
+            .maybeSingle(),
+          new Promise<typeof timedOut>((resolve) => {
+            setTimeout(() => resolve(timedOut), PROFILE_TIMEOUT_MS);
+          }),
+        ]);
+        if (cancelled) return;
+        if (result === timedOut) {
+          setNeedsOnboarding(false);
+          return;
+        }
+        const { data } = result;
+        setNeedsOnboarding(!data?.onboarding_completed);
       } catch {
-        // Network / RLS failure — keep `needsOnboarding` at default
-        // false so the redirect at line 203 sends the user into the
-        // app rather than back through onboarding.
+        if (!cancelled) setNeedsOnboarding(false);
       } finally {
         if (!cancelled) setOnboardingChecked(true);
       }
@@ -212,14 +229,25 @@ export default function LoginScreen() {
   }
 
   if (loading) {
-    return <View style={styles.container} />;
+    return (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <ActivityIndicator size="large" color={Accent.primary} />
+      </View>
+    );
   }
 
   if (session && onboardingChecked) {
     return <Redirect href={needsOnboarding ? "/onboarding" : "/(tabs)"} />;
   }
   if (session && !onboardingChecked) {
-    return null;
+    return (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <ActivityIndicator size="large" color={Accent.primary} />
+        <Text style={[styles.tagline, { marginTop: Spacing.lg, textAlign: "center" }]}>
+          Signing you in…
+        </Text>
+      </View>
+    );
   }
 
   async function onSubmit() {

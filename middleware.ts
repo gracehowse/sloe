@@ -14,6 +14,14 @@ const PUBLIC_ROUTES = new Set([
   "/privacy",
   "/terms",
   "/reset-password",
+  // `/dmca` and `/licences` MUST be public — DMCA safe-harbor §512(c)
+  // requires the takedown form to be reachable without authentication.
+  // Auth-gating either route is a legal compliance failure (audit A1
+  // 2026-05-05). `/whats-new` is a marketing/changelog surface and
+  // tanks cold-traffic clicks if gated (audit A2 2026-05-05).
+  "/dmca",
+  "/licences",
+  "/whats-new",
   // `/onboarding` + `/onboarding/v2` MUST be public — the v2 flow is
   // now the canonical sign-up entry point (real Supabase signUp fires
   // inline at step 02). Gating them behind auth creates a catch-22

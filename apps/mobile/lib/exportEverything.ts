@@ -181,7 +181,7 @@ export async function exportEverythingToFile(
   }
   // The expo module exports both as named bindings AND under
   // `default` depending on bundler. Probe both.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const fsModAny = fsModule as any;
   const cacheDir: unknown =
     fsModAny?.cacheDirectory ??

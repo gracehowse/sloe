@@ -79,10 +79,21 @@ for (const vp of VIEWPORTS) {
         const target = join(OUTPUT_DIR, filename);
 
         // Navigate; allow up to networkidle so client hydration completes.
-        const response = await page.goto(route.path, {
+        // Audit 2026-05-04 #9: cold-compiled Next dev routes occasionally
+        // 404 on the first request to a not-yet-compiled page, then 200
+        // on the immediate retry. Retry once on a 404 to keep the tour
+        // green on cold-compile flakes without masking real broken
+        // routes (a real 404 stays 404 on retry).
+        let response = await page.goto(route.path, {
           waitUntil: "networkidle",
           timeout: 30_000,
         });
+        if (response?.status() === 404) {
+          response = await page.goto(route.path, {
+            waitUntil: "networkidle",
+            timeout: 30_000,
+          });
+        }
 
         // Don't fail the test on auth-redirect 3xx — we still want
         // the rendered destination captured so the audit can see what

@@ -27,6 +27,8 @@ import * as React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react-native";
 
+import PhotoLogSheet from "../../components/PhotoLogSheet";
+
 vi.mock("@/lib/supabase", () => ({
   supabase: {
     auth: { getUser: vi.fn(async () => ({ data: { user: null } })) },
@@ -51,8 +53,6 @@ vi.mock("@react-native-async-storage/async-storage", () => ({
 vi.mock("../../../../src/lib/nutrition/photoCorrectionPersist", () => ({
   persistPhotoCorrections: vi.fn(async () => ({ anyPersisted: false })),
 }));
-
-import PhotoLogSheet from "../../components/PhotoLogSheet";
 
 void React;
 

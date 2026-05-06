@@ -253,7 +253,7 @@ describe("insertCookHistory", () => {
 
   it("omits null / out-of-range optional fields from the payload", async () => {
     const sb = makeSupabase({
-      recipe_cook_history: (op, ctx) => {
+      recipe_cook_history: (op, _ctx) => {
         if (op === "insert:single") {
           return {
             data: {

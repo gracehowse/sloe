@@ -53,7 +53,7 @@ function mockRequest(): Request {
  *  filter builders use. Returns the same `{ data, error }` no
  *  matter how deep the chain goes. */
 function chainable<T>(result: { data: T; error: unknown }) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const p: any = Promise.resolve(result);
   p.eq = () => chainable(result);
   p.in = () => chainable(result);

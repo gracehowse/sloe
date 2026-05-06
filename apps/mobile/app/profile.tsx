@@ -204,6 +204,12 @@ export default function ProfileScreen() {
       setLoading(false);
       return;
     }
+    // Debug audit 2026-05-04 (code-quality #5): the body had no
+    // try/catch. A rejected supabase select threw out of the callback
+    // before `setLoading(false)` ran — the screen sat on the skeleton
+    // and pull-to-refresh wasn't wired to clear it. Now: full-body
+    // try/finally so loading always resolves.
+    try {
     const { data } = await supabase
       .from("profiles")
       .select(
@@ -262,7 +268,13 @@ export default function ProfileScreen() {
         dietary: [...diet],
       };
     }
-    setLoading(false);
+    } catch (err) {
+      if (typeof console !== "undefined") {
+        console.warn("[profile] load failed:", err instanceof Error ? err.message : err);
+      }
+    } finally {
+      setLoading(false);
+    }
   }, [userId]);
 
   useFocusEffect(
@@ -381,8 +393,14 @@ export default function ProfileScreen() {
           <View style={{ width: 28 }} />
         </View>
 
-        {/* Current targets summary */}
-        <View style={styles.card}>
+        {/* Current targets summary.
+            Audit 2026-05-04 #29: previously the outer card border + 4
+            inner coloured tile borders made for 6 visible borders in
+            one region (cage-within-cage). The colour-coded numbers
+            already carry macro identity, so drop the outer card
+            border; keep the inner tile borders for the macro colour
+            cue. */}
+        <View style={[styles.card, { borderWidth: 0 }]}>
           <Text style={styles.cardTitle}>Daily Targets</Text>
           <View style={styles.targetsRow}>
             {/* 2026-04-30 (#17, design-system-enforcer): retoken to

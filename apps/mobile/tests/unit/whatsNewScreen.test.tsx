@@ -24,6 +24,13 @@ import * as React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { render, fireEvent } from "@testing-library/react-native";
 
+import {
+  getLatestChangelog,
+  groupChangelogItems,
+  changelogKindLabel,
+} from "../../../../src/lib/changelog/entries";
+import WhatsNewScreen from "../../app/whats-new";
+
 void React;
 
 // Mock expo-router: `useNavigation` lets us capture `setOptions`
@@ -51,13 +58,6 @@ vi.mock("@react-navigation/native", () => ({
     canGoBack: canGoBackSpy,
   }),
 }));
-
-import {
-  getLatestChangelog,
-  groupChangelogItems,
-  changelogKindLabel,
-} from "../../../../src/lib/changelog/entries";
-import WhatsNewScreen from "../../app/whats-new";
 
 describe("WhatsNewScreen (mobile) — F-0 'What's new' surface", () => {
   it("renders the latest entry's build header line", () => {

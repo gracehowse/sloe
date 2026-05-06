@@ -32,7 +32,7 @@
  */
 
 import * as React from "react";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import type { SavedMealItem } from "../../../lib/nutrition/savedMeals";
 import type { WeeklyCheckin } from "../../../lib/nutrition/weeklyCheckin";
 import { AnalyticsEvents } from "../../../lib/analytics/events";

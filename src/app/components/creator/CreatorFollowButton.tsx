@@ -94,7 +94,7 @@ export function CreatorFollowButton({
           );
         if (error) throw error;
       }
-    } catch (_e) {
+    } catch {
       // Roll back so the UI matches DB truth.
       setIsFollowing(wasFollowing);
       setFollowerCount(followerCount);

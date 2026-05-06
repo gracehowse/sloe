@@ -9,7 +9,6 @@ import {
   type ProfileGateRow,
 } from "../src/lib/client/homeProfileGate.ts";
 import { loadLocalProfile } from "../src/lib/profile/profileStorage.ts";
-import { AppLoadingSkeleton } from "../src/app/components/AppLoadingSkeleton.tsx";
 import { Button } from "../src/app/components/ui/button.tsx";
 
 type GateState = "loading" | "ready" | "onboarding" | "error";

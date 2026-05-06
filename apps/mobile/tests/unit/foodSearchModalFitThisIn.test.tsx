@@ -28,6 +28,8 @@ import { render, fireEvent, waitFor } from "@testing-library/react-native";
 
 import { projectRemaining } from "../../../../src/lib/nutrition/remainingMacros";
 
+import FoodSearchModal from "../../components/FoodSearchModal";
+
 void React;
 
 // The modal imports these from `@/lib/verifyRecipe`. Mock the module at
@@ -85,8 +87,6 @@ vi.mock("@/lib/verifyRecipe", () => {
     },
   };
 });
-
-import FoodSearchModal from "../../components/FoodSearchModal";
 
 const TARGETS = {
   calories: 2000,

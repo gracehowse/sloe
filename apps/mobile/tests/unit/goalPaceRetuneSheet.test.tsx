@@ -20,6 +20,9 @@ import * as React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render } from "@testing-library/react-native";
 
+// ── Imports (after mocks) ──────────────────────────────────────────
+import { GoalPaceRetuneSheet } from "../../components/recap/GoalPaceRetuneSheet";
+
 void React;
 
 // ── Supabase + analytics mocks (hoisted so `vi.mock` factories can
@@ -60,9 +63,6 @@ vi.mock("@/hooks/use-theme-colors", () => ({
     cardBorder: "#eee",
   }),
 }));
-
-// ── Imports (after mocks) ──────────────────────────────────────────
-import { GoalPaceRetuneSheet } from "../../components/recap/GoalPaceRetuneSheet";
 
 beforeEach(() => {
   updateSpy.mockClear();

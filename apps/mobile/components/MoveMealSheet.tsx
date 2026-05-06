@@ -51,7 +51,7 @@ export function MoveMealSheet({
   // sheet is readable on narrow phones and accessible via VoiceOver row-by-row.
   const rows = useMemo(() => {
     if (!plan) return [];
-    const out: Array<{
+    const out: {
       day: number;
       slotIndex: number;
       dayLabel: string;
@@ -59,7 +59,7 @@ export function MoveMealSheet({
       recipeTitle: string;
       isSource: boolean;
       isEmpty: boolean;
-    }> = [];
+    }[] = [];
     plan.forEach((dp, di) => {
       const dayLabel = dayLabels[di] ?? `Day ${dp.day}`;
       dp.meals.forEach((m, si) => {
@@ -178,13 +178,18 @@ export function MoveMealSheet({
 }
 
 const styles = StyleSheet.create({
+  // Audit 2026-05-04 #33: previously a 35% backdrop + hairline border
+  // edge made the sheet look pasted on rather than lifted. Deeper
+  // backdrop (50%) plus a soft shadow gives a more premium "sheet
+  // raised over content" feel. Hairline border kept for theme-edge
+  // contrast on dark mode.
   backdrop: {
     position: "absolute",
     top: 0,
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: "rgba(0,0,0,0.35)",
+    backgroundColor: "rgba(0,0,0,0.5)",
   },
   sheet: {
     position: "absolute",
@@ -196,6 +201,11 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     paddingTop: Spacing.lg,
     paddingBottom: Spacing.xl,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 24,
+    elevation: 16,
   },
   header: {
     flexDirection: "row",

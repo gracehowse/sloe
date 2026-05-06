@@ -125,10 +125,21 @@ export async function GET(req: Request) {
   } catch (e) {
     // Log + return empty so the merge pipeline keeps USDA / OFF / Edamam
     // rendering. FatSecret outages must never break food search overall.
+    const msg = e instanceof Error ? e.message : String(e);
     console.error(
       "[/api/fatsecret/search] failed:",
-      e instanceof Error ? e.message : e,
+      msg,
     );
-    return NextResponse.json({ ok: true, hits: [], page: pageNumber });
+    // 2026-05-06 (Grace) — also surface a non-fatal `_diag` token on the
+    // empty response so the mobile client diagnostic
+    // (`searchFatSecret`) can log it. Keeps `ok: true` and `hits: []` so
+    // the merge contract is unchanged. Truncate to avoid leaking long
+    // upstream payloads.
+    return NextResponse.json({
+      ok: true,
+      hits: [],
+      page: pageNumber,
+      _diag: { upstream: "failed", message: msg.slice(0, 200) },
+    });
   }
 }

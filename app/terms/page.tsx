@@ -162,7 +162,7 @@ export default function TermsPage() {
           </p>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Limitation of liability</h2>
           <p>
-            <strong>[PLACEHOLDER &mdash; pending formal legal review.]</strong> To the maximum extent permitted by law, Suppr and its
+            To the maximum extent permitted by law, Suppr and its
             contributors are not liable for indirect, incidental, special, or consequential damages arising from use of the app,
             including (without limitation) losses attributable to reliance on nutrition estimates. Our total aggregate liability to
             you for any claim arising out of or relating to the service is limited to the greater of (a) the amount you paid Suppr
@@ -172,8 +172,6 @@ export default function TermsPage() {
           </p>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Governing law and jurisdiction</h2>
           <p>
-            <strong>[PLACEHOLDER &mdash; pending the incorporation decision tracked in{" "}
-            <code className="text-xs bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded">docs/decisions/2026-04-20-incorporation-jurisdiction-pending.md</code>.]</strong>{" "}
             Governing law and exclusive jurisdiction will be set once the operating entity is incorporated. Until then, consumers
             in the UK and the EU retain the benefit of mandatory local consumer-protection law and may bring proceedings in the
             courts of their place of residence.

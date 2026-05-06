@@ -61,14 +61,6 @@ import {
   X,
 } from "lucide-react-native";
 
-let ImagePicker: typeof import("expo-image-picker") | null = null;
-try {
-  ImagePicker =
-    require("expo-image-picker") as typeof import("expo-image-picker");
-} catch {
-  // Native module not available (Expo Go) — image picker disabled.
-}
-
 import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
@@ -104,6 +96,14 @@ import {
   type WizardMacroOverrides,
   type WizardStep,
 } from "../../../../src/lib/recipes/createRecipeWizard";
+
+let ImagePicker: typeof import("expo-image-picker") | null = null;
+try {
+  ImagePicker =
+    require("expo-image-picker") as typeof import("expo-image-picker");
+} catch {
+  // Native module not available (Expo Go) — image picker disabled.
+}
 
 let _nextId = 0;
 function newId(prefix: string): string {

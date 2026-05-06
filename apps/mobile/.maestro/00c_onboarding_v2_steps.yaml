@@ -32,7 +32,7 @@ name: "Onboarding v2 — capture every step (point-tap edition)"
     appId: com.supprclub.supprapp
 - waitForAnimationToEnd
 
-- openLink: suppr:///onboarding-v2
+- openLink: suppr:///onboarding
 - waitForAnimationToEnd
 - waitForAnimationToEnd
 - waitForAnimationToEnd

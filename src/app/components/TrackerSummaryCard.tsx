@@ -20,13 +20,11 @@ function StatTile({
   label,
   value,
   sub,
-  tone = "primary",
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
   sub: string;
-  tone?: "primary" | "success" | "warning";
 }) {
   return (
     <div className="rounded-card bg-card border border-border p-4">

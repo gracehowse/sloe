@@ -57,6 +57,28 @@ type ShoppingItem = {
   checkedBy: string | null;
 };
 
+const SHOPPING_ITEMS_TIMEOUT_MS = 28_000;
+const SHOPPING_PLAN_AUX_TIMEOUT_MS = 18_000;
+const SHOPPING_LEGACY_JSON_TIMEOUT_MS = 18_000;
+const shoppingQueryTimeout = Symbol("shopping_query_timeout");
+
+async function raceShoppingQuery<T>(
+  p: Promise<T>,
+  ms: number,
+  label: string,
+): Promise<T | typeof shoppingQueryTimeout> {
+  const out = await Promise.race([
+    p,
+    new Promise<typeof shoppingQueryTimeout>((resolve) => {
+      setTimeout(() => resolve(shoppingQueryTimeout), ms);
+    }),
+  ]);
+  if (out === shoppingQueryTimeout) {
+    console.warn(`[shopping] ${label} timed out (${ms}ms)`);
+  }
+  return out;
+}
+
 export default function ShoppingListScreen() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
@@ -124,29 +146,49 @@ export default function ShoppingListScreen() {
       q = q.eq("user_id", s.userId).is("household_id", null);
     }
 
-    const { data: rows, error } = await q;
+    const rowsPack = await raceShoppingQuery(
+      (async () => await q)(),
+      SHOPPING_ITEMS_TIMEOUT_MS,
+      "shopping_items",
+    );
+    if (rowsPack === shoppingQueryTimeout) {
+      return [];
+    }
+    const { data: rows, error } = rowsPack;
     if (error || !rows) return null;
 
     // G-2 reconciliation only applies to per-user (solo) items — a
     // household list is shared and it's NOT one user's job to prune
     // entries that fell off another user's plan.
     if (s.kind === "solo" && rows.length > 0) {
-      const { data: dayRows } = await supabase
-        .from("meal_plan_days")
-        .select("id")
-        .eq("user_id", s.userId)
-        .eq("slot_id", "default");
-      const dayIds = Array.isArray(dayRows)
-        ? (dayRows as Array<{ id: string }>).map((d) => d.id)
-        : [];
+      const dayPack = await raceShoppingQuery(
+        (async () =>
+          await supabase
+            .from("meal_plan_days")
+            .select("id")
+            .eq("user_id", s.userId)
+            .eq("slot_id", "default"))(),
+        SHOPPING_PLAN_AUX_TIMEOUT_MS,
+        "meal_plan_days (shopping reconcile)",
+      );
+      const dayRows =
+        dayPack === shoppingQueryTimeout ? [] : ((dayPack.data ?? []) as { id: string }[]);
+      const dayIds = Array.isArray(dayRows) ? dayRows.map((d) => d.id) : [];
       let liveTitles: string[] = [];
       if (dayIds.length > 0) {
-        const { data: planMeals } = await supabase
-          .from("meal_plan_meals")
-          .select("recipe_title")
-          .in("plan_day_id", dayIds);
+        const mealsPack = await raceShoppingQuery(
+          (async () =>
+            await supabase
+              .from("meal_plan_meals")
+              .select("recipe_title")
+              .in("plan_day_id", dayIds))(),
+          SHOPPING_PLAN_AUX_TIMEOUT_MS,
+          "meal_plan_meals (shopping reconcile)",
+        );
+        const planMeals =
+          mealsPack === shoppingQueryTimeout ? null : mealsPack.data;
         if (Array.isArray(planMeals)) {
-          liveTitles = (planMeals as Array<{ recipe_title: string | null }>)
+          liveTitles = (planMeals as { recipe_title: string | null }[])
             .map((m) => m.recipe_title ?? "")
             .filter(Boolean);
         }
@@ -154,12 +196,12 @@ export default function ShoppingListScreen() {
 
       const kept = liveTitles.length > 0
         ? shoppingItemsTiedToCurrentPlan({
-            items: rows as Array<{ source: string | null } & Record<string, unknown>>,
+            items: rows as ({ source: string | null } & Record<string, unknown>)[],
             currentPlanRecipeTitles: liveTitles,
           })
-        : (rows as Array<Record<string, unknown>>);
+        : (rows as Record<string, unknown>[]);
 
-      const staleIds = (rows as Array<{ id: string }>)
+      const staleIds = (rows as { id: string }[])
         .filter((r) => !kept.some((k) => (k as { id: string }).id === r.id))
         .map((r) => r.id);
       if (staleIds.length > 0) {
@@ -192,28 +234,44 @@ export default function ShoppingListScreen() {
 
   // Initial load.
   useEffect(() => {
-    if (!userId) { setLoading(false); return; }
-    if (scope == null) return;
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
+    if (scope == null) {
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     (async () => {
-      const loaded = await loadItems(scope);
-      if (cancelled) return;
-      if (loaded == null) {
-        // Relational table missing → JSON fallback (solo only — household
-        // mode requires the relational schema, fallback would silently
-        // break sync so we leave the list empty there).
-        if (scope.kind === "solo") {
-          const { items: legacyItems } = await fetchShoppingListJsonItems(supabase, scope.userId);
-          if (!cancelled && Array.isArray(legacyItems)) {
-            setItems(legacyItems as ShoppingItem[]);
+      try {
+        const loaded = await loadItems(scope);
+        if (cancelled) return;
+        if (loaded == null) {
+          // Relational table missing → JSON fallback (solo only — household
+          // mode requires the relational schema, fallback would silently
+          // break sync so we leave the list empty there).
+          if (scope.kind === "solo") {
+            const legacyPack = await raceShoppingQuery(
+              fetchShoppingListJsonItems(supabase, scope.userId),
+              SHOPPING_LEGACY_JSON_TIMEOUT_MS,
+              "shopping_list JSON fallback",
+            );
+            if (cancelled) return;
+            if (legacyPack !== shoppingQueryTimeout && Array.isArray(legacyPack.items)) {
+              setItems(legacyPack.items as ShoppingItem[]);
+            }
           }
+        } else {
+          setItems(loaded);
         }
-      } else {
-        setItems(loaded);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-      setLoading(false);
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [userId, scope, loadItems]);
 
   // Real-time subscription. Step 4 — items added/checked/removed by

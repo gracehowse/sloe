@@ -88,16 +88,33 @@ export default function FastingScreen() {
 
   useEffect(() => {
     if (!userId) return;
+    // Debug audit 2026-05-04 (code-quality #7): no try/catch and no
+    // cancellation flag. A rejected select left the spinner up
+    // permanently; on rapid userId change a stale resolution could
+    // stomp the new state. Now: cancellation flag + try/finally so
+    // loading always resolves and stale rows can't win.
+    let cancelled = false;
     (async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("fasting_window, fasting_sessions")
-        .eq("id", userId)
-        .maybeSingle();
-      if (data?.fasting_window) setFastingWindow(data.fasting_window);
-      if (Array.isArray(data?.fasting_sessions)) setSessions(data.fasting_sessions);
-      setLoading(false);
+      try {
+        const { data } = await supabase
+          .from("profiles")
+          .select("fasting_window, fasting_sessions")
+          .eq("id", userId)
+          .maybeSingle();
+        if (cancelled) return;
+        if (data?.fasting_window) setFastingWindow(data.fasting_window);
+        if (Array.isArray(data?.fasting_sessions)) setSessions(data.fasting_sessions);
+      } catch (err) {
+        if (typeof console !== "undefined") {
+          console.warn("[fasting] load failed:", err instanceof Error ? err.message : err);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [userId]);
 
   useEffect(() => {
@@ -302,8 +319,14 @@ export default function FastingScreen() {
               );
             })()}
           </Svg>
-          <Text style={{ fontSize: 40, fontWeight: "800", color: isFasting ? colors.text : colors.textTertiary, fontVariant: ["tabular-nums"] }}>
-            {isFasting ? dur.display : "—"}
+          {/* Audit 2026-05-04 #32: idle ring centred a flat grey "—"
+              that read as an unfinished UI element. Use the canonical
+              fasting copy ("Ready") inside the ring when idle so the
+              centre always carries meaning; the duration display takes
+              over once a fast starts. The full "Ready when you are"
+              still lives just below as a subtitle. */}
+          <Text style={{ fontSize: isFasting ? 40 : 22, fontWeight: "800", color: isFasting ? colors.text : colors.textTertiary, fontVariant: ["tabular-nums"], letterSpacing: isFasting ? 0 : 0.5 }}>
+            {isFasting ? dur.display : "Ready"}
           </Text>
         </View>
 

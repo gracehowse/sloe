@@ -18,8 +18,8 @@ import {
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import { refreshAdaptiveTdeeForUser } from "../../lib/nutrition/refreshAdaptiveTdee.ts";
 import { useAuthSession } from "../../context/AuthSessionContext.tsx";
-import { weeksToGoal, kgToLb, calculateTDEE, getEffectiveTDEE, type PlanPace, type Sex, type ActivityLevel } from "../../lib/nutrition/tdee.ts";
-import { calcGoalTimeline, computeWeightJourneyProgressPct, formatWeightJourneyProgressCopy, projectWeight, shouldRenderDailyProjection } from "../../lib/weightProjection.ts";
+import { kgToLb, calculateTDEE, getEffectiveTDEE, type PlanPace, type Sex, type ActivityLevel } from "../../lib/nutrition/tdee.ts";
+import { calcGoalTimeline, computeWeightJourneyProgressPct, formatWeightJourneyProgressCopy, projectWeight, resolveLatestWeightKg, shouldRenderDailyProjection } from "../../lib/weightProjection.ts";
 import { resolveMaintenance } from "../../lib/nutrition/resolveMaintenance.ts";
 import { buildMaintenanceChain } from "../../lib/nutrition/maintenanceChain.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
@@ -161,6 +161,10 @@ function ProgressDashboardContent() {
   // snapshots so we don't need a parallel storage layer; falls back
   // to `null` when the snapshot wasn't captured yet (first week).
   const [previousWeekTdeeKcal, setPreviousWeekTdeeKcal] = useState<number | null>(null);
+  // Numbers audit 2026-05-04 #9 — full prev-week snapshot map for recap.
+  const [previousWeekDailyTargetsByDay, setPreviousWeekDailyTargetsByDay] = useState<
+    Record<string, DailyTarget | null>
+  >({});
   // Profile basics cached so `resolveMaintenance` can fall back to the
   // formula when adaptive isn't confident enough (F-3, 2026-04-19).
   const [profileSexCached, setProfileSexCached] = useState<Sex>("unspecified");
@@ -350,6 +354,12 @@ function ProgressDashboardContent() {
       }
       void getDailyTargets(supabase, authedUserId, prevWeekKeys)
         .then((snapshots) => {
+          // Numbers audit 2026-05-04 #9: cache the prev-week snapshots
+          // so `buildWeeklyRecap` can score each day against the target
+          // that was active that day, not the user's *current* target.
+          // Without this, a mid-week target edit produced one adherence
+          // value on the recap card and a different one on Progress.
+          setPreviousWeekDailyTargetsByDay(snapshots);
           // Walk the prev-week keys in order; the first non-null
           // `maintenanceTdee` we find is the baseline.
           for (const k of prevWeekKeys) {
@@ -363,6 +373,7 @@ function ProgressDashboardContent() {
         })
         .catch(() => {
           setPreviousWeekTdeeKcal(null);
+          setPreviousWeekDailyTargetsByDay({});
         });
     }
     } catch (err) {
@@ -379,26 +390,41 @@ function ProgressDashboardContent() {
     void load();
   }, [load]);
 
-  const latestWeightKg = useMemo(() => {
-    const fromLog = Object.entries(weightKgByDay).sort(([a], [b]) => (a < b ? 1 : a > b ? -1 : 0))[0]?.[1];
-    if (fromLog != null && Number.isFinite(fromLog)) return fromLog;
-    return weightKg;
-  }, [weightKgByDay, weightKg]);
+  // Numbers audit 2026-05-04 #15: route through shared `resolveLatestWeightKg`
+  // helper so behaviour stays in lockstep if the resolver evolves (e.g. to
+  // filter zero-valued days). Inline implementation was functionally
+  // equivalent but invisible to refactors.
+  const latestWeightKg = useMemo(
+    () => resolveLatestWeightKg(weightKgByDay, weightKg ?? null),
+    [weightKgByDay, weightKg],
+  );
 
-  const weeksToGoalVal = useMemo(() => {
+  // Numbers audit 2026-05-04 #2: headline ETA was computing
+  // `weeksToGoal(currentKg, goalKg, planPace)` — a *prescriptive* rate
+  // from the pace preset (e.g. "steady" → 0.5 kg/wk). Every other goal-date
+  // surface (mobile Targets, mobile Progress, web Targets, the deeper
+  // projection card on this same page at line ~1730) uses
+  // `calcGoalTimeline`, which derives the rate from actual `weight_kg_by_day`
+  // entries. Result: a user losing faster than prescribed saw an *earlier*
+  // ETA on mobile vs a *later* prescriptive ETA on web — and two ETAs on
+  // this same web page once the deeper card rendered. Now both call sites
+  // route through the same observed-rate helper.
+  const goalTimeline = useMemo(() => {
     if (latestWeightKg == null || goalWeightKg == null) return null;
-    if (latestWeightKg <= goalWeightKg) return 0;
-    return weeksToGoal(latestWeightKg, goalWeightKg, planPace);
-  }, [latestWeightKg, goalWeightKg, planPace]);
+    return calcGoalTimeline({
+      currentWeightKg: latestWeightKg,
+      goalWeightKg,
+      weightKgByDay,
+    });
+  }, [latestWeightKg, goalWeightKg, weightKgByDay]);
 
   const goalDateLabel = useMemo(() => {
-    if (weeksToGoalVal == null || weeksToGoalVal <= 0) return null;
+    if (!goalTimeline || goalTimeline.daysToGoal == null) return null;
+    if (goalTimeline.daysToGoal <= 0) return null;
     const d = new Date();
-    d.setDate(d.getDate() + weeksToGoalVal * 7);
+    d.setDate(d.getDate() + goalTimeline.daysToGoal);
     return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-  }, [weeksToGoalVal]);
-
-  const todaySteps = stepsByDay[todayKey()] ?? 0;
+  }, [goalTimeline]);
 
   const rangeDays = range === "7d" ? 7 : range === "30d" ? 30 : range === "90d" ? 90 : 9999;
 
@@ -458,15 +484,6 @@ function ProgressDashboardContent() {
     setStepsInput("");
     await persistProfilePatch({ steps_by_day: nextMap });
   }, [stepsInput, stepsByDay, persistProfilePatch]);
-
-  const saveStepsGoal = useCallback(
-    async (next: number) => {
-      const g = Math.max(1000, Math.round(next));
-      setDailyStepsGoal(g);
-      await persistProfilePatch({ daily_steps_goal: g });
-    },
-    [persistProfilePatch],
-  );
 
   const saveBodyFat = useCallback(async () => {
     const v = Number.parseFloat(bodyFatInput.replace(",", "."));
@@ -598,6 +615,29 @@ function ProgressDashboardContent() {
     () => weekKeyFor(new Date(), weekStartDay),
     [weekStartDay],
   );
+  // Numbers audit 2026-05-04 #9 — shape prev-week snapshots into the
+  // override map `buildWeekStats` consumes. Without this the recap
+  // judged past days against the user's *current* target, while
+  // Progress judged them against the per-day snapshot — same week,
+  // different "% adherence".
+  const prevWeekTargetsByDay = useMemo(() => {
+    const out: Record<
+      string,
+      { targetCalories: number | null; targetProtein: number | null; targetCarbs: number | null; targetFat: number | null } | null
+    > = {};
+    for (const [k, v] of Object.entries(previousWeekDailyTargetsByDay)) {
+      out[k] = v
+        ? {
+            targetCalories: v.targetCalories,
+            targetProtein: v.targetProteinG,
+            targetCarbs: v.targetCarbsG,
+            targetFat: v.targetFatG,
+          }
+        : null;
+    }
+    return out;
+  }, [previousWeekDailyTargetsByDay]);
+
   const recap = useMemo(
     () =>
       buildWeeklyRecap({
@@ -607,8 +647,9 @@ function ProgressDashboardContent() {
         weekStartDay,
         ledger: freezeLedger,
         budgetMax: freezeBudgetMax,
+        dayTargetOverrides: prevWeekTargetsByDay,
       }),
-    [nutritionByDay, weightKgByDay, targets, weekStartDay, freezeLedger, freezeBudgetMax],
+    [nutritionByDay, weightKgByDay, targets, weekStartDay, freezeLedger, freezeBudgetMax, prevWeekTargetsByDay],
   );
   const recapVisible = useMemo(
     () =>

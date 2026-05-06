@@ -52,7 +52,7 @@ const PAYLOAD_KEYS = [
  * `htmlFor` on the `<Label>` or `aria-label`; mobile uses
  * `accessibilityLabel`. We grep for substrings that are unique to each
  * field on both sides. */
-const LABEL_PROBES: Array<{ field: string; web: RegExp; mobile: RegExp }> = [
+const LABEL_PROBES: { field: string; web: RegExp; mobile: RegExp }[] = [
   {
     field: "name",
     web: /htmlFor="custom-food-name"|id="custom-food-name"/,

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icons } from "./ui/icons";
-import { IconBox } from "./ui/icon-box";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import {
@@ -121,6 +120,8 @@ async function shareRecipeDeepLink(recipeId: string) {
     });
   }
 }
+
+const RECIPE_MACRO_KEYS_FOR_FILTER = new Set(["protein", "carbs", "fat", "fiber", "sugar", "sodium"]);
 
 interface RecipeDetailProps {
   recipe: RecipeCard;
@@ -614,7 +615,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
     return () => {
       cancelled = true;
     };
-  }, [recipe.id, isCatalogRecipe]);
+  }, [recipe.id, recipe.servings, isCatalogRecipe]);
 
   /** Audit gap #3 (Wave 4, 2026-05-02) — hydrate the seed-recipe
    *  content into the same state slots the DB-backed path writes to,
@@ -768,8 +769,6 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
     sodiumMg: Math.round(((ingredientTotal.sodiumMg || displayRecipe.sodiumMg || 0) * servings) / baseServings),
   };
 
-  const RECIPE_MACRO_KEYS = new Set(["protein", "carbs", "fat", "fiber", "sugar", "sodium"]);
-
   // True when any ingredient in this recipe was matched against the
   // FatSecret database — drives the attribution badge per FatSecret ToS.
   const hasFatSecretIngredients = useMemo(
@@ -781,7 +780,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
   );
 
   const recipeMacrosToShow = useMemo(() => {
-    const filtered = trackedMacros.filter((k) => RECIPE_MACRO_KEYS.has(k));
+    const filtered = trackedMacros.filter((k) => RECIPE_MACRO_KEYS_FOR_FILTER.has(k));
     return filtered.length > 0 ? filtered : ["protein", "carbs", "fat"];
   }, [trackedMacros]);
 
@@ -992,7 +991,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
       });
       toast.success("Nutrition override saved");
     },
-    [authUserId, isMyRecipe, dbIngredientIds, recipe.id],
+    [authUserId, isMyRecipe, dbIngredientIds, dbIngredients, recipe.id],
   );
 
   // Batch 2.7 — clear a previously-pinned override, reverting to matched macros.
@@ -1026,7 +1025,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
       });
       toast.success("Override cleared — using matched macros");
     },
-    [authUserId, isMyRecipe, dbIngredientIds, recipe.id],
+    [authUserId, isMyRecipe, dbIngredientIds, dbIngredients, recipe.id],
   );
 
   if (!isCatalogRecipe && dbLoading) {
@@ -1312,6 +1311,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           const heroSrc = ladderSrc ?? recipe.image;
           return (
             <div className="relative rounded-2xl overflow-hidden shadow-2xl group">
+              {/* eslint-disable-next-line @next/next/no-img-element -- viewTransitionName + arbitrary hero ladder URLs */}
               <img
                 src={heroSrc}
                 alt={recipe.title}
@@ -1500,6 +1500,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
 
         {/* Creator Info */}
         <div className="flex items-center gap-4 p-6 bg-card/60 backdrop-blur-xl rounded-2xl border border-border/50 shadow-lg">
+          {/* eslint-disable-next-line @next/next/no-img-element -- creator avatar URLs */}
           <img src={recipe.creatorImage} alt={recipe.creatorName} className="w-14 h-14 rounded-full object-cover ring-2 ring-primary/20" />
           <div className="flex-1">
             <p className="font-semibold text-foreground">{recipe.creatorName}</p>

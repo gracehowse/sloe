@@ -53,8 +53,6 @@ const GENERIC_FOOD_NOUNS = new Set([
   "water", "coffee", "tea", "juice", "wine", "beer",
 ]);
 
-const PUNCT_SPLIT = /[\s,()/·•]+/;
-
 /**
  * F-89 — return true when a non-verified result's display name is just
  * a single generic-food noun (and therefore the row is likely a

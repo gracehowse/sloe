@@ -120,7 +120,7 @@ describe("Premier-tier wire format", () => {
     const calls: Array<{ url: string; body?: string }> = [];
     let i = 0;
     vi.spyOn(globalThis, "fetch" as never).mockImplementation(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       ((url: any, init?: RequestInit) => {
         const u = typeof url === "string" ? url : (url as URL).toString();
         const rawBody = init?.body;
@@ -190,7 +190,7 @@ describe("Premier-tier wire format", () => {
 
   it("autocomplete returns [] when query is empty, no fetch issued", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch" as never).mockImplementation(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       (() => Promise.reject(new Error("should not have called fetch"))) as never,
     );
     const result = await fatSecretFoodsAutocomplete(
@@ -237,7 +237,7 @@ describe("OAuth2 scope flag for Premier tier", () => {
   it("Premier requests 'basic premier' scope; Basic requests 'basic'", async () => {
     const calls: string[] = [];
     vi.spyOn(globalThis, "fetch" as never).mockImplementation(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       ((url: any, init?: RequestInit) => {
         const u = typeof url === "string" ? url : (url as URL).toString();
         if (u.includes("oauth.fatsecret.com/connect/token")) {

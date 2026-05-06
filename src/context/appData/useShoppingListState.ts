@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import type { ShoppingItem } from "../../types/recipe.ts";
@@ -61,9 +61,19 @@ export function useShoppingListState(opts: {
   const [dbShoppingEnabled, setDbShoppingEnabled] = useState(true);
   const [dbShoppingWarned, setDbShoppingWarned] = useState(false);
 
-  const scope: ShoppingScope | null = authedUserId
-    ? shoppingScopeFor({ userId: authedUserId, householdId: activeHouseholdId })
-    : null;
+  // 2026-05-06 — `scope` is a fresh object every render. Without
+  // memoisation, the three effects + callbacks below — which list
+  // `scope` in their dep arrays after the recent simplification —
+  // re-fire on every render and trigger an infinite loop in tests
+  // (and waste cycles in production). Memoise on the primitive
+  // inputs so identity changes only when the scope actually changes.
+  const scope: ShoppingScope | null = useMemo(
+    () =>
+      authedUserId
+        ? shoppingScopeFor({ userId: authedUserId, householdId: activeHouseholdId })
+        : null,
+    [authedUserId, activeHouseholdId],
+  );
 
   const tryEnableDbShopping = useCallback(async () => {
     if (!authedUserId) return false;
@@ -135,7 +145,7 @@ export function useShoppingListState(opts: {
       }
     })();
     return () => { cancelled = true; };
-  }, [authedUserId, dbShoppingEnabled, dbShoppingWarned, scope?.kind, scope?.kind === "household" ? scope.householdId : null]);
+  }, [authedUserId, dbShoppingEnabled, dbShoppingWarned, scope]);
 
   // Honeydew parity (2026-04-30): real-time subscription so checks /
   // adds / removes from another device or another member propagate
@@ -176,7 +186,7 @@ export function useShoppingListState(opts: {
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [authedUserId, dbShoppingEnabled, scope?.kind, scope?.kind === "household" ? scope.householdId : scope?.userId]);
+  }, [authedUserId, dbShoppingEnabled, scope]);
 
   const toggleShoppingChecked = useCallback((itemId: string) => {
     setShoppingItems((prev) => {
@@ -237,7 +247,7 @@ export function useShoppingListState(opts: {
         });
       }
     },
-    [authedUserId, dbShoppingEnabled, scope?.kind, scope?.kind === "household" ? scope.householdId : null],
+    [authedUserId, dbShoppingEnabled, scope],
   );
 
   return {

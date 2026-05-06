@@ -68,4 +68,42 @@ describe("fdcFoodMacrosPer100g", () => {
     expect(macros.sugarG).toBeGreaterThan(0);
     expect(macros.sodiumMg).toBeGreaterThan(0);
   });
+
+  // Audit 2026-05-05 K2 (Grace): wine + coffee logged via the food
+  // search produced no caffeine / alcohol bump because the USDA
+  // normalizer dropped these nutrients on the floor. Pin the
+  // extraction so a future refactor can't re-introduce the bug.
+  it("extracts caffeine (mg per 100g) — espresso parity", () => {
+    const food = makeFdcFood([
+      { nutrientName: "Energy", unitName: "kcal", amount: 9 },
+      { nutrientName: "Caffeine", unitName: "mg", amount: 212 },
+    ]);
+    const macros = fdcFoodMacrosPer100g(food);
+    expect(macros.caffeineMgPer100g).toBe(212);
+    expect(macros.alcoholGPer100g).toBeNull();
+  });
+
+  it("extracts alcohol (g per 100g) — white wine parity", () => {
+    const food = makeFdcFood([
+      { nutrientName: "Energy", unitName: "kcal", amount: 82 },
+      { nutrientName: "Alcohol, ethyl", unitName: "g", amount: 10.3 },
+    ]);
+    const macros = fdcFoodMacrosPer100g(food);
+    expect(macros.alcoholGPer100g).toBeCloseTo(10.3, 1);
+    expect(macros.caffeineMgPer100g).toBeNull();
+  });
+
+  it("returns null for missing or zero caffeine/alcohol (no fabrication)", () => {
+    const food = makeFdcFood([
+      { nutrientName: "Energy", unitName: "kcal", amount: 100 },
+      { nutrientName: "Caffeine", unitName: "mg", amount: 0 },
+      // No "Alcohol, ethyl" entry at all.
+    ]);
+    const macros = fdcFoodMacrosPer100g(food);
+    // Zero treated as null — USDA returns 0 for "not measured" on
+    // some rows; we'd rather null than fabricate "0 caffeine in your
+    // espresso".
+    expect(macros.caffeineMgPer100g).toBeNull();
+    expect(macros.alcoholGPer100g).toBeNull();
+  });
 });

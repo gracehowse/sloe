@@ -17,7 +17,7 @@
  */
 
 import type { LoggedMeal } from "../../types/recipe";
-import { computeLoggingStreak } from "./trackerStats";
+import { isHealthImportFallbackTitle } from "./healthImportLabels";
 
 /** Distinct days threshold to fire the moment. Pinned by tests. */
 export const MILESTONE_30_DAY_THRESHOLD = 30;
@@ -80,7 +80,7 @@ export type Milestone30DayContentInput = {
 };
 
 export type Milestone30DayContent = {
-  /** "30 days of logging" — the headline that anchors the surface. */
+  /** Hero line — always matches `daysLogged` so it never fights the body copy. */
   headline: string;
   /** Number of distinct days logged at the moment of the snapshot.
    *  Always ≥ 30 for callers that pass the gate; tests cover the
@@ -99,9 +99,11 @@ export type Milestone30DayContent = {
    *  window. Distinct from "current streak" — this is the all-time
    *  high. */
   longestStreak: number;
-  /** Total weight delta in kg, rounded to 0.1, from the *first*
-   *  weigh-in to the *last* weigh-in inside the window. `null`
-   *  when fewer than 2 weigh-ins on file. */
+  /** Total weight delta in kg, rounded to 0.1, from the first to the
+   *  last weigh-in **whose date falls on a day with logged food** in
+   *  `nutritionByDay` (same calendar span as the diary snapshot).
+   *  `null` when fewer than 2 such weigh-ins — avoids lifetime
+   *  first-vs-last deltas that contradict what this modal describes. */
   totalWeightDeltaKg: number | null;
 };
 
@@ -133,12 +135,19 @@ export function buildMilestone30DayContent(
   // Top foods by raw log count of `recipeTitle`. Empty / unknown
   // titles fall through to `name`; if both are missing the row is
   // skipped (we don't want to crown an unnamed entry).
+  //
+  // Audit 2026-05-04 #2: skip HealthKit-import fallback titles
+  // (`Food log (X kcal)`, `<Source> entry · X kcal`) so the
+  // celebration modal doesn't crown an MFP / Lose It! placeholder
+  // as the user's "most-logged food" — that read as broken data
+  // to first-impression users on Grace's screenshots.
   const counts = new Map<string, number>();
   for (const meals of Object.values(nutritionByDay)) {
     if (!Array.isArray(meals)) continue;
     for (const m of meals) {
       const title = (m.recipeTitle || m.name || "").trim();
       if (!title) continue;
+      if (isHealthImportFallbackTitle(title)) continue;
       counts.set(title, (counts.get(title) ?? 0) + 1);
     }
   }
@@ -159,10 +168,13 @@ export function buildMilestone30DayContent(
 
   // Total weight delta — first vs last weigh-in. Null when fewer
   // than 2 weigh-ins (we never fabricate "+0.0 kg").
-  const totalWeightDeltaKg = computeFirstToLastWeightDelta(weightKgByDay);
+  const totalWeightDeltaKg = computeWeightDeltaAcrossFoodDiarySpan(
+    nutritionByDay,
+    weightKgByDay,
+  );
 
   return {
-    headline: "30 days of logging",
+    headline: `${daysLogged} day${daysLogged === 1 ? "" : "s"} of meal logging`,
     daysLogged,
     avgDailyKcal,
     topFoods,
@@ -211,11 +223,41 @@ function parseDateKey(key: string): Date {
   return new Date(Date.UTC(y, (m ?? 1) - 1, d ?? 1, 12, 0, 0));
 }
 
-function computeFirstToLastWeightDelta(
+/** Earliest and latest `YYYY-MM-DD` keys that have ≥1 positive-kcal meal. */
+function foodDiaryDateBounds(
+  nutritionByDay: Record<string, LoggedMeal[]>,
+): { min: string; max: string } | null {
+  const keys: string[] = [];
+  for (const [k, meals] of Object.entries(nutritionByDay)) {
+    if (!Array.isArray(meals) || meals.length === 0) continue;
+    if (!meals.some((m) => Math.max(0, m.calories) > 0)) continue;
+    keys.push(k);
+  }
+  if (keys.length === 0) return null;
+  keys.sort((a, b) => a.localeCompare(b));
+  return { min: keys[0]!, max: keys[keys.length - 1]! };
+}
+
+/**
+ * First vs last weigh-in **only on days that fall inside the meal-diary
+ * calendar span** (min→max date keys with food). Omits ancient profile
+ * weights that would skew "+X kg" vs what the user sees as "this diary".
+ */
+function computeWeightDeltaAcrossFoodDiarySpan(
+  nutritionByDay: Record<string, LoggedMeal[]>,
   weightKgByDay: Record<string, number>,
 ): number | null {
+  const bounds = foodDiaryDateBounds(nutritionByDay);
+  if (!bounds) return null;
   const entries = Object.entries(weightKgByDay)
-    .filter(([, v]) => typeof v === "number" && Number.isFinite(v) && v > 0)
+    .filter(
+      ([k, v]) =>
+        k >= bounds.min &&
+        k <= bounds.max &&
+        typeof v === "number" &&
+        Number.isFinite(v) &&
+        v > 0,
+    )
     .sort(([a], [b]) => a.localeCompare(b));
   if (entries.length < 2) return null;
   const first = entries[0][1];

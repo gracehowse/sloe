@@ -105,7 +105,7 @@ export interface QuickAddPanelProps {
    *  not used internally today. */
   onOpenSaveCombo?: (
     slot?: string,
-    seedItems?: Array<Omit<SavedMealItem, "id" | "position">>,
+    seedItems?: Omit<SavedMealItem, "id" | "position">[],
   ) => void;
   /** Bump this number after a new saved-meal is persisted by the host to
    *  trigger a refetch + auto-switch to the "My meals" tab. */
@@ -349,7 +349,7 @@ export function QuickAddPanel({
           wasStarred ? "Could not remove favourite" : "Could not save favourite",
           "Please try again.",
         );
-        // eslint-disable-next-line no-console
+         
         console.warn("QuickAddPanel favourite toggle failed", err);
       } finally {
         setPendingKeys((s) => {
@@ -403,7 +403,7 @@ export function QuickAddPanel({
         }
         // Fire-and-forget counter bump. A failure here is not user-facing.
         void incrementLogCount(supabase, userId, meal.id).catch((err) => {
-          // eslint-disable-next-line no-console
+           
           console.warn("QuickAddPanel saved-meal log-count bump failed", err);
         });
       } finally {
@@ -437,7 +437,7 @@ export function QuickAddPanel({
             } catch (err) {
               setSavedMeals(snapshot);
               Alert.alert("Could not rename", "Please try again.");
-              // eslint-disable-next-line no-console
+               
               console.warn("QuickAddPanel saved-meal rename failed", err);
             }
           },
@@ -481,7 +481,7 @@ export function QuickAddPanel({
               } catch (err) {
                 setSavedMeals(snapshot);
                 Alert.alert("Could not delete", "Please try again.");
-                // eslint-disable-next-line no-console
+                 
                 console.warn("QuickAddPanel saved-meal delete failed", err);
               }
             },

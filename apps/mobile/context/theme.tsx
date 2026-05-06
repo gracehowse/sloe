@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { useColorScheme } from "react-native";
+import { ActivityIndicator, useColorScheme, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Colors } from "@/constants/theme";
+import { Accent, Colors } from "@/constants/theme";
 
 export type ThemePreference = "light" | "dark" | "auto";
 export type ResolvedTheme = "light" | "dark";
@@ -27,14 +27,35 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [preference, setPreferenceState] = useState<ThemePreference>("auto");
   const [loaded, setLoaded] = useState(false);
 
-  // Load saved preference
+  // Load saved preference — never hang boot: if AsyncStorage stalls (seen
+  // on some devices), `loaded` must still flip or the whole tree stays
+  // `null` and the user sees an endless blank screen above the tab bar.
   useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY).then((val) => {
-      if (val === "light" || val === "dark" || val === "auto") {
-        setPreferenceState(val);
-      }
-      setLoaded(true);
-    });
+    let cancelled = false;
+    const BOOT_STORAGE_TIMEOUT_MS = 3000;
+    const timer = setTimeout(() => {
+      if (!cancelled) setLoaded(true);
+    }, BOOT_STORAGE_TIMEOUT_MS);
+
+    void AsyncStorage.getItem(STORAGE_KEY)
+      .then((val) => {
+        if (cancelled) return;
+        if (val === "light" || val === "dark" || val === "auto") {
+          setPreferenceState(val);
+        }
+      })
+      .catch(() => {
+        /* keep defaults */
+      })
+      .finally(() => {
+        clearTimeout(timer);
+        if (!cancelled) setLoaded(true);
+      });
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, []);
 
   const setPreference = useCallback((pref: ThemePreference) => {
@@ -49,8 +70,27 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const colors = resolved === "light" ? Colors.light : Colors.dark;
 
-  // Don't render until we've loaded the preference to avoid flash
-  if (!loaded) return null;
+  // Boot gate: use system scheme for background immediately so the first
+  // paint is not RN's default white window while storage resolves.
+  if (!loaded) {
+    const bootScheme: ResolvedTheme =
+      systemScheme === "light" ? "light" : "dark";
+    const bootBg =
+      bootScheme === "light" ? Colors.light.background : Colors.dark.background;
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: bootBg,
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+        accessibilityLabel="Loading app theme"
+      >
+        <ActivityIndicator size="large" color={Accent.primary} />
+      </View>
+    );
+  }
 
   return (
     <ThemeContext.Provider value={{ preference, resolved, colors, setPreference }}>

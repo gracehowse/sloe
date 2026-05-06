@@ -93,12 +93,12 @@ const FALLBACK_PRICES = {
 /** Render timing of the Day-7-trial-ends timeline — only shown when
  *  the user is looking at the Pro annual package, which is the only
  *  SKU that carries the 7-day trial (pricing v1). */
-const TIMELINE: Array<{
+const TIMELINE: {
   icon: LucideIcon;
   color: string;
   title: string;
   desc: string;
-}> = [
+}[] = [
   {
     icon: CheckCircle2,
     color: Accent.success,
@@ -534,8 +534,11 @@ export default function PaywallScreen() {
     if (paywallFrom === "voice_log" || paywallFrom === "photo_log") return "Unlock AI logging";
     return "Pick the plan that fits";
   })();
+  // Debug audit 2026-05-04 (visual-qa P1): the proFlavoured subtitle
+  // referenced "Base" — a tier removed in PR-01. Now references the
+  // current product structure (Free + Pro).
   const headerSubtitle = proFlavoured
-    ? "Includes everything in Base, plus AI photo and voice logging."
+    ? "Includes all Free features, plus AI photo and voice logging."
     : "Cancel anytime. Price in your currency, taxes included.";
 
   // ─── Disclosure copy ────────────────────────────────────────────
@@ -1010,15 +1013,58 @@ export default function PaywallScreen() {
             <View style={styles.skeletonCard} />
           </>
         ) : subscriptionsUnavailable ? (
-          <View style={styles.unavailableCard}>
-            <CloudOff size={28} color={colors.textTertiary} strokeWidth={1.75} />
-            <Text style={styles.unavailableTitle}>Subscriptions unavailable</Text>
-            <Text style={styles.unavailableBody}>
-              {isPurchasesApiKeyPresent()
-                ? "We couldn't load plans right now. Continue on the free plan, or try again from Settings."
-                : "In-app purchases aren't configured in this build. Continue on the free plan."}
-            </Text>
-          </View>
+          // Audit 2026-05-04 #4: previously this entire branch collapsed
+          // to a "Subscriptions unavailable" card with no value ladder
+          // — the conversion surface presented as broken in TestFlight
+          // and dev builds. Now we still render the Pro tier card with
+          // its full feature ladder + fallback price so the user can
+          // see what Pro actually offers, with the CTA disabled and
+          // copy that explains the temporary unavailability. Maintains
+          // trust while flagging the state cleanly.
+          <>
+            <View style={styles.unavailableCard}>
+              <CloudOff size={28} color={colors.textTertiary} strokeWidth={1.75} />
+              <Text style={styles.unavailableTitle}>Subscriptions unavailable</Text>
+              <Text style={styles.unavailableBody}>
+                {isPurchasesApiKeyPresent()
+                  ? "We couldn't load plans right now. You can still see what Pro includes below — try again later from Settings."
+                  : "In-app purchases aren't wired in this build. You can still see what Pro will include below."}
+              </Text>
+            </View>
+            {/* Always render the fallback Pro tier card in the unavailable
+                branch — `hasPro` is sourced from RevenueCat package state,
+                which is empty when subscriptions are unavailable, so
+                gating on it would defeat the whole "show value ladder
+                even without IAP" intent. PRO_TIER is statically loaded
+                from the SSOT in `pricingTiers.ts`. */}
+            <TierCard
+              tier="pro"
+              title="Pro"
+              tag="Log by photo and voice, faster."
+              priceString={billing === "annual" ? FALLBACK_PRICES.proAnnual : FALLBACK_PRICES.proMonthly}
+              periodSuffix={periodSuffix}
+              showSavings={billing === "annual"}
+              referenceLine={
+                billing === "annual"
+                  ? computeAnnualReferenceLine(
+                      FALLBACK_PRICES.proAnnual,
+                      FALLBACK_PRICES.proMonthly,
+                    )
+                  : null
+              }
+              featHead={PRO_FEATURE_HEAD}
+              features={PRO_FEATURES}
+              badgeLabel="MOST POPULAR"
+              isHero
+              ctaLabel="Subscriptions unavailable"
+              ctaColor={Accent.primary}
+              ctaDisabled
+              ctaLoading={false}
+              onPress={() => undefined}
+              colors={colors}
+              styles={styles}
+            />
+          </>
         ) : (
           <>
             {hasPro ? (
@@ -1230,7 +1276,7 @@ type TierCardProps = {
   ctaLoading: boolean;
   onPress: () => void;
   colors: ReturnType<typeof useThemeColors>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   styles: any;
 };
 

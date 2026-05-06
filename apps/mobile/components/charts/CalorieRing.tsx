@@ -311,25 +311,34 @@ export default function CalorieRing({
             opacity={isEmpty ? 0.18 : 1}
           />
           {/* Main calorie ring progress.
-              TestFlight Build 40 feedback (`AEvjNTAVsipFKDysDkJD2g4`,
-              2026-05-01): "Why is the ring now gradient even when the
-              user has logged instead of green?" — the post-59cc821
-              gradient ran across the whole consumed-vs-target range,
-              including hit-target days, so the user never saw the
-              "you're done" success signal. Build 41 fix: keep the
-              brand gradient for the in-progress arc (`consumed <
-              goal`), switch to solid `Accent.success` once the user
-              hits or exceeds the target. Over-budget no longer flips
-              to destructive — going over is part of normal calorie
-              tracking, not an error state, and the user explicitly
-              asked for green when "logged" (i.e. at or beyond goal). */}
+              Three-state colour mapping (Grace 2026-05-05 audit
+              feedback — supersedes the Build 41 two-state mapping):
+                1. Empty (consumed === 0) — brand gradient at full
+                   opacity. "You haven't started; here's the welcome".
+                2. Logged-and-under (0 < consumed <= goal) — solid
+                   `Accent.success` green. "You're logging and on
+                   track."
+                3. Logged-and-over (consumed > goal) — solid
+                   `Accent.destructive` red. "You're over the
+                   budget." Matches the centre-text colour, which
+                   already flips to destructive when over.
+
+              The Build 41 mapping had under = gradient + over =
+              green which inverted the cue: a user who'd gone OVER
+              their target saw a green ring while the centre digit
+              read red, and a user who'd logged UNDER saw the
+              welcome gradient as if they hadn't started. */}
           <AnimatedCircle
             cx={CX}
             cy={CX}
             r={R}
-            stroke={consumed >= goal && goal > 0
-              ? Accent.success
-              : "url(#calorie-ring-gradient)"}
+            stroke={
+              isEmpty
+                ? "url(#calorie-ring-gradient)"
+                : consumed > goal && goal > 0
+                  ? Accent.destructive
+                  : Accent.success
+            }
             strokeWidth={STROKE}
             fill="none"
             strokeDasharray={`${mainCirc}`}
@@ -406,7 +415,12 @@ export default function CalorieRing({
         ) : (
           <Text
             style={{
-              fontSize: expanded ? 22 : 28,
+              // Grace 2026-05-05: 4-digit values like "1,516" at fontSize 22
+              // bold are ~80px wide and overlap the innermost macro ring
+              // (diameter ~64). Drop expanded centre to 18 so 4–5 char
+              // values fit cleanly inside the inner ring band. Collapsed
+              // mode (no macro rings) keeps the original 28 for readability.
+              fontSize: expanded ? 18 : 28,
               fontWeight: "700",
               color: isOver && displayMode !== "consumed" ? Accent.destructive : textColor,
               fontVariant: ["tabular-nums"],

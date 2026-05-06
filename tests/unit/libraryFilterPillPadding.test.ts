@@ -71,50 +71,61 @@ describe("Library filter pill padding (build-12, 2026-05-02)", () => {
     });
   });
 
-  describe("mobile — StyleSheet floor", () => {
-    it("pins paddingHorizontal: 14 (>= the 14pt brief floor)", () => {
-      // Match the StyleSheet entry by name so a re-order doesn't
-      // mis-match a similarly-shaped but unrelated style.
+  describe("mobile — StyleSheet floor (2026-05-06: aligned with Discover)", () => {
+    // 2026-05-06 (Grace) — geometry shifted to match Discover so the
+    // four most-used filters (All / Saved / High-Protein / Quick) fit
+    // a 393pt iPhone width without "Quick" clipping at the trailing
+    // edge. The Type.body (14pt) tokens used to render a ~454pt-wide
+    // row that was always half-off-screen. Now: paddingHorizontal:13
+    // + fontSize:12 + lineHeight:18 + minHeight:36 — descenders
+    // ("Q", "g") sit fully inside the pill body and the row fits.
+    it("pins paddingHorizontal: 13 — matches Discover's filter pill", () => {
       expect(MOBILE_SRC).toMatch(
-        /filterPill:\s*\{[\s\S]*?paddingHorizontal:\s*14[\s\S]*?\}/,
+        /filterPill:\s*\{[\s\S]*?paddingHorizontal:\s*13[\s\S]*?\}/,
       );
     });
 
-    it("pins paddingVertical: 8 — restores vertical breathing room (was 7, squished)", () => {
+    it("pins paddingVertical: 8 — vertical breathing room preserved from build-12 fix", () => {
       expect(MOBILE_SRC).toMatch(
         /filterPill:\s*\{[\s\S]*?paddingVertical:\s*8[\s\S]*?\}/,
       );
     });
 
-    it("pins minHeight: 32 — iOS HIG hit-target floor for inline pills", () => {
+    it("pins minHeight: 36 — gives descender envelope room without iOS clipping", () => {
+      // Bumped 32 → 36 (2026-05-06) after Grace flagged the descender
+      // tail of "g" / "Q" clipping at the bottom border on iOS.
       expect(MOBILE_SRC).toMatch(
-        /filterPill:\s*\{[\s\S]*?minHeight:\s*32[\s\S]*?\}/,
+        /filterPill:\s*\{[\s\S]*?minHeight:\s*36[\s\S]*?\}/,
       );
     });
 
     it("centers the label with justifyContent + alignItems", () => {
-      // `minHeight: 32` alone would just enlarge the box; without
+      // `minHeight: 36` alone would just enlarge the box; without
       // centering the text would flow top-aligned, defeating the fix.
       expect(MOBILE_SRC).toMatch(
         /filterPill:\s*\{[\s\S]*?justifyContent:\s*"center"[\s\S]*?alignItems:\s*"center"[\s\S]*?\}/,
       );
     });
 
-    it("uses Type.body (14/20) for the pill label — brief allows caption|body", () => {
-      // Type.body == { fontSize: 14, lineHeight: 20 }. Pinning by
-      // token (rather than by raw 14) is what keeps mobile + web in
-      // step when the typography ladder evolves.
-      expect(MOBILE_SRC).toMatch(/Type\.body\.fontSize/);
-      expect(MOBILE_SRC).toMatch(/Type\.body\.lineHeight/);
+    it("uses fontSize 12 / lineHeight 18 — matches Discover's 12/18 text scale", () => {
+      // Was Type.body (14/20). Dropped to Discover's 12/18 so the
+      // 4-pill row fits a 393pt iPhone width and the pill text scale
+      // is consistent across Library and Discover.
+      expect(MOBILE_SRC).toMatch(
+        /filterPillText:\s*\{[\s\S]*?fontSize:\s*12[\s\S]*?lineHeight:\s*18[\s\S]*?\}/,
+      );
     });
 
-    it("scrolls horizontally with paddingHorizontal: Spacing.xl on the contentContainer (first/last pill not flush)", () => {
-      // Brief item 3: if pills are inside a horizontal ScrollView,
-      // add `contentContainerStyle: { paddingHorizontal: Spacing.md }`
-      // so first/last pills don't butt screen edges. Mobile already
-      // uses Spacing.xl (20pt), which exceeds Spacing.md (12pt).
+    it("scrolls horizontally with leading Spacing.xl + extra trailing padding", () => {
+      // 2026-05-06: split the previous symmetric `paddingHorizontal:
+      // Spacing.xl` into `paddingLeft: Spacing.xl` (preserve header
+      // alignment) + `paddingRight: Spacing.xl * 2` so the trailing
+      // pill always has visible scroll-headroom on the right edge.
       expect(MOBILE_SRC).toMatch(
-        /filterScroll:\s*\{[\s\S]*?paddingHorizontal:\s*Spacing\.xl[\s\S]*?\}/,
+        /filterScroll:\s*\{[\s\S]*?paddingLeft:\s*Spacing\.xl[\s\S]*?\}/,
+      );
+      expect(MOBILE_SRC).toMatch(
+        /filterScroll:\s*\{[\s\S]*?paddingRight:\s*Spacing\.xl\s*\*\s*2[\s\S]*?\}/,
       );
     });
   });

@@ -139,6 +139,21 @@ export function buildWeeklyRecap<M extends MealMacros>(params: {
    *  Missing days treated as 0 (hydration is intentionally rolled
    *  across all 7 days, not just days with logged meals). */
   hydrationByDay?: Record<string, number>;
+  /**
+   * Numbers audit 2026-05-04 #9 — per-day target snapshots from the
+   * `daily_targets` table. When a user edits their target mid-week,
+   * Progress + ProgressMetricDetail already feed snapshots into
+   * `buildWeekStats` via the same arg, so past days are judged against
+   * the target that was active *that day*. The recap was missing this
+   * plumbing — same week, different "% adherence" between Recap (current
+   * target only) and Progress (snapshot-aware). Now both surfaces share
+   * the snapshot map. Caller fetches via `getDailyTargets()` for the 7
+   * day-keys that span the recap window.
+   */
+  dayTargetOverrides?: Record<
+    string,
+    { targetCalories: number | null; targetProtein: number | null; targetCarbs: number | null; targetFat: number | null } | null | undefined
+  >;
   now?: Date;
 }): WeeklyRecap {
   const now = params.now ?? new Date();
@@ -153,6 +168,7 @@ export function buildWeeklyRecap<M extends MealMacros>(params: {
     params.targets,
     params.weekStartDay,
     previousWeekAnchor,
+    params.dayTargetOverrides,
   );
 
   const daysLogged = bundle.days.filter((d) => d.calories > 0).length;

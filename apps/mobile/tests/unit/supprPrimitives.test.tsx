@@ -74,7 +74,7 @@ describe("mobile SupprCard", () => {
     );
     const card = getByTestId("noborder");
     // The flattened style from RNTL exposes the borderWidth.
-    const flat = (card.props.style as Array<Record<string, unknown>>)
+    const flat = (card.props.style as Record<string, unknown>[])
       .filter(Boolean)
       .reduce((a, b) => ({ ...a, ...b }), {} as Record<string, unknown>);
     expect(flat.borderWidth).toBe(0);

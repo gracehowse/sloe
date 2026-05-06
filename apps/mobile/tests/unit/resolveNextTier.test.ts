@@ -12,16 +12,18 @@
  */
 import { describe, expect, it } from "vitest";
 
+// vitest.mock the RC native module so the static import of the
+// purchases module doesn't explode at resolve time.
+import { vi } from "vitest";
+
+import { beforeAll } from "vitest";
+
 type Mod = typeof import("../../lib/purchases");
 
 // Lazy import via eval-style dynamic import to sidestep RC native
 // module resolution. The function is pure so we can destructure it
 // off the module exports after vitest has parsed the file.
 let resolveNextTier: Mod["resolveNextTier"];
-
-// vitest.mock the RC native module so the static import of the
-// purchases module doesn't explode at resolve time.
-import { vi } from "vitest";
 vi.mock("react-native-purchases", () => ({
   default: {
     configure: vi.fn(),
@@ -43,8 +45,6 @@ beforeAll(async () => {
   const mod = (await import("../../lib/purchases")) as Mod;
   resolveNextTier = mod.resolveNextTier;
 });
-
-import { beforeAll } from "vitest";
 
 describe("resolveNextTier — F-58 downgrade guard", () => {
   it("blocks pro → free when RC returns empty entitlements and no promo", () => {

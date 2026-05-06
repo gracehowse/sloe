@@ -9,6 +9,7 @@ import {
 } from "lucide-react-native";
 import { Accent } from "@/constants/theme";
 import DayStrip from "@/components/charts/DayStrip";
+import { GradientAvatar } from "@/components/GradientAvatar";
 
 /**
  * TodayDateHeader — day/week nav buttons, title, view-mode toggle, avatar,
@@ -187,17 +188,19 @@ export function TodayDateHeader({
             accessibilityRole="button"
             accessibilityLabel="Open profile"
             hitSlop={8}
-            style={({ pressed }) => ({
-              width: 32,
-              height: 32,
-              borderRadius: 8,
-              backgroundColor: Accent.primary + "08",
-              alignItems: "center",
-              justifyContent: "center",
-              opacity: pressed ? 0.7 : 1,
-            })}
+            style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
           >
-            <Text style={{ fontSize: 12, fontWeight: "700", color: Accent.primary }}>{avatarLetter}</Text>
+            {/* Audit 2026-05-04 #12: previously a flat blue rounded
+                square. The prototype + brand carryover rules call for
+                the brand-gradient circular avatar (matches Profile,
+                Settings, the More tab) — same paint path as the
+                shared `<GradientAvatar>` primitive. */}
+            <GradientAvatar
+              size={32}
+              initial={avatarLetter}
+              fontSize={12}
+              gradientIdSuffix="today-header"
+            />
           </Pressable>
         </View>
       </View>

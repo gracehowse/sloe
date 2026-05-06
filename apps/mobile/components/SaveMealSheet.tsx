@@ -47,14 +47,14 @@ type MealSlot = (typeof MEAL_SLOTS)[number];
 type SavePayload = {
   name: string;
   defaultMealSlot?: MealSlot;
-  items: Array<Omit<SavedMealItem, "id" | "position">>;
+  items: Omit<SavedMealItem, "id" | "position">[];
 };
 
 type Props = {
   visible: boolean;
   onClose: () => void;
   /** Items the user is bundling into a combo, in preserved order. */
-  initialItems: Array<Omit<SavedMealItem, "id" | "position">>;
+  initialItems: Omit<SavedMealItem, "id" | "position">[];
   /** Default slot preselected (usually the slot the items came from). */
   defaultSlot?: MealSlot;
   /** Suggested name pre-fill (e.g. "My breakfast combo"). */

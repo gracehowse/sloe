@@ -22,6 +22,13 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import {
+  exportEverythingToFile,
+  _buildExportFilename,
+  isExportEverythingSupported,
+} from "../../lib/exportEverything";
+import { authedFetch } from "../../lib/authedFetch";
+
 // Mock the api-base + auth helper before importing the helper so
 // the helper picks up the mocks at module load.
 vi.mock("@/lib/supprWeb", () => ({
@@ -45,13 +52,6 @@ vi.mock("expo-file-system", () => ({
   cacheDirectory: "file:///tmp/cache/",
   writeAsStringAsync: mockedWrite,
 }));
-
-import {
-  exportEverythingToFile,
-  _buildExportFilename,
-  isExportEverythingSupported,
-} from "../../lib/exportEverything";
-import { authedFetch } from "../../lib/authedFetch";
 
 const mockedFetch = authedFetch as ReturnType<typeof vi.fn>;
 

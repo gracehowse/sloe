@@ -93,6 +93,13 @@ export default function MealNutritionScreen() {
     }
     setLoading(true);
     setError(null);
+    // Debug audit 2026-05-04 (code-quality #8): the supabase select
+    // had `qErr` destructure handling but a *thrown* rejection (network
+    // disconnect, RLS deadlock) bypassed that branch and threw out of
+    // the callback before `setLoading(false)`. Spinner stuck. Now:
+    // full-body try/catch with `setError` in catch + setLoading in
+    // finally so the screen always recovers.
+    try {
     const { data, error: qErr } = await supabase
       .from("nutrition_entries")
       .select(
@@ -126,15 +133,36 @@ export default function MealNutritionScreen() {
         source: (data.source as string) ?? undefined,
       });
     }
-    setLoading(false);
+    } catch (err) {
+      if (typeof console !== "undefined") {
+        console.warn("[meal-nutrition] load failed:", err instanceof Error ? err.message : err);
+      }
+      setError(err instanceof Error ? err.message : "Could not load meal");
+      setMeal(null);
+    } finally {
+      setLoading(false);
+    }
   }, [userId, id]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  const microRows = useMemo(() => listMicroNutrientsCompleteDisplay(meal?.micros ?? null), [meal?.micros]);
   const fiberDisplay = meal ? mealContributedFiberG(meal) : 0;
+  // Audit 2026-05-05 (Grace): Fiber moved from the macro-summary card
+  // extras row into the "Vitamins, minerals & more" table where it
+  // belongs alongside the rest of the per-entry breakdown. Inject the
+  // resolved fiber value into the micros payload so the shared helper
+  // surfaces it as the first row (`MICRO_LINES` puts `fiberG` first).
+  // Falls back to "—" when zero, same as every other curated row.
+  const microRows = useMemo(
+    () =>
+      listMicroNutrientsCompleteDisplay({
+        ...(meal?.micros ?? {}),
+        fiberG: fiberDisplay > 0 ? fiberDisplay : (meal?.micros?.fiberG ?? 0),
+      }),
+    [meal?.micros, fiberDisplay],
+  );
   const split = useMemo(
     () => (meal ? macroCalorieSplit(meal) : { proteinPct: 0, carbsPct: 0, fatPct: 0, proteinKcal: 0, carbsKcal: 0, fatKcal: 0 }),
     [meal],
@@ -205,11 +233,39 @@ export default function MealNutritionScreen() {
   }
 
   if (error || !meal) {
+    // Audit 2026-05-04 #6: previously this was bare "Missing meal" + bare
+    // "Go back" link with no chrome — read as a crashed route. Mirror the
+    // cook-mode empty-state pattern (heading + subtitle + styled CTA) so
+    // the user has a clear recovery path that looks like a designed surface.
+    const heading = error === "Missing meal" || error === "Invalid meal id" ? "Meal not found" : "Couldn't load meal";
+    const subtitle =
+      error === "Missing meal"
+        ? "We couldn't find that meal. It may have been deleted or the link is missing an id."
+        : error === "Invalid meal id"
+          ? "That meal link doesn't look right. Open the meal again from Today."
+          : "Something went wrong loading this meal. Check your connection and try again.";
     return (
       <View style={[styles.center, { backgroundColor: colors.background, padding: Spacing.lg }]}>
-        <Text style={{ color: colors.textSecondary, textAlign: "center" }}>{error ?? "Could not load meal."}</Text>
-        <Pressable onPress={goBack} style={{ marginTop: Spacing.md }}>
-          <Text style={{ color: Accent.primary, fontWeight: "600" }}>Go back</Text>
+        <Ionicons name="alert-circle-outline" size={44} color={colors.textTertiary} style={{ marginBottom: Spacing.md }} />
+        <Text style={{ color: colors.text, fontSize: 20, fontWeight: "700", textAlign: "center", marginBottom: Spacing.sm }}>
+          {heading}
+        </Text>
+        <Text style={{ color: colors.textSecondary, fontSize: 14, lineHeight: 20, textAlign: "center", maxWidth: 320 }}>
+          {subtitle}
+        </Text>
+        <Pressable
+          onPress={goBack}
+          style={{
+            marginTop: Spacing.lg,
+            paddingHorizontal: 22,
+            paddingVertical: 12,
+            borderRadius: Radius.md,
+            backgroundColor: Accent.primary,
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
+          <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Go back</Text>
         </Pressable>
       </View>
     );
@@ -267,20 +323,10 @@ export default function MealNutritionScreen() {
           </>
         )}
 
-        <View style={[styles.extras, { borderTopColor: colors.cardBorder }]}>
-          <Text style={[styles.extraLine, { color: colors.textSecondary }]}>
-            Fiber{" "}
-            <Text style={{ fontWeight: "700", color: colors.text }}>
-              {fiberDisplay > 0 ? `${Math.round(fiberDisplay * 10) / 10}g` : "—"}
-            </Text>
-          </Text>
-          <Text style={[styles.extraLine, { color: colors.textSecondary }]}>
-            Water{" "}
-            <Text style={{ fontWeight: "700", color: colors.text }}>
-              {meal.waterMl != null && meal.waterMl > 0 ? `${Math.round(meal.waterMl)} ml` : "—"}
-            </Text>
-          </Text>
-        </View>
+        {/* Audit 2026-05-05 (Grace): the Fiber + Water rows that
+            previously lived here have moved (Fiber → "Vitamins,
+            minerals & more" table below) or been cut (Water — not
+            relevant to the per-entry meal nutrition view). */}
       </View>
 
       <View style={[styles.card, { marginTop: Spacing.md, backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
@@ -384,8 +430,6 @@ const styles = StyleSheet.create({
   macroSeg: { minWidth: 2 },
   macroGrid: { flexDirection: "row", justifyContent: "space-between", gap: 8 },
   macroCell: { flex: 1 },
-  extras: { marginTop: Spacing.md, paddingTop: Spacing.md, borderTopWidth: StyleSheet.hairlineWidth },
-  extraLine: { fontSize: 14, marginTop: 4 },
   sectionTitle: { fontSize: 15, fontWeight: "700", marginBottom: 4 },
   sectionSub: { fontSize: 12, lineHeight: 17, marginBottom: Spacing.sm },
   microRow: {

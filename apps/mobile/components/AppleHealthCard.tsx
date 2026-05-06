@@ -148,14 +148,14 @@ export function AppleHealthCard({
   }
 
   // ready / denied share the 4-row list; denied values will be null (em-dash).
-  const rows: Array<{
+  const rows: {
     key: string;
     Icon: React.ComponentType<{ size?: number; color?: string }>;
     color: string;
     label: string;
     value: string;
     hint?: string;
-  }> = [
+  }[] = [
     {
       key: "steps",
       Icon: Footprints,

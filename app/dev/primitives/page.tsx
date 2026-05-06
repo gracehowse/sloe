@@ -87,10 +87,10 @@ export default function PrimitivesPreview() {
           </div>
           <div className="flex items-center gap-2">
             <a
-              href="/onboarding/v2"
+              href="/onboarding"
               className="rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary transition-pm hover:bg-primary/15"
             >
-              See onboarding v2 →
+              See onboarding →
             </a>
             <button
               type="button"

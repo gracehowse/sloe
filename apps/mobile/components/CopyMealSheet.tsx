@@ -29,7 +29,7 @@ type Theme = {
 
 type QuickRange = "none" | "+2" | "+3" | "+7";
 
-const QUICK_RANGES: Array<{ key: QuickRange; label: string; days: number }> = [
+const QUICK_RANGES: { key: QuickRange; label: string; days: number }[] = [
   { key: "+2", label: "Next 2 days", days: 2 },
   { key: "+3", label: "Next 3 days", days: 3 },
   { key: "+7", label: "Next 7 days", days: 7 },

@@ -102,8 +102,10 @@ export function StreakPip({
   const fontSize = isLg ? 13 : 11;
   const gap = isLg ? 6 : 4;
 
+  // "27-day streak" reads as *current consecutive* logging — distinct from
+  // "48 days" (distinct days with food) in the milestone snapshot.
   const labelText =
-    safeDays === 0 ? "Start streak" : `${safeDays} day${safeDays === 1 ? "" : "s"}`;
+    safeDays === 0 ? "Start streak" : `${safeDays}-day streak`;
 
   const inner = (
     <>

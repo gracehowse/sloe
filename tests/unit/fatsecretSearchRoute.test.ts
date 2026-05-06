@@ -175,7 +175,17 @@ describe("/api/fatsecret/search — result mapping", () => {
     const res = await GET(makeReq("http://localhost/api/fatsecret/search?q=milk"));
     expect(res.status).toBe(200);
     const json = await res.json();
-    expect(json).toEqual({ ok: true, hits: [], page: 1 });
+    // 2026-05-06 (Grace) — empty fallback now also echoes a `_diag`
+    // field carrying the upstream error so the mobile / web client
+    // diagnostic surfaces the cause without chasing Vercel runtime
+    // logs. Pin both the contract (ok+empty) and the diag shape.
+    expect(json.ok).toBe(true);
+    expect(json.hits).toEqual([]);
+    expect(json.page).toBe(1);
+    expect(json._diag).toEqual({
+      upstream: "failed",
+      message: "FatSecret HTTP 502",
+    });
   });
 
   it("skips placeholder rows where every macro is zero", async () => {

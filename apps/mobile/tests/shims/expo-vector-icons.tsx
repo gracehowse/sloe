@@ -22,7 +22,7 @@ function makeIcon(family: string): React.ForwardRefExoticComponent<
 > & { glyphMap: Record<string, number> } {
   const Cmp = React.forwardRef<unknown, IconProps>(function Icon(props, _ref) {
     const { name, children: _children, ...rest } = props;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const elementType: any = "Text";
     const label: React.ReactNode = typeof name === "string" ? name : "";
     return React.createElement(

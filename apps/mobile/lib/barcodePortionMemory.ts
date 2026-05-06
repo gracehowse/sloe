@@ -90,7 +90,7 @@ export async function getRememberedPortion(barcode: string): Promise<number | nu
  */
 export function clampRememberedToServingOptions(
   remembered: number,
-  servingOptions: ReadonlyArray<{ grams: number }> | null | undefined,
+  servingOptions: readonly { grams: number }[] | null | undefined,
 ): number {
   if (!Number.isFinite(remembered) || remembered <= 0) return remembered;
   if (!servingOptions || servingOptions.length === 0) return remembered;

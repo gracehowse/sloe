@@ -38,6 +38,16 @@ export function PricingHero() {
           Plans that hit your macros, one-tap shopping lists, cook mode
           with timers. Pick the plan that fits your goals.
         </p>
+        {/* Debug audit 2026-05-04 (customer-lens P1 #30): pricing
+            referenced "Apple Health sync (iOS)" without disambiguating
+            for visitors on Android. Per project memory
+            (project_ios_only_no_android.md), Android isn't on the
+            roadmap — surfacing this honestly here prevents an Android
+            visitor signing up and discovering the mobile app is
+            iOS-only after the fact. */}
+        <p className="mt-3 text-xs uppercase tracking-[0.12em] opacity-75">
+          Web works everywhere · Mobile app is iPhone only (TestFlight)
+        </p>
       </div>
     </div>
   );

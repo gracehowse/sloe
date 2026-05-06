@@ -78,7 +78,12 @@ async function fetchRecipe(id: string) {
       id: row.id,
       title: row.title,
       description: row.description,
-      image: row.image_url ?? "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&h=600&fit=crop",
+      // Audit C1 (2026-05-05): when no image, return null so the
+      // page renders a gradient fallback block instead of an Unsplash
+      // stock photo of stranger food. The caller (page render below)
+      // branches on null vs string. The OpenGraph image (line ~124)
+      // also takes a null-safe fallback below.
+      image: row.image_url ?? null,
       servings: row.servings,
       calories: row.calories,
       protein: row.protein,
@@ -121,7 +126,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     openGraph: {
       title: recipe.title,
       description: `${recipe.calories} kcal · ${recipe.protein}g protein`,
-      images: [{ url: recipe.image, width: 800, height: 600 }],
+      // OpenGraph still needs a URL — only fall back to a generic
+      // brand image when no recipe image is available, never the
+      // stranger-food Unsplash stock.
+      images: recipe.image
+        ? [{ url: recipe.image, width: 800, height: 600 }]
+        : [{ url: "https://suppr.club/og-default.png", width: 1200, height: 630 }],
       type: "article",
     },
   };
@@ -175,7 +185,9 @@ export default async function RecipePage({ params }: Props) {
     "@context": "https://schema.org",
     "@type": "Recipe",
     name: recipe.title,
-    image: recipe.image,
+    // JSON-LD: omit image when no real recipe photo (don't lie with
+    // stock imagery in structured data either).
+    ...(recipe.image ? { image: recipe.image } : {}),
     description: recipe.description ?? `${recipe.calories} kcal, ${recipe.protein}g protein`,
     recipeYield: `${recipe.servings} serving${recipe.servings !== 1 ? "s" : ""}`,
     nutrition: {
@@ -220,15 +232,33 @@ export default async function RecipePage({ params }: Props) {
       </header>
 
       <main className="max-w-3xl mx-auto px-6 py-8">
-        {/* Hero */}
-        <div className="rounded-2xl overflow-hidden shadow-xl mb-8">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={recipe.image}
-            alt={recipe.title}
-            className="w-full aspect-video object-cover"
-          />
-        </div>
+        {/* Hero — audit C1 (2026-05-05): when there's no recipe
+            photo, render a deterministic gradient block at half
+            height instead of the stranger-food Unsplash stock. This
+            mirrors the mobile RecipeHeroFallback. Photo case stays
+            full aspect-video. */}
+        {recipe.image ? (
+          <div className="rounded-2xl overflow-hidden shadow-xl mb-8">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={recipe.image}
+              alt={recipe.title}
+              className="w-full aspect-video object-cover"
+            />
+          </div>
+        ) : (
+          <div
+            className="rounded-2xl overflow-hidden shadow-xl mb-8 flex items-center justify-center"
+            style={{
+              aspectRatio: "16 / 7",
+              background:
+                "linear-gradient(135deg, #BBC6FF 0%, #C8B5FF 35%, #F0AECF 70%, #FFCFBA 100%)",
+            }}
+            aria-label={`${recipe.title} — no photo available`}
+          >
+            <span className="text-white/70 text-sm uppercase tracking-widest">No photo</span>
+          </div>
+        )}
 
         <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
           {recipe.title}

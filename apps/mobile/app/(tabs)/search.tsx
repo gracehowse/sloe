@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Constants from "expo-constants";
 import { authedFetch } from "@/lib/authedFetch";
 import { effectiveFoodSearchQuery } from "../../../../src/lib/nutrition/foodSearchQuery";
@@ -16,6 +17,7 @@ type Hit = { description?: string; fdcId?: number };
 
 export default function SearchScreen() {
   const colors = useThemeColors();
+  const insets = useSafeAreaInsets();
   const base = apiBase();
   const [q, setQ] = useState("apple");
   const [busy, setBusy] = useState(false);
@@ -91,7 +93,7 @@ export default function SearchScreen() {
   }), [colors]);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top + Spacing.xl }]}>
       <Text style={styles.title}>Food search</Text>
       <Text style={styles.sub}>Search foods and log portions.</Text>
 

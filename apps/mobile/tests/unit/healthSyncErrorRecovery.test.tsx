@@ -23,6 +23,8 @@ import * as React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 
+import HealthSyncScreen from "../../app/health-sync";
+
 void React;
 
 // ── Hoisted mock spies ─────────────────────────────────────────────
@@ -127,8 +129,6 @@ vi.mock("@/lib/healthSync", () => ({
   syncHealthData: syncHealthDataSpy,
   syncNutritionFromHealth: syncNutritionFromHealthSpy,
 }));
-
-import HealthSyncScreen from "../../app/health-sync";
 
 beforeEach(() => {
   openURLSpy.mockClear();

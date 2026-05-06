@@ -31,7 +31,7 @@ const BASE_COLORS = {
 
 function makeContent(overrides: Partial<Milestone30DayContent> = {}): Milestone30DayContent {
   return {
-    headline: "30 days of logging",
+    headline: "30 days of meal logging",
     daysLogged: 30,
     avgDailyKcal: 1850,
     topFoods: [
@@ -55,9 +55,11 @@ describe("Milestone30DayModal", () => {
         {...BASE_COLORS}
       />,
     );
-    expect(getByText("30 days of logging")).toBeTruthy();
+    expect(getByText("30 days of meal logging")).toBeTruthy();
+    // Debug audit 2026-05-05: subtitle no longer references the
+    // threshold constant; the headline owns "distinct days".
     expect(
-      getByText(/You've logged 30 days. Here's what your month looks like/),
+      getByText(/snapshot of your sustained logging/i),
     ).toBeTruthy();
   });
 
@@ -72,7 +74,7 @@ describe("Milestone30DayModal", () => {
     );
     expect(getByText("Avg daily kcal")).toBeTruthy();
     expect(getByText("1,850")).toBeTruthy();
-    expect(getByText("Longest streak")).toBeTruthy();
+    expect(getByText("Best run")).toBeTruthy();
     expect(getByText("11 days")).toBeTruthy();
   });
 
@@ -128,7 +130,7 @@ describe("Milestone30DayModal", () => {
         {...BASE_COLORS}
       />,
     );
-    expect(getByText("Total weight change")).toBeTruthy();
+    expect(getByText(/Weight \(first/)).toBeTruthy();
     expect(getByText("−1.4 kg")).toBeTruthy();
   });
 
@@ -141,7 +143,7 @@ describe("Milestone30DayModal", () => {
         {...BASE_COLORS}
       />,
     );
-    expect(queryByText("Total weight change")).toBeNull();
+    expect(queryByText(/Weight \(first/)).toBeNull();
   });
 
   it("calls onDismiss when 'Keep going' is pressed", () => {

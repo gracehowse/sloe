@@ -1,6 +1,6 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { safeGetClipboardString } from "@/lib/safeClipboard";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Alert,
   View,
@@ -11,6 +11,8 @@ import {
   RefreshControl,
   ActivityIndicator,
   Image,
+  type StyleProp,
+  type ImageStyle,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, type Href } from "expo-router";
@@ -29,11 +31,6 @@ import { computeRecipeFitPercent } from "../../../../src/lib/nutrition/recipeFit
 import { DISCOVER_POPULAR_MIN_SAVES } from "../../../../src/lib/recipes/fetchPublicRecipeSaveCounts";
 import { recipeSearchMatch } from "../../../../src/lib/recipes/recipeSearchMatch";
 import { displayAttribution } from "../../../../src/lib/recipes/displayAttribution";
-import {
-  SEED_CLUSTERS,
-  isSeedRecipeId,
-  type SeedCuisineCluster,
-} from "../../../../src/lib/recipes/seedRecipesV2";
 // GW-08 (audit 2026-04-28): `TrustChip` + `recipeLevelTrust` imports
 // dropped — the Discover hero card no longer renders the chip because
 // the underlying source signal is fabricated (see the comment by the
@@ -70,6 +67,60 @@ function SourceBadge({ source }: { source?: string }) {
   return (
     <View style={{ position: "absolute", top: 8, left: 8, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: "#00000066" }}>
       <Text style={{ fontSize: 9, fontWeight: "500", color: "#fff" }}>{source}</Text>
+    </View>
+  );
+}
+
+/** Row thumbnail: if `uri` 404s, show the same glyph box as missing image. */
+function DiscoverCoverImage({
+  uri,
+  style,
+  fallback,
+}: {
+  uri: string | null | undefined;
+  style: StyleProp<ImageStyle>;
+  fallback: ReactNode;
+}) {
+  const [broken, setBroken] = useState(false);
+  const trimmed = (uri ?? "").trim();
+  if (!trimmed || broken) return <>{fallback}</>;
+  return (
+    <Image
+      source={{ uri: trimmed }}
+      style={style}
+      resizeMode="cover"
+      accessibilityIgnoresInvertColors
+      onError={() => setBroken(true)}
+    />
+  );
+}
+
+/** Hero top: aspect ratio follows whether a remote image actually renders. */
+function DiscoverHeroMedia({ item }: { item: RecipeCard }) {
+  const [broken, setBroken] = useState(false);
+  const trimmed = (item.image ?? "").trim();
+  const showPhoto = trimmed.length > 0 && !broken;
+  return (
+    <View
+      style={{
+        aspectRatio: showPhoto ? 16 / 10 : 8,
+        alignItems: "center",
+        justifyContent: "center",
+        overflow: "hidden",
+      }}
+    >
+      {showPhoto ? (
+        <Image
+          source={{ uri: trimmed }}
+          style={{ width: "100%", height: "100%" }}
+          resizeMode="cover"
+          accessibilityIgnoresInvertColors
+          onError={() => setBroken(true)}
+        />
+      ) : (
+        <RecipeHeroFallback id={item.id} title={item.title} />
+      )}
+      <SourceBadge source={item.source} />
     </View>
   );
 }
@@ -338,27 +389,10 @@ export default function DiscoverScreen() {
               keep the full hero; image-less rows collapse to a thin
               category band (8:1) that signals bucket without taking
               over the card. Title + macros below carry the visual
-              weight in the no-image case. */}
-          <View
-            style={{
-              aspectRatio: item.image ? 16 / 10 : 8,
-              alignItems: "center",
-              justifyContent: "center",
-              overflow: "hidden",
-            }}
-          >
-            {item.image ? (
-              <Image
-                source={{ uri: item.image }}
-                style={{ width: "100%", height: "100%" }}
-                resizeMode="cover"
-                accessibilityIgnoresInvertColors
-              />
-            ) : (
-              <RecipeHeroFallback id={item.id} title={item.title} />
-            )}
-            <SourceBadge source={item.source} />
-          </View>
+              weight in the no-image case.
+              2026-05-03 — failed remote URLs use the same fallback and
+              collapse aspect ratio via `DiscoverHeroMedia`. */}
+          <DiscoverHeroMedia item={item} />
           <View style={{ padding: 14 }}>
             {/* Fit-percent pill — primary-tinted, top-right of the
                 card body. Matches prototype treatment. */}
@@ -407,7 +441,13 @@ export default function DiscoverScreen() {
                 feedback: "on the discover page protein has an icon but
                 none of the other macro nutrients do". Each macro now
                 gets its own icon + value pair, matching the prototype's
-                visual treatment. Fibre joins when the recipe carries it. */}
+                visual treatment. Fibre joins when the recipe carries it.
+
+                Audit 2026-05-04 #15: customer-lens called out that 5
+                numbers in a row without P/C/F letter labels reads as
+                "memorize the order". Add a low-emphasis macro letter
+                after each value (e.g. `Beef 13g P`) so the row is
+                self-explanatory without losing icon redundancy. */}
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 10 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                 <Flame size={11} color={MacroColors.calories} />
@@ -418,19 +458,19 @@ export default function DiscoverScreen() {
               <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                 <Beef size={11} color={MacroColors.protein} />
                 <Text style={{ fontSize: 11, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
-                  {protein}g
+                  {protein}g <Text style={{ color: colors.textTertiary }}>P</Text>
                 </Text>
               </View>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                 <Wheat size={11} color={MacroColors.carbs} />
                 <Text style={{ fontSize: 11, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
-                  {carbs}g
+                  {carbs}g <Text style={{ color: colors.textTertiary }}>C</Text>
                 </Text>
               </View>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                 <Droplets size={11} color={MacroColors.fat} />
                 <Text style={{ fontSize: 11, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
-                  {fat}g
+                  {fat}g <Text style={{ color: colors.textTertiary }}>F</Text>
                 </Text>
               </View>
               {Number.isFinite(item.fiberG) && (item.fiberG ?? 0) > 0 ? (
@@ -465,118 +505,11 @@ export default function DiscoverScreen() {
     [router, colors, heroColor, t.accent, targets],
   );
 
-  // ── Compact carousel card — used inside the cluster carousels
-  // (Mediterranean / Asian / Latin / Comfort / Healthy bowls). Fixed
-  // width (220) so several cards fit on screen and horizontal scroll
-  // is the obvious affordance. Title + kcal/protein metadata; tap
-  // routes to the same recipe detail screen as a hero card.
-  // Mobile parity: web `DiscoverFeed.tsx` cluster carousels.
-  const renderCarouselCard = useCallback(
-    (item: RecipeCard) => {
-      const kcal = Math.round(item.calories);
-      const protein = Math.round(item.protein);
-      const cookTimeText =
-        item.cookTime ?? (item.cookTimeMin ? `${item.cookTimeMin} min` : null);
-      return (
-        <Pressable
-          key={item.id}
-          onPress={() => router.push(`/recipe/${item.id}`)}
-          accessibilityRole="button"
-          accessibilityLabel={item.title}
-          style={{
-            width: 220,
-            borderRadius: 14,
-            backgroundColor: colors.card,
-            borderWidth: 1,
-            borderColor: colors.cardBorder,
-            overflow: "hidden",
-          }}
-        >
-          <View
-            style={{
-              aspectRatio: item.image ? 16 / 10 : 8,
-              alignItems: "center",
-              justifyContent: "center",
-              overflow: "hidden",
-              backgroundColor: colors.cardBorder,
-            }}
-          >
-            {item.image ? (
-              <Image source={{ uri: item.image }} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
-            ) : (
-              <RecipeHeroFallback id={item.id} title={item.title} iconSize={24} />
-            )}
-          </View>
-          <View style={{ padding: 10 }}>
-            <Text
-              style={{ fontSize: 13, fontWeight: "700", color: colors.text, lineHeight: 16 }}
-              numberOfLines={2}
-            >
-              {item.title}
-            </Text>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 6 }}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
-                <Flame size={11} color={MacroColors.calories} />
-                <Text style={{ fontSize: 11, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
-                  {kcal} kcal
-                </Text>
-              </View>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
-                <Beef size={11} color={MacroColors.protein} />
-                <Text style={{ fontSize: 11, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
-                  {protein}g
-                </Text>
-              </View>
-              {cookTimeText ? (
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
-                  <Clock size={11} color={colors.textTertiary} />
-                  <Text style={{ fontSize: 11, color: colors.textSecondary }}>{cookTimeText}</Text>
-                </View>
-              ) : null}
-            </View>
-          </View>
-        </Pressable>
-      );
-    },
-    [router, colors],
-  );
-
-  // Group seed entries (catalogue cards) by cluster for the cluster
-  // carousels. Order is fixed: Mediterranean → Asian → Latin →
-  // Comfort → Healthy bowls (the canonical reading order pinned by
-  // `SEED_CLUSTERS`). Non-seed (community) entries are routed
-  // through the legacy "Matches your day" + "More ideas" sections so
-  // existing imports + community uploads still surface.
-  const seedRecipesByCluster = (() => {
-    const map = new Map<SeedCuisineCluster, RecipeCard[]>();
-    for (const cluster of SEED_CLUSTERS) {
-      map.set(cluster.id, []);
-    }
-    for (const r of filtered) {
-      if (!isSeedRecipeId(r.id)) continue;
-      // Recover cluster from the seed id (`seed-v2-{cluster}-...`).
-      // Multi-word cluster slugs (e.g. "healthy-bowls") need a
-      // longest-prefix match against SEED_CLUSTERS, not a regex
-      // greedy split — so walk the canonical cluster list.
-      const after = r.id.slice("seed-v2-".length);
-      let clusterId: SeedCuisineCluster | null = null;
-      for (const c of SEED_CLUSTERS) {
-        if (after.startsWith(`${c.id}-`)) {
-          clusterId = c.id;
-          break;
-        }
-      }
-      if (!clusterId) continue;
-      map.get(clusterId)?.push(r);
-    }
-    return map;
-  })();
-
-  const nonSeedFiltered = filtered.filter((r) => !isSeedRecipeId(r.id));
-  // Cluster carousels render only when no search/filter narrows the
-  // feed (otherwise the cluster grouping fights the active query).
-  // "For You" is the default; treat it as the unfiltered case.
-  const showClusterCarousels = !search.trim() && filter === "For You";
+  // 2026-05-03 — mobile Discover uses one layout for every filter:
+  // stacked hero cards ("Matches your day" + "More ideas"). Web still
+  // shows cuisine cluster carousels on the default "For You" view
+  // (`DiscoverFeed.tsx`); mobile dropped the carousel branch so
+  // switching pills does not swap between two different IA patterns.
 
   // ── Compact list row — "More ideas" section. 40×40 icon-box on the
   // left, title + source·time in the middle, trailing kcal / P / C.
@@ -605,18 +538,15 @@ export default function DiscoverScreen() {
               more you might like is wrong - this is supposed to be
               like a social media feed"). Chef-hat glyph box stays as
               the fallback for image-less rows. */}
-          {item.image ? (
-            <Image
-              source={{ uri: item.image }}
-              style={{ width: 56, height: 56, borderRadius: 10 }}
-              resizeMode="cover"
-              accessibilityIgnoresInvertColors
-            />
-          ) : (
-            <View style={{ width: 56, height: 56, borderRadius: 10, backgroundColor: colors.inputBg, alignItems: "center", justifyContent: "center" }}>
-              <ChefHat size={20} color={colors.textSecondary} />
-            </View>
-          )}
+          <DiscoverCoverImage
+            uri={item.image}
+            style={{ width: 56, height: 56, borderRadius: 10 }}
+            fallback={
+              <View style={{ width: 56, height: 56, borderRadius: 10, backgroundColor: colors.inputBg, alignItems: "center", justifyContent: "center" }}>
+                <ChefHat size={20} color={colors.textSecondary} />
+              </View>
+            }
+          />
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }} numberOfLines={1}>
               {decodeEntities(item.title)}
@@ -702,22 +632,49 @@ export default function DiscoverScreen() {
           />
         </View>
 
-        {/* Filter pills */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }} contentContainerStyle={{ gap: 6 }}>
+        {/* Filter pills.
+            Audit 2026-05-04 #27: previously the row's last pill ("High
+            Protein") got clipped mid-word by the viewport edge with no
+            scroll cue — read as a broken truncation rather than a
+            scrollable row. `paddingRight` past the viewport gives the
+            user explicit "more pills off the right" affordance, and
+            `numberOfLines={1}` prevents any single pill text from
+            wrapping to two lines on narrow devices. */}
+        {/* 2026-05-06 (Grace) — canonical filter-pill geometry shared
+            with Library: paddingHorizontal:13 + paddingVertical:8 +
+            minHeight:36 + lineHeight:18 so descenders ("Q" in Quick,
+            "g" in High-Protein) sit fully inside the pill body
+            instead of clipping at the bottom border. paddingRight:32
+            on the contentContainer keeps the trailing pill from
+            sitting flush against the screen edge. */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={{ marginBottom: 12 }}
+          contentContainerStyle={{ gap: 6, paddingRight: 32, alignItems: "center" }}
+        >
           {FILTERS.map((f) => (
             <Pressable
               key={f}
               onPress={() => setFilter(f)}
               style={{
                 paddingHorizontal: 13,
-                paddingVertical: 6,
+                paddingVertical: 8,
+                minHeight: 36,
                 borderRadius: 20,
                 borderWidth: 1,
                 borderColor: filter === f ? t.accent : colors.cardBorder,
                 backgroundColor: filter === f ? t.accent + "10" : "transparent",
+                justifyContent: "center",
+                alignItems: "center",
               }}
             >
-              <Text style={{ fontSize: 11, fontWeight: "500", color: filter === f ? t.accent : colors.textSecondary }}>{f}</Text>
+              <Text
+                numberOfLines={1}
+                style={{ fontSize: 12, lineHeight: 18, fontWeight: "600", color: filter === f ? t.accent : colors.textSecondary }}
+              >
+                {f}
+              </Text>
             </Pressable>
           ))}
         </ScrollView>
@@ -827,96 +784,23 @@ export default function DiscoverScreen() {
           </View>
         ) : (
           <>
-            {/* Wave 4 (2026-05-02) — cuisine cluster carousels.
-                Five horizontal carousels (Mediterranean → Asian →
-                Latin → Comfort → Healthy bowls) when no search/filter
-                narrows the feed. Each carousel has a header above and
-                renders the curated seed entries for that cluster.
-                Community uploads still surface below in the original
-                "Matches your day" + "More ideas" sections so
-                community content is never hidden behind seeds.
-                Web parity: src/app/components/DiscoverFeed.tsx. */}
-            {showClusterCarousels ? (
-              <>
-                {SEED_CLUSTERS.map((cluster) => {
-                  const items = seedRecipesByCluster.get(cluster.id) ?? [];
-                  if (items.length === 0) return null;
-                  return (
-                    <View
-                      key={cluster.id}
-                      testID={`discover-cluster-${cluster.id}`}
-                      style={{ marginTop: 8 }}
-                    >
-                      <Text
-                        accessibilityRole="header"
-                        style={{
-                          fontSize: 14,
-                          fontWeight: "700",
-                          color: colors.text,
-                          letterSpacing: -0.1,
-                          marginBottom: 8,
-                        }}
-                      >
-                        {cluster.title}
-                      </Text>
-                      <ScrollView
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={{ gap: 12, paddingRight: 4 }}
-                      >
-                        {items.map((r) => renderCarouselCard(r))}
-                      </ScrollView>
-                    </View>
-                  );
-                })}
+            <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text, letterSpacing: -0.1, marginTop: 8, marginBottom: 10 }}>
+              Matches your day
+            </Text>
+            <View style={{ gap: 12 }}>
+              {filtered.slice(0, 2).map((r) => renderHeroCard(r))}
+            </View>
 
-                {/* Community uploads — only when user has imported /
-                    published recipes; pre-existing flat hero layout. */}
-                {nonSeedFiltered.length > 0 ? (
-                  <>
-                    <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text, letterSpacing: -0.1, marginTop: 22, marginBottom: 10 }}>
-                      Matches your day
-                    </Text>
-                    <View style={{ gap: 12 }}>
-                      {nonSeedFiltered.map((r) => renderHeroCard(r))}
-                    </View>
-                  </>
-                ) : null}
-              </>
-            ) : (
+            {filtered.length > 2 ? (
               <>
-                {/* Search / filter active — fall back to the legacy
-                    flat layout so the active query isn't masked by
-                    cluster grouping. */}
-                <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text, letterSpacing: -0.1, marginTop: 8, marginBottom: 10 }}>
-                  Matches your day
+                <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text, letterSpacing: -0.1, marginTop: 22, marginBottom: 10 }}>
+                  More ideas
                 </Text>
                 <View style={{ gap: 12 }}>
-                  {filtered.slice(0, 2).map((r) => renderHeroCard(r))}
+                  {filtered.slice(2).map((r) => renderHeroCard(r))}
                 </View>
-
-                {/* Section 2 — More ideas.
-                    F-61 (2026-04-22): tester `AEq5NTi0n…` + `APpAKhhR…`
-                    flagged that "More ideas" compact list rows felt
-                    second-class next to the big hero cards and asked for
-                    a uniform social-feed render. Promote this section to
-                    hero-card style — same layout, same image treatment,
-                    just stacked below Matches-your-day with a 12px gap.
-                    `renderMoreIdeaRow` is retained in case a future
-                    density toggle re-enables the compact variant, but
-                    nothing calls it right now. */}
-                {filtered.length > 2 ? (
-                  <>
-                    <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text, letterSpacing: -0.1, marginTop: 22, marginBottom: 10 }}>
-                      More ideas
-                    </Text>
-                    <View style={{ gap: 12 }}>
-                      {filtered.slice(2).map((r) => renderHeroCard(r))}
-                    </View>
-                  </>
-                ) : null}
               </>
-            )}
+            ) : null}
           </>
         )}
 

@@ -349,7 +349,7 @@ export default function PlannerScreen() {
         await purchases.syncTierToSupabase(info, supabase as any, userId);
       } catch (err) {
         if (__DEV__) {
-          // eslint-disable-next-line no-console
+           
           console.warn("[planner] RC reconcile failed — falling back to profile read", err);
         }
       }
@@ -400,10 +400,23 @@ export default function PlannerScreen() {
   useEffect(() => {
     if (!userId) { setActiveHouseholdId(null); return; }
     let cancelled = false;
+    const plannerHouseholdTimeout = Symbol("planner_household_timeout");
     void (async () => {
       try {
-        const { data } = await getMyHousehold(supabase as any, userId);
-        if (!cancelled) setActiveHouseholdId(data?.household?.id ?? null);
+        const pack = await Promise.race([
+          getMyHousehold(supabase as any, userId),
+          new Promise<typeof plannerHouseholdTimeout>((resolve) => {
+            setTimeout(() => resolve(plannerHouseholdTimeout), 18_000);
+          }),
+        ]);
+        if (cancelled) return;
+        if (pack === plannerHouseholdTimeout) {
+          if (__DEV__) console.warn("[planner] getMyHousehold timed out — shopping scope falls back to solo");
+          setActiveHouseholdId(null);
+          return;
+        }
+        const { data } = pack;
+        setActiveHouseholdId(data?.household?.id ?? null);
       } catch {
         if (!cancelled) setActiveHouseholdId(null);
       }
@@ -1903,8 +1916,16 @@ export default function PlannerScreen() {
                         style={[styles.dayBtn, active && styles.dayBtnActive]}
                         onPress={() => toggleSlot(slot)}
                       >
+                        {/* 2026-05-06 (Grace) — was `color="#fff"` on
+                            an `Accent.primary + "15"` tinted background
+                            (~8% opacity). White-on-very-light-blue made
+                            the check icon invisible. Both states now
+                            use a colour that contrasts against the
+                            chip's tinted background: active uses the
+                            primary blue (matches `dayBtnTextActive`);
+                            inactive stays muted text-secondary. */}
                         {active ? (
-                          <CheckCircle2 size={14} color="#fff" strokeWidth={1.75} style={{ marginRight: 4 }} />
+                          <CheckCircle2 size={14} color={Accent.primary} strokeWidth={2} style={{ marginRight: 4 }} />
                         ) : (
                           <Circle size={14} color={colors.textSecondary} strokeWidth={1.75} style={{ marginRight: 4 }} />
                         )}

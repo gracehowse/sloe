@@ -3,7 +3,7 @@
  * Columns: date, meal, food, calories, protein_g, carbs_g, fat_g, fiber_g, source, time
  */
 export function nutritionEntriesToCsv(
-  entries: Array<{
+  entries: {
     date_key?: string;
     name?: string;
     recipe_title?: string;
@@ -15,7 +15,7 @@ export function nutritionEntriesToCsv(
     source?: string;
     time_label?: string;
     created_at?: string;
-  }>,
+  }[],
 ): string {
   const header = "date,meal,food,calories,protein_g,carbs_g,fat_g,fiber_g,source,time";
   const rows = entries.map((e) => {

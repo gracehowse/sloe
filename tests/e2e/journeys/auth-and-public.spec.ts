@@ -6,21 +6,20 @@ import { expectNoSeriousA11yViolations } from "../utils/a11y";
  * Prefer getByRole / getByLabel so behavior tracks what users see, not implementation details.
  */
 test.describe("Public auth journey", () => {
-  test("when I open /login I see sign-up and can switch to sign-in", async ({ page }) => {
+  test("when I open /login I see sign-in and can switch to sign-up", async ({ page }) => {
+    // Debug audit 2026-05-04 (customer-lens P0 #8): /login defaults
+    // to "signin" mode now. Canonical signup lives at /onboarding;
+    // this route is the signin destination from the landing's
+    // "Sign in" link. Test reflects the new behaviour — was "signup
+    // default" before PR #93. The mode-switcher is still rendered so
+    // a user who lands here in error can opt into signup.
     await test.step("I open the login page", async () => {
       await page.goto("/login");
     });
 
-    await test.step("I expect the default mode to be create account", async () => {
-      await expect(page.getByRole("heading", { name: /create your account/i })).toBeVisible();
-      await expect(page.getByText(/free to start/i)).toBeVisible();
-    });
-
-    await test.step("I tap Sign in and expect the sign-in heading", async () => {
-      await page.getByRole("button", { name: "Sign in", exact: true }).first().click();
+    await test.step("I expect the default mode to be sign-in", async () => {
       await expect(page.getByRole("heading", { name: /welcome back/i })).toBeVisible();
       await expect(page.getByText(/sign in to continue/i)).toBeVisible();
-      await expectNoSeriousA11yViolations(page);
     });
 
     await test.step("I expect email and password fields I can type into", async () => {
@@ -31,6 +30,13 @@ test.describe("Public auth journey", () => {
 
     await test.step("I expect forgot password affordance on sign-in", async () => {
       await expect(page.getByRole("button", { name: /forgot password/i })).toBeVisible();
+      await expectNoSeriousA11yViolations(page);
+    });
+
+    await test.step("I tap Sign up and expect the create-account heading", async () => {
+      await page.getByRole("button", { name: "Sign up", exact: true }).first().click();
+      await expect(page.getByRole("heading", { name: /create your account/i })).toBeVisible();
+      await expect(page.getByText(/free to start/i)).toBeVisible();
     });
   });
 
@@ -87,3 +93,4 @@ test.describe("Unauthenticated app shell", () => {
     });
   });
 });
+// trigger CI 2026-05-06

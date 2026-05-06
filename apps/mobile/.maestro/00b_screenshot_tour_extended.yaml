@@ -216,14 +216,16 @@ name: "Extended screenshot tour — surfaces not captured by 00_screenshot_tour.
 # G. Onboarding v2 — every step
 # ────────────────────────────────────────────────────────────────────
 #
-# The /onboarding-v2 route renders the MobileFlow component. Without
+# The /onboarding route renders the MobileFlow component. (Was
+# /onboarding-v2 before the 2026-04-30 rename; /onboarding-v2 still
+# exists as a defensive redirect, see app/onboarding-v2.tsx.) Without
 # resetting onboarding_completed=false on the DB, this route normally
 # redirects authed users away. Capture the route as it lands; if the
 # user already completed onboarding, the screenshot will show the
 # redirect target. To capture every step, sign out + go through the
 # flow manually. (Marker — Grace re-runs this section after Erase.)
 
-- openLink: suppr:///onboarding-v2
+- openLink: suppr:///onboarding
 - waitForAnimationToEnd
 - waitForAnimationToEnd
 - takeScreenshot: screenshots/latest/tour-ext-70-onboarding-entry

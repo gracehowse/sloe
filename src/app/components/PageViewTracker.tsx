@@ -32,8 +32,10 @@ export function PageDismissTracker({
   const propsRef = useRef(properties);
   const eventRef = useRef(event);
   useEffect(() => {
+    const eventAtMount = eventRef.current;
+    const propsAtMount = propsRef.current;
     return () => {
-      track(eventRef.current, propsRef.current);
+      track(eventAtMount, propsAtMount);
     };
   }, []);
   return null;

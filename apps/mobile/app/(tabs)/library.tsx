@@ -1,11 +1,12 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback, useMemo, useState } from "react";
 import {
+  ActionSheetIOS,
   Alert,
   View,
   Text,
   FlatList,
-  Image,
+  Platform,
   Pressable,
   StyleSheet,
   TextInput,
@@ -32,9 +33,10 @@ import {
 } from "lucide-react-native";
 import { useAuth } from "@/context/auth";
 import { useSavedLibraryRecipes, useSavedRecipes } from "@/lib/recipes";
+import { RecipeCardImage } from "@/components/library/RecipeCardImage";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
-import { Accent, MacroColors, Spacing, Radius, Type } from "@/constants/theme";
+import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import type { RecipeCard } from "@/lib/types";
 import {
   LIBRARY_FILTER_PILLS,
@@ -169,8 +171,75 @@ export default function LibraryScreen() {
     [persistSaveToggle, refresh],
   );
 
+  /**
+   * 2026-05-06 (Grace) — the `…` overflow icon used to open the
+   * `confirmRemove` Alert directly, which violated the convention
+   * that `…` means "more options" not "delete". Now opens an
+   * iOS-native action sheet (or RN Alert on Android) with three
+   * choices: View recipe (primary), Remove from library
+   * (destructive), Cancel. The destructive path still chains into
+   * `confirmRemove` so the user gets the existing two-step delete
+   * confirmation — no silent one-tap delete.
+   */
+  const openCardActions = useCallback(
+    (item: RecipeCard) => {
+      const labels = ["View recipe", "Remove from library", "Cancel"] as const;
+      const viewRecipe = () => router.push(`/recipe/${item.id}`);
+      if (Platform.OS === "ios") {
+        ActionSheetIOS.showActionSheetWithOptions(
+          {
+            title: item.title,
+            options: [...labels],
+            destructiveButtonIndex: 1,
+            cancelButtonIndex: 2,
+          },
+          (idx) => {
+            if (idx === 0) viewRecipe();
+            else if (idx === 1) confirmRemove(item);
+          },
+        );
+        return;
+      }
+      // Android (and any non-iOS platform) — RN Alert serves as a
+      // simple action-sheet equivalent. Order intentionally matches
+      // the iOS sheet so muscle memory carries.
+      Alert.alert(item.title, undefined, [
+        { text: "View recipe", onPress: viewRecipe },
+        { text: "Remove from library", style: "destructive", onPress: () => confirmRemove(item) },
+        { text: "Cancel", style: "cancel" },
+      ]);
+    },
+    [router, confirmRemove],
+  );
+
   const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
+    // 2026-05-06 (Grace) — header geometry now mirrors Discover:
+    // small uppercase overline + 28pt bold title in a vertical
+    // block, with sort/create controls + count moved to a
+    // secondary row below.
+    headerBlock: {
+      paddingHorizontal: Spacing.xl,
+      paddingTop: 18,
+      paddingBottom: 4,
+    },
+    headerOverline: {
+      fontSize: 11,
+      fontWeight: "600",
+      color: colors.textTertiary,
+      letterSpacing: 1.4,
+      textTransform: "uppercase",
+    },
+    headerActionsRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: Spacing.sm,
+      paddingHorizontal: Spacing.xl,
+      paddingBottom: 14,
+    },
+    // Legacy topBar / backHit / titleBlock kept for any other
+    // surface that imports library.tsx's styles indirectly. Marked
+    // unused by the new header layout.
     topBar: {
       flexDirection: "row",
       alignItems: "center",
@@ -182,15 +251,18 @@ export default function LibraryScreen() {
     backHit: { padding: 6, marginLeft: -6 },
     titleBlock: { flex: 1 },
     headerTitle: {
-      fontSize: 24,
-      fontWeight: "700",
+      // 2026-05-06: bumped 24 → 28 (matches Discover) + bolder
+      // (700 → 800) + tighter letter-spacing.
+      fontSize: 28,
+      fontWeight: "800",
       color: colors.text,
-      letterSpacing: -0.4,
+      letterSpacing: -0.6,
+      marginTop: 2,
     },
     headerSub: {
       fontSize: 13,
       color: colors.textSecondary,
-      marginTop: 2,
+      flex: 1,
       fontVariant: ["tabular-nums"],
     },
     sortBtn: {
@@ -224,7 +296,17 @@ export default function LibraryScreen() {
     createBtnText: { fontSize: 12, fontWeight: "700", color: "#fff" },
     searchRow: { paddingHorizontal: Spacing.xl, paddingVertical: Spacing.sm },
     filterScroll: {
-      paddingHorizontal: Spacing.xl,
+      // 2026-05-06 (Grace) — "Quick" pill was clipping at the right
+      // edge: a single `paddingHorizontal: Spacing.xl` left the
+      // rightmost pill flush against the trailing padding so its
+      // border/text touched the screen edge with no breathing room.
+      // Splitting into explicit `paddingLeft` (preserve original
+      // edge alignment with the section header) + a generous
+      // `paddingRight: Spacing.xl * 2` so the trailing pill always
+      // has visible scroll-headroom and doesn't sit on the screen
+      // edge.
+      paddingLeft: Spacing.xl,
+      paddingRight: Spacing.xl * 2,
       // F-63b (2026-04-22): tester AAUNt / ALvjyW flagged the Library
       // filter pills as "scrunched" / "format layout still terrible"
       // — on iOS the horizontal ScrollView was rendering at just
@@ -255,10 +337,23 @@ export default function LibraryScreen() {
      // padding stays at 14 (== Spacing.sm + Spacing.xs) which already
      // satisfies the brief floor; the squish was vertical.
     filterPill: {
-      paddingHorizontal: 14,
+      // 2026-05-06 (Grace) — canonical pill geometry shared with
+      // `apps/mobile/app/(tabs)/discover.tsx`. Both surfaces show
+      // a horizontal-scrolling filter row; Library used to render
+      // chunkier pills (Type.body/14pt + paddingHorizontal:14) which
+      // clipped "Quick" against the trailing edge AND gave a
+      // visually heavier row than Discover. Now identical.
+      //
+      // Geometry: paddingHorizontal:13 + paddingVertical:8 + minHeight:36
+      // + lineHeight:18 — gives descenders ("g" in High-Protein, "Q"
+      // in Quick) the headroom RN/iOS needs without the tails clipping
+      // at the bottom border. `borderRadius:20` matches Discover's
+      // softer corner; the pill is shorter than the 999 fully-round
+      // shape but reads as a proper pill.
+      paddingHorizontal: 13,
       paddingVertical: 8,
-      minHeight: 32,
-      borderRadius: 999,
+      minHeight: 36,
+      borderRadius: 20,
       borderWidth: 1,
       borderColor: colors.border,
       backgroundColor: colors.card,
@@ -270,11 +365,11 @@ export default function LibraryScreen() {
       borderColor: Accent.primary,
     },
     filterPillText: {
-      // Type.body (14/20) — brief said use `Type.caption` or
-      // `Type.body`; body wins for readability of count suffixes
-      // ("All · 21" needs to stay legible at thumb-glance distance).
-      fontSize: Type.body.fontSize,
-      lineHeight: Type.body.lineHeight,
+      // 12/18 — matches Discover's text scale (fontSize 12) but
+      // with a bumped lineHeight 16 → 18 so descenders sit fully
+      // inside the pill body instead of clipping at the border.
+      fontSize: 12,
+      lineHeight: 18,
       fontWeight: "600",
       color: colors.text,
     },
@@ -282,15 +377,25 @@ export default function LibraryScreen() {
       color: Accent.primary,
       fontWeight: "600",
     },
-    searchInput: {
+    // 2026-05-06 (Grace) — search-input wrapper that holds the
+    // magnifying-glass icon next to the TextInput. Mirrors the
+    // Discover treatment (icon-prefixed bigger search bar).
+    searchInputWrap: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
       backgroundColor: colors.card,
-      borderRadius: Radius.md,
+      borderRadius: 12,
       borderWidth: 1,
       borderColor: colors.border,
-      paddingHorizontal: Spacing.md,
-      paddingVertical: 10,
-      fontSize: 15,
+      paddingHorizontal: 14,
+      paddingVertical: 14,
+    },
+    searchInput: {
+      flex: 1,
+      fontSize: 14,
       color: colors.text,
+      padding: 0,
     },
     list: {
       paddingHorizontal: Spacing.xl,
@@ -432,21 +537,40 @@ export default function LibraryScreen() {
           accessibilityLabel={`${item.title}, ${Math.round(item.calories)} calories.`}
         >
           <View style={styles.cardImageWrap}>
-            <Image source={{ uri: item.image }} style={styles.cardImage} resizeMode="cover" />
+            {/* Audit 2026-05-04 #28: when a recipe has no image (e.g.
+                user-imported recipe with no thumbnail captured) OR the
+                fetched image fails to load (network blip, expired
+                Unsplash URL), the blank white area reads as a broken
+                card next to siblings that did have photos. Render a
+                neutral placeholder surface (soft grey + utensils glyph)
+                so cards stay visually consistent in both cases.
+
+                NOTE: `useSavedLibraryRecipes` resolves `item.image` to a
+                stock URL via `pickDefaultImage` when `image_url` is
+                missing, so the empty-string branch only fires for
+                pathological data; the on-error branch is the actually-
+                live fallback path. */}
+            <RecipeCardImage
+              uri={item.image}
+              cardImageStyle={styles.cardImage}
+              fallbackBg={colors.cardBorder}
+              fallbackTint={colors.textTertiary}
+            />
             <View style={styles.cardGradient} pointerEvents="none" />
             {item.isSaved ? (
               <View style={styles.bookmarkDot} accessibilityLabel="Saved">
                 <Bookmark size={14} color={Accent.primary} fill={Accent.primary} />
               </View>
             ) : null}
-            {/* Audit 2026-04-30: discoverable overflow menu for delete.
-                Sits to the left of the bookmark dot. Tapping opens the
-                same Alert sheet long-press already triggers, so we
-                preserve P2-32's "delete is confirmed, never one-tap"
-                rule while making it visible to first-time users. */}
+            {/* 2026-05-06 (Grace) — `…` is "more options", not
+                "delete one-tap". Tapping now opens an action sheet
+                (iOS) or RN Alert menu (Android) with View / Remove /
+                Cancel. The Remove path still chains into the existing
+                `confirmRemove` two-step prompt so destructive actions
+                stay confirmed. */}
             <Pressable
               style={styles.cardOverflowBtn}
-              onPress={() => confirmRemove(item)}
+              onPress={() => openCardActions(item)}
               accessibilityRole="button"
               accessibilityLabel={`More options for ${item.title}`}
               hitSlop={8}
@@ -518,28 +642,25 @@ export default function LibraryScreen() {
           Discover sibling). Lives at the top of every Recipes-group
           screen so the user can flip without leaving the group. */}
       <RecipesSubTabHeader />
-      {/* Prototype: back chevron + "Library" title → "{n} recipes ·
-          {m} saved" subtitle. The sort cycle button moves to the
-          trailing slot so the control surface stays discoverable
-          without crowding the title. */}
-      <View style={styles.topBar}>
-        <Pressable onPress={goBack} hitSlop={12} style={styles.backHit} accessibilityLabel="Back">
-          <ChevronLeft size={24} color={colors.text} />
-        </Pressable>
-        <View style={styles.titleBlock}>
-          <Text style={styles.headerTitle}>Library</Text>
-          <Text style={styles.headerSub}>
-            {savedRecipes.length} {savedRecipes.length === 1 ? "recipe" : "recipes"} · {savedCount} saved
-          </Text>
-        </View>
+      {/* 2026-05-06 (Grace) — restructured to match Discover's
+          header pattern: small uppercase overline + large 28pt
+          title. Was: back-chevron + smaller title + sort/create
+          buttons inline. The sort + create controls move to a
+          compact secondary row under the title; the count subtitle
+          is preserved next to the sort cycle so all the original
+          info is reachable. */}
+      <View style={styles.headerBlock}>
+        <Text style={styles.headerOverline}>RECIPES</Text>
+        <Text style={styles.headerTitle}>Library</Text>
+      </View>
+      <View style={styles.headerActionsRow}>
+        <Text style={styles.headerSub}>
+          {savedRecipes.length} {savedRecipes.length === 1 ? "recipe" : "recipes"} · {savedCount} saved
+        </Text>
         <Pressable style={styles.sortBtn} onPress={cycleSort} accessibilityLabel={`Sort by ${SORT_LABELS[sortKey]}`}>
           <ArrowUpDown size={14} color={colors.textSecondary} />
           <Text style={styles.sortText}>{SORT_LABELS[sortKey]}</Text>
         </Pressable>
-        {/* 2026-04-30 audit (customer-lens): first-class "+ Create"
-            entry. Routes to the wizard at `/recipe/create` (5-step
-            guided flow). Surfaces the create-from-scratch path that
-            was previously buried under More → Settings. */}
         <Pressable
           style={styles.createBtn}
           onPress={() => router.push("/recipe/create")}
@@ -551,15 +672,20 @@ export default function LibraryScreen() {
         </Pressable>
       </View>
 
+      {/* Search bar — matches Discover's pattern (icon + bigger
+          input + softer card style). */}
       <View style={styles.searchRow}>
-        <TextInput
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Search your recipes…"
-          placeholderTextColor={colors.textTertiary}
-          style={styles.searchInput}
-          accessibilityLabel="Search saved recipes"
-        />
+        <View style={styles.searchInputWrap}>
+          <SearchIcon size={16} color={colors.textTertiary} />
+          <TextInput
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Search your recipes"
+            placeholderTextColor={colors.textTertiary}
+            style={styles.searchInput}
+            accessibilityLabel="Search saved recipes"
+          />
+        </View>
       </View>
 
       {/* Filter pill row — horizontal scroll per prototype. Combines

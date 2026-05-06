@@ -55,7 +55,7 @@ function buildClient(opts: {
   capturedUpdate?: Record<string, unknown>;
 }) {
   const update = vi.fn((patch: Record<string, unknown>) => {
-    opts.capturedUpdate && Object.assign(opts.capturedUpdate, patch);
+    if (opts.capturedUpdate) Object.assign(opts.capturedUpdate, patch);
     return { eq: vi.fn(() => Promise.resolve({ data: null, error: null })) };
   });
 

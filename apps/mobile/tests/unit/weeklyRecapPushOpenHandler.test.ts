@@ -15,6 +15,8 @@
  */
 import { describe, expect, it, vi } from "vitest";
 
+import { handleWeeklyRecapNotificationResponse } from "../../lib/weeklyRecapPush";
+
 vi.mock("react-native", () => ({
   Platform: { OS: "ios" },
 }));
@@ -46,8 +48,6 @@ vi.mock("expo-notifications", () => ({
 vi.mock("../../lib/errorTracking", () => ({
   captureException: vi.fn(),
 }));
-
-import { handleWeeklyRecapNotificationResponse } from "../../lib/weeklyRecapPush";
 
 /**
  * Build a minimal `NotificationResponse`-shaped object. Only the

@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { cn } from "../ui/utils";
-import { IconBox } from "../ui/icon-box";
 import { Icons, type IconName } from "../ui/icons";
 import { formatMacro } from "../../../lib/nutrition/formatMacro";
 

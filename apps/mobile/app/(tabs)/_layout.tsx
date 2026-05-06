@@ -54,24 +54,31 @@ export default function TabLayout() {
   useEffect(() => {
     if (!session?.user?.id) return;
     let cancelled = false;
+    const PROFILE_ONBOARDING_TIMEOUT_MS = 8000;
+    const profileOnboardingQuery = supabase
+      .from('profiles')
+      .select('onboarding_completed')
+      .eq('id', session.user.id)
+      .maybeSingle();
+
     (async () => {
-      // Wrap in try/finally so `onboardingChecked` ALWAYS flips true,
-      // even if the supabase call throws (network failure, RLS denial,
-      // PostgREST hang). Without this guarantee a returning user with a
-      // restored session sees a perpetual spinner if anything goes wrong
-      // on the network — the gate at line 70 below never opens.
-      // On the sad path we leave `onboardingCompleted` at its default
-      // (`true`), letting the user into the app rather than bouncing
-      // them to /onboarding. They've already completed onboarding once
-      // (their session exists); a transient fetch failure shouldn't
-      // re-route them through it.
+      // Flip `onboardingChecked` after any outcome: success, throw, OR
+      // hung network. `try/finally` alone does NOT run `finally` until the
+      // awaited promise settles — a PostgREST/client hang would leave the
+      // user on the tab spinner forever (`session && !onboardingChecked`).
+      // Race against a timeout so the gate always opens; on timeout we keep
+      // the default `onboardingCompleted === true` (same as the catch path).
       try {
-        const { data } = await supabase
-          .from('profiles')
-          .select('onboarding_completed')
-          .eq('id', session.user.id)
-          .maybeSingle();
+        const timedOut = Symbol('profile_onboarding_timeout');
+        const result = await Promise.race([
+          profileOnboardingQuery,
+          new Promise<typeof timedOut>((resolve) => {
+            setTimeout(() => resolve(timedOut), PROFILE_ONBOARDING_TIMEOUT_MS);
+          }),
+        ]);
         if (cancelled) return;
+        if (result === timedOut) return;
+        const { data } = result;
         setOnboardingCompleted(data?.onboarding_completed === true);
       } catch {
         // Silent — `onboardingCompleted` stays at its default true.

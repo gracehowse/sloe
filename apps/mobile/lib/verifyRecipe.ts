@@ -142,13 +142,13 @@ export type FoodSearchResult = {
   servingSizeUnit?: string;
   householdServingFullText?: string;
   /** Non-branded portions; empty for branded hits. */
-  foodPortions?: Array<{
+  foodPortions?: {
     gramWeight?: number;
     amount?: number;
     modifier?: string;
     portionDescription?: string;
     measureUnit?: { name?: string; abbreviation?: string };
-  }>;
+  }[];
 };
 
 export type BarcodeProduct = {
@@ -401,7 +401,19 @@ export async function searchUsda(query: string, opts?: { page?: number }): Promi
     );
     clearTimeout(t);
     const json = await res.json();
-    if (!json.ok || !Array.isArray(json.hits)) return [];
+    // 2026-05-06 (Grace) — surface why a search returned empty so
+    // TestFlight / sim logs show the actual failure mode (env var,
+    // OAuth, rate-limit, etc.) instead of silently disappearing.
+    if (!json.ok || !Array.isArray(json.hits)) {
+      const errCode = typeof json?.error === "string" ? json.error : "unknown";
+      const sampleMsg = typeof json?.message === "string" ? json.message.slice(0, 120) : null;
+      console.warn(
+        `[searchUsda] empty result — status=${res.status} error=${errCode}${
+          sampleMsg ? ` msg="${sampleMsg}"` : ""
+        }`,
+      );
+      return [];
+    }
     return json.hits.map((h: any) => ({
       fdcId: h.fdcId,
       description: h.description ?? "Unknown",
@@ -504,7 +516,12 @@ export async function searchOpenFoodFacts(query: string, opts?: { page?: number 
       },
     );
     clearTimeout(t);
-    if (!res.ok) return [];
+    if (!res.ok) {
+      // 2026-05-06 (Grace) — surface OFF upstream errors so debug
+      // shows whether OFF is timing out, rate-limited, or 5xx-ing.
+      console.warn(`[searchOFF] empty result — upstream status=${res.status}`);
+      return [];
+    }
     const text = await res.text();
     let data: { products?: unknown[] };
     try {
@@ -513,7 +530,10 @@ export async function searchOpenFoodFacts(query: string, opts?: { page?: number 
       console.warn("[searchOFF] non-JSON response:", text.slice(0, 200));
       return [];
     }
-    if (!Array.isArray(data.products)) return [];
+    if (!Array.isArray(data.products)) {
+      console.warn("[searchOFF] empty result — no products array in response");
+      return [];
+    }
     return data.products
       .filter((p: any) => p.product_name && p.nutriments)
       .map((p: any) => {
@@ -653,7 +673,7 @@ export type EdamamSearchResult = {
    * a Pret sandwich). Passed straight through from the API route so the
    * primary-serving inference helper can pick the non-"Gram" entry.
    */
-  servingSizes?: Array<{ uri?: string; label?: string; quantity?: number }>;
+  servingSizes?: { uri?: string; label?: string; quantity?: number }[];
 };
 
 /**
@@ -682,7 +702,29 @@ export async function searchEdamam(
     );
     clearTimeout(t);
     const json = await res.json();
-    if (!json.ok || !Array.isArray(json.hits)) return [];
+    // 2026-05-06 (Grace) — surface why a search returned empty.
+    if (!json.ok || !Array.isArray(json.hits)) {
+      const errCode = typeof json?.error === "string" ? json.error : "unknown";
+      const sampleMsg = typeof json?.message === "string" ? json.message.slice(0, 120) : null;
+      console.warn(
+        `[searchEdamam] empty result — status=${res.status} error=${errCode}${
+          sampleMsg ? ` msg="${sampleMsg}"` : ""
+        }`,
+      );
+      return [];
+    }
+    // 2026-05-06 (Grace) — the route returns ok:true with hits:[]
+    // when the upstream call fails. Surface its `_diag` echo so prod
+    // failures show up in Metro logs.
+    if (Array.isArray(json.hits) && json.hits.length === 0 && json._diag) {
+      const upstream = typeof json._diag?.upstream === "string" ? json._diag.upstream : "unknown";
+      const upstreamMsg = typeof json._diag?.message === "string" ? json._diag.message : "";
+      console.warn(
+        `[searchEdamam] upstream ${upstream} (route returned ok+empty)${
+          upstreamMsg ? ` — ${upstreamMsg}` : ""
+        }`,
+      );
+    }
     // Route already shapes each hit to the EdamamSearchResult envelope
     // (including `servingSizes`), so we pass the array through.
     return json.hits as EdamamSearchResult[];
@@ -747,7 +789,36 @@ export async function searchFatSecret(
     );
     clearTimeout(t);
     const json = await res.json();
-    if (!json.ok || !Array.isArray(json.hits)) return [];
+    // 2026-05-06 (Grace) — production smoke test showed no FatSecret
+    // hits surfacing in the merge. Was: silently returned [] on any
+    // non-ok shape, so the cause (server_misconfigured / OAuth
+    // expired / rate-limited / etc.) was invisible from
+    // mobile/TestFlight logs. Now surfaces the route's `error` token
+    // + status so the failure mode is greppable in device logs.
+    if (!json.ok || !Array.isArray(json.hits)) {
+      const errCode = typeof json?.error === "string" ? json.error : "unknown";
+      const sampleMsg = typeof json?.message === "string" ? json.message.slice(0, 120) : null;
+      console.warn(
+        `[searchFatSecret] empty result — status=${res.status} error=${errCode}${
+          sampleMsg ? ` msg="${sampleMsg}"` : ""
+        }`,
+      );
+      return [];
+    }
+    // 2026-05-06 (Grace) — the route returns ok:true with hits:[] when
+    // the upstream call fails (so the merge keeps USDA/OFF rendering).
+    // The route now also echoes a `_diag` field on that fallback path.
+    // Surface it in Metro logs so prod-side failures don't require
+    // chasing Vercel runtime logs.
+    if (Array.isArray(json.hits) && json.hits.length === 0 && json._diag) {
+      const upstream = typeof json._diag?.upstream === "string" ? json._diag.upstream : "unknown";
+      const upstreamMsg = typeof json._diag?.message === "string" ? json._diag.message : "";
+      console.warn(
+        `[searchFatSecret] upstream ${upstream} (route returned ok+empty)${
+          upstreamMsg ? ` — ${upstreamMsg}` : ""
+        }`,
+      );
+    }
     return json.hits as FatSecretSearchResult[];
   } catch (e) {
     if (isBenignAbort(e)) return [];
@@ -859,6 +930,15 @@ export async function searchFoods(
   } else {
     [usda, off, eda, fs] = await Promise.all([usdaP, offP, edamamP, fatsecretP]);
   }
+
+  // 2026-05-06 (Grace) — per-source hit-count log so a search that
+  // surfaces only USDA results immediately shows whether the other
+  // three sources returned 0 hits (env var / quota / outage) or were
+  // simply outranked by USDA in the merge. Quiet log; only fires
+  // once per searchFoods call.
+  console.log(
+    `[searchFoods] q="${t}" page=${page} hits — usda=${usda.length} off=${off.length} edamam=${eda.length} fatsecret=${fs.length}`,
+  );
 
   return [...genericRows, ...mergeResults(qRank, usda, off, eda, fs, limit - genericRows.length)];
 }

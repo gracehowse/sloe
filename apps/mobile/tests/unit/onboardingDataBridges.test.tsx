@@ -21,6 +21,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render } from "@testing-library/react-native";
 import { Text as RNText } from "react-native";
 
+// AsyncStorage shim already lives in the workspace; the provider's
+// localStorage hydration short-circuits when `initial` is supplied.
+
+import {
+  OnboardingProvider,
+  useOnboarding,
+} from "../../components/onboarding/context";
+import { MobileDataBridgesStep } from "../../components/onboarding/steps/data-bridges";
+import {
+  DEFAULT_ONBOARDING_STATE,
+  type OnboardingState,
+} from "../../../../src/lib/onboarding/state";
+
 void React;
 
 // Auth context — authed user so syncHealthData has a user id to call.
@@ -70,19 +83,6 @@ vi.mock("@/lib/supprWeb", () => ({
   getSupprApiBase: () => "https://suppr-club.com",
   getSupprWebBase: () => "https://suppr-club.com",
 }));
-
-// AsyncStorage shim already lives in the workspace; the provider's
-// localStorage hydration short-circuits when `initial` is supplied.
-
-import {
-  OnboardingProvider,
-  useOnboarding,
-} from "../../components/onboarding/context";
-import { MobileDataBridgesStep } from "../../components/onboarding/steps/data-bridges";
-import {
-  DEFAULT_ONBOARDING_STATE,
-  type OnboardingState,
-} from "../../../../src/lib/onboarding/state";
 
 beforeEach(() => {
   try {

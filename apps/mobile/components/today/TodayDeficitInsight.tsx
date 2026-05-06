@@ -5,7 +5,7 @@ import {
   weekSummaryDateKeys,
   type WeekSummaryMode,
 } from "../../../../src/lib/nutrition/weekSummaryWindow";
-import type { JournalMeal } from "@/lib/nutritionJournal";
+import { dateKeyFromDate, type JournalMeal } from "@/lib/nutritionJournal";
 import { NET_DEFICIT_LABEL } from "../../../../src/lib/copy/today";
 
 /**
@@ -56,52 +56,66 @@ export interface TodayDeficitInsightProps {
 }
 
 export function TodayDeficitInsight({
-  remaining,
   weekSummaryMode,
   selectedDate,
   weekStartDay,
   byDay,
-  targetCalories,
-  preferActivityAdjustedCalories,
-  activityBonusCaloriesOnly,
   activityBurnByDay,
   basalBurnByDay,
-  maintenanceKcal,
-  dayActivityBudgetAddon,
   textSecondaryColor,
   surfaceBackgroundColor,
   surfaceBorderColor,
   labelColor,
 }: TodayDeficitInsightProps) {
   const keys = weekSummaryDateKeys(weekSummaryMode, selectedDate, weekStartDay);
-  const keysWithMeals = keys.filter((k) => (byDay[k] ?? []).length > 0);
   // F-25 (2026-04-21): hide the deficit banner on an empty day. Before,
   // a user with nothing logged saw "~1667 kcal deficit so far today" —
   // technically true but useless and contributing to the cluttered-3-
   // cards feeling on Today (TestFlight AJ2q4OgYYXE7). If the *current*
   // day has 0 meals, the banner adds no information — don't render.
-  const todayKey = selectedDate.toISOString().slice(0, 10);
+  // Use the local-time day key (matches `dateKeyFromDate` used across
+  // the host) — `toISOString().slice(0,10)` returns the UTC day, which
+  // diverges from the keys used by `byDay`, `activityBurnByDay`, and
+  // `basalBurnByDay` for any user not on UTC. Pre-fix, the banner
+  // could read an empty burn record near midnight in non-UTC zones.
+  const todayKey = dateKeyFromDate(selectedDate);
   const hasLoggedToday = (byDay[todayKey] ?? []).length > 0;
   if (!hasLoggedToday) return null;
 
-  const avgDeficit = keysWithMeals.length < 2
-    ? null
-    : Math.round(
-        keysWithMeals.reduce((sum, k) => {
-          const dayCals = (byDay[k] ?? []).reduce((a, m) => a + m.calories, 0);
-          const dayGoal =
-            targetCalories +
-            dayActivityBudgetAddon(
-              preferActivityAdjustedCalories,
-              activityBonusCaloriesOnly,
-              activityBurnByDay,
-              basalBurnByDay,
-              maintenanceKcal,
-              k,
-            );
-          return sum + (dayGoal - dayCals);
-        }, 0) / keysWithMeals.length,
-      );
+  // 2026-05-05 (Grace): the banner used to show `goal - consumed`
+  // (calories REMAINING in budget) but labelled it "deficit", which
+  // contradicted the Activity Bonus card directly below — that card
+  // shows `burn - consumed` (true energy deficit). Same screen, same
+  // word, two different numbers. Aligned to the Activity Bonus
+  // calculation so the two surfaces always agree:
+  //   - today's number = burnSoFar(today) - consumed(today)
+  //   - 7-day avg     = (Σburn(window) - Σconsumed(window)) / 7
+  // (matches `TodayActivityBonusCard` `weekDeficit / 7`).
+  const consumedToday = (byDay[todayKey] ?? []).reduce(
+    (a, m) => a + Math.max(0, m.calories),
+    0,
+  );
+  const burnToday =
+    (activityBurnByDay[todayKey] ?? 0) + (basalBurnByDay[todayKey] ?? 0);
+  const todayNetDeficit = Math.round(burnToday - consumedToday);
+  // No burn data yet → can't compute a true net; suppress rather than
+  // silently fall back to a different definition.
+  if (burnToday <= 0) return null;
+  // Banner is for "you're in deficit" — if today is actually a surplus
+  // the Activity Bonus card already surfaces that with appropriate
+  // colour; don't double-render with a confusing positive-framed line.
+  if (todayNetDeficit <= 0) return null;
+
+  let weekBurn = 0;
+  let weekConsumed = 0;
+  for (const dk of keys) {
+    weekBurn += (activityBurnByDay[dk] ?? 0) + (basalBurnByDay[dk] ?? 0);
+    weekConsumed += (byDay[dk] ?? []).reduce(
+      (a, m) => a + Math.max(0, m.calories),
+      0,
+    );
+  }
+  const avgDeficit = weekBurn > 0 ? Math.round((weekBurn - weekConsumed) / 7) : null;
 
   const resolvedBg = surfaceBackgroundColor ?? Accent.primary + "08";
   const resolvedBorder = surfaceBorderColor ?? Accent.primary + "30";
@@ -118,7 +132,7 @@ export function TodayDeficitInsight({
       }}
     >
       <Text style={{ fontSize: 13, fontWeight: "600", color: resolvedLabel }}>
-        ~{remaining} kcal {NET_DEFICIT_LABEL} so far today
+        ~{todayNetDeficit.toLocaleString()} kcal {NET_DEFICIT_LABEL} so far today
       </Text>
       {/* F-83 (2026-04-25) — hide the rolling-average sub-line when it
           sits in the noise floor (<50 kcal/day). A "~2 kcal/day deficit"
@@ -130,7 +144,7 @@ export function TodayDeficitInsight({
           floor in either direction. */}
       {avgDeficit != null && Math.abs(avgDeficit) >= 50 ? (
         <Text style={{ fontSize: 11, color: textSecondaryColor, marginTop: 4 }}>
-          {weekSummaryMode === "calendar_week" ? "Week avg" : "7-day avg"}: ~{avgDeficit} kcal/day {NET_DEFICIT_LABEL}
+          {weekSummaryMode === "calendar_week" ? "Week avg" : "7-day avg"}: ~{avgDeficit.toLocaleString()} kcal/day {NET_DEFICIT_LABEL}
         </Text>
       ) : null}
     </View>

@@ -19,11 +19,6 @@ type SubmitFoodRequest = {
   servingSizeG?: number;
 };
 
-type SearchRequest = {
-  query: string;
-  limit?: number;
-};
-
 /**
  * GET /api/user-foods?q=<query>&limit=10
  *

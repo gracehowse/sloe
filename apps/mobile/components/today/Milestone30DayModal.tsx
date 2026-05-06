@@ -3,7 +3,7 @@ import { Modal, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X, Sparkles, Flame, Utensils, Scale } from "lucide-react-native";
 import { Accent, Radius, Spacing } from "@/constants/theme";
-import type { Milestone30DayContent } from "@/lib/milestone30Day";
+import { type Milestone30DayContent } from "@/lib/milestone30Day";
 
 /**
  * Milestone30DayModal — the "30 days of logging" trust moment.
@@ -72,9 +72,17 @@ export function Milestone30DayModal({
             borderTopLeftRadius: 24,
             borderTopRightRadius: 24,
             paddingTop: Spacing.xl,
-            paddingBottom: insets.bottom + Spacing.xl,
             paddingHorizontal: Spacing.xl,
+            paddingBottom: Spacing.md,
             maxHeight: "85%",
+            // Audit 2026-05-04 #33: soft shadow gives the sheet a
+            // raised feel against the dimmed backdrop instead of
+            // looking pasted on.
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: -8 },
+            shadowOpacity: 0.18,
+            shadowRadius: 24,
+            elevation: 16,
           }}
         >
           <Pressable
@@ -82,14 +90,16 @@ export function Milestone30DayModal({
             hitSlop={12}
             accessibilityRole="button"
             accessibilityLabel="Close"
-            style={{ position: "absolute", top: 16, right: 20 }}
+            style={{ position: "absolute", top: 16, right: 20, zIndex: 2 }}
           >
             <X size={24} color={textSecondaryColor} strokeWidth={2.25} />
           </Pressable>
 
           <ScrollView
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingTop: Spacing.sm }}
+            keyboardShouldPersistTaps="handled"
+            style={{ flexGrow: 0 }}
+            contentContainerStyle={{ paddingTop: Spacing.sm, paddingBottom: Spacing.sm }}
           >
             <View
               style={{
@@ -131,8 +141,19 @@ export function Milestone30DayModal({
                 paddingHorizontal: 8,
               }}
             >
-              You&apos;ve logged {content.daysLogged} days. Here&apos;s what
-              your month looks like.
+              {/* Debug audit 2026-05-05 (Grace): subtitle used to read
+                  "You crossed {MILESTONE_30_DAY_THRESHOLD}+ distinct days
+                  with meals logged" — but the headline already shows the
+                  user's actual count (e.g. "49 days of meal logging").
+                  Two numbers about the same metric on adjacent lines
+                  read as a contradiction (49 ≠ 30+) and made the third
+                  number ("Best Run 28 days" — a different metric, the
+                  longest *consecutive* run) feel like noise. Subtitle
+                  now drops the threshold reference and just frames the
+                  three stats below; the headline owns "distinct days"
+                  and the Best Run tile owns "consecutive run". */}
+              Here&apos;s a snapshot of your sustained logging — averages,
+              favourites, and your best consecutive run.
             </Text>
 
             {/* Stats card 1: avg kcal + longest streak */}
@@ -154,7 +175,11 @@ export function Milestone30DayModal({
               />
               <StatTile
                 icon={<Sparkles size={18} color={Accent.primary} strokeWidth={2.25} />}
-                label="Longest streak"
+                // Audit 2026-05-04 #26: "Best consecutive run" upper-cased
+                // to "BEST CONSECUTIVE R…" with a trailing ellipsis at
+                // the available column width on iPhone 16 Pro. Shorter
+                // label fits cleanly without changing meaning.
+                label="Best run"
                 value={`${content.longestStreak} day${content.longestStreak === 1 ? "" : "s"}`}
                 textColor={textColor}
                 textSecondaryColor={textSecondaryColor}
@@ -257,7 +282,7 @@ export function Milestone30DayModal({
                     flex: 1,
                   }}
                 >
-                  Total weight change
+                  Weight (first→last log day)
                 </Text>
                 <Text
                   style={[
@@ -269,27 +294,27 @@ export function Milestone30DayModal({
                 </Text>
               </View>
             ) : null}
-
-            <Pressable
-              onPress={onDismiss}
-              accessibilityRole="button"
-              accessibilityLabel="Keep going"
-              style={{
-                width: "100%",
-                paddingVertical: 16,
-                borderRadius: Radius.md,
-                backgroundColor: Accent.primary,
-                alignItems: "center",
-                marginTop: Spacing.sm,
-              }}
-            >
-              <Text
-                style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}
-              >
-                Keep going
-              </Text>
-            </Pressable>
           </ScrollView>
+
+          {/* Outside ScrollView so the CTA always receives taps (Fabric modal + long scroll). */}
+          <Pressable
+            onPress={onDismiss}
+            accessibilityRole="button"
+            accessibilityLabel="Keep going"
+            style={{
+              width: "100%",
+              paddingVertical: 16,
+              borderRadius: Radius.md,
+              backgroundColor: Accent.primary,
+              alignItems: "center",
+              marginTop: Spacing.sm,
+              marginBottom: insets.bottom > 0 ? insets.bottom : Spacing.md,
+            }}
+          >
+            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>
+              Keep going
+            </Text>
+          </Pressable>
         </View>
       </View>
     </Modal>

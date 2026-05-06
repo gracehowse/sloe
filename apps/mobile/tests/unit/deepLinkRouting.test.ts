@@ -19,6 +19,8 @@
  */
 import { describe, expect, it, vi } from "vitest";
 
+import { decideDeepLinkAction } from "../../lib/deepLinkRouting";
+
 // `lib/deepLinkRouting` transitively imports `expo-linking` through
 // `lib/resolveImportUrl`. Stub `expo-linking.parse` with a minimal
 // URL-parser-shaped implementation so the test can run in node/vitest
@@ -46,8 +48,6 @@ vi.mock("expo-linking", () => ({
     }
   },
 }));
-
-import { decideDeepLinkAction } from "../../lib/deepLinkRouting";
 
 describe("decideDeepLinkAction — navigation deeplinks must NOT be intercepted", () => {
   it("ignores bare suppr:// (lets Expo Router default to home)", () => {

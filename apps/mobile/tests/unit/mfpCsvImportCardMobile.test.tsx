@@ -26,6 +26,9 @@ import {
 } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
+import { MobileMfpCsvImportCard } from "../../components/imports/MfpCsvImportCard";
+import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
+
 void React;
 
 // Theme colours stub.
@@ -68,9 +71,6 @@ vi.mock("expo-document-picker", () => ({
   default: { getDocumentAsync: (...a: unknown[]) => documentPickerMock(...a) },
   getDocumentAsync: (...a: unknown[]) => documentPickerMock(...a),
 }));
-
-import { MobileMfpCsvImportCard } from "../../components/imports/MfpCsvImportCard";
-import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
 
 beforeEach(() => {
   authedFetchMock.mockReset();

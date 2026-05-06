@@ -1,9 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { webRecipeDeepLink } from "../../lib/share/recipeDeepLink.ts";
 import { Icons } from "./ui/icons";
 import { IconBox } from "./ui/icon-box";
 import { SourceBadge } from "./suppr/source-badge";
-import { toast } from "sonner";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import type { UserTier } from "../../types/recipe.ts";
@@ -23,7 +21,6 @@ import { RecipeHeroFallback } from "./suppr/RecipeHeroFallback";
 // from the Discover hero card — see the comment on the card body.
 
 const COLLECTIONS_KEY = "suppr-collections-v1";
-const HEARTS_KEY = "suppr-feed-hearts-v1";
 /** ISO timestamp: last time the user left the Discover view (used for "new from follows" banner). */
 const DISCOVER_LAST_LEFT_AT_KEY = "suppr-discover-last-left-at";
 
@@ -44,28 +41,6 @@ function saveCollections(rows: CollectionRow[]) {
   localStorage.setItem(COLLECTIONS_KEY, JSON.stringify(rows));
 }
 
-function loadHeartSet(): Set<string> {
-  try {
-    const raw = localStorage.getItem(HEARTS_KEY);
-    if (!raw) return new Set();
-    const arr = JSON.parse(raw) as unknown;
-    return new Set(Array.isArray(arr) ? arr.filter((x): x is string => typeof x === "string") : []);
-  } catch {
-    return new Set();
-  }
-}
-
-function persistHeartSet(ids: Set<string>) {
-  localStorage.setItem(HEARTS_KEY, JSON.stringify([...ids]));
-}
-
-function formatCompactNumber(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
-  if (n >= 10_000) return `${Math.round(n / 1000)}k`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace(/\.0$/, "")}k`;
-  return String(n);
-}
-
 interface DiscoverFeedProps {
   userTier: UserTier;
   /** Open a recipe when landing with `?recipe=` (share link). */
@@ -79,23 +54,6 @@ interface DiscoverFeedProps {
   onViewTracker?: () => void;
 }
 
-function formatFeedTime(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) {
-    return "";
-  }
-  const now = Date.now();
-  const diffMs = now - d.getTime();
-  const mins = Math.floor(diffMs / 60000);
-  if (mins < 1) return "Just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 48) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 14) return `${days}d ago`;
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-}
-
 // Fit-percent badge history:
 //   - F-11 (TestFlight `AA63DQ7xd2gRhdjC3L7gjtE`, 2026-04-19) removed
 //     the "Great / Good / Warn" pill because the underlying `fit`
@@ -107,8 +65,6 @@ function formatFeedTime(iso: string): string {
 //     prototype with fit % and said 'add this' — overrides F-11".
 //     Pinned by `tests/unit/recipeCardFitBadge.test.ts`.
 
-type StoryCreator = { key: string; name: string; image: string; recipeId: string };
-
 export const DiscoverFeed = memo(function DiscoverFeed({
   userTier,
   initialOpenRecipeId,
@@ -117,10 +73,9 @@ export const DiscoverFeed = memo(function DiscoverFeed({
   onConsumedDeepLinkRecipe,
   onViewTracker,
 }: DiscoverFeedProps) {
-  const { discoverRecipes, toggleSaveRecipe, communityFeedCount, refreshDiscoverRecipes, nutritionTargets } = useAppData();
+  const { discoverRecipes, nutritionTargets } = useAppData();
   const [selectedRecipe, setSelectedRecipe] = useState<RecipeCard | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [showFilters, setShowFilters] = useState(false);
   // Eating-out row — Edamam restaurant + branded results, debounced 350ms.
   // Surfaces only when the query is ≥ 3 chars to avoid noisy/empty calls.
   // TestFlight `AOI9xgY88Dx-uphiXI8IzEk` (2026-04-18). Mirrors mobile Discover.
@@ -163,18 +118,14 @@ export const DiscoverFeed = memo(function DiscoverFeed({
     maxCalories: "",
     minProtein: "",
   });
-  const [collections, setCollections] = useState<CollectionRow[]>(() => loadCollections());
-  const [newCollectionName, setNewCollectionName] = useState("");
+  const [collections] = useState<CollectionRow[]>(() => loadCollections());
   const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
-  const [heartTick, setHeartTick] = useState(0);
-  const hearts = useMemo(() => loadHeartSet(), [heartTick]);
   const [quickFilter, setQuickFilter] = useState("For You");
   const [feedScope, setFeedScope] = useState<"forYou" | "following">("forYou");
   const [followedAuthorIds, setFollowedAuthorIds] = useState<Set<string>>(() => new Set());
   const [followedCreatorIds, setFollowedCreatorIds] = useState<Set<string>>(() => new Set());
   const [followGraphLoading, setFollowGraphLoading] = useState(true);
-  const [newFromFollowsCount, setNewFromFollowsCount] = useState(0);
-  const [dismissNewFromFollows, setDismissNewFromFollows] = useState(false);
+  const [, setNewFromFollowsCount] = useState(0);
   const prevDetailRef = useRef<RecipeCard | null>(null);
 
   useEffect(() => {
@@ -280,20 +231,6 @@ export const DiscoverFeed = memo(function DiscoverFeed({
     };
   }, [followGraphLoading, followedAuthorIds, followedCreatorIds]);
 
-  const toggleHeart = (recipeId: string) => {
-    const next = loadHeartSet();
-    if (next.has(recipeId)) next.delete(recipeId);
-    else next.add(recipeId);
-    persistHeartSet(next);
-    setHeartTick((t) => t + 1);
-  };
-
-  const likeCount = (recipe: RecipeCard) => {
-    const base = recipe.savedCount;
-    const liked = hearts.has(recipe.id);
-    return formatCompactNumber(base + (liked ? 1 : 0));
-  };
-
   useEffect(() => {
     saveCollections(collections);
   }, [collections]);
@@ -310,50 +247,6 @@ export const DiscoverFeed = memo(function DiscoverFeed({
       onConsumedDeepLinkRecipe();
     }
   }, [initialOpenRecipeId, discoverRecipes, onConsumedDeepLinkRecipe]);
-
-  const storyCreators: StoryCreator[] = useMemo(() => {
-    const seen = new Set<string>();
-    const out: StoryCreator[] = [];
-    for (const r of discoverRecipes) {
-      const key = `${r.creatorName}|${r.creatorImage}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      out.push({ key: r.id, name: r.creatorName, image: r.creatorImage, recipeId: r.id });
-    }
-    return out;
-  }, [discoverRecipes]);
-
-  const scrollToPost = (recipeId: string) => {
-    document.getElementById(`discover-post-${recipeId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-
-  const addToCollection = (recipeId: string, collectionId: string) => {
-    setCollections((prev) =>
-      prev.map((c) =>
-        c.id === collectionId && !c.recipeIds.includes(recipeId)
-          ? { ...c, recipeIds: [...c.recipeIds, recipeId] }
-          : c,
-      ),
-    );
-    toast.success("Saved to collection");
-  };
-
-  const createCollection = () => {
-    const name = newCollectionName.trim();
-    if (!name) return;
-    const id = `col-${Date.now()}`;
-    setCollections((prev) => [...prev, { id, name, recipeIds: [] }]);
-    setNewCollectionName("");
-    toast.success("Collection created — use Add on a recipe");
-  };
-
-  const copyShareLink = (recipeId: string) => {
-    const url = webRecipeDeepLink(recipeId, window.location.origin);
-    void navigator.clipboard.writeText(url).then(
-      () => toast.success("Link copied"),
-      () => toast.error("Could not copy link"),
-    );
-  };
 
   const recipes = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -792,6 +685,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                     style={{ aspectRatio: recipe.image ? "16 / 10" : "8 / 1" }}
                   >
                     {recipe.image ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- remote creator URLs; next/image domains not enumerated
                       <img
                         src={recipe.image}
                         alt=""
@@ -937,6 +831,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                       style={{ aspectRatio: recipe.image ? "16 / 10" : "8 / 1" }}
                     >
                       {recipe.image ? (
+                        // eslint-disable-next-line @next/next/no-img-element -- remote creator URLs; next/image domains not enumerated
                         <img src={recipe.image} alt="" className="w-full h-full object-cover" />
                       ) : (
                         <RecipeHeroFallback id={recipe.id} title={recipe.title} iconSize={28} />
@@ -1016,6 +911,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                       >
                         <span className="w-10 h-10 rounded-lg bg-muted text-muted-foreground inline-flex items-center justify-center shrink-0 overflow-hidden">
                           {recipe.image ? (
+                            // eslint-disable-next-line @next/next/no-img-element -- remote creator URLs; next/image domains not enumerated
                             <img src={recipe.image} alt="" className="w-full h-full object-cover" />
                           ) : (
                             <Icons.chef className="w-[18px] h-[18px]" />

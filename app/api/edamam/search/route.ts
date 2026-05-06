@@ -104,9 +104,18 @@ export async function GET(req: Request) {
     });
     return NextResponse.json({ ok: true, mode, page: pageNumber, hits });
   } catch (e) {
-    return NextResponse.json(
-      { ok: false, error: "edamam_failed", message: e instanceof Error ? e.message : "Edamam request failed" },
-      { status: 502 },
-    );
+    // 2026-05-06 (Grace) — log + return ok:true with `_diag` echo so
+    // the merge contract is preserved (other 3 sources keep
+    // rendering) AND the mobile / web client diagnostic surfaces the
+    // upstream cause without having to chase Vercel runtime logs.
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[/api/edamam/search] failed:", msg);
+    return NextResponse.json({
+      ok: true,
+      mode,
+      page: pageNumber,
+      hits: [],
+      _diag: { upstream: "failed", message: msg.slice(0, 200) },
+    });
   }
 }

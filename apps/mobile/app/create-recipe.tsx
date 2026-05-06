@@ -21,13 +21,6 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { decode } from "base64-arraybuffer";
 
-let ImagePicker: typeof import("expo-image-picker") | null = null;
-try {
-  ImagePicker = require("expo-image-picker") as typeof import("expo-image-picker");
-} catch {
-  // Native module not available (Expo Go) — image picker will be disabled
-}
-
 import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
@@ -51,6 +44,13 @@ import { parseRawIngredients } from "../../../src/lib/recipe-ingredients/parseRa
 import { splitPastedIngredientLines } from "../../../src/lib/recipe-ingredients/splitPastedIngredientLines";
 import { flatMacroRowsFromVerifyJson } from "../../../src/lib/nutrition/verifyRecipeResponse";
 import { ingredientVerifyNeedsReview } from "../../../src/lib/nutrition/verifyConfidencePolicy";
+
+let ImagePicker: typeof import("expo-image-picker") | null = null;
+try {
+  ImagePicker = require("expo-image-picker") as typeof import("expo-image-picker");
+} catch {
+  // Native module not available (Expo Go) — image picker will be disabled
+}
 
 type Ingredient = {
   id: string;
