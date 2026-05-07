@@ -52,7 +52,7 @@ import {
   View,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Camera, Images, Plus, X } from "lucide-react-native";
+import { ArrowRight, Camera, Images, Plus, X } from "lucide-react-native";
 
 import { Accent, IconSize, Radius, Spacing } from "@/constants/theme";
 import {
@@ -667,7 +667,10 @@ export default function PhotoLogSheet({
                     marginBottom: Spacing.sm,
                   }}
                 >
-                  <Text style={{ fontSize: 16, marginRight: 6 }}>👉</Text>
+                  {/* 2026-05-06 audit (F-107): swap 👉 emoji for
+                      lucide ArrowRight per project icon-registry
+                      rule. */}
+                  <ArrowRight size={16} color={colors.text} style={{ marginRight: 6 }} />
                   <Text style={{ flex: 1, fontSize: 13, fontWeight: "600", color: colors.text }}>
                     Plate total
                   </Text>

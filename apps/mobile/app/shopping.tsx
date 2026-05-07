@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Users } from "lucide-react-native";
+import { ShoppingCart, Users } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/context/auth";
@@ -669,7 +669,13 @@ export default function ShoppingListScreen() {
           </View>
         ) : items.length === 0 ? (
           <View style={styles.emptyCard}>
-            <Text style={styles.emptyIcon}>🛒</Text>
+            {/* 2026-05-06 audit (F-107): swap 🛒 emoji for lucide
+                ShoppingCart per project icon-registry rule (Pattern
+                #7 in TestFlight tracker). Emojis render
+                inconsistently across iOS / Android / web fonts. */}
+            <View style={{ alignItems: "center", marginBottom: Spacing.sm }}>
+              <ShoppingCart size={48} color={Accent.primary} strokeWidth={1.5} />
+            </View>
             <Text style={styles.emptyTitle}>No shopping list yet</Text>
             <Text style={styles.emptyDesc}>
               Generate a meal plan first — your shopping list is created automatically.

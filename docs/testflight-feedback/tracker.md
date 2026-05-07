@@ -93,6 +93,41 @@ Single TestFlight session this morning surfaced 4 distinct food-search + weight-
 | `AOhsQeGDzvSr` | F-120 | ⏳ outstanding | "Don't really understand what 88% verified means it sounds made up" — verify-confidence percentage is opaque. Either replace with a categorical state ("verified" / "AI-matched" / "needs review") or hide the number. Copy + IA decision. |
 | `AJK4VIZdlOwU` | F-121 | ⏳ outstanding | "Still having issues importing" — recipe-import error without specifics. Could be Insta/TikTok caption flow (F-76 family) or a different surface. Need screenshot context. |
 
+**Coverage post-pass:** all 159 screenshot items + 6 crashes have an F-number assigned (F-1 → F-121). Every item's status is one of {✅, 🟡, 🔄, 🟠, ⏳, 🔍}.
+
+---
+
+**2026-05-06 — open-items sweep (post bulk pass, this session)**
+
+Walked every ⏳ / 🔄 / 🔍 / 🟠 entry in the tracker. Outcome:
+
+| F# | Old status | New status | Resolution |
+|----|------------|------------|------------|
+| F-70 (weight chart crosshair/zoom) | ⏳ | ✅ closed by #106 | Tap-and-drag scrubber + bucket-aware tooltip shipped today; live in `WeightChart.tsx:194` (panResponder). |
+| F-75 (tap meal for full nutrition) | ⏳ → ✅ | ✅ confirmed | Closed earlier in session by #98 + #105. |
+| F-104 (calorie ring colour mapping) | ⏳ | ✅ closed by 2026-05-05 decision | Three-state mapping (gradient/green/red) live on both surfaces — `CalorieRing.tsx:331-341` (mobile) + `daily-ring.tsx:245-263` (web). Tester report predates the decision. |
+| F-105 (recipe → log defaults to wrong slot) | ⏳ | ✅ closed by build 41 | `journalSlotFromMealTypes` honours `recipe.meal_type` first, falls back to time-of-day; `recipe/[id].tsx:1192`. Tester report predates the fix. |
+| F-107 (emoji vs lucide sweep) | ⏳ | ✅ closed this session | Swept mobile UI for emoji glyphs in active strings (excluding doc-comments + pre-removed): 2 hits — 🛒 in `shopping.tsx:672` (empty state) → `lucide-react-native ShoppingCart`; 👉 in `PhotoLogSheet.tsx:670` ("Plate total" row prefix) → `lucide-react-native ArrowRight`. |
+| F-120 (88% verified opaque) | ⏳ | ✅ closed this session | Replaced inline "88% · Partial match" rendering with categorical label only ("Partial match"). Numeric confidence retained on long-press accessibility hint for power users + screen readers. Web already aligned (uses `ConfidenceDot`, no %). |
+| F-119 (orange-when-already-verified) | ⏳ | ⏳ deferred — needs DB row inspection | `deriveIngredientVerificationTier` correctly returns "verified" when `is_verified=true` (line 67). Either the write path didn't set `is_verified` for the affected rows, or the read query is dropping the column. Need a screenshot + the recipe's actual `recipe_ingredients` rows to pin the cause. |
+| F-110 / F-115 / F-117 / F-121 | 🔍 | 🔍 deferred | All four need screenshot triage to narrow the surface (vague layout / wrong current weight / "Words can't be seen next to fat" / "Still having issues importing"). |
+| F-73 (cortado search relevance + DB coverage) | ⏳ | ⏳ kept | Big work — requires (a) OFF trust-weighting refinement (sibling of F-77 partial fix) and (b) generic-drinks seed expansion. Documented for separate session. |
+| F-74 / F-103 (logged caffeine/alcohol → cards) | ⏳ | ⏳ kept | Architectural change — `caffeine_mg` / `alcohol_g` need to be derived from `nutrition_micros`, not a separate ledger. Already partial via `bumpStimulantsForLoggedMeal` for the per-meal path; the Today cards still read the old ledger column. Documented for separate session. |
+| F-76 (caption-as-title on import) | ⏳ | ⏳ kept | Stricter title-trim rule needed at the import write site (separate from `stripSectionPrefix` which handles ingredient rows). Documented. |
+| F-106 (no "from library" entry on Today / Plan) | ⏳ | ⏳ kept | UX change — needs design pass to decide where the entry point sits without overloading the existing `+` FAB. Documented. |
+| F-108 (AI photo analysis fail) | ⏳ | ⏳ kept | Need server-side logs from the affected request to diagnose. No screenshot ID we can correlate without more info. Documented. |
+| F-109 (fasting toggle UI) | ⏳ | ⏳ kept | Settings or quick-toggle surface needed; the fasting-window state is set on Profile but there's no easy on/off. Documented. |
+| F-111 (household invite "Add" button broken) | ⏳ | ⏳ kept | Code-level investigation needed on the household invite path — the create path was already partially fixed (G-5) but invite is a separate flow. Pairs with the existing P0 "Households non-functional". Documented. |
+| F-113 (journey numbers wrong) | ⏳ | ⏳ kept | Need tester's actual numbers vs computed to pin which fn in `weightProjection.ts` is wrong. Documented. |
+| F-114 (gets stuck loading more data) | ⏳ | ⏳ kept | Pattern #10 (Progress cold-load) + Pattern #11 (HK native crashes) likely overlap. The HK crash thread (G-1 family) probably eats this on build 12+, but tester reported again on build 42 — needs re-verification. |
+
+**Summary:**
+- 6 closed in this sweep (F-70, F-75, F-104, F-105, F-107, F-120)
+- 4 deferred pending screenshot triage (F-110, F-115, F-117, F-121)
+- 9 documented for separate sessions (F-73, F-74, F-76, F-103, F-106, F-108, F-109, F-111, F-113, F-114, F-119)
+
+Net open items count: ~12 ⏳ + ~4 🔍 + the 6 ✅ that flipped today. Every ASC ID is now mapped to an F-number with a clear next-step.
+
 ---
 
 **2026-04-25 ASC pull (build 39; `npm run testflight:feedback`):** 139 screenshot / 6 crash threads. **+4 new rows** vs the 2026-04-24 pull:
