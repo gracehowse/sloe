@@ -94,14 +94,24 @@ describe("Round 2 — colour token alignment", () => {
 });
 
 describe("Round 2 — copy / discoverability", () => {
-  it("D22: confidence row labels the percentage so 35% / 98% are self-explanatory", () => {
+  it("D22: confidence row uses categorical label only (no opaque % string)", () => {
     const SRC = read("apps/mobile/app/recipe/[id].tsx");
-    // 2026-05-02 fix renamed `confLabel` to `tierLabel` because the
-    // row label is now derived from a tier (verified / partial /
-    // estimated / unverified) rather than from the raw confidence
-    // bucket alone. The "%·label" form is preserved on non-verified
-    // rows so the percentage stays self-explanatory.
-    expect(SRC).toMatch(/\{confPct\}% · \{tierLabel\}/);
+    // 2026-05-06 audit (F-120): tester quote — "Don't really
+    // understand what 88% verified means it sounds made up."
+    // Dropped the inline "{confPct}% · {tierLabel}" rendering;
+    // categorical label alone reads cleaner ("Partial match" /
+    // "Estimated" / "Unverified") and the row colour carries the
+    // same semantic. The numeric confidence is still surfaced via
+    // the long-press accessibility hint
+    // ("Status: Partial match (88%)") for power users + screen
+    // readers.
+    //
+    // Pin asserts: (a) the inline "%·label" form is GONE from the
+    // visible Text node, and (b) the accessibilityHint pattern
+    // still includes the percentage so screen-reader users keep
+    // the precision.
+    expect(SRC).not.toMatch(/\{confPct\}% · \{tierLabel\}/);
+    expect(SRC).toMatch(/`Status: \$\{tierLabel\}\$\{confPct/);
   });
 
   it("D21: Progress page weight card header is Sentence Case (matches Daily Calories / Macro Adherence)", () => {
