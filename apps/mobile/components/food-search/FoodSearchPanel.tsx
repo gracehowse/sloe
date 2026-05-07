@@ -591,6 +591,15 @@ export default function FoodSearchPanel({
         backfillMissingMacros(appended);
         return appended;
       });
+    } catch (e) {
+      // F-114 (`AHOkMJ8yu5hA`, "Gets stuck trying to get more data"):
+      // a failed pagination fetch must not leave `hasMoreRef` dangling
+      // true — otherwise every subsequent scroll-to-bottom retriggers
+      // the same failing fetch and the user sees an endless spinner
+      // cycle. Stop further attempts once a page errors so the list
+      // settles into a final state.
+      hasMoreRef.current = false;
+      console.warn("[FoodSearchPanel] loadMore failed:", e);
     } finally {
       setLoadingMore(false);
     }
