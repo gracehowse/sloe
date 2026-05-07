@@ -227,20 +227,55 @@ export default function PhotoLogSheet({
     setStage("analysing");
     setErrorMsg(null);
     try {
+      // F-108 (2026-05-07): apiBase can be empty if expo-constants
+      // hasn't resolved yet (rare race on first launch). A relative
+      // URL on RN throws a vague "URL not absolute" error that the
+      // generic catch swallowed, leaving the user with a meaningless
+      // "Photo logging failed" toast.
+      if (!apiBase) {
+        console.error("[PhotoLogSheet] apiBase missing — bailing out before fetch");
+        setErrorMsg("Couldn't reach the server. Please try again in a moment.");
+        setStage("error");
+        return;
+      }
       const form = new FormData();
       form.append("image", {
         uri: asset.uri,
         type: asset.mimeType ?? "image/jpeg",
         name: asset.fileName ?? "meal.jpg",
       } as any);
-      const resp = await fetch(`${apiBase}/api/nutrition/photo-log`, {
-        method: "POST",
-        headers: {
-          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-        },
-        body: form,
+      // F-108 (2026-05-07): client-side abort so a hung request
+      // doesn't strand the user on the analyzing spinner. Server
+      // owns its own 55s OpenAI timeout; this 65s ceiling matches
+      // the route's `maxDuration = 60` plus a small headroom.
+      const ac = new AbortController();
+      const clientTimeout = setTimeout(() => ac.abort(), 65_000);
+      let resp: Response;
+      try {
+        resp = await fetch(`${apiBase}/api/nutrition/photo-log`, {
+          method: "POST",
+          headers: {
+            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+          },
+          body: form,
+          signal: ac.signal,
+        });
+      } finally {
+        clearTimeout(clientTimeout);
+      }
+      const data = await resp.json().catch((parseErr) => {
+        console.error("[PhotoLogSheet] response not JSON", parseErr);
+        return null;
       });
-      const data = await resp.json();
+      // F-108: server now returns differentiated `error` codes; surface
+      // the server-supplied `message` when present rather than collapsing
+      // every failure to one string. Anything missing falls through to a
+      // tone-appropriate fallback below.
+      if (!data) {
+        setErrorMsg("The server's reply was unreadable. Please try again.");
+        setStage("error");
+        return;
+      }
       if (resp.status === 403 && data?.error === "upgrade_required") {
         // 2026-05-02 — free-taster quota exhausted. Hand off to the
         // host so it can close this sheet and open the AiPaywallSheet
@@ -263,11 +298,24 @@ export default function PhotoLogSheet({
         setStage("error");
         return;
       }
-      if (!data?.ok || !Array.isArray(data.items) || data.items.length === 0) {
+      if (!data.ok || !Array.isArray(data.items) || data.items.length === 0) {
+        // F-108: differentiate the failure mode by the server's `error`
+        // code. Falls back to the user-friendly fallback when the code
+        // is unknown (defensive — shouldn't happen with the route's
+        // current contract).
+        const errCode = typeof data.error === "string" ? data.error : null;
+        const fallbackByCode: Record<string, string> = {
+          openai_timeout: "The AI took too long to respond. Try again in a moment.",
+          openai_network_error: "Could not reach the AI service. Try again in a moment.",
+          openai_http_error: "The AI service had a problem with this image. Try a different photo or angle.",
+          model_unparseable: "Couldn't read the AI's reply. Try a different angle or better light.",
+          file_too_large: "That photo is too large. Crop tighter or take a fresh shot.",
+          missing_image: "No image was uploaded. Pick a photo and try again.",
+        };
         setErrorMsg(
-          typeof data?.message === "string"
-            ? data.message
-            : "Couldn't read the photo. Try a clearer angle or better light.",
+          (typeof data.message === "string" && data.message) ||
+            (errCode ? fallbackByCode[errCode] : null) ||
+            "Couldn't read the photo. Try a clearer angle or better light.",
         );
         setStage("error");
         return;
@@ -286,8 +334,21 @@ export default function PhotoLogSheet({
       setAddons(Array.isArray(data.addons) ? data.addons : []);
       setNotes(typeof data.notes === "string" ? data.notes : null);
       setStage("review");
-    } catch {
-      setErrorMsg("Photo logging failed. Check your connection and try again.");
+    } catch (err) {
+      // F-108 (2026-05-07): name the error so it's diagnosable from
+      // device logs without server access.
+      const isAbort =
+        (err instanceof Error && err.name === "AbortError") ||
+        (err as { name?: string } | null)?.name === "AbortError";
+      if (isAbort) {
+        console.warn("[PhotoLogSheet] aborted (client timeout 65s)");
+        setErrorMsg(
+          "The photo is taking longer than usual to analyse. Check your connection and try again.",
+        );
+      } else {
+        console.error("[PhotoLogSheet] threw during photo log", err);
+        setErrorMsg("Photo logging failed. Check your connection and try again.");
+      }
       setStage("error");
     }
   }, [accessToken, apiBase, asset, onUpgradeRequired]);

@@ -79,7 +79,7 @@ Single TestFlight session this morning surfaced 4 distinct food-search + weight-
 | `AB1PYpfPjbd9` | F-105 | ⏳ outstanding | "Doesn't give me an option of which meal to log this for and it ended up logging it as lunch. Also this was a breakfast recipe and I marked it as such when I imported it." — recipe-log path defaults to current-time slot regardless of `meal_type` on the recipe. Need a meal-slot picker on quick-log + honour stored `meal_type` as default. |
 | `AECfotBlQgwf` | F-106 | ✅ already shipped 2026-05-01 — LogSheet has a Library tab on both platforms (`apps/mobile/components/today/LogSheet.tsx:259` + `src/app/components/NutritionTracker.tsx:3191`); Planner has "Open recipe library" / "Browse recipe library" CTAs (`apps/mobile/app/(tabs)/planner.tsx:1998+2115`). Tester report predates the fix. | "No way to add recipes saved to library from here I have to go to recipes then to library then click the recipe then scroll down then log it." |
 | `ALCot9q4E4UF` | F-107 | ⏳ outstanding | "Emoji here instead of lucid icon. Always use icons." — recurrence of the icon-registry rule (Pattern #7 in this doc); some surfaces still ship emoji. Sweep needed. |
-| `ABM2nBZTJf9W` | F-108 | ⏳ outstanding | "Couldn't analyse this food even though it's pretty clear" — AI-photo analysis fail without a screenshot of which item; need to inspect logs. |
+| `ABM2nBZTJf9W` | F-108 | ⏳ partial fix shipped (PR #131, build 45) — `nutrition-engine` audit found 3 P0 causes: (1) no `maxDuration` on the route, so Vercel killed mid-OpenAI call; (2) bare `catch {}` swallowed every failure into one generic toast; (3) error codes already returned by the route were collapsed client-side. All three fixed: `maxDuration = 60`, `AbortController` + named catch, per-code message map mobile + web. Stays ⏳ for tester re-verify. | "Couldn't analyse this food even though it's pretty clear" |
 | `AFHtAQRAWad1` | F-109 | ✅ closed by #116 (build 43) | "Can't see how to turn fasting on and off" — added an idle "Start fast" pill on Today (mobile + web), gated on IF opt-in. Tap-to-start / tap-to-end without leaving Today. |
 | `AKzwcchbHQ14` | F-110 | 🔍 vague | "Still don't like the layout look of this page" — needs screenshot triage to pin which surface. |
 
@@ -163,9 +163,25 @@ Net open items count: ~12 ⏳ + ~4 🔍 + the 6 ✅ that flipped today. Every AS
 | **F-126** | #117 | "Why would it take 5 weeks to lose another .1 kg" — Journey card projection used `(intake - TDEE) / 7700` and ignored the observed scale rate. Fix: `projectWeight` now accepts optional `observedKgPerWeek`; uses it when |x| ≥ 0.05 kg/week AND direction-aligned with the formula. Progress tab passes `timeline.weeklyRateKg`. |
 | **F-129** | #118 | Mirror of F-124 on the Weekly Recap surface — "Building confidence" copy fired despite the engine reporting high confidence. Fix: `buildWeeklyCheckin` now accepts `adaptiveTdeeConfidence`; when "high", skips the `weighInsThisWeek < 3` floor. |
 
-**Items still deferred (kept):** F-108 (AI photo analysis fail — needs server logs), F-110 (vague "don't like layout").
+**Items still deferred (kept):** F-108 (partial fix shipped today, awaiting tester re-verify on build 45), F-110 (vague "don't like layout" — needs screenshot triage).
 
-Net open items count after this sweep: **2 ⏳ items** (F-108 / F-114) + 2 🔍 items (F-110 + the unmapped 2026-04-19 `AN8GJ1Dr3M` steps/burn). F-114 stays ⏳ pending tester re-verify against the partial fix.
+Net open items count after this sweep: **2 ⏳ items** (F-108 / F-114) + 2 🔍 items (F-110 + the unmapped 2026-04-19 `AN8GJ1Dr3M` steps/burn). Both ⏳ items have partial fixes shipped pending tester re-verify on build 45.
+
+---
+
+**2026-05-07 — F-108 partial fix shipped (PR #131, build 45)**
+
+`nutrition-engine` audit of the AI photo-log path surfaced 3 P0 causes that explain the tester's "couldn't analyse" complaint without server logs:
+
+1. **No `maxDuration` export** on `app/api/nutrition/photo-log/route.ts` — Vercel's default 10s/15s cap killed mid-OpenAI call (GPT-4o vision over a multi-MB base64 image regularly takes 12–20s). Fix: `export const maxDuration = 60;`.
+2. **Bare `catch {}` swallowed every failure** in mobile + web clients into one static "Photo logging failed" toast. Fix: `catch (err)` with `console.error(...err)` and a differentiated user message.
+3. **Server error codes were already returned** (`openai_timeout`, `openai_http_error`, `file_too_large`, `model_unparseable`) but the clients collapsed them all to one fallback string. Fix: `fallbackByCode` map mobile + web with per-code copy.
+
+Plus: explicit `AbortController` on the route's OpenAI fetch (55s, sub-`maxDuration`) so a slow response returns a structured `openai_timeout` 504 instead of being killed by the platform; client-side abort + 65s ceiling so a hung request can't strand the user on the analysing spinner; logging on every failure path (`console.warn` for non-200 / abort, `console.error` for thrown).
+
+Test: `photoLogContract.test.ts` (6 cases) pins `maxDuration ≥ 30`, `AbortController` use, named-catch use, per-code message map on both clients.
+
+F-108 stays ⏳ pending tester re-verify with the new error copy on build 45 — if the user sees a specific code-mapped message ("AI took too long", "AI service had a problem"), we'll know the server isn't unanalyseable and can iterate from there. If the photo really is unanalysable, we now surface "different angle" copy that distinguishes from server failure.
 
 ---
 

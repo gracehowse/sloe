@@ -12,7 +12,19 @@ import {
 
 export const runtime = "nodejs";
 
+// F-108 (2026-05-07): GPT-4o vision over a multi-MB base64 image
+// regularly takes 12-20s. Vercel's default 10s/15s caps were killing
+// the route mid-call, leaving the mobile client with an aborted
+// stream that hit the swallowed `catch {}` and surfaced the generic
+// "Photo logging failed" toast. Match `/api/recipe-import` (50s) +
+// headroom for the bigger payload.
+export const maxDuration = 60;
+
 const MAX_BYTES = 6 * 1024 * 1024;
+// F-108 (2026-05-07): explicit OpenAI request timeout. Slightly under
+// `maxDuration` so we return a structured `openai_timeout` error
+// instead of being killed by the platform.
+const OPENAI_TIMEOUT_MS = 55_000;
 
 /**
  * Re-architected 2026-05-01 (`docs/decisions/2026-05-01-photo-log-rangefirst.md`).
@@ -208,6 +220,12 @@ export async function POST(req: Request) {
   const b64 = buf.toString("base64");
   const dataUrl = `data:${mime};base64,${b64}`;
 
+  // F-108 (2026-05-07): explicit AbortController with a sub-platform
+  // timeout so a slow OpenAI response returns a structured error
+  // instead of being killed by Vercel's `maxDuration`.
+  const ac = new AbortController();
+  const timeoutHandle = setTimeout(() => ac.abort(), OPENAI_TIMEOUT_MS);
+  const startedAt = Date.now();
   let res: Response;
   try {
     res = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -216,6 +234,7 @@ export async function POST(req: Request) {
         Authorization: `Bearer ${key}`,
         "Content-Type": "application/json",
       },
+      signal: ac.signal,
       body: JSON.stringify({
         model: MODEL_VERSION,
         // 0.3 — deterministic enough; not so cold the ranges collapse
@@ -245,16 +264,48 @@ export async function POST(req: Request) {
         ],
       }),
     });
-  } catch {
+  } catch (err) {
+    clearTimeout(timeoutHandle);
+    const elapsedMs = Date.now() - startedAt;
+    const isAbort =
+      (err instanceof Error && err.name === "AbortError") ||
+      (err as { name?: string } | null)?.name === "AbortError";
+    if (isAbort) {
+      console.warn(
+        `[photo-log] openai timeout after ${elapsedMs}ms (limit ${OPENAI_TIMEOUT_MS}ms)`,
+      );
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "openai_timeout",
+          message: "The AI took too long to respond. Try again in a moment.",
+        },
+        { status: 504 },
+      );
+    }
+    console.error("[photo-log] openai fetch threw", err);
     return NextResponse.json(
       { ok: false, error: "openai_network_error", message: "Could not reach the AI service. Please try again." },
       { status: 502 },
     );
   }
+  clearTimeout(timeoutHandle);
 
   if (!res.ok) {
+    const bodyPreview = await res.text().catch(() => "");
+    console.warn(
+      `[photo-log] openai non-200 status=${res.status} bodyPreview=${bodyPreview.slice(0, 200)}`,
+    );
     return NextResponse.json(
-      { ok: false, error: "openai_http_error", status: res.status },
+      {
+        ok: false,
+        error: "openai_http_error",
+        status: res.status,
+        message:
+          res.status === 429
+            ? "The AI service is busy right now. Try again in a moment."
+            : "The AI service had a problem with this image. Try a different photo or angle.",
+      },
       { status: 502 },
     );
   }
