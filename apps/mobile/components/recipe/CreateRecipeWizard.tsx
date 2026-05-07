@@ -70,6 +70,8 @@ import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
 import FoodSearchModal, {
   type SelectedFood,
 } from "@/components/FoodSearchModal";
+import BarcodeScannerModal from "@/components/BarcodeScannerModal";
+import type { BarcodeProduct } from "@/lib/verifyRecipe";
 import { parseIngredientLine } from "../../../../src/lib/recipe-ingredients/parseIngredientLine";
 import { normaliseInstructions } from "../../../../src/lib/recipes/normaliseInstructions";
 import { normalizeRecipeTitle } from "../../../../src/lib/recipes/normalizeRecipeTitle";
@@ -137,6 +139,11 @@ export default function CreateRecipeWizard() {
   );
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchReplaceId, setSearchReplaceId] = useState<string | null>(null);
+  // F-128 (Grace, 2026-05-07): "we need to be able to add ingredients
+  // by barcode etc (same ways we log food)". Wizard now mounts a
+  // BarcodeScannerModal so the search sheet's quick-add icon can pivot
+  // to scan without leaving the recipe-creation flow.
+  const [barcodeOpen, setBarcodeOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
   // Reduced shape for step-machine helpers. State is split across
@@ -298,6 +305,35 @@ export default function CreateRecipeWizard() {
     setIngredients((prev) => prev.filter((i) => i.id !== id));
     setMacroOverrides({});
   }, []);
+
+  // F-128 — handle a scanned product. Mirrors `onBarcodeScanned` in
+  // `apps/mobile/app/create-recipe.tsx`: 100 g default portion, OFF
+  // source, append-only (the user can edit the row after).
+  const onBarcodeScanned = useCallback(
+    (_barcode: string, product: BarcodeProduct) => {
+      const grams = product.servingSizeG ?? 100;
+      const f = grams / 100;
+      setIngredients((prev) => [
+        ...prev,
+        {
+          id: newId("ing"),
+          name: product.name,
+          amount: String(grams),
+          unit: "g",
+          calories: Math.round(product.calories * f),
+          protein: Math.round(product.protein * f * 10) / 10,
+          carbs: Math.round(product.carbs * f * 10) / 10,
+          fat: Math.round(product.fat * f * 10) / 10,
+          fiberG: Math.round(product.fiberG * f * 10) / 10,
+          source: "OFF",
+        },
+      ]);
+      setMacroOverrides({});
+      setBarcodeOpen(false);
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    },
+    [],
+  );
 
   // ---- Step 3 helpers ---------------------------------------------------
   const addStep = useCallback(() => {
@@ -1214,6 +1250,21 @@ export default function CreateRecipeWizard() {
           setSearchOpen(false);
           setSearchReplaceId(null);
         }}
+        // F-128: scan barcode from inside the ingredient search sheet.
+        // Close the search first (avoid stacked modals), clear the
+        // replace target so the scan appends as a new ingredient via
+        // the existing append-only `onBarcodeScanned` path.
+        onScanBarcode={() => {
+          setSearchReplaceId(null);
+          setSearchOpen(false);
+          setBarcodeOpen(true);
+        }}
+      />
+
+      <BarcodeScannerModal
+        visible={barcodeOpen}
+        onScan={onBarcodeScanned}
+        onClose={() => setBarcodeOpen(false)}
       />
     </KeyboardAvoidingView>
   );
