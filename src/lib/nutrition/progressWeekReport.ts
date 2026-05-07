@@ -189,37 +189,35 @@ export function formatAvgCaloriesLabel(daysWithFood: number): string {
  * Action 13 Item #4 (2026-04-19) — single source of truth for the
  * Macro Adherence bar's fill % AND its label.
  *
- * Bug history: web (`ProgressDashboard.tsx`) rendered the raw
- * `adherencePct` straight into the bar width with no cap, while mobile
- * (`app/(tabs)/progress.tsx`) clamped to 150%. A user at 200% protein
- * saw a label-shaped bar on web and a clipped 150% bar on mobile —
- * pure parity drift.
- *
- * Decision (Action 13): cap **both** at 150%. The bar height visually
- * stops at 150%; the label preserves the actual figure with an
- * "(capped at 150)" suffix when over the cap so the user still sees
- * the real number.
+ * F-117 v2 (Grace, 2026-05-07): "remove capped at 150 it ruins the
+ * visual. needs to be clear that youre over with the bar." Drops the
+ * "(capped at N)" suffix entirely and emits an `isOver` flag so the
+ * UI can render a clear over-budget visual (destructive-coloured % +
+ * full-track fill) instead of a parenthetical disclosure that fights
+ * with the bar's pink fill.
  *
  * Behaviour matrix:
- *   - 0   → barFillPct = 0,   label = "0%"
- *   - 80  → barFillPct = 80,  label = "80%"
- *   - 100 → barFillPct = 100, label = "100%"
- *   - 175 → barFillPct = 150, label = "175% (capped at 150)"
- *   - 200 → barFillPct = 150, label = "200% (capped at 150)"
+ *   - 0   → barFillPct = 0,   label = "0%",   isOver = false
+ *   - 80  → barFillPct = 80,  label = "80%",  isOver = false
+ *   - 100 → barFillPct = 100, label = "100%", isOver = false
+ *   - 175 → barFillPct = 100, label = "175%", isOver = true
+ *   - 200 → barFillPct = 100, label = "200%", isOver = true
  *
- * Also defends against negative / non-finite input by clamping to
- * `[0, MACRO_ADHERENCE_BAR_CAP_PCT]`. Returns the rounded %s so the
- * UI never shows "99.999%".
+ * Bar fill is now clamped to 100 — the full track fill + the
+ * destructive % text together communicate "over budget". Renderers
+ * MUST flip the % colour to destructive (red) when `isOver`.
  *
  * Pinned by `tests/unit/macroAdherenceBar.test.ts`.
  */
 export const MACRO_ADHERENCE_BAR_CAP_PCT = 150;
 
 export type MacroAdherenceBar = {
-  /** Bar width as a 0-150 integer; clamped from `adherencePct`. */
+  /** Bar width as a 0-100 integer (clamped). */
   barFillPct: number;
-  /** User-facing label. Includes the cap suffix when over the cap. */
+  /** User-facing label, e.g. "187%". No parenthetical disclosure. */
   label: string;
+  /** True when adherencePct exceeds 100 — renderer should flip colour. */
+  isOver: boolean;
 };
 
 export function formatMacroAdherenceBar(opts: {
@@ -229,12 +227,8 @@ export function formatMacroAdherenceBar(opts: {
     ? opts.adherencePct
     : 0;
   const safe = Math.max(0, Math.round(raw));
-  const barFillPct = Math.min(MACRO_ADHERENCE_BAR_CAP_PCT, safe);
-  const label =
-    safe > MACRO_ADHERENCE_BAR_CAP_PCT
-      ? `${safe}% (capped at ${MACRO_ADHERENCE_BAR_CAP_PCT})`
-      : `${safe}%`;
-  return { barFillPct, label };
+  const barFillPct = Math.min(100, safe);
+  return { barFillPct, label: `${safe}%`, isOver: safe > 100 };
 }
 
 /** Same rule as `computeLoggingStreak`: consecutive days ending today or yesterday with ≥1 meal. */

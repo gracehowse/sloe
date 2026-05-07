@@ -1527,13 +1527,12 @@ export default function ProgressScreen() {
                 <View key={name} style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 }}>
                   <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: color }} />
                   <Text style={{ fontSize: 12, color: t.sub, width: 50 }}>{name}</Text>
-                  {/* F-117 (TestFlight `ABIRVwgsxJo5xNAfinETMNY`, 2026-05-06):
-                      `barFillPct` can exceed 100 when "capped at 150" is in
-                      play (Fat row at 171% etc). React Native's default
-                      `overflow: visible` lets the fill bleed past the track
-                      and visually strike through the right-aligned percentage
-                      label, making the text unreadable. Web parity already
-                      clips via Tailwind `overflow-hidden`. */}
+                  {/* F-117 v2 (Grace, 2026-05-07): bar fill is now
+                      pre-clamped at 100 in `formatMacroAdherenceBar`,
+                      and the over-budget signal moved into the label
+                      colour (destructive instead of macro). The
+                      "(capped at 150)" suffix is gone. `overflow:hidden`
+                      stays as a defence-in-depth guard. */}
                   <View
                     style={{
                       flex: 1,
@@ -1545,12 +1544,24 @@ export default function ProgressScreen() {
                   >
                     <View
                       testID={`macro-adherence-bar-${name.toLowerCase()}`}
-                      style={{ width: `${Math.min(100, bar.barFillPct)}%`, height: "100%", borderRadius: 3, backgroundColor: color }}
+                      style={{
+                        width: `${bar.barFillPct}%`,
+                        height: "100%",
+                        borderRadius: 3,
+                        backgroundColor: bar.isOver ? Accent.destructive : color,
+                      }}
                     />
                   </View>
                   <Text
                     testID={`macro-adherence-label-${name.toLowerCase()}`}
-                    style={{ fontSize: 12, fontWeight: "600", color, minWidth: 80, textAlign: "right", fontVariant: ["tabular-nums"] }}
+                    style={{
+                      fontSize: 12,
+                      fontWeight: "600",
+                      color: bar.isOver ? Accent.destructive : color,
+                      minWidth: 56,
+                      textAlign: "right",
+                      fontVariant: ["tabular-nums"],
+                    }}
                   >
                     {bar.label}
                   </Text>
@@ -1985,6 +1996,22 @@ export default function ProgressScreen() {
               // suppress the entire projection line; the journey card
               // still renders progress + days-to-goal.
               const projectionEligible = shouldRenderDailyProjection(daysWithFood.length);
+              // F-126 (Grace, 2026-05-07): prefer the observed weekly
+              // weight rate over the formula deficit when it's
+              // reliable. The Journey card already shows
+              // "Currently losing ~0.3 kg/week" derived from
+              // `timeline.weeklyRateKg`; pass that in so the
+              // projection respects the scale instead of forecasting
+              // from a stale TDEE estimate. Sign convention: negative
+              // for loss (user's actual rate × goal direction).
+              const observedKgPerWeek =
+                typeof timeline.weeklyRateKg === "number"
+                  ? timeline.trendDirection === "losing"
+                    ? -Math.abs(timeline.weeklyRateKg)
+                    : timeline.trendDirection === "gaining"
+                      ? Math.abs(timeline.weeklyRateKg)
+                      : 0
+                  : 0;
               const dailyProjection =
                 projectionEligible && avgCals > 0 && latestWeightKg != null
                   ? projectWeight({
@@ -1993,6 +2020,7 @@ export default function ProgressScreen() {
                       targetCalories: targets.calories,
                       maintenanceTdeeKcal,
                       goal: userGoal,
+                      observedKgPerWeek,
                     })
                   : null;
 

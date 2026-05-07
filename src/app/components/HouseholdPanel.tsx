@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Icons } from "./ui/icons";
 import { IconBox } from "./ui/icon-box";
 import { DestructiveConfirmDialog } from "./suppr/destructive-confirm-dialog";
+import ReceivedInvitesBanner from "./household/ReceivedInvitesBanner";
 import { useAuthSession } from "../../context/AuthSessionContext";
 import { supabase } from "../../lib/supabase/browserClient";
 // Direct-to-Supabase household client. Web previously used the Next.js
@@ -235,6 +236,13 @@ export function HouseholdPanel() {
     return (
       <div className="rounded-xl bg-card border border-border p-4">
         {scopeBanner}
+        {/* F-111 (TestFlight `AGthJykAoNdxEYKsRoLWf-c`, 2026-05-06):
+            received-invites banner above the create/join CTAs. When
+            the user has been invited by an existing household owner,
+            this banner appears the moment they open Suppr. Accepting
+            joins them to the inviter's household and `onAccepted`
+            re-pulls /household state. */}
+        <ReceivedInvitesBanner onAccepted={() => void load()} />
         <div className="flex items-center gap-2 mb-3">
           <IconBox size="sm" tone="primary"><Icons.users /></IconBox>
           <p className="text-sm font-semibold text-foreground">Household Meal Planning</p>

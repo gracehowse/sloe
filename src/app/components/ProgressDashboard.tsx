@@ -1505,12 +1505,11 @@ function ProgressDashboardContent() {
         </div>
       </div>
 
-      {/* MACRO ADHERENCE — Action 13 Item #4 (2026-04-19): bar fill is
-          now capped at 150% via the shared `formatMacroAdherenceBar`
-          helper so a user at 200% protein renders as a 150%-wide bar
-          with the literal figure preserved in the label
-          ("200% (capped at 150)"). Mobile mirrors this via the same
-          helper. */}
+      {/* MACRO ADHERENCE — F-117 v2 (Grace, 2026-05-07): bar fill
+          clamps to 100% via `formatMacroAdherenceBar`; over-target
+          rows render the % in destructive (red) so the bar + label
+          together communicate "over budget". The "(capped at 150)"
+          parenthetical is gone. */}
       <div className="rounded-xl bg-card border border-border p-4 mb-6">
         <p className="text-sm font-semibold text-foreground mb-3">Macro Adherence</p>
         <div className="space-y-2">
@@ -1520,6 +1519,7 @@ function ProgressDashboardContent() {
             ["Fat", fatAdherence, "var(--macro-fat)"],
           ] as const).map(([name, pct, color]) => {
             const bar = formatMacroAdherenceBar({ adherencePct: pct });
+            const tone = bar.isOver ? "var(--destructive)" : color;
             return (
               <div key={name} className="flex items-center gap-2.5">
                 <div className="w-2 h-2 rounded-sm" style={{ background: color }} />
@@ -1528,12 +1528,12 @@ function ProgressDashboardContent() {
                   <div
                     className="h-full rounded-full"
                     data-testid={`macro-adherence-bar-${name.toLowerCase()}`}
-                    style={{ width: `${bar.barFillPct}%`, background: color }}
+                    style={{ width: `${bar.barFillPct}%`, background: tone }}
                   />
                 </div>
                 <span
                   className="text-xs font-semibold tabular-nums text-right"
-                  style={{ color, minWidth: "5rem" }}
+                  style={{ color: tone, minWidth: "3.5rem" }}
                   data-testid={`macro-adherence-label-${name.toLowerCase()}`}
                 >
                   {bar.label}

@@ -36,8 +36,14 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Search as SearchIcon, X } from "lucide-react-native";
-import { Spacing, Radius } from "@/constants/theme";
+import {
+  Camera as CameraIcon,
+  Mic as MicIcon,
+  ScanBarcode,
+  Search as SearchIcon,
+  X,
+} from "lucide-react-native";
+import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import KeyboardSafeView from "./KeyboardSafeView";
 import FoodSearchPanel, {
@@ -62,6 +68,18 @@ type Props = {
   userId?: string | null;
   onSelect: (result: SelectedFood) => void;
   onClose: () => void;
+  /**
+   * F-128 (Grace, 2026-05-07): "we need to be able to add ingredients
+   * by barcode etc (same ways we log food)". When wired, the modal
+   * renders quick-add icons in the header so the user can pivot to
+   * scan / voice / photo without first dismissing the search sheet.
+   * Each callback fires through to the host — the host is responsible
+   * for closing this modal (if appropriate) and opening the dedicated
+   * sheet. Pass `null`/omit to hide the icon.
+   */
+  onScanBarcode?: () => void;
+  onVoiceLog?: () => void;
+  onPhotoLog?: () => void;
 };
 
 export default function FoodSearchModal({
@@ -76,10 +94,14 @@ export default function FoodSearchModal({
   userId,
   onSelect,
   onClose,
+  onScanBarcode,
+  onVoiceLog,
+  onPhotoLog,
 }: Props) {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
   const [query, setQuery] = useState(initialQuery);
+  const hasQuickAdd = !!(onScanBarcode || onVoiceLog || onPhotoLog);
 
   // On open, sync query → initialQuery so callers that re-mount with a
   // different initialQuery (e.g. recipe-verify) get the right starting
@@ -118,6 +140,19 @@ export default function FoodSearchModal({
       fontSize: 16,
       paddingVertical: 14,
     },
+    quickAddDivider: {
+      width: 1,
+      alignSelf: "stretch",
+      marginVertical: 10,
+      marginHorizontal: 6,
+      backgroundColor: colors.border,
+    },
+    quickAddBtn: {
+      paddingHorizontal: 8,
+      paddingVertical: 10,
+      alignItems: "center",
+      justifyContent: "center",
+    },
   });
 
   return (
@@ -153,6 +188,52 @@ export default function FoodSearchModal({
             returnKeyType="search"
             accessibilityLabel="Search foods"
           />
+          {/* F-128 quick-add row — mirrors LogSheet's right-edge input
+              modes so the recipe-ingredient flow has the same "scan /
+              voice / photo" affordances the food-log flow does. Each
+              icon is host-controlled; we don't render any icon whose
+              callback isn't wired. */}
+          {hasQuickAdd ? (
+            <>
+              <View style={styles.quickAddDivider} />
+              {onScanBarcode ? (
+                <Pressable
+                  onPress={onScanBarcode}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Scan barcode to add ingredient"
+                  testID="food-search-scan-barcode"
+                  style={styles.quickAddBtn}
+                >
+                  <ScanBarcode size={20} color={Accent.primary} strokeWidth={1.75} />
+                </Pressable>
+              ) : null}
+              {onVoiceLog ? (
+                <Pressable
+                  onPress={onVoiceLog}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Voice log to add ingredient"
+                  testID="food-search-voice-log"
+                  style={styles.quickAddBtn}
+                >
+                  <MicIcon size={20} color={Accent.primary} strokeWidth={1.75} />
+                </Pressable>
+              ) : null}
+              {onPhotoLog ? (
+                <Pressable
+                  onPress={onPhotoLog}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Photo log to add ingredient"
+                  testID="food-search-photo-log"
+                  style={styles.quickAddBtn}
+                >
+                  <CameraIcon size={20} color={Accent.primary} strokeWidth={1.75} />
+                </Pressable>
+              ) : null}
+            </>
+          ) : null}
         </View>
 
         <FoodSearchPanel

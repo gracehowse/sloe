@@ -93,8 +93,28 @@ export function projectWeight(opts: {
   maintenanceTdeeKcal?: number | null;
   goal?: string | null;
   weeksOut?: number;
+  /**
+   * F-126 (Grace, 2026-05-07): observed weight rate from the trend
+   * line (kg/week, signed — negative = losing). When provided AND
+   * non-trivial (|rate| ≥ 0.05 kg/week) AND the direction matches
+   * the deficit-implied direction, this OVERRIDES the formula
+   * projection. The formula uses (intake - TDEE) / 7700 which under-
+   * estimates loss when the user's actual maintenance is higher than
+   * the engine's estimate (or above the engine's confidence floor).
+   * Trusting the observed scale is the correct call: the scale is
+   * ground truth, the formula is a model.
+   */
+  observedKgPerWeek?: number | null;
 }): DailyProjection {
-  const { currentWeightKg, todayCalories, targetCalories, maintenanceTdeeKcal, goal, weeksOut = 5 } = opts;
+  const {
+    currentWeightKg,
+    todayCalories,
+    targetCalories,
+    maintenanceTdeeKcal,
+    goal,
+    weeksOut = 5,
+    observedKgPerWeek,
+  } = opts;
 
   let estimatedTdee: number;
   if (
@@ -112,8 +132,26 @@ export function projectWeight(opts: {
   }
 
   const dailySurplusDeficit = todayCalories - estimatedTdee;
-  const totalDays = weeksOut * 7;
-  const totalKgChange = (dailySurplusDeficit * totalDays) / KCAL_PER_KG;
+
+  // F-126: prefer the observed weekly rate when it's reliable + agrees
+  // in direction with the formula. "Agrees" guards against using a
+  // noise spike (e.g. one week of water-weight loss) that contradicts
+  // the user's actual eating pattern. When the observed rate is
+  // non-trivial and direction-aligned, use it; otherwise fall back to
+  // the formula projection so first-week users still get a number.
+  const formulaWeeklyKg = (dailySurplusDeficit * 7) / KCAL_PER_KG;
+  const observed =
+    typeof observedKgPerWeek === "number" && Number.isFinite(observedKgPerWeek)
+      ? observedKgPerWeek
+      : 0;
+  const observedReliable = Math.abs(observed) >= 0.05;
+  const directionMatches =
+    formulaWeeklyKg === 0 ||
+    Math.sign(formulaWeeklyKg) === Math.sign(observed) ||
+    observed === 0;
+  const useObserved = observedReliable && directionMatches;
+  const weeklyKg = useObserved ? observed : formulaWeeklyKg;
+  const totalKgChange = weeklyKg * weeksOut;
   const projectedWeightKg = Math.round((currentWeightKg + totalKgChange) * 10) / 10;
 
   const direction: DailyProjection["direction"] =

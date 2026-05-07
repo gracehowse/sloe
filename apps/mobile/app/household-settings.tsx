@@ -52,6 +52,7 @@ import {
   setMemberSharePreset,
   type HouseholdData,
 } from "../../../src/lib/household/householdClient";
+import HouseholdInviteSheet from "@/components/household/HouseholdInviteSheet";
 import {
   SHARE_TARGETS_TOGGLE_HELPER,
   SHARE_TARGETS_TOGGLE_LABEL,
@@ -147,6 +148,10 @@ export default function HouseholdSettingsScreen() {
   const [data, setData] = useState<HouseholdData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // F-111 (TestFlight `AGthJykAoNdxEYKsRoLWf-c`, 2026-05-06): the
+  // "+ Add" button used to deflect to the Plan tab. Now it opens the
+  // invite sheet (email send + sent-invites list + code fallback).
+  const [inviteSheetOpen, setInviteSheetOpen] = useState(false);
   const [sharing, setSharing] = useState<HouseholdSharingState>({
     preset: "dinners",
     grid: emptyGrid(),
@@ -486,14 +491,14 @@ export default function HouseholdSettingsScreen() {
                 </Text>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Add household member"
+                  accessibilityLabel="Invite a household member"
                   testID="household-settings-add"
-                  onPress={() => router.push("/(tabs)/planner" as any)}
+                  onPress={() => setInviteSheetOpen(true)}
                   hitSlop={6}
                   style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
                 >
                   <Plus size={14} color={Accent.primary} strokeWidth={2} />
-                  <Text style={{ fontSize: 12, fontWeight: "600", color: Accent.primary }}>Add</Text>
+                  <Text style={{ fontSize: 12, fontWeight: "600", color: Accent.primary }}>Invite</Text>
                 </Pressable>
               </View>
               <View
@@ -1047,6 +1052,18 @@ export default function HouseholdSettingsScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* F-111 invite sheet — opens from the Members section "+ Invite"
+          button. Sends email-targeted invites via the
+          household_invite_send RPC; falls back to the 6-char code. */}
+      {data?.household && (
+        <HouseholdInviteSheet
+          visible={inviteSheetOpen}
+          householdId={data.household.id}
+          inviteCode={data.household.invite_code}
+          onClose={() => setInviteSheetOpen(false)}
+        />
+      )}
     </View>
   );
 }

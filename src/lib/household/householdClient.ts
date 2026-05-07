@@ -780,6 +780,127 @@ export async function insertHouseholdMealWithCookSnapshot(
   return { data: { id: (data as any).id }, error: null };
 }
 
+// ─── F-111 (TestFlight `AGthJykAoNdxEYKsRoLWf-c`, 2026-05-06) ────────
+// Email-targeted invite flow. The "+ Add" button on Household settings
+// was a dead navigation; this gives it a real flow. The owner enters
+// an email, an invite row is persisted, and the moment the invitee
+// next opens Suppr they see "X invited you to their household —
+// Accept / Decline" on the /household surface. No email delivery in
+// v1 — the invitee finds the invite via JWT-email match in `auth.email()`.
+// Migration: `supabase/migrations/20260507120000_household_invites.sql`.
+
+export type HouseholdInvite = {
+  id: string;
+  household_id: string;
+  inviter_user_id: string;
+  invitee_email: string;
+  status: "pending" | "accepted" | "declined" | "expired" | "cancelled";
+  created_at: string;
+  expires_at: string;
+  accepted_at: string | null;
+  declined_at: string | null;
+  cancelled_at: string | null;
+};
+
+/** Inviter-facing: email a household invite to `invitee_email`. */
+export async function sendHouseholdInvite(
+  supabase: SupabaseLike,
+  householdId: string,
+  inviteeEmail: string,
+): Promise<ClientResult<HouseholdInvite>> {
+  const email = (inviteeEmail || "").trim();
+  if (!email) return { data: null, error: "missing_email" };
+
+  const { data, error } = await supabase.rpc("household_invite_send", {
+    p_household_id: householdId,
+    p_invitee_email: email,
+  });
+
+  if (error) {
+    const code = (error as any)?.message || (error as any)?.code || "invite_failed";
+    if (typeof code === "string" && code.includes("invalid_email")) return { data: null, error: "invalid_email" };
+    if (typeof code === "string" && code.includes("not_household_owner")) return { data: null, error: "not_household_owner" };
+    if (typeof code === "string" && code.includes("cannot_invite_self")) return { data: null, error: "cannot_invite_self" };
+    return { data: null, error: "invite_failed" };
+  }
+
+  return { data: data as HouseholdInvite, error: null };
+}
+
+/** Inviter-facing: cancel a still-pending outgoing invite. */
+export async function cancelHouseholdInvite(
+  supabase: SupabaseLike,
+  inviteId: string,
+): Promise<ClientResult<HouseholdInvite>> {
+  const { data, error } = await supabase.rpc("household_invite_cancel", {
+    p_invite_id: inviteId,
+  });
+  if (error) return { data: null, error: "cancel_failed" };
+  return { data: data as HouseholdInvite, error: null };
+}
+
+/** Invitee-facing: accept a pending invite (RPC enforces email match). */
+export async function acceptHouseholdInvite(
+  supabase: SupabaseLike,
+  inviteId: string,
+): Promise<ClientResult<{ household_id: string; user_id: string }>> {
+  const { data, error } = await supabase.rpc("household_invite_accept", {
+    p_invite_id: inviteId,
+  });
+  if (error) return { data: null, error: "accept_failed" };
+  const payload = (data ?? {}) as { household_id?: string; user_id?: string };
+  return {
+    data: {
+      household_id: String(payload.household_id ?? ""),
+      user_id: String(payload.user_id ?? ""),
+    },
+    error: null,
+  };
+}
+
+/** Invitee-facing: decline a pending invite. */
+export async function declineHouseholdInvite(
+  supabase: SupabaseLike,
+  inviteId: string,
+): Promise<ClientResult<HouseholdInvite>> {
+  const { data, error } = await supabase.rpc("household_invite_decline", {
+    p_invite_id: inviteId,
+  });
+  if (error) return { data: null, error: "decline_failed" };
+  return { data: data as HouseholdInvite, error: null };
+}
+
+/** Inviter-facing: list invites the caller has sent for `householdId`. */
+export async function listSentHouseholdInvites(
+  supabase: SupabaseLike,
+  householdId: string,
+): Promise<ClientResult<HouseholdInvite[]>> {
+  const { data, error } = await supabase
+    .from("household_invites")
+    .select("*")
+    .eq("household_id", householdId)
+    .order("created_at", { ascending: false });
+  if (error) return { data: null, error: "load_failed" };
+  return { data: (data ?? []) as HouseholdInvite[], error: null };
+}
+
+/**
+ * Invitee-facing: list invites addressed to the caller's email (RLS
+ * scopes by JWT email). Used by the /household banner that surfaces
+ * "X invited you to their household — Accept / Decline".
+ */
+export async function listReceivedHouseholdInvites(
+  supabase: SupabaseLike,
+): Promise<ClientResult<HouseholdInvite[]>> {
+  const { data, error } = await supabase
+    .from("household_invites")
+    .select("*")
+    .eq("status", "pending")
+    .order("created_at", { ascending: false });
+  if (error) return { data: null, error: "load_failed" };
+  return { data: (data ?? []) as HouseholdInvite[], error: null };
+}
+
 export const __test__ = {
   MAX_MEMBERS,
   MAX_NAME_LEN,

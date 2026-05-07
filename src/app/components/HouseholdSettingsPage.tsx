@@ -31,6 +31,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Icons } from "./ui/icons";
+import HouseholdInviteDialog from "./household/HouseholdInviteDialog";
 import { useAuthSession } from "../../context/AuthSessionContext";
 import { supabase } from "../../lib/supabase/browserClient";
 import {
@@ -127,6 +128,10 @@ export function HouseholdSettingsPage({ onBack }: HouseholdSettingsPageProps) {
   const [data, setData] = useState<HouseholdData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // F-111 (TestFlight `AGthJykAoNdxEYKsRoLWf-c`, 2026-05-06): the
+  // "+ Add" anchor used to navigate to the Plan tab and stop. Now it
+  // opens the invite dialog (email send + sent-invites list + code).
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [sharing, setSharing] = useState<HouseholdSharingState>({
     preset: "dinners",
     grid: emptyGrid(),
@@ -391,14 +396,16 @@ export function HouseholdSettingsPage({ onBack }: HouseholdSettingsPageProps) {
           <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
             Members
           </p>
-          <a
-            href="/home?view=plan"
+          <button
+            type="button"
+            onClick={() => setInviteDialogOpen(true)}
             className="inline-flex items-center gap-1 text-[12px] font-semibold text-primary hover:underline"
             data-testid="household-settings-add"
+            aria-label="Invite a household member"
           >
             <Icons.add className="w-3 h-3" aria-hidden />
-            Add
-          </a>
+            Invite
+          </button>
         </div>
         <div className="rounded-xl border border-border bg-card overflow-hidden">
           {members.map((m, idx) => {
@@ -746,6 +753,18 @@ export function HouseholdSettingsPage({ onBack }: HouseholdSettingsPageProps) {
           </div>
         </div>
       ) : null}
+
+      {/* F-111 invite dialog — opens from the Members section "Invite"
+          button. Sends email-targeted invites via the
+          household_invite_send RPC; falls back to the 6-char code. */}
+      {data?.household && (
+        <HouseholdInviteDialog
+          open={inviteDialogOpen}
+          onOpenChange={setInviteDialogOpen}
+          householdId={data.household.id}
+          inviteCode={data.household.invite_code}
+        />
+      )}
     </div>
   );
 }
