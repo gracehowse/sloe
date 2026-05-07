@@ -26,7 +26,7 @@
  * help there. See `docs/audits/2026-04-28-recipe-creation-audit.md`
  * for the full surface map.
  */
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -71,7 +71,10 @@ import FoodSearchModal, {
   type SelectedFood,
 } from "@/components/FoodSearchModal";
 import BarcodeScannerModal from "@/components/BarcodeScannerModal";
+import VoiceLogSheet from "@/components/VoiceLogSheet";
+import PhotoLogSheet from "@/components/PhotoLogSheet";
 import type { BarcodeProduct } from "@/lib/verifyRecipe";
+import type { AiLoggedItem } from "../../../../src/lib/nutrition/aiLogging";
 import { parseIngredientLine } from "../../../../src/lib/recipe-ingredients/parseIngredientLine";
 import { normaliseInstructions } from "../../../../src/lib/recipes/normaliseInstructions";
 import { normalizeRecipeTitle } from "../../../../src/lib/recipes/normalizeRecipeTitle";
@@ -144,6 +147,33 @@ export default function CreateRecipeWizard() {
   // BarcodeScannerModal so the search sheet's quick-add icon can pivot
   // to scan without leaving the recipe-creation flow.
   const [barcodeOpen, setBarcodeOpen] = useState(false);
+  // F-128 follow-up (Grace, 2026-05-07): "add all the other methods
+  // too" — wire voice + photo log so AI-recognised items append as
+  // ingredients (multi-food log → multi-ingredient append). Same
+  // sheets the food-log flow uses; only the commit handler differs.
+  const [voiceLogOpen, setVoiceLogOpen] = useState(false);
+  const [photoLogOpen, setPhotoLogOpen] = useState(false);
+  // Resolve the API base for the voice/photo Next.js endpoints. Mirrors
+  // `apps/mobile/app/(tabs)/index.tsx` so the two surfaces hit the
+  // same configuration.
+  const [apiBase, setApiBase] = useState<string>("");
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const Constants = (await import("expo-constants")).default;
+        const extra = Constants.expoConfig?.extra as
+          | { supprApiUrl?: string }
+          | undefined;
+        if (!cancelled) setApiBase(extra?.supprApiUrl ?? "");
+      } catch {
+        if (!cancelled) setApiBase("");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const [saving, setSaving] = useState(false);
 
   // Reduced shape for step-machine helpers. State is split across
@@ -304,6 +334,48 @@ export default function CreateRecipeWizard() {
   const removeIngredient = useCallback((id: string) => {
     setIngredients((prev) => prev.filter((i) => i.id !== id));
     setMacroOverrides({});
+  }, []);
+
+  // F-128 — convert AI-logged items (voice/photo) to recipe
+  // ingredients and append. Each `AiLoggedItem` already carries
+  // resolved macros + an optional `grams` figure; we keep the macro
+  // numbers as-is (the AI pipeline returns absolute per-item totals,
+  // not per-100g) so the user sees the same kcal/macros they reviewed
+  // in the sheet. `amount` falls back to grams → quantity → 1; `unit`
+  // prefers grams when present, then the AI's unit, then "piece".
+  const onAiItemsCommit = useCallback((items: AiLoggedItem[]) => {
+    if (items.length === 0) return;
+    setIngredients((prev) => [
+      ...prev,
+      ...items.map((item) => {
+        const amount =
+          typeof item.grams === "number" && Number.isFinite(item.grams) && item.grams > 0
+            ? item.grams
+            : typeof item.quantity === "number" && Number.isFinite(item.quantity) && item.quantity > 0
+              ? item.quantity
+              : 1;
+        const unit =
+          typeof item.grams === "number" && Number.isFinite(item.grams) && item.grams > 0
+            ? "g"
+            : item.unit?.trim() || "piece";
+        return {
+          id: newId("ing"),
+          name: item.name,
+          amount: String(amount),
+          unit,
+          calories: Math.round(item.calories),
+          protein: Math.round(item.protein * 10) / 10,
+          carbs: Math.round(item.carbs * 10) / 10,
+          fat: Math.round(item.fat * 10) / 10,
+          fiberG: Math.round((item.fiber ?? 0) * 10) / 10,
+          source: item.source === "voice" ? "AI voice" : "AI photo",
+        };
+      }),
+    ]);
+    setMacroOverrides({});
+    setVoiceLogOpen(false);
+    setPhotoLogOpen(false);
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }, []);
 
   // F-128 — handle a scanned product. Mirrors `onBarcodeScanned` in
@@ -1259,12 +1331,71 @@ export default function CreateRecipeWizard() {
           setSearchOpen(false);
           setBarcodeOpen(true);
         }}
+        onVoiceLog={() => {
+          setSearchReplaceId(null);
+          setSearchOpen(false);
+          setVoiceLogOpen(true);
+        }}
+        onPhotoLog={() => {
+          setSearchReplaceId(null);
+          setSearchOpen(false);
+          setPhotoLogOpen(true);
+        }}
       />
 
       <BarcodeScannerModal
         visible={barcodeOpen}
         onScan={onBarcodeScanned}
         onClose={() => setBarcodeOpen(false)}
+      />
+
+      <VoiceLogSheet
+        visible={voiceLogOpen}
+        onClose={() => setVoiceLogOpen(false)}
+        // `activeSlot` is irrelevant in recipe context — the items
+        // become ingredients, not journal rows. Pass a no-op label so
+        // the sheet's analytics events stay non-null.
+        activeSlot="recipe"
+        accessToken={session?.access_token ?? null}
+        apiBase={apiBase}
+        onCommit={onAiItemsCommit}
+        colors={{
+          text: colors.text,
+          textSecondary: colors.textSecondary,
+          textTertiary: colors.textTertiary,
+          card: colors.card,
+          cardBorder: colors.cardBorder,
+          background: colors.background,
+          inputBg: colors.inputBg,
+          border: colors.border,
+          primaryForeground: colors.primaryForeground,
+        }}
+      />
+
+      <PhotoLogSheet
+        visible={photoLogOpen}
+        onClose={() => setPhotoLogOpen(false)}
+        activeSlot="recipe"
+        accessToken={session?.access_token ?? null}
+        apiBase={apiBase}
+        onCommit={onAiItemsCommit}
+        // Don't surface the AiPaywallSheet inside the wizard — closing
+        // the photo sheet on 403 leaves the user back on the wizard,
+        // which is the right outcome (they can keep building the
+        // recipe via search/barcode/manual). Free-tier visibility of
+        // the icon matches the Today behaviour.
+        onUpgradeRequired={() => setPhotoLogOpen(false)}
+        colors={{
+          text: colors.text,
+          textSecondary: colors.textSecondary,
+          textTertiary: colors.textTertiary,
+          card: colors.card,
+          cardBorder: colors.cardBorder,
+          background: colors.background,
+          inputBg: colors.inputBg,
+          border: colors.border,
+          primaryForeground: colors.primaryForeground,
+        }}
       />
     </KeyboardAvoidingView>
   );

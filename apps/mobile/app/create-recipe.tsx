@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -37,7 +37,10 @@ import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "../../../src/lib/analytics/events";
 import FoodSearchModal, { type SelectedFood } from "@/components/FoodSearchModal";
 import BarcodeScannerModal from "@/components/BarcodeScannerModal";
+import VoiceLogSheet from "@/components/VoiceLogSheet";
+import PhotoLogSheet from "@/components/PhotoLogSheet";
 import type { BarcodeProduct } from "@/lib/verifyRecipe";
+import type { AiLoggedItem } from "../../../src/lib/nutrition/aiLogging";
 import MealTypePicker from "@/components/MealTypePicker";
 import { normaliseInstructions } from "../../../src/lib/recipes/normaliseInstructions";
 import { normalizeRecipeTitle } from "../../../src/lib/recipes/normalizeRecipeTitle";
@@ -202,6 +205,29 @@ export default function CreateRecipeScreen() {
   // recipe page now supports barcode scan as a third quick-add path
   // alongside Paste list / Scan photo, mirroring verify.tsx.
   const [barcodeOpen, setBarcodeOpen] = useState(false);
+  // F-128 (Grace, 2026-05-07): voice + photo log as ingredient
+  // entry-points — same sheets food-log uses; AI items append as
+  // ingredients via `onAiItemsCommit`.
+  const [voiceLogOpen, setVoiceLogOpen] = useState(false);
+  const [photoLogOpen, setPhotoLogOpen] = useState(false);
+  const [apiBase, setApiBase] = useState<string>("");
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const Constants = (await import("expo-constants")).default;
+        const extra = Constants.expoConfig?.extra as
+          | { supprApiUrl?: string }
+          | undefined;
+        if (!cancelled) setApiBase(extra?.supprApiUrl ?? "");
+      } catch {
+        if (!cancelled) setApiBase("");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const totals = useMemo(() => {
     return ingredients.reduce(
@@ -457,6 +483,42 @@ export default function CreateRecipeScreen() {
     setSearchOpen(false);
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, [searchReplaceId]);
+
+  // F-128 — AI items (voice/photo) → recipe ingredients. Same shape
+  // mapping as the wizard so the two surfaces stay byte-identical.
+  const onAiItemsCommit = useCallback((items: AiLoggedItem[]) => {
+    if (items.length === 0) return;
+    setIngredients((prev) => [
+      ...prev,
+      ...items.map((item) => {
+        const amount =
+          typeof item.grams === "number" && Number.isFinite(item.grams) && item.grams > 0
+            ? item.grams
+            : typeof item.quantity === "number" && Number.isFinite(item.quantity) && item.quantity > 0
+              ? item.quantity
+              : 1;
+        const unit =
+          typeof item.grams === "number" && Number.isFinite(item.grams) && item.grams > 0
+            ? "g"
+            : item.unit?.trim() || "piece";
+        return {
+          id: newIngId(),
+          name: item.name,
+          amount: String(amount),
+          unit,
+          calories: Math.round(item.calories),
+          protein: Math.round(item.protein * 10) / 10,
+          carbs: Math.round(item.carbs * 10) / 10,
+          fat: Math.round(item.fat * 10) / 10,
+          fiberG: Math.round((item.fiber ?? 0) * 10) / 10,
+          source: item.source === "voice" ? "AI voice" : "AI photo",
+        };
+      }),
+    ]);
+    setVoiceLogOpen(false);
+    setPhotoLogOpen(false);
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  }, []);
 
   const onBarcodeScanned = useCallback(
     (_barcode: string, product: BarcodeProduct) => {
@@ -1038,6 +1100,16 @@ export default function CreateRecipeScreen() {
           setSearchOpen(false);
           setBarcodeOpen(true);
         }}
+        onVoiceLog={() => {
+          setSearchReplaceId(null);
+          setSearchOpen(false);
+          setVoiceLogOpen(true);
+        }}
+        onPhotoLog={() => {
+          setSearchReplaceId(null);
+          setSearchOpen(false);
+          setPhotoLogOpen(true);
+        }}
       />
 
       {/* F-122: barcode scanner — adds a new ingredient using the
@@ -1046,6 +1118,47 @@ export default function CreateRecipeScreen() {
         visible={barcodeOpen}
         onScan={onBarcodeScanned}
         onClose={() => setBarcodeOpen(false)}
+      />
+
+      <VoiceLogSheet
+        visible={voiceLogOpen}
+        onClose={() => setVoiceLogOpen(false)}
+        activeSlot="recipe"
+        accessToken={session?.access_token ?? null}
+        apiBase={apiBase}
+        onCommit={onAiItemsCommit}
+        colors={{
+          text: colors.text,
+          textSecondary: colors.textSecondary,
+          textTertiary: colors.textTertiary,
+          card: colors.card,
+          cardBorder: colors.cardBorder,
+          background: colors.background,
+          inputBg: colors.inputBg,
+          border: colors.border,
+          primaryForeground: colors.primaryForeground,
+        }}
+      />
+
+      <PhotoLogSheet
+        visible={photoLogOpen}
+        onClose={() => setPhotoLogOpen(false)}
+        activeSlot="recipe"
+        accessToken={session?.access_token ?? null}
+        apiBase={apiBase}
+        onCommit={onAiItemsCommit}
+        onUpgradeRequired={() => setPhotoLogOpen(false)}
+        colors={{
+          text: colors.text,
+          textSecondary: colors.textSecondary,
+          textTertiary: colors.textTertiary,
+          card: colors.card,
+          cardBorder: colors.cardBorder,
+          background: colors.background,
+          inputBg: colors.inputBg,
+          border: colors.border,
+          primaryForeground: colors.primaryForeground,
+        }}
       />
     </KeyboardAvoidingView>
   );
