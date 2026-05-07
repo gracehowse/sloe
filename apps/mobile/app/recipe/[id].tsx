@@ -538,6 +538,16 @@ export default function RecipeDetailScreen() {
         if (dbIngs) {
           for (let i = 0; i < Math.min(rows.length, dbIngs.length); i++) {
             const r = rows[i]!;
+            // F-119 (TestFlight `AMNFCofaR6cwd432kDYgfm8`, 2026-05-06):
+            // earlier this payload omitted `is_verified`, so a re-verify
+            // refreshed `source` + `confidence` but left rows at their
+            // import-time `is_verified=false`. Recipe aggregate flipped
+            // green while children stayed orange — the "all of these are
+            // orange like they need to be verified but most of them
+            // already have been" complaint. Mirror the policy used by
+            // `verifyRecipe.ts:saveVerifiedIngredients` (confidence ≥ 0.5
+            // = verified). FatSecret rows still get overridden to
+            // `is_verified: false` by `scrubFatSecretMacros` below.
             const scrubbed = scrubFatSecretMacros({
               calories: Math.round(r.calories),
               protein: Math.round(r.protein),
@@ -548,6 +558,7 @@ export default function RecipeDetailScreen() {
               sodium_mg: Math.round(r.sodium),
               source: r.source,
               confidence: r.confidence,
+              is_verified: typeof r.confidence === "number" && r.confidence >= 0.5,
             });
             const { error: ingErr } = await supabase
               .from("recipe_ingredients")

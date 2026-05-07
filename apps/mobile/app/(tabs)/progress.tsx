@@ -1527,10 +1527,25 @@ export default function ProgressScreen() {
                 <View key={name} style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 }}>
                   <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: color }} />
                   <Text style={{ fontSize: 12, color: t.sub, width: 50 }}>{name}</Text>
-                  <View style={{ flex: 1, height: 6, borderRadius: 3, backgroundColor: t.border }}>
+                  {/* F-117 (TestFlight `ABIRVwgsxJo5xNAfinETMNY`, 2026-05-06):
+                      `barFillPct` can exceed 100 when "capped at 150" is in
+                      play (Fat row at 171% etc). React Native's default
+                      `overflow: visible` lets the fill bleed past the track
+                      and visually strike through the right-aligned percentage
+                      label, making the text unreadable. Web parity already
+                      clips via Tailwind `overflow-hidden`. */}
+                  <View
+                    style={{
+                      flex: 1,
+                      height: 6,
+                      borderRadius: 3,
+                      backgroundColor: t.border,
+                      overflow: "hidden",
+                    }}
+                  >
                     <View
                       testID={`macro-adherence-bar-${name.toLowerCase()}`}
-                      style={{ width: `${bar.barFillPct}%`, height: "100%", borderRadius: 3, backgroundColor: color }}
+                      style={{ width: `${Math.min(100, bar.barFillPct)}%`, height: "100%", borderRadius: 3, backgroundColor: color }}
                     />
                   </View>
                   <Text

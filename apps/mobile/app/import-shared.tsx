@@ -169,6 +169,14 @@ export default function ImportSharedScreen() {
   // was supplied. Surfaces the dropped-image fact on the import
   // preview so users know the recipe was extracted from caption alone.
   const [imageUsed, setImageUsed] = useState<boolean | undefined>(undefined);
+  // F-121 (TestFlight `AJK4VIZdlOwU_yQWVLn_9pc`, 2026-05-06): when the
+  // server returns 429 with a `Retry-After` header, capture the absolute
+  // timestamp at which retry becomes valid and disable the "Try again"
+  // button until then. Stops the user-driven re-tap amplification of
+  // OpenAI rate-limit exhaustion. `retryNow` is a derived tick (see
+  // effect below) that re-renders the button label every second.
+  const [retryAfterAt, setRetryAfterAt] = useState<number | null>(null);
+  const [retryNow, setRetryNow] = useState<number>(() => Date.now());
   // Index of the ingredient row currently being edited via the
   // food-search modal (tap) or the override sheet (long-press). Null
   // when no sheet is open. Kept separate from `pendingRecipe` so
@@ -276,6 +284,23 @@ export default function ImportSharedScreen() {
     return () => timers.forEach(clearTimeout);
   }, [state]);
 
+  // F-121: tick once a second while a Retry-After window is active so the
+  // countdown re-renders. Cleared automatically when `retryAfterAt` is null.
+  useEffect(() => {
+    if (retryAfterAt == null) return;
+    const t = setInterval(() => {
+      const now = Date.now();
+      setRetryNow(now);
+      if (now >= retryAfterAt) {
+        setRetryAfterAt(null);
+      }
+    }, 1000);
+    return () => clearInterval(t);
+  }, [retryAfterAt]);
+  const retrySecondsLeft =
+    retryAfterAt != null ? Math.max(0, Math.ceil((retryAfterAt - retryNow) / 1000)) : 0;
+  const retryDisabled = retrySecondsLeft > 0;
+
   const runImport = useCallback(
     async (url: string) => {
       const trimmed = url.trim();
@@ -310,16 +335,27 @@ export default function ImportSharedScreen() {
           body: JSON.stringify({ url: trimmed }),
         });
 
+        // F-121: pull `Retry-After` BEFORE consuming the body so we can
+        // surface a countdown to the user when OpenAI is rate-limited.
+        const retryAfterHeader = res.headers.get("Retry-After");
+
         const data = (await res.json()) as {
           ok?: boolean;
           recipe?: ApiImportedRecipe;
           message?: string;
           imageUsed?: boolean;
+          error?: string;
         };
 
         if (!data.ok || !data.recipe) {
           setState("error");
           setError(userFacingImportError(data));
+          if (res.status === 429 || data.error === "ai_rate_limited") {
+            const sec = retryAfterHeader
+              ? Math.max(1, Math.min(600, Number.parseInt(retryAfterHeader, 10) || 30))
+              : 30;
+            setRetryAfterAt(Date.now() + sec * 1000);
+          }
           return;
         }
         // Audit I05 (2026-05-05) — record the imageUsed signal so the
@@ -1720,8 +1756,15 @@ export default function ImportSharedScreen() {
               autoCorrect={false}
               keyboardType="url"
             />
-            <Pressable style={styles.primaryBtn} onPress={onManualImport}>
-              <Text style={styles.primaryBtnText}>Try again</Text>
+            <Pressable
+              style={[styles.primaryBtn, retryDisabled && { opacity: 0.5 }]}
+              onPress={retryDisabled ? undefined : onManualImport}
+              disabled={retryDisabled}
+              accessibilityState={{ disabled: retryDisabled }}
+            >
+              <Text style={styles.primaryBtnText}>
+                {retryDisabled ? `Try again in ${retrySecondsLeft}s` : "Try again"}
+              </Text>
             </Pressable>
             <Pressable style={styles.textLinkBtn} onPress={onPasteFromClipboard}>
               <Ionicons name="clipboard-outline" size={18} color={Accent.primary} />
