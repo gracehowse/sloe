@@ -79,6 +79,24 @@ export interface WeeklyCheckinInput {
    *  the intake-line phrasing — when this is 0 we suppress the
    *  intake-delta narrative entirely. */
   daysLogged: number;
+  /**
+   * F-129 (Grace, 2026-05-07): "this page is always stuck and or wrong" —
+   * the screen kept rendering "Building confidence — needs more data"
+   * even when the engine reported high confidence on the long-term
+   * adaptive TDEE. Conflict mirror of F-124 on the Progress tab: the
+   * weighInsThisWeek gate was second-guessing the engine's confidence.
+   *
+   * When the engine reports `"high"` confidence we trust it and skip
+   * the weighInsThisWeek floor entirely — the engine already weights
+   * data quality into its confidence. Medium / low / null still gate
+   * on weighInsThisWeek as before, so a first-week user without an
+   * adaptive history still sees the calibrating copy.
+   *
+   * Pass the value from `profiles.adaptive_tdee_confidence` directly;
+   * any string other than `"low" | "medium" | "high"` is treated as
+   * null (no engine signal yet).
+   */
+  adaptiveTdeeConfidence?: "low" | "medium" | "high" | null;
 }
 
 export interface WeeklyCheckin {
@@ -254,7 +272,12 @@ export function buildWeeklyCheckin(input: WeeklyCheckinInput): WeeklyCheckin {
     weightEndKg,
     weighInsThisWeek,
     daysLogged,
+    adaptiveTdeeConfidence,
   } = input;
+  // F-129: when the engine reports "high" confidence we trust it and
+  // skip the weighInsThisWeek floor below. See the field's docstring
+  // on `WeeklyCheckinInput` for the conflict this resolves.
+  const engineHighConfidence = adaptiveTdeeConfidence === "high";
 
   // Weight delta — only when both endpoints exist and are finite.
   const weightDeltaKg =
@@ -315,8 +338,13 @@ export function buildWeeklyCheckin(input: WeeklyCheckinInput): WeeklyCheckin {
     };
   }
 
-  // Confidence gate — too few weigh-ins to trust the delta.
-  if (weighInsThisWeek < MIN_WEIGHT_DATAPOINTS_FOR_CONFIDENCE) {
+  // Confidence gate — too few weigh-ins to trust the delta. F-129
+  // carve-out: skip when the engine has already declared high
+  // confidence (it has more signal than this weekly window alone).
+  if (
+    !engineHighConfidence &&
+    weighInsThisWeek < MIN_WEIGHT_DATAPOINTS_FOR_CONFIDENCE
+  ) {
     return {
       kind: "low_confidence",
       direction: "flat",

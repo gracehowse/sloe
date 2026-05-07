@@ -1197,6 +1197,16 @@ function ProgressDashboardContent() {
             : staticTdee;
         const weeklyIntakeKcal = recap.avgCalories * recap.daysLogged;
         const weighInsThisWeek = recap.weightDeltaKg != null ? 2 : 0; // ≥2 → has both endpoints
+        // F-129 (Grace, 2026-05-07): pass engine confidence so the
+        // weeklyCheckin gate can skip the weighInsThisWeek floor when
+        // the engine already trusts the long-term TDEE — mirrors the
+        // F-124 carve-out on the calibrating-card.
+        const engineConfidenceForCheckin: "low" | "medium" | "high" | null =
+          adaptiveConfidence === "low" ||
+          adaptiveConfidence === "medium" ||
+          adaptiveConfidence === "high"
+            ? adaptiveConfidence
+            : null;
         const weeklyCheckin = currentTdeeForCheckin
           ? buildWeeklyCheckin({
               previousTdeeKcal: previousWeekTdeeKcal,
@@ -1207,6 +1217,7 @@ function ProgressDashboardContent() {
               weightEndKg: recap.weightLastKg,
               weighInsThisWeek,
               daysLogged: recap.daysLogged,
+              adaptiveTdeeConfidence: engineConfidenceForCheckin,
             })
           : null;
         return (
