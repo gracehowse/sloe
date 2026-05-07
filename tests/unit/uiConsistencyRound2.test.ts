@@ -78,10 +78,15 @@ describe("Round 2 — algorithm display fixes", () => {
     expect(SRC).toMatch(/Math\.min\(2, Math\.max\(0\.5/);
   });
 
-  it("D16: weight-tracker range pills reduced from 7 to 4", () => {
+  it("D16 / F-125: weight-tracker range pills match Progress tab canonical set", () => {
     const SRC = read("apps/mobile/components/charts/TimeRangeSelector.tsx");
-    // Visible RANGES array — the canonical short list.
-    expect(SRC).toMatch(/const RANGES: TimeRange\[\] = \["1M", "3M", "12M", "All"\]/);
+    // F-125 (2026-05-07): RANGES now mirrors WeightRangeToggle's
+    // 1W / 1M / 3M / 1Y / All set so the two surfaces don't disagree
+    // on the available time windows. "12M" stays in the union for
+    // backwards-compat persisted state; the visible label flips to
+    // "1Y" via `rangeLabel()`.
+    expect(SRC).toMatch(/const RANGES: TimeRange\[\] = \["1W", "1M", "3M", "12M", "All"\]/);
+    expect(SRC).toMatch(/function rangeLabel\(r: TimeRange\): string \{[\s\S]*?"12M" \? "1Y" : r/);
   });
 });
 
