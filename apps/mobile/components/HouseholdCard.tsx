@@ -18,6 +18,7 @@ import {
   setHouseholdShareLunch,
   type HouseholdData,
 } from "../../../src/lib/household/householdClient";
+import ReceivedInvitesBanner from "@/components/household/ReceivedInvitesBanner";
 // Legal-approved copy + storage key (F-16, 2026-04-25). Imported from
 // the shared module so web + mobile can never silently diverge — the
 // parity test in `tests/unit/householdJoinDisclosureCopy.test.ts`
@@ -272,6 +273,13 @@ export function HouseholdCard() {
     return (
       <View style={{ backgroundColor: t.elevated, borderRadius: Radius.lg, borderWidth: 1, borderColor: t.border, padding: 16, marginBottom: 14 }}>
         {scopeBanner}
+        {/* F-111 (TestFlight `AGthJykAoNdxEYKsRoLWf-c`, 2026-05-06):
+            received-invites banner above the create/join CTAs. When
+            the user has been invited by an existing household owner,
+            this banner appears the moment they open Suppr. Accepting
+            joins them to the inviter's household and `onAccepted`
+            re-pulls /household state. */}
+        <ReceivedInvitesBanner onAccepted={load} />
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
           <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: t.accent + "18", alignItems: "center", justifyContent: "center" }}>
             <Ionicons name="people-outline" size={14} color={t.accent} />
