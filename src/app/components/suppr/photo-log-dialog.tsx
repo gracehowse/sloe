@@ -182,13 +182,33 @@ export function PhotoLogDialog({
     try {
       const form = new FormData();
       form.append("image", file);
-      const resp = await fetch("/api/nutrition/photo-log", {
-        method: "POST",
-        body: form,
-      });
-      const data = (await resp.json()) as
+      // F-108 (2026-05-07): client abort so a hung request doesn't
+      // strand the user on the analysing spinner. 65s ceiling matches
+      // the route's `maxDuration = 60` plus headroom.
+      const ac = new AbortController();
+      const clientTimeout = setTimeout(() => ac.abort(), 65_000);
+      let resp: Response;
+      try {
+        resp = await fetch("/api/nutrition/photo-log", {
+          method: "POST",
+          body: form,
+          signal: ac.signal,
+        });
+      } finally {
+        clearTimeout(clientTimeout);
+      }
+      const data = (await resp.json().catch((parseErr) => {
+        console.error("[photo-log-dialog] response not JSON", parseErr);
+        return null;
+      })) as
         | (ResponseShape & { ok: true; freeQuotaRemaining?: number | null })
-        | { ok: false; error?: string; message?: string; freeQuotaRemaining?: number | null };
+        | { ok: false; error?: string; message?: string; freeQuotaRemaining?: number | null }
+        | null;
+      if (!data) {
+        setError("The server's reply was unreadable. Please try again.");
+        setStage("error");
+        return;
+      }
       if (resp.status === 403 && "error" in data && data.error === "upgrade_required") {
         // 2026-05-02 — free-taster quota exhausted. Hand off to the
         // host so it can close this dialog and open the
@@ -212,10 +232,20 @@ export function PhotoLogDialog({
         return;
       }
       if (!data.ok || !Array.isArray(data.items) || data.items.length === 0) {
+        // F-108: differentiate failure mode by server `error` code.
+        const errCode = "error" in data && typeof data.error === "string" ? data.error : null;
+        const fallbackByCode: Record<string, string> = {
+          openai_timeout: "The AI took too long to respond. Try again in a moment.",
+          openai_network_error: "Could not reach the AI service. Try again in a moment.",
+          openai_http_error: "The AI service had a problem with this image. Try a different photo or angle.",
+          model_unparseable: "Couldn't read the AI's reply. Try a different angle or better light.",
+          file_too_large: "That photo is too large. Crop tighter or take a fresh shot.",
+          missing_image: "No image was uploaded. Pick a photo and try again.",
+        };
         const msg =
-          "message" in data && typeof data.message === "string"
-            ? data.message
-            : "Couldn't read the photo. Try a clearer angle or better light.";
+          ("message" in data && typeof data.message === "string" && data.message) ||
+          (errCode ? fallbackByCode[errCode] : null) ||
+          "Couldn't read the photo. Try a clearer angle or better light.";
         setError(msg);
         setStage("error");
         return;
@@ -233,8 +263,21 @@ export function PhotoLogDialog({
       setAddons(Array.isArray(data.addons) ? data.addons : []);
       setNotes(typeof data.notes === "string" ? data.notes : null);
       setStage("review");
-    } catch {
-      setError("Photo logging failed. Check your connection and try again.");
+    } catch (err) {
+      // F-108 (2026-05-07): name the error so it's diagnosable from
+      // browser console without server access.
+      const isAbort =
+        (err instanceof Error && err.name === "AbortError") ||
+        (err as { name?: string } | null)?.name === "AbortError";
+      if (isAbort) {
+        console.warn("[photo-log-dialog] aborted (client timeout 65s)");
+        setError(
+          "The photo is taking longer than usual to analyse. Check your connection and try again.",
+        );
+      } else {
+        console.error("[photo-log-dialog] threw during photo log", err);
+        setError("Photo logging failed. Check your connection and try again.");
+      }
       setStage("error");
     }
   }, [file, onUpgradeRequired]);
