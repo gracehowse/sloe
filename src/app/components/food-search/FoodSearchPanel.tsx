@@ -966,6 +966,10 @@ export function FoodSearchPanel({
     }
     setLoading(true);
     debounceRef.current = setTimeout(async () => {
+      // F-114 broader sweep (2026-05-07): mirror mobile — wrap the
+      // debounced first-page search in try/catch/finally so a
+      // throwing source doesn't strand the user on a perpetual
+      // spinner.
       const rankQ = effectiveFoodSearchQuery(q);
       const customPromise: Promise<CustomFood[]> = customEnabled && supabase && userId
         ? searchCustomFoods(
@@ -974,17 +978,29 @@ export function FoodSearchPanel({
             q,
           )
         : Promise.resolve([] as CustomFood[]);
-      const [usda, off, edamam, fatsecret, custom] = await Promise.all([
-        searchUsda(q, 1),
-        searchOff(q, 1),
-        searchEdamam(q, 1),
-        searchFatSecret(q, 1),
-        customPromise,
-      ]);
+      let usda: Awaited<ReturnType<typeof searchUsda>> = [];
+      let off: Awaited<ReturnType<typeof searchOff>> = [];
+      let edamam: Awaited<ReturnType<typeof searchEdamam>> = [];
+      let fatsecret: Awaited<ReturnType<typeof searchFatSecret>> = [];
+      let custom: CustomFood[] = [];
+      try {
+        [usda, off, edamam, fatsecret, custom] = await Promise.all([
+          searchUsda(q, 1),
+          searchOff(q, 1),
+          searchEdamam(q, 1),
+          searchFatSecret(q, 1),
+          customPromise,
+        ]);
+      } catch (e) {
+        console.warn("[FoodSearchPanel] initial search failed:", e);
+        // Defaults stay []; merge below is empty + the user sees
+        // the no-result state instead of a stuck spinner.
+      } finally {
+        setLoading(false);
+      }
       const generic = buildGenericMatchRow(q);
       const merged = mergeAndDedup(rankQ, usda, off, edamam, fatsecret, custom, 25, generic ? [generic] : []);
       setResults(merged);
-      setLoading(false);
       hasMoreRef.current = usda.length + off.length + edamam.length + fatsecret.length > 0;
       backfillMissingMacros(merged);
       // No-result loop (audit move-blocker #2, 2026-05-02): when the

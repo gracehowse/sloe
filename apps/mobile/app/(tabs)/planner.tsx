@@ -1328,6 +1328,13 @@ export default function PlannerScreen() {
     }
 
     setGenerating(true);
+    // F-114 broader sweep (2026-05-07): wrap the whole generation +
+    // persistence body in try/finally so a throw at any await point
+    // (profiles fetch, save_meal_plan RPC, shopping rebuild) flips the
+    // regenerate spinner off. Pre-fix the explicit setGenerating(false)
+    // at the happy-path tail meant any rejection between setGenerating
+    // (true) and that line stranded the button spinning forever.
+    try {
 
     // P1-24 (TestFlight `AMXSjeaXJeCf6QtKgUTMkD0`,
     // `ALU8hrB1I9Sn4ysqoR_ocEs`, 2026-04-22+): when the user starts
@@ -1504,7 +1511,6 @@ export default function PlannerScreen() {
 
       setPlan(newPlan);
       setPlanTargets(resolved);
-      setGenerating(false);
 
       // F1 fix (audit 2026-04-28): regenerate must REBUILD the
       // shopping list, not just purge it. Previously the regenerate
@@ -1555,6 +1561,15 @@ export default function PlannerScreen() {
           }
         })();
       }
+    }
+    } catch (err) {
+      console.error("[planner] generatePlan failed:", err);
+      Alert.alert(
+        "Couldn't generate plan",
+        "Something went wrong while building your plan. Please try again.",
+      );
+    } finally {
+      setGenerating(false);
     }
   }, [savedRecipes, days, userId, enabledSlots]);
 

@@ -80,6 +80,9 @@ export default function VerifyScreen() {
   const [captionClaim, setCaptionClaim] = useState<CaptionNutritionClaim | null>(null);
   const [ingredients, setIngredients] = useState<VerifiableIngredient[]>([]);
   const [loading, setLoading] = useState(true);
+  // F-114 broader sweep (2026-05-07): surface initial-load failures so
+  // the user gets a retry path instead of a perpetual spinner.
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const [searchIndex, setSearchIndex] = useState<number | null>(null);
@@ -116,26 +119,40 @@ export default function VerifyScreen() {
     if (!recipeId) return;
     let cancelled = false;
     (async () => {
-      const [recipeRes, ings] = await Promise.all([
-        supabase
-          .from("recipes")
-          .select("title, servings, caption_nutrition_claim")
-          .eq("id", recipeId)
-          .maybeSingle(),
-        fetchIngredientsForVerification(recipeId),
-      ]);
-      if (cancelled) return;
-      if (recipeRes.data) {
-        const r = recipeRes.data as {
-          title: string;
-          servings: number;
-          caption_nutrition_claim?: CaptionNutritionClaim | null;
-        };
-        setRecipe({ title: r.title, servings: r.servings });
-        setCaptionClaim(r.caption_nutrition_claim ?? null);
+      // F-114 broader sweep (2026-05-07): wrap initial load in
+      // try/catch/finally. Pre-fix shape was bare `await Promise.all` —
+      // a Supabase rejection or a fetchIngredientsForVerification
+      // throw stranded `loading=true` and the user saw a perpetual
+      // verify-screen spinner.
+      try {
+        const [recipeRes, ings] = await Promise.all([
+          supabase
+            .from("recipes")
+            .select("title, servings, caption_nutrition_claim")
+            .eq("id", recipeId)
+            .maybeSingle(),
+          fetchIngredientsForVerification(recipeId),
+        ]);
+        if (cancelled) return;
+        if (recipeRes.data) {
+          const r = recipeRes.data as {
+            title: string;
+            servings: number;
+            caption_nutrition_claim?: CaptionNutritionClaim | null;
+          };
+          setRecipe({ title: r.title, servings: r.servings });
+          setCaptionClaim(r.caption_nutrition_claim ?? null);
+        }
+        setIngredients(ings);
+      } catch (err) {
+        if (cancelled) return;
+        console.error("[recipe/verify] initial load failed:", err);
+        setLoadError(
+          "Couldn't load this recipe. Check your connection and reopen the screen.",
+        );
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-      setIngredients(ings);
-      setLoading(false);
     })();
     return () => { cancelled = true; };
   }, [recipeId]);
@@ -686,6 +703,25 @@ export default function VerifyScreen() {
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={Accent.primary} />
+        </View>
+      </View>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <View style={styles.topBar}>
+          <Pressable onPress={() => router.back()} hitSlop={12}>
+            <Text style={styles.backText}>‹ Back</Text>
+          </Pressable>
+          <Text style={styles.topTitle}>VERIFY</Text>
+          <View style={{ width: 50 }} />
+        </View>
+        <View style={styles.centered}>
+          <Text style={{ color: Accent.warning, textAlign: "center", marginHorizontal: 24 }}>
+            {loadError}
+          </Text>
         </View>
       </View>
     );
