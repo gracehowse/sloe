@@ -82,12 +82,20 @@ export function generateProgressCommentary(
   const loggingDays = input.loggingDays ?? current?.loggingDays ?? 0;
 
   // Calibrating regime — engine returned null OR confidence is low OR
-  // we don't yet have ≥14 days of intake data. Per D-2026-04-27-12 we
-  // still surface the headline, but in calibration tone — never hide.
+  // confidence is medium with <14 days. Per D-2026-04-27-12 we still
+  // surface the headline, but in calibration tone — never hide.
+  //
+  // F-124 (Grace, 2026-05-07): "this maintance est says high so there
+  // are two conflicting widgets" — when the adaptive engine says
+  // **high** confidence we trust it and skip the `loggingDays < 14`
+  // gate. Otherwise the top "This Week" card renders "calibrating"
+  // while the bottom Maintenance card claims "High confidence" —
+  // mutually contradictory copy. The engine already weights data
+  // quality into its confidence; we shouldn't second-guess it.
   if (
     !current ||
     current.confidence === "low" ||
-    loggingDays < CALIBRATING_MIN_DAYS
+    (current.confidence === "medium" && loggingDays < CALIBRATING_MIN_DAYS)
   ) {
     return calibratingCopy(current, loggingDays);
   }
