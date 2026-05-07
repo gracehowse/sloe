@@ -40,6 +40,11 @@ import TimeRangeSelector, {
   daysForRange,
   type TimeRange,
 } from "@/components/charts/TimeRangeSelector";
+import {
+  computeWeightTrend,
+  weightKgByDayToPoints,
+  type WeightRange,
+} from "@/lib/progress/weightTrend";
 
 const MAX_JSONB_DAYS = 400;
 function pruneByDay(map: Record<string, number>): Record<string, number> {
@@ -78,6 +83,32 @@ function filterByRange(
 
 function formatShortDate(dateStr: string): string {
   const d = new Date(dateStr + "T00:00:00");
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
+
+/**
+ * 2026-05-06 (F-101 follow-up): bucket-aware x-axis label so the
+ * weight-tracker chart x-axis reads honestly:
+ *   - daily   → "5 May"
+ *   - weekly  → "w/c 5 May"
+ *   - monthly → "May" (year added when not current)
+ * Matches the WeightChart tooltip on Progress so the two surfaces
+ * speak the same language.
+ */
+function formatBucketLabel(
+  dateISO: string,
+  bucket: "daily" | "weekly" | "monthly",
+): string {
+  const d = new Date(dateISO + "T12:00:00");
+  if (bucket === "monthly") {
+    const thisYear = new Date().getFullYear();
+    return d.getFullYear() === thisYear
+      ? d.toLocaleDateString("en-GB", { month: "short" })
+      : d.toLocaleDateString("en-GB", { month: "short", year: "2-digit" });
+  }
+  if (bucket === "weekly") {
+    return `w/c ${d.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`;
+  }
   return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 }
 
@@ -324,13 +355,58 @@ export default function ProgressScreen() {
   }, [bfInput, bodyFatPct, persist, userId]);
 
   // Chart data derived from time range
+  //
+  // 2026-05-06 (F-101 follow-up): the weight-tracker page chart now
+  // shares the bucketing pipeline with the Progress-tab WeightChart
+  // via `computeWeightTrend`. Same MFP-style aggregation
+  // (1W/1M = daily, 3M = weekly, 6M/9M/12M/All = monthly), same
+  // calendar-day MA, same same-day dedup, same smart bucket
+  // fallback. Without this, the weight-tracker chart was rendering
+  // raw daily points filtered by a flat days-from-now cutoff —
+  // which is why the tester reported the months were inaccurate
+  // ("the chart is hard to read once the range covers >3 months").
+  //
+  // Map TimeRange (this page's union) → WeightRange
+  // (computeWeightTrend's union):
+  //   1W       → 1w
+  //   1M       → 1m
+  //   3M       → 3m
+  //   6M / 9M  → 1y (covered by the same monthly bucketing)
+  //   12M      → 1y
+  //   All      → all
+  // 6M / 9M deliberately collapse to "1y"-style monthly buckets
+  // because anything beyond 3 months wants monthly aggregation;
+  // the days-cutoff is enforced by the existing `filterByRange`
+  // path used elsewhere on this page (rangeDelta, weightProjection).
+  const weightTrendRange: WeightRange =
+    range === "1W"
+      ? "1w"
+      : range === "1M"
+        ? "1m"
+        : range === "3M"
+          ? "3m"
+          : range === "All"
+            ? "all"
+            : "1y";
+
+  const weightTrend = useMemo(
+    () =>
+      computeWeightTrend(
+        weightKgByDayToPoints(weightKgByDay),
+        weightTrendRange,
+        goalWeightKg ?? null,
+      ),
+    [weightKgByDay, weightTrendRange, goalWeightKg],
+  );
+
   const weightData = useMemo(() => {
-    const filtered = filterByRange(weightKgByDay, range);
-    return Object.entries(filtered).map(([k, v]) => ({
-      label: formatShortDate(k),
-      value: isImperial ? kgToLb(v) : Math.round(v * 10) / 10,
+    const conv = (kg: number) =>
+      isImperial ? kgToLb(kg) : Math.round(kg * 10) / 10;
+    return weightTrend.points.map((p) => ({
+      label: formatBucketLabel(p.dateISO, weightTrend.bucket),
+      value: conv(p.kg),
     }));
-  }, [weightKgByDay, range, isImperial]);
+  }, [weightTrend, isImperial]);
 
   // Range delta — prominent "↑ 1.4 kg past three months" header stat.
   // TestFlight `AF7bS2DQrH_wZWxGosBJ3K8` (2026-04-18): tester attached
