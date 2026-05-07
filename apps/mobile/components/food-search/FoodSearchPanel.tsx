@@ -518,22 +518,36 @@ export default function FoodSearchPanel({
     }
     setLoading(true);
     debounceRef.current = setTimeout(async () => {
-      const externalP = searchFoods(
-        q,
-        (partial) => setResults(partial as SearchRow[]),
-        { page: 1 },
-      );
-      const customP: Promise<CustomFood[]> = customEnabled && supabase && userId
-        ? searchCustomFoods(
-            supabase as Parameters<typeof searchCustomFoods>[0],
-            userId,
-            q,
-          )
-        : Promise.resolve([] as CustomFood[]);
-      const [r, customs] = await Promise.all([externalP, customP]);
+      // F-114 broader sweep (2026-05-07): wrap the debounced first-page
+      // search in try/catch/finally. Pre-fix shape was bare `await
+      // Promise.all` — if either side rejected, `setLoading(false)`
+      // never ran and the user saw an indefinite spinner. Same bug
+      // shape as PR #129's loadMore fix, applied to the initial page.
+      let r: Awaited<ReturnType<typeof searchFoods>> = [];
+      let customs: CustomFood[] = [];
+      try {
+        const externalP = searchFoods(
+          q,
+          (partial) => setResults(partial as SearchRow[]),
+          { page: 1 },
+        );
+        const customP: Promise<CustomFood[]> = customEnabled && supabase && userId
+          ? searchCustomFoods(
+              supabase as Parameters<typeof searchCustomFoods>[0],
+              userId,
+              q,
+            )
+          : Promise.resolve([] as CustomFood[]);
+        [r, customs] = await Promise.all([externalP, customP]);
+      } catch (e) {
+        console.warn("[FoodSearchPanel] initial search failed:", e);
+        // r / customs default to []; merge below is empty + the user
+        // sees the no-result state instead of a stuck spinner.
+      } finally {
+        setLoading(false);
+      }
       const merged = mergeWithCustom(r, customs);
       setResults(merged);
-      setLoading(false);
       hasMoreRef.current = r.length > 0;
       backfillMissingMacros(merged);
       // No-result loop (audit move-blocker #2, 2026-05-02): when the

@@ -731,66 +731,79 @@ export default function RecipeDetailScreen() {
     }
     let cancelled = false;
     (async () => {
-      // Try with source columns; fall back without if they don't exist yet (migration pending).
-      let recipeRes = await supabase
-        .from("recipes")
-        .select(
-          "id, title, description, instructions, image_url, servings, prep_time_min, cook_time_min, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, meal_type, source_url, source_name, author_id, allergens",
-        )
-        .eq("id", recipeId)
-        .maybeSingle();
-      if (recipeRes.error?.code === "42703") {
-        recipeRes = await supabase
+      // F-114 broader sweep (2026-05-07): wrap initial recipe load in
+      // try/catch/finally. Pre-fix shape was a bare async IIFE chain
+      // — any rejection (Supabase 5xx, profiles fetch hang) stranded
+      // `loading=true` and the user saw a perpetual recipe-detail
+      // spinner. The cancelled-guard inside `finally` mirrors the
+      // existing audit pattern in `meal-nutrition.tsx`.
+      try {
+        // Try with source columns; fall back without if they don't exist yet (migration pending).
+        let recipeRes = await supabase
           .from("recipes")
           .select(
-            "id, title, description, instructions, image_url, servings, prep_time_min, cook_time_min, calories, protein, carbs, fat, meal_type, author_id",
+            "id, title, description, instructions, image_url, servings, prep_time_min, cook_time_min, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, meal_type, source_url, source_name, author_id, allergens",
           )
           .eq("id", recipeId)
           .maybeSingle();
-      }
-      // Try with confidence/source columns, fall back without if columns don't exist yet
-      let ingRes = await supabase
-        .from("recipe_ingredients")
-        .select("name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, confidence, source, is_verified")
-        .eq("recipe_id", recipeId);
-      if (ingRes.error && String(ingRes.error.message).includes("column")) {
-        ingRes = await supabase
-          .from("recipe_ingredients")
-          .select("name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg")
-          .eq("recipe_id", recipeId) as any;
-      }
-      if (cancelled) return;
-      if (recipeRes.data) {
-        const row = recipeRes.data as Record<string, unknown>;
-        const aid = (row.author_id as string | null) ?? null;
-        let author: FullRecipe["author"] = null;
-        if (aid) {
-          const { data: prof } = await supabase
-            .from("profiles")
-            .select("display_name, avatar_url")
-            .eq("id", aid)
+        if (recipeRes.error?.code === "42703") {
+          recipeRes = await supabase
+            .from("recipes")
+            .select(
+              "id, title, description, instructions, image_url, servings, prep_time_min, cook_time_min, calories, protein, carbs, fat, meal_type, author_id",
+            )
+            .eq("id", recipeId)
             .maybeSingle();
-          if (prof) {
-            author = {
-              display_name: (prof.display_name as string | null) ?? null,
-              avatar_url: (prof.avatar_url as string | null) ?? null,
-            };
-          }
         }
-        const r = row as Record<string, unknown>;
-        setRecipe({
-          ...r,
-          prep_time_min: (r.prep_time_min as number | null | undefined) ?? null,
-          cook_time_min: (r.cook_time_min as number | null | undefined) ?? null,
-          source_url: (r.source_url as string | null | undefined) ?? null,
-          source_name: (r.source_name as string | null | undefined) ?? null,
-          author_id: aid,
-          author,
-          allergens: Array.isArray(r.allergens) ? (r.allergens as string[]) : [],
-        } as FullRecipe);
+        // Try with confidence/source columns, fall back without if columns don't exist yet
+        let ingRes = await supabase
+          .from("recipe_ingredients")
+          .select("name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, confidence, source, is_verified")
+          .eq("recipe_id", recipeId);
+        if (ingRes.error && String(ingRes.error.message).includes("column")) {
+          ingRes = await supabase
+            .from("recipe_ingredients")
+            .select("name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg")
+            .eq("recipe_id", recipeId) as any;
+        }
+        if (cancelled) return;
+        if (recipeRes.data) {
+          const row = recipeRes.data as Record<string, unknown>;
+          const aid = (row.author_id as string | null) ?? null;
+          let author: FullRecipe["author"] = null;
+          if (aid) {
+            const { data: prof } = await supabase
+              .from("profiles")
+              .select("display_name, avatar_url")
+              .eq("id", aid)
+              .maybeSingle();
+            if (prof) {
+              author = {
+                display_name: (prof.display_name as string | null) ?? null,
+                avatar_url: (prof.avatar_url as string | null) ?? null,
+              };
+            }
+          }
+          const r = row as Record<string, unknown>;
+          setRecipe({
+            ...r,
+            prep_time_min: (r.prep_time_min as number | null | undefined) ?? null,
+            cook_time_min: (r.cook_time_min as number | null | undefined) ?? null,
+            source_url: (r.source_url as string | null | undefined) ?? null,
+            source_name: (r.source_name as string | null | undefined) ?? null,
+            author_id: aid,
+            author,
+            allergens: Array.isArray(r.allergens) ? (r.allergens as string[]) : [],
+          } as FullRecipe);
+        }
+        if (ingRes.data) setIngredients(ingRes.data as Ingredient[]);
+      } catch (err) {
+        if (!cancelled) {
+          console.error("[recipe/[id]] initial load failed:", err);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-      if (ingRes.data) setIngredients(ingRes.data as Ingredient[]);
-      setLoading(false);
     })();
     return () => { cancelled = true; };
   }, [recipeId]);

@@ -90,7 +90,7 @@ Single TestFlight session this morning surfaced 4 distinct food-search + weight-
 | `AGthJykAoNdx` | F-111 | ✅ closed by #117 (build 44) | "Clicking add to add someone to your household doesn't actually work" — full email-targeted invite flow shipped: `household_invites` table + 4 RPCs (send/accept/decline/cancel), `HouseholdInviteSheet` (mobile) + `HouseholdInviteDialog` (web), `ReceivedInvitesBanner` on both platforms. Schema applied 2026-05-07 via `supabase db push --linked`. |
 | `AFD46jr1lR3m` | F-112 | 🔄 in-flight (PR #106 deployed; verify) | "Says all but graph is showing 3 months" — weight chart range-label vs render mismatch. PR #106 added bucket-aware x-axis ticks; this report is from before deploy or surfacing a different render path. Re-verify on build 42. |
 | `AMg4BaMwZWZ8` | F-113 | ✅ closed by #117 (mobile) + #126 (web parity) | "Journey numbers are wrong" — F-126 (mobile) added `observedKgPerWeek` to `projectWeight` so the projection respects observed scale rate. PR #126 mirrored to web's `ProgressDashboard.tsx` where the same callsite was missing the argument. Parity pin test added. |
-| `AHOkMJ8yu5hA` | F-114 | ⏳ partial fix shipped (PR #129, build 45) — `loadMore` on FoodSearchPanel (the only infinite-scroll surface) now catches errors and stops further attempts so a failing fetch doesn't loop forever. Stays ⏳ pending tester re-verify against the actual surface (could be HK historical or Progress chart cold-load instead). | "Gets stuck trying to get more data" |
+| `AHOkMJ8yu5hA` | F-114 | ⏳ partial fix shipped (PRs #129 + #133, build 45) — Performance-optimizer audit found 4 more unguarded `setLoading(true)` paths beyond `loadMore`. PR #133 added try/catch/finally to: recipe verify initial load, recipe detail initial load, planner `generatePlan`, and FoodSearchPanel debounced first-page search (mobile + web). Stays ⏳ pending tester re-verify against the actual surface (HealthKit historical pull is the remaining likely candidate — separate session, 14+ wrappers). | "Gets stuck trying to get more data" |
 | `AGq70YLY1hmZ` | F-115 | ✅ closed by #115 (build 44) | "Current weight is actually 54.3" — HealthKit ingest in `healthSync.ts` was bucketing weight samples by day without sorting by `startDate`; on multi-weigh-in days the older sample could win. Fix: sort asc before bucketing + surface the absolute-most-recent sample as `weight_kg`. |
 | `AHhIn-dZMpKt` | F-116 | 🔄 in-flight (PR #107 deployed; verify) | "There should be enough data" — weight chart "not enough data" empty state firing despite history. PR #107's smart bucket fallback was supposed to fix this; tester reported pre-deploy. Re-verify on build 42. |
 | `ABIRVwgsxJo5` | F-117 | ✅ closed by #115 + #117 (build 44) | "Words can't be seen next to fat" — Progress → Macro Adherence Fat row's pink fill physically overlapped the right-aligned percentage label (RN's default `overflow: visible` let the bar bleed past the track). #115 added `overflow: hidden` + clamped fill to ≤100. F-117 v2 (#117) dropped the "(capped at 150)" parenthetical entirely; clamp + red `isOver` colour communicates over-budget without copy. |
@@ -168,6 +168,19 @@ Net open items count: ~12 ⏳ + ~4 🔍 + the 6 ✅ that flipped today. Every AS
 Net open items count after this sweep: **2 ⏳ items** (F-108 / F-114) + 2 🔍 items (F-110 + the unmapped 2026-04-19 `AN8GJ1Dr3M` steps/burn). Both ⏳ items have partial fixes shipped pending tester re-verify on build 45.
 
 ---
+
+**2026-05-07 — F-114 broader stuck-spinner sweep (PR #133, build 45)**
+
+`performance-optimizer` audit beyond PR #129's `loadMore` fix surfaced 4 more unguarded `setLoading(true)` / `setGenerating(true)` paths where any rejection stranded the spinner. All wrapped in try/catch/finally:
+
+1. **Recipe verify initial load** (`apps/mobile/app/recipe/verify.tsx:115-141`) — added `loadError` state + inline error UI so a failed Supabase / `fetchIngredientsForVerification` no longer leaves the user staring at the spinner.
+2. **Recipe detail initial load** (`apps/mobile/app/recipe/[id].tsx:732-794`) — bare async IIFE chain with up to 3 serial Supabase calls. Now `try/catch/finally` with cancelled-guard, mirroring the existing audit pattern in `meal-nutrition.tsx`.
+3. **Planner `generatePlan`** (`apps/mobile/app/(tabs)/planner.tsx:1324`) — explicit `setGenerating(false)` at the happy-path tail meant any throw at any await stranded the regenerate button. Now wrapped in finally + user-facing alert.
+4. **FoodSearchPanel debounced first-page search** (mobile + web) — same bug shape as PR #129's `loadMore` but on the initial debounced page. Pre-fix: `await Promise.all([searchFoods, searchCustomFoods])` rejected → `setLoading(false)` never ran. Now `try/catch/finally` with empty-result fallback.
+
+Test: `stuckSpinnerGuards.test.ts` (10 cases) — pins every surface has ≥1 `} finally {` block AND that one of those finally blocks resets the spinner state (with cancelled-guard tolerated).
+
+Remaining unguarded surface: HealthKit sample-fetch native-callback wrappers (`healthSync.ts`). 14+ promises with no callback timeout — if a HK callback never fires, the awaiting promise hangs forever. Separate session: needs a `withHealthCallbackTimeout` helper applied to all wrappers (similar shape to existing `initHealthKitPromiseWithTimeout`). Documented for next pass.
 
 **2026-05-07 — F-74 follow-up + tracker integrity (PR #132, build 45)**
 
