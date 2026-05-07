@@ -32,7 +32,6 @@ import { useAuth } from "@/context/auth";
 import { dateKeyFromDate, newMealId } from "@/lib/nutritionJournal";
 import { snapshotDailyTargetIfMissing } from "../../../../src/lib/nutrition/dailyTargetSnapshot";
 import { scaleCaffeineAlcohol } from "../../../../src/lib/nutrition/scaleCaffeineAlcoholForGrams";
-import { updateStimulantsForDay } from "../../../../src/lib/nutrition/updateStimulantsForDay";
 import { scaleMicrosForGrams } from "../../../../src/lib/openFoodFacts/parseOffMicros";
 import { clampRememberedToServingOptions, getRememberedPortion, recordPortion } from "@/lib/barcodePortionMemory";
 import { writeMealToHealthKitIfEnabled } from "@/lib/healthKitMealWriter";
@@ -193,13 +192,11 @@ export default function BarcodeScreen() {
     } else {
       // F-2 — freeze today's target on first log of the day.
       void snapshotDailyTargetIfMissing(supabase, userId);
-      // F-13 — bump daily caffeine / alcohol totals.
-      if (caffeineMg > 0 || alcoholG > 0) {
-        void updateStimulantsForDay(supabase, userId, dateKey, {
-          caffeineMg,
-          alcoholG,
-        });
-      }
+      // F-74 / F-103 fix (2026-05-07): per-meal micros canonical SoT.
+      // `nutrition_micros.caffeineMg` / `alcoholG` is already on the
+      // inserted row above; Today's `caffeineFromMealsMg` /
+      // `alcoholByDayMerged` will sum it at render. No ledger bump
+      // (the previous one + the read-side merge double-counted by 2×).
       // Audit/2026-04-30 — remember this portion size for the barcode
       // so the next scan defaults here. Fire-and-forget; AsyncStorage
       // failures are non-fatal (the meal already persisted).

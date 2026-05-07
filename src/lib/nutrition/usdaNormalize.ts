@@ -18,13 +18,13 @@ export type VerifiedMacros = {
    * Audit 2026-05-05 (Grace): the previous shape had no field for
    * either, so a USDA-sourced wine / coffee / cosmopolitan logged
    * via the food search produced a `nutrition_micros.alcoholG = null`
-   * row and the daily `extra_alcohol_g_by_day` / `extra_caffeine_by_day`
-   * stamp short-circuited at zero. The Today caffeine/alcohol charts
-   * read from those daily totals, so wine + coffee logs vanished
-   * silently. Adding these fields closes the gap end-to-end:
+   * row, so wine + coffee logs vanished from the chip totals. Adding
+   * these fields closes the gap end-to-end:
    * `fdcFoodMacrosPer100g` extracts → API route returns →
-   * `getFoodMacros` reads → `handleFoodSearchSelect` scales →
-   * `bumpStimulantsForLoggedMeal` writes.
+   * `getFoodMacros` reads → `handleFoodSearchSelect` scales → meal
+   * row's `nutrition_micros.{caffeineMg,alcoholG}` carries it through.
+   * Per-meal micros is the canonical SoT (F-74 / F-103, 2026-05-07);
+   * the Today chip totals sum it at render.
    */
   caffeineMgPer100g: number | null;
   alcoholGPer100g: number | null;

@@ -123,11 +123,6 @@ import { aiLoggingSourceLabel } from "../../../../src/lib/nutrition/aiLogging";
 import { scaleCaffeineAlcohol } from "../../../../src/lib/nutrition/scaleCaffeineAlcoholForGrams";
 import { scaleMicrosPerServing } from "../../../../src/lib/nutrition/scaleMicrosPerServing";
 import { scaleMicrosForGrams } from "../../../../src/lib/openFoodFacts/parseOffMicros";
-import { updateStimulantsForDay } from "../../../../src/lib/nutrition/updateStimulantsForDay";
-import {
-  bumpStimulantsForLoggedMeal,
-  bumpStimulantsForLoggedMeals,
-} from "../../../../src/lib/nutrition/bumpStimulantsForLoggedMeal";
 import { HydrationStimulantsCard } from "@/components/HydrationStimulantsCard";
 import SaveMealSheet from "@/components/SaveMealSheet";
 import QuickAddPanel from "@/components/QuickAddPanel";
@@ -1665,14 +1660,14 @@ export default function TrackerScreen() {
       setByDay((prev) => ({ ...prev, [dayKey]: [...(prev[dayKey] ?? []), meal] }));
       // 2026-04-28 (teardown Top-5 #5): light haptic on log.
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      // Tracking-extras autoupdate (2026-05-02) — centralised via
-      // `bumpStimulantsForLoggedMeal`. Pre-helper this block read
-      // `micros.caffeineMg` / `micros.alcoholG` inline; the helper
-      // does the same null/positive guard so the behaviour is
-      // byte-equivalent. Mirrors `handleFoodSearchSelect`.
-      if (userId) {
-        void bumpStimulantsForLoggedMeal(supabase, userId, dayKey, meal);
-      }
+      // F-74 / F-103 fix (2026-05-07): NO ledger bump on log paths.
+      // Per-meal `micros.caffeineMg` / `alcoholG` is the canonical SoT
+      // for food-derived stimulants — `caffeineFromMealsMg` /
+      // `alcoholByDayMerged` sum these from `byDay` at render. The
+      // earlier `bumpStimulantsForLoggedMeal` call here was duplicating
+      // the value into `extra_caffeine_by_day`, then the read merged
+      // both → 2× display. Quick-add (`addCaffeineMg`) keeps writing
+      // to the ledger directly; that ledger now holds quick-add only.
       try { track(AnalyticsEvents.food_logged, { source: "quick_add", slot }); } catch { /* noop */ }
     },
     [dayKey, userId],
@@ -1770,14 +1765,9 @@ export default function TrackerScreen() {
         ...prev,
         [dayKey]: [...(prev[dayKey] ?? []), meal],
       }));
-      // Tracking-extras autoupdate (2026-05-02) — centralised via
-      // `bumpStimulantsForLoggedMeal`. Reads from the meal's `micros`
-      // map which we just set, so a wine / coffee log persists the
-      // bump on `profiles.extra_caffeine_by_day` /
-      // `extra_alcohol_g_by_day` for cross-device durability.
-      if (userId) {
-        void bumpStimulantsForLoggedMeal(supabase, userId, dayKey, meal);
-      }
+      // F-74 / F-103 fix (2026-05-07): see `quickAddMeal` above —
+      // per-meal micros is the canonical SoT for food-derived
+      // stimulants. No `bumpStimulantsForLoggedMeal` here.
       try {
         track(AnalyticsEvents.food_logged, {
           source: result.source === "CUSTOM" ? "custom_food" : "manual",
@@ -2754,14 +2744,12 @@ export default function TrackerScreen() {
         minute: "2-digit",
       });
       const newMeals: JournalMeal[] = aiItems.map((item) => {
-        // Tracking-extras autoupdate (2026-05-02) — forward optional
-        // caffeine / alcohol from the AI item to the journal meal's
-        // `micros` map so (a) the chip totals (which read
-        // `m.micros.caffeineMg` / `alcoholG` directly off `byDay`)
-        // reflect the log immediately and (b) the bulk
-        // `bumpStimulantsForLoggedMeals` call below persists the
-        // bump on `profiles`. Per project rule: only forward values
-        // the AI pipeline actually provided — never invent.
+        // F-74 / F-103 (2026-05-07) — forward optional caffeine /
+        // alcohol from the AI item to the journal meal's `micros`
+        // map. Per-meal `micros` is the canonical SoT — the chip
+        // totals read `m.micros.caffeineMg` / `alcoholG` off `byDay`
+        // and re-sum at every render. Per project rule: only forward
+        // values the AI pipeline actually provided — never invent.
         const micros: Record<string, number> = {};
         if (
           typeof item.caffeineMg === "number" &&
@@ -2795,15 +2783,8 @@ export default function TrackerScreen() {
         ...prev,
         [dayKey]: [...(prev[dayKey] ?? []), ...newMeals],
       }));
-      // Tracking-extras autoupdate (2026-05-02) — single bulk bump
-      // when ANY committed AI item carried caffeine / alcohol. No-op
-      // when the upstream API hasn't been extended yet (current
-      // baseline — voice + photo routes don't surface stimulants).
-      // The helper short-circuits on a 0 sum so this is free in the
-      // common case.
-      if (userId) {
-        void bumpStimulantsForLoggedMeals(supabase, userId, dayKey, newMeals);
-      }
+      // F-74 / F-103 fix (2026-05-07): see `quickAddMeal` —
+      // per-meal micros canonical, no ledger bump on AI commits.
       // 2026-04-28 (teardown Top-5 #5): light haptic on log.
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       track(AnalyticsEvents.food_logged, {
@@ -3710,29 +3691,15 @@ export default function TrackerScreen() {
   }, [dayKey, kcal, protein, carbs, fat, title, activeMealSlot]);
 
   const deleteMeal = useCallback((mealId: string) => {
-    // F-13 (2026-04-19) — capture the meal's caffeine/alcohol delta
-    // BEFORE we drop it so the same values can be subtracted from
-    // `profiles.extra_caffeine_by_day` / `extra_alcohol_g_by_day`.
-    // `dayKey` is captured by scanning every day (edits from the
-    // non-selected day are rare but possible).
-    let doomedCaffeineMg = 0;
-    let doomedAlcoholG = 0;
-    let doomedDayKey: string | null = null;
-    setByDay((prev) => {
-      for (const [dk, meals] of Object.entries(prev)) {
-        const hit = meals.find((m) => m.id === mealId);
-        if (hit) {
-          doomedDayKey = dk;
-          doomedCaffeineMg = Number(hit.micros?.caffeineMg ?? 0) || 0;
-          doomedAlcoholG = Number(hit.micros?.alcoholG ?? 0) || 0;
-          break;
-        }
-      }
-      return {
-        ...prev,
-        [dayKey]: (prev[dayKey] ?? []).filter((m) => m.id !== mealId),
-      };
-    });
+    // F-74 / F-103 (2026-05-07) — delete is now stimulant-side
+    // self-healing because per-meal `micros` is the canonical SoT.
+    // Removing the row drops its caffeine/alcohol contribution from
+    // the next render's `caffeineFromMealsMg` / `alcoholByDayMerged`
+    // sum automatically. No `doomed*` capture needed.
+    setByDay((prev) => ({
+      ...prev,
+      [dayKey]: (prev[dayKey] ?? []).filter((m) => m.id !== mealId),
+    }));
 
     // Persist deletion to Supabase (relational table).
     // Without this, the meal reappears on next app launch.
@@ -3746,18 +3713,9 @@ export default function TrackerScreen() {
             console.error("[tracker] delete meal failed:", error.message);
             return;
           }
-          // F-13 — decrement daily caffeine / alcohol totals by the
-          // deleted meal's contribution. Clamped at 0 inside the
-          // updater so a stale delete cannot push the total negative.
-          if (
-            doomedDayKey &&
-            (doomedCaffeineMg > 0 || doomedAlcoholG > 0)
-          ) {
-            void updateStimulantsForDay(supabase, userId, doomedDayKey, {
-              caffeineMg: -doomedCaffeineMg,
-              alcoholG: -doomedAlcoholG,
-            });
-          }
+          // F-74 / F-103 (2026-05-07): per-meal `micros` is canonical;
+          // the local `setByDay` filter above already drops the
+          // stimulant contribution from the chip totals.
         });
     }
   }, [dayKey, userId]);
@@ -3820,14 +3778,10 @@ export default function TrackerScreen() {
       // (back-dating a snapshot would defeat the purpose).
       void snapshotDailyTargetIfMissing(supabase, userId);
       // Tracking-extras autoupdate (2026-05-02) — close the mobile
-      // parity gap with web's `addLoggedMealsForDate`: when the
-      // cloned rows carried per-meal caffeine / alcohol micros (e.g.
-      // duplicating a day that contained "1 espresso" or "1 glass
-      // of wine"), bump the TARGET day's persisted totals so the
-      // chips on the target day reflect the duplicate within ~1s.
-      // Single round-trip (sums across `withIds`) instead of N
-      // sequential bumps. Mirrors web byte-for-byte.
-      void bumpStimulantsForLoggedMeals(supabase, userId, targetDayKey, withIds);
+      // F-74 / F-103 fix (2026-05-07): per-meal micros canonical SoT —
+      // duplicate-day clones carry `micros.caffeineMg` / `alcoholG`
+      // forward via `cloneMealWithoutId`, so the target day's chip
+      // totals re-sum from `byDay` at render. No ledger bump here.
       // Audit/2026-04-30 — per-meal HK write for the copied rows.
       // Cloned meals are minted with fresh ids so the dedupe set
       // doesn't suppress them; the user just logged a real meal on
@@ -4132,13 +4086,11 @@ export default function TrackerScreen() {
           source: "Meal plan",
           origin: "plan",
         });
-        // Tracking-extras autoupdate (2026-05-02) — centralised via
-        // `bumpStimulantsForLoggedMeal`. Reads from the optimistic
-        // meal's `micros` map (populated above from
-        // `fetchPlannedMealMicros`, already scaled by `mult`) so the
-        // helper sees the same per-portion values the chip totals
-        // will sum on the next render.
-        void bumpStimulantsForLoggedMeal(supabase, userId, dk, optimisticMeal);
+        // F-74 / F-103 fix (2026-05-07): per-meal micros canonical SoT.
+        // The optimistic meal's `micros` map (populated above from
+        // `fetchPlannedMealMicros`, scaled by `mult`) feeds
+        // `caffeineFromMealsMg` / `alcoholByDayMerged` at render. No
+        // ledger bump.
       }
     },
     [userId, selectedDate, loadJournal],
@@ -5344,13 +5296,10 @@ export default function TrackerScreen() {
             ...prev,
             [dayKey]: [...(prev[dayKey] ?? []), meal],
           }));
-          // F-13 — bump daily caffeine / alcohol totals on profiles.
-          if (userId && (caffeineMg > 0 || alcoholG > 0)) {
-            void updateStimulantsForDay(supabase, userId, dayKey, {
-              caffeineMg,
-              alcoholG,
-            });
-          }
+          // F-74 / F-103 fix (2026-05-07): per-meal micros canonical
+          // SoT. The barcode commit above wrote `micros.caffeineMg` /
+          // `alcoholG` onto the meal row; `caffeineFromMealsMg` /
+          // `alcoholByDayMerged` will sum it at render. No ledger bump.
           track(AnalyticsEvents.food_logged, { source: "barcode", slot: activeMealSlot });
           Alert.alert("Logged", `${product.name} added to ${activeMealSlot}.`);
         }}
