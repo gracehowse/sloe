@@ -1395,15 +1395,12 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         // dashboard slices correctly.
         const analyticsSource: FoodLoggedSource =
           item.source === "voice" ? "voice" : "photo";
-        // Tracking-extras autoupdate (2026-05-02) — forward optional
-        // caffeine / alcohol from the AI item to the meal's `micros`
-        // map. The downstream `addLoggedMeal` insert path inside
-        // `useNutritionJournalState` reads `meal.micros.caffeineMg` /
-        // `alcoholG` and calls `updateStimulantsForDay` on a positive
-        // value, so the daily chip totals reflect the log without
-        // needing a parallel bump call here. No-op when the AI pipe
-        // doesn't surface stimulants (current baseline). Project
-        // rule: only forward what the pipeline actually provided.
+        // F-74 / F-103 (2026-05-07): forward optional caffeine /
+        // alcohol from the AI item to the meal's `micros` map.
+        // Per-meal `micros` is the canonical SoT for food-derived
+        // stimulants — `caffeineFromMealsMgToday` /
+        // `alcoholByDayMerged` re-sum it at render. Project rule:
+        // only forward what the pipeline actually provided.
         const micros: Record<string, number> = {};
         if (
           typeof item.caffeineMg === "number" &&

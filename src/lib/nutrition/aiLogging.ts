@@ -78,12 +78,13 @@ export type AiLoggedItem = {
    *  later refactor of `unit`'s semantics can't strip it. */
   quantityHint?: string;
   /**
-   * Tracking-extras autoupdate (2026-05-02) — optional caffeine + alcohol
-   * payload an AI pipeline MAY surface when the recognised food has a
-   * known reference (e.g. "espresso" maps to a generic-beverage row in
-   * `genericBeverages.ts`). Both fields are absolute per-serving values
-   * (not per-100g) so the commit path can pass them straight to
-   * `bumpStimulantsForLoggedMeal` without re-scaling.
+   * F-74 / F-103 (2026-05-07) — optional caffeine + alcohol payload
+   * an AI pipeline MAY surface when the recognised food has a known
+   * reference (e.g. "espresso" maps to a generic-beverage row in
+   * `genericBeverages.ts`). Both fields are absolute per-serving
+   * values (not per-100g) so the commit path can stash them straight
+   * onto the meal row's `micros` map without re-scaling. Per-meal
+   * `micros` is the canonical SoT for food-derived stimulants.
    *
    * Per CLAUDE.md "no invented nutrition values" rule — these MUST come
    * from a deterministic upstream lookup, never from the LLM's free-text

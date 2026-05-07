@@ -1205,14 +1205,13 @@ export default function RecipeDetailScreen() {
       const micros: Record<string, number> = {};
       if (scaledForLog.sugar_g != null) micros.sugarG = scaledForLog.sugar_g;
       if (scaledForLog.sodium_mg != null) micros.sodiumMg = scaledForLog.sodium_mg;
-      // Tracking-extras autoupdate (2026-05-02) — recipes table doesn't
-      // currently carry caffeine_mg / alcohol_g per recipe (would
-      // require schema migration + per-ingredient roll-up). When that
-      // lands, set `micros.caffeineMg` / `micros.alcoholG` here from
-      // the verified ingredient roll-up and the inserted meal will
-      // auto-bump the daily totals via the debounced journal sync's
-      // `bumpStimulantsForLoggedMeal` (or wire a direct call here for
-      // the immediate-bump UX). Until then a recipe containing
+      // F-74 / F-103 (2026-05-07) — recipes table doesn't currently
+      // carry caffeine_mg / alcohol_g per recipe (would require a
+      // schema migration + per-ingredient roll-up). When that lands,
+      // set `micros.caffeineMg` / `micros.alcoholG` on the inserted
+      // meal row from the verified ingredient roll-up; per-meal
+      // micros is the canonical SoT and the chip totals will sum it
+      // automatically at next render. Until then a recipe containing
       // wine / coffee logged via "Add to today" leaves the chip
       // totals unchanged — known gap, scoped to a follow-up.
       const newId = newMealId();

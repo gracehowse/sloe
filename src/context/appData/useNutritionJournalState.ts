@@ -14,11 +14,6 @@ import { useRetryEnableDbTable } from "./useRetryEnableDbTable.ts";
 import { refreshAdaptiveTdeeForUser } from "../../lib/nutrition/refreshAdaptiveTdee.ts";
 import { cloneMealWithoutId, sanitizeCopyTargets } from "../../lib/nutrition/copyMeals.ts";
 import { snapshotDailyTargetIfMissing } from "../../lib/nutrition/dailyTargetSnapshot.ts";
-import { updateStimulantsForDay } from "../../lib/nutrition/updateStimulantsForDay.ts";
-import {
-  bumpStimulantsForLoggedMeal,
-  bumpStimulantsForLoggedMeals,
-} from "../../lib/nutrition/bumpStimulantsForLoggedMeal.ts";
 
 type NutritionEntryRow = {
   id: string;
@@ -207,14 +202,14 @@ export function useNutritionJournalState(opts: {
           // activity_level / plan_pace / goal. Fire-and-forget — a
           // snapshot write failure must never roll back the log.
           void snapshotDailyTargetIfMissing(supabase, authedUserId);
-          // F-13 (2026-04-19) — auto-track caffeine / alcohol on every
-          // successful log. Centralised via
-          // `bumpStimulantsForLoggedMeal` (2026-05-02) so web + mobile
-          // share the same null/positive guard. Reads from the meal's
-          // `micros` map (set by the host before calling addLoggedMeal);
-          // 0 / null → no-op, positive → bump. Fire-and-forget: a
-          // failure here never rolls back the meal row.
-          void bumpStimulantsForLoggedMeal(supabase, authedUserId, dayKey, newMeal);
+          // F-74 / F-103 fix (2026-05-07): per-meal `micros.caffeineMg`
+          // / `alcoholG` is the canonical SoT — `NutritionTracker`
+          // re-sums it at render via `caffeineFromMealsMgToday` /
+          // `alcoholByDayMerged`. The previous bump here was duplicating
+          // the value into `extra_caffeine_by_day`, then the read merged
+          // both → 2× display. Quick-add still writes the ledger
+          // directly (different code path); ledger now holds quick-add
+          // only.
         });
     }
 
@@ -284,12 +279,10 @@ export function useNutritionJournalState(opts: {
       // `dayKey` — past-day snapshots stay empty so the read path's
       // fallback renders (see `dailyTargetSnapshot.ts` contract).
       void snapshotDailyTargetIfMissing(supabase, authedUserId);
-      // F-13 — sum every meal's caffeine/alcohol contributions and
-      // post a single bump. Duplicate-day of a day that contained
-      // "1 espresso" carries the micros forward via cloneMealWithoutId.
-      // 2026-05-02: centralised via `bumpStimulantsForLoggedMeals` so
-      // web + mobile share the same sum + round logic.
-      void bumpStimulantsForLoggedMeals(supabase, authedUserId, dayKey, withIds);
+      // F-74 / F-103 fix (2026-05-07): per-meal micros canonical SoT —
+      // duplicated meals carry `micros` forward via the row clone, so
+      // the destination day's chip totals re-sum from the merged map
+      // at render. No ledger bump.
       return withIds;
     },
     [authedUserId, dbNutritionEnabled, buildNutritionEntryRow],
@@ -304,31 +297,16 @@ export function useNutritionJournalState(opts: {
 
   const removeLoggedMeal = useCallback(
     (mealId: string) => {
-      // F-13 (2026-04-19) — capture the meal's caffeine / alcohol
-      // contribution BEFORE we drop it from state so the same delta can
-      // be subtracted from `profiles.extra_caffeine_by_day` /
-      // `extra_alcohol_g_by_day`. `dayKey` is captured from the meal's
-      // storage location, not `selectedDateKey`, so deletes from a
-      // non-selected day (rare, but possible via edit flows) still
-      // decrement the right bucket.
-      let doomedCaffeineMg = 0;
-      let doomedAlcoholG = 0;
-      let doomedDayKey: string | null = null;
-      setNutritionByDay((prev) => {
-        for (const [dk, meals] of Object.entries(prev)) {
-          const hit = meals.find((m) => m.id === mealId);
-          if (hit) {
-            doomedDayKey = dk;
-            doomedCaffeineMg = Number(hit.micros?.caffeineMg ?? 0) || 0;
-            doomedAlcoholG = Number(hit.micros?.alcoholG ?? 0) || 0;
-            break;
-          }
-        }
-        return {
-          ...prev,
-          [selectedDateKey]: (prev[selectedDateKey] ?? []).filter((m) => m.id !== mealId),
-        };
-      });
+      // F-74 / F-103 (2026-05-07) — delete is now stimulant-side
+      // self-healing because per-meal `micros` is the canonical SoT.
+      // Removing the row drops its caffeine/alcohol contribution from
+      // the next render's `caffeineFromMealsMgToday` /
+      // `alcoholByDayMerged` sum automatically. No `doomed*` capture
+      // needed.
+      setNutritionByDay((prev) => ({
+        ...prev,
+        [selectedDateKey]: (prev[selectedDateKey] ?? []).filter((m) => m.id !== mealId),
+      }));
 
       // Delete from relational table
       if (authedUserId && dbNutritionEnabled) {
@@ -339,19 +317,13 @@ export function useNutritionJournalState(opts: {
           }
           if (!error) {
             void refreshAdaptiveTdeeForUser(supabase, authedUserId);
-            // F-13 — decrement daily totals. Only fires when the deleted
-            // meal actually carried a non-zero caffeine / alcohol micro
-            // and we know which day it lived on. The updater clamps at
-            // 0 so we can't push a stale delta past zero.
-            if (
-              doomedDayKey &&
-              (doomedCaffeineMg > 0 || doomedAlcoholG > 0)
-            ) {
-              void updateStimulantsForDay(supabase, authedUserId, doomedDayKey, {
-                caffeineMg: -doomedCaffeineMg,
-                alcoholG: -doomedAlcoholG,
-              });
-            }
+            // F-74 / F-103 fix (2026-05-07): no ledger decrement on
+            // delete. Per-meal `micros` is the canonical SoT; removing
+            // the row drops its contribution from the next render's
+            // `caffeineFromMealsMgToday` / `alcoholByDayMerged` sum
+            // automatically. The `doomed*` capture above is now a
+            // no-op for stimulants; kept as scaffolding for any
+            // future delete-time hooks that need it.
           }
         });
       }
