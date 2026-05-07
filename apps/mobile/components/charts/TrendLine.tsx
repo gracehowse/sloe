@@ -52,6 +52,55 @@ export default function TrendLine({
     }
   }, [dataSig, data.length]);
 
+  // 2026-05-06: tap-and-drag scrubber. Previously the chart only
+  // responded to a single tap (`onPressIn`). PanResponder now lets
+  // the user drag along the line — the selectedIndex follows the
+  // touch x — matching the WeightChart on the Progress tab.
+  //
+  // Note: hook MUST run unconditionally (rules-of-hooks), so it is
+  // declared above the early-return below. The handler closes over
+  // `data` / `projectedData` / `chartWidthPx` and recomputes
+  // stepX inline so it stays correct without depending on the
+  // post-return calculations.
+  const projectedLength = projectedData?.length ?? 0;
+  const panResponder = useMemo(() => {
+    const viewW = 200;
+    const paddingX = 4;
+    const usableW = viewW - paddingX * 2;
+    const totalPts = data.length + projectedLength;
+    const stepX = totalPts > 1 ? usableW / (totalPts - 1) : usableW;
+    const pick = (locationX: number, widthPx: number) => {
+      if (widthPx <= 0 || data.length < 2) return;
+      const xSvg = (locationX / widthPx) * viewW;
+      let bestI = 0;
+      let bestDist = Infinity;
+      for (let i = 0; i < data.length; i++) {
+        const px = paddingX + i * stepX;
+        const dist = Math.abs(px - xSvg);
+        if (dist < bestDist) {
+          bestDist = dist;
+          bestI = i;
+        }
+      }
+      setSelectedIndex((prev) => {
+        if (prev !== bestI) {
+          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        }
+        return bestI;
+      });
+    };
+    return PanResponder.create({
+      onStartShouldSetPanResponder: () => data.length >= 2,
+      onMoveShouldSetPanResponder: () => data.length >= 2,
+      onPanResponderGrant: (e: GestureResponderEvent) => {
+        if (chartWidthPx > 0) pick(e.nativeEvent.locationX, chartWidthPx);
+      },
+      onPanResponderMove: (e: GestureResponderEvent) => {
+        if (chartWidthPx > 0) pick(e.nativeEvent.locationX, chartWidthPx);
+      },
+    });
+  }, [chartWidthPx, data.length, projectedLength]);
+
   if (data.length === 0) return null;
 
   // Domain is derived from the plotted data (+ projected), NOT from the
@@ -126,55 +175,8 @@ export default function TrendLine({
   const selX = paddingX + safeIdx * stepX;
   const selY = toY(selPt.value);
 
-  const pickNearestFromX = (locationX: number, widthPx: number) => {
-    if (widthPx <= 0 || data.length < 2) return;
-    const xSvg = (locationX / widthPx) * viewW;
-    let bestI = 0;
-    let bestDist = Infinity;
-    for (let i = 0; i < data.length; i++) {
-      const px = paddingX + i * stepX;
-      const dist = Math.abs(px - xSvg);
-      if (dist < bestDist) {
-        bestDist = dist;
-        bestI = i;
-      }
-    }
-    setSelectedIndex((prev) => {
-      if (prev !== bestI) {
-        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }
-      return bestI;
-    });
-  };
-
   const valueLabel =
     formatValue != null ? formatValue(selPt.value) : String(selPt.value);
-
-  // 2026-05-06: tap-and-drag scrubber. Previously the chart only
-  // responded to a single tap (`onPressIn`). PanResponder now lets
-  // the user drag along the line — the selectedIndex follows the
-  // touch x — matching the WeightChart on the Progress tab.
-  const panResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onStartShouldSetPanResponder: () => data.length >= 2,
-        onMoveShouldSetPanResponder: () => data.length >= 2,
-        onPanResponderGrant: (e: GestureResponderEvent) => {
-          if (chartWidthPx > 0) {
-            pickNearestFromX(e.nativeEvent.locationX, chartWidthPx);
-          }
-        },
-        onPanResponderMove: (e: GestureResponderEvent) => {
-          if (chartWidthPx > 0) {
-            pickNearestFromX(e.nativeEvent.locationX, chartWidthPx);
-          }
-        },
-      }),
-    // Re-create when chart width / data shape changes so the
-    // scrubber math stays correct after layout changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [chartWidthPx, data.length],
-  );
 
   return (
     <View style={{ width: "100%" }}>
