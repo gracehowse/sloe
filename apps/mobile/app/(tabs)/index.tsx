@@ -478,6 +478,13 @@ export default function TrackerScreen() {
   // (stored as "16:8" style). Defaults to 16 until the profile loads.
   // Used by the widget snapshot so the iOS widget shows the correct ring.
   const [fastTargetHours, setFastTargetHours] = useState<number>(16);
+  // F-109 (TestFlight `AFHtAQRAWad1w8bDvSgZkUg`, 2026-05-06): the
+  // idle-state "Start fast" pill on Today is gated on the user having
+  // opted in to intermittent fasting (Grace, 2026-05-07). The proxy
+  // signal is `profiles.fasting_window != null` — the column is set
+  // only after the user picks a window on /fasting or in settings.
+  // Non-IF users see no pill at all.
+  const [fastingOptedIn, setFastingOptedIn] = useState<boolean>(false);
   const [fabSheetOpen, setFabSheetOpen] = useState(false);
   // Batch 5.13 — Pro-gated Voice + AI photo logging state.
   const [voiceLogOpen, setVoiceLogOpen] = useState(false);
@@ -1529,6 +1536,11 @@ export default function TrackerScreen() {
         setFastTargetHours(fast);
       }
     }
+    // F-109: gate the idle "Start fast" pill on the IF opt-in signal.
+    // A non-null `fasting_window` means the user has set a window
+    // (onboarding or /fasting preset chip) — only those users see the
+    // idle pill on Today.
+    setFastingOptedIn(typeof fwRaw === "string" && fwRaw.length > 0);
     if (Array.isArray(data.tracked_macros) && data.tracked_macros.length > 0) {
       setTrackedMacros(data.tracked_macros as string[]);
     }
@@ -4384,6 +4396,18 @@ export default function TrackerScreen() {
                   <TodayFastingPill
                     startedAt={activeFastStart}
                     nowTick={fastingTick}
+                    onPress={() => router.push("/fasting")}
+                  />
+                );
+              }
+              // 1b. F-109: idle "Start fast" pill — only for users who
+              //     opted in to IF (`fasting_window != null`). A
+              //     non-IF user falls through to the eat-again /
+              //     north-star / deficit prompts, same as before.
+              if (fastingOptedIn) {
+                return (
+                  <TodayFastingPill
+                    mode="idle"
                     onPress={() => router.push("/fasting")}
                   />
                 );
