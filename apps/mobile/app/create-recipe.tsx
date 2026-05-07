@@ -36,6 +36,8 @@ import {
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "../../../src/lib/analytics/events";
 import FoodSearchModal, { type SelectedFood } from "@/components/FoodSearchModal";
+import BarcodeScannerModal from "@/components/BarcodeScannerModal";
+import type { BarcodeProduct } from "@/lib/verifyRecipe";
 import MealTypePicker from "@/components/MealTypePicker";
 import { normaliseInstructions } from "../../../src/lib/recipes/normaliseInstructions";
 import { normalizeRecipeTitle } from "../../../src/lib/recipes/normalizeRecipeTitle";
@@ -196,6 +198,10 @@ export default function CreateRecipeScreen() {
   const [pasteDraft, setPasteDraft] = useState("");
   const [bulkMatching, setBulkMatching] = useState(false);
   const [imageExtracting, setImageExtracting] = useState(false);
+  // F-122 (TestFlight `ACwYhlziV5Fop37xCsbuL2I`, 2026-05-06): Create
+  // recipe page now supports barcode scan as a third quick-add path
+  // alongside Paste list / Scan photo, mirroring verify.tsx.
+  const [barcodeOpen, setBarcodeOpen] = useState(false);
 
   const totals = useMemo(() => {
     return ingredients.reduce(
@@ -451,6 +457,33 @@ export default function CreateRecipeScreen() {
     setSearchOpen(false);
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, [searchReplaceId]);
+
+  const onBarcodeScanned = useCallback(
+    (_barcode: string, product: BarcodeProduct) => {
+      // Default to 100 g of the scanned product. The user can edit
+      // the row afterward — same as Paste list / Scan photo paths.
+      const grams = product.servingSizeG ?? 100;
+      const f = grams / 100;
+      setIngredients((prev) => [
+        ...prev,
+        {
+          id: newIngId(),
+          name: product.name,
+          amount: String(grams),
+          unit: "g",
+          calories: Math.round(product.calories * f),
+          protein: Math.round(product.protein * f * 10) / 10,
+          carbs: Math.round(product.carbs * f * 10) / 10,
+          fat: Math.round(product.fat * f * 10) / 10,
+          fiberG: Math.round(product.fiberG * f * 10) / 10,
+          source: "OFF",
+        },
+      ]);
+      setBarcodeOpen(false);
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    },
+    [],
+  );
 
   const openAddIngredientSearch = useCallback(() => {
     setSearchReplaceId(null);
@@ -816,6 +849,16 @@ export default function CreateRecipeScreen() {
               <Ionicons name="scan-outline" size={18} color={Accent.primary} />
               <Text style={styles.quickBtnText}>Scan photo</Text>
             </Pressable>
+            <Pressable
+              style={[styles.quickBtn, !session && { opacity: 0.45 }]}
+              onPress={() => setBarcodeOpen(true)}
+              disabled={!session}
+              accessibilityRole="button"
+              accessibilityLabel="Scan barcode to add ingredient"
+            >
+              <Ionicons name="barcode-outline" size={18} color={Accent.primary} />
+              <Text style={styles.quickBtnText}>Scan barcode</Text>
+            </Pressable>
           </View>
           {(bulkMatching || imageExtracting) && (
             <View style={styles.row}>
@@ -984,6 +1027,14 @@ export default function CreateRecipeScreen() {
           setSearchOpen(false);
           setSearchReplaceId(null);
         }}
+      />
+
+      {/* F-122: barcode scanner — adds a new ingredient using the
+          scanned product's per-100g macros. */}
+      <BarcodeScannerModal
+        visible={barcodeOpen}
+        onScan={onBarcodeScanned}
+        onClose={() => setBarcodeOpen(false)}
       />
     </KeyboardAvoidingView>
   );
