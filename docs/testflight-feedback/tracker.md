@@ -118,7 +118,7 @@ Walked every ⏳ / 🔄 / 🔍 / 🟠 entry in the tracker. Outcome:
 | F-119 (orange-when-already-verified) | ⏳ | ✅ closed by #115 (build 44) | Confirmed: `applyVerifyJsonToStateAndDb` was the broken write path. It set `source` + `confidence` on per-row updates but never `is_verified`, so ≥0.5-confidence AI rows stayed `is_verified=false`. Fix: include `is_verified: confidence >= 0.5` in per-row payload. |
 | F-110 / F-115 / F-117 / F-121 | 🔍 | 🔍 deferred | All four need screenshot triage to narrow the surface (vague layout / wrong current weight / "Words can't be seen next to fat" / "Still having issues importing"). |
 | F-73 (cortado search relevance + DB coverage) | ⏳ | ⏳ kept | Big work — requires (a) OFF trust-weighting refinement (sibling of F-77 partial fix) and (b) generic-drinks seed expansion. Documented for separate session. |
-| F-74 / F-103 (logged caffeine/alcohol → cards) | ⏳ | ⏳ kept | Architectural change — `caffeine_mg` / `alcohol_g` need to be derived from `nutrition_micros`, not a separate ledger. Already partial via `bumpStimulantsForLoggedMeal` for the per-meal path; the Today cards still read the old ledger column. Documented for separate session. |
+| F-74 / F-103 (logged caffeine/alcohol → cards) | ⏳ | ✅ closed by PR #128 (build 45) — see "2026-05-07 — F-74 / F-103 fully closed" entry. Per-meal `micros` is now the canonical SoT; `bumpStimulantsForLoggedMeal*` helpers + ledger-decrement-on-delete deleted as dead code. |
 | F-76 (caption-as-title on import) | ⏳ | ⏳ kept | Stricter title-trim rule needed at the import write site (separate from `stripSectionPrefix` which handles ingredient rows). Documented. |
 | F-106 (no "from library" entry on Today / Plan) | ⏳ | ⏳ kept | UX change — needs design pass to decide where the entry point sits without overloading the existing `+` FAB. Documented. |
 | F-108 (AI photo analysis fail) | ⏳ | ⏳ kept | Need server-side logs from the affected request to diagnose. No screenshot ID we can correlate without more info. Documented. |
@@ -168,6 +168,15 @@ Net open items count: ~12 ⏳ + ~4 🔍 + the 6 ✅ that flipped today. Every AS
 Net open items count after this sweep: **2 ⏳ items** (F-108 / F-114) + 2 🔍 items (F-110 + the unmapped 2026-04-19 `AN8GJ1Dr3M` steps/burn). Both ⏳ items have partial fixes shipped pending tester re-verify on build 45.
 
 ---
+
+**2026-05-07 — F-74 follow-up + tracker integrity (PR #132, build 45)**
+
+`repo-auditor` build-45 ground-truth pass surfaced two real residuals from PR #128:
+
+1. **`apps/mobile/app/(tabs)/planner.tsx:2587-2601` "Log today" button was writing only the big-four macros** — fiber / sugar / sodium silently dropped vs the recipe-detail "Add to today" path which already persists them. Fixed: route through `fetchPlannedMealMicros` (same shape as `logPlannedMealWithPortion` in Today). Caffeine / alcohol still absent because `recipes` doesn't store them aggregated — see `recipe/[id].tsx` for the documented gap; would require a schema migration + per-ingredient roll-up.
+2. **Static-pin file list was incomplete** — `tests/unit/stimulantPerMealCanonicalSot.test.ts` listed only 3 files when the actual nutrition_entries insert sites are 5+ (mobile planner + recipe-detail were missing). A future agent re-introducing `bumpStimulantsForLoggedMeal*` in `planner.tsx` or `recipe/[id].tsx` would not have tripped the pin. Extended `LOG_PATHS_NO_BUMP` to include `apps/mobile/app/(tabs)/planner.tsx` + `apps/mobile/app/recipe/[id].tsx`.
+
+Plus: cleaned up a stale "kept as scaffolding" comment in `useNutritionJournalState.ts:removeLoggedMeal` that referenced a deleted variable; corrected the older 2026-05-06 sweep table row that still claimed F-74 was "kept ⏳" via the now-deleted `bumpStimulantsForLoggedMeal` helper.
 
 **2026-05-07 — F-108 partial fix shipped (PR #131, build 45)**
 

@@ -317,13 +317,11 @@ export function useNutritionJournalState(opts: {
           }
           if (!error) {
             void refreshAdaptiveTdeeForUser(supabase, authedUserId);
-            // F-74 / F-103 fix (2026-05-07): no ledger decrement on
-            // delete. Per-meal `micros` is the canonical SoT; removing
-            // the row drops its contribution from the next render's
-            // `caffeineFromMealsMgToday` / `alcoholByDayMerged` sum
-            // automatically. The `doomed*` capture above is now a
-            // no-op for stimulants; kept as scaffolding for any
-            // future delete-time hooks that need it.
+            // F-74 / F-103 (2026-05-07): per-meal `micros` is the
+            // canonical SoT — removing the row drops its contribution
+            // from the next render's `caffeineFromMealsMgToday` /
+            // `alcoholByDayMerged` sum automatically. No ledger touch
+            // needed.
           }
         });
       }

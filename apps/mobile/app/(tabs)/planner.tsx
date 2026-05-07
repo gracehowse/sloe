@@ -30,6 +30,7 @@ import {
 import { fetchMealPlanJson, upsertMealPlanJson } from "../../../../src/lib/supabase/phase1LegacyJsonb";
 import { dateKeyFromDate, newMealId } from "@/lib/nutritionJournal";
 import { snapshotDailyTargetIfMissing } from "../../../../src/lib/nutrition/dailyTargetSnapshot";
+import { fetchPlannedMealMicros } from "../../../../src/lib/planning/plannedMealMicros";
 import {
   Check,
   CheckCircle2,
@@ -2575,6 +2576,23 @@ export default function PlannerScreen() {
                     e.stopPropagation?.();
                     const dk = dateKeyFromDate(new Date());
                     const entryId = newMealId();
+                    // F-74 follow-up (2026-05-07, repo-auditor flag): the
+                    // "Log today" path was writing only the big-four
+                    // macros — fiber / sugar / sodium were silently
+                    // dropped vs the recipe-detail "Add to today" path
+                    // which already persists them. Pull them from the
+                    // recipe row at log time (same shape as
+                    // `logPlannedMealWithPortion` in Today). Caffeine /
+                    // alcohol are still absent because `recipes` doesn't
+                    // store them aggregated — see recipe/[id].tsx for
+                    // the documented gap.
+                    const microsRes = meal.recipeId
+                      ? await fetchPlannedMealMicros(
+                          supabase as unknown as Parameters<typeof fetchPlannedMealMicros>[0],
+                          meal.recipeId,
+                          1,
+                        )
+                      : { fiberG: null, micros: {}, macrosAreCoerced: false };
                     // F30 fix (audit 2026-04-28): `meal.calories` etc.
                     // are already post-portion (the planner bakes
                     // portion into macros — see the per-meal storage
@@ -2597,6 +2615,10 @@ export default function PlannerScreen() {
                         protein: meal.protein,
                         carbs: meal.carbs,
                         fat: meal.fat,
+                        fiber_g: microsRes.fiberG,
+                        ...(Object.keys(microsRes.micros).length > 0
+                          ? { nutrition_micros: microsRes.micros }
+                          : {}),
                         portion_multiplier: 1,
                       });
                     if (error) {

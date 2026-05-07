@@ -107,6 +107,8 @@ describe("F-74 / F-103 — per-meal micros canonical (no double-count)", () => {
 const LOG_PATHS_NO_BUMP = [
   "apps/mobile/app/(tabs)/index.tsx",
   "apps/mobile/app/(tabs)/barcode.tsx",
+  "apps/mobile/app/(tabs)/planner.tsx",
+  "apps/mobile/app/recipe/[id].tsx",
   "src/context/appData/useNutritionJournalState.ts",
 ];
 
