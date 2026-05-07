@@ -268,7 +268,7 @@ export async function POST(req: Request) {
           return NextResponse.json({
             ok: true,
             recipe: {
-              title: websiteRecipe.title,
+              title: sanitiseImportedTitle(websiteRecipe.title) ?? "Imported recipe",
               description: websiteRecipe.description,
               ingredients: ingList,
               instructions: websiteRecipe.instructions ?? [],
@@ -359,8 +359,14 @@ export async function POST(req: Request) {
       // before using it as fallback. Instagram's og:title for a Reel is
       // frequently the entire caption (with hashtags) — without this
       // pass, a null `recipe.title` fell back to that raw caption.
+      // Build 44 (2026-05-07): also sanitise `recipe.title` itself —
+      // tester `AFVnLJIVdjQY` showed the LLM can still leak caption
+      // shape past the prompt rules, so the helper is the only gate
+      // we trust at the response boundary.
       const safeTitle =
-        recipe.title ?? sanitiseImportedTitle(meta.title) ?? "Imported recipe";
+        sanitiseImportedTitle(recipe.title) ??
+        sanitiseImportedTitle(meta.title) ??
+        "Imported recipe";
 
       // Audit I03 (2026-05-05) — filter empty / whitespace-only entries
       // before the empty-recipe check is meaningful. The LLM occasionally
@@ -591,6 +597,11 @@ export async function POST(req: Request) {
         ok: true,
         recipe: {
           ...parsed,
+          // F-76 build 44 (2026-05-07): the spread above includes
+          // `parsed.title` from the HTML-scrape branch, which can
+          // be a long meta-tag caption. Override with the sanitised
+          // value so the response title always passes the helper.
+          title: sanitiseImportedTitle(parsed.title) ?? "Imported recipe",
           mealType,
           sourceUrl: attribution.source_url,
           sourceName: attribution.source_name,

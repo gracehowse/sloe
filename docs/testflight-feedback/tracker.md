@@ -163,9 +163,15 @@ Net open items count: ~12 ⏳ + ~4 🔍 + the 6 ✅ that flipped today. Every AS
 | **F-126** | #117 | "Why would it take 5 weeks to lose another .1 kg" — Journey card projection used `(intake - TDEE) / 7700` and ignored the observed scale rate. Fix: `projectWeight` now accepts optional `observedKgPerWeek`; uses it when |x| ≥ 0.05 kg/week AND direction-aligned with the formula. Progress tab passes `timeline.weeklyRateKg`. |
 | **F-129** | #118 | Mirror of F-124 on the Weekly Recap surface — "Building confidence" copy fired despite the engine reporting high confidence. Fix: `buildWeeklyCheckin` now accepts `adaptiveTdeeConfidence`; when "high", skips the `weighInsThisWeek < 3` floor. |
 
-**Items still deferred (kept):** F-73 (search relevance + drinks DB coverage), F-74 + F-103 (caffeine/alcohol from logged foods — architectural), F-76 (caption-as-title), F-106 (Library entry on Today/Plan — UX), F-108 (AI photo analysis fail — needs server logs), F-110 (vague "don't like layout"), F-113 (journey numbers — F-126 fix may resolve, re-verify), F-114 (Progress cold-load + HK pagination overlap).
+**Items still deferred (kept):** F-73 (search relevance + drinks DB coverage), F-74 + F-103 (caffeine/alcohol from logged foods — architectural), F-106 (Library entry on Today/Plan — UX), F-108 (AI photo analysis fail — needs server logs), F-110 (vague "don't like layout"), F-113 (journey numbers — F-126 fix may resolve, re-verify), F-114 (Progress cold-load + HK pagination overlap).
 
 Net open items count after this sweep: **8 ⏳ items** (F-73 / F-74 / F-76 / F-103 / F-106 / F-108 / F-113 / F-114) + 2 🔍 items (F-110 + the unmapped 2026-04-19 `AN8GJ1Dr3M` steps/burn).
+
+---
+
+**2026-05-07 — F-76 fully closed (build 44, PR #125)**
+
+F-76 had been kept ⏳ since 2026-04-25 because the build-41 fix only sanitised the `meta.title` fallback. Tester `AFVnLJIVdjQY` showed the leak still happened when the LLM's `recipe.title` itself carried caption shape. Build 44 closes the rest: `sanitiseImportedTitle` is now called at every response-shape title site across `app/api/recipe-import/{,image,caption}/route.ts`. New static-analysis test (`recipeImportTitleSanitiserCallsites.test.ts`) pins the contract — each route file must invoke the helper for each response branch (3 / 1 / 1 minimums). Net open after this PR: **7 ⏳ items** (F-73 / F-74 / F-103 / F-106 / F-108 / F-113 / F-114) + 2 🔍.
 
 ---
 
@@ -319,7 +325,7 @@ Ship rules:
 | 2026-04-25 | `AKtz5LtrL39b39-CPXdFE08` | screenshot | ⏳ | **F-73** — search relevance + DB coverage for common drinks | "cortado should have lots of options" |
 | 2026-04-25 | `AN3mTmZK5T2Nhj13aMFLk2E` | screenshot | ⏳ | **F-74** — derive caffeine_mg/alcohol_g from logged foods (logged cortado → Caffeine card increments) | "Alcohol and caffeine should auto update from things logged" |
 | 2026-04-25 | `AO5PEI1xgamOQ-Nx4Gbr8Ok` | screenshot | ✅ | build-42 F-75 → F-98 (closed by #98 + #105) | "Tap meal for full nutrition doesn't show … full nutrition for the meal" |
-| 2026-04-25 | `AFVnLJIVdjQY7bkWyi0AG8A` | screenshot | ⏳ | **F-76** — recipe-import title trim rule (caption rejection) | "Some recipes pulling in with the whole caption on the title" |
+| 2026-04-25 | `AFVnLJIVdjQY7bkWyi0AG8A` | screenshot | ✅ | **F-76** — `sanitiseImportedTitle` now wired at every recipe-import response site (web-scrape, social/LLM, HTML-fallback, image, caption). Build 41 only sanitised `meta.title` fallback; build 44 also sanitises `recipe.title` (LLM output) + `parsed.title` (HTML scrape) + `websiteRecipe.title` (JSON-LD). Static-analysis test pins the contract — every route file must call `sanitiseImportedTitle` for each response branch. | "Some recipes pulling in with the whole caption on the title" |
 | 2026-04-24 | `AGSeM-FnnYbZy6FJveUKBoc` | screenshot | 🟡 | **F-71** — coerce zero-macro recipe rows + penalise extreme portion spreads in meal-plan sampler; hydrate relational plan rows | "Portioning is not logical - … double lunch and 0.2 breakfast" |
 | 2026-04-24 | `APHEBaM02gFAhoeHQ5mtxuE` | screenshot | 🟡 | **F-72** — Plan tab explicit library links | "Need to be more obvious ways to access the library" |
 | 2026-04-24 | `ABo2673OW9Z_GsXuifRsOjo` | screenshot | ⏳ | cluster **C12-IA** — MFP-style secondary surfaces (design) | "This should be on a secondary more subtle page like mfp" |

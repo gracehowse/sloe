@@ -3,6 +3,7 @@ import { rateLimit } from "@/lib/server/rateLimit";
 import { getUserIdFromRequest, getUserTier } from "@/lib/supabase/serverAnonClient";
 import { verifyIngredients, parseRawIngredients } from "@/lib/nutrition/verifyIngredients";
 import { importErrorResponse } from "@/lib/recipes/importErrorCopy";
+import { sanitiseImportedTitle } from "@/lib/recipe-import/extractSocialRecipe";
 
 export const runtime = "nodejs";
 
@@ -147,7 +148,7 @@ Rules:
 
   return NextResponse.json({
     ok: true,
-    title: parsed.title ?? null,
+    title: sanitiseImportedTitle(parsed.title),
     ingredients,
     steps,
     notes: parsed.notes ?? null,

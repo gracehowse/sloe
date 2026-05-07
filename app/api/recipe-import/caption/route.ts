@@ -25,7 +25,7 @@ import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
 import { verifyIngredients, parseRawIngredients } from "@/lib/nutrition/verifyIngredients";
 import { classifyMealType } from "@/lib/recipe-import/classifyMealType";
 import { extractCaptionNutrition } from "@/lib/recipe-import/extractCaptionNutrition";
-import { CaptionExtractionError } from "@/lib/recipe-import/extractSocialRecipe";
+import { CaptionExtractionError, sanitiseImportedTitle } from "@/lib/recipe-import/extractSocialRecipe";
 import { normaliseSource } from "@/lib/recipes/persistSourceAttribution";
 import { importErrorResponse } from "@/lib/recipes/importErrorCopy";
 
@@ -213,7 +213,7 @@ export async function POST(req: Request) {
     source: platform,
     sourcePlatform: platform,
     recipe: {
-      title: parsed.title ?? "Imported recipe",
+      title: sanitiseImportedTitle(parsed.title) ?? "Imported recipe",
       description: null,
       ingredients: parsed.ingredients,
       instructions: parsed.instructions,
