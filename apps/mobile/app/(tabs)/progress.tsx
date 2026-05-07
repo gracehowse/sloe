@@ -1928,7 +1928,11 @@ export default function ProgressScreen() {
                 collapsing short histories into <3 buckets.
               */}
               {weightChartTrend.points.length >= 2 ? (
-                <WeightChart trend={weightChartTrend} goalKg={goalWeightKg} />
+                <WeightChart
+                  trend={weightChartTrend}
+                  goalKg={goalWeightKg}
+                  isImperial={measurementSystem === "imperial"}
+                />
               ) : (
                 <WeightSparseState
                   points={weightChartTrend.points}
