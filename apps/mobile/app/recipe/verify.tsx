@@ -17,6 +17,7 @@ import * as Haptics from "expo-haptics";
 import { decodeEntities } from "@/lib/decodeEntities";
 import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import {
   fetchIngredientsForVerification,
@@ -36,6 +37,9 @@ import {
 } from "@/lib/verifyRecipe";
 import FoodSearchModal, { type SelectedFood } from "@/components/FoodSearchModal";
 import BarcodeScannerModal from "@/components/BarcodeScannerModal";
+import VoiceLogSheet from "@/components/VoiceLogSheet";
+import PhotoLogSheet from "@/components/PhotoLogSheet";
+import type { AiLoggedItem } from "../../../../src/lib/nutrition/aiLogging";
 import AddIngredientSheet, {
   type AddIngredientPayload,
 } from "@/components/AddIngredientSheet";
@@ -69,6 +73,7 @@ export default function VerifyScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
+  const { session } = useAuth();
   const recipeId = typeof id === "string" ? id : "";
 
   const [recipe, setRecipe] = useState<{ title: string; servings: number } | null>(null);
@@ -82,6 +87,30 @@ export default function VerifyScreen() {
   // Batch 2.7 — add-ingredient + per-ingredient override sheets.
   const [addSheetOpen, setAddSheetOpen] = useState(false);
   const [overrideIndex, setOverrideIndex] = useState<number | null>(null);
+  // F-128 follow-up (Grace, 2026-05-07): voice + photo log as
+  // append-paths for verify-after-import. Each AI item lands as a new
+  // user-added ingredient via the existing `addUserIngredient` flow
+  // (per-row Supabase write — same path AddIngredientSheet uses).
+  const [voiceLogOpen, setVoiceLogOpen] = useState(false);
+  const [photoLogOpen, setPhotoLogOpen] = useState(false);
+  const [apiBase, setApiBase] = useState<string>("");
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const Constants = (await import("expo-constants")).default;
+        const extra = Constants.expoConfig?.extra as
+          | { supprApiUrl?: string }
+          | undefined;
+        if (!cancelled) setApiBase(extra?.supprApiUrl ?? "");
+      } catch {
+        if (!cancelled) setApiBase("");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!recipeId) return;
@@ -345,6 +374,90 @@ export default function VerifyScreen() {
         confidence_bucket: classifyConfidence(payload.confidence),
       });
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    },
+    [recipeId],
+  );
+
+  // F-128 follow-up — handle AI-recognised items (voice/photo) by
+  // appending each as a new user-added ingredient. Same persistence
+  // path as AddIngredientSheet (per-item `addUserIngredient` write +
+  // local-state push) so the rows participate in the verify save
+  // pipeline alongside imported ones. Sequential writes so an early
+  // failure surfaces clearly rather than mid-batch.
+  const onAiItemsCommit = useCallback(
+    async (items: AiLoggedItem[]) => {
+      if (!recipeId || items.length === 0) {
+        setVoiceLogOpen(false);
+        setPhotoLogOpen(false);
+        return;
+      }
+      const newRows: VerifiableIngredient[] = [];
+      for (const item of items) {
+        const amount =
+          typeof item.grams === "number" && Number.isFinite(item.grams) && item.grams > 0
+            ? item.grams
+            : typeof item.quantity === "number" && Number.isFinite(item.quantity) && item.quantity > 0
+              ? item.quantity
+              : 1;
+        const unit =
+          typeof item.grams === "number" && Number.isFinite(item.grams) && item.grams > 0
+            ? "g"
+            : item.unit?.trim() || "piece";
+        const sourceLabel = item.source === "voice" ? "AI voice" : "AI photo";
+        const hasMatch = item.confidence >= 0.5;
+        const res = await addUserIngredient(recipeId, {
+          name: item.name,
+          amount,
+          unit,
+          calories: item.calories,
+          protein: item.protein,
+          carbs: item.carbs,
+          fat: item.fat,
+          fiberG: item.fiber ?? 0,
+          sugarG: 0,
+          sodiumMg: 0,
+          source: sourceLabel,
+          confidence: item.confidence,
+          hasMatch,
+        });
+        if ("error" in res) {
+          Alert.alert("Couldn't add ingredient", res.error);
+          continue;
+        }
+        newRows.push({
+          id: res.id,
+          name: item.name,
+          amount,
+          unit,
+          calories: item.calories,
+          protein: item.protein,
+          carbs: item.carbs,
+          fat: item.fat,
+          fiberG: item.fiber ?? 0,
+          sugarG: 0,
+          sodiumMg: 0,
+          source: sourceLabel,
+          confidence: item.confidence,
+          matchedName: hasMatch ? item.name : null,
+          isVerified: hasMatch,
+          isDirty: false,
+          macrosPer100g: null,
+          portions: [],
+          chosenPortion: null,
+          addedByUser: true,
+        });
+        track(AnalyticsEvents.recipe_ingredient_added, {
+          recipeId,
+          hasMatch,
+          confidence_bucket: classifyConfidence(item.confidence),
+        });
+      }
+      if (newRows.length > 0) {
+        setIngredients((prev) => [...prev, ...newRows]);
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+      setVoiceLogOpen(false);
+      setPhotoLogOpen(false);
     },
     [recipeId],
   );
@@ -969,11 +1082,64 @@ export default function VerifyScreen() {
           setSearchIndex(null);
           setBarcodeIndex(i);
         }}
+        // F-128 follow-up — voice/photo APPEND new ingredients (no row
+        // target). Multi-item AI doesn't fit replace-this-row semantics
+        // anyway, so we just close the search and route the user to
+        // the dedicated sheet.
+        onVoiceLog={() => {
+          setSearchIndex(null);
+          setVoiceLogOpen(true);
+        }}
+        onPhotoLog={() => {
+          setSearchIndex(null);
+          setPhotoLogOpen(true);
+        }}
       />
       <BarcodeScannerModal
         visible={barcodeIndex != null}
         onScan={onBarcodeScanned}
         onClose={() => setBarcodeIndex(null)}
+      />
+
+      <VoiceLogSheet
+        visible={voiceLogOpen}
+        onClose={() => setVoiceLogOpen(false)}
+        activeSlot="recipe"
+        accessToken={session?.access_token ?? null}
+        apiBase={apiBase}
+        onCommit={onAiItemsCommit}
+        colors={{
+          text: colors.text,
+          textSecondary: colors.textSecondary,
+          textTertiary: colors.textTertiary,
+          card: colors.card,
+          cardBorder: colors.cardBorder,
+          background: colors.background,
+          inputBg: colors.inputBg,
+          border: colors.border,
+          primaryForeground: colors.primaryForeground,
+        }}
+      />
+
+      <PhotoLogSheet
+        visible={photoLogOpen}
+        onClose={() => setPhotoLogOpen(false)}
+        activeSlot="recipe"
+        accessToken={session?.access_token ?? null}
+        apiBase={apiBase}
+        onCommit={onAiItemsCommit}
+        onUpgradeRequired={() => setPhotoLogOpen(false)}
+        colors={{
+          text: colors.text,
+          textSecondary: colors.textSecondary,
+          textTertiary: colors.textTertiary,
+          card: colors.card,
+          cardBorder: colors.cardBorder,
+          background: colors.background,
+          inputBg: colors.inputBg,
+          border: colors.border,
+          primaryForeground: colors.primaryForeground,
+        }}
       />
 
       {/* Batch 2.7 — Add ingredient sheet */}
