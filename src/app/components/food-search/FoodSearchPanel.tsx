@@ -1044,6 +1044,13 @@ export function FoodSearchPanel({
         backfillMissingMacros(appended);
         return appended;
       });
+    } catch (e) {
+      // F-114 (`AHOkMJ8yu5hA`, "Gets stuck trying to get more data"):
+      // mirror mobile — a failed pagination fetch must stop further
+      // attempts so the user doesn't see a perpetual loading-more
+      // spinner on every scroll-to-bottom retry.
+      hasMoreRef.current = false;
+      console.warn("[FoodSearchPanel] loadMore failed:", e);
     } finally {
       setLoadingMore(false);
     }
