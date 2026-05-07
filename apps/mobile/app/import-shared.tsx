@@ -38,7 +38,8 @@ import MealTypePicker from "@/components/MealTypePicker";
 import FoodSearchModal, { type SelectedFood } from "@/components/FoodSearchModal";
 import OverrideIngredientSheet from "@/components/OverrideIngredientSheet";
 import { SupprMark } from "@/components/SupprMark";
-import { scaleMacros , parseIngredientForSearch } from "@/lib/verifyRecipe";
+import { scaleMacros , parseIngredientForSearch, type BarcodeProduct } from "@/lib/verifyRecipe";
+import BarcodeScannerModal from "@/components/BarcodeScannerModal";
 import {
   extractUrlFromShareText,
   urlFromDeepLink,
@@ -182,6 +183,11 @@ export default function ImportSharedScreen() {
   // when no sheet is open. Kept separate from `pendingRecipe` so
   // dismissing a sheet doesn't perturb the underlying recipe state.
   const [searchIngredientIdx, setSearchIngredientIdx] = useState<number | null>(null);
+  // F-128 follow-up (Grace, 2026-05-07): barcode replace for the
+  // imported-recipe preview. Same pattern as `recipe/verify.tsx` —
+  // when the user pivots from search → barcode for a targeted row,
+  // we hand off the index so the scan REPLACES the same row's match.
+  const [barcodeIngredientIdx, setBarcodeIngredientIdx] = useState<number | null>(null);
   const [overrideIngredientIdx, setOverrideIngredientIdx] = useState<number | null>(null);
   const [reviewServingsDraft, setReviewServingsDraft] = useState("1");
   const [servingsEditorOpen, setServingsEditorOpen] = useState(false);
@@ -632,6 +638,45 @@ export default function ImportSharedScreen() {
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     },
     [searchIngredientIdx],
+  );
+
+  /** F-128 follow-up: barcode-scanned product replaces the targeted
+   *  ingredient row's match. Mirrors `onIngredientSearchSelected` but
+   *  uses the BarcodeProduct payload (per-100g already, no portion
+   *  picker). 100 g default portion, OFF source, replace-not-append
+   *  because the user opened the search/scan flow on a specific row. */
+  const onIngredientBarcodeScanned = useCallback(
+    (_barcode: string, product: BarcodeProduct) => {
+      const idx = barcodeIngredientIdx;
+      if (idx == null) return;
+      const grams = product.servingSizeG ?? 100;
+      const f = grams / 100;
+      setPendingRecipe((prev) => {
+        if (!prev || !Array.isArray(prev.ingredientMacros)) return prev;
+        const next = prev.ingredientMacros.map((row, i) =>
+          i === idx
+            ? {
+                ...row,
+                name: row.name,
+                amount: String(grams),
+                unit: "g",
+                calories: Math.round(product.calories * f),
+                protein: Math.round(product.protein * f * 10) / 10,
+                carbs: Math.round(product.carbs * f * 10) / 10,
+                fat: Math.round(product.fat * f * 10) / 10,
+                fiberG: Math.round(product.fiberG * f * 10) / 10,
+                sugarG: 0,
+                sodiumMg: 0,
+                source: "OFF",
+              }
+            : row,
+        );
+        return { ...prev, ingredientMacros: next };
+      });
+      setBarcodeIngredientIdx(null);
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    },
+    [barcodeIngredientIdx],
   );
 
   /** Directly overwrite one row's macros (long-press / override path). */
@@ -1942,6 +1987,22 @@ export default function ImportSharedScreen() {
         userId={userId}
         onSelect={onIngredientSearchSelected}
         onClose={() => setSearchIngredientIdx(null)}
+        // F-128 follow-up (Grace, 2026-05-07): pivot from search →
+        // barcode for the SAME row. Hand off `searchIngredientIdx`
+        // to `barcodeIngredientIdx` so the scan replaces the targeted
+        // ingredient via the existing `onIngredientBarcodeScanned`.
+        onScanBarcode={() => {
+          if (searchIngredientIdx == null) return;
+          const i = searchIngredientIdx;
+          setSearchIngredientIdx(null);
+          setBarcodeIngredientIdx(i);
+        }}
+      />
+
+      <BarcodeScannerModal
+        visible={barcodeIngredientIdx != null}
+        onScan={onIngredientBarcodeScanned}
+        onClose={() => setBarcodeIngredientIdx(null)}
       />
 
       {/* Manual macro override sheet — long-press path. Lets users
