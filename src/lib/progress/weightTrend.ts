@@ -1,0 +1,368 @@
+/**
+ * Weight trend computation — shared by WeightChart and the stat tile.
+ * Pure functions; no React, no platform APIs.
+ *
+ * Web parity: this file lives under apps/mobile/lib/progress/ but its
+ * logic is re-exported from src/lib/progress/weightTrend.ts so the web
+ * WeightTracker can use the same domain/MA/since-label calculations.
+ *
+ * 2026-05-06 rewrite — TestFlight feedback that the chart is hard to
+ * read once the range covers >3 months (every raw weigh-in renders, no
+ * smoothing, dots smudge). Adopts MFP-style bucket aggregation:
+ *   - 1W / 1M  → daily points (one weigh-in per day)
+ *   - 3M       → weekly bucket (Mon-anchored mean)
+ *   - 1Y / All → monthly bucket (calendar-month mean)
+ * The MA is also calendar-day-aware now (was index-based, so a sparse
+ * weigh-in cadence made a "7-day MA" span 7+ weeks).
+ */
+
+export type WeightRange = "1w" | "1m" | "3m" | "1y" | "all";
+
+export type WeightPoint = {
+  dateISO: string;
+  kg: number;
+  source?: "healthkit" | "manual" | "unknown";
+};
+
+export type WeightTrendResult = {
+  /**
+   * Points within the selected range, sorted oldest→newest.
+   *
+   * 2026-05-06: now bucketed for ranges where raw daily renders smudge
+   * (3M = weekly mean, 1Y / All = monthly mean). Each bucketed point's
+   * `dateISO` is the bucket anchor (start-of-week / start-of-month);
+   * `kg` is the unweighted mean of weigh-ins in that bucket.
+   */
+  points: WeightPoint[];
+  /**
+   * Calendar-day moving average aligned to `points`. Window length is
+   * 7 days for 1W / 1M / 3M, 28 days for 1Y / All. Null when the
+   * trailing window has < 3 entries.
+   */
+  movingAvg: (number | null)[];
+  /** Y-axis domain: [yMin, yMax]. Always spans at least 0.8 kg. */
+  yDomain: [number, number];
+  /** "Down 0.4 kg" / "Up 0.3 kg" / "Holding steady" */
+  trendCopy: string;
+  /** True when MA endpoint > MA start (trending away from lower goal) or vice versa. */
+  trendDirection: "improving" | "worsening" | "neutral";
+  /** "Last 7 days" / "Last 30 days" / "Last 3 months" / "Since 12 Jan" */
+  sinceLabel: string;
+  /** Days since the most recent weigh-in. Null if no data. */
+  daysSinceLatest: number | null;
+  /**
+   * 2026-05-06: which bucketing strategy was applied.
+   * `daily` → one point per day, raw dots safe to render.
+   * `weekly` / `monthly` → bucketed mean, raw dots should be hidden
+   * because each point is an aggregate, not an individual weigh-in.
+   */
+  bucket: "daily" | "weekly" | "monthly";
+};
+
+const RANGE_DAYS: Record<WeightRange, number> = {
+  "1w": 7,
+  "1m": 30,
+  "3m": 90,
+  "1y": 365,
+  all: Infinity,
+};
+
+const RANGE_LABELS: Record<WeightRange, string> = {
+  "1w": "Last 7 days",
+  "1m": "Last 30 days",
+  "3m": "Last 3 months",
+  "1y": "Last 12 months",
+  all: "",
+};
+
+/** Bucketing strategy per range — matches MFP's behaviour for similar UX. */
+function bucketFor(range: WeightRange): "daily" | "weekly" | "monthly" {
+  if (range === "1w" || range === "1m") return "daily";
+  if (range === "3m") return "weekly";
+  return "monthly";
+}
+
+/** MA window in calendar days. Wider on long ranges so it actually smooths. */
+function maWindowDaysFor(range: WeightRange): number {
+  if (range === "1y" || range === "all") return 28;
+  return 7;
+}
+
+function isoToDate(iso: string): Date {
+  // Treat as local noon to avoid timezone-day-shift issues
+  return new Date(iso + "T12:00:00");
+}
+
+function dateKeyFromISO(iso: string): string {
+  return iso.slice(0, 10);
+}
+
+function formatShortDate(date: Date): string {
+  return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
+
+/**
+ * Calendar-day-aware moving average — for each point, average all
+ * points whose date falls within the trailing `windowDays` calendar
+ * days of the current point's date (inclusive of both ends). Returns
+ * null when fewer than 3 points fall in the window.
+ *
+ * 2026-05-06: previously index-based — `points.slice(i-6, i+1)` —
+ * which silently broke under sparse weigh-ins (1/wk → "7-day MA"
+ * spanned 7 weeks).
+ */
+function computeMovingAvg(
+  points: WeightPoint[],
+  windowDays: number,
+): (number | null)[] {
+  return points.map((p, i) => {
+    const cutoff = isoToDate(p.dateISO).getTime() - (windowDays - 1) * 86400000;
+    let sum = 0;
+    let n = 0;
+    for (let j = i; j >= 0; j--) {
+      if (isoToDate(points[j]!.dateISO).getTime() < cutoff) break;
+      sum += points[j]!.kg;
+      n++;
+    }
+    if (n < 3) return null;
+    return Math.round((sum / n) * 100) / 100;
+  });
+}
+
+/**
+ * 2026-05-06: iterative min/max — `Math.min(...allValues)` rest-spread
+ * has a stack-overflow risk on long histories (~10k+ entries) and is
+ * generally slower than a single pass.
+ */
+function minMax(values: number[]): [number, number] {
+  let mn = Infinity;
+  let mx = -Infinity;
+  for (const v of values) {
+    if (v < mn) mn = v;
+    if (v > mx) mx = v;
+  }
+  if (!Number.isFinite(mn) || !Number.isFinite(mx)) return [0, 0];
+  return [mn, mx];
+}
+
+/**
+ * Compute the Y domain: [min(data,goal) - padding, max(data,goal) +
+ * padding] where padding = max(0.8, 8% of range). Never includes 0.
+ */
+function computeYDomain(
+  points: WeightPoint[],
+  goalKg: number | null,
+): [number, number] {
+  const kgs = points.map((p) => p.kg);
+  const allValues = goalKg != null ? [...kgs, goalKg] : kgs;
+  const [rawMin, rawMax] = minMax(allValues);
+  const rawRange = rawMax - rawMin;
+  const padding = Math.max(0.8, rawRange * 0.08);
+  return [
+    Math.round((rawMin - padding) * 10) / 10,
+    Math.round((rawMax + padding) * 10) / 10,
+  ];
+}
+
+function computeTrendCopy(
+  movingAvg: (number | null)[],
+  goalKg: number | null,
+): { copy: string; direction: "improving" | "worsening" | "neutral" } {
+  const validMA = movingAvg.filter((v): v is number => v !== null);
+  if (validMA.length < 2) {
+    return { copy: "Not enough data yet.", direction: "neutral" };
+  }
+  const first = validMA[0]!;
+  const last = validMA[validMA.length - 1]!;
+  const delta = last - first;
+  const absDelta = Math.abs(delta);
+
+  if (absDelta < 0.2) {
+    return { copy: "Holding steady.", direction: "neutral" };
+  }
+
+  const sign = delta < 0 ? "Down" : "Up";
+  const copy = `${sign} ${absDelta.toFixed(1)} kg on average.`;
+
+  let direction: "improving" | "worsening" | "neutral" = "neutral";
+  if (goalKg != null) {
+    const goalIsLower = goalKg < last;
+    direction = (goalIsLower && delta < 0) || (!goalIsLower && delta > 0) ? "improving" : "worsening";
+  }
+
+  return { copy, direction };
+}
+
+function computeSinceLabel(points: WeightPoint[], range: WeightRange): string {
+  if (range !== "all") return RANGE_LABELS[range];
+  if (points.length === 0) return "All time";
+  const earliest = isoToDate(points[0]!.dateISO);
+  return `Since ${formatShortDate(earliest)}`;
+}
+
+/**
+ * Dedupe per-day weigh-ins. If the user logged twice on the same day
+ * (e.g. HealthKit auto-sync + manual entry), keep the mean — that's
+ * MFP's behaviour and matches user intent ("today's weight" rather
+ * than "every weigh-in stamped today").
+ *
+ * 2026-05-06: previously not deduped at all — same-day entries
+ * stacked on the same x-coord and the MA double-counted them.
+ */
+function dedupeByDay(points: WeightPoint[]): WeightPoint[] {
+  const byDay = new Map<string, { sum: number; n: number; source?: WeightPoint["source"] }>();
+  for (const p of points) {
+    const key = dateKeyFromISO(p.dateISO);
+    const existing = byDay.get(key);
+    if (existing) {
+      existing.sum += p.kg;
+      existing.n += 1;
+    } else {
+      byDay.set(key, { sum: p.kg, n: 1, source: p.source });
+    }
+  }
+  const out: WeightPoint[] = [];
+  for (const [dateISO, agg] of byDay.entries()) {
+    out.push({ dateISO, kg: Math.round((agg.sum / agg.n) * 100) / 100, source: agg.source });
+  }
+  out.sort((a, b) => a.dateISO.localeCompare(b.dateISO));
+  return out;
+}
+
+/** ISO date key for the Monday of `dateISO`'s week. */
+function weekAnchor(dateISO: string): string {
+  const d = isoToDate(dateISO);
+  const day = d.getDay(); // 0 = Sun, 1 = Mon, ...
+  const diff = day === 0 ? 6 : day - 1; // shift Sun→6 so Monday is the anchor
+  d.setDate(d.getDate() - diff);
+  return d.toISOString().slice(0, 10);
+}
+
+/** ISO date key for the first day of `dateISO`'s month. */
+function monthAnchor(dateISO: string): string {
+  return `${dateISO.slice(0, 7)}-01`;
+}
+
+/**
+ * Bucket per-day points into weekly or monthly aggregates. Each
+ * bucket's kg is the unweighted mean across the days that fell into
+ * it. Anchor date is the start-of-week (Monday) or start-of-month so
+ * the chart x-axis aligns with calendar boundaries.
+ */
+function bucketPoints(
+  points: WeightPoint[],
+  bucket: "daily" | "weekly" | "monthly",
+): WeightPoint[] {
+  if (bucket === "daily") return points;
+  const anchorOf = bucket === "weekly" ? weekAnchor : monthAnchor;
+  const buckets = new Map<string, { sum: number; n: number; source?: WeightPoint["source"] }>();
+  for (const p of points) {
+    const key = anchorOf(p.dateISO);
+    const existing = buckets.get(key);
+    if (existing) {
+      existing.sum += p.kg;
+      existing.n += 1;
+    } else {
+      buckets.set(key, { sum: p.kg, n: 1, source: p.source });
+    }
+  }
+  const out: WeightPoint[] = [];
+  for (const [dateISO, agg] of buckets.entries()) {
+    out.push({ dateISO, kg: Math.round((agg.sum / agg.n) * 100) / 100, source: agg.source });
+  }
+  out.sort((a, b) => a.dateISO.localeCompare(b.dateISO));
+  return out;
+}
+
+/**
+ * Main entry point. Pass all available weight records; this function
+ * filters to the selected range, dedupes same-day entries, buckets
+ * per the range's strategy, then computes MA / domain / trend copy /
+ * since-label.
+ */
+export function computeWeightTrend(
+  allPoints: WeightPoint[],
+  range: WeightRange,
+  goalKg: number | null,
+  nowISO?: string,
+): WeightTrendResult {
+  const now = nowISO ? new Date(nowISO + "T12:00:00") : new Date();
+  const nowDay = now.getTime();
+  const cutoffDays = RANGE_DAYS[range];
+
+  const sorted = [...allPoints]
+    .map((p) => ({ ...p, dateISO: dateKeyFromISO(p.dateISO) }))
+    .sort((a, b) => a.dateISO.localeCompare(b.dateISO));
+
+  // 2026-05-06: dedupe same-day weigh-ins BEFORE range filter so the
+  // boundary day (e.g. exactly 30 days ago for 1M) is treated as one
+  // point, not several.
+  const deduped = dedupeByDay(sorted);
+
+  const filtered =
+    cutoffDays === Infinity
+      ? deduped
+      : deduped.filter((p) => {
+          const daysDiff = (nowDay - isoToDate(p.dateISO).getTime()) / 86400000;
+          return daysDiff <= cutoffDays;
+        });
+
+  // Bucket according to range — keeps the chart readable on long
+  // ranges by collapsing daily weigh-ins into weekly / monthly means.
+  //
+  // 2026-05-06: with smart fallback. If the selected bucket would
+  // collapse the data more aggressively than is useful (e.g. user
+  // picked "1Y" but only has 30 days of weigh-ins → 1 monthly
+  // bucket), step down through monthly → weekly → daily until the
+  // bucketed count matches min(3, raw count). This preserves the
+  // user's range *intent* (a 1Y x-axis showing 30 days of recent
+  // data is still useful) while avoiding the "not enough data"
+  // empty-state trap.
+  let bucket: "daily" | "weekly" | "monthly" = bucketFor(range);
+  let bucketed = bucket === "daily" ? filtered : bucketPoints(filtered, bucket);
+  const targetCount = Math.min(3, filtered.length);
+  while (bucketed.length < targetCount && bucket !== "daily") {
+    bucket = bucket === "monthly" ? "weekly" : "daily";
+    bucketed = bucket === "daily" ? filtered : bucketPoints(filtered, bucket);
+  }
+
+  const movingAvg = computeMovingAvg(bucketed, maWindowDaysFor(range));
+  const yDomain =
+    bucketed.length > 0
+      ? computeYDomain(bucketed, goalKg)
+      : ([60, 80] as [number, number]);
+  const { copy: trendCopy, direction: trendDirection } = computeTrendCopy(
+    movingAvg,
+    goalKg,
+  );
+  const sinceLabel = computeSinceLabel(bucketed, range);
+
+  const daysSinceLatest =
+    filtered.length > 0
+      ? Math.round(
+          (nowDay - isoToDate(filtered[filtered.length - 1]!.dateISO).getTime()) /
+            86400000,
+        )
+      : null;
+
+  return {
+    points: bucketed,
+    movingAvg,
+    yDomain,
+    trendCopy,
+    trendDirection,
+    sinceLabel,
+    daysSinceLatest,
+    bucket,
+  };
+}
+
+/** Convert a weightKgByDay record to WeightPoint[]. */
+export function weightKgByDayToPoints(
+  byDay: Record<string, number>,
+  source: WeightPoint["source"] = "unknown",
+): WeightPoint[] {
+  return Object.entries(byDay)
+    .filter(([, kg]) => typeof kg === "number" && Number.isFinite(kg) && kg > 0)
+    .map(([dateISO, kg]) => ({ dateISO, kg, source }));
+}

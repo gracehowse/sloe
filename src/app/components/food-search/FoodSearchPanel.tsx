@@ -145,8 +145,16 @@ type SearchResult = {
 export type FoodSearchSelection = {
   name: string;
   source: "USDA" | "OFF" | "CUSTOM" | "Edamam" | "FatSecret";
-  macrosPer100g: MacrosPer100g;
+  /**
+   * 2026-05-06 audit (D1): nullable for per-serving-only FatSecret
+   * foods (no metric grounding). When null, `macrosPerServing`
+   * carries the values and `chosenPortion.gramWeight` will be 0
+   * (sentinel). The commit site treats this as "log N × 1 serving".
+   */
+  macrosPer100g: MacrosPer100g | null;
+  macrosPerServing?: { calories: number; protein: number; carbs: number; fat: number } | null;
   microsPer100g?: Record<string, number>;
+  microsPerServing?: Record<string, number>;
   portions: FoodPortion[];
   chosenPortion: FoodPortion;
   quantity: number;
@@ -513,7 +521,17 @@ async function fetchUsdaDetail(
 async function fetchFatSecretDetail(
   foodId: string,
 ): Promise<{
-  macrosPer100g: MacrosPer100g;
+  /**
+   * 2026-05-06 audit (D1): nullable. FatSecret's `food.get` for some
+   * branded items (e.g. McDonald's Big Mac) returns "1 serving" with
+   * no `metric_serving_amount`. The route now returns `macrosPer100g:
+   * null` + `macrosPerServing` for that case. Mirrors mobile
+   * `getFatSecretFood` shape.
+   */
+  macrosPer100g: MacrosPer100g | null;
+  macrosPerServing?: { calories: number; protein: number; carbs: number; fat: number } | null;
+  microsPer100g?: Record<string, number>;
+  microsPerServing?: Record<string, number>;
   portions: FoodPortion[];
   primaryPortion?: PrimaryServing | null;
 } | null> {
@@ -522,7 +540,10 @@ async function fetchFatSecretDetail(
     const json = await res.json();
     if (!json.ok) return null;
     return {
-      macrosPer100g: json.macrosPer100g,
+      macrosPer100g: json.macrosPer100g ?? null,
+      ...(json.macrosPerServing ? { macrosPerServing: json.macrosPerServing } : {}),
+      ...(json.microsPer100g ? { microsPer100g: json.microsPer100g } : {}),
+      ...(json.microsPerServing ? { microsPerServing: json.microsPerServing } : {}),
       portions: Array.isArray(json.portions) ? json.portions : [],
       primaryPortion: json.primaryPortion ?? null,
     };
@@ -732,8 +753,17 @@ export function FoodSearchPanel({
   const [preview, setPreview] = useState<{
     name: string;
     source: "USDA" | "OFF" | "CUSTOM" | "Edamam" | "FatSecret";
-    macrosPer100g: MacrosPer100g;
+    /**
+     * 2026-05-06 audit (D1): nullable for per-serving-only FatSecret
+     * foods (no metric grounding). When null, `macrosPerServing`
+     * carries the values and the only valid portion is the inline
+     * serving (gramWeight: 0 sentinel). Mirrors the mobile preview
+     * shape.
+     */
+    macrosPer100g: MacrosPer100g | null;
+    macrosPerServing?: { calories: number; protein: number; carbs: number; fat: number } | null;
     microsPer100g?: Record<string, number>;
+    microsPerServing?: Record<string, number>;
     portions: FoodPortion[];
     chosenPortion: FoodPortion;
     quantity: number;
@@ -1095,6 +1125,12 @@ export function FoodSearchPanel({
       // null per-100g macros (the row was per-serving). Fetch the full
       // detail panel before opening the preview so the portion picker
       // has real values to scale. Never invent macros.
+      //
+      // 2026-05-06 audit (D1): FatSecret per-serving-only foods (e.g.
+      // McDonald's Big Mac with no `metric_serving_amount`) return
+      // `macrosPer100g: null` + `macrosPerServing` from the route.
+      // Thread both through so the commit path can scale by quantity
+      // without grams. Mirrors mobile behaviour.
       const detail = await fetchFatSecretDetail(item._fatSecretFoodId);
       setLoadingKey(null);
       if (!detail) return;
@@ -1103,7 +1139,17 @@ export function FoodSearchPanel({
       const { portion, quantity } = effectivePrimary
         ? { portion: portions[0], quantity: 1 }
         : resolveInitialPortion(portions, initialAmount, initialUnit);
-      setPreview({ name: item.name, source: "FatSecret", macrosPer100g: detail.macrosPer100g, portions, chosenPortion: portion, quantity });
+      setPreview({
+        name: item.name,
+        source: "FatSecret",
+        macrosPer100g: detail.macrosPer100g,
+        ...(detail.macrosPerServing ? { macrosPerServing: detail.macrosPerServing } : {}),
+        ...(detail.microsPer100g ? { microsPer100g: detail.microsPer100g } : {}),
+        ...(detail.microsPerServing ? { microsPerServing: detail.microsPerServing } : {}),
+        portions,
+        chosenPortion: portion,
+        quantity,
+      });
     } else {
       setLoadingKey(null);
     }
@@ -1205,7 +1251,9 @@ export function FoodSearchPanel({
       name: preview.name,
       source: preview.source,
       macrosPer100g: preview.macrosPer100g,
+      ...(preview.macrosPerServing ? { macrosPerServing: preview.macrosPerServing } : {}),
       ...(preview.microsPer100g ? { microsPer100g: preview.microsPer100g } : {}),
+      ...(preview.microsPerServing ? { microsPerServing: preview.microsPerServing } : {}),
       portions: preview.portions,
       chosenPortion: preview.chosenPortion,
       quantity: preview.quantity,
@@ -1230,6 +1278,32 @@ export function FoodSearchPanel({
 
   const scaled = useMemo(() => {
     if (!preview) return null;
+    // 2026-05-06 audit (D1): per-serving-only path (FatSecret no-
+    // metric foods). gramWeight: 0 + macrosPer100g: null +
+    // macrosPerServing populated → scale by quantity directly
+    // without per-100g math.
+    if (
+      preview.macrosPer100g === null &&
+      preview.macrosPerServing &&
+      preview.chosenPortion.gramWeight === 0
+    ) {
+      const q = preview.quantity;
+      const ps = preview.macrosPerServing;
+      const m = preview.microsPerServing ?? {};
+      const fiberPerServing = typeof m.fiberG === "number" ? m.fiberG : 0;
+      const sugarPerServing = typeof m.sugarG === "number" ? m.sugarG : 0;
+      const sodiumPerServing = typeof m.sodiumMg === "number" ? m.sodiumMg : 0;
+      return {
+        calories: Math.round(ps.calories * q),
+        protein: Math.round(ps.protein * q * 10) / 10,
+        carbs: Math.round(ps.carbs * q * 10) / 10,
+        fat: Math.round(ps.fat * q * 10) / 10,
+        fiberG: Math.round(fiberPerServing * q * 10) / 10,
+        sugarG: Math.round(sugarPerServing * q * 10) / 10,
+        sodiumMg: Math.round(sodiumPerServing * q),
+      };
+    }
+    if (!preview.macrosPer100g) return null;
     return scaleMacros(preview.macrosPer100g, preview.chosenPortion.gramWeight * preview.quantity);
   }, [preview]);
 

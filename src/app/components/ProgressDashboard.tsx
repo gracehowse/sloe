@@ -33,6 +33,11 @@ import {
   type RangeKey,
 } from "../../lib/nutrition/progressRangeStats.ts";
 import { computeWeightTrendCopy } from "../../lib/nutrition/weightTrendTile.ts";
+import {
+  computeWeightTrend,
+  weightKgByDayToPoints,
+  type WeightRange,
+} from "../../lib/progress/weightTrend.ts";
 import { getDailyTargets, type DailyTarget } from "../../lib/nutrition/dailyTargetRead.ts";
 import {
   availableFreezes,
@@ -428,18 +433,54 @@ function ProgressDashboardContent() {
 
   const rangeDays = range === "7d" ? 7 : range === "30d" ? 30 : range === "90d" ? 90 : 9999;
 
+  // 2026-05-06 audit (D2): web parity for the mobile weight chart
+  // rewrite (PRs #106 + #107). Use the shared `computeWeightTrend`
+  // so web gets the same MFP-style bucket aggregation, calendar-day
+  // moving-average, same-day dedup, smart bucket fallback, and
+  // iterative min/max as mobile.
+  const weightTrendRange: WeightRange =
+    range === "7d" ? "1w" : range === "30d" ? "1m" : range === "90d" ? "3m" : "all";
+  const weightTrend = useMemo(
+    () =>
+      computeWeightTrend(
+        weightKgByDayToPoints(weightKgByDay),
+        weightTrendRange,
+        goalWeightKg ?? null,
+      ),
+    [weightKgByDay, weightTrendRange, goalWeightKg],
+  );
+
   const weightChartData = useMemo(() => {
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - rangeDays);
-    const cutStr = cutoff.toISOString().slice(0, 10);
-    return Object.entries(weightKgByDay)
-      .filter(([k]) => k >= cutStr)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([k, v]) => ({
-        date: k.slice(5),
-        value: profileMeasurementSystem === "imperial" ? Math.round(kgToLb(v) * 10) / 10 : Math.round(v * 10) / 10,
-      }));
-  }, [weightKgByDay, rangeDays, profileMeasurementSystem]);
+    const isImperial = profileMeasurementSystem === "imperial";
+    const conv = (kg: number) =>
+      isImperial ? Math.round(kgToLb(kg) * 10) / 10 : Math.round(kg * 10) / 10;
+    return weightTrend.points.map((p, i) => {
+      // 2026-05-06: bucket-aware date label.
+      // daily   → "MM-DD" (matches the previous behaviour)
+      // weekly  → "DD MMM" (week-anchor date)
+      // monthly → "MMM" (month name)
+      const d = new Date(p.dateISO + "T12:00:00");
+      const date =
+        weightTrend.bucket === "monthly"
+          ? d.toLocaleDateString("en-GB", { month: "short" })
+          : weightTrend.bucket === "weekly"
+            ? d.toLocaleDateString("en-GB", { day: "numeric", month: "short" })
+            : p.dateISO.slice(5);
+      const ma = weightTrend.movingAvg[i];
+      return {
+        date,
+        value: conv(p.kg),
+        // Smoothed MA — null entries left as undefined so Recharts
+        // skips them rather than drawing a flatline at zero.
+        ma: ma != null ? conv(ma) : undefined,
+      };
+    });
+  }, [weightTrend, profileMeasurementSystem]);
+
+  // Hide raw dots on bucketed views — each point is an aggregate,
+  // not a single weigh-in, so dots would mislead. MFP / Cronometer
+  // do the same.
+  const showRawDots = weightTrend.bucket === "daily";
 
   const stepsChartData = useMemo(() => {
     const cutoff = new Date();
@@ -1749,13 +1790,43 @@ function ProgressDashboardContent() {
         </div>
         {weightChartData.length >= 2 && (
           <div className="mb-3">
-            <ResponsiveContainer width="100%" height={100}>
+            <ResponsiveContainer width="100%" height={140}>
               <LineChart data={weightChartData}>
                 <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" />
                 <YAxis hide domain={["dataMin - 1", "dataMax + 1"]} />
                 <Tooltip contentStyle={{ fontSize: 11 }} />
-                <Line type="monotone" dataKey="value" stroke="var(--primary)" strokeWidth={2} dot={{ r: 2 }} />
-                {goalWeightChart != null && <ReferenceLine y={goalWeightChart} stroke="var(--success)" strokeDasharray="4 4" />}
+                {/*
+                  2026-05-06 audit (D2): bucket-aware rendering.
+                  Daily ranges keep the raw point line + dots.
+                  Weekly / monthly ranges render only the smoothed
+                  MA line — each `value` point IS an aggregate, so
+                  dots would mislead.
+                */}
+                {showRawDots ? (
+                  <Line
+                    type="monotone"
+                    dataKey="value"
+                    stroke="var(--primary)"
+                    strokeWidth={2}
+                    dot={{ r: 2 }}
+                  />
+                ) : (
+                  <Line
+                    type="monotone"
+                    dataKey="ma"
+                    stroke="var(--primary)"
+                    strokeWidth={2}
+                    dot={false}
+                    connectNulls
+                  />
+                )}
+                {goalWeightChart != null && (
+                  <ReferenceLine
+                    y={goalWeightChart}
+                    stroke="var(--success)"
+                    strokeDasharray="4 4"
+                  />
+                )}
               </LineChart>
             </ResponsiveContainer>
           </div>

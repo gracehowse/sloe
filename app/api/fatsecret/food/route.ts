@@ -76,8 +76,18 @@ export async function GET(req: Request) {
   try {
     const food = await fatSecretFoodGet(cfg, foodId);
     if (!food || !food.servings?.serving) {
+      // 2026-05-06 audit (C1): user-facing message stays vendor-
+      // neutral. Internal `error` code retains the vendor reference
+      // for log-correlation. The mobile client (`getFatSecretFood`)
+      // currently swallows this on `!ok` so this string never reaches
+      // a user — but defensive against any future caller that
+      // surfaces `result.message` directly.
       return NextResponse.json(
-        { ok: false, error: "not_found", message: "FatSecret returned no servings for this food." },
+        {
+          ok: false,
+          error: "not_found",
+          message: "Couldn't load nutrition for this item.",
+        },
         { status: 404 },
       );
     }
@@ -197,11 +207,15 @@ export async function GET(req: Request) {
       "[/api/fatsecret/food] failed:",
       e instanceof Error ? e.message : e,
     );
+    // 2026-05-06 audit (C1): user-facing message stays vendor-
+    // neutral; the upstream error.message is logged server-side
+    // only. Internal `error` code retains the vendor reference for
+    // log-correlation.
     return NextResponse.json(
       {
         ok: false,
         error: "fatsecret_failed",
-        message: e instanceof Error ? e.message : "FatSecret request failed",
+        message: "Couldn't load nutrition for this item.",
       },
       { status: 502 },
     );

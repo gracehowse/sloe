@@ -2134,14 +2134,41 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           const ingId = dbIngredientIds[verifyIndex];
           if (!ingId) return;
 
-          const grams = selection.chosenPortion.gramWeight * selection.quantity;
-          const f = grams / 100;
-          const macros = {
-            calories: Math.round(selection.macrosPer100g.calories * f),
-            protein: Math.round(selection.macrosPer100g.protein * f * 10) / 10,
-            carbs: Math.round(selection.macrosPer100g.carbs * f * 10) / 10,
-            fat: Math.round(selection.macrosPer100g.fat * f * 10) / 10,
-          };
+          // 2026-05-06 audit (D1): per-serving-only path (FatSecret
+          // no-metric foods). Use `macrosPerServing × quantity`
+          // directly when `macrosPer100g` is null. Mirrors mobile.
+          const isPerServingOnly =
+            selection.macrosPer100g === null && Boolean(selection.macrosPerServing);
+          const grams = isPerServingOnly
+            ? 0
+            : selection.chosenPortion.gramWeight * selection.quantity;
+          const f = isPerServingOnly ? 0 : grams / 100;
+          const ps = selection.macrosPerServing;
+          const q = selection.quantity;
+          const macros = isPerServingOnly && ps
+            ? {
+                calories: Math.round(ps.calories * q),
+                protein: Math.round(ps.protein * q * 10) / 10,
+                carbs: Math.round(ps.carbs * q * 10) / 10,
+                fat: Math.round(ps.fat * q * 10) / 10,
+              }
+            : {
+                calories: Math.round((selection.macrosPer100g?.calories ?? 0) * f),
+                protein: Math.round((selection.macrosPer100g?.protein ?? 0) * f * 10) / 10,
+                carbs: Math.round((selection.macrosPer100g?.carbs ?? 0) * f * 10) / 10,
+                fat: Math.round((selection.macrosPer100g?.fat ?? 0) * f * 10) / 10,
+              };
+          const microsServing =
+            (selection as { microsPerServing?: Record<string, number> }).microsPerServing ?? {};
+          const fiberG = isPerServingOnly
+            ? Math.round((microsServing.fiberG ?? 0) * q * 10) / 10
+            : Math.round((selection.macrosPer100g?.fiberG ?? 0) * f * 10) / 10;
+          const sugarG = isPerServingOnly
+            ? Math.round((microsServing.sugarG ?? 0) * q * 10) / 10
+            : Math.round((selection.macrosPer100g?.sugarG ?? 0) * f * 10) / 10;
+          const sodiumMg = isPerServingOnly
+            ? Math.round((microsServing.sodiumMg ?? 0) * q)
+            : Math.round((selection.macrosPer100g?.sodiumMg ?? 0) * f);
 
           const { error } = await supabase
             .from("recipe_ingredients")
@@ -2153,9 +2180,9 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
               protein: macros.protein,
               carbs: macros.carbs,
               fat: macros.fat,
-              fiber_g: Math.round(selection.macrosPer100g.fiberG * f * 10) / 10,
-              sugar_g: Math.round(selection.macrosPer100g.sugarG * f * 10) / 10,
-              sodium_mg: Math.round(selection.macrosPer100g.sodiumMg * f),
+              fiber_g: fiberG,
+              sugar_g: sugarG,
+              sodium_mg: sodiumMg,
               is_verified: true,
               source: selection.source,
               // 2026-05-02 fix — also persist `confidence: 1.0` so

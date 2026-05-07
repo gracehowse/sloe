@@ -352,7 +352,105 @@ describe("FoodSearchPanel — FatSecret in merge pipeline (web)", () => {
     });
     const arg = onSelect.mock.calls[0]?.[0];
     expect(arg).toMatchObject({ source: "FatSecret" });
-    expect(arg!.macrosPer100g.calories).toBe(225);
+    expect(arg!.macrosPer100g!.calories).toBe(225);
+  });
+
+  // 2026-05-06 audit (E1): pin the per-serving-only path on web —
+  // the actual TestFlight bug case where FatSecret's `food.get`
+  // returns `macrosPer100g: null` + `macrosPerServing` because the
+  // food has no metric grounding (e.g. McDonald's Big Mac with no
+  // `metric_serving_amount`). Previously web silently failed
+  // because `fetchFatSecretDetail` typed `macrosPer100g` as
+  // non-nullable; now it's nullable and the commit path uses
+  // `macrosPerServing × quantity` directly.
+  it("commits a per-serving-only FatSecret hit using `macrosPerServing × quantity` (no metric grounding)", async () => {
+    // Per-serving-only search hit — no `servingGrams` field (FatSecret
+    // food.get returns "1 serving" with no `metric_serving_amount`).
+    const PER_SERVING_HIT = {
+      foodId: "fs-bigmac-2",
+      label: "McDonald's · Big Mac (no metric)",
+      brand: "McDonald's",
+      macrosPer100g: null,
+      servingLabel: "1 serving",
+      servingGrams: null,
+      macrosPerServing: { calories: 580, protein: 25, carbs: 45, fat: 34 },
+    };
+    const PER_SERVING_DETAIL = {
+      ok: true,
+      macrosPer100g: null,
+      macrosPerServing: { calories: 580, protein: 25, carbs: 45, fat: 34 },
+      microsPerServing: {
+        fiberG: 3,
+        sugarG: 7,
+        sodiumMg: 1060,
+        saturatedFatG: 11,
+        cholesterolMg: 85,
+        potassiumMg: 370,
+      },
+      portions: [{ label: "1 serving", gramWeight: 0, amount: 1 }],
+      primaryPortion: {
+        label: "1 serving",
+        grams: 0,
+        kcal: 580,
+        protein: 25,
+        carbs: 45,
+        fat: 34,
+      },
+    };
+    vi.stubGlobal(
+      "fetch",
+      makeFetchStub({
+        "/api/usda/search": () => jsonResponse({ ok: true, hits: [] }),
+        "openfoodfacts.org": () => jsonResponse({ products: [] }),
+        "/api/edamam/search": () => jsonResponse({ ok: true, hits: [] }),
+        "/api/fatsecret/search": () =>
+          jsonResponse({ ok: true, hits: [PER_SERVING_HIT], page: 1 }),
+        "/api/fatsecret/food": () => jsonResponse(PER_SERVING_DETAIL),
+      }),
+    );
+
+    const { onSelect } = renderPanel({ query: "big mac" });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(450);
+    });
+
+    const row = await screen.findByRole("button", {
+      name: /McDonald's · Big Mac \(no metric\)/i,
+    });
+    fireEvent.click(row);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    const useThis = await screen.findByRole("button", { name: /Use this/i });
+    fireEvent.click(useThis);
+
+    await waitFor(() => {
+      expect(onSelect).toHaveBeenCalledTimes(1);
+    });
+    const arg = onSelect.mock.calls[0]![0];
+    // Per-serving-only commit shape:
+    //   - macrosPer100g is null
+    //   - macrosPerServing carries the values
+    //   - chosenPortion.gramWeight === 0 (sentinel)
+    expect(arg.macrosPer100g).toBeNull();
+    expect(arg.macrosPerServing).toEqual({
+      calories: 580,
+      protein: 25,
+      carbs: 45,
+      fat: 34,
+    });
+    expect(arg.chosenPortion.gramWeight).toBe(0);
+    expect(arg.chosenPortion.label).toBe("1 serving");
+    // microsPerServing threaded through so the commit path can scale
+    // by quantity without per-100g math.
+    expect(arg.microsPerServing).toMatchObject({
+      fiberG: 3,
+      sodiumMg: 1060,
+      saturatedFatG: 11,
+    });
   });
 
   it("calls /api/fatsecret/search again on load-more (page=2)", async () => {
