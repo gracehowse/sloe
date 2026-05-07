@@ -246,6 +246,59 @@ function isAvailableDetailed(hk: AppleHealthKitNative): Promise<{ ok: true } | {
 /** Permission `initHealthKit` can wait while the system sheet stays open; 45s was too short. */
 const HEALTH_PERMISSION_INIT_TIMEOUT_MS = 180_000;
 
+/**
+ * F-114 (2026-05-07): hard cap on individual sample-fetch callbacks.
+ * 15s sits below the screen-level 18s `raceHealth` so the inner timeout
+ * fires first with a per-fetch label (the screen-level race rejects
+ * the whole orchestrator with a generic message). The native bridge
+ * occasionally never invokes its completion callback under HK
+ * sandbox glitches; without this race the awaiting promise hangs
+ * forever and stranded the `loadingMore` / cold-load paths.
+ */
+const HEALTH_SAMPLE_TIMEOUT_MS = 15_000;
+
+/**
+ * Wrap an HK native callback in a timeout race. Treat as the canonical
+ * shape for every `new Promise((resolve, reject) => hk.getX(opts, cb))`
+ * wrapper in this file — the native bridge has no abort signal of its
+ * own, so we settle our promise on whichever fires first (callback or
+ * timeout) and let the bridge invoke the callback into a no-op.
+ */
+function withHealthCallbackTimeout<T>(
+  label: string,
+  exec: (resolve: (val: T) => void, reject: (err: Error) => void) => void,
+): Promise<T> {
+  return new Promise<T>((outerResolve, outerReject) => {
+    let settled = false;
+    const t = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      outerReject(
+        new Error(
+          `HealthKit ${label} did not respond within ${HEALTH_SAMPLE_TIMEOUT_MS}ms`,
+        ),
+      );
+    }, HEALTH_SAMPLE_TIMEOUT_MS);
+    const resolveOnce = (val: T) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(t);
+      outerResolve(val);
+    };
+    const rejectOnce = (err: Error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(t);
+      outerReject(err);
+    };
+    try {
+      exec(resolveOnce, rejectOnce);
+    } catch (err) {
+      rejectOnce(err instanceof Error ? err : new Error(String(err)));
+    }
+  });
+}
+
 function initHealthKitPromiseWithTimeout(
   hk: AppleHealthKitNative,
   permissions: { permissions: { read: string[]; write?: string[] } },
@@ -272,7 +325,7 @@ function getDailyStepCountSamplesPromise(
   hk: AppleHealthKitNative,
   options: { startDate: string; endDate: string },
 ): Promise<{ value: number; startDate: string }[]> {
-  return new Promise((resolve, reject) => {
+  return withHealthCallbackTimeout("getDailyStepCountSamples", (resolve, reject) => {
     hk.getDailyStepCountSamples(options, (err, results) => {
       if (err) reject(new Error(String(err)));
       else resolve(results ?? []);
@@ -284,7 +337,7 @@ function getWeightSamplesPromise(
   hk: AppleHealthKitNative,
   options: { startDate: string; endDate: string; unit: string },
 ): Promise<{ value: number; startDate: string }[]> {
-  return new Promise((resolve, reject) => {
+  return withHealthCallbackTimeout("getWeightSamples", (resolve, reject) => {
     hk.getWeightSamples(options, (err, results) => {
       if (err) reject(new Error(String(err)));
       else resolve(results ?? []);
@@ -296,7 +349,7 @@ function getBodyFatPercentageSamplesPromise(
   hk: AppleHealthKitNative,
   options: { startDate: string; endDate: string; ascending?: boolean; limit?: number },
 ): Promise<{ value: number; startDate: string; endDate?: string }[]> {
-  return new Promise((resolve, reject) => {
+  return withHealthCallbackTimeout("getBodyFatPercentageSamples", (resolve, reject) => {
     if (!hk.getBodyFatPercentageSamples) {
       resolve([]);
       return;
@@ -320,7 +373,7 @@ function getActiveEnergyBurnedPromise(
   hk: AppleHealthKitNative,
   options: { startDate: string; endDate: string },
 ): Promise<{ value: number; startDate: string }[]> {
-  return new Promise((resolve, reject) => {
+  return withHealthCallbackTimeout("getActiveEnergyBurned", (resolve, reject) => {
     hk.getActiveEnergyBurned(options, (err, results) => {
       if (err) reject(new Error(String(err)));
       else resolve(results ?? []);
@@ -338,7 +391,7 @@ function getWorkoutSamplesPromise(
   hk: AppleHealthKitNative,
   options: { startDate: string; endDate: string },
 ): Promise<WorkoutSample[]> {
-  return new Promise((resolve, reject) => {
+  return withHealthCallbackTimeout("getSamples (Workout)", (resolve, reject) => {
     if (!hk.getSamples) { resolve([]); return; }
     hk.getSamples({ ...options, type: "Workout" }, (err, results) => {
       if (err) reject(new Error(String(err)));
@@ -351,7 +404,7 @@ function getBasalEnergyBurnedPromise(
   hk: AppleHealthKitNative,
   options: { startDate: string; endDate: string },
 ): Promise<{ value: number; startDate: string }[]> {
-  return new Promise((resolve, reject) => {
+  return withHealthCallbackTimeout("getBasalEnergyBurned", (resolve, reject) => {
     if (!hk.getBasalEnergyBurned) { resolve([]); return; }
     hk.getBasalEnergyBurned(options, (err, results) => {
       if (err) reject(new Error(String(err)));
@@ -407,7 +460,7 @@ function getEnergyConsumedSamplesPromise(
   hk: AppleHealthKitNative,
   options: { startDate: string; endDate: string },
 ): Promise<DietarySample[]> {
-  return new Promise((resolve, reject) => {
+  return withHealthCallbackTimeout("getEnergyConsumedSamples", (resolve, reject) => {
     if (!hk.getEnergyConsumedSamples) { resolve([]); return; }
     hk.getEnergyConsumedSamples(options, (err, results) => {
       if (err) reject(new Error(String(err)));
@@ -420,7 +473,7 @@ function getProteinSamplesPromise(
   hk: AppleHealthKitNative,
   options: { startDate: string; endDate: string },
 ): Promise<DietarySample[]> {
-  return new Promise((resolve, reject) => {
+  return withHealthCallbackTimeout("getProteinSamples", (resolve, reject) => {
     if (!hk.getProteinSamples) { resolve([]); return; }
     hk.getProteinSamples({ ...options, unit: "gram" }, (err, results) => {
       if (err) reject(new Error(String(err)));
@@ -433,7 +486,7 @@ function getCarbsSamplesPromise(
   hk: AppleHealthKitNative,
   options: { startDate: string; endDate: string },
 ): Promise<DietarySample[]> {
-  return new Promise((resolve, reject) => {
+  return withHealthCallbackTimeout("getCarbohydratesSamples", (resolve, reject) => {
     if (!hk.getCarbohydratesSamples) { resolve([]); return; }
     hk.getCarbohydratesSamples({ ...options, unit: "gram" }, (err, results) => {
       if (err) reject(new Error(String(err)));
@@ -446,7 +499,7 @@ function getFatSamplesPromise(
   hk: AppleHealthKitNative,
   options: { startDate: string; endDate: string },
 ): Promise<DietarySample[]> {
-  return new Promise((resolve, reject) => {
+  return withHealthCallbackTimeout("getFatTotalSamples", (resolve, reject) => {
     if (!hk.getFatTotalSamples) { resolve([]); return; }
     hk.getFatTotalSamples({ ...options, unit: "gram" }, (err, results) => {
       if (err) reject(new Error(String(err)));
@@ -459,7 +512,7 @@ function getFiberSamplesPromise(
   hk: AppleHealthKitNative,
   options: { startDate: string; endDate: string },
 ): Promise<DietarySample[]> {
-  return new Promise((resolve, reject) => {
+  return withHealthCallbackTimeout("getFiberSamples", (resolve, reject) => {
     if (!hk.getFiberSamples) { resolve([]); return; }
     hk.getFiberSamples({ ...options, unit: "gram" }, (err, results) => {
       if (err) reject(new Error(String(err)));
@@ -472,7 +525,7 @@ function getSugarSamplesPromise(
   hk: AppleHealthKitNative,
   options: { startDate: string; endDate: string },
 ): Promise<DietarySample[]> {
-  return new Promise((resolve, reject) => {
+  return withHealthCallbackTimeout("getSugarSamples", (resolve, reject) => {
     if (!hk.getSugarSamples) { resolve([]); return; }
     hk.getSugarSamples({ ...options, unit: "gram" }, (err, results) => {
       if (err) reject(new Error(String(err)));
@@ -485,7 +538,7 @@ function getSodiumSamplesPromise(
   hk: AppleHealthKitNative,
   options: { startDate: string; endDate: string },
 ): Promise<DietarySample[]> {
-  return new Promise((resolve, reject) => {
+  return withHealthCallbackTimeout("getSodiumSamples", (resolve, reject) => {
     if (!hk.getSodiumSamples) { resolve([]); return; }
     hk.getSodiumSamples({ ...options, unit: "gram" }, (err, results) => {
       if (err) reject(new Error(String(err)));
@@ -498,7 +551,7 @@ function getFatSaturatedSamplesPromise(
   hk: AppleHealthKitNative,
   options: { startDate: string; endDate: string },
 ): Promise<DietarySample[]> {
-  return new Promise((resolve, reject) => {
+  return withHealthCallbackTimeout("getFatSaturatedSamples", (resolve, reject) => {
     if (!hk.getFatSaturatedSamples) { resolve([]); return; }
     hk.getFatSaturatedSamples({ ...options, unit: "gram" }, (err, results) => {
       if (err) reject(new Error(String(err)));
@@ -511,7 +564,7 @@ function getCholesterolSamplesPromise(
   hk: AppleHealthKitNative,
   options: { startDate: string; endDate: string },
 ): Promise<DietarySample[]> {
-  return new Promise((resolve, reject) => {
+  return withHealthCallbackTimeout("getCholesterolSamples", (resolve, reject) => {
     if (!hk.getCholesterolSamples) { resolve([]); return; }
     hk.getCholesterolSamples({ ...options, unit: "gram" }, (err, results) => {
       if (err) reject(new Error(String(err)));
@@ -527,15 +580,18 @@ async function getDietaryQuantitySamplesForPermissionPromise(
   options: { startDate: string; endDate: string },
 ): Promise<DietarySample[]> {
   if (typeof hk.getDietaryQuantitySamplesForPermission === "function") {
-    return new Promise((resolve, reject) => {
-      hk.getDietaryQuantitySamplesForPermission!(
-        { ...options, permissionKey, unit },
-        (err, results) => {
-          if (err) reject(new Error(String(err)));
-          else resolve((results ?? []) as DietarySample[]);
-        },
-      );
-    });
+    return withHealthCallbackTimeout(
+      `getDietaryQuantitySamplesForPermission(${permissionKey})`,
+      (resolve, reject) => {
+        hk.getDietaryQuantitySamplesForPermission!(
+          { ...options, permissionKey, unit },
+          (err, results) => {
+            if (err) reject(new Error(String(err)));
+            else resolve((results ?? []) as DietarySample[]);
+          },
+        );
+      },
+    );
   }
   switch (permissionKey) {
     case "EnergyConsumed":
@@ -588,7 +644,7 @@ function saveFoodSamplePromise(
     date?: string;
   },
 ): Promise<boolean> {
-  return new Promise((resolve, reject) => {
+  return withHealthCallbackTimeout("saveFoodSample", (resolve, reject) => {
     if (!hk.saveFoodSample) { resolve(false); return; }
     hk.saveFoodSample(options, (err, result) => {
       if (err) reject(new Error(String(err)));
@@ -805,7 +861,7 @@ function getFoodCorrelationSamplesPromise(
   hk: AppleHealthKitNative,
   options: { startDate: string; endDate: string },
 ): Promise<unknown[]> {
-  return new Promise((resolve, reject) => {
+  return withHealthCallbackTimeout("getFoodCorrelationSamples", (resolve, reject) => {
     if (typeof hk.getFoodCorrelationSamples !== "function") {
       resolve([]);
       return;
