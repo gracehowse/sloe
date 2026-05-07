@@ -1245,7 +1245,6 @@ export async function syncHealthData(userId: string): Promise<{
     const existingActivityBurn = (profile?.activity_burn_by_day ?? {}) as Record<string, number>;
     const existingWorkouts = (profile?.workouts_by_day ?? {}) as Record<string, unknown[]>;
     const existingBasalBurn = (profile?.basal_burn_by_day ?? {}) as Record<string, number>;
-    const todayKey = dateKey(new Date());
 
     try {
       const stepSamples = await getDailyStepCountSamplesPromise(hk, {
@@ -1282,21 +1281,39 @@ export async function syncHealthData(userId: string): Promise<{
         unit: "kg",
       });
 
+      // F-115 (TestFlight `AGq70YLY1hmZ1uFqid9XMeo`, 2026-05-06): the
+      // tester saw 54.36 in Suppr while Apple Health's most-recent weigh-in
+      // was 54.3. react-native-health's `getWeightSamples` does not
+      // guarantee timestamp order, so when ≥1 weigh-in lands on the same
+      // calendar day the previous loop's last-iterated sample won — which
+      // could be the older reading. Sort ascending by `startDate` so the
+      // last write per `dateKey` is the most-recent-by-time. Then surface
+      // the absolute-most-recent sample as `weight_kg` (not the today-bucket
+      // value) so the "current weight" pill always matches Apple Health.
+      const sortedSamples = [...weightSamples].sort((a, b) => {
+        const ta = new Date(a.startDate).getTime();
+        const tb = new Date(b.startDate).getTime();
+        return ta - tb;
+      });
       const weightByDay: Record<string, number> = { ...existingWeight };
-      for (const sample of weightSamples) {
+      for (const sample of sortedSamples) {
         const dk = dateKey(sample.startDate);
         const rounded = Math.round(sample.value * 10) / 10;
         weightByDay[dk] = rounded;
       }
+      const mostRecentSample =
+        sortedSamples.length > 0 ? sortedSamples[sortedSamples.length - 1]! : null;
+      const mostRecentRounded = mostRecentSample
+        ? Math.round(mostRecentSample.value * 10) / 10
+        : null;
 
       if (JSON.stringify(weightByDay) !== JSON.stringify(existingWeight)) {
-        const todayWeight = weightByDay[todayKey];
         const profileWeightKg = profile && "weight_kg" in profile ? (profile as { weight_kg?: number | null }).weight_kg : null;
         const { error } = await supabase
           .from("profiles")
           .update({
             weight_kg_by_day: weightByDay,
-            weight_kg: todayWeight ?? profileWeightKg ?? null,
+            weight_kg: mostRecentRounded ?? profileWeightKg ?? null,
           })
           .eq("id", userId);
         if (!error) {

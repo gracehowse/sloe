@@ -694,12 +694,35 @@ Rules:
     body: JSON.stringify(body),
   });
 
+  // F-121 (TestFlight `AJK4VIZdlOwU_yQWVLn_9pc`, 2026-05-06): single
+  // server-side retry on OpenAI 429 with `Retry-After` honour, otherwise
+  // 2s + jitter. Catches transient burst limits before they bubble up
+  // as a user-facing "service is busy" — the tester reported re-tap
+  // amplification because the mobile client wasn't backing off either.
+  // Cap the wait so we don't blow the route's 45s abort window.
+  if (res.status === 429) {
+    const retryAfterHeader = res.headers.get("Retry-After");
+    const retryAfterMs = retryAfterHeader
+      ? Math.max(500, Math.min(10_000, (Number.parseInt(retryAfterHeader, 10) || 2) * 1000))
+      : 2000 + Math.floor(Math.random() * 500);
+    await new Promise((r) => setTimeout(r, retryAfterMs));
+    res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${openaiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+  }
+
   // If the image URL is invalid/expired (common with Instagram CDN URLs),
   // OpenAI returns 400. Retry without the image. Track that we did so
   // (audit I05, 2026-05-05) so callers can surface "image couldn't be
   // analysed — text only" rather than silently degrade.
+  // Skip this fallback on 429 — the image isn't the issue there.
   let imageUsed: boolean | undefined = imageUrl ? true : undefined;
-  if (!res.ok && imageUrl) {
+  if (!res.ok && res.status !== 429 && imageUrl) {
     const textOnlyBody = {
       ...body,
       messages: [{ role: "user", content: prompt }],
