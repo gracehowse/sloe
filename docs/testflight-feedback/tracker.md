@@ -19,6 +19,12 @@ Data source: `docs/testflight-feedback/data/feedback-YYYY-MM-DD.json` (deduped A
 | ⏳ | Open, not yet scheduled |
 | 🔍 | Unverifiable from available evidence (insufficient data from tester) |
 
+## Snapshot (2026-05-07, build 43 + 44 in-flight; 10 PRs since 2026-05-06 evening)
+
+10 PRs landed between 2026-05-06 evening and 2026-05-07 evening (#114 → #123). Build 43 ships F-122 + F-109 + F-115/F-117/F-119/F-121 + the F-125 chart unify; build 44 follows with the F-111 household invite flow + F-128 quick-add + F-124/F-126/F-129 sim-test fixes once Apple finishes processing.
+
+**Net open after this sweep:** 8 ⏳ items + 2 🔍 items. See `2026-05-07 — build 43/44 ship-out` below.
+
 ## Snapshot (2026-05-06, build 42 uploaded to ASC; 2026-05-06T21:14Z ASC pull)
 
 ASC pull totals: 159 screenshot / 6 crash threads. Build 42 (`d85faa0` + downstream fixes) was just uploaded to App Store Connect — Apple processing in flight; tester verification pending.
@@ -74,24 +80,24 @@ Single TestFlight session this morning surfaced 4 distinct food-search + weight-
 | `AECfotBlQgwf` | F-106 | ⏳ outstanding | "No way to add recipes saved to library from here I have to go to recipes then to library then click the recipe then scroll down then log it." — Today + Plan + LogSheet need a "From library" entry point. UX change. |
 | `ALCot9q4E4UF` | F-107 | ⏳ outstanding | "Emoji here instead of lucid icon. Always use icons." — recurrence of the icon-registry rule (Pattern #7 in this doc); some surfaces still ship emoji. Sweep needed. |
 | `ABM2nBZTJf9W` | F-108 | ⏳ outstanding | "Couldn't analyse this food even though it's pretty clear" — AI-photo analysis fail without a screenshot of which item; need to inspect logs. |
-| `AFHtAQRAWad1` | F-109 | ⏳ outstanding | "Can't see how to turn fasting on and off" — fasting-window UI control buried; needs a Settings or quick-toggle surface. |
+| `AFHtAQRAWad1` | F-109 | ✅ closed by #116 (build 43) | "Can't see how to turn fasting on and off" — added an idle "Start fast" pill on Today (mobile + web), gated on IF opt-in. Tap-to-start / tap-to-end without leaving Today. |
 | `AKzwcchbHQ14` | F-110 | 🔍 vague | "Still don't like the layout look of this page" — needs screenshot triage to pin which surface. |
 
 **2026-05-06 fresh items (11, F-111 → F-121)**
 
 | ID | F# | Status | Description / Closed by |
 |----|----|--------|--------------------------|
-| `AGthJykAoNdx` | F-111 | ⏳ outstanding | "Clicking add to add someone to your household doesn't actually work" — household *invite* path broken (separate from "Nothing happens when I try to create a household" which is on the create path). Both wedge the household feature. |
+| `AGthJykAoNdx` | F-111 | ✅ closed by #117 (build 44) | "Clicking add to add someone to your household doesn't actually work" — full email-targeted invite flow shipped: `household_invites` table + 4 RPCs (send/accept/decline/cancel), `HouseholdInviteSheet` (mobile) + `HouseholdInviteDialog` (web), `ReceivedInvitesBanner` on both platforms. Schema applied 2026-05-07 via `supabase db push --linked`. |
 | `AFD46jr1lR3m` | F-112 | 🔄 in-flight (PR #106 deployed; verify) | "Says all but graph is showing 3 months" — weight chart range-label vs render mismatch. PR #106 added bucket-aware x-axis ticks; this report is from before deploy or surfacing a different render path. Re-verify on build 42. |
 | `AMg4BaMwZWZ8` | F-113 | ⏳ outstanding | "Journey numbers are wrong" — weight-journey progress (`weightProjection.ts` / `computeWeightJourneyProgressPct`) returning wrong %. Need to inspect tester's actual numbers vs computed. |
 | `AHOkMJ8yu5hA` | F-114 | ⏳ outstanding | "Gets stuck trying to get more data" — likely Apple Health pagination / cold-load on Progress tab; possibly related to the 6 HK crash threads (G-1) and Pattern #10 (Progress cold-load). |
-| `AGq70YLY1hmZ` | F-115 | 🔍 needs context | "Current weight is actually 54.3" — implies app shows wrong current weight. Could be: (a) HealthKit not pulling latest reading, (b) stale display cache, (c) weight not yet logged that day. Need screenshot. |
+| `AGq70YLY1hmZ` | F-115 | ✅ closed by #115 (build 44) | "Current weight is actually 54.3" — HealthKit ingest in `healthSync.ts` was bucketing weight samples by day without sorting by `startDate`; on multi-weigh-in days the older sample could win. Fix: sort asc before bucketing + surface the absolute-most-recent sample as `weight_kg`. |
 | `AHhIn-dZMpKt` | F-116 | 🔄 in-flight (PR #107 deployed; verify) | "There should be enough data" — weight chart "not enough data" empty state firing despite history. PR #107's smart bucket fallback was supposed to fix this; tester reported pre-deploy. Re-verify on build 42. |
-| `ABIRVwgsxJo5` | F-117 | ⏳ outstanding | "Words can't be seen next to fat" — Today macro tile / nutrition row contrast or truncation issue. Needs visual triage from the screenshot. |
+| `ABIRVwgsxJo5` | F-117 | ✅ closed by #115 + #117 (build 44) | "Words can't be seen next to fat" — Progress → Macro Adherence Fat row's pink fill physically overlapped the right-aligned percentage label (RN's default `overflow: visible` let the bar bleed past the track). #115 added `overflow: hidden` + clamped fill to ≤100. F-117 v2 (#117) dropped the "(capped at 150)" parenthetical entirely; clamp + red `isOver` colour communicates over-budget without copy. |
 | `AB5wdTxKw-fA` | F-118 | 🔄 in-flight (PR #106 + #107) | "Impossible to read this chart" — weight chart legibility; bucketing + scrubber address this on build 42. Re-verify. |
-| `AMNFCofaR6cw` | F-119 | ⏳ outstanding | "All of these are orange like they need to be verified but most of them already have been" — recipe ingredient list visual state stuck on "needs verify" colour despite `is_verified=true`. Likely the row-level state read path or a stale colour-token rule. Inspect `RecipeDetail` ingredient row + `recipe_ingredients.is_verified` / `confidence` columns. |
+| `AMNFCofaR6cw` | F-119 | ✅ closed by #115 (build 44) | "All of these are orange like they need to be verified but most of them already have been" — `applyVerifyJsonToStateAndDb` (Recipe Detail re-verify + auto-verify) wrote per-row `source` + `confidence` but omitted `is_verified`, so rows that came in at AI confidence 0.5–0.75 stayed `is_verified=false`. Recipe aggregate flipped green which masked per-row drift. Fix: include `is_verified: confidence >= 0.5` in the per-row update payload (matches `verifyRecipe.ts:saveVerifiedIngredients`). |
 | `AOhsQeGDzvSr` | F-120 | ⏳ outstanding | "Don't really understand what 88% verified means it sounds made up" — verify-confidence percentage is opaque. Either replace with a categorical state ("verified" / "AI-matched" / "needs review") or hide the number. Copy + IA decision. |
-| `AJK4VIZdlOwU` | F-121 | ⏳ outstanding | "Still having issues importing" — recipe-import error without specifics. Could be Insta/TikTok caption flow (F-76 family) or a different surface. Need screenshot context. |
+| `AJK4VIZdlOwU` | F-121 | ✅ closed by #115 (build 44) | "Still having issues importing" — root cause was OpenAI 429 burst limits + user-driven re-tap amplification. Two-part fix: server `extractSocialRecipe.ts` adds a single retry honouring `Retry-After` (capped at 10s); mobile `import-shared.tsx` reads `Retry-After`, ticks a countdown, and renders "Try again in 28s" disabled until expiry. |
 
 **Coverage post-pass:** all 159 screenshot items + 6 crashes have an F-number assigned (F-1 → F-121). Every item's status is one of {✅, 🟡, 🔄, 🟠, ⏳, 🔍}.
 
@@ -109,25 +115,57 @@ Walked every ⏳ / 🔄 / 🔍 / 🟠 entry in the tracker. Outcome:
 | F-105 (recipe → log defaults to wrong slot) | ⏳ | ✅ closed by build 41 | `journalSlotFromMealTypes` honours `recipe.meal_type` first, falls back to time-of-day; `recipe/[id].tsx:1192`. Tester report predates the fix. |
 | F-107 (emoji vs lucide sweep) | ⏳ | ✅ closed this session | Swept mobile UI for emoji glyphs in active strings (excluding doc-comments + pre-removed): 2 hits — 🛒 in `shopping.tsx:672` (empty state) → `lucide-react-native ShoppingCart`; 👉 in `PhotoLogSheet.tsx:670` ("Plate total" row prefix) → `lucide-react-native ArrowRight`. |
 | F-120 (88% verified opaque) | ⏳ | ✅ closed this session | Replaced inline "88% · Partial match" rendering with categorical label only ("Partial match"). Numeric confidence retained on long-press accessibility hint for power users + screen readers. Web already aligned (uses `ConfidenceDot`, no %). |
-| F-119 (orange-when-already-verified) | ⏳ | ⏳ deferred — needs DB row inspection | `deriveIngredientVerificationTier` correctly returns "verified" when `is_verified=true` (line 67). Either the write path didn't set `is_verified` for the affected rows, or the read query is dropping the column. Need a screenshot + the recipe's actual `recipe_ingredients` rows to pin the cause. |
+| F-119 (orange-when-already-verified) | ⏳ | ✅ closed by #115 (build 44) | Confirmed: `applyVerifyJsonToStateAndDb` was the broken write path. It set `source` + `confidence` on per-row updates but never `is_verified`, so ≥0.5-confidence AI rows stayed `is_verified=false`. Fix: include `is_verified: confidence >= 0.5` in per-row payload. |
 | F-110 / F-115 / F-117 / F-121 | 🔍 | 🔍 deferred | All four need screenshot triage to narrow the surface (vague layout / wrong current weight / "Words can't be seen next to fat" / "Still having issues importing"). |
 | F-73 (cortado search relevance + DB coverage) | ⏳ | ⏳ kept | Big work — requires (a) OFF trust-weighting refinement (sibling of F-77 partial fix) and (b) generic-drinks seed expansion. Documented for separate session. |
 | F-74 / F-103 (logged caffeine/alcohol → cards) | ⏳ | ⏳ kept | Architectural change — `caffeine_mg` / `alcohol_g` need to be derived from `nutrition_micros`, not a separate ledger. Already partial via `bumpStimulantsForLoggedMeal` for the per-meal path; the Today cards still read the old ledger column. Documented for separate session. |
 | F-76 (caption-as-title on import) | ⏳ | ⏳ kept | Stricter title-trim rule needed at the import write site (separate from `stripSectionPrefix` which handles ingredient rows). Documented. |
 | F-106 (no "from library" entry on Today / Plan) | ⏳ | ⏳ kept | UX change — needs design pass to decide where the entry point sits without overloading the existing `+` FAB. Documented. |
 | F-108 (AI photo analysis fail) | ⏳ | ⏳ kept | Need server-side logs from the affected request to diagnose. No screenshot ID we can correlate without more info. Documented. |
-| F-109 (fasting toggle UI) | ⏳ | ⏳ kept | Settings or quick-toggle surface needed; the fasting-window state is set on Profile but there's no easy on/off. Documented. |
-| F-111 (household invite "Add" button broken) | ⏳ | ⏳ kept | Code-level investigation needed on the household invite path — the create path was already partially fixed (G-5) but invite is a separate flow. Pairs with the existing P0 "Households non-functional". Documented. |
+| F-109 (fasting toggle UI) | ⏳ | ✅ closed by #116 (build 43) | Idle "Start fast" pill on Today gated on IF opt-in, mobile + web. |
+| F-111 (household invite "Add" button broken) | ⏳ | ✅ closed by #117 (build 44) | Email-targeted invite flow shipped: schema (`household_invites` + 4 RPCs), `HouseholdInviteSheet` (mobile) + `HouseholdInviteDialog` (web), `ReceivedInvitesBanner` on both platforms. |
 | F-113 (journey numbers wrong) | ⏳ | ⏳ kept | Need tester's actual numbers vs computed to pin which fn in `weightProjection.ts` is wrong. Documented. |
 | F-114 (gets stuck loading more data) | ⏳ | ⏳ kept | Pattern #10 (Progress cold-load) + Pattern #11 (HK native crashes) likely overlap. The HK crash thread (G-1 family) probably eats this on build 12+, but tester reported again on build 42 — needs re-verification. |
 | F-122 (barcode on Create-recipe) | 🆕 | ✅ closed this session | New ASC item `ACwYhlziV5Fop37xCsbuL2I` (2026-05-06): "This is the Create recipe page I need to be able to scan barcodes too." Added a third "Scan barcode" quick-add button to the Create-recipe page alongside Paste list / Scan photo, mounting `BarcodeScannerModal` and converting the OFF product → new ingredient row using `servingSizeG ?? 100 g` as the default amount. Mirrors the verify.tsx pattern but appends instead of replacing a row, so it works as a brand-new ingredient source. |
 
 **Summary:**
 - 7 closed in this sweep (F-70, F-75, F-104, F-105, F-107, F-120, F-122)
-- 4 deferred pending screenshot triage (F-110, F-115, F-117, F-121)
-- 9 documented for separate sessions (F-73, F-74, F-76, F-103, F-106, F-108, F-109, F-111, F-113, F-114, F-119)
+- 4 deferred pending screenshot triage (F-110, F-115, F-117, F-121) — see 2026-05-07 update below; F-115/F-117/F-121 all closed by #115.
+- 9 documented for separate sessions (F-73, F-74, F-76, F-103, F-106, F-108, F-109, F-111, F-113, F-114, F-119) — see 2026-05-07 update below; F-109/F-111/F-119 closed.
 
 Net open items count: ~12 ⏳ + ~4 🔍 + the 6 ✅ that flipped today. Every ASC ID is now mapped to an F-number with a clear next-step.
+
+---
+
+**2026-05-07 — build 43/44 ship-out (10 tracker items + 4 internal-discovered → closed)**
+
+10 PRs (#114 → #123) shipped between 2026-05-06 evening and 2026-05-07 evening, closing every remaining ⏳ item that had been deferred from the 2026-05-06 sweep plus a handful of internal-discovered issues Grace surfaced via dev-build sim testing (F-124, F-125, F-126, F-129). Build 43 was the first cut (uploaded 2026-05-06 evening); build 44 follows once Apple finishes processing the F-128 follow-up bundle.
+
+**ASC-IDed items closed:**
+
+| F# | Closed by | Resolution |
+|----|-----------|------------|
+| **F-109** | #116 | Idle "Start fast" pill on Today (mobile + web), gated on IF opt-in. Tap-to-start / tap-to-end without leaving Today. |
+| **F-111** | #117 | `household_invites` table + 4 RPCs + email-targeted in-app accept (mobile + web). Schema applied via `supabase db push --linked`. |
+| **F-115** | #115 | HealthKit weight ingest now sorts samples asc before bucketing + surfaces absolute-most-recent reading as `weight_kg`. |
+| **F-117** | #115 + #117 | #115 fixed bar overflow on Macro Adherence; #117 (v2) dropped the "(capped at 150)" parenthetical, clamped fill to 100, added `isOver` red colour token. |
+| **F-119** | #115 | `applyVerifyJsonToStateAndDb` now writes `is_verified: confidence >= 0.5` on per-row updates so verified rows stop rendering orange. |
+| **F-121** | #115 | OpenAI 429 single-retry honouring `Retry-After` server-side; mobile `Try again in 28s` countdown so user-driven re-taps stop amplifying the rate limit. |
+| **F-122** | #114 (pre-sweep) | Already ✅ — Scan-barcode quick-add on Create-recipe page. |
+| **F-128** | #117 + #119 + #123 | Three-PR rollout of ingredient-search-modal quick-add icons. #117 wired barcode + voice-icon scaffolding on `CreateRecipeWizard` + `create-recipe.tsx` + `recipe/verify.tsx`; #119 wired voice + photo (multi-item AI commit handlers); #123 wired barcode replace-not-append on the imported-recipe `/import-shared` preview screen. F-128 epic now fully closed. |
+
+**Internal-discovered items (Grace dev-build sim testing 2026-05-07; no ASC IDs):**
+
+| F# | Closed by | Resolution |
+|----|-----------|------------|
+| **F-124** | #117 | "Confidence: High" on Progress vs "Building confidence — needs more data" calibrating card was firing on `loggingDays < 14` even when the engine reported high confidence. Fix: calibrating gate now only fires when engine confidence is medium AND loggingDays < 14, or when confidence is low. |
+| **F-125** | #120 + #122 | "Multiple weight charts all saying different things." v1 (#120) unified the range pill set across `/progress` and `/weight-tracker` to canonical `1W / 1M / 3M / 1Y / All`. v2 (#122) replaced `<TrendLine>` on `/weight-tracker` with `<WeightChart>` so the chart component is identical too. WeightChart is now unit-aware (`isImperial` prop). Out of scope: empty-state copy parity — defer to v3 if Grace flags. |
+| **F-126** | #117 | "Why would it take 5 weeks to lose another .1 kg" — Journey card projection used `(intake - TDEE) / 7700` and ignored the observed scale rate. Fix: `projectWeight` now accepts optional `observedKgPerWeek`; uses it when |x| ≥ 0.05 kg/week AND direction-aligned with the formula. Progress tab passes `timeline.weeklyRateKg`. |
+| **F-129** | #118 | Mirror of F-124 on the Weekly Recap surface — "Building confidence" copy fired despite the engine reporting high confidence. Fix: `buildWeeklyCheckin` now accepts `adaptiveTdeeConfidence`; when "high", skips the `weighInsThisWeek < 3` floor. |
+
+**Items still deferred (kept):** F-73 (search relevance + drinks DB coverage), F-74 + F-103 (caffeine/alcohol from logged foods — architectural), F-76 (caption-as-title), F-106 (Library entry on Today/Plan — UX), F-108 (AI photo analysis fail — needs server logs), F-110 (vague "don't like layout"), F-113 (journey numbers — F-126 fix may resolve, re-verify), F-114 (Progress cold-load + HK pagination overlap).
+
+Net open items count after this sweep: **8 ⏳ items** (F-73 / F-74 / F-76 / F-103 / F-106 / F-108 / F-113 / F-114) + 2 🔍 items (F-110 + the unmapped 2026-04-19 `AN8GJ1Dr3M` steps/burn).
 
 ---
 
