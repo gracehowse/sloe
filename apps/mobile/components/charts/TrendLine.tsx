@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
+  GestureResponderEvent,
   LayoutChangeEvent,
-  Pressable,
+  PanResponder,
   Text,
   View,
 } from "react-native";
@@ -149,6 +150,32 @@ export default function TrendLine({
   const valueLabel =
     formatValue != null ? formatValue(selPt.value) : String(selPt.value);
 
+  // 2026-05-06: tap-and-drag scrubber. Previously the chart only
+  // responded to a single tap (`onPressIn`). PanResponder now lets
+  // the user drag along the line — the selectedIndex follows the
+  // touch x — matching the WeightChart on the Progress tab.
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => data.length >= 2,
+        onMoveShouldSetPanResponder: () => data.length >= 2,
+        onPanResponderGrant: (e: GestureResponderEvent) => {
+          if (chartWidthPx > 0) {
+            pickNearestFromX(e.nativeEvent.locationX, chartWidthPx);
+          }
+        },
+        onPanResponderMove: (e: GestureResponderEvent) => {
+          if (chartWidthPx > 0) {
+            pickNearestFromX(e.nativeEvent.locationX, chartWidthPx);
+          }
+        },
+      }),
+    // Re-create when chart width / data shape changes so the
+    // scrubber math stays correct after layout changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [chartWidthPx, data.length],
+  );
+
   return (
     <View style={{ width: "100%" }}>
       <View
@@ -158,16 +185,12 @@ export default function TrendLine({
           if (w > 0) setChartWidthPx(w);
         }}
       >
-        <Pressable
+        <View
           accessibilityRole="image"
           accessibilityLabel="Weight trend chart"
-          accessibilityHint="Tap the chart to see weight on a date"
+          accessibilityHint="Tap or drag along the chart to see weight on a date"
           style={{ height }}
-          onPressIn={(e) => {
-            if (chartWidthPx > 0) {
-              pickNearestFromX(e.nativeEvent.locationX, chartWidthPx);
-            }
-          }}
+          {...panResponder.panHandlers}
         >
           <Svg
             width="100%"
@@ -309,7 +332,7 @@ export default function TrendLine({
               </>
             )}
           </Svg>
-        </Pressable>
+        </View>
       </View>
 
       <Text
