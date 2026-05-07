@@ -1896,6 +1896,20 @@ function ProgressDashboardContent() {
         // long-term mean). The block is suppressed entirely below the
         // floor — we don't backfill with placeholder copy.
         const projectionEligible = shouldRenderDailyProjection(daysWithFood.length);
+        // F-126 / F-113 web parity (2026-05-07): mirror the mobile
+        // Progress fix from a117789. Mobile passes
+        // `timeline.weeklyRateKg` so the projection respects the
+        // observed scale rate when it's reliable; web was forecasting
+        // from a stale TDEE estimate, which is exactly the
+        // "Journey numbers are wrong" complaint (`AMg4BaMwZWZ8`).
+        const observedKgPerWeek =
+          typeof timeline.weeklyRateKg === "number"
+            ? timeline.trendDirection === "losing"
+              ? -Math.abs(timeline.weeklyRateKg)
+              : timeline.trendDirection === "gaining"
+                ? Math.abs(timeline.weeklyRateKg)
+                : 0
+            : 0;
         const dailyProjection = projectionEligible && avgRecentCals > 0
           ? projectWeight({
               currentWeightKg: weightKg,
@@ -1903,6 +1917,7 @@ function ProgressDashboardContent() {
               targetCalories: targets.calories,
               maintenanceTdeeKcal,
               goal: userGoal,
+              observedKgPerWeek,
             })
           : null;
 

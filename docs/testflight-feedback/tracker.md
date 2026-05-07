@@ -89,7 +89,7 @@ Single TestFlight session this morning surfaced 4 distinct food-search + weight-
 |----|----|--------|--------------------------|
 | `AGthJykAoNdx` | F-111 | ✅ closed by #117 (build 44) | "Clicking add to add someone to your household doesn't actually work" — full email-targeted invite flow shipped: `household_invites` table + 4 RPCs (send/accept/decline/cancel), `HouseholdInviteSheet` (mobile) + `HouseholdInviteDialog` (web), `ReceivedInvitesBanner` on both platforms. Schema applied 2026-05-07 via `supabase db push --linked`. |
 | `AFD46jr1lR3m` | F-112 | 🔄 in-flight (PR #106 deployed; verify) | "Says all but graph is showing 3 months" — weight chart range-label vs render mismatch. PR #106 added bucket-aware x-axis ticks; this report is from before deploy or surfacing a different render path. Re-verify on build 42. |
-| `AMg4BaMwZWZ8` | F-113 | ⏳ outstanding | "Journey numbers are wrong" — weight-journey progress (`weightProjection.ts` / `computeWeightJourneyProgressPct`) returning wrong %. Need to inspect tester's actual numbers vs computed. |
+| `AMg4BaMwZWZ8` | F-113 | ✅ closed by #117 (mobile) + #126 (web parity) | "Journey numbers are wrong" — F-126 (mobile) added `observedKgPerWeek` to `projectWeight` so the projection respects observed scale rate. PR #126 mirrored to web's `ProgressDashboard.tsx` where the same callsite was missing the argument. Parity pin test added. |
 | `AHOkMJ8yu5hA` | F-114 | ⏳ outstanding | "Gets stuck trying to get more data" — likely Apple Health pagination / cold-load on Progress tab; possibly related to the 6 HK crash threads (G-1) and Pattern #10 (Progress cold-load). |
 | `AGq70YLY1hmZ` | F-115 | ✅ closed by #115 (build 44) | "Current weight is actually 54.3" — HealthKit ingest in `healthSync.ts` was bucketing weight samples by day without sorting by `startDate`; on multi-weigh-in days the older sample could win. Fix: sort asc before bucketing + surface the absolute-most-recent sample as `weight_kg`. |
 | `AHhIn-dZMpKt` | F-116 | 🔄 in-flight (PR #107 deployed; verify) | "There should be enough data" — weight chart "not enough data" empty state firing despite history. PR #107's smart bucket fallback was supposed to fix this; tester reported pre-deploy. Re-verify on build 42. |
@@ -163,7 +163,7 @@ Net open items count: ~12 ⏳ + ~4 🔍 + the 6 ✅ that flipped today. Every AS
 | **F-126** | #117 | "Why would it take 5 weeks to lose another .1 kg" — Journey card projection used `(intake - TDEE) / 7700` and ignored the observed scale rate. Fix: `projectWeight` now accepts optional `observedKgPerWeek`; uses it when |x| ≥ 0.05 kg/week AND direction-aligned with the formula. Progress tab passes `timeline.weeklyRateKg`. |
 | **F-129** | #118 | Mirror of F-124 on the Weekly Recap surface — "Building confidence" copy fired despite the engine reporting high confidence. Fix: `buildWeeklyCheckin` now accepts `adaptiveTdeeConfidence`; when "high", skips the `weighInsThisWeek < 3` floor. |
 
-**Items still deferred (kept):** F-73 (search relevance + drinks DB coverage), F-74 + F-103 (caffeine/alcohol from logged foods — architectural), F-106 (Library entry on Today/Plan — UX), F-108 (AI photo analysis fail — needs server logs), F-110 (vague "don't like layout"), F-113 (journey numbers — F-126 fix may resolve, re-verify), F-114 (Progress cold-load + HK pagination overlap).
+**Items still deferred (kept):** F-73 (search relevance + drinks DB coverage), F-74 + F-103 (caffeine/alcohol from logged foods — architectural), F-106 (Library entry on Today/Plan — UX), F-108 (AI photo analysis fail — needs server logs), F-110 (vague "don't like layout"), F-114 (Progress cold-load + HK pagination overlap).
 
 Net open items count after this sweep: **8 ⏳ items** (F-73 / F-74 / F-76 / F-103 / F-106 / F-108 / F-113 / F-114) + 2 🔍 items (F-110 + the unmapped 2026-04-19 `AN8GJ1Dr3M` steps/burn).
 
@@ -172,6 +172,10 @@ Net open items count after this sweep: **8 ⏳ items** (F-73 / F-74 / F-76 / F-1
 **2026-05-07 — F-76 fully closed (build 44, PR #125)**
 
 F-76 had been kept ⏳ since 2026-04-25 because the build-41 fix only sanitised the `meta.title` fallback. Tester `AFVnLJIVdjQY` showed the leak still happened when the LLM's `recipe.title` itself carried caption shape. Build 44 closes the rest: `sanitiseImportedTitle` is now called at every response-shape title site across `app/api/recipe-import/{,image,caption}/route.ts`. New static-analysis test (`recipeImportTitleSanitiserCallsites.test.ts`) pins the contract — each route file must invoke the helper for each response branch (3 / 1 / 1 minimums). Net open after this PR: **7 ⏳ items** (F-73 / F-74 / F-103 / F-106 / F-108 / F-113 / F-114) + 2 🔍.
+
+**2026-05-07 — F-113 fully closed (build 44, PR #126)**
+
+F-113 (`AMg4BaMwZWZ8`, "Journey numbers are wrong") was kept ⏳ pending tester re-verify against the F-126 fix. Investigation found the F-126 fix (a117789) only landed on mobile — `apps/mobile/app/(tabs)/progress.tsx` passes `observedKgPerWeek` to `projectWeight`, but `src/app/components/ProgressDashboard.tsx` (web Journey card) was still calling `projectWeight` without the argument, so web users would have seen the same wrong projection numbers Grace originally reported. Web parity now wired (mirrors mobile derivation: `timeline.weeklyRateKg` × `timeline.trendDirection`), with a parity-pin test (`journeyProjectionWebParity.test.ts`) that asserts both files mention `observedKgPerWeek` ≥ 2 times and derive from `timeline.weeklyRateKg`. Net open after this PR: **6 ⏳ items** (F-73 / F-74 / F-103 / F-106 / F-108 / F-114) + 2 🔍.
 
 ---
 
