@@ -1027,6 +1027,17 @@ export default function CreateRecipeScreen() {
           setSearchOpen(false);
           setSearchReplaceId(null);
         }}
+        // F-128 (Grace, 2026-05-07): scan barcode from inside the
+        // ingredient search sheet — same input mode the food-log
+        // sheet exposes. We close the search first (avoid stacked
+        // modals) and clear any in-flight replace target so the scan
+        // appends as a new ingredient via the existing
+        // `onBarcodeScanned` flow.
+        onScanBarcode={() => {
+          setSearchReplaceId(null);
+          setSearchOpen(false);
+          setBarcodeOpen(true);
+        }}
       />
 
       {/* F-122: barcode scanner — adds a new ingredient using the

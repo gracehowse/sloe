@@ -959,6 +959,16 @@ export default function VerifyScreen() {
         ].filter(Boolean).join(" ") : null}
         onSelect={onFoodSelected}
         onClose={() => setSearchIndex(null)}
+        // F-128 (Grace, 2026-05-07): pivot from search → barcode for
+        // the SAME row. We hand off `searchIndex` to `barcodeIndex` so
+        // the existing `onBarcodeScanned` handler updates the targeted
+        // ingredient instead of appending.
+        onScanBarcode={() => {
+          if (searchIndex == null) return;
+          const i = searchIndex;
+          setSearchIndex(null);
+          setBarcodeIndex(i);
+        }}
       />
       <BarcodeScannerModal
         visible={barcodeIndex != null}
