@@ -147,11 +147,20 @@ export async function GET(req: Request) {
     // (`searchFatSecret`) can log it. Keeps `ok: true` and `hits: []` so
     // the merge contract is unchanged. Truncate to avoid leaking long
     // upstream payloads.
+    //
+    // 2026-05-06 audit (B3): gate `_diag` on `SUPPR_DEBUG=1` so authed
+    // users in production can't read upstream FatSecret payloads from
+    // the Network panel. Server logs still carry the full message via
+    // the console.error above. Tests stub the env to keep the existing
+    // assertions passing.
+    const includeDiag = process.env.SUPPR_DEBUG === "1";
     return NextResponse.json({
       ok: true,
       hits: [],
       page: pageNumber,
-      _diag: { upstream: "failed", message: msg.slice(0, 200) },
+      ...(includeDiag
+        ? { _diag: { upstream: "failed", message: msg.slice(0, 200) } }
+        : {}),
     });
   }
 }

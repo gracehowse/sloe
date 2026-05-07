@@ -190,13 +190,21 @@ describe("/api/fatsecret/search — result mapping", () => {
     const res = await GET(makeReq("http://localhost/api/fatsecret/search?q=milk"));
     expect(res.status).toBe(200);
     const json = await res.json();
-    // 2026-05-06 (Grace) — empty fallback now also echoes a `_diag`
-    // field carrying the upstream error so the mobile / web client
-    // diagnostic surfaces the cause without chasing Vercel runtime
-    // logs. Pin both the contract (ok+empty) and the diag shape.
+    // 2026-05-06 audit (B3): `_diag` is now gated on SUPPR_DEBUG=1
+    // so authed users in production can't read upstream FatSecret
+    // payloads via the Network panel. Default-off — confirm here.
     expect(json.ok).toBe(true);
     expect(json.hits).toEqual([]);
     expect(json.page).toBe(1);
+    expect(json._diag).toBeUndefined();
+  });
+
+  it("emits `_diag` when SUPPR_DEBUG=1 (server-side debug opt-in)", async () => {
+    vi.stubEnv("SUPPR_DEBUG", "1");
+    fatSecretFoodSearchMock.mockRejectedValueOnce(new Error("FatSecret HTTP 502"));
+    const GET = await loadRoute();
+    const res = await GET(makeReq("http://localhost/api/fatsecret/search?q=milk"));
+    const json = await res.json();
     expect(json._diag).toEqual({
       upstream: "failed",
       message: "FatSecret HTTP 502",
