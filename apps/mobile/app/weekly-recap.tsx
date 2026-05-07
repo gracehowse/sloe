@@ -480,6 +480,16 @@ export default function WeeklyRecapScreen() {
   const checkin = useMemo<WeeklyCheckin | null>(() => {
     // Requires the body-stats slice to be present at all.
     if (!bodyStats || currentTdeeKcal == null) return null;
+    // F-129 (Grace, 2026-05-07): pass the engine confidence so the
+    // weeklyCheckin gate can skip the weighInsThisWeek floor when the
+    // engine already trusts the long-term TDEE — mirrors F-124 on the
+    // Progress tab.
+    const engineConfidence: "low" | "medium" | "high" | null =
+      bodyStats.adaptive_tdee_confidence === "low" ||
+      bodyStats.adaptive_tdee_confidence === "medium" ||
+      bodyStats.adaptive_tdee_confidence === "high"
+        ? bodyStats.adaptive_tdee_confidence
+        : null;
     return buildWeeklyCheckin({
       previousTdeeKcal,
       currentTdeeKcal,
@@ -489,6 +499,7 @@ export default function WeeklyRecapScreen() {
       weightEndKg: weeklyWeightStats.endKg,
       weighInsThisWeek: weeklyWeightStats.weighIns,
       daysLogged,
+      adaptiveTdeeConfidence: engineConfidence,
     });
   }, [
     bodyStats,

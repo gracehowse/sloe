@@ -127,6 +127,74 @@ describe("buildWeeklyCheckin — low-confidence placeholder", () => {
   });
 });
 
+describe("buildWeeklyCheckin — F-129 engine-confidence carve-out", () => {
+  // Conflict the F-129 fix resolves: the long-term adaptive TDEE
+  // engine reported "high" confidence, but the weighInsThisWeek floor
+  // still fired the calibrating headline. Two surfaces disagreed in
+  // copy ("high confidence" vs "needs more data"). Engine wins.
+  it("kind=ready when engine confidence is 'high' even with weighInsThisWeek=0", () => {
+    const out = buildWeeklyCheckin({
+      previousTdeeKcal: 2340,
+      currentTdeeKcal: 2410,
+      weeklyIntakeKcal: 14_600,
+      dailyTargetKcal: 2000,
+      weightStartKg: null,
+      weightEndKg: null,
+      weighInsThisWeek: 0, // zero this week
+      daysLogged: 7,
+      adaptiveTdeeConfidence: "high",
+    });
+    expect(out.kind).toBe("ready");
+    expect(out.headline).not.toBe("Building confidence — needs more data.");
+    // The cascade still produces a meaningful delta line.
+    expect(out.deltaLine).toBe("2,340 → 2,410 kcal/day");
+  });
+
+  it("still gates as low_confidence when engine confidence is 'medium' and weighIns < floor", () => {
+    const out = buildWeeklyCheckin({
+      previousTdeeKcal: 2340,
+      currentTdeeKcal: 2410,
+      weeklyIntakeKcal: 14_600,
+      dailyTargetKcal: 2000,
+      weightStartKg: 80,
+      weightEndKg: 79.6,
+      weighInsThisWeek: 1,
+      daysLogged: 7,
+      adaptiveTdeeConfidence: "medium",
+    });
+    expect(out.kind).toBe("low_confidence");
+  });
+
+  it("gates as low_confidence when engine confidence is 'low' regardless of weighIns count", () => {
+    const out = buildWeeklyCheckin({
+      previousTdeeKcal: 2340,
+      currentTdeeKcal: 2410,
+      weeklyIntakeKcal: 14_600,
+      dailyTargetKcal: 2000,
+      weightStartKg: 80,
+      weightEndKg: 79.6,
+      weighInsThisWeek: 1,
+      daysLogged: 7,
+      adaptiveTdeeConfidence: "low",
+    });
+    expect(out.kind).toBe("low_confidence");
+  });
+
+  it("backwards compat — omitting adaptiveTdeeConfidence preserves the original gate", () => {
+    const out = buildWeeklyCheckin({
+      previousTdeeKcal: 2340,
+      currentTdeeKcal: 2410,
+      weeklyIntakeKcal: 14_600,
+      dailyTargetKcal: 2000,
+      weightStartKg: 80,
+      weightEndKg: 79.6,
+      weighInsThisWeek: 2, // below floor, no engine signal
+      daysLogged: 7,
+    });
+    expect(out.kind).toBe("low_confidence");
+  });
+});
+
 describe("buildWeeklyCheckin — ready / why-line cascade", () => {
   it("ate under previous TDEE + lost weight → burning more than we thought (direction up)", () => {
     const out = buildWeeklyCheckin({
