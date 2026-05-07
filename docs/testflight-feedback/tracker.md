@@ -177,6 +177,24 @@ F-76 had been kept ⏳ since 2026-04-25 because the build-41 fix only sanitised 
 
 F-113 (`AMg4BaMwZWZ8`, "Journey numbers are wrong") was kept ⏳ pending tester re-verify against the F-126 fix. Investigation found the F-126 fix (a117789) only landed on mobile — `apps/mobile/app/(tabs)/progress.tsx` passes `observedKgPerWeek` to `projectWeight`, but `src/app/components/ProgressDashboard.tsx` (web Journey card) was still calling `projectWeight` without the argument, so web users would have seen the same wrong projection numbers Grace originally reported. Web parity now wired (mirrors mobile derivation: `timeline.weeklyRateKg` × `timeline.trendDirection`), with a parity-pin test (`journeyProjectionWebParity.test.ts`) that asserts both files mention `observedKgPerWeek` ≥ 2 times and derive from `timeline.weeklyRateKg`. Net open after this PR: **6 ⏳ items** (F-73 / F-74 / F-103 / F-106 / F-108 / F-114) + 2 🔍.
 
+**2026-05-07 — F-73 closed (already shipped 2026-04-27)**
+
+F-73 (`AKtz5LtrL39b39-CPXdFE08`, "cortado returns Spanish cheese") had been ⏳ kept since 2026-04-25 documented as "DB coverage" + "ranking refinement" work for a separate session. Walking the code: `src/lib/nutrition/genericBeverages.ts` ships 30 generic-beverage entries (espresso/americano/cortado/flat-white/cappuccino/latte/macchiato/mocha/drip/pour-over/cold-brew/black-tea/green-tea/matcha-latte/chai-latte/herbal-tea/earl-grey/whole-milk/semi-skimmed/skim/oat/almond/soy/orange-juice/apple-juice/red-wine/white-wine/lager/IPA + 1) covering every named complaint plus the broader "milk", "green tea", "red wine" class. `matchGenericBeverage(query)` is wired at the TOP of merged search results in both `apps/mobile/lib/verifyRecipe.ts:888` and `src/app/components/food-search/FoodSearchPanel.tsx:630`, so a generic match preempts USDA Branded noise synchronously. 17 unit tests + alias coverage including typos (cappucino / capuccino). Tester report predates the 2026-04-27 fix. Closure on code-level argument; no PR needed.
+
+**2026-05-07 — F-74 / F-103 architectural finding (still ⏳)**
+
+Walking the F-74 / F-103 deferral surfaced a real architectural conflict that needs a dedicated session, not a quick patch. **Both** the per-meal micros merge AND the `bumpStimulantsForLoggedMeal` ledger bump are firing on every food-search / barcode / recipe-log path:
+
+1. Meal is inserted with `nutrition_micros.caffeineMg = 64`.
+2. `bumpStimulantsForLoggedMeal` writes 64 to `extra_caffeine_by_day[dayKey]` (additive).
+3. Today reads `extraCaffeineToday = (extraCaffeineByDay[dayKey] ?? 0) + caffeineFromMealsMg = 64 + 64 = 128`.
+
+Net: a single 64 mg espresso displays as 128 mg. Quick-add path is correct (ledger only); food-search / barcode / recipe-log path double-counts. Same shape for alcohol via `alcoholByDayMerged` (line 2676 mobile, 1985 web).
+
+Resolution requires picking a canonical SoT (ledger as canonical → drop `caffeineFromMealsMg` from the read; or per-meal as canonical → drop the bump call from non-quick-add paths) and migrating one writer or one reader across all callsites — both platforms, all 5+ log paths, all delete paths. Pin with parity tests + a per-platform end-to-end test that logs an espresso and asserts the displayed value equals the meal's micros, not 2× the meal's micros. Documented for the next session — this is the F-74 / F-103 close-out work.
+
+Net open after this sweep: **5 ⏳ items** (F-74 / F-103 / F-106 / F-108 / F-114) + 2 🔍.
+
 ---
 
 **2026-04-25 ASC pull (build 39; `npm run testflight:feedback`):** 139 screenshot / 6 crash threads. **+4 new rows** vs the 2026-04-24 pull:
@@ -326,8 +344,8 @@ Ship rules:
 
 | Date | ID | Type | Status | Fix / track | Complaint |
 |------|-----|------|--------|-------------|-----------|
-| 2026-04-25 | `AKtz5LtrL39b39-CPXdFE08` | screenshot | ⏳ | **F-73** — search relevance + DB coverage for common drinks | "cortado should have lots of options" |
-| 2026-04-25 | `AN3mTmZK5T2Nhj13aMFLk2E` | screenshot | ⏳ | **F-74** — derive caffeine_mg/alcohol_g from logged foods (logged cortado → Caffeine card increments) | "Alcohol and caffeine should auto update from things logged" |
+| 2026-04-25 | `AKtz5LtrL39b39-CPXdFE08` | screenshot | ✅ | **F-73** — already shipped 2026-04-27: 30-entry `genericBeverages.ts` matcher (`matchGenericBeverage`) preempts USDA Branded noise at the top of merged search results on both platforms. Covers cortado, flat white, cappuccino, plus 27 more drinks (coffee/tea/milk/juice/wine/beer). | "cortado should have lots of options" |
+| 2026-04-25 | `AN3mTmZK5T2Nhj13aMFLk2E` | screenshot | ⏳ | **F-74** — partial fix shipped (per-meal micros merge); double-count discovered 2026-05-07 (auto-bump ledger + per-meal merge sum to 2× actual). Architectural fix deferred to next session — see "2026-05-07 F-74 / F-103 architectural finding". | "Alcohol and caffeine should auto update from things logged" |
 | 2026-04-25 | `AO5PEI1xgamOQ-Nx4Gbr8Ok` | screenshot | ✅ | build-42 F-75 → F-98 (closed by #98 + #105) | "Tap meal for full nutrition doesn't show … full nutrition for the meal" |
 | 2026-04-25 | `AFVnLJIVdjQY7bkWyi0AG8A` | screenshot | ✅ | **F-76** — `sanitiseImportedTitle` now wired at every recipe-import response site (web-scrape, social/LLM, HTML-fallback, image, caption). Build 41 only sanitised `meta.title` fallback; build 44 also sanitises `recipe.title` (LLM output) + `parsed.title` (HTML scrape) + `websiteRecipe.title` (JSON-LD). Static-analysis test pins the contract — every route file must call `sanitiseImportedTitle` for each response branch. | "Some recipes pulling in with the whole caption on the title" |
 | 2026-04-24 | `AGSeM-FnnYbZy6FJveUKBoc` | screenshot | 🟡 | **F-71** — coerce zero-macro recipe rows + penalise extreme portion spreads in meal-plan sampler; hydrate relational plan rows | "Portioning is not logical - … double lunch and 0.2 breakfast" |
