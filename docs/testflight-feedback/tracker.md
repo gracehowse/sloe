@@ -120,9 +120,10 @@ Walked every ⏳ / 🔄 / 🔍 / 🟠 entry in the tracker. Outcome:
 | F-111 (household invite "Add" button broken) | ⏳ | ⏳ kept | Code-level investigation needed on the household invite path — the create path was already partially fixed (G-5) but invite is a separate flow. Pairs with the existing P0 "Households non-functional". Documented. |
 | F-113 (journey numbers wrong) | ⏳ | ⏳ kept | Need tester's actual numbers vs computed to pin which fn in `weightProjection.ts` is wrong. Documented. |
 | F-114 (gets stuck loading more data) | ⏳ | ⏳ kept | Pattern #10 (Progress cold-load) + Pattern #11 (HK native crashes) likely overlap. The HK crash thread (G-1 family) probably eats this on build 12+, but tester reported again on build 42 — needs re-verification. |
+| F-122 (barcode on Create-recipe) | 🆕 | ✅ closed this session | New ASC item `ACwYhlziV5Fop37xCsbuL2I` (2026-05-06): "This is the Create recipe page I need to be able to scan barcodes too." Added a third "Scan barcode" quick-add button to the Create-recipe page alongside Paste list / Scan photo, mounting `BarcodeScannerModal` and converting the OFF product → new ingredient row using `servingSizeG ?? 100 g` as the default amount. Mirrors the verify.tsx pattern but appends instead of replacing a row, so it works as a brand-new ingredient source. |
 
 **Summary:**
-- 6 closed in this sweep (F-70, F-75, F-104, F-105, F-107, F-120)
+- 7 closed in this sweep (F-70, F-75, F-104, F-105, F-107, F-120, F-122)
 - 4 deferred pending screenshot triage (F-110, F-115, F-117, F-121)
 - 9 documented for separate sessions (F-73, F-74, F-76, F-103, F-106, F-108, F-109, F-111, F-113, F-114, F-119)
 
