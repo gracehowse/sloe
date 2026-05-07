@@ -61,8 +61,16 @@ describe("Today above-meals cap (mobile) — context block dispatch", () => {
   // doc-comment references like `\`<Foo>\`` which would otherwise
   // false-positive a `\b` boundary.
 
-  it("TodayFastingPill renders at most once (in the unified dispatch)", () => {
-    expect(countMatches(HOST_SRC, /<TodayFastingPill[\s/]/g)).toBeLessThanOrEqual(1);
+  it("TodayFastingPill renders at most twice (active + idle modes, mutually exclusive in the unified dispatch)", () => {
+    // F-109 (TestFlight `AFHtAQRAWad1w8bDvSgZkUg`, 2026-05-06): the
+    // pill now has TWO render branches inside the same dispatch
+    // IIFE — one for the in-flight fast and one for the idle "Start
+    // fast" state shown to opted-in users. Both live inside the same
+    // mutually-exclusive `if/else` chain, so the runtime cap of "at
+    // most one above-meals block at a time" is preserved. Bumping the
+    // source-pin from 1 to 2 keeps that intent honest while letting
+    // the new branch land.
+    expect(countMatches(HOST_SRC, /<TodayFastingPill[\s/]/g)).toBeLessThanOrEqual(2);
   });
 
   it("TodayEatAgainBanner renders at most once (in the unified dispatch)", () => {

@@ -656,6 +656,10 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
   const [dailyStepsGoal, setDailyStepsGoal] = useState(DEFAULT_STEPS_GOAL);
   const [fastingSessions, setFastingSessions] = useState<FastingSessionRow[]>([]);
   const [fastingNowTick, setFastingNowTick] = useState(() => Date.now());
+  // F-109 (TestFlight `AFHtAQRAWad1w8bDvSgZkUg`, 2026-05-06): web parity
+  // for the IF opt-in gate. The "Start fast" idle pill on Today only
+  // renders when `profiles.fasting_window != null` (Grace, 2026-05-07).
+  const [fastingOptedIn, setFastingOptedIn] = useState<boolean>(false);
   const calendarInputRef = useRef<HTMLInputElement>(null);
   const { authedUserId, authUserCreatedAt } = useAuthSession();
 
@@ -1211,7 +1215,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
     supabase
       .from("profiles")
       .select(
-        "weight_kg, weight_kg_by_day, goal, plan_pace, sex, age, height_cm, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, week_start_day, steps_by_day, daily_steps_goal, fasting_sessions, tracked_macros, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, milestone_30_shown_at, last_weekly_checkin_shown_at",
+        "weight_kg, weight_kg_by_day, goal, plan_pace, sex, age, height_cm, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, week_start_day, steps_by_day, daily_steps_goal, fasting_sessions, fasting_window, tracked_macros, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, milestone_30_shown_at, last_weekly_checkin_shown_at",
       )
       .eq("id", authedUserId)
       .maybeSingle()
@@ -1245,6 +1249,11 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         if (Array.isArray(fs)) {
           setFastingSessions(fs as FastingSessionRow[]);
         }
+        // F-109: hydrate the IF opt-in flag from `profiles.fasting_window`.
+        // Non-null = user picked a window (onboarding or /fasting preset
+        // chip) → idle "Start fast" pill renders on Today.
+        const fwRaw = (data as { fasting_window?: unknown }).fasting_window;
+        setFastingOptedIn(typeof fwRaw === "string" && fwRaw.length > 0);
         const w = data.weight_kg != null ? Number(data.weight_kg) : null;
         setProfileWeightKg(Number.isFinite(w) ? w : null);
         setProfileGoal((data as any).goal ?? null);
@@ -2236,7 +2245,23 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
       {(() => {
         // 1. Active fast wins outright.
         if (activeFast) {
-          return <TodayFastingPill activeFastElapsedLabel={fastingElapsedLabel} />;
+          return (
+            <TodayFastingPill
+              activeFastElapsedLabel={fastingElapsedLabel}
+              fastingOptedIn={fastingOptedIn}
+            />
+          );
+        }
+        // 1b. F-109: idle "Start fast" pill — only for users who
+        //     opted in to IF (`fasting_window != null`). Non-IF users
+        //     fall through to the eat-again / north-star prompts.
+        if (fastingOptedIn) {
+          return (
+            <TodayFastingPill
+              activeFastElapsedLabel={null}
+              fastingOptedIn={true}
+            />
+          );
         }
         // 2. Budget met or exceeded, with a re-log suggestion that
         //    hasn't been dismissed today.

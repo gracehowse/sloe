@@ -2,28 +2,84 @@ import React from "react";
 import { Pressable, Text } from "react-native";
 import { Clock } from "lucide-react-native";
 import { Accent, Radius, Spacing } from "@/constants/theme";
+import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
- * TodayFastingPill — "Fasting — Xh Ym" CTA linking to the fasting timer.
+ * TodayFastingPill — fasting state CTA on the Today surface.
  *
- * Extracted from `apps/mobile/app/(tabs)/index.tsx` (audit H3,
- * 2026-04-18). The pill itself is stateless — the host passes the
- * active fast's `startedAt` + `nowTick` so elapsed time recalculates
- * once per minute via the host's existing interval.
+ * Two render modes:
+ * - `active`: "Fasting — Xh Ym" with the live elapsed counter. Shown
+ *   when the user has an in-flight fast (`startedAt` set). Stateless;
+ *   host passes `nowTick` and recalculates per minute.
+ * - `idle`:   "Start fast" — shown when the user has opted in to
+ *   intermittent fasting (`profiles.fasting_window != null`) but is
+ *   not currently fasting. Tapping the pill opens the fasting page,
+ *   where Start Fast lives. F-109 (TestFlight `AFHtAQRAWad1w8bDvSgZkUg`,
+ *   2026-05-06): tester reported "Can't see how to turn fasting on
+ *   and off" — the active-only pill meant there was no entry from
+ *   Today when the user was idle. The host gates this mode on the IF
+ *   opt-in signal so it never appears for non-IF users (Grace,
+ *   2026-05-07): "we only want to show that fast pill if they said in
+ *   onboarding/changed in settings that they want to do intermittent
+ *   fasting."
+ *
+ * Original (audit H3, 2026-04-18) was stateless-active-only; this
+ * widens the API to add the idle mode without breaking existing
+ * callers.
  */
-export interface TodayFastingPillProps {
-  startedAt: string;
-  nowTick: number;
-  onPress: () => void;
-}
+export type TodayFastingPillProps =
+  | {
+      mode?: "active";
+      startedAt: string;
+      nowTick: number;
+      onPress: () => void;
+    }
+  | {
+      mode: "idle";
+      onPress: () => void;
+    };
 
-export function TodayFastingPill({ startedAt, nowTick, onPress }: TodayFastingPillProps) {
-  const elapsedH = Math.max(0, (nowTick - new Date(startedAt).getTime()) / 3600_000);
+export function TodayFastingPill(props: TodayFastingPillProps) {
+  const colors = useThemeColors();
+  if (props.mode === "idle") {
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Start fast"
+        onPress={props.onPress}
+        testID="today-fasting-pill-idle"
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 6,
+          paddingVertical: 6,
+          paddingHorizontal: Spacing.lg,
+          alignSelf: "center",
+          backgroundColor: colors.card,
+          borderWidth: 1,
+          borderColor: colors.border,
+          borderRadius: Radius.md,
+          marginVertical: Spacing.xs,
+        }}
+      >
+        <Clock size={16} color={colors.textSecondary} strokeWidth={2.25} />
+        <Text style={{ fontSize: 13, fontWeight: "700", color: colors.textSecondary }}>
+          Start fast
+        </Text>
+      </Pressable>
+    );
+  }
+
+  const elapsedH = Math.max(0, (props.nowTick - new Date(props.startedAt).getTime()) / 3600_000);
   const h = Math.floor(elapsedH);
   const m = Math.floor((elapsedH - h) * 60);
   return (
     <Pressable
-      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`Fasting — ${h} hours ${m} minutes elapsed`}
+      onPress={props.onPress}
+      testID="today-fasting-pill-active"
       style={{
         flexDirection: "row",
         alignItems: "center",
