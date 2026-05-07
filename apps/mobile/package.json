@@ -24,7 +24,7 @@
     "ios:fix-workspace": "bash ./scripts/ensure-suppr-xcworkspace.sh",
     "ios:xcode": "npm run ios:prune-stale-workspace && npm run ios:fix-workspace && open ios/Suppr.xcworkspace",
     "web": "expo start --web",
-    "lint": "expo lint",
+    "lint": "expo lint -- --no-error-on-unmatched-pattern",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "node ./scripts/run-maestro-e2e.mjs",
