@@ -30,7 +30,26 @@ const PAD_RIGHT = 48;
 type Props = {
   trend: WeightTrendResult;
   goalKg: number | null;
+  /**
+   * F-125 v2 (Grace, 2026-05-07): when true, render values in lb +
+   * suffix labels with " lb" instead of " kg". Internally the chart
+   * still computes layout against kg (the trend payload is always kg),
+   * just the displayed numbers are converted at the label-render step.
+   * Default false preserves existing Progress-tab callers byte-for-byte.
+   */
+  isImperial?: boolean;
 };
+
+/** kg → lb at the canonical 2.20462 factor used elsewhere in mobile. */
+function kgToLb(kg: number): number {
+  return Math.round(kg * 2.20462 * 10) / 10;
+}
+
+/** Display + unit suffix for a kg value. */
+function formatWeight(kg: number, isImperial: boolean): string {
+  const v = isImperial ? kgToLb(kg) : Math.round(kg * 10) / 10;
+  return `${v.toFixed(1)} ${isImperial ? "lb" : "kg"}`;
+}
 
 function toX(i: number, count: number, plotW: number): number {
   if (count <= 1) return PAD_LEFT + plotW / 2;
@@ -141,7 +160,7 @@ function buildXAxisTicks(
   return ticks;
 }
 
-export function WeightChart({ trend, goalKg }: Props) {
+export function WeightChart({ trend, goalKg, isImperial = false }: Props) {
   const colors = useThemeColors();
   const [chartWidth, setChartWidth] = useState(300);
   const [scrubIdx, setScrubIdx] = useState<number | null>(null);
@@ -223,23 +242,24 @@ export function WeightChart({ trend, goalKg }: Props) {
   const latestCaption = useMemo(() => {
     if (latestKg == null || latestDateISO == null) return null;
     const date = new Date(latestDateISO + "T12:00:00");
+    const valueStr = formatWeight(latestKg, isImperial);
     if (bucket === "monthly") {
-      return `${latestKg.toFixed(1)} · ${date.toLocaleDateString("en-GB", { month: "short", year: "2-digit" })}`;
+      return `${valueStr} · ${date.toLocaleDateString("en-GB", { month: "short", year: "2-digit" })}`;
     }
     if (bucket === "weekly") {
-      return `${latestKg.toFixed(1)} · w/c ${date.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`;
+      return `${valueStr} · w/c ${date.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`;
     }
     // Daily — relative if recent, otherwise short date.
     const today = new Date();
     today.setHours(12, 0, 0, 0);
     const diffDays = Math.round((today.getTime() - date.getTime()) / 86400000);
-    if (diffDays === 0) return `${latestKg.toFixed(1)} · Today`;
-    if (diffDays === 1) return `${latestKg.toFixed(1)} · Yesterday`;
+    if (diffDays === 0) return `${valueStr} · Today`;
+    if (diffDays === 1) return `${valueStr} · Yesterday`;
     if (diffDays > 0 && diffDays < 7) {
-      return `${latestKg.toFixed(1)} · ${date.toLocaleDateString("en-GB", { weekday: "short" })}`;
+      return `${valueStr} · ${date.toLocaleDateString("en-GB", { weekday: "short" })}`;
     }
-    return `${latestKg.toFixed(1)} · ${date.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`;
-  }, [latestKg, latestDateISO, bucket]);
+    return `${valueStr} · ${date.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`;
+  }, [latestKg, latestDateISO, bucket, isImperial]);
 
   /**
    * 2026-05-06: avoid goal-line label colliding with grid labels.
@@ -292,6 +312,10 @@ export function WeightChart({ trend, goalKg }: Props) {
         {/* Grid labels (right-aligned inside plot) */}
         {gridValues.map((v, i) => {
           const gy = toY(v, yMin, yMax, plotH);
+          // F-125 v2: convert to lb when imperial. No unit suffix on
+          // gridlines (already implied by the `Goal X.X lb` line + the
+          // floating latest pill); avoids label overflow into PAD_RIGHT.
+          const display = isImperial ? kgToLb(v) : Math.round(v * 10) / 10;
           return (
             <SvgText
               key={i}
@@ -301,7 +325,7 @@ export function WeightChart({ trend, goalKg }: Props) {
               fill={colors.textTertiary}
               textAnchor="start"
             >
-              {v.toFixed(1)}
+              {display.toFixed(1)}
             </SvgText>
           );
         })}
@@ -325,7 +349,7 @@ export function WeightChart({ trend, goalKg }: Props) {
               fill={colors.textSecondary}
               textAnchor="start"
             >
-              {`Goal ${goalKg.toFixed(1)}`}
+              {`Goal ${formatWeight(goalKg, isImperial)}`}
             </SvgText>
           </>
         )}
@@ -463,7 +487,7 @@ export function WeightChart({ trend, goalKg }: Props) {
           ]}
         >
           <Text style={[styles.floatingText, { color: colors.text }]}>
-            {`${scrubPoint.kg.toFixed(1)} kg · ${formatScrubDate(scrubPoint.dateISO, bucket)}${scrubMa != null ? `  ·  avg ${scrubMa.toFixed(1)}` : ""}`}
+            {`${formatWeight(scrubPoint.kg, isImperial)} · ${formatScrubDate(scrubPoint.dateISO, bucket)}${scrubMa != null ? `  ·  avg ${(isImperial ? kgToLb(scrubMa) : Math.round(scrubMa * 10) / 10).toFixed(1)}` : ""}`}
           </Text>
         </View>
       )}

@@ -34,7 +34,7 @@ import {
 } from "@/lib/weightProjection";
 import { dateKeyFromDate } from "@/lib/nutritionJournal";
 
-import TrendLine from "@/components/charts/TrendLine";
+import { WeightChart } from "@/components/progress/WeightChart";
 import MiniBarChart from "@/components/charts/MiniBarChart";
 import TimeRangeSelector, {
   daysForRange,
@@ -83,32 +83,6 @@ function filterByRange(
 
 function formatShortDate(dateStr: string): string {
   const d = new Date(dateStr + "T00:00:00");
-  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-}
-
-/**
- * 2026-05-06 (F-101 follow-up): bucket-aware x-axis label so the
- * weight-tracker chart x-axis reads honestly:
- *   - daily   → "5 May"
- *   - weekly  → "w/c 5 May"
- *   - monthly → "May" (year added when not current)
- * Matches the WeightChart tooltip on Progress so the two surfaces
- * speak the same language.
- */
-function formatBucketLabel(
-  dateISO: string,
-  bucket: "daily" | "weekly" | "monthly",
-): string {
-  const d = new Date(dateISO + "T12:00:00");
-  if (bucket === "monthly") {
-    const thisYear = new Date().getFullYear();
-    return d.getFullYear() === thisYear
-      ? d.toLocaleDateString("en-GB", { month: "short" })
-      : d.toLocaleDateString("en-GB", { month: "short", year: "2-digit" });
-  }
-  if (bucket === "weekly") {
-    return `w/c ${d.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`;
-  }
   return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 }
 
@@ -399,14 +373,12 @@ export default function ProgressScreen() {
     [weightKgByDay, weightTrendRange, goalWeightKg],
   );
 
-  const weightData = useMemo(() => {
-    const conv = (kg: number) =>
-      isImperial ? kgToLb(kg) : Math.round(kg * 10) / 10;
-    return weightTrend.points.map((p) => ({
-      label: formatBucketLabel(p.dateISO, weightTrend.bucket),
-      value: conv(p.kg),
-    }));
-  }, [weightTrend, isImperial]);
+  // F-125 v2 (2026-05-07): `weightData` (unit-converted projection of
+  // weightTrend.points for TrendLine consumption) and `weightProjection`
+  // (dashed-line forecast extension) were dropped when the chart swapped
+  // to <WeightChart>. The journey card below already surfaces a "~N
+  // weeks to goal" textual estimate, so the visual extension was
+  // redundant and added noise on long ranges.
 
   // Range delta — prominent "↑ 1.4 kg past three months" header stat.
   // TestFlight `AF7bS2DQrH_wZWxGosBJ3K8` (2026-04-18): tester attached
@@ -485,50 +457,6 @@ export default function ProgressScreen() {
       tone,
     };
   }, [weightKgByDay, range, isImperial, goalWeightKg]);
-
-  const weightProjection = useMemo(() => {
-    if (!goalWeightKg || latestKg == null || weightData.length < 2)
-      return undefined;
-    const filtered = filterByRange(weightKgByDay, range);
-    const entries = Object.entries(filtered).sort(([a], [b]) =>
-      a.localeCompare(b),
-    );
-    if (entries.length < 2) return undefined;
-    const firstKey = entries[0][0];
-    const lastKey = entries[entries.length - 1][0];
-    const first = entries[0][1];
-    const last = entries[entries.length - 1][1];
-    const daysBetween = Math.max(
-      1,
-      Math.round(
-        (new Date(`${lastKey}T12:00:00`).getTime() -
-          new Date(`${firstKey}T12:00:00`).getTime()) /
-          86400000,
-      ),
-    );
-    const dailyRate = (last - first) / daysBetween;
-    if (Math.abs(dailyRate) < 0.001) return undefined;
-    const deltaToGoal = goalWeightKg - last;
-    if (Math.sign(deltaToGoal) !== Math.sign(dailyRate)) return undefined;
-    const daysToGoal = Math.abs(deltaToGoal / dailyRate);
-    if (daysToGoal > 365) return undefined;
-    const pts: { label: string; value: number }[] = [];
-    const weeks = Math.min(12, Math.ceil(daysToGoal / 7));
-    for (let w = 1; w <= weeks; w++) {
-      const projected = last + dailyRate * w * 7;
-      const future = new Date();
-      future.setHours(12, 0, 0, 0);
-      future.setDate(future.getDate() + w * 7);
-      const futureKey = dateKeyFromDate(future);
-      pts.push({
-        label: formatShortDate(futureKey),
-        value: isImperial
-          ? kgToLb(projected)
-          : Math.round(projected * 10) / 10,
-      });
-    }
-    return pts;
-  }, [weightKgByDay, goalWeightKg, latestKg, range, weightData.length, isImperial]);
 
   const stepsData = useMemo(() => {
     const filtered = filterByRange(stepsByDay, range);
@@ -853,30 +781,24 @@ export default function ProgressScreen() {
                 </View>
               </View>
 
-              {weightData.length >= 2 && (
+              {weightTrend.points.length >= 2 && (
                 <>
                   <Text style={[styles.muted, { marginBottom: 4 }]}>
                     Tap the chart to see weight on that day.
                   </Text>
-                  <TrendLine
+                  {/* F-125 v2 (Grace, 2026-05-07): canonical
+                      WeightChart rendering — same component, same
+                      bucket-aware MA + scrubber + goal-line + axis
+                      labels Progress tab uses. Drops the dashed
+                      `weightProjection` extension the old TrendLine
+                      had; the journey card below already surfaces a
+                      "~N weeks to goal" textual estimate so the
+                      visual extension was redundant. */}
+                  <WeightChart
                     key={range}
-                    data={weightData}
-                    projectedData={weightProjection}
-                    height={200}
-                    goalValue={
-                      goalWeightKg != null
-                        ? isImperial
-                          ? kgToLb(goalWeightKg)
-                          : Math.round(goalWeightKg * 10) / 10
-                        : undefined
-                    }
-                    color={Accent.primary}
-                    labelColor={colors.textTertiary}
-                    trackColor={colors.border}
-                    goalColor={Accent.success}
-                    formatValue={(v) =>
-                      `${Math.round(v * 10) / 10}${isImperial ? " lb" : " kg"}`
-                    }
+                    trend={weightTrend}
+                    goalKg={goalWeightKg ?? null}
+                    isImperial={isImperial}
                   />
                 </>
               )}
