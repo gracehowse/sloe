@@ -77,7 +77,7 @@ Single TestFlight session this morning surfaced 4 distinct food-search + weight-
 | `AEsaeOW2Qw-B` | F-103 | ✅ closed by PR #128 (build 45) — sibling of F-74. Per-meal `micros` is now the canonical SoT; food-search / barcode / recipe-log paths no longer double-count via the auto-bump ledger. | "Adding alcohol or coffee still not impacting these numbers" |
 | `AEvjNTAVsipF` | F-104 | ⏳ — see `docs/decisions/2026-05-05-calorie-ring-colour-mapping.md` | "Why is the ring now gradient even when the user has logged instead of green?" — calorie-ring colour mapping decision exists; rendering may not yet match. Audit-deferred; verify against build 42. |
 | `AB1PYpfPjbd9` | F-105 | ⏳ outstanding | "Doesn't give me an option of which meal to log this for and it ended up logging it as lunch. Also this was a breakfast recipe and I marked it as such when I imported it." — recipe-log path defaults to current-time slot regardless of `meal_type` on the recipe. Need a meal-slot picker on quick-log + honour stored `meal_type` as default. |
-| `AECfotBlQgwf` | F-106 | ⏳ outstanding | "No way to add recipes saved to library from here I have to go to recipes then to library then click the recipe then scroll down then log it." — Today + Plan + LogSheet need a "From library" entry point. UX change. |
+| `AECfotBlQgwf` | F-106 | ✅ already shipped 2026-05-01 — LogSheet has a Library tab on both platforms (`apps/mobile/components/today/LogSheet.tsx:259` + `src/app/components/NutritionTracker.tsx:3191`); Planner has "Open recipe library" / "Browse recipe library" CTAs (`apps/mobile/app/(tabs)/planner.tsx:1998+2115`). Tester report predates the fix. | "No way to add recipes saved to library from here I have to go to recipes then to library then click the recipe then scroll down then log it." |
 | `ALCot9q4E4UF` | F-107 | ⏳ outstanding | "Emoji here instead of lucid icon. Always use icons." — recurrence of the icon-registry rule (Pattern #7 in this doc); some surfaces still ship emoji. Sweep needed. |
 | `ABM2nBZTJf9W` | F-108 | ⏳ outstanding | "Couldn't analyse this food even though it's pretty clear" — AI-photo analysis fail without a screenshot of which item; need to inspect logs. |
 | `AFHtAQRAWad1` | F-109 | ✅ closed by #116 (build 43) | "Can't see how to turn fasting on and off" — added an idle "Start fast" pill on Today (mobile + web), gated on IF opt-in. Tap-to-start / tap-to-end without leaving Today. |
@@ -163,9 +163,9 @@ Net open items count: ~12 ⏳ + ~4 🔍 + the 6 ✅ that flipped today. Every AS
 | **F-126** | #117 | "Why would it take 5 weeks to lose another .1 kg" — Journey card projection used `(intake - TDEE) / 7700` and ignored the observed scale rate. Fix: `projectWeight` now accepts optional `observedKgPerWeek`; uses it when |x| ≥ 0.05 kg/week AND direction-aligned with the formula. Progress tab passes `timeline.weeklyRateKg`. |
 | **F-129** | #118 | Mirror of F-124 on the Weekly Recap surface — "Building confidence" copy fired despite the engine reporting high confidence. Fix: `buildWeeklyCheckin` now accepts `adaptiveTdeeConfidence`; when "high", skips the `weighInsThisWeek < 3` floor. |
 
-**Items still deferred (kept):** F-73 (search relevance + drinks DB coverage), F-74 + F-103 (caffeine/alcohol from logged foods — architectural), F-106 (Library entry on Today/Plan — UX), F-108 (AI photo analysis fail — needs server logs), F-110 (vague "don't like layout"), F-114 (Progress cold-load + HK pagination overlap).
+**Items still deferred (kept):** F-108 (AI photo analysis fail — needs server logs), F-110 (vague "don't like layout").
 
-Net open items count after this sweep: **8 ⏳ items** (F-73 / F-74 / F-76 / F-103 / F-106 / F-108 / F-113 / F-114) + 2 🔍 items (F-110 + the unmapped 2026-04-19 `AN8GJ1Dr3M` steps/burn).
+Net open items count after this sweep: **2 ⏳ items** (F-108 / F-114) + 2 🔍 items (F-110 + the unmapped 2026-04-19 `AN8GJ1Dr3M` steps/burn). F-114 stays ⏳ pending tester re-verify against the partial fix.
 
 ---
 
@@ -180,6 +180,16 @@ F-113 (`AMg4BaMwZWZ8`, "Journey numbers are wrong") was kept ⏳ pending tester 
 **2026-05-07 — F-73 closed (already shipped 2026-04-27)**
 
 F-73 (`AKtz5LtrL39b39-CPXdFE08`, "cortado returns Spanish cheese") had been ⏳ kept since 2026-04-25 documented as "DB coverage" + "ranking refinement" work for a separate session. Walking the code: `src/lib/nutrition/genericBeverages.ts` ships 30 generic-beverage entries (espresso/americano/cortado/flat-white/cappuccino/latte/macchiato/mocha/drip/pour-over/cold-brew/black-tea/green-tea/matcha-latte/chai-latte/herbal-tea/earl-grey/whole-milk/semi-skimmed/skim/oat/almond/soy/orange-juice/apple-juice/red-wine/white-wine/lager/IPA + 1) covering every named complaint plus the broader "milk", "green tea", "red wine" class. `matchGenericBeverage(query)` is wired at the TOP of merged search results in both `apps/mobile/lib/verifyRecipe.ts:888` and `src/app/components/food-search/FoodSearchPanel.tsx:630`, so a generic match preempts USDA Branded noise synchronously. 17 unit tests + alias coverage including typos (cappucino / capuccino). Tester report predates the 2026-04-27 fix. Closure on code-level argument; no PR needed.
+
+**2026-05-07 — F-106 closed (already shipped 2026-05-01)**
+
+`AECfotBlQgwf` ("No way to add recipes saved to library from here"). Walking the code found this was already fully addressed on both platforms:
+- Mobile `LogSheet` has a Library tab (`recipes`, `onPick`, `onBrowseRecipes`) wired from Today via `useSavedLibraryRecipes` — see `(tabs)/index.tsx:5067`.
+- Web `NutritionTracker` mirrors the LogSheet `library={{...}}` prop with the same shape — `NutritionTracker.tsx:3191`.
+- Mobile Planner has "Open recipe library" + "Browse recipe library" CTAs — `(tabs)/planner.tsx:1998 + 2115`.
+- Web Planner shipped equivalent entry points in F-72 (2026-04-24).
+
+Tester report `AECfotBlQgwf` predates the 2026-05-01 fix. Closure on code-level argument; no PR needed.
 
 **2026-05-07 — F-114 robustness fix in most-likely-suspect surface (build 45, PR #129)**
 
