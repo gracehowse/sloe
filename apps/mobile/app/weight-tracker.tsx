@@ -669,11 +669,14 @@ export default function ProgressScreen() {
                 Relabel + helper copy disambiguate the two surfaces.
                 "All" reads up to ~11 years (HealthKit cap). */}
             <Text style={styles.sectionTitle}>Historical import depth</Text>
+            {/* 2026-05-08 ui-critic F14: tightened the 4-sentence
+                defensive paragraph that mostly explained what the
+                control ISN'T (chart range, journey-bar lookback). The
+                control speaks for itself; the disambiguation belongs
+                in a tooltip if it's needed at all. Kept the one
+                positive line that names the action. */}
             <Text style={styles.muted}>
-              Choose how many months of past weights and steps to pull from your connected health source. Doesn&apos;t change what&apos;s
-              visible on the chart above — use the range pills at the top for that. Journey &quot;lost&quot; uses roughly
-              the last 18 months of saved weights and trims statistical outliers so one bad reading does not
-              dominate the bar.
+              How many months of past weights and steps to pull from your connected health source.
             </Text>
             <View
               style={{

@@ -190,7 +190,8 @@ export function ProgressMetricDetail({ metric, weekStartDay, onClose }: Props) {
                 );
               })}
             </div>
-            <p className="text-[11px] text-muted-foreground mt-3">Tap a day to open it on Today.</p>
+            {/* 2026-05-08 ui-critic F8 web parity: removed "Tap a day to open it on Today."
+                trailing helper. Day buttons below are visibly tappable (cursor + hover). */}
           </div>
 
           {weekStats.days.map((d) => (
@@ -274,12 +275,16 @@ export function ProgressMetricDetail({ metric, weekStartDay, onClose }: Props) {
 
       {metric === "streak" && (
         <>
-          <div className="rounded-xl border border-border bg-card p-5 mb-4">
-            <p className="text-4xl font-black text-primary tabular-nums">{streakDays}</p>
-            <p className="text-sm font-semibold text-foreground mt-1">
-              consecutive logging day{streakDays !== 1 ? "s" : ""}
-            </p>
-          </div>
+          {/* 2026-05-08 ui-critic F11 web parity: hide the giant `0` headline when
+              there's no streak yet — empty-state copy below carries the message. */}
+          {streakDays > 0 ? (
+            <div className="rounded-xl border border-border bg-card p-5 mb-4">
+              <p className="text-4xl font-black text-primary tabular-nums">{streakDays}</p>
+              <p className="text-sm font-semibold text-foreground mt-1">
+                consecutive logging day{streakDays !== 1 ? "s" : ""}
+              </p>
+            </div>
+          ) : null}
 
           {streakDaysDetail.length === 0 ? (
             <p className="text-sm text-muted-foreground">Log a meal on Today to start a streak.</p>
