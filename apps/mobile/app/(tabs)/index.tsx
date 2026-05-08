@@ -326,6 +326,12 @@ function formatMealTimeDisplay(time: string | undefined, createdAt?: string | nu
   }
 }
 
+// 2026-05-08 data-loss hotfix — was a per-render `const` inside the
+// component (line ~3620). Lifted to module-level so the persistence
+// helpers below can reference it from earlier in the component body
+// without TDZ ordering errors.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export default function TrackerScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{
@@ -349,6 +355,127 @@ export default function TrackerScreen() {
   const [byDay, setByDay] = useState<ByDay>({});
   const [hydrated, setHydrated] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  /**
+   * 2026-05-08 data-loss hotfix — fire-and-forget immediate persist of
+   * one or more newly-logged meals to `nutrition_entries`. Pre-fix, all
+   * the "log a meal" entry-points (addMeal / quickAddMeal / search /
+   * saved-meal / barcode / AI commit) wrote ONLY to local `byDay`
+   * state and relied on the 600ms debounced upsert further down to
+   * drain to Supabase. That timer's cleanup cancels the sync any
+   * time `byDay`/`selectedDate`/userId/hydrated change before it
+   * fires — including app backgrounding, day navigation, or even a
+   * follow-up state mutation. ~25 days of journal data was lost on
+   * Grace's TestFlight reinstall because of this.
+   *
+   * Post-fix: every add-meal call site now calls this primitive
+   * IMMEDIATELY after its `setByDay` (no debounce). On error we roll
+   * back the optimistic UI and surface an Alert — same shape as the
+   * existing `insertClonedRowsIntoDay` and `logPlannedMealWithPortion`
+   * paths that already worked correctly.
+   *
+   * The 600ms debounced effect stays as a backstop (cheap re-upsert
+   * of the current day on every render), but is no longer the only
+   * path to durable storage.
+   */
+  const persistMealsImmediate = useCallback(
+    async (targetDayKey: string, meals: JournalMeal[]): Promise<boolean> => {
+      if (meals.length === 0) return true;
+      if (!userId) {
+        console.warn(
+          "[tracker] persistMealsImmediate called without userId — meals not persisted",
+        );
+        return true;
+      }
+      const dbRows = meals.map((m) => ({
+        id: UUID_RE.test(m.id) ? m.id : newMealId(),
+        user_id: userId,
+        date_key: targetDayKey,
+        name: m.name,
+        recipe_title: m.recipeTitle,
+        time_label: m.time,
+        calories: m.calories,
+        protein: m.protein,
+        carbs: m.carbs,
+        fat: m.fat,
+        fiber_g: m.fiberG ?? null,
+        water_ml: m.waterMl ?? null,
+        portion_multiplier: m.portionMultiplier ?? 1,
+        nutrition_micros:
+          m.micros && Object.keys(m.micros).length > 0 ? m.micros : {},
+        source: m.source ?? null,
+      }));
+      const { error } = await supabase
+        .from("nutrition_entries")
+        .insert(dbRows);
+      if (error) {
+        console.error("[tracker] persistMealsImmediate failed:", error.message);
+        // Roll back the optimistic add(s) so the user sees the failure
+        // instead of a phantom entry that disappears on next reload.
+        setByDay((prev) => ({
+          ...prev,
+          [targetDayKey]: (prev[targetDayKey] ?? []).filter(
+            (m) => !meals.some((nm) => nm.id === m.id),
+          ),
+        }));
+        Alert.alert(
+          "Couldn't save",
+          error.message ||
+            "Logged locally but couldn't sync to your account. Try again.",
+        );
+        return false;
+      }
+      return true;
+    },
+    [userId],
+  );
+
+  /**
+   * 2026-05-08 data-loss hotfix — sister primitive for `saveEditMeal`.
+   * Pre-fix, edit-save mutated `byDay` only and relied on the same
+   * fragile debounce. Post-fix: immediate UPDATE on the relational
+   * row, scoped to (id, user_id) to satisfy RLS.
+   */
+  const persistMealUpdateImmediate = useCallback(
+    async (mealId: string, updated: JournalMeal): Promise<boolean> => {
+      if (!userId) return true;
+      const { error } = await supabase
+        .from("nutrition_entries")
+        .update({
+          name: updated.name,
+          recipe_title: updated.recipeTitle,
+          time_label: updated.time,
+          calories: updated.calories,
+          protein: updated.protein,
+          carbs: updated.carbs,
+          fat: updated.fat,
+          fiber_g: updated.fiberG ?? null,
+          water_ml: updated.waterMl ?? null,
+          portion_multiplier: updated.portionMultiplier ?? 1,
+          nutrition_micros:
+            updated.micros && Object.keys(updated.micros).length > 0
+              ? updated.micros
+              : {},
+          source: updated.source ?? null,
+        })
+        .eq("id", mealId)
+        .eq("user_id", userId);
+      if (error) {
+        console.error(
+          "[tracker] persistMealUpdateImmediate failed:",
+          error.message,
+        );
+        Alert.alert(
+          "Couldn't save changes",
+          error.message ||
+            "Edit applied locally but couldn't sync. Try again.",
+        );
+        return false;
+      }
+      return true;
+    },
+    [userId],
+  );
   // Pattern #9 (`AN8GJ1Dr3M` + F-131 `AMmlpVOqMnaKKdV2dobjjjg`, 2026-05-08):
   // WhereThisComesFromSheet visibility + last-sync timestamp. One sheet
   // shared across the activity card + burn card; the context decides
@@ -1214,6 +1341,8 @@ export default function TrackerScreen() {
       });
       const targetDayKey = dateKeyFromDate(selectedDate);
       setByDay((prev) => ({ ...prev, [targetDayKey]: [...(prev[targetDayKey] ?? []), ...newMeals] }));
+      // 2026-05-08 data-loss hotfix — immediate Supabase persist.
+      void persistMealsImmediate(targetDayKey, newMeals);
       // 2026-04-28 (teardown Top-5 #5): light haptic on every log so
       // the action lands in the body, not just on the screen. Success
       // notification (line ~1515) stays reserved for hitting the
@@ -1234,12 +1363,12 @@ export default function TrackerScreen() {
       } catch { /* analytics fire-and-forget */ }
       // Fire-and-forget counter bump. Panel fires the analytics event.
       void incrementLogCount(supabase, userId, meal.id).catch((err) => {
-         
+
         console.warn("Saved-meal log-count bump failed", err);
       });
       setShowPrevious(false);
     },
-    [userId, selectedDate],
+    [userId, selectedDate, persistMealsImmediate],
   );
 
   /** Ship M1 — slot-header "Log usual" pill handler. Logs the saved meal
@@ -1273,6 +1402,8 @@ export default function TrackerScreen() {
       });
       const targetDayKey = dateKeyFromDate(selectedDate);
       setByDay((prev) => ({ ...prev, [targetDayKey]: [...(prev[targetDayKey] ?? []), ...newMeals] }));
+      // 2026-05-08 data-loss hotfix — immediate Supabase persist.
+      void persistMealsImmediate(targetDayKey, newMeals);
       // 2026-04-28 (teardown Top-5 #5): light haptic on log.
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       try {
@@ -1318,12 +1449,12 @@ export default function TrackerScreen() {
         return next;
       });
       void incrementLogCount(supabase, userId, meal.id).catch((err) => {
-         
+
         console.warn("Today slot-header usual-meal log bump failed", err);
       });
       setSavedMealsRefreshToken((n) => n + 1);
     },
-    [userId, selectedDate],
+    [userId, selectedDate, persistMealsImmediate],
   );
 
   /** Infer the default slot for the Eat-again card from local clock time. */
@@ -1666,6 +1797,8 @@ export default function TrackerScreen() {
         ...(Object.keys(micros).length > 0 ? { micros } : {}),
       };
       setByDay((prev) => ({ ...prev, [dayKey]: [...(prev[dayKey] ?? []), meal] }));
+      // 2026-05-08 data-loss hotfix — immediate Supabase persist.
+      void persistMealsImmediate(dayKey, [meal]);
       // 2026-04-28 (teardown Top-5 #5): light haptic on log.
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       // F-74 / F-103 fix (2026-05-07): NO ledger bump on log paths.
@@ -1678,7 +1811,7 @@ export default function TrackerScreen() {
       // to the ledger directly; that ledger now holds quick-add only.
       try { track(AnalyticsEvents.food_logged, { source: "quick_add", slot }); } catch { /* noop */ }
     },
-    [dayKey, userId],
+    [dayKey, userId, persistMealsImmediate],
   );
 
   /**
@@ -1773,6 +1906,8 @@ export default function TrackerScreen() {
         ...prev,
         [dayKey]: [...(prev[dayKey] ?? []), meal],
       }));
+      // 2026-05-08 data-loss hotfix — immediate Supabase persist.
+      void persistMealsImmediate(dayKey, [meal]);
       // F-74 / F-103 fix (2026-05-07): see `quickAddMeal` above —
       // per-meal micros is the canonical SoT for food-derived
       // stimulants. No `bumpStimulantsForLoggedMeal` here.
@@ -1784,7 +1919,7 @@ export default function TrackerScreen() {
         });
       } catch { /* noop */ }
     },
-    [activeMealSlot, dayKey, userId, supabase],
+    [activeMealSlot, dayKey, userId, supabase, persistMealsImmediate],
   );
 
   const trackerWeekSummaryKeys = useMemo(
@@ -2802,6 +2937,8 @@ export default function TrackerScreen() {
         ...prev,
         [dayKey]: [...(prev[dayKey] ?? []), ...newMeals],
       }));
+      // 2026-05-08 data-loss hotfix — immediate Supabase persist.
+      void persistMealsImmediate(dayKey, newMeals);
       // F-74 / F-103 fix (2026-05-07): see `quickAddMeal` —
       // per-meal micros canonical, no ledger bump on AI commits.
       // 2026-04-28 (teardown Top-5 #5): light haptic on log.
@@ -2811,7 +2948,7 @@ export default function TrackerScreen() {
         count: newMeals.length,
       });
     },
-    [activeMealSlot, dayKey, userId],
+    [activeMealSlot, dayKey, userId, persistMealsImmediate],
   );
 
   // Batch 5.13 — Pro gate for Voice and AI photo logging. Free + Base
@@ -3607,8 +3744,6 @@ export default function TrackerScreen() {
     }, [userId, loadProfileTargets, loadJournal]),
   );
 
-  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
   // Sync journal to relational nutrition_entries table
   useEffect(() => {
     if (!userId || !hydrated) return;
@@ -3699,6 +3834,10 @@ export default function TrackerScreen() {
       ...prev,
       [dayKey]: [...(prev[dayKey] ?? []), meal],
     }));
+    // 2026-05-08 data-loss hotfix — immediate Supabase persist (was
+    // relying on the fragile 600ms debounce that lost ~25 days of
+    // Grace's data on TestFlight reinstall).
+    void persistMealsImmediate(dayKey, [meal]);
     // 2026-04-28 (teardown Top-5 #5): light haptic on log.
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setTitle("");
@@ -3707,7 +3846,7 @@ export default function TrackerScreen() {
     setCarbs("");
     setFat("");
     setAddOpen(false);
-  }, [dayKey, kcal, protein, carbs, fat, title, activeMealSlot]);
+  }, [dayKey, kcal, protein, carbs, fat, title, activeMealSlot, persistMealsImmediate]);
 
   const deleteMeal = useCallback((mealId: string) => {
     // F-74 / F-103 (2026-05-07) — delete is now stimulant-side
@@ -4010,8 +4149,10 @@ export default function TrackerScreen() {
       ...prev,
       [dayKey]: (prev[dayKey] ?? []).map((m) => (m.id === editingMeal.id ? updated : m)),
     }));
+    // 2026-05-08 data-loss hotfix — immediate Supabase update.
+    void persistMealUpdateImmediate(updated.id, updated);
     setEditingMeal(null);
-  }, [editingMeal, editTitle, editSlot, editKcal, editProtein, editCarbs, editFat, editPortion, dayKey]);
+  }, [editingMeal, editTitle, editSlot, editKcal, editProtein, editCarbs, editFat, editPortion, dayKey, persistMealUpdateImmediate]);
 
   const logPlannedMealWithPortion = useCallback(
     async (
@@ -5384,6 +5525,8 @@ export default function TrackerScreen() {
             ...prev,
             [dayKey]: [...(prev[dayKey] ?? []), meal],
           }));
+          // 2026-05-08 data-loss hotfix — immediate Supabase persist.
+          void persistMealsImmediate(dayKey, [meal]);
           // F-74 / F-103 fix (2026-05-07): per-meal micros canonical
           // SoT. The barcode commit above wrote `micros.caffeineMg` /
           // `alcoholG` onto the meal row; `caffeineFromMealsMg` /
