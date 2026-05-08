@@ -2347,9 +2347,22 @@ export default function TrackerScreen() {
     // useEffect re-fires on the same focus event and opens its modal
     // ON TOP of the edit modal — both are presented at the same RN
     // Modal level and iOS blocks input on the back one → page freezes.
-    // Suppress weekly check-in while the edit-meal flow is in progress.
-    if (editingMeal != null) return;
-    if (typeof params.editMealId === "string" && params.editMealId.length > 0) return;
+    //
+    // build-47 follow-up (2026-05-08): the original guard returned
+    // early WITHOUT setting `weeklyCheckinHandledRef.current = true`,
+    // so the moment the edit modal closed the gate re-ran with the
+    // guard cleared and the check-in popped immediately after every
+    // edit ("This keeps popping up every time I edit an item"). Fix:
+    // when we observe the edit flow, ALSO mark the check-in as
+    // handled for the rest of this session. The check-in is once-per-
+    // week server-side; deferring to the next app launch is fine.
+    if (
+      editingMeal != null ||
+      (typeof params.editMealId === "string" && params.editMealId.length > 0)
+    ) {
+      weeklyCheckinHandledRef.current = true;
+      return;
+    }
     // Map adaptive confidence string into the gate's typed enum. Any
     // unrecognised value (legacy / null / future addition) routes to
     // null which the gate treats as "math hasn't resolved" → no fire.

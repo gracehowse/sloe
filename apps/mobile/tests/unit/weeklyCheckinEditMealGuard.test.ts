@@ -1,19 +1,26 @@
 /**
- * build-45 bug fix (2026-05-08) — pin the weekly-checkin gate's
- * editingMeal / params.editMealId guards so they don't get
- * accidentally removed by a future agent. Grace's repro:
+ * build-45 + build-47 fix (2026-05-08) — pin the weekly-checkin gate's
+ * edit-flow suppression so the modal doesn't pop on every meal edit.
  *
+ * Repro:
  *   1. Tap a logged meal on Today → /meal-nutrition opens
  *   2. Tap Edit on that screen → navigate back with `?editMealId=...`
  *   3. TodayEditMealModal opens via the edit-meal-on-return useEffect
  *   4. Weekly check-in useEffect re-fires on the same focus event
- *      → WeeklyCheckinModal also opens
- *   5. Both modals stack at the RN Modal level → iOS blocks input on
- *      the back one → page freezes
  *
- * The fix early-outs the weekly-checkin useEffect when the edit-meal
- * flow is in progress (either editingMeal is non-null OR the
- * editMealId param is present from the meal-nutrition screen return).
+ * Build-45 fix (PR #154): early-out when editingMeal != null OR
+ * params.editMealId is present.
+ *
+ * Build-47 fix (THIS PR): the original early-out returned WITHOUT
+ * setting `weeklyCheckinHandledRef.current = true`, so the moment
+ * the edit modal closed (editingMeal goes null) the gate re-ran with
+ * the guard cleared and the check-in fired immediately. Grace's TF
+ * comment after build 47: "This keeps popping up every time I edit
+ * an item".
+ *
+ * Post-fix: the edit-flow guard ALSO marks the check-in as handled
+ * for the rest of this app session. The check-in eligibility is
+ * once-per-week server-side; deferring to the next app launch is fine.
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
@@ -25,23 +32,28 @@ const SRC = readFileSync(
   "utf8",
 );
 
-describe("build-45 fix — weekly check-in skips when edit-meal flow is active", () => {
-  it("skips when editingMeal is non-null (modal already showing)", () => {
-    // The guard sits inside the weekly-checkin useEffect, before the
-    // eligibility gate. Match the early-out pattern.
-    expect(SRC).toMatch(/if\s*\(editingMeal\s*!=\s*null\)\s*return\s*;/);
-  });
-
-  it("skips when navigating back from /meal-nutrition with editMealId param", () => {
+describe("build-45/47 fix — weekly check-in suppressed by edit-meal flow", () => {
+  it("guard combines editingMeal + params.editMealId in a single OR-block", () => {
+    // The combined OR-guard ensures both conditions trigger the same
+    // suppression branch. Pre-fix used two separate `if` returns which
+    // made it harder to also set handledRef in both places.
     expect(SRC).toMatch(
-      /if\s*\(typeof\s+params\.editMealId\s*===\s*["']string["']\s*&&\s*params\.editMealId\.length\s*>\s*0\)\s*return\s*;/,
+      /editingMeal\s*!=\s*null\s*\|\|[\s\S]{0,200}params\.editMealId\s*===\s*["']string["'][\s\S]{0,80}length\s*>\s*0/,
     );
   });
 
+  it("edit-flow guard sets weeklyCheckinHandledRef.current = true (suppress for session)", () => {
+    // Find the FIRST occurrence of `weeklyCheckinHandledRef.current = true`
+    // — must be inside the edit-flow guard, BEFORE the eligibility CALL
+    // (`shouldShowWeeklyCheckin({` invocation, not the import name).
+    const handledIdx = SRC.indexOf("weeklyCheckinHandledRef.current = true");
+    const eligCallIdx = SRC.indexOf("shouldShowWeeklyCheckin({");
+    expect(handledIdx).toBeGreaterThan(-1);
+    expect(eligCallIdx).toBeGreaterThan(-1);
+    expect(handledIdx).toBeLessThan(eligCallIdx);
+  });
+
   it("editingMeal + params.editMealId are in the useEffect deps array", () => {
-    // Grep the deps array containing weeklyCheckinShownAt — that's the
-    // weekly-checkin useEffect's deps. Both new triggers must be deps
-    // so the gate re-evaluates when the edit flow opens / closes.
     const depsMatch = SRC.match(
       /}, \[\s*isToday,\s*userId,[\s\S]{0,500}?weeklyCheckinShownAt,([\s\S]{0,200})\]\s*\)/,
     );
