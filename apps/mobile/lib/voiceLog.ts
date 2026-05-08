@@ -1,34 +1,58 @@
 /**
- * Voice logging scaffold.
+ * Voice logging — on-device speech-to-text via `expo-speech-recognition`.
  *
- * Uses expo-speech-recognition for on-device speech-to-text when available.
- * Falls back to a simple text input if the native module is missing (Expo Go).
+ * 2026-05-08 hotfix (build 47 follow-up): the previous implementation
+ * called `mod.startAsync(...)` / `mod.stopAsync()` / `require("expo-
+ * speech-recognition")` as a default export — none of those exist on
+ * this package. The package's actual API:
  *
- * To enable native speech recognition:
- *   npx expo install expo-speech-recognition
- *   Then create a dev build (EAS Build).
+ *   import { ExpoSpeechRecognitionModule } from "expo-speech-recognition";
+ *   ExpoSpeechRecognitionModule.requestPermissionsAsync()
+ *   ExpoSpeechRecognitionModule.start({ lang, ... })
+ *   ExpoSpeechRecognitionModule.stop()
+ *   ExpoSpeechRecognitionModule.addListener("result"|"end"|"error", cb)
+ *
+ * Event names follow the W3C Web Speech API: `result` (with `{isFinal,
+ * results: [{transcript, confidence}]}` payload), `end`, `error`.
+ *
+ * Falls back to a typing-only experience if the native module isn't
+ * present (Expo Go / web preview). The press-and-hold mic UI in
+ * VoiceLogSheet treats `isSpeechAvailable() === false` as "typing only".
  */
 
-/** Shown under the voice-log sheet when users type instead of dictating. */
 import { Platform } from "react-native";
 
 export const VOICE_LOG_NATIVE_BUILD_HINT =
   "Expo Go: type here. For spoken dictation, use a dev build with expo-speech-recognition (EAS).";
 
+// Loose subset of the package's API we depend on.
 type SpeechModule = {
-  requestPermissionsAsync: () => Promise<{ granted: boolean }>;
-  startAsync: (opts?: any) => Promise<void>;
-  stopAsync: () => Promise<void>;
-  addListener: (event: string, cb: (data: any) => void) => { remove: () => void };
+  requestPermissionsAsync: () => Promise<{ granted: boolean; status?: string }>;
+  start: (opts: Record<string, unknown>) => void;
+  stop: () => void;
+  abort?: () => void;
+  addListener: (
+    event: string,
+    cb: (data: unknown) => void,
+  ) => { remove: () => void };
 };
 
-let ExpoSpeech: SpeechModule | null = null;
+let cached: SpeechModule | null = null;
 
 function getSpeechModule(): SpeechModule | null {
-  if (ExpoSpeech) return ExpoSpeech;
+  if (cached) return cached;
   try {
-    ExpoSpeech = require("expo-speech-recognition") as SpeechModule;
-    return ExpoSpeech;
+    // The package exports `ExpoSpeechRecognitionModule` as a NAMED
+    // export, not a default. The previous wrapper grabbed the whole
+    // namespace and called `.startAsync` which doesn't exist.
+    const mod = require("expo-speech-recognition") as {
+      ExpoSpeechRecognitionModule?: SpeechModule;
+    };
+    if (mod && mod.ExpoSpeechRecognitionModule) {
+      cached = mod.ExpoSpeechRecognitionModule;
+      return cached;
+    }
+    return null;
   } catch {
     return null;
   }
@@ -42,16 +66,20 @@ export async function requestSpeechPermission(): Promise<boolean> {
   const mod = getSpeechModule();
   if (!mod) return false;
   try {
-    const { granted } = await mod.requestPermissionsAsync();
-    return granted;
+    const res = await mod.requestPermissionsAsync();
+    return Boolean(res?.granted);
   } catch {
     return false;
   }
 }
 
 /**
- * Start listening and resolve with the final transcript.
- * Rejects if speech recognition is unavailable or fails.
+ * Start a recognition session. Resolves with the final transcript when
+ * the user stops speaking, when stop() is called externally, or when
+ * `maxDurationMs` elapses.
+ *
+ * Rejects if the native module isn't available, permission is denied,
+ * or the recognition errors before producing any transcript.
  */
 export function listenForSpeech(opts?: {
   locale?: string;
@@ -60,55 +88,97 @@ export function listenForSpeech(opts?: {
   return new Promise((resolve, reject) => {
     const mod = getSpeechModule();
     if (!mod) {
-      reject(new Error("Speech recognition not available. Requires a native build."));
+      reject(
+        new Error(
+          "Speech recognition not available. Requires a native build with expo-speech-recognition.",
+        ),
+      );
       return;
     }
 
     let transcript = "";
     let resolved = false;
+    let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
 
-    const resultSub = mod.addListener("result", (data: any) => {
-      if (data?.results?.[0]?.transcript) {
-        transcript = data.results[0].transcript;
-      }
-      if (data?.isFinal && !resolved) {
-        resolved = true;
+    const cleanup = () => {
+      if (timeoutHandle != null) clearTimeout(timeoutHandle);
+      try {
         resultSub.remove();
+      } catch {
+        /* noop */
+      }
+      try {
+        endSub.remove();
+      } catch {
+        /* noop */
+      }
+      try {
         errorSub.remove();
-        resolve(transcript);
+      } catch {
+        /* noop */
+      }
+    };
+
+    const settle = (kind: "ok" | "err", payload: string | Error) => {
+      if (resolved) return;
+      resolved = true;
+      cleanup();
+      try {
+        mod.stop();
+      } catch {
+        /* noop — recognition may have already ended */
+      }
+      if (kind === "ok") resolve(payload as string);
+      else reject(payload as Error);
+    };
+
+    const resultSub = mod.addListener("result", (data: unknown) => {
+      const ev = data as {
+        isFinal?: boolean;
+        results?: Array<{ transcript?: string }>;
+      };
+      const newest = ev?.results?.[0]?.transcript;
+      if (typeof newest === "string" && newest.length > 0) {
+        transcript = newest;
+      }
+      if (ev?.isFinal) {
+        settle("ok", transcript);
       }
     });
 
-    const errorSub = mod.addListener("error", (err: any) => {
-      if (!resolved) {
-        resolved = true;
-        resultSub.remove();
-        errorSub.remove();
-        reject(new Error(err?.message ?? "Speech recognition error"));
-      }
+    // `end` fires when iOS hits its silence timeout or the user calls
+    // stop(). We resolve with whatever transcript we accumulated so
+    // press-and-release feels like "release to commit".
+    const endSub = mod.addListener("end", () => {
+      settle("ok", transcript);
     });
 
-    mod.startAsync({
-      locale: opts?.locale ?? (Platform.OS === "ios" ? "en-US" : undefined),
-    }).catch((e: Error) => {
-      if (!resolved) {
-        resolved = true;
-        resultSub.remove();
-        errorSub.remove();
-        reject(e);
-      }
+    const errorSub = mod.addListener("error", (data: unknown) => {
+      const ev = data as { error?: string; message?: string };
+      const msg = ev?.message ?? ev?.error ?? "Speech recognition error";
+      // If we already have a transcript, prefer that over erroring.
+      if (transcript) settle("ok", transcript);
+      else settle("err", new Error(msg));
     });
 
     if (opts?.maxDurationMs) {
-      setTimeout(() => {
-        if (!resolved) {
-          resolved = true;
-          resultSub.remove();
-          errorSub.remove();
-          mod.stopAsync().catch(() => {});
-          resolve(transcript);
-        }
+      timeoutHandle = setTimeout(() => {
+        settle("ok", transcript);
       }, opts.maxDurationMs);
+    }
+
+    try {
+      mod.start({
+        lang: opts?.locale ?? (Platform.OS === "ios" ? "en-US" : undefined),
+        // Web Speech defaults: not continuous, interim results on so we
+        // get partial transcripts for live UI feedback.
+        continuous: false,
+        interimResults: true,
+        maxAlternatives: 1,
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to start speech recognition";
+      settle("err", new Error(msg));
     }
   });
 }
