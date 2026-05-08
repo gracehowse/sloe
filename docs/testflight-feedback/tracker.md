@@ -81,7 +81,7 @@ Single TestFlight session this morning surfaced 4 distinct food-search + weight-
 | `ALCot9q4E4UF` | F-107 | ⏳ outstanding | "Emoji here instead of lucid icon. Always use icons." — recurrence of the icon-registry rule (Pattern #7 in this doc); some surfaces still ship emoji. Sweep needed. |
 | `ABM2nBZTJf9W` | F-108 | ⏳ partial fix shipped (PR #131, build 45) — `nutrition-engine` audit found 3 P0 causes: (1) no `maxDuration` on the route, so Vercel killed mid-OpenAI call; (2) bare `catch {}` swallowed every failure into one generic toast; (3) error codes already returned by the route were collapsed client-side. All three fixed: `maxDuration = 60`, `AbortController` + named catch, per-code message map mobile + web. Stays ⏳ for tester re-verify. | "Couldn't analyse this food even though it's pretty clear" |
 | `AFHtAQRAWad1` | F-109 | ✅ closed by #116 (build 43) | "Can't see how to turn fasting on and off" — added an idle "Start fast" pill on Today (mobile + web), gated on IF opt-in. Tap-to-start / tap-to-end without leaving Today. |
-| `AKzwcchbHQ14` | F-110 | 🔍 vague | "Still don't like the layout look of this page" — needs screenshot triage to pin which surface. |
+| `AKzwcchbHQ14` | F-110 | ✅ already shipped 2026-04-30 — screenshot triage (2026-05-07) identified the page as **Recipe Detail** with the old 3-icon-circle layout (Prep / Cook / Servings showing "—" placeholders for missing data). The 2026-04-30 ui-product-designer audit replaced that with a compact single-line `timeStatsRow` + a separate Servings stepper card. Tester report (submitted 2026-05-01 21:38 UTC) predates build 40's upload (22:13 UTC same day), so the screenshot is from build ≤39 — pre-fix. | "Still don't like the layout look of this page" |
 
 **2026-05-06 fresh items (11, F-111 → F-121)**
 
@@ -163,9 +163,14 @@ Net open items count: ~12 ⏳ + ~4 🔍 + the 6 ✅ that flipped today. Every AS
 | **F-126** | #117 | "Why would it take 5 weeks to lose another .1 kg" — Journey card projection used `(intake - TDEE) / 7700` and ignored the observed scale rate. Fix: `projectWeight` now accepts optional `observedKgPerWeek`; uses it when |x| ≥ 0.05 kg/week AND direction-aligned with the formula. Progress tab passes `timeline.weeklyRateKg`. |
 | **F-129** | #118 | Mirror of F-124 on the Weekly Recap surface — "Building confidence" copy fired despite the engine reporting high confidence. Fix: `buildWeeklyCheckin` now accepts `adaptiveTdeeConfidence`; when "high", skips the `weighInsThisWeek < 3` floor. |
 
-**Items still deferred (kept):** F-108 (partial fix shipped today, awaiting tester re-verify on build 45), F-110 (vague "don't like layout" — needs screenshot triage).
+**Items still deferred (kept):** F-108 (partial fix shipped today, awaiting tester re-verify on build 45).
 
-Net open items count after this sweep: **2 ⏳ items** (F-108 / F-114) + 2 🔍 items (F-110 + the unmapped 2026-04-19 `AN8GJ1Dr3M` steps/burn). Both ⏳ items have partial fixes shipped pending tester re-verify on build 45.
+Net open items count after this sweep: **2 ⏳ items** (F-108 / F-114) + 1 🔍 item (the unmapped 2026-04-19 `AN8GJ1Dr3M` steps/burn). Both ⏳ items have comprehensive fixes shipped pending tester re-verify on build 45. F-110 closed by code-level argument 2026-05-07 — the layout it complained about was replaced 2026-04-30, screenshot predates the fix.
+
+`AN8GJ1Dr3M` ("Steps and total burn are wrong for this day"): two unblock paths.
+
+1. **Forensic** — tester opens Apple Health for 2026-04-19, screenshots steps + active energy, posts the comparison so we can pin which side (Suppr or HK) has the wrong number.
+2. **Architectural** — ship Pattern #9 (HK provenance affordance: "Source: Apple Health · N samples · last synced HH:MM" inline on the steps + burn cards + on `/burn-detail`). Future "this number is wrong" reports self-diagnose. Documented for the next session — needs persistent last-sync timestamp + new UI affordance + cross-platform parity, ~half a session of work.
 
 ---
 
