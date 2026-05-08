@@ -1728,6 +1728,20 @@ async function syncNutritionFromHealthImpl(
     existingSet.add(`${row.date_key}|${row.recipe_title}|${row.calories}|${minute}`);
   }
 
+  // F-130 (2026-05-07) — load the user-deleted-tombstone set and OR
+  // it into `existingHkIds` so previously-deleted HK samples stay
+  // suppressed on re-sync. Pre-fix: deleting an apple_health-imported
+  // row removed it from `nutrition_entries`, but the next sync saw
+  // the same HK sample, found no row to dedup against, and re-
+  // imported the meal — duplicates kept reappearing.
+  try {
+    const { loadDeletedHealthSampleIds } = await import("./deletedHealthSamples");
+    const tombstone = await loadDeletedHealthSampleIds();
+    for (const id of tombstone) existingHkIds.add(id);
+  } catch (err) {
+    console.warn("[healthSync] failed to load delete tombstone:", err);
+  }
+
   // Batch inserts for efficiency
   const toInsert: {
     user_id: string;

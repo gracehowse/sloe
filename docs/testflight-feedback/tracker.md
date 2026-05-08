@@ -165,7 +165,7 @@ Net open items count: ~12 ⏳ + ~4 🔍 + the 6 ✅ that flipped today. Every AS
 
 **Items still deferred (kept):** F-108 (partial fix shipped today, awaiting tester re-verify on build 45).
 
-Net open items count after this sweep: **2 ⏳ items** (F-108 / F-114) + 1 🔍 item (the unmapped 2026-04-19 `AN8GJ1Dr3M` steps/burn). Both ⏳ items have comprehensive fixes shipped pending tester re-verify on build 45. F-110 closed by code-level argument 2026-05-07 — the layout it complained about was replaced 2026-04-30, screenshot predates the fix.
+Net open items count after this sweep: **2 ⏳ items** (F-108 / F-114) + 1 🔍 item (the unmapped 2026-04-19 `AN8GJ1Dr3M` steps/burn). Both ⏳ items have comprehensive fixes shipped pending tester re-verify on build 45. F-110 closed by code-level argument 2026-05-07 — the layout it complained about was replaced 2026-04-30, screenshot predates the fix. F-130 (HK delete doesn't stick) shipped same evening — tombstone fix on build 45.
 
 `AN8GJ1Dr3M` ("Steps and total burn are wrong for this day"): two unblock paths.
 
@@ -219,6 +219,19 @@ Plus: explicit `AbortController` on the route's OpenAI fetch (55s, sub-`maxDurat
 Test: `photoLogContract.test.ts` (6 cases) pins `maxDuration ≥ 30`, `AbortController` use, named-catch use, per-code message map on both clients.
 
 F-108 stays ⏳ pending tester re-verify with the new error copy on build 45 — if the user sees a specific code-mapped message ("AI took too long", "AI service had a problem"), we'll know the server isn't unanalyseable and can iterate from there. If the photo really is unanalysable, we now surface "different angle" copy that distinguishes from server failure.
+
+**2026-05-07 — F-130 fix shipped (PR #137, build 45)**
+
+Grace (out-of-band, 2026-05-07): "sometimes when items copy from MyFitnessPal / Apple Health etc. even when I try to delete them, they don't delete. for example if a duplicate entry shows up." The bug: HK sync's dedup logic in `apps/mobile/lib/healthSync.ts:1709` queries `nutrition_entries` for existing rows with `source = 'apple_health'`. When the user deletes a row, it leaves the table — so the next sync sees the same HK sample, finds no row to dedup against, and re-imports it. The "duplicate" reappears every sync.
+
+Fix: AsyncStorage-backed local tombstone keyed by HK sample UUID.
+- New helper `apps/mobile/lib/deletedHealthSamples.ts` with `markHealthSampleDeleted` / `loadDeletedHealthSampleIds` / `clearDeletedHealthSampleIds`.
+- `deleteMeal` in `(tabs)/index.tsx` now reads `source + health_sample_id` from the row before deleting; if the row was apple_health-sourced with a non-null sample id, marks it tombstoned.
+- HK sync `existingHkIds` set OR'd with the tombstone before the dedup check.
+
+Tests: `apps/mobile/tests/unit/deletedHealthSamples.test.ts` (6 cases) — empty on init, persists across reloads, ignores null/empty ids, dedupes, clears, survives corrupted payload.
+
+Scope cap: tombstone is local-only (one device). Fine for solo tester (memory: project_solo_tester). Cross-device durability would need a server-side column on `profiles.deleted_health_sample_ids` or a `deleted_health_samples` table — filed as a follow-up for the next focused session.
 
 ---
 
