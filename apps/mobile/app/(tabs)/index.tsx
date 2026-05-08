@@ -3693,9 +3693,6 @@ export default function TrackerScreen() {
   const deleteMeal = useCallback((mealId: string) => {
     // F-74 / F-103 (2026-05-07) — delete is now stimulant-side
     // self-healing because per-meal `micros` is the canonical SoT.
-    // Removing the row drops its caffeine/alcohol contribution from
-    // the next render's `caffeineFromMealsMg` / `alcoholByDayMerged`
-    // sum automatically. No `doomed*` capture needed.
     setByDay((prev) => ({
       ...prev,
       [dayKey]: (prev[dayKey] ?? []).filter((m) => m.id !== mealId),
@@ -3704,18 +3701,30 @@ export default function TrackerScreen() {
     // Persist deletion to Supabase (relational table).
     // Without this, the meal reappears on next app launch.
     if (userId) {
+      // F-130 (2026-05-07) — for HK-imported rows, capture the
+      // health_sample_id BEFORE delete so we can tombstone it.
+      // Without the tombstone, the next HK sync re-imports the
+      // sample and the user-perceived "duplicate" reappears.
       void supabase
         .from("nutrition_entries")
-        .delete()
+        .select("source, health_sample_id")
         .eq("id", mealId)
-        .then(({ error }) => {
+        .maybeSingle()
+        .then(async ({ data }) => {
+          const row = data as { source?: string | null; health_sample_id?: string | null } | null;
+          if (row?.source === "apple_health" && row.health_sample_id) {
+            const { markHealthSampleDeleted } = await import(
+              "../../lib/deletedHealthSamples"
+            );
+            void markHealthSampleDeleted(row.health_sample_id);
+          }
+          const { error } = await supabase
+            .from("nutrition_entries")
+            .delete()
+            .eq("id", mealId);
           if (error) {
             console.error("[tracker] delete meal failed:", error.message);
-            return;
           }
-          // F-74 / F-103 (2026-05-07): per-meal `micros` is canonical;
-          // the local `setByDay` filter above already drops the
-          // stimulant contribution from the chip totals.
         });
     }
   }, [dayKey, userId]);
