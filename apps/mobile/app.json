@@ -106,6 +106,13 @@
       "expo-router",
       "expo-apple-authentication",
       [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Suppr uses your microphone to capture voice memos when you describe a meal out loud (press-and-hold the mic on the voice-log sheet).",
+          "speechRecognitionPermission": "Suppr uses on-device speech recognition to turn your spoken meal descriptions into searchable food items. Audio stays on your phone."
+        }
+      ],
+      [
         "react-native-health",
         {
           "healthSharePermission": "Suppr reads your steps, active energy, basal energy, workouts, weight, body fat, and any dietary entries you have in Apple Health so your Suppr tracker stays in sync with the rest of your Health data.",
