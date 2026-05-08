@@ -273,6 +273,12 @@ export default function MealNutritionScreen() {
 
   const portion = meal.portionMultiplier ?? 1;
   const portionLabel = Number.isInteger(portion) ? String(portion) : String(Math.round(portion * 100) / 100);
+  // 2026-05-07 (Grace screenshot review): hide the "Portion ×1" line
+  // entirely when the multiplier is the default — it adds no info and
+  // reads as boilerplate. Keep visible only when the user actually
+  // altered the portion (e.g. ×0.5 or ×2.5) so the override is
+  // surfaced honestly.
+  const showPortionLine = Math.abs(portion - 1) > 0.001;
 
   return (
     <ScrollView
@@ -285,7 +291,9 @@ export default function MealNutritionScreen() {
           {[meal.name, meal.time].filter(Boolean).join(" · ")}
           {meal.source ? ` · ${meal.source}` : ""}
         </Text>
-        <Text style={[styles.portion, { color: colors.textSecondary }]}>Portion ×{portionLabel}</Text>
+        {showPortionLine ? (
+          <Text style={[styles.portion, { color: colors.textSecondary }]}>Portion ×{portionLabel}</Text>
+        ) : null}
         <Text style={[styles.kcal, { color: colors.text }]}>{Math.round(meal.calories)} kcal</Text>
 
         {splitConfidence.state === "single_macro" ? (
@@ -350,7 +358,8 @@ export default function MealNutritionScreen() {
           return (
             <>
               <Text style={[styles.sectionSub, { color: colors.textTertiary }]}>
-                {populatedCount} of {microRows.length} fields published by {sourceLabel}; values reflect portion ×{portionLabel}.
+                {populatedCount} of {microRows.length} fields published by {sourceLabel}
+                {showPortionLine ? `; values reflect portion ×${portionLabel}` : ""}.
               </Text>
               {microRows.map((row) => (
                 <View key={row.key} style={[styles.microRow, { borderBottomColor: colors.cardBorder + "55" }]}>
@@ -372,18 +381,15 @@ export default function MealNutritionScreen() {
         })()}
       </View>
 
-      <Pressable
-        onPress={openEditOnToday}
-        style={[styles.editCta, { marginTop: Spacing.md, backgroundColor: colors.inputBg, borderColor: colors.cardBorder }]}
-      >
-        <Ionicons name="create-outline" size={20} color={Accent.primary} />
-        <Text style={{ marginLeft: 10, fontSize: 15, fontWeight: "600", color: Accent.primary }}>Edit entry</Text>
-        <Ionicons name="chevron-forward" size={18} color={Accent.primary} style={{ marginLeft: "auto" }} />
-      </Pressable>
-
-      <Text style={[styles.hint, { color: colors.textTertiary }]}>
-        On Today, tap a meal for this screen; long-press for quick delete or edit.
-      </Text>
+      {/*
+        2026-05-07 (Grace screenshot review): removed the inline
+        "Edit entry" button + the trailing helper line ("On Today,
+        tap a meal for this screen…"). The header-right "Edit" chip
+        already routes to the same place, and helper text about how
+        to navigate to this screen doesn't belong on the detail
+        screen itself — it adds noise to a page that should be all
+        meal data.
+      */}
     </ScrollView>
   );
 }
@@ -410,7 +416,7 @@ function MacroStat({
       </View>
       <Text style={{ fontSize: 15, fontWeight: "700", color: textColor, marginTop: 4 }}>{Math.round(grams * 10) / 10}g</Text>
       {pct != null ? (
-        <Text style={{ fontSize: 12, color: color, opacity: 0.85 }}>{pct}% of macro calories</Text>
+        <Text style={{ fontSize: 12, color: color, opacity: 0.85 }}>{pct}% of kcal</Text>
       ) : null}
     </View>
   );
@@ -444,12 +450,4 @@ const styles = StyleSheet.create({
   microValue: { fontSize: 14, fontVariant: ["tabular-nums"] },
   incompleteMacroPanel: { marginBottom: Spacing.md },
   incompleteMacroCopy: { fontSize: 13, lineHeight: 18, marginBottom: Spacing.sm },
-  editCta: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: Spacing.md,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-  },
-  hint: { fontSize: 12, marginTop: Spacing.md, textAlign: "center", lineHeight: 18 },
 });
