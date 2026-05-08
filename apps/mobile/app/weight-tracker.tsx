@@ -783,9 +783,10 @@ export default function ProgressScreen() {
 
               {weightTrend.points.length >= 2 && (
                 <>
-                  <Text style={[styles.muted, { marginBottom: 4 }]}>
-                    Tap the chart to see weight on that day.
-                  </Text>
+                  {/* 2026-05-07 ui-critic F12: dropped "Tap the chart to
+                      see weight on that day." — the scrubber + crosshair
+                      affordance shipped in F-125 v2 makes the tap-to-
+                      inspect behaviour discoverable on first interaction. */}
                   {/* F-125 v2 (Grace, 2026-05-07): canonical
                       WeightChart rendering — same component, same
                       bucket-aware MA + scrubber + goal-line + axis
@@ -998,9 +999,11 @@ export default function ProgressScreen() {
                   goalColor={Accent.success}
                 />
               )}
-              <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: Spacing.sm }}>
-                Steps sync automatically from your connected health source.
-              </Text>
+              {/* 2026-05-07 ui-critic F13: removed "Steps sync
+                  automatically from your connected health source." —
+                  this is settings-level info that doesn't belong under
+                  a chart on a detail screen. If sync state ever fails,
+                  the existing health-sync surface shows the error. */}
             </View>
 
             {/* WATER */}

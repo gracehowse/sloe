@@ -2692,37 +2692,59 @@ export default function RecipeDetailScreen() {
                 </View>
               </View>
 
-              {/* Micronutrients Section — real data from ingredients */}
-              <View style={styles.micronutrientsSection}>
-                <Text style={styles.microLabel}>MICRONUTRIENTS</Text>
-                <View style={styles.microRow}>
-                  <Text style={styles.microName}>Fiber</Text>
-                  <View style={styles.microBarContainer}>
-                    <View style={styles.progressBar}>
-                      <View style={[styles.progressBarFill, { width: `${Math.min(100, Math.round((macros.fiber_g / (userTargets?.fiber ?? 28)) * 100))}%` }]} />
-                    </View>
+              {/* Micronutrients Section — real data from ingredients.
+                  2026-05-07 ui-critic F4: hide rows for missing values
+                  rather than rendering bare `0g` / `0mg`. The recipes
+                  table doesn't always carry these from third-party
+                  imports; a confident zero reads as "this recipe has
+                  zero fiber" instead of "we don't know yet". */}
+              {(() => {
+                const showFiber = (macros.fiber_g ?? 0) > 0;
+                const showSugar = (macros.sugar_g ?? 0) > 0;
+                const showSodium = (macros.sodium_mg ?? 0) > 0;
+                if (!showFiber && !showSugar && !showSodium) return null;
+                const visible = [showFiber, showSugar, showSodium].filter(Boolean).length;
+                let rendered = 0;
+                const isLast = () => ++rendered === visible;
+                return (
+                  <View style={styles.micronutrientsSection}>
+                    <Text style={styles.microLabel}>MICRONUTRIENTS</Text>
+                    {showFiber && (
+                      <View style={[styles.microRow, isLast() ? { borderBottomWidth: 0 } : null]}>
+                        <Text style={styles.microName}>Fiber</Text>
+                        <View style={styles.microBarContainer}>
+                          <View style={styles.progressBar}>
+                            <View style={[styles.progressBarFill, { width: `${Math.min(100, Math.round((macros.fiber_g / (userTargets?.fiber ?? 28)) * 100))}%` }]} />
+                          </View>
+                        </View>
+                        <Text style={styles.microValue}>{macros.fiber_g}g</Text>
+                      </View>
+                    )}
+                    {showSugar && (
+                      <View style={[styles.microRow, isLast() ? { borderBottomWidth: 0 } : null]}>
+                        <Text style={styles.microName}>Sugar</Text>
+                        <View style={styles.microBarContainer}>
+                          <View style={styles.progressBar}>
+                            <View style={[styles.progressBarFill, { width: `${Math.min(100, Math.round((macros.sugar_g / 50) * 100))}%` }]} />
+                          </View>
+                        </View>
+                        <Text style={styles.microValue}>{macros.sugar_g}g</Text>
+                      </View>
+                    )}
+                    {showSodium && (
+                      <View style={[styles.microRow, isLast() ? { borderBottomWidth: 0 } : null]}>
+                        <Text style={styles.microName}>Sodium</Text>
+                        <View style={styles.microBarContainer}>
+                          <View style={styles.progressBar}>
+                            <View style={[styles.progressBarFill, { width: `${Math.min(100, Math.round((macros.sodium_mg / 2300) * 100))}%` }]} />
+                          </View>
+                        </View>
+                        <Text style={styles.microValue}>{macros.sodium_mg}mg</Text>
+                      </View>
+                    )}
                   </View>
-                  <Text style={styles.microValue}>{macros.fiber_g}g</Text>
-                </View>
-                <View style={styles.microRow}>
-                  <Text style={styles.microName}>Sugar</Text>
-                  <View style={styles.microBarContainer}>
-                    <View style={styles.progressBar}>
-                      <View style={[styles.progressBarFill, { width: `${Math.min(100, Math.round((macros.sugar_g / 50) * 100))}%` }]} />
-                    </View>
-                  </View>
-                  <Text style={styles.microValue}>{macros.sugar_g}g</Text>
-                </View>
-                <View style={[styles.microRow, { borderBottomWidth: 0 }]}>
-                  <Text style={styles.microName}>Sodium</Text>
-                  <View style={styles.microBarContainer}>
-                    <View style={styles.progressBar}>
-                      <View style={[styles.progressBarFill, { width: `${Math.min(100, Math.round((macros.sodium_mg / 2300) * 100))}%` }]} />
-                    </View>
-                  </View>
-                  <Text style={styles.microValue}>{macros.sodium_mg}mg</Text>
-                </View>
-              </View>
+                );
+              })()}
             </View>
             {/* FatSecret attribution on the Nutrition tab. */}
             {hasFatSecretIngredients ? (

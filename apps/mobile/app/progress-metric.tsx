@@ -294,7 +294,10 @@ export default function ProgressMetricDetailScreen() {
                 );
               })}
             </View>
-            <Text style={{ fontSize: 11, color: t.dim, marginTop: Spacing.md }}>Tap a day to open it on Today.</Text>
+            {/* 2026-05-07 ui-critic F8: removed "Tap a day to open it on Today."
+                trailing helper. The day rows below are visibly tappable
+                (Pressable + chevron), so the affordance speaks for itself
+                — same fix shape as the meal-nutrition footer cleanup. */}
           </View>
 
           {weekStats.days.map((d) => (
@@ -397,10 +400,16 @@ export default function ProgressMetricDetailScreen() {
 
       {metric === "streak" && (
         <>
-          <View style={{ marginTop: Spacing.lg, padding: Spacing.lg, backgroundColor: t.elevated, borderRadius: Radius.lg, borderWidth: 1, borderColor: t.border }}>
-            <Text style={{ fontSize: 36, fontWeight: "900", color: t.accent, fontVariant: ["tabular-nums"] }}>{streakDays}</Text>
-            <Text style={{ fontSize: 14, fontWeight: "600", color: t.text, marginTop: 4 }}>consecutive logging day{streakDays !== 1 ? "s" : ""}</Text>
-          </View>
+          {/* 2026-05-07 ui-critic F11: hide the giant `0` headline when
+              there's no streak yet — the empty-state copy below carries
+              the message on its own. A 36/900 zero with "consecutive
+              logging days" reads as a placeholder, not a stat. */}
+          {streakDays > 0 ? (
+            <View style={{ marginTop: Spacing.lg, padding: Spacing.lg, backgroundColor: t.elevated, borderRadius: Radius.lg, borderWidth: 1, borderColor: t.border }}>
+              <Text style={{ fontSize: 36, fontWeight: "900", color: t.accent, fontVariant: ["tabular-nums"] }}>{streakDays}</Text>
+              <Text style={{ fontSize: 14, fontWeight: "600", color: t.text, marginTop: 4 }}>consecutive logging day{streakDays !== 1 ? "s" : ""}</Text>
+            </View>
+          ) : null}
 
           {streakDaysDetail.length === 0 ? (
             <Text style={{ fontSize: 14, color: t.sub, marginTop: Spacing.lg }}>Log a meal on Today to start a streak.</Text>

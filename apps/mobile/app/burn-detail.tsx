@@ -261,10 +261,15 @@ export default function BurnDetailScreen() {
               </View>
             )}
 
+            {/* 2026-05-07 ui-critic F6: trimmed the activity-bonus
+                explainer to the one fact that matters at this level —
+                "burn above maintenance counts as extra food budget".
+                The longer paragraph (with the "your calorie target
+                already accounts for typical daily activity" caveat)
+                belongs in onboarding / a one-time tip, not under
+                every burn-detail render. */}
             <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: Spacing.lg, lineHeight: 16 }}>
-              {isPast
-                ? "Any burn above your maintenance estimate was added to your food budget for this day."
-                : "When your projected burn exceeds maintenance, the extra calories are added to your daily food budget. Your calorie target already accounts for typical daily activity, so only the surplus counts."}
+              Burn above your maintenance estimate adds to your daily food budget.
             </Text>
           </>
         )}
