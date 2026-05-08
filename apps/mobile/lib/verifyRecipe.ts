@@ -92,6 +92,13 @@ export type VerifiableIngredient = {
   fiberG: number;
   sugarG: number;
   sodiumMg: number;
+  /** F-74 cross-device (2026-05-08): scaled caffeine + alcohol for
+   *  this ingredient's gram weight. Populated from `macrosPer100g.
+   *  {caffeineMgPer100g,alcoholGPer100g}` via `scaleMacros` and
+   *  rolled up to `recipes.caffeine_mg / alcohol_g` in
+   *  `saveVerifiedIngredients`. */
+  caffeineMg: number;
+  alcoholG: number;
   source: string | null;
   confidence: number;
   matchedName: string | null;
@@ -290,10 +297,9 @@ export async function fetchIngredientsForVerification(
   const { data, error } = await supabase
     .from("recipe_ingredients")
     .select(
-      // GW-08 P2 (audit 2026-04-28): added `confidence` so the
-      // VerifiableIngredient.confidence below reflects the real
-      // persisted column instead of the synthetic 0.9/0.3 mapping.
-      "id, name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, is_verified, source, override_macros, added_by_user, confidence",
+      // GW-08 P2 (audit 2026-04-28): added `confidence`.
+      // F-74 cross-device (2026-05-08): added caffeine_mg, alcohol_g.
+      "id, name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, caffeine_mg, alcohol_g, is_verified, source, override_macros, added_by_user, confidence",
     )
     .eq("recipe_id", recipeId);
 
@@ -352,6 +358,11 @@ export async function fetchIngredientsForVerification(
       fiberG: r.fiber_g ?? 0,
       sugarG: r.sugar_g ?? 0,
       sodiumMg: r.sodium_mg ?? 0,
+      // F-74 cross-device (2026-05-08): hydrate scaled caffeine /
+      // alcohol from the new columns. Pre-migration rows return null
+      // / undefined → default to 0 (matches the column default).
+      caffeineMg: typeof r.caffeine_mg === "number" ? r.caffeine_mg : 0,
+      alcoholG: typeof r.alcohol_g === "number" ? r.alcohol_g : 0,
       source: r.source ?? null,
       // GW-08 P2 (audit 2026-04-28): pre-fix this was always
       // `r.is_verified ? 0.9 : 0.3` — a circular synthesis (the
@@ -1672,9 +1683,25 @@ export async function saveVerifiedIngredients(
         fiberG: acc.fiberG + (eff.fiber ?? i.fiberG),
         sugarG: acc.sugarG + i.sugarG,
         sodiumMg: acc.sodiumMg + i.sodiumMg,
+        // F-74 cross-device (2026-05-08): roll up scaled caffeine +
+        // alcohol so `recipes.{caffeine_mg,alcohol_g}` reflect the
+        // ingredient sum / servings — the planner-tab + recipe-detail
+        // "Add to today" log paths read these.
+        caffeineMg: acc.caffeineMg + (i.caffeineMg ?? 0),
+        alcoholG: acc.alcoholG + (i.alcoholG ?? 0),
       };
     },
-    { calories: 0, protein: 0, carbs: 0, fat: 0, fiberG: 0, sugarG: 0, sodiumMg: 0 },
+    {
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      fiberG: 0,
+      sugarG: 0,
+      sodiumMg: 0,
+      caffeineMg: 0,
+      alcoholG: 0,
+    },
   );
 
   const safeServings = Math.max(1, servings || 1);
@@ -1686,6 +1713,8 @@ export async function saveVerifiedIngredients(
     fiberG: Math.round((totals.fiberG / safeServings) * 10) / 10,
     sugarG: Math.round((totals.sugarG / safeServings) * 10) / 10,
     sodiumMg: Math.round(totals.sodiumMg / safeServings),
+    caffeineMg: Math.round(totals.caffeineMg / safeServings),
+    alcoholG: Math.round((totals.alcoholG / safeServings) * 10) / 10,
   };
 
   // T12 (2026-04-24): infer regulated allergens from ingredient names
@@ -1708,6 +1737,8 @@ export async function saveVerifiedIngredients(
       fiber_g: perServing.fiberG,
       sugar_g: perServing.sugarG,
       sodium_mg: perServing.sodiumMg,
+      caffeine_mg: perServing.caffeineMg,
+      alcohol_g: perServing.alcoholG,
       is_verified: allRowsVerified,
       allergens: inferredAllergens,
     })
@@ -1715,9 +1746,10 @@ export async function saveVerifiedIngredients(
 
   if (recipeErr) {
     // Fallback: if the column doesn't exist yet in this environment
-    // (migration pending in dev), retry without allergens so the rest
-    // of the save still goes through. Matches the pattern used on the
-    // recipe SELECT in apps/mobile/app/recipe/[id].tsx.
+    // (migration pending in dev), retry without allergens / new
+    // caffeine + alcohol columns so the rest of the save still goes
+    // through. Matches the pattern used on the recipe SELECT in
+    // apps/mobile/app/recipe/[id].tsx.
     if ((recipeErr as { code?: string }).code === "42703") {
       const { error: fallbackErr } = await supabase
         .from("recipes")
@@ -1767,6 +1799,11 @@ export async function saveVerifiedIngredients(
       fiber_g: Math.round(ing.fiberG * 10) / 10,
       sugar_g: Math.round(ing.sugarG * 10) / 10,
       sodium_mg: Math.round(ing.sodiumMg),
+      // F-74 cross-device (2026-05-08): persist scaled caffeine +
+      // alcohol per ingredient so the recipe-level rollup re-computes
+      // correctly on next save (no need to re-hit USDA / OFF / Edamam).
+      caffeine_mg: Math.round((ing.caffeineMg ?? 0) * 10) / 10,
+      alcohol_g: Math.round((ing.alcoholG ?? 0) * 10) / 10,
       is_verified: rowIsVerified,
       source: ing.source,
       // 2026-05-02 fix — pre-fix `confidence` was NOT written on the
@@ -1820,6 +1857,9 @@ export async function addUserIngredient(
     fiberG: number;
     sugarG: number;
     sodiumMg: number;
+    /** F-74 cross-device (2026-05-08) — optional. Defaults to 0 when omitted. */
+    caffeineMg?: number;
+    alcoholG?: number;
     source: string;
     confidence: number;
     hasMatch: boolean;
@@ -1838,6 +1878,12 @@ export async function addUserIngredient(
     fiber_g: Math.round(payload.fiberG * 10) / 10,
     sugar_g: Math.round(payload.sugarG * 10) / 10,
     sodium_mg: Math.round(payload.sodiumMg),
+    // F-74 cross-device (2026-05-08): forward caffeine + alcohol when
+    // the caller has them. Defaults to 0 (matches the column default)
+    // for adders that don't carry the per-100g basis (e.g. manual
+    // typed entries).
+    caffeine_mg: Math.round((payload.caffeineMg ?? 0) * 10) / 10,
+    alcohol_g: Math.round((payload.alcoholG ?? 0) * 10) / 10,
     is_verified: payload.hasMatch && payload.confidence >= 0.5,
     source: payload.source,
     confidence: payload.confidence,

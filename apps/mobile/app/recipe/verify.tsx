@@ -261,6 +261,12 @@ export default function VerifyScreen() {
         calories: product.calories, protein: product.protein,
         carbs: product.carbs, fat: product.fat,
         fiberG: product.fiberG, sugarG: 0, sodiumMg: 0,
+        // F-74 cross-device (2026-05-08): forward caffeine/alcohol
+        // per-100g so the scaled output (which spreads onto the
+        // ingredient row below) populates `caffeineMg` / `alcoholG`
+        // on the row, then rolls up to the recipe.
+        caffeineMgPer100g: product.caffeineMgPer100g ?? null,
+        alcoholGPer100g: product.alcoholGPer100g ?? null,
       };
       const defaultGrams =
         ing.unit === "g" && ing.amount != null && ing.amount > 0
@@ -371,6 +377,13 @@ export default function VerifyScreen() {
           fiberG: payload.fiberG,
           sugarG: payload.sugarG,
           sodiumMg: payload.sodiumMg,
+          // F-74 cross-device (2026-05-08): user-added ingredients
+          // don't carry per-100g caffeine/alcohol unless the
+          // upstream Add-ingredient sheet learns to forward them
+          // (currently no UI). Default to 0; verifier rollup keeps
+          // working.
+          caffeineMg: 0,
+          alcoholG: 0,
           source: payload.source,
           confidence: payload.confidence,
           matchedName: payload.hasMatch ? payload.name : null,
@@ -453,6 +466,12 @@ export default function VerifyScreen() {
           fiberG: item.fiber ?? 0,
           sugarG: 0,
           sodiumMg: 0,
+          // F-74 cross-device (2026-05-08): AI-photo / voice-log
+          // ingredient adds don't carry caffeine/alcohol per-100g
+          // through the pipeline today. Default to 0; the next
+          // verifier save can populate via a search-match swap.
+          caffeineMg: 0,
+          alcoholG: 0,
           source: sourceLabel,
           confidence: item.confidence,
           matchedName: hasMatch ? item.name : null,

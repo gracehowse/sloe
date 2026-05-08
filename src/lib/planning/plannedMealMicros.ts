@@ -57,6 +57,13 @@ export function scaleRecipeMicros(
     fiber_g?: number | null;
     sugar_g?: number | null;
     sodium_mg?: number | null;
+    /** F-74 cross-device (2026-05-08): per-serving caffeine + alcohol
+     *  rolled up by the verifier into `recipes.{caffeine_mg,alcohol_g}`.
+     *  Closes the planner-tab + recipe-detail "Add to today" gap where
+     *  these were silently dropped (per-meal canonical SoT had no
+     *  ingredient-aggregate to read). */
+    caffeine_mg?: number | null;
+    alcohol_g?: number | null;
     calories?: number | null;
     protein?: number | null;
     carbs?: number | null;
@@ -68,6 +75,8 @@ export function scaleRecipeMicros(
   const fiberRaw = recipe.fiber_g;
   const sugarRaw = recipe.sugar_g;
   const sodiumRaw = recipe.sodium_mg;
+  const caffeineRaw = recipe.caffeine_mg;
+  const alcoholRaw = recipe.alcohol_g;
 
   const fiberG =
     typeof fiberRaw === "number" && Number.isFinite(fiberRaw) && fiberRaw > 0
@@ -80,6 +89,12 @@ export function scaleRecipeMicros(
   }
   if (typeof sodiumRaw === "number" && Number.isFinite(sodiumRaw) && sodiumRaw > 0) {
     micros.sodiumMg = Math.round(sodiumRaw * safeMult);
+  }
+  if (typeof caffeineRaw === "number" && Number.isFinite(caffeineRaw) && caffeineRaw > 0) {
+    micros.caffeineMg = Math.round(caffeineRaw * safeMult);
+  }
+  if (typeof alcoholRaw === "number" && Number.isFinite(alcoholRaw) && alcoholRaw > 0) {
+    micros.alcoholG = Math.round(alcoholRaw * safeMult * 10) / 10;
   }
 
   const macrosAreCoerced = wouldCoerceMacros({
@@ -103,15 +118,45 @@ export async function fetchPlannedMealMicros(
   try {
     const { data, error } = await supabase
       .from("recipes")
-      .select("fiber_g, sugar_g, sodium_mg, calories, protein, carbs, fat")
+      .select("fiber_g, sugar_g, sodium_mg, caffeine_mg, alcohol_g, calories, protein, carbs, fat")
       .eq("id", recipeId)
       .maybeSingle();
-    if (error || !data || typeof data !== "object") return empty;
+    if (error) {
+      // F-74 cross-device (2026-05-08): if the migration hasn't been
+      // applied yet (PGREST 42703 / "column ... does not exist"), fall
+      // back to the legacy column set so the planner / recipe-detail
+      // log paths keep working with stale data.
+      const code = (error as { code?: string }).code;
+      if (code === "42703") {
+        const { data: legacy } = await supabase
+          .from("recipes")
+          .select("fiber_g, sugar_g, sodium_mg, calories, protein, carbs, fat")
+          .eq("id", recipeId)
+          .maybeSingle();
+        if (!legacy || typeof legacy !== "object") return empty;
+        return scaleRecipeMicros(
+          legacy as Record<string, unknown> & {
+            fiber_g?: number | null;
+            sugar_g?: number | null;
+            sodium_mg?: number | null;
+            calories?: number | null;
+            protein?: number | null;
+            carbs?: number | null;
+            fat?: number | null;
+          },
+          mult,
+        );
+      }
+      return empty;
+    }
+    if (!data || typeof data !== "object") return empty;
     return scaleRecipeMicros(
       data as {
         fiber_g?: number | null;
         sugar_g?: number | null;
         sodium_mg?: number | null;
+        caffeine_mg?: number | null;
+        alcohol_g?: number | null;
         calories?: number | null;
         protein?: number | null;
         carbs?: number | null;

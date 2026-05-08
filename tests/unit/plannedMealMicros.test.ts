@@ -48,6 +48,39 @@ describe("scaleRecipeMicros", () => {
       macrosAreCoerced: false,
     });
   });
+
+  it("F-74 cross-device — scales caffeine + alcohol by the multiplier (per-serving × portions)", () => {
+    // Coffee recipe: 95 mg caffeine per serving; logging 1.5 portions = 143 mg.
+    expect(
+      scaleRecipeMicros({ fiber_g: 0, caffeine_mg: 95, alcohol_g: 0 }, 1.5).micros,
+    ).toEqual({
+      caffeineMg: 143,
+    });
+    // Wine recipe: 12 g ethanol per serving; logging 0.5 portions = 6 g.
+    expect(
+      scaleRecipeMicros({ fiber_g: 0, caffeine_mg: 0, alcohol_g: 12 }, 0.5).micros,
+    ).toEqual({
+      alcoholG: 6,
+    });
+    // Mixed: caffeine + alcohol + sugar all roll up.
+    expect(
+      scaleRecipeMicros(
+        { fiber_g: 2, sugar_g: 8, sodium_mg: 50, caffeine_mg: 64, alcohol_g: 4 },
+        1,
+      ).micros,
+    ).toEqual({
+      sugarG: 8,
+      sodiumMg: 50,
+      caffeineMg: 64,
+      alcoholG: 4,
+    });
+  });
+
+  it("F-74 cross-device — omits zero / null caffeine + alcohol (matches existing fiber/sugar/sodium semantics)", () => {
+    expect(scaleRecipeMicros({ caffeine_mg: 0 }, 1).micros).toEqual({});
+    expect(scaleRecipeMicros({ alcohol_g: null }, 1).micros).toEqual({});
+    expect(scaleRecipeMicros({ caffeine_mg: 0, alcohol_g: 0 }, 1).micros).toEqual({});
+  });
 });
 
 describe("scaleRecipeMicros — T4 macrosAreCoerced detection", () => {
