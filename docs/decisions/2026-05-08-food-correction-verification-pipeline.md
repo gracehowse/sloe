@@ -1,9 +1,16 @@
 # Food correction + verification pipeline — design
 
 **Date:** 2026-05-08
-**Status:** Tentative — proposal awaiting Grace's ratification on scope/sequencing
+**Status:** Resolved (2026-05-08) — Grace ratified all 4 open questions + added a unifying decision: migrate photo-log from OpenAI to Claude vision so we have a single vision provider across the platform.
 **Area:** Product / Data / Trust
 **Trigger:** Grace's F-138 follow-up — "we have to be clearly building out our own database so we aren't 100% reliant on other APIs. We should probably have some sort of method of verifying uploads (although as a team of 1 I can't verify everything — look into that)"
+
+## Ratifications (2026-05-08)
+
+1. **Closed doors first** — TestFlight stays at N=1 (Grace) until Phase 1 (P0 schema) + Phase 2 (plausibility + consensus) ship. Roughly 1 week of focused work. Broadening invitee pool only happens against a clean RLS / state-machine / numeric-bounds posture.
+2. **Claude vision: yes, commit now (~£5/mo)** — and migrate the existing photo-log meal-import flow off OpenAI onto Claude in the same workstream so we have a single vision provider across the platform (one vendor, one key, one bill, shared prompt patterns, code reuse between meal-import and label-verify).
+3. **"You helped N people": yes** — soft, not leaderboard-y. "Your correction for X is now used by N people" appears (a) as a quiet line on the Submit-to-database success state, (b) as a contributor history section in profile. Grace explicitly flagged "we need more gamification generally" — that becomes a parallel workstream, not part of this proposal's scope.
+4. **Label photo: required for DB submission, optional for own-foods** — two-path submit UI replaces the single "Save Correction" button. **"Save to my foods"** is fast, optional photo, scoped per-user (no verification, no shared DB write). **"Submit to database"** is the path that requires a label photo and runs through the full plausibility → Claude-vision → consensus → admin pipeline.
 
 ---
 
@@ -92,13 +99,15 @@ We have **three live problems** that this proposal addresses together:
 
 ## Phasing
 
-### Phase 0 — Immediate (this PR)
+### Phase 0 — Immediate (PR #148, shipped 2026-05-08)
 
 UI-only, no schema change, no overpromising:
 - F-138 success state: replaces the form with a "Correction saved" card after submit
 - Subtitle copy: honest about *current* effect ("applies to your scans straight away")
 - Success body: forward-looking but not claiming a live review process
 - Static-pin tests in `correctionSubmitSuccessState.test.ts`
+
+**Note:** the Phase 0 success state will be revised in Phase 3 to add the two-path submission UI ("Save to my foods" vs "Submit to database") + the "your contributions: N products, used X times" gamification line.
 
 ### Phase 1 — P0 schema hardening (1–2 days)
 
@@ -156,10 +165,29 @@ Where 80% of automated work happens:
 
 ## Open questions for Grace
 
-1. **Verification cadence ambition** — do we want the auto-verify pipeline live before broadening the tester pool, or is "Grace + small invitee group" OK while we build it?
-2. **Claude-vision pilot priority** — happy to commit ~£5/mo to label-photo auto-verify, or wait until we have data on where consensus fails first?
-3. **Public contributor leaderboard / "you helped N people"** — adopt the OFF / Discogs gamification pattern, or keep it quiet for now?
-4. **Photo-of-label requirement** — make it optional in v1 (encourages submission), or required (raises quality, reduces volume)?
+(All resolved 2026-05-08 — see "Ratifications" at top of doc.)
+
+1. **Verification cadence ambition** — ✅ Closed doors first.
+2. **Claude-vision pilot priority** — ✅ Commit now + also migrate photo-log onto Claude (single vision vendor).
+3. **Public contributor leaderboard / "you helped N people"** — ✅ Yes, soft surface; broader gamification workstream parallel.
+4. **Photo-of-label requirement** — ✅ Required for DB submission, optional for own-foods (two-path submit UI).
+
+## Phase 0.5 — photo-log → Claude vision migration (added 2026-05-08)
+
+Sequenced before Phase 1 because it's independent of the schema work and unlocks shared code between the existing photo-log feature and the new label-verify endpoint.
+
+**Scope:**
+- Replace OpenAI vision call in `app/api/nutrition/photo-log/route.ts` with Anthropic SDK call (Claude Sonnet 4.6 default, Opus 4.7 for higher-stakes verification).
+- Re-tune prompt — Claude wants slightly different framing than GPT-4 vision for "estimate macros from this photo of a meal" / "extract nutrition from this label photo" tasks.
+- Update error-code map: `openai_timeout` → `claude_timeout`, `openai_http_error` → `claude_http_error`, etc. (preserves the F-108 differentiated-error UX).
+- Update test fixtures — current ones are OpenAI-response-shaped; adapt to Anthropic message-block shape.
+- Mirror migration on the web client (`src/app/components/suppr/photo-log-dialog.tsx`).
+- Time estimate: ~half a day if it goes smoothly. Mitigation against accuracy regression: keep OpenAI path behind a feature flag for one TestFlight cycle (Grace A/B's herself), then cut over.
+
+**Why it's worth doing:**
+- One vendor (Anthropic) for all vision work going forward.
+- Code reuse between photo-log meal-import and label-photo verify-correction (same prompt scaffolding, same parsing utilities, same error-code map).
+- Removes OpenAI dependency entirely (one less account, one less rate-limit dashboard, one less bill).
 
 ## Mirror / handoff
 
