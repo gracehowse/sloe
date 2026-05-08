@@ -304,7 +304,16 @@ export default function PhotoLogSheet({
         // is unknown (defensive — shouldn't happen with the route's
         // current contract).
         const errCode = typeof data.error === "string" ? data.error : null;
+        // F-138 follow-up (2026-05-08): vendor-neutral `ai_*` codes after
+        // photo-log migrated from OpenAI to Claude vision. Legacy
+        // `openai_*` codes kept as aliases so a Claude path that briefly
+        // falls back to the OpenAI fallback during the env-var transition
+        // still surfaces the right copy.
         const fallbackByCode: Record<string, string> = {
+          ai_timeout: "The AI took too long to respond. Try again in a moment.",
+          ai_network_error: "Could not reach the AI service. Try again in a moment.",
+          ai_http_error: "The AI service had a problem with this image. Try a different photo or angle.",
+          ai_not_configured: "Photo logging isn't available right now. Try logging manually.",
           openai_timeout: "The AI took too long to respond. Try again in a moment.",
           openai_network_error: "Could not reach the AI service. Try again in a moment.",
           openai_http_error: "The AI service had a problem with this image. Try a different photo or angle.",

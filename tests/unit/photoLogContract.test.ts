@@ -32,11 +32,14 @@ describe("F-108 photo-log route contract", () => {
     if (m) expect(Number(m[1])).toBeGreaterThanOrEqual(30);
   });
 
-  it("uses an explicit AbortController on the OpenAI fetch", () => {
+  it("uses an explicit AbortController on the AI vision fetch", () => {
     const src = read("app/api/nutrition/photo-log/route.ts");
     const code = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
     expect(code).toMatch(/new AbortController\s*\(\)/);
-    expect(code).toMatch(/openai_timeout/);
+    // 2026-05-08 — route migrated to Claude with vendor-neutral `ai_*`
+    // error codes. Either `ai_timeout` or `openai_timeout` proves the
+    // F-108 timeout-handling branch is intact (both vendors emit it).
+    expect(code).toMatch(/ai_timeout|openai_timeout/);
   });
 });
 
@@ -45,13 +48,16 @@ describe("F-108 photo-log clients differentiate server error codes", () => {
     "apps/mobile/components/PhotoLogSheet.tsx",
     "src/app/components/suppr/photo-log-dialog.tsx",
   ];
-  it.each(CLIENTS)("%s maps openai_timeout / openai_http_error / file_too_large to user copy", (rel) => {
+  it.each(CLIENTS)("%s maps ai_timeout / ai_http_error / file_too_large to user copy", (rel) => {
     const src = read(rel);
     const code = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+    // Vendor-neutral codes are required (Claude path). Legacy `openai_*`
+    // aliases stay during the transition window but are not asserted —
+    // their disappearance shouldn't break the test once cutover lands.
     for (const errCode of [
-      "openai_timeout",
-      "openai_network_error",
-      "openai_http_error",
+      "ai_timeout",
+      "ai_network_error",
+      "ai_http_error",
       "model_unparseable",
       "file_too_large",
     ]) {

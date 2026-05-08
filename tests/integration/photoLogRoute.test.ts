@@ -10,11 +10,17 @@
  * bucket (`api:photo-log`). See
  * `docs/decisions/2026-05-02-photo-log-free-taster.md`.
  *
- * Covers auth, free-taster quota, Pro 100/day cap, OpenAI config,
+ * Covers auth, free-taster quota, Pro 100/day cap, AI config,
  * multipart expectation, and the range-first response shape.
  *
- * No live OpenAI calls — the upstream `fetch` is stubbed with
- * `vi.stubGlobal`.
+ * 2026-05-08 (`docs/decisions/2026-05-08-food-correction-verification-pipeline.md`):
+ * route migrated from OpenAI GPT-4o to Anthropic Claude Sonnet 4.6 vision.
+ * `ANTHROPIC_API_KEY` is preferred; falls back to `OPENAI_API_KEY` so the
+ * env-var-driven cutover can flip without a redeploy. Tests now stub the
+ * Claude Messages API response shape ({content: [{type:"text",text:"..."}]})
+ * and assert vendor-neutral `ai_*` error codes.
+ *
+ * No live AI calls — the upstream `fetch` is stubbed with `vi.stubGlobal`.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
@@ -49,8 +55,8 @@ const mockRateLimit = rateLimit as ReturnType<typeof vi.fn>;
 type FetchInit = RequestInit & { body?: string };
 type StubSpec = { status: number; body: unknown };
 
-/** Helper: stub `globalThis.fetch` to return a single OpenAI-shaped response. */
-function stubOpenAi(spec: StubSpec) {
+/** Helper: stub `globalThis.fetch` to return a single AI-shaped response. */
+function stubAi(spec: StubSpec) {
   const fakeResp = new Response(JSON.stringify(spec.body), {
     status: spec.status,
     headers: { "content-type": "application/json" },
@@ -58,10 +64,13 @@ function stubOpenAi(spec: StubSpec) {
   vi.stubGlobal("fetch", vi.fn(async (_url: string, _init?: FetchInit) => fakeResp));
 }
 
-/** Helper: model JSON wrapped in OpenAI's chat completion envelope. */
+/** Helper: model JSON wrapped in Claude's Messages API envelope.
+ *  The route prefills `{` so `text` here is the JSON body MINUS the
+ *  leading brace (the route prepends it back before parsing). */
 function modelEnvelope(content: string) {
+  const stripped = content.replace(/^\{/, "");
   return {
-    choices: [{ message: { content } }],
+    content: [{ type: "text", text: stripped }],
   };
 }
 
@@ -98,7 +107,9 @@ const HAPPY_MODEL_BODY = modelEnvelope(
 describe("POST /api/nutrition/photo-log", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.stubEnv("OPENAI_API_KEY", "sk-test-openai");
+    // Default to the Claude path (preferred). Tests that need to
+    // exercise the OpenAI fallback override this in the test body.
+    vi.stubEnv("ANTHROPIC_API_KEY", "sk-ant-test");
     // Default: every rateLimit call passes. Tests override per-case.
     mockRateLimit.mockImplementation(async () => ({
       ok: true,
@@ -135,7 +146,7 @@ describe("POST /api/nutrition/photo-log", () => {
       remaining: 4,
       resetAtMs: 0,
     });
-    stubOpenAi({ status: 200, body: HAPPY_MODEL_BODY });
+    stubAi({ status: 200, body: HAPPY_MODEL_BODY });
     const res = await POST(
       new Request("http://localhost/api/nutrition/photo-log", {
         method: "POST",
@@ -222,7 +233,7 @@ describe("POST /api/nutrition/photo-log", () => {
       remaining: 99,
       resetAtMs: 0,
     });
-    stubOpenAi({ status: 200, body: HAPPY_MODEL_BODY });
+    stubAi({ status: 200, body: HAPPY_MODEL_BODY });
     const res = await POST(
       new Request("http://localhost/api/nutrition/photo-log", {
         method: "POST",
@@ -273,7 +284,7 @@ describe("POST /api/nutrition/photo-log", () => {
     expect((await res.json()).error).toBe("rate_limited");
   });
 
-  it("returns 503 when OPENAI_API_KEY is unset (after gate passes)", async () => {
+  it("returns 503 ai_not_configured when neither AI key is set (after gate passes)", async () => {
     vi.unstubAllEnvs();
     mockUserId.mockResolvedValue("u1");
     mockTier.mockResolvedValue("pro");
@@ -284,7 +295,81 @@ describe("POST /api/nutrition/photo-log", () => {
       }),
     );
     expect(res.status).toBe(503);
-    expect((await res.json()).error).toBe("openai_not_configured");
+    expect((await res.json()).error).toBe("ai_not_configured");
+  });
+
+  it("falls back to OpenAI when only OPENAI_API_KEY is set", async () => {
+    vi.unstubAllEnvs();
+    vi.stubEnv("OPENAI_API_KEY", "sk-test-openai");
+    mockUserId.mockResolvedValue("u1");
+    mockTier.mockResolvedValue("pro");
+    // Stub OpenAI envelope shape for this test (choices/message/content).
+    const openaiResp = new Response(
+      JSON.stringify({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                items: [
+                  {
+                    name: "Pita",
+                    category: "Bread + dips",
+                    calories: { low: 120, high: 150 },
+                    protein: null,
+                    carbs: null,
+                    fat: null,
+                    confidence: "high",
+                  },
+                ],
+              }),
+            },
+          },
+        ],
+      }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    );
+    let called: string = "";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        called = url;
+        return openaiResp;
+      }),
+    );
+    const res = await POST(
+      new Request("http://localhost/api/nutrition/photo-log", {
+        method: "POST",
+        body: pngFormBody(),
+      }),
+    );
+    expect(res.status).toBe(200);
+    // Confirm we hit the OpenAI endpoint, not Anthropic.
+    expect(called).toContain("api.openai.com");
+  });
+
+  it("uses Claude (Anthropic) when ANTHROPIC_API_KEY is set", async () => {
+    mockUserId.mockResolvedValue("u1");
+    mockTier.mockResolvedValue("pro");
+    stubAi({ status: 200, body: HAPPY_MODEL_BODY });
+    let called: string = "";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        called = url;
+        return new Response(JSON.stringify(HAPPY_MODEL_BODY), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }),
+    );
+    const res = await POST(
+      new Request("http://localhost/api/nutrition/photo-log", {
+        method: "POST",
+        body: pngFormBody(),
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect(called).toContain("api.anthropic.com");
   });
 
   it("returns 400 expected_multipart when Content-Type is not multipart", async () => {

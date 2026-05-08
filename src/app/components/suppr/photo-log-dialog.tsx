@@ -234,7 +234,15 @@ export function PhotoLogDialog({
       if (!data.ok || !Array.isArray(data.items) || data.items.length === 0) {
         // F-108: differentiate failure mode by server `error` code.
         const errCode = "error" in data && typeof data.error === "string" ? data.error : null;
+        // F-138 follow-up (2026-05-08): vendor-neutral `ai_*` codes after
+        // photo-log migrated from OpenAI to Claude vision. Legacy `openai_*`
+        // codes kept as aliases for the env-var transition window where
+        // the route may temporarily fall back to OpenAI.
         const fallbackByCode: Record<string, string> = {
+          ai_timeout: "The AI took too long to respond. Try again in a moment.",
+          ai_network_error: "Could not reach the AI service. Try again in a moment.",
+          ai_http_error: "The AI service had a problem with this image. Try a different photo or angle.",
+          ai_not_configured: "Photo logging isn't available right now. Try logging manually.",
           openai_timeout: "The AI took too long to respond. Try again in a moment.",
           openai_network_error: "Could not reach the AI service. Try again in a moment.",
           openai_http_error: "The AI service had a problem with this image. Try a different photo or angle.",
