@@ -36,10 +36,17 @@ describe("F-108 photo-log route contract", () => {
     const src = read("app/api/nutrition/photo-log/route.ts");
     const code = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
     expect(code).toMatch(/new AbortController\s*\(\)/);
-    // 2026-05-08 — route migrated to Claude with vendor-neutral `ai_*`
-    // error codes. Either `ai_timeout` or `openai_timeout` proves the
-    // F-108 timeout-handling branch is intact (both vendors emit it).
-    expect(code).toMatch(/ai_timeout|openai_timeout/);
+  });
+
+  it("AI timeout branch is intact (in route source OR shared aiProvider helper)", () => {
+    // 2026-05-08: route migrated to Claude via the shared `callAiVision`
+    // helper. The `ai_timeout` error code now lives in the helper, not
+    // the route — so we assert it appears in either source so the
+    // pin survives the helper extraction.
+    const route = read("app/api/nutrition/photo-log/route.ts");
+    const helper = read("src/lib/server/aiProvider.ts");
+    const all = (route + helper).replace(/\/\*[\s\S]*?\*\//g, "");
+    expect(all).toMatch(/ai_timeout|openai_timeout/);
   });
 });
 

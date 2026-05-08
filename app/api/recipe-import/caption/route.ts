@@ -110,8 +110,10 @@ export async function POST(req: Request) {
     return NextResponse.json(importErrorResponse("caption_too_short"), { status: 422 });
   }
 
-  const openaiKey = process.env.OPENAI_API_KEY?.trim();
-  if (!openaiKey) {
+  // 2026-05-08: vendor selection happens inside `parseCaption` via the
+  // shared `aiProvider` helper (Anthropic preferred, OpenAI fallback).
+  const { activeVendor } = await import("@/lib/server/aiProvider");
+  if (!activeVendor()) {
     return NextResponse.json(importErrorResponse("openai_not_configured"), { status: 503 });
   }
 
@@ -121,7 +123,6 @@ export async function POST(req: Request) {
       captionText: trimmed,
       sourceUrl: url,
       platform,
-      openaiKey,
     });
   } catch (e) {
     if (e instanceof CaptionTooShortError) {

@@ -4,14 +4,16 @@ import { getUserIdFromRequest, getUserTier } from "@/lib/supabase/serverAnonClie
 import { verifyIngredients, parseRawIngredients } from "@/lib/nutrition/verifyIngredients";
 import { importErrorResponse } from "@/lib/recipes/importErrorCopy";
 import { sanitiseImportedTitle } from "@/lib/recipe-import/extractSocialRecipe";
+import { callAiVision, activeVendor } from "@/lib/server/aiProvider";
 
 export const runtime = "nodejs";
 
 const MAX_BYTES = 6 * 1024 * 1024;
 
 /**
- * Image → ingredient lines via OpenAI vision (when OPENAI_API_KEY is set).
- * Returns structured JSON for the recipe import UI.
+ * Image → ingredient lines via Claude vision (Anthropic, default) or
+ * OpenAI vision fallback. 2026-05-08 migration:
+ * `docs/decisions/2026-05-08-food-correction-verification-pipeline.md`.
  */
 export async function POST(req: Request) {
   const userId = await getUserIdFromRequest(req);
@@ -33,8 +35,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const key = process.env.OPENAI_API_KEY?.trim();
-  if (!key) {
+  if (!activeVendor()) {
     return NextResponse.json(importErrorResponse("openai_not_configured"), { status: 503 });
   }
 
@@ -67,7 +68,7 @@ export async function POST(req: Request) {
   const b64 = buf.toString("base64");
   const dataUrl = `data:${mime};base64,${b64}`;
 
-  const prompt = `You are helping import a recipe from a photo or screenshot.
+  const SYSTEM_PROMPT = `You are helping import a recipe from a photo or screenshot.
 Return a single JSON object with this shape (no markdown fences):
 {
   "title": string or null,
@@ -80,53 +81,34 @@ Rules:
 - steps: ordered cooking steps; empty array if none visible.
 - If text is unreadable, use best effort and short ingredients/steps arrays.`;
 
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${key}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "gpt-4o-mini",
-      temperature: 0.2,
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "text", text: prompt },
-            { type: "image_url", image_url: { url: dataUrl } },
-          ],
-        },
-      ],
-    }),
+  const aiResult = await callAiVision({
+    callSite: "recipe-import/image",
+    systemPrompt: SYSTEM_PROMPT,
+    userText: "Extract the recipe from this image.",
+    imageDataUrl: dataUrl,
+    expectJson: true,
+    temperature: 0.2,
+    maxTokens: 2000,
   });
 
-  if (!res.ok) {
-    // Drain the body so the connection can be released. Don't echo
-    // the upstream error text to the client — it would leak vendor
-    // names + raw status. Audit I01 (2026-05-05).
-    void res.text().catch(() => "");
-    // 429 from upstream is a vendor rate-limit; surface the calmer
-    // copy so users know to retry. All other failures collapse to
-    // the generic "couldn't read that image" copy.
-    if (res.status === 429) {
+  if (!aiResult.ok) {
+    // 429 → calmer copy with Retry-After. All other failures collapse to
+    // the generic "couldn't read that image" copy. Don't echo upstream
+    // body — would leak vendor + status (Audit I01, 2026-05-05).
+    if (aiResult.error === "ai_rate_limited") {
       return NextResponse.json(
         importErrorResponse("ai_rate_limited"),
         { status: 429, headers: { "Retry-After": "30" } },
       );
     }
-    return NextResponse.json(importErrorResponse("openai_http_error"), { status: 502 });
+    return NextResponse.json(importErrorResponse("openai_http_error"), { status: aiResult.status });
   }
 
-  const data = (await res.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
-  };
-  const raw = data.choices?.[0]?.message?.content?.trim() ?? "";
   let parsed: { title?: string | null; ingredients?: string[]; steps?: string[]; notes?: string | null };
   try {
-    parsed = JSON.parse(raw) as typeof parsed;
+    parsed = JSON.parse(aiResult.text) as typeof parsed;
   } catch {
-    // Don't echo `raw` — model output occasionally contains chunks of
+    // Don't echo the raw model output — occasionally contains chunks of
     // the prompt or vendor identifiers (audit I01, 2026-05-05).
     return NextResponse.json(importErrorResponse("unparseable_model_output"), { status: 502 });
   }

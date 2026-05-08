@@ -123,24 +123,25 @@ export function normaliseStepToImperative(raw: string): string {
  * @param input.sourceUrl     Original post URL. Stored on the recipe but
  *                            NOT fetched server-side.
  * @param input.platform      Detected platform classification.
- * @param input.openaiKey     OpenAI API key for the LLM extraction call.
- *
  * @throws {CaptionTooShortError} when caption is empty / below
  *   `MIN_CAPTION_LEN`. Caller decides how to surface (typically: route to
  *   the legacy URL path or show a "couldn't import" message).
+ *
+ * 2026-05-08: AI key is now read from env vars inside the shared
+ * `aiProvider` helper (Anthropic preferred, OpenAI fallback). The
+ * `openaiKey` param is no longer needed.
  */
 export async function parseCaption(input: {
   captionText: string;
   sourceUrl: string;
   platform: "instagram" | "tiktok" | "youtube";
-  openaiKey: string;
 }): Promise<ParsedCaptionRecipe> {
   const caption = (input.captionText ?? "").trim();
   if (caption.length < MIN_CAPTION_LEN) {
     throw new CaptionTooShortError();
   }
 
-  const raw = await extractRecipeFromCaption(caption, input.openaiKey, null);
+  const raw = await extractRecipeFromCaption(caption, null);
 
   /**
    * Legal guardrail: every step is rewritten to imperative voice. This

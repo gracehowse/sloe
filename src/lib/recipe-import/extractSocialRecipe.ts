@@ -13,6 +13,7 @@
 
 import { decodeHtmlEntities } from "../text/decodeHtmlEntities";
 import { siteNameFromUrl } from "./parseRecipeFromHtml";
+import { callAiText, callAiVision, type AiCallResult } from "../server/aiProvider";
 
 export type SocialPlatform = "instagram" | "tiktok" | "youtube" | null;
 
@@ -620,7 +621,6 @@ export class CaptionExtractionError extends Error {
 
 export async function extractRecipeFromCaption(
   caption: string,
-  openaiKey: string,
   imageUrl?: string | null,
 ): Promise<{
   title: string | null;
@@ -669,103 +669,103 @@ Rules:
 - servings: extract if mentioned, otherwise null
 - prepTimeMin / cookTimeMin: total minutes if the caption states prep time or cook time (e.g. "prep 15 min", "20 min cook"); otherwise null`;
 
-  const body: Record<string, unknown> = {
-    model: "gpt-4o-mini",
-    temperature: 0.2,
-    messages: [
-      {
-        role: "user",
-        content: imageUrl
-          ? [
-              { type: "text", text: prompt },
-              { type: "image_url", image_url: { url: imageUrl } },
-            ]
-          : prompt,
-      },
-    ],
+  // 2026-05-08: migrated from direct OpenAI fetch to the shared
+  // `callAiText` / `callAiVision` helpers (vendor-neutral). Default
+  // path is Claude Sonnet 4.6; falls back to OpenAI gpt-4o-mini if
+  // only OPENAI_API_KEY is set. See
+  // `docs/decisions/2026-05-08-food-correction-verification-pipeline.md`.
+  const callAi = async (useImage: boolean): Promise<AiCallResult> => {
+    if (useImage && imageUrl) {
+      // Anthropic vision wants base64 + media_type, not a URL. Fetch
+      // the image first, then pass as a data URL — the helper strips
+      // it back into base64 + media_type itself.
+      const imgRes = await fetch(imageUrl).catch(() => null);
+      if (!imgRes || !imgRes.ok) {
+        // Image fetch failed — caller will retry without it.
+        return {
+          ok: false,
+          error: "ai_http_error",
+          status: 502,
+          message: "image fetch failed",
+          vendor: "claude",
+          modelVersion: "n/a",
+          upstreamStatus: imgRes?.status ?? null,
+        };
+      }
+      const arrayBuf = await imgRes.arrayBuffer();
+      const mime = imgRes.headers.get("content-type") || "image/jpeg";
+      const b64 = Buffer.from(arrayBuf).toString("base64");
+      const dataUrl = `data:${mime};base64,${b64}`;
+      return callAiVision({
+        callSite: "extractSocialRecipe",
+        systemPrompt: prompt,
+        userText: "Extract the recipe from the caption above + this image.",
+        imageDataUrl: dataUrl,
+        expectJson: true,
+        temperature: 0.2,
+        maxTokens: 2000,
+      });
+    }
+    return callAiText({
+      callSite: "extractSocialRecipe",
+      userText: prompt,
+      expectJson: true,
+      temperature: 0.2,
+      maxTokens: 2000,
+    });
   };
 
-  let res = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${openaiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
+  let aiResult = await callAi(true);
+  let imageUsed: boolean | undefined = imageUrl ? true : undefined;
 
   // F-121 (TestFlight `AJK4VIZdlOwU_yQWVLn_9pc`, 2026-05-06): single
-  // server-side retry on OpenAI 429 with `Retry-After` honour, otherwise
-  // 2s + jitter. Catches transient burst limits before they bubble up
-  // as a user-facing "service is busy" — the tester reported re-tap
-  // amplification because the mobile client wasn't backing off either.
-  // Cap the wait so we don't blow the route's 45s abort window.
-  if (res.status === 429) {
-    const retryAfterHeader = res.headers.get("Retry-After");
-    const retryAfterMs = retryAfterHeader
-      ? Math.max(500, Math.min(10_000, (Number.parseInt(retryAfterHeader, 10) || 2) * 1000))
-      : 2000 + Math.floor(Math.random() * 500);
+  // server-side retry on rate-limit. Helps absorb transient burst
+  // limits before they bubble up as a user-facing "service is busy".
+  if (!aiResult.ok && aiResult.error === "ai_rate_limited") {
+    const retryAfterMs = 2000 + Math.floor(Math.random() * 500);
     await new Promise((r) => setTimeout(r, retryAfterMs));
-    res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${openaiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    });
+    aiResult = await callAi(true);
   }
 
   // If the image URL is invalid/expired (common with Instagram CDN URLs),
-  // OpenAI returns 400. Retry without the image. Track that we did so
-  // (audit I05, 2026-05-05) so callers can surface "image couldn't be
-  // analysed — text only" rather than silently degrade.
-  // Skip this fallback on 429 — the image isn't the issue there.
-  let imageUsed: boolean | undefined = imageUrl ? true : undefined;
-  if (!res.ok && res.status !== 429 && imageUrl) {
-    const textOnlyBody = {
-      ...body,
-      messages: [{ role: "user", content: prompt }],
-    };
-    res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${openaiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(textOnlyBody),
-    });
-    if (res.ok) {
+  // the vision call fails. Retry text-only and flag `imageUsed: false`
+  // (audit I05, 2026-05-05). Skip this fallback on 429 — the image
+  // isn't the issue there.
+  if (!aiResult.ok && aiResult.error !== "ai_rate_limited" && imageUrl) {
+    const textOnly = await callAi(false);
+    if (textOnly.ok) {
+      aiResult = textOnly;
       imageUsed = false;
     }
   }
 
-  if (!res.ok) {
-    // Take main's version: PR #95 introduced the typed
-    // `CaptionExtractionError` class (audit I02, 2026-05-05) which
-    // carries the upstream status + Retry-After header so the route
-    // handler can surface a 429 with countdown to the client.
-    // PR #93's earlier `throw new Error("ai_rate_limited")` form is
-    // superseded.
-    void res.text().catch(() => "");
-    const retryAfterHeader = res.headers.get("Retry-After");
-    const retryAfterSec = retryAfterHeader
-      ? Math.max(1, Math.min(600, Number.parseInt(retryAfterHeader, 10) || 30))
-      : null;
-    if (res.status === 429) {
-      throw new CaptionExtractionError({ code: "ai_rate_limited", upstreamStatus: res.status, retryAfterSec });
+  if (!aiResult.ok) {
+    // PR #95 introduced the typed `CaptionExtractionError` class
+    // (audit I02, 2026-05-05) which carries the upstream status +
+    // Retry-After so the route handler can surface a 429 with
+    // countdown to the client.
+    if (aiResult.error === "ai_rate_limited") {
+      throw new CaptionExtractionError({
+        code: "ai_rate_limited",
+        upstreamStatus: aiResult.upstreamStatus ?? 429,
+        retryAfterSec: 30,
+      });
     }
-    if (res.status >= 500) {
-      throw new CaptionExtractionError({ code: "ai_unavailable", upstreamStatus: res.status, retryAfterSec });
+    if ((aiResult.upstreamStatus ?? 0) >= 500 || aiResult.error === "ai_network_error" || aiResult.error === "ai_timeout") {
+      throw new CaptionExtractionError({
+        code: "ai_unavailable",
+        upstreamStatus: aiResult.upstreamStatus ?? 502,
+        retryAfterSec: null,
+      });
     }
-    throw new CaptionExtractionError({ code: "ai_request_failed", upstreamStatus: res.status, retryAfterSec });
+    throw new CaptionExtractionError({
+      code: "ai_request_failed",
+      upstreamStatus: aiResult.upstreamStatus ?? 502,
+      retryAfterSec: null,
+    });
   }
 
-  const data = (await res.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
-  };
-
-  const raw = data.choices?.[0]?.message?.content?.trim() ?? "";
+  const raw = aiResult.text;
   try {
     const parsed = JSON.parse(raw) as {
       title?: string | null;
