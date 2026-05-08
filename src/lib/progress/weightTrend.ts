@@ -148,13 +148,31 @@ function minMax(values: number[]): [number, number] {
 /**
  * Compute the Y domain: [min(data,goal) - padding, max(data,goal) +
  * padding] where padding = max(0.8, 8% of range). Never includes 0.
+ *
+ * F-133 (`AFlB4oMfwQGIFx-w0DxOofE`, 2026-05-08): Grace's "graph is
+ * broken" — when goal is far from the data (e.g. current 54.6 kg,
+ * goal 50 kg with a 1-month range that's only ±1 kg of data), the
+ * goal-inclusion stretches the y-axis so the data line collapses to
+ * a thin sliver near the top of the plot. Now the goal is included
+ * only when it's within a reasonable distance of the data envelope
+ * (max(2 kg, 50% of data range) on either side). Beyond that, the
+ * data uses the full plot height and the WeightChart renders an
+ * off-chart "Goal X.X kg ↓" chip at the appropriate edge so the
+ * goal stays visible in spirit if not in the plot.
  */
 function computeYDomain(
   points: WeightPoint[],
   goalKg: number | null,
 ): [number, number] {
   const kgs = points.map((p) => p.kg);
-  const allValues = goalKg != null ? [...kgs, goalKg] : kgs;
+  const [dataMin, dataMax] = minMax(kgs);
+  const dataRange = dataMax - dataMin;
+  const goalThreshold = Math.max(2, dataRange * 0.5);
+  const includeGoal =
+    goalKg != null &&
+    goalKg >= dataMin - goalThreshold &&
+    goalKg <= dataMax + goalThreshold;
+  const allValues = includeGoal && goalKg != null ? [...kgs, goalKg] : kgs;
   const [rawMin, rawMax] = minMax(allValues);
   const rawRange = rawMax - rawMin;
   const padding = Math.max(0.8, rawRange * 0.08);

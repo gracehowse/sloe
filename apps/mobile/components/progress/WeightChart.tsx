@@ -193,6 +193,13 @@ export function WeightChart({ trend, goalKg, isImperial = false }: Props) {
   const latestDateISO = latestIdx >= 0 ? points[latestIdx]!.dateISO : null;
 
   const goalY = goalKg != null ? toY(goalKg, yMin, yMax, plotH) : null;
+  // F-133 (`AFlB4oMfwQGIFx-w0DxOofE`, 2026-05-08): when computeYDomain
+  // excluded the goal because it was too far from data, goalY falls
+  // outside the plot area. Render an edge chip indicating direction
+  // so the goal stays visible (vs disappearing entirely).
+  const goalIsBelowChart = goalY != null && goalY > PAD_TOP + plotH;
+  const goalIsAboveChart = goalY != null && goalY < PAD_TOP;
+  const goalIsOffChart = goalIsBelowChart || goalIsAboveChart;
 
   const lineColor =
     trend.trendDirection === "worsening" ? Accent.warning : Accent.primary;
@@ -330,8 +337,11 @@ export function WeightChart({ trend, goalKg, isImperial = false }: Props) {
           );
         })}
 
-        {/* Goal line */}
-        {goalY != null && goalKg != null && goalLabelY != null && (
+        {/* Goal line — only when the goal sits inside the visible
+            data domain. F-133: when goal is far from data, the line
+            is replaced by an off-chart edge chip below (or above) so
+            the data line uses the full plot height. */}
+        {goalY != null && goalKg != null && goalLabelY != null && !goalIsOffChart && (
           <>
             <Line
               x1={PAD_LEFT}
@@ -352,6 +362,23 @@ export function WeightChart({ trend, goalKg, isImperial = false }: Props) {
               {`Goal ${formatWeight(goalKg, isImperial)}`}
             </SvgText>
           </>
+        )}
+
+        {/* F-133 — Off-chart goal indicator. Renders when the goal
+            sits outside the visible data envelope (the user's actual
+            data range is far above / below the goal). Arrow points
+            toward where the goal sits. */}
+        {goalY != null && goalKg != null && goalIsOffChart && (
+          <SvgText
+            x={chartWidth - PAD_RIGHT}
+            y={goalIsBelowChart ? bottom - 2 : PAD_TOP + 12}
+            fontSize={10}
+            fill={colors.textSecondary}
+            textAnchor="end"
+            testID="weight-chart-offchart-goal-chip"
+          >
+            {`Goal ${formatWeight(goalKg, isImperial)} ${goalIsBelowChart ? "↓" : "↑"}`}
+          </SvgText>
         )}
 
         {/* MA area fill */}

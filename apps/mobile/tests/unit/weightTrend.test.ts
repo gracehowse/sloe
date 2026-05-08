@@ -83,11 +83,28 @@ describe("computeWeightTrend", () => {
     expect(yMax - yMin).toBeGreaterThanOrEqual(0.8);
   });
 
-  it("yDomain includes goal line when provided", () => {
+  it("yDomain includes goal line when goal is near the data", () => {
+    // Data span 75 → 74.55 (range 0.45); goal 74 is 0.55 below data
+    // min — within threshold = max(2, 0.5×range) = max(2, 0.23) = 2.
+    const pts = makePoints(10, 75);
+    const r = computeWeightTrend(pts, "1m", 74, BASE_ISO);
+    const [yMin] = r.yDomain;
+    expect(yMin).toBeLessThanOrEqual(74);
+  });
+
+  it("F-133 — yDomain EXCLUDES goal when goal is far from data", () => {
+    // Data span 75 → 74.55 (range 0.45); goal 70 is ~4.5 below data
+    // min — outside threshold (max(2, 0.23) = 2). Pre-fix this
+    // included 70 in the domain → axis stretched to ~69-76, data
+    // line collapsed to a thin sliver near the top (Grace's "graph
+    // is broken" complaint, `AFlB4oMfwQGIFx-w0DxOofE`). Post-fix
+    // the data uses the full plot height; off-chart edge chip on
+    // WeightChart shows the goal direction.
     const pts = makePoints(10, 75);
     const r = computeWeightTrend(pts, "1m", 70, BASE_ISO);
     const [yMin] = r.yDomain;
-    expect(yMin).toBeLessThanOrEqual(70);
+    // yMin should be near data-min (74.55), not pulled down to ~69.
+    expect(yMin).toBeGreaterThan(72);
   });
 
   it("movingAvg produces nulls when < 3 points in window", () => {
