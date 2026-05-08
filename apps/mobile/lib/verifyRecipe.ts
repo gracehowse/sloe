@@ -1466,36 +1466,75 @@ export async function lookupBarcode(
   const trimmed = code.replace(/\s/g, "");
   if (!/^\d{8,14}$/.test(trimmed)) return null;
 
-  // 1. Check user-contributed foods first — prioritise verified entries
+  // F-138 Phase 1 (P0 schema hardening, migration
+  // 20260512100000_user_foods_p0_hardening.sql) — three-tier read path:
+  //   1. `verified_food_canonical` (PK lookup, single row) — authoritative
+  //      verified value, computed by the recompute trigger
+  //   2. Caller's OWN `user_foods` row (so users see their pending
+  //      submissions / private corrections immediately)
+  //   3. Open Food Facts fallback
+  //
+  // Pre-fix: lex-sort `verification_status` ascending put 'pending' before
+  // 'verified' (alphabetical). The `find(...verified)` fallback masked the
+  // bug, but the sort sometimes served a high-upvoted REJECTED row when
+  // no verified row existed. Post-fix: PK hit on canonical table, then
+  // explicit own-pending lookup with verification_status NEQ 'rejected'.
   try {
     const { supabase } = await import("@/lib/supabase");
-    // Try verified entries first, then fall back to any user entry
-    const { data: userFoods } = await supabase
-      .from("user_foods")
-      .select("name, calories, protein, carbs, fat, fiber_g, serving_size_g, verification_status")
+    const { data: canon } = await supabase
+      .from("verified_food_canonical")
+      .select(
+        "name, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, saturated_fat_g, serving_size_g, consensus_method, consensus_confidence",
+      )
       .eq("barcode", trimmed)
-      .order("verification_status", { ascending: true }) // 'verified' sorts before 'pending'
-      .order("upvotes", { ascending: false })
-      .order("updated_at", { ascending: false })
-      .limit(5);
+      .maybeSingle();
 
-    if (userFoods && userFoods.length > 0) {
-      // Pick verified entry if available, otherwise the top-voted
-      const best = userFoods.find((f) => f.verification_status === "verified") ?? userFoods[0];
-      if (best) {
-        const isVerified = best.verification_status === "verified";
-        return {
-          name: best.name,
-          calories: Math.round(Number(best.calories) || 0),
-          protein: Math.round((Number(best.protein) || 0) * 10) / 10,
-          carbs: Math.round((Number(best.carbs) || 0) * 10) / 10,
-          fat: Math.round((Number(best.fat) || 0) * 10) / 10,
-          fiberG: Math.round((Number(best.fiber_g) || 0) * 10) / 10,
-          servingSizeG: Number(best.serving_size_g) || 100,
-          source: isVerified ? "verified" : "user",
-          verified: isVerified,
-        };
-      }
+    if (canon) {
+      return {
+        name: canon.name,
+        calories: Math.round(Number(canon.calories) || 0),
+        protein: Math.round((Number(canon.protein) || 0) * 10) / 10,
+        carbs: Math.round((Number(canon.carbs) || 0) * 10) / 10,
+        fat: Math.round((Number(canon.fat) || 0) * 10) / 10,
+        fiberG: Math.round((Number(canon.fiber_g) || 0) * 10) / 10,
+        sugarG: canon.sugar_g != null ? Math.round(Number(canon.sugar_g) * 10) / 10 : null,
+        sodiumMg: canon.sodium_mg != null ? Math.round(Number(canon.sodium_mg)) : null,
+        saturatedFatG:
+          canon.saturated_fat_g != null
+            ? Math.round(Number(canon.saturated_fat_g) * 10) / 10
+            : null,
+        servingSizeG: Number(canon.serving_size_g) || 100,
+        source: "verified",
+        verified: true,
+      };
+    }
+
+    // Tier 2: caller's own pending submission (RLS allows viewing own
+    // rows even when status != 'verified'). Filter `rejected` so a
+    // user-rejected row doesn't override OFF.
+    const { data: ownRows } = await supabase
+      .from("user_foods")
+      .select(
+        "name, calories, protein, carbs, fat, fiber_g, serving_size_g, verification_status",
+      )
+      .eq("barcode", trimmed)
+      .neq("verification_status", "rejected")
+      .order("updated_at", { ascending: false })
+      .limit(1);
+
+    const own = ownRows?.[0];
+    if (own) {
+      return {
+        name: own.name,
+        calories: Math.round(Number(own.calories) || 0),
+        protein: Math.round((Number(own.protein) || 0) * 10) / 10,
+        carbs: Math.round((Number(own.carbs) || 0) * 10) / 10,
+        fat: Math.round((Number(own.fat) || 0) * 10) / 10,
+        fiberG: Math.round((Number(own.fiber_g) || 0) * 10) / 10,
+        servingSizeG: Number(own.serving_size_g) || 100,
+        source: "user",
+        verified: false,
+      };
     }
   } catch {
     // Fall through to Open Food Facts
