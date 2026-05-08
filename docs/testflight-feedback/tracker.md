@@ -74,12 +74,12 @@ Single TestFlight session this morning surfaced 4 distinct food-search + weight-
 | ID | F# | Status | Description / Closed by |
 |----|----|--------|--------------------------|
 | `AKhE2_le-T2m` | F-102 | ✅ closed by F-95 (PR #98 + #102) | "Still no fat secret option showing for big mac" — recurrence of the same FatSecret production-empty issue closed today. |
-| `AEsaeOW2Qw-B` | F-103 | ✅ closed by PR #128 (build 45) — sibling of F-74. Per-meal `micros` is now the canonical SoT; food-search / barcode / recipe-log paths no longer double-count via the auto-bump ledger. | "Adding alcohol or coffee still not impacting these numbers" |
+| `AEsaeOW2Qw-B` | F-103 | ✅ closed by PR #128 (the next TestFlight cut) — sibling of F-74. Per-meal `micros` is now the canonical SoT; food-search / barcode / recipe-log paths no longer double-count via the auto-bump ledger. | "Adding alcohol or coffee still not impacting these numbers" |
 | `AEvjNTAVsipF` | F-104 | ⏳ — see `docs/decisions/2026-05-05-calorie-ring-colour-mapping.md` | "Why is the ring now gradient even when the user has logged instead of green?" — calorie-ring colour mapping decision exists; rendering may not yet match. Audit-deferred; verify against build 42. |
 | `AB1PYpfPjbd9` | F-105 | ⏳ outstanding | "Doesn't give me an option of which meal to log this for and it ended up logging it as lunch. Also this was a breakfast recipe and I marked it as such when I imported it." — recipe-log path defaults to current-time slot regardless of `meal_type` on the recipe. Need a meal-slot picker on quick-log + honour stored `meal_type` as default. |
 | `AECfotBlQgwf` | F-106 | ✅ already shipped 2026-05-01 — LogSheet has a Library tab on both platforms (`apps/mobile/components/today/LogSheet.tsx:259` + `src/app/components/NutritionTracker.tsx:3191`); Planner has "Open recipe library" / "Browse recipe library" CTAs (`apps/mobile/app/(tabs)/planner.tsx:1998+2115`). Tester report predates the fix. | "No way to add recipes saved to library from here I have to go to recipes then to library then click the recipe then scroll down then log it." |
 | `ALCot9q4E4UF` | F-107 | ⏳ outstanding | "Emoji here instead of lucid icon. Always use icons." — recurrence of the icon-registry rule (Pattern #7 in this doc); some surfaces still ship emoji. Sweep needed. |
-| `ABM2nBZTJf9W` | F-108 | ⏳ partial fix shipped (PR #131, build 45) — `nutrition-engine` audit found 3 P0 causes: (1) no `maxDuration` on the route, so Vercel killed mid-OpenAI call; (2) bare `catch {}` swallowed every failure into one generic toast; (3) error codes already returned by the route were collapsed client-side. All three fixed: `maxDuration = 60`, `AbortController` + named catch, per-code message map mobile + web. Stays ⏳ for tester re-verify. | "Couldn't analyse this food even though it's pretty clear" |
+| `ABM2nBZTJf9W` | F-108 | ⏳ partial fix shipped (PR #131, the next TestFlight cut) — `nutrition-engine` audit found 3 P0 causes: (1) no `maxDuration` on the route, so Vercel killed mid-OpenAI call; (2) bare `catch {}` swallowed every failure into one generic toast; (3) error codes already returned by the route were collapsed client-side. All three fixed: `maxDuration = 60`, `AbortController` + named catch, per-code message map mobile + web. Stays ⏳ for tester re-verify. | "Couldn't analyse this food even though it's pretty clear" |
 | `AFHtAQRAWad1` | F-109 | ✅ closed by #116 (build 43) | "Can't see how to turn fasting on and off" — added an idle "Start fast" pill on Today (mobile + web), gated on IF opt-in. Tap-to-start / tap-to-end without leaving Today. |
 | `AKzwcchbHQ14` | F-110 | ✅ already shipped 2026-04-30 — screenshot triage (2026-05-07) identified the page as **Recipe Detail** with the old 3-icon-circle layout (Prep / Cook / Servings showing "—" placeholders for missing data). The 2026-04-30 ui-product-designer audit replaced that with a compact single-line `timeStatsRow` + a separate Servings stepper card. Tester report (submitted 2026-05-01 21:38 UTC) predates build 40's upload (22:13 UTC same day), so the screenshot is from build ≤39 — pre-fix. | "Still don't like the layout look of this page" |
 
@@ -90,7 +90,7 @@ Single TestFlight session this morning surfaced 4 distinct food-search + weight-
 | `AGthJykAoNdx` | F-111 | ✅ closed by #117 (build 44) | "Clicking add to add someone to your household doesn't actually work" — full email-targeted invite flow shipped: `household_invites` table + 4 RPCs (send/accept/decline/cancel), `HouseholdInviteSheet` (mobile) + `HouseholdInviteDialog` (web), `ReceivedInvitesBanner` on both platforms. Schema applied 2026-05-07 via `supabase db push --linked`. |
 | `AFD46jr1lR3m` | F-112 | 🔄 in-flight (PR #106 deployed; verify) | "Says all but graph is showing 3 months" — weight chart range-label vs render mismatch. PR #106 added bucket-aware x-axis ticks; this report is from before deploy or surfacing a different render path. Re-verify on build 42. |
 | `AMg4BaMwZWZ8` | F-113 | ✅ closed by #117 (mobile) + #126 (web parity) | "Journey numbers are wrong" — F-126 (mobile) added `observedKgPerWeek` to `projectWeight` so the projection respects observed scale rate. PR #126 mirrored to web's `ProgressDashboard.tsx` where the same callsite was missing the argument. Parity pin test added. |
-| `AHOkMJ8yu5hA` | F-114 | ⏳ comprehensive fix shipped (PRs #129 + #133 + #134, build 45) — every `setLoading(true)` / `setGenerating(true)` path on every visible surface + every HealthKit native-callback wrapper now has a finite-time settle path. Stays ⏳ until tester re-verifies on build 45; if any "stuck" symptom remains, the failure mode is now narrowed to non-HK / non-loader code. | "Gets stuck trying to get more data" |
+| `AHOkMJ8yu5hA` | F-114 | ⏳ comprehensive fix shipped (PRs #129 + #133 + #134, the next TestFlight cut) — every `setLoading(true)` / `setGenerating(true)` path on every visible surface + every HealthKit native-callback wrapper now has a finite-time settle path. Stays ⏳ until tester re-verifies on the next TestFlight cut; if any "stuck" symptom remains, the failure mode is now narrowed to non-HK / non-loader code. | "Gets stuck trying to get more data" |
 | `AGq70YLY1hmZ` | F-115 | ✅ closed by #115 (build 44) | "Current weight is actually 54.3" — HealthKit ingest in `healthSync.ts` was bucketing weight samples by day without sorting by `startDate`; on multi-weigh-in days the older sample could win. Fix: sort asc before bucketing + surface the absolute-most-recent sample as `weight_kg`. |
 | `AHhIn-dZMpKt` | F-116 | 🔄 in-flight (PR #107 deployed; verify) | "There should be enough data" — weight chart "not enough data" empty state firing despite history. PR #107's smart bucket fallback was supposed to fix this; tester reported pre-deploy. Re-verify on build 42. |
 | `ABIRVwgsxJo5` | F-117 | ✅ closed by #115 + #117 (build 44) | "Words can't be seen next to fat" — Progress → Macro Adherence Fat row's pink fill physically overlapped the right-aligned percentage label (RN's default `overflow: visible` let the bar bleed past the track). #115 added `overflow: hidden` + clamped fill to ≤100. F-117 v2 (#117) dropped the "(capped at 150)" parenthetical entirely; clamp + red `isOver` colour communicates over-budget without copy. |
@@ -118,7 +118,7 @@ Walked every ⏳ / 🔄 / 🔍 / 🟠 entry in the tracker. Outcome:
 | F-119 (orange-when-already-verified) | ⏳ | ✅ closed by #115 (build 44) | Confirmed: `applyVerifyJsonToStateAndDb` was the broken write path. It set `source` + `confidence` on per-row updates but never `is_verified`, so ≥0.5-confidence AI rows stayed `is_verified=false`. Fix: include `is_verified: confidence >= 0.5` in per-row payload. |
 | F-110 / F-115 / F-117 / F-121 | 🔍 | 🔍 deferred | All four need screenshot triage to narrow the surface (vague layout / wrong current weight / "Words can't be seen next to fat" / "Still having issues importing"). |
 | F-73 (cortado search relevance + DB coverage) | ⏳ | ⏳ kept | Big work — requires (a) OFF trust-weighting refinement (sibling of F-77 partial fix) and (b) generic-drinks seed expansion. Documented for separate session. |
-| F-74 / F-103 (logged caffeine/alcohol → cards) | ⏳ | ✅ closed by PR #128 (build 45) — see "2026-05-07 — F-74 / F-103 fully closed" entry. Per-meal `micros` is now the canonical SoT; `bumpStimulantsForLoggedMeal*` helpers + ledger-decrement-on-delete deleted as dead code. |
+| F-74 / F-103 (logged caffeine/alcohol → cards) | ⏳ | ✅ closed by PR #128 (the next TestFlight cut) — see "2026-05-07 — F-74 / F-103 fully closed" entry. Per-meal `micros` is now the canonical SoT; `bumpStimulantsForLoggedMeal*` helpers + ledger-decrement-on-delete deleted as dead code. |
 | F-76 (caption-as-title on import) | ⏳ | ⏳ kept | Stricter title-trim rule needed at the import write site (separate from `stripSectionPrefix` which handles ingredient rows). Documented. |
 | F-106 (no "from library" entry on Today / Plan) | ⏳ | ⏳ kept | UX change — needs design pass to decide where the entry point sits without overloading the existing `+` FAB. Documented. |
 | F-108 (AI photo analysis fail) | ⏳ | ⏳ kept | Need server-side logs from the affected request to diagnose. No screenshot ID we can correlate without more info. Documented. |
@@ -163,9 +163,9 @@ Net open items count: ~12 ⏳ + ~4 🔍 + the 6 ✅ that flipped today. Every AS
 | **F-126** | #117 | "Why would it take 5 weeks to lose another .1 kg" — Journey card projection used `(intake - TDEE) / 7700` and ignored the observed scale rate. Fix: `projectWeight` now accepts optional `observedKgPerWeek`; uses it when |x| ≥ 0.05 kg/week AND direction-aligned with the formula. Progress tab passes `timeline.weeklyRateKg`. |
 | **F-129** | #118 | Mirror of F-124 on the Weekly Recap surface — "Building confidence" copy fired despite the engine reporting high confidence. Fix: `buildWeeklyCheckin` now accepts `adaptiveTdeeConfidence`; when "high", skips the `weighInsThisWeek < 3` floor. |
 
-**Items still deferred (kept):** F-108 (partial fix shipped today, awaiting tester re-verify on build 45).
+**Items still deferred (kept):** F-108 (partial fix shipped today, awaiting tester re-verify on the next TestFlight cut).
 
-Net open items count after this sweep: **2 ⏳ items** (F-108 / F-114) + 1 🔍 item (the unmapped 2026-04-19 `AN8GJ1Dr3M` steps/burn). Both ⏳ items have comprehensive fixes shipped pending tester re-verify on build 45. F-110 closed by code-level argument 2026-05-07 — the layout it complained about was replaced 2026-04-30, screenshot predates the fix. F-130 (HK delete doesn't stick) shipped same evening — tombstone fix on build 45.
+Net open items count after this sweep: **2 ⏳ items** (F-108 / F-114) + 1 🔍 item (the unmapped 2026-04-19 `AN8GJ1Dr3M` steps/burn). Both ⏳ items have comprehensive fixes shipped pending tester re-verify on the next TestFlight cut. F-110 closed by code-level argument 2026-05-07 — the layout it complained about was replaced 2026-04-30, screenshot predates the fix. F-130 (HK delete doesn't stick) shipped same evening — tombstone fix on the next TestFlight cut.
 
 `AN8GJ1Dr3M` ("Steps and total burn are wrong for this day"): two unblock paths.
 
@@ -174,7 +174,7 @@ Net open items count after this sweep: **2 ⏳ items** (F-108 / F-114) + 1 🔍 
 
 ---
 
-**2026-05-07 — F-114 HealthKit callback timeouts (PR #134, build 45)**
+**2026-05-07 — F-114 HealthKit callback timeouts (PR #134, the next TestFlight cut)**
 
 The last unguarded F-114 surface from the `performance-optimizer` audit was the HealthKit native-callback layer. `apps/mobile/lib/healthSync.ts` had 14+ `new Promise((resolve, reject) => hk.getX(opts, cb))` wrappers with no timeout — under HK sandbox glitches the native bridge occasionally never invokes its callback, hanging the awaiting promise forever (the screen-level 18s `raceHealth` only protects the dedicated Health Sync screen, not Today / onboarding warmups that also call these wrappers).
 
@@ -182,9 +182,9 @@ Fix: single `withHealthCallbackTimeout<T>(label, exec)` helper (15s cap, sub the
 
 Test: `healthKitCallbackTimeoutContract.test.ts` (3 cases) — pins helper exists, every bare `new Promise((resolve...))` callsite is in an allowed context (one of the two named exceptions), and the helper is invoked at least 15 times.
 
-After this PR every loader on the critical path has a finite-time settle. If a tester report still surfaces "stuck spinner" on build 45, the bug is in code that doesn't currently live on a `setLoading` path — narrows the search significantly.
+After this PR every loader on the critical path has a finite-time settle. If a tester report still surfaces "stuck spinner" on the next TestFlight cut, the bug is in code that doesn't currently live on a `setLoading` path — narrows the search significantly.
 
-**2026-05-07 — F-114 broader stuck-spinner sweep (PR #133, build 45)**
+**2026-05-07 — F-114 broader stuck-spinner sweep (PR #133, the next TestFlight cut)**
 
 `performance-optimizer` audit beyond PR #129's `loadMore` fix surfaced 4 more unguarded `setLoading(true)` / `setGenerating(true)` paths where any rejection stranded the spinner. All wrapped in try/catch/finally:
 
@@ -197,7 +197,7 @@ Test: `stuckSpinnerGuards.test.ts` (10 cases) — pins every surface has ≥1 `}
 
 Remaining unguarded surface: HealthKit sample-fetch native-callback wrappers (`healthSync.ts`). 14+ promises with no callback timeout — if a HK callback never fires, the awaiting promise hangs forever. Separate session: needs a `withHealthCallbackTimeout` helper applied to all wrappers (similar shape to existing `initHealthKitPromiseWithTimeout`). Documented for next pass.
 
-**2026-05-07 — F-74 follow-up + tracker integrity (PR #132, build 45)**
+**2026-05-07 — F-74 follow-up + tracker integrity (PR #132, the next TestFlight cut)**
 
 `repo-auditor` build-45 ground-truth pass surfaced two real residuals from PR #128:
 
@@ -206,7 +206,7 @@ Remaining unguarded surface: HealthKit sample-fetch native-callback wrappers (`h
 
 Plus: cleaned up a stale "kept as scaffolding" comment in `useNutritionJournalState.ts:removeLoggedMeal` that referenced a deleted variable; corrected the older 2026-05-06 sweep table row that still claimed F-74 was "kept ⏳" via the now-deleted `bumpStimulantsForLoggedMeal` helper.
 
-**2026-05-07 — F-108 partial fix shipped (PR #131, build 45)**
+**2026-05-07 — F-108 partial fix shipped (PR #131, the next TestFlight cut)**
 
 `nutrition-engine` audit of the AI photo-log path surfaced 3 P0 causes that explain the tester's "couldn't analyse" complaint without server logs:
 
@@ -218,9 +218,9 @@ Plus: explicit `AbortController` on the route's OpenAI fetch (55s, sub-`maxDurat
 
 Test: `photoLogContract.test.ts` (6 cases) pins `maxDuration ≥ 30`, `AbortController` use, named-catch use, per-code message map on both clients.
 
-F-108 stays ⏳ pending tester re-verify with the new error copy on build 45 — if the user sees a specific code-mapped message ("AI took too long", "AI service had a problem"), we'll know the server isn't unanalyseable and can iterate from there. If the photo really is unanalysable, we now surface "different angle" copy that distinguishes from server failure.
+F-108 stays ⏳ pending tester re-verify with the new error copy on the next TestFlight cut — if the user sees a specific code-mapped message ("AI took too long", "AI service had a problem"), we'll know the server isn't unanalyseable and can iterate from there. If the photo really is unanalysable, we now surface "different angle" copy that distinguishes from server failure.
 
-**2026-05-07 — Detail-pages noise cleanup (PR #138, build 45)**
+**2026-05-07 — Detail-pages noise cleanup (PR #138, the next TestFlight cut)**
 
 UI-critic audit confirmed Grace's "all pages still like this" hunch — the meal-nutrition boilerplate (PR #135) repeats across multiple detail surfaces. P1 batch shipped:
 
@@ -237,7 +237,7 @@ UI-critic audit confirmed Grace's "all pages still like this" hunch — the meal
 - F15 (`—` placeholders for Current / Goal weight) — needs a designer call on whether to collapse the row or render a soft prompt.
 - All web parity checks — flagged for a follow-up grep pass.
 
-**2026-05-07 — F-130 fix shipped (PR #137, build 45)**
+**2026-05-07 — F-130 fix shipped (PR #137, the next TestFlight cut)**
 
 Grace (out-of-band, 2026-05-07): "sometimes when items copy from MyFitnessPal / Apple Health etc. even when I try to delete them, they don't delete. for example if a duplicate entry shows up." The bug: HK sync's dedup logic in `apps/mobile/lib/healthSync.ts:1709` queries `nutrition_entries` for existing rows with `source = 'apple_health'`. When the user deletes a row, it leaves the table — so the next sync sees the same HK sample, finds no row to dedup against, and re-imports it. The "duplicate" reappears every sync.
 
@@ -274,7 +274,7 @@ F-73 (`AKtz5LtrL39b39-CPXdFE08`, "cortado returns Spanish cheese") had been ⏳ 
 
 Tester report `AECfotBlQgwf` predates the 2026-05-01 fix. Closure on code-level argument; no PR needed.
 
-**2026-05-07 — F-114 robustness fix in most-likely-suspect surface (build 45, PR #129)**
+**2026-05-07 — F-114 robustness fix in most-likely-suspect surface (the next TestFlight cut, PR #129)**
 
 `AHOkMJ8yu5hA` ("Gets stuck trying to get more data") doesn't pinpoint a specific surface, but the FoodSearchPanel pagination is the only `onEndReached`-driven loader on either platform. Reading the code surfaced a real bug: the `loadMore` callback had `try/finally` but no `catch`. A throwing `searchFoods` (network failure, session refresh hang, server 5xx) left `hasMoreRef.current = true` while the spinner reset to false. Every subsequent scroll-to-bottom retriggered the failing fetch — the user sees an endless spinner cycle with no explanation.
 
@@ -282,7 +282,7 @@ Fix (mobile + web parity): `try/catch/finally` with the catch setting `hasMoreRe
 
 F-114 stays ⏳ pending tester re-verify on the specific surface. The robustness fix reduces the known stuck-pagination footprint; if the tester's "stuck" was elsewhere (HealthKit historical pull, Progress chart cold-load), a follow-up pass will hunt it.
 
-**2026-05-07 — F-74 / F-103 fully closed (build 45, PR #128)**
+**2026-05-07 — F-74 / F-103 fully closed (the next TestFlight cut, PR #128)**
 
 The double-count bug discovered earlier today is now fixed. Picked **per-meal `micros` as canonical SoT** (deletes self-heal; matches macros pattern). Changes:
 
@@ -445,7 +445,7 @@ Ship rules:
 | Date | ID | Type | Status | Fix / track | Complaint |
 |------|-----|------|--------|-------------|-----------|
 | 2026-04-25 | `AKtz5LtrL39b39-CPXdFE08` | screenshot | ✅ | **F-73** — already shipped 2026-04-27: 30-entry `genericBeverages.ts` matcher (`matchGenericBeverage`) preempts USDA Branded noise at the top of merged search results on both platforms. Covers cortado, flat white, cappuccino, plus 27 more drinks (coffee/tea/milk/juice/wine/beer). | "cortado should have lots of options" |
-| 2026-04-25 | `AN3mTmZK5T2Nhj13aMFLk2E` | screenshot | ✅ | **F-74** — closed by PR #128 (build 45). Picked per-meal `micros` as canonical SoT; removed 7 bump-on-log callsites + 4 decrement-on-delete callsites + 2 dead helpers. Quick-add ledger now holds quick-add only. New `stimulantPerMealCanonicalSot.test.ts` (11 cases) pins behaviour + static contract. | "Alcohol and caffeine should auto update from things logged" |
+| 2026-04-25 | `AN3mTmZK5T2Nhj13aMFLk2E` | screenshot | ✅ | **F-74** — closed by PR #128 (the next TestFlight cut). Picked per-meal `micros` as canonical SoT; removed 7 bump-on-log callsites + 4 decrement-on-delete callsites + 2 dead helpers. Quick-add ledger now holds quick-add only. New `stimulantPerMealCanonicalSot.test.ts` (11 cases) pins behaviour + static contract. | "Alcohol and caffeine should auto update from things logged" |
 | 2026-04-25 | `AO5PEI1xgamOQ-Nx4Gbr8Ok` | screenshot | ✅ | build-42 F-75 → F-98 (closed by #98 + #105) | "Tap meal for full nutrition doesn't show … full nutrition for the meal" |
 | 2026-04-25 | `AFVnLJIVdjQY7bkWyi0AG8A` | screenshot | ✅ | **F-76** — `sanitiseImportedTitle` now wired at every recipe-import response site (web-scrape, social/LLM, HTML-fallback, image, caption). Build 41 only sanitised `meta.title` fallback; build 44 also sanitises `recipe.title` (LLM output) + `parsed.title` (HTML scrape) + `websiteRecipe.title` (JSON-LD). Static-analysis test pins the contract — every route file must call `sanitiseImportedTitle` for each response branch. | "Some recipes pulling in with the whole caption on the title" |
 | 2026-04-24 | `AGSeM-FnnYbZy6FJveUKBoc` | screenshot | 🟡 | **F-71** — coerce zero-macro recipe rows + penalise extreme portion spreads in meal-plan sampler; hydrate relational plan rows | "Portioning is not logical - … double lunch and 0.2 breakfast" |
