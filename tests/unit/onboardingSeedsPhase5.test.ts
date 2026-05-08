@@ -43,16 +43,18 @@ describe("ONBOARDING_SEEDS list shape", () => {
     }
   });
 
-  it("includes the canonical decision-doc slugs", () => {
+  it("includes the canonical Suppr Kitchen slugs (post-2026-05-08 repoint)", () => {
     const slugs = new Set(ONBOARDING_SEEDS.map((s) => s.slug));
-    // Spot-check the canonical 15 list — full list lives in the
-    // decision doc; we pin a representative sample to guard against
-    // accidental rename / dropped row.
-    expect(slugs.has("sheet-pan-harissa-chicken-chickpeas")).toBe(true);
-    expect(slugs.has("miso-salmon-greens")).toBe(true);
-    expect(slugs.has("lentil-bolognese")).toBe(true);
-    expect(slugs.has("greek-yogurt-overnight-oats-berries")).toBe(true);
-    expect(slugs.has("korean-chicken-rice-bowl")).toBe(true);
+    // Spot-check the canonical 15 list — repointed at the new Suppr
+    // Kitchen library on 2026-05-08 after the prior 15 titles were
+    // wiped by 20260514100000_replace_recipes_with_suppr_kitchen.sql.
+    // Pin a representative sample across breakfast / omnivore / vegan
+    // / pescatarian so an accidental rename or dropped row trips here.
+    expect(slugs.has("berry-overnight-oats")).toBe(true);
+    expect(slugs.has("mediterranean-chicken-bowl")).toBe(true);
+    expect(slugs.has("chickpea-coconut-curry")).toBe(true);
+    expect(slugs.has("lentil-soup")).toBe(true);
+    expect(slugs.has("salmon-teriyaki-bowl")).toBe(true);
   });
 
   it("hits the decision-doc coverage shape (≥4 GF, ≥3 vegan, ≥1 batch-cook)", () => {
@@ -86,11 +88,12 @@ describe("filterOnboardingSeeds — diet filter", () => {
   });
 
   it("falls back to the full list when vegan filter has < threshold matches", () => {
-    // The core 15 carries 4 vegan seeds (black bean chilli, tofu soba,
-    // chickpea curry, lentil bolognese). 4 < SEED_FILTER_FALLBACK_THRESHOLD
-    // (6) so the filter falls back to the unfiltered list rather than
-    // surface a too-thin picker. The fallback is by design — better
-    // than empty per the candidate-source decision.
+    // 2026-05-08 repoint — the new core 15 carries 3 vegan seeds
+    // (chickpea coconut curry, lentil soup, quinoa power bowl).
+    // 3 < SEED_FILTER_FALLBACK_THRESHOLD (6) so the filter falls back
+    // to the unfiltered list rather than surface a too-thin picker.
+    // The fallback is by design — better than empty per the
+    // candidate-source decision.
     const r = filterOnboardingSeeds(ONBOARDING_SEEDS, { diet: ["vegan"] });
     expect(r).toEqual(ONBOARDING_SEEDS);
   });
