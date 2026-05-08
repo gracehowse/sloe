@@ -349,10 +349,11 @@ export default function TrackerScreen() {
   const [byDay, setByDay] = useState<ByDay>({});
   const [hydrated, setHydrated] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  // Pattern #9 (`AN8GJ1Dr3M`, 2026-05-08): WhereThisComesFromSheet
-  // visibility + last-sync timestamp. Read once on first sheet open
-  // so we don't re-touch AsyncStorage on every render.
-  const [activityProvenanceOpen, setActivityProvenanceOpen] = useState(false);
+  // Pattern #9 (`AN8GJ1Dr3M` + F-131 `AMmlpVOqMnaKKdV2dobjjjg`, 2026-05-08):
+  // WhereThisComesFromSheet visibility + last-sync timestamp. One sheet
+  // shared across the activity card + burn card; the context decides
+  // headline + range copy. `null` = closed.
+  const [provenanceContext, setProvenanceContext] = useState<"activity" | "burn" | null>(null);
   const [healthLastSyncedAtMs, setHealthLastSyncedAtMs] = useState<number | null>(null);
   const [collapsedSlots, setCollapsedSlots] = useState<Set<string>>(new Set());
   const [title, setTitle] = useState("");
@@ -4771,7 +4772,7 @@ export default function TrackerScreen() {
               // first open so the AsyncStorage read doesn't run on
               // every Today render.
               void loadHealthLastSyncedAt().then(setHealthLastSyncedAtMs);
-              setActivityProvenanceOpen(true);
+              setProvenanceContext("activity");
             }}
             styles={styles}
             textColor={colors.text}
@@ -4811,6 +4812,14 @@ export default function TrackerScreen() {
             byDay={byDay}
             weekSummaryMode={weekSummaryMode}
             onOpenBurnDetail={() => router.push({ pathname: "/burn-detail", params: { date: dayKey } } as any)}
+            onShowBurnProvenance={() => {
+              // F-131 (2026-05-08): same WhereThisComesFromSheet, burn
+              // context — headline switches to burn breakdown, range
+              // is the same Today-window string the activity sheet
+              // uses.
+              void loadHealthLastSyncedAt().then(setHealthLastSyncedAtMs);
+              setProvenanceContext("burn");
+            }}
             maintenanceTdeeKcal={profileMaintenanceTdeeKcal}
             profileSex={profileSex}
             profileWeightKg={profileWeightKg}
@@ -5188,25 +5197,70 @@ export default function TrackerScreen() {
       />
 
       {targetCelebration && (
+        // F-139 (`ACyWRLx2M-_D9t2jdcNjmaU`, 2026-05-08): Grace flagged
+        // the previous solid-purple banner as "looks cheap" — the
+        // 88%-opacity Accent.primary block fully obscured the calorie
+        // ring it was meant to celebrate. Redesigned as a polished
+        // toast: white card + subtle green accent border + inline
+        // checkmark icon + soft shadow. Sits at the top of the screen
+        // (under the safe-area inset) instead of dead-center over the
+        // ring, so the user can still see what they hit.
         <View
           pointerEvents="none"
-          style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center", zIndex: 50 }}
+          style={{
+            position: "absolute",
+            top: insets.top + Spacing.lg,
+            left: 0,
+            right: 0,
+            alignItems: "center",
+            zIndex: 50,
+          }}
         >
           <View
             style={{
-              backgroundColor: Accent.primary + "E8",
-              paddingHorizontal: Spacing.xxl,
-              paddingVertical: Spacing.lg,
+              backgroundColor: colors.card,
+              borderWidth: 1,
+              borderColor: Accent.success + "60",
+              paddingHorizontal: Spacing.lg,
+              paddingVertical: Spacing.md,
               borderRadius: Radius.lg,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: Spacing.sm,
               maxWidth: "88%",
+              shadowColor: "#000",
+              shadowOpacity: 0.12,
+              shadowRadius: 12,
+              shadowOffset: { width: 0, height: 4 },
+              elevation: 4,
             }}
           >
-            <Text style={{ fontSize: 18, fontWeight: "800", color: "#fff", textAlign: "center" }}>
-              Goals hit!
-            </Text>
-            <Text style={{ fontSize: 13, fontWeight: "600", color: "#fff", textAlign: "center", marginTop: 4, opacity: 0.95 }}>
-              Calories and protein targets met for today
-            </Text>
+            <Ionicons
+              name="checkmark-circle"
+              size={22}
+              color={Accent.success}
+            />
+            <View style={{ flexShrink: 1 }}>
+              <Text
+                style={{
+                  fontSize: 15,
+                  fontWeight: "700",
+                  color: colors.text,
+                }}
+              >
+                Goals hit
+              </Text>
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontWeight: "500",
+                  color: colors.textSecondary,
+                  marginTop: 2,
+                }}
+              >
+                Calories and protein on target
+              </Text>
+            </View>
           </View>
         </View>
       )}
@@ -5614,27 +5668,43 @@ export default function TrackerScreen() {
         }}
       />
 
-      {/* Pattern #9 (`AN8GJ1Dr3M`, 2026-05-08): "Where this comes
-          from" provenance sheet for the Today steps + activity card.
-          Triggered by the small info icon on the card header. */}
+      {/* Pattern #9 (`AN8GJ1Dr3M` + F-131 `AMmlpVOqMnaKKdV2dobjjjg`,
+          2026-05-08): "Where this comes from" provenance sheet —
+          shared between the Today activity card (steps + active
+          energy) and the Today burn-summary card. Headline + footer
+          copy derive from `provenanceContext`. */}
       <WhereThisComesFromSheet
-        visible={activityProvenanceOpen}
-        onClose={() => setActivityProvenanceOpen(false)}
+        visible={provenanceContext != null}
+        onClose={() => setProvenanceContext(null)}
         headline={(() => {
+          if (provenanceContext === "burn") {
+            const total = (basalBurnKcal + (activityBurnKcal ?? 0)).toLocaleString();
+            const active = (activityBurnKcal ?? 0).toLocaleString();
+            const resting = basalBurnKcal.toLocaleString();
+            return `${total} kcal · Active ${active} · Resting ${resting}`;
+          }
           const stepsStr = stepsCount != null ? stepsCount.toLocaleString() : "—";
           const burnStr = activityBurnKcal != null ? `${activityBurnKcal.toLocaleString()} kcal active` : "—";
           return `${stepsStr} steps · ${burnStr}`;
         })()}
-        source="Apple Health"
+        source={
+          provenanceContext === "burn"
+            ? "Apple Health (active) + estimate (resting)"
+            : "Apple Health"
+        }
         range={isToday ? `Today, 00:00 – ${new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}` : `${formatDateLabel(selectedDate)}, full day`}
         lastSyncedAtMs={healthLastSyncedAtMs}
-        footerExplainer="Numbers update when Apple Health does. Pull to refresh on Today, or tap Sync now to force a fresh read."
+        footerExplainer={
+          provenanceContext === "burn"
+            ? "Active energy comes from Apple Watch / iPhone motion. Resting is your baseline burn — Apple Health when published, otherwise an estimate from your profile (Mifflin-St Jeor)."
+            : "Numbers update when Apple Health does. Pull to refresh on Today, or tap Sync now to force a fresh read."
+        }
         primaryCta={
           userId
             ? {
                 label: "Sync now",
                 onPress: () => {
-                  setActivityProvenanceOpen(false);
+                  setProvenanceContext(null);
                   void syncHealthDataThrottled(userId, { bypassThrottle: true }).then(() => {
                     void loadHealthLastSyncedAt().then(setHealthLastSyncedAtMs);
                   });

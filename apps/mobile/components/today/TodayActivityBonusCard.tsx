@@ -78,6 +78,18 @@ export interface TodayActivityBonusCardProps {
    */
   maintenanceSource?: MaintenanceSource | null;
   maintenanceConfidence?: MaintenanceConfidence;
+  /**
+   * F-131 (`AMmlpVOqMnaKKdV2dobjjjg`, 2026-05-08): tap-to-explain
+   * affordance for the burn-summary row. When provided, renders a
+   * small Info icon next to the "{N} kcal burned so far" text and
+   * fires this on tap. Host opens the WhereThisComesFromSheet with
+   * burn-specific headline + breakdown rows. The existing
+   * `onOpenBurnDetail` (which routes to /burn-detail) remains the
+   * tap target for the row itself; the info icon is the explain-in-
+   * place affordance Grace asked for ("would be helpful to click on
+   * here and see what it's made up of").
+   */
+  onShowBurnProvenance?: () => void;
 }
 
 export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
@@ -97,6 +109,7 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
     byDay,
     weekSummaryMode,
     onOpenBurnDetail,
+    onShowBurnProvenance,
     styles,
     textColor,
     textSecondaryColor,
@@ -284,6 +297,27 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
               <Text style={{ fontSize: 13, fontWeight: "700", color: textColor }}>
                 {(basalBurnKcal + (activityBurnKcal ?? 0)).toLocaleString()} kcal {isToday ? "burned so far" : "burned"}
               </Text>
+              {/* F-131 — small Info icon. Stops the row press from
+                  bubbling so the user gets explain-in-place rather
+                  than navigating to /burn-detail. */}
+              {onShowBurnProvenance ? (
+                <Pressable
+                  onPress={(e) => {
+                    e.stopPropagation?.();
+                    onShowBurnProvenance();
+                  }}
+                  hitSlop={12}
+                  accessibilityRole="button"
+                  accessibilityLabel="Where this number comes from"
+                  testID="today-burn-provenance-info"
+                >
+                  <Ionicons
+                    name="information-circle-outline"
+                    size={14}
+                    color={textTertiaryColor}
+                  />
+                </Pressable>
+              ) : null}
             </View>
             <View style={{ flexDirection: "row", gap: Spacing.md }}>
               {(activityBurnKcal ?? 0) > 0 && (
