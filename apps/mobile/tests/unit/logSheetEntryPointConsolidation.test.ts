@@ -103,8 +103,14 @@ describe("LogSheet web wiring (NutritionTracker + raised tab-bar button)", () =>
     expect(trackerSrc).toMatch(
       /trackerSearchParams\.get\(["']openLog["']\)/,
     );
+    // Early return when not the deep-link, then set the sheet open.
+    // 2026-05-08 build-47 follow-up: a `setMealSlot(slotForHour(...))`
+    // reset now sits between the early-return and `setLogSheetOpen(true)`
+    // so the LogSheet header + pick-handlers default to time-of-day.
+    // Allow that line in the gap; the slot-reset behaviour is pinned
+    // separately in `logSheetSlotHonouredWeb.test.ts`.
     expect(trackerSrc).toMatch(
-      /if\s*\(openLogParam\s*!==\s*["']1["']\)\s*return;\s*\n\s*setLogSheetOpen\(true\)/,
+      /if\s*\(openLogParam\s*!==\s*["']1["']\)\s*return;[\s\S]{0,400}setLogSheetOpen\(true\)/,
     );
     expect(trackerSrc).toMatch(/params\.delete\(["']openLog["']\)/);
   });
