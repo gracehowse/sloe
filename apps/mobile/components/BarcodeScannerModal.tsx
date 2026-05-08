@@ -16,6 +16,8 @@ import {
   View,
 } from "react-native";
 import { useCameraPermissions } from "expo-camera";
+import * as ImagePicker from "expo-image-picker";
+import Constants from "expo-constants";
 import { BarcodeCameraView } from "@/components/BarcodeCameraView";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -25,6 +27,11 @@ import { lookupBarcode, scaleMacros, submitFoodCorrection, type BarcodeProduct }
 import { scaleCorrectionToPer100g, type CorrectionBasis } from "@/lib/barcodeCorrection";
 import { useAuth } from "@/context/auth";
 import { clampRememberedToServingOptions, getRememberedPortion, recordPortion } from "@/lib/barcodePortionMemory";
+
+// Resolve the API origin once. Suppr's mobile app talks to the same
+// Vercel-hosted Next.js routes the web client uses.
+const API_BASE: string =
+  (Constants.expoConfig?.extra?.supprApiUrl as string | undefined) ?? "https://suppr-club.com";
 
 type Props = {
   visible: boolean;
@@ -99,6 +106,12 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
   // (e.g. Atwater off by >30%, sugar > carbs, etc.). Surfaced inline so
   // the user can fix and re-submit instead of getting silent failure.
   const [corrBlockReasons, setCorrBlockReasons] = useState<string[] | null>(null);
+  // 2026-05-08 build-45 follow-up — "Snap the label instead" now hits
+  // /api/nutrition/scan-label, pre-fills the correction form, and routes
+  // through Phase 2 plausibility + writes to user_foods. Loading +
+  // error states surfaced inline in the not-found empty state.
+  const [scanLabelLoading, setScanLabelLoading] = useState(false);
+  const [scanLabelError, setScanLabelError] = useState<string | null>(null);
   // F-20 (2026-04-19, TestFlight `AIOek8w6GKW5DdY1XK9avkE`) — many
   // products only list nutrition per serving (e.g. PBfit: per 16 g). The
   // tester typed per-serving numbers into a form that silently stored
@@ -357,6 +370,7 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
     setCorrectionMode(false);
     setCorrSubmitted(false);
     setCorrBlockReasons(null);
+    setScanLabelError(null);
     setGramsInput("100");
     setRememberedPortion(null);
   }, []);
@@ -369,6 +383,7 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
     setCorrectionMode(false);
     setCorrSubmitted(false);
     setCorrBlockReasons(null);
+    setScanLabelError(null);
     setGramsInput("100");
     setRememberedPortion(null);
     onClose();
@@ -381,6 +396,130 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
     setCorrectionMode(false);
     setGramsInput("100");
   }, []);
+
+  // 2026-05-08 build-45 follow-up — "Snap the label instead" handler.
+  // Captures a photo, posts to /api/nutrition/scan-label, pre-fills
+  // the correctionMode form fields with extracted per-100g values,
+  // and switches into correctionMode. The user reviews and taps Save
+  // Correction, which routes through Phase 2 plausibility + writes
+  // to user_foods (so the next scan of this barcode hits the canonical
+  // table or the user's own pending row instead of failing again).
+  const handleSnapLabel = useCallback(async () => {
+    if (!scanned || !userId) return;
+    setScanLabelError(null);
+    // Camera permission is granted via the barcode camera already, but
+    // ImagePicker uses its own permission. Ask politely.
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) {
+      setScanLabelError("Camera permission needed to snap the label.");
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: false,
+      quality: 0.85,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    });
+    if (result.canceled || !result.assets?.[0]?.uri) return;
+
+    setScanLabelLoading(true);
+    try {
+      const asset = result.assets[0];
+      const fd = new FormData();
+      // RN's FormData wants a `{ uri, name, type }` object, not a Blob.
+      // Casting to `any` is the established pattern across the codebase
+      // for this RN-native FormData shape.
+      fd.append(
+        "image",
+        ({
+          uri: asset.uri,
+          name: "label.jpg",
+          type: asset.mimeType ?? "image/jpeg",
+        } as unknown) as Blob,
+      );
+      fd.append("barcode", scanned);
+
+      const { supabase } = await import("@/lib/supabase");
+      const { data: sess } = await supabase.auth.getSession();
+      const accessToken = sess.session?.access_token;
+
+      const ac = new AbortController();
+      const clientTimeout = setTimeout(() => ac.abort(), 50_000);
+      let resp: Response;
+      try {
+        resp = await fetch(`${API_BASE}/api/nutrition/scan-label`, {
+          method: "POST",
+          body: fd,
+          signal: ac.signal,
+          headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+        });
+      } finally {
+        clearTimeout(clientTimeout);
+      }
+      const data = await resp.json().catch(() => null);
+      if (!resp.ok || !data?.ok) {
+        const msg =
+          (typeof data?.message === "string" && data.message) ||
+          "Couldn't read the label. Try a sharper, well-lit photo of the nutrition panel.";
+        setScanLabelError(msg);
+        return;
+      }
+
+      // Pre-fill the correctionMode form with extracted per-100g values.
+      setCorrName(typeof data.name === "string" && data.name ? data.name : "");
+      setCorrBasis("per100g");
+      setCorrServingG(
+        data.servingSizeG != null ? String(Math.round(Number(data.servingSizeG))) : "",
+      );
+      setCorrCalories(String(Math.round(Number(data.calories) || 0)));
+      setCorrProtein(String(Math.round((Number(data.protein) || 0) * 10) / 10));
+      setCorrCarbs(String(Math.round((Number(data.carbs) || 0) * 10) / 10));
+      setCorrFat(String(Math.round((Number(data.fat) || 0) * 10) / 10));
+      setCorrFiber(String(Math.round((Number(data.fiberG) || 0) * 10) / 10));
+      setCorrSugar(
+        data.sugarG != null && Number(data.sugarG) > 0
+          ? String(Math.round(Number(data.sugarG) * 10) / 10)
+          : "",
+      );
+      setCorrSodium(
+        data.sodiumMg != null && Number(data.sodiumMg) > 0
+          ? String(Math.round(Number(data.sodiumMg)))
+          : "",
+      );
+      setCorrSatFat(
+        data.saturatedFatG != null && Number(data.saturatedFatG) > 0
+          ? String(Math.round(Number(data.saturatedFatG) * 10) / 10)
+          : "",
+      );
+      // Mock the not-found product into a draft so the form can render
+      // (correctionMode requires `product` to be non-null).
+      setProduct({
+        name: typeof data.name === "string" && data.name ? data.name : "Scanned product",
+        calories: Math.round(Number(data.calories) || 0),
+        protein: Math.round((Number(data.protein) || 0) * 10) / 10,
+        carbs: Math.round((Number(data.carbs) || 0) * 10) / 10,
+        fat: Math.round((Number(data.fat) || 0) * 10) / 10,
+        fiberG: Math.round((Number(data.fiberG) || 0) * 10) / 10,
+        servingSizeG: Number(data.servingSizeG) || 100,
+      });
+      setError(null);
+      setCorrectionMode(true);
+
+      try {
+        track(AnalyticsEvents.barcode_scan_label_succeeded, {
+          confidence: typeof data.confidence === "string" ? data.confidence : "unknown",
+          platform: "ios",
+        });
+      } catch {
+        /* noop */
+      }
+    } catch {
+      setScanLabelError(
+        "Couldn't reach the AI service. Check your connection and try again.",
+      );
+    } finally {
+      setScanLabelLoading(false);
+    }
+  }, [scanned, userId]);
 
   const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
@@ -737,27 +876,46 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
                       ? "We don't have this product yet."
                       : error}
                   </Text>
-                  {/* F-136: 3-CTA decision fatigue — "Snap the label"
-                      (primary, recommended), "Enter manually" (kept as
-                      secondary text-link below). "Scan again" demoted
-                      to a tertiary chevron-style link since the user
-                      already knows the barcode wasn't found, and
-                      re-scanning the same item won't help. */}
-                  {onPhotoFallback ? (
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Snap the label instead"
-                      testID="barcode-not-found-photo-fallback"
-                      style={styles.photoFallbackBtn}
-                      onPress={() => {
-                        onReset();
-                        onPhotoFallback();
+                  {/* F-136 + 2026-05-08 build-45 follow-up — "Snap the
+                      label instead" now hits /api/nutrition/scan-label
+                      and pre-fills the Correct-Product form so the
+                      contribution actually persists to user_foods.
+                      Pre-fix it routed through onPhotoFallback (photo-
+                      log meal-estimator) which never wrote to the
+                      database — same barcode would fail next scan. */}
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Snap the label instead"
+                    testID="barcode-not-found-photo-fallback"
+                    style={[
+                      styles.photoFallbackBtn,
+                      scanLabelLoading && { opacity: 0.7 },
+                    ]}
+                    onPress={handleSnapLabel}
+                    disabled={scanLabelLoading}
+                  >
+                    {scanLabelLoading ? (
+                      <ActivityIndicator color="#fff" size="small" />
+                    ) : (
+                      <Ionicons name="camera" size={18} color="#fff" />
+                    )}
+                    <Text style={styles.photoFallbackBtnText}>
+                      {scanLabelLoading ? "Reading label..." : "Snap the label instead"}
+                    </Text>
+                  </Pressable>
+                  {scanLabelError && (
+                    <Text
+                      accessibilityLiveRegion="polite"
+                      style={{
+                        color: Accent.destructive,
+                        fontSize: 12,
+                        textAlign: "center",
+                        paddingTop: Spacing.sm,
                       }}
                     >
-                      <Ionicons name="camera" size={18} color="#fff" />
-                      <Text style={styles.photoFallbackBtnText}>Snap the label instead</Text>
-                    </Pressable>
-                  ) : null}
+                      {scanLabelError}
+                    </Text>
+                  )}
                   <Pressable
                     onPress={() => setManualMode(true)}
                     accessibilityRole="button"

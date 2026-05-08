@@ -33,6 +33,20 @@ vi.mock("expo-camera", () => ({
   ],
 }));
 
+// 2026-05-08 build-45 follow-up: BarcodeScannerModal now imports
+// expo-image-picker (for handleSnapLabel) and expo-constants (for
+// API base URL). Stub both so the JSDOM test environment doesn't
+// error on `__DEV__` from expo-modules-core.
+vi.mock("expo-image-picker", () => ({
+  requestCameraPermissionsAsync: vi.fn(async () => ({ granted: true })),
+  launchCameraAsync: vi.fn(async () => ({ canceled: true, assets: null })),
+  MediaTypeOptions: { Images: "Images" },
+}));
+
+vi.mock("expo-constants", () => ({
+  default: { expoConfig: { extra: { supprApiUrl: "https://test.local" } } },
+}));
+
 vi.mock("@/components/BarcodeCameraView", () => ({
   BarcodeCameraView: ({
     onBarcodeScanned,
@@ -121,7 +135,14 @@ describe("BarcodeScannerModal — not-found photo fallback", () => {
     });
   });
 
-  it("fires onPhotoFallback when the user taps 'Snap the label instead'", async () => {
+  it("opens the camera (not the legacy onPhotoFallback) when 'Snap the label instead' is tapped", async () => {
+    // 2026-05-08 build-45 follow-up: the CTA used to fire onPhotoFallback
+    // (PhotoLogSheet → meal-log estimator → never wrote to user_foods).
+    // It now invokes handleSnapLabel which captures via ImagePicker and
+    // posts to /api/nutrition/scan-label so the contribution actually
+    // persists. This test asserts launchCameraAsync gets called and the
+    // legacy onPhotoFallback is NOT (would route through the dead path).
+    const ImagePicker = await import("expo-image-picker");
     lookupBarcode.mockResolvedValue(null);
     const onPhotoFallback = vi.fn();
     const { getByTestId } = render(
@@ -138,13 +159,19 @@ describe("BarcodeScannerModal — not-found photo fallback", () => {
     await waitFor(() => {
       expect(getByTestId("barcode-not-found-photo-fallback")).toBeTruthy();
     });
-    fireEvent.press(getByTestId("barcode-not-found-photo-fallback"));
-    expect(onPhotoFallback).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      fireEvent.press(getByTestId("barcode-not-found-photo-fallback"));
+    });
+    expect(ImagePicker.launchCameraAsync).toHaveBeenCalled();
+    expect(onPhotoFallback).not.toHaveBeenCalled();
   });
 
-  it("hides the photo-fallback CTA when the host hasn't wired onPhotoFallback (legacy path)", async () => {
+  it("CTA always renders (post-build-45 the host doesn't need to opt in via onPhotoFallback)", async () => {
+    // Pre-build-45: button gated on `onPhotoFallback ? <btn> : null`.
+    // Post-build-45: CTA is unconditional because the new handler is
+    // self-contained inside the modal (no host callback required).
     lookupBarcode.mockResolvedValue(null);
-    const { getByTestId, queryByTestId } = render(
+    const { getByTestId } = render(
       <BarcodeScannerModal
         visible
         onScan={() => {}}
@@ -155,7 +182,7 @@ describe("BarcodeScannerModal — not-found photo fallback", () => {
       fireEvent.press(getByTestId("barcode-trigger"));
     });
     await waitFor(() => {
-      expect(queryByTestId("barcode-not-found-photo-fallback")).toBeNull();
+      expect(getByTestId("barcode-not-found-photo-fallback")).toBeTruthy();
     });
   });
 
