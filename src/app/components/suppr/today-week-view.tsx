@@ -296,7 +296,10 @@ export function TodayWeekView({
 
       <div className="rounded-card bg-card border border-border p-4">
         <p className="text-sm font-semibold text-foreground mb-2">Steps & water</p>
-        <p className="text-[10px] text-muted-foreground mb-3">Each column: steps vs goal (top), water vs goal (bottom). Tap a day to open it.</p>
+        {/* 2026-05-08 ui-critic F8 web parity: kept the legend (it disambiguates
+            two stacked metrics that share columns); dropped the "Tap a day to open
+            it" suffix — the day columns are visibly clickable. */}
+        <p className="text-[10px] text-muted-foreground mb-3">Each column: steps vs goal (top), water vs goal (bottom).</p>
         <div className="flex gap-1 items-end">
           {days.map((day) => {
             const stepPct =

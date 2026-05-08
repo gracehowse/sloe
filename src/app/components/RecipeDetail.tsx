@@ -2066,26 +2066,36 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
               ))}
             </div>
 
-            {/* Micronutrient bars — real data from ingredients */}
-            <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Micronutrients</h4>
-              {[
-                { name: "Fiber", pct: Math.min(100, Math.round((scaledMicros.fiberG / 28) * 100)), value: `${scaledMicros.fiberG}g` },
-                { name: "Sugar", pct: Math.min(100, Math.round((scaledMicros.sugarG / 50) * 100)), value: `${scaledMicros.sugarG}g` },
-                { name: "Sodium", pct: Math.min(100, Math.round((scaledMicros.sodiumMg / 2300) * 100)), value: `${scaledMicros.sodiumMg}mg` },
-              ].map((micro) => (
-                <div key={micro.name} className="flex items-center gap-3">
-                  <span className="text-xs text-foreground w-20 shrink-0">{micro.name}</span>
-                  <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all duration-500"
-                      style={{ width: `${micro.pct}%`, backgroundColor: "var(--macro-calories)" }}
-                    />
-                  </div>
-                  <span className="text-[11px] text-muted-foreground tabular-nums w-12 text-right">{micro.value}</span>
+            {/* Micronutrient bars — real data from ingredients.
+                2026-05-08 ui-critic F4 web parity: hide rows for missing
+                values (>0 only) instead of rendering bare "0g" / "0mg"
+                with a full progress bar (reads as "this recipe has zero
+                fiber" not "we don't know yet"). */}
+            {(() => {
+              const microRows = [
+                { name: "Fiber", pct: Math.min(100, Math.round((scaledMicros.fiberG / 28) * 100)), value: `${scaledMicros.fiberG}g`, raw: scaledMicros.fiberG },
+                { name: "Sugar", pct: Math.min(100, Math.round((scaledMicros.sugarG / 50) * 100)), value: `${scaledMicros.sugarG}g`, raw: scaledMicros.sugarG },
+                { name: "Sodium", pct: Math.min(100, Math.round((scaledMicros.sodiumMg / 2300) * 100)), value: `${scaledMicros.sodiumMg}mg`, raw: scaledMicros.sodiumMg },
+              ].filter((row) => row.raw > 0);
+              if (microRows.length === 0) return null;
+              return (
+                <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Micronutrients</h4>
+                  {microRows.map((micro) => (
+                    <div key={micro.name} className="flex items-center gap-3">
+                      <span className="text-xs text-foreground w-20 shrink-0">{micro.name}</span>
+                      <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{ width: `${micro.pct}%`, backgroundColor: "var(--macro-calories)" }}
+                        />
+                      </div>
+                      <span className="text-[11px] text-muted-foreground tabular-nums w-12 text-right">{micro.value}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              );
+            })()}
           </div>
         )}
 
