@@ -153,12 +153,29 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
   // true label like "1 cup (240 g)".
   const GENERIC_1_SERVING_LABEL = /^1\s+serving\s*\(\s*\d+(?:\.\d+)?\s*g\s*\)\s*$/i;
 
+  // F-135 (`ADU-JU-1zRIm2WQBeovKEjA`, 2026-05-08): "11.33 rice papers"
+  // chip uses absurd decimal precision. When the leading number on a
+  // count label has a small fractional residual (e.g. 11.03 / 11.97),
+  // collapse to the integer. Keeps meaningful halves (1.5 cups,
+  // 0.5 tablespoon) intact via the > 0.1 && < 0.9 guard.
+  const TIDY_COUNT_LABEL_RE = /^(\d+)\.(\d+)(\s+\S.*)$/;
+  const tidyDecimalCount = useCallback((label: string): string => {
+    const m = TIDY_COUNT_LABEL_RE.exec(label.trim());
+    if (!m) return label;
+    const intPart = Number(m[1]);
+    const frac = Number(`0.${m[2]}`);
+    if (!Number.isFinite(intPart) || !Number.isFinite(frac)) return label;
+    if (frac < 0.1) return `${intPart}${m[3]}`;
+    if (frac > 0.9) return `${intPart + 1}${m[3]}`;
+    return label;
+  }, []);
+
   const displayServingLabel = useCallback((label: string, grams: number): string => {
     if (GENERIC_1_SERVING_LABEL.test(label.trim())) {
       return `${Math.round(grams)} g`;
     }
-    return label;
-  }, []);
+    return tidyDecimalCount(label);
+  }, [tidyDecimalCount]);
 
   const portionSummary = useMemo(() => {
     const opts = product?.servingOptions ?? [];
@@ -369,7 +386,10 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
       borderColor: Accent.primary + "80",
       borderRadius: Radius.lg,
     },
-    resultArea: { minHeight: 200, padding: Spacing.xl },
+    // F-134 (2026-05-08): when the camera collapses on result, the
+    // resultArea takes over the freed space so content doesn't float
+    // at the top of the screen with a big empty void below.
+    resultArea: { flex: 1, minHeight: 200, padding: Spacing.xl },
     lookupText: { color: colors.textSecondary, fontSize: 14 },
     errorText: { color: colors.textSecondary, fontSize: 14, textAlign: "center" },
     retryBtn: {
@@ -563,16 +583,31 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
           </View>
         ) : (
           <>
-            <View style={styles.cameraWrap}>
-              <BarcodeCameraView
-                style={styles.camera}
-                facing="back"
-                barcodeScannerEnabled={!scanned}
-                barcodeScannerSettings={{ barcodeTypes: ["ean13", "ean8", "upc_a", "upc_e"] }}
-                onBarcodeScanned={scanned ? undefined : onBarcode}
-              />
-              <View style={styles.scanFrame} />
-            </View>
+            {/*
+              F-134 (`AH2YKLI84Fc` + 3 siblings, 2026-05-08): hide the
+              camera + scanFrame entirely when there's any result state
+              (loading / error / product / manualMode / correctionMode).
+              Pre-fix the camera kept rendering as a thin strip when the
+              productCard pushed up; the absolute-positioned `scanFrame`
+              (top:25%, height:50% of cameraWrap) became a tiny floating
+              rounded rectangle above the result — Grace called this
+              "everything is overlapping and ugly" on 4 of 11 build-44
+              screenshots. Once the user has a result, the camera adds
+              no value (scanning is disabled via `!scanned`); collapsing
+              the area gives the result the full surface.
+            */}
+            {!scanned && !manualMode && !correctionMode && (
+              <View style={styles.cameraWrap}>
+                <BarcodeCameraView
+                  style={styles.camera}
+                  facing="back"
+                  barcodeScannerEnabled={!scanned}
+                  barcodeScannerSettings={{ barcodeTypes: ["ean13", "ean8", "upc_a", "upc_e"] }}
+                  onBarcodeScanned={scanned ? undefined : onBarcode}
+                />
+                <View style={styles.scanFrame} />
+              </View>
+            )}
 
             <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
             <View style={styles.resultArea}>
@@ -585,27 +620,32 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
 
               {error && !manualMode && (
                 <View style={styles.centered}>
-                  <Ionicons name="alert-circle" size={32} color={Accent.destructive} />
-                  {/* Audit 2026-04-30 — friendlier "not found" copy.
-                      `error` from `lookupBarcode` is the only surface
-                      that drives this branch and only carries the
-                      single literal "Product not found in database.";
-                      we replace it inline with a softer line so the
-                      empty state doesn't read like a failure. The
-                      raw error string is still shown to anyone hitting
-                      a future variant ("Network failed", etc.) so we
-                      don't accidentally bury real diagnostics. */}
+                  {/* F-136 (`AG5LqMGUpER2Gqi5N03_ytc`, 2026-05-08): the
+                      "Product not found" branch isn't a real error — it
+                      surfaces information ("we don't have this in our
+                      DB yet"). Pre-fix used red `alert-circle` icon,
+                      which read as a failure to the tester. Use a
+                      neutral information icon for the not-found case;
+                      keep the red destructive icon for genuine
+                      errors (network, etc.) where the raw `error`
+                      string is shown. */}
+                  {error === "Product not found in database." ? (
+                    <Ionicons name="search-outline" size={32} color={Accent.primary} />
+                  ) : (
+                    <Ionicons name="alert-circle" size={32} color={Accent.destructive} />
+                  )}
+                  {/* Audit 2026-04-30 — friendlier "not found" copy. */}
                   <Text style={styles.errorText}>
                     {error === "Product not found in database."
                       ? "We don't have this product yet."
                       : error}
                   </Text>
-                  {/* Audit 2026-04-30 (Lose It "Closer" parity, Fix 2)
-                      — when the host wires `onPhotoFallback`, the
-                      photo CTA becomes primary and manual entry
-                      demotes to secondary. PhotoLogSheet's vision
-                      parser handles label text well, so this turns a
-                      dead-end into a soft handoff. */}
+                  {/* F-136: 3-CTA decision fatigue — "Snap the label"
+                      (primary, recommended), "Enter manually" (kept as
+                      secondary text-link below). "Scan again" demoted
+                      to a tertiary chevron-style link since the user
+                      already knows the barcode wasn't found, and
+                      re-scanning the same item won't help. */}
                   {onPhotoFallback ? (
                     <Pressable
                       accessibilityRole="button"
@@ -613,8 +653,6 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
                       testID="barcode-not-found-photo-fallback"
                       style={styles.photoFallbackBtn}
                       onPress={() => {
-                        // Reset scanner state so reopening the modal
-                        // starts fresh, then hand off to the host.
                         onReset();
                         onPhotoFallback();
                       }}
@@ -623,11 +661,25 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
                       <Text style={styles.photoFallbackBtnText}>Snap the label instead</Text>
                     </Pressable>
                   ) : null}
-                  <Pressable style={styles.retryBtn} onPress={onReset}>
-                    <Text style={styles.retryBtnText}>Scan again</Text>
+                  <Pressable
+                    onPress={() => setManualMode(true)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Enter manually instead"
+                    style={{ paddingTop: Spacing.md }}
+                  >
+                    <Text style={{ color: Accent.primary, fontSize: 13, fontWeight: "600" }}>
+                      Enter manually
+                    </Text>
                   </Pressable>
-                  <Pressable style={styles.manualEntryBtn} onPress={() => setManualMode(true)}>
-                    <Text style={styles.manualEntryBtnText}>Enter manually instead</Text>
+                  <Pressable
+                    onPress={onReset}
+                    accessibilityRole="button"
+                    accessibilityLabel="Scan a different barcode"
+                    style={{ paddingTop: Spacing.xs }}
+                  >
+                    <Text style={{ color: colors.textTertiary, fontSize: 12 }}>
+                      Scan a different barcode
+                    </Text>
                   </Pressable>
                 </View>
               )}
@@ -780,8 +832,19 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
                           so the serving context reads cleanly in one
                           pass. `portionSummary` is already collapsed via
                           `displayServingLabel` when the label is a
-                          generic fallback. */}
-                      <Text style={styles.useBtnText}>Log · {portionSummary}</Text>
+                          generic fallback.
+                          F-135 (2026-05-08): strip the "(~Ng)" parenthetical
+                          from the button (the Amount field above already
+                          shows grams) so long labels like
+                          "1 rice paper (~9 g)" don't wrap mid-word.
+                          numberOfLines + ellipsizeMode is the safety net. */}
+                      <Text
+                        style={styles.useBtnText}
+                        numberOfLines={1}
+                        ellipsizeMode="tail"
+                      >
+                        Log · {portionSummary.replace(/\s*\(~?[\d.]+\s*g\)\s*$/, "")}
+                      </Text>
                     </Pressable>
                     <Pressable style={styles.scanAgainBtn} onPress={onReset}>
                       <Text style={styles.scanAgainText}>Scan again</Text>
