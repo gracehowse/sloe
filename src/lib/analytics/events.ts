@@ -344,6 +344,11 @@ export const AnalyticsEvents = {
   ai_voice_log_paywalled: "ai_voice_log_paywalled",
   /** User opened the AI photo-log modal (Batch 5.13). No payload. */
   ai_photo_log_started: "ai_photo_log_started",
+  /** 2026-05-08 build-45 follow-up — user tapped "Snap the label
+   * instead" on a not-found barcode and the AI label-extraction
+   * succeeded; correction form is now pre-filled. Payload:
+   * `{ confidence: "high"|"medium"|"low"|"unknown", platform }`. */
+  barcode_scan_label_succeeded: "barcode_scan_label_succeeded",
   /** User tapped "Log all" on the photo-log review sheet (Batch 5.13).
    * Payload: `{ itemCount, avgConfidence }`. */
   ai_photo_log_committed: "ai_photo_log_committed",
