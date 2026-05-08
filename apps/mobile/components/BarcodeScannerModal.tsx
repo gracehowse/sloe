@@ -930,7 +930,7 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
                       <Text style={styles.correctionSuccessTitle}>Correction saved</Text>
                       <Text style={styles.correctionSuccessBody}>
                         Your numbers apply to your scans of this barcode now.
-                        We're building out a review process — once it's
+                        We{"’"}re building out a review process — once it{"’"}s
                         live, the best corrections will roll out to everyone.
                       </Text>
                       <Pressable
