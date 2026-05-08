@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { rateLimit } from "@/lib/server/rateLimit";
 import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
 import { callAiVision } from "@/lib/server/aiProvider";
+import { normalizeImageForAi } from "@/lib/server/normalizeImageForAi";
 
 export const runtime = "nodejs";
 export const maxDuration = 45;
@@ -181,10 +182,39 @@ export async function POST(req: Request) {
     );
   }
 
-  const buf = Buffer.from(await file.arrayBuffer());
-  const mime = file.type || "image/jpeg";
-  const b64 = buf.toString("base64");
-  const dataUrl = `data:${mime};base64,${b64}`;
+  // 2026-05-08 hotfix — iPhone Camera defaults to HEIC which Anthropic
+  // rejects (only supports jpeg/png/gif/webp). Normalize EVERY incoming
+  // image to JPEG via sharp (handles HEIC/PNG/WebP/etc. → JPEG) and
+  // cap edge at 2048px so we don't blow Anthropic's per-image token
+  // budget on multi-MB photos. Falls through to the existing 502
+  // ai_internal_error path if the bytes are corrupt or an unsupported
+  // format we can't read.
+  const rawBuf = Buffer.from(await file.arrayBuffer());
+  let normalizedBuf: Buffer;
+  let normalizedMime: string;
+  try {
+    const normalized = await normalizeImageForAi(rawBuf);
+    normalizedBuf = normalized.buffer;
+    normalizedMime = normalized.mediaType;
+    if (normalized.sourceFormat !== "image/jpeg") {
+      console.info(
+        `[scan-label] normalized ${normalized.sourceFormat} → image/jpeg (${rawBuf.length} → ${normalizedBuf.length} bytes)`,
+      );
+    }
+  } catch (err) {
+    console.warn("[scan-label] image normalization failed", err);
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "image_unreadable",
+        message:
+          "Couldn't read that image. Try a sharper, well-lit photo of the nutrition panel.",
+      },
+      { status: 415 },
+    );
+  }
+  const b64 = normalizedBuf.toString("base64");
+  const dataUrl = `data:${normalizedMime};base64,${b64}`;
 
   const ac = new AbortController();
   const timeoutHandle = setTimeout(() => ac.abort(), AI_TIMEOUT_MS);

@@ -5,6 +5,7 @@ import { verifyIngredients, parseRawIngredients } from "@/lib/nutrition/verifyIn
 import { importErrorResponse } from "@/lib/recipes/importErrorCopy";
 import { sanitiseImportedTitle } from "@/lib/recipe-import/extractSocialRecipe";
 import { callAiVision, activeVendor } from "@/lib/server/aiProvider";
+import { normalizeImageForAi } from "@/lib/server/normalizeImageForAi";
 
 export const runtime = "nodejs";
 
@@ -63,10 +64,21 @@ export async function POST(req: Request) {
     );
   }
 
-  const buf = Buffer.from(await file.arrayBuffer());
-  const mime = file.type || "image/jpeg";
-  const b64 = buf.toString("base64");
-  const dataUrl = `data:${mime};base64,${b64}`;
+  // 2026-05-08 hotfix — normalize HEIC/PNG/etc. → JPEG via sharp so
+  // Anthropic doesn't 400 on iPhone uploads. Edge cap 2048px.
+  const rawBuf = Buffer.from(await file.arrayBuffer());
+  let normalizedBuf: Buffer;
+  let normalizedMime: string;
+  try {
+    const normalized = await normalizeImageForAi(rawBuf);
+    normalizedBuf = normalized.buffer;
+    normalizedMime = normalized.mediaType;
+  } catch (err) {
+    console.warn("[recipe-import/image] image normalization failed", err);
+    return NextResponse.json(importErrorResponse("file_too_large"), { status: 415 });
+  }
+  const b64 = normalizedBuf.toString("base64");
+  const dataUrl = `data:${normalizedMime};base64,${b64}`;
 
   const SYSTEM_PROMPT = `You are helping import a recipe from a photo or screenshot.
 Return a single JSON object with this shape (no markdown fences):

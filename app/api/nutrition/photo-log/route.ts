@@ -10,6 +10,7 @@ import {
   FREE_PHOTO_LOG_WINDOW_MS,
 } from "@/lib/nutrition/photoLogQuota";
 import { callAiVision } from "@/lib/server/aiProvider";
+import { normalizeImageForAi } from "@/lib/server/normalizeImageForAi";
 
 export const runtime = "nodejs";
 
@@ -176,10 +177,29 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "file_too_large", maxBytes: MAX_BYTES }, { status: 413 });
   }
 
-  const buf = Buffer.from(await file.arrayBuffer());
-  const mime = file.type || "image/jpeg";
-  const b64 = buf.toString("base64");
-  const dataUrl = `data:${mime};base64,${b64}`;
+  // 2026-05-08 hotfix — iPhone HEIC isn't supported by Anthropic;
+  // normalize to JPEG via sharp before sending to Claude. Caps the
+  // edge at 2048px to stay under Anthropic's per-image token budget.
+  const rawBuf = Buffer.from(await file.arrayBuffer());
+  let normalizedBuf: Buffer;
+  let normalizedMime: string;
+  try {
+    const normalized = await normalizeImageForAi(rawBuf);
+    normalizedBuf = normalized.buffer;
+    normalizedMime = normalized.mediaType;
+  } catch (err) {
+    console.warn("[photo-log] image normalization failed", err);
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "image_unreadable",
+        message: "Couldn't read that image. Try a different photo.",
+      },
+      { status: 415 },
+    );
+  }
+  const b64 = normalizedBuf.toString("base64");
+  const dataUrl = `data:${normalizedMime};base64,${b64}`;
 
   const ac = new AbortController();
   const timeoutHandle = setTimeout(() => ac.abort(), AI_TIMEOUT_MS);
