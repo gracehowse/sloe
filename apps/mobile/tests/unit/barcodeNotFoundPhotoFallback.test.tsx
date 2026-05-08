@@ -173,8 +173,13 @@ describe("BarcodeScannerModal — not-found photo fallback", () => {
       fireEvent.press(getByTestId("barcode-trigger"));
     });
     await waitFor(() => {
-      expect(getByText("Enter manually instead")).toBeTruthy();
-      expect(getByText("Scan again")).toBeTruthy();
+      // F-136 (build-44 polish, 2026-05-08): the 3-CTA stack was demoted
+      // to 1 primary + 2 text links and the labels were tightened —
+      // "Enter manually instead" → "Enter manually", "Scan again" →
+      // "Scan a different barcode". The escape hatches still exist;
+      // their copy just changed.
+      expect(getByText("Enter manually")).toBeTruthy();
+      expect(getByText("Scan a different barcode")).toBeTruthy();
     });
   });
 });
