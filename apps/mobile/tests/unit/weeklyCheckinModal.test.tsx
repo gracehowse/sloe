@@ -45,6 +45,7 @@ function makeContent(
     whyLine: "Your real burn is +200 kcal higher than the formula.",
     avgThisWeekLabel: "1,750 kcal/day",
     weightDeltaLabel: "−0.4 kg",
+    floorAppliedKcal: null,
     ...overrides,
   };
 }
@@ -157,6 +158,42 @@ describe("WeeklyCheckinModal", () => {
     );
     fireEvent.press(getByLabelText("Keep current target"));
     expect(onDismiss).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the 1,200 kcal floor explainer when floorAppliedKcal is set", () => {
+    // build-47 follow-up — Grace `APPzhqLXgb64_9reZ44rGk4`:
+    // "If my tdee is lower why is my target higher?" — when the math
+    // would land below the safety floor we clamp up. The modal must
+    // explain that, otherwise the suggestion looks self-contradictory.
+    const { getByText, queryByText } = render(
+      <WeeklyCheckinModal
+        visible
+        content={makeContent({
+          suggestedTargetKcal: 1200,
+          floorAppliedKcal: 1093,
+        })}
+        currentTargetKcal={1800}
+        onAccept={() => {}}
+        onDismiss={() => {}}
+        {...BASE_COLORS}
+      />,
+    );
+    expect(getByText(/math would land at/i)).toBeTruthy();
+    expect(getByText("1,093 kcal/day")).toBeTruthy();
+    expect(getByText("1,200 kcal/day")).toBeTruthy();
+    // Sanity: explainer must NOT render on the default (no-floor) content.
+    const { queryByText: qNoFloor } = render(
+      <WeeklyCheckinModal
+        visible
+        content={makeContent()}
+        currentTargetKcal={1800}
+        onAccept={() => {}}
+        onDismiss={() => {}}
+        {...BASE_COLORS}
+      />,
+    );
+    expect(qNoFloor(/math would land at/i)).toBeNull();
+    void queryByText;
   });
 
   it("renders nothing when content is null (defensive guard)", () => {

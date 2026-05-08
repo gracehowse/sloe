@@ -250,6 +250,34 @@ export function WeeklyCheckinModal({
             </View>
           </View>
 
+          {/* 2026-05-08 build-47 follow-up — Grace `APPzhqLXgb64_9reZ44rGk4`:
+              "If my tdee is lower why is my target higher?" — when the
+              math says the target should drop below the 1,200 kcal safety
+              floor, we clamp up. Without this explainer the suggestion
+              looked contradictory. */}
+          {content.floorAppliedKcal != null ? (
+            <Text
+              accessibilityLiveRegion="polite"
+              style={{
+                fontSize: 12,
+                lineHeight: 17,
+                color: textSecondaryColor,
+                textAlign: "center",
+                marginBottom: 16,
+                paddingHorizontal: 8,
+              }}
+            >
+              The math would land at{" "}
+              <Text style={{ fontWeight: "600" }}>
+                {content.floorAppliedKcal.toLocaleString("en-GB")} kcal/day
+              </Text>
+              , but eating that little long-term isn&apos;t safe. We&apos;ve capped
+              the suggestion at the{" "}
+              <Text style={{ fontWeight: "600" }}>1,200 kcal/day</Text>{" "}
+              minimum.
+            </Text>
+          ) : null}
+
           <Pressable
             onPress={onAccept}
             accessibilityRole="button"

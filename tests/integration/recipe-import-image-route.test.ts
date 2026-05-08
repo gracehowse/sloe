@@ -30,6 +30,15 @@ vi.mock("@/lib/server/serverEnv", () => ({
   hasSupabaseServiceConfig: () => false,
 }));
 
+// 2026-05-08 — sharp can't decode the tiny test-fixture buffers; mock
+// the helper. Real coverage in tests/unit/normalizeImageForAi.test.ts.
+vi.mock("@/lib/server/normalizeImageForAi", () => ({
+  normalizeImageForAi: vi.fn(async (buf: Buffer) => ({
+    buffer: buf,
+    mediaType: "image/jpeg",
+  })),
+}));
+
 import { POST } from "../../app/api/recipe-import/image/route";
 import { getUserIdFromRequest, getUserTier } from "@/lib/supabase/serverAnonClient";
 

@@ -40,6 +40,18 @@ vi.mock("@/lib/server/rateLimit", () => ({
   })),
 }));
 
+// 2026-05-08 — the route invokes sharp on the upload to normalize HEIC →
+// JPEG before sending to the AI vendor. Sharp can't decode the 4-byte
+// fixture buffer used in these tests; mock the helper so we exercise
+// only the post-normalize path. The real helper has dedicated coverage
+// in `tests/unit/normalizeImageForAi.test.ts`.
+vi.mock("@/lib/server/normalizeImageForAi", () => ({
+  normalizeImageForAi: vi.fn(async (buf: Buffer) => ({
+    buffer: buf,
+    mediaType: "image/jpeg",
+  })),
+}));
+
 import { POST } from "../../app/api/nutrition/photo-log/route";
 import {
   FREE_PHOTO_LOG_WEEKLY_LIMIT,
