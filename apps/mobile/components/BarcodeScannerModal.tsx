@@ -90,6 +90,13 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
   const [corrSodium, setCorrSodium] = useState("");
   const [corrSatFat, setCorrSatFat] = useState("");
   const [corrSaving, setCorrSaving] = useState(false);
+  // F-138 (`AcUlNw_4ZTCMGcjmETcQUaJ`, 2026-05-08): post-submit success state.
+  // Pre-fix the form silently closed after Save Correction → users had no
+  // confirmation their submission was received. We don't claim "verified by
+  // team" because there's no live verification pipeline producing verified
+  // rows yet (schema exists, workflow doesn't). Honest copy: it applies to
+  // your scans now and goes into the review queue for everyone else.
+  const [corrSubmitted, setCorrSubmitted] = useState(false);
   // F-20 (2026-04-19, TestFlight `AIOek8w6GKW5DdY1XK9avkE`) — many
   // products only list nutrition per serving (e.g. PBfit: per 16 g). The
   // tester typed per-serving numbers into a form that silently stored
@@ -329,8 +336,9 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
             : (product?.servingSizeG ?? 100),
       };
       setProduct(corrected);
-      setCorrectionMode(false);
-      setGramsInput("100");
+      // F-138 — show success state in place of the form. User taps Done
+      // to dismiss back to the product card with their corrected values.
+      setCorrSubmitted(true);
     }
   }, [scanned, userId, corrName, corrPer100g, corrBasis, corrServingG, product]);
 
@@ -340,6 +348,7 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
     setError(null);
     setManualMode(false);
     setCorrectionMode(false);
+    setCorrSubmitted(false);
     setGramsInput("100");
     setRememberedPortion(null);
   }, []);
@@ -350,10 +359,19 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
     setError(null);
     setManualMode(false);
     setCorrectionMode(false);
+    setCorrSubmitted(false);
     setGramsInput("100");
     setRememberedPortion(null);
     onClose();
   }, [onClose]);
+
+  // F-138 — dismiss the success state back to the product card with the
+  // user's corrected values applied (already set by submitCorrection).
+  const handleCorrectionDone = useCallback(() => {
+    setCorrSubmitted(false);
+    setCorrectionMode(false);
+    setGramsInput("100");
+  }, []);
 
   const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
@@ -551,6 +569,50 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
     },
     basisChipText: { fontSize: 13, fontWeight: "600", color: colors.textSecondary },
     basisChipTextSelected: { color: Accent.primary },
+    // F-138 — post-submit success card (replaces the form, not the whole
+    // sheet). White-card + soft success ring + Done button. Mirrors the
+    // F-139 goals-hit banner restyle so the language stays consistent
+    // across the product.
+    correctionSuccessCard: {
+      backgroundColor: colors.card,
+      borderRadius: Radius.lg,
+      borderWidth: 1,
+      borderColor: Accent.success + "40",
+      paddingHorizontal: Spacing.xl,
+      paddingVertical: Spacing.xxl,
+      alignItems: "center",
+      gap: Spacing.md,
+    },
+    correctionSuccessIconRing: {
+      width: 72,
+      height: 72,
+      borderRadius: 36,
+      backgroundColor: Accent.success + "18",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    correctionSuccessTitle: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: colors.text,
+      textAlign: "center",
+    },
+    correctionSuccessBody: {
+      fontSize: 14,
+      lineHeight: 20,
+      color: colors.textSecondary,
+      textAlign: "center",
+    },
+    correctionSuccessDoneBtn: {
+      marginTop: Spacing.sm,
+      backgroundColor: Accent.success,
+      borderRadius: Radius.md,
+      paddingHorizontal: Spacing.xxl,
+      paddingVertical: 14,
+      alignSelf: "stretch",
+      alignItems: "center",
+    },
+    correctionSuccessDoneText: { color: "#fff", fontWeight: "700", fontSize: 15 },
     basisReference: {
       fontSize: 12,
       color: colors.textTertiary,
@@ -858,13 +920,39 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
               )}
 
               {/* Correction mode — edit scanned product and save to DB */}
-              {product && correctionMode && (
+              {product && correctionMode && corrSubmitted && (
+                <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
+                  <ScrollView keyboardShouldPersistTaps="handled">
+                    <View style={styles.correctionSuccessCard}>
+                      <View style={styles.correctionSuccessIconRing}>
+                        <Ionicons name="checkmark-circle" size={48} color={Accent.success} />
+                      </View>
+                      <Text style={styles.correctionSuccessTitle}>Correction saved</Text>
+                      <Text style={styles.correctionSuccessBody}>
+                        Your numbers apply to your scans of this barcode now.
+                        We{"’"}re building out a review process — once it{"’"}s
+                        live, the best corrections will roll out to everyone.
+                      </Text>
+                      <Pressable
+                        style={styles.correctionSuccessDoneBtn}
+                        onPress={handleCorrectionDone}
+                        accessibilityRole="button"
+                        accessibilityLabel="Done"
+                      >
+                        <Text style={styles.correctionSuccessDoneText}>Done</Text>
+                      </Pressable>
+                    </View>
+                  </ScrollView>
+                </KeyboardAvoidingView>
+              )}
+              {product && correctionMode && !corrSubmitted && (
                 <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
                   <ScrollView keyboardShouldPersistTaps="handled">
                     <View style={styles.manualCard}>
                       <Text style={styles.manualTitle}>Correct This Product</Text>
                       <Text style={styles.manualSubtitle}>
-                        Update the nutrition info — your correction helps everyone.
+                        Help us build a better database. Your numbers will
+                        apply to your scans straight away.
                       </Text>
                       <TextInput
                         style={styles.manualInput}
