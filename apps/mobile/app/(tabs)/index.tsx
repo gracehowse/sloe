@@ -166,6 +166,8 @@ import {
 } from "@/lib/weeklyCheckinBannerDismissal";
 import { weekKeyFor as weekKeyForCheckin } from "@/lib/weeklyRecap";
 import { TodayActivityCard } from "@/components/today/TodayActivityCard";
+import { WhereThisComesFromSheet } from "@/components/today/WhereThisComesFromSheet";
+import { loadHealthLastSyncedAt } from "@/lib/healthSyncMeta";
 import { TodayWeekView } from "@/components/today/TodayWeekView";
 import { TodayMealsSection } from "@/components/today/TodayMealsSection";
 import { TodayFirstMealEmptyState } from "@/components/today/TodayFirstMealEmptyState";
@@ -347,6 +349,11 @@ export default function TrackerScreen() {
   const [byDay, setByDay] = useState<ByDay>({});
   const [hydrated, setHydrated] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // Pattern #9 (`AN8GJ1Dr3M`, 2026-05-08): WhereThisComesFromSheet
+  // visibility + last-sync timestamp. Read once on first sheet open
+  // so we don't re-touch AsyncStorage on every render.
+  const [activityProvenanceOpen, setActivityProvenanceOpen] = useState(false);
+  const [healthLastSyncedAtMs, setHealthLastSyncedAtMs] = useState<number | null>(null);
   const [collapsedSlots, setCollapsedSlots] = useState<Set<string>>(new Set());
   const [title, setTitle] = useState("");
   const [kcal, setKcal] = useState("");
@@ -4759,6 +4766,13 @@ export default function TrackerScreen() {
             stepsCount={stepsCount}
             dailyStepsGoal={dailyStepsGoal}
             activityBurnKcal={activityBurnKcal}
+            onShowProvenance={() => {
+              // Pattern #9: load the last-sync timestamp lazily on
+              // first open so the AsyncStorage read doesn't run on
+              // every Today render.
+              void loadHealthLastSyncedAt().then(setHealthLastSyncedAtMs);
+              setActivityProvenanceOpen(true);
+            }}
             styles={styles}
             textColor={colors.text}
             textSecondaryColor={colors.textSecondary}
@@ -5598,6 +5612,42 @@ export default function TrackerScreen() {
           border: colors.border,
           primaryForeground: colors.primaryForeground,
         }}
+      />
+
+      {/* Pattern #9 (`AN8GJ1Dr3M`, 2026-05-08): "Where this comes
+          from" provenance sheet for the Today steps + activity card.
+          Triggered by the small info icon on the card header. */}
+      <WhereThisComesFromSheet
+        visible={activityProvenanceOpen}
+        onClose={() => setActivityProvenanceOpen(false)}
+        headline={(() => {
+          const stepsStr = stepsCount != null ? stepsCount.toLocaleString() : "—";
+          const burnStr = activityBurnKcal != null ? `${activityBurnKcal.toLocaleString()} kcal active` : "—";
+          return `${stepsStr} steps · ${burnStr}`;
+        })()}
+        source="Apple Health"
+        range={isToday ? `Today, 00:00 – ${new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}` : `${formatDateLabel(selectedDate)}, full day`}
+        lastSyncedAtMs={healthLastSyncedAtMs}
+        footerExplainer="Numbers update when Apple Health does. Pull to refresh on Today, or tap Sync now to force a fresh read."
+        primaryCta={
+          userId
+            ? {
+                label: "Sync now",
+                onPress: () => {
+                  setActivityProvenanceOpen(false);
+                  void syncHealthDataThrottled(userId, { bypassThrottle: true }).then(() => {
+                    void loadHealthLastSyncedAt().then(setHealthLastSyncedAtMs);
+                  });
+                },
+              }
+            : undefined
+        }
+        backgroundColor={colors.background}
+        cardColor={colors.card}
+        cardBorderColor={colors.border}
+        textColor={colors.text}
+        textSecondaryColor={colors.textSecondary}
+        textTertiaryColor={colors.textTertiary}
       />
 
       {/* M2 (2026-04-18) — in-flow AI paywall. Mirrors web

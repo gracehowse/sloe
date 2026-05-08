@@ -1568,6 +1568,16 @@ export async function syncHealthDataThrottled(
   if (!opts?.bypassThrottle && now - lastThrottledHealthBodySyncAt < HEALTH_BODY_SYNC_MIN_MS) return;
   await syncHealthData(userId);
   lastThrottledHealthBodySyncAt = Date.now();
+  // Pattern #9 (`AN8GJ1Dr3M`, 2026-05-08): stamp the AsyncStorage
+  // "last synced" timestamp so the WhereThisComesFromSheet can render
+  // "Synced X min ago" on Today + Burn detail. Fire-and-forget; the
+  // sheet falls back to "Synced recently" when missing.
+  try {
+    const { recordHealthSyncedAt } = await import("./healthSyncMeta");
+    void recordHealthSyncedAt(Date.now());
+  } catch {
+    /* noop — non-fatal */
+  }
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────

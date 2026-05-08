@@ -237,6 +237,17 @@ UI-critic audit confirmed Grace's "all pages still like this" hunch — the meal
 - F15 (`—` placeholders for Current / Goal weight) — needs a designer call on whether to collapse the row or render a soft prompt.
 - All web parity checks — flagged for a follow-up grep pass.
 
+**2026-05-08 — Architectural follow-ups batch (PRs #140–143, the next TestFlight cut after build 44)**
+
+Four parked architectural items shipped in one batch.
+
+- **PR #140 — UI-critic P2 batch.** Mobile F14 (`weight-tracker.tsx` "Historical import depth" 4-sentence paragraph trimmed). Web parity for F4 (recipe `0g`/`0mg` micros hide), F8 (ProgressMetricDetail + today-week-view "Tap a day" helpers removed), F11 (web streak `0` headline hidden when streakDays===0).
+- **PR #141 — F-130 cross-device tombstone.** New `deleted_health_samples` table (user_id, health_sample_id, deleted_at, source) + RLS + L1 (AsyncStorage) / L2 (Supabase) helper. Tombstone now survives reinstall and cross-device sync. Migration `20260510100000_deleted_health_samples.sql` applied via `supabase db push --linked`.
+- **PR #142 — F-74 cross-device.** `recipes.caffeine_mg` + `alcohol_g` + matching `recipe_ingredients` columns. Verifier rolls up per-ingredient → per-serving. `fetchPlannedMealMicros` reads + scales them so the planner-tab "Log today" + recipe-detail "Add to today" log paths now populate caffeine/alcohol on the meal row (closes the "honest closure" gap from PRs #128 / #132). Migration `20260510100100_recipes_caffeine_alcohol_aggregates.sql` applied.
+- **PR #143 — Pattern #9 (`AN8GJ1Dr3M`) provenance affordance.** New `WhereThisComesFromSheet` (mobile) mirroring `WhyThisNumberSheet` shape. Info icon on `TodayActivityCard` opens a bottom sheet showing source / range / "Last synced X ago" + a "Sync now" CTA. `healthSyncMeta.ts` stamps `lastSyncedAt` to AsyncStorage after every successful sync. Closes the architectural unblock for the most-frequent surface (Today). Burn-detail mount + web parity deferred to a follow-up.
+
+Net open after this sweep: **2 ⏳** (F-108 / F-114, both await tester re-verify on the next TestFlight cut after build 44) + **1 🔍** (`AN8GJ1Dr3M` — code-level closure but tester-side still needs the build install). All architecturally-deferred follow-ups now shipped.
+
 **2026-05-07 — F-130 fix shipped (PR #137, the next TestFlight cut)**
 
 Grace (out-of-band, 2026-05-07): "sometimes when items copy from MyFitnessPal / Apple Health etc. even when I try to delete them, they don't delete. for example if a duplicate entry shows up." The bug: HK sync's dedup logic in `apps/mobile/lib/healthSync.ts:1709` queries `nutrition_entries` for existing rows with `source = 'apple_health'`. When the user deletes a row, it leaves the table — so the next sync sees the same HK sample, finds no row to dedup against, and re-imports it. The "duplicate" reappears every sync.
