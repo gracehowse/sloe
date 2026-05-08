@@ -62,14 +62,29 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
 
   // Serving size picker state
   const [gramsInput, setGramsInput] = useState("100");
+  // 2026-05-08 (build-47 follow-up, Grace's TF feedback `AEzXpj7cEtWzcmRM391H1pM`):
+  // "I should be able to have that [per-100g/per-serving] option when
+  // logging too". Mirror the basis toggle from the correction form on
+  // the LOG card so users can type "2" servings instead of "224g".
+  // "perServing" mode interprets `gramsInput` as a serving multiplier
+  // (× servingSizeG); "per100g" mode keeps grams-as-grams. Toggle is
+  // hidden when no serving size is known (gram-only fallback).
+  const [logBasis, setLogBasis] = useState<"per100g" | "perServing">("per100g");
   // Audit/2026-04-30 — when this barcode has been logged before,
   // surface "You usually log {n} g — using that" near the picker.
   const [rememberedPortion, setRememberedPortion] = useState<number | null>(null);
+  const servingSizeForBasis = product?.servingSizeG ?? 0;
   const grams = useMemo(() => {
     const n = Number.parseFloat(String(gramsInput).replace(",", ".").trim());
     if (!Number.isFinite(n) || n <= 0) return 100;
+    // build-47 follow-up: in perServing mode, the input is a multiplier
+    // (e.g. "2" = 2 servings). When no serving size is known, fall
+    // through to grams-as-grams to avoid silently logging 100g × 0 = 0.
+    if (logBasis === "perServing" && servingSizeForBasis > 0) {
+      return Math.min(10_000, Math.round(n * servingSizeForBasis * 10) / 10);
+    }
     return Math.min(10_000, Math.round(n * 10) / 10);
-  }, [gramsInput]);
+  }, [gramsInput, logBasis, servingSizeForBasis]);
 
   // Manual entry state (when barcode not found)
   const [manualMode, setManualMode] = useState(false);
@@ -396,6 +411,39 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
     setCorrectionMode(false);
     setGramsInput("100");
   }, []);
+
+  // 2026-05-08 build-47 follow-up — "Log this now" path on the
+  // correction-saved success state. Closes the success card, exits
+  // correction mode, and immediately fires `onConfirm` against the
+  // updated product (which has the corrected per-100g macros from
+  // `submitCorrection`). Default portion: one serving when serving
+  // size is known, else 100 g.
+  const handleCorrectionLogNow = useCallback(() => {
+    if (!product) {
+      handleCorrectionDone();
+      return;
+    }
+    const portionGrams =
+      product.servingSizeG && product.servingSizeG > 0
+        ? Math.round(product.servingSizeG)
+        : 100;
+    setCorrSubmitted(false);
+    setCorrectionMode(false);
+    // Pre-set the LOG path's gram input + reset basis so the user can
+    // verify/adjust before confirming. We DO NOT auto-fire onConfirm
+    // here because the user might want to tweak the portion (1 piece
+    // vs 2). Returning to the product card with the right default is
+    // the right balance between "auto-log" and "user agency".
+    setGramsInput(String(portionGrams));
+    setLogBasis(
+      product.servingSizeG && product.servingSizeG > 0
+        ? "perServing"
+        : "per100g",
+    );
+    if (logBasis === "perServing" || (product.servingSizeG && product.servingSizeG > 0)) {
+      setGramsInput("1");
+    }
+  }, [product, handleCorrectionDone, logBasis]);
 
   // 2026-05-08 build-45 follow-up — "Snap the label instead" handler.
   // Captures a photo, posts to /api/nutrition/scan-label, pre-fills
@@ -761,6 +809,24 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
       alignItems: "center",
     },
     correctionSuccessDoneText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+    // 2026-05-08 build-47 follow-up — secondary "Just done" button on
+    // the correction-saved success state, paired with the new primary
+    // "Log this now" CTA. Subdued visual weight so the auto-log path
+    // is the visually-recommended next step.
+    correctionSuccessDoneSecondary: {
+      marginTop: Spacing.sm,
+      backgroundColor: "transparent",
+      borderRadius: Radius.md,
+      paddingHorizontal: Spacing.xxl,
+      paddingVertical: 12,
+      alignSelf: "stretch",
+      alignItems: "center",
+    },
+    correctionSuccessDoneSecondaryText: {
+      color: colors.textSecondary,
+      fontWeight: "600",
+      fontSize: 14,
+    },
     // F-138 Phase 2 — plausibility-block error surface. Tinted destructive
     // panel inside the form, above the Save button, with a per-reason list.
     plausibilityBlockBox: {
@@ -1023,6 +1089,83 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
                     <Text style={styles.macroItem}>C: {Math.round(scaled.carbs)}g</Text>
                     <Text style={styles.macroItem}>F: {Math.round(scaled.fat)}g</Text>
                   </View>
+                  {/* 2026-05-08 build-47 follow-up — Per 100 g / Per serving
+                      toggle on the LOG card (parity with the correction
+                      form). Hidden when the product has no known serving
+                      size (gram-only fallback). When in perServing mode
+                      the Amount input is interpreted as a serving
+                      multiplier (× servingSizeG). */}
+                  {product.servingSizeG && product.servingSizeG > 0 ? (
+                    <View style={[styles.basisRow, { marginTop: Spacing.xs }]}>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: logBasis === "per100g" }}
+                        accessibilityLabel="Log by grams"
+                        onPress={() => {
+                          if (logBasis === "perServing") {
+                            // Switching from servings → grams: convert
+                            // the current multiplier into its gram
+                            // equivalent so the field doesn't appear
+                            // to drop a zero.
+                            const n = Number.parseFloat(
+                              String(gramsInput).replace(",", ".").trim(),
+                            );
+                            if (Number.isFinite(n) && n > 0 && product.servingSizeG) {
+                              setGramsInput(String(Math.round(n * product.servingSizeG)));
+                            }
+                          }
+                          setLogBasis("per100g");
+                        }}
+                        style={[
+                          styles.basisChip,
+                          logBasis === "per100g" && styles.basisChipSelected,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.basisChipText,
+                            logBasis === "per100g" && styles.basisChipTextSelected,
+                          ]}
+                        >
+                          By grams
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: logBasis === "perServing" }}
+                        accessibilityLabel="Log by serving"
+                        onPress={() => {
+                          if (logBasis === "per100g" && product.servingSizeG) {
+                            // Convert grams → multiplier so the field
+                            // shows e.g. "1" or "2" not "112" or "224".
+                            const n = Number.parseFloat(
+                              String(gramsInput).replace(",", ".").trim(),
+                            );
+                            if (Number.isFinite(n) && n > 0) {
+                              const mult = Math.round((n / product.servingSizeG) * 100) / 100;
+                              setGramsInput(String(mult > 0 ? mult : 1));
+                            } else {
+                              setGramsInput("1");
+                            }
+                          }
+                          setLogBasis("perServing");
+                        }}
+                        style={[
+                          styles.basisChip,
+                          logBasis === "perServing" && styles.basisChipSelected,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.basisChipText,
+                            logBasis === "perServing" && styles.basisChipTextSelected,
+                          ]}
+                        >
+                          By serving ({Math.round(product.servingSizeG)} g)
+                        </Text>
+                      </Pressable>
+                    </View>
+                  ) : null}
                   {/* Serving size picker */}
                   <View style={styles.servingRow}>
                     <Text style={styles.servingLabel}>Amount:</Text>
@@ -1034,9 +1177,19 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
                       selectTextOnFocus
                       returnKeyType="done"
                       onSubmitEditing={Keyboard.dismiss}
-                      accessibilityLabel="Serving size in grams"
+                      accessibilityLabel={
+                        logBasis === "perServing"
+                          ? "Number of servings"
+                          : "Serving size in grams"
+                      }
                     />
-                    <Text style={styles.servingUnit}>g</Text>
+                    <Text style={styles.servingUnit}>
+                      {logBasis === "perServing"
+                        ? Number.parseFloat(gramsInput || "0") === 1
+                          ? "serving"
+                          : "servings"
+                        : "g"}
+                    </Text>
                   </View>
                   {/* F-18 (2026-04-19) — simplified helper copy. The old
                       "macros scale from per 100 g" aside leaked internal
@@ -1126,13 +1279,29 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
                         We{"’"}re building out a review process — once it{"’"}s
                         live, the best corrections will roll out to everyone.
                       </Text>
+                      {/* 2026-05-08 build-47 follow-up — Grace's TF
+                          feedback `AEzXpj7cEtWzcmRM391H1pM`: "When I save
+                          a new item I should be able to auto log it not
+                          have to scan it again". Primary CTA logs the
+                          freshly-corrected product immediately at one
+                          serving (or 100 g when no serving size known).
+                          Secondary stays as "Done" for users who only
+                          wanted to fix the data. */}
                       <Pressable
                         style={styles.correctionSuccessDoneBtn}
+                        onPress={handleCorrectionLogNow}
+                        accessibilityRole="button"
+                        accessibilityLabel="Log this product now"
+                      >
+                        <Text style={styles.correctionSuccessDoneText}>Log this now</Text>
+                      </Pressable>
+                      <Pressable
+                        style={styles.correctionSuccessDoneSecondary}
                         onPress={handleCorrectionDone}
                         accessibilityRole="button"
-                        accessibilityLabel="Done"
+                        accessibilityLabel="Done without logging"
                       >
-                        <Text style={styles.correctionSuccessDoneText}>Done</Text>
+                        <Text style={styles.correctionSuccessDoneSecondaryText}>Just done</Text>
                       </Pressable>
                     </View>
                   </ScrollView>
