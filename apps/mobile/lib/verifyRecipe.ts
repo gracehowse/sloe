@@ -18,6 +18,7 @@ import {
   type PrimaryServing,
 } from "../../../src/lib/nutrition/primaryServing";
 import { inferNaturalServingFromName } from "../../../src/lib/nutrition/inferNaturalServing";
+import { checkSubmissionPlausibility } from "../../../src/lib/foodCorrection/plausibility";
 import {
   effectiveMacros as effectiveIngredientMacros,
   recomputeRecipeTotals,
@@ -1591,7 +1592,29 @@ export async function submitFoodCorrection(opts: {
   saturatedFatG?: number;
   servingSizeG?: number;
   userId: string;
-}): Promise<{ ok: boolean; error?: string }> {
+}): Promise<{ ok: boolean; error?: string; reasons?: string[] }> {
+  // F-138 Phase 2 — server-side plausibility gate. Catches typos and
+  // unit errors before they pollute user_foods. Block-tier failures
+  // surface to the form so the user can fix and re-submit; warn-tier
+  // submissions still write but stay `pending`.
+  const plausibility = checkSubmissionPlausibility({
+    calories: opts.calories,
+    protein: opts.protein,
+    carbs: opts.carbs,
+    fat: opts.fat,
+    fiber: opts.fiberG ?? 0,
+    sugar: opts.sugarG ?? 0,
+    satFat: opts.saturatedFatG ?? 0,
+    sodium: opts.sodiumMg ?? 0,
+  });
+  if (plausibility.verdict === "block") {
+    return {
+      ok: false,
+      error: "plausibility_blocked",
+      reasons: plausibility.reasons,
+    };
+  }
+
   try {
     const { supabase } = await import("@/lib/supabase");
     // F-30: include micro columns only when provided > 0 so older DB
