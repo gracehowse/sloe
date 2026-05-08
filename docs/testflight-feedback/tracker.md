@@ -220,6 +220,23 @@ Test: `photoLogContract.test.ts` (6 cases) pins `maxDuration ≥ 30`, `AbortCont
 
 F-108 stays ⏳ pending tester re-verify with the new error copy on build 45 — if the user sees a specific code-mapped message ("AI took too long", "AI service had a problem"), we'll know the server isn't unanalyseable and can iterate from there. If the photo really is unanalysable, we now surface "different angle" copy that distinguishes from server failure.
 
+**2026-05-07 — Detail-pages noise cleanup (PR #138, build 45)**
+
+UI-critic audit confirmed Grace's "all pages still like this" hunch — the meal-nutrition boilerplate (PR #135) repeats across multiple detail surfaces. P1 batch shipped:
+
+- **`progress-metric.tsx:297`** — removed "Tap a day to open it on Today." trailing helper. Day rows are visibly tappable (Pressable + chevron).
+- **`weight-tracker.tsx:787`** — removed "Tap the chart to see weight on that day." The F-125 v2 scrubber + crosshair makes the tap-to-inspect affordance discoverable on first interaction.
+- **`weight-tracker.tsx:1001`** — removed "Steps sync automatically from your connected health source." Settings-level info that doesn't belong under a chart on a detail screen.
+- **`burn-detail.tsx:264`** — tightened the activity-bonus explainer from 2-sentence past/future-conditional paragraph to one line ("Burn above your maintenance estimate adds to your daily food budget.").
+- **`recipe/[id].tsx:2695`** — micronutrient rows for Fiber / Sugar / Sodium now hide entirely when the value is 0, instead of rendering bare "0g" / "0mg" (reads as a confident zero, not a missing value).
+- **`progress-metric.tsx:401`** — Streak metric headline (`{streakDays}` 36px/900) now hides when `streakDays === 0`; the empty-state copy carries the message alone instead of fronting a 0.
+
+**Out of scope (deferred):**
+- F1 (recipe `1×` stepper) — interactive control, not boilerplate.
+- F14 (weight-tracker historical-import-depth defensive paragraph) — UX revision, not scope cleanup.
+- F15 (`—` placeholders for Current / Goal weight) — needs a designer call on whether to collapse the row or render a soft prompt.
+- All web parity checks — flagged for a follow-up grep pass.
+
 **2026-05-07 — F-130 fix shipped (PR #137, build 45)**
 
 Grace (out-of-band, 2026-05-07): "sometimes when items copy from MyFitnessPal / Apple Health etc. even when I try to delete them, they don't delete. for example if a duplicate entry shows up." The bug: HK sync's dedup logic in `apps/mobile/lib/healthSync.ts:1709` queries `nutrition_entries` for existing rows with `source = 'apple_health'`. When the user deletes a row, it leaves the table — so the next sync sees the same HK sample, finds no row to dedup against, and re-imports it. The "duplicate" reappears every sync.
