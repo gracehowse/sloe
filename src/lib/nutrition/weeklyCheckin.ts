@@ -545,6 +545,16 @@ export interface WeeklyCheckinContent {
    *  Falls back to the current target when `tdeeDeltaKcal` is null.
    *  Never returns a value below `MIN_SUGGESTED_TARGET_KCAL`. */
   suggestedTargetKcal: number;
+  /**
+   * 2026-05-08 (build-47 follow-up, Grace `APPzhqLXgb64_9reZ44rGk4`):
+   * "If my tdee is lower why is my target higher?". When the math says
+   * `currentTargetKcal + tdeeDeltaKcal` would land below the safety
+   * floor, the suggestion is bumped up. Surface this fact + the raw
+   * (pre-clamp) value so the modal can render an honest explainer
+   * instead of leaving the user to guess. `null` when no clamp was
+   * applied (math result already at or above the floor).
+   */
+  floorAppliedKcal: number | null;
   /** Headline copy. Calm, factual — no exclamation marks, no
    *  performance adjectives. */
   headline: string;
@@ -589,13 +599,13 @@ export function buildWeeklyCheckinContent(
       ? Math.round(adaptiveTdee - priorTdee)
       : null;
 
-  const suggestedTargetKcal = (() => {
-    if (tdeeDeltaKcal == null) {
-      return Math.max(MIN_SUGGESTED_TARGET_KCAL, Math.round(currentTargetKcal));
-    }
-    const raw = Math.round(currentTargetKcal + tdeeDeltaKcal);
-    return Math.max(MIN_SUGGESTED_TARGET_KCAL, raw);
-  })();
+  const rawTargetKcal =
+    tdeeDeltaKcal == null
+      ? Math.round(currentTargetKcal)
+      : Math.round(currentTargetKcal + tdeeDeltaKcal);
+  const suggestedTargetKcal = Math.max(MIN_SUGGESTED_TARGET_KCAL, rawTargetKcal);
+  const floorAppliedKcal =
+    rawTargetKcal < MIN_SUGGESTED_TARGET_KCAL ? rawTargetKcal : null;
 
   const headline = "Your weekly check-in is ready";
 
@@ -618,6 +628,7 @@ export function buildWeeklyCheckinContent(
   return {
     tdeeDeltaKcal,
     suggestedTargetKcal,
+    floorAppliedKcal,
     headline,
     whyLine,
     avgThisWeekLabel,

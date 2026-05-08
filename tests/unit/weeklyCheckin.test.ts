@@ -511,6 +511,34 @@ describe("buildWeeklyCheckinContent (modal ritual)", () => {
     });
     // Raw would be 1500 + (1300-2200) = 600 → clamped to 1200
     expect(content.suggestedTargetKcal).toBe(1200);
+    // build-47 follow-up — Grace `APPzhqLXgb64_9reZ44rGk4`:
+    // when the floor kicks in the modal needs an explainer; the
+    // raw (pre-clamp) value is exposed as floorAppliedKcal so the
+    // UI can render "the math would land at X but we capped at 1,200".
+    expect(content.floorAppliedKcal).toBe(600);
+  });
+
+  it("floorAppliedKcal is null when raw target is at or above the floor", () => {
+    // Normal cascade — raw target lands above 1,200, no clamp.
+    const content = buildWeeklyCheckinContent({
+      adaptiveTdee: 2300,
+      priorTdee: 2100,
+      currentTargetKcal: 1800,
+      avgCaloriesThisWeek: 1750,
+      weightDeltaKg: -0.4,
+    });
+    expect(content.floorAppliedKcal).toBeNull();
+  });
+
+  it("floorAppliedKcal is null when prior TDEE missing (no clamp opportunity)", () => {
+    const content = buildWeeklyCheckinContent({
+      adaptiveTdee: 2100,
+      priorTdee: null,
+      currentTargetKcal: 1800,
+      avgCaloriesThisWeek: 1820,
+      weightDeltaKg: null,
+    });
+    expect(content.floorAppliedKcal).toBeNull();
   });
 
   it("suppresses weight delta label when null (never fabricates +0.0 kg)", () => {
