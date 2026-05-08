@@ -237,6 +237,26 @@ UI-critic audit confirmed Grace's "all pages still like this" hunch — the meal
 - F15 (`—` placeholders for Current / Goal weight) — needs a designer call on whether to collapse the row or render a soft prompt.
 - All web parity checks — flagged for a follow-up grep pass.
 
+**2026-05-08 — Build-44 testing session (11 new ASC items, F-131 → F-139)**
+
+Grace's first session on build 44 surfaced 11 screenshot items in two bursts (00:44 UTC + 02:15-02:21 UTC). Mapped to 9 F-numbers (4 of the 11 are sub-symptoms of F-134). Triage:
+
+| F# | ID | Page | Diagnosis | Status |
+|----|----|------|-----------|--------|
+| **F-131** | `AMmlpVOqMnaKKdV2dobjjjg` | Today / burn-summary card | "Need to check this number is correct - would be helpful to click on here and see what it's made up of" — exact validation of Pattern #9. PR #143 wired the WhereThisComesFromSheet on `TodayActivityCard` only; the burn-summary card / 7-day rolling summary card needs the same affordance. | ⏳ partial fix shipped (Today activity), burn-card extension pending |
+| **F-132** | `AGNEODiMEK7F` + `ALP1WPzhIZqba0TBcWKw7gU` | Progress + Weight tracker | "Do we need weight graphs in 3 places? Do it once and do it well" + "Page is so slow to load". F-125 unified the chart components but not the surfaces — Progress page renders both a small weight widget AND a bigger weight section, plus the standalone `/weight-tracker` route. | ⏳ — needs UX consolidation pass |
+| **F-133** | `AFlB4oMfwQGIFx-w0DxOofE` | Weight & Trends | "Graph is broken" — the y-axis stretches to include the goal line (50 kg) when current is 54.6 kg, so the actual data line collapses to near-invisible at the top of the plot area. Looks like one floating dot with the rest empty. | ⏳ — y-axis clip logic |
+| **F-134** | `AH2YKLI84Fc` + `AIwJjIxWtKm` + `ALYyTJ5iBRo` + `ADU-JU` | Barcode result sheet | **Same visual bug across 4 of 11 screenshots** — a rounded grey blob sits stacked behind the barcode result sheet. Looks like an orphan modal layer or a misplaced backdrop pill. P0 — visible on every barcode scan. | ⏳ P0 |
+| **F-135** | `ADU-JU-1zRIm2WQBeovKEjA` | Barcode result | "Log · 1 rice paper (~9" green button text wraps mid-token; "11.33 rice papers" chip uses absurd decimal precision. | ⏳ |
+| **F-136** | `AG5LqMGUpER2Gqi5N03_ytc` | Scan Barcode empty state | Red error icon for an informational state ("We don't have this product yet" isn't an error). 3 stacked CTAs ("Snap the label / Scan again / Enter manually") = decision fatigue. | ⏳ |
+| **F-137** | `ALYyTJ5iBRo3qzeXngFZclA` | Barcode result | "Need to be able to edit simply like 4 nuggets instead of edit the grams. Like it says 1 nugget I should be able to select that and say 4 of 1 nugget like mfp lose it etc". Portion chip needs a count multiplier. | ⏳ — UX design |
+| **F-138** | `AIwJjIxWtKm1szmRd4CkzWs` | Correct This Product | "Need a better way of adding to the database. Need some sort of submission success this will be verified by the team etc". Submission has no confirmation toast / success state / verification status messaging. | ⏳ |
+| **F-139** | `ACyWRLx2M-_D9t2jdcNjmaU` | Today | "The goals hit banner looks cheap" — solid blue banner overlaps the calorie ring. Needs lighter visual weight + non-overlapping placement. | ⏳ |
+
+**Ship order (this turn):** F-134 (P0, fixes 4 screenshots) → F-135 + F-136 + F-139 (UI batch) → F-131 (Pattern #9 v2) → F-133 (chart y-axis). F-132 + F-137 + F-138 deferred to a focused UX session.
+
+**Source:** `docs/testflight-feedback/data/feedback-2026-05-08.json` (171 screenshots / 6 crashes / 10 builds; URLs valid through 2026-05-13).
+
 **2026-05-08 — Architectural follow-ups batch (PRs #140–143, the next TestFlight cut after build 44)**
 
 Four parked architectural items shipped in one batch.
