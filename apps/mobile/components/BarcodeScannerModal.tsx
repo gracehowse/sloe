@@ -92,11 +92,13 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
   const [corrSaving, setCorrSaving] = useState(false);
   // F-138 (`AcUlNw_4ZTCMGcjmETcQUaJ`, 2026-05-08): post-submit success state.
   // Pre-fix the form silently closed after Save Correction → users had no
-  // confirmation their submission was received. We don't claim "verified by
-  // team" because there's no live verification pipeline producing verified
-  // rows yet (schema exists, workflow doesn't). Honest copy: it applies to
+  // confirmation their submission was received. Honest copy: it applies to
   // your scans now and goes into the review queue for everyone else.
   const [corrSubmitted, setCorrSubmitted] = useState(false);
+  // F-138 Phase 2 — server-side plausibility check rejected the submission
+  // (e.g. Atwater off by >30%, sugar > carbs, etc.). Surfaced inline so
+  // the user can fix and re-submit instead of getting silent failure.
+  const [corrBlockReasons, setCorrBlockReasons] = useState<string[] | null>(null);
   // F-20 (2026-04-19, TestFlight `AIOek8w6GKW5DdY1XK9avkE`) — many
   // products only list nutrition per serving (e.g. PBfit: per 16 g). The
   // tester typed per-serving numbers into a form that silently stored
@@ -336,9 +338,14 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
             : (product?.servingSizeG ?? 100),
       };
       setProduct(corrected);
+      setCorrBlockReasons(null);
       // F-138 — show success state in place of the form. User taps Done
       // to dismiss back to the product card with their corrected values.
       setCorrSubmitted(true);
+    } else if (result.error === "plausibility_blocked" && result.reasons) {
+      // F-138 Phase 2 — plausibility gate rejected the submission. Surface
+      // the specific reasons so the user can fix and re-submit.
+      setCorrBlockReasons(result.reasons);
     }
   }, [scanned, userId, corrName, corrPer100g, corrBasis, corrServingG, product]);
 
@@ -349,6 +356,7 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
     setManualMode(false);
     setCorrectionMode(false);
     setCorrSubmitted(false);
+    setCorrBlockReasons(null);
     setGramsInput("100");
     setRememberedPortion(null);
   }, []);
@@ -360,6 +368,7 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
     setManualMode(false);
     setCorrectionMode(false);
     setCorrSubmitted(false);
+    setCorrBlockReasons(null);
     setGramsInput("100");
     setRememberedPortion(null);
     onClose();
@@ -613,6 +622,32 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
       alignItems: "center",
     },
     correctionSuccessDoneText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+    // F-138 Phase 2 — plausibility-block error surface. Tinted destructive
+    // panel inside the form, above the Save button, with a per-reason list.
+    plausibilityBlockBox: {
+      backgroundColor: Accent.destructive + "12",
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: Accent.destructive + "55",
+      padding: Spacing.md,
+      gap: 4,
+    },
+    plausibilityBlockTitle: {
+      fontSize: 13,
+      fontWeight: "700",
+      color: Accent.destructive,
+    },
+    plausibilityBlockReason: {
+      fontSize: 12,
+      color: colors.text,
+      lineHeight: 17,
+    },
+    plausibilityBlockHint: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      fontStyle: "italic",
+      marginTop: 4,
+    },
     basisReference: {
       fontSize: 12,
       color: colors.textTertiary,
@@ -1139,6 +1174,26 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
                         >
                           = {corrPer100g.calories} kcal / 100 g
                         </Text>
+                      )}
+
+                      {/* F-138 Phase 2 — server-side plausibility block. */}
+                      {corrBlockReasons && corrBlockReasons.length > 0 && (
+                        <View
+                          accessibilityLiveRegion="assertive"
+                          style={styles.plausibilityBlockBox}
+                        >
+                          <Text style={styles.plausibilityBlockTitle}>
+                            These numbers don{"’"}t add up
+                          </Text>
+                          {corrBlockReasons.map((reason, i) => (
+                            <Text key={i} style={styles.plausibilityBlockReason}>
+                              • {reason}
+                            </Text>
+                          ))}
+                          <Text style={styles.plausibilityBlockHint}>
+                            Double-check the label and try again.
+                          </Text>
+                        </View>
                       )}
 
                       <Pressable
