@@ -40,8 +40,11 @@ describe("Phase 0.5b — shared aiProvider helper", () => {
   // regex would eat.
   const SRC = read("src/lib/server/aiProvider.ts").replace(/\/\*[\s\S]*?\*\//g, "");
 
-  it("declares the claude-sonnet-4-6 model id as the default", () => {
-    expect(SRC).toMatch(/CLAUDE_MODEL_DEFAULT\s*=\s*["']claude-sonnet-4-6["']/);
+  it("declares a dated Claude Sonnet model id as the default (alias-free)", () => {
+    // 2026-05-08 hotfix: aliases like `claude-sonnet-4-6` 400'd via the
+    // direct REST API on Grace's Anthropic account. Pin a dated model
+    // id so we never regress to an alias.
+    expect(SRC).toMatch(/CLAUDE_MODEL_DEFAULT\s*=\s*["']claude-sonnet-4-\d-\d{8}["']/);
   });
 
   it("hits the Anthropic Messages endpoint", () => {

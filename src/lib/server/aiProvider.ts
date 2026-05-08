@@ -21,7 +21,12 @@
  * Both accept an `AbortSignal` for sub-platform timeout control.
  */
 
-const CLAUDE_MODEL_DEFAULT = "claude-sonnet-4-6";
+// 2026-05-08 hotfix: switched from `claude-sonnet-4-6` (alias) to the
+// fully-qualified dated model id. Aliases sometimes 400 via direct
+// REST when the account hasn't been provisioned for the latest tier.
+// Override per call via `claudeModel` option if a specific dated model
+// is needed.
+const CLAUDE_MODEL_DEFAULT = "claude-sonnet-4-5-20250929";
 const OPENAI_MODEL_DEFAULT = "gpt-4o-mini";
 const OPENAI_VISION_MODEL_DEFAULT = "gpt-4o";
 
@@ -165,7 +170,7 @@ function httpError(
   bodyPreview: string,
 ): AiCallErr {
   console.warn(
-    `[${callSite}] ${vendor} non-200 status=${res.status} bodyPreview=${bodyPreview.slice(0, 200)}`,
+    `[${callSite}] ${vendor} non-200 status=${res.status} bodyPreview=${bodyPreview.slice(0, 500)}`,
   );
   if (res.status === 429) {
     return {
