@@ -166,6 +166,18 @@ export {
 
 const RECENT_BARCODE_KEY = "suppr-recent-foods-v1";
 
+// 2026-05-08 build-47 follow-up — Grace TF: tapping "+ Breakfast" in
+// the afternoon was logging picks as Snacks. Pick-handlers must use
+// `mealSlot` (the user's choice), and the generic LogSheet-open paths
+// must reset `mealSlot` to a fresh time-of-day default. Mobile parity:
+// `apps/mobile/app/(tabs)/index.tsx` slotForHour.
+function slotForHour(h: number): "Breakfast" | "Lunch" | "Snacks" | "Dinner" {
+  if (h < 10) return "Breakfast";
+  if (h < 14) return "Lunch";
+  if (h < 17) return "Snacks";
+  return "Dinner";
+}
+
 const MEAL_SECTION_ORDER = ["Breakfast", "Lunch", "Dinner", "Snacks", "Planned"];
 
 /** Must match Settings “Dashboard widgets” keys (`WIDGET_MACRO_OPTIONS`). */
@@ -498,6 +510,11 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
   const openLogParam = trackerSearchParams.get("openLog");
   useEffect(() => {
     if (openLogParam !== "1") return;
+    // 2026-05-08 build-47 follow-up — generic `?openLog=1` deep-link is
+    // not slot-specific. Reset mealSlot to time-of-day so the LogSheet
+    // header + the pick-handlers default to the right slot. The
+    // slot-specific `+ Breakfast` path (onOpenAddForSlot) overrides this.
+    setMealSlot(slotForHour(new Date().getHours()));
     setLogSheetOpen(true);
     const params = new URLSearchParams(trackerSearchParams.toString());
     params.delete("openLog");
@@ -717,14 +734,11 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
 
   /** Infer the default meal slot from local clock time for Eat-again /
    * Quick Add defaults. Mirrors the mobile rule of thumb in
-   * `apps/mobile/app/(tabs)/index.tsx`. */
-  const currentSlotFromTime = useMemo(() => {
-    const h = new Date().getHours();
-    if (h < 10) return "Breakfast";
-    if (h < 14) return "Lunch";
-    if (h < 17) return "Snacks";
-    return "Dinner";
-  }, []);
+   * `apps/mobile/app/(tabs)/index.tsx` (shared `slotForHour`). */
+  const currentSlotFromTime = useMemo(
+    () => slotForHour(new Date().getHours()),
+    [],
+  );
   // Eat-again dismiss (audit L4, 2026-04-18). v2 shape stores
   // `{ dateKey, dismissedAt }` so a device clock rollback can't
   // resurrect the banner on the same real-world day. Reads migrate
@@ -2298,6 +2312,9 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
               // but the host contract requires the arg for cross-
               // platform parity with mobile (which routes to
               // /recipe/{id}).
+              // 2026-05-08 build-47 follow-up — generic FAB path,
+              // reset mealSlot to time-of-day. See deep-link path above.
+              setMealSlot(slotForHour(new Date().getHours()));
               setLogSheetOpen(true);
             }}
             onBrowseLibrary={() => {
@@ -2305,6 +2322,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
               // here (the user tab-clicks Recipes themselves).
               // Logging surface is the LogSheet — opening it is a
               // reasonable fallback.
+              setMealSlot(slotForHour(new Date().getHours()));
               setLogSheetOpen(true);
             }}
             selectedDateKey={selectedDateKey}
@@ -2368,6 +2386,9 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
               } catch {
                 /* analytics fire-and-forget */
               }
+              // 2026-05-08 build-47 follow-up — generic empty-state CTA,
+              // see deep-link path for the same reset.
+              setMealSlot(slotForHour(new Date().getHours()));
               setLogSheetOpen(true);
             }}
           />
@@ -2532,7 +2553,12 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         // standalone `<TodayPlannedMealsCard>` rendered above. Planned
         // meals still render via `<TodayPlannedMealsCard>` directly
         // below (gated on `mealPlan` truthy with ≥1 non-placeholder).
-        onOpenLogSheet={() => setLogSheetOpen(true)}
+        onOpenLogSheet={() => {
+          // 2026-05-08 build-47 follow-up — see other generic-FAB
+          // call-sites; reset mealSlot to time-of-day before opening.
+          setMealSlot(slotForHour(new Date().getHours()));
+          setLogSheetOpen(true);
+        }}
         savedMeals={hostSavedMeals}
         onLogSavedMeal={logSavedMealFromSlotHeader}
         hintVisibleForSlot={hintVisibleForSlot}
@@ -3161,7 +3187,13 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
               (i) => foodHistoryKey(i.recipeTitle, i.calories) === picked.id,
             );
             if (!found) return;
-            logHistoryItem(found, currentSlotFromTime);
+            // 2026-05-08 build-47 follow-up — Grace TF: tapping "+ Breakfast"
+            // in the afternoon was logging picks as Snacks because this
+            // path used currentSlotFromTime instead of the user's choice
+            // (mealSlot). Mobile parity: apps/mobile/app/(tabs)/index.tsx
+            // recents.onPick. Generic LogSheet-open paths reset mealSlot
+            // to time-of-day so the default is fresh.
+            logHistoryItem(found, mealSlot);
           },
         }}
         saved={{
@@ -3184,8 +3216,11 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
             setLogSheetOpen(false);
             const meal = hostSavedMeals.find((m) => m.id === picked.id);
             if (!meal) return;
-            const slot = meal.defaultMealSlot ?? currentSlotFromTime;
-            logSavedMeal(meal, slot);
+            // 2026-05-08 build-47 follow-up — same reason as recents
+            // above: respect the user's slot choice (mealSlot). The
+            // saved-meal's defaultMealSlot was its preference at save
+            // time; the user has now explicitly picked a slot to log into.
+            logSavedMeal(meal, mealSlot);
           },
         }}
         library={{
@@ -3230,13 +3265,11 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
               }
               return;
             }
-            // `journalSlotFromMealTypes` does its own time-of-day
-            // fallback when meal_type is missing — see helper.
-            const slot = recipe.mealSlots
-              ? (journalSlotFromMealTypes(
-                  recipe.mealSlots as string[],
-                ) as MealSlot)
-              : (currentSlotFromTime as MealSlot);
+            // 2026-05-08 build-47 follow-up — same reason as recents
+            // and saved above: respect the user's slot choice (mealSlot).
+            // The recipe's own meal_type was a soft tag; the user has
+            // explicitly picked a slot.
+            const slot = mealSlot as MealSlot;
             const timeLabel = new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
             addLoggedMealForDate(
               selectedDateKey,

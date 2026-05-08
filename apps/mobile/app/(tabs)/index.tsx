@@ -332,6 +332,19 @@ function formatMealTimeDisplay(time: string | undefined, createdAt?: string | nu
 // without TDZ ordering errors.
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+// 2026-05-08 build-47 follow-up — Grace TF: tapping "+ Breakfast" in
+// the afternoon was logging picks as Snacks. Two reasons: (1) the
+// pick-handlers used `currentSlotFromTime` instead of `activeMealSlot`,
+// and (2) generic FAB-open paths (deep-link, empty-state) didn't reset
+// `activeMealSlot` to a fresh time-of-day default. Shared helper so
+// the useMemo + the two reset call-sites all use the same buckets.
+function slotForHour(h: number): "Breakfast" | "Lunch" | "Snacks" | "Dinner" {
+  if (h < 10) return "Breakfast";
+  if (h < 14) return "Lunch";
+  if (h < 17) return "Snacks";
+  return "Dinner";
+}
+
 export default function TrackerScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{
@@ -756,6 +769,12 @@ export default function TrackerScreen() {
   // doesn't re-open the sheet on the next focus.
   useEffect(() => {
     if (params.openLog === "1") {
+      // 2026-05-08 build-47 follow-up — global tab-bar `+` is generic
+      // (not slot-specific). Reset activeMealSlot to time-of-day so the
+      // LogSheet header + the pick-handlers default to the right slot.
+      // The slot-specific `+ Breakfast` path overrides this immediately
+      // via its own setActiveMealSlot in onOpenFabForSlot.
+      setActiveMealSlot(slotForHour(new Date().getHours()));
       setFabSheetOpen(true);
       router.setParams({ openLog: undefined } as Record<string, undefined>);
     }
@@ -1458,13 +1477,7 @@ export default function TrackerScreen() {
   );
 
   /** Infer the default slot for the Eat-again card from local clock time. */
-  const currentSlotFromTime = useMemo(() => {
-    const h = new Date().getHours();
-    if (h < 10) return "Breakfast";
-    if (h < 14) return "Lunch";
-    if (h < 17) return "Snacks";
-    return "Dinner";
-  }, []);
+  const currentSlotFromTime = useMemo(() => slotForHour(new Date().getHours()), []);
   const eatAgainSuggestion = useMemo(
     () => computeEatAgainForSlot(byDay, currentSlotFromTime, new Date()),
     [byDay, currentSlotFromTime],
@@ -4723,6 +4736,9 @@ export default function TrackerScreen() {
                     } catch {
                       /* analytics fire-and-forget */
                     }
+                    // 2026-05-08 build-47 follow-up — generic FAB path,
+                    // see deep-link path above for the same reset.
+                    setActiveMealSlot(slotForHour(new Date().getHours()));
                     setFabSheetOpen(true);
                   }}
                   textColor={colors.text}
@@ -5233,7 +5249,12 @@ export default function TrackerScreen() {
               (i) => foodHistoryKey(i.recipeTitle, i.calories) === picked.id,
             );
             if (!found) return;
-            logHistoryItemToSlot(found, currentSlotFromTime);
+            // 2026-05-08 build-47 follow-up — Grace TF: tapping "+ Breakfast"
+            // in the afternoon was logging picks as Snacks because this
+            // path used currentSlotFromTime instead of the user's choice.
+            // Use activeMealSlot (set by the slot-specific FAB tap or
+            // reset to time-of-day when the generic FAB opens).
+            logHistoryItemToSlot(found, activeMealSlot);
           },
         }}
         saved={{
@@ -5257,8 +5278,11 @@ export default function TrackerScreen() {
             setFabSheetOpen(false);
             const meal = hostSavedMeals.find((m) => m.id === picked.id);
             if (!meal) return;
-            const slot = meal.defaultMealSlot ?? currentSlotFromTime;
-            logSavedMealFromPanel(meal, slot);
+            // 2026-05-08 build-47 follow-up — same reason as `recents`
+            // above: respect the user's slot choice (activeMealSlot).
+            // The saved-meal's defaultMealSlot was its preference at save
+            // time; the user has now explicitly picked a slot to log into.
+            logSavedMealFromPanel(meal, activeMealSlot);
           },
         }}
         library={{
@@ -5299,11 +5323,11 @@ export default function TrackerScreen() {
             // not guess".
             void logPlannedMealWithPortion(
               {
-                // `journalSlotFromMealTypes` does its own time-of-day
-                // fallback when meal_type is empty — see helper.
-                name: journalSlotFromMealTypes(
-                  (recipe.mealSlots ?? []) as string[],
-                ),
+                // 2026-05-08 build-47 follow-up — same reason as `recents`
+                // and `saved` above: respect the user's slot choice
+                // (activeMealSlot). The recipe's own meal_type was a
+                // soft tag; the user has explicitly picked a slot.
+                name: activeMealSlot,
                 recipe_title: recipe.title,
                 calories: recipe.calories ?? 0,
                 protein: recipe.protein ?? 0,
