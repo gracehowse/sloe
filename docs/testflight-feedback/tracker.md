@@ -250,7 +250,7 @@ Grace's first session on build 44 surfaced 11 screenshot items in two bursts (00
 | **F-135** | `ADU-JU-1zRIm2WQBeovKEjA` | Barcode result | "Log · 1 rice paper (~9" green button text wraps mid-token; "11.33 rice papers" chip uses absurd decimal precision. | ⏳ |
 | **F-136** | `AG5LqMGUpER2Gqi5N03_ytc` | Scan Barcode empty state | Red error icon for an informational state ("We don't have this product yet" isn't an error). 3 stacked CTAs ("Snap the label / Scan again / Enter manually") = decision fatigue. | ⏳ |
 | **F-137** | `ALYyTJ5iBRo3qzeXngFZclA` | Barcode result | "Need to be able to edit simply like 4 nuggets instead of edit the grams. Like it says 1 nugget I should be able to select that and say 4 of 1 nugget like mfp lose it etc". Portion chip needs a count multiplier. | ⏳ — UX design |
-| **F-138** | `AIwJjIxWtKm1szmRd4CkzWs` | Correct This Product | "Need a better way of adding to the database. Need some sort of submission success this will be verified by the team etc". Submission has no confirmation toast / success state / verification status messaging. | ✅ Phase 0 — success card + honest copy (PR pending). Phase 1+ scope in `docs/decisions/2026-05-08-food-correction-verification-pipeline.md` (P0 schema + plausibility + consensus + admin + vision auto-verify). |
+| **F-138** | `AIwJjIxWtKm1szmRd4CkzWs` | Correct This Product | "Need a better way of adding to the database. Need some sort of submission success this will be verified by the team etc". Submission has no confirmation toast / success state / verification status messaging. | 🟡 Phases 0–2 shipped (success card + honest copy + P0 schema hardening + plausibility/consensus). Phases 3 (vote UI + flagging + two-path submit) / 4 (admin) / 5 (trust + vision auto-verify) scoped in `docs/decisions/2026-05-08-food-correction-verification-pipeline.md`, deferred to a focused multi-day session. |
 | **F-139** | `ACyWRLx2M-_D9t2jdcNjmaU` | Today | "The goals hit banner looks cheap" — solid blue banner overlaps the calorie ring. Needs lighter visual weight + non-overlapping placement. | ⏳ |
 
 **Ship order (this turn):** F-134 (P0, fixes 4 screenshots) → F-135 + F-136 + F-139 (UI batch) → F-131 (Pattern #9 v2) → F-133 (chart y-axis). F-132 + F-137 + F-138 deferred to a focused UX session.
@@ -267,6 +267,26 @@ Four parked architectural items shipped in one batch.
 - **PR #143 — Pattern #9 (`AN8GJ1Dr3M`) provenance affordance.** New `WhereThisComesFromSheet` (mobile) mirroring `WhyThisNumberSheet` shape. Info icon on `TodayActivityCard` opens a bottom sheet showing source / range / "Last synced X ago" + a "Sync now" CTA. `healthSyncMeta.ts` stamps `lastSyncedAt` to AsyncStorage after every successful sync. Closes the architectural unblock for the most-frequent surface (Today). Burn-detail mount + web parity deferred to a follow-up.
 
 Net open after this sweep: **2 ⏳** (F-108 / F-114, both await tester re-verify on the next TestFlight cut after build 44) + **1 🔍** (`AN8GJ1Dr3M` — code-level closure but tester-side still needs the build install). All architecturally-deferred follow-ups now shipped.
+
+**2026-05-08 — Build 45 / 46 / 47 hotfix cluster (PRs #154–#163, 5+ OTAs)**
+
+Three same-day TestFlight builds. Build 45 caught two latent bugs (edit-meal freeze + voice-log no-op). Build 46 was rejected by Apple (90683 — missing `NSSpeechRecognitionUsageDescription`). Build 47 unmasked a critical data-loss issue (re-install wiped ~25 days of meals) plus four follow-up product asks. All 9 work items shipped via the next OTA / TestFlight cut.
+
+| Item | PR | Fix |
+|------|----|-----|
+| Apple 90683 reject — missing speech-recognition purpose strings | #157 | `expo.ios.infoPlist` on `app.json` (the `expo-speech-recognition` plugin only handles Android) |
+| iPhone Camera HEIC → Anthropic 400 invalid base64 | #158 | Server-side `normalizeImageForAi` (sharp; 2048px cap; auto-rotate) plumbed into all 3 image routes |
+| Voice button silent no-op | #159 | `voiceLog.ts` rewrite — package exports `ExpoSpeechRecognitionModule` named (not default) and uses `start()` / `stop()` (not `*Async`) |
+| **CRITICAL — re-install wiped ~25 days of meals** | #160 | All 8 `setByDay` paths in `(tabs)/index.tsx` now go through `persistMealsImmediate`; old 600ms-debounced useEffect was cancelling on every dep change |
+| Weekly-checkin pop-up loop on every meal edit | #161 | Edit-flow guard now sets `weeklyCheckinHandledRef.current = true` so the modal stays suppressed for the rest of the session |
+| Per-100g vs Per-serving toggle missing on the LOG card + auto-log after correction-save | #162 | Mirrors the toggle from the correction form; "Log this now" CTA on success card pre-fills gramsInput to one serving |
+| TDEE-vs-target floor explainer (Grace `APPzhqLXgb64_9reZ44rGk4` — "If my tdee is lower why is my target higher?") | #163 | Expose raw pre-clamp target via `floorAppliedKcal`; modal renders calm copy when the 1,200 kcal/day safety floor is applied |
+| AI errors + "no vitamins and minerals even when they do exist" | (deferred) | Scoped in `docs/decisions/2026-05-08-ai-photo-log-micronutrient-gap.md` — right fix is to wire AI photo-log items through the existing OFF/USDA/FatSecret matcher on commit (not extend the AI prompt). Sequenced after F-138 Phase 5 |
+| F-138 Phase 0–2 (correction success state + P0 schema + plausibility) | #148, #150–#153 | Honest copy + numeric constraints + RLS hardening + state-machine guard + `verified_food_canonical` projection + 3-tier `lookupBarcode` read |
+
+Plus a CI unblock (PR #163 follow-up): integration tests that fed 4-byte fixture buffers to `normalizeImageForAi` were 415-ing on every multipart-passing case after #158 merged, so main was red on `test`. Mocked the helper at the test boundary; real sharp coverage stays in `tests/unit/normalizeImageForAi.test.ts`.
+
+Net open after this sweep: F-138 Phases 3 / 4 / 5 (vote UI + admin queue + Claude-vision label-photo verify) — multi-day, scoped in the same decision doc. F-132 (weight-chart consolidation) + F-137 (portion-chip count multiplier) remain deferred to a focused UX session per the build-44 ship order.
 
 **2026-05-07 — F-130 fix shipped (PR #137, the next TestFlight cut)**
 
