@@ -154,9 +154,13 @@ describe("F-20 · form wiring — modal references the shared helper + basis lab
 
 describe("F-18 · parity pins — four specific copy strings from the scan card", () => {
   it("Log button uses mid-dot instead of nested parentheses", () => {
-    // `Log · {portionSummary}` — guards against the regression to
-    // `Log ({portionSummary})` which produced `Log (1 serving (100 g))`.
-    expect(MODAL_SRC).toContain("Log · {portionSummary}");
+    // F-18 / F-135 evolved this string. F-18 collapsed the nested
+    // parens (`Log (1 serving (100 g))` → `Log · 1 serving`); F-135
+    // stripped the trailing `(~Ng)` parenthetical via a regex so long
+    // portion labels stop wrapping mid-word. The pin tracks the
+    // shape: a mid-dot Log line that USES `portionSummary` (with or
+    // without the F-135 regex strip) and is NOT the nested-paren form.
+    expect(MODAL_SRC).toMatch(/Log · \{portionSummary\b/);
     expect(MODAL_SRC).not.toContain("Log ({portionSummary})");
   });
 
