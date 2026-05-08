@@ -2,8 +2,14 @@ import { NextResponse } from "next/server";
 import { rateLimit } from "@/lib/server/rateLimit";
 import { getUserIdFromRequest, getUserTier } from "@/lib/supabase/serverAnonClient";
 import { verifyIngredients } from "@/lib/nutrition/verifyIngredients";
+import { callAiText } from "@/lib/server/aiProvider";
 
 export const runtime = "nodejs";
+
+// 2026-05-08 (`docs/decisions/2026-05-08-food-correction-verification-pipeline.md`):
+// migrated from OpenAI gpt-4o-mini to Anthropic Claude Sonnet 4.6 via the
+// shared `callAiText` helper. Voice transcription happens on-device
+// (expo-speech-recognition) so there's no Whisper dependency to migrate.
 
 export type VoiceLogItem = {
   name: string;
@@ -61,14 +67,6 @@ export async function POST(req: Request) {
     );
   }
 
-  const key = process.env.OPENAI_API_KEY?.trim();
-  if (!key) {
-    return NextResponse.json(
-      { ok: false, error: "openai_not_configured" },
-      { status: 503 },
-    );
-  }
-
   let body: { transcript?: string };
   try {
     body = await req.json();
@@ -81,7 +79,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "missing_transcript" }, { status: 400 });
   }
 
-  // ── Step 1: Use LLM to PARSE transcript into structured food items (not estimate nutrition) ──
+  // ── Step 1: Use LLM to PARSE transcript into structured food items
+  // (not estimate nutrition — that comes from the verified pipeline). ──
   const parsePrompt = `Parse this food description into individual food items with amounts and units.
 
 Transcript: "${transcript}"
@@ -104,43 +103,23 @@ Rules:
 - Separate compound items ("chicken and rice" = two items)
 - Do NOT estimate calories or macros — only parse foods and portions`;
 
-  let res: Response;
-  try {
-    res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        temperature: 0.2,
-        max_tokens: 1000,
-        messages: [{ role: "user", content: parsePrompt }],
-      }),
-    });
-  } catch {
+  const aiResult = await callAiText({
+    callSite: "voice-log",
+    userText: parsePrompt,
+    expectJson: true,
+    temperature: 0.2,
+    maxTokens: 1000,
+  });
+  if (!aiResult.ok) {
     return NextResponse.json(
-      { ok: false, error: "openai_network_error", message: "Could not reach the AI service. Please try again." },
-      { status: 502 },
+      { ok: false, error: aiResult.error, message: aiResult.message },
+      { status: aiResult.status },
     );
   }
-
-  if (!res.ok) {
-    return NextResponse.json(
-      { ok: false, error: "openai_http_error", status: res.status },
-      { status: 502 },
-    );
-  }
-
-  const data = (await res.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
-  };
-  const raw = data.choices?.[0]?.message?.content?.trim() ?? "";
 
   let parsed: { items?: Array<{ name?: string; amount?: string; unit?: string }> };
   try {
-    const cleaned = raw.replace(/^```json?\s*/i, "").replace(/```\s*$/, "");
+    const cleaned = aiResult.text.replace(/^```json?\s*/i, "").replace(/```\s*$/, "");
     parsed = JSON.parse(cleaned) as typeof parsed;
   } catch {
     return NextResponse.json(

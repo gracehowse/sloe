@@ -53,13 +53,16 @@ describe("POST /api/nutrition/voice-log", () => {
     expect(j.error).toBe("upgrade_required");
   });
 
-  it("returns 503 when OPENAI_API_KEY is unset", async () => {
+  it("returns 503 ai_not_configured when neither AI key is set", async () => {
+    // 2026-05-08: route migrated to the shared `aiProvider` helper which
+    // returns vendor-neutral `ai_not_configured` instead of the
+    // OpenAI-specific code.
     vi.unstubAllEnvs();
     mockUserId.mockResolvedValue("u1");
     mockTier.mockResolvedValue("pro");
     const res = await POST(req({ transcript: "two eggs" }));
     expect(res.status).toBe(503);
-    expect((await res.json()).error).toBe("openai_not_configured");
+    expect((await res.json()).error).toBe("ai_not_configured");
   });
 
   it("returns 400 for missing transcript when Pro and OpenAI configured", async () => {

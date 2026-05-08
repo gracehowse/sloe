@@ -175,12 +175,15 @@ export async function POST(req: Request) {
   // Social imports need more headroom for video download + Whisper transcription
   const t = setTimeout(() => ac.abort(), socialPlatform ? 45000 : 20000);
   try {
-    // Instagram / TikTok: extract caption via meta tags, then parse recipe with OpenAI.
+    // Instagram / TikTok: extract caption via meta tags, then parse recipe via Claude (or OpenAI fallback).
     if (socialPlatform) {
-      const openaiKey = process.env.OPENAI_API_KEY?.trim();
-      if (!openaiKey) {
+      // 2026-05-08: vendor selection happens inside `extractRecipeFromCaption`
+      // via the shared `aiProvider` helper. Just check that *some* AI key
+      // is configured before proceeding.
+      const { activeVendor } = await import("@/lib/server/aiProvider");
+      if (!activeVendor()) {
         return NextResponse.json(
-          { ok: false, error: "openai_not_configured", message: "Set OPENAI_API_KEY to enable social recipe import." },
+          { ok: false, error: "ai_not_configured", message: "Set ANTHROPIC_API_KEY (preferred) or OPENAI_API_KEY to enable social recipe import." },
           { status: 503 },
         );
       }
@@ -198,7 +201,7 @@ export async function POST(req: Request) {
       }
 
       const captionText = [meta.title, meta.caption].filter(Boolean).join("\n\n");
-      let recipe = await extractRecipeFromCaption(captionText, openaiKey, meta.imageUrl);
+      let recipe = await extractRecipeFromCaption(captionText, meta.imageUrl);
 
       // Tier 2: Try augmenting with Instagram comments from embedded HTML
       if (!recipe.ingredients.length && !recipe.steps.length) {
@@ -206,7 +209,7 @@ export async function POST(req: Request) {
           const commentText = extractCommentsFromHtml(meta.rawHtml);
           if (commentText) {
             const augmentedCaption = captionText + "\n\n--- Comments ---\n" + commentText;
-            recipe = await extractRecipeFromCaption(augmentedCaption, openaiKey, meta.imageUrl);
+            recipe = await extractRecipeFromCaption(augmentedCaption, meta.imageUrl);
           }
         }
       }
