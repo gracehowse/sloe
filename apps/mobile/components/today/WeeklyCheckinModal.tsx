@@ -271,7 +271,7 @@ export function WeeklyCheckinModal({
               <Text style={{ fontWeight: "600" }}>
                 {content.floorAppliedKcal.toLocaleString("en-GB")} kcal/day
               </Text>
-              , but eating that little long-term isn't safe. We've capped
+              , but eating that little long-term isn&apos;t safe. We&apos;ve capped
               the suggestion at the{" "}
               <Text style={{ fontWeight: "600" }}>1,200 kcal/day</Text>{" "}
               minimum.
