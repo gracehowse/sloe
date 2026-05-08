@@ -1,6 +1,6 @@
 import React from "react";
-import { Text, View } from "react-native";
-import { Flame, Footprints } from "lucide-react-native";
+import { Pressable, Text, View } from "react-native";
+import { Flame, Footprints, Info } from "lucide-react-native";
 import { Accent, Spacing } from "@/constants/theme";
 
 /**
@@ -10,12 +10,19 @@ import { Accent, Spacing } from "@/constants/theme";
  * 2026-04-18). Host owns all data; component is a pure view so the
  * existing HealthKit sync flow + historic-day navigation still run
  * through the composition root.
+ *
+ * 2026-05-08 (Pattern #9, tracker `AN8GJ1Dr3M`): optional `onShowProvenance`
+ * prop renders a small info icon next to the title that opens the
+ * "Where this comes from" sheet. One affordance per card (steps + active
+ * energy share a source); two icons would fight on a dense screen.
  */
 export interface TodayActivityCardProps {
   dayLabel: string;
   stepsCount: number | null;
   dailyStepsGoal: number;
   activityBurnKcal: number | null;
+  /** Pattern #9 — when provided, renders an info icon that opens the provenance sheet. */
+  onShowProvenance?: () => void;
   styles: Record<string, any>;
   textColor: string;
   textSecondaryColor: string;
@@ -28,6 +35,7 @@ export function TodayActivityCard({
   stepsCount,
   dailyStepsGoal,
   activityBurnKcal,
+  onShowProvenance,
   styles,
   textColor,
   textSecondaryColor,
@@ -36,7 +44,20 @@ export function TodayActivityCard({
 }: TodayActivityCardProps) {
   return (
     <View style={styles.card}>
-      <Text style={styles.cardTitle}>Steps & activity</Text>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+        <Text style={styles.cardTitle}>Steps & activity</Text>
+        {onShowProvenance ? (
+          <Pressable
+            onPress={onShowProvenance}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel="Where this number comes from"
+            testID="today-activity-provenance-info"
+          >
+            <Info size={14} color={textTertiaryColor} strokeWidth={2} />
+          </Pressable>
+        ) : null}
+      </View>
       <Text style={{ fontSize: 11, color: textTertiaryColor, marginBottom: Spacing.md }}>{dayLabel}</Text>
 
       <View style={{ gap: Spacing.sm }}>
