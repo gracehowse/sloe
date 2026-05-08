@@ -2206,6 +2206,15 @@ export default function TrackerScreen() {
     if (!isToday) return;
     if (weeklyCheckinHandledRef.current) return;
     if (!userId) return;
+    // build-45 bug fix (2026-05-08): when the user navigates to
+    // /meal-nutrition then taps Edit, the host route returns with
+    // `editMealId` and TodayEditMealModal opens. The weekly check-in
+    // useEffect re-fires on the same focus event and opens its modal
+    // ON TOP of the edit modal — both are presented at the same RN
+    // Modal level and iOS blocks input on the back one → page freezes.
+    // Suppress weekly check-in while the edit-meal flow is in progress.
+    if (editingMeal != null) return;
+    if (typeof params.editMealId === "string" && params.editMealId.length > 0) return;
     // Map adaptive confidence string into the gate's typed enum. Any
     // unrecognised value (legacy / null / future addition) routes to
     // null which the gate treats as "math hasn't resolved" → no fire.
@@ -2273,6 +2282,8 @@ export default function TrackerScreen() {
     targets.calories,
     resolvedMaintenance,
     weeklyCheckinShownAt,
+    editingMeal,
+    params.editMealId,
   ]);
 
   const handleWeeklyCheckinAccept = useCallback(() => {
