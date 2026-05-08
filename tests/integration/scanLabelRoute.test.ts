@@ -21,6 +21,15 @@ vi.mock("@/lib/server/rateLimit", () => ({
   rateLimit: vi.fn(async () => ({ ok: true, retryAfterSec: 0 })),
 }));
 
+// 2026-05-08 — sharp can't decode the 4-byte test fixture; mock the
+// helper. Real coverage in tests/unit/normalizeImageForAi.test.ts.
+vi.mock("@/lib/server/normalizeImageForAi", () => ({
+  normalizeImageForAi: vi.fn(async (buf: Buffer) => ({
+    buffer: buf,
+    mediaType: "image/jpeg",
+  })),
+}));
+
 import { POST } from "../../app/api/nutrition/scan-label/route";
 import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
 
