@@ -32,7 +32,6 @@ import {
   formatHelpedLine,
   type ContributorStats,
 } from "@/lib/contributorStats";
-import { supabase } from "@/lib/supabase";
 
 // Resolve the API origin once. Suppr's mobile app talks to the same
 // Vercel-hosted Next.js routes the web client uses.
@@ -386,12 +385,18 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
       // F-138 Phase 3 — fetch the contributor stats so the success card
       // can show the "you helped N people" line. Fire-and-forget: a
       // failure here just hides the line, never blocks the success UX.
+      // Lazy-import supabase so the test runtime (which doesn't load
+      // env vars) doesn't throw at module-eval time.
       if (userId) {
-        void getMyContributorStats(supabase, userId)
-          .then(setContributorStats)
-          .catch(() => {
+        void (async () => {
+          try {
+            const { supabase } = await import("@/lib/supabase");
+            const stats = await getMyContributorStats(supabase, userId);
+            setContributorStats(stats);
+          } catch {
             /* silently keep contributorStats=null */
-          });
+          }
+        })();
       }
     } else if (result.error === "plausibility_blocked" && result.reasons) {
       // F-138 Phase 2 — plausibility gate rejected the submission. Surface
