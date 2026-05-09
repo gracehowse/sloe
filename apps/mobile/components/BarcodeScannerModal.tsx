@@ -27,6 +27,12 @@ import { lookupBarcode, scaleMacros, submitFoodCorrection, type BarcodeProduct }
 import { scaleCorrectionToPer100g, type CorrectionBasis } from "@/lib/barcodeCorrection";
 import { useAuth } from "@/context/auth";
 import { clampRememberedToServingOptions, getRememberedPortion, recordPortion } from "@/lib/barcodePortionMemory";
+import {
+  getMyContributorStats,
+  formatHelpedLine,
+  type ContributorStats,
+} from "@/lib/contributorStats";
+import { supabase } from "@/lib/supabase";
 
 // Resolve the API origin once. Suppr's mobile app talks to the same
 // Vercel-hosted Next.js routes the web client uses.
@@ -117,6 +123,13 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
   // confirmation their submission was received. Honest copy: it applies to
   // your scans now and goes into the review queue for everyone else.
   const [corrSubmitted, setCorrSubmitted] = useState(false);
+  // F-138 Phase 3 — soft "you helped N people" line on the
+  // correction-saved success card. Fetched once on submission success
+  // (RLS-scoped to submitted_by = auth.uid()). null = not loaded yet,
+  // ContributorStats with helpedLine=null = nothing to show on this
+  // card (e.g. first-ever submission with no verified history).
+  const [contributorStats, setContributorStats] =
+    useState<ContributorStats | null>(null);
   // F-138 Phase 2 — server-side plausibility check rejected the submission
   // (e.g. Atwater off by >30%, sugar > carbs, etc.). Surfaced inline so
   // the user can fix and re-submit instead of getting silent failure.
@@ -370,6 +383,16 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
       // F-138 — show success state in place of the form. User taps Done
       // to dismiss back to the product card with their corrected values.
       setCorrSubmitted(true);
+      // F-138 Phase 3 — fetch the contributor stats so the success card
+      // can show the "you helped N people" line. Fire-and-forget: a
+      // failure here just hides the line, never blocks the success UX.
+      if (userId) {
+        void getMyContributorStats(supabase, userId)
+          .then(setContributorStats)
+          .catch(() => {
+            /* silently keep contributorStats=null */
+          });
+      }
     } else if (result.error === "plausibility_blocked" && result.reasons) {
       // F-138 Phase 2 — plausibility gate rejected the submission. Surface
       // the specific reasons so the user can fix and re-submit.
@@ -385,6 +408,7 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
     setCorrectionMode(false);
     setCorrSubmitted(false);
     setCorrBlockReasons(null);
+    setContributorStats(null);
     setScanLabelError(null);
     setGramsInput("100");
     setRememberedPortion(null);
@@ -398,6 +422,7 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
     setCorrectionMode(false);
     setCorrSubmitted(false);
     setCorrBlockReasons(null);
+    setContributorStats(null);
     setScanLabelError(null);
     setGramsInput("100");
     setRememberedPortion(null);
@@ -798,6 +823,17 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
       lineHeight: 20,
       color: colors.textSecondary,
       textAlign: "center",
+    },
+    // F-138 Phase 3 — soft contributor-stats line below the body copy.
+    // Subdued visual weight (textTertiary + smaller font) so it reads
+    // as a footnote, not the headline. Decision doc: "soft, not
+    // leaderboard-y".
+    correctionSuccessHelpedLine: {
+      fontSize: 13,
+      lineHeight: 18,
+      color: Accent.success,
+      textAlign: "center",
+      fontWeight: "600",
     },
     correctionSuccessDoneBtn: {
       marginTop: Spacing.sm,
@@ -1279,6 +1315,20 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
                         We{"’"}re building out a review process — once it{"’"}s
                         live, the best corrections will roll out to everyone.
                       </Text>
+                      {/* F-138 Phase 3 — soft "you helped N people" line.
+                          Hidden when the user has no verified history yet
+                          (first submission shows nothing here rather than
+                          "You helped 0 people"). */}
+                      {(() => {
+                        if (!contributorStats) return null;
+                        const line = formatHelpedLine(contributorStats);
+                        if (!line) return null;
+                        return (
+                          <Text style={styles.correctionSuccessHelpedLine}>
+                            {line}
+                          </Text>
+                        );
+                      })()}
                       {/* 2026-05-08 build-47 follow-up — Grace's TF
                           feedback `AEzXpj7cEtWzcmRM391H1pM`: "When I save
                           a new item I should be able to auto log it not
