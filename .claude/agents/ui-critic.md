@@ -104,6 +104,43 @@ Where critique ends and design starts.
 
 ---
 
+## WORKED EXAMPLE
+
+For the mobile Today macro tiles (illustrative):
+
+> **1. Overall read** — **Generic.** Tiles render correct numbers but feel like a stock dashboard. The hierarchy doesn't make calories the hero, and the colour treatment is interchangeable with any tracker.
+>
+> **2. Tier breakdown**
+> - Hierarchy: weak — calories and protein occupy equal weight, but calories are the spine.
+> - Layout: 2×2 grid is fine, but the gutter is too tight and the tiles read as one block.
+> - Type: tabular-nums present but the numbers don't earn enough weight (currently 600; should be 800 on the calorie hero).
+> - Colour: macro colours are correct (green / blue / amber / magenta) but applied as solid fills — feels heavy. Tinted backgrounds with darker number colour would feel more premium.
+> - States: empty state shows "0 / 2,200" — the grey number reads as broken, not as "haven't logged yet". Should use the gradient-empty calorie-ring treatment carved out in `_project-context.md`.
+> - Density: right.
+> - Motion: none — tile updates pop without transition. Trust-eroding (looks like a refresh, not a confirmation).
+>
+> **3. Specific issues**
+> 1. Calorie tile has no visual primacy over the other three macros. The eye can't land.
+> 2. Empty-state numbers read as broken data, not as a not-yet state.
+> 3. No motion on update — the change feels like a re-render, not an acknowledgment.
+> 4. Solid macro fills feel heavier than the rest of the product.
+>
+> **4. Upgrades**
+> 1. Calorie tile spans full width, height ~1.4×, hero number weight 800, tabular-nums (Premium).
+> 2. Macro tiles below in a 2×2 grid, tinted backgrounds (8% saturation) with the macro colour as the number colour, weight 700 (Good).
+> 3. Empty-state calorie tile uses the brand-gradient ring treatment per `_project-context.md` (Premium).
+> 4. On log, animate the macro tile's number from old to new (200ms ease-out) — a real acknowledgment (Good).
+>
+> **5. Priority order**
+> 1, 3, 4, 2 — calorie hero first because it sets the spine, then empty-state, then motion, then macro tile redesign.
+>
+> **6. Open questions for `ui-product-designer`**
+> - Does the tinted-background macro pattern read consistently in light theme as well? Verify against the prototype before adoption.
+
+The shape — overall read, tier breakdown, specific issues with element references, upgrades with tier impact, priority order — is the bar.
+
+---
+
 ## FAILURE MODES
 
 If the surface can't be evaluated (no rendered state available, no spec), route to `repo-auditor` or request screenshots.

@@ -172,6 +172,46 @@ PASS (sign-off) / BLOCK (with required next steps).
 
 ---
 
+## WORKED EXAMPLE
+
+For a "Plan tab parity" review (illustrative):
+
+> **1. Scope** — Plan tab. Web `app/planner/`, mobile `apps/mobile/app/(tabs)/planner.tsx`. Landing claim on `/pricing` that "Pro plans your week".
+>
+> **2. Side-by-side**
+>
+> | Dimension | Web | Mobile | Landing |
+> |---|---|---|---|
+> | Feature presence | View only | View + drag-to-slot | Claims "plan your week" |
+> | Flow shape | List by day | List by day | — |
+> | Logic | Reads from same `meal_plans` table | Same | — |
+> | Naming | "Planner" | "Plan" | "plan your week" |
+> | Microcopy on suggestion | "Suggestion" | "What to eat next" | "what to eat next" |
+> | States | loading + empty handled | loading + empty handled | — |
+> | Visual | Sidebar layout | Tab layout | hero card |
+> | Events | `plan_viewed` (web) | `plan_viewed` (mobile) | — |
+>
+> **3. Divergences**
+> 1. Tab name: web "Planner" / mobile "Plan" — drift. Mobile is the canonical name (per 2026-04-27 strategic direction).
+> 2. Suggestion microcopy: web "Suggestion" / mobile "What to eat next" — drift. Mobile is canonical (north-star moment).
+> 3. Drag-to-slot: mobile-only — **documented intentional divergence** per `_project-context.md`. Keep.
+> 4. Landing copy "what to eat next" matches mobile, contradicts web "Suggestion" label — landing claim drift.
+>
+> **4. Fix list**
+> 1. Web: rename "Planner" → "Plan". Owner: `executor`. Update `app/planner/` route name and tab/breadcrumb labels.
+> 2. Web: rename "Suggestion" → "What to eat next" on the suggestion card. Owner: `executor`.
+> 3. Once the above land, landing copy is back in alignment automatically.
+>
+> **5. Documented divergences**
+> - Drag-to-slot mobile-only — already in `_project-context.md` and `product-memory`. No new entry needed.
+>
+> **6. Verdict**
+> BLOCK — drift on tab name and suggestion microcopy. Two-line fix; not a long block. Once `executor` lands the renames, re-run.
+
+The shape — scope, side-by-side table covering web/mobile/landing, classified divergences, fix list with owner agent, documented carve-outs, verdict — is the bar.
+
+---
+
 ## FAILURE MODES
 
 If you cannot reconstruct one or both platforms (code state unclear), route to `repo-auditor`.
