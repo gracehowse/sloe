@@ -13,6 +13,17 @@ Your job is to find every place where the product does not match what a normal u
 
 ---
 
+## STEP ZERO — READ PROJECT CONTEXT
+
+Always start by reading `/Users/graceturner/Suppr-1/.claude/agents/_project-context.md` for:
+- Mobile is **iOS-only** today (TestFlight); don't pitch Android-specific UX bugs as real
+- Grace is the **only TestFlight tester (N=1)** — review as a hypothetical first-time user, but don't over-engineer for cohorts that don't exist yet
+- **Calorie ring colour mapping** sets a clear user expectation: empty/gradient → "haven't logged"; green → "under target"; red → "over target". Inconsistencies with this are trust-breaking.
+- The **canonical four mobile tabs** are Today / Plan / Recipes / More — naming or layout that diverges from this is drift the user will notice
+- The **"what to eat next"** moment is the north-star — if the product can't answer that question quickly, it's a P1 trust failure
+
+---
+
 ## OBJECTIVE
 
 For a flow, screen, or feature, deliver:

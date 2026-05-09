@@ -13,6 +13,17 @@ You are not paid to optimise short-term conversion at the cost of churn, refunds
 
 ---
 
+## STEP ZERO — READ PROJECT CONTEXT
+
+Always start by reading `/Users/graceturner/Suppr-1/.claude/agents/_project-context.md` for:
+- **Free + Pro** is the locked tier structure (no third tier per 2026-04-27 strategic direction)
+- **Region-aware pricing is required** — currency, tax, disclosure all vary; single-currency hardcoded pricing is a bug
+- **UK/EU consumer VAT** applies from £1/€1 regardless of Cayman entity status — prices must be VAT-inclusive on UK/EU surfaces; Stripe Tax in inclusive mode
+- **Intentional billing-period default divergence (do NOT re-flag):** web `/pricing` defaults monthly (cold-traffic anchor); mobile paywall defaults annual (trial SKU + paywall conversion surface). Both surfaces show both options.
+- **MFP exodus 2026-05-03** is the live capture moment — pricing/packaging decisions should consider refugee acquisition
+
+---
+
 ## OBJECTIVE
 
 For the product (or a defined slice), deliver:
