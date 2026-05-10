@@ -237,6 +237,57 @@ UI-critic audit confirmed Grace's "all pages still like this" hunch — the meal
 - F15 (`—` placeholders for Current / Goal weight) — needs a designer call on whether to collapse the row or render a soft prompt.
 - All web parity checks — flagged for a follow-up grep pass.
 
+**2026-05-10 — ASC pull (181 screenshot / ? crash; F-140 → F-156 + recurrences)**
+
+Grace's morning brief 2026-05-10 (data: `docs/testflight-feedback/data/feedback-2026-05-10.json`). Latest ~50 items clustered into ~10 themes spanning P0 launch-blockers, P1 numbers/trust, and P2 polish. Many ASC IDs map to existing themes / recurrences of items previously thought closed. Recipe-related items (import bugs, library, hero images, defaults-to-recipes-that-don't-exist) explicitly **deferred** by Grace — re-visit pre-launch.
+
+Two specialist diagnostic passes in this session:
+- `repo-auditor` on the P0 cluster (auth + household + payments + persistence) — surgical findings file:line.
+- `repo-auditor` on the P1 numbers cluster (TDEE / deficit / plan retroactive / steps mismatch / weight-chart / 100g defaults) — surgical findings file:line.
+
+Triage table (this turn — fixes shipping in waves, see ship-order at the bottom):
+
+| F# | ID | Status | Cluster | Description / Fix |
+|----|----|--------|---------|-------------------|
+| **F-140** | (regression of F-94 + `AC2JP5CG8x`) | 🔄 in PR | Landing copy | "Is this a diet app?" FAQ at `src/lib/landing/content.ts:217` claimed "we don't do leaderboards, streaks or shaming" *after* streaks shipped (`streakFreeze.ts`/`streakReset.ts`). **F-94 went the wrong direction** — `b3206ea` removed the honest "gentle logging streak…" copy. Rewrote to: "We don't do leaderboards or shaming, and our targets are based on Mifflin-St Jeor so you can override them. We do have streaks — but they're protective: miss a day and a freeze keeps the streak alive." |
+| **F-141** | (web missing) | ⏳ next PR | P0 auth | Apple sign-in. Mobile `apps/mobile/app/login.tsx:454` works but silently hides button when `appleAuthAvailable === false`. **Web `/login` has no Apple button at all** — only a TODO comment at `app/login/ui.tsx:44`. Fix: add `signInWithOAuth({ provider: 'apple' })` to web; add disabled-state copy on mobile when entitlement unavailable so testers can tell "missing entitlement" from "broken at runtime". |
+| **F-142** | `AAegi1DJEiscjIFi_pYaep4` | ⏳ next PR | P0 household | "Nothing happens when I try to create a household" — recurrence after F-111 cluster partial-fix (2026-05-06). `src/lib/household/householdClient.ts:181-250` does 3 sequential writes with no transaction; if step 2 (`household_members.insert`) errors, leaves zombie household; the error toast in `HouseholdCard.tsx:196` is opaque (`(e as Error).message` = raw RLS error). Fix: rollback sentinel + PostHog capture in catch + friendlier copy + log raw error to Sentry for the next tester report. |
+| **F-143** | (operational) | ⏳ next PR | P0 payments | "None of the trial / payments stuff is hooked up". Mobile UI works through to `purchasePackage` and Apple charges. **But** `2026-05-03` lockdown migration (`profiles_tier_column_lockdown.sql`) blocks client-side `profiles.user_tier` UPDATE; replacement RC webhook at `app/api/revenuecat/webhook/route.ts` requires (a) Vercel env vars `REVENUECAT_WEBHOOK_AUTH` + `SUPABASE_SERVICE_ROLE_KEY` and (b) RC dashboard webhook pointing at `/api/revenuecat/webhook`. **`apps/mobile/lib/purchases.ts:255-273` silently swallows the lockdown error in DEV-only `console.warn` — user has paid, profile stays free.** Fix: surface real user-visible error on tier-sync failure (not silent), AND verify Vercel + RC dashboard config (operational, must do in dashboards). |
+| **F-144** | `APU2FBCjLALmugeCLmQ4Ii0` (templates) + (notes/ratings) | ⏳ next PR | P0 persistence | "Could not load notes / templates / save ratings" — recurrence. Root cause for ratings/notes: `20260514100000_replace_recipes_with_suppr_kitchen.sql` wiped platform recipes, cascading FK delete on `user_recipe_notes`. App's local cache still has old recipe ids; when user saves a rating, FK violation 23503 → "could not save". Fix: catch FK violation in `recipeNotesClient.ts:upsertUserRecipeNotes`, surface "This recipe is no longer in our library — save it again to keep notes" copy. Templates is a separate opaque-error issue at `apps/mobile/app/(tabs)/planner.tsx:463` — surface real `error.message`. |
+| **F-145** | `ALcwMFPjf` + `AAtW7dYcCBP` (recurrences) | ⏳ later PR | P1 numbers | "Maintenance shows 1,900 when actual is ~1,600" / TDEE doesn't reconcile across surfaces. **Three drift sources**: `resolveMaintenance` (correct, stale-aware), `getEffectiveTDEE` (no staleness check), `dailyTargetSnapshot.maintenance_tdee` (just adaptive, no formula fallback). Different surfaces call different paths — same label, three numbers. Fix: route everyone through `resolveMaintenance`; snapshot stores the resolved value at write time. |
+| **F-146** | `AEyOuUJrB4` (recurrence — see Theme 3) | ⏳ later PR | P1 numbers | "Plan set to gain because consumed > goal but not > burn". `apps/mobile/components/today/TodayWeekView.tsx:395, 409` + `src/app/components/suppr/today-week-view.tsx:377, 380` compare `consumed > goal` (wrong) instead of `burn − consumed` (right — see `TodayActivityBonusCard.tsx:163-164` which got this right months ago). Fix: compute weekBurn from same data already loaded for Activity Bonus; mirror across platforms; parity test pin. |
+| **F-147** | `AD6_JNUaEjoJ5phZ_N1kv6o` (P2-39 recurrence) | ⏳ later PR | P1 numbers | "0 steps on Progress doesn't match Today (which has the right count)". Both read `profiles.steps_by_day[todayKey]`; Progress's sync is deferred behind `setLoading(false)`, races on cold focus. `apps/mobile/app/(tabs)/progress.tsx:237` already adds `stepsSyncStatus` for the case but the BIG number at L1883 doesn't gate on it. Fix: render `—` / skeleton when `stepsSyncStatus === "pending"` instead of `0`. |
+| **F-148** | `AF7bS2DQrH_wZWxGosBJ3K8` | ⏳ later PR | P1 numbers | "Weight chart 3/6/9 month buttons don't change months shown". The 6M / 9M pills **literally don't exist** in `apps/mobile/components/charts/TimeRangeSelector.tsx:26` — `RANGES = ["1W", "1M", "3M", "12M", "All"]`. Even if added, `weightTrendRange` collapses 6M/9M to `"1y"` buckets so they'd be no-ops. Decision needed: re-add 6M with proper bucket support, OR explicitly close as "by design" (the 1M → 3M → 12M jump is intentional). |
+| **F-149** | (recurrence Theme 3) | ⏳ later PR | P1 numbers | "Plan update retroactively changes past-day goals". `dailyTargetSnapshot.ts` only writes for `today` (L57). Past days without a snapshot fall back to `currentTargets` in `dailyTargetRead.ts:115-122` — i.e. the live profile target, not the target effective on that day. Fix: backfill `daily_targets` for every past day with previous profile values on goal/pace retune (smaller fix), or add `goal_history` table (proper fix per Theme 3 architectural lesson). |
+| **F-150** | `AKvgjnb` + `APGJJlg` (recurrence Theme 1) + new mentions | ⏳ later PR | P1 portions | "Everything defaults to 100g rather than actual portion sizes". Six concrete call-sites where the search panel's resolved `PrimaryServing` is **thrown away on selection** and the receiving code falls through to `servingSizeG ?? 100`: `apps/mobile/app/recipe/verify.tsx:271-274`, `import-shared.tsx:652`, `create-recipe.tsx:527`, `CreateRecipeWizard.tsx:386`, `verifyRecipe.ts:317` (corrupts back-calc per-100g for any non-grams unit), `CreateCustomFoodSheet.tsx:112`, `barcode.tsx:56`, `BarcodeScannerModal.tsx:69`. Fix: plumb resolved `PrimaryServing` through the food-pick callback. Web parity: same fix in `customFoodsClient.ts` and web recipe-verify. |
+| **F-151** | `APdpODtJDL8q2JhtGup6DK0` | ⏳ later PR | P2 broken | "Notifications don't appear to be working". Needs diagnosis pass (push permission status, server-side `notifications` table state, push token registered, Resend / push provider config). |
+| **F-152** | `AOOBv-1Ow` (recurrence Theme 7) | ⏳ later PR | P2 polish | "Use icons not emojis" — recurring. Project-wide sweep: replace emojis in product chrome with `lucide-react-native` (mobile) / `lucide-react` (web). Emojis OK in user-generated content; not in ours. |
+| **F-153** | `AH8csBqtZsBJJr0uHgXyEcE` | ⏳ later PR | P2 feature | "Plan doesn't tell me how close it is to my macro targets". Add macro-target alignment indicator to Plan day cards. |
+| **F-154** | (no specific ID, multiple mentions) | ⏳ later PR | P2 feature | "Way to share only dinner not whole plan, and not my macros (husband has different ones)". Per-meal share affordance + privacy strip on macros. |
+| **F-155** | `AOI9xgY88Dx-uphiXI8IzEk` (recurrence of F-96) | ⏳ verify | P2 broken | "Unclear if Edamam is integrated yet — would expect meals from restaurants". F-96 was closed 2026-05-06 with Edamam Food Database swap; verify the restaurant-lookup path actually surfaces in the UI for restaurants the tester is searching. May be a UX issue (where do these surface?) rather than integration. |
+| **F-156** | (no specific ID, multiple mentions) | ⏳ later PR | P2 feature | "Add-custom-food too thin vs MFP / Lose It". Parity gap with comparable trackers. Needs scoping pass. |
+
+**Recipe-related items deferred per Grace's 2026-05-10 brief (re-visit pre-launch):**
+- `AJHZNp8NHTiFNk9TjQfdYBk` — "Imported MFP carbs way higher than actual" (recipe import accuracy)
+- "Imported recipes lose source link" / "Esther Clark recipe — source not clickable" / "Some recipes pulling whole caption in as title"
+- "Library inconsistency: some recipes have images, some don't" (the hero-images thread, paused pending strategy call)
+- "Defaults to recipes that don't exist" on some surface (recipe library state)
+
+**Other items in Grace's brief already closed in earlier waves:**
+- "Score seems irrelevant — make it relevant or remove" → score pill removed from More + web Profile + score popover deleted in 2026-04-25 P1 sweep (line 46 above). Verify against build 47.
+- "Discover feed pagination caps too low" → already raised in earlier sweep; verify if recurrence.
+
+**Ship order (this multi-PR run):**
+1. **F-140** — landing streaks honest copy. Self-contained, lowest blast radius. *(in flight as PR)*
+2. **F-141 + F-142 + F-144** — P0 cluster (auth web parity + household telemetry + notes/ratings FK guard).
+3. **F-143** — P0 payments diagnostics + operational config note (real fix needs Vercel + RC dashboard).
+4. **F-145 + F-146 + F-149** — P1 numbers cluster (TDEE reconciliation, week-view net deficit, plan retroactive snapshot backfill).
+5. **F-147 + F-148** — Steps mismatch + weight-chart range buttons.
+6. **F-150** — 100g defaults sweep across the 6 call-sites.
+7. **F-151 → F-156** — P2 polish + features in remaining waves.
+
+---
+
 **2026-05-08 — Build-44 testing session (11 new ASC items, F-131 → F-139)**
 
 Grace's first session on build 44 surfaced 11 screenshot items in two bursts (00:44 UTC + 02:15-02:21 UTC). Mapped to 9 F-numbers (4 of the 11 are sub-symptoms of F-134). Triage:
