@@ -50,6 +50,7 @@ import {
   onboardingGoalForDbGoal,
 } from "../../../../src/lib/nutrition/goalPaceRetune";
 import { formatKcal } from "@/lib/weeklyCheckin";
+import { backfillDailyTargetsFromProfile } from "../../../../src/lib/nutrition/dailyTargetSnapshot";
 import type { Goal } from "../../../../src/lib/onboarding/state";
 import type { NutritionStrategy, Sex } from "../../../../src/lib/nutrition/tdee";
 
@@ -187,6 +188,29 @@ export function GoalPaceRetuneSheet(props: GoalPaceRetuneSheetProps) {
       // "cut" — the most common case — so the deficit applies.
       if (selectedPace !== 0 && dbGoal === "maintain") {
         updates.goal = dbGoalForOnboardingGoal(goal === "maintain" ? "lose" : goal);
+      }
+
+      // F-149 (2026-05-10): backfill past-day snapshots BEFORE writing
+      // the new targets, so historical days that lack a daily_targets
+      // row don't silently flip to the new target on read. Read the
+      // current profile (about to become the OLD profile), backfill
+      // synthetic snapshots for the past 30 days using its values, then
+      // write the new ones. `upsert(..., { ignoreDuplicates: true })`
+      // protects existing snapshots — only gaps get filled. Best-effort:
+      // if the backfill fails, still proceed with the profile update.
+      try {
+        const { data: oldProfile } = await supabase
+          .from("profiles")
+          .select(
+            "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, activity_level, plan_pace, goal, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, sex, weight_kg, height_cm, age",
+          )
+          .eq("id", userId)
+          .maybeSingle();
+        if (oldProfile) {
+          await backfillDailyTargetsFromProfile(supabase as any, userId, oldProfile);
+        }
+      } catch {
+        // Backfill never blocks the user's retune.
       }
 
       const { error: updateError } = await supabase

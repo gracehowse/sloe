@@ -219,6 +219,63 @@ describe("snapshotDailyTargetIfMissing", () => {
     expect(typeof insertCall!.payload.maintenance_tdee).toBe("number");
   });
 
+  it("F-149 — backfillDailyTargetsFromProfile upserts past-day snapshots from the OLD profile", async () => {
+    const { backfillDailyTargetsFromProfile } = await import("@/lib/nutrition/dailyTargetSnapshot");
+    const sb = makeSupabase({
+      daily_targets: () => ({ data: null, error: null }),
+    });
+    const oldProfile = {
+      target_calories: 1500,
+      target_protein: 110,
+      target_carbs: 180,
+      target_fat: 50,
+      target_fiber_g: 25,
+      activity_level: "moderate",
+      plan_pace: "0.5kg",
+      goal: "lose",
+      adaptive_tdee: 2000,
+      adaptive_tdee_confidence: "medium",
+      adaptive_tdee_updated_at: "2026-05-05T12:00:00Z",
+      sex: "female",
+      weight_kg: 70,
+      height_cm: 170,
+      age: 30,
+    };
+    const out = await backfillDailyTargetsFromProfile(sb as any, "u1", oldProfile, {
+      now: new Date("2026-04-19T12:00:00Z"),
+    });
+    expect(out.attempted).toBe(30);
+    expect(out.ok).toBe(true);
+    const upsertCall = sb.calls.find((c) => c.table === "daily_targets" && c.op === "upsert");
+    expect(upsertCall).toBeDefined();
+    const rows = (upsertCall!.payload as any[]) ?? [];
+    expect(rows.length).toBe(30);
+    // Every row carries the OLD targets.
+    for (const row of rows) {
+      expect(row.target_calories).toBe(1500);
+      expect(row.target_protein_g).toBe(110);
+      expect(row.user_id).toBe("u1");
+    }
+    // First-write-wins protects existing snapshots.
+    expect(upsertCall!.options).toMatchObject({ onConflict: "user_id,date_key", ignoreDuplicates: true });
+    // Date keys are yesterday → 30 days ago, not today.
+    const dateKeys = rows.map((r: any) => r.date_key);
+    expect(dateKeys).not.toContain("2026-04-19");
+    expect(dateKeys).toContain("2026-04-18");
+    expect(dateKeys).toContain("2026-03-20");
+  });
+
+  it("F-149 — backfill no-ops when target_calories is missing (pre-onboarding)", async () => {
+    const { backfillDailyTargetsFromProfile } = await import("@/lib/nutrition/dailyTargetSnapshot");
+    const sb = makeSupabase({});
+    const out = await backfillDailyTargetsFromProfile(sb as any, "u1", {
+      target_calories: null,
+    });
+    expect(out.attempted).toBe(0);
+    expect(out.ok).toBe(false);
+    expect(sb.calls.some((c) => c.table === "daily_targets")).toBe(false);
+  });
+
   it("preserves null/unset optional columns without fabricating defaults", async () => {
     const sb = makeSupabase({
       profiles: () => ({
