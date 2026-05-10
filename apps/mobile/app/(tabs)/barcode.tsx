@@ -20,7 +20,7 @@ import { BarcodeCameraView } from "@/components/BarcodeCameraView";
 // 2026-04-28 (Top-5 #4 in docs/ux/teardown-2026-04-28-daily-loop.md).
 // Glyph map used: camera-outline → Camera, add-circle → PlusCircle,
 // alert-circle → AlertCircle.
-import { AlertCircle, Camera, PlusCircle } from "lucide-react-native";
+import { AlertCircle, Camera, Check, PlusCircle } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, type Href } from "expo-router";
 
@@ -599,9 +599,16 @@ export default function BarcodeScreen() {
                   );
                 })}
             </View>
-            <Text style={styles.source}>
-              {product.verified ? "✓ Verified" : product.source === "user" ? "Community submitted" : "via Open Food Facts"}
-            </Text>
+            {product.verified ? (
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4 }}>
+                <Check size={11} color={Colors.dark.textTertiary} strokeWidth={3} />
+                <Text style={styles.source}>Verified</Text>
+              </View>
+            ) : (
+              <Text style={styles.source}>
+                {product.source === "user" ? "Community submitted" : "via Open Food Facts"}
+              </Text>
+            )}
             <View style={styles.btnRow}>
               <Pressable
                 style={styles.logBtn}
