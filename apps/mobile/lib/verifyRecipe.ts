@@ -18,6 +18,7 @@ import {
   type PrimaryServing,
 } from "../../../src/lib/nutrition/primaryServing";
 import { inferNaturalServingFromName } from "../../../src/lib/nutrition/inferNaturalServing";
+import { measureToGrams } from "../../../src/lib/nutrition/measureToGrams";
 import { checkSubmissionPlausibility } from "../../../src/lib/foodCorrection/plausibility";
 import {
   effectiveMacros as effectiveIngredientMacros,
@@ -314,7 +315,22 @@ export async function fetchIngredientsForVerification(
       amount = parsed.amount;
     }
 
-    const grams = unit === "g" && amount ? amount : 100;
+    // F-150 (2026-05-10): the previous fallback (`unit === "g" && amount ? amount : 100`)
+    // silently corrupted per-100g back-calc for any ingredient stored in non-gram
+    // units. A recipe row with `unit="cup"` `amount=1` of cooked rice would have
+    // its 158g-of-rice macros divided by factor=1, producing per-100g macros that
+    // are 58% too high. `measureToGrams` covers eggs, cups (region-aware), tins,
+    // counts (medium/large/small), and the COUNT_WEIGHT_G table so non-gram units
+    // resolve to a defensible weight before the back-calc.
+    let grams: number;
+    if (unit === "g" && amount && amount > 0) {
+      grams = amount;
+    } else if (unit && amount && amount > 0 && r.name) {
+      const inferred = measureToGrams({ name: String(r.name), amount: Number(amount), unit: String(unit) });
+      grams = inferred > 0 ? inferred : 100;
+    } else {
+      grams = 100;
+    }
     const factor = grams / 100;
     const hasMacros = (r.calories ?? 0) > 0;
     const per100g: MacrosPer100g | null = factor > 0 && hasMacros ? {
