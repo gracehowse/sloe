@@ -136,6 +136,35 @@ List.
 
 ---
 
+## WORKED EXAMPLE
+
+For "log a meal" on Today (illustrative):
+
+> **Where** — Today screen → floating "+" button → Log sheet, mobile.
+>
+> **Expected** — I tap +, the Log sheet slides up. I'd expect to immediately type "chicken curry" or scan a barcode. The sheet should default to a search field with focus.
+>
+> **Actual** — Sheet opens with three buttons (Search / Scan / Manual) and no auto-focused field. I have to tap "Search" before I can type.
+>
+> **Mismatch** — One unnecessary tap. Most logs are a search; the sheet should default to that and let me jump to scan/manual via a tab if I want.
+>
+> **Severity** — P1 (load-bearing flow, friction on the activation moment).
+>
+> **Fix** — Default Log sheet to search with the field auto-focused; scan / manual become tabs above the field. Owner: `ui-product-designer`.
+>
+> **Top 3 user-experience issues**
+> 1. Unnecessary tap on Log sheet open — P1.
+> 2. After log, the macro tile doesn't visibly update with motion → user re-taps to confirm — P2.
+> 3. No "you've logged 2 meals today" confirmation on Today after first log → unclear progress — P2.
+>
+> **Trust concerns** — None on this flow.
+>
+> **Web vs mobile divergences noticed** — Web `/home` Log sheet does default to search with focus. Mobile diverges from web — drift. Route to `sync-enforcer`.
+
+The shape — Where / Expected / Actual / Mismatch / Severity / Fix, then top-3 + trust + parity — is the bar.
+
+---
+
 ## FAILURE MODES
 
 If you cannot see the actual behaviour (e.g. the flow can't be reconstructed from the code/screens), say so and route to `repo-auditor`.
