@@ -224,11 +224,36 @@ export function resolveNextTier(args: {
   return { next: computed, write: true, reason: "upgrade" };
 }
 
+/**
+ * Outcome of `syncTierToSupabase`. Designed so the caller (paywall)
+ * can surface a sensible user-facing message even when the client
+ * write is locked out by design.
+ *
+ * F-143 (2026-05-10): the previous void return + DEV-only console.warn
+ * meant production users whose purchase succeeded at Apple but whose
+ * tier never propagated saw zero feedback — Grace's TF brief reported
+ * "trial / payments not hooked up at all" because the upgrade was
+ * silent on every code path.
+ */
+export type TierSyncOutcome =
+  /** No change needed — user is already at the resolved tier. */
+  | { status: "no_change"; reason: string }
+  /** Client write succeeded (legacy / non-lockdown environment). */
+  | { status: "wrote"; from: UserTier; to: UserTier }
+  /** Client write rejected by the lockdown — expected; the
+   *  RevenueCat server webhook is the authoritative path and should
+   *  catch up within seconds. The paywall surfaces this as
+   *  "Processing your purchase…" with a follow-up grace period. */
+  | { status: "lockdown_expected"; from: UserTier; to: UserTier }
+  /** Client write failed for a non-lockdown reason — surface to user
+   *  + capture telemetry so we can diagnose. */
+  | { status: "unexpected_error"; from: UserTier; to: UserTier; error: { code?: string; message: string } };
+
 export async function syncTierToSupabase(
   info: CustomerInfo,
   supabase: SupabaseClient,
   userId: string,
-): Promise<void> {
+): Promise<TierSyncOutcome> {
   const rc = resolvedTier(info);
   const promo = await bestPromoTierFromRedemptions(supabase, userId);
 
@@ -242,12 +267,11 @@ export async function syncTierToSupabase(
   const { next, write, reason } = resolveNextTier({ rc, promo, current });
   if (!write) {
     if (__DEV__ && reason === "downgrade-blocked") {
-       
       console.warn(
         `[syncTierToSupabase] refusing to downgrade ${current} → computed (RC=${rc}, promo=${promo})`,
       );
     }
-    return;
+    return { status: "no_change", reason };
   }
 
   const { error } = await supabase.from("profiles").update({ user_tier: next }).eq("id", userId);
@@ -256,8 +280,9 @@ export async function syncTierToSupabase(
     // longer client-writable. This UPDATE returns 42501 once migration
     // 20260503100000_profiles_tier_column_lockdown.sql has been applied.
     // The correct write path is the T6 RevenueCat server webhook
-    // (service-role). Until T6 ships, mobile tier sync after purchase
-    // will fail here — tracked in docs/planning/sweep-2026-04-24-executor-backlog.md T6.
+    // (service-role). Until T6's webhook is live, mobile tier sync
+    // after purchase will fail here — surface that to the caller so the
+    // paywall can choose whether to wait/poll/show grace copy.
     const locked =
       (error as { code?: string }).code === "42501" ||
       /T2: tier column lockdown/.test(error.message ?? "");
@@ -270,5 +295,15 @@ export async function syncTierToSupabase(
         console.warn("[syncTierToSupabase]", error.message);
       }
     }
+    if (locked) {
+      return { status: "lockdown_expected", from: current, to: next };
+    }
+    return {
+      status: "unexpected_error",
+      from: current,
+      to: next,
+      error: { code: (error as { code?: string }).code, message: error.message ?? "Unknown error" },
+    };
   }
+  return { status: "wrote", from: current, to: next };
 }

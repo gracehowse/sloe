@@ -389,7 +389,45 @@ export default function PaywallScreen() {
     try {
       const { success, customerInfo } = await purchasePackage(pkg);
       if (success && customerInfo) {
-        if (userId) void syncTierToSupabase(customerInfo, supabase, userId);
+        if (userId) {
+          // F-143 (2026-05-10): capture sync outcome so we can detect
+          // when the RC webhook isn't catching up to a successful
+          // purchase. RC's entitlement (checked below) is the immediate
+          // truth — `profiles.user_tier` is a server-side projection
+          // that arrives via webhook. Telemetry here lets Grace verify
+          // the webhook is firing without forcing a per-purchase
+          // user-facing wait.
+          void (async () => {
+            try {
+              const outcome = await syncTierToSupabase(customerInfo, supabase, userId);
+              try {
+                const { track: trackEvent } = await import("@/lib/analytics");
+                trackEvent("revenuecat_tier_sync_attempted", {
+                  status: outcome.status,
+                  from: "from" in outcome ? outcome.from : undefined,
+                  to: "to" in outcome ? outcome.to : undefined,
+                  error_code: outcome.status === "unexpected_error" ? outcome.error.code : undefined,
+                });
+              } catch {
+                // analytics never blocks the purchase happy path
+              }
+            } catch (e) {
+              // syncTierToSupabase no longer throws on lockdown — but
+              // an unhandled throw here would be a real bug, so
+              // capture it.
+              try {
+                const { track: trackEvent } = await import("@/lib/analytics");
+                trackEvent("revenuecat_tier_sync_attempted", {
+                  status: "unexpected_error",
+                  error_code: "throw",
+                  error_message: (e as Error)?.message ?? null,
+                });
+              } catch {
+                // swallow analytics failure
+              }
+            }
+          })();
+        }
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         // Entitlement check before celebrating — syncTierToSupabase can
         // race with the customerInfo refresh. For Pro we gate on
@@ -452,7 +490,38 @@ export default function PaywallScreen() {
     setRestoring(true);
     try {
       const info = await restorePurchases();
-      if (userId) void syncTierToSupabase(info, supabase, userId);
+      if (userId) {
+        // F-143 telemetry parity with the purchase path.
+        void (async () => {
+          try {
+            const outcome = await syncTierToSupabase(info, supabase, userId);
+            try {
+              const { track: trackEvent } = await import("@/lib/analytics");
+              trackEvent("revenuecat_tier_sync_attempted", {
+                status: outcome.status,
+                from: "from" in outcome ? outcome.from : undefined,
+                to: "to" in outcome ? outcome.to : undefined,
+                error_code: outcome.status === "unexpected_error" ? outcome.error.code : undefined,
+                surface: "restore",
+              });
+            } catch {
+              // analytics never blocks restore
+            }
+          } catch (e) {
+            try {
+              const { track: trackEvent } = await import("@/lib/analytics");
+              trackEvent("revenuecat_tier_sync_attempted", {
+                status: "unexpected_error",
+                error_code: "throw",
+                error_message: (e as Error)?.message ?? null,
+                surface: "restore",
+              });
+            } catch {
+              // swallow analytics failure
+            }
+          }
+        })();
+      }
       if (isProEntitled(info) || Object.keys(info.entitlements.active).length > 0) {
         router.replace("/notifications-prompt");
       } else {
