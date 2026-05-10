@@ -35,11 +35,12 @@ import {
   TARGETS_PRIVATE_LABEL,
 } from "../../lib/household/scopeCopy";
 
-function mapCreateError(code: string): string {
-  if (code === "already_in_household") {
-    return "You already belong to a household. Leave it first to create a new one.";
-  }
-  return "Failed to create household.";
+// F-142 (2026-05-10): the createHousehold envelope now carries
+// `{ code, message, raw }` instead of a string, with the friendly
+// copy authored once in the shared client. The mapper here is a
+// thin passthrough kept for symmetry with `mapJoinError`.
+function mapCreateError(err: { code: string; message: string }): string {
+  return err.message;
 }
 
 function mapJoinError(code: string): string {
@@ -160,6 +161,23 @@ export function HouseholdPanel() {
         householdName.trim() || undefined,
       );
       if (createErr) {
+        // F-142 telemetry parity with mobile — same event name, same
+        // properties shape so PostHog dashboards aggregate cleanly.
+        try {
+          const { track } = await import("@/lib/analytics/track");
+          track("household_create_failed", {
+            code: createErr.code,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            raw_message: (createErr.raw as any)?.message ?? null,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            raw_code: (createErr.raw as any)?.code ?? null,
+          });
+        } catch {
+          // analytics failure must never block error handling
+        }
+        // Surface the friendly message authored once in the shared
+        // client; `mapCreateError` is a thin passthrough kept for
+        // symmetry with `mapJoinError`.
         setError(mapCreateError(createErr));
         return;
       }
@@ -167,6 +185,15 @@ export function HouseholdPanel() {
       setHouseholdName("");
       void load();
     } catch (e) {
+      try {
+        const { track } = await import("@/lib/analytics/track");
+        track("household_create_failed", {
+          code: "unexpected_throw",
+          raw_message: (e as Error)?.message ?? null,
+        });
+      } catch {
+        // swallow analytics failure
+      }
       setError((e as Error).message || "Failed to create household");
     }
   };

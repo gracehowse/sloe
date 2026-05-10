@@ -180,6 +180,26 @@ export const AnalyticsEvents = {
    * Payload: `{ parentCount, leftoverCount }` — parents that produced leftovers,
    * and total leftover slots filled. */
   plan_leftovers_generated: "plan_leftovers_generated",
+  /** Household creation attempt failed (F-142, 2026-05-10). Payload:
+   *  `{ code, raw_message, raw_code }` where `code` is the stable
+   *  envelope code from `createHousehold` (e.g. "create_member_failed",
+   *  "unexpected_throw") and `raw_*` carry the raw PG / supabase error
+   *  for diagnosis without surfacing to the user. Fires on every
+   *  failure so the next "nothing happened when I created a household"
+   *  TF report is correlated to a concrete code. */
+  household_create_failed: "household_create_failed",
+  /** Mobile attempted to sync the user's tier to Supabase after a
+   *  RevenueCat purchase / restore (F-143, 2026-05-10). Payload:
+   *  `{ status, from, to, error_code }` where status is one of
+   *  `wrote | no_change | lockdown_expected | unexpected_error`.
+   *  `lockdown_expected` is the post-2026-05-03 normal — the server
+   *  webhook is the authoritative path. If `unexpected_error`
+   *  appears in production, the client-side write hit a non-lockdown
+   *  PG error worth investigating. If `lockdown_expected` fires but
+   *  `profiles.user_tier` never updates server-side, the RC webhook
+   *  isn't configured / firing — operational fix on Vercel + RC
+   *  dashboard. */
+  revenuecat_tier_sync_attempted: "revenuecat_tier_sync_attempted",
   /** A freeze was consumed to protect the streak on a zero-meal day (Batch 4.11).
    * Payload: `{ dateKey, freezesRemaining }`. Fires once per freeze, not per
    * render of the protected streak. */
