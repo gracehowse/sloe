@@ -6,6 +6,7 @@ import { importErrorResponse } from "@/lib/recipes/importErrorCopy";
 import { sanitiseImportedTitle } from "@/lib/recipe-import/extractSocialRecipe";
 import { callAiVision, activeVendor } from "@/lib/server/aiProvider";
 import { normalizeImageForAi } from "@/lib/server/normalizeImageForAi";
+import { normaliseSource } from "@/lib/recipes/persistSourceAttribution";
 
 export const runtime = "nodejs";
 
@@ -56,6 +57,29 @@ export async function POST(req: Request) {
   if (!(file instanceof File)) {
     return NextResponse.json(importErrorResponse("missing_image"), { status: 400 });
   }
+
+  // F-156-recipe-wave (2026-05-10): the image-import path previously
+  // had no way to capture the original recipe URL — saved rows had
+  // null `source_url` so the recipe-detail screen rendered no
+  // attribution and the source-card link wasn't tappable. Two related
+  // tester reports ("Imported recipes lose source link" + "Esther Clark
+  // recipe — source not clickable") collapse to the same root: image
+  // imports never wrote a source URL. The client now sends an
+  // optional `sourceUrl` text field alongside the image; we run it
+  // through the existing `normaliseSource` helper (same path as the
+  // URL-import branch) so persistence + render are uniform across
+  // import sources. Empty / invalid URL silently falls through —
+  // previous "no attribution" behaviour is preserved.
+  const rawSourceUrlField = form.get("sourceUrl");
+  const sourceUrlInput =
+    typeof rawSourceUrlField === "string" && rawSourceUrlField.trim().length > 0
+      ? rawSourceUrlField.trim()
+      : null;
+  const rawSourceNameField = form.get("sourceName");
+  const sourceNameInput =
+    typeof rawSourceNameField === "string" && rawSourceNameField.trim().length > 0
+      ? rawSourceNameField.trim()
+      : null;
 
   if (file.size > MAX_BYTES) {
     return NextResponse.json(
@@ -140,12 +164,23 @@ Rules:
     }
   }
 
+  // F-156-recipe-wave — pipe the user-supplied URL through the
+  // shared normaliser so the saved row carries the same shape as the
+  // URL-import branch. Returns `{ source_url: null, source_name: null }`
+  // when the input is empty or malformed.
+  const attribution = normaliseSource({
+    url: sourceUrlInput,
+    name: sourceNameInput,
+  });
+
   return NextResponse.json({
     ok: true,
     title: sanitiseImportedTitle(parsed.title),
     ingredients,
     steps,
     notes: parsed.notes ?? null,
+    sourceUrl: attribution.source_url,
+    sourceName: attribution.source_name,
     nutrition: nutrition
       ? {
           perServing: nutrition.perServing,

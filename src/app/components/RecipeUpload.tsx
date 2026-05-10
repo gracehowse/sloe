@@ -443,6 +443,13 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
       }
       const fd = new FormData();
       fd.append("image", file);
+      // F-156-recipe-wave (2026-05-10) — forward an optional source URL
+      // so image-imported recipes can carry attribution. Reuses the
+      // same `importUrl` field the URL-import branch already collects;
+      // the server runs it through `normaliseSource` and returns
+      // sanitised `sourceUrl` + `sourceName` we persist below.
+      const sourceUrlForImage = importUrl.trim();
+      if (sourceUrlForImage) fd.append("sourceUrl", sourceUrlForImage);
       const res = await fetch("/api/recipe-import/image", { method: "POST", body: fd });
       const data = (await res.json()) as {
         ok?: boolean;
@@ -450,6 +457,8 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
         steps?: string[];
         title?: string | null;
         message?: string;
+        sourceUrl?: string | null;
+        sourceName?: string | null;
         nutrition?: { perServing?: unknown } | null;
       };
       if (!res.ok || !data.ok) {
@@ -482,6 +491,12 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
       if (data.steps?.length) {
         setInstructions(data.steps.map((s, i) => `${i + 1}. ${s}`).join("\n"));
       }
+      // F-156-recipe-wave — persist sanitised source attribution from
+      // the response. Empty values mean the user didn't supply a URL
+      // (or it failed normalisation); we leave existing imported-state
+      // untouched so a subsequent URL re-import doesn't lose the link.
+      if (data.sourceUrl) setImportedSourceUrl(data.sourceUrl);
+      if (data.sourceName) setImportedSourceName(data.sourceName);
       toast.success("Extracted text from image — review amounts and steps.");
     } finally {
       setOcrBusy(false);
@@ -1444,6 +1459,14 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
             {ocrBusy ? "Extracting…" : "Extract from image"}
           </button>
         </div>
+        {/* F-156-recipe-wave (2026-05-10) — gentle nudge so users with
+            an original URL keep the source link on the saved row.
+            The "Paste a recipe link" card above already collects the
+            URL; we just have to tell the user it works for image
+            imports too. */}
+        <p className="text-xs text-muted-foreground mt-3">
+          If you have the original recipe URL, paste it in &ldquo;Paste a recipe link&rdquo; above and we&apos;ll keep the source link on the saved recipe.
+        </p>
       </div>
 
       {/* Basic Info */}

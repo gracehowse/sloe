@@ -529,6 +529,15 @@ export default function ImportSharedScreen() {
         name: asset.fileName ?? "photo.jpg",
         type: asset.mimeType ?? "image/jpeg",
       } as any);
+      // F-156-recipe-wave (2026-05-10) — forward an optional source
+      // URL so image-imported recipes can carry attribution. Reuses
+      // the `manualUrl` state from the URL-import flow: if a user
+      // pasted a URL there but pivoted to the photo-pick path, we
+      // still capture the link rather than silently losing it. The
+      // server runs it through `normaliseSource`; empty / malformed
+      // values silently fall through to "no attribution".
+      const sourceUrlForImage = manualUrl.trim();
+      if (sourceUrlForImage) form.append("sourceUrl", sourceUrlForImage);
 
       const res = await authedFetch(`${base}/api/recipe-import/image`, {
         method: "POST",
@@ -540,6 +549,8 @@ export default function ImportSharedScreen() {
         ingredients?: string[];
         steps?: string[];
         notes?: string | null;
+        sourceUrl?: string | null;
+        sourceName?: string | null;
         nutrition?: { perServing?: any } | null;
         error?: string;
         message?: string;
@@ -559,6 +570,13 @@ export default function ImportSharedScreen() {
         protein: data.nutrition?.perServing?.protein ?? null,
         carbs: data.nutrition?.perServing?.carbs ?? null,
         fat: data.nutrition?.perServing?.fat ?? null,
+        // F-156-recipe-wave — pipe sanitised attribution onto the
+        // recipe shape so `saveImportedRecipe` writes the correct
+        // `source_url` / `source_name` columns. Empty when the user
+        // didn't supply a URL — recipe lands in the library with no
+        // source card (existing behaviour, preserved).
+        sourceUrl: data.sourceUrl ?? undefined,
+        sourceName: data.sourceName ?? undefined,
       };
       const captionHint = Array.isArray(data.steps) ? data.steps.map((s) => String(s)).join("\n") : "";
       const autoTags = classifyMealType({
