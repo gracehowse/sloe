@@ -31,7 +31,7 @@
  *    macros filled in later).
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import {
   Dialog,
@@ -46,12 +46,17 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import {
   CUSTOM_FOOD_NAME_MAX,
+  convertMacrosBetweenBases,
   customFoodToMacrosPer100g,
   normaliseCustomFoodName,
   validateCustomFoodBarcode,
   type CustomFood,
   type CustomFoodServing,
+  type MacroBasis,
 } from "../../../lib/nutrition/customFoods";
+
+/** F-156 PR-1 — localStorage key for the user's last-chosen macro basis. */
+const MACRO_BASIS_STORAGE_KEY = "suppr.customFood.macroBasis.v1";
 
 export type CreateCustomFoodPayload = {
   name: string;
@@ -105,7 +110,6 @@ export function CreateCustomFoodDialog({
   const [servingLabel, setServingLabel] = useState("");
   const [servingGramsText, setServingGramsText] = useState("");
   const [servingsPerContainerText, setServingsPerContainerText] = useState("");
-  const [baseGramsText, setBaseGramsText] = useState("100");
   const [caloriesText, setCaloriesText] = useState("");
   const [proteinText, setProteinText] = useState("");
   const [carbsText, setCarbsText] = useState("");
@@ -117,11 +121,19 @@ export function CreateCustomFoodDialog({
   const [barcode, setBarcode] = useState("");
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  // F-156 PR-1 — macro basis the user is currently entering values in.
+  const [macroBasis, setMacroBasis] = useState<MacroBasis>("per_100g");
+  const [conversionNotice, setConversionNotice] = useState<string | null>(null);
+  const conversionNoticeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const initialBasisAppliedRef = useRef(false);
 
   // Reset every time the dialog opens so a cancelled edit doesn't leak
   // into a new session.
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      initialBasisAppliedRef.current = false;
+      return;
+    }
     if (initialFood) {
       setName(initialFood.name);
       setBrand(initialFood.brand ?? "");
@@ -135,12 +147,36 @@ export function CreateCustomFoodDialog({
           ? formatNumber(initialFood.servingsPerContainer)
           : "",
       );
-      setBaseGramsText(formatNumber(initialFood.baseGrams) || "100");
-      setCaloriesText(formatNumber(initialFood.calories));
-      setProteinText(formatNumber(initialFood.protein));
-      setCarbsText(formatNumber(initialFood.carbs));
-      setFatText(formatNumber(initialFood.fat));
-      setFiberText(initialFood.fiber != null ? formatNumber(initialFood.fiber) : "");
+      // F-156 PR-1 — render macro fields in the chosen basis.
+      const servingG = first?.grams ?? 0;
+      const initialBasis: MacroBasis = servingG > 0 ? "per_serving" : "per_100g";
+      const per100g = customFoodToMacrosPer100g({
+        baseGrams: initialFood.baseGrams,
+        calories: initialFood.calories,
+        protein: initialFood.protein,
+        carbs: initialFood.carbs,
+        fat: initialFood.fat,
+        fiber: initialFood.fiber,
+      });
+      const displayed = convertMacrosBetweenBases(
+        {
+          calories: per100g.calories,
+          protein: per100g.protein,
+          carbs: per100g.carbs,
+          fat: per100g.fat,
+          fiber: per100g.fiberG,
+        },
+        "per_100g",
+        initialBasis,
+        servingG,
+      );
+      setCaloriesText(displayed.calories > 0 ? formatNumber(displayed.calories) : "");
+      setProteinText(displayed.protein > 0 ? formatNumber(displayed.protein) : "");
+      setCarbsText(displayed.carbs > 0 ? formatNumber(displayed.carbs) : "");
+      setFatText(displayed.fat > 0 ? formatNumber(displayed.fat) : "");
+      setFiberText(initialFood.fiber != null && displayed.fiber > 0 ? formatNumber(displayed.fiber) : "");
+      setMacroBasis(initialBasis);
+      initialBasisAppliedRef.current = true;
       setSugarText(initialFood.sugarG != null ? formatNumber(initialFood.sugarG) : "");
       setSatFatText(
         initialFood.saturatedFatG != null ? formatNumber(initialFood.saturatedFatG) : "",
@@ -159,7 +195,6 @@ export function CreateCustomFoodDialog({
       setServingLabel("");
       setServingGramsText("");
       setServingsPerContainerText("");
-      setBaseGramsText("100");
       setCaloriesText("");
       setProteinText("");
       setCarbsText("");
@@ -170,23 +205,32 @@ export function CreateCustomFoodDialog({
       setSodiumText("");
       setBarcode("");
       setDetailsOpen(false);
+      // F-156 PR-1 — restore last-chosen basis from localStorage.
+      let stored: string | null = null;
+      try {
+        stored = typeof window !== "undefined" ? window.localStorage.getItem(MACRO_BASIS_STORAGE_KEY) : null;
+      } catch {
+        stored = null;
+      }
+      setMacroBasis(stored === "per_serving" ? "per_serving" : "per_100g");
+      initialBasisAppliedRef.current = true;
     }
     setSaving(false);
+    setConversionNotice(null);
+    if (conversionNoticeTimeoutRef.current) {
+      clearTimeout(conversionNoticeTimeoutRef.current);
+      conversionNoticeTimeoutRef.current = null;
+    }
   }, [open, initialFood, initialName]);
 
-  const macros = useMemo(
-    () => ({
-      baseGrams: toNumber(baseGramsText),
-      calories: toNumber(caloriesText),
-      protein: toNumber(proteinText),
-      carbs: toNumber(carbsText),
-      fat: toNumber(fatText),
-      fiber: fiberText.trim() ? toNumber(fiberText) : undefined,
-      sugarG: sugarText.trim() ? toNumber(sugarText) : undefined,
-      sodiumMg: sodiumText.trim() ? toNumber(sodiumText) : undefined,
-    }),
-    [baseGramsText, caloriesText, proteinText, carbsText, fatText, fiberText, sugarText, sodiumText],
-  );
+  // Cleanup timer on unmount.
+  useEffect(() => {
+    return () => {
+      if (conversionNoticeTimeoutRef.current) {
+        clearTimeout(conversionNoticeTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const servingGrams = toNumber(servingGramsText);
   const servingLabelClean = servingLabel.trim();
@@ -195,6 +239,25 @@ export function CreateCustomFoodDialog({
   const servingValid =
     (!hasServingLabel && !hasServingGrams) ||
     (hasServingLabel && hasServingGrams);
+
+  // F-156 PR-1 — per_serving requires a valid serving.
+  const perServingAvailable = hasServingLabel && hasServingGrams;
+  const effectiveBasis: MacroBasis = perServingAvailable ? macroBasis : "per_100g";
+  const baseGrams = effectiveBasis === "per_serving" ? servingGrams : 100;
+
+  const macros = useMemo(
+    () => ({
+      baseGrams,
+      calories: toNumber(caloriesText),
+      protein: toNumber(proteinText),
+      carbs: toNumber(carbsText),
+      fat: toNumber(fatText),
+      fiber: fiberText.trim() ? toNumber(fiberText) : undefined,
+      sugarG: sugarText.trim() ? toNumber(sugarText) : undefined,
+      sodiumMg: sodiumText.trim() ? toNumber(sodiumText) : undefined,
+    }),
+    [baseGrams, caloriesText, proteinText, carbsText, fatText, fiberText, sugarText, sodiumText],
+  );
 
   const barcodeParsed = useMemo(() => validateCustomFoodBarcode(barcode), [barcode]);
   const barcodeValid = barcodeParsed.ok;
@@ -214,6 +277,62 @@ export function CreateCustomFoodDialog({
     servingValid &&
     barcodeValid &&
     !saving;
+
+  // F-156 PR-1 — basis flip handler (mirrors mobile).
+  const flipBasisTo = (next: MacroBasis) => {
+    if (next === macroBasis) return;
+    if (next === "per_serving" && !perServingAvailable) return;
+    const hasAnyMacro =
+      caloriesText.trim() !== "" ||
+      proteinText.trim() !== "" ||
+      carbsText.trim() !== "" ||
+      fatText.trim() !== "" ||
+      fiberText.trim() !== "";
+    if (hasAnyMacro && servingGrams > 0) {
+      const converted = convertMacrosBetweenBases(
+        {
+          calories: toNumber(caloriesText),
+          protein: toNumber(proteinText),
+          carbs: toNumber(carbsText),
+          fat: toNumber(fatText),
+          fiber: toNumber(fiberText),
+        },
+        macroBasis,
+        next,
+        servingGrams,
+      );
+      if (caloriesText.trim() !== "") setCaloriesText(formatNumber(converted.calories));
+      if (proteinText.trim() !== "") setProteinText(formatNumber(converted.protein));
+      if (carbsText.trim() !== "") setCarbsText(formatNumber(converted.carbs));
+      if (fatText.trim() !== "") setFatText(formatNumber(converted.fat));
+      if (fiberText.trim() !== "") setFiberText(formatNumber(converted.fiber));
+      const targetLabel = next === "per_serving" ? "per serving" : "per 100 g";
+      setConversionNotice(`Values converted to ${targetLabel}.`);
+      if (conversionNoticeTimeoutRef.current) {
+        clearTimeout(conversionNoticeTimeoutRef.current);
+      }
+      conversionNoticeTimeoutRef.current = setTimeout(() => {
+        setConversionNotice(null);
+        conversionNoticeTimeoutRef.current = null;
+      }, 3000);
+    }
+    setMacroBasis(next);
+    try {
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(MACRO_BASIS_STORAGE_KEY, next);
+      }
+    } catch {
+      /* localStorage may be unavailable in some embedded contexts */
+    }
+  };
+
+  // Snap basis back if the serving fields are cleared.
+  useEffect(() => {
+    if (!open || !initialBasisAppliedRef.current) return;
+    if (macroBasis === "per_serving" && !perServingAvailable) {
+      setMacroBasis("per_100g");
+    }
+  }, [open, macroBasis, perServingAvailable]);
 
   // Live preview: scale the food's macros to the natural serving, if the
   // user has set one; else to `baseGrams`. Uses `customFoodToMacrosPer100g`
@@ -364,26 +483,57 @@ export function CreateCustomFoodDialog({
           </fieldset>
 
           <fieldset className="grid gap-2">
-            <legend className="text-sm font-medium text-foreground">Macros per</legend>
-            <div className="flex items-center gap-2">
-              <Input
-                id="custom-food-base-grams"
-                type="number"
-                inputMode="decimal"
-                value={baseGramsText}
-                onChange={(e) => setBaseGramsText(e.target.value)}
-                className="w-24"
-                min={1}
-                step="any"
-                aria-label="Base grams"
-              />
-              <span className="text-sm text-muted-foreground">grams</span>
+            <legend className="text-sm font-medium text-foreground">Macros entered as</legend>
+            {/* F-156 PR-1 — basis toggle. Macros are stored per-100g
+                internally; the toggle picks which basis the user
+                enters them in. Per-serving option is disabled until a
+                natural serving (label + grams) is set. */}
+            <div
+              role="radiogroup"
+              aria-label="Macro entry basis"
+              className="grid grid-cols-2 gap-1 rounded-md border border-border p-0.5"
+            >
+              {(
+                [
+                  { value: "per_serving" as MacroBasis, label: "Per serving", disabled: !perServingAvailable },
+                  { value: "per_100g" as MacroBasis, label: "Per 100 g", disabled: false },
+                ]
+              ).map((opt) => {
+                const selected = effectiveBasis === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    aria-disabled={opt.disabled}
+                    disabled={opt.disabled}
+                    onClick={() => flipBasisTo(opt.value)}
+                    data-testid={`custom-food-basis-${opt.value}`}
+                    className={`rounded px-3 py-1.5 text-sm font-medium transition-colors ${
+                      selected
+                        ? "bg-primary text-primary-foreground"
+                        : "text-foreground hover:bg-muted/40"
+                    } ${opt.disabled ? "opacity-40 cursor-not-allowed" : ""}`}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
             </div>
-            {!hasValidBase && (
-              <p className="text-xs text-destructive" aria-live="polite">
-                Base grams must be greater than zero.
+            {effectiveBasis === "per_100g" && !perServingAvailable && (
+              <p className="text-xs text-muted-foreground">
+                Add a serving size above to switch to per-serving entry.
               </p>
             )}
+            {conversionNotice && (
+              <p className="text-xs text-success" aria-live="polite" role="status">
+                {conversionNotice}
+              </p>
+            )}
+            {/* F-156 PR-1 — 2x3 macro grid. Fibre joins the grid as a
+                first-class field so the visual rhythm matches the four
+                core macros. */}
             <div className="grid grid-cols-2 gap-2 pt-1">
               <div className="grid gap-1">
                 <Label htmlFor="custom-food-calories">Calories (kcal)</Label>
@@ -433,8 +583,8 @@ export function CreateCustomFoodDialog({
                   step="any"
                 />
               </div>
-              <div className="grid gap-1 col-span-2">
-                <Label htmlFor="custom-food-fiber">Fibre (g, optional)</Label>
+              <div className="grid gap-1">
+                <Label htmlFor="custom-food-fiber">Fibre (g)</Label>
                 <Input
                   id="custom-food-fiber"
                   type="number"
@@ -445,6 +595,8 @@ export function CreateCustomFoodDialog({
                   step="any"
                 />
               </div>
+              {/* Empty cell preserves the 2-column rhythm. */}
+              <div />
             </div>
             {allMacrosZero && (
               <p

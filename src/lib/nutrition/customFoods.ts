@@ -303,6 +303,58 @@ export function customFoodToMacrosPer100g(
   };
 }
 
+/** F-156 PR-1 — basis the user is currently entering macros in. */
+export type MacroBasis = "per_serving" | "per_100g";
+
+/** F-156 PR-1 — macro values rendered into the form's text fields. */
+export type MacroFormValues = {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiber: number;
+};
+
+/**
+ * F-156 PR-1 (2026-05-10) — convert macro form values between
+ * per-serving and per-100g bases for the basis toggle. Macros are
+ * always stored as per-100g internally; this helper drives what the
+ * user sees in the input fields when they flip the toggle.
+ *
+ *  - `from === to` returns the input unchanged.
+ *  - `per_serving → per_100g` scales by `100 / servingGrams`.
+ *  - `per_100g → per_serving` scales by `servingGrams / 100`.
+ *
+ * `servingGrams` must be > 0 for a meaningful conversion. If it is
+ * zero / negative / non-finite, we return the input unchanged — the
+ * caller is responsible for preventing the toggle from being flipped
+ * in that state (e.g. require a serving label + grams pair before
+ * enabling per-serving). Returning input rather than zeros avoids
+ * silently destroying the user's typed values.
+ *
+ * Rounding mirrors `customFoodToMacrosPer100g` and `scaleMacrosForGrams`
+ * so a round-trip through the toggle is stable to the byte (calories +
+ * sodium round to integer; protein / carbs / fat / fiber round to 1dp).
+ */
+export function convertMacrosBetweenBases(
+  values: MacroFormValues,
+  from: MacroBasis,
+  to: MacroBasis,
+  servingGrams: number,
+): MacroFormValues {
+  if (from === to) return values;
+  const grams = safeNumber(servingGrams);
+  if (!Number.isFinite(grams) || grams <= 0) return values;
+  const factor = from === "per_serving" ? 100 / grams : grams / 100;
+  return {
+    calories: Math.round(safeNonNegative(values.calories) * factor),
+    protein: roundTo(safeNonNegative(values.protein) * factor, 1),
+    carbs: roundTo(safeNonNegative(values.carbs) * factor, 1),
+    fat: roundTo(safeNonNegative(values.fat) * factor, 1),
+    fiber: roundTo(safeNonNegative(values.fiber) * factor, 1),
+  };
+}
+
 /**
  * Build the portion-chip list for a custom food: always grams first,
  * then one chip per saved serving with `gramWeight` == saved grams.
