@@ -9,6 +9,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildCustomFoodPortions,
+  convertMacrosBetweenBases,
   customFoodToMacrosPer100g,
   customFoodToPrimaryServing,
   dedupeServings,
@@ -613,5 +614,72 @@ describe("customFoodToPrimaryServing", () => {
       servings: [{ label: "1 Slice", grams: 30 }],
     });
     expect(out?.label).toBe("1 Slice");
+  });
+});
+
+describe("convertMacrosBetweenBases (F-156 PR-1)", () => {
+  const perServing = { calories: 220, protein: 8, carbs: 28, fat: 9, fiber: 3 };
+
+  it("returns input unchanged when from === to", () => {
+    expect(convertMacrosBetweenBases(perServing, "per_serving", "per_serving", 30)).toEqual(perServing);
+    expect(convertMacrosBetweenBases(perServing, "per_100g", "per_100g", 30)).toEqual(perServing);
+  });
+
+  it("scales per_serving → per_100g by 100/servingGrams", () => {
+    // 30g serving × (100/30) = 333% — calories 220 → ~733
+    const out = convertMacrosBetweenBases(perServing, "per_serving", "per_100g", 30);
+    expect(out.calories).toBe(733);
+    expect(out.protein).toBeCloseTo(26.7, 1);
+    expect(out.carbs).toBeCloseTo(93.3, 1);
+    expect(out.fat).toBe(30);
+    expect(out.fiber).toBe(10);
+  });
+
+  it("scales per_100g → per_serving by servingGrams/100", () => {
+    const per100g = { calories: 733, protein: 26.7, carbs: 93.3, fat: 30, fiber: 10 };
+    const out = convertMacrosBetweenBases(per100g, "per_100g", "per_serving", 30);
+    expect(out.calories).toBe(220);
+    expect(out.protein).toBeCloseTo(8, 1);
+    expect(out.carbs).toBeCloseTo(28, 1);
+    expect(out.fat).toBe(9);
+    expect(out.fiber).toBe(3);
+  });
+
+  it("round-trip per_serving → per_100g → per_serving is stable", () => {
+    const there = convertMacrosBetweenBases(perServing, "per_serving", "per_100g", 30);
+    const back = convertMacrosBetweenBases(there, "per_100g", "per_serving", 30);
+    expect(back.calories).toBe(perServing.calories);
+    expect(back.protein).toBeCloseTo(perServing.protein, 1);
+    expect(back.carbs).toBeCloseTo(perServing.carbs, 1);
+    expect(back.fat).toBe(perServing.fat);
+    expect(back.fiber).toBe(perServing.fiber);
+  });
+
+  it("returns input unchanged when servingGrams is 0 (caller must gate the toggle)", () => {
+    expect(convertMacrosBetweenBases(perServing, "per_serving", "per_100g", 0)).toEqual(perServing);
+  });
+
+  it("returns input unchanged when servingGrams is negative or non-finite", () => {
+    expect(convertMacrosBetweenBases(perServing, "per_serving", "per_100g", -1)).toEqual(perServing);
+    expect(convertMacrosBetweenBases(perServing, "per_serving", "per_100g", NaN)).toEqual(perServing);
+  });
+
+  it("never returns NaN or negative values for any input", () => {
+    const out = convertMacrosBetweenBases(
+      { calories: -50, protein: -5, carbs: -10, fat: -2, fiber: -1 },
+      "per_serving",
+      "per_100g",
+      30,
+    );
+    expect(out.calories).toBe(0);
+    expect(out.protein).toBe(0);
+    expect(out.carbs).toBe(0);
+    expect(out.fat).toBe(0);
+    expect(out.fiber).toBe(0);
+  });
+
+  it("identity case: 100g serving converts 1:1 in either direction", () => {
+    const out = convertMacrosBetweenBases(perServing, "per_serving", "per_100g", 100);
+    expect(out).toEqual(perServing);
   });
 });

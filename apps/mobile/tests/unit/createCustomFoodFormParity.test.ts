@@ -78,11 +78,11 @@ const LABEL_PROBES: { field: string; web: RegExp; mobile: RegExp }[] = [
     web: /aria-label="Servings per container"|id="custom-food-servings-per-container"/,
     mobile: /accessibilityLabel="Servings per container"/,
   },
-  {
-    field: "base grams",
-    web: /aria-label="Base grams"|id="custom-food-base-grams"/,
-    mobile: /accessibilityLabel="Base grams"/,
-  },
+  // F-156 PR-1 (2026-05-10): the standalone "Base grams" input was
+  // replaced by the macro basis toggle (Per serving | Per 100 g). The
+  // baseGrams value is now derived from the basis + servingGrams, so
+  // the user no longer types it. Probe lives below in the basis toggle
+  // tests instead.
   {
     field: "calories",
     web: /id="custom-food-calories"/,
@@ -184,5 +184,58 @@ describe("Create custom food form parity (TestFlight AE52_fIRZ-ZIupmoJ8T4yaI)", 
   it("both surfaces surface a 'Per-serving preview' line computed from the shared helper", () => {
     expect(MOBILE_SRC).toMatch(/Per-serving preview/i);
     expect(WEB_SRC).toMatch(/Per-serving preview/i);
+  });
+
+  // F-156 PR-1 (2026-05-10) — basis toggle + Fibre into the macro grid.
+  it("both surfaces import the shared convertMacrosBetweenBases helper + MacroBasis type", () => {
+    for (const src of [MOBILE_SRC, WEB_SRC]) {
+      expect(src).toMatch(/convertMacrosBetweenBases/);
+      expect(src).toMatch(/MacroBasis/);
+    }
+  });
+
+  it("both surfaces render the basis toggle (Per serving | Per 100 g) with matching test ids", () => {
+    for (const src of [MOBILE_SRC, WEB_SRC]) {
+      expect(src).toMatch(/Macros entered as/);
+      expect(src).toMatch(/Per serving/);
+      expect(src).toMatch(/Per 100 g/);
+      // Both surfaces emit testIDs of the form `custom-food-basis-${opt.value}`
+      // via a template literal in the radiogroup map.
+      expect(src).toMatch(/custom-food-basis-\$\{opt\.value\}/);
+    }
+  });
+
+  it("both surfaces gate per-serving on a valid serving (perServingAvailable)", () => {
+    for (const src of [MOBILE_SRC, WEB_SRC]) {
+      expect(src).toMatch(/perServingAvailable/);
+    }
+  });
+
+  it("both surfaces persist the user's last-chosen basis across sessions", () => {
+    expect(MOBILE_SRC).toMatch(/AsyncStorage/);
+    expect(MOBILE_SRC).toMatch(/MACRO_BASIS_STORAGE_KEY/);
+    expect(WEB_SRC).toMatch(/localStorage/);
+    expect(WEB_SRC).toMatch(/MACRO_BASIS_STORAGE_KEY/);
+  });
+
+  it("both surfaces show a 'Values converted' notice when the toggle flips", () => {
+    for (const src of [MOBILE_SRC, WEB_SRC]) {
+      expect(src).toMatch(/Values converted to/);
+      expect(src).toMatch(/conversionNotice/);
+    }
+  });
+
+  it("both surfaces remove the standalone 'Macros per [N grams]' input (basis replaces it)", () => {
+    for (const src of [MOBILE_SRC, WEB_SRC]) {
+      expect(src).not.toMatch(/baseGramsText/);
+      expect(src).not.toMatch(/setBaseGramsText/);
+    }
+  });
+
+  it("both surfaces render Fibre as a same-row macro grid cell (not a full-width row)", () => {
+    expect(MOBILE_SRC).toMatch(/Fibre \(g\)/);
+    expect(WEB_SRC).toMatch(/Fibre \(g\)/);
+    // Negative: web no longer has `col-span-2` on the Fibre row.
+    expect(WEB_SRC).not.toMatch(/custom-food-fiber"[\s\S]{0,200}?col-span-2/);
   });
 });

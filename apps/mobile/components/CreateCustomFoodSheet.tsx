@@ -25,7 +25,7 @@
  *  - Serving label and grams are both empty, or both set (grams > 0).
  *  - Barcode, if provided, validates to 8 / 12 / 13 / 14 digits.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Modal,
   Pressable,
@@ -35,17 +35,23 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import KeyboardSafeView from "./KeyboardSafeView";
 import { Accent, Radius, Spacing } from "@/constants/theme";
 import {
   CUSTOM_FOOD_NAME_MAX,
+  convertMacrosBetweenBases,
   customFoodToMacrosPer100g,
   normaliseCustomFoodName,
   validateCustomFoodBarcode,
   type CustomFood,
   type CustomFoodServing,
+  type MacroBasis,
 } from "../../../src/lib/nutrition/customFoods";
+
+/** F-156 PR-1 — AsyncStorage key for the user's last-chosen macro basis. */
+const MACRO_BASIS_STORAGE_KEY = "@suppr/customFood/macroBasis/v1";
 
 type Theme = {
   text: string;
@@ -109,7 +115,6 @@ export default function CreateCustomFoodSheet({
   const [servingLabel, setServingLabel] = useState("");
   const [servingGramsText, setServingGramsText] = useState("");
   const [servingsPerContainerText, setServingsPerContainerText] = useState("");
-  const [baseGramsText, setBaseGramsText] = useState("100");
   const [caloriesText, setCaloriesText] = useState("");
   const [proteinText, setProteinText] = useState("");
   const [carbsText, setCarbsText] = useState("");
@@ -121,9 +126,20 @@ export default function CreateCustomFoodSheet({
   const [barcode, setBarcode] = useState("");
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  // F-156 PR-1 — macro basis the user is currently entering values in.
+  // Persisted across sessions so a power user doesn't re-toggle every
+  // time. Default for new foods: per_serving when natural serving is
+  // valid, else per_100g.
+  const [macroBasis, setMacroBasis] = useState<MacroBasis>("per_100g");
+  const [conversionNotice, setConversionNotice] = useState<string | null>(null);
+  const conversionNoticeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const initialBasisAppliedRef = useRef(false);
 
   useEffect(() => {
-    if (!visible) return;
+    if (!visible) {
+      initialBasisAppliedRef.current = false;
+      return;
+    }
     if (initialFood) {
       setName(initialFood.name);
       setBrand(initialFood.brand ?? "");
@@ -138,12 +154,40 @@ export default function CreateCustomFoodSheet({
           ? formatNumber(initialFood.servingsPerContainer)
           : "",
       );
-      setBaseGramsText(formatNumber(initialFood.baseGrams) || "100");
-      setCaloriesText(formatNumber(initialFood.calories));
-      setProteinText(formatNumber(initialFood.protein));
-      setCarbsText(formatNumber(initialFood.carbs));
-      setFatText(formatNumber(initialFood.fat));
-      setFiberText(initialFood.fiber != null ? formatNumber(initialFood.fiber) : "");
+      // F-156 PR-1 — macro fields are always rendered in the user's
+      // chosen basis. Internally the food row stores per its own
+      // `baseGrams`. Convert into the displayed basis at init time.
+      // For edit mode we default the basis to "per_serving" if the
+      // food has a natural serving (most common), else "per_100g".
+      const servingG = first?.grams ?? 0;
+      const initialBasis: MacroBasis = servingG > 0 ? "per_serving" : "per_100g";
+      const per100g = customFoodToMacrosPer100g({
+        baseGrams: initialFood.baseGrams,
+        calories: initialFood.calories,
+        protein: initialFood.protein,
+        carbs: initialFood.carbs,
+        fat: initialFood.fat,
+        fiber: initialFood.fiber,
+      });
+      const displayed = convertMacrosBetweenBases(
+        {
+          calories: per100g.calories,
+          protein: per100g.protein,
+          carbs: per100g.carbs,
+          fat: per100g.fat,
+          fiber: per100g.fiberG,
+        },
+        "per_100g",
+        initialBasis,
+        servingG,
+      );
+      setCaloriesText(displayed.calories > 0 ? formatNumber(displayed.calories) : "");
+      setProteinText(displayed.protein > 0 ? formatNumber(displayed.protein) : "");
+      setCarbsText(displayed.carbs > 0 ? formatNumber(displayed.carbs) : "");
+      setFatText(displayed.fat > 0 ? formatNumber(displayed.fat) : "");
+      setFiberText(initialFood.fiber != null && displayed.fiber > 0 ? formatNumber(displayed.fiber) : "");
+      setMacroBasis(initialBasis);
+      initialBasisAppliedRef.current = true;
       setSugarText(initialFood.sugarG != null ? formatNumber(initialFood.sugarG) : "");
       setSatFatText(
         initialFood.saturatedFatG != null ? formatNumber(initialFood.saturatedFatG) : "",
@@ -164,7 +208,6 @@ export default function CreateCustomFoodSheet({
       setServingLabel("");
       setServingGramsText("");
       setServingsPerContainerText("");
-      setBaseGramsText("100");
       setCaloriesText("");
       setProteinText("");
       setCarbsText("");
@@ -175,23 +218,36 @@ export default function CreateCustomFoodSheet({
       setSodiumText("");
       setBarcode("");
       setDetailsOpen(false);
+      // F-156 PR-1 — for a new food, restore the user's last-chosen
+      // basis from AsyncStorage. Falls back to "per_100g" while the
+      // read is in flight + when no value is stored.
+      setMacroBasis("per_100g");
+      initialBasisAppliedRef.current = false;
+      void AsyncStorage.getItem(MACRO_BASIS_STORAGE_KEY).then((stored) => {
+        if (stored === "per_serving" || stored === "per_100g") {
+          setMacroBasis(stored);
+        }
+        initialBasisAppliedRef.current = true;
+      }).catch(() => {
+        initialBasisAppliedRef.current = true;
+      });
     }
     setSaving(false);
+    setConversionNotice(null);
+    if (conversionNoticeTimeoutRef.current) {
+      clearTimeout(conversionNoticeTimeoutRef.current);
+      conversionNoticeTimeoutRef.current = null;
+    }
   }, [visible, initialFood, initialName]);
 
-  const macros = useMemo(
-    () => ({
-      baseGrams: toNumber(baseGramsText),
-      calories: toNumber(caloriesText),
-      protein: toNumber(proteinText),
-      carbs: toNumber(carbsText),
-      fat: toNumber(fatText),
-      fiber: fiberText.trim() ? toNumber(fiberText) : undefined,
-      sugarG: sugarText.trim() ? toNumber(sugarText) : undefined,
-      sodiumMg: sodiumText.trim() ? toNumber(sodiumText) : undefined,
-    }),
-    [baseGramsText, caloriesText, proteinText, carbsText, fatText, fiberText, sugarText, sodiumText],
-  );
+  // Cleanup the conversion-notice timer on unmount.
+  useEffect(() => {
+    return () => {
+      if (conversionNoticeTimeoutRef.current) {
+        clearTimeout(conversionNoticeTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const servingGrams = toNumber(servingGramsText);
   const servingLabelClean = servingLabel.trim();
@@ -202,6 +258,31 @@ export default function CreateCustomFoodSheet({
   const servingValid =
     (!hasServingLabel && !hasServingGrams) ||
     (hasServingLabel && hasServingGrams);
+
+  // F-156 PR-1 — Per-serving basis requires a valid serving (label +
+  // grams). If the user clears the serving while the toggle is on
+  // per_serving, snap back to per_100g and convert any entered macros.
+  const perServingAvailable = hasServingLabel && hasServingGrams;
+  const effectiveBasis: MacroBasis = perServingAvailable ? macroBasis : "per_100g";
+
+  // baseGrams is now derived from the basis + serving grams. The user
+  // never sees a "Macros per N grams" input — they pick a basis and
+  // the math follows.
+  const baseGrams = effectiveBasis === "per_serving" ? servingGrams : 100;
+
+  const macros = useMemo(
+    () => ({
+      baseGrams,
+      calories: toNumber(caloriesText),
+      protein: toNumber(proteinText),
+      carbs: toNumber(carbsText),
+      fat: toNumber(fatText),
+      fiber: fiberText.trim() ? toNumber(fiberText) : undefined,
+      sugarG: sugarText.trim() ? toNumber(sugarText) : undefined,
+      sodiumMg: sodiumText.trim() ? toNumber(sodiumText) : undefined,
+    }),
+    [baseGrams, caloriesText, proteinText, carbsText, fatText, fiberText, sugarText, sodiumText],
+  );
 
   const barcodeParsed = useMemo(() => validateCustomFoodBarcode(barcode), [barcode]);
   const barcodeValid = barcodeParsed.ok;
@@ -221,6 +302,64 @@ export default function CreateCustomFoodSheet({
     servingValid &&
     barcodeValid &&
     !saving;
+
+  // F-156 PR-1 — handle a user-initiated basis flip. Convert the
+  // currently-entered macro values to the new basis so the numbers in
+  // the input fields stay semantically the same. Show a brief
+  // "values converted" notice for trust. No-op if servingGrams is 0
+  // (the toggle to per_serving is disabled in that state).
+  const flipBasisTo = (next: MacroBasis) => {
+    if (next === macroBasis) return;
+    if (next === "per_serving" && !perServingAvailable) return;
+    const hasAnyMacro =
+      caloriesText.trim() !== "" ||
+      proteinText.trim() !== "" ||
+      carbsText.trim() !== "" ||
+      fatText.trim() !== "" ||
+      fiberText.trim() !== "";
+    const grams = next === "per_serving" ? servingGrams : servingGrams;
+    if (hasAnyMacro && servingGrams > 0) {
+      const converted = convertMacrosBetweenBases(
+        {
+          calories: toNumber(caloriesText),
+          protein: toNumber(proteinText),
+          carbs: toNumber(carbsText),
+          fat: toNumber(fatText),
+          fiber: toNumber(fiberText),
+        },
+        macroBasis,
+        next,
+        grams,
+      );
+      if (caloriesText.trim() !== "") setCaloriesText(formatNumber(converted.calories));
+      if (proteinText.trim() !== "") setProteinText(formatNumber(converted.protein));
+      if (carbsText.trim() !== "") setCarbsText(formatNumber(converted.carbs));
+      if (fatText.trim() !== "") setFatText(formatNumber(converted.fat));
+      if (fiberText.trim() !== "") setFiberText(formatNumber(converted.fiber));
+      const targetLabel = next === "per_serving" ? "per serving" : "per 100 g";
+      setConversionNotice(`Values converted to ${targetLabel}.`);
+      if (conversionNoticeTimeoutRef.current) {
+        clearTimeout(conversionNoticeTimeoutRef.current);
+      }
+      conversionNoticeTimeoutRef.current = setTimeout(() => {
+        setConversionNotice(null);
+        conversionNoticeTimeoutRef.current = null;
+      }, 3000);
+    }
+    setMacroBasis(next);
+    void AsyncStorage.setItem(MACRO_BASIS_STORAGE_KEY, next).catch(() => {});
+  };
+
+  // F-156 PR-1 — if the user is on per_serving and clears the
+  // serving fields, snap basis back to per_100g + convert macros so
+  // the numbers don't silently become per-100g values labelled as
+  // per-serving.
+  useEffect(() => {
+    if (!visible || !initialBasisAppliedRef.current) return;
+    if (macroBasis === "per_serving" && !perServingAvailable) {
+      setMacroBasis("per_100g");
+    }
+  }, [visible, macroBasis, perServingAvailable]);
 
   // Live preview: scale the food's macros to the natural serving, if the
   // user has set one; else to `baseGrams`. Uses `customFoodToMacrosPer100g`
@@ -248,6 +387,10 @@ export default function CreateCustomFoodSheet({
         hasServingLabel && hasServingGrams
           ? [{ label: servingLabelClean, grams: servingGrams }]
           : [];
+      // F-156 PR-1 — payload is always stored against `baseGrams`. The
+      // toggle picks which `baseGrams` (servingGrams for per_serving,
+      // 100 for per_100g) so the saved values + base agree without
+      // converting at save time.
       const payload: CreateCustomFoodPayload = {
         name: trimmedName,
         baseGrams: macros.baseGrams,
@@ -459,6 +602,10 @@ export default function CreateCustomFoodSheet({
                 </Text>
               )}
 
+              {/* F-156 PR-1 — basis toggle. Macros are stored per-100g
+                  internally; the toggle picks which basis the user
+                  enters them in. Per-serving pill is disabled until a
+                  natural serving (label + grams) is set. */}
               <Text
                 style={{
                   fontSize: 12,
@@ -468,38 +615,85 @@ export default function CreateCustomFoodSheet({
                   marginTop: 4,
                 }}
               >
-                Macros per
+                Macros entered as
               </Text>
               <View
                 style={{
                   flexDirection: "row",
-                  alignItems: "center",
-                  gap: 8,
-                  marginBottom: Spacing.sm,
+                  borderWidth: 1,
+                  borderColor: colors.cardBorder,
+                  borderRadius: Radius.md,
+                  padding: 2,
+                  marginBottom: 4,
                 }}
+                accessibilityRole="radiogroup"
               >
-                <TextInput
-                  value={baseGramsText}
-                  onChangeText={setBaseGramsText}
-                  keyboardType="decimal-pad"
-                  accessibilityLabel="Base grams"
-                  style={[inputStyle, { width: 90 }]}
-                />
-                <Text style={{ fontSize: 13, color: colors.textSecondary }}>grams</Text>
+                {(
+                  [
+                    { value: "per_serving" as MacroBasis, label: "Per serving", disabled: !perServingAvailable },
+                    { value: "per_100g" as MacroBasis, label: "Per 100 g", disabled: false },
+                  ]
+                ).map((opt) => {
+                  const selected = effectiveBasis === opt.value;
+                  return (
+                    <Pressable
+                      key={opt.value}
+                      onPress={() => flipBasisTo(opt.value)}
+                      disabled={opt.disabled}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected, disabled: opt.disabled }}
+                      accessibilityLabel={`Enter macros ${opt.label.toLowerCase()}`}
+                      testID={`custom-food-basis-${opt.value}`}
+                      style={{
+                        flex: 1,
+                        paddingVertical: 8,
+                        borderRadius: Radius.md - 2,
+                        backgroundColor: selected ? Accent.primary : "transparent",
+                        opacity: opt.disabled ? 0.4 : 1,
+                        alignItems: "center",
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 13,
+                          fontWeight: "600",
+                          color: selected ? "#fff" : colors.text,
+                        }}
+                      >
+                        {opt.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
               </View>
-              {!hasValidBase && (
+              {effectiveBasis === "per_100g" && !perServingAvailable && (
                 <Text
                   style={{
                     fontSize: 11,
-                    color: Accent.destructive,
+                    color: colors.textTertiary,
+                    marginBottom: 8,
+                  }}
+                >
+                  Add a serving size above to switch to per-serving entry.
+                </Text>
+              )}
+              {conversionNotice && (
+                <Text
+                  style={{
+                    fontSize: 11,
+                    color: Accent.success,
                     marginBottom: 8,
                   }}
                   accessibilityLiveRegion="polite"
                 >
-                  Base grams must be greater than zero.
+                  {conversionNotice}
                 </Text>
               )}
 
+              {/* F-156 PR-1 — 2x3 macro grid. Fibre joins the grid as a
+                  first-class field (was previously a full-width row
+                  below) so the visual rhythm matches the four core
+                  macros. */}
               <View
                 style={{ flexDirection: "row", gap: 8, marginBottom: Spacing.sm }}
               >
@@ -564,18 +758,26 @@ export default function CreateCustomFoodSheet({
                   />
                 </View>
               </View>
-              <Text
-                style={{ fontSize: 11, color: colors.textSecondary, marginBottom: 4 }}
+              <View
+                style={{ flexDirection: "row", gap: 8, marginBottom: 4 }}
               >
-                Fibre (g, optional)
-              </Text>
-              <TextInput
-                value={fiberText}
-                onChangeText={setFiberText}
-                keyboardType="decimal-pad"
-                accessibilityLabel="Fibre grams, optional"
-                style={[inputStyle, { marginBottom: 4 }]}
-              />
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={{ fontSize: 11, color: colors.textSecondary, marginBottom: 4 }}
+                  >
+                    Fibre (g)
+                  </Text>
+                  <TextInput
+                    value={fiberText}
+                    onChangeText={setFiberText}
+                    keyboardType="decimal-pad"
+                    accessibilityLabel="Fibre grams, optional"
+                    style={inputStyle}
+                  />
+                </View>
+                {/* Empty cell preserves the 2-column grid rhythm. */}
+                <View style={{ flex: 1 }} />
+              </View>
 
               {/* Live "per-serving ≈" preview — below the macro grid so the
                   user sees instant feedback that the label adds up. */}
