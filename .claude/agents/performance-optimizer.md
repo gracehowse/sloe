@@ -48,7 +48,7 @@ Always start by reading `/Users/graceturner/Suppr-1/.claude/agents/_project-cont
 
 ### Telemetry
 - PostHog event timing (where instrumented in `src/lib/analytics/`)
-- Sentry performance traces — verify Sentry SDKs initialised in all three contexts (`sentry.client/edge/server.config.ts`)
+- Sentry performance traces — verify Sentry SDKs initialised in all three contexts: `sentry.client.config.ts`, `sentry.edge.config.ts`, `sentry.server.config.ts`
 - Web Vitals: LCP/INP/CLS — particularly on the public landing pages
 
 ---
