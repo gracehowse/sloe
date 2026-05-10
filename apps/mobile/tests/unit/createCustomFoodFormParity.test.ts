@@ -238,4 +238,74 @@ describe("Create custom food form parity (TestFlight AE52_fIRZ-ZIupmoJ8T4yaI)", 
     // Negative: web no longer has `col-span-2` on the Fibre row.
     expect(WEB_SRC).not.toMatch(/custom-food-fiber"[\s\S]{0,200}?col-span-2/);
   });
+
+  // F-156 PR-2 (2026-05-10) — barcode-failure prefill (M2) +
+  // unlimited multi-serving rows (M3).
+  it("both surfaces accept an `initialBarcode` prop for the scan-not-found prefill", () => {
+    for (const src of [MOBILE_SRC, WEB_SRC]) {
+      expect(src).toMatch(/initialBarcode/);
+    }
+  });
+
+  it("both surfaces auto-open the disclosure when initialBarcode is set", () => {
+    for (const src of [MOBILE_SRC, WEB_SRC]) {
+      // Both mobile + web flip detailsOpen to true on initialBarcode.
+      expect(src).toMatch(/setDetailsOpen\(Boolean\(initialBarcode\)\)/);
+    }
+  });
+
+  it("both surfaces hold an additionalServings array (unlimited rows beyond the first)", () => {
+    for (const src of [MOBILE_SRC, WEB_SRC]) {
+      expect(src).toMatch(/additionalServings/);
+      expect(src).toMatch(/setAdditionalServings/);
+    }
+  });
+
+  it("both surfaces validate every additional serving row both-or-neither", () => {
+    for (const src of [MOBILE_SRC, WEB_SRC]) {
+      expect(src).toMatch(/additionalServingsValid/);
+      // The check pattern: each row's label and grams are both set or both empty.
+      expect(src).toMatch(/additionalServings\.every/);
+    }
+  });
+
+  it("both surfaces render an 'Add another serving' button with a matching test id", () => {
+    for (const src of [MOBILE_SRC, WEB_SRC]) {
+      expect(src).toMatch(/Add another serving/);
+      expect(src).toMatch(/custom-food-add-serving/);
+    }
+  });
+
+  it("both surfaces render a remove button per additional serving row", () => {
+    for (const src of [MOBILE_SRC, WEB_SRC]) {
+      expect(src).toMatch(/custom-food-additional-serving-remove-/);
+    }
+  });
+
+  it("both surfaces collect first + additional rows into the saved servings[] payload", () => {
+    for (const src of [MOBILE_SRC, WEB_SRC]) {
+      expect(src).toMatch(/for \(const row of additionalServings\)/);
+      expect(src).toMatch(/servings\.push/);
+    }
+  });
+
+  it("the BarcodeScannerModal exposes an onAddAsCustomFood callback for the not-found CTA (mobile)", () => {
+    const scanner = readFileSync(
+      resolve(__dirname, "../../components/BarcodeScannerModal.tsx"),
+      "utf8",
+    );
+    expect(scanner).toMatch(/onAddAsCustomFood\?/);
+    expect(scanner).toMatch(/Add as custom food/);
+    expect(scanner).toMatch(/barcode-not-found-add-custom-food/);
+  });
+
+  it("the today-barcode-dialog exposes an onAddAsCustomFood callback for the not-found CTA (web)", () => {
+    const dialog = readFileSync(
+      resolve(__dirname, "../../../../src/app/components/suppr/today-barcode-dialog.tsx"),
+      "utf8",
+    );
+    expect(dialog).toMatch(/onAddAsCustomFood\?/);
+    expect(dialog).toMatch(/Add as custom food/);
+    expect(dialog).toMatch(/barcode-not-found-add-custom-food/);
+  });
 });

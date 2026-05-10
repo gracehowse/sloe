@@ -158,6 +158,8 @@ import { StreakPip } from "@/components/today/StreakPip";
 // canonicalTodayPhase2.test.tsx, and (b) parity with the web
 // `<LogFab>` import path while the web still ships its own FAB.
 import { LogSheet } from "@/components/today/LogSheet";
+import CreateCustomFoodSheet, { type CreateCustomFoodPayload } from "@/components/CreateCustomFoodSheet";
+import { createCustomFood } from "../../../../src/lib/nutrition/customFoodsClient";
 import { TodayEatAgainBanner } from "@/components/today/TodayEatAgainBanner";
 import { WeeklyCheckinBanner } from "@/components/today/WeeklyCheckinBanner";
 import {
@@ -534,6 +536,13 @@ export default function TrackerScreen() {
   const [freezeBudgetMax, setFreezeBudgetMax] = useState<number>(3);
   const [activeMealSlot, setActiveMealSlot] = useState("Breakfast");
   const [barcodeOpen, setBarcodeOpen] = useState(false);
+  /**
+   * F-156 PR-2 (2026-05-10) — barcode-not-found → "Add as custom food"
+   * handoff state. Carries the scanned barcode forward to the
+   * CreateCustomFoodSheet so the saved row's `barcode` column is set
+   * and the next scan resolves successfully.
+   */
+  const [customFoodFromBarcode, setCustomFoodFromBarcode] = useState<string | null>(null);
   const [journalCalendarOpen, setJournalCalendarOpen] = useState(false);
   /** Batch 1.4 — Copy-meal sheet: the meal id being copied, or null. */
   const [copyMealTargetId, setCopyMealTargetId] = useState<string | null>(null);
@@ -5602,6 +5611,58 @@ export default function TrackerScreen() {
           // quota line + 403 paywall handoff handle gating now.
           setBarcodeOpen(false);
           setPhotoLogOpen(true);
+        }}
+        onAddAsCustomFood={(barcode) => {
+          // F-156 PR-2 (2026-05-10) — barcode scanned, not found in
+          // any DB → user opts to add it as a custom food. Close the
+          // scanner and open CreateCustomFoodSheet pre-filled with
+          // the barcode so the saved row writes to user_foods with
+          // the correct code (next scan resolves successfully).
+          setBarcodeOpen(false);
+          setCustomFoodFromBarcode(barcode);
+        }}
+      />
+
+      {/* F-156 PR-2 (2026-05-10) — CreateCustomFoodSheet host for the
+          barcode-not-found path. Only mounted when the user has
+          arrived here via the "Add as custom food" CTA. Saves the new
+          food to user_custom_foods; the user can then scan again to
+          log it. */}
+      <CreateCustomFoodSheet
+        visible={customFoodFromBarcode != null}
+        initialBarcode={customFoodFromBarcode ?? undefined}
+        colors={{
+          text: colors.text,
+          textSecondary: colors.textSecondary,
+          textTertiary: colors.textTertiary,
+          card: colors.card,
+          cardBorder: colors.cardBorder,
+          background: colors.background,
+        }}
+        onClose={() => setCustomFoodFromBarcode(null)}
+        onSave={async (payload: CreateCustomFoodPayload) => {
+          if (!userId) return;
+          try {
+            await createCustomFood(supabase as Parameters<typeof createCustomFood>[0], userId, payload);
+            try {
+              track(AnalyticsEvents.custom_food_created, {
+                hasBrand: Boolean(payload.brand),
+                servingCount: payload.servings.length,
+                fromBarcode: true,
+              });
+            } catch {
+              /* analytics noop */
+            }
+            Alert.alert(
+              "Saved",
+              "Custom food saved. Scan the barcode again to log it.",
+            );
+          } catch (err) {
+            Alert.alert(
+              "Couldn't save",
+              err instanceof Error ? err.message : "Try again in a moment.",
+            );
+          }
         }}
       />
 
