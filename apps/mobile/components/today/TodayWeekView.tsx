@@ -50,6 +50,18 @@ export interface TodayWeekViewProps {
   weekAvg: { calories: number; protein: number; carbs: number; fat: number };
   daysWithFood: number;
   weekEffectiveCalorieBudget: number;
+  /** F-146 (2026-05-10): sum of (basal + activity) burn across the
+   *  visible week. Used by the Net deficit/surplus tile so it
+   *  compares burn-vs-consumed (the truth) instead of goal-vs-consumed
+   *  (which mislabels a deficit as a surplus when consumed > goal but
+   *  < burn). The Activity Bonus card already gets this right per
+   *  day; the week-view tile now lines up with it.
+   *
+   *  Optional for backwards compatibility with legacy test harnesses
+   *  and any caller still on the pre-F-146 prop shape. When missing,
+   *  the tile falls back to `maintenanceKcal × 7` as a flat baseline
+   *  so the deficit/surplus label is still defensible. */
+  weekBurnTotal?: number;
   calorieTarget: number;
   proteinTarget: number;
   carbsTarget: number;
@@ -188,6 +200,7 @@ export function TodayWeekView(props: TodayWeekViewProps) {
     weekAvg,
     daysWithFood,
     weekEffectiveCalorieBudget,
+    weekBurnTotal,
     calorieTarget,
     proteinTarget,
     carbsTarget,
@@ -385,30 +398,50 @@ export function TodayWeekView(props: TodayWeekViewProps) {
             </Text>
             <Text style={{ fontSize: 11, color: textSecondaryColor }}>Daily avg</Text>
           </View>
-          <View style={{ alignItems: "center" }}>
-            <Text
-              style={{
-                fontSize: 24,
-                fontWeight: "800",
-                // Amber on over-target, never red — per project memory
-                // (`feedback_no_quick_temp_fixes.md` + spec §1.4).
-                color: weekEffectiveCalorieBudget > weekTotals.calories ? Accent.success : Accent.warning,
-                fontVariant: ["tabular-nums"],
-              }}
-            >
-              {Math.round(Math.abs(weekEffectiveCalorieBudget - weekTotals.calories))}
-            </Text>
-            {/* User-sentiment audit (round 4, 2026-04-30): retired the
-                punitive over/under-target labels in favour of the
-                canonical "Net deficit" / "Net surplus" phrasing from
-                `src/lib/copy/today.ts`. UCL Oct 2025 study + r/loseit
-                data show punitive framing drives logging avoidance +
-                ED-cohort harm. Web parity: same swap on
-                `today-week-view.tsx` in the same commit. */}
-            <Text style={{ fontSize: 11, color: textSecondaryColor }}>
-              {weekEffectiveCalorieBudget > weekTotals.calories ? "Net deficit" : "Net surplus"}
-            </Text>
-          </View>
+          {(() => {
+            // F-146 (2026-05-10): the Net deficit/surplus tile compares
+            // burn-vs-consumed (the truth), not goal-vs-consumed
+            // (which mislabels deficits-above-goal as surplus). The
+            // Activity Bonus card already uses the same shape; this
+            // tile now lines up with it. `weekBurnTotal` is sum of
+            // (basal + activity) for the visible week, computed in
+            // the parent (`(tabs)/index.tsx`). Falls back to
+            // `maintenanceKcal × 7` when callers haven't been
+            // upgraded to plumb burn through.
+            const burnReference =
+              typeof weekBurnTotal === "number" && Number.isFinite(weekBurnTotal)
+                ? weekBurnTotal
+                : Math.max(0, maintenanceKcal) * 7;
+            const inDeficit = burnReference >= weekTotals.calories;
+            const diff = Math.round(Math.abs(burnReference - weekTotals.calories));
+            return (
+              <View style={{ alignItems: "center" }}>
+                <Text
+                  style={{
+                    fontSize: 24,
+                    fontWeight: "800",
+                    // Amber on over-burn (true surplus), success on
+                    // deficit. Never red per project memory
+                    // (`feedback_no_quick_temp_fixes.md` + spec §1.4).
+                    color: inDeficit ? Accent.success : Accent.warning,
+                    fontVariant: ["tabular-nums"],
+                  }}
+                >
+                  {diff}
+                </Text>
+                {/* User-sentiment audit (round 4, 2026-04-30): retired the
+                    punitive over/under-target labels in favour of the
+                    canonical "Net deficit" / "Net surplus" phrasing from
+                    `src/lib/copy/today.ts`. UCL Oct 2025 study + r/loseit
+                    data show punitive framing drives logging avoidance +
+                    ED-cohort harm. Web parity: same swap on
+                    `today-week-view.tsx` in the same commit. */}
+                <Text style={{ fontSize: 11, color: textSecondaryColor }}>
+                  {inDeficit ? "Net deficit" : "Net surplus"}
+                </Text>
+              </View>
+            );
+          })()}
         </View>
       </View>
 

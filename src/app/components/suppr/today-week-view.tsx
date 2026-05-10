@@ -81,6 +81,14 @@ export interface TodayWeekViewProps {
   weekAvg: TodayWeekTotals;
   loggedDaysInWeek: number;
   weekEffectiveCalorieBudget: number;
+  /** F-146 (2026-05-10): mobile-parity prop. Sum of (basal + activity)
+   *  burn across the visible week, used by the Net deficit/surplus
+   *  tile so it compares burn-vs-consumed (the truth) instead of
+   *  goal-vs-consumed (which mislabels deficits-above-goal as surplus).
+   *  Optional for backwards compatibility — when missing, the tile
+   *  falls back to `maintenanceForWeek` × 7 as a flat baseline so the
+   *  label is still defensible. */
+  weekBurnTotal?: number;
   calorieTarget: number;
   proteinTarget: number;
   carbsTarget: number;
@@ -125,6 +133,7 @@ export function TodayWeekView({
   weekAvg,
   loggedDaysInWeek,
   weekEffectiveCalorieBudget,
+  weekBurnTotal,
   calorieTarget,
   proteinTarget,
   carbsTarget,
@@ -140,8 +149,16 @@ export function TodayWeekView({
     1,
     ...days.map((d, i) => Math.max(d.totals.calories, dayGoals[i] ?? calorieTarget)),
   );
-  const under = weekEffectiveCalorieBudget > weekTotals.calories;
-  const diff = Math.round(Math.abs(weekEffectiveCalorieBudget - weekTotals.calories));
+  // F-146 (2026-05-10): label by burn-vs-consumed, not goal-vs-consumed.
+  // Falls back to `maintenanceForWeek × 7` when `weekBurnTotal` isn't
+  // plumbed yet (caller upgrade path) so the tile still produces a
+  // defensible label.
+  const burnReference =
+    typeof weekBurnTotal === "number" && Number.isFinite(weekBurnTotal)
+      ? weekBurnTotal
+      : Math.max(0, maintenanceForWeek) * 7;
+  const under = burnReference >= weekTotals.calories;
+  const diff = Math.round(Math.abs(burnReference - weekTotals.calories));
 
   // 2026-05-01 (ui-critic #5) — scrubber state + closest-to-target.
   const [scrubIndex, setScrubIndex] = React.useState<number | null>(null);

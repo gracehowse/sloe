@@ -311,11 +311,23 @@ export default function ProgressScreen() {
     // Expo Go, Android), we treat the sync as "success" — the card
     // falls back to manual `stepsByDay` and the user-supplied value
     // is honestly what we know.
+    //
+    // F-147 (2026-05-10): the previous flow flipped `stepsSyncStatus`
+    // to "success" immediately when the sync promise resolved, but
+    // the steps_by_day re-read (line below) hadn't yet landed. The
+    // success branch then rendered stale state — for users whose
+    // initial profile load had no row for today, that meant a flash
+    // of "0 steps" while Today (which has a different sync timing)
+    // showed the correct count. The fix: defer the success flip
+    // until AFTER the re-read writes the new state, so the moment
+    // the success branch renders, the data is accurate. Failure
+    // path is unchanged.
     setStepsSyncStatus("pending");
     const syncPromise: Promise<void> = isHealthSyncAvailable()
       ? syncHealthDataThrottled(userId).then(
           () => {
-            setStepsSyncStatus("success");
+            // Status flip is intentionally deferred to the re-read
+            // handler below so the big number paints with fresh data.
           },
           () => {
             setStepsSyncStatus("failed");
@@ -372,17 +384,29 @@ export default function ProgressScreen() {
 
     // Re-read `steps_by_day` after the background HK sync completes so
     // today's steps are accurate even though we didn't await sync above.
+    //
+    // F-147 (2026-05-10): the success status flip moved here so the
+    // big number doesn't paint while we're still waiting on the
+    // re-read. If the sync resolved but the re-read failed (network
+    // hiccup mid-flight), we still flip to success — the user has
+    // the existing local state and a stale-but-honest number, which
+    // is better than perpetual skeleton.
     void syncPromise.then(async () => {
-      const { data: refreshed } = await supabase
-        .from("profiles")
-        .select("steps_by_day, weight_kg_by_day, weight_kg")
-        .eq("id", userId)
-        .maybeSingle();
-      if (refreshed) {
-        setStepsByDay(parseNumMap((refreshed as any).steps_by_day));
-        setWeightKgByDay(parseNumMap((refreshed as any).weight_kg_by_day));
-        const w = (refreshed as any).weight_kg != null ? Number((refreshed as any).weight_kg) : null;
-        if (Number.isFinite(w)) setWeightKg(w);
+      try {
+        const { data: refreshed } = await supabase
+          .from("profiles")
+          .select("steps_by_day, weight_kg_by_day, weight_kg")
+          .eq("id", userId)
+          .maybeSingle();
+        if (refreshed) {
+          setStepsByDay(parseNumMap((refreshed as any).steps_by_day));
+          setWeightKgByDay(parseNumMap((refreshed as any).weight_kg_by_day));
+          const w = (refreshed as any).weight_kg != null ? Number((refreshed as any).weight_kg) : null;
+          if (Number.isFinite(w)) setWeightKg(w);
+        }
+      } finally {
+        // Only flip if the sync itself didn't already mark failed.
+        setStepsSyncStatus((prev) => (prev === "failed" ? prev : "success"));
       }
     });
 

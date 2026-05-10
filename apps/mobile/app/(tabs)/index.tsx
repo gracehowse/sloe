@@ -2228,6 +2228,28 @@ export default function TrackerScreen() {
     maintenanceKcal,
   ]);
 
+  // F-146 (2026-05-10): the week-view "Net deficit / Net surplus"
+  // tile previously compared `weekConsumed > weekTarget` (consumed-
+  // vs-goal), which mislabels a deficit as a surplus when consumed is
+  // above goal but below total burn. The Activity Bonus card (one
+  // section above) gets this right via `totalBurn − consumed`. This
+  // sum of (basal + activity) per day across the visible week is the
+  // same shape the Activity Bonus card already uses. Falls back to
+  // `maintenanceKcal × 7` (a flat assumption) when the user hasn't
+  // opted into activity-adjusted calories so the tile still answers
+  // "deficit / surplus" with a defensible burn baseline.
+  const weekBurnTotal = useMemo(() => {
+    const fallbackPerDay = Math.max(0, maintenanceKcal);
+    return weekData.days.reduce((sum, d) => {
+      const basal = basalBurnByDay[d.key];
+      const activity = activityBurnByDay[d.key];
+      const dayBurn =
+        (typeof basal === "number" && Number.isFinite(basal) ? basal : fallbackPerDay) +
+        (typeof activity === "number" && Number.isFinite(activity) ? activity : 0);
+      return sum + dayBurn;
+    }, 0);
+  }, [weekData.days, basalBurnByDay, activityBurnByDay, maintenanceKcal]);
+
   const navigateWeek = useCallback((offset: number) => {
     setSelectedDate((prev) => {
       const next = new Date(prev);
@@ -4456,6 +4478,7 @@ export default function TrackerScreen() {
             weekAvg={weekData.weekAvg}
             daysWithFood={weekData.daysWithFood}
             weekEffectiveCalorieBudget={weekEffectiveCalorieBudget}
+            weekBurnTotal={weekBurnTotal}
             calorieTarget={targets.calories}
             proteinTarget={targets.protein}
             carbsTarget={targets.carbs}
