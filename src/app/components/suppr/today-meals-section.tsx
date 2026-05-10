@@ -26,6 +26,9 @@ import {
 import { Button } from "../ui/button";
 import type { SavedMeal } from "../../../lib/nutrition/savedMeals";
 import { summariseSavedMeal } from "../../../lib/nutrition/savedMealsLogic";
+import { buildMealShareText } from "../../../lib/share/buildMealShareText";
+import { track } from "../../../lib/analytics/track";
+import { toast } from "sonner";
 
 /**
  * TodayMealsSection — per-slot meal list, save-as-usual full-width row,
@@ -316,6 +319,49 @@ export function TodayMealsSection({
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onSelect={() => onRequestCopyMeal(meal.id)}>
                               Copy to another day…
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onSelect={async () => {
+                                const message = buildMealShareText({
+                                  recipeTitle: meal.recipeTitle,
+                                  calories: meal.calories,
+                                  protein: meal.protein,
+                                  carbs: meal.carbs,
+                                  fat: meal.fat,
+                                  portionMultiplier: meal.portionMultiplier,
+                                });
+                                if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+                                  try {
+                                    await navigator.share({ title: meal.recipeTitle, text: message });
+                                    track("meal_share_invoked", {
+                                      surface: "today_meal_row_kebab",
+                                      outcome: "shared",
+                                    });
+                                  } catch (err) {
+                                    track("meal_share_invoked", {
+                                      surface: "today_meal_row_kebab",
+                                      outcome: (err as Error)?.name === "AbortError" ? "dismissed" : "error",
+                                    });
+                                  }
+                                  return;
+                                }
+                                try {
+                                  await navigator.clipboard.writeText(message);
+                                  toast.success("Meal copied to clipboard");
+                                  track("meal_share_invoked", {
+                                    surface: "today_meal_row_kebab",
+                                    outcome: "shared",
+                                  });
+                                } catch {
+                                  toast.error("Couldn't copy meal");
+                                  track("meal_share_invoked", {
+                                    surface: "today_meal_row_kebab",
+                                    outcome: "error",
+                                  });
+                                }
+                              }}
+                            >
+                              Share meal
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onSelect={() => {

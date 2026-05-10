@@ -1,5 +1,7 @@
 import React, { useState } from "react";
-import { Alert, Modal, Pressable, ScrollView, Text, View } from "react-native";
+import { Alert, Modal, Pressable, ScrollView, Share, Text, View } from "react-native";
+import { buildMealShareText } from "../../../../src/lib/share/buildMealShareText";
+import { track } from "@/lib/analytics";
 import { Swipeable } from "react-native-gesture-handler";
 import {
   Bookmark,
@@ -435,6 +437,31 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                           { text: "Cancel", style: "cancel" },
                           { text: "Edit", onPress: () => onLongPressEdit(m) },
                           { text: "Copy to another day", onPress: () => onRequestCopyMeal(m.id) },
+                          {
+                            text: "Share meal",
+                            onPress: async () => {
+                              const message = buildMealShareText({
+                                recipeTitle: m.recipeTitle,
+                                calories: m.calories,
+                                protein: m.protein,
+                                carbs: m.carbs,
+                                fat: m.fat,
+                                portionMultiplier: m.portionMultiplier,
+                              });
+                              try {
+                                const result = await Share.share({ message, title: m.recipeTitle });
+                                track("meal_share_invoked", {
+                                  surface: "today_meal_row_longpress",
+                                  outcome: result.action === Share.dismissedAction ? "dismissed" : "shared",
+                                });
+                              } catch {
+                                track("meal_share_invoked", {
+                                  surface: "today_meal_row_longpress",
+                                  outcome: "error",
+                                });
+                              }
+                            },
+                          },
                           { text: "Delete", style: "destructive", onPress: () => onDeleteMeal(m.id) },
                         ]);
                       }}
