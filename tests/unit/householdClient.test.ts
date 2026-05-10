@@ -113,7 +113,8 @@ describe("createHousehold", () => {
   it("rejects when userId is empty (caller not authed)", async () => {
     const sb = makeSupabase({});
     const res = await createHousehold(sb as any, "");
-    expect(res.error).toBe("not_authenticated");
+    // F-142 (2026-05-10): error envelope `{ code, message, raw }`.
+    expect(res.error?.code).toBe("not_authenticated");
     expect(res.data).toBeNull();
     expect(sb.calls).toHaveLength(0);
   });
@@ -126,7 +127,8 @@ describe("createHousehold", () => {
       },
     });
     const res = await createHousehold(sb as any, "u1");
-    expect(res.error).toBe("already_in_household");
+    expect(res.error?.code).toBe("already_in_household");
+    expect(res.error?.message).toContain("already belong to a household");
     // Should not reach the insert path.
     expect(sb.calls.some((c) => c.op === "insert:single")).toBe(false);
   });
@@ -211,9 +213,52 @@ describe("createHousehold", () => {
     });
     const res = await createHousehold(sb as any, "u1", "Team");
     expect(res.data).toBeNull();
-    expect(res.error).toBe("insert blew up");
+    // F-142 (2026-05-10): error envelope `{ code, message, raw }`.
+    // The friendly message replaces the raw PG error string the user
+    // used to see; the raw error is preserved on `error.raw` for
+    // telemetry / Sentry breadcrumb only (never surfaced to user).
+    expect(res.error?.code).toBe("create_household_failed");
+    expect(res.error?.message).toContain("Couldn't create your household");
+    expect((res.error?.raw as Error)?.message).toBe("insert blew up");
     // The critical invariant: no membership row was inserted.
     expect(memberInserts).toHaveLength(0);
+  });
+
+  it("rolls back the just-created household when the members insert fails (F-142)", async () => {
+    // F-142 (2026-05-10): "Nothing happens when I try to create a
+    // household". The previous code left a zombie `households` row
+    // when the `household_members.insert` failed (no transaction).
+    // The fix: best-effort DELETE on the household id before
+    // returning the error envelope.
+    const householdsDeleted: string[] = [];
+    const sb = makeSupabase({
+      household_members: (op) => {
+        if (op === "select:maybeSingle") return { data: null, error: null };
+        if (op === "insert") {
+          // Force the second-write failure that triggers rollback.
+          return { data: null, error: new Error("members RLS denied") };
+        }
+        return { data: null, error: null };
+      },
+      households: (op, ctx) => {
+        if (op === "insert:single") {
+          return { data: { id: "h-orphan", name: "Team", invite_code: "abc" }, error: null };
+        }
+        if (op === "delete") {
+          // makeSupabase records `.eq("col", val)` in `filters['eq:col']`.
+          householdsDeleted.push((ctx.filters?.["eq:id"] as string) ?? "(no-id)");
+          return { data: null, error: null };
+        }
+        return { data: null, error: null };
+      },
+      profiles: () => ({ data: null, error: null }),
+    });
+    const res = await createHousehold(sb as any, "u1", "Team");
+    expect(res.data).toBeNull();
+    expect(res.error?.code).toBe("create_member_failed");
+    expect(res.error?.message).toContain("Couldn't add you as an owner");
+    // The rollback hit `households.delete` with the orphan id.
+    expect(householdsDeleted).toContain("h-orphan");
   });
 
   it("defaults to 'My Household' when no name is supplied", async () => {
