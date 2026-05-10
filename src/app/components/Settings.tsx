@@ -46,6 +46,7 @@ import {
   type Sex,
 } from "../../lib/nutrition/tdee.ts";
 import { recomputeTargetsForActivity } from "../../lib/nutrition/recomputeTargetsForActivity.ts";
+import { backfillDailyTargetsFromProfile } from "../../lib/nutrition/dailyTargetSnapshot.ts";
 import { nukeAllUserAppData } from "../../lib/account/nukeAccountData.ts";
 import { NUTRITION_DEFAULTS } from "../../constants/nutritionDefaults.ts";
 import {
@@ -323,6 +324,33 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       // `maintenanceTdee` is exposed for the toast only — not a DB column.
       const { maintenanceTdee: _maintenance, ...writeable } =
         update as typeof update & { maintenanceTdee?: number };
+
+      // F-149 web parity (2026-05-10): when this update would change
+      // target_calories (i.e. `recomputed` is non-null), backfill
+      // past-day daily_targets snapshots from the user's CURRENT
+      // (about-to-be-old) profile values BEFORE writing the new ones.
+      // Mirrors `apps/mobile/components/recap/GoalPaceRetuneSheet.tsx`
+      // — same helper, same posture: `upsert(..., { ignoreDuplicates:
+      // true })` protects existing snapshots; only gaps fill. Past
+      // days without logs now show the target that was effective on
+      // that day, not the new one. Best-effort: backfill failure
+      // doesn't block the user's settings save.
+      if (recomputed) {
+        try {
+          const { data: oldProfile } = await supabase
+            .from("profiles")
+            .select(
+              "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, activity_level, plan_pace, goal, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, sex, weight_kg, height_cm, age",
+            )
+            .eq("id", uid)
+            .maybeSingle();
+          if (oldProfile) {
+            await backfillDailyTargetsFromProfile(supabase as any, uid, oldProfile);
+          }
+        } catch {
+          // Backfill never blocks the user's settings save.
+        }
+      }
 
       const { error } = await supabase
         .from("profiles")
