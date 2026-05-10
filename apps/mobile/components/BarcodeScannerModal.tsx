@@ -52,9 +52,20 @@ type Props = {
    * legacy "Enter manually instead" button stays primary.
    */
   onPhotoFallback?: () => void;
+  /**
+   * F-156 PR-2 (2026-05-10) — when a barcode resolves to "not found",
+   * surface an "Add as custom food" CTA that hands off to the
+   * CreateCustomFoodSheet pre-filled with the scanned barcode. The
+   * host is responsible for closing this scanner and opening the
+   * sheet with `initialBarcode={barcode}` (so the saved row writes
+   * to `user_foods` with the correct barcode and the next scan
+   * resolves successfully). Optional — when omitted the CTA is
+   * hidden and the existing manual / scan-label paths stay primary.
+   */
+  onAddAsCustomFood?: (barcode: string) => void;
 };
 
-export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoFallback }: Props) {
+export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoFallback, onAddAsCustomFood }: Props) {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
   const { session } = useAuth();
@@ -1022,6 +1033,30 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
                     >
                       {scanLabelError}
                     </Text>
+                  )}
+                  {/* F-156 PR-2 (2026-05-10) — "Add as custom food"
+                      CTA. Hands the scanned barcode to the host, which
+                      opens CreateCustomFoodSheet with initialBarcode
+                      set so the saved row writes to user_foods with
+                      the correct barcode (so the next scan resolves
+                      successfully). Only renders when the host wires
+                      `onAddAsCustomFood` AND we have a scanned value
+                      to forward. */}
+                  {onAddAsCustomFood && scanned && error === "Product not found in database." && (
+                    <Pressable
+                      onPress={() => {
+                        const code = scanned;
+                        onAddAsCustomFood(code);
+                      }}
+                      accessibilityRole="button"
+                      accessibilityLabel="Add as custom food with this barcode"
+                      testID="barcode-not-found-add-custom-food"
+                      style={{ paddingTop: Spacing.md }}
+                    >
+                      <Text style={{ color: Accent.primary, fontSize: 13, fontWeight: "600" }}>
+                        Add as custom food
+                      </Text>
+                    </Pressable>
                   )}
                   <Pressable
                     onPress={() => setManualMode(true)}

@@ -86,6 +86,14 @@ type Props = {
   initialFood?: CustomFood;
   /** Suggested name prefill (e.g. what the user typed in search). */
   initialName?: string;
+  /**
+   * F-156 PR-2 (2026-05-10) — barcode prefill from a scan-not-found
+   * flow. When set (and `initialFood` is unset, i.e. create mode),
+   * the barcode field is pre-populated and the detailed-nutrition
+   * disclosure is auto-opened so the user can see the field. Wired
+   * from `BarcodeScannerModal.onAddAsCustomFood`.
+   */
+  initialBarcode?: string;
   onSave: (payload: CreateCustomFoodPayload) => void | Promise<void>;
   colors: Theme;
 };
@@ -107,6 +115,7 @@ export default function CreateCustomFoodSheet({
   onClose,
   initialFood,
   initialName,
+  initialBarcode,
   onSave,
   colors,
 }: Props) {
@@ -114,6 +123,17 @@ export default function CreateCustomFoodSheet({
   const [brand, setBrand] = useState("");
   const [servingLabel, setServingLabel] = useState("");
   const [servingGramsText, setServingGramsText] = useState("");
+  /**
+   * F-156 PR-2 (2026-05-10) — additional serving rows beyond the first
+   * canonical natural serving. First row stays in `servingLabel` +
+   * `servingGramsText` because it drives the basis toggle, preview,
+   * and per-serving conversion. Extra rows are pure rendering: a
+   * user adds 1 slice (30g) + 1 loaf (500g) + 1 cup (250g). Unlimited
+   * (Grace 2026-05-10 override of the spec's cap of 3).
+   */
+  const [additionalServings, setAdditionalServings] = useState<
+    Array<{ label: string; grams: string }>
+  >([]);
   const [servingsPerContainerText, setServingsPerContainerText] = useState("");
   const [caloriesText, setCaloriesText] = useState("");
   const [proteinText, setProteinText] = useState("");
@@ -149,6 +169,18 @@ export default function CreateCustomFoodSheet({
       );
       setServingLabel(first?.label ?? "");
       setServingGramsText(first ? formatNumber(first.grams) : "");
+      // F-156 PR-2 — load any saved servings beyond the first into
+      // the additional rows. Skip the first match (already loaded
+      // above) and any half-saved rows (empty label or zero grams).
+      const rest = (initialFood.servings ?? [])
+        .filter(
+          (s, idx) =>
+            !(idx === (initialFood.servings ?? []).indexOf(first!) && first) &&
+            s.label.trim() !== "" &&
+            s.grams > 0,
+        )
+        .map((s) => ({ label: s.label, grams: formatNumber(s.grams) }));
+      setAdditionalServings(rest);
       setServingsPerContainerText(
         initialFood.servingsPerContainer != null
           ? formatNumber(initialFood.servingsPerContainer)
@@ -207,6 +239,7 @@ export default function CreateCustomFoodSheet({
       setBrand("");
       setServingLabel("");
       setServingGramsText("");
+      setAdditionalServings([]);
       setServingsPerContainerText("");
       setCaloriesText("");
       setProteinText("");
@@ -216,8 +249,10 @@ export default function CreateCustomFoodSheet({
       setSugarText("");
       setSatFatText("");
       setSodiumText("");
-      setBarcode("");
-      setDetailsOpen(false);
+      // F-156 PR-2 — prefill the barcode + auto-open the disclosure
+      // when the host opened the sheet from a barcode-not-found CTA.
+      setBarcode(initialBarcode ?? "");
+      setDetailsOpen(Boolean(initialBarcode));
       // F-156 PR-1 — for a new food, restore the user's last-chosen
       // basis from AsyncStorage. Falls back to "per_100g" while the
       // read is in flight + when no value is stored.
@@ -238,7 +273,7 @@ export default function CreateCustomFoodSheet({
       clearTimeout(conversionNoticeTimeoutRef.current);
       conversionNoticeTimeoutRef.current = null;
     }
-  }, [visible, initialFood, initialName]);
+  }, [visible, initialFood, initialName, initialBarcode]);
 
   // Cleanup the conversion-notice timer on unmount.
   useEffect(() => {
@@ -255,9 +290,17 @@ export default function CreateCustomFoodSheet({
   const hasServingGrams = servingGrams > 0;
   // Both fields are "required together or both empty". Disallow half-
   // filled combos (label without grams, grams without label).
-  const servingValid =
+  const firstServingValid =
     (!hasServingLabel && !hasServingGrams) ||
     (hasServingLabel && hasServingGrams);
+  // F-156 PR-2 — same both-or-neither rule applies per additional row.
+  const additionalServingsValid = additionalServings.every((row) => {
+    const hasLabel = row.label.trim().length > 0;
+    const grams = toNumber(row.grams);
+    const hasG = grams > 0;
+    return (!hasLabel && !hasG) || (hasLabel && hasG);
+  });
+  const servingValid = firstServingValid && additionalServingsValid;
 
   // F-156 PR-1 — Per-serving basis requires a valid serving (label +
   // grams). If the user clears the serving while the toggle is on
@@ -383,10 +426,21 @@ export default function CreateCustomFoodSheet({
     if (!canSave) return;
     setSaving(true);
     try {
+      // F-156 PR-2 — first row + any valid additional rows. Empty
+      // trailing rows are stripped silently; per-row both-or-neither
+      // is already enforced by `servingValid` so we only get here
+      // when every populated row is whole.
       const servings: CustomFoodServing[] =
         hasServingLabel && hasServingGrams
           ? [{ label: servingLabelClean, grams: servingGrams }]
           : [];
+      for (const row of additionalServings) {
+        const label = row.label.trim();
+        const grams = toNumber(row.grams);
+        if (label.length > 0 && grams > 0) {
+          servings.push({ label, grams });
+        }
+      }
       // F-156 PR-1 — payload is always stored against `baseGrams`. The
       // toggle picks which `baseGrams` (servingGrams for per_serving,
       // 100 for per_100g) so the saved values + base agree without
@@ -568,6 +622,80 @@ export default function CreateCustomFoodSheet({
                   style={[inputStyle, { width: 90 }]}
                 />
               </View>
+
+              {/* F-156 PR-2 (2026-05-10) — additional serving rows.
+                  Compact list ([label] [grams] [×]) below the first
+                  serving so the user can add "1 slice" + "1 loaf" +
+                  "1 cup" etc. Unlimited (Grace 2026-05-10 override).
+                  First row above stays the canonical serving used by
+                  the basis toggle + preview. */}
+              {additionalServings.map((row, idx) => (
+                <View
+                  key={idx}
+                  style={{ flexDirection: "row", gap: 8, marginBottom: 6, alignItems: "center" }}
+                  testID={`custom-food-additional-serving-${idx}`}
+                >
+                  <TextInput
+                    value={row.label}
+                    onChangeText={(t) =>
+                      setAdditionalServings((rows) =>
+                        rows.map((r, i) => (i === idx ? { ...r, label: t } : r)),
+                      )
+                    }
+                    placeholder="e.g. 1 cup"
+                    placeholderTextColor={colors.textTertiary}
+                    maxLength={40}
+                    accessibilityLabel={`Additional serving ${idx + 2} label`}
+                    style={[inputStyle, { flex: 1 }]}
+                  />
+                  <TextInput
+                    value={row.grams}
+                    onChangeText={(t) =>
+                      setAdditionalServings((rows) =>
+                        rows.map((r, i) => (i === idx ? { ...r, grams: t } : r)),
+                      )
+                    }
+                    keyboardType="decimal-pad"
+                    placeholder="grams"
+                    placeholderTextColor={colors.textTertiary}
+                    accessibilityLabel={`Additional serving ${idx + 2} grams`}
+                    style={[inputStyle, { width: 90 }]}
+                  />
+                  <Pressable
+                    onPress={() =>
+                      setAdditionalServings((rows) => rows.filter((_, i) => i !== idx))
+                    }
+                    hitSlop={10}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Remove serving ${idx + 2}`}
+                    testID={`custom-food-additional-serving-remove-${idx}`}
+                    style={{ paddingHorizontal: 6, paddingVertical: 4 }}
+                  >
+                    <Ionicons name="close" size={20} color={colors.textTertiary} />
+                  </Pressable>
+                </View>
+              ))}
+              <Pressable
+                onPress={() =>
+                  setAdditionalServings((rows) => [...rows, { label: "", grams: "" }])
+                }
+                accessibilityRole="button"
+                accessibilityLabel="Add another serving"
+                testID="custom-food-add-serving"
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 4,
+                  paddingVertical: 6,
+                  marginBottom: 4,
+                }}
+              >
+                <Ionicons name="add" size={16} color={Accent.primary} />
+                <Text style={{ fontSize: 13, color: Accent.primary, fontWeight: "600" }}>
+                  Add another serving
+                </Text>
+              </Pressable>
+
               <View
                 style={{
                   flexDirection: "row",

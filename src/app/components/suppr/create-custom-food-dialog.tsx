@@ -32,7 +32,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Plus, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -82,6 +82,14 @@ export type CreateCustomFoodDialogProps = {
   initialFood?: CustomFood;
   /** Optional name prefill (e.g. from the search query). */
   initialName?: string;
+  /**
+   * F-156 PR-2 (2026-05-10) — barcode prefill from a scan-not-found
+   * flow. When set (and `initialFood` is unset, i.e. create mode), the
+   * barcode field is pre-populated and the detailed-nutrition disclosure
+   * is auto-opened. Wired from the today-barcode-dialog
+   * "Add as custom food" CTA.
+   */
+  initialBarcode?: string;
   onSave: (payload: CreateCustomFoodPayload) => void | Promise<void>;
 };
 
@@ -103,12 +111,22 @@ export function CreateCustomFoodDialog({
   onOpenChange,
   initialFood,
   initialName,
+  initialBarcode,
   onSave,
 }: CreateCustomFoodDialogProps) {
   const [name, setName] = useState("");
   const [brand, setBrand] = useState("");
   const [servingLabel, setServingLabel] = useState("");
   const [servingGramsText, setServingGramsText] = useState("");
+  /**
+   * F-156 PR-2 (2026-05-10) — additional serving rows beyond the first
+   * canonical natural serving. First row stays in `servingLabel` +
+   * `servingGramsText` because it drives the basis toggle, preview,
+   * and per-serving conversion. Unlimited (Grace 2026-05-10 override).
+   */
+  const [additionalServings, setAdditionalServings] = useState<
+    Array<{ label: string; grams: string }>
+  >([]);
   const [servingsPerContainerText, setServingsPerContainerText] = useState("");
   const [caloriesText, setCaloriesText] = useState("");
   const [proteinText, setProteinText] = useState("");
@@ -142,6 +160,17 @@ export function CreateCustomFoodDialog({
       );
       setServingLabel(first?.label ?? "");
       setServingGramsText(first ? formatNumber(first.grams) : "");
+      // F-156 PR-2 — load any saved servings beyond the first into
+      // the additional rows.
+      const rest = (initialFood.servings ?? [])
+        .filter(
+          (s, idx) =>
+            !(idx === (initialFood.servings ?? []).indexOf(first!) && first) &&
+            s.label.trim() !== "" &&
+            s.grams > 0,
+        )
+        .map((s) => ({ label: s.label, grams: formatNumber(s.grams) }));
+      setAdditionalServings(rest);
       setServingsPerContainerText(
         initialFood.servingsPerContainer != null
           ? formatNumber(initialFood.servingsPerContainer)
@@ -194,6 +223,7 @@ export function CreateCustomFoodDialog({
       setBrand("");
       setServingLabel("");
       setServingGramsText("");
+      setAdditionalServings([]);
       setServingsPerContainerText("");
       setCaloriesText("");
       setProteinText("");
@@ -203,8 +233,10 @@ export function CreateCustomFoodDialog({
       setSugarText("");
       setSatFatText("");
       setSodiumText("");
-      setBarcode("");
-      setDetailsOpen(false);
+      // F-156 PR-2 — prefill barcode + auto-open the disclosure when
+      // the host opened the dialog from a barcode-not-found CTA.
+      setBarcode(initialBarcode ?? "");
+      setDetailsOpen(Boolean(initialBarcode));
       // F-156 PR-1 — restore last-chosen basis from localStorage.
       let stored: string | null = null;
       try {
@@ -221,7 +253,7 @@ export function CreateCustomFoodDialog({
       clearTimeout(conversionNoticeTimeoutRef.current);
       conversionNoticeTimeoutRef.current = null;
     }
-  }, [open, initialFood, initialName]);
+  }, [open, initialFood, initialName, initialBarcode]);
 
   // Cleanup timer on unmount.
   useEffect(() => {
@@ -236,9 +268,17 @@ export function CreateCustomFoodDialog({
   const servingLabelClean = servingLabel.trim();
   const hasServingLabel = servingLabelClean.length > 0;
   const hasServingGrams = servingGrams > 0;
-  const servingValid =
+  const firstServingValid =
     (!hasServingLabel && !hasServingGrams) ||
     (hasServingLabel && hasServingGrams);
+  // F-156 PR-2 — same both-or-neither rule per additional row.
+  const additionalServingsValid = additionalServings.every((row) => {
+    const hasLabel = row.label.trim().length > 0;
+    const grams = toNumber(row.grams);
+    const hasG = grams > 0;
+    return (!hasLabel && !hasG) || (hasLabel && hasG);
+  });
+  const servingValid = firstServingValid && additionalServingsValid;
 
   // F-156 PR-1 — per_serving requires a valid serving.
   const perServingAvailable = hasServingLabel && hasServingGrams;
@@ -356,10 +396,20 @@ export function CreateCustomFoodDialog({
     if (!canSave) return;
     setSaving(true);
     try {
+      // F-156 PR-2 — first row + any valid additional rows. Empty
+      // trailing rows stripped silently; per-row validation is
+      // already enforced by `servingValid`.
       const servings: CustomFoodServing[] =
         hasServingLabel && hasServingGrams
           ? [{ label: servingLabelClean, grams: servingGrams }]
           : [];
+      for (const row of additionalServings) {
+        const label = row.label.trim();
+        const grams = toNumber(row.grams);
+        if (label.length > 0 && grams > 0) {
+          servings.push({ label, grams });
+        }
+      }
       const payload: CreateCustomFoodPayload = {
         name: trimmedName,
         baseGrams: macros.baseGrams,
@@ -455,6 +505,73 @@ export function CreateCustomFoodDialog({
                 className="w-24"
               />
             </div>
+
+            {/* F-156 PR-2 (2026-05-10) — additional serving rows.
+                Compact list ([label] [grams] [×]) under the first
+                row so users can add "1 slice" + "1 loaf" + "1 cup".
+                Unlimited (Grace 2026-05-10 override). First row above
+                stays the canonical serving used by the basis toggle
+                + preview. */}
+            {additionalServings.map((row, idx) => (
+              <div
+                key={idx}
+                className="flex items-center gap-2"
+                data-testid={`custom-food-additional-serving-${idx}`}
+              >
+                <Input
+                  type="text"
+                  value={row.label}
+                  onChange={(e) =>
+                    setAdditionalServings((rows) =>
+                      rows.map((r, i) => (i === idx ? { ...r, label: e.target.value } : r)),
+                    )
+                  }
+                  placeholder="e.g. 1 cup"
+                  maxLength={40}
+                  aria-label={`Additional serving ${idx + 2} label`}
+                  className="flex-1"
+                />
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  value={row.grams}
+                  onChange={(e) =>
+                    setAdditionalServings((rows) =>
+                      rows.map((r, i) => (i === idx ? { ...r, grams: e.target.value } : r)),
+                    )
+                  }
+                  placeholder="grams"
+                  min={0}
+                  step="any"
+                  aria-label={`Additional serving ${idx + 2} grams`}
+                  className="w-24"
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    setAdditionalServings((rows) => rows.filter((_, i) => i !== idx))
+                  }
+                  aria-label={`Remove serving ${idx + 2}`}
+                  data-testid={`custom-food-additional-serving-remove-${idx}`}
+                  className="text-muted-foreground hover:text-foreground p-1"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() =>
+                setAdditionalServings((rows) => [...rows, { label: "", grams: "" }])
+              }
+              data-testid="custom-food-add-serving"
+              aria-label="Add another serving"
+              className="flex items-center gap-1 text-sm font-medium text-primary hover:underline self-start py-1"
+            >
+              <Plus className="w-4 h-4" />
+              Add another serving
+            </button>
+
             <div className="flex items-center gap-2">
               <Input
                 id="custom-food-servings-per-container"

@@ -99,6 +99,11 @@ import { TodayCompleteDayDialog } from "./suppr/today-complete-day-dialog";
 import { TodayAddMealDialog } from "./suppr/today-add-meal-dialog";
 import { FoodSearch, type FoodSearchSelection } from "./FoodSearch.tsx";
 import { TodayBarcodeDialog, type TodayBarcodeConfirmPayload } from "./suppr/today-barcode-dialog";
+import {
+  CreateCustomFoodDialog,
+  type CreateCustomFoodPayload,
+} from "./suppr/create-custom-food-dialog";
+import { createCustomFood } from "../../lib/nutrition/customFoodsClient";
 import { TodayDateHeader } from "./suppr/today-date-header";
 import { aiLoggingSourceLabel, type AiLoggedItem } from "../../lib/nutrition/aiLogging";
 import {
@@ -528,6 +533,13 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
   const [barcodeValue, setBarcodeValue] = useState("");
   const [barcodeBusy, setBarcodeBusy] = useState(false);
   const [barcodePreview, setBarcodePreview] = useState<OffProductMacros | null>(null);
+  /**
+   * F-156 PR-2 (2026-05-10) — barcode-not-found → "Add as custom food"
+   * handoff. Carries the scanned barcode forward to the
+   * CreateCustomFoodDialog so the saved row's `barcode` column is
+   * set; the next scan resolves successfully.
+   */
+  const [customFoodFromBarcode, setCustomFoodFromBarcode] = useState<string | null>(null);
   const [barcodeGramsStr, setBarcodeGramsStr] = useState("100");
   const barcodeGramsParsed = useMemo(() => {
     const n = Number.parseFloat(barcodeGramsStr.replace(",", ".").trim());
@@ -2982,6 +2994,47 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
           // quota line + 403 paywall handoff handle gating now.
           setBarcodeOpen(false);
           setPhotoLogOpen(true);
+        }}
+        onAddAsCustomFood={(barcode) => {
+          // F-156 PR-2 (2026-05-10) — barcode not found in OFF →
+          // user opts to add it as a custom food. Close the barcode
+          // dialog and open CreateCustomFoodDialog with the barcode
+          // pre-filled so the saved row writes to user_custom_foods
+          // with the correct code (next scan resolves successfully).
+          setBarcodeOpen(false);
+          setCustomFoodFromBarcode(barcode);
+        }}
+      />
+
+      {/* F-156 PR-2 (2026-05-10) — CreateCustomFoodDialog host for the
+          barcode-not-found path. Only mounts when the user arrived
+          via the "Add as custom food" CTA. Saves to user_custom_foods;
+          user can scan again to log. */}
+      <CreateCustomFoodDialog
+        open={customFoodFromBarcode != null}
+        onOpenChange={(o) => {
+          if (!o) setCustomFoodFromBarcode(null);
+        }}
+        initialBarcode={customFoodFromBarcode ?? undefined}
+        onSave={async (payload: CreateCustomFoodPayload) => {
+          if (!authedUserId) return;
+          try {
+            await createCustomFood(supabase, authedUserId, payload);
+            try {
+              track(AnalyticsEvents.custom_food_created, {
+                hasBrand: Boolean(payload.brand),
+                servingCount: payload.servings.length,
+                fromBarcode: true,
+              });
+            } catch {
+              /* analytics noop */
+            }
+            toast.success("Custom food saved. Scan again to log it.");
+          } catch (err) {
+            toast.error(
+              err instanceof Error ? err.message : "Couldn't save custom food",
+            );
+          }
         }}
       />
 

@@ -102,6 +102,15 @@ export interface TodayBarcodeDialogProps {
    * toast-and-stay behaviour.
    */
   onPhotoFallback?: () => void;
+  /**
+   * F-156 PR-2 (2026-05-10) — when the barcode lookup returns
+   * "not found", surface an "Add as custom food" CTA that hands the
+   * barcode to the host, which opens CreateCustomFoodDialog with
+   * `initialBarcode={barcode}` so the saved row writes to
+   * `user_custom_foods` with the correct code (next scan resolves
+   * successfully). Optional.
+   */
+  onAddAsCustomFood?: (barcode: string) => void;
 }
 
 export function TodayBarcodeDialog(props: TodayBarcodeDialogProps) {
@@ -138,6 +147,7 @@ export function TodayBarcodeDialog(props: TodayBarcodeDialogProps) {
     onPickRecentFood,
     onConfirm,
     onPhotoFallback,
+    onAddAsCustomFood,
   } = props;
 
   // Audit 2026-04-30 — local "not found" state. Surfaced as a
@@ -180,6 +190,21 @@ export function TodayBarcodeDialog(props: TodayBarcodeDialogProps) {
                 >
                   <Icons.camera className="mr-2 h-4 w-4" aria-hidden />
                   Snap the label instead
+                </Button>
+              ) : null}
+              {onAddAsCustomFood && barcodeValue ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  data-testid="barcode-not-found-add-custom-food"
+                  className="w-full sm:w-auto"
+                  onClick={() => {
+                    const code = barcodeValue;
+                    setNotFound(false);
+                    onAddAsCustomFood(code);
+                  }}
+                >
+                  Add as custom food
                 </Button>
               ) : null}
               <Button
