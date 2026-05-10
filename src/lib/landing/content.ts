@@ -214,7 +214,7 @@ export const FAQS: ReadonlyArray<{ q: string; a: string }> = [
   },
   {
     q: "Is this a diet app?",
-    a: "No. Suppr is a personal tracking tool, not a medical device. We don't do leaderboards, streaks or shaming — over-budget shows amber, not red, and targets are based on Mifflin-St Jeor so you can override them. Miss a day, pick it up the next — no pressure, no punishing copy.",
+    a: "No. Suppr is a personal tracking tool, not a medical device. We don't do leaderboards or shaming, and our targets are based on Mifflin-St Jeor so you can override them. We do have streaks — but they're protective: miss a day and a freeze keeps the streak alive. No pressure, no punishing copy.",
   },
   // Annual-plan "Coming soon" FAQ intentionally removed 2026-04-19
   // (monetisation-architect round-2): parking a placeholder with no
