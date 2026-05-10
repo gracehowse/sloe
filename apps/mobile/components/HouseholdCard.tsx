@@ -37,11 +37,13 @@ import {
 // the component file so web (`HouseholdPanel.tsx`) can use the same map
 // shape via its own helpers — they intentionally diverge in copy because
 // web uses inline error text while mobile uses native Alert.
-function mapCreateError(code: string): string {
-  if (code === "already_in_household") {
-    return "You already belong to a household. Leave it first to create a new one.";
-  }
-  return code;
+//
+// F-142 (2026-05-10): the createHousehold envelope now carries
+// `{ code, message, raw }` instead of a string, with the friendly
+// copy authored once in the shared client. The mapper here is a
+// thin passthrough kept for symmetry with `mapJoinError`.
+function mapCreateError(err: { code: string; message: string }): string {
+  return err.message;
 }
 
 function mapJoinError(code: string): string {
@@ -179,6 +181,23 @@ export function HouseholdCard() {
         inputValue.trim() || undefined,
       );
       if (error) {
+        // F-142 telemetry: capture the failure shape so the next
+        // tester report tells us *why* "nothing happened" rather
+        // than the user re-reporting an opaque alert. Raw PG error
+        // is logged for Sentry breadcrumb / debug only — never
+        // surfaced to the user.
+        try {
+          const { track: trackEvent } = await import("@/lib/analytics");
+          trackEvent("household_create_failed", {
+            code: error.code,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            raw_message: (error.raw as any)?.message ?? null,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            raw_code: (error.raw as any)?.code ?? null,
+          });
+        } catch {
+          // analytics failure must never block error handling
+        }
         Alert.alert("Couldn't create household", mapCreateError(error));
         return;
       }
@@ -193,6 +212,16 @@ export function HouseholdCard() {
           : "You can now invite others using the invite code below.",
       );
     } catch (e) {
+      // Unexpected throw — same telemetry shape so we can correlate.
+      try {
+        const { track: trackEvent } = await import("@/lib/analytics");
+        trackEvent("household_create_failed", {
+          code: "unexpected_throw",
+          raw_message: (e as Error)?.message ?? null,
+        });
+      } catch {
+        // swallow analytics failure
+      }
       Alert.alert("Error", (e as Error).message || "Failed to create household");
     }
   };

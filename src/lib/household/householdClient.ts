@@ -169,21 +169,51 @@ function roundTo1(n: number): number {
 }
 
 /**
+ * Error envelope for createHousehold. Carries a stable code, a
+ * human-readable message, and the raw PG error for telemetry. The
+ * caller MUST surface `message` to the user; `code` lets the UI
+ * branch (e.g. "already_in_household" vs every other failure).
+ */
+export type CreateHouseholdError = {
+  code:
+    | "not_authenticated"
+    | "already_in_household"
+    | "create_household_failed"
+    | "create_member_failed";
+  message: string;
+  /** Raw error for telemetry / Sentry breadcrumb. Never log to user. */
+  raw?: unknown;
+};
+
+/**
  * Create a household with the caller as owner. Also adds the owner
  * `household_members` row and updates `profiles.household_id`.
  *
- * Three writes happen in sequence; if step 2 or 3 fails we do NOT roll
- * back step 1 (no transactions over the Supabase HTTP API). A zombie
- * household with no members is recoverable (caller retries and hits the
- * "already in household" path via profile linkage failure) but unlikely
- * because the owner_id FK → auth.users is the only non-trivial check.
+ * Three writes happen in sequence:
+ *   1. Insert into `households` (creates the row + computes invite_code)
+ *   2. Insert into `household_members` (owner membership row)
+ *   3. Update `profiles.household_id` (best-effort linkage)
+ *
+ * F-142 (2026-05-10): if step 2 fails we now roll back step 1 by
+ * deleting the just-created household. Without rollback, retries
+ * accumulate zombie household rows (the existing-membership check at
+ * step 0 reads `household_members`, so an orphan `households` row
+ * doesn't block re-attempts). A zombie household with the owner as
+ * the only id holder also wouldn't surface to the user — they'd see
+ * "Couldn't create household" and silently leak rows.
+ *
+ * The error envelope returns a stable `code` + a friendly `message`
+ * so the caller can decide whether to retry, surface to the user, or
+ * capture telemetry — see `CreateHouseholdError`.
  */
 export async function createHousehold(
   supabase: SupabaseLike,
   userId: string,
   name?: string,
-): Promise<ClientResult<HouseholdSummary>> {
-  if (!userId) return { data: null, error: "not_authenticated" };
+): Promise<{ data: HouseholdSummary | null; error: CreateHouseholdError | null }> {
+  if (!userId) {
+    return { data: null, error: { code: "not_authenticated", message: "Not signed in." } };
+  }
 
   // Block if already in a household. `order + limit(1) + maybeSingle` is
   // the defensive read: a `.maybeSingle()` alone throws PGRST "multiple
@@ -202,7 +232,13 @@ export async function createHousehold(
     .maybeSingle();
   if (existingErr) throw existingErr;
   if (existing) {
-    return { data: null, error: "already_in_household" };
+    return {
+      data: null,
+      error: {
+        code: "already_in_household",
+        message: "You already belong to a household. Leave it first to create a new one.",
+      },
+    };
   }
 
   const cleanName = (name?.trim() || "My Household").slice(0, MAX_NAME_LEN);
@@ -213,7 +249,14 @@ export async function createHousehold(
     .select("id, name, invite_code")
     .single();
   if (hErr || !household) {
-    return { data: null, error: hErr?.message || "create_failed" };
+    return {
+      data: null,
+      error: {
+        code: "create_household_failed",
+        message: "Couldn't create your household. Try again, or contact support if it keeps happening.",
+        raw: hErr,
+      },
+    };
   }
 
   // Owner membership row. `role = 'owner'` — mirrors REST route.
@@ -221,9 +264,26 @@ export async function createHousehold(
     .from("household_members")
     .insert({ household_id: household.id, user_id: userId, role: "owner" });
   if (memErr) {
-    // Surface but don't rollback — the household row is harmless without
-    // members (the owner can leave to delete it).
-    return { data: null, error: memErr.message };
+    // F-142 rollback: delete the orphan household row before returning.
+    // Best-effort — if the rollback itself fails, we still surface the
+    // primary error rather than mask it. Worst case, we have a zombie
+    // household but the user gets the actionable error and can retry
+    // (the next attempt will see no membership and re-enter this flow,
+    // producing a different name `households` row — accepted leak vs
+    // silent silent failure).
+    try {
+      await supabase.from("households").delete().eq("id", household.id);
+    } catch {
+      // swallowed — rollback is best-effort
+    }
+    return {
+      data: null,
+      error: {
+        code: "create_member_failed",
+        message: "Couldn't add you as an owner of the new household. Try again.",
+        raw: memErr,
+      },
+    };
   }
 
   // Link profile — best-effort. Failure here doesn't block the UI
