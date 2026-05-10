@@ -16,6 +16,8 @@
  * Migration: `supabase/migrations/20260504100000_recipe_cook_history.sql`.
  */
 
+import { mapPersistenceError } from "./persistenceErrors";
+
 /** Loose supabase-js shape — the file must not pull in the workspace's
  *  generated types. Both web and mobile pass their own client. */
 type SupabaseLike = {
@@ -168,7 +170,9 @@ export async function insertCookHistory(
     .select("*")
     .single();
   if (error || !data) {
-    throw error ?? new Error("insertCookHistory: insert returned no row");
+    // F-144 (2026-05-10): catch the recipe-wipe FK cascade so users
+    // see actionable copy instead of a raw constraint error.
+    throw mapPersistenceError(error ?? new Error("insertCookHistory: insert returned no row"));
   }
   return rowToHistory(data);
 }

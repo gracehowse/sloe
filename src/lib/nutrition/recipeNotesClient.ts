@@ -30,6 +30,8 @@
  *    valid ("user cleared their rating").
  */
 
+import { mapPersistenceError } from "./persistenceErrors";
+
 /** Supabase-js-compatible shape. Typed as `any` on purpose — this file
  * must import from neither workspace's generated types. */
 type SupabaseLike = {
@@ -187,7 +189,9 @@ export async function upsertUserRecipeNotes(
       .eq("user_id", userId)
       .select("*")
       .single();
-    if (updErr || !updated) throw updErr ?? new Error("upsertUserRecipeNotes: update failed");
+    if (updErr || !updated) {
+      throw mapPersistenceError(updErr ?? new Error("upsertUserRecipeNotes: update failed"));
+    }
     return rowToNotes(updated);
   }
 
@@ -203,7 +207,13 @@ export async function upsertUserRecipeNotes(
     .insert(insertPayload)
     .select("*")
     .single();
-  if (insErr || !inserted) throw insErr ?? new Error("upsertUserRecipeNotes: insert failed");
+  if (insErr || !inserted) {
+    // The recipe-wipe cascade case (PG 23503) lands here when the user's
+    // local cache holds a recipe id whose row was deleted by the
+    // 2026-05-14 Suppr Kitchen replacement migration. `mapPersistenceError`
+    // surfaces an actionable message instead of the raw constraint name.
+    throw mapPersistenceError(insErr ?? new Error("upsertUserRecipeNotes: insert failed"));
+  }
   return rowToNotes(inserted);
 }
 
@@ -242,7 +252,9 @@ export async function incrementCookCount(
       .eq("user_id", userId)
       .select("*")
       .single();
-    if (updErr || !updated) throw updErr ?? new Error("incrementCookCount: update failed");
+    if (updErr || !updated) {
+      throw mapPersistenceError(updErr ?? new Error("incrementCookCount: update failed"));
+    }
     return rowToNotes(updated);
   }
 
@@ -259,6 +271,8 @@ export async function incrementCookCount(
     })
     .select("*")
     .single();
-  if (insErr || !inserted) throw insErr ?? new Error("incrementCookCount: insert failed");
+  if (insErr || !inserted) {
+    throw mapPersistenceError(insErr ?? new Error("incrementCookCount: insert failed"));
+  }
   return rowToNotes(inserted);
 }
