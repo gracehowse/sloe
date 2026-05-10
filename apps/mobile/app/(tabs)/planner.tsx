@@ -37,6 +37,7 @@ import {
   Circle,
   Coffee,
   Cookie,
+  Lock,
   Plus,
   RefreshCw,
   Settings2,
@@ -1899,9 +1900,19 @@ export default function PlannerScreen() {
                           setDays(d);
                         }}
                       >
-                        <Text style={[styles.dayBtnText, days === d && styles.dayBtnTextActive]}>
-                          {d} day{d > 1 ? "s" : ""}{locked ? " 🔒" : ""}
-                        </Text>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                          <Text style={[styles.dayBtnText, days === d && styles.dayBtnTextActive]}>
+                            {d} day{d > 1 ? "s" : ""}
+                          </Text>
+                          {locked ? (
+                            <Lock
+                              size={11}
+                              color={days === d ? Accent.success : Accent.warning}
+                              strokeWidth={2}
+                              accessibilityLabel="Pro only"
+                            />
+                          ) : null}
+                        </View>
                       </Pressable>
                     );
                   })}
