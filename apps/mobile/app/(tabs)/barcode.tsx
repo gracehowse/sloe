@@ -518,7 +518,7 @@ export default function BarcodeScreen() {
         onBarcodeScanned={product || manualMode || correctionMode ? undefined : onBarcode}
       />
 
-      {!product && <View style={styles.reticle} />}
+      {!product && !loading && !manualMode && !correctionMode && <View style={styles.reticle} />}
 
       <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
       <View style={styles.overlay}>

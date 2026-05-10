@@ -93,8 +93,8 @@ A two-pill segmented control above the macro grid: `Per serving` / `Per 100 g`. 
 **M2. Scan-to-prefill from barcode failure path.**
 When `barcode.tsx` returns "no match," surface a single CTA: `+ Add as custom food` that opens the sheet with the barcode pre-filled and the disclosure auto-opened. No scanner inside the sheet itself — the camera lives where it already lives.
 
-**M3. Multi-serving array (up to 3).**
-The schema already stores `servings: CustomFoodServing[]`. Today the form writes only one entry. Allow the user to add up to two additional serving rows via "+ Add another serving" inline. Cap at 3 to keep the form short; that's enough for a slice/loaf/cup pattern without becoming MFP-sprawl. First row remains the canonical natural serving used by the preview.
+**M3. Multi-serving array (unlimited, MFP parity).**
+The schema already stores `servings: CustomFoodServing[]`. Today the form writes only one entry. Allow the user to add as many serving rows as they need via "+ Add another serving" inline. **No cap** (Grace 2026-05-10 override). To keep the form from blowing up the sheet height, rows beyond the first are rendered in a compact list (`[label] [grams] ×` per row) inside a `ScrollView`. First row stays pinned as the canonical natural serving used by the preview. Both-or-neither validation per row.
 
 **M4. Move Fibre into the macro grid.**
 Make it a 2x3 grid: Calories / Protein / Carbs / Fat / Fibre / (empty). Right now Fibre's full-width row breaks the visual rhythm. Cosmetic but high-leverage for "feels finished."
@@ -184,9 +184,11 @@ Photo of label, public/private sharing (until F-138 Phase 4 cleanly defines publ
 
 - **PR 1 — M1 + M4 (mobile + web in same PR):** ~1.5 days. Toggle is the entirety of the work; M4 is a 30-minute grid reflow. Both surfaces touch the same shared `customFoods.ts` for the conversion helper. Adds one new pure helper `convertMacrosBetweenBases()` with full test coverage.
 
-- **PR 2 — M2 + M3 (mobile-first, web parity in same PR):** ~2 days. M2 is a small wiring change in `barcode.tsx` plus the prop pipe. M3 is state-array refactor + "add row" UX + tests for the both-or-neither validation extended to N rows.
+- **PR 2 — M2 + M3 (mobile-first, web parity in same PR):** ~2.5 days (was 2; +0.5 day for unlimited-row UX with the compact ScrollView list). M2 is a small wiring change in `barcode.tsx` plus the prop pipe. M3 is state-array refactor + "add row" UX + compact list rendering + tests for the both-or-neither validation extended to N rows.
 
-Total: ~3.5 days, two PRs, sequenced to land within one sprint. No migrations.
+Total: **~4 days**, two PRs, sequenced to land within one sprint. No migrations on PR-1 / PR-2.
+
+**PR 3 (read surface for cholesterol + potassium)** + **PR 4 (write fields + schema)** are deferred to a later wave and not part of this initial F-156 work.
 
 If we want to ship M1 alone first and let it sit before adding M2/M3, that's a perfectly defensible call — M1 is the single highest-leverage item.
 
@@ -217,11 +219,18 @@ If we want to ship M1 alone first and let it sit before adding M2/M3, that's a p
 
 ---
 
-## Open questions for Grace
+## Open questions for Grace — RESOLVED 2026-05-10
 
-1. **Default basis toggle on first open** — `Per serving` when a natural serving exists feels right to me. Veto?
-2. **Multi-serving cap of 3** — confident this is the right number? MFP allows unlimited. I'd hold the line at 3 for form-length discipline.
-3. **N1 (Cholesterol + Potassium)** — defer to telemetry, or build now alongside M1 since the disclosure is already open?
+1. **Default basis toggle on first open** — ✅ `Per serving` when a natural serving exists, else `Per 100 g`. Persist user's last choice across sessions.
+2. **Multi-serving cap** — ✅ **Unlimited (MFP parity)**, overriding the spec's recommended cap of 3. Implementation note: the form needs visual discipline at scale — render added rows in a compact list (no extra labels, just `[label] [grams] ×`), keep first row pinned as the canonical natural serving used by the preview, and lazy-render rows beyond ~3 inside a `ScrollView` so the form doesn't blow up the sheet height. Both-or-neither validation per row stays.
+3. **N1 (Cholesterol + Potassium)** — ✅ **Build the read surface first, then the write fields.** No new entry fields in PR-1 or PR-2. Defer to a separate **PR 3 (read)** + **PR 4 (write + schema add)** sequence after the read surface lands. Trust posture: don't collect data the user can't see.
+
+### Updated PR sequence after these calls
+
+- **PR 1 (~1.5 days):** M1 per-serving toggle (with the "default Per serving when natural serving set" rule + last-choice persistence) + M4 Fibre into the macro grid.
+- **PR 2 (~2.5 days, +0.5d for unlimited rows):** M2 scan-to-prefill from barcode failure + M3 multi-serving as **unlimited list** with pinned first row, compact row UI, and ScrollView lazy-render.
+- **PR 3 (TBD, after telemetry confirms surface need):** Cholesterol + Potassium read surface on food-detail + meal-nutrition.
+- **PR 4 (after PR 3):** Cholesterol + Potassium write fields in disclosure + schema add (`cholesterol_mg`, `potassium_mg` columns on `user_foods`).
 
 ---
 
