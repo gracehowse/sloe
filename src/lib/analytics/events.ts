@@ -200,6 +200,18 @@ export const AnalyticsEvents = {
    *  isn't configured / firing — operational fix on Vercel + RC
    *  dashboard. */
   revenuecat_tier_sync_attempted: "revenuecat_tier_sync_attempted",
+  /** Mobile attempted to register / refresh an Expo push token
+   *  (F-151, 2026-05-10). Payload:
+   *    { outcome: "ok" | "no_user" | "no_project_id" | "fetch_failed"
+   *        | "db_failed" | "no_permission" | "no_change",
+   *      surface: "register" | "refresh",
+   *      error_message?: string }
+   *  Fires on every attempt so the next "notifications don't work"
+   *  TF report is correlated to a concrete failure code. `no_permission`
+   *  + `no_change` are healthy outcomes (refresh path); `fetch_failed`
+   *  / `db_failed` are real diagnostics. Replaces silent `console.warn`
+   *  on the registration paths in `apps/mobile/lib/expoPushToken.ts`. */
+  expo_push_token_register_attempted: "expo_push_token_register_attempted",
   /** A freeze was consumed to protect the streak on a zero-meal day (Batch 4.11).
    * Payload: `{ dateKey, freezesRemaining }`. Fires once per freeze, not per
    * render of the protected streak. */
