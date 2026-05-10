@@ -158,21 +158,56 @@ export function calculateTDEE(
 /**
  * Returns adaptive TDEE if available with sufficient confidence, else
  * the static Mifflin-St Jeor estimate. Single source of truth for TDEE.
+ *
+ * F-145 (2026-05-10) — staleness check parity with `src/lib/nutrition/tdee.ts`.
+ * When the caller passes `adaptive_tdee_updated_at`, we reject adaptive
+ * values older than 14 days and fall back to the formula. Without this
+ * check, a stale adaptive value (user stopped logging weeks ago) would
+ * silently keep displaying as the user's "real" TDEE on Progress.
+ * Callers without `_updated_at` get the original behaviour (back-compat).
  */
-export function getEffectiveTDEE(profile: {
-  adaptive_tdee?: number | null;
-  adaptive_tdee_confidence?: string | null;
-  sex: string;
-  weight_kg: number;
-  height_cm: number;
-  age: number;
-  activity_level: string;
-}): { tdee: number; isAdaptive: boolean } {
+const ADAPTIVE_STALE_DAYS_MS = 14 * 86_400_000;
+
+export function getEffectiveTDEE(
+  profile: {
+    adaptive_tdee?: number | null;
+    adaptive_tdee_confidence?: string | null;
+    /** ISO timestamp of last adaptive recompute. When provided AND
+     *  the value is older than 14d, the adaptive number is rejected
+     *  as stale and the formula is used instead. Optional for
+     *  back-compat with callers that haven't been upgraded yet. */
+    adaptive_tdee_updated_at?: string | null;
+    sex: string;
+    weight_kg: number;
+    height_cm: number;
+    age: number;
+    activity_level: string;
+  },
+  options: { now?: Date } = {},
+): { tdee: number; isAdaptive: boolean } {
   if (
     profile.adaptive_tdee != null &&
     profile.adaptive_tdee > 0 &&
     (profile.adaptive_tdee_confidence === "medium" || profile.adaptive_tdee_confidence === "high")
   ) {
+    if (profile.adaptive_tdee_updated_at) {
+      const updated = new Date(profile.adaptive_tdee_updated_at);
+      if (Number.isFinite(updated.getTime())) {
+        const now = options.now ?? new Date();
+        if (now.getTime() - updated.getTime() > ADAPTIVE_STALE_DAYS_MS) {
+          return {
+            tdee: calculateTDEE(
+              profile.sex,
+              profile.weight_kg,
+              profile.height_cm,
+              profile.age,
+              profile.activity_level,
+            ),
+            isAdaptive: false,
+          };
+        }
+      }
+    }
     return { tdee: profile.adaptive_tdee, isAdaptive: true };
   }
   return {
