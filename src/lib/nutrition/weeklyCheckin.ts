@@ -617,7 +617,25 @@ export function buildWeeklyCheckinContent(
       return "Your real burn held steady this week.";
     }
     const direction = tdeeDeltaKcal > 0 ? "higher" : "lower";
-    return `Your real burn is ${formatSignedKcalRow(tdeeDeltaKcal)} ${direction} than the formula.`;
+    const baseLine = `Your real burn is ${formatSignedKcalRow(tdeeDeltaKcal)} ${direction} than the formula.`;
+    // F-157 (2026-05-10): when burn is lower (deficit goal) AND the
+    // floor-clamped suggestion is HIGHER than the user's current
+    // target, the modal previously read as a contradiction —
+    // "burn lower" + "eat MORE". The math is correct (lower burn ⇒
+    // need less food to hold the same deficit ⇒ math lands below
+    // the safety floor ⇒ we clamp up). The floor explainer is
+    // beneath the suggestion in fine print, but the whyLine here
+    // is the prominent subtitle, so the contradiction reads first.
+    // Surface the "floor-clamp slows your pace" message at the same
+    // visual weight to avoid the misread.
+    const floorBindsAboveCurrent =
+      tdeeDeltaKcal < 0 &&
+      floorAppliedKcal != null &&
+      suggestedTargetKcal > Math.round(currentTargetKcal);
+    if (floorBindsAboveCurrent) {
+      return `${baseLine} Your goal pace would dip below the safety floor, so we're suggesting ${suggestedTargetKcal.toLocaleString("en-GB")} kcal/day (a slower pace) instead.`;
+    }
+    return baseLine;
   })();
 
   const avgThisWeekLabel = `${Math.round(avgCaloriesThisWeek).toLocaleString("en-GB")} kcal/day`;
