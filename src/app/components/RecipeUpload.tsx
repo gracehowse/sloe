@@ -1374,7 +1374,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
                     <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
                       step.done ? "bg-success text-white" : "bg-muted text-muted-foreground animate-pulse"
                     }`}>
-                      {step.done ? "✓" : i + 1}
+                      {step.done ? <Icons.check className="w-3 h-3" strokeWidth={3} /> : i + 1}
                     </span>
                     <span className={`text-xs ${step.done ? "text-success font-medium" : "text-muted-foreground"}`}>
                       {step.label}

@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { ShoppingCart, Users } from "lucide-react-native";
+import { Check, ShoppingCart, Users } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/context/auth";
@@ -494,7 +494,6 @@ export default function ShoppingListScreen() {
       alignItems: "center",
     },
     checkboxChecked: { backgroundColor: Accent.primary, borderColor: Accent.primary },
-    checkmark: { color: "#fff", fontSize: 14, fontWeight: "700" },
     itemName: { fontSize: 14, color: colors.text },
     itemChecked: { textDecorationLine: "line-through", color: colors.tabIconDefault },
     itemFrom: { fontSize: 11, color: colors.textTertiary, marginTop: 1 },
@@ -827,7 +826,7 @@ export default function ShoppingListScreen() {
                             allChecked && styles.checkboxChecked,
                           ]}
                         >
-                          {allChecked && <Text style={styles.checkmark}>✓</Text>}
+                          {allChecked && <Check size={14} color="#fff" strokeWidth={3} />}
                         </View>
                         <View style={{ flex: 1 }}>
                           <Text

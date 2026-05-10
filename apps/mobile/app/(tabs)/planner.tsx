@@ -2259,9 +2259,13 @@ export default function PlannerScreen() {
                   return (
                     <View key={label} style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
                       <Text style={{ fontSize: 11, fontWeight: "700", color }}>{label} {val}g</Text>
-                      <Text style={{ fontSize: 10, color: isClose ? Accent.success : diff > 0 ? Accent.destructive : Accent.warning }}>
-                        {isClose ? "✓" : diff > 0 ? `+${Math.round(diff)}` : `${Math.round(diff)}`}
-                      </Text>
+                      {isClose ? (
+                        <Check size={11} color={Accent.success} strokeWidth={3} />
+                      ) : (
+                        <Text style={{ fontSize: 10, color: diff > 0 ? Accent.destructive : Accent.warning }}>
+                          {diff > 0 ? `+${Math.round(diff)}` : `${Math.round(diff)}`}
+                        </Text>
+                      )}
                     </View>
                   );
                 })}
