@@ -212,6 +212,13 @@ export const AnalyticsEvents = {
    *  / `db_failed` are real diagnostics. Replaces silent `console.warn`
    *  on the registration paths in `apps/mobile/lib/expoPushToken.ts`. */
   expo_push_token_register_attempted: "expo_push_token_register_attempted",
+  /** F-154 (2026-05-10) — user invoked the per-meal share action.
+   *  Payload: `{ surface: "today_meal_row_longpress" | "today_meal_row_kebab",
+   *             outcome: "shared" | "dismissed" | "error" }`
+   *  Tracks adoption of per-dinner share so we can see whether the
+   *  affordance gets used at all before investing in a richer share
+   *  card / image / OG-link variant. */
+  meal_share_invoked: "meal_share_invoked",
   /** A freeze was consumed to protect the streak on a zero-meal day (Batch 4.11).
    * Payload: `{ dateKey, freezesRemaining }`. Fires once per freeze, not per
    * render of the protected streak. */
