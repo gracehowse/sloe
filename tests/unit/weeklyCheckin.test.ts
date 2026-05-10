@@ -573,6 +573,53 @@ describe("buildWeeklyCheckinContent (modal ritual)", () => {
     expect(positive.weightDeltaLabel).toBe("+0.3 kg");
   });
 
+  it("F-157 — when burn is lower AND floor binds above current target, the whyLine reframes to lead with the safety story", () => {
+    // Reproduces Grace's 2026-05-10 screenshot:
+    //   - prior TDEE 1,225, current TDEE 1,132 (delta = -93 kcal/day)
+    //   - current daily target 1,132 kcal/day
+    //   - math says new target = 1,132 + (-93) = 1,039
+    //   - 1,039 < MIN_SUGGESTED_TARGET_KCAL (1,200) → floor clamps up
+    //   - Pre-fix whyLine: "Your real burn is −93 kcal lower than the formula."
+    //     (The user reads this then sees a *higher* suggested target → contradiction.)
+    //   - Post-fix whyLine: includes a calm explainer that the math
+    //     would have dipped below the safety floor + we're holding
+    //     at the floor (slower pace) instead.
+    const content = buildWeeklyCheckinContent({
+      adaptiveTdee: 1132,
+      priorTdee: 1225,
+      currentTargetKcal: 1132,
+      avgCaloriesThisWeek: 1424,
+      weightDeltaKg: null,
+    });
+    expect(content.tdeeDeltaKcal).toBe(-93);
+    expect(content.floorAppliedKcal).toBe(1039);
+    expect(content.suggestedTargetKcal).toBe(1200);
+    // Burn delta is still surfaced honestly.
+    expect(content.whyLine).toContain("Your real burn is −93 kcal lower than the formula.");
+    // And the safety reframe is right there in the same prominent line.
+    expect(content.whyLine).toContain("safety floor");
+    expect(content.whyLine).toContain("slower pace");
+    expect(content.whyLine).toContain("1,200");
+  });
+
+  it("F-157 — does NOT reframe when burn is lower but floor doesn't bind (suggestion stays below current)", () => {
+    // User at 2,000 kcal/day, burn drops 100 → math says 1,900,
+    // floor not applied, suggestion 1,900 < current 2,000 → normal
+    // "burn lower, eat less" framing is correct, no reframe needed.
+    const content = buildWeeklyCheckinContent({
+      adaptiveTdee: 1900,
+      priorTdee: 2000,
+      currentTargetKcal: 2000,
+      avgCaloriesThisWeek: 2050,
+      weightDeltaKg: null,
+    });
+    expect(content.tdeeDeltaKcal).toBe(-100);
+    expect(content.floorAppliedKcal).toBeNull();
+    expect(content.suggestedTargetKcal).toBe(1900);
+    expect(content.whyLine).not.toContain("safety floor");
+    expect(content.whyLine).not.toContain("slower pace");
+  });
+
   it("falls back to current target when prior TDEE is missing", () => {
     const content = buildWeeklyCheckinContent({
       adaptiveTdee: 2100,

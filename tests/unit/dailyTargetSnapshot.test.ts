@@ -171,6 +171,111 @@ describe("snapshotDailyTargetIfMissing", () => {
     expect(wrote).toBe(false);
   });
 
+  it("F-145 — resolves maintenance via the canonical helper so the snapshot matches Today", async () => {
+    // Pre-fix: snapshot stored raw `profile.adaptive_tdee`, which
+    // could be null even when body stats are sufficient to compute a
+    // formula maintenance. Past-day reads then fell back to live
+    // `currentTargets`, producing the "1900 today vs 1600 past"
+    // divergence Grace flagged in 2026-05-10. Now the snapshot
+    // delegates to `resolveMaintenance` which prefers adaptive (when
+    // confident + non-stale) and falls back to Mifflin-St Jeor with
+    // the user's body stats. Same number Today shows, frozen for
+    // history.
+    const sb = makeSupabase({
+      profiles: () => ({
+        data: {
+          target_calories: 2000,
+          target_protein: 130,
+          target_carbs: 230,
+          target_fat: 65,
+          target_fiber_g: 28,
+          activity_level: "moderate",
+          plan_pace: "steady",
+          goal: "maintain",
+          // No adaptive yet — canonical "early days" user. Pre-fix
+          // would have stored null here. Post-fix uses the formula.
+          adaptive_tdee: null,
+          adaptive_tdee_confidence: null,
+          adaptive_tdee_updated_at: null,
+          sex: "female",
+          weight_kg: 70,
+          height_cm: 170,
+          age: 30,
+        },
+        error: null,
+      }),
+      daily_targets: () => ({ data: null, error: null }),
+    });
+    const wrote = await snapshotDailyTargetIfMissing(sb as any, "u1", {
+      now: new Date("2026-04-19T12:00:00Z"),
+    });
+    expect(wrote).toBe(true);
+    const insertCall = sb.calls.find((c) => c.table === "daily_targets" && c.op === "upsert");
+    // Mifflin-St Jeor for a 30 y/o 70 kg / 170 cm female × moderate
+    // (1.55) is roughly 2,200 kcal — the snapshot now stores a real
+    // number, not null.
+    expect(insertCall!.payload.maintenance_tdee).toBeGreaterThan(1500);
+    expect(insertCall!.payload.maintenance_tdee).toBeLessThan(3000);
+    expect(typeof insertCall!.payload.maintenance_tdee).toBe("number");
+  });
+
+  it("F-149 — backfillDailyTargetsFromProfile upserts past-day snapshots from the OLD profile", async () => {
+    const { backfillDailyTargetsFromProfile } = await import("@/lib/nutrition/dailyTargetSnapshot");
+    const sb = makeSupabase({
+      daily_targets: () => ({ data: null, error: null }),
+    });
+    const oldProfile = {
+      target_calories: 1500,
+      target_protein: 110,
+      target_carbs: 180,
+      target_fat: 50,
+      target_fiber_g: 25,
+      activity_level: "moderate",
+      plan_pace: "0.5kg",
+      goal: "lose",
+      adaptive_tdee: 2000,
+      adaptive_tdee_confidence: "medium",
+      adaptive_tdee_updated_at: "2026-05-05T12:00:00Z",
+      sex: "female",
+      weight_kg: 70,
+      height_cm: 170,
+      age: 30,
+    };
+    const out = await backfillDailyTargetsFromProfile(sb as any, "u1", oldProfile, {
+      now: new Date("2026-04-19T12:00:00Z"),
+    });
+    expect(out.attempted).toBe(30);
+    expect(out.ok).toBe(true);
+    const upsertCall = sb.calls.find((c) => c.table === "daily_targets" && c.op === "upsert");
+    expect(upsertCall).toBeDefined();
+    const rows = (upsertCall!.payload as any[]) ?? [];
+    expect(rows.length).toBe(30);
+    // Every row carries the OLD targets.
+    for (const row of rows) {
+      expect(row.target_calories).toBe(1500);
+      expect(row.target_protein_g).toBe(110);
+      expect(row.user_id).toBe("u1");
+    }
+    // First-write-wins protects existing snapshots.
+    expect(upsertCall!.options).toMatchObject({ onConflict: "user_id,date_key", ignoreDuplicates: true });
+    // Date keys are yesterday → 30 days ago, not today.
+    const dateKeys = rows.map((r: any) => r.date_key);
+    expect(dateKeys).not.toContain("2026-04-19");
+    expect(dateKeys).toContain("2026-04-18");
+    expect(dateKeys).toContain("2026-03-20");
+  });
+
+  it("F-149 — backfill no-ops when target_calories is missing (pre-onboarding)", async () => {
+    const { backfillDailyTargetsFromProfile } = await import("@/lib/nutrition/dailyTargetSnapshot");
+    const sb = makeSupabase({});
+    const out = await backfillDailyTargetsFromProfile(sb as any, "u1", {
+      target_calories: null,
+    });
+    expect(out.attempted).toBe(0);
+    expect(out.ok).toBe(false);
+    expect(sb.calls.some((c) => c.table === "daily_targets")).toBe(false);
+  });
+
   it("preserves null/unset optional columns without fabricating defaults", async () => {
     const sb = makeSupabase({
       profiles: () => ({

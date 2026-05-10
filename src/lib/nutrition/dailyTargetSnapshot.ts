@@ -29,6 +29,7 @@
  */
 
 import { dateKeyFromDate } from "./trackerStats";
+import { resolveMaintenance } from "./resolveMaintenance";
 
 /**
  * Minimal Supabase client shape used by this helper. Both the web
@@ -58,14 +59,22 @@ export async function snapshotDailyTargetIfMissing(
 
   // Read the user's *current* targets + plan state. These are the values
   // we freeze for this day — later profile edits must not rewrite them.
-  // `adaptive_tdee` is the best proxy we have for "maintenance TDEE" —
-  // when a user has enough data we trust the adaptive number, otherwise
-  // the formula estimate is recomputable from the frozen activity_level
-  // plus the user's static basics.
+  //
+  // F-145 (2026-05-10): we now resolve maintenance via `resolveMaintenance`
+  // at write time so the snapshot stores the SAME number `Today` displays.
+  // Previously we stored raw `profile.adaptive_tdee` only, which:
+  //   - was `null` for users without enough adaptive data → past-day reads
+  //     fell back to live `currentTargets` and showed *today's* maintenance
+  //     against past meals (the "1900 vs 1600" divergence on Maintenance);
+  //   - bypassed the staleness check `resolveMaintenance` enforces, so a
+  //     stale adaptive value could freeze into the snapshot.
+  // We pull the formula inputs (sex/weight/height/age/activity) so
+  // `resolveMaintenance` can fall back to Mifflin-St Jeor when adaptive
+  // is missing or rejected as stale.
   const { data: profile, error: profileErr } = await supabase
     .from("profiles")
     .select(
-      "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, activity_level, plan_pace, goal, adaptive_tdee",
+      "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, activity_level, plan_pace, goal, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, sex, weight_kg, height_cm, age",
     )
     .eq("id", userId)
     .maybeSingle();
@@ -85,6 +94,25 @@ export async function snapshotDailyTargetIfMissing(
   // just pollute the snapshot table and leak as "N% of null" later.
   if (targetCalories == null) return false;
 
+  // F-145: resolve maintenance via the canonical helper so the
+  // snapshotted number matches what Today shows. Falls back gracefully
+  // when adaptive isn't set yet (formula path) or when adaptive is
+  // stale (rejected → formula). Only stores `null` when we genuinely
+  // cannot compute (e.g. pre-onboarding profile with no body stats).
+  const resolved = resolveMaintenance(
+    {
+      sex: typeof profile.sex === "string" ? (profile.sex as "male" | "female") : null,
+      weight_kg: typeof profile.weight_kg === "number" ? profile.weight_kg : null,
+      height_cm: typeof profile.height_cm === "number" ? profile.height_cm : null,
+      age: typeof profile.age === "number" ? profile.age : null,
+      activity_level: typeof profile.activity_level === "string" ? (profile.activity_level as Parameters<typeof resolveMaintenance>[0]["activity_level"]) : null,
+      adaptive_tdee: typeof profile.adaptive_tdee === "number" ? profile.adaptive_tdee : null,
+      adaptive_tdee_confidence: typeof profile.adaptive_tdee_confidence === "string" ? profile.adaptive_tdee_confidence : null,
+      adaptive_tdee_updated_at: profile.adaptive_tdee_updated_at ?? null,
+    },
+    { now: opts?.now },
+  );
+
   const row = {
     user_id: userId,
     date_key: today,
@@ -96,7 +124,7 @@ export async function snapshotDailyTargetIfMissing(
     activity_level: typeof profile.activity_level === "string" ? profile.activity_level : null,
     plan_pace: typeof profile.plan_pace === "string" ? profile.plan_pace : null,
     goal: typeof profile.goal === "string" ? profile.goal : null,
-    maintenance_tdee: toInt(profile.adaptive_tdee),
+    maintenance_tdee: resolved?.kcal ?? toInt(profile.adaptive_tdee),
   };
 
   // `ignoreDuplicates: true` maps to `on conflict do nothing` at the
@@ -130,4 +158,100 @@ function toInt(raw: unknown): number | null {
   const n = typeof raw === "number" ? raw : Number(raw);
   if (!Number.isFinite(n)) return null;
   return Math.round(n);
+}
+
+/**
+ * F-149 (2026-05-10) — backfill missing past-day snapshots.
+ *
+ * Why this exists:
+ *   `dailyTargetRead.resolveDisplayTarget(dateKey)` falls back to live
+ *   `currentTargets` for past days that have no `daily_targets` row.
+ *   When a user later changes their goal/pace, that fallback shows the
+ *   NEW target against past meals — i.e. "you went over your goal" on
+ *   days you didn't even have that goal.
+ *
+ *   The snapshot writer (`snapshotDailyTargetIfMissing`) only writes
+ *   for `today`, so days the user didn't log don't have snapshots.
+ *
+ *   Smaller fix (this function): right BEFORE the user's goal/pace
+ *   retune writes new values to `profiles`, backfill snapshots for
+ *   the past `lookbackDays` using the user's CURRENT (about-to-be-old)
+ *   profile values. `upsert(..., { ignoreDuplicates: true })` means
+ *   genuinely-snapshotted past days are untouched — only the gaps
+ *   get filled. Past days without logs now show the target that was
+ *   effective on that day, not the new one.
+ *
+ *   Proper fix per Theme 3 (parked) is a `goal_history` table; this
+ *   helper is the smaller-blast-radius mitigation that lets the
+ *   common case work correctly today.
+ *
+ * Returns the count of synthetic rows attempted, plus whether the
+ * upsert succeeded. Failures are logged + swallowed — the user's
+ * profile update must not roll back because backfill couldn't write.
+ */
+export async function backfillDailyTargetsFromProfile(
+  supabase: DailyTargetSnapshotClient,
+  userId: string,
+  profile: Record<string, unknown>,
+  options: { now?: Date; lookbackDays?: number } = {},
+): Promise<{ attempted: number; ok: boolean }> {
+  if (!userId) return { attempted: 0, ok: false };
+  const targetCalories = toInt(profile.target_calories);
+  if (targetCalories == null) return { attempted: 0, ok: false };
+
+  const now = options.now ?? new Date();
+  const lookbackDays = Math.max(1, options.lookbackDays ?? 30);
+
+  const resolved = resolveMaintenance(
+    {
+      sex: typeof profile.sex === "string" ? (profile.sex as "male" | "female") : null,
+      weight_kg: typeof profile.weight_kg === "number" ? profile.weight_kg : null,
+      height_cm: typeof profile.height_cm === "number" ? profile.height_cm : null,
+      age: typeof profile.age === "number" ? profile.age : null,
+      activity_level: typeof profile.activity_level === "string" ? (profile.activity_level as Parameters<typeof resolveMaintenance>[0]["activity_level"]) : null,
+      adaptive_tdee: typeof profile.adaptive_tdee === "number" ? profile.adaptive_tdee : null,
+      adaptive_tdee_confidence: typeof profile.adaptive_tdee_confidence === "string" ? profile.adaptive_tdee_confidence : null,
+      adaptive_tdee_updated_at:
+        typeof profile.adaptive_tdee_updated_at === "string"
+          ? profile.adaptive_tdee_updated_at
+          : null,
+    },
+    { now },
+  );
+
+  // Build past-day rows. Iterate from yesterday backwards so the
+  // upsert's first-write-wins semantic protects today's existing
+  // snapshot (today is intentionally NOT backfilled — that's the
+  // job of `snapshotDailyTargetIfMissing` on the next log).
+  const rows: Array<Record<string, unknown>> = [];
+  for (let i = 1; i <= lookbackDays; i++) {
+    const d = new Date(now.getTime() - i * 86_400_000);
+    const dateKey = dateKeyFromDate(d);
+    rows.push({
+      user_id: userId,
+      date_key: dateKey,
+      target_calories: targetCalories,
+      target_protein_g: toInt(profile.target_protein),
+      target_carbs_g: toInt(profile.target_carbs),
+      target_fat_g: toInt(profile.target_fat),
+      target_fiber_g: toInt(profile.target_fiber_g),
+      activity_level: typeof profile.activity_level === "string" ? profile.activity_level : null,
+      plan_pace: typeof profile.plan_pace === "string" ? profile.plan_pace : null,
+      goal: typeof profile.goal === "string" ? profile.goal : null,
+      maintenance_tdee: resolved?.kcal ?? toInt(profile.adaptive_tdee),
+    });
+  }
+
+  const { error } = await supabase
+    .from("daily_targets")
+    .upsert(rows, { onConflict: "user_id,date_key", ignoreDuplicates: true });
+
+  if (error) {
+    console.warn(
+      "[backfillDailyTargetsFromProfile] upsert failed — skipping",
+      error.message ?? "",
+    );
+    return { attempted: rows.length, ok: false };
+  }
+  return { attempted: rows.length, ok: true };
 }
