@@ -11,6 +11,7 @@ import {
   weeksToGoal,
   budgetSafety,
   goalDate,
+  getEffectiveTDEE,
 } from "@/lib/nutrition/tdee";
 
 describe("calculateBMR (Mifflin-St Jeor)", () => {
@@ -168,5 +169,93 @@ describe("calculateMacros strategies", () => {
     const lowCarb = calculateMacros(2000, "low_carb", 80);
     expect(lowCarb.carbs).toBeLessThan(balanced.carbs);
     expect(lowCarb.fat).toBeGreaterThan(balanced.fat);
+  });
+});
+
+describe("getEffectiveTDEE — F-145 staleness gate", () => {
+  // Pre-fix: getEffectiveTDEE returned the adaptive value whenever
+  // confidence was medium/high, regardless of how stale that value
+  // was. A user who logged consistently for two weeks and then
+  // stopped would still see the same "real" TDEE three months
+  // later. F-145 adds a 14-day staleness check matching what
+  // `resolveMaintenance` already enforces. Sibling fix to F-145's
+  // snapshot-write change.
+  const baseProfile = {
+    sex: "female" as const,
+    weight_kg: 70,
+    height_cm: 170,
+    age: 30,
+    activity_level: "moderate" as const,
+  };
+
+  it("returns adaptive TDEE when confidence is high and value is fresh", () => {
+    const out = getEffectiveTDEE(
+      {
+        ...baseProfile,
+        adaptive_tdee: 2400,
+        adaptive_tdee_confidence: "high",
+        adaptive_tdee_updated_at: new Date("2026-05-08T12:00:00Z").toISOString(),
+      },
+      { now: new Date("2026-05-10T12:00:00Z") }, // 2 days old
+    );
+    expect(out.isAdaptive).toBe(true);
+    expect(out.tdee).toBe(2400);
+  });
+
+  it("rejects adaptive TDEE when older than 14 days and falls back to formula", () => {
+    const out = getEffectiveTDEE(
+      {
+        ...baseProfile,
+        adaptive_tdee: 2400,
+        adaptive_tdee_confidence: "high",
+        adaptive_tdee_updated_at: new Date("2026-04-20T12:00:00Z").toISOString(),
+      },
+      { now: new Date("2026-05-10T12:00:00Z") }, // 20 days old, > 14d
+    );
+    expect(out.isAdaptive).toBe(false);
+    expect(out.tdee).toBeGreaterThan(0);
+    expect(out.tdee).not.toBe(2400);
+  });
+
+  it("preserves back-compat when adaptive_tdee_updated_at is omitted (no staleness check)", () => {
+    // Callers that haven't been upgraded to pass `_updated_at` get
+    // the original behaviour — adaptive value used regardless of
+    // age. Prevents this change from silently flipping every caller
+    // to formula mode.
+    const out = getEffectiveTDEE({
+      ...baseProfile,
+      adaptive_tdee: 2400,
+      adaptive_tdee_confidence: "medium",
+    });
+    expect(out.isAdaptive).toBe(true);
+    expect(out.tdee).toBe(2400);
+  });
+
+  it("falls back to formula when adaptive confidence is low (unchanged behaviour)", () => {
+    const out = getEffectiveTDEE({
+      ...baseProfile,
+      adaptive_tdee: 2400,
+      adaptive_tdee_confidence: "low",
+      adaptive_tdee_updated_at: new Date().toISOString(),
+    });
+    expect(out.isAdaptive).toBe(false);
+    expect(out.tdee).not.toBe(2400);
+  });
+
+  it("ignores invalid adaptive_tdee_updated_at and uses adaptive (defensive)", () => {
+    // A bad timestamp shouldn't break the helper or silently flip
+    // the user to formula. We trust the adaptive value when the
+    // staleness signal can't be parsed.
+    const out = getEffectiveTDEE(
+      {
+        ...baseProfile,
+        adaptive_tdee: 2400,
+        adaptive_tdee_confidence: "high",
+        adaptive_tdee_updated_at: "not-a-date",
+      },
+      { now: new Date("2026-05-10T12:00:00Z") },
+    );
+    expect(out.isAdaptive).toBe(true);
+    expect(out.tdee).toBe(2400);
   });
 });
