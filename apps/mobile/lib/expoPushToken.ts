@@ -37,6 +37,33 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
 
 import { supabase } from "@/lib/supabase";
+import { track } from "@/lib/analytics";
+
+/**
+ * F-151 (2026-05-10) — emit a typed PostHog event on every push-token
+ * registration attempt so the next "notifications don't work" tester
+ * report is correlated to a concrete failure code, not an opaque
+ * console.warn the user can never see.
+ *
+ * Outcome buckets mirror the `RegisterResult.reason` union plus an
+ * `ok` for success. `surface` distinguishes the prompt path
+ * (`registerExpoPushTokenForUser`) from the focus-refresh path
+ * (`refreshExpoPushTokenIfChanged`). `error_message` is populated
+ * for `fetch_failed` / `db_failed` so we can see WHY without
+ * surfacing it to the user.
+ */
+type RegisterTelemetry = {
+  outcome: "ok" | "no_user" | "no_project_id" | "fetch_failed" | "db_failed" | "no_permission" | "no_change";
+  surface: "register" | "refresh";
+  error_message?: string;
+};
+function trackRegister(props: RegisterTelemetry): void {
+  try {
+    track("expo_push_token_register_attempted", props);
+  } catch {
+    /* analytics never blocks the registration flow */
+  }
+}
 
 /** AsyncStorage key — single source of truth for prompt suppression. */
 export const NOTIFICATIONS_PROMPT_DISMISSED_KEY = "notifications_prompt_dismissed_v1";
@@ -107,13 +134,17 @@ type RegisterResult =
 export async function registerExpoPushTokenForUser(
   userId: string | null | undefined,
 ): Promise<RegisterResult> {
-  if (!userId) return { ok: false, reason: "no_user" };
+  if (!userId) {
+    trackRegister({ outcome: "no_user", surface: "register" });
+    return { ok: false, reason: "no_user" };
+  }
 
   const projectId = readEasProjectId();
   if (!projectId) {
     console.warn(
       "[expoPushToken] missing expo.extra.eas.projectId in app.json — cannot fetch push token",
     );
+    trackRegister({ outcome: "no_project_id", surface: "register" });
     return { ok: false, reason: "no_project_id" };
   }
 
@@ -124,6 +155,11 @@ export async function registerExpoPushTokenForUser(
     token = result.data;
   } catch (err) {
     console.warn("[expoPushToken] getExpoPushTokenAsync failed", err);
+    trackRegister({
+      outcome: "fetch_failed",
+      surface: "register",
+      error_message: (err as Error)?.message ?? undefined,
+    });
     return { ok: false, reason: "fetch_failed" };
   }
 
@@ -134,10 +170,20 @@ export async function registerExpoPushTokenForUser(
       .eq("id", userId);
     if (error) {
       console.warn("[expoPushToken] failed to write profiles.expo_push_token", error.message);
+      trackRegister({
+        outcome: "db_failed",
+        surface: "register",
+        error_message: error.message ?? undefined,
+      });
       return { ok: false, reason: "db_failed" };
     }
   } catch (err) {
     console.warn("[expoPushToken] supabase update threw", err);
+    trackRegister({
+      outcome: "db_failed",
+      surface: "register",
+      error_message: (err as Error)?.message ?? undefined,
+    });
     return { ok: false, reason: "db_failed" };
   }
 
@@ -149,6 +195,7 @@ export async function registerExpoPushTokenForUser(
     console.warn("[expoPushToken] failed to cache last token locally", err);
   }
 
+  trackRegister({ outcome: "ok", surface: "register" });
   return { ok: true, token };
 }
 
@@ -161,18 +208,28 @@ export async function registerExpoPushTokenForUser(
 export async function refreshExpoPushTokenIfChanged(
   userId: string | null | undefined,
 ): Promise<void> {
-  if (!userId) return;
+  if (!userId) {
+    trackRegister({ outcome: "no_user", surface: "refresh" });
+    return;
+  }
   try {
     const Notifications = await import("expo-notifications");
     const perm = await Notifications.getPermissionsAsync();
-    if (perm.status !== "granted") return;
+    if (perm.status !== "granted") {
+      trackRegister({ outcome: "no_permission", surface: "refresh" });
+      return;
+    }
   } catch {
-    // expo-notifications unavailable — silently skip.
+    // expo-notifications unavailable — silently skip. Don't fire
+    // telemetry on Expo Go / web — that just floods PostHog.
     return;
   }
 
   const projectId = readEasProjectId();
-  if (!projectId) return; // already warned in registerExpoPushTokenForUser
+  if (!projectId) {
+    trackRegister({ outcome: "no_project_id", surface: "refresh" });
+    return;
+  }
 
   let currentToken: string;
   try {
@@ -181,6 +238,11 @@ export async function refreshExpoPushTokenIfChanged(
     currentToken = result.data;
   } catch (err) {
     console.warn("[expoPushToken] focus-refresh getExpoPushTokenAsync failed", err);
+    trackRegister({
+      outcome: "fetch_failed",
+      surface: "refresh",
+      error_message: (err as Error)?.message ?? undefined,
+    });
     return;
   }
 
@@ -190,7 +252,10 @@ export async function refreshExpoPushTokenIfChanged(
   } catch {
     cached = null;
   }
-  if (cached === currentToken) return;
+  if (cached === currentToken) {
+    trackRegister({ outcome: "no_change", surface: "refresh" });
+    return;
+  }
 
   try {
     const { error } = await supabase
@@ -202,10 +267,20 @@ export async function refreshExpoPushTokenIfChanged(
         "[expoPushToken] focus-refresh failed to update profiles.expo_push_token",
         error.message,
       );
+      trackRegister({
+        outcome: "db_failed",
+        surface: "refresh",
+        error_message: error.message ?? undefined,
+      });
       return;
     }
   } catch (err) {
     console.warn("[expoPushToken] focus-refresh supabase update threw", err);
+    trackRegister({
+      outcome: "db_failed",
+      surface: "refresh",
+      error_message: (err as Error)?.message ?? undefined,
+    });
     return;
   }
 
@@ -214,4 +289,5 @@ export async function refreshExpoPushTokenIfChanged(
   } catch {
     // best-effort; next refresh will retry.
   }
+  trackRegister({ outcome: "ok", surface: "refresh" });
 }
