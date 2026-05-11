@@ -411,7 +411,10 @@ export default function ProfileScreen() {
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View
+      testID="screen-profile"
+      style={[styles.container, { paddingTop: insets.top }]}
+    >
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         <View style={styles.headerRow}>
           <Pressable onPress={goBack} hitSlop={12}>

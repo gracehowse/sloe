@@ -582,7 +582,10 @@ export default function DiscoverScreen() {
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top }}>
+    <View
+      testID="screen-discover"
+      style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top }}
+    >
       {/* Phase 2 / B1.1 — Recipes sub-tab pill bar (Library default,
           Discover sibling). Lives at the top of every Recipes-group
           screen so the user can flip without leaving the group. */}

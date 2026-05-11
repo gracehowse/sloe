@@ -83,7 +83,7 @@ export default function NutritionSourcesScreen() {
   );
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View testID="screen-nutrition-sources" style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.topBar}>
         <Pressable onPress={goBack} hitSlop={12}>
           <Text style={styles.backText}>‹ Back</Text>

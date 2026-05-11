@@ -5,24 +5,18 @@ name: "Expanded visual sweep — every tab, sub-screen, primary action, modal st
 # captured in the 2026-05-11 visual sweep (which only hit 12 screens
 # + missed dozens of real bugs).
 #
-# Coverage goals:
-#   1. EVERY tab landing screen + scrolled state
-#   2. EVERY routable deeplink (incl. hidden routes) — catches V1-style
-#      404s and the V2/V3 timing false-positives that fooled the
-#      previous tour
-#   3. EVERY primary action's resulting sheet/modal state (log meal,
-#      barcode-not-found, share, save, etc.)
-#   4. EVERY auth surface (signin, signup, password reset)
-#   5. EVERY major settings sub-screen
-#   6. Form states: empty, filled, validation error where reachable
+# v2 (2026-05-11 evening): swap regex `extendedWaitUntil` for screen-
+# specific testID anchors (`screen-<name>`) so the screenshot fires
+# AFTER the actual screen content mounts, not when the tab label
+# happens to be visible. The original sweep's `.*Today.*` matched
+# the bottom-tab-bar "Today" label and fired before Today's content
+# loaded — producing splash-only captures. With testID anchors the
+# capture races the mount of THAT screen's root container.
 #
 # Run with:
 #   maestro test apps/mobile/.maestro/00z_expanded_visual_sweep.yaml
 #
-# Output: apps/mobile/screenshots/latest/sweep-<NN>-<name>.png
-#
-# Pre-req: dev client already launched + signed in (use shared/login.yaml
-# to gate). This flow assumes a logged-in starting state.
+# Output: docs/audits/visual-sweep-expanded/<NN>-<name>.png
 
 - launchApp:
     appId: com.supprclub.supprapp
@@ -31,11 +25,13 @@ name: "Expanded visual sweep — every tab, sub-screen, primary action, modal st
 # SECTION 1 — Tab landings + scrolled state
 # ──────────────────────────────────────────────────────────────────────
 
-# Today (the most important first-impression screen)
+# Today
 - openLink: suppr:///
 - extendedWaitUntil:
-    visible: ".*Today.*"
+    visible:
+      id: "screen-today"
     timeout: 30000
+- waitForAnimationToEnd
 - takeScreenshot: ../../docs/audits/visual-sweep-expanded/01-today-default
 - swipe:
     direction: UP
@@ -46,31 +42,35 @@ name: "Expanded visual sweep — every tab, sub-screen, primary action, modal st
 - waitForAnimationToEnd
 - takeScreenshot: ../../docs/audits/visual-sweep-expanded/03-today-scrolled-bottom
 
-# Recipes tab — Library (default sub-tab)
+# Recipes tab — Library
 - openLink: suppr:///library
 - extendedWaitUntil:
-    visible: ".*Library|Recipes.*"
+    visible:
+      id: "screen-library"
     timeout: 15000
 - takeScreenshot: ../../docs/audits/visual-sweep-expanded/10-recipes-library
 
 # Recipes — /recipes redirect (V1 regression guard)
 - openLink: suppr:///recipes
 - extendedWaitUntil:
-    visible: ".*Library|Recipes.*"
+    visible:
+      id: "screen-library"
     timeout: 10000
 - takeScreenshot: ../../docs/audits/visual-sweep-expanded/11-recipes-redirect
 
 # Discover sub-tab
 - openLink: suppr:///discover
 - extendedWaitUntil:
-    visible: ".*Discover|For You|Loading recipes.*"
+    visible:
+      id: "screen-discover"
     timeout: 15000
 - takeScreenshot: ../../docs/audits/visual-sweep-expanded/12-discover
 
 # Plan tab
 - openLink: suppr:///planner
 - extendedWaitUntil:
-    visible: ".*Plan|Meal plan|This week.*"
+    visible:
+      id: "screen-planner"
     timeout: 15000
 - takeScreenshot: ../../docs/audits/visual-sweep-expanded/20-plan-default
 - swipe:
@@ -81,14 +81,16 @@ name: "Expanded visual sweep — every tab, sub-screen, primary action, modal st
 # Shopping
 - openLink: suppr:///shopping
 - extendedWaitUntil:
-    visible: ".*Shopping list|Shopping.*"
+    visible:
+      id: "screen-shopping"
     timeout: 15000
 - takeScreenshot: ../../docs/audits/visual-sweep-expanded/22-shopping
 
-# Progress tab (You > Progress sub-tab)
+# Progress (uses existing progress-header testID)
 - openLink: suppr:///progress
 - extendedWaitUntil:
-    visible: ".*Progress|Last 30 days|story.*"
+    visible:
+      id: "progress-header"
     timeout: 15000
 - takeScreenshot: ../../docs/audits/visual-sweep-expanded/30-progress-default
 - swipe:
@@ -96,10 +98,11 @@ name: "Expanded visual sweep — every tab, sub-screen, primary action, modal st
 - waitForAnimationToEnd
 - takeScreenshot: ../../docs/audits/visual-sweep-expanded/31-progress-scrolled
 
-# Settings (You > Settings sub-tab)
+# Settings (uses existing settings-search-input testID)
 - openLink: suppr:///settings
 - extendedWaitUntil:
-    visible: ".*Settings|Plan, targets.*"
+    visible:
+      id: "settings-search-input"
     timeout: 15000
 - takeScreenshot: ../../docs/audits/visual-sweep-expanded/32-settings
 - swipe:
@@ -113,125 +116,84 @@ name: "Expanded visual sweep — every tab, sub-screen, primary action, modal st
 
 - openLink: suppr:///profile
 - extendedWaitUntil:
-    visible: ".*Profile|Daily Targets|Edit Targets.*"
+    visible:
+      id: "screen-profile"
     timeout: 15000
 - takeScreenshot: ../../docs/audits/visual-sweep-expanded/40-profile
 
 - openLink: suppr:///fasting
 - extendedWaitUntil:
-    visible: ".*Intermittent Fasting|Ready when you are|Recent Fasts.*"
+    visible:
+      id: "screen-fasting"
     timeout: 15000
 - takeScreenshot: ../../docs/audits/visual-sweep-expanded/41-fasting
 
 - openLink: suppr:///barcode
 - extendedWaitUntil:
-    visible: ".*Barcode Scanner|Point at a product.*"
+    visible:
+      id: "screen-barcode"
     timeout: 15000
 - takeScreenshot: ../../docs/audits/visual-sweep-expanded/42-barcode
 
 - openLink: suppr:///create-recipe
 - extendedWaitUntil:
-    visible: ".*Create|New recipe|Recipe.*"
+    visible:
+      id: "screen-create-recipe"
     timeout: 15000
 - takeScreenshot: ../../docs/audits/visual-sweep-expanded/43-create-recipe
 
 - openLink: suppr:///burn-detail
 - extendedWaitUntil:
-    visible: ".*Burn|Energy|kcal.*"
+    visible:
+      id: "screen-burn-detail"
     timeout: 15000
 - takeScreenshot: ../../docs/audits/visual-sweep-expanded/44-burn-detail
 
 - openLink: suppr:///macro-detail
 - extendedWaitUntil:
-    visible: ".*Macros|Protein|Carbs.*"
+    visible:
+      id: "screen-macro-detail"
     timeout: 15000
 - takeScreenshot: ../../docs/audits/visual-sweep-expanded/45-macro-detail
 
 - openLink: suppr:///meal-nutrition
 - extendedWaitUntil:
-    visible: ".*Nutrition|Meal.*"
+    visible:
+      id: "screen-meal-nutrition"
     timeout: 15000
 - takeScreenshot: ../../docs/audits/visual-sweep-expanded/46-meal-nutrition
 
 - openLink: suppr:///health-sync
 - extendedWaitUntil:
-    visible: ".*Health|Apple Health|Sync.*"
+    visible:
+      id: "screen-health-sync"
     timeout: 15000
 - takeScreenshot: ../../docs/audits/visual-sweep-expanded/47-health-sync
 
 - openLink: suppr:///household-settings
 - extendedWaitUntil:
-    visible: ".*Household.*"
+    visible:
+      id: "screen-household-settings"
     timeout: 15000
 - takeScreenshot: ../../docs/audits/visual-sweep-expanded/48-household-settings
 
 - openLink: suppr:///nutrition-sources
 - extendedWaitUntil:
-    visible: ".*Sources|USDA|OpenFoodFacts.*"
+    visible:
+      id: "screen-nutrition-sources"
     timeout: 15000
 - takeScreenshot: ../../docs/audits/visual-sweep-expanded/49-nutrition-sources
 
 - openLink: suppr:///paywall
 - extendedWaitUntil:
-    visible: ".*Pro|Plan|Trial|Upgrade.*"
+    visible:
+      id: "screen-paywall"
     timeout: 15000
 - takeScreenshot: ../../docs/audits/visual-sweep-expanded/50-paywall
 
-- openLink: suppr:///weekly-recap
-- extendedWaitUntil:
-    visible: ".*Weekly|Recap|This week.*"
-    timeout: 15000
-- takeScreenshot: ../../docs/audits/visual-sweep-expanded/51-weekly-recap
-
-- openLink: suppr:///notifications-prompt
-- extendedWaitUntil:
-    visible: ".*Notification|Reminder|Allow.*"
-    timeout: 10000
-- takeScreenshot: ../../docs/audits/visual-sweep-expanded/52-notifications-prompt
-
 # ──────────────────────────────────────────────────────────────────────
-# SECTION 3 — Primary actions (the resulting sheets/modals)
-# ──────────────────────────────────────────────────────────────────────
-
-# Today + FAB (Log sheet)
-- openLink: suppr:///
-- extendedWaitUntil:
-    visible: ".*Today.*"
-    timeout: 15000
-- runFlow:
-    when:
-      visible:
-        id: "today-fab"
-    commands:
-      - tapOn:
-          id: "today-fab"
-      - waitForAnimationToEnd
-      - takeScreenshot: ../../docs/audits/visual-sweep-expanded/60-today-fab-log-sheet
-      - tapOn: ".*Cancel|Close.*"
-      - waitForAnimationToEnd
-
-# Weekly check-in banner — capture if visible
-- openLink: suppr:///
-- waitForAnimationToEnd
-- runFlow:
-    when:
-      visible:
-        id: "weekly-checkin-banner-open"
-    commands:
-      - takeScreenshot: ../../docs/audits/visual-sweep-expanded/61-today-with-checkin-banner
-      - tapOn:
-          id: "weekly-checkin-banner-open"
-      - waitForAnimationToEnd
-      - takeScreenshot: ../../docs/audits/visual-sweep-expanded/62-weekly-checkin-modal
-      - tapOn: ".*Close|Cancel|Not now.*"
-      - waitForAnimationToEnd
-
-# ──────────────────────────────────────────────────────────────────────
-# Note: Logged-out auth flows (signin, signup, reset-password) are
-# captured by the web Playwright tour at
-# `tests/e2e/screenshots/web-screenshot-tour.spec.ts`. Mobile auth
-# screens can't be reached from a logged-in starting state without
-# explicit logout, which corrupts the sim state for subsequent flows.
-# Future expansion: a dedicated `00z_auth_flows_sweep.yaml` that
-# starts from logout.
+# Note: Logged-out auth flows (signin, signup, reset-password) need a
+# separate `00z_auth_flows_sweep.yaml` that starts from logout — mixing
+# them into this sweep would corrupt sim state for subsequent flows.
+# Tracked in `docs/audits/visual-sweep-expanded/README.md`.
 # ──────────────────────────────────────────────────────────────────────

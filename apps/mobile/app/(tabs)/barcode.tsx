@@ -509,7 +509,7 @@ export default function BarcodeScreen() {
   }
 
   return (
-    <View style={styles.fill}>
+    <View testID="screen-barcode" style={styles.fill}>
       <BarcodeCameraView
         style={styles.camera}
         facing="back"

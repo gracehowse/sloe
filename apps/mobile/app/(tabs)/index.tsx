@@ -4310,7 +4310,10 @@ export default function TrackerScreen() {
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top, position: "relative" }]}>
+    <View
+      testID="screen-today"
+      style={[styles.container, { paddingTop: insets.top, position: "relative" }]}
+    >
       {/* Activation hooks (audit 2026-04-30) — mounted at the top of the
           container so the toast overlays the ScrollView and the modal
           renders above everything. The toast is absolute-positioned;

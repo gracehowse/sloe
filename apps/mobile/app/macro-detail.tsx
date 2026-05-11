@@ -117,7 +117,7 @@ export default function MacroDetailScreen() {
   const total = meals.reduce((sum, m) => sum + (Number(m[config.field]) || 0), 0);
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <View testID="screen-macro-detail" style={{ flex: 1, backgroundColor: colors.background }}>
       {/* Header */}
       <View style={{ paddingTop: insets.top + Spacing.sm, paddingHorizontal: Spacing.lg, paddingBottom: Spacing.md, flexDirection: "row", alignItems: "center", gap: Spacing.md }}>
         <Pressable onPress={() => router.back()} hitSlop={12}>

@@ -424,7 +424,7 @@ export default function HealthSyncScreen() {
   );
 
   return (
-    <ScrollView style={[styles.container, { paddingTop: insets.top }]} contentContainerStyle={{ paddingBottom: 40 }}>
+    <ScrollView testID="screen-health-sync" style={[styles.container, { paddingTop: insets.top }]} contentContainerStyle={{ paddingBottom: 40 }}>
       <View style={styles.header}>
         <Pressable onPress={goBack} hitSlop={12}>
           <Ionicons name="chevron-back" size={24} color={colors.text} />

@@ -830,6 +830,7 @@ export default function CreateRecipeScreen() {
 
   return (
     <KeyboardAvoidingView
+      testID="screen-create-recipe"
       style={[styles.container, { paddingTop: insets.top }]}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >

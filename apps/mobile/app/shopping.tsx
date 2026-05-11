@@ -609,7 +609,10 @@ export default function ShoppingListScreen() {
   }, [household, userId]);
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View
+      testID="screen-shopping"
+      style={[styles.container, { paddingTop: insets.top }]}
+    >
       <PlanSubTabHeader
         value="shopping"
         shoppingUncheckedCount={uncheckedCount}
