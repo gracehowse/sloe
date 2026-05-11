@@ -66,7 +66,11 @@ describe("WeeklyCheckinModal", () => {
     expect(getByText(/higher than the formula/)).toBeTruthy();
   });
 
-  it("renders avg-this-week, weight delta, and TDEE delta rows", () => {
+  it("renders avg-this-week, weight delta, and estimated-burn-change rows", () => {
+    // P1 (customer-lens 2026-05-11): "TDEE delta" → "Estimated burn
+    // change". The MFP-refugee cohort doesn't know "TDEE"; the new
+    // label matches the plain-English whyLine above
+    // ("Your real burn is +X higher than the formula").
     const { getByText } = render(
       <WeeklyCheckinModal
         visible
@@ -81,7 +85,7 @@ describe("WeeklyCheckinModal", () => {
     expect(getByText("1,750 kcal/day")).toBeTruthy();
     expect(getByText("Weight delta")).toBeTruthy();
     expect(getByText("−0.4 kg")).toBeTruthy();
-    expect(getByText("TDEE delta")).toBeTruthy();
+    expect(getByText("Estimated burn change")).toBeTruthy();
     expect(getByText("+200 kcal")).toBeTruthy();
   });
 

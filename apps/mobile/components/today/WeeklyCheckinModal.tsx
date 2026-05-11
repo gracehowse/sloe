@@ -168,9 +168,19 @@ export function WeeklyCheckinModal({
                 topMargin
               />
             ) : null}
+            {/*
+              P1 (customer-lens 2026-05-11): "TDEE delta" is jargon
+              the broader MFP-refugee cohort won't recognise (only
+              MacroFactor refugees know "TDEE"). The whyLine above
+              already says this in plain English ("Your real burn is
+              ±X kcal higher/lower than the formula"), so this row's
+              label is the only jargon left. Renamed to
+              "Estimated burn change" — same number, accessible
+              vocabulary.
+            */}
             {content.tdeeDeltaKcal != null ? (
               <Row
-                label="TDEE delta"
+                label="Estimated burn change"
                 value={
                   content.tdeeDeltaKcal === 0
                     ? "0 kcal"
