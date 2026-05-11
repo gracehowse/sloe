@@ -153,6 +153,15 @@ export interface LoggedMeal {
   micros?: Record<string, number> | null;
   /** Optional provenance for confidence badges (USDA, Open Food Facts, AI photo, etc.). */
   source?: string | null;
+  /**
+   * Schema refactor Phase 2 (2026-05-11) — typed FK to `recipes.id`.
+   * When set, the row's `nutrition_entries.recipe_id` column carries
+   * this id so journal entries can be reverse-linked to a recipe (and
+   * auto-NULLed if the recipe is later deleted, per the FK SET NULL).
+   * Optional because Health-import / manual-entry / barcode-only logs
+   * don't have a recipe id in scope.
+   */
+  recipeId?: string;
 }
 
 export interface DayPlanMeal {

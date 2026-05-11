@@ -30,6 +30,9 @@ type NutritionEntryRow = {
   portion_multiplier: number | null;
   source: string | null;
   nutrition_micros?: Record<string, unknown> | null;
+  // Schema refactor Phase 2 (2026-05-11) — typed FK to recipes.id.
+  // Auto-NULLed by Phase 1's FK if the recipe is later deleted.
+  recipe_id: string | null;
 };
 
 function parseRowMicros(raw: Record<string, unknown> | null | undefined): Record<string, number> | undefined {
@@ -59,6 +62,10 @@ function rowToLoggedMeal(row: NutritionEntryRow): LoggedMeal {
     portionMultiplier: row.portion_multiplier ?? undefined,
     ...(micros ? { micros } : {}),
     ...(typeof src === "string" && src.trim() !== "" ? { source: src.trim() } : {}),
+    // Schema refactor Phase 2 (2026-05-11) — carry the typed FK
+    // through to the in-memory LoggedMeal so downstream surfaces can
+    // navigate to the source recipe.
+    ...(row.recipe_id ? { recipeId: row.recipe_id } : {}),
   };
 }
 
@@ -102,7 +109,10 @@ export function useNutritionJournalState(opts: {
       // If sodium/sugar targets are added, this jsonb read must be replaced with a column query for index performance
       const { data, error } = await supabase
         .from("nutrition_entries")
-        .select("id, date_key, name, recipe_title, time_label, calories, protein, carbs, fat, fiber_g, water_ml, portion_multiplier, source, nutrition_micros")
+        // Schema refactor Phase 2 (2026-05-11) — select recipe_id so
+        // the loaded LoggedMeal carries the typed FK link, mirrors
+        // the mobile read path.
+        .select("id, date_key, name, recipe_title, time_label, calories, protein, carbs, fat, fiber_g, water_ml, portion_multiplier, source, nutrition_micros, recipe_id")
         .eq("user_id", authedUserId)
         .order("created_at", { ascending: true });
 
@@ -158,6 +168,13 @@ export function useNutritionJournalState(opts: {
       portion_multiplier: meal.portionMultiplier ?? 1,
       nutrition_micros: meal.micros && Object.keys(meal.micros).length > 0 ? meal.micros : {},
       source: meal.source ?? null,
+      // Schema refactor Phase 2 (2026-05-11) — typed FK to recipes.id.
+      // When the caller knows the recipe id (recipe-detail log,
+      // planner log, etc.) we persist it so the journal row can be
+      // reverse-linked to the recipe and auto-NULLed if the recipe
+      // is later deleted (Phase 1 FK ON DELETE SET NULL). Manual /
+      // barcode-only / Health-import logs leave it null.
+      recipe_id: meal.recipeId ?? null,
     }),
     [],
   );

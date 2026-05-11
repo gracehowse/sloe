@@ -19,6 +19,13 @@ export type JournalMeal = {
   source?: string | null;
   /** ISO from `nutrition_entries.created_at` when loaded (optional timestamps in UI). */
   createdAt?: string | null;
+  /**
+   * Schema refactor Phase 2 (2026-05-11) — typed FK to `recipes.id`.
+   * Mirrors web's `LoggedMeal.recipeId`. Populated for recipe-detail
+   * + planner-log paths where the recipe id is in scope; left
+   * undefined for Health-import / manual / barcode-only logs.
+   */
+  recipeId?: string;
 };
 
 /** One journal slot for all snacks; migrate legacy DB value `Snack` → `Snacks`. */
