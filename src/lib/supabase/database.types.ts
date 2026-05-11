@@ -1570,8 +1570,10 @@ export type Database = {
           category: string | null
           created_at: string
           downvotes: number
+          evidence_url: string | null
           fat: number
           fiber_g: number | null
+          flagged_for_admin_at: string | null
           id: string
           image_url: string | null
           name: string
@@ -1596,8 +1598,10 @@ export type Database = {
           category?: string | null
           created_at?: string
           downvotes?: number
+          evidence_url?: string | null
           fat?: number
           fiber_g?: number | null
+          flagged_for_admin_at?: string | null
           id?: string
           image_url?: string | null
           name: string
@@ -1622,8 +1626,10 @@ export type Database = {
           category?: string | null
           created_at?: string
           downvotes?: number
+          evidence_url?: string | null
           fat?: number
           fiber_g?: number | null
+          flagged_for_admin_at?: string | null
           id?: string
           image_url?: string | null
           name?: string
