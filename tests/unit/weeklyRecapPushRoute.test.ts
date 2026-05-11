@@ -788,9 +788,13 @@ describe("T6 — server-side weekly_recap_push_sent emit per success", () => {
     );
     expect(phCallsAfter.length + phCalls.length).toBeGreaterThanOrEqual(2);
 
-    const phPayloads = phCallsAfter.map(([, init]) =>
-      JSON.parse(String((init as RequestInit).body)),
-    );
+    // B10 (2026-05-11) — route now emits BOTH `weekly_recap_push_sent`
+    // (legacy, success-only) and `weekly_recap_push_attempted` (unified
+    // outcome). Filter to just the legacy sent event for this assertion;
+    // the attempted-event assertions live in the test above.
+    const phPayloads = phCallsAfter
+      .map(([, init]) => JSON.parse(String((init as RequestInit).body)))
+      .filter((p) => p.event === "weekly_recap_push_sent");
     for (const p of phPayloads) {
       expect(p).toMatchObject({
         event: "weekly_recap_push_sent",
@@ -841,11 +845,30 @@ describe("T6 — server-side weekly_recap_push_sent emit per success", () => {
     const phCalls = fetchMock.mock.calls.filter(([url]) =>
       String(url).includes("/capture/"),
     );
-    const distinctIds = phCalls.map(
-      ([, init]) => JSON.parse(String((init as RequestInit).body)).distinct_id,
-    );
-    expect(distinctIds).toContain("user-live");
-    expect(distinctIds).not.toContain("user-dead");
+    const events = phCalls.map(([, init]) => {
+      const body = JSON.parse(String((init as RequestInit).body));
+      return { event: body.event, distinctId: body.distinct_id, props: body.properties };
+    });
+
+    // weekly_recap_push_sent: success-only, fires for user-live only.
+    const sentDistinctIds = events
+      .filter((e) => e.event === "weekly_recap_push_sent")
+      .map((e) => e.distinctId);
+    expect(sentDistinctIds).toContain("user-live");
+    expect(sentDistinctIds).not.toContain("user-dead");
+
+    // B10 (2026-05-11) — weekly_recap_push_attempted is the new unified
+    // outcome event. Fires for BOTH users — user-live with outcome="sent"
+    // and user-dead with outcome="deregistered" — so the dashboard can
+    // compute % succeeded across all attempts without joining tables.
+    const attemptedByUser = new Map<string, string>();
+    for (const e of events) {
+      if (e.event === "weekly_recap_push_attempted") {
+        attemptedByUser.set(e.distinctId, e.props.outcome);
+      }
+    }
+    expect(attemptedByUser.get("user-live")).toBe("sent");
+    expect(attemptedByUser.get("user-dead")).toBe("deregistered");
   });
 
   it("uses the previous-week weekKey (not currentWeekKey) — fixes the off-by-one", async () => {

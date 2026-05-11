@@ -570,14 +570,26 @@ export async function POST(req: Request) {
     } catch (err) {
       // Per-user compute failure: silent skip + structured log. Do NOT
       // fall back to the generic body. The next cron retries.
+      const errMsg = (err as Error)?.message ?? "unknown";
       console.log(
         JSON.stringify({
           at: "push.weekly_recap",
           phase: "recap_failed",
           userId: row.id,
-          error: (err as Error)?.message ?? "unknown",
+          error: errMsg,
         }),
       );
+      // B10 (2026-05-11) — per-user outcome telemetry. Compute failure
+      // is still a real attempt the user didn't see a push from; surface
+      // it so the dashboard tracks it separately from "no token" /
+      // "deregistered" / "send_failed".
+      const wsd: "monday" | "sunday" = row.week_start_day === "sunday" ? "sunday" : "monday";
+      const descriptor = previousWeekDescriptor(wsd, nowDate);
+      void serverTrack(AnalyticsEvents.weekly_recap_push_attempted, row.id, {
+        outcome: "compute_failed",
+        weekKey: descriptor.weekKey,
+        errorCode: errMsg.slice(0, 200),
+      });
     }
   }
 
@@ -612,6 +624,18 @@ export async function POST(req: Request) {
         statusCode: result.statusCode,
       }),
     );
+    // B10 (2026-05-11) — per-user outcome telemetry. The whole batch
+    // failed at the Expo API layer; emit a `send_failed` outcome for
+    // every user that would have been in the batch so the dashboard
+    // doesn't undercount this case as silent.
+    for (const c of composed) {
+      void serverTrack(AnalyticsEvents.weekly_recap_push_attempted, c.row.id, {
+        outcome: "send_failed",
+        weekKey: c.weekKey,
+        bodyVariant: c.bodyVariant,
+        errorCode: result.error?.slice(0, 200) ?? "unknown",
+      });
+    }
     return NextResponse.json(
       { ok: false, error: "send_failed", message: result.error, statusCode: result.statusCode },
       { status: 502 },
@@ -633,6 +657,13 @@ export async function POST(req: Request) {
 
     if (deregisteredSet.has(messages[i].to)) {
       deregisteredUserIds.push(c.row.id);
+      // B10 (2026-05-11) — per-user outcome telemetry: deregistered.
+      void serverTrack(AnalyticsEvents.weekly_recap_push_attempted, c.row.id, {
+        outcome: "deregistered",
+        weekKey: c.weekKey,
+        bodyVariant: c.bodyVariant,
+        errorCode: "DeviceNotRegistered",
+      });
       continue;
     }
     if (ticket.status === "ok") {
@@ -647,9 +678,43 @@ export async function POST(req: Request) {
         bodyVariant: c.bodyVariant,
         suggestionRule: c.suggestionRule,
       });
+      // B10 (2026-05-11) — also emit the unified outcome event so the
+      // dashboard can compute % succeeded across all attempts in one
+      // query (no joining required between sent + attempted).
+      void serverTrack(AnalyticsEvents.weekly_recap_push_attempted, c.row.id, {
+        outcome: "sent",
+        weekKey: c.weekKey,
+        bodyVariant: c.bodyVariant,
+      });
+    } else if (ticket.status === "error") {
+      // B10 (2026-05-11) — per-user outcome telemetry: ticket error
+      // (MessageTooBig, InvalidCredentials, etc.). The next cron run
+      // retries these, but we emit the failure now so the dashboard
+      // sees the spike if a deploy regresses message size.
+      void serverTrack(AnalyticsEvents.weekly_recap_push_attempted, c.row.id, {
+        outcome: "ticket_error",
+        weekKey: c.weekKey,
+        bodyVariant: c.bodyVariant,
+        errorCode: ticket.details?.error ?? ticket.message?.slice(0, 200) ?? "unknown",
+      });
     }
-    // Tickets with other `status: "error"` (e.g. MessageTooBig) are
-    // intentionally not stamped — the next cron run retries them.
+  }
+
+  // B10 (2026-05-11) — `result.invalidTokens` are tokens our local
+  // regex rejected before POSTing. Map back to user ids via the
+  // message index. These weren't in `messages` (the helper filtered
+  // them), so we look them up from `composed` by token match.
+  if (result.invalidTokens.length > 0) {
+    const invalidSet = new Set(result.invalidTokens);
+    for (const c of composed) {
+      if (invalidSet.has(c.message.to)) {
+        void serverTrack(AnalyticsEvents.weekly_recap_push_attempted, c.row.id, {
+          outcome: "invalid_token",
+          weekKey: c.weekKey,
+          errorCode: "local_regex_rejected",
+        });
+      }
+    }
   }
 
   const nowIso = new Date(now).toISOString();
