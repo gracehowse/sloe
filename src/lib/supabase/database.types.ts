@@ -719,6 +719,13 @@ export type Database = {
             referencedRelation: "meal_plan_days"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "meal_plan_meals_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
         ]
       }
       nutrition_entries: {
@@ -735,6 +742,7 @@ export type Database = {
           nutrition_micros: Json
           portion_multiplier: number | null
           protein: number
+          recipe_id: string | null
           recipe_title: string
           source: string | null
           source_id: string | null
@@ -755,6 +763,7 @@ export type Database = {
           nutrition_micros?: Json
           portion_multiplier?: number | null
           protein?: number
+          recipe_id?: string | null
           recipe_title?: string
           source?: string | null
           source_id?: string | null
@@ -775,6 +784,7 @@ export type Database = {
           nutrition_micros?: Json
           portion_multiplier?: number | null
           protein?: number
+          recipe_id?: string | null
           recipe_title?: string
           source?: string | null
           source_id?: string | null
@@ -782,7 +792,15 @@ export type Database = {
           user_id?: string
           water_ml?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "nutrition_entries_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
