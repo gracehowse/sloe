@@ -1,0 +1,237 @@
+appId: com.supprclub.supprapp
+name: "Expanded visual sweep — every tab, sub-screen, primary action, modal state"
+---
+# Expanded visual sweep flow. Replaces the narrow `00_quick_sim_tour`
+# captured in the 2026-05-11 visual sweep (which only hit 12 screens
+# + missed dozens of real bugs).
+#
+# Coverage goals:
+#   1. EVERY tab landing screen + scrolled state
+#   2. EVERY routable deeplink (incl. hidden routes) — catches V1-style
+#      404s and the V2/V3 timing false-positives that fooled the
+#      previous tour
+#   3. EVERY primary action's resulting sheet/modal state (log meal,
+#      barcode-not-found, share, save, etc.)
+#   4. EVERY auth surface (signin, signup, password reset)
+#   5. EVERY major settings sub-screen
+#   6. Form states: empty, filled, validation error where reachable
+#
+# Run with:
+#   maestro test apps/mobile/.maestro/00z_expanded_visual_sweep.yaml
+#
+# Output: apps/mobile/screenshots/latest/sweep-<NN>-<name>.png
+#
+# Pre-req: dev client already launched + signed in (use shared/login.yaml
+# to gate). This flow assumes a logged-in starting state.
+
+- launchApp:
+    appId: com.supprclub.supprapp
+
+# ──────────────────────────────────────────────────────────────────────
+# SECTION 1 — Tab landings + scrolled state
+# ──────────────────────────────────────────────────────────────────────
+
+# Today (the most important first-impression screen)
+- openLink: suppr:///
+- extendedWaitUntil:
+    visible: ".*Today.*"
+    timeout: 30000
+- takeScreenshot: ../../docs/audits/visual-sweep-expanded/01-today-default
+- swipe:
+    direction: UP
+- waitForAnimationToEnd
+- takeScreenshot: ../../docs/audits/visual-sweep-expanded/02-today-scrolled-mid
+- swipe:
+    direction: UP
+- waitForAnimationToEnd
+- takeScreenshot: ../../docs/audits/visual-sweep-expanded/03-today-scrolled-bottom
+
+# Recipes tab — Library (default sub-tab)
+- openLink: suppr:///library
+- extendedWaitUntil:
+    visible: ".*Library|Recipes.*"
+    timeout: 15000
+- takeScreenshot: ../../docs/audits/visual-sweep-expanded/10-recipes-library
+
+# Recipes — /recipes redirect (V1 regression guard)
+- openLink: suppr:///recipes
+- extendedWaitUntil:
+    visible: ".*Library|Recipes.*"
+    timeout: 10000
+- takeScreenshot: ../../docs/audits/visual-sweep-expanded/11-recipes-redirect
+
+# Discover sub-tab
+- openLink: suppr:///discover
+- extendedWaitUntil:
+    visible: ".*Discover|For You|Loading recipes.*"
+    timeout: 15000
+- takeScreenshot: ../../docs/audits/visual-sweep-expanded/12-discover
+
+# Plan tab
+- openLink: suppr:///planner
+- extendedWaitUntil:
+    visible: ".*Plan|Meal plan|This week.*"
+    timeout: 15000
+- takeScreenshot: ../../docs/audits/visual-sweep-expanded/20-plan-default
+- swipe:
+    direction: UP
+- waitForAnimationToEnd
+- takeScreenshot: ../../docs/audits/visual-sweep-expanded/21-plan-scrolled
+
+# Shopping
+- openLink: suppr:///shopping
+- extendedWaitUntil:
+    visible: ".*Shopping list|Shopping.*"
+    timeout: 15000
+- takeScreenshot: ../../docs/audits/visual-sweep-expanded/22-shopping
+
+# Progress tab (You > Progress sub-tab)
+- openLink: suppr:///progress
+- extendedWaitUntil:
+    visible: ".*Progress|Last 30 days|story.*"
+    timeout: 15000
+- takeScreenshot: ../../docs/audits/visual-sweep-expanded/30-progress-default
+- swipe:
+    direction: UP
+- waitForAnimationToEnd
+- takeScreenshot: ../../docs/audits/visual-sweep-expanded/31-progress-scrolled
+
+# Settings (You > Settings sub-tab)
+- openLink: suppr:///settings
+- extendedWaitUntil:
+    visible: ".*Settings|Plan, targets.*"
+    timeout: 15000
+- takeScreenshot: ../../docs/audits/visual-sweep-expanded/32-settings
+- swipe:
+    direction: UP
+- waitForAnimationToEnd
+- takeScreenshot: ../../docs/audits/visual-sweep-expanded/33-settings-scrolled
+
+# ──────────────────────────────────────────────────────────────────────
+# SECTION 2 — Hidden / deep routes
+# ──────────────────────────────────────────────────────────────────────
+
+- openLink: suppr:///profile
+- extendedWaitUntil:
+    visible: ".*Profile|Daily Targets|Edit Targets.*"
+    timeout: 15000
+- takeScreenshot: ../../docs/audits/visual-sweep-expanded/40-profile
+
+- openLink: suppr:///fasting
+- extendedWaitUntil:
+    visible: ".*Intermittent Fasting|Ready when you are|Recent Fasts.*"
+    timeout: 15000
+- takeScreenshot: ../../docs/audits/visual-sweep-expanded/41-fasting
+
+- openLink: suppr:///barcode
+- extendedWaitUntil:
+    visible: ".*Barcode Scanner|Point at a product.*"
+    timeout: 15000
+- takeScreenshot: ../../docs/audits/visual-sweep-expanded/42-barcode
+
+- openLink: suppr:///create-recipe
+- extendedWaitUntil:
+    visible: ".*Create|New recipe|Recipe.*"
+    timeout: 15000
+- takeScreenshot: ../../docs/audits/visual-sweep-expanded/43-create-recipe
+
+- openLink: suppr:///burn-detail
+- extendedWaitUntil:
+    visible: ".*Burn|Energy|kcal.*"
+    timeout: 15000
+- takeScreenshot: ../../docs/audits/visual-sweep-expanded/44-burn-detail
+
+- openLink: suppr:///macro-detail
+- extendedWaitUntil:
+    visible: ".*Macros|Protein|Carbs.*"
+    timeout: 15000
+- takeScreenshot: ../../docs/audits/visual-sweep-expanded/45-macro-detail
+
+- openLink: suppr:///meal-nutrition
+- extendedWaitUntil:
+    visible: ".*Nutrition|Meal.*"
+    timeout: 15000
+- takeScreenshot: ../../docs/audits/visual-sweep-expanded/46-meal-nutrition
+
+- openLink: suppr:///health-sync
+- extendedWaitUntil:
+    visible: ".*Health|Apple Health|Sync.*"
+    timeout: 15000
+- takeScreenshot: ../../docs/audits/visual-sweep-expanded/47-health-sync
+
+- openLink: suppr:///household-settings
+- extendedWaitUntil:
+    visible: ".*Household.*"
+    timeout: 15000
+- takeScreenshot: ../../docs/audits/visual-sweep-expanded/48-household-settings
+
+- openLink: suppr:///nutrition-sources
+- extendedWaitUntil:
+    visible: ".*Sources|USDA|OpenFoodFacts.*"
+    timeout: 15000
+- takeScreenshot: ../../docs/audits/visual-sweep-expanded/49-nutrition-sources
+
+- openLink: suppr:///paywall
+- extendedWaitUntil:
+    visible: ".*Pro|Plan|Trial|Upgrade.*"
+    timeout: 15000
+- takeScreenshot: ../../docs/audits/visual-sweep-expanded/50-paywall
+
+- openLink: suppr:///weekly-recap
+- extendedWaitUntil:
+    visible: ".*Weekly|Recap|This week.*"
+    timeout: 15000
+- takeScreenshot: ../../docs/audits/visual-sweep-expanded/51-weekly-recap
+
+- openLink: suppr:///notifications-prompt
+- extendedWaitUntil:
+    visible: ".*Notification|Reminder|Allow.*"
+    timeout: 10000
+- takeScreenshot: ../../docs/audits/visual-sweep-expanded/52-notifications-prompt
+
+# ──────────────────────────────────────────────────────────────────────
+# SECTION 3 — Primary actions (the resulting sheets/modals)
+# ──────────────────────────────────────────────────────────────────────
+
+# Today + FAB (Log sheet)
+- openLink: suppr:///
+- extendedWaitUntil:
+    visible: ".*Today.*"
+    timeout: 15000
+- runFlow:
+    when:
+      visible:
+        id: "today-fab"
+    commands:
+      - tapOn:
+          id: "today-fab"
+      - waitForAnimationToEnd
+      - takeScreenshot: ../../docs/audits/visual-sweep-expanded/60-today-fab-log-sheet
+      - tapOn: ".*Cancel|Close.*"
+      - waitForAnimationToEnd
+
+# Weekly check-in banner — capture if visible
+- openLink: suppr:///
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      visible:
+        id: "weekly-checkin-banner-open"
+    commands:
+      - takeScreenshot: ../../docs/audits/visual-sweep-expanded/61-today-with-checkin-banner
+      - tapOn:
+          id: "weekly-checkin-banner-open"
+      - waitForAnimationToEnd
+      - takeScreenshot: ../../docs/audits/visual-sweep-expanded/62-weekly-checkin-modal
+      - tapOn: ".*Close|Cancel|Not now.*"
+      - waitForAnimationToEnd
+
+# ──────────────────────────────────────────────────────────────────────
+# Note: Logged-out auth flows (signin, signup, reset-password) are
+# captured by the web Playwright tour at
+# `tests/e2e/screenshots/web-screenshot-tour.spec.ts`. Mobile auth
+# screens can't be reached from a logged-in starting state without
+# explicit logout, which corrupts the sim state for subsequent flows.
+# Future expansion: a dedicated `00z_auth_flows_sweep.yaml` that
+# starts from logout.
+# ──────────────────────────────────────────────────────────────────────
