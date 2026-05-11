@@ -24,6 +24,44 @@ export const AnalyticsEvents = {
    *  `{ source: "url" | "image"; ...originalPayload }`. Retire the two
    *  legacy events on 2026-05-18. */
   recipe_imported: "recipe_imported",
+  /**
+   * Recipe-wave (2026-05-10) — per-stage telemetry for the recipe-import
+   * pipeline. Fires at the END of each pipeline stage on every import
+   * path (URL / image / caption). Designed so the next "wrong nutrition
+   * numbers" tester report can be correlated to the exact stage that
+   * produced the bad number, instead of guessing.
+   *
+   * Payload contract:
+   *   {
+   *     importPath: "url" | "image" | "caption",
+   *     stage: "extraction" | "ingredient_parsing" | "nutrition_lookup" | "caption_nutrition",
+   *     // Stage-specific keys below; all optional.
+   *     extractionMethod?: "schema_org" | "ai_vision" | "ai_caption",
+   *     extractedIngredientCount?: number,
+   *     extractedStepCount?: number,
+   *     parsedIngredientCount?: number,
+   *     verifiedCount?: number,
+   *     primarySource?: string,                 // "USDA" / "OFF" / "Estimated" / etc.
+   *     sourceCounts?: Record<string, number>,  // per-source ingredient count
+   *     avgConfidence?: number,                 // 0-1
+   *     minConfidence?: number,                 // 0-1
+   *     fallbackUsed?: boolean,                 // any ingredient hit "Estimated"?
+   *     totalCalories?: number,                 // recipe-level total post-aggregation
+   *     totalProteinG?: number,
+   *     totalCarbsG?: number,
+   *     totalFatG?: number,
+   *     servings?: number,
+   *     captionExtracted?: boolean,             // caption_nutrition stage only
+   *     captionCalories?: number,               // claimed by source caption
+   *     captionProteinG?: number,
+   *     captionCarbsG?: number,
+   *     captionFatG?: number,
+   *   }
+   *
+   * Fired server-side via `serverTrack` so route handlers don't need
+   * the browser SDK. `distinctId` is the user id from the request.
+   */
+  recipe_import_pipeline_stage: "recipe_import_pipeline_stage",
   meal_plan_generated: "meal_plan_generated",
   shopping_list_generated: "shopping_list_generated",
   smart_suggestion_saved: "smart_suggestion_saved",

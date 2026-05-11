@@ -16,6 +16,12 @@ import { extractCaptionNutrition } from "@/lib/recipe-import/extractCaptionNutri
 import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
 import { normaliseSource } from "@/lib/recipes/persistSourceAttribution";
 import { importErrorResponse } from "@/lib/recipes/importErrorCopy";
+import {
+  traceExtraction,
+  traceParsing,
+  traceNutritionLookup,
+  traceCaptionNutrition,
+} from "@/lib/analytics/recipeImportPipelineTrace";
 
 /** Block private/reserved IP ranges to prevent SSRF attacks. */
 function isPrivateHost(hostname: string): boolean {
@@ -250,10 +256,22 @@ export async function POST(req: Request) {
           // Successfully scraped from linked website — use it
           const ingList = Array.isArray(websiteRecipe.ingredients) ? websiteRecipe.ingredients.map(String) : [];
           const srv = websiteRecipe.servings ?? 1;
+          // Recipe-wave (2026-05-10) — per-stage telemetry.
+          traceExtraction(userId, "url", "schema_org", {
+            ingredientCount: ingList.length,
+            stepCount: (websiteRecipe.instructions ?? []).length,
+          });
           const parsedIngs = parseRawIngredients(ingList);
+          traceParsing(userId, "url", parsedIngs.length);
           let nutrition: Awaited<ReturnType<typeof verifyIngredients>> | null = null;
           try {
             nutrition = await verifyIngredients({ ingredients: parsedIngs, servings: srv });
+            traceNutritionLookup(userId, "url", {
+              verified: nutrition.verified,
+              primarySource: nutrition.primarySource,
+              perServing: nutrition.perServing,
+              servings: srv,
+            });
           } catch { /* verification optional */ }
 
           const mealType = classifyMealType({
@@ -338,13 +356,33 @@ export async function POST(req: Request) {
       }
 
       const servings = recipe.servings ?? 1;
+      // Recipe-wave (2026-05-10) — per-stage telemetry for the social
+      // caption branch (Instagram / TikTok / Pinterest etc.).
+      traceExtraction(userId, "caption", "ai_caption", {
+        ingredientCount: recipe.ingredients.length,
+        stepCount: recipe.steps.length,
+      });
       const parsed = parseRawIngredients(recipe.ingredients);
+      traceParsing(userId, "caption", parsed.length);
       let nutrition: Awaited<ReturnType<typeof verifyIngredients>> | null = null;
       try {
         nutrition = await verifyIngredients({ ingredients: parsed, servings });
+        traceNutritionLookup(userId, "caption", {
+          verified: nutrition.verified,
+          primarySource: nutrition.primarySource,
+          perServing: nutrition.perServing,
+          servings,
+        });
       } catch (e) {
         console.error("[recipe-import] verifyIngredients failed:", e instanceof Error ? e.message : e);
       }
+      const captionClaim = extractCaptionNutrition(captionText);
+      traceCaptionNutrition(userId, "caption", {
+        caloriesPerServing: captionClaim?.caloriesPerServing ?? null,
+        proteinG: captionClaim?.proteinG ?? null,
+        carbsG: captionClaim?.carbsG ?? null,
+        fatG: captionClaim?.fatG ?? null,
+      });
 
       const mealType = classifyMealType({
         title: recipe.title ?? meta.title ?? "",
@@ -508,6 +546,13 @@ export async function POST(req: Request) {
       const ingList = Array.isArray(parsed.ingredients) ? parsed.ingredients.map(String) : [];
       const srv = parsed.servings ?? 1;
 
+      // Recipe-wave (2026-05-10) — extraction telemetry for the HTML
+      // scrape branch.
+      traceExtraction(userId, "url", "schema_org", {
+        ingredientCount: ingList.length,
+        stepCount: (parsed.instructions ?? []).length,
+      });
+
       // Use site-provided nutrition (JSON-LD) as initial values
       if (parsed.siteNutrition) {
         const sn = parsed.siteNutrition;
@@ -523,6 +568,7 @@ export async function POST(req: Request) {
 
       if (ingList.length > 0) {
         const parsedIngs = parseRawIngredients(ingList);
+        traceParsing(userId, "url", parsedIngs.length);
         // Always store parsed quantities so ingredient rows have amount/unit even
         // when FatSecret verification fails (F-66, 2026-04-22: all-zero ingredients
         // when verifyIngredients throws on difficult ingredient lists).
@@ -543,6 +589,12 @@ export async function POST(req: Request) {
         }));
         try {
           const nutrition = await verifyIngredients({ ingredients: parsedIngs, servings: srv });
+          traceNutritionLookup(userId, "url", {
+            verified: nutrition.verified,
+            primarySource: nutrition.primarySource,
+            perServing: nutrition.perServing,
+            servings: srv,
+          });
           // Only overwrite recipe-level macros if the site didn't provide them
           // (site nutrition is typically from a dietitian and more trustworthy)
           if (!parsed.siteNutrition) {

@@ -7,6 +7,11 @@ import { sanitiseImportedTitle } from "@/lib/recipe-import/extractSocialRecipe";
 import { callAiVision, activeVendor } from "@/lib/server/aiProvider";
 import { normalizeImageForAi } from "@/lib/server/normalizeImageForAi";
 import { normaliseSource } from "@/lib/recipes/persistSourceAttribution";
+import {
+  traceExtraction,
+  traceParsing,
+  traceNutritionLookup,
+} from "@/lib/analytics/recipeImportPipelineTrace";
 
 export const runtime = "nodejs";
 
@@ -154,11 +159,26 @@ Rules:
     : [];
   const steps = Array.isArray(parsed.steps) ? parsed.steps.map((s) => String(s).trim()).filter(Boolean) : [];
 
+  // Recipe-wave (2026-05-10) — pipeline telemetry. Fires per stage
+  // so the next "wrong nutrition numbers" tester report can be
+  // correlated to the exact stage that produced the bad number.
+  traceExtraction(userId, "image", "ai_vision", {
+    ingredientCount: ingredients.length,
+    stepCount: steps.length,
+  });
+
   let nutrition: Awaited<ReturnType<typeof verifyIngredients>> | null = null;
   if (ingredients.length > 0) {
     try {
       const parsedIngs = parseRawIngredients(ingredients);
+      traceParsing(userId, "image", parsedIngs.length);
       nutrition = await verifyIngredients({ ingredients: parsedIngs, servings: 1 });
+      traceNutritionLookup(userId, "image", {
+        verified: nutrition.verified,
+        primarySource: nutrition.primarySource,
+        perServing: nutrition.perServing,
+        servings: 1,
+      });
     } catch (e) {
       console.error("[recipe-import/image] verifyIngredients failed:", e instanceof Error ? e.message : e);
     }
