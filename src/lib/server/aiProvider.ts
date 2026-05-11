@@ -21,6 +21,8 @@
  * Both accept an `AbortSignal` for sub-platform timeout control.
  */
 
+import { emitAiGeneration } from "../analytics/aiGeneration";
+
 // 2026-05-08 hotfix: switched from `claude-sonnet-4-6` (alias) to the
 // fully-qualified dated model id. Aliases sometimes 400 via direct
 // REST when the account hasn't been provisioned for the latest tier.
@@ -81,6 +83,13 @@ export type CallAiOptions = {
   openaiModel?: string;
   /** Tag for log lines so callers can grep their own traffic. */
   callSite: string;
+  /** Supabase user id, for `$ai_generation` PostHog attribution.
+   *  When null/undefined the event falls back to the synthetic
+   *  `srv:ai-anonymous` distinct id. */
+  userId?: string | null;
+  /** Optional trace id to group multiple AI calls from one logical
+   *  user action (e.g. recipe-import vision retry + text fallback). */
+  traceId?: string | null;
 };
 
 export type CallAiVisionInput = {
@@ -196,6 +205,41 @@ function httpError(
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// PostHog LLM Analytics — fire `$ai_generation` from every branch so the
+// dashboard captures token usage, latency, vendor error rate, and model
+// distribution. Fire-and-forget; never blocks the response.
+// ─────────────────────────────────────────────────────────────────────────
+
+type EmitCtx = {
+  vendor: AiVendor;
+  model: string;
+  callSite: string;
+  userId?: string | null;
+  traceId?: string | null;
+  startedAt: number;
+};
+
+function fireAiTelemetry(
+  ctx: EmitCtx,
+  result: AiCallResult,
+  usage?: { inputTokens?: number | null; outputTokens?: number | null },
+): void {
+  void emitAiGeneration({
+    userId: ctx.userId,
+    provider: ctx.vendor === "claude" ? "anthropic" : "openai",
+    model: ctx.model,
+    callSite: ctx.callSite,
+    latencyMs: Date.now() - ctx.startedAt,
+    httpStatus: result.ok ? 200 : result.upstreamStatus ?? 0,
+    isError: !result.ok,
+    errorCode: result.ok ? null : result.error,
+    inputTokens: usage?.inputTokens ?? null,
+    outputTokens: usage?.outputTokens ?? null,
+    traceId: ctx.traceId,
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // Vision
 // ─────────────────────────────────────────────────────────────────────────
 
@@ -204,9 +248,18 @@ async function callClaudeVision(
   input: CallAiVisionInput,
 ): Promise<AiCallResult> {
   const model = input.claudeModel ?? CLAUDE_MODEL_DEFAULT;
+  const startedAt = Date.now();
+  const ctx: EmitCtx = {
+    vendor: "claude",
+    model,
+    callSite: input.callSite,
+    userId: input.userId,
+    traceId: input.traceId,
+    startedAt,
+  };
   const dataUrlMatch = /^data:([^;]+);base64,(.*)$/.exec(input.imageDataUrl);
   if (!dataUrlMatch) {
-    return {
+    const err: AiCallErr = {
       ok: false,
       error: "ai_internal_error",
       status: 500,
@@ -215,10 +268,10 @@ async function callClaudeVision(
       modelVersion: model,
       upstreamStatus: null,
     };
+    fireAiTelemetry(ctx, err);
+    return err;
   }
   const [, mediaType, b64] = dataUrlMatch;
-
-  const startedAt = Date.now();
   const messages: Array<Record<string, unknown>> = [
     {
       role: "user",
@@ -257,24 +310,34 @@ async function callClaudeVision(
     });
   } catch (err) {
     const elapsedMs = Date.now() - startedAt;
-    if ((err as { name?: string } | null)?.name === "AbortError") {
-      return abortError(input.callSite, "claude", model, elapsedMs);
-    }
-    return networkError(input.callSite, "claude", model, err);
+    const ret =
+      (err as { name?: string } | null)?.name === "AbortError"
+        ? abortError(input.callSite, "claude", model, elapsedMs)
+        : networkError(input.callSite, "claude", model, err);
+    fireAiTelemetry(ctx, ret);
+    return ret;
   }
 
   if (!res.ok) {
     const bodyPreview = await res.text().catch(() => "");
-    return httpError(input.callSite, "claude", model, res, bodyPreview);
+    const ret = httpError(input.callSite, "claude", model, res, bodyPreview);
+    fireAiTelemetry(ctx, ret);
+    return ret;
   }
 
   const data = (await res.json()) as {
     content?: Array<{ type?: string; text?: string }>;
+    usage?: { input_tokens?: number; output_tokens?: number };
   };
   const text = data.content?.find((b) => b.type === "text")?.text?.trim() ?? "";
   // Re-attach the prefilled `{` so the parser sees a complete object.
   const reply = input.expectJson && !text.startsWith("{") ? `{${text}` : text;
-  return { ok: true, text: reply, vendor: "claude", modelVersion: model };
+  const ok: AiCallOk = { ok: true, text: reply, vendor: "claude", modelVersion: model };
+  fireAiTelemetry(ctx, ok, {
+    inputTokens: data.usage?.input_tokens ?? null,
+    outputTokens: data.usage?.output_tokens ?? null,
+  });
+  return ok;
 }
 
 async function callOpenAIVision(
@@ -283,6 +346,14 @@ async function callOpenAIVision(
 ): Promise<AiCallResult> {
   const model = input.openaiModel ?? OPENAI_VISION_MODEL_DEFAULT;
   const startedAt = Date.now();
+  const ctx: EmitCtx = {
+    vendor: "openai",
+    model,
+    callSite: input.callSite,
+    userId: input.userId,
+    traceId: input.traceId,
+    startedAt,
+  };
 
   let res: Response;
   try {
@@ -312,22 +383,32 @@ async function callOpenAIVision(
     });
   } catch (err) {
     const elapsedMs = Date.now() - startedAt;
-    if ((err as { name?: string } | null)?.name === "AbortError") {
-      return abortError(input.callSite, "openai", model, elapsedMs);
-    }
-    return networkError(input.callSite, "openai", model, err);
+    const ret =
+      (err as { name?: string } | null)?.name === "AbortError"
+        ? abortError(input.callSite, "openai", model, elapsedMs)
+        : networkError(input.callSite, "openai", model, err);
+    fireAiTelemetry(ctx, ret);
+    return ret;
   }
 
   if (!res.ok) {
     const bodyPreview = await res.text().catch(() => "");
-    return httpError(input.callSite, "openai", model, res, bodyPreview);
+    const ret = httpError(input.callSite, "openai", model, res, bodyPreview);
+    fireAiTelemetry(ctx, ret);
+    return ret;
   }
 
   const data = (await res.json()) as {
     choices?: Array<{ message?: { content?: string } }>;
+    usage?: { prompt_tokens?: number; completion_tokens?: number };
   };
   const text = data.choices?.[0]?.message?.content?.trim() ?? "";
-  return { ok: true, text, vendor: "openai", modelVersion: model };
+  const ok: AiCallOk = { ok: true, text, vendor: "openai", modelVersion: model };
+  fireAiTelemetry(ctx, ok, {
+    inputTokens: data.usage?.prompt_tokens ?? null,
+    outputTokens: data.usage?.completion_tokens ?? null,
+  });
+  return ok;
 }
 
 export async function callAiVision(
@@ -349,6 +430,14 @@ async function callClaudeText(
 ): Promise<AiCallResult> {
   const model = input.claudeModel ?? CLAUDE_MODEL_DEFAULT;
   const startedAt = Date.now();
+  const ctx: EmitCtx = {
+    vendor: "claude",
+    model,
+    callSite: input.callSite,
+    userId: input.userId,
+    traceId: input.traceId,
+    startedAt,
+  };
   const messages: Array<Record<string, unknown>> = [
     { role: "user", content: input.userText },
   ];
@@ -376,23 +465,33 @@ async function callClaudeText(
     });
   } catch (err) {
     const elapsedMs = Date.now() - startedAt;
-    if ((err as { name?: string } | null)?.name === "AbortError") {
-      return abortError(input.callSite, "claude", model, elapsedMs);
-    }
-    return networkError(input.callSite, "claude", model, err);
+    const ret =
+      (err as { name?: string } | null)?.name === "AbortError"
+        ? abortError(input.callSite, "claude", model, elapsedMs)
+        : networkError(input.callSite, "claude", model, err);
+    fireAiTelemetry(ctx, ret);
+    return ret;
   }
 
   if (!res.ok) {
     const bodyPreview = await res.text().catch(() => "");
-    return httpError(input.callSite, "claude", model, res, bodyPreview);
+    const ret = httpError(input.callSite, "claude", model, res, bodyPreview);
+    fireAiTelemetry(ctx, ret);
+    return ret;
   }
 
   const data = (await res.json()) as {
     content?: Array<{ type?: string; text?: string }>;
+    usage?: { input_tokens?: number; output_tokens?: number };
   };
   const text = data.content?.find((b) => b.type === "text")?.text?.trim() ?? "";
   const reply = input.expectJson && !text.startsWith("{") ? `{${text}` : text;
-  return { ok: true, text: reply, vendor: "claude", modelVersion: model };
+  const ok: AiCallOk = { ok: true, text: reply, vendor: "claude", modelVersion: model };
+  fireAiTelemetry(ctx, ok, {
+    inputTokens: data.usage?.input_tokens ?? null,
+    outputTokens: data.usage?.output_tokens ?? null,
+  });
+  return ok;
 }
 
 async function callOpenAIText(
@@ -401,6 +500,14 @@ async function callOpenAIText(
 ): Promise<AiCallResult> {
   const model = input.openaiModel ?? OPENAI_MODEL_DEFAULT;
   const startedAt = Date.now();
+  const ctx: EmitCtx = {
+    vendor: "openai",
+    model,
+    callSite: input.callSite,
+    userId: input.userId,
+    traceId: input.traceId,
+    startedAt,
+  };
   const messages: Array<{ role: string; content: string }> = [];
   if (input.systemPrompt) messages.push({ role: "system", content: input.systemPrompt });
   messages.push({ role: "user", content: input.userText });
@@ -424,22 +531,32 @@ async function callOpenAIText(
     });
   } catch (err) {
     const elapsedMs = Date.now() - startedAt;
-    if ((err as { name?: string } | null)?.name === "AbortError") {
-      return abortError(input.callSite, "openai", model, elapsedMs);
-    }
-    return networkError(input.callSite, "openai", model, err);
+    const ret =
+      (err as { name?: string } | null)?.name === "AbortError"
+        ? abortError(input.callSite, "openai", model, elapsedMs)
+        : networkError(input.callSite, "openai", model, err);
+    fireAiTelemetry(ctx, ret);
+    return ret;
   }
 
   if (!res.ok) {
     const bodyPreview = await res.text().catch(() => "");
-    return httpError(input.callSite, "openai", model, res, bodyPreview);
+    const ret = httpError(input.callSite, "openai", model, res, bodyPreview);
+    fireAiTelemetry(ctx, ret);
+    return ret;
   }
 
   const data = (await res.json()) as {
     choices?: Array<{ message?: { content?: string } }>;
+    usage?: { prompt_tokens?: number; completion_tokens?: number };
   };
   const text = data.choices?.[0]?.message?.content?.trim() ?? "";
-  return { ok: true, text, vendor: "openai", modelVersion: model };
+  const ok: AiCallOk = { ok: true, text, vendor: "openai", modelVersion: model };
+  fireAiTelemetry(ctx, ok, {
+    inputTokens: data.usage?.prompt_tokens ?? null,
+    outputTokens: data.usage?.completion_tokens ?? null,
+  });
+  return ok;
 }
 
 export async function callAiText(input: CallAiTextInput): Promise<AiCallResult> {
