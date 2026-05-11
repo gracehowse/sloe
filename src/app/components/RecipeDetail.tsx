@@ -23,6 +23,7 @@ import {
   isSeedRecipeId,
 } from "../../lib/recipes/seedRecipesV2";
 import { pickHeroImageUrl } from "../../lib/recipes/heroImageFallback.ts";
+import { RecipeHeroFallback } from "./suppr/RecipeHeroFallback";
 import { DEFAULT_UPLOADED_RECIPE_IMAGE } from "../../context/appData/constants.ts";
 import { RecipeNotesCard } from "./suppr/recipe-notes-card";
 import { Badge } from "./suppr/badge";
@@ -1308,16 +1309,30 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             image_url: hasRealImage ? recipe.image : null,
             source_url: recipe.sourceUrl ?? null,
           });
-          const heroSrc = ladderSrc ?? recipe.image;
+          const heroSrc = ladderSrc ?? (hasRealImage ? recipe.image : null);
+          // Recipe-wave (2026-05-10) — when neither the recipe row nor
+          // the source-URL hero ladder produce a real image, render
+          // the deterministic fallback hero instead of a broken `<img>`.
+          // Closes the "Library inconsistency" tester report at the
+          // detail page too.
           return (
             <div className="relative rounded-2xl overflow-hidden shadow-2xl group">
-              {/* eslint-disable-next-line @next/next/no-img-element -- viewTransitionName + arbitrary hero ladder URLs */}
-              <img
-                src={heroSrc}
-                alt={recipe.title}
-                className="w-full aspect-video object-cover group-hover:scale-105 transition-transform duration-500"
-                style={{ viewTransitionName: `recipe-${recipe.id}-image` }}
-              />
+              {heroSrc ? (
+                // eslint-disable-next-line @next/next/no-img-element -- viewTransitionName + arbitrary hero ladder URLs
+                <img
+                  src={heroSrc}
+                  alt={recipe.title}
+                  className="w-full aspect-video object-cover group-hover:scale-105 transition-transform duration-500"
+                  style={{ viewTransitionName: `recipe-${recipe.id}-image` }}
+                />
+              ) : (
+                <div
+                  className="w-full aspect-video"
+                  style={{ viewTransitionName: `recipe-${recipe.id}-image` }}
+                >
+                  <RecipeHeroFallback id={recipe.id} title={recipe.title} iconSize={48} />
+                </div>
+              )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
             </div>
           );
