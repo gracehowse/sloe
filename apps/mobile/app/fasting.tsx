@@ -258,7 +258,11 @@ export default function FastingScreen() {
   if (loading) return <View style={[styles.container, { paddingTop: insets.top }]} />;
 
   return (
-    <ScrollView style={[styles.container, { paddingTop: insets.top }]} contentContainerStyle={{ paddingBottom: 40 }}>
+    <ScrollView
+      testID="screen-fasting"
+      style={[styles.container, { paddingTop: insets.top }]}
+      contentContainerStyle={{ paddingBottom: 40 }}
+    >
       <View style={styles.header}>
         <Pressable onPress={goBack} style={styles.backBtn} hitSlop={12}>
           <Ionicons name="chevron-back" size={24} color={colors.text} />

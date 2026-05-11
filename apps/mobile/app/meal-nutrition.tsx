@@ -282,6 +282,7 @@ export default function MealNutritionScreen() {
 
   return (
     <ScrollView
+      testID="screen-meal-nutrition"
       style={{ flex: 1, backgroundColor: colors.backgroundSecondary }}
       contentContainerStyle={{ padding: Spacing.md, paddingBottom: insets.bottom + 24 }}
       keyboardShouldPersistTaps="handled"

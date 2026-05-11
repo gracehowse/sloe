@@ -398,7 +398,7 @@ export default function HouseholdSettingsScreen() {
     : null;
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <View testID="screen-household-settings" style={{ flex: 1, backgroundColor: colors.background }}>
       {/* F-63d (2026-04-22): hide the auto-generated router header
           so the in-content "Household" header isn't duplicated by an
           "Household Settings" nav bar above it. Tester AHitOL0R

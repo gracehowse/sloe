@@ -1576,7 +1576,10 @@ export default function PlannerScreen() {
   }, [savedRecipes, days, userId, enabledSlots]);
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View
+      testID="screen-planner"
+      style={[styles.container, { paddingTop: insets.top }]}
+    >
       {/* Phase 2 / B1.1 — Plan sub-tab pill bar (Plan default,
           Shopping list as a sub-view). Tapping "Shopping" routes to
           the existing `/shopping` screen which carries a mirroring

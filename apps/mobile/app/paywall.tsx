@@ -952,7 +952,7 @@ export default function PaywallScreen() {
   // ─── Render ─────────────────────────────────────────────────────
 
   return (
-    <View style={styles.container}>
+    <View testID="screen-paywall" style={styles.container}>
       <Pressable
         style={styles.closeBtn}
         onPress={onClose}
