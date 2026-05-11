@@ -31,8 +31,6 @@ import { track } from "@/lib/analytics/track";
 import { AnalyticsEvents } from "@/lib/analytics/events";
 import { MfpCsvImportCard } from "@/app/components/imports/MfpCsvImportCard";
 
-type RecipePhase = "idle" | "parsing" | "done";
-
 export function DataBridgesStep() {
   const { state, set } = useOnboarding();
   const overline = useStepOverline();
@@ -218,59 +216,19 @@ function NotificationsCard() {
 /* ---------------------------------------------------------------- */
 
 function RecipeUrlCard() {
-  const { set } = useOnboarding();
-  const [url, setUrl] = React.useState("");
-  const [phase, setPhase] = React.useState<RecipePhase>("idle");
-
-  const runImport = () => {
-    setPhase("parsing");
-    set({ dataBridgeChosen: "recipe" });
-    track(AnalyticsEvents.onboarding_data_bridge_chosen, { option: "recipe", url_provided: url.length > 0 });
-    const t = setTimeout(() => setPhase("done"), 1800);
-    return () => clearTimeout(t);
-  };
-
   return (
     <BridgeCard
       icon={<Link2 className="size-4" />}
       iconClassName="text-emerald-500 bg-emerald-500/15"
-      title="Try a recipe import"
-      body="Paste any Instagram, TikTok, or blog URL — Suppr parses ingredients and matches each against USDA / OFF."
-      grantedBadge={phase === "done" ? "Imported" : null}
+      title="Recipe import"
+      body="Suppr parses Instagram, TikTok, blog, and YouTube links — ingredients matched against USDA / OFF."
+      grantedBadge={null}
     >
-      {phase === "idle" ? (
-        <div className="mt-3">
-          <div className="flex items-center gap-2 rounded-md border border-border bg-input-background px-3 py-2">
-            <Link2 className="size-3.5 text-muted-foreground" />
-            <input
-              type="url"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://www.instagram.com/reel/…"
-              aria-label="Recipe URL"
-              className="flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
-            />
-          </div>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={runImport}
-            className="mt-3 h-9 w-full"
-          >
-            {url ? "Import this recipe" : "Try a sample recipe"}
-          </Button>
-        </div>
-      ) : phase === "parsing" ? (
-        <div className="mt-3 flex items-center gap-2 py-2 text-xs text-muted-foreground">
-          <Loader2 className="size-3 animate-spin" />
-          Parsing ingredients…
-        </div>
-      ) : (
-        <p className="mt-3 text-xs font-semibold text-emerald-500">
-          Imported — open Library to see it
-        </p>
-      )}
+      <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+        Try it after setup — open the Library tab and tap the Import button to
+        paste a link, or share any recipe to Suppr from inside Instagram /
+        TikTok / your browser.
+      </p>
     </BridgeCard>
   );
 }

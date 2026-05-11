@@ -31,13 +31,26 @@ export function getPostHogClient(): PostHog | null {
     // make: every TF bug report becomes a replayable video instead
     // of a screenshot + memory of "what was the previous screen".
     //
-    // Privacy posture (defaults from posthog-react-native types):
+    // SDK defaults we accept as-is (already privacy-conservative):
     //   - maskAllTextInputs:    true (text inputs masked at capture)
     //   - maskAllImages:        true (user images / hero images masked)
     //   - maskAllSandboxedViews:true (iOS UIImagePickerController etc.)
-    //   - captureLog:           true (console.log shipped with replay)
-    //   - captureNetworkTelemetry: true (iOS only — request timings)
     //   - throttleDelayMs:      1000 (one screenshot per second of activity)
+    //
+    // OVERRIDES (security review P0, 2026-05-11):
+    //   - captureLog:              FALSE. The SDK default is TRUE — every
+    //     `console.warn` / `console.error` from the app is embedded in
+    //     the replay segment. Suppr's runtime logs include Supabase RLS
+    //     error text, vendor API error bodies, push-token failure
+    //     messages with `error.message` echoing back row data
+    //     (`expoPushToken.ts:172`), and FatSecret vendor messages with
+    //     foodIds. None of that is masked by the SDK; it ships as plain
+    //     text in the replay. Disable at the SDK layer (belt) and also
+    //     keep `consoleLogRecordingEnabled` off in PostHog project
+    //     settings (braces).
+    //   - captureNetworkTelemetry: FALSE. iOS-only request-timing
+    //     capture would include URLs + status codes. Not a hard leak
+    //     today but adds an unnecessary capture surface.
     //
     // Anything sensitive (journal text, recipe titles, weight numbers)
     // is masked at the SDK layer before it leaves the device. The
@@ -51,9 +64,8 @@ export function getPostHogClient(): PostHog | null {
     enableSessionReplay: true,
     sessionReplayConfig: {
       sampleRate: 1.0,
-      // Defaults are already privacy-conservative; we leave them
-      // in place rather than overriding so future SDK upgrades
-      // automatically pick up tighter defaults.
+      captureLog: false,
+      captureNetworkTelemetry: false,
     },
   });
 

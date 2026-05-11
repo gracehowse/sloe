@@ -59,8 +59,6 @@ import { useOnboarding } from "../context";
 import { MobileStepBody, MobileStepHeader, useStepOverline } from "../scaffold";
 import { MobileMfpCsvImportCard } from "../../imports/MfpCsvImportCard";
 
-type RecipePhase = "idle" | "parsing" | "done";
-
 export function MobileDataBridgesStep() {
   const { state, set } = useOnboarding();
   const overline = useStepOverline();
@@ -455,101 +453,27 @@ function NotificationsCard({ userId }: { userId: string | null }) {
 /* ---------------------------------------------------------------- */
 
 function RecipeUrlCard() {
-  const { set } = useOnboarding();
   const colors = useThemeColors();
-  const [url, setUrl] = React.useState("");
-  const [phase, setPhase] = React.useState<RecipePhase>("idle");
-
-  const runImport = () => {
-    setPhase("parsing");
-    set({ dataBridgeChosen: "recipe" });
-    track(AnalyticsEvents.onboarding_data_bridge_chosen, { option: "recipe", url_provided: url.length > 0 });
-    const t = setTimeout(() => setPhase("done"), 1800);
-    return () => clearTimeout(t);
-  };
-
   return (
     <BridgeCard
       icon="link-outline"
       iconColor={Accent.successLight}
-      title="Try a recipe import"
-      body="Paste any Instagram, TikTok, or blog URL — Suppr parses ingredients and matches each against USDA / OFF."
-      grantedBadge={phase === "done" ? "Imported" : null}
+      title="Recipe import"
+      body="Suppr parses Instagram, TikTok, blog, and YouTube links — ingredients matched against USDA / OFF."
+      grantedBadge={null}
     >
-      {phase === "idle" ? (
-        <View style={{ marginTop: 10 }}>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 6,
-              backgroundColor: colors.inputBg,
-              borderRadius: Radius.sm,
-              borderWidth: 1,
-              borderColor: colors.border,
-              paddingHorizontal: 10,
-              paddingVertical: 8,
-            }}
-          >
-            <Ionicons name="link-outline" size={14} color={colors.textTertiary} />
-            <TextInput
-              value={url}
-              onChangeText={setUrl}
-              placeholder="https://www.instagram.com/reel/…"
-              placeholderTextColor={colors.textTertiary}
-              autoCapitalize="none"
-              keyboardType="url"
-              style={{
-                flex: 1,
-                fontSize: 14,
-                color: colors.text,
-                paddingVertical: 0,
-              }}
-            />
-          </View>
-          <Pressable
-            onPress={runImport}
-            accessibilityRole="button"
-            accessibilityLabel={url ? "Import this recipe" : "Try a sample recipe"}
-            style={({ pressed }) => ({
-              marginTop: 10,
-              height: 40,
-              borderRadius: 12,
-              backgroundColor: colors.inputBg,
-              borderWidth: 1,
-              borderColor: colors.border,
-              alignItems: "center",
-              justifyContent: "center",
-              opacity: pressed ? 0.85 : 1,
-            })}
-          >
-            <Text style={{ color: colors.text, fontSize: 13, fontWeight: "700" }}>
-              {url ? "Import this recipe" : "Try a sample recipe"}
-            </Text>
-          </Pressable>
-        </View>
-      ) : phase === "parsing" ? (
-        <View
-          style={{
-            flexDirection: "row",
-            gap: 10,
-            alignItems: "center",
-            marginTop: 12,
-            paddingVertical: 10,
-          }}
-        >
-          <ActivityIndicator size="small" color={Accent.primaryLight} />
-          <Text style={{ fontSize: 12, color: colors.textSecondary }}>
-            Parsing ingredients…
-          </Text>
-        </View>
-      ) : (
-        <Text
-          style={{ fontSize: 12, color: Accent.successLight, marginTop: 10, fontWeight: "600" }}
-        >
-          Imported — open Library to see it
-        </Text>
-      )}
+      <Text
+        style={{
+          fontSize: 12,
+          color: colors.textSecondary,
+          marginTop: 10,
+          lineHeight: 17,
+        }}
+      >
+        Try it after setup — open the Library tab and tap the share icon to
+        paste a link, or share any recipe to Suppr from inside Instagram /
+        TikTok / Safari.
+      </Text>
     </BridgeCard>
   );
 }

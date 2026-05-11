@@ -27,6 +27,9 @@ import {
   type DietaryPreferenceId,
 } from "../../../src/constants/dietaryPreferences";
 import { PROFILE_TARGETS_DIRTY_KEY } from "@/lib/profileTargetsDirtyFlag";
+import { track } from "@/lib/analytics";
+import { AnalyticsEvents } from "../../../src/lib/analytics/events";
+import { recordGoalHistory } from "../../../src/lib/nutrition/goalHistory";
 
 export default function ProfileScreen() {
   const colors = useThemeColors();
@@ -321,6 +324,31 @@ export default function ProfileScreen() {
       console.error("[Profile] save error:", JSON.stringify(error));
       Alert.alert("Error", "Couldn't save. Changes are kept locally.");
       return;
+    }
+
+    // F-149 (2026-05-11) — record goal-shape into goal_history so past-day
+    // reads can resolve "what target was in force on day D" without
+    // falling through to live profile values. Fire-and-forget; failures
+    // never block the save (helper internally try/catches).
+    void recordGoalHistory(
+      supabase as Parameters<typeof recordGoalHistory>[0],
+      userId,
+      {
+        target_calories: Number(calories),
+        target_protein_g: Number(protein),
+        target_carbs_g: Number(carbs),
+        target_fat_g: Number(fat),
+        target_fiber_g: Number(fiber),
+      },
+      "settings_save",
+    );
+
+    // Sync-enforcer parity (2026-05-11): match web Settings.tsx which
+    // fires this on every successful profile-target save.
+    try {
+      track(AnalyticsEvents.profile_targets_saved, { from: "profile_screen" });
+    } catch {
+      /* fire-and-forget analytics — never block */
     }
     // P0-2 (parity spec 2026-04-27 §5.5) — write a dirty flag so the
     // Today tab's `useFocusEffect` can re-read targets immediately on

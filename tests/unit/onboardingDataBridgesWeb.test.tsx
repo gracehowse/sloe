@@ -167,26 +167,21 @@ describe("DataBridgesStep — card structure", () => {
     withProvider(<DataBridgesStep />);
     expect(screen.getByText("I already know my targets")).toBeTruthy();
     expect(screen.getByText("Gentle reminders")).toBeTruthy();
-    expect(screen.getByText("Try a recipe import")).toBeTruthy();
+    // Pre-launch P0 (2026-05-11): the recipe card no longer simulates an
+    // import on tap. Title changed from "Try a recipe import" to
+    // "Recipe import" — honest preview, no input field, no fake success.
+    expect(screen.getByText("Recipe import")).toBeTruthy();
     // Web does NOT include the Apple Health card.
     expect(screen.queryByText(/Apple Health/i)).toBeNull();
   });
 
-  it("renders the recipe URL input", () => {
+  it("recipe card is a preview only — no input + no fake success state", () => {
     withProvider(<DataBridgesStep />);
-    expect(screen.getByLabelText("Recipe URL")).toBeTruthy();
-  });
-
-  it("recipe URL — clicking the import button transitions to parsing phase", () => {
-    withProvider(
-      <>
-        <DataBridgesStep />
-        <StateProbe testId="probe" />
-      </>,
-    );
-    const button = screen.getByText("Try a sample recipe");
-    fireEvent.click(button);
-    const probe = JSON.parse(screen.getByTestId("probe").textContent ?? "{}");
-    expect(probe.chosen).toBe("recipe");
+    // The simulated input + button + dataBridgeChosen=recipe write were
+    // removed because the import never actually happened. Tester would
+    // see "Imported — open Library to see it" but nothing was in Library.
+    expect(screen.queryByLabelText("Recipe URL")).toBeNull();
+    expect(screen.queryByText("Try a sample recipe")).toBeNull();
+    expect(screen.queryByText(/Imported/)).toBeNull();
   });
 });
