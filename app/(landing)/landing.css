@@ -280,6 +280,24 @@
   }
 }
 
+/* V5/V16 (2026-05-11 visual sweep): on narrow phones the nav was
+ * cramming `[theme-toggle][Sign in][Get started]` — the primary
+ * "Get started" CTA was getting truncated to "Get st..." at <380px.
+ *
+ * Solution: hide the 3-icon theme toggle below 640px. System theme
+ * follows the device preference automatically; the toggle is a
+ * power-user override only useful on wider viewports. Also tighten
+ * the brand mark + give the CTAs room to breathe.
+ */
+@media (max-width: 640px) {
+  .lp-theme-toggle {
+    display: none;
+  }
+  .lp-nav-right {
+    gap: 8px;
+  }
+}
+
 /* ═════════ HERO ═════════ */
 .lp-hero {
   position: relative;
