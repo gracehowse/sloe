@@ -295,7 +295,10 @@ describe("Create custom food form parity (TestFlight AE52_fIRZ-ZIupmoJ8T4yaI)", 
       "utf8",
     );
     expect(scanner).toMatch(/onAddAsCustomFood\?/);
-    expect(scanner).toMatch(/Add as custom food/);
+    // P1 (customer-lens 2026-05-11): copy changed from "Add as custom
+    // food" (text link, near-synonym with "Enter manually") to
+    // "Add this product" (primary CTA, communicates the save benefit).
+    expect(scanner).toMatch(/Add this product/);
     expect(scanner).toMatch(/barcode-not-found-add-custom-food/);
   });
 
@@ -305,7 +308,7 @@ describe("Create custom food form parity (TestFlight AE52_fIRZ-ZIupmoJ8T4yaI)", 
       "utf8",
     );
     expect(dialog).toMatch(/onAddAsCustomFood\?/);
-    expect(dialog).toMatch(/Add as custom food/);
+    expect(dialog).toMatch(/Add as custom food|Add this product/);
     expect(dialog).toMatch(/barcode-not-found-add-custom-food/);
   });
 });

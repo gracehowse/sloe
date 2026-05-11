@@ -174,28 +174,21 @@ export function TodayBarcodeDialog(props: TodayBarcodeDialogProps) {
             <DialogHeader>
               <DialogTitle className="text-foreground">{"We don't have this product yet."}</DialogTitle>
               <DialogDescription className="text-muted-foreground">
-                Snap the nutrition label and we&apos;ll read it for you, or enter the values manually below.
+                Add it to your library so the next scan recognises it.
               </DialogDescription>
             </DialogHeader>
+            {/*
+              P1 (customer-lens 2026-05-11) — three near-synonym CTAs
+              ("Snap the label" / "Add as custom food" / "Try another
+              barcode") reshuffled into a clear hierarchy. Primary now
+              communicates the save benefit; secondary is the AI
+              helper; tertiary stays for "give up and try a different
+              code".
+            */}
             <DialogFooter className="flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-              {onPhotoFallback ? (
-                <Button
-                  type="button"
-                  data-testid="barcode-not-found-photo-fallback"
-                  className="w-full sm:w-auto"
-                  onClick={() => {
-                    setNotFound(false);
-                    onPhotoFallback();
-                  }}
-                >
-                  <Icons.camera className="mr-2 h-4 w-4" aria-hidden />
-                  Snap the label instead
-                </Button>
-              ) : null}
               {onAddAsCustomFood && barcodeValue ? (
                 <Button
                   type="button"
-                  variant="outline"
                   data-testid="barcode-not-found-add-custom-food"
                   className="w-full sm:w-auto"
                   onClick={() => {
@@ -204,12 +197,27 @@ export function TodayBarcodeDialog(props: TodayBarcodeDialogProps) {
                     onAddAsCustomFood(code);
                   }}
                 >
-                  Add as custom food
+                  Add this product
+                </Button>
+              ) : null}
+              {onPhotoFallback ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  data-testid="barcode-not-found-photo-fallback"
+                  className="w-full sm:w-auto"
+                  onClick={() => {
+                    setNotFound(false);
+                    onPhotoFallback();
+                  }}
+                >
+                  <Icons.camera className="mr-2 h-4 w-4" aria-hidden />
+                  Scan the label
                 </Button>
               ) : null}
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
                 className="w-full sm:w-auto"
                 onClick={() => setNotFound(false)}
               >

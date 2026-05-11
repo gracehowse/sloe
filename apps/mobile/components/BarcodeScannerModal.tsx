@@ -988,37 +988,105 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
                   ) : (
                     <Ionicons name="alert-circle" size={32} color={Accent.destructive} />
                   )}
-                  {/* Audit 2026-04-30 — friendlier "not found" copy. */}
+                  {/*
+                    P1 (customer-lens 2026-05-11) — not-found state was
+                    three equal-weight CTAs ("Snap the label", "Add as
+                    custom food", "Enter manually") that read as
+                    near-synonyms. The user couldn't tell which one
+                    actually saved the product for future scans.
+
+                    New hierarchy reflects user intent at this moment:
+                    - PRIMARY: "Add this product" → opens
+                      CreateCustomFoodSheet (saves to user_foods, so
+                      the next scan of this barcode resolves)
+                    - SECONDARY (filled-outline): "Scan the label" →
+                      AI-OCR fast-fill of the same Custom Food form
+                    - TERTIARY (text link): "Just log it once" →
+                      inline manual form, doesn't save (one-off log)
+
+                    Copy also explains the 'save' benefit so the user
+                    understands why primary > secondary > tertiary.
+                  */}
                   <Text style={styles.errorText}>
                     {error === "Product not found in database."
                       ? "We don't have this product yet."
                       : error}
                   </Text>
-                  {/* F-136 + 2026-05-08 build-45 follow-up — "Snap the
-                      label instead" now hits /api/nutrition/scan-label
-                      and pre-fills the Correct-Product form so the
-                      contribution actually persists to user_foods.
-                      Pre-fix it routed through onPhotoFallback (photo-
-                      log meal-estimator) which never wrote to the
-                      database — same barcode would fail next scan. */}
+                  {error === "Product not found in database." && (
+                    <Text
+                      style={{
+                        color: colors.textSecondary,
+                        fontSize: 12,
+                        textAlign: "center",
+                        marginTop: -Spacing.sm,
+                        marginBottom: Spacing.sm,
+                        lineHeight: 17,
+                      }}
+                    >
+                      Add it to your library so the next scan recognises it.
+                    </Text>
+                  )}
+
+                  {/* PRIMARY — Add this product (saves to user_foods).
+                      F-156 PR-2 (2026-05-10) wired the
+                      onAddAsCustomFood callback; this is just a
+                      promotion from tertiary text-link to primary CTA. */}
+                  {onAddAsCustomFood && scanned && error === "Product not found in database." && (
+                    <Pressable
+                      onPress={() => {
+                        const code = scanned;
+                        onAddAsCustomFood(code);
+                      }}
+                      accessibilityRole="button"
+                      accessibilityLabel="Add this product to your food library"
+                      testID="barcode-not-found-add-custom-food"
+                      style={styles.photoFallbackBtn}
+                    >
+                      <Ionicons name="add-circle-outline" size={18} color="#fff" />
+                      <Text style={styles.photoFallbackBtnText}>Add this product</Text>
+                    </Pressable>
+                  )}
+
+                  {/* SECONDARY — Scan the label (AI-OCR helper). Was
+                      the primary CTA pre-2026-05-11; demoted to
+                      secondary because "Add this product" is the
+                      higher-intent path for most users. Renders as a
+                      filled-outline button (tinted bg, no fill) so the
+                      visual hierarchy reads primary → secondary at a
+                      glance.
+
+                      F-136 + 2026-05-08: this fires the
+                      /api/nutrition/scan-label endpoint and pre-fills
+                      the Correct-Product form so the contribution
+                      persists to user_foods. */}
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel="Snap the label instead"
+                    accessibilityLabel="Scan the nutrition label instead"
                     testID="barcode-not-found-photo-fallback"
-                    style={[
-                      styles.photoFallbackBtn,
-                      scanLabelLoading && { opacity: 0.7 },
-                    ]}
+                    style={({ pressed }) => ({
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: Spacing.sm,
+                      backgroundColor: Accent.primary + "1f",
+                      borderColor: Accent.primary,
+                      borderWidth: 1,
+                      borderRadius: Radius.md,
+                      paddingHorizontal: Spacing.xl,
+                      paddingVertical: 11,
+                      marginTop: Spacing.md,
+                      opacity: scanLabelLoading ? 0.7 : pressed ? 0.85 : 1,
+                    })}
                     onPress={handleSnapLabel}
                     disabled={scanLabelLoading}
                   >
                     {scanLabelLoading ? (
-                      <ActivityIndicator color="#fff" size="small" />
+                      <ActivityIndicator color={Accent.primary} size="small" />
                     ) : (
-                      <Ionicons name="camera" size={18} color="#fff" />
+                      <Ionicons name="camera-outline" size={18} color={Accent.primary} />
                     )}
-                    <Text style={styles.photoFallbackBtnText}>
-                      {scanLabelLoading ? "Reading label..." : "Snap the label instead"}
+                    <Text style={{ color: Accent.primary, fontWeight: "700", fontSize: 14 }}>
+                      {scanLabelLoading ? "Reading label..." : "Scan the label"}
                     </Text>
                   </Pressable>
                   {scanLabelError && (
@@ -1034,38 +1102,16 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
                       {scanLabelError}
                     </Text>
                   )}
-                  {/* F-156 PR-2 (2026-05-10) — "Add as custom food"
-                      CTA. Hands the scanned barcode to the host, which
-                      opens CreateCustomFoodSheet with initialBarcode
-                      set so the saved row writes to user_foods with
-                      the correct barcode (so the next scan resolves
-                      successfully). Only renders when the host wires
-                      `onAddAsCustomFood` AND we have a scanned value
-                      to forward. */}
-                  {onAddAsCustomFood && scanned && error === "Product not found in database." && (
-                    <Pressable
-                      onPress={() => {
-                        const code = scanned;
-                        onAddAsCustomFood(code);
-                      }}
-                      accessibilityRole="button"
-                      accessibilityLabel="Add as custom food with this barcode"
-                      testID="barcode-not-found-add-custom-food"
-                      style={{ paddingTop: Spacing.md }}
-                    >
-                      <Text style={{ color: Accent.primary, fontSize: 13, fontWeight: "600" }}>
-                        Add as custom food
-                      </Text>
-                    </Pressable>
-                  )}
+
+                  {/* TERTIARY — one-off log, doesn't save to library. */}
                   <Pressable
                     onPress={() => setManualMode(true)}
                     accessibilityRole="button"
-                    accessibilityLabel="Enter manually instead"
+                    accessibilityLabel="Log macros once without saving the product"
                     style={{ paddingTop: Spacing.md }}
                   >
-                    <Text style={{ color: Accent.primary, fontSize: 13, fontWeight: "600" }}>
-                      Enter manually
+                    <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: "500", textDecorationLine: "underline" }}>
+                      Just log it once
                     </Text>
                   </Pressable>
                   <Pressable
