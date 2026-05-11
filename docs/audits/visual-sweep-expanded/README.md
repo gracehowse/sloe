@@ -55,31 +55,35 @@ Output: `docs/audits/visual-sweep-expanded/<NN>-<name>.png`
 
 **Net: 23 expanded surfaces vs 12 original.**
 
-## Known sweep-tooling improvements still needed
+## Known sweep-tooling improvements
 
-1. **`extendedWaitUntil` regex matches against bottom tab labels** — e.g.
-   `.*Today.*` matches the "Today" tab text in the bottom tab bar, so the
-   screenshot fires before the actual Today screen content loads. Fix:
-   use screen-specific testIDs (`today-calorie-ring`, `library-recipe-card`,
-   `progress-weight-chart`) as wait anchors.
+| # | Status | Detail |
+|---|---|---|
+| 1 | ✅ Closed (PR #223) | `screen-<name>` testID anchors replace regex matches. Today captures fully-loaded content now. |
+| 2 | ✅ Closed (PR #225) | Sweep split into independent sections + Bash wrapper at `apps/mobile/scripts/run-visual-sweep.sh`. Section failure no longer kills siblings. |
+| 3 | ✅ Closed (PR #226) | Pixelmatch-based baseline diff at `apps/mobile/scripts/diff-visual-sweep.mjs`. Run after each sweep to catch unintended pixel drift. |
+| 4 | ✅ Closed | Auth flow capture at `apps/mobile/.maestro/00z_sweep_auth_flows.yaml`. Run deliberately when refreshing logged-out captures (modifies sim state). |
+| 5 | ✅ Closed | `--with-web` flag on the wrapper runs the existing Playwright `web-screenshot-tour.spec.ts` in lockstep. `--with-diff` runs the baseline diff after capture. |
 
-2. **Deeplink routes without that name** — `/burn-detail`, `/macro-detail`,
-   `/meal-nutrition` may resolve to different screen titles. Failed assertion
-   blocks the rest of the sweep. Fix: add `optional: true` semantics so the
-   sweep continues with a `MISSING` placeholder screenshot if a route can't
-   be reached.
+## Usage
 
-3. **Logged-out auth flows** (signin, signup, password reset) need a separate
-   sweep that starts from logout. Mixing into the main sweep would corrupt
-   sim state. TODO: `00z_auth_flows_sweep.yaml`.
+```bash
+# Mobile-only sweep (default — sim must be booted + logged-in, Metro running)
+bash apps/mobile/scripts/run-visual-sweep.sh
 
-4. **Diff-against-baseline visual regression** — every run produces fresh
-   screenshots. A pixelmatch comparator with 1% tolerance + diff highlights
-   would catch unintended UI regressions across PRs.
+# Mobile + web in lockstep
+bash apps/mobile/scripts/run-visual-sweep.sh --with-web
 
-5. **Web parity sweep** — Playwright already has `web-screenshot-tour.spec.ts`
-   covering ~36 routes. Should run in lockstep with the mobile sweep so
-   web/mobile drift surfaces in one place.
+# Mobile + diff against baseline (CI-friendly, exits non-zero on regression)
+bash apps/mobile/scripts/run-visual-sweep.sh --with-diff
+
+# Refresh baseline after intentional UI change
+node apps/mobile/scripts/diff-visual-sweep.mjs --update
+
+# Refresh auth surfaces (signs out, captures, signs back in)
+cd apps/mobile && maestro test .maestro/00z_sweep_auth_flows.yaml \
+  -e E2E_EMAIL="$E2E_EMAIL" -e E2E_PASSWORD="$E2E_PASSWORD"
+```
 
 ## V-item proof (this run)
 
