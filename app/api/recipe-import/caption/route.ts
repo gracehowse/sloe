@@ -28,6 +28,12 @@ import { extractCaptionNutrition } from "@/lib/recipe-import/extractCaptionNutri
 import { CaptionExtractionError, sanitiseImportedTitle } from "@/lib/recipe-import/extractSocialRecipe";
 import { normaliseSource } from "@/lib/recipes/persistSourceAttribution";
 import { importErrorResponse } from "@/lib/recipes/importErrorCopy";
+import {
+  traceExtraction,
+  traceParsing,
+  traceNutritionLookup,
+  traceCaptionNutrition,
+} from "@/lib/analytics/recipeImportPipelineTrace";
 
 export const maxDuration = 30;
 
@@ -157,13 +163,35 @@ export async function POST(req: Request) {
   }
 
   const servings = parsed.servings ?? 1;
+  // Recipe-wave (2026-05-10) — per-stage telemetry for the caption-text
+  // import path. Mirrors the URL + image routes so a "wrong nutrition"
+  // tester report on ANY import surface lands the same per-stage data
+  // in PostHog.
+  traceExtraction(userId, "caption", "ai_caption", {
+    ingredientCount: parsed.ingredients.length,
+    stepCount: parsed.instructions.length,
+  });
   const parsedIngs = parseRawIngredients(parsed.ingredients);
+  traceParsing(userId, "caption", parsedIngs.length);
   let nutrition: Awaited<ReturnType<typeof verifyIngredients>> | null = null;
   try {
     nutrition = await verifyIngredients({ ingredients: parsedIngs, servings });
+    traceNutritionLookup(userId, "caption", {
+      verified: nutrition.verified,
+      primarySource: nutrition.primarySource,
+      perServing: nutrition.perServing,
+      servings,
+    });
   } catch (e) {
     console.error("[recipe-import:caption] verifyIngredients failed:", e instanceof Error ? e.message : e);
   }
+  const captionClaimForTrace = extractCaptionNutrition(trimmed);
+  traceCaptionNutrition(userId, "caption", {
+    caloriesPerServing: captionClaimForTrace?.caloriesPerServing ?? null,
+    proteinG: captionClaimForTrace?.proteinG ?? null,
+    carbsG: captionClaimForTrace?.carbsG ?? null,
+    fatG: captionClaimForTrace?.fatG ?? null,
+  });
 
   const mealType = classifyMealType({
     title: parsed.title ?? "",
