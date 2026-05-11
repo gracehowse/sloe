@@ -209,6 +209,9 @@ export default function TabLayout() {
       <Tabs.Screen name="search" options={{ href: null }} />
       <Tabs.Screen name="barcode" options={{ href: null }} />
       <Tabs.Screen name="notifications" options={{ href: null }} />
+      {/* V1 (2026-05-11 visual sweep): /recipes redirects to /library
+          so external links matching the tab label resolve correctly. */}
+      <Tabs.Screen name="recipes" options={{ href: null }} />
     </Tabs>
   );
 }

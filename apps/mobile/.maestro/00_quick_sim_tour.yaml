@@ -1,0 +1,57 @@
+appId: com.supprclub.supprapp
+name: "Quick sim tour — local screenshot capture (no login)"
+---
+# Quick visual-sweep tour. Doesn't sign in (we're already on Today),
+# just walks the four tabs + key sub-routes via deeplinks. Output to
+# docs/audits/2026-05-11-visual-sweep/mobile/ for the visual sweep
+# review.
+
+- launchApp:
+    appId: com.supprclub.supprapp
+
+- waitForAnimationToEnd
+- takeScreenshot: ../../docs/audits/2026-05-11-visual-sweep/mobile/01-today
+- swipe:
+    direction: UP
+- waitForAnimationToEnd
+- takeScreenshot: ../../docs/audits/2026-05-11-visual-sweep/mobile/02-today-scrolled
+
+- openLink: suppr:///recipes
+- waitForAnimationToEnd
+- takeScreenshot: ../../docs/audits/2026-05-11-visual-sweep/mobile/03-recipes-library
+
+- openLink: suppr:///discover
+- waitForAnimationToEnd
+- takeScreenshot: ../../docs/audits/2026-05-11-visual-sweep/mobile/04-recipes-discover
+
+- openLink: suppr:///planner
+- waitForAnimationToEnd
+- takeScreenshot: ../../docs/audits/2026-05-11-visual-sweep/mobile/05-plan
+
+- openLink: suppr:///shopping
+- waitForAnimationToEnd
+- takeScreenshot: ../../docs/audits/2026-05-11-visual-sweep/mobile/06-shopping
+
+- openLink: suppr:///more
+- waitForAnimationToEnd
+- takeScreenshot: ../../docs/audits/2026-05-11-visual-sweep/mobile/07-more
+
+- openLink: suppr:///profile
+- waitForAnimationToEnd
+- takeScreenshot: ../../docs/audits/2026-05-11-visual-sweep/mobile/08-profile
+
+- openLink: suppr:///settings
+- waitForAnimationToEnd
+- takeScreenshot: ../../docs/audits/2026-05-11-visual-sweep/mobile/09-settings
+
+- openLink: suppr:///barcode
+- waitForAnimationToEnd
+- takeScreenshot: ../../docs/audits/2026-05-11-visual-sweep/mobile/10-barcode
+
+- openLink: suppr:///progress
+- waitForAnimationToEnd
+- takeScreenshot: ../../docs/audits/2026-05-11-visual-sweep/mobile/11-progress
+
+- openLink: suppr:///fasting
+- waitForAnimationToEnd
+- takeScreenshot: ../../docs/audits/2026-05-11-visual-sweep/mobile/12-fasting
