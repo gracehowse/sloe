@@ -313,6 +313,28 @@ export const AnalyticsEvents = {
    * firing the legacy `weekly_recap_push_sent` at the scheduling site
    * for the 30-day migration window. */
   weekly_recap_push_sent: "weekly_recap_push_sent",
+  /** Server-side push-send outcome telemetry (B10, 2026-05-11). Mirrors
+   *  the F-151 mobile `expo_push_token_register_attempted` shape so the
+   *  next "notifications don't work" tester report correlates to a
+   *  specific failure code, not a stdout grep. Fires once per user per
+   *  cron invocation, regardless of outcome. Payload:
+   *    `{
+   *       outcome:
+   *         "sent"               — Expo ticket status === "ok"
+   *       | "compute_failed"     — recap math threw before send
+   *       | "deregistered"       — Expo returned DeviceNotRegistered
+   *       | "invalid_token"      — local regex rejected the stored token
+   *       | "ticket_error"       — Expo ticket status === "error" (non-deregistered)
+   *       | "send_failed"        — Expo API rejected the whole batch (4xx/5xx)
+   *       ,
+   *       weekKey: string,
+   *       bodyVariant?: string,
+   *       errorCode?: string     — vendor-neutral error code when available
+   *     }`
+   *  Distinct from `weekly_recap_push_sent` which fires only on success
+   *  — keeping both gives the dashboard a "% succeeded" rate without
+   *  inferring from drop-off. */
+  weekly_recap_push_attempted: "weekly_recap_push_attempted",
   /** Canonical scheduling event (rename target — split #1 for
    *  `weekly_recap_push_sent`). Fires when the OS-level local
    *  notification has been successfully registered. Payload:
