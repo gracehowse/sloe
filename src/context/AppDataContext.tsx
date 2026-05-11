@@ -60,7 +60,6 @@ import {
   syncDisabledBecauseSchemaMessage,
   syncFailedRetryMessage,
 } from "./appData/supabaseErrors.ts";
-import { fetchMealPlanJson, probeAnyMealPlanJsonTable, upsertMealPlanJson } from "../lib/supabase/phase1LegacyJsonb.ts";
 import { useNutritionJournalState } from "./appData/useNutritionJournalState.ts";
 import { usePersistLocalAppSnapshot } from "./appData/usePersistLocalAppSnapshot.ts";
 import { useRetryEnableDbTable } from "./appData/useRetryEnableDbTable.ts";
@@ -450,13 +449,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setDbMealPlanEnabled(true);
       return true;
     }
-    if (looksLikeMissingTableError(error.message ?? "")) {
-      const legacyOk = await probeAnyMealPlanJsonTable(supabase);
-      if (legacyOk) {
-        setDbMealPlanEnabled(true);
-        return true;
-      }
-    }
+    // Schema refactor Phase 3 (2026-05-11) — legacy `meal_plans` JSONB
+    // probe removed (table dropped 2026-04-21). meal_plan_days is the
+    // only path now.
     return false;
   }, [authedUserId]);
 
@@ -777,18 +772,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // Fall back to legacy JSONB table (`meal_plans` or `meal_plans_legacy`)
-      if (!cancelled) {
-        const planJson = await fetchMealPlanJson(supabase, authedUserId);
-        if (!cancelled) {
-          if (planJson != null) {
-            const normalized =
-              normalizeDayPlans(planJson) ?? (Array.isArray(planJson) ? (planJson as DayPlan[]) : null);
-            const slotId = activeMealPlanSlotIdRef.current;
-            setMealPlanSlots((prev) => prev.map((s) => (s.id === slotId ? { ...s, plan: normalized } : s)));
-          }
-        }
-      }
+      // Schema refactor Phase 3 (2026-05-11) — legacy `meal_plans`
+      // JSONB fallback removed (table dropped 2026-04-21). Plans now
+      // come exclusively from `meal_plan_days` + `meal_plan_meals`.
     })();
     return () => {
       cancelled = true;
@@ -1381,28 +1367,19 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
       if (error) {
         const msg = error.message ?? "";
-        // 42883 = function does not exist (env without the migration);
-        // table-not-found patterns indicate the relational schema is
-        // missing entirely. Fall back to legacy JSONB persistence.
+        // Schema refactor Phase 3 (2026-05-11) — legacy JSONB upsert
+        // fallback removed (table dropped 2026-04-21; RPC has been in
+        // production for weeks). 42883 / missing-table errors here
+        // are now hard failures the user needs to know about.
         if (
           (error as { code?: string }).code === "42883" ||
           looksLikeMissingTableError(msg)
         ) {
-          void upsertMealPlanJson(supabase, authedUserId, mealPlan).then(({ error: jsonErr }) => {
-            if (jsonErr) {
-              const jsonMsg = jsonErr.message ?? "";
-              if (
-                looksLikeMissingTableError(jsonMsg) ||
-                jsonMsg.toLowerCase().includes("no meal_plans json table")
-              ) {
-                setDbMealPlanEnabled(false);
-                if (!dbMealPlanWarned) {
-                  setDbMealPlanWarned(true);
-                  toast.warning(syncDisabledBecauseSchemaMessage("Meal plan"));
-                }
-              }
-            }
-          });
+          setDbMealPlanEnabled(false);
+          if (!dbMealPlanWarned) {
+            setDbMealPlanWarned(true);
+            toast.warning(syncDisabledBecauseSchemaMessage("Meal plan"));
+          }
           return;
         }
         console.error("[mealPlan] save_meal_plan failed:", msg);

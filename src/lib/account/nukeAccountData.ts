@@ -5,7 +5,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { NUTRITION_DEFAULTS } from "../../constants/nutritionDefaults";
 import { upsertShoppingListJsonItems } from "../supabase/shoppingJsonFallback";
-import { upsertNutritionJournalByDay } from "../supabase/phase1LegacyJsonb";
 
 export type NukeResult = { ok: true } | { ok: false; message: string };
 
@@ -94,13 +93,10 @@ export async function nukeAllUserAppData(supabase: SupabaseClient, userId: strin
       if (!ignorable) return { ok: false, message: listErr.message };
     }
 
-    const { error: journalErr } = await upsertNutritionJournalByDay(supabase, userId, {});
-    if (journalErr) {
-      const msg = String(journalErr.message ?? "").toLowerCase();
-      const ignorable =
-        isIgnorableMissingTableError(journalErr) || msg.includes("no nutrition_journals json table");
-      if (!ignorable) return { ok: false, message: journalErr.message };
-    }
+    // Schema refactor Phase 3 (2026-05-11) — legacy `nutrition_journals`
+    // JSONB nuke removed (table dropped 2026-04-21). nutrition_entries
+    // is the source of truth for journal data; it gets cleared
+    // elsewhere in the nuke chain (see DELETE blocks above).
 
     const { error: profErr } = await supabase
       .from("profiles")

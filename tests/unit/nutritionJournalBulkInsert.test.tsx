@@ -86,10 +86,9 @@ vi.mock("sonner", () => ({
   },
 }));
 
-vi.mock("../../src/lib/supabase/phase1LegacyJsonb.ts", () => ({
-  fetchNutritionJournalByDay: vi.fn(() => Promise.resolve(null)),
-  probeAnyNutritionJournalJsonTable: vi.fn(() => Promise.resolve(false)),
-}));
+// Schema refactor Phase 3 (2026-05-11) — phase1LegacyJsonb shim
+// deleted; useNutritionJournalState no longer imports it, so no mock
+// is needed for the legacy fallback.
 
 vi.mock("../../src/context/appData/useRetryEnableDbTable.ts", () => ({
   useRetryEnableDbTable: () => {},
