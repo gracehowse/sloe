@@ -3,6 +3,7 @@ import { Icons } from "./ui/icons";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import type { LibraryEntryKind, RecipeCard, UserTier } from "../../types/recipe.ts";
 import { RecipeDetail } from "./RecipeDetail";
+import { RecipeHeroFallback } from "./suppr/RecipeHeroFallback";
 import { useRouter } from "next/navigation";
 import {
   LIBRARY_FILTER_PILLS,
@@ -351,13 +352,28 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                         API (Firefox today) ignore the property — no
                         regression. The matching name lives on the
                         detail hero (RecipeDetail.tsx). */}
-                    {/* eslint-disable-next-line @next/next/no-img-element -- viewTransitionName + arbitrary recipe image URLs */}
-                    <img
-                      src={recipe.image}
-                      alt=""
-                      className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
-                      style={{ viewTransitionName: `recipe-${recipe.id}-image` }}
-                    />
+                    {recipe.image ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- viewTransitionName + arbitrary recipe image URLs
+                      <img
+                        src={recipe.image}
+                        alt=""
+                        className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
+                        style={{ viewTransitionName: `recipe-${recipe.id}-image` }}
+                      />
+                    ) : (
+                      // Recipe-wave (2026-05-10) — Library cards used to
+                      // render a broken `<img>` (no `src`) when a recipe
+                      // had no `image`. Closes the "Library inconsistency:
+                      // some recipes have images, some don't" tester
+                      // report by showing the deterministic hero
+                      // fallback that Discover already uses.
+                      <div
+                        className="w-full h-full"
+                        style={{ viewTransitionName: `recipe-${recipe.id}-image` }}
+                      >
+                        <RecipeHeroFallback id={recipe.id} title={recipe.title} iconSize={32} />
+                      </div>
+                    )}
                     <div
                       className={`absolute top-3 left-3 px-2 py-0.5 rounded-md text-[11px] font-semibold shadow-sm ${kindBadgeClasses(kind)}`}
                     >
@@ -482,8 +498,17 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                 onClick={() => setSelectedRecipe(recipe)}
               >
                 <div className="relative overflow-hidden">
-                  {/* eslint-disable-next-line @next/next/no-img-element -- arbitrary recipe image URLs */}
-                  <img src={recipe.image} alt={recipe.title} className="w-full aspect-[4/3] object-cover group-hover:scale-110 transition-transform duration-500" />
+                  {recipe.image ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- arbitrary recipe image URLs
+                    <img src={recipe.image} alt={recipe.title} className="w-full aspect-[4/3] object-cover group-hover:scale-110 transition-transform duration-500" />
+                  ) : (
+                    // Recipe-wave (2026-05-10) — same fallback as the
+                    // desktop card path. Mobile-web cards historically
+                    // rendered a broken `<img>` when image was null.
+                    <div className="w-full aspect-[4/3]">
+                      <RecipeHeroFallback id={recipe.id} title={recipe.title} iconSize={36} />
+                    </div>
+                  )}
                   <div
                     className={`absolute top-3 left-3 px-2.5 py-1 rounded-lg text-xs font-semibold shadow-md border border-white/30 ${kindBadgeClasses(entryKindForRecipe(recipe, libraryEntryKindByRecipeId[recipe.id], uid))}`}
                   >
