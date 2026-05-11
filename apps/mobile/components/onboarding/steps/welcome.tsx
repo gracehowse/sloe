@@ -150,6 +150,15 @@ function FloatingPreview() {
   const colors = useThemeColors();
   return (
     <View style={{ height: 140, marginBottom: Spacing.xxl }}>
+      {/*
+        Decorative preview tiles. P1 (customer-lens 2026-05-11):
+        re-labelled so a first-time user doesn't read these as real
+        product state. The "Imported" past-tense + "Matched against
+        USDA" past-tense made it look as if Suppr had already done
+        something on their behalf. New copy is present-tense
+        aspirational + the wrapper is opacity-dimmed so it visibly
+        reads as an illustration.
+      */}
       <View
         style={{
           position: "absolute",
@@ -163,7 +172,10 @@ function FloatingPreview() {
           paddingHorizontal: 14,
           paddingVertical: 12,
           transform: [{ rotate: "-2.4deg" }],
+          opacity: 0.85,
         }}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
       >
         <View
           style={{
@@ -183,7 +195,7 @@ function FloatingPreview() {
               color: Accent.primaryLight,
             }}
           >
-            Imported
+            Example
           </Text>
         </View>
         <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }}>
@@ -209,13 +221,16 @@ function FloatingPreview() {
           alignItems: "center",
           gap: 6,
           transform: [{ rotate: "-1deg" }],
+          opacity: 0.85,
         }}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
       >
-        <Ionicons name="checkmark" size={12} color={Accent.successLight} />
+        <Ionicons name="nutrition-outline" size={12} color={Accent.successLight} />
         <Text
           style={{ fontSize: 11, fontWeight: "700", color: Accent.successLight }}
         >
-          Matched against USDA
+          USDA-backed nutrition
         </Text>
       </View>
     </View>

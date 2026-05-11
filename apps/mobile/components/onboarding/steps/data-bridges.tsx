@@ -60,9 +60,7 @@ import { MobileStepBody, MobileStepHeader, useStepOverline } from "../scaffold";
 import { MobileMfpCsvImportCard } from "../../imports/MfpCsvImportCard";
 
 export function MobileDataBridgesStep() {
-  const { state, set } = useOnboarding();
   const overline = useStepOverline();
-  const colors = useThemeColors();
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
 
@@ -80,24 +78,17 @@ export function MobileDataBridgesStep() {
       <RecipeUrlCard />
       <MobileMfpCsvImportCard surface="onboarding" />
 
-      <Pressable
-        onPress={() => {
-          set({ dataBridgeChosen: "skip" });
-          track(AnalyticsEvents.onboarding_data_bridge_skipped, { reason: "card_tap" });
-        }}
-        accessibilityRole="button"
-        accessibilityLabel="Maybe later"
-        style={({ pressed }) => ({
-          marginTop: Spacing.md,
-          paddingVertical: 12,
-          alignItems: "center",
-          opacity: pressed ? 0.7 : 1,
-        })}
-      >
-        <Text style={{ fontSize: 13, fontWeight: "600", color: colors.textSecondary }}>
-          Maybe later
-        </Text>
-      </Pressable>
+      {/*
+        P1 (customer-lens 2026-05-11): the in-body "Maybe later" link
+        was removed. It competed with the footer "Build my plan" CTA —
+        two terminal actions on the same screen confused testers
+        ("which one finishes setup?"). `canAdvance("data-bridges")`
+        always returns true (see `src/lib/onboarding/state.ts:408`),
+        so the footer "Build my plan" advances cleanly with zero cards
+        touched. `dataBridgeChosen` stays null when nothing's picked,
+        which the `onboarding_completed` event already reports as a
+        first-class "skip" via its `data_bridge_chosen: null` value.
+      */}
     </MobileStepBody>
   );
 }

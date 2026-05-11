@@ -32,7 +32,6 @@ import { AnalyticsEvents } from "@/lib/analytics/events";
 import { MfpCsvImportCard } from "@/app/components/imports/MfpCsvImportCard";
 
 export function DataBridgesStep() {
-  const { state, set } = useOnboarding();
   const overline = useStepOverline();
 
   return (
@@ -50,16 +49,17 @@ export function DataBridgesStep() {
         <MfpCsvImportCard surface="onboarding" />
       </div>
 
-      <button
-        type="button"
-        onClick={() => {
-          set({ dataBridgeChosen: "skip" });
-          track(AnalyticsEvents.onboarding_data_bridge_skipped, { reason: "card_tap" });
-        }}
-        className="mt-4 self-center text-[13px] font-semibold text-muted-foreground hover:text-foreground transition-pm"
-      >
-        {state.dataBridgeChosen === "skip" ? "Skipped" : "Maybe later"}
-      </button>
+      {/*
+        P1 (customer-lens 2026-05-11): the in-body "Maybe later" button
+        was removed. It competed with the footer "Build my plan" CTA —
+        two terminal actions on the same screen confused testers
+        ("which one finishes setup?"). `canAdvance("data-bridges")`
+        always returns true (see `src/lib/onboarding/state.ts`), so the
+        footer "Build my plan" advances cleanly with zero cards touched.
+        `dataBridgeChosen` stays null when nothing's picked, which the
+        `onboarding_completed` event already reports as a first-class
+        "skip" via its `data_bridge_chosen: null` value.
+      */}
     </StepBody>
   );
 }

@@ -130,7 +130,15 @@ function Checkline({ children }: { children: React.ReactNode }) {
 
 function WebWelcomeVisual() {
   return (
-    <div className="relative" style={{ width: 440, height: 520 }}>
+    <div
+      className="relative"
+      style={{ width: 440, height: 520 }}
+      // P1 (customer-lens 2026-05-11): the welcome visual is a marketing
+      // illustration, not real product state. Marked aria-hidden so
+      // screen-readers don't announce "Today / On track / Sheet-pan
+      // chicken / Importing" as if the user had data.
+      aria-hidden
+    >
       {/* Main "Today" card preview */}
       <div
         className="absolute right-0 top-10 w-[380px] rounded-[22px] border bg-card p-6 backdrop-blur-xl"
@@ -140,10 +148,15 @@ function WebWelcomeVisual() {
             "0 40px 80px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.04)",
         }}
       >
+        {/* P1 (2026-05-11): explicit "Example" badge so the card reads
+            as a marketing illustration rather than real state. */}
+        <div className="absolute right-4 top-4 rounded-full border border-border bg-input-background px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
+          Example
+        </div>
         <div className="mb-4 flex items-baseline justify-between">
           <div>
             <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-              Wed, 14 May
+              Your Today, soon
             </div>
             <div
               className="mt-0.5 text-[22px] font-bold text-foreground"
@@ -222,7 +235,7 @@ function WebWelcomeVisual() {
               Sheet-pan chicken bowl
             </div>
             <div className="mt-px text-[10px] text-muted-foreground">
-              imported from instagram.com
+              from instagram.com
             </div>
           </div>
           <div className="text-[13px] font-bold tabular-nums text-foreground">

@@ -135,9 +135,10 @@ describe("MobileDataBridgesStep — smoke render", () => {
     expect(getByText("Recipe import")).toBeTruthy();
   });
 
-  it("renders the 'Maybe later' opt-out", () => {
-    const { getByText } = withProvider(<MobileDataBridgesStep />);
-    expect(getByText("Maybe later")).toBeTruthy();
+  it("P1 (2026-05-11): no in-body 'Maybe later' link — footer 'Build my plan' is the single forward action", () => {
+    const { queryByText } = withProvider(<MobileDataBridgesStep />);
+    expect(queryByText("Maybe later")).toBeNull();
+    expect(queryByText("Skipped")).toBeNull();
   });
 });
 
@@ -187,17 +188,9 @@ describe("MobileDataBridgesStep — manual targets", () => {
   });
 });
 
-describe("MobileDataBridgesStep — Maybe later", () => {
-  it("tapping 'Maybe later' sets dataBridgeChosen='skip'", () => {
-    const { getByText, getByTestId } = withProvider(
-      <>
-        <MobileDataBridgesStep />
-        <StateProbe testID="probe" />
-      </>,
-    );
-    const skip = getByText("Maybe later");
-    fireEvent.press(skip);
-    const probe = JSON.parse(getByTestId("probe").props.children as string);
-    expect(probe.chosen).toBe("skip");
-  });
-});
+// P1 (customer-lens 2026-05-11): the in-body "Maybe later" link was
+// removed because it competed with the footer "Build my plan" CTA.
+// The `data-bridges` step now relies on the footer for forward motion.
+// `canAdvance("data-bridges")` returns true unconditionally so the
+// footer is always enabled. The "skip" path is reported via
+// `onboarding_completed.data_bridge_chosen: null` (see mobile-flow.tsx).

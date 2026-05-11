@@ -136,29 +136,17 @@ describe("DataBridgesStep — manual targets card", () => {
   });
 });
 
-describe("DataBridgesStep — Maybe later", () => {
-  it("tapping 'Maybe later' sets dataBridgeChosen='skip'", () => {
-    withProvider(
-      <>
-        <DataBridgesStep />
-        <StateProbe testId="probe" />
-      </>,
-    );
-    const skip = screen.getByText("Maybe later");
-    fireEvent.click(skip);
-    const probe = JSON.parse(screen.getByTestId("probe").textContent ?? "{}");
-    expect(probe.chosen).toBe("skip");
-  });
-
-  it("after skip, the button label flips to 'Skipped'", () => {
-    withProvider(
-      <>
-        <DataBridgesStep />
-        <StateProbe testId="probe" />
-      </>,
-    );
-    fireEvent.click(screen.getByText("Maybe later"));
-    expect(screen.getByText("Skipped")).toBeTruthy();
+describe("DataBridgesStep — no in-body skip CTA (footer is the single forward action)", () => {
+  // P1 (customer-lens 2026-05-11): the in-body "Maybe later" button
+  // was removed because it competed with the footer "Build my plan"
+  // CTA — two terminal actions on one screen confused testers.
+  // `canAdvance("data-bridges")` returns true unconditionally so the
+  // footer is always enabled. The "skip" path is reported via
+  // `onboarding_completed.data_bridge_chosen: null`.
+  it("does not render an in-body skip button", () => {
+    withProvider(<DataBridgesStep />);
+    expect(screen.queryByText("Maybe later")).toBeNull();
+    expect(screen.queryByText("Skipped")).toBeNull();
   });
 });
 
