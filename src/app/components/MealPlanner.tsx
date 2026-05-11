@@ -461,6 +461,27 @@ export const MealPlanner = memo(function MealPlanner({
     return fits.length > 0 ? fits : pool;
   }, [swapFor, discoverRecipes, savedRecipesForLibrary]);
 
+  /**
+   * Recipe-wave (2026-05-10): "Defaults to recipes that don't exist".
+   *
+   * `meal_plans.plan` is JSONB with no FK against `recipes.id`, so a
+   * `recipeId` baked into a plan row stays referenceable after the
+   * underlying recipe is deleted from the library. Pre-fix the card
+   * silently disabled the click handler (line ~970) but kept rendering
+   * the title — read as a half-broken card.
+   *
+   * This Set carries every recipe id known to the current session
+   * (Discover seed pack + the user's saved library). When a meal's
+   * `recipeId` isn't in the set, the card surfaces a "Recipe removed"
+   * badge so the user understands the state and can swap or delete it.
+   */
+  const knownRecipeIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const r of discoverRecipes) ids.add(r.id);
+    for (const r of savedRecipesForLibrary) ids.add(r.id);
+    return ids;
+  }, [discoverRecipes, savedRecipesForLibrary]);
+
   const plan = mealPlan ?? [];
   // F2-B (2026-04-28): the rendered grid follows the actual plan
   // length now that day-count is user-selectable (1 / 3 / 7). Pre-
@@ -936,6 +957,15 @@ export const MealPlanner = memo(function MealPlanner({
                 const kcal = Math.round(Math.max(0, Number(meal.calories) || 0));
                 const prot = Math.round(Math.max(0, Number(meal.protein) || 0));
                 const recipeId = (meal as { recipeId?: string }).recipeId;
+                // Recipe-wave (2026-05-10) — detect a stale recipeId
+                // (set on the plan row but no longer in the library /
+                // discover pool). Surfaced as a "Recipe removed"
+                // badge below so the card explains itself instead of
+                // half-rendering. Placeholder rows (`isPlaceholder`)
+                // intentionally have no recipeId; that case stays
+                // silent.
+                const recipeMissing =
+                  Boolean(recipeId) && !knownRecipeIds.has(recipeId as string);
                 // F2-E (2026-04-28): per-meal portion-multiplier
                 // badge. Hidden at 1× (the silent default) so cards
                 // stay clean when no portion adjustment was made.
@@ -967,9 +997,9 @@ export const MealPlanner = memo(function MealPlanner({
                   >
                     <button
                       type="button"
-                      disabled={isPlaceholder || !recipeId}
+                      disabled={isPlaceholder || !recipeId || recipeMissing}
                       onClick={() => {
-                        if (isPlaceholder || !recipeId) return;
+                        if (isPlaceholder || !recipeId || recipeMissing) return;
                         onOpenRecipe?.(recipeId);
                       }}
                       className="text-left w-full bg-transparent border-0 p-0 cursor-pointer disabled:cursor-default"
@@ -1015,6 +1045,27 @@ export const MealPlanner = memo(function MealPlanner({
                           </span>
                         ) : null}
                       </div>
+                      {/* Recipe-wave (2026-05-10) — "Recipe removed"
+                          badge for plan rows whose `recipeId` no
+                          longer resolves to a live recipe. Pre-fix
+                          the card silently disabled itself; now the
+                          state is explained so the user knows to
+                          swap or remove the slot. */}
+                      {recipeMissing && (
+                        <span
+                          data-testid="meal-planner-recipe-removed-badge"
+                          className="inline-flex items-center rounded-full bg-muted-foreground/15 text-muted-foreground"
+                          style={{
+                            fontSize: 9,
+                            fontWeight: 700,
+                            padding: "1px 6px",
+                            marginBottom: 4,
+                          }}
+                          aria-label="Recipe no longer in your library"
+                        >
+                          Recipe removed
+                        </span>
+                      )}
                       {isLeftover ? (
                         <span
                           className="inline-flex items-center rounded-full bg-success/15 text-success"

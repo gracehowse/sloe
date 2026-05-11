@@ -276,6 +276,25 @@ export default function PlannerScreen() {
     [savedRecipes, discoverRecipes],
   );
 
+  /**
+   * Recipe-wave (2026-05-10): "Defaults to recipes that don't exist".
+   *
+   * `meal_plans.plan` is JSONB with no FK against `recipes.id`, so a
+   * `recipeId` baked into a plan row stays referenceable after the
+   * underlying recipe is deleted from the library. Pre-fix the card
+   * half-rendered (no image, just the slot icon + title), which read
+   * as a broken default.
+   *
+   * `knownRecipeIds` mirrors the web Set in `MealPlanner.tsx` so each
+   * meal-row render can cheaply detect a stale `recipeId` and surface
+   * a "Recipe removed" badge instead of pretending the card is whole.
+   */
+  const knownRecipeIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const r of planRecipePool) ids.add(r.id);
+    return ids;
+  }, [planRecipePool]);
+
   // Named meal-plan slots — mobile parity for web's
   // `mealPlanSlots / activeMealPlanSlotId / switchMealPlanSlot`
   // (`src/context/AppDataContext.tsx`). The hook persists slot
@@ -2557,6 +2576,42 @@ export default function PlannerScreen() {
                         )
                       : "— kcal · P —g · C —g · F —g"}
                   </Text>
+                  {/* Recipe-wave (2026-05-10) — "Recipe removed" badge
+                      for plan rows whose `recipeId` is set but no
+                      longer resolves to any known recipe. Pre-fix the
+                      card silently dropped to a no-image fallback,
+                      reading as a broken default. Now the state is
+                      explained so the user can swap or remove the
+                      slot. Placeholder rows (no recipeId) intentionally
+                      stay silent. */}
+                  {planMealHasRecipe(meal) &&
+                  meal.recipeId &&
+                  !knownRecipeIds.has(meal.recipeId) ? (
+                    <View
+                      testID="planner-recipe-removed-badge"
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        alignSelf: "flex-start",
+                        marginTop: 4,
+                        paddingHorizontal: 8,
+                        paddingVertical: 2,
+                        borderRadius: 999,
+                        backgroundColor: colors.textTertiary + "1A",
+                      }}
+                      accessibilityLabel="Recipe no longer in your library"
+                    >
+                      <Text
+                        style={{
+                          fontSize: 10,
+                          fontWeight: "700",
+                          color: colors.textTertiary,
+                        }}
+                      >
+                        Recipe removed
+                      </Text>
+                    </View>
+                  ) : null}
                   {planMealHasRecipe(meal) &&
                   (meal as { macrosAreEstimated?: boolean }).macrosAreEstimated ? (
                     // P1-19 (2026-04-25): the recipe's calories don't agree
