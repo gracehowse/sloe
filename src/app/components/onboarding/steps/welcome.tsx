@@ -244,7 +244,16 @@ function WebWelcomeVisual() {
         </div>
       </div>
 
-      {/* Floating import card */}
+      {/*
+        Floating import card. P1 follow-up (2026-05-11 visual verify):
+        the spinner + "Importing / Korean beef bowl / 12 ingredients
+        matched" reads as a real import-in-progress to a first-time
+        user. Killed the spinner animation, dropped the "Importing"
+        past-tense progress label, and relabelled as "What we can
+        match" — present-tense capability illustration rather than
+        active state. Matches the "Example" treatment on the main
+        Today card.
+      */}
       <div
         className="absolute left-0 top-0 w-[240px] rounded-2xl border bg-card p-3.5 backdrop-blur-xl"
         style={{
@@ -256,14 +265,12 @@ function WebWelcomeVisual() {
         <div className="mb-2.5 flex items-center gap-2">
           <InstagramGlyph />
           <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
-            Importing
+            What we match
           </span>
           <div className="flex-1" />
-          <div
-            aria-hidden
-            className="size-3.5 rounded-full border-[2px] border-border border-t-primary"
-            style={{ animation: "spin 1s linear infinite" }}
-          />
+          <span className="rounded-full border border-border bg-input-background px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
+            Example
+          </span>
         </div>
         <div
           className="text-[13px] font-semibold text-foreground"
@@ -272,12 +279,17 @@ function WebWelcomeVisual() {
           Korean beef bowl
         </div>
         <div className="mt-0.5 text-[11px] text-muted-foreground">
-          12 ingredients matched
+          ingredients matched against USDA / OFF
         </div>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
 
-      {/* Floating weekly insight */}
+      {/*
+        Floating weekly insight. P1 follow-up (2026-05-11): "Protein
+        intake up 18%" with a 7-bar chart reads as the user's own
+        history. Relabelled to "Weekly insights — what you'll see" so
+        the present-tense "what you'll see" framing makes the card
+        clearly aspirational.
+      */}
       <div
         className="absolute bottom-10 left-5 w-[260px] rounded-2xl border p-4 backdrop-blur-xl"
         style={{
@@ -288,14 +300,17 @@ function WebWelcomeVisual() {
           transform: "rotate(3deg)",
         }}
       >
-        <div className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-primary">
-          Weekly insight
+        <div className="mb-1.5 flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.1em] text-primary">
+          <span>Weekly insights</span>
+          <span className="rounded-full border border-primary/40 bg-background/60 px-1.5 py-0.5 text-[8px] tracking-[0.1em] text-primary">
+            Example
+          </span>
         </div>
         <div
           className="mb-2 text-sm font-bold text-foreground"
           style={{ letterSpacing: "-0.01em" }}
         >
-          Protein intake up 18%
+          See how your week is trending
         </div>
         <div className="flex h-7 items-end gap-[3px]">
           {[30, 42, 38, 55, 62, 72, 80].map((h, i) => (
