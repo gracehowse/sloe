@@ -200,13 +200,44 @@ describe("BarcodeScannerModal — not-found photo fallback", () => {
       fireEvent.press(getByTestId("barcode-trigger"));
     });
     await waitFor(() => {
-      // F-136 (build-44 polish, 2026-05-08): the 3-CTA stack was demoted
-      // to 1 primary + 2 text links and the labels were tightened —
-      // "Enter manually instead" → "Enter manually", "Scan again" →
-      // "Scan a different barcode". The escape hatches still exist;
-      // their copy just changed.
-      expect(getByText("Enter manually")).toBeTruthy();
+      // P1 (customer-lens 2026-05-11): hierarchy reshuffle. The 3-CTA
+      // stack of near-synonyms ("Snap the label" / "Add as custom
+      // food" / "Enter manually") was confusing — primary CTA is now
+      // "Add this product" (saves to library), secondary is "Scan the
+      // label" (AI helper), tertiary is "Just log it once" (one-off
+      // log, doesn't save).
+      expect(getByText("Just log it once")).toBeTruthy();
       expect(getByText("Scan a different barcode")).toBeTruthy();
+    });
+  });
+
+  it("P1 (2026-05-11) — primary CTA is 'Add this product' when onAddAsCustomFood is wired", async () => {
+    lookupBarcode.mockResolvedValue(null);
+    const onAddAsCustomFood = vi.fn();
+    const { getByTestId, getByText } = render(
+      <BarcodeScannerModal
+        visible
+        onScan={() => {}}
+        onClose={() => {}}
+        onAddAsCustomFood={onAddAsCustomFood}
+      />,
+    );
+    await act(async () => {
+      fireEvent.press(getByTestId("barcode-trigger"));
+    });
+    await waitFor(() => {
+      // Primary CTA copy reflects the user's actual intent at this
+      // moment: save the product to library so future scans work.
+      expect(getByText("Add this product")).toBeTruthy();
+      // Helper subtitle explains the 'save' benefit so the hierarchy
+      // reads sensibly (primary > secondary > tertiary).
+      expect(
+        getByText("Add it to your library so the next scan recognises it."),
+      ).toBeTruthy();
+      // Secondary CTA copy was tightened from "Snap the label instead"
+      // (which read as primary) to "Scan the label" (which reads as
+      // an alternative).
+      expect(getByText("Scan the label")).toBeTruthy();
     });
   });
 });
