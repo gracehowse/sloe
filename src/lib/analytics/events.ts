@@ -257,6 +257,21 @@ export const AnalyticsEvents = {
    *  affordance gets used at all before investing in a richer share
    *  card / image / OG-link variant. */
   meal_share_invoked: "meal_share_invoked",
+  /**
+   * Analytics health sentinel (2026-05-11). Fires once per app boot
+   * (mobile) + once per session (web) so PostHog ingestion can be
+   * verified end-to-end after deploys. Payload:
+   *   { platform: "ios" | "android" | "web",
+   *     buildVersion?: string,
+   *     buildNumber?: string }
+   *
+   * Surfaced after PostHog reporting went dead 2026-04-21 → 2026-05-11
+   * because the mobile EXPO_PUBLIC_POSTHOG_KEY was empty + app.json
+   * `extra` had no `posthogKey`. With this event, the first TF build
+   * carrying the fix lights up an event in PostHog within seconds of
+   * app open — no need to wait for the user to log a meal.
+   */
+  posthog_health_check: "posthog_health_check",
   /** A freeze was consumed to protect the streak on a zero-meal day (Batch 4.11).
    * Payload: `{ dateKey, freezesRemaining }`. Fires once per freeze, not per
    * render of the protected streak. */
