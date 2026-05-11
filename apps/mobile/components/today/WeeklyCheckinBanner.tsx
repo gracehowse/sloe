@@ -75,7 +75,7 @@ export function WeeklyCheckinBanner({
             marginTop: 2,
           }}
         >
-          Your TDEE update is ready.
+          Your weekly check-in is ready.
         </Text>
         <Text
           style={{
