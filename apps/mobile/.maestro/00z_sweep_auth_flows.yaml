@@ -1,0 +1,78 @@
+appId: com.supprclub.supprapp
+name: "Sweep section 3 — Logged-out auth flows (one-off)"
+---
+# Sweep tooling #4 — captures the logged-out auth surfaces (login,
+# signup, password reset). Run this DELIBERATELY when you want to
+# refresh those captures — it signs out, captures, then signs back in
+# (your test E2E_EMAIL/PASSWORD from .env.local).
+#
+# Don't bundle into the normal sweep wrapper because:
+#   1. It modifies sim state (sign out → sign back in)
+#   2. The re-login adds ~10s to every other sweep run
+#   3. Auth surfaces don't change often
+#
+# Run with:
+#   maestro test apps/mobile/.maestro/00z_sweep_auth_flows.yaml \
+#     -e E2E_EMAIL="$E2E_EMAIL" -e E2E_PASSWORD="$E2E_PASSWORD"
+#
+# Output: docs/audits/visual-sweep-expanded/9X-auth-*.png
+
+- launchApp:
+    appId: com.supprclub.supprapp
+
+# Sign out via Settings.
+- openLink: suppr:///settings
+- extendedWaitUntil:
+    visible: { id: "settings-search-input" }
+    timeout: 15000
+- swipe: { direction: UP }
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      visible: { id: "settings-sign-out-row" }
+    commands:
+      - tapOn: { id: "settings-sign-out-row" }
+      - waitForAnimationToEnd
+      - runFlow:
+          when:
+            visible: ".*Sign out.*"
+          commands:
+            - tapOn: ".*Sign out.*"
+            - waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# Should now be on Login. Capture each state.
+- extendedWaitUntil:
+    visible: ".*Sign in|Welcome back|Continue with Apple.*"
+    timeout: 15000
+- takeScreenshot: ../../docs/audits/visual-sweep-expanded/90-login-default
+
+# Toggle to Signup (if there's a Sign up CTA).
+- runFlow:
+    when:
+      visible: ".*Sign up.*"
+    commands:
+      - tapOn: ".*Sign up.*"
+      - waitForAnimationToEnd
+      - takeScreenshot: ../../docs/audits/visual-sweep-expanded/91-signup-default
+
+# Back to Sign in for password-reset capture.
+- runFlow:
+    when:
+      visible: ".*Sign in.*"
+    commands:
+      - tapOn: ".*Sign in.*"
+      - waitForAnimationToEnd
+
+# Tap Forgot password if visible.
+- runFlow:
+    when:
+      visible: ".*Forgot password.*"
+    commands:
+      - tapOn: ".*Forgot password.*"
+      - waitForAnimationToEnd
+      - takeScreenshot: ../../docs/audits/visual-sweep-expanded/92-reset-password
+
+# Sign back in so subsequent runs work normally.
+# Conservative: rely on the shared/login.yaml flow.
+- runFlow: shared/login.yaml
