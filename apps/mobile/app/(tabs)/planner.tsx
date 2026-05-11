@@ -2709,7 +2709,12 @@ export default function PlannerScreen() {
                   }}
                   style={styles.mealLogBtn}
                 >
-                  <Text style={styles.mealLogBtnText}>Log today</Text>
+                  {/* V6 (2026-05-11 visual sweep) — "Log today" → "Log"
+                      so the meal title stops getting clipped to
+                      "Peanut Butter Prot..." on standard iPhone widths.
+                      "Today" is redundant context (the user is already
+                      viewing today's row in the planner). */}
+                  <Text style={styles.mealLogBtnText}>Log</Text>
                 </Pressable>
               </Pressable>
             );
