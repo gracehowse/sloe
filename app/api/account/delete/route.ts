@@ -115,6 +115,48 @@ export async function DELETE(req: Request) {
       if (error && !isIgnorable(error)) errors.push(`${table}: ${error.message}`);
     }
 
+    // 5b. Storage object cleanup — `food-evidence` bucket.
+    //
+    // P1 (security review 2026-05-11): F-138 Phase 3 introduced the
+    // `food-evidence` private bucket where users upload label photos to
+    // back their barcode corrections. Files live under `{userId}/...`
+    // per the bucket's RLS policy. Storage objects are NOT cascaded
+    // when `auth.users` rows are deleted — only DB FKs cascade. Without
+    // this step, a deleted user's evidence photos persist in the
+    // bucket forever (GDPR erasure regression).
+    //
+    // We list all objects under the user's prefix, then bulk-remove.
+    // Errors on missing-bucket / no-objects are non-fatal (treated as
+    // success). Other errors block the auth-user delete via the
+    // `errors` array — same gating as every other step.
+    try {
+      const { data: evidenceObjects, error: listErr } = await sb.storage
+        .from("food-evidence")
+        .list(userId, { limit: 1000 });
+      if (listErr && !isIgnorableStorageError(listErr)) {
+        errors.push(`food_evidence_list: ${listErr.message}`);
+      } else if (evidenceObjects && evidenceObjects.length > 0) {
+        const paths = evidenceObjects
+          .map((o) => `${userId}/${o.name}`)
+          .filter(Boolean);
+        if (paths.length > 0) {
+          const { error: removeErr } = await sb.storage
+            .from("food-evidence")
+            .remove(paths);
+          if (removeErr && !isIgnorableStorageError(removeErr)) {
+            errors.push(`food_evidence_remove: ${removeErr.message}`);
+          }
+        }
+      }
+    } catch (err) {
+      // Bucket may not exist in some environments (pre-F-138 migrations,
+      // local dev without storage seeded). Treat as no-op.
+      const msg = (err as Error)?.message ?? "";
+      if (!/bucket.*not.*found/i.test(msg)) {
+        errors.push(`food_evidence_threw: ${msg}`);
+      }
+    }
+
     // 6. Profile row.
     const { error: profileErr } = await sb.from("profiles").delete().eq("id", userId);
     if (profileErr) errors.push(`profiles: ${profileErr.message}`);
@@ -137,6 +179,31 @@ export async function DELETE(req: Request) {
     }
 
     // 8. Delete the auth user — last, and only if everything else succeeded.
+    //
+    // Cascade coverage (auto-handled by `auth.admin.deleteUser` via
+    // `on delete cascade` FKs to `auth.users(id)`; no explicit delete
+    // needed — verified 2026-05-11):
+    //   - `user_custom_foods.user_id`              → cascade delete
+    //   - `daily_targets.user_id`                  → cascade delete
+    //   - `goal_history.user_id`                   → cascade delete (F-149)
+    //   - `admin_users.user_id`                    → cascade delete
+    //   - `user_food_votes.voter_id`               → cascade delete
+    //   - `user_food_flags.flagger_id`             → cascade delete (F-138 P3)
+    //   - `households` member rows (household_members.user_id) → cascade
+    //
+    // Un-attributed via `on delete set null` (kept public, source-link
+    // dropped — same pattern as published recipes above):
+    //   - `user_foods.submitted_by`                → set null
+    //   - `verified_food_canonical.source_user_food_id` → set null
+    //     (via user_foods cascade → set null chain)
+    //
+    // Explicitly deleted above (no FK cascade or we want gating):
+    //   - meal_plan_meals, meal_plan_days, meal_plans, meal_plans_legacy
+    //   - shopping_items, shopping_lists, nutrition_entries, saves
+    //   - app_notifications, creator_publish_notifications
+    //   - recipe_plan_add_events, food_reports, author_follows
+    //   - nutrition_journals, profiles, private recipes + ingredients
+    //   - food-evidence storage objects (step 5b)
     const { error: authErr } = await sb.auth.admin.deleteUser(userId);
     if (authErr) {
       console.error("[account/delete] auth.admin.deleteUser failed:", authErr.message);
@@ -173,4 +240,16 @@ function isIgnorable(err: { message: string; code?: string } | null): boolean {
   const code = String(err.code ?? "");
   if (code === "PGRST205" || code === "42P01") return true;
   return m.includes("could not find the table") || m.includes("does not exist") || m.includes("permission");
+}
+
+function isIgnorableStorageError(err: { message: string } | null): boolean {
+  if (!err) return true;
+  const m = String(err.message).toLowerCase();
+  // Bucket not seeded in this environment, or listing returned nothing
+  // because the user uploaded no evidence photos. Either is fine.
+  return (
+    m.includes("bucket not found") ||
+    m.includes("not found") ||
+    m.includes("the resource was not found")
+  );
 }
