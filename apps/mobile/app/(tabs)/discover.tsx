@@ -23,7 +23,7 @@ import { searchEdamam, type EdamamSearchResult } from "@/lib/verifyRecipe";
 import { Search, Utensils, Flame, Beef, Wheat, Droplets, Leaf, Clock, Bookmark, Link as LinkIcon, ChevronRight, ChefHat } from "lucide-react-native";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { decodeEntities } from "@/lib/decodeEntities";
-import { Accent, MacroColors, Radius } from "@/constants/theme";
+import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
 import type { RecipeCard } from "@/lib/types";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
@@ -136,6 +136,21 @@ export default function DiscoverScreen() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("For You");
   const searchInputRef = useRef<TextInput>(null);
+
+  // V10 (2026-05-11 visual sweep): the cold-load spinner could spin
+  // for up to 35s (the hook's `DISCOVER_QUERY_TIMEOUT_MS`) before the
+  // user saw any feedback. Show a "Taking longer than expected" hint
+  // after 5s so the user knows something's actually happening and has
+  // a tap-to-retry escape. Mirrors the F-114 stuck-spinner pattern.
+  const [slowLoad, setSlowLoad] = useState(false);
+  useEffect(() => {
+    if (!loading) {
+      setSlowLoad(false);
+      return;
+    }
+    const t = setTimeout(() => setSlowLoad(true), 5000);
+    return () => clearTimeout(t);
+  }, [loading]);
 
   // B5 Phase 2c (2026-04-27) — set of creator_ids the current user
   // follows. Used by the "Following" filter pill to hide recipes that
@@ -764,9 +779,44 @@ export default function DiscoverScreen() {
             `src/app/components/DiscoverFeed.tsx`. */}
 
         {loading && filtered.length === 0 ? (
-          <View style={{ paddingTop: 60, alignItems: "center", gap: 8 }}>
+          <View style={{ paddingTop: 60, alignItems: "center", gap: 8, paddingHorizontal: Spacing.lg }}>
             <ActivityIndicator size="large" color={Accent.primary} />
             <Text style={{ fontSize: 14, color: colors.textSecondary }}>Loading recipes...</Text>
+            {slowLoad ? (
+              <>
+                <Text
+                  style={{
+                    fontSize: 12,
+                    color: colors.textTertiary,
+                    textAlign: "center",
+                    marginTop: 4,
+                    maxWidth: 280,
+                    lineHeight: 17,
+                  }}
+                >
+                  Taking longer than usual. Check your connection if this hangs.
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Retry loading recipes"
+                  onPress={() => void refresh()}
+                  style={({ pressed }) => ({
+                    marginTop: Spacing.sm,
+                    paddingHorizontal: 14,
+                    paddingVertical: 8,
+                    borderRadius: 8,
+                    borderWidth: 1,
+                    borderColor: Accent.primary,
+                    backgroundColor: Accent.primary + "10",
+                    opacity: pressed ? 0.7 : 1,
+                  })}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: "600", color: Accent.primary }}>
+                    Retry
+                  </Text>
+                </Pressable>
+              </>
+            ) : null}
           </View>
         ) : filtered.length === 0 ? (
           <View style={{ paddingTop: 60, paddingBottom: 20, alignItems: "center", gap: 8 }}>
