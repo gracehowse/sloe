@@ -129,7 +129,10 @@ describe("MobileDataBridgesStep — smoke render", () => {
     expect(getByText("I already know my targets")).toBeTruthy();
     expect(getByText("Connect Apple Health")).toBeTruthy();
     expect(getByText("Gentle reminders")).toBeTruthy();
-    expect(getByText("Try a recipe import")).toBeTruthy();
+    // Pre-launch P0 (2026-05-11): the recipe card no longer simulates an
+    // import on tap. Title changed from "Try a recipe import" to
+    // "Recipe import" — honest preview, no input field, no fake success.
+    expect(getByText("Recipe import")).toBeTruthy();
   });
 
   it("renders the 'Maybe later' opt-out", () => {
