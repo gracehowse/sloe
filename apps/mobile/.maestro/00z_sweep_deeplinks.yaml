@@ -1,0 +1,71 @@
+appId: com.supprclub.supprapp
+name: "Sweep section 2 — Hidden / deep routes"
+---
+- launchApp:
+    appId: com.supprclub.supprapp
+
+- openLink: suppr:///profile
+- extendedWaitUntil:
+    visible: { id: "screen-profile" }
+    timeout: 15000
+- takeScreenshot: ../../docs/audits/visual-sweep-expanded/40-profile
+
+- openLink: suppr:///fasting
+- extendedWaitUntil:
+    visible: { id: "screen-fasting" }
+    timeout: 15000
+- takeScreenshot: ../../docs/audits/visual-sweep-expanded/41-fasting
+
+- openLink: suppr:///barcode
+- extendedWaitUntil:
+    visible: { id: "screen-barcode" }
+    timeout: 15000
+- takeScreenshot: ../../docs/audits/visual-sweep-expanded/42-barcode
+
+- openLink: suppr:///create-recipe
+- extendedWaitUntil:
+    visible: { id: "screen-create-recipe" }
+    timeout: 15000
+- takeScreenshot: ../../docs/audits/visual-sweep-expanded/43-create-recipe
+
+- openLink: suppr:///burn-detail
+- extendedWaitUntil:
+    visible: { id: "screen-burn-detail" }
+    timeout: 15000
+- takeScreenshot: ../../docs/audits/visual-sweep-expanded/44-burn-detail
+
+- openLink: suppr:///macro-detail?macro=protein
+- extendedWaitUntil:
+    visible: { id: "screen-macro-detail" }
+    timeout: 15000
+- takeScreenshot: ../../docs/audits/visual-sweep-expanded/45-macro-detail
+
+- openLink: suppr:///meal-nutrition
+- extendedWaitUntil:
+    visible: { id: "screen-meal-nutrition" }
+    timeout: 15000
+- takeScreenshot: ../../docs/audits/visual-sweep-expanded/46-meal-nutrition
+
+- openLink: suppr:///health-sync
+- extendedWaitUntil:
+    visible: { id: "screen-health-sync" }
+    timeout: 15000
+- takeScreenshot: ../../docs/audits/visual-sweep-expanded/47-health-sync
+
+- openLink: suppr:///household-settings
+- extendedWaitUntil:
+    visible: { id: "screen-household-settings" }
+    timeout: 15000
+- takeScreenshot: ../../docs/audits/visual-sweep-expanded/48-household-settings
+
+- openLink: suppr:///nutrition-sources
+- extendedWaitUntil:
+    visible: { id: "screen-nutrition-sources" }
+    timeout: 15000
+- takeScreenshot: ../../docs/audits/visual-sweep-expanded/49-nutrition-sources
+
+- openLink: suppr:///paywall
+- extendedWaitUntil:
+    visible: { id: "screen-paywall" }
+    timeout: 15000
+- takeScreenshot: ../../docs/audits/visual-sweep-expanded/50-paywall
