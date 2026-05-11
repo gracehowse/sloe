@@ -62,12 +62,7 @@ import {
 } from "../../../../src/lib/nutrition/weekSummaryWindow";
 import { track, isFeatureEnabled } from "@/lib/analytics";
 import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
-import { looksLikeMissingTableError } from "@/lib/supabaseErrors";
-import { fetchMealPlanJson, fetchNutritionJournalByDay } from "../../../../src/lib/supabase/phase1LegacyJsonb";
-import {
-  findLegacyPlanDayForCalendarDate,
-  findPlanDayIdForCalendarDate,
-} from "../../../../src/lib/mealPlan/planCalendarAnchor";
+import { findPlanDayIdForCalendarDate } from "../../../../src/lib/mealPlan/planCalendarAnchor";
 import { coerceMacrosWhenCaloriesButNoGrams } from "../../../../src/lib/nutrition/coerceRecipeMacrosForPlanning";
 import { fetchPlannedMealMicros, type SupabaseLike } from "../../../../src/lib/planning/plannedMealMicros";
 import { refreshAdaptiveTdeeForUser } from "@/lib/refreshAdaptiveTdee";
@@ -3470,36 +3465,6 @@ export default function TrackerScreen() {
     // "skeleton forever" rather than "Couldn't load + retry".
     try {
 
-    const loadLegacyByDay = async (): Promise<ByDay | null> => {
-      const raw = await fetchNutritionJournalByDay(supabase, userId);
-      if (!raw) return null;
-      const out: ByDay = {};
-      for (const [dayKey, meals] of Object.entries(raw)) {
-        if (!Array.isArray(meals)) continue;
-        out[dayKey] = meals.map((m: Record<string, unknown>) => ({
-          id: typeof m.id === "string" ? m.id : newMealId(),
-          name: normalizeJournalSlotName(String(m.name ?? "")),
-          recipeTitle: String(m.recipeTitle ?? m.recipe_title ?? ""),
-          time: String(m.time ?? m.time_label ?? ""),
-          calories: Number(m.calories) || 0,
-          protein: Number(m.protein) || 0,
-          carbs: Number(m.carbs) || 0,
-          fat: Number(m.fat) || 0,
-          fiberG: m.fiberG != null ? Number(m.fiberG) : m.fiber_g != null ? Number(m.fiber_g) : undefined,
-          waterMl: m.waterMl != null ? Number(m.waterMl) : m.water_ml != null ? Number(m.water_ml) : undefined,
-          portionMultiplier:
-            m.portionMultiplier != null
-              ? Number(m.portionMultiplier)
-              : m.portion_multiplier != null
-                ? Number(m.portion_multiplier)
-                : undefined,
-          source: m.source != null && String(m.source).trim() !== "" ? String(m.source) : undefined,
-        }));
-      }
-      return out;
-    };
-
-    const LEGACY_JOURNAL_TIMEOUT_MS = 18_000;
     const PLANNED_MEALS_TIMEOUT_MS = 18_000;
     const journalRaceTimeout = Symbol("journal_race_timeout");
     async function raceJournal<T>(
@@ -3587,15 +3552,16 @@ export default function TrackerScreen() {
     let loaded: ByDay = {};
 
     if (error) {
-      const msg = error.message ?? "";
-      if (looksLikeMissingTableError(msg)) {
-        const legacyResult = await raceJournal("legacy journal by_day", LEGACY_JOURNAL_TIMEOUT_MS, loadLegacyByDay());
-        setByDay(legacyResult === journalRaceTimeout ? {} : (legacyResult ?? {}));
-      } else {
-        console.error("[tracker] load failed:", msg);
-        setLoadError("Could not load your journal.");
-        setByDay({});
-      }
+      // Schema refactor Phase 3 (2026-05-11) — the legacy
+      // `nutrition_journals` JSONB fallback was deleted along with
+      // its shim. The table was dropped 2026-04-21 so the fallback
+      // always returned null in production anyway. `looksLikeMissingTableError`
+      // can no longer fire (nutrition_entries is the only path), so
+      // any error here is a real load failure that should surface to
+      // the user.
+      console.error("[tracker] load failed:", error.message ?? "");
+      setLoadError("Could not load your journal.");
+      setByDay({});
     } else {
       if (!entriesTimedOut) {
         setLoadError(null);
@@ -3624,12 +3590,9 @@ export default function TrackerScreen() {
           recipeId: (r as { recipe_id?: string | null }).recipe_id ?? undefined,
         });
       }
-      if (Object.keys(loaded).length === 0 && !entriesTimedOut) {
-        const legacyResult = await raceJournal("legacy journal by_day (empty nutrition_entries)", LEGACY_JOURNAL_TIMEOUT_MS, loadLegacyByDay());
-        if (legacyResult !== journalRaceTimeout && legacyResult && Object.keys(legacyResult).length > 0) {
-          loaded = legacyResult;
-        }
-      }
+      // Schema refactor Phase 3 (2026-05-11) — legacy by_day JSONB
+      // fallback removed. An empty `nutrition_entries` just means an
+      // empty journal; we no longer try the deleted legacy table.
       setByDay(loaded);
       // Audit/2026-04-30 — pre-populate the HealthKit-meal-write dedupe
       // set with every meal that already exists in the journal at load
@@ -3699,47 +3662,11 @@ export default function TrackerScreen() {
         }
       }
     } else {
-      const jsonRes = await racePlannedMeals(fetchMealPlanJson(supabase, userId));
-      type LegacyMeal = {
-        name?: string;
-        recipeTitle?: string;
-        recipe_title?: string;
-        calories?: number;
-        protein?: number;
-        carbs?: number;
-        fat?: number;
-      };
-      type LegacyDay = { day: number; meals?: LegacyMeal[] };
-      if (jsonRes === plannedMealsRaceTimeout) {
-        console.warn(`[tracker] fetchMealPlanJson timed out (${PLANNED_MEALS_TIMEOUT_MS}ms)`);
-        setPlannedMeals([]);
-      } else {
-        const planJson = jsonRes;
-        if (planJson != null && Array.isArray(planJson)) {
-          const dayPlan = findLegacyPlanDayForCalendarDate(planJson as LegacyDay[], selectedDate);
-          const meals = dayPlan?.meals ?? [];
-          setPlannedMeals(
-            meals.map((m) => {
-              const coerced = coerceMacrosWhenCaloriesButNoGrams({
-                calories: Number(m.calories) || 0,
-                protein: Number(m.protein) || 0,
-                carbs: Number(m.carbs) || 0,
-                fat: Number(m.fat) || 0,
-              });
-              return {
-                name: m.name,
-                recipe_title: m.recipeTitle ?? m.recipe_title,
-                calories: coerced.calories,
-                protein: coerced.protein,
-                carbs: coerced.carbs,
-                fat: coerced.fat,
-              };
-            }),
-          );
-        } else {
-          setPlannedMeals([]);
-        }
-      }
+      // Schema refactor Phase 3 (2026-05-11) — legacy `meal_plans`
+      // JSONB fallback removed (table was dropped 2026-04-21).
+      // No plan_day_id resolves to no planned meals; the relational
+      // path is the only one we trust now.
+      setPlannedMeals([]);
     }
 
     } catch (err) {

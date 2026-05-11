@@ -27,7 +27,6 @@ import {
   shoppingScopeClearFilters,
   type ShoppingScope,
 } from "../../../../src/lib/household/shoppingScope";
-import { fetchMealPlanJson, upsertMealPlanJson } from "../../../../src/lib/supabase/phase1LegacyJsonb";
 import { dateKeyFromDate, newMealId } from "@/lib/nutritionJournal";
 import { snapshotDailyTargetIfMissing } from "../../../../src/lib/nutrition/dailyTargetSnapshot";
 import { fetchPlannedMealMicros } from "../../../../src/lib/planning/plannedMealMicros";
@@ -593,12 +592,11 @@ export default function PlannerScreen() {
         p_plan: planPayload,
       } as never);
       if (error) {
-        // Legacy fallback for environments missing the migration
-        // (function-not-found 42883). After the rollout window this
-        // branch can be removed.
-        if ((error as { code?: string }).code === "42883") {
-          void upsertMealPlanJson(supabase, userId, nextPlan);
-        } else if (__DEV__) {
+        // Schema refactor Phase 3 (2026-05-11) — legacy JSONB upsert
+        // fallback removed (table dropped 2026-04-21; RPC has been in
+        // production since 2026-04-24). 42883 / missing-table now
+        // surface as a real save failure that we log.
+        if (__DEV__) {
           console.warn("[persistPlan] save_meal_plan failed:", error.message);
         }
       }
@@ -1175,25 +1173,9 @@ export default function PlannerScreen() {
         }
       }
 
-      if (!cancelled) {
-        const planJson = await fetchMealPlanJson(supabase, userId);
-        if (!cancelled && planJson != null && Array.isArray(planJson)) {
-          const cleaned = (planJson as DayPlan[]).map((dp) => {
-            const meals = stripPlanPlaceholders(dp.meals);
-            const totals = meals.reduce(
-              (acc, ml) => ({
-                calories: acc.calories + ml.calories,
-                protein: acc.protein + ml.protein,
-                carbs: acc.carbs + ml.carbs,
-                fat: acc.fat + ml.fat,
-              }),
-              { calories: 0, protein: 0, carbs: 0, fat: 0 },
-            );
-            return { ...dp, meals, totals };
-          });
-          setPlan(cleaned);
-        }
-      }
+      // Schema refactor Phase 3 (2026-05-11) — legacy `meal_plans`
+      // JSONB fallback removed (table dropped 2026-04-21). Plans come
+      // exclusively from `meal_plan_days` + `meal_plan_meals` above.
     })();
     return () => { cancelled = true; };
   }, [userId]);
@@ -1573,9 +1555,9 @@ export default function PlannerScreen() {
             p_plan: planPayload,
           } as never);
           if (error) {
-            if ((error as { code?: string }).code === "42883") {
-              void upsertMealPlanJson(supabase, userId, newPlan);
-            } else if (__DEV__) {
+            // Schema refactor Phase 3 (2026-05-11) — legacy JSONB
+            // upsert fallback removed.
+            if (__DEV__) {
               console.warn("[persistPlan/regenerate] save_meal_plan failed:", error.message);
             }
           }

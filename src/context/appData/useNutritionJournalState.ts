@@ -5,10 +5,6 @@ import type { LoggedMeal } from "../../types/recipe.ts";
 import { AnalyticsEvents, type FoodLoggedSource } from "../../lib/analytics/events.ts";
 import { track } from "../../lib/analytics/track.ts";
 import { looksLikeMissingTableError, syncDisabledBecauseSchemaMessage, syncFailedRetryMessage } from "./supabaseErrors.ts";
-import {
-  fetchNutritionJournalByDay,
-  probeAnyNutritionJournalJsonTable,
-} from "../../lib/supabase/phase1LegacyJsonb.ts";
 import { newId } from "./persistence.ts";
 import { useRetryEnableDbTable } from "./useRetryEnableDbTable.ts";
 import { refreshAdaptiveTdeeForUser } from "../../lib/nutrition/refreshAdaptiveTdee.ts";
@@ -83,13 +79,9 @@ export function useNutritionJournalState(opts: {
     if (!authedUserId) return false;
     const { error } = await supabase.from("nutrition_entries").select("id").limit(1);
     if (error) {
-      if (looksLikeMissingTableError(error.message ?? "")) {
-        const legacyOk = await probeAnyNutritionJournalJsonTable(supabase);
-        if (legacyOk) {
-          setDbNutritionEnabled(true);
-          return true;
-        }
-      }
+      // Schema refactor Phase 3 (2026-05-11) — legacy
+      // `nutrition_journals` JSONB probe removed (table dropped
+      // 2026-04-21). nutrition_entries is the only path now.
       return false;
     }
     setDbNutritionEnabled(true);
@@ -119,13 +111,10 @@ export function useNutritionJournalState(opts: {
       if (cancelled) return;
 
       if (error) {
-        if (looksLikeMissingTableError(error.message ?? "")) {
-          const byDay = await fetchNutritionJournalByDay(supabase, authedUserId);
-          if (!cancelled && byDay) {
-            setNutritionByDay(byDay as Record<string, LoggedMeal[]>);
-          }
-          return;
-        }
+        // Schema refactor Phase 3 (2026-05-11) — legacy by_day JSONB
+        // fallback removed. A missing-table error here is now a real
+        // schema problem the user needs to see (not silently routed
+        // to the dropped legacy table).
         if (!dbNutritionWarned) {
           setDbNutritionWarned(true);
           toast.warning(syncDisabledBecauseSchemaMessage("Nutrition log"));
