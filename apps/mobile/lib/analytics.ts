@@ -25,7 +25,36 @@ export function getPostHogClient(): PostHog | null {
 
   client = new PostHog(POSTHOG_KEY, {
     host: POSTHOG_HOST,
-    enableSessionReplay: false,
+    // Phase A (2026-05-11) — flip mobile session replay ON. Pre-launch
+    // we have one tester (Grace), so capturing every session is both
+    // affordable and the highest-leverage analytics change we can
+    // make: every TF bug report becomes a replayable video instead
+    // of a screenshot + memory of "what was the previous screen".
+    //
+    // Privacy posture (defaults from posthog-react-native types):
+    //   - maskAllTextInputs:    true (text inputs masked at capture)
+    //   - maskAllImages:        true (user images / hero images masked)
+    //   - maskAllSandboxedViews:true (iOS UIImagePickerController etc.)
+    //   - captureLog:           true (console.log shipped with replay)
+    //   - captureNetworkTelemetry: true (iOS only — request timings)
+    //   - throttleDelayMs:      1000 (one screenshot per second of activity)
+    //
+    // Anything sensitive (journal text, recipe titles, weight numbers)
+    // is masked at the SDK layer before it leaves the device. The
+    // replay dashboard sees grey blocks for those regions, not the
+    // original text. Use `<PostHogMaskView>` from posthog-react-native
+    // to opt MORE elements into masking if needed.
+    //
+    // sampleRate 1.0 = capture every session. Drop to 0.1 (10%) post-
+    // launch when traffic grows; keep at 1.0 while N=1 because partial
+    // sampling on one tester is noise.
+    enableSessionReplay: true,
+    sessionReplayConfig: {
+      sampleRate: 1.0,
+      // Defaults are already privacy-conservative; we leave them
+      // in place rather than overriding so future SDK upgrades
+      // automatically pick up tighter defaults.
+    },
   });
 
   return client;
