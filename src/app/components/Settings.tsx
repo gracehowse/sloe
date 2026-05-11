@@ -47,6 +47,7 @@ import {
 } from "../../lib/nutrition/tdee.ts";
 import { recomputeTargetsForActivity } from "../../lib/nutrition/recomputeTargetsForActivity.ts";
 import { backfillDailyTargetsFromProfile } from "../../lib/nutrition/dailyTargetSnapshot.ts";
+import { recordGoalHistory } from "../../lib/nutrition/goalHistory.ts";
 import { nukeAllUserAppData } from "../../lib/account/nukeAccountData.ts";
 import { NUTRITION_DEFAULTS } from "../../constants/nutritionDefaults.ts";
 import {
@@ -362,6 +363,29 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       }
 
       setActivityLevel(nextLevel);
+
+      // F-149 (2026-05-11): record the new goal-shape into goal_history
+      // so future past-day reads can find the values that were live AS
+      // OF today onwards. The `backfillDailyTargetsFromProfile` call
+      // above protects PAST days (with the old values); this call seals
+      // TODAY-and-forward (with the new values). Fire-and-forget.
+      void recordGoalHistory(
+        supabase as any,
+        uid,
+        {
+          activity_level: nextLevel,
+          goal: profileGoal ?? null,
+          plan_pace: profilePlanPace ?? null,
+          target_calories: recomputed?.target_calories ?? null,
+          target_protein_g: recomputed?.target_protein ?? null,
+          target_carbs_g: recomputed?.target_carbs ?? null,
+          target_fat_g: recomputed?.target_fat ?? null,
+          target_fiber_g: recomputed?.target_fiber_g ?? null,
+          maintenance_tdee: recomputed?.maintenanceTdee ?? null,
+        },
+        "settings_save",
+      );
+
       track(AnalyticsEvents.profile_targets_saved, {
         activityAdjusted: preferActivityAdjustedCalories,
         from: "settings_activity_level_picker",

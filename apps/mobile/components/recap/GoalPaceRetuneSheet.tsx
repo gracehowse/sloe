@@ -51,6 +51,7 @@ import {
 } from "../../../../src/lib/nutrition/goalPaceRetune";
 import { formatKcal } from "@/lib/weeklyCheckin";
 import { backfillDailyTargetsFromProfile } from "../../../../src/lib/nutrition/dailyTargetSnapshot";
+import { recordGoalHistory } from "../../../../src/lib/nutrition/goalHistory";
 import type { Goal } from "../../../../src/lib/onboarding/state";
 import type { NutritionStrategy, Sex } from "../../../../src/lib/nutrition/tdee";
 
@@ -223,6 +224,27 @@ export function GoalPaceRetuneSheet(props: GoalPaceRetuneSheetProps) {
         setSaving(false);
         return;
       }
+
+      // F-149 (2026-05-11): seal today-and-forward by recording the new
+      // goal-shape into goal_history. The backfill above protects past
+      // days; this call ensures the next time a past-day read needs to
+      // resolve "what was the goal on date >= today?", goal_history
+      // returns the values we just wrote. Fire-and-forget.
+      void recordGoalHistory(
+        supabase as any,
+        userId,
+        {
+          activity_level: typeof updates.activity_level === "string" ? updates.activity_level : null,
+          goal: typeof updates.goal === "string" ? updates.goal : null,
+          plan_pace: typeof updates.plan_pace === "string" ? updates.plan_pace : null,
+          target_calories: preview.targetCalories,
+          target_protein_g: preview.proteinG,
+          target_carbs_g: preview.carbsG,
+          target_fat_g: preview.fatG,
+          target_fiber_g: preview.fiberG,
+        },
+        "goal_retune",
+      );
 
       try {
         track(AnalyticsEvents.goal_pace_adjusted, {
