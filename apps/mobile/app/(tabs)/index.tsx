@@ -3532,7 +3532,11 @@ export default function TrackerScreen() {
     const entriesPromise = (async () =>
       await supabase
         .from("nutrition_entries")
-        .select("id, date_key, name, recipe_title, time_label, calories, protein, carbs, fat, fiber_g, water_ml, portion_multiplier, source, created_at, nutrition_micros")
+        // Schema refactor Phase 2 (2026-05-11) — select recipe_id so
+        // the loaded JournalMeal can carry the typed FK link. The
+        // copy/duplicate path uses it to clone; future surfaces (e.g.
+        // "open the recipe behind this log") rely on it being present.
+        .select("id, date_key, name, recipe_title, time_label, calories, protein, carbs, fat, fiber_g, water_ml, portion_multiplier, source, created_at, nutrition_micros, recipe_id")
         .eq("user_id", userId)
         .order("date_key", { ascending: true })
         .order("created_at", { ascending: true })
@@ -3614,6 +3618,10 @@ export default function TrackerScreen() {
           micros: parseNutritionMicrosJson((r as { nutrition_micros?: unknown }).nutrition_micros),
           source: (r.source as string) ?? undefined,
           createdAt: (r as { created_at?: string }).created_at ?? undefined,
+          // Schema refactor Phase 2 (2026-05-11) — carry the typed FK
+          // through into the in-memory JournalMeal so the copy /
+          // duplicate path can clone with recipe_id intact.
+          recipeId: (r as { recipe_id?: string | null }).recipe_id ?? undefined,
         });
       }
       if (Object.keys(loaded).length === 0 && !entriesTimedOut) {
@@ -3985,6 +3993,10 @@ export default function TrackerScreen() {
         portion_multiplier: m.portionMultiplier ?? 1,
         nutrition_micros: m.micros && Object.keys(m.micros).length > 0 ? m.micros : {},
         source: m.source ?? null,
+        // Schema refactor Phase 2 (2026-05-11) — propagate the recipe
+        // id through copy / duplicate so the cloned journal row keeps
+        // the typed FK link to recipes.id.
+        recipe_id: m.recipeId ?? null,
       }));
       const { error } = await supabase.from("nutrition_entries").insert(dbRows);
       if (error) {
@@ -4283,6 +4295,10 @@ export default function TrackerScreen() {
         nutrition_micros: Object.keys(microsRes.micros).length > 0 ? microsRes.micros : {},
         portion_multiplier: mult,
         source: "Meal plan",
+        // Schema refactor Phase 2 (2026-05-11) — typed FK to recipes.id.
+        // Planner-log path has the recipe id in scope on `pm`. Auto-
+        // NULLed by Phase 1's FK if the recipe is later deleted.
+        recipe_id: pm.recipe_id ?? null,
       });
       if (error) {
         // Roll back the optimistic add and tell the user.

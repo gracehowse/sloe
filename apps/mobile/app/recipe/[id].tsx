@@ -1243,6 +1243,11 @@ export default function RecipeDetailScreen() {
         nutrition_micros: Object.keys(micros).length > 0 ? micros : {},
         portion_multiplier: mult,
         source: "Recipe",
+        // Schema refactor Phase 2 (2026-05-11) — typed FK to recipes.id.
+        // Recipe-detail log is the canonical case where the recipe id
+        // is in scope. Auto-NULLed by Phase 1's FK if the recipe is
+        // later deleted.
+        recipe_id: recipe.id,
       });
       if (error) {
         Alert.alert("Could not log", error.message);
