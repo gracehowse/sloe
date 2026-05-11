@@ -20,7 +20,12 @@ import { Sparkles } from "lucide-react";
 export function PricingHero() {
   return (
     <div
-      className="relative rounded-3xl px-8 py-14 mb-12 text-white overflow-hidden"
+      // V15 (2026-05-11 visual sweep): mobile hero took ~50% of the
+      // viewport before any pricing was visible. Reduced vertical
+      // padding on small screens (py-8 → py-14 desktop) so the
+      // billing toggle is reachable in one viewport-height on a
+      // standard iPhone.
+      className="relative rounded-3xl px-8 py-8 sm:py-14 mb-12 text-white overflow-hidden"
       style={{
         backgroundImage:
           "linear-gradient(135deg, #4c6ce0 0%, #e04888 100%)",
@@ -38,15 +43,15 @@ export function PricingHero() {
           Plans that hit your macros, one-tap shopping lists, cook mode
           with timers. Pick the plan that fits your goals.
         </p>
-        {/* Debug audit 2026-05-04 (customer-lens P1 #30): pricing
-            referenced "Apple Health sync (iOS)" without disambiguating
-            for visitors on Android. Per project memory
-            (project_ios_only_no_android.md), Android isn't on the
-            roadmap — surfacing this honestly here prevents an Android
-            visitor signing up and discovering the mobile app is
-            iOS-only after the fact. */}
-        <p className="mt-3 text-xs uppercase tracking-[0.12em] opacity-75">
-          Web works everywhere · Mobile app is iPhone only (TestFlight)
+        {/* V13 (2026-05-11 visual sweep): the old subtitle was all-caps
+            "WEB WORKS EVERYWHERE · MOBILE APP IS IPHONE ONLY (TESTFLIGHT)"
+            which read as internal-team copy on a marketing surface.
+            Same disclosure (per customer-lens P1 #30 / project memory
+            `project_ios_only_no_android.md`), but written in sentence
+            case so it reads as customer-facing context rather than a
+            console log. */}
+        <p className="mt-3 text-xs opacity-80 leading-relaxed">
+          Web works on every device. Mobile app is iPhone-only via TestFlight today.
         </p>
       </div>
     </div>
