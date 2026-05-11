@@ -83,7 +83,7 @@ Confirmed via tracker review — each has explicit reasoning in the entry itself
 
 These are not "open" — they're scoped multi-day workstreams with their own decision docs:
 
-- **F-138 Phases 3–5** — `docs/decisions/2026-05-08-food-correction-verification-pipeline.md`. Phase 3 partially shipped 2026-05-10–11; Phase 4 admin queue shipped 2026-05-10 (PR #186); Phase 5 trust + vision auto-verify scoped, not started.
+- **F-138 Phases 3–5** — `docs/decisions/2026-05-08-food-correction-verification-pipeline.md`. Phase 3 partially shipped 2026-05-10–11. **Phase 4 admin queue:** built in PR #191 (2026-05-11), reverted later the same day per the pre-launch product-lead sweep — "no users, no submissions, no queue to clear; reverting now and re-shipping alongside Phase 5 is one less surface to keep working through future migrations". Schema (admin_users table from P0 hardening, F-138 P3 votes/flags/evidence) stays in place so the queue can be re-built without DB churn. Spec retained at `docs/planning/F-138-P4-admin-queue-spec.md`. Phase 5 trust + vision auto-verify still scoped, not started.
 
 ## Net open after this reconciliation
 
