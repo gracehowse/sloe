@@ -105,7 +105,8 @@ export function ProgressStoryGate({
         data-testid="progress-story-gate-ring-label"
         className="mt-2 text-[11px] tabular-nums text-muted-foreground/80"
       >
-        {placeholder.ringLabel} days logged · {STORY_DATA_FLOOR_DAYS}-day floor
+        {/* V17 (2026-05-11 visual sweep) — see mobile ProgressStoryGate. */}
+        {placeholder.ringLabel} days logged · {STORY_DATA_FLOOR_DAYS} needed to unlock
       </p>
     </section>
   );
