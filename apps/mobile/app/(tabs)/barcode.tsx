@@ -20,7 +20,7 @@ import { BarcodeCameraView } from "@/components/BarcodeCameraView";
 // 2026-04-28 (Top-5 #4 in docs/ux/teardown-2026-04-28-daily-loop.md).
 // Glyph map used: camera-outline → Camera, add-circle → PlusCircle,
 // alert-circle → AlertCircle.
-import { AlertCircle, Camera, Check, PlusCircle } from "lucide-react-native";
+import { AlertCircle, Camera, Check, PlusCircle, X } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, type Href } from "expo-router";
 
@@ -519,6 +519,41 @@ export default function BarcodeScreen() {
       />
 
       {!product && !loading && !manualMode && !correctionMode && <View style={styles.reticle} />}
+
+      {/*
+        E8 (2026-05-11 visual sweep): deeplinking to `/barcode` (from
+        the share-extension success path, deeplink, or programmatic
+        nav) put the user on a full-screen scanner with no way back
+        except the bottom tab bar — which is itself less obvious
+        than a close button on what reads as a modal-style overlay.
+        Floating close (×) button in the top-left, padded by the
+        safe-area inset.
+      */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Close barcode scanner"
+        onPress={() => {
+          if (router.canGoBack()) {
+            router.back();
+          } else {
+            router.replace("/(tabs)");
+          }
+        }}
+        hitSlop={16}
+        style={{
+          position: "absolute",
+          top: insets.top + 8,
+          left: Spacing.md,
+          width: 40,
+          height: 40,
+          borderRadius: 20,
+          backgroundColor: "rgba(0,0,0,0.45)",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <X size={22} color="#fff" strokeWidth={2.25} />
+      </Pressable>
 
       <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
       <View style={styles.overlay}>
