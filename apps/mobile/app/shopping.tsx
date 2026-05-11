@@ -663,8 +663,21 @@ export default function ShoppingListScreen() {
         ) : null}
 
         {loading ? (
+          // E4 (2026-05-11 visual sweep): the bare spinner gave no
+          // context — looked like a frozen screen. Add a "Loading…"
+          // caption so the user knows something's happening, matching
+          // the Discover + Library load-state pattern.
           <View style={styles.centered}>
             <ActivityIndicator size="large" color={Accent.primary} />
+            <Text
+              style={{
+                marginTop: Spacing.md,
+                fontSize: 14,
+                color: colors.textSecondary,
+              }}
+            >
+              Loading your shopping list…
+            </Text>
           </View>
         ) : items.length === 0 ? (
           <View style={styles.emptyCard}>
