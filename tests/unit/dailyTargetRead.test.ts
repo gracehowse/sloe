@@ -55,6 +55,19 @@ function makeSupabase(
         filters[`in:${col}`] = vals;
         return self;
       },
+      // F-149: goal_history fallback uses .lte() + .order(). Stubs
+      // return self so the chain resolves; handlers can introspect
+      // `filters['lte:effective_from']` if a test wants to.
+      lte(col: string, val: unknown) {
+        filters[`lte:${col}`] = val;
+        return self;
+      },
+      order(_col: string, _opts: unknown) {
+        return self;
+      },
+      limit(_n: number) {
+        return self;
+      },
       then(resolve: any) {
         const h = handlers[table];
         calls.push({ op, table, filters });
@@ -140,6 +153,87 @@ describe("getDailyTargets", () => {
     });
     const res = await getDailyTargets(sb as any, "u1", ["2026-04-18", "2026-04-19"]);
     expect(res).toEqual({ "2026-04-18": null, "2026-04-19": null });
+  });
+
+  it("F-149 — falls back to goal_history when no daily_targets snapshot exists", async () => {
+    const sb = makeSupabase({
+      daily_targets: () => ({ data: [], error: null }),
+      goal_history: () => ({
+        data: [
+          {
+            goal: "cut",
+            plan_pace: "steady",
+            activity_level: "moderate",
+            target_calories: 1900,
+            target_protein_g: 140,
+            target_carbs_g: 210,
+            target_fat_g: 65,
+            target_fiber_g: 28,
+            maintenance_tdee: 2200,
+            effective_from: "2026-04-15",
+            recorded_at: "2026-04-15T08:00:00Z",
+          },
+        ],
+        error: null,
+      }),
+    });
+    const res = await getDailyTargets(sb as any, "u1", [
+      "2026-04-20",
+      "2026-04-21",
+    ]);
+    expect(res["2026-04-20"]).toMatchObject({
+      targetCalories: 1900,
+      targetProteinG: 140,
+      goal: "cut",
+      planPace: "steady",
+    });
+    expect(res["2026-04-21"]).toMatchObject({
+      targetCalories: 1900,
+      goal: "cut",
+    });
+  });
+
+  it("F-149 — daily_targets snapshot wins over goal_history on the same date", async () => {
+    const sb = makeSupabase({
+      daily_targets: () => ({
+        data: [
+          {
+            date_key: "2026-04-18",
+            target_calories: 2000, // ← authoritative
+            target_protein_g: 150,
+            target_carbs_g: 220,
+            target_fat_g: 70,
+            target_fiber_g: 30,
+            activity_level: "moderate",
+            plan_pace: "steady",
+            goal: "cut",
+            maintenance_tdee: 2300,
+          },
+        ],
+        error: null,
+      }),
+      goal_history: () => ({
+        data: [
+          {
+            goal: "cut",
+            plan_pace: "accelerated",
+            activity_level: "very_active",
+            target_calories: 1700, // ← should be ignored, snapshot wins
+            target_protein_g: null,
+            target_carbs_g: null,
+            target_fat_g: null,
+            target_fiber_g: null,
+            maintenance_tdee: null,
+            effective_from: "2026-04-10",
+            recorded_at: "2026-04-10T08:00:00Z",
+          },
+        ],
+        error: null,
+      }),
+    });
+    const res = await getDailyTargets(sb as any, "u1", ["2026-04-18"]);
+    expect(res["2026-04-18"]?.targetCalories).toBe(2000);
+    expect(res["2026-04-18"]?.planPace).toBe("steady");
   });
 
   it("filters the query by user_id and the requested date list", async () => {

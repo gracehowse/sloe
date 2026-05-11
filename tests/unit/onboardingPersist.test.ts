@@ -238,8 +238,12 @@ describe("persistOnboarding", () => {
       state,
       targets: computeV2Targets(state),
     });
-    // Only the profiles upsert should have been issued.
+    // F-2 invariant: no daily_targets write from onboarding.
+    // F-149 (2026-05-11) adds a goal_history seed write on completion;
+    // that is intentional and orthogonal to the F-2 invariant being
+    // tested here.
     const tablesTouched = supabase.from.mock.calls.map((c) => c[0]);
-    expect(tablesTouched).toEqual(["profiles"]);
+    expect(tablesTouched).not.toContain("daily_targets");
+    expect(tablesTouched).toContain("profiles");
   });
 });

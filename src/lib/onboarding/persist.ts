@@ -348,6 +348,31 @@ export async function persistOnboarding(
   // path would corrupt today's `% of goal` reads if the user
   // re-runs onboarding mid-day. data-integrity Stage F sign-off.
 
+  // F-149 (2026-05-11): seed goal_history with the onboarding values
+  // so a new user immediately has a baseline row. Without this, the
+  // very first read after onboarding (before any food log) would
+  // bypass goal_history and fall through to the live-profile path.
+  // The helper dedupes by goal-shape, so re-running onboarding mid-day
+  // with identical values is a no-op. Fire-and-forget.
+  if (upsertError == null) {
+    const { recordGoalHistory } = await import("../nutrition/goalHistory");
+    void recordGoalHistory(
+      supabase as Parameters<typeof recordGoalHistory>[0],
+      args.userId,
+      {
+        activity_level: typeof row.activity_level === "string" ? row.activity_level : null,
+        goal: typeof row.goal === "string" ? row.goal : null,
+        plan_pace: typeof row.plan_pace === "string" ? row.plan_pace : null,
+        target_calories: typeof row.target_calories === "number" ? row.target_calories : null,
+        target_protein_g: typeof row.target_protein === "number" ? row.target_protein : null,
+        target_carbs_g: typeof row.target_carbs === "number" ? row.target_carbs : null,
+        target_fat_g: typeof row.target_fat === "number" ? row.target_fat : null,
+        target_fiber_g: typeof row.target_fiber_g === "number" ? row.target_fiber_g : null,
+      },
+      "onboarding",
+    );
+  }
+
   return {
     ok: upsertError == null,
     error: upsertError,

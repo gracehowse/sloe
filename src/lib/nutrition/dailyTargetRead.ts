@@ -3,15 +3,29 @@
  *
  * Pairs with `dailyTargetSnapshot.ts`. Given a list of date keys, returns
  * a map of `{ [dateKey]: DailyTarget | null }`. Null means "no snapshot
- * for that day" — callers are expected to fall back to the current
- * profile target and visually mark the percentage as approximate (see
- * Progress screens).
+ * and no goal_history coverage for that day" — callers fall back to the
+ * current profile target and visually mark the percentage as approximate
+ * (see Progress screens).
  *
- * The helper never fabricates a target. Pre-migration days always
- * return `null` — we deliberately do not reconstruct what the user's
- * target "probably was" on that day, because that's exactly the bug
- * this feature is fixing.
+ * F-149 (2026-05-11) — read path is now two-tier:
+ *   1. `daily_targets` snapshot (existing): authoritative, written on
+ *      first food log of that day. Returns the exact values that were
+ *      live when the user logged.
+ *   2. `goal_history` fallback (NEW): when no snapshot exists for a
+ *      date, look up the goal_history row whose `effective_from` covers
+ *      that date. Synthesize a DailyTarget from that row so the caller
+ *      sees a real historical answer rather than the current profile.
+ *
+ *   3. Only after both fail does the caller fall back to the live
+ *      profile (via `resolveDisplayTarget`'s `currentTargets` arg), and
+ *      the approximate-chip flag fires.
+ *
+ * The helper never fabricates a target. Pre-history days always return
+ * `null` — we deliberately do not reconstruct what the user's target
+ * "probably was" on that day.
  */
+
+import { getGoalEffectiveForDates } from "./goalHistory";
 
 export type DailyTarget = {
   dateKey: string;
@@ -83,6 +97,34 @@ export async function getDailyTargets(
       goal: typeof row.goal === "string" ? row.goal : null,
       maintenanceTdee: toInt(row.maintenance_tdee),
     };
+  }
+
+  // F-149: backfill any still-null dates from goal_history. This is
+  // the middle tier — "we don't have a snapshot for that day, but we
+  // do know what the goal was on that date from the history log".
+  const missingDates = dateKeys.filter((k) => out[k] == null);
+  if (missingDates.length > 0) {
+    const historyByDate = await getGoalEffectiveForDates(
+      supabase,
+      userId,
+      missingDates,
+    );
+    for (const dateKey of missingDates) {
+      const h = historyByDate[dateKey];
+      if (!h) continue;
+      out[dateKey] = {
+        dateKey,
+        targetCalories: h.target_calories ?? null,
+        targetProteinG: h.target_protein_g ?? null,
+        targetCarbsG: h.target_carbs_g ?? null,
+        targetFatG: h.target_fat_g ?? null,
+        targetFiberG: h.target_fiber_g ?? null,
+        activityLevel: h.activity_level ?? null,
+        planPace: h.plan_pace ?? null,
+        goal: h.goal ?? null,
+        maintenanceTdee: h.maintenance_tdee ?? null,
+      };
+    }
   }
 
   return out;

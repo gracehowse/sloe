@@ -12,8 +12,54 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
+      admin_users: {
+        Row: {
+          granted_at: string
+          granted_by: string | null
+          note: string | null
+          user_id: string
+        }
+        Insert: {
+          granted_at?: string
+          granted_by?: string | null
+          note?: string | null
+          user_id: string
+        }
+        Update: {
+          granted_at?: string
+          granted_by?: string | null
+          note?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       app_notifications: {
         Row: {
           body: string | null
@@ -257,6 +303,69 @@ export type Database = {
         }
         Relationships: []
       }
+      deleted_health_samples: {
+        Row: {
+          deleted_at: string
+          health_sample_id: string
+          source: string
+          user_id: string
+        }
+        Insert: {
+          deleted_at?: string
+          health_sample_id: string
+          source?: string
+          user_id: string
+        }
+        Update: {
+          deleted_at?: string
+          health_sample_id?: string
+          source?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      dmca_takedowns: {
+        Row: {
+          description: string | null
+          id: string
+          original_post_url: string
+          reporter_email: string
+          reporter_ip: string | null
+          reporter_user_agent: string | null
+          reviewed_at: string | null
+          reviewer_notes: string | null
+          status: string
+          submitted_at: string
+          suppr_recipe_id: string | null
+        }
+        Insert: {
+          description?: string | null
+          id?: string
+          original_post_url: string
+          reporter_email: string
+          reporter_ip?: string | null
+          reporter_user_agent?: string | null
+          reviewed_at?: string | null
+          reviewer_notes?: string | null
+          status?: string
+          submitted_at?: string
+          suppr_recipe_id?: string | null
+        }
+        Update: {
+          description?: string | null
+          id?: string
+          original_post_url?: string
+          reporter_email?: string
+          reporter_ip?: string | null
+          reporter_user_agent?: string | null
+          reviewed_at?: string | null
+          reviewer_notes?: string | null
+          status?: string
+          submitted_at?: string
+          suppr_recipe_id?: string | null
+        }
+        Relationships: []
+      }
       follows: {
         Row: {
           created_at: string
@@ -396,6 +505,57 @@ export type Database = {
         }
         Relationships: []
       }
+      goal_history: {
+        Row: {
+          activity_level: string | null
+          effective_from: string
+          goal: string | null
+          id: string
+          maintenance_tdee: number | null
+          plan_pace: string | null
+          recorded_at: string
+          source: string
+          target_calories: number | null
+          target_carbs_g: number | null
+          target_fat_g: number | null
+          target_fiber_g: number | null
+          target_protein_g: number | null
+          user_id: string
+        }
+        Insert: {
+          activity_level?: string | null
+          effective_from: string
+          goal?: string | null
+          id?: string
+          maintenance_tdee?: number | null
+          plan_pace?: string | null
+          recorded_at?: string
+          source: string
+          target_calories?: number | null
+          target_carbs_g?: number | null
+          target_fat_g?: number | null
+          target_fiber_g?: number | null
+          target_protein_g?: number | null
+          user_id: string
+        }
+        Update: {
+          activity_level?: string | null
+          effective_from?: string
+          goal?: string | null
+          id?: string
+          maintenance_tdee?: number | null
+          plan_pace?: string | null
+          recorded_at?: string
+          source?: string
+          target_calories?: number | null
+          target_carbs_g?: number | null
+          target_fat_g?: number | null
+          target_fiber_g?: number | null
+          target_protein_g?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       health_snapshots: {
         Row: {
           active_energy_kcal: number | null
@@ -434,6 +594,53 @@ export type Database = {
           weight_kg?: number | null
         }
         Relationships: []
+      }
+      household_invites: {
+        Row: {
+          accepted_at: string | null
+          cancelled_at: string | null
+          created_at: string
+          declined_at: string | null
+          expires_at: string
+          household_id: string
+          id: string
+          invitee_email: string
+          inviter_user_id: string
+          status: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          cancelled_at?: string | null
+          created_at?: string
+          declined_at?: string | null
+          expires_at?: string
+          household_id: string
+          id?: string
+          invitee_email: string
+          inviter_user_id: string
+          status?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          cancelled_at?: string | null
+          created_at?: string
+          declined_at?: string | null
+          expires_at?: string
+          household_id?: string
+          id?: string
+          invitee_email?: string
+          inviter_user_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "household_invites_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       household_meals: {
         Row: {
@@ -720,7 +927,7 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "meal_plan_meals_recipe_id_fkey"
+            foreignKeyName: "meal_plan_meals_recipe_id_uuid_fkey"
             columns: ["recipe_id"]
             isOneToOne: false
             referencedRelation: "recipes"
@@ -833,8 +1040,11 @@ export type Database = {
           high_days: Json | null
           household_id: string | null
           id: string
+          last_weekly_checkin_decision: string | null
+          last_weekly_checkin_shown_at: string | null
           last_weekly_recap_push_sent_at: string | null
           measurement_system: string | null
+          milestone_30_shown_at: string | null
           net_carbs_lens_enabled: boolean
           notification_prefs: Json
           notifications_seeded: boolean
@@ -899,8 +1109,11 @@ export type Database = {
           high_days?: Json | null
           household_id?: string | null
           id: string
+          last_weekly_checkin_decision?: string | null
+          last_weekly_checkin_shown_at?: string | null
           last_weekly_recap_push_sent_at?: string | null
           measurement_system?: string | null
+          milestone_30_shown_at?: string | null
           net_carbs_lens_enabled?: boolean
           notification_prefs?: Json
           notifications_seeded?: boolean
@@ -965,8 +1178,11 @@ export type Database = {
           high_days?: Json | null
           household_id?: string | null
           id?: string
+          last_weekly_checkin_decision?: string | null
+          last_weekly_checkin_shown_at?: string | null
           last_weekly_recap_push_sent_at?: string | null
           measurement_system?: string | null
+          milestone_30_shown_at?: string | null
           net_carbs_lens_enabled?: boolean
           notification_prefs?: Json
           notifications_seeded?: boolean
@@ -1073,10 +1289,56 @@ export type Database = {
           },
         ]
       }
+      recipe_cook_history: {
+        Row: {
+          cooked_at: string
+          created_at: string
+          duration_seconds: number | null
+          id: string
+          note: string | null
+          rating: number | null
+          recipe_id: string
+          scale_factor: number | null
+          user_id: string
+        }
+        Insert: {
+          cooked_at?: string
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          note?: string | null
+          rating?: number | null
+          recipe_id: string
+          scale_factor?: number | null
+          user_id: string
+        }
+        Update: {
+          cooked_at?: string
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          note?: string | null
+          rating?: number | null
+          recipe_id?: string
+          scale_factor?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_cook_history_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recipe_ingredients: {
         Row: {
           added_by_user: boolean
+          alcohol_g: number
           amount: number | null
+          caffeine_mg: number
           calories: number
           carbs: number
           confidence: number | null
@@ -1098,7 +1360,9 @@ export type Database = {
         }
         Insert: {
           added_by_user?: boolean
+          alcohol_g?: number
           amount?: number | null
+          caffeine_mg?: number
           calories?: number
           carbs?: number
           confidence?: number | null
@@ -1120,7 +1384,9 @@ export type Database = {
         }
         Update: {
           added_by_user?: boolean
+          alcohol_g?: number
           amount?: number | null
+          caffeine_mg?: number
           calories?: number
           carbs?: number
           confidence?: number | null
@@ -1195,8 +1461,10 @@ export type Database = {
       }
       recipes: {
         Row: {
+          alcohol_g: number
           allergens: string[]
           author_id: string | null
+          caffeine_mg: number
           calories: number
           caption_nutrition_claim: Json | null
           carbs: number
@@ -1204,8 +1472,10 @@ export type Database = {
           created_at: string
           creator_calories: number | null
           creator_id: string | null
+          cuisine: string | null
           description: string | null
           dietary: Json | null
+          dietary_flags: Json
           fat: number
           fiber_g: number
           id: string
@@ -1227,8 +1497,10 @@ export type Database = {
           verified_source: string | null
         }
         Insert: {
+          alcohol_g?: number
           allergens?: string[]
           author_id?: string | null
+          caffeine_mg?: number
           calories?: number
           caption_nutrition_claim?: Json | null
           carbs?: number
@@ -1236,8 +1508,10 @@ export type Database = {
           created_at?: string
           creator_calories?: number | null
           creator_id?: string | null
+          cuisine?: string | null
           description?: string | null
           dietary?: Json | null
+          dietary_flags?: Json
           fat?: number
           fiber_g?: number
           id?: string
@@ -1259,8 +1533,10 @@ export type Database = {
           verified_source?: string | null
         }
         Update: {
+          alcohol_g?: number
           allergens?: string[]
           author_id?: string | null
+          caffeine_mg?: number
           calories?: number
           caption_nutrition_claim?: Json | null
           carbs?: number
@@ -1268,8 +1544,10 @@ export type Database = {
           created_at?: string
           creator_calories?: number | null
           creator_id?: string | null
+          cuisine?: string | null
           description?: string | null
           dietary?: Json | null
+          dietary_flags?: Json
           fat?: number
           fiber_g?: number
           id?: string
@@ -1417,7 +1695,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "households"
             referencedColumns: ["id"]
-          }
+          },
         ]
       }
       stripe_webhook_events: {
@@ -1452,10 +1730,6 @@ export type Database = {
           servings: Json
           servings_per_container: number | null
           sodium_mg: number | null
-          // Round 4 user-sentiment audit (2026-04-30): provenance of the
-          // row. `manual` for legacy/curated entries, `photo_correction`
-          // / `voice_correction` for AI-log review writebacks. Defaults
-          // to `manual` at the DB level.
           source: string
           sugar_g: number | null
           updated_at: string
@@ -1547,6 +1821,41 @@ export type Database = {
         }
         Relationships: []
       }
+      user_food_flags: {
+        Row: {
+          created_at: string
+          flagger_id: string
+          id: string
+          note: string | null
+          reason: string
+          user_food_id: string
+        }
+        Insert: {
+          created_at?: string
+          flagger_id: string
+          id?: string
+          note?: string | null
+          reason?: string
+          user_food_id: string
+        }
+        Update: {
+          created_at?: string
+          flagger_id?: string
+          id?: string
+          note?: string | null
+          reason?: string
+          user_food_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_food_flags_user_food_id_fkey"
+            columns: ["user_food_id"]
+            isOneToOne: false
+            referencedRelation: "user_foods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_food_votes: {
         Row: {
           created_at: string
@@ -1588,8 +1897,10 @@ export type Database = {
           category: string | null
           created_at: string
           downvotes: number
+          evidence_url: string | null
           fat: number
           fiber_g: number | null
+          flagged_for_admin_at: string | null
           id: string
           image_url: string | null
           name: string
@@ -1614,8 +1925,10 @@ export type Database = {
           category?: string | null
           created_at?: string
           downvotes?: number
+          evidence_url?: string | null
           fat?: number
           fiber_g?: number | null
+          flagged_for_admin_at?: string | null
           id?: string
           image_url?: string | null
           name: string
@@ -1640,8 +1953,10 @@ export type Database = {
           category?: string | null
           created_at?: string
           downvotes?: number
+          evidence_url?: string | null
           fat?: number
           fiber_g?: number | null
+          flagged_for_admin_at?: string | null
           id?: string
           image_url?: string | null
           name?: string
@@ -1820,6 +2135,68 @@ export type Database = {
         }
         Relationships: []
       }
+      verified_food_canonical: {
+        Row: {
+          barcode: string
+          calories: number
+          carbs: number
+          consensus_confidence: number
+          consensus_method: string
+          fat: number
+          fiber_g: number
+          last_recomputed_at: string
+          name: string
+          protein: number
+          saturated_fat_g: number | null
+          serving_size_g: number
+          sodium_mg: number | null
+          source_user_food_id: string | null
+          sugar_g: number | null
+        }
+        Insert: {
+          barcode: string
+          calories: number
+          carbs: number
+          consensus_confidence?: number
+          consensus_method?: string
+          fat: number
+          fiber_g?: number
+          last_recomputed_at?: string
+          name: string
+          protein: number
+          saturated_fat_g?: number | null
+          serving_size_g?: number
+          sodium_mg?: number | null
+          source_user_food_id?: string | null
+          sugar_g?: number | null
+        }
+        Update: {
+          barcode?: string
+          calories?: number
+          carbs?: number
+          consensus_confidence?: number
+          consensus_method?: string
+          fat?: number
+          fiber_g?: number
+          last_recomputed_at?: string
+          name?: string
+          protein?: number
+          saturated_fat_g?: number | null
+          serving_size_g?: number
+          sodium_mg?: number | null
+          source_user_food_id?: string | null
+          sugar_g?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "verified_food_canonical_source_user_food_id_fkey"
+            columns: ["source_user_food_id"]
+            isOneToOne: false
+            referencedRelation: "user_foods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       web_push_subscriptions: {
         Row: {
           auth: string
@@ -1868,6 +2245,88 @@ export type Database = {
         }
         Returns: undefined
       }
+      household_invite_accept: {
+        Args: { p_invite_id: string }
+        Returns: {
+          display_name: string | null
+          household_id: string
+          id: string
+          joined_at: string
+          role: string
+          share_preset: string
+          share_targets: boolean
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "household_members"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      household_invite_cancel: {
+        Args: { p_invite_id: string }
+        Returns: {
+          accepted_at: string | null
+          cancelled_at: string | null
+          created_at: string
+          declined_at: string | null
+          expires_at: string
+          household_id: string
+          id: string
+          invitee_email: string
+          inviter_user_id: string
+          status: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "household_invites"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      household_invite_decline: {
+        Args: { p_invite_id: string }
+        Returns: {
+          accepted_at: string | null
+          cancelled_at: string | null
+          created_at: string
+          declined_at: string | null
+          expires_at: string
+          household_id: string
+          id: string
+          invitee_email: string
+          inviter_user_id: string
+          status: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "household_invites"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      household_invite_send: {
+        Args: { p_household_id: string; p_invitee_email: string }
+        Returns: {
+          accepted_at: string | null
+          cancelled_at: string | null
+          created_at: string
+          declined_at: string | null
+          expires_at: string
+          household_id: string
+          id: string
+          invitee_email: string
+          inviter_user_id: string
+          status: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "household_invites"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       household_join_by_invite_code: {
         Args: { p_display_name?: string; p_invite_code: string }
         Returns: Json
@@ -1904,6 +2363,10 @@ export type Database = {
           recipe_id: string
           save_count: number
         }[]
+      }
+      recompute_verified_food_canonical: {
+        Args: { p_barcode: string }
+        Returns: undefined
       }
       redeem_promo_code: { Args: { p_code: string }; Returns: Json }
       save_meal_plan: {
@@ -2038,6 +2501,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },
