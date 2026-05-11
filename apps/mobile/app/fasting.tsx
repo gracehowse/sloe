@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { Ionicons } from "@expo/vector-icons";
@@ -442,20 +442,80 @@ export default function FastingScreen() {
       {recentCompleted.length > 0 && (
         <View style={styles.card}>
           <Text style={styles.historyTitle}>Recent Fasts</Text>
+          {/*
+            V11/V12 (2026-05-11 visual sweep): the sweep flagged a
+            63h 30m completed fast + duplicate same-day entries.
+            Neither is a bug per se (long fasts are valid; same-day
+            entries are valid when two fasts genuinely happen on one
+            day), but the user had no way to clean up bad-data rows
+            (e.g. forgot-to-end fasts). Long-press → confirm delete
+            gives that affordance. Unusually long fasts (>30h) get a
+            subtle "Extended" badge so the user can quickly identify
+            them vs forgot-to-end.
+          */}
           {recentCompleted.map((s) => {
             const startD = new Date(s.start);
             const endD = new Date(s.end!);
             const durMs = endD.getTime() - startD.getTime();
             const fd = formatDuration(durMs);
+            const isExtended = durMs > 30 * 60 * 60 * 1000;
             return (
-              <View key={s.start} style={styles.histRow}>
+              <Pressable
+                key={s.start}
+                accessibilityRole="button"
+                accessibilityLabel={`Fast on ${startD.toLocaleDateString(undefined, { month: "short", day: "numeric" })}, duration ${fd.hours} hours ${fd.minutes} minutes. Long-press to delete.`}
+                onLongPress={() => {
+                  Alert.alert(
+                    "Delete this fast?",
+                    `${fd.hours}h ${fd.minutes}m on ${startD.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`,
+                    [
+                      { text: "Cancel", style: "cancel" },
+                      {
+                        text: "Delete",
+                        style: "destructive",
+                        onPress: () => {
+                          persist(sessions.filter((x) => x.start !== s.start));
+                        },
+                      },
+                    ],
+                  );
+                }}
+                style={({ pressed }) => ({
+                  ...styles.histRow,
+                  opacity: pressed ? 0.6 : 1,
+                })}
+              >
                 <Text style={styles.histDate}>
                   {startD.toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                 </Text>
-                <Text style={styles.histDuration}>
-                  {fd.hours}h {fd.minutes}m
-                </Text>
-              </View>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  {isExtended ? (
+                    <View
+                      style={{
+                        paddingHorizontal: 6,
+                        paddingVertical: 2,
+                        borderRadius: 4,
+                        backgroundColor: Accent.warning + "1F",
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 10,
+                          fontWeight: "700",
+                          color: Accent.warning,
+                          letterSpacing: 0.5,
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        Extended
+                      </Text>
+                    </View>
+                  ) : null}
+                  <Text style={styles.histDuration}>
+                    {fd.hours}h {fd.minutes}m
+                  </Text>
+                </View>
+              </Pressable>
             );
           })}
         </View>
