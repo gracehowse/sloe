@@ -442,6 +442,39 @@ export default function ProfileScreen() {
             <TargetStat value={Number(carbs) || 0} label="Carbs" color={MacroColors.carbs} />
             <TargetStat value={Number(fat) || 0} label="Fat" color={MacroColors.fat} />
           </View>
+          {/*
+            E3 (2026-05-11 visual sweep): the Profile screen showed a
+            user with 1132 kcal target (below the 1200 kcal safety
+            floor we enforce in weeklyCheckin) with no warning. The
+            weekly check-in modal explains the floor when it auto-
+            corrects, but a user who manually entered a sub-floor
+            target has no signal here that the number is below what
+            we'd recommend. Show a one-line amber notice when the
+            target is < 1200 kcal.
+          */}
+          {Number(calories) > 0 && Number(calories) < 1200 ? (
+            <View
+              style={{
+                marginTop: Spacing.md,
+                paddingHorizontal: Spacing.md,
+                paddingVertical: 10,
+                borderRadius: Radius.md,
+                backgroundColor: Accent.warning + "14",
+                borderWidth: 1,
+                borderColor: Accent.warning + "40",
+                flexDirection: "row",
+                gap: 8,
+                alignItems: "flex-start",
+              }}
+              accessibilityRole="alert"
+              accessibilityLabel={`Calorie target is below the 1,200 kcal safety floor we recommend.`}
+            >
+              <Circle size={14} color={Accent.warning} fill={Accent.warning} style={{ marginTop: 2 }} />
+              <Text style={{ flex: 1, fontSize: 12, lineHeight: 17, color: colors.text }}>
+                <Text style={{ fontWeight: "700" }}>Below 1,200 kcal.</Text> This is under the safety floor we recommend for adults. Consider raising your target — or talk to a clinician if a lower target is medically necessary.
+              </Text>
+            </View>
+          ) : null}
         </View>
 
         {/* Edit form */}
