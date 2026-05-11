@@ -655,7 +655,16 @@ export default function LibraryScreen() {
       </View>
       <View style={styles.headerActionsRow}>
         <Text style={styles.headerSub}>
-          {savedRecipes.length} {savedRecipes.length === 1 ? "recipe" : "recipes"} · {savedCount} saved
+          {/*
+            E1 (2026-05-11 visual sweep): during the initial load, this
+            subtitle was rendering "0 recipes · 0 saved" — which reads
+            as "you have no recipes" rather than "we're still loading
+            them". Show "Loading..." while the hook is fetching the
+            first page; switch to the count once data arrives.
+          */}
+          {loading && savedRecipes.length === 0
+            ? "Loading…"
+            : `${savedRecipes.length} ${savedRecipes.length === 1 ? "recipe" : "recipes"} · ${savedCount} saved`}
         </Text>
         <Pressable style={styles.sortBtn} onPress={cycleSort} accessibilityLabel={`Sort by ${SORT_LABELS[sortKey]}`}>
           <ArrowUpDown size={14} color={colors.textSecondary} />
@@ -705,12 +714,18 @@ export default function LibraryScreen() {
           // size of each bucket at a glance. Other pills are
           // filters (High-Protein / Quick / Vegetarian) and don't
           // need counts — the filtered list itself shows what's left.
+          // E1 (2026-05-11 visual sweep): suppress the `· 0` count
+          // during initial load so the pills don't read "All · 0 /
+          // Saved · 0" before recipes arrive.
+          const isInitialLoad = loading && savedRecipes.length === 0;
           const count =
-            f.id === "all"
-              ? savedRecipes.length
-              : f.id === "saved"
-                ? savedCount
-                : null;
+            isInitialLoad
+              ? null
+              : f.id === "all"
+                ? savedRecipes.length
+                : f.id === "saved"
+                  ? savedCount
+                  : null;
           const label = count != null ? `${f.label} · ${count}` : f.label;
           return (
             <Pressable
