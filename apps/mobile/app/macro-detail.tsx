@@ -147,8 +147,38 @@ export default function MacroDetailScreen() {
             <Text style={{ fontSize: 14, color: colors.textTertiary }}>Loading...</Text>
           </View>
         ) : meals.length === 0 ? (
-          <View style={{ alignItems: "center", paddingVertical: 40 }}>
-            <Text style={{ fontSize: 14, color: colors.textTertiary }}>No meals logged for this day</Text>
+          // E13 (2026-05-11 visual sweep): empty state was just
+          // "No meals logged for this day" — no anchor, no CTA. The
+          // user landed here from Today expecting to learn about
+          // their macro, and got a dead end. Add a "Log a meal" CTA
+          // that bounces back to Today (where the FAB lives) so the
+          // empty state is actionable.
+          <View style={{ alignItems: "center", paddingVertical: 40, gap: Spacing.md }}>
+            <Text style={{ fontSize: 14, color: colors.textTertiary }}>
+              No meals logged for this day
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Log a meal on Today"
+              onPress={() => router.push("/(tabs)")}
+              style={({ pressed }) => ({
+                paddingHorizontal: Spacing.xl,
+                paddingVertical: 10,
+                borderRadius: Radius.md,
+                backgroundColor: config.color,
+                opacity: pressed ? 0.85 : 1,
+              })}
+            >
+              <Text
+                style={{
+                  fontSize: 14,
+                  fontWeight: "700",
+                  color: "#fff",
+                }}
+              >
+                Log a meal
+              </Text>
+            </Pressable>
           </View>
         ) : (
           <View style={{ gap: 0 }}>
