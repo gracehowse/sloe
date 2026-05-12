@@ -98,16 +98,34 @@ describe("SettingsBundleContent — parity contract", () => {
     }
   });
 
-  it("renders the 6 modals (reset, widgets, week-start, caffeine, alcohol, weekly recap)", () => {
+  it("renders the 7 modals (reset, type-confirm-erase, widgets, week-start, caffeine, alcohol, weekly recap)", () => {
+    // 2026-05-12 (premium-bar audit DC9): a 7th modal was added for
+    // the type-RESET-to-confirm gate on Erase Everything. The Apple
+    // pattern for irreversible destruction — friction proportional to
+    // consequence. Replaces the earlier Alert.alert version (no text
+    // input possible).
     expect(bundle).toContain("setResetModalOpen");
+    expect(bundle).toContain("setEraseConfirmOpen");
     expect(bundle).toContain("setWidgetPickerOpen");
     expect(bundle).toContain("setWeekStartPickerOpen");
     expect(bundle).toContain("setCaffeineTargetPickerOpen");
     expect(bundle).toContain("setAlcoholTargetPickerOpen");
     expect(bundle).toContain("setWeeklyRecapPushPickerOpen");
-    // 6 <Modal> mounts, one per picker.
+    // 7 <Modal> mounts.
     const modalCount = (bundle.match(/<Modal\b/g) ?? []).length;
-    expect(modalCount).toBe(6);
+    expect(modalCount).toBe(7);
+  });
+
+  it("erase-everything modal enforces type-RESET-to-confirm (DC9, 2026-05-12)", () => {
+    // Source-greps to pin the type-confirm gate: the CTA must check
+    // `eraseConfirmInput === "RESET"` before allowing handleNuke to
+    // fire, and the placeholder + label must surface "RESET" to the
+    // user. This fails CI if a future refactor relaxes the gate.
+    expect(bundle).toContain("setEraseConfirmInput");
+    expect(bundle).toMatch(/eraseConfirmInput\s*!==\s*"RESET"/);
+    expect(bundle).toContain('placeholder="RESET"');
+    expect(bundle).toContain('testID="erase-confirm-cta"');
+    expect(bundle).toContain('testID="erase-confirm-input"');
   });
 
   it("delete-account flow still posts to /api/account/delete with bearer token", () => {

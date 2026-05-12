@@ -491,6 +491,12 @@ export function SettingsBundleContent({ context }: { context: Context }) {
 
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [resetting, setResetting] = useState(false);
+  // 2026-05-12 (premium-bar audit DC9): type-confirm gate for the
+  // Erase Everything destructive path. `eraseConfirmOpen` controls
+  // the modal; `eraseConfirmInput` is the user's typed string and
+  // must equal "RESET" before the CTA enables.
+  const [eraseConfirmOpen, setEraseConfirmOpen] = useState(false);
+  const [eraseConfirmInput, setEraseConfirmInput] = useState("");
   const [widgetPickerOpen, setWidgetPickerOpen] = useState(false);
   const [weekStartPickerOpen, setWeekStartPickerOpen] = useState(false);
   const [trackedMacros, setTrackedMacros] = useState<string[]>([
@@ -2105,24 +2111,21 @@ export function SettingsBundleContent({ context }: { context: Context }) {
 
             <Pressable
               onPress={() => {
-                // P1-6 (2026-05-01) — calm-streak copy. Drops the
-                // double "permanently / cannot be undone" pattern in
-                // favour of a single forward-looking line. The body
-                // still enumerates what gets wiped (lowercase list)
-                // so the user understands the scope; categories list
-                // is a behavioural pin in `settingsBundleParity.test.ts`.
-                Alert.alert(
-                  "Delete your data and start fresh?",
-                  "You can re-import from your export file anytime. We'll clear your food log, journal, library saves, shopping lists, imported recipes, and synced activity. Your account and subscription stay.",
-                  [
-                    { text: "Cancel", style: "cancel" },
-                    {
-                      text: "Erase everything",
-                      style: "destructive",
-                      onPress: () => handleNukeEverything(),
-                    },
-                  ],
-                );
+                // 2026-05-12 (premium-bar audit DC9 type-confirm gate):
+                // Replaced Alert.alert with a custom modal that requires
+                // the user to type "RESET" before the destructive CTA
+                // enables. Apple's pattern for irreversible destruction
+                // (the iOS "Type DELETE to confirm" gate). The Alert
+                // had no friction beyond the destructive-button style
+                // — a misclick on "Erase everything" wiped everything.
+                // P1-6 (2026-05-01) copy preserved: "Delete your data
+                // and start fresh?" headline + the full wipe-list
+                // (food log, journal, library saves, shopping lists,
+                // imported recipes, synced activity). Categories list
+                // is behaviour-pinned in `settingsBundleParity.test.ts`.
+                setEraseConfirmInput("");
+                setEraseConfirmOpen(true);
+                setResetModalOpen(false);
               }}
               disabled={resetting}
               style={{
@@ -2154,6 +2157,134 @@ export function SettingsBundleContent({ context }: { context: Context }) {
             <Pressable
               onPress={() => setResetModalOpen(false)}
               style={{ paddingVertical: 14, alignItems: "center" }}
+            >
+              <Text
+                style={{
+                  color: colors.textSecondary,
+                  fontWeight: "600",
+                  fontSize: 15,
+                }}
+              >
+                Cancel
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 2026-05-12 (premium-bar audit DC9): Type-RESET-to-confirm modal
+          for Erase Everything. Apple's pattern for irreversible
+          destruction — friction proportional to consequence. The CTA
+          is disabled until the user types "RESET" exactly. */}
+      <Modal
+        visible={eraseConfirmOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEraseConfirmOpen(false)}
+      >
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+            backgroundColor: "rgba(0,0,0,0.6)",
+            paddingHorizontal: Spacing.xl,
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: colors.card,
+              borderRadius: Radius.lg,
+              paddingVertical: Spacing.xl,
+              paddingHorizontal: Spacing.xl,
+              width: "100%",
+              maxWidth: 380,
+              gap: Spacing.md,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 17,
+                fontWeight: "700",
+                color: colors.text,
+                textAlign: "center",
+              }}
+            >
+              Delete your data and start fresh?
+            </Text>
+            <Text
+              style={{
+                fontSize: 13,
+                color: colors.textSecondary,
+                textAlign: "center",
+                lineHeight: 19,
+              }}
+            >
+              You can re-import from your export file anytime. We&apos;ll clear your food log, journal, library saves, shopping lists, imported recipes, and synced activity. Your account and subscription stay.
+            </Text>
+            <Text
+              style={{
+                fontSize: 12,
+                color: colors.textTertiary,
+                textAlign: "center",
+                marginTop: Spacing.xs,
+              }}
+            >
+              Type <Text style={{ fontWeight: "700", color: t.red }}>RESET</Text> to confirm.
+            </Text>
+            <TextInput
+              value={eraseConfirmInput}
+              onChangeText={setEraseConfirmInput}
+              autoFocus
+              autoCapitalize="characters"
+              autoCorrect={false}
+              spellCheck={false}
+              placeholder="RESET"
+              placeholderTextColor={colors.textTertiary}
+              style={{
+                borderWidth: 1,
+                borderColor: eraseConfirmInput === "RESET" ? t.red : colors.cardBorder,
+                borderRadius: Radius.md,
+                paddingHorizontal: 14,
+                paddingVertical: 12,
+                fontSize: 16,
+                fontWeight: "700",
+                letterSpacing: 1,
+                textAlign: "center",
+                color: colors.text,
+                backgroundColor: colors.background,
+              }}
+              testID="erase-confirm-input"
+            />
+            <Pressable
+              onPress={() => {
+                if (eraseConfirmInput !== "RESET") return;
+                setEraseConfirmOpen(false);
+                setEraseConfirmInput("");
+                handleNukeEverything();
+              }}
+              disabled={eraseConfirmInput !== "RESET" || resetting}
+              accessibilityRole="button"
+              accessibilityLabel="Erase everything"
+              testID="erase-confirm-cta"
+              style={{
+                backgroundColor: t.red,
+                borderRadius: Radius.md,
+                paddingVertical: 14,
+                alignItems: "center",
+                opacity: eraseConfirmInput !== "RESET" || resetting ? 0.35 : 1,
+              }}
+            >
+              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>
+                {resetting ? "Working..." : "Erase everything"}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                setEraseConfirmOpen(false);
+                setEraseConfirmInput("");
+              }}
+              style={{ paddingVertical: 10, alignItems: "center" }}
             >
               <Text
                 style={{

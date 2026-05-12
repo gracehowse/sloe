@@ -59,7 +59,11 @@ export function TodayEatAgainBanner({
         onPress={onLog}
         style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.sm, backgroundColor: Accent.primary }}
       >
-        <Text style={{ fontSize: 11, fontWeight: "700", color: "#fff", letterSpacing: 0.5 }}>LOG</Text>
+        {/* 2026-05-12 (premium-bar audit copy unify): "LOG" all-caps
+            was the lone outlier across Today CTAs. The canonical verb
+            on the Today + LogSheet + NorthStar surfaces is "Log it"
+            (sentence case). This banner now matches. */}
+        <Text style={{ fontSize: 11, fontWeight: "700", color: "#fff", letterSpacing: 0.5 }}>Log it</Text>
       </Pressable>
       <Pressable
         accessibilityRole="button"

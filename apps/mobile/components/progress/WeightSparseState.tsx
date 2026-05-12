@@ -61,11 +61,16 @@ export function WeightSparseState({ points, onLogWeight }: Props) {
   return (
     <View style={[styles.container, { paddingBottom: Spacing.sm }]}>
       <Svg width={w} height={h}>
+        {/* 2026-05-12 (premium-bar audit DC5 polish): dashed 2-point
+            line switched to solid. Audit: "DC5 — Sparse-state weight
+            chart" is BETTER THAN BAR vs Withings, except the dashed
+            line in the 2-point state read as "tentative/in-flight"
+            when it should read "real trend, just early". Withings ships
+            solid lines at every density. */}
         <Line
           x1={x0} y1={y0} x2={x1} y2={y1}
           stroke={colors.textSecondary}
           strokeWidth={1.5}
-          strokeDasharray="4 3"
         />
         <Circle cx={x0} cy={y0} r={4} fill={colors.card} stroke={colors.textSecondary} strokeWidth={1.5} />
         <Circle cx={x1} cy={y1} r={4} fill={colors.card} stroke={Accent.primary} strokeWidth={1.5} />

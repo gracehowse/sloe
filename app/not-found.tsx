@@ -22,9 +22,13 @@ export default function NotFound() {
         <h1 className="text-slate-900 dark:text-white mb-2">
           We couldn&apos;t find that page
         </h1>
+        {/* 2026-05-12 (premium-bar audit copy fix): old copy assumed the
+            user was looking for a recipe ("the recipe may have been
+            deleted"). The 404 page handles every missing route — typos,
+            stale bookmarks, retired campaign links — not just recipes.
+            Generic + actionable reads better. */}
         <p className="text-sm text-slate-600 dark:text-slate-300 mb-6">
-          The link may be stale or the recipe may have been deleted. Try one
-          of these instead.
+          The link may be stale, or the content has moved. Try one of these instead.
         </p>
         <div className="flex flex-wrap gap-2">
           <Button asChild>
