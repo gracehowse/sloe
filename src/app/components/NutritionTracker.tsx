@@ -2711,7 +2711,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
       {selectedDateKey === todayKey() && mealsForSelectedDate.length > 0 && (
         <button
           onClick={() => setCompleteDayOpen(true)}
-          className="w-full py-3.5 rounded-xl bg-primary text-white font-bold text-sm hover:opacity-90 transition-opacity mt-4"
+          className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:opacity-90 transition-opacity mt-4"
         >
           Complete Day
         </button>

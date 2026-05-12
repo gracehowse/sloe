@@ -1149,7 +1149,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           <button
             type="button"
             onClick={() => setCookModeOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-white text-sm font-semibold hover:shadow-lg hover:shadow-primary/25 transition-all shrink-0"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:shadow-lg hover:shadow-primary/25 transition-all shrink-0"
           >
             <Icons.cook className="w-4 h-4" />
             Cook
@@ -1537,7 +1537,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
               type="button"
               disabled={followBusy}
               onClick={() => void toggleFollow()}
-              className="px-5 py-2.5 bg-primary text-white rounded-xl hover:shadow-lg hover:shadow-primary/25 transition-all duration-300 hover:scale-105 disabled:opacity-50"
+              className="px-5 py-2.5 bg-primary text-primary-foreground rounded-xl hover:shadow-lg hover:shadow-primary/25 transition-all duration-300 hover:scale-105 disabled:opacity-50"
             >
               {followBusy ? "…" : isFollowing ? "Following" : "Follow"}
             </button>
@@ -2047,7 +2047,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             ) : (
               instructionSteps.map((step, index) => (
                 <div key={index} className="flex gap-3">
-                  <span className="flex-shrink-0 w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold">
+                  <span className="flex-shrink-0 w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">
                     {index + 1}
                   </span>
                   <p className="text-sm text-foreground pt-0.5 leading-relaxed">{step}</p>
@@ -2120,7 +2120,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             <button
               type="button"
               onClick={() => setCookModeOpen(true)}
-              className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-primary text-white font-bold text-sm hover:shadow-lg hover:shadow-primary/25 transition-all"
+              className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:shadow-lg hover:shadow-primary/25 transition-all"
             >
               <Icons.cook className="w-4 h-4" />
               Start Cooking

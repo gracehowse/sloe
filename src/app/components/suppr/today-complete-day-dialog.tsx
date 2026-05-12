@@ -94,7 +94,7 @@ export function TodayCompleteDayDialog({
           )}
           <button
             onClick={onViewProgress}
-            className="w-full py-3.5 rounded-xl bg-primary text-white font-bold text-sm hover:opacity-90 transition-opacity"
+            className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:opacity-90 transition-opacity"
           >
             View my progress
           </button>

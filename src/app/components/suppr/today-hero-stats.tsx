@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { HelpCircle } from "lucide-react";
 import { DailyRing } from "./daily-ring";
 import { TodayHeroRing, type TodayHeroRingProps } from "./today-hero-ring";
 import { TODAY_STAT_LABELS } from "../../../lib/copy/today";
@@ -162,21 +161,14 @@ function DesktopHeroStats({
             onToggle={onToggleExpanded}
             displayMode={displayMode}
           />
-          {/* Audit gap #10 transparency moat (2026-05-01) — desktop "Why
-              this number?" pill aligned under the ring. Mobile-web
-              variant ships inside TodayHeroRing already. */}
-          {onPressWhy ? (
-            <button
-              type="button"
-              data-testid="today-hero-why-this-number-desktop"
-              aria-label="Why this number? Open calorie target explanation"
-              onClick={onPressWhy}
-              className="inline-flex items-center gap-1 rounded-full bg-primary/15 hover:bg-primary/25 transition-colors px-3 py-1 text-[11px] font-bold tracking-wide text-primary self-center"
-            >
-              <HelpCircle size={12} strokeWidth={2.25} />
-              Why this number?
-            </button>
-          ) : null}
+          {/* 2026-05-12 round 5 (Grace TF, web parity round 2): desktop
+              "Why this number?" pill removed — same call as the mobile
+              + mobile-web variants in round 4. The explainer lives on
+              /home?view=targets → "How is this calculated?" row. This
+              was the missed surface in commit c7e59df (which only
+              dropped the mobile-web variant inside `today-hero-ring`).
+              `onPressWhy` stays on the type for backwards compat with
+              the host wiring (host already removed it). */}
         </div>
         {/* Sub-labels under each value (e.g. "Mifflin-St Jeor",
             "Apple Health", "deficit") were removed 2026-04-18 — the

@@ -103,7 +103,7 @@ export function GoPublicDialog(props: {
         <button
           type="button"
           disabled={props.disabled}
-          className="px-4 py-2 bg-primary text-white rounded-xl hover:shadow-xl hover:shadow-primary/30 transition-all duration-300 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-4 py-2 bg-primary text-primary-foreground rounded-xl hover:shadow-xl hover:shadow-primary/30 transition-all duration-300 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {triggerLabel}
         </button>

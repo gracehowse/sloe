@@ -279,7 +279,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
             <button
               type="button"
               onClick={onGoDiscover}
-              className="px-6 py-3 rounded-xl bg-primary text-white font-semibold hover:shadow-lg hover:shadow-primary/25 transition-all"
+              className="px-6 py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:shadow-lg hover:shadow-primary/25 transition-all"
             >
               Go to Discover
             </button>
@@ -460,7 +460,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                           const q = new URLSearchParams({ view: "create", editRecipe: recipe.id }).toString();
                           router.replace(`/home?${q}`, { scroll: false });
                         }}
-                        className="mt-3 inline-flex items-center justify-center px-2.5 py-1 rounded-md bg-primary text-white text-[11px] font-semibold hover:opacity-90"
+                        className="mt-3 inline-flex items-center justify-center px-2.5 py-1 rounded-md bg-primary text-primary-foreground text-[11px] font-semibold hover:opacity-90"
                       >
                         Go public
                       </button>
@@ -549,7 +549,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                         const q = new URLSearchParams({ view: "create", editRecipe: recipe.id }).toString();
                         router.replace(`/home?${q}`, { scroll: false });
                       }}
-                      className="mb-3 inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-semibold hover:opacity-90"
+                      className="mb-3 inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90"
                     >
                       Go public
                     </button>

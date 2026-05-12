@@ -1266,7 +1266,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
           <button
             type="button"
             onClick={onSwitchToImport}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-white text-sm font-semibold hover:opacity-90"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90"
           >
             <Icons.import className="w-4 h-4" />
             Open Import recipe
@@ -1370,7 +1370,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
                 type="button"
                 disabled={importBusy}
                 onClick={() => void runImportFromUrl()}
-                className="px-6 py-3 rounded-xl bg-primary text-white text-sm font-semibold disabled:opacity-50"
+                className="px-6 py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50"
               >
                 {importBusy ? "Importing…" : "Import"}
               </button>
@@ -1549,7 +1549,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
                     onClick={() => setDietary(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag])}
                     className={`px-3 py-1.5 rounded-lg text-sm transition-all capitalize ${
                       dietary.includes(tag)
-                        ? "bg-primary text-white"
+                        ? "bg-primary text-primary-foreground"
                         : "bg-muted text-foreground hover:hover:bg-muted"
                     }`}
                   >
@@ -1584,7 +1584,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
             <button
               type="button"
               onClick={addIngredient}
-              className="px-4 py-2 bg-primary text-white rounded-lg hover:hover:bg-primary/90 transition-all flex items-center gap-2 text-sm font-medium"
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:hover:bg-primary/90 transition-all flex items-center gap-2 text-sm font-medium"
             >
               <Icons.add className="w-4 h-4" />
               Add Ingredient
@@ -2139,7 +2139,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
             type="button"
             disabled={saving !== null}
             onClick={() => void saveRecipe(false)}
-            className="w-full px-6 py-4 bg-primary text-white rounded-xl hover:shadow-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full px-6 py-4 bg-primary text-primary-foreground rounded-xl hover:shadow-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving === "draft" ? "Saving…" : "Save to my library"}
           </button>
@@ -2170,7 +2170,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
               type="button"
               disabled={saving !== null}
               onClick={() => void saveRecipe(true)}
-              className="flex-1 px-6 py-4 bg-primary text-white rounded-xl hover:shadow-2xl hover:shadow-primary/30 transition-all duration-300 hover:scale-[1.02] font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-6 py-4 bg-primary text-primary-foreground rounded-xl hover:shadow-2xl hover:shadow-primary/30 transition-all duration-300 hover:scale-[1.02] font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Icons.upload className="w-5 h-5" />
               {saving === "publish" ? "Publishing…" : "Publish recipe"}

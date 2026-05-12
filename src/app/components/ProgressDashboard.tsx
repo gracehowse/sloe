@@ -1844,7 +1844,7 @@ function ProgressDashboardContent() {
             type="number"
             step="0.1"
           />
-          <button onClick={() => void saveTodayWeight()} className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:opacity-90 transition-opacity">Save</button>
+          <button onClick={() => void saveTodayWeight()} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity">Save</button>
         </div>
       </div>
       ) : null}
@@ -2020,7 +2020,7 @@ function ProgressDashboardContent() {
             onChange={(e) => setStepsInput(e.target.value)}
             type="number"
           />
-          <button onClick={() => void saveTodaySteps()} className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:opacity-90 transition-opacity">Save</button>
+          <button onClick={() => void saveTodaySteps()} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity">Save</button>
         </div>
       </div>
 
@@ -2037,7 +2037,7 @@ function ProgressDashboardContent() {
             type="number"
             step="0.1"
           />
-          <button onClick={() => void saveBodyFat()} className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:opacity-90 transition-opacity">Save</button>
+          <button onClick={() => void saveBodyFat()} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity">Save</button>
         </div>
       </div>
       <p
