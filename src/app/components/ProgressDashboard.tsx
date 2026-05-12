@@ -1457,7 +1457,25 @@ function ProgressDashboardContent() {
           colour decision is approximate. */}
       <div className="rounded-xl bg-card border border-border p-4 mb-6">
         <p className="text-sm font-semibold text-foreground mb-3">Daily Calories</p>
-        <div className="flex items-end gap-2" style={{ height: 90 }}>
+        <div className="relative flex items-end gap-2" style={{ height: 90 }}>
+          {/* Dashed target line — mirror of mobile chart. Pointer-events
+              off so the bars stay clickable. */}
+          {(() => {
+            const maxCalForLine = Math.max(
+              targets.calories,
+              ...dailyCaloriesData.map((dd) => dd.calories),
+              1,
+            );
+            if (targets.calories <= 0) return null;
+            const lineY = (targets.calories / maxCalForLine) * 70;
+            return (
+              <div
+                aria-hidden
+                className="pointer-events-none absolute left-0 right-0 border-t border-dashed border-primary/70"
+                style={{ bottom: lineY }}
+              />
+            );
+          })()}
           {(() => {
             const maxCal = Math.max(
               targets.calories,
@@ -1478,6 +1496,17 @@ function ProgressDashboardContent() {
               // skipped (no historical-target ambiguity for those).
               const isPast = d.key < todayDateKey;
               const showApproxCue = isPast && !d.isSnapshot && d.calories > 0;
+              // Audit 2026-05-12 (premium-bar #16 — DC10): match the
+              // calorie-ring 3-state rule — empty=border tint,
+              // under=success green, over=destructive red. Web was
+              // using `var(--warning)` (amber) for over which broke
+              // parity with mobile and collapsed the over-budget signal
+              // with the under-target state in dark mode.
+              const bg = d.calories === 0
+                ? "var(--border)"
+                : overTarget
+                  ? "var(--destructive)"
+                  : "var(--success)";
               return (
                 <div key={d.key} className="flex-1 flex flex-col items-center gap-1">
                   <span className="text-[9px] text-muted-foreground tabular-nums">
@@ -1491,8 +1520,8 @@ function ProgressDashboardContent() {
                     title={showApproxCue ? "Compared against today's target (no snapshot for that day)" : undefined}
                     style={{
                       height: barH,
-                      background: overTarget ? "var(--warning)" : "var(--success)",
-                      opacity: isDayToday ? 0.4 : 0.75,
+                      background: bg,
+                      opacity: isDayToday ? 1 : 0.75,
                       ...(showApproxCue
                         ? {
                             border: "1px dashed var(--muted-foreground)",
@@ -1506,6 +1535,25 @@ function ProgressDashboardContent() {
               );
             });
           })()}
+        </div>
+        {/* Legend — mirror of mobile progress.tsx. TestFlight feedback
+            (2026-04-18 AISAWnLgU9cjRBOuEY-HuJU) "not intuitive"
+            without a colour key. */}
+        <div className="flex items-center gap-3 mt-2 text-[10px] text-muted-foreground flex-wrap">
+          <span className="flex items-center gap-1">
+            <span className="inline-block w-2 h-2 rounded-sm" style={{ background: "var(--success)" }} />
+            At or under target
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="inline-block w-2 h-2 rounded-sm" style={{ background: "var(--destructive)" }} />
+            Over target
+          </span>
+          {targets.calories > 0 ? (
+            <span className="flex items-center gap-1">
+              <span className="inline-block w-2.5 h-px border-t border-dashed border-primary" />
+              Target {targets.calories.toLocaleString()} kcal
+            </span>
+          ) : null}
         </div>
       </div>
 

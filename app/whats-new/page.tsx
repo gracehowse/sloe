@@ -7,6 +7,15 @@
  * `apps/mobile/app/whats-new.tsx` renders the exact same entry, so
  * a bullet edit needs only one data change.
  *
+ * 2026-05-12 (premium-bar audit #6 — Linear changelog parity):
+ * upgraded from single-release header to all-releases-on-page scroll
+ * narrative. Each release gets its own header + kind-coloured chip
+ * sections so the page reads like a release timeline rather than
+ * "the last build's notes". Kind label chips now use semantic
+ * colours that read in both light + dark (NEW=success, FIXED=info,
+ * COMING SOON=warning) instead of the prior `slate-500` washed-out
+ * uppercase eyebrow.
+ *
  * Entry points:
  *   1. Settings → About → "What's new in Suppr" (manual).
  *   2. Direct URL `/whats-new`.
@@ -19,14 +28,15 @@ import type { Metadata } from "next";
 
 import {
   changelogKindLabel,
-  getLatestChangelog,
+  getAllChangelogs,
   groupChangelogItems,
+  type ChangelogItemKind,
 } from "../../src/lib/changelog/entries";
 
 export const metadata: Metadata = {
   title: "What's new — Suppr",
   description:
-    "Fixes, new features, and upcoming work in the latest Suppr build.",
+    "Fixes, new features, and upcoming work in every Suppr build.",
 };
 
 function formatReleaseDate(iso: string): string {
@@ -39,13 +49,35 @@ function formatReleaseDate(iso: string): string {
   });
 }
 
+function kindChipClasses(kind: ChangelogItemKind): string {
+  switch (kind) {
+    case "new":
+      return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800";
+    case "fixed":
+      return "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300 border border-sky-200 dark:border-sky-800";
+    case "coming_soon":
+      return "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800";
+  }
+}
+
+function kindBulletClasses(kind: ChangelogItemKind): string {
+  switch (kind) {
+    case "new":
+      return "bg-emerald-500 dark:bg-emerald-400";
+    case "fixed":
+      return "bg-sky-500 dark:bg-sky-400";
+    case "coming_soon":
+      return "bg-amber-500 dark:bg-amber-400";
+  }
+}
+
 export default function WhatsNewPage() {
-  const entry = getLatestChangelog();
-  const groups = groupChangelogItems(entry);
+  const entries = getAllChangelogs().filter((e) => e.items.length > 0);
+  const latest = entries[0];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-      <div className="max-w-2xl mx-auto px-6 py-12">
+      <div className="max-w-3xl mx-auto px-6 py-12">
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
           <Link
             href="/"
@@ -55,25 +87,20 @@ export default function WhatsNewPage() {
           </Link>
         </p>
 
-        <div
-          className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6 mb-8"
-          data-testid="whats-new-header"
-        >
+        <header className="mb-10">
           <h1
-            className="text-2xl font-semibold text-slate-900 dark:text-white"
+            className="text-3xl font-semibold tracking-tight text-slate-900 dark:text-white"
             data-testid="whats-new-title"
           >
-            {`Build ${entry.buildNumber} (${entry.appVersion} #${entry.buildNumber})`}
+            What&rsquo;s new in Suppr
           </h1>
-          <p
-            className="text-sm text-slate-500 dark:text-slate-400 mt-1"
-            data-testid="whats-new-date"
-          >
-            {formatReleaseDate(entry.releaseDate)}
+          <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+            Every release, freshest first. New features, fixes, and what we
+            are about to ship next.
           </p>
-        </div>
+        </header>
 
-        {groups.length === 0 ? (
+        {entries.length === 0 ? (
           <p
             className="text-sm text-slate-600 dark:text-slate-300"
             data-testid="whats-new-empty"
@@ -82,44 +109,83 @@ export default function WhatsNewPage() {
             after the next TestFlight build lands.
           </p>
         ) : (
-          <div className="space-y-6">
-            {groups.map((group) => (
-              <section key={group.kind}>
-                <h2
-                  className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2"
-                  data-testid={`whats-new-section-${group.kind}`}
+          <div className="space-y-12">
+            {entries.map((entry, idx) => {
+              const groups = groupChangelogItems(entry);
+              const slug = `build-${entry.buildNumber}`;
+              const isLatest = idx === 0 && entry === latest;
+              return (
+                <section
+                  key={entry.buildNumber}
+                  id={slug}
+                  data-testid={`whats-new-release-${entry.buildNumber}`}
+                  className="scroll-mt-12"
                 >
-                  {changelogKindLabel(group.kind)}
-                </h2>
-                <ul className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 divide-y divide-slate-100 dark:divide-slate-800">
-                  {group.items.map((item, idx) => (
-                    <li
-                      key={`${group.kind}-${idx}`}
-                      className="flex items-start gap-3 px-4 py-3"
+                  <div className="mb-4 flex items-baseline gap-3 flex-wrap">
+                    <h2
+                      className="text-xl font-semibold text-slate-900 dark:text-white"
+                      data-testid={`whats-new-release-title-${entry.buildNumber}`}
                     >
-                      <span
-                        aria-hidden
-                        className="mt-2 h-1.5 w-1.5 rounded-full bg-violet-500 dark:bg-violet-400 shrink-0"
-                      />
-                      <span className="text-sm leading-6 text-slate-700 dark:text-slate-200">
-                        {item.text}
+                      {`Build ${entry.buildNumber}`}{" "}
+                      <span className="text-slate-500 dark:text-slate-400 font-normal">
+                        {`(${entry.appVersion} #${entry.buildNumber})`}
                       </span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ))}
+                    </h2>
+                    {isLatest ? (
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300 border border-violet-200 dark:border-violet-800">
+                        Latest
+                      </span>
+                    ) : null}
+                    <span
+                      className="text-xs text-slate-500 dark:text-slate-400 ml-auto"
+                      data-testid={`whats-new-date-${entry.buildNumber}`}
+                    >
+                      {formatReleaseDate(entry.releaseDate)}
+                    </span>
+                  </div>
+
+                  <div className="space-y-5">
+                    {groups.map((group) => (
+                      <div key={group.kind}>
+                        <span
+                          className={`inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md mb-2 ${kindChipClasses(group.kind)}`}
+                          data-testid={`whats-new-section-${entry.buildNumber}-${group.kind}`}
+                        >
+                          {changelogKindLabel(group.kind)}
+                        </span>
+                        <ul className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 divide-y divide-slate-100 dark:divide-slate-800">
+                          {group.items.map((item, itemIdx) => (
+                            <li
+                              key={`${group.kind}-${itemIdx}`}
+                              className="flex items-start gap-3 px-4 py-3"
+                            >
+                              <span
+                                aria-hidden
+                                className={`mt-2 h-1.5 w-1.5 rounded-full shrink-0 ${kindBulletClasses(group.kind)}`}
+                              />
+                              <span className="text-sm leading-6 text-slate-700 dark:text-slate-200">
+                                {item.text}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+
+                  {entry.testerAttribution ? (
+                    <p
+                      className="mt-4 text-xs text-slate-500 dark:text-slate-400"
+                      data-testid={`whats-new-attribution-${entry.buildNumber}`}
+                    >
+                      {entry.testerAttribution}
+                    </p>
+                  ) : null}
+                </section>
+              );
+            })}
           </div>
         )}
-
-        {entry.testerAttribution ? (
-          <p
-            className="text-center text-xs text-slate-500 dark:text-slate-400 mt-8"
-            data-testid="whats-new-attribution"
-          >
-            {entry.testerAttribution}
-          </p>
-        ) : null}
       </div>
     </div>
   );
