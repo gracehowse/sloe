@@ -122,24 +122,25 @@ describe("SettingsBundleContent — parity contract", () => {
     expect(bundle).toContain('!== "delete"');
   });
 
-  it("reset modal still surfaces both reset-targets and erase-everything paths", () => {
-    // 2026-04-30 (issue #16): "Reset Plan (Keep My Data)" → "Reset targets",
-    // "Erase all app data" → "Erase everything". Reset is now inline
-    // (NUTRITION_DEFAULTS, no re-onboarding) so it no longer wipes the
-    // planner via clearStructuredMealPlans. Erase still calls
-    // nukeAllUserAppData.
-    expect(bundle).toContain("Reset targets");
+  it("reset modal surfaces refresh-plan and erase-everything paths (2026-05-11 simpler flow)", () => {
+    // 2026-05-11 (Grace TF feedback): "Reset targets" inline path replaced
+    // by "Refresh my plan" — always re-runs the canonical /onboarding flow
+    // (Lose It-style) so users can update weight/height/goals/macros.
+    // Post-onboarding a one-shot prompt asks "Keep my logs and weight
+    // history?". "Erase everything" remains the nuclear option.
+    expect(bundle).toContain("Refresh my plan");
     expect(bundle).toContain("Erase everything");
+    expect(bundle).toContain("handleRefreshPlan");
+    expect(bundle).toContain("handleNukeEverything");
     expect(bundle).toContain("nukeAllUserAppData");
   });
 
-  it("reset-targets path is inline — no re-onboarding, no planner wipe (issue #16)", () => {
-    // Reset must NOT re-run onboarding (would re-trigger the 15-step v2
-    // flow for a user who only wanted fresh defaults). Reset must NOT
-    // clear the planner (Keep My Data should mean it).
-    expect(bundle).not.toContain("clearStructuredMealPlans");
-    expect(bundle).toContain("Targets reset to defaults");
-    expect(bundle).toContain('"/targets"');
+  it("refresh-plan sets the post-onboarding prompt flag (2026-05-11)", () => {
+    // Refresh writes `suppr.reset-plan-pending-prompt` to AsyncStorage so
+    // `apps/mobile/components/onboarding/mobile-flow.tsx` `handleComplete`
+    // can show the "Keep my logs and weight history?" prompt at the end
+    // of the re-run. Without this flag the prompt is suppressed.
+    expect(bundle).toContain('"suppr.reset-plan-pending-prompt"');
   });
 
   it("erase routes to canonical /onboarding (post-rename, was /onboarding-v2 — issue #13)", () => {

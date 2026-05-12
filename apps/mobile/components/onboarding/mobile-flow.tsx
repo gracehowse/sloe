@@ -31,6 +31,7 @@ import {
   mapV2GoalToLegacy,
   persistOnboarding,
 } from "../../../../src/lib/onboarding/persist";
+import { clearLogsAndWeightHistory } from "../../../../src/lib/account/nukeAccountData";
 import { useOnboarding } from "./context";
 import { MOBILE_STEP_COMPONENTS } from "./steps";
 
@@ -208,9 +209,20 @@ export function MobileFlow() {
 
       // MV-03: clear persisted state so a fresh signup on this device
       // doesn't pre-fill the previous user's answers.
+      // 2026-05-11 (refresh-plan flow): also read the reset-plan flag
+      // set by Settings → "Refresh my plan". If present, we surface a
+      // one-shot prompt offering to keep or clear the user's logs and
+      // weight history. Falls through to the normal post-onboarding
+      // route on either choice.
+      let refreshPlanPending = false;
       try {
         const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
         await AsyncStorage.removeItem("suppr.onboarding-v2.state");
+        const flag = await AsyncStorage.getItem("suppr.reset-plan-pending-prompt");
+        if (flag) {
+          refreshPlanPending = true;
+          await AsyncStorage.removeItem("suppr.reset-plan-pending-prompt");
+        }
       } catch {
         /* non-fatal */
       }
@@ -218,11 +230,48 @@ export function MobileFlow() {
       // Activation hook (audit 2026-04-30): always pass `firstRun=1` on
       // the post-onboarding land so Today can fire its first-run
       // polish (push-permission explainer, ring-celebration, etc.)
-      // without re-querying `onboarding_completed`.
-      const homeQs = planFailed
-        ? "?onboarding_complete=1&plan_build=failed&firstRun=1"
-        : "?onboarding_complete=1&firstRun=1";
-      router.replace(`/(tabs)${homeQs}`);
+      // without re-querying `onboarding_completed`. For a refresh-plan
+      // flow we drop `firstRun` (this user already saw the polish) and
+      // tag the navigation with `refresh=1` so analytics can split
+      // first-time vs refresh completions.
+      const baseQs = planFailed
+        ? "?onboarding_complete=1&plan_build=failed"
+        : "?onboarding_complete=1";
+      const homeQs = refreshPlanPending
+        ? `${baseQs}&refresh=1`
+        : `${baseQs}&firstRun=1`;
+
+      if (refreshPlanPending) {
+        Alert.alert(
+          "Keep my logs and weight history?",
+          "Your saved recipes, plans, and shopping lists are untouched either way.",
+          [
+            {
+              text: "Keep",
+              style: "default",
+              onPress: () => {
+                router.replace(`/(tabs)${homeQs}` as any);
+              },
+            },
+            {
+              text: "Clear",
+              style: "destructive",
+              onPress: async () => {
+                try {
+                  await clearLogsAndWeightHistory(supabase, userId);
+                } catch {
+                  /* non-fatal — user can still re-enter Today */
+                }
+                router.replace(`/(tabs)${homeQs}` as any);
+              },
+            },
+          ],
+          { cancelable: false },
+        );
+        return;
+      }
+
+      router.replace(`/(tabs)${homeQs}` as any);
     } catch (e) {
       setCompleting(false);
       Alert.alert(
