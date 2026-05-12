@@ -40,7 +40,7 @@ export type WeightTrendResult = {
    * trailing window has < 3 entries.
    */
   movingAvg: (number | null)[];
-  /** Y-axis domain: [yMin, yMax]. Always spans at least 0.8 kg. */
+  /** Y-axis domain: [yMin, yMax]. Always spans at least 0.8 kg (data + 0.4 kg padding each side). */
   yDomain: [number, number];
   /** "Down 0.4 kg" / "Up 0.3 kg" / "Holding steady" */
   trendCopy: string;
@@ -195,7 +195,12 @@ function computeYDomain(
   const allValues = includeGoal && goalKg != null ? [...kgs, goalKg] : kgs;
   const [rawMin, rawMax] = minMax(allValues);
   const rawRange = rawMax - rawMin;
-  const padding = Math.max(0.8, rawRange * 0.08);
+  // 2026-05-11 (Grace TF feedback — "looking squished on phone"):
+  // padding minimum dropped 0.8→0.4 kg per side. With a ~1.3 kg data
+  // range the chart was wasting ~46% of vertical space; now the data
+  // fills ~75%. The 0.4 minimum still keeps a tiny 0.2 kg daily
+  // fluctuation from looking like a vertical spike.
+  const padding = Math.max(0.4, rawRange * 0.08);
   return [
     Math.round((rawMin - padding) * 10) / 10,
     Math.round((rawMax + padding) * 10) / 10,

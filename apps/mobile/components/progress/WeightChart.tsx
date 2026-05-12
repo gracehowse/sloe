@@ -21,11 +21,12 @@ import { Accent, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import type { WeightTrendResult } from "@/lib/progress/weightTrend";
 
-// 2026-05-11 (Grace TF feedback — mockup signed off): chart padding
-// reduced so the plot fills more of the card. PAD_BOTTOM still leaves
-// room for the x-axis tick labels (~12px tall). PAD_RIGHT stays at 48
-// for the Y-axis tick gutter the tooltip avoids.
-const CHART_HEIGHT = 200;
+// 2026-05-11 (Grace TF feedback — "looking squished on phone"):
+// chart container shrunk 200→170 so it doesn't take up so much
+// vertical real-estate in the card. Combined with the tighter
+// Y-domain padding (computeYDomain), the data line now fills ~70%
+// of the plot height vs ~50% before.
+const CHART_HEIGHT = 170;
 const PAD_TOP = 8;
 const PAD_BOTTOM = 22;
 const PAD_LEFT = 8;
