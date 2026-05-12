@@ -37,7 +37,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
-import { Beef, Wheat, Droplets, Leaf, type LucideIcon } from "lucide-react";
+import { Beef, Wheat, Droplets, Leaf, HelpCircle, ChevronRight, type LucideIcon } from "lucide-react";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { useAuthSession } from "../../context/AuthSessionContext.tsx";
@@ -47,6 +47,8 @@ import { todayKey } from "../../lib/nutrition/trackerDate.ts";
 import { kgToLb } from "../../lib/units/imperial.ts";
 import { carbsLabel, netCarbsForRow } from "../../lib/nutrition/netCarbs.ts";
 import { activityLevelCaption, deficitSurplusCaption, type Goal } from "../../lib/targets/targetsView.ts";
+import { WhyThisNumberDialog } from "./suppr/why-this-number-dialog.tsx";
+import { paceKgPerWeekFromPreset } from "../../lib/nutrition/whyThisNumber.ts";
 
 export interface TargetsProps {
   /**
@@ -112,6 +114,14 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
   const [weightKgByDay, setWeightKgByDay] = useState<Record<string, number>>({});
   const [activityLevel, setActivityLevel] = useState<string>("moderate");
   const [maintenanceTdee, setMaintenanceTdee] = useState<number | null>(null);
+  // 2026-05-12 round 4 (web parity with mobile Targets): hydrate the
+  // inputs the WhyThisNumberDialog needs. confidence drives the
+  // "calibrating / early estimate / strong estimate" copy; plan_pace
+  // + goal drive the "Lose / Maintain / Gain" line.
+  const [adaptiveTdeeConfidence, setAdaptiveTdeeConfidence] = useState<string | null>(null);
+  const [profileGoal, setProfileGoal] = useState<string | null>(null);
+  const [profilePlanPace, setProfilePlanPace] = useState<string | null>(null);
+  const [whyOpen, setWhyOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -120,7 +130,7 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
       const { data, error } = await supabase
         .from("profiles")
         .select(
-          "weight_kg, goal_weight_kg, weight_kg_by_day, activity_level, adaptive_tdee, adaptive_tdee_confidence",
+          "weight_kg, goal_weight_kg, weight_kg_by_day, activity_level, adaptive_tdee, adaptive_tdee_confidence, goal, plan_pace",
         )
         .eq("id", authedUserId)
         .maybeSingle();
@@ -143,6 +153,11 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
       if (typeof aTdee === "number" && Number.isFinite(aTdee) && (aConf === "high" || aConf === "medium")) {
         setMaintenanceTdee(aTdee);
       }
+      setAdaptiveTdeeConfidence(typeof aConf === "string" ? aConf : null);
+      const g = (data as { goal?: string }).goal;
+      setProfileGoal(typeof g === "string" ? g : null);
+      const pp = (data as { plan_pace?: string }).plan_pace;
+      setProfilePlanPace(typeof pp === "string" ? pp : null);
     })();
     return () => {
       cancelled = true;
@@ -467,10 +482,72 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
         })}
       </div>
 
+      {/* 2026-05-12 round 4 (Grace TF, web parity with mobile): the
+          "Why this number?" affordance moved off Today's hero ring
+          (audit flagged the pill as signalling low confidence). The
+          explainer lives here on Targets now — same row treatment as
+          the mobile screen. */}
+      <button
+        type="button"
+        onClick={() => setWhyOpen(true)}
+        data-testid="targets-how-is-this-calculated"
+        aria-label="How is this calculated? Open calorie target explanation"
+        className="flex items-center gap-3 w-full max-w-3xl rounded-2xl border border-border bg-card hover:bg-accent/30 transition-colors px-4 py-3.5 mb-pm-3 text-left"
+      >
+        <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary shrink-0">
+          <HelpCircle size={14} strokeWidth={2} />
+        </span>
+        <span className="flex-1 min-w-0">
+          <span className="block text-[14px] font-semibold text-foreground">
+            How is this calculated?
+          </span>
+          <span className="block text-[12px] text-muted-foreground mt-0.5">
+            See the maintenance TDEE, goal, and pace behind today&apos;s target.
+          </span>
+        </span>
+        <ChevronRight size={18} strokeWidth={1.75} className="text-muted-foreground shrink-0" />
+      </button>
+
       <p className="text-[11px] text-muted-foreground leading-relaxed max-w-3xl">
         Projections assume your recent trend continues. Targets update when you edit your plan or
         when adaptive TDEE re-calibrates.
       </p>
+
+      <WhyThisNumberDialog
+        open={whyOpen}
+        onOpenChange={setWhyOpen}
+        targetCalories={targets.calories}
+        maintenanceTdee={maintenanceTdee}
+        confidence={
+          adaptiveTdeeConfidence === "low" ||
+          adaptiveTdeeConfidence === "medium" ||
+          adaptiveTdeeConfidence === "high"
+            ? adaptiveTdeeConfidence
+            : null
+        }
+        loggingDays={null}
+        goal={
+          profileGoal === "gain" || profileGoal === "bulk" || profileGoal === "strength"
+            ? "gain"
+            : profileGoal === "maintain" || profileGoal === "health"
+              ? "maintain"
+              : "lose"
+        }
+        paceKgPerWeek={paceKgPerWeekFromPreset(
+          profilePlanPace,
+          profileGoal === "gain" || profileGoal === "bulk" || profileGoal === "strength"
+            ? "gain"
+            : profileGoal === "maintain" || profileGoal === "health"
+              ? "maintain"
+              : "lose",
+        )}
+        mealLogDays={null}
+        weightLogCount={Object.keys(weightKgByDay).length}
+        onAdjustTarget={() => {
+          setWhyOpen(false);
+          onNavigate?.("profile");
+        }}
+      />
     </div>
   );
 }

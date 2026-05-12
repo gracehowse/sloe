@@ -135,14 +135,23 @@ describe("Fix 3A — Why this number? panel uses the streak value", () => {
     expect(MOBILE_TARGETS).toMatch(/mealLogDays=\{null\}/);
   });
 
-  it("web WhyThisNumberDialog receives streakDays for both loggingDays and mealLogDays", () => {
-    expect(WEB_NUTRITION_TRACKER).toMatch(/loggingDays=\{streakDays\}/);
-    expect(WEB_NUTRITION_TRACKER).toMatch(/mealLogDays=\{streakDays\}/);
-    expect(WEB_NUTRITION_TRACKER).not.toMatch(
-      /loggingDays=\{loggedDays\.size\}/,
+  it("web WhyThisNumberDialog now lives on /home?view=targets (moved 2026-05-12 round 4)", () => {
+    // Round 4 (Grace TF, web parity with mobile): same move as mobile —
+    // the dialog was removed from Today's NutritionTracker and the
+    // host wiring (streakDays binding, etc) along with it. The Targets
+    // surface owns the dialog inline now. The Today pill on web is
+    // also gone — see todayHeroRingNoChipsWeb.test.tsx for that pin.
+    const WEB_TARGETS = readFileSync(
+      resolve(ROOT, "src/app/components/Targets.tsx"),
+      "utf8",
     );
-    expect(WEB_NUTRITION_TRACKER).not.toMatch(
-      /mealLogDays=\{loggedDays\.size\}/,
-    );
+    expect(WEB_TARGETS).toMatch(/<WhyThisNumberDialog/);
+    expect(WEB_NUTRITION_TRACKER).not.toMatch(/<WhyThisNumberDialog/);
+    // On /targets there's no StreakPip on the same surface so the
+    // streak-alignment requirement from 2026-05-02 doesn't apply
+    // here. We pass `null` for loggingDays/mealLogDays and the
+    // dialog's fallback copy handles it.
+    expect(WEB_TARGETS).toMatch(/loggingDays=\{null\}/);
+    expect(WEB_TARGETS).toMatch(/mealLogDays=\{null\}/);
   });
 });

@@ -90,8 +90,6 @@ import { TodayWeekView } from "./suppr/today-week-view";
 import { TodayDashboardMacroTiles } from "./suppr/today-dashboard-macro-tiles";
 import { FullNutrientPanelSheet } from "./suppr/full-nutrient-panel-sheet";
 import { FULL_NUTRIENT_PANEL_ROW_COUNT } from "../../lib/nutrition/fullNutrientPanel";
-import { WhyThisNumberDialog } from "./suppr/why-this-number-dialog";
-import { paceKgPerWeekFromPreset } from "../../lib/nutrition/whyThisNumber";
 import { TodaySnapShortcut } from "./suppr/today-snap-shortcut";
 import { TodayMealsSection } from "./suppr/today-meals-section";
 import { TodayFirstMealEmptyState } from "./suppr/today-first-meal-empty-state";
@@ -574,9 +572,6 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
   const [photoLogOpen, setPhotoLogOpen] = useState(false);
   const [aiPaywallFeature, setAiPaywallFeature] = useState<AiPaywallFeature | null>(null);
   const [completeDayOpen, setCompleteDayOpen] = useState(false);
-  /** Audit gap #10 (2026-05-01) — "Why this number?" dialog visibility.
-   *  Opened by the small pill under the calorie ring. */
-  const [whyThisNumberOpen, setWhyThisNumberOpen] = useState(false);
   /** Full-nutrient panel sheet (PR #47, re-wired 2026-05-02) — opened
    *  from the "View all N nutrients" pill inside
    *  `TodayDashboardMacroTiles` after the Today-canvas
@@ -2253,7 +2248,6 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         onToggleExpanded={() => setRingExpanded((v) => !v)}
         displayMode={ringDisplayMode}
         onDisplayModeChange={setRingDisplayMode}
-        onPressWhy={() => setWhyThisNumberOpen(true)}
       />
 
       {/* Single context block — priority order: fasting > eat-again >
@@ -2746,55 +2740,11 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         onDismiss={handleWeeklyCheckinDismiss}
       />
 
-      {/* Complete Day Dialog */}
-      {/* Audit gap #10 — "Why this number?" dialog (2026-05-01).
-          Reads adaptive_tdee + goal + plan_pace from the profile state
-          we already hydrate; recomp folds into "lose" semantics for
-          the panel because the user-facing direction is identical.
-          "Adjust target" is intentionally omitted on web for now: the
-          web settings surface that lives at /account is billing-only;
-          target editing on web ships once the profile-edit page lands. */}
-      <WhyThisNumberDialog
-        open={whyThisNumberOpen}
-        onOpenChange={setWhyThisNumberOpen}
-        targetCalories={Math.round(effectiveCalorieTarget)}
-        maintenanceTdee={profileMaintenanceTdee}
-        confidence={profileMaintenanceConfidence}
-        // Streak alignment (2026-05-02 user feedback,
-        // claude/household-section-streak-sidebar-bundle): the panel
-        // reads the SAME consecutive-logging-streak number the
-        // StreakPip shows, so users don't see "26-day streak" on the
-        // header and "40 days of logging" inside the panel and ask
-        // "which is it?". `streakDays` is the canonical metric for
-        // both the early-estimate qualifier and the calibrating ask
-        // gate — `loggedDays.size` (distinct-day count) is no longer
-        // surfaced here.
-        loggingDays={streakDays}
-        goal={
-          profileGoal === "gain"
-            ? "gain"
-            : profileGoal === "maintain"
-              ? "maintain"
-              : "lose" // covers "lose" + "recomp" + null
-        }
-        paceKgPerWeek={paceKgPerWeekFromPreset(
-          profilePlanPace,
-          profileGoal === "gain"
-            ? "gain"
-            : profileGoal === "maintain"
-              ? "maintain"
-              : "lose",
-        )}
-        // Specific calibrating ask: when adaptive TDEE hasn't fired
-        // we tell the user EXACTLY what's missing (3+ weight logs, 7+
-        // meal-log days). Without these the panel falls back to a
-        // generic "keep logging" line that lies after 40 days of meals
-        // with no weights — see PR claude/why-this-number-data-fix.
-        // 2026-05-02 — `mealLogDays` now uses the streak so the gate
-        // matches what the user sees on the pip.
-        mealLogDays={streakDays}
-        weightLogCount={Object.keys(profileWeightKgByDay).length}
-      />
+      {/* 2026-05-12 round 4 (Grace TF, web parity with mobile): the
+          WhyThisNumberDialog moved to /home?view=targets — pill on
+          Today's hero was called out as signalling low confidence in
+          the number. Web Today no longer hosts the dialog; the
+          Targets surface owns it inline. */}
 
       <TodayCompleteDayDialog
         open={completeDayOpen}

@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { HelpCircle } from "lucide-react";
 import { DailyRing, type CalorieRingDisplayMode } from "./daily-ring";
 
 /**
@@ -41,9 +40,10 @@ export interface TodayHeroRingProps {
    *  affordance has a single mutation point. */
   onDisplayModeChange: (mode: CalorieRingDisplayMode) => void;
 
-  /** Audit gap #10 transparency moat (2026-05-01). When provided, a
-   *  small "Why this number?" pill renders below the ring; tapping it
-   *  opens the host-owned `WhyThisNumberDialog`. */
+  /** 2026-05-12 round 4 — pill dropped. Prop preserved on the type for
+   *  backwards compat with host wiring; no UI surfaces it here. The
+   *  explainer is now reached from the Targets sub-tab inside More
+   *  (mirrors mobile). */
   onPressWhy?: () => void;
 }
 
@@ -57,8 +57,15 @@ export function TodayHeroRing({
   onToggleExpanded,
   displayMode,
   onDisplayModeChange: _onDisplayModeChange,
-  onPressWhy,
+  onPressWhy: _onPressWhy,
 }: TodayHeroRingProps) {
+  // 2026-05-12 round 4 (Grace TF, web parity with mobile): the
+  // "Why this number?" pill was dropped. Audit: pill signalled low
+  // confidence in the number. On mobile we relocated the affordance to
+  // Settings → Targets → "How is this calculated?" row, which opens
+  // the WhyThisNumberSheet inline there. Web mirrors: the explainer
+  // is reachable from the Targets sub-tab (inside More) on web too,
+  // not from Today's hero. Today stays clean.
   return (
     <div className="flex flex-col items-center mb-4">
       <DailyRing
@@ -73,21 +80,6 @@ export function TodayHeroRing({
         onToggle={onToggleExpanded}
         displayMode={displayMode}
       />
-      {/* Audit gap #10 transparency moat (2026-05-01) — small "Why this
-          number?" pill that opens the WhyThisNumberDialog. Sized so it
-          doesn't fight the ring tap target. */}
-      {onPressWhy ? (
-        <button
-          type="button"
-          data-testid="today-hero-why-this-number"
-          aria-label="Why this number? Open calorie target explanation"
-          onClick={onPressWhy}
-          className="mt-2 inline-flex items-center gap-1 rounded-full bg-primary/15 hover:bg-primary/25 transition-colors px-3 py-1 text-[11px] font-bold tracking-wide text-primary"
-        >
-          <HelpCircle size={12} strokeWidth={2.25} />
-          Why this number?
-        </button>
-      ) : null}
     </div>
   );
 }
