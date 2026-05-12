@@ -416,8 +416,13 @@ export default function TargetsScreen() {
           fontVariant: ["tabular-nums"],
         },
         goalHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-        goalTitle: { fontSize: 18, fontWeight: "700", color: colors.text },
-        goalSub: { fontSize: 13, color: colors.textSecondary, marginTop: 4, lineHeight: 18 },
+        goalTitle: { fontSize: 18, fontWeight: "700", color: colors.text, flexShrink: 1 },
+        // Audit 2026-05-12: goalSub previously clipped at the right edge of its
+        // flex-1 column because RN didn't shrink the Text container before
+        // the row laid out. flexShrink: 1 + numberOfLines={2} forces a graceful
+        // wrap so "Currently 54.5 kg · could reach by ≈ 18 July 2026" doesn't
+        // truncate to "≈ 18".
+        goalSub: { fontSize: 13, color: colors.textSecondary, marginTop: 4, lineHeight: 18, flexShrink: 1 },
         statusPill: {
           paddingHorizontal: 10,
           paddingVertical: 4,
@@ -597,9 +602,9 @@ export default function TargetsScreen() {
         {goalCard ? (
           <View style={styles.card}>
             <View style={styles.goalHead}>
-              <View style={{ flex: 1, paddingRight: Spacing.sm }}>
+              <View style={{ flex: 1, minWidth: 0, paddingRight: Spacing.sm }}>
                 <Text style={styles.goalTitle}>{goalCard.title}</Text>
-                <Text style={styles.goalSub}>{goalCard.subtitle}</Text>
+                <Text style={styles.goalSub} numberOfLines={2}>{goalCard.subtitle}</Text>
               </View>
               <View
                 style={[

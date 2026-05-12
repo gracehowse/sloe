@@ -20,7 +20,7 @@ export type DigestHeadlineInput = {
  *
  * Rules (first match wins):
  *   1. `daysLogged === 0` → "Quiet week."
- *   2. |weightDeltaKg| ≥ 0.3 → "Your week — down/up X.X kg."
+ *   2. |weightDeltaKg| ≥ 0.3 → "Last week: down/up X.X kg." (past-tense per project voice rule)
  *   3. closestToTargetLabel present → "Closest to target: <day>."
  *   4. streakDays ≥ 7 → "Streak held — X days."
  *   5. fallback → "Your week, at a glance."
@@ -30,7 +30,7 @@ export function resolveDigestHeadline(input: DigestHeadlineInput): string {
   if (input.weightDeltaKg != null && Math.abs(input.weightDeltaKg) >= 0.3) {
     const direction = input.weightDeltaKg < 0 ? "down" : "up";
     const magnitude = Math.abs(input.weightDeltaKg).toFixed(1);
-    return `Your week — ${direction} ${magnitude} kg.`;
+    return `Last week: ${direction} ${magnitude} kg.`;
   }
   if (input.closestToTargetLabel) {
     return `Closest to target: ${input.closestToTargetLabel}.`;

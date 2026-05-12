@@ -337,7 +337,7 @@ export default function LoginScreen() {
           <Text style={styles.brandLetter}>S</Text>
         </View>
         <Text style={styles.title}>SUPPR</Text>
-        <Text style={styles.tagline}>Meal plans that hit your macros</Text>
+        <Text style={styles.tagline}>Sign in to Suppr</Text>
       </View>
 
       {/* Form */}

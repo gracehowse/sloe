@@ -108,15 +108,15 @@ export const PRICING_TIERS: PricingTier[] = [
     // correct.
     annualSavings: undefined,
     checkoutTier: "pro",
-    nutritionNote: "Unlimited recipes + unlimited AI photo & voice logging",
+    nutritionNote: "Unlimited recipes + AI photo & voice logging up to 100/day",
     featHead: "Everything in Free, plus",
     features: [
       "Unlimited saved recipes",
       "Multi-day meal plans matched to your macro targets",
       "Shopping list from plan",
       "Publish recipes to the community",
-      "Unlimited AI photo meal recognition (100/day)",
-      "Voice food logging (100/day)",
+      "AI photo meal recognition (up to 100/day)",
+      "Voice food logging (up to 100/day)",
       "Priority email support",
     ],
     highlighted: true,

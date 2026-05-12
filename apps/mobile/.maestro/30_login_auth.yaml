@@ -33,7 +33,7 @@ name: "Login — form validation, error states, successful auth"
 
 # --- Now on the login screen ---
 - assertVisible: ".*SUPPR.*"
-- assertVisible: ".*Meal plans that hit your macros.*"
+- assertVisible: ".*Sign in to Suppr.*"
 
 # Verify form fields are present
 - assertVisible:

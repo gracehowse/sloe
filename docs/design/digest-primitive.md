@@ -92,7 +92,7 @@ DigestProps {
 ```
 
 Headline rule (host computes, Digest renders):
-- If weight delta present and |delta| ≥ 0.3 kg → "Your week — down/up X kg."
+- If weight delta present and |delta| ≥ 0.3 kg → "Last week: down/up X.X kg." (past-tense per project voice rule — past days use past tense)
 - Else if closestToTarget present → "Closest to target: <day>."
 - Else if streak ≥ 7 → "Streak held — X days."
 - Else → "Your week, at a glance."

@@ -32,7 +32,7 @@ describe("resolveDigestHeadline — §5 precedence", () => {
         streakDays: 10,
         daysLogged: 7,
       }),
-    ).toBe("Your week — down 0.6 kg.");
+    ).toBe("Last week: down 0.6 kg.");
   });
 
   it("prefers weight delta when |delta| >= 0.3 kg (up)", () => {
@@ -43,7 +43,7 @@ describe("resolveDigestHeadline — §5 precedence", () => {
         streakDays: 0,
         daysLogged: 7,
       }),
-    ).toBe("Your week — up 0.4 kg.");
+    ).toBe("Last week: up 0.4 kg.");
   });
 
   it("falls through to closest-to-target when weight delta is below 0.3 kg", () => {
