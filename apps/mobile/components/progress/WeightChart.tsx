@@ -308,25 +308,66 @@ export function WeightChart({ trend, goalKg, isImperial = false }: Props) {
           </LinearGradient>
         </Defs>
 
-        {/* Gridlines — 2026-05-12 (Grace TF chart polish): solid
-            hairlines at 0.5 alpha replace the dashed pattern.
-            Withings ships solid horizontal hairlines, never dashed —
-            dashed gridlines read busy at small chart heights. */}
+        {/* Horizontal gridlines — solid hairlines at 0.45 alpha.
+            Withings's spec is solid; dashed reads busy at this
+            chart height. */}
         {gridValues.map((v, i) => {
           const gy = toY(v, yMin, yMax, plotH);
           return (
             <Line
-              key={i}
+              key={`hg-${i}`}
               x1={PAD_LEFT}
               y1={gy}
               x2={chartWidth - PAD_RIGHT + 4}
               y2={gy}
               stroke={colors.border}
               strokeWidth={1}
-              opacity={0.5}
+              opacity={0.45}
             />
           );
         })}
+
+        {/* 2026-05-12 round 4 (Withings comparison): vertical
+            gridlines at every X-tick month boundary. Withings's
+            Year view has subtle vertical guides between every month
+            initial — they anchor the data to the time axis and stop
+            the data from looking like it floats. Same opacity as
+            horizontal so neither dominates. */}
+        {xTicks.length > 1 &&
+          xTicks.map((t, i) => {
+            const tx = PAD_LEFT + t.position * plotW;
+            // Skip drawing the leftmost vertical guide — it'd visually
+            // collide with the chart's left edge.
+            if (i === 0) return null;
+            return (
+              <Line
+                key={`vg-${i}`}
+                x1={tx}
+                y1={PAD_TOP}
+                x2={tx}
+                y2={bottom}
+                stroke={colors.border}
+                strokeWidth={1}
+                opacity={0.25}
+              />
+            );
+          })}
+
+        {/* "kg" / "lb" unit label top-right above the y-axis ticks,
+            mirroring Withings's Year-view header. Suppresses on very
+            narrow plots (rare). */}
+        {plotW > 200 && (
+          <SvgText
+            x={chartWidth - PAD_RIGHT + 6}
+            y={PAD_TOP - 2}
+            fontSize={9}
+            fill={colors.textTertiary}
+            textAnchor="start"
+            fontWeight="600"
+          >
+            {isImperial ? "lb" : "kg"}
+          </SvgText>
+        )}
 
         {/* Grid labels (right-aligned inside plot) */}
         {gridValues.map((v, i) => {
@@ -385,21 +426,28 @@ export function WeightChart({ trend, goalKg, isImperial = false }: Props) {
             when the goal is far from data the in-chart goal line is
             already suppressed by computeYDomain. */}
 
-        {/* MA area fill */}
-        {count >= 3 && (
-          <Path
-            d={buildAreaPath(xs, maYs, maMask, bottom)}
-            fill="url(#areaGrad)"
-          />
-        )}
+        {/* 2026-05-12 round 4 (Grace TF, Withings comparison):
+            **always** draw a trend line through the actual data
+            points — this is the Withings Health Mate pattern. Round 3
+            relied on the smoothed MA line as the headline element,
+            but on weekly / monthly buckets where the MA pipeline
+            can't produce enough valid points, the chart rendered
+            as scattered dots with NO connecting line. Side-by-side
+            with Withings: their "Year" view has a continuous trend
+            line + a hollow ring at every data point. We now match.
 
-        {/* MA line — 2026-05-12 (Grace TF chart polish): 2.0pt → 2.25pt
-            for more presence at small chart heights. The smoothed line
-            is the headline element of this chart; Withings's spec is
-            ~2pt and ours was just under it. */}
-        {count >= 3 && (
+            Two-layer system:
+              - Always: connect every point with a 2.25pt line (the
+                "real" trend on this surface — what the user logged).
+              - When count >= 3 AND we have a valid MA mask: render
+                the smoothed MA + area fill UNDER the real-points
+                line at lower opacity, so the underlying trend reads
+                as a soft envelope. On sparse data this layer is
+                absent — the points line carries it alone.
+            */}
+        {count >= 2 && (
           <Path
-            d={buildLinePath(xs, maYs, maMask)}
+            d={buildLinePath(xs, ys, ys.map(() => true))}
             stroke={lineColor}
             strokeWidth={2.25}
             fill="none"
@@ -408,34 +456,23 @@ export function WeightChart({ trend, goalKg, isImperial = false }: Props) {
           />
         )}
 
-        {/*
-          Raw dots — 2026-05-06: only rendered for `daily` bucket. On
-          weekly / monthly each point IS already an aggregate, so
-          rendering them as dots smudges into a blob and misleads
-          (looks like raw weigh-ins). MFP shows just the smoothed line
-          on long ranges.
-        */}
-        {/* 2026-05-11 (mockup signed off): sparse raw dots when there
-            are 14+ daily points. The smoothed line carries the story;
-            dots become sample markers, not noise. `stride` makes sure
-            we keep the first + last + roughly 6 evenly-spaced dots in
-            between, plus the actively-scrubbed point regardless. */}
-        {/* Data points (raw weigh-ins for daily, aggregates for
-            weekly / monthly). 2026-05-12 round 3 (Grace TF: 3M / 1Y
-            views were rendering only the latest dot when count < 3
-            blocked the smoothed line — user saw "one floating dot
-            in empty space"). Two-track logic now:
-              - Daily bucket: stride-decimate raw dots so the smoothed
-                line still carries the story on dense data (~6 dots
-                visible between first + last + scrub).
-              - Weekly / monthly bucket: render EVERY aggregate dot.
-                Each point IS the aggregate (no noise to thin out),
-                and on sparse data the dots ARE the chart. Without
-                this, a user with 2 weekly buckets saw one lonely
-                latest dot on an empty plot.
-            Filled markers at 35% alpha keep the smoothed line as the
-            headline element when present; scrubbed dot at full
-            opacity / r=5 is the active anchor. */}
+        {/* Smoothed-MA envelope — area fill + soft line, both at low
+            opacity so the canonical points-line above stays the
+            headline. Suppressed when count < 3 (not enough data
+            for a meaningful average). */}
+        {count >= 3 && (
+          <Path
+            d={buildAreaPath(xs, maYs, maMask, bottom)}
+            fill="url(#areaGrad)"
+          />
+        )}
+
+        {/* Data points. Round 4 (Withings parity): every visible point
+            is a hollow ring (filled with card colour, stroked with
+            line colour) at r=4. This is the canonical Withings marker
+            style — reads as "data point on a trend line", not "blob
+            of noise". On daily bucket with > 14 raw points we still
+            stride-decimate so the line stays the headline. */}
         {points.map((p, i) => {
           if (i === latestIdx) return null;
           const isScrubbed = scrubIdx === i;
@@ -444,37 +481,18 @@ export function WeightChart({ trend, goalKg, isImperial = false }: Props) {
             const keep = isScrubbed || i === 0 || i % stride === 0;
             if (!keep) return null;
           }
-          // Weekly / monthly: render every point.
           return (
             <Circle
               key={p.dateISO + i}
               cx={xs[i]!}
               cy={ys[i]!}
-              r={isScrubbed ? 5 : 3}
-              fill={lineColor}
-              opacity={isScrubbed ? 1 : 0.35}
+              r={isScrubbed ? 5 : 4}
+              fill={colors.card}
+              stroke={lineColor}
+              strokeWidth={isScrubbed ? 2.25 : 1.75}
             />
           );
         })}
-
-        {/* Fallback connector line — 2026-05-12 round 3: when the
-            smoothed MA line is suppressed (count < 3) and there are
-            still ≥ 2 points to render, draw a thin connector between
-            them so the dots read as a series instead of stray marks.
-            Lower stroke weight than the canonical MA line so a future
-            count >= 3 view still feels more "premium" than a sparse
-            one. */}
-        {count >= 2 && count < 3 && (
-          <Path
-            d={buildLinePath(xs, ys, ys.map(() => true))}
-            stroke={lineColor}
-            strokeWidth={1.5}
-            opacity={0.4}
-            fill="none"
-            strokeLinejoin="round"
-            strokeLinecap="round"
-          />
-        )}
 
         {/* Scrubber crosshair (active during pan) */}
         {scrubIdx != null && scrubPoint != null && (
