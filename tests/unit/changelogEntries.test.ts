@@ -31,13 +31,13 @@ import {
 describe("changelog/entries", () => {
   it("getLatestChangelog returns the highest build number that has items (skips placeholders)", () => {
     const latest = getLatestChangelog();
-    // 2026-05-02: PR #30 (Today micros 4-tile widget) was reverted
-    // per user feedback, but PR #47 (full-nutrient panel) and PR #31
-    // ("Why this number?") still ship build 12 with two user-facing
-    // bullets. Build 12 is therefore the latest user-visible entry.
-    // When a future build N+1 ships items, bump the expectation here
-    // in lockstep.
-    expect(latest.buildNumber).toBe(12);
+    // 2026-05-12: build 13 ships the premium-bar audit polish set
+    // (ruler-crash fix, refresh-plan UX, calorie-ring DC10, Withings
+    // weight chart parity, verify-step skeleton + confidence bar,
+    // recipe-import action sheet, paywall trial framing, reset modal
+    // bullets, etc.). When a future build N+1 ships items, bump
+    // the expectation here in lockstep.
+    expect(latest.buildNumber).toBe(13);
     expect(latest.items.length).toBeGreaterThan(0);
   });
 
