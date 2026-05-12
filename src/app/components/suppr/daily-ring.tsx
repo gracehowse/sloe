@@ -353,25 +353,6 @@ function DailyRing({
             >
               {centerLabel}
             </span>
-            {/* 2026-05-12 (premium-bar DC1, web parity with mobile
-                CalorieRing): delta chip in the ring centre. Answers
-                "am I over or under?" at a glance — green when under,
-                destructive when over — without the user needing the
-                long-press / explainer path. Only renders in `consumed`
-                mode; in `remaining` mode the big number IS the delta
-                so a duplicate chip would be noise. */}
-            {displayMode === "consumed" && target > 0 ? (
-              <span
-                className={`font-bold tabular-nums mt-0.5 ${expanded ? "text-[10px]" : "text-[11px]"}`}
-                style={{
-                  color: isOverBudget ? "var(--destructive)" : "var(--success)",
-                }}
-              >
-                {isOverBudget
-                  ? `−${overBy.toLocaleString()} over`
-                  : `${remaining.toLocaleString()} left`}
-              </span>
-            ) : null}
             {/* Budget line renders in BOTH expanded + collapsed states
                 (parity with mobile `CalorieRing` — commit 26a63bf, 2026-04-20).
                 ui-critic called out that the expanded view hid the

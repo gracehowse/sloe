@@ -79,7 +79,7 @@ export function TodayHeroRing({
   displayMode,
   onToggleDisplayMode,
   textTertiaryColor: _textTertiaryColor,
-  onPressWhy,
+  onPressWhy: _onPressWhy,
 }: TodayHeroRingProps) {
   return (
     <View
@@ -110,16 +110,19 @@ export function TodayHeroRing({
         onToggle={onToggleExpanded}
         displayMode={displayMode}
         onToggleDisplayMode={onToggleDisplayMode}
-        // 2026-05-12 (premium-bar DC1, Grace approval): the visible
-        // "Why this number?" pill below the ring was dropped — the
-        // audit called it out as signalling low confidence in the
-        // number. Long-press now opens the explainer instead. Tap
-        // still toggles macro-ring expansion; the displayMode toggle
-        // is preserved on the back-end via onToggleDisplayMode but
-        // is now reachable only when `onPressWhy` is not provided
-        // (i.e. on dev / preview surfaces).
-        onLongPressExplain={onPressWhy}
       />
+      {/* 2026-05-12 round 3 (Grace TF): "Why this number?" affordance
+          is removed from Today entirely. The explainer is now reachable
+          from the Targets screen (Settings → Targets → "How is this
+          calculated?"). The Reveal step in onboarding already explains
+          the math at first run; post-onboarding the explainer's job is
+          debugging-mode access, which tolerates 2-3 taps. Today's hero
+          stays clean.
+
+          The `onPressWhy` prop is preserved on the type for backwards
+          compat with the host wiring in `app/(tabs)/index.tsx`, but no
+          UI surfaces it here. If a future iteration brings the
+          affordance back, the wiring is still in place. */}
     </View>
   );
 }

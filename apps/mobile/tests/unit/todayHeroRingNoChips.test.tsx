@@ -1,24 +1,27 @@
 // @vitest-environment jsdom
 /**
- * TodayHeroRing — chip-control reverted (2026-05-02); pill dropped +
- * long-press repurposed as the explainer trigger (2026-05-12,
- * premium-bar DC1, Grace approval).
+ * TodayHeroRing — chip-control reverted (2026-05-02); explainer
+ * affordance removed from Today entirely (2026-05-12 round 3, Grace
+ * TF feedback). Iteration history:
+ *   - Round 1: long-press repurposed to open the explainer + delta
+ *     chip in centre. REVERTED — crowded the ring.
+ *   - Round 2: subtle "Why?" inline link below the ring. REMOVED —
+ *     still chrome around the hero.
+ *   - Round 3 (current): no Today-side affordance. The explainer
+ *     lives at Settings → Targets → "How is this calculated?" row,
+ *     which deep-links to /(tabs)?openWhy=1 so Today opens the
+ *     sheet on focus.
  *
  * Pinned behaviour:
  *   - Component does NOT render a Remaining/Consumed segmented chip
- *     control. Replacing the chips with the long-press gesture was a
- *     deliberate user-feedback change; this test fails if the chips
- *     are ever re-introduced without an explicit revisit of the
- *     2026-05-02 decision.
- *   - Component does NOT render a visible "Why this number?" pill.
- *     The audit called the pill out as signalling low confidence in
- *     the number. Long-press now opens the explainer instead. This
- *     fails if the pill is ever re-introduced without an explicit
- *     revisit of the 2026-05-12 decision.
- *   - When `onPressWhy` is provided, the long-press on the ring
- *     fires it (forwarded as `onLongPressExplain` to CalorieRing).
- *     When `onPressWhy` is omitted, long-press falls back to
- *     `onToggleDisplayMode` (legacy preview/dev surfaces).
+ *     control. (2026-05-02 decision.)
+ *   - Component does NOT render the old large "Why this number?"
+ *     pill, nor the round-2 subtle "Why?" link. The `onPressWhy`
+ *     prop is preserved on the type for backwards compat with host
+ *     wiring, but no UI surfaces it. (2026-05-12 round 3 decision.)
+ *   - Long-press on the ring fires `onToggleDisplayMode` — canonical
+ *     power-user gesture (toggle consumed/remaining + show/hide
+ *     macro sub-rings).
  *
  * Web parity: the segmented chip in
  * `src/app/components/suppr/today-hero-ring.tsx` is also gone for the
@@ -28,7 +31,7 @@
  */
 import * as React from "react";
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render } from "@testing-library/react-native";
+import { render } from "@testing-library/react-native";
 
 import { TodayHeroRing } from "../../components/today/TodayHeroRing";
 
@@ -77,7 +80,7 @@ describe("TodayHeroRing — post-revert (2026-05-02)", () => {
     expect(typeof TodayHeroRing).toBe("function");
   });
 
-  it("does NOT render a visible 'Why this number?' pill even when onPressWhy is provided (2026-05-12 audit)", () => {
+  it("does NOT render any 'Why?' affordance even when onPressWhy is provided (2026-05-12 round 3)", () => {
     const onPressWhy = vi.fn();
     const { queryByTestId } = render(
       <TodayHeroRing
@@ -87,12 +90,13 @@ describe("TodayHeroRing — post-revert (2026-05-02)", () => {
         onPressWhy={onPressWhy}
       />,
     );
-    // The pill testID must not be present on either branch — the
-    // explainer is reachable via long-press on the ring instead.
+    // The explainer is reached from Settings → Targets now. No UI
+    // here. The testID must not appear.
     expect(queryByTestId("today-hero-why-this-number")).toBeNull();
+    expect(onPressWhy).not.toHaveBeenCalled();
   });
 
-  it("does NOT render the pill when onPressWhy is omitted", () => {
+  it("does NOT render the 'Why?' link when onPressWhy is omitted", () => {
     const { queryByTestId } = render(
       <TodayHeroRing
         {...baseProps}

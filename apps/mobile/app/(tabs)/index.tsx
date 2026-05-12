@@ -356,6 +356,11 @@ export default function TrackerScreen() {
     /** Onboarding completion routes through here so Today can show
      *  post-onboarding nudges. Older code path. */
     onboarding_complete?: string;
+    /** 2026-05-12 round 3 (Grace TF): deep-link from `/targets`'s
+     *  "How is this calculated?" row. Today owns the WhyThisNumberSheet
+     *  (it has all the inputs already hydrated); Targets is a thin
+     *  caller via this param so we don't duplicate the data plumbing. */
+    openWhy?: string;
   }>();
   const insets = useSafeAreaInsets();
   const { session } = useAuth();
@@ -783,6 +788,18 @@ export default function TrackerScreen() {
       router.setParams({ openLog: undefined } as Record<string, undefined>);
     }
   }, [params.openLog, router]);
+
+  // 2026-05-12 round 3 (Grace TF) — `/targets` "How is this calculated?"
+  // row deep-links here with `?openWhy=1`. Today owns the
+  // WhyThisNumberSheet (all inputs are already hydrated here); Targets
+  // is just the entry point. Clear the param after firing so a back-nav
+  // doesn't re-open the sheet on next focus.
+  useEffect(() => {
+    if (params.openWhy === "1") {
+      setWhyThisNumberOpen(true);
+      router.setParams({ openWhy: undefined } as Record<string, undefined>);
+    }
+  }, [params.openWhy, router]);
 
   useEffect(() => subscribeOffline(setIsOffline), []);
 
@@ -4495,15 +4512,15 @@ export default function TrackerScreen() {
               expanded={ringExpanded}
               onToggleExpanded={() => setRingExpanded((e) => !e)}
               displayMode={calorieDisplayMode}
-              // 2026-05-12 (premium-bar DC1, Grace approval): long-press
-              // now opens the "Why this number?" explainer instead of
-              // toggling display-mode + macro-ring expansion. The new
-              // centre delta chip ("−178 over" / "+178 left") shows
-              // both consumed and remaining at once, making the
-              // toggle obsolete. The onToggleDisplayMode prop stays
-              // wired as a fallback for surfaces that don't pass
-              // `onPressWhy` (e.g. dev/preview), but on Today the
-              // ring's long-press routes through onPressWhy.
+              // 2026-05-12 round 2 (Grace TF revert): long-press is back
+              // to its canonical role — toggle display-mode AND show /
+              // hide the macro sub-rings in lock-step. The short-lived
+              // long-press-opens-explainer experiment was reverted
+              // after the centre delta chip + pill drop made the ring
+              // "super crowded". The explainer is now reached via a
+              // subtle "Why?" link below the ring in TodayHeroRing
+              // (much smaller than the old pill, doesn't fight the
+              // ring's gestures).
               onToggleDisplayMode={() => {
                 setCalorieDisplayMode((m) => m === "remaining" ? "consumed" : "remaining");
                 setRingExpanded((e) => !e);

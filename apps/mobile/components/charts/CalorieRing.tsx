@@ -290,12 +290,15 @@ export default function CalorieRing({
   return (
     <Pressable
       onPress={onToggle}
-      // 2026-05-12 (premium-bar DC1): long-press opens the explainer
-      // when `onLongPressExplain` is provided (canonical post-audit
-      // path). Falls back to the legacy displayMode toggle when
-      // not — keeps the dev-screen + tests stable until every caller
-      // migrates.
-      onLongPress={onLongPressExplain ?? onToggleDisplayMode}
+      // 2026-05-12 (Grace TF feedback round 2): revert long-press to the
+      // canonical displayMode toggle. The earlier patch wired
+      // `onLongPressExplain` here so long-press would open the
+      // "Why this number?" sheet, but the trade — losing the
+      // expand/displayMode lock-step gesture — was the wrong call.
+      // The explainer now lives on a subtle inline affordance below
+      // the ring (see TodayHeroRing). Long-press stays the power-user
+      // shortcut for ring state.
+      onLongPress={onToggleDisplayMode}
       style={{ alignItems: "center" }}
     >
       <View
@@ -490,30 +493,6 @@ export default function CalorieRing({
             {centerLabel}
           </Text>
         )}
-        {/* 2026-05-12 (premium-bar DC1): delta chip in the ring centre.
-            The audit's "1,822 / 1,600 · Δ +222" answer-at-a-glance goal
-            condensed into a single signed value. Only renders in the
-            default `consumed` mode — when the user long-presses to
-            `remaining` mode, the big number IS already the delta so a
-            duplicate chip would be noise. Empty state suppressed (no
-            number to be "over/under" against). Colour mirrors the
-            calorie ring 3-state rule (DC10) so the chip carries the
-            same green/red verdict as the ring itself. */}
-        {!isEmpty && displayMode === "consumed" && goal > 0 ? (
-          <Text
-            style={{
-              fontSize: expanded ? 10 : 11,
-              fontWeight: "700",
-              color: isOver ? Accent.destructive : Accent.success,
-              fontVariant: ["tabular-nums"],
-              marginTop: 2,
-            }}
-          >
-            {isOver
-              ? `−${Math.abs(diff).toLocaleString()} over`
-              : `${diff.toLocaleString()} left`}
-          </Text>
-        ) : null}
         {/* Budget line hidden when the concentric macro rings are
             showing — Grace 2026-04-20: text + rings looked squished.
             Also hidden when goal <= 0 (no profile target yet) so the

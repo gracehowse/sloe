@@ -12,6 +12,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import {
   ChevronLeft,
+  ChevronRight,
+  HelpCircle,
   Beef,
   Wheat,
   Droplets,
@@ -624,6 +626,57 @@ export default function TargetsScreen() {
             </View>
           </View>
         ) : null}
+
+        {/* 2026-05-12 round 3 (Grace TF): "How is this calculated?" row.
+            The "Why this number?" affordance was removed from Today's
+            hero (too crowded around the ring). The explainer lives
+            here now — Settings → Targets → tap the row → Today opens
+            with the WhyThisNumberSheet visible. Today owns the sheet
+            because it already hydrates every input the sheet needs
+            (TDEE, confidence, goal, pace); we deep-link with
+            `?openWhy=1` instead of duplicating the data plumbing. */}
+        <Pressable
+          onPress={() =>
+            router.push({ pathname: "/(tabs)", params: { openWhy: "1" } } as never)
+          }
+          accessibilityRole="button"
+          accessibilityLabel="How is this calculated? Open calorie target explanation"
+          style={({ pressed }) => ({
+            backgroundColor: colors.card,
+            borderWidth: 1,
+            borderColor: colors.cardBorder,
+            borderRadius: Radius.lg,
+            paddingVertical: 14,
+            paddingHorizontal: Spacing.lg,
+            marginBottom: Spacing.md,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 12,
+            opacity: pressed ? 0.7 : 1,
+          })}
+        >
+          <View
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: 14,
+              backgroundColor: Accent.primary + "1A",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <HelpCircle size={14} color={Accent.primary} strokeWidth={2} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>
+              How is this calculated?
+            </Text>
+            <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
+              See the maintenance TDEE, goal, and pace behind today&apos;s target.
+            </Text>
+          </View>
+          <ChevronRight size={18} color={colors.textTertiary} strokeWidth={1.75} />
+        </Pressable>
 
         <Text style={styles.footnote}>
           Projections assume a 14-day moving average. Targets adapt weekly based on logged intake.
