@@ -27,6 +27,7 @@ import { lookupBarcode, scaleMacros, submitFoodCorrection, type BarcodeProduct }
 import { scaleCorrectionToPer100g, type CorrectionBasis } from "@/lib/barcodeCorrection";
 import { useAuth } from "@/context/auth";
 import { clampRememberedToServingOptions, getRememberedPortion, recordPortion } from "@/lib/barcodePortionMemory";
+import { ServingStepper } from "@/components/food-log/ServingStepper";
 import {
   getMyContributorStats,
   formatHelpedLine,
@@ -689,6 +690,7 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
       textAlign: "center",
     },
     servingUnit: { fontSize: 13, color: colors.textSecondary },
+    servingStepperWrap: { flexShrink: 1 },
     presetRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
     presetChip: {
       paddingHorizontal: 10,
@@ -1288,30 +1290,33 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
                       </Pressable>
                     </View>
                   ) : null}
-                  {/* Serving size picker */}
+                  {/* F-137 (2026-05-11) — inline stepper replaces the
+                      free-text TextInput. Step size matches the basis:
+                      0.5 servings in perServing mode (so users go up in
+                      half-serving ticks), 5 g in per-100g mode. Direct
+                      text entry still works via the inline TextInput
+                      inside the stepper. */}
                   <View style={styles.servingRow}>
                     <Text style={styles.servingLabel}>Amount:</Text>
-                    <TextInput
-                      style={styles.servingInput}
+                    <ServingStepper
                       value={gramsInput}
-                      onChangeText={setGramsInput}
-                      keyboardType="decimal-pad"
-                      selectTextOnFocus
-                      returnKeyType="done"
-                      onSubmitEditing={Keyboard.dismiss}
-                      accessibilityLabel={
+                      onChange={setGramsInput}
+                      step={logBasis === "perServing" ? 0.5 : 5}
+                      unit={
+                        logBasis === "perServing"
+                          ? { singular: "serving", plural: "servings" }
+                          : "g"
+                      }
+                      min={0}
+                      max={10000}
+                      inputAccessibilityLabel={
                         logBasis === "perServing"
                           ? "Number of servings"
                           : "Serving size in grams"
                       }
+                      testIdPrefix="barcode-modal-amount"
+                      style={styles.servingStepperWrap}
                     />
-                    <Text style={styles.servingUnit}>
-                      {logBasis === "perServing"
-                        ? Number.parseFloat(gramsInput || "0") === 1
-                          ? "serving"
-                          : "servings"
-                        : "g"}
-                    </Text>
                   </View>
                   {/* F-18 (2026-04-19) — simplified helper copy. The old
                       "macros scale from per 100 g" aside leaked internal
