@@ -136,6 +136,10 @@ export function MobileRevealStep() {
         >
           Your daily target
         </Text>
+        {/* 2026-05-12 (premium-bar audit, B5 Reveal upgrade #2):
+            re-titled the reveal h1 from "Here's what your day looks
+            like." → "Your plan is ready." Cal AI parity — leads with
+            completion + reward beat, not "look at this dashboard". */}
         <Text
           style={{
             fontSize: 20,
@@ -146,7 +150,7 @@ export function MobileRevealStep() {
             textAlign: "center",
           }}
         >
-          Here&apos;s what your day looks like.
+          Your plan is ready.
         </Text>
 
         <View

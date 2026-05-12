@@ -48,9 +48,14 @@ export function TodayEatAgainBanner({
         <Text style={{ fontSize: 14, fontWeight: "600", color: textColor, marginTop: 2 }} numberOfLines={1}>
           {suggestion.recipeTitle}
         </Text>
+        {/* 2026-05-12 (premium-bar audit, cross-cutting copy unify):
+            macro format string normalised to `698 kcal · 22g P · 95g
+            C · 27g F`. Was `P 22g · C 95g · F 27g` here (letter-first)
+            and `22P / 95C / 27F` on NorthStarBlock (slash-separated).
+            Unified to the audit's spec across all Today surfaces. */}
         <Text style={{ fontSize: 11, color: textSecondaryColor, marginTop: 2 }}>
-          {Math.round(suggestion.calories)} kcal · P {Math.round(suggestion.protein)}g · C{" "}
-          {Math.round(suggestion.carbs)}g · F {Math.round(suggestion.fat)}g · into {slot}
+          {Math.round(suggestion.calories)} kcal · {Math.round(suggestion.protein)}g P ·{" "}
+          {Math.round(suggestion.carbs)}g C · {Math.round(suggestion.fat)}g F · into {slot}
         </Text>
       </View>
       <Pressable

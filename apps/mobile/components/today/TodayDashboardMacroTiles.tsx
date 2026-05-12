@@ -223,7 +223,17 @@ export function TodayDashboardMacroTiles({
                 >
                   {def.label}
                 </Text>
-                <def.Icon size={13} color={def.color} strokeWidth={1.75} />
+                {/* 2026-05-12 (premium-bar audit, Today F4 #2):
+                    chevron-right affordance signals each tile is
+                    tappable (deep-links to /macro-detail). Was just
+                    the macro icon — Cronometer / MacroFactor both
+                    show an explicit "tap for detail" cue. Kept the
+                    macro icon next to the chevron so colour-coding
+                    stays. */}
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                  <def.Icon size={13} color={def.color} strokeWidth={1.75} />
+                  <ChevronRight size={11} color={textTertiaryColor} strokeWidth={2} />
+                </View>
               </View>
               <View style={{ flexDirection: "row", alignItems: "baseline" }}>
                 <Text

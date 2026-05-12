@@ -222,8 +222,11 @@ export function NorthStarBlock({
           >
             {suggestion.bandLabel}
           </span>
+          {/* 2026-05-12 (premium-bar audit cross-cutting): macro
+              format unified to `698 kcal · 22g P · 95g C · 27g F`
+              across Today + Eat Again. Web mirrors mobile. */}
           <span className="text-[11px] text-muted-foreground tabular-nums">
-            {suggestion.predictedCalories} kcal · {Math.round(suggestion.predictedProtein)}P / {Math.round(suggestion.predictedCarbs)}C / {Math.round(suggestion.predictedFat)}F
+            {suggestion.predictedCalories} kcal · {Math.round(suggestion.predictedProtein)}g P · {Math.round(suggestion.predictedCarbs)}g C · {Math.round(suggestion.predictedFat)}g F
           </span>
         </div>
 

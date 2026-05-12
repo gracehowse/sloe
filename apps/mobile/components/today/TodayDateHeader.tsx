@@ -90,20 +90,29 @@ export function TodayDateHeader({
             <ChevronLeft size={16} color={textColor} />
           </Pressable>
           <Pressable onPress={onTapTitle} hitSlop={8}>
-            <Text
-              numberOfLines={1}
-              style={{
-                fontSize: 11,
-                fontWeight: "500",
-                color: textTertiaryColor,
-                letterSpacing: 0.5,
-                textTransform: "uppercase",
-              }}
-            >
-              {viewMode === "week"
-                ? weekLabel
-                : `${selectedDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })} · ${selectedDate.toLocaleDateString("en-US", { weekday: "long" })}`}
-            </Text>
+            {/* 2026-05-12 (premium-bar audit, Today header upgrade):
+                drop the small-caps date eyebrow when the h1 is already
+                "Today" — the eyebrow's "Apr 22 · Tuesday" duplicates
+                what the h1 implies. Keep the eyebrow for non-today
+                date selections (so "Sat Apr 19" h1 still has the
+                weekday-name context above it) and for the week view
+                (`weekLabel` is the date range). */}
+            {!(viewMode === "day" && isToday) ? (
+              <Text
+                numberOfLines={1}
+                style={{
+                  fontSize: 11,
+                  fontWeight: "500",
+                  color: textTertiaryColor,
+                  letterSpacing: 0.5,
+                  textTransform: "uppercase",
+                }}
+              >
+                {viewMode === "week"
+                  ? weekLabel
+                  : `${selectedDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })} · ${selectedDate.toLocaleDateString("en-US", { weekday: "long" })}`}
+              </Text>
+            ) : null}
             <Text style={{ fontSize: 22, fontWeight: "700", color: textColor, letterSpacing: -0.4, marginTop: 1 }}>
               {viewMode === "week" ? "This Week" : isToday ? "Today" : formatDateLabel(selectedDate)}
             </Text>

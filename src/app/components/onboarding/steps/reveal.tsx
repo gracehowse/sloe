@@ -109,11 +109,15 @@ export function RevealStep({ compact = false }: RevealProps) {
         <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-primary mb-2.5">
           Your daily target
         </div>
+        {/* 2026-05-12 (premium-bar audit, B5 Reveal upgrade #2):
+            re-titled from "Here's what your day looks like." → "Your
+            plan is ready." Cal AI parity — leads with completion +
+            reward beat. Mobile mirrored. */}
         <h1
           className={`font-bold tracking-tight m-0 mb-5 text-foreground leading-tight ${compact ? "text-xl" : "text-[22px]"}`}
           style={{ letterSpacing: "-0.02em", textWrap: "balance" } as React.CSSProperties}
         >
-          Here&apos;s what your day looks like.
+          Your plan is ready.
         </h1>
 
         <div

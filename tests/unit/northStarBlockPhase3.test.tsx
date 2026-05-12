@@ -41,7 +41,11 @@ describe("NorthStarBlock (web) — default kind", () => {
     expect(screen.getByText("What to eat next")).toBeDefined();
     expect(screen.getByText("Tofu poke bowl")).toBeDefined();
     expect(screen.getByText("Hits within 3%")).toBeDefined();
-    expect(screen.getByText(/520 kcal · 38P \/ 42C \/ 18F/)).toBeDefined();
+    // 2026-05-12 (premium-bar audit cross-cutting): macro format
+    // unified to `520 kcal · 38g P · 42g C · 18g F` across Today
+    // surfaces (NorthStarBlock + EatAgain). Was slash-separated
+    // `38P / 42C / 18F`.
+    expect(screen.getByText(/520 kcal · 38g P · 42g C · 18g F/)).toBeDefined();
     expect(screen.getByRole("button", { name: "Log it" })).toBeDefined();
   });
 

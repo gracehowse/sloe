@@ -312,6 +312,10 @@ function NorthStarDefault({
                 {suggestion.bandLabel}
               </Text>
             </View>
+            {/* 2026-05-12 (premium-bar audit cross-cutting): macro
+                format unified to `698 kcal · 22g P · 95g C · 27g F`
+                across Today + Eat Again + Plan grid. Was slash-
+                separated (`22P / 95C / 27F`). */}
             <Text
               style={[
                 Type.caption,
@@ -321,7 +325,7 @@ function NorthStarDefault({
                 },
               ]}
             >
-              {suggestion.predictedCalories} kcal · {Math.round(suggestion.predictedProtein)}P / {Math.round(suggestion.predictedCarbs)}C / {Math.round(suggestion.predictedFat)}F
+              {suggestion.predictedCalories} kcal · {Math.round(suggestion.predictedProtein)}g P · {Math.round(suggestion.predictedCarbs)}g C · {Math.round(suggestion.predictedFat)}g F
             </Text>
           </View>
 
@@ -365,9 +369,15 @@ const styles = StyleSheet.create({
     alignItems: "stretch",
     gap: Spacing.md,
   },
+  // 2026-05-12 (premium-bar audit, DC2 polish): bumped 56→64 to match
+  // the Recime hero-image size for the "what to eat next" card. The
+  // image is the trust signal that converts the suggestion into "yes
+  // I want that" — 56 was reading as a small avatar, 64 reads as a
+  // proper thumbnail. Same ratio as macro tile internal padding so
+  // the whole card breathes correctly.
   thumb: {
-    width: 56,
-    height: 56,
+    width: 64,
+    height: 64,
     borderRadius: 12,
     flexShrink: 0,
   },
