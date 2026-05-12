@@ -93,6 +93,18 @@ const FAQ = [
     q: "Do you offer refunds?",
     a: "If you're unhappy within the first 7 days, email support@suppr-club.com and we'll process a refund. Refunds are handled manually via Stripe.",
   },
+  // 2026-05-12 (premium-bar audit Group A pricing #5 — 6-question
+  // FAQ): added two MFP-refugee-relevant entries — privacy posture
+  // and competitor import compatibility — to lift the FAQ count
+  // from 4 → 6 and shore up the conversion case for switchers.
+  {
+    q: "Is my food data private?",
+    a: "Yes. Your food log, weight history, and saved recipes are private to your account. We never sell or share your data. You can export everything as JSON or delete your account anytime from Settings.",
+  },
+  {
+    q: "Can I bring in my history from MyFitnessPal, Cronometer, or Lose It?",
+    a: "MyFitnessPal CSV import is on the roadmap — paste-link import from any recipe URL already works. If you have an export from another tracker, email support@suppr-club.com and we'll help you migrate manually in the meantime.",
+  },
 ];
 
 function FaqItem({ q, a }: { q: string; a: string }) {

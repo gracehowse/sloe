@@ -108,7 +108,13 @@ export const PRICING_TIERS: PricingTier[] = [
     // correct.
     annualSavings: undefined,
     checkoutTier: "pro",
-    nutritionNote: "Unlimited recipes + AI photo & voice logging up to 100/day",
+    // 2026-05-12 (premium-bar audit #1.8): the prior "Unlimited
+    // recipes + AI photo & voice logging up to 100/day" was a
+    // grammatical contradiction at first read ("unlimited" + "up to
+    // 100/day"). Reordered so the cap reads as the qualifier on
+    // AI logging only, and recipes is its own clause. Same message,
+    // less head-tilt.
+    nutritionNote: "Unlimited saved recipes · AI photo + voice logging up to 100 per day",
     featHead: "Everything in Free, plus",
     features: [
       "Unlimited saved recipes",
