@@ -304,6 +304,18 @@ We've **jumped around and ahead** of the original phase order. Several Phase A i
 
 ### Still to build
 
+- **Ad-hoc shared meal** (Grace, 2026-05-12) — share an individual
+  logged meal with the household even when it isn't in anyone's plan.
+  Use case: "I ordered takeout, I want to share what I logged with my
+  husband", or "I made something up from what's in the fridge — he
+  shouldn't have to re-log it manually". Today, household sharing only
+  surfaces planned dinners. This gap forces the partner to re-log
+  identical meals on their side; ad-hoc share fixes that. Owner:
+  integration-manager + ui-product-designer. Probable shape: a
+  "Share with household" affordance on the meal-logged confirmation
+  state (Today + LogSheet) that creates a `household_meals` row with
+  `kind: 'adhoc'` so the partner sees it in their feed but it doesn't
+  consume a plan slot.
 - **Friends graph** — trusted connections outside of household (one-to-one share).
 - **Share meals / share plans / share slices** — send or link individual logged / saved meals, or specific slots, without sharing an entire plan.
 - **Plan-for-one, cook-for-many semantics** — explicit rule for "my portion" vs "household batch" when scaling a recipe for 2+ diners.

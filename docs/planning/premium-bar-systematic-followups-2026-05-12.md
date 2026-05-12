@@ -504,6 +504,14 @@ This doc is the live tracking surface — update tags as items ship.
   legal-reviewer + diversity-inclusion sign-off (cis-het assumptions,
   body-neutral framing, no shaming, AMAB-inclusive defaults). Add to
   long-term roadmap. Owner: nutrition-engine + product-lead + legal.
+- [ ] **Ad-hoc shared meal** (Grace, 2026-05-12) — share an
+  individual logged meal with the household even when it isn't in
+  anyone's plan. Use case: "I ordered takeout, I want to share what
+  I logged with my husband" / "I made something up from the fridge
+  and he shouldn't have to re-log it". Today, household sharing only
+  surfaces planned dinners — this gap forces the partner to re-log
+  the same meal. Mirror added to Phase F (`docs/product-roadmap.md`).
+  Owner: integration-manager + ui-product-designer.
 
 ## Phase 4+ execution log
 
