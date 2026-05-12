@@ -601,14 +601,26 @@ export default function PaywallScreen() {
   const headerTitle = (() => {
     if (paywallFrom === "trial_end") return "Your trial ended — pick a plan";
     if (paywallFrom === "voice_log" || paywallFrom === "photo_log") return "Unlock AI logging";
+    // 2026-05-12 (premium-bar audit #1 — Calm/Cal AI parity): lead
+    // with the trial benefit when a trial is offered. The previous
+    // "Pick the plan that fits" headline buried the strongest
+    // conversion lever (free trial) below the fold. Trial only
+    // applies on the annual SKU per `trialApplies` rule above; if
+    // annual is unavailable, fall back to the generic frame.
+    if (trialApplies) return "Try Pro free for 7 days";
     return "Pick the plan that fits";
   })();
   // Debug audit 2026-05-04 (visual-qa P1): the proFlavoured subtitle
   // referenced "Base" — a tier removed in PR-01. Now references the
   // current product structure (Free + Pro).
-  const headerSubtitle = proFlavoured
-    ? "Includes all Free features, plus AI photo and voice logging."
-    : "Cancel anytime. Price in your currency, taxes included.";
+  // 2026-05-12 (premium-bar audit #1.3): when the trial applies,
+  // surface the trial → first-charge story directly in the subtitle
+  // so the header reads as a complete pitch (Calm/Cal AI parity).
+  const headerSubtitle = trialApplies
+    ? "Full Pro free for a week. Cancel anytime in iOS Settings."
+    : proFlavoured
+      ? "Includes all Free features, plus AI photo and voice logging."
+      : "Cancel anytime. Price in your currency, taxes included.";
 
   // ─── Disclosure copy ────────────────────────────────────────────
 
@@ -1123,7 +1135,9 @@ export default function PaywallScreen() {
               }
               featHead={PRO_FEATURE_HEAD}
               features={PRO_FEATURES}
-              badgeLabel="MOST POPULAR"
+              // 2026-05-12 (premium-bar audit #1.7): drop "MOST POPULAR"
+              // badge — Pro is the only paid tier on the paywall, so
+              // "most popular vs what?" reads as marketing fluff.
               isHero
               ctaLabel="Subscriptions unavailable"
               ctaColor={Accent.primary}
@@ -1154,7 +1168,7 @@ export default function PaywallScreen() {
                 }
                 featHead={PRO_FEATURE_HEAD}
                 features={PRO_FEATURES}
-                badgeLabel="MOST POPULAR"
+                // 2026-05-12 (premium-bar audit #1.7): see note above.
                 isHero
                 ctaLabel={
                   trialApplies
