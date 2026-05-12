@@ -2015,11 +2015,23 @@ export default function ProgressScreen() {
                 computeWeightTrend prevents long ranges from
                 collapsing short histories into <3 buckets.
               */}
-              {weightChartTrend.points.length >= 2 ? (
+              {/* 2026-05-12 round 4 (Grace TF, Withings parity): show
+                  the chart structure even with a single weigh-in.
+                  Withings draws the chart at count === 1 (one dot on
+                  the gridlines, no trend line) — way more readable
+                  than the sparse-state template ("scale icon + Log
+                  weight" replaced the chart entirely). The chart
+                  already handles count === 1 gracefully: today's
+                  vertical indicator + the prominent halo dot + no
+                  trend line. count === 0 still falls back to the
+                  Log-weight CTA template since there's literally
+                  nothing to chart. */}
+              {weightChartTrend.points.length >= 1 ? (
                 <WeightChart
                   trend={weightChartTrend}
                   goalKg={goalWeightKg}
                   isImperial={measurementSystem === "imperial"}
+                  range={weightChartRange}
                 />
               ) : (
                 <WeightSparseState

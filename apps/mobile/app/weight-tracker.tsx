@@ -803,6 +803,7 @@ export default function ProgressScreen() {
                     trend={weightTrend}
                     goalKg={goalWeightKg ?? null}
                     isImperial={isImperial}
+                    range={weightTrendRange}
                   />
                 </>
               )}

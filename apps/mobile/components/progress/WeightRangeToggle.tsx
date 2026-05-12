@@ -3,11 +3,15 @@ import { Accent, Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import type { WeightRange } from "@/lib/progress/weightTrend";
 
+// 2026-05-12 (Grace TF chart parity with Withings): full-word labels
+// replace the compact 1W / 1M / 3M / 1Y form. Withings ships
+// Week / Month / Quarter / Year / All — words read more calmly and
+// don't require the user to mentally expand "3M" → "three months".
 const RANGES: { key: WeightRange; label: string }[] = [
-  { key: "1w", label: "1W" },
-  { key: "1m", label: "1M" },
-  { key: "3m", label: "3M" },
-  { key: "1y", label: "1Y" },
+  { key: "1w", label: "Week" },
+  { key: "1m", label: "Month" },
+  { key: "3m", label: "Quarter" },
+  { key: "1y", label: "Year" },
   { key: "all", label: "All" },
 ];
 

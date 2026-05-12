@@ -43,6 +43,14 @@ type Props = {
    * Default false preserves existing Progress-tab callers byte-for-byte.
    */
   isImperial?: boolean;
+  /**
+   * 2026-05-12 round 4 (Grace TF, Withings parity): the active range
+   * selection drives X-axis tick formatting (weekday names on Week,
+   * "Mon DD" on Month, full month names on Quarter, single letters
+   * on Year, years on All). Optional; legacy callers that omit it
+   * fall back to the old "first / last date" two-tick behaviour.
+   */
+  range?: "1w" | "1m" | "3m" | "1y" | "all";
 };
 
 /** kg → lb at the canonical 2.20462 factor used elsewhere in mobile. */
@@ -118,13 +126,48 @@ function buildAreaPath(
  * the plot width, allowing the renderer to place the label
  * proportionally.
  */
+// 2026-05-12 round 4 (Grace TF, Withings parity): range-aware x-axis
+// labels. Withings uses different tick formats per range — month
+// initials on Year, month names on Quarter, weekday abbreviations on
+// Week — so the time anchor reads at-a-glance for each scale. The
+// `range` param is optional so legacy callers that don't pass it
+// fall back to the old "first / last date" two-tick behaviour.
 function buildXAxisTicks(
   points: { dateISO: string }[],
   bucket: "daily" | "weekly" | "monthly",
+  range?: "1w" | "1m" | "3m" | "1y" | "all",
 ): Array<{ label: string; position: number }> {
   const count = points.length;
   if (count < 2) return [];
+
   if (bucket === "daily") {
+    // Week view: weekday-name ticks for every day in the visible
+    // window. With count ≤ 7 the labels fit comfortably; bigger
+    // windows fall through to the legacy "first / last" pair.
+    if (range === "1w" && count <= 9) {
+      return points.map((p, i) => ({
+        label: new Date(p.dateISO + "T12:00:00").toLocaleDateString("en-GB", {
+          weekday: "short",
+        }),
+        position: count <= 1 ? 0 : i / (count - 1),
+      }));
+    }
+    // Month view: emit a "Mon DD" tick at every Monday in the window,
+    // mirroring Withings's Month-view tick row.
+    if (range === "1m") {
+      const ticks: Array<{ label: string; position: number }> = [];
+      for (let i = 0; i < count; i++) {
+        const d = new Date(points[i]!.dateISO + "T12:00:00");
+        if (d.getDay() === 1 /* Monday */) {
+          ticks.push({
+            label: `Mon ${d.getDate()}`,
+            position: count <= 1 ? 0 : i / (count - 1),
+          });
+        }
+      }
+      if (ticks.length >= 2) return ticks;
+    }
+    // Daily fallback (or 1m with < 2 Mondays): first + last date.
     return [
       {
         label: new Date(points[0]!.dateISO + "T12:00:00").toLocaleDateString("en-GB", {
@@ -142,8 +185,49 @@ function buildXAxisTicks(
       },
     ];
   }
-  // For bucketed ranges: emit a tick whenever the month changes vs
-  // the previous emitted tick. Cap at ~6 ticks to avoid overflow.
+
+  // Year view: one tick per month, single-letter labels ("J F M ...").
+  // Withings's Year row shows all 12 months at single-letter density.
+  if (range === "1y") {
+    const ticks: Array<{ label: string; position: number }> = [];
+    let lastMonth = "";
+    for (let i = 0; i < count; i++) {
+      const month = points[i]!.dateISO.slice(0, 7);
+      if (month !== lastMonth) {
+        const d = new Date(points[i]!.dateISO + "T12:00:00");
+        ticks.push({
+          label: d.toLocaleDateString("en-GB", { month: "narrow" }),
+          position: i / (count - 1),
+        });
+        lastMonth = month;
+      }
+    }
+    return ticks;
+  }
+
+  // All view: years-only ticks. Decimated below if too many.
+  if (range === "all") {
+    const ticks: Array<{ label: string; position: number }> = [];
+    let lastYear = "";
+    for (let i = 0; i < count; i++) {
+      const year = points[i]!.dateISO.slice(0, 4);
+      if (year !== lastYear) {
+        ticks.push({
+          label: year,
+          position: i / (count - 1),
+        });
+        lastYear = year;
+      }
+    }
+    if (ticks.length > 6) {
+      const stride = Math.ceil(ticks.length / 6);
+      return ticks.filter((_, i) => i % stride === 0);
+    }
+    return ticks;
+  }
+
+  // Quarter (3m) view + any other bucketed range: full month names
+  // for each month boundary, capped at 6 ticks.
   const ticks: Array<{ label: string; position: number }> = [];
   let lastMonth = "";
   for (let i = 0; i < count; i++) {
@@ -151,13 +235,12 @@ function buildXAxisTicks(
     if (month !== lastMonth) {
       const d = new Date(points[i]!.dateISO + "T12:00:00");
       ticks.push({
-        label: d.toLocaleDateString("en-GB", { month: "short" }),
+        label: d.toLocaleDateString("en-GB", { month: "long" }),
         position: i / (count - 1),
       });
       lastMonth = month;
     }
   }
-  // Decimate if too many.
   if (ticks.length > 6) {
     const stride = Math.ceil(ticks.length / 6);
     return ticks.filter((_, i) => i % stride === 0);
@@ -165,7 +248,7 @@ function buildXAxisTicks(
   return ticks;
 }
 
-export function WeightChart({ trend, goalKg, isImperial = false }: Props) {
+export function WeightChart({ trend, goalKg, isImperial = false, range }: Props) {
   const colors = useThemeColors();
   const [chartWidth, setChartWidth] = useState(300);
   const [scrubIdx, setScrubIdx] = useState<number | null>(null);
@@ -189,7 +272,7 @@ export function WeightChart({ trend, goalKg, isImperial = false }: Props) {
     () => movingAvg.map((v) => (v !== null ? toY(v, yMin, yMax, plotH) : 0)),
     [movingAvg, yMin, yMax, plotH],
   );
-  const xTicks = useMemo(() => buildXAxisTicks(points, bucket), [points, bucket]);
+  const xTicks = useMemo(() => buildXAxisTicks(points, bucket, range), [points, bucket, range]);
 
   const latestIdx = points.length - 1;
   const latestX = latestIdx >= 0 ? xs[latestIdx]! : 0;
@@ -515,6 +598,25 @@ export function WeightChart({ trend, goalKg, isImperial = false }: Props) {
               strokeWidth={2}
             />
           </>
+        )}
+
+        {/* 2026-05-12 round 4 (Grace TF, Withings parity): persistent
+            "today" vertical indicator at the latest data point's x.
+            Thin solid line, low-contrast black, full plot height.
+            Withings runs this through every range view; reads as a
+            calm "you are here" marker that the scrub crosshair
+            overrides on touch. Suppressed when no data so it doesn't
+            float in an empty plot. */}
+        {latestIdx >= 0 && scrubIdx == null && (
+          <Line
+            x1={latestX}
+            y1={PAD_TOP}
+            x2={latestX}
+            y2={bottom}
+            stroke={colors.text}
+            strokeWidth={1}
+            opacity={0.55}
+          />
         )}
 
         {/* Latest dot — prominent with halo ring (Withings parity).
