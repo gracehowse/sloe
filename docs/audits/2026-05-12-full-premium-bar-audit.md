@@ -436,6 +436,35 @@ Each borrow runs through the Selective Borrow Decision Rule: (1) voice fit, (2) 
 
 ---
 
+## Late-add finding (2026-05-12, Grace cohort) — Settings → "Refresh my plan" reuses the onboarding Welcome screen
+
+**Where:** Mobile native. Triggered via **More → Settings → "Refresh my plan"** in `apps/mobile/components/settings/SettingsBundleContent.tsx:916` (`handleRefreshPlan`). Sets `onboarding_completed: false`, clears the persisted onboarding draft, sets the `suppr.reset-plan-pending-prompt` AsyncStorage flag, and routes to `/onboarding`.
+
+**Symptom (pre-fix):** A signed-in user resetting their plan landed on the **first-impression onboarding Welcome screen** — full marketing sell ("Eat well, without overthinking it." headline, floating "Example · Sheet-pan chicken from instagram.com" tile, "USDA-backed nutrition" pill, "Get started" CTA, and most confusingly **"Have an account? Sign in"** as a tertiary link). The user had no signal they were in a plan-refresh flow — the screen looked identical to a brand-new sign-up. Subsequent body-stats / Goal / Strategy steps then looked identical to a fresh signup too, with no indication the user was just refreshing their existing plan.
+
+**Comparable / bar:** **Apple Watch — Health "Update Activity Goals" flow.** A user-initiated goal change re-asks the relevant questions but never re-shows the first-impression sell, never asks the user to sign in, and surfaces a clear header ("Update your goals") so the user knows what flow they're in. **Stripe Atlas re-onboarding** does the same — re-asks specific fields with a clear "Refresh your details" banner, never the first-run intro.
+
+**Verdict (pre-fix):** EMBARRASSING — concept gap (re-using the unauthed first-run flow for a signed-in refresh) AND execution gap (no flow indicator, no auto-skip).
+
+**Verdict (post-fix, this PR):** AT BAR — fixed in `apps/mobile/components/onboarding/mobile-flow.tsx` with two changes:
+1. **Auto-skip Welcome when in refresh-plan mode.** A new `useEffect` peeks the `suppr.reset-plan-pending-prompt` AsyncStorage flag on mount; when true, the Welcome step is auto-skipped via `go(1)`. A neutral `ActivityIndicator` loading shell renders for the ~10ms AsyncStorage read so the user never sees a flash of the first-impression Welcome.
+2. **"REFRESH PLAN" pill in the top bar** while the user is in refresh-plan mode. Calm-pip treatment (muted `Accent.primaryLight` tint, 11pt bold tracked uppercase) sat next to the progress bar. The user can tell at a glance this is a plan refresh, not a fresh signup, on every subsequent step.
+
+**Verified end-to-end in sim (2026-05-12):** Settings → "Refresh my plan" → tap → confirm modal → land directly on Step 03 "What's your goal?" with REFRESH PLAN pill visible top-right. No Welcome screen flash. No "Sign in" affordance shown. Step counter + back chevron + Continue button all intact.
+
+**Why it matters:** flagged by Grace mid-Phase-1, this was a P0 UX bug that no automated test would catch — the flow technically worked, but the *meaning* of the screen was wrong. Adds to the audit's list of "things the agent missed" — it focused on first-impression onboarding without auditing the re-entry path.
+
+**Files changed (this PR):**
+- `apps/mobile/components/onboarding/mobile-flow.tsx` — added `isRefreshPlan` peek + Welcome auto-skip + REFRESH PLAN pill
+- (no change needed to `welcome.tsx` itself; the screen is simply not rendered when refresh-plan is detected)
+
+**Open questions / future polish (not in this PR):**
+- Should the "Build my plan" terminal-step CTA copy change to "Refresh my plan" when in refresh mode? Currently identical to first-run.
+- Should specific steps within the flow (e.g. Pace, Strategy) carry a one-line "You're updating from X to Y" diff for the values that changed? Adds clarity at the cost of complexity.
+- Web parity: does `/onboarding` on web have the same reset-plan reuse pattern? Web doesn't currently have a "Refresh my plan" Settings affordance, but if added later, mirror this fix.
+
+---
+
 # Group A — Landing & marketing (web public)
 
 **Scope:** `/`, `/pricing`, `/roadmap`, `/whats-new`, `/help`, `/privacy`, `/terms`, `/dmca`, `/licences` — desktop (1440×900) + mobile-web (iPhone 13), light + dark, 36 screenshots reviewed.
@@ -1623,7 +1652,7 @@ Long tail of stack screens where Suppr drifts furthest from the canonical Today/
 - H.7 Macro detail — **BELOW**
 - H.8 Burn detail — **BELOW**
 - H.9 Meal nutrition detail — **EMBARRASSING (only error state captured)**
-- H.10 Targets summary — **CLOSE**
+- H.10 **You → Settings → Daily targets** (route `/targets`; was called "Targets summary" — naming now corrected per nav path) — **CLOSE**
 - H.11 Weekly Digest — **CLOSE**
 - H.12 Dark-mode parity — **CLOSE**
 

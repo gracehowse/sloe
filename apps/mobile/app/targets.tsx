@@ -470,7 +470,7 @@ export default function TargetsScreen() {
         <Pressable onPress={goBack} hitSlop={12} style={styles.backHit} accessibilityLabel="Back">
           <ChevronLeft size={24} color={colors.text} strokeWidth={2} />
         </Pressable>
-        <Text style={styles.title}>Targets</Text>
+        <Text style={styles.title}>Daily targets</Text>
         <Pressable
           style={styles.editBtn}
           onPress={() => router.push("/profile")}

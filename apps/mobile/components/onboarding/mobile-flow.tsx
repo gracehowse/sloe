@@ -93,6 +93,41 @@ export function MobileFlow() {
     }
   }, [isSignup, userId, go]);
 
+  // Refresh-plan auto-skip (audit 2026-05-12 — Grace cohort): when the
+  // user reached onboarding via Settings → "Refresh my plan", the
+  // Welcome step's first-impression sell ("Eat well, without
+  // overthinking it.", "Have an account? Sign in") makes zero sense.
+  // They're already signed in, already an existing user, just resetting
+  // their plan. Auto-skip Welcome straight to Goal. The reset-pending
+  // flag is consumed (cleared) at handleComplete; we only peek here.
+  //
+  // isRefreshPlan: null = unknown (AsyncStorage read in flight),
+  //                true = arrived via reset-plan,
+  //                false = first-run or normal re-entry
+  const [isRefreshPlan, setIsRefreshPlan] = React.useState<boolean | null>(null);
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const AsyncStorage = (
+          await import("@react-native-async-storage/async-storage")
+        ).default;
+        const flag = await AsyncStorage.getItem("suppr.reset-plan-pending-prompt");
+        if (!cancelled) setIsRefreshPlan(flag === "1");
+      } catch {
+        if (!cancelled) setIsRefreshPlan(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  React.useEffect(() => {
+    if (isWelcome && isRefreshPlan === true) {
+      go(1);
+    }
+  }, [isWelcome, isRefreshPlan, go]);
+
   /**
    * MV-01 fix (audit 2026-04-28) — terminal-step completion handler.
    *
@@ -324,7 +359,30 @@ export function MobileFlow() {
   ]);
 
   // Welcome uses its own layout (full-bleed gradient, own CTA).
+  //
+  // Audit 2026-05-12 (Grace cohort, refresh-plan flow): when the
+  // user arrived via Settings → "Refresh my plan", we don't want to
+  // flash the "Eat well, without overthinking it." + "Have an
+  // account? Sign in" first-impression screen before the
+  // auto-skip useEffect fires. Render a neutral loading shell while
+  // we read the reset-plan flag, then either auto-skip (handled by
+  // the effect above) or render the real Welcome.
   if (isWelcome) {
+    if (isRefreshPlan === null || isRefreshPlan === true) {
+      return (
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: colors.background,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <StatusBar barStyle={isDarkSystem ? "light-content" : "dark-content"} />
+          <ActivityIndicator color={colors.textSecondary} />
+        </View>
+      );
+    }
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <StatusBar barStyle="light-content" />
@@ -375,6 +433,38 @@ export function MobileFlow() {
               naming a hard total — Cal AI / MFP / Lifesum all use
               progress-only on their flows. */}
           <ProgressBar value={displayIndex} total={displayTotal} />
+
+          {/* Audit 2026-05-12 (Grace cohort): when a signed-in user
+              arrived via Settings → "Refresh my plan", surface a calm
+              pill so they can tell at a glance this is a plan reset,
+              not first-run onboarding. Otherwise the body-stats /
+              Goal screens look identical to a fresh signup and the
+              user wonders if they accidentally created a new account. */}
+          {isRefreshPlan === true ? (
+            <View
+              style={{
+                marginLeft: Spacing.sm,
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+                borderRadius: 999,
+                backgroundColor: `${Accent.primaryLight}1f`,
+                borderWidth: 1,
+                borderColor: `${Accent.primaryLight}40`,
+              }}
+              accessibilityLabel="Refreshing your plan"
+            >
+              <Text
+                style={{
+                  fontSize: 11,
+                  fontWeight: "700",
+                  letterSpacing: 0.6,
+                  color: Accent.primaryLight,
+                }}
+              >
+                REFRESH PLAN
+              </Text>
+            </View>
+          ) : null}
         </View>
       </View>
 
