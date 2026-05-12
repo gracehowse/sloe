@@ -62,6 +62,12 @@ export type WeightTrendResult = {
   trendStatus: "stable" | "down" | "up" | "no_data";
   /** "Last 7 days" / "Last 30 days" / "Last 3 months" / "Since 12 Jan" */
   sinceLabel: string;
+  /**
+   * 2026-05-11: real start-end date label like "12 Apr – 6 May 2026"
+   * for the chart header (Withings parity). Null when there are no
+   * points. Distinct from `sinceLabel` which is fuzzy ("Last 30 days").
+   */
+  periodRangeLabel: string | null;
   /** Days since the most recent weigh-in. Null if no data. */
   daysSinceLatest: number | null;
   /**
@@ -198,6 +204,7 @@ function computeYDomain(
 
 function computeTrendCopy(
   movingAvg: (number | null)[],
+  points: WeightPoint[],
   goalKg: number | null,
 ): {
   copy: string;
@@ -205,12 +212,33 @@ function computeTrendCopy(
   deltaKg: number | null;
   status: "stable" | "down" | "up" | "no_data";
 } {
+  // 2026-05-11 (Grace TF feedback — "only show no data where there is
+  // none at all"): prefer the MA-based trend (smoother, less noisy)
+  // but fall back to a raw first-vs-last point delta when MA can't
+  // compute (sparse weigh-ins / short window with <3 points in the
+  // trailing MA window). Previously the chart rendered raw dots while
+  // the header said "No data" — a contradiction the user could see.
   const validMA = movingAvg.filter((v): v is number => v !== null);
-  if (validMA.length < 2) {
+  let first: number | undefined;
+  let last: number | undefined;
+  if (validMA.length >= 2) {
+    first = validMA[0];
+    last = validMA[validMA.length - 1];
+  } else if (points.length >= 2) {
+    first = points[0]!.kg;
+    last = points[points.length - 1]!.kg;
+  }
+
+  if (first === undefined || last === undefined) {
+    // Truly nothing to summarise. Still keep `stable` (not `no_data`)
+    // when there's a SINGLE entry — the user has logged once and is
+    // staring at one dot; calling that "no data" reads wrong.
+    if (points.length === 1) {
+      return { copy: "First entry — keep going.", direction: "neutral", deltaKg: null, status: "stable" };
+    }
     return { copy: "Not enough data yet.", direction: "neutral", deltaKg: null, status: "no_data" };
   }
-  const first = validMA[0]!;
-  const last = validMA[validMA.length - 1]!;
+
   const delta = last - first;
   const absDelta = Math.abs(delta);
 
@@ -235,6 +263,42 @@ function computeSinceLabel(points: WeightPoint[], range: WeightRange): string {
   if (points.length === 0) return "All time";
   const earliest = isoToDate(points[0]!.dateISO);
   return `Since ${formatShortDate(earliest)}`;
+}
+
+/**
+ * 2026-05-11 (Grace TF feedback — Withings parity): real start-end
+ * date label like "12 Apr – 6 May 2026". Replaces the fuzzy "Last 30
+ * days" string for the chart-card header so it matches the x-axis
+ * tick labels and what Withings shows above their chart.
+ *
+ * Format rules:
+ *   - daily / weekly buckets    → "12 Apr – 6 May 2026" (day + month, year on end-side)
+ *   - monthly bucket (1Y/All)   → "May 2025 – May 2026" (month + year only) so the
+ *                                 label doesn't overflow on long spans
+ *   - identical-year spans      → drop the year on the start side
+ *   - empty                     → null (callers should hide the slot)
+ */
+function computePeriodRangeLabel(
+  points: WeightPoint[],
+  bucket: "daily" | "weekly" | "monthly",
+): string | null {
+  if (points.length === 0) return null;
+  const startISO = points[0]!.dateISO;
+  const endISO = points[points.length - 1]!.dateISO;
+  const startD = isoToDate(startISO);
+  const endD = isoToDate(endISO);
+  const startYear = startD.getFullYear();
+  const endYear = endD.getFullYear();
+  const sameYear = startYear === endYear;
+  const fmtDay = (d: Date, withYear: boolean): string =>
+    d.toLocaleDateString("en-GB", withYear ? { day: "numeric", month: "short", year: "numeric" } : { day: "numeric", month: "short" });
+  const fmtMonth = (d: Date): string =>
+    d.toLocaleDateString("en-GB", { month: "short", year: "numeric" });
+  if (bucket === "monthly") {
+    if (sameYear) return `${startD.toLocaleDateString("en-GB", { month: "short" })} – ${fmtMonth(endD)}`;
+    return `${fmtMonth(startD)} – ${fmtMonth(endD)}`;
+  }
+  return `${fmtDay(startD, !sameYear)} – ${fmtDay(endD, true)}`;
 }
 
 /**
@@ -370,9 +434,11 @@ export function computeWeightTrend(
       : ([60, 80] as [number, number]);
   const { copy: trendCopy, direction: trendDirection, deltaKg: trendDeltaKg, status: trendStatus } = computeTrendCopy(
     movingAvg,
+    bucketed,
     goalKg,
   );
   const sinceLabel = computeSinceLabel(bucketed, range);
+  const periodRangeLabel = computePeriodRangeLabel(bucketed, bucket);
 
   const daysSinceLatest =
     filtered.length > 0
@@ -391,6 +457,7 @@ export function computeWeightTrend(
     trendDeltaKg,
     trendStatus,
     sinceLabel,
+    periodRangeLabel,
     daysSinceLatest,
     bucket,
   };

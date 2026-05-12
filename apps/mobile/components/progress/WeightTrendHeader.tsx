@@ -8,20 +8,31 @@ import type { WeightTrendResult } from "@/lib/progress/weightTrend";
 import { kgToLb } from "../../../../src/lib/units/imperial";
 
 /**
- * Withings-style chart header (Grace TF feedback 2026-05-11).
+ * Withings-style chart header (Grace TF feedback 2026-05-11 — full
+ * rebuild after "still looks messy / illogical").
  *
- * Mirrors the structure of the Withings "WEIGHT: Stable" / "TREND -0.6 kg"
- * header above the weight chart. Pulled out of `progress.tsx` into its
- * own file so the layout + arrow-icon logic stays testable + reusable
- * (e.g. when we later open an "Explore Data" full-screen view, the same
- * header sits above).
+ * Layout (Withings parity):
+ *   ┌─────────────────────────────────────┐
+ *   │      11 Apr – 12 May 2026           │  ← period label, centred
+ *   ├──────────────────┬──────────────────┤
+ *   │ WEIGHT           │ TREND            │  ← uppercase overlines
+ *   │ ↘  Down          │ −0.6 kg          │  ← icon LEFT of word
+ *   └──────────────────┴──────────────────┘
+ *
+ * Period label moved to the top centre (was orphaned under WEIGHT
+ * column before, looked like it only described that column).
+ * Vertical divider between the two columns to anchor the eye.
  */
 
 const STATUS_LABEL: Record<WeightTrendResult["trendStatus"], string> = {
   stable: "Stable",
   down: "Down",
   up: "Up",
-  no_data: "No data",
+  // 2026-05-11 (Grace TF feedback): only used when the trend payload
+  // truly has zero entries. The card itself is gated on
+  // `points.length >= 1`, so this label is unreachable in normal
+  // flow — kept as a defensive fallback.
+  no_data: "—",
 };
 
 function formatDelta(kg: number, isImperial: boolean): string {
@@ -34,7 +45,7 @@ function formatDelta(kg: number, isImperial: boolean): string {
 export interface WeightTrendHeaderProps {
   trend: Pick<WeightTrendResult, "trendStatus" | "trendDeltaKg">;
   isImperial: boolean;
-  /** Period label like "11 Apr – 12 May 2026". Optional; rendered below header when present. */
+  /** Period label like "11 Apr – 12 May 2026" or "Last 30 days". */
   periodLabel?: string | null;
 }
 
@@ -56,6 +67,11 @@ export function WeightTrendHeader({ trend, isImperial, periodLabel }: WeightTren
 
   return (
     <View style={styles.wrap} testID="weight-trend-header">
+      {periodLabel ? (
+        <Text style={[styles.periodLabel, { color: colors.textTertiary }]}>
+          {periodLabel}
+        </Text>
+      ) : null}
       <View style={styles.row}>
         <View style={styles.col}>
           <Text style={[styles.smallLabel, { color: colors.textSecondary }]}>
@@ -68,13 +84,14 @@ export function WeightTrendHeader({ trend, isImperial, periodLabel }: WeightTren
                 { backgroundColor: statusIconColor + "1f" },
               ]}
             >
-              <StatusIcon size={16} color={statusIconColor} strokeWidth={2.25} />
+              <StatusIcon size={14} color={statusIconColor} strokeWidth={2.25} />
             </View>
             <Text style={[styles.bigLabel, { color: colors.text }]}>
               {STATUS_LABEL[status]}
             </Text>
           </View>
         </View>
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
         <View style={styles.col}>
           <Text style={[styles.smallLabel, { color: colors.textSecondary }]}>
             TREND
@@ -84,11 +101,6 @@ export function WeightTrendHeader({ trend, isImperial, periodLabel }: WeightTren
           </Text>
         </View>
       </View>
-      {periodLabel ? (
-        <Text style={[styles.periodLabel, { color: colors.textTertiary }]}>
-          {periodLabel}
-        </Text>
-      ) : null}
     </View>
   );
 }
@@ -97,20 +109,31 @@ const styles = StyleSheet.create({
   wrap: {
     marginBottom: Spacing.md,
   },
+  periodLabel: {
+    ...Type.caption,
+    textAlign: "center",
+    marginBottom: Spacing.sm,
+  },
   row: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: Spacing.lg,
+    alignItems: "stretch",
   },
   col: {
     flex: 1,
+  },
+  divider: {
+    // 2026-05-11 (Grace TF feedback — mockup signed off): hairline
+    // was invisible against the card background. Bumped to 1px and
+    // using the slightly darker `border` token so the line reads
+    // clearly even on light mode.
+    width: 1,
+    marginHorizontal: Spacing.md,
   },
   smallLabel: {
     fontSize: 11,
     fontWeight: "600",
     letterSpacing: 0.6,
-    marginBottom: 4,
+    marginBottom: 6,
   },
   statusRow: {
     flexDirection: "row",
@@ -118,19 +141,15 @@ const styles = StyleSheet.create({
     gap: Spacing.xs,
   },
   iconCircle: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
   },
   bigLabel: {
     ...Type.title,
     fontSize: 20,
-    lineHeight: 24,
-  },
-  periodLabel: {
-    ...Type.caption,
-    marginTop: Spacing.xs,
+    lineHeight: 22,
   },
 });

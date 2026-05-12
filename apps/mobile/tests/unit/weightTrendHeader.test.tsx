@@ -63,15 +63,22 @@ describe("<WeightTrendHeader>", () => {
     expect(getByText("+0.1 kg")).toBeTruthy();
   });
 
-  it("renders the no-data placeholder when no MA endpoints", () => {
-    const { getByText } = render(
+  it("renders dashes for both fields when truly no data (defensive — parent gates this out)", () => {
+    // 2026-05-11 (Grace TF feedback — "only show no data where there
+    // is none at all"): the status label for "no_data" is "—" (dash)
+    // now, not the text "No data". The chart-card parent already
+    // gates render on `points.length >= 1`, so this branch is
+    // effectively unreachable; keeping the dash means if it ever does
+    // render, it doesn't read as broken state.
+    const { queryAllByText, queryByText } = render(
       <WeightTrendHeader
         trend={{ trendStatus: "no_data", trendDeltaKg: null }}
         isImperial={false}
       />,
     );
-    expect(getByText("No data")).toBeTruthy();
-    expect(getByText("—")).toBeTruthy();
+    // Two dashes — one in the status slot, one in the trend slot.
+    expect(queryAllByText("—").length).toBeGreaterThanOrEqual(2);
+    expect(queryByText("No data")).toBeNull();
   });
 
   it("formats in lb when isImperial", () => {

@@ -1105,7 +1105,16 @@ export default function ProgressScreen() {
           "hide": skip entirely. Same gate applies to the WeightChart and
           Weight Projection / Journey cards lower in the screen so a single
           opt-out reflects everywhere on Progress. */}
-      {weightSurfaceMode === "hide" ? null : weightSurfaceMode === "trends_only" ? (
+      {/* 2026-05-11 (Grace TF feedback — "this is duplicative"): the
+          full `<WeightRangeCard>` ("show" mode) was rendering a second
+          weight surface above the big Weight Chart Card lower on this
+          screen — same data, smaller chart, different time-range
+          buttons. Killed in show mode; the big chart card below is the
+          single canonical weight surface now. The body-neutral
+          `trends_only` mode keeps its lightweight single-line tile
+          because that's intentionally NOT the big chart; users opt
+          into trends-only specifically to hide absolute numbers. */}
+      {weightSurfaceMode === "trends_only" && (
         <WeightTrendOnlyCard
           // P1-14 (TestFlight `AOVuCyOCNB1pI_TjMGNiAeg`, `AHEeeC9a4-lKIyW5n7HgJxs`,
           // 2026-04-22): when there's no weigh-in in the past 7 days,
@@ -1116,17 +1125,6 @@ export default function ProgressScreen() {
           // week"-style — see WeightTrendOnlyCard for the threshold).
           weekDeltaKg={weightRange.weekDeltaKg}
           rangeKey={rangeKey}
-          theme={t}
-        />
-      ) : (
-        <WeightRangeCard
-          series={weightRange.series}
-          latestKg={weightRange.latestKg}
-          weekDeltaKg={weightRange.weekDeltaKg}
-          deltaKg={weightRange.deltaKg}
-          rangeKey={rangeKey}
-          goalWeightKg={goalWeightKg}
-          measurementSystem={measurementSystem}
           theme={t}
         />
       )}
@@ -1944,56 +1942,60 @@ export default function ProgressScreen() {
               marginBottom: 14,
             }}
           >
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-              {/* 2026-04-26 polish (round 2): per docs/ux/design-tokens.md
-                  card / section headers are Sentence Case (matches "Daily
-                  Calories" + "Macro Adherence" further down the same screen).
-                  WEIGHT was the lone UPPERCASE outlier on this surface. */}
-              <Text style={{ fontSize: 13, fontWeight: "600", color: t.text }}>Weight</Text>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                {weightChartTrend.daysSinceLatest != null && weightChartTrend.daysSinceLatest > 10 && (
-                  <View style={{ backgroundColor: colors.inputBg, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 }}>
-                    <Text style={{ fontSize: 11, color: t.sub }}>{weightChartTrend.daysSinceLatest}d since last log</Text>
-                  </View>
-                )}
-                {/* All-data list opener (2026-05-11, Grace TF feedback —
-                    Withings/MFP/Lose It parity). Hidden when no entries
-                    exist so the button doesn't tease an empty list. */}
-                {Object.keys(weightKgByDay).length > 0 && (
-                  <Pressable
-                    onPress={() => setAllWeightDataOpen(true)}
-                    accessibilityRole="button"
-                    accessibilityLabel="View all weight data"
-                    hitSlop={6}
-                    testID="progress-all-weight-data-button"
-                    style={({ pressed }) => ({
-                      width: 28,
-                      height: 28,
-                      borderRadius: 14,
-                      backgroundColor: colors.inputBg,
-                      alignItems: "center",
-                      justifyContent: "center",
-                      opacity: pressed ? 0.6 : 1,
-                    })}
-                  >
-                    <ListIcon size={14} color={t.text} strokeWidth={2} />
-                  </Pressable>
-                )}
+            {/* 2026-05-11 (Grace TF feedback — mockup signed off):
+                tabs + list button on ONE row (was an orphan row above
+                the tabs holding only the list button — ~28px of dead
+                whitespace). Stale-log badge becomes a small line above
+                the row instead of riding alongside the button. */}
+            {weightChartTrend.daysSinceLatest != null && weightChartTrend.daysSinceLatest > 10 && (
+              <View style={{ alignSelf: "flex-end", backgroundColor: colors.inputBg, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3, marginBottom: 6 }}>
+                <Text style={{ fontSize: 11, color: t.sub }}>{weightChartTrend.daysSinceLatest}d since last log</Text>
               </View>
+            )}
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <View style={{ flex: 1 }}>
+                <WeightRangeToggle value={weightChartRange} onChange={setWeightChartRange} />
+              </View>
+              {Object.keys(weightKgByDay).length > 0 && (
+                <Pressable
+                  onPress={() => setAllWeightDataOpen(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel="View all weight data"
+                  hitSlop={6}
+                  testID="progress-all-weight-data-button"
+                  style={({ pressed }) => ({
+                    width: 32,
+                    height: 32,
+                    borderRadius: 16,
+                    backgroundColor: colors.inputBg,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    opacity: pressed ? 0.6 : 1,
+                  })}
+                >
+                  <ListIcon size={16} color={t.text} strokeWidth={2} />
+                </Pressable>
+              )}
             </View>
-            <WeightRangeToggle value={weightChartRange} onChange={setWeightChartRange} />
             {/* Withings-style WEIGHT + TREND header (2026-05-11, Grace
                 TF feedback). Renders the chart's status + signed delta
                 prominently above the chart so users don't have to read
                 the small trend line at the bottom. Period label is
                 drawn from the chart's `sinceLabel` so it tracks the
                 selected range automatically. */}
-              {weightChartTrend.points.length >= 2 && (
+              {/* 2026-05-11 (Grace TF feedback — "only show no data
+                  where there is none at all"): render the header
+                  whenever the user has ANY entry. The header itself
+                  shows "No data" only when the trend payload says so
+                  (zero points, after the raw-delta fallback). */}
+              {weightChartTrend.points.length >= 1 && (
                 <View style={{ marginTop: 12 }}>
                   <WeightTrendHeader
                     trend={weightChartTrend}
                     isImperial={measurementSystem === "imperial"}
-                    periodLabel={weightChartTrend.sinceLabel}
+                    periodLabel={
+                      weightChartTrend.periodRangeLabel ?? weightChartTrend.sinceLabel
+                    }
                   />
                 </View>
               )}
@@ -2019,11 +2021,11 @@ export default function ProgressScreen() {
                 />
               )}
             </View>
-            {weightChartTrend.points.length >= 2 && (
-              <Text style={{ fontSize: 12, color: t.sub, marginTop: 6 }}>
-                {weightChartTrend.trendCopy} {weightChartTrend.sinceLabel}.
-              </Text>
-            )}
+            {/* 2026-05-11 (Grace TF feedback — "still looks super
+                messy"): the bottom trend copy line ("Down 0.8 kg on
+                average. Last 30 days.") duplicated the new
+                WEIGHT/TREND header above the chart byte-for-byte.
+                Removed. The header is the source of truth now. */}
           </View>
           ) : null}
 

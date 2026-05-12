@@ -39,43 +39,48 @@ describe("Progress Phase 2 — WEIGHT + Calories cards", () => {
     expect(WEB).toMatch(/buildCaloriesRangeStats\(nutritionByDay, nutritionTargets\.calories, range as RangeKey/);
   });
 
-  it("mobile mounts both new cards between the range picker and !hasData branch", () => {
-    // Card components defined in the same file.
+  it("mobile mounts the Calories range card below the range picker (Weight card was consolidated 2026-05-11)", () => {
+    // 2026-05-11 (Grace TF feedback — "this is duplicative"):
+    // WeightRangeCard was rendering above the bigger Weight chart card
+    // lower on the screen. Killed in `show` surface mode; the big
+    // chart card is now the single weight surface. The function
+    // definition is kept around in case `trends_only`/`hide` modes
+    // ever need it back, but no JSX render happens in show mode.
     expect(MOBILE).toMatch(/function WeightRangeCard\(/);
     expect(MOBILE).toMatch(/function CaloriesRangeCard\(/);
-    // Rendered with test IDs the visual-QA team + e2e rely on.
-    expect(MOBILE).toMatch(/<WeightRangeCard\b/);
     expect(MOBILE).toMatch(/<CaloriesRangeCard\b/);
-    expect(MOBILE).toMatch(/testID="progress-weight-range-card"/);
     expect(MOBILE).toMatch(/testID="progress-calories-range-card"/);
-    // Calories header sits OUTSIDE the card body (17pt bold).
     expect(MOBILE).toMatch(/testID="progress-calories-range-header"/);
-    // Mount order — WeightRangeCard is rendered strictly before
-    // CaloriesRangeCard which is rendered strictly before the
-    // !hasData branch (so the two phase-2 cards are the first thing
-    // below the range picker).
-    const weightIdx = MOBILE.indexOf("<WeightRangeCard");
+    // CaloriesRangeCard still strictly precedes the !hasData branch.
     const calIdx = MOBILE.indexOf("<CaloriesRangeCard");
     const hasDataIdx = MOBILE.indexOf("{!hasData ? (");
-    expect(weightIdx).toBeGreaterThan(-1);
-    expect(calIdx).toBeGreaterThan(weightIdx);
+    expect(calIdx).toBeGreaterThan(-1);
     expect(hasDataIdx).toBeGreaterThan(calIdx);
   });
 
-  it("web mounts both new cards between the range picker and WEEK DIGEST", () => {
+  it("web mounts the Calories range card below the range picker (Weight card was consolidated 2026-05-11)", () => {
+    // Same parity consolidation on the web ProgressDashboard.
     expect(WEB).toMatch(/function WeightRangeCardWeb\(/);
     expect(WEB).toMatch(/function CaloriesRangeCardWeb\(/);
-    expect(WEB).toMatch(/<WeightRangeCardWeb\b/);
     expect(WEB).toMatch(/<CaloriesRangeCardWeb\b/);
-    expect(WEB).toMatch(/data-testid="progress-weight-range-card"/);
     expect(WEB).toMatch(/data-testid="progress-calories-range-card"/);
     expect(WEB).toMatch(/data-testid="progress-calories-range-header"/);
-    const weightIdx = WEB.indexOf("<WeightRangeCardWeb");
     const calIdx = WEB.indexOf("<CaloriesRangeCardWeb");
     const digestIdx = WEB.indexOf("WEEK DIGEST");
-    expect(weightIdx).toBeGreaterThan(-1);
-    expect(calIdx).toBeGreaterThan(weightIdx);
+    expect(calIdx).toBeGreaterThan(-1);
     expect(digestIdx).toBeGreaterThan(calIdx);
+  });
+
+  it("the WeightRangeCard JSX is no longer rendered in show mode (consolidated 2026-05-11)", () => {
+    // Regression guard: the duplication this commit removed must not
+    // come back. We allow the function definition to live in the
+    // file (still referenced by `WeightTrendOnlyCard` siblings via
+    // shared types), and the explanatory comments may quote
+    // `<WeightRangeCard>` as text — so we look for a JSX-shaped
+    // pattern (open angle, name, then either space-attr or
+    // open-tag-close) which never appears in comments.
+    expect(MOBILE).not.toMatch(/<WeightRangeCard[\s\n][^>]*\//);
+    expect(WEB).not.toMatch(/<WeightRangeCardWeb[\s\n][^>]*\//);
   });
 
   it("both platforms preserve existing cards below the new ones", () => {

@@ -1066,28 +1066,21 @@ function ProgressDashboardContent() {
           label (no absolute kg). "show" keeps the legacy behaviour.
           Helper: decideWeightSurface in src/lib/nutrition/weightSurfaceMode.ts.
         */}
-        {(() => {
-          if (profileWeightSurfaceMode === "hide") return null;
-          if (profileWeightSurfaceMode === "trends_only") {
-            return (
-              <WeightTrendOnlyCardWeb
-                weekDeltaKg={weightRange.weekDeltaKg}
-                rangeKey={range as RangeKey}
-              />
-            );
-          }
-          return (
-            <WeightRangeCardWeb
-              series={weightRange.series}
-              latestKg={weightRange.latestKg}
-              weekDeltaKg={weightRange.weekDeltaKg}
-              deltaKg={weightRange.deltaKg}
-              rangeKey={range as RangeKey}
-              goalWeightKg={goalWeightKg}
-              measurementSystem={profileMeasurementSystem}
-            />
-          );
-        })()}
+        {/* 2026-05-11 (Grace TF feedback — "this is duplicative"): the
+            full `<WeightRangeCardWeb>` ("show" mode) was rendering a
+            second weight surface above the big Weight chart card lower
+            on this dashboard — same data, smaller chart, same
+            time-range scope. Killed in show mode for parity with the
+            mobile change. The body-neutral `trends_only` mode keeps
+            its lightweight tile because that's intentionally not the
+            big chart; users opt into trends-only to hide absolute
+            numbers. */}
+        {profileWeightSurfaceMode === "trends_only" && (
+          <WeightTrendOnlyCardWeb
+            weekDeltaKg={weightRange.weekDeltaKg}
+            rangeKey={range as RangeKey}
+          />
+        )}
         <CaloriesRangeCardWeb
           avgCaloriesPerDay={caloriesRange.avgCaloriesPerDay}
           deltaVsTargetKcal={caloriesRange.deltaVsTargetKcal}
