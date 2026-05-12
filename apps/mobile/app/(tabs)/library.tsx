@@ -555,6 +555,8 @@ export default function LibraryScreen() {
               cardImageStyle={styles.cardImage}
               fallbackBg={colors.cardBorder}
               fallbackTint={colors.textTertiary}
+              recipeId={item.id}
+              recipeTitle={item.title}
             />
             <View style={styles.cardGradient} pointerEvents="none" />
             {item.isSaved ? (

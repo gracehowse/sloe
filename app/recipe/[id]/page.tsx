@@ -6,6 +6,7 @@ import { projectId, publicAnonKey } from "../../../utils/supabase/info.tsx";
 import { PageViewTracker } from "../../../src/app/components/PageViewTracker.tsx";
 import { AnalyticsEvents } from "../../../src/lib/analytics/events.ts";
 import { normaliseInstructions } from "../../../src/lib/recipes/normaliseInstructions.ts";
+import { RecipeHeroFallback } from "../../../src/app/components/suppr/RecipeHeroFallback.tsx";
 
 const supabaseUrl = `https://${projectId}.supabase.co`;
 
@@ -247,16 +248,20 @@ export default async function RecipePage({ params }: Props) {
             />
           </div>
         ) : (
+          // B7 (2026-05-11): swapped the hardcoded gradient + "No
+          // photo" caption for the canonical RecipeHeroFallback so
+          // detail-page placeholders match Library cards (same
+          // deterministic per-recipe gradient + glyph). Aspect ratio
+          // matches the photo case via aspect-video.
           <div
-            className="rounded-2xl overflow-hidden shadow-xl mb-8 flex items-center justify-center"
-            style={{
-              aspectRatio: "16 / 7",
-              background:
-                "linear-gradient(135deg, #BBC6FF 0%, #C8B5FF 35%, #F0AECF 70%, #FFCFBA 100%)",
-            }}
+            className="relative rounded-2xl overflow-hidden shadow-xl mb-8 aspect-video"
             aria-label={`${recipe.title} — no photo available`}
           >
-            <span className="text-white/70 text-sm uppercase tracking-widest">No photo</span>
+            <RecipeHeroFallback
+              id={recipe.id}
+              title={recipe.title}
+              iconSize={48}
+            />
           </div>
         )}
 
