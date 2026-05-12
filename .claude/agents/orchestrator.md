@@ -121,6 +121,13 @@ Pick the smallest strong set. Do not run every agent by default.
 - a fresh Claude Design bundle has landed and surfaces need re-auditing against it
 - this lens is upstream of `ui-critic` (tier) and `visual-qa` (ugly): first ask "does it match the prototype?", then "is it premium enough?", then "is anything outright broken?"
 
+### Always use `premium-auditor` when
+- the question is "is the whole product as good as the best app in the world per feature?" — end-to-end, not a single screen
+- a milestone audit is needed across web app, mobile app, mobile web, onboarding, landing — button by button, state by state
+- each feature needs a **named best-in-class comparable** (e.g. weight chart vs Withings, food log vs MFP, recipe import vs Recime) with a refuse-to-pass verdict
+- broader than `ui-critic` (single-surface tier judgement) and `visual-qa` (cleanup pass); downstream of `design-system-enforcer` (prototype conformance) — this agent asks whether the product is at the bar of the best apps in the world, not whether it matches the prototype
+- pair with `ui-product-designer` for redesign briefs surfaced by the audit
+
 ### Always use `journey-architect` when
 - the user journey is too long, friction-heavy, or diverges between web and mobile
 - activation, time-to-value, or core-loop shape needs restructuring

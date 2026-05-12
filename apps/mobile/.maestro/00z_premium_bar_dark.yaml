@@ -1,0 +1,156 @@
+appId: com.supprclub.supprapp
+name: "Premium-bar dark sweep — canonical surfaces in dark appearance"
+---
+# Premium-bar dark sweep.
+#
+# Mirrors the canonical surface list from 00z_expanded_visual_sweep.yaml,
+# but assumes the iOS sim has been put into dark appearance BEFORE the
+# run. Mobile Suppr's ThemeProvider defaults to `auto` (system scheme),
+# so flipping the sim appearance is enough — no in-app toggle exists.
+#
+# Run sequence (from repo root):
+#   1. xcrun simctl ui booted appearance dark
+#   2. cd apps/mobile && maestro test .maestro/00z_premium_bar_dark.yaml
+#   3. xcrun simctl ui booted appearance light  # restore after
+#
+# Output: apps/mobile/screenshots/latest/dark-<NN>-<name>.png (same dir
+# as every other capture, so the auditor finds them via one path).
+
+- launchApp:
+    appId: com.supprclub.supprapp
+
+# ──────────────────────────────────────────────────────────────────────
+# Tab landings — dark
+# ──────────────────────────────────────────────────────────────────────
+
+- openLink: suppr:///
+- extendedWaitUntil:
+    visible:
+      id: "screen-today"
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/dark-01-today-default
+- swipe:
+    direction: UP
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/dark-02-today-scrolled
+
+- openLink: suppr:///library
+- extendedWaitUntil:
+    visible:
+      id: "screen-library"
+    timeout: 15000
+- takeScreenshot: screenshots/latest/dark-10-recipes-library
+
+- openLink: suppr:///discover
+- extendedWaitUntil:
+    visible:
+      id: "screen-discover"
+    timeout: 15000
+- takeScreenshot: screenshots/latest/dark-12-discover
+
+- openLink: suppr:///planner
+- extendedWaitUntil:
+    visible:
+      id: "screen-planner"
+    timeout: 15000
+- takeScreenshot: screenshots/latest/dark-20-plan
+
+- openLink: suppr:///shopping
+- extendedWaitUntil:
+    visible:
+      id: "screen-shopping"
+    timeout: 15000
+- takeScreenshot: screenshots/latest/dark-22-shopping
+
+- openLink: suppr:///progress
+- extendedWaitUntil:
+    visible:
+      id: "progress-header"
+    timeout: 15000
+- takeScreenshot: screenshots/latest/dark-30-progress-default
+- swipe:
+    direction: UP
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/dark-31-progress-scrolled
+
+- openLink: suppr:///settings
+- extendedWaitUntil:
+    visible:
+      id: "settings-search-input"
+    timeout: 15000
+- takeScreenshot: screenshots/latest/dark-32-settings
+
+# ──────────────────────────────────────────────────────────────────────
+# Stack screens — dark
+# ──────────────────────────────────────────────────────────────────────
+
+- openLink: suppr:///profile
+- extendedWaitUntil:
+    visible:
+      id: "screen-profile"
+    timeout: 15000
+- takeScreenshot: screenshots/latest/dark-40-profile
+
+- openLink: suppr:///fasting
+- extendedWaitUntil:
+    visible:
+      id: "screen-fasting"
+    timeout: 15000
+- takeScreenshot: screenshots/latest/dark-41-fasting
+
+- openLink: suppr:///barcode
+- extendedWaitUntil:
+    visible:
+      id: "screen-barcode"
+    timeout: 15000
+- takeScreenshot: screenshots/latest/dark-42-barcode
+
+- openLink: suppr:///create-recipe
+- extendedWaitUntil:
+    visible:
+      id: "screen-create-recipe"
+    timeout: 15000
+- takeScreenshot: screenshots/latest/dark-43-create-recipe
+
+- openLink: suppr:///burn-detail
+- extendedWaitUntil:
+    visible:
+      id: "screen-burn-detail"
+    timeout: 15000
+- takeScreenshot: screenshots/latest/dark-44-burn-detail
+
+- openLink: suppr:///macro-detail
+- extendedWaitUntil:
+    visible:
+      id: "screen-macro-detail"
+    timeout: 15000
+- takeScreenshot: screenshots/latest/dark-45-macro-detail
+
+- openLink: suppr:///meal-nutrition
+- extendedWaitUntil:
+    visible:
+      id: "screen-meal-nutrition"
+    timeout: 15000
+- takeScreenshot: screenshots/latest/dark-46-meal-nutrition
+
+- openLink: suppr:///health-sync
+- extendedWaitUntil:
+    visible:
+      id: "screen-health-sync"
+    timeout: 15000
+- takeScreenshot: screenshots/latest/dark-47-health-sync
+
+- openLink: suppr:///nutrition-sources
+- extendedWaitUntil:
+    visible:
+      id: "screen-nutrition-sources"
+    timeout: 15000
+- takeScreenshot: screenshots/latest/dark-49-nutrition-sources
+
+- openLink: suppr:///paywall
+- extendedWaitUntil:
+    visible:
+      id: "screen-paywall"
+    timeout: 15000
+- takeScreenshot: screenshots/latest/dark-50-paywall
