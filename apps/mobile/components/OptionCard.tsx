@@ -77,8 +77,8 @@ export function OptionCard({
         {
           flexDirection: "row",
           alignItems: "center",
-          gap: Spacing.md + 2,
-          padding: compact ? 14 : 16,
+          gap: compact ? Spacing.sm + 2 : Spacing.md + 2,
+          padding: compact ? 12 : 16,
           borderRadius: Radius.lg,
           backgroundColor: selected ? PRIMARY_TINT : colors.card,
           borderWidth: 1,
@@ -91,8 +91,8 @@ export function OptionCard({
       {icon ? (
         <View
           style={{
-            width: compact ? 36 : 44,
-            height: compact ? 36 : 44,
+            width: compact ? 32 : 44,
+            height: compact ? 32 : 44,
             borderRadius: Radius.md,
             alignItems: "center",
             justifyContent: "center",
@@ -107,12 +107,19 @@ export function OptionCard({
       <View style={{ flex: 1, minWidth: 0 }}>
         {typeof title === "string" ? (
           <Text
-            numberOfLines={2}
+            numberOfLines={compact ? 1 : 2}
             adjustsFontSizeToFit
-            minimumFontScale={0.85}
+            minimumFontScale={compact ? 0.7 : 0.85}
+            // Compact fontSize lowered from 14 → 13 (Grace cohort 2026-05-12):
+            // single-word labels like "Mediterranean" in the 2-col diet grid
+            // (card width ~48% of viewport) exceeded the text container at
+            // 14pt and RN broke them mid-word ("Mediterranea / n"). At 13pt
+            // with the existing 0.7 minimumFontScale floor, the engine can
+            // both fit at full size for shorter labels AND shrink long ones
+            // to ~9pt for the rare overflow case. Non-compact stays 15pt.
             style={{
               color: colors.text,
-              fontSize: compact ? 14 : 15,
+              fontSize: compact ? 13 : 15,
               fontWeight: "600",
               letterSpacing: -0.2,
               lineHeight: 20,
