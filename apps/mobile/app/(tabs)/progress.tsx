@@ -2165,7 +2165,7 @@ export default function ProgressScreen() {
                   <Text style={{ fontSize: 13, color: t.sub, marginBottom: 10, lineHeight: 18 }}>
                     {timeline.remainingKg > 0.1
                       ? `${timeline.remainingKg} kg left to reach ${goalWeightKg} kg.`
-                      : "You've reached your goal weight!"}
+                      : "You've reached your goal weight."}
                     {timeline.weeklyRateKg !== 0 && ` Currently ${timeline.trendDirection === "losing" ? "losing" : timeline.trendDirection === "gaining" ? "gaining" : "maintaining"} ~${Math.abs(timeline.weeklyRateKg)} kg/week.`}
                   </Text>
 
@@ -2199,7 +2199,12 @@ export default function ProgressScreen() {
                   {dailyProjection && (
                     <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: t.border }}>
                       <Text style={{ fontSize: 12, color: t.sub, lineHeight: 18 }}>
-                        Your recent 7-day average is {avgCals.toLocaleString()} kcal/day vs {targets.calories.toLocaleString()} target, putting you on track for{" "}
+                        {/* 2026-05-12 (premium-bar DC12 voice audit): split
+                            past-fact from future-projection per Headspace
+                            voice borrow — "averaging X puts you on track
+                            for Y" mixed an observation with a promise.
+                            Now: stated fact + conditional projection. */}
+                        Last 7 days averaged {avgCals.toLocaleString()} kcal/day vs {targets.calories.toLocaleString()} target. On that trend you&apos;d reach{" "}
                         <Text style={{ fontWeight: "700", color: t.accent }}>{dailyProjection.projectedWeightKg} kg</Text> in ~{dailyProjection.projectionWeeks} weeks.
                       </Text>
                       <Text style={{ fontSize: 10, color: t.dim, marginTop: 4 }}>

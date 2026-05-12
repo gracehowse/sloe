@@ -37,7 +37,7 @@ describe("DigestStoryCard — day-of-week pattern (web)", () => {
     );
     const line = screen.getByTestId("digest-story-dow-pattern-line");
     expect(line.textContent).toBe(
-      "You eat about 250 more kcal on Saturdays than Tuesdays.",
+      "You averaged about 250 more kcal on Saturdays than Tuesdays.",
     );
   });
 

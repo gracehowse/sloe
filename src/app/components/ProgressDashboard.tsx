@@ -1969,11 +1969,16 @@ function ProgressDashboardContent() {
               </p>
             )}
 
-            {/* Projection based on recent average */}
+            {/* Projection based on recent average.
+                2026-05-12 (premium-bar DC12 voice audit, web parity with
+                mobile progress.tsx): split past-fact from future-projection.
+                Previously a single sentence read as past observation +
+                future promise; now it's separated into two clauses,
+                conditional. */}
             {dailyProjection && (
               <div className="mt-3 pt-3 border-t border-border">
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Weekly trajectory: averaging {avgRecentCals.toLocaleString()} kcal/day puts you on track for{" "}
+                  Last 7 days averaged {avgRecentCals.toLocaleString()} kcal/day. On that trend you&apos;d reach{" "}
                   <span className="font-bold text-primary">{formatWeight(dailyProjection.projectedWeightKg)}</span> in ~{dailyProjection.projectionWeeks} weeks.
                 </p>
               </div>

@@ -191,7 +191,12 @@ export function buildDigestStory(input: DigestStoryInput): DigestStoryResult {
     dayOfWeekPattern.deltaKcal > 0
   ) {
     const delta = Math.round(dayOfWeekPattern.deltaKcal);
-    dayOfWeekPatternLine = `You eat about ${delta.toLocaleString()} more kcal on ${pluraliseWeekday(dayOfWeekPattern.highDay)} than ${pluraliseWeekday(dayOfWeekPattern.lowDay)}.`;
+    // 2026-05-12 (premium-bar DC12 voice audit): "You eat" → "You
+    // averaged". Habitual present read like a stereotype; past tense
+    // ties the line to the 4-week observed window the engine actually
+    // computed it from. Same calm-factual register as the rest of
+    // the digest paragraph.
+    dayOfWeekPatternLine = `You averaged about ${delta.toLocaleString()} more kcal on ${pluraliseWeekday(dayOfWeekPattern.highDay)} than ${pluraliseWeekday(dayOfWeekPattern.lowDay)}.`;
   }
 
   const paragraph = [

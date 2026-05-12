@@ -196,7 +196,7 @@ describe("buildWeeklyCheckin — F-129 engine-confidence carve-out", () => {
 });
 
 describe("buildWeeklyCheckin — ready / why-line cascade", () => {
-  it("ate under previous TDEE + lost weight → burning more than we thought (direction up)", () => {
+  it("ate under previous TDEE + lost weight → real burn looks higher than we'd estimated (direction up)", () => {
     const out = buildWeeklyCheckin({
       previousTdeeKcal: 2340,
       currentTdeeKcal: 2410,
@@ -212,7 +212,7 @@ describe("buildWeeklyCheckin — ready / why-line cascade", () => {
     expect(out.direction).toBe("up");
     expect(out.tdeeDeltaKcal).toBe(70);
     expect(out.deltaLine).toBe("2,340 → 2,410 kcal/day");
-    expect(out.whyLine).toContain("burning more than we thought");
+    expect(out.whyLine).toContain("real burn looks higher than we'd estimated");
     expect(out.whyLine).toContain("0.4 kg less");
     expect(out.weightLine).toContain("80.0 → 79.6 kg");
     expect(out.weightLine).toContain("(-0.4 kg)");
@@ -220,7 +220,7 @@ describe("buildWeeklyCheckin — ready / why-line cascade", () => {
     expectCalmPosture([out.headline, out.whyLine, out.intakeLine, out.weightLine]);
   });
 
-  it("ate above previous TDEE + gained weight → burning less than we thought (direction down)", () => {
+  it("ate above previous TDEE + gained weight → real burn looks lower than we'd estimated (direction down)", () => {
     const out = buildWeeklyCheckin({
       previousTdeeKcal: 2400,
       currentTdeeKcal: 2300, // -100 kcal/day
@@ -234,7 +234,7 @@ describe("buildWeeklyCheckin — ready / why-line cascade", () => {
     expect(out.kind).toBe("ready");
     expect(out.direction).toBe("down");
     expect(out.tdeeDeltaKcal).toBe(-100);
-    expect(out.whyLine).toContain("burning less than we thought");
+    expect(out.whyLine).toContain("real burn looks lower than we'd estimated");
     expect(out.whyLine).toContain("0.5 kg more");
     expectCalmPosture([out.headline, out.whyLine, out.intakeLine, out.weightLine]);
   });
@@ -339,7 +339,7 @@ describe("buildWhyLine — direct cases", () => {
       direction: "up",
     });
     expect(line).toContain("ate under your previous estimate");
-    expect(line).toContain("burning more than we thought");
+    expect(line).toContain("real burn looks higher than we'd estimated");
     expect(line).toContain("0.5 kg less");
   });
 
@@ -350,7 +350,7 @@ describe("buildWhyLine — direct cases", () => {
       intakeVsExpected: 100,
       direction: "up",
     });
-    expect(line).toContain("burning more than we thought");
+    expect(line).toContain("real burn looks higher than we'd estimated");
   });
 
   it("down + ate-under but didn't lose → 'burning less'", () => {
@@ -360,7 +360,7 @@ describe("buildWhyLine — direct cases", () => {
       intakeVsExpected: -100,
       direction: "down",
     });
-    expect(line).toContain("burning less than we thought");
+    expect(line).toContain("real burn looks lower than we'd estimated");
   });
 });
 
