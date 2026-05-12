@@ -101,6 +101,7 @@ import { WeightRangeToggle } from "@/components/progress/WeightRangeToggle";
 import { WeightSparseState } from "@/components/progress/WeightSparseState";
 import { LogWeightSheet } from "@/components/progress/LogWeightSheet";
 import { AllWeightDataSheet } from "@/components/progress/AllWeightDataSheet";
+import { WeightTrendHeader } from "@/components/progress/WeightTrendHeader";
 import {
   computeWeightTrend,
   weightKgByDayToPoints,
@@ -1981,7 +1982,22 @@ export default function ProgressScreen() {
               </View>
             </View>
             <WeightRangeToggle value={weightChartRange} onChange={setWeightChartRange} />
-            <View style={{ marginTop: 12 }}>
+            {/* Withings-style WEIGHT + TREND header (2026-05-11, Grace
+                TF feedback). Renders the chart's status + signed delta
+                prominently above the chart so users don't have to read
+                the small trend line at the bottom. Period label is
+                drawn from the chart's `sinceLabel` so it tracks the
+                selected range automatically. */}
+              {weightChartTrend.points.length >= 2 && (
+                <View style={{ marginTop: 12 }}>
+                  <WeightTrendHeader
+                    trend={weightChartTrend}
+                    isImperial={measurementSystem === "imperial"}
+                    periodLabel={weightChartTrend.sinceLabel}
+                  />
+                </View>
+              )}
+            <View style={{ marginTop: 4 }}>
               {/*
                 2026-05-06: relaxed >=3 → >=2 so the chart renders a
                 line as soon as the user has two weigh-ins. The chart

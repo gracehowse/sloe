@@ -244,6 +244,33 @@ describe("computeWeightTrend", () => {
     expect(r.points.length).toBe(2);
   });
 
+  it("exposes trendDeltaKg + trendStatus alongside trendCopy (2026-05-11 Withings header)", () => {
+    // Steady -0.05 kg/day downward over 30 days → ~-1.5 kg delta.
+    const pts = makePoints(30, 75, -0.05);
+    const r = computeWeightTrend(pts, "1m", null, BASE_ISO);
+    expect(r.trendStatus).toBe("down");
+    expect(r.trendDeltaKg).toBeLessThan(0);
+    expect(r.trendDeltaKg).toBeGreaterThan(-2);
+    // Matches the legacy trendCopy direction.
+    expect(r.trendCopy).toMatch(/down/i);
+  });
+
+  it("trendStatus is 'no_data' + trendDeltaKg null for short histories", () => {
+    // One point → can't compute a moving-average delta.
+    const r = computeWeightTrend([{ dateISO: BASE_ISO, kg: 70 }], "1m", null, BASE_ISO);
+    expect(r.trendStatus).toBe("no_data");
+    expect(r.trendDeltaKg).toBeNull();
+  });
+
+  it("trendStatus is 'stable' for sub-0.2-kg movements", () => {
+    // Flat history with tiny noise — delta should fall under the 0.2 kg
+    // threshold the trendCopy already uses.
+    const pts = makePoints(14, 75, 0.005);
+    const r = computeWeightTrend(pts, "1m", null, BASE_ISO);
+    expect(r.trendStatus).toBe("stable");
+    expect(Math.abs(r.trendDeltaKg ?? 999)).toBeLessThan(0.2);
+  });
+
   it("yDomain handles a 10000-point history without stack overflow (iterative min/max)", () => {
     // Math.min(...arr) rest-spread crashes on >~7000 args; the
     // iterative implementation must handle large histories cleanly.

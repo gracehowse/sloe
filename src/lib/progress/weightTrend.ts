@@ -46,6 +46,20 @@ export type WeightTrendResult = {
   trendCopy: string;
   /** True when MA endpoint > MA start (trending away from lower goal) or vice versa. */
   trendDirection: "improving" | "worsening" | "neutral";
+  /**
+   * 2026-05-11 (Grace TF feedback — Withings-style chart header).
+   * Signed delta in kg between the first and last MA endpoints over
+   * the selected range. Negative = down, positive = up. Null when
+   * there aren't enough points for a moving average (matches the
+   * "Not enough data yet" branch of `trendCopy`).
+   */
+  trendDeltaKg: number | null;
+  /**
+   * Discrete status the header renders. `stable` mirrors the
+   * `|delta| < 0.2` threshold used by `trendCopy`. Independent of
+   * `trendDirection` (which is improving/worsening relative to a goal).
+   */
+  trendStatus: "stable" | "down" | "up" | "no_data";
   /** "Last 7 days" / "Last 30 days" / "Last 3 months" / "Since 12 Jan" */
   sinceLabel: string;
   /** Days since the most recent weigh-in. Null if no data. */
@@ -185,10 +199,15 @@ function computeYDomain(
 function computeTrendCopy(
   movingAvg: (number | null)[],
   goalKg: number | null,
-): { copy: string; direction: "improving" | "worsening" | "neutral" } {
+): {
+  copy: string;
+  direction: "improving" | "worsening" | "neutral";
+  deltaKg: number | null;
+  status: "stable" | "down" | "up" | "no_data";
+} {
   const validMA = movingAvg.filter((v): v is number => v !== null);
   if (validMA.length < 2) {
-    return { copy: "Not enough data yet.", direction: "neutral" };
+    return { copy: "Not enough data yet.", direction: "neutral", deltaKg: null, status: "no_data" };
   }
   const first = validMA[0]!;
   const last = validMA[validMA.length - 1]!;
@@ -196,7 +215,7 @@ function computeTrendCopy(
   const absDelta = Math.abs(delta);
 
   if (absDelta < 0.2) {
-    return { copy: "Holding steady.", direction: "neutral" };
+    return { copy: "Holding steady.", direction: "neutral", deltaKg: delta, status: "stable" };
   }
 
   const sign = delta < 0 ? "Down" : "Up";
@@ -208,7 +227,7 @@ function computeTrendCopy(
     direction = (goalIsLower && delta < 0) || (!goalIsLower && delta > 0) ? "improving" : "worsening";
   }
 
-  return { copy, direction };
+  return { copy, direction, deltaKg: delta, status: delta < 0 ? "down" : "up" };
 }
 
 function computeSinceLabel(points: WeightPoint[], range: WeightRange): string {
@@ -349,7 +368,7 @@ export function computeWeightTrend(
     bucketed.length > 0
       ? computeYDomain(bucketed, goalKg)
       : ([60, 80] as [number, number]);
-  const { copy: trendCopy, direction: trendDirection } = computeTrendCopy(
+  const { copy: trendCopy, direction: trendDirection, deltaKg: trendDeltaKg, status: trendStatus } = computeTrendCopy(
     movingAvg,
     goalKg,
   );
@@ -369,6 +388,8 @@ export function computeWeightTrend(
     yDomain,
     trendCopy,
     trendDirection,
+    trendDeltaKg,
+    trendStatus,
     sinceLabel,
     daysSinceLatest,
     bucket,
