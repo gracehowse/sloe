@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { BookOpen, Sparkles, Target } from "lucide-react";
 import { useOnboarding } from "../context";
 import { MethodologyNote } from "../scaffold";
 
@@ -26,25 +27,41 @@ export function RevealStep({ compact = false }: RevealProps) {
   // Animated count-up — easeOutCubic over ~1.2s.
   const [displayCals, setDisplayCals] = React.useState(0);
   const [ringProgress, setRingProgress] = React.useState(0);
+  // 2026-05-12 (premium-bar audit DC1 — Cal AI plan-reveal borrow,
+  // web parity with mobile reveal.tsx): ~700ms anticipation beat
+  // before the count-up + ring sweep begin. Reads as "the engine is
+  // crunching your numbers" instead of "the page just loaded".
+  const [revealStarted, setRevealStarted] = React.useState(false);
   const target = targets?.target ?? 0;
   React.useEffect(() => {
     if (target === 0) {
       setDisplayCals(0);
       setRingProgress(0);
+      setRevealStarted(false);
       return;
     }
-    const start = performance.now();
-    const dur = 1200;
     let raf = 0;
-    const tick = (now: number) => {
-      const p = Math.min(1, (now - start) / dur);
-      const e = 1 - Math.pow(1 - p, 3);
-      setDisplayCals(Math.round(target * e));
-      setRingProgress(e);
-      if (p < 1) raf = requestAnimationFrame(tick);
+    let cancelled = false;
+    const beatTimer = window.setTimeout(() => {
+      if (cancelled) return;
+      setRevealStarted(true);
+      const start = performance.now();
+      const dur = 1200;
+      const tick = (now: number) => {
+        if (cancelled) return;
+        const p = Math.min(1, (now - start) / dur);
+        const e = 1 - Math.pow(1 - p, 3);
+        setDisplayCals(Math.round(target * e));
+        setRingProgress(e);
+        if (p < 1) raf = requestAnimationFrame(tick);
+      };
+      raf = requestAnimationFrame(tick);
+    }, 700);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(beatTimer);
+      cancelAnimationFrame(raf);
     };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
   }, [target]);
 
   if (targets == null) {
@@ -137,18 +154,26 @@ export function RevealStep({ compact = false }: RevealProps) {
             />
           </svg>
           <div className="absolute inset-0 flex flex-col justify-center items-center">
-            <div
-              className="font-extrabold tracking-tight tabular-nums leading-none text-foreground"
-              style={{
-                fontSize: compact ? 52 : 60,
-                letterSpacing: "-0.035em",
-              }}
-            >
-              {displayCals.toLocaleString()}
-            </div>
-            <div className="text-xs font-semibold text-muted-foreground mt-1.5 tracking-tight">
-              kcal / day
-            </div>
+            {revealStarted ? (
+              <>
+                <div
+                  className="font-extrabold tracking-tight tabular-nums leading-none text-foreground"
+                  style={{
+                    fontSize: compact ? 52 : 60,
+                    letterSpacing: "-0.035em",
+                  }}
+                >
+                  {displayCals.toLocaleString()}
+                </div>
+                <div className="text-xs font-semibold text-muted-foreground mt-1.5 tracking-tight">
+                  kcal / day
+                </div>
+              </>
+            ) : (
+              <div className="text-[13px] font-semibold text-muted-foreground text-center leading-snug max-w-[160px]">
+                Crunching your numbers…
+              </div>
+            )}
           </div>
         </div>
 
@@ -172,7 +197,7 @@ export function RevealStep({ compact = false }: RevealProps) {
           <MacroTile
             name="Carbs"
             value={targets.carbsG}
-            color="var(--warning)"
+            color="var(--macro-carbs)"
             pct={Math.round(((targets.carbsG * 4) / targets.target) * 100)}
           />
           <MacroTile
@@ -209,6 +234,67 @@ export function RevealStep({ compact = false }: RevealProps) {
           will re-calibrate your TDEE from your logged intake and activity
           data over the first ~2 weeks.
         </MethodologyNote>
+
+        {/* 2026-05-12 (premium-bar audit DC1 — Cal AI plan-reveal borrow,
+            web parity with mobile reveal.tsx). "What happens next" 3-step
+            card anchors the abstract number to the daily loop. */}
+        <div className="mt-4 p-3.5 rounded-xl border border-border bg-card flex flex-col gap-3.5">
+          <div className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
+            What happens next
+          </div>
+          <RevealNextRow
+            Icon={BookOpen}
+            iconBg="color-mix(in oklab, var(--primary) 12%, transparent)"
+            iconColor="var(--primary)"
+            title="Log meals as you eat"
+            sub="Search, barcode, photo, voice — whichever's fastest."
+          />
+          <RevealNextRow
+            Icon={Target}
+            iconBg="color-mix(in oklab, var(--success) 12%, transparent)"
+            iconColor="var(--success)"
+            title="Watch the ring fill"
+            sub="Today's hero shows where you are vs your target in one glance."
+          />
+          <RevealNextRow
+            Icon={Sparkles}
+            iconBg="color-mix(in oklab, var(--macro-fat) 12%, transparent)"
+            iconColor="var(--macro-fat)"
+            title="Adapt over the first ~2 weeks"
+            sub="As you log + weigh in, Suppr re-tunes your TDEE to what your body actually does."
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RevealNextRow({
+  Icon,
+  iconBg,
+  iconColor,
+  title,
+  sub,
+}: {
+  Icon: typeof BookOpen;
+  iconBg: string;
+  iconColor: string;
+  title: string;
+  sub: string;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <div
+        className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+        style={{ background: iconBg }}
+      >
+        <Icon size={16} strokeWidth={2} style={{ color: iconColor }} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="text-[14px] font-semibold text-foreground">{title}</div>
+        <div className="text-[12px] text-muted-foreground mt-0.5 leading-snug">
+          {sub}
+        </div>
       </div>
     </div>
   );

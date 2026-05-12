@@ -1,6 +1,6 @@
 import * as React from "react";
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import {
   OnboardingProvider,
   useOnboarding,
@@ -249,25 +249,44 @@ describe("StrategyStep — prototype visual pass (D2)", () => {
 
 describe("RevealStep", () => {
   // Note on the count-up: the daily-target hero animates from 0 to the
-  // computed target over ~1.2 s via requestAnimationFrame. At mount
-  // time the rendered hero number is "0" — the user-facing number
-  // arrives a frame later. We assert on the static BMR + TDEE rows
-  // (1,369 / 2,122 for the textbook profile) which are equivalent
-  // proof that the targets pipeline is wired correctly without
-  // having to wait on rAF.
+  // computed target over ~1.2 s via requestAnimationFrame, behind a
+  // ~700ms "Crunching your numbers…" anticipation beat (2026-05-12
+  // premium-bar audit DC1 — Cal AI plan-reveal borrow). We assert on
+  // the static BMR + TDEE rows (1,369 / 2,122 for the textbook profile)
+  // which are present from the first frame and don't depend on the
+  // beat / rAF timing.
+  //
+  // For the "kcal / day" caption we use vi.useFakeTimers + advance past
+  // the 700ms beat so the count-up starts. The caption is only rendered
+  // after the beat completes (during the beat, the centre shows the
+  // anticipation copy instead).
   it("renders the BMR + TDEE summary when state is complete", () => {
-    withProvider(<RevealStep />, {
-      sex: "female",
-      age: 28,
-      heightCm: 168,
-      weightKg: 62,
-      activity: "moderate",
-      goal: "lose",
-      paceKgPerWeek: 0.4,
-    });
-    expect(screen.getByText("1,369")).toBeInTheDocument(); // BMR
-    expect(screen.getByText("2,122")).toBeInTheDocument(); // TDEE
-    expect(screen.getByText(/kcal \/ day/i)).toBeInTheDocument();
+    vi.useFakeTimers();
+    try {
+      withProvider(<RevealStep />, {
+        sex: "female",
+        age: 28,
+        heightCm: 168,
+        weightKg: 62,
+        activity: "moderate",
+        goal: "lose",
+        paceKgPerWeek: 0.4,
+      });
+      expect(screen.getByText("1,369")).toBeInTheDocument(); // BMR
+      expect(screen.getByText("2,122")).toBeInTheDocument(); // TDEE
+      // Pre-beat: anticipation copy in the centre, no kcal/day caption.
+      expect(
+        screen.getByText(/crunching your numbers/i),
+      ).toBeInTheDocument();
+      // Advance past the 700ms anticipation beat so the count-up
+      // hero renders the kcal/day caption.
+      act(() => {
+        vi.advanceTimersByTime(800);
+      });
+      expect(screen.getByText(/kcal \/ day/i)).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("renders the quieter fallback when body stats are incomplete", () => {

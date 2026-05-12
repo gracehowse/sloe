@@ -6,7 +6,9 @@ import Svg, {
   LinearGradient as SvgLinearGradient,
   Stop,
 } from "react-native-svg";
-import { Accent, MacroColors, Radius } from "@/constants/theme";
+import * as Haptics from "expo-haptics";
+import { BookOpen, Sparkles, Target } from "lucide-react-native";
+import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useOnboarding } from "../context";
 import { MobileMethodologyNote } from "../scaffold";
@@ -24,24 +26,52 @@ export function MobileRevealStep() {
 
   const [displayCals, setDisplayCals] = React.useState(0);
   const [progress, setProgress] = React.useState(0);
+  // 2026-05-12 (premium-bar audit DC1 — refuse-to-pass #5, Cal AI
+  // plan-reveal borrow): the ring + number used to start counting
+  // the instant the screen mounted, which read as "the page just
+  // loaded a number". Add a ~700ms anticipation beat where the
+  // hero stays blank, then snap into the count-up + ring sweep.
+  // Mirrors the Cal AI / Strava plan-reveal cadence: pause, then
+  // payoff. Haptic fires the moment the count-up begins so the
+  // body feels the moment too.
+  const [revealStarted, setRevealStarted] = React.useState(false);
   React.useEffect(() => {
     if (target === 0) {
       setDisplayCals(0);
       setProgress(0);
+      setRevealStarted(false);
       return;
     }
-    const start = Date.now();
-    const dur = 1200;
     let raf = 0;
-    const tick = () => {
-      const p = Math.min(1, (Date.now() - start) / dur);
-      const e = 1 - Math.pow(1 - p, 3);
-      setDisplayCals(Math.round(target * e));
-      setProgress(e);
-      if (p < 1) raf = requestAnimationFrame(tick);
+    let cancelled = false;
+    const beatTimer = setTimeout(() => {
+      if (cancelled) return;
+      setRevealStarted(true);
+      // Apple-style success notification on the reveal moment. iOS
+      // honours per-device haptic settings; on Android the call is
+      // a no-op (we ship iOS-only via TestFlight today anyway).
+      try {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } catch {
+        /* silent — haptics aren't critical to the flow */
+      }
+      const start = Date.now();
+      const dur = 1200;
+      const tick = () => {
+        if (cancelled) return;
+        const p = Math.min(1, (Date.now() - start) / dur);
+        const e = 1 - Math.pow(1 - p, 3);
+        setDisplayCals(Math.round(target * e));
+        setProgress(e);
+        if (p < 1) raf = requestAnimationFrame(tick);
+      };
+      raf = requestAnimationFrame(tick);
+    }, 700);
+    return () => {
+      cancelled = true;
+      clearTimeout(beatTimer);
+      cancelAnimationFrame(raf);
     };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
   }, [target]);
 
   if (targets == null) {
@@ -154,29 +184,53 @@ export function MobileRevealStep() {
             />
           </Svg>
           <View style={{ alignItems: "center" }}>
-            <Text
-              style={{
-                fontSize: 56,
-                fontWeight: "800",
-                letterSpacing: -1.8,
-                color: colors.text,
-                fontVariant: ["tabular-nums"],
-                lineHeight: 56,
-                includeFontPadding: false,
-              }}
-            >
-              {displayCals.toLocaleString()}
-            </Text>
-            <Text
-              style={{
-                fontSize: 12,
-                fontWeight: "600",
-                color: colors.textSecondary,
-                marginTop: 6,
-              }}
-            >
-              kcal / day
-            </Text>
+            {/* 2026-05-12 (premium-bar audit DC1 — Cal AI plan-reveal):
+                during the ~700ms anticipation beat the centre shows a
+                soft "Crunching your numbers" caption instead of a
+                static 0 kcal. The moment the count-up + ring sweep
+                start, the centre snaps to the big tabular kcal value.
+                Reads as deliberate (the engine is doing work) rather
+                than empty (the page hasn't loaded). */}
+            {revealStarted ? (
+              <>
+                <Text
+                  style={{
+                    fontSize: 56,
+                    fontWeight: "800",
+                    letterSpacing: -1.8,
+                    color: colors.text,
+                    fontVariant: ["tabular-nums"],
+                    lineHeight: 56,
+                    includeFontPadding: false,
+                  }}
+                >
+                  {displayCals.toLocaleString()}
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: "600",
+                    color: colors.textSecondary,
+                    marginTop: 6,
+                  }}
+                >
+                  kcal / day
+                </Text>
+              </>
+            ) : (
+              <Text
+                style={{
+                  fontSize: 13,
+                  fontWeight: "600",
+                  color: colors.textSecondary,
+                  textAlign: "center",
+                  lineHeight: 19,
+                  maxWidth: 160,
+                }}
+              >
+                Crunching your numbers…
+              </Text>
+            )}
           </View>
         </View>
 
@@ -247,8 +301,99 @@ export function MobileRevealStep() {
           will re-calibrate your TDEE from your logged intake and activity
           data over the first ~2 weeks.
         </MobileMethodologyNote>
+
+        {/* 2026-05-12 (premium-bar audit DC1 — refuse-to-pass #5, Cal AI
+            plan-reveal borrow): "what happens next" 3-step card. Tells
+            the user what the very next moments of the app look like
+            after they tap Continue. Anchors the abstract number to a
+            concrete daily loop. Steps are intentionally bare — no CTAs,
+            no expanders — so the eye lands on the path, not the chrome. */}
+        <View
+          style={{
+            marginTop: Spacing.lg,
+            padding: Spacing.md,
+            borderRadius: Radius.md + 2,
+            borderWidth: 1,
+            borderColor: colors.border,
+            backgroundColor: colors.card,
+            gap: 14,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 11,
+              fontWeight: "700",
+              textTransform: "uppercase",
+              letterSpacing: 1.2,
+              color: colors.textTertiary,
+            }}
+          >
+            What happens next
+          </Text>
+          <NextStepRow
+            Icon={BookOpen}
+            iconBg={`${Accent.primary}1A`}
+            iconColor={Accent.primary}
+            title="Log meals as you eat"
+            sub="Search, barcode, photo, voice — whichever's fastest."
+          />
+          <NextStepRow
+            Icon={Target}
+            iconBg={`${Accent.success}1A`}
+            iconColor={Accent.success}
+            title="Watch the ring fill"
+            sub="Today's hero shows where you are vs your target in one glance."
+          />
+          <NextStepRow
+            Icon={Sparkles}
+            iconBg={`${MacroColors.fat}1A`}
+            iconColor={MacroColors.fat}
+            title="Adapt over the first ~2 weeks"
+            sub="As you log + weigh in, Suppr re-tunes your TDEE to what your body actually does."
+          />
+        </View>
       </View>
     </ScrollView>
+  );
+}
+
+function NextStepRow({
+  Icon,
+  iconBg,
+  iconColor,
+  title,
+  sub,
+}: {
+  Icon: typeof BookOpen;
+  iconBg: string;
+  iconColor: string;
+  title: string;
+  sub: string;
+}) {
+  const colors = useThemeColors();
+  return (
+    <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
+      <View
+        style={{
+          width: 32,
+          height: 32,
+          borderRadius: 16,
+          backgroundColor: iconBg,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Icon size={16} color={iconColor} strokeWidth={2} />
+      </View>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>
+          {title}
+        </Text>
+        <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2, lineHeight: 17 }}>
+          {sub}
+        </Text>
+      </View>
+    </View>
   );
 }
 
