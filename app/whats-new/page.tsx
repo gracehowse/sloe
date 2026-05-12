@@ -121,7 +121,7 @@ export default function WhatsNewPage() {
                   data-testid={`whats-new-release-${entry.buildNumber}`}
                   className="scroll-mt-12"
                 >
-                  <div className="mb-4 flex items-baseline gap-3 flex-wrap">
+                  <div className="mb-2 flex items-baseline gap-3 flex-wrap">
                     <h2
                       className="text-xl font-semibold text-slate-900 dark:text-white"
                       data-testid={`whats-new-release-title-${entry.buildNumber}`}
@@ -143,6 +143,17 @@ export default function WhatsNewPage() {
                       {formatReleaseDate(entry.releaseDate)}
                     </span>
                   </div>
+                  {/* 2026-05-12 (premium-bar audit Group A #1):
+                      optional 1-sentence release headline so each entry
+                      reads as a story. Linear changelog parity. */}
+                  {entry.releaseTitle ? (
+                    <p
+                      className="mb-4 text-sm text-slate-600 dark:text-slate-300"
+                      data-testid={`whats-new-release-headline-${entry.buildNumber}`}
+                    >
+                      {entry.releaseTitle}
+                    </p>
+                  ) : null}
 
                   <div className="space-y-5">
                     {groups.map((group) => (

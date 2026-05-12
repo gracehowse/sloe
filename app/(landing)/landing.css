@@ -298,6 +298,24 @@
   }
 }
 
+/* 2026-05-12 (premium-bar audit Group A landing #4, P0): on narrow
+ * phones (< 480px) the "Sign in" + "Get started" pair still competes
+ * even after the theme-toggle hide. Below 480px the audit found
+ * "Get st…" truncating because both CTAs were sharing limited width.
+ *
+ * Fix: hide the secondary "Sign in" affordance on phones < 480px.
+ * "Get started" stays as the only header CTA. Existing users can
+ * reach sign-in from the footer (visible at the bottom of every
+ * landing scroll) and from the in-app login flow — losing the
+ * header chip on phone is the right trade vs cramping the primary
+ * conversion CTA.
+ */
+@media (max-width: 480px) {
+  .lp-nav-right .lp-btn-ghost {
+    display: none;
+  }
+}
+
 /* ═════════ HERO ═════════ */
 .lp-hero {
   position: relative;

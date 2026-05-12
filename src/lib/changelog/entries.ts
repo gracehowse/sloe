@@ -34,6 +34,12 @@ export type ChangelogEntry = {
   appVersion: string;
   /** ISO date (YYYY-MM-DD) the build was promoted to TestFlight. */
   releaseDate: string;
+  /** Optional 1-sentence release headline (audit Group A Feature 4 #1,
+   *  2026-05-12). Rendered as a subtitle under the build-number on
+   *  `/whats-new` so the release reads as a story, not a bullet dump.
+   *  Linear changelog format. Keep under ~80 chars. Omit when there's
+   *  no single overarching theme (maintenance-only builds). */
+  releaseTitle?: string;
   /** Optional footer line: "Shaped by TestFlight feedback from N testers."
    *  Set only when the build actually closed tester-reported items.
    *  Omit for maintenance / infra-only builds. */
@@ -66,6 +72,8 @@ const CHANGELOGS: ChangelogEntry[] = [
     buildNumber: 49,
     appVersion: "1.0.0",
     releaseDate: "2026-05-12",
+    releaseTitle:
+      "Premium-bar polish — 26 visible upgrades from the 2026-05-12 internal audit.",
     // No testerAttribution — this build was driven by the 2026-05-12
     // internal premium-bar audit, not direct tester feedback. The
     // attribution field is reserved for builds that close out
