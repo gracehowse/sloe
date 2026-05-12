@@ -35,6 +35,8 @@ import {
   CheckCircle2,
   Circle,
   Coffee,
+  ChevronDown,
+  ChevronRight,
   Cookie,
   Lock,
   Plus,
@@ -1785,7 +1787,29 @@ export default function PlannerScreen() {
               empty-state Generate Plan button. */}
         {plan && plan.length > 0 && planTargets && summaryScore && (
           <View style={styles.summaryCard} testID="plan-summary-card">
-            <Text style={styles.summaryOverline}>This week</Text>
+            {/* 2026-05-12 (premium-bar audit Plan Card 1): eyebrow
+                upgraded from generic "This week" → "{start} – {end} ·
+                Meal plan" so users see the actual span of the plan
+                they're looking at. Matches the audit's example
+                ("May 7 – 13 · Meal plan"). Falls back to "This week"
+                when the date math can't resolve (defensive). */}
+            <Text style={styles.summaryOverline}>
+              {(() => {
+                try {
+                  const planLen = plan.length;
+                  const first = planCalendarDateForIndex(0, startOffset);
+                  const last = planCalendarDateForIndex(planLen - 1, startOffset);
+                  const fmt = (d: Date) =>
+                    d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+                  if (first.getMonth() === last.getMonth()) {
+                    return `${fmt(first)} – ${last.getDate()} · Meal plan`;
+                  }
+                  return `${fmt(first)} – ${fmt(last)} · Meal plan`;
+                } catch {
+                  return "This week";
+                }
+              })()}
+            </Text>
             <Text style={styles.summaryTitle}>
               Hits your targets {summaryScore.hits} of {summaryScore.total} day{summaryScore.total === 1 ? "" : "s"}
             </Text>
@@ -1880,7 +1904,16 @@ export default function PlannerScreen() {
                   </Text>
                 ) : null}
               </View>
-              <Text style={{ fontSize: 18, color: colors.textSecondary }}>{planSetupExpanded ? "▼" : "▶"}</Text>
+              {/* 2026-05-12 (premium-bar audit Plan Card 1): replaced
+                  the raw "▶ / ▼" Unicode glyphs with lucide chevrons
+                  matching the rest of the app's disclosure pattern.
+                  The Unicode markers read as placeholder; the proper
+                  chevron icon is the prototype + design-system spec. */}
+              {planSetupExpanded ? (
+                <ChevronDown size={18} color={colors.textSecondary} strokeWidth={2} />
+              ) : (
+                <ChevronRight size={18} color={colors.textSecondary} strokeWidth={2} />
+              )}
             </Pressable>
             {planSetupExpanded ? (
               <View style={{ marginTop: Spacing.md, gap: Spacing.md }}>

@@ -77,6 +77,13 @@ export function MoveMealSheet({
     return out;
   }, [plan, dayLabels, from]);
 
+  // 2026-05-12 (premium-bar audit Plan Card 3 #2): expand the sheet
+  // header from a generic "Pick a slot" subtitle into a from-context
+  // line that names the meal being moved — `Breakfast · Thu · Tofu
+  // poke bowl` style. Reduces the cognitive load of remembering which
+  // row was long-pressed two seconds ago.
+  const sourceRow = rows.find((r) => r.isSource);
+
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <Pressable
@@ -93,11 +100,15 @@ export function MoveMealSheet({
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
             <Text style={[styles.title, { color: colors.text }]}>Move meal</Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              Pick a slot
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]} numberOfLines={1}>
+              {sourceRow
+                ? sourceRow.isEmpty
+                  ? `From: ${sourceRow.slotName} · ${sourceRow.dayLabel}`
+                  : `From: ${sourceRow.slotName} · ${sourceRow.dayLabel} · ${sourceRow.recipeTitle}`
+                : "Pick a slot"}
             </Text>
           </View>
-          <Pressable onPress={onClose} accessibilityLabel="Cancel">
+          <Pressable onPress={onClose} accessibilityLabel="Cancel" hitSlop={8}>
             <Text style={{ color: Accent.primary, fontWeight: "600" }}>Cancel</Text>
           </Pressable>
         </View>
