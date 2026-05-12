@@ -57,7 +57,13 @@ export const CHANGELOG_BULLET_MAX_CHARS = 120;
  */
 const CHANGELOGS: ChangelogEntry[] = [
   {
-    buildNumber: 13,
+    // EAS auto-increments buildNumber on each cloud build. The 12 →
+    // 49 jump happened across iterative production/preview builds
+    // between 2026-05-02 and 2026-05-12. The number Grace sees in
+    // TestFlight is the EAS-minted one, so the changelog mirrors it
+    // for traceability — even though only the items shipped under
+    // that build are user-facing.
+    buildNumber: 49,
     appVersion: "1.0.0",
     releaseDate: "2026-05-12",
     // No testerAttribution — this build was driven by the 2026-05-12

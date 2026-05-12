@@ -31,13 +31,15 @@ import {
 describe("changelog/entries", () => {
   it("getLatestChangelog returns the highest build number that has items (skips placeholders)", () => {
     const latest = getLatestChangelog();
-    // 2026-05-12: build 13 ships the premium-bar audit polish set
+    // 2026-05-12: build 49 (EAS auto-incremented from 12 across
+    // iterative production/preview builds between 2026-05-02 and
+    // 2026-05-12) ships the premium-bar audit polish set
     // (ruler-crash fix, refresh-plan UX, calorie-ring DC10, Withings
     // weight chart parity, verify-step skeleton + confidence bar,
     // recipe-import action sheet, paywall trial framing, reset modal
     // bullets, etc.). When a future build N+1 ships items, bump
     // the expectation here in lockstep.
-    expect(latest.buildNumber).toBe(13);
+    expect(latest.buildNumber).toBe(49);
     expect(latest.items.length).toBeGreaterThan(0);
   });
 
