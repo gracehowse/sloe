@@ -85,8 +85,16 @@
   /** Macro colours */
   --macro-protein: #4c6ce0;
   --macro-protein-soft: #4c6ce012;
-  --macro-carbs: #e8a020;
-  --macro-carbs-soft: #e8a02012;
+  /* 2026-05-12 (premium-bar audit DC10 follow-through): carbs split
+     from --warning (amber #e8a020) to its own warm-orange hue. Amber
+     now reserved for over-budget warnings only. Previously a
+     macro-carbs bar and an over-budget warning looked identical
+     because they shared the same token. Hue 16° (warm orange),
+     distinct from --warning (39°, yellow-orange), --destructive
+     (red), --macro-fat (magenta), and from sodium's tailwind-500
+     orange. Dark-mode equivalent further below. */
+  --macro-carbs: #ed6b2a;
+  --macro-carbs-soft: #ed6b2a14;
   --macro-fat: #e04888;
   --macro-fat-soft: #e0488812;
   --macro-calories: #22a860;
@@ -222,8 +230,12 @@
   /** Macro colours — dark */
   --macro-protein: #6c8cff;
   --macro-protein-soft: #6c8cff15;
-  --macro-carbs: #ffc04c;
-  --macro-carbs-soft: #ffc04c15;
+  /* 2026-05-12 (premium-bar audit DC10): carbs dark hue split from
+     --warning (#ffc04c amber-light) → warm-orange (#ff9054). Lifted
+     for dark-mode legibility. Same rationale as light mode — amber
+     now reserved for over-budget warnings only. */
+  --macro-carbs: #ff9054;
+  --macro-carbs-soft: #ff905415;
   --macro-fat: #ff7eb3;
   --macro-fat-soft: #ff7eb315;
   --macro-calories: #4cd080;
