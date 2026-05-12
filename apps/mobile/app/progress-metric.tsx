@@ -195,6 +195,7 @@ export default function ProgressMetricDetailScreen() {
       accent: Accent.primary,
       green: Accent.success,
       amber: Accent.warning,
+      red: Accent.destructive,
       protein: MacroColors.protein,
     }),
     [colors],
@@ -285,7 +286,13 @@ export default function ProgressMetricDetailScreen() {
                         width: "100%",
                         height: barH,
                         borderRadius: 6,
-                        backgroundColor: d.calories === 0 ? t.border : over ? t.amber : t.green,
+                        // Audit 2026-05-12 (premium-bar DC10): bars now follow
+                        // the calorie-ring 3-state rule — empty = border tint
+                        // (no judgment), logged-and-under = success green,
+                        // logged-and-over = destructive red. Previously over
+                        // used `t.amber` which collapsed under/over into the
+                        // same warning hue on dark backgrounds.
+                        backgroundColor: d.calories === 0 ? t.border : over ? t.red : t.green,
                         opacity: isToday ? 1 : 0.85,
                       }}
                     />

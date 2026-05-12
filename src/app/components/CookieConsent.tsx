@@ -44,33 +44,37 @@ export function CookieConsent() {
 
   if (!visible) return null;
 
-  // Audit 2026-05-04 #24 + #36: previously a centred floating card
-  // (`max-w-lg mx-auto rounded-2xl`) that overlapped the Pro tier card
-  // on `/pricing`, masked roadmap items, and obscured landing-hero
-  // proof-points. Now a slim full-width bottom strip — matches the
-  // mobile-web pattern, doesn't z-index over content, and the buttons
-  // sit inline at the right so the body copy gets the full width.
+  // Audit 2026-05-04 #24 + #36 (centred floating card → slim full-width
+  // bottom strip): the floating card overlapped Pro tier, roadmap, and
+  // landing-hero proof.
+  // Audit 2026-05-12 (premium-bar Phase 2): tighten further — copy
+  // halved, padding py-3 → py-2, buttons px-3 → px-2.5, flex-row on all
+  // breakpoints. Target height ~52px on phone (was ~136px = 16% of
+  // viewport). Linear / Notion / Vercel are all single-line bars; the
+  // two consent buttons stay inline to satisfy UK/EU equal-prominence
+  // (Accept all vs Essential only, both with the same visual weight on
+  // their respective contrasts). `line-clamp-1` keeps the body to one
+  // line and lets it ellipsis on the tightest screens rather than
+  // wrap.
   return (
     <div className="fixed bottom-0 inset-x-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-t border-slate-200 dark:border-slate-800 shadow-lg">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex flex-col sm:flex-row items-start sm:items-center gap-3">
-        <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 flex-1">
-          Suppr uses essential cookies to keep you signed in. With your consent we also load optional analytics
-          (PostHog) and error reporting (Sentry). These stay off until you accept.{" "}
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-2 flex flex-row items-center gap-3">
+        <p className="text-xs text-slate-700 dark:text-slate-300 flex-1 line-clamp-1 min-w-0">
+          Essential cookies on; analytics stay off until you accept.{" "}
           <Link href="/privacy" className="text-primary dark:text-primary underline">
             Privacy
           </Link>
-          .
         </p>
         <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={decline}
-            className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs sm:text-sm font-medium rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+            className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
           >
             Essential only
           </button>
           <button
             onClick={accept}
-            className="px-3 py-1.5 bg-primary text-white text-xs sm:text-sm font-medium rounded-md hover:bg-primary/90 transition-colors"
+            className="px-2.5 py-1 bg-primary text-white text-xs font-medium rounded-md hover:bg-primary/90 transition-colors"
           >
             Accept all
           </button>

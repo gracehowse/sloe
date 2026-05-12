@@ -2043,8 +2043,38 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                   lineHeight: 18,
                 }}
               >
-                Walk through setup again to update your weight, height, goals, and macros. We&apos;ll ask if you want to keep your food log and weight history at the end. Erase everything also removes recipes, plans, saves, and shopping lists.
+                Walk through setup again to update your weight, height, goals, and macros.
               </Text>
+            </View>
+
+            {/* Audit 2026-05-12 (premium-bar Phase 2) — replace the prior
+                60-word paragraph with two scannable bullet rows so the
+                user can compare options at a glance. Linear / Apple pattern:
+                green check = kept, red cross = removed. */}
+            <View
+              style={{
+                backgroundColor: colors.background,
+                borderRadius: Radius.md,
+                paddingVertical: 12,
+                paddingHorizontal: 14,
+                marginBottom: Spacing.lg,
+                gap: 10,
+                borderWidth: 1,
+                borderColor: colors.border,
+              }}
+            >
+              <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
+                <Text style={{ color: t.green, fontWeight: "700", fontSize: 13, marginTop: 1 }}>✓</Text>
+                <Text style={{ flex: 1, fontSize: 12, color: colors.textSecondary, lineHeight: 17 }}>
+                  <Text style={{ fontWeight: "700", color: colors.text }}>Refresh my plan</Text> keeps your food log, weight history, recipes, plans, saves, and shopping lists.
+                </Text>
+              </View>
+              <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
+                <Text style={{ color: t.red, fontWeight: "700", fontSize: 13, marginTop: 1 }}>✗</Text>
+                <Text style={{ flex: 1, fontSize: 12, color: colors.textSecondary, lineHeight: 17 }}>
+                  <Text style={{ fontWeight: "700", color: colors.text }}>Erase everything</Text> wipes all of the above. Your account and subscription stay.
+                </Text>
+              </View>
             </View>
 
             <Pressable

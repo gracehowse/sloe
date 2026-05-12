@@ -828,6 +828,7 @@ export default function ProgressScreen() {
     accent: Accent.primary,
     green: Accent.success,
     amber: Accent.warning,
+    red: Accent.destructive,
     protein: MacroColors.protein,
     carbs: MacroColors.carbs,
     fat: MacroColors.fat,
@@ -1485,7 +1486,13 @@ export default function ProgressScreen() {
                               width: "100%",
                               height: barH,
                               borderRadius: 5,
-                              backgroundColor: d.calories === 0 ? t.border : overTarget ? t.amber : t.green,
+                              // Audit 2026-05-12 (premium-bar DC10): match the
+                              // calorie-ring 3-state rule — empty=border tint,
+                              // under=success green, over=destructive red.
+                              // Previously over used `t.amber` which collapsed
+                              // visual signal with the under-target state at
+                              // low lightness in dark mode.
+                              backgroundColor: d.calories === 0 ? t.border : overTarget ? t.red : t.green,
                               opacity: isDayToday ? 1 : 0.75,
                               ...(showApproxCue
                                 ? {
@@ -1531,7 +1538,7 @@ export default function ProgressScreen() {
                   <Text style={{ fontSize: 10, color: t.dim }}>At or under target</Text>
                 </View>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                  <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: t.amber }} />
+                  <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: t.red }} />
                   <Text style={{ fontSize: 10, color: t.dim }}>Over target</Text>
                 </View>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
