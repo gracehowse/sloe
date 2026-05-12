@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
 import { Accent, Spacing, Radius } from "@/constants/theme";
+import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
@@ -12,6 +13,8 @@ import { dateKeyFromDate } from "../../../src/lib/nutrition/trackerStats";
 import { resolveMaintenance } from "../../../src/lib/nutrition/resolveMaintenance";
 import { maintenanceIntakeFromTargetCalories } from "@/lib/calcTargets";
 import { syncHealthDataThrottled, isHealthSyncAvailable } from "@/lib/healthSync";
+import { filterByDateRangeDays } from "@/lib/weightProjection";
+import MiniBarChart from "@/components/charts/MiniBarChart";
 
 function profileAgeYears(p: { dob?: string | null; age?: number | null }): number | null {
   if (p.age != null) {
@@ -47,6 +50,15 @@ export default function BurnDetailScreen() {
     maintenanceKcal: number;
     workouts: { type: string; minutes: number; calories: number; source: string }[];
   } | null>(null);
+  // 2026-05-12 (premium-bar audit weight-chart Phase 2 — Option B+):
+  // 30-day steps trend chart relocated from /weight-tracker → here.
+  // Burn detail is the canonical activity drill-down (per the
+  // MFP + Lose It IA pattern that pairs steps with calories-out, not
+  // weight). `stepsByDay` keeps the full map; `dailyStepsGoal` for
+  // the goal line. Empty state still uses the existing single-day
+  // "Steps" row above for "no chart yet" feel.
+  const [stepsByDay, setStepsByDay] = useState<Record<string, number>>({});
+  const [dailyStepsGoal, setDailyStepsGoal] = useState(NUTRITION_DEFAULTS.steps);
   // 2026-04-26 polish (round 2): pre-fix the screen rendered a static
   // "Loading..." text with no spinner and no terminal state — if userId
   // was null or the profile select returned an empty row, the screen
@@ -80,7 +92,7 @@ export default function BurnDetailScreen() {
         const { data: profile, error: profileErr } = await supabase
           .from("profiles")
           .select(
-            "activity_burn_by_day, basal_burn_by_day, steps_by_day, workouts_by_day, target_calories, goal, plan_pace, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, sex, height_cm, weight_kg, age, dob, activity_level",
+            "activity_burn_by_day, basal_burn_by_day, steps_by_day, daily_steps_goal, workouts_by_day, target_calories, goal, plan_pace, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, sex, height_cm, weight_kg, age, dob, activity_level",
           )
           .eq("id", userId)
           .maybeSingle();
@@ -117,6 +129,23 @@ export default function BurnDetailScreen() {
           maintenanceKcal,
           workouts: Array.isArray((p.workouts_by_day ?? {})[viewKey]) ? (p.workouts_by_day ?? {})[viewKey] : [],
         });
+        // Hydrate the 30-day steps trend (Phase 2 relocation). The map
+        // comes from HealthKit sync (mobile) or manual entry; we coerce
+        // every value to a finite number, drop the rest, so the chart
+        // never renders a stray NaN bar.
+        const sbd = p.steps_by_day;
+        if (sbd && typeof sbd === "object" && !Array.isArray(sbd)) {
+          const parsed: Record<string, number> = {};
+          for (const [k, v] of Object.entries(sbd as Record<string, unknown>)) {
+            const n = typeof v === "number" ? v : Number(v);
+            if (Number.isFinite(n)) parsed[k] = n;
+          }
+          setStepsByDay(parsed);
+        }
+        const sg = Number(p.daily_steps_goal);
+        setDailyStepsGoal(
+          Number.isFinite(sg) && sg > 0 ? Math.round(sg) : NUTRITION_DEFAULTS.steps,
+        );
       } catch (err) {
         if (cancelled) return;
         if (typeof console !== "undefined") {
@@ -127,6 +156,25 @@ export default function BurnDetailScreen() {
     })();
     return () => { cancelled = true; };
   }, [userId, viewKey]);
+
+  // 30-day steps trend — last 30 days, oldest → newest, formatted for
+  // MiniBarChart consumption. Mirror of /weight-tracker's old build
+  // (filterByDateRangeDays + label/value shape) so the chart renders
+  // identically on this surface.
+  const stepsHistory = useMemo(() => {
+    const filtered = filterByDateRangeDays(stepsByDay, 30);
+    return Object.entries(filtered).map(([k, v]) => ({
+      label: (() => {
+        try {
+          const d = new Date(k + "T00:00:00");
+          return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+        } catch {
+          return k;
+        }
+      })(),
+      value: v,
+    }));
+  }, [stepsByDay]);
 
   const totals = useMemo(() => {
     if (!data) return null;
@@ -223,11 +271,54 @@ export default function BurnDetailScreen() {
               </View>
             )}
 
-            {/* Steps */}
+            {/* Steps — single-day count */}
             {data.steps > 0 && (
               <View style={{ paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border, flexDirection: "row", justifyContent: "space-between" }}>
                 <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>Steps</Text>
                 <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"] }}>{data.steps.toLocaleString()}</Text>
+              </View>
+            )}
+
+            {/* 2026-05-12 (premium-bar audit Phase 2 — relocated from
+                /weight-tracker): 30-day steps trend with the user's
+                daily goal as a horizontal line. Burn detail is the
+                canonical activity drill-down per MFP + Lose It IA —
+                steps belongs here, not on the weight surface. Renders
+                only when there are at least 2 days of data. */}
+            {stepsHistory.length >= 2 && (
+              <View
+                style={{
+                  marginTop: Spacing.lg,
+                  padding: Spacing.md,
+                  borderRadius: Radius.md,
+                  backgroundColor: colors.card,
+                  borderWidth: 1,
+                  borderColor: colors.cardBorder,
+                  gap: 10,
+                }}
+              >
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" }}>
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text }}>
+                    Steps · last 30 days
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 11,
+                      color: colors.textTertiary,
+                      fontVariant: ["tabular-nums"],
+                    }}
+                  >
+                    Goal {dailyStepsGoal.toLocaleString()}
+                  </Text>
+                </View>
+                <MiniBarChart
+                  data={stepsHistory}
+                  goalLine={dailyStepsGoal}
+                  color={Accent.success}
+                  trackColor={colors.border}
+                  labelColor={colors.textTertiary}
+                  goalColor={Accent.success}
+                />
               </View>
             )}
 
