@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Help & Information — Suppr",
+  title: "Help — Suppr",
   description: "How Suppr works, nutrition methodology, data sources, and disclaimers.",
 };
 
@@ -19,7 +19,7 @@ export default function HelpPage() {
             &larr; Back to app
           </Link>
         </p>
-        <h1 className="text-2xl font-semibold text-slate-900 dark:text-white mb-8">Help &amp; Information</h1>
+        <h1 className="text-2xl font-semibold text-slate-900 dark:text-white mb-8">Help</h1>
 
         <div className="prose prose-slate dark:prose-invert prose-sm max-w-none space-y-6 text-slate-700 dark:text-slate-300">
 

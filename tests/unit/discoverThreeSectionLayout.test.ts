@@ -1,26 +1,28 @@
 /**
- * Discover tab three-section layout — pins the 2026-04-19 Claude
- * Design prototype port (`docs/prototypes/2026-04-19-whole-app-experience/
- * project/screens-mobile.jsx` → `DiscoverScreen` function).
+ * Discover tab layout — pins the 2026-04-19 Claude Design prototype
+ * port (`docs/prototypes/2026-04-19-whole-app-experience/project/
+ * screens-mobile.jsx` → `DiscoverScreen` function) and the
+ * 2026-05-12 premium-bar audit override on the Import card.
  *
- * Before the port, Discover rendered a single 2-column grid of recipe
- * cards with the Import + My Library CTAs pinned below the filter
- * pills. The prototype calls for three distinct stacked sections
- * instead:
+ * MOBILE structure (post-2026-05-12 audit):
+ *   - Permanent Import card AT THE TOP (refuse-to-pass #8: "Promote
+ *     Import from a link to permanent first Discover card"). testID
+ *     `discover-import-cta` stable.
+ *   - "Matches your day" — 2 hero cards (16:10 image, full width)
+ *     drawn from `filtered.slice(0, 2)`.
+ *   - "More ideas" — a single card containing compact meal-row
+ *     style list rows for `filtered.slice(2)`.
+ *   - "My Library" — bottom rail with the saved-recipes jump card.
  *
- *   1. "Matches your day" — 2 hero cards (16:10 image, full width)
- *      drawn from `filtered.slice(0, 2)`.
- *   2. "More ideas" — a single card containing compact meal-row
- *      style list rows for `filtered.slice(2)`.
- *   3. "From your sources" — Import + My Library CTAs, reordered to
- *      the BOTTOM. They are utility, not discovery content; placing
- *      them after the recipe sections matches the prototype's reading
- *      order.
+ * WEB structure (unchanged 2026-04-20 prototype port):
+ *   1. "Matches your day"
+ *   2. "More ideas"
+ *   3. "From your sources" — Import + My Library CTAs at the bottom
  *
  * Empty-state rule: when the filtered recipe list is empty we skip
  * sections 1 + 2 and fall back to the existing "No recipes yet" /
- * "Nothing to show" empty state. Section 3 still renders so users
- * can still bring content in.
+ * "Nothing to show" empty state. The bottom rail (mobile) / Section
+ * 3 (web) still renders so users can still bring content in.
  *
  * F-11 still stands: NO fit-percent badge on either platform. The
  * prototype drew one but tester feedback killed it
@@ -50,12 +52,13 @@ describe("Discover tab — three-section layout (2026-04-20 prototype port)", ()
       expect(WEB_SRC).toMatch(/>\s*From your sources\s*</);
     });
 
-    it("mobile renders all three section headings", () => {
+    it("mobile renders all required section headings (post-2026-05-12 audit)", () => {
       // Mobile uses `<Text>…</Text>` so the literal string appears as
-      // the child.
+      // the child. "From your sources" was renamed to "My Library"
+      // when Import moved to a permanent top card.
       expect(MOBILE_SRC).toMatch(/Matches your day/);
       expect(MOBILE_SRC).toMatch(/More ideas/);
-      expect(MOBILE_SRC).toMatch(/From your sources/);
+      expect(MOBILE_SRC).toMatch(/>\s*My Library\s*</);
     });
   });
 
@@ -96,20 +99,20 @@ describe("Discover tab — three-section layout (2026-04-20 prototype port)", ()
       expect(importIdx).toBeGreaterThan(moreIdeasIdx);
     });
 
-    it("mobile places the 'From your sources' heading BEFORE the Import / My Library CTAs", () => {
-      const headingIdx = MOBILE_SRC.indexOf("From your sources");
-      const importIdx = MOBILE_SRC.indexOf("Import from TikTok, Instagram...");
-      const libraryIdx = MOBILE_SRC.indexOf(">My Library<");
-      expect(headingIdx).toBeGreaterThan(0);
-      expect(importIdx).toBeGreaterThan(headingIdx);
-      expect(libraryIdx).toBeGreaterThan(headingIdx);
-    });
-
-    it("mobile places the Import / My Library CTAs AFTER the More ideas section", () => {
-      const moreIdeasIdx = MOBILE_SRC.indexOf("More ideas");
-      const importIdx = MOBILE_SRC.indexOf("Import from TikTok, Instagram...");
-      expect(moreIdeasIdx).toBeGreaterThan(0);
-      expect(importIdx).toBeGreaterThan(moreIdeasIdx);
+    it("mobile places the Import card as the FIRST surface above all recipe sections (2026-05-12 audit)", () => {
+      // Match the rendered strings, not the JSDoc comments at the top
+      // of the file. Section headings render inside a `<Text style=...>`
+      // tag so we anchor on the closing `>` from the opening tag.
+      const importIdx = MOBILE_SRC.indexOf('testID="discover-import-cta"');
+      const matchesIdx = MOBILE_SRC.search(/>\s*Matches your day\s*</);
+      const moreIdeasIdx = MOBILE_SRC.search(/>\s*More ideas\s*</);
+      const libraryHeadingIdx = MOBILE_SRC.search(/>\s*My Library\s*</);
+      expect(importIdx).toBeGreaterThan(0);
+      // Import card comes before all section headings.
+      expect(matchesIdx).toBeGreaterThan(importIdx);
+      expect(moreIdeasIdx).toBeGreaterThan(importIdx);
+      // My Library jump-card stays in the bottom rail.
+      expect(libraryHeadingIdx).toBeGreaterThan(moreIdeasIdx);
     });
   });
 

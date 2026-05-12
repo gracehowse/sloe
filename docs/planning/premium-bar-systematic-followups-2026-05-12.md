@@ -481,6 +481,30 @@ This doc is the live tracking surface — update tags as items ship.
 
 ---
 
+## Added 2026-05-12 (outside the audit)
+
+- [ ] **Instacart integration on shopping list** (Grace, 2026-05-12) — wire
+  the Plan → Shopping list to Instacart so users can one-tap-buy the
+  generated list. Likely uses Instacart's [Developer Platform recipe
+  page API](https://docs.instacart.com/developer_platform_api/api/recipes/)
+  or [shopping list API](https://docs.instacart.com/developer_platform_api/api/products/shopping_list/).
+  Affiliate revenue + reduces friction Plan→Pantry. Owner: integration-manager
+  + monetisation-architect.
+- [ ] **MCP / Claude connector — Suppr as an MCP server for fitness +
+  food data** (Grace, 2026-05-12, "way down the line") — expose the
+  user's fitness/food data over MCP so Claude users can ask their
+  Suppr data questions (e.g. "what's my average protein over the last
+  30 days?", "did I hit my macros this week?"). Read-only first cut.
+  Owner: integration-manager. Add to long-term roadmap, not v1.
+- [ ] **Pregnancy / TTC nutrition insight surface** (Grace, 2026-05-12,
+  "way down the line") — analyse what the user has logged and surface
+  pregnancy-optimised or TTC-optimised diet insights ("Is your diet
+  optimised for trying to conceive?", folate / iron / iodine /
+  omega-3 coverage, alcohol/caffeine flags). Sensitive surface: needs
+  legal-reviewer + diversity-inclusion sign-off (cis-het assumptions,
+  body-neutral framing, no shaming, AMAB-inclusive defaults). Add to
+  long-term roadmap. Owner: nutrition-engine + product-lead + legal.
+
 ## Phase 4+ execution log
 
 Items being worked in batches. Each batch ends with CI green + push.

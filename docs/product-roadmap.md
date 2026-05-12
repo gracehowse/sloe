@@ -317,6 +317,35 @@ We've **jumped around and ahead** of the original phase order. Several Phase A i
 
 ---
 
+## Phase G — Integrations & ecosystem (post-launch, 2026-05-12 captures)
+
+**Goal:** Make Suppr the data spine so other surfaces can act on it (one-tap-buy, Claude-as-coach).
+
+### Still to build
+
+- **Instacart shopping list integration** — wire Plan → Shopping list to
+  Instacart's [Developer Platform recipe / shopping list API](https://docs.instacart.com/developer_platform_api/api/products/shopping_list/)
+  so users can one-tap-buy a generated list. Affiliate revenue + reduces
+  friction Plan → Pantry. Owners: integration-manager + monetisation-architect.
+  (Captured 2026-05-12; not in 2026-05-12 audit.)
+- **MCP / Claude connector — Suppr as MCP server for fitness + food data**
+  (long-term) — expose the user's fitness/food data over the
+  Model Context Protocol so Claude users can ask their Suppr data
+  questions ("what's my average protein over the last 30 days?", "did
+  I hit my macros this week?"). Read-only first cut. Owner:
+  integration-manager. Not v1; positioned for when MCP is mature on
+  consumer surfaces.
+- **Pregnancy / TTC nutrition insight surface** (long-term, sensitive
+  surface) — analyse what the user has logged and surface
+  pregnancy-optimised or TTC-optimised diet insights ("Is your diet
+  optimised for trying to conceive?", folate / iron / iodine /
+  omega-3 coverage, alcohol/caffeine flags). Requires legal-reviewer +
+  diversity-inclusion sign-off (no cis-het assumptions, body-neutral
+  framing, no shaming, AMAB-inclusive defaults). Owner: nutrition-engine
+  + product-lead + legal-reviewer + diversity-inclusion.
+
+---
+
 ## Suggested sequencing (refreshed)
 
 We've already completed much of the Phase A + B + C breadth. The remaining sequence is:

@@ -481,7 +481,13 @@ export function MobileFlow() {
           onPress={handleContinue}
           disabled={completing || !canAdvance}
           accessibilityRole="button"
-          accessibilityLabel={isTerminal ? "Build my plan" : "Continue"}
+          accessibilityLabel={
+            isTerminal
+              ? isRefreshPlan === true
+                ? "Refresh my plan"
+                : "Build my plan"
+              : "Continue"
+          }
           accessibilityState={{
             disabled: completing || !canAdvance,
           }}
@@ -516,7 +522,11 @@ export function MobileFlow() {
                 color: !canAdvance ? colors.textTertiary : Accent.primaryForeground,
               }}
             >
-              {isTerminal ? "Build my plan" : "Continue"}
+              {isTerminal
+                ? isRefreshPlan === true
+                  ? "Refresh my plan"
+                  : "Build my plan"
+                : "Continue"}
             </Text>
           )}
         </Pressable>
