@@ -98,6 +98,7 @@ import { generateProgressCommentary } from "@/lib/progressCommentary";
 import { WeightChart } from "@/components/progress/WeightChart";
 import { WeightRangeToggle } from "@/components/progress/WeightRangeToggle";
 import { WeightSparseState } from "@/components/progress/WeightSparseState";
+import { LogWeightSheet } from "@/components/progress/LogWeightSheet";
 import {
   computeWeightTrend,
   weightKgByDayToPoints,
@@ -205,6 +206,12 @@ export default function ProgressScreen() {
   const [weightSurfaceMode, setWeightSurfaceMode] = useState<WeightSurfaceMode>("show");
 
   const [weightChartRange, setWeightChartRange] = useState<WeightRange>("1m");
+
+  // Weight chart consolidation Phase 1 (2026-05-11, B6). Inline
+  // log-weight sheet replaces the prior `/weight-tracker` push for the
+  // 4 CTAs on this screen. The route itself is still alive for
+  // backwards compat; Phase 3 deletes it.
+  const [logWeightOpen, setLogWeightOpen] = useState(false);
 
   // H-4 (build 12, 2026-04-19, TestFlight `AEb7NcjnvK`): defer the
   // heavy below-the-fold blocks (daily-calories chart, maintenance
@@ -956,8 +963,8 @@ export default function ProgressScreen() {
         <Pressable
           testID="progress-calendar-button"
           accessibilityRole="button"
-          accessibilityLabel="Open weight tracker"
-          onPress={() => router.push("/weight-tracker" as const)}
+          accessibilityLabel="Log weight"
+          onPress={() => setLogWeightOpen(true)}
           style={({ pressed }) => [{
             width: 36,
             height: 36,
@@ -1318,7 +1325,7 @@ export default function ProgressScreen() {
                 title === "Avg Calories" || title.startsWith("Avg on logged days");
               const openTile = () => {
                 if (title === "Trend") {
-                  router.push("/weight-tracker" as const);
+                  setLogWeightOpen(true);
                   return;
                 }
                 const metric =
@@ -1960,7 +1967,7 @@ export default function ProgressScreen() {
               ) : (
                 <WeightSparseState
                   points={weightChartTrend.points}
-                  onLogWeight={() => router.push("/weight-tracker" as const)}
+                  onLogWeight={() => setLogWeightOpen(true)}
                 />
               )}
             </View>
@@ -2054,7 +2061,7 @@ export default function ProgressScreen() {
 
               return (
                 <Pressable
-                  onPress={() => router.push("/weight-tracker" as const)}
+                  onPress={() => setLogWeightOpen(true)}
                   accessibilityRole="button"
                   accessibilityLabel="Weight journey and charts"
                   accessibilityHint="Opens detailed weight progress"
@@ -2176,6 +2183,18 @@ export default function ProgressScreen() {
         Nutrition data are estimates. Not medical or dietetic advice.
       </Text>
     </ScrollView>
+    <LogWeightSheet
+      visible={logWeightOpen}
+      onClose={() => setLogWeightOpen(false)}
+      userId={userId ?? null}
+      isImperial={measurementSystem === "imperial"}
+      weightKgByDay={weightKgByDay}
+      weightKg={weightKg}
+      onSaved={({ weightKgByDay: next, weightKg: kg }) => {
+        setWeightKgByDay(next);
+        setWeightKg(kg);
+      }}
+    />
     </View>
   );
 }
