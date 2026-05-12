@@ -5489,6 +5489,20 @@ export default function TrackerScreen() {
           fat: totals.fat,
           fiber: totals.fiber,
         }}
+        // 2026-05-12 round 5 (premium-bar audit #12 MFP borrow):
+        // recents on mount. Compute the user's last 5 meals from byDay
+        // (the same source the QuickAddPanel reads) and pass through
+        // so the search modal's empty-query state shows tap-to-log
+        // recents — the pattern MFP / Lose It / Cronometer all ship.
+        recentFoods={computeRecentMeals(byDay, 5).map((item) => ({
+          recipeTitle: item.recipeTitle,
+          calories: item.calories,
+          protein: item.protein,
+          carbs: item.carbs,
+          fat: item.fat,
+          fiber: item.fiber,
+          source: item.source,
+        }))}
         // Shared commit path — same logic the inline `<FoodSearchPanel>`
         // inside `<LogSheet>` runs (handleFoodSearchSelect). F-13 +
         // F-79 + L6 G1 all live in the shared callback.

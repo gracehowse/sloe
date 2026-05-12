@@ -80,6 +80,21 @@ type Props = {
   onScanBarcode?: () => void;
   onVoiceLog?: () => void;
   onPhotoLog?: () => void;
+  /**
+   * 2026-05-12 round 5 (premium-bar audit #12): pass-through to the
+   * underlying FoodSearchPanel. When provided, the modal's empty-query
+   * state renders "Recent" — last 5 logged foods, tap to log. Hosts
+   * that don't have a foodHistory hydrated can omit.
+   */
+  recentFoods?: Array<{
+    recipeTitle: string;
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    fiber?: number;
+    source?: string;
+  }>;
 };
 
 export default function FoodSearchModal({
@@ -97,6 +112,7 @@ export default function FoodSearchModal({
   onScanBarcode,
   onVoiceLog,
   onPhotoLog,
+  recentFoods,
 }: Props) {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
@@ -247,6 +263,7 @@ export default function FoodSearchModal({
           userId={userId}
           onSelect={onSelect}
           mode="full"
+          recentFoods={recentFoods}
         />
       </KeyboardSafeView>
     </Modal>
