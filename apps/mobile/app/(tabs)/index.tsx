@@ -196,8 +196,6 @@ import { TodayEditMealModal } from "@/components/today/TodayEditMealModal";
 import { TodayDateHeader } from "@/components/today/TodayDateHeader";
 import { TodayDashboardMacroTiles } from "@/components/today/TodayDashboardMacroTiles";
 import { FullNutrientPanelSheet } from "@/components/today/FullNutrientPanelSheet";
-import { WhyThisNumberSheet } from "@/components/today/WhyThisNumberSheet";
-import { paceKgPerWeekFromPreset } from "../../../../src/lib/nutrition/whyThisNumber";
 import { TodayQuickLogStrip } from "@/components/today/TodayQuickLogStrip";
 import { TodaySnapShortcut } from "@/components/today/TodaySnapShortcut";
 import { OnboardingNudgeBanner } from "@/components/today/onboarding-nudges";
@@ -356,11 +354,6 @@ export default function TrackerScreen() {
     /** Onboarding completion routes through here so Today can show
      *  post-onboarding nudges. Older code path. */
     onboarding_complete?: string;
-    /** 2026-05-12 round 3 (Grace TF): deep-link from `/targets`'s
-     *  "How is this calculated?" row. Today owns the WhyThisNumberSheet
-     *  (it has all the inputs already hydrated); Targets is a thin
-     *  caller via this param so we don't duplicate the data plumbing. */
-    openWhy?: string;
   }>();
   const insets = useSafeAreaInsets();
   const { session } = useAuth();
@@ -620,9 +613,6 @@ export default function TrackerScreen() {
   // → "Net carbs" via the shared netCarbs.ts helper.
   const [netCarbsLensEnabled, setNetCarbsLensEnabled] = useState(false);
   const [nutrientsModalOpen, setNutrientsModalOpen] = useState(false);
-  /** Audit gap #10 (2026-05-01) — "Why this number?" sheet visibility.
-   *  Opened by the small pill under the calorie ring. */
-  const [whyThisNumberOpen, setWhyThisNumberOpen] = useState(false);
   const [dailyStepsGoal, setDailyStepsGoal] = useState(NUTRITION_DEFAULTS.steps);
   const [plannedMeals, setPlannedMeals] = useState<{name?: string; recipe_title?: string; calories?: number; protein?: number; carbs?: number; fat?: number; recipe_id?: string | null}[]>([]);
   const [activeFastStart, setActiveFastStart] = useState<string | null>(null);
@@ -789,17 +779,9 @@ export default function TrackerScreen() {
     }
   }, [params.openLog, router]);
 
-  // 2026-05-12 round 3 (Grace TF) — `/targets` "How is this calculated?"
-  // row deep-links here with `?openWhy=1`. Today owns the
-  // WhyThisNumberSheet (all inputs are already hydrated here); Targets
-  // is just the entry point. Clear the param after firing so a back-nav
-  // doesn't re-open the sheet on next focus.
-  useEffect(() => {
-    if (params.openWhy === "1") {
-      setWhyThisNumberOpen(true);
-      router.setParams({ openWhy: undefined } as Record<string, undefined>);
-    }
-  }, [params.openWhy, router]);
+  // 2026-05-12 round 4 (Grace TF) — the `?openWhy=1` deep-link is
+  // gone. The WhyThisNumberSheet now mounts on `/targets` and opens
+  // inline there. Today no longer owns the sheet.
 
   useEffect(() => subscribeOffline(setIsOffline), []);
 
@@ -4525,7 +4507,6 @@ export default function TrackerScreen() {
                 setCalorieDisplayMode((m) => m === "remaining" ? "consumed" : "remaining");
                 setRingExpanded((e) => !e);
               }}
-              onPressWhy={() => setWhyThisNumberOpen(true)}
             />
 
             {/* Single context block — priority order: fasting >
@@ -5717,67 +5698,11 @@ export default function TrackerScreen() {
         }}
       />
 
-      {/* Audit gap #10 — "Why this number?" sheet (2026-05-01).
-          Reads adaptive_tdee + goal + plan_pace from the profile state
-          we already hydrate; recomp folds into "lose" semantics for
-          the panel because the user-facing direction is identical. */}
-      <WhyThisNumberSheet
-        visible={whyThisNumberOpen}
-        onClose={() => setWhyThisNumberOpen(false)}
-        targetCalories={effectiveCalorieGoal}
-        maintenanceTdee={adaptiveTdee}
-        confidence={
-          adaptiveTdeeConfidence === "low" ||
-          adaptiveTdeeConfidence === "medium" ||
-          adaptiveTdeeConfidence === "high"
-            ? adaptiveTdeeConfidence
-            : null
-        }
-        // Streak alignment (2026-05-02 user feedback,
-        // claude/household-section-streak-sidebar-bundle): the panel
-        // reads the SAME consecutive-logging-streak number the
-        // StreakPip shows, so users don't see "26-day streak" on the
-        // header and "40 days of logging" inside the panel and ask
-        // "which is it?". `streakDays` is the canonical metric — both
-        // the early-estimate qualifier and the calibrating ask gate on
-        // it. Distinct-day count (Object.keys(byDay).filter…) is no
-        // longer surfaced here; if a future panel wants both metrics,
-        // add an explicit "X consecutive of Y total" line.
-        loggingDays={streakDays}
-        goal={
-          profileGoal === "gain"
-            ? "gain"
-            : profileGoal === "maintain"
-              ? "maintain"
-              : "lose" // covers "lose" + "recomp" + null
-        }
-        paceKgPerWeek={paceKgPerWeekFromPreset(
-          profilePlanPace,
-          profileGoal === "gain"
-            ? "gain"
-            : profileGoal === "maintain"
-              ? "maintain"
-              : "lose",
-        )}
-        // Specific calibrating ask: when adaptive TDEE hasn't fired
-        // we tell the user EXACTLY what's missing (3+ weight logs, 7+
-        // meal-log days). Without these the panel falls back to a
-        // generic "keep logging" line that lies after 40 days of meals
-        // with no weights — see PR claude/why-this-number-data-fix.
-        // 2026-05-02 — `mealLogDays` now uses the streak so the gate
-        // matches what the user sees on the pip; for a 26-day streak
-        // the gate has long since cleared so the surface impact is on
-        // sub-7-day users (more conservative calibrating ask = honest).
-        mealLogDays={streakDays}
-        weightLogCount={Object.keys(profileWeightKgByDay).length}
-        onPressAdjustTarget={() => router.push("/profile?focus=plan")}
-        backgroundColor={colors.background}
-        cardColor={colors.card}
-        cardBorderColor={colors.cardBorder}
-        textColor={colors.text}
-        textSecondaryColor={colors.textSecondary}
-        textTertiaryColor={colors.textTertiary}
-      />
+      {/* 2026-05-12 round 4 (Grace TF): the WhyThisNumberSheet moved
+          to `/targets` (Settings → Targets → "How is this calculated?")
+          and mounts inline there. Today no longer hosts it. The
+          state + `paceKgPerWeekFromPreset` import remain in case a
+          future entry point on Today wants to re-host. */}
 
       <JournalDatePickerModal
         visible={journalCalendarOpen}

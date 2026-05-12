@@ -40,6 +40,8 @@ import {
   buildMacroTiles,
   buildGoalCard,
 } from "../../../src/lib/targets/targetsView";
+import { WhyThisNumberSheet } from "@/components/today/WhyThisNumberSheet";
+import { paceKgPerWeekFromPreset } from "../../../src/lib/nutrition/whyThisNumber";
 
 /**
  * Targets screen — 2026-04-20 prototype port. Dedicated surface that
@@ -93,6 +95,17 @@ export default function TargetsScreen() {
   const [goalWeightKg, setGoalWeightKg] = useState<number | null>(null);
   const [weightKgByDay, setWeightKgByDay] = useState<Record<string, number>>({});
 
+  // 2026-05-12 round 4 (Grace TF): "How is this calculated?" opens
+  // the WhyThisNumberSheet inline on Targets. Round-3 routed via a
+  // deeplink to Today which "popped up" away from the user's current
+  // context — wrong call. Now the sheet mounts here and uses the
+  // profile state Targets already hydrates (adaptive_tdee, confidence,
+  // plan_pace).
+  const [whySheetOpen, setWhySheetOpen] = useState(false);
+  const [adaptiveTdee, setAdaptiveTdee] = useState<number | null>(null);
+  const [adaptiveTdeeConfidence, setAdaptiveTdeeConfidence] = useState<string | null>(null);
+  const [planPace, setPlanPace] = useState<string | null>(null);
+
   useEffect(() => {
     if (!userId) {
       setLoading(false);
@@ -111,7 +124,7 @@ export default function TargetsScreen() {
       const { data } = await supabase
         .from("profiles")
         .select(
-          "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, weight_kg, goal_weight_kg, weight_kg_by_day, height_cm, sex, activity_level, goal, dob, age, plan_pace, net_carbs_lens_enabled, prefer_activity_adjusted_calories",
+          "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, weight_kg, goal_weight_kg, weight_kg_by_day, height_cm, sex, activity_level, goal, dob, age, plan_pace, net_carbs_lens_enabled, prefer_activity_adjusted_calories, adaptive_tdee, adaptive_tdee_confidence",
         )
         .eq("id", userId)
         .maybeSingle();
@@ -161,6 +174,16 @@ export default function TargetsScreen() {
       }
       setWeightKg(w);
       setGoalWeightKg(d.goal_weight_kg != null ? Number(d.goal_weight_kg) : null);
+      // 2026-05-12 round 4 (Grace TF): hydrate the inputs the
+      // WhyThisNumberSheet needs. Adaptive TDEE + confidence drive
+      // the "calibrating / early estimate / strong estimate" copy;
+      // plan_pace + goal drive the "Lose / Maintain / Gain" line.
+      const at = d.adaptive_tdee != null ? Number(d.adaptive_tdee) : null;
+      setAdaptiveTdee(Number.isFinite(at) && at != null && at > 0 ? at : null);
+      setAdaptiveTdeeConfidence(
+        typeof d.adaptive_tdee_confidence === "string" ? d.adaptive_tdee_confidence : null,
+      );
+      setPlanPace(typeof d.plan_pace === "string" ? d.plan_pace : null);
       const wMap = d.weight_kg_by_day;
       if (wMap && typeof wMap === "object" && !Array.isArray(wMap)) {
         const parsed: Record<string, number> = {};
@@ -627,18 +650,14 @@ export default function TargetsScreen() {
           </View>
         ) : null}
 
-        {/* 2026-05-12 round 3 (Grace TF): "How is this calculated?" row.
-            The "Why this number?" affordance was removed from Today's
-            hero (too crowded around the ring). The explainer lives
-            here now — Settings → Targets → tap the row → Today opens
-            with the WhyThisNumberSheet visible. Today owns the sheet
-            because it already hydrates every input the sheet needs
-            (TDEE, confidence, goal, pace); we deep-link with
-            `?openWhy=1` instead of duplicating the data plumbing. */}
+        {/* 2026-05-12 round 4 (Grace TF): "How is this calculated?" row
+            opens the WhyThisNumberSheet INLINE on this screen. Round 3
+            deep-linked to Today which "popped up" away from the user's
+            current context — wrong call. The sheet now mounts at the
+            bottom of this file and uses the profile state Targets
+            already hydrates. */}
         <Pressable
-          onPress={() =>
-            router.push({ pathname: "/(tabs)", params: { openWhy: "1" } } as never)
-          }
+          onPress={() => setWhySheetOpen(true)}
           accessibilityRole="button"
           accessibilityLabel="How is this calculated? Open calorie target explanation"
           style={({ pressed }) => ({
@@ -682,6 +701,52 @@ export default function TargetsScreen() {
           Projections assume a 14-day moving average. Targets adapt weekly based on logged intake.
         </Text>
       </ScrollView>
+
+      {/* 2026-05-12 round 4 (Grace TF): inline WhyThisNumberSheet.
+          Adaptive TDEE is preferred when present; the sheet falls back
+          to the static Mifflin × activity TDEE when adaptive hasn't
+          fired yet. Goal/pace plumbing mirrors Today's wiring. */}
+      <WhyThisNumberSheet
+        visible={whySheetOpen}
+        onClose={() => setWhySheetOpen(false)}
+        targetCalories={targets.calories}
+        maintenanceTdee={adaptiveTdee ?? tdeeKcal}
+        confidence={
+          adaptiveTdeeConfidence === "low" ||
+          adaptiveTdeeConfidence === "medium" ||
+          adaptiveTdeeConfidence === "high"
+            ? adaptiveTdeeConfidence
+            : null
+        }
+        loggingDays={null}
+        goal={
+          goal === "gain" || goal === "bulk" || goal === "strength"
+            ? "gain"
+            : goal === "maintain" || goal === "health"
+              ? "maintain"
+              : "lose"
+        }
+        paceKgPerWeek={paceKgPerWeekFromPreset(
+          planPace,
+          goal === "gain" || goal === "bulk" || goal === "strength"
+            ? "gain"
+            : goal === "maintain" || goal === "health"
+              ? "maintain"
+              : "lose",
+        )}
+        mealLogDays={null}
+        weightLogCount={Object.keys(weightKgByDay).length}
+        onPressAdjustTarget={() => {
+          setWhySheetOpen(false);
+          router.push("/profile?focus=plan" as never);
+        }}
+        backgroundColor={colors.background}
+        cardColor={colors.card}
+        cardBorderColor={colors.cardBorder}
+        textColor={colors.text}
+        textSecondaryColor={colors.textSecondary}
+        textTertiaryColor={colors.textTertiary}
+      />
     </View>
   );
 }

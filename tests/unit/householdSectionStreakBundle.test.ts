@@ -46,6 +46,10 @@ const MOBILE_TODAY = readFileSync(
   resolve(ROOT, "apps/mobile/app/(tabs)/index.tsx"),
   "utf8",
 );
+const MOBILE_TARGETS = readFileSync(
+  resolve(ROOT, "apps/mobile/app/targets.tsx"),
+  "utf8",
+);
 const WEB_NUTRITION_TRACKER = readFileSync(
   resolve(ROOT, "src/app/components/NutritionTracker.tsx"),
   "utf8",
@@ -114,21 +118,21 @@ describe("Fix 2 — section header rename: Everything else → People", () => {
 });
 
 describe("Fix 3A — Why this number? panel uses the streak value", () => {
-  it("mobile WhyThisNumberSheet receives streakDays for both loggingDays and mealLogDays", () => {
-    // After alignment, both props bind to `streakDays` (the same
-    // value the StreakPip renders). Distinct-day counts via
-    // Object.keys(byDay).filter(...) must be gone for these props.
-    expect(MOBILE_TODAY).toMatch(/loggingDays=\{streakDays\}/);
-    expect(MOBILE_TODAY).toMatch(/mealLogDays=\{streakDays\}/);
-    // Pin: the previous distinct-day expression must no longer feed
-    // either prop. We assert the prop call sites are off it; the
-    // expression itself can still appear elsewhere in the file.
-    expect(MOBILE_TODAY).not.toMatch(
-      /loggingDays=\{Object\.keys\(byDay\)\.filter/,
-    );
-    expect(MOBILE_TODAY).not.toMatch(
-      /mealLogDays=\{Object\.keys\(byDay\)\.filter/,
-    );
+  it("mobile WhyThisNumberSheet now lives on /targets (moved 2026-05-12 round 4)", () => {
+    // Round 4 (Grace TF): the sheet was removed from Today (no host
+    // surface there since the pill + long-press + subtle link were
+    // all rejected in rounds 1-3) and re-mounted on /targets, opened
+    // from the "How is this calculated?" row. Today no longer hosts.
+    expect(MOBILE_TARGETS).toMatch(/<WhyThisNumberSheet/);
+    expect(MOBILE_TODAY).not.toMatch(/<WhyThisNumberSheet/);
+    // On /targets there is no StreakPip on the same surface, so the
+    // streak-alignment requirement from 2026-05-02 doesn't apply
+    // here. We pass `null` for loggingDays/mealLogDays and let the
+    // sheet's fallback copy handle it. The pin is just "the sheet
+    // mounts with the expected null inputs" so a future change that
+    // accidentally wires a wrong source fails CI.
+    expect(MOBILE_TARGETS).toMatch(/loggingDays=\{null\}/);
+    expect(MOBILE_TARGETS).toMatch(/mealLogDays=\{null\}/);
   });
 
   it("web WhyThisNumberDialog receives streakDays for both loggingDays and mealLogDays", () => {
