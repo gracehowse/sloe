@@ -116,7 +116,7 @@ const PRIMARY_ITEMS: PrimaryItem[] = [
   },
   {
     view: "you",
-    label: "You",
+    label: "More",
     icon: "profile",
     defaultLeaf: "progress",
     leaves: ["progress", "profile", "settings", "household-settings", "targets"],

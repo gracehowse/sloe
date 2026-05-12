@@ -219,8 +219,11 @@ describe("(tabs)/_layout.tsx — primary tab structure pin", () => {
     expect(layoutSrc).toMatch(/name="library"\s+options=\{\{[^}]*title:\s*'Recipes'/s);
   });
 
-  it("renames the Progress Tabs.Screen to You for the visible tab title", () => {
-    expect(layoutSrc).toMatch(/name="progress"\s+options=\{\{[^}]*title:\s*'You'/s);
+  it("renames the Progress Tabs.Screen to More for the visible tab title", () => {
+    // 2026-05-12: renamed "You" → "More" per premium-bar audit. The
+    // tab is a kitchen-sink for Progress + Settings + Account; "You"
+    // read as a profile-only tab and underplayed the actual surface.
+    expect(layoutSrc).toMatch(/name="progress"\s+options=\{\{[^}]*title:\s*'More'/s);
   });
 
   it("uses the custom <SupprTabBar> renderer (2026-04-30 — centered raised Log button)", () => {

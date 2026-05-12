@@ -593,7 +593,7 @@ export default function App() {
               { primary: "today" as const, defaultLeaf: "today" as const, icon: <Icons.home className="w-5 h-5" />, label: "Today" },
               { primary: "recipes" as const, defaultLeaf: "library" as const, icon: <Icons.recipe className="w-5 h-5" />, label: "Recipes" },
               { primary: "plan" as const, defaultLeaf: "plan" as const, icon: <Icons.plan className="w-5 h-5" />, label: "Plan" },
-              { primary: "you" as const, defaultLeaf: "progress" as const, icon: <Icons.user className="w-5 h-5" />, label: "You" },
+              { primary: "you" as const, defaultLeaf: "progress" as const, icon: <Icons.user className="w-5 h-5" />, label: "More" },
             ] as const).map((tab, tabIndex) => {
               const activePrimary = resolvePrimaryFromView(currentView as SidebarView);
               const isActive = activePrimary === tab.primary;

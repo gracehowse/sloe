@@ -29,10 +29,15 @@ import { Spacing } from "@/constants/theme";
  *
  * Audit 2026-05-04 #22: previously the bottom-tab said "You" but the
  * top-of-screen title said "Settings" or "Progress" — a customer-lens
- * confusion ("two names for the same destination"). A small "You"
+ * confusion ("two names for the same destination"). A small "More"
  * eyebrow above the pill ties the bottom-tab label to the segmented
  * sub-view name visually. The screen-level title still names the
  * specific sub-page (Progress / Settings).
+ *
+ * 2026-05-12 (premium-bar audit): eyebrow renamed "You" → "More" to
+ * match the renamed bottom-tab. Filename + component name kept as
+ * `YouSubTabHeader` to avoid a churny rename — the import path is the
+ * stable contract; the display string is what users see.
  */
 type YouTab = "progress" | "settings";
 
@@ -65,7 +70,7 @@ export function YouSubTabHeader() {
         }}
         accessibilityRole="header"
       >
-        You
+        More
       </Text>
       <SubTabPill<YouTab>
         items={[
@@ -74,7 +79,7 @@ export function YouSubTabHeader() {
         ]}
         activeId={activeId}
         onSelect={(id) => router.replace(`/(tabs)/${id}` as never)}
-        accessibilityLabel="You sections"
+        accessibilityLabel="More sections"
         scrollable
       />
     </View>

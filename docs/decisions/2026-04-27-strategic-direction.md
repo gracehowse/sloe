@@ -153,7 +153,8 @@
 - **Files/surfaces:** `apps/mobile/app/(tabs)/_layout.tsx`; web sidebar (`components/nav/*` or equivalent); deep-link map; route tests; navigation analytics events.
 - **Owner:** journey-architect (structure) + executor (refactor).
 - **Dependencies:** none — independent first move.
-- **Acceptance:** mobile + web show 4 tabs (Today/Recipes/Plan/You); Library is default sub-tab in Recipes; Shopping is sub-view of Plan; Progress + More merged into You; all deep links resolve; tests green; sync-enforcer happy.
+- **Acceptance:** mobile + web show 4 tabs (Today/Recipes/Plan/More); Library is default sub-tab in Recipes; Shopping is sub-view of Plan; Progress + Settings + Account combined under More; all deep links resolve; tests green; sync-enforcer happy.
+- **Update 2026-05-12 (premium-bar audit):** the fourth tab is labelled "More", not "You". Original spec called it "You" because Progress + the legacy "More" route were merged into a single destination. The premium-bar audit (and Grace approval) flipped to "More" — "You" read as profile-only and underplayed the kitchen-sink nature of the destination (Progress + Settings + Profile + Targets + Account/Billing). The route key stays `you` for deeplink stability; only the visible label changed.
 
 #### B1.2 — Today canonical, kill 3 variants
 - **Files/surfaces:** `apps/mobile/components/today/*` (variant components deleted); web Today; M4 progressive disclosure rules retained; streak ribbon → pip.

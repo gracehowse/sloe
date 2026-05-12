@@ -181,19 +181,24 @@ export default function TabLayout() {
           tabBarButtonTestID: 'tab-plan',
         }}
       />
-      {/* You — primary tab points at Progress (the default sub-tab).
-          When on /settings or /more, the You entry stays highlighted. */}
+      {/* More — primary tab points at Progress (the default sub-tab).
+          When on /settings or /more, the entry stays highlighted.
+          Renamed from "You" → "More" 2026-05-12 (premium-bar audit item
+          P1 + Grace approval). The tab is functionally a kitchen-sink
+          for Progress + Settings + Account; "You" read as a profile-only
+          tab and underplayed the actual surface. testID kept as
+          `tab-you` for Maestro stability across the rename. */}
       <Tabs.Screen
         name="progress"
         options={{
-          title: 'You',
+          title: 'More',
           tabBarIcon: ({ color }) => <CircleUser size={22} color={color} strokeWidth={2} />,
-          tabBarAccessibilityLabel: 'You',
+          tabBarAccessibilityLabel: 'More',
           tabBarButtonTestID: 'tab-you',
         }}
         listeners={{
           tabPress: (e) => {
-            // Pressing You while on /settings or /more returns to /progress.
+            // Pressing More while on /settings or /more returns to /progress.
             if (pathname.startsWith('/settings') || pathname.startsWith('/more')) {
               e.preventDefault();
               router.replace('/(tabs)/progress' as never);
