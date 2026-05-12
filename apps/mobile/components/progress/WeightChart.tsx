@@ -420,31 +420,61 @@ export function WeightChart({ trend, goalKg, isImperial = false }: Props) {
             dots become sample markers, not noise. `stride` makes sure
             we keep the first + last + roughly 6 evenly-spaced dots in
             between, plus the actively-scrubbed point regardless. */}
-        {/* Raw dots — 2026-05-12 (Grace TF chart polish): solid filled
-            dots in the line colour at 35% alpha instead of hollow
-            rings. Withings pattern: filled markers carry less visual
-            weight than rings AND keep the dot reading "data point",
-            not "interactive target". Smaller (r=3) and lower opacity
-            so the smoothed line stays the headline element. Scrubbed
-            dot stays r=5 + full opacity as the active anchor. */}
-        {bucket === "daily" &&
-          points.map((p, i) => {
-            if (i === latestIdx) return null;
-            const isScrubbed = scrubIdx === i;
+        {/* Data points (raw weigh-ins for daily, aggregates for
+            weekly / monthly). 2026-05-12 round 3 (Grace TF: 3M / 1Y
+            views were rendering only the latest dot when count < 3
+            blocked the smoothed line — user saw "one floating dot
+            in empty space"). Two-track logic now:
+              - Daily bucket: stride-decimate raw dots so the smoothed
+                line still carries the story on dense data (~6 dots
+                visible between first + last + scrub).
+              - Weekly / monthly bucket: render EVERY aggregate dot.
+                Each point IS the aggregate (no noise to thin out),
+                and on sparse data the dots ARE the chart. Without
+                this, a user with 2 weekly buckets saw one lonely
+                latest dot on an empty plot.
+            Filled markers at 35% alpha keep the smoothed line as the
+            headline element when present; scrubbed dot at full
+            opacity / r=5 is the active anchor. */}
+        {points.map((p, i) => {
+          if (i === latestIdx) return null;
+          const isScrubbed = scrubIdx === i;
+          if (bucket === "daily") {
             const stride = count > 14 ? Math.ceil(count / 6) : 1;
             const keep = isScrubbed || i === 0 || i % stride === 0;
             if (!keep) return null;
-            return (
-              <Circle
-                key={p.dateISO + i}
-                cx={xs[i]!}
-                cy={ys[i]!}
-                r={isScrubbed ? 5 : 3}
-                fill={lineColor}
-                opacity={isScrubbed ? 1 : 0.35}
-              />
-            );
-          })}
+          }
+          // Weekly / monthly: render every point.
+          return (
+            <Circle
+              key={p.dateISO + i}
+              cx={xs[i]!}
+              cy={ys[i]!}
+              r={isScrubbed ? 5 : 3}
+              fill={lineColor}
+              opacity={isScrubbed ? 1 : 0.35}
+            />
+          );
+        })}
+
+        {/* Fallback connector line — 2026-05-12 round 3: when the
+            smoothed MA line is suppressed (count < 3) and there are
+            still ≥ 2 points to render, draw a thin connector between
+            them so the dots read as a series instead of stray marks.
+            Lower stroke weight than the canonical MA line so a future
+            count >= 3 view still feels more "premium" than a sparse
+            one. */}
+        {count >= 2 && count < 3 && (
+          <Path
+            d={buildLinePath(xs, ys, ys.map(() => true))}
+            stroke={lineColor}
+            strokeWidth={1.5}
+            opacity={0.4}
+            fill="none"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+        )}
 
         {/* Scrubber crosshair (active during pan) */}
         {scrubIdx != null && scrubPoint != null && (
@@ -495,6 +525,23 @@ export function WeightChart({ trend, goalKg, isImperial = false }: Props) {
             </SvgText>
           );
         })}
+
+        {/* 2026-05-12 round 3 (Grace TF: "some buttons show nothing"):
+            soft empty-state message when the active range window
+            contains zero data points. Centred in the plot area, low
+            contrast so it doesn't shout — same posture as the
+            sparse-state caption. */}
+        {count === 0 && (
+          <SvgText
+            x={PAD_LEFT + plotW / 2}
+            y={PAD_TOP + plotH / 2 + 4}
+            fontSize={12}
+            fill={colors.textTertiary}
+            textAnchor="middle"
+          >
+            No weigh-ins in this range
+          </SvgText>
+        )}
 
         {/* Tap-target overlay — captures pan but doesn't render */}
         <Rect
