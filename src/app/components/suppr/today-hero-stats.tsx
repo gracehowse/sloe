@@ -110,44 +110,47 @@ function DesktopHeroStats({
   const netStr = formatNet(net);
 
   return (
-    <div className="hidden md:block relative mb-4 rounded-card border border-border bg-card p-6">
-      {/* Top-right floating control: REMAINING / CONSUMED display mode.
-          Absolute so it doesn't affect grid alignment.
-          Prototype port (2026-04-20): moved to top-2.5 right-2.5 with
-          a subtle `bg-muted/50` tint and no border — mirrors mobile's
-          ui-critic fix where the bordered circle was visually
-          overpowering the ring. The active chip keeps a light
-          foreground tint so the mode is still scannable.
-          Intentional desktop-vs-mobile divergence (2026-05-02 revert
-          of #50): mobile + mobile-web removed the chip control
-          because the ring's long-press already covers the toggle and
-          the chip felt redundant. Desktop is mouse-driven with no
-          long-press equivalent, so the chip stays as the canonical
-          mode switch on viewports >= md. See
+    <div className="hidden md:block mb-4 rounded-card border border-border bg-card p-6">
+      {/* REMAINING / CONSUMED display-mode chip — header row.
+          2026-05-12 (premium-bar audit, web parity round 2): was an
+          absolutely-positioned chip in the top-right corner with a
+          magic `pr-32` reservation on the inner grid to stop the
+          right-column tiles from sliding under it. That hack
+          truncated stat-tile widths on narrower desktop windows
+          (e.g. 4-digit kcal values like "2,180" got squeezed). Now
+          the chip lives in its own right-aligned header row above
+          the ring+tiles grid — no absolute positioning, no width
+          reservation. Prototype port carry-over (2026-04-20) +
+          intentional desktop-vs-mobile divergence (2026-05-02 revert
+          of #50) still hold: mobile + mobile-web hide the chip
+          because the ring's long-press toggles, desktop keeps it
+          because it has no long-press equivalent. See
           `docs/decisions/2026-05-02-revert-today-ui-changes.md`. */}
-      <div
-        className="absolute top-2.5 right-2.5 inline-flex rounded-md bg-muted/50 p-0.5"
-        role="group"
-        aria-label="Calorie ring display"
-      >
-        {(["remaining", "consumed"] as const).map((mode) => (
-          <button
-            key={mode}
-            type="button"
-            onClick={() => onDisplayModeChange(mode)}
-            aria-pressed={displayMode === mode}
-            className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide transition-colors ${
-              displayMode === mode
-                ? "bg-card text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {mode}
-          </button>
-        ))}
+      <div className="flex items-center justify-end mb-3">
+        <div
+          className="inline-flex rounded-md bg-muted/50 p-0.5"
+          role="group"
+          aria-label="Calorie ring display"
+        >
+          {(["remaining", "consumed"] as const).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => onDisplayModeChange(mode)}
+              aria-pressed={displayMode === mode}
+              className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide transition-colors ${
+                displayMode === mode
+                  ? "bg-card text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {mode}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="grid grid-cols-[auto_1fr] gap-10 items-center pr-32">
+      <div className="grid grid-cols-[auto_1fr] gap-10 items-center">
         <div className="flex flex-col items-start gap-2">
           <DailyRing
             consumed={consumed}

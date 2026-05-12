@@ -421,6 +421,11 @@ function PhoneMacro({
 }
 
 function PhoneTabBar() {
+  // 2026-05-12 (premium-bar audit, web parity round 2): landing phone
+  // mock IA must mirror the shipped 4-tab structure (Today / Recipes /
+  // Plan / More) — not the old 5-tab v1 layout. Prospects compare the
+  // landing mock to the real install; a 5-vs-4 mismatch is a trust
+  // hit. Strategic direction lock: project_strategic_direction_2026-04-27.
   return (
     <div className="lp-ps-tabbar">
       <div className="lp-tab lp-active">
@@ -428,20 +433,16 @@ function PhoneTabBar() {
         Today
       </div>
       <div className="lp-tab">
-        <Compass aria-hidden />
-        Discover
+        <BookOpen aria-hidden />
+        Recipes
       </div>
       <div className="lp-tab">
         <CalendarDays aria-hidden />
         Plan
       </div>
       <div className="lp-tab">
-        <TrendingUp aria-hidden />
-        Progress
-      </div>
-      <div className="lp-tab">
         <User aria-hidden />
-        Profile
+        More
       </div>
     </div>
   );
@@ -532,7 +533,7 @@ function Features() {
     },
     {
       iconBg: "color-mix(in oklab, var(--macro-fat) 12%, transparent)",
-      iconColor: "#e04888",
+      iconColor: "var(--macro-fat)",
       Icon: ChefHat,
       title: "Cook mode",
       body:
@@ -631,36 +632,32 @@ function WebShot() {
         </div>
       </div>
       <div className="lp-ws-app">
+        {/* 2026-05-12 (premium-bar audit, web parity round 2): mirror
+            the shipped sidebar — 4 primary tabs (Today / Recipes /
+            Plan / More), no flat "Track"/"Recipes" groupings. Library
+            / Discover / Shopping / Progress live under their parent
+            tabs in the real app; landing mock had them at the top
+            level which mismatched the real install. */}
         <aside className="lp-ws-side">
           <div className="lp-ws-brand">
             <div className="lp-mk">S</div>
             <div className="lp-n">Suppr</div>
           </div>
-          <div className="lp-ws-cat">Track</div>
           <a className="lp-active">
             <Home aria-hidden />
             Today
+          </a>
+          <a>
+            <BookOpen aria-hidden />
+            Recipes
           </a>
           <a>
             <CalendarDays aria-hidden />
             Plan
           </a>
           <a>
-            <TrendingUp aria-hidden />
-            Progress
-          </a>
-          <div className="lp-ws-cat">Recipes</div>
-          <a>
-            <BookOpen aria-hidden />
-            Library
-          </a>
-          <a>
-            <Compass aria-hidden />
-            Discover
-          </a>
-          <a>
-            <ShoppingCart aria-hidden />
-            Shopping
+            <User aria-hidden />
+            More
           </a>
         </aside>
         <div className="lp-ws-main">
@@ -679,7 +676,7 @@ function WebShot() {
                     cx="56"
                     cy="56"
                     r="46"
-                    stroke="#22a860"
+                    stroke="var(--success)"
                     strokeWidth="8"
                     fill="none"
                     strokeLinecap="round"
@@ -713,8 +710,8 @@ function WebShot() {
             <div className="lp-ws-meals">
               <WsMeal
                 Icon={Coffee}
-                iconBg="rgba(34,168,96,0.15)"
-                iconColor="#22a860"
+                iconBg="color-mix(in oklab, var(--success) 15%, transparent)"
+                iconColor="var(--success)"
                 name="Greek yogurt & berries"
                 sub="08:40"
                 kc="280"
@@ -727,7 +724,7 @@ function WebShot() {
             <div className="lp-ws-meals">
               <WsMeal
                 Icon={Utensils}
-                iconBg="rgba(76,108,224,0.15)"
+                iconBg="color-mix(in oklab, var(--primary) 15%, transparent)"
                 iconColor="var(--primary)"
                 name="Sheet-pan chicken bowl"
                 sub="Instagram"
@@ -741,8 +738,8 @@ function WebShot() {
             <div className="lp-ws-meals">
               <WsMeal
                 Icon={Apple}
-                iconBg="rgba(232,160,32,0.15)"
-                iconColor="#e8a020"
+                iconBg="color-mix(in oklab, var(--warning) 15%, transparent)"
+                iconColor="var(--warning)"
                 name="Apple & peanut butter"
                 sub="2 servings"
                 kc="220"
