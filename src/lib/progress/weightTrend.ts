@@ -40,14 +40,34 @@ export type WeightTrendResult = {
    * trailing window has < 3 entries.
    */
   movingAvg: (number | null)[];
-  /** Y-axis domain: [yMin, yMax]. Always spans at least 0.8 kg. */
+  /** Y-axis domain: [yMin, yMax]. Always spans at least 0.8 kg (data + 0.4 kg padding each side). */
   yDomain: [number, number];
   /** "Down 0.4 kg" / "Up 0.3 kg" / "Holding steady" */
   trendCopy: string;
   /** True when MA endpoint > MA start (trending away from lower goal) or vice versa. */
   trendDirection: "improving" | "worsening" | "neutral";
+  /**
+   * 2026-05-11 (Grace TF feedback — Withings-style chart header).
+   * Signed delta in kg between the first and last MA endpoints over
+   * the selected range. Negative = down, positive = up. Null when
+   * there aren't enough points for a moving average (matches the
+   * "Not enough data yet" branch of `trendCopy`).
+   */
+  trendDeltaKg: number | null;
+  /**
+   * Discrete status the header renders. `stable` mirrors the
+   * `|delta| < 0.2` threshold used by `trendCopy`. Independent of
+   * `trendDirection` (which is improving/worsening relative to a goal).
+   */
+  trendStatus: "stable" | "down" | "up" | "no_data";
   /** "Last 7 days" / "Last 30 days" / "Last 3 months" / "Since 12 Jan" */
   sinceLabel: string;
+  /**
+   * 2026-05-11: real start-end date label like "12 Apr – 6 May 2026"
+   * for the chart header (Withings parity). Null when there are no
+   * points. Distinct from `sinceLabel` which is fuzzy ("Last 30 days").
+   */
+  periodRangeLabel: string | null;
   /** Days since the most recent weigh-in. Null if no data. */
   daysSinceLatest: number | null;
   /**
@@ -175,7 +195,12 @@ function computeYDomain(
   const allValues = includeGoal && goalKg != null ? [...kgs, goalKg] : kgs;
   const [rawMin, rawMax] = minMax(allValues);
   const rawRange = rawMax - rawMin;
-  const padding = Math.max(0.8, rawRange * 0.08);
+  // 2026-05-11 (Grace TF feedback — "looking squished on phone"):
+  // padding minimum dropped 0.8→0.4 kg per side. With a ~1.3 kg data
+  // range the chart was wasting ~46% of vertical space; now the data
+  // fills ~75%. The 0.4 minimum still keeps a tiny 0.2 kg daily
+  // fluctuation from looking like a vertical spike.
+  const padding = Math.max(0.4, rawRange * 0.08);
   return [
     Math.round((rawMin - padding) * 10) / 10,
     Math.round((rawMax + padding) * 10) / 10,
@@ -184,19 +209,46 @@ function computeYDomain(
 
 function computeTrendCopy(
   movingAvg: (number | null)[],
+  points: WeightPoint[],
   goalKg: number | null,
-): { copy: string; direction: "improving" | "worsening" | "neutral" } {
+): {
+  copy: string;
+  direction: "improving" | "worsening" | "neutral";
+  deltaKg: number | null;
+  status: "stable" | "down" | "up" | "no_data";
+} {
+  // 2026-05-11 (Grace TF feedback — "only show no data where there is
+  // none at all"): prefer the MA-based trend (smoother, less noisy)
+  // but fall back to a raw first-vs-last point delta when MA can't
+  // compute (sparse weigh-ins / short window with <3 points in the
+  // trailing MA window). Previously the chart rendered raw dots while
+  // the header said "No data" — a contradiction the user could see.
   const validMA = movingAvg.filter((v): v is number => v !== null);
-  if (validMA.length < 2) {
-    return { copy: "Not enough data yet.", direction: "neutral" };
+  let first: number | undefined;
+  let last: number | undefined;
+  if (validMA.length >= 2) {
+    first = validMA[0];
+    last = validMA[validMA.length - 1];
+  } else if (points.length >= 2) {
+    first = points[0]!.kg;
+    last = points[points.length - 1]!.kg;
   }
-  const first = validMA[0]!;
-  const last = validMA[validMA.length - 1]!;
+
+  if (first === undefined || last === undefined) {
+    // Truly nothing to summarise. Still keep `stable` (not `no_data`)
+    // when there's a SINGLE entry — the user has logged once and is
+    // staring at one dot; calling that "no data" reads wrong.
+    if (points.length === 1) {
+      return { copy: "First entry — keep going.", direction: "neutral", deltaKg: null, status: "stable" };
+    }
+    return { copy: "Not enough data yet.", direction: "neutral", deltaKg: null, status: "no_data" };
+  }
+
   const delta = last - first;
   const absDelta = Math.abs(delta);
 
   if (absDelta < 0.2) {
-    return { copy: "Holding steady.", direction: "neutral" };
+    return { copy: "Holding steady.", direction: "neutral", deltaKg: delta, status: "stable" };
   }
 
   const sign = delta < 0 ? "Down" : "Up";
@@ -208,7 +260,7 @@ function computeTrendCopy(
     direction = (goalIsLower && delta < 0) || (!goalIsLower && delta > 0) ? "improving" : "worsening";
   }
 
-  return { copy, direction };
+  return { copy, direction, deltaKg: delta, status: delta < 0 ? "down" : "up" };
 }
 
 function computeSinceLabel(points: WeightPoint[], range: WeightRange): string {
@@ -216,6 +268,42 @@ function computeSinceLabel(points: WeightPoint[], range: WeightRange): string {
   if (points.length === 0) return "All time";
   const earliest = isoToDate(points[0]!.dateISO);
   return `Since ${formatShortDate(earliest)}`;
+}
+
+/**
+ * 2026-05-11 (Grace TF feedback — Withings parity): real start-end
+ * date label like "12 Apr – 6 May 2026". Replaces the fuzzy "Last 30
+ * days" string for the chart-card header so it matches the x-axis
+ * tick labels and what Withings shows above their chart.
+ *
+ * Format rules:
+ *   - daily / weekly buckets    → "12 Apr – 6 May 2026" (day + month, year on end-side)
+ *   - monthly bucket (1Y/All)   → "May 2025 – May 2026" (month + year only) so the
+ *                                 label doesn't overflow on long spans
+ *   - identical-year spans      → drop the year on the start side
+ *   - empty                     → null (callers should hide the slot)
+ */
+function computePeriodRangeLabel(
+  points: WeightPoint[],
+  bucket: "daily" | "weekly" | "monthly",
+): string | null {
+  if (points.length === 0) return null;
+  const startISO = points[0]!.dateISO;
+  const endISO = points[points.length - 1]!.dateISO;
+  const startD = isoToDate(startISO);
+  const endD = isoToDate(endISO);
+  const startYear = startD.getFullYear();
+  const endYear = endD.getFullYear();
+  const sameYear = startYear === endYear;
+  const fmtDay = (d: Date, withYear: boolean): string =>
+    d.toLocaleDateString("en-GB", withYear ? { day: "numeric", month: "short", year: "numeric" } : { day: "numeric", month: "short" });
+  const fmtMonth = (d: Date): string =>
+    d.toLocaleDateString("en-GB", { month: "short", year: "numeric" });
+  if (bucket === "monthly") {
+    if (sameYear) return `${startD.toLocaleDateString("en-GB", { month: "short" })} – ${fmtMonth(endD)}`;
+    return `${fmtMonth(startD)} – ${fmtMonth(endD)}`;
+  }
+  return `${fmtDay(startD, !sameYear)} – ${fmtDay(endD, true)}`;
 }
 
 /**
@@ -349,11 +437,13 @@ export function computeWeightTrend(
     bucketed.length > 0
       ? computeYDomain(bucketed, goalKg)
       : ([60, 80] as [number, number]);
-  const { copy: trendCopy, direction: trendDirection } = computeTrendCopy(
+  const { copy: trendCopy, direction: trendDirection, deltaKg: trendDeltaKg, status: trendStatus } = computeTrendCopy(
     movingAvg,
+    bucketed,
     goalKg,
   );
   const sinceLabel = computeSinceLabel(bucketed, range);
+  const periodRangeLabel = computePeriodRangeLabel(bucketed, bucket);
 
   const daysSinceLatest =
     filtered.length > 0
@@ -369,7 +459,10 @@ export function computeWeightTrend(
     yDomain,
     trendCopy,
     trendDirection,
+    trendDeltaKg,
+    trendStatus,
     sinceLabel,
+    periodRangeLabel,
     daysSinceLatest,
     bucket,
   };

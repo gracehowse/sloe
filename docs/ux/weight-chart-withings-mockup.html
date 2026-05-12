@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Weight chart — Withings-style mockup (Grace TF feedback 2026-05-11)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    /* Suppr theme tokens — sampled from
+       apps/mobile/constants/theme.ts so the mockup uses the same
+       palette the production card would render. */
+    :root {
+      --bg: #f4f5f7;
+      --card: #ffffff;
+      --border: #e4e4ec;
+      --divider: #cfcfd7;
+      --text: #111118;
+      --text-secondary: #475569;
+      --text-tertiary: #94a3b8;
+      --input-bg: #ededf2;
+      --accent: #4c6ce0;
+      --accent-soft: #4c6ce01f;
+      --success: #22a860;
+      --line: #4c6ce0;
+      --line-fill-top: rgba(76, 108, 224, 0.18);
+      --line-fill-bottom: rgba(76, 108, 224, 0.00);
+      --tooltip-bg: #ffffff;
+      --tooltip-border: rgba(0, 0, 0, 0.08);
+      --tooltip-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+      background: #e9ebef;
+      color: var(--text);
+    }
+    .page {
+      max-width: 980px;
+      margin: 32px auto;
+      padding: 0 16px 48px;
+    }
+    h1 {
+      font-size: 18px;
+      margin: 0 0 8px;
+      font-weight: 700;
+    }
+    .subtitle {
+      color: var(--text-secondary);
+      font-size: 13px;
+      margin-bottom: 24px;
+      max-width: 680px;
+      line-height: 1.5;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+    .panel {
+      background: var(--card);
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      padding: 16px;
+    }
+    .panel-h {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin: 0 0 12px;
+    }
+    /* Phone frame — iPhone 14/15 width (390px) sets the EXACT
+       layout density the card has on Grace's sim. Anything that
+       looks fine at 980px desktop but cramped here is a real
+       problem. */
+    .device-mock {
+      background: var(--bg);
+      border-radius: 40px;
+      padding: 16px 12px 28px;
+      border: 12px solid #1f1f24;
+      width: 390px;
+      max-width: 100%;
+      margin: 0 auto;
+      box-sizing: content-box;
+      position: relative;
+    }
+    .device-mock::before {
+      content: "";
+      display: block;
+      width: 100px;
+      height: 22px;
+      background: #1f1f24;
+      border-radius: 0 0 14px 14px;
+      margin: -16px auto 14px;
+    }
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 8px 18px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .status-bar .right {
+      display: flex;
+      gap: 4px;
+      font-size: 13px;
+    }
+    .nav-back {
+      width: 32px;
+      height: 32px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 12px;
+    }
+    .nav-back svg { width: 16px; height: 16px; color: var(--text); }
+    .progress-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-tertiary);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      text-align: center;
+      margin-bottom: 12px;
+    }
+    /* ────────── The weight card itself ────────── */
+    .weight-card {
+      background: var(--card);
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      padding: 14px 16px 18px;
+    }
+    /* Row 1 — time-range tabs + list button, single row */
+    .controls-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .range-tabs {
+      flex: 1;
+      display: flex;
+      background: var(--input-bg);
+      border-radius: 999px;
+      padding: 3px;
+    }
+    .range-tab {
+      flex: 1;
+      text-align: center;
+      padding: 7px 0;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      border-radius: 999px;
+    }
+    .range-tab.active {
+      background: var(--card);
+      color: var(--text);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+    .list-button {
+      width: 32px;
+      height: 32px;
+      border-radius: 16px;
+      background: var(--input-bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .list-button svg { width: 16px; height: 16px; color: var(--text); }
+    /* Row 2 — period date range, centered, small grey */
+    .period-label {
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-tertiary);
+      margin-bottom: 14px;
+      font-variant-numeric: tabular-nums;
+    }
+    /* Row 3 — WEIGHT | TREND header with visible divider */
+    .header-row {
+      display: flex;
+      align-items: stretch;
+      margin-bottom: 18px;
+    }
+    .header-col {
+      flex: 1;
+      min-width: 0;
+    }
+    .header-divider {
+      width: 1px;
+      background: var(--divider);
+      margin: 4px 16px;
+    }
+    .header-overline {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      letter-spacing: 0.06em;
+      margin-bottom: 6px;
+    }
+    .header-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .status-icon {
+      width: 22px;
+      height: 22px;
+      border-radius: 11px;
+      background: var(--accent-soft);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .status-icon svg { width: 14px; height: 14px; color: var(--accent); stroke-width: 2.25; }
+    .header-value {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      line-height: 1.1;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+    }
+    /* The chart itself — SVG */
+    .chart-wrap {
+      position: relative;
+      height: 184px;
+    }
+    .chart-wrap svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    /* X-axis labels under the chart */
+    .x-axis {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 4px 0;
+      font-size: 11px;
+      color: var(--text-tertiary);
+      font-variant-numeric: tabular-nums;
+    }
+    /* Tooltip rendered as an HTML element above the chart */
+    .tooltip {
+      position: absolute;
+      background: var(--tooltip-bg);
+      border: 1px solid var(--tooltip-border);
+      box-shadow: var(--tooltip-shadow);
+      border-radius: 10px;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      color: var(--text);
+      white-space: nowrap;
+      transform: translateX(-50%);
+    }
+    .tooltip::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: -5px;
+      transform: translateX(-50%) rotate(45deg);
+      width: 10px;
+      height: 10px;
+      background: var(--tooltip-bg);
+      border-right: 1px solid var(--tooltip-border);
+      border-bottom: 1px solid var(--tooltip-border);
+    }
+    .label {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      margin-top: 24px;
+      margin-bottom: 6px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .legend {
+      display: flex;
+      gap: 12px;
+      margin-top: 12px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      flex-wrap: wrap;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .legend-swatch {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      background: var(--accent);
+    }
+    .legend-swatch.dim { background: var(--text-tertiary); }
+    .legend-swatch.fill { background: rgba(76, 108, 224, 0.18); }
+    .notes {
+      margin-top: 18px;
+      padding: 14px 16px;
+      background: var(--input-bg);
+      border-radius: 12px;
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--text-secondary);
+    }
+    .notes strong { color: var(--text); }
+    .changes {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .change {
+      display: grid;
+      grid-template-columns: 28px 1fr;
+      gap: 8px;
+      font-size: 13px;
+    }
+    .change-num {
+      background: var(--accent);
+      color: white;
+      width: 22px;
+      height: 22px;
+      border-radius: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+  <h1>Weight chart — Withings-style rebuild (mockup)</h1>
+  <p class="subtitle">
+    Proposed layout for the Weight section on the Progress tab. Built to compare 1:1
+    against the Withings screenshots you shared (12 May 2026). All measurements,
+    colours, and typography pulled from <code>apps/mobile/constants/theme.ts</code>.
+    Open this file in any browser — it's a static mock, not the live app.
+  </p>
+
+  <div class="grid">
+    <!-- ─────────── LEFT: PROPOSED ─────────── -->
+    <div class="panel">
+      <div class="panel-h">PROPOSED — Suppr (mockup)</div>
+      <div class="device-mock">
+        <div class="status-bar">
+          <span>22:14</span>
+          <span class="right">5G · 51%</span>
+        </div>
+        <div class="progress-title">PROGRESS · WEIGHT</div>
+        <div class="weight-card">
+          <!-- Row 1: tabs + list button on one row -->
+          <div class="controls-row">
+            <div class="range-tabs">
+              <div class="range-tab">1W</div>
+              <div class="range-tab active">1M</div>
+              <div class="range-tab">3M</div>
+              <div class="range-tab">1Y</div>
+              <div class="range-tab">All</div>
+            </div>
+            <div class="list-button" aria-label="All data">
+              <!-- list icon -->
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="8" y1="6" x2="21" y2="6"></line>
+                <line x1="8" y1="12" x2="21" y2="12"></line>
+                <line x1="8" y1="18" x2="21" y2="18"></line>
+                <circle cx="4" cy="6" r="0.8" fill="currentColor"></circle>
+                <circle cx="4" cy="12" r="0.8" fill="currentColor"></circle>
+                <circle cx="4" cy="18" r="0.8" fill="currentColor"></circle>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Row 2: real date-range label, centered -->
+          <div class="period-label">12 Apr – 6 May 2026</div>
+
+          <!-- Row 3: WEIGHT | TREND header with visible divider -->
+          <div class="header-row">
+            <div class="header-col">
+              <div class="header-overline">WEIGHT</div>
+              <div class="header-status">
+                <div class="status-icon">
+                  <!-- TrendingDown icon -->
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="22 17 13.5 8.5 8.5 13.5 2 7"></polyline>
+                    <polyline points="16 17 22 17 22 11"></polyline>
+                  </svg>
+                </div>
+                <div class="header-value">Down</div>
+              </div>
+            </div>
+            <div class="header-divider"></div>
+            <div class="header-col">
+              <div class="header-overline">TREND</div>
+              <div class="header-value">−0.7&nbsp;kg</div>
+            </div>
+          </div>
+
+          <!-- Chart (proposed proportions) -->
+          <div class="chart-wrap">
+            <svg viewBox="0 0 320 184" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="rgba(76,108,224,0.18)"/>
+                  <stop offset="100%" stop-color="rgba(76,108,224,0)"/>
+                </linearGradient>
+              </defs>
+
+              <!-- 4 gridlines + their right-side Y labels.
+                   Span = 53.5 → 55.9, height 144 (184 - 40 for label area + padding) -->
+              <!-- y = 14: kg 55.9 -->
+              <line x1="8" y1="14" x2="280" y2="14" stroke="#e4e4ec" stroke-width="1" stroke-dasharray="3 3"/>
+              <text x="286" y="17" font-size="10" fill="#94a3b8">55.9</text>
+              <!-- y = 54: kg 55.1 -->
+              <line x1="8" y1="54" x2="280" y2="54" stroke="#e4e4ec" stroke-width="1" stroke-dasharray="3 3"/>
+              <text x="286" y="57" font-size="10" fill="#94a3b8">55.1</text>
+              <!-- y = 94: kg 54.3 -->
+              <line x1="8" y1="94" x2="280" y2="94" stroke="#e4e4ec" stroke-width="1" stroke-dasharray="3 3"/>
+              <text x="286" y="97" font-size="10" fill="#94a3b8">54.3</text>
+              <!-- y = 134: kg 53.5 -->
+              <line x1="8" y1="134" x2="280" y2="134" stroke="#e4e4ec" stroke-width="1" stroke-dasharray="3 3"/>
+              <text x="286" y="137" font-size="10" fill="#94a3b8">53.5</text>
+
+              <!-- Smoothed area fill behind the line — gentle Bézier path
+                   shaped like your real 1M trend (start near 55.0, peak
+                   ~55.6 around day 8, decline to 54.3). -->
+              <path d="
+                M 8 50
+                C 30 48, 50 36, 75 30
+                C 100 26, 125 32, 150 42
+                C 175 52, 200 64, 225 76
+                C 250 88, 275 96, 280 94
+                L 280 144
+                L 8 144 Z
+              " fill="url(#areaFill)"/>
+
+              <!-- The smoothed trend line (same path without the
+                   bottom-close so it's a stroked curve). -->
+              <path d="
+                M 8 50
+                C 30 48, 50 36, 75 30
+                C 100 26, 125 32, 150 42
+                C 175 52, 200 64, 225 76
+                C 250 88, 275 96, 280 94
+              " fill="none" stroke="#4c6ce0" stroke-width="2.25" stroke-linejoin="round" stroke-linecap="round"/>
+
+              <!-- Sparse raw-dot rendering — only every ~3rd point,
+                   not every point. Cluster fatigue solved. -->
+              <circle cx="8"   cy="50" r="3" fill="#ffffff" stroke="#4c6ce0" stroke-width="1.5"/>
+              <circle cx="50"  cy="36" r="3" fill="#ffffff" stroke="#4c6ce0" stroke-width="1.5"/>
+              <circle cx="100" cy="26" r="3" fill="#ffffff" stroke="#4c6ce0" stroke-width="1.5"/>
+              <circle cx="150" cy="42" r="3" fill="#ffffff" stroke="#4c6ce0" stroke-width="1.5"/>
+              <circle cx="200" cy="64" r="3" fill="#ffffff" stroke="#4c6ce0" stroke-width="1.5"/>
+              <circle cx="250" cy="88" r="3" fill="#ffffff" stroke="#4c6ce0" stroke-width="1.5"/>
+
+              <!-- Latest point — large filled dot with halo ring -->
+              <circle cx="280" cy="94" r="9" fill="#4c6ce0" opacity="0.16"/>
+              <circle cx="280" cy="94" r="5" fill="#4c6ce0"/>
+            </svg>
+
+            <!-- Tooltip ABOVE the latest dot, flipped left so it
+                 doesn't overlap the Y-axis labels at the right edge.
+                 Pixel positions match the SVG viewBox scaled to
+                 container width — in production this is computed
+                 from the chart's clientWidth. -->
+            <div class="tooltip" style="
+              left: calc(280 / 320 * 100% - 60px);
+              top: 56px;
+            ">54.3 kg · Wed</div>
+          </div>
+
+          <!-- X-axis date labels — anchor to the actual range -->
+          <div class="x-axis">
+            <span>12 Apr</span>
+            <span>6 May</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="label">Reference — Withings (your screenshot)</div>
+      <div class="notes">
+        See screenshot 4 in the thread — same hierarchy:
+        Tabs · period date-range · WEIGHT/TREND big header · chart with tooltip · x-axis dates · breakdown below.
+      </div>
+    </div>
+
+    <!-- ─────────── RIGHT: WHAT'S CHANGING ─────────── -->
+    <div class="panel">
+      <div class="panel-h">CHANGES FROM CURRENT MOBILE</div>
+
+      <div class="changes">
+        <div class="change">
+          <div class="change-num">1</div>
+          <div><strong>Tabs + list-button on ONE row.</strong> Kills the orphan top row that held the list icon alone (~28px of dead whitespace).</div>
+        </div>
+        <div class="change">
+          <div class="change-num">2</div>
+          <div><strong>Period label = real dates "12 Apr – 6 May 2026".</strong> Was "Last 30 days" — fuzzy, didn't match the x-axis.</div>
+        </div>
+        <div class="change">
+          <div class="change-num">3</div>
+          <div><strong>Visible 1px divider</strong> between WEIGHT and TREND columns. The hairline I shipped earlier vanishes against the card background.</div>
+        </div>
+        <div class="change">
+          <div class="change-num">4</div>
+          <div><strong>Chart height/padding tightened.</strong> Chart fills more of the card; no more orphaned whitespace above/below.</div>
+        </div>
+        <div class="change">
+          <div class="change-num">5</div>
+          <div><strong>Tooltip flips up + clamps inside plot.</strong> No more "54.3 kg · Wed" overlapping the "55.1" gridline label. Added a small triangle pointer to the dot.</div>
+        </div>
+        <div class="change">
+          <div class="change-num">6</div>
+          <div><strong>Sparse raw dots</strong> when there are 14+ daily points. Smoothed line carries the story; dots are sample markers, not noise.</div>
+        </div>
+        <div class="change">
+          <div class="change-num">7</div>
+          <div><strong>Latest dot has a halo ring</strong> (large soft circle behind a smaller filled circle). Withings does this — emphasises "you are here".</div>
+        </div>
+        <div class="change">
+          <div class="change-num">8</div>
+          <div><strong>4 Y-axis labels</strong> (was 3) — top, two middle, bottom — gives the eye more reference points across the data range.</div>
+        </div>
+        <div class="change">
+          <div class="change-num">9</div>
+          <div><strong>Status icon size 20→22px circle + 14px glyph</strong>. Slightly bigger so it reads from arm's length.</div>
+        </div>
+      </div>
+
+      <div class="notes" style="margin-top: 18px;">
+        <strong>Out of scope this round</strong> (separate PRs if you want them):<br>
+        • Period nav arrows (< > to scroll months)<br>
+        • "Explore Data" full-screen view with weekly delta annotations<br>
+        • Weight Breakdown section (BMI / Basal metabolic rate tiles)<br>
+        • Goal weight chip (currently hidden when goal is far from data; tell me if you want it back as a small pill)
+      </div>
+
+      <div class="label">Visual reference</div>
+      <div class="legend">
+        <div class="legend-item"><span class="legend-swatch"></span> Smoothed trend (MA)</div>
+        <div class="legend-item"><span class="legend-swatch fill"></span> Area fill (soft gradient)</div>
+        <div class="legend-item"><span class="legend-swatch dim"></span> Gridlines + axis labels</div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -21,9 +21,14 @@ import { Accent, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import type { WeightTrendResult } from "@/lib/progress/weightTrend";
 
-const CHART_HEIGHT = 200;
-const PAD_TOP = 12;
-const PAD_BOTTOM = 28;
+// 2026-05-11 (Grace TF feedback — "looking squished on phone"):
+// chart container shrunk 200→170 so it doesn't take up so much
+// vertical real-estate in the card. Combined with the tighter
+// Y-domain padding (computeYDomain), the data line now fills ~70%
+// of the plot height vs ~50% before.
+const CHART_HEIGHT = 170;
+const PAD_TOP = 8;
+const PAD_BOTTOM = 22;
 const PAD_LEFT = 8;
 const PAD_RIGHT = 48;
 
@@ -204,11 +209,15 @@ export function WeightChart({ trend, goalKg, isImperial = false }: Props) {
   const lineColor =
     trend.trendDirection === "worsening" ? Accent.warning : Accent.primary;
 
-  // 3 horizontal gridlines
+  // 2026-05-11 (mockup signed off): 4 gridlines + their Y-axis
+  // labels, evenly spaced from yMax to yMin so the user has a finer
+  // visual scale to read against (was 3 internal lines, looked sparse
+  // on Withings-style cards).
   const gridValues = [
-    yMin + (yMax - yMin) * 0.25,
-    yMin + (yMax - yMin) * 0.5,
-    yMin + (yMax - yMin) * 0.75,
+    yMin + (yMax - yMin) * 0.85,
+    yMin + (yMax - yMin) * 0.6,
+    yMin + (yMax - yMin) * 0.35,
+    yMin + (yMax - yMin) * 0.1,
   ];
 
   /**
@@ -364,22 +373,14 @@ export function WeightChart({ trend, goalKg, isImperial = false }: Props) {
           </>
         )}
 
-        {/* F-133 — Off-chart goal indicator. Renders when the goal
-            sits outside the visible data envelope (the user's actual
-            data range is far above / below the goal). Arrow points
-            toward where the goal sits. */}
-        {goalY != null && goalKg != null && goalIsOffChart && (
-          <SvgText
-            x={chartWidth - PAD_RIGHT}
-            y={goalIsBelowChart ? bottom - 2 : PAD_TOP + 12}
-            fontSize={10}
-            fill={colors.textSecondary}
-            textAnchor="end"
-            testID="weight-chart-offchart-goal-chip"
-          >
-            {`Goal ${formatWeight(goalKg, isImperial)} ${goalIsBelowChart ? "↓" : "↑"}`}
-          </SvgText>
-        )}
+        {/* 2026-05-11 (Grace TF feedback — chart "messy / illogical"):
+            the F-133 off-chart goal indicator was rendering as a
+            floating "Goal X kg ↓" string near the bottom-right of the
+            plot, with no visual anchor. Looked unmoored and confused
+            the chart-reader. Dropped entirely — the goal weight is
+            already visible in Today / Settings / Onboarding, and
+            when the goal is far from data the in-chart goal line is
+            already suppressed by computeYDomain. */}
 
         {/* MA area fill */}
         {count >= 3 && (
@@ -408,10 +409,18 @@ export function WeightChart({ trend, goalKg, isImperial = false }: Props) {
           (looks like raw weigh-ins). MFP shows just the smoothed line
           on long ranges.
         */}
+        {/* 2026-05-11 (mockup signed off): sparse raw dots when there
+            are 14+ daily points. The smoothed line carries the story;
+            dots become sample markers, not noise. `stride` makes sure
+            we keep the first + last + roughly 6 evenly-spaced dots in
+            between, plus the actively-scrubbed point regardless. */}
         {bucket === "daily" &&
           points.map((p, i) => {
             if (i === latestIdx) return null;
             const isScrubbed = scrubIdx === i;
+            const stride = count > 14 ? Math.ceil(count / 6) : 1;
+            const keep = isScrubbed || i === 0 || i % stride === 0;
+            if (!keep) return null;
             return (
               <Circle
                 key={p.dateISO + i}
@@ -449,9 +458,14 @@ export function WeightChart({ trend, goalKg, isImperial = false }: Props) {
           </>
         )}
 
-        {/* Latest dot — prominent */}
+        {/* Latest dot — prominent with halo ring (Withings parity).
+            Soft outer ring (radius 10, 16% alpha) behind a solid
+            smaller dot (radius 5) — emphasises "you are here". */}
         {latestIdx >= 0 && (
-          <Circle cx={latestX} cy={latestY} r={8} fill={lineColor} />
+          <>
+            <Circle cx={latestX} cy={latestY} r={10} fill={lineColor} opacity={0.16} />
+            <Circle cx={latestX} cy={latestY} r={5} fill={lineColor} />
+          </>
         )}
 
         {/* X-axis tick marks (calendar-aware) */}
@@ -481,43 +495,64 @@ export function WeightChart({ trend, goalKg, isImperial = false }: Props) {
         />
       </Svg>
 
-      {/* Floating latest label (suppressed while scrubbing) */}
-      {latestCaption != null && scrubIdx == null && (
-        <View
-          style={[
-            styles.floatingLabel,
-            {
-              backgroundColor: colors.card,
-              borderColor: colors.border,
-              left: Math.max(0, latestX - 36),
-              top: latestY - 28,
-            },
-          ]}
-        >
-          <Text style={[styles.floatingText, { color: colors.text }]}>
-            {latestCaption}
-          </Text>
-        </View>
-      )}
-
-      {/* Scrubber tooltip */}
-      {scrubIdx != null && scrubPoint != null && (
-        <View
-          style={[
-            styles.floatingLabel,
-            {
-              backgroundColor: colors.card,
-              borderColor: colors.border,
-              left: clampX(xs[scrubIdx]! - 50, chartWidth - 100),
-              top: Math.max(0, ys[scrubIdx]! - 32),
-            },
-          ]}
-        >
-          <Text style={[styles.floatingText, { color: colors.text }]}>
-            {`${formatWeight(scrubPoint.kg, isImperial)} · ${formatScrubDate(scrubPoint.dateISO, bucket)}${scrubMa != null ? `  ·  avg ${(isImperial ? kgToLb(scrubMa) : Math.round(scrubMa * 10) / 10).toFixed(1)}` : ""}`}
-          </Text>
-        </View>
-      )}
+      {/* 2026-05-11 (Grace TF feedback — chart "messy / illogical"):
+          The floating tooltip and scrubber tooltip had two collision
+          problems:
+            1. `left: latestX - 36` is a guessed half-width that
+               doesn't center the actual text — text wider than 72px
+               sits right-of-center.
+            2. `top: latestY - 28` clamped at 0 — when the latest dot
+               is near the top of the plot, the tooltip pins to y=0
+               and overlaps the Y-axis labels.
+          Both labels now:
+            - center horizontally using a fixed approximate width
+              with `clampX` to stay inside the plot bounds
+            - position vertically using a "flip" — above the dot when
+              there's room, below the dot when there isn't
+            - never extend into the right gutter where the Y-axis
+              ticks live */}
+      {(() => {
+        const showScrub = scrubIdx != null && scrubPoint != null;
+        const showLatest = !showScrub && latestCaption != null;
+        if (!showScrub && !showLatest) return null;
+        const TOOLTIP_W = 130;
+        const TOOLTIP_H = 22;
+        const anchorX = showScrub ? xs[scrubIdx!]! : latestX;
+        const anchorY = showScrub ? ys[scrubIdx!]! : latestY;
+        const flipBelow = anchorY - TOOLTIP_H - 8 < PAD_TOP;
+        const tipTop = flipBelow ? anchorY + 12 : anchorY - TOOLTIP_H - 6;
+        // Right gutter (where the Y-axis tick labels live) starts at
+        // `chartWidth - PAD_RIGHT`. Keep the tooltip's right edge at
+        // least 4px left of that line so the text never overlaps.
+        const maxLeft = chartWidth - PAD_RIGHT - TOOLTIP_W - 4;
+        const tipLeft = clampX(anchorX - TOOLTIP_W / 2, Math.max(0, maxLeft));
+        const text = showScrub
+          ? `${formatWeight(scrubPoint!.kg, isImperial)} · ${formatScrubDate(scrubPoint!.dateISO, bucket)}${scrubMa != null ? `  ·  avg ${(isImperial ? kgToLb(scrubMa) : Math.round(scrubMa * 10) / 10).toFixed(1)}` : ""}`
+          : latestCaption!;
+        return (
+          <View
+            style={[
+              styles.floatingLabel,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                left: tipLeft,
+                top: tipTop,
+                width: TOOLTIP_W,
+              },
+            ]}
+            pointerEvents="none"
+          >
+            <Text
+              style={[styles.floatingText, { color: colors.text }]}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {text}
+            </Text>
+          </View>
+        );
+      })()}
     </View>
   );
 }
@@ -563,5 +598,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "600",
     fontVariant: ["tabular-nums"],
+    textAlign: "center",
   },
 });

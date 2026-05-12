@@ -244,6 +244,88 @@ describe("computeWeightTrend", () => {
     expect(r.points.length).toBe(2);
   });
 
+  it("exposes trendDeltaKg + trendStatus alongside trendCopy (2026-05-11 Withings header)", () => {
+    // Steady -0.05 kg/day downward over 30 days → ~-1.5 kg delta.
+    const pts = makePoints(30, 75, -0.05);
+    const r = computeWeightTrend(pts, "1m", null, BASE_ISO);
+    expect(r.trendStatus).toBe("down");
+    expect(r.trendDeltaKg).toBeLessThan(0);
+    expect(r.trendDeltaKg).toBeGreaterThan(-2);
+    // Matches the legacy trendCopy direction.
+    expect(r.trendCopy).toMatch(/down/i);
+  });
+
+  it("trendStatus for a single entry is 'stable' (not 'no_data') — chart still has a dot to show", () => {
+    // 2026-05-11 (Grace TF feedback — "only show no data where there
+    // is none at all"): a single weigh-in renders a single point on
+    // the chart, so calling the header "No data" reads wrong. The
+    // status falls back to "stable" (with copy "First entry — keep
+    // going") and trendDeltaKg stays null (no second point to delta
+    // against). "no_data" is reserved for truly empty histories.
+    const r = computeWeightTrend([{ dateISO: BASE_ISO, kg: 70 }], "1m", null, BASE_ISO);
+    expect(r.trendStatus).toBe("stable");
+    expect(r.trendDeltaKg).toBeNull();
+    expect(r.trendCopy).toMatch(/first entry/i);
+  });
+
+  it("trendStatus is 'no_data' only for fully empty histories", () => {
+    const r = computeWeightTrend([], "1m", null, BASE_ISO);
+    expect(r.trendStatus).toBe("no_data");
+    expect(r.trendDeltaKg).toBeNull();
+  });
+
+  it("periodRangeLabel formats as real start–end date (2026-05-11 Withings header)", () => {
+    // Daily bucket → "X Mon – Y Mon YYYY" shape with en-dash separator.
+    const pts = makePoints(30);
+    const r = computeWeightTrend(pts, "1m", null, BASE_ISO);
+    expect(r.periodRangeLabel).toMatch(/–/);
+    expect(r.periodRangeLabel).toMatch(/\d{4}/);
+  });
+
+  it("periodRangeLabel uses month+year only for monthly buckets (1Y / All)", () => {
+    // 120 days → monthly bucket. Output is "Mon – Mon YYYY" (same
+    // year) or "Mon YYYY – Mon YYYY" (cross-year); no day numbers.
+    const pts = makePoints(120, 75);
+    const r = computeWeightTrend(pts, "all", null, BASE_ISO);
+    expect(r.periodRangeLabel).toMatch(/–/);
+    expect(r.periodRangeLabel).not.toMatch(
+      /\b\d{1,2}\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/,
+    );
+  });
+
+  it("periodRangeLabel is null for empty histories", () => {
+    const r = computeWeightTrend([], "1m", null, BASE_ISO);
+    expect(r.periodRangeLabel).toBeNull();
+  });
+
+  it("falls back to raw point delta when MA can't compute (sparse 1W view)", () => {
+    // Two weigh-ins, 4 days apart — within the 1W window but MA needs
+    // 3+ points in its trailing 7-day window, so MA returns null at
+    // both indices. The fallback path uses the raw first-vs-last
+    // delta so the header doesn't say "No data" while the chart shows
+    // two dots. This is the exact bug Grace flagged 2026-05-11.
+    const r = computeWeightTrend(
+      [
+        { dateISO: "2026-04-18", kg: 75.0 },
+        { dateISO: "2026-04-22", kg: 74.0 },
+      ],
+      "1w",
+      null,
+      BASE_ISO,
+    );
+    expect(r.trendStatus).toBe("down");
+    expect(r.trendDeltaKg).toBeCloseTo(-1, 1);
+  });
+
+  it("trendStatus is 'stable' for sub-0.2-kg movements", () => {
+    // Flat history with tiny noise — delta should fall under the 0.2 kg
+    // threshold the trendCopy already uses.
+    const pts = makePoints(14, 75, 0.005);
+    const r = computeWeightTrend(pts, "1m", null, BASE_ISO);
+    expect(r.trendStatus).toBe("stable");
+    expect(Math.abs(r.trendDeltaKg ?? 999)).toBeLessThan(0.2);
+  });
+
   it("yDomain handles a 10000-point history without stack overflow (iterative min/max)", () => {
     // Math.min(...arr) rest-spread crashes on >~7000 args; the
     // iterative implementation must handle large histories cleanly.

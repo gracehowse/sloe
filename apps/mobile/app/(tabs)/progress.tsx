@@ -14,6 +14,7 @@ import {
   Flame,
   Footprints,
   LineChart,
+  List as ListIcon,
   Scale,
   TrendingDown,
   TrendingUp,
@@ -99,6 +100,8 @@ import { WeightChart } from "@/components/progress/WeightChart";
 import { WeightRangeToggle } from "@/components/progress/WeightRangeToggle";
 import { WeightSparseState } from "@/components/progress/WeightSparseState";
 import { LogWeightSheet } from "@/components/progress/LogWeightSheet";
+import { AllWeightDataSheet } from "@/components/progress/AllWeightDataSheet";
+import { WeightTrendHeader } from "@/components/progress/WeightTrendHeader";
 import {
   computeWeightTrend,
   weightKgByDayToPoints,
@@ -212,6 +215,11 @@ export default function ProgressScreen() {
   // 4 CTAs on this screen. The route itself is still alive for
   // backwards compat; Phase 3 deletes it.
   const [logWeightOpen, setLogWeightOpen] = useState(false);
+
+  // 2026-05-11 (Grace TF feedback): Withings-style "All data" list view
+  // for weigh-ins. Opens from the list icon next to the Weight chart
+  // header. Tap-and-hold on a row deletes that entry.
+  const [allWeightDataOpen, setAllWeightDataOpen] = useState(false);
 
   // H-4 (build 12, 2026-04-19, TestFlight `AEb7NcjnvK`): defer the
   // heavy below-the-fold blocks (daily-calories chart, maintenance
@@ -1097,7 +1105,16 @@ export default function ProgressScreen() {
           "hide": skip entirely. Same gate applies to the WeightChart and
           Weight Projection / Journey cards lower in the screen so a single
           opt-out reflects everywhere on Progress. */}
-      {weightSurfaceMode === "hide" ? null : weightSurfaceMode === "trends_only" ? (
+      {/* 2026-05-11 (Grace TF feedback — "this is duplicative"): the
+          full `<WeightRangeCard>` ("show" mode) was rendering a second
+          weight surface above the big Weight Chart Card lower on this
+          screen — same data, smaller chart, different time-range
+          buttons. Killed in show mode; the big chart card below is the
+          single canonical weight surface now. The body-neutral
+          `trends_only` mode keeps its lightweight single-line tile
+          because that's intentionally NOT the big chart; users opt
+          into trends-only specifically to hide absolute numbers. */}
+      {weightSurfaceMode === "trends_only" && (
         <WeightTrendOnlyCard
           // P1-14 (TestFlight `AOVuCyOCNB1pI_TjMGNiAeg`, `AHEeeC9a4-lKIyW5n7HgJxs`,
           // 2026-04-22): when there's no weigh-in in the past 7 days,
@@ -1108,17 +1125,6 @@ export default function ProgressScreen() {
           // week"-style — see WeightTrendOnlyCard for the threshold).
           weekDeltaKg={weightRange.weekDeltaKg}
           rangeKey={rangeKey}
-          theme={t}
-        />
-      ) : (
-        <WeightRangeCard
-          series={weightRange.series}
-          latestKg={weightRange.latestKg}
-          weekDeltaKg={weightRange.weekDeltaKg}
-          deltaKg={weightRange.deltaKg}
-          rangeKey={rangeKey}
-          goalWeightKg={goalWeightKg}
-          measurementSystem={measurementSystem}
           theme={t}
         />
       )}
@@ -1936,20 +1942,64 @@ export default function ProgressScreen() {
               marginBottom: 14,
             }}
           >
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-              {/* 2026-04-26 polish (round 2): per docs/ux/design-tokens.md
-                  card / section headers are Sentence Case (matches "Daily
-                  Calories" + "Macro Adherence" further down the same screen).
-                  WEIGHT was the lone UPPERCASE outlier on this surface. */}
-              <Text style={{ fontSize: 13, fontWeight: "600", color: t.text }}>Weight</Text>
-              {weightChartTrend.daysSinceLatest != null && weightChartTrend.daysSinceLatest > 10 && (
-                <View style={{ backgroundColor: colors.inputBg, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 }}>
-                  <Text style={{ fontSize: 11, color: t.sub }}>{weightChartTrend.daysSinceLatest}d since last log</Text>
-                </View>
+            {/* 2026-05-11 (Grace TF feedback — mockup signed off):
+                tabs + list button on ONE row (was an orphan row above
+                the tabs holding only the list button — ~28px of dead
+                whitespace). Stale-log badge becomes a small line above
+                the row instead of riding alongside the button. */}
+            {weightChartTrend.daysSinceLatest != null && weightChartTrend.daysSinceLatest > 10 && (
+              <View style={{ alignSelf: "flex-end", backgroundColor: colors.inputBg, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3, marginBottom: 6 }}>
+                <Text style={{ fontSize: 11, color: t.sub }}>{weightChartTrend.daysSinceLatest}d since last log</Text>
+              </View>
+            )}
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <View style={{ flex: 1 }}>
+                <WeightRangeToggle value={weightChartRange} onChange={setWeightChartRange} />
+              </View>
+              {Object.keys(weightKgByDay).length > 0 && (
+                <Pressable
+                  onPress={() => setAllWeightDataOpen(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel="View all weight data"
+                  hitSlop={6}
+                  testID="progress-all-weight-data-button"
+                  style={({ pressed }) => ({
+                    width: 32,
+                    height: 32,
+                    borderRadius: 16,
+                    backgroundColor: colors.inputBg,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    opacity: pressed ? 0.6 : 1,
+                  })}
+                >
+                  <ListIcon size={16} color={t.text} strokeWidth={2} />
+                </Pressable>
               )}
             </View>
-            <WeightRangeToggle value={weightChartRange} onChange={setWeightChartRange} />
-            <View style={{ marginTop: 12 }}>
+            {/* Withings-style WEIGHT + TREND header (2026-05-11, Grace
+                TF feedback). Renders the chart's status + signed delta
+                prominently above the chart so users don't have to read
+                the small trend line at the bottom. Period label is
+                drawn from the chart's `sinceLabel` so it tracks the
+                selected range automatically. */}
+              {/* 2026-05-11 (Grace TF feedback — "only show no data
+                  where there is none at all"): render the header
+                  whenever the user has ANY entry. The header itself
+                  shows "No data" only when the trend payload says so
+                  (zero points, after the raw-delta fallback). */}
+              {weightChartTrend.points.length >= 1 && (
+                <View style={{ marginTop: 12 }}>
+                  <WeightTrendHeader
+                    trend={weightChartTrend}
+                    isImperial={measurementSystem === "imperial"}
+                    periodLabel={
+                      weightChartTrend.periodRangeLabel ?? weightChartTrend.sinceLabel
+                    }
+                  />
+                </View>
+              )}
+            <View style={{ marginTop: 4 }}>
               {/*
                 2026-05-06: relaxed >=3 → >=2 so the chart renders a
                 line as soon as the user has two weigh-ins. The chart
@@ -1971,11 +2021,11 @@ export default function ProgressScreen() {
                 />
               )}
             </View>
-            {weightChartTrend.points.length >= 2 && (
-              <Text style={{ fontSize: 12, color: t.sub, marginTop: 6 }}>
-                {weightChartTrend.trendCopy} {weightChartTrend.sinceLabel}.
-              </Text>
-            )}
+            {/* 2026-05-11 (Grace TF feedback — "still looks super
+                messy"): the bottom trend copy line ("Down 0.8 kg on
+                average. Last 30 days.") duplicated the new
+                WEIGHT/TREND header above the chart byte-for-byte.
+                Removed. The header is the source of truth now. */}
           </View>
           ) : null}
 
@@ -2193,6 +2243,22 @@ export default function ProgressScreen() {
       onSaved={({ weightKgByDay: next, weightKg: kg }) => {
         setWeightKgByDay(next);
         setWeightKg(kg);
+      }}
+    />
+    <AllWeightDataSheet
+      visible={allWeightDataOpen}
+      onClose={() => setAllWeightDataOpen(false)}
+      userId={userId ?? null}
+      isImperial={measurementSystem === "imperial"}
+      weightKgByDay={weightKgByDay}
+      onEntryDeleted={(_dateISO, nextMap) => {
+        setWeightKgByDay(nextMap);
+        // Refresh the latest scalar in case we just deleted today's
+        // entry — fall back to the newest remaining entry.
+        const remaining = Object.entries(nextMap)
+          .filter(([, kg]) => Number.isFinite(kg) && (kg as number) > 0)
+          .sort(([a], [b]) => b.localeCompare(a));
+        setWeightKg(remaining.length > 0 ? (remaining[0][1] as number) : null);
       }}
     />
     </View>
