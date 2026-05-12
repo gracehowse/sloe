@@ -35,6 +35,7 @@ import { scaleCaffeineAlcohol } from "../../../../src/lib/nutrition/scaleCaffein
 import { scaleMicrosForGrams } from "../../../../src/lib/openFoodFacts/parseOffMicros";
 import { clampRememberedToServingOptions, getRememberedPortion, recordPortion } from "@/lib/barcodePortionMemory";
 import { writeMealToHealthKitIfEnabled } from "@/lib/healthKitMealWriter";
+import { ServingStepper } from "@/components/food-log/ServingStepper";
 
 export default function BarcodeScreen() {
   const insets = useSafeAreaInsets();
@@ -392,6 +393,7 @@ export default function BarcodeScreen() {
           textAlign: "center",
         },
         servingUnit: { color: Colors.dark.textSecondary, fontSize: 13 },
+        servingStepper: { flexShrink: 1 },
         servingHint: { color: Colors.dark.textTertiary, fontSize: 11, textAlign: "center" as const },
         presetRow: { flexDirection: "row" as const, flexWrap: "wrap" as const, gap: 6, justifyContent: "center" as const },
         presetChip: {
@@ -585,19 +587,24 @@ export default function BarcodeScreen() {
                 <Text style={styles.macroLabel}>fat</Text>
               </View>
             </View>
+            {/* F-137 (2026-05-11) — inline stepper replaces the free
+                grams TextInput. Step = 5 g (typical OFF granularity).
+                Direct text entry still works via the inline TextInput
+                inside the stepper, so users can paste precise values
+                like "112.5 g" off the label. */}
             <View style={styles.servingRow}>
               <Text style={styles.servingLabel}>Amount:</Text>
-              <TextInput
-                style={styles.servingInput}
+              <ServingStepper
                 value={gramsInput}
-                onChangeText={setGramsInput}
-                keyboardType="decimal-pad"
-                selectTextOnFocus
-                returnKeyType="done"
-                onSubmitEditing={Keyboard.dismiss}
-                accessibilityLabel="Serving size in grams"
+                onChange={setGramsInput}
+                step={5}
+                unit="g"
+                min={0}
+                max={10000}
+                inputAccessibilityLabel="Serving size in grams"
+                testIdPrefix="barcode-amount"
+                style={styles.servingStepper}
               />
-              <Text style={styles.servingUnit}>g</Text>
             </View>
             {rememberedPortion != null && rememberedPortion > 0 ? (
               <Text style={[styles.servingHint, { color: Accent.primary }]}>
