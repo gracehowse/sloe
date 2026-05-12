@@ -57,6 +57,7 @@ export function MobileFlow() {
     state,
     targets,
     warning,
+    isRefreshPlan,
   } = useOnboarding();
   const colors = useThemeColors();
   // Debug audit 2026-05-04 (visual-qa): the welcome step uses a dark
@@ -99,29 +100,8 @@ export function MobileFlow() {
   // overthinking it.", "Have an account? Sign in") makes zero sense.
   // They're already signed in, already an existing user, just resetting
   // their plan. Auto-skip Welcome straight to Goal. The reset-pending
-  // flag is consumed (cleared) at handleComplete; we only peek here.
-  //
-  // isRefreshPlan: null = unknown (AsyncStorage read in flight),
-  //                true = arrived via reset-plan,
-  //                false = first-run or normal re-entry
-  const [isRefreshPlan, setIsRefreshPlan] = React.useState<boolean | null>(null);
-  React.useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const AsyncStorage = (
-          await import("@react-native-async-storage/async-storage")
-        ).default;
-        const flag = await AsyncStorage.getItem("suppr.reset-plan-pending-prompt");
-        if (!cancelled) setIsRefreshPlan(flag === "1");
-      } catch {
-        if (!cancelled) setIsRefreshPlan(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // flag is consumed (cleared) at handleComplete; here we only react to
+  // the value the OnboardingProvider read on mount (see context.tsx).
   React.useEffect(() => {
     if (isWelcome && isRefreshPlan === true) {
       go(1);
@@ -346,6 +326,18 @@ export function MobileFlow() {
       void handleComplete();
       return;
     }
+    // Audit 2026-05-12 (Grace TF): on refresh-plan flow, skip
+    // data-bridges entirely. The Apple-Health-connect + manual-targets
+    // paste page only earns its place on first-run onboarding — a
+    // returning user refreshing their plan has already chosen these
+    // bridges (and the "Suppr never writes to Health" copy is also
+    // misleading once we've shipped the Apple Health export). Jump
+    // straight from reveal → handleComplete so the user lands back on
+    // Today the moment they confirm their new targets.
+    if (currentStepId === "reveal" && isRefreshPlan === true) {
+      void handleComplete();
+      return;
+    }
     go(1);
   }, [
     currentStepId,
@@ -355,6 +347,7 @@ export function MobileFlow() {
     state.paceDangerAcknowledged,
     go,
     isTerminal,
+    isRefreshPlan,
     handleComplete,
   ]);
 

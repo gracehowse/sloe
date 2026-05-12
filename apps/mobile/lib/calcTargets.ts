@@ -113,10 +113,19 @@ export function calcTargetsFromStats(stats: BodyStats): MacroTargets | null {
     if (Number.isFinite(a) && a > 0) age = Math.round(Math.min(100, Math.max(14, a)));
   }
 
+  // 2026-05-12 — handle "unspecified" sex with the midpoint estimate
+  // (matches web `calculateBMR` in src/lib/nutrition/tdee.ts and the
+  // sibling `calculateTDEE` helper below). Previous branch collapsed
+  // any non-"male" sex (including "unspecified" / null normalised) into
+  // the female formula, underestimating BMR by ~78 kcal/day for
+  // non-binary or undeclared users.
+  const baseBmr = 10 * weightKg + 6.25 * heightCm - 5 * age;
   const bmr =
     sexRaw === "male"
-      ? 10 * weightKg + 6.25 * heightCm - 5 * age + 5
-      : 10 * weightKg + 6.25 * heightCm - 5 * age - 161;
+      ? baseBmr + 5
+      : sexRaw === "female"
+        ? baseBmr - 161
+        : Math.round((baseBmr + 5 + (baseBmr - 161)) / 2);
 
   // Default to sedentary (1.2) when missing — see TestFlight
   // `AIIm60nKi_sTu3-4YjR-WR4` (2026-04-18). Previously "moderate" (1.55)

@@ -43,6 +43,12 @@ interface OnboardingContext {
   displayTotal: number;
   canAdvance: boolean;
   stepLabels: typeof STEP_LABELS;
+  /** True when the user arrived via Settings → "Refresh my plan". When
+   *  true, mobile-flow routes reveal → handleComplete directly and we
+   *  drop data-bridges from `displayTotal` so the counter reads N/12
+   *  instead of N/13. `null` while the AsyncStorage flag read is in
+   *  flight on mount. */
+  isRefreshPlan: boolean | null;
 }
 
 const Ctx = React.createContext<OnboardingContext | null>(null);
@@ -75,6 +81,15 @@ export function OnboardingProvider({ children, initial }: ProviderProps) {
     ...(initial ?? {}),
   }));
 
+  // 2026-05-12 (Grace TF) — refresh-plan detection. Mirror of the
+  // identically-named read in `mobile-flow.tsx`, lifted here so the
+  // counter overline (`Step N of 12`) and any other consumer can react
+  // without duplicating the AsyncStorage read. `null` = unknown (read
+  // in flight); true/false once resolved.
+  const [isRefreshPlan, setIsRefreshPlan] = React.useState<boolean | null>(
+    hasInitial ? false : null,
+  );
+
   // Hydrate from AsyncStorage on mount. Async — initial render uses
   // defaults, then a setState fires once the persisted state is read.
   React.useEffect(() => {
@@ -83,14 +98,25 @@ export function OnboardingProvider({ children, initial }: ProviderProps) {
     void (async () => {
       try {
         const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
-        const raw = await AsyncStorage.getItem(STORAGE_KEY);
-        if (cancelled || !raw) return;
-        const parsed = JSON.parse(raw);
-        if (parsed && typeof parsed === "object") {
-          setState((prev) => ({ ...prev, ...(parsed as Partial<OnboardingState>) }));
+        const [raw, flag] = await Promise.all([
+          AsyncStorage.getItem(STORAGE_KEY),
+          AsyncStorage.getItem("suppr.reset-plan-pending-prompt"),
+        ]);
+        if (cancelled) return;
+        if (raw) {
+          try {
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === "object") {
+              setState((prev) => ({ ...prev, ...(parsed as Partial<OnboardingState>) }));
+            }
+          } catch {
+            /* malformed JSON — ignore */
+          }
         }
+        setIsRefreshPlan(flag === "1");
       } catch {
         // Storage unavailable / malformed JSON — fall back to defaults.
+        if (!cancelled) setIsRefreshPlan(false);
       }
     })();
     return () => {
@@ -161,11 +187,17 @@ export function OnboardingProvider({ children, initial }: ProviderProps) {
       // 1-indexed display — mirror of web context. Welcome is "Step 1
       // of 13" but its overline + top bar are both hidden.
       displayIndex: state.step + 1,
-      displayTotal: TOTAL_STEPS,
+      // 2026-05-12 (Grace TF) — drop the data-bridges step from the
+      // displayed total on refresh-plan, because mobile-flow routes
+      // reveal → handleComplete directly in that mode. Without this,
+      // the user sees "Step 12 of 13" on what is, for them, the last
+      // step they'll ever see — confusing and inaccurate.
+      displayTotal: isRefreshPlan ? TOTAL_STEPS - 1 : TOTAL_STEPS,
       canAdvance,
       stepLabels: STEP_LABELS,
+      isRefreshPlan,
     }),
-    [state, set, go, goTo, reset, targets, warning, currentStepId, canAdvance],
+    [state, set, go, goTo, reset, targets, warning, currentStepId, canAdvance, isRefreshPlan],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

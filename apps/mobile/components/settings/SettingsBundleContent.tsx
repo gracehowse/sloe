@@ -918,16 +918,13 @@ export function SettingsBundleContent({ context }: { context: Context }) {
     setResetting(true);
     setResetModalOpen(false);
     try {
-      // Mark onboarding incomplete so the canonical /onboarding route
-      // mounts the flow instead of redirecting back to Today.
-      const { error } = await supabase
-        .from("profiles")
-        .update({ onboarding_completed: false })
-        .eq("id", userId);
-      if (error) {
-        Alert.alert("Could not start refresh", error.message);
-        return;
-      }
+      // 2026-05-12 (Grace TF) — DO NOT pre-set onboarding_completed=false here.
+      // If persistOnboarding's upsert at the end of refresh-plan fails silently
+      // (it catches + logs internally — see src/lib/onboarding/persist.ts), the
+      // profile stays at false and the (tabs) guard bounces the user back to
+      // Welcome forever. /onboarding mounts unconditionally, so flipping the
+      // flag is unnecessary. Worst case on persist failure now: user lands on
+      // Today with their OLD plan (recoverable) instead of a redirect loop.
       try {
         // Clear the persisted onboarding draft so the user starts from
         // their CURRENT profile state (the persist hydration in

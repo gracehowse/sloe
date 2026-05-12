@@ -290,7 +290,7 @@ function AppleHealthCard({ userId }: { userId: string | null }) {
       icon="heart-outline"
       iconColor={MacroColors.fat}
       title="Connect Apple Health"
-      body="Read active energy + steps so your adaptive TDEE calibrates from day 1. Suppr never writes to Health."
+      body="Read active energy + steps so your adaptive TDEE calibrates from day 1. If you opt in later, logged meals can also sync back to Health."
       grantedBadge={granted ? "Connected" : null}
     >
       {error ? (

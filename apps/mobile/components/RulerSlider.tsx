@@ -78,6 +78,25 @@ export function RulerSlider({
   const [editing, setEditing] = React.useState(false);
   const [draft, setDraft] = React.useState("");
   const startValueRef = React.useRef(value);
+  // 2026-05-12 — stabilise the Pan gesture across renders. The previous
+  // implementation re-created the gesture inside `useMemo` whose deps
+  // included `value` + `onChange`. Every drag tick called `onChange`,
+  // which re-rendered the parent and minted a new gesture object;
+  // GestureDetector then tore down the in-flight handler while the
+  // worklet event pipeline still held a reference to it, causing a
+  // pending-JS-exception abort inside Hermes (see the .ips trace in
+  // ~/Library/Logs/DiagnosticReports — RNGestureHandlerManager →
+  // ReanimatedModuleProxy::handleEvent → throwPendingError). Routing
+  // `value` and `onChange` through refs keeps the gesture object
+  // identity stable for the lifetime of the slider.
+  const valueRef = React.useRef(value);
+  const onChangeRef = React.useRef(onChange);
+  React.useEffect(() => {
+    valueRef.current = value;
+  }, [value]);
+  React.useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
   const trackWidth = width ?? measuredWidth;
   const range = max - min;
@@ -110,14 +129,27 @@ export function RulerSlider({
   const pan = React.useMemo(
     () =>
       Gesture.Pan()
+        // 2026-05-12 (Grace TF) — `.runOnJS(true)` forces RNGH to fire
+        // callbacks on the JS thread directly, bypassing the Reanimated
+        // worklet event bridge. Without it, every Pan event is routed
+        // through `worklets::EventHandlerRegistry::processEvent`, which
+        // on RNGH 2.28 + Reanimated 4.1 + new arch + iOS 26 sim throws
+        // a pending JS exception inside Hermes and SIGABRTs the app
+        // (see ~/Library/Logs/DiagnosticReports/Suppr-2026-05-12-094424.ips).
+        // We have zero worklets in this component — there is nothing
+        // useful for the worklet runtime to do on this gesture — so
+        // skipping that path is both safer and matches the JS-thread
+        // semantics our handlers already rely on (parent React state
+        // updates can't run on the UI thread anyway).
+        .runOnJS(true)
         .onBegin(() => {
-          startValueRef.current = value;
+          startValueRef.current = valueRef.current;
         })
         .onChange((evt) => {
           const dv = -evt.translationX * (step / PX_PER_STEP);
-          onChange(snap(clamp(startValueRef.current + dv)));
+          onChangeRef.current(snap(clamp(startValueRef.current + dv)));
         }),
-    [value, step, snap, clamp, onChange],
+    [step, snap, clamp],
   );
 
   const commitDraft = () => {
