@@ -257,7 +257,7 @@ function PermissionCard({
               opacity: busy ? 0.6 : pressed ? 0.85 : 1,
             })}
           >
-            <Text style={{ color: "#0a0a0f", fontSize: 13, fontWeight: "700" }}>
+            <Text style={{ color: Accent.primaryForeground, fontSize: 13, fontWeight: "700" }}>
               {busy ? "Asking…" : "Allow"}
             </Text>
           </Pressable>

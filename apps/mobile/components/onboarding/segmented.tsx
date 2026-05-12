@@ -67,7 +67,7 @@ export function MobileSegmented<T extends string = string>({
               style={{
                 fontSize: 12,
                 fontWeight: "700",
-                color: on ? "#0a0a0f" : colors.textSecondary,
+                color: on ? Accent.primaryForeground : colors.textSecondary,
               }}
             >
               {opt.label}

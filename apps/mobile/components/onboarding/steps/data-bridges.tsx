@@ -335,9 +335,9 @@ function AppleHealthCard({ userId }: { userId: string | null }) {
           })}
         >
           {busy ? (
-            <ActivityIndicator color="#0a0a0f" size="small" />
+            <ActivityIndicator color={Accent.primaryForeground} size="small" />
           ) : (
-            <Text style={{ color: "#0a0a0f", fontSize: 13, fontWeight: "700" }}>
+            <Text style={{ color: Accent.primaryForeground, fontSize: 13, fontWeight: "700" }}>
               Allow Health access
             </Text>
           )}
@@ -427,9 +427,9 @@ function NotificationsCard({ userId }: { userId: string | null }) {
           })}
         >
           {busy ? (
-            <ActivityIndicator color="#0a0a0f" size="small" />
+            <ActivityIndicator color={Accent.primaryForeground} size="small" />
           ) : (
-            <Text style={{ color: "#0a0a0f", fontSize: 13, fontWeight: "700" }}>
+            <Text style={{ color: Accent.primaryForeground, fontSize: 13, fontWeight: "700" }}>
               Turn on
             </Text>
           )}

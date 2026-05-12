@@ -8,6 +8,17 @@ import { Platform } from 'react-native';
 /** Accent palette — aligned with web CSS custom properties in theme.css */
 export const Accent = {
   primary: '#4c6ce0',
+  /**
+   * Canonical foreground colour for anything sitting on top of
+   * Accent.primary (CTAs, segmented-active states, halo pills). Always
+   * pure white — matches web's `--primary-foreground: #ffffff` token in
+   * both light and dark modes (the `Accent.primary` indigo is dark
+   * enough that white-on-indigo passes WCAG AA contrast 5.7:1; the
+   * previous `#0a0a0f` near-black on indigo only hit ~3.1:1, failing AA
+   * for normal text). Grace cohort 2026-05-12: standardised across
+   * onboarding to match the rest of the app + web.
+   */
+  primaryForeground: '#ffffff',
   primaryLight: '#6c8cff',
   success: '#22a860',
   successLight: '#4cd080',

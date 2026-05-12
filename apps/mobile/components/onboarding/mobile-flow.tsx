@@ -514,13 +514,13 @@ export function MobileFlow() {
           }}
         >
           {completing ? (
-            <ActivityIndicator color="#0a0a0f" />
+            <ActivityIndicator color={Accent.primaryForeground} />
           ) : (
             <Text
               style={{
                 fontSize: 16,
                 fontWeight: "700",
-                color: !canAdvance ? colors.textTertiary : "#0a0a0f",
+                color: !canAdvance ? colors.textTertiary : Accent.primaryForeground,
               }}
             >
               {isTerminal ? "Build my plan" : "Continue"}

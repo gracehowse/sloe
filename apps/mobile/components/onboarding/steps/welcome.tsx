@@ -101,7 +101,7 @@ export function MobileWelcomeStep() {
             opacity: pressed ? 0.9 : 1,
           })}
         >
-          <Text style={{ fontSize: 16, fontWeight: "700", color: "#0a0a0f" }}>
+          <Text style={{ fontSize: 16, fontWeight: "700", color: Accent.primaryForeground }}>
             Get started
           </Text>
         </Pressable>
