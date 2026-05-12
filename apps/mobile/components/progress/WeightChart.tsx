@@ -308,7 +308,10 @@ export function WeightChart({ trend, goalKg, isImperial = false }: Props) {
           </LinearGradient>
         </Defs>
 
-        {/* Gridlines */}
+        {/* Gridlines — 2026-05-12 (Grace TF chart polish): solid
+            hairlines at 0.5 alpha replace the dashed pattern.
+            Withings ships solid horizontal hairlines, never dashed —
+            dashed gridlines read busy at small chart heights. */}
         {gridValues.map((v, i) => {
           const gy = toY(v, yMin, yMax, plotH);
           return (
@@ -320,7 +323,7 @@ export function WeightChart({ trend, goalKg, isImperial = false }: Props) {
               y2={gy}
               stroke={colors.border}
               strokeWidth={1}
-              strokeDasharray="3 3"
+              opacity={0.5}
             />
           );
         })}
@@ -390,12 +393,15 @@ export function WeightChart({ trend, goalKg, isImperial = false }: Props) {
           />
         )}
 
-        {/* MA line */}
+        {/* MA line — 2026-05-12 (Grace TF chart polish): 2.0pt → 2.25pt
+            for more presence at small chart heights. The smoothed line
+            is the headline element of this chart; Withings's spec is
+            ~2pt and ours was just under it. */}
         {count >= 3 && (
           <Path
             d={buildLinePath(xs, maYs, maMask)}
             stroke={lineColor}
-            strokeWidth={2}
+            strokeWidth={2.25}
             fill="none"
             strokeLinejoin="round"
             strokeLinecap="round"
@@ -414,6 +420,13 @@ export function WeightChart({ trend, goalKg, isImperial = false }: Props) {
             dots become sample markers, not noise. `stride` makes sure
             we keep the first + last + roughly 6 evenly-spaced dots in
             between, plus the actively-scrubbed point regardless. */}
+        {/* Raw dots — 2026-05-12 (Grace TF chart polish): solid filled
+            dots in the line colour at 35% alpha instead of hollow
+            rings. Withings pattern: filled markers carry less visual
+            weight than rings AND keep the dot reading "data point",
+            not "interactive target". Smaller (r=3) and lower opacity
+            so the smoothed line stays the headline element. Scrubbed
+            dot stays r=5 + full opacity as the active anchor. */}
         {bucket === "daily" &&
           points.map((p, i) => {
             if (i === latestIdx) return null;
@@ -426,11 +439,9 @@ export function WeightChart({ trend, goalKg, isImperial = false }: Props) {
                 key={p.dateISO + i}
                 cx={xs[i]!}
                 cy={ys[i]!}
-                r={isScrubbed ? 5 : 4}
-                fill={colors.card}
-                stroke={lineColor}
-                strokeWidth={1.5}
-                opacity={0.6}
+                r={isScrubbed ? 5 : 3}
+                fill={lineColor}
+                opacity={isScrubbed ? 1 : 0.35}
               />
             );
           })}
@@ -519,8 +530,13 @@ export function WeightChart({ trend, goalKg, isImperial = false }: Props) {
         const TOOLTIP_H = 22;
         const anchorX = showScrub ? xs[scrubIdx!]! : latestX;
         const anchorY = showScrub ? ys[scrubIdx!]! : latestY;
-        const flipBelow = anchorY - TOOLTIP_H - 8 < PAD_TOP;
-        const tipTop = flipBelow ? anchorY + 12 : anchorY - TOOLTIP_H - 6;
+        // 2026-05-12 (Grace TF chart polish): bump the clearance gap
+        // from 6/12px to 14px so the tooltip never crowds the line
+        // it's anchored to. Withings's spec is a ~12pt clear floating
+        // pill; tightening this was the audit gap.
+        const GAP = 14;
+        const flipBelow = anchorY - TOOLTIP_H - GAP < PAD_TOP;
+        const tipTop = flipBelow ? anchorY + GAP : anchorY - TOOLTIP_H - GAP;
         // Right gutter (where the Y-axis tick labels live) starts at
         // `chartWidth - PAD_RIGHT`. Keep the tooltip's right edge at
         // least 4px left of that line so the text never overlaps.
