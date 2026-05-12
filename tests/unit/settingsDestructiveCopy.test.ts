@@ -76,20 +76,35 @@ describe("Settings — Erase Everything confirm copy (P1-6, calm rewrite)", () =
     expect(SRC).toContain("You can re-import from your export file anytime.");
   });
 
-  it("body still lists the affected categories so consent is informed", () => {
-    // Lowercase, single line — the long capital-letter inventory from
-    // the pre-fix copy was retired but the categories must remain
-    // visible so the user knows exactly what they're agreeing to.
-    expect(SRC).toContain(
-      "Affects: food log, journal, library saves, shopping lists, imported recipes, synced activity.",
-    );
-    expect(SRC).toContain("Your account and subscription stay.");
+  it("body lists affected + kept categories as scannable bullets (2026-05-12 DC9 polish)", () => {
+    // Pre-2026-05-12 the body was a single paragraph
+    // ("Affects: food log, journal, library saves, …"). Linear's
+    // pattern for destructive confirms is ✓/✗ bullets so the user
+    // can verify at a glance which things go and which stay. The
+    // categories still all appear by label.
+    expect(SRC).toContain('label: "Food log"');
+    expect(SRC).toContain('label: "Daily journal"');
+    expect(SRC).toContain('label: "Library saves"');
+    expect(SRC).toContain('label: "Shopping lists"');
+    expect(SRC).toContain('label: "Imported recipes"');
+    expect(SRC).toContain('label: "Synced activity"');
+    expect(SRC).toContain('label: "Your account"');
+    expect(SRC).toContain('label: "Subscription"');
   });
 
   it("retires the legacy shame-energy phrasing", () => {
     expect(SRC).not.toContain('title="Erase everything?"');
     expect(SRC).not.toContain(
       "This will permanently delete your food log, journal",
+    );
+  });
+
+  it("retires the legacy single-paragraph affects string (2026-05-12 DC9 polish)", () => {
+    // Negative guard — the prior `description=` paragraph form
+    // ("Affects: food log, journal, …") was replaced with structured
+    // bullets in a JSX description.
+    expect(SRC).not.toContain(
+      'description="You can re-import from your export file anytime. Affects:',
     );
   });
 

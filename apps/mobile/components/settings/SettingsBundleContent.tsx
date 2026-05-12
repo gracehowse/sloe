@@ -2212,15 +2212,68 @@ export function SettingsBundleContent({ context }: { context: Context }) {
             >
               Delete your data and start fresh?
             </Text>
+            {/* 2026-05-12 (premium-bar audit DC9 polish): the prior
+                paragraph body was a comma-separated list of what gets
+                deleted vs what stays — easy to skim past, hard to
+                reason about. Linear's pattern for destructive actions
+                is scannable ✓/✗ bullets so the user can confirm at
+                a glance "yes I'm OK with X going". Two columns: cleared
+                (red ✗) and kept (green ✓). The "You can re-import"
+                reassurance moves to a final caption row. */}
+            <View style={{ gap: 6 }}>
+              {[
+                { label: "Food log", kept: false },
+                { label: "Daily journal", kept: false },
+                { label: "Library saves", kept: false },
+                { label: "Shopping lists", kept: false },
+                { label: "Imported recipes", kept: false },
+                { label: "Synced activity", kept: false },
+                { label: "Your account", kept: true },
+                { label: "Subscription", kept: true },
+              ].map((row) => (
+                <View
+                  key={row.label}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 10,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 14,
+                      fontWeight: "700",
+                      width: 14,
+                      textAlign: "center",
+                      color: row.kept ? Accent.success : t.red,
+                    }}
+                    accessibilityLabel={row.kept ? "Kept" : "Cleared"}
+                  >
+                    {row.kept ? "✓" : "✗"}
+                  </Text>
+                  <Text
+                    style={{
+                      flex: 1,
+                      fontSize: 13,
+                      color: row.kept ? colors.text : colors.textSecondary,
+                      textDecorationLine: row.kept ? "none" : "line-through",
+                    }}
+                  >
+                    {row.label}
+                  </Text>
+                </View>
+              ))}
+            </View>
             <Text
               style={{
-                fontSize: 13,
-                color: colors.textSecondary,
+                fontSize: 12,
+                color: colors.textTertiary,
                 textAlign: "center",
-                lineHeight: 19,
+                lineHeight: 17,
+                marginTop: Spacing.xs,
               }}
             >
-              You can re-import from your export file anytime. We&apos;ll clear your food log, journal, library saves, shopping lists, imported recipes, and synced activity. Your account and subscription stay.
+              You can re-import from your export file anytime.
             </Text>
             <Text
               style={{
