@@ -843,6 +843,25 @@ export default function VerifyScreen() {
           const rowEff = effectiveMacros(ing);
           const rowCal = rowHasOverride ? Math.round(rowEff.calories) : ing.calories;
 
+          // 2026-05-12 (premium-bar audit refuse-to-pass #3 — Recime
+          // per-row confidence): expose the confidence value as a
+          // colour-coded bar at the bottom of the collapsed row.
+          // - >= 0.9 → success (high confidence match)
+          // - >= 0.5 → muted track (moderate; already flagged via
+          //   alert-circle for needsReview path)
+          // - < 0.5  → destructive (low; needs user attention)
+          // Override rows skip the bar entirely — the user has
+          // explicitly pinned the value so confidence is "100% user".
+          // Added rows (user-typed) also skip — they're user-authored.
+          const confPct = Math.max(0, Math.min(1, ing.confidence ?? 0));
+          const confColor =
+            confPct >= 0.9
+              ? Accent.success
+              : confPct >= 0.5
+                ? Accent.warning
+                : Accent.destructive;
+          const showConfBar = !rowHasOverride && !rowAdded && ing.isVerified !== undefined;
+
           return (
             <View key={ing.id}>
               {/* Collapsed row */}
@@ -879,6 +898,27 @@ export default function VerifyScreen() {
                   {ing.matchedName && ing.matchedName !== ing.name && (
                     <Text style={styles.ingOriginal}>{`"${decodeEntities(ing.name)}"`}</Text>
                   )}
+                  {showConfBar ? (
+                    <View
+                      style={{
+                        marginTop: 6,
+                        height: 3,
+                        borderRadius: 2,
+                        backgroundColor: colors.border,
+                        overflow: "hidden",
+                      }}
+                      accessibilityLabel={`Match confidence: ${Math.round(confPct * 100)} percent`}
+                    >
+                      <View
+                        style={{
+                          width: `${Math.round(confPct * 100)}%`,
+                          height: "100%",
+                          backgroundColor: confColor,
+                          borderRadius: 2,
+                        }}
+                      />
+                    </View>
+                  ) : null}
                 </View>
                 <Text style={styles.ingCals}>{rowCal}</Text>
                 <Ionicons
@@ -1302,6 +1342,18 @@ function VerifyLoadingSkeleton({
     return () => clearInterval(t);
   }, [STAGES.length]);
 
+  // 2026-05-12 (premium-bar audit refuse-to-pass #3 — 8s timeout):
+  // after 8 seconds of skeleton load, surface a "Taking longer than
+  // usual" message + retry hint. The parent still owns the timeout
+  // ↦ error path (loadError state) — this is a softer pre-error nudge
+  // so the user isn't staring at a status-cycle for 30s with no
+  // signal that something might be off.
+  const [slowLoad, setSlowLoad] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setSlowLoad(true), 8_000);
+    return () => clearTimeout(t);
+  }, []);
+
   const skeletonBg = colors.cardBorder ?? colors.border;
   const SkeletonBar = ({ width, height = 14 }: { width: string | number; height?: number }) => (
     <View
@@ -1393,6 +1445,29 @@ function VerifyLoadingSkeleton({
             <SkeletonBar width="55%" height={11} />
           </View>
         ))}
+
+        {/* 2026-05-12 (premium-bar audit refuse-to-pass #3): pre-error
+            "taking longer than usual" message surfaces after 8s of
+            skeleton. Reads as honest expectation-setting rather than
+            silence. The parent still owns the actual timeout-to-error
+            path (loadError state). */}
+        {slowLoad ? (
+          <Text
+            style={{
+              marginTop: Spacing.md,
+              fontSize: 12,
+              color: colors.textSecondary,
+              textAlign: "center",
+              lineHeight: 17,
+              paddingHorizontal: Spacing.lg,
+            }}
+            accessibilityLiveRegion="polite"
+            testID="verify-slow-load-note"
+          >
+            Taking longer than usual. Recipes with 30+ ingredients can
+            take 20–30 seconds. Cancel anytime below.
+          </Text>
+        ) : null}
 
         {/* Cancel affordance — bailing mid-verify is OK, the user
             shouldn't feel trapped while the AI runs. */}
