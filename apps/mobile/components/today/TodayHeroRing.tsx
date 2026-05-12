@@ -1,8 +1,7 @@
 import React from "react";
-import { Pressable, Text, View } from "react-native";
-import { HelpCircle } from "lucide-react-native";
+import { View } from "react-native";
 import CalorieRing from "@/components/charts/CalorieRing";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing } from "@/constants/theme";
 
 /**
  * TodayHeroRing — ring hero variant.
@@ -111,34 +110,16 @@ export function TodayHeroRing({
         onToggle={onToggleExpanded}
         displayMode={displayMode}
         onToggleDisplayMode={onToggleDisplayMode}
+        // 2026-05-12 (premium-bar DC1, Grace approval): the visible
+        // "Why this number?" pill below the ring was dropped — the
+        // audit called it out as signalling low confidence in the
+        // number. Long-press now opens the explainer instead. Tap
+        // still toggles macro-ring expansion; the displayMode toggle
+        // is preserved on the back-end via onToggleDisplayMode but
+        // is now reachable only when `onPressWhy` is not provided
+        // (i.e. on dev / preview surfaces).
+        onLongPressExplain={onPressWhy}
       />
-      {/* Audit gap #10 transparency moat (2026-05-01) — small "Why this
-          number?" pill that opens the WhyThisNumberSheet. Renders only
-          when the host passes `onPressWhy`; sized so it doesn't fight
-          the ring's tap target. */}
-      {onPressWhy ? (
-        <Pressable
-          testID="today-hero-why-this-number"
-          accessibilityRole="button"
-          accessibilityLabel="Why this number? Open calorie target explanation"
-          onPress={onPressWhy}
-          hitSlop={6}
-          style={({ pressed }) => ({
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 4,
-            paddingHorizontal: Spacing.md,
-            paddingVertical: 6,
-            borderRadius: Radius.full,
-            backgroundColor: pressed ? `${Accent.primary}30` : `${Accent.primary}14`,
-          })}
-        >
-          <HelpCircle size={12} color={Accent.primary} strokeWidth={2.25} />
-          <Text style={{ fontSize: 11, fontWeight: "700", color: Accent.primary, letterSpacing: 0.2 }}>
-            Why this number?
-          </Text>
-        </Pressable>
-      ) : null}
     </View>
   );
 }

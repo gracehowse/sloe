@@ -175,7 +175,12 @@ function DailyRing({
     snapOn: displayMode,
   });
 
-  const macroStroke = 5;
+  // 2026-05-12 (premium-bar DC1, web parity with mobile CalorieRing):
+  // macro arc stroke 5 → 7. The web ring is bigger than mobile
+  // (160 vs 140) so it can carry the same proportional bump
+  // comfortably. Audit flagged the macro arcs as "too thin to read at
+  // a glance" — fattening reads them as macros, not hairlines.
+  const macroStroke = 7;
   const macroRadii = [radius - 13, radius - 24, radius - 35];
 
   const macroRings = [
@@ -261,7 +266,12 @@ function DailyRing({
           className="transition-[stroke-dashoffset] duration-700"
           style={{ transitionTimingFunction: "var(--pm-ease)" }}
         />
-        {/* Macro rings (shown when expanded) */}
+        {/* Macro rings (shown when expanded).
+            2026-05-12 (premium-bar DC1): when the outer calorie ring is
+            over-budget, dim each macro arc to ~55% opacity so the
+            destructive-red outer ring carries the over signal without
+            macro hues fighting it. "Warm-shift" per audit, approximated
+            as alpha to keep rendering cheap and dark-mode-safe. */}
         {expanded && macroRings.map((ring, i) => {
           const c = 2 * Math.PI * ring.r;
           const o = c * (1 - Math.min(ring.pct, 0.999));
@@ -286,6 +296,7 @@ function DailyRing({
                 strokeLinecap="round"
                 strokeDasharray={c}
                 strokeDashoffset={o}
+                opacity={isOverBudget ? 0.55 : 1}
                 className="transition-[stroke-dashoffset] duration-700"
                 style={{
                   transitionTimingFunction: "var(--pm-ease)",
@@ -342,6 +353,25 @@ function DailyRing({
             >
               {centerLabel}
             </span>
+            {/* 2026-05-12 (premium-bar DC1, web parity with mobile
+                CalorieRing): delta chip in the ring centre. Answers
+                "am I over or under?" at a glance — green when under,
+                destructive when over — without the user needing the
+                long-press / explainer path. Only renders in `consumed`
+                mode; in `remaining` mode the big number IS the delta
+                so a duplicate chip would be noise. */}
+            {displayMode === "consumed" && target > 0 ? (
+              <span
+                className={`font-bold tabular-nums mt-0.5 ${expanded ? "text-[10px]" : "text-[11px]"}`}
+                style={{
+                  color: isOverBudget ? "var(--destructive)" : "var(--success)",
+                }}
+              >
+                {isOverBudget
+                  ? `−${overBy.toLocaleString()} over`
+                  : `${remaining.toLocaleString()} left`}
+              </span>
+            ) : null}
             {/* Budget line renders in BOTH expanded + collapsed states
                 (parity with mobile `CalorieRing` — commit 26a63bf, 2026-04-20).
                 ui-critic called out that the expanded view hid the

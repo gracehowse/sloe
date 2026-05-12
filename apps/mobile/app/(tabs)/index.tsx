@@ -4495,12 +4495,15 @@ export default function TrackerScreen() {
               expanded={ringExpanded}
               onToggleExpanded={() => setRingExpanded((e) => !e)}
               displayMode={calorieDisplayMode}
-              // User feedback 2026-05-02: long-press should toggle
-              // display-mode AND show/hide the macro sub-rings in
-              // lock-step (the original "click-and-hold" UX). The
-              // segmented chip control from PR #50 was reverted in
-              // the same change; long-press is now the single
-              // gesture that drives both pieces of ring state.
+              // 2026-05-12 (premium-bar DC1, Grace approval): long-press
+              // now opens the "Why this number?" explainer instead of
+              // toggling display-mode + macro-ring expansion. The new
+              // centre delta chip ("−178 over" / "+178 left") shows
+              // both consumed and remaining at once, making the
+              // toggle obsolete. The onToggleDisplayMode prop stays
+              // wired as a fallback for surfaces that don't pass
+              // `onPressWhy` (e.g. dev/preview), but on Today the
+              // ring's long-press routes through onPressWhy.
               onToggleDisplayMode={() => {
                 setCalorieDisplayMode((m) => m === "remaining" ? "consumed" : "remaining");
                 setRingExpanded((e) => !e);

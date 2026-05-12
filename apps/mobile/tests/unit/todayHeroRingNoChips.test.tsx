@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 /**
- * TodayHeroRing — chip-control reverted, long-press restored as the
- * sole mode-switch gesture (2026-05-02 user-feedback revert of PR #50).
+ * TodayHeroRing — chip-control reverted (2026-05-02); pill dropped +
+ * long-press repurposed as the explainer trigger (2026-05-12,
+ * premium-bar DC1, Grace approval).
  *
  * Pinned behaviour:
  *   - Component does NOT render a Remaining/Consumed segmented chip
@@ -9,12 +10,15 @@
  *     deliberate user-feedback change; this test fails if the chips
  *     are ever re-introduced without an explicit revisit of the
  *     2026-05-02 decision.
- *   - Long-press on the ring fires `onToggleDisplayMode` (the sole
- *     mode-switch path on mobile). The host (`app/(tabs)/index.tsx`)
- *     additionally toggles the inner sub-rings on the same gesture;
- *     that wiring is covered by the host-level test below.
- *   - The "Why this number?" pill still renders when `onPressWhy`
- *     is provided (PR #31 untouched by this revert).
+ *   - Component does NOT render a visible "Why this number?" pill.
+ *     The audit called the pill out as signalling low confidence in
+ *     the number. Long-press now opens the explainer instead. This
+ *     fails if the pill is ever re-introduced without an explicit
+ *     revisit of the 2026-05-12 decision.
+ *   - When `onPressWhy` is provided, the long-press on the ring
+ *     fires it (forwarded as `onLongPressExplain` to CalorieRing).
+ *     When `onPressWhy` is omitted, long-press falls back to
+ *     `onToggleDisplayMode` (legacy preview/dev surfaces).
  *
  * Web parity: the segmented chip in
  * `src/app/components/suppr/today-hero-ring.tsx` is also gone for the
@@ -73,9 +77,9 @@ describe("TodayHeroRing — post-revert (2026-05-02)", () => {
     expect(typeof TodayHeroRing).toBe("function");
   });
 
-  it("renders the 'Why this number?' pill when onPressWhy is provided (PR #31 preserved)", () => {
+  it("does NOT render a visible 'Why this number?' pill even when onPressWhy is provided (2026-05-12 audit)", () => {
     const onPressWhy = vi.fn();
-    const { getByTestId } = render(
+    const { queryByTestId } = render(
       <TodayHeroRing
         {...baseProps}
         onToggleExpanded={() => {}}
@@ -83,13 +87,12 @@ describe("TodayHeroRing — post-revert (2026-05-02)", () => {
         onPressWhy={onPressWhy}
       />,
     );
-    const pill = getByTestId("today-hero-why-this-number");
-    expect(pill).toBeTruthy();
-    fireEvent.press(pill);
-    expect(onPressWhy).toHaveBeenCalledTimes(1);
+    // The pill testID must not be present on either branch — the
+    // explainer is reachable via long-press on the ring instead.
+    expect(queryByTestId("today-hero-why-this-number")).toBeNull();
   });
 
-  it("does NOT render the 'Why this number?' pill when onPressWhy is omitted", () => {
+  it("does NOT render the pill when onPressWhy is omitted", () => {
     const { queryByTestId } = render(
       <TodayHeroRing
         {...baseProps}
