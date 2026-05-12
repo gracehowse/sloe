@@ -14,6 +14,7 @@ import {
   Flame,
   Footprints,
   LineChart,
+  List as ListIcon,
   Scale,
   TrendingDown,
   TrendingUp,
@@ -99,6 +100,7 @@ import { WeightChart } from "@/components/progress/WeightChart";
 import { WeightRangeToggle } from "@/components/progress/WeightRangeToggle";
 import { WeightSparseState } from "@/components/progress/WeightSparseState";
 import { LogWeightSheet } from "@/components/progress/LogWeightSheet";
+import { AllWeightDataSheet } from "@/components/progress/AllWeightDataSheet";
 import {
   computeWeightTrend,
   weightKgByDayToPoints,
@@ -212,6 +214,11 @@ export default function ProgressScreen() {
   // 4 CTAs on this screen. The route itself is still alive for
   // backwards compat; Phase 3 deletes it.
   const [logWeightOpen, setLogWeightOpen] = useState(false);
+
+  // 2026-05-11 (Grace TF feedback): Withings-style "All data" list view
+  // for weigh-ins. Opens from the list icon next to the Weight chart
+  // header. Tap-and-hold on a row deletes that entry.
+  const [allWeightDataOpen, setAllWeightDataOpen] = useState(false);
 
   // H-4 (build 12, 2026-04-19, TestFlight `AEb7NcjnvK`): defer the
   // heavy below-the-fold blocks (daily-calories chart, maintenance
@@ -1942,11 +1949,36 @@ export default function ProgressScreen() {
                   Calories" + "Macro Adherence" further down the same screen).
                   WEIGHT was the lone UPPERCASE outlier on this surface. */}
               <Text style={{ fontSize: 13, fontWeight: "600", color: t.text }}>Weight</Text>
-              {weightChartTrend.daysSinceLatest != null && weightChartTrend.daysSinceLatest > 10 && (
-                <View style={{ backgroundColor: colors.inputBg, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 }}>
-                  <Text style={{ fontSize: 11, color: t.sub }}>{weightChartTrend.daysSinceLatest}d since last log</Text>
-                </View>
-              )}
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                {weightChartTrend.daysSinceLatest != null && weightChartTrend.daysSinceLatest > 10 && (
+                  <View style={{ backgroundColor: colors.inputBg, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 }}>
+                    <Text style={{ fontSize: 11, color: t.sub }}>{weightChartTrend.daysSinceLatest}d since last log</Text>
+                  </View>
+                )}
+                {/* All-data list opener (2026-05-11, Grace TF feedback —
+                    Withings/MFP/Lose It parity). Hidden when no entries
+                    exist so the button doesn't tease an empty list. */}
+                {Object.keys(weightKgByDay).length > 0 && (
+                  <Pressable
+                    onPress={() => setAllWeightDataOpen(true)}
+                    accessibilityRole="button"
+                    accessibilityLabel="View all weight data"
+                    hitSlop={6}
+                    testID="progress-all-weight-data-button"
+                    style={({ pressed }) => ({
+                      width: 28,
+                      height: 28,
+                      borderRadius: 14,
+                      backgroundColor: colors.inputBg,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      opacity: pressed ? 0.6 : 1,
+                    })}
+                  >
+                    <ListIcon size={14} color={t.text} strokeWidth={2} />
+                  </Pressable>
+                )}
+              </View>
             </View>
             <WeightRangeToggle value={weightChartRange} onChange={setWeightChartRange} />
             <View style={{ marginTop: 12 }}>
@@ -2193,6 +2225,22 @@ export default function ProgressScreen() {
       onSaved={({ weightKgByDay: next, weightKg: kg }) => {
         setWeightKgByDay(next);
         setWeightKg(kg);
+      }}
+    />
+    <AllWeightDataSheet
+      visible={allWeightDataOpen}
+      onClose={() => setAllWeightDataOpen(false)}
+      userId={userId ?? null}
+      isImperial={measurementSystem === "imperial"}
+      weightKgByDay={weightKgByDay}
+      onEntryDeleted={(_dateISO, nextMap) => {
+        setWeightKgByDay(nextMap);
+        // Refresh the latest scalar in case we just deleted today's
+        // entry — fall back to the newest remaining entry.
+        const remaining = Object.entries(nextMap)
+          .filter(([, kg]) => Number.isFinite(kg) && (kg as number) > 0)
+          .sort(([a], [b]) => b.localeCompare(a));
+        setWeightKg(remaining.length > 0 ? (remaining[0][1] as number) : null);
       }}
     />
     </View>
