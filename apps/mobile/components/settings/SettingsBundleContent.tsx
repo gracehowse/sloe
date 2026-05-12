@@ -904,85 +904,92 @@ export function SettingsBundleContent({ context }: { context: Context }) {
     })();
   }, [userId]);
 
-  const handleResetPlan = useCallback(
-    async (clearData: boolean) => {
-      if (!userId) return;
-      setResetting(true);
-      setResetModalOpen(false);
-
-      try {
-        if (clearData) {
-          // Erase everything — wipes server data + local scratchpads, then
-          // sends the user through onboarding again. Per 2026-04-30 product
-          // call (issue #16), this is the only path that re-runs onboarding.
-          const r = await nukeAllUserAppData(supabase, userId);
-          if (!r.ok) {
-            Alert.alert("Could not erase data", r.message);
-            return;
-          }
-          try {
-            // `suppr.onboarding-v2.state` matches the AsyncStorage key in
-            // `apps/mobile/components/onboarding/context.tsx` — without
-            // this, the next session pre-fills with the deleted user's
-            // answers (issue #14).
-            await AsyncStorage.multiRemove([
-              "health_import_nutrition",
-              "health_export_nutrition",
-              "health_import_generic_labels",
-              "health_sync_apple_connected",
-              "suppr.onboarding-v2.state",
-            ]);
-          } catch {
-            /* ignore */
-          }
-          // Canonical onboarding route (post-rename; issue #13).
-          router.replace("/onboarding" as any);
-        } else {
-          // Reset targets — inline. Per 2026-04-30 product call (issue #16),
-          // this resets calorie/macro defaults but does NOT clear the planner,
-          // food log, or saved recipes, and does NOT re-run onboarding. The
-          // copy "Keep My Data" should mean what it says.
-          const { error } = await supabase
-            .from("profiles")
-            .update({
-              target_calories: NUTRITION_DEFAULTS.calories,
-              // Tagging the reset as `reset_default` so Rule 2 (Maintenance
-              // Recalibrate) can tell this apart from a real user-set target.
-              target_calories_set_at: new Date().toISOString(),
-              target_calories_source: "reset_default",
-              target_protein: NUTRITION_DEFAULTS.protein,
-              target_carbs: NUTRITION_DEFAULTS.carbs,
-              target_fat: NUTRITION_DEFAULTS.fat,
-              target_fiber_g: NUTRITION_DEFAULTS.fiber,
-              target_water_ml: NUTRITION_DEFAULTS.water,
-            })
-            .eq("id", userId);
-          if (error) {
-            Alert.alert("Reset failed", error.message);
-            return;
-          }
-          Alert.alert(
-            "Targets reset to defaults",
-            "Your calorie and macro goals are back to Suppr defaults. Edit them anytime.",
-            [
-              { text: "Edit targets", onPress: () => router.push("/targets" as any) },
-              { text: "OK", style: "default" },
-            ],
-          );
-        }
-      } catch (e: unknown) {
-        Alert.alert(
-          "Reset failed",
-          e instanceof Error
-            ? e.message
-            : "Something went wrong. Please try again.",
-        );
-      } finally {
-        setResetting(false);
+  /**
+   * 2026-05-11 (Grace TF feedback) — "Refresh my plan" flow.
+   * Replaces the prior two-branch "Reset targets / Erase everything"
+   * model. Always re-runs the user through onboarding so they can
+   * update weight / height / goals / macros. At the end of onboarding
+   * a one-shot prompt asks "Keep my logs and weight history?" — see
+   * the matching hook in `apps/mobile/components/onboarding/mobile-flow.tsx`
+   * which reads the AsyncStorage flag set here.
+   */
+  const handleRefreshPlan = useCallback(async () => {
+    if (!userId) return;
+    setResetting(true);
+    setResetModalOpen(false);
+    try {
+      // Mark onboarding incomplete so the canonical /onboarding route
+      // mounts the flow instead of redirecting back to Today.
+      const { error } = await supabase
+        .from("profiles")
+        .update({ onboarding_completed: false })
+        .eq("id", userId);
+      if (error) {
+        Alert.alert("Could not start refresh", error.message);
+        return;
       }
-    },
-    [userId, router],
-  );
+      try {
+        // Clear the persisted onboarding draft so the user starts from
+        // their CURRENT profile state (the persist hydration in
+        // `apps/mobile/components/onboarding/context.tsx` pulls from
+        // profiles when this key is absent).
+        await AsyncStorage.multiRemove(["suppr.onboarding-v2.state"]);
+        // Set the reset-flag the mobile-flow handleComplete hook reads
+        // to surface the post-onboarding "Keep my logs and weight
+        // history?" prompt. Cleared by that hook once handled.
+        await AsyncStorage.setItem("suppr.reset-plan-pending-prompt", "1");
+      } catch {
+        /* non-fatal — prompt won't show but onboarding still runs */
+      }
+      router.replace("/onboarding" as any);
+    } catch (e: unknown) {
+      Alert.alert(
+        "Couldn't refresh plan",
+        e instanceof Error ? e.message : "Something went wrong. Please try again.",
+      );
+    } finally {
+      setResetting(false);
+    }
+  }, [userId, router]);
+
+  /**
+   * Nuclear option — wipes EVERYTHING (recipes, plans, saves, log,
+   * weight history) and re-runs onboarding from scratch. Reserved for
+   * "I want to delete my data and start fresh" — distinct from
+   * `handleRefreshPlan` which preserves library content by default.
+   */
+  const handleNukeEverything = useCallback(async () => {
+    if (!userId) return;
+    setResetting(true);
+    setResetModalOpen(false);
+    try {
+      const r = await nukeAllUserAppData(supabase, userId);
+      if (!r.ok) {
+        Alert.alert("Could not erase data", r.message);
+        return;
+      }
+      try {
+        await AsyncStorage.multiRemove([
+          "health_import_nutrition",
+          "health_export_nutrition",
+          "health_import_generic_labels",
+          "health_sync_apple_connected",
+          "suppr.onboarding-v2.state",
+          "suppr.reset-plan-pending-prompt",
+        ]);
+      } catch {
+        /* ignore */
+      }
+      router.replace("/onboarding" as any);
+    } catch (e: unknown) {
+      Alert.alert(
+        "Reset failed",
+        e instanceof Error ? e.message : "Something went wrong. Please try again.",
+      );
+    } finally {
+      setResetting(false);
+    }
+  }, [userId, router]);
 
   const t = useMemo(
     () => ({
@@ -2027,7 +2034,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                   textAlign: "center",
                 }}
               >
-                Reset or start over
+                Refresh your plan
               </Text>
               <Text
                 style={{
@@ -2039,12 +2046,12 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                   lineHeight: 18,
                 }}
               >
-                Reset targets defaults your calorie and macro goals while keeping your food log, planner, and saved recipes. Erase everything also removes journal entries, library saves, shopping lists, your private imported recipes, and synced activity — then sends you through setup again. Your account and subscription stay.
+                Walk through setup again to update your weight, height, goals, and macros. We&apos;ll ask if you want to keep your food log and weight history at the end. Erase everything also removes recipes, plans, saves, and shopping lists.
               </Text>
             </View>
 
             <Pressable
-              onPress={() => handleResetPlan(false)}
+              onPress={() => handleRefreshPlan()}
               disabled={resetting}
               style={{
                 backgroundColor: t.accent,
@@ -2056,7 +2063,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
               }}
             >
               <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>
-                {resetting ? "Resetting..." : "Reset targets"}
+                {resetting ? "Starting..." : "Refresh my plan"}
               </Text>
               <Text
                 style={{
@@ -2065,7 +2072,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                   marginTop: 2,
                 }}
               >
-                Defaults your goals — keeps food log, planner, recipes
+                Re-run setup — keeps recipes, plans, saves
               </Text>
             </Pressable>
 
@@ -2085,7 +2092,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                     {
                       text: "Erase everything",
                       style: "destructive",
-                      onPress: () => handleResetPlan(true),
+                      onPress: () => handleNukeEverything(),
                     },
                   ],
                 );

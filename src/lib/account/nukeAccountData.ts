@@ -43,6 +43,77 @@ export async function clearStructuredMealPlans(supabase: SupabaseClient, userId:
 }
 
 /**
+ * Reset-plan-scoped wipe (2026-05-11). Clears the user's LOGS and
+ * METRIC HISTORY but PRESERVES recipes, saved meals, meal plans, and
+ * other library-shaped content. Called from the post-onboarding
+ * "Keep my logs and weight history?" prompt when the user picks "no".
+ *
+ * What this clears:
+ *   - `nutrition_entries`           — daily food log
+ *   - `daily_targets`               — snapshotted targets per day
+ *   - `goal_history`                — effective-dated goal/target history
+ *   - `profiles.weight_kg_by_day`   — weight log
+ *   - `profiles.steps_by_day`       — Apple Health step history
+ *   - `profiles.activity_burn_by_day` / `basal_burn_by_day` / `workouts_by_day`
+ *   - `profiles.extra_water_by_day` — hydration log
+ *   - `profiles.fasting_sessions`   — IF history
+ *   - `profiles.adaptive_tdee*`     — learned TDEE (will re-learn from new logs)
+ *
+ * What this DOES NOT touch (vs `nukeAllUserAppData`):
+ *   - Saved recipes (`saves`)
+ *   - Private recipes the user authored (`recipes` where author_id = user)
+ *   - Meal plans + meal plan days/meals
+ *   - Shopping list
+ *   - The new (post-onboarding) profile target_calories / macros /
+ *     dietary / body stats — those were just set by the onboarding
+ *     pass that finished moments ago.
+ */
+export async function clearLogsAndWeightHistory(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<NukeResult> {
+  try {
+    const ops: PromiseLike<{ error: { message: string } | null }>[] = [
+      supabase.from("nutrition_entries").delete().eq("user_id", userId),
+      supabase.from("daily_targets").delete().eq("user_id", userId),
+      supabase.from("goal_history").delete().eq("user_id", userId),
+    ];
+    const results = await Promise.all(ops);
+    for (const r of results) {
+      if (r.error && !isIgnorableMissingTableError(r.error)) {
+        return { ok: false, message: r.error.message };
+      }
+    }
+
+    // Profile JSONB log columns — clear the longitudinal history but
+    // NOT the freshly-set targets / body stats from the onboarding pass
+    // that just completed.
+    const { error: profErr } = await supabase
+      .from("profiles")
+      .update({
+        weight_kg_by_day: {},
+        steps_by_day: {},
+        activity_burn_by_day: {},
+        basal_burn_by_day: {},
+        workouts_by_day: {},
+        extra_water_by_day: {},
+        fasting_sessions: [],
+        adaptive_tdee: null,
+        adaptive_tdee_confidence: null,
+        adaptive_tdee_updated_at: null,
+      })
+      .eq("id", userId);
+    if (profErr && !isIgnorableMissingTableError(profErr)) {
+      return { ok: false, message: profErr.message };
+    }
+
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, message: e instanceof Error ? e.message : "Unknown error" };
+  }
+}
+
+/**
  * Permanently deletes app-owned rows for this user (journal, plans, library links,
  * shopping, private recipes) and resets `profiles` nutrition / activity JSON to a clean slate.
  * Does not delete the auth user, promo redemptions, or change `user_tier`.

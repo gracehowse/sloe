@@ -31,11 +31,21 @@ describe("mobile onboarding — no post-onboarding paywall hop", () => {
     // future regression that adds `router.replace("/paywall")` here
     // would price-shock users — surface that as a test failure so
     // the regression is forced to think about price-visibility.
-    expect(src).toContain("router.replace(`/(tabs)${homeQs}`)");
+    // 2026-05-11 (refresh-plan flow): the route call now carries an
+    // `as any` cast because the homeQs branches between
+    // `&firstRun=1` (true first-time completion) and `&refresh=1`
+    // (Settings → Refresh my plan). Match the prefix substring so
+    // the test stays implementation-flexible.
+    expect(src).toMatch(/router\.replace\(`\/\(tabs\)\$\{homeQs\}`/);
     expect(src).not.toMatch(/router\.replace\(\s*["'`]\/paywall/);
   });
 
-  it("handoff query string carries firstRun=1 so Today renders the post-onboarding shell", () => {
-    expect(src).toContain("onboarding_complete=1&firstRun=1");
+  it("handoff query string carries firstRun=1 for first-time completion", () => {
+    // 2026-05-11 (refresh-plan flow): refresh-plan branch uses
+    // `&refresh=1` instead of `&firstRun=1` so Today can skip the
+    // first-run polish on a re-run. First-time completion path must
+    // still set firstRun.
+    expect(src).toContain("&firstRun=1");
+    expect(src).toContain("onboarding_complete=1");
   });
 });
