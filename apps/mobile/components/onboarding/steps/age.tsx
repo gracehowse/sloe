@@ -1,12 +1,28 @@
 import * as React from "react";
-import { View } from "react-native";
+import { Pressable, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { Accent } from "@/constants/theme";
+import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useOnboarding } from "../context";
 import { MobileNumberStepper } from "../number-stepper";
 import { MobileStepBody, MobileStepHeader, useStepOverline } from "../scaffold";
 
+/**
+ * Mobile Age step.
+ *
+ * 2026-05-12 (premium-bar audit DC7 polish): mirrors the Sex step's
+ * "Which one should I choose?" disclosure pattern with a "How does
+ * age affect my target?" expander. The Mifflin-St Jeor coefficient
+ * for age is small but non-zero (~5 kcal/year subtracted from BMR);
+ * the expander surfaces that math + the "we re-calibrate from your
+ * actual logs" reassurance so a user worried the number is a hard
+ * cap reads the truth before tap.
+ */
 export function MobileAgeStep() {
   const { state, set } = useOnboarding();
   const overline = useStepOverline();
+  const colors = useThemeColors();
+  const [helpOpen, setHelpOpen] = React.useState(false);
   return (
     <MobileStepBody>
       <MobileStepHeader
@@ -25,6 +41,95 @@ export function MobileAgeStep() {
           ariaLabel="Age"
         />
       </View>
+
+      {/* Inclusive explainer expander — DC7 polish, mirror of Sex step. */}
+      <Pressable
+        onPress={() => setHelpOpen((v) => !v)}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: helpOpen }}
+        style={{
+          marginTop: 18,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 8,
+        }}
+      >
+        <Ionicons
+          name="information-circle-outline"
+          size={14}
+          color={Accent.primaryLight}
+        />
+        <Text
+          style={{
+            fontSize: 13,
+            color: colors.textSecondary,
+            textDecorationLine: "underline",
+          }}
+        >
+          How does age affect my target?
+        </Text>
+      </Pressable>
+
+      {helpOpen ? (
+        <View
+          style={{
+            marginTop: 12,
+            padding: 14,
+            backgroundColor: Accent.primary + "10",
+            borderColor: Accent.primary + "33",
+            borderWidth: 1,
+            borderRadius: 12,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 10,
+              fontWeight: "700",
+              textTransform: "uppercase",
+              letterSpacing: 1.2,
+              color: Accent.primaryLight,
+              marginBottom: 8,
+            }}
+          >
+            What Suppr does with this
+          </Text>
+          <Text
+            style={{
+              fontSize: 12,
+              color: colors.text,
+              lineHeight: 18,
+              marginBottom: 10,
+            }}
+          >
+            The Mifflin-St Jeor equation subtracts about 5 kcal/year from
+            your estimated BMR — so a 25-year-old and a 45-year-old at the
+            same weight + height get targets ~100 kcal apart.
+          </Text>
+          <Text
+            style={{
+              fontSize: 12,
+              color: colors.text,
+              lineHeight: 18,
+              marginBottom: 10,
+            }}
+          >
+            This is an estimate, not a verdict on your metabolism. Suppr
+            adaptive-TDEE will re-calibrate from your actual logged
+            intake + weight changes after ~2 weeks, replacing the formula
+            with your real maintenance.
+          </Text>
+          <Text
+            style={{
+              fontSize: 12,
+              color: colors.textSecondary,
+              lineHeight: 18,
+            }}
+          >
+            You can change your age (or any other plan input) anytime
+            from Settings.
+          </Text>
+        </View>
+      ) : null}
     </MobileStepBody>
   );
 }
