@@ -160,7 +160,7 @@ export default function PrivacyPage() {
                 <tr><td>FatSecret</td><td>Food database lookups</td><td>Ingredient text query (no account data)</td><td>US</td></tr>
                 <tr><td>USDA FoodData Central</td><td>Public-domain food database</td><td>Ingredient text query (no account data)</td><td>US (public sector)</td></tr>
                 <tr><td>Open Food Facts</td><td>Product / barcode lookups</td><td>Barcode or product name (no account data)</td><td>EU (France)</td></tr>
-                <tr><td>PostHog</td><td>Product analytics (if not opted out)</td><td>Event names, device id, page views</td><td>EU (Frankfurt)</td></tr>
+                <tr><td>PostHog</td><td>Product analytics + session replay (if not opted out)</td><td>Event names, device id, page views, replay of UI interactions with form inputs masked</td><td>EU (Frankfurt)</td></tr>
                 <tr><td>Sentry</td><td>Error reporting (if not opted out)</td><td>Stack traces, device type, user id</td><td>EU (Frankfurt)</td></tr>
                 <tr><td>Google Play</td><td>Android purchases (future)</td><td>Purchase token, account email</td><td>Global</td></tr>
               </tbody>

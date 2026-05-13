@@ -57,6 +57,41 @@ Three rules to keep this from recurring:
 
 Plus a hook safety net: `scripts/auto-push-on-stop.sh` runs at end-of-turn and pushes any unpushed commits on `claude/*` branches, so chat closes can never strand commits locally.
 
+## Feature flags — non-negotiable
+
+On 2026-05-13 we shipped five sessions of UI changes without
+before/after screenshots and without a flag-gated rollout. That
+violated `feedback_visual_validation_mandatory.md` and shipped
+visual changes blind. Two complementary rules from now on:
+
+1. **Visual or structural changes ship behind a feature flag.**
+   Use `isFeatureEnabled("flag-name")` from `@/lib/analytics` on
+   web or the mobile equivalent in `apps/mobile/lib/analytics.ts`.
+   Gate the new path, leave the old path alive in the `else`, ramp
+   via PostHog dashboard. Once the flag has held 100% for two
+   weeks with no regression, the gate can be removed in a follow-
+   up cleanup PR.
+
+   Applies to: tab order, navigation, layout, divider patterns,
+   colour mappings, animation timings, copy that changes meaning
+   (not typo fixes).
+
+   Does NOT apply to: pure logic / API changes, bug fixes with
+   no visual surface, typo-only copy fixes, internal-only
+   utilities.
+
+2. **Session replay is on (web + mobile) — use it.** PostHog
+   captures every consent-accepted session with inputs masked. When
+   a TF report arrives, the first move is to scrub the replay
+   before opening the repo. See
+   `docs/decisions/2026-05-13-session-replay-and-feature-flags.md`
+   for the privacy posture (masking selectors, console-log opt-out,
+   project-level toggles).
+
+   Session replay is the safety net, not the gate. It does not
+   replace the "validate in sim before push" rule from
+   `feedback_validate_in_sim_before_push.md`.
+
 ## CI hygiene — non-negotiable
 
 CI runs more gates than a single `npm test` does. Failures are
