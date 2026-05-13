@@ -1,5 +1,6 @@
 import * as React from "react";
 import {
+  Alert,
   Image,
   PanResponder,
   Pressable,
@@ -319,20 +320,44 @@ function NorthStarDefault({
             {suggestion.title}
           </Text>
           {suggestion.whyLine ? (
-            <Text
-              // Activation hook (audit 2026-04-30 — leak fix #5).
-              // 12pt secondary matches the existing card cadence
-              // (the chip + macros caption row below uses the same
-              // size). Trust signal — tells the user WHICH macro
-              // fits, so "Close fit" stops reading as black-box.
-              style={[
-                Type.caption,
-                { color: colors.textSecondary, marginTop: 2 },
-              ]}
-              numberOfLines={1}
+            // 2026-05-12 (premium-bar audit DC2 polish — "Why this
+            // recommendation?" disclosure): the whyLine is now
+            // tappable. Tap surfaces an Alert with the longer
+            // reasoning (band label + macro fit composition) so
+            // power users can audit the engine without leaving the
+            // card. MacroFactor parity.
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`${suggestion.whyLine}. Tap for full reasoning.`}
+              hitSlop={4}
+              onPress={() => {
+                Alert.alert(
+                  "Why this suggestion?",
+                  [
+                    suggestion.whyLine,
+                    `Macro fit: ${suggestion.bandLabel.toLowerCase()}.`,
+                    `Predicted: ${suggestion.predictedCalories} kcal · ${Math.round(suggestion.predictedProtein)}g P · ${Math.round(suggestion.predictedCarbs)}g C · ${Math.round(suggestion.predictedFat)}g F.`,
+                    "Suppr picks the saved recipe that best closes the gap to your remaining macros for today. Re-run by skipping (swipe left) to see another candidate.",
+                  ].filter(Boolean).join("\n\n"),
+                );
+              }}
+              style={{ alignSelf: "flex-start", paddingVertical: 2 }}
             >
-              {suggestion.whyLine}
-            </Text>
+              <Text
+                style={[
+                  Type.caption,
+                  {
+                    color: colors.textSecondary,
+                    marginTop: 2,
+                    textDecorationLine: "underline",
+                    textDecorationStyle: "dotted",
+                  },
+                ]}
+                numberOfLines={1}
+              >
+                {suggestion.whyLine}
+              </Text>
+            </Pressable>
           ) : null}
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
             <View

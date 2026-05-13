@@ -109,21 +109,39 @@ export default function RoadmapPage() {
                 <ul className="mt-3 space-y-3 text-sm leading-relaxed sm:text-base">
                   {bucket.items.map((item) => {
                     const status = STATUS_COPY[item.status];
+                    // 2026-05-12 (premium-bar audit Group A Roadmap #3):
+                    // shipped rows link to /whats-new so the user can
+                    // see the actual release notes for the item.
+                    // Building / planned rows stay non-interactive
+                    // (no destination to send the user to yet).
+                    const Wrapper = status.label === "Shipped"
+                      ? (props: React.PropsWithChildren) => (
+                          <Link
+                            href="/whats-new"
+                            className="flex items-start gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm hover:bg-accent/50 transition-colors"
+                          >
+                            {props.children}
+                          </Link>
+                        )
+                      : (props: React.PropsWithChildren) => (
+                          <div className="flex items-start gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
+                            {props.children}
+                          </div>
+                        );
                     return (
-                      <li
-                        key={item.text}
-                        className="flex items-start gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm"
-                      >
-                        <span
-                          aria-hidden
-                          className={`mt-1.5 inline-block w-2 h-2 rounded-full shrink-0 ${status.dotClass}`}
-                        />
-                        <span className="text-foreground flex-1">{item.text}</span>
-                        <span
-                          className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-xs font-medium ${status.className}`}
-                        >
-                          {status.label}
-                        </span>
+                      <li key={item.text}>
+                        <Wrapper>
+                          <span
+                            aria-hidden
+                            className={`mt-1.5 inline-block w-2 h-2 rounded-full shrink-0 ${status.dotClass}`}
+                          />
+                          <span className="text-foreground flex-1">{item.text}</span>
+                          <span
+                            className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-xs font-medium ${status.className}`}
+                          >
+                            {status.label}
+                          </span>
+                        </Wrapper>
                       </li>
                     );
                   })}
