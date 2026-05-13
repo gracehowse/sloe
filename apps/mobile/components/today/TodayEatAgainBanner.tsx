@@ -1,8 +1,20 @@
 import React from "react";
 import { Pressable, Text, View } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+  Easing,
+} from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import { Accent, Radius, Spacing } from "@/constants/theme";
 import type { FoodHistoryItem } from "../../../../src/lib/nutrition/foodHistory";
+
+// 2026-05-12 (premium-bar audit DC3 polish — Cal AI 200ms fade-up
+// on first paint): the EatAgain banner now eases in over 220ms with
+// a small upward translate. Mirrors NorthStarBlock's fade-up so
+// every Today suggestion card lands with the same calm motion.
+const AnimatedView = Animated.createAnimatedComponent(View);
 
 /**
  * TodayEatAgainBanner — one-tap re-log of the previous-day meal in
@@ -28,20 +40,43 @@ export function TodayEatAgainBanner({
   onLog,
   onDismiss,
 }: TodayEatAgainBannerProps) {
+  // 220ms ease-out fade + translate on first paint. No reduce-motion
+  // gate here because the banner is a small accent (not a full-bleed
+  // card); the motion is subtle enough that the reduce-motion budget
+  // doesn't trip. Matches NorthStarBlock pattern.
+  const opacity = useSharedValue(0);
+  const translate = useSharedValue(6);
+  React.useEffect(() => {
+    opacity.value = withTiming(1, {
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
+    });
+    translate.value = withTiming(0, {
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [opacity, translate]);
+  const fadeStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateY: translate.value }],
+  }));
   return (
-    <View
-      style={{
-        marginBottom: Spacing.md,
-        backgroundColor: Accent.primary + "08",
-        borderWidth: 1,
-        borderColor: Accent.primary + "30",
-        borderRadius: Radius.lg,
-        paddingHorizontal: Spacing.md,
-        paddingVertical: Spacing.sm,
-        flexDirection: "row",
-        alignItems: "center",
-        gap: Spacing.sm,
-      }}
+    <AnimatedView
+      style={[
+        {
+          marginBottom: Spacing.md,
+          backgroundColor: Accent.primary + "08",
+          borderWidth: 1,
+          borderColor: Accent.primary + "30",
+          borderRadius: Radius.lg,
+          paddingHorizontal: Spacing.md,
+          paddingVertical: Spacing.sm,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: Spacing.sm,
+        },
+        fadeStyle,
+      ]}
     >
       <View style={{ flex: 1 }}>
         <Text style={{ fontSize: 10, fontWeight: "700", color: Accent.primary, letterSpacing: 1 }}>EAT AGAIN</Text>
@@ -79,7 +114,7 @@ export function TodayEatAgainBanner({
       >
         <Ionicons name="close" size={18} color={textSecondaryColor} />
       </Pressable>
-    </View>
+    </AnimatedView>
   );
 }
 

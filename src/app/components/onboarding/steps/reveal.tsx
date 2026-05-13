@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { BookOpen, Sparkles, Target } from "lucide-react";
+import { BookOpen, ChevronDown, ChevronUp, Sparkles, Target } from "lucide-react";
 import { useOnboarding } from "../context";
 import { MethodologyNote } from "../scaffold";
 
@@ -239,6 +239,19 @@ export function RevealStep({ compact = false }: RevealProps) {
           data over the first ~2 weeks.
         </MethodologyNote>
 
+        {/* 2026-05-12 (premium-bar audit B5 #3 — Cal AI parity, web
+            mirror of mobile `RevealShowTheMaths`): "Show the maths"
+            expandable that reveals the formula breakdown. Closed by
+            default — power users tap to expand, average user reads
+            the bigger blocks above. */}
+        <RevealShowTheMaths
+          bmr={targets.bmr}
+          tdee={targets.tdee}
+          target={targets.target}
+          kcalAdj={targets.kcalAdj}
+          goal={state.goal ?? "maintain"}
+        />
+
         {/* 2026-05-12 (premium-bar audit DC1 — Cal AI plan-reveal borrow,
             web parity with mobile reveal.tsx). "What happens next" 3-step
             card anchors the abstract number to the daily loop. */}
@@ -269,6 +282,96 @@ export function RevealStep({ compact = false }: RevealProps) {
           />
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * RevealShowTheMaths — 2026-05-12 (premium-bar audit B5 #3, web mirror
+ * of mobile `RevealShowTheMaths` in `apps/mobile/components/onboarding/
+ * steps/reveal.tsx`).
+ *
+ * A "Show the maths" disclosure rendered below the BMR / TDEE tiles.
+ * Closed by default. Tap → reveals BMR + Est. TDEE + Target rows with
+ * the formula reasoning so power users can audit the numbers without
+ * crowding the default state.
+ */
+function RevealShowTheMaths({
+  bmr,
+  tdee,
+  target,
+  kcalAdj,
+  goal,
+}: {
+  bmr: number;
+  tdee: number;
+  target: number;
+  kcalAdj: number;
+  goal: "lose" | "maintain" | "gain" | "recomp";
+}) {
+  const [open, setOpen] = React.useState(false);
+  const adjSigned =
+    goal === "gain"
+      ? `+${kcalAdj.toLocaleString()}`
+      : goal === "maintain"
+        ? "±0"
+        : `−${Math.abs(kcalAdj).toLocaleString()}`;
+  const rows: { label: string; value: string; sub: string }[] = [
+    {
+      label: "BMR",
+      value: `${bmr.toLocaleString()} kcal`,
+      sub: "Mifflin-St Jeor (sex · age · height · weight)",
+    },
+    {
+      label: "Est. TDEE",
+      value: `${tdee.toLocaleString()} kcal`,
+      sub: "BMR × your activity level",
+    },
+    {
+      label: "Target",
+      value: `${target.toLocaleString()} kcal`,
+      sub: `Est. TDEE ${adjSigned} kcal for your goal`,
+    },
+  ];
+  return (
+    <div className="mt-3">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-label={open ? "Hide the maths" : "Show the maths"}
+        className="inline-flex items-center gap-1.5 py-2 text-[12px] font-semibold text-primary hover:opacity-70 transition-opacity"
+      >
+        {open ? "Hide the maths" : "Show the maths"}
+        {open ? (
+          <ChevronUp className="size-3.5" strokeWidth={2.25} />
+        ) : (
+          <ChevronDown className="size-3.5" strokeWidth={2.25} />
+        )}
+      </button>
+      {open ? (
+        <div
+          className="mt-1.5 rounded-xl border border-border bg-card p-3.5 space-y-3"
+          role="region"
+          aria-label="How your target is calculated"
+        >
+          {rows.map((row) => (
+            <div key={row.label}>
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-muted-foreground">
+                  {row.label}
+                </span>
+                <span className="text-[15px] font-bold tabular-nums text-foreground">
+                  {row.value}
+                </span>
+              </div>
+              <div className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                {row.sub}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }

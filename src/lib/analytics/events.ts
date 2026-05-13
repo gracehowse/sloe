@@ -83,6 +83,12 @@ export const AnalyticsEvents = {
   recipe_page_viewed: "recipe_page_viewed",
   onboarding_completed: "onboarding_completed",
   onboarding_step_completed: "onboarding_step_completed",
+  /** 2026-05-12 (premium-bar audit B9 #2): fires when the
+   *  `/onboarding-v2` legacy redirect screen mounts. The route was
+   *  renamed 2026-04-30; this counter is the end-of-life signal —
+   *  when stale-link traffic drops to zero for a sustained window,
+   *  the redirect screen can be removed. Payload: `{ surface: 'mobile' }`. */
+  onboarding_v2_redirect_followed: "onboarding_v2_redirect_followed",
   paywall_viewed: "paywall_viewed",
   /** Fires when the user dismisses an in-app paywall surface
    *  (currently: `UpgradePaywallDialog` on web). Payload:
