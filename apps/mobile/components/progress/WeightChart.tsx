@@ -289,8 +289,15 @@ export function WeightChart({ trend, goalKg, isImperial = false, range }: Props)
   const goalIsAboveChart = goalY != null && goalY < PAD_TOP;
   const goalIsOffChart = goalIsBelowChart || goalIsAboveChart;
 
-  const lineColor =
-    trend.trendDirection === "worsening" ? Accent.warning : Accent.primary;
+  // 2026-05-13 (premium-bar audit Group H weight chart #5): trend-line
+  // colour previously swapped to `Accent.warning` (amber) when
+  // `trend.trendDirection === "worsening"`. Withings keeps the trend
+  // line one colour regardless; the directional signal lives in the
+  // caption / status pill, not bled into the canonical chart line.
+  // Swapping the line colour mid-display also broke the user's
+  // mental model — they learn the colour as "this is my weight",
+  // not as a verdict. Drop the swap; line stays primary.
+  const lineColor = Accent.primary;
 
   // 2026-05-11 (mockup signed off): 4 gridlines + their Y-axis
   // labels, evenly spaced from yMax to yMin so the user has a finer

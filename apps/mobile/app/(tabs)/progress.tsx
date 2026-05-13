@@ -1070,6 +1070,12 @@ export default function ProgressScreen() {
               accessibilityLabel={`Range ${label}`}
               accessibilityState={{ selected: active }}
               onPress={() => setRangeKey(k)}
+              // 2026-05-13 (premium-bar audit Group H weight chart #7):
+              // visible pill is ~28pt tall; hitSlop extends the touch
+              // target above + below to ≥40pt without changing visual
+              // geometry. Apple HIG recommends ≥44pt; testers reported
+              // missed taps on the range row at the prior visual size.
+              hitSlop={{ top: 8, bottom: 8, left: 2, right: 2 }}
               style={({ pressed }) => [{
                 flex: 1,
                 paddingVertical: 8,

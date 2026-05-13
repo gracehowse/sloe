@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { BookOpen, ChevronDown, ChevronUp, Sparkles, Target } from "lucide-react";
+import { isFeatureEnabled } from "../../../../lib/analytics/track";
 import { useOnboarding } from "../context";
 import { MethodologyNote } from "../scaffold";
 
@@ -418,18 +419,27 @@ function MacroTile({
   color: string;
   pct: number;
 }) {
+  // 2026-05-13 (premium-bar audit Reveal #4 — pair macro % with g
+  // inline): web parity mirror of the mobile flag-gated layout.
+  // Same flag name + gating posture so both platforms flip
+  // simultaneously when Grace enables `reveal-macro-tile-paired-pct`
+  // in PostHog. Default OFF — original layout unchanged for real
+  // users until the flag is flipped.
+  const pairedLayout = isFeatureEnabled("reveal-macro-tile-paired-pct");
   return (
     <div className="bg-card border border-border rounded-xl p-3.5">
       <div className="flex justify-between items-center mb-2.5">
         <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
           {name}
         </span>
-        <span
-          className="text-[10px] font-bold tabular-nums"
-          style={{ color }}
-        >
-          {pct}%
-        </span>
+        {!pairedLayout ? (
+          <span
+            className="text-[10px] font-bold tabular-nums"
+            style={{ color }}
+          >
+            {pct}%
+          </span>
+        ) : null}
       </div>
       <div
         className="text-[22px] font-extrabold tabular-nums leading-none text-foreground tracking-tight"
@@ -439,6 +449,14 @@ function MacroTile({
         <span className="text-xs text-muted-foreground font-medium ml-0.5">
           g
         </span>
+        {pairedLayout ? (
+          <span
+            className="text-xs font-bold tabular-nums ml-1.5"
+            style={{ color }}
+          >
+            · {pct}%
+          </span>
+        ) : null}
       </div>
       <div
         className="mt-2.5 h-[3px] rounded-sm"
