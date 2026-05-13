@@ -11,6 +11,7 @@ import * as Haptics from "expo-haptics";
 import { BookOpen, Sparkles, Target } from "lucide-react-native";
 import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { isFeatureEnabled } from "@/lib/analytics";
 import { useOnboarding } from "../context";
 import { MobileMethodologyNote } from "../scaffold";
 
@@ -428,6 +429,14 @@ function MacroTile({
   pct: number;
 }) {
   const colors = useThemeColors();
+  // 2026-05-13 (premium-bar audit Reveal #4 — pair macro % with g
+  // inline): feature-flag-gated layout variant that moves the
+  // percentage out of the eyebrow row and pairs it inline with the
+  // grams value. Pair flag default OFF; Grace flips the
+  // `reveal-macro-tile-paired-pct` flag in PostHog once she's
+  // validated the change in TF. Flag name + rollout doc in the
+  // commit message; cleanup follow-up in 2 weeks if ramp held 100%.
+  const pairedLayout = isFeatureEnabled("reveal-macro-tile-paired-pct");
   return (
     <View
       style={{
@@ -458,16 +467,18 @@ function MacroTile({
         >
           {name}
         </Text>
-        <Text
-          style={{
-            fontSize: 10,
-            fontWeight: "700",
-            fontVariant: ["tabular-nums"],
-            color,
-          }}
-        >
-          {pct}%
-        </Text>
+        {!pairedLayout ? (
+          <Text
+            style={{
+              fontSize: 10,
+              fontWeight: "700",
+              fontVariant: ["tabular-nums"],
+              color,
+            }}
+          >
+            {pct}%
+          </Text>
+        ) : null}
       </View>
       <Text
         style={{
@@ -484,6 +495,18 @@ function MacroTile({
           {" "}
           g
         </Text>
+        {pairedLayout ? (
+          <Text
+            style={{
+              fontSize: 12,
+              fontWeight: "700",
+              fontVariant: ["tabular-nums"],
+              color,
+            }}
+          >
+            {` · ${pct}%`}
+          </Text>
+        ) : null}
       </Text>
       <View
         style={{
