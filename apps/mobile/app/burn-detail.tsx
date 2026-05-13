@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, Switch, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -13,8 +13,13 @@ import { dateKeyFromDate } from "../../../src/lib/nutrition/trackerStats";
 import { resolveMaintenance } from "../../../src/lib/nutrition/resolveMaintenance";
 import { maintenanceIntakeFromTargetCalories } from "@/lib/calcTargets";
 import { syncHealthDataThrottled, isHealthSyncAvailable } from "@/lib/healthSync";
-import { filterByDateRangeDays } from "@/lib/weightProjection";
-import MiniBarChart from "@/components/charts/MiniBarChart";
+// `filterByDateRangeDays` import removed 2026-05-13 — was only used
+// by the 30-day steps chart which moved to Progress per TF feedback.
+// import { filterByDateRangeDays } from "@/lib/weightProjection";
+// MiniBarChart import removed 2026-05-13 — see steps-chart removal
+// note further down. Re-import here when adding back any other
+// bar-chart surface on this screen.
+// import MiniBarChart from "@/components/charts/MiniBarChart";
 
 function profileAgeYears(p: { dob?: string | null; age?: number | null }): number | null {
   if (p.age != null) {
@@ -59,6 +64,12 @@ export default function BurnDetailScreen() {
   // "Steps" row above for "no chart yet" feel.
   const [stepsByDay, setStepsByDay] = useState<Record<string, number>>({});
   const [dailyStepsGoal, setDailyStepsGoal] = useState(NUTRITION_DEFAULTS.steps);
+  // 2026-05-13 (TF feedback `AOc1nHHposbaZ7yEgDLwPdE` — "this should
+  // be a toggle so user can choose"): inline switch on this screen
+  // for `prefer_activity_adjusted_calories`. Default off — the user
+  // opts in to having today's burn bonus add to the food budget.
+  const [preferActivityAdjustedCalories, setPreferActivityAdjustedCalories] = useState(false);
+  const [savingPreference, setSavingPreference] = useState(false);
   // 2026-04-26 polish (round 2): pre-fix the screen rendered a static
   // "Loading..." text with no spinner and no terminal state — if userId
   // was null or the profile select returned an empty row, the screen
@@ -92,7 +103,7 @@ export default function BurnDetailScreen() {
         const { data: profile, error: profileErr } = await supabase
           .from("profiles")
           .select(
-            "activity_burn_by_day, basal_burn_by_day, steps_by_day, daily_steps_goal, workouts_by_day, target_calories, goal, plan_pace, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, sex, height_cm, weight_kg, age, dob, activity_level",
+            "activity_burn_by_day, basal_burn_by_day, steps_by_day, daily_steps_goal, workouts_by_day, target_calories, goal, plan_pace, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, sex, height_cm, weight_kg, age, dob, activity_level, prefer_activity_adjusted_calories",
           )
           .eq("id", userId)
           .maybeSingle();
@@ -129,6 +140,7 @@ export default function BurnDetailScreen() {
           maintenanceKcal,
           workouts: Array.isArray((p.workouts_by_day ?? {})[viewKey]) ? (p.workouts_by_day ?? {})[viewKey] : [],
         });
+        setPreferActivityAdjustedCalories(Boolean(p.prefer_activity_adjusted_calories));
         // Hydrate the 30-day steps trend (Phase 2 relocation). The map
         // comes from HealthKit sync (mobile) or manual entry; we coerce
         // every value to a finite number, drop the rest, so the chart
@@ -157,24 +169,10 @@ export default function BurnDetailScreen() {
     return () => { cancelled = true; };
   }, [userId, viewKey]);
 
-  // 30-day steps trend — last 30 days, oldest → newest, formatted for
-  // MiniBarChart consumption. Mirror of /weight-tracker's old build
-  // (filterByDateRangeDays + label/value shape) so the chart renders
-  // identically on this surface.
-  const stepsHistory = useMemo(() => {
-    const filtered = filterByDateRangeDays(stepsByDay, 30);
-    return Object.entries(filtered).map(([k, v]) => ({
-      label: (() => {
-        try {
-          const d = new Date(k + "T00:00:00");
-          return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-        } catch {
-          return k;
-        }
-      })(),
-      value: v,
-    }));
-  }, [stepsByDay]);
+  // 30-day steps trend memo removed 2026-05-13 (TF
+  // `AEAhefzqZ_0tuPnEONlytgI`) along with the chart. `stepsByDay`
+  // stays in state because it still feeds today's step count
+  // surface near the top of the screen.
 
   const totals = useMemo(() => {
     if (!data) return null;
@@ -284,43 +282,16 @@ export default function BurnDetailScreen() {
                 daily goal as a horizontal line. Burn detail is the
                 canonical activity drill-down per MFP + Lose It IA —
                 steps belongs here, not on the weight surface. Renders
-                only when there are at least 2 days of data. */}
-            {stepsHistory.length >= 2 && (
-              <View
-                style={{
-                  marginTop: Spacing.lg,
-                  padding: Spacing.md,
-                  borderRadius: Radius.md,
-                  backgroundColor: colors.card,
-                  borderWidth: 1,
-                  borderColor: colors.cardBorder,
-                  gap: 10,
-                }}
-              >
-                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" }}>
-                  <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text }}>
-                    Steps · last 30 days
-                  </Text>
-                  <Text
-                    style={{
-                      fontSize: 11,
-                      color: colors.textTertiary,
-                      fontVariant: ["tabular-nums"],
-                    }}
-                  >
-                    Goal {dailyStepsGoal.toLocaleString()}
-                  </Text>
-                </View>
-                <MiniBarChart
-                  data={stepsHistory}
-                  goalLine={dailyStepsGoal}
-                  color={Accent.success}
-                  trackColor={colors.border}
-                  labelColor={colors.textTertiary}
-                  goalColor={Accent.success}
-                />
-              </View>
-            )}
+                only when there are at least 2 days of data.
+                2026-05-13 (TF feedback `AEAhefzqZ_0tuPnEONlytgI` —
+                "we don't need the last 30 days step chart here that
+                belongs in progress"): the 30-day steps chart removed
+                from Activity Bonus. Today's bonus surface is about
+                *today's* burn — a 30-day trend chart belongs in
+                Progress, not on the daily drill-down. The chart now
+                lives at the top of the burn-history rail in
+                Progress's burn / activity section (which still uses
+                the same `stepsHistory` data shape). */}
 
             {/* Totals card */}
             {totals && (
@@ -351,6 +322,64 @@ export default function BurnDetailScreen() {
                 )}
               </View>
             )}
+
+            {/* 2026-05-13 (TF feedback `AOc1nHHposbaZ7yEgDLwPdE` —
+                "this should be a toggle so user can choose"):
+                inline switch right under the bonus so the user can
+                opt in / out without digging into Settings. When ON,
+                today's bonus is added to the calorie target on
+                Today; OFF (default) keeps the target static and
+                the bonus is informational only. Bug repro from the
+                same feedback ("bonus earned over 300 but not
+                reflected in target") was the default-OFF case;
+                surfacing the toggle here closes the loop. */}
+            {totals && totals.bonus > 0 ? (
+              <View
+                style={{
+                  marginTop: Spacing.lg,
+                  padding: Spacing.md,
+                  borderRadius: Radius.md,
+                  backgroundColor: colors.card,
+                  borderWidth: 1,
+                  borderColor: colors.cardBorder,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 12,
+                }}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text }}>
+                    Add bonus to today&apos;s budget
+                  </Text>
+                  <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2, lineHeight: 16 }}>
+                    When on, the bonus above adds to your Today calorie target.
+                  </Text>
+                </View>
+                <Switch
+                  value={preferActivityAdjustedCalories}
+                  disabled={savingPreference || !userId}
+                  onValueChange={async (next) => {
+                    setPreferActivityAdjustedCalories(next);
+                    if (!userId) return;
+                    setSavingPreference(true);
+                    try {
+                      const { error } = await supabase
+                        .from("profiles")
+                        .update({ prefer_activity_adjusted_calories: next })
+                        .eq("id", userId);
+                      if (error) {
+                        // Roll back on error so the UI stays
+                        // honest about what's persisted.
+                        setPreferActivityAdjustedCalories(!next);
+                      }
+                    } finally {
+                      setSavingPreference(false);
+                    }
+                  }}
+                  trackColor={{ true: Accent.primary, false: colors.border }}
+                />
+              </View>
+            ) : null}
 
             {/* 2026-05-07 ui-critic F6: trimmed the activity-bonus
                 explainer to the one fact that matters at this level —

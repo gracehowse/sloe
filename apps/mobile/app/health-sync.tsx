@@ -475,8 +475,14 @@ export default function HealthSyncScreen() {
       {/* Nutrition export card */}
       <View style={styles.card}>
         <CardTitle styles={styles} icon="nutrition" text="Nutrition Sync" />
+        {/* 2026-05-13 (TF feedback `AOe4rm7514fI3dj_TliRdqk` —
+            "internal language needs to be removed"): the prior copy
+            leaked an audit-doc reference ("Audit/2026-04-30"), a
+            competitor name ("matching MyFitnessPal / Cal AI"), and
+            internal jargon ("Complete Day"). Rewritten in plain
+            English for the user-facing surface. */}
         <Text style={styles.desc}>
-          {`Share your Suppr meals to Apple Health so other apps can see them. Audit/2026-04-30 — meals are now written per-log (matching MyFitnessPal / Cal AI), not only at "Complete Day". Energy, protein, carbs, fat, and fibre are written for every meal you log; AI-estimated rows are skipped until you confirm them.`}
+          Share your Suppr meals to Apple Health so other apps can see them. Energy, protein, carbs, fat, and fibre are written each time you log a meal — AI-estimated rows are skipped until you confirm them.
         </Text>
 
         <View style={{ marginTop: Spacing.lg, gap: Spacing.md }}>

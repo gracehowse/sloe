@@ -6,6 +6,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Switch,
@@ -490,6 +491,9 @@ export default function TrackerScreen() {
   // headline + range copy. `null` = closed.
   const [provenanceContext, setProvenanceContext] = useState<"activity" | "burn" | null>(null);
   const [healthLastSyncedAtMs, setHealthLastSyncedAtMs] = useState<number | null>(null);
+  // 2026-05-13 (TF feedback `AKmYHgZ7WA9uUUOSbjPtL2U`):
+  // pull-to-refresh state for the Today ScrollView's RefreshControl.
+  const [isPullToRefreshing, setIsPullToRefreshing] = useState(false);
   const [collapsedSlots, setCollapsedSlots] = useState<Set<string>>(new Set());
   const [title, setTitle] = useState("");
   const [kcal, setKcal] = useState("");
@@ -4327,7 +4331,38 @@ export default function TrackerScreen() {
         onSkip={onPostOnbPushSkip}
         onEnable={onPostOnbPushEnable}
       />
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      {/* 2026-05-13 (TF feedback `AKmYHgZ7WA9uUUOSbjPtL2U` — "drag
+          down to sync functionality"): pull-to-refresh on Today
+          forces a HealthKit re-sync (steps + burn + weight) and
+          re-pulls profile basics so the user can pull-down to
+          force the data behind the ring to refresh on demand.
+          Mirrors MFP / Cal AI / Lose It pattern. The
+          `bypassThrottle: true` flag on `syncHealthDataThrottled`
+          skips the 60s cool-down so the manual gesture always
+          fires. */}
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={isPullToRefreshing}
+            onRefresh={async () => {
+              setIsPullToRefreshing(true);
+              if (process.env.EXPO_OS === "ios") {
+                void Haptics.selectionAsync();
+              }
+              try {
+                if (userId) {
+                  await syncHealthDataThrottled(userId, { bypassThrottle: true });
+                }
+              } finally {
+                setIsPullToRefreshing(false);
+              }
+            }}
+          />
+        }
+      >
         {/* Phase 2 / B1.2 (D-2026-04-27-07) — streak as a calm pip
             next to the date row. The earlier streak ribbon was removed
             2026-04-20; this pip is the binding pattern going forward.
