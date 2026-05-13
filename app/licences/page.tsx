@@ -47,6 +47,7 @@ export default function LicencesPage() {
       lastUpdated="April 2026"
       version="v1.0"
       subtitle="The software Suppr ships and the data Suppr displays — and the licences they use."
+      revisionPath="app/licences/page.tsx"
     >
         <p className="text-sm text-slate-700 dark:text-slate-300 mb-8">
           Suppr is built on the work of hundreds of open-source contributors and the maintainers of public food-data

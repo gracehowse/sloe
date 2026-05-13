@@ -37,6 +37,14 @@ export const metadata: Metadata = {
   title: "What's new — Suppr",
   description:
     "Fixes, new features, and upcoming work in every Suppr build.",
+  // 2026-05-13 — RSS feed discoverability. `<link rel="alternate">`
+  // in the `<head>` lets feed-reader browser extensions auto-detect
+  // the feed when the user lands on `/whats-new`.
+  alternates: {
+    types: {
+      "application/rss+xml": "/whats-new/rss.xml",
+    },
+  },
 };
 
 function formatReleaseDate(iso: string): string {

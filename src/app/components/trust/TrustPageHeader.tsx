@@ -29,6 +29,12 @@ export interface TrustPageHeaderProps {
    *  version line. Set `false` on a page that doesn't want a
    *  related-docs jump (rare). */
   showCrossLinks?: boolean;
+  /** 2026-05-13 — repo path for the page (e.g. `app/privacy/page.tsx`).
+   *  When provided, the header renders a "Revision history" link
+   *  pointing at the GitHub `/commits/main/<path>` view so users +
+   *  legal reviewers can see what changed per version without us
+   *  maintaining a separate per-page changelog. */
+  revisionPath?: string;
 }
 
 export function TrustPageHeader({
@@ -37,6 +43,7 @@ export function TrustPageHeader({
   version,
   subtitle,
   showCrossLinks = true,
+  revisionPath,
 }: TrustPageHeaderProps) {
   return (
     <header className="mb-8">
@@ -84,6 +91,24 @@ export function TrustPageHeader({
         >
           Print / save PDF
         </button>
+        {/* 2026-05-13 (premium-bar audit Group A trust pages —
+            version-history link): legal-review processes (and
+            careful users) want to see what changed between
+            versions. The trust pages are checked into git at
+            `app/{privacy,terms,dmca,licences}/page.tsx`; linking
+            the GitHub commits view gives a full per-line revision
+            history without us maintaining a separate changelog
+            doc per page. The repo is public so no auth gate. */}
+        {revisionPath ? (
+          <a
+            href={`https://github.com/gracehowse/Suppr/commits/main/${revisionPath}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[10px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:text-violet-600 dark:hover:text-violet-400 transition-colors print:hidden"
+          >
+            Revision history ↗
+          </a>
+        ) : null}
       </div>
       {showCrossLinks ? (
         <nav

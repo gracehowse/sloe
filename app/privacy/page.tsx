@@ -35,6 +35,7 @@ export default function PrivacyPage() {
       version="v1.0"
       subtitle="What we process, who we share it with, and your choices."
       sections={PRIVACY_SECTIONS}
+      revisionPath="app/privacy/page.tsx"
     >
         <div className="prose prose-slate dark:prose-invert prose-sm max-w-none space-y-4 text-slate-700 dark:text-slate-300">
           <p>

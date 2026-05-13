@@ -42,6 +42,7 @@ export function TrustPageLayout({
   subtitle,
   sections,
   children,
+  revisionPath,
 }: TrustPageLayoutProps) {
   const hasToc = Array.isArray(sections) && sections.length > 0;
   return (
@@ -54,6 +55,7 @@ export function TrustPageLayout({
           lastUpdated={lastUpdated}
           version={version}
           subtitle={subtitle}
+          revisionPath={revisionPath}
         />
         {hasToc ? (
           <div className="lg:grid lg:grid-cols-[180px_1fr] lg:gap-10">

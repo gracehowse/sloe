@@ -35,6 +35,7 @@ export default function DmcaPage() {
       lastUpdated="April 2026"
       version="v1.0"
       sections={DMCA_SECTIONS}
+      revisionPath="app/dmca/page.tsx"
     >
         <div className="prose prose-slate dark:prose-invert prose-sm max-w-none space-y-4 text-slate-700 dark:text-slate-300">
           <p>

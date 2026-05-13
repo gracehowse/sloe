@@ -207,7 +207,12 @@ export function NorthStarBlock({
           <Sparkles aria-hidden width={10} height={10} />
           What to eat next
         </span>
-        <span className="text-[15px] font-bold leading-tight">{suggestion.title}</span>
+        {/* 2026-05-13 (premium-bar audit DC2 polish — Recime
+            multi-line + line-clamp(2)): web title now matches the
+            mobile pattern (`numberOfLines={2}`) so long recipe
+            titles wrap to a second line cleanly instead of
+            mid-word truncating. */}
+        <span className="text-[15px] font-bold leading-tight line-clamp-2">{suggestion.title}</span>
         {suggestion.whyLine ? (
           // Activation hook (audit 2026-04-30 — leak fix #5). 12px
           // muted matches the existing card cadence; tells the user

@@ -163,6 +163,23 @@ export default function RoadmapPage() {
           >
             Back to home
           </Link>
+          {/* 2026-05-13 (premium-bar audit Group A Roadmap #5 — "Get
+              notified when X ships"): full email-capture form needs a
+              backend endpoint (Mailchimp / Resend / Loops) which
+              isn't wired yet, so the substitute is an RSS subscribe
+              link. Users who want to track shipped items can add the
+              /whats-new RSS feed to their reader of choice. Same
+              affordance Vercel / Linear use as their "track new
+              versions" path. */}
+          <a
+            href="/whats-new/rss.xml"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-border bg-card px-6 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+              <path d="M6.18 17.82c0 1.21-.98 2.18-2.18 2.18s-2.18-.97-2.18-2.18.97-2.18 2.18-2.18 2.18.97 2.18 2.18zm-4.36-7.18c0 .73.59 1.32 1.32 1.32 4.41 0 8 3.59 8 8 0 .73.59 1.32 1.32 1.32s1.32-.59 1.32-1.32c0-5.87-4.77-10.64-10.64-10.64-.73 0-1.32.59-1.32 1.32zm0-6c0 .73.59 1.32 1.32 1.32 7.72 0 14 6.28 14 14 0 .73.59 1.32 1.32 1.32s1.32-.59 1.32-1.32C19.78 7.42 12.36 0 4.14 0 3.41 0 2.82.59 2.82 1.32z" />
+            </svg>
+            Get notified — RSS
+          </a>
         </div>
       </main>
     </div>

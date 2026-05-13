@@ -33,6 +33,7 @@ export default function TermsPage() {
       lastUpdated="April 2026"
       version="v1.0"
       sections={TERMS_SECTIONS}
+      revisionPath="app/terms/page.tsx"
     >
         <div className="prose prose-slate dark:prose-invert prose-sm max-w-none space-y-4 text-slate-700 dark:text-slate-300">
           <p>

@@ -160,10 +160,17 @@ function Hero() {
     <section className="lp-hero">
       <div className="lp-wrap lp-hero-grid">
         <div className="lp-hero-copy">
-          <span className="lp-hero-chip">
+          {/* 2026-05-13 (premium-bar audit Group A landing #3): the
+              "NEW · Paste a TikTok" eyebrow is now a real anchor link
+              pointing to the recipe-import feature explainer. The
+              audit flagged this — users were reading it as a decorative
+              chip; making it tappable + showing the arrow indicates
+              "tap to learn more". */}
+          <a href="#features" className="lp-hero-chip lp-hero-chip-link">
             <span className="lp-tag">New</span>
             Paste a TikTok, get real macros
-          </span>
+            <ArrowRight width={12} height={12} aria-hidden style={{ marginLeft: 4 }} />
+          </a>
           <h1 className="lp-h-display">
             Import any recipe.
             <br />
@@ -178,7 +185,12 @@ function Hero() {
             <Link className="lp-btn lp-btn-primary lp-btn-lg" href={SIGNUP_HREF}>
               Get started — it’s free
             </Link>
-            <a className="lp-btn lp-btn-ghost lp-btn-lg" href="#what">
+            {/* 2026-05-13 (premium-bar audit Group A landing #2):
+                secondary CTA demoted from button (`lp-btn-ghost`) to
+                text link (`lp-btn-link`). Two equal-weight large
+                buttons split the eye-path; one primary + one text
+                link is the Linear / Vercel / Notion convention. */}
+            <a className="lp-btn lp-btn-link" href="#what">
               See how it works
               <ArrowRight width={16} height={16} aria-hidden />
             </a>
