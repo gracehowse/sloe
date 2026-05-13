@@ -35,7 +35,21 @@ import {
   sumMicrosFromLoggedMeals,
 } from "@/lib/healthDietaryNutrients";
 import { supabase } from "@/lib/supabase";
-import { Ionicons } from "@expo/vector-icons";
+// ENG-73 (2026-05-13): Today moved off `@expo/vector-icons`
+// (Ionicons) to lucide-react-native to bring the screen's supporting
+// glyphs in line with the prototype carryover rule #2 (icons must be
+// the exact lucide set, not approximations). The macro-tile glyphs
+// (Beef / Wheat / Droplets / Leaf) already used lucide — these six
+// were the leftover supporting icons on Today.
+import {
+  AlertCircle,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  CloudOff,
+  X,
+  Zap,
+} from "lucide-react-native";
 import { Accent, Spacing, Radius } from "@/constants/theme";
 import FoodSearchModal, { type SelectedFood as FoodSearchSelectedFood } from "@/components/FoodSearchModal";
 import BarcodeScannerModal from "@/components/BarcodeScannerModal";
@@ -4424,7 +4438,7 @@ export default function TrackerScreen() {
 
         {isOffline && (
           <View style={styles.offlineBanner} accessibilityRole="alert">
-            <Ionicons name="cloud-offline-outline" size={14} color={Accent.primary} />
+            <CloudOff size={14} color={Accent.primary} strokeWidth={1.75} />
             <Text style={styles.offlineBannerText}>{"Offline · syncing when you reconnect"}</Text>
           </View>
         )}
@@ -4435,7 +4449,7 @@ export default function TrackerScreen() {
             onPress={() => { setLoadError(null); void loadJournal(); }}
             style={{ backgroundColor: Accent.destructive + "18", borderRadius: Radius.md, padding: Spacing.md, flexDirection: "row", alignItems: "center", gap: Spacing.sm }}
           >
-            <Ionicons name="alert-circle" size={18} color={Accent.destructive} />
+            <AlertCircle size={18} color={Accent.destructive} strokeWidth={1.75} />
             <Text style={{ flex: 1, fontSize: 13, color: Accent.destructive, fontWeight: "600" }}>
               {loadError}
               {" Tap to retry."}
@@ -4859,17 +4873,17 @@ export default function TrackerScreen() {
               }}
             >
               <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
-                <Ionicons name="flash-outline" size={18} color={Accent.primary} />
+                <Zap size={18} color={Accent.primary} strokeWidth={1.75} />
                 <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>Quick add</Text>
                 <Text numberOfLines={1} style={{ flexShrink: 1, fontSize: 12, color: colors.textTertiary }}>
                   Usual meals, recent, frequent, favourites
                 </Text>
               </View>
-              <Ionicons
-                name={quickAddCollapsed ? "chevron-down" : "chevron-up"}
-                size={18}
-                color={colors.textSecondary}
-              />
+              {quickAddCollapsed ? (
+                <ChevronDown size={18} color={colors.textSecondary} strokeWidth={2} />
+              ) : (
+                <ChevronUp size={18} color={colors.textSecondary} strokeWidth={2} />
+              )}
             </Pressable>
             {!quickAddCollapsed && (
               <View style={{ marginTop: Spacing.sm }}>
@@ -5446,10 +5460,10 @@ export default function TrackerScreen() {
               elevation: 4,
             }}
           >
-            <Ionicons
-              name="checkmark-circle"
+            <CheckCircle2
               size={22}
               color={Accent.success}
+              strokeWidth={1.75}
             />
             <View style={{ flexShrink: 1 }}>
               <Text
@@ -5689,7 +5703,7 @@ export default function TrackerScreen() {
               </Text>
             </View>
             <Pressable onPress={() => setShowPrevious(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Close quick add">
-              <Ionicons name="close" size={24} color={colors.text} />
+              <X size={24} color={colors.text} strokeWidth={2} />
             </Pressable>
           </View>
           <QuickAddPanel
