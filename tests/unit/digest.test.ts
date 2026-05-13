@@ -76,7 +76,7 @@ describe("resolveDigestHeadline — §5 precedence", () => {
         streakDays: 6,
         daysLogged: 4,
       }),
-    ).toBe("Your week, at a glance.");
+    ).toBe("Last week, at a glance.");
   });
 
   it("never renders +0.0 kg — exact 0.0 is below 0.3 kg threshold", () => {
@@ -87,6 +87,6 @@ describe("resolveDigestHeadline — §5 precedence", () => {
         streakDays: 3,
         daysLogged: 4,
       }),
-    ).toBe("Your week, at a glance.");
+    ).toBe("Last week, at a glance.");
   });
 });

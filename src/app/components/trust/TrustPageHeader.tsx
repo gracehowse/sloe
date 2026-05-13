@@ -1,3 +1,4 @@
+"use client";
 /**
  * TrustPageHeader — shared header for Privacy / Terms / DMCA / Licences.
  *
@@ -64,6 +65,25 @@ export function TrustPageHeader({
             {version}
           </span>
         ) : null}
+        {/* 2026-05-13 (premium-bar audit Group A trust pages —
+            print/save-as-PDF affordance): every UK/EU compliance
+            and US legal review process expects a "save a copy"
+            option on Privacy / Terms. The browser's print dialog
+            doubles as "Save as PDF" on macOS / iOS / Windows, so a
+            single button covers both intents without an extra
+            client-side PDF lib. Hidden when JS is off (the same
+            print menu item is still in the browser's File menu). */}
+        <button
+          type="button"
+          onClick={() => {
+            if (typeof window !== "undefined") {
+              window.print();
+            }
+          }}
+          className="text-[10px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:text-violet-600 dark:hover:text-violet-400 transition-colors print:hidden"
+        >
+          Print / save PDF
+        </button>
       </div>
       {showCrossLinks ? (
         <nav

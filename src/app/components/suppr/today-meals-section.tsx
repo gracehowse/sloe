@@ -12,6 +12,7 @@ import {
 import NutritionSourceBadge from "../../../components/NutritionSourceBadge";
 import { SourceDot } from "../ui/source-dot";
 import { mapMealSourceToDot } from "../../../lib/nutrition/sourceMap";
+import { formatMacroTrailer } from "../../../lib/nutrition/macroFormat";
 import { distributeMealBudget } from "../../../lib/nutrition/mealBudget";
 import { scaledMacro } from "../../../lib/nutrition/portionMultiplier";
 import { DestructiveConfirmDialog } from "./destructive-confirm-dialog";
@@ -532,11 +533,19 @@ export function TodayMealsSection({
                   aria-label={`Log ${m.name} — ${itemsLabel}, ${summary.totalCalories} kcal`}
                 >
                   <p className="text-sm font-semibold text-foreground truncate">{m.name}</p>
+                  {/* 2026-05-13 (premium-bar audit cross-cutting):
+                      macro format unified via `formatMacroTrailer` so
+                      this row matches the canonical "698 kcal · 22g
+                      P · 95g C · 27g F" shape used on NorthStar +
+                      EatAgain + macro tiles. Was letter-first
+                      ("P 22g"). */}
                   <p className="text-[11px] text-muted-foreground mt-0.5">
-                    {itemsLabel} · {summary.totalCalories} kcal · P{" "}
-                    {Math.round(summary.totalProtein)}g · C{" "}
-                    {Math.round(summary.totalCarbs)}g · F{" "}
-                    {Math.round(summary.totalFat)}g
+                    {itemsLabel} · {formatMacroTrailer({
+                      calories: summary.totalCalories,
+                      protein: summary.totalProtein,
+                      carbs: summary.totalCarbs,
+                      fat: summary.totalFat,
+                    })}
                   </p>
                 </button>
               );

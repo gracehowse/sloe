@@ -1815,23 +1815,62 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
                   <option value="pinch">pinch</option>
                 </select>
                 {ingredient.name.trim() ? (
-                  <span
-                    className="text-xs font-medium tabular-nums text-success whitespace-nowrap px-2 py-1 rounded-lg bg-success/10 border border-success/30"
-                    title={verifiedTotals ? "Verified (USDA/FatSecret) when available" : "Estimated from name, amount, and unit"}
-                  >
+                  <>
+                    <span
+                      className="text-xs font-medium tabular-nums text-success whitespace-nowrap px-2 py-1 rounded-lg bg-success/10 border border-success/30"
+                      title={verifiedTotals ? "Verified (USDA/FatSecret) when available" : "Estimated from name, amount, and unit"}
+                    >
+                      {(() => {
+                        const r = resolveStructuredIngredient(ingredient);
+                        const key = `${r.name}||${r.amount}||${r.unit}`.toLowerCase();
+                        const v = verifiedMacroByKey?.get(key);
+                        const src = verifiedLines?.find((x) => {
+                          const xr = x.resolved;
+                          if (!xr) return false;
+                          return `${xr.name}||${xr.amount}||${xr.unit}`.toLowerCase() === key;
+                        })?.source;
+                        if (verifiedTotals && v) return `${v.calories} kcal${src ? ` · ${src}` : ""}`;
+                        return `~${macroByIngredientId.get(ingredient.id)?.calories ?? 0} kcal`;
+                      })()}
+                    </span>
+                    {/* 2026-05-13 (premium-bar audit web parity,
+                        refuse-to-pass #3 — Recime per-row confidence):
+                        coloured confidence bar mirror of the mobile
+                        verify screen (apps/mobile/app/recipe/verify.tsx).
+                        Width = confidence × 100; colour = success ≥
+                        0.9 / warning ≥ 0.5 / destructive < 0.5. Only
+                        renders when we have a verified line for this
+                        row (otherwise the engine hasn't run yet). */}
                     {(() => {
                       const r = resolveStructuredIngredient(ingredient);
                       const key = `${r.name}||${r.amount}||${r.unit}`.toLowerCase();
-                      const v = verifiedMacroByKey?.get(key);
-                      const src = verifiedLines?.find((x) => {
+                      const line = verifiedLines?.find((x) => {
                         const xr = x.resolved;
                         if (!xr) return false;
                         return `${xr.name}||${xr.amount}||${xr.unit}`.toLowerCase() === key;
-                      })?.source;
-                      if (verifiedTotals && v) return `${v.calories} kcal${src ? ` · ${src}` : ""}`;
-                      return `~${macroByIngredientId.get(ingredient.id)?.calories ?? 0} kcal`;
+                      });
+                      if (!line) return null;
+                      const pct = Math.max(0, Math.min(1, line.confidence ?? 0));
+                      const tone =
+                        pct >= 0.9
+                          ? "bg-success"
+                          : pct >= 0.5
+                            ? "bg-warning"
+                            : "bg-destructive";
+                      return (
+                        <span
+                          className="inline-block h-1 w-12 rounded-full bg-muted overflow-hidden self-center"
+                          aria-label={`Match confidence: ${Math.round(pct * 100)}%`}
+                          title={`Match confidence: ${Math.round(pct * 100)}%`}
+                        >
+                          <span
+                            className={`block h-full rounded-full ${tone}`}
+                            style={{ width: `${Math.round(pct * 100)}%` }}
+                          />
+                        </span>
+                      );
                     })()}
-                  </span>
+                  </>
                 ) : null}
                 <button
                   type="button"

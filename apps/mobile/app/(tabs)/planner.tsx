@@ -2170,7 +2170,35 @@ export default function PlannerScreen() {
               disabled={generating || savedRecipes.length === 0}
             >
               {generating ? (
-                <ActivityIndicator color="#fff" />
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                  {/* 2026-05-13 (premium-bar audit Plan Card 4 —
+                      7-dot stacked viz inline with headline):
+                      replaces the bare `<ActivityIndicator>` with
+                      a 7-dot ribbon (one dot per day of the
+                      week-long plan) plus the "Building your
+                      plan…" headline. Gives the user honest
+                      signal that the engine is filling days, not
+                      just spinning. The dot ribbon uses opacity
+                      to imply sequential fill without per-dot
+                      animation (which would need reanimated state
+                      threading on this hot path — overkill for a
+                      6–10s job). */}
+                  <View style={{ flexDirection: "row", gap: 4 }}>
+                    {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+                      <View
+                        key={i}
+                        style={{
+                          width: 6,
+                          height: 6,
+                          borderRadius: 3,
+                          backgroundColor: "#fff",
+                          opacity: 0.35 + (i / 7) * 0.6,
+                        }}
+                      />
+                    ))}
+                  </View>
+                  <Text style={styles.generateBtnText}>Building your plan…</Text>
+                </View>
               ) : (
                 <Text style={styles.generateBtnText}>Generate Plan</Text>
               )}

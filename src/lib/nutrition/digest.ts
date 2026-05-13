@@ -23,7 +23,14 @@ export type DigestHeadlineInput = {
  *   2. |weightDeltaKg| ≥ 0.3 → "Last week: down/up X.X kg." (past-tense per project voice rule)
  *   3. closestToTargetLabel present → "Closest to target: <day>."
  *   4. streakDays ≥ 7 → "Streak held — X days."
- *   5. fallback → "Your week, at a glance."
+ *   5. fallback → "Last week, at a glance."
+ *
+ * 2026-05-13 (premium-bar audit DC12 polish — past-tense voice rule):
+ * the fallback "Your week, at a glance." now reads "Last week, at a
+ * glance." to match the other recap-eyebrow surfaces (Digest range
+ * line, weight-delta headline). The recap renders Sun/Mon looking
+ * back — past tense reads as a closed retrospective, not a mid-stream
+ * nudge.
  */
 export function resolveDigestHeadline(input: DigestHeadlineInput): string {
   if (input.daysLogged === 0) return "Quiet week.";
@@ -38,5 +45,5 @@ export function resolveDigestHeadline(input: DigestHeadlineInput): string {
   if (input.streakDays >= 7) {
     return `Streak held — ${input.streakDays} days.`;
   }
-  return "Your week, at a glance.";
+  return "Last week, at a glance.";
 }

@@ -16,6 +16,7 @@ import {
   requestHealthPermissions,
   syncHealthData,
   syncNutritionFromHealth,
+  writeNutritionToHealth,
 } from "@/lib/healthSync";
 import { supabase } from "@/lib/supabase";
 
@@ -365,6 +366,57 @@ export default function HealthSyncScreen() {
     }
   }, [errorState?.kind, handleConnect, handleSync]);
 
+  // 2026-05-13 (Grace TF feedback) — diagnostic write probe. Fires a
+  // single `writeNutritionToHealth` call with a labelled 1 kcal sample.
+  // Surfaces the actual result via Alert so the user (and Grace
+  // debugging) can see whether the bridge call succeeds. The most
+  // common failure mode is iOS Settings → Health → Data Access &
+  // Devices → Suppr → Nutrition WRITE toggle being OFF — Health
+  // returns 0 from the saveFoodSample callback in that case.
+  const handleTestWrite = useCallback(() => {
+    Alert.alert(
+      "Send a test meal to Apple Health?",
+      'This writes a labelled 1 kcal entry called "Suppr test write" to verify the connection. You can delete it from the Health app afterwards.',
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Send test",
+          onPress: async () => {
+            try {
+              const count = await writeNutritionToHealth([
+                {
+                  name: "Suppr test write",
+                  calories: 1,
+                  protein: 0,
+                  carbs: 0,
+                  fat: 0,
+                  fiber: 0,
+                  date: new Date().toISOString(),
+                },
+              ]);
+              if (count > 0) {
+                Alert.alert(
+                  "Test write succeeded ✓",
+                  "Open Apple Health → Browse → Nutrition → Dietary Energy. You should see a 1 kcal entry from Suppr. Real meals will write automatically as you log them.",
+                );
+              } else {
+                Alert.alert(
+                  "Test write blocked",
+                  'Apple Health rejected the write. Open Settings → Health → Data Access & Devices → Suppr, then enable WRITE access for Dietary Energy / Protein / Carbohydrates / Fat / Dietary Fiber. After re-enabling, try this test again.',
+                );
+              }
+            } catch (e) {
+              Alert.alert(
+                "Test write errored",
+                e instanceof Error ? e.message : "Unknown error. See logs for details.",
+              );
+            }
+          },
+        },
+      ],
+    );
+  }, []);
+
   const handleClearImported = useCallback(() => {
     if (!userId) return;
     Alert.alert(
@@ -533,6 +585,43 @@ export default function HealthSyncScreen() {
           <Text style={{ fontSize: 12, color: colors.textTertiary, marginLeft: 28, marginTop: -4 }}>
             Your logged meals will be written to Apple Health for other apps to read. Each meal is written when you log it; re-logs of the same entry are de-duplicated.
           </Text>
+
+          {/* 2026-05-13 (Grace TF feedback — "meals are not sharing
+              to Health from Suppr, only from Health to Suppr"): the
+              write path had no diagnostic — when iOS Health denies
+              Nutrition WRITE permission (it can be denied
+              independently of reads), the `saveFoodSample` bridge
+              call returns 0 and Suppr swallows it silently. This
+              "Send a test meal" button writes one 1-kcal probe
+              entry labelled "Suppr test write" and Alert-reports
+              the result so the user can verify the write path
+              actually fires. Failure most commonly means the
+              Nutrition WRITE toggle is OFF in iOS Settings →
+              Health → Data Access & Devices → Suppr. */}
+          {exportEnabled && available && connected ? (
+            <Pressable
+              onPress={handleTestWrite}
+              accessibilityRole="button"
+              accessibilityLabel="Send a test meal to Apple Health to verify writes work"
+              testID="health-sync-test-write"
+              style={({ pressed }) => ({
+                marginTop: Spacing.sm,
+                marginLeft: 28,
+                alignSelf: "flex-start",
+                paddingHorizontal: Spacing.md,
+                paddingVertical: 8,
+                borderRadius: Radius.md,
+                borderWidth: 1,
+                borderColor: Accent.primary + "55",
+                backgroundColor: Accent.primary + "10",
+                opacity: pressed ? 0.7 : 1,
+              })}
+            >
+              <Text style={{ fontSize: 12, fontWeight: "600", color: Accent.primary }}>
+                Send a test meal to Health →
+              </Text>
+            </Pressable>
+          ) : null}
         </View>
 
         {/* Clear imported data — always visible so user can clean up past imports */}
