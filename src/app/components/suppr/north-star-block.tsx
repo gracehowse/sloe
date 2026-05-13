@@ -34,7 +34,14 @@ export type NorthStarKind =
   | "default"
   | "library-empty"
   | "over-budget"
-  | "no-fit";
+  | "no-fit"
+  // ENG-94 (2026-05-13): on a user's very first day — no nutrition
+  // history yet — the `default` suggestion card felt presumptuous
+  // (algorithm pattern-matching on targets alone, not real intake).
+  // Render a calmer "Log your first meal" card instead until ≥ 1
+  // meal has been logged anywhere in the user's history. Mirror of
+  // the mobile `NorthStarBlock` kind shipped same day.
+  | "new-user";
 
 export interface NorthStarBlockSuggestion {
   recipeId: string;
@@ -96,6 +103,26 @@ export function NorthStarBlock({
           You've hit your calories for today — eat freely, or save for tomorrow.
         </p>
       </div>
+    );
+  }
+
+  if (kind === "new-user") {
+    return (
+      <SupprCard
+        data-slot="north-star-new-user"
+        data-testid={testID}
+        tone="primary"
+        gradient
+        padding="md"
+        className="flex flex-row items-center gap-3"
+      >
+        <Sparkles aria-hidden width={18} height={18} className="text-primary shrink-0" />
+        <div className="flex flex-1 flex-col gap-1">
+          <p className="text-[14px] font-semibold">
+            Log your first meal — suggestions get smarter once we've seen you eat.
+          </p>
+        </div>
+      </SupprCard>
     );
   }
 

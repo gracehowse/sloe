@@ -55,7 +55,15 @@ export type NorthStarKind =
   | "default"
   | "library-empty"
   | "over-budget"
-  | "no-fit";
+  | "no-fit"
+  // ENG-94 (2026-05-13): on a user's very first day — no nutrition
+  // history yet — the `default` suggestion card ("Cajun Steak Bowl
+  // — 1,128 kcal · Close fit") felt presumptuous: the algorithm
+  // hasn't seen the user eat anything yet, so "close fit" is
+  // pattern-matching on targets, not on real intake. Render a calmer
+  // "Log your first meal" card instead until ≥ 1 meal has been
+  // logged anywhere in the user's history.
+  | "new-user";
 
 export interface NorthStarBlockSuggestion {
   recipeId: string;
@@ -116,6 +124,24 @@ export function NorthStarBlock({
           {"You've hit your calories for today — eat freely, or save for tomorrow."}
         </Text>
       </View>
+    );
+  }
+
+  if (kind === "new-user") {
+    return (
+      <SupprCard
+        testID={testID ?? "north-star-new-user"}
+        tone="primary"
+        padding="md"
+        style={styles.row}
+      >
+        <Sparkles size={IconSize.lg} color={colors.text} />
+        <View style={{ flex: 1 }}>
+          <Text style={[Type.body, { color: colors.text, fontWeight: "600" }]}>
+            {"Log your first meal — suggestions get smarter once we've seen you eat."}
+          </Text>
+        </View>
+      </SupprCard>
     );
   }
 

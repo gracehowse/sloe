@@ -4639,6 +4639,16 @@ export default function TrackerScreen() {
                     // skipped seed-picking) still gets a real
                     // suggestion on Today, not the empty-state.
                     userCreatedAt={session?.user?.created_at ?? null}
+                    // ENG-94 (2026-05-13): on a true day-1 user with
+                    // no nutrition history yet, the host renders a
+                    // calmer "Log your first meal" card instead of
+                    // an algorithmic suggestion. `byDay` is the user's
+                    // full local nutrition log; if no day has any
+                    // meals, the algorithm has nothing to pattern-
+                    // match on yet.
+                    hasEverLoggedAnyMeal={Object.values(byDay).some(
+                      (meals) => Array.isArray(meals) && meals.length > 0,
+                    )}
                   />
                 );
               }

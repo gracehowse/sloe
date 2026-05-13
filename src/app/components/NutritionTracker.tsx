@@ -313,6 +313,7 @@ function NorthStarBlockHost({
   onBrowseLibrary,
   selectedDateKey,
   userCreatedAt,
+  hasEverLoggedAnyMeal,
 }: {
   viewMode: string;
   savedRecipesForLibrary: NorthStarRecipe[];
@@ -333,6 +334,11 @@ function NorthStarBlockHost({
    *  ≥2 so a new user with 2-3 saved recipes still sees a real
    *  suggestion, not the empty-state. */
   userCreatedAt?: string | null;
+  /** ENG-94 (2026-05-13): true when the user has logged at least one
+   *  meal across their entire history. When false, the host renders
+   *  the `new-user` kind (calm "Log your first meal" card) instead
+   *  of the algorithmic suggestion. Mirror of the mobile prop. */
+  hasEverLoggedAnyMeal?: boolean;
 }) {
   // Phase 4 / B3.Y — per-day skip ledger keyed by selected date.
   const [skippedIds, setSkippedIds] = useState<Set<string>>(() =>
@@ -362,6 +368,13 @@ function NorthStarBlockHost({
   // Over-budget — hide block, show calm caption.
   if (remainingCalories <= 0) {
     return <NorthStarBlock kind="over-budget" />;
+  }
+
+  // ENG-94 (2026-05-13): true day-1 user — no log history yet.
+  // Render the calmer `new-user` card instead of an algorithmic
+  // suggestion the algorithm has nothing to base on.
+  if (hasEverLoggedAnyMeal === false) {
+    return <NorthStarBlock kind="new-user" />;
   }
 
   // Library too small — invite the user to seed it.
@@ -2337,6 +2350,13 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
             // not ≥5) so a new user with 2-3 recipes still sees a
             // real suggestion instead of the empty-state.
             userCreatedAt={authUserCreatedAt}
+            // ENG-94 (2026-05-13): on a true day-1 user (no
+            // nutrition history yet) the host renders a calmer
+            // "Log your first meal" card instead of an algorithmic
+            // suggestion the algorithm has nothing to base on.
+            hasEverLoggedAnyMeal={Object.values(nutritionByDay).some(
+              (meals) => Array.isArray(meals) && meals.length > 0,
+            )}
           />
         );
       })()}
