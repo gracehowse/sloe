@@ -2724,7 +2724,16 @@ export default function PlannerScreen() {
                       </View>
                     ) : null}
                   </View>
-                  <Text style={styles.mealMacros} numberOfLines={1}>
+                  {/* ENG-64 (2026-05-13): the macro line is dense
+                      enough that `numberOfLines={1}` clipped mid-
+                      token on narrow phones ("…· F…"), hiding Fat
+                      and Fiber values. Allow 2 lines so the wrap
+                      breaks cleanly on the " · " separator between
+                      tokens rather than mid-abbreviation. The
+                      adjacent title above is still `numberOfLines={1}`
+                      so the meal name stays single-line and only
+                      the informational macro line wraps. */}
+                  <Text style={styles.mealMacros} numberOfLines={2}>
                     {planMealHasRecipe(meal)
                       ? formatPlannedMealKcalMacrosLine(
                           meal.calories,
