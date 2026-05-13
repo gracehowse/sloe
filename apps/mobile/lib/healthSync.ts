@@ -122,9 +122,15 @@ type AppleHealthKitNative = {
     options: { startDate: string; endDate: string },
     callback: (err: string, results: unknown[]) => void,
   ) => void;
-  saveFoodSample(
+  // Native method is `saveFood`, NOT `saveFoodSample`. The Obj-C side
+  // (RCTAppleHealthKit+Methods_Dietary.m) builds an HKCorrelation from
+  // these fields and requires `foodName` + `mealType` to be non-nil —
+  // the metadata `NSDictionary` literal crashes the bridge otherwise.
+  // Field keys: `foodName` (not `name`), `fiber` (not `dietaryFiber`).
+  saveFood?: (
     options: {
-      name: string;
+      foodName: string;
+      mealType: string;
       biotin?: number;
       caffeine?: number;
       calcium?: number;
@@ -132,11 +138,11 @@ type AppleHealthKitNative = {
       fatTotal?: number;
       protein?: number;
       carbohydrates?: number;
-      dietaryFiber?: number;
+      fiber?: number;
       date?: string;
     },
     callback: (err: string, result: boolean) => void,
-  ): void;
+  ) => void;
   getSamples(
     options: { startDate: string; endDate: string; type: string },
     callback: (err: string, results: {
@@ -630,23 +636,29 @@ async function getDietaryImportSamplesSafe(
   }
 }
 
-function saveFoodSamplePromise(
+function saveFoodPromise(
   hk: AppleHealthKitNative,
   options: {
-    name: string;
+    /** Display name for the HK food entry. Required — native bridge crashes on nil. */
+    foodName: string;
+    /** Required by the native bridge — "Breakfast" | "Lunch" | "Dinner" | "Snack". */
+    mealType: string;
     energy: number;
     protein?: number;
     carbohydrates?: number;
     fatTotal?: number;
-    dietaryFiber?: number;
+    fiber?: number;
     /** Grams of caffeine (react-native-health convention). */
     caffeine?: number;
     date?: string;
   },
 ): Promise<boolean> {
-  return withHealthCallbackTimeout("saveFoodSample", (resolve, reject) => {
-    if (!hk.saveFoodSample) { resolve(false); return; }
-    hk.saveFoodSample(options, (err, result) => {
+  return withHealthCallbackTimeout("saveFood", (resolve, reject) => {
+    if (!hk.saveFood) {
+      reject(new Error("HealthKit bridge does not expose `saveFood`. Update react-native-health or rebuild the iOS bundle."));
+      return;
+    }
+    hk.saveFood(options, (err, result) => {
       if (err) reject(new Error(String(err)));
       else resolve(!!result);
     });
@@ -1911,6 +1923,8 @@ export type MealToExport = {
   carbs?: number;
   fat?: number;
   fiber?: number;
+  /** "Breakfast" | "Lunch" | "Dinner" | "Snack" — defaults to "Snack" if absent. */
+  mealType?: string;
   /** ISO date string, defaults to now. */
   date?: string;
 };
@@ -1918,31 +1932,87 @@ export type MealToExport = {
 /**
  * Push a batch of Suppr-logged meals to Apple HealthKit.
  * Returns the number of samples successfully written.
+ *
+ * Errors are surfaced via `lastWriteError` for the diagnostic probe;
+ * individual sample failures don't abort the batch.
  */
+let lastWriteError: string | null = null;
+
+export function getLastNutritionWriteError(): string | null {
+  return lastWriteError;
+}
+
 export async function writeNutritionToHealth(
   meals: MealToExport[],
 ): Promise<number> {
   const hk = loadAppleHealthKit();
-  if (!hk) return 0;
+  if (!hk) {
+    lastWriteError = "HealthKit native module not available (loadAppleHealthKit returned null).";
+    return 0;
+  }
 
   let written = 0;
+  lastWriteError = null;
   for (const meal of meals) {
     try {
-      const ok = await saveFoodSamplePromise(hk, {
-        name: meal.name || "Suppr meal",
+      const ok = await saveFoodPromise(hk, {
+        foodName: meal.name || "Suppr meal",
+        mealType: meal.mealType || "Snack",
         energy: meal.calories,
         protein: meal.protein,
         carbohydrates: meal.carbs,
         fatTotal: meal.fat,
-        dietaryFiber: meal.fiber,
+        fiber: meal.fiber,
         date: meal.date,
       });
       if (ok) written++;
-    } catch {
-      // Individual sample write failed — continue with the rest
+      else if (!lastWriteError) lastWriteError = "saveFood returned false without an error code.";
+    } catch (e) {
+      lastWriteError = e instanceof Error ? e.message : String(e);
     }
   }
   return written;
+}
+
+/**
+ * Diagnostic-only single write. Returns the actual bridge error string
+ * on failure so the Health Sync screen's "Send a test meal" button can
+ * tell the user *why* the write failed instead of guessing at
+ * permissions. Used by `apps/mobile/app/health-sync.tsx`.
+ */
+export async function probeNutritionWrite(): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const hk = loadAppleHealthKit();
+  if (!hk) {
+    return {
+      ok: false,
+      reason: "HealthKit isn't available on this device (loadAppleHealthKit returned null).",
+    };
+  }
+  if (!hk.saveFood) {
+    return {
+      ok: false,
+      reason: "HealthKit bridge does not expose `saveFood`. The iOS bundle needs a rebuild against react-native-health.",
+    };
+  }
+  try {
+    const ok = await saveFoodPromise(hk, {
+      foodName: "Suppr test write",
+      mealType: "Snack",
+      energy: 1,
+      protein: 0,
+      carbohydrates: 0,
+      fatTotal: 0,
+      fiber: 0,
+      date: new Date().toISOString(),
+    });
+    if (ok) return { ok: true };
+    return {
+      ok: false,
+      reason: "Apple Health accepted the call but reported the write was not saved. The most common cause is that one of the five WRITE toggles (Dietary Energy / Protein / Carbohydrates / Fat / Dietary Fiber) is still off in Settings → Health → Data Access & Devices → Suppr.",
+    };
+  } catch (e) {
+    return { ok: false, reason: e instanceof Error ? e.message : String(e) };
+  }
 }
 
 /**
@@ -1950,10 +2020,10 @@ export async function writeNutritionToHealth(
  * Skips entries that were themselves imported from Health (to avoid a feedback loop).
  *
  * Batch 2.5 — also writes today's caffeine total (mg) as a single
- * `saveFoodSample` record named "Suppr caffeine". Alcohol is **not**
+ * `saveFood` record named "Suppr caffeine". Alcohol is **not**
  * written: Apple's HealthKit exposes alcohol only via
  * `HKQuantityTypeIdentifierNumberOfAlcoholicBeverages` (count, not mass),
- * which sits outside the dietary saveFoodSample path we already use.
+ * which sits outside the dietary saveFood path we already use.
  * Documented as a backlog item in `docs/health-platform-phase-b.md`.
  */
 export async function exportDayToHealth(
@@ -1994,8 +2064,9 @@ export async function exportDayToHealth(
     if (mg > 0) {
       const hk = loadAppleHealthKit();
       if (hk) {
-        const ok = await saveFoodSamplePromise(hk, {
-          name: "Suppr caffeine",
+        const ok = await saveFoodPromise(hk, {
+          foodName: "Suppr caffeine",
+          mealType: "Snack",
           energy: 0,
           caffeine: mg / 1000, // react-native-health expects grams, UI stores mg
           date: new Date(`${dateKeyStr}T12:00:00`).toISOString(),

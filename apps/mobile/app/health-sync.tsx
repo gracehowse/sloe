@@ -12,11 +12,11 @@ import {
   isExpoGoRuntime,
   isHealthSyncAvailable,
   probeHealthAccess,
+  probeNutritionWrite,
   requestDietaryHealthPermissions,
   requestHealthPermissions,
   syncHealthData,
   syncNutritionFromHealth,
-  writeNutritionToHealth,
 } from "@/lib/healthSync";
 import { supabase } from "@/lib/supabase";
 
@@ -367,12 +367,9 @@ export default function HealthSyncScreen() {
   }, [errorState?.kind, handleConnect, handleSync]);
 
   // 2026-05-13 (Grace TF feedback) — diagnostic write probe. Fires a
-  // single `writeNutritionToHealth` call with a labelled 1 kcal sample.
-  // Surfaces the actual result via Alert so the user (and Grace
-  // debugging) can see whether the bridge call succeeds. The most
-  // common failure mode is iOS Settings → Health → Data Access &
-  // Devices → Suppr → Nutrition WRITE toggle being OFF — Health
-  // returns 0 from the saveFoodSample callback in that case.
+  // single `saveFood` call with a labelled 1 kcal sample via
+  // `probeNutritionWrite` so the alert can surface the real bridge
+  // error instead of guessing at permissions.
   const handleTestWrite = useCallback(() => {
     Alert.alert(
       "Send a test meal to Apple Health?",
@@ -382,34 +379,14 @@ export default function HealthSyncScreen() {
         {
           text: "Send test",
           onPress: async () => {
-            try {
-              const count = await writeNutritionToHealth([
-                {
-                  name: "Suppr test write",
-                  calories: 1,
-                  protein: 0,
-                  carbs: 0,
-                  fat: 0,
-                  fiber: 0,
-                  date: new Date().toISOString(),
-                },
-              ]);
-              if (count > 0) {
-                Alert.alert(
-                  "Test write succeeded ✓",
-                  "Open Apple Health → Browse → Nutrition → Dietary Energy. You should see a 1 kcal entry from Suppr. Real meals will write automatically as you log them.",
-                );
-              } else {
-                Alert.alert(
-                  "Test write blocked",
-                  'Apple Health rejected the write. Open Settings → Health → Data Access & Devices → Suppr, then enable WRITE access for Dietary Energy / Protein / Carbohydrates / Fat / Dietary Fiber. After re-enabling, try this test again.',
-                );
-              }
-            } catch (e) {
+            const result = await probeNutritionWrite();
+            if (result.ok) {
               Alert.alert(
-                "Test write errored",
-                e instanceof Error ? e.message : "Unknown error. See logs for details.",
+                "Test write succeeded ✓",
+                "Open Apple Health → Browse → Nutrition → Dietary Energy. You should see a 1 kcal entry from Suppr. Real meals will write automatically as you log them.",
               );
+            } else {
+              Alert.alert("Test write blocked", result.reason);
             }
           },
         },
@@ -588,16 +565,13 @@ export default function HealthSyncScreen() {
 
           {/* 2026-05-13 (Grace TF feedback — "meals are not sharing
               to Health from Suppr, only from Health to Suppr"): the
-              write path had no diagnostic — when iOS Health denies
-              Nutrition WRITE permission (it can be denied
-              independently of reads), the `saveFoodSample` bridge
-              call returns 0 and Suppr swallows it silently. This
-              "Send a test meal" button writes one 1-kcal probe
-              entry labelled "Suppr test write" and Alert-reports
-              the result so the user can verify the write path
-              actually fires. Failure most commonly means the
-              Nutrition WRITE toggle is OFF in iOS Settings →
-              Health → Data Access & Devices → Suppr. */}
+              write path had no diagnostic. Root cause shipped the
+              same day was a method-name mismatch — our code called
+              `hk.saveFoodSample` but react-native-health exposes
+              `hk.saveFood`, so every meal silently no-op'd. This
+              "Send a test meal" button now writes a 1-kcal probe via
+              `probeNutritionWrite`, which surfaces the real bridge
+              error in the alert. */}
           {exportEnabled && available && connected ? (
             <Pressable
               onPress={handleTestWrite}

@@ -13,7 +13,7 @@
  *  - Reads the existing AsyncStorage flag `health_export_nutrition`
  *    (set by Settings → Health Sync → "Share meals to Health"). If the
  *    flag is unset or "false", this is a no-op.
- *  - Writes the meal as a single `saveFoodSample` (energy + protein +
+ *  - Writes the meal as a single `saveFood` (energy + protein +
  *    carbs + fat + fibre) — the same shape `exportDayToHealth` uses.
  *  - Idempotent at the meal-id level: a per-device `Set<mealId>` plus
  *    AsyncStorage-backed `health_export_written_ids` (capped at 5k
@@ -227,7 +227,7 @@ export async function writeMealToHealthKitIfEnabled(
   await persistWrittenIds(input.userId);
 
   if (bridgeWroteCount === 0) {
-    console.warn("[hk.writeMeal] FAILED — `saveFoodSample` returned 0. Most likely cause: iOS Health → Suppr → Nutrition WRITE permission is denied. Check Settings → Health → Data Access & Devices → Suppr.", {
+    console.warn("[hk.writeMeal] FAILED — `saveFood` wrote 0 samples. Check the diagnostic in More → Health Sync → 'Send a test meal' for the bridge error. Most common cause: WRITE toggles still off in Settings → Health → Data Access & Devices → Suppr.", {
       mealId: input.mealId,
       name: input.name,
       calories: input.calories,
