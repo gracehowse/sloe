@@ -113,13 +113,18 @@ export function TodaySnapShortcut({
           <Text style={[Type.body, { fontWeight: FontWeight.bold, color: colors.text }]}>
             Snap a meal
           </Text>
+          {/* 2026-05-12 (premium-bar audit Today F3 #2): subtitle now
+              carries both the speed signal (~3 seconds) and the
+              "AI estimate · review" trust signal. Drops "no typing"
+              (implicit from the action) and gives the user honest
+              expectation about the engine before tap. */}
           <Text
             style={[
               Type.bodyMuted,
               { fontSize: 12, color: colors.textSecondary, marginTop: Spacing.xs / 2 },
             ]}
           >
-            One photo, full macros — no typing.
+            ~3 seconds · AI estimates macros, review before saving.
           </Text>
         </View>
       </Pressable>

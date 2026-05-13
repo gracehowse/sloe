@@ -68,8 +68,11 @@ export function TodaySnapShortcut({
         <span className="text-[14px] font-bold text-foreground leading-tight">
           Snap a meal
         </span>
+        {/* 2026-05-12 (premium-bar audit Today F3 #2): subtitle now
+            carries the speed signal + the AI-estimate trust signal.
+            Mobile mirrored in `apps/mobile/components/today/TodaySnapShortcut.tsx`. */}
         <span className="text-[12px] text-muted-foreground leading-tight mt-0.5">
-          One photo, full macros — no typing.
+          ~3 seconds · AI estimates macros, review before saving.
         </span>
       </span>
     </button>

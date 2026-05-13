@@ -38,8 +38,9 @@ describe("TodaySnapShortcut (mobile)", () => {
   it("renders the canonical 'Snap a meal' label and supporting copy", () => {
     const { getByText } = render(<TodaySnapShortcut onPress={() => {}} />);
     expect(getByText("Snap a meal")).toBeTruthy();
-    // Helper line tells the user this is the photo flow, not search.
-    expect(getByText("One photo, full macros — no typing.")).toBeTruthy();
+    // 2026-05-12 (premium-bar audit Today F3 #2): subtitle reframed
+    // to carry the speed signal + the AI-estimate trust signal.
+    expect(getByText("~3 seconds · AI estimates macros, review before saving.")).toBeTruthy();
   });
 
   it("fires onPress exactly once when tapped", () => {

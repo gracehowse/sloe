@@ -1,5 +1,6 @@
 import * as React from "react";
-import { ScrollView, Text, TextStyle, View } from "react-native";
+import { Pressable, ScrollView, Text, TextStyle, View } from "react-native";
+import { ChevronDown, ChevronUp } from "lucide-react-native";
 import Svg, {
   Circle,
   Defs,
@@ -306,6 +307,20 @@ export function MobileRevealStep() {
           data over the first ~2 weeks.
         </MobileMethodologyNote>
 
+        {/* 2026-05-12 (premium-bar audit B5 Reveal #3, Cal AI parity):
+            "Show the maths" expandable that reveals the formula breakdown
+            so the abstract numbers above land as something the user can
+            audit. Closed by default — power users tap to expand, the
+            average user reads the bigger blocks above and moves on. */}
+        <RevealShowTheMaths
+          colors={colors}
+          bmr={targets.bmr}
+          tdee={targets.tdee}
+          target={targets.target}
+          kcalAdj={targets.kcalAdj}
+          goal={state.goal ?? "maintain"}
+        />
+
         {/* 2026-05-12 (premium-bar audit DC1 — refuse-to-pass #5, Cal AI
             plan-reveal borrow): "what happens next" 3-step card. Tells
             the user what the very next moments of the app look like
@@ -522,4 +537,153 @@ function summaryUnitStyle(
     color: colors.textSecondary,
     fontWeight: "500",
   };
+}
+
+/**
+ * RevealShowTheMaths — 2026-05-12 (premium-bar audit B5 #3, Cal AI
+ * plan-reveal parity).
+ *
+ * A small "Show the maths" expander rendered below the BMR / TDEE
+ * tiles. Closed by default. Tap → reveals a 3-row breakdown:
+ *   - BMR (Mifflin-St Jeor)
+ *   - Est. TDEE (BMR × activity factor)
+ *   - Target (TDEE ± deficit/surplus)
+ *
+ * Power users get the audit trail; the average user reads the big
+ * blocks above and skips the expander entirely. Matches the audit's
+ * "show the maths" prescription without crowding the default state.
+ */
+function RevealShowTheMaths({
+  colors,
+  bmr,
+  tdee,
+  target,
+  kcalAdj,
+  goal,
+}: {
+  colors: ReturnType<typeof useThemeColors>;
+  bmr: number;
+  tdee: number;
+  target: number;
+  kcalAdj: number;
+  goal: "lose" | "maintain" | "gain" | "recomp";
+}) {
+  const [open, setOpen] = React.useState(false);
+  const adjSigned =
+    goal === "gain"
+      ? `+${kcalAdj.toLocaleString()}`
+      : goal === "maintain"
+        ? "±0"
+        : `−${Math.abs(kcalAdj).toLocaleString()}`;
+
+  const rows: { label: string; value: string; sub: string }[] = [
+    {
+      label: "BMR",
+      value: `${bmr.toLocaleString()} kcal`,
+      sub: "Mifflin-St Jeor (sex · age · height · weight)",
+    },
+    {
+      label: "Est. TDEE",
+      value: `${tdee.toLocaleString()} kcal`,
+      sub: "BMR × your activity level",
+    },
+    {
+      label: "Target",
+      value: `${target.toLocaleString()} kcal`,
+      sub: `Est. TDEE ${adjSigned} kcal for your goal`,
+    },
+  ];
+
+  return (
+    <View style={{ marginTop: Spacing.md }}>
+      <Pressable
+        onPress={() => setOpen((v) => !v)}
+        accessibilityRole="button"
+        accessibilityLabel={open ? "Hide the maths" : "Show the maths"}
+        accessibilityState={{ expanded: open }}
+        hitSlop={6}
+        style={({ pressed }) => ({
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 6,
+          paddingVertical: 8,
+          opacity: pressed ? 0.6 : 1,
+        })}
+      >
+        <Text
+          style={{
+            fontSize: 12,
+            fontWeight: "600",
+            color: Accent.primary,
+            letterSpacing: 0.1,
+          }}
+        >
+          {open ? "Hide the maths" : "Show the maths"}
+        </Text>
+        {open ? (
+          <ChevronUp size={14} color={Accent.primary} strokeWidth={2.25} />
+        ) : (
+          <ChevronDown size={14} color={Accent.primary} strokeWidth={2.25} />
+        )}
+      </Pressable>
+      {open ? (
+        <View
+          style={{
+            marginTop: 6,
+            borderRadius: Radius.md,
+            borderWidth: 1,
+            borderColor: colors.border,
+            backgroundColor: colors.card,
+            padding: Spacing.md,
+            gap: 12,
+          }}
+          accessibilityRole="text"
+        >
+          {rows.map((row) => (
+            <View key={row.label}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "baseline",
+                  justifyContent: "space-between",
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 11,
+                    fontWeight: "700",
+                    color: colors.textSecondary,
+                    letterSpacing: 0.5,
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {row.label}
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 15,
+                    fontWeight: "700",
+                    color: colors.text,
+                    fontVariant: ["tabular-nums"],
+                  }}
+                >
+                  {row.value}
+                </Text>
+              </View>
+              <Text
+                style={{
+                  fontSize: 11,
+                  color: colors.textTertiary,
+                  marginTop: 2,
+                  lineHeight: 16,
+                }}
+              >
+                {row.sub}
+              </Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
 }
