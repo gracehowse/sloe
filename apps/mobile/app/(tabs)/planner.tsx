@@ -2471,7 +2471,7 @@ export default function PlannerScreen() {
                       ...(hasRecipe
                         ? [
                             {
-                              text: "Adjust portion…",
+                              text: "Change portion size…",
                               onPress: () => setPortionModal({ dayIdx, mealIndex: mealIndexInDay }),
                             },
                           ]
@@ -2522,7 +2522,7 @@ export default function PlannerScreen() {
                       ...(hasRecipeTap
                         ? [
                             {
-                              text: "Adjust portion…",
+                              text: "Change portion size…",
                               onPress: () => setPortionModal({ dayIdx, mealIndex: mealIndexInDay }),
                             },
                             {
@@ -2614,6 +2614,11 @@ export default function PlannerScreen() {
                       {planMealHasRecipe(meal) ? meal.recipeTitle : "Empty slot"}
                     </Text>
                     {planMealHasRecipe(meal) && multLabel !== "1" ? (
+                      // 2026-05-13 (premium-bar audit Plan Card 2 #4):
+                      // pill now reads `0.5× portion` (not bare `0.5×`)
+                      // so users without context know what the chip means.
+                      // Compact enough to keep on one line at typical
+                      // recipe-title lengths.
                       <View
                         style={{
                           paddingHorizontal: 6,
@@ -2622,7 +2627,7 @@ export default function PlannerScreen() {
                           backgroundColor: Accent.primary + "1A",
                           flexShrink: 0,
                         }}
-                        accessibilityLabel={`Portion ${multLabel} times`}
+                        accessibilityLabel={`${multLabel} times portion`}
                       >
                         <Text
                           style={{
@@ -2632,7 +2637,7 @@ export default function PlannerScreen() {
                             fontVariant: ["tabular-nums"],
                           }}
                         >
-                          {`${multLabel}×`}
+                          {`${multLabel}× portion`}
                         </Text>
                       </View>
                     ) : null}
