@@ -148,6 +148,21 @@ export default function TabLayout() {
           tabBarButtonTestID: 'tab-today',
         }}
       />
+      {/* 2026-05-13 (premium-bar audit Today F8 #2 + strategic direction
+          2026-04-27): tab order is Today / Plan / Recipes / More so the
+          meal-planning core loop comes second (right of Today) and
+          Recipes (a saved-library tool) lives further right. Plan was
+          previously third, behind Recipes; testers on the 2026-04-29
+          customer-lens pass said the planning-first ordering matches
+          how they actually use the app day-to-day. */}
+      <Tabs.Screen
+        name="planner"
+        options={{
+          title: 'Plan',
+          tabBarIcon: ({ color }) => <CalendarDays size={22} color={color} strokeWidth={2} />,
+          tabBarButtonTestID: 'tab-plan',
+        }}
+      />
       {/* Recipes — primary tab points at Library (the default sub-tab).
           When the user is on /discover, the Recipes entry stays
           highlighted because of the custom listener below; pressing
@@ -171,14 +186,6 @@ export default function TabLayout() {
               router.replace('/(tabs)/library' as never);
             }
           },
-        }}
-      />
-      <Tabs.Screen
-        name="planner"
-        options={{
-          title: 'Plan',
-          tabBarIcon: ({ color }) => <CalendarDays size={22} color={color} strokeWidth={2} />,
-          tabBarButtonTestID: 'tab-plan',
         }}
       />
       {/* More — primary tab points at Progress (the default sub-tab).

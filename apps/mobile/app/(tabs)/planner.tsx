@@ -2207,19 +2207,44 @@ export default function PlannerScreen() {
         )}
 
         {plan && plan.length > 0 && (
-          <View style={{ marginBottom: Spacing.sm }}>
+          <View
+            style={{
+              marginBottom: Spacing.sm,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: Spacing.sm,
+            }}
+          >
             <Text style={styles.sectionLabel}>
               {plan.length === 1
                 ? `${WEEKDAY_LONG[planCalendarDateForIndex(0, startOffset).getDay()]}'s plan`
                 : `Your ${plan.length}-day plan`}
             </Text>
+            {/* 2026-05-13 (premium-bar audit Plan Card 1 #6): demoted
+                "Browse recipe library" from a full-width primary-tinted
+                pressable into a small secondary chip sitting beside the
+                section label. The link was the same visual weight as
+                the section title which made the page eyebrow row look
+                like two competing headers. Same destination, quieter
+                affordance. */}
             <Pressable
               onPress={() => router.push("/(tabs)/library" as Href)}
               accessibilityRole="button"
               accessibilityLabel="Browse recipe library"
-              style={{ marginTop: 4 }}
+              hitSlop={8}
+              style={{
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+                borderRadius: 999,
+                borderWidth: 1,
+                borderColor: colors.border,
+                backgroundColor: colors.card,
+              }}
             >
-              <Text style={{ fontSize: 14, fontWeight: "600", color: Accent.primary }}>Browse recipe library</Text>
+              <Text style={{ fontSize: 11, fontWeight: "600", color: colors.textSecondary }}>
+                Browse library →
+              </Text>
             </Pressable>
           </View>
         )}
