@@ -725,7 +725,13 @@ export default function PaywallScreen() {
       color: colors.textSecondary,
     },
 
-    toggleWrap: { alignItems: "center", marginTop: Spacing.lg, marginBottom: Spacing.xl },
+    toggleWrap: { alignItems: "center", marginTop: Spacing.lg, marginBottom: Spacing.xl, gap: 8 },
+    toggleEyebrow: {
+      fontSize: 10,
+      fontWeight: "700",
+      letterSpacing: 1.2,
+      color: colors.textTertiary,
+    },
     toggleRow: {
       flexDirection: "row",
       padding: 4,
@@ -1027,6 +1033,13 @@ export default function PaywallScreen() {
 
         {showToggle ? (
           <View style={styles.toggleWrap}>
+            {/* 2026-05-13 (premium-bar audit Group I #4): the period
+                toggle floated with no label. Testers in TF feedback
+                said they didn't realise the row was switching pricing
+                until after they'd tapped — they thought the badge was
+                advertising "Save 37%" generically. Tiny BILLING eyebrow
+                above the row anchors the toggle's purpose. */}
+            <Text style={styles.toggleEyebrow}>BILLING</Text>
             <View
               style={styles.toggleRow}
               accessibilityRole="tablist"
