@@ -974,7 +974,18 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
                 </View>
               )}
 
-              {error && !manualMode && (
+              {/* 2026-05-13 (TF feedback `ABEVEqEM0qYAJ3QqnI1TN2U` —
+                  "scan barcode screen is still very ugly and badly
+                  laid out"): added `!product` gate so the not-found
+                  empty-state and a success product card cannot
+                  render simultaneously. The previous render path
+                  could double-paint when state held both
+                  `error="Product not found"` AND a stale `product`
+                  from a prior scan, producing the stacked "ugly"
+                  layout in the screenshot. Product card takes
+                  precedence; error renders only when there's no
+                  product to show. */}
+              {error && !product && !manualMode && (
                 <View style={styles.centered}>
                   {/* F-136 (`AG5LqMGUpER2Gqi5N03_ytc`, 2026-05-08): the
                       "Product not found" branch isn't a real error — it
