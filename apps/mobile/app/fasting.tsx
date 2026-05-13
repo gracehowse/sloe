@@ -3,6 +3,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-nati
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import Svg, {
   Circle,
   Defs,
@@ -417,6 +418,12 @@ export default function FastingScreen() {
           to a quieter outlined button. Complete Fast keeps the
           success-green solid (it's a celebratory state). */}
       {isFasting && !isComplete ? (
+        // 2026-05-12 (premium-bar audit J1 active timer): End Fast
+        // promoted to long-press-to-end so a stray tap on an active
+        // fast doesn't kill a 16-hour run. Tap-only fires a haptic
+        // warning + Alert nudging the user to long-press; long-press
+        // fires a success haptic + ends the fast. Matches Apple Health
+        // / Zero's pattern for irreversible-ish controls.
         <Pressable
           style={[
             styles.btn,
@@ -426,9 +433,27 @@ export default function FastingScreen() {
               borderColor: colors.border,
             },
           ]}
-          onPress={endFast}
+          accessibilityRole="button"
+          accessibilityLabel="End fast — long-press to confirm"
+          accessibilityHint="Long-press for one second to end your fast"
+          onPress={() => {
+            if (process.env.EXPO_OS === "ios") {
+              void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            }
+            Alert.alert(
+              "Hold to end fast",
+              "Long-press the End Fast button to confirm. This stops your active fast and saves the duration to your history.",
+            );
+          }}
+          onLongPress={() => {
+            if (process.env.EXPO_OS === "ios") {
+              void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            }
+            endFast();
+          }}
+          delayLongPress={650}
         >
-          <Text style={[styles.btnText, { color: colors.textSecondary }]}>End Fast</Text>
+          <Text style={[styles.btnText, { color: colors.textSecondary }]}>Hold to End Fast</Text>
         </Pressable>
       ) : (
         <Pressable

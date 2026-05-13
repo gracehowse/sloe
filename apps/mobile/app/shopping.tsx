@@ -569,15 +569,53 @@ export default function ShoppingListScreen() {
 
   // 2026-04-30 (#2): badge + progress reflect *grouped* rows so counts
   // match on-screen groups (web parity).
+  // 2026-05-12 (premium-bar audit J2 — aisle ordering): sort sections
+  // in the order a real shopper walks through a supermarket so the
+  // user can scan top-down without backtracking. Categories not in
+  // the canonical order land at the end alphabetically. Mirrors the
+  // pattern used by AnyList / OurGroceries.
+  const AISLE_ORDER = useMemo<readonly string[]>(
+    () => [
+      "Produce",
+      "Bakery",
+      "Meat",
+      "Seafood",
+      "Deli",
+      "Dairy",
+      "Eggs",
+      "Frozen",
+      "Pantry",
+      "Grains",
+      "Pasta",
+      "Canned",
+      "Condiments",
+      "Spices",
+      "Baking",
+      "Snacks",
+      "Drinks",
+      "Alcohol",
+      "Household",
+      "Other",
+    ],
+    [],
+  );
   const groupedSections = useMemo(() => {
     const cats = [...new Set(items.map((i) => i.category))];
-    return cats.map((category) => ({
+    const orderedCats = cats.slice().sort((a, b) => {
+      const ai = AISLE_ORDER.indexOf(a);
+      const bi = AISLE_ORDER.indexOf(b);
+      if (ai === -1 && bi === -1) return a.localeCompare(b);
+      if (ai === -1) return 1;
+      if (bi === -1) return -1;
+      return ai - bi;
+    });
+    return orderedCats.map((category) => ({
       name: category,
       groups: groupShoppingItemsByIngredientName(
         items.filter((i) => i.category === category),
       ),
     }));
-  }, [items]);
+  }, [items, AISLE_ORDER]);
   const totalGroupCount = useMemo(
     () => groupedSections.reduce((n, s) => n + s.groups.length, 0),
     [groupedSections],
