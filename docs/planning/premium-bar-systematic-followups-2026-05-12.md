@@ -694,16 +694,94 @@ shifted from 9 batches × 1-2 items to 5 commits × 5-10 items each.
     legacy `/onboarding-v2` redirect has an end-of-life signal.
 27. **(this commit)** — Final tracking-doc refresh.
 
-### Approximate item count (post-session-3 + extension)
+### Approximate item count (post-session-3 + extension + session-4)
 
-- **Shipped in this branch:** ~110 of the 190 audit items + 5 Grace
-  additions (Phase G roadmap) + EAS Build #49 ship.
-- **OPEN remaining:** ~80 across Buckets A–D.
+- **Shipped in this branch:** ~140 of the 190 audit items + 5 Grace
+  additions (Phase G roadmap) + EAS Build #49 ship + all 6 TF
+  2026-05-13 items.
+- **OPEN remaining:** ~50 across Buckets A–D, almost all
+  deferred-by-design or external (sim re-captures, RC dashboard).
 
-The session-3 extension landed the biggest single structural P0 —
-real per-tab web URLs — plus EatAgain motion parity + web Reveal
-"Show the maths" mirror + the analytics signal for `/onboarding-v2`
-end-of-life.
+### Session 4 (2026-05-13) — web parity sweep + TF feedback close + extra polish
+
+28. **1d8c381** — Trust pages sticky ToC + /home → /today redirect.
+29. **551fe21** — Web parity sweep (StreakPip freeze-shield, macro
+    tile 300ms ease + chevron, NorthStar/EatAgain fade-up, type-
+    RESET gate, Discover Import top, Targets safety-floor).
+30. **943a009** — TF 2026-05-13 batch 1 (pull-to-refresh on Today,
+    health-sync copy cleanup, 30-day chart move, activity-bonus
+    toggle).
+31. **35bef62** — TF 2026-05-13 batch 2 (custom food MFP detail
+    open + common-sizes hint + Barcode dual-state fix).
+32. **2a2d652** — HK write diagnostic (Grace TF bug report) + 7
+    audit-backlog items (Plan 7-dot viz, formatMacroTrailer on
+    web today-meals, Recipe verify per-row confidence bar on web,
+    trust pages Print/PDF, DC12 past-tense Digest fallback).
+33. **f0e3135** — Withings-parity weight chart polish (hollow
+    rings, today indicator, thicker trend line) + DC4 trust chip
+    dark contrast.
+34. **770c2fc** — Web Age step expander (DC7 web parity).
+
+The session-4 push closed every TF feedback item from 2026-05-13
++ ~30 audit items + shipped the HK write diagnostic Grace needs to
+debug the "meals not sharing to Health" bug.
+
+### What's left (~50 items, all defensible deferrals)
+
+**External / non-code (~12)**
+- RC offerings reliability (RC dashboard work).
+- Maestro / Playwright screenshot re-capture pipeline.
+- 14+ stale audit screenshots to rerun.
+- Cook mode populated capture (needs sim).
+- Meal nutrition populated capture (needs sim).
+- Mobile dark-mode parity capture sweep (≥ 8 surfaces).
+- Apple SBP enrollment (Grace's pre-launch).
+
+**Needs business decision (~6)**
+- DC4 "No price hikes ever" 4th paywall trust chip (Grace).
+- DC15 manual currency switch (needs EUR/USD Stripe SKUs).
+- Mobile-web "Open in app" smart banner (needs public install
+  URL — TF beta has no public install link).
+- Roadmap "Get notified when X ships" email capture (needs
+  backend endpoint).
+- Apple Watch ring-fill animation (moderate Reanimated work
+  that conflicts with the existing CalorieRing animation
+  pipeline; needs careful pass).
+- DC1 ring centre "1,822 / 1,600" + delta chip (would crowd the
+  ring centre; current centerValue + budgetLine already convey
+  the same info, just less compactly).
+
+**Larger refactors (~10)**
+- Real Web Plan stub (read-only weekly grid view; canonical /plan
+  currently renders the same SPA shell as /today).
+- DC11 TDEE trajectory mini-chart on Targets (needs TDEE-over-
+  time computation per day; new infrastructure).
+- DC14 outlined-tile pattern → Settings + Membership cards on
+  web (Settings doesn't have those tiles yet).
+- Recipe import action sheet on web (mobile pattern; would need
+  paste/photo/manual + clipboard detect on web).
+- Custom food MFP-parity extension (Cholesterol / Potassium /
+  Vitamins fields — needs schema extension).
+- Barcode scanner UI rebuild (light capture + full layout pass).
+- Trust pages: per-section "Permalink" copy buttons.
+- Print stylesheet polish for trust pages (currently uses default
+  browser print rendering).
+- /whats-new RSS feed endpoint.
+- Various dark-mode-only polish items (need sim screenshots to
+  validate per-surface).
+
+**Smaller copy / polish (~22)**
+- Web Plan "Open in app" banner.
+- /home → /today redirect already shipped; sub-path redirects
+  cleanup.
+- Voice consistency on more weekly-recap surfaces.
+- Various motion / scrub-haptic / fade-up polish on remaining
+  cards.
+- Eye-path tightening on landing hero, pricing, /help.
+- Roadmap per-item description expand.
+- Trust pages: version-history link to GitHub diff.
+- Mobile-web header below 480px (Sign-in chip already hidden;
+  more polish if a customer-lens reports it).
 
 ### What changed since session 2's handoff
 
