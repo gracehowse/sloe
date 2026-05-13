@@ -517,4 +517,140 @@ This doc is the live tracking surface — update tags as items ship.
 
 Items being worked in batches. Each batch ends with CI green + push.
 
-(updated as batches land)
+### Session 1 (2026-05-12 evening) — 14 commits
+
+Pre-tracking-doc batches (Phase 1–3 audit fixes, before the
+systematic sweep):
+
+1. **ef0c5f4 / b4c42e2 / 820d56b / 3a1f4de** — Phase 1 fixes (ruler
+   crash via `runOnJS`, refresh-plan loop, Apple Health copy lie,
+   BMR unspecified-sex midpoint, white-on-blue CTA contrast)
+2. **b5a1532** — Food search recents-on-mount (MFP borrow)
+3. **320166a** — Recipe verify skeleton + status narration (Recime
+   borrow)
+4. **a1dbbf8 / 7b0b9b6 / dd043c3** — Weight chart Withings parity
+   (always-on trend line, hollow rings, today indicator, range
+   ticks, kg unit label, full-word tab labels, calendar window
+   labelling)
+
+### Session 2 (2026-05-12 night) — 9 batches
+
+5. **cebe72d / ee4b959 / 41b46e3** — Web parity rounds (token-
+   correct `bg-primary text-primary-foreground` sweep across 17
+   files; Today desktop hero `pr-32` chip moved to header row;
+   landing phone-mock + WebShot sidebar updated to 4-tab IA;
+   `/whats-new` Linear-style rebuild; `/onboarding-v2` redirect
+   chrome-flash kill; Daily Calories bar 3-state colour + dashed
+   target line + colour legend on web).
+6. **83a1fd4** — 9 canonical web URL redirects (`/today`,
+   `/recipes`, `/library`, `/discover`, `/plan`, `/progress`,
+   `/shopping`, `/settings`, `/notifications` → `/home?view=*`).
+7. **72a245f** — Paywall trial-led headline + subtitle, dropped
+   vestigial "MOST POPULAR" badge.
+8. **4c9eb69** — This tracking doc (190 items extracted from the
+   audit).
+9. **f69a279** — Batch 1: Discover Import as permanent first card,
+   refresh-plan terminal CTA copy, /help rename, Phase G roadmap
+   (Instacart + MCP/Claude connector + pregnancy/TTC insight).
+10. **d6dc6ca** — Batch 2: Today header polish (drop redundant
+    Today eyebrow + day-strip jump-pill), DC2 thumb 56→64, Reveal
+    title "Your plan is ready.", macro format unify on NorthStar +
+    EatAgain (both platforms).
+11. **6f0ec2c** — Batch 3: Plan tab eyebrow date-range + chevron
+    icons + Move-meal sheet from-context header.
+12. **ad63b02** — Batch 4: Recipe verify slow-load nudge + per-row
+    confidence bar.
+13. **1dc6220** — Batch 5: Reset modal ✓/✗ bullets (mobile + web
+    parity).
+14. **de9cf4d / 5015690** — Build 49 changelog + EAS build-number
+    alignment.
+15. **0db38d2** — Batch 6: Pricing FAQ expansion 4→6 + Pro
+    nutritionNote grammar fix.
+16. **d16af8a** — Batch 7 part 1: /help rebuild (search + ToC +
+    accordion + sticky contact) + ad-hoc household share roadmap.
+17. **c920037** — Batch 7 part 2: landing mobile-web header
+    (hide Sign-in chip < 480px) + /whats-new release-title field.
+18. **e0d9681** — Batch 8: Shopping aisle ordering + Fasting
+    long-press to End.
+19. **6679cc6** — Batch 9: canonical `formatMacroTrailer` helper
+    + apply across 5 mobile surfaces.
+
+### EAS / TestFlight
+
+- **EAS Build #49** (2026-05-12 22:23 UTC) — auto-submitted to
+  App Store Connect. Build 1.0.0 (#49). Apple processing 5-10 min
+  before it lands in TestFlight inbox. Build URL:
+  https://expo.dev/artifacts/eas/khhvgGbDYuf4w3xSnMeLpx.ipa
+
+### What's still OPEN — handoff
+
+After 9 batches and 19 commits this session, the remaining items
+fall into 4 buckets:
+
+**Bucket A — Animation polish (~20 items)**
+Apple Watch ring-fill animation on log, count-up animation on hero
+kcal (mobile already has `useAnimatedNumber`; web has its own
+helper — both shipped), macro-arc animate-in on first log of day,
+200ms ease-out bar fill on macro-tile log, 200ms ease-out tween on
+weight-chart yMin/yMax change, soft haptic on weight-chart scrub,
+Cal AI 200ms fade-up on north-star first paint, ring-fill
+animation on log, 7-dot stacked viz on generate-plan,
+generation skeleton state, regenerate diff toast. **Defer**: needs
+sustained design sequencing (200-400ms ease curves + RN
+Reanimated easing primitives) plus visual QA on each curve.
+Recommend a focused 1-day "Today + Plan motion polish" follow-up.
+
+**Bucket B — Larger-scope features (~10 items)**
+- Real per-tab web URLs (`/today` renders, not redirect shim;
+  `/home` → 307 to `/today`) — needs `App.tsx` refactor off
+  `?view=` query to path-based.
+- Mobile-web bottom tab bar (full product surface on phone
+  browser).
+- Web Plan stub build (read-only weekly grid) vs the current
+  redirect to `/home?view=plan`.
+- DC2 "Why this recommendation?" disclosure on north-star card.
+- Reveal "Show the maths" expandable (BMR + Activity + Goal).
+- Cook mode populated state.
+- Macro detail granularity decision (meal vs ingredient).
+- Fasting active timer ring fill + milestone labels + projected
+  end (long-press already shipped; the ring chrome is the bigger
+  ask).
+- Roadmap Next/Later sections + status dots + email capture
+  (changelog-style structural refactor).
+- Trust pages unified template + sticky ToC + version chip (4
+  pages × significant rewrite).
+
+**Bucket C — External / not pure code (`[e]` tagged)**
+- RevenueCat offerings reliability (RC dashboard work; not pure
+  code).
+- Maestro / Playwright screenshot re-capture pipeline (sim runs).
+- 14+ stale captures to rerun.
+- Cook mode populated capture.
+- Meal nutrition populated capture.
+- Mobile dark mode parity capture sweep (≥8 surfaces).
+
+**Bucket D — Defended Choices polish (Selective Borrows, ~15 items)**
+DC5 dashed→solid 2-point weight chart line, DC7 Age step DOB
+toggle + Sex-style explainer, DC8 streak shield glyph + supportive
+reset copy, DC11 adaptive-TDEE landing callout, DC12 past-tense
+voice rule on Digest, DC14 Profile dark safety-warning parity,
+DC15 manual currency switch + GoCardless region-detection banner.
+These are quality-up moves, not refuse-to-pass. Defer to a
+"Defended Choices polish" follow-up branch.
+
+### Numbers
+
+- **Items shipped in this branch:** ~75 (of the ~190 extracted from
+  the audit + the 5 fresh Grace-added items + the build-49 ship).
+- **Items still OPEN:** ~115 across Buckets A–D, all tagged in
+  this doc.
+- **External-only (`[e]`):** 8 items.
+
+### Notion mirror actions (deferred — MCP not connected in session)
+
+- Mirror this tracking doc to the Notion Decisions log:
+  `https://www.notion.so/731ee63201584879b311a69cea4dc523`
+- Add Phase G roadmap rows (Instacart, MCP/Claude connector,
+  pregnancy/TTC, ad-hoc shared meal) to the Notion Roadmap DB:
+  `https://www.notion.so/6d5e815b6a4c404d845d8a48f19ae673`
+- Close out Tasks DB rows for the 75 items shipped here.
