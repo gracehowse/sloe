@@ -110,9 +110,40 @@ export function TodaySnapShortcut({
           ) : null}
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={[Type.body, { fontWeight: FontWeight.bold, color: colors.text }]}>
-            Snap a meal
-          </Text>
+          {/* 2026-05-13 (premium-bar audit Today F3 #3): when locked,
+              pair the small corner-lock badge with an explicit "PRO"
+              chip beside the title. The lock alone wasn't reading as
+              a Pro gate — testers were tapping through expecting a
+              prompt-on-tap rather than an upgrade gate. The chip
+              makes the gate state unambiguous before the user taps. */}
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <Text style={[Type.body, { fontWeight: FontWeight.bold, color: colors.text }]}>
+              Snap a meal
+            </Text>
+            {locked ? (
+              <View
+                testID="today-snap-shortcut-pro-chip"
+                accessibilityLabel="Pro feature"
+                style={{
+                  paddingHorizontal: 6,
+                  paddingVertical: 1,
+                  borderRadius: Radius.sm,
+                  backgroundColor: Accent.primary,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 9,
+                    fontWeight: "800",
+                    letterSpacing: 0.6,
+                    color: Accent.primaryForeground,
+                  }}
+                >
+                  PRO
+                </Text>
+              </View>
+            ) : null}
+          </View>
           {/* 2026-05-12 (premium-bar audit Today F3 #2): subtitle now
               carries both the speed signal (~3 seconds) and the
               "AI estimate · review" trust signal. Drops "no typing"

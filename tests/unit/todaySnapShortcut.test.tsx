@@ -55,6 +55,15 @@ describe("TodaySnapShortcut (web)", () => {
     expect(screen.queryByTestId("today-snap-shortcut-lock")).not.toBeNull();
   });
 
+  it("renders the PRO chip only when locked (audit Today F3 #3)", () => {
+    const { rerender } = render(<TodaySnapShortcut onPress={() => {}} />);
+    expect(screen.queryByTestId("today-snap-shortcut-pro-chip")).toBeNull();
+    rerender(<TodaySnapShortcut onPress={() => {}} locked />);
+    const chip = screen.queryByTestId("today-snap-shortcut-pro-chip");
+    expect(chip).not.toBeNull();
+    expect(chip?.textContent).toBe("PRO");
+  });
+
   it("supports a custom testID for downstream test suites", () => {
     render(<TodaySnapShortcut onPress={() => {}} testID="custom-snap-id" />);
     expect(screen.queryByTestId("custom-snap-id")).not.toBeNull();
