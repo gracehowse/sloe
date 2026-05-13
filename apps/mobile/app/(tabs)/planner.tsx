@@ -989,7 +989,12 @@ export default function PlannerScreen() {
           borderColor: colors.border,
           alignItems: "center",
         },
-        dayBtnActive: { borderColor: Accent.primary, backgroundColor: Accent.primary + "15" },
+        // 2026-05-13 (premium-bar audit Plan Card 6 #2): active tint
+        // was `+ "15"` (8.2% opacity) which read as nearly invisible in
+        // dark mode and weakly tinted in light. Bumped to `+ "26"`
+        // (≈15%) so the active state lifts visibly above the card
+        // surface in both themes without dominating like a solid fill.
+        dayBtnActive: { borderColor: Accent.primary, backgroundColor: Accent.primary + "26" },
         dayBtnText: { color: colors.textTertiary, fontWeight: "600", fontSize: 14 },
         dayBtnTextActive: { color: Accent.primary },
 
@@ -1909,10 +1914,16 @@ export default function PlannerScreen() {
                   matching the rest of the app's disclosure pattern.
                   The Unicode markers read as placeholder; the proper
                   chevron icon is the prototype + design-system spec. */}
+              {/* 2026-05-13 (premium-bar audit Plan Card 6 #3): chevron
+                  used `textSecondary` which read as faded against the
+                  card surface in dark mode — testers reported the
+                  expander affordance disappeared at a glance. Bumped
+                  to `text` so the chevron carries the same weight as
+                  the card title in both themes. */}
               {planSetupExpanded ? (
-                <ChevronDown size={18} color={colors.textSecondary} strokeWidth={2} />
+                <ChevronDown size={18} color={colors.text} strokeWidth={2.25} />
               ) : (
-                <ChevronRight size={18} color={colors.textSecondary} strokeWidth={2} />
+                <ChevronRight size={18} color={colors.text} strokeWidth={2.25} />
               )}
             </Pressable>
             {planSetupExpanded ? (
