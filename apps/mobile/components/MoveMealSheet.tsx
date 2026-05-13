@@ -18,9 +18,43 @@ import {
   Text,
   View,
 } from "react-native";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import {
+  Coffee,
+  Cookie,
+  Sun,
+  UtensilsCrossed,
+  type LucideIcon,
+} from "lucide-react-native";
+import { Accent, Radius, SlotColors, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import type { DayPlan } from "../../../src/types/recipe";
+
+// 2026-05-13 (premium-bar audit Plan Card 3 #1): leading slot glyphs
+// on each destination row so the user can scan vertically by slot
+// type instead of reading the slot-name string on every row. Same
+// glyph set + per-slot tint as the canonical Today meal rows
+// (`apps/mobile/components/today/TodayMealsSection.tsx`) so the
+// pattern reads identically across surfaces.
+const SLOT_ICON: Record<string, LucideIcon> = {
+  Breakfast: Coffee,
+  Lunch: Sun,
+  Dinner: UtensilsCrossed,
+  Snacks: Cookie,
+  Snack: Cookie,
+};
+const SLOT_TINT: Record<string, string> = {
+  Breakfast: SlotColors.breakfast,
+  Lunch: SlotColors.lunch,
+  Dinner: SlotColors.dinner,
+  Snacks: SlotColors.snack,
+  Snack: SlotColors.snack,
+};
+function resolveSlotGlyph(name: string): LucideIcon {
+  return SLOT_ICON[name] ?? UtensilsCrossed;
+}
+function resolveSlotTint(name: string): string {
+  return SLOT_TINT[name] ?? Accent.primary;
+}
 
 type Props = {
   visible: boolean;
@@ -57,6 +91,7 @@ export function MoveMealSheet({
       dayLabel: string;
       slotName: string;
       recipeTitle: string;
+      calories: number;
       isSource: boolean;
       isEmpty: boolean;
     }[] = [];
@@ -69,6 +104,7 @@ export function MoveMealSheet({
           dayLabel,
           slotName: m.name,
           recipeTitle: m.recipeTitle ?? "",
+          calories: Math.round(m.calories ?? 0),
           isSource: !!from && from.day === dp.day && from.slotIndex === si,
           isEmpty: !!m.isPlaceholder || !m.recipeTitle,
         });
@@ -100,11 +136,15 @@ export function MoveMealSheet({
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
             <Text style={[styles.title, { color: colors.text }]}>Move meal</Text>
+            {/* 2026-05-13 (premium-bar audit Plan Card 3 #2): include
+                source-meal kcal in the subtitle so the user can spot
+                a calorically-relevant swap target without having to
+                memorise the source kcal from the previous screen. */}
             <Text style={[styles.subtitle, { color: colors.textSecondary }]} numberOfLines={1}>
               {sourceRow
                 ? sourceRow.isEmpty
                   ? `From: ${sourceRow.slotName} · ${sourceRow.dayLabel}`
-                  : `From: ${sourceRow.slotName} · ${sourceRow.dayLabel} · ${sourceRow.recipeTitle}`
+                  : `From: ${sourceRow.slotName} · ${sourceRow.dayLabel} · ${sourceRow.recipeTitle} · ${sourceRow.calories} kcal`
                 : "Pick a slot"}
             </Text>
           </View>
@@ -125,6 +165,8 @@ export function MoveMealSheet({
             rows.map((r) => {
               const key = `${r.day}-${r.slotIndex}`;
               const label = `Move to ${r.dayLabel} ${r.slotName}`;
+              const Glyph = resolveSlotGlyph(r.slotName);
+              const tint = resolveSlotTint(r.slotName);
               return (
                 <Pressable
                   key={key}
@@ -144,6 +186,23 @@ export function MoveMealSheet({
                     },
                   ]}
                 >
+                  {/* Leading slot glyph — matches Today meal-rows
+                      pattern so the user reads the column structure
+                      the same way across surfaces. Premium-bar audit
+                      Plan Card 3 #1. */}
+                  <View
+                    aria-hidden
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 8,
+                      backgroundColor: tint + "1A",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Glyph size={14} color={tint} strokeWidth={2} />
+                  </View>
                   <View style={{ flex: 1 }}>
                     <Text
                       style={{
@@ -163,7 +222,9 @@ export function MoveMealSheet({
                       }}
                       numberOfLines={1}
                     >
-                      {r.isEmpty ? "Empty slot" : r.recipeTitle}
+                      {r.isEmpty
+                        ? "Empty slot"
+                        : `${r.recipeTitle}${r.calories > 0 ? ` · ${r.calories} kcal` : ""}`}
                     </Text>
                   </View>
                   {r.isSource ? (
