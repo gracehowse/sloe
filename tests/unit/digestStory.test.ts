@@ -29,7 +29,11 @@ const baseInput = {
 describe("buildDigestStory", () => {
   it("emits range + days + calories(under) + protein + closest sentences for a typical week", () => {
     const out = buildDigestStory(baseInput);
-    expect(out.rangeLine).toBe("This week (Apr 6 – Apr 12).");
+    // 2026-05-12 (premium-bar audit DC12): past-tense voice rule —
+    // recap eyebrow reframed from "This week" to "Last week" so the
+    // surface reads as a closed retrospective, not a present-tense
+    // mid-stream nudge.
+    expect(out.rangeLine).toBe("Last week (Apr 6 – Apr 12).");
     expect(out.daysLine).toBe("5 of 7 days logged.");
     expect(out.caloriesLine).toBe(
       "You averaged 1,980 kcal vs 2,100 target — 120 under.",

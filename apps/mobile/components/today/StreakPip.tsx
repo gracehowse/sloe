@@ -1,6 +1,6 @@
 import React from "react";
 import { Pressable, Text, View, type ViewStyle, type StyleProp } from "react-native";
-import { Flame } from "lucide-react-native";
+import { Flame, Shield } from "lucide-react-native";
 
 import { Accent } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -67,6 +67,17 @@ export interface StreakPipProps {
    * arm's length on the recap header.
    */
   size?: "sm" | "lg";
+  /**
+   * 2026-05-12 (premium-bar audit DC8 polish — Headspace freeze-shield):
+   * when today's streak is being kept alive by a freeze (user missed a
+   * day but had a freeze stocked), swap the `Flame` glyph for `Shield`
+   * and tint to a calm slate. The fundamental message is "you didn't
+   * lose your streak — a freeze covered for you", not "well done, you
+   * fired today" (which fame would imply). The audit's DC8 frame is
+   * "streak as calm pip, gated to ≥ 2 days" — the shield variant lands
+   * the same calm posture for the freeze-saved case.
+   */
+  freezeProtected?: boolean;
 }
 
 export function StreakPip({
@@ -75,20 +86,33 @@ export function StreakPip({
   style,
   onPress,
   size = "sm",
+  freezeProtected = false,
 }: StreakPipProps) {
   const colors = useThemeColors();
   const safeDays = Number.isFinite(days) && days >= 0 ? Math.floor(days) : 0;
   const active = safeDays >= 2;
-  const fg = active ? Accent.primary : colors.textSecondary;
-  const bg = active ? `${Accent.primary}14` : colors.cardBorder;
+  // DC8 freeze-shield variant takes precedence over the active/inactive
+  // tone so the user reads "freeze covered for you" instead of
+  // "fired up today".
+  const fg = freezeProtected
+    ? colors.textSecondary
+    : active
+      ? Accent.primary
+      : colors.textSecondary;
+  const bg = freezeProtected
+    ? colors.cardBorder
+    : active
+      ? `${Accent.primary}14`
+      : colors.cardBorder;
 
   // Accessibility label: dynamic per streak length AND whether the pip
   // is interactive. The "tap for weekly recap" suffix is only added
   // when there's a real tap target, otherwise we'd be lying to
   // VoiceOver. Zero-day case preserves the same suffix so the screen
   // is reachable from first launch (it lands on the explainer).
-  const baseLabel =
-    safeDays === 0
+  const baseLabel = freezeProtected
+    ? `${safeDays}-day streak — freeze used today`
+    : safeDays === 0
       ? "0-day logging streak"
       : `${safeDays}-day logging streak`;
   const a11yLabel = onPress ? `${baseLabel} — tap for weekly recap` : baseLabel;
@@ -104,12 +128,20 @@ export function StreakPip({
 
   // "27-day streak" reads as *current consecutive* logging — distinct from
   // "48 days" (distinct days with food) in the milestone snapshot.
-  const labelText =
-    safeDays === 0 ? "Start streak" : `${safeDays}-day streak`;
+  // DC8 freeze-shield variant: replace the count with a calm "Freeze
+  // saved" + retained day count so the user reads what happened in
+  // plain English. Duolingo + Headspace's pattern.
+  const labelText = freezeProtected
+    ? `${safeDays}-day streak · freeze`
+    : safeDays === 0
+      ? "Start streak"
+      : `${safeDays}-day streak`;
+
+  const Glyph = freezeProtected ? Shield : Flame;
 
   const inner = (
     <>
-      <Flame size={iconSize} color={fg} strokeWidth={2.25} />
+      <Glyph size={iconSize} color={fg} strokeWidth={2.25} />
       <Text
         numberOfLines={1}
         style={{

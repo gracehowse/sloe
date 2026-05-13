@@ -124,7 +124,14 @@ export function buildDigestStory(input: DigestStoryInput): DigestStoryResult {
     ? Math.floor(daysLogged)
     : 0;
 
-  const rangeLine = `This week (${weekLabel}).`;
+  // 2026-05-12 (premium-bar audit DC12 polish — past-tense voice rule):
+  // The Digest is a recap of the *previous* week, but the eyebrow used
+  // to read "This week (May 5–11)" in present tense even when shown on
+  // Sunday/Monday looking back. Linear / Headspace / MacroFactor all
+  // anchor recap eyebrows in past tense so the user reads the surface
+  // as "here's what happened" rather than "you're mid-stream and falling
+  // behind." Reframed to "Last week".
+  const rangeLine = `Last week (${weekLabel}).`;
   const daysLine = `${safeDaysLogged} of 7 days logged.`;
 
   let caloriesLine: string | null = null;

@@ -4351,6 +4351,14 @@ export default function TrackerScreen() {
             <StreakPip
               days={protectedStreakLength}
               onPress={() => router.push("/weekly-recap" as never)}
+              // 2026-05-12 (premium-bar audit DC8 polish): when today's
+              // key is in `protectedDateKeys` it means a freeze
+              // covered for an empty-log day in the current chain —
+              // the pip swaps the Flame glyph for Shield + calm slate
+              // tint. Headspace parity. Only fires when the user
+              // actually had a freeze used; the regular logged-today
+              // path keeps the Flame.
+              freezeProtected={protectedDateKeys.has(dateKeyFromDate(new Date()))}
             />
           </View>
         )}

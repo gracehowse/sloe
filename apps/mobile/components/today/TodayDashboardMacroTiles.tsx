@@ -1,5 +1,18 @@
 import React from "react";
 import { Pressable, Text, View } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+  Easing,
+} from "react-native-reanimated";
+
+// 2026-05-12 (premium-bar audit motion polish): use the reanimated
+// `createAnimatedComponent` pattern so the resolved component goes
+// through React's normal forwardRef pipeline rather than relying on
+// `Animated.View` resolving correctly on every renderer. Mirrors
+// `PressableScale.tsx`.
+const AnimatedView = Animated.createAnimatedComponent(View);
 import {
   Beef,
   Candy,
@@ -262,7 +275,14 @@ export function TodayDashboardMacroTiles({
                   macro's brand colour at 14% opacity so each tile is
                   legible as "your X progress" even before any logging
                   — and the brighter fill stands out cleanly as the
-                  user logs through the day. */}
+                  user logs through the day.
+
+                  2026-05-12 (premium-bar audit Today F4 #4 — 200ms
+                  ease-out bar fill on log): wrapped the fill in a
+                  reanimated View that tweens to the new pct over
+                  300ms with `Easing.out(cubic)`. Apple Watch + Cal AI
+                  parity — the bar grows visibly as the user logs,
+                  reinforcing the "you just made progress" beat. */}
               <View
                 style={{
                   height: 6,
@@ -272,14 +292,7 @@ export function TodayDashboardMacroTiles({
                   overflow: "hidden",
                 }}
               >
-                <View
-                  style={{
-                    width: `${pct}%`,
-                    height: "100%",
-                    borderRadius: 999,
-                    backgroundColor: def.color,
-                  }}
-                />
+                <MacroTileFill pct={pct} color={def.color} />
               </View>
               <Text
                 style={{
@@ -296,6 +309,39 @@ export function TodayDashboardMacroTiles({
       })}
       </View>
     </View>
+  );
+}
+
+/**
+ * MacroTileFill — animated fill bar for a macro tile (audit Today F4
+ * #4, 2026-05-12). 300ms `Easing.out(cubic)` tween so the bar grows
+ * visibly when the user logs a meal. Pure reanimated — no JS-thread
+ * width interpolation. The track + the dim background sit in the
+ * parent View (this only owns the coloured fill).
+ */
+function MacroTileFill({ pct, color }: { pct: number; color: string }) {
+  const target = Math.max(0, Math.min(100, pct));
+  const animPct = useSharedValue(target);
+  React.useEffect(() => {
+    animPct.value = withTiming(target, {
+      duration: 300,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [target, animPct]);
+  const animatedStyle = useAnimatedStyle(() => ({
+    width: `${animPct.value}%`,
+  }));
+  return (
+    <AnimatedView
+      style={[
+        {
+          height: "100%",
+          borderRadius: 999,
+          backgroundColor: color,
+        },
+        animatedStyle,
+      ]}
+    />
   );
 }
 

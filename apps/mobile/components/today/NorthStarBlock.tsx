@@ -8,8 +8,21 @@ import {
   View,
 } from "react-native";
 import type { GestureResponderEvent, PanResponderGestureState } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+  Easing,
+} from "react-native-reanimated";
 import { Sparkles, X } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
+
+// 2026-05-12 (premium-bar audit motion polish): use the reanimated
+// `createAnimatedComponent` pattern so the resolved component goes
+// through React's normal forwardRef pipeline rather than relying on
+// `Animated.View` resolving correctly on every renderer (real RN +
+// vitest shim). Mirrors `PressableScale.tsx`.
+const AnimatedView = Animated.createAnimatedComponent(View);
 
 import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -236,8 +249,38 @@ function NorthStarDefault({
     });
   }, [onSkip, reduceMotion]);
 
+  // 2026-05-12 (premium-bar audit DC2 polish — Cal AI 200ms fade-up
+  // on first paint): the suggestion card eases in over 220ms with a
+  // small upward translate so it lands as a deliberate moment, not a
+  // pop-in. Reduce-motion users see no animation (skip the tween).
+  const fadeOpacity = useSharedValue(reduceMotion ? 1 : 0);
+  const fadeTranslate = useSharedValue(reduceMotion ? 0 : 6);
+  React.useEffect(() => {
+    if (reduceMotion) {
+      fadeOpacity.value = 1;
+      fadeTranslate.value = 0;
+      return;
+    }
+    fadeOpacity.value = withTiming(1, {
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
+    });
+    fadeTranslate.value = withTiming(0, {
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [reduceMotion, fadeOpacity, fadeTranslate]);
+  const fadeStyle = useAnimatedStyle(() => ({
+    opacity: fadeOpacity.value,
+    transform: [{ translateY: fadeTranslate.value }],
+  }));
+
   return (
-    <View {...responder.panHandlers} testID={testID ?? "north-star-default"}>
+    <AnimatedView
+      {...responder.panHandlers}
+      testID={testID ?? "north-star-default"}
+      style={fadeStyle}
+    >
       <SupprCard tone="primary" padding="md" style={styles.defaultCard}>
         {reduceMotion && onSkip ? (
           <Pressable
@@ -354,7 +397,7 @@ function NorthStarDefault({
           </Pressable>
         </View>
       </SupprCard>
-    </View>
+    </AnimatedView>
   );
 }
 
