@@ -32,6 +32,7 @@ import {
   restorePurchases,
   syncTierToSupabase,
 } from "@/lib/purchases";
+import { classifyPaywallReadiness } from "@/lib/paywallReadiness";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { usePromoCode } from "@/hooks/usePromoCode";
@@ -280,10 +281,35 @@ export default function PaywallScreen() {
          *  send someone back to the app on a transient RC failure. */
       }
       if (cancelled) return;
-      const pkgs = await getOfferings();
+      let pkgs: PurchasesPackage[] = [];
+      let errored = false;
+      try {
+        pkgs = await getOfferings();
+      } catch {
+        errored = true;
+      }
       if (cancelled) return;
       setPackages(pkgs);
       setOfferingsReady(true);
+      // ENG-101 (2026-05-13): classify IAP wiring state so PostHog
+      // can alarm on builds that don't resolve to `ok`. Fires once
+      // per paywall mount alongside `paywall_viewed`.
+      const readiness = classifyPaywallReadiness({
+        hasApiKey: isPurchasesApiKeyPresent(),
+        packages: pkgs,
+        errored,
+      });
+      track(AnalyticsEvents.paywall_readiness, {
+        reason: readiness.reason,
+        package_count: pkgs.length,
+        platform: Platform.OS === "ios" ? "ios" : "android",
+        from: paywallFrom,
+      });
+      if (__DEV__ && readiness.reason !== "ok") {
+        console.warn(
+          `[paywall] readiness=${readiness.reason} — ${readiness.diagnostic} Next: ${readiness.nextAction}`,
+        );
+      }
       // Analytics (L6 G9 + 2026-04-19 round-2): every `paywall_viewed`
       // emit carries `{ from, tier, surface, platform }`. `tier: "pro"`
       // reflects the default visual focus on this screen; if/when we

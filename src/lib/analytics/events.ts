@@ -90,6 +90,20 @@ export const AnalyticsEvents = {
    *  the redirect screen can be removed. Payload: `{ surface: 'mobile' }`. */
   onboarding_v2_redirect_followed: "onboarding_v2_redirect_followed",
   paywall_viewed: "paywall_viewed",
+  /** Fires once per paywall mount with the resolved IAP readiness
+   *  state. Lets us alarm in PostHog when production builds resolve
+   *  to anything other than `ok` — i.e. RevenueCat / StoreKit / EAS
+   *  Secrets aren't wired end-to-end. Added 2026-05-13 (ENG-101) so
+   *  we don't need TF console logs to verify launch-readiness.
+   *
+   *  Payload:
+   *    { reason: "ok" | "no-api-key" | "empty-offering" | "error",
+   *      package_count: number,
+   *      platform: "ios" | "android",
+   *      from: PaywallViewedFrom }
+   *
+   *  Authority: docs/operations/iap-launch-checklist.md. */
+  paywall_readiness: "paywall_readiness",
   /** Fires when the user dismisses an in-app paywall surface
    *  (currently: `UpgradePaywallDialog` on web). Payload:
    *    { from: PaywallViewedFrom,
