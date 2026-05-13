@@ -1666,6 +1666,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           the user can verify at a glance "yes I'm OK with X going".
           Mirror of mobile reset modal in SettingsBundleContent.tsx. */}
       <DestructiveConfirmDialog
+        typeToConfirm="RESET"
         open={eraseEverythingOpen}
         onOpenChange={setEraseEverythingOpen}
         title="Delete your data and start fresh?"

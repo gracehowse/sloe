@@ -46,10 +46,14 @@ const MOBILE_SRC = readFileSync(MOBILE_DISCOVER_PATH, "utf8");
 
 describe("Discover tab — three-section layout (2026-04-20 prototype port)", () => {
   describe("section headings", () => {
-    it("web renders all three section headings", () => {
+    it("web renders the recipe section headings + the My Library bottom rail", () => {
+      // 2026-05-12 (premium-bar audit web parity): Import card moved
+      // to a permanent first card above the feed (mirror of mobile).
+      // "From your sources" was renamed to "My Library" since Import
+      // is no longer in that bottom-rail block.
       expect(WEB_SRC).toMatch(/>\s*Matches your day\s*</);
       expect(WEB_SRC).toMatch(/>\s*More ideas\s*</);
-      expect(WEB_SRC).toMatch(/>\s*From your sources\s*</);
+      expect(WEB_SRC).toMatch(/>\s*My Library\s*</);
     });
 
     it("mobile renders all required section headings (post-2026-05-12 audit)", () => {
@@ -82,21 +86,31 @@ describe("Discover tab — three-section layout (2026-04-20 prototype port)", ()
     });
   });
 
-  describe("CTA reordering (From your sources at the bottom)", () => {
-    it("web places the 'From your sources' heading BEFORE the Import / My Library CTAs", () => {
-      const headingIdx = WEB_SRC.indexOf("From your sources");
-      const importIdx = WEB_SRC.indexOf("Import from TikTok, Instagram...");
-      const libraryIdx = WEB_SRC.indexOf("My Library</p>");
-      expect(headingIdx).toBeGreaterThan(0);
-      expect(importIdx).toBeGreaterThan(headingIdx);
-      expect(libraryIdx).toBeGreaterThan(headingIdx);
+  describe("CTA reordering (Import as permanent first card; My Library at bottom)", () => {
+    it("web places the Import card as the FIRST surface above all recipe sections (2026-05-12 audit)", () => {
+      // Mirror of the mobile assertion — Import is now a permanent
+      // top card so the import affordance is the first thing on
+      // Discover, not buried beneath recipe rows.
+      const topImportIdx = WEB_SRC.indexOf('discover-import-cta-top');
+      const matchesIdx = WEB_SRC.search(/>\s*Matches your day\s*</);
+      const moreIdeasIdx = WEB_SRC.search(/>\s*More ideas\s*</);
+      const libraryHeadingIdx = WEB_SRC.search(/>\s*My Library\s*</);
+      expect(topImportIdx).toBeGreaterThan(0);
+      expect(matchesIdx).toBeGreaterThan(topImportIdx);
+      expect(moreIdeasIdx).toBeGreaterThan(topImportIdx);
+      expect(libraryHeadingIdx).toBeGreaterThan(moreIdeasIdx);
     });
 
-    it("web places the Import / My Library CTAs AFTER the More ideas section", () => {
-      const moreIdeasIdx = WEB_SRC.indexOf("More ideas");
-      const importIdx = WEB_SRC.indexOf("Import from TikTok, Instagram...");
+    it("web places the bottom My Library rail AFTER the More ideas section", () => {
+      // Use the rendered `>Heading<` JSX-boundary patterns so the
+      // pre-fix comment-block mentions of "More ideas" / "My Library"
+      // at the top of the file don't false-match. The bottom-rail
+      // "My Library" heading must follow the recipe-section "More
+      // ideas" heading in source order.
+      const moreIdeasIdx = WEB_SRC.search(/>\s*More ideas\s*</);
+      const libraryHeadingIdx = WEB_SRC.search(/>\s*My Library\s*</);
       expect(moreIdeasIdx).toBeGreaterThan(0);
-      expect(importIdx).toBeGreaterThan(moreIdeasIdx);
+      expect(libraryHeadingIdx).toBeGreaterThan(moreIdeasIdx);
     });
 
     it("mobile places the Import card as the FIRST surface above all recipe sections (2026-05-12 audit)", () => {

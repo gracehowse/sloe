@@ -158,6 +158,12 @@ export function NorthStarBlock({
   }
 
   return (
+    // 2026-05-12 (premium-bar audit web parity, DC2 polish): 200ms
+    // fade-up entrance using the shared `.v2-fade-up` keyframe so
+    // the card lands as a deliberate moment, not a pop-in. Mirrors
+    // mobile's 220ms reanimated fade-up. Honours
+    // `prefers-reduced-motion: reduce` via the existing theme.css
+    // reduce-motion override.
     <SupprCard
       data-slot="north-star-default"
       data-testid={testID}
@@ -165,7 +171,7 @@ export function NorthStarBlock({
       gradient
       padding="md"
       radius="lg"
-      className="relative flex flex-row items-stretch gap-3"
+      className="relative flex flex-row items-stretch gap-3 v2-fade-up"
     >
       {onSkip ? (
         <button

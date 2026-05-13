@@ -4,6 +4,7 @@ import * as React from "react";
 import {
   Beef,
   Candy,
+  ChevronRight,
   Droplet,
   Droplets,
   Gauge,
@@ -250,12 +251,24 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
               <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 {tile.label}
               </span>
-              <Icon
-                size={13}
-                strokeWidth={1.75}
-                style={{ color: tile.fillVar }}
-                aria-hidden
-              />
+              {/* 2026-05-12 (premium-bar audit web parity, Today F4 #2):
+                  ChevronRight signals each tile is tappable to a
+                  detail surface. Mirror of mobile macro-tile pattern
+                  (Cronometer / MacroFactor parity). */}
+              <span className="flex items-center gap-1">
+                <Icon
+                  size={13}
+                  strokeWidth={1.75}
+                  style={{ color: tile.fillVar }}
+                  aria-hidden
+                />
+                <ChevronRight
+                  size={11}
+                  strokeWidth={2}
+                  className="text-muted-foreground"
+                  aria-hidden
+                />
+              </span>
             </div>
             {/* Prototype port (2026-04-20, mobile parity): value
                 bumped from 18pt → 22pt per mobile's ui-critic fix so
@@ -283,8 +296,13 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
               className="mt-2.5 h-[6px] rounded-full overflow-hidden"
               style={{ background: `color-mix(in_oklab, ${tile.fillVar} 14%, transparent)` }}
             >
+              {/* 2026-05-12 (premium-bar audit web parity, Today F4 #4):
+                  bar fill duration 700ms → 300ms with ease-out cubic
+                  so the "you just logged" beat matches mobile's
+                  300ms `Easing.out(cubic)` reanimated tween. Apple
+                  Watch + Cal AI parity. */}
               <div
-                className="h-full rounded-full transition-[width] duration-700"
+                className="h-full rounded-full transition-[width] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]"
                 style={{ width: `${tile.pct}%`, background: tile.fillVar }}
               />
             </div>

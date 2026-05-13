@@ -394,6 +394,33 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
               Today&apos;s goal adjusts upward by your active-burn calories.
             </p>
           ) : null}
+          {/* 2026-05-12 (premium-bar audit web parity, DC14 polish):
+              amber safety-floor warning when the calorie target is
+              below the 1,200 kcal threshold we enforce in the weekly
+              check-in safety helper. Mobile parity with
+              `apps/mobile/app/profile.tsx`. Without this warning, a
+              user who manually set a sub-floor target has no signal
+              from this screen that the number is below recommended
+              adult intake. */}
+          {targets.calories > 0 && targets.calories < 1200 ? (
+            <div
+              role="alert"
+              aria-label="Calorie target is below the 1,200 kcal safety floor we recommend."
+              className="mt-3 mx-auto max-w-md rounded-xl border border-warning/40 bg-warning/10 px-3.5 py-2.5 flex items-start gap-2"
+              data-testid="targets-safety-floor-warning"
+            >
+              <span
+                aria-hidden
+                className="mt-1 inline-block w-2.5 h-2.5 rounded-full bg-warning shrink-0"
+              />
+              <p className="text-[12px] text-foreground leading-snug flex-1">
+                <span className="font-bold">Below 1,200 kcal.</span> This is
+                under the safety floor we recommend for adults. Consider
+                raising your target — or talk to a clinician if a lower
+                target is medically necessary.
+              </p>
+            </div>
+          ) : null}
         </div>
 
         {/* Goal */}

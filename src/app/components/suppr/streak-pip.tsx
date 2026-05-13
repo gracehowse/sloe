@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Flame } from "lucide-react";
+import { Flame, Shield } from "lucide-react";
 
 /**
  * StreakPip — small pill that shows the user's current logging streak
@@ -19,6 +19,14 @@ import { Flame } from "lucide-react";
  * Streak < 2 renders the pip in muted neutral; ≥ 2 turns primary.
  * 0-day streaks still render so first-time users understand what the
  * surface is.
+ *
+ * 2026-05-12 (premium-bar audit web parity, DC8 polish):
+ *   - `freezeProtected` swaps the Flame → Shield + calm slate when a
+ *     freeze covered today's logging gap. Headspace parity.
+ *   - `onPress` makes the pip tappable (opens /whats-new or other
+ *     destination supplied by the host).
+ *   - `size` lifts the pill to 28pt for headline placements (e.g.
+ *     above the weekly recap card).
  */
 export interface StreakPipProps {
   /** Current consecutive logging-day count. Always non-negative. */
@@ -28,35 +36,94 @@ export interface StreakPipProps {
   /** Optional className escape hatch for callers that need to nudge
    *  vertical alignment within their own row. */
   className?: string;
+  /** 2026-05-12 — when supplied, the pip becomes a `<button>` and
+   *  the accessibility role flips from status → button. Use to wire
+   *  a destination (typically `/whats-new` or a weekly-recap dialog). */
+  onPress?: () => void;
+  /** 2026-05-12 — render at headline size (28pt) for recap header
+   *  placements. Default is the compact 22pt pill. */
+  size?: "sm" | "lg";
+  /** 2026-05-12 — DC8 polish (Headspace freeze-shield): when today's
+   *  streak is being kept alive by a stocked freeze, swap the
+   *  `Flame` glyph for `Shield` and tint to a calm slate so the
+   *  message reads "a freeze covered for you", not "you fired
+   *  today". */
+  freezeProtected?: boolean;
 }
 
-export function StreakPip({ days, ariaLabel, className }: StreakPipProps) {
+export function StreakPip({
+  days,
+  ariaLabel,
+  className,
+  onPress,
+  size = "sm",
+  freezeProtected = false,
+}: StreakPipProps) {
   const safeDays = Number.isFinite(days) && days >= 0 ? Math.floor(days) : 0;
   const active = safeDays >= 2;
+  const isLg = size === "lg";
 
-  const label =
-    safeDays === 0
+  const label = freezeProtected
+    ? `${safeDays}-day streak · freeze`
+    : safeDays === 0
       ? "Start your streak"
       : `${safeDays}-day streak`;
 
-  return (
-    <span
-      role="status"
-      aria-label={ariaLabel ?? `${safeDays}-day logging streak`}
-      className={[
-        "inline-flex items-center gap-1 h-[22px] px-2 rounded-full text-[11px] font-bold leading-none tracking-[0.01em] tabular-nums",
-        active
-          ? "bg-primary/10 text-primary"
-          : "bg-muted text-muted-foreground",
-        className ?? "",
-      ].join(" ")}
-    >
-      <Flame
-        className="h-3 w-3 shrink-0"
+  const baseAria = freezeProtected
+    ? `${safeDays}-day streak — freeze used today`
+    : `${safeDays}-day logging streak`;
+  const finalAria = onPress
+    ? `${ariaLabel ?? baseAria} — tap for weekly recap`
+    : (ariaLabel ?? baseAria);
+
+  // DC8 freeze-shield takes precedence: muted slate tone instead of
+  // the primary active tint.
+  const toneClass = freezeProtected
+    ? "bg-muted text-muted-foreground"
+    : active
+      ? "bg-primary/10 text-primary"
+      : "bg-muted text-muted-foreground";
+
+  const sizeClass = isLg
+    ? "h-7 px-3 text-[13px] gap-1.5"
+    : "h-[22px] px-2 text-[11px] gap-1";
+
+  const Glyph = freezeProtected ? Shield : Flame;
+
+  const inner = (
+    <>
+      <Glyph
+        className={isLg ? "h-3.5 w-3.5 shrink-0" : "h-3 w-3 shrink-0"}
         strokeWidth={2.25}
         aria-hidden
       />
       <span>{label}</span>
+    </>
+  );
+
+  const baseClass = [
+    "inline-flex items-center rounded-full font-bold leading-none tracking-[0.01em] tabular-nums",
+    sizeClass,
+    toneClass,
+    className ?? "",
+  ].join(" ");
+
+  if (onPress) {
+    return (
+      <button
+        type="button"
+        onClick={onPress}
+        aria-label={finalAria}
+        className={`${baseClass} hover:opacity-80 transition-opacity`}
+      >
+        {inner}
+      </button>
+    );
+  }
+
+  return (
+    <span role="status" aria-label={finalAria} className={baseClass}>
+      {inner}
     </span>
   );
 }

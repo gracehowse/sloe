@@ -787,6 +787,40 @@ export const DiscoverFeed = memo(function DiscoverFeed({
           </div>
         ) : null}
 
+        {/* 2026-05-12 (premium-bar audit web parity, DC13 + refuse-
+            to-pass #8): permanent Import card above the feed on
+            mobile-web. Mirrors the mobile placement (shipped in
+            f69a279) — Import is the first thing the user sees on
+            Discover, not buried at the bottom under "From your
+            sources". `testID` preserved for the Maestro flow on
+            iOS, but the click handler uses History API parity with
+            the rest of the mobile-web nav. */}
+        <div className="md:hidden">
+          <div
+            role="button"
+            tabIndex={0}
+            data-testid="discover-import-cta-top"
+            onClick={() => {
+              const url = new URL(window.location.href);
+              url.searchParams.set("view", "import");
+              window.history.pushState({}, "", url.toString());
+              window.dispatchEvent(new PopStateEvent("popstate"));
+            }}
+            onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.click(); }}
+            className="mx-4 mt-3 rounded-xl border p-3.5 flex items-center gap-3 cursor-pointer transition-colors"
+            style={{ background: "rgba(76,108,224,0.08)", borderColor: "rgba(76,108,224,0.22)" }}
+          >
+            <IconBox size="lg" tone="primary">
+              <Icons.import />
+            </IconBox>
+            <div className="flex-1">
+              <p className="text-[13px] font-semibold text-foreground">Import from TikTok, Instagram...</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Paste a link or share from any app</p>
+            </div>
+            <Icons.forward className="w-4 h-4 text-muted-foreground" />
+          </div>
+        </div>
+
         {/* Section 1 + 2: recipe sections — only when there's content
             MOBILE-WEB ONLY (below `md`). Desktop uses the flat grid
             above; this three-section structure matches the mobile app
@@ -966,40 +1000,15 @@ export const DiscoverFeed = memo(function DiscoverFeed({
           </div>
         )}
 
-        {/* ── From your sources — Import + My Library CTAs, bottom
-            of the scroll per mobile prototype. MOBILE-WEB ONLY: on
-            desktop the sidebar has permanent entries for Library +
-            Import, so the CTAs are duplicative (`md:hidden` wrapper
-            below). Always rendered on narrow widths so users can
-            still bring content in when the feed is empty. */}
+        {/* ── My Library jump card — bottom rail. MOBILE-WEB ONLY:
+            on desktop the sidebar has a permanent Library entry, so
+            the CTA is duplicative (`md:hidden` wrapper below).
+            Import moved to a permanent first card above the feed
+            (2026-05-12 audit, mirror of mobile). */}
         <div className="md:hidden">
         <h3 className="text-[14px] font-bold text-foreground -tracking-[0.01em] mt-[22px] mb-2.5 px-4">
-          From your sources
+          My Library
         </h3>
-
-        {/* Import CTA card */}
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={() => {
-            const url = new URL(window.location.href);
-            url.searchParams.set("view", "import");
-            window.history.pushState({}, "", url.toString());
-            window.dispatchEvent(new PopStateEvent("popstate"));
-          }}
-          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.click(); }}
-          className="mx-4 rounded-xl border p-3.5 flex items-center gap-3 cursor-pointer transition-colors"
-          style={{ background: "rgba(76,108,224,0.08)", borderColor: "rgba(76,108,224,0.22)" }}
-        >
-          <IconBox size="lg" tone="primary">
-            <Icons.import />
-          </IconBox>
-          <div className="flex-1">
-            <p className="text-[13px] font-semibold text-foreground">Import from TikTok, Instagram...</p>
-            <p className="text-[11px] text-muted-foreground mt-0.5">Paste a link or share from any app</p>
-          </div>
-          <Icons.forward className="w-4 h-4 text-muted-foreground" />
-        </div>
 
         {/* My Library CTA — parity with mobile
             (`apps/mobile/app/(tabs)/discover.tsx`). Same `view` URL
