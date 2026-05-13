@@ -1,3 +1,4 @@
+"use client";
 /**
  * TrustPageLayout — shared shell for Privacy / Terms / DMCA / Licences.
  *
@@ -57,7 +58,7 @@ export function TrustPageLayout({
         {hasToc ? (
           <div className="lg:grid lg:grid-cols-[180px_1fr] lg:gap-10">
             <nav
-              className="hidden lg:block sticky top-12 self-start"
+              className="hidden lg:block sticky top-12 self-start print:hidden"
               aria-label={`${title} sections`}
             >
               <ul className="space-y-2 text-sm">

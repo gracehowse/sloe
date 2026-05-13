@@ -194,6 +194,7 @@ const CHANGELOGS: ChangelogEntry[] = [
     buildNumber: 12,
     appVersion: "1.0.0",
     releaseDate: "2026-05-02",
+    releaseTitle: "Today nutrient drill-down + ring explainer.",
     items: [
       {
         kind: "new",
@@ -217,6 +218,7 @@ const CHANGELOGS: ChangelogEntry[] = [
     buildNumber: 11,
     appVersion: "1.0.0",
     releaseDate: "2026-04-20",
+    releaseTitle: "Recipe page cleanup — calories inline, bigger macro tiles.",
     items: [
       {
         kind: "fixed",
@@ -228,6 +230,7 @@ const CHANGELOGS: ChangelogEntry[] = [
     buildNumber: 10,
     appVersion: "1.0.0",
     releaseDate: "2026-04-19",
+    releaseTitle: "TestFlight feedback round 1 — 10 fixes across food search, recipes, and onboarding.",
     testerAttribution: "Shaped by TestFlight feedback from 8 testers.",
     items: [
       { kind: "fixed", text: "Apple Sign-In now works for everyone." },

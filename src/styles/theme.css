@@ -648,3 +648,40 @@
   outline: none;
   box-shadow: 0 0 0 3px var(--accent-muted);
 }
+
+/* 2026-05-13 (premium-bar audit Group A trust pages — print/Save-PDF
+ * polish): force a clean, single-column, ink-friendly render when
+ * the user prints/saves Privacy/Terms/DMCA/Licences. Drops chrome
+ * (sticky ToC, print button, marketing nav), expands the prose
+ * column, and switches background tones to white so the PDF doesn't
+ * waste a black-cartridge on the bg gradient. */
+@media print {
+  /* Drop gradient + dark-mode tone — saved PDF should be plain white. */
+  body,
+  .min-h-screen {
+    background: #ffffff !important;
+    color: #111111 !important;
+  }
+  /* Hide sticky ToC sidebar + Print button + cross-link nav while
+   * preserving the print content. Components themselves use
+   * `print:hidden` Tailwind utilities for callout-level overrides. */
+  nav[aria-label$="sections"],
+  header nav {
+    display: none !important;
+  }
+  /* Sticky-positioned elements don't translate well to paper. */
+  [class*="sticky"] {
+    position: static !important;
+  }
+  /* Anchors lose underline-on-hover; keep them readable as plain
+   * text + brackets-style URL hint via `print-url`. */
+  a {
+    color: #0033cc !important;
+    text-decoration: underline !important;
+  }
+  /* Page-break hints — keep each h2 with its first paragraph. */
+  h1, h2, h3 {
+    break-after: avoid-page;
+    page-break-after: avoid;
+  }
+}

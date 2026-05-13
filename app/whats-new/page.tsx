@@ -98,6 +98,27 @@ export default function WhatsNewPage() {
             Every release, freshest first. New features, fixes, and what we
             are about to ship next.
           </p>
+          {/* 2026-05-13 (premium-bar audit Group A Feature 4 #6):
+              RSS subscribe link. Endpoint at `/whats-new/rss.xml`
+              serialises the same `getAllChangelogs()` SSOT so a
+              feed reader sees every shipped item. Linear / Vercel /
+              Stripe all expose one. */}
+          <a
+            href="/whats-new/rss.xml"
+            className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
+            data-testid="whats-new-rss-link"
+          >
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden
+            >
+              <path d="M6.18 17.82c0 1.21-.98 2.18-2.18 2.18s-2.18-.97-2.18-2.18.97-2.18 2.18-2.18 2.18.97 2.18 2.18zm-4.36-7.18c0 .73.59 1.32 1.32 1.32 4.41 0 8 3.59 8 8 0 .73.59 1.32 1.32 1.32s1.32-.59 1.32-1.32c0-5.87-4.77-10.64-10.64-10.64-.73 0-1.32.59-1.32 1.32zm0-6c0 .73.59 1.32 1.32 1.32 7.72 0 14 6.28 14 14 0 .73.59 1.32 1.32 1.32s1.32-.59 1.32-1.32C19.78 7.42 12.36 0 4.14 0 3.41 0 2.82.59 2.82 1.32z" />
+            </svg>
+            Subscribe via RSS
+          </a>
         </header>
 
         {entries.length === 0 ? (

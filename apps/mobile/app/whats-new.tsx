@@ -182,6 +182,24 @@ export default function WhatsNewScreen() {
           <Text style={styles.buildMeta} testID="whats-new-date">
             {formatReleaseDate(entry.releaseDate)}
           </Text>
+          {/* 2026-05-13 (premium-bar audit Group A Feature 4 #1):
+              optional 1-sentence release headline mirrored to mobile.
+              Web already renders it. Subtle muted style so the
+              build label + date stay the headline; releaseTitle is
+              the subhead. */}
+          {entry.releaseTitle ? (
+            <Text
+              style={{
+                fontSize: 13,
+                color: colors.textSecondary,
+                marginTop: 6,
+                lineHeight: 18,
+              }}
+              testID="whats-new-release-headline"
+            >
+              {entry.releaseTitle}
+            </Text>
+          ) : null}
         </View>
 
         {groups.length === 0 ? (
