@@ -1,5 +1,7 @@
 # Premium-bar audit systematic follow-ups — 2026-05-12
 
+**Linear umbrella:** [ENG-203 — Premium bar audit (2026-05-12) — remaining backlog + doc sync](https://linear.app/suppr/issue/ENG-203/premium-bar-audit-2026-05-12-remaining-backlog-doc-sync) (comment there when you ship a batch; tick checkboxes here in the same PR).
+
 **Source audit:** `docs/audits/2026-05-12-full-premium-bar-audit.md` (2022 lines).
 **Branch:** `claude/premium-bar-audit`.
 
@@ -226,7 +228,7 @@ This doc is the live tracking surface — update tags as items ship.
 ### B9 `/onboarding-v2` redirect
 
 - [x] Investigate Expo Router redirect-before-NotFound mounting (headerShown=false, animation=none)
-- [ ] Add `redirect_followed` analytics event
+- [x] Add `redirect_followed` analytics event — shipped as `onboarding_v2_redirect_followed` (see `apps/mobile/app/onboarding-v2.tsx`, `src/lib/analytics/events.ts`)
 - [ ] Document end-of-life date for redirect
 
 ### Cross-cutting B
