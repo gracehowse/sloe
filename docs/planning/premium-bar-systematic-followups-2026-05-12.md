@@ -654,3 +654,83 @@ These are quality-up moves, not refuse-to-pass. Defer to a
   pregnancy/TTC, ad-hoc shared meal) to the Notion Roadmap DB:
   `https://www.notion.so/6d5e815b6a4c404d845d8a48f19ae673`
 - Close out Tasks DB rows for the 75 items shipped here.
+
+### Session 3 (2026-05-12 evening, post-TF push) — 5 big commits
+
+Grace's pacing feedback ("group better, less commits") — Session 3
+shifted from 9 batches × 1-2 items to 5 commits × 5-10 items each.
+
+20. **b674b37** — Big commit 1: DC8 streak shield + DC11 adaptive
+    TDEE on Free card + DC12 past-tense Digest voice + macro tile
+    bar fill 300ms ease-out + NorthStarBlock 220ms fade-up + reanimated
+    test-shim hardening.
+21. **44d0921** — Big commit 2: Snap-a-meal subtitle re-frame
+    ("~3 seconds · AI estimates macros, review before saving" —
+    mobile + web parity, test pins updated) + B5 Reveal "Show the
+    maths" expandable (BMR / Est. TDEE / Target breakdown, closed
+    by default, Cal AI parity).
+22. **95092db** — Big commit 3: shared `<TrustPageHeader>` wired
+    into /privacy, /terms, /dmca, /licences (last-updated + v1.0
+    version pill + cross-link row to every trust surface + /help) +
+    Roadmap status-dot at row left edge + count chip row above each
+    bucket ("5 shipped · 3 building · 2 planned").
+23. **99e9849** — Big commit 4: DC7 Age step expander mirror of
+    Sex pattern ("How does age affect my target?" + Mifflin
+    explanation + adaptive-TDEE reassurance) + Goal step Ionicons
+    → lucide-react-native migration (TrendingDown / Minus /
+    TrendingUp / ArrowLeftRight).
+24. **(this commit)** — Big commit 5: final tracking-doc update +
+    Notion mirror notes refresh.
+
+### Approximate item count (post-session-3)
+
+- **Shipped in this branch:** ~95 of the 190 audit items + 5 Grace
+  additions (Phase G roadmap) + EAS Build #49 ship.
+- **OPEN remaining:** ~95 across Buckets A–D.
+
+### What changed since session 2's handoff
+
+- DC8 freeze-shield variant — new visual state for the StreakPip
+  when a freeze covers today's logging gap.
+- DC11 adaptive-TDEE callout on /pricing Free card — strongest
+  MFP-refugee differentiator now visible above the fold.
+- DC12 past-tense voice on Digest — "Last week" framing across
+  recap surfaces.
+- DC7 Age expander — mirror of Sex pattern; "more info" affordance
+  consistent across every metabolic-input step.
+- Macro tile bar fill — animates 300ms ease-out on log.
+- NorthStarBlock — 220ms fade-up on first paint.
+- Snap-a-meal subtitle — speed signal + AI-estimate trust signal.
+- Reveal "Show the maths" expandable — BMR / TDEE / Target audit
+  trail for power users.
+- Trust pages — unified header with version pill + cross-links.
+- Roadmap — status dots at row left + count chip row above bucket.
+- Goal step — Ionicons → lucide migration.
+- Test shim — `Animated.View` is now a real forwardRef component
+  so future reanimated-direct surfaces don't blow up RTR.
+
+### Remaining backlog (~95 items)
+
+Still bucketed at the top of this doc. Largest single remaining
+clusters:
+
+- **Bucket A motion** — Apple Watch ring-fill animation on calorie
+  ring fill (currently `useAnimatedNumber` count-up on the centre
+  number only), 7-dot generate-plan inline viz, weight-chart
+  yMin/yMax tween, scrub-haptic on weight chart.
+- **Bucket B large refactors** — real per-tab web URLs (`/today`
+  renders directly instead of redirecting to /home?view=today; full
+  `App.tsx` refactor off the `?view=` SPA pattern), mobile-web
+  bottom tab bar, Web Plan stub build, Cook mode populated state.
+- **Bucket C external** — RC offerings reliability (RC dashboard),
+  14+ Maestro/Playwright screenshot reruns, mobile dark-mode
+  capture sweep (≥8 surfaces).
+- **Bucket D DC selective borrows** — DC15 manual currency switch
+  (deferred until EUR/USD SKUs ship on Stripe), DC4 "No price hikes
+  ever" 4th chip pending Grace decision.
+
+Trust pages future polish (deferred from big commit 3): sticky ToC
+sidebar on desktop ≥ lg, print/PDF affordance, per-section copy-
+permalink buttons. Header unification was the highest-impact slice
+and shipped here; the rest is enhancement that can land in a focused
+"trust polish round 2" follow-up.
