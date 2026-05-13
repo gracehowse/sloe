@@ -48,9 +48,14 @@ export const metadata: Metadata = {
 };
 
 function formatReleaseDate(iso: string): string {
+  // 2026-05-13 (premium-bar audit Whats-New #7): pin locale to en-GB
+  // so server-render + client-render produce the same string. Prior
+  // `undefined` locale meant the server picked its env locale
+  // (en-US — "May 12, 2026") while the client picked the visitor's
+  // (en-GB — "12 May 2026"), causing a hydration date mismatch.
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString(undefined, {
+  return d.toLocaleDateString("en-GB", {
     year: "numeric",
     month: "long",
     day: "numeric",

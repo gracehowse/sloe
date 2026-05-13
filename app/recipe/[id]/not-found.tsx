@@ -13,18 +13,24 @@ export default function RecipeNotFound() {
         <p className="text-slate-600 dark:text-slate-400 mb-8">
           This recipe may have been removed or is no longer public. Browse our community for more inspiration.
         </p>
+        {/* 2026-05-13 (premium-bar audit Group F web — fix 404 CTA loop):
+            old primary CTA pointed at "/" (landing), which dropped the
+            user out of the product back to the marketing page — felt
+            like a dead end on a typoed link. Now points at the in-app
+            Discover feed so the user lands somewhere they can actually
+            keep browsing. */}
         <div className="flex flex-wrap gap-3 justify-center">
           <Link
-            href="/"
+            href="/home?view=discover"
             className="px-6 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold hover:shadow-lg hover:shadow-violet-500/25 transition-all"
           >
-            Browse Recipes
+            Browse recipes
           </Link>
           <Link
-            href="/login"
+            href="/home"
             className="px-6 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
           >
-            Sign in
+            Back to Today
           </Link>
         </div>
       </div>

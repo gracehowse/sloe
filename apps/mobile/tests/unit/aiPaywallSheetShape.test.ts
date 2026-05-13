@@ -65,8 +65,12 @@ describe("AiPaywallSheet module contract (Ship M2)", () => {
     // 2026-05-02 — photo_log copy updated to reference the just-
     // experienced free taster (5/week). See
     // `docs/decisions/2026-05-02-photo-log-free-taster.md`.
+    // 2026-05-13 — "unlimited" + "100/day" was a contradiction;
+    // dropped "unlimited" to match landing pricingTiers nutritionNote
+    // ("AI photo + voice logging up to 100 per day"). Premium-bar
+    // audit Group I #6.
     expect(SHEET_SOURCE).toContain(
-      '"Get unlimited photo logs with Pro"',
+      '"Get more photo logs with Pro"',
     );
 
     // Body prefix assertions — enough to catch accidental rewrites
