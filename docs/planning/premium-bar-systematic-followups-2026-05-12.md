@@ -859,6 +859,55 @@ in isolation and CI minutes stayed cheap.
   Plan landing "Browse recipe library" demoted from full-width
   pressable to a small secondary chip beside the section label.
 
+### Session 10 (2026-05-13) — small-batch polish run
+
+- **Session 10 (511d009)** — Food-search default + Plan menu copy
+  unification + Today portion-pill label. Three orthogonal copy /
+  default fixes batched in one commit per Grace's "group better"
+  pacing rule.
+
+### Session 11 (2026-05-13) — MoveMealSheet + weight chart + Reveal + Plan + Today + paywall
+
+Eight commits this session, grouped by feature so each is reviewable
+in isolation but each closes a multi-platform item:
+
+- **743697a** — MoveMealSheet leading slot glyphs (slot icon +
+  kcal in source row + destination row subtitle). Plan Card 3
+  premium-bar item.
+- **9ffe7dc** — Today snap-shortcut renders an explicit PRO chip
+  when AI logging is locked (instead of vague disabled state).
+  Today F3 follow-up.
+- **5b891f8** — Reveal MacroTile paired-% + g layout behind
+  `reveal-paired-pct` flag (Cal AI parity). Mobile + web both
+  flag-gated per the feature-flag rule.
+- **c4fcc4c** — Plan Card 6 dark-mode contrast (brightened chevron
+  + segmented control tint), so the card no longer disappears
+  on dark backgrounds.
+- **cfaf190** — MoveMealSheet selection-haptic on destination
+  tap (mirror of source-tap haptic; closes haptic asymmetry).
+- **50e4885** — Today snap-shortcut tap-haptic upgrade from
+  light → medium impact (Apple HIG: destructive-ish actions get
+  medium; "open AI flow" reads as commitment-tier).
+- **51fb4cb** — Weight chart range pill hitslops widened
+  + drop colour-swap; Reveal web parity for paired %/g.
+- **23db8eb** — Plan setup instruction now renders as a
+  persisted-dismissable tooltip (key in AsyncStorage / localStorage
+  parity).
+- **bd40cf5** — Paywall BILLING eyebrow above period toggle
+  (mobile). Web parity in Session 12.
+- **b4fd19f** — Tracking-doc update for Session 11.
+
+### Session 12 (2026-05-13) — web parity + Plan skeleton
+
+- **(this commit)** — Web `/pricing` BILLING eyebrow above the
+  period-toggle (Group I #4 web parity of bd40cf5 mobile). Plus
+  Plan generation skeleton state on mobile (Plan Card 4 #5):
+  when the user taps Generate Plan with no existing plan, render
+  3 SkeletonCard silhouettes below the generate button so the
+  surface reads as "the plan is on its way" rather than "nothing
+  happened yet." Skipped on the regenerate path — the existing
+  plan stays visible during the swap.
+
 **Status of every "Continue with…" item from the session-4
 handoff:** every item that was tractable without external decision,
 external infrastructure, or larger refactor scope has now landed.

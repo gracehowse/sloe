@@ -52,6 +52,7 @@ import {
 import { Accent, MacroColors, SlotColors, Spacing, Radius } from "@/constants/theme";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets } from "@/lib/calcTargets";
+import { SkeletonCard } from "@/components/ui/SkeletonRow";
 import {
   generateSmartPlan,
   ALL_MEAL_SLOTS,
@@ -2313,6 +2314,22 @@ export default function PlannerScreen() {
             </Pressable>
           </View>
         )}
+
+        {/* 2026-05-13 (premium-bar audit Plan Card 4 #5 — Generation
+            skeleton state): when the user taps "Generate Plan" with
+            no existing plan, render 3 skeleton day-cards below the
+            generate button so the surface reads as "the plan is on
+            its way" rather than "nothing happened yet". Skipped when
+            an existing plan is visible (regenerate path) — the user
+            already has visual content during the swap. Matches the
+            Recipe verify flow's anticipation-beat pattern. */}
+        {generating && (!plan || plan.length === 0) ? (
+          <View testID="planner-generation-skeleton" style={{ gap: Spacing.md }}>
+            {[0, 1, 2].map((i) => (
+              <SkeletonCard key={i} hero={false} lines={3} />
+            ))}
+          </View>
+        ) : null}
 
         {/* Plan display */}
         {plan && plan.map((dp, dayIdx) => {

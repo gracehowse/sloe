@@ -342,7 +342,16 @@ function BillingToggle({
   const headlineTier = tiers.find((t) => Boolean(t.annualPrice));
   const annualBadge = headlineTier ? computeAnnualSavingsBadge(headlineTier) : null;
   return (
-    <div className="flex justify-center mb-10">
+    <div className="flex flex-col items-center mb-10 gap-2">
+      {/* 2026-05-13 (premium-bar audit Group I #4): web parity mirror
+          of the mobile paywall eyebrow. TF feedback found that the
+          period toggle floated with no label, and testers thought
+          the "Save 37%" badge was advertising a generic discount
+          rather than a billing-period switch. The BILLING eyebrow
+          anchors the toggle's purpose. */}
+      <span className="text-[10px] font-bold tracking-[0.12em] text-slate-500 dark:text-slate-400">
+        BILLING
+      </span>
       <div
         role="tablist"
         aria-label="Billing period"
