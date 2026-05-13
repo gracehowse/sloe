@@ -1,19 +1,39 @@
 import Link from "next/link";
-import { TrustPageHeader } from "../../src/app/components/trust/TrustPageHeader";
+import { TrustPageLayout } from "../../src/app/components/trust/TrustPageLayout";
 
 const DEFAULT_SUPPORT_EMAIL = "support@suppr-club.com";
+
+// 2026-05-12 (premium-bar audit Group A trust pages — sticky ToC):
+// the top-12 sections most users jump to. Section ids map 1:1 with
+// the h2 ids below.
+const TERMS_SECTIONS = [
+  { id: "service", title: "The service" },
+  { id: "not-medical", title: "Not medical advice" },
+  { id: "nutrition-estimates", title: "Nutrition estimates" },
+  { id: "eligibility", title: "Eligibility" },
+  { id: "account", title: "Account & security" },
+  { id: "your-content", title: "Your content licence" },
+  { id: "acceptable-use", title: "Acceptable use" },
+  { id: "copyright", title: "Copyright / DMCA" },
+  { id: "subscriptions", title: "Subscriptions" },
+  { id: "refunds", title: "Refunds" },
+  { id: "termination", title: "Termination" },
+  { id: "ip", title: "Intellectual property" },
+  { id: "liability", title: "Limitation of liability" },
+  { id: "governing-law", title: "Governing law" },
+  { id: "eu-withdrawal", title: "EU consumer withdrawal" },
+];
 
 export default function TermsPage() {
   const supportEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL?.trim() || DEFAULT_SUPPORT_EMAIL;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-      <div className="max-w-2xl mx-auto px-6 py-12">
-        <TrustPageHeader
-          title="Terms of service"
-          lastUpdated="April 2026"
-          version="v1.0"
-        />
+    <TrustPageLayout
+      title="Terms of service"
+      lastUpdated="April 2026"
+      version="v1.0"
+      sections={TERMS_SECTIONS}
+    >
         <div className="prose prose-slate dark:prose-invert prose-sm max-w-none space-y-4 text-slate-700 dark:text-slate-300">
           <p>
             &ldquo;Suppr&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo; and
@@ -22,7 +42,7 @@ export default function TermsPage() {
             and the Suppr mobile app. By creating an account, signing in, or continuing to use Suppr you agree to these
             terms. If you do not agree, do not use the service.
           </p>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">The service</h2>
+          <h2 id="service" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">The service</h2>
           <p>
             Suppr is a recipe, meal-planning, and nutrition-tracking service. It lets you save recipes, build meal plans,
             log what you eat, and see estimated nutrition totals. Optional AI-assisted features (for example photo or voice meal
@@ -36,7 +56,7 @@ export default function TermsPage() {
             for how that processing works. Suppr is provided &ldquo;as is&rdquo; for personal use.
           </p>
           <div className="rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 p-4">
-            <h2 className="text-lg font-semibold text-amber-900 dark:text-amber-100 pt-0 mt-0">Not medical or dietetic advice</h2>
+            <h2 id="not-medical" className="scroll-mt-16 text-lg font-semibold text-amber-900 dark:text-amber-100 pt-0 mt-0">Not medical or dietetic advice</h2>
             <p className="text-amber-900 dark:text-amber-100">
               Suppr is a consumer tracking tool. It is <strong>not</strong> a medical device, nor is it a substitute for advice from a
               qualified doctor, registered dietitian, or other healthcare professional. Do not use Suppr to diagnose, treat, cure, or
@@ -45,7 +65,7 @@ export default function TermsPage() {
               disease, or allergies), taking medication, or making changes for a child.
             </p>
           </div>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Nutrition estimates</h2>
+          <h2 id="nutrition-estimates" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">Nutrition estimates</h2>
           <p>
             Every nutrition value shown in Suppr &mdash; calories, macros, micronutrients, portion weights &mdash; is an{" "}
             <strong>estimate</strong> generated from public and licensed food databases (USDA FoodData Central, Open Food Facts,
@@ -54,12 +74,12 @@ export default function TermsPage() {
             Accuracy is <strong>not guaranteed</strong>. You are responsible for reviewing and correcting any value before relying on
             it for health, training, or clinical purposes.
           </p>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Eligibility</h2>
+          <h2 id="eligibility" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">Eligibility</h2>
           <p>
             You must be at least 13 years old to use Suppr (or 16 in jurisdictions where GDPR applies without
             parental consent). By creating an account, you confirm you meet this age requirement.
           </p>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Account registration and security</h2>
+          <h2 id="account" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">Account registration and security</h2>
           <p>
             To use most of Suppr you need an account. You agree to provide accurate information, to keep your sign-in
             credentials confidential, and to tell us promptly at{" "}
@@ -67,7 +87,7 @@ export default function TermsPage() {
             if you believe your account has been compromised. You are responsible for activity that happens under your account. We
             may suspend accounts showing signs of unauthorised use, fraud, or abuse.
           </p>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Your content &mdash; licence you grant us</h2>
+          <h2 id="your-content" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">Your content &mdash; licence you grant us</h2>
           <p>
             You keep the rights to everything you upload, import, or create in Suppr (&ldquo;Your Content&rdquo;).
             You are solely responsible for Your Content and for making sure you have the rights to share it.
@@ -88,7 +108,7 @@ export default function TermsPage() {
           <p>
             We do not claim ownership of Your Content, we do not use it to train AI models, and we do not sell it.
           </p>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Acceptable use</h2>
+          <h2 id="acceptable-use" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">Acceptable use</h2>
           <p>You agree not to:</p>
           <ul className="list-disc pl-5 space-y-1">
             <li>upload content you do not have the right to share, or that infringes another person&rsquo;s copyright, trademark, privacy, or publicity rights;</li>
@@ -104,7 +124,7 @@ export default function TermsPage() {
             <code className="text-xs bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded mx-1">robots.txt</code>
             where applicable. You remain responsible for choosing URLs that you are entitled to import.
           </p>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Copyright &mdash; DMCA and takedown</h2>
+          <h2 id="copyright" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">Copyright &mdash; DMCA and takedown</h2>
           <p>
             We respect intellectual-property rights and follow the notice-and-takedown procedure in 17 U.S.C. &sect; 512
             of the Digital Millennium Copyright Act (DMCA) and, for UK and EU users, the equivalent notice-and-action
@@ -113,7 +133,7 @@ export default function TermsPage() {
             <Link href="/dmca" className="text-violet-600 dark:text-violet-400 underline">DMCA / takedown page</Link>{" "}
             for how to submit a notice. We may terminate the accounts of users who repeatedly infringe.
           </p>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Subscriptions</h2>
+          <h2 id="subscriptions" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">Subscriptions</h2>
           <p>
             Paid features may be billed through Stripe (web) or Apple&rsquo;s App Store / Google Play (mobile). On
             mobile, payment is processed by the respective app store. Prices are shown before purchase in your
@@ -130,7 +150,7 @@ export default function TermsPage() {
             policies follow the respective platform&rsquo;s guidelines (Apple, Google, or Stripe).
           </p>
           <section id="refunds" className="scroll-mt-24">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Refunds (7-day policy)</h2>
+            <h2 id="refunds" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">Refunds (7-day policy)</h2>
             <p>
               If you&rsquo;re unhappy with a Suppr subscription purchased on the web within the first 7 days of
               your billing period, email{" "}
@@ -142,12 +162,12 @@ export default function TermsPage() {
               please use Apple&rsquo;s &ldquo;Report a Problem&rdquo; or Google Play&rsquo;s refund flow for those.
             </p>
           </section>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Termination</h2>
+          <h2 id="termination" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">Termination</h2>
           <p>
             You can stop using Suppr and delete your account at any time from Settings. We can suspend or terminate
             accounts that breach these terms, abuse the service, or trigger repeated copyright notices.
           </p>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Intellectual property</h2>
+          <h2 id="ip" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">Intellectual property</h2>
           <p>
             The Suppr service, including the software, database structure, user interface, brand name, logo, and supporting content
             we create, is owned by Suppr and protected by copyright, trademark, and other laws. Third-party food-database content
@@ -157,7 +177,7 @@ export default function TermsPage() {
             for details. You may not copy, distribute, or create derivative works from the Suppr codebase or branded assets except as
             expressly permitted.
           </p>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Limitation of liability</h2>
+          <h2 id="liability" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">Limitation of liability</h2>
           <p>
             To the maximum extent permitted by law, Suppr and its
             contributors are not liable for indirect, incidental, special, or consequential damages arising from use of the app,
@@ -167,13 +187,13 @@ export default function TermsPage() {
             that cannot be excluded by law (for example liability for death or personal injury caused by negligence, for fraud, or
             for a consumer&rsquo;s statutory rights that cannot be waived).
           </p>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Governing law and jurisdiction</h2>
+          <h2 id="governing-law" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">Governing law and jurisdiction</h2>
           <p>
             Governing law and exclusive jurisdiction will be set once the operating entity is incorporated. Until then, consumers
             in the UK and the EU retain the benefit of mandatory local consumer-protection law and may bring proceedings in the
             courts of their place of residence.
           </p>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">EU consumer withdrawal rights</h2>
+          <h2 id="eu-withdrawal" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">EU consumer withdrawal rights</h2>
           <p>
             If you are a consumer resident in the European Union or the United Kingdom, you have a statutory right to cancel a
             purchase of digital content or digital services within <strong>14 days</strong> of the contract being concluded,
@@ -186,13 +206,13 @@ export default function TermsPage() {
             and it does not apply to in-app purchases made through the Apple App Store or Google Play (which are governed by the
             respective store&rsquo;s policy).
           </p>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Changes to these terms</h2>
+          <h2 id="changes" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">Changes to these terms</h2>
           <p>
             We may update these terms from time to time. If a change is material we will tell you before it takes
             effect (for example by email or an in-app notice). Continued use of Suppr after the effective date means
             you accept the updated terms.
           </p>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Contact</h2>
+          <h2 id="contact" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">Contact</h2>
           <p>
             Legal notices, DMCA / IP complaints, and questions about these terms:{" "}
             <a href={`mailto:legal@suppr.app`} className="text-violet-600 dark:text-violet-400 underline">legal@suppr.app</a>.
@@ -200,7 +220,6 @@ export default function TermsPage() {
             <a href={`mailto:${supportEmail}`} className="text-violet-600 dark:text-violet-400 underline">{supportEmail}</a>.
           </p>
         </div>
-      </div>
-    </div>
+    </TrustPageLayout>
   );
 }

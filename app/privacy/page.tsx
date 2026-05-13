@@ -1,7 +1,27 @@
 import Link from "next/link";
-import { TrustPageHeader } from "../../src/app/components/trust/TrustPageHeader";
+import { TrustPageLayout } from "../../src/app/components/trust/TrustPageLayout";
 
 const DEFAULT_PRIVACY_EMAIL = "privacy@suppr-club.com";
+
+// 2026-05-12 (premium-bar audit Group A trust pages — sticky ToC):
+// privacy is the most-jumped-to trust surface (UK/EU users looking
+// for "data controller" / "your rights" / "sub-processors"). Section
+// ids map 1:1 with the h2 elements below.
+const PRIVACY_SECTIONS = [
+  { id: "controller", title: "Data controller" },
+  { id: "collect", title: "What we collect" },
+  { id: "use", title: "How we use data" },
+  { id: "ai", title: "AI, voice, and images" },
+  { id: "imported", title: "Imported recipes" },
+  { id: "subprocessors", title: "Sub-processors" },
+  { id: "transfers", title: "International transfers" },
+  { id: "legal-basis", title: "Legal basis (EU/UK)" },
+  { id: "automated", title: "Automated processing" },
+  { id: "health", title: "Apple Health (iOS)" },
+  { id: "retention", title: "Data retention" },
+  { id: "rights", title: "Your rights and choices" },
+  { id: "contact", title: "Contact" },
+];
 
 export default function PrivacyPage() {
   const privacyEmail =
@@ -9,20 +29,19 @@ export default function PrivacyPage() {
   const mailtoHref = `mailto:${encodeURIComponent(privacyEmail)}`;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-      <div className="max-w-2xl mx-auto px-6 py-12">
-        <TrustPageHeader
-          title="Privacy policy"
-          lastUpdated="April 2026"
-          version="v1.0"
-          subtitle="What we process, who we share it with, and your choices."
-        />
+    <TrustPageLayout
+      title="Privacy policy"
+      lastUpdated="April 2026"
+      version="v1.0"
+      subtitle="What we process, who we share it with, and your choices."
+      sections={PRIVACY_SECTIONS}
+    >
         <div className="prose prose-slate dark:prose-invert prose-sm max-w-none space-y-4 text-slate-700 dark:text-slate-300">
           <p>
             Suppr helps you log recipes, nutrition, and discover meals.
             This policy describes what we process, who we share it with, and your choices.
           </p>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Data controller</h2>
+          <h2 id="controller" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">Data controller</h2>
           <ul className="list-disc pl-5 space-y-1">
             <li>
               <strong>Controller:</strong> Suppr is currently operated by Grace Howse as a sole operator pending
@@ -43,7 +62,7 @@ export default function PrivacyPage() {
               Required for non-EU controllers offering goods or services to individuals in the EU.
             </li>
           </ul>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">What we collect</h2>
+          <h2 id="collect" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">What we collect</h2>
           <ul className="list-disc pl-5 space-y-1">
             <li>
               <strong>Account:</strong> email and profile fields you provide (e.g. display name, goals, measurements)
@@ -58,12 +77,12 @@ export default function PrivacyPage() {
               device type, and optional analytics or error reporting if you do not opt out.
             </li>
           </ul>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">How we use data</h2>
+          <h2 id="use" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">How we use data</h2>
           <p>
             To provide the service (logging, meal planning, barcode and recipe features), improve reliability, and
             comply with law. We do not sell your personal data.
           </p>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">AI, voice, and images</h2>
+          <h2 id="ai" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">AI, voice, and images</h2>
           <p>
             If you use optional features, we send the minimum content needed to operate them to our servers and, where
             described below, to model providers:
@@ -85,7 +104,7 @@ export default function PrivacyPage() {
               flows.
             </li>
           </ul>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">
+          <h2 id="imported" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">
             Imported recipes from public posts
           </h2>
           <p data-testid="privacy-imported-recipes-disclosure">
@@ -112,7 +131,7 @@ export default function PrivacyPage() {
             . We&rsquo;ll remove within 7 business days.
           </p>
 
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Sub-processors</h2>
+          <h2 id="subprocessors" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">Sub-processors</h2>
           <p>
             We use the following third-party service providers to operate Suppr. Each is bound by a data-processing
             agreement and processes your data only on our instructions.
@@ -146,7 +165,7 @@ export default function PrivacyPage() {
               </tbody>
             </table>
           </div>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">International transfers</h2>
+          <h2 id="transfers" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">International transfers</h2>
           <p>
             Several sub-processors listed above are located in the United States (OpenAI, Stripe, Upstash, RevenueCat,
             Expo, Edamam, FatSecret, USDA). Where we transfer personal data of EU or UK users to a country not covered
@@ -156,7 +175,7 @@ export default function PrivacyPage() {
             transfer safeguards for any specific sub-processor is available on request by emailing the address at the
             foot of this page.
           </p>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Legal basis (EU/UK)</h2>
+          <h2 id="legal-basis" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">Legal basis (EU/UK)</h2>
           <ul className="list-disc pl-5 space-y-1">
             <li><strong>Providing the service (account, logging, planning):</strong> performance of a contract.</li>
             <li><strong>AI features, analytics, error reporting:</strong> our legitimate interests in improving and
@@ -165,13 +184,13 @@ export default function PrivacyPage() {
             <li><strong>Marketing email (if any):</strong> your consent.</li>
             <li><strong>Legal and safety:</strong> compliance with legal obligations.</li>
           </ul>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Automated processing</h2>
+          <h2 id="automated" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">Automated processing</h2>
           <p>
             AI-derived nutrition matches, meal photo identification and ingredient parsing are automated but are
             estimates — a human (you) reviews and edits every saved entry before it enters your tracker. These features
             do not make decisions that produce legal or similarly significant effects about you.
           </p>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Apple Health (iOS)</h2>
+          <h2 id="health" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">Apple Health (iOS)</h2>
           <p>
             If you enable the Apple Health integration on iOS, Suppr reads the following data to keep your tracker in sync:
             steps, active energy, basal energy, workouts, weight, body fat percentage, and any dietary entries already in
@@ -182,14 +201,14 @@ export default function PrivacyPage() {
             and stored on your device; Suppr does not send your Health data to our servers unless you explicitly log a meal.
             You can revoke Suppr&rsquo;s Health access at any time in iOS Settings &rarr; Privacy &amp; Security &rarr; Health &rarr; Suppr.
           </p>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Data retention</h2>
+          <h2 id="retention" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">Data retention</h2>
           <p>
             We retain your account data for as long as your account is active. If you delete your account, we will
             delete your personal data within 30 days, except where retention is required by law (e.g. billing records
             may be retained for up to 7 years for tax compliance). Anonymised, aggregated analytics data from which you
             cannot reasonably be re-identified may be retained indefinitely.
           </p>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Your rights and choices</h2>
+          <h2 id="rights" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">Your rights and choices</h2>
           <ul className="list-disc pl-5 space-y-1">
             <li>
               <strong>Export your data:</strong> You can export locally stored data from Settings (Download your data).
@@ -215,7 +234,7 @@ export default function PrivacyPage() {
               To exercise these rights, contact the support channel below.
             </li>
           </ul>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Contact</h2>
+          <h2 id="contact" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">Contact</h2>
           <p>
             For questions about this policy, data requests, or to exercise your rights, email us
             at{" "}
@@ -225,7 +244,6 @@ export default function PrivacyPage() {
             We aim to respond within 14 days.
           </p>
         </div>
-      </div>
-    </div>
+    </TrustPageLayout>
   );
 }
