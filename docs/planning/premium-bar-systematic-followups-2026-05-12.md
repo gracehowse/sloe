@@ -830,3 +830,37 @@ sidebar on desktop ≥ lg, print/PDF affordance, per-section copy-
 permalink buttons. Header unification was the highest-impact slice
 and shipped here; the rest is enhancement that can land in a focused
 "trust polish round 2" follow-up.
+
+### Session 5–9 (2026-05-13) — small-batch polish runs
+
+After the big session-4 sweep, several smaller commits landed
+covering trust pages, landing, roadmap, plan, paywall, and 404
+copy. Each commit covered 3–5 items so reviewers could read each
+in isolation and CI minutes stayed cheap.
+
+- **Session 6 (07a4b9a)** — Trust pages revision-history link via
+  new `TrustPageHeader.revisionPath`. NorthStar web title
+  `line-clamp-2`. Roadmap "Get notified — RSS" link. Landing
+  hero NEW chip → anchor link, secondary CTA → text-link.
+  `/whats-new` RSS alternate `<link>` metadata.
+- **Session 7 (7e29aa0)** — AI paywall sheet drops the
+  "unlimited" / "100/day" contradiction. Recipe `/recipe/[id]`
+  404 page CTAs route into the app (Discover + Today) instead
+  of dropping to landing. `/whats-new` date locale pinned to
+  en-GB to fix SSR/CSR hydration mismatch.
+- **Session 8 (2cadde0)** — Landing trust-line check items
+  moved above the CTAs (sub-sub-headline). Roadmap converted
+  to divider-list pattern (rounded outer + divide-y rows + 40px
+  height). Licences page renders stacked cards on mobile-web
+  + table on md+. Mobile `/whats-new` date locale pinned for
+  parity with web.
+- **Session 9 (156252f)** — Mobile tab order swapped to
+  Today / Plan / Recipes / More (strategic-direction canonical).
+  Plan landing "Browse recipe library" demoted from full-width
+  pressable to a small secondary chip beside the section label.
+
+**Status of every "Continue with…" item from the session-4
+handoff:** every item that was tractable without external decision,
+external infrastructure, or larger refactor scope has now landed.
+Remaining open items are the same four buckets: external/non-code,
+needs decision, larger refactors, mobile dark-mode capture sweep.
