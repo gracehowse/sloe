@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { DmcaTakedownForm } from "./_form/DmcaTakedownForm";
+import { TrustPageHeader } from "../../src/app/components/trust/TrustPageHeader";
 
 // NOTE FOR OPERATOR: To make the § 512(c) safe harbour effective, the Suppr
 // designated agent still needs to be registered with the US Copyright Office
@@ -20,14 +21,11 @@ export default function DmcaPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       <div className="max-w-2xl mx-auto px-6 py-12">
-        <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-          <Link href="/" className="text-violet-600 dark:text-violet-400 hover:underline">
-            &larr; Back to app
-          </Link>
-        </p>
-        <h1 className="text-2xl font-semibold text-slate-900 dark:text-white mb-6">
-          Copyright &amp; DMCA takedown
-        </h1>
+        <TrustPageHeader
+          title="Copyright & DMCA takedown"
+          lastUpdated="April 2026"
+          version="v1.0"
+        />
 
         <div className="prose prose-slate dark:prose-invert prose-sm max-w-none space-y-4 text-slate-700 dark:text-slate-300">
           <p>

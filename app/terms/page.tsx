@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { TrustPageHeader } from "../../src/app/components/trust/TrustPageHeader";
 
 const DEFAULT_SUPPORT_EMAIL = "support@suppr-club.com";
 
@@ -8,18 +9,14 @@ export default function TermsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       <div className="max-w-2xl mx-auto px-6 py-12">
-        <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-          <Link
-            href="/"
-            className="text-violet-600 dark:text-violet-400 underline underline-offset-2 hover:text-violet-700 dark:hover:text-violet-300"
-          >
-            ← Back to app
-          </Link>
-        </p>
-        <h1 className="text-2xl font-semibold text-slate-900 dark:text-white mb-6">Terms of service</h1>
+        <TrustPageHeader
+          title="Terms of service"
+          lastUpdated="April 2026"
+          version="v1.0"
+        />
         <div className="prose prose-slate dark:prose-invert prose-sm max-w-none space-y-4 text-slate-700 dark:text-slate-300">
           <p>
-            <strong>Last updated:</strong> April 2026. &ldquo;Suppr&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo; and
+            &ldquo;Suppr&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo; and
             &ldquo;our&rdquo; refer to the team operating the Suppr recipe and nutrition service at{" "}
             <Link href="/" className="text-violet-600 dark:text-violet-400 underline">suppr-club.com</Link>{" "}
             and the Suppr mobile app. By creating an account, signing in, or continuing to use Suppr you agree to these

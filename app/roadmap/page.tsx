@@ -17,20 +17,23 @@ export const metadata: Metadata = {
  * parity tests catch drift.
  */
 
-const STATUS_COPY: Record<RoadmapStatus, { label: string; className: string }> = {
+const STATUS_COPY: Record<RoadmapStatus, { label: string; className: string; dotClass: string }> = {
   shipped: {
     label: "Shipped",
     className:
       "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+    dotClass: "bg-emerald-500 dark:bg-emerald-400",
   },
   building: {
     label: "Building",
     className:
       "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
+    dotClass: "bg-amber-500 dark:bg-amber-400",
   },
   planned: {
     label: "Planned",
     className: "bg-muted text-muted-foreground",
+    dotClass: "bg-slate-400 dark:bg-slate-500",
   },
 };
 
@@ -59,39 +62,75 @@ export default function RoadmapPage() {
           page, so what you see is what’s actually in (or coming to) the app.
         </p>
         <div className="mt-10 space-y-10">
-          {ROADMAP.map((bucket) => (
-            <section key={bucket.title}>
-              <div className="flex items-baseline justify-between gap-3">
-                <h2 className="text-xl font-semibold tracking-tight">
-                  {bucket.title}
-                </h2>
-                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  {bucket.when}
-                </span>
-              </div>
-              <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-                {bucket.summary}
-              </p>
-              <ul className="mt-4 space-y-3 text-sm leading-relaxed sm:text-base">
-                {bucket.items.map((item) => {
-                  const status = STATUS_COPY[item.status];
-                  return (
-                    <li
-                      key={item.text}
-                      className="flex items-start justify-between gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm"
-                    >
-                      <span className="text-foreground">{item.text}</span>
-                      <span
-                        className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-xs font-medium ${status.className}`}
-                      >
-                        {status.label}
+          {ROADMAP.map((bucket) => {
+            // 2026-05-12 (premium-bar audit Group A Roadmap #4): count
+            // chip row above each bucket so the user can scan progress
+            // at a glance without reading every row. e.g. "5 shipped ·
+            // 2 building · 3 planned".
+            const counts = bucket.items.reduce(
+              (acc, it) => {
+                acc[it.status]++;
+                return acc;
+              },
+              { shipped: 0, building: 0, planned: 0 } as Record<RoadmapStatus, number>,
+            );
+            return (
+              <section key={bucket.title}>
+                <div className="flex items-baseline justify-between gap-3">
+                  <h2 className="text-xl font-semibold tracking-tight">
+                    {bucket.title}
+                  </h2>
+                  <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    {bucket.when}
+                  </span>
+                </div>
+                <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+                  {bucket.summary}
+                </p>
+                {/* Status count chip row */}
+                <div className="mt-3 flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
+                  {(["shipped", "building", "planned"] as const).map((s) => {
+                    if (counts[s] === 0) return null;
+                    const meta = STATUS_COPY[s];
+                    return (
+                      <span key={s} className="inline-flex items-center gap-1.5">
+                        <span className={`inline-block w-1.5 h-1.5 rounded-full ${meta.dotClass}`} />
+                        {counts[s]} {meta.label.toLowerCase()}
                       </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          ))}
+                    );
+                  })}
+                </div>
+                {/* 2026-05-12 (premium-bar audit Group A Roadmap #6):
+                    single status dot at the row's left edge so the
+                    eye can scan a column of dots without re-reading
+                    chip text on every row. Chip retained at right
+                    edge for accessibility (Voice-Over still reads
+                    "Shipped" / "Building" / "Planned"). */}
+                <ul className="mt-3 space-y-3 text-sm leading-relaxed sm:text-base">
+                  {bucket.items.map((item) => {
+                    const status = STATUS_COPY[item.status];
+                    return (
+                      <li
+                        key={item.text}
+                        className="flex items-start gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm"
+                      >
+                        <span
+                          aria-hidden
+                          className={`mt-1.5 inline-block w-2 h-2 rounded-full shrink-0 ${status.dotClass}`}
+                        />
+                        <span className="text-foreground flex-1">{item.text}</span>
+                        <span
+                          className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-xs font-medium ${status.className}`}
+                        >
+                          {status.label}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            );
+          })}
         </div>
         <div className="mt-12 flex flex-wrap gap-4">
           <Link

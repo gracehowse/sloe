@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { TrustPageHeader } from "../../src/app/components/trust/TrustPageHeader";
 
 export const metadata: Metadata = {
   title: "Open-source licences — Suppr",
@@ -43,14 +44,12 @@ export default function LicencesPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       <div className="max-w-3xl mx-auto px-6 py-12">
-        <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-          <Link href="/" className="text-violet-600 dark:text-violet-400 hover:underline">
-            &larr; Back to app
-          </Link>
-        </p>
-        <h1 className="text-2xl font-semibold text-slate-900 dark:text-white mb-6">
-          Open-source &amp; open-data licences
-        </h1>
+        <TrustPageHeader
+          title="Open-source & open-data licences"
+          lastUpdated="April 2026"
+          version="v1.0"
+          subtitle="The software Suppr ships and the data Suppr displays — and the licences they use."
+        />
         <p className="text-sm text-slate-700 dark:text-slate-300 mb-8">
           Suppr is built on the work of hundreds of open-source contributors and the maintainers of public food-data
           databases. This page lists the licences that apply to software Suppr ships and to data it displays. The
