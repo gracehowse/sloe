@@ -1,17 +1,15 @@
 /**
- * /library → /home?view=library (server-side 307).
- *
- * 2026-05-12 (premium-bar audit #4 — Web Recipes routes): every
- * top-level surface needs a real URL the user can type, bookmark, or
- * share. Until the full URL migration lands (refuse-to-pass #2,
- * journey-architect + executor scope), this is a thin redirect so
- * `/library` doesn't 404 or fall through to the marketing landing.
- *
- * Pre-fix behaviour: typing `suppr-club.com/library` returned 404 →
- * trust hit + dead-end for any external link.
+ * /library — canonical Recipes Library render path.
+ * See `app/today/page.tsx` for the routing rationale.
  */
-import { redirect } from "next/navigation";
+import type { Metadata } from "next";
+import { HomePageClient } from "../HomePageClient";
 
-export default function LibraryRedirectPage() {
-  redirect("/home?view=library");
+export const metadata: Metadata = {
+  title: "Library — Suppr",
+  description: "Your saved recipes.",
+};
+
+export default function LibraryPage() {
+  return <HomePageClient />;
 }

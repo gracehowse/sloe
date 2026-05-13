@@ -1,9 +1,15 @@
 /**
- * /plan → /home?view=plan (server-side 307).
- * See `app/library/page.tsx` for the audit context (#4 — Web Recipes routes).
+ * /plan — canonical Meal Plan render path.
+ * See `app/today/page.tsx` for the routing rationale.
  */
-import { redirect } from "next/navigation";
+import type { Metadata } from "next";
+import { HomePageClient } from "../HomePageClient";
 
-export default function PlanRedirectPage() {
-  redirect("/home?view=plan");
+export const metadata: Metadata = {
+  title: "Plan — Suppr",
+  description: "Your meal plan and shopping list.",
+};
+
+export default function PlanPage() {
+  return <HomePageClient />;
 }

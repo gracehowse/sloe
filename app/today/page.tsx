@@ -1,9 +1,25 @@
 /**
- * /today → /home?view=today (server-side 307).
- * See `app/library/page.tsx` for the audit context (#4 — Web Recipes routes).
+ * /today — canonical Today render path.
+ *
+ * 2026-05-12 (premium-bar audit refuse-to-pass #2): mounts the
+ * shared `<HomePageClient />` directly so the browser URL stays as
+ * `/today` instead of redirecting to `/home?view=today`. The App
+ * shell reads `usePathname()` and derives the current view from the
+ * path; `?view=` is still supported as a legacy alias for old
+ * bookmarks.
+ *
+ * Auth gating is handled inside HomePageClient. Middleware also
+ * catches unauthed access (the path is not in `PUBLIC_ROUTES`) and
+ * 307s to /login before any client JS runs.
  */
-import { redirect } from "next/navigation";
+import type { Metadata } from "next";
+import { HomePageClient } from "../HomePageClient";
 
-export default function TodayRedirectPage() {
-  redirect("/home?view=today");
+export const metadata: Metadata = {
+  title: "Today — Suppr",
+  description: "Your daily macros, planned meals, and quick-log.",
+};
+
+export default function TodayPage() {
+  return <HomePageClient />;
 }

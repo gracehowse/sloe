@@ -1,9 +1,15 @@
 /**
- * /shopping → /home?view=shopping (server-side 307).
- * See `app/library/page.tsx` for the audit context (#4 — Web Recipes routes).
+ * /shopping — canonical Shopping List render path.
+ * See `app/today/page.tsx` for the routing rationale.
  */
-import { redirect } from "next/navigation";
+import type { Metadata } from "next";
+import { HomePageClient } from "../HomePageClient";
 
-export default function ShoppingRedirectPage() {
-  redirect("/home?view=shopping");
+export const metadata: Metadata = {
+  title: "Shopping — Suppr",
+  description: "Your shopping list from this week's plan.",
+};
+
+export default function ShoppingPage() {
+  return <HomePageClient />;
 }

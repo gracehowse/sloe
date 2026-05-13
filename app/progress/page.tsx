@@ -1,9 +1,15 @@
 /**
- * /progress → /home?view=progress (server-side 307).
- * See `app/library/page.tsx` for the audit context (#4 — Web Recipes routes).
+ * /progress — canonical Progress render path.
+ * See `app/today/page.tsx` for the routing rationale.
  */
-import { redirect } from "next/navigation";
+import type { Metadata } from "next";
+import { HomePageClient } from "../HomePageClient";
 
-export default function ProgressRedirectPage() {
-  redirect("/home?view=progress");
+export const metadata: Metadata = {
+  title: "Progress — Suppr",
+  description: "Your weight, weekly recap, and adaptive TDEE.",
+};
+
+export default function ProgressPage() {
+  return <HomePageClient />;
 }

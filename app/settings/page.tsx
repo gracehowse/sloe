@@ -1,9 +1,15 @@
 /**
- * /settings → /home?view=settings (server-side 307).
- * See `app/library/page.tsx` for the audit context (#4 — Web Recipes routes).
+ * /settings — canonical Settings render path.
+ * See `app/today/page.tsx` for the routing rationale.
  */
-import { redirect } from "next/navigation";
+import type { Metadata } from "next";
+import { HomePageClient } from "../HomePageClient";
 
-export default function SettingsRedirectPage() {
-  redirect("/home?view=settings");
+export const metadata: Metadata = {
+  title: "Settings — Suppr",
+  description: "Manage your account, plan, and preferences.",
+};
+
+export default function SettingsPage() {
+  return <HomePageClient />;
 }

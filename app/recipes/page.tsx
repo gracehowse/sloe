@@ -1,16 +1,14 @@
 /**
- * /recipes → /home?view=library (server-side 307).
+ * /recipes → /library (server-side 307).
  *
- * Convenience alias. The shipped sidebar primary label is "Recipes"
- * which expands into Library + Discover sub-tabs; `/recipes` lands
- * on Library (the default leaf — same default as the sidebar's
- * `defaultLeaf: "library"` for the Recipes primary).
- *
- * See `app/library/page.tsx` for the audit context (#4 — Web Recipes
- * routes).
+ * The sidebar "Recipes" primary tab's default leaf is Library. A user
+ * who types `/recipes` lands on the Library view by convention.
+ * Keeping this as a redirect (rather than a HomePageClient mount)
+ * means there's exactly one canonical path per view — `/library` is
+ * the canonical leaf, `/recipes` is a friendly alias.
  */
 import { redirect } from "next/navigation";
 
 export default function RecipesRedirectPage() {
-  redirect("/home?view=library");
+  redirect("/library");
 }

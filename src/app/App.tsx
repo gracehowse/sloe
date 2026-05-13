@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Plus } from "lucide-react";
 import { AnalyticsEvents, type PaywallViewedFrom } from "../lib/analytics/events.ts";
 import { track } from "../lib/analytics/track.ts";
@@ -152,8 +152,34 @@ export default function App() {
   } = useAppData();
   const searchParams = useSearchParams();
   const router = useRouter();
+  const pathname = usePathname();
   const deepLinkRecipeId = searchParams.get("recipe");
   const viewParam = searchParams.get("view");
+  // 2026-05-12 (premium-bar audit refuse-to-pass #2 — real per-tab
+  // web URLs): derive the canonical view from the pathname when the
+  // user types or bookmarks `/today`, `/library`, `/plan`, etc.
+  // `?view=` stays supported as a legacy alias so old links still
+  // route to the right tab. The pathname-derived view ALWAYS wins
+  // over `?view=` because the path is the user-facing canonical
+  // identifier.
+  const pathDerivedView = useMemo<View | null>(() => {
+    if (!pathname) return null;
+    const seg = pathname.replace(/^\/+|\/+$/g, "").split("/")[0];
+    const pathMap: Record<string, View> = {
+      today: "today",
+      recipes: "library",
+      library: "library",
+      discover: "discover",
+      plan: "plan",
+      planner: "plan",
+      progress: "progress",
+      shopping: "shopping",
+      settings: "settings",
+      notifications: "notifications",
+      targets: "targets",
+    };
+    return pathMap[seg] ?? null;
+  }, [pathname]);
   const [currentView, setCurrentView] = useState<View>("today");
   const [settingsScrollToPromo, setSettingsScrollToPromo] = useState(false);
   const [plannerMobileTab, setPlannerMobileTab] = useState<"plan" | "shop">("plan");
@@ -186,21 +212,33 @@ export default function App() {
     return (allowed as string[]).includes(v) ? (v as View) : null;
   }, [viewParam]);
 
-  // URL → state (deep links, refresh)
+  // URL → state. Precedence: pathname-derived view > ?view= legacy
+  // alias. Re-runs on either input change so deep links + back/forward
+  // navigation update the current tab correctly.
   useEffect(() => {
-    if (normalizedViewParam && normalizedViewParam !== currentView) {
-      setCurrentView(normalizedViewParam);
+    const resolved = pathDerivedView ?? normalizedViewParam;
+    if (resolved && resolved !== currentView) {
+      setCurrentView(resolved);
     }
-  }, [normalizedViewParam, currentView]);
+  }, [pathDerivedView, normalizedViewParam, currentView]);
 
+  // 2026-05-12 (premium-bar audit refuse-to-pass #2): the previous
+  // /home fallback that auto-pushed `?view=today` is gone — the
+  // canonical landing is now `/today`. /home renders the SPA shell
+  // for legacy URLs but the redirect to populate `?view=today` is
+  // no longer fired. Pages that mount HomePageClient under a
+  // canonical path (/today, /library, /plan, etc.) supply the view
+  // via pathname; /home with no params resolves to "today" via the
+  // useState initial value.
   useEffect(() => {
+    if (pathname !== "/home") return;
     if (searchParams.get("view")) return;
     // Shared recipe links use ?recipe= without view; don't stomp them with view=today.
     if (searchParams.get("recipe")?.trim()) return;
-    const p = new URLSearchParams(searchParams.toString());
-    p.set("view", "today");
-    router.replace(`/home?${p.toString()}`, { scroll: false });
-  }, [searchParams, router]);
+    // No-op on legacy /home — let the initial currentView ("today")
+    // stand. We don't push a redirect so the URL bar stays /home
+    // for users on the legacy entry point.
+  }, [pathname, searchParams]);
 
   const recipeDeepLinkId = searchParams.get("recipe")?.trim() ?? "";
   useEffect(() => {
@@ -214,39 +252,90 @@ export default function App() {
     }
   }, [recipeDeepLinkId, searchParams, router]);
 
+  // 2026-05-12 (premium-bar audit refuse-to-pass #2): nav now pushes
+  // path-based URLs so the browser bar shows `/today`, `/library`,
+  // `/discover`, etc. instead of `/home?view=X`. Deep-linked recipe
+  // queries are preserved on top of the canonical path. Legacy
+  // `/home?view=` URLs continue to resolve (the App still reads
+  // `?view=` as a fallback alias), but new navigation always lands
+  // on the canonical path.
+  const PATH_FOR_VIEW: Record<View, string> = useMemo(
+    () => ({
+      today: "/today",
+      library: "/library",
+      discover: "/discover",
+      plan: "/plan",
+      progress: "/progress",
+      shopping: "/shopping",
+      settings: "/settings",
+      notifications: "/notifications",
+      profile: "/profile",
+      create: "/create",
+      import: "/import",
+      targets: "/targets",
+    }),
+    [],
+  );
   const navigateToView = useCallback(
     (view: View) => {
       setCurrentView(view);
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("view", view);
-      if (view !== "progress") {
-        params.delete("metric");
+      const path = PATH_FOR_VIEW[view] ?? "/today";
+      // 2026-05-12 (premium-bar audit refuse-to-pass #2): in-app tab
+      // switching uses the History API directly so Next's router
+      // doesn't unmount + remount HomePageClient on every tab change
+      // (each canonical path is its own `page.tsx` rendering
+      // HomePageClient — `router.replace` would trigger a full
+      // remount + re-fetch of user data). The history-based path
+      // change keeps the SPA mounted; deep links + back/forward
+      // (which DO fire Next's pathname change) still trigger the
+      // path→view useEffect at the top of this component to land
+      // on the right tab. Belt-and-braces: fall back to router.replace
+      // when window.history is unavailable (SSR / edge cases).
+      if (
+        typeof window !== "undefined" &&
+        window.history &&
+        typeof window.history.replaceState === "function"
+      ) {
+        const params = new URLSearchParams(window.location.search);
+        params.delete("view");
+        if (view !== "progress") {
+          params.delete("metric");
+        }
+        const q = params.toString();
+        window.history.replaceState({}, "", q ? `${path}?${q}` : path);
+      } else {
+        router.replace(path, { scroll: false });
       }
-      // Keep deep-linked recipe query if present.
-      const q = params.toString();
-      router.replace(q ? `/home?${q}` : "/", { scroll: false });
     },
-    [router, searchParams],
+    [PATH_FOR_VIEW, router],
   );
 
+  // 2026-05-12 (premium-bar audit refuse-to-pass #2): clearRecipeQuery
+  // now lands on the canonical path-based URL (`/today` etc.) instead
+  // of `/home?view=today`. The view is derived from the destination
+  // path; legacy `?view=` is no longer added.
   const clearRecipeQuery = useCallback(() => {
     const params = new URLSearchParams(searchParams.toString());
     params.delete("recipe");
     params.delete("cook");
     params.delete("portions");
-    if (!params.get("view")) params.set("view", "today");
+    params.delete("view");
     const q = params.toString();
-    router.replace(q ? `/home?${q}` : "/home?view=today", { scroll: false });
-  }, [router, searchParams]);
+    // Default destination is /today. If we're already on a canonical
+    // path (e.g. /discover with a recipe open), keep that path and
+    // just strip the recipe params.
+    const currentPath = pathname && pathname !== "/home" ? pathname : "/today";
+    router.replace(q ? `${currentPath}?${q}` : currentPath, { scroll: false });
+  }, [pathname, router, searchParams]);
 
   const openRecipeById = useCallback(
     (recipeId: string, opts?: { cook?: boolean }) => {
       const params = new URLSearchParams(searchParams.toString());
-      params.set("view", "discover");
+      params.delete("view");
       params.set("recipe", recipeId);
       if (opts?.cook) params.set("cook", "1");
       const q = params.toString();
-      router.replace(q ? `/home?${q}` : "/", { scroll: false });
+      router.replace(q ? `/discover?${q}` : "/discover", { scroll: false });
       setCurrentView("discover");
     },
     [router, searchParams],

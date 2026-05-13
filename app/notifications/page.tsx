@@ -1,9 +1,15 @@
 /**
- * /notifications → /home?view=notifications (server-side 307).
- * See `app/library/page.tsx` for the audit context (#4 — Web Recipes routes).
+ * /notifications — canonical Notifications render path.
+ * See `app/today/page.tsx` for the routing rationale.
  */
-import { redirect } from "next/navigation";
+import type { Metadata } from "next";
+import { HomePageClient } from "../HomePageClient";
 
-export default function NotificationsRedirectPage() {
-  redirect("/home?view=notifications");
+export const metadata: Metadata = {
+  title: "Notifications — Suppr",
+  description: "Manage your push notifications.",
+};
+
+export default function NotificationsPage() {
+  return <HomePageClient />;
 }
