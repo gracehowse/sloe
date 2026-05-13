@@ -1,7 +1,7 @@
 # Linear workspace blueprint + Notion Tasks migration plan
 
 **Date:** 2026-05-13
-**Status:** Pending — Linear MCP added this session, loads on next session start. After that I can run the migration via API. Grace does the 5-minute workspace setup in the Linear UI first.
+**Status:** Workspace live (teams ENG/GROW, initiatives, projects, labels). Notion migration largely complete. Custom views: `npm run linear:create-dashboard-views` (optional `linear:create-dashboard-views:all-teams` for GROW-sidebar copies with `[GROW]` suffix). Rotate any API keys used for GraphQL scripts after one-off runs.
 
 ## Workspace blueprint (Grace clicks once)
 

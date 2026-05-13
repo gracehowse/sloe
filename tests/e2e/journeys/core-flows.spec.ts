@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { expectNoSeriousA11yViolations } from "../utils/a11y";
 
 /**
  * Core user journeys — these test real browser interaction.
@@ -10,6 +11,7 @@ import { expect, test } from "@playwright/test";
 test.describe("Public pages", () => {
   test("help page loads with methodology section", async ({ page }) => {
     await page.goto("/help");
+    await expectNoSeriousA11yViolations(page);
     await expect(page.getByRole("heading", { name: /help & information/i })).toBeVisible();
     await expect(page.getByText(/mifflin-st jeor/i)).toBeVisible();
     await expect(page.getByText(/usda fooddata central/i).first()).toBeVisible();
@@ -18,6 +20,7 @@ test.describe("Public pages", () => {
 
   test("privacy page loads with retention section", async ({ page }) => {
     await page.goto("/privacy");
+    await expectNoSeriousA11yViolations(page);
     await expect(page.getByRole("heading", { name: /privacy policy/i })).toBeVisible();
     await expect(page.getByText(/data retention/i)).toBeVisible();
     await expect(page.getByRole("listitem").filter({ hasText: /delete your account/i })).toBeVisible();
@@ -25,6 +28,7 @@ test.describe("Public pages", () => {
 
   test("terms page loads with eligibility section", async ({ page }) => {
     await page.goto("/terms");
+    await expectNoSeriousA11yViolations(page);
     await expect(page.getByRole("heading", { name: /terms of service/i })).toBeVisible();
     await expect(page.getByText(/13 years old/i)).toBeVisible();
     await expect(page.getByRole("heading", { name: /^Subscriptions$/ })).toBeVisible();
@@ -32,12 +36,14 @@ test.describe("Public pages", () => {
 
   test("pricing page loads and shows tiers", async ({ page }) => {
     await page.goto("/pricing");
+    await expectNoSeriousA11yViolations(page);
     await expect(page.getByText(/free/i).first()).toBeVisible();
     await expect(page.getByText(/pro/i).first()).toBeVisible();
   });
 
   test("unauthenticated root shows landing page with a sign-in path", async ({ page }) => {
     await page.goto("/");
+    await expectNoSeriousA11yViolations(page);
     // LandingPage renders server-side for unauthenticated users (see app/page.tsx).
     // Previously `/` middleware-redirected to /login; it now shows the marketing
     // landing page with a Sign in CTA that opens /login?mode=signin.

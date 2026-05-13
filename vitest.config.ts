@@ -23,6 +23,18 @@ export default defineConfig({
     include: ["tests/{unit,component,integration}/**/*.{test,spec}.{ts,tsx}"],
     exclude: ["tests/e2e/**", "node_modules/**", "dist/**", ".next/**"],
     globals: true,
+    coverage: {
+      provider: "v8",
+      reportsDirectory: "./coverage",
+      reporter: ["text", "json-summary", "html"],
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: [
+        "src/**/*.d.ts",
+        "src/**/types/**",
+        "**/node_modules/**",
+        ".next/**",
+      ],
+    },
   },
 });
 

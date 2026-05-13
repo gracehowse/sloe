@@ -94,13 +94,22 @@
 # Unit + integration (web + shared)
 npm test
 
+# Same tests + V8 coverage report for `src/**` (summary in terminal; HTML → coverage/index.html)
+npm run test:coverage
+
+# Mobile workspace (from repo root): lint, typecheck, Vitest + coverage, Maestro manifest
+npm run mobile:test:coverage
+
+# Inside apps/mobile only:
+# npm run test:coverage   # Istanbul coverage for app/** and lib/** → apps/mobile/coverage/
+
 # E2E (local: Playwright starts dev server; CI uses build + start — see tests/e2e/README.md)
 npm run test:e2e
 
 # Type checking (web)
 npm run typecheck
 
-# Mobile belt (lint, tsc, vitest, Maestro manifest — no simulator required)
+# Mobile belt (lint, tsc, vitest + coverage, Maestro manifest — no simulator required)
 npm run mobile:verify
 ```
 
@@ -108,9 +117,9 @@ npm run mobile:verify
 
 GitHub Actions (`.github/workflows/ci.yml`):
 
-**Web job:** `npm ci` → `verify:production-env` → `tsc` → `npm test` → Playwright install → `npm run build` → `next start` on port 3100 → `npm run test:e2e`.
+**Web job:** `npm ci` → `verify:production-env` → `tsc` → `npm run test:coverage` → Playwright install → `npm run build` → `next start` on port 3100 → `npm run test:e2e`.
 
-**Mobile job:** under `apps/mobile` — ESLint, TypeScript, import-path guards, `npm test` (Vitest), `npm run test:e2e:verify-suite` (Maestro flow files + `config.yaml` manifest — does not run the simulator on CI).
+**Mobile job:** under `apps/mobile` — ESLint, TypeScript, import-path guards, `npm run test:coverage` (Vitest with Istanbul coverage for `app/**` and `lib/**`; HTML under `apps/mobile/coverage/`), `npm run test:e2e:verify-suite` (Maestro flow files + `config.yaml` manifest — does not run the simulator on CI).
 
 ## Related Documents
 

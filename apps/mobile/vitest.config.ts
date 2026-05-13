@@ -118,6 +118,22 @@ export default defineConfig({
       },
     },
     globals: true,
+    coverage: {
+      // Istanbul (not V8): @vitest/coverage-v8 + `pool: "vmThreads"` can hit
+      // inspector teardown errors ("Session is not connected") on some Node
+      // versions; Istanbul stays stable while preserving the RN shim pool.
+      provider: "istanbul",
+      reportsDirectory: "./coverage",
+      reporter: ["text", "json-summary", "html"],
+      include: ["app/**/*.{ts,tsx}", "lib/**/*.{ts,tsx}"],
+      exclude: [
+        "**/*.d.ts",
+        "**/node_modules/**",
+        "tests/**",
+        ".expo/**",
+        "dist/**",
+      ],
+    },
   },
   resolve: {
     alias: [

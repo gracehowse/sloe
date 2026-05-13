@@ -11,7 +11,6 @@ if (
   typeof HTMLCanvasElement !== "undefined" &&
   typeof HTMLCanvasElement.prototype.getContext === "function"
 ) {
-   
   HTMLCanvasElement.prototype.getContext = (() => null) as any;
 }
 

@@ -19,10 +19,15 @@ function parseSuiteFlows(text) {
   const i = lines.findIndex((l) => l.trim().startsWith("flowsOrder:"));
   if (i < 0) throw new Error("config.yaml: flowsOrder: not found");
   const flows = [];
+  const seen = new Set();
   for (let j = i + 1; j < lines.length; j++) {
     const line = lines[j];
     const m = line.match(/^\s*-\s+(\S+)\s*$/);
     if (m && m[1].endsWith(".yaml")) {
+      if (seen.has(m[1])) {
+        throw new Error(`config.yaml: duplicate entry in flowsOrder: ${m[1]}`);
+      }
+      seen.add(m[1]);
       flows.push(m[1]);
       continue;
     }

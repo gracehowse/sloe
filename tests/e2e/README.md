@@ -51,7 +51,7 @@ Stop the server when finished (foreground **Ctrl+C** or `kill` the background PI
 
 Workflow: [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml).
 
-The **root** job runs `npm run lint` (ESLint on `src/`, `app/`, `tests/`) after typecheck, then Vitest, `next build`, and Playwright smoke.
+The **root** job runs `npm run lint` (ESLint on `src/`, `app/`, `tests/`) after typecheck, then Vitest with coverage, `next build`, and Playwright smoke. On GitHub Actions, Playwright uses the **GitHub** reporter (annotations on failures), **HTML** (`open: "never"`), and **list**; failed runs upload a **`playwright-report`** artifact (see the *Upload Playwright HTML report* step in the workflow). `test.only` / `describe.only` are rejected when `CI` is set (`forbidOnly`).
 
 Repository **secrets** (Settings → Secrets and variables → Actions):
 

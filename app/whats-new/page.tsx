@@ -62,6 +62,10 @@ function formatReleaseDate(iso: string): string {
   });
 }
 
+function assertNeverChangelogKind(kind: never): never {
+  throw new Error(`Unhandled changelog item kind: ${kind}`);
+}
+
 function kindChipClasses(kind: ChangelogItemKind): string {
   switch (kind) {
     case "new":
@@ -70,6 +74,8 @@ function kindChipClasses(kind: ChangelogItemKind): string {
       return "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300 border border-sky-200 dark:border-sky-800";
     case "coming_soon":
       return "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800";
+    default:
+      return assertNeverChangelogKind(kind);
   }
 }
 
@@ -81,6 +87,8 @@ function kindBulletClasses(kind: ChangelogItemKind): string {
       return "bg-sky-500 dark:bg-sky-400";
     case "coming_soon":
       return "bg-amber-500 dark:bg-amber-400";
+    default:
+      return assertNeverChangelogKind(kind);
   }
 }
 
