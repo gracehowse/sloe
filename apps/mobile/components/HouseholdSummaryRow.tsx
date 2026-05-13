@@ -93,6 +93,15 @@ export function HouseholdSummaryRow() {
   if (!data || !data.household) return null;
 
   const memberCount = data.members?.length ?? 1;
+
+  // ENG-93 (2026-05-13): the audit flagged the household chip
+  // ("Howse · 1 member · sharing dinners") showing up unprompted on
+  // a fresh Plan tab before the user has done anything related to
+  // household. Solo households (memberCount ≤ 1) render nothing —
+  // the chip only earns the slot once at least one other person
+  // joins. The full /household-settings screen still exists and is
+  // reachable from More for solo users who want to set up sharing.
+  if (memberCount <= 1) return null;
   const memberWord = memberCount === 1 ? "member" : "members";
   const sharingPreset = (data.household as { share_lunch?: boolean }).share_lunch
     ? "sharing dinners + lunches"

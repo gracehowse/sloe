@@ -203,11 +203,19 @@ export function TodayDateHeader({
                 square. The prototype + brand carryover rules call for
                 the brand-gradient circular avatar (matches Profile,
                 Settings, the More tab) — same paint path as the
-                shared `<GradientAvatar>` primitive. */}
+                shared `<GradientAvatar>` primitive.
+
+                ENG-99 (2026-05-13): the prototype canon spec is a
+                **36×36** gradient avatar — bumped from 32 so the
+                Today header's primary profile-entry affordance
+                reaches the prototype size. Day/Week toggle to the
+                left of this is functional view-mode scope (not the
+                "theme toggle" the audit also called out — theme was
+                already moved to More/Settings). */}
             <GradientAvatar
-              size={32}
+              size={36}
               initial={avatarLetter}
-              fontSize={12}
+              fontSize={13}
               gradientIdSuffix="today-header"
             />
           </Pressable>
