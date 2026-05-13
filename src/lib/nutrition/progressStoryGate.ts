@@ -27,22 +27,24 @@
  * Pure module — no React, no I/O.
  */
 
+// ENG-97 (2026-05-13): the floor + gate now live in
+// `progressDataContract.ts` so every Progress surface reads the same
+// constants. This module keeps `STORY_DATA_FLOOR_DAYS` as a
+// re-export for the existing call sites + the placeholder copy below.
+import {
+  MIN_LOGGING_DAYS_FOR_STORY,
+  hasEnoughDataForStory as contractHasEnoughDataForStory,
+} from "./progressDataContract";
+
 /** Minimum days of logging before we let the story render at all. */
-export const STORY_DATA_FLOOR_DAYS = 3;
+export const STORY_DATA_FLOOR_DAYS = MIN_LOGGING_DAYS_FOR_STORY;
 
 /**
  * Decide whether to render the engine-led `<ProgressHeadline>` or the
- * pre-story placeholder card.
- *
- * `daysLogged` is the count of distinct calendar days inside the
- * current rolling window with at least one nutrition entry. We don't
- * use streak length (a sick day in the middle of week 2 shouldn't
- * collapse the user back to the placeholder).
+ * pre-story placeholder card. Re-exports the contract — the value
+ * never diverges between this module and `progressDataContract.ts`.
  */
-export function hasEnoughDataForStory(daysLogged: number): boolean {
-  if (!Number.isFinite(daysLogged)) return false;
-  return daysLogged >= STORY_DATA_FLOOR_DAYS;
-}
+export const hasEnoughDataForStory = contractHasEnoughDataForStory;
 
 /**
  * Resolved copy + ring progress for the placeholder card. Pure helper

@@ -15,9 +15,18 @@
  * on bodyweight" (Am J Clin Nutr, 2011).
  */
 
+// ENG-97 (2026-05-13): the floor constants are now sourced from the
+// Progress empty-state contract so every nutrition surface reads the
+// same numbers. The MIN_LOGGING_DAYS / MIN_WEIGH_INS names are kept as
+// re-exports for back-compat with existing tests + call sites.
+import {
+  MIN_LOGGING_DAYS_FOR_ADAPTIVE_TDEE,
+  MIN_WEIGH_INS_FOR_ADAPTIVE_TDEE,
+} from "./progressDataContract";
+
 const KCAL_PER_KG = 7700;
-export const MIN_LOGGING_DAYS = 7;
-export const MIN_WEIGH_INS = 3;
+export const MIN_LOGGING_DAYS = MIN_LOGGING_DAYS_FOR_ADAPTIVE_TDEE;
+export const MIN_WEIGH_INS = MIN_WEIGH_INS_FOR_ADAPTIVE_TDEE;
 const DEFAULT_WINDOW_DAYS = 28;
 const EMA_ALPHA = 0.1; // Lower = more smoothing
 
