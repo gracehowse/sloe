@@ -5,7 +5,7 @@ import { Shield, Cloud, Download, ChevronDown } from "lucide-react";
 import { PageViewTracker, PageDismissTracker } from "../../src/app/components/PageViewTracker.tsx";
 import { AnalyticsEvents, type PaywallViewedFrom } from "../../src/lib/analytics/events.ts";
 import { FREE_SAVE_LIMIT, NUTRITION_SOURCES, PRICING_TIERS } from "../../src/lib/landing/content.ts";
-import { detectRegion } from "../../src/lib/region/detectRegion.ts";
+import { detectRegion, resolveRenderedVatNote } from "../../src/lib/region/detectRegion.ts";
 import { PricingHero } from "./PricingHero.tsx";
 import { PricingTiersGrid } from "./PricingTiersGrid.tsx";
 import { PaywallTrustStrip } from "./PaywallTrustStrip.tsx";
@@ -218,11 +218,24 @@ export default async function PricingPage({
             tax-clause copy stays in lockstep with whether the
             /api/stripe/checkout route passes `automatic_tax` to Stripe
             (round-6 flag, 2026-04-19). */}
+        {/* ENG-33 (2026-05-13): when STRIPE_TAX_ENABLED is false, the
+            "Prices include VAT" inclusive-VAT claim on UK/EU surfaces
+            is untrue — Stripe isn't computing VAT, so the user pays the
+            sticker price without VAT added. `resolveRenderedVatNote`
+            gates the note on the flag so the disclosure falls back to
+            the honest "Price excludes any applicable taxes" line until
+            Stripe dashboard has `tax_behavior=inclusive` on each Price
+            object and the flag flips. Authority: docs/operations/
+            stripe-tax-launch-checklist.md + docs/decisions/2026-04-19-
+            consumer-vat-posture-uk-eu.md. */}
         <PricingTiersGrid
           tiers={TIERS_FOR_GRID}
           stripeTaxEnabled={process.env.STRIPE_TAX_ENABLED === "true"}
           paywallFrom={paywallFrom}
-          regionVatNote={region.vatNote}
+          regionVatNote={resolveRenderedVatNote(
+            region.vatNote,
+            process.env.STRIPE_TAX_ENABLED === "true",
+          )}
           regionCurrency={region.currency}
           regionNote={
             region.currency === "EUR"

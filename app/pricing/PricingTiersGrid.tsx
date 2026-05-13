@@ -96,9 +96,16 @@ export function PricingTiersGrid({
   paywallFrom: PaywallViewedFrom;
   /** H7 (2026-04-21) — inline VAT disclosure for UK / EU visitors
    *  ("Prices include VAT"). Empty string suppresses the line for
-   *  default / US-ish surfaces. Kept alongside the Stripe-flag-driven
-   *  tax clause in `BillingDisclosure` so the UK/EU surface gets the
-   *  inclusive-VAT note even when `STRIPE_TAX_ENABLED=false`. */
+   *  default / US-ish surfaces.
+   *
+   *  ENG-33 (2026-05-13): the parent (`/pricing/page.tsx`) now passes
+   *  the region note **only** when `STRIPE_TAX_ENABLED=true`. When
+   *  the flag is off, the "Prices include VAT" claim is untrue —
+   *  Stripe isn't computing VAT, so the user pays the sticker price
+   *  without VAT added. Until the flag flips and Stripe dashboard
+   *  has `tax_behavior=inclusive` on each Price object, this prop
+   *  arrives empty for UK/EU visitors and the disclosure falls back
+   *  to the honest "Price excludes any applicable taxes" line. */
   regionVatNote?: string;
   /** H7 — detected display currency. GBP today everywhere; EUR tag is
    *  propagated for future EUR-SKU work but does NOT change the
