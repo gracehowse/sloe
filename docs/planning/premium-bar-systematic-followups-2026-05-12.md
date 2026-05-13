@@ -217,8 +217,8 @@ This doc is the live tracking surface — update tags as items ship.
 - [x] "What happens next" 3-step card
 - [x] Re-title to "Your plan is ready."
 - [x] Show the maths (expandable BMR + Activity + Goal) — RevealShowTheMaths
-- [ ] Pair macro % with g inline
-- [ ] Add "compared to" anchor
+- [p] Pair macro % with g inline — flag-gated `reveal-macro-tile-paired-pct` on both platforms (commits 5b891f8 + 51552be); Grace flips when ready
+- [x] Add "compared to" anchor — goalBlurb already names TDEE comparison
 - [x] Promote methodology footer to "How we calculate" chip-expander — MobileMethodologyNote
 - [ ] Rebuild weight-skipped branch as soft-illustration moment
 - [x] Unify ring gradient to single brand gradient — Accent.primaryLight → MacroColors.fat gradient
@@ -253,9 +253,9 @@ This doc is the live tracking surface — update tags as items ship.
 
 - [ ] Replace camera glyph with explicit shutter button
 - [x] Add "~3 seconds to log" / "AI estimate · review before saving" subtitle
-- [ ] Surface Pro chip on card if Free
+- [x] Surface Pro chip on card if Free (commit 9ffe7dc)
 - [ ] Persist photo-log card to populated state
-- [ ] Shutter-pulse haptic on tap → camera sheet
+- [x] Shutter-pulse haptic on tap → camera sheet — upgraded selection → medium impact (commit 50e4885)
 
 ### Feature 4 Macro tiles
 
@@ -320,11 +320,11 @@ This doc is the live tracking surface — update tags as items ship.
 
 ### Card 3 Move-meal sheet
 
-- [ ] Leading glyphs (lucide)
-- [ ] Expand recipe context header to `Breakfast · Thu May 7 · 429 kcal`
-- [ ] Confirm haptics fire per row, warning on destructive
-- [ ] Disambiguate "Adjust portion…" label
-- [ ] Separate Cancel into own group with 8-px gap
+- [x] Leading glyphs (lucide) — Coffee / Sun / UtensilsCrossed / Cookie + per-slot tint (commit 743697a)
+- [x] Expand recipe context header to include kcal (commit 743697a)
+- [x] Confirm haptics fire per row — Haptics.selectionAsync on tap (commit cfaf190)
+- [x] Disambiguate "Adjust portion…" label — renamed to "Change portion size…" (session 10)
+- [d] Separate Cancel into own group with 8-px gap — iOS Alert auto-separates `style: "cancel"`, no work needed
 - [ ] Warning toast on household-shared destructive
 
 ### Card 4 Generate flow
@@ -347,10 +347,10 @@ This doc is the live tracking surface — update tags as items ship.
 ### Card 6 Dark mode
 
 - [ ] Port dark 4-pill CTA empty-day row to light
-- [ ] Boost segmented-control active contrast in dark
-- [ ] Brighten Plan setup ▶ chevron
+- [x] Boost segmented-control active contrast in dark — bumped `+ "15"` → `+ "26"` opacity (commit c4fcc4c)
+- [x] Brighten Plan setup ▶ chevron — `textSecondary` → `text` (commit c4fcc4c)
 - [e] Capture missing dark screenshots (Maestro)
-- [ ] Demote "Browse recipe library" link colour
+- [x] Demote "Browse recipe library" link colour (session 9)
 
 ---
 
@@ -395,8 +395,8 @@ This doc is the live tracking surface — update tags as items ship.
 - [x] Anchor floating "latest" pill above latest dot at idle (showLatest tooltip positioning)
 - [ ] 200ms ease-out tween on yMin/yMax change (deferred — reanimated work)
 - [ ] Soft haptic on scrub crossing data point + 180ms fade-out (deferred — moderate work)
-- [ ] Drop trend-line colour swap on worsening
-- [ ] Bump pill touch targets ≥40pt
+- [x] Drop trend-line colour swap on worsening — line stays primary (commit 51552be)
+- [x] Bump pill touch targets ≥40pt — hitSlop adds 8pt above + below (commit 51552be)
 - [ ] Labelled "View all measurements" link
 - [ ] Single-source-of-truth chart (Phase 2 consolidation) — larger refactor
 - [x] Solid line between 2 points (DC5)
