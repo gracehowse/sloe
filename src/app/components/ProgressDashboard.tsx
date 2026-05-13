@@ -454,6 +454,11 @@ function ProgressDashboardContent() {
     const isImperial = profileMeasurementSystem === "imperial";
     const conv = (kg: number) =>
       isImperial ? Math.round(kgToLb(kg) * 10) / 10 : Math.round(kg * 10) / 10;
+    // 2026-05-13 (Withings parity): expose `isToday` per point so the
+    // chart can render a "you are here" vertical indicator. Match by
+    // the underlying ISO date (the rendered label is bucket-aware so
+    // matching on `date` is unsafe).
+    const tk = todayKey();
     return weightTrend.points.map((p, i) => {
       // 2026-05-06: bucket-aware date label.
       // daily   → "MM-DD" (matches the previous behaviour)
@@ -473,6 +478,7 @@ function ProgressDashboardContent() {
         // Smoothed MA — null entries left as undefined so Recharts
         // skips them rather than drawing a flatline at zero.
         ma: ma != null ? conv(ma) : undefined,
+        isToday: p.dateISO === tk,
       };
     });
   }, [weightTrend, profileMeasurementSystem]);
@@ -1842,6 +1848,13 @@ function ProgressDashboardContent() {
         </div>
         {weightChartData.length >= 2 && (
           <div className="mb-3">
+            {/* 2026-05-13 (premium-bar audit web parity, Withings polish):
+                hollow rings on data points (was filled r=2 dots) +
+                vertical "today" indicator line + thicker smoothed
+                trend line. Same Withings Health Mate parity that
+                mobile got in dd043c3 + 7b0b9b6, ported to the
+                Recharts surface so the web chart no longer reads
+                as the cheap default. */}
             <ResponsiveContainer width="100%" height={140}>
               <LineChart data={weightChartData}>
                 <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" />
@@ -1859,15 +1872,26 @@ function ProgressDashboardContent() {
                     type="monotone"
                     dataKey="value"
                     stroke="var(--primary)"
-                    strokeWidth={2}
-                    dot={{ r: 2 }}
+                    strokeWidth={2.25}
+                    dot={{
+                      r: 3.5,
+                      fill: "var(--card)",
+                      stroke: "var(--primary)",
+                      strokeWidth: 2,
+                    }}
+                    activeDot={{
+                      r: 5,
+                      fill: "var(--primary)",
+                      stroke: "var(--card)",
+                      strokeWidth: 2,
+                    }}
                   />
                 ) : (
                   <Line
                     type="monotone"
                     dataKey="ma"
                     stroke="var(--primary)"
-                    strokeWidth={2}
+                    strokeWidth={2.25}
                     dot={false}
                     connectNulls
                   />
@@ -1879,6 +1903,19 @@ function ProgressDashboardContent() {
                     strokeDasharray="4 4"
                   />
                 )}
+                {/* 2026-05-13 — "today" vertical indicator. Same
+                    Withings "you are here" marker mobile uses. Renders
+                    when `weightChartData` contains a point whose
+                    underlying ISO date matches today, identified by
+                    the `isToday` flag on each point. */}
+                {weightChartData.some((p) => p.isToday) ? (
+                  <ReferenceLine
+                    x={weightChartData.find((p) => p.isToday)?.date}
+                    stroke="var(--foreground)"
+                    strokeWidth={1}
+                    strokeOpacity={0.3}
+                  />
+                ) : null}
               </LineChart>
             </ResponsiveContainer>
           </div>
