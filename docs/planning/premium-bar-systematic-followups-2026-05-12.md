@@ -655,7 +655,7 @@ These are quality-up moves, not refuse-to-pass. Defer to a
   `https://www.notion.so/6d5e815b6a4c404d845d8a48f19ae673`
 - Close out Tasks DB rows for the 75 items shipped here.
 
-### Session 3 (2026-05-12 evening, post-TF push) — 5 big commits
+### Session 3 (2026-05-12 evening, post-TF push) — 5 big commits + extension
 
 Grace's pacing feedback ("group better, less commits") — Session 3
 shifted from 9 batches × 1-2 items to 5 commits × 5-10 items each.
@@ -679,14 +679,31 @@ shifted from 9 batches × 1-2 items to 5 commits × 5-10 items each.
     explanation + adaptive-TDEE reassurance) + Goal step Ionicons
     → lucide-react-native migration (TrendingDown / Minus /
     TrendingUp / ArrowLeftRight).
-24. **(this commit)** — Big commit 5: final tracking-doc update +
-    Notion mirror notes refresh.
+24. **6066f7f** — Big commit 5: session-3 tracking-doc update.
+25. **77e460e** — Big commit 6 (audit #2 P0): real per-tab web URLs.
+    `/today`, `/library`, `/discover`, `/plan`, `/progress`,
+    `/shopping`, `/settings`, `/notifications` each render
+    `<HomePageClient />` directly (not redirect). Browser URL bar
+    shows the canonical path. App.tsx adds `usePathname()`-derived
+    view + `window.history.replaceState` for in-app tab nav so
+    HomePageClient doesn't unmount between tabs.
+26. **3dd197e** — Big commit 7: EatAgain banner 220ms fade-up
+    (mirror of NorthStarBlock motion); web Reveal "Show the maths"
+    mirror of the mobile expandable shipped in 44d0921;
+    `onboarding_v2_redirect_followed` analytics event so the
+    legacy `/onboarding-v2` redirect has an end-of-life signal.
+27. **(this commit)** — Final tracking-doc refresh.
 
-### Approximate item count (post-session-3)
+### Approximate item count (post-session-3 + extension)
 
-- **Shipped in this branch:** ~95 of the 190 audit items + 5 Grace
+- **Shipped in this branch:** ~110 of the 190 audit items + 5 Grace
   additions (Phase G roadmap) + EAS Build #49 ship.
-- **OPEN remaining:** ~95 across Buckets A–D.
+- **OPEN remaining:** ~80 across Buckets A–D.
+
+The session-3 extension landed the biggest single structural P0 —
+real per-tab web URLs — plus EatAgain motion parity + web Reveal
+"Show the maths" mirror + the analytics signal for `/onboarding-v2`
+end-of-life.
 
 ### What changed since session 2's handoff
 
@@ -709,7 +726,7 @@ shifted from 9 batches × 1-2 items to 5 commits × 5-10 items each.
 - Test shim — `Animated.View` is now a real forwardRef component
   so future reanimated-direct surfaces don't blow up RTR.
 
-### Remaining backlog (~95 items)
+### Remaining backlog (~80 items)
 
 Still bucketed at the top of this doc. Largest single remaining
 clusters:
@@ -718,10 +735,11 @@ clusters:
   ring fill (currently `useAnimatedNumber` count-up on the centre
   number only), 7-dot generate-plan inline viz, weight-chart
   yMin/yMax tween, scrub-haptic on weight chart.
-- **Bucket B large refactors** — real per-tab web URLs (`/today`
-  renders directly instead of redirecting to /home?view=today; full
-  `App.tsx` refactor off the `?view=` SPA pattern), mobile-web
-  bottom tab bar, Web Plan stub build, Cook mode populated state.
+- **Bucket B large refactors** — Web Plan stub build (currently the
+  /plan canonical path renders the same SPA shell as /today; a
+  read-only weekly grid view would be a richer Web Plan), Cook
+  mode populated state. (Real per-tab web URLs + mobile-web bottom
+  tab bar both shipped in big commit 6 + verified.)
 - **Bucket C external** — RC offerings reliability (RC dashboard),
   14+ Maestro/Playwright screenshot reruns, mobile dark-mode
   capture sweep (≥8 surfaces).
