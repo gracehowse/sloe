@@ -117,6 +117,7 @@ import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
 import { fetchFatSecretAutocomplete } from "../../../../src/lib/nutrition/fatsecretAutocompleteClient";
 import { shouldShowBarcodeFallbackHint } from "../../../../src/lib/nutrition/foodSearchLocale";
+import { formatMacroTrailer } from "../../../../src/lib/nutrition/macroFormat";
 
 /** Standard units always available regardless of data source */
 const STANDARD_UNITS: FoodPortion[] = [
@@ -1518,7 +1519,12 @@ export default function FoodSearchPanel({
                     fontVariant: ["tabular-nums"],
                   }}
                 >
-                  {Math.round(item.calories)} kcal · P {Math.round(item.protein)} / C {Math.round(item.carbs)} / F {Math.round(item.fat)}
+                  {formatMacroTrailer({
+                    calories: item.calories,
+                    protein: item.protein,
+                    carbs: item.carbs,
+                    fat: item.fat,
+                  })}
                 </Text>
               </View>
               <Text style={{ fontSize: 13, color: colors.textTertiary, marginLeft: 8 }}>

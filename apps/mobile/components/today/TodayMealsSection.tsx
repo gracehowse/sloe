@@ -20,6 +20,7 @@ import * as Haptics from "expo-haptics";
 import { Accent, Radius, SlotColors, Spacing } from "@/constants/theme";
 import { SourceDot } from "@/components/ui/SourceDot";
 import { mapMealSourceToDot } from "../../../../src/lib/nutrition/sourceMap";
+import { formatMacroTrailer } from "../../../../src/lib/nutrition/macroFormat";
 import type { JournalMeal } from "@/lib/nutritionJournal";
 import type { SavedMeal } from "../../../../src/lib/nutrition/savedMeals";
 import { summariseSavedMeal } from "../../../../src/lib/nutrition/savedMealsLogic";
@@ -703,8 +704,12 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                           {m.name}
                         </Text>
                         <Text style={{ fontSize: 11, color: textSecondaryColor, marginTop: 2 }}>
-                          {itemsLabel} · {summary.totalCalories} kcal · P {Math.round(summary.totalProtein)}g · C{" "}
-                          {Math.round(summary.totalCarbs)}g · F {Math.round(summary.totalFat)}g
+                          {itemsLabel} · {formatMacroTrailer({
+                            calories: summary.totalCalories,
+                            protein: summary.totalProtein,
+                            carbs: summary.totalCarbs,
+                            fat: summary.totalFat,
+                          })}
                         </Text>
                       </Pressable>
                     );

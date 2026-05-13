@@ -31,6 +31,7 @@ import { X } from "lucide-react-native";
 
 import { Accent, IconSize, Radius, Spacing } from "@/constants/theme";
 import type { SavedMealItem } from "../../../src/lib/nutrition/savedMeals";
+import { formatMacroTrailer } from "../../../src/lib/nutrition/macroFormat";
 
 type Theme = {
   text: string;
@@ -343,8 +344,12 @@ export default function SaveMealSheet({
                         <Text
                           style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2 }}
                         >
-                          {Math.round(it.calories)} kcal · P {Math.round(it.protein)}g · C{" "}
-                          {Math.round(it.carbs)}g · F {Math.round(it.fat)}g
+                          {formatMacroTrailer({
+                            calories: it.calories,
+                            protein: it.protein,
+                            carbs: it.carbs,
+                            fat: it.fat,
+                          })}
                         </Text>
                       </View>
                       <Pressable
