@@ -1,5 +1,6 @@
 import type * as React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   View,
   Text,
@@ -45,6 +46,7 @@ import {
   ShoppingCart,
   Sun,
   UtensilsCrossed,
+  X,
   type LucideIcon,
 } from "lucide-react-native";
 import { Accent, MacroColors, SlotColors, Spacing, Radius } from "@/constants/theme";
@@ -456,6 +458,33 @@ export default function PlannerScreen() {
   const [templatesLoading, setTemplatesLoading] = useState(false);
   /** When a plan exists: expand to change day count / slots / start before regenerating. */
   const [planSetupExpanded, setPlanSetupExpanded] = useState(false);
+  // 2026-05-13 (premium-bar audit Plan Card 4 #4): instruction copy
+  // ("Change options below, then regenerate. Edits to individual
+  // meals…") used to render every time the Plan setup was expanded.
+  // After the first read it's noise; testers said they tuned it out.
+  // Now persisted-dismissable: shown until the user taps the close X,
+  // then `suppr-plan-setup-instr-seen-v1` flag in AsyncStorage hides
+  // it forever for that device. Set on dismiss; read on mount.
+  const PLAN_INSTR_SEEN_KEY = "suppr-plan-setup-instr-seen-v1";
+  const [planInstrSeen, setPlanInstrSeen] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const v = await AsyncStorage.getItem(PLAN_INSTR_SEEN_KEY);
+        if (!cancelled) setPlanInstrSeen(v === "1");
+      } catch {
+        if (!cancelled) setPlanInstrSeen(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const dismissPlanInstruction = useCallback(() => {
+    setPlanInstrSeen(true);
+    void AsyncStorage.setItem(PLAN_INSTR_SEEN_KEY, "1").catch(() => undefined);
+  }, []);
   const [portionModal, setPortionModal] = useState<{ dayIdx: number; mealIndex: number } | null>(null);
 
   // Batch 3.10 (mobile parity, 2026-04-18 audit C2) — Move meal state.
@@ -1903,10 +1932,35 @@ export default function PlannerScreen() {
             >
               <View style={{ flex: 1, paddingRight: 8 }}>
                 <Text style={styles.cardTitle}>Plan setup</Text>
-                {planSetupExpanded ? (
-                  <Text style={styles.cardDesc}>
-                    Change options below, then regenerate. Edits to individual meals (swap, portion, clear) apply immediately.
-                  </Text>
+                {/* 2026-05-13 (premium-bar audit Plan Card 4 #4): the
+                    instruction copy now renders only until the user
+                    dismisses it. After dismissal, the
+                    `suppr-plan-setup-instr-seen-v1` flag keeps it
+                    hidden on that device forever. Reduces repeat-
+                    visit noise on the Plan tab while still giving
+                    first-time users the orientation. */}
+                {planSetupExpanded && !planInstrSeen ? (
+                  <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 6, marginTop: 4 }}>
+                    <Text style={[styles.cardDesc, { flex: 1, marginTop: 0 }]}>
+                      Change options below, then regenerate. Edits to individual meals (swap, portion, clear) apply immediately.
+                    </Text>
+                    <Pressable
+                      onPress={(e) => {
+                        // Stop the parent header's expand/collapse
+                        // toggle from firing when the user just wants
+                        // to dismiss the tooltip.
+                        e.stopPropagation?.();
+                        dismissPlanInstruction();
+                      }}
+                      hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel="Dismiss tip"
+                      testID="plan-setup-instr-dismiss"
+                      style={{ padding: 2 }}
+                    >
+                      <X size={14} color={colors.textTertiary} strokeWidth={2} />
+                    </Pressable>
+                  </View>
                 ) : null}
               </View>
               {/* 2026-05-12 (premium-bar audit Plan Card 1): replaced
