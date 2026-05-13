@@ -18,6 +18,7 @@ import {
   Text,
   View,
 } from "react-native";
+import * as Haptics from "expo-haptics";
 import {
   Coffee,
   Cookie,
@@ -171,7 +172,20 @@ export function MoveMealSheet({
                 <Pressable
                   key={key}
                   disabled={r.isSource}
-                  onPress={() => onMove({ day: r.day, slotIndex: r.slotIndex })}
+                  onPress={() => {
+                    // 2026-05-13 (premium-bar audit Plan Card 3 #3):
+                    // selection haptic on every destination tap so
+                    // the pick lands as a deliberate moment. Matches
+                    // Apple's "selection feedback on row pick" pattern
+                    // and the Today FAB's medium-impact tap haptic
+                    // (one tier above selection for higher-stakes
+                    // actions). iOS-only — RN ignores on Android but
+                    // we're iOS-only today per project memory.
+                    if (process.env.EXPO_OS === "ios") {
+                      void Haptics.selectionAsync();
+                    }
+                    onMove({ day: r.day, slotIndex: r.slotIndex });
+                  }}
                   accessibilityRole="button"
                   accessibilityLabel={label}
                   accessibilityState={{ disabled: r.isSource }}
