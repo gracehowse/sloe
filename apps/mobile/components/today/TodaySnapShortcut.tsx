@@ -54,8 +54,15 @@ export function TodaySnapShortcut({
         accessibilityHint="Opens the photo log so you can capture a meal in one tap"
         testID={testID ?? "today-snap-shortcut"}
         onPress={() => {
+          // 2026-05-13 (premium-bar audit Today F3 #5): upgraded from
+          // `selectionAsync` (lightest) to medium impact so the tap
+          // feels like a shutter press — matches the iOS Camera app's
+          // tap-the-shutter feedback. The card is the entry point to a
+          // photo-log capture flow; a heftier confirmation is honest
+          // about what's about to happen (camera permission prompt or
+          // capture sheet).
           if (process.env.EXPO_OS === "ios") {
-            void Haptics.selectionAsync();
+            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
           }
           onPress();
         }}
