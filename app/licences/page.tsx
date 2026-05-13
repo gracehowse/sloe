@@ -58,7 +58,30 @@ export default function LicencesPage() {
 
         <section className="mb-10">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">Nutrition &amp; product data</h2>
-          <div className="overflow-x-auto">
+          {/* 2026-05-13 (premium-bar audit Group A trust #5):
+              dual-render — stacked cards on mobile-web (where the
+              horizontal-scroll table read as broken), full table on
+              md+. Same data, no SSR/CSR fork — content is identical. */}
+          <ul className="md:hidden space-y-2">
+            {DATA_LICENCES.map((e) => (
+              <li
+                key={e.name}
+                className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 p-3 text-xs"
+              >
+                <a
+                  className="block font-semibold text-violet-600 dark:text-violet-400 underline"
+                  href={e.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {e.name}
+                </a>
+                <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">{e.licence}</p>
+                <p className="mt-1 text-slate-700 dark:text-slate-300">{e.purpose}</p>
+              </li>
+            ))}
+          </ul>
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-xs border border-slate-200 dark:border-slate-800">
               <thead className="bg-slate-100 dark:bg-slate-900">
                 <tr>
@@ -92,7 +115,26 @@ export default function LicencesPage() {
 
         <section className="mb-10">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">Open-source software</h2>
-          <div className="overflow-x-auto">
+          <ul className="md:hidden space-y-2">
+            {CODE_LICENCES.map((e) => (
+              <li
+                key={e.name}
+                className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 p-3 text-xs"
+              >
+                <a
+                  className="block font-semibold text-violet-600 dark:text-violet-400 underline"
+                  href={e.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {e.name}
+                </a>
+                <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">{e.licence}</p>
+                <p className="mt-1 text-slate-700 dark:text-slate-300">{e.purpose}</p>
+              </li>
+            ))}
+          </ul>
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-xs border border-slate-200 dark:border-slate-800">
               <thead className="bg-slate-100 dark:bg-slate-900">
                 <tr>

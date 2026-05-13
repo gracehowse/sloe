@@ -42,9 +42,14 @@ import {
 function formatReleaseDate(iso: string): string {
   // Defensive: if the ISO is malformed, fall back to the raw string
   // so the screen never errors. Tests pin ISO `YYYY-MM-DD` inputs.
+  // 2026-05-13 — locale pinned to en-GB to match web /whats-new
+  // formatter (which had to be pinned to avoid SSR/CSR hydration
+  // mismatch). Keeping the two in lockstep so a cross-link from
+  // mobile to web shows the same string. Premium-bar audit
+  // Whats-New #7.
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString(undefined, {
+  return d.toLocaleDateString("en-GB", {
     year: "numeric",
     month: "long",
     day: "numeric",

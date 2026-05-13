@@ -181,20 +181,12 @@ function Hero() {
             Instagram, TikTok, or any recipe blog — Suppr parses every ingredient and matches it against
             USDA FoodData Central and other public food databases so you know what’s on the plate.
           </p>
-          <div className="lp-hero-ctas">
-            <Link className="lp-btn lp-btn-primary lp-btn-lg" href={SIGNUP_HREF}>
-              Get started — it’s free
-            </Link>
-            {/* 2026-05-13 (premium-bar audit Group A landing #2):
-                secondary CTA demoted from button (`lp-btn-ghost`) to
-                text link (`lp-btn-link`). Two equal-weight large
-                buttons split the eye-path; one primary + one text
-                link is the Linear / Vercel / Notion convention. */}
-            <a className="lp-btn lp-btn-link" href="#what">
-              See how it works
-              <ArrowRight width={16} height={16} aria-hidden />
-            </a>
-          </div>
+          {/* 2026-05-13 (premium-bar audit Group A landing #6): moved
+              the trust-line check items ABOVE the CTAs so they read as
+              a sub-sub-headline reinforcement before the user reaches
+              the decision point. Previously the trust line sat below
+              the CTAs and most users never scrolled to it. Same three
+              proof points, same component — markup order change only. */}
           <div className="lp-hero-sub">
             <div className="lp-item">
               <Check width={14} height={14} aria-hidden />
@@ -208,6 +200,20 @@ function Hero() {
               <Check width={14} height={14} aria-hidden />
               No ads, no diet culture
             </div>
+          </div>
+          <div className="lp-hero-ctas">
+            <Link className="lp-btn lp-btn-primary lp-btn-lg" href={SIGNUP_HREF}>
+              Get started — it’s free
+            </Link>
+            {/* 2026-05-13 (premium-bar audit Group A landing #2):
+                secondary CTA demoted from button (`lp-btn-ghost`) to
+                text link (`lp-btn-link`). Two equal-weight large
+                buttons split the eye-path; one primary + one text
+                link is the Linear / Vercel / Notion convention. */}
+            <a className="lp-btn lp-btn-link" href="#what">
+              See how it works
+              <ArrowRight width={16} height={16} aria-hidden />
+            </a>
           </div>
         </div>
 

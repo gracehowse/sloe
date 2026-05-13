@@ -106,7 +106,16 @@ export default function RoadmapPage() {
                     chip text on every row. Chip retained at right
                     edge for accessibility (Voice-Over still reads
                     "Shipped" / "Building" / "Planned"). */}
-                <ul className="mt-3 space-y-3 text-sm leading-relaxed sm:text-base">
+                {/* 2026-05-13 (premium-bar audit Group A Roadmap #2):
+                    tightened from per-item cards (p-4 + border + shadow)
+                    to a divider-list (rounded outer border, divide-y
+                    between rows, py-2.5 sm:py-3 ≈ 40-44px row height).
+                    Linear / Vercel / Notion all use a divider-list for
+                    long scannable progress lists — the per-item card
+                    pattern was over-weighted for a list this long and
+                    bloated the page vertically. Status dot stays at
+                    left edge; chip retained at right for VoiceOver. */}
+                <ul className="mt-3 rounded-2xl border border-border bg-card overflow-hidden divide-y divide-border text-sm leading-relaxed sm:text-base">
                   {bucket.items.map((item) => {
                     const status = STATUS_COPY[item.status];
                     // 2026-05-12 (premium-bar audit Group A Roadmap #3):
@@ -118,13 +127,13 @@ export default function RoadmapPage() {
                       ? (props: React.PropsWithChildren) => (
                           <Link
                             href="/whats-new"
-                            className="flex items-start gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm hover:bg-accent/50 transition-colors"
+                            className="flex items-center gap-3 px-4 py-2.5 sm:py-3 hover:bg-accent/50 transition-colors"
                           >
                             {props.children}
                           </Link>
                         )
                       : (props: React.PropsWithChildren) => (
-                          <div className="flex items-start gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
+                          <div className="flex items-center gap-3 px-4 py-2.5 sm:py-3">
                             {props.children}
                           </div>
                         );
@@ -133,7 +142,7 @@ export default function RoadmapPage() {
                         <Wrapper>
                           <span
                             aria-hidden
-                            className={`mt-1.5 inline-block w-2 h-2 rounded-full shrink-0 ${status.dotClass}`}
+                            className={`inline-block w-2 h-2 rounded-full shrink-0 ${status.dotClass}`}
                           />
                           <span className="text-foreground flex-1">{item.text}</span>
                           <span
