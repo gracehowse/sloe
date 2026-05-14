@@ -1,0 +1,30 @@
+{
+  "bucket": "P0",
+  "batchType": "before",
+  "capturedAt": "2026-05-15T11:00:00Z",
+  "fixtureUserId": "E2E_EMAIL from .env.local (Grace's primary test user)",
+  "iosSimVersion": "iOS 26.4",
+  "iosSimDevice": "iPhone 17 Pro",
+  "webViewports": ["1440x900 (desktop)", "390x844 (iPhone 13)"],
+  "themes": ["light", "dark"],
+  "flagsResolved": {
+    "onboarding-v2": true,
+    "premium-sweep-v2-*": false
+  },
+  "appBuildSha": "0e363de",
+  "captureSources": [
+    "tests/e2e/screenshots/premium-bar-sweep-dark.spec.ts",
+    "tests/e2e/screenshots/premium-bar-sweep-light.spec.ts",
+    "apps/mobile/.maestro/00_screenshot_tour.yaml",
+    "apps/mobile/.maestro/00z_premium_bar_dark.yaml (running)",
+    "apps/mobile/.maestro/00c_onboarding_v2_steps.yaml (queued)"
+  ],
+  "knownGaps": [
+    "Mobile Today first-render (no-logs) — current sim has logs; fresh-install state needs separate fixture",
+    "Mobile login screen — authed user skips it; need signed-out capture",
+    "Web onboarding step screens (welcome, signup, goal, sex, age, height, weight, activity, pace, diet, strategy, reveal, data-bridges) — entry route captured, individual steps need interactive Playwright flow",
+    "Web upgrade paywall dialog + AI paywall dialog — modal overlays, need interactive trigger",
+    "Web checkout success — needs post-purchase fixture state"
+  ],
+  "notes": "First S1 capture pass. Triage PNGs from 2026-05-15 ~10:00 staged here as before-pixels. The dark-mode sweep (00z_premium_bar_dark.yaml) is running in background to fill mobile dark coverage for Today + paywall. Onboarding-steps flow (00c_onboarding_v2_steps.yaml) will run after the dark sweep completes."
+}
