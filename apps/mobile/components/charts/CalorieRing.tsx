@@ -152,17 +152,12 @@ function MacroRing({
   color,
   trackColor,
   delay,
-  dim,
 }: {
   radius: number;
   pct: number;
   color: string;
   trackColor: string;
   delay: number;
-  /** When true (over-budget), shift arc to warm amber tint so the
-   *  destructive outer ring reads as the primary signal without the
-   *  macro colours competing. Apple Watch warm-tint borrow. */
-  dim?: boolean;
 }) {
   const circ = CIRC(radius);
   const progress = useSharedValue(0);
@@ -172,8 +167,6 @@ function MacroRing({
     const prevPct = prevPctRef.current;
     prevPctRef.current = pct;
     if (prevPct === 0 && pct > 0) {
-      // First log of the day — animate dramatically from zero so the
-      // arcs fill in as data lands (Apple Watch "ring fill" moment).
       progress.value = 0;
       progress.value = withDelay(
         delay,
@@ -183,8 +176,6 @@ function MacroRing({
         }),
       );
     } else {
-      // Subsequent update — tween from current position for a smooth
-      // incremental feel rather than a jarring reset.
       progress.value = withTiming(Math.min(pct, 0.999), {
         duration: 200,
         easing: Easing.out(Easing.cubic),
@@ -196,12 +187,13 @@ function MacroRing({
     strokeDashoffset: circ * (1 - progress.value),
   }));
 
-  // Warm amber tint when over-budget (dim=true): all arcs shift to
-  // Accent.warning so the over signal reads as "warm overrun" not just
-  // "faded colours". Opacity drops to 0.6 to keep the outer red ring
-  // as the dominant signal.
-  const arcColor = dim ? Accent.warning : color;
-
+  // 2026-05-14 — Grace's call: macro arcs always render in their own
+  // colour at full opacity, even when the user is over-budget. The
+  // previous amber-warm-tint treatment (`dim=true` shifted arc to
+  // Accent.warning at 0.6 opacity) collapsed the multi-colour
+  // language into a single warning hue and made the ring read as
+  // dimmer overall. The destructive outer kcal ring already carries
+  // the over-budget signal — the inner arcs don't need to repeat it.
   return (
     <G>
       <Circle
@@ -217,7 +209,7 @@ function MacroRing({
         cx={CX}
         cy={CX}
         r={radius}
-        stroke={arcColor}
+        stroke={color}
         strokeWidth={MACRO_STROKE}
         fill="none"
         strokeDasharray={`${circ}`}
@@ -225,7 +217,6 @@ function MacroRing({
         strokeLinecap="round"
         rotation="-90"
         origin={`${CX},${CX}`}
-        opacity={dim ? 0.6 : 1}
       />
     </G>
   );
@@ -428,7 +419,6 @@ export default function CalorieRing({
               color={MacroColors.protein}
               trackColor={trackColor}
               delay={80}
-              dim={isOver}
             />
           )}
           {expanded && !isEmpty && (
@@ -438,7 +428,6 @@ export default function CalorieRing({
               color={MacroColors.carbs}
               trackColor={trackColor}
               delay={160}
-              dim={isOver}
             />
           )}
           {expanded && !isEmpty && (
@@ -448,7 +437,6 @@ export default function CalorieRing({
               color={MacroColors.fat}
               trackColor={trackColor}
               delay={240}
-              dim={isOver}
             />
           )}
         </Svg>
