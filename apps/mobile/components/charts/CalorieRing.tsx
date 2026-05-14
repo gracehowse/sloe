@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Pressable, Text, View } from "react-native";
+import * as Haptics from "expo-haptics";
 import Svg, {
   Circle,
   Defs,
@@ -51,7 +52,7 @@ function useAnimatedNumber(
   target: number,
   options?: { snapOn?: unknown; duration?: number; reduceMotion?: boolean },
 ): number {
-  const duration = options?.duration ?? 800;
+  const duration = options?.duration ?? 400;
   const snapOn = options?.snapOn;
   const reduceMotion = options?.reduceMotion ?? false;
   const [value, setValue] = useState(target);
@@ -158,32 +159,48 @@ function MacroRing({
   color: string;
   trackColor: string;
   delay: number;
-  /** 2026-05-12 (premium-bar DC1, Apple Watch borrow): when the outer
-   *  calorie ring is over-budget, dim the macro arcs to ~55% so the
-   *  destructive-red outer ring carries the over signal without the
-   *  macro colours fighting it. "Warm-shift" per audit — opacity
-   *  approximation that's cheap to render and reads correctly in dark
-   *  mode. If a true colour-warm-shift is wanted later, swap this
-   *  prop for a `tint` colour string. */
+  /** When true (over-budget), shift arc to warm amber tint so the
+   *  destructive outer ring reads as the primary signal without the
+   *  macro colours competing. Apple Watch warm-tint borrow. */
   dim?: boolean;
 }) {
   const circ = CIRC(radius);
   const progress = useSharedValue(0);
+  const prevPctRef = useRef(pct);
 
   useEffect(() => {
-    progress.value = 0;
-    progress.value = withDelay(
-      delay,
-      withTiming(Math.min(pct, 0.999), {
-        duration: 800,
+    const prevPct = prevPctRef.current;
+    prevPctRef.current = pct;
+    if (prevPct === 0 && pct > 0) {
+      // First log of the day — animate dramatically from zero so the
+      // arcs fill in as data lands (Apple Watch "ring fill" moment).
+      progress.value = 0;
+      progress.value = withDelay(
+        delay,
+        withTiming(Math.min(pct, 0.999), {
+          duration: 200,
+          easing: Easing.out(Easing.cubic),
+        }),
+      );
+    } else {
+      // Subsequent update — tween from current position for a smooth
+      // incremental feel rather than a jarring reset.
+      progress.value = withTiming(Math.min(pct, 0.999), {
+        duration: 200,
         easing: Easing.out(Easing.cubic),
-      }),
-    );
+      });
+    }
   }, [pct]);
 
   const animatedProps = useAnimatedProps(() => ({
     strokeDashoffset: circ * (1 - progress.value),
   }));
+
+  // Warm amber tint when over-budget (dim=true): all arcs shift to
+  // Accent.warning so the over signal reads as "warm overrun" not just
+  // "faded colours". Opacity drops to 0.6 to keep the outer red ring
+  // as the dominant signal.
+  const arcColor = dim ? Accent.warning : color;
 
   return (
     <G>
@@ -200,7 +217,7 @@ function MacroRing({
         cx={CX}
         cy={CX}
         r={radius}
-        stroke={color}
+        stroke={arcColor}
         strokeWidth={MACRO_STROKE}
         fill="none"
         strokeDasharray={`${circ}`}
@@ -208,7 +225,7 @@ function MacroRing({
         strokeLinecap="round"
         rotation="-90"
         origin={`${CX},${CX}`}
-        opacity={dim ? 0.55 : 1}
+        opacity={dim ? 0.6 : 1}
       />
     </G>
   );
@@ -260,17 +277,25 @@ export default function CalorieRing({
   const progress = useSharedValue(0);
 
   // Tween from the current ring position to the new pct (do NOT snap to
-  // zero first — that produced a jarring "drain then refill" on every
-  // log because the prior snapshot was discarded). Reanimated 3
-  // continues the existing animation when withTiming is called on an
-  // already-animating shared value, which is the desired behaviour for
-  // a ring that updates as the user logs through the day.
+  // zero first). Reanimated 3 continues the existing animation when
+  // withTiming is called on an already-animating shared value.
   useEffect(() => {
     progress.value = withTiming(pct, {
       duration: 800,
       easing: Easing.out(Easing.cubic),
     });
   }, [pct]);
+
+  // Light haptic feedback when logged calories change — Withings-style
+  // confirmation that a new data point has landed. Skipped on mount
+  // (prevConsumedRef seeds to the initial value).
+  const prevConsumedRef = useRef(consumed);
+  useEffect(() => {
+    if (consumed !== prevConsumedRef.current && consumed > 0) {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    prevConsumedRef.current = consumed;
+  }, [consumed]);
 
   const animatedProps = useAnimatedProps(() => ({
     strokeDashoffset: mainCirc * (1 - progress.value),
@@ -510,6 +535,43 @@ export default function CalorieRing({
           </Text>
         ) : null}
       </View>
+      {/* Fraction + delta chip below the ring (DC1 audit item:
+          "Add 1,822 / 1,600 + delta chip in ring centre under kcal").
+          Shown only when logged and goal is set — empty state and
+          collapsed-no-goal states skip it. When over-budget the delta
+          shows in destructive red; when under, in success green. */}
+      {!isEmpty && goal > 0 && (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 }}>
+          <Text
+            style={{
+              fontSize: 10,
+              color: secondaryColor,
+              fontVariant: ["tabular-nums"],
+            }}
+          >
+            {Math.round(consumed).toLocaleString()} / {Math.round(goal).toLocaleString()}
+          </Text>
+          <View
+            style={{
+              borderRadius: 4,
+              paddingHorizontal: 4,
+              paddingVertical: 1,
+              backgroundColor: isOver ? `${Accent.destructive}22` : `${Accent.success}22`,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 9,
+                fontWeight: "600",
+                color: isOver ? Accent.destructive : Accent.success,
+                fontVariant: ["tabular-nums"],
+              }}
+            >
+              {isOver ? "+" : "-"}{Math.abs(diff).toLocaleString()}
+            </Text>
+          </View>
+        </View>
+      )}
     </Pressable>
   );
 }

@@ -1,5 +1,5 @@
 import React from "react";
-import { Pressable, Text, View } from "react-native";
+import { Image, Pressable, Text, View } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -10,6 +10,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Accent, Radius, Spacing } from "@/constants/theme";
 import { formatMacro } from "../../../../src/lib/nutrition/formatMacro";
 import type { FoodHistoryItem } from "../../../../src/lib/nutrition/foodHistory";
+import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 
 // 2026-05-12 (premium-bar audit DC3 polish — Cal AI 200ms fade-up
 // on first paint): the EatAgain banner now eases in over 220ms with
@@ -61,6 +62,16 @@ export function TodayEatAgainBanner({
     opacity: opacity.value,
     transform: [{ translateY: translate.value }],
   }));
+  // 2026-05-14 (premium-bar audit DC3 polish — Recime card-layout
+  // polish when image present): the banner conditionally renders a
+  // 48×48 hero thumbnail on the left when the suggestion carries an
+  // image URL (or the deterministic `RecipeHeroFallback` when we
+  // know the recipe but have no image). When no image is available
+  // at all, the original text-only layout is preserved so logs
+  // without recipe metadata stay calm.
+  const imageUrl = suggestion.imageUrl;
+  const showThumb = Boolean(imageUrl);
+
   return (
     <AnimatedView
       style={[
@@ -79,9 +90,34 @@ export function TodayEatAgainBanner({
         fadeStyle,
       ]}
     >
+      {showThumb ? (
+        <View
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: 8,
+            overflow: "hidden",
+            flexShrink: 0,
+            position: "relative",
+          }}
+        >
+          {imageUrl ? (
+            <Image
+              source={{ uri: imageUrl }}
+              style={{ width: "100%", height: "100%", borderRadius: 8 }}
+            />
+          ) : (
+            <RecipeHeroFallback
+              id={suggestion.recipeTitle}
+              title={suggestion.recipeTitle}
+              iconSize={22}
+            />
+          )}
+        </View>
+      ) : null}
       <View style={{ flex: 1 }}>
         <Text style={{ fontSize: 10, fontWeight: "700", color: Accent.primary, letterSpacing: 1 }}>EAT AGAIN</Text>
-        <Text style={{ fontSize: 14, fontWeight: "600", color: textColor, marginTop: 2 }} numberOfLines={1}>
+        <Text style={{ fontSize: 14, fontWeight: "600", color: textColor, marginTop: 2 }} numberOfLines={2} ellipsizeMode="tail">
           {suggestion.recipeTitle}
         </Text>
         {/* 2026-05-12 (premium-bar audit, cross-cutting copy unify):

@@ -58,6 +58,11 @@ export default function DayStrip({
   const selectedDk = dateKeyFromDate(selectedDate);
   const todayDk = dateKeyFromDate(new Date());
 
+  // 2026-05-14 — reverted F5/F9 stacked-tile treatment back to
+  // day-label-above-circle. Grace's call: the stacked 32x44 pills
+  // read as ovals and felt heavier than the clean 30x30 circles.
+  // Three-letter labels also restored for readability ("Mon" beats
+  // "M" at a glance).
   const dowLabels = useMemo(
     () =>
       weekStartDay === "monday"

@@ -38,6 +38,10 @@ export function DayStrip({ selectedDateKey, weekStartDay, loggedDays, protectedD
   const selectedDk = selectedDateKey;
   const todayDk = dateKeyFromDate(new Date());
 
+  // 2026-05-14 — reverted F5/F9 stacked-tile treatment back to
+  // day-label-above-circle. Web parity with mobile DayStrip; Grace's
+  // call that the stacked pills read as ovals and felt heavier than
+  // the clean 30x30 circles.
   const dowLabels = useMemo(
     () =>
       weekStartDay === "monday"
@@ -158,7 +162,7 @@ export function DayStrip({ selectedDateKey, weekStartDay, loggedDays, protectedD
                       className={`flex-1 flex flex-col items-center gap-1 py-1 ${outOfRange ? "opacity-35" : ""}`}
                     >
                       <span
-                        className={`text-[10px] font-semibold tracking-wide ${
+                        className={`text-[10px] font-semibold tracking-wide leading-none ${
                           isSelected ? "text-primary" : "text-muted-foreground"
                         }`}
                       >
@@ -166,7 +170,7 @@ export function DayStrip({ selectedDateKey, weekStartDay, loggedDays, protectedD
                       </span>
                       <div
                         className={[
-                          "relative w-[30px] h-[30px] rounded-full flex items-center justify-center text-[13px] font-extrabold tabular-nums border-2 transition-colors",
+                          "relative w-[30px] h-[30px] rounded-full flex items-center justify-center border-2 transition-colors",
                           isSelected
                             ? "bg-primary text-primary-foreground border-transparent"
                             : hasLogs
@@ -178,7 +182,9 @@ export function DayStrip({ selectedDateKey, weekStartDay, loggedDays, protectedD
                         {hasLogs && !isSelected ? (
                           <Icons.check className="w-4 h-4 text-success" aria-hidden />
                         ) : (
-                          date.getDate()
+                          <span className="text-[13px] font-bold tabular-nums">
+                            {date.getDate()}
+                          </span>
                         )}
                         {isProtected ? (
                           <Icons.streakFreeze

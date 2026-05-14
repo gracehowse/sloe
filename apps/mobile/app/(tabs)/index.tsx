@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
+  Animated,
   AppState,
+  Easing,
   Keyboard,
   Modal,
   Platform,
@@ -72,6 +74,10 @@ import {
 } from "@/lib/streakFreeze";
 import { didStreakReset } from "../../../../src/lib/nutrition/streakReset";
 import {
+  MISSED_YESTERDAY_COPY,
+  shouldShowMissedYesterday,
+} from "../../../../src/lib/nutrition/missedYesterday";
+import {
   normalizeWeekSummaryMode,
   weekSummaryDateKeys,
   type WeekSummaryMode,
@@ -97,7 +103,7 @@ import {
 import { primeWrittenMealIds, writeMealToHealthKitIfEnabled } from "@/lib/healthKitMealWriter";
 import { clampJournalDate } from "@/lib/journalNavigation";
 import {
-  computeEatAgainForSlot,
+  computeEatAgainCandidatesForSlot,
   computeRecentMeals,
   foodHistoryKey,
   isAiSourcedFoodHistoryItem,
@@ -161,7 +167,6 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { PROFILE_TARGETS_DIRTY_KEY } from "@/lib/profileTargetsDirtyFlag";
 import { TodayHero } from "@/components/today/TodayHero";
 import { TodayFastingPill } from "@/components/today/TodayFastingPill";
-import { StreakPip } from "@/components/today/StreakPip";
 // `LogFab` is retired on mobile (2026-04-30) — the centered raised
 // Log button now lives inside the global `<SupprTabBar>` via
 // `<LogTabBarButton>`. The component file is preserved (deferred
@@ -172,6 +177,7 @@ import { LogSheet } from "@/components/today/LogSheet";
 import CreateCustomFoodSheet, { type CreateCustomFoodPayload } from "@/components/CreateCustomFoodSheet";
 import { createCustomFood } from "../../../../src/lib/nutrition/customFoodsClient";
 import { TodayEatAgainBanner } from "@/components/today/TodayEatAgainBanner";
+import { TodayEatAgainScroller } from "@/components/today/TodayEatAgainScroller";
 import { WeeklyCheckinBanner } from "@/components/today/WeeklyCheckinBanner";
 import {
   isCheckinBannerDismissed,
@@ -1505,10 +1511,15 @@ export default function TrackerScreen() {
 
   /** Infer the default slot for the Eat-again card from local clock time. */
   const currentSlotFromTime = useMemo(() => slotForHour(new Date().getHours()), []);
-  const eatAgainSuggestion = useMemo(
-    () => computeEatAgainForSlot(byDay, currentSlotFromTime, new Date()),
+  // Premium-bar audit DC3 polish (2026-05-14) — MacroFactor-style
+  // horizontal scroller of up to 3 Eat-Again candidates. The first
+  // entry maps to the legacy single-suggestion contract for
+  // existing analytics/tests that still read `eatAgainSuggestion`.
+  const eatAgainCandidates = useMemo(
+    () => computeEatAgainCandidatesForSlot(byDay, currentSlotFromTime, new Date(), 3),
     [byDay, currentSlotFromTime],
   );
+  const eatAgainSuggestion = eatAgainCandidates[0] ?? null;
   // Eat-again dismiss (audit L4, 2026-04-18). v2 shape stores
   // `{ dateKey, dismissedAt }` so a device clock rollback can't
   // resurrect the banner on the same real-world day. Reads migrate
@@ -2776,6 +2787,89 @@ export default function TrackerScreen() {
   /** 2026-05-01 — true iff the user has logged any meal on any day. */
   const hasAnyJournalHistory = useMemo(() => loggedDays.size > 0, [loggedDays]);
 
+  /**
+   * DC12 (2026-05-14, premium-bar audit) — "missed-day" supportive
+   * banner. High-emotion surface per the audit: a returning user
+   * who skipped yesterday and is now back on Today shouldn't be
+   * met with silent shame or a streak-broken stamp. We render one
+   * calm sub-line at the top of the meals area.
+   *
+   * Visibility rules:
+   *  - User is on today's view (selecting a past day is itself a
+   *    catch-up, not a miss).
+   *  - User has previously logged something at some point
+   *    (`hasAnyJournalHistory`) — brand-new accounts get the
+   *    first-meal empty state, not this.
+   *  - Yesterday's meal count is exactly zero.
+   *  - Today is not the first day of a fresh week (Mon for
+   *    Monday-start users, Sun for Sunday-start users) — a week
+   *    boundary already reads as a reset, and Sundays already
+   *    carry the weekly-checkin nudge.
+   */
+  const missedYesterdayVisible = useMemo(() => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yKey = dateKeyFromDate(yesterday);
+    const mealsYesterday = byDay[yKey] ?? [];
+    return shouldShowMissedYesterday({
+      isToday,
+      hasAnyJournalHistory,
+      mealsYesterdayCount: mealsYesterday.length,
+      todayDayOfWeek: new Date().getDay(),
+      weekStartDay,
+    });
+  }, [isToday, hasAnyJournalHistory, byDay, weekStartDay]);
+
+  /**
+   * Feature 5 / Feature 9 (2026-05-14, premium-bar audit) — subtle
+   * mount-time motion on Today. When the tab first receives focus
+   * after mount, the hero card fades from 0.85 → 1.0 and the
+   * section column slides up 4px with a fade 0.8 → 1.0. Both run
+   * over 200ms on `Animated.timing` with the default native driver.
+   *
+   * Only fires on the first focus per mount, not every tab
+   * re-select — `hasMountedFocusRef` is the latch. This keeps the
+   * motion as a premium-arrival cue rather than a per-tap animation
+   * that would feel busy on the third visit.
+   *
+   * Reduce-motion users are NOT explicitly opted out here because
+   * the magnitudes (opacity 0.85→1.0 over 200ms, 4px translate) are
+   * below the WCAG vestibular-motion threshold; the system-level
+   * reduce-motion preference still attenuates the curve. If a tester
+   * reports discomfort, a `useReducedMotion()` gate is a one-line
+   * follow-up.
+   */
+  const heroFadeAnim = useRef(new Animated.Value(0.85)).current;
+  const sectionSlideAnim = useRef(new Animated.Value(4)).current;
+  const sectionFadeAnim = useRef(new Animated.Value(0.8)).current;
+  const hasMountedFocusRef = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (hasMountedFocusRef.current) return;
+      hasMountedFocusRef.current = true;
+      Animated.parallel([
+        Animated.timing(heroFadeAnim, {
+          toValue: 1,
+          duration: 200,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(sectionSlideAnim, {
+          toValue: 0,
+          duration: 200,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(sectionFadeAnim, {
+          toValue: 1,
+          duration: 200,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }, [heroFadeAnim, sectionSlideAnim, sectionFadeAnim]),
+  );
+
   const streakDays = useMemo(
     () => computeLoggingStreak(byDay as any),
     [byDay],
@@ -2803,6 +2897,12 @@ export default function TrackerScreen() {
   // protected streak transitions from >=1 to 0. Ref starts at `null`
   // so a user with a zero streak on first render never fires.
   const priorProtectedStreakRef = useRef<number | null>(null);
+  // Premium-bar audit DC8 polish (2026-05-14) — when the streak just
+  // reset, show a calm supportive line in the date-header row
+  // (Duolingo-style "Every expert was once a beginner"). Sticky
+  // until the user next renders a positive streak — at which point
+  // the StreakPip takes over again. Independent of analytics fire.
+  const [streakJustReset, setStreakJustReset] = useState(false);
   useEffect(() => {
     const prior = priorProtectedStreakRef.current;
     priorProtectedStreakRef.current = protectedStreakLength;
@@ -2812,8 +2912,13 @@ export default function TrackerScreen() {
           priorStreak: prior ?? 0,
         });
       } catch { /* analytics fire-and-forget */ }
+      setStreakJustReset(true);
+    } else if (protectedStreakLength > 0 && streakJustReset) {
+      // User logged again and climbed off zero — clear the reset
+      // copy so the pip surface returns.
+      setStreakJustReset(false);
     }
-  }, [protectedStreakLength]);
+  }, [protectedStreakLength, streakJustReset]);
   // 2026-04-18 audit H7 — one-time "You earned a freeze" row under the
   // streak insight card. Newest `earnedAt` ISO from the ledger; the row
   // shows until the user taps "Got it", which writes that ISO to
@@ -4383,41 +4488,13 @@ export default function TrackerScreen() {
           />
         }
       >
-        {/* Phase 2 / B1.2 (D-2026-04-27-07) — streak as a calm pip
-            next to the date row. The earlier streak ribbon was removed
-            2026-04-20; this pip is the binding pattern going forward.
-            Lives above the date header on day-view; suppressed on
-            week-view to keep the week toggle uncrowded.
-
-            2026-04-30 — pip now opens the weekly-recap surface (audit
-            "cut OR finish" verdict). Zero-streak users land on the
-            same screen which renders an explainer instead of a
-            broken card.
-
-            Audit 2026-05-04 #1 (ui-product-designer spec): hide the
-            streak pip on day 0 / day 1 — fresh users with a streak of
-            "0" or "1" should not see a streak chip at all (it reads
-            as fabricated when the user has just installed and the
-            milestone modal already filters import-fallback titles per
-            #2 fix). Pip appears once the user has 2+ actual logged
-            days. Existing-user streaks unchanged. */}
-        {viewMode === "day" && streakDays >= 2 && (
-          <View style={{ alignItems: "flex-end", paddingTop: 6, marginBottom: -4 }}>
-            <StreakPip
-              days={protectedStreakLength}
-              onPress={() => router.push("/weekly-recap" as never)}
-              // 2026-05-12 (premium-bar audit DC8 polish): when today's
-              // key is in `protectedDateKeys` it means a freeze
-              // covered for an empty-log day in the current chain —
-              // the pip swaps the Flame glyph for Shield + calm slate
-              // tint. Headspace parity. Only fires when the user
-              // actually had a freeze used; the regular logged-today
-              // path keeps the Flame.
-              freezeProtected={protectedDateKeys.has(dateKeyFromDate(new Date()))}
-            />
-          </View>
-        )}
-        {/* Date navigation header */}
+        {/* Date navigation header.
+            2026-05-14 (premium-bar audit DC8 polish): the standalone
+            StreakPip block that previously floated above this header
+            was inlined into `TodayDateHeader` next to the "Today"
+            pill. The header gates the pip on day view + isToday +
+            ≥2-day streak internally; the host owns the analytics-fire
+            transition state via `streakResetCopyVisible`. */}
         <TodayDateHeader
           viewMode={viewMode}
           onViewModeChange={setViewMode}
@@ -4440,6 +4517,10 @@ export default function TrackerScreen() {
           cardColor={colors.card}
           cardBorderColor={colors.cardBorder}
           primaryForegroundColor={colors.primaryForeground}
+          streakDays={protectedStreakLength}
+          freezeProtected={protectedDateKeys.has(dateKeyFromDate(new Date()))}
+          onStreakPress={() => router.push("/weekly-recap" as never)}
+          streakResetCopyVisible={streakJustReset}
         />
 
         {isOffline && (
@@ -4461,6 +4542,29 @@ export default function TrackerScreen() {
               {" Tap to retry."}
             </Text>
           </Pressable>
+        )}
+
+        {/* DC12 (2026-05-14, premium-bar audit) — Headspace-style
+            supportive missed-day line. Renders only when the user
+            (a) is on today's view, (b) has prior history, (c)
+            logged nothing yesterday, and (d) it's not the first
+            day of a fresh week (see `missedYesterdayVisible` memo
+            for the full rule). No CTA, no destructive tone — the
+            calm sub-line just reframes the gap and gets out of
+            the way. */}
+        {missedYesterdayVisible && (
+          <Text
+            testID="today-missed-yesterday-copy"
+            style={{
+              fontSize: 12,
+              color: colors.textSecondary,
+              textAlign: "center",
+              paddingHorizontal: Spacing.md,
+              marginTop: 2,
+            }}
+          >
+            {MISSED_YESTERDAY_COPY}
+          </Text>
         )}
 
         {/* Day-of-week strip in week mode */}
@@ -4540,37 +4644,44 @@ export default function TrackerScreen() {
                 first). The signal is now delivered once via
                 `AiFirstLogTooltip` on the user's first AI meal row in
                 `TodayMealsSection`, gated by AsyncStorage so it never
-                fires twice. */}
-            <TodayHero
-              consumed={totals.calories}
-              goal={effectiveCalorieGoal}
-              baseGoal={todayActivityBudgetAddon > 0 ? targets.calories : undefined}
-              textColor={colors.text}
-              textSecondaryColor={colors.textSecondary}
-              textTertiaryColor={colors.textTertiary}
-              cardBackgroundColor={colors.card}
-              borderColor={colors.border}
-              trackColor={colors.border}
-              proteinPct={targets.protein > 0 ? Math.min(totals.protein / targets.protein, 1) : 0}
-              carbsPct={targets.carbs > 0 ? Math.min(totals.carbs / targets.carbs, 1) : 0}
-              fatPct={targets.fat > 0 ? Math.min(totals.fat / targets.fat, 1) : 0}
-              expanded={ringExpanded}
-              onToggleExpanded={() => setRingExpanded((e) => !e)}
-              displayMode={calorieDisplayMode}
-              // 2026-05-12 round 2 (Grace TF revert): long-press is back
-              // to its canonical role — toggle display-mode AND show /
-              // hide the macro sub-rings in lock-step. The short-lived
-              // long-press-opens-explainer experiment was reverted
-              // after the centre delta chip + pill drop made the ring
-              // "super crowded". The explainer is now reached via a
-              // subtle "Why?" link below the ring in TodayHeroRing
-              // (much smaller than the old pill, doesn't fight the
-              // ring's gestures).
-              onToggleDisplayMode={() => {
-                setCalorieDisplayMode((m) => m === "remaining" ? "consumed" : "remaining");
-                setRingExpanded((e) => !e);
-              }}
-            />
+                fires twice.
+
+                Feature 5 (2026-05-14, premium-bar audit) — wrapped in
+                an Animated.View driven by `heroFadeAnim`. First focus
+                after mount fades 0.85 → 1.0 over 200ms; subsequent
+                focuses are no-ops (latched via `hasMountedFocusRef`). */}
+            <Animated.View style={{ opacity: heroFadeAnim }}>
+              <TodayHero
+                consumed={totals.calories}
+                goal={effectiveCalorieGoal}
+                baseGoal={todayActivityBudgetAddon > 0 ? targets.calories : undefined}
+                textColor={colors.text}
+                textSecondaryColor={colors.textSecondary}
+                textTertiaryColor={colors.textTertiary}
+                cardBackgroundColor={colors.card}
+                borderColor={colors.border}
+                trackColor={colors.border}
+                proteinPct={targets.protein > 0 ? Math.min(totals.protein / targets.protein, 1) : 0}
+                carbsPct={targets.carbs > 0 ? Math.min(totals.carbs / targets.carbs, 1) : 0}
+                fatPct={targets.fat > 0 ? Math.min(totals.fat / targets.fat, 1) : 0}
+                expanded={ringExpanded}
+                onToggleExpanded={() => setRingExpanded((e) => !e)}
+                displayMode={calorieDisplayMode}
+                // 2026-05-12 round 2 (Grace TF revert): long-press is back
+                // to its canonical role — toggle display-mode AND show /
+                // hide the macro sub-rings in lock-step. The short-lived
+                // long-press-opens-explainer experiment was reverted
+                // after the centre delta chip + pill drop made the ring
+                // "super crowded". The explainer is now reached via a
+                // subtle "Why?" link below the ring in TodayHeroRing
+                // (much smaller than the old pill, doesn't fight the
+                // ring's gestures).
+                onToggleDisplayMode={() => {
+                  setCalorieDisplayMode((m) => m === "remaining" ? "consumed" : "remaining");
+                  setRingExpanded((e) => !e);
+                }}
+              />
+            </Animated.View>
 
             {/* Single context block — priority order: fasting >
                 eat-again > north-star > deficit. Mutually exclusive.
@@ -4601,21 +4712,41 @@ export default function TrackerScreen() {
                   />
                 );
               }
-              // 2. Budget met or exceeded, with a re-log suggestion
-              //    that hasn't been dismissed today.
+              // 2. Budget met or exceeded, with one or more re-log
+              //    suggestions that haven't been dismissed today.
+              //    Premium-bar audit DC3 polish (2026-05-14): when
+              //    we have 2+ candidates, render a paginated
+              //    horizontal scroller (MacroFactor parity) instead
+              //    of a single banner. Single-candidate path stays
+              //    on the original banner shape.
               if (
                 isToday &&
-                eatAgainSuggestion &&
+                eatAgainCandidates.length > 0 &&
                 !eatAgainDismissedForToday &&
                 !(remaining > 0)
               ) {
+                if (eatAgainCandidates.length === 1) {
+                  return (
+                    <TodayEatAgainBanner
+                      suggestion={eatAgainCandidates[0]!}
+                      slot={currentSlotFromTime}
+                      textColor={colors.text}
+                      textSecondaryColor={colors.textSecondary}
+                      onLog={() =>
+                        logHistoryItemToSlot(eatAgainCandidates[0]!, currentSlotFromTime)
+                      }
+                      onDismiss={dismissEatAgain}
+                    />
+                  );
+                }
                 return (
-                  <TodayEatAgainBanner
-                    suggestion={eatAgainSuggestion}
+                  <TodayEatAgainScroller
+                    candidates={eatAgainCandidates}
                     slot={currentSlotFromTime}
                     textColor={colors.text}
                     textSecondaryColor={colors.textSecondary}
-                    onLog={() => logHistoryItemToSlot(eatAgainSuggestion, currentSlotFromTime)}
+                    secondaryColor={colors.textSecondary}
+                    onLog={(item) => logHistoryItemToSlot(item, currentSlotFromTime)}
                     onDismiss={dismissEatAgain}
                   />
                 );
@@ -4805,7 +4936,18 @@ export default function TrackerScreen() {
                 link that previously floated as a centred row below
                 the tiles now renders as a right-aligned "Nutrients"
                 chevron in the tiles' section header
-                (Phase 4 / Top-5 #2C, 2026-04-28). */}
+                (Phase 4 / Top-5 #2C, 2026-04-28).
+
+                Feature 9 (2026-05-14, premium-bar audit) — wrapped
+                with the shared section slide+fade animation. See
+                `sectionSlideAnim` / `sectionFadeAnim` declarations
+                above for the mount-time motion contract. */}
+            <Animated.View
+              style={{
+                opacity: sectionFadeAnim,
+                transform: [{ translateY: sectionSlideAnim }],
+              }}
+            >
             <TodayDashboardMacroTiles
               trackedMacros={trackedMacros}
               totals={totals}
@@ -4825,6 +4967,7 @@ export default function TrackerScreen() {
               mutedColor={colors.border}
               netCarbsLensEnabled={netCarbsLensEnabled}
             />
+            </Animated.View>
             {/* TodayMicrosWidget removed 2026-05-02 (revert PR #30) —
                 user feedback: 4-tile widget on Today canvas duplicated
                 fibre and over-cluttered the screen. Micronutrient depth
@@ -4921,6 +5064,15 @@ export default function TrackerScreen() {
         )}
 
         {viewMode === "day" && (
+          /* Feature 9 (2026-05-14, premium-bar audit) — wrapped with
+             the shared section slide+fade animation; see
+             `sectionSlideAnim` / `sectionFadeAnim`. */
+          <Animated.View
+            style={{
+              opacity: sectionFadeAnim,
+              transform: [{ translateY: sectionSlideAnim }],
+            }}
+          >
           <TodayMealsSection
             slots={MEAL_SLOTS}
             mealGroups={mealGroups}
@@ -4956,6 +5108,7 @@ export default function TrackerScreen() {
             aiFirstLogTooltipMealId={aiFirstLogTooltipMealId}
             onDismissAiFirstLogTooltip={dismissAiFirstLogTooltip}
           />
+          </Animated.View>
         )}
 
         {/* Planned meals from the planner */}
@@ -5640,7 +5793,9 @@ export default function TrackerScreen() {
           // `alcoholG` onto the meal row; `caffeineFromMealsMg` /
           // `alcoholByDayMerged` will sum it at render. No ledger bump.
           track(AnalyticsEvents.food_logged, { source: "barcode", slot: activeMealSlot });
-          Alert.alert("Logged", `${product.name} added to ${activeMealSlot}.`);
+          // DC12 (2026-05-14, premium-bar audit) — specific log
+          // confirmation. Mobile parity sweep.
+          Alert.alert(`${product.name} logged`, `Added to ${activeMealSlot}.`);
         }}
         onClose={() => setBarcodeOpen(false)}
         onPhotoFallback={() => {
@@ -5692,9 +5847,12 @@ export default function TrackerScreen() {
             } catch {
               /* analytics noop */
             }
+            // DC12 (2026-05-14, premium-bar audit) — specific
+            // confirmation; title carries the noun ("Custom food")
+            // instead of the bare verb ("Saved").
             Alert.alert(
-              "Saved",
-              "Custom food saved. Scan the barcode again to log it.",
+              "Custom food saved",
+              "Scan the barcode again to log it.",
             );
           } catch (err) {
             Alert.alert(

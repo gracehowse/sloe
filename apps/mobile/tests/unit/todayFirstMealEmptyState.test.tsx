@@ -48,6 +48,22 @@ describe("TodayFirstMealEmptyState (mobile)", () => {
     expect(getByLabelText("Log a meal")).toBeTruthy();
   });
 
+  // DC12 (2026-05-14, premium-bar audit) — pins the Headspace-style
+  // supportive sub-line that the empty-day surface added. Web parity
+  // pinned in tests/unit/todayFirstMealEmptyState.test.tsx.
+  it("renders the Headspace supportive 'no pressure' line", () => {
+    const { getByText } = render(
+      <TodayFirstMealEmptyState
+        {...baseProps}
+        isBrandNew={false}
+        tipDismissed={false}
+        onDismissTip={vi.fn()}
+        onLogMeal={vi.fn()}
+      />,
+    );
+    expect(getByText("No pressure — log when you're ready.")).toBeTruthy();
+  });
+
   it("brand-new + tip not dismissed → tip line renders", () => {
     const { getByText } = render(
       <TodayFirstMealEmptyState

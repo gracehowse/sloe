@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  computeEatAgainCandidatesForSlot,
   computeEatAgainForSlot,
   computeFrequentMeals,
   computeRecentMeals,
@@ -264,6 +265,199 @@ describe("computeEatAgainForSlot", () => {
       expect(out).not.toBeNull();
       expect(out!.recipeTitle).toBe("Real Lunch");
     });
+  });
+});
+
+/**
+ * Premium-bar audit DC3 polish (2026-05-14) — MacroFactor-style
+ * horizontal scroller. `computeEatAgainCandidatesForSlot` returns up to
+ * `limit` distinct candidates ordered most-recent-prior-day first; the
+ * single-suggestion helper is now a thin wrapper that returns the head.
+ */
+describe("computeEatAgainCandidatesForSlot", () => {
+  it("returns [] when there is no history", () => {
+    expect(computeEatAgainCandidatesForSlot({}, "Lunch", new Date("2026-04-14T12:00:00Z"))).toEqual([]);
+  });
+
+  it("returns [] when slot is empty or limit ≤ 0", () => {
+    const byDay: Record<string, M[]> = {
+      "2026-04-13": [{ ...meal("Salad", 400), name: "Lunch" }],
+    };
+    const now = new Date(2026, 3, 14, 12, 0, 0);
+    expect(computeEatAgainCandidatesForSlot(byDay, "", now)).toEqual([]);
+    expect(computeEatAgainCandidatesForSlot(byDay, "Lunch", now, 0)).toEqual([]);
+    expect(computeEatAgainCandidatesForSlot(byDay, "Lunch", now, -3)).toEqual([]);
+  });
+
+  it("returns up to `limit` distinct candidates across prior days, newest first", () => {
+    const byDay: Record<string, M[]> = {
+      "2026-04-10": [{ ...meal("Even Older Lunch", 350), name: "Lunch" }],
+      "2026-04-11": [{ ...meal("Old Lunch", 300), name: "Lunch" }],
+      "2026-04-12": [{ ...meal("Newer Lunch", 400), name: "Lunch" }],
+      "2026-04-13": [
+        { ...meal("First Lunch", 300), name: "Lunch" },
+        { ...meal("Second Lunch", 500), name: "Lunch" },
+      ],
+      // Today is excluded.
+      "2026-04-14": [{ ...meal("Today Lunch", 700), name: "Lunch" }],
+    };
+    const now = new Date(2026, 3, 14, 12, 0, 0);
+    const out = computeEatAgainCandidatesForSlot(byDay, "Lunch", now, 3);
+    expect(out).toHaveLength(3);
+    // 04-13 is most-recent prior day; its LAST meal in the slot is "Second Lunch".
+    expect(out[0]!.recipeTitle).toBe("Second Lunch");
+    expect(out[1]!.recipeTitle).toBe("First Lunch");
+    // Next prior day → "Newer Lunch" from 04-12.
+    expect(out[2]!.recipeTitle).toBe("Newer Lunch");
+  });
+
+  it("dedupes by (title, rounded-kcal) so the scroller never repeats a meal", () => {
+    const byDay: Record<string, M[]> = {
+      "2026-04-12": [{ ...meal("Salad", 400), name: "Lunch" }],
+      "2026-04-13": [{ ...meal("Salad", 400), name: "Lunch" }],
+    };
+    const now = new Date(2026, 3, 14, 12, 0, 0);
+    const out = computeEatAgainCandidatesForSlot(byDay, "Lunch", now, 3);
+    expect(out).toHaveLength(1);
+    expect(out[0]!.recipeTitle).toBe("Salad");
+  });
+
+  it("never returns more than the requested limit even when more candidates exist", () => {
+    const byDay: Record<string, M[]> = {
+      "2026-04-10": [{ ...meal("A", 100), name: "Lunch" }],
+      "2026-04-11": [{ ...meal("B", 200), name: "Lunch" }],
+      "2026-04-12": [{ ...meal("C", 300), name: "Lunch" }],
+      "2026-04-13": [{ ...meal("D", 400), name: "Lunch" }],
+    };
+    const now = new Date(2026, 3, 14, 12, 0, 0);
+    const out = computeEatAgainCandidatesForSlot(byDay, "Lunch", now, 2);
+    expect(out).toHaveLength(2);
+    expect(out.map((x) => x.recipeTitle)).toEqual(["D", "C"]);
+  });
+
+  it("skips HealthKit-import fallback titles in the multi-candidate path too", () => {
+    const byDay: Record<string, M[]> = {
+      "2026-04-12": [{ ...meal("Real Salad", 400), name: "Lunch" }],
+      "2026-04-13": [
+        { ...meal("Food log (250 kcal)", 250), name: "Lunch" },
+        { ...meal("Real Sandwich", 500), name: "Lunch" },
+      ],
+    };
+    const now = new Date(2026, 3, 14, 12, 0, 0);
+    const out = computeEatAgainCandidatesForSlot(byDay, "Lunch", now, 3);
+    expect(out.map((x) => x.recipeTitle)).toEqual(["Real Sandwich", "Real Salad"]);
+  });
+
+  it("single-suggestion wrapper still returns the head candidate", () => {
+    const byDay: Record<string, M[]> = {
+      "2026-04-12": [{ ...meal("Older", 400), name: "Lunch" }],
+      "2026-04-13": [{ ...meal("Newer", 500), name: "Lunch" }],
+    };
+    const now = new Date(2026, 3, 14, 12, 0, 0);
+    const single = computeEatAgainForSlot(byDay, "Lunch", now);
+    const multi = computeEatAgainCandidatesForSlot(byDay, "Lunch", now, 3);
+    expect(single?.recipeTitle).toBe("Newer");
+    expect(multi[0]?.recipeTitle).toBe("Newer");
+  });
+});
+
+/**
+ * Premium-bar audit DC3 polish (2026-05-14) — recipe image URL flows
+ * through the bucket builder when the journal row carries one. Never
+ * invented; only surfaced when the original row already had a value.
+ */
+describe("FoodHistoryItem.imageUrl propagation", () => {
+  it("surfaces imageUrl on the eat-again candidate when the journal row carries one", () => {
+    const byDay: Record<string, M[]> = {
+      "2026-04-13": [
+        {
+          ...meal("Sheet-pan Chicken", 600),
+          name: "Lunch",
+          recipeImageUrl: "https://example.com/sheet-pan.jpg",
+        },
+      ],
+    };
+    const now = new Date(2026, 3, 14, 12, 0, 0);
+    const out = computeEatAgainForSlot(byDay, "Lunch", now);
+    expect(out?.imageUrl).toBe("https://example.com/sheet-pan.jpg");
+  });
+
+  it("falls back to imageUrl when recipeImageUrl is absent", () => {
+    const byDay: Record<string, M[]> = {
+      "2026-04-13": [
+        {
+          ...meal("Pad Thai", 700),
+          name: "Lunch",
+          imageUrl: "https://example.com/pad-thai.jpg",
+        },
+      ],
+    };
+    const now = new Date(2026, 3, 14, 12, 0, 0);
+    const out = computeEatAgainForSlot(byDay, "Lunch", now);
+    expect(out?.imageUrl).toBe("https://example.com/pad-thai.jpg");
+  });
+
+  it("does not invent an imageUrl when neither field is present", () => {
+    const byDay: Record<string, M[]> = {
+      "2026-04-13": [{ ...meal("No-image lunch", 500), name: "Lunch" }],
+    };
+    const now = new Date(2026, 3, 14, 12, 0, 0);
+    const out = computeEatAgainForSlot(byDay, "Lunch", now);
+    expect(out).not.toBeNull();
+    expect(out!.imageUrl).toBeUndefined();
+  });
+
+  it("latest-seen imageUrl wins when the same meal logged twice", () => {
+    const byDay: Record<string, M[]> = {
+      "2026-04-11": [
+        {
+          ...meal("Bowl", 400),
+          name: "Lunch",
+          recipeImageUrl: "https://example.com/old.jpg",
+        },
+      ],
+      "2026-04-13": [
+        {
+          ...meal("Bowl", 400),
+          name: "Lunch",
+          recipeImageUrl: "https://example.com/new.jpg",
+        },
+      ],
+    };
+    const recent = computeRecentMeals(byDay, 1);
+    expect(recent[0]?.imageUrl).toBe("https://example.com/new.jpg");
+  });
+
+  it("retains an older imageUrl when the newest row is text-only", () => {
+    const byDay: Record<string, M[]> = {
+      "2026-04-11": [
+        {
+          ...meal("Bowl", 400),
+          name: "Lunch",
+          recipeImageUrl: "https://example.com/known.jpg",
+        },
+      ],
+      // Newer occurrence is text-only — must not clear the known image.
+      "2026-04-13": [{ ...meal("Bowl", 400), name: "Lunch" }],
+    };
+    const recent = computeRecentMeals(byDay, 1);
+    expect(recent[0]?.imageUrl).toBe("https://example.com/known.jpg");
+  });
+
+  it("ignores empty / whitespace imageUrl strings", () => {
+    const byDay: Record<string, M[]> = {
+      "2026-04-13": [
+        {
+          ...meal("Soup", 300),
+          name: "Lunch",
+          recipeImageUrl: "   ",
+          imageUrl: "",
+        },
+      ],
+    };
+    const now = new Date(2026, 3, 14, 12, 0, 0);
+    const out = computeEatAgainForSlot(byDay, "Lunch", now);
+    expect(out?.imageUrl).toBeUndefined();
   });
 });
 

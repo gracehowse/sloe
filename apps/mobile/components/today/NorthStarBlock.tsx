@@ -30,6 +30,7 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
 
 import { SupprCard } from "@/components/ui/SupprCard";
+import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 
 /**
  * Mobile `<NorthStarBlock>` — "What to eat next" permanent block on Today.
@@ -321,11 +322,28 @@ function NorthStarDefault({
           </Pressable>
         ) : null}
 
-        {suggestion.thumbnail ? (
-          <Image source={{ uri: suggestion.thumbnail }} style={styles.thumb} />
-        ) : (
-          <View style={[styles.thumb, { backgroundColor: `${Accent.primary}26` }]} />
-        )}
+        {/* 2026-05-14 (premium-bar audit DC2 polish — Recime hero
+            image): the suggestion card always renders a 64×64
+            thumbnail. When the suggestion carries a real
+            `thumbnail` URL we render it as an `<Image>`; otherwise
+            the deterministic `RecipeHeroFallback` paints the
+            cuisine-tinted gradient + glyph so the card never falls
+            through to a flat tint placeholder. Border-radius 8 to
+            match the bumped 64pt thumb spec. */}
+        <View style={styles.thumb}>
+          {suggestion.thumbnail ? (
+            <Image
+              source={{ uri: suggestion.thumbnail }}
+              style={{ width: "100%", height: "100%", borderRadius: 8 }}
+            />
+          ) : (
+            <RecipeHeroFallback
+              id={suggestion.recipeId}
+              title={suggestion.title}
+              iconSize={28}
+            />
+          )}
+        </View>
 
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
@@ -469,11 +487,16 @@ const styles = StyleSheet.create({
   // I want that" — 56 was reading as a small avatar, 64 reads as a
   // proper thumbnail. Same ratio as macro tile internal padding so
   // the whole card breathes correctly.
+  // 2026-05-14 — borderRadius 12 → 8 + overflow hidden so the
+  // optional `RecipeHeroFallback` (absolute-positioned svg) clips to
+  // the thumbnail's rounded edge. 8 matches the audit spec.
   thumb: {
     width: 64,
     height: 64,
-    borderRadius: 12,
+    borderRadius: 8,
+    overflow: "hidden",
     flexShrink: 0,
+    position: "relative",
   },
   chip: {
     paddingHorizontal: 8,

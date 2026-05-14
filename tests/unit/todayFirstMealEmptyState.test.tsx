@@ -33,6 +33,23 @@ describe("TodayFirstMealEmptyState (web)", () => {
     expect(screen.getByRole("button", { name: "Log a meal" })).toBeInTheDocument();
   });
 
+  // DC12 (2026-05-14, premium-bar audit) — pins the Headspace-style
+  // supportive sub-line; mobile parity in
+  // `apps/mobile/tests/unit/todayFirstMealEmptyState.test.tsx`.
+  it("renders the Headspace supportive 'no pressure' line", () => {
+    render(
+      <TodayFirstMealEmptyState
+        isBrandNew={false}
+        tipDismissed={false}
+        onDismissTip={vi.fn()}
+        onLogMeal={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByText("No pressure — log when you're ready."),
+    ).toBeInTheDocument();
+  });
+
   it("brand-new + tip not dismissed → tip line renders", () => {
     render(
       <TodayFirstMealEmptyState
