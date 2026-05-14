@@ -23,6 +23,14 @@ import {
   getRememberedPortion,
   recordPortion,
 } from "../../../lib/barcodePortionMemory";
+import {
+  buildPickerOptions,
+  formatPortion,
+  stateToGrams,
+  type PortionState,
+} from "../../../lib/nutrition/portionPicker";
+import { PortionPickerWeb } from "./portion-picker";
+import { formatMacro } from "../../../lib/nutrition/formatMacro";
 
 /**
  * TodayBarcodeDialog — the Open Food Facts barcode lookup + review.
@@ -61,6 +69,57 @@ function parseNonnegNumber(raw: string): number | null {
 function barcodePortionLabel(product: OffProductMacros, grams: number): string {
   const hit = product.servingOptions.find((o) => Math.abs(o.grams - grams) < 0.51);
   return hit?.label ?? `${Math.round(grams * 10) / 10} g`;
+}
+
+/**
+ * Bridge between the host's gram-based barcode state and the
+ * `<PortionPickerWeb>` state model. The host owns `grams`; the picker
+ * owns `{ amount, unit }`. We re-derive picker state from grams when
+ * grams changes externally (e.g. user typed in the legacy input) and
+ * push grams back up on every picker change. Result: host stays
+ * gram-only, picker UX is unit-aware.
+ */
+function BarcodePicker(props: {
+  product: OffProductMacros;
+  grams: number;
+  rememberedGrams: number | null;
+  onGramsChange: (g: number) => void;
+}) {
+  const { product, grams, rememberedGrams, onGramsChange } = props;
+  const productInput = React.useMemo(
+    () => ({ servingSizeG: product.servingSizeG, servingOptions: product.servingOptions }),
+    [product],
+  );
+  const options = React.useMemo(
+    () => buildPickerOptions(productInput, { rememberedGrams }),
+    [productInput, rememberedGrams],
+  );
+  const [pickerState, setPickerState] = React.useState<PortionState>(options.initial);
+
+  // Re-init when the product changes (different barcode lookup).
+  React.useEffect(() => {
+    setPickerState(options.initial);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productInput]);
+
+  // Push grams back up on any picker change.
+  React.useEffect(() => {
+    const g = stateToGrams(pickerState);
+    if (Math.abs(g - grams) > 0.05) {
+      onGramsChange(Math.round(g * 10) / 10);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pickerState]);
+
+  return (
+    <PortionPickerWeb
+      product={productInput}
+      value={pickerState}
+      onChange={setPickerState}
+      options={options}
+      rememberedGrams={rememberedGrams}
+    />
+  );
 }
 
 export interface TodayBarcodeDialogProps {
@@ -403,8 +462,8 @@ export function TodayBarcodeDialog(props: TodayBarcodeDialogProps) {
                     {!barcodeMacrosManual ? (
                       <p className="text-sm text-muted-foreground">
                         <span className="font-medium text-foreground">{scaled.calories}</span> kcal · P{" "}
-                        {scaled.protein}g · C {scaled.carbs}g · F {scaled.fat}g
-                        {scaled.fiberG > 0 ? ` · Fiber ${scaled.fiberG}g` : ""}
+                        {formatMacro(scaled.protein, "protein", "g")} · C {formatMacro(scaled.carbs, "carbs", "g")} · F {formatMacro(scaled.fat, "fat", "g")}
+                        {scaled.fiberG > 0 ? ` · Fiber ${formatMacro(scaled.fiberG, "fiber", "g")}` : ""}
                         <span className="block text-[11px] mt-1">From label per 100 g × grams below.</span>
                       </p>
                     ) : (
@@ -452,61 +511,12 @@ export function TodayBarcodeDialog(props: TodayBarcodeDialogProps) {
                       </div>
                     )}
 
-                    <label className="grid gap-1">
-                      <span className="text-sm font-medium text-foreground">Portion (grams)</span>
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        value={barcodeGramsStr}
-                        onChange={(e) => onBarcodeGramsStrChange(e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground"
-                      />
-                      <span className="text-[11px] text-muted-foreground">
-                        Used for the serving note in your diary
-                        {!barcodeMacrosManual ? " and to scale macros from the label" : ""}.
-                      </span>
-                    </label>
-                    <div>
-                      <span className="text-xs font-medium text-muted-foreground">Quick picks</span>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {p.servingOptions.map((o) => {
-                          const selected = Math.abs(o.grams - barcodeGramsParsed) < 0.51;
-                          return (
-                            <button
-                              key={`${o.label}-${o.grams}`}
-                              type="button"
-                              onClick={() => onBarcodeGramsStrChange(String(o.grams))}
-                              className={`text-xs px-2.5 py-1.5 rounded-full border transition-colors ${
-                                selected
-                                  ? "border-primary bg-primary/15 text-foreground"
-                                  : "border-border bg-muted/40 hover:bg-muted"
-                              }`}
-                            >
-                              {o.label}
-                            </button>
-                          );
-                        })}
-                        {[50, 150, 200]
-                          .filter((g) => !p.servingOptions.some((o) => Math.abs(o.grams - g) < 0.51))
-                          .map((g) => {
-                            const selected = Math.abs(g - barcodeGramsParsed) < 0.51;
-                            return (
-                              <button
-                                key={`g-${g}`}
-                                type="button"
-                                onClick={() => onBarcodeGramsStrChange(String(g))}
-                                className={`text-xs px-2.5 py-1.5 rounded-full border transition-colors ${
-                                  selected
-                                    ? "border-primary bg-primary/15 text-foreground"
-                                    : "border-border bg-muted/40 hover:bg-muted"
-                                }`}
-                              >
-                                {g} g
-                              </button>
-                            );
-                          })}
-                      </div>
-                    </div>
+                    <BarcodePicker
+                      product={p}
+                      grams={barcodeGramsParsed}
+                      rememberedGrams={rememberedPortion}
+                      onGramsChange={(g) => onBarcodeGramsStrChange(String(g))}
+                    />
                     {rememberedPortion != null && rememberedPortion > 0 ? (
                       <p className="text-xs text-primary">
                         You usually log {Math.round(rememberedPortion)} g — using that.

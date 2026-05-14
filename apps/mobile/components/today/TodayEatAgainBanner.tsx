@@ -8,6 +8,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import { Accent, Radius, Spacing } from "@/constants/theme";
+import { formatMacro } from "../../../../src/lib/nutrition/formatMacro";
 import type { FoodHistoryItem } from "../../../../src/lib/nutrition/foodHistory";
 
 // 2026-05-12 (premium-bar audit DC3 polish — Cal AI 200ms fade-up
@@ -89,8 +90,8 @@ export function TodayEatAgainBanner({
             and `22P / 95C / 27F` on NorthStarBlock (slash-separated).
             Unified to the audit's spec across all Today surfaces. */}
         <Text style={{ fontSize: 11, color: textSecondaryColor, marginTop: 2 }}>
-          {Math.round(suggestion.calories)} kcal · {Math.round(suggestion.protein)}g P ·{" "}
-          {Math.round(suggestion.carbs)}g C · {Math.round(suggestion.fat)}g F · into {slot}
+          {Math.round(suggestion.calories)} kcal · {formatMacro(suggestion.protein, "protein")}g P ·{" "}
+          {formatMacro(suggestion.carbs, "carbs")}g C · {formatMacro(suggestion.fat, "fat")}g F · into {slot}
         </Text>
       </View>
       <Pressable

@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { normalizeMacroTargets, DEFAULT_STEPS_GOAL } from "../../types/profile.ts";
 import { resolveMaintenance } from "../../lib/nutrition/resolveMaintenance.ts";
+import { computeActivityBonusKcal } from "../../lib/nutrition/activityBonus.ts";
 import {
   buildMilestone30DayContent,
   shouldShowMilestone30Day,
@@ -216,6 +217,12 @@ function parseStepsDayMap(raw: unknown): Record<string, number> {
   return out;
 }
 
+/**
+ * Web call-site wrapper around `computeActivityBonusKcal`. See
+ * `docs/decisions/2026-05-13-activity-bonus-projected-eod-model.md`
+ * for rationale and `src/lib/nutrition/activityBonus.ts` for the
+ * single-source-of-truth math.
+ */
 function dayActivityBudgetAddonWeb(
   prefer: boolean,
   dk: string,
@@ -224,14 +231,16 @@ function dayActivityBudgetAddonWeb(
   basalByDay: Record<string, number>,
   workoutsByDay: Record<string, Array<{ calories?: number }>>,
 ): number {
-  const active = Math.round(activityByDay[dk] ?? 0);
-  if (!prefer || active <= 0) return 0;
-  const basal = Math.round(basalByDay[dk] ?? 0);
-  if (basal > 0 && maintenance > 0) {
-    return Math.max(0, Math.round(basal + active - maintenance));
-  }
   const workouts = workoutsByDay[dk] ?? [];
-  return Math.max(0, workouts.reduce((s, w) => s + (w.calories ?? 0), 0));
+  return computeActivityBonusKcal({
+    prefer,
+    dateKey: dk,
+    todayDateKey: todayKey(),
+    restingKcal: basalByDay[dk] ?? 0,
+    activeKcal: activityByDay[dk] ?? 0,
+    maintenanceKcal: maintenance,
+    workoutKcal: workouts.reduce((s, w) => s + (w.calories ?? 0), 0),
+  });
 }
 
 interface NutritionTrackerProps {
@@ -1967,30 +1976,19 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
   const basalBurnKcal = basalBurnByDay[selectedDateKey] ?? 0;
   const totalBurnKcal = activityBurnForSelectedDay + basalBurnKcal;
 
-  // Activity adjustment — surplus-only "Activity Bonus":
-  //
-  // Only add bonus calories when actual total burn exceeds estimated maintenance.
-  //   bonus = max(0, (resting + active) − maintenance_TDEE)
-  //
-  // This avoids double-counting: the user's baseCalorieTarget already includes an
-  // estimated activity level (e.g. "moderate" = BMR × 1.55), so adding raw active
-  // burn would overcount. The bonus only rewards burn ABOVE what was expected.
-  //
-  // Fallback when resting energy isn't available from Health: use active energy
-  // from logged workouts only (intentional exercise, not incidental movement).
-  const activityAdjustment = (() => {
-    if (!preferActivityAdjustedCalories || activityBurnForSelectedDay === 0) return 0;
-    const maintenance = profileMaintenanceTdee ?? baseCalorieTarget;
-    if (basalBurnKcal > 0) {
-      // Best case: we have resting + active from Health.
-      // Bonus = how much actual burn exceeds estimated maintenance.
-      return Math.max(0, Math.round(totalBurnKcal - maintenance));
-    }
-    // No resting data from Health: use logged workout calories only.
-    // This is conservative but safe — avoids adding incidental movement.
-    const workoutBurn = dayWorkouts.reduce((sum, w) => sum + (w.calories ?? 0), 0);
-    return Math.max(0, Math.round(workoutBurn));
-  })();
+  // Activity adjustment — surplus-only "Activity Bonus" using the
+  // shared `computeActivityBonusKcal` helper. See
+  // `docs/decisions/2026-05-13-activity-bonus-projected-eod-model.md`
+  // and `src/lib/nutrition/activityBonus.ts`.
+  const activityAdjustment = computeActivityBonusKcal({
+    prefer: preferActivityAdjustedCalories,
+    dateKey: selectedDateKey,
+    todayDateKey: todayKey(),
+    restingKcal: basalBurnKcal,
+    activeKcal: activityBurnForSelectedDay,
+    maintenanceKcal: profileMaintenanceTdee ?? baseCalorieTarget,
+    workoutKcal: dayWorkouts.reduce((sum, w) => sum + (w.calories ?? 0), 0),
+  });
   const effectiveCalorieTarget = baseCalorieTarget + activityAdjustment;
   const totalWaterMl = totals.waterMl + extraWaterMlForSelectedDay;
 

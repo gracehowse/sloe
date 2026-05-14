@@ -63,6 +63,7 @@ import VoiceLogSheet from "@/components/VoiceLogSheet";
 import PhotoLogSheet from "@/components/PhotoLogSheet";
 import AiPaywallSheet, { type AiPaywallFeature } from "@/components/AiPaywallSheet";
 import { computeLoggingStreak } from "@/lib/trackerStats";
+import { computeActivityBonusKcal } from "../../../../src/lib/nutrition/activityBonus";
 import {
   availableFreezes,
   computeProtectedStreak,
@@ -293,9 +294,14 @@ function parseByDayNumberMap(raw: unknown): Record<string, number> {
 /**
  * Extra kcal added to the food budget when `prefer_activity_adjusted_calories` is on.
  * surplus-only: only adds burn ABOVE estimated maintenance TDEE.
- *   bonus = max(0, (resting + active) − maintenance)
+ *   bonus = max(0, projected_EOD_burn − maintenance)   (today)
+ *   bonus = max(0, (resting + active) − maintenance)    (closed days)
  * Avoids double-counting since the calorie target already includes an activity estimate.
  * Fallback when no resting energy: logged workout calories only.
+ *
+ * Math lives in `src/lib/nutrition/activityBonus.ts` so web + mobile share
+ * one source of truth. See
+ * `docs/decisions/2026-05-13-activity-bonus-projected-eod-model.md`.
  */
 function dayActivityBudgetAddon(
   prefer: boolean,
@@ -306,16 +312,16 @@ function dayActivityBudgetAddon(
   dk: string,
   workoutsByDay?: Record<string, { type: string; minutes: number; calories: number; source: string }[]>,
 ): number {
-  if (!prefer) return 0;
-  const active = Math.round(activityByDay[dk] ?? 0);
-  if (active <= 0) return 0;
-  const basal = Math.round(basalByDay[dk] ?? 0);
-  if (basal > 0 && maintenanceKcal > 0) {
-    return Math.max(0, basal + active - maintenanceKcal);
-  }
-  // No resting data: use logged workout calories only
   const workouts = workoutsByDay?.[dk] ?? [];
-  return Math.max(0, workouts.reduce((s, w) => s + (w.calories ?? 0), 0));
+  return computeActivityBonusKcal({
+    prefer,
+    dateKey: dk,
+    todayDateKey: dateKeyFromDate(new Date()),
+    restingKcal: basalByDay[dk] ?? 0,
+    activeKcal: activityByDay[dk] ?? 0,
+    maintenanceKcal,
+    workoutKcal: workouts.reduce((s, w) => s + (w.calories ?? 0), 0),
+  });
 }
 
 function pruneByDay<V>(map: Record<string, V>): Record<string, V> {

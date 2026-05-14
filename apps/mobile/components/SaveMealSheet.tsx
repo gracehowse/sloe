@@ -30,6 +30,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { X } from "lucide-react-native";
 
 import { Accent, IconSize, Radius, Spacing } from "@/constants/theme";
+import { formatMacro } from "../../../src/lib/nutrition/formatMacro";
 import type { SavedMealItem } from "../../../src/lib/nutrition/savedMeals";
 import { formatMacroTrailer } from "../../../src/lib/nutrition/macroFormat";
 
@@ -317,9 +318,10 @@ export default function SaveMealSheet({
               >
                 {items.map((it, i) => {
                   const title = it.recipeTitle?.trim() || "Untitled";
-                  const macroSummary = `${Math.round(it.calories)} kcal, protein ${Math.round(
+                  const macroSummary = `${Math.round(it.calories)} kcal, protein ${formatMacro(
                     it.protein,
-                  )} grams, carbs ${Math.round(it.carbs)} grams, fat ${Math.round(it.fat)} grams`;
+                    "protein",
+                  )} grams, carbs ${formatMacro(it.carbs, "carbs")} grams, fat ${formatMacro(it.fat, "fat")} grams`;
                   return (
                     <View
                       key={`${title}-${i}`}

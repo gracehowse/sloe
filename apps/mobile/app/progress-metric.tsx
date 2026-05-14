@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-nati
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ArrowLeft, CheckCircle2, ChevronRight } from "lucide-react-native";
+import { formatMacro } from "../../../src/lib/nutrition/formatMacro";
 
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -207,7 +208,7 @@ export default function ProgressMetricDetailScreen() {
     metric === "calories"
       ? `Average across days you logged food: ${weekStats.avgCalories.toLocaleString()} kcal vs ${targets.calories.toLocaleString()} kcal target.`
       : metric === "protein"
-        ? `A day counts as “on target” when protein is at least 90% of your ${Math.round(targets.protein)}g goal.`
+        ? `A day counts as “on target” when protein is at least 90% of your ${formatMacro(targets.protein, "protein", "g")} goal.`
         : "Consecutive days (ending today or yesterday) where you logged at least one meal.";
 
   if (loading) {

@@ -183,6 +183,9 @@ export default function BurnDetailScreen() {
       return { total: actualBurn, futureBurn: 0, bonus, isProjected: false };
     }
 
+    // Matches Lose It!'s model: bonus = projected EOD burn − full
+    // maintenance. See `dayActivityBudgetAddon` in (tabs)/index.tsx
+    // for the shared rationale.
     const now = new Date();
     const hoursElapsed = now.getHours() + now.getMinutes() / 60;
     const hourlyResting = hoursElapsed > 0 && data.restingBurn > 0 ? data.restingBurn / hoursElapsed : 0;
@@ -293,12 +296,15 @@ export default function BurnDetailScreen() {
                 Progress's burn / activity section (which still uses
                 the same `stepsHistory` data shape). */}
 
-            {/* Totals card */}
+            {/* Totals card — mirrors Lose It!'s breakdown so the rows
+                above the divider visibly produce the bonus below it.
+                Today: Projected burn − Maintenance = Bonus earned.
+                Closed: Final burn − Maintenance = Bonus earned. */}
             {totals && (
               <View style={{ marginTop: Spacing.lg, padding: Spacing.md, borderRadius: Radius.md, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.cardBorder, gap: 10 }}>
                 <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                   <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text }}>
-                    {isPast ? "Final burn" : "Projected total"}
+                    {isPast ? "Final burn" : "Projected burn"}
                   </Text>
                   <Text style={{ fontSize: 14, fontWeight: "800", color: colors.text, fontVariant: ["tabular-nums"] }}>{totals.total.toLocaleString()}</Text>
                 </View>
@@ -311,9 +317,7 @@ export default function BurnDetailScreen() {
                 {data.maintenanceKcal > 0 && (
                   <View style={{ flexDirection: "row", justifyContent: "space-between", paddingTop: 8, borderTopWidth: 1, borderTopColor: colors.border }}>
                     <Text style={{ fontSize: 14, fontWeight: "800", color: totals.bonus > 0 ? Accent.warning : colors.textTertiary }}>
-                      {totals.bonus > 0
-                        ? (isPast ? "Bonus earned" : "Bonus so far")
-                        : (isPast ? "No bonus earned" : "No bonus yet")}
+                      {totals.bonus > 0 ? "Bonus earned" : "No bonus earned"}
                     </Text>
                     <Text style={{ fontSize: 16, fontWeight: "800", color: totals.bonus > 0 ? Accent.warning : colors.textTertiary, fontVariant: ["tabular-nums"] }}>
                       {totals.bonus > 0 ? `+${totals.bonus.toLocaleString()}` : "0"}

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "../../../src/lib/analytics/events";
 import {
@@ -27,7 +27,14 @@ import { lookupBarcode, scaleMacros, submitFoodCorrection, type BarcodeProduct }
 import { scaleCorrectionToPer100g, type CorrectionBasis } from "@/lib/barcodeCorrection";
 import { useAuth } from "@/context/auth";
 import { clampRememberedToServingOptions, getRememberedPortion, recordPortion } from "@/lib/barcodePortionMemory";
-import { ServingStepper } from "@/components/food-log/ServingStepper";
+import { PortionPicker } from "@/components/PortionPicker";
+import {
+  buildPickerOptions,
+  formatPortion,
+  stateToGrams,
+  type PortionState,
+} from "../../../src/lib/nutrition/portionPicker";
+import { formatMacro } from "../../../src/lib/nutrition/formatMacro";
 import {
   getMyContributorStats,
   formatHelpedLine,
@@ -77,31 +84,26 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
   const [product, setProduct] = useState<BarcodeProduct | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Serving size picker state
-  const [gramsInput, setGramsInput] = useState("100");
-  // 2026-05-08 (build-47 follow-up, Grace's TF feedback `AEzXpj7cEtWzcmRM391H1pM`):
-  // "I should be able to have that [per-100g/per-serving] option when
-  // logging too". Mirror the basis toggle from the correction form on
-  // the LOG card so users can type "2" servings instead of "224g".
-  // "perServing" mode interprets `gramsInput` as a serving multiplier
-  // (× servingSizeG); "per100g" mode keeps grams-as-grams. Toggle is
-  // hidden when no serving size is known (gram-only fallback).
-  const [logBasis, setLogBasis] = useState<"per100g" | "perServing">("per100g");
+  // Portion picker state — Lose It!-style { amount, unit } pair via the
+  // shared `portionPicker` state model. Replaces the legacy `gramsInput`
+  // string + `logBasis: per100g | perServing` mode toggle (2026-05-13;
+  // see docs/decisions/2026-05-13-portion-picker-and-macro-display.md).
+  const [pickerState, setPickerState] = useState<PortionState | null>(null);
   // Audit/2026-04-30 — when this barcode has been logged before,
   // surface "You usually log {n} g — using that" near the picker.
   const [rememberedPortion, setRememberedPortion] = useState<number | null>(null);
-  const servingSizeForBasis = product?.servingSizeG ?? 0;
+  const pickerOptions = useMemo(() => {
+    if (!product) return null;
+    return buildPickerOptions(
+      { servingSizeG: product.servingSizeG, servingOptions: product.servingOptions },
+      { rememberedGrams: rememberedPortion },
+    );
+  }, [product, rememberedPortion]);
   const grams = useMemo(() => {
-    const n = Number.parseFloat(String(gramsInput).replace(",", ".").trim());
-    if (!Number.isFinite(n) || n <= 0) return 100;
-    // build-47 follow-up: in perServing mode, the input is a multiplier
-    // (e.g. "2" = 2 servings). When no serving size is known, fall
-    // through to grams-as-grams to avoid silently logging 100g × 0 = 0.
-    if (logBasis === "perServing" && servingSizeForBasis > 0) {
-      return Math.min(10_000, Math.round(n * servingSizeForBasis * 10) / 10);
-    }
-    return Math.min(10_000, Math.round(n * 10) / 10);
-  }, [gramsInput, logBasis, servingSizeForBasis]);
+    if (!pickerState) return 100;
+    const g = stateToGrams(pickerState);
+    return Math.min(10_000, Math.round(g * 10) / 10);
+  }, [pickerState]);
 
   // Manual entry state (when barcode not found)
   const [manualMode, setManualMode] = useState(false);
@@ -185,18 +187,13 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
         setProduct(result);
         // Audit/2026-04-30 — barcode portion memory.
         const remembered = await getRememberedPortion(e.data);
-        if (remembered != null && remembered > 0) {
-          const snapped = clampRememberedToServingOptions(remembered, result.servingOptions ?? null);
-          setRememberedPortion(remembered);
-          setGramsInput(String(Math.round(snapped)));
-        } else {
-          setRememberedPortion(null);
-          if (result.servingSizeG && result.servingSizeG > 0) {
-            setGramsInput(String(Math.round(result.servingSizeG)));
-          } else {
-            setGramsInput("100");
-          }
-        }
+        const rememberedGrams = remembered != null && remembered > 0
+          ? clampRememberedToServingOptions(remembered, result.servingOptions ?? null)
+          : null;
+        setRememberedPortion(rememberedGrams);
+        // The pickerState useEffect below will derive initial state
+        // from the new product + remembered portion via
+        // `buildPickerOptions`.
       } else {
         setRememberedPortion(null);
         setError("Product not found in database.");
@@ -204,6 +201,20 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
     },
     [loading, scanned],
   );
+
+  // Re-derive pickerState whenever the product changes (or remembered
+  // portion arrives). Single source of truth — no manual gram/multiplier
+  // conversions strewn across the lookup, reset, and chip-tap paths.
+  React.useEffect(() => {
+    if (!pickerOptions) {
+      setPickerState(null);
+      return;
+    }
+    setPickerState(pickerOptions.initial);
+    // We intentionally re-init only when the product (and thus options
+    // identity) changes, not on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product]);
 
   // F-18 (2026-04-19, TestFlight `ABs9n0AyFkA8VeH7WPbwdGE`) — when OFF
   // gives no real label serving the builder falls back to a generic
@@ -271,7 +282,7 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
       onScan(scanned, scaledProduct);
       setScanned(null);
       setProduct(null);
-      setGramsInput("100");
+      setPickerState(null);
       setRememberedPortion(null);
     }
   }, [scanned, product, scaled, grams, portionSummary, onScan]);
@@ -427,7 +438,7 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
     setCorrBlockReasons(null);
     setContributorStats(null);
     setScanLabelError(null);
-    setGramsInput("100");
+    setPickerState(null);
     setRememberedPortion(null);
   }, []);
 
@@ -441,7 +452,7 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
     setCorrBlockReasons(null);
     setContributorStats(null);
     setScanLabelError(null);
-    setGramsInput("100");
+    setPickerState(null);
     setRememberedPortion(null);
     onClose();
   }, [onClose]);
@@ -451,8 +462,9 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
   const handleCorrectionDone = useCallback(() => {
     setCorrSubmitted(false);
     setCorrectionMode(false);
-    setGramsInput("100");
-  }, []);
+    // Re-derive picker initial state from the (now corrected) product.
+    if (pickerOptions) setPickerState(pickerOptions.initial);
+  }, [pickerOptions]);
 
   // 2026-05-08 build-47 follow-up — "Log this now" path on the
   // correction-saved success state. Closes the success card, exits
@@ -465,27 +477,16 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
       handleCorrectionDone();
       return;
     }
-    const portionGrams =
-      product.servingSizeG && product.servingSizeG > 0
-        ? Math.round(product.servingSizeG)
-        : 100;
     setCorrSubmitted(false);
     setCorrectionMode(false);
-    // Pre-set the LOG path's gram input + reset basis so the user can
-    // verify/adjust before confirming. We DO NOT auto-fire onConfirm
-    // here because the user might want to tweak the portion (1 piece
-    // vs 2). Returning to the product card with the right default is
-    // the right balance between "auto-log" and "user agency".
-    setGramsInput(String(portionGrams));
-    setLogBasis(
-      product.servingSizeG && product.servingSizeG > 0
-        ? "perServing"
-        : "per100g",
-    );
-    if (logBasis === "perServing" || (product.servingSizeG && product.servingSizeG > 0)) {
-      setGramsInput("1");
-    }
-  }, [product, handleCorrectionDone, logBasis]);
+    // Pre-set the picker to the corrected product's default portion so
+    // the user can verify/adjust before confirming. We DO NOT auto-fire
+    // onConfirm here because the user might want to tweak the portion
+    // (1 piece vs 2). Returning to the product card with the right
+    // default is the right balance between "auto-log" and "user
+    // agency".
+    if (pickerOptions) setPickerState(pickerOptions.initial);
+  }, [product, handleCorrectionDone, pickerOptions]);
 
   // 2026-05-08 build-45 follow-up — "Snap the label instead" handler.
   // Captures a photo, posts to /api/nutrition/scan-label, pre-fills
@@ -660,14 +661,56 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
       backgroundColor: colors.card,
       borderRadius: Radius.lg,
       borderWidth: 1,
-      borderColor: Accent.success + "40",
-      padding: Spacing.lg,
-      // F-18 (2026-04-19) — tighten vertical rhythm. `xs` between card
-      // rows puts the chips closer to the Log button so the detected-
-      // product card stops feeling tall below the camera preview.
-      gap: Spacing.xs,
+      borderColor: colors.border,
+      overflow: "hidden",
     },
-    productName: { fontSize: 16, fontWeight: "600", color: colors.text },
+    productHead: {
+      paddingHorizontal: Spacing.lg,
+      paddingTop: Spacing.lg,
+      paddingBottom: Spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    productName: { fontSize: 16, fontWeight: "700", color: colors.text, letterSpacing: -0.3, lineHeight: 21 },
+    // 2026-05-13 portion-picker rebuild — 4-tile macro grid (kcal /
+    // protein / carbs / fat) matching the mockup at
+    // /tmp/barcode-redesign.html. Replaces the legacy single-line
+    // `macroRow` text aggregate.
+    macroTiles: {
+      flexDirection: "row",
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    macroTile: {
+      flex: 1,
+      paddingVertical: 12,
+      paddingHorizontal: 4,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    macroTileDivider: {
+      width: 1,
+      backgroundColor: colors.border,
+      marginVertical: 10,
+    },
+    macroTileNum: {
+      fontSize: 18,
+      fontWeight: "800",
+      color: colors.text,
+      letterSpacing: -0.5,
+      lineHeight: 20,
+      fontVariant: ["tabular-nums"],
+    },
+    macroTileNumKcal: { color: Accent.warning },
+    macroTileLabel: {
+      marginTop: 4,
+      fontSize: 10,
+      fontWeight: "700",
+      letterSpacing: 0.5,
+      textTransform: "uppercase",
+      color: colors.textSecondary,
+    },
+    productBody: { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md },
     macroRow: { flexDirection: "row", gap: Spacing.lg },
     macroItem: { fontSize: 14, color: colors.textSecondary, fontWeight: "500" },
     per100g: { fontSize: 12, color: colors.textTertiary },
@@ -706,7 +749,7 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
     presetChipText: { fontSize: 11, fontWeight: "600", color: Accent.primary },
     // F-18 (2026-04-19) — reduced top margin ~8px so the Log/Scan-again
     // pair sits tighter below the chip row.
-    btnRow: { flexDirection: "row", gap: Spacing.md, marginTop: 0 },
+    btnRow: { flexDirection: "row", gap: Spacing.sm, marginTop: 0 },
     useBtn: {
       flex: 1,
       flexDirection: "row",
@@ -715,17 +758,21 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
       gap: Spacing.sm,
       backgroundColor: Accent.success,
       borderRadius: Radius.md,
-      paddingVertical: 14,
+      height: 44,
     },
-    useBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+    useBtnText: { color: "#fff", fontWeight: "700", fontSize: 14, letterSpacing: -0.1 },
+    // 2026-05-13 portion-picker rebuild — "Scan again" is now an icon-
+    // only 44x44 square so it shares height with the primary CTA and
+    // doesn't wrap on narrow product names. See mockup.
     scanAgainBtn: {
-      flex: 1,
+      width: 44,
+      height: 44,
       alignItems: "center",
       justifyContent: "center",
       borderRadius: Radius.md,
       borderWidth: 1,
       borderColor: colors.border,
-      paddingVertical: 14,
+      backgroundColor: colors.card,
     },
     scanAgainText: { color: colors.textSecondary, fontWeight: "600" },
     hintText: {
@@ -1217,189 +1264,60 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
 
               {product && scaled && !correctionMode && (
                 <View style={styles.productCard}>
-                  <Text style={styles.productName} numberOfLines={2}>{product.name}</Text>
-                  <View style={styles.macroRow}>
-                    <Text style={styles.macroItem}>{Math.round(scaled.calories)} kcal</Text>
-                    <Text style={styles.macroItem}>P: {Math.round(scaled.protein)}g</Text>
-                    <Text style={styles.macroItem}>C: {Math.round(scaled.carbs)}g</Text>
-                    <Text style={styles.macroItem}>F: {Math.round(scaled.fat)}g</Text>
+                  <View style={styles.productHead}>
+                    <Text style={styles.productName} numberOfLines={2}>{product.name}</Text>
                   </View>
-                  {/* 2026-05-08 build-47 follow-up — Per 100 g / Per serving
-                      toggle on the LOG card (parity with the correction
-                      form). Hidden when the product has no known serving
-                      size (gram-only fallback). When in perServing mode
-                      the Amount input is interpreted as a serving
-                      multiplier (× servingSizeG). */}
-                  {product.servingSizeG && product.servingSizeG > 0 ? (
-                    <View style={[styles.basisRow, { marginTop: Spacing.xs }]}>
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityState={{ selected: logBasis === "per100g" }}
-                        accessibilityLabel="Log by grams"
-                        onPress={() => {
-                          if (logBasis === "perServing") {
-                            // Switching from servings → grams: convert
-                            // the current multiplier into its gram
-                            // equivalent so the field doesn't appear
-                            // to drop a zero.
-                            const n = Number.parseFloat(
-                              String(gramsInput).replace(",", ".").trim(),
-                            );
-                            if (Number.isFinite(n) && n > 0 && product.servingSizeG) {
-                              setGramsInput(String(Math.round(n * product.servingSizeG)));
-                            }
-                          }
-                          setLogBasis("per100g");
-                        }}
-                        style={[
-                          styles.basisChip,
-                          logBasis === "per100g" && styles.basisChipSelected,
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.basisChipText,
-                            logBasis === "per100g" && styles.basisChipTextSelected,
-                          ]}
-                        >
-                          By grams
+                  <View style={styles.macroTiles}>
+                    <View style={styles.macroTile}>
+                      <Text style={[styles.macroTileNum, styles.macroTileNumKcal]}>{Math.round(scaled.calories)}</Text>
+                      <Text style={styles.macroTileLabel}>kcal</Text>
+                    </View>
+                    <View style={styles.macroTileDivider} />
+                    <View style={styles.macroTile}>
+                      <Text style={styles.macroTileNum}>{formatMacro(scaled.protein, "protein", "g")}</Text>
+                      <Text style={styles.macroTileLabel}>Protein</Text>
+                    </View>
+                    <View style={styles.macroTileDivider} />
+                    <View style={styles.macroTile}>
+                      <Text style={styles.macroTileNum}>{formatMacro(scaled.carbs, "carbs", "g")}</Text>
+                      <Text style={styles.macroTileLabel}>Carbs</Text>
+                    </View>
+                    <View style={styles.macroTileDivider} />
+                    <View style={styles.macroTile}>
+                      <Text style={styles.macroTileNum}>{formatMacro(scaled.fat, "fat", "g")}</Text>
+                      <Text style={styles.macroTileLabel}>Fat</Text>
+                    </View>
+                  </View>
+                  <View style={styles.productBody}>
+                    {pickerState && pickerOptions ? (
+                      <PortionPicker
+                        product={{ servingSizeG: product.servingSizeG, servingOptions: product.servingOptions }}
+                        value={pickerState}
+                        onChange={setPickerState}
+                        options={pickerOptions}
+                        rememberedGrams={rememberedPortion}
+                      />
+                    ) : null}
+                    {rememberedPortion != null && rememberedPortion > 0 ? (
+                      <Text style={[styles.per100g, { marginTop: Spacing.sm, color: Accent.primary }]}>
+                        You usually log {Math.round(rememberedPortion)} g — using that.
+                      </Text>
+                    ) : null}
+                    <View style={[styles.btnRow, { marginTop: Spacing.md }]}>
+                      <Pressable style={styles.useBtn} onPress={onConfirm} accessibilityRole="button" accessibilityLabel="Log this portion">
+                        <Ionicons name="checkmark" size={16} color="#fff" />
+                        <Text style={styles.useBtnText} numberOfLines={1} ellipsizeMode="tail">
+                          Log · {pickerState ? formatPortion(pickerState) : portionSummary.replace(/\s*\(~?[\d.]+\s*g\)\s*$/, "")}
                         </Text>
                       </Pressable>
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityState={{ selected: logBasis === "perServing" }}
-                        accessibilityLabel="Log by serving"
-                        onPress={() => {
-                          if (logBasis === "per100g" && product.servingSizeG) {
-                            // Convert grams → multiplier so the field
-                            // shows e.g. "1" or "2" not "112" or "224".
-                            const n = Number.parseFloat(
-                              String(gramsInput).replace(",", ".").trim(),
-                            );
-                            if (Number.isFinite(n) && n > 0) {
-                              const mult = Math.round((n / product.servingSizeG) * 100) / 100;
-                              setGramsInput(String(mult > 0 ? mult : 1));
-                            } else {
-                              setGramsInput("1");
-                            }
-                          }
-                          setLogBasis("perServing");
-                        }}
-                        style={[
-                          styles.basisChip,
-                          logBasis === "perServing" && styles.basisChipSelected,
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.basisChipText,
-                            logBasis === "perServing" && styles.basisChipTextSelected,
-                          ]}
-                        >
-                          By serving ({Math.round(product.servingSizeG)} g)
-                        </Text>
+                      <Pressable style={styles.scanAgainBtn} onPress={onReset} accessibilityRole="button" accessibilityLabel="Scan again">
+                        <Ionicons name="refresh" size={20} color={colors.textSecondary} />
                       </Pressable>
                     </View>
-                  ) : null}
-                  {/* F-137 (2026-05-11) — inline stepper replaces the
-                      free-text TextInput. Step size matches the basis:
-                      0.5 servings in perServing mode (so users go up in
-                      half-serving ticks), 5 g in per-100g mode. Direct
-                      text entry still works via the inline TextInput
-                      inside the stepper. */}
-                  <View style={styles.servingRow}>
-                    <Text style={styles.servingLabel}>Amount:</Text>
-                    <ServingStepper
-                      value={gramsInput}
-                      onChange={setGramsInput}
-                      step={logBasis === "perServing" ? 0.5 : 5}
-                      unit={
-                        logBasis === "perServing"
-                          ? { singular: "serving", plural: "servings" }
-                          : "g"
-                      }
-                      min={0}
-                      max={10000}
-                      inputAccessibilityLabel={
-                        logBasis === "perServing"
-                          ? "Number of servings"
-                          : "Serving size in grams"
-                      }
-                      testIdPrefix="barcode-modal-amount"
-                      style={styles.servingStepperWrap}
-                    />
-                  </View>
-                  {/* F-18 (2026-04-19) — simplified helper copy. The old
-                      "macros scale from per 100 g" aside leaked internal
-                      model onto the user; the chip row already tells them
-                      what they need to know. */}
-                  {rememberedPortion != null && rememberedPortion > 0 ? (
-                    <Text style={[styles.per100g, { marginBottom: 2, color: Accent.primary }]}>
-                      You usually log {Math.round(rememberedPortion)} g — using that.
-                    </Text>
-                  ) : (
-                    <Text style={[styles.per100g, { marginBottom: 2 }]}>Tap a chip or edit grams.</Text>
-                  )}
-                  <View style={styles.presetRow}>
-                    {(product.servingOptions ?? []).map((o) => {
-                      const selected = Math.abs(o.grams - grams) < 0.51;
-                      return (
-                        <Pressable
-                          key={`${o.label}-${o.grams}`}
-                          style={[styles.presetChip, selected && styles.presetChipSelected]}
-                          onPress={() => setGramsInput(String(o.grams))}
-                        >
-                          <Text style={styles.presetChipText}>{displayServingLabel(o.label, o.grams)}</Text>
-                        </Pressable>
-                      );
-                    })}
-                    {[50, 150, 200]
-                      .filter(
-                        (g) => !(product.servingOptions ?? []).some((o) => Math.abs(o.grams - g) < 0.51),
-                      )
-                      .map((g) => {
-                        const selected = Math.abs(g - grams) < 0.51;
-                        return (
-                          <Pressable
-                            key={`preset-${g}`}
-                            style={[styles.presetChip, selected && styles.presetChipSelected]}
-                            onPress={() => setGramsInput(String(g))}
-                          >
-                            <Text style={styles.presetChipText}>{g} g</Text>
-                          </Pressable>
-                        );
-                      })}
-                  </View>
-                  <View style={styles.btnRow}>
-                    <Pressable style={styles.useBtn} onPress={onConfirm}>
-                      <Ionicons name="checkmark" size={18} color="#fff" />
-                      {/* F-18 (2026-04-19) — replace nested-parens
-                          "Log (1 serving (100 g))" with a mid-dot divider
-                          so the serving context reads cleanly in one
-                          pass. `portionSummary` is already collapsed via
-                          `displayServingLabel` when the label is a
-                          generic fallback.
-                          F-135 (2026-05-08): strip the "(~Ng)" parenthetical
-                          from the button (the Amount field above already
-                          shows grams) so long labels like
-                          "1 rice paper (~9 g)" don't wrap mid-word.
-                          numberOfLines + ellipsizeMode is the safety net. */}
-                      <Text
-                        style={styles.useBtnText}
-                        numberOfLines={1}
-                        ellipsizeMode="tail"
-                      >
-                        Log · {portionSummary.replace(/\s*\(~?[\d.]+\s*g\)\s*$/, "")}
-                      </Text>
-                    </Pressable>
-                    <Pressable style={styles.scanAgainBtn} onPress={onReset}>
-                      <Text style={styles.scanAgainText}>Scan again</Text>
+                    <Pressable onPress={openCorrectionMode} style={{ alignItems: "center", paddingTop: Spacing.md }}>
+                      <Text style={{ fontSize: 12, color: colors.textTertiary, textDecorationLine: "underline" }}>This is wrong — edit and update</Text>
                     </Pressable>
                   </View>
-                  {/* "This is wrong" link */}
-                  <Pressable onPress={openCorrectionMode} style={{ alignItems: "center", paddingTop: Spacing.xs }}>
-                    <Text style={{ fontSize: 12, color: colors.textTertiary, textDecorationLine: "underline" }}>This is wrong — edit and update</Text>
-                  </Pressable>
                 </View>
               )}
 

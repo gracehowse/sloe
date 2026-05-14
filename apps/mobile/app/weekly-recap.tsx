@@ -61,6 +61,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { formatMacro } from "../../../src/lib/nutrition/formatMacro";
 import { supabase } from "@/lib/supabase";
 import { Accent, Radius, Spacing } from "@/constants/theme";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
@@ -948,7 +949,7 @@ export default function WeeklyRecapScreen() {
                 }}
               >
                 {targets.protein > 0
-                  ? `Hit your ${Math.round(targets.protein)}g goal on ${proteinHitDays} of 7 days.`
+                  ? `Hit your ${formatMacro(targets.protein, "protein", "g")} goal on ${proteinHitDays} of 7 days.`
                   : "No protein target set."}
               </Text>
             </>,
