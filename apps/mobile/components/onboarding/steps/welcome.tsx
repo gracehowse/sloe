@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, Text, useColorScheme, View } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -20,6 +20,14 @@ export function MobileWelcomeStep() {
   const { go } = useOnboarding();
   const colors = useThemeColors();
   const router = useRouter();
+  // 2026-05-14 (premium-bar audit B1 #2): dampen the brand-gradient
+  // wash by 50% in dark mode. The full-strength stops blew out against
+  // the near-black background and washed the headline. Light mode keeps
+  // the original strength because the page bg balances it.
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === "dark";
+  const gradTopOpacity = isDark ? 0.16 : 0.32;
+  const gradMidOpacity = isDark ? 0.08 : 0.16;
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <View
@@ -39,8 +47,8 @@ export function MobileWelcomeStep() {
           <Svg width="100%" height="100%">
             <Defs>
               <LinearGradient id="welcome-grad" x1="0" y1="0" x2="0" y2="1">
-                <Stop offset="0%" stopColor={Accent.primary} stopOpacity={0.32} />
-                <Stop offset="50%" stopColor={Accent.magenta} stopOpacity={0.16} />
+                <Stop offset="0%" stopColor={Accent.primary} stopOpacity={gradTopOpacity} />
+                <Stop offset="50%" stopColor={Accent.magenta} stopOpacity={gradMidOpacity} />
                 <Stop
                   offset="100%"
                   stopColor={colors.background}
@@ -88,6 +96,20 @@ export function MobileWelcomeStep() {
           backgroundColor: colors.background,
         }}
       >
+        {/* 2026-05-14 (premium-bar audit B1 #1): single proof line
+            directly above the primary CTA. Calm, no metrics, no
+            shaming — Cal AI / Lifesum-style anchor that grounds the
+            jump without overpromising. */}
+        <Text
+          style={{
+            fontSize: 12,
+            color: colors.textSecondary,
+            textAlign: "center",
+            marginBottom: 8,
+          }}
+        >
+          Join thousands tracking smarter
+        </Text>
         <Pressable
           onPress={() => go(1)}
           accessibilityRole="button"
@@ -105,42 +127,37 @@ export function MobileWelcomeStep() {
             Get started
           </Text>
         </Pressable>
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "center",
-            alignItems: "center",
-            marginTop: 14,
-          }}
+        {/* 2026-05-14 (premium-bar audit B1 #3): standalone outlined
+            "Sign in" button below the primary CTA. The prior
+            "Have an account? Sign in" prefix buried the affordance for
+            returning users — testers in TF reported missing it on
+            first scan. A real secondary button reads as a co-equal
+            option without competing with the primary tap target. */}
+        <Pressable
+          onPress={() => router.push("/login")}
+          accessibilityRole="button"
+          accessibilityLabel="Sign in to existing account"
+          style={({ pressed }) => ({
+            marginTop: 12,
+            alignSelf: "center",
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: 8,
+            paddingVertical: 10,
+            paddingHorizontal: 24,
+            opacity: pressed ? 0.7 : 1,
+          })}
         >
           <Text
             style={{
               fontSize: 14,
-              color: colors.textSecondary,
+              color: colors.text,
+              fontWeight: "600",
             }}
           >
-            Have an account?{" "}
+            Sign in
           </Text>
-          <Pressable
-            onPress={() => router.push("/login")}
-            accessibilityRole="link"
-            accessibilityLabel="Sign in to existing account"
-            hitSlop={12}
-          >
-            {({ pressed }) => (
-              <Text
-                style={{
-                  fontSize: 14,
-                  color: Accent.primaryLight,
-                  fontWeight: "600",
-                  opacity: pressed ? 0.7 : 1,
-                }}
-              >
-                Sign in
-              </Text>
-            )}
-          </Pressable>
-        </View>
+        </Pressable>
       </View>
     </View>
   );

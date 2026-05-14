@@ -26,10 +26,23 @@ const OPTIONS: { id: Sex; title: string; subtitle?: string }[] = [
 ];
 
 export function MobileSexStep() {
-  const { state, set } = useOnboarding();
+  const { state, set, go } = useOnboarding();
   const overline = useStepOverline();
   const [helpOpen, setHelpOpen] = React.useState(false);
   const colors = useThemeColors();
+  // 2026-05-14 (premium-bar audit B cross-cutting #6): auto-advance
+  // after 200ms when the user picks a sex. Same pattern as Goal +
+  // Activity — single-choice steps should never strand the user
+  // hunting for Continue when the tap itself was the answer.
+  const advanceTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  React.useEffect(
+    () => () => {
+      if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
+    },
+    [],
+  );
   return (
     <MobileStepBody>
       <MobileStepHeader
@@ -43,7 +56,16 @@ export function MobileSexStep() {
             key={o.id ?? "u"}
             compact
             selected={state.sex === o.id}
-            onPress={() => set({ sex: o.id })}
+            onPress={() => {
+              if (state.sex === o.id) return;
+              set({ sex: o.id });
+              if (advanceTimerRef.current) {
+                clearTimeout(advanceTimerRef.current);
+              }
+              advanceTimerRef.current = setTimeout(() => {
+                go(1);
+              }, 200);
+            }}
             title={o.title}
             subtitle={o.subtitle}
           />

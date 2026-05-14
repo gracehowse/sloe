@@ -21,10 +21,11 @@ import { render, screen } from "@testing-library/react";
 import {
   PAYWALL_TRUST_CHIPS,
   buildReceiptTrustCopy,
+  getPaywallTrustChips,
 } from "../../src/lib/landing/paywallTrust";
 import { PaywallTrustStrip } from "../../app/pricing/PaywallTrustStrip";
 
-describe("PAYWALL_TRUST_CHIPS — SSOT shape", () => {
+describe("PAYWALL_TRUST_CHIPS — SSOT shape (platform-neutral default)", () => {
   it("carries exactly three chips", () => {
     expect(PAYWALL_TRUST_CHIPS).toHaveLength(3);
   });
@@ -48,19 +49,54 @@ describe("PAYWALL_TRUST_CHIPS — SSOT shape", () => {
   });
 });
 
+describe("getPaywallTrustChips — DC4 platform-correct cancellation chip", () => {
+  it("web variant names the Stripe Customer Portal", () => {
+    const chips = getPaywallTrustChips("web");
+    expect(chips).toHaveLength(3);
+    expect(chips[0].label).toBe("Cancel in Stripe Portal");
+    expect(chips[0].a11yLabel).toContain("Stripe Customer Portal");
+  });
+
+  it("mobile variant names the App Store", () => {
+    const chips = getPaywallTrustChips("mobile");
+    expect(chips).toHaveLength(3);
+    expect(chips[0].label).toBe("Cancel anytime in App Store");
+    expect(chips[0].a11yLabel).toContain("App Store");
+  });
+
+  it("only the cancellation chip varies — refund + no-mid-trial chips are shared", () => {
+    const web = getPaywallTrustChips("web");
+    const mobile = getPaywallTrustChips("mobile");
+    expect(web[1]).toEqual(mobile[1]);
+    expect(web[2]).toEqual(mobile[2]);
+    expect(web[0]).not.toEqual(mobile[0]);
+  });
+
+  it("each chip carries a non-empty long-form a11y label on both platforms", () => {
+    for (const platform of ["web", "mobile"] as const) {
+      for (const chip of getPaywallTrustChips(platform)) {
+        expect(chip.a11yLabel.length).toBeGreaterThan(chip.label.length);
+        expect(chip.label.endsWith(".")).toBe(false);
+      }
+    }
+  });
+});
+
 describe("PaywallTrustStrip — web /pricing rendering", () => {
-  it("renders all three chips visibly", () => {
+  it("renders all three chips visibly using the web variant", () => {
     render(<PaywallTrustStrip />);
-    expect(screen.getByText("Cancel anytime in-app")).toBeInTheDocument();
+    // DC4: cancellation chip names Stripe Portal on web (was the
+    // platform-neutral "Cancel anytime in-app" pre-DC4).
+    expect(screen.getByText("Cancel in Stripe Portal")).toBeInTheDocument();
     expect(screen.getByText("7-day refund, no email needed")).toBeInTheDocument();
     expect(
       screen.getByText("Price never changes mid-trial"),
     ).toBeInTheDocument();
   });
 
-  it("attaches the SSOT a11y labels to each chip", () => {
+  it("attaches the web-variant a11y labels to each chip", () => {
     render(<PaywallTrustStrip />);
-    for (const chip of PAYWALL_TRUST_CHIPS) {
+    for (const chip of getPaywallTrustChips("web")) {
       expect(screen.getByLabelText(chip.a11yLabel)).toBeInTheDocument();
     }
   });

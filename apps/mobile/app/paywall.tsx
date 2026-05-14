@@ -39,7 +39,7 @@ import { usePromoCode } from "@/hooks/usePromoCode";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents, type PaywallViewedFrom } from "../../../src/lib/analytics/events";
 import { PRICING_TIERS, type PricingTier, computeAnnualSavingsBadge } from "../../../src/lib/landing/pricingTiers";
-import { PAYWALL_TRUST_CHIPS, buildReceiptTrustCopy } from "../../../src/lib/landing/paywallTrust";
+import { getPaywallTrustChips, buildReceiptTrustCopy, type PaywallTrustChip } from "../../../src/lib/landing/paywallTrust";
 
 /**
  * Mobile paywall — sells both Base and Pro across monthly + annual.
@@ -375,6 +375,14 @@ export default function PaywallScreen() {
 
   const trialApplies = billing === "annual"; // 7-day trial only on Pro annual
   const subscriptionsUnavailable = offeringsReady && packages.length === 0;
+
+  // DC4 (premium-bar audit 2026-05-14): platform-correct trust chips
+  // resolved once and threaded into the TierCard so the cancellation
+  // chip reads "Cancel anytime in App Store" on mobile rather than
+  // the generic "in-app" line. Web parity: `PaywallTrustStrip.tsx`
+  // calls `getPaywallTrustChips("web")` so the Stripe Portal variant
+  // surfaces there.
+  const trustChips = useMemo(() => getPaywallTrustChips("mobile"), []);
 
   // ─── Interaction handlers ───────────────────────────────────────
 
@@ -724,7 +732,12 @@ export default function PaywallScreen() {
       opacity: 0.85,
     },
 
-    scrollContent: { paddingHorizontal: Spacing.xl, paddingBottom: insets.bottom + Spacing.xxxl },
+    // 2026-05-14 (premium-bar audit Group I #7): extra bottom padding
+    // so the persistent restore-purchase footer (pinned absolutely at
+    // the bottom) never overlaps the scroll content. ~Spacing.xxxl is
+    // the footer height + safe-area; insets.bottom is the home-indicator
+    // padding on top of that.
+    scrollContent: { paddingHorizontal: Spacing.xl, paddingBottom: insets.bottom + Spacing.xxxl + 40 },
 
     trustStripWrap: {
       flexDirection: "row",
@@ -733,6 +746,19 @@ export default function PaywallScreen() {
       gap: Spacing.sm,
       marginTop: Spacing.lg,
       marginBottom: Spacing.xs,
+    },
+    /** DC4 (premium-bar audit 2026-05-14): in-card trust strip — sits
+     *  ~8px under the price/reference-line so the guarantee reads as
+     *  the price's caption (Stripe Checkout precedent). Smaller gap
+     *  + left-aligned (vs. centred standalone strip) because it
+     *  shares horizontal axis with the price digit above. */
+    trustChipsInCard: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      alignItems: "center",
+      gap: 6,
+      marginTop: 8,
+      marginBottom: Spacing.sm,
     },
     trustChip: {
       flexDirection: "row",
@@ -751,7 +777,12 @@ export default function PaywallScreen() {
       color: colors.textSecondary,
     },
 
-    toggleWrap: { alignItems: "center", marginTop: Spacing.lg, marginBottom: Spacing.xl, gap: 8 },
+    // 2026-05-14 (premium-bar audit Group I #6): toggle is now the
+    // first control after the gradient header — pad the top so it
+    // breathes off the header edge (was relying on the trust strip's
+    // marginTop above it). marginBottom shrunk slightly because the
+    // trust strip below adds its own gap.
+    toggleWrap: { alignItems: "center", marginTop: Spacing.xl, marginBottom: Spacing.md, gap: 8 },
     toggleEyebrow: {
       fontSize: 10,
       fontWeight: "700",
@@ -1033,30 +1064,14 @@ export default function PaywallScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Trust strip — three chips (cancel anytime / 7-day refund /
-            price never changes mid-trial) rendered ABOVE the tier
-            cards. Counter to the #1 user-sentiment pain across the
-            competitive set per the 2026-04-30 14-app audit. Copy SSOT
-            in `src/lib/landing/paywallTrust.ts`; the web /pricing
-            surface renders the same three chips in identical order. */}
-        <View
-          testID="paywall-trust-strip"
-          style={styles.trustStripWrap}
-          accessibilityRole="summary"
-          accessibilityLabel="Trust commitments: cancel anytime in-app, 7-day refund no email needed, price never changes mid-trial"
-        >
-          {PAYWALL_TRUST_CHIPS.map((chip) => (
-            <View
-              key={chip.label}
-              style={styles.trustChip}
-              accessibilityLabel={chip.a11yLabel}
-            >
-              <ShieldCheck size={12} color={Accent.success} strokeWidth={2.25} />
-              <Text style={styles.trustChipText}>{chip.label}</Text>
-            </View>
-          ))}
-        </View>
-
+        {/* 2026-05-14 (premium-bar audit Group I #6): period toggle
+            promoted to the first prominent control after the headline.
+            Previous order placed the trust strip first; testers
+            scrolled past the toggle (buried below the chips) and
+            landed on the Pro card before realising they could switch
+            billing periods. Toggle now reads as the headline's "pick
+            your cadence" beat; trust strip follows so trust copy still
+            sits above the tier card. */}
         {showToggle ? (
           <View style={styles.toggleWrap}>
             {/* 2026-05-13 (premium-bar audit Group I #4): the period
@@ -1127,6 +1142,21 @@ export default function PaywallScreen() {
           </View>
         ) : null}
 
+        {/* Trust strip — DC4 (premium-bar audit 2026-05-14): chips
+            moved INTO each TierCard adjacent to the price digit so
+            the guarantee reads as the price's caption, not a banner
+            sitting two cards above it. The cancellation chip now
+            names the platform-correct surface (App Store on mobile,
+            Stripe Portal on web — see `getPaywallTrustChips`). The
+            previous strip-above-the-card placement put a 16-24px
+            gap between the trust copy and the price; per Stripe
+            Checkout's precedent, guarantees sit within ~8px of the
+            price element so they read as a single unit. The web
+            /pricing surface keeps a shared strip above the grid
+            (one strip covers both tiers there); mobile renders
+            one paid card so the chips slot directly under the
+            price. */}
+
         {!offeringsReady ? (
           <>
             <View style={styles.skeletonCard} />
@@ -1183,6 +1213,7 @@ export default function PaywallScreen() {
               ctaDisabled
               ctaLoading={false}
               onPress={() => undefined}
+              trustChips={trustChips}
               colors={colors}
               styles={styles}
             />
@@ -1218,6 +1249,7 @@ export default function PaywallScreen() {
                 ctaDisabled={!currentProPkg || purchasing !== null}
                 ctaLoading={purchasing === "pro"}
                 onPress={() => void onSelectTier("pro")}
+                trustChips={trustChips}
                 colors={colors}
                 styles={styles}
               />
@@ -1371,6 +1403,48 @@ export default function PaywallScreen() {
         </View>
         <Text style={styles.secondaryNote}>Payments handled by the App Store.</Text>
       </ScrollView>
+
+      {/* 2026-05-14 (premium-bar audit Group I #7): persistent
+          "Restore purchases" link pinned to the bottom of the
+          paywall, always visible regardless of scroll position. The
+          in-scroll restore link in the secondary rail above stays
+          (returning users land there as part of the secondary rail
+          + terms / privacy cluster), but testers below the fold
+          previously had to scroll back up to find restore when the
+          purchase flow stalled. Footer sits above the safe-area
+          inset so it doesn't ride into the home-indicator. */}
+      <View
+        pointerEvents="box-none"
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          paddingBottom: insets.bottom + Spacing.sm,
+          paddingTop: Spacing.sm,
+          alignItems: "center",
+          backgroundColor: colors.background,
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+        }}
+      >
+        <Pressable
+          testID="paywall-restore-footer"
+          onPress={() => void onRestore()}
+          disabled={restoring}
+          accessibilityRole="button"
+          accessibilityLabel="Restore previous purchases"
+          hitSlop={8}
+        >
+          {restoring ? (
+            <ActivityIndicator size="small" color={colors.textSecondary} />
+          ) : (
+            <Text style={{ fontSize: 12, color: colors.textSecondary, fontWeight: "500" }}>
+              Restore purchases
+            </Text>
+          )}
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -1397,8 +1471,13 @@ type TierCardProps = {
   ctaDisabled: boolean;
   ctaLoading: boolean;
   onPress: () => void;
+  /** DC4 (premium-bar audit 2026-05-14): trust chips rendered
+   *  directly under the price digit so the guarantee reads as the
+   *  price's caption (~8px gap). Pass `null` to suppress, e.g. on
+   *  surfaces that already carry the strip externally. */
+  trustChips?: ReadonlyArray<PaywallTrustChip> | null;
   colors: ReturnType<typeof useThemeColors>;
-   
+
   styles: any;
 };
 
@@ -1419,6 +1498,7 @@ function TierCard({
   ctaDisabled,
   ctaLoading,
   onPress,
+  trustChips,
   colors,
   styles,
 }: TierCardProps) {
@@ -1454,6 +1534,31 @@ function TierCard({
         >
           {referenceLine}
         </Text>
+      ) : null}
+
+      {/* DC4 (premium-bar audit 2026-05-14): trust chips adjacent to
+          price (~8px below). Reads as the price's caption. The
+          cancellation chip is platform-correct via
+          `getPaywallTrustChips("mobile")` ("Cancel anytime in App
+          Store" rather than the generic "in-app"). */}
+      {trustChips && trustChips.length > 0 ? (
+        <View
+          testID="paywall-trust-strip"
+          style={styles.trustChipsInCard}
+          accessibilityRole="summary"
+          accessibilityLabel={`Trust commitments: ${trustChips.map((c) => c.a11yLabel).join(". ")}`}
+        >
+          {trustChips.map((chip) => (
+            <View
+              key={chip.label}
+              style={styles.trustChip}
+              accessibilityLabel={chip.a11yLabel}
+            >
+              <ShieldCheck size={12} color={Accent.success} strokeWidth={2.25} />
+              <Text style={styles.trustChipText}>{chip.label}</Text>
+            </View>
+          ))}
+        </View>
       ) : null}
 
       <Text style={styles.cardTag}>{tag}</Text>

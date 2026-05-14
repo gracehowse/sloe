@@ -51,13 +51,32 @@ export type PaywallTrustChip = {
  * Mobile renders these with `lucide-react-native#ShieldCheck`,
  * web renders with `lucide-react#ShieldCheck`. Keep the icon
  * choice consistent across platforms so the visual weight matches.
+ *
+ * DC4 (premium-bar audit 2026-05-14): the cancellation chip is
+ * platform-specific so users see the exact path they'll take.
+ *   - Web → Stripe Customer Portal (linked from Account → Billing)
+ *   - Mobile → App Store subscription manager
+ * Use `getPaywallTrustChips(platform)` to pick the right set; the
+ * exported `PAYWALL_TRUST_CHIPS` default keeps the platform-neutral
+ * "in-app" copy for any caller that doesn't know its platform yet
+ * (e.g. shared landing surfaces before checkout-tier selection).
  */
-export const PAYWALL_TRUST_CHIPS: ReadonlyArray<PaywallTrustChip> = [
-  {
-    label: "Cancel anytime in-app",
+export type PaywallTrustPlatform = "web" | "mobile";
+
+const CANCEL_CHIP_BY_PLATFORM: Record<PaywallTrustPlatform, PaywallTrustChip> = {
+  web: {
+    label: "Cancel in Stripe Portal",
     a11yLabel:
-      "Cancel anytime in-app. Manage your subscription directly through Apple, Google, or your account settings on web.",
+      "Cancel in the Stripe Customer Portal. Open Account, then Billing — you can cancel or pause in one click without contacting support.",
   },
+  mobile: {
+    label: "Cancel anytime in App Store",
+    a11yLabel:
+      "Cancel anytime in the App Store. Open Settings, then Apple ID, then Subscriptions — you can cancel or pause without contacting support.",
+  },
+};
+
+const SHARED_TRUST_CHIPS: ReadonlyArray<PaywallTrustChip> = [
   {
     label: "7-day refund, no email needed",
     a11yLabel:
@@ -68,6 +87,35 @@ export const PAYWALL_TRUST_CHIPS: ReadonlyArray<PaywallTrustChip> = [
     a11yLabel:
       "Price never changes mid-trial. The price you see is the price you pay — no surprise increases when your trial ends.",
   },
+];
+
+/**
+ * Resolve the three trust chips for a specific platform. The
+ * cancellation chip swaps in the platform-correct surface (Stripe
+ * Portal on web, App Store on mobile) so users read the exact path
+ * they'll take, not a generic "in-app" line that obscures whether
+ * cancellation goes through Apple or Stripe.
+ */
+export function getPaywallTrustChips(
+  platform: PaywallTrustPlatform,
+): ReadonlyArray<PaywallTrustChip> {
+  return [CANCEL_CHIP_BY_PLATFORM[platform], ...SHARED_TRUST_CHIPS];
+}
+
+/**
+ * Platform-neutral default. Kept for backwards compatibility with
+ * landing surfaces that render before a checkout tier (and therefore
+ * before a checkout platform) is selected. Pre-DC4 this was the only
+ * export; paywall/pricing surfaces now read `getPaywallTrustChips()`
+ * so the cancellation chip is platform-correct.
+ */
+export const PAYWALL_TRUST_CHIPS: ReadonlyArray<PaywallTrustChip> = [
+  {
+    label: "Cancel anytime in-app",
+    a11yLabel:
+      "Cancel anytime in-app. Manage your subscription directly through Apple, Google, or your account settings on web.",
+  },
+  ...SHARED_TRUST_CHIPS,
 ] as const;
 
 /**

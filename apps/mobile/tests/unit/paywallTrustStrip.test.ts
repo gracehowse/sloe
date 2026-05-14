@@ -41,17 +41,26 @@ describe("mobile paywall — trust strip render", () => {
     expect(src).toMatch(/PAYWALL_TRUST_CHIPS\.map\(/);
   });
 
-  it("trust strip is rendered ABOVE the billing toggle in the ScrollView", () => {
-    // The strip must appear before the toggle/tier section so it's
-    // visible without scrolling. This pins the order in the JSX
-    // tree: the trust-strip testID block must appear BEFORE the
-    // `style={styles.toggleWrap}` JSX use site (not the styles
-    // definition, which appears earlier in the file via useMemo).
+  it("billing toggle leads, trust strip follows ABOVE the tier cards", () => {
+    // 2026-05-14 (premium-bar audit Group I #6): the previous order was
+    // trust-strip → toggle → tiers. Audit found testers scrolled past
+    // the toggle (buried under the trust chips) and landed on the Pro
+    // card before realising they could switch billing periods. New
+    // order: toggle leads as the first prominent control after the
+    // gradient header, trust strip follows. Both still sit ABOVE the
+    // tier cards so the user never hits a Pro card without seeing
+    // either control.
     const stripIdx = src.indexOf('testID="paywall-trust-strip"');
     const toggleJsxIdx = src.indexOf("style={styles.toggleWrap}");
+    // The first tier card mount site — anchor for "both controls are
+    // above the tier cards". `TierCard tier="pro"` is the canonical
+    // mount JSX (skeleton cards above it don't have the testID).
+    const tierIdx = src.indexOf('tier="pro"');
     expect(stripIdx).toBeGreaterThan(0);
     expect(toggleJsxIdx).toBeGreaterThan(0);
-    expect(stripIdx).toBeLessThan(toggleJsxIdx);
+    expect(tierIdx).toBeGreaterThan(0);
+    expect(toggleJsxIdx).toBeLessThan(stripIdx);
+    expect(stripIdx).toBeLessThan(tierIdx);
   });
 });
 

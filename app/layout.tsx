@@ -42,6 +42,13 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
+  // Explicit width + initialScale so the meta viewport tag is always
+  // rendered, even if Next.js 15's default ever changes. Verified
+  // 2026-05-14 (premium-bar audit refuse-to-pass #298, mobile-web
+  // phone-browser routing) — `/today` on a mobile browser needs this
+  // to render at the device width rather than the desktop fallback.
+  width: "device-width",
+  initialScale: 1,
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#f4f5f7" },
     { media: "(prefers-color-scheme: dark)", color: "#111118" },

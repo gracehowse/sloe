@@ -332,10 +332,19 @@
   pointer-events: none;
   z-index: 0;
 }
+/* 2026-05-14 (premium-bar audit Group A landing #7): re-graded the
+   dark-mode hero gradient so both radial washes have the same
+   opacity (0.14) and symmetric anchor positions (15% / 85% on the
+   x-axis, matched 5% on the y-axis), plus matched ellipse sizes
+   (55% × 45%). The prior 0.16 vs 0.12 + 0% vs 10% offset gave the
+   left wash visible weight and the right wash a paler, lower-set
+   smear — asymmetric in a way visible the moment the eye scanned
+   the headline. Light mode keeps the slight asymmetry (page bg
+   balances it). */
 :where(.dark) .lp-hero::before {
   background:
-    radial-gradient(60% 50% at 15% 0%, rgba(76, 108, 224, 0.16), transparent 60%),
-    radial-gradient(50% 40% at 85% 10%, rgba(224, 72, 136, 0.12), transparent 60%);
+    radial-gradient(55% 45% at 15% 5%, rgba(76, 108, 224, 0.14), transparent 60%),
+    radial-gradient(55% 45% at 85% 5%, rgba(224, 72, 136, 0.14), transparent 60%);
 }
 .lp-hero-grid {
   position: relative;

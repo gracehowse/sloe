@@ -39,9 +39,24 @@ const GOALS: {
 ];
 
 export function MobileGoalStep() {
-  const { state, set } = useOnboarding();
+  const { state, set, go } = useOnboarding();
   const colors = useThemeColors();
   const overline = useStepOverline();
+  // 2026-05-14 (premium-bar audit B cross-cutting #6): single-choice
+  // steps auto-advance after a 200ms hold so the selection state
+  // registers visually before transition. Pattern mirrored on Sex +
+  // Activity so the user never has to find Continue on a step where
+  // the tap itself was the answer. Tap-on-same-value is a no-op (no
+  // delta from current state, no advance).
+  const advanceTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  React.useEffect(
+    () => () => {
+      if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
+    },
+    [],
+  );
   return (
     <MobileStepBody>
       <MobileStepHeader
@@ -56,7 +71,16 @@ export function MobileGoalStep() {
             <OptionCard
               key={g.id}
               selected={selected}
-              onPress={() => set({ goal: g.id })}
+              onPress={() => {
+                if (state.goal === g.id) return;
+                set({ goal: g.id });
+                if (advanceTimerRef.current) {
+                  clearTimeout(advanceTimerRef.current);
+                }
+                advanceTimerRef.current = setTimeout(() => {
+                  go(1);
+                }, 200);
+              }}
               icon={
                 <g.Icon
                   size={20}
