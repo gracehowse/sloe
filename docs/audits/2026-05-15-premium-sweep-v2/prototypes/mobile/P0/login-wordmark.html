@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Suppr — mobile login wordmark prototype</title>
+  <style>
+    :root {
+      --pm-ease: cubic-bezier(0.22, 1, 0.36, 1);
+      --pm-duration: 150ms;
+      --background: #f4f5f7;
+      --foreground: #111118;
+      --card: #ffffff;
+      --primary: #4c6ce0;
+      --primary-foreground: #ffffff;
+      --muted: #e4e4ec;
+      --muted-foreground: #6b6b78;
+      --border: #e4e4ec;
+      --input-background: #ededf2;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+      background: var(--background); color: var(--foreground);
+      min-height: 100vh; font-size: 15px; line-height: 1.45;
+      -webkit-font-smoothing: antialiased;
+    }
+    .prototype-header {
+      position: sticky; top: 0; z-index: 10;
+      background: var(--card); border-bottom: 1px solid var(--border);
+      padding: 16px 24px; display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+    }
+    .prototype-header h1 { font-size: 18px; font-weight: 700; }
+    .prototype-header .meta { font-size: 12px; color: var(--muted-foreground); margin-top: 2px; }
+    .prototype-header nav { margin-left: auto; display: flex; gap: 4px; background: var(--muted); border-radius: 8px; padding: 3px; }
+    .prototype-header nav button {
+      border: 0; background: transparent; color: var(--muted-foreground);
+      padding: 6px 14px; font-size: 13px; font-weight: 600;
+      border-radius: 6px; cursor: pointer;
+    }
+    .prototype-header nav button[aria-current="true"] { background: var(--card); color: var(--foreground); box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+
+    .prototype-canvas { padding: 32px; display: grid; gap: 32px; }
+    .prototype-canvas[data-view="before"] .state--after { display: none; }
+    .prototype-canvas[data-view="after"] .state--before { display: none; }
+    .prototype-canvas[data-view="side-by-side"] { grid-template-columns: 1fr 1fr; }
+    .state {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 48px 24px 24px; position: relative;
+    }
+    .state::before {
+      content: attr(data-label); position: absolute; top: 12px; left: 12px;
+      font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+      padding: 3px 8px; border-radius: 4px;
+      background: var(--muted); color: var(--muted-foreground);
+    }
+    .state--after::before { background: var(--primary); color: var(--primary-foreground); }
+
+    /* iPhone */
+    .iphone {
+      width: 430px; height: 932px;
+      border-radius: 50px; background: #000;
+      padding: 14px; margin: 0 auto;
+      box-shadow: 0 0 0 2px #1a1a1c, 0 24px 48px rgba(0, 0, 0, 0.18);
+      position: relative;
+    }
+    .iphone__screen {
+      width: 100%; height: 100%; border-radius: 38px; overflow: hidden;
+      background: var(--background); position: relative;
+    }
+    .iphone__status-bar {
+      height: 47px; display: flex; align-items: center; justify-content: space-between;
+      padding: 0 28px 0 32px; font-size: 15px; font-weight: 600;
+      color: var(--foreground); position: relative; z-index: 2;
+    }
+    .iphone__status-bar::before {
+      content: ""; position: absolute; left: 50%; top: 11px; transform: translateX(-50%);
+      width: 124px; height: 36px; background: #000; border-radius: 20px;
+    }
+    .iphone__status-bar-time, .iphone__status-bar-right { z-index: 3; }
+    .iphone__status-bar-right { display: flex; gap: 4px; align-items: center; font-size: 12px; }
+
+    .login-screen {
+      padding: 56px 24px 24px;
+      text-align: center;
+    }
+    /* BEFORE wordmark: caps "SUPPR" */
+    .wordmark-before {
+      font-size: 32px; font-weight: 800;
+      letter-spacing: 0.18em;
+      margin-bottom: 16px;
+      color: var(--foreground);
+    }
+    /* AFTER wordmark: mixed-case "Suppr" matching landing/Welcome */
+    .wordmark-after {
+      font-size: 32px; font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 16px;
+      color: var(--foreground);
+    }
+    .login-screen__title {
+      font-size: 22px; font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .login-screen__sub {
+      font-size: 14px; color: var(--muted-foreground);
+      margin-bottom: 28px;
+    }
+    .field {
+      text-align: left; margin-bottom: 14px;
+    }
+    .field label {
+      display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px;
+    }
+    .field input {
+      width: 100%; padding: 13px 14px;
+      background: var(--input-background);
+      border: 0; border-radius: 12px;
+      font-size: 15px; font-family: inherit;
+    }
+    .login-screen__cta {
+      width: 100%; padding: 14px; margin-top: 4px;
+      background: var(--primary); color: var(--primary-foreground);
+      border: 0; border-radius: 14px;
+      font-weight: 700; font-size: 15px; cursor: pointer;
+    }
+    .login-screen__sso {
+      width: 100%; padding: 13px; margin-top: 10px;
+      background: #000; color: white;
+      border: 0; border-radius: 14px;
+      font-weight: 600; font-size: 14px;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      cursor: pointer;
+    }
+    .login-screen__helper {
+      margin-top: 18px;
+      font-size: 13px;
+      color: var(--muted-foreground);
+    }
+    .login-screen__helper a { color: var(--primary); }
+
+    .prototype-notes {
+      margin: 0 32px 64px; background: var(--card);
+      border: 1px solid var(--border); border-radius: 12px; padding: 24px;
+    }
+    .prototype-notes h2 { font-size: 14px; font-weight: 700; margin-bottom: 8px; margin-top: 16px; }
+    .prototype-notes h2:first-child { margin-top: 0; }
+    .prototype-notes ul { list-style: none; display: grid; gap: 8px; }
+    .prototype-notes li { padding-left: 8px; border-left: 2px solid var(--primary); font-size: 14px; }
+    .prototype-notes li strong {
+      display: inline-block; font-size: 11px; font-weight: 700;
+      background: var(--muted); color: var(--muted-foreground);
+      padding: 2px 6px; border-radius: 4px; margin-right: 6px;
+      text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .prototype-notes p { font-size: 14px; color: var(--muted-foreground); }
+    .prototype-notes code {
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+      font-size: 12px; background: var(--muted); color: var(--foreground);
+      padding: 1px 5px; border-radius: 3px;
+    }
+    [data-view="side-by-side"] .iphone {
+      transform: scale(0.75); transform-origin: top center;
+      margin-bottom: -240px;
+    }
+  </style>
+</head>
+<body>
+  <header class="prototype-header">
+    <div>
+      <h1>Mobile login — wordmark unify</h1>
+      <p class="meta">Surface: <code>apps/mobile/app/login.tsx</code> · Row: #15.1 (TIGHTEN brand consistency) · code read only — no pixel capture</p>
+    </div>
+    <nav>
+      <button onclick="setView('before', this)">Before</button>
+      <button onclick="setView('after', this)" aria-current="true">After</button>
+      <button onclick="setView('side-by-side', this)">Side-by-side</button>
+    </nav>
+  </header>
+
+  <main class="prototype-canvas" data-view="after">
+
+    <section class="state state--before" data-label="Before (current)">
+      <div class="iphone">
+        <div class="iphone__screen">
+          <div class="iphone__status-bar">
+            <span class="iphone__status-bar-time">9:41</span>
+            <span class="iphone__status-bar-right">●●● 100%</span>
+          </div>
+          <div class="login-screen">
+            <div class="wordmark-before">SUPPR</div>
+            <h2 class="login-screen__title">Welcome back</h2>
+            <p class="login-screen__sub">Sign in to continue.</p>
+            <div class="field"><label>Email</label><input type="email" placeholder="you@domain.com"></div>
+            <div class="field"><label>Password</label><input type="password" placeholder="Your password"></div>
+            <button class="login-screen__cta">Sign in</button>
+            <button class="login-screen__sso"> Continue with Apple</button>
+            <p class="login-screen__helper">
+              <a href="#">Forgot password?</a>
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="state state--after" data-label="After (proposed)">
+      <div class="iphone">
+        <div class="iphone__screen">
+          <div class="iphone__status-bar">
+            <span class="iphone__status-bar-time">9:41</span>
+            <span class="iphone__status-bar-right">●●● 100%</span>
+          </div>
+          <div class="login-screen">
+            <!-- 15.1 TIGHTEN: caps "SUPPR" → mixed-case "Suppr" -->
+            <div class="wordmark-after">Suppr</div>
+            <h2 class="login-screen__title">Welcome back</h2>
+            <p class="login-screen__sub">Sign in to continue.</p>
+            <div class="field"><label>Email</label><input type="email" placeholder="you@domain.com"></div>
+            <div class="field"><label>Password</label><input type="password" placeholder="Your password"></div>
+            <button class="login-screen__cta">Sign in</button>
+            <button class="login-screen__sso"> Continue with Apple</button>
+            <p class="login-screen__helper">
+              <a href="#">Forgot password?</a>
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <aside class="prototype-notes">
+    <h2>What changed</h2>
+    <ul>
+      <li>
+        <strong>#15.1 TIGHTEN</strong>
+        Changed the wordmark from caps "SUPPR" (with wide letter-spacing) to mixed-case "Suppr" (with tight
+        negative letter-spacing) — same treatment as the landing top-bar wordmark and the mobile Welcome screen's
+        brand mark.
+        <em>What it duplicates / weakens:</em> removes brand-mark drift between this screen and the rest of the app.
+        The caps "SUPPR" was an inconsistency, not an intentional treatment for the auth surface.
+      </li>
+    </ul>
+
+    <h2>DC preservation</h2>
+    <p>
+      No DC touched. Pure brand-consistency polish at the auth touchpoint. DC12 calm voice is intact ("Welcome back"
+      preserved).
+    </p>
+
+    <h2>Refused borrows considered</h2>
+    <p>
+      Considered adding the same Suppr "S" wordmark tile (the rounded-square mark used on Welcome) above the
+      "Welcome back" headline to match the web login fix in row #5.1. Refused for now — the mobile login screen
+      already reads cleanly without an icon tile, and adding one would crowd the auth card. Revisit if dark-mode
+      capture shows the wordmark loses prominence on near-black.
+    </p>
+
+    <h2>Capture gaps still open</h2>
+    <p>
+      <strong>No pixel captured</strong> — RTP-6 capture flow doesn't reach the login screen for authed fixture
+      users. CF-4 covers re-capture (light + dark) before this row's G4 sign-off. The prototype above is grounded
+      in <code>apps/mobile/app/login.tsx</code> code read only, not actual pixels.
+    </p>
+  </aside>
+
+  <script>
+    function setView(view, btn) {
+      const canvas = document.querySelector('.prototype-canvas');
+      canvas.dataset.view = view;
+      document.querySelectorAll('.prototype-header nav button').forEach(b => b.removeAttribute('aria-current'));
+      btn.setAttribute('aria-current', 'true');
+    }
+  </script>
+</body>
+</html>

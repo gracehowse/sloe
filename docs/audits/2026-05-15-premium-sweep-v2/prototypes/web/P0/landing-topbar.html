@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Suppr — landing top-bar prototype</title>
+  <style>
+    :root {
+      --pm-ease: cubic-bezier(0.22, 1, 0.36, 1);
+      --pm-duration: 150ms;
+      --background: #f4f5f7;
+      --foreground: #111118;
+      --card: #ffffff;
+      --primary: #4c6ce0;
+      --primary-foreground: #ffffff;
+      --muted: #e4e4ec;
+      --muted-foreground: #6b6b78;
+      --border: #e4e4ec;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+      background: var(--background);
+      color: var(--foreground);
+      min-height: 100vh;
+      font-size: 15px;
+      line-height: 1.45;
+      -webkit-font-smoothing: antialiased;
+    }
+    .prototype-header {
+      position: sticky; top: 0; z-index: 10;
+      background: var(--card); border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+    }
+    .prototype-header h1 { font-size: 18px; font-weight: 700; }
+    .prototype-header .meta { font-size: 12px; color: var(--muted-foreground); margin-top: 2px; }
+    .prototype-header nav { margin-left: auto; display: flex; gap: 4px; background: var(--muted); border-radius: 8px; padding: 3px; }
+    .prototype-header nav button {
+      border: 0; background: transparent; color: var(--muted-foreground);
+      padding: 6px 14px; font-size: 13px; font-weight: 600;
+      border-radius: 6px; cursor: pointer;
+    }
+    .prototype-header nav button[aria-current="true"] { background: var(--card); color: var(--foreground); box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+
+    .prototype-canvas { padding: 32px; display: grid; gap: 32px; }
+    .prototype-canvas[data-view="before"] .state--after { display: none; }
+    .prototype-canvas[data-view="after"] .state--before { display: none; }
+    .prototype-canvas[data-view="side-by-side"] { grid-template-columns: 1fr 1fr; }
+    .state {
+      background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+      padding: 48px 0 0; position: relative; overflow: hidden;
+    }
+    .state::before {
+      content: attr(data-label); position: absolute; top: 12px; left: 12px;
+      font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+      padding: 3px 8px; border-radius: 4px;
+      background: var(--muted); color: var(--muted-foreground);
+    }
+    .state--after::before { background: var(--primary); color: var(--primary-foreground); }
+
+    /* Landing top-bar */
+    .landing-topbar {
+      display: flex; align-items: center; padding: 14px 32px;
+      border-bottom: 1px solid var(--border);
+      gap: 24px;
+    }
+    .topbar__brand {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 16px;
+    }
+    .topbar__brand-mark {
+      width: 24px; height: 24px;
+      background: var(--primary); border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      color: white; font-weight: 800; font-size: 13px;
+    }
+    /* BEFORE: thinner wordmark */
+    .state--before .topbar__brand-text { font-weight: 600; letter-spacing: 0; }
+    /* AFTER (1.1): hairline-thickened wordmark to match Linear brandmark prominence */
+    .state--after .topbar__brand-text { font-weight: 700; letter-spacing: -0.005em; }
+
+    .topbar__nav {
+      display: flex; gap: 24px; flex: 1;
+    }
+    .topbar__nav a {
+      font-size: 13px; color: var(--muted-foreground);
+      text-decoration: none; font-weight: 500;
+    }
+    .topbar__right {
+      display: flex; align-items: center; gap: 16px;
+    }
+    /* BEFORE: search icon present */
+    .topbar__search {
+      width: 32px; height: 32px;
+      border-radius: 8px; background: var(--muted);
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 14px; color: var(--muted-foreground);
+    }
+    .topbar__signin {
+      font-size: 13px; font-weight: 500;
+      color: var(--foreground);
+    }
+    .topbar__cta {
+      background: var(--primary); color: var(--primary-foreground);
+      border: 0; border-radius: 999px;
+      padding: 8px 16px;
+      font-size: 13px; font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* Hero — same in before & after */
+    .hero {
+      padding: 64px 32px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 48px;
+      align-items: center;
+    }
+    .hero__eyebrow {
+      display: inline-block;
+      background: rgba(76, 108, 224, 0.08);
+      color: var(--primary);
+      font-size: 12px; font-weight: 700;
+      padding: 4px 10px; border-radius: 12px;
+      margin-bottom: 20px;
+    }
+    .hero__title {
+      font-size: 56px; font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.05;
+      margin-bottom: 16px;
+    }
+    .hero__sub {
+      font-size: 15px; color: var(--muted-foreground);
+      margin-bottom: 24px;
+      max-width: 440px;
+    }
+    .hero__ctas { display: flex; gap: 12px; margin-bottom: 16px; }
+    .hero__cta--primary {
+      background: var(--primary); color: var(--primary-foreground);
+      border: 0; border-radius: 999px;
+      padding: 12px 22px;
+      font-weight: 700; font-size: 14px;
+      cursor: pointer;
+    }
+    .hero__cta--ghost {
+      background: var(--card); color: var(--foreground);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 12px 22px;
+      font-weight: 600; font-size: 14px;
+      cursor: pointer;
+    }
+    .hero__visual {
+      background: var(--muted);
+      border-radius: 16px;
+      height: 320px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; color: var(--muted-foreground);
+    }
+
+    .prototype-notes {
+      margin: 32px; background: var(--card);
+      border: 1px solid var(--border); border-radius: 12px; padding: 24px;
+    }
+    .prototype-notes h2 { font-size: 14px; font-weight: 700; margin-bottom: 8px; margin-top: 16px; }
+    .prototype-notes h2:first-child { margin-top: 0; }
+    .prototype-notes ul { list-style: none; display: grid; gap: 8px; }
+    .prototype-notes li { padding-left: 8px; border-left: 2px solid var(--primary); font-size: 14px; }
+    .prototype-notes li strong {
+      display: inline-block; font-size: 11px; font-weight: 700;
+      background: var(--muted); color: var(--muted-foreground);
+      padding: 2px 6px; border-radius: 4px; margin-right: 6px;
+      text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .prototype-notes p { font-size: 14px; color: var(--muted-foreground); }
+    .prototype-notes code {
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+      font-size: 12px; background: var(--muted); color: var(--foreground);
+      padding: 1px 5px; border-radius: 3px;
+    }
+  </style>
+</head>
+<body>
+  <header class="prototype-header">
+    <div>
+      <h1>Web landing top-bar — minor polish</h1>
+      <p class="meta">Surface: <code>app/(landing)/LandingPage.tsx</code> · Rows: #1.1 (TIGHTEN wordmark weight), #1.2 (SUBTRACT search icon)</p>
+    </div>
+    <nav>
+      <button onclick="setView('before', this)">Before</button>
+      <button onclick="setView('after', this)" aria-current="true">After</button>
+      <button onclick="setView('side-by-side', this)">Side-by-side</button>
+    </nav>
+  </header>
+
+  <main class="prototype-canvas" data-view="after">
+
+    <section class="state state--before" data-label="Before (capture)">
+      <div class="landing-topbar">
+        <div class="topbar__brand">
+          <div class="topbar__brand-mark">S</div>
+          <span class="topbar__brand-text">Suppr</span>
+        </div>
+        <div class="topbar__nav">
+          <a href="#">How it works</a>
+          <a href="#">Features</a>
+          <a href="#">Roadmap</a>
+          <a href="#">Pricing</a>
+          <a href="#">FAQ</a>
+        </div>
+        <div class="topbar__right">
+          <span class="topbar__search">⌕</span>
+          <span class="topbar__signin">Sign in</span>
+          <button class="topbar__cta">Get started</button>
+        </div>
+      </div>
+      <div class="hero">
+        <div>
+          <span class="hero__eyebrow">Paste a TikTok, get real macros</span>
+          <h2 class="hero__title">Import any recipe. Get real macros.</h2>
+          <p class="hero__sub">Suppr is the recipe and nutrition platform for actually-cook. Paste a link from Instagram, TikTok, or any recipe blog — Suppr parses every ingredient and matches it against USDA FoodData Central and other public food databases so you know what's on the plate.</p>
+          <div class="hero__ctas">
+            <button class="hero__cta--primary">Get started — it's free</button>
+            <button class="hero__cta--ghost">See how it works →</button>
+          </div>
+          <p style="font-size:12px;color:var(--muted-foreground);">Matches against USDA FoodData Central · Web and iOS (TestFlight)</p>
+        </div>
+        <div class="hero__visual">[mobile mockup of Today]</div>
+      </div>
+    </section>
+
+    <section class="state state--after" data-label="After (proposed)">
+      <div class="landing-topbar">
+        <div class="topbar__brand">
+          <div class="topbar__brand-mark">S</div>
+          <span class="topbar__brand-text">Suppr</span>
+        </div>
+        <div class="topbar__nav">
+          <a href="#">How it works</a>
+          <a href="#">Features</a>
+          <a href="#">Roadmap</a>
+          <a href="#">Pricing</a>
+          <a href="#">FAQ</a>
+        </div>
+        <div class="topbar__right">
+          <!-- 1.2 SUBTRACT: search icon removed (no site search exists) -->
+          <span class="topbar__signin">Sign in</span>
+          <button class="topbar__cta">Get started</button>
+        </div>
+      </div>
+      <div class="hero">
+        <div>
+          <span class="hero__eyebrow">Paste a TikTok, get real macros</span>
+          <h2 class="hero__title">Import any recipe. Get real macros.</h2>
+          <p class="hero__sub">Suppr is the recipe and nutrition platform for actually-cook. Paste a link from Instagram, TikTok, or any recipe blog — Suppr parses every ingredient and matches it against USDA FoodData Central and other public food databases so you know what's on the plate.</p>
+          <div class="hero__ctas">
+            <button class="hero__cta--primary">Get started — it's free</button>
+            <button class="hero__cta--ghost">See how it works →</button>
+          </div>
+          <p style="font-size:12px;color:var(--muted-foreground);">Matches against USDA FoodData Central · Web and iOS (TestFlight)</p>
+        </div>
+        <div class="hero__visual">[mobile mockup of Today]</div>
+      </div>
+    </section>
+
+  </main>
+
+  <aside class="prototype-notes">
+    <h2>What changed</h2>
+    <ul>
+      <li>
+        <strong>#1.1 TIGHTEN</strong>
+        Wordmark weight nudged from <code>font-weight: 600</code> to <code>font-weight: 700</code>, with -0.005em letter-spacing tightening. Brings prominence closer to Linear's brandmark in the top-bar without making the wordmark shout.
+        <em>What it duplicates / weakens:</em> nothing — tightens visual hierarchy, no content change.
+      </li>
+      <li>
+        <strong>#1.2 SUBTRACT</strong>
+        Removed the search icon from the top-bar nav. Suppr doesn't have a site-wide search yet, so the icon was a broken promise — clicking it either did nothing or opened a no-op interface.
+        <em>What it duplicates / weakens:</em> duplicates a search affordance the product can't fulfil. Honest UX = don't show what you don't have.
+      </li>
+    </ul>
+
+    <h2>DC preservation</h2>
+    <p>No DC touched. Top-bar isn't part of any defended choice; this is pure execution polish.</p>
+
+    <h2>Refused borrows considered</h2>
+    <p>
+      Considered swapping the "Sign in" + "Get started" pair for a single "Get started" CTA per Linear's
+      sign-in-via-CTA pattern. Refused — Suppr's existing pair is more honest about the two paths (returning users vs.
+      new users) and matches the DC12 calm-voice posture of "no tricks at the door".
+    </p>
+
+    <h2>Capture gaps still open</h2>
+    <p>None for this surface. Both light and dark, both viewports captured.</p>
+  </aside>
+
+  <script>
+    function setView(view, btn) {
+      const canvas = document.querySelector('.prototype-canvas');
+      canvas.dataset.view = view;
+      document.querySelectorAll('.prototype-header nav button').forEach(b => b.removeAttribute('aria-current'));
+      btn.setAttribute('aria-current', 'true');
+    }
+  </script>
+</body>
+</html>

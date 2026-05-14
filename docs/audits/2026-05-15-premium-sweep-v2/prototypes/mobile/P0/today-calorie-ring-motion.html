@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Suppr — mobile Today CalorieRing motion prototype</title>
+  <style>
+    :root {
+      --pm-ease: cubic-bezier(0.22, 1, 0.36, 1);
+      --ease-out-cubic: cubic-bezier(0.05, 0.7, 0.1, 1);
+      --pm-duration: 150ms;
+      --background: #f4f5f7;
+      --foreground: #111118;
+      --card: #ffffff;
+      --primary: #4c6ce0;
+      --primary-foreground: #ffffff;
+      --muted: #e4e4ec;
+      --muted-foreground: #6b6b78;
+      --border: #e4e4ec;
+      --macro-protein: #4c6ce0;
+      --macro-carbs: #ed6b2a;
+      --macro-fat: #e04888;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+      background: var(--background); color: var(--foreground);
+      min-height: 100vh; font-size: 15px; line-height: 1.45;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .prototype-header {
+      position: sticky; top: 0; z-index: 10;
+      background: var(--card); border-bottom: 1px solid var(--border);
+      padding: 16px 24px; display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+    }
+    .prototype-header h1 { font-size: 18px; font-weight: 700; }
+    .prototype-header .meta { font-size: 12px; color: var(--muted-foreground); margin-top: 2px; }
+    .prototype-header nav { margin-left: auto; display: flex; gap: 4px; background: var(--muted); border-radius: 8px; padding: 3px; }
+    .prototype-header nav button {
+      border: 0; background: transparent; color: var(--muted-foreground);
+      padding: 6px 14px; font-size: 13px; font-weight: 600;
+      border-radius: 6px; cursor: pointer;
+    }
+    .prototype-header nav button[aria-current="true"] { background: var(--card); color: var(--foreground); box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+
+    .prototype-canvas { padding: 32px; display: grid; gap: 32px; }
+    .prototype-canvas[data-view="before"] .state--after { display: none; }
+    .prototype-canvas[data-view="after"] .state--before { display: none; }
+    .prototype-canvas[data-view="side-by-side"] { grid-template-columns: 1fr 1fr; }
+    .state {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 48px 24px 24px; position: relative;
+    }
+    .state::before {
+      content: attr(data-label); position: absolute; top: 12px; left: 12px;
+      font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+      padding: 3px 8px; border-radius: 4px;
+      background: var(--muted); color: var(--muted-foreground);
+    }
+    .state--after::before { background: var(--primary); color: var(--primary-foreground); }
+
+    /* iPhone (dark) — fixed background for Today dark screen */
+    .iphone {
+      width: 430px; height: 932px;
+      border-radius: 50px; background: #000;
+      padding: 14px; margin: 0 auto;
+      box-shadow: 0 0 0 2px #1a1a1c, 0 24px 48px rgba(0, 0, 0, 0.18);
+      position: relative;
+    }
+    .iphone__screen {
+      width: 100%; height: 100%; border-radius: 38px; overflow: hidden;
+      background: #101014; color: #e4e4e8;
+      position: relative;
+    }
+    .iphone__status-bar {
+      height: 47px; display: flex; align-items: center; justify-content: space-between;
+      padding: 0 28px 0 32px; font-size: 15px; font-weight: 600;
+      color: white; position: relative; z-index: 2;
+    }
+    .iphone__status-bar::before {
+      content: ""; position: absolute; left: 50%; top: 11px; transform: translateX(-50%);
+      width: 124px; height: 36px; background: #000; border-radius: 20px;
+    }
+    .iphone__status-bar-time, .iphone__status-bar-right { z-index: 3; }
+    .iphone__status-bar-right { display: flex; gap: 4px; align-items: center; font-size: 12px; }
+
+    /* Today screen header */
+    .today-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px 12px;
+    }
+    .today-header__left {
+      display: flex; align-items: center; gap: 8px;
+    }
+    .today-header__back {
+      width: 28px; height: 28px; border-radius: 8px;
+      background: #1c1c22;
+      display: flex; align-items: center; justify-content: center;
+      color: #e4e4e8; font-size: 14px;
+    }
+    .today-header__title {
+      font-size: 24px; font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+    .today-header__streak {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: rgba(76, 108, 224, 0.18);
+      color: #b4c4ff;
+      padding: 4px 10px; border-radius: 999px;
+      font-size: 11px; font-weight: 700;
+    }
+    .today-header__right {
+      display: flex; align-items: center; gap: 8px;
+    }
+    .today-header__avatar {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: linear-gradient(135deg, #c4419e, #5a4ad6);
+      display: flex; align-items: center; justify-content: center;
+      color: white; font-weight: 700; font-size: 12px;
+    }
+
+    /* Day strip */
+    .day-strip {
+      display: flex; justify-content: space-between;
+      padding: 8px 20px 20px;
+    }
+    .day {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: #6b6b78;
+    }
+    .day__dot {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: #1c1c22;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 600;
+      color: #e4e4e8;
+    }
+    .day--past .day__dot { background: rgba(34, 168, 96, 0.18); color: #22a860; }
+    .day--today .day__dot { background: var(--primary); color: white; }
+    .day--today { color: var(--primary); font-weight: 700; }
+
+    /* Calorie ring */
+    .ring-card {
+      background: #16161c;
+      margin: 0 20px 16px;
+      border-radius: 16px;
+      padding: 32px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .ring-stage {
+      width: 220px; height: 220px;
+      position: relative;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .ring-svg {
+      width: 100%; height: 100%;
+      position: absolute; inset: 0;
+      transform: rotate(-90deg);
+    }
+    .ring-track {
+      fill: none;
+      stroke: rgba(255,255,255,0.06);
+      stroke-width: 8;
+    }
+    /* Gradient empty-state stroke */
+    .ring-empty {
+      fill: none;
+      stroke: url(#empty-gradient);
+      stroke-width: 8;
+      stroke-linecap: round;
+    }
+    .ring-progress {
+      fill: none;
+      stroke: var(--primary);
+      stroke-width: 8;
+      stroke-linecap: round;
+      stroke-dasharray: 660;
+      stroke-dashoffset: 660;
+    }
+    /* AFTER animation — DC1 Allowed borrow: Apple Watch Move ring 200ms ease-out fill */
+    .state--after .ring-progress {
+      animation: ring-fill 1.2s var(--ease-out-cubic) forwards;
+    }
+    @keyframes ring-fill {
+      to { stroke-dashoffset: 250; }  /* roughly 62% fill ~ 1014 of 1650 kcal */
+    }
+
+    .ring-center {
+      position: relative;
+      z-index: 2;
+      text-align: center;
+    }
+    .ring-center__big {
+      font-size: 48px; font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.02em;
+      color: white;
+    }
+    .ring-center__label {
+      font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: #6b6b78; margin-top: 4px;
+    }
+
+    /* Macro arcs inside ring */
+    .macro-protein, .macro-carbs, .macro-fat {
+      fill: none;
+      stroke-width: 6;
+      stroke-linecap: round;
+      stroke-dasharray: 0;
+    }
+    /* BEFORE: empty state with just "Start your day" */
+    .ring-empty-label {
+      font-size: 16px; color: #6b6b78; font-weight: 500;
+    }
+
+    .control-bar {
+      padding: 16px 32px;
+      display: flex; justify-content: center; align-items: center; gap: 12px;
+      background: var(--card); border-top: 1px solid var(--border);
+      border-radius: 0 0 12px 12px;
+      margin: 32px -24px -24px;
+    }
+    .replay-button {
+      background: var(--primary); color: var(--primary-foreground);
+      border: 0; border-radius: 999px;
+      padding: 10px 20px;
+      font-size: 13px; font-weight: 700;
+      cursor: pointer;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .haptic-note {
+      font-size: 12px; color: var(--muted-foreground);
+      font-style: italic;
+    }
+
+    .prototype-notes {
+      margin: 0 32px 64px; background: var(--card);
+      border: 1px solid var(--border); border-radius: 12px; padding: 24px;
+    }
+    .prototype-notes h2 { font-size: 14px; font-weight: 700; margin-bottom: 8px; margin-top: 16px; }
+    .prototype-notes h2:first-child { margin-top: 0; }
+    .prototype-notes ul { list-style: none; display: grid; gap: 8px; }
+    .prototype-notes li { padding-left: 8px; border-left: 2px solid var(--primary); font-size: 14px; }
+    .prototype-notes li strong {
+      display: inline-block; font-size: 11px; font-weight: 700;
+      background: var(--muted); color: var(--muted-foreground);
+      padding: 2px 6px; border-radius: 4px; margin-right: 6px;
+      text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .prototype-notes p { font-size: 14px; color: var(--muted-foreground); }
+    .prototype-notes code {
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+      font-size: 12px; background: var(--muted); color: var(--foreground);
+      padding: 1px 5px; border-radius: 3px;
+    }
+
+    [data-view="side-by-side"] .iphone {
+      transform: scale(0.65); transform-origin: top center;
+      margin-bottom: -320px;
+    }
+  </style>
+</head>
+<body>
+  <header class="prototype-header">
+    <div>
+      <h1>Mobile Today — CalorieRing motion (DC1 allowed borrows)</h1>
+      <p class="meta">Surface: <code>apps/mobile/components/charts/CalorieRing.tsx</code> · Rows: #11.1 (ring-fill anim), #11.2 (count-up anim), #11.3 (haptic) · All explicit DC1 Allowed borrows</p>
+    </div>
+    <nav>
+      <button onclick="setView('before', this)">Before</button>
+      <button onclick="setView('after', this)" aria-current="true">After</button>
+      <button onclick="setView('side-by-side', this)">Side-by-side</button>
+    </nav>
+  </header>
+
+  <main class="prototype-canvas" data-view="after">
+
+    <!-- ─────────────── BEFORE ─────────────── -->
+    <section class="state state--before" data-label="Before (no animation)">
+      <div class="iphone">
+        <div class="iphone__screen">
+          <div class="iphone__status-bar">
+            <span class="iphone__status-bar-time">9:41</span>
+            <span class="iphone__status-bar-right">●●● 100%</span>
+          </div>
+          <div class="today-header">
+            <div class="today-header__left">
+              <span class="today-header__back">‹</span>
+              <span class="today-header__title">Today</span>
+              <span class="today-header__streak">🔥 38-day streak</span>
+            </div>
+            <div class="today-header__right">
+              <span class="today-header__back">›</span>
+              <span class="today-header__avatar">G</span>
+            </div>
+          </div>
+          <div class="day-strip">
+            <div class="day day--past"><span>Mon</span><span class="day__dot">✓</span></div>
+            <div class="day day--past"><span>Tue</span><span class="day__dot">✓</span></div>
+            <div class="day day--past"><span>Wed</span><span class="day__dot">✓</span></div>
+            <div class="day day--today"><span>Thu</span><span class="day__dot">14</span></div>
+            <div class="day"><span>Fri</span><span class="day__dot">15</span></div>
+            <div class="day"><span>Sat</span><span class="day__dot">16</span></div>
+            <div class="day"><span>Sun</span><span class="day__dot">17</span></div>
+          </div>
+          <div class="ring-card">
+            <div class="ring-stage">
+              <svg class="ring-svg" viewBox="0 0 220 220">
+                <defs>
+                  <linearGradient id="empty-gradient-b" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#4c6ce0" stop-opacity="0.4"/>
+                    <stop offset="100%" stop-color="#c4419e" stop-opacity="0.4"/>
+                  </linearGradient>
+                </defs>
+                <circle cx="110" cy="110" r="105" class="ring-track"/>
+                <circle cx="110" cy="110" r="105" fill="none"
+                        stroke="url(#empty-gradient-b)" stroke-width="8" stroke-linecap="round"/>
+              </svg>
+              <div class="ring-center">
+                <span class="ring-empty-label">Start your day</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="control-bar">
+        <span class="haptic-note">No animation. Logging a meal swaps the ring from empty-state to filled-state in a single frame, with no count-up or haptic.</span>
+      </div>
+    </section>
+
+    <!-- ─────────────── AFTER ─────────────── -->
+    <section class="state state--after" data-label="After (DC1 allowed borrows)">
+      <div class="iphone">
+        <div class="iphone__screen">
+          <div class="iphone__status-bar">
+            <span class="iphone__status-bar-time">9:41</span>
+            <span class="iphone__status-bar-right">●●● 100%</span>
+          </div>
+          <div class="today-header">
+            <div class="today-header__left">
+              <span class="today-header__back">‹</span>
+              <span class="today-header__title">Today</span>
+              <span class="today-header__streak">🔥 38-day streak</span>
+            </div>
+            <div class="today-header__right">
+              <span class="today-header__back">›</span>
+              <span class="today-header__avatar">G</span>
+            </div>
+          </div>
+          <div class="day-strip">
+            <div class="day day--past"><span>Mon</span><span class="day__dot">✓</span></div>
+            <div class="day day--past"><span>Tue</span><span class="day__dot">✓</span></div>
+            <div class="day day--past"><span>Wed</span><span class="day__dot">✓</span></div>
+            <div class="day day--today"><span>Thu</span><span class="day__dot">14</span></div>
+            <div class="day"><span>Fri</span><span class="day__dot">15</span></div>
+            <div class="day"><span>Sat</span><span class="day__dot">16</span></div>
+            <div class="day"><span>Sun</span><span class="day__dot">17</span></div>
+          </div>
+          <div class="ring-card">
+            <div class="ring-stage" id="ring-stage-after">
+              <svg class="ring-svg" viewBox="0 0 220 220">
+                <defs>
+                  <linearGradient id="empty-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#4c6ce0" stop-opacity="0.18"/>
+                    <stop offset="100%" stop-color="#c4419e" stop-opacity="0.18"/>
+                  </linearGradient>
+                </defs>
+                <circle cx="110" cy="110" r="105" class="ring-track"/>
+                <circle cx="110" cy="110" r="105" class="ring-empty"/>
+                <circle cx="110" cy="110" r="105" class="ring-progress"/>
+              </svg>
+              <div class="ring-center">
+                <span class="ring-center__big" id="kcal-count">0</span>
+                <div class="ring-center__label">kcal logged</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="control-bar">
+        <button class="replay-button" onclick="replayAnimation()">
+          ↻ Replay first-log animation
+        </button>
+        <span class="haptic-note">💡 At <code>animation.start()</code> the SDK fires <code>Haptics.selectionAsync()</code> — silent on HTML; tactile on device.</span>
+      </div>
+    </section>
+
+  </main>
+
+  <aside class="prototype-notes">
+    <h2>What changed</h2>
+    <ul>
+      <li>
+        <strong>#11.1 NEW (DC1 allowed borrow)</strong>
+        Apple Watch Move-ring 200ms ease-out fill animation on the ring's empty → lit transition. Fires once per
+        day on the user's first meal log. Subsequent logs in the same day tween from the current ring position
+        instead of resetting.
+        <em>What it duplicates / weakens:</em> adds a motion detail; does not duplicate any existing visual.
+        Explicitly listed in <code>defended-choices.md</code> §DC1 Allowed borrows.
+      </li>
+      <li>
+        <strong>#11.2 NEW (DC1 allowed borrow)</strong>
+        Cal AI count-up animation on the hero kcal number (400ms cubic ease, tabular-nums so the digit width
+        doesn't jitter). Triggered on the same data-update event as the ring fill.
+        <em>What it duplicates / weakens:</em> does not duplicate the long-press detail surface (which remains
+        the disclosure for over/remaining). Explicit DC1 Allowed borrow.
+      </li>
+      <li>
+        <strong>#11.3 NEW (DC1 allowed borrow)</strong>
+        Withings-style light haptic on the same data-update (<code>Haptics.selectionAsync()</code> on mobile only).
+        Silent in HTML; tactile on device. Provides the third sensory channel (visual ring fill + visual count-up +
+        tactile feedback) that Apple Health and Withings use to mark a logged event.
+        <em>What it duplicates / weakens:</em> nothing — no existing haptic on this surface.
+      </li>
+    </ul>
+
+    <h2>DC1 preservation check</h2>
+    <p>
+      DC1 (multi-ring calorie + macros spine) — the load-bearing nested-arc spine is unchanged. These three
+      additions are all explicit DC1 Allowed borrows listed in <code>defended-choices.md</code> §DC1 ("Apple Watch
+      Move ring 200ms fill animation", "Cal AI count-up animation", "Withings light haptic"). They strengthen the
+      concept by giving the ring's empty→logged transition a moment of consequence — exactly the borrows the DC
+      reference doc pre-approves.
+    </p>
+
+    <h2>DC10 preservation check</h2>
+    <p>
+      DC10 (calorie ring 3-state colour rule — empty=gradient / under=success-green / over=destructive-red) is
+      explicitly NOT touched here. The animation uses the primary brand colour for the filled-state demo (under-
+      budget), the empty-state gradient stroke is preserved, and the over-budget state would render in destructive
+      red per the existing colour rule. The F40 erasure pattern (warm-tint macro arcs when over-budget) does NOT
+      apply here.
+    </p>
+
+    <h2>Refused borrows considered</h2>
+    <p>
+      Considered adopting Cal AI's confetti / pulse-out radial burst on first-log. Refused — DC12 calm voice
+      rejects shouty celebrate-the-tracking moments. The ring fill + count-up + haptic provides moment-of-consequence
+      without crossing into gamification.
+    </p>
+
+    <h2>Capture gaps still open</h2>
+    <p>
+      Need to capture the empty-state Today (fixture user has logs, so first-log animation needs an "after fresh
+      install" capture, not the current dark capture which shows logged state). CF-9 added to the gap list:
+      capture Today empty-state + Today over-budget state + Today scrolled-with-logs state in dark + light.
+    </p>
+  </aside>
+
+  <script>
+    function setView(view, btn) {
+      const canvas = document.querySelector('.prototype-canvas');
+      canvas.dataset.view = view;
+      document.querySelectorAll('.prototype-header nav button').forEach(b => b.removeAttribute('aria-current'));
+      btn.setAttribute('aria-current', 'true');
+      if (view === 'after' || view === 'side-by-side') {
+        replayAnimation();
+      }
+    }
+    function replayAnimation() {
+      // Replay both the ring-fill CSS animation and the count-up JS animation.
+      const progress = document.querySelector('.state--after .ring-progress');
+      if (progress) {
+        progress.style.animation = 'none';
+        void progress.offsetHeight;
+        progress.style.animation = '';
+      }
+      const counter = document.getElementById('kcal-count');
+      if (!counter) return;
+      const target = 1014;
+      const duration = 1200;
+      const start = performance.now();
+      function tick(now) {
+        const t = Math.min(1, (now - start) / duration);
+        // cubic ease-out
+        const eased = 1 - Math.pow(1 - t, 3);
+        counter.textContent = Math.round(target * eased).toLocaleString();
+        if (t < 1) requestAnimationFrame(tick);
+      }
+      counter.textContent = '0';
+      requestAnimationFrame(tick);
+    }
+    // Auto-play on initial load
+    window.addEventListener('load', () => setTimeout(replayAnimation, 200));
+  </script>
+</body>
+</html>
