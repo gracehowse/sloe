@@ -206,10 +206,10 @@ This doc is the live tracking surface — update tags as items ship.
 ### B1 Welcome
 
 - [x] Move web cookie consent to bottom-right pill
-- [ ] Replace web marketing tile with real product moment
-- [ ] Add single proof line above CTA
-- [ ] Dampen dark-mode gradient by 50%
-- [ ] Promote mobile native "Sign in" out of "Have an account?" prefix
+- [ ] Replace web marketing tile with real product moment — needs ui-product-designer brief (no spec for the new tile content yet)
+- [ ] Add single proof line above CTA — needs copy-reviewer / brand-manager for the line wording
+- [x] Dampen dark-mode gradient by 50% — mobile `useColorScheme()` halves SVG `stopOpacity`; web `dark:opacity-50` on both gradient washes
+- [x] Promote mobile native "Sign in" out of "Have an account?" prefix — standalone Sign-in button under primary CTA, no preamble
 - [d] Unify three proof affordances across platforms (welcome divergence carve-out)
 
 ### B5 Reveal (THE biggest gap)

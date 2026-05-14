@@ -22,10 +22,12 @@ export function WelcomeStep() {
   return (
     <div className="relative h-full w-full overflow-hidden bg-background text-foreground">
       {/* Gradient washes — the only place product UI shows the
-          brand gradient (alongside the Reveal hero). */}
+          brand gradient (alongside the Reveal hero).
+          2026-05-13 (premium-bar audit B1 follow-up): dampen in dark
+          mode by ~50% via `dark:opacity-50`. Light mode is untouched. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0"
+        className="pointer-events-none absolute inset-0 dark:opacity-50"
         style={{
           background:
             "radial-gradient(ellipse at 30% 20%, color-mix(in oklab, var(--primary) 28%, transparent), transparent 50%)",
@@ -33,7 +35,7 @@ export function WelcomeStep() {
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0"
+        className="pointer-events-none absolute inset-0 dark:opacity-50"
         style={{
           background:
             "radial-gradient(ellipse at 75% 75%, color-mix(in oklab, var(--macro-fat) 22%, transparent), transparent 55%)",

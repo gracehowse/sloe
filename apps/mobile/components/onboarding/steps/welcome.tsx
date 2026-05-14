@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, Text, useColorScheme, View } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -20,6 +20,13 @@ export function MobileWelcomeStep() {
   const { go } = useOnboarding();
   const colors = useThemeColors();
   const router = useRouter();
+  // 2026-05-13 (premium-bar audit B1 follow-up) — dampen the brand
+  // gradient in dark mode by ~50%. Light mode is untouched. Premium
+  // apps (Apple Watch, Calm) keep gradients soft in dark themes so
+  // the hero feels calm instead of saturated.
+  const isDark = useColorScheme() === "dark";
+  const gradTop = isDark ? 0.16 : 0.32;
+  const gradMid = isDark ? 0.08 : 0.16;
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <View
@@ -39,8 +46,8 @@ export function MobileWelcomeStep() {
           <Svg width="100%" height="100%">
             <Defs>
               <LinearGradient id="welcome-grad" x1="0" y1="0" x2="0" y2="1">
-                <Stop offset="0%" stopColor={Accent.primary} stopOpacity={0.32} />
-                <Stop offset="50%" stopColor={Accent.magenta} stopOpacity={0.16} />
+                <Stop offset="0%" stopColor={Accent.primary} stopOpacity={gradTop} />
+                <Stop offset="50%" stopColor={Accent.magenta} stopOpacity={gradMid} />
                 <Stop
                   offset="100%"
                   stopColor={colors.background}
@@ -105,42 +112,35 @@ export function MobileWelcomeStep() {
             Get started
           </Text>
         </Pressable>
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "center",
-            alignItems: "center",
+        {/* 2026-05-13 (premium-bar audit B1 follow-up) — promote
+            mobile Sign in out of the "Have an account?" prefix.
+            iOS-native pattern (Instagram, Spotify, MFP) is a single
+            standalone "Sign in" affordance under the primary CTA;
+            no preamble. Tap target stays generous via hitSlop. */}
+        <Pressable
+          onPress={() => router.push("/login")}
+          accessibilityRole="button"
+          accessibilityLabel="Sign in to existing account"
+          hitSlop={12}
+          style={({ pressed }) => ({
             marginTop: 14,
-          }}
+            alignItems: "center",
+            justifyContent: "center",
+            paddingVertical: 12,
+            opacity: pressed ? 0.7 : 1,
+          })}
         >
           <Text
             style={{
-              fontSize: 14,
-              color: colors.textSecondary,
+              fontSize: 15,
+              color: Accent.primary,
+              fontWeight: "700",
+              letterSpacing: -0.2,
             }}
           >
-            Have an account?{" "}
+            Sign in
           </Text>
-          <Pressable
-            onPress={() => router.push("/login")}
-            accessibilityRole="link"
-            accessibilityLabel="Sign in to existing account"
-            hitSlop={12}
-          >
-            {({ pressed }) => (
-              <Text
-                style={{
-                  fontSize: 14,
-                  color: Accent.primaryLight,
-                  fontWeight: "600",
-                  opacity: pressed ? 0.7 : 1,
-                }}
-              >
-                Sign in
-              </Text>
-            )}
-          </Pressable>
-        </View>
+        </Pressable>
       </View>
     </View>
   );
