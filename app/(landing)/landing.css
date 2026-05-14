@@ -298,6 +298,24 @@
   }
 }
 
+/* 2026-05-12 (premium-bar audit Group A landing #4, P0): on narrow
+ * phones (< 480px) the "Sign in" + "Get started" pair still competes
+ * even after the theme-toggle hide. Below 480px the audit found
+ * "Get st…" truncating because both CTAs were sharing limited width.
+ *
+ * Fix: hide the secondary "Sign in" affordance on phones < 480px.
+ * "Get started" stays as the only header CTA. Existing users can
+ * reach sign-in from the footer (visible at the bottom of every
+ * landing scroll) and from the in-app login flow — losing the
+ * header chip on phone is the right trade vs cramping the primary
+ * conversion CTA.
+ */
+@media (max-width: 480px) {
+  .lp-nav-right .lp-btn-ghost {
+    display: none;
+  }
+}
+
 /* ═════════ HERO ═════════ */
 .lp-hero {
   position: relative;
@@ -355,6 +373,19 @@
   font-size: 10px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+/* 2026-05-13 (premium-bar audit Group A landing #3): chip-as-link
+ * affordance — the NEW eyebrow now points at the recipe-import
+ * feature card. The hover state lifts the chip's saturation +
+ * the trailing arrow translates so it reads as a real "tap to
+ * learn more" CTA, not a decorative pill. */
+.lp-hero-chip-link {
+  text-decoration: none;
+  transition: background var(--transition-fast, 0.15s ease), color var(--transition-fast, 0.15s ease);
+}
+.lp-hero-chip-link:hover {
+  background: color-mix(in oklab, var(--lp-chip-bg) 70%, var(--primary) 30%);
+  color: var(--foreground);
 }
 .lp-hero-ctas {
   display: flex;

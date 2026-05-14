@@ -43,6 +43,14 @@ type Props = {
    * Default false preserves existing Progress-tab callers byte-for-byte.
    */
   isImperial?: boolean;
+  /**
+   * 2026-05-12 round 4 (Grace TF, Withings parity): the active range
+   * selection drives X-axis tick formatting (weekday names on Week,
+   * "Mon DD" on Month, full month names on Quarter, single letters
+   * on Year, years on All). Optional; legacy callers that omit it
+   * fall back to the old "first / last date" two-tick behaviour.
+   */
+  range?: "1w" | "1m" | "3m" | "1y" | "all";
 };
 
 /** kg → lb at the canonical 2.20462 factor used elsewhere in mobile. */
@@ -118,13 +126,48 @@ function buildAreaPath(
  * the plot width, allowing the renderer to place the label
  * proportionally.
  */
+// 2026-05-12 round 4 (Grace TF, Withings parity): range-aware x-axis
+// labels. Withings uses different tick formats per range — month
+// initials on Year, month names on Quarter, weekday abbreviations on
+// Week — so the time anchor reads at-a-glance for each scale. The
+// `range` param is optional so legacy callers that don't pass it
+// fall back to the old "first / last date" two-tick behaviour.
 function buildXAxisTicks(
   points: { dateISO: string }[],
   bucket: "daily" | "weekly" | "monthly",
+  range?: "1w" | "1m" | "3m" | "1y" | "all",
 ): Array<{ label: string; position: number }> {
   const count = points.length;
   if (count < 2) return [];
+
   if (bucket === "daily") {
+    // Week view: weekday-name ticks for every day in the visible
+    // window. With count ≤ 7 the labels fit comfortably; bigger
+    // windows fall through to the legacy "first / last" pair.
+    if (range === "1w" && count <= 9) {
+      return points.map((p, i) => ({
+        label: new Date(p.dateISO + "T12:00:00").toLocaleDateString("en-GB", {
+          weekday: "short",
+        }),
+        position: count <= 1 ? 0 : i / (count - 1),
+      }));
+    }
+    // Month view: emit a "Mon DD" tick at every Monday in the window,
+    // mirroring Withings's Month-view tick row.
+    if (range === "1m") {
+      const ticks: Array<{ label: string; position: number }> = [];
+      for (let i = 0; i < count; i++) {
+        const d = new Date(points[i]!.dateISO + "T12:00:00");
+        if (d.getDay() === 1 /* Monday */) {
+          ticks.push({
+            label: `Mon ${d.getDate()}`,
+            position: count <= 1 ? 0 : i / (count - 1),
+          });
+        }
+      }
+      if (ticks.length >= 2) return ticks;
+    }
+    // Daily fallback (or 1m with < 2 Mondays): first + last date.
     return [
       {
         label: new Date(points[0]!.dateISO + "T12:00:00").toLocaleDateString("en-GB", {
@@ -142,8 +185,49 @@ function buildXAxisTicks(
       },
     ];
   }
-  // For bucketed ranges: emit a tick whenever the month changes vs
-  // the previous emitted tick. Cap at ~6 ticks to avoid overflow.
+
+  // Year view: one tick per month, single-letter labels ("J F M ...").
+  // Withings's Year row shows all 12 months at single-letter density.
+  if (range === "1y") {
+    const ticks: Array<{ label: string; position: number }> = [];
+    let lastMonth = "";
+    for (let i = 0; i < count; i++) {
+      const month = points[i]!.dateISO.slice(0, 7);
+      if (month !== lastMonth) {
+        const d = new Date(points[i]!.dateISO + "T12:00:00");
+        ticks.push({
+          label: d.toLocaleDateString("en-GB", { month: "narrow" }),
+          position: i / (count - 1),
+        });
+        lastMonth = month;
+      }
+    }
+    return ticks;
+  }
+
+  // All view: years-only ticks. Decimated below if too many.
+  if (range === "all") {
+    const ticks: Array<{ label: string; position: number }> = [];
+    let lastYear = "";
+    for (let i = 0; i < count; i++) {
+      const year = points[i]!.dateISO.slice(0, 4);
+      if (year !== lastYear) {
+        ticks.push({
+          label: year,
+          position: i / (count - 1),
+        });
+        lastYear = year;
+      }
+    }
+    if (ticks.length > 6) {
+      const stride = Math.ceil(ticks.length / 6);
+      return ticks.filter((_, i) => i % stride === 0);
+    }
+    return ticks;
+  }
+
+  // Quarter (3m) view + any other bucketed range: full month names
+  // for each month boundary, capped at 6 ticks.
   const ticks: Array<{ label: string; position: number }> = [];
   let lastMonth = "";
   for (let i = 0; i < count; i++) {
@@ -151,13 +235,12 @@ function buildXAxisTicks(
     if (month !== lastMonth) {
       const d = new Date(points[i]!.dateISO + "T12:00:00");
       ticks.push({
-        label: d.toLocaleDateString("en-GB", { month: "short" }),
+        label: d.toLocaleDateString("en-GB", { month: "long" }),
         position: i / (count - 1),
       });
       lastMonth = month;
     }
   }
-  // Decimate if too many.
   if (ticks.length > 6) {
     const stride = Math.ceil(ticks.length / 6);
     return ticks.filter((_, i) => i % stride === 0);
@@ -165,7 +248,7 @@ function buildXAxisTicks(
   return ticks;
 }
 
-export function WeightChart({ trend, goalKg, isImperial = false }: Props) {
+export function WeightChart({ trend, goalKg, isImperial = false, range }: Props) {
   const colors = useThemeColors();
   const [chartWidth, setChartWidth] = useState(300);
   const [scrubIdx, setScrubIdx] = useState<number | null>(null);
@@ -189,7 +272,7 @@ export function WeightChart({ trend, goalKg, isImperial = false }: Props) {
     () => movingAvg.map((v) => (v !== null ? toY(v, yMin, yMax, plotH) : 0)),
     [movingAvg, yMin, yMax, plotH],
   );
-  const xTicks = useMemo(() => buildXAxisTicks(points, bucket), [points, bucket]);
+  const xTicks = useMemo(() => buildXAxisTicks(points, bucket, range), [points, bucket, range]);
 
   const latestIdx = points.length - 1;
   const latestX = latestIdx >= 0 ? xs[latestIdx]! : 0;
@@ -206,8 +289,15 @@ export function WeightChart({ trend, goalKg, isImperial = false }: Props) {
   const goalIsAboveChart = goalY != null && goalY < PAD_TOP;
   const goalIsOffChart = goalIsBelowChart || goalIsAboveChart;
 
-  const lineColor =
-    trend.trendDirection === "worsening" ? Accent.warning : Accent.primary;
+  // 2026-05-13 (premium-bar audit Group H weight chart #5): trend-line
+  // colour previously swapped to `Accent.warning` (amber) when
+  // `trend.trendDirection === "worsening"`. Withings keeps the trend
+  // line one colour regardless; the directional signal lives in the
+  // caption / status pill, not bled into the canonical chart line.
+  // Swapping the line colour mid-display also broke the user's
+  // mental model — they learn the colour as "this is my weight",
+  // not as a verdict. Drop the swap; line stays primary.
+  const lineColor = Accent.primary;
 
   // 2026-05-11 (mockup signed off): 4 gridlines + their Y-axis
   // labels, evenly spaced from yMax to yMin so the user has a finer
@@ -308,22 +398,66 @@ export function WeightChart({ trend, goalKg, isImperial = false }: Props) {
           </LinearGradient>
         </Defs>
 
-        {/* Gridlines */}
+        {/* Horizontal gridlines — solid hairlines at 0.45 alpha.
+            Withings's spec is solid; dashed reads busy at this
+            chart height. */}
         {gridValues.map((v, i) => {
           const gy = toY(v, yMin, yMax, plotH);
           return (
             <Line
-              key={i}
+              key={`hg-${i}`}
               x1={PAD_LEFT}
               y1={gy}
               x2={chartWidth - PAD_RIGHT + 4}
               y2={gy}
               stroke={colors.border}
               strokeWidth={1}
-              strokeDasharray="3 3"
+              opacity={0.45}
             />
           );
         })}
+
+        {/* 2026-05-12 round 4 (Withings comparison): vertical
+            gridlines at every X-tick month boundary. Withings's
+            Year view has subtle vertical guides between every month
+            initial — they anchor the data to the time axis and stop
+            the data from looking like it floats. Same opacity as
+            horizontal so neither dominates. */}
+        {xTicks.length > 1 &&
+          xTicks.map((t, i) => {
+            const tx = PAD_LEFT + t.position * plotW;
+            // Skip drawing the leftmost vertical guide — it'd visually
+            // collide with the chart's left edge.
+            if (i === 0) return null;
+            return (
+              <Line
+                key={`vg-${i}`}
+                x1={tx}
+                y1={PAD_TOP}
+                x2={tx}
+                y2={bottom}
+                stroke={colors.border}
+                strokeWidth={1}
+                opacity={0.25}
+              />
+            );
+          })}
+
+        {/* "kg" / "lb" unit label top-right above the y-axis ticks,
+            mirroring Withings's Year-view header. Suppresses on very
+            narrow plots (rare). */}
+        {plotW > 200 && (
+          <SvgText
+            x={chartWidth - PAD_RIGHT + 6}
+            y={PAD_TOP - 2}
+            fontSize={9}
+            fill={colors.textTertiary}
+            textAnchor="start"
+            fontWeight="600"
+          >
+            {isImperial ? "lb" : "kg"}
+          </SvgText>
+        )}
 
         {/* Grid labels (right-aligned inside plot) */}
         {gridValues.map((v, i) => {
@@ -382,7 +516,40 @@ export function WeightChart({ trend, goalKg, isImperial = false }: Props) {
             when the goal is far from data the in-chart goal line is
             already suppressed by computeYDomain. */}
 
-        {/* MA area fill */}
+        {/* 2026-05-12 round 4 (Grace TF, Withings comparison):
+            **always** draw a trend line through the actual data
+            points — this is the Withings Health Mate pattern. Round 3
+            relied on the smoothed MA line as the headline element,
+            but on weekly / monthly buckets where the MA pipeline
+            can't produce enough valid points, the chart rendered
+            as scattered dots with NO connecting line. Side-by-side
+            with Withings: their "Year" view has a continuous trend
+            line + a hollow ring at every data point. We now match.
+
+            Two-layer system:
+              - Always: connect every point with a 2.25pt line (the
+                "real" trend on this surface — what the user logged).
+              - When count >= 3 AND we have a valid MA mask: render
+                the smoothed MA + area fill UNDER the real-points
+                line at lower opacity, so the underlying trend reads
+                as a soft envelope. On sparse data this layer is
+                absent — the points line carries it alone.
+            */}
+        {count >= 2 && (
+          <Path
+            d={buildLinePath(xs, ys, ys.map(() => true))}
+            stroke={lineColor}
+            strokeWidth={2.25}
+            fill="none"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+        )}
+
+        {/* Smoothed-MA envelope — area fill + soft line, both at low
+            opacity so the canonical points-line above stays the
+            headline. Suppressed when count < 3 (not enough data
+            for a meaningful average). */}
         {count >= 3 && (
           <Path
             d={buildAreaPath(xs, maYs, maMask, bottom)}
@@ -390,50 +557,32 @@ export function WeightChart({ trend, goalKg, isImperial = false }: Props) {
           />
         )}
 
-        {/* MA line */}
-        {count >= 3 && (
-          <Path
-            d={buildLinePath(xs, maYs, maMask)}
-            stroke={lineColor}
-            strokeWidth={2}
-            fill="none"
-            strokeLinejoin="round"
-            strokeLinecap="round"
-          />
-        )}
-
-        {/*
-          Raw dots — 2026-05-06: only rendered for `daily` bucket. On
-          weekly / monthly each point IS already an aggregate, so
-          rendering them as dots smudges into a blob and misleads
-          (looks like raw weigh-ins). MFP shows just the smoothed line
-          on long ranges.
-        */}
-        {/* 2026-05-11 (mockup signed off): sparse raw dots when there
-            are 14+ daily points. The smoothed line carries the story;
-            dots become sample markers, not noise. `stride` makes sure
-            we keep the first + last + roughly 6 evenly-spaced dots in
-            between, plus the actively-scrubbed point regardless. */}
-        {bucket === "daily" &&
-          points.map((p, i) => {
-            if (i === latestIdx) return null;
-            const isScrubbed = scrubIdx === i;
+        {/* Data points. Round 4 (Withings parity): every visible point
+            is a hollow ring (filled with card colour, stroked with
+            line colour) at r=4. This is the canonical Withings marker
+            style — reads as "data point on a trend line", not "blob
+            of noise". On daily bucket with > 14 raw points we still
+            stride-decimate so the line stays the headline. */}
+        {points.map((p, i) => {
+          if (i === latestIdx) return null;
+          const isScrubbed = scrubIdx === i;
+          if (bucket === "daily") {
             const stride = count > 14 ? Math.ceil(count / 6) : 1;
             const keep = isScrubbed || i === 0 || i % stride === 0;
             if (!keep) return null;
-            return (
-              <Circle
-                key={p.dateISO + i}
-                cx={xs[i]!}
-                cy={ys[i]!}
-                r={isScrubbed ? 5 : 4}
-                fill={colors.card}
-                stroke={lineColor}
-                strokeWidth={1.5}
-                opacity={0.6}
-              />
-            );
-          })}
+          }
+          return (
+            <Circle
+              key={p.dateISO + i}
+              cx={xs[i]!}
+              cy={ys[i]!}
+              r={isScrubbed ? 5 : 4}
+              fill={colors.card}
+              stroke={lineColor}
+              strokeWidth={isScrubbed ? 2.25 : 1.75}
+            />
+          );
+        })}
 
         {/* Scrubber crosshair (active during pan) */}
         {scrubIdx != null && scrubPoint != null && (
@@ -456,6 +605,25 @@ export function WeightChart({ trend, goalKg, isImperial = false }: Props) {
               strokeWidth={2}
             />
           </>
+        )}
+
+        {/* 2026-05-12 round 4 (Grace TF, Withings parity): persistent
+            "today" vertical indicator at the latest data point's x.
+            Thin solid line, low-contrast black, full plot height.
+            Withings runs this through every range view; reads as a
+            calm "you are here" marker that the scrub crosshair
+            overrides on touch. Suppressed when no data so it doesn't
+            float in an empty plot. */}
+        {latestIdx >= 0 && scrubIdx == null && (
+          <Line
+            x1={latestX}
+            y1={PAD_TOP}
+            x2={latestX}
+            y2={bottom}
+            stroke={colors.text}
+            strokeWidth={1}
+            opacity={0.55}
+          />
         )}
 
         {/* Latest dot — prominent with halo ring (Withings parity).
@@ -484,6 +652,23 @@ export function WeightChart({ trend, goalKg, isImperial = false }: Props) {
             </SvgText>
           );
         })}
+
+        {/* 2026-05-12 round 3 (Grace TF: "some buttons show nothing"):
+            soft empty-state message when the active range window
+            contains zero data points. Centred in the plot area, low
+            contrast so it doesn't shout — same posture as the
+            sparse-state caption. */}
+        {count === 0 && (
+          <SvgText
+            x={PAD_LEFT + plotW / 2}
+            y={PAD_TOP + plotH / 2 + 4}
+            fontSize={12}
+            fill={colors.textTertiary}
+            textAnchor="middle"
+          >
+            No weigh-ins in this range
+          </SvgText>
+        )}
 
         {/* Tap-target overlay — captures pan but doesn't render */}
         <Rect
@@ -519,8 +704,13 @@ export function WeightChart({ trend, goalKg, isImperial = false }: Props) {
         const TOOLTIP_H = 22;
         const anchorX = showScrub ? xs[scrubIdx!]! : latestX;
         const anchorY = showScrub ? ys[scrubIdx!]! : latestY;
-        const flipBelow = anchorY - TOOLTIP_H - 8 < PAD_TOP;
-        const tipTop = flipBelow ? anchorY + 12 : anchorY - TOOLTIP_H - 6;
+        // 2026-05-12 (Grace TF chart polish): bump the clearance gap
+        // from 6/12px to 14px so the tooltip never crowds the line
+        // it's anchored to. Withings's spec is a ~12pt clear floating
+        // pill; tightening this was the audit gap.
+        const GAP = 14;
+        const flipBelow = anchorY - TOOLTIP_H - GAP < PAD_TOP;
+        const tipTop = flipBelow ? anchorY + GAP : anchorY - TOOLTIP_H - GAP;
         // Right gutter (where the Y-axis tick labels live) starts at
         // `chartWidth - PAD_RIGHT`. Keep the tooltip's right edge at
         // least 4px left of that line so the text never overlaps.

@@ -66,7 +66,9 @@ describe("NorthStarBlock (mobile) — default kind", () => {
     expect(getByText("What to eat next")).toBeTruthy();
     expect(getByText("Tofu poke bowl")).toBeTruthy();
     expect(getByText("Hits within 3%")).toBeTruthy();
-    expect(getByText(/520 kcal · 38P \/ 42C \/ 18F/)).toBeTruthy();
+    // 2026-05-12 (premium-bar audit cross-cutting): macro format
+    // unified to `520 kcal · 38g P · 42g C · 18g F`.
+    expect(getByText(/520 kcal · 38g P · 42g C · 18g F/)).toBeTruthy();
   });
 
   it("primary CTA fires onPrimaryCta on press", () => {

@@ -286,12 +286,29 @@ function computeSinceLabel(points: WeightPoint[], range: WeightRange): string {
 function computePeriodRangeLabel(
   points: WeightPoint[],
   bucket: "daily" | "weekly" | "monthly",
+  range: WeightRange,
+  nowDate: Date,
 ): string | null {
   if (points.length === 0) return null;
-  const startISO = points[0]!.dateISO;
-  const endISO = points[points.length - 1]!.dateISO;
-  const startD = isoToDate(startISO);
-  const endD = isoToDate(endISO);
+  // 2026-05-12 round 5 (Grace TF, Withings parity): use the CALENDAR
+  // window for the period label, not the data window. Previously we
+  // showed `points[0]` – `points[last]`, so a user with only one
+  // weigh-in on 6 May saw "6 May – 6 May 2026" on Week view. Withings
+  // shows "4 – 12 May" (the calendar window containing today). Match.
+  // The data points stay data-aligned for the chart axis itself; only
+  // the label changes — we anchor the right end at today and step
+  // back by RANGE_DAYS for the left end. "All" view still uses the
+  // data extent because there's no fixed window.
+  let startD: Date;
+  let endD: Date;
+  if (range === "all") {
+    startD = isoToDate(points[0]!.dateISO);
+    endD = isoToDate(points[points.length - 1]!.dateISO);
+  } else {
+    const rangeDays = RANGE_DAYS[range];
+    endD = nowDate;
+    startD = new Date(nowDate.getTime() - (rangeDays - 1) * 86400000);
+  }
   const startYear = startD.getFullYear();
   const endYear = endD.getFullYear();
   const sameYear = startYear === endYear;
@@ -443,7 +460,7 @@ export function computeWeightTrend(
     goalKg,
   );
   const sinceLabel = computeSinceLabel(bucketed, range);
-  const periodRangeLabel = computePeriodRangeLabel(bucketed, bucket);
+  const periodRangeLabel = computePeriodRangeLabel(bucketed, bucket, range, now);
 
   const daysSinceLatest =
     filtered.length > 0

@@ -5,7 +5,9 @@ import { track } from "@/lib/analytics";
 import { Swipeable } from "react-native-gesture-handler";
 import {
   Bookmark,
+  ChevronDown,
   ChevronRight,
+  ChevronUp,
   Coffee,
   Cookie,
   Copy,
@@ -20,6 +22,7 @@ import * as Haptics from "expo-haptics";
 import { Accent, Radius, SlotColors, Spacing } from "@/constants/theme";
 import { SourceDot } from "@/components/ui/SourceDot";
 import { mapMealSourceToDot } from "../../../../src/lib/nutrition/sourceMap";
+import { formatMacroTrailer } from "../../../../src/lib/nutrition/macroFormat";
 import type { JournalMeal } from "@/lib/nutritionJournal";
 import type { SavedMeal } from "../../../../src/lib/nutrition/savedMeals";
 import { summariseSavedMeal } from "../../../../src/lib/nutrition/savedMealsLogic";
@@ -52,6 +55,8 @@ export interface TodayMealsSectionProps {
   /** Open the save-as-usual sheet pre-seeded with the items in `slot`. */
   onOpenSaveUsualMealForSlot: (slot: string) => void;
   onOpenDuplicateDay: () => void;
+  /** Tap the slot header (when the slot has items) → combined macros for everything in that slot. */
+  onPressSlotSummary?: (slot: string) => void;
   onPressMeal: (mealId: string) => void;
   onLongPressEdit: (meal: JournalMeal) => void;
   onRequestCopyMeal: (mealId: string) => void;
@@ -173,6 +178,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
     onOpenFabForSlot,
     onOpenSaveUsualMealForSlot,
     onOpenDuplicateDay,
+    onPressSlotSummary,
     onPressMeal,
     onLongPressEdit,
     onRequestCopyMeal,
@@ -248,8 +254,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
           const extraSavedCount = slotSaved.length - 1;
           return (
             <View key={slot}>
-              <Pressable
-                onPress={() => (hasMeals ? onToggleSlotCollapse(slot) : onOpenFabForSlot(slot))}
+              <View
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
@@ -261,47 +266,98 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                   gap: 10,
                 }}
               >
-                <View
-                  style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 9,
-                    backgroundColor: col + "18",
-                    alignItems: "center",
-                    justifyContent: "center",
+                <Pressable
+                  onPress={() => {
+                    if (!hasMeals) {
+                      onOpenFabForSlot(slot);
+                      return;
+                    }
+                    if (onPressSlotSummary) {
+                      onPressSlotSummary(slot);
+                      return;
+                    }
+                    onToggleSlotCollapse(slot);
                   }}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    flex: 1,
+                    minWidth: 0,
+                    gap: 10,
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    hasMeals
+                      ? onPressSlotSummary
+                        ? `${slot}, ${meals.length} items — open combined nutrition`
+                        : `${slot}, ${meals.length} items — expand or collapse`
+                      : `${slot} — add food`
+                  }
                 >
-                  <SlotIcon Glyph={ic} size={16} color={col} />
-                </View>
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  {/* F-80 (2026-04-25) — `numberOfLines={1}` on both the slot
-                      title and the meta line. Without these, the "Log usual:
-                      <name>" pill in the trailing row crowds the title column
-                      down to ~80 px and the title letter-wraps ("Brea / kfast
-                      / 4 / items / · tap a / meal / for full / nutriti / on").
-                      The pill itself is also constrained below; `minWidth: 0`
-                      on this column lets RN actually shrink the text under
-                      pressure (RN flex defaults to `minWidth: auto` which is
-                      content-width and prevents shrink). */}
-                  <Text
-                    style={{ fontSize: 13, fontWeight: "600", color: textColor }}
-                    numberOfLines={1}
+                  <View
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 9,
+                      backgroundColor: col + "18",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
                   >
-                    {slot}
-                  </Text>
-                  {hasMeals ? (
+                    <SlotIcon Glyph={ic} size={16} color={col} />
+                  </View>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    {/* F-80 (2026-04-25) — `numberOfLines={1}` on both the slot
+                        title and the meta line. Without these, the "Log usual:
+                        <name>" pill in the trailing row crowds the title column
+                        down to ~80 px and the title letter-wraps ("Brea / kfast
+                        / 4 / items / · tap a / meal / for full / nutriti / on").
+                        The pill itself is also constrained below; `minWidth: 0`
+                        on this column lets RN actually shrink the text under
+                        pressure (RN flex defaults to `minWidth: auto` which is
+                        content-width and prevents shrink). */}
                     <Text
-                      style={{ fontSize: 11, color: textTertiaryColor }}
+                      style={{ fontSize: 13, fontWeight: "600", color: textColor }}
                       numberOfLines={1}
                     >
-                      {meals.length} item{meals.length > 1 ? "s" : ""} · tap an item for nutrition
+                      {slot}
                     </Text>
-                  ) : (
-                    <Text style={{ fontSize: 11, color: textTertiaryColor }} numberOfLines={1}>
-                      Tap to add
-                    </Text>
-                  )}
-                </View>
+                    {hasMeals ? (
+                      <Text
+                        style={{ fontSize: 11, color: textTertiaryColor }}
+                        numberOfLines={1}
+                      >
+                        {meals.length} item{meals.length > 1 ? "s" : ""}
+                        {onPressSlotSummary
+                          ? " · tap for combined macros"
+                          : " · tap an item for nutrition"}
+                      </Text>
+                    ) : (
+                      <Text style={{ fontSize: 11, color: textTertiaryColor }} numberOfLines={1}>
+                        Tap to add
+                      </Text>
+                    )}
+                  </View>
+                </Pressable>
+                {hasMeals && onPressSlotSummary ? (
+                  <Pressable
+                    onPress={() => onToggleSlotCollapse(slot)}
+                    hitSlop={10}
+                    accessibilityRole="button"
+                    accessibilityLabel={isOpen ? `Collapse ${slot}` : `Expand ${slot}`}
+                    style={{
+                      paddingHorizontal: 4,
+                      paddingVertical: 4,
+                      marginRight: -2,
+                    }}
+                  >
+                    {isOpen ? (
+                      <ChevronUp size={18} color={textSecondaryColor} strokeWidth={2} />
+                    ) : (
+                      <ChevronDown size={18} color={textSecondaryColor} strokeWidth={2} />
+                    )}
+                  </Pressable>
+                ) : null}
                 {hasMeals ? (
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 0 }}>
                     {/* F-17 (2026-04-19, TestFlight `AIjmgrBMmY-M6B363x_hT8I`)
@@ -393,7 +449,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                 ) : (
                   <Plus size={14} color={textTertiaryColor} />
                 )}
-              </Pressable>
+              </View>
               {hasMeals &&
                 isOpen &&
                 meals.map((m) => (
@@ -703,8 +759,12 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                           {m.name}
                         </Text>
                         <Text style={{ fontSize: 11, color: textSecondaryColor, marginTop: 2 }}>
-                          {itemsLabel} · {summary.totalCalories} kcal · P {Math.round(summary.totalProtein)}g · C{" "}
-                          {Math.round(summary.totalCarbs)}g · F {Math.round(summary.totalFat)}g
+                          {itemsLabel} · {formatMacroTrailer({
+                            calories: summary.totalCalories,
+                            protein: summary.totalProtein,
+                            carbs: summary.totalCarbs,
+                            fat: summary.totalFat,
+                          })}
                         </Text>
                       </Pressable>
                     );

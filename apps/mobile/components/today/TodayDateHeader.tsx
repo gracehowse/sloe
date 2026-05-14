@@ -90,20 +90,29 @@ export function TodayDateHeader({
             <ChevronLeft size={16} color={textColor} />
           </Pressable>
           <Pressable onPress={onTapTitle} hitSlop={8}>
-            <Text
-              numberOfLines={1}
-              style={{
-                fontSize: 11,
-                fontWeight: "500",
-                color: textTertiaryColor,
-                letterSpacing: 0.5,
-                textTransform: "uppercase",
-              }}
-            >
-              {viewMode === "week"
-                ? weekLabel
-                : `${selectedDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })} · ${selectedDate.toLocaleDateString("en-US", { weekday: "long" })}`}
-            </Text>
+            {/* 2026-05-12 (premium-bar audit, Today header upgrade):
+                drop the small-caps date eyebrow when the h1 is already
+                "Today" — the eyebrow's "Apr 22 · Tuesday" duplicates
+                what the h1 implies. Keep the eyebrow for non-today
+                date selections (so "Sat Apr 19" h1 still has the
+                weekday-name context above it) and for the week view
+                (`weekLabel` is the date range). */}
+            {!(viewMode === "day" && isToday) ? (
+              <Text
+                numberOfLines={1}
+                style={{
+                  fontSize: 11,
+                  fontWeight: "500",
+                  color: textTertiaryColor,
+                  letterSpacing: 0.5,
+                  textTransform: "uppercase",
+                }}
+              >
+                {viewMode === "week"
+                  ? weekLabel
+                  : `${selectedDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })} · ${selectedDate.toLocaleDateString("en-US", { weekday: "long" })}`}
+              </Text>
+            ) : null}
             <Text style={{ fontSize: 22, fontWeight: "700", color: textColor, letterSpacing: -0.4, marginTop: 1 }}>
               {viewMode === "week" ? "This Week" : isToday ? "Today" : formatDateLabel(selectedDate)}
             </Text>
@@ -194,11 +203,19 @@ export function TodayDateHeader({
                 square. The prototype + brand carryover rules call for
                 the brand-gradient circular avatar (matches Profile,
                 Settings, the More tab) — same paint path as the
-                shared `<GradientAvatar>` primitive. */}
+                shared `<GradientAvatar>` primitive.
+
+                ENG-99 (2026-05-13): the prototype canon spec is a
+                **36×36** gradient avatar — bumped from 32 so the
+                Today header's primary profile-entry affordance
+                reaches the prototype size. Day/Week toggle to the
+                left of this is functional view-mode scope (not the
+                "theme toggle" the audit also called out — theme was
+                already moved to More/Settings). */}
             <GradientAvatar
-              size={32}
+              size={36}
               initial={avatarLetter}
-              fontSize={12}
+              fontSize={13}
               gradientIdSuffix="today-header"
             />
           </Pressable>

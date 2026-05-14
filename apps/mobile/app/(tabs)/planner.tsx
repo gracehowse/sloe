@@ -1,5 +1,6 @@
 import type * as React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   View,
   Text,
@@ -35,6 +36,8 @@ import {
   CheckCircle2,
   Circle,
   Coffee,
+  ChevronDown,
+  ChevronRight,
   Cookie,
   Lock,
   Plus,
@@ -43,11 +46,13 @@ import {
   ShoppingCart,
   Sun,
   UtensilsCrossed,
+  X,
   type LucideIcon,
 } from "lucide-react-native";
 import { Accent, MacroColors, SlotColors, Spacing, Radius } from "@/constants/theme";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets } from "@/lib/calcTargets";
+import { SkeletonCard } from "@/components/ui/SkeletonRow";
 import {
   generateSmartPlan,
   ALL_MEAL_SLOTS,
@@ -454,6 +459,33 @@ export default function PlannerScreen() {
   const [templatesLoading, setTemplatesLoading] = useState(false);
   /** When a plan exists: expand to change day count / slots / start before regenerating. */
   const [planSetupExpanded, setPlanSetupExpanded] = useState(false);
+  // 2026-05-13 (premium-bar audit Plan Card 4 #4): instruction copy
+  // ("Change options below, then regenerate. Edits to individual
+  // meals…") used to render every time the Plan setup was expanded.
+  // After the first read it's noise; testers said they tuned it out.
+  // Now persisted-dismissable: shown until the user taps the close X,
+  // then `suppr-plan-setup-instr-seen-v1` flag in AsyncStorage hides
+  // it forever for that device. Set on dismiss; read on mount.
+  const PLAN_INSTR_SEEN_KEY = "suppr-plan-setup-instr-seen-v1";
+  const [planInstrSeen, setPlanInstrSeen] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const v = await AsyncStorage.getItem(PLAN_INSTR_SEEN_KEY);
+        if (!cancelled) setPlanInstrSeen(v === "1");
+      } catch {
+        if (!cancelled) setPlanInstrSeen(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const dismissPlanInstruction = useCallback(() => {
+    setPlanInstrSeen(true);
+    void AsyncStorage.setItem(PLAN_INSTR_SEEN_KEY, "1").catch(() => undefined);
+  }, []);
   const [portionModal, setPortionModal] = useState<{ dayIdx: number; mealIndex: number } | null>(null);
 
   // Batch 3.10 (mobile parity, 2026-04-18 audit C2) — Move meal state.
@@ -987,7 +1019,12 @@ export default function PlannerScreen() {
           borderColor: colors.border,
           alignItems: "center",
         },
-        dayBtnActive: { borderColor: Accent.primary, backgroundColor: Accent.primary + "15" },
+        // 2026-05-13 (premium-bar audit Plan Card 6 #2): active tint
+        // was `+ "15"` (8.2% opacity) which read as nearly invisible in
+        // dark mode and weakly tinted in light. Bumped to `+ "26"`
+        // (≈15%) so the active state lifts visibly above the card
+        // surface in both themes without dominating like a solid fill.
+        dayBtnActive: { borderColor: Accent.primary, backgroundColor: Accent.primary + "26" },
         dayBtnText: { color: colors.textTertiary, fontWeight: "600", fontSize: 14 },
         dayBtnTextActive: { color: Accent.primary },
 
@@ -1785,7 +1822,29 @@ export default function PlannerScreen() {
               empty-state Generate Plan button. */}
         {plan && plan.length > 0 && planTargets && summaryScore && (
           <View style={styles.summaryCard} testID="plan-summary-card">
-            <Text style={styles.summaryOverline}>This week</Text>
+            {/* 2026-05-12 (premium-bar audit Plan Card 1): eyebrow
+                upgraded from generic "This week" → "{start} – {end} ·
+                Meal plan" so users see the actual span of the plan
+                they're looking at. Matches the audit's example
+                ("May 7 – 13 · Meal plan"). Falls back to "This week"
+                when the date math can't resolve (defensive). */}
+            <Text style={styles.summaryOverline}>
+              {(() => {
+                try {
+                  const planLen = plan.length;
+                  const first = planCalendarDateForIndex(0, startOffset);
+                  const last = planCalendarDateForIndex(planLen - 1, startOffset);
+                  const fmt = (d: Date) =>
+                    d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+                  if (first.getMonth() === last.getMonth()) {
+                    return `${fmt(first)} – ${last.getDate()} · Meal plan`;
+                  }
+                  return `${fmt(first)} – ${fmt(last)} · Meal plan`;
+                } catch {
+                  return "This week";
+                }
+              })()}
+            </Text>
             <Text style={styles.summaryTitle}>
               Hits your targets {summaryScore.hits} of {summaryScore.total} day{summaryScore.total === 1 ? "" : "s"}
             </Text>
@@ -1874,13 +1933,53 @@ export default function PlannerScreen() {
             >
               <View style={{ flex: 1, paddingRight: 8 }}>
                 <Text style={styles.cardTitle}>Plan setup</Text>
-                {planSetupExpanded ? (
-                  <Text style={styles.cardDesc}>
-                    Change options below, then regenerate. Edits to individual meals (swap, portion, clear) apply immediately.
-                  </Text>
+                {/* 2026-05-13 (premium-bar audit Plan Card 4 #4): the
+                    instruction copy now renders only until the user
+                    dismisses it. After dismissal, the
+                    `suppr-plan-setup-instr-seen-v1` flag keeps it
+                    hidden on that device forever. Reduces repeat-
+                    visit noise on the Plan tab while still giving
+                    first-time users the orientation. */}
+                {planSetupExpanded && !planInstrSeen ? (
+                  <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 6, marginTop: 4 }}>
+                    <Text style={[styles.cardDesc, { flex: 1, marginTop: 0 }]}>
+                      Change options below, then regenerate. Edits to individual meals (swap, portion, clear) apply immediately.
+                    </Text>
+                    <Pressable
+                      onPress={(e) => {
+                        // Stop the parent header's expand/collapse
+                        // toggle from firing when the user just wants
+                        // to dismiss the tooltip.
+                        e.stopPropagation?.();
+                        dismissPlanInstruction();
+                      }}
+                      hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel="Dismiss tip"
+                      testID="plan-setup-instr-dismiss"
+                      style={{ padding: 2 }}
+                    >
+                      <X size={14} color={colors.textTertiary} strokeWidth={2} />
+                    </Pressable>
+                  </View>
                 ) : null}
               </View>
-              <Text style={{ fontSize: 18, color: colors.textSecondary }}>{planSetupExpanded ? "▼" : "▶"}</Text>
+              {/* 2026-05-12 (premium-bar audit Plan Card 1): replaced
+                  the raw "▶ / ▼" Unicode glyphs with lucide chevrons
+                  matching the rest of the app's disclosure pattern.
+                  The Unicode markers read as placeholder; the proper
+                  chevron icon is the prototype + design-system spec. */}
+              {/* 2026-05-13 (premium-bar audit Plan Card 6 #3): chevron
+                  used `textSecondary` which read as faded against the
+                  card surface in dark mode — testers reported the
+                  expander affordance disappeared at a glance. Bumped
+                  to `text` so the chevron carries the same weight as
+                  the card title in both themes. */}
+              {planSetupExpanded ? (
+                <ChevronDown size={18} color={colors.text} strokeWidth={2.25} />
+              ) : (
+                <ChevronRight size={18} color={colors.text} strokeWidth={2.25} />
+              )}
             </Pressable>
             {planSetupExpanded ? (
               <View style={{ marginTop: Spacing.md, gap: Spacing.md }}>
@@ -2137,7 +2236,35 @@ export default function PlannerScreen() {
               disabled={generating || savedRecipes.length === 0}
             >
               {generating ? (
-                <ActivityIndicator color="#fff" />
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                  {/* 2026-05-13 (premium-bar audit Plan Card 4 —
+                      7-dot stacked viz inline with headline):
+                      replaces the bare `<ActivityIndicator>` with
+                      a 7-dot ribbon (one dot per day of the
+                      week-long plan) plus the "Building your
+                      plan…" headline. Gives the user honest
+                      signal that the engine is filling days, not
+                      just spinning. The dot ribbon uses opacity
+                      to imply sequential fill without per-dot
+                      animation (which would need reanimated state
+                      threading on this hot path — overkill for a
+                      6–10s job). */}
+                  <View style={{ flexDirection: "row", gap: 4 }}>
+                    {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+                      <View
+                        key={i}
+                        style={{
+                          width: 6,
+                          height: 6,
+                          borderRadius: 3,
+                          backgroundColor: "#fff",
+                          opacity: 0.35 + (i / 7) * 0.6,
+                        }}
+                      />
+                    ))}
+                  </View>
+                  <Text style={styles.generateBtnText}>Building your plan…</Text>
+                </View>
               ) : (
                 <Text style={styles.generateBtnText}>Generate Plan</Text>
               )}
@@ -2146,22 +2273,63 @@ export default function PlannerScreen() {
         )}
 
         {plan && plan.length > 0 && (
-          <View style={{ marginBottom: Spacing.sm }}>
+          <View
+            style={{
+              marginBottom: Spacing.sm,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: Spacing.sm,
+            }}
+          >
             <Text style={styles.sectionLabel}>
               {plan.length === 1
                 ? `${WEEKDAY_LONG[planCalendarDateForIndex(0, startOffset).getDay()]}'s plan`
                 : `Your ${plan.length}-day plan`}
             </Text>
+            {/* 2026-05-13 (premium-bar audit Plan Card 1 #6): demoted
+                "Browse recipe library" from a full-width primary-tinted
+                pressable into a small secondary chip sitting beside the
+                section label. The link was the same visual weight as
+                the section title which made the page eyebrow row look
+                like two competing headers. Same destination, quieter
+                affordance. */}
             <Pressable
               onPress={() => router.push("/(tabs)/library" as Href)}
               accessibilityRole="button"
               accessibilityLabel="Browse recipe library"
-              style={{ marginTop: 4 }}
+              hitSlop={8}
+              style={{
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+                borderRadius: 999,
+                borderWidth: 1,
+                borderColor: colors.border,
+                backgroundColor: colors.card,
+              }}
             >
-              <Text style={{ fontSize: 14, fontWeight: "600", color: Accent.primary }}>Browse recipe library</Text>
+              <Text style={{ fontSize: 11, fontWeight: "600", color: colors.textSecondary }}>
+                Browse library →
+              </Text>
             </Pressable>
           </View>
         )}
+
+        {/* 2026-05-13 (premium-bar audit Plan Card 4 #5 — Generation
+            skeleton state): when the user taps "Generate Plan" with
+            no existing plan, render 3 skeleton day-cards below the
+            generate button so the surface reads as "the plan is on
+            its way" rather than "nothing happened yet". Skipped when
+            an existing plan is visible (regenerate path) — the user
+            already has visual content during the swap. Matches the
+            Recipe verify flow's anticipation-beat pattern. */}
+        {generating && (!plan || plan.length === 0) ? (
+          <View testID="planner-generation-skeleton" style={{ gap: Spacing.md }}>
+            {[0, 1, 2].map((i) => (
+              <SkeletonCard key={i} hero={false} lines={3} />
+            ))}
+          </View>
+        ) : null}
 
         {/* Plan display */}
         {plan && plan.map((dp, dayIdx) => {
@@ -2385,7 +2553,7 @@ export default function PlannerScreen() {
                       ...(hasRecipe
                         ? [
                             {
-                              text: "Adjust portion…",
+                              text: "Change portion size…",
                               onPress: () => setPortionModal({ dayIdx, mealIndex: mealIndexInDay }),
                             },
                           ]
@@ -2436,7 +2604,7 @@ export default function PlannerScreen() {
                       ...(hasRecipeTap
                         ? [
                             {
-                              text: "Adjust portion…",
+                              text: "Change portion size…",
                               onPress: () => setPortionModal({ dayIdx, mealIndex: mealIndexInDay }),
                             },
                             {
@@ -2528,6 +2696,11 @@ export default function PlannerScreen() {
                       {planMealHasRecipe(meal) ? meal.recipeTitle : "Empty slot"}
                     </Text>
                     {planMealHasRecipe(meal) && multLabel !== "1" ? (
+                      // 2026-05-13 (premium-bar audit Plan Card 2 #4):
+                      // pill now reads `0.5× portion` (not bare `0.5×`)
+                      // so users without context know what the chip means.
+                      // Compact enough to keep on one line at typical
+                      // recipe-title lengths.
                       <View
                         style={{
                           paddingHorizontal: 6,
@@ -2536,7 +2709,7 @@ export default function PlannerScreen() {
                           backgroundColor: Accent.primary + "1A",
                           flexShrink: 0,
                         }}
-                        accessibilityLabel={`Portion ${multLabel} times`}
+                        accessibilityLabel={`${multLabel} times portion`}
                       >
                         <Text
                           style={{
@@ -2546,12 +2719,21 @@ export default function PlannerScreen() {
                             fontVariant: ["tabular-nums"],
                           }}
                         >
-                          {`${multLabel}×`}
+                          {`${multLabel}× portion`}
                         </Text>
                       </View>
                     ) : null}
                   </View>
-                  <Text style={styles.mealMacros} numberOfLines={1}>
+                  {/* ENG-64 (2026-05-13): the macro line is dense
+                      enough that `numberOfLines={1}` clipped mid-
+                      token on narrow phones ("…· F…"), hiding Fat
+                      and Fiber values. Allow 2 lines so the wrap
+                      breaks cleanly on the " · " separator between
+                      tokens rather than mid-abbreviation. The
+                      adjacent title above is still `numberOfLines={1}`
+                      so the meal name stays single-line and only
+                      the informational macro line wraps. */}
+                  <Text style={styles.mealMacros} numberOfLines={2}>
                     {planMealHasRecipe(meal)
                       ? formatPlannedMealKcalMacrosLine(
                           meal.calories,

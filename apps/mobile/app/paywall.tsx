@@ -32,6 +32,7 @@ import {
   restorePurchases,
   syncTierToSupabase,
 } from "@/lib/purchases";
+import { classifyPaywallReadiness } from "@/lib/paywallReadiness";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { usePromoCode } from "@/hooks/usePromoCode";
@@ -280,10 +281,35 @@ export default function PaywallScreen() {
          *  send someone back to the app on a transient RC failure. */
       }
       if (cancelled) return;
-      const pkgs = await getOfferings();
+      let pkgs: PurchasesPackage[] = [];
+      let errored = false;
+      try {
+        pkgs = await getOfferings();
+      } catch {
+        errored = true;
+      }
       if (cancelled) return;
       setPackages(pkgs);
       setOfferingsReady(true);
+      // ENG-101 (2026-05-13): classify IAP wiring state so PostHog
+      // can alarm on builds that don't resolve to `ok`. Fires once
+      // per paywall mount alongside `paywall_viewed`.
+      const readiness = classifyPaywallReadiness({
+        hasApiKey: isPurchasesApiKeyPresent(),
+        packages: pkgs,
+        errored,
+      });
+      track(AnalyticsEvents.paywall_readiness, {
+        reason: readiness.reason,
+        package_count: pkgs.length,
+        platform: Platform.OS === "ios" ? "ios" : "android",
+        from: paywallFrom,
+      });
+      if (__DEV__ && readiness.reason !== "ok") {
+        console.warn(
+          `[paywall] readiness=${readiness.reason} — ${readiness.diagnostic} Next: ${readiness.nextAction}`,
+        );
+      }
       // Analytics (L6 G9 + 2026-04-19 round-2): every `paywall_viewed`
       // emit carries `{ from, tier, surface, platform }`. `tier: "pro"`
       // reflects the default visual focus on this screen; if/when we
@@ -601,14 +627,26 @@ export default function PaywallScreen() {
   const headerTitle = (() => {
     if (paywallFrom === "trial_end") return "Your trial ended — pick a plan";
     if (paywallFrom === "voice_log" || paywallFrom === "photo_log") return "Unlock AI logging";
+    // 2026-05-12 (premium-bar audit #1 — Calm/Cal AI parity): lead
+    // with the trial benefit when a trial is offered. The previous
+    // "Pick the plan that fits" headline buried the strongest
+    // conversion lever (free trial) below the fold. Trial only
+    // applies on the annual SKU per `trialApplies` rule above; if
+    // annual is unavailable, fall back to the generic frame.
+    if (trialApplies) return "Try Pro free for 7 days";
     return "Pick the plan that fits";
   })();
   // Debug audit 2026-05-04 (visual-qa P1): the proFlavoured subtitle
   // referenced "Base" — a tier removed in PR-01. Now references the
   // current product structure (Free + Pro).
-  const headerSubtitle = proFlavoured
-    ? "Includes all Free features, plus AI photo and voice logging."
-    : "Cancel anytime. Price in your currency, taxes included.";
+  // 2026-05-12 (premium-bar audit #1.3): when the trial applies,
+  // surface the trial → first-charge story directly in the subtitle
+  // so the header reads as a complete pitch (Calm/Cal AI parity).
+  const headerSubtitle = trialApplies
+    ? "Full Pro free for a week. Cancel anytime in iOS Settings."
+    : proFlavoured
+      ? "Includes all Free features, plus AI photo and voice logging."
+      : "Cancel anytime. Price in your currency, taxes included.";
 
   // ─── Disclosure copy ────────────────────────────────────────────
 
@@ -713,7 +751,13 @@ export default function PaywallScreen() {
       color: colors.textSecondary,
     },
 
-    toggleWrap: { alignItems: "center", marginTop: Spacing.lg, marginBottom: Spacing.xl },
+    toggleWrap: { alignItems: "center", marginTop: Spacing.lg, marginBottom: Spacing.xl, gap: 8 },
+    toggleEyebrow: {
+      fontSize: 10,
+      fontWeight: "700",
+      letterSpacing: 1.2,
+      color: colors.textTertiary,
+    },
     toggleRow: {
       flexDirection: "row",
       padding: 4,
@@ -1015,6 +1059,13 @@ export default function PaywallScreen() {
 
         {showToggle ? (
           <View style={styles.toggleWrap}>
+            {/* 2026-05-13 (premium-bar audit Group I #4): the period
+                toggle floated with no label. Testers in TF feedback
+                said they didn't realise the row was switching pricing
+                until after they'd tapped — they thought the badge was
+                advertising "Save 37%" generically. Tiny BILLING eyebrow
+                above the row anchors the toggle's purpose. */}
+            <Text style={styles.toggleEyebrow}>BILLING</Text>
             <View
               style={styles.toggleRow}
               accessibilityRole="tablist"
@@ -1123,7 +1174,9 @@ export default function PaywallScreen() {
               }
               featHead={PRO_FEATURE_HEAD}
               features={PRO_FEATURES}
-              badgeLabel="MOST POPULAR"
+              // 2026-05-12 (premium-bar audit #1.7): drop "MOST POPULAR"
+              // badge — Pro is the only paid tier on the paywall, so
+              // "most popular vs what?" reads as marketing fluff.
               isHero
               ctaLabel="Subscriptions unavailable"
               ctaColor={Accent.primary}
@@ -1154,7 +1207,7 @@ export default function PaywallScreen() {
                 }
                 featHead={PRO_FEATURE_HEAD}
                 features={PRO_FEATURES}
-                badgeLabel="MOST POPULAR"
+                // 2026-05-12 (premium-bar audit #1.7): see note above.
                 isHero
                 ctaLabel={
                   trialApplies

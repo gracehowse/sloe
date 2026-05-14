@@ -454,6 +454,11 @@ function ProgressDashboardContent() {
     const isImperial = profileMeasurementSystem === "imperial";
     const conv = (kg: number) =>
       isImperial ? Math.round(kgToLb(kg) * 10) / 10 : Math.round(kg * 10) / 10;
+    // 2026-05-13 (Withings parity): expose `isToday` per point so the
+    // chart can render a "you are here" vertical indicator. Match by
+    // the underlying ISO date (the rendered label is bucket-aware so
+    // matching on `date` is unsafe).
+    const tk = todayKey();
     return weightTrend.points.map((p, i) => {
       // 2026-05-06: bucket-aware date label.
       // daily   → "MM-DD" (matches the previous behaviour)
@@ -473,6 +478,7 @@ function ProgressDashboardContent() {
         // Smoothed MA — null entries left as undefined so Recharts
         // skips them rather than drawing a flatline at zero.
         ma: ma != null ? conv(ma) : undefined,
+        isToday: p.dateISO === tk,
       };
     });
   }, [weightTrend, profileMeasurementSystem]);
@@ -1457,7 +1463,25 @@ function ProgressDashboardContent() {
           colour decision is approximate. */}
       <div className="rounded-xl bg-card border border-border p-4 mb-6">
         <p className="text-sm font-semibold text-foreground mb-3">Daily Calories</p>
-        <div className="flex items-end gap-2" style={{ height: 90 }}>
+        <div className="relative flex items-end gap-2" style={{ height: 90 }}>
+          {/* Dashed target line — mirror of mobile chart. Pointer-events
+              off so the bars stay clickable. */}
+          {(() => {
+            const maxCalForLine = Math.max(
+              targets.calories,
+              ...dailyCaloriesData.map((dd) => dd.calories),
+              1,
+            );
+            if (targets.calories <= 0) return null;
+            const lineY = (targets.calories / maxCalForLine) * 70;
+            return (
+              <div
+                aria-hidden
+                className="pointer-events-none absolute left-0 right-0 border-t border-dashed border-primary/70"
+                style={{ bottom: lineY }}
+              />
+            );
+          })()}
           {(() => {
             const maxCal = Math.max(
               targets.calories,
@@ -1478,6 +1502,17 @@ function ProgressDashboardContent() {
               // skipped (no historical-target ambiguity for those).
               const isPast = d.key < todayDateKey;
               const showApproxCue = isPast && !d.isSnapshot && d.calories > 0;
+              // Audit 2026-05-12 (premium-bar #16 — DC10): match the
+              // calorie-ring 3-state rule — empty=border tint,
+              // under=success green, over=destructive red. Web was
+              // using `var(--warning)` (amber) for over which broke
+              // parity with mobile and collapsed the over-budget signal
+              // with the under-target state in dark mode.
+              const bg = d.calories === 0
+                ? "var(--border)"
+                : overTarget
+                  ? "var(--destructive)"
+                  : "var(--success)";
               return (
                 <div key={d.key} className="flex-1 flex flex-col items-center gap-1">
                   <span className="text-[9px] text-muted-foreground tabular-nums">
@@ -1491,8 +1526,8 @@ function ProgressDashboardContent() {
                     title={showApproxCue ? "Compared against today's target (no snapshot for that day)" : undefined}
                     style={{
                       height: barH,
-                      background: overTarget ? "var(--warning)" : "var(--success)",
-                      opacity: isDayToday ? 0.4 : 0.75,
+                      background: bg,
+                      opacity: isDayToday ? 1 : 0.75,
                       ...(showApproxCue
                         ? {
                             border: "1px dashed var(--muted-foreground)",
@@ -1506,6 +1541,25 @@ function ProgressDashboardContent() {
               );
             });
           })()}
+        </div>
+        {/* Legend — mirror of mobile progress.tsx. TestFlight feedback
+            (2026-04-18 AISAWnLgU9cjRBOuEY-HuJU) "not intuitive"
+            without a colour key. */}
+        <div className="flex items-center gap-3 mt-2 text-[10px] text-muted-foreground flex-wrap">
+          <span className="flex items-center gap-1">
+            <span className="inline-block w-2 h-2 rounded-sm" style={{ background: "var(--success)" }} />
+            At or under target
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="inline-block w-2 h-2 rounded-sm" style={{ background: "var(--destructive)" }} />
+            Over target
+          </span>
+          {targets.calories > 0 ? (
+            <span className="flex items-center gap-1">
+              <span className="inline-block w-2.5 h-px border-t border-dashed border-primary" />
+              Target {targets.calories.toLocaleString()} kcal
+            </span>
+          ) : null}
         </div>
       </div>
 
@@ -1794,6 +1848,13 @@ function ProgressDashboardContent() {
         </div>
         {weightChartData.length >= 2 && (
           <div className="mb-3">
+            {/* 2026-05-13 (premium-bar audit web parity, Withings polish):
+                hollow rings on data points (was filled r=2 dots) +
+                vertical "today" indicator line + thicker smoothed
+                trend line. Same Withings Health Mate parity that
+                mobile got in dd043c3 + 7b0b9b6, ported to the
+                Recharts surface so the web chart no longer reads
+                as the cheap default. */}
             <ResponsiveContainer width="100%" height={140}>
               <LineChart data={weightChartData}>
                 <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" />
@@ -1811,15 +1872,26 @@ function ProgressDashboardContent() {
                     type="monotone"
                     dataKey="value"
                     stroke="var(--primary)"
-                    strokeWidth={2}
-                    dot={{ r: 2 }}
+                    strokeWidth={2.25}
+                    dot={{
+                      r: 3.5,
+                      fill: "var(--card)",
+                      stroke: "var(--primary)",
+                      strokeWidth: 2,
+                    }}
+                    activeDot={{
+                      r: 5,
+                      fill: "var(--primary)",
+                      stroke: "var(--card)",
+                      strokeWidth: 2,
+                    }}
                   />
                 ) : (
                   <Line
                     type="monotone"
                     dataKey="ma"
                     stroke="var(--primary)"
-                    strokeWidth={2}
+                    strokeWidth={2.25}
                     dot={false}
                     connectNulls
                   />
@@ -1831,6 +1903,19 @@ function ProgressDashboardContent() {
                     strokeDasharray="4 4"
                   />
                 )}
+                {/* 2026-05-13 — "today" vertical indicator. Same
+                    Withings "you are here" marker mobile uses. Renders
+                    when `weightChartData` contains a point whose
+                    underlying ISO date matches today, identified by
+                    the `isToday` flag on each point. */}
+                {weightChartData.some((p) => p.isToday) ? (
+                  <ReferenceLine
+                    x={weightChartData.find((p) => p.isToday)?.date}
+                    stroke="var(--foreground)"
+                    strokeWidth={1}
+                    strokeOpacity={0.3}
+                  />
+                ) : null}
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -1844,7 +1929,7 @@ function ProgressDashboardContent() {
             type="number"
             step="0.1"
           />
-          <button onClick={() => void saveTodayWeight()} className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:opacity-90 transition-opacity">Save</button>
+          <button onClick={() => void saveTodayWeight()} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity">Save</button>
         </div>
       </div>
       ) : null}
@@ -1969,11 +2054,16 @@ function ProgressDashboardContent() {
               </p>
             )}
 
-            {/* Projection based on recent average */}
+            {/* Projection based on recent average.
+                2026-05-12 (premium-bar DC12 voice audit, web parity with
+                mobile progress.tsx): split past-fact from future-projection.
+                Previously a single sentence read as past observation +
+                future promise; now it's separated into two clauses,
+                conditional. */}
             {dailyProjection && (
               <div className="mt-3 pt-3 border-t border-border">
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Weekly trajectory: averaging {avgRecentCals.toLocaleString()} kcal/day puts you on track for{" "}
+                  Last 7 days averaged {avgRecentCals.toLocaleString()} kcal/day. On that trend you&apos;d reach{" "}
                   <span className="font-bold text-primary">{formatWeight(dailyProjection.projectedWeightKg)}</span> in ~{dailyProjection.projectionWeeks} weeks.
                 </p>
               </div>
@@ -2015,7 +2105,7 @@ function ProgressDashboardContent() {
             onChange={(e) => setStepsInput(e.target.value)}
             type="number"
           />
-          <button onClick={() => void saveTodaySteps()} className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:opacity-90 transition-opacity">Save</button>
+          <button onClick={() => void saveTodaySteps()} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity">Save</button>
         </div>
       </div>
 
@@ -2032,7 +2122,7 @@ function ProgressDashboardContent() {
             type="number"
             step="0.1"
           />
-          <button onClick={() => void saveBodyFat()} className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:opacity-90 transition-opacity">Save</button>
+          <button onClick={() => void saveBodyFat()} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity">Save</button>
         </div>
       </div>
       <p

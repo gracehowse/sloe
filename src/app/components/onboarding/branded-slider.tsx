@@ -183,7 +183,7 @@ export function BrandedSlider({
             className="px-2 py-1 rounded-md text-[11px] font-bold tabular-nums shadow-md"
             style={{
               background: accent,
-              color: "#0a0a0f",
+              color: "var(--primary-foreground)",
               whiteSpace: "nowrap",
             }}
           >

@@ -54,8 +54,15 @@ export function TodaySnapShortcut({
         accessibilityHint="Opens the photo log so you can capture a meal in one tap"
         testID={testID ?? "today-snap-shortcut"}
         onPress={() => {
+          // 2026-05-13 (premium-bar audit Today F3 #5): upgraded from
+          // `selectionAsync` (lightest) to medium impact so the tap
+          // feels like a shutter press — matches the iOS Camera app's
+          // tap-the-shutter feedback. The card is the entry point to a
+          // photo-log capture flow; a heftier confirmation is honest
+          // about what's about to happen (camera permission prompt or
+          // capture sheet).
           if (process.env.EXPO_OS === "ios") {
-            void Haptics.selectionAsync();
+            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
           }
           onPress();
         }}
@@ -110,16 +117,52 @@ export function TodaySnapShortcut({
           ) : null}
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={[Type.body, { fontWeight: FontWeight.bold, color: colors.text }]}>
-            Snap a meal
-          </Text>
+          {/* 2026-05-13 (premium-bar audit Today F3 #3): when locked,
+              pair the small corner-lock badge with an explicit "PRO"
+              chip beside the title. The lock alone wasn't reading as
+              a Pro gate — testers were tapping through expecting a
+              prompt-on-tap rather than an upgrade gate. The chip
+              makes the gate state unambiguous before the user taps. */}
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <Text style={[Type.body, { fontWeight: FontWeight.bold, color: colors.text }]}>
+              Snap a meal
+            </Text>
+            {locked ? (
+              <View
+                testID="today-snap-shortcut-pro-chip"
+                accessibilityLabel="Pro feature"
+                style={{
+                  paddingHorizontal: 6,
+                  paddingVertical: 1,
+                  borderRadius: Radius.sm,
+                  backgroundColor: Accent.primary,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 9,
+                    fontWeight: "800",
+                    letterSpacing: 0.6,
+                    color: Accent.primaryForeground,
+                  }}
+                >
+                  PRO
+                </Text>
+              </View>
+            ) : null}
+          </View>
+          {/* 2026-05-12 (premium-bar audit Today F3 #2): subtitle now
+              carries both the speed signal (~3 seconds) and the
+              "AI estimate · review" trust signal. Drops "no typing"
+              (implicit from the action) and gives the user honest
+              expectation about the engine before tap. */}
           <Text
             style={[
               Type.bodyMuted,
               { fontSize: 12, color: colors.textSecondary, marginTop: Spacing.xs / 2 },
             ]}
           >
-            One photo, full macros — no typing.
+            ~3 seconds · AI estimates macros, review before saving.
           </Text>
         </View>
       </Pressable>

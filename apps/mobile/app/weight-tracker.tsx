@@ -803,6 +803,7 @@ export default function ProgressScreen() {
                     trend={weightTrend}
                     goalKg={goalWeightKg ?? null}
                     isImperial={isImperial}
+                    range={weightTrendRange}
                   />
                 </>
               )}
@@ -971,86 +972,26 @@ export default function ProgressScreen() {
               </View>
             )}
 
-            {/* STEPS */}
-            <View style={styles.card}>
-              <Text style={styles.sectionTitle}>Steps</Text>
-              <View style={styles.row}>
-                <View style={styles.stat}>
-                  <Text style={styles.statValue}>
-                    {(stepsByDay[todayKey] ?? 0).toLocaleString()}
-                  </Text>
-                  <Text style={styles.statLabel}>Today</Text>
-                </View>
-                <View style={styles.stat}>
-                  <Text
-                    style={[styles.statValue, { color: Accent.success }]}
-                  >
-                    {dailyStepsGoal.toLocaleString()}
-                  </Text>
-                  <Text style={styles.statLabel}>Goal</Text>
-                </View>
-              </View>
-
-              {stepsData.length >= 2 && (
-                <MiniBarChart
-                  key={`steps-${range}`}
-                  data={stepsData}
-                  goalLine={dailyStepsGoal}
-                  color={Accent.success}
-                  trackColor={colors.border}
-                  labelColor={colors.textTertiary}
-                  goalColor={Accent.success}
-                />
-              )}
-              {/* 2026-05-07 ui-critic F13: removed "Steps sync
-                  automatically from your connected health source." —
-                  this is settings-level info that doesn't belong under
-                  a chart on a detail screen. If sync state ever fails,
-                  the existing health-sync surface shows the error. */}
-            </View>
-
-            {/* WATER */}
-            {waterData.length >= 2 && (
-              <View style={styles.card}>
-                <Text style={styles.sectionTitle}>Water</Text>
-                <MiniBarChart
-                  key={`water-${range}`}
-                  data={waterData}
-                  goalLine={waterGoalMl}
-                  color={MacroColors.water}
-                  trackColor={colors.border}
-                  labelColor={colors.textTertiary}
-                  goalColor={MacroColors.water}
-                />
-              </View>
-            )}
-
-            {/* BODY FAT */}
-            <View style={styles.card}>
-              <Text style={styles.sectionTitle}>Body Fat</Text>
-              <Text style={styles.big}>
-                {bodyFatPct != null ? `${Math.round(bodyFatPct * 10) / 10}%` : "—"}
-              </Text>
-              <View style={styles.inputRow}>
-                <TextInput
-                  style={[styles.input, { flex: 1 }]}
-                  placeholder="Body fat %"
-                  placeholderTextColor={colors.textTertiary}
-                  keyboardType="decimal-pad"
-                  value={bfInput}
-                  onChangeText={(t) => {
-                    bfInputUserEdited.current = true;
-                    setBfInput(t);
-                  }}
-                />
-                <Pressable
-                  style={[styles.btn, { paddingHorizontal: Spacing.xl }]}
-                  onPress={() => void saveBf()}
-                >
-                  <Text style={styles.btnText}>Save</Text>
-                </Pressable>
-              </View>
-            </View>
+            {/* 2026-05-12 (premium-bar audit Phase 2 — Option B+):
+                STEPS / WATER / BODY FAT sections removed from this
+                screen.
+                  - Steps trend (30-day chart + goal line) lives on
+                    Burn detail now — that's the canonical
+                    activity drill-down (MFP + Lose It IA pattern).
+                  - Water is already on Today as a tile and a
+                    standalone /weight-tracker home for it didn't
+                    earn its place.
+                  - Body fat has no regulatory cover, no chart
+                    history worth preserving, and no comparable that
+                    prioritises it for manual-entry users (research
+                    via competitor-intelligence sub-agent
+                    2026-05-12). If the user re-enables body-comp
+                    tracking later we'll bring it back behind a
+                    Settings flag.
+                The screen is now scoped to weight + goal + journey.
+                Phase 3 will collapse this whole route into a redirect
+                to Progress once one release of PostHog usage
+                confirms zero deeplink hits. */}
           </>
         )}
       </ScrollView>

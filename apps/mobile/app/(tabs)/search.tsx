@@ -19,7 +19,11 @@ export default function SearchScreen() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const base = apiBase();
-  const [q, setQ] = useState("apple");
+  // 2026-05-13 (premium-bar audit Group J #19): default empty, not
+  // pre-filled with "apple". The pre-fill demanded an immediate
+  // backspace from any user who didn't actually want to search for
+  // apples — the placeholder hint ("e.g. chicken breast") is enough.
+  const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
   const [hits, setHits] = useState<Hit[]>([]);
   const [err, setErr] = useState<string | null>(null);

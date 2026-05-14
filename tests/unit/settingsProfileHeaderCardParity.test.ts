@@ -11,7 +11,7 @@
  *      bookmarks and the existing App.tsx view-router resolve.
  *   3. The sidebar's `you` sub-tab list is exactly Progress + Settings
  *      (Profile is gone) and `profile` remains in the `leaves` array
- *      so being on /profile still highlights "You".
+ *      so being on /profile still highlights "More" (renamed 2026-05-12).
  *   4. Mobile-web YouSubTabPill in App.tsx mirrors the sidebar — 2
  *      pills, no "profile" id.
  *

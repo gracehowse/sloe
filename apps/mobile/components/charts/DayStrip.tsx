@@ -186,18 +186,25 @@ export default function DayStrip({
     [pagerW, dowLabels, selectedDk, todayDk, loggedDays, protectedDateKeys, min, max, textColor, secondaryColor, onSelectDate],
   );
 
+  // 2026-05-12 (premium-bar audit, Today header upgrade): only render
+  // the "Jump to today" pill when the selected date is NOT today. On
+  // the default load the pill duplicated the h1 "Today" — visually
+  // redundant and the user is already where they'd jump to.
+  const showJumpToToday = selectedDk !== todayDk;
   return (
     <View style={{ gap: Spacing.xs }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
-        <Pressable
-          onPress={handleToday}
-          accessibilityRole="button"
-          accessibilityLabel="Jump to today"
-          hitSlop={8}
-          style={{ paddingVertical: 8, paddingHorizontal: 4 }}
-        >
-          <Text style={{ fontSize: 14, fontWeight: "700", color: Accent.primary }}>Today</Text>
-        </Pressable>
+        {showJumpToToday ? (
+          <Pressable
+            onPress={handleToday}
+            accessibilityRole="button"
+            accessibilityLabel="Jump to today"
+            hitSlop={8}
+            style={{ paddingVertical: 8, paddingHorizontal: 4 }}
+          >
+            <Text style={{ fontSize: 14, fontWeight: "700", color: Accent.primary }}>Today</Text>
+          </Pressable>
+        ) : null}
         <View style={{ flex: 1 }} onLayout={onPagerLayout}>
           {pagerW > 0 ? (
             <FlatList<Date>

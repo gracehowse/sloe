@@ -152,37 +152,40 @@ describe("F-20 · form wiring — modal references the shared helper + basis lab
   });
 });
 
-describe("F-18 · parity pins — four specific copy strings from the scan card", () => {
-  it("Log button uses mid-dot instead of nested parentheses", () => {
-    // F-18 / F-135 evolved this string. F-18 collapsed the nested
-    // parens (`Log (1 serving (100 g))` → `Log · 1 serving`); F-135
-    // stripped the trailing `(~Ng)` parenthetical via a regex so long
-    // portion labels stop wrapping mid-word. The pin tracks the
-    // shape: a mid-dot Log line that USES `portionSummary` (with or
-    // without the F-135 regex strip) and is NOT the nested-paren form.
-    expect(MODAL_SRC).toMatch(/Log · \{portionSummary\b/);
+describe("2026-05-13 portion-picker rebuild — scan card pins", () => {
+  // Replaces the F-18 / F-135 pins for the legacy logBasis toggle +
+  // chip-row + verbose card styling. The card was rebuilt 2026-05-13
+  // around the shared `<PortionPicker>` component, 4-tile macro
+  // grid, and icon-only Scan-again CTA. See
+  // docs/decisions/2026-05-13-portion-picker-and-macro-display.md.
+
+  it("Log button label uses pickerState via formatPortion (mid-dot retained)", () => {
+    expect(MODAL_SRC).toMatch(/Log · \{pickerState\s*\?\s*formatPortion\(pickerState\)/);
     expect(MODAL_SRC).not.toContain("Log ({portionSummary})");
   });
 
-  it("chip labels route through displayServingLabel so the generic '1 serving (N g)' collapses to 'N g'", () => {
-    expect(MODAL_SRC).toContain("displayServingLabel(o.label, o.grams)");
-    expect(MODAL_SRC).toMatch(/GENERIC_1_SERVING_LABEL/);
+  it("macro display routes through formatMacro for protein/carbs/fat (no naive Math.round)", () => {
+    expect(MODAL_SRC).toContain('formatMacro(scaled.protein, "protein"');
+    expect(MODAL_SRC).toContain('formatMacro(scaled.carbs, "carbs"');
+    expect(MODAL_SRC).toContain('formatMacro(scaled.fat, "fat"');
+    expect(MODAL_SRC).not.toMatch(/Math\.round\(scaled\.(protein|carbs|fat)\)/);
   });
 
-  it("helper text above the chips is the simplified 'Tap a chip or edit grams.' copy", () => {
-    expect(MODAL_SRC).toContain("Tap a chip or edit grams.");
-    // And the verbose technical line is gone.
-    expect(MODAL_SRC).not.toContain(
-      "Tap a label serving or edit grams (macros scale from per 100 g).",
-    );
+  it("scan card renders the 4-tile macro grid (kcal / protein / carbs / fat)", () => {
+    // The new layout is a horizontal row of four `<View style={styles.macroTile}>`
+    // entries between hairline dividers, not the legacy single-line text aggregate.
+    expect(MODAL_SRC).toMatch(/styles\.macroTiles\b/);
+    expect(MODAL_SRC).toMatch(/styles\.macroTileNumKcal\b/);
+    // Tile labels (uppercase) for each macro.
+    expect(MODAL_SRC).toContain(">kcal<");
+    expect(MODAL_SRC).toContain(">Protein<");
+    expect(MODAL_SRC).toContain(">Carbs<");
+    expect(MODAL_SRC).toContain(">Fat<");
   });
 
-  it("product card padding tightened (padding=Spacing.lg, gap=Spacing.xs, btnRow marginTop=0)", () => {
-    // The four specific rhythm knobs the spec called out. Kept as
-    // source-literal asserts so someone doesn't silently widen the card
-    // back out without updating this test.
-    expect(MODAL_SRC).toMatch(/productCard:[\s\S]*?padding:\s*Spacing\.lg/);
-    expect(MODAL_SRC).toMatch(/productCard:[\s\S]*?gap:\s*Spacing\.xs/);
-    expect(MODAL_SRC).toMatch(/btnRow:[\s\S]*?marginTop:\s*0/);
+  it("mounts the shared <PortionPicker> for the log path", () => {
+    expect(MODAL_SRC).toMatch(/<PortionPicker\b/);
+    expect(MODAL_SRC).toMatch(/value=\{pickerState\}/);
+    expect(MODAL_SRC).toMatch(/onChange=\{setPickerState\}/);
   });
 });

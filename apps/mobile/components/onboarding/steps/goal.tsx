@@ -1,6 +1,12 @@
 import * as React from "react";
 import { View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import {
+  ArrowLeftRight,
+  Minus,
+  TrendingDown,
+  TrendingUp,
+  type LucideIcon,
+} from "lucide-react-native";
 import { Accent } from "@/constants/theme";
 import { OptionCard } from "@/components/OptionCard";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -8,11 +14,28 @@ import type { Goal } from "@/lib/onboarding";
 import { useOnboarding } from "../context";
 import { MobileStepBody, MobileStepHeader, useStepOverline } from "../scaffold";
 
-const GOALS: { id: Goal; title: string; subtitle: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { id: "lose", title: "Lose fat", subtitle: "Gradual deficit, protein-first", icon: "trending-down-outline" },
-  { id: "maintain", title: "Maintain", subtitle: "Keep things steady", icon: "remove-outline" },
-  { id: "gain", title: "Gain muscle", subtitle: "Small surplus, high protein", icon: "trending-up-outline" },
-  { id: "recomp", title: "Recomposition", subtitle: "Slight deficit, strength-focused", icon: "swap-horizontal-outline" },
+/**
+ * Mobile Goal step.
+ *
+ * 2026-05-12 (premium-bar audit Group B cross-cutting): icons
+ * migrated from Ionicons to lucide-react-native to match the rest of
+ * the app's icon system (prototype carryover rule + every other
+ * onboarding step is on lucide). One-for-one shape map:
+ *   trending-down-outline → TrendingDown
+ *   remove-outline        → Minus
+ *   trending-up-outline   → TrendingUp
+ *   swap-horizontal-outline → ArrowLeftRight
+ */
+const GOALS: {
+  id: Goal;
+  title: string;
+  subtitle: string;
+  Icon: LucideIcon;
+}[] = [
+  { id: "lose", title: "Lose fat", subtitle: "Gradual deficit, protein-first", Icon: TrendingDown },
+  { id: "maintain", title: "Maintain", subtitle: "Keep things steady", Icon: Minus },
+  { id: "gain", title: "Gain muscle", subtitle: "Small surplus, high protein", Icon: TrendingUp },
+  { id: "recomp", title: "Recomposition", subtitle: "Slight deficit, strength-focused", Icon: ArrowLeftRight },
 ];
 
 export function MobileGoalStep() {
@@ -35,10 +58,10 @@ export function MobileGoalStep() {
               selected={selected}
               onPress={() => set({ goal: g.id })}
               icon={
-                <Ionicons
-                  name={g.icon}
+                <g.Icon
                   size={20}
                   color={selected ? Accent.primaryLight : colors.icon}
+                  strokeWidth={2.25}
                 />
               }
               title={g.title}

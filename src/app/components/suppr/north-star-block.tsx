@@ -34,7 +34,14 @@ export type NorthStarKind =
   | "default"
   | "library-empty"
   | "over-budget"
-  | "no-fit";
+  | "no-fit"
+  // ENG-94 (2026-05-13): on a user's very first day — no nutrition
+  // history yet — the `default` suggestion card felt presumptuous
+  // (algorithm pattern-matching on targets alone, not real intake).
+  // Render a calmer "Log your first meal" card instead until ≥ 1
+  // meal has been logged anywhere in the user's history. Mirror of
+  // the mobile `NorthStarBlock` kind shipped same day.
+  | "new-user";
 
 export interface NorthStarBlockSuggestion {
   recipeId: string;
@@ -99,6 +106,26 @@ export function NorthStarBlock({
     );
   }
 
+  if (kind === "new-user") {
+    return (
+      <SupprCard
+        data-slot="north-star-new-user"
+        data-testid={testID}
+        tone="primary"
+        gradient
+        padding="md"
+        className="flex flex-row items-center gap-3"
+      >
+        <Sparkles aria-hidden width={18} height={18} className="text-primary shrink-0" />
+        <div className="flex flex-1 flex-col gap-1">
+          <p className="text-[14px] font-semibold">
+            Log your first meal — suggestions get smarter once we've seen you eat.
+          </p>
+        </div>
+      </SupprCard>
+    );
+  }
+
   if (kind === "library-empty") {
     return (
       <SupprCard
@@ -158,6 +185,12 @@ export function NorthStarBlock({
   }
 
   return (
+    // 2026-05-12 (premium-bar audit web parity, DC2 polish): 200ms
+    // fade-up entrance using the shared `.v2-fade-up` keyframe so
+    // the card lands as a deliberate moment, not a pop-in. Mirrors
+    // mobile's 220ms reanimated fade-up. Honours
+    // `prefers-reduced-motion: reduce` via the existing theme.css
+    // reduce-motion override.
     <SupprCard
       data-slot="north-star-default"
       data-testid={testID}
@@ -165,7 +198,7 @@ export function NorthStarBlock({
       gradient
       padding="md"
       radius="lg"
-      className="relative flex flex-row items-stretch gap-3"
+      className="relative flex flex-row items-stretch gap-3 v2-fade-up"
     >
       {onSkip ? (
         <button
@@ -201,7 +234,12 @@ export function NorthStarBlock({
           <Sparkles aria-hidden width={10} height={10} />
           What to eat next
         </span>
-        <span className="text-[15px] font-bold leading-tight">{suggestion.title}</span>
+        {/* 2026-05-13 (premium-bar audit DC2 polish — Recime
+            multi-line + line-clamp(2)): web title now matches the
+            mobile pattern (`numberOfLines={2}`) so long recipe
+            titles wrap to a second line cleanly instead of
+            mid-word truncating. */}
+        <span className="text-[15px] font-bold leading-tight line-clamp-2">{suggestion.title}</span>
         {suggestion.whyLine ? (
           // Activation hook (audit 2026-04-30 — leak fix #5). 12px
           // muted matches the existing card cadence; tells the user
@@ -222,8 +260,11 @@ export function NorthStarBlock({
           >
             {suggestion.bandLabel}
           </span>
+          {/* 2026-05-12 (premium-bar audit cross-cutting): macro
+              format unified to `698 kcal · 22g P · 95g C · 27g F`
+              across Today + Eat Again. Web mirrors mobile. */}
           <span className="text-[11px] text-muted-foreground tabular-nums">
-            {suggestion.predictedCalories} kcal · {Math.round(suggestion.predictedProtein)}P / {Math.round(suggestion.predictedCarbs)}C / {Math.round(suggestion.predictedFat)}F
+            {suggestion.predictedCalories} kcal · {Math.round(suggestion.predictedProtein)}g P · {Math.round(suggestion.predictedCarbs)}g C · {Math.round(suggestion.predictedFat)}g F
           </span>
         </div>
 

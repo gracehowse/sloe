@@ -65,11 +65,31 @@ export function TodaySnapShortcut({
         ) : null}
       </span>
       <span className="flex flex-col min-w-0">
-        <span className="text-[14px] font-bold text-foreground leading-tight">
-          Snap a meal
+        {/* 2026-05-13 (premium-bar audit Today F3 #3): when locked,
+            pair the small corner-lock badge with an explicit "PRO"
+            chip beside the title. The lock alone wasn't reading as
+            a Pro gate — the chip makes the gate state unambiguous
+            before the user clicks. Mobile mirror at
+            `apps/mobile/components/today/TodaySnapShortcut.tsx`. */}
+        <span className="flex items-center gap-1.5">
+          <span className="text-[14px] font-bold text-foreground leading-tight">
+            Snap a meal
+          </span>
+          {locked ? (
+            <span
+              data-testid="today-snap-shortcut-pro-chip"
+              aria-label="Pro feature"
+              className="inline-flex items-center rounded-sm bg-primary px-1.5 py-px text-[9px] font-extrabold tracking-wider text-primary-foreground"
+            >
+              PRO
+            </span>
+          ) : null}
         </span>
+        {/* 2026-05-12 (premium-bar audit Today F3 #2): subtitle now
+            carries the speed signal + the AI-estimate trust signal.
+            Mobile mirrored in `apps/mobile/components/today/TodaySnapShortcut.tsx`. */}
         <span className="text-[12px] text-muted-foreground leading-tight mt-0.5">
-          One photo, full macros — no typing.
+          ~3 seconds · AI estimates macros, review before saving.
         </span>
       </span>
     </button>

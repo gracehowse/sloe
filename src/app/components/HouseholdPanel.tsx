@@ -290,7 +290,7 @@ export function HouseholdPanel() {
               maxLength={50}
             />
             <div className="flex gap-2">
-              <button onClick={() => void createHousehold()} className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:opacity-90 transition-opacity">Create</button>
+              <button onClick={() => void createHousehold()} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity">Create</button>
               <button onClick={() => setShowCreate(false)} className="px-4 py-2 rounded-lg bg-muted text-foreground text-sm hover:opacity-90 transition-opacity">Cancel</button>
             </div>
           </div>
@@ -311,13 +311,13 @@ export function HouseholdPanel() {
               {HOUSEHOLD_JOIN_DISCLOSURE_COPY}
             </p>
             <div className="flex gap-2">
-              <button onClick={() => void joinHousehold()} className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:opacity-90 transition-opacity">Join</button>
+              <button onClick={() => void joinHousehold()} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity">Join</button>
               <button onClick={() => setShowJoin(false)} className="px-4 py-2 rounded-lg bg-muted text-foreground text-sm hover:opacity-90 transition-opacity">Cancel</button>
             </div>
           </div>
         ) : (
           <div className="flex gap-2">
-            <button onClick={() => setShowCreate(true)} className="flex-1 px-4 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold hover:opacity-90 transition-opacity">Create Household</button>
+            <button onClick={() => setShowCreate(true)} className="flex-1 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity">Create Household</button>
             <button onClick={() => setShowJoin(true)} className="flex-1 px-4 py-2.5 rounded-lg border border-border text-foreground text-sm font-semibold hover:bg-muted/50 transition-colors">Join with Code</button>
           </div>
         )}

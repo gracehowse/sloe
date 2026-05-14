@@ -124,7 +124,14 @@ export function buildDigestStory(input: DigestStoryInput): DigestStoryResult {
     ? Math.floor(daysLogged)
     : 0;
 
-  const rangeLine = `This week (${weekLabel}).`;
+  // 2026-05-12 (premium-bar audit DC12 polish — past-tense voice rule):
+  // The Digest is a recap of the *previous* week, but the eyebrow used
+  // to read "This week (May 5–11)" in present tense even when shown on
+  // Sunday/Monday looking back. Linear / Headspace / MacroFactor all
+  // anchor recap eyebrows in past tense so the user reads the surface
+  // as "here's what happened" rather than "you're mid-stream and falling
+  // behind." Reframed to "Last week".
+  const rangeLine = `Last week (${weekLabel}).`;
   const daysLine = `${safeDaysLogged} of 7 days logged.`;
 
   let caloriesLine: string | null = null;
@@ -191,7 +198,12 @@ export function buildDigestStory(input: DigestStoryInput): DigestStoryResult {
     dayOfWeekPattern.deltaKcal > 0
   ) {
     const delta = Math.round(dayOfWeekPattern.deltaKcal);
-    dayOfWeekPatternLine = `You eat about ${delta.toLocaleString()} more kcal on ${pluraliseWeekday(dayOfWeekPattern.highDay)} than ${pluraliseWeekday(dayOfWeekPattern.lowDay)}.`;
+    // 2026-05-12 (premium-bar DC12 voice audit): "You eat" → "You
+    // averaged". Habitual present read like a stereotype; past tense
+    // ties the line to the 4-week observed window the engine actually
+    // computed it from. Same calm-factual register as the rest of
+    // the digest paragraph.
+    dayOfWeekPatternLine = `You averaged about ${delta.toLocaleString()} more kcal on ${pluraliseWeekday(dayOfWeekPattern.highDay)} than ${pluraliseWeekday(dayOfWeekPattern.lowDay)}.`;
   }
 
   const paragraph = [

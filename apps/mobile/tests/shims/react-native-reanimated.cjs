@@ -95,10 +95,28 @@ const Easing = {
   cubic: (t) => t,
 };
 
+// 2026-05-12 (premium-bar audit motion polish): components that render
+// `<Animated.View>` directly need a real React component, not a JSX-
+// type string. Strings like "Animated.View" worked in tests that only
+// `mount + find by testID`, but react-test-renderer throws
+// "Element type is invalid" once a component tries to render the
+// returned identifier as a JSX element type. Wrap each primitive in a
+// forwardRef that just renders to the corresponding RN host string
+// ("View" / "Text" / "ScrollView") — matching the RN shim's
+// `hostForwarder` pattern in `tests/shims/react-native.cjs`. RNTL
+// + react-test-renderer both find these by host-type name.
+function reanimatedHostForwarder(type, displayName) {
+  const Cmp = React.forwardRef(function Animated(props, ref) {
+    return React.createElement(type, Object.assign({}, props, { ref }));
+  });
+  Cmp.displayName = displayName;
+  return Cmp;
+}
+
 const Animated = {
-  View: "Animated.View",
-  Text: "Animated.Text",
-  ScrollView: "Animated.ScrollView",
+  View: reanimatedHostForwarder("View", "Animated.View"),
+  Text: reanimatedHostForwarder("Text", "Animated.Text"),
+  ScrollView: reanimatedHostForwarder("ScrollView", "Animated.ScrollView"),
   createAnimatedComponent,
 };
 

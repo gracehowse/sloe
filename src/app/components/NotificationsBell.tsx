@@ -43,7 +43,7 @@ export function NotificationsBell({
       >
         <Icons.notification className="w-5 h-5" />
         {notificationsUnreadCount > 0 ? (
-          <span className="absolute -top-0.5 -right-0.5 min-w-[1.1rem] h-[1.1rem] px-1 rounded-full bg-primary text-white text-[10px] font-bold leading-[1.1rem] text-center">
+          <span className="absolute -top-0.5 -right-0.5 min-w-[1.1rem] h-[1.1rem] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold leading-[1.1rem] text-center">
             {notificationsUnreadCount > 9 ? "9+" : notificationsUnreadCount}
           </span>
         ) : null}

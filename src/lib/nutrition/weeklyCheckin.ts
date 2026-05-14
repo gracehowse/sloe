@@ -210,23 +210,23 @@ export function buildWhyLine(input: {
     if (direction === "up") {
       if (ate < 0 && weightDir === "less") {
         // Standard pattern — ate under, lost more than expected.
-        return `You ate under your previous estimate and weighed ${weightAbs.toFixed(1)} kg less — your body is burning more than we thought.`;
+        return `You ate under your previous estimate and weighed ${weightAbs.toFixed(1)} kg less — your real burn looks higher than we'd estimated.`;
       }
       if (ate > 0 && weightDir !== "more") {
         // Ate over, but didn't gain as much as expected.
-        return `You ate above your previous estimate but didn't gain — your body is burning more than we thought.`;
+        return `You ate above your previous estimate but didn't gain — your real burn looks higher than we'd estimated.`;
       }
-      return "Your body is burning more than the previous estimate.";
+      return "Your real burn looks higher than the previous estimate.";
     }
     // direction === "down" — burning less than the engine thought.
     if (ate < 0 && weightDir !== "less") {
       // Ate under, but didn't lose.
-      return `You ate under your previous estimate but didn't lose — your body is burning less than we thought.`;
+      return `You ate under your previous estimate but didn't lose — your real burn looks lower than we'd estimated.`;
     }
     if (ate > 0 && weightDir === "more") {
-      return `You ate above your previous estimate and weighed ${weightAbs.toFixed(1)} kg more — your body is burning less than we thought.`;
+      return `You ate above your previous estimate and weighed ${weightAbs.toFixed(1)} kg more — your real burn looks lower than we'd estimated.`;
     }
-    return "Your body is burning less than the previous estimate.";
+    return "Your real burn looks lower than the previous estimate.";
   }
 
   // Weight-only — common when the user weighs in but doesn't log every
@@ -236,26 +236,26 @@ export function buildWhyLine(input: {
     const weightAbs = Math.abs(weightDelta);
     if (direction === "up") {
       return weightDelta < 0
-        ? `You weighed ${weightAbs.toFixed(1)} kg less — your body is burning more than we thought.`
-        : `Your body is burning more than the previous estimate.`;
+        ? `You weighed ${weightAbs.toFixed(1)} kg less — your real burn looks higher than we'd estimated.`
+        : `Your real burn looks higher than the previous estimate.`;
     }
     return weightDelta > 0
-      ? `You weighed ${weightAbs.toFixed(1)} kg more — your body is burning less than we thought.`
-      : `Your body is burning less than the previous estimate.`;
+      ? `You weighed ${weightAbs.toFixed(1)} kg more — your real burn looks lower than we'd estimated.`
+      : `Your real burn looks lower than the previous estimate.`;
   }
 
   // Intake-only — rarer (user logs but doesn't weigh) but possible.
   if (intakeKnown) {
     return direction === "up"
-      ? `Your body is burning more than the previous estimate based on this week's intake.`
-      : `Your body is burning less than the previous estimate based on this week's intake.`;
+      ? `Your real burn looks higher than the previous estimate based on this week's intake.`
+      : `Your real burn looks lower than the previous estimate based on this week's intake.`;
   }
 
   // Neither — should not happen at "ready" tier (the gate requires
   // weigh-ins) but be defensive.
   return direction === "up"
-    ? "Your body is burning more than the previous estimate."
-    : "Your body is burning less than the previous estimate.";
+    ? "Your real burn looks higher than the previous estimate."
+    : "Your real burn looks lower than the previous estimate.";
 }
 
 /**

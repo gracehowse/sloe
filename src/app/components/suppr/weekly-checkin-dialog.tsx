@@ -119,7 +119,7 @@ export function WeeklyCheckinDialog({
             type="button"
             onClick={onAccept}
             aria-label="Accept new target"
-            className="w-full py-3 rounded-xl bg-primary text-white font-bold text-sm hover:opacity-90 transition-opacity"
+            className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:opacity-90 transition-opacity"
           >
             Accept new target
           </button>

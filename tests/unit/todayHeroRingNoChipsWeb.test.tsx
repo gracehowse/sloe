@@ -1,23 +1,27 @@
 /**
- * TodayHeroRing (mobile-web) — chip-control reverted (2026-05-02).
+ * TodayHeroRing (mobile-web) — chip-control reverted (2026-05-02);
+ * pill dropped (2026-05-12 round 4, Grace TF, web parity with mobile).
  *
  * Pinned behaviour:
- *   - The `<md` (mobile-web) variant of the calorie ring no longer
- *     renders the Remaining/Consumed segmented chip control.
- *   - Mode-switching at this breakpoint flows through the long-press
- *     gesture inside the underlying ring (mirrors mobile parity).
- *   - The "Why this number?" pill (PR #31) still renders when the
- *     host provides `onPressWhy`.
+ *   - The mobile-web variant no longer renders the Remaining/Consumed
+ *     segmented chip control (2026-05-02 decision).
+ *   - The mobile-web variant no longer renders the "Why this number?"
+ *     pill, even when the host provides `onPressWhy`. The audit called
+ *     the pill out as signalling low confidence in the number. The
+ *     explainer is now reached from /home?view=targets → "How is this
+ *     calculated?" row, which opens the dialog inline on Targets. The
+ *     `onPressWhy` prop is preserved on the type for backwards compat
+ *     with host wiring, but no UI surfaces it.
+ *   - Mode-switching at this breakpoint still flows through the
+ *     long-press gesture inside the underlying ring.
  *
- * Desktop (`>= md`) intentionally keeps its own chip control inside
- * `TodayHeroStats` (no long-press equivalent on a mouse-driven UI) —
- * that divergence is documented in
- * `docs/decisions/2026-05-02-revert-today-ui-changes.md` and tested
- * separately.
+ * Desktop (`>= md`) keeps its own chip control inside `TodayHeroStats`
+ * — that divergence is documented in
+ * `docs/decisions/2026-05-02-revert-today-ui-changes.md`.
  */
 
 import { describe, it, expect, vi } from "vitest";
-import { render, fireEvent } from "@testing-library/react";
+import { render } from "@testing-library/react";
 
 import { TodayHeroRing } from "../../src/app/components/suppr/today-hero-ring";
 
@@ -48,9 +52,9 @@ describe("TodayHeroRing (mobile-web) — post-revert (2026-05-02)", () => {
     expect(queryByText("Consumed")).toBeNull();
   });
 
-  it("renders the 'Why this number?' pill when onPressWhy is provided", () => {
+  it("does NOT render the 'Why this number?' pill even when onPressWhy is provided (2026-05-12 round 4)", () => {
     const onPressWhy = vi.fn();
-    const { getByTestId } = render(
+    const { queryByTestId } = render(
       <TodayHeroRing
         {...baseProps}
         onToggleExpanded={() => {}}
@@ -58,8 +62,9 @@ describe("TodayHeroRing (mobile-web) — post-revert (2026-05-02)", () => {
         onPressWhy={onPressWhy}
       />,
     );
-    const pill = getByTestId("today-hero-why-this-number");
-    fireEvent.click(pill);
-    expect(onPressWhy).toHaveBeenCalledTimes(1);
+    // The pill testID must not appear on Today. The explainer lives
+    // on /home?view=targets now.
+    expect(queryByTestId("today-hero-why-this-number")).toBeNull();
+    expect(onPressWhy).not.toHaveBeenCalled();
   });
 });

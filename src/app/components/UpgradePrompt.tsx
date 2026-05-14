@@ -62,7 +62,7 @@ export function UpgradePrompt({ feature, requiredTier, currentTier, onUpgrade, o
             <button
               type="button"
               onClick={onUpgrade}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-white font-medium shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-medium shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all"
             >
               <Icons.sparkles className="w-4 h-4" />
               Upgrade
@@ -117,7 +117,7 @@ export function SaveLimitBanner({
       <button
         type="button"
         onClick={onUpgrade}
-        className="shrink-0 px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors"
+        className="shrink-0 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors"
       >
         Upgrade
       </button>

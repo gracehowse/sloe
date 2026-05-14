@@ -2,7 +2,10 @@
  * Withings-style chart header (Grace TF feedback 2026-05-11).
  *
  * Pins:
- *   - "WEIGHT: Stable" / "Down" / "Up" / "No data" status word
+ *   - "WEIGHT: Stable" / "Losing weight" / "Gaining weight" / "—" status word
+ *   - 2026-05-12 (Withings parity round 4): "Down" / "Up" renamed to
+ *     "Losing weight" / "Gaining weight" — the Withings phrase carries
+ *     the verdict; "Down" alone read as direction without context.
  *   - "TREND: +0.4 kg" / "−0.6 kg" / "—" signed delta
  *   - kg vs lb formatting honoured
  *   - Period label rendered when provided
@@ -29,26 +32,26 @@ vi.mock("@/hooks/use-theme-colors", () => ({
 import { WeightTrendHeader } from "../../components/progress/WeightTrendHeader";
 
 describe("<WeightTrendHeader>", () => {
-  it("renders 'Down' status with negative delta (kg)", () => {
+  it("renders 'Losing weight' status with negative delta (kg)", () => {
     const { getByText } = render(
       <WeightTrendHeader
         trend={{ trendStatus: "down", trendDeltaKg: -0.6 }}
         isImperial={false}
       />,
     );
-    expect(getByText("Down")).toBeTruthy();
+    expect(getByText("Losing weight")).toBeTruthy();
     // Minus sign is the typographic minus, formatted to 1 dp.
     expect(getByText("−0.6 kg")).toBeTruthy();
   });
 
-  it("renders 'Up' status with positive delta", () => {
+  it("renders 'Gaining weight' status with positive delta", () => {
     const { getByText } = render(
       <WeightTrendHeader
         trend={{ trendStatus: "up", trendDeltaKg: 0.4 }}
         isImperial={false}
       />,
     );
-    expect(getByText("Up")).toBeTruthy();
+    expect(getByText("Gaining weight")).toBeTruthy();
     expect(getByText("+0.4 kg")).toBeTruthy();
   });
 

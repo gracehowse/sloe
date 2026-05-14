@@ -8,6 +8,17 @@ import { Platform } from 'react-native';
 /** Accent palette — aligned with web CSS custom properties in theme.css */
 export const Accent = {
   primary: '#4c6ce0',
+  /**
+   * Canonical foreground colour for anything sitting on top of
+   * Accent.primary (CTAs, segmented-active states, halo pills). Always
+   * pure white — matches web's `--primary-foreground: #ffffff` token in
+   * both light and dark modes (the `Accent.primary` indigo is dark
+   * enough that white-on-indigo passes WCAG AA contrast 5.7:1; the
+   * previous `#0a0a0f` near-black on indigo only hit ~3.1:1, failing AA
+   * for normal text). Grace cohort 2026-05-12: standardised across
+   * onboarding to match the rest of the app + web.
+   */
+  primaryForeground: '#ffffff',
   primaryLight: '#6c8cff',
   success: '#22a860',
   successLight: '#4cd080',
@@ -20,6 +31,16 @@ export const Accent = {
   magenta: '#e04888',
   /** Info / carbs-style accent (aligned with web macro-carbs tone where needed) */
   info: '#0ea5e9',
+  /** 2026-05-12 (premium-bar audit DC10 follow-through): carbs gets a
+   *  dedicated warm-orange hue. Amber (`warning`) is now reserved for
+   *  over-budget warnings only. Previously `MacroColors.carbs` collapsed
+   *  onto `warning`, which made an over-budget amber bar look identical
+   *  to a normal carbs bar. Light: #ed6b2a (deep warm orange, hue 16°);
+   *  dark: #ff9054 (lighter warm orange so it still pops on dark
+   *  backgrounds). Distinct from `orange` (#f97316, tailwind-500) which
+   *  is reserved for sodium drill-downs in the micros panel. */
+  carbs: '#ed6b2a',
+  carbsLight: '#ff9054',
 };
 
 /**
@@ -49,7 +70,11 @@ export const StimulantColors = {
 export const MacroColors = {
   calories: Accent.success,       // web: --macro-calories (#22a860)
   protein: Accent.primary,        // web: --macro-protein  (#4c6ce0)
-  carbs: Accent.warning,          // web: --macro-carbs    (#e8a020)
+  // 2026-05-12 (premium-bar audit DC10): carbs split from
+  // `Accent.warning` (amber) → `Accent.carbs` (warm orange). Amber is
+  // now reserved for over-budget warnings only. See `Accent.carbs`
+  // comment in theme.ts for the hue rationale.
+  carbs: Accent.carbs,            // web: --macro-carbs    (#ed6b2a)
   fat: Accent.magenta,            // web: --macro-fat      (#e04888)
   fiber: Accent.success,
   sugar: Accent.primaryLight,

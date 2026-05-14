@@ -128,7 +128,7 @@ export function Milestone30DayDialog({
           type="button"
           onClick={onDismiss}
           aria-label="Keep going"
-          className="w-full py-3 rounded-xl bg-primary text-white font-bold text-sm hover:opacity-90 transition-opacity mt-4"
+          className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:opacity-90 transition-opacity mt-4"
         >
           Keep going
         </button>

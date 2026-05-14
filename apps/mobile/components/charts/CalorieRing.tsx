@@ -98,7 +98,14 @@ function useAnimatedNumber(
 // fixed" on build 28). Macro-ring radii stay proportional.
 const SIZE = 140;
 const STROKE = 8;
-const MACRO_STROKE = 5;
+// 2026-05-12 (premium-bar DC1): macro arc stroke 5 → 6.5. Audit flagged
+// "macro arcs too thin to read at a glance" — Apple Watch's nested
+// rings ship at ~7-8px on a similar diameter. We bump to 6.5 (not 7)
+// because MACRO_R[2] = R - 32 = 30, and a 7px stroke at radius 30 has
+// the inner edge at 26.5px which starts crowding the centre text.
+// 6.5 keeps centre text breathing room while making each arc readable
+// as a macro indicator instead of a faint hairline.
+const MACRO_STROKE = 6.5;
 const CX = SIZE / 2;
 const R = (SIZE - STROKE) / 2 - 2;
 const MACRO_R = [R - 12, R - 22, R - 32];
@@ -124,8 +131,18 @@ type Props = {
   onToggle?: () => void;
   /** Show remaining or consumed calories */
   displayMode?: DisplayMode;
-  /** Called when user long-presses to toggle display mode */
+  /** Called when user long-presses to toggle display mode. Ignored
+   *  when `onLongPressExplain` is also provided — the new explainer
+   *  binding takes precedence per 2026-05-12 audit. */
   onToggleDisplayMode?: () => void;
+  /** 2026-05-12 (premium-bar DC1, Grace approval): when provided, the
+   *  long-press gesture opens the "Why this number?" explainer
+   *  instead of toggling display mode. The visible "Why this number?"
+   *  pill below the ring is dropped — "the link signals low
+   *  confidence; long-press signals depth" per audit. Discoverability
+   *  is the trade — Apple Watch / Fitbit / Strava all hide depth
+   *  behind a long-press once. */
+  onLongPressExplain?: () => void;
 };
 
 function MacroRing({
@@ -134,12 +151,21 @@ function MacroRing({
   color,
   trackColor,
   delay,
+  dim,
 }: {
   radius: number;
   pct: number;
   color: string;
   trackColor: string;
   delay: number;
+  /** 2026-05-12 (premium-bar DC1, Apple Watch borrow): when the outer
+   *  calorie ring is over-budget, dim the macro arcs to ~55% so the
+   *  destructive-red outer ring carries the over signal without the
+   *  macro colours fighting it. "Warm-shift" per audit — opacity
+   *  approximation that's cheap to render and reads correctly in dark
+   *  mode. If a true colour-warm-shift is wanted later, swap this
+   *  prop for a `tint` colour string. */
+  dim?: boolean;
 }) {
   const circ = CIRC(radius);
   const progress = useSharedValue(0);
@@ -182,6 +208,7 @@ function MacroRing({
         strokeLinecap="round"
         rotation="-90"
         origin={`${CX},${CX}`}
+        opacity={dim ? 0.55 : 1}
       />
     </G>
   );
@@ -201,6 +228,7 @@ export default function CalorieRing({
   onToggle,
   displayMode = "consumed",
   onToggleDisplayMode,
+  onLongPressExplain,
 }: Props) {
   const diff = Math.round(goal - consumed);
   const isOver = consumed > goal;
@@ -260,7 +288,19 @@ export default function CalorieRing({
   });
 
   return (
-    <Pressable onPress={onToggle} onLongPress={onToggleDisplayMode} style={{ alignItems: "center" }}>
+    <Pressable
+      onPress={onToggle}
+      // 2026-05-12 (Grace TF feedback round 2): revert long-press to the
+      // canonical displayMode toggle. The earlier patch wired
+      // `onLongPressExplain` here so long-press would open the
+      // "Why this number?" sheet, but the trade — losing the
+      // expand/displayMode lock-step gesture — was the wrong call.
+      // The explainer now lives on a subtle inline affordance below
+      // the ring (see TodayHeroRing). Long-press stays the power-user
+      // shortcut for ring state.
+      onLongPress={onToggleDisplayMode}
+      style={{ alignItems: "center" }}
+    >
       <View
         style={{
           width: SIZE,
@@ -363,7 +403,7 @@ export default function CalorieRing({
               color={MacroColors.protein}
               trackColor={trackColor}
               delay={80}
-
+              dim={isOver}
             />
           )}
           {expanded && !isEmpty && (
@@ -373,7 +413,7 @@ export default function CalorieRing({
               color={MacroColors.carbs}
               trackColor={trackColor}
               delay={160}
-
+              dim={isOver}
             />
           )}
           {expanded && !isEmpty && (
@@ -383,7 +423,7 @@ export default function CalorieRing({
               color={MacroColors.fat}
               trackColor={trackColor}
               delay={240}
-  
+              dim={isOver}
             />
           )}
         </Svg>

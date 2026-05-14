@@ -30,7 +30,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { X } from "lucide-react-native";
 
 import { Accent, IconSize, Radius, Spacing } from "@/constants/theme";
+import { formatMacro } from "../../../src/lib/nutrition/formatMacro";
 import type { SavedMealItem } from "../../../src/lib/nutrition/savedMeals";
+import { formatMacroTrailer } from "../../../src/lib/nutrition/macroFormat";
 
 type Theme = {
   text: string;
@@ -316,9 +318,10 @@ export default function SaveMealSheet({
               >
                 {items.map((it, i) => {
                   const title = it.recipeTitle?.trim() || "Untitled";
-                  const macroSummary = `${Math.round(it.calories)} kcal, protein ${Math.round(
+                  const macroSummary = `${Math.round(it.calories)} kcal, protein ${formatMacro(
                     it.protein,
-                  )} grams, carbs ${Math.round(it.carbs)} grams, fat ${Math.round(it.fat)} grams`;
+                    "protein",
+                  )} grams, carbs ${formatMacro(it.carbs, "carbs")} grams, fat ${formatMacro(it.fat, "fat")} grams`;
                   return (
                     <View
                       key={`${title}-${i}`}
@@ -343,8 +346,12 @@ export default function SaveMealSheet({
                         <Text
                           style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2 }}
                         >
-                          {Math.round(it.calories)} kcal · P {Math.round(it.protein)}g · C{" "}
-                          {Math.round(it.carbs)}g · F {Math.round(it.fat)}g
+                          {formatMacroTrailer({
+                            calories: it.calories,
+                            protein: it.protein,
+                            carbs: it.carbs,
+                            fat: it.fat,
+                          })}
                         </Text>
                       </View>
                       <Pressable

@@ -53,40 +53,41 @@ Run agents in this order. Group within phases can run in parallel.
 6. `design-system-enforcer` — prototype conformance across web / landing / onboarding / mobile web / mobile app against `docs/ux/claude-design-bundles/`; run first in this phase so downstream lenses operate on a drift map
 7. `visual-qa`
 8. `ui-critic`
-9. `brand-manager` — brand identity, tone, visual direction, naming consistency
-10. `copy-reviewer` — all product and website copy against brand tone, clarity, persuasion
-11. `ui-product-designer` — for screens flagged by `design-system-enforcer`, `ui-critic`, or `visual-qa`, assess whether a credible design direction exists or is missing
+9. `premium-auditor` — end-to-end premium-bar sweep, every surface, with a named best-in-class comparable per feature (Withings, MFP, Recime, Cal AI, Linear, etc.); refuse-to-pass list gates phase exit
+10. `brand-manager` — brand identity, tone, visual direction, naming consistency
+11. `copy-reviewer` — all product and website copy against brand tone, clarity, persuasion
+12. `ui-product-designer` — for screens flagged by `design-system-enforcer`, `ui-critic`, `visual-qa`, or `premium-auditor`, assess whether a credible design direction exists or is missing
 
 ### Phase 4 — Domain correctness
-12. `nutrition-engine`
-13. `data-integrity`
-14. `sync-enforcer`
-15. `integration-manager`
-16. `performance-optimizer`
+13. `nutrition-engine`
+14. `data-integrity`
+15. `sync-enforcer`
+16. `integration-manager`
+17. `performance-optimizer`
 
 ### Phase 5 — Trust and safety
-17. `security-reviewer`
-18. `legal-reviewer`
-19. `diversity-inclusion` — inclusive language, body-neutral framing, cultural respect, accessibility, equitable defaults
+18. `security-reviewer`
+19. `legal-reviewer`
+20. `diversity-inclusion` — inclusive language, body-neutral framing, cultural respect, accessibility, equitable defaults
 
 ### Phase 6 — Quality gate
-20. `qa-lead`
+21. `qa-lead`
 
 ### Phase 7 — Market position and growth
-21. `user-sentiment` — ground truth on what real users love, hate, request
-22. `competitor-intelligence`
-23. `feature-scout` — specific feature gaps and unmet needs from public feedback
-24. `growth-strategist`
-25. `monetisation-architect`
-26. `analytics-engineer`
+22. `user-sentiment` — ground truth on what real users love, hate, request
+23. `competitor-intelligence`
+24. `feature-scout` — specific feature gaps and unmet needs from public feedback
+25. `growth-strategist`
+26. `monetisation-architect`
+27. `analytics-engineer`
 
 ### Phase 8 — Documentation and memory
-27. `docs-keeper`
-28. `product-memory`
+28. `docs-keeper`
+29. `product-memory`
 
 ### Phase 9 — Plan and gate
-29. `planner`
-30. `release-gate`
+30. `planner`
+31. `release-gate`
 
 Note: `executor` is intentionally not a sweep phase (the sweep reads, it doesn't write). `executor` is named as the owner on any action in the ranked list that requires implementation, and receives the handoff via `planner`.
 

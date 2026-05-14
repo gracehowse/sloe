@@ -828,6 +828,7 @@ export default function ProgressScreen() {
     accent: Accent.primary,
     green: Accent.success,
     amber: Accent.warning,
+    red: Accent.destructive,
     protein: MacroColors.protein,
     carbs: MacroColors.carbs,
     fat: MacroColors.fat,
@@ -1069,6 +1070,12 @@ export default function ProgressScreen() {
               accessibilityLabel={`Range ${label}`}
               accessibilityState={{ selected: active }}
               onPress={() => setRangeKey(k)}
+              // 2026-05-13 (premium-bar audit Group H weight chart #7):
+              // visible pill is ~28pt tall; hitSlop extends the touch
+              // target above + below to ≥40pt without changing visual
+              // geometry. Apple HIG recommends ≥44pt; testers reported
+              // missed taps on the range row at the prior visual size.
+              hitSlop={{ top: 8, bottom: 8, left: 2, right: 2 }}
               style={({ pressed }) => [{
                 flex: 1,
                 paddingVertical: 8,
@@ -1485,7 +1492,13 @@ export default function ProgressScreen() {
                               width: "100%",
                               height: barH,
                               borderRadius: 5,
-                              backgroundColor: d.calories === 0 ? t.border : overTarget ? t.amber : t.green,
+                              // Audit 2026-05-12 (premium-bar DC10): match the
+                              // calorie-ring 3-state rule — empty=border tint,
+                              // under=success green, over=destructive red.
+                              // Previously over used `t.amber` which collapsed
+                              // visual signal with the under-target state at
+                              // low lightness in dark mode.
+                              backgroundColor: d.calories === 0 ? t.border : overTarget ? t.red : t.green,
                               opacity: isDayToday ? 1 : 0.75,
                               ...(showApproxCue
                                 ? {
@@ -1531,7 +1544,7 @@ export default function ProgressScreen() {
                   <Text style={{ fontSize: 10, color: t.dim }}>At or under target</Text>
                 </View>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                  <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: t.amber }} />
+                  <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: t.red }} />
                   <Text style={{ fontSize: 10, color: t.dim }}>Over target</Text>
                 </View>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
@@ -2008,11 +2021,23 @@ export default function ProgressScreen() {
                 computeWeightTrend prevents long ranges from
                 collapsing short histories into <3 buckets.
               */}
-              {weightChartTrend.points.length >= 2 ? (
+              {/* 2026-05-12 round 4 (Grace TF, Withings parity): show
+                  the chart structure even with a single weigh-in.
+                  Withings draws the chart at count === 1 (one dot on
+                  the gridlines, no trend line) — way more readable
+                  than the sparse-state template ("scale icon + Log
+                  weight" replaced the chart entirely). The chart
+                  already handles count === 1 gracefully: today's
+                  vertical indicator + the prominent halo dot + no
+                  trend line. count === 0 still falls back to the
+                  Log-weight CTA template since there's literally
+                  nothing to chart. */}
+              {weightChartTrend.points.length >= 1 ? (
                 <WeightChart
                   trend={weightChartTrend}
                   goalKg={goalWeightKg}
                   isImperial={measurementSystem === "imperial"}
+                  range={weightChartRange}
                 />
               ) : (
                 <WeightSparseState
@@ -2158,7 +2183,7 @@ export default function ProgressScreen() {
                   <Text style={{ fontSize: 13, color: t.sub, marginBottom: 10, lineHeight: 18 }}>
                     {timeline.remainingKg > 0.1
                       ? `${timeline.remainingKg} kg left to reach ${goalWeightKg} kg.`
-                      : "You've reached your goal weight!"}
+                      : "You've reached your goal weight."}
                     {timeline.weeklyRateKg !== 0 && ` Currently ${timeline.trendDirection === "losing" ? "losing" : timeline.trendDirection === "gaining" ? "gaining" : "maintaining"} ~${Math.abs(timeline.weeklyRateKg)} kg/week.`}
                   </Text>
 
@@ -2192,7 +2217,12 @@ export default function ProgressScreen() {
                   {dailyProjection && (
                     <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: t.border }}>
                       <Text style={{ fontSize: 12, color: t.sub, lineHeight: 18 }}>
-                        Your recent 7-day average is {avgCals.toLocaleString()} kcal/day vs {targets.calories.toLocaleString()} target, putting you on track for{" "}
+                        {/* 2026-05-12 (premium-bar DC12 voice audit): split
+                            past-fact from future-projection per Headspace
+                            voice borrow — "averaging X puts you on track
+                            for Y" mixed an observation with a promise.
+                            Now: stated fact + conditional projection. */}
+                        Last 7 days averaged {avgCals.toLocaleString()} kcal/day vs {targets.calories.toLocaleString()} target. On that trend you&apos;d reach{" "}
                         <Text style={{ fontWeight: "700", color: t.accent }}>{dailyProjection.projectedWeightKg} kg</Text> in ~{dailyProjection.projectionWeeks} weeks.
                       </Text>
                       <Text style={{ fontSize: 10, color: t.dim, marginTop: 4 }}>

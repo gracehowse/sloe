@@ -12,6 +12,7 @@ import {
   isExpoGoRuntime,
   isHealthSyncAvailable,
   probeHealthAccess,
+  probeNutritionWrite,
   requestDietaryHealthPermissions,
   requestHealthPermissions,
   syncHealthData,
@@ -365,6 +366,34 @@ export default function HealthSyncScreen() {
     }
   }, [errorState?.kind, handleConnect, handleSync]);
 
+  // 2026-05-13 (Grace TF feedback) — diagnostic write probe. Fires a
+  // single `saveFood` call with a labelled 1 kcal sample via
+  // `probeNutritionWrite` so the alert can surface the real bridge
+  // error instead of guessing at permissions.
+  const handleTestWrite = useCallback(() => {
+    Alert.alert(
+      "Send a test meal to Apple Health?",
+      'This writes a labelled 1 kcal entry called "Suppr test write" to verify the connection. You can delete it from the Health app afterwards.',
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Send test",
+          onPress: async () => {
+            const result = await probeNutritionWrite();
+            if (result.ok) {
+              Alert.alert(
+                "Test write succeeded ✓",
+                "Open Apple Health → Browse → Nutrition → Dietary Energy. You should see a 1 kcal entry from Suppr. Real meals will write automatically as you log them.",
+              );
+            } else {
+              Alert.alert("Test write blocked", result.reason);
+            }
+          },
+        },
+      ],
+    );
+  }, []);
+
   const handleClearImported = useCallback(() => {
     if (!userId) return;
     Alert.alert(
@@ -475,8 +504,14 @@ export default function HealthSyncScreen() {
       {/* Nutrition export card */}
       <View style={styles.card}>
         <CardTitle styles={styles} icon="nutrition" text="Nutrition Sync" />
+        {/* 2026-05-13 (TF feedback `AOe4rm7514fI3dj_TliRdqk` —
+            "internal language needs to be removed"): the prior copy
+            leaked an audit-doc reference ("Audit/2026-04-30"), a
+            competitor name ("matching MyFitnessPal / Cal AI"), and
+            internal jargon ("Complete Day"). Rewritten in plain
+            English for the user-facing surface. */}
         <Text style={styles.desc}>
-          {`Share your Suppr meals to Apple Health so other apps can see them. Audit/2026-04-30 — meals are now written per-log (matching MyFitnessPal / Cal AI), not only at "Complete Day". Energy, protein, carbs, fat, and fibre are written for every meal you log; AI-estimated rows are skipped until you confirm them.`}
+          Share your Suppr meals to Apple Health so other apps can see them. Energy, protein, carbs, fat, and fibre are written each time you log a meal — AI-estimated rows are skipped until you confirm them.
         </Text>
 
         <View style={{ marginTop: Spacing.lg, gap: Spacing.md }}>
@@ -527,6 +562,40 @@ export default function HealthSyncScreen() {
           <Text style={{ fontSize: 12, color: colors.textTertiary, marginLeft: 28, marginTop: -4 }}>
             Your logged meals will be written to Apple Health for other apps to read. Each meal is written when you log it; re-logs of the same entry are de-duplicated.
           </Text>
+
+          {/* 2026-05-13 (Grace TF feedback — "meals are not sharing
+              to Health from Suppr, only from Health to Suppr"): the
+              write path had no diagnostic. Root cause shipped the
+              same day was a method-name mismatch — our code called
+              `hk.saveFoodSample` but react-native-health exposes
+              `hk.saveFood`, so every meal silently no-op'd. This
+              "Send a test meal" button now writes a 1-kcal probe via
+              `probeNutritionWrite`, which surfaces the real bridge
+              error in the alert. */}
+          {exportEnabled && available && connected ? (
+            <Pressable
+              onPress={handleTestWrite}
+              accessibilityRole="button"
+              accessibilityLabel="Send a test meal to Apple Health to verify writes work"
+              testID="health-sync-test-write"
+              style={({ pressed }) => ({
+                marginTop: Spacing.sm,
+                marginLeft: 28,
+                alignSelf: "flex-start",
+                paddingHorizontal: Spacing.md,
+                paddingVertical: 8,
+                borderRadius: Radius.md,
+                borderWidth: 1,
+                borderColor: Accent.primary + "55",
+                backgroundColor: Accent.primary + "10",
+                opacity: pressed ? 0.7 : 1,
+              })}
+            >
+              <Text style={{ fontSize: 12, fontWeight: "600", color: Accent.primary }}>
+                Send a test meal to Health →
+              </Text>
+            </Pressable>
+          ) : null}
         </View>
 
         {/* Clear imported data — always visible so user can clean up past imports */}

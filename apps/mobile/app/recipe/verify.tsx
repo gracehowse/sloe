@@ -719,11 +719,12 @@ export default function VerifyScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={Accent.primary} />
-        </View>
-      </View>
+      <VerifyLoadingSkeleton
+        insetsTop={insets.top}
+        colors={colors}
+        styles={styles}
+        onCancel={() => router.back()}
+      />
     );
   }
 
@@ -842,6 +843,25 @@ export default function VerifyScreen() {
           const rowEff = effectiveMacros(ing);
           const rowCal = rowHasOverride ? Math.round(rowEff.calories) : ing.calories;
 
+          // 2026-05-12 (premium-bar audit refuse-to-pass #3 — Recime
+          // per-row confidence): expose the confidence value as a
+          // colour-coded bar at the bottom of the collapsed row.
+          // - >= 0.9 → success (high confidence match)
+          // - >= 0.5 → muted track (moderate; already flagged via
+          //   alert-circle for needsReview path)
+          // - < 0.5  → destructive (low; needs user attention)
+          // Override rows skip the bar entirely — the user has
+          // explicitly pinned the value so confidence is "100% user".
+          // Added rows (user-typed) also skip — they're user-authored.
+          const confPct = Math.max(0, Math.min(1, ing.confidence ?? 0));
+          const confColor =
+            confPct >= 0.9
+              ? Accent.success
+              : confPct >= 0.5
+                ? Accent.warning
+                : Accent.destructive;
+          const showConfBar = !rowHasOverride && !rowAdded && ing.isVerified !== undefined;
+
           return (
             <View key={ing.id}>
               {/* Collapsed row */}
@@ -878,6 +898,27 @@ export default function VerifyScreen() {
                   {ing.matchedName && ing.matchedName !== ing.name && (
                     <Text style={styles.ingOriginal}>{`"${decodeEntities(ing.name)}"`}</Text>
                   )}
+                  {showConfBar ? (
+                    <View
+                      style={{
+                        marginTop: 6,
+                        height: 3,
+                        borderRadius: 2,
+                        backgroundColor: colors.border,
+                        overflow: "hidden",
+                      }}
+                      accessibilityLabel={`Match confidence: ${Math.round(confPct * 100)} percent`}
+                    >
+                      <View
+                        style={{
+                          width: `${Math.round(confPct * 100)}%`,
+                          height: "100%",
+                          backgroundColor: confColor,
+                          borderRadius: 2,
+                        }}
+                      />
+                    </View>
+                  ) : null}
                 </View>
                 <Text style={styles.ingCals}>{rowCal}</Text>
                 <Ionicons
@@ -1237,6 +1278,221 @@ export default function VerifyScreen() {
           }}
         />
       ) : null}
+    </View>
+  );
+}
+
+/**
+ * VerifyLoadingSkeleton — 2026-05-12 round 5 (premium-bar audit
+ * refuse-to-pass #3, Recime borrow). Replaces the previous bare
+ * `ActivityIndicator` centred on a blank screen, which the audit
+ * called out as EMBARRASSING tier — the user pastes a recipe URL,
+ * waits 3-30s while the AI matches ingredients, and stares at a
+ * generic spinner with no header, no skeleton, no progress hint,
+ * no escape hatch.
+ *
+ * What this renders during the load:
+ *   - Full top bar (back / VERIFY / list affordance placeholder)
+ *   - Title skeleton row (recipe name placeholder)
+ *   - Status narration line that cycles through 3 stages every
+ *     ~1200ms ("Reading the recipe…" → "Matching ingredients…"
+ *     → "Scaling macros…") with a small spinner
+ *   - 4 ingredient-row skeletons (Recime pattern: shows what
+ *     the screen WILL contain, not just "loading…")
+ *   - Cancel button that calls `onCancel` so the user can bail
+ *     without waiting
+ *
+ * No timeout-and-fail flow yet — the parent already surfaces
+ * loadError post-throw; that branch shows the topbar + "Couldn't
+ * load this recipe" message with a back affordance.
+ */
+function VerifyLoadingSkeleton({
+  insetsTop,
+  colors,
+  styles,
+  onCancel,
+}: {
+  insetsTop: number;
+  colors: ReturnType<typeof useThemeColors>;
+  // Loose typing — we use only `container`, `topBar`, `backText`,
+  // `topTitle`, `scroll` from the parent's StyleSheet, all of which
+  // are ViewStyle / TextStyle. Narrowing to a strict mapped type
+  // would mean duplicating the parent's whole style object literal
+  // here just to satisfy TS's StyleSheet.create generic.
+  styles: Record<string, never> | { [k: string]: never } | { [k: string]: object };
+  onCancel: () => void;
+}) {
+  // Status narration cycle. Stages match the actual stages the
+  // back-end runs (fetch → match → scale) so the copy stays honest
+  // even though we can't read which stage the back-end is on in
+  // real time.
+  const STAGES = useMemo(
+    () => [
+      "Reading the recipe…",
+      "Matching ingredients to our database…",
+      "Scaling macros to your servings…",
+    ],
+    [],
+  );
+  const [stageIdx, setStageIdx] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => {
+      setStageIdx((i) => (i + 1) % STAGES.length);
+    }, 1400);
+    return () => clearInterval(t);
+  }, [STAGES.length]);
+
+  // 2026-05-12 (premium-bar audit refuse-to-pass #3 — 8s timeout):
+  // after 8 seconds of skeleton load, surface a "Taking longer than
+  // usual" message + retry hint. The parent still owns the timeout
+  // ↦ error path (loadError state) — this is a softer pre-error nudge
+  // so the user isn't staring at a status-cycle for 30s with no
+  // signal that something might be off.
+  const [slowLoad, setSlowLoad] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setSlowLoad(true), 8_000);
+    return () => clearTimeout(t);
+  }, []);
+
+  const skeletonBg = colors.cardBorder ?? colors.border;
+  const SkeletonBar = ({ width, height = 14 }: { width: string | number; height?: number }) => (
+    <View
+      style={{
+        width: width as never,
+        height,
+        borderRadius: 6,
+        backgroundColor: skeletonBg,
+        opacity: 0.6,
+      }}
+    />
+  );
+
+  return (
+    <View style={[styles.container, { paddingTop: insetsTop }]}>
+      <View style={styles.topBar}>
+        <Pressable
+          onPress={onCancel}
+          hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel="Cancel and go back"
+        >
+          <Text style={styles.backText}>‹ Back</Text>
+        </Pressable>
+        <Text style={styles.topTitle}>VERIFY</Text>
+        <View style={{ width: 50 }} />
+      </View>
+
+      <ScrollView contentContainerStyle={styles.scroll}>
+        {/* Recipe title skeleton — matches the recipeName/subtitle
+            structure of the loaded view, so the page doesn't reflow
+            when data arrives. */}
+        <SkeletonBar width="70%" height={24} />
+        <View style={{ height: 8 }} />
+        <SkeletonBar width="40%" height={13} />
+        <View style={{ height: Spacing.md }} />
+
+        {/* Status narration — the load is async + opaque, so we
+            tell the user what we're DOING. Reads as deliberate
+            (the engine is working) instead of empty (the page
+            hasn't loaded). */}
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 10,
+            padding: 14,
+            borderRadius: Radius.md,
+            backgroundColor: `${Accent.primary}10`,
+            borderWidth: 1,
+            borderColor: `${Accent.primary}26`,
+            marginBottom: Spacing.md,
+          }}
+        >
+          <ActivityIndicator size="small" color={Accent.primary} />
+          <Text
+            style={{
+              flex: 1,
+              fontSize: 13,
+              fontWeight: "600",
+              color: Accent.primary,
+            }}
+            accessibilityLiveRegion="polite"
+            testID="verify-status-narration"
+          >
+            {STAGES[stageIdx]}
+          </Text>
+        </View>
+
+        {/* Ingredient-row skeletons — 4 rows of varying widths so
+            the placeholder reads as content, not a striped bar.
+            Matches the rough shape of a real verify row (name +
+            quantity + macros line). */}
+        {[0, 1, 2, 3].map((i) => (
+          <View
+            key={i}
+            style={{
+              padding: 14,
+              borderRadius: Radius.md,
+              borderWidth: 1,
+              borderColor: colors.border,
+              backgroundColor: colors.card,
+              gap: 10,
+              marginBottom: Spacing.sm,
+            }}
+          >
+            <SkeletonBar width={i % 2 === 0 ? "65%" : "80%"} height={15} />
+            <SkeletonBar width="35%" height={11} />
+            <SkeletonBar width="55%" height={11} />
+          </View>
+        ))}
+
+        {/* 2026-05-12 (premium-bar audit refuse-to-pass #3): pre-error
+            "taking longer than usual" message surfaces after 8s of
+            skeleton. Reads as honest expectation-setting rather than
+            silence. The parent still owns the actual timeout-to-error
+            path (loadError state). */}
+        {slowLoad ? (
+          <Text
+            style={{
+              marginTop: Spacing.md,
+              fontSize: 12,
+              color: colors.textSecondary,
+              textAlign: "center",
+              lineHeight: 17,
+              paddingHorizontal: Spacing.lg,
+            }}
+            accessibilityLiveRegion="polite"
+            testID="verify-slow-load-note"
+          >
+            Taking longer than usual. Recipes with 30+ ingredients can
+            take 20–30 seconds. Cancel anytime below.
+          </Text>
+        ) : null}
+
+        {/* Cancel affordance — bailing mid-verify is OK, the user
+            shouldn't feel trapped while the AI runs. */}
+        <Pressable
+          onPress={onCancel}
+          accessibilityRole="button"
+          accessibilityLabel="Cancel verify and go back"
+          testID="verify-cancel-button"
+          style={{
+            marginTop: Spacing.lg,
+            paddingVertical: 14,
+            alignItems: "center",
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 15,
+              fontWeight: "600",
+              color: colors.textSecondary,
+            }}
+          >
+            Cancel
+          </Text>
+        </Pressable>
+      </ScrollView>
     </View>
   );
 }

@@ -761,18 +761,50 @@ export default function DiscoverScreen() {
           </View>
         )}
 
+        {/* 2026-05-12 (premium-bar audit, DC13 + refuse-to-pass #8):
+            promote "Import from a link" to a permanent first card
+            above the discovery feed so the import affordance is the
+            first thing the user sees on Discover, not buried beneath
+            recipe rows. Mirrors Recime's import-link pattern. testID
+            preserved for the Maestro 25_import_shared flow. */}
+        <Pressable
+          onPress={() => router.push("/import-shared" as Href)}
+          accessibilityRole="button"
+          accessibilityLabel="Import from TikTok, Instagram, YouTube or a website"
+          testID="discover-import-cta"
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 12,
+            padding: 14,
+            borderRadius: Radius.lg,
+            backgroundColor: t.accent + "08",
+            borderWidth: 1,
+            borderColor: t.accent + "22",
+            marginBottom: 14,
+          }}
+        >
+          <IconBox color={t.accent} size={36}>
+            <LinkIcon size={18} color={t.accent} />
+          </IconBox>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }}>Import from TikTok, Instagram...</Text>
+            <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 1 }}>Paste a link or share from any app</Text>
+          </View>
+          <ChevronRight size={16} color={colors.textTertiary} />
+        </Pressable>
+
         {/* ── Prototype port (2026-04-20, screens-mobile.jsx
             `DiscoverScreen` lines 345–438): three stacked sections.
 
               1. "Matches your day" — 2 hero cards from `filtered.slice(0, 2)`.
               2. "More ideas" — single card containing compact meal-row list
                  for `filtered.slice(2)`.
-              3. "From your sources" — Import + My Library CTAs at the
-                 BOTTOM (prototype treats them as utility, not discovery).
+              3. "My Library" — bottom rail for jumping to saved recipes.
 
             When `filtered` is empty we skip sections 1 + 2 and render
-            the existing "No recipes yet" empty state. Section 3 still
-            renders — that's how users bring content in.
+            the existing "No recipes yet" empty state. The library
+            jump-card still renders so users can pivot to saved.
 
             F-11 reversed 2026-04-20: fit-percent badge is back per
             Grace's prototype screenshot — primary-tinted `{N}%` pill
@@ -857,39 +889,14 @@ export default function DiscoverScreen() {
           </>
         )}
 
-        {/* Section 3 — From your sources. Always rendered so users
-            can still bring content in when the feed is empty. */}
+        {/* Bottom rail — jump-card to My Library. Import card moved
+            up to be the permanent first card above the discovery
+            sections (2026-05-12 audit). Always renders so users can
+            navigate to their saved recipes from the discovery feed
+            even when the feed is empty. */}
         <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text, letterSpacing: -0.1, marginTop: 22, marginBottom: 10 }}>
-          From your sources
+          My Library
         </Text>
-
-        {/* Import CTA */}
-        <Pressable
-          onPress={() => router.push("/import-shared" as Href)}
-          accessibilityRole="button"
-          accessibilityLabel="Import from TikTok, Instagram, YouTube or a website"
-          testID="discover-import-cta"
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 12,
-            padding: 14,
-            borderRadius: Radius.lg,
-            backgroundColor: t.accent + "08",
-            borderWidth: 1,
-            borderColor: t.accent + "22",
-            marginBottom: 10,
-          }}
-        >
-          <IconBox color={t.accent} size={36}>
-            <LinkIcon size={18} color={t.accent} />
-          </IconBox>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }}>Import from TikTok, Instagram...</Text>
-            <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 1 }}>Paste a link or share from any app</Text>
-          </View>
-          <ChevronRight size={16} color={colors.textTertiary} />
-        </Pressable>
 
         {/* My Library CTA */}
         <Pressable

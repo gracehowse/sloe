@@ -144,7 +144,13 @@ export default function CreateCustomFoodSheet({
   const [satFatText, setSatFatText] = useState("");
   const [sodiumText, setSodiumText] = useState("");
   const [barcode, setBarcode] = useState("");
-  const [detailsOpen, setDetailsOpen] = useState(false);
+  // 2026-05-13 (TF feedback `AMbt66gRLJwsjswlQ2aKpG4` — "needs to be
+  // more flexible and dynamic more nutrition fields ... parity with
+  // mfp"): the detailed-nutrition disclosure (sugar / sat fat /
+  // sodium) was collapsed by default — Grace didn't notice it was
+  // there. Default to OPEN so MFP-parity nutrient fields are visible
+  // on first paint. Users who don't need them can still tap to hide.
+  const [detailsOpen, setDetailsOpen] = useState(true);
   const [saving, setSaving] = useState(false);
   // F-156 PR-1 — macro basis the user is currently entering values in.
   // Persisted across sessions so a power user doesn't re-toggle every
@@ -695,6 +701,27 @@ export default function CreateCustomFoodSheet({
                   Add another serving
                 </Text>
               </Pressable>
+
+              {/* 2026-05-13 (TF feedback `AMbt66gRLJwsjswlQ2aKpG4` —
+                  "more options for servings different weights ...
+                  parity with mfp"): hint row with common-serving
+                  conversions. Users coming from MFP expect "1 cup"
+                  to auto-fill its gram weight; we don't have a
+                  density-aware converter yet (deferred), so the
+                  next-best UX is showing the canonical values
+                  inline so the user can fill grams without leaving
+                  the sheet. Reference values are the food-industry
+                  defaults used by USDA + MyFitnessPal. */}
+              <Text
+                style={{
+                  fontSize: 11,
+                  color: colors.textTertiary,
+                  lineHeight: 16,
+                  marginBottom: Spacing.sm,
+                }}
+              >
+                Tip — common sizes:  1 cup ≈ 240 g  ·  1 oz ≈ 28 g  ·  1 tbsp ≈ 15 g  ·  1 tsp ≈ 5 g  ·  1 slice ≈ 30 g
+              </Text>
 
               <View
                 style={{

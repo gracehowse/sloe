@@ -96,9 +96,16 @@ export function PricingTiersGrid({
   paywallFrom: PaywallViewedFrom;
   /** H7 (2026-04-21) — inline VAT disclosure for UK / EU visitors
    *  ("Prices include VAT"). Empty string suppresses the line for
-   *  default / US-ish surfaces. Kept alongside the Stripe-flag-driven
-   *  tax clause in `BillingDisclosure` so the UK/EU surface gets the
-   *  inclusive-VAT note even when `STRIPE_TAX_ENABLED=false`. */
+   *  default / US-ish surfaces.
+   *
+   *  ENG-33 (2026-05-13): the parent (`/pricing/page.tsx`) now passes
+   *  the region note **only** when `STRIPE_TAX_ENABLED=true`. When
+   *  the flag is off, the "Prices include VAT" claim is untrue —
+   *  Stripe isn't computing VAT, so the user pays the sticker price
+   *  without VAT added. Until the flag flips and Stripe dashboard
+   *  has `tax_behavior=inclusive` on each Price object, this prop
+   *  arrives empty for UK/EU visitors and the disclosure falls back
+   *  to the honest "Price excludes any applicable taxes" line. */
   regionVatNote?: string;
   /** H7 — detected display currency. GBP today everywhere; EUR tag is
    *  propagated for future EUR-SKU work but does NOT change the
@@ -212,6 +219,25 @@ export function PricingTiersGrid({
                   );
                 })() : null}
               </div>
+              {/* 2026-05-12 (premium-bar audit #7, P0 legal exposure):
+                  UK/EU visitors must see the VAT-inclusive line in the
+                  visible viewport, not buried beneath the feature list.
+                  Stripe + Linear ship this directly under the price
+                  digit. The full BillingDisclosure still renders below
+                  the feature list with the longer statutory copy; this
+                  is the at-a-glance reassurance. */}
+              {regionVatNote && tier.checkoutTier ? (
+                <p
+                  data-testid={`pricing-vat-inclusive-${tier.name.toLowerCase()}`}
+                  className={`-mt-1 mb-2 text-xs ${
+                    tier.name === "Pro"
+                      ? "text-slate-300"
+                      : "text-slate-500 dark:text-slate-400"
+                  }`}
+                >
+                  Includes VAT
+                </p>
+              ) : null}
               {/* Audit 2026-05-04 #23: surface the annual savings in
                   the Monthly default view too — the previous design
                   hid the whole savings signal until the user flipped
@@ -323,12 +349,28 @@ function BillingToggle({
   const headlineTier = tiers.find((t) => Boolean(t.annualPrice));
   const annualBadge = headlineTier ? computeAnnualSavingsBadge(headlineTier) : null;
   return (
-    <div className="flex justify-center mb-10">
+    <div className="flex flex-col items-center mb-10 gap-2">
+      {/* 2026-05-13 (premium-bar audit Group I #4): web parity mirror
+          of the mobile paywall eyebrow. TF feedback found that the
+          period toggle floated with no label, and testers thought
+          the "Save 37%" badge was advertising a generic discount
+          rather than a billing-period switch. The BILLING eyebrow
+          anchors the toggle's purpose. */}
+      <span className="text-[10px] font-bold tracking-[0.12em] text-slate-500 dark:text-slate-400">
+        BILLING
+      </span>
       <div
         role="tablist"
         aria-label="Billing period"
         className="inline-flex items-center p-1 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
       >
+        {/* 2026-05-12 (premium-bar audit #7 dark-mode fix): active-tab
+            background was `dark:bg-slate-900` which is DARKER than the
+            wrapper's `dark:bg-slate-800` — selected tab read as
+            recessed/invisible against the rail. Convention is selected
+            = raised/lighter. Switched to `dark:bg-slate-700` so the
+            active tab sits visibly above the rail in dark mode while
+            light mode keeps its white-on-slate-100 lift. */}
         <button
           type="button"
           role="tab"
@@ -336,7 +378,7 @@ function BillingToggle({
           onClick={() => onChange("monthly")}
           className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${
             billing === "monthly"
-              ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm"
+              ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
               : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
           }`}
         >
@@ -349,7 +391,7 @@ function BillingToggle({
           onClick={() => onChange("annual")}
           className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-colors flex items-center gap-2 ${
             billing === "annual"
-              ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm"
+              ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
               : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
           }`}
         >

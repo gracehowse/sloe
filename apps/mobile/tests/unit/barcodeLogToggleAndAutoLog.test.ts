@@ -7,13 +7,14 @@
  *   I save a new item I should be able to auto log it not have to scan
  *   it again."
  *
- * Two changes:
- *   1. Per-100 g / Per serving toggle on the LOG card (parity with
- *      correction form). When perServing, Amount field is interpreted
- *      as a multiplier × servingSizeG.
- *   2. "Log this now" CTA on the correction-saved success state that
- *      pre-fills the log gram input to one serving and exits correction
- *      mode, so the user lands on the product card primed to log.
+ * Original spec called for a per-100g / per-serving toggle on the LOG
+ * card. That toggle was REMOVED 2026-05-13 in favour of the shared
+ * <PortionPicker> with a single { amount, unit } model — see
+ * docs/decisions/2026-05-13-portion-picker-and-macro-display.md.
+ *
+ * This file now pins the auto-log-after-correction behaviour against
+ * the new picker state (`setPickerState` / `pickerOptions.initial`),
+ * not the legacy `setGramsInput` / `setLogBasis` calls.
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
@@ -25,36 +26,32 @@ const SRC = readFileSync(
   "utf8",
 );
 
-describe("build-47 — log card per-100g/per-serving toggle", () => {
-  it("declares logBasis state with both modes", () => {
-    expect(SRC).toMatch(
-      /const\s+\[logBasis,\s*setLogBasis\]\s*=\s*useState<["']per100g["']\s*\|\s*["']perServing["']>/,
-    );
+describe("2026-05-13 portion-picker rebuild — log card pins", () => {
+  it("legacy logBasis toggle is fully removed (replaced by <PortionPicker>)", () => {
+    // Mentions inside `//` historical comments are fine — we're guarding
+    // against the state hook + setter actually being declared again.
+    expect(SRC).not.toMatch(/const\s+\[logBasis,\s*setLogBasis\]/);
+    expect(SRC).not.toMatch(/setLogBasis\s*\(/);
+    expect(SRC).not.toMatch(/useState<["']per100g["']/);
   });
 
-  it("grams useMemo multiplies by servingSizeG when in perServing mode", () => {
-    expect(SRC).toMatch(
-      /logBasis\s*===\s*["']perServing["'][\s\S]{0,300}servingSizeForBasis\s*\*\s*10/,
-    );
+  it("legacy gramsInput state is fully removed", () => {
+    expect(SRC).not.toMatch(/\bsetGramsInput\b/);
+    expect(SRC).not.toMatch(/\[gramsInput,\s*setGramsInput\]/);
   });
 
-  it("toggle UI is gated on product.servingSizeG > 0 (gram-only fallback)", () => {
-    // The toggle wrapper conditional must check both that servingSizeG
-    // is set and > 0. Otherwise users see a meaningless toggle on
-    // products without a known serving.
-    expect(SRC).toMatch(
-      /product\.servingSizeG\s*&&\s*product\.servingSizeG\s*>\s*0\s*\?\s*\(\s*<View\s+style=\{\[styles\.basisRow/,
-    );
+  it("declares the new { amount, unit } picker state", () => {
+    expect(SRC).toMatch(/const\s+\[pickerState,\s*setPickerState\]\s*=\s*useState<PortionState\s*\|\s*null>/);
   });
 
-  it("'By serving' chip shows the serving-size grams in parentheses", () => {
-    // JSX expression in label: `By serving ({Math.round(product.servingSizeG)} g)`
-    expect(SRC).toMatch(/By serving \(\{Math\.round\(product\.servingSizeG\)\} g\)/);
+  it("derives pickerOptions from product via buildPickerOptions", () => {
+    expect(SRC).toMatch(/buildPickerOptions\s*\(/);
   });
 
-  it("Amount unit label switches between 'g' and 'serving(s)' based on logBasis", () => {
-    expect(SRC).toMatch(/logBasis\s*===\s*["']perServing["'][\s\S]{0,200}["']serving["']/);
-    expect(SRC).toMatch(/logBasis\s*===\s*["']perServing["'][\s\S]{0,200}["']servings["']/);
+  it("mounts <PortionPicker> bound to pickerState / setPickerState", () => {
+    expect(SRC).toMatch(/<PortionPicker\b/);
+    expect(SRC).toMatch(/value=\{pickerState\}/);
+    expect(SRC).toMatch(/onChange=\{setPickerState\}/);
   });
 });
 
@@ -68,15 +65,15 @@ describe("build-47 — auto-log after correction-save", () => {
     expect(SRC).toMatch(/Log this now/);
   });
 
-  it("pre-fills LOG path with 1 serving when serving size is known, else 100g", () => {
+  it("pre-fills the picker to its default state when serving size is known (lands on '1 serving')", () => {
     const idx = SRC.indexOf("handleCorrectionLogNow");
     expect(idx).toBeGreaterThan(-1);
     const slice = SRC.slice(idx, idx + 2000);
-    // Must reset gramsInput + flip logBasis to perServing when
-    // servingSizeG > 0 — that's the "land on the product card primed
-    // to log one serving" semantic.
-    expect(slice).toMatch(/setGramsInput\(/);
-    expect(slice).toMatch(/setLogBasis\(/);
+    // The callback re-initialises the picker by calling
+    // setPickerState(pickerOptions.initial). buildPickerOptions already
+    // resolves "1 serving" as the default when servingSizeG > 0 (see
+    // src/lib/nutrition/portionPicker.ts).
+    expect(slice).toMatch(/setPickerState\(pickerOptions\.initial\)/);
   });
 
   it("preserves Done escape hatch (renamed 'Just done') as secondary action", () => {

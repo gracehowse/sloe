@@ -116,7 +116,7 @@ function MacroBarRowWeb({
   const pct = goal > 0 ? Math.min((current / goal) * 100, 100) : 0;
   return (
     <div className="flex items-center gap-2 py-1.5">
-      <span className="w-16 text-[10px] font-bold tracking-wide text-muted-foreground">{label}</span>
+      <span className="w-16 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{label}</span>
       <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
         <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: colorVar }} />
       </div>

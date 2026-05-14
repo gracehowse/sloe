@@ -41,6 +41,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { formatMacro } from "../../../../src/lib/nutrition/formatMacro";
 
 import { supabase } from "@/lib/supabase";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -338,7 +339,7 @@ export default function CreatorProfileScreen() {
                 </Text>
                 <Text style={styles.recipeMeta} numberOfLines={1}>
                   {Math.round(r.calories ?? 0)} kcal
-                  {r.protein != null ? ` · ${Math.round(r.protein)}g protein` : ""}
+                  {r.protein != null ? ` · ${formatMacro(r.protein, "protein", "g")} protein` : ""}
                   {r.cook_time_min ? ` · ${r.cook_time_min} min` : ""}
                 </Text>
               </View>

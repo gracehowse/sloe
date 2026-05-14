@@ -19,6 +19,7 @@ import {
   averageConfidence,
   type AiLoggedItem,
 } from "../../../src/lib/nutrition/aiLogging";
+import { formatMacroTrailer } from "../../../src/lib/nutrition/macroFormat";
 import {
   confidenceColor,
   confidenceLabel,
@@ -103,9 +104,13 @@ export default function AiLogReviewSummary({ items, slotLabel, colors }: Props) 
       <Text style={{ fontSize: 12, color: colors.textSecondary }}>
         Logging to{" "}
         <Text style={{ color: colors.text, fontWeight: "700" }}>{slotLabel}</Text>
-        . Total: {totals.calories} kcal · P {totals.protein}g · C{" "}
-        {totals.carbs}g · F {totals.fat}g
-        {totals.fiber != null ? ` · Fi ${totals.fiber}g` : ""}
+        . Total: {formatMacroTrailer({
+          calories: totals.calories,
+          protein: totals.protein,
+          carbs: totals.carbs,
+          fat: totals.fat,
+          fiber: totals.fiber,
+        })}
       </Text>
     </View>
   );

@@ -57,6 +57,7 @@ export function MobileFlow() {
     state,
     targets,
     warning,
+    isRefreshPlan,
   } = useOnboarding();
   const colors = useThemeColors();
   // Debug audit 2026-05-04 (visual-qa): the welcome step uses a dark
@@ -92,6 +93,20 @@ export function MobileFlow() {
       go(1);
     }
   }, [isSignup, userId, go]);
+
+  // Refresh-plan auto-skip (audit 2026-05-12 — Grace cohort): when the
+  // user reached onboarding via Settings → "Refresh my plan", the
+  // Welcome step's first-impression sell ("Eat well, without
+  // overthinking it.", "Have an account? Sign in") makes zero sense.
+  // They're already signed in, already an existing user, just resetting
+  // their plan. Auto-skip Welcome straight to Goal. The reset-pending
+  // flag is consumed (cleared) at handleComplete; here we only react to
+  // the value the OnboardingProvider read on mount (see context.tsx).
+  React.useEffect(() => {
+    if (isWelcome && isRefreshPlan === true) {
+      go(1);
+    }
+  }, [isWelcome, isRefreshPlan, go]);
 
   /**
    * MV-01 fix (audit 2026-04-28) — terminal-step completion handler.
@@ -311,6 +326,18 @@ export function MobileFlow() {
       void handleComplete();
       return;
     }
+    // Audit 2026-05-12 (Grace TF): on refresh-plan flow, skip
+    // data-bridges entirely. The Apple-Health-connect + manual-targets
+    // paste page only earns its place on first-run onboarding — a
+    // returning user refreshing their plan has already chosen these
+    // bridges (and the "Suppr never writes to Health" copy is also
+    // misleading once we've shipped the Apple Health export). Jump
+    // straight from reveal → handleComplete so the user lands back on
+    // Today the moment they confirm their new targets.
+    if (currentStepId === "reveal" && isRefreshPlan === true) {
+      void handleComplete();
+      return;
+    }
     go(1);
   }, [
     currentStepId,
@@ -320,11 +347,35 @@ export function MobileFlow() {
     state.paceDangerAcknowledged,
     go,
     isTerminal,
+    isRefreshPlan,
     handleComplete,
   ]);
 
   // Welcome uses its own layout (full-bleed gradient, own CTA).
+  //
+  // Audit 2026-05-12 (Grace cohort, refresh-plan flow): when the
+  // user arrived via Settings → "Refresh my plan", we don't want to
+  // flash the "Eat well, without overthinking it." + "Have an
+  // account? Sign in" first-impression screen before the
+  // auto-skip useEffect fires. Render a neutral loading shell while
+  // we read the reset-plan flag, then either auto-skip (handled by
+  // the effect above) or render the real Welcome.
   if (isWelcome) {
+    if (isRefreshPlan === null || isRefreshPlan === true) {
+      return (
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: colors.background,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <StatusBar barStyle={isDarkSystem ? "light-content" : "dark-content"} />
+          <ActivityIndicator color={colors.textSecondary} />
+        </View>
+      );
+    }
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <StatusBar barStyle="light-content" />
@@ -375,6 +426,38 @@ export function MobileFlow() {
               naming a hard total — Cal AI / MFP / Lifesum all use
               progress-only on their flows. */}
           <ProgressBar value={displayIndex} total={displayTotal} />
+
+          {/* Audit 2026-05-12 (Grace cohort): when a signed-in user
+              arrived via Settings → "Refresh my plan", surface a calm
+              pill so they can tell at a glance this is a plan reset,
+              not first-run onboarding. Otherwise the body-stats /
+              Goal screens look identical to a fresh signup and the
+              user wonders if they accidentally created a new account. */}
+          {isRefreshPlan === true ? (
+            <View
+              style={{
+                marginLeft: Spacing.sm,
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+                borderRadius: 999,
+                backgroundColor: `${Accent.primaryLight}1f`,
+                borderWidth: 1,
+                borderColor: `${Accent.primaryLight}40`,
+              }}
+              accessibilityLabel="Refreshing your plan"
+            >
+              <Text
+                style={{
+                  fontSize: 11,
+                  fontWeight: "700",
+                  letterSpacing: 0.6,
+                  color: Accent.primaryLight,
+                }}
+              >
+                REFRESH PLAN
+              </Text>
+            </View>
+          ) : null}
         </View>
       </View>
 
@@ -398,7 +481,13 @@ export function MobileFlow() {
           onPress={handleContinue}
           disabled={completing || !canAdvance}
           accessibilityRole="button"
-          accessibilityLabel={isTerminal ? "Build my plan" : "Continue"}
+          accessibilityLabel={
+            isTerminal
+              ? isRefreshPlan === true
+                ? "Refresh my plan"
+                : "Build my plan"
+              : "Continue"
+          }
           accessibilityState={{
             disabled: completing || !canAdvance,
           }}
@@ -424,16 +513,20 @@ export function MobileFlow() {
           }}
         >
           {completing ? (
-            <ActivityIndicator color="#0a0a0f" />
+            <ActivityIndicator color={Accent.primaryForeground} />
           ) : (
             <Text
               style={{
                 fontSize: 16,
                 fontWeight: "700",
-                color: !canAdvance ? colors.textTertiary : "#0a0a0f",
+                color: !canAdvance ? colors.textTertiary : Accent.primaryForeground,
               }}
             >
-              {isTerminal ? "Build my plan" : "Continue"}
+              {isTerminal
+                ? isRefreshPlan === true
+                  ? "Refresh my plan"
+                  : "Build my plan"
+                : "Continue"}
             </Text>
           )}
         </Pressable>

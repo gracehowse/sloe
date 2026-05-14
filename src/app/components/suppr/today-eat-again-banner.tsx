@@ -24,12 +24,21 @@ export function TodayEatAgainBanner({
   onDismiss,
 }: TodayEatAgainBannerProps) {
   return (
-    <div className="mb-3 rounded-card border border-primary/30 bg-primary/5 px-3.5 py-3 flex items-center gap-3">
+    // 2026-05-12 (premium-bar audit web parity, DC3 polish): 200ms
+    // fade-up entrance using the shared `.v2-fade-up` keyframe so
+    // every Today suggestion card lands with the same motion.
+    // Mirrors mobile's 220ms reanimated fade-up.
+    <div className="mb-3 rounded-card border border-primary/30 bg-primary/5 px-3.5 py-3 flex items-center gap-3 v2-fade-up">
       <div className="flex-1 min-w-0">
         <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Eat again</p>
         <p className="text-[13px] font-semibold text-foreground truncate">{suggestion.recipeTitle}</p>
+        {/* 2026-05-12 (premium-bar audit web parity, cross-cutting
+            copy unify): macro format normalised to `698 kcal · 22g
+            P · 95g C · 27g F` to match the canonical
+            `formatMacroTrailer` shape on mobile. Was letter-first
+            (`P 22g · C 95g`). */}
         <p className="text-[11px] text-muted-foreground">
-          {Math.round(suggestion.calories)} kcal · P {Math.round(suggestion.protein)}g · C {Math.round(suggestion.carbs)}g · F {Math.round(suggestion.fat)}g · into {slot}
+          {Math.round(suggestion.calories)} kcal · {Math.round(suggestion.protein)}g P · {Math.round(suggestion.carbs)}g C · {Math.round(suggestion.fat)}g F · into {slot}
         </p>
       </div>
       <button

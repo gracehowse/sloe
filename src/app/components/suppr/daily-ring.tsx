@@ -175,7 +175,12 @@ function DailyRing({
     snapOn: displayMode,
   });
 
-  const macroStroke = 5;
+  // 2026-05-12 (premium-bar DC1, web parity with mobile CalorieRing):
+  // macro arc stroke 5 → 7. The web ring is bigger than mobile
+  // (160 vs 140) so it can carry the same proportional bump
+  // comfortably. Audit flagged the macro arcs as "too thin to read at
+  // a glance" — fattening reads them as macros, not hairlines.
+  const macroStroke = 7;
   const macroRadii = [radius - 13, radius - 24, radius - 35];
 
   const macroRings = [
@@ -261,7 +266,12 @@ function DailyRing({
           className="transition-[stroke-dashoffset] duration-700"
           style={{ transitionTimingFunction: "var(--pm-ease)" }}
         />
-        {/* Macro rings (shown when expanded) */}
+        {/* Macro rings (shown when expanded).
+            2026-05-12 (premium-bar DC1): when the outer calorie ring is
+            over-budget, dim each macro arc to ~55% opacity so the
+            destructive-red outer ring carries the over signal without
+            macro hues fighting it. "Warm-shift" per audit, approximated
+            as alpha to keep rendering cheap and dark-mode-safe. */}
         {expanded && macroRings.map((ring, i) => {
           const c = 2 * Math.PI * ring.r;
           const o = c * (1 - Math.min(ring.pct, 0.999));
@@ -286,6 +296,7 @@ function DailyRing({
                 strokeLinecap="round"
                 strokeDasharray={c}
                 strokeDashoffset={o}
+                opacity={isOverBudget ? 0.55 : 1}
                 className="transition-[stroke-dashoffset] duration-700"
                 style={{
                   transitionTimingFunction: "var(--pm-ease)",

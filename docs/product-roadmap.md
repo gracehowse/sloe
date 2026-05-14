@@ -304,6 +304,18 @@ We've **jumped around and ahead** of the original phase order. Several Phase A i
 
 ### Still to build
 
+- **Ad-hoc shared meal** (Grace, 2026-05-12) — share an individual
+  logged meal with the household even when it isn't in anyone's plan.
+  Use case: "I ordered takeout, I want to share what I logged with my
+  husband", or "I made something up from what's in the fridge — he
+  shouldn't have to re-log it manually". Today, household sharing only
+  surfaces planned dinners. This gap forces the partner to re-log
+  identical meals on their side; ad-hoc share fixes that. Owner:
+  integration-manager + ui-product-designer. Probable shape: a
+  "Share with household" affordance on the meal-logged confirmation
+  state (Today + LogSheet) that creates a `household_meals` row with
+  `kind: 'adhoc'` so the partner sees it in their feed but it doesn't
+  consume a plan slot.
 - **Friends graph** — trusted connections outside of household (one-to-one share).
 - **Share meals / share plans / share slices** — send or link individual logged / saved meals, or specific slots, without sharing an entire plan.
 - **Plan-for-one, cook-for-many semantics** — explicit rule for "my portion" vs "household batch" when scaling a recipe for 2+ diners.
@@ -314,6 +326,35 @@ We've **jumped around and ahead** of the original phase order. Several Phase A i
 - **Notifications** — plan updated, meal swapped, shopping list impact; frequency + muting.
 
 *Depends on:* solid single-user planning + day totals (✅); friends primitives may overlap with Phase D.
+
+---
+
+## Phase G — Integrations & ecosystem (post-launch, 2026-05-12 captures)
+
+**Goal:** Make Suppr the data spine so other surfaces can act on it (one-tap-buy, Claude-as-coach).
+
+### Still to build
+
+- **Instacart shopping list integration** — wire Plan → Shopping list to
+  Instacart's [Developer Platform recipe / shopping list API](https://docs.instacart.com/developer_platform_api/api/products/shopping_list/)
+  so users can one-tap-buy a generated list. Affiliate revenue + reduces
+  friction Plan → Pantry. Owners: integration-manager + monetisation-architect.
+  (Captured 2026-05-12; not in 2026-05-12 audit.)
+- **MCP / Claude connector — Suppr as MCP server for fitness + food data**
+  (long-term) — expose the user's fitness/food data over the
+  Model Context Protocol so Claude users can ask their Suppr data
+  questions ("what's my average protein over the last 30 days?", "did
+  I hit my macros this week?"). Read-only first cut. Owner:
+  integration-manager. Not v1; positioned for when MCP is mature on
+  consumer surfaces.
+- **Pregnancy / TTC nutrition insight surface** (long-term, sensitive
+  surface) — analyse what the user has logged and surface
+  pregnancy-optimised or TTC-optimised diet insights ("Is your diet
+  optimised for trying to conceive?", folate / iron / iodine /
+  omega-3 coverage, alcohol/caffeine flags). Requires legal-reviewer +
+  diversity-inclusion sign-off (no cis-het assumptions, body-neutral
+  framing, no shaming, AMAB-inclusive defaults). Owner: nutrition-engine
+  + product-lead + legal-reviewer + diversity-inclusion.
 
 ---
 

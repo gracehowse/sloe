@@ -206,13 +206,15 @@ export function LoginClient({ initialMode = "signin", hideTabs = false }: LoginC
             className="text-2xl font-bold mb-2"
             style={{ color: "var(--foreground)" }}
           >
-            Meal plans that hit your macros
+            {mode === "signup" ? "Create your Suppr account" : "Sign in to Suppr"}
           </h1>
           <p
             className="text-sm leading-relaxed max-w-sm mx-auto"
             style={{ color: "var(--muted-foreground)" }}
           >
-            Find recipes, plan your week, generate a shopping list, and track what you eat — all built around your calorie and protein targets.
+            {mode === "signup"
+              ? "Track macros, plan your week, import recipes — all on one account that syncs across web and iOS."
+              : "Welcome back. Your Today, plan, and recipes are waiting."}
           </p>
         </div>
 

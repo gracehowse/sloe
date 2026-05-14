@@ -23,7 +23,12 @@ describe("TodaySnapShortcut (web)", () => {
   it("renders the canonical 'Snap a meal' label and supporting copy", () => {
     render(<TodaySnapShortcut onPress={() => {}} />);
     expect(screen.getByText("Snap a meal")).toBeDefined();
-    expect(screen.getByText("One photo, full macros — no typing.")).toBeDefined();
+    // 2026-05-12 (premium-bar audit Today F3 #2): subtitle now carries
+    // both the speed signal (~3 seconds) and the AI-estimate trust
+    // signal so the user reads what's about to happen before tap.
+    expect(
+      screen.getByText("~3 seconds · AI estimates macros, review before saving."),
+    ).toBeDefined();
   });
 
   it("fires onPress exactly once when clicked", () => {
@@ -48,6 +53,15 @@ describe("TodaySnapShortcut (web)", () => {
     expect(screen.queryByTestId("today-snap-shortcut-lock")).toBeNull();
     rerender(<TodaySnapShortcut onPress={() => {}} locked />);
     expect(screen.queryByTestId("today-snap-shortcut-lock")).not.toBeNull();
+  });
+
+  it("renders the PRO chip only when locked (audit Today F3 #3)", () => {
+    const { rerender } = render(<TodaySnapShortcut onPress={() => {}} />);
+    expect(screen.queryByTestId("today-snap-shortcut-pro-chip")).toBeNull();
+    rerender(<TodaySnapShortcut onPress={() => {}} locked />);
+    const chip = screen.queryByTestId("today-snap-shortcut-pro-chip");
+    expect(chip).not.toBeNull();
+    expect(chip?.textContent).toBe("PRO");
   });
 
   it("supports a custom testID for downstream test suites", () => {

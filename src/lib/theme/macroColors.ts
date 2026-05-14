@@ -20,8 +20,10 @@
 export const MACRO_COLORS_LIGHT = {
   /** --macro-protein */
   protein: "#4c6ce0",
-  /** --macro-carbs */
-  carbs: "#e8a020",
+  /** --macro-carbs — 2026-05-12 (DC10): split from --warning (#e8a020
+   *  amber) to a dedicated warm-orange. Amber now reserved for
+   *  over-budget warnings only. */
+  carbs: "#ed6b2a",
   /** --macro-fat */
   fat: "#e04888",
   /** --success — fibre rides on the success-green track. */

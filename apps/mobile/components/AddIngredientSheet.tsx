@@ -33,6 +33,7 @@ import {
   type IngredientOverride,
 } from "../../../src/lib/nutrition/ingredientOverrides";
 import { ingredientVerifyNeedsReview } from "../../../src/lib/nutrition/verifyConfidencePolicy";
+import { formatMacro } from "../../../src/lib/nutrition/formatMacro";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "../../../src/lib/analytics/events";
 
@@ -395,8 +396,9 @@ export default function AddIngredientSheet({ visible, onClose, onAdd, colors, re
                 </Text>
                 <Text style={{ fontSize: 12, color: colors.textSecondary }}>
                   {match.source} · {Math.round(match.macros.calories)} kcal ·{" "}
-                  {Math.round(match.macros.protein)}P / {Math.round(match.macros.carbs)}C /{" "}
-                  {Math.round(match.macros.fat)}F
+                  {formatMacro(match.macros.protein, "protein")}P /{" "}
+                  {formatMacro(match.macros.carbs, "carbs")}C /{" "}
+                  {formatMacro(match.macros.fat, "fat")}F
                 </Text>
               </View>
             ) : null}

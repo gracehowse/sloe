@@ -83,6 +83,13 @@ export const PRICING_TIERS: PricingTier[] = [
       `Save up to ${FREE_SAVE_LIMIT} recipes`,
       "Browse community recipes",
       "Macro tracking with confidence scores",
+      // 2026-05-12 (premium-bar audit DC11 polish): surface the
+      // adaptive-TDEE differentiator on the Free card. MFP / Lose It
+      // / Cronometer all stop at the Mifflin-St-Jeor formula estimate.
+      // Suppr learns your real maintenance over 7+ days of logging
+      // and ≥ 3 weight entries, then replaces the formula with the
+      // empirical TDEE. Strongest single Free-tier reason to switch.
+      "Adaptive TDEE — your target re-tunes as we learn your real maintenance",
       "Recipe import from URL, Instagram, TikTok, YouTube",
       "Barcode scanning",
       "Cook mode with inline timers",
@@ -108,15 +115,21 @@ export const PRICING_TIERS: PricingTier[] = [
     // correct.
     annualSavings: undefined,
     checkoutTier: "pro",
-    nutritionNote: "Unlimited recipes + unlimited AI photo & voice logging",
+    // 2026-05-12 (premium-bar audit #1.8): the prior "Unlimited
+    // recipes + AI photo & voice logging up to 100/day" was a
+    // grammatical contradiction at first read ("unlimited" + "up to
+    // 100/day"). Reordered so the cap reads as the qualifier on
+    // AI logging only, and recipes is its own clause. Same message,
+    // less head-tilt.
+    nutritionNote: "Unlimited saved recipes · AI photo + voice logging up to 100 per day",
     featHead: "Everything in Free, plus",
     features: [
       "Unlimited saved recipes",
       "Multi-day meal plans matched to your macro targets",
       "Shopping list from plan",
       "Publish recipes to the community",
-      "Unlimited AI photo meal recognition (100/day)",
-      "Voice food logging (100/day)",
+      "AI photo meal recognition (up to 100/day)",
+      "Voice food logging (up to 100/day)",
       "Priority email support",
     ],
     highlighted: true,

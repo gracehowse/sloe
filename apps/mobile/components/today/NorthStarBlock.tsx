@@ -1,5 +1,6 @@
 import * as React from "react";
 import {
+  Alert,
   Image,
   PanResponder,
   Pressable,
@@ -8,8 +9,21 @@ import {
   View,
 } from "react-native";
 import type { GestureResponderEvent, PanResponderGestureState } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+  Easing,
+} from "react-native-reanimated";
 import { Sparkles, X } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
+
+// 2026-05-12 (premium-bar audit motion polish): use the reanimated
+// `createAnimatedComponent` pattern so the resolved component goes
+// through React's normal forwardRef pipeline rather than relying on
+// `Animated.View` resolving correctly on every renderer (real RN +
+// vitest shim). Mirrors `PressableScale.tsx`.
+const AnimatedView = Animated.createAnimatedComponent(View);
 
 import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -41,7 +55,15 @@ export type NorthStarKind =
   | "default"
   | "library-empty"
   | "over-budget"
-  | "no-fit";
+  | "no-fit"
+  // ENG-94 (2026-05-13): on a user's very first day — no nutrition
+  // history yet — the `default` suggestion card ("Cajun Steak Bowl
+  // — 1,128 kcal · Close fit") felt presumptuous: the algorithm
+  // hasn't seen the user eat anything yet, so "close fit" is
+  // pattern-matching on targets, not on real intake. Render a calmer
+  // "Log your first meal" card instead until ≥ 1 meal has been
+  // logged anywhere in the user's history.
+  | "new-user";
 
 export interface NorthStarBlockSuggestion {
   recipeId: string;
@@ -102,6 +124,24 @@ export function NorthStarBlock({
           {"You've hit your calories for today — eat freely, or save for tomorrow."}
         </Text>
       </View>
+    );
+  }
+
+  if (kind === "new-user") {
+    return (
+      <SupprCard
+        testID={testID ?? "north-star-new-user"}
+        tone="primary"
+        padding="md"
+        style={styles.row}
+      >
+        <Sparkles size={IconSize.lg} color={colors.text} />
+        <View style={{ flex: 1 }}>
+          <Text style={[Type.body, { color: colors.text, fontWeight: "600" }]}>
+            {"Log your first meal — suggestions get smarter once we've seen you eat."}
+          </Text>
+        </View>
+      </SupprCard>
     );
   }
 
@@ -236,8 +276,38 @@ function NorthStarDefault({
     });
   }, [onSkip, reduceMotion]);
 
+  // 2026-05-12 (premium-bar audit DC2 polish — Cal AI 200ms fade-up
+  // on first paint): the suggestion card eases in over 220ms with a
+  // small upward translate so it lands as a deliberate moment, not a
+  // pop-in. Reduce-motion users see no animation (skip the tween).
+  const fadeOpacity = useSharedValue(reduceMotion ? 1 : 0);
+  const fadeTranslate = useSharedValue(reduceMotion ? 0 : 6);
+  React.useEffect(() => {
+    if (reduceMotion) {
+      fadeOpacity.value = 1;
+      fadeTranslate.value = 0;
+      return;
+    }
+    fadeOpacity.value = withTiming(1, {
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
+    });
+    fadeTranslate.value = withTiming(0, {
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [reduceMotion, fadeOpacity, fadeTranslate]);
+  const fadeStyle = useAnimatedStyle(() => ({
+    opacity: fadeOpacity.value,
+    transform: [{ translateY: fadeTranslate.value }],
+  }));
+
   return (
-    <View {...responder.panHandlers} testID={testID ?? "north-star-default"}>
+    <AnimatedView
+      {...responder.panHandlers}
+      testID={testID ?? "north-star-default"}
+      style={fadeStyle}
+    >
       <SupprCard tone="primary" padding="md" style={styles.defaultCard}>
         {reduceMotion && onSkip ? (
           <Pressable
@@ -276,20 +346,44 @@ function NorthStarDefault({
             {suggestion.title}
           </Text>
           {suggestion.whyLine ? (
-            <Text
-              // Activation hook (audit 2026-04-30 — leak fix #5).
-              // 12pt secondary matches the existing card cadence
-              // (the chip + macros caption row below uses the same
-              // size). Trust signal — tells the user WHICH macro
-              // fits, so "Close fit" stops reading as black-box.
-              style={[
-                Type.caption,
-                { color: colors.textSecondary, marginTop: 2 },
-              ]}
-              numberOfLines={1}
+            // 2026-05-12 (premium-bar audit DC2 polish — "Why this
+            // recommendation?" disclosure): the whyLine is now
+            // tappable. Tap surfaces an Alert with the longer
+            // reasoning (band label + macro fit composition) so
+            // power users can audit the engine without leaving the
+            // card. MacroFactor parity.
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`${suggestion.whyLine}. Tap for full reasoning.`}
+              hitSlop={4}
+              onPress={() => {
+                Alert.alert(
+                  "Why this suggestion?",
+                  [
+                    suggestion.whyLine,
+                    `Macro fit: ${suggestion.bandLabel.toLowerCase()}.`,
+                    `Predicted: ${suggestion.predictedCalories} kcal · ${Math.round(suggestion.predictedProtein)}g P · ${Math.round(suggestion.predictedCarbs)}g C · ${Math.round(suggestion.predictedFat)}g F.`,
+                    "Suppr picks the saved recipe that best closes the gap to your remaining macros for today. Re-run by skipping (swipe left) to see another candidate.",
+                  ].filter(Boolean).join("\n\n"),
+                );
+              }}
+              style={{ alignSelf: "flex-start", paddingVertical: 2 }}
             >
-              {suggestion.whyLine}
-            </Text>
+              <Text
+                style={[
+                  Type.caption,
+                  {
+                    color: colors.textSecondary,
+                    marginTop: 2,
+                    textDecorationLine: "underline",
+                    textDecorationStyle: "dotted",
+                  },
+                ]}
+                numberOfLines={1}
+              >
+                {suggestion.whyLine}
+              </Text>
+            </Pressable>
           ) : null}
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
             <View
@@ -312,6 +406,10 @@ function NorthStarDefault({
                 {suggestion.bandLabel}
               </Text>
             </View>
+            {/* 2026-05-12 (premium-bar audit cross-cutting): macro
+                format unified to `698 kcal · 22g P · 95g C · 27g F`
+                across Today + Eat Again + Plan grid. Was slash-
+                separated (`22P / 95C / 27F`). */}
             <Text
               style={[
                 Type.caption,
@@ -321,7 +419,7 @@ function NorthStarDefault({
                 },
               ]}
             >
-              {suggestion.predictedCalories} kcal · {Math.round(suggestion.predictedProtein)}P / {Math.round(suggestion.predictedCarbs)}C / {Math.round(suggestion.predictedFat)}F
+              {suggestion.predictedCalories} kcal · {Math.round(suggestion.predictedProtein)}g P · {Math.round(suggestion.predictedCarbs)}g C · {Math.round(suggestion.predictedFat)}g F
             </Text>
           </View>
 
@@ -350,7 +448,7 @@ function NorthStarDefault({
           </Pressable>
         </View>
       </SupprCard>
-    </View>
+    </AnimatedView>
   );
 }
 
@@ -365,9 +463,15 @@ const styles = StyleSheet.create({
     alignItems: "stretch",
     gap: Spacing.md,
   },
+  // 2026-05-12 (premium-bar audit, DC2 polish): bumped 56→64 to match
+  // the Recime hero-image size for the "what to eat next" card. The
+  // image is the trust signal that converts the suggestion into "yes
+  // I want that" — 56 was reading as a small avatar, 64 reads as a
+  // proper thumbnail. Same ratio as macro tile internal padding so
+  // the whole card breathes correctly.
   thumb: {
-    width: 56,
-    height: 56,
+    width: 64,
+    height: 64,
     borderRadius: 12,
     flexShrink: 0,
   },

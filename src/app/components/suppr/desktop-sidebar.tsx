@@ -116,7 +116,7 @@ const PRIMARY_ITEMS: PrimaryItem[] = [
   },
   {
     view: "you",
-    label: "You",
+    label: "More",
     icon: "profile",
     defaultLeaf: "progress",
     leaves: ["progress", "profile", "settings", "household-settings", "targets"],
@@ -413,8 +413,8 @@ function SubTabSidebarItem({
       aria-current={isActive ? "page" : undefined}
       className={`group relative flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors ${
         isActive
-          ? "text-primary"
-          : "text-muted-foreground hover:text-foreground"
+          ? "bg-primary/10 text-primary"
+          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
       }`}
     >
       <span className="flex-1 text-left">{sub.label}</span>

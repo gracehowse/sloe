@@ -35,14 +35,18 @@ describe("F-139 — Goals hit banner restyle", () => {
     }
   });
 
-  it("targetCelebration banner uses Accent.success accent + checkmark-circle icon", () => {
+  it("targetCelebration banner uses Accent.success accent + lucide CheckCircle2 icon", () => {
+    // ENG-73 (2026-05-13): Today moved off `@expo/vector-icons` to
+    // lucide-react-native. The Ionicons `name="checkmark-circle"`
+    // is now `<CheckCircle2 />`. Pin the new lucide identifier so
+    // a future regression to a different success glyph still trips.
     const code = SRC.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
     const re = /targetCelebration\s*&&[\s\S]{0,2000}?(?:\}\)|<\/View>\s*\)\s*\})/;
     const m = re.exec(code);
     expect(m).not.toBeNull();
     if (m) {
       expect(m[0]).toMatch(/Accent\.success/);
-      expect(m[0]).toMatch(/checkmark-circle/);
+      expect(m[0]).toMatch(/CheckCircle2/);
     }
   });
 

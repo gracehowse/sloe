@@ -45,6 +45,7 @@ import {
 } from "../../../../src/lib/recipes/libraryFilters";
 import { classifyLibraryEntry } from "../../../../src/lib/recipes/libraryEntryKind";
 import { RecipesSubTabHeader } from "@/components/tabs/RecipesSubTabHeader";
+import { CreateRecipeActionSheet } from "@/components/recipe/CreateRecipeActionSheet";
 // GW-08 (audit 2026-04-28): `TrustChip` + `recipeLevelTrust` imports
 // dropped — Library cards no longer render the chip; see the comment
 // by each card body for the rationale.
@@ -118,6 +119,9 @@ export default function LibraryScreen() {
   // Vegetarian). See `src/lib/recipes/libraryFilters.ts` for the
   // canonical ordering + predicate shape.
   const [pill, setPill] = useState<LibraryFilterPillId>("all");
+  // 2026-05-12 (premium-bar audit #8): tapping "+ Create" opens a
+  // multi-source action sheet instead of hard-routing to manual entry.
+  const [createSheetOpen, setCreateSheetOpen] = useState(false);
 
   const cycleSort = useCallback(() => {
     setSortKey((prev) => {
@@ -677,9 +681,9 @@ export default function LibraryScreen() {
         </Pressable>
         <Pressable
           style={styles.createBtn}
-          onPress={() => router.push("/recipe/create")}
+          onPress={() => setCreateSheetOpen(true)}
           accessibilityLabel="Create a new recipe"
-          accessibilityHint="Opens the new recipe wizard"
+          accessibilityHint="Opens a sheet with paste-link, photo, or manual entry options"
         >
           <Plus size={14} color="#fff" />
           <Text style={styles.createBtnText}>Create</Text>
@@ -794,6 +798,15 @@ export default function LibraryScreen() {
           }
         />
       )}
+
+      {/* 2026-05-12 (premium-bar audit #8): multi-source action sheet
+          for "+ Create". Opens on the header pill; clipboard
+          auto-detect surfaces a paste shortcut when a recipe URL is
+          already copied. */}
+      <CreateRecipeActionSheet
+        visible={createSheetOpen}
+        onClose={() => setCreateSheetOpen(false)}
+      />
     </View>
   );
 }

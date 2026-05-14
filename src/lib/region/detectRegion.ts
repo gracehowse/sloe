@@ -145,3 +145,27 @@ function defaultRegion(): RegionInfo {
     displayAmountsInGbp: true,
   };
 }
+
+/**
+ * ENG-33 (2026-05-13): the inclusive-VAT note must only be rendered
+ * to UK/EU visitors when Stripe Tax is actually computing VAT —
+ * otherwise we're claiming "Prices include VAT" while the user pays
+ * the sticker price at checkout without VAT, which is misleading.
+ *
+ * This helper takes the raw note from `detectRegion()` plus the
+ * `STRIPE_TAX_ENABLED` flag and returns the note that should
+ * actually be rendered. When the flag is off, the note is
+ * suppressed for everyone — UK/EU visitors fall through to the
+ * default tax-exclusive disclosure copy. Once the flag flips and
+ * Stripe dashboard has `tax_behavior=inclusive` on each Price
+ * object, the note passes through unchanged.
+ *
+ * Pure helper — pinned by `tests/unit/resolveRenderedVatNote.test.ts`.
+ */
+export function resolveRenderedVatNote(
+  rawVatNote: string,
+  stripeTaxEnabled: boolean,
+): string {
+  if (!stripeTaxEnabled) return "";
+  return rawVatNote;
+}

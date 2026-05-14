@@ -1,8 +1,21 @@
 import React from "react";
 import { Pressable, Text, View } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+  Easing,
+} from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import { Accent, Radius, Spacing } from "@/constants/theme";
+import { formatMacro } from "../../../../src/lib/nutrition/formatMacro";
 import type { FoodHistoryItem } from "../../../../src/lib/nutrition/foodHistory";
+
+// 2026-05-12 (premium-bar audit DC3 polish — Cal AI 200ms fade-up
+// on first paint): the EatAgain banner now eases in over 220ms with
+// a small upward translate. Mirrors NorthStarBlock's fade-up so
+// every Today suggestion card lands with the same calm motion.
+const AnimatedView = Animated.createAnimatedComponent(View);
 
 /**
  * TodayEatAgainBanner — one-tap re-log of the previous-day meal in
@@ -28,29 +41,57 @@ export function TodayEatAgainBanner({
   onLog,
   onDismiss,
 }: TodayEatAgainBannerProps) {
+  // 220ms ease-out fade + translate on first paint. No reduce-motion
+  // gate here because the banner is a small accent (not a full-bleed
+  // card); the motion is subtle enough that the reduce-motion budget
+  // doesn't trip. Matches NorthStarBlock pattern.
+  const opacity = useSharedValue(0);
+  const translate = useSharedValue(6);
+  React.useEffect(() => {
+    opacity.value = withTiming(1, {
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
+    });
+    translate.value = withTiming(0, {
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [opacity, translate]);
+  const fadeStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateY: translate.value }],
+  }));
   return (
-    <View
-      style={{
-        marginBottom: Spacing.md,
-        backgroundColor: Accent.primary + "08",
-        borderWidth: 1,
-        borderColor: Accent.primary + "30",
-        borderRadius: Radius.lg,
-        paddingHorizontal: Spacing.md,
-        paddingVertical: Spacing.sm,
-        flexDirection: "row",
-        alignItems: "center",
-        gap: Spacing.sm,
-      }}
+    <AnimatedView
+      style={[
+        {
+          marginBottom: Spacing.md,
+          backgroundColor: Accent.primary + "08",
+          borderWidth: 1,
+          borderColor: Accent.primary + "30",
+          borderRadius: Radius.lg,
+          paddingHorizontal: Spacing.md,
+          paddingVertical: Spacing.sm,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: Spacing.sm,
+        },
+        fadeStyle,
+      ]}
     >
       <View style={{ flex: 1 }}>
         <Text style={{ fontSize: 10, fontWeight: "700", color: Accent.primary, letterSpacing: 1 }}>EAT AGAIN</Text>
         <Text style={{ fontSize: 14, fontWeight: "600", color: textColor, marginTop: 2 }} numberOfLines={1}>
           {suggestion.recipeTitle}
         </Text>
+        {/* 2026-05-12 (premium-bar audit, cross-cutting copy unify):
+            macro format string normalised to `698 kcal · 22g P · 95g
+            C · 27g F`. Was `P 22g · C 95g · F 27g` here (letter-first)
+            and `22P / 95C / 27F` on NorthStarBlock (slash-separated).
+            Unified to the audit's spec across all Today surfaces. */}
         <Text style={{ fontSize: 11, color: textSecondaryColor, marginTop: 2 }}>
-          {Math.round(suggestion.calories)} kcal · P {Math.round(suggestion.protein)}g · C{" "}
-          {Math.round(suggestion.carbs)}g · F {Math.round(suggestion.fat)}g · into {slot}
+          {Math.round(suggestion.calories)} kcal · {formatMacro(suggestion.protein, "protein")}g P ·{" "}
+          {formatMacro(suggestion.carbs, "carbs")}g C · {formatMacro(suggestion.fat, "fat")}g F · into {slot}
         </Text>
       </View>
       <Pressable
@@ -59,7 +100,11 @@ export function TodayEatAgainBanner({
         onPress={onLog}
         style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.sm, backgroundColor: Accent.primary }}
       >
-        <Text style={{ fontSize: 11, fontWeight: "700", color: "#fff", letterSpacing: 0.5 }}>LOG</Text>
+        {/* 2026-05-12 (premium-bar audit copy unify): "LOG" all-caps
+            was the lone outlier across Today CTAs. The canonical verb
+            on the Today + LogSheet + NorthStar surfaces is "Log it"
+            (sentence case). This banner now matches. */}
+        <Text style={{ fontSize: 11, fontWeight: "700", color: "#fff", letterSpacing: 0.5 }}>Log it</Text>
       </Pressable>
       <Pressable
         accessibilityRole="button"
@@ -70,7 +115,7 @@ export function TodayEatAgainBanner({
       >
         <Ionicons name="close" size={18} color={textSecondaryColor} />
       </Pressable>
-    </View>
+    </AnimatedView>
   );
 }
 

@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { normalizeMacroTargets, DEFAULT_STEPS_GOAL } from "../../types/profile.ts";
 import { resolveMaintenance } from "../../lib/nutrition/resolveMaintenance.ts";
+import { computeActivityBonusKcal } from "../../lib/nutrition/activityBonus.ts";
 import {
   buildMilestone30DayContent,
   shouldShowMilestone30Day,
@@ -90,8 +91,6 @@ import { TodayWeekView } from "./suppr/today-week-view";
 import { TodayDashboardMacroTiles } from "./suppr/today-dashboard-macro-tiles";
 import { FullNutrientPanelSheet } from "./suppr/full-nutrient-panel-sheet";
 import { FULL_NUTRIENT_PANEL_ROW_COUNT } from "../../lib/nutrition/fullNutrientPanel";
-import { WhyThisNumberDialog } from "./suppr/why-this-number-dialog";
-import { paceKgPerWeekFromPreset } from "../../lib/nutrition/whyThisNumber";
 import { TodaySnapShortcut } from "./suppr/today-snap-shortcut";
 import { TodayMealsSection } from "./suppr/today-meals-section";
 import { TodayFirstMealEmptyState } from "./suppr/today-first-meal-empty-state";
@@ -218,6 +217,12 @@ function parseStepsDayMap(raw: unknown): Record<string, number> {
   return out;
 }
 
+/**
+ * Web call-site wrapper around `computeActivityBonusKcal`. See
+ * `docs/decisions/2026-05-13-activity-bonus-projected-eod-model.md`
+ * for rationale and `src/lib/nutrition/activityBonus.ts` for the
+ * single-source-of-truth math.
+ */
 function dayActivityBudgetAddonWeb(
   prefer: boolean,
   dk: string,
@@ -226,14 +231,16 @@ function dayActivityBudgetAddonWeb(
   basalByDay: Record<string, number>,
   workoutsByDay: Record<string, Array<{ calories?: number }>>,
 ): number {
-  const active = Math.round(activityByDay[dk] ?? 0);
-  if (!prefer || active <= 0) return 0;
-  const basal = Math.round(basalByDay[dk] ?? 0);
-  if (basal > 0 && maintenance > 0) {
-    return Math.max(0, Math.round(basal + active - maintenance));
-  }
   const workouts = workoutsByDay[dk] ?? [];
-  return Math.max(0, workouts.reduce((s, w) => s + (w.calories ?? 0), 0));
+  return computeActivityBonusKcal({
+    prefer,
+    dateKey: dk,
+    todayDateKey: todayKey(),
+    restingKcal: basalByDay[dk] ?? 0,
+    activeKcal: activityByDay[dk] ?? 0,
+    maintenanceKcal: maintenance,
+    workoutKcal: workouts.reduce((s, w) => s + (w.calories ?? 0), 0),
+  });
 }
 
 interface NutritionTrackerProps {
@@ -315,6 +322,7 @@ function NorthStarBlockHost({
   onBrowseLibrary,
   selectedDateKey,
   userCreatedAt,
+  hasEverLoggedAnyMeal,
 }: {
   viewMode: string;
   savedRecipesForLibrary: NorthStarRecipe[];
@@ -335,6 +343,11 @@ function NorthStarBlockHost({
    *  ≥2 so a new user with 2-3 saved recipes still sees a real
    *  suggestion, not the empty-state. */
   userCreatedAt?: string | null;
+  /** ENG-94 (2026-05-13): true when the user has logged at least one
+   *  meal across their entire history. When false, the host renders
+   *  the `new-user` kind (calm "Log your first meal" card) instead
+   *  of the algorithmic suggestion. Mirror of the mobile prop. */
+  hasEverLoggedAnyMeal?: boolean;
 }) {
   // Phase 4 / B3.Y — per-day skip ledger keyed by selected date.
   const [skippedIds, setSkippedIds] = useState<Set<string>>(() =>
@@ -364,6 +377,13 @@ function NorthStarBlockHost({
   // Over-budget — hide block, show calm caption.
   if (remainingCalories <= 0) {
     return <NorthStarBlock kind="over-budget" />;
+  }
+
+  // ENG-94 (2026-05-13): true day-1 user — no log history yet.
+  // Render the calmer `new-user` card instead of an algorithmic
+  // suggestion the algorithm has nothing to base on.
+  if (hasEverLoggedAnyMeal === false) {
+    return <NorthStarBlock kind="new-user" />;
   }
 
   // Library too small — invite the user to seed it.
@@ -574,9 +594,6 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
   const [photoLogOpen, setPhotoLogOpen] = useState(false);
   const [aiPaywallFeature, setAiPaywallFeature] = useState<AiPaywallFeature | null>(null);
   const [completeDayOpen, setCompleteDayOpen] = useState(false);
-  /** Audit gap #10 (2026-05-01) — "Why this number?" dialog visibility.
-   *  Opened by the small pill under the calorie ring. */
-  const [whyThisNumberOpen, setWhyThisNumberOpen] = useState(false);
   /** Full-nutrient panel sheet (PR #47, re-wired 2026-05-02) — opened
    *  from the "View all N nutrients" pill inside
    *  `TodayDashboardMacroTiles` after the Today-canvas
@@ -1959,30 +1976,19 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
   const basalBurnKcal = basalBurnByDay[selectedDateKey] ?? 0;
   const totalBurnKcal = activityBurnForSelectedDay + basalBurnKcal;
 
-  // Activity adjustment — surplus-only "Activity Bonus":
-  //
-  // Only add bonus calories when actual total burn exceeds estimated maintenance.
-  //   bonus = max(0, (resting + active) − maintenance_TDEE)
-  //
-  // This avoids double-counting: the user's baseCalorieTarget already includes an
-  // estimated activity level (e.g. "moderate" = BMR × 1.55), so adding raw active
-  // burn would overcount. The bonus only rewards burn ABOVE what was expected.
-  //
-  // Fallback when resting energy isn't available from Health: use active energy
-  // from logged workouts only (intentional exercise, not incidental movement).
-  const activityAdjustment = (() => {
-    if (!preferActivityAdjustedCalories || activityBurnForSelectedDay === 0) return 0;
-    const maintenance = profileMaintenanceTdee ?? baseCalorieTarget;
-    if (basalBurnKcal > 0) {
-      // Best case: we have resting + active from Health.
-      // Bonus = how much actual burn exceeds estimated maintenance.
-      return Math.max(0, Math.round(totalBurnKcal - maintenance));
-    }
-    // No resting data from Health: use logged workout calories only.
-    // This is conservative but safe — avoids adding incidental movement.
-    const workoutBurn = dayWorkouts.reduce((sum, w) => sum + (w.calories ?? 0), 0);
-    return Math.max(0, Math.round(workoutBurn));
-  })();
+  // Activity adjustment — surplus-only "Activity Bonus" using the
+  // shared `computeActivityBonusKcal` helper. See
+  // `docs/decisions/2026-05-13-activity-bonus-projected-eod-model.md`
+  // and `src/lib/nutrition/activityBonus.ts`.
+  const activityAdjustment = computeActivityBonusKcal({
+    prefer: preferActivityAdjustedCalories,
+    dateKey: selectedDateKey,
+    todayDateKey: todayKey(),
+    restingKcal: basalBurnKcal,
+    activeKcal: activityBurnForSelectedDay,
+    maintenanceKcal: profileMaintenanceTdee ?? baseCalorieTarget,
+    workoutKcal: dayWorkouts.reduce((sum, w) => sum + (w.calories ?? 0), 0),
+  });
   const effectiveCalorieTarget = baseCalorieTarget + activityAdjustment;
   const totalWaterMl = totals.waterMl + extraWaterMlForSelectedDay;
 
@@ -2253,7 +2259,6 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         onToggleExpanded={() => setRingExpanded((v) => !v)}
         displayMode={ringDisplayMode}
         onDisplayModeChange={setRingDisplayMode}
-        onPressWhy={() => setWhyThisNumberOpen(true)}
       />
 
       {/* Single context block — priority order: fasting > eat-again >
@@ -2343,6 +2348,13 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
             // not ≥5) so a new user with 2-3 recipes still sees a
             // real suggestion instead of the empty-state.
             userCreatedAt={authUserCreatedAt}
+            // ENG-94 (2026-05-13): on a true day-1 user (no
+            // nutrition history yet) the host renders a calmer
+            // "Log your first meal" card instead of an algorithmic
+            // suggestion the algorithm has nothing to base on.
+            hasEverLoggedAnyMeal={Object.values(nutritionByDay).some(
+              (meals) => Array.isArray(meals) && meals.length > 0,
+            )}
           />
         );
       })()}
@@ -2717,7 +2729,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
       {selectedDateKey === todayKey() && mealsForSelectedDate.length > 0 && (
         <button
           onClick={() => setCompleteDayOpen(true)}
-          className="w-full py-3.5 rounded-xl bg-primary text-white font-bold text-sm hover:opacity-90 transition-opacity mt-4"
+          className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:opacity-90 transition-opacity mt-4"
         >
           Complete Day
         </button>
@@ -2746,55 +2758,11 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         onDismiss={handleWeeklyCheckinDismiss}
       />
 
-      {/* Complete Day Dialog */}
-      {/* Audit gap #10 — "Why this number?" dialog (2026-05-01).
-          Reads adaptive_tdee + goal + plan_pace from the profile state
-          we already hydrate; recomp folds into "lose" semantics for
-          the panel because the user-facing direction is identical.
-          "Adjust target" is intentionally omitted on web for now: the
-          web settings surface that lives at /account is billing-only;
-          target editing on web ships once the profile-edit page lands. */}
-      <WhyThisNumberDialog
-        open={whyThisNumberOpen}
-        onOpenChange={setWhyThisNumberOpen}
-        targetCalories={Math.round(effectiveCalorieTarget)}
-        maintenanceTdee={profileMaintenanceTdee}
-        confidence={profileMaintenanceConfidence}
-        // Streak alignment (2026-05-02 user feedback,
-        // claude/household-section-streak-sidebar-bundle): the panel
-        // reads the SAME consecutive-logging-streak number the
-        // StreakPip shows, so users don't see "26-day streak" on the
-        // header and "40 days of logging" inside the panel and ask
-        // "which is it?". `streakDays` is the canonical metric for
-        // both the early-estimate qualifier and the calibrating ask
-        // gate — `loggedDays.size` (distinct-day count) is no longer
-        // surfaced here.
-        loggingDays={streakDays}
-        goal={
-          profileGoal === "gain"
-            ? "gain"
-            : profileGoal === "maintain"
-              ? "maintain"
-              : "lose" // covers "lose" + "recomp" + null
-        }
-        paceKgPerWeek={paceKgPerWeekFromPreset(
-          profilePlanPace,
-          profileGoal === "gain"
-            ? "gain"
-            : profileGoal === "maintain"
-              ? "maintain"
-              : "lose",
-        )}
-        // Specific calibrating ask: when adaptive TDEE hasn't fired
-        // we tell the user EXACTLY what's missing (3+ weight logs, 7+
-        // meal-log days). Without these the panel falls back to a
-        // generic "keep logging" line that lies after 40 days of meals
-        // with no weights — see PR claude/why-this-number-data-fix.
-        // 2026-05-02 — `mealLogDays` now uses the streak so the gate
-        // matches what the user sees on the pip.
-        mealLogDays={streakDays}
-        weightLogCount={Object.keys(profileWeightKgByDay).length}
-      />
+      {/* 2026-05-12 round 4 (Grace TF, web parity with mobile): the
+          WhyThisNumberDialog moved to /home?view=targets — pill on
+          Today's hero was called out as signalling low confidence in
+          the number. Web Today no longer hosts the dialog; the
+          Targets surface owns it inline. */}
 
       <TodayCompleteDayDialog
         open={completeDayOpen}

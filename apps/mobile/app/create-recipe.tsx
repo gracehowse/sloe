@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -14,7 +14,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -183,6 +183,11 @@ export default function CreateRecipeScreen() {
   const colors = useThemeColors();
   const { session } = useAuth();
   const userId = session?.user?.id;
+  // 2026-05-12 (premium-bar audit #8): CreateRecipeActionSheet routes
+  // here with `?autoPhoto=1` when the user picked "Photo of a recipe"
+  // from the multi-source sheet. On mount we fire the photo picker
+  // immediately and clear the param so a back-nav doesn't re-pick.
+  const params = useLocalSearchParams<{ autoPhoto?: string }>();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -439,6 +444,19 @@ export default function CreateRecipeScreen() {
       setImageExtracting(false);
     }
   }, [session?.access_token, ingredients.length]);
+
+  // 2026-05-12 (premium-bar audit #8): when the user arrives here via
+  // CreateRecipeActionSheet's "Photo of a recipe" row, the route
+  // carries `?autoPhoto=1`. Fire the photo picker once on mount, then
+  // clear the param so a back-nav doesn't re-pick.
+  const autoPhotoFiredRef = useRef(false);
+  useEffect(() => {
+    if (autoPhotoFiredRef.current) return;
+    if (params.autoPhoto !== "1") return;
+    autoPhotoFiredRef.current = true;
+    router.setParams({ autoPhoto: undefined } as Record<string, undefined>);
+    void importRecipeFromPhoto();
+  }, [params.autoPhoto, importRecipeFromPhoto, router]);
 
   const onFoodSelected = useCallback((result: SelectedFood) => {
     // 2026-05-06: per-serving-only FatSecret foods (no metric grounding)

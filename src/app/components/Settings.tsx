@@ -1660,11 +1660,55 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           how much you'll lose"). The new copy points at the recovery
           path (re-import from your export) and lists categories
           lowercase if the user wants a reminder. */}
+      {/* 2026-05-12 (premium-bar audit DC9 polish): description was a
+          paragraph — comma-separated list, easy to skim past. Linear's
+          pattern for irreversible actions is scannable ✓/✗ bullets so
+          the user can verify at a glance "yes I'm OK with X going".
+          Mirror of mobile reset modal in SettingsBundleContent.tsx. */}
       <DestructiveConfirmDialog
+        typeToConfirm="RESET"
         open={eraseEverythingOpen}
         onOpenChange={setEraseEverythingOpen}
         title="Delete your data and start fresh?"
-        description="You can re-import from your export file anytime. Affects: food log, journal, library saves, shopping lists, imported recipes, synced activity. Your account and subscription stay."
+        description={
+          <span className="block">
+            <span className="block text-xs text-muted-foreground mb-3">
+              You can re-import from your export file anytime.
+            </span>
+            <span className="block space-y-1.5 mt-1">
+              {[
+                { label: "Food log", kept: false },
+                { label: "Daily journal", kept: false },
+                { label: "Library saves", kept: false },
+                { label: "Shopping lists", kept: false },
+                { label: "Imported recipes", kept: false },
+                { label: "Synced activity", kept: false },
+                { label: "Your account", kept: true },
+                { label: "Subscription", kept: true },
+              ].map((row) => (
+                <span key={row.label} className="flex items-center gap-2.5 text-[13px]">
+                  <span
+                    className={`inline-block w-3.5 text-center font-bold ${
+                      row.kept ? "text-success" : "text-destructive"
+                    }`}
+                    aria-label={row.kept ? "Kept" : "Cleared"}
+                  >
+                    {row.kept ? "✓" : "✗"}
+                  </span>
+                  <span
+                    className={
+                      row.kept
+                        ? "text-foreground"
+                        : "text-muted-foreground line-through"
+                    }
+                  >
+                    {row.label}
+                  </span>
+                </span>
+              ))}
+            </span>
+          </span>
+        }
         confirmLabel="Erase everything"
         onConfirm={handleEraseEverything}
       />

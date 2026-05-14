@@ -1,13 +1,17 @@
 import * as React from "react";
-import { ScrollView, Text, TextStyle, View } from "react-native";
+import { Pressable, ScrollView, Text, TextStyle, View } from "react-native";
+import { ChevronDown, ChevronUp } from "lucide-react-native";
 import Svg, {
   Circle,
   Defs,
   LinearGradient as SvgLinearGradient,
   Stop,
 } from "react-native-svg";
-import { Accent, MacroColors, Radius } from "@/constants/theme";
+import * as Haptics from "expo-haptics";
+import { BookOpen, Sparkles, Target } from "lucide-react-native";
+import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { isFeatureEnabled } from "@/lib/analytics";
 import { useOnboarding } from "../context";
 import { MobileMethodologyNote } from "../scaffold";
 
@@ -24,24 +28,52 @@ export function MobileRevealStep() {
 
   const [displayCals, setDisplayCals] = React.useState(0);
   const [progress, setProgress] = React.useState(0);
+  // 2026-05-12 (premium-bar audit DC1 — refuse-to-pass #5, Cal AI
+  // plan-reveal borrow): the ring + number used to start counting
+  // the instant the screen mounted, which read as "the page just
+  // loaded a number". Add a ~700ms anticipation beat where the
+  // hero stays blank, then snap into the count-up + ring sweep.
+  // Mirrors the Cal AI / Strava plan-reveal cadence: pause, then
+  // payoff. Haptic fires the moment the count-up begins so the
+  // body feels the moment too.
+  const [revealStarted, setRevealStarted] = React.useState(false);
   React.useEffect(() => {
     if (target === 0) {
       setDisplayCals(0);
       setProgress(0);
+      setRevealStarted(false);
       return;
     }
-    const start = Date.now();
-    const dur = 1200;
     let raf = 0;
-    const tick = () => {
-      const p = Math.min(1, (Date.now() - start) / dur);
-      const e = 1 - Math.pow(1 - p, 3);
-      setDisplayCals(Math.round(target * e));
-      setProgress(e);
-      if (p < 1) raf = requestAnimationFrame(tick);
+    let cancelled = false;
+    const beatTimer = setTimeout(() => {
+      if (cancelled) return;
+      setRevealStarted(true);
+      // Apple-style success notification on the reveal moment. iOS
+      // honours per-device haptic settings; on Android the call is
+      // a no-op (we ship iOS-only via TestFlight today anyway).
+      try {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } catch {
+        /* silent — haptics aren't critical to the flow */
+      }
+      const start = Date.now();
+      const dur = 1200;
+      const tick = () => {
+        if (cancelled) return;
+        const p = Math.min(1, (Date.now() - start) / dur);
+        const e = 1 - Math.pow(1 - p, 3);
+        setDisplayCals(Math.round(target * e));
+        setProgress(e);
+        if (p < 1) raf = requestAnimationFrame(tick);
+      };
+      raf = requestAnimationFrame(tick);
+    }, 700);
+    return () => {
+      cancelled = true;
+      clearTimeout(beatTimer);
+      cancelAnimationFrame(raf);
     };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
   }, [target]);
 
   if (targets == null) {
@@ -106,6 +138,10 @@ export function MobileRevealStep() {
         >
           Your daily target
         </Text>
+        {/* 2026-05-12 (premium-bar audit, B5 Reveal upgrade #2):
+            re-titled the reveal h1 from "Here's what your day looks
+            like." → "Your plan is ready." Cal AI parity — leads with
+            completion + reward beat, not "look at this dashboard". */}
         <Text
           style={{
             fontSize: 20,
@@ -116,7 +152,7 @@ export function MobileRevealStep() {
             textAlign: "center",
           }}
         >
-          Here&apos;s what your day looks like.
+          Your plan is ready.
         </Text>
 
         <View
@@ -154,29 +190,53 @@ export function MobileRevealStep() {
             />
           </Svg>
           <View style={{ alignItems: "center" }}>
-            <Text
-              style={{
-                fontSize: 56,
-                fontWeight: "800",
-                letterSpacing: -1.8,
-                color: colors.text,
-                fontVariant: ["tabular-nums"],
-                lineHeight: 56,
-                includeFontPadding: false,
-              }}
-            >
-              {displayCals.toLocaleString()}
-            </Text>
-            <Text
-              style={{
-                fontSize: 12,
-                fontWeight: "600",
-                color: colors.textSecondary,
-                marginTop: 6,
-              }}
-            >
-              kcal / day
-            </Text>
+            {/* 2026-05-12 (premium-bar audit DC1 — Cal AI plan-reveal):
+                during the ~700ms anticipation beat the centre shows a
+                soft "Crunching your numbers" caption instead of a
+                static 0 kcal. The moment the count-up + ring sweep
+                start, the centre snaps to the big tabular kcal value.
+                Reads as deliberate (the engine is doing work) rather
+                than empty (the page hasn't loaded). */}
+            {revealStarted ? (
+              <>
+                <Text
+                  style={{
+                    fontSize: 56,
+                    fontWeight: "800",
+                    letterSpacing: -1.8,
+                    color: colors.text,
+                    fontVariant: ["tabular-nums"],
+                    lineHeight: 56,
+                    includeFontPadding: false,
+                  }}
+                >
+                  {displayCals.toLocaleString()}
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: "600",
+                    color: colors.textSecondary,
+                    marginTop: 6,
+                  }}
+                >
+                  kcal / day
+                </Text>
+              </>
+            ) : (
+              <Text
+                style={{
+                  fontSize: 13,
+                  fontWeight: "600",
+                  color: colors.textSecondary,
+                  textAlign: "center",
+                  lineHeight: 19,
+                  maxWidth: 160,
+                }}
+              >
+                Crunching your numbers…
+              </Text>
+            )}
           </View>
         </View>
 
@@ -247,8 +307,113 @@ export function MobileRevealStep() {
           will re-calibrate your TDEE from your logged intake and activity
           data over the first ~2 weeks.
         </MobileMethodologyNote>
+
+        {/* 2026-05-12 (premium-bar audit B5 Reveal #3, Cal AI parity):
+            "Show the maths" expandable that reveals the formula breakdown
+            so the abstract numbers above land as something the user can
+            audit. Closed by default — power users tap to expand, the
+            average user reads the bigger blocks above and moves on. */}
+        <RevealShowTheMaths
+          colors={colors}
+          bmr={targets.bmr}
+          tdee={targets.tdee}
+          target={targets.target}
+          kcalAdj={targets.kcalAdj}
+          goal={state.goal ?? "maintain"}
+        />
+
+        {/* 2026-05-12 (premium-bar audit DC1 — refuse-to-pass #5, Cal AI
+            plan-reveal borrow): "what happens next" 3-step card. Tells
+            the user what the very next moments of the app look like
+            after they tap Continue. Anchors the abstract number to a
+            concrete daily loop. Steps are intentionally bare — no CTAs,
+            no expanders — so the eye lands on the path, not the chrome. */}
+        <View
+          style={{
+            marginTop: Spacing.lg,
+            padding: Spacing.md,
+            borderRadius: Radius.md + 2,
+            borderWidth: 1,
+            borderColor: colors.border,
+            backgroundColor: colors.card,
+            gap: 14,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 11,
+              fontWeight: "700",
+              textTransform: "uppercase",
+              letterSpacing: 1.2,
+              color: colors.textTertiary,
+            }}
+          >
+            What happens next
+          </Text>
+          <NextStepRow
+            Icon={BookOpen}
+            iconBg={`${Accent.primary}1A`}
+            iconColor={Accent.primary}
+            title="Log meals as you eat"
+            sub="Search, barcode, photo, voice — whichever's fastest."
+          />
+          <NextStepRow
+            Icon={Target}
+            iconBg={`${Accent.success}1A`}
+            iconColor={Accent.success}
+            title="Watch the ring fill"
+            sub="Today's hero shows where you are vs your target in one glance."
+          />
+          <NextStepRow
+            Icon={Sparkles}
+            iconBg={`${MacroColors.fat}1A`}
+            iconColor={MacroColors.fat}
+            title="Adapt over the first ~2 weeks"
+            sub="As you log + weigh in, Suppr re-tunes your TDEE to what your body actually does."
+          />
+        </View>
       </View>
     </ScrollView>
+  );
+}
+
+function NextStepRow({
+  Icon,
+  iconBg,
+  iconColor,
+  title,
+  sub,
+}: {
+  Icon: typeof BookOpen;
+  iconBg: string;
+  iconColor: string;
+  title: string;
+  sub: string;
+}) {
+  const colors = useThemeColors();
+  return (
+    <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
+      <View
+        style={{
+          width: 32,
+          height: 32,
+          borderRadius: 16,
+          backgroundColor: iconBg,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Icon size={16} color={iconColor} strokeWidth={2} />
+      </View>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>
+          {title}
+        </Text>
+        <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2, lineHeight: 17 }}>
+          {sub}
+        </Text>
+      </View>
+    </View>
   );
 }
 
@@ -264,6 +429,14 @@ function MacroTile({
   pct: number;
 }) {
   const colors = useThemeColors();
+  // 2026-05-13 (premium-bar audit Reveal #4 — pair macro % with g
+  // inline): feature-flag-gated layout variant that moves the
+  // percentage out of the eyebrow row and pairs it inline with the
+  // grams value. Pair flag default OFF; Grace flips the
+  // `reveal-macro-tile-paired-pct` flag in PostHog once she's
+  // validated the change in TF. Flag name + rollout doc in the
+  // commit message; cleanup follow-up in 2 weeks if ramp held 100%.
+  const pairedLayout = isFeatureEnabled("reveal-macro-tile-paired-pct");
   return (
     <View
       style={{
@@ -294,16 +467,18 @@ function MacroTile({
         >
           {name}
         </Text>
-        <Text
-          style={{
-            fontSize: 10,
-            fontWeight: "700",
-            fontVariant: ["tabular-nums"],
-            color,
-          }}
-        >
-          {pct}%
-        </Text>
+        {!pairedLayout ? (
+          <Text
+            style={{
+              fontSize: 10,
+              fontWeight: "700",
+              fontVariant: ["tabular-nums"],
+              color,
+            }}
+          >
+            {pct}%
+          </Text>
+        ) : null}
       </View>
       <Text
         style={{
@@ -320,6 +495,18 @@ function MacroTile({
           {" "}
           g
         </Text>
+        {pairedLayout ? (
+          <Text
+            style={{
+              fontSize: 12,
+              fontWeight: "700",
+              fontVariant: ["tabular-nums"],
+              color,
+            }}
+          >
+            {` · ${pct}%`}
+          </Text>
+        ) : null}
       </Text>
       <View
         style={{
@@ -373,4 +560,153 @@ function summaryUnitStyle(
     color: colors.textSecondary,
     fontWeight: "500",
   };
+}
+
+/**
+ * RevealShowTheMaths — 2026-05-12 (premium-bar audit B5 #3, Cal AI
+ * plan-reveal parity).
+ *
+ * A small "Show the maths" expander rendered below the BMR / TDEE
+ * tiles. Closed by default. Tap → reveals a 3-row breakdown:
+ *   - BMR (Mifflin-St Jeor)
+ *   - Est. TDEE (BMR × activity factor)
+ *   - Target (TDEE ± deficit/surplus)
+ *
+ * Power users get the audit trail; the average user reads the big
+ * blocks above and skips the expander entirely. Matches the audit's
+ * "show the maths" prescription without crowding the default state.
+ */
+function RevealShowTheMaths({
+  colors,
+  bmr,
+  tdee,
+  target,
+  kcalAdj,
+  goal,
+}: {
+  colors: ReturnType<typeof useThemeColors>;
+  bmr: number;
+  tdee: number;
+  target: number;
+  kcalAdj: number;
+  goal: "lose" | "maintain" | "gain" | "recomp";
+}) {
+  const [open, setOpen] = React.useState(false);
+  const adjSigned =
+    goal === "gain"
+      ? `+${kcalAdj.toLocaleString()}`
+      : goal === "maintain"
+        ? "±0"
+        : `−${Math.abs(kcalAdj).toLocaleString()}`;
+
+  const rows: { label: string; value: string; sub: string }[] = [
+    {
+      label: "BMR",
+      value: `${bmr.toLocaleString()} kcal`,
+      sub: "Mifflin-St Jeor (sex · age · height · weight)",
+    },
+    {
+      label: "Est. TDEE",
+      value: `${tdee.toLocaleString()} kcal`,
+      sub: "BMR × your activity level",
+    },
+    {
+      label: "Target",
+      value: `${target.toLocaleString()} kcal`,
+      sub: `Est. TDEE ${adjSigned} kcal for your goal`,
+    },
+  ];
+
+  return (
+    <View style={{ marginTop: Spacing.md }}>
+      <Pressable
+        onPress={() => setOpen((v) => !v)}
+        accessibilityRole="button"
+        accessibilityLabel={open ? "Hide the maths" : "Show the maths"}
+        accessibilityState={{ expanded: open }}
+        hitSlop={6}
+        style={({ pressed }) => ({
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 6,
+          paddingVertical: 8,
+          opacity: pressed ? 0.6 : 1,
+        })}
+      >
+        <Text
+          style={{
+            fontSize: 12,
+            fontWeight: "600",
+            color: Accent.primary,
+            letterSpacing: 0.1,
+          }}
+        >
+          {open ? "Hide the maths" : "Show the maths"}
+        </Text>
+        {open ? (
+          <ChevronUp size={14} color={Accent.primary} strokeWidth={2.25} />
+        ) : (
+          <ChevronDown size={14} color={Accent.primary} strokeWidth={2.25} />
+        )}
+      </Pressable>
+      {open ? (
+        <View
+          style={{
+            marginTop: 6,
+            borderRadius: Radius.md,
+            borderWidth: 1,
+            borderColor: colors.border,
+            backgroundColor: colors.card,
+            padding: Spacing.md,
+            gap: 12,
+          }}
+          accessibilityRole="text"
+        >
+          {rows.map((row) => (
+            <View key={row.label}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "baseline",
+                  justifyContent: "space-between",
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 11,
+                    fontWeight: "700",
+                    color: colors.textSecondary,
+                    letterSpacing: 0.5,
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {row.label}
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 15,
+                    fontWeight: "700",
+                    color: colors.text,
+                    fontVariant: ["tabular-nums"],
+                  }}
+                >
+                  {row.value}
+                </Text>
+              </View>
+              <Text
+                style={{
+                  fontSize: 11,
+                  color: colors.textTertiary,
+                  marginTop: 2,
+                  lineHeight: 16,
+                }}
+              >
+                {row.sub}
+              </Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
 }

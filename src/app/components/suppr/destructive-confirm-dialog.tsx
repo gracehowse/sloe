@@ -60,6 +60,15 @@ export type DestructiveConfirmDialogProps = {
    * closes itself once the promise resolves.
    */
   onConfirm: () => void | Promise<void>;
+  /**
+   * 2026-05-12 (premium-bar audit web parity, DC9): when supplied,
+   * the confirm action requires the user to type this exact string
+   * into a TextInput before the destructive CTA enables. Apple's
+   * pattern for irreversible destruction — friction proportional to
+   * consequence. Mirror of mobile `SettingsBundleContent` Erase-
+   * Everything modal. Pass `"RESET"` to gate erase-everything.
+   */
+  typeToConfirm?: string;
 };
 
 export function DestructiveConfirmDialog({
@@ -70,14 +79,26 @@ export function DestructiveConfirmDialog({
   confirmLabel = "Delete",
   cancelLabel = "Cancel",
   onConfirm,
+  typeToConfirm,
 }: DestructiveConfirmDialogProps) {
   const [pending, setPending] = React.useState(false);
+  // 2026-05-12 — type-to-confirm gate. When `typeToConfirm` is set,
+  // the destructive CTA stays disabled until the user types the
+  // matching string. Reset on every open so a re-show requires
+  // fresh confirmation.
+  const [typedConfirm, setTypedConfirm] = React.useState("");
+  React.useEffect(() => {
+    if (!open) setTypedConfirm("");
+  }, [open]);
+  const gateMatched =
+    !typeToConfirm || typedConfirm === typeToConfirm;
 
   const handleConfirm = async (event: React.MouseEvent<HTMLButtonElement>) => {
     // Let us control closing so a thrown confirm handler leaves the
     // dialog open (Radix would otherwise close on its own).
     event.preventDefault();
     if (pending) return;
+    if (!gateMatched) return;
     try {
       setPending(true);
       await onConfirm();
@@ -98,12 +119,41 @@ export function DestructiveConfirmDialog({
             </AlertDialogDescription>
           ) : null}
         </AlertDialogHeader>
+        {typeToConfirm ? (
+          <div className="mt-2 space-y-2">
+            <p className="text-xs text-muted-foreground text-center">
+              Type{" "}
+              <span className="font-bold text-destructive">{typeToConfirm}</span>{" "}
+              to confirm.
+            </p>
+            <input
+              type="text"
+              value={typedConfirm}
+              onChange={(e) => setTypedConfirm(e.target.value)}
+              autoFocus
+              autoCapitalize="characters"
+              autoCorrect="off"
+              spellCheck={false}
+              placeholder={typeToConfirm}
+              data-testid="destructive-confirm-input"
+              className={`w-full rounded-md border bg-background px-3 py-2.5 text-center text-base font-bold tracking-[0.1em] text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive ${
+                typedConfirm === typeToConfirm
+                  ? "border-destructive"
+                  : "border-border"
+              }`}
+            />
+          </div>
+        ) : null}
         <AlertDialogFooter>
           <AlertDialogCancel disabled={pending}>{cancelLabel}</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleConfirm}
-            disabled={pending}
-            className={cn(buttonVariants({ variant: "destructive" }))}
+            disabled={pending || !gateMatched}
+            data-testid="destructive-confirm-cta"
+            className={cn(
+              buttonVariants({ variant: "destructive" }),
+              !gateMatched && "opacity-40 pointer-events-none",
+            )}
           >
             {pending ? `${confirmLabel}…` : confirmLabel}
           </AlertDialogAction>

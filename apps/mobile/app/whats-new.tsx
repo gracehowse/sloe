@@ -42,9 +42,14 @@ import {
 function formatReleaseDate(iso: string): string {
   // Defensive: if the ISO is malformed, fall back to the raw string
   // so the screen never errors. Tests pin ISO `YYYY-MM-DD` inputs.
+  // 2026-05-13 — locale pinned to en-GB to match web /whats-new
+  // formatter (which had to be pinned to avoid SSR/CSR hydration
+  // mismatch). Keeping the two in lockstep so a cross-link from
+  // mobile to web shows the same string. Premium-bar audit
+  // Whats-New #7.
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString(undefined, {
+  return d.toLocaleDateString("en-GB", {
     year: "numeric",
     month: "long",
     day: "numeric",
@@ -182,6 +187,24 @@ export default function WhatsNewScreen() {
           <Text style={styles.buildMeta} testID="whats-new-date">
             {formatReleaseDate(entry.releaseDate)}
           </Text>
+          {/* 2026-05-13 (premium-bar audit Group A Feature 4 #1):
+              optional 1-sentence release headline mirrored to mobile.
+              Web already renders it. Subtle muted style so the
+              build label + date stay the headline; releaseTitle is
+              the subhead. */}
+          {entry.releaseTitle ? (
+            <Text
+              style={{
+                fontSize: 13,
+                color: colors.textSecondary,
+                marginTop: 6,
+                lineHeight: 18,
+              }}
+              testID="whats-new-release-headline"
+            >
+              {entry.releaseTitle}
+            </Text>
+          ) : null}
         </View>
 
         {groups.length === 0 ? (

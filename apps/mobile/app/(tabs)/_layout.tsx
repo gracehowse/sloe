@@ -148,6 +148,21 @@ export default function TabLayout() {
           tabBarButtonTestID: 'tab-today',
         }}
       />
+      {/* 2026-05-13 (premium-bar audit Today F8 #2 + strategic direction
+          2026-04-27): tab order is Today / Plan / Recipes / More so the
+          meal-planning core loop comes second (right of Today) and
+          Recipes (a saved-library tool) lives further right. Plan was
+          previously third, behind Recipes; testers on the 2026-04-29
+          customer-lens pass said the planning-first ordering matches
+          how they actually use the app day-to-day. */}
+      <Tabs.Screen
+        name="planner"
+        options={{
+          title: 'Plan',
+          tabBarIcon: ({ color }) => <CalendarDays size={22} color={color} strokeWidth={2} />,
+          tabBarButtonTestID: 'tab-plan',
+        }}
+      />
       {/* Recipes — primary tab points at Library (the default sub-tab).
           When the user is on /discover, the Recipes entry stays
           highlighted because of the custom listener below; pressing
@@ -173,27 +188,24 @@ export default function TabLayout() {
           },
         }}
       />
-      <Tabs.Screen
-        name="planner"
-        options={{
-          title: 'Plan',
-          tabBarIcon: ({ color }) => <CalendarDays size={22} color={color} strokeWidth={2} />,
-          tabBarButtonTestID: 'tab-plan',
-        }}
-      />
-      {/* You — primary tab points at Progress (the default sub-tab).
-          When on /settings or /more, the You entry stays highlighted. */}
+      {/* More — primary tab points at Progress (the default sub-tab).
+          When on /settings or /more, the entry stays highlighted.
+          Renamed from "You" → "More" 2026-05-12 (premium-bar audit item
+          P1 + Grace approval). The tab is functionally a kitchen-sink
+          for Progress + Settings + Account; "You" read as a profile-only
+          tab and underplayed the actual surface. testID kept as
+          `tab-you` for Maestro stability across the rename. */}
       <Tabs.Screen
         name="progress"
         options={{
-          title: 'You',
+          title: 'More',
           tabBarIcon: ({ color }) => <CircleUser size={22} color={color} strokeWidth={2} />,
-          tabBarAccessibilityLabel: 'You',
+          tabBarAccessibilityLabel: 'More',
           tabBarButtonTestID: 'tab-you',
         }}
         listeners={{
           tabPress: (e) => {
-            // Pressing You while on /settings or /more returns to /progress.
+            // Pressing More while on /settings or /more returns to /progress.
             if (pathname.startsWith('/settings') || pathname.startsWith('/more')) {
               e.preventDefault();
               router.replace('/(tabs)/progress' as never);

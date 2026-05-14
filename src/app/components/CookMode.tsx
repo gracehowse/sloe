@@ -831,7 +831,7 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
                         onClick={() => handleScaleChange(preset)}
                         className={`min-w-[44px] px-3.5 py-1.5 rounded-full text-sm font-semibold tabular-nums transition-colors ${
                           active
-                            ? "bg-primary text-white shadow"
+                            ? "bg-primary text-primary-foreground shadow"
                             : "text-muted-foreground hover:text-white"
                         }`}
                       >
@@ -864,7 +864,7 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
                 <button
                   type="button"
                   onClick={goNext}
-                  className="px-8 py-3 rounded-xl bg-primary text-white font-semibold hover:shadow-lg hover:shadow-primary/25 transition-all text-lg"
+                  className="px-8 py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:shadow-lg hover:shadow-primary/25 transition-all text-lg"
                 >
                   {isLastStep ? "Finish" : "Next"}
                 </button>
@@ -965,7 +965,7 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
                     ? "bg-success text-white"
                     : savingHistory
                       ? "bg-primary/60 text-white cursor-wait"
-                      : "bg-primary text-white hover:shadow-lg hover:shadow-primary/25"
+                      : "bg-primary text-primary-foreground hover:shadow-lg hover:shadow-primary/25"
                 } disabled:cursor-not-allowed`}
               >
                 {historySaved ? (
@@ -984,7 +984,7 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
                 <button
                   type="button"
                   onClick={handleLogMeal}
-                  className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-primary text-white font-semibold text-lg hover:shadow-xl hover:shadow-primary/30 transition-all mb-4"
+                  className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-primary text-primary-foreground font-semibold text-lg hover:shadow-xl hover:shadow-primary/30 transition-all mb-4"
                 >
                   <Icons.success className="w-5 h-5" />
                   Log this meal
@@ -999,7 +999,7 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
                     <button
                       type="button"
                       onClick={() => { onExit(); onViewTracker(); }}
-                      className="px-6 py-3 rounded-xl bg-primary text-white font-semibold hover:shadow-lg hover:shadow-primary/25 transition-all"
+                      className="px-6 py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:shadow-lg hover:shadow-primary/25 transition-all"
                     >
                       View in Tracker
                     </button>

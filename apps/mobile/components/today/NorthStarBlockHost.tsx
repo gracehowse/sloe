@@ -76,6 +76,12 @@ export interface NorthStarBlockHostProps {
    *  activation leak fix). Pass `undefined` only when the value is
    *  unknown — the gate treats unknown as new-user. */
   userCreatedAt?: string | null;
+  /** ENG-94 (2026-05-13): true when the user has logged at least one
+   *  meal across their entire history. When false, the host renders
+   *  the `new-user` kind (calm "Log your first meal" card) instead
+   *  of the algorithmic suggestion — the algorithm has nothing to
+   *  pattern-match on yet. */
+  hasEverLoggedAnyMeal?: boolean;
 }
 
 export function NorthStarBlockHost({
@@ -89,6 +95,7 @@ export function NorthStarBlockHost({
   onBrowseLibrary,
   selectedDateKey,
   userCreatedAt,
+  hasEverLoggedAnyMeal,
 }: NorthStarBlockHostProps) {
   const [skippedIds, setSkippedIds] = React.useState<Set<string>>(new Set());
 
@@ -118,6 +125,15 @@ export function NorthStarBlockHost({
 
   if (remainingCalories <= 0) {
     return <NorthStarBlock kind="over-budget" />;
+  }
+
+  // ENG-94 (2026-05-13): on a true day-1 user (no historical log
+  // data anywhere), render the calmer `new-user` card instead of an
+  // algorithmic suggestion. The default suggestion was pattern-
+  // matching on targets alone, which read as presumptuous before
+  // the user had logged anything.
+  if (hasEverLoggedAnyMeal === false) {
+    return <NorthStarBlock kind="new-user" />;
   }
 
   if (

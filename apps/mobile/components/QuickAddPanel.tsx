@@ -40,6 +40,7 @@ import {
   type FavoriteFood,
   type FavoriteFoodInput,
 } from "../../../src/lib/nutrition/favoriteFoods";
+import { formatMacroTrailer } from "../../../src/lib/nutrition/macroFormat";
 import {
   deleteSavedMeal,
   incrementLogCount,
@@ -635,10 +636,12 @@ export function QuickAddPanel({
                     <Text
                       style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}
                     >
-                      {itemsLabel} · {summary.totalCalories} kcal · P{" "}
-                      {Math.round(summary.totalProtein)}g · C{" "}
-                      {Math.round(summary.totalCarbs)}g · F{" "}
-                      {Math.round(summary.totalFat)}g
+                      {itemsLabel} · {formatMacroTrailer({
+                        calories: summary.totalCalories,
+                        protein: summary.totalProtein,
+                        carbs: summary.totalCarbs,
+                        fat: summary.totalFat,
+                      })}
                     </Text>
                   </View>
                   <Pressable
@@ -741,8 +744,12 @@ export function QuickAddPanel({
                       marginTop: 2,
                     }}
                   >
-                    {Math.round(row.calories)} kcal · P {Math.round(row.protein)}g · C{" "}
-                    {Math.round(row.carbs)}g · F {Math.round(row.fat)}g
+                    {formatMacroTrailer({
+                      calories: row.calories,
+                      protein: row.protein,
+                      carbs: row.carbs,
+                      fat: row.fat,
+                    })}
                     {row.count > 1 ? `  ·  ${row.count}×` : ""}
                   </Text>
                 </View>

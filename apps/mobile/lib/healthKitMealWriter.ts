@@ -13,7 +13,7 @@
  *  - Reads the existing AsyncStorage flag `health_export_nutrition`
  *    (set by Settings → Health Sync → "Share meals to Health"). If the
  *    flag is unset or "false", this is a no-op.
- *  - Writes the meal as a single `saveFoodSample` (energy + protein +
+ *  - Writes the meal as a single `saveFood` (energy + protein +
  *    carbs + fat + fibre) — the same shape `exportDayToHealth` uses.
  *  - Idempotent at the meal-id level: a per-device `Set<mealId>` plus
  *    AsyncStorage-backed `health_export_written_ids` (capped at 5k
@@ -153,29 +153,46 @@ export type WriteMealResult =
  *
  * Always returns — never throws — so callers can `void` it. Returns a
  * result object so tests can assert which branch ran.
+ *
+ * 2026-05-13 (Grace TF feedback — "meals are not sharing to Health
+ * from Suppr"): every non-success branch now logs a structured
+ * `console.warn` so the actual failure reason is visible in
+ * `xcrun simctl` / Sentry breadcrumb output. The function previously
+ * swallowed every reason silently, which meant "writes aren't
+ * happening" had no diagnostic trail.
  */
 export async function writeMealToHealthKitIfEnabled(
   input: WriteMealToHealthKitInput,
 ): Promise<WriteMealResult> {
-  if (!input || !input.mealId) return { ok: true, written: false, reason: "duplicate" };
+  if (!input || !input.mealId) {
+    console.warn("[hk.writeMeal] skipped — empty mealId", { name: input?.name });
+    return { ok: true, written: false, reason: "duplicate" };
+  }
   if (!Number.isFinite(input.calories) || input.calories <= 0) {
+    console.warn("[hk.writeMeal] skipped — no calories", { mealId: input.mealId, calories: input.calories });
     return { ok: true, written: false, reason: "no-calories" };
   }
   if (isLowConfidenceSource(input.source)) {
+    console.warn("[hk.writeMeal] skipped — low-confidence source", { mealId: input.mealId, source: input.source });
     return { ok: true, written: false, reason: "low-confidence" };
   }
   // 2026-05-05 — userId required for the dedupe set to be userId-scoped.
   // Missing userId means the caller doesn't have a session yet; skip
   // rather than write to a global key (audit Y02 cross-user leak).
   if (!input.userId) {
+    console.warn("[hk.writeMeal] skipped — no userId on input", { mealId: input.mealId });
     return { ok: true, written: false, reason: "disabled" };
   }
 
   const enabled = await isExportEnabled();
-  if (!enabled) return { ok: true, written: false, reason: "disabled" };
+  if (!enabled) {
+    console.warn("[hk.writeMeal] skipped — `health_export_nutrition` flag is off", { mealId: input.mealId });
+    return { ok: true, written: false, reason: "disabled" };
+  }
 
   await hydrateWrittenIds(input.userId);
   if (writtenIdsMemory.has(input.mealId)) {
+    // Duplicate is the expected path — don't warn for these.
     return { ok: true, written: false, reason: "duplicate" };
   }
 
@@ -186,6 +203,7 @@ export async function writeMealToHealthKitIfEnabled(
   writtenIdsMemory.add(input.mealId);
 
   let bridgeWroteCount = 0;
+  let bridgeError: unknown = null;
   try {
     bridgeWroteCount = await writeNutritionToHealth([
       {
@@ -198,8 +216,9 @@ export async function writeMealToHealthKitIfEnabled(
         date: input.date ?? new Date().toISOString(),
       },
     ]);
-  } catch {
+  } catch (e) {
     bridgeWroteCount = 0;
+    bridgeError = e;
   }
 
   // Persist after every successful write so a restart inherits the
@@ -208,6 +227,12 @@ export async function writeMealToHealthKitIfEnabled(
   await persistWrittenIds(input.userId);
 
   if (bridgeWroteCount === 0) {
+    console.warn("[hk.writeMeal] FAILED — `saveFood` wrote 0 samples. Check the diagnostic in More → Health Sync → 'Send a test meal' for the bridge error. Most common cause: WRITE toggles still off in Settings → Health → Data Access & Devices → Suppr.", {
+      mealId: input.mealId,
+      name: input.name,
+      calories: input.calories,
+      bridgeError: bridgeError instanceof Error ? bridgeError.message : bridgeError,
+    });
     return { ok: true, written: false, reason: "hk-failed" };
   }
   return { ok: true, written: true };

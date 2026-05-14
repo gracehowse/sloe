@@ -1,6 +1,18 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { DmcaTakedownForm } from "./_form/DmcaTakedownForm";
+import { TrustPageLayout } from "../../src/app/components/trust/TrustPageLayout";
+
+// 2026-05-12 (premium-bar audit Group A trust pages — sticky ToC):
+// DMCA is shorter than Privacy / Terms but still benefits from quick
+// jumps to the form and the counter-notice flow.
+const DMCA_SECTIONS = [
+  { id: "form", title: "Submit a notice" },
+  { id: "agent", title: "Designated agent" },
+  { id: "counter", title: "Counter-notice" },
+  { id: "repeat", title: "Repeat infringers" },
+  { id: "uk-eu", title: "UK / EU notice" },
+];
 
 // NOTE FOR OPERATOR: To make the § 512(c) safe harbour effective, the Suppr
 // designated agent still needs to be registered with the US Copyright Office
@@ -18,17 +30,13 @@ const DMCA_EMAIL = "dmca@suppr-club.com";
 
 export default function DmcaPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-      <div className="max-w-2xl mx-auto px-6 py-12">
-        <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-          <Link href="/" className="text-violet-600 dark:text-violet-400 hover:underline">
-            &larr; Back to app
-          </Link>
-        </p>
-        <h1 className="text-2xl font-semibold text-slate-900 dark:text-white mb-6">
-          Copyright &amp; DMCA takedown
-        </h1>
-
+    <TrustPageLayout
+      title="Copyright & DMCA takedown"
+      lastUpdated="April 2026"
+      version="v1.0"
+      sections={DMCA_SECTIONS}
+      revisionPath="app/dmca/page.tsx"
+    >
         <div className="prose prose-slate dark:prose-invert prose-sm max-w-none space-y-4 text-slate-700 dark:text-slate-300">
           <p>
             Suppr respects copyright. If you believe that content on Suppr infringes your copyright, you can ask us
@@ -37,7 +45,7 @@ export default function DmcaPage() {
             processes in the UK and EU.
           </p>
 
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">
+          <h2 id="form" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">
             Quick submission form
           </h2>
           <p>
@@ -48,7 +56,7 @@ export default function DmcaPage() {
           </p>
           <DmcaTakedownForm />
 
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Designated agent</h2>
+          <h2 id="agent" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">Designated agent</h2>
           <p>
             Send DMCA takedown notices, counter-notices, and any copyright-related correspondence to:
           </p>
@@ -100,7 +108,7 @@ export default function DmcaPage() {
             what we did.
           </p>
 
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">Counter-notice</h2>
+          <h2 id="counter" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">Counter-notice</h2>
           <p>
             If content you posted was removed and you believe the removal was a mistake or misidentification, you can
             send a counter-notice under 17 U.S.C. &sect; 512(g)(3) containing:
@@ -125,7 +133,7 @@ export default function DmcaPage() {
             action.
           </p>
 
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">
+          <h2 id="repeat" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">
             Repeat-infringer policy
           </h2>
           <p>
@@ -144,7 +152,7 @@ export default function DmcaPage() {
             the copyright owner (or authorised to act for one).
           </p>
 
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white pt-2">
+          <h2 id="uk-eu" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">
             UK and EU users
           </h2>
           <p>
@@ -161,7 +169,6 @@ export default function DmcaPage() {
             <Link href="/privacy" className="text-violet-600 dark:text-violet-400 underline">Privacy policy</Link>
           </p>
         </div>
-      </div>
-    </div>
+    </TrustPageLayout>
   );
 }

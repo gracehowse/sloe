@@ -3,6 +3,9 @@
 # dependencies
 node_modules/
 
+# Vitest coverage (apps/mobile)
+coverage/
+
 # Expo
 .expo/
 dist/

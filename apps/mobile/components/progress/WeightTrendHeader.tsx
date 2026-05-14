@@ -24,10 +24,14 @@ import { kgToLb } from "../../../../src/lib/units/imperial";
  * Vertical divider between the two columns to anchor the eye.
  */
 
+// 2026-05-12 round 4 (Grace TF, Withings parity): full status copy.
+// Withings uses "Stable" / "Gaining Weight" / "Losing Weight" —
+// the words carry the verdict; the arrow icon is reinforcement.
+// "Up" / "Down" alone read as direction without context.
 const STATUS_LABEL: Record<WeightTrendResult["trendStatus"], string> = {
   stable: "Stable",
-  down: "Down",
-  up: "Up",
+  down: "Losing weight",
+  up: "Gaining weight",
   // 2026-05-11 (Grace TF feedback): only used when the trend payload
   // truly has zero entries. The card itself is gated on
   // `points.length >= 1`, so this label is unreachable in normal
@@ -86,7 +90,13 @@ export function WeightTrendHeader({ trend, isImperial, periodLabel }: WeightTren
             >
               <StatusIcon size={14} color={statusIconColor} strokeWidth={2.25} />
             </View>
-            <Text style={[styles.bigLabel, { color: colors.text }]}>
+            {/* 2026-05-12 round 4: longer status copy ("Losing weight"
+                / "Gaining weight") can wrap on narrow phones; allow up
+                to 2 lines so the column doesn't truncate. */}
+            <Text
+              style={[styles.bigLabel, { color: colors.text }]}
+              numberOfLines={2}
+            >
               {STATUS_LABEL[status]}
             </Text>
           </View>

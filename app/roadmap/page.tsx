@@ -17,20 +17,23 @@ export const metadata: Metadata = {
  * parity tests catch drift.
  */
 
-const STATUS_COPY: Record<RoadmapStatus, { label: string; className: string }> = {
+const STATUS_COPY: Record<RoadmapStatus, { label: string; className: string; dotClass: string }> = {
   shipped: {
     label: "Shipped",
     className:
       "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+    dotClass: "bg-emerald-500 dark:bg-emerald-400",
   },
   building: {
     label: "Building",
     className:
       "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
+    dotClass: "bg-amber-500 dark:bg-amber-400",
   },
   planned: {
     label: "Planned",
     className: "bg-muted text-muted-foreground",
+    dotClass: "bg-slate-400 dark:bg-slate-500",
   },
 };
 
@@ -59,39 +62,102 @@ export default function RoadmapPage() {
           page, so what you see is what’s actually in (or coming to) the app.
         </p>
         <div className="mt-10 space-y-10">
-          {ROADMAP.map((bucket) => (
-            <section key={bucket.title}>
-              <div className="flex items-baseline justify-between gap-3">
-                <h2 className="text-xl font-semibold tracking-tight">
-                  {bucket.title}
-                </h2>
-                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  {bucket.when}
-                </span>
-              </div>
-              <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-                {bucket.summary}
-              </p>
-              <ul className="mt-4 space-y-3 text-sm leading-relaxed sm:text-base">
-                {bucket.items.map((item) => {
-                  const status = STATUS_COPY[item.status];
-                  return (
-                    <li
-                      key={item.text}
-                      className="flex items-start justify-between gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm"
-                    >
-                      <span className="text-foreground">{item.text}</span>
-                      <span
-                        className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-xs font-medium ${status.className}`}
-                      >
-                        {status.label}
+          {ROADMAP.map((bucket) => {
+            // 2026-05-12 (premium-bar audit Group A Roadmap #4): count
+            // chip row above each bucket so the user can scan progress
+            // at a glance without reading every row. e.g. "5 shipped ·
+            // 2 building · 3 planned".
+            const counts = bucket.items.reduce(
+              (acc, it) => {
+                acc[it.status]++;
+                return acc;
+              },
+              { shipped: 0, building: 0, planned: 0 } as Record<RoadmapStatus, number>,
+            );
+            return (
+              <section key={bucket.title}>
+                <div className="flex items-baseline justify-between gap-3">
+                  <h2 className="text-xl font-semibold tracking-tight">
+                    {bucket.title}
+                  </h2>
+                  <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    {bucket.when}
+                  </span>
+                </div>
+                <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+                  {bucket.summary}
+                </p>
+                {/* Status count chip row */}
+                <div className="mt-3 flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
+                  {(["shipped", "building", "planned"] as const).map((s) => {
+                    if (counts[s] === 0) return null;
+                    const meta = STATUS_COPY[s];
+                    return (
+                      <span key={s} className="inline-flex items-center gap-1.5">
+                        <span className={`inline-block w-1.5 h-1.5 rounded-full ${meta.dotClass}`} />
+                        {counts[s]} {meta.label.toLowerCase()}
                       </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          ))}
+                    );
+                  })}
+                </div>
+                {/* 2026-05-12 (premium-bar audit Group A Roadmap #6):
+                    single status dot at the row's left edge so the
+                    eye can scan a column of dots without re-reading
+                    chip text on every row. Chip retained at right
+                    edge for accessibility (Voice-Over still reads
+                    "Shipped" / "Building" / "Planned"). */}
+                {/* 2026-05-13 (premium-bar audit Group A Roadmap #2):
+                    tightened from per-item cards (p-4 + border + shadow)
+                    to a divider-list (rounded outer border, divide-y
+                    between rows, py-2.5 sm:py-3 ≈ 40-44px row height).
+                    Linear / Vercel / Notion all use a divider-list for
+                    long scannable progress lists — the per-item card
+                    pattern was over-weighted for a list this long and
+                    bloated the page vertically. Status dot stays at
+                    left edge; chip retained at right for VoiceOver. */}
+                <ul className="mt-3 rounded-2xl border border-border bg-card overflow-hidden divide-y divide-border text-sm leading-relaxed sm:text-base">
+                  {bucket.items.map((item) => {
+                    const status = STATUS_COPY[item.status];
+                    // 2026-05-12 (premium-bar audit Group A Roadmap #3):
+                    // shipped rows link to /whats-new so the user can
+                    // see the actual release notes for the item.
+                    // Building / planned rows stay non-interactive
+                    // (no destination to send the user to yet).
+                    const Wrapper = status.label === "Shipped"
+                      ? (props: React.PropsWithChildren) => (
+                          <Link
+                            href="/whats-new"
+                            className="flex items-center gap-3 px-4 py-2.5 sm:py-3 hover:bg-accent/50 transition-colors"
+                          >
+                            {props.children}
+                          </Link>
+                        )
+                      : (props: React.PropsWithChildren) => (
+                          <div className="flex items-center gap-3 px-4 py-2.5 sm:py-3">
+                            {props.children}
+                          </div>
+                        );
+                    return (
+                      <li key={item.text}>
+                        <Wrapper>
+                          <span
+                            aria-hidden
+                            className={`inline-block w-2 h-2 rounded-full shrink-0 ${status.dotClass}`}
+                          />
+                          <span className="text-foreground flex-1">{item.text}</span>
+                          <span
+                            className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-xs font-medium ${status.className}`}
+                          >
+                            {status.label}
+                          </span>
+                        </Wrapper>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            );
+          })}
         </div>
         <div className="mt-12 flex flex-wrap gap-4">
           <Link
@@ -106,6 +172,23 @@ export default function RoadmapPage() {
           >
             Back to home
           </Link>
+          {/* 2026-05-13 (premium-bar audit Group A Roadmap #5 — "Get
+              notified when X ships"): full email-capture form needs a
+              backend endpoint (Mailchimp / Resend / Loops) which
+              isn't wired yet, so the substitute is an RSS subscribe
+              link. Users who want to track shipped items can add the
+              /whats-new RSS feed to their reader of choice. Same
+              affordance Vercel / Linear use as their "track new
+              versions" path. */}
+          <a
+            href="/whats-new/rss.xml"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-border bg-card px-6 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+              <path d="M6.18 17.82c0 1.21-.98 2.18-2.18 2.18s-2.18-.97-2.18-2.18.97-2.18 2.18-2.18 2.18.97 2.18 2.18zm-4.36-7.18c0 .73.59 1.32 1.32 1.32 4.41 0 8 3.59 8 8 0 .73.59 1.32 1.32 1.32s1.32-.59 1.32-1.32c0-5.87-4.77-10.64-10.64-10.64-.73 0-1.32.59-1.32 1.32zm0-6c0 .73.59 1.32 1.32 1.32 7.72 0 14 6.28 14 14 0 .73.59 1.32 1.32 1.32s1.32-.59 1.32-1.32C19.78 7.42 12.36 0 4.14 0 3.41 0 2.82.59 2.82 1.32z" />
+            </svg>
+            Get notified — RSS
+          </a>
         </div>
       </main>
     </div>

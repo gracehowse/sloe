@@ -117,6 +117,7 @@ import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
 import { fetchFatSecretAutocomplete } from "../../../../src/lib/nutrition/fatsecretAutocompleteClient";
 import { shouldShowBarcodeFallbackHint } from "../../../../src/lib/nutrition/foodSearchLocale";
+import { formatMacroTrailer } from "../../../../src/lib/nutrition/macroFormat";
 
 /** Standard units always available regardless of data source */
 const STANDARD_UNITS: FoodPortion[] = [
@@ -225,6 +226,25 @@ export type FoodSearchPanelProps = {
    * this directly; production callers should leave it undefined.
    */
   localeOverride?: string;
+  /**
+   * 2026-05-12 round 5 (premium-bar audit #12, MFP borrow): when
+   * the query is empty, render a "Recent foods" section above the
+   * results FlatList. Each row taps directly to `onSelect` with a
+   * SelectedFood built from the FoodHistoryItem's per-serving
+   * macros (no grams basis — `macrosPer100g: null`, `quantity: 1`).
+   * Hosts that don't have a foodHistory available can omit this
+   * prop; the panel falls back to the legacy empty-query state
+   * (no results rendered).
+   */
+  recentFoods?: Array<{
+    recipeTitle: string;
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    fiber?: number;
+    source?: string;
+  }>;
 };
 
 function buildPortionList(
@@ -355,6 +375,7 @@ export default function FoodSearchPanel({
   onScanBarcodePressed,
   inBarcodeMode = false,
   localeOverride,
+  recentFoods,
 }: FoodSearchPanelProps) {
   const colors = useThemeColors();
   const [results, setResults] = useState<SearchRow[]>([]);
@@ -1415,6 +1436,101 @@ export default function FoodSearchPanel({
             >
               <Text style={{ fontSize: 12, color: colors.textSecondary }}>{s}</Text>
             </View>
+          ))}
+        </View>
+      ) : null}
+
+      {/* 2026-05-12 round 5 (premium-bar audit #12, MFP borrow):
+          Recent foods on mount. When the query is empty AND the host
+          passed in recentFoods, render them as a tap-to-log list.
+          Suppresses if query is non-empty (search results take over)
+          or if no recents are supplied. The first 5 are rendered to
+          keep the list scannable; if the user wants more they can
+          type or tap into Recents on the canonical LogSheet. */}
+      {!query.trim() && recentFoods && recentFoods.length > 0 ? (
+        <View
+          style={{
+            paddingHorizontal: Spacing.lg,
+            paddingTop: Spacing.sm,
+            paddingBottom: Spacing.md,
+          }}
+          testID="food-search-recent-foods"
+        >
+          <Text
+            style={{
+              fontSize: 11,
+              fontWeight: "700",
+              color: colors.textTertiary,
+              textTransform: "uppercase",
+              letterSpacing: 1,
+              marginBottom: 8,
+            }}
+          >
+            Recent
+          </Text>
+          {recentFoods.slice(0, 5).map((item, i) => (
+            <Pressable
+              key={`recent-${i}-${item.recipeTitle}`}
+              testID={`food-search-recent-${i}`}
+              accessibilityRole="button"
+              accessibilityLabel={`Log ${item.recipeTitle}, ${Math.round(item.calories)} calories`}
+              onPress={() => {
+                onSelect({
+                  name: item.recipeTitle,
+                  source: (item.source as never) ?? "history",
+                  // Per-serving food — no per-100g basis so the host
+                  // commit path uses macrosPerServing × quantity.
+                  macrosPer100g: null,
+                  macrosPerServing: {
+                    calories: item.calories,
+                    protein: item.protein,
+                    carbs: item.carbs,
+                    fat: item.fat,
+                    fiberG: item.fiber ?? 0,
+                    sugarG: 0,
+                    sodiumMg: 0,
+                  },
+                  quantity: 1,
+                  chosenPortion: { label: "1 serving", gramWeight: 0 },
+                  portions: [{ label: "1 serving", gramWeight: 0 }],
+                } as never);
+              }}
+              style={({ pressed }) => ({
+                flexDirection: "row",
+                alignItems: "center",
+                paddingVertical: 12,
+                borderBottomWidth: i < Math.min(4, recentFoods.length - 1) ? StyleSheet.hairlineWidth : 0,
+                borderBottomColor: colors.border,
+                opacity: pressed ? 0.6 : 1,
+              })}
+            >
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text
+                  style={{ fontSize: 15, fontWeight: "600", color: colors.text }}
+                  numberOfLines={1}
+                >
+                  {item.recipeTitle}
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 12,
+                    color: colors.textSecondary,
+                    marginTop: 2,
+                    fontVariant: ["tabular-nums"],
+                  }}
+                >
+                  {formatMacroTrailer({
+                    calories: item.calories,
+                    protein: item.protein,
+                    carbs: item.carbs,
+                    fat: item.fat,
+                  })}
+                </Text>
+              </View>
+              <Text style={{ fontSize: 13, color: colors.textTertiary, marginLeft: 8 }}>
+                ›
+              </Text>
+            </Pressable>
           ))}
         </View>
       ) : null}

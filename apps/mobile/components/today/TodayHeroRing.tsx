@@ -1,8 +1,7 @@
 import React from "react";
-import { Pressable, Text, View } from "react-native";
-import { HelpCircle } from "lucide-react-native";
+import { View } from "react-native";
 import CalorieRing from "@/components/charts/CalorieRing";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing } from "@/constants/theme";
 
 /**
  * TodayHeroRing — ring hero variant.
@@ -80,7 +79,7 @@ export function TodayHeroRing({
   displayMode,
   onToggleDisplayMode,
   textTertiaryColor: _textTertiaryColor,
-  onPressWhy,
+  onPressWhy: _onPressWhy,
 }: TodayHeroRingProps) {
   return (
     <View
@@ -112,33 +111,18 @@ export function TodayHeroRing({
         displayMode={displayMode}
         onToggleDisplayMode={onToggleDisplayMode}
       />
-      {/* Audit gap #10 transparency moat (2026-05-01) — small "Why this
-          number?" pill that opens the WhyThisNumberSheet. Renders only
-          when the host passes `onPressWhy`; sized so it doesn't fight
-          the ring's tap target. */}
-      {onPressWhy ? (
-        <Pressable
-          testID="today-hero-why-this-number"
-          accessibilityRole="button"
-          accessibilityLabel="Why this number? Open calorie target explanation"
-          onPress={onPressWhy}
-          hitSlop={6}
-          style={({ pressed }) => ({
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 4,
-            paddingHorizontal: Spacing.md,
-            paddingVertical: 6,
-            borderRadius: Radius.full,
-            backgroundColor: pressed ? `${Accent.primary}30` : `${Accent.primary}14`,
-          })}
-        >
-          <HelpCircle size={12} color={Accent.primary} strokeWidth={2.25} />
-          <Text style={{ fontSize: 11, fontWeight: "700", color: Accent.primary, letterSpacing: 0.2 }}>
-            Why this number?
-          </Text>
-        </Pressable>
-      ) : null}
+      {/* 2026-05-12 round 3 (Grace TF): "Why this number?" affordance
+          is removed from Today entirely. The explainer is now reachable
+          from the Targets screen (Settings → Targets → "How is this
+          calculated?"). The Reveal step in onboarding already explains
+          the math at first run; post-onboarding the explainer's job is
+          debugging-mode access, which tolerates 2-3 taps. Today's hero
+          stays clean.
+
+          The `onPressWhy` prop is preserved on the type for backwards
+          compat with the host wiring in `app/(tabs)/index.tsx`, but no
+          UI surfaces it here. If a future iteration brings the
+          affordance back, the wiring is still in place. */}
     </View>
   );
 }

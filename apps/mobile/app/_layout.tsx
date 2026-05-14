@@ -450,6 +450,14 @@ function RootLayoutInner() {
         <Stack.Screen name="import-shared" options={{ headerShown: false }} />
         <Stack.Screen name="cook" options={{ headerShown: false }} />
         <Stack.Screen name="recipe/verify" options={{ headerShown: false }} />
+        {/* 2026-05-12 (premium-bar audit #18): redirect screen for
+            historical `/onboarding-v2` URLs. Suppress header + skip
+            animation so the redirect doesn't flash a blank Stack
+            screen before resolving to `/onboarding`. */}
+        <Stack.Screen
+          name="onboarding-v2"
+          options={{ headerShown: false, animation: "none" }}
+        />
         {/* 2026-04-30 — StreakPip destination. iOS-only mobile feature;
             web pip stays display-only (no /weekly-recap route on web). */}
         <Stack.Screen

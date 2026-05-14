@@ -149,6 +149,11 @@ export default function NotificationsPromptScreen() {
       marginTop: Spacing.xl, lineHeight: 22, paddingHorizontal: Spacing.lg,
     },
     statBold: { fontWeight: "700", color: colors.text },
+    bullets: {
+      alignSelf: "stretch",
+      marginTop: Spacing.xl,
+      gap: Spacing.md,
+    },
     enableBtn: {
       backgroundColor: Accent.success, borderRadius: Radius.md,
       paddingVertical: 18, alignItems: "center", alignSelf: "stretch",
@@ -196,11 +201,32 @@ export default function NotificationsPromptScreen() {
       </View>
 
       <Text style={styles.heading}>Stay on top of your meals</Text>
-      <Text style={styles.stat}>
-        {
-          "Gentle reminders only — an evening nudge when you're off-target, plus a Sunday recap of your week."
-        }
-      </Text>
+
+      {/* 2026-05-12 (premium-bar audit #13, Cal AI pattern): single-line
+          explainer expanded into a 3-bullet value ladder. Bullets make
+          the commitment concrete ("evening nudge", "Sunday recap") and
+          the trust line ("two max per week") sets expectation for
+          "we won't spam you" — important for an opt-in moment. */}
+      <View style={styles.bullets}>
+        <BulletRow
+          colors={colors}
+          icon="moon-outline"
+          title="Evening nudge"
+          sub="A quiet poke if you're off your daily target."
+        />
+        <BulletRow
+          colors={colors}
+          icon="newspaper-outline"
+          title="Sunday weekly recap"
+          sub="Where the week landed in numbers — no judgment, just the data."
+        />
+        <BulletRow
+          colors={colors}
+          icon="checkmark-circle-outline"
+          title="Two notifications a week, max"
+          sub="That's the cap. We won't push more, ever."
+        />
+      </View>
 
       <Pressable style={styles.enableBtn} onPress={() => void onEnable()}>
         <Text style={styles.enableBtnText}>Turn on notifications</Text>
@@ -208,6 +234,49 @@ export default function NotificationsPromptScreen() {
       <Pressable style={styles.skipBtn} onPress={() => void onSkip()}>
         <Text style={styles.skipText}>Maybe later</Text>
       </Pressable>
+    </View>
+  );
+}
+
+function BulletRow({
+  colors,
+  icon,
+  title,
+  sub,
+}: {
+  colors: ReturnType<typeof useThemeColors>;
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+  sub: string;
+}) {
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "flex-start",
+        gap: 12,
+        paddingHorizontal: Spacing.md,
+      }}
+    >
+      <View
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: 18,
+          backgroundColor: Accent.success + "15",
+          alignItems: "center",
+          justifyContent: "center",
+          marginTop: 1,
+        }}
+      >
+        <Ionicons name={icon} size={18} color={Accent.success} />
+      </View>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text }}>{title}</Text>
+        <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 2, lineHeight: 18 }}>
+          {sub}
+        </Text>
+      </View>
     </View>
   );
 }

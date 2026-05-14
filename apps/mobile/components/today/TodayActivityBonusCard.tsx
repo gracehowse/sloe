@@ -332,7 +332,7 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
               )}
               {todayActivityBudgetAddon > 0 && (
                 <Text style={{ fontSize: 11, fontWeight: "700", color: Accent.warning }}>
-                  +{todayActivityBudgetAddon.toLocaleString()} {isToday ? "bonus so far" : "bonus earned"}
+                  +{todayActivityBudgetAddon.toLocaleString()} bonus earned
                 </Text>
               )}
             </View>

@@ -6,6 +6,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Switch,
@@ -34,7 +35,21 @@ import {
   sumMicrosFromLoggedMeals,
 } from "@/lib/healthDietaryNutrients";
 import { supabase } from "@/lib/supabase";
-import { Ionicons } from "@expo/vector-icons";
+// ENG-73 (2026-05-13): Today moved off `@expo/vector-icons`
+// (Ionicons) to lucide-react-native to bring the screen's supporting
+// glyphs in line with the prototype carryover rule #2 (icons must be
+// the exact lucide set, not approximations). The macro-tile glyphs
+// (Beef / Wheat / Droplets / Leaf) already used lucide — these six
+// were the leftover supporting icons on Today.
+import {
+  AlertCircle,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  CloudOff,
+  X,
+  Zap,
+} from "lucide-react-native";
 import { Accent, Spacing, Radius } from "@/constants/theme";
 import FoodSearchModal, { type SelectedFood as FoodSearchSelectedFood } from "@/components/FoodSearchModal";
 import BarcodeScannerModal from "@/components/BarcodeScannerModal";
@@ -48,6 +63,7 @@ import VoiceLogSheet from "@/components/VoiceLogSheet";
 import PhotoLogSheet from "@/components/PhotoLogSheet";
 import AiPaywallSheet, { type AiPaywallFeature } from "@/components/AiPaywallSheet";
 import { computeLoggingStreak } from "@/lib/trackerStats";
+import { computeActivityBonusKcal } from "../../../../src/lib/nutrition/activityBonus";
 import {
   availableFreezes,
   computeProtectedStreak,
@@ -196,8 +212,6 @@ import { TodayEditMealModal } from "@/components/today/TodayEditMealModal";
 import { TodayDateHeader } from "@/components/today/TodayDateHeader";
 import { TodayDashboardMacroTiles } from "@/components/today/TodayDashboardMacroTiles";
 import { FullNutrientPanelSheet } from "@/components/today/FullNutrientPanelSheet";
-import { WhyThisNumberSheet } from "@/components/today/WhyThisNumberSheet";
-import { paceKgPerWeekFromPreset } from "../../../../src/lib/nutrition/whyThisNumber";
 import { TodayQuickLogStrip } from "@/components/today/TodayQuickLogStrip";
 import { TodaySnapShortcut } from "@/components/today/TodaySnapShortcut";
 import { OnboardingNudgeBanner } from "@/components/today/onboarding-nudges";
@@ -280,9 +294,14 @@ function parseByDayNumberMap(raw: unknown): Record<string, number> {
 /**
  * Extra kcal added to the food budget when `prefer_activity_adjusted_calories` is on.
  * surplus-only: only adds burn ABOVE estimated maintenance TDEE.
- *   bonus = max(0, (resting + active) − maintenance)
+ *   bonus = max(0, projected_EOD_burn − maintenance)   (today)
+ *   bonus = max(0, (resting + active) − maintenance)    (closed days)
  * Avoids double-counting since the calorie target already includes an activity estimate.
  * Fallback when no resting energy: logged workout calories only.
+ *
+ * Math lives in `src/lib/nutrition/activityBonus.ts` so web + mobile share
+ * one source of truth. See
+ * `docs/decisions/2026-05-13-activity-bonus-projected-eod-model.md`.
  */
 function dayActivityBudgetAddon(
   prefer: boolean,
@@ -293,16 +312,16 @@ function dayActivityBudgetAddon(
   dk: string,
   workoutsByDay?: Record<string, { type: string; minutes: number; calories: number; source: string }[]>,
 ): number {
-  if (!prefer) return 0;
-  const active = Math.round(activityByDay[dk] ?? 0);
-  if (active <= 0) return 0;
-  const basal = Math.round(basalByDay[dk] ?? 0);
-  if (basal > 0 && maintenanceKcal > 0) {
-    return Math.max(0, basal + active - maintenanceKcal);
-  }
-  // No resting data: use logged workout calories only
   const workouts = workoutsByDay?.[dk] ?? [];
-  return Math.max(0, workouts.reduce((s, w) => s + (w.calories ?? 0), 0));
+  return computeActivityBonusKcal({
+    prefer,
+    dateKey: dk,
+    todayDateKey: dateKeyFromDate(new Date()),
+    restingKcal: basalByDay[dk] ?? 0,
+    activeKcal: activityByDay[dk] ?? 0,
+    maintenanceKcal,
+    workoutKcal: workouts.reduce((s, w) => s + (w.calories ?? 0), 0),
+  });
 }
 
 function pruneByDay<V>(map: Record<string, V>): Record<string, V> {
@@ -492,6 +511,9 @@ export default function TrackerScreen() {
   // headline + range copy. `null` = closed.
   const [provenanceContext, setProvenanceContext] = useState<"activity" | "burn" | null>(null);
   const [healthLastSyncedAtMs, setHealthLastSyncedAtMs] = useState<number | null>(null);
+  // 2026-05-13 (TF feedback `AKmYHgZ7WA9uUUOSbjPtL2U`):
+  // pull-to-refresh state for the Today ScrollView's RefreshControl.
+  const [isPullToRefreshing, setIsPullToRefreshing] = useState(false);
   const [collapsedSlots, setCollapsedSlots] = useState<Set<string>>(new Set());
   const [title, setTitle] = useState("");
   const [kcal, setKcal] = useState("");
@@ -615,9 +637,6 @@ export default function TrackerScreen() {
   // → "Net carbs" via the shared netCarbs.ts helper.
   const [netCarbsLensEnabled, setNetCarbsLensEnabled] = useState(false);
   const [nutrientsModalOpen, setNutrientsModalOpen] = useState(false);
-  /** Audit gap #10 (2026-05-01) — "Why this number?" sheet visibility.
-   *  Opened by the small pill under the calorie ring. */
-  const [whyThisNumberOpen, setWhyThisNumberOpen] = useState(false);
   const [dailyStepsGoal, setDailyStepsGoal] = useState(NUTRITION_DEFAULTS.steps);
   const [plannedMeals, setPlannedMeals] = useState<{name?: string; recipe_title?: string; calories?: number; protein?: number; carbs?: number; fat?: number; recipe_id?: string | null}[]>([]);
   const [activeFastStart, setActiveFastStart] = useState<string | null>(null);
@@ -783,6 +802,10 @@ export default function TrackerScreen() {
       router.setParams({ openLog: undefined } as Record<string, undefined>);
     }
   }, [params.openLog, router]);
+
+  // 2026-05-12 round 4 (Grace TF) — the `?openWhy=1` deep-link is
+  // gone. The WhyThisNumberSheet now mounts on `/targets` and opens
+  // inline there. Today no longer owns the sheet.
 
   useEffect(() => subscribeOffline(setIsOffline), []);
 
@@ -4328,7 +4351,38 @@ export default function TrackerScreen() {
         onSkip={onPostOnbPushSkip}
         onEnable={onPostOnbPushEnable}
       />
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      {/* 2026-05-13 (TF feedback `AKmYHgZ7WA9uUUOSbjPtL2U` — "drag
+          down to sync functionality"): pull-to-refresh on Today
+          forces a HealthKit re-sync (steps + burn + weight) and
+          re-pulls profile basics so the user can pull-down to
+          force the data behind the ring to refresh on demand.
+          Mirrors MFP / Cal AI / Lose It pattern. The
+          `bypassThrottle: true` flag on `syncHealthDataThrottled`
+          skips the 60s cool-down so the manual gesture always
+          fires. */}
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={isPullToRefreshing}
+            onRefresh={async () => {
+              setIsPullToRefreshing(true);
+              if (process.env.EXPO_OS === "ios") {
+                void Haptics.selectionAsync();
+              }
+              try {
+                if (userId) {
+                  await syncHealthDataThrottled(userId, { bypassThrottle: true });
+                }
+              } finally {
+                setIsPullToRefreshing(false);
+              }
+            }}
+          />
+        }
+      >
         {/* Phase 2 / B1.2 (D-2026-04-27-07) — streak as a calm pip
             next to the date row. The earlier streak ribbon was removed
             2026-04-20; this pip is the binding pattern going forward.
@@ -4352,6 +4406,14 @@ export default function TrackerScreen() {
             <StreakPip
               days={protectedStreakLength}
               onPress={() => router.push("/weekly-recap" as never)}
+              // 2026-05-12 (premium-bar audit DC8 polish): when today's
+              // key is in `protectedDateKeys` it means a freeze
+              // covered for an empty-log day in the current chain —
+              // the pip swaps the Flame glyph for Shield + calm slate
+              // tint. Headspace parity. Only fires when the user
+              // actually had a freeze used; the regular logged-today
+              // path keeps the Flame.
+              freezeProtected={protectedDateKeys.has(dateKeyFromDate(new Date()))}
             />
           </View>
         )}
@@ -4382,7 +4444,7 @@ export default function TrackerScreen() {
 
         {isOffline && (
           <View style={styles.offlineBanner} accessibilityRole="alert">
-            <Ionicons name="cloud-offline-outline" size={14} color={Accent.primary} />
+            <CloudOff size={14} color={Accent.primary} strokeWidth={1.75} />
             <Text style={styles.offlineBannerText}>{"Offline · syncing when you reconnect"}</Text>
           </View>
         )}
@@ -4393,7 +4455,7 @@ export default function TrackerScreen() {
             onPress={() => { setLoadError(null); void loadJournal(); }}
             style={{ backgroundColor: Accent.destructive + "18", borderRadius: Radius.md, padding: Spacing.md, flexDirection: "row", alignItems: "center", gap: Spacing.sm }}
           >
-            <Ionicons name="alert-circle" size={18} color={Accent.destructive} />
+            <AlertCircle size={18} color={Accent.destructive} strokeWidth={1.75} />
             <Text style={{ flex: 1, fontSize: 13, color: Accent.destructive, fontWeight: "600" }}>
               {loadError}
               {" Tap to retry."}
@@ -4495,17 +4557,19 @@ export default function TrackerScreen() {
               expanded={ringExpanded}
               onToggleExpanded={() => setRingExpanded((e) => !e)}
               displayMode={calorieDisplayMode}
-              // User feedback 2026-05-02: long-press should toggle
-              // display-mode AND show/hide the macro sub-rings in
-              // lock-step (the original "click-and-hold" UX). The
-              // segmented chip control from PR #50 was reverted in
-              // the same change; long-press is now the single
-              // gesture that drives both pieces of ring state.
+              // 2026-05-12 round 2 (Grace TF revert): long-press is back
+              // to its canonical role — toggle display-mode AND show /
+              // hide the macro sub-rings in lock-step. The short-lived
+              // long-press-opens-explainer experiment was reverted
+              // after the centre delta chip + pill drop made the ring
+              // "super crowded". The explainer is now reached via a
+              // subtle "Why?" link below the ring in TodayHeroRing
+              // (much smaller than the old pill, doesn't fight the
+              // ring's gestures).
               onToggleDisplayMode={() => {
                 setCalorieDisplayMode((m) => m === "remaining" ? "consumed" : "remaining");
                 setRingExpanded((e) => !e);
               }}
-              onPressWhy={() => setWhyThisNumberOpen(true)}
             />
 
             {/* Single context block — priority order: fasting >
@@ -4581,6 +4645,16 @@ export default function TrackerScreen() {
                     // skipped seed-picking) still gets a real
                     // suggestion on Today, not the empty-state.
                     userCreatedAt={session?.user?.created_at ?? null}
+                    // ENG-94 (2026-05-13): on a true day-1 user with
+                    // no nutrition history yet, the host renders a
+                    // calmer "Log your first meal" card instead of
+                    // an algorithmic suggestion. `byDay` is the user's
+                    // full local nutrition log; if no day has any
+                    // meals, the algorithm has nothing to pattern-
+                    // match on yet.
+                    hasEverLoggedAnyMeal={Object.values(byDay).some(
+                      (meals) => Array.isArray(meals) && meals.length > 0,
+                    )}
                   />
                 );
               }
@@ -4815,17 +4889,17 @@ export default function TrackerScreen() {
               }}
             >
               <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
-                <Ionicons name="flash-outline" size={18} color={Accent.primary} />
+                <Zap size={18} color={Accent.primary} strokeWidth={1.75} />
                 <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>Quick add</Text>
                 <Text numberOfLines={1} style={{ flexShrink: 1, fontSize: 12, color: colors.textTertiary }}>
                   Usual meals, recent, frequent, favourites
                 </Text>
               </View>
-              <Ionicons
-                name={quickAddCollapsed ? "chevron-down" : "chevron-up"}
-                size={18}
-                color={colors.textSecondary}
-              />
+              {quickAddCollapsed ? (
+                <ChevronDown size={18} color={colors.textSecondary} strokeWidth={2} />
+              ) : (
+                <ChevronUp size={18} color={colors.textSecondary} strokeWidth={2} />
+              )}
             </Pressable>
             {!quickAddCollapsed && (
               <View style={{ marginTop: Spacing.sm }}>
@@ -4857,6 +4931,11 @@ export default function TrackerScreen() {
             onOpenSaveUsualMealForSlot={openSaveMealSheetForSlot}
             onOpenDuplicateDay={() => setDuplicateDayOpen(true)}
             onPressMeal={(id) => router.push(`/meal-nutrition?id=${encodeURIComponent(id)}` as const)}
+            onPressSlotSummary={(slot) =>
+              router.push(
+                `/meal-nutrition?slot=${encodeURIComponent(slot)}&date=${encodeURIComponent(dayKey)}` as const,
+              )
+            }
             onLongPressEdit={openEditMeal}
             onRequestCopyMeal={(id) => setCopyMealTargetId(id)}
             onDeleteMeal={deleteMeal}
@@ -5402,10 +5481,10 @@ export default function TrackerScreen() {
               elevation: 4,
             }}
           >
-            <Ionicons
-              name="checkmark-circle"
+            <CheckCircle2
               size={22}
               color={Accent.success}
+              strokeWidth={1.75}
             />
             <View style={{ flexShrink: 1 }}>
               <Text
@@ -5488,6 +5567,20 @@ export default function TrackerScreen() {
           fat: totals.fat,
           fiber: totals.fiber,
         }}
+        // 2026-05-12 round 5 (premium-bar audit #12 MFP borrow):
+        // recents on mount. Compute the user's last 5 meals from byDay
+        // (the same source the QuickAddPanel reads) and pass through
+        // so the search modal's empty-query state shows tap-to-log
+        // recents — the pattern MFP / Lose It / Cronometer all ship.
+        recentFoods={computeRecentMeals(byDay, 5).map((item) => ({
+          recipeTitle: item.recipeTitle,
+          calories: item.calories,
+          protein: item.protein,
+          carbs: item.carbs,
+          fat: item.fat,
+          fiber: item.fiber,
+          source: item.source,
+        }))}
         // Shared commit path — same logic the inline `<FoodSearchPanel>`
         // inside `<LogSheet>` runs (handleFoodSearchSelect). F-13 +
         // F-79 + L6 G1 all live in the shared callback.
@@ -5631,7 +5724,7 @@ export default function TrackerScreen() {
               </Text>
             </View>
             <Pressable onPress={() => setShowPrevious(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Close quick add">
-              <Ionicons name="close" size={24} color={colors.text} />
+              <X size={24} color={colors.text} strokeWidth={2} />
             </Pressable>
           </View>
           <QuickAddPanel
@@ -5697,67 +5790,11 @@ export default function TrackerScreen() {
         }}
       />
 
-      {/* Audit gap #10 — "Why this number?" sheet (2026-05-01).
-          Reads adaptive_tdee + goal + plan_pace from the profile state
-          we already hydrate; recomp folds into "lose" semantics for
-          the panel because the user-facing direction is identical. */}
-      <WhyThisNumberSheet
-        visible={whyThisNumberOpen}
-        onClose={() => setWhyThisNumberOpen(false)}
-        targetCalories={effectiveCalorieGoal}
-        maintenanceTdee={adaptiveTdee}
-        confidence={
-          adaptiveTdeeConfidence === "low" ||
-          adaptiveTdeeConfidence === "medium" ||
-          adaptiveTdeeConfidence === "high"
-            ? adaptiveTdeeConfidence
-            : null
-        }
-        // Streak alignment (2026-05-02 user feedback,
-        // claude/household-section-streak-sidebar-bundle): the panel
-        // reads the SAME consecutive-logging-streak number the
-        // StreakPip shows, so users don't see "26-day streak" on the
-        // header and "40 days of logging" inside the panel and ask
-        // "which is it?". `streakDays` is the canonical metric — both
-        // the early-estimate qualifier and the calibrating ask gate on
-        // it. Distinct-day count (Object.keys(byDay).filter…) is no
-        // longer surfaced here; if a future panel wants both metrics,
-        // add an explicit "X consecutive of Y total" line.
-        loggingDays={streakDays}
-        goal={
-          profileGoal === "gain"
-            ? "gain"
-            : profileGoal === "maintain"
-              ? "maintain"
-              : "lose" // covers "lose" + "recomp" + null
-        }
-        paceKgPerWeek={paceKgPerWeekFromPreset(
-          profilePlanPace,
-          profileGoal === "gain"
-            ? "gain"
-            : profileGoal === "maintain"
-              ? "maintain"
-              : "lose",
-        )}
-        // Specific calibrating ask: when adaptive TDEE hasn't fired
-        // we tell the user EXACTLY what's missing (3+ weight logs, 7+
-        // meal-log days). Without these the panel falls back to a
-        // generic "keep logging" line that lies after 40 days of meals
-        // with no weights — see PR claude/why-this-number-data-fix.
-        // 2026-05-02 — `mealLogDays` now uses the streak so the gate
-        // matches what the user sees on the pip; for a 26-day streak
-        // the gate has long since cleared so the surface impact is on
-        // sub-7-day users (more conservative calibrating ask = honest).
-        mealLogDays={streakDays}
-        weightLogCount={Object.keys(profileWeightKgByDay).length}
-        onPressAdjustTarget={() => router.push("/profile?focus=plan")}
-        backgroundColor={colors.background}
-        cardColor={colors.card}
-        cardBorderColor={colors.cardBorder}
-        textColor={colors.text}
-        textSecondaryColor={colors.textSecondary}
-        textTertiaryColor={colors.textTertiary}
-      />
+      {/* 2026-05-12 round 4 (Grace TF): the WhyThisNumberSheet moved
+          to `/targets` (Settings → Targets → "How is this calculated?")
+          and mounts inline there. Today no longer hosts it. The
+          state + `paceKgPerWeekFromPreset` import remain in case a
+          future entry point on Today wants to re-host. */}
 
       <JournalDatePickerModal
         visible={journalCalendarOpen}
