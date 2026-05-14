@@ -1,12 +1,15 @@
-import { Sparkles } from "lucide-react";
-
 /**
  * Gradient hero panel for `/pricing`.
  *
- * D13 (design-system sweep 2026-04-21) — mirrors the prototype paywall
- * hero in `docs/ux/claude-design-bundles/prototype/project/flows.jsx:555-564`:
- * brand gradient background, "SUPPR" pill with a Sparkles glyph, then the
- * "The full meal planning loop" title + a one-line value prop.
+ * D13 (design-system sweep 2026-04-21) — brand gradient background,
+ * "The full meal planning loop" title, value prop, and TestFlight
+ * disclosure line.
+ *
+ * 2026-05-14 (premium-sweep-v2 P0 rows 3.1 + 3.3 + 4.1): removed the
+ * "SUPPR" pill from the hero (duplicates the top-bar wordmark 60px
+ * above) and compressed vertical padding further so the Monthly/Annual
+ * toggle reaches the first 900px viewport without scroll on desktop
+ * and the £7.99 Pro price renders in the first mobile viewport.
  *
  * Kept as its own server component so `/pricing/page.tsx` stays readable
  * and the gradient + copy can be shared if the paywall route ever needs
@@ -20,22 +23,22 @@ import { Sparkles } from "lucide-react";
 export function PricingHero() {
   return (
     <div
-      // V15 (2026-05-11 visual sweep): mobile hero took ~50% of the
-      // viewport before any pricing was visible. Reduced vertical
-      // padding on small screens (py-8 → py-14 desktop) so the
-      // billing toggle is reachable in one viewport-height on a
-      // standard iPhone.
-      className="relative rounded-3xl px-8 py-8 sm:py-14 mb-12 text-white overflow-hidden"
+      // 2026-05-14 (premium-sweep-v2 rows 3.1 + 4.1): py-8 sm:py-14
+      // → py-6 sm:py-10. Compresses the hero ~30% so the toggle is
+      // reachable in 900px desktop viewport and the Pro price reads
+      // in the first mobile viewport. Prior V15 reduction was a step
+      // in this direction; this finishes the job.
+      className="relative rounded-3xl px-8 py-6 sm:py-10 mb-12 text-white overflow-hidden"
       style={{
         backgroundImage:
           "linear-gradient(135deg, #4c6ce0 0%, #e04888 100%)",
       }}
     >
       <div className="max-w-2xl mx-auto text-center">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 text-[11px] font-semibold tracking-[0.05em] mb-4">
-          <Sparkles className="w-3 h-3" aria-hidden="true" />
-          SUPPR
-        </div>
+        {/* 2026-05-14 (premium-sweep-v2 row 3.3): "SUPPR" Sparkles pill
+            removed — duplicated the top-bar Suppr wordmark 60px above,
+            which made the brand-mark appear twice in the same viewport
+            with no functional reason for the second instance. */}
         <h1 className="text-4xl font-bold tracking-tight leading-tight mb-3">
           The full meal planning loop
         </h1>
