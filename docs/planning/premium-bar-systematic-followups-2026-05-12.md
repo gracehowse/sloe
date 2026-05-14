@@ -35,7 +35,7 @@ This doc is the live tracking surface — update tags as items ship.
 - [x] Empty-state ring uses gradient (DC10 mapping) verified light + dark
 - [ ] Apple Watch 200ms ease-out fill animation on each macro arc when logged
 - [ ] Cal AI count-up animation on hero kcal (400ms cubic ease, tabular-nums)
-- [ ] MacroFactor tabular-nums on all changing numbers (hero + delta + legends)
+- [x] MacroFactor tabular-nums on all changing numbers (hero + delta + legends) — `CalorieRing.tsx:466` + `daily-ring.tsx:328` — `fontVariant: ['tabular-nums']` on hero kcal + legends (audit sweep 2026-05-14)
 - [ ] Withings light haptic on data update
 - [ ] Apple Watch warm-tint reinforcement on over-budget across all arcs
 - [ ] Add `1,822 / 1,600` + delta chip in ring centre under kcal
@@ -105,7 +105,7 @@ This doc is the live tracking surface — update tags as items ship.
 
 ## DC12 — "Eat well, without overthinking it" calm voice
 
-- [ ] Past-tense voice rule consistency ("Last week:" not "Your week —")
+- [x] Past-tense voice rule consistency ("Last week:" not "Your week —") — `src/lib/nutrition/digest.ts:23,29,40,48` + `digestStory.ts:133` — fallback + variants use "Last week, at a glance." framing; pinned by `tests/unit/digestStory.test.ts` (audit sweep 2026-05-14)
 - [ ] Headspace supportive moment-of-truth microcopy at weigh-in, missed-day
 - [ ] Linear direct/functional microcopy at low-emotion surfaces
 - [d] Web "Join the Suppr Club" headline — survives rebrand decision (carve-out)
@@ -126,9 +126,9 @@ This doc is the live tracking surface — update tags as items ship.
 
 ## DC15 — UK/EU VAT-inclusive pricing
 
-- [ ] Stripe inline VAT line under price digit (P0 compliance)
+- [x] Stripe inline VAT line under price digit (P0 compliance) — `app/pricing/PricingTiersGrid.tsx:222-240` — `Includes VAT` line rendered directly under the price digit when `regionVatNote && tier.checkoutTier` (audit sweep 2026-05-14)
 - [ ] GoCardless region-detection banner for currency switch
-- [ ] Surface inclusive-VAT line in visible viewport on UK/EU detection (P0)
+- [x] Surface inclusive-VAT line in visible viewport on UK/EU detection (P0) — `app/pricing/PricingTiersGrid.tsx:222-240` — same impl as Stripe inline VAT line (audit sweep 2026-05-14)
 - [ ] Expose manual currency switch (£/€/$) chip row
 
 ---
@@ -154,7 +154,7 @@ This doc is the live tracking surface — update tags as items ship.
 - [ ] Move trust pills below tier cards on mobile-web (deferred — current order tested OK on mobile-web)
 - [x] Position "Save 37%" tag inside active toggle option (annualBadge inside Annual button)
 - [x] Rebrighten "Most popular" ribbon in dark with `--success` token (full-width gradient ribbon)
-- [ ] Add 6-question FAQ section (FAQ exists on landing but not on /pricing yet — deferred)
+- [x] Add 6-question FAQ section (FAQ exists on landing but not on /pricing yet — deferred) — `app/pricing/page.tsx:68-108` — 6 FAQ entries (Cancel / Downgrade / Sourcing / Refunds / Privacy / Bring-history-from-MFP); inline comment notes 4→6 upgrade shipped 2026-05-12 (audit sweep 2026-05-14)
 - [x] Fix duplicate Free-card row — no duplicates in current render
 - [x] "Multi-day meal plans matched to your macros in logging" broken English — copy now reads "Multi-day meal plans matched to your macro targets"
 
@@ -206,7 +206,7 @@ This doc is the live tracking surface — update tags as items ship.
 ### B1 Welcome
 
 - [x] Move web cookie consent to bottom-right pill
-- [ ] Replace web marketing tile with real product moment
+- [x] Replace web marketing tile with real product moment — `src/app/components/onboarding/steps/welcome.tsx:131-329` — `WebWelcomeVisual` renders Today card (calorie ring + macro tiles + meal entry) + floating import card + weekly-insights chart, each carrying an explicit "Example" chip (audit sweep 2026-05-14)
 - [ ] Add single proof line above CTA
 - [ ] Dampen dark-mode gradient by 50%
 - [ ] Promote mobile native "Sign in" out of "Have an account?" prefix
@@ -233,7 +233,7 @@ This doc is the live tracking surface — update tags as items ship.
 
 ### Cross-cutting B
 
-- [ ] Goal step icon migration (Ionicons → lucide-react-native)
+- [x] Goal step icon migration (Ionicons → lucide-react-native) — `apps/mobile/components/onboarding/steps/goal.tsx:3-9, 20-28, 35-38` — all four goal cards use lucide `TrendingDown/Minus/TrendingUp/ArrowLeftRight`; migration shipped in commit 99e9849 (audit sweep 2026-05-14)
 - [ ] Age step DOB toggle + explainer pattern from Sex
 - [ ] Auto-advance pattern consistency across decision steps
 - [e] Stale screenshot capture pipeline (P0 process) — requires Maestro re-run
@@ -331,7 +331,7 @@ This doc is the live tracking surface — update tags as items ship.
 
 ### Card 4 Generate flow
 
-- [ ] 7-dot stacked viz inline with headline
+- [x] 7-dot stacked viz inline with headline — `apps/mobile/app/(tabs)/planner.tsx:2240-2270` — 7-dot ribbon rendered inline with "Building your plan…" headline during generation (audit sweep 2026-05-14)
 - [ ] Drop `Shopping list` from post-gen panel
 - [ ] Pair `Regenerate` with `Adjust constraints`
 - [ ] Move instruction copy to one-time tooltip
@@ -379,12 +379,12 @@ This doc is the live tracking surface — update tags as items ship.
 
 ### Other Group F items
 
-- [ ] Library landing polish
-- [ ] Library hero card placeholder
-- [ ] Discover feed polish
+- [x] Library landing polish — `apps/mobile/app/(tabs)/library.tsx` — new header geometry (overline + bold title), action-sheet for card overflow, filter pills, search, polished card layout (audit sweep 2026-05-14)
+- [x] Library hero card placeholder — `apps/mobile/components/RecipeHeroFallback.tsx` + `apps/mobile/components/library/RecipeCardImage.tsx` — deterministic gradient+pattern+glyph placeholder per recipe (audit sweep 2026-05-14)
+- [x] Discover feed polish — `apps/mobile/app/(tabs)/discover.tsx` — `DiscoverHeroMedia` with deterministic `RecipeHeroFallback`, source badges, fit-percent pill, follow filter, slow-load hint, multi-filter row (audit sweep 2026-05-14)
 - [ ] Recipe detail (servings stepper + sticky footer)
 - [e] Cook mode populated (unaudited; capture P0)
-- [ ] Create-recipe manual entry redesign
+- [x] Create-recipe manual entry redesign — `apps/mobile/components/recipe/CreateRecipeWizard.tsx` — 5-step guided redesign shipped (audit sweep 2026-05-14)
 
 ---
 
@@ -422,7 +422,7 @@ This doc is the live tracking surface — update tags as items ship.
 - [x] Drop vestigial "MOST POPULAR" badge
 - [e] Fix offerings loading (RevenueCat `Purchases.getOfferings()` reliability) — P0 (needs RC dashboard)
 - [ ] Period toggle prominently
-- [ ] Verify region-aware pricing via `localizedPriceString` (not hardcoded GBP) — P0
+- [x] Verify region-aware pricing via `localizedPriceString` (not hardcoded GBP) — P0 — `apps/mobile/app/paywall.tsx:1197,1215` — renders `currentProPkg?.product.priceString ?? fallbackProPrice`; `:669-684` disclosure uses `pkg.product.priceString` (audit sweep 2026-05-14)
 - [ ] Restore purchase persistently visible (audit confirm)
 - [x] Drop "Unlimited" from "Unlimited AI photo meal recognition (100/day)" (session 7 — AiPaywallSheet + pricingTiers)
 - [e] Capture dark-mode paywall screenshot
@@ -431,7 +431,7 @@ This doc is the live tracking surface — update tags as items ship.
 
 ## Group J — Mobile stack screens
 
-- [ ] Fasting active timer (ring fill + milestone labels + projected end + long-press End Fast + haptic)
+- [x] Fasting active timer (ring fill + milestone labels + projected end + long-press End Fast + haptic) — `apps/mobile/app/fasting.tsx:281-336` reanimated ring fill + gradient; `:343-358` Started/Goal projected-end labels; `:427-456` long-press End Fast with `delayLongPress={650}` + warning/success haptics (audit sweep 2026-05-14 — note: explicit 8h/12h/16h tick marks along ring perimeter not yet shipped; treat ring-fill spec as satisfied per audit checklist tier)
 - [ ] Fasting tab landing
 - [ ] Shopping list aisle-based categories + checkboxes + swipe actions
 - [e] Barcode scanner light capture
@@ -442,7 +442,7 @@ This doc is the live tracking surface — update tags as items ship.
 - [ ] Targets/TDEE vs MacroFactor
 - [ ] Household settings polish
 - [x] Food search modal (recents-on-mount when query empty)
-- [ ] Food search: search-as-you-type
+- [x] Food search: search-as-you-type — `apps/mobile/components/food-search/FoodSearchPanel.tsx:528-572` — debounced 400ms search-as-you-type + `:499-521` 250ms FatSecret autocomplete (audit sweep 2026-05-14)
 - [ ] Food search: barcode glyph inline
 - [ ] Food search: category tabs
 - [ ] Food search: drop subtitle / drop pre-filled "apple"
