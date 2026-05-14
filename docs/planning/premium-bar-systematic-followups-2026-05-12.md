@@ -26,6 +26,13 @@ includes ~190 items across:
 
 This doc is the live tracking surface — update tags as items ship.
 
+**Retro:** see `docs/decisions/2026-05-14-premium-audit-sweep-retro.md`
+for the post-sweep retro. Headline: 4 reverts in one sitting; pattern
+= additive flourishes shipped on code-only inference; next sweep must
+be **subtractive-first**, **visual-validated per-item in sim before
+[x]**, and **weighted by first-impression priority** (cold-open >
+daily-use > detail). Memory pin: `feedback_premium_audit_subtractive_first.md`.
+
 **Reverts (post-sweep):**
 
 - **2026-05-14 — F5/F9 "Stack day initial + numeral into single tile"
