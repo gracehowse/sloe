@@ -1271,7 +1271,10 @@ export default function RecipeDetailScreen() {
           source: "Recipe",
           origin: "recipe",
         });
-        Alert.alert("Logged", `${recipe.title} added to today at ${mult}× portion.`, [
+        // DC12 (2026-05-14, premium-bar audit) — specific log
+        // confirmation; mobile parity sweep across the barcode +
+        // planner + Today food-search Alert sites.
+        Alert.alert(`${recipe.title} logged`, `Added to today at ${mult}× portion.`, [
           { text: "Stay", style: "cancel" },
           { text: "View Today", onPress: () => router.push("/(tabs)" as any) },
         ]);
@@ -1590,6 +1593,39 @@ export default function RecipeDetailScreen() {
     sourceLinkText: { color: Accent.primary, fontSize: 14, fontWeight: "600" },
 
     actionsRow: { gap: Spacing.sm, paddingBottom: 20 },
+
+    // Sticky footer (premium-bar audit, Group F line 385) — pins the
+    // primary log CTA to the bottom of the screen so it's reachable
+    // without scrolling to the in-page "Log to journal" card. Mirrors
+    // the pattern from household-settings.tsx ("Save changes" sticky
+    // footer) and recipe-mode cook overlay buttons. The footer is
+    // safe-area-aware via insets.bottom inline below.
+    stickyFooter: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: colors.background,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      paddingHorizontal: Spacing.xl,
+      paddingTop: Spacing.md,
+    },
+    stickyFooterBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      paddingVertical: 14,
+      borderRadius: Radius.md,
+      backgroundColor: Accent.primary,
+    },
+    stickyFooterBtnText: {
+      color: colors.primaryForeground,
+      fontWeight: "700",
+      fontSize: 15,
+      letterSpacing: 0.2,
+    },
     actionBtn: {
       flexDirection: "row",
       borderRadius: Radius.md,
@@ -1804,7 +1840,14 @@ export default function RecipeDetailScreen() {
         </View>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        // Sticky footer below (premium-bar audit Group F line 385)
+        // overlays ~64pt + safe-area; pad the scroll content so the
+        // last items (source attribution / notes card) aren't hidden
+        // behind the CTA.
+        contentContainerStyle={{ paddingBottom: insets.bottom + 88 }}
+      >
         {/* Hero image — now sits below the top bar (no overlap).
             Audit C1 (2026-05-05): when no real image is available the
             screen previously rendered an Unsplash stock photo at 280pt
@@ -3108,6 +3151,41 @@ export default function RecipeDetailScreen() {
           </Modal>
         );
       })()}
+
+      {/* Sticky footer — premium-bar audit Group F line 385. The
+          existing in-page "Log to journal" card stays (it owns the
+          portion stepper + presets); the footer is a thumb-zone
+          shortcut that fires the same `addRecipeToTodayJournal`
+          handler at whatever logPortion the user has dialled in.
+          Hidden during cook mode (the cook overlay owns the bottom
+          third of the screen). */}
+      {userId && recipe && !cookMode ? (
+        <View
+          style={[styles.stickyFooter, { paddingBottom: insets.bottom + Spacing.md }]}
+          pointerEvents="box-none"
+          testID="recipe-detail-sticky-footer"
+        >
+          <Pressable
+            onPress={() => void addRecipeToTodayJournal()}
+            disabled={loggingJournal}
+            style={[styles.stickyFooterBtn, { opacity: loggingJournal ? 0.6 : 1 }]}
+            accessibilityRole="button"
+            accessibilityLabel={`Log ${recipe.title} to today at ${(Math.round(logPortion * 1000) / 1000).toString()} portion`}
+            testID="recipe-detail-sticky-log-cta"
+          >
+            {loggingJournal ? (
+              <ActivityIndicator color={colors.primaryForeground} />
+            ) : (
+              <>
+                <PlusCircle size={18} color={colors.primaryForeground} />
+                <Text style={styles.stickyFooterBtnText}>
+                  Log all · {scaledForLog.calories} kcal
+                </Text>
+              </>
+            )}
+          </Pressable>
+        </View>
+      ) : null}
     </View>
   );
 }

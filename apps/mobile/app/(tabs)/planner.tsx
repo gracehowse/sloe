@@ -13,6 +13,8 @@ import {
   Modal,
   FlatList,
   InteractionManager,
+  Animated,
+  Easing,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, type Href } from "expo-router";
@@ -40,10 +42,11 @@ import {
   ChevronRight,
   Cookie,
   Lock,
+  MoreHorizontal,
   Plus,
   RefreshCw,
   Settings2,
-  ShoppingCart,
+  Sliders,
   Sun,
   UtensilsCrossed,
   X,
@@ -68,7 +71,9 @@ import {
   startDateForOffset,
   stripMidnight,
 } from "../../../../src/lib/mealPlan/planCalendarAnchor";
+import { countChangedMealsInPlan } from "../../../../src/lib/mealPlan/planDiff";
 import { formatPlannedMealKcalMacrosLine } from "../../../../src/lib/nutrition/plannedMealDisplay";
+import { formatMacro } from "../../../../src/lib/nutrition/formatMacro";
 import {
   buildDayTotalVsGoalLine,
   formatDayTotalCell,
@@ -317,6 +322,58 @@ export default function PlannerScreen() {
     deleteExistingSlot: deletePlanSlot,
   } = useMealPlanSlots();
   const [generating, setGenerating] = useState(false);
+  // Group E Card 4 (premium-bar audit 2026-05-14): regenerate diff
+  // toast. When the user taps Regenerate against an existing plan,
+  // we snapshot the prior plan in `prevPlanForDiffRef`, run the
+  // generator, then count how many meals (by recipeId, falling back
+  // to recipeTitle) differ between before/after. The toast surfaces
+  // the count for ~2.4s so the user reads the action as "the engine
+  // picked N new recipes" rather than "did anything change?". The
+  // pattern mirrors `FirstLogAcknowledgment` (one-shot toast, host
+  // owns visibility lifecycle).
+  const prevPlanForDiffRef = useRef<DayPlan[] | null>(null);
+  const [regenerateToast, setRegenerateToast] = useState<{
+    visible: boolean;
+    changedCount: number;
+  } | null>(null);
+  useEffect(() => {
+    if (!regenerateToast?.visible) return;
+    const handle = setTimeout(() => {
+      setRegenerateToast(null);
+    }, 2400);
+    return () => clearTimeout(handle);
+  }, [regenerateToast]);
+  // 2026-05-14 (premium-bar audit Plan Card 4 #8): when the user
+  // taps Regenerate while a plan is already visible, show a soft
+  // shimmer overlay over the day-card stack so the surface reads
+  // as "working on it" rather than "did anything happen?". 800ms
+  // opacity loop matches the SkeletonRow's `Shimmer` cadence so
+  // the two pulses don't desync on screens where both appear.
+  const generatingPulse = useRef(new Animated.Value(0.45)).current;
+  useEffect(() => {
+    if (!generating) {
+      generatingPulse.setValue(0.45);
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(generatingPulse, {
+          toValue: 0.18,
+          duration: 400,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(generatingPulse, {
+          toValue: 0.45,
+          duration: 400,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [generating, generatingPulse]);
   const [planSlotMenuOpen, setPlanSlotMenuOpen] = useState(false);
   // Default to 7 days — Plan is a week tool, and a 1-day default hides
   // the week-view "wow" behind a tap. Free-tier users see the 3-day /
@@ -422,8 +479,14 @@ export default function PlannerScreen() {
   // leaves a household via the Manage screen. Drives `household_id` on
   // shopping_items writes + the "shared" status on the summary row.
   const [activeHouseholdId, setActiveHouseholdId] = useState<string | null>(null);
+  // ENG-? (2026-05-14 premium-bar audit Plan Card 2 #5): day-card
+  // eyebrow now reads "Mon · Shared" when the user is in a household
+  // with >1 member, so the planned meals are anchored to who they're
+  // for. Solo households (count <= 1) suppress the suffix — same
+  // rule the HouseholdSummaryRow uses to hide its own pill.
+  const [householdMemberCount, setHouseholdMemberCount] = useState<number>(1);
   useEffect(() => {
-    if (!userId) { setActiveHouseholdId(null); return; }
+    if (!userId) { setActiveHouseholdId(null); setHouseholdMemberCount(1); return; }
     let cancelled = false;
     const plannerHouseholdTimeout = Symbol("planner_household_timeout");
     void (async () => {
@@ -438,16 +501,19 @@ export default function PlannerScreen() {
         if (pack === plannerHouseholdTimeout) {
           if (__DEV__) console.warn("[planner] getMyHousehold timed out — shopping scope falls back to solo");
           setActiveHouseholdId(null);
+          setHouseholdMemberCount(1);
           return;
         }
         const { data } = pack;
         setActiveHouseholdId(data?.household?.id ?? null);
+        setHouseholdMemberCount(data?.members?.length ?? 1);
       } catch {
-        if (!cancelled) setActiveHouseholdId(null);
+        if (!cancelled) { setActiveHouseholdId(null); setHouseholdMemberCount(1); }
       }
     })();
     return () => { cancelled = true; };
   }, [userId]);
+  const isSharedHousehold = householdMemberCount > 1;
   const shoppingScope: ShoppingScope | null = useMemo(() => {
     if (!userId) return null;
     return shoppingScopeFor({ userId, householdId: activeHouseholdId });
@@ -1051,6 +1117,16 @@ export default function PlannerScreen() {
           color: Accent.primary,
           letterSpacing: 1.4,
         },
+        // 2026-05-14 (premium-bar audit Plan Card 2 #5) — companion
+        // to `dayTodayPill`, signals the day-card is part of a shared
+        // household plan. Subdued grey so it reads as scope context,
+        // not as a CTA.
+        daySharedPill: {
+          fontSize: 10,
+          fontWeight: "700",
+          color: colors.textTertiary,
+          letterSpacing: 1.4,
+        },
         dayTotals: { fontSize: 12, color: colors.textSecondary, fontVariant: ["tabular-nums"] },
 
         mealRow: {
@@ -1096,15 +1172,44 @@ export default function PlannerScreen() {
         // suggestion-card CTA.
         mealLogBtn: {
           paddingVertical: 6,
-          paddingHorizontal: 12,
-          minWidth: 64,
+          paddingHorizontal: 10,
+          minWidth: 90,
           borderRadius: 8,
           backgroundColor: `${Accent.primary}14`,
           alignItems: "center",
           justifyContent: "center",
           marginTop: 4,
         },
-        mealLogBtnText: { fontSize: 12, fontWeight: "600", color: Accent.primary, textAlign: "center" },
+        mealLogBtnText: { fontSize: 11, fontWeight: "600", color: Accent.primary, textAlign: "center" },
+        // 2026-05-14 (premium-bar audit Plan Card 2 #4) — `…` overflow
+        // sits adjacent to the primary Log-as-planned button and opens
+        // an action sheet with the same actions long-press exposes.
+        // Matches the swap-button size/visual so the right-side action
+        // cluster reads as a single trio: swap, log, more.
+        mealOverflowBtn: {
+          width: 30,
+          height: 30,
+          borderRadius: 8,
+          backgroundColor: colors.border + "66",
+          alignItems: "center",
+          justifyContent: "center",
+          marginTop: 3,
+        },
+        // 2026-05-14 (premium-bar audit Plan Card 2 #1) — per-row fit
+        // chip ("Fits 92%" / "Over by 220 kcal"). Shape mirrors the
+        // portion-multiplier pill rendered next to the recipe title.
+        mealFitPill: {
+          paddingHorizontal: 6,
+          paddingVertical: 1,
+          borderRadius: 4,
+          alignSelf: "flex-start",
+          marginTop: 4,
+        },
+        mealFitPillText: {
+          fontSize: 11,
+          fontWeight: "700",
+          fontVariant: ["tabular-nums"],
+        },
         mealChevron: { color: colors.tabIconDefault, fontSize: 20, fontWeight: "600", marginTop: 2 },
 
         shoppingListCard: {
@@ -1366,6 +1471,19 @@ export default function PlannerScreen() {
       return;
     }
 
+    // Group E Card 4 (premium-bar audit 2026-05-14): snapshot the
+    // existing plan BEFORE regeneration so the post-generation diff
+    // toast can count how many meals changed. We deep-copy the meals
+    // array (shallow ref would mutate when `setPlan` replaces the
+    // state below) so the comparison reads the pre-regenerate
+    // recipes, not the new ones we're about to write.
+    prevPlanForDiffRef.current = plan
+      ? plan.map((dp) => ({
+          ...dp,
+          meals: dp.meals.map((m) => ({ ...m })),
+        }))
+      : null;
+
     setGenerating(true);
     // F-114 broader sweep (2026-05-07): wrap the whole generation +
     // persistence body in try/finally so a throw at any await point
@@ -1551,6 +1669,25 @@ export default function PlannerScreen() {
       setPlan(newPlan);
       setPlanTargets(resolved);
 
+      // Group E Card 4 (premium-bar audit 2026-05-14): count how
+      // many meal slots changed (different recipe vs. the snapshot
+      // taken at the top of this callback) and surface the count
+      // as a soft toast. Identity is recipeId-first, with recipeTitle
+      // as the fallback for placeholder slots that never resolved
+      // to a saved recipe — see `countChangedMealsInPlan` in
+      // `src/lib/mealPlan/planDiff.ts`. If the prior plan was empty
+      // (first-time generation) we skip the toast — there's nothing
+      // to compare against, the empty-state CTA already covers that
+      // beat.
+      const prevPlan = prevPlanForDiffRef.current;
+      if (prevPlan && prevPlan.length > 0) {
+        const changed = countChangedMealsInPlan(prevPlan, newPlan);
+        if (changed > 0) {
+          setRegenerateToast({ visible: true, changedCount: changed });
+        }
+      }
+      prevPlanForDiffRef.current = null;
+
       // F1 fix (audit 2026-04-28): regenerate must REBUILD the
       // shopping list, not just purge it. Previously the regenerate
       // path purged `shopping_items` rows but the UI's only path to
@@ -1617,6 +1754,66 @@ export default function PlannerScreen() {
       testID="screen-planner"
       style={[styles.container, { paddingTop: insets.top }]}
     >
+      {/* Group E Card 4 (premium-bar audit 2026-05-14): regenerate
+          diff toast. Absolutely positioned overlay below the status
+          bar so it doesn't compete for header space. Auto-dismisses
+          after 2.4s via the effect on `regenerateToast`. Hosts no
+          tap target — calm-reward posture matching
+          `FirstLogAcknowledgment`. */}
+      {regenerateToast?.visible ? (
+        <View
+          testID="planner-regenerate-toast"
+          accessibilityRole="alert"
+          accessibilityLabel={`Plan updated. ${regenerateToast.changedCount} meals changed.`}
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            top: insets.top + Spacing.sm,
+            left: Spacing.md,
+            right: Spacing.md,
+            zIndex: 1000,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: Spacing.sm,
+            paddingVertical: Spacing.sm,
+            paddingHorizontal: Spacing.md,
+            borderRadius: Radius.md,
+            backgroundColor: colors.card,
+            borderWidth: 1,
+            borderColor: Accent.primary + "40",
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.12,
+            shadowRadius: 6,
+            elevation: 4,
+          }}
+        >
+          <View
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: 14,
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: Accent.primary + "1A",
+            }}
+          >
+            <RefreshCw size={14} color={Accent.primary} strokeWidth={2.25} />
+          </View>
+          <Text
+            style={{
+              flex: 1,
+              fontSize: 14,
+              fontWeight: "600",
+              color: colors.text,
+              letterSpacing: -0.1,
+            }}
+          >
+            Plan updated — {regenerateToast.changedCount}{" "}
+            {regenerateToast.changedCount === 1 ? "meal" : "meals"} changed
+          </Text>
+        </View>
+      ) : null}
       {/* Phase 2 / B1.1 — Plan sub-tab pill bar (Plan default,
           Shopping list as a sub-view). Tapping "Shopping" routes to
           the existing `/shopping` screen which carries a mirroring
@@ -1651,13 +1848,24 @@ export default function PlannerScreen() {
               TestFlight AAtQgwFWaQTF — "regenerate section is missing".
               Surface the action at the header level whenever a plan
               exists so it's always one tap away. */}
+          {/* Group E Card 1 (premium-bar audit 2026-05-14): the two
+              circular header buttons (Regenerate + Plan options) are
+              icon-only — without an a11y label the screen reader
+              announces them as anonymous buttons. Each carries a
+              descriptive accessibilityLabel naming the action and a
+              short accessibilityHint explaining the outcome so
+              VoiceOver / TalkBack users get the same context sighted
+              users get from the icon shape. accessibilityRole="button"
+              + state guards (disabled spinner) are already in place. */}
           {plan && plan.length > 0 ? (
             <Pressable
               style={[styles.headerIconBtn, { marginRight: 8 }]}
               onPress={generatePlan}
               disabled={generating}
               accessibilityRole="button"
-              accessibilityLabel="Regenerate plan"
+              accessibilityLabel="Regenerate this week's meal plan"
+              accessibilityHint="Rebuilds the plan with a fresh combination of your saved recipes"
+              accessibilityState={{ disabled: generating, busy: generating }}
             >
               {generating ? (
                 <ActivityIndicator size="small" color={colors.text} />
@@ -1670,7 +1878,8 @@ export default function PlannerScreen() {
             style={styles.headerIconBtn}
             onPress={() => setTemplatesOpen(true)}
             accessibilityRole="button"
-            accessibilityLabel="Plan options"
+            accessibilityLabel="Plan settings and templates"
+            accessibilityHint="Opens plan-setup controls: meal slots, day count, saved templates"
           >
             <Settings2 size={18} color={colors.text} strokeWidth={1.75} />
           </Pressable>
@@ -1855,50 +2064,41 @@ export default function PlannerScreen() {
                   ? `${WEEKDAY_LONG[planCalendarDateForIndex(summaryScore.worstShort.dayIndex, startOffset).getDay()]} is ~${Math.round(summaryScore.worstShort.shortBy)} kcal short. Add a snack or swap the dinner.`
                   : "Some days run over target. Tap a meal to swap or adjust the portion."}
             </Text>
+            {/* 2026-05-14 (premium-bar audit Plan Card 4 #6 + #7):
+                "Shopping list" was dropped from the summary card —
+                it remained accessible via the dedicated CTA card
+                below and the tab bar, so duplicating it as the
+                primary action here was a duplicate-CTA papercut.
+                Regenerate is now primary; a secondary "Adjust
+                constraints" expands the Plan-setup card directly
+                so the user can change day count / start / slots
+                without scrolling to find the disclosure. */}
             <View style={styles.summaryActions}>
               <Pressable
                 style={styles.summaryPrimaryBtn}
-                onPress={async () => {
-                  // F1 fix (2026-04-28): if the shopping list is
-                  // empty (e.g. plan was regenerated and the auto-
-                  // rebuild failed, or the user is hitting this for
-                  // the first time after migration), build it from
-                  // the active plan before navigating. Falling
-                  // through silently to /shopping landed users on a
-                  // "Generate a meal plan first" empty state even
-                  // when they had an active plan.
-                  if (plan && shoppingItemCount === 0) {
-                    const res = await generateShoppingListFromPlan(plan);
-                    if (!res.ok) {
-                      Alert.alert(
-                        "Couldn't build shopping list",
-                        `${res.error}\n\nOpening Shopping anyway — you can retry from there.`,
-                      );
-                    }
-                  }
-                  router.push("/shopping");
-                }}
-                accessibilityRole="button"
-                accessibilityLabel="Open shopping list"
-              >
-                <ShoppingCart size={14} color="#fff" strokeWidth={1.75} />
-                <Text style={styles.summaryPrimaryText}>Shopping list</Text>
-              </Pressable>
-              <Pressable
-                style={styles.summarySecondaryBtn}
                 onPress={generatePlan}
                 disabled={generating}
                 accessibilityRole="button"
                 accessibilityLabel="Regenerate plan"
               >
                 {generating ? (
-                  <ActivityIndicator size="small" color={colors.text} />
+                  <ActivityIndicator size="small" color="#fff" />
                 ) : (
                   <>
-                    <RefreshCw size={14} color={colors.text} strokeWidth={1.75} />
-                    <Text style={styles.summarySecondaryText}>Regenerate</Text>
+                    <RefreshCw size={14} color="#fff" strokeWidth={1.75} />
+                    <Text style={styles.summaryPrimaryText}>Regenerate</Text>
                   </>
                 )}
+              </Pressable>
+              <Pressable
+                style={styles.summarySecondaryBtn}
+                onPress={() => setPlanSetupExpanded(true)}
+                accessibilityRole="button"
+                accessibilityLabel="Adjust plan constraints"
+                testID="plan-summary-adjust-constraints"
+              >
+                <Sliders size={14} color={colors.text} strokeWidth={1.75} />
+                <Text style={styles.summarySecondaryText}>Adjust constraints</Text>
               </Pressable>
             </View>
           </View>
@@ -2123,9 +2323,16 @@ export default function PlannerScreen() {
         {/* Generate controls */}
         {!plan && (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Plan your week</Text>
+            {/* DC12 (2026-05-14, premium-bar audit) — low-emotion
+                empty state. Linear/direct copy: tells the user what
+                they're looking at (no plan yet) and what to do
+                (generate one), with the 30-second time signal that
+                a returning MFP/Lose It refugee will instantly read
+                as "this won't be a 10-minute chore". Web parity:
+                `src/app/components/PlannerScreen.tsx`. */}
+            <Text style={styles.cardTitle}>No plan yet</Text>
             <Text style={styles.cardDesc}>
-              {savedRecipes.length} recipe{savedRecipes.length !== 1 ? "s" : ""} in your library.
+              Generate one in 30 seconds. {savedRecipes.length} recipe{savedRecipes.length !== 1 ? "s" : ""} in your library.
               {savedRecipes.length === 0 ? " Save some from Discover first." : ""}
             </Text>
             <Pressable
@@ -2266,7 +2473,11 @@ export default function PlannerScreen() {
                   <Text style={styles.generateBtnText}>Building your plan…</Text>
                 </View>
               ) : (
-                <Text style={styles.generateBtnText}>Generate Plan</Text>
+                /* DC12 (2026-05-14, premium-bar audit) — linear/direct
+                   primary CTA. "Generate Plan" was abstract; "Generate
+                   my plan" reads as the user's action (their plan, not
+                   the system's). */
+                <Text style={styles.generateBtnText}>Generate my plan</Text>
               )}
             </Pressable>
           </View>
@@ -2331,8 +2542,19 @@ export default function PlannerScreen() {
           </View>
         ) : null}
 
-        {/* Plan display */}
-        {plan && plan.map((dp, dayIdx) => {
+        {/* Plan display
+            2026-05-14 (premium-bar audit Plan Card 4 #8): the plan
+            stack is wrapped in a relative container so that, during
+            regenerate (when an existing plan is already visible), a
+            shimmering brand-tinted overlay can sit over the day-cards
+            without unmounting them. The overlay is `pointerEvents="none"`
+            so taps still reach the underlying rows — by design we don't
+            block interaction during regenerate; we just signal "new
+            plan incoming". The cold-start path (no existing plan)
+            still shows the 3 SkeletonCards above. */}
+        {plan && (
+          <View style={{ position: "relative" }}>
+        {plan.map((dp, dayIdx) => {
           // Build-12 H-5 (TestFlight `AH8csBqtZsBJJr0uHgXyEcE`,
           // 2026-04-19): "Plan doesn't tell me how close it is to my
           // macro targets." The shared helper builds an explicit
@@ -2389,6 +2611,20 @@ export default function PlannerScreen() {
                     style={styles.dayTodayPill}
                   >
                     TODAY
+                  </Text>
+                )}
+                {/* 2026-05-14 (premium-bar audit Plan Card 2 #5):
+                    anchor household scope in the day-card eyebrow
+                    when the user is in a >1-member household, so
+                    each day's plan reads as "this is for the
+                    household, not just me". Solo households
+                    suppress the suffix. */}
+                {isSharedHousehold && (
+                  <Text
+                    accessibilityLabel="Shared with household"
+                    style={styles.daySharedPill}
+                  >
+                    · SHARED
                   </Text>
                 )}
               </View>
@@ -2472,11 +2708,36 @@ export default function PlannerScreen() {
                 No slots on this day yet. Add one below, or regenerate the plan.
               </Text>
             ) : null}
-            {sortMealsBySlotOrder(dp.meals).map((meal) => {
+            {(() => {
+              const sortedMeals = sortMealsBySlotOrder(dp.meals);
+              // 2026-05-14 (premium-bar audit Plan Card 2 #1): cumulative
+              // kcal up to and including each row, used to render a
+              // per-row fit pill ("Fits 92%" / "Over by 220 kcal").
+              // Computed in slot order so the fit value reflects how
+              // the day is filling up as the user reads downward.
+              let running = 0;
+              const cumKcal = sortedMeals.map((m) => {
+                if (planMealHasRecipe(m) && Number.isFinite(m.calories)) {
+                  running += m.calories || 0;
+                }
+                return running;
+              });
+              return sortedMeals.map((meal, sortedIdx) => {
               const mealIndexInDay = dp.meals.indexOf(meal);
               const multMeta = planMealPortionMeta(meal, planRecipePool);
               const currentMult = multMeta.displayMult;
               const multLabel = multMeta.label;
+              const dayCalGoal = planTargets?.calories ?? 0;
+              const cumKcalForRow = cumKcal[sortedIdx] ?? 0;
+              const showFitPill =
+                planMealHasRecipe(meal) &&
+                Number.isFinite(meal.calories) &&
+                meal.calories > 0 &&
+                dayCalGoal > 0;
+              const overByKcal = cumKcalForRow - dayCalGoal;
+              const fitPctRaw = dayCalGoal > 0 ? (cumKcalForRow / dayCalGoal) * 100 : 0;
+              const fitPct = Math.round(fitPctRaw);
+              const fitOver = overByKcal > 0;
               return (
               <Pressable
                 key={`${dp.day}-${mealIndexInDay}-${meal.name}`}
@@ -2733,6 +2994,13 @@ export default function PlannerScreen() {
                       adjacent title above is still `numberOfLines={1}`
                       so the meal name stays single-line and only
                       the informational macro line wraps. */}
+                  {/* 2026-05-14 (premium-bar audit Plan Card 2 #3):
+                      meal row macro line shows all four macros via the
+                      shared `formatPlannedMealKcalMacrosLine` helper —
+                      "NNN kcal · P NNg · C NNg · F NNg". Rounding is
+                      centralised through `formatMacro` inside the
+                      helper so we never drift to "105.80000000000001g"
+                      on RN floats. */}
                   <Text style={styles.mealMacros} numberOfLines={2}>
                     {planMealHasRecipe(meal)
                       ? formatPlannedMealKcalMacrosLine(
@@ -2741,8 +3009,45 @@ export default function PlannerScreen() {
                           meal.carbs,
                           meal.fat,
                         )
-                      : "— kcal · P —g · C —g · F —g"}
+                      : `${formatMacro(0, "calories")} kcal · P —g · C —g · F —g`}
                   </Text>
+                  {/* 2026-05-14 (premium-bar audit Plan Card 2 #1) — per-
+                      row fit chip. "Fits N%" when running day total
+                      stays at or below the day's kcal goal; "Over by
+                      N kcal" once cumulative exceeds the goal. Hidden
+                      when the row has no kcal or the user has no
+                      daily kcal target. Amber tint on over (matches
+                      the over-budget rule from
+                      project_prototype_carryover_rules — never red). */}
+                  {showFitPill ? (
+                    <View
+                      style={[
+                        styles.mealFitPill,
+                        {
+                          backgroundColor: fitOver
+                            ? Accent.warning + "1F"
+                            : Accent.success + "1F",
+                        },
+                      ]}
+                      accessibilityLabel={
+                        fitOver
+                          ? `Over the daily target by ${Math.round(overByKcal)} kilocalories at this row`
+                          : `Fits ${fitPct}% of the daily target at this row`
+                      }
+                      testID={`meal-fit-pill-${dp.day}-${mealIndexInDay}`}
+                    >
+                      <Text
+                        style={[
+                          styles.mealFitPillText,
+                          { color: fitOver ? Accent.warning : Accent.success },
+                        ]}
+                      >
+                        {fitOver
+                          ? `Over by ${Math.round(overByKcal)} kcal`
+                          : `Fits ${fitPct}%`}
+                      </Text>
+                    </View>
+                  ) : null}
                   {/* Recipe-wave (2026-05-10) — "Recipe removed" badge
                       for plan rows whose `recipeId` is set but no
                       longer resolves to any known recipe. Pre-fix the
@@ -2889,7 +3194,11 @@ export default function PlannerScreen() {
                     } else {
                       // F-2 — snapshot today's target on first log.
                       void snapshotDailyTargetIfMissing(supabase, userId);
-                      Alert.alert("Logged", `${meal.recipeTitle} added to today's tracker.`);
+                      // DC12 (2026-05-14, premium-bar audit) —
+                      // specific log confirmation. Surfaces the meal
+                      // name in the title; body holds the routing
+                      // context. Mobile parity sweep.
+                      Alert.alert(`${meal.recipeTitle} logged`, "Added to today's tracker.");
                     }
                   }}
                   style={styles.mealLogBtn}
@@ -2898,12 +3207,136 @@ export default function PlannerScreen() {
                       so the meal title stops getting clipped to
                       "Peanut Butter Prot..." on standard iPhone widths.
                       "Today" is redundant context (the user is already
-                      viewing today's row in the planner). */}
-                  <Text style={styles.mealLogBtnText}>Log</Text>
+                      viewing today's row in the planner).
+                      2026-05-14 (premium-bar audit Plan Card 2 #4):
+                      relabelled to "Log as planned" to disambiguate
+                      against the overflow menu's "Change portion size…"
+                      / "Move to different meal" alternatives. */}
+                  <Text style={styles.mealLogBtnText} numberOfLines={1}>Log as planned</Text>
+                </Pressable>
+                <Pressable
+                  hitSlop={8}
+                  onPress={(e) => {
+                    e.stopPropagation?.();
+                    // 2026-05-14 (premium-bar audit Plan Card 2 #4):
+                    // overflow menu that surfaces the same actions
+                    // long-press already exposes. Primary "Log as
+                    // planned" stays as the dedicated button; "…"
+                    // gives keyboard-shy testers a tappable affordance
+                    // for "Change portion size…" / "Move to different
+                    // meal" / "Remove from plan" without having to
+                    // discover the long-press gesture.
+                    const hasRecipeOv = planMealHasRecipe(meal);
+                    const sourceDayOv = plan?.[dayIdx]?.day;
+                    Alert.alert(
+                      hasRecipeOv ? meal.recipeTitle! : meal.name,
+                      hasRecipeOv ? `${Math.round(meal.calories)} kcal · ${meal.name}` : "Empty slot",
+                      [
+                        ...(hasRecipeOv
+                          ? [
+                              {
+                                text: "Log as planned",
+                                onPress: async () => {
+                                  const dk = dateKeyFromDate(new Date());
+                                  const entryId = newMealId();
+                                  const microsResOv = meal.recipeId
+                                    ? await fetchPlannedMealMicros(
+                                        supabase as unknown as Parameters<typeof fetchPlannedMealMicros>[0],
+                                        meal.recipeId,
+                                        1,
+                                      )
+                                    : { fiberG: null, micros: {}, macrosAreCoerced: false };
+                                  const { error } = await supabase
+                                    .from("nutrition_entries")
+                                    .insert({
+                                      id: entryId,
+                                      user_id: userId,
+                                      date_key: dk,
+                                      name: meal.name,
+                                      recipe_title: meal.recipeTitle,
+                                      time_label: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
+                                      calories: meal.calories,
+                                      protein: meal.protein,
+                                      carbs: meal.carbs,
+                                      fat: meal.fat,
+                                      fiber_g: microsResOv.fiberG,
+                                      ...(Object.keys(microsResOv.micros).length > 0
+                                        ? { nutrition_micros: microsResOv.micros }
+                                        : {}),
+                                      portion_multiplier: 1,
+                                    });
+                                  if (error) {
+                                    Alert.alert("Log failed", "Could not save to tracker. " + error.message);
+                                  } else {
+                                    void snapshotDailyTargetIfMissing(supabase, userId);
+                                    // DC12 (2026-05-14, premium-bar audit) —
+                      // specific log confirmation. Surfaces the meal
+                      // name in the title; body holds the routing
+                      // context. Mobile parity sweep.
+                      Alert.alert(`${meal.recipeTitle} logged`, "Added to today's tracker.");
+                                  }
+                                },
+                              },
+                              {
+                                text: "Change portion size…",
+                                onPress: () => setPortionModal({ dayIdx, mealIndex: mealIndexInDay }),
+                              },
+                            ]
+                          : []),
+                        {
+                          text: "Move to different meal",
+                          onPress: () => {
+                            if (!hasRecipeOv) {
+                              Alert.alert("Nothing to move", "This slot is empty.");
+                              return;
+                            }
+                            if (sourceDayOv == null || mealIndexInDay < 0) return;
+                            setMoveSource({ day: sourceDayOv, slotIndex: mealIndexInDay });
+                            setMoveSheetOpen(true);
+                          },
+                        },
+                        {
+                          text: "Remove from plan",
+                          style: "destructive" as const,
+                          onPress: () => {
+                            setPlan((prev) => {
+                              if (!prev) return prev;
+                              const next = prev.map((dpRow, di) => {
+                                if (di !== dayIdx) return dpRow;
+                                const newMeals = sortMealsBySlotOrder(
+                                  dpRow.meals.filter((_, mi) => mi !== mealIndexInDay),
+                                );
+                                const totals = newMeals.reduce(
+                                  (a, m) => ({
+                                    calories: a.calories + m.calories,
+                                    protein: a.protein + m.protein,
+                                    carbs: a.carbs + m.carbs,
+                                    fat: a.fat + m.fat,
+                                  }),
+                                  { calories: 0, protein: 0, carbs: 0, fat: 0 },
+                                );
+                                return { ...dpRow, meals: newMeals, totals };
+                              });
+                              void persistPlan(next);
+                              return next;
+                            });
+                          },
+                        },
+                        { text: "Cancel", style: "cancel" },
+                      ],
+                    );
+                  }}
+                  style={styles.mealOverflowBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel="More actions for this meal"
+                  testID={`meal-overflow-${dp.day}-${mealIndexInDay}`}
+                >
+                  <MoreHorizontal size={16} color={colors.textSecondary} strokeWidth={1.75} />
                 </Pressable>
               </Pressable>
             );
-            })}
+            });
+            })()}
             {(() => {
               const missing = canonicalSlotsMissingFromDay(dp.meals);
               if (missing.length === 0) return null;
@@ -2980,6 +3413,49 @@ export default function PlannerScreen() {
           </View>
           );
         })}
+            {/* Regenerate-in-flight overlay (Plan Card 4 #8). Brand
+                primary gradient hint via two stacked tinted layers
+                — the LinearGradient package isn't installed on this
+                surface (see comment on `summaryCard`), so we approximate
+                with two semi-opaque layers using primary + fat tints.
+                Animated opacity pulses both layers in unison via the
+                `generatingPulse` value. Cold-start path is handled
+                above via SkeletonCards. */}
+            {generating ? (
+              <Animated.View
+                pointerEvents="none"
+                testID="planner-regenerate-shimmer"
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  borderRadius: Radius.lg,
+                  opacity: generatingPulse,
+                  overflow: "hidden",
+                }}
+              >
+                <View
+                  style={{
+                    flex: 1,
+                    backgroundColor: Accent.primary + "26",
+                  }}
+                />
+                <View
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: MacroColors.fat + "12",
+                  }}
+                />
+              </Animated.View>
+            ) : null}
+          </View>
+        )}
 
         {/* Shopping list CTA card removed 2026-04-20 per Grace's
             review — "This week" summary card already carries the

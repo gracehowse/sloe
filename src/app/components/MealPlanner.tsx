@@ -1230,7 +1230,15 @@ export const MealPlanner = memo(function MealPlanner({
             strokeWidth={2}
             className={isGenerating ? "animate-spin" : ""}
           />
-          Regenerate week
+          {/* DC12 (2026-05-14, premium-bar audit) — when no plan
+              exists yet this is the empty-state CTA; the verb
+              "Regenerate" misreads at that moment (nothing has
+              been generated to re-do). The summary-card path
+              keeps the regenerate verb since a plan IS visible
+              there. Mobile parity:
+              `apps/mobile/app/(tabs)/planner.tsx` "Generate my
+              plan". */}
+          {plan.length > 0 ? "Regenerate week" : "Generate my plan"}
         </button>
       </div>
 

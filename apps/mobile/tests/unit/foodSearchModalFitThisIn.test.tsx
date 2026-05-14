@@ -32,6 +32,17 @@ import FoodSearchModal from "../../components/FoodSearchModal";
 
 void React;
 
+// 2026-05-14 (premium-bar polish #1): the modal now imports `useRouter`
+// from expo-router to wire the inline ScanLine glyph as a fallback
+// navigation when the host hasn't supplied `onScanBarcode`. Tests must
+// mock the module — its package transitively imports
+// `react-native/Stack` JSX that vite-node doesn't transform. Tests in
+// this file always provide an explicit `onScanBarcode` callback, so
+// the inline ScanLine never renders and `router.push` is never invoked.
+vi.mock("expo-router", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
 // The modal imports these from `@/lib/verifyRecipe`. Mock the module at
 // the module-graph level so the component gets our deterministic
 // stubs — no network, no Supabase, no native bridges. Keep the

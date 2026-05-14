@@ -254,10 +254,15 @@ describe("Fix 5 — Phase 4 (2026-04-28): eat-again banner is part of the post-h
   });
 
   it("mobile keeps the conditional gate (no banner when there's no recommendation)", () => {
-    // The banner collapses to zero height when `eatAgainSuggestion` is
-    // null OR dismissed OR remaining > 0 (existing behaviour).
+    // The banner collapses to zero height when there are no candidates
+    // OR dismissed OR remaining > 0 (existing behaviour). Premium-bar
+    // audit DC3 polish (2026-05-14) renamed the gate's left operand
+    // from the single `eatAgainSuggestion` to
+    // `eatAgainCandidates.length > 0` so the new horizontal scroller
+    // path can fire when 2+ are present. The rest of the gate is
+    // unchanged.
     expect(SRC.today).toMatch(
-      /eatAgainSuggestion\s*&&\s*!eatAgainDismissedForToday\s*&&\s*!\(remaining\s*>\s*0\)/,
+      /eatAgainCandidates\.length\s*>\s*0\s*&&\s*!eatAgainDismissedForToday\s*&&\s*!\(remaining\s*>\s*0\)/,
     );
   });
 });

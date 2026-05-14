@@ -219,7 +219,11 @@ export default function BarcodeScreen() {
         source: "Open Food Facts",
         origin: "barcode",
       });
-      Alert.alert("Logged", `${product.name} (${portionSummary}) added to today's tracker.`, [
+      // DC12 (2026-05-14, premium-bar audit) — specific log
+      // confirmation: surface the actual meal name in the title so
+      // the user reads back exactly what they just logged (Cal AI /
+      // MFP parity, the "what" not the verb). Mobile parity sweep.
+      Alert.alert(`${product.name} logged`, `Added to today's tracker (${portionSummary}).`, [
         { text: "Scan another", onPress: () => { lastRef.current = null; setLast(null); setProduct(null); setError(null); setRememberedPortion(null); } },
         { text: "Go to tracker", onPress: () => router.push("/(tabs)/index" as Href) },
       ]);
@@ -273,7 +277,9 @@ export default function BarcodeScreen() {
         source: "Manual barcode entry",
         origin: "manual",
       });
-      Alert.alert("Logged", `${manualName.trim()} added to today's tracker.`, [
+      // DC12 (2026-05-14, premium-bar audit) — specific log
+      // confirmation, see barcode commit above.
+      Alert.alert(`${manualName.trim()} logged`, "Added to today's tracker.", [
         { text: "Scan another", onPress: () => { lastRef.current = null; setLast(null); setProduct(null); setError(null); setManualMode(false); setManualName(""); setManualCalories(""); setManualProtein(""); setManualCarbs(""); setManualFat(""); setRememberedPortion(null); } },
         { text: "Go to tracker", onPress: () => router.push("/(tabs)/index" as Href) },
       ]);
