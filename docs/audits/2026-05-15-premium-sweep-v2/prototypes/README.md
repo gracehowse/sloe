@@ -10,8 +10,9 @@ differently from rendered ones; prototypes catch the gap.
 ```
 prototypes/
 ├── README.md            (this file)
-├── _shared/
-│   ├── tokens.css       (the Tailwind / shadcn token subset used)
+├── _shared/             (CSS source-of-truth for the inline blocks;
+│                         do NOT link from prototype HTML — see below)
+│   ├── tokens.css       (browser-safe extract of theme.css)
 │   ├── iphone-frame.css (mobile iPhone bezel/notch CSS)
 │   └── prototype.css    (before/after toggle, side-by-side layout)
 ├── web/
@@ -23,6 +24,16 @@ prototypes/
     ├── P1/
     └── P2/
 ```
+
+**Important — inline the CSS, don't `<link>` it.** Tried external
+`<link rel="stylesheet">` to the `_shared/` files first; browsers
+served them but `file://` cache + path-resolution quirks broke the
+render unpredictably. The fix that works reliably: copy the relevant
+`_shared/` CSS into a `<style>` block at the top of each prototype
+HTML. The `_shared/` files are the source of truth for the patterns;
+each prototype is fully self-contained so it's double-clickable from
+Finder with zero external dependencies. Reference example:
+[`mobile/P0/paywall.html`](mobile/P0/paywall.html).
 
 ## Naming convention
 

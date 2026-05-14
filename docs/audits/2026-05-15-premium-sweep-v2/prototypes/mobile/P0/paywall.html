@@ -3,49 +3,226 @@
 <head>
   <meta charset="utf-8">
   <title>Suppr — mobile paywall prototype</title>
-  <link rel="stylesheet" href="../../_shared/tokens.css">
-  <link rel="stylesheet" href="../../_shared/prototype.css">
-  <link rel="stylesheet" href="../../_shared/iphone-frame.css">
   <style>
-    /* Surface-specific styling — mimics the live mobile paywall
-       layout using the same tokens. */
+    /* ──────────────────────────────────────────────────────────
+       INLINED PROTOTYPE STYLES — premium-sweep-v2 G3.5
+       Self-contained so the HTML is double-clickable from Finder
+       with no file:// caching variables. Tokens are the browser-
+       safe subset of src/styles/theme.css.
+       ────────────────────────────────────────────────────────── */
+
+    :root {
+      --pm-ease: cubic-bezier(0.22, 1, 0.36, 1);
+      --pm-duration: 150ms;
+
+      --background: #f4f5f7;
+      --foreground: #111118;
+      --card: #ffffff;
+      --card-foreground: #111118;
+      --primary: #4c6ce0;
+      --primary-foreground: #ffffff;
+      --muted: #e4e4ec;
+      --muted-foreground: #6b6b78;
+      --border: #e4e4ec;
+      --destructive: #e04848;
+      --success: #22a860;
+      --success-foreground: #ffffff;
+      --success-soft: rgba(34, 168, 96, 0.08);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text",
+                   "Segoe UI", Roboto, sans-serif;
+      background: var(--background);
+      color: var(--foreground);
+      min-height: 100vh;
+      font-size: 15px;
+      line-height: 1.45;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Prototype shell ── */
+    .prototype-header {
+      position: sticky; top: 0; z-index: 10;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+    }
+    .prototype-header h1 { font-size: 18px; font-weight: 700; }
+    .prototype-header .meta { font-size: 12px; color: var(--muted-foreground); margin-top: 2px; }
+    .prototype-header nav {
+      margin-left: auto;
+      display: flex; gap: 4px;
+      background: var(--muted);
+      border-radius: 8px; padding: 3px;
+    }
+    .prototype-header nav button {
+      border: 0; background: transparent;
+      color: var(--muted-foreground);
+      padding: 6px 14px;
+      font-size: 13px; font-weight: 600;
+      border-radius: 6px; cursor: pointer;
+      transition: background var(--pm-duration) var(--pm-ease),
+                  color var(--pm-duration) var(--pm-ease);
+    }
+    .prototype-header nav button[aria-current="true"] {
+      background: var(--card); color: var(--foreground);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+    }
+
+    .prototype-canvas {
+      padding: 32px;
+      display: grid; gap: 32px;
+    }
+    .prototype-canvas[data-view="before"] .state--after { display: none; }
+    .prototype-canvas[data-view="after"]  .state--before { display: none; }
+    .prototype-canvas[data-view="side-by-side"] { grid-template-columns: 1fr 1fr; }
+
+    .state {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 48px 24px 24px;
+      position: relative;
+    }
+    .state::before {
+      content: attr(data-label);
+      position: absolute; top: 12px; left: 12px;
+      font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      padding: 3px 8px; border-radius: 4px;
+      background: var(--muted); color: var(--muted-foreground);
+    }
+    .state--after::before {
+      background: var(--primary); color: var(--primary-foreground);
+    }
+
+    .prototype-notes {
+      margin: 0 32px 64px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+    }
+    .prototype-notes h2 { font-size: 14px; font-weight: 700; margin-bottom: 8px; margin-top: 16px; }
+    .prototype-notes h2:first-child { margin-top: 0; }
+    .prototype-notes ul { list-style: none; display: grid; gap: 8px; }
+    .prototype-notes li {
+      padding-left: 8px; border-left: 2px solid var(--primary);
+      font-size: 14px;
+    }
+    .prototype-notes li strong {
+      display: inline-block;
+      font-size: 11px; font-weight: 700;
+      background: var(--muted); color: var(--muted-foreground);
+      padding: 2px 6px; border-radius: 4px;
+      margin-right: 6px;
+      text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .prototype-notes p { font-size: 14px; color: var(--muted-foreground); }
+    .prototype-notes code {
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+      font-size: 12px;
+      background: var(--muted); color: var(--foreground);
+      padding: 1px 5px; border-radius: 3px;
+    }
+
+    /* ── iPhone frame ── */
+    .iphone {
+      width: 430px; height: 932px;
+      border-radius: 50px;
+      background: #000;
+      padding: 14px;
+      margin: 0 auto;
+      box-shadow: 0 0 0 2px #1a1a1c, 0 24px 48px rgba(0, 0, 0, 0.18);
+      position: relative;
+    }
+    .iphone__screen {
+      width: 100%; height: 100%;
+      border-radius: 38px; overflow: hidden;
+      background: var(--background);
+      position: relative;
+    }
+    .iphone__status-bar {
+      height: 47px;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 28px 0 32px;
+      font-size: 15px; font-weight: 600;
+      color: var(--foreground);
+      position: relative; z-index: 2;
+    }
+    .iphone__status-bar::before {
+      content: ""; position: absolute;
+      left: 50%; top: 11px; transform: translateX(-50%);
+      width: 124px; height: 36px;
+      background: #000; border-radius: 20px;
+    }
+    .iphone__status-bar-time, .iphone__status-bar-right { z-index: 3; }
+    .iphone__status-bar-right { display: flex; gap: 4px; align-items: center; font-size: 12px; }
+    .iphone__viewport {
+      height: calc(100% - 47px);
+      overflow-y: auto;
+      padding-bottom: 100px;
+    }
+    .iphone__tab-bar {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      height: 88px;
+      background: var(--card);
+      border-top: 1px solid var(--border);
+      display: flex; justify-content: space-around;
+      align-items: flex-start; padding-top: 8px;
+      z-index: 5; border-radius: 0 0 38px 38px;
+    }
+    .iphone__tab {
+      display: flex; flex-direction: column;
+      align-items: center; gap: 2px;
+      font-size: 10px;
+      color: var(--muted-foreground);
+      font-weight: 500;
+    }
+    .iphone__tab[aria-current="page"] { color: var(--primary); }
+    .iphone__tab-icon {
+      width: 26px; height: 26px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+
+    [data-view="side-by-side"] .iphone {
+      transform: scale(0.75); transform-origin: top center;
+      margin-bottom: -240px;
+    }
+
+    /* ── Surface-specific (mobile paywall) ── */
     .paywall-body { padding: 20px 20px 24px; }
     .paywall-header { text-align: center; padding: 40px 0 24px; }
     .paywall-header h2 {
-      font-size: 28px;
-      font-weight: 800;
-      letter-spacing: -0.02em;
-      margin-bottom: 8px;
+      font-size: 28px; font-weight: 800;
+      letter-spacing: -0.02em; margin-bottom: 8px;
     }
-    .paywall-header p {
-      font-size: 14px;
-      color: var(--muted-foreground);
-    }
+    .paywall-header p { font-size: 14px; color: var(--muted-foreground); }
+
     .toggle {
       display: flex;
       background: var(--muted);
-      border-radius: 12px;
-      padding: 4px;
+      border-radius: 12px; padding: 4px;
       margin-bottom: 20px;
     }
     .toggle button {
-      flex: 1;
-      border: 0;
-      background: transparent;
+      flex: 1; border: 0; background: transparent;
       padding: 10px;
-      font-weight: 600;
-      font-size: 14px;
-      color: var(--muted-foreground);
-      border-radius: 8px;
+      font-weight: 600; font-size: 14px;
+      color: var(--muted-foreground); border-radius: 8px;
+      cursor: pointer;
     }
     .toggle button[aria-current="true"] {
-      background: var(--card);
-      color: var(--foreground);
+      background: var(--card); color: var(--foreground);
       box-shadow: 0 1px 3px rgba(0,0,0,0.08);
     }
 
-    /* BEFORE state — the broken "Subscriptions unavailable" card
-       eating ~18% of viewport above the trust chips and Pro card. */
+    /* BEFORE — broken unavailable card */
     .unavailable-card-before {
       background: #ededf2;
       border: 1px solid #d4d4dc;
@@ -55,61 +232,41 @@
       text-align: center;
     }
     .unavailable-card-before h3 {
-      font-size: 16px;
-      font-weight: 700;
-      color: #6b6b78;
-      margin-bottom: 6px;
+      font-size: 16px; font-weight: 700;
+      color: #6b6b78; margin-bottom: 6px;
     }
     .unavailable-card-before p {
-      font-size: 13px;
-      color: #6b6b78;
+      font-size: 13px; color: #6b6b78;
     }
-
-    /* AFTER state — collapsed inline footnote below the price card */
     .unavailable-footnote-after {
       text-align: center;
       font-size: 11px;
       color: var(--muted-foreground);
-      margin-top: 8px;
-      opacity: 0.6;
+      margin-top: 8px; opacity: 0.6;
     }
 
     .trust-chips {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      margin-bottom: 16px;
+      display: flex; flex-direction: column;
+      gap: 6px; margin-bottom: 16px;
     }
     .trust-chip {
-      display: flex;
-      align-items: center;
-      gap: 8px;
+      display: flex; align-items: center; gap: 8px;
       padding: 8px 12px;
-      background: var(--success-soft, rgba(34, 168, 96, 0.06));
+      background: var(--success-soft);
       border-radius: 8px;
-      font-size: 13px;
-      color: var(--foreground);
-      font-weight: 500;
+      font-size: 13px; color: var(--foreground); font-weight: 500;
     }
     .trust-chip-icon {
-      width: 16px;
-      height: 16px;
+      width: 16px; height: 16px;
       border-radius: 4px;
       background: var(--success);
       color: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 10px;
-      font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 700;
     }
-
-    /* AFTER: trust chips moved inline adjacent to price */
     .trust-chips-inline {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      justify-content: center;
+      display: flex; flex-wrap: wrap;
+      gap: 6px; justify-content: center;
       margin-top: 10px;
     }
     .trust-chips-inline .trust-chip {
@@ -119,9 +276,7 @@
       border: 1px solid var(--border);
     }
     .trust-chips-inline .trust-chip-icon {
-      width: 12px;
-      height: 12px;
-      font-size: 8px;
+      width: 12px; height: 12px; font-size: 8px;
     }
 
     .pro-card {
@@ -133,77 +288,51 @@
       position: relative;
     }
     .pro-tag {
-      position: absolute;
-      top: -10px;
-      left: 50%;
+      position: absolute; top: -10px; left: 50%;
       transform: translateX(-50%);
-      background: var(--primary);
-      color: var(--primary-foreground);
-      font-size: 10px;
-      font-weight: 700;
-      padding: 4px 12px;
-      border-radius: 12px;
+      background: var(--primary); color: var(--primary-foreground);
+      font-size: 10px; font-weight: 700;
+      padding: 4px 12px; border-radius: 12px;
       letter-spacing: 0.04em;
     }
-    .pro-card h3 {
-      font-size: 18px;
-      font-weight: 700;
-      margin-bottom: 4px;
-    }
+    .pro-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
     .pro-card .price {
-      font-size: 32px;
-      font-weight: 800;
+      font-size: 32px; font-weight: 800;
       letter-spacing: -0.02em;
       margin: 12px 0 4px;
     }
-    .pro-card .price-sub {
-      font-size: 12px;
-      color: var(--muted-foreground);
-    }
+    .pro-card .price-sub { font-size: 12px; color: var(--muted-foreground); }
     .pro-card .cta {
-      display: block;
-      width: 100%;
-      margin-top: 18px;
-      padding: 14px;
-      background: var(--primary);
-      color: var(--primary-foreground);
-      border: 0;
-      border-radius: 12px;
-      font-weight: 700;
-      font-size: 15px;
+      display: block; width: 100%;
+      margin-top: 18px; padding: 14px;
+      background: var(--primary); color: var(--primary-foreground);
+      border: 0; border-radius: 12px;
+      font-weight: 700; font-size: 15px;
+      cursor: pointer;
     }
     .pro-features {
       list-style: none;
       text-align: left;
       margin-top: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
+      display: flex; flex-direction: column; gap: 6px;
     }
     .pro-features li {
-      font-size: 13px;
-      color: var(--foreground);
-      padding-left: 22px;
-      position: relative;
+      font-size: 13px; color: var(--foreground);
+      padding-left: 22px; position: relative;
     }
     .pro-features li::before {
       content: "✓";
-      position: absolute;
-      left: 0;
-      color: var(--success);
-      font-weight: 700;
+      position: absolute; left: 0;
+      color: var(--success); font-weight: 700;
     }
 
     .restore {
-      position: absolute;
-      bottom: 100px;
-      left: 0;
-      right: 0;
-      padding: 12px;
-      text-align: center;
-      font-size: 13px;
-      color: var(--muted-foreground);
+      position: absolute; bottom: 100px;
+      left: 0; right: 0;
+      padding: 12px; text-align: center;
+      font-size: 13px; color: var(--muted-foreground);
       background: linear-gradient(180deg, transparent, var(--background) 40%);
+      z-index: 4;
     }
   </style>
 </head>
@@ -211,24 +340,24 @@
   <header class="prototype-header">
     <div>
       <h1>Mobile paywall — RTP-3 fix</h1>
-      <p class="meta">Surface: <code>apps/mobile/app/paywall.tsx</code> • Proposal rows: #13.1 (SUBTRACT), #13.2 (TIGHTEN) • DC4 preserved</p>
+      <p class="meta">Surface: <code>apps/mobile/app/paywall.tsx</code> · Proposal rows: #13.1 (SUBTRACT), #13.2 (TIGHTEN) · DC4 preserved</p>
     </div>
     <nav>
-      <button onclick="setView('before')">Before</button>
-      <button onclick="setView('after')" aria-current="true">After</button>
-      <button onclick="setView('side-by-side')">Side-by-side</button>
+      <button onclick="setView('before', this)">Before</button>
+      <button onclick="setView('after', this)" aria-current="true">After</button>
+      <button onclick="setView('side-by-side', this)">Side-by-side</button>
     </nav>
   </header>
 
   <main class="prototype-canvas" data-view="after">
 
-    <!-- ──────────────── BEFORE ──────────────── -->
+    <!-- ─────────────── BEFORE ─────────────── -->
     <section class="state state--before" data-label="Before (capture)">
       <div class="iphone">
         <div class="iphone__screen">
           <div class="iphone__status-bar">
             <span class="iphone__status-bar-time">9:41</span>
-            <span class="iphone__status-bar-right">●●●●● WiFi 100%</span>
+            <span class="iphone__status-bar-right">●●● 100%</span>
           </div>
           <div class="iphone__viewport">
             <div class="paywall-header">
@@ -236,24 +365,19 @@
               <p>Eat well, without overthinking it</p>
             </div>
             <div class="paywall-body">
-
-              <!-- Broken card: eats ~18% of viewport, reads as failed-load -->
               <div class="unavailable-card-before">
                 <h3>Subscriptions unavailable</h3>
                 <p>In-app purchases aren't wired in this build. Try again later.</p>
               </div>
-
               <div class="trust-chips">
                 <div class="trust-chip"><span class="trust-chip-icon">✓</span> Cancel anytime in App Store</div>
                 <div class="trust-chip"><span class="trust-chip-icon">✓</span> 7-day refund, no email needed</div>
                 <div class="trust-chip"><span class="trust-chip-icon">✓</span> Price never changes mid-trial</div>
               </div>
-
               <div class="toggle">
                 <button aria-current="true">Yearly</button>
                 <button>Monthly</button>
               </div>
-
               <div class="pro-card">
                 <div class="pro-tag">Save 38%</div>
                 <h3>Suppr Pro</h3>
@@ -267,7 +391,6 @@
                 </ul>
                 <button class="cta">Subscribe</button>
               </div>
-
             </div>
           </div>
           <div class="restore">Restore purchase</div>
@@ -281,13 +404,13 @@
       </div>
     </section>
 
-    <!-- ──────────────── AFTER ──────────────── -->
+    <!-- ─────────────── AFTER ─────────────── -->
     <section class="state state--after" data-label="After (proposed)">
       <div class="iphone">
         <div class="iphone__screen">
           <div class="iphone__status-bar">
             <span class="iphone__status-bar-time">9:41</span>
-            <span class="iphone__status-bar-right">●●●●● WiFi 100%</span>
+            <span class="iphone__status-bar-right">●●● 100%</span>
           </div>
           <div class="iphone__viewport">
             <div class="paywall-header">
@@ -295,24 +418,15 @@
               <p>Eat well, without overthinking it</p>
             </div>
             <div class="paywall-body">
-
-              <!-- Subscriptions-unavailable card REMOVED.
-                   Hidden by default. Surfaces as a 1-line footnote
-                   only when RC offerings genuinely fail to load. -->
-
               <div class="toggle">
                 <button aria-current="true">Yearly</button>
                 <button>Monthly</button>
               </div>
-
               <div class="pro-card">
                 <div class="pro-tag">Save 38%</div>
                 <h3>Suppr Pro</h3>
                 <div class="price">£59.99</div>
                 <div class="price-sub">per year · billed annually</div>
-                <!-- Trust chips moved INLINE adjacent to price
-                     (DC4 allowed borrow from Stripe Checkout —
-                     "adjacent placement of guarantees and price") -->
                 <div class="trust-chips-inline">
                   <span class="trust-chip"><span class="trust-chip-icon">✓</span> Cancel anytime</span>
                   <span class="trust-chip"><span class="trust-chip-icon">✓</span> 7-day refund</span>
@@ -326,10 +440,7 @@
                 </ul>
                 <button class="cta">Subscribe</button>
               </div>
-
-              <!-- IF (and only if) RC offerings fail: -->
               <p class="unavailable-footnote-after">If pricing doesn't load, pull to refresh.</p>
-
             </div>
           </div>
           <div class="restore">Restore purchase</div>
@@ -354,7 +465,7 @@
         <em>What it duplicates / weakens:</em> the trust-chip strip below already
         carries "Cancel anytime / refund / price locked" — which is the inverse
         of "unavailable" trust. Two competing trust posters in the same viewport
-        is worse than one. The unavailable case now degrades to a 1-line footnote
+        is worse than one. The unavailable case degrades to a 1-line footnote
         beneath the price ("If pricing doesn't load, pull to refresh") — only
         rendered when RC offerings genuinely fail to resolve.
       </li>
@@ -363,8 +474,7 @@
         Move trust chips inline adjacent to the price, inside the Pro card
         (allowed borrow from Stripe Checkout per DC4: "adjacent placement of
         guarantees and price"). Chips downsize from 13px to 11px and lose
-        the soft green background; the trust signal compresses but stays
-        readable.
+        the soft green background; trust signal compresses but stays readable.
         <em>What it duplicates / weakens:</em> nothing — the original block
         layout above the toggle is removed and the chips relocate to where
         Stripe puts them. Reduces vertical chrome by ~80px.
@@ -376,42 +486,39 @@
       The three explicit guarantees (Cancel anytime · 7-day refund · Price
       locked) are preserved verbatim — the bet (specificity, not vibes) is
       intact. Placement changes from "above the price block" to "inside the
-      Pro card adjacent to the price digit", which is the Stripe Checkout
-      borrow explicitly listed as <em>allowed</em> in
-      <code>defended-choices.md</code> §DC4. No "No price hikes ever" 4th
-      chip added (deferred pending Grace's long-term commitment per the
-      DC reference doc).
+      Pro card adjacent to the price digit", the Stripe Checkout borrow
+      explicitly listed as <em>allowed</em> in <code>defended-choices.md</code>
+      §DC4. No "No price hikes ever" 4th chip added (deferred pending Grace's
+      long-term commitment per the DC reference doc).
     </p>
 
     <h2>Refused borrows considered</h2>
     <p>
-      Considered adopting Calm's full "Not satisfied? Cancel anytime,
-      no questions asked" longer-form guarantee copy in place of the short
-      chips. Refused — Suppr's chip-form specificity ("Cancel anytime
-      <em>in App Store</em>") is more falsifiable than Calm's vibes-style
-      promise, and DC4 explicitly defends the chip form against
-      "generic 'Trusted by N users' social proof" patterns.
+      Considered adopting Calm's longer-form "Not satisfied? Cancel anytime,
+      no questions asked" guarantee copy in place of the short chips. Refused
+      — Suppr's chip-form specificity ("Cancel anytime <em>in App Store</em>")
+      is more falsifiable than Calm's vibes-style promise, and DC4 explicitly
+      defends the chip form against "generic social proof" patterns.
     </p>
 
     <h2>Capture gaps still open</h2>
     <p>
-      Dark-mode paywall pixel is missing (RTP-7) — this prototype renders
-      the after-state in light only. The dark variant needs a re-capture
-      via <code>00z_premium_bar_dark.yaml</code> before G4 (per-item sim
+      Dark-mode paywall pixel is missing (RTP-7) — this prototype renders the
+      after-state in light only. The dark variant needs a re-capture via
+      <code>00z_premium_bar_dark.yaml</code> before G4 (per-item sim
       validation) can sign off on this item. The DC4 trust chips will need
-      contrast verification on near-black canvas — the soft green chip
-      background may not survive dark mode at AA contrast.
+      contrast verification on near-black canvas.
     </p>
   </aside>
 
   <script>
-    function setView(view) {
+    function setView(view, btn) {
       const canvas = document.querySelector('.prototype-canvas');
       canvas.dataset.view = view;
       document.querySelectorAll('.prototype-header nav button').forEach(b => {
         b.removeAttribute('aria-current');
       });
-      event.target.setAttribute('aria-current', 'true');
+      btn.setAttribute('aria-current', 'true');
     }
   </script>
 </body>
