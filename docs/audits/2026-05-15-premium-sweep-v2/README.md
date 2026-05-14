@@ -32,6 +32,7 @@ captured pixels, with hard gates so the four-revert pattern can't recur.
 | `P2-auditor-report.md` | premium-auditor output for P2 (S6) |
 | `captures/{P0,P1,P2}/before/` | Pre-implementation pixel captures per bucket |
 | `captures/{P0,P1,P2}/after/` | Post-implementation pixel captures per item |
+| `prototypes/{web,mobile}/{P0,P1,P2}/` | HTML prototypes of proposed "after" states; G3.5 gate input (added 2026-05-14) |
 
 ## Session sequence
 
@@ -48,7 +49,8 @@ captured pixels, with hard gates so the four-revert pattern can't recur.
 - **G1 Capture-OK** — spot-check 5 captures look correct
 - **G2 Audit-OK** — read auditor report; flag wrong comparable / missed DC
 - **G3 Proposal-OK** — red-line table; every NEW row must justify what it duplicates/weakens
-- **G4 Item-OK (per row)** — eyeball before/after pair
+- **G3.5 Prototype-OK** — eyeball HTML prototype renderings of each approved proposal (web + mobile) BEFORE any code lands (added 2026-05-14)
+- **G4 Item-OK (per row)** — eyeball before/after pair against prototype
 - **G5 Bucket-OK** — holistic feel check
 
 ## Closing artefacts (produced at end of sweep)

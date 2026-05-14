@@ -1,0 +1,687 @@
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --font-size: 16px;
+
+  /** Suppr v2: snappier easing — fast-in, gentle-out. */
+  --pm-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --pm-duration: 150ms;
+  --pm-duration-sm: 120ms;
+  --pm-duration-md: 250ms;
+  --pm-duration-lg: 350ms;
+
+  /** Production design spec — 2026-04-27 §1.1 motion tokens.
+   *  `--ease-spring-soft` is the CSS approximation of the gentle-overshoot
+   *  spring used for sheet present + confirm-success. Native side uses
+   *  `withSpring({ damping: 18, stiffness: 220, mass: 0.9 })`.
+   *  `--ease-decel` is the iOS-standard out curve used for dismiss + fade-out. */
+  --ease-spring-soft: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-decel: cubic-bezier(0.05, 0.7, 0.1, 1);
+
+  /** Type scale (1.2 modular ratio, base 15px) */
+  --text-xs: 0.6875rem;   /* 11px */
+  --text-sm: 0.8125rem;   /* 13px */
+  --text-base: 0.9375rem; /* 15px */
+  --text-lg: 1.125rem;    /* 18px */
+  --text-xl: 1.375rem;    /* 22px */
+  --text-2xl: 1.5rem;     /* 24px */
+  --text-3xl: 1.75rem;    /* 28px */
+  --text-display: 2.25rem;/* 36px — hero numbers */
+
+  /** 4px grid spacing tokens — semantic naming aligned with mobile
+   *  `Spacing.*` (Next-10 #11 from
+   *  `docs/ux/teardown-2026-04-28-daily-loop.md`, 2026-04-28). The
+   *  prior numeric `--spacing-pm-N` scheme had zero callers in
+   *  production code (audit-confirmed) and forced anyone working
+   *  cross-platform to mentally translate `pm-3 ↔ Spacing.md`. The
+   *  semantic names map 1:1 to mobile and match the documented
+   *  4px grid in `docs/ux/brand-tokens.md` and
+   *  `docs/ux/design-system.md`. */
+  --space-xs: 0.25rem;    /* 4px  ↔ Spacing.xs   */
+  --space-sm: 0.5rem;     /* 8px  ↔ Spacing.sm   */
+  --space-md: 0.75rem;    /* 12px ↔ Spacing.md   */
+  --space-lg: 1rem;       /* 16px ↔ Spacing.lg   */
+  --space-xl: 1.25rem;    /* 20px ↔ Spacing.xl   */
+  --space-xxl: 1.5rem;    /* 24px ↔ Spacing.xxl  */
+  --space-xxxl: 2rem;     /* 32px ↔ Spacing.xxxl */
+
+  /** Radius — larger, more refined */
+  --radius: 0.75rem;         /* 12px base */
+  --radius-card: 1rem;        /* 16px cards — matches mobile Radius.lg */
+
+  /** ── LIGHT MODE PALETTE ──
+   *  Icon-driven & Structured: cool grays, blue accent, green success.
+   *  Designed for systematic, precise feel. */
+  --background: #f4f5f7;
+  --foreground: #111118;
+  --card: #ffffff;
+  --card-foreground: #111118;
+  --popover: #ffffff;
+  --popover-foreground: #111118;
+  --primary: #4c6ce0;
+  --primary-foreground: #ffffff;
+  --secondary: #f4f5f7;
+  --secondary-foreground: #111118;
+  --muted: #e4e4ec;
+  --muted-foreground: #6b6b78;
+  --accent: #e4e4ec;
+  --accent-foreground: #111118;
+  --destructive: #e04848;
+  --destructive-foreground: #ffffff;
+  --border: #e4e4ec;
+  --input: transparent;
+  --input-background: #ededf2;
+  --switch-background: #c4c4cc;
+  --ring: #4c6ce0;
+
+  /** Semantic colours */
+  --success: #22a860;
+  --success-foreground: #ffffff;
+  --success-soft: #22a86010;
+  --warning: #e8a020;
+  --warning-foreground: #ffffff;
+  --warning-soft: #e8a02010;
+
+  /** Macro colours */
+  --macro-protein: #4c6ce0;
+  --macro-protein-soft: #4c6ce012;
+  /* 2026-05-12 (premium-bar audit DC10 follow-through): carbs split
+     from --warning (amber #e8a020) to its own warm-orange hue. Amber
+     now reserved for over-budget warnings only. Previously a
+     macro-carbs bar and an over-budget warning looked identical
+     because they shared the same token. Hue 16° (warm orange),
+     distinct from --warning (39°, yellow-orange), --destructive
+     (red), --macro-fat (magenta), and from sodium's tailwind-500
+     orange. Dark-mode equivalent further below. */
+  --macro-carbs: #ed6b2a;
+  --macro-carbs-soft: #ed6b2a14;
+  --macro-fat: #e04888;
+  --macro-fat-soft: #e0488812;
+  --macro-calories: #22a860;
+  --macro-water: #06b6d4;
+  --macro-water-soft: #06b6d412;
+
+  /** Meal-slot tints — production design spec (ui-critic P2 #10, 2026-05-01).
+   *  Snacks previously borrowed `--macro-fat` (magenta) which collided
+   *  1:1 with the Fat macro tile on Today. Snacks now ships its own
+   *  cyan token; macro tokens stay reserved for the Macro tile row.
+   *  Mirrors mobile `SlotColors` in `apps/mobile/constants/theme.ts`. */
+  --slot-breakfast: #e8a020;        /* amber  ↔ Accent.warning */
+  --slot-breakfast-soft: #e8a02012;
+  --slot-lunch: #22a860;             /* green  ↔ Accent.success */
+  --slot-lunch-soft: #22a86012;
+  --slot-dinner: #4c6ce0;            /* blue   ↔ Accent.primary */
+  --slot-dinner-soft: #4c6ce012;
+  --slot-snack: #06b6d4;             /* cyan — distinct from --macro-fat */
+  --slot-snack-soft: #06b6d412;
+
+  /** Stimulant tracker colours (Batch 2.5 hydration & stimulants).
+   *  Caffeine: violet (not a macro role). Alcohol: amber — intentionally
+   *  shares the --warning hue because "approaching weekly limit" is the
+   *  same semantic category. Documented in docs/ux/brand-tokens.md. */
+  --stimulant-caffeine: #8b5cf6;
+  --stimulant-alcohol: #f59e0b;
+
+  /** Confidence colours */
+  --confidence-high: #22a860;
+  --confidence-med: #e8a020;
+  --confidence-low: #e04848;
+  /** Confidence chip — neutral grey base used for adaptive TDEE display
+   *  (D-2026-04-27-12). NOT a warning state; ConfidenceChip is calm. */
+  --confidence-neutral: #94a3b8;
+
+  /** Source / provenance dots — production design spec §1.6.
+   *  USDA = success-green, OFF = primary-blue, FatSecret = orange,
+   *  Manual = text-tertiary grey, AI = magenta (paired with sparkle glyph). */
+  --source-usda: #22a860;
+  --source-off: #4c6ce0;
+  --source-fatsecret: #f97316;
+  --source-manual: #94a3b8;
+  --source-ai: #e04888;
+
+  /** North-star block — gradient SupprCard on Today. Spec §1.4. */
+  --north-star-bg-from: rgba(76, 108, 224, 0.08);
+  --north-star-bg-to: rgba(224, 72, 136, 0.04);
+  --north-star-border: rgba(76, 108, 224, 0.18);
+
+  /** Over-budget — amber, never red. Per project memory + spec §1.4. */
+  --over-budget-fg: #e8a020;
+  --over-budget-soft: rgba(232, 160, 32, 0.08);
+
+  /** Depth ladder — production design spec §1.3.
+   *  Card = list rows on a card. Sheet = bottom-sheets. Float = popovers.
+   *  FloatPrimary = FAB (primary tint underneath). */
+  --elev-card: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --elev-sheet: 0 -8px 32px rgba(0, 0, 0, 0.12);
+  --elev-float: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --elev-float-primary: 0 4px 16px rgba(76, 108, 224, 0.4);
+
+  /** Chart colours (mapped to macro + accent system) */
+  --chart-1: #4c6ce0;
+  --chart-2: #22a860;
+  --chart-3: #e8a020;
+  --chart-4: #e04888;
+  --chart-5: #8b5cf6;
+
+  /** Ring component */
+  --ring-bg: #e4e4ec;
+  --ring-track: #22a860;
+
+  /** Font weights */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /** Sidebar */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #111118;
+  --sidebar-primary: #4c6ce0;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f4f5f7;
+  --sidebar-accent-foreground: #111118;
+  --sidebar-border: #e4e4ec;
+  --sidebar-ring: #4c6ce0;
+
+  /** Glass / surface tokens (Apple-style, used by marketing pages) */
+  --glass: rgba(255, 255, 255, 0.72);
+  --glass-border: rgba(0, 0, 0, 0.06);
+  --border-strong: rgba(0, 0, 0, 0.1);
+  --accent-muted: rgba(76, 108, 224, 0.12);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.06), 0 2px 6px rgba(0, 0, 0, 0.02);
+  --radius-xl-landing: 20px;
+  --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-fast: 0.15s ease;
+}
+
+.dark {
+  --background: #101014;
+  --foreground: #e4e4e8;
+  --card: #18181c;
+  --card-foreground: #e4e4e8;
+  --popover: #202028;
+  --popover-foreground: #e4e4e8;
+  --primary: #6c8cff;
+  --primary-foreground: #ffffff;
+  --secondary: #18181c;
+  --secondary-foreground: #e4e4e8;
+  --muted: #282830;
+  --muted-foreground: #7a7a88;
+  --accent: #282830;
+  --accent-foreground: #e4e4e8;
+  --destructive: #ff6b6b;
+  --destructive-foreground: #ffffff;
+  --border: #282830;
+  --input: #282830;
+  --input-background: #202028;
+  --switch-background: #4a4a55;
+  --ring: #6c8cff;
+
+  /** Semantic colours — dark */
+  --success: #4cd080;
+  --success-foreground: #ffffff;
+  --success-soft: #4cd08015;
+  --warning: #ffc04c;
+  --warning-foreground: #ffffff;
+  --warning-soft: #ffc04c15;
+
+  /** Macro colours — dark */
+  --macro-protein: #6c8cff;
+  --macro-protein-soft: #6c8cff15;
+  /* 2026-05-12 (premium-bar audit DC10): carbs dark hue split from
+     --warning (#ffc04c amber-light) → warm-orange (#ff9054). Lifted
+     for dark-mode legibility. Same rationale as light mode — amber
+     now reserved for over-budget warnings only. */
+  --macro-carbs: #ff9054;
+  --macro-carbs-soft: #ff905415;
+  --macro-fat: #ff7eb3;
+  --macro-fat-soft: #ff7eb315;
+  --macro-calories: #4cd080;
+  --macro-water: #22d3ee;
+  --macro-water-soft: #22d3ee15;
+
+  /** Meal-slot tints — dark. Mirrors light-mode roles with OLED-lifted
+   *  hues. Snack stays cyan family (distinct from --macro-fat which
+   *  is magenta in dark too). */
+  --slot-breakfast: #ffc04c;         /* amber-light */
+  --slot-breakfast-soft: #ffc04c15;
+  --slot-lunch: #4cd080;              /* green-light */
+  --slot-lunch-soft: #4cd08015;
+  --slot-dinner: #6c8cff;             /* blue-light */
+  --slot-dinner-soft: #6c8cff15;
+  --slot-snack: #22d3ee;              /* cyan-light */
+  --slot-snack-soft: #22d3ee15;
+
+  /** Stimulant tracker colours — dark. Kept at the same hex as light
+   *  for now; the hydration cards render chips on a --muted surface so
+   *  the violet/amber tones hold up against dark backgrounds. */
+  --stimulant-caffeine: #8b5cf6;
+  --stimulant-alcohol: #f59e0b;
+
+  /** Confidence colours — dark */
+  --confidence-high: #4cd080;
+  --confidence-med: #ffc04c;
+  --confidence-low: #ff6b6b;
+  --confidence-neutral: #64748b;
+
+  /** Source / provenance dots — dark.
+   *  Lifted hues for OLED contrast; mirrors macro/semantic dark adjustments. */
+  --source-usda: #4cd080;
+  --source-off: #6c8cff;
+  --source-fatsecret: #fb923c;
+  --source-manual: #64748b;
+  --source-ai: #ff7eb3;
+
+  /** North-star block — dark. Stronger gradient + border for OLED.
+   *  Visual-qa V-1 (spec): A/B against a more muted variant before locking. */
+  --north-star-bg-from: rgba(108, 140, 255, 0.14);
+  --north-star-bg-to: rgba(255, 126, 179, 0.08);
+  --north-star-border: rgba(108, 140, 255, 0.32);
+
+  /** Over-budget — dark amber. Spec §1.4. */
+  --over-budget-fg: #ffc04c;
+  --over-budget-soft: rgba(255, 192, 76, 0.14);
+
+  /** Depth ladder — dark.
+   *  Per spec §1.3 dark-mode-shadow rules: shadows nearly invisible on
+   *  dark, so cards rely on borders + 1px hairline highlight. We keep
+   *  the same elev-* tokens for surface-tier consistency, but consumers
+   *  on dark mode should layer a 1px top-edge `rgba(255,255,255,0.06)`
+   *  highlight via the SupprCard primitive. Sheet drops box-shadow,
+   *  keeps backdrop blur. */
+  --elev-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --elev-sheet: 0 -8px 32px rgba(0, 0, 0, 0.5);
+  --elev-float: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --elev-float-primary: 0 4px 16px rgba(108, 140, 255, 0.4);
+
+  /** Chart colours — dark */
+  --chart-1: #6c8cff;
+  --chart-2: #4cd080;
+  --chart-3: #ffc04c;
+  --chart-4: #ff7eb3;
+  --chart-5: #a78bfa;
+
+  /** Ring component — dark */
+  --ring-bg: #28283060;
+  --ring-track: #4cd080;
+
+  /** Sidebar — dark */
+  --sidebar: #18181c;
+  --sidebar-foreground: #e4e4e8;
+  --sidebar-primary: #6c8cff;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #202028;
+  --sidebar-accent-foreground: #e4e4e8;
+  --sidebar-border: #282830;
+  --sidebar-ring: #6c8cff;
+
+  /** Glass / surface tokens — dark */
+  --glass: rgba(24, 24, 28, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.12);
+  --accent-muted: rgba(108, 140, 255, 0.2);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+@theme inline {
+  /* Core */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-input-background: var(--input-background);
+  --color-switch-background: var(--switch-background);
+  --color-ring: var(--ring);
+
+  /* Semantic */
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-soft: var(--warning-soft);
+
+  /* Macros */
+  --color-macro-protein: var(--macro-protein);
+  --color-macro-protein-soft: var(--macro-protein-soft);
+  --color-macro-carbs: var(--macro-carbs);
+  --color-macro-carbs-soft: var(--macro-carbs-soft);
+  --color-macro-fat: var(--macro-fat);
+  --color-macro-fat-soft: var(--macro-fat-soft);
+  --color-macro-calories: var(--macro-calories);
+  --color-macro-water: var(--macro-water);
+  --color-macro-water-soft: var(--macro-water-soft);
+
+  /* Meal-slot tints — ui-critic P2 #10 (2026-05-01) */
+  --color-slot-breakfast: var(--slot-breakfast);
+  --color-slot-breakfast-soft: var(--slot-breakfast-soft);
+  --color-slot-lunch: var(--slot-lunch);
+  --color-slot-lunch-soft: var(--slot-lunch-soft);
+  --color-slot-dinner: var(--slot-dinner);
+  --color-slot-dinner-soft: var(--slot-dinner-soft);
+  --color-slot-snack: var(--slot-snack);
+  --color-slot-snack-soft: var(--slot-snack-soft);
+
+  /* Confidence */
+  --color-confidence-high: var(--confidence-high);
+  --color-confidence-med: var(--confidence-med);
+  --color-confidence-low: var(--confidence-low);
+  --color-confidence-neutral: var(--confidence-neutral);
+
+  /* Source / provenance — production design spec §1.6 */
+  --color-source-usda: var(--source-usda);
+  --color-source-off: var(--source-off);
+  --color-source-fatsecret: var(--source-fatsecret);
+  --color-source-manual: var(--source-manual);
+  --color-source-ai: var(--source-ai);
+
+  /* Over-budget */
+  --color-over-budget-fg: var(--over-budget-fg);
+  --color-over-budget-soft: var(--over-budget-soft);
+
+  /* North-star (gradient bounds + border) */
+  --color-north-star-bg-from: var(--north-star-bg-from);
+  --color-north-star-bg-to: var(--north-star-bg-to);
+  --color-north-star-border: var(--north-star-border);
+
+  /* Charts */
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* Ring */
+  --color-ring-bg: var(--ring-bg);
+  --color-ring-track: var(--ring-track);
+
+  /* Radius */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-card: var(--radius-card);
+
+  /* Sidebar */
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Easing tokens (production design spec §1.1) */
+  --ease-pm: var(--pm-ease);
+  /* --ease-spring-soft and --ease-decel are read directly from :root */
+
+  /* Spacing — semantic naming, matches mobile `Spacing.*`
+     (renamed from `--spacing-pm-N` 2026-04-28, Next-10 #11). */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 0.75rem;
+  --space-lg: 1rem;
+  --space-xl: 1.25rem;
+  --space-xxl: 1.5rem;
+  --space-xxxl: 2rem;
+
+  /* Transition defaults */
+  --default-transition-duration: var(--pm-duration);
+  --default-transition-timing-function: var(--pm-ease);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    /** Production design spec §1.2 — tabular-nums + stylistic set 01
+     *  shipped globally so every numeric inherits Inter's tnum + ss01
+     *  glyphs (calorie totals, macro grams, dates, durations, etc).
+     *  cv02/03/04/11 stay for character-variant alignment. */
+    font-feature-settings: "tnum" 1, "ss01" 1, "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /** Production design spec §1.1 — reduce-motion fallback.
+   *  Every CSS transition / animation tied to --pm-ease /
+   *  --ease-spring-soft / --ease-decel collapses to a near-instant
+   *  fade. Components using framer-motion read `useReducedMotion()`
+   *  separately; this rule covers tailwind/utility-driven motion. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  html {
+    font-size: var(--font-size);
+  }
+
+  /** Tabular nums everywhere numbers appear */
+  .tabular-nums, [data-numeric] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  h1 {
+    font-size: var(--text-2xl);
+    font-weight: var(--font-weight-bold);
+    line-height: 1.3;
+    letter-spacing: -0.02em;
+  }
+
+  h2 {
+    font-size: var(--text-xl);
+    font-weight: var(--font-weight-bold);
+    line-height: 1.3;
+    letter-spacing: -0.02em;
+  }
+
+  h3 {
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-semibold);
+    line-height: 1.4;
+  }
+
+  h4 {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-semibold);
+    line-height: 1.5;
+  }
+
+  label {
+    font-size: var(--text-sm);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  button {
+    font-size: var(--text-sm);
+    font-weight: var(--font-weight-semibold);
+    line-height: 1.5;
+  }
+
+  input {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-normal);
+    line-height: 1.5;
+  }
+}
+
+@layer utilities {
+  .transition-pm {
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform;
+    transition-duration: var(--pm-duration);
+    transition-timing-function: var(--pm-ease);
+  }
+
+  /** Section label — the uppercase overline used throughout the new design */
+  .section-label {
+    font-size: var(--text-xs);
+    font-weight: var(--font-weight-semibold);
+    color: var(--muted-foreground);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /** RulerSlider edit-mode input — strip native number spinners. */
+  .ruler-num-input::-webkit-outer-spin-button,
+  .ruler-num-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .ruler-num-input {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+
+  /** Onboarding v2 — soft fade-up entrance for elements that mount
+   *  conditionally (Pace projection tile, warning banner). Avoids the
+   *  jarring reflow per visual-qa P0. */
+  .v2-fade-up {
+    animation: v2-fade-up 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  @keyframes v2-fade-up {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  /** Onboarding v2 — checkmark draw-in for the danger acknowledgement
+   *  checkbox. Premium-tier upgrade per ui-critic. */
+  @keyframes v2-check-in {
+    from { opacity: 0; transform: scale(0.4); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+}
+
+/* ─── Marketing / landing-page utilities (mirrored from Vielum design system) ─── */
+
+/* Cards: soft shadow, subtle hover lift */
+.card-landing {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl-landing);
+  box-shadow: var(--shadow-sm);
+  transition: border-color var(--transition), box-shadow var(--transition), transform var(--transition);
+}
+
+.card-landing:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow);
+  transform: translateY(-1px);
+}
+
+.card-landing:active {
+  transform: translateY(0);
+}
+
+/* Primary button: solid accent */
+.btn-primary {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-weight: 500;
+  font-size: 15px;
+  line-height: 1.2;
+  padding: 10px 22px;
+  border-radius: var(--radius);
+  border: none;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+
+.btn-primary:hover {
+  filter: brightness(0.92);
+}
+
+.btn-primary:active {
+  transform: scale(0.98);
+}
+
+.btn-primary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-muted);
+}
+
+/* Secondary / ghost button */
+.btn-secondary {
+  background: transparent;
+  color: var(--foreground);
+  font-weight: 500;
+  font-size: 15px;
+  padding: 10px 22px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-strong);
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.btn-secondary:hover {
+  background: var(--accent-muted);
+  border-color: var(--primary);
+}
+
+.btn-secondary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-muted);
+}
+
+/* 2026-05-13 (premium-bar audit Group A trust pages — print/Save-PDF
+ * polish): force a clean, single-column, ink-friendly render when
+ * the user prints/saves Privacy/Terms/DMCA/Licences. Drops chrome
+ * (sticky ToC, print button, marketing nav), expands the prose
+ * column, and switches background tones to white so the PDF doesn't
+ * waste a black-cartridge on the bg gradient. */
+@media print {
+  /* Drop gradient + dark-mode tone — saved PDF should be plain white. */
+  body,
+  .min-h-screen {
+    background: #ffffff !important;
+    color: #111111 !important;
+  }
+  /* Hide sticky ToC sidebar + Print button + cross-link nav while
+   * preserving the print content. Components themselves use
+   * `print:hidden` Tailwind utilities for callout-level overrides. */
+  nav[aria-label$="sections"],
+  header nav {
+    display: none !important;
+  }
+  /* Sticky-positioned elements don't translate well to paper. */
+  [class*="sticky"] {
+    position: static !important;
+  }
+  /* Anchors lose underline-on-hover; keep them readable as plain
+   * text + brackets-style URL hint via `print-url`. */
+  a {
+    color: #0033cc !important;
+    text-decoration: underline !important;
+  }
+  /* Page-break hints — keep each h2 with its first paragraph. */
+  h1, h2, h3 {
+    break-after: avoid-page;
+    page-break-after: avoid;
+  }
+}

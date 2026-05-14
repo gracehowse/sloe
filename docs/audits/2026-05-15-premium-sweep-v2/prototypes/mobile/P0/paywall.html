@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Suppr — mobile paywall prototype</title>
+  <link rel="stylesheet" href="../../_shared/tokens.css">
+  <link rel="stylesheet" href="../../_shared/prototype.css">
+  <link rel="stylesheet" href="../../_shared/iphone-frame.css">
+  <style>
+    /* Surface-specific styling — mimics the live mobile paywall
+       layout using the same tokens. */
+    .paywall-body { padding: 20px 20px 24px; }
+    .paywall-header { text-align: center; padding: 40px 0 24px; }
+    .paywall-header h2 {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+    }
+    .paywall-header p {
+      font-size: 14px;
+      color: var(--muted-foreground);
+    }
+    .toggle {
+      display: flex;
+      background: var(--muted);
+      border-radius: 12px;
+      padding: 4px;
+      margin-bottom: 20px;
+    }
+    .toggle button {
+      flex: 1;
+      border: 0;
+      background: transparent;
+      padding: 10px;
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--muted-foreground);
+      border-radius: 8px;
+    }
+    .toggle button[aria-current="true"] {
+      background: var(--card);
+      color: var(--foreground);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+
+    /* BEFORE state — the broken "Subscriptions unavailable" card
+       eating ~18% of viewport above the trust chips and Pro card. */
+    .unavailable-card-before {
+      background: #ededf2;
+      border: 1px solid #d4d4dc;
+      border-radius: 12px;
+      padding: 24px 20px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .unavailable-card-before h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: #6b6b78;
+      margin-bottom: 6px;
+    }
+    .unavailable-card-before p {
+      font-size: 13px;
+      color: #6b6b78;
+    }
+
+    /* AFTER state — collapsed inline footnote below the price card */
+    .unavailable-footnote-after {
+      text-align: center;
+      font-size: 11px;
+      color: var(--muted-foreground);
+      margin-top: 8px;
+      opacity: 0.6;
+    }
+
+    .trust-chips {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+    .trust-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: var(--success-soft, rgba(34, 168, 96, 0.06));
+      border-radius: 8px;
+      font-size: 13px;
+      color: var(--foreground);
+      font-weight: 500;
+    }
+    .trust-chip-icon {
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+      background: var(--success);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    /* AFTER: trust chips moved inline adjacent to price */
+    .trust-chips-inline {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      justify-content: center;
+      margin-top: 10px;
+    }
+    .trust-chips-inline .trust-chip {
+      padding: 4px 8px;
+      font-size: 11px;
+      background: transparent;
+      border: 1px solid var(--border);
+    }
+    .trust-chips-inline .trust-chip-icon {
+      width: 12px;
+      height: 12px;
+      font-size: 8px;
+    }
+
+    .pro-card {
+      background: var(--card);
+      border: 2px solid var(--primary);
+      border-radius: 16px;
+      padding: 24px 20px;
+      text-align: center;
+      position: relative;
+    }
+    .pro-tag {
+      position: absolute;
+      top: -10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--primary);
+      color: var(--primary-foreground);
+      font-size: 10px;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 12px;
+      letter-spacing: 0.04em;
+    }
+    .pro-card h3 {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .pro-card .price {
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin: 12px 0 4px;
+    }
+    .pro-card .price-sub {
+      font-size: 12px;
+      color: var(--muted-foreground);
+    }
+    .pro-card .cta {
+      display: block;
+      width: 100%;
+      margin-top: 18px;
+      padding: 14px;
+      background: var(--primary);
+      color: var(--primary-foreground);
+      border: 0;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 15px;
+    }
+    .pro-features {
+      list-style: none;
+      text-align: left;
+      margin-top: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .pro-features li {
+      font-size: 13px;
+      color: var(--foreground);
+      padding-left: 22px;
+      position: relative;
+    }
+    .pro-features li::before {
+      content: "✓";
+      position: absolute;
+      left: 0;
+      color: var(--success);
+      font-weight: 700;
+    }
+
+    .restore {
+      position: absolute;
+      bottom: 100px;
+      left: 0;
+      right: 0;
+      padding: 12px;
+      text-align: center;
+      font-size: 13px;
+      color: var(--muted-foreground);
+      background: linear-gradient(180deg, transparent, var(--background) 40%);
+    }
+  </style>
+</head>
+<body>
+  <header class="prototype-header">
+    <div>
+      <h1>Mobile paywall — RTP-3 fix</h1>
+      <p class="meta">Surface: <code>apps/mobile/app/paywall.tsx</code> • Proposal rows: #13.1 (SUBTRACT), #13.2 (TIGHTEN) • DC4 preserved</p>
+    </div>
+    <nav>
+      <button onclick="setView('before')">Before</button>
+      <button onclick="setView('after')" aria-current="true">After</button>
+      <button onclick="setView('side-by-side')">Side-by-side</button>
+    </nav>
+  </header>
+
+  <main class="prototype-canvas" data-view="after">
+
+    <!-- ──────────────── BEFORE ──────────────── -->
+    <section class="state state--before" data-label="Before (capture)">
+      <div class="iphone">
+        <div class="iphone__screen">
+          <div class="iphone__status-bar">
+            <span class="iphone__status-bar-time">9:41</span>
+            <span class="iphone__status-bar-right">●●●●● WiFi 100%</span>
+          </div>
+          <div class="iphone__viewport">
+            <div class="paywall-header">
+              <h2>Suppr Pro</h2>
+              <p>Eat well, without overthinking it</p>
+            </div>
+            <div class="paywall-body">
+
+              <!-- Broken card: eats ~18% of viewport, reads as failed-load -->
+              <div class="unavailable-card-before">
+                <h3>Subscriptions unavailable</h3>
+                <p>In-app purchases aren't wired in this build. Try again later.</p>
+              </div>
+
+              <div class="trust-chips">
+                <div class="trust-chip"><span class="trust-chip-icon">✓</span> Cancel anytime in App Store</div>
+                <div class="trust-chip"><span class="trust-chip-icon">✓</span> 7-day refund, no email needed</div>
+                <div class="trust-chip"><span class="trust-chip-icon">✓</span> Price never changes mid-trial</div>
+              </div>
+
+              <div class="toggle">
+                <button aria-current="true">Yearly</button>
+                <button>Monthly</button>
+              </div>
+
+              <div class="pro-card">
+                <div class="pro-tag">Save 38%</div>
+                <h3>Suppr Pro</h3>
+                <div class="price">£59.99</div>
+                <div class="price-sub">per year · billed annually</div>
+                <ul class="pro-features">
+                  <li>Adaptive TDEE (Free in Suppr · £11.99/mo in MacroFactor)</li>
+                  <li>Recipe import from TikTok / Instagram / YouTube</li>
+                  <li>Photo + voice meal logging</li>
+                  <li>Unlimited meal plans</li>
+                </ul>
+                <button class="cta">Subscribe</button>
+              </div>
+
+            </div>
+          </div>
+          <div class="restore">Restore purchase</div>
+          <div class="iphone__tab-bar">
+            <div class="iphone__tab"><div class="iphone__tab-icon">○</div>Today</div>
+            <div class="iphone__tab"><div class="iphone__tab-icon">▤</div>Plan</div>
+            <div class="iphone__tab"><div class="iphone__tab-icon">📖</div>Recipes</div>
+            <div class="iphone__tab"><div class="iphone__tab-icon">👤</div>More</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ──────────────── AFTER ──────────────── -->
+    <section class="state state--after" data-label="After (proposed)">
+      <div class="iphone">
+        <div class="iphone__screen">
+          <div class="iphone__status-bar">
+            <span class="iphone__status-bar-time">9:41</span>
+            <span class="iphone__status-bar-right">●●●●● WiFi 100%</span>
+          </div>
+          <div class="iphone__viewport">
+            <div class="paywall-header">
+              <h2>Suppr Pro</h2>
+              <p>Eat well, without overthinking it</p>
+            </div>
+            <div class="paywall-body">
+
+              <!-- Subscriptions-unavailable card REMOVED.
+                   Hidden by default. Surfaces as a 1-line footnote
+                   only when RC offerings genuinely fail to load. -->
+
+              <div class="toggle">
+                <button aria-current="true">Yearly</button>
+                <button>Monthly</button>
+              </div>
+
+              <div class="pro-card">
+                <div class="pro-tag">Save 38%</div>
+                <h3>Suppr Pro</h3>
+                <div class="price">£59.99</div>
+                <div class="price-sub">per year · billed annually</div>
+                <!-- Trust chips moved INLINE adjacent to price
+                     (DC4 allowed borrow from Stripe Checkout —
+                     "adjacent placement of guarantees and price") -->
+                <div class="trust-chips-inline">
+                  <span class="trust-chip"><span class="trust-chip-icon">✓</span> Cancel anytime</span>
+                  <span class="trust-chip"><span class="trust-chip-icon">✓</span> 7-day refund</span>
+                  <span class="trust-chip"><span class="trust-chip-icon">✓</span> Price locked</span>
+                </div>
+                <ul class="pro-features">
+                  <li>Adaptive TDEE (Free in Suppr · £11.99/mo in MacroFactor)</li>
+                  <li>Recipe import from TikTok / Instagram / YouTube</li>
+                  <li>Photo + voice meal logging</li>
+                  <li>Unlimited meal plans</li>
+                </ul>
+                <button class="cta">Subscribe</button>
+              </div>
+
+              <!-- IF (and only if) RC offerings fail: -->
+              <p class="unavailable-footnote-after">If pricing doesn't load, pull to refresh.</p>
+
+            </div>
+          </div>
+          <div class="restore">Restore purchase</div>
+          <div class="iphone__tab-bar">
+            <div class="iphone__tab"><div class="iphone__tab-icon">○</div>Today</div>
+            <div class="iphone__tab"><div class="iphone__tab-icon">▤</div>Plan</div>
+            <div class="iphone__tab"><div class="iphone__tab-icon">📖</div>Recipes</div>
+            <div class="iphone__tab"><div class="iphone__tab-icon">👤</div>More</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <aside class="prototype-notes">
+    <h2>What changed</h2>
+    <ul>
+      <li>
+        <strong>#13.1 SUBTRACT</strong>
+        Remove the "Subscriptions unavailable" card from the default render path.
+        <em>What it duplicates / weakens:</em> the trust-chip strip below already
+        carries "Cancel anytime / refund / price locked" — which is the inverse
+        of "unavailable" trust. Two competing trust posters in the same viewport
+        is worse than one. The unavailable case now degrades to a 1-line footnote
+        beneath the price ("If pricing doesn't load, pull to refresh") — only
+        rendered when RC offerings genuinely fail to resolve.
+      </li>
+      <li>
+        <strong>#13.2 TIGHTEN</strong>
+        Move trust chips inline adjacent to the price, inside the Pro card
+        (allowed borrow from Stripe Checkout per DC4: "adjacent placement of
+        guarantees and price"). Chips downsize from 13px to 11px and lose
+        the soft green background; the trust signal compresses but stays
+        readable.
+        <em>What it duplicates / weakens:</em> nothing — the original block
+        layout above the toggle is removed and the chips relocate to where
+        Stripe puts them. Reduces vertical chrome by ~80px.
+      </li>
+    </ul>
+
+    <h2>DC4 preservation check</h2>
+    <p>
+      The three explicit guarantees (Cancel anytime · 7-day refund · Price
+      locked) are preserved verbatim — the bet (specificity, not vibes) is
+      intact. Placement changes from "above the price block" to "inside the
+      Pro card adjacent to the price digit", which is the Stripe Checkout
+      borrow explicitly listed as <em>allowed</em> in
+      <code>defended-choices.md</code> §DC4. No "No price hikes ever" 4th
+      chip added (deferred pending Grace's long-term commitment per the
+      DC reference doc).
+    </p>
+
+    <h2>Refused borrows considered</h2>
+    <p>
+      Considered adopting Calm's full "Not satisfied? Cancel anytime,
+      no questions asked" longer-form guarantee copy in place of the short
+      chips. Refused — Suppr's chip-form specificity ("Cancel anytime
+      <em>in App Store</em>") is more falsifiable than Calm's vibes-style
+      promise, and DC4 explicitly defends the chip form against
+      "generic 'Trusted by N users' social proof" patterns.
+    </p>
+
+    <h2>Capture gaps still open</h2>
+    <p>
+      Dark-mode paywall pixel is missing (RTP-7) — this prototype renders
+      the after-state in light only. The dark variant needs a re-capture
+      via <code>00z_premium_bar_dark.yaml</code> before G4 (per-item sim
+      validation) can sign off on this item. The DC4 trust chips will need
+      contrast verification on near-black canvas — the soft green chip
+      background may not survive dark mode at AA contrast.
+    </p>
+  </aside>
+
+  <script>
+    function setView(view) {
+      const canvas = document.querySelector('.prototype-canvas');
+      canvas.dataset.view = view;
+      document.querySelectorAll('.prototype-header nav button').forEach(b => {
+        b.removeAttribute('aria-current');
+      });
+      event.target.setAttribute('aria-current', 'true');
+    }
+  </script>
+</body>
+</html>
