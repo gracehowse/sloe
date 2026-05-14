@@ -15,6 +15,15 @@ import { AccessibilityInfo, AppState, LogBox, Platform, Text, View } from 'react
 // dev pill so screenshot captures during sim NAT wedge / cold-boot don't
 // leak handled-error chrome onto otherwise-clean screens. Production builds
 // disable LogBox entirely so this is dev-only.
+//
+// 2026-05-14: added PostHog flush-error patterns. The SDK queues events,
+// retries on its own (fetchRetryCount/fetchRetryDelay), and shouts via
+// console.error after a single failed flush — which RN escalates to a
+// redbox. Surfaces every time we trip the iOS-18 sim HTTP/3 wedge
+// (`feedback_sim_supabase_unreachable.md`) or background mid-flush.
+// Not actionable in dev; SDK handles the retry. Production still
+// reports via Sentry through `initErrorTracking()` if a flush truly
+// gives up.
 if (__DEV__) {
   LogBox.ignoreLogs([
     /TypeError: Network request failed/,
@@ -23,6 +32,8 @@ if (__DEV__) {
     /\[tzSync\] profiles\.tz_iana update failed/,
     /\[tracker\] (?:meal_plan_days|nutrition_entries|fetchMealPlanJson) timed out/,
     /\[useSavedLibraryRecipes\] saves\+recipes batch timed out/,
+    /Error while flushing PostHog/,
+    /PostHogFetchNetworkError/,
   ]);
 }
 import { useShareIntent } from 'expo-share-intent';
