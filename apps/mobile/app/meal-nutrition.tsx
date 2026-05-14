@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, type ViewStyle } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -7,8 +7,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
-import { listMicroNutrientsCompleteDisplay, mealContributedFiberG } from "@/lib/healthDietaryNutrients";
-import { parseNutritionMicrosJson, type JournalMeal } from "@/lib/nutritionJournal";
+import { listMicroNutrientsCompleteDisplay, mealContributedFiberG, sumDayFiberFromMeals, sumMicrosFromLoggedMeals } from "@/lib/healthDietaryNutrients";
+import { parseNutritionMicrosJson, type JournalMeal, normalizeJournalSlotName, dateKeyFromDate } from "@/lib/nutritionJournal";
 import { supabase } from "@/lib/supabase";
 import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
 import {
@@ -17,6 +17,21 @@ import {
 } from "../../../src/lib/nutrition/macroSplitConfidence";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function formatDateLabel(dateKey: string): string {
+  try {
+    const today = dateKeyFromDate(new Date());
+    if (dateKey === today) return "Today";
+    const y = new Date();
+    y.setDate(y.getDate() - 1);
+    if (dateKey === dateKeyFromDate(y)) return "Yesterday";
+    const d = new Date(dateKey + "T12:00:00");
+    return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+  } catch {
+    return dateKey;
+  }
+}
 
 function macroCalorieSplit(m: Pick<JournalMeal, "protein" | "carbs" | "fat">): {
   proteinPct: number;
@@ -67,9 +82,36 @@ function macroCalorieSplit(m: Pick<JournalMeal, "protein" | "carbs" | "fat">): {
   };
 }
 
+function nutritionRowToJournalMeal(data: Record<string, unknown>): JournalMeal {
+  return {
+    id: data.id as string,
+    name: (data.name as string) ?? "",
+    recipeTitle: (data.recipe_title as string) ?? "",
+    time: (data.time_label as string) ?? "",
+    calories: (data.calories as number) ?? 0,
+    protein: (data.protein as number) ?? 0,
+    carbs: (data.carbs as number) ?? 0,
+    fat: (data.fat as number) ?? 0,
+    fiberG: (data.fiber_g as number) ?? undefined,
+    waterMl: (data.water_ml as number) ?? undefined,
+    portionMultiplier: (data.portion_multiplier as number) ?? undefined,
+    micros: parseNutritionMicrosJson((data as { nutrition_micros?: unknown }).nutrition_micros),
+    source: (data.source as string) ?? undefined,
+    createdAt: (data.created_at as string | null) ?? undefined,
+  };
+}
+
 export default function MealNutritionScreen() {
-  const { id: idParam } = useLocalSearchParams<{ id?: string | string[] }>();
+  const { id: idParam, slot: slotParam, date: dateParam } = useLocalSearchParams<{
+    id?: string | string[];
+    slot?: string | string[];
+    date?: string | string[];
+  }>();
   const id = typeof idParam === "string" ? idParam : Array.isArray(idParam) ? idParam[0] : undefined;
+  const slotFromParams =
+    typeof slotParam === "string" ? slotParam : Array.isArray(slotParam) ? slotParam[0] : undefined;
+  const dateFromParams =
+    typeof dateParam === "string" ? dateParam : Array.isArray(dateParam) ? dateParam[0] : undefined;
 
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -83,66 +125,110 @@ export default function MealNutritionScreen() {
   const [error, setError] = useState<string | null>(null);
   const [meal, setMeal] = useState<JournalMeal | null>(null);
   const [dateKey, setDateKey] = useState<string | null>(null);
+  /** Populated in slot-summary mode (`?slot=&date=`) — each row opens single-meal nutrition. */
+  const [slotLineItems, setSlotLineItems] = useState<JournalMeal[] | null>(null);
 
   const load = useCallback(async () => {
-    if (!userId || !id || !UUID_RE.test(id)) {
+    if (!userId) {
       setLoading(false);
-      setError(!id ? "Missing meal" : "Invalid meal id");
+      setError("Missing meal");
       setMeal(null);
+      setSlotLineItems(null);
       return;
     }
     setLoading(true);
     setError(null);
-    // Debug audit 2026-05-04 (code-quality #8): the supabase select
-    // had `qErr` destructure handling but a *thrown* rejection (network
-    // disconnect, RLS deadlock) bypassed that branch and threw out of
-    // the callback before `setLoading(false)`. Spinner stuck. Now:
-    // full-body try/catch with `setError` in catch + setLoading in
-    // finally so the screen always recovers.
     try {
-    const { data, error: qErr } = await supabase
-      .from("nutrition_entries")
-      .select(
-        "id, date_key, name, recipe_title, time_label, calories, protein, carbs, fat, fiber_g, water_ml, portion_multiplier, source, nutrition_micros",
-      )
-      .eq("user_id", userId)
-      .eq("id", id)
-      .maybeSingle();
+      if (id && UUID_RE.test(id)) {
+        setSlotLineItems(null);
+        const { data, error: qErr } = await supabase
+          .from("nutrition_entries")
+          .select(
+            "id, date_key, name, recipe_title, time_label, calories, protein, carbs, fat, fiber_g, water_ml, portion_multiplier, source, nutrition_micros, created_at",
+          )
+          .eq("user_id", userId)
+          .eq("id", id)
+          .maybeSingle();
 
-    if (qErr) {
-      setError(qErr.message);
+        if (qErr) {
+          setError(qErr.message);
+          setMeal(null);
+        } else if (!data) {
+          setError("Meal not found");
+          setMeal(null);
+        } else {
+          setDateKey((data.date_key as string) ?? null);
+          setMeal(nutritionRowToJournalMeal(data as Record<string, unknown>));
+        }
+        return;
+      }
+
+      const slotRaw = slotFromParams?.trim();
+      if (slotRaw && dateFromParams && DATE_KEY_RE.test(dateFromParams)) {
+        const { data: rows, error: qErr } = await supabase
+          .from("nutrition_entries")
+          .select(
+            "id, date_key, name, recipe_title, time_label, calories, protein, carbs, fat, fiber_g, water_ml, portion_multiplier, source, nutrition_micros, created_at",
+          )
+          .eq("user_id", userId)
+          .eq("date_key", dateFromParams)
+          .order("created_at", { ascending: true });
+
+        if (qErr) {
+          setError(qErr.message);
+          setMeal(null);
+          setSlotLineItems(null);
+          return;
+        }
+
+        const targetSlot = normalizeJournalSlotName(slotRaw);
+        const items = (rows ?? [])
+          .map((r) => nutritionRowToJournalMeal(r as Record<string, unknown>))
+          .filter((m) => normalizeJournalSlotName(m.name) === targetSlot);
+
+        setDateKey(dateFromParams);
+        if (items.length === 0) {
+          setMeal(null);
+          setSlotLineItems([]);
+          setError("NO_SLOT_ITEMS");
+          return;
+        }
+
+        const mergedMicros = sumMicrosFromLoggedMeals(items);
+        delete mergedMicros.fiberG;
+
+        const aggregate: JournalMeal = {
+          id: "__slot_aggregate__",
+          name: slotRaw,
+          recipeTitle: `${slotRaw} · ${items.length} items`,
+          time: "",
+          calories: Math.round(items.reduce((a, m) => a + m.calories, 0)),
+          protein: items.reduce((a, m) => a + m.protein, 0),
+          carbs: items.reduce((a, m) => a + m.carbs, 0),
+          fat: items.reduce((a, m) => a + m.fat, 0),
+          fiberG: sumDayFiberFromMeals(items),
+          micros: Object.keys(mergedMicros).length > 0 ? mergedMicros : undefined,
+        };
+        setMeal(aggregate);
+        setSlotLineItems(items);
+        setError(null);
+        return;
+      }
+
+      setSlotLineItems(null);
       setMeal(null);
-    } else if (!data) {
-      setError("Meal not found");
-      setMeal(null);
-    } else {
-      setDateKey((data.date_key as string) ?? null);
-      setMeal({
-        id: data.id as string,
-        name: (data.name as string) ?? "",
-        recipeTitle: (data.recipe_title as string) ?? "",
-        time: (data.time_label as string) ?? "",
-        calories: (data.calories as number) ?? 0,
-        protein: (data.protein as number) ?? 0,
-        carbs: (data.carbs as number) ?? 0,
-        fat: (data.fat as number) ?? 0,
-        fiberG: (data.fiber_g as number) ?? undefined,
-        waterMl: (data.water_ml as number) ?? undefined,
-        portionMultiplier: (data.portion_multiplier as number) ?? undefined,
-        micros: parseNutritionMicrosJson((data as { nutrition_micros?: unknown }).nutrition_micros),
-        source: (data.source as string) ?? undefined,
-      });
-    }
+      setError(!id ? "Missing meal" : "Invalid meal id");
     } catch (err) {
       if (typeof console !== "undefined") {
         console.warn("[meal-nutrition] load failed:", err instanceof Error ? err.message : err);
       }
       setError(err instanceof Error ? err.message : "Could not load meal");
       setMeal(null);
+      setSlotLineItems(null);
     } finally {
       setLoading(false);
     }
-  }, [userId, id]);
+  }, [userId, id, slotFromParams, dateFromParams]);
 
   useEffect(() => {
     void load();
@@ -186,17 +272,24 @@ export default function MealNutritionScreen() {
   );
 
   const openEditOnToday = useCallback(() => {
-    if (!meal || !dateKey) return;
+    if (!meal || !dateKey || meal.id === "__slot_aggregate__") return;
+    if (!UUID_RE.test(meal.id)) return;
     router.navigate({
       pathname: "/(tabs)",
       params: { date: dateKey, editMealId: meal.id, _t: String(Date.now()) },
     } as Parameters<typeof router.navigate>[0]);
   }, [router, meal, dateKey]);
 
+  const isSlotAggregate = meal?.id === "__slot_aggregate__";
+
   useLayoutEffect(() => {
-    const title = meal?.recipeTitle?.trim() || "Meal nutrition";
+    if (isSlotAggregate) {
+      navigation.setOptions({ headerShown: false });
+      return;
+    }
     navigation.setOptions({
-      title,
+      headerShown: true,
+      title: meal?.recipeTitle?.trim() || "Meal nutrition",
       // F-19 (2026-04-19) — the default native-header back was silently
       // no-op'ing in some cold-start / deep-link entry flows where the
       // stack held no history. Force a custom `headerLeft` wired to
@@ -216,18 +309,48 @@ export default function MealNutritionScreen() {
         </Pressable>
       ),
       headerRight: () =>
-        meal ? (
+        meal && !isSlotAggregate && UUID_RE.test(meal.id) ? (
           <Pressable onPress={openEditOnToday} hitSlop={12} style={{ paddingHorizontal: Spacing.md }}>
             <Text style={{ fontSize: 16, fontWeight: "600", color: Accent.primary }}>Edit</Text>
           </Pressable>
         ) : null,
     });
-  }, [navigation, meal, openEditOnToday, goBack, colors.text]);
+  }, [navigation, meal, isSlotAggregate, openEditOnToday, goBack, colors.text]);
 
   if (loading) {
     return (
       <View style={[styles.center, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={Accent.primary} />
+      </View>
+    );
+  }
+
+  if (error === "NO_SLOT_ITEMS" && slotFromParams) {
+    return (
+      <View style={[styles.center, { backgroundColor: colors.background, padding: Spacing.lg }]}>
+        <Ionicons name="nutrition-outline" size={44} color={colors.textTertiary} style={{ marginBottom: Spacing.md }} />
+        <Text style={{ color: colors.text, fontSize: 20, fontWeight: "700", textAlign: "center", marginBottom: Spacing.sm }}>
+          Nothing in {slotFromParams}
+        </Text>
+        <Text style={{ color: colors.textSecondary, fontSize: 14, lineHeight: 20, textAlign: "center", maxWidth: 320 }}>
+          {dateFromParams
+            ? `There are no logged items for this meal slot on ${dateFromParams}. Add food from Today, then open this summary again.`
+            : "There are no logged items for this meal slot on that day."}
+        </Text>
+        <Pressable
+          onPress={goBack}
+          style={{
+            marginTop: Spacing.lg,
+            paddingHorizontal: 22,
+            paddingVertical: 12,
+            borderRadius: Radius.md,
+            backgroundColor: Accent.primary,
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
+          <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Go back</Text>
+        </Pressable>
       </View>
     );
   }
@@ -278,24 +401,192 @@ export default function MealNutritionScreen() {
   // reads as boilerplate. Keep visible only when the user actually
   // altered the portion (e.g. ×0.5 or ×2.5) so the override is
   // surfaced honestly.
-  const showPortionLine = Math.abs(portion - 1) > 0.001;
+  const showPortionLine = !isSlotAggregate && Math.abs(portion - 1) > 0.001;
+
+  const slotDateLabel = formatDateLabel(dateKey ?? dateFromParams ?? "");
 
   return (
-    <ScrollView
-      testID="screen-meal-nutrition"
-      style={{ flex: 1, backgroundColor: colors.backgroundSecondary }}
-      contentContainerStyle={{ padding: Spacing.md, paddingBottom: insets.bottom + 24 }}
-      keyboardShouldPersistTaps="handled"
-    >
-      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-        <Text style={[styles.meta, { color: colors.textTertiary }]}>
-          {[meal.name, meal.time].filter(Boolean).join(" · ")}
-          {meal.source ? ` · ${meal.source}` : ""}
-        </Text>
-        {showPortionLine ? (
-          <Text style={[styles.portion, { color: colors.textSecondary }]}>Portion ×{portionLabel}</Text>
+    <View style={{ flex: 1, backgroundColor: isSlotAggregate ? colors.background : colors.backgroundSecondary }}>
+      {isSlotAggregate ? (
+        <View
+          style={{
+            paddingTop: insets.top + Spacing.sm,
+            paddingHorizontal: Spacing.lg,
+            paddingBottom: Spacing.md,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: Spacing.md,
+            backgroundColor: colors.background,
+          }}
+        >
+          <Pressable onPress={goBack} hitSlop={12} accessibilityRole="button" accessibilityLabel="Go back">
+            <Ionicons name="chevron-back" size={24} color={colors.text} />
+          </Pressable>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={{ fontSize: 22, fontWeight: "700", color: colors.text }} numberOfLines={1}>
+              {meal.name}
+            </Text>
+            <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }} numberOfLines={1}>
+              {slotDateLabel} · {slotLineItems?.length ?? 0} item{(slotLineItems?.length ?? 0) !== 1 ? "s" : ""}
+            </Text>
+          </View>
+          <View
+            style={{
+              backgroundColor: Accent.primary + "20",
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: Radius.sm,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 16,
+                fontWeight: "800",
+                color: Accent.primary,
+                fontVariant: ["tabular-nums"],
+              }}
+            >
+              {Math.round(meal.calories)} kcal
+            </Text>
+          </View>
+        </View>
+      ) : null}
+      <ScrollView
+        testID="screen-meal-nutrition"
+        style={{ flex: 1, backgroundColor: isSlotAggregate ? colors.background : colors.backgroundSecondary }}
+        contentContainerStyle={{
+          paddingTop: Spacing.md,
+          paddingBottom: insets.bottom + 24,
+          paddingHorizontal: isSlotAggregate ? Spacing.lg : Spacing.md,
+        }}
+        keyboardShouldPersistTaps="handled"
+      >
+        {isSlotAggregate && slotLineItems && slotLineItems.length > 0 ? (
+          <View style={{ marginBottom: Spacing.lg }}>
+            {slotLineItems.map((line, i) => {
+              const totalCal = Math.max(1, Math.round(meal.calories));
+              const val = Math.round(line.calories);
+              const pct = totalCal > 0 ? val / totalCal : 0;
+              const upper = (line.time?.trim() || "Logged").toUpperCase();
+              return (
+                <Pressable
+                  key={line.id}
+                  onPress={() => router.push(`/meal-nutrition?id=${encodeURIComponent(line.id)}` as const)}
+                  style={({ pressed }) => ({
+                    flexDirection: "row",
+                    alignItems: "center",
+                    paddingVertical: 14,
+                    borderBottomWidth: i < slotLineItems.length - 1 ? 1 : 0,
+                    borderBottomColor: colors.border,
+                    gap: 12,
+                    opacity: pressed ? 0.75 : 1,
+                  })}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Open nutrition for ${line.recipeTitle || "item"}`}
+                >
+                  <View
+                    style={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: 5,
+                      backgroundColor: Accent.primary,
+                      opacity: 0.3 + pct * 0.7,
+                    }}
+                  />
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        fontWeight: "600",
+                        color: colors.textTertiary,
+                        textTransform: "uppercase",
+                        letterSpacing: 0.5,
+                      }}
+                      numberOfLines={1}
+                    >
+                      {upper}
+                    </Text>
+                    <Text
+                      style={{ fontSize: 14, fontWeight: "500", color: colors.text, marginTop: 2 }}
+                      numberOfLines={2}
+                    >
+                      {line.recipeTitle?.trim() || "Logged item"}
+                    </Text>
+                  </View>
+                  <Text
+                    style={{
+                      fontSize: 15,
+                      fontWeight: "700",
+                      color: Accent.primary,
+                      fontVariant: ["tabular-nums"],
+                    }}
+                  >
+                    {val} kcal
+                  </Text>
+                </Pressable>
+              );
+            })}
+            <View
+              style={{
+                marginTop: Spacing.lg,
+                padding: Spacing.md,
+                borderRadius: Radius.md,
+                backgroundColor: Accent.primary + "10",
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: "row",
+                  gap: 2,
+                  height: 8,
+                  borderRadius: 4,
+                  overflow: "hidden",
+                  backgroundColor: colors.border,
+                }}
+              >
+                {slotLineItems.map((line, i) => {
+                  const totalCal = Math.max(1, Math.round(meal.calories));
+                  const val = Math.round(line.calories);
+                  const pct = totalCal > 0 ? (val / totalCal) * 100 : 0;
+                  return (
+                    <View
+                      key={line.id}
+                      style={
+                        {
+                          width: `${Math.max(pct, 1)}%`,
+                          height: "100%",
+                          backgroundColor: Accent.primary,
+                          opacity: 0.4 + (i % 3) * 0.2,
+                        } as ViewStyle
+                      }
+                    />
+                  );
+                })}
+              </View>
+              <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 8, textAlign: "center" }}>
+                {Math.round(meal.calories)} kcal across {slotLineItems.length} logged item
+                {slotLineItems.length !== 1 ? "s" : ""}
+              </Text>
+            </View>
+          </View>
         ) : null}
-        <Text style={[styles.kcal, { color: colors.text }]}>{Math.round(meal.calories)} kcal</Text>
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+        {!isSlotAggregate ? (
+          <>
+            <Text style={[styles.meta, { color: colors.textTertiary }]}>
+              {[meal.name, meal.time].filter(Boolean).join(" · ")}
+              {meal.source ? ` · ${meal.source}` : ""}
+            </Text>
+            {showPortionLine ? (
+              <Text style={[styles.portion, { color: colors.textSecondary }]}>Portion ×{portionLabel}</Text>
+            ) : null}
+            <Text style={[styles.kcal, { color: colors.text }]}>{Math.round(meal.calories)} kcal</Text>
+          </>
+        ) : (
+          <Text style={{ fontSize: 13, fontWeight: "600", color: colors.textSecondary, marginBottom: Spacing.sm }}>
+            Combined macros
+          </Text>
+        )}
 
         {splitConfidence.state === "single_macro" ? (
           // F-82 — incomplete-data state. Skip the misleading bar +
@@ -348,11 +639,17 @@ export default function MealNutritionScreen() {
             gap, not Suppr's. */}
         {(() => {
           const populatedCount = microRows.filter((row) => row.value !== "—").length;
-          const sourceLabel = meal.source ? meal.source : "the data source";
+          const sourceLabel = isSlotAggregate
+            ? "your logged items in this slot"
+            : meal.source
+              ? meal.source
+              : "the data source";
           if (populatedCount === 0) {
             return (
               <Text style={[styles.sectionSub, { color: colors.textTertiary, marginBottom: 0 }]}>
-                {sourceLabel} did not publish vitamin or mineral data for this product.
+                {isSlotAggregate
+                  ? "None of the entries in this slot included published vitamin or mineral data."
+                  : `${sourceLabel} did not publish vitamin or mineral data for this product.`}
               </Text>
             );
           }
@@ -392,6 +689,7 @@ export default function MealNutritionScreen() {
         meal data.
       */}
     </ScrollView>
+    </View>
   );
 }
 

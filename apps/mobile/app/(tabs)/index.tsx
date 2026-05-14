@@ -4931,6 +4931,11 @@ export default function TrackerScreen() {
             onOpenSaveUsualMealForSlot={openSaveMealSheetForSlot}
             onOpenDuplicateDay={() => setDuplicateDayOpen(true)}
             onPressMeal={(id) => router.push(`/meal-nutrition?id=${encodeURIComponent(id)}` as const)}
+            onPressSlotSummary={(slot) =>
+              router.push(
+                `/meal-nutrition?slot=${encodeURIComponent(slot)}&date=${encodeURIComponent(dayKey)}` as const,
+              )
+            }
             onLongPressEdit={openEditMeal}
             onRequestCopyMeal={(id) => setCopyMealTargetId(id)}
             onDeleteMeal={deleteMeal}

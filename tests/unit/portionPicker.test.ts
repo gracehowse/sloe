@@ -33,11 +33,6 @@ const meatballProduct = {
   ],
 };
 
-const sodaProduct = {
-  servingSizeG: 330,
-  servingOptions: [{ label: "1 can", grams: 330 }],
-};
-
 const gramOnlyProduct = {
   servingSizeG: null,
   servingOptions: [{ label: "100 g", grams: 100 }],
