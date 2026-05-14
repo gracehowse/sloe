@@ -1,21 +1,18 @@
 /**
- * Group G IA Batches B + D — `SettingsBundleContent` is the single
+ * Group G IA Batches B–E — `SettingsBundleContent` is the single
  * render surface for the legacy "More" sections (Membership, Goals &
  * targets, Connections, Recipes, Household, Legal, Build, Danger
- * zone, Sign Out + 6 modals). Mounted on `/(tabs)/settings`.
+ * zone, Sign Out + modals). Mounted on `/(tabs)/settings`.
  *
- * Batch D (2026-04-30): `/(tabs)/more` is now a redirect to
- * `/(tabs)/settings`; the bundle is no longer rendered there. This
- * test still pins:
+ * Batch E (2026-05-14): `/(tabs)/more` deleted entirely (grace period
+ * complete). This test pins:
  *   1. The bundle file exists and exports `SettingsBundleContent`.
  *   2. Every row that Apple Health / Daily targets / Delete account
  *      / Reset / Caffeine / Alcohol / Weekly recap depends on is
  *      present (testIDs pinned).
  *   3. `settings.tsx` imports the bundle.
- *   4. `more.tsx` is a thin <Redirect href="/(tabs)/settings" />.
- *   5. The 6 modals (reset, dashboard widgets, week start, caffeine,
- *      alcohol, weekly recap) are still rendered inside the bundle
- *      so they self-portal correctly.
+ *   4. The 7 modals are still rendered inside the bundle so they
+ *      self-portal correctly.
  *
  * Source-level structural check — no React rendering.
  */
@@ -28,11 +25,9 @@ const BUNDLE_PATH = resolve(
   ROOT,
   "components/settings/SettingsBundleContent.tsx",
 );
-const MORE_PATH = resolve(ROOT, "app/(tabs)/more.tsx");
 const SETTINGS_PATH = resolve(ROOT, "app/(tabs)/settings.tsx");
 
 const bundle = readFileSync(BUNDLE_PATH, "utf8");
-const more = readFileSync(MORE_PATH, "utf8");
 const settings = readFileSync(SETTINGS_PATH, "utf8");
 
 describe("SettingsBundleContent — parity contract", () => {
@@ -199,23 +194,6 @@ describe("SettingsBundleContent — parity contract", () => {
       'from "@/components/settings/SettingsBundleContent"',
     );
     expect(settings).toContain('<SettingsBundleContent context="settings"');
-  });
-
-  it("/more is a thin redirect to /(tabs)/settings (Batch D)", () => {
-    // Batch D collapsed the More wrapper into a redirect so push
-    // notifications, bookmarks, and any external system that still
-    // deep-links to suppr:///more continues to resolve. Batch E
-    // deletes the file after one release of grace period.
-    expect(more).toContain('from "expo-router"');
-    expect(more).toMatch(/<Redirect\s+href="\/\(tabs\)\/settings"\s*\/>/);
-    // No bundle render on /more anymore — the screen MUST be a pure
-    // redirect with zero state, fetches, or duplicate UI. (The doc
-    // comment may still reference the bundle component path; we match
-    // on the JSX usage <SettingsBundleContent ... /> which is the
-    // load-bearing signal.)
-    expect(more).not.toMatch(/<SettingsBundleContent\b/);
-    expect(more).not.toContain("supabase");
-    expect(more).not.toContain("ScrollView");
   });
 
   it("self-routing 'Settings' row in the bundle is gated for the legacy More context", () => {

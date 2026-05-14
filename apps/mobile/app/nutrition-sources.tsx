@@ -61,7 +61,7 @@ const FALLBACK_ICON: LucideIcon = BookOpen;
 
 export default function NutritionSourcesScreen() {
   const insets = useSafeAreaInsets();
-  const goBack = useSafeBack("/(tabs)/more");
+  const goBack = useSafeBack("/(tabs)/settings");
   const colors = useThemeColors();
 
   const styles = useMemo(

@@ -205,8 +205,8 @@ export default function TabLayout() {
         }}
         listeners={{
           tabPress: (e) => {
-            // Pressing More while on /settings or /more returns to /progress.
-            if (pathname.startsWith('/settings') || pathname.startsWith('/more')) {
+            // Pressing More while on /settings returns to /progress.
+            if (pathname.startsWith('/settings')) {
               e.preventDefault();
               router.replace('/(tabs)/progress' as never);
             }
@@ -216,7 +216,6 @@ export default function TabLayout() {
       {/* Hidden routes — accessible via deep links and sub-tab pills,
           but not surfaced in the tab bar. */}
       <Tabs.Screen name="discover" options={{ href: null }} />
-      <Tabs.Screen name="more" options={{ href: null }} />
       <Tabs.Screen name="settings" options={{ href: null }} />
       <Tabs.Screen name="search" options={{ href: null }} />
       <Tabs.Screen name="barcode" options={{ href: null }} />
