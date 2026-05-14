@@ -13,41 +13,6 @@ import { dateKeyFromDate } from "../../../src/lib/nutrition/trackerStats";
 import { resolveMaintenance } from "../../../src/lib/nutrition/resolveMaintenance";
 import { maintenanceIntakeFromTargetCalories } from "@/lib/calcTargets";
 import { syncHealthDataThrottled, isHealthSyncAvailable } from "@/lib/healthSync";
-
-/**
- * 2026-05-14 (premium-bar audit Group H #5): build the last-7-days
- * burn series anchored at the current `viewKey`. Each entry is the
- * sum of resting + active for that day; missing days resolve to 0.
- * Day labels are single-letter weekday initials (M / T / W ...) so
- * the row fits in the 80px chart without overflowing on narrow
- * devices. The label-key pair is exported in viewKey-ending order
- * so the latest day is the rightmost bar.
- */
-function buildSevenDayBurnSeries(
-  anchorDateKey: string,
-  activeByDay: Record<string, number>,
-  basalByDay: Record<string, number>,
-): Array<{ key: string; label: string; value: number; isAnchor: boolean }> {
-  const out: Array<{ key: string; label: string; value: number; isAnchor: boolean }> = [];
-  // anchor is rightmost; walk backwards 6 days, then reverse so the
-  // earliest day is at the left.
-  const anchor = new Date(anchorDateKey + "T12:00:00");
-  const WEEKDAY_INITIALS = ["S", "M", "T", "W", "T", "F", "S"];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(anchor);
-    d.setDate(anchor.getDate() - i);
-    const key = dateKeyFromDate(d);
-    const active = Number(activeByDay[key]) || 0;
-    const basal = Number(basalByDay[key]) || 0;
-    out.push({
-      key,
-      label: WEEKDAY_INITIALS[d.getDay()] ?? "",
-      value: Math.max(0, Math.round(active + basal)),
-      isAnchor: key === anchorDateKey,
-    });
-  }
-  return out;
-}
 // `filterByDateRangeDays` import removed 2026-05-13 — was only used
 // by the 30-day steps chart which moved to Progress per TF feedback.
 // import { filterByDateRangeDays } from "@/lib/weightProjection";
@@ -99,13 +64,6 @@ export default function BurnDetailScreen() {
   // "Steps" row above for "no chart yet" feel.
   const [stepsByDay, setStepsByDay] = useState<Record<string, number>>({});
   const [dailyStepsGoal, setDailyStepsGoal] = useState(NUTRITION_DEFAULTS.steps);
-
-  // 2026-05-14 (premium-bar audit Group H #5): 7-day burn history.
-  // `activityBurnByDay` + `basalBurnByDay` retain the raw maps so the
-  // chart builder can sum them per day; the anchor day (`viewKey`) is
-  // the rightmost bar.
-  const [activityBurnByDay, setActivityBurnByDay] = useState<Record<string, number>>({});
-  const [basalBurnByDay, setBasalBurnByDay] = useState<Record<string, number>>({});
   // 2026-05-13 (TF feedback `AOc1nHHposbaZ7yEgDLwPdE` — "this should
   // be a toggle so user can choose"): inline switch on this screen
   // for `prefer_activity_adjusted_calories`. Default off — the user
@@ -182,30 +140,6 @@ export default function BurnDetailScreen() {
           maintenanceKcal,
           workouts: Array.isArray((p.workouts_by_day ?? {})[viewKey]) ? (p.workouts_by_day ?? {})[viewKey] : [],
         });
-        // 2026-05-14 (premium-bar audit Group H #5): hydrate the 7-day
-        // burn maps so the trend chart at the top of the screen has
-        // historic context. Parse each entry to a finite number so a
-        // stale string value never bleeds into the chart's scale.
-        {
-          const abd = p.activity_burn_by_day;
-          if (abd && typeof abd === "object" && !Array.isArray(abd)) {
-            const parsed: Record<string, number> = {};
-            for (const [k, v] of Object.entries(abd as Record<string, unknown>)) {
-              const n = typeof v === "number" ? v : Number(v);
-              if (Number.isFinite(n)) parsed[k] = n;
-            }
-            setActivityBurnByDay(parsed);
-          }
-          const bbd = p.basal_burn_by_day;
-          if (bbd && typeof bbd === "object" && !Array.isArray(bbd)) {
-            const parsed: Record<string, number> = {};
-            for (const [k, v] of Object.entries(bbd as Record<string, unknown>)) {
-              const n = typeof v === "number" ? v : Number(v);
-              if (Number.isFinite(n)) parsed[k] = n;
-            }
-            setBasalBurnByDay(parsed);
-          }
-        }
         setPreferActivityAdjustedCalories(Boolean(p.prefer_activity_adjusted_calories));
         // Hydrate the 30-day steps trend (Phase 2 relocation). The map
         // comes from HealthKit sync (mobile) or manual entry; we coerce
@@ -239,21 +173,6 @@ export default function BurnDetailScreen() {
   // `AEAhefzqZ_0tuPnEONlytgI`) along with the chart. `stepsByDay`
   // stays in state because it still feeds today's step count
   // surface near the top of the screen.
-
-  // 2026-05-14 (premium-bar audit Group H #5): 7-day burn series for
-  // the chart at the top of the screen. Pure derive from the
-  // hydrated maps + the active `viewKey`; recomputes when the user
-  // navigates back/forward between days so the chart always anchors
-  // on the screen they're viewing.
-  const sevenDaySeries = useMemo(
-    () => buildSevenDayBurnSeries(viewKey, activityBurnByDay, basalBurnByDay),
-    [viewKey, activityBurnByDay, basalBurnByDay],
-  );
-  const sevenDayMax = useMemo(
-    () => Math.max(0, ...sevenDaySeries.map((d) => d.value)),
-    [sevenDaySeries],
-  );
-  const sevenDayHasData = sevenDayMax > 0;
 
   const totals = useMemo(() => {
     if (!data) return null;
@@ -311,103 +230,6 @@ export default function BurnDetailScreen() {
           </View>
         ) : (
           <>
-            {/* 2026-05-14 (premium-bar audit Group H #5): 7-day burn
-                trend chart. Each bar is total burn (resting + active)
-                for that day; the rightmost bar is `viewKey`. Brand
-                primary fill; the anchor day pops at full opacity
-                while the surrounding days sit at 0.55 so the
-                "what day am I looking at" cue is preserved.
-                Renders only when there's any non-zero burn in the
-                window so an empty install doesn't show a flat row
-                of zero-height bars. */}
-            <View
-              testID="burn-detail-seven-day-chart"
-              style={{
-                marginTop: 4,
-                marginBottom: Spacing.lg,
-                padding: Spacing.md,
-                borderRadius: Radius.md,
-                backgroundColor: colors.card,
-                borderWidth: 1,
-                borderColor: colors.cardBorder,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 11,
-                  fontWeight: "700",
-                  color: colors.textSecondary,
-                  textTransform: "uppercase",
-                  letterSpacing: 0.5,
-                  marginBottom: 8,
-                }}
-              >
-                Last 7 days
-              </Text>
-              {sevenDayHasData ? (
-                <View>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "flex-end",
-                      height: 80,
-                      gap: 6,
-                    }}
-                  >
-                    {sevenDaySeries.map((d) => {
-                      const h = sevenDayMax > 0 ? Math.max(2, (d.value / sevenDayMax) * 72) : 2;
-                      return (
-                        <View
-                          key={d.key}
-                          testID={`burn-detail-bar-${d.key}`}
-                          style={{
-                            flex: 1,
-                            height: h,
-                            borderRadius: 4,
-                            backgroundColor: Accent.primary,
-                            opacity: d.isAnchor ? 1 : 0.55,
-                          }}
-                        />
-                      );
-                    })}
-                  </View>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      gap: 6,
-                      marginTop: 6,
-                    }}
-                  >
-                    {sevenDaySeries.map((d, i) => (
-                      <Text
-                        key={`${d.key}-lbl-${i}`}
-                        style={{
-                          flex: 1,
-                          textAlign: "center",
-                          fontSize: 10,
-                          fontWeight: d.isAnchor ? "700" : "500",
-                          color: d.isAnchor ? Accent.primary : colors.textTertiary,
-                        }}
-                      >
-                        {d.label}
-                      </Text>
-                    ))}
-                  </View>
-                </View>
-              ) : (
-                <Text
-                  style={{
-                    fontSize: 12,
-                    color: colors.textTertiary,
-                    textAlign: "center",
-                    paddingVertical: Spacing.md,
-                  }}
-                >
-                  No burn data yet. Connect Apple Health to populate.
-                </Text>
-              )}
-            </View>
-
             {/* Energy rows */}
             <View style={{ paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border }}>
               <View style={{ flexDirection: "row", justifyContent: "space-between" }}>

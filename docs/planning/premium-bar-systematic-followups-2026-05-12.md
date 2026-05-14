@@ -34,6 +34,20 @@ This doc is the live tracking surface — update tags as items ship.
   number. Restored to day-letter-above-30×30-circle on both mobile
   and web. See `docs/decisions/2026-05-14-daystrip-revert-stacked-tile.md`
   for full context. Status flipped `[x]` → `[d]`.
+- **2026-05-14 — F40 "warm-tint over-budget" on macro arcs reverted.**
+  Inner protein/carbs/fat arcs shifted to Accent.warning amber at
+  0.6 opacity when the outer kcal ring was over-budget. Collapsed
+  the multi-colour ring language into a single warning hue. Macro
+  arcs now always render in their own colour at full opacity; the
+  destructive-red outer kcal ring already carries the over-budget
+  signal. Mobile + web parity.
+- **2026-05-14 — H.8 "Burn detail 7-day chart" reverted.** The bar-
+  only chart card at the top of `apps/mobile/app/burn-detail.tsx`
+  felt crude next to the version of the page Grace had already
+  perfected the day before the audit-sweep change. File restored to
+  state at `5d2c80d`. Future revisit would need a more considered
+  viz (line / area + workout overlay), not 7 flat bars. Status
+  flipped `[x]` → `[d]`.
 
 ---
 
@@ -418,7 +432,7 @@ This doc is the live tracking surface — update tags as items ship.
 - [x] H.6 Calories drill-down (DC10 3-state app-wide; web Daily Calories chart now has 3-state + dashed target + colour legend)
 - [x] H.7 Macro detail granularity (pick meal vs ingredient for all 4) — `apps/mobile/app/macro-detail.tsx` — 'By meal'/'By ingredient' segmented control; By-meal groups by slot with subtotals; By-ingredient renders placeholder + flat fallback (2026-05-14)
 - [x] H.7 Macro detail colour mapping (verify hues) — `apps/mobile/app/macro-detail.tsx` — calories→Accent.primary, protein/carbs/fat→MacroColors.{protein,carbs,fat} (fixed; was Accent.success on calories) (2026-05-14)
-- [x] H.8 Burn detail needs chart + 7-day context — `apps/mobile/app/burn-detail.tsx` — `buildSevenDayBurnSeries()` + 80px bar chart card at top; anchor day full opacity, others 0.55; empty state if sum==0 (2026-05-14)
+- [d] H.8 Burn detail needs chart + 7-day context — **reverted 2026-05-14** on Grace's call. The bar-only "Last 7 days" card felt crude vs the page she already perfected the day before. burn-detail.tsx restored to state at 5d2c80d (no chart). Future revisit would need a more considered viz (line/area + workout overlay) rather than 7 flat bars.
 - [e] H.9 Meal nutrition populated state (P0 re-capture)
 - [x] H.10 Targets truncated "≈ 15" date string (P0) — flexShrink: 1 + numberOfLines={2} on goalSub
 - [p] H.11 Weekly Digest past-tense voice — partial: "Last week" framing on recap card, "This week" still on weekly-recap eyebrow (deferred — needs broader voice rule pass)
