@@ -79,6 +79,28 @@ Three coordinated edits:
 
 Mobile-only — there is no equivalent dead-link surface on web.
 
+## End-of-life
+
+**Target removal date:** 2026-07-31 (~ 12 weeks after the redirect
+shipped on 2026-05-05). Rationale:
+
+- The redirect catches users running a TF build cached with the old
+  `/onboarding-v2` deep-link. TF builds typically rotate every 2-4
+  weeks; by end of July, every active tester will have run a build
+  that already points at the canonical `/onboarding`.
+- The `onboarding_v2_redirect_followed` PostHog event (shipped in
+  the same audit batch) gives an EOL signal. If hit-count drops to
+  ~0 across a 14-day window before 2026-07-31, the redirect and the
+  route file can be deleted ahead of schedule.
+- After removal, `/onboarding-v2` 404s naturally via the Expo Router
+  NotFound fall-through. That is the desired end state — the route
+  should not live indefinitely.
+
+When the EOL date arrives: delete `apps/mobile/app/onboarding-v2.tsx`,
+the redirect import, and the `onboarding_v2_redirect_followed`
+analytics event definition. Update memory `project_v2_rename_pending.md`
+to mark fully complete.
+
 ## Closes
 
 - Audit finding A3 (P0)

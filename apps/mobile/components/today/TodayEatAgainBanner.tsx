@@ -81,7 +81,18 @@ export function TodayEatAgainBanner({
     >
       <View style={{ flex: 1 }}>
         <Text style={{ fontSize: 10, fontWeight: "700", color: Accent.primary, letterSpacing: 1 }}>EAT AGAIN</Text>
-        <Text style={{ fontSize: 14, fontWeight: "600", color: textColor, marginTop: 2 }} numberOfLines={1}>
+        {/* 2026-05-13 (premium-bar audit DC3 follow-up — TF
+            screenshot showed "Salad & Stic…" mid-word truncation):
+            allow the recipe title to wrap to a second line before
+            tail-ellipsizing. Most titles still fit on one line; the
+            ones that don't now break at a word boundary instead of
+            cutting mid-character. Banner height grows by ~16pt on
+            the rare 2-line case — acceptable trade for legibility. */}
+        <Text
+          style={{ fontSize: 14, fontWeight: "600", color: textColor, marginTop: 2 }}
+          numberOfLines={2}
+          ellipsizeMode="tail"
+        >
           {suggestion.recipeTitle}
         </Text>
         {/* 2026-05-12 (premium-bar audit, cross-cutting copy unify):

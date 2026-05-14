@@ -54,7 +54,7 @@ This doc is the live tracking surface — update tags as items ship.
 
 - [ ] MacroFactor stacked 2-3 Eat Again candidates as horizontal scroller
 - [ ] Recime card-layout polish when image present
-- [ ] Fix mid-word title truncation ("Salad & Stic…")
+- [x] Fix mid-word title truncation ("Salad & Stic…") — title now allowed 2 lines + word-boundary break (`numberOfLines={2} ellipsizeMode="tail"` on mobile, `line-clamp-2 break-words` on web)
 - [x] Unify macro format string (`698 kcal · 22g P · 95g C · 27g F`) — formatMacroTrailer canonical helper
 - [x] Unify Log verb (cross-cuts DC2) — "Log it" on Eat Again banner
 
@@ -229,7 +229,7 @@ This doc is the live tracking surface — update tags as items ship.
 
 - [x] Investigate Expo Router redirect-before-NotFound mounting (headerShown=false, animation=none)
 - [x] Add `redirect_followed` analytics event — shipped as `onboarding_v2_redirect_followed` (see `apps/mobile/app/onboarding-v2.tsx`, `src/lib/analytics/events.ts`)
-- [ ] Document end-of-life date for redirect
+- [x] Document end-of-life date for redirect — 2026-07-31 target documented in `docs/decisions/2026-05-05-onboarding-v2-deeplink-redirect.md` (§ End-of-life), gated on `onboarding_v2_redirect_followed` hit-count → ~0
 
 ### Cross-cutting B
 
