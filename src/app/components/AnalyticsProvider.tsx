@@ -17,7 +17,12 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
     }
     const consent = getConsentChoice();
     posthog.init(key, {
-      api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST?.trim() || "https://us.i.posthog.com",
+      // 2026-05-14 — point at the Next.js reverse-proxy
+      // (`next.config.ts` rewrites). `ui_host` keeps PostHog
+      // dashboard deep-links working since the proxy host is not
+      // app.posthog.com.
+      api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST?.trim() || "/ingest",
+      ui_host: "https://us.posthog.com",
       person_profiles: "identified_only",
       // Start opted out if no consent yet or explicitly declined
       opt_out_capturing_by_default: consent !== "accepted",
