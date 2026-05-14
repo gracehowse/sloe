@@ -523,43 +523,12 @@ export default function CalorieRing({
           </Text>
         ) : null}
       </View>
-      {/* Fraction + delta chip below the ring (DC1 audit item:
-          "Add 1,822 / 1,600 + delta chip in ring centre under kcal").
-          Shown only when logged and goal is set — empty state and
-          collapsed-no-goal states skip it. When over-budget the delta
-          shows in destructive red; when under, in success green. */}
-      {!isEmpty && goal > 0 && (
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 }}>
-          <Text
-            style={{
-              fontSize: 10,
-              color: secondaryColor,
-              fontVariant: ["tabular-nums"],
-            }}
-          >
-            {Math.round(consumed).toLocaleString()} / {Math.round(goal).toLocaleString()}
-          </Text>
-          <View
-            style={{
-              borderRadius: 4,
-              paddingHorizontal: 4,
-              paddingVertical: 1,
-              backgroundColor: isOver ? `${Accent.destructive}22` : `${Accent.success}22`,
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 9,
-                fontWeight: "600",
-                color: isOver ? Accent.destructive : Accent.success,
-                fontVariant: ["tabular-nums"],
-              }}
-            >
-              {isOver ? "+" : "-"}{Math.abs(diff).toLocaleString()}
-            </Text>
-          </View>
-        </View>
-      )}
+      {/* 2026-05-14 — Grace's call: removed the
+          fraction + delta chip row below the ring. The hero kcal
+          inside the ring already shows the running total, and
+          long-press on the ring surfaces the over/remaining detail
+          — duplicating it as a static line under the ring was
+          redundant. */}
     </Pressable>
   );
 }

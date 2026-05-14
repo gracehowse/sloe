@@ -48,6 +48,13 @@ This doc is the live tracking surface — update tags as items ship.
   state at `5d2c80d`. Future revisit would need a more considered
   viz (line / area + workout overlay), not 7 flat bars. Status
   flipped `[x]` → `[d]`.
+- **2026-05-14 — DC1 "1,822 / 1,600 + delta chip under ring kcal"
+  reverted.** The fraction + delta chip row under the calorie ring
+  was redundant: the hero kcal inside the ring already shows the
+  running total, and long-press on the ring surfaces the over /
+  remaining detail. Removing the static duplicate keeps the
+  surrounding hierarchy (ring → tiles) cleaner. Mobile-only (web
+  never had it). Status flipped `[x]` → `[d]`.
 
 ---
 
@@ -61,7 +68,7 @@ This doc is the live tracking surface — update tags as items ship.
 - [x] MacroFactor tabular-nums on all changing numbers (hero + delta + legends) — `CalorieRing.tsx:466` + `daily-ring.tsx:328` — `fontVariant: ['tabular-nums']` on hero kcal + legends (audit sweep 2026-05-14)
 - [x] Withings light haptic on data update — `CalorieRing.tsx` `Haptics.impactAsync(Light)` fires when `consumed` changes (2026-05-14)
 - [x] Apple Watch warm-tint reinforcement on over-budget across all arcs — `CalorieRing.tsx` MacroRing `dim=true` path now strokes `Accent.warning` amber at 0.6 opacity instead of macro colour at 0.55 (2026-05-14)
-- [x] Add `1,822 / 1,600` + delta chip in ring centre under kcal — `CalorieRing.tsx` fraction row + delta chip rendered below the 140×140 ring View when !isEmpty && goal>0 (2026-05-14)
+- [d] Add `1,822 / 1,600` + delta chip in ring centre under kcal — **reverted 2026-05-14** on Grace's call. Redundant: hero kcal inside the ring already shows the running total, and long-press on the ring surfaces over/remaining detail. The static row under the ring duplicated info without adding affordance.
 - [x] Animate macro arcs in as data lands on first log of day — `CalorieRing.tsx` MacroRing `prevPctRef` — 0→N resets progress to 0 then animates; N→M tweens from current (2026-05-14)
 
 ## DC2 — "What to eat next" 3% fit chip
