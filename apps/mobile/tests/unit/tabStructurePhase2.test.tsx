@@ -91,12 +91,9 @@ describe("RecipesSubTabHeader", () => {
   });
 });
 
-describe("YouSubTabHeader (post-Group-G IA collapse, 2026-04-28)", () => {
-  // Group G IA decision (`docs/decisions/2026-04-28-group-g-ia-collapse.md`)
-  // collapsed the You sub-tabs from 3 (Progress / Settings / More) to
-  // 2 (Progress / Settings). The "/more" route stays alive as a
-  // redirect so deep links don't break, but the pill bar treats it
-  // as part of Settings for highlighting.
+describe("YouSubTabHeader (post-Group-G IA Batch E, 2026-05-14)", () => {
+  // Group G IA Batch E deleted more.tsx entirely. The pill bar is now
+  // 2 pills only (Progress + Settings); the /more route no longer exists.
   it("renders exactly two You sub-tabs (Progress + Settings)", () => {
     setPathname("/progress");
     const { getByLabelText, queryByLabelText } = render(<YouSubTabHeader />);
@@ -105,18 +102,11 @@ describe("YouSubTabHeader (post-Group-G IA collapse, 2026-04-28)", () => {
     expect(queryByLabelText("More")).toBeNull();
   });
 
-  it("highlights Settings when on /settings or /more (legacy redirect path)", () => {
+  it("highlights Settings when on /settings", () => {
     setPathname("/settings");
-    const { getByLabelText, rerender } = render(<YouSubTabHeader />);
+    const { getByLabelText } = render(<YouSubTabHeader />);
     expect(getByLabelText("Settings").props.accessibilityState.selected).toBe(true);
     expect(getByLabelText("Progress").props.accessibilityState.selected).toBe(false);
-
-    // Legacy /more deep links keep the You tab highlighted on
-    // Settings during the migration window — the redirect to
-    // /settings will fire on mount.
-    setPathname("/more");
-    rerender(<YouSubTabHeader />);
-    expect(getByLabelText("Settings").props.accessibilityState.selected).toBe(true);
   });
 
   it("routes to /(tabs)/settings when Settings is tapped from Progress", async () => {
@@ -203,13 +193,14 @@ describe("(tabs)/_layout.tsx — primary tab structure pin", () => {
     expect(layoutSrc).toContain('name="progress"'); // You default
   });
 
-  it("hides discover / more / settings / search / barcode / notifications via href: null", () => {
+  it("hides discover / settings / search / barcode / notifications via href: null (more deleted in Batch E)", () => {
     expect(layoutSrc).toContain('name="discover" options={{ href: null }}');
-    expect(layoutSrc).toContain('name="more" options={{ href: null }}');
     expect(layoutSrc).toContain('name="settings" options={{ href: null }}');
     expect(layoutSrc).toContain('name="search" options={{ href: null }}');
     expect(layoutSrc).toContain('name="barcode" options={{ href: null }}');
     expect(layoutSrc).toContain('name="notifications" options={{ href: null }}');
+    // more.tsx deleted in Group G IA Batch E (2026-05-14) — no registration needed.
+    expect(layoutSrc).not.toContain('name="more"');
   });
 
   it("renames the Library Tabs.Screen to Recipes for the visible tab title", () => {
