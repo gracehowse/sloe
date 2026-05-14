@@ -186,6 +186,20 @@ export function LogWeightSheet({
               {isImperial ? "lb" : "kg"}
             </Text>
           </View>
+          {/* DC12 (2026-05-14, premium-bar audit) — Headspace-style
+              supportive moment-of-truth line. Weigh-ins are a
+              high-emotion surface (scale numbers carry weight, no
+              pun intended); the linear "Save weight" CTA is honest
+              but cold. This subtle line reframes the act as data
+              that helps the user, not a verdict on them. Mirrors
+              `today-first-meal-empty-state` / `progress-headline`
+              voice rule from `_project-context.md`. */}
+          <Text
+            testID="log-weight-supportive-copy"
+            style={[styles.supportiveCopy, { color: colors.textSecondary }]}
+          >
+            Every check-in gives us better data for you.
+          </Text>
           <Pressable
             onPress={handleSave}
             disabled={saving || !input.trim()}
@@ -250,6 +264,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
+    marginBottom: Spacing.sm,
+  },
+  supportiveCopy: {
+    fontSize: 12,
+    textAlign: "center",
     marginBottom: Spacing.lg,
   },
   input: {

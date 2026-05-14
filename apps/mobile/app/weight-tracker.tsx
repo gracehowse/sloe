@@ -830,6 +830,21 @@ export default function ProgressScreen() {
                   <Text style={styles.btnText}>Save</Text>
                 </Pressable>
               </View>
+              {/* DC12 (2026-05-14, premium-bar audit) — Headspace-style
+                  supportive moment-of-truth line. Mirrors the
+                  canonical LogWeightSheet on /(tabs)/progress so the
+                  copy is the same across both weigh-in surfaces. */}
+              <Text
+                testID="weight-tracker-supportive-copy"
+                style={{
+                  fontSize: 12,
+                  color: colors.textSecondary,
+                  textAlign: "center",
+                  marginTop: 4,
+                }}
+              >
+                Every check-in gives us better data for you.
+              </Text>
             </View>
 
             {/* JOURNEY / MILESTONES */}

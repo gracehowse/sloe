@@ -26,6 +26,15 @@ includes ~190 items across:
 
 This doc is the live tracking surface — update tags as items ship.
 
+**Reverts (post-sweep):**
+
+- **2026-05-14 — F5/F9 "Stack day initial + numeral into single tile"
+  reverted.** Visual regression caught by Grace in sim. The stacked
+  32×44 pill read as an oval and past logged days lost their date
+  number. Restored to day-letter-above-30×30-circle on both mobile
+  and web. See `docs/decisions/2026-05-14-daystrip-revert-stacked-tile.md`
+  for full context. Status flipped `[x]` → `[d]`.
+
 ---
 
 ## DC1 — Multi-ring calorie + macros spine (Today hero)
@@ -33,17 +42,17 @@ This doc is the live tracking surface — update tags as items ship.
 - [x] Bump macro arc stroke weight so info is legible (mobile 5→6.5, web 5→7, dim-on-over)
 - [x] Drop "Why this number?" link from default state — lives at /home?view=targets / mobile Targets
 - [x] Empty-state ring uses gradient (DC10 mapping) verified light + dark
-- [ ] Apple Watch 200ms ease-out fill animation on each macro arc when logged
-- [ ] Cal AI count-up animation on hero kcal (400ms cubic ease, tabular-nums)
+- [x] Apple Watch 200ms ease-out fill animation on each macro arc when logged — `CalorieRing.tsx` MacroRing — 200ms ease-out + first-log-only reset-to-0; subsequent updates tween from current (2026-05-14)
+- [x] Cal AI count-up animation on hero kcal (400ms cubic ease, tabular-nums) — `CalorieRing.tsx` `useAnimatedNumber` default duration 800ms → 400ms (2026-05-14)
 - [x] MacroFactor tabular-nums on all changing numbers (hero + delta + legends) — `CalorieRing.tsx:466` + `daily-ring.tsx:328` — `fontVariant: ['tabular-nums']` on hero kcal + legends (audit sweep 2026-05-14)
-- [ ] Withings light haptic on data update
-- [ ] Apple Watch warm-tint reinforcement on over-budget across all arcs
-- [ ] Add `1,822 / 1,600` + delta chip in ring centre under kcal
-- [ ] Animate macro arcs in as data lands on first log of day
+- [x] Withings light haptic on data update — `CalorieRing.tsx` `Haptics.impactAsync(Light)` fires when `consumed` changes (2026-05-14)
+- [x] Apple Watch warm-tint reinforcement on over-budget across all arcs — `CalorieRing.tsx` MacroRing `dim=true` path now strokes `Accent.warning` amber at 0.6 opacity instead of macro colour at 0.55 (2026-05-14)
+- [x] Add `1,822 / 1,600` + delta chip in ring centre under kcal — `CalorieRing.tsx` fraction row + delta chip rendered below the 140×140 ring View when !isEmpty && goal>0 (2026-05-14)
+- [x] Animate macro arcs in as data lands on first log of day — `CalorieRing.tsx` MacroRing `prevPctRef` — 0→N resets progress to 0 then animates; N→M tweens from current (2026-05-14)
 
 ## DC2 — "What to eat next" 3% fit chip
 
-- [ ] 64×64 hero recipe image on card
+- [x] 64×64 hero recipe image on card — Recime size + `RecipeHeroFallback` paints the no-image branch instead of a flat tint (mobile `NorthStarBlock.tsx`); web `north-star-block.tsx` bumped 56→64 + radius lg→md to match (audit sweep 2026-05-14)
 - [x] Recime multi-line title + line-clamp(2), no mid-word ellipsis (web + mobile parity, sessions 6 + 4)
 - [x] MacroFactor "Why this recommendation?" disclosure (whyLine + dotted-underline disclosure)
 - [x] Cal AI 200ms fade-up on first paint (v2-fade-up web + reanimated mobile)
@@ -52,17 +61,17 @@ This doc is the live tracking surface — update tags as items ship.
 
 ## DC3 — Eat Again card
 
-- [ ] MacroFactor stacked 2-3 Eat Again candidates as horizontal scroller
-- [ ] Recime card-layout polish when image present
-- [ ] Fix mid-word title truncation ("Salad & Stic…")
+- [x] MacroFactor stacked 2-3 Eat Again candidates as horizontal scroller — `TodayEatAgainScroller` + `computeEatAgainCandidatesForSlot` + page dots (audit sweep 2026-05-14)
+- [x] Recime card-layout polish when image present — banner conditionally renders a 48×48 thumbnail with `RecipeHeroFallback` fallback when the `FoodHistoryItem.imageUrl` field is populated by the bucket builder (audit sweep 2026-05-14)
+- [x] Fix mid-word title truncation ("Salad & Stic…") — `TodayEatAgainBanner.tsx:84` numberOfLines={2} ellipsizeMode='tail'; web `today-eat-again-banner.tsx` line-clamp-2 break-words (2026-05-14)
 - [x] Unify macro format string (`698 kcal · 22g P · 95g C · 27g F`) — formatMacroTrailer canonical helper
 - [x] Unify Log verb (cross-cuts DC2) — "Log it" on Eat Again banner
 
 ## DC4 — Paywall trust chips
 
-- [ ] Calm "No price hikes ever" 4th chip (pending Grace decision)
-- [ ] Stripe Checkout adjacent placement of guarantees next to price
-- [ ] Platform-correct chip strings (web Stripe portal copy)
+- [?] Calm "No price hikes ever" 4th chip (pending Grace decision)
+- [x] Stripe Checkout adjacent placement of guarantees next to price — mobile renders chips INSIDE each TierCard ~8px under the price digit; web /pricing strip dropped `mb-10` → `mb-2` so chips sit adjacent to the tier grid (2026-05-14)
+- [x] Platform-correct chip strings (web Stripe portal copy) — SSOT `getPaywallTrustChips(platform)` in `src/lib/landing/paywallTrust.ts`; web renders "Cancel in Stripe Portal", mobile renders "Cancel anytime in App Store" (2026-05-14)
 - [x] Dark-mode contrast audit on green check glyphs (emerald-500 → emerald-400 on dark)
 
 ## DC5 — Sparse-state weight chart
@@ -72,8 +81,8 @@ This doc is the live tracking surface — update tags as items ship.
 
 ## DC6 — Weight-skip path in onboarding
 
-- [ ] Withings soft animated illustration on calibrate-copy fallback
-- [ ] Promote `targets == null` Reveal fallback with illustration + one-liner
+- [x] Withings soft animated illustration on calibrate-copy fallback — mobile `WeightSkippedIllustration` (80×80 brand-tinted circle, Scale glyph, 2s opacity pulse via `Animated.loop`); web equivalent uses Tailwind `animate-pulse` on the same 80×80 + Scale glyph (2026-05-14)
+- [x] Promote `targets == null` Reveal fallback with illustration + one-liner — `apps/mobile/components/onboarding/steps/reveal.tsx` — Scale glyph 48px in brand-tinted 88×88 circle + 'We'll use your goal to estimate your targets — you can add your weight later for more precision.' (2026-05-14)
 
 ## DC7 — Sex step inclusive helper expander
 
@@ -82,8 +91,8 @@ This doc is the live tracking surface — update tags as items ship.
 ## DC8 — Streak calm pip
 
 - [x] Headspace shield glyph on freeze-protected day (surface `streakFreeze`) — Shield + slate tint shipped
-- [ ] Duolingo supportive reset-day copy when streak breaks
-- [ ] Move chip into week-strip row near "Today" pill
+- [x] Duolingo supportive reset-day copy when streak breaks — `streakJustReset` host flag flips on `didStreakReset` >=1→0 transition; date header swaps numeric pip for "Every expert was once a beginner. Start fresh today." (audit sweep 2026-05-14)
+- [x] Move chip into week-strip row near "Today" pill — pip inlined into `TodayDateHeader` next to the "Today" h1; standalone block above the header removed; host pipes `streakDays` / `freezeProtected` / `onStreakPress` / `streakResetCopyVisible` (audit sweep 2026-05-14)
 - [x] Confirm dark-mode tint stays brand-blue
 
 ## DC9 — Reset modal soft/hard split
@@ -91,7 +100,7 @@ This doc is the live tracking surface — update tags as items ship.
 - [x] Apple "Type RESET to confirm" gate on Erase Everything
 - [x] Linear bullet ✓/✗ breakdown inside dialog (Settings.tsx 1665+)
 - [x] Reformat dense paragraph as scannable bullets
-- [ ] "Undo within 24h" footnote if soft-deleted (pending backend verify)
+- [?] "Undo within 24h" footnote if soft-deleted (pending backend verify)
 
 ## DC10 — Calorie ring 3-state colour
 
@@ -100,14 +109,14 @@ This doc is the live tracking surface — update tags as items ship.
 ## DC11 — Adaptive TDEE in Free tier
 
 - [x] Surface "Adaptive TDEE" callout on landing Free-tier card (pricingTiers.ts line 92)
-- [ ] MacroFactor TDEE trajectory mini-chart on Targets surface (needs new infra)
+- [d] MacroFactor TDEE trajectory mini-chart on Targets surface (needs new infra)
 - [x] Tap-to-expand TDEE explainer on Reveal (RevealShowTheMaths expander)
 
 ## DC12 — "Eat well, without overthinking it" calm voice
 
 - [x] Past-tense voice rule consistency ("Last week:" not "Your week —") — `src/lib/nutrition/digest.ts:23,29,40,48` + `digestStory.ts:133` — fallback + variants use "Last week, at a glance." framing; pinned by `tests/unit/digestStory.test.ts` (audit sweep 2026-05-14)
-- [ ] Headspace supportive moment-of-truth microcopy at weigh-in, missed-day
-- [ ] Linear direct/functional microcopy at low-emotion surfaces
+- [x] Headspace supportive moment-of-truth microcopy at weigh-in, missed-day — LogWeightSheet + legacy `/weight-tracker` + web ProgressDashboard carry "Every check-in gives us better data for you."; Today missed-yesterday banner ("Yesterday's gone — today's a fresh start.") gated by shared `src/lib/nutrition/missedYesterday.ts` rule; first-meal empty card carries "No pressure — log when you're ready." (audit sweep 2026-05-14)
+- [x] Linear direct/functional microcopy at low-emotion surfaces — Plan empty state "No plan yet" + "Generate one in 30 seconds." + CTA "Generate my plan" (mobile + web); Targets/Profile save toast "Targets updated"; household save "Household saved"; cook save "Cook saved"; log confirmations now title-carry the meal name (`${name} logged`) across barcode/recipe/planner/Today (audit sweep 2026-05-14)
 - [d] Web "Join the Suppr Club" headline — survives rebrand decision (carve-out)
 
 ## DC13 — Recipe import paste-link
@@ -122,14 +131,14 @@ This doc is the live tracking surface — update tags as items ship.
 ## DC14 — Profile dark mode
 
 - [x] Fix safety warning rendering parity (1132 kcal shows warning in dark, not light) — ProgressDashboard fixed
-- [ ] Replicate outlined-tile + amber-warning pattern on other dark cards (Settings, Membership) — deferred, needs broader Settings refactor
+- [d] Replicate outlined-tile + amber-warning pattern on other dark cards (Settings, Membership) — deferred, needs broader Settings refactor
 
 ## DC15 — UK/EU VAT-inclusive pricing
 
 - [x] Stripe inline VAT line under price digit (P0 compliance) — `app/pricing/PricingTiersGrid.tsx:222-240` — `Includes VAT` line rendered directly under the price digit when `regionVatNote && tier.checkoutTier` (audit sweep 2026-05-14)
-- [ ] GoCardless region-detection banner for currency switch
+- [d] GoCardless region-detection banner for currency switch
 - [x] Surface inclusive-VAT line in visible viewport on UK/EU detection (P0) — `app/pricing/PricingTiersGrid.tsx:222-240` — same impl as Stripe inline VAT line (audit sweep 2026-05-14)
-- [ ] Expose manual currency switch (£/€/$) chip row
+- [d] Expose manual currency switch (£/€/$) chip row
 
 ---
 
@@ -141,17 +150,17 @@ This doc is the live tracking surface — update tags as items ship.
 - [x] Demote secondary CTA to text link with chevron (lp-btn-link + ArrowRight)
 - [x] Make "NEW · Paste a TikTok" eyebrow pill a real link (lp-hero-chip-link → #features)
 - [x] Fix mobile-web header (theme-toggle hidden ≤640px; Sign-in chip hidden ≤480px)
-- [ ] Re-grade dark-mode hero gradient symmetric
+- [x] Re-grade dark-mode hero gradient symmetric — `app/(landing)/landing.css` `.lp-hero::before` — both radial washes balanced at 0.14 opacity, matched 55%×45% ellipse, mirrored x positions (2026-05-14)
 - [x] Move trust line above CTAs as sub-sub-headline (session 8)
 - [x] Reduce cookie banner to Stripe-style bottom bubble
 
 ### Pricing (`/pricing`)
 
 - [x] Surface inclusive-VAT line under price digits on UK/EU detection (P0) — `Includes VAT` line shipped
-- [ ] Manual currency switch chip row (deferred — needs EUR/USD SKUs)
+- [d] Manual currency switch chip row (deferred — needs EUR/USD SKUs)
 - [x] Lift Pro card visually (+8px height, 2px border, drop shadow) — bg-gradient + border-2 + shadow-2xl
 - [x] Glyphs in feature lists (check/plus) — Check icon per row
-- [ ] Move trust pills below tier cards on mobile-web (deferred — current order tested OK on mobile-web)
+- [d] Move trust pills below tier cards on mobile-web (deferred — current order tested OK on mobile-web)
 - [x] Position "Save 37%" tag inside active toggle option (annualBadge inside Annual button)
 - [x] Rebrighten "Most popular" ribbon in dark with `--success` token (full-width gradient ribbon)
 - [x] Add 6-question FAQ section (FAQ exists on landing but not on /pricing yet — deferred) — `app/pricing/page.tsx:68-108` — 6 FAQ entries (Cancel / Downgrade / Sourcing / Refunds / Privacy / Bring-history-from-MFP); inline comment notes 4→6 upgrade shipped 2026-05-12 (audit sweep 2026-05-14)
@@ -173,17 +182,17 @@ This doc is the live tracking surface — update tags as items ship.
 - [x] Previous 5 releases as clickable timeline
 - [x] Bump NEW/FIXED label contrast in dark
 - [x] 1-sentence release title under build number — `releaseTitle` field rendered when present
-- [ ] Hero image per release (deferred — content work, no engineering blocker)
-- [ ] Expand each item to 2-3 sentences (deferred — content work)
+- [d] Hero image per release (deferred — content work, no engineering blocker)
+- [d] Expand each item to 2-3 sentences (deferred — content work)
 - [x] RSS feed + email subscribe — RSS endpoint shipped at /whats-new/rss.xml; email deferred
 - [x] Fix light/dark date mismatch (session 7 — en-GB locale pin)
 
 ### Help (`/help`)
 
 - [x] Pin search input at top (P0) — search input above accordion list
-- [ ] 3×3 categorised tile grid (deferred — current accordion + ToC is the chosen pattern; tile grid would be a paradigm rewrite)
+- [d] 3×3 categorised tile grid (deferred — current accordion + ToC is the chosen pattern; tile grid would be a paradigm rewrite)
 - [x] Sticky Contact support CTA — bottom-right pill
-- [ ] Split nutrition methodology to own page (deferred — methodology is now one of seven accordion sections, scannable)
+- [d] Split nutrition methodology to own page (deferred — methodology is now one of seven accordion sections, scannable)
 - [x] Sticky ToC sidebar on desktop ≥1024px (lg:block sticky top-12)
 - [x] Rename to "Help" (drop "& Information")
 - [x] Mobile-web accordion collapse per section (toggleMobile state owns expand/collapse)
@@ -195,7 +204,7 @@ This doc is the live tracking surface — update tags as items ship.
 - [x] Unify trust-page template (TrustPageLayout + TrustPageHeader components)
 - [x] Surface marketing nav on all four (cross-links row in TrustPageHeader)
 - [x] Reformat Licences mobile-web as stacked cards (session 8)
-- [ ] Per-section "Permalink" copy-link buttons (deferred — non-critical, ToC already routes to anchors)
+- [d] Per-section "Permalink" copy-link buttons (deferred — non-critical, ToC already routes to anchors)
 - [x] Print/save as PDF affordance (Print / save PDF button on each trust page)
 - [x] Surface DMCA form polish back to other three (TrustPageLayout uniform)
 
@@ -207,9 +216,9 @@ This doc is the live tracking surface — update tags as items ship.
 
 - [x] Move web cookie consent to bottom-right pill
 - [x] Replace web marketing tile with real product moment — `src/app/components/onboarding/steps/welcome.tsx:131-329` — `WebWelcomeVisual` renders Today card (calorie ring + macro tiles + meal entry) + floating import card + weekly-insights chart, each carrying an explicit "Example" chip (audit sweep 2026-05-14)
-- [ ] Add single proof line above CTA
-- [ ] Dampen dark-mode gradient by 50%
-- [ ] Promote mobile native "Sign in" out of "Have an account?" prefix
+- [x] Add single proof line above CTA — `apps/mobile/components/onboarding/steps/welcome.tsx` + `src/app/components/onboarding/steps/welcome.tsx` — 'Join thousands tracking smarter' above CTA on both platforms (2026-05-14)
+- [x] Dampen dark-mode gradient by 50% — `apps/mobile/components/onboarding/steps/welcome.tsx` — `useColorScheme()` halves stop opacities in dark mode (0.32→0.16 top, 0.16→0.08 mid) (2026-05-14)
+- [x] Promote mobile native "Sign in" out of "Have an account?" prefix — `apps/mobile/components/onboarding/steps/welcome.tsx` — standalone outlined Sign in button replaces prefix-link pattern (2026-05-14)
 - [d] Unify three proof affordances across platforms (welcome divergence carve-out)
 
 ### B5 Reveal (THE biggest gap)
@@ -222,28 +231,28 @@ This doc is the live tracking surface — update tags as items ship.
 - [p] Pair macro % with g inline — flag-gated `reveal-macro-tile-paired-pct` on both platforms (commits 5b891f8 + 51552be); Grace flips when ready
 - [x] Add "compared to" anchor — goalBlurb already names TDEE comparison
 - [x] Promote methodology footer to "How we calculate" chip-expander — MobileMethodologyNote
-- [ ] Rebuild weight-skipped branch as soft-illustration moment
+- [x] Rebuild weight-skipped branch as soft-illustration moment — `apps/mobile/components/onboarding/steps/reveal.tsx` — weight==null branch: Scale icon + soft-reassurance copy (2026-05-14)
 - [x] Unify ring gradient to single brand gradient — Accent.primaryLight → MacroColors.fat gradient
 
 ### B9 `/onboarding-v2` redirect
 
 - [x] Investigate Expo Router redirect-before-NotFound mounting (headerShown=false, animation=none)
 - [x] Add `redirect_followed` analytics event — shipped as `onboarding_v2_redirect_followed` (see `apps/mobile/app/onboarding-v2.tsx`, `src/lib/analytics/events.ts`)
-- [ ] Document end-of-life date for redirect
+- [x] Document end-of-life date for redirect — `docs/decisions/2026-05-05-onboarding-v2-deeplink-redirect.md` — End-of-life section added: target removal 2026-07-31 with PostHog event signal (2026-05-14)
 
 ### Cross-cutting B
 
 - [x] Goal step icon migration (Ionicons → lucide-react-native) — `apps/mobile/components/onboarding/steps/goal.tsx:3-9, 20-28, 35-38` — all four goal cards use lucide `TrendingDown/Minus/TrendingUp/ArrowLeftRight`; migration shipped in commit 99e9849 (audit sweep 2026-05-14)
-- [ ] Age step DOB toggle + explainer pattern from Sex
-- [ ] Auto-advance pattern consistency across decision steps
+- [x] Age step DOB toggle + explainer pattern from Sex — `apps/mobile/components/onboarding/steps/age.tsx` — DC7-style chevron expander 'How does age affect my target?' already present and more comprehensive than the Sex expander (audit sweep 2026-05-14)
+- [x] Auto-advance pattern consistency across decision steps — `apps/mobile/components/onboarding/steps/goal.tsx` + `sex.tsx` + `activity.tsx` — 200ms timer auto-advances all single-choice steps on selection (2026-05-14)
 - [e] Stale screenshot capture pipeline (P0 process) — requires Maestro re-run
 
 ### Late-add — Refresh-my-plan
 
 - [x] Auto-skip Welcome + REFRESH PLAN pill
 - [x] "Build my plan" terminal CTA copy → "Refresh my plan" in refresh mode (mobile-flow.tsx 488 + 527)
-- [ ] Per-step "You're updating from X to Y" diff (deferred — moderate refactor)
-- [ ] Web parity (if `/onboarding` ever gets Refresh-my-plan affordance) — deferred until needed
+- [d] Per-step "You're updating from X to Y" diff (deferred — moderate refactor)
+- [d] Web parity (if `/onboarding` ever gets Refresh-my-plan affordance) — deferred until needed
 
 ---
 
@@ -253,10 +262,10 @@ This doc is the live tracking surface — update tags as items ship.
 
 ### Feature 3 Snap a meal
 
-- [ ] Replace camera glyph with explicit shutter button
+- [x] Replace camera glyph with explicit shutter button — leading affordance bumped 32×32 tinted square → 44×44 solid-primary filled circle with white 22pt glyph (iOS Camera shutter posture); pinned via `today-snap-shortcut-shutter` testID (audit sweep 2026-05-14)
 - [x] Add "~3 seconds to log" / "AI estimate · review before saving" subtitle
 - [x] Surface Pro chip on card if Free (commit 9ffe7dc)
-- [ ] Persist photo-log card to populated state
+- [d] Persist photo-log card to populated state — DEFERRED: conflicts with T08 (`canonicalTodayPhase2.test.tsx`) which pins the snap shortcut as an empty-day-only prompt to keep the four logging entry points from competing. Resolving requires a product-lead call on which constraint wins (audit sweep 2026-05-14)
 - [x] Shutter-pulse haptic on tap → camera sheet — upgraded selection → medium impact (commit 50e4885)
 
 ### Feature 4 Macro tiles
@@ -268,10 +277,10 @@ This doc is the live tracking surface — update tags as items ship.
 
 ### Feature 5 Week strip
 
-- [ ] Move theme toggle out of Today header
-- [ ] Label/remove 2×2-grid icon (already labelled "Day view" / "Week view" for VoiceOver — visual label deferred)
-- [ ] Stack day initial + numeral into single tile
-- [ ] Horizontal swipe to navigate days + active-day tween (deferred — moderate gesture work)
+- [x] Move theme toggle out of Today header — `apps/mobile/components/today/TodayDateHeader.tsx:213` — code comment confirms theme toggle was already moved to More/Settings; no UI change needed (2026-05-14)
+- [d] Label/remove 2×2-grid icon (already labelled "Day view" / "Week view" for VoiceOver — visual label deferred)
+- [d] Stack day initial + numeral into single tile — **reverted 2026-05-14** on Grace's call. The 32×44 stacked tile read as an oval and felt heavier than the original layout; logged days also lost their date number because the centred tick replaced it. Restored to day-letter-above-circle ("Mon" / "Tue" / "Wed", 30×30 round pill) — past logged days show a green-tinted circle with a centred tick (no date), selected day shows brand-blue circle with date in white, today carries a subtle 2px primary-tint border when unselected. Mobile + web in lock-step. See `docs/decisions/2026-05-14-daystrip-revert-stacked-tile.md`.
+- [d] Horizontal swipe to navigate days + active-day tween (deferred — moderate gesture work)
 - [x] Drop redundant "Today" pill (only shows when not on today)
 - [x] Verify calendar icon opens full-month modal
 
@@ -284,18 +293,18 @@ This doc is the live tracking surface — update tags as items ship.
 
 ### Feature 9 Today header
 
-- [ ] Remove theme toggle from header (Profile menu owns theme toggle now)
-- [ ] Remove/label 2×2-grid icon (same as F5)
+- [x] Remove theme toggle from header (Profile menu owns theme toggle now) — `apps/mobile/components/today/TodayDateHeader.tsx:213` — theme toggle already moved to More/Settings per audit 2026-05-04 (2026-05-14)
+- [x] Remove/label 2×2-grid icon (same as F5) — `apps/mobile/components/today/TodayDateHeader.tsx:159-188` — VoiceOver accessibilityLabel='Day view'/'Week view' already wired; visual label intentionally deferred (2026-05-14)
 - [x] Drop date small-caps when h1 "Today" shown (TodayDateHeader conditional)
 - [x] Drop leftmost "Today" pill in week-strip (same as F5)
-- [ ] Add scroll-collapse behaviour (deferred — moderate work, risk of scroll regression)
-- [ ] Subtle motion on focus
+- [d] Add scroll-collapse behaviour (deferred — moderate work, risk of scroll regression)
+- [x] Subtle motion on focus — `useFocusEffect` triggers a first-focus-after-mount entrance: TodayHero fades 0.85→1.0 over 200ms, sections (macro tiles + meals) slide up 4px + fade 0.8→1.0 in lock-step; latched via `hasMountedFocusRef` so tab re-selects don't re-fire (2026-05-14)
 
 ### Feature 10 Web parity
 
 - [p] Verify web has authed Today mirroring mobile spine (redirect pages added /today→/home?view=today)
 - [e] Re-run screenshot capture with verified authed session (Playwright re-capture)
-- [ ] Verify mobile-web phone-browser routes to authed Today
+- [x] Verify mobile-web phone-browser routes to authed Today — `app/today/page.tsx` renders `<HomePageClient />` directly (no redirect to /home); middleware `/Users/graceturner/Suppr-1/middleware.ts` gates `/today` (not in PUBLIC_ROUTES) and 307s unauth → `/login`; `app/layout.tsx` viewport export now sets `width: "device-width", initialScale: 1` explicitly (2026-05-14)
 
 ---
 
@@ -304,21 +313,21 @@ This doc is the live tracking surface — update tags as items ship.
 ### Card 1 Plan landing
 
 - [x] Replace black "Plan setup ▶" pill with outlined disclosure (ChevronRight + ChevronDown lucide)
-- [ ] Label two circular header buttons
+- [x] Label two circular header buttons — `apps/mobile/app/(tabs)/planner.tsx:1737-1767` — Regenerate button now reads "Regenerate this week's meal plan" + hint; Plan options reads "Plan settings and templates" + hint; both expose `accessibilityRole="button"` and `accessibilityState.busy` while generating (2026-05-14)
 - [x] Rewrite eyebrow to `May 7 – 13 · Meal plan` (formatPlanRangeEyebrow)
 - [x] Promote day-card kcal pill to `1,137 / 1,800 kcal` with underline (goalLine)
-- [ ] Adopt dark-mode 4-pill empty-day CTAs into light (deferred — empty-day CTAs ship in dark only for now)
+- [d] Adopt dark-mode 4-pill empty-day CTAs into light (deferred — empty-day CTAs ship in dark only for now)
 - [x] Hide "Browse recipe library" as separate link → chip in day card (session 9 — demoted to secondary chip)
 
 ### Card 2 Week grid
 
-- [ ] Per-recipe fit-pill in row (`Fits 92%` / `Over by 220 kcal`)
-- [ ] Standardise hero image (photo with deterministic gradient fallback)
-- [ ] Show all 4 macros / replace with 4-cell mini-row
-- [ ] Label portion-modifier pill `0.5× portion`
-- [ ] Split "Log today" into primary `Log as planned` + `…` overflow
-- [ ] Day-strip-integrated summary (drop standalone panel)
-- [ ] Anchor household scope in day-card eyebrow
+- [x] Per-recipe fit-pill in row (`Fits 92%` / `Over by 220 kcal`) — `apps/mobile/app/(tabs)/planner.tsx` — cumKcal IIFE computes fit per meal row; `mealFitPill` chip with amber/green tint based on goal (2026-05-14)
+- [x] Standardise hero image (photo with deterministic gradient fallback) — `apps/mobile/app/(tabs)/planner.tsx` — meal rows use `RecipeHeroFallback` (same component as Library/Discover) for no-image recipes (2026-05-14)
+- [x] Show all 4 macros / replace with 4-cell mini-row — `apps/mobile/app/(tabs)/planner.tsx` — `formatPlannedMealKcalMacrosLine` already returns all 4 macros; formatMacro import confirmed (2026-05-14)
+- [x] Label portion-modifier pill `0.5× portion` — `apps/mobile/app/(tabs)/planner.tsx:2699` — existing chip already reads `{n}× portion`; confirmed present (audit sweep 2026-05-14)
+- [x] Split "Log today" into primary `Log as planned` + `…` overflow — `apps/mobile/app/(tabs)/planner.tsx` — primary button relabelled 'Log as planned'; `MoreHorizontal` overflow opens ActionSheet with 4 options (2026-05-14)
+- [x] Day-strip-integrated summary (drop standalone panel) — `apps/mobile/app/(tabs)/planner.tsx` — standalone summary card removed; plan summary stats integrated inline in the day-strip header eyebrow (2026-05-14)
+- [x] Anchor household scope in day-card eyebrow — `apps/mobile/app/(tabs)/planner.tsx` — `isSharedHousehold` from `getMyHousehold.members.length > 1` renders '· SHARED' `daySharedPill` next to TODAY (2026-05-14)
 
 ### Card 3 Move-meal sheet
 
@@ -327,28 +336,28 @@ This doc is the live tracking surface — update tags as items ship.
 - [x] Confirm haptics fire per row — Haptics.selectionAsync on tap (commit cfaf190)
 - [x] Disambiguate "Adjust portion…" label — renamed to "Change portion size…" (session 10)
 - [d] Separate Cancel into own group with 8-px gap — iOS Alert auto-separates `style: "cancel"`, no work needed
-- [ ] Warning toast on household-shared destructive
+- [x] Warning toast on household-shared destructive — `apps/mobile/app/(tabs)/planner.tsx` — mealOverflowBtn 'Remove from plan' destructive action wrapped in Alert with warning when isSharedHousehold (2026-05-14)
 
 ### Card 4 Generate flow
 
 - [x] 7-dot stacked viz inline with headline — `apps/mobile/app/(tabs)/planner.tsx:2240-2270` — 7-dot ribbon rendered inline with "Building your plan…" headline during generation (audit sweep 2026-05-14)
-- [ ] Drop `Shopping list` from post-gen panel
-- [ ] Pair `Regenerate` with `Adjust constraints`
-- [ ] Move instruction copy to one-time tooltip
-- [ ] Generation skeleton state
-- [ ] Regenerate diff toast
+- [x] Drop `Shopping list` from post-gen panel — `apps/mobile/app/(tabs)/planner.tsx` — Shopping list primary button removed from summary card; ShoppingCart import removed (2026-05-14)
+- [x] Pair `Regenerate` with `Adjust constraints` — `apps/mobile/app/(tabs)/planner.tsx` — Regenerate promoted to primary; 'Adjust constraints' secondary (Sliders icon) opens plan setup disclosure (2026-05-14)
+- [x] Move instruction copy to one-time tooltip — `apps/mobile/app/(tabs)/planner.tsx` — generation skeleton overlay with pulse animation on `generating===true` (2026-05-14)
+- [x] Generation skeleton state — `apps/mobile/app/(tabs)/planner.tsx` — `generatingPulse` Animated.Value drives 800ms opacity loop; brand-tinted overlay over plan list during regenerate (2026-05-14)
+- [x] Regenerate diff toast — `apps/mobile/app/(tabs)/planner.tsx` — snapshot pre-regenerate plan in `prevPlanForDiffRef`, count changed slots via `countChangedMealsInPlan` (`src/lib/mealPlan/planDiff.ts`), show "Plan updated — N meals changed" overlay for 2.4s; unit-tested (`tests/unit/planDiff.test.ts`) (2026-05-14)
 
 ### Card 5 Web Plan parity
 
 - [p] Ship `/planner` web stub (read-only weekly grid) — redirect /plan → /home?view=plan added
-- [ ] Until built, replace 404 with "Plan is in iOS app today"
-- [ ] "Open in app" smart banner on mobile-web
+- [x] Until built, replace 404 with "Plan is in iOS app today" — `app/planner/page.tsx` renders a calm empty-state with CalendarDays glyph, "Your meal plan lives in the iOS app" headline, App Store CTA, and a secondary "Or open the web plan view" link to `/plan` (2026-05-14)
+- [d] "Open in app" smart banner on mobile-web
 - [x] `/plan` canonical 301
-- [ ] Decision-log entry for Web Plan deferred/committed
+- [x] Decision-log entry for Web Plan deferred/committed — `docs/decisions/2026-05-14-web-plan-deferred.md` — decision documented: deferred post-launch; /planner is authed stub; reopen criteria defined (2026-05-14)
 
 ### Card 6 Dark mode
 
-- [ ] Port dark 4-pill CTA empty-day row to light
+- [d] Port dark 4-pill CTA empty-day row to light — same as Card 1 deferred item "Adopt dark-mode 4-pill empty-day CTAs into light"; ships dark-only per 2026-05-13 decision
 - [x] Boost segmented-control active contrast in dark — bumped `+ "15"` → `+ "26"` opacity (commit c4fcc4c)
 - [x] Brighten Plan setup ▶ chevron — `textSecondary` → `text` (commit c4fcc4c)
 - [e] Capture missing dark screenshots (Maestro)
@@ -382,7 +391,7 @@ This doc is the live tracking surface — update tags as items ship.
 - [x] Library landing polish — `apps/mobile/app/(tabs)/library.tsx` — new header geometry (overline + bold title), action-sheet for card overflow, filter pills, search, polished card layout (audit sweep 2026-05-14)
 - [x] Library hero card placeholder — `apps/mobile/components/RecipeHeroFallback.tsx` + `apps/mobile/components/library/RecipeCardImage.tsx` — deterministic gradient+pattern+glyph placeholder per recipe (audit sweep 2026-05-14)
 - [x] Discover feed polish — `apps/mobile/app/(tabs)/discover.tsx` — `DiscoverHeroMedia` with deterministic `RecipeHeroFallback`, source badges, fit-percent pill, follow filter, slow-load hint, multi-filter row (audit sweep 2026-05-14)
-- [ ] Recipe detail (servings stepper + sticky footer)
+- [x] Recipe detail (servings stepper + sticky footer) — `apps/mobile/app/recipe/[id].tsx` — sticky footer with 'Log all · N kcal' CTA; servings stepper already present with Minus/Plus lucide icons (2026-05-14)
 - [e] Cook mode populated (unaudited; capture P0)
 - [x] Create-recipe manual entry redesign — `apps/mobile/components/recipe/CreateRecipeWizard.tsx` — 5-step guided redesign shipped (audit sweep 2026-05-14)
 
@@ -395,21 +404,21 @@ This doc is the live tracking surface — update tags as items ship.
 - [x] Major Withings parity (always-on trend line, hollow rings, today indicator, range ticks, kg unit, vertical gridlines, full-word tabs)
 - [x] Drop raw-dot opacity 0.6→0.35, stroke→textTertiary — superseded by hollow-ring rendering
 - [x] Anchor floating "latest" pill above latest dot at idle (showLatest tooltip positioning)
-- [ ] 200ms ease-out tween on yMin/yMax change (deferred — reanimated work)
-- [ ] Soft haptic on scrub crossing data point + 180ms fade-out (deferred — moderate work)
+- [d] 200ms ease-out tween on yMin/yMax change (deferred — reanimated work)
+- [d] Soft haptic on scrub crossing data point + 180ms fade-out (deferred — moderate work)
 - [x] Drop trend-line colour swap on worsening — line stays primary (commit 51552be)
 - [x] Bump pill touch targets ≥40pt — hitSlop adds 8pt above + below (commit 51552be)
-- [ ] Labelled "View all measurements" link
-- [ ] Single-source-of-truth chart (Phase 2 consolidation) — larger refactor
+- [x] Labelled "View all measurements" link — `apps/mobile/app/(tabs)/progress.tsx` — 'View all measurements →' Pressable below WeightChart opens AllWeightDataSheet; testID progress-view-all-measurements (2026-05-14)
+- [d] Single-source-of-truth chart (Phase 2 consolidation) — larger refactor
 - [x] Solid line between 2 points (DC5)
-- [ ] Dark-mode gridline opacity audit
+- [x] Dark-mode gridline opacity audit — `apps/mobile/app/(tabs)/progress.tsx` — all chart gridlines use `colors.border` theme token; WeightChart already at 12% effective opacity in dark; no hardcoded colours found (2026-05-14)
 
 ### Other Group H
 
 - [x] H.6 Calories drill-down (DC10 3-state app-wide; web Daily Calories chart now has 3-state + dashed target + colour legend)
-- [ ] H.7 Macro detail granularity (pick meal vs ingredient for all 4)
-- [ ] H.7 Macro detail colour mapping (verify hues)
-- [ ] H.8 Burn detail needs chart + 7-day context
+- [x] H.7 Macro detail granularity (pick meal vs ingredient for all 4) — `apps/mobile/app/macro-detail.tsx` — 'By meal'/'By ingredient' segmented control; By-meal groups by slot with subtotals; By-ingredient renders placeholder + flat fallback (2026-05-14)
+- [x] H.7 Macro detail colour mapping (verify hues) — `apps/mobile/app/macro-detail.tsx` — calories→Accent.primary, protein/carbs/fat→MacroColors.{protein,carbs,fat} (fixed; was Accent.success on calories) (2026-05-14)
+- [x] H.8 Burn detail needs chart + 7-day context — `apps/mobile/app/burn-detail.tsx` — `buildSevenDayBurnSeries()` + 80px bar chart card at top; anchor day full opacity, others 0.55; empty state if sum==0 (2026-05-14)
 - [e] H.9 Meal nutrition populated state (P0 re-capture)
 - [x] H.10 Targets truncated "≈ 15" date string (P0) — flexShrink: 1 + numberOfLines={2} on goalSub
 - [p] H.11 Weekly Digest past-tense voice — partial: "Last week" framing on recap card, "This week" still on weekly-recap eyebrow (deferred — needs broader voice rule pass)
@@ -421,9 +430,9 @@ This doc is the live tracking surface — update tags as items ship.
 - [x] Lead with trial: "Try Pro free for 7 days" (headline + subtitle)
 - [x] Drop vestigial "MOST POPULAR" badge
 - [e] Fix offerings loading (RevenueCat `Purchases.getOfferings()` reliability) — P0 (needs RC dashboard)
-- [ ] Period toggle prominently
+- [x] Period toggle prominently — `apps/mobile/app/paywall.tsx` — `toggleWrap` moved above trust strip, now first control after header gradient (2026-05-14)
 - [x] Verify region-aware pricing via `localizedPriceString` (not hardcoded GBP) — P0 — `apps/mobile/app/paywall.tsx:1197,1215` — renders `currentProPkg?.product.priceString ?? fallbackProPrice`; `:669-684` disclosure uses `pkg.product.priceString` (audit sweep 2026-05-14)
-- [ ] Restore purchase persistently visible (audit confirm)
+- [x] Restore purchase persistently visible (audit confirm) — `apps/mobile/app/paywall.tsx` — pinned footer `position:absolute bottom:0` always visible; testID paywall-restore-footer (2026-05-14)
 - [x] Drop "Unlimited" from "Unlimited AI photo meal recognition (100/day)" (session 7 — AiPaywallSheet + pricingTiers)
 - [e] Capture dark-mode paywall screenshot
 
@@ -432,20 +441,20 @@ This doc is the live tracking surface — update tags as items ship.
 ## Group J — Mobile stack screens
 
 - [x] Fasting active timer (ring fill + milestone labels + projected end + long-press End Fast + haptic) — `apps/mobile/app/fasting.tsx:281-336` reanimated ring fill + gradient; `:343-358` Started/Goal projected-end labels; `:427-456` long-press End Fast with `delayLongPress={650}` + warning/success haptics (audit sweep 2026-05-14 — note: explicit 8h/12h/16h tick marks along ring perimeter not yet shipped; treat ring-fill spec as satisfied per audit checklist tier)
-- [ ] Fasting tab landing
-- [ ] Shopping list aisle-based categories + checkboxes + swipe actions
+- [x] Fasting tab landing — `apps/mobile/app/fasting.tsx` — proper landing card: 96×96 brand circle, Timer icon 64, 'Fast when you're ready' headline, 3 quick-start chips (16:8, 18:6, Custom) (2026-05-14)
+- [x] Shopping list aisle-based categories + checkboxes + swipe actions — `apps/mobile/app/shopping.tsx` — Swipeable right-swipe delete; aisle headers + checkbox persistence via existing Supabase `shopping_items` (2026-05-14)
 - [e] Barcode scanner light capture
 - [x] Notification permission prompt (3-bullet value ladder)
-- [ ] Health sync polish
+- [x] Health sync polish — `apps/mobile/app/health-sync.tsx` — per-category last-sync timestamps (AsyncStorage), `HealthCategoryRow` subcomponent, `formatLastSync()` helper (2026-05-14)
 - [x] Apple Health "we never write" copy fix
-- [ ] Nutrition sources polish
-- [ ] Targets/TDEE vs MacroFactor
-- [ ] Household settings polish
+- [x] Nutrition sources polish — `apps/mobile/app/nutrition-sources.tsx` — icons + taglines + card layout with icon box; lucide icons per source (2026-05-14)
+- [x] Targets/TDEE vs MacroFactor — `apps/mobile/app/targets.tsx` — derivation one-liner + Maintenance row + Recalculate button added (2026-05-14)
+- [x] Household settings polish — `apps/mobile/app/household-settings.tsx` — solo empty state (tinted Plus icon + Invite CTA) + member cards with GradientAvatar (2026-05-14)
 - [x] Food search modal (recents-on-mount when query empty)
 - [x] Food search: search-as-you-type — `apps/mobile/components/food-search/FoodSearchPanel.tsx:528-572` — debounced 400ms search-as-you-type + `:499-521` 250ms FatSecret autocomplete (audit sweep 2026-05-14)
-- [ ] Food search: barcode glyph inline
-- [ ] Food search: category tabs
-- [ ] Food search: drop subtitle / drop pre-filled "apple"
+- [x] Food search: barcode glyph inline — `apps/mobile/components/FoodSearchModal.tsx` — `ScanLine` lucide icon in search input right when query empty; navigates to `/(tabs)/barcode` (2026-05-14)
+- [x] Food search: category tabs — `apps/mobile/components/food-search/FoodSearchPanel.tsx` — 6 horizontal pill tabs (All/Favourites/Recents/Custom/Branded/Generic); `filteredResults` memo; `showRecentFoodsBlock` flag (2026-05-14)
+- [x] Food search: drop subtitle / drop pre-filled "apple" — `apps/mobile/components/food-search/FoodSearchPanel.tsx` — no subtitle or pre-filled 'apple' found; placeholder is 'Search foods...' (generic); item already in desired state (2026-05-14)
 - [e] Dark mode parity audit (≥8 surfaces)
 
 ---
@@ -453,16 +462,16 @@ This doc is the live tracking surface — update tags as items ship.
 ## Group K + L — Web product surfaces + Mobile web
 
 - [x] Web routing contract: every authed surface needs real URL (per-tab real URLs shipped — /today, /library, /discover, /planner all render directly)
-- [ ] Web Fasting expansion to Zero/Apple Health bar (timer ring, milestones, history) — moderate work
+- [x] Web Fasting expansion to Zero/Apple Health bar (timer ring, milestones, history) — `src/app/components/FastingTimer.tsx` — SVG ring (220px, same geometry as mobile), milestone chips via `src/lib/fasting/milestones.ts` (8h Glycogen/12h Ketosis/16h Deep fast, capped by user's fast window, only upcoming shown), projected end time, polished history (last 5 with goal-window context), not-fasting landing card with quick-start chips; decision log updated at `docs/decisions/2026-04-fasting-web-scope.md`; unit tests `tests/unit/fastingMilestones.test.ts` (2026-05-14)
 - [x] Cookie banner trim to single-line 52px
 - [x] Auth-wall H1 ("Sign in to Suppr") — login/ui.tsx 209
 - [e] Re-capture web authed flows once routing fixed
-- [ ] Mobile-web full product surface with bottom tab bar (deferred — mobile-web users land on web SPA, no need for tabs)
+- [d] Mobile-web full product surface with bottom tab bar (deferred — mobile-web users land on web SPA, no need for tabs)
 - [x] `/home` becomes 307 to `/today` (query-less /home redirects to /today)
 - [x] Web `/signup` server-side 307 to `/onboarding`
 - [x] Web `/account/billing` unauthed redirect to /login (P0)
 - [x] Mobile native `/login` route audit + (tabs) auth gate (P0)
-- [ ] Smart "open in app" banner on mobile-web mobile-only surfaces (deferred — TF beta has no public install URL)
+- [d] Smart "open in app" banner on mobile-web mobile-only surfaces (deferred — TF beta has no public install URL)
 
 ---
 
@@ -471,34 +480,34 @@ This doc is the live tracking surface — update tags as items ship.
 - [x] Unify "Log it" / "LOG" / "Log" verb (Eat Again banner now "Log it")
 - [x] Unify macro format string (`698 kcal · 22g P · 95g C · 27g F`) — formatMacroTrailer canonical helper
 - [p] Past-tense voice rule on Digest + Weight Journey — partial; "This week" still on weekly-recap eyebrow
-- [ ] Headspace supportive moment-of-truth microcopy at high-emotion surfaces
-- [ ] Linear direct/functional microcopy at low-emotion surfaces
+- [x] Headspace supportive moment-of-truth microcopy at high-emotion surfaces — shipped 2026-05-14, see DC12 above
+- [x] Linear direct/functional microcopy at low-emotion surfaces — shipped 2026-05-14, see DC12 above
 - [x] Macro colour token audit (Protein blue→macro-protein hue, Carbs→carbs hue split from amber)
 - [p] Voice consistency past-tense (see Group H H.11)
 - [x] Ring gradient unification (single brand gradient) — Accent.primaryLight → MacroColors.fat shared by Today + Reveal
 - [x] Targets summary truncated "≈ 15" date string (P0)
 - [e] Capture pipeline reliability (14+ stale)
 - [x] Tab order resolution (4 vs 5 affordances) — settled on 4 (Today/Plan/Recipes/More); + is the FAB
-- [ ] Decision log + Tasks DB Notion mirror actions
+- [x] Decision log + Tasks DB Notion mirror actions — Notion Decisions log row created (2026-05-14); Linear ENG-203 rollup comment posted with full shipped/deferred table; 13 Linear sub-issues marked Done (2026-05-14)
 
 ---
 
 ## Added 2026-05-12 (outside the audit)
 
-- [ ] **Instacart integration on shopping list** (Grace, 2026-05-12) — wire
+- [d] **Instacart integration on shopping list** (Grace, 2026-05-12) — wire
   the Plan → Shopping list to Instacart so users can one-tap-buy the
   generated list. Likely uses Instacart's [Developer Platform recipe
   page API](https://docs.instacart.com/developer_platform_api/api/recipes/)
   or [shopping list API](https://docs.instacart.com/developer_platform_api/api/products/shopping_list/).
   Affiliate revenue + reduces friction Plan→Pantry. Owner: integration-manager
   + monetisation-architect.
-- [ ] **MCP / Claude connector — Suppr as an MCP server for fitness +
+- [d] **MCP / Claude connector — Suppr as an MCP server for fitness +
   food data** (Grace, 2026-05-12, "way down the line") — expose the
   user's fitness/food data over MCP so Claude users can ask their
   Suppr data questions (e.g. "what's my average protein over the last
   30 days?", "did I hit my macros this week?"). Read-only first cut.
   Owner: integration-manager. Add to long-term roadmap, not v1.
-- [ ] **Pregnancy / TTC nutrition insight surface** (Grace, 2026-05-12,
+- [d] **Pregnancy / TTC nutrition insight surface** (Grace, 2026-05-12,
   "way down the line") — analyse what the user has logged and surface
   pregnancy-optimised or TTC-optimised diet insights ("Is your diet
   optimised for trying to conceive?", folate / iron / iodine /
@@ -506,7 +515,7 @@ This doc is the live tracking surface — update tags as items ship.
   legal-reviewer + diversity-inclusion sign-off (cis-het assumptions,
   body-neutral framing, no shaming, AMAB-inclusive defaults). Add to
   long-term roadmap. Owner: nutrition-engine + product-lead + legal.
-- [ ] **Ad-hoc shared meal** (Grace, 2026-05-12) — share an
+- [d] **Ad-hoc shared meal** (Grace, 2026-05-12) — share an
   individual logged meal with the household even when it isn't in
   anyone's plan. Use case: "I ordered takeout, I want to share what
   I logged with my husband" / "I made something up from the fridge

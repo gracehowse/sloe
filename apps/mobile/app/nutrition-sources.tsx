@@ -3,6 +3,7 @@ import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-na
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { Beaker, BookOpen, Database, Globe2, Utensils, type LucideIcon } from "lucide-react-native";
 import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { NUTRITION_SOURCES } from "../../../src/lib/landing/nutritionSources";
@@ -14,29 +15,49 @@ import { NUTRITION_SOURCES } from "../../../src/lib/landing/nutritionSources";
  * source is added or removed in the SSOT, the screen picks it up
  * automatically — the only manual step is adding its description + URL
  * here. Missing entries log once to the console so QA spots drift.
+ *
+ * 2026-05-14 (premium-bar audit Group J #8): each source now carries a
+ * `tagline` (one-line summary) + `icon` (lucide-react-native) so the
+ * row reads as a styled card not a wall of text. Tagline appears in
+ * the bold byline position; the long-form description follows.
  */
-const SOURCE_DETAILS: Record<string, { description: string; url: string }> = {
+const SOURCE_DETAILS: Record<
+  string,
+  { tagline: string; description: string; url: string; icon: LucideIcon }
+> = {
   "USDA FoodData Central": {
+    tagline: "Laboratory-tested data for whole foods.",
     description:
-      "Laboratory-tested nutrition data for thousands of whole foods, maintained by the U.S. Department of Agriculture. Includes Foundation, SR Legacy, and Survey datasets.",
+      "Maintained by the U.S. Department of Agriculture. Includes Foundation, SR Legacy, and Survey datasets covering tens of thousands of generic and minimally processed foods.",
     url: "https://fdc.nal.usda.gov",
+    icon: Beaker,
   },
   "Edamam": {
+    tagline: "Strong on restaurant meals and recipes.",
     description:
-      "A nutrition database with strong coverage of restaurant meals, recipes, and generic foods. Backed by the Edamam Food & Measures database used by major food publishers. Powered by Edamam.",
+      "A nutrition database with deep coverage of restaurant items, recipes, and generic foods. Backed by the Edamam Food & Measures database used by major food publishers. Powered by Edamam.",
     url: "https://www.edamam.com/",
+    icon: Utensils,
   },
   "Open Food Facts": {
+    tagline: "Open-source barcode database, 2M+ products.",
     description:
-      "A free, open-source database of food products from around the world. Built by volunteers who scan barcodes and record nutrition labels. Strong coverage across the UK, EU, US, and Australia. Product data © Open Food Facts contributors, available under the Open Database License (ODbL).",
+      "A free, open-source database of food products built by volunteers who scan barcodes and record nutrition labels. Strong coverage across the UK, EU, US, and Australia. Product data (c) Open Food Facts contributors, available under the Open Database License (ODbL).",
     url: "https://world.openfoodfacts.org",
+    icon: Globe2,
   },
   "FatSecret": {
+    tagline: "Branded food database with 800,000+ items.",
     description:
       "A comprehensive food and nutrition database with detailed serving-size information for branded and generic foods.",
     url: "https://platform.fatsecret.com",
+    icon: Database,
   },
 };
+
+/** Drift-guard fallback icon when a new source is added to the SSOT
+ *  without a row in `SOURCE_DETAILS`. Generic book/reference glyph. */
+const FALLBACK_ICON: LucideIcon = BookOpen;
 
 export default function NutritionSourcesScreen() {
   const insets = useSafeAreaInsets();
@@ -67,11 +88,41 @@ export default function NutritionSourcesScreen() {
           borderWidth: 1,
           borderColor: colors.border,
           padding: Spacing.lg,
-          gap: Spacing.sm,
+          flexDirection: "row",
+          gap: Spacing.md,
+        },
+        iconBox: {
+          width: 40,
+          height: 40,
+          borderRadius: Radius.md,
+          backgroundColor: Accent.primary + "14",
+          alignItems: "center",
+          justifyContent: "center",
+          marginTop: 2,
+        },
+        cardBody: {
+          flex: 1,
+          gap: Spacing.xs,
         },
         sourceName: { fontSize: 16, fontWeight: "700", color: colors.text },
-        sourceDesc: { fontSize: 13, lineHeight: 20, color: colors.textSecondary },
-        sourceLink: { fontSize: 13, color: Accent.primary, fontWeight: "600", marginTop: Spacing.xs },
+        sourceTagline: {
+          fontSize: 13,
+          fontWeight: "600",
+          color: colors.textSecondary,
+          lineHeight: 18,
+        },
+        sourceDesc: {
+          fontSize: 13,
+          lineHeight: 20,
+          color: colors.textSecondary,
+          marginTop: 2,
+        },
+        sourceLink: {
+          fontSize: 13,
+          color: Accent.primary,
+          fontWeight: "600",
+          marginTop: Spacing.xs,
+        },
         disclaimer: {
           fontSize: 12,
           lineHeight: 18,
@@ -111,19 +162,32 @@ export default function NutritionSourcesScreen() {
             }
             return (
               <View key={name} style={styles.card}>
-                <Text style={styles.sourceName}>{name}</Text>
+                <View style={styles.iconBox}>
+                  <FALLBACK_ICON size={20} color={Accent.primary} strokeWidth={1.75} />
+                </View>
+                <View style={styles.cardBody}>
+                  <Text style={styles.sourceName}>{name}</Text>
+                </View>
               </View>
             );
           }
+          const Icon = detail.icon;
           return (
-            <View key={name} style={styles.card}>
-              <Text style={styles.sourceName}>{name}</Text>
-              <Text style={styles.sourceDesc}>{detail.description}</Text>
-              <Pressable onPress={() => Linking.openURL(detail.url)}>
-                <Text style={styles.sourceLink}>
-                  {detail.url.replace("https://", "")} <Ionicons name="open-outline" size={12} color={Accent.primary} />
-                </Text>
-              </Pressable>
+            <View key={name} style={styles.card} testID={`nutrition-source-${name}`}>
+              <View style={styles.iconBox}>
+                <Icon size={20} color={Accent.primary} strokeWidth={1.75} />
+              </View>
+              <View style={styles.cardBody}>
+                <Text style={styles.sourceName}>{name}</Text>
+                <Text style={styles.sourceTagline}>{detail.tagline}</Text>
+                <Text style={styles.sourceDesc}>{detail.description}</Text>
+                <Pressable onPress={() => Linking.openURL(detail.url)}>
+                  <Text style={styles.sourceLink}>
+                    {detail.url.replace("https://", "")}{" "}
+                    <Ionicons name="open-outline" size={12} color={Accent.primary} />
+                  </Text>
+                </Pressable>
+              </View>
             </View>
           );
         })}

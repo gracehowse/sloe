@@ -105,13 +105,17 @@ export default function TargetsScreen() {
   const [adaptiveTdee, setAdaptiveTdee] = useState<number | null>(null);
   const [adaptiveTdeeConfidence, setAdaptiveTdeeConfidence] = useState<string | null>(null);
   const [planPace, setPlanPace] = useState<string | null>(null);
+  // Premium-bar audit Group J line 442 — Recalculate button feedback.
+  // When the user taps the action we briefly show "Recalculating…" so
+  // the press has confirmation; falls back to a Saved-style "Updated"
+  // toast on completion. State is purely local — the data is reloaded
+  // via the same query path the initial load uses, so RLS + cache
+  // semantics are identical.
+  const [recalculating, setRecalculating] = useState(false);
+  const [recalcToast, setRecalcToast] = useState(false);
 
-  useEffect(() => {
-    if (!userId) {
-      setLoading(false);
-      return;
-    }
-    let cancelled = false;
+  const loadTargets = useCallback(async (signal?: { cancelled: boolean }) => {
+    if (!userId) return;
     // Debug audit 2026-05-04 (code-quality #4): the IIFE used to dive
     // straight into supabase awaits with no try/catch. Either the
     // profile select or the `meals` fallback select rejecting silently
@@ -119,8 +123,8 @@ export default function TargetsScreen() {
     // stuck on the skeleton. Now: full-body try/finally so loading
     // always resolves, and an error is logged + surfaced via the
     // existing empty/loaded state instead of the spinner.
-    (async () => {
-      try {
+    try {
+      const cancelled = () => Boolean(signal?.cancelled);
       const { data } = await supabase
         .from("profiles")
         .select(
@@ -128,7 +132,7 @@ export default function TargetsScreen() {
         )
         .eq("id", userId)
         .maybeSingle();
-      if (cancelled || !data) {
+      if (cancelled() || !data) {
         return;
       }
       const d = data as Record<string, unknown>;
@@ -201,7 +205,7 @@ export default function TargetsScreen() {
         .select("protein, carbs, fat, fiber_g")
         .eq("user_id", userId)
         .eq("log_date", todayKey);
-      if (!cancelled && Array.isArray(mealsData)) {
+      if (!cancelled() && Array.isArray(mealsData)) {
         const sum = mealsData.reduce(
           (acc, m: any) => ({
             protein: acc.protein + (Number(m.protein) || 0),
@@ -213,18 +217,46 @@ export default function TargetsScreen() {
         );
         setConsumed(sum);
       }
-      } catch (err) {
-        if (typeof console !== "undefined") {
-          console.warn("[targets] load failed:", err instanceof Error ? err.message : err);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
+    } catch (err) {
+      if (typeof console !== "undefined") {
+        console.warn("[targets] load failed:", err instanceof Error ? err.message : err);
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    } finally {
+      if (!signal?.cancelled) setLoading(false);
+    }
   }, [userId]);
+
+  useEffect(() => {
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
+    const signal = { cancelled: false };
+    void loadTargets(signal);
+    return () => {
+      signal.cancelled = true;
+    };
+  }, [userId, loadTargets]);
+
+  // Premium-bar audit Group J line 442 — re-derive targets from current
+  // profile data. Re-uses the same load path the screen mounts with,
+  // which is the canonical query path through `resolveTargets`. We
+  // don't call a separate "recalculate" endpoint because targets are
+  // derived deterministically from profile fields on every read; the
+  // user-facing effect of "Recalculate" is therefore equivalent to a
+  // forced reload that surfaces any out-of-band profile changes (e.g.
+  // adaptive TDEE engine writes, mid-day weigh-ins).
+  const onRecalculate = useCallback(async () => {
+    if (!userId || recalculating) return;
+    setRecalculating(true);
+    try {
+      await loadTargets();
+      setRecalcToast(true);
+      setTimeout(() => setRecalcToast(false), 1800);
+    } finally {
+      setRecalculating(false);
+    }
+  }, [userId, recalculating, loadTargets]);
 
   // 2026-05-02 (net-carbs toggle fix) — refresh the lens flag on every
   // screen focus so toggling "Show net carbs" in Settings flips the
@@ -561,6 +593,84 @@ export default function TargetsScreen() {
             </View>
           </View>
           <Text style={[styles.caption, { textAlign: "center" }]}>{tdeeCaption}</Text>
+          {/* Premium-bar audit Group J line 442 — derivation one-liner +
+              clearly-labelled maintenance row + Recalculate. MacroFactor
+              parity. Maintenance was only visible inside the
+              WhyThisNumberSheet before; surfacing it on the main card
+              answers the user's first follow-up question ("what's my
+              maintenance?") without requiring a sheet open. */}
+          <Text
+            style={[styles.caption, { textAlign: "center", marginTop: 4 }]}
+            accessibilityLabel="Targets are based on your goal, weight, and activity level."
+          >
+            Based on your goal, weight, and activity level.
+          </Text>
+          {tdeeKcal != null ? (
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "baseline",
+                justifyContent: "center",
+                gap: 6,
+                marginTop: Spacing.md,
+                paddingTop: Spacing.md,
+                borderTopWidth: 1,
+                borderTopColor: colors.border,
+                alignSelf: "stretch",
+              }}
+              testID="targets-maintenance-row"
+            >
+              <Text
+                style={{
+                  fontSize: 11,
+                  fontWeight: "800",
+                  color: colors.textSecondary,
+                  letterSpacing: 1.5,
+                }}
+              >
+                MAINTENANCE
+              </Text>
+              <Text
+                style={{
+                  fontSize: 15,
+                  fontWeight: "700",
+                  color: colors.text,
+                  fontVariant: ["tabular-nums"],
+                }}
+              >
+                {(adaptiveTdee ?? tdeeKcal).toLocaleString()}
+              </Text>
+              <Text style={{ fontSize: 12, color: colors.textSecondary }}>kcal / day</Text>
+            </View>
+          ) : null}
+          <Pressable
+            onPress={() => void onRecalculate()}
+            disabled={recalculating}
+            accessibilityRole="button"
+            accessibilityLabel="Recalculate targets from current profile data"
+            testID="targets-recalculate"
+            style={({ pressed }) => ({
+              marginTop: Spacing.md,
+              alignSelf: "center",
+              paddingHorizontal: Spacing.lg,
+              paddingVertical: 8,
+              borderRadius: Radius.sm,
+              borderWidth: 1,
+              borderColor: colors.border,
+              backgroundColor: colors.card,
+              opacity: pressed || recalculating ? 0.6 : 1,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 6,
+            })}
+          >
+            {recalculating ? (
+              <ActivityIndicator size="small" color={Accent.primary} />
+            ) : null}
+            <Text style={{ fontSize: 12, fontWeight: "600", color: colors.text }}>
+              {recalculating ? "Recalculating…" : recalcToast ? "Updated" : "Recalculate"}
+            </Text>
+          </Pressable>
           {/* Numbers audit 2026-05-04 #3: when activity-adjusted calories
               are on, Today's ring goal is `targets.calories +
               dayActivityBudgetAddon(...)`. The Targets number above is

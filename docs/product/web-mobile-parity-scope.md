@@ -35,7 +35,7 @@ Any change that **ships, removes, improves, or fixes** a user-visible feature on
 | **Discover quick filters** | **Aligned (Popular)** | Both load global save counts after the community recipe list fetch (`fetchPublicRecipeSaveCounts` → `public_recipe_save_counts_batch` + `DISCOVER_POPULAR_MIN_SAVES`); **Popular** = saves ≥ threshold. Web `DiscoverFeed` + mobile `discover.tsx` use the same constant. Mobile offline cache stores **enriched** rows (counts included) and re-fetches counts when hydrating from cache if Supabase is reachable (P-P2-3). |
 | **Stripe vs IAP** | **Intentionally different billing rails** | Documented in [`subscriptions-stripe-and-iap.md`](subscriptions-stripe-and-iap.md); entitlements must match in **`profiles.user_tier`**. |
 | **Apple Health / Apple Sign-In** | **Mobile-first / native** | Web has manual steps / different OS capabilities — **intentional**. |
-| **Fasting timer** | **Mobile-only (for now)** | [`../decisions/2026-04-fasting-web-scope.md`](../decisions/2026-04-fasting-web-scope.md) — web Help points to mobile; **intentional**. |
+| **Fasting timer** | **Aligned (web expanded 2026-05-14)** | [`../decisions/2026-04-fasting-web-scope.md`](../decisions/2026-04-fasting-web-scope.md) — web ships ring + milestones + projected end + history + landing card; remaining deliberate deltas are long-press End Fast (mobile only), long-press delete history row (mobile only), push notifications (mobile only, web notifications deferred). |
 | **Discover / Plan / Profile chrome** | **May diverge visually** | Styling and density may differ until a **product pass** tickets explicit UI parity. |
 
 ---

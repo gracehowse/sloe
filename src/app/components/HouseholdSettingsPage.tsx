@@ -663,7 +663,10 @@ export function HouseholdSettingsPage({ onBack }: HouseholdSettingsPageProps) {
           className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
           title={household.isOwner ? undefined : "Only the household owner can change sharing"}
         >
-          {saving ? "Saving…" : savedToast ? "Saved" : "Save changes"}
+          {/* DC12 (2026-05-14, premium-bar audit) — specific
+              confirmation. Mobile parity:
+              `apps/mobile/app/household-settings.tsx`. */}
+          {saving ? "Saving…" : savedToast ? "Household saved" : "Save changes"}
         </button>
         {!household.isOwner ? (
           <p className="text-[11px] text-muted-foreground mt-2 text-center">

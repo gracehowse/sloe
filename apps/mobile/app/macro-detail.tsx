@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -21,14 +21,29 @@ type Meal = {
   waterMl: number;
 };
 
+// 2026-05-14 (premium-bar audit Group H #4): brand-colour mapping for
+// all 4 macros + fibre + water. Protein/carbs/fat → MacroColors token
+// set. Calories → Accent.primary (canonical "energy" colour across the
+// app — calorie ring, paywall hero, etc.). Fibre → Accent.success
+// (green for plant fibre, distinct from the macro trio). Water →
+// Accent.info (blue, same as Today's water tile).
 const MACRO_CONFIG: Record<string, { label: string; color: string; unit: string; field: keyof Meal }> = {
   protein: { label: "Protein", color: MacroColors.protein, unit: "g", field: "protein" },
   carbs: { label: "Carbs", color: MacroColors.carbs, unit: "g", field: "carbs" },
   fat: { label: "Fat", color: MacroColors.fat, unit: "g", field: "fat" },
   fiber: { label: "Fiber", color: Accent.success, unit: "g", field: "fiberG" },
-  calories: { label: "Calories", color: Accent.success, unit: "kcal", field: "calories" },
+  calories: { label: "Calories", color: Accent.primary, unit: "kcal", field: "calories" },
   water: { label: "Water", color: Accent.info, unit: "ml", field: "waterMl" },
 };
+
+// 2026-05-14 (premium-bar audit Group H #3): segmented toggle between
+// "By meal" (current breakdown grouped by meal slot) and "By ingredient"
+// (per-ingredient breakdown). Ingredient breakdown is a TODO — the
+// current `nutrition_entries` query doesn't carry per-ingredient
+// macro rows. When available, the "By ingredient" view will read
+// from `nutrition_entries.components` (or whichever schema lands) and
+// render the same row layout keyed on ingredient name.
+type BreakdownMode = "meal" | "ingredient";
 
 function formatDateLabel(dateKey: string): string {
   try {
@@ -59,6 +74,7 @@ export default function MacroDetailScreen() {
 
   const [meals, setMeals] = useState<Meal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [breakdownMode, setBreakdownMode] = useState<BreakdownMode>("meal");
 
   useEffect(() => {
     if (!userId) return;
@@ -116,6 +132,36 @@ export default function MacroDetailScreen() {
 
   const total = meals.reduce((sum, m) => sum + (Number(m[config.field]) || 0), 0);
 
+  // 2026-05-14 (premium-bar audit Group H #3): a meal slot in this
+  // codebase is the `name` field on nutrition_entries (Breakfast /
+  // Lunch / Dinner / Snack). Group meals by that bucket so the
+  // "By meal" view shows aggregated slot totals + a sub-row per meal.
+  const mealsBySlot = useMemo(() => {
+    const buckets: Record<string, Meal[]> = {};
+    for (const m of meals) {
+      const slot = m.name || "Other";
+      if (!buckets[slot]) buckets[slot] = [];
+      buckets[slot].push(m);
+    }
+    return buckets;
+  }, [meals]);
+
+  const slotOrder = useMemo(() => {
+    // Canonical meal-slot order so Breakfast renders first even if
+    // logged out of sequence. Anything off-canonical keeps insertion
+    // order at the tail.
+    const canonical = ["Breakfast", "Lunch", "Dinner", "Snack"];
+    const present = Object.keys(mealsBySlot);
+    const ordered: string[] = [];
+    for (const k of canonical) {
+      if (present.includes(k)) ordered.push(k);
+    }
+    for (const k of present) {
+      if (!canonical.includes(k)) ordered.push(k);
+    }
+    return ordered;
+  }, [mealsBySlot]);
+
   return (
     <View testID="screen-macro-detail" style={{ flex: 1, backgroundColor: colors.background }}>
       {/* Header */}
@@ -142,6 +188,56 @@ export default function MacroDetailScreen() {
       </View>
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: Spacing.lg, paddingBottom: insets.bottom + 40 }}>
+        {/* 2026-05-14 (premium-bar audit Group H #3): segmented control
+            so the breakdown can pivot between meal slot and ingredient.
+            Rendered above the list so the user sees both modes at a
+            glance even when "By ingredient" is the active view. */}
+        {!loading && meals.length > 0 && (
+          <View
+            testID="macro-detail-breakdown-toggle"
+            accessibilityRole="tablist"
+            accessibilityLabel="Breakdown mode"
+            style={{
+              flexDirection: "row",
+              padding: 3,
+              backgroundColor: colors.inputBg,
+              borderRadius: Radius.full,
+              marginBottom: Spacing.md,
+            }}
+          >
+            {(["meal", "ingredient"] as const).map((mode) => {
+              const isActive = breakdownMode === mode;
+              return (
+                <Pressable
+                  key={mode}
+                  testID={`macro-detail-toggle-${mode}`}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: isActive }}
+                  accessibilityLabel={mode === "meal" ? "By meal" : "By ingredient"}
+                  onPress={() => setBreakdownMode(mode)}
+                  style={{
+                    flex: 1,
+                    paddingVertical: 8,
+                    borderRadius: Radius.full,
+                    backgroundColor: isActive ? colors.card : "transparent",
+                    alignItems: "center",
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      fontWeight: isActive ? "700" : "500",
+                      color: isActive ? colors.text : colors.textSecondary,
+                    }}
+                  >
+                    {mode === "meal" ? "By meal" : "By ingredient"}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
+
         {loading ? (
           <View style={{ alignItems: "center", paddingVertical: 40 }}>
             <Text style={{ fontSize: 14, color: colors.textTertiary }}>Loading...</Text>
@@ -180,35 +276,152 @@ export default function MacroDetailScreen() {
               </Text>
             </Pressable>
           </View>
+        ) : breakdownMode === "ingredient" ? (
+          // 2026-05-14 (premium-bar audit Group H #3): ingredient
+          // breakdown placeholder. The `nutrition_entries` schema
+          // here doesn't carry per-ingredient macro rows yet — only
+          // the aggregated meal totals. Until the upstream import +
+          // verify pipeline persists component-level breakdowns to
+          // a queryable column on `nutrition_entries`, we render an
+          // informative empty state with the meal list visible
+          // below so the user still has data on screen.
+          // TODO(nutrition-engine): wire per-ingredient breakdown
+          // once `nutrition_entries.components` (or equivalent) is
+          // available — same row shape as meal mode but keyed on
+          // ingredient name.
+          <View>
+            <View
+              style={{
+                padding: Spacing.lg,
+                borderRadius: Radius.md,
+                backgroundColor: config.color + "10",
+                marginBottom: Spacing.md,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 13,
+                  color: colors.textSecondary,
+                  lineHeight: 18,
+                  textAlign: "center",
+                }}
+              >
+                Per-ingredient breakdown is coming soon — for now, here&apos;s
+                your {config.label.toLowerCase()} grouped by meal.
+              </Text>
+            </View>
+            <MealList
+              meals={meals}
+              config={config}
+              total={total}
+              colors={colors}
+            />
+          </View>
         ) : (
           <View style={{ gap: 0 }}>
-            {meals.map((meal, i) => {
-              const val = Number(meal[config.field]) || 0;
-              const pct = total > 0 ? val / total : 0;
+            {/* By-meal view: render a slot header per meal slot
+                with the slot subtotal, then each meal as a sub-row.
+                Single-meal slots collapse to a single visual row
+                so we don't show a header + one item. */}
+            {slotOrder.map((slot, slotIdx) => {
+              const slotMeals = mealsBySlot[slot] ?? [];
+              const slotTotal = slotMeals.reduce(
+                (s, m) => s + (Number(m[config.field]) || 0),
+                0,
+              );
+              const slotPct = total > 0 ? slotTotal / total : 0;
               return (
-                <View
-                  key={i}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    paddingVertical: 14,
-                    borderBottomWidth: i < meals.length - 1 ? 1 : 0,
-                    borderBottomColor: colors.border,
-                    gap: 12,
-                  }}
-                >
-                  <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: config.color, opacity: 0.3 + pct * 0.7 }} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 11, fontWeight: "600", color: colors.textTertiary, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                      {meal.name}
-                    </Text>
-                    <Text style={{ fontSize: 14, fontWeight: "500", color: colors.text, marginTop: 2 }} numberOfLines={1}>
-                      {meal.recipeTitle}
+                <View key={slot} style={{ marginTop: slotIdx === 0 ? 0 : Spacing.md }}>
+                  {/* Slot header row */}
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      paddingVertical: 12,
+                      borderBottomWidth: 1,
+                      borderBottomColor: colors.border,
+                      gap: 12,
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: 5,
+                        backgroundColor: config.color,
+                        opacity: 0.3 + slotPct * 0.7,
+                      }}
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={{
+                          fontSize: 11,
+                          fontWeight: "700",
+                          color: colors.textTertiary,
+                          textTransform: "uppercase",
+                          letterSpacing: 0.5,
+                        }}
+                      >
+                        {slot}
+                      </Text>
+                    </View>
+                    <Text
+                      style={{
+                        fontSize: 15,
+                        fontWeight: "800",
+                        color: config.color,
+                        fontVariant: ["tabular-nums"],
+                      }}
+                    >
+                      {Math.round(slotTotal * 10) / 10}
+                      {config.unit}
                     </Text>
                   </View>
-                  <Text style={{ fontSize: 15, fontWeight: "700", color: config.color, fontVariant: ["tabular-nums"] }}>
-                    {Math.round(val * 10) / 10}{config.unit}
-                  </Text>
+
+                  {/* Sub-rows — only render when more than one meal in
+                      the slot so we don't duplicate the header. */}
+                  {slotMeals.length > 1 &&
+                    slotMeals.map((meal, i) => {
+                      const val = Number(meal[config.field]) || 0;
+                      return (
+                        <View
+                          key={`${slot}-${i}`}
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            paddingVertical: 10,
+                            paddingLeft: 22,
+                            borderBottomWidth: i < slotMeals.length - 1 ? 1 : 0,
+                            borderBottomColor: colors.border,
+                            gap: 12,
+                          }}
+                        >
+                          <View style={{ flex: 1 }}>
+                            <Text
+                              style={{
+                                fontSize: 13,
+                                fontWeight: "500",
+                                color: colors.text,
+                              }}
+                              numberOfLines={1}
+                            >
+                              {meal.recipeTitle}
+                            </Text>
+                          </View>
+                          <Text
+                            style={{
+                              fontSize: 13,
+                              fontWeight: "600",
+                              color: colors.textSecondary,
+                              fontVariant: ["tabular-nums"],
+                            }}
+                          >
+                            {Math.round(val * 10) / 10}
+                            {config.unit}
+                          </Text>
+                        </View>
+                      );
+                    })}
                 </View>
               );
             })}
@@ -234,6 +447,91 @@ export default function MacroDetailScreen() {
           </View>
         )}
       </ScrollView>
+    </View>
+  );
+}
+
+/**
+ * 2026-05-14 (premium-bar audit Group H #3): the legacy flat meal list
+ * is now reusable so the ingredient-breakdown placeholder can fall back
+ * to it rather than render an empty surface. Same visual treatment as
+ * the pre-toggle screen.
+ */
+function MealList({
+  meals,
+  config,
+  total,
+  colors,
+}: {
+  meals: Meal[];
+  config: { label: string; color: string; unit: string; field: keyof Meal };
+  total: number;
+  colors: ReturnType<typeof useThemeColors>;
+}) {
+  return (
+    <View style={{ gap: 0 }}>
+      {meals.map((meal, i) => {
+        const val = Number(meal[config.field]) || 0;
+        const pct = total > 0 ? val / total : 0;
+        return (
+          <View
+            key={i}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              paddingVertical: 14,
+              borderBottomWidth: i < meals.length - 1 ? 1 : 0,
+              borderBottomColor: colors.border,
+              gap: 12,
+            }}
+          >
+            <View
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: 5,
+                backgroundColor: config.color,
+                opacity: 0.3 + pct * 0.7,
+              }}
+            />
+            <View style={{ flex: 1 }}>
+              <Text
+                style={{
+                  fontSize: 11,
+                  fontWeight: "600",
+                  color: colors.textTertiary,
+                  textTransform: "uppercase",
+                  letterSpacing: 0.5,
+                }}
+              >
+                {meal.name}
+              </Text>
+              <Text
+                style={{
+                  fontSize: 14,
+                  fontWeight: "500",
+                  color: colors.text,
+                  marginTop: 2,
+                }}
+                numberOfLines={1}
+              >
+                {meal.recipeTitle}
+              </Text>
+            </View>
+            <Text
+              style={{
+                fontSize: 15,
+                fontWeight: "700",
+                color: config.color,
+                fontVariant: ["tabular-nums"],
+              }}
+            >
+              {Math.round(val * 10) / 10}
+              {config.unit}
+            </Text>
+          </View>
+        );
+      })}
     </View>
   );
 }

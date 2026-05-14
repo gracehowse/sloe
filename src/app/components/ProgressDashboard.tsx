@@ -1931,6 +1931,17 @@ function ProgressDashboardContent() {
           />
           <button onClick={() => void saveTodayWeight()} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity">Save</button>
         </div>
+        {/* DC12 (2026-05-14, premium-bar audit) — Headspace-style
+            supportive moment-of-truth line. Mirrors the mobile
+            LogWeightSheet / weight-tracker copy so the
+            high-emotion weigh-in surface reads the same way on
+            both platforms. */}
+        <p
+          data-testid="weight-input-supportive-copy"
+          className="mt-1 text-center text-xs text-muted-foreground"
+        >
+          Every check-in gives us better data for you.
+        </p>
       </div>
       ) : null}
 
