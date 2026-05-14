@@ -12,7 +12,7 @@ test.describe("Public pages", () => {
   test("help page loads with methodology section", async ({ page }) => {
     await page.goto("/help");
     await expectNoSeriousA11yViolations(page);
-    await expect(page.getByRole("heading", { name: /help & information/i })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: /^help$/i })).toBeVisible();
     await expect(page.getByText(/mifflin-st jeor/i)).toBeVisible();
     await expect(page.getByText(/usda fooddata central/i).first()).toBeVisible();
     await expect(page.getByText(/not medical advice/i)).toBeVisible();
@@ -22,7 +22,7 @@ test.describe("Public pages", () => {
     await page.goto("/privacy");
     await expectNoSeriousA11yViolations(page);
     await expect(page.getByRole("heading", { name: /privacy policy/i })).toBeVisible();
-    await expect(page.getByText(/data retention/i)).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^Data retention$/i })).toBeVisible();
     await expect(page.getByRole("listitem").filter({ hasText: /delete your account/i })).toBeVisible();
   });
 

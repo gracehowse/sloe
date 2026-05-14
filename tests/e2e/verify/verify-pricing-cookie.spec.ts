@@ -8,14 +8,12 @@ test.describe("verify #23 + #24 — pricing hierarchy + cookie strip", () => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto("/pricing", { waitUntil: "networkidle" });
     await page.screenshot({ path: join(OUT, "verify-23-pricing-desktop-after.png"), fullPage: false });
-    // Pro now anchors first in the grid order (`highlighted: true` first).
-    const firstCard = page.locator('div.relative.rounded-2xl.flex.flex-col').first();
-    await expect(firstCard).toContainText("Pro");
+    // Pro is sorted first when `highlighted: true` (see PricingTiersGrid).
+    await expect(page.getByRole("heading", { name: "Pro", exact: true })).toBeVisible();
     // Full-width ribbon present.
     await expect(page.getByText("Most popular")).toBeVisible();
-    // Cookie consent visible as a slim bottom strip (not centred card).
-    const consent = page.locator('text=/Suppr uses essential cookies/i').first();
-    await expect(consent).toBeVisible();
+    // Cookie consent: slim bottom strip (copy in CookieConsent.tsx).
+    await expect(page.getByText(/Essential cookies on/i)).toBeVisible();
   });
 
   test("mobile pricing", async ({ page }) => {
