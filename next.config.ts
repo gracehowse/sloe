@@ -42,8 +42,17 @@ const nextConfig: NextConfig = {
 };
 
 export default withSentryConfig(nextConfig, {
-  silent: true,
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: !process.env.CI,
   widenClientFileUpload: true,
   hideSourceMaps: true,
+  // Proxy Sentry ingestion through /monitoring to bypass adblockers.
+  // Without this, paid-acquisition users with uBlock / Brave / 1Blocker
+  // (~30% of mobile-web TikTok traffic by industry estimates) silently
+  // never report errors. Middleware (`middleware.ts`) excludes this
+  // path from auth redirects so requests aren't 307'd to /login.
+  tunnelRoute: "/monitoring",
 });
 

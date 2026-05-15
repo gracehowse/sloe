@@ -15,8 +15,16 @@ import { redactPII } from "./src/lib/observability/sentryRedaction";
  */
 Sentry.init({
   dsn: process.env.SENTRY_DSN ?? process.env.NEXT_PUBLIC_SENTRY_DSN,
-  tracesSampleRate: 0.08,
+  tracesSampleRate: process.env.NODE_ENV === "development" ? 1.0 : 0.08,
   enabled: Boolean(process.env.SENTRY_DSN ?? process.env.NEXT_PUBLIC_SENTRY_DSN),
+  enableLogs: true,
+  // `includeLocalVariables: true` (sentry-nextjs-sdk skill recommendation)
+  // intentionally NOT enabled — our `redactPII` walks event keys but does
+  // not yet recurse into stack-frame `vars`. Turning this on would attach
+  // local-var snapshots (possibly containing email / token-shaped values
+  // the redactor missed) to every prod error. Revisit once `redactPII` is
+  // extended to walk frames; tracked as a follow-up to
+  // docs/decisions/2026-05-14-sentry-pre-consent-capture.md.
   beforeSend(event) {
     // Cast through `unknown` — the helper is structurally typed for
     // both @sentry/nextjs and @sentry/react-native; Sentry's

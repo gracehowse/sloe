@@ -8,8 +8,9 @@ import { redactPII } from "./src/lib/observability/sentryRedaction";
  */
 Sentry.init({
   dsn: process.env.SENTRY_DSN ?? process.env.NEXT_PUBLIC_SENTRY_DSN,
-  tracesSampleRate: 0.05,
+  tracesSampleRate: process.env.NODE_ENV === "development" ? 1.0 : 0.05,
   enabled: Boolean(process.env.SENTRY_DSN ?? process.env.NEXT_PUBLIC_SENTRY_DSN),
+  enableLogs: true,
   beforeSend(event) {
     // See comment in `sentry.server.config.ts` for the cast rationale.
     return redactPII(event as unknown as Record<string, unknown>) as unknown as typeof event;

@@ -53,6 +53,7 @@
  */
 
 import { NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { timingSafeEqual } from "crypto";
 
 import { sendExpoPush, type ExpoPushMessage } from "@/lib/push/expoPush";
@@ -191,7 +192,31 @@ const PROFILE_SELECT_COLUMNS = [
   "activity_level",
 ].join(", ");
 
+/**
+ * Sentry Cron monitor (2026-05-15) — wraps `runWeeklyRecapPush` so Sentry
+ * gets a start check-in on every invocation and an OK/error check-in on
+ * resolve. A missed run (Vercel cron didn't fire) shows up in Sentry's
+ * Crons dashboard within `checkinMargin` minutes of the scheduled time.
+ * The monitor auto-provisions on first check-in using the inline
+ * `MonitorConfig`; no UI setup required. Schedule must match `vercel.json`
+ * — if you change one, change both.
+ */
+const WEEKLY_RECAP_MONITOR_CONFIG = {
+  schedule: { type: "crontab" as const, value: "0 23 * * *" },
+  checkinMargin: 5,
+  maxRuntime: 10,
+  timezone: "UTC" as const,
+};
+
 export async function POST(req: Request) {
+  return Sentry.withMonitor(
+    "weekly-recap-push",
+    () => runWeeklyRecapPush(req),
+    WEEKLY_RECAP_MONITOR_CONFIG,
+  );
+}
+
+async function runWeeklyRecapPush(req: Request) {
   // 1. Auth gate — shared-secret header.
   const expected = process.env.SUPPR_CRON_SECRET;
   if (!expected || expected.length === 0) {
