@@ -104,6 +104,7 @@ import { track } from "../../../lib/analytics/track";
 import { fetchFatSecretAutocomplete } from "@/lib/nutrition/fatsecretAutocompleteClient";
 import { shouldShowBarcodeFallbackHint } from "@/lib/nutrition/foodSearchLocale";
 import { portionEqualsLabel } from "@/lib/nutrition/portionEqualsLabel";
+import { resolveInitialPortion } from "@/lib/nutrition/foodSearchCore";
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -560,63 +561,11 @@ async function fetchFatSecretDetail(
   } catch { return null; }
 }
 
-function resolveInitialPortion(
-  portions: FoodPortion[],
-  amount: number | string | null | undefined,
-  unit: string | null | undefined,
-): { portion: FoodPortion; quantity: number } {
-  const rawAmt = typeof amount === "string" ? parseFloat(amount) : amount;
-  const amt = rawAmt != null && rawAmt > 0 ? rawAmt : 1;
-  const u = (unit ?? "").trim().toLowerCase();
-
-  if (!u) {
-    const gPortion = portions.find((p) => p.label === "g");
-    return { portion: gPortion ?? portions[0], quantity: amt > 10 ? amt : 100 };
-  }
-
-  const UNIT_TO_LABEL: Record<string, string[]> = {
-    g: ["g"], gram: ["g"], grams: ["g"],
-    oz: ["oz"], ounce: ["oz"], ounces: ["oz"],
-    lb: ["lb"], pound: ["lb"], pounds: ["lb"],
-    cup: ["cup"], cups: ["cup"],
-    tbsp: ["tbsp"], tablespoon: ["tbsp"], tablespoons: ["tbsp"],
-    tsp: ["tsp"], teaspoon: ["tsp"], teaspoons: ["tsp"],
-    ml: ["ml"],
-    "fl oz": ["fl oz"],
-    kg: ["g"],
-  };
-
-  const labels = UNIT_TO_LABEL[u];
-  if (labels) {
-    for (const label of labels) {
-      const match = portions.find((p) => p.label.toLowerCase() === label);
-      if (match) {
-        const qty = u === "kg" ? amt * 1000 : amt;
-        return { portion: match, quantity: qty };
-      }
-    }
-  }
-
-  const directMatch = portions.find((p) => p.label.toLowerCase() === u);
-  if (directMatch) return { portion: directMatch, quantity: amt };
-
-  const UNIT_GRAMS: Record<string, number> = {
-    lb: 453.6, pound: 453.6, pounds: 453.6,
-    oz: 28.35, ounce: 28.35, ounces: 28.35, kg: 1000,
-    cup: 236.59, cups: 236.59, tbsp: 14.79, tsp: 4.93, ml: 1, "fl oz": 29.57,
-    breast: 200, thigh: 120, drumstick: 90, wing: 40, fillet: 170,
-    chop: 150, steak: 225, leg: 250,
-    medium: 110, large: 180, small: 80,
-    slice: 25, rasher: 28, clove: 4, tin: 400, can: 400,
-  };
-  const gPerUnit = UNIT_GRAMS[u];
-  if (gPerUnit) {
-    const gPortion = portions.find((p) => p.label === "g");
-    if (gPortion) return { portion: gPortion, quantity: Math.round(amt * gPerUnit) };
-  }
-
-  return { portion: portions[0], quantity: amt };
-}
+// 2026-05-15 (ENG-550): inline `resolveInitialPortion` extracted to
+// `@/lib/nutrition/foodSearchCore` so web + mobile share one source of
+// truth. The previous web-side function (with its `UNIT_TO_LABEL` and
+// `UNIT_GRAMS` tables) was byte-identical to the mobile version apart
+// from formatting.
 
 function customFoodToSearchResult(food: CustomFood): SearchResult {
   const macrosPer100g = customFoodToMacrosPer100g(food);
