@@ -1,5 +1,4 @@
 import { useEffect, useRef } from "react";
-import confetti from "canvas-confetti";
 import { Icons } from "./ui/icons";
 import { IconBox } from "./ui/icon-box";
 import { DailyRing } from "./suppr/daily-ring";
@@ -55,17 +54,21 @@ export function TodayAtAGlance({
   const allTargetsHit = caloriesOnTrack && proteinHit && caloriesEaten > 0;
   const makingProgress = caloriesEaten > 0 && calPct >= 0.5 && calPct < 0.9;
 
-  // Fire confetti once when targets are first hit
+  // Fire confetti once when targets are first hit.
+  // 2026-05-15: lazy-load canvas-confetti — fires on ~5% of opens, was
+  // costing ~12KB on every Today web load. Critical-path JS saving.
   const celebratedRef = useRef(false);
   useEffect(() => {
     if (allTargetsHit && !celebratedRef.current) {
       celebratedRef.current = true;
-      confetti({
-        particleCount: 60,
-        spread: 70,
-        origin: { y: 0.7 },
-        colors: ["#4c6ce0", "#22a860", "#ed6b2a", "#8b5cf6"],
-        disableForReducedMotion: true,
+      void import("canvas-confetti").then(({ default: confetti }) => {
+        confetti({
+          particleCount: 60,
+          spread: 70,
+          origin: { y: 0.7 },
+          colors: ["#4c6ce0", "#22a860", "#ed6b2a", "#8b5cf6"],
+          disableForReducedMotion: true,
+        });
       });
     }
     if (!allTargetsHit) celebratedRef.current = false;

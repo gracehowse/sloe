@@ -1254,65 +1254,57 @@ export default function PlannerScreen() {
       // consumers that resolve "today's plan day" read the persisted
       // calendar anchor instead of iterating offsets. Column added in
       // migration 20260503100300_meal_plan_days_start_date.sql.
+      //
+      // 2026-05-15: one round-trip via nested PostgREST embed instead
+      // of two. FK `meal_plan_meals_plan_day_id_fkey` lets the embed
+      // resolve cleanly (see database.types.ts).
       const { data: dayRows, error: dayErr } = await supabase
         .from("meal_plan_days")
-        .select("id, day, start_date")
+        .select(
+          "id, day, start_date, meals:meal_plan_meals(plan_day_id, slot_index, name, recipe_title, calories, protein, carbs, fat, portion_multiplier, is_placeholder)",
+        )
         .eq("user_id", userId)
         .eq("slot_id", "default")
         .order("day", { ascending: true });
 
       if (!cancelled && dayRows && dayRows.length > 0 && !dayErr) {
-        const dayIds = dayRows.map((d: { id: string }) => d.id);
-        const { data: mealRows } = await supabase
-          .from("meal_plan_meals")
-          .select("plan_day_id, slot_index, name, recipe_title, calories, protein, carbs, fat, portion_multiplier, is_placeholder")
-          .in("plan_day_id", dayIds)
-          .order("slot_index", { ascending: true });
-
-        if (!cancelled && mealRows) {
-          const mealsByDay = new Map<string, typeof mealRows>();
-          for (const m of mealRows) {
-            const arr = mealsByDay.get(m.plan_day_id as string) ?? [];
-            arr.push(m);
-            mealsByDay.set(m.plan_day_id as string, arr);
-          }
-          const plans: DayPlan[] = dayRows.map((d: { id: string; day: number }) => {
-            const meals = stripPlanPlaceholders(
-              (mealsByDay.get(d.id) ?? []).map((m) => {
-                const coerced = coerceMacrosWhenCaloriesButNoGrams({
-                  calories: (m.calories as number) ?? 0,
-                  protein: (m.protein as number) ?? 0,
-                  carbs: (m.carbs as number) ?? 0,
-                  fat: (m.fat as number) ?? 0,
-                });
-                return {
-                  name: (m.name as string) ?? "",
-                  recipeTitle: (m.recipe_title as string) ?? "",
-                  calories: coerced.calories,
-                  protein: coerced.protein,
-                  carbs: coerced.carbs,
-                  fat: coerced.fat,
-                  // Relational rows historically stored `portion_multiplier` alongside
-                  // already-scaled kcal from swap/adjust — strip so totals match rows.
-                  portionMultiplier: undefined,
-                  isPlaceholder: (m.is_placeholder as boolean) || undefined,
-                };
-              }),
-            );
-            const totals = meals.reduce(
-              (acc, ml) => ({
-                calories: acc.calories + ml.calories,
-                protein: acc.protein + ml.protein,
-                carbs: acc.carbs + ml.carbs,
-                fat: acc.fat + ml.fat,
-              }),
-              { calories: 0, protein: 0, carbs: 0, fat: 0 },
-            );
-            return { day: d.day, meals, totals };
-          });
-          setPlan(plans);
-          return;
-        }
+        const plans: DayPlan[] = dayRows.map((d: { id: string; day: number; meals?: Array<Record<string, unknown>> | null }) => {
+          const dayMeals = (d.meals ?? []).slice().sort((a, b) => (((a.slot_index as number) ?? 0) - ((b.slot_index as number) ?? 0)));
+          const meals = stripPlanPlaceholders(
+            dayMeals.map((m) => {
+              const coerced = coerceMacrosWhenCaloriesButNoGrams({
+                calories: (m.calories as number) ?? 0,
+                protein: (m.protein as number) ?? 0,
+                carbs: (m.carbs as number) ?? 0,
+                fat: (m.fat as number) ?? 0,
+              });
+              return {
+                name: (m.name as string) ?? "",
+                recipeTitle: (m.recipe_title as string) ?? "",
+                calories: coerced.calories,
+                protein: coerced.protein,
+                carbs: coerced.carbs,
+                fat: coerced.fat,
+                // Relational rows historically stored `portion_multiplier` alongside
+                // already-scaled kcal from swap/adjust — strip so totals match rows.
+                portionMultiplier: undefined,
+                isPlaceholder: (m.is_placeholder as boolean) || undefined,
+              };
+            }),
+          );
+          const totals = meals.reduce(
+            (acc, ml) => ({
+              calories: acc.calories + ml.calories,
+              protein: acc.protein + ml.protein,
+              carbs: acc.carbs + ml.carbs,
+              fat: acc.fat + ml.fat,
+            }),
+            { calories: 0, protein: 0, carbs: 0, fat: 0 },
+          );
+          return { day: d.day, meals, totals };
+        });
+        setPlan(plans);
+        return;
       }
 
       // Schema refactor Phase 3 (2026-05-11) — legacy `meal_plans`
