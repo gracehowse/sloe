@@ -96,20 +96,11 @@ export function MobileWelcomeStep() {
           backgroundColor: colors.background,
         }}
       >
-        {/* 2026-05-14 (premium-bar audit B1 #1): single proof line
-            directly above the primary CTA. Calm, no metrics, no
-            shaming — Cal AI / Lifesum-style anchor that grounds the
-            jump without overpromising. */}
-        <Text
-          style={{
-            fontSize: 12,
-            color: colors.textSecondary,
-            textAlign: "center",
-            marginBottom: 8,
-          }}
-        >
-          Join thousands tracking smarter
-        </Text>
+        {/* 2026-05-14 (premium-sweep-v2 row 10.1): removed the
+            "Join thousands tracking smarter" proof line that B1 #1
+            had added above the primary CTA. Unsubstantiated claim
+            (N=1 tester today), and DC12 calm voice rejects
+            unsubstantiated growth puffery. */}
         <Pressable
           onPress={() => go(1)}
           accessibilityRole="button"
@@ -127,35 +118,35 @@ export function MobileWelcomeStep() {
             Get started
           </Text>
         </Pressable>
-        {/* 2026-05-14 (premium-bar audit B1 #3): standalone outlined
-            "Sign in" button below the primary CTA. The prior
-            "Have an account? Sign in" prefix buried the affordance for
-            returning users — testers in TF reported missing it on
-            first scan. A real secondary button reads as a co-equal
-            option without competing with the primary tap target. */}
+        {/* 2026-05-14 (premium-sweep-v2 row 10.2): demoted the
+            standalone outlined "Sign in" button (added in B1 #3) to a
+            smaller text link at the bottom of the viewport, matching
+            Cal AI's affordance pattern. The outlined button competed
+            visually with the primary "Get started" CTA at cold-open,
+            splitting the call to action between two equal-weight
+            buttons. Still tappable, still readable, no longer
+            competing. */}
         <Pressable
           onPress={() => router.push("/login")}
           accessibilityRole="button"
           accessibilityLabel="Sign in to existing account"
+          hitSlop={12}
           style={({ pressed }) => ({
-            marginTop: 12,
+            marginTop: 16,
             alignSelf: "center",
-            borderWidth: 1,
-            borderColor: colors.border,
-            borderRadius: 8,
-            paddingVertical: 10,
-            paddingHorizontal: 24,
-            opacity: pressed ? 0.7 : 1,
+            paddingVertical: 8,
+            opacity: pressed ? 0.55 : 1,
           })}
         >
           <Text
             style={{
               fontSize: 14,
-              color: colors.text,
-              fontWeight: "600",
+              color: colors.textSecondary,
+              fontWeight: "500",
+              textAlign: "center",
             }}
           >
-            Sign in
+            Already have an account? <Text style={{ color: Accent.primary, fontWeight: "600" }}>Sign in</Text>
           </Text>
         </Pressable>
       </View>

@@ -9,8 +9,8 @@
  *   - `off-adjusted`      → blue tint, Check glyph + "OFF · adjusted"
  *   - `estimated`         → amber tint, Sparkles glyph + "Estimated · verify"
  *   - `manual`            → grey tint, no glyph + "Manual"
- *   - `gluten-high-conf`  → green tint, Check glyph + "Gluten-free · high confidence"
- *   - `gluten-uncertain`  → amber tint, Sparkles glyph + "Gluten contamination risk · review"
+ *   - `gluten-high-conf`  → green tint, Check glyph + "No gluten-containing ingredients"
+ *   - `gluten-uncertain`  → amber tint, Sparkles glyph + "Contains potential gluten · review"
  *
  * Pill geometry: 24px height, padding 3px x 8px, radius 999px.
  *

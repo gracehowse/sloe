@@ -19,8 +19,13 @@ export const DIETARY_PREFERENCE_ENTRIES = [
   { id: "pescatarian", label: "Pescatarian" },
   { id: "halal", label: "Halal" },
   { id: "kosher", label: "Kosher" },
-  // Allergen-adjacent / dietary restriction (legacy aliases kept)
-  { id: "gluten-free", label: "Gluten-free" },
+  // Allergen-adjacent / dietary restriction (legacy aliases kept).
+  // The `gluten-free` slug stays as an internal filter flag, but the
+  // user-facing label uses descriptive ingredient-composition language:
+  // "Gluten-free" is a regulated claim under EU/UK Reg 828/2014 (≤20 ppm
+  // verification required). Computed-from-ingredients chips can't meet
+  // that standard — see docs/decisions/2026-04-27-onboarding-seed-copyright-review.md §D.
+  { id: "gluten-free", label: "No gluten-containing ingredients" },
   { id: "dairy-free", label: "Dairy-free" },
   { id: "nut-free", label: "Nut-free" },
   // T12 (2026-04-24) — 14 regulated allergens, explicit avoidances
