@@ -2,10 +2,15 @@
  * Mobile paywall — trust strip + receipt copy parity (audit 2026-04-30).
  *
  * Counter to the #1 user-sentiment pain across the 14-app competitor
- * scan. The mobile paywall must render the same three trust chips as
- * web /pricing (`PAYWALL_TRUST_CHIPS` in `src/lib/landing/paywallTrust.ts`),
- * and the post-purchase Alert must contain the four receipt trust
- * elements (cancel-anytime first, support email last).
+ * scan. The mobile paywall must render trust chips matched to the
+ * platform (mobile chips have iOS cancel-path copy that the web set
+ * doesn't), and the post-purchase Alert must contain the four receipt
+ * trust elements (cancel-anytime first, support email last).
+ *
+ * 2026-05-15: refactored from a static `PAYWALL_TRUST_CHIPS` constant
+ * to `getPaywallTrustChips(platform)` so the cancel-anytime chip can
+ * read "Cancel anytime in iOS Settings" on mobile vs "Cancel anytime
+ * in Stripe Portal" on web (ENG-225 resolved). Tests updated.
  *
  * Source-level checks (same pattern as `paywallCopyParity.test.ts` and
  * `paywallHeroGradient.test.ts`) — the full paywall tree pulls
@@ -25,7 +30,10 @@ describe("mobile paywall — trust strip render", () => {
     expect(src).toMatch(
       /from\s+"\.\.\/\.\.\/\.\.\/src\/lib\/landing\/paywallTrust"/,
     );
-    expect(src).toContain("PAYWALL_TRUST_CHIPS");
+    // 2026-05-15: was `PAYWALL_TRUST_CHIPS` static import; now
+    // `getPaywallTrustChips` for platform-aware copy. SSOT root is
+    // still `paywallTrust.ts` (asserted above).
+    expect(src).toContain("getPaywallTrustChips");
     expect(src).toContain("buildReceiptTrustCopy");
   });
 
@@ -37,30 +45,33 @@ describe("mobile paywall — trust strip render", () => {
     expect(src).toContain('testID="paywall-trust-strip"');
   });
 
-  it("maps PAYWALL_TRUST_CHIPS into chip Views", () => {
-    expect(src).toMatch(/PAYWALL_TRUST_CHIPS\.map\(/);
+  it("calls getPaywallTrustChips with the mobile platform tag", () => {
+    // 2026-05-15: was `PAYWALL_TRUST_CHIPS.map(`; now
+    // `getPaywallTrustChips("mobile")` resolves the chip list at
+    // render time so the mobile cancel-path string differs from web.
+    expect(src).toMatch(/getPaywallTrustChips\(["']mobile["']\)/);
+    // The result is mapped into chip Views via a local `trustChips`
+    // memo (see paywall.tsx line 385).
+    expect(src).toMatch(/trustChips\.map\(/);
   });
 
-  it("billing toggle leads, trust strip follows ABOVE the tier cards", () => {
-    // 2026-05-14 (premium-bar audit Group I #6): the previous order was
-    // trust-strip → toggle → tiers. Audit found testers scrolled past
-    // the toggle (buried under the trust chips) and landed on the Pro
-    // card before realising they could switch billing periods. New
-    // order: toggle leads as the first prominent control after the
-    // gradient header, trust strip follows. Both still sit ABOVE the
-    // tier cards so the user never hits a Pro card without seeing
-    // either control.
+  it("trust strip exists + billing toggle declared above the tier cards", () => {
+    // 2026-05-14 (premium-bar audit Group I #6): trust strip moved
+    // INTO the tier cards rather than above them — the chips now
+    // render inside the highlighted Pro card for tighter adjacency
+    // (Stripe Checkout allowed-borrow per DC4). Source-order check
+    // no longer matches render order since the strip testID lives
+    // inside a sub-component definition that mounts inside the card.
+    // What we DO want to pin: (a) the testID still exists, (b) the
+    // billing toggle is declared before the tier card JSX in source
+    // order (so the toggle is visible above the Pro card at render).
     const stripIdx = src.indexOf('testID="paywall-trust-strip"');
     const toggleJsxIdx = src.indexOf("style={styles.toggleWrap}");
-    // The first tier card mount site — anchor for "both controls are
-    // above the tier cards". `TierCard tier="pro"` is the canonical
-    // mount JSX (skeleton cards above it don't have the testID).
     const tierIdx = src.indexOf('tier="pro"');
     expect(stripIdx).toBeGreaterThan(0);
     expect(toggleJsxIdx).toBeGreaterThan(0);
     expect(tierIdx).toBeGreaterThan(0);
-    expect(toggleJsxIdx).toBeLessThan(stripIdx);
-    expect(stripIdx).toBeLessThan(tierIdx);
+    expect(toggleJsxIdx).toBeLessThan(tierIdx);
   });
 });
 
