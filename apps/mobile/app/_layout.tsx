@@ -24,7 +24,32 @@ import { AccessibilityInfo, AppState, LogBox, Platform, Text, View } from 'react
 // Not actionable in dev; SDK handles the retry. Production still
 // reports via Sentry through `initErrorTracking()` if a flush truly
 // gives up.
+//
+// 2026-05-15: `LogBox.ignoreLogs` alone doesn't suppress PostHog flush
+// errors — the SDK throws `PostHogFetchNetworkError` through an async
+// generator (`posthog-core-stateless.js`) and the rejection escapes
+// LogBox's `console.error` filter on at least some paths. Adding a
+// console.error monkey-patch that runs BEFORE LogBox so the message
+// never reaches the redbox renderer. SDK still queues + retries
+// internally; we just stop yelling about it in dev. Production keeps
+// reporting via Sentry through `initErrorTracking()`.
 if (__DEV__) {
+  const POSTHOG_FLUSH_FILTERS = [
+    /Error while flushing PostHog/,
+    /PostHogFetchNetworkError/,
+  ];
+  const originalConsoleError = console.error;
+  console.error = (...args: unknown[]) => {
+    const first = args[0];
+    const text =
+      typeof first === "string"
+        ? first
+        : first instanceof Error
+          ? `${first.name}: ${first.message}`
+          : String(first);
+    if (POSTHOG_FLUSH_FILTERS.some((p) => p.test(text))) return;
+    originalConsoleError.apply(console, args);
+  };
   LogBox.ignoreLogs([
     /TypeError: Network request failed/,
     /\[expo-notifications\] Error thrown while updating the device push token/,
