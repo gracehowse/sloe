@@ -4,7 +4,7 @@ import { getUserIdFromRequest, getUserTier } from "@/lib/supabase/serverAnonClie
 import { verifyIngredients, parseRawIngredients } from "@/lib/nutrition/verifyIngredients";
 import { importErrorResponse } from "@/lib/recipes/importErrorCopy";
 import { sanitiseImportedTitle } from "@/lib/recipe-import/extractSocialRecipe";
-import { callAiVision, activeVendor } from "@/lib/server/aiProvider";
+import { AiBudgetExceededError, callAiVision, activeVendor } from "@/lib/server/aiProvider";
 import { normalizeImageForAi } from "@/lib/server/normalizeImageForAi";
 import { normaliseSource } from "@/lib/recipes/persistSourceAttribution";
 import {
@@ -122,15 +122,27 @@ Rules:
 - steps: ordered cooking steps; empty array if none visible.
 - If text is unreadable, use best effort and short ingredients/steps arrays.`;
 
-  const aiResult = await callAiVision({
-    callSite: "recipe-import/image",
-    systemPrompt: SYSTEM_PROMPT,
-    userText: "Extract the recipe from this image.",
-    imageDataUrl: dataUrl,
-    expectJson: true,
-    temperature: 0.2,
-    maxTokens: 2000,
-  });
+  let aiResult;
+  try {
+    aiResult = await callAiVision({
+      callSite: "recipe-import/image",
+      userId,
+      systemPrompt: SYSTEM_PROMPT,
+      userText: "Extract the recipe from this image.",
+      imageDataUrl: dataUrl,
+      expectJson: true,
+      temperature: 0.2,
+      maxTokens: 2000,
+    });
+  } catch (err) {
+    if (err instanceof AiBudgetExceededError) {
+      return NextResponse.json(
+        { ...importErrorResponse("ai_capacity_reached"), retryAfterSec: err.retryAfterSec },
+        { status: 503, headers: { "Retry-After": String(err.retryAfterSec) } },
+      );
+    }
+    throw err;
+  }
 
   if (!aiResult.ok) {
     // 429 → calmer copy with Retry-After. All other failures collapse to

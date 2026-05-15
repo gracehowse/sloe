@@ -10,6 +10,7 @@ import {
   extractCommentsFromHtml,
   sanitiseImportedTitle,
 } from "@/lib/recipe-import/extractSocialRecipe";
+import { AiBudgetExceededError } from "@/lib/server/aiProvider";
 import { rateLimit } from "@/lib/server/rateLimit";
 import { verifyIngredients, parseRawIngredients } from "@/lib/nutrition/verifyIngredients";
 import { extractCaptionNutrition } from "@/lib/recipe-import/extractCaptionNutrition";
@@ -207,7 +208,7 @@ export async function POST(req: Request) {
       }
 
       const captionText = [meta.title, meta.caption].filter(Boolean).join("\n\n");
-      let recipe = await extractRecipeFromCaption(captionText, meta.imageUrl);
+      let recipe = await extractRecipeFromCaption(captionText, meta.imageUrl, userId);
 
       // Tier 2: Try augmenting with Instagram comments from embedded HTML
       if (!recipe.ingredients.length && !recipe.steps.length) {
@@ -215,7 +216,7 @@ export async function POST(req: Request) {
           const commentText = extractCommentsFromHtml(meta.rawHtml);
           if (commentText) {
             const augmentedCaption = captionText + "\n\n--- Comments ---\n" + commentText;
-            recipe = await extractRecipeFromCaption(augmentedCaption, meta.imageUrl);
+            recipe = await extractRecipeFromCaption(augmentedCaption, meta.imageUrl, userId);
           }
         }
       }
@@ -702,6 +703,15 @@ export async function POST(req: Request) {
       );
     }
   } catch (e) {
+    // Blocker 3 (2026-05-14) — AI daily budget caps. Surface 503 with
+    // Retry-After so mobile + web clients can show a calm "try again
+    // later" toast and a "log manually" CTA.
+    if (e instanceof AiBudgetExceededError) {
+      return NextResponse.json(
+        { ...importErrorResponse("ai_capacity_reached"), retryAfterSec: e.retryAfterSec },
+        { status: 503, headers: { "Retry-After": String(e.retryAfterSec) } },
+      );
+    }
     // Audit I02 (2026-05-05) — preserve AI-side rate-limit signal so
     // clients can read `Retry-After` and surface a countdown, instead
     // of flattening every CaptionExtractionError into "import_failed".

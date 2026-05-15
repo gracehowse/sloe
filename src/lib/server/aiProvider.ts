@@ -22,6 +22,12 @@
  */
 
 import { emitAiGeneration } from "../analytics/aiGeneration";
+import {
+  AiBudgetExceededError,
+  commitBudget,
+  releaseBudget,
+  reserveBudget,
+} from "./aiBudget";
 
 // 2026-05-08 hotfix: switched from `claude-sonnet-4-6` (alias) to the
 // fully-qualified dated model id. Aliases sometimes 400 via direct
@@ -257,6 +263,8 @@ async function callClaudeVision(
     traceId: input.traceId,
     startedAt,
   };
+  // Validate inputs BEFORE reserving budget so a malformed call doesn't
+  // pollute the daily counter.
   const dataUrlMatch = /^data:([^;]+);base64,(.*)$/.exec(input.imageDataUrl);
   if (!dataUrlMatch) {
     const err: AiCallErr = {
@@ -272,6 +280,18 @@ async function callClaudeVision(
     return err;
   }
   const [, mediaType, b64] = dataUrlMatch;
+  // Blocker 3 (2026-05-14) — reserve worst-case cost against the daily
+  // budget BEFORE the model call. Throws `AiBudgetExceededError` when
+  // enforcement is on and a cap has been hit; route handlers catch
+  // and return 503.
+  const grant = await reserveBudget(
+    input.userId ?? null,
+    model,
+    input.maxTokens ?? 2500,
+  );
+  if (!grant.ok) {
+    throw new AiBudgetExceededError(grant.reason, grant.retryAfterSec);
+  }
   const messages: Array<Record<string, unknown>> = [
     {
       role: "user",
@@ -309,6 +329,7 @@ async function callClaudeVision(
       }),
     });
   } catch (err) {
+    void releaseBudget(grant.grantId);
     const elapsedMs = Date.now() - startedAt;
     const ret =
       (err as { name?: string } | null)?.name === "AbortError"
@@ -319,6 +340,7 @@ async function callClaudeVision(
   }
 
   if (!res.ok) {
+    void releaseBudget(grant.grantId);
     const bodyPreview = await res.text().catch(() => "");
     const ret = httpError(input.callSite, "claude", model, res, bodyPreview);
     fireAiTelemetry(ctx, ret);
@@ -329,6 +351,9 @@ async function callClaudeVision(
     content?: Array<{ type?: string; text?: string }>;
     usage?: { input_tokens?: number; output_tokens?: number };
   };
+  const inputTokens = data.usage?.input_tokens ?? 0;
+  const outputTokens = data.usage?.output_tokens ?? 0;
+  void commitBudget(grant.grantId, { inputTokens, outputTokens });
   const text = data.content?.find((b) => b.type === "text")?.text?.trim() ?? "";
   // Re-attach the prefilled `{` so the parser sees a complete object.
   const reply = input.expectJson && !text.startsWith("{") ? `{${text}` : text;
@@ -354,6 +379,15 @@ async function callOpenAIVision(
     traceId: input.traceId,
     startedAt,
   };
+  // Blocker 3 (2026-05-14) — see aiBudget.ts.
+  const grant = await reserveBudget(
+    input.userId ?? null,
+    model,
+    input.maxTokens ?? 2500,
+  );
+  if (!grant.ok) {
+    throw new AiBudgetExceededError(grant.reason, grant.retryAfterSec);
+  }
 
   let res: Response;
   try {
@@ -382,6 +416,7 @@ async function callOpenAIVision(
       }),
     });
   } catch (err) {
+    void releaseBudget(grant.grantId);
     const elapsedMs = Date.now() - startedAt;
     const ret =
       (err as { name?: string } | null)?.name === "AbortError"
@@ -392,6 +427,7 @@ async function callOpenAIVision(
   }
 
   if (!res.ok) {
+    void releaseBudget(grant.grantId);
     const bodyPreview = await res.text().catch(() => "");
     const ret = httpError(input.callSite, "openai", model, res, bodyPreview);
     fireAiTelemetry(ctx, ret);
@@ -402,6 +438,10 @@ async function callOpenAIVision(
     choices?: Array<{ message?: { content?: string } }>;
     usage?: { prompt_tokens?: number; completion_tokens?: number };
   };
+  void commitBudget(grant.grantId, {
+    inputTokens: data.usage?.prompt_tokens ?? 0,
+    outputTokens: data.usage?.completion_tokens ?? 0,
+  });
   const text = data.choices?.[0]?.message?.content?.trim() ?? "";
   const ok: AiCallOk = { ok: true, text, vendor: "openai", modelVersion: model };
   fireAiTelemetry(ctx, ok, {
@@ -438,6 +478,15 @@ async function callClaudeText(
     traceId: input.traceId,
     startedAt,
   };
+  // Blocker 3 (2026-05-14) — see aiBudget.ts.
+  const grant = await reserveBudget(
+    input.userId ?? null,
+    model,
+    input.maxTokens ?? 1500,
+  );
+  if (!grant.ok) {
+    throw new AiBudgetExceededError(grant.reason, grant.retryAfterSec);
+  }
   const messages: Array<Record<string, unknown>> = [
     { role: "user", content: input.userText },
   ];
@@ -464,6 +513,7 @@ async function callClaudeText(
       }),
     });
   } catch (err) {
+    void releaseBudget(grant.grantId);
     const elapsedMs = Date.now() - startedAt;
     const ret =
       (err as { name?: string } | null)?.name === "AbortError"
@@ -474,6 +524,7 @@ async function callClaudeText(
   }
 
   if (!res.ok) {
+    void releaseBudget(grant.grantId);
     const bodyPreview = await res.text().catch(() => "");
     const ret = httpError(input.callSite, "claude", model, res, bodyPreview);
     fireAiTelemetry(ctx, ret);
@@ -484,6 +535,10 @@ async function callClaudeText(
     content?: Array<{ type?: string; text?: string }>;
     usage?: { input_tokens?: number; output_tokens?: number };
   };
+  void commitBudget(grant.grantId, {
+    inputTokens: data.usage?.input_tokens ?? 0,
+    outputTokens: data.usage?.output_tokens ?? 0,
+  });
   const text = data.content?.find((b) => b.type === "text")?.text?.trim() ?? "";
   const reply = input.expectJson && !text.startsWith("{") ? `{${text}` : text;
   const ok: AiCallOk = { ok: true, text: reply, vendor: "claude", modelVersion: model };
@@ -508,6 +563,15 @@ async function callOpenAIText(
     traceId: input.traceId,
     startedAt,
   };
+  // Blocker 3 (2026-05-14) — see aiBudget.ts.
+  const grant = await reserveBudget(
+    input.userId ?? null,
+    model,
+    input.maxTokens ?? 1500,
+  );
+  if (!grant.ok) {
+    throw new AiBudgetExceededError(grant.reason, grant.retryAfterSec);
+  }
   const messages: Array<{ role: string; content: string }> = [];
   if (input.systemPrompt) messages.push({ role: "system", content: input.systemPrompt });
   messages.push({ role: "user", content: input.userText });
@@ -530,6 +594,7 @@ async function callOpenAIText(
       }),
     });
   } catch (err) {
+    void releaseBudget(grant.grantId);
     const elapsedMs = Date.now() - startedAt;
     const ret =
       (err as { name?: string } | null)?.name === "AbortError"
@@ -540,6 +605,7 @@ async function callOpenAIText(
   }
 
   if (!res.ok) {
+    void releaseBudget(grant.grantId);
     const bodyPreview = await res.text().catch(() => "");
     const ret = httpError(input.callSite, "openai", model, res, bodyPreview);
     fireAiTelemetry(ctx, ret);
@@ -550,6 +616,10 @@ async function callOpenAIText(
     choices?: Array<{ message?: { content?: string } }>;
     usage?: { prompt_tokens?: number; completion_tokens?: number };
   };
+  void commitBudget(grant.grantId, {
+    inputTokens: data.usage?.prompt_tokens ?? 0,
+    outputTokens: data.usage?.completion_tokens ?? 0,
+  });
   const text = data.choices?.[0]?.message?.content?.trim() ?? "";
   const ok: AiCallOk = { ok: true, text, vendor: "openai", modelVersion: model };
   fireAiTelemetry(ctx, ok, {
@@ -577,3 +647,8 @@ export function activeVendor(): AiVendor | null {
   if (openaiKey) return "openai";
   return null;
 }
+
+// Re-export so route handlers can `import { AiBudgetExceededError }
+// from "@/lib/server/aiProvider"` rather than knowing the budget
+// module's path. Blocker 3 (2026-05-14).
+export { AiBudgetExceededError } from "./aiBudget";

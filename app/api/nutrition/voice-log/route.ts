@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { rateLimit } from "@/lib/server/rateLimit";
 import { getUserIdFromRequest, getUserTier } from "@/lib/supabase/serverAnonClient";
 import { verifyIngredients } from "@/lib/nutrition/verifyIngredients";
-import { callAiText } from "@/lib/server/aiProvider";
+import { AiBudgetExceededError, callAiText } from "@/lib/server/aiProvider";
 
 export const runtime = "nodejs";
 
@@ -103,13 +103,31 @@ Rules:
 - Separate compound items ("chicken and rice" = two items)
 - Do NOT estimate calories or macros — only parse foods and portions`;
 
-  const aiResult = await callAiText({
-    callSite: "voice-log",
-    userText: parsePrompt,
-    expectJson: true,
-    temperature: 0.2,
-    maxTokens: 1000,
-  });
+  let aiResult;
+  try {
+    aiResult = await callAiText({
+      callSite: "voice-log",
+      userId,
+      userText: parsePrompt,
+      expectJson: true,
+      temperature: 0.2,
+      maxTokens: 1000,
+    });
+  } catch (err) {
+    if (err instanceof AiBudgetExceededError) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "ai_capacity_reached",
+          message:
+            "AI is temporarily at capacity. Try again in a few hours or log manually.",
+          retryAfterSec: err.retryAfterSec,
+        },
+        { status: 503, headers: { "Retry-After": String(err.retryAfterSec) } },
+      );
+    }
+    throw err;
+  }
   if (!aiResult.ok) {
     return NextResponse.json(
       { ok: false, error: aiResult.error, message: aiResult.message },
