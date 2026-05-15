@@ -80,6 +80,19 @@ export type FoodPortion = {
   label: string;
   gramWeight: number;
   amount: number;
+  /**
+   * 2026-05-15: fraction of `macrosPerServing` represented by ONE
+   * unit of this portion. Used when a FatSecret/USDA food has a
+   * compound primary serving like "8 pieces" — we surface BOTH the
+   * original "8 pieces" portion (servingFraction = 1) AND a derived
+   * "1 piece" portion (servingFraction = 1/8) so the user can log
+   * individual pieces without doing 0.625-pack arithmetic.
+   *
+   * Default 1 (the portion = one full serving). previewMacros multiplies
+   * `quantity × servingFraction × macrosPerServing` in the per-serving
+   * branch; per-100g math is unchanged (it uses gramWeight directly).
+   */
+  servingFraction?: number;
 };
 
 export type VerifiableIngredient = {
