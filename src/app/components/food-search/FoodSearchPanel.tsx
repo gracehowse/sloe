@@ -1435,7 +1435,7 @@ export function FoodSearchPanel({
                   }`}
                 >
                   {p.label}
-                  {p.gramWeight !== 1 && <span className="block text-[10px] text-muted-foreground">{p.gramWeight}g</span>}
+                  {p.gramWeight !== 1 && p.gramWeight > 0 && <span className="block text-[10px] text-muted-foreground">{p.gramWeight}g</span>}
                 </button>
               ))}
             </div>

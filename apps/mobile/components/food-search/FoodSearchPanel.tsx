@@ -1310,7 +1310,7 @@ export default function FoodSearchPanel({
                     <Text style={{ fontSize: 13, fontWeight: isActive ? "700" : "500", color: isActive ? Accent.success : colors.text }}>
                       {p.label}
                     </Text>
-                    {p.gramWeight !== 1 && (
+                    {p.gramWeight !== 1 && p.gramWeight > 0 && (
                       <Text style={{ fontSize: 10, color: colors.textTertiary }}>
                         {p.gramWeight} g
                       </Text>
