@@ -124,7 +124,15 @@ import {
   resolveCurrentBuildNumber,
   shouldAutoShowWhatsNew,
 } from '@/lib/whatsNew';
+import * as Sentry from '@sentry/react-native';
 
+// NOTE: the wizard's auto-generated `Sentry.init({...})` was deliberately
+// removed here. `initErrorTracking()` below (`@/lib/errorTracking`) handles
+// init with our consent-gated `redactPII` `beforeSend` — the wizard's init
+// has `sendDefaultPii: true` and no redactor, which would silently regress
+// the 2026-05-14 privacy posture. The `Sentry.wrap(RootLayout)` export
+// below is kept; it wires native crash handling + navigation tracing into
+// the Expo Router tree.
 initErrorTracking();
 configurePurchases();
 configureNotificationPresentation();
@@ -540,7 +548,7 @@ function RootLayoutInner() {
   );
 }
 
-export default function RootLayout() {
+export default Sentry.wrap(function RootLayout() {
   return (
     <RootErrorBoundary>
       <AuthProvider>
@@ -552,4 +560,4 @@ export default function RootLayout() {
       </AuthProvider>
     </RootErrorBoundary>
   );
-}
+});
