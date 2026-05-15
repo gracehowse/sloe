@@ -327,7 +327,7 @@ export function LogSheet({
           accessibilityLabel="Dismiss log sheet"
           testID="log-sheet-backdrop"
           onPress={onClose}
-          style={[StyleSheet.absoluteFillObject, { backgroundColor: "rgba(0,0,0,0.4)" }]}
+          style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.4)" }]}
         />
         {/* iOS keyboard-avoidance — when the user focuses the inline
             search TextInput, the sheet card lifts above the keyboard

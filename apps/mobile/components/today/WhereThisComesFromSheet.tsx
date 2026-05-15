@@ -104,7 +104,7 @@ export function WhereThisComesFromSheet({
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={{ flex: 1, justifyContent: "flex-end" }}>
         <Pressable
-          style={StyleSheet.absoluteFillObject}
+          style={StyleSheet.absoluteFill}
           onPress={onClose}
           accessibilityLabel="Close"
         />

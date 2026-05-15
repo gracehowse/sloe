@@ -118,6 +118,7 @@ import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
 import { fetchFatSecretAutocomplete } from "../../../../src/lib/nutrition/fatsecretAutocompleteClient";
 import { shouldShowBarcodeFallbackHint } from "../../../../src/lib/nutrition/foodSearchLocale";
 import { formatMacroTrailer } from "../../../../src/lib/nutrition/macroFormat";
+import { portionEqualsLabel } from "../../../../src/lib/nutrition/portionEqualsLabel";
 
 /** Standard units always available regardless of data source */
 const STANDARD_UNITS: FoodPortion[] = [
@@ -1384,12 +1385,12 @@ export default function FoodSearchPanel({
               <Plus size={18} color={colors.text} />
             </Pressable>
             <Text style={{ fontSize: 13, color: colors.textSecondary, flex: 1 }}>
-              {/* 2026-05-06: per-serving-only foods don't have gram
-                  grounding (FatSecret no-metric path). Show the
-                  serving count instead of "= 0 g". */}
-              {preview.chosenPortion.gramWeight === 0
-                ? `= ${preview.quantity} ${preview.chosenPortion.label}`
-                : `= ${totalGrams} g`}
+              {portionEqualsLabel({
+                quantity: preview.quantity,
+                label: preview.chosenPortion.label,
+                gramWeight: preview.chosenPortion.gramWeight,
+                totalGrams,
+              })}
             </Text>
           </View>
 

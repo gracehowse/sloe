@@ -224,7 +224,15 @@ export function LogWeightSheet({
 
 const styles = StyleSheet.create({
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    // 2026-05-15 — RN 0.85 forward-compat: `StyleSheet.absoluteFillObject`
+    // (a spreadable object) was removed; `StyleSheet.absoluteFill` exists
+    // but is a registered numeric ID, so can't be spread into a
+    // StyleSheet.create entry. Inline the literal.
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
     backgroundColor: "rgba(0,0,0,0.45)",
   },
   kbWrap: {

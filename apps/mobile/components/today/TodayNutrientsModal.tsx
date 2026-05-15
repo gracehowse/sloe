@@ -36,7 +36,7 @@ export function TodayNutrientsModal({
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={{ flex: 1, justifyContent: "flex-end" }}>
-        <Pressable style={StyleSheet.absoluteFillObject} onPress={onClose} accessibilityLabel="Close" />
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close" />
         <View
           style={{
             backgroundColor,

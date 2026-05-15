@@ -103,6 +103,7 @@ import { AnalyticsEvents } from "../../../lib/analytics/events";
 import { track } from "../../../lib/analytics/track";
 import { fetchFatSecretAutocomplete } from "@/lib/nutrition/fatsecretAutocompleteClient";
 import { shouldShowBarcodeFallbackHint } from "@/lib/nutrition/foodSearchLocale";
+import { portionEqualsLabel } from "@/lib/nutrition/portionEqualsLabel";
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -1491,7 +1492,14 @@ export function FoodSearchPanel({
               >
                 +
               </button>
-              <span className="text-sm text-muted-foreground">= {totalGrams}g</span>
+              <span className="text-sm text-muted-foreground">
+                {portionEqualsLabel({
+                  quantity: preview.quantity,
+                  label: preview.chosenPortion.label,
+                  gramWeight: preview.chosenPortion.gramWeight,
+                  totalGrams,
+                })}
+              </span>
             </div>
           </div>
 
