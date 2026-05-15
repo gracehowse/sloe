@@ -120,15 +120,21 @@ Browser-side verification via `npm run dev` + Claude Preview eval:
 - ✅ SDK initialised: `window.__SENTRY__['10.47.0']` carries a `BrowserClient` with the correct DSN host (`o4511383114350592.ingest.us.sentry.io`)
 - ✅ 14 integrations loaded including `Replay`, `BrowserTracing`, `BrowserSession`, `NextjsClientStackFrameNormalization`
 - ✅ Consent gate works (without `localStorage.suppr_cookie_consent = "accepted"`, no events post to the tunnel)
-- ✅ Tunnel route URL builds correctly: `/monitoring?o=4511383114350592&p=4511383116316672&r=us`
-- ⚠️ **Sentry Relay returns `403 {"detail":"event submission rejected with_reason: ProjectId"}`** for browser-originated events — both via the tunnel AND via direct ingestion. `sentry-cli send-event` (no browser origin) succeeded for the same DSN against the same project. Diagnosis: the `suppr-web` project's "Allowed Domains" list in Sentry doesn't include `localhost` (or anything), and browser-origin events are rejected as a result. **Fix: Sentry → Projects → suppr-web → Settings → Security & Privacy → Allowed Domains → add `localhost:*` for dev, `suppr.club`, `*.suppr.club`, `*.vercel.app` (preview deploys) for prod.** This is dashboard config, not code.
+- ✅ Tunnel route URL builds correctly: `/monitoring?o=4511383114350592&p=4511394710093824&r=us`
+- ✅ Relay accepts events: all `/monitoring` POSTs return 200 OK, browser event id `452e493c8a6e465d8837a773d524bd23` landed
+- ✅ CLI accepts events: `sentry-cli send-event` confirms id `0dc0e709-9edd-49bd-a40d-7ec736b3c26e`
+
+### Bumps along the way (left in here so future debug doesn't repeat them)
+
+1. **Worktree `.env.local`.** Next.js loads `.env.local` from cwd; git worktrees don't inherit. Symlink: `ln -s /Users/graceturner/Suppr-1/.env.local .env.local` (gitignored, safe).
+2. **Project ID rotation.** Original `suppr-web` project (id `4511383116316672`) was deleted and recreated as `super-web` (id `4511394710093824`); DSN public key + project ID both changed. The `ProjectId` 403 was the stale DSN, not Allowed Domains. Be wary of any "rename slug" path in Sentry that turns out to be delete-and-recreate.
+3. **Project slug is `super-web` not `suppr-web`** (Grace's typo when creating the project, mirrored on mobile as `super-mobile`). `SENTRY_PROJECT` env var must match the literal slug. The DSN ignores slug (keyed on numeric ID) so dev capture works either way — but build-time source-map upload needs the correct slug.
 
 Outstanding (tracked in follow-ups):
 
-- [ ] Update Allowed Domains in Sentry dashboard for `suppr-web` project (see above)
 - [ ] First Vercel preview deploy — needed to prove source-map upload runs and prod stack traces unminify
 - [ ] First weekly-recap cron firing in production — should auto-register the `weekly-recap-push` monitor in Sentry's Crons dashboard
-- [ ] Symlink `.env.local` from the main project root into any new git worktree before running `next dev` (Next.js loads `.env.local` from cwd; worktrees don't inherit it). One-liner: `ln -s /Users/graceturner/Suppr-1/.env.local .env.local`
+- [ ] (Optional) Rename `super-web` / `super-mobile` slugs to `suppr-*` if Sentry actually supports rename (delete-and-recreate dance is brittle)
 
 ## Tier C — what we added and what we deliberately skipped
 
