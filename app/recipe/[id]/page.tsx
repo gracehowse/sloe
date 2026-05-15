@@ -47,24 +47,28 @@ interface IngredientRow {
 }
 
 async function fetchRecipe(id: string) {
-  // Fetch from Supabase
+  // Fetch from Supabase. 2026-05-15: recipe + ingredients fire in
+  // parallel (saves ~50–150ms TTFB per public-share view — meaningful
+  // on the recipe-import-from-Reel viral surface). The ingredients
+  // query is harmlessly wasted on 404s (returns []).
   const sb = getServerClient();
-  const { data: row } = await sb
-    .from("recipes")
-    .select(
-      "id, title, description, instructions, image_url, servings, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, verified_confidence, source_name, author:profiles!author_id(display_name)",
-    )
-    .eq("id", id)
-    .eq("published", true)
-    .maybeSingle<RecipeRow>();
+  const [{ data: row }, { data: ingredientRows }] = await Promise.all([
+    sb
+      .from("recipes")
+      .select(
+        "id, title, description, instructions, image_url, servings, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, verified_confidence, source_name, author:profiles!author_id(display_name)",
+      )
+      .eq("id", id)
+      .eq("published", true)
+      .maybeSingle<RecipeRow>(),
+    sb
+      .from("recipe_ingredients")
+      .select("name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg")
+      .eq("recipe_id", id)
+      .returns<IngredientRow[]>(),
+  ]);
 
   if (!row) return null;
-
-  const { data: ingredientRows } = await sb
-    .from("recipe_ingredients")
-    .select("name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg")
-    .eq("recipe_id", id)
-    .returns<IngredientRow[]>();
 
   // Shared normaliser protects against historic `\n` / `/n` rows typed
   // into the Create Recipe form before build 10 landed the placeholder fix

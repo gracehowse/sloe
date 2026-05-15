@@ -682,6 +682,8 @@ export default function TrackerScreen() {
   const [editPortion, setEditPortion] = useState("1");
   const waterActivityInitialLoadDone = useRef(false);
   const editCanonicalRef = useRef({ cal: 0, p: 0, cb: 0, f: 0 });
+  // 2026-05-15 (ENG-543): dedup parallel `loadJournal` calls — see fn.
+  const loadJournalInFlightRef = useRef(false);
   const [fastingTick, setFastingTick] = useState(Date.now());
   const [isOffline, setIsOffline] = useState(false);
   const [targetCelebration, setTargetCelebration] = useState(false);
@@ -3583,6 +3585,15 @@ export default function TrackerScreen() {
       setHydrated(true);
       return;
     }
+    // 2026-05-15 (ENG-543): dedup parallel calls. Today previously
+    // fired `loadJournal` from 3 paths per focus (reactive on
+    // `selectedDate`, primary `useFocusEffect`, post-HealthKit-sync
+    // `useFocusEffect`). Each call costs a Supabase round-trip. Skip
+    // any caller that arrives while another fetch is still in flight.
+    // The legitimate after-HealthKit-sync reload still runs because
+    // it's awaited *after* the earlier fetch completes.
+    if (loadJournalInFlightRef.current) return;
+    loadJournalInFlightRef.current = true;
 
     // Defence (2026-05-03): wrap the whole load in try/finally so
     // `hydrated` ALWAYS flips true, even if a supabase call throws
@@ -3622,6 +3633,16 @@ export default function TrackerScreen() {
     // caps, not the sum).
     const JOURNAL_ENTRIES_TIMEOUT_MS = 45_000;
     const MEAL_PLAN_DAYS_TIMEOUT_MS = 15_000;
+    // 2026-05-15 (ENG-542): window to the last 35 days. Covers the
+    // week-strip (7d) + trailing analytics (~28d). Previously this
+    // query pulled up to 20,000 rows on every Today focus — fine at
+    // N=1, breaks at 1k DAU when an MFP-import user lands with 4k+
+    // entries.
+    const WINDOW_DAYS = 35;
+    const windowStart = new Date();
+    windowStart.setUTCHours(0, 0, 0, 0);
+    windowStart.setUTCDate(windowStart.getUTCDate() - WINDOW_DAYS);
+    const windowStartKey = windowStart.toISOString().slice(0, 10);
     const entriesPromise = (async () =>
       await supabase
         .from("nutrition_entries")
@@ -3631,6 +3652,7 @@ export default function TrackerScreen() {
         // "open the recipe behind this log") rely on it being present.
         .select("id, date_key, name, recipe_title, time_label, calories, protein, carbs, fat, fiber_g, water_ml, portion_multiplier, source, created_at, nutrition_micros, recipe_id")
         .eq("user_id", userId)
+        .gte("date_key", windowStartKey)
         .order("date_key", { ascending: true })
         .order("created_at", { ascending: true })
         .limit(20_000))();
@@ -3805,6 +3827,7 @@ export default function TrackerScreen() {
       // sad path. Falls through to either the loadError retry UI or
       // an empty Today shell rather than skeleton-forever.
       setHydrated(true);
+      loadJournalInFlightRef.current = false;
     }
   }, [userId, selectedDate]);
 
