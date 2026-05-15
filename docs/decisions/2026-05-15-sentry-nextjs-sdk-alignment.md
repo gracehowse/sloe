@@ -127,14 +127,14 @@ Browser-side verification via `npm run dev` + Claude Preview eval:
 ### Bumps along the way (left in here so future debug doesn't repeat them)
 
 1. **Worktree `.env.local`.** Next.js loads `.env.local` from cwd; git worktrees don't inherit. Symlink: `ln -s /Users/graceturner/Suppr-1/.env.local .env.local` (gitignored, safe).
-2. **Project ID rotation.** Original `suppr-web` project (id `4511383116316672`) was deleted and recreated as `super-web` (id `4511394710093824`); DSN public key + project ID both changed. The `ProjectId` 403 was the stale DSN, not Allowed Domains. Be wary of any "rename slug" path in Sentry that turns out to be delete-and-recreate.
-3. **Project slug is `super-web` not `suppr-web`** (Grace's typo when creating the project, mirrored on mobile as `super-mobile`). `SENTRY_PROJECT` env var must match the literal slug. The DSN ignores slug (keyed on numeric ID) so dev capture works either way — but build-time source-map upload needs the correct slug.
+2. **Project ID rotation.** First web project (id `4511383116316672`) was deleted and a new one created (id `4511394710093824`) during the setup journey; DSN public key + project ID both changed. The `ProjectId` 403 was the stale DSN, not Allowed Domains. Be wary of any "rename slug" path in Sentry that turns out to be delete-and-recreate.
+3. **Slug typo found-and-fixed mid-session.** Web project was originally created with slug `super-web` (mobile as `super-mobile`); both renamed in Sentry dashboard to `suppr-web` / `suppr-mobile` before this doc was finalised. `SENTRY_PROJECT` env var must match the literal slug. The DSN ignores slug (keyed on numeric ID) so dev capture works either way — but build-time source-map upload needs the correct slug.
 
 Outstanding (tracked in follow-ups):
 
 - [ ] First Vercel preview deploy — needed to prove source-map upload runs and prod stack traces unminify
 - [ ] First weekly-recap cron firing in production — should auto-register the `weekly-recap-push` monitor in Sentry's Crons dashboard
-- [ ] (Optional) Rename `super-web` / `super-mobile` slugs to `suppr-*` if Sentry actually supports rename (delete-and-recreate dance is brittle)
+- [x] ~~Rename `super-web` / `super-mobile` slugs to `suppr-*`~~ — done by Grace 2026-05-15 (slug rename in Sentry preserves project ID, so existing DSNs continue working)
 
 ## Tier C — what we added and what we deliberately skipped
 
@@ -188,7 +188,7 @@ instrumentation and consolidation may make sense.
 
 ## Follow-ups
 
-- [ ] Mobile wizard (`npx @sentry/wizard@latest -i reactNative --saas --org suppr-kr --project suppr-mobile`) — rename `super-mobile` → `suppr-mobile` first in Sentry Project Settings, then review the diff and revert any duplicate `Sentry.init()` the wizard inserts (we already have `apps/mobile/lib/errorTracking.ts` with the redaction `beforeSend`)
+- [ ] Mobile wizard (`npx @sentry/wizard@latest -i reactNative --saas --org suppr-kr --project suppr-mobile`) — review the wizard diff against `apps/mobile/lib/errorTracking.ts` (which already has the redaction `beforeSend`) and revert any duplicate `Sentry.init()` the wizard inserts
 - [ ] Mirror all 6 Sentry env vars to Vercel for `production` + `preview` environments
 - [ ] Mirror `EXPO_PUBLIC_SENTRY_DSN` to EAS secrets (`eas secret:create`)
 - [ ] Extend `redactPII` to walk `exception.values[*].stacktrace.frames[*].vars` post-consent → then turn on `includeLocalVariables: true` server-side
