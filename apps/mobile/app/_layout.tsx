@@ -38,18 +38,51 @@ if (__DEV__) {
     /Error while flushing PostHog/,
     /PostHogFetchNetworkError/,
   ];
+  const matchesPostHogFlush = (input: unknown): boolean => {
+    const text =
+      typeof input === "string"
+        ? input
+        : input instanceof Error
+          ? `${input.name}: ${input.message}`
+          : String(input);
+    return POSTHOG_FLUSH_FILTERS.some((p) => p.test(text));
+  };
+  // Patch console.error — direct SDK error path.
   const originalConsoleError = console.error;
   console.error = (...args: unknown[]) => {
-    const first = args[0];
-    const text =
-      typeof first === "string"
-        ? first
-        : first instanceof Error
-          ? `${first.name}: ${first.message}`
-          : String(first);
-    if (POSTHOG_FLUSH_FILTERS.some((p) => p.test(text))) return;
+    if (args.length > 0 && matchesPostHogFlush(args[0])) return;
     originalConsoleError.apply(console, args);
   };
+  // Patch console.warn — RN's promise rejection tracker uses warn on
+  // some versions; SDK also sometimes downgrades to warn.
+  const originalConsoleWarn = console.warn;
+  console.warn = (...args: unknown[]) => {
+    if (args.length > 0 && matchesPostHogFlush(args[0])) return;
+    originalConsoleWarn.apply(console, args);
+  };
+  // 2026-05-15: Hermes/JSC routes unhandled promise rejections through
+  // a separate channel (HermesInternal.enablePromiseRejectionTracker or
+  // the legacy `promise/lib/rejection-tracking` from React Native's
+  // Promise polyfill). The tracker calls console.warn after a short
+  // delay, but it ALSO logs through ExceptionsManager which renders
+  // the redbox directly. Wrap ExceptionsManager.reportException to
+  // silence PostHog flush errors before they hit the bridge.
+  try {
+    const ExceptionsManager = require("react-native/Libraries/Core/ExceptionsManager");
+    if (ExceptionsManager && typeof ExceptionsManager.handleException === "function") {
+      const originalHandle = ExceptionsManager.handleException.bind(ExceptionsManager);
+      ExceptionsManager.handleException = (e: unknown, isFatal: boolean) => {
+        if (e && typeof e === "object" && "message" in e && matchesPostHogFlush(e)) {
+          return;
+        }
+        return originalHandle(e, isFatal);
+      };
+    }
+  } catch {
+    // ExceptionsManager API has shifted between RN versions; if the
+    // wrap fails, the console.error/warn patches still cover the
+    // common paths.
+  }
   LogBox.ignoreLogs([
     /TypeError: Network request failed/,
     /\[expo-notifications\] Error thrown while updating the device push token/,
