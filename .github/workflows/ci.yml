@@ -126,7 +126,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
+      # 2026-05-15 fix: gitleaks-action@v2 needs `pull-requests: write` to
+      # post inline diff annotations + comment on the PR. Without it the
+      # action exits with `RequestError: Resource not accessible by
+      # integration` (HTTP 403), which our `if: failure()` step
+      # misinterprets as "secret detected" — surfacing a misleading red
+      # CI gate. Keeping `contents: read` for the checkout; adding the
+      # minimum needed for the action to function.
       contents: read
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
         with:
