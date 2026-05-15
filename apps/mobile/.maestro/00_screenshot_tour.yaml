@@ -94,15 +94,14 @@ name: "Screenshot tour — capture baseline shots of every key surface"
     direction: DOWN
 - waitForAnimationToEnd
 
-# ---- /more — Group G Batch D (2026-04-30) collapsed this into a
-# redirect to /settings. Capture the deeplink-resolved screen as a
-# regression check that the redirect lands users on Settings instead
-# of dead-ending. The screenshot is identical to tour-08-settings;
-# leaving the capture in place to lock the redirect contract. ----
-- openLink: suppr:///more
+# ---- Discover — Group G Batch E (2026-05-14): /more deleted; the
+# redirect grace period is over and suppr:///more now 404s. Replaced
+# this capture with the Discover surface so the slot stays occupied
+# without depending on a dead route. ----
+- openLink: suppr:///discover
 - waitForAnimationToEnd
 - waitForAnimationToEnd
-- takeScreenshot: screenshots/latest/tour-09-more-redirected
+- takeScreenshot: screenshots/latest/tour-09-discover
 
 # ---- Deep routes ----
 - openLink: suppr:///weight-tracker

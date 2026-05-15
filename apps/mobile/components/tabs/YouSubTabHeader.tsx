@@ -46,12 +46,7 @@ export function YouSubTabHeader() {
   const pathname = usePathname();
   const colors = useThemeColors();
 
-  // Group G IA Batch A (2026-04-28): treat /more as Settings for the
-  // purposes of pill highlighting so the redirect from /more →
-  // /settings doesn't briefly de-highlight the You tab.
-  const onSettings =
-    (pathname?.startsWith("/settings") ?? false) ||
-    (pathname?.startsWith("/more") ?? false);
+  const onSettings = pathname?.startsWith("/settings") ?? false;
 
   const activeId: YouTab = onSettings ? "settings" : "progress";
 

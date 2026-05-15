@@ -179,7 +179,7 @@ function ingredientsFromImageResponse(
 export default function CreateRecipeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const goBackOrCancel = useSafeBack("/(tabs)/more");
+  const goBackOrCancel = useSafeBack("/(tabs)/settings");
   const colors = useThemeColors();
   const { session } = useAuth();
   const userId = session?.user?.id;

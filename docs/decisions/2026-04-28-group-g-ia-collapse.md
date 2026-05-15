@@ -211,11 +211,20 @@ to simulator-or-device since iOS Simulator now supports HealthKit.
   `_layout.tsx:162` (the You-tab tap handler that re-routes to
   /progress when the user is already on /settings or /more).
 
-### Batch E — Cleanup
+### Batch E — Cleanup ✅ Shipped 2026-05-14
 
-**Scope:** delete `apps/mobile/app/(tabs)/more.tsx` after one
-release of redirect grace period. Drop `pathname.startsWith('/more')`
-references from `_layout.tsx:156`.
+**Scope shipped:** deleted `apps/mobile/app/(tabs)/more.tsx` (the
+one-release redirect wrapper) after the Batch D grace period. Dropped
+`pathname.startsWith('/more')` from the `_layout.tsx` tabPress
+listener and the `YouSubTabHeader.tsx` pill-highlight logic. Updated
+three `useSafeBack("/(tabs)/more")` call sites in `create-recipe.tsx`,
+`nutrition-sources.tsx`, and `health-sync.tsx` to `/(tabs)/settings`.
+Removed the Batch D redirect test case from `settingsBundleParity.test.ts`
+and its `MORE_PATH` / `more` file constants. Replaced the
+`tour-09-more-redirected` Maestro screenshot capture with
+`tour-09-discover` (opening `suppr:///more` would 404 post-deletion;
+`discover` is the nearest equivalent orphaned-deeplink surface already
+in the tour). Group G IA collapse is now complete across all 5 batches.
 
 ## Backwards-compatibility surfaces
 

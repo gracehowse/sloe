@@ -58,7 +58,7 @@ function formatLastSync(iso: string | null): string {
 
 export default function HealthSyncScreen() {
   const insets = useSafeAreaInsets();
-  const goBack = useSafeBack("/(tabs)/more");
+  const goBack = useSafeBack("/(tabs)/settings");
   const { session } = useAuth();
   const userId = session?.user?.id;
   const colors = useThemeColors();
