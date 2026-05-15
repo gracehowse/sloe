@@ -158,7 +158,15 @@
           }
         }
       ],
-      "@sentry/react-native"
+      "@sentry/react-native",
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "project": "suppr-mobile",
+          "organization": "suppr-kr"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

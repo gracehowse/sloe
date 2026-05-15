@@ -16,6 +16,7 @@ export function initErrorTracking(): void {
     tracesSampleRate: 0.2,
     sendDefaultPii: false,
     enabled: !__DEV__,
+    enableLogs: true,
     /**
      * Mobile has no cookie banner — TestFlight + App Store users
      * consent to operational telemetry as part of installing the

@@ -1,10 +1,14 @@
-const { getDefaultConfig } = require("expo/metro-config");
 const path = require("path");
+const { getSentryExpoConfig } = require("@sentry/react-native/metro");
 
 const projectRoot = __dirname;
 
+// `getSentryExpoConfig` is a drop-in for `getDefaultConfig` that adds the
+// Sentry serializer so source-maps + debug IDs are emitted on EAS builds.
+// Without it, prod stack traces on TestFlight / App Store stay minified.
+// See docs/decisions/2026-05-15-sentry-nextjs-sdk-alignment.md (mobile leg).
 /** @type {import('expo/metro-config').MetroConfig} */
-const config = getDefaultConfig(projectRoot);
+const config = getSentryExpoConfig(projectRoot);
 
 // Watch ../../src so the mobile app can import shared nutrition/analytics
 // code via ../../../src/*. Deliberately NOT watching the whole monorepo root

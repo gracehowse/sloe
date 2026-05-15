@@ -64,8 +64,28 @@ function preConsentCaptureEnabled(): boolean {
 
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
-  tracesSampleRate: 0.08,
+  tracesSampleRate: process.env.NODE_ENV === "development" ? 1.0 : 0.08,
   enabled: Boolean(process.env.NEXT_PUBLIC_SENTRY_DSN),
+  enableLogs: true,
+  // Crash-replay only. PostHog records every consented session
+  // already (see docs/decisions/2026-05-13-session-replay-and-feature-
+  // flags.md); Sentry replay's value is the 30s leading up to an
+  // *exception* attached to the issue in Sentry. We deliberately
+  // sample 0 random sessions to avoid recording overlap with PostHog.
+  //
+  // Privacy: every text node + input + media element masked at the
+  // SDK level. Network bodies/headers not captured (default). This
+  // means replays show structure + clicks but no user data, which
+  // matches the redactPII posture for the parent event.
+  replaysSessionSampleRate: 0,
+  replaysOnErrorSampleRate: 1.0,
+  integrations: [
+    Sentry.replayIntegration({
+      maskAllText: true,
+      maskAllInputs: true,
+      blockAllMedia: true,
+    }),
+  ],
   beforeSend(event) {
     // Cast through `unknown` — the helpers are structurally typed for
     // both @sentry/nextjs and @sentry/react-native; Sentry's
@@ -92,3 +112,13 @@ Sentry.init({
     return hasConsent() ? transaction : null;
   },
 });
+
+/**
+ * App Router navigation transition hook. Without this export, client-
+ * side navigations (`router.push`, `<Link>` clicks) don't create their
+ * own transaction span and roll into whatever span is active — which
+ * makes per-route latency unreadable in Sentry's Performance view.
+ *
+ * Required by Next.js 15+ App Router per the `sentry-nextjs-sdk` skill.
+ */
+export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
