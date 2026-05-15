@@ -44,6 +44,12 @@ export type ImportErrorCode =
   | "ai_rate_limited"
   | "ai_unavailable"
   | "ai_request_failed"
+  // Blocker 3 (2026-05-14) — daily AI cost cap hit (per-user OR global).
+  // Distinct from `ai_rate_limited` (vendor-side 429) and
+  // `ai_unavailable` (vendor 5xx) so client copy + telemetry can
+  // distinguish "the vendor is overloaded" from "Suppr stopped sending
+  // calls because we crossed our daily spend ceiling".
+  | "ai_capacity_reached"
   | "openai_not_configured"
   | "openai_http_error"
   | "unparseable_model_output"
@@ -96,6 +102,7 @@ export const IMPORT_ERROR_COPY: Record<ImportErrorCode, string> = {
   ai_rate_limited: "Our import service is busy right now. Try again in a moment.",
   ai_unavailable: "Our import service is temporarily unavailable. Try again shortly.",
   ai_request_failed: "We couldn't process that import. Try again, or paste the recipe manually.",
+  ai_capacity_reached: "AI is temporarily at capacity. Try again in a few hours or paste the recipe manually.",
   openai_not_configured: "Image import isn't available right now. Try the URL or caption import instead.",
   openai_http_error: "We couldn't read that image. Try again, or paste the recipe text manually.",
   unparseable_model_output: "We couldn't read that image. Try a clearer photo, or paste the recipe text manually.",
