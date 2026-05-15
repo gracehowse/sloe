@@ -291,51 +291,24 @@ export async function fetchSocialPostMeta(url: string): Promise<SocialPostMeta |
   return null;
 }
 
-const RESERVED_IG_SEGMENTS = new Set([
-  "p",
-  "reel",
-  "reels",
-  "tv",
-  "stories",
-  "explore",
-  "accounts",
-  "direct",
-  "legal",
-]);
+// Pure URL + string helpers re-exported from a server-free module so
+// mobile bundles can import them without pulling in the server-only
+// `aiProvider` / `aiBudget` / `@upstash/redis` chain. See
+// `./socialUrlHelpers.ts` for the actual implementations.
+import {
+  _RESERVED_IG_SEGMENTS_FOR_BACKCOMPAT as RESERVED_IG_SEGMENTS,
+  instagramHandleFromPostUrl as _instagramHandleFromPostUrl,
+  tiktokHandleFromPostUrl as _tiktokHandleFromPostUrl,
+  stripSectionPrefix as _stripSectionPrefix,
+} from "./socialUrlHelpers";
 
-/**
- * Instagram URLs like `instagram.com/HANDLE/reel/…` or `…/HANDLE/p/…` encode the post owner.
- * Prefer this over oEmbed `author_name`, which can be a generic display string or wrong in edge cases.
- */
-export function instagramHandleFromPostUrl(postUrl: string): string | null {
-  try {
-    const u = new URL(postUrl);
-    const host = u.hostname.replace(/^www\./, "").toLowerCase();
-    if (!host.includes("instagram")) return null;
-    const seg = u.pathname.split("/").filter(Boolean);
-    if (seg.length < 2) return null;
-    const first = seg[0].toLowerCase();
-    const second = seg[1].toLowerCase();
-    if (RESERVED_IG_SEGMENTS.has(first)) return null;
-    if (["p", "reel", "reels", "tv"].includes(second)) return `@${seg[0]}`;
-    return null;
-  } catch {
-    return null;
-  }
-}
+export const instagramHandleFromPostUrl = _instagramHandleFromPostUrl;
+export const tiktokHandleFromPostUrl = _tiktokHandleFromPostUrl;
+export const stripSectionPrefix = _stripSectionPrefix;
 
-export function tiktokHandleFromPostUrl(postUrl: string): string | null {
-  try {
-    const u = new URL(postUrl);
-    const host = u.hostname.replace(/^www\./, "").toLowerCase();
-    if (!host.includes("tiktok")) return null;
-    const m = u.pathname.match(/^\/@([^/]+)/i);
-    if (m?.[1]) return `@${m[1]}`;
-  } catch {
-    /* ignore */
-  }
-  return null;
-}
+// `instagramHandleFromPostUrl` + `tiktokHandleFromPostUrl` live in
+// `./socialUrlHelpers.ts` (re-exported above so all existing callers
+// keep working). The split keeps mobile bundles free of server deps.
 
 /**
  * Human attribution for a saved social import when oEmbed `author_name` is missing.
@@ -474,9 +447,7 @@ export function sanitiseImportedTitle(raw: unknown): string | null {
  * would be part of a real ingredient name, unlikely but possible) are not
  * stripped.
  */
-export function stripSectionPrefix(s: string): string {
-  return s.replace(/^\s*For\s+[^:]{1,80}:\s*/i, "").trim();
-}
+// `stripSectionPrefix` is re-exported above from `./socialUrlHelpers.ts`.
 
 function extractMetaContent(html: string, property: string): string | null {
   // Match both property="..." and name="..." patterns
@@ -622,6 +593,7 @@ export class CaptionExtractionError extends Error {
 export async function extractRecipeFromCaption(
   caption: string,
   imageUrl?: string | null,
+  userId?: string | null,
 ): Promise<{
   title: string | null;
   ingredients: string[];
@@ -698,6 +670,7 @@ Rules:
       const dataUrl = `data:${mime};base64,${b64}`;
       return callAiVision({
         callSite: "extractSocialRecipe",
+        userId: userId ?? null,
         systemPrompt: prompt,
         userText: "Extract the recipe from the caption above + this image.",
         imageDataUrl: dataUrl,
@@ -708,6 +681,7 @@ Rules:
     }
     return callAiText({
       callSite: "extractSocialRecipe",
+      userId: userId ?? null,
       userText: prompt,
       expectJson: true,
       temperature: 0.2,

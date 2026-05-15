@@ -56,7 +56,7 @@ import { getSupprApiBase } from "@/lib/supprWeb";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
 import { webRecipeDeepLink } from "../../../../src/lib/share/recipeDeepLink";
-import { instagramHandleFromPostUrl, tiktokHandleFromPostUrl } from "../../../../src/lib/recipe-import/extractSocialRecipe";
+import { instagramHandleFromPostUrl, tiktokHandleFromPostUrl } from "../../../../src/lib/recipe-import/socialUrlHelpers";
 import { journalSlotFromMealTypes } from "../../../../src/lib/nutrition/recipeJournalSlot";
 import { normaliseInstructions } from "../../../../src/lib/recipes/normaliseInstructions";
 import { sanitizeRecipeDescription } from "../../../../src/lib/recipes/sanitizeRecipeDescription";

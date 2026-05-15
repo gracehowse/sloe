@@ -37,7 +37,7 @@ import {
   isLowRelevanceNonVerifiedRow,
 } from "../../../src/lib/nutrition/searchRowTrust";
 import { parseOffMicrosPer100g } from "../../../src/lib/openFoodFacts/parseOffMicros";
-import { stripSectionPrefix } from "../../../src/lib/recipe-import/extractSocialRecipe";
+import { stripSectionPrefix } from "../../../src/lib/recipe-import/socialUrlHelpers";
 
 /**
  * P1-8 (2026-04-25): re-export the canonical threshold from
