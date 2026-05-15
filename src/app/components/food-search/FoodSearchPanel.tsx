@@ -104,7 +104,7 @@ import { track } from "../../../lib/analytics/track";
 import { fetchFatSecretAutocomplete } from "@/lib/nutrition/fatsecretAutocompleteClient";
 import { shouldShowBarcodeFallbackHint } from "@/lib/nutrition/foodSearchLocale";
 import { portionEqualsLabel } from "@/lib/nutrition/portionEqualsLabel";
-import { resolveInitialPortion } from "@/lib/nutrition/foodSearchCore";
+import { resolveInitialPortion, buildPortions } from "@/lib/nutrition/foodSearchCore";
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -231,18 +231,6 @@ export type FoodSearchPanelProps = {
    */
   localeOverride?: string;
 };
-
-// ── Standard units ──────────────────────────────────────────────────
-
-const STANDARD_UNITS: FoodPortion[] = [
-  { label: "g", gramWeight: 1, amount: 1 },
-  { label: "oz", gramWeight: 28.35, amount: 1 },
-  { label: "lb", gramWeight: 453.59, amount: 1 },
-  { label: "tbsp", gramWeight: 14.79, amount: 1 },
-  { label: "tsp", gramWeight: 4.93, amount: 1 },
-  { label: "cup", gramWeight: 236.59, amount: 1 },
-  { label: "ml", gramWeight: 1, amount: 1 },
-];
 
 // ── Helpers (carried over verbatim from FoodSearch.tsx) ─────────────
 
@@ -650,29 +638,10 @@ function buildGenericMatchRow(query: string): SearchResult | null {
   return null;
 }
 
-function buildPortions(
-  apiPortions: FoodPortion[],
-  primary?: PrimaryServing | null,
-): FoodPortion[] {
-  const seen = new Set<string>();
-  const result: FoodPortion[] = [];
-  if (primary) {
-    const chip = primaryServingToPortionChip(primary);
-    seen.add(chip.label.toLowerCase());
-    result.push(chip);
-  }
-  for (const u of STANDARD_UNITS) {
-    const key = u.label.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    result.push(u);
-  }
-  for (const p of apiPortions) {
-    const key = p.label.toLowerCase().trim();
-    if (!seen.has(key) && key !== "100 g") { seen.add(key); result.push(p); }
-  }
-  return result;
-}
+// 2026-05-15 (ENG-550 phase 2): inline `buildPortions` and
+// `STANDARD_UNITS` both extracted to `@/lib/nutrition/foodSearchCore`.
+// Same logic, same dedup order — see foodSearchCore.test.ts for the
+// behaviour pin.
 
 // ── Component ────────────────────────────────────────────────────────
 

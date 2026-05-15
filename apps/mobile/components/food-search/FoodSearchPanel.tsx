@@ -119,18 +119,12 @@ import { fetchFatSecretAutocomplete } from "../../../../src/lib/nutrition/fatsec
 import { shouldShowBarcodeFallbackHint } from "../../../../src/lib/nutrition/foodSearchLocale";
 import { formatMacroTrailer } from "../../../../src/lib/nutrition/macroFormat";
 import { portionEqualsLabel } from "../../../../src/lib/nutrition/portionEqualsLabel";
-import { resolveInitialPortion } from "../../../../src/lib/nutrition/foodSearchCore";
+import { resolveInitialPortion, buildPortions } from "../../../../src/lib/nutrition/foodSearchCore";
 
-/** Standard units always available regardless of data source */
-const STANDARD_UNITS: FoodPortion[] = [
-  { label: "g", gramWeight: 1, amount: 1 },
-  { label: "oz", gramWeight: 28.35, amount: 1 },
-  { label: "lb", gramWeight: 453.59, amount: 1 },
-  { label: "tbsp", gramWeight: 14.79, amount: 1 },
-  { label: "tsp", gramWeight: 4.93, amount: 1 },
-  { label: "cup", gramWeight: 236.59, amount: 1 },
-  { label: "ml", gramWeight: 1, amount: 1 },
-];
+// 2026-05-15 (ENG-550 phase 2): `STANDARD_UNITS` and `buildPortionList`
+// extracted to `@/lib/nutrition/foodSearchCore` as `STANDARD_UNITS` and
+// `buildPortions`. The mobile-side names were aliases; both files now
+// import from the single shared source.
 
 export type Macros = {
   calories: number;
@@ -248,33 +242,6 @@ export type FoodSearchPanelProps = {
     source?: string;
   }>;
 };
-
-function buildPortionList(
-  apiPortions: FoodPortion[],
-  primary?: PrimaryServing | null,
-): FoodPortion[] {
-  const seen = new Set<string>();
-  const result: FoodPortion[] = [];
-  if (primary) {
-    const chip = primaryServingToPortionChip(primary);
-    seen.add(chip.label.toLowerCase());
-    result.push(chip);
-  }
-  for (const u of STANDARD_UNITS) {
-    const key = u.label.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    result.push(u);
-  }
-  for (const p of apiPortions) {
-    const key = p.label.toLowerCase().trim();
-    if (!seen.has(key) && key !== "100 g") {
-      seen.add(key);
-      result.push(p);
-    }
-  }
-  return result;
-}
 
 // 2026-05-15 (ENG-550): inline `resolveInitialPortion` extracted to
 // `../../../../src/lib/nutrition/foodSearchCore` so web + mobile share
@@ -607,7 +574,7 @@ export default function FoodSearchPanel({
         item.macrosPer100g
       ) {
         setLoadingKey(null);
-        const allPortions = buildPortionList([], item.primaryServing);
+        const allPortions = buildPortions([], item.primaryServing);
         const { portion, quantity } = item.primaryServing
           ? { portion: allPortions[0], quantity: 1 }
           : resolveInitialPortion(allPortions, initialAmount, initialUnit);
@@ -628,7 +595,7 @@ export default function FoodSearchPanel({
         setLoadingKey(null);
         if (!result) return;
         const effectivePrimary = item.primaryServing ?? result.primaryPortion ?? null;
-        const allPortions = buildPortionList(result.portions, effectivePrimary);
+        const allPortions = buildPortions(result.portions, effectivePrimary);
         const { portion, quantity } = effectivePrimary
           ? { portion: allPortions[0], quantity: 1 }
           : resolveInitialPortion(allPortions, initialAmount, initialUnit);
@@ -648,7 +615,7 @@ export default function FoodSearchPanel({
         });
       } else if (item._source === "OFF" && item.macrosPer100g) {
         setLoadingKey(null);
-        const allPortions = buildPortionList([], item.primaryServing);
+        const allPortions = buildPortions([], item.primaryServing);
         const { portion, quantity } = item.primaryServing
           ? { portion: allPortions[0], quantity: 1 }
           : resolveInitialPortion(allPortions, initialAmount, initialUnit);
@@ -665,7 +632,7 @@ export default function FoodSearchPanel({
         });
       } else if (item._source === "Edamam" && item.macrosPer100g) {
         setLoadingKey(null);
-        const allPortions = buildPortionList([], item.primaryServing);
+        const allPortions = buildPortions([], item.primaryServing);
         const { portion, quantity } = item.primaryServing
           ? { portion: allPortions[0], quantity: 1 }
           : resolveInitialPortion(allPortions, initialAmount, initialUnit);
@@ -700,7 +667,7 @@ export default function FoodSearchPanel({
           return;
         }
         const effectivePrimary = item.primaryServing ?? result.primaryPortion ?? null;
-        const allPortions = buildPortionList(result.portions, effectivePrimary);
+        const allPortions = buildPortions(result.portions, effectivePrimary);
         const { portion, quantity } = effectivePrimary
           ? { portion: allPortions[0], quantity: 1 }
           : resolveInitialPortion(allPortions, initialAmount, initialUnit);

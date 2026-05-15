@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
   resolveInitialPortion,
+  buildPortions,
+  STANDARD_UNITS,
   type FoodPortion,
 } from "../../src/lib/nutrition/foodSearchCore";
 
@@ -132,5 +134,97 @@ describe("resolveInitialPortion", () => {
         quantity: 3,
       });
     });
+  });
+});
+
+describe("STANDARD_UNITS", () => {
+  it("includes g, oz, lb, tbsp, tsp, cup, ml in that order", () => {
+    expect(STANDARD_UNITS.map((u) => u.label)).toEqual([
+      "g", "oz", "lb", "tbsp", "tsp", "cup", "ml",
+    ]);
+  });
+
+  it("uses gramWeight: 1 for the gram basis units (g, ml)", () => {
+    expect(STANDARD_UNITS.find((u) => u.label === "g")?.gramWeight).toBe(1);
+    expect(STANDARD_UNITS.find((u) => u.label === "ml")?.gramWeight).toBe(1);
+  });
+
+  it("has the canonical conversion factors", () => {
+    const byLabel = Object.fromEntries(STANDARD_UNITS.map((u) => [u.label, u.gramWeight]));
+    expect(byLabel.oz).toBe(28.35);
+    expect(byLabel.lb).toBe(453.59);
+    expect(byLabel.tbsp).toBe(14.79);
+    expect(byLabel.tsp).toBe(4.93);
+    expect(byLabel.cup).toBe(236.59);
+  });
+});
+
+describe("buildPortions", () => {
+  it("starts with the standard units when no primary serving + no api portions", () => {
+    const out = buildPortions([], null);
+    expect(out).toEqual(STANDARD_UNITS);
+  });
+
+  it("puts the primary serving first when provided", () => {
+    const primary = {
+      label: "1 package",
+      grams: 100,
+      kcal: 350,
+      protein: 13,
+      carbs: 42,
+      fat: 8,
+      fiber: 3,
+      sugar: 11,
+      sodium: 760,
+    };
+    const out = buildPortions([], primary);
+    expect(out[0]?.label).toBe("1 package");
+  });
+
+  it("appends API portions that aren't in standard or primary", () => {
+    const apiPortions: FoodPortion[] = [
+      { label: "slice", gramWeight: 25, amount: 1 },
+      { label: "rasher", gramWeight: 28, amount: 1 },
+    ];
+    const out = buildPortions(apiPortions, null);
+    expect(out.map((u) => u.label)).toContain("slice");
+    expect(out.map((u) => u.label)).toContain("rasher");
+  });
+
+  it("dedups case-insensitively — duplicate labels are dropped", () => {
+    const apiPortions: FoodPortion[] = [
+      { label: "G", gramWeight: 1, amount: 1 }, // already in STANDARD_UNITS as 'g'
+      { label: "TBSP", gramWeight: 14.79, amount: 1 }, // already in STANDARD_UNITS as 'tbsp'
+    ];
+    const out = buildPortions(apiPortions, null);
+    expect(out.length).toBe(STANDARD_UNITS.length);
+  });
+
+  it("skips the historical '100 g' USDA placeholder portion", () => {
+    const apiPortions: FoodPortion[] = [
+      { label: "100 g", gramWeight: 100, amount: 1 },
+      { label: "slice", gramWeight: 25, amount: 1 },
+    ];
+    const out = buildPortions(apiPortions, null);
+    expect(out.map((u) => u.label)).not.toContain("100 g");
+    expect(out.map((u) => u.label)).toContain("slice");
+  });
+
+  it("dedups standard units against the primary serving label", () => {
+    const primary = {
+      label: "g", // collides with STANDARD_UNITS[0].label
+      grams: 100,
+      kcal: 350,
+      protein: 13,
+      carbs: 42,
+      fat: 8,
+      fiber: 3,
+      sugar: 11,
+      sodium: 760,
+    };
+    const out = buildPortions([], primary);
+    // Only one 'g' in result — the primary serving's
+    const gCount = out.filter((u) => u.label.toLowerCase() === "g").length;
+    expect(gCount).toBe(1);
   });
 });
