@@ -468,6 +468,88 @@ export default function HouseholdSettingsScreen() {
           </View>
         ) : (
           <>
+            {/* Premium-bar audit Group J line 443 — solo-household empty
+                state. When the user is the only member, the rest of
+                the screen (sharing presets + 7×4 grid + legend) is
+                technically functional but meaningless: there's no one
+                to share with. Surface a prominent, friendly invite
+                card at the top so the next action is obvious. Below
+                it the existing sections still render so the user can
+                preview what they'll get once a second member joins. */}
+            {members.length <= 1 ? (
+              <View
+                testID="household-settings-solo-empty"
+                style={{
+                  borderRadius: Radius.lg,
+                  borderWidth: 1,
+                  borderColor: Accent.primary + "33",
+                  backgroundColor: Accent.primary + "0d",
+                  padding: 18,
+                  marginBottom: 18,
+                  alignItems: "center",
+                }}
+              >
+                <View
+                  style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 24,
+                    backgroundColor: Accent.primary + "1f",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: 12,
+                  }}
+                >
+                  <Plus size={22} color={Accent.primary} strokeWidth={2.25} />
+                </View>
+                <Text
+                  style={{
+                    fontSize: 15,
+                    fontWeight: "700",
+                    color: colors.text,
+                    marginBottom: 4,
+                    textAlign: "center",
+                  }}
+                >
+                  Household is solo
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 12,
+                    color: colors.textSecondary,
+                    textAlign: "center",
+                    lineHeight: 17,
+                    marginBottom: 14,
+                    paddingHorizontal: 8,
+                  }}
+                >
+                  Invite a partner, flatmate, or family member to share
+                  meal plans and shopping lists.
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Invite a household member"
+                  testID="household-settings-solo-invite"
+                  onPress={() => setInviteSheetOpen(true)}
+                  style={({ pressed }) => ({
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 6,
+                    paddingHorizontal: 18,
+                    paddingVertical: 10,
+                    borderRadius: Radius.md,
+                    backgroundColor: Accent.primary,
+                    opacity: pressed ? 0.85 : 1,
+                  })}
+                >
+                  <Plus size={16} color="#fff" strokeWidth={2.25} />
+                  <Text style={{ color: "#fff", fontSize: 14, fontWeight: "700" }}>
+                    Invite
+                  </Text>
+                </Pressable>
+              </View>
+            ) : null}
+
             {/* Members */}
             <View style={{ marginBottom: 18 }} testID="household-settings-members">
               <View
@@ -933,7 +1015,11 @@ export default function HouseholdSettingsScreen() {
             }}
           >
             <Text style={{ color: "#fff", fontSize: 14, fontWeight: "700" }}>
-              {saving ? "Saving…" : savedToast ? "Saved" : "Save changes"}
+              {/* DC12 (2026-05-14, premium-bar audit) — specific
+                  confirmation. The button is "Save changes" so the
+                  affirmed state should mirror that, not the generic
+                  "Saved". */}
+              {saving ? "Saving…" : savedToast ? "Household saved" : "Save changes"}
             </Text>
           </Pressable>
           {!household.isOwner ? (

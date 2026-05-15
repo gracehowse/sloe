@@ -79,20 +79,29 @@ export function TodaySnapShortcut({
           opacity: pressed ? 0.7 : 1,
         })}
       >
+        {/* 2026-05-14 (premium-bar audit Feature 3 #6 — explicit
+            shutter button): the leading affordance was a flat
+            primary-tinted 32×32 square with a Camera glyph. The
+            audit upgrades this to an iOS-Camera-shutter-style
+            filled circle: 44×44, solid `Accent.primary` background,
+            white 22pt glyph. The card now reads as a tap-the-shutter
+            button rather than a generic icon card; matches the
+            shutter-press haptic that was already added on tap. */}
         <View
+          testID="today-snap-shortcut-shutter"
           style={{
-            width: 32,
-            height: 32,
-            borderRadius: Radius.sm,
-            backgroundColor: Accent.primary + "18",
+            width: 44,
+            height: 44,
+            borderRadius: 22,
+            backgroundColor: Accent.primary,
             alignItems: "center",
             justifyContent: "center",
             position: "relative",
           }}
         >
           <Camera
-            size={IconSize.base}
-            color={Accent.primary}
+            size={22}
+            color={Accent.primaryForeground}
             strokeWidth={2.25}
           />
           {locked ? (

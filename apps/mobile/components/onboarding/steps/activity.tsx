@@ -22,9 +22,22 @@ const ACTIVITIES: {
 ];
 
 export function MobileActivityStep() {
-  const { state, set } = useOnboarding();
+  const { state, set, go } = useOnboarding();
   const colors = useThemeColors();
   const overline = useStepOverline();
+  // 2026-05-14 (premium-bar audit B cross-cutting #6): auto-advance
+  // after 200ms when the user picks an activity level. Same pattern
+  // as Goal + Sex — single-choice steps should never strand the user
+  // hunting for Continue when the tap itself was the answer.
+  const advanceTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  React.useEffect(
+    () => () => {
+      if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
+    },
+    [],
+  );
   return (
     <MobileStepBody>
       <MobileStepHeader
@@ -40,7 +53,16 @@ export function MobileActivityStep() {
               key={a.id}
               compact
               selected={selected}
-              onPress={() => set({ activity: a.id })}
+              onPress={() => {
+                if (state.activity === a.id) return;
+                set({ activity: a.id });
+                if (advanceTimerRef.current) {
+                  clearTimeout(advanceTimerRef.current);
+                }
+                advanceTimerRef.current = setTimeout(() => {
+                  go(1);
+                }, 200);
+              }}
               icon={
                 <a.Icon
                   size={18}

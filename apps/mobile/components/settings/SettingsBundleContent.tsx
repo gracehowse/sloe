@@ -1087,12 +1087,17 @@ export function SettingsBundleContent({ context }: { context: Context }) {
       {/* Stats strip — Recipes / Streak.
           Audit 2026-05-04 #21: streak=0 styled identically to a positive
           streak (green) was misleading. Default text colour for 0;
-          green only when the user genuinely has a streak ≥ 1. */}
+          green only when the user genuinely has a streak ≥ 1.
+          Audit P1 ENG-40 (2026-05-15): streak=0 still anchored on a
+          literal "0". Render an em-dash for zero — same shape as the
+          Today hero rule (`feedback_no_duplicate_today_hero_content`)
+          applied here for adjacency consistency. The empty state reads
+          as "no streak yet" rather than "0 streak". */}
       <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
         {(
           [
             [String(profileData.savedCount), "Recipes", t.accent],
-            [String(profileData.streak), "Streak", profileData.streak > 0 ? t.green : colors.text],
+            [profileData.streak > 0 ? String(profileData.streak) : "—", "Streak", profileData.streak > 0 ? t.green : colors.textTertiary],
           ] as [string, string, string][]
         ).map(([v, l, c]) => (
           <Pressable

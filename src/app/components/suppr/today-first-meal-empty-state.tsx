@@ -41,6 +41,15 @@ export function TodayFirstMealEmptyState({
       <p className="px-2 text-xs text-muted-foreground">
         Search a food, scan a barcode, or paste a recipe — your day starts here.
       </p>
+      {/* DC12 (2026-05-14, premium-bar audit) — Headspace-style
+          supportive moment-of-truth line. Mobile parity:
+          `apps/mobile/components/today/TodayFirstMealEmptyState.tsx`. */}
+      <p
+        data-testid="first-meal-empty-supportive-copy"
+        className="px-2 text-xs text-muted-foreground"
+      >
+        No pressure — log when you&apos;re ready.
+      </p>
       <button
         type="button"
         onClick={onLogMeal}

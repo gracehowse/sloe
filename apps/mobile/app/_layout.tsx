@@ -15,7 +15,74 @@ import { AccessibilityInfo, AppState, LogBox, Platform, Text, View } from 'react
 // dev pill so screenshot captures during sim NAT wedge / cold-boot don't
 // leak handled-error chrome onto otherwise-clean screens. Production builds
 // disable LogBox entirely so this is dev-only.
+//
+// 2026-05-14: added PostHog flush-error patterns. The SDK queues events,
+// retries on its own (fetchRetryCount/fetchRetryDelay), and shouts via
+// console.error after a single failed flush — which RN escalates to a
+// redbox. Surfaces every time we trip the iOS-18 sim HTTP/3 wedge
+// (`feedback_sim_supabase_unreachable.md`) or background mid-flush.
+// Not actionable in dev; SDK handles the retry. Production still
+// reports via Sentry through `initErrorTracking()` if a flush truly
+// gives up.
+//
+// 2026-05-15: `LogBox.ignoreLogs` alone doesn't suppress PostHog flush
+// errors — the SDK throws `PostHogFetchNetworkError` through an async
+// generator (`posthog-core-stateless.js`) and the rejection escapes
+// LogBox's `console.error` filter on at least some paths. Adding a
+// console.error monkey-patch that runs BEFORE LogBox so the message
+// never reaches the redbox renderer. SDK still queues + retries
+// internally; we just stop yelling about it in dev. Production keeps
+// reporting via Sentry through `initErrorTracking()`.
 if (__DEV__) {
+  const POSTHOG_FLUSH_FILTERS = [
+    /Error while flushing PostHog/,
+    /PostHogFetchNetworkError/,
+  ];
+  const matchesPostHogFlush = (input: unknown): boolean => {
+    const text =
+      typeof input === "string"
+        ? input
+        : input instanceof Error
+          ? `${input.name}: ${input.message}`
+          : String(input);
+    return POSTHOG_FLUSH_FILTERS.some((p) => p.test(text));
+  };
+  // Patch console.error — direct SDK error path.
+  const originalConsoleError = console.error;
+  console.error = (...args: unknown[]) => {
+    if (args.length > 0 && matchesPostHogFlush(args[0])) return;
+    originalConsoleError.apply(console, args);
+  };
+  // Patch console.warn — RN's promise rejection tracker uses warn on
+  // some versions; SDK also sometimes downgrades to warn.
+  const originalConsoleWarn = console.warn;
+  console.warn = (...args: unknown[]) => {
+    if (args.length > 0 && matchesPostHogFlush(args[0])) return;
+    originalConsoleWarn.apply(console, args);
+  };
+  // 2026-05-15: Hermes/JSC routes unhandled promise rejections through
+  // a separate channel (HermesInternal.enablePromiseRejectionTracker or
+  // the legacy `promise/lib/rejection-tracking` from React Native's
+  // Promise polyfill). The tracker calls console.warn after a short
+  // delay, but it ALSO logs through ExceptionsManager which renders
+  // the redbox directly. Wrap ExceptionsManager.reportException to
+  // silence PostHog flush errors before they hit the bridge.
+  try {
+    const ExceptionsManager = require("react-native/Libraries/Core/ExceptionsManager");
+    if (ExceptionsManager && typeof ExceptionsManager.handleException === "function") {
+      const originalHandle = ExceptionsManager.handleException.bind(ExceptionsManager);
+      ExceptionsManager.handleException = (e: unknown, isFatal: boolean) => {
+        if (e && typeof e === "object" && "message" in e && matchesPostHogFlush(e)) {
+          return;
+        }
+        return originalHandle(e, isFatal);
+      };
+    }
+  } catch {
+    // ExceptionsManager API has shifted between RN versions; if the
+    // wrap fails, the console.error/warn patches still cover the
+    // common paths.
+  }
   LogBox.ignoreLogs([
     /TypeError: Network request failed/,
     /\[expo-notifications\] Error thrown while updating the device push token/,
@@ -23,6 +90,8 @@ if (__DEV__) {
     /\[tzSync\] profiles\.tz_iana update failed/,
     /\[tracker\] (?:meal_plan_days|nutrition_entries|fetchMealPlanJson) timed out/,
     /\[useSavedLibraryRecipes\] saves\+recipes batch timed out/,
+    /Error while flushing PostHog/,
+    /PostHogFetchNetworkError/,
   ]);
 }
 import { useShareIntent } from 'expo-share-intent';

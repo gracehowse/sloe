@@ -189,33 +189,26 @@ export function LoginClient({ initialMode = "signin", hideTabs = false }: LoginC
       style={{ background: "var(--background)" }}
     >
       <div className="w-full max-w-md">
-        {/* Value proposition — above the form */}
+        {/* 2026-05-14 (premium-sweep-v2 row 5.1 + 5.2): brand mark
+            updated from generic clipboard-with-checkmark SVG to the
+            Suppr "S" wordmark tile (same mark used in the landing
+            top-bar + mobile Welcome). Brand consistency at the first
+            auth touchpoint. Page-level H1 + subtitle removed because
+            the card directly below carries the same content ("Welcome
+            back / Sign in to continue.") — two competing headlines for
+            the same surface. */}
         <div className="text-center mb-6 sm:mb-8">
           <div
-            className="inline-flex items-center justify-center w-12 h-12 rounded-2xl mb-4"
+            className="inline-flex items-center justify-center w-12 h-12 rounded-2xl mb-4 text-white font-extrabold text-2xl"
             style={{
               background: "var(--primary)",
               boxShadow: "0 8px 24px color-mix(in srgb, var(--primary) 25%, transparent)",
+              letterSpacing: "-0.02em",
             }}
+            aria-label="Suppr"
           >
-            <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-            </svg>
+            S
           </div>
-          <h1
-            className="text-2xl font-bold mb-2"
-            style={{ color: "var(--foreground)" }}
-          >
-            {mode === "signup" ? "Create your Suppr account" : "Sign in to Suppr"}
-          </h1>
-          <p
-            className="text-sm leading-relaxed max-w-sm mx-auto"
-            style={{ color: "var(--muted-foreground)" }}
-          >
-            {mode === "signup"
-              ? "Track macros, plan your week, import recipes — all on one account that syncs across web and iOS."
-              : "Welcome back. Your Today, plan, and recipes are waiting."}
-          </p>
         </div>
 
         {/* Auth form */}

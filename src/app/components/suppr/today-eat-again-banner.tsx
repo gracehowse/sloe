@@ -31,7 +31,7 @@ export function TodayEatAgainBanner({
     <div className="mb-3 rounded-card border border-primary/30 bg-primary/5 px-3.5 py-3 flex items-center gap-3 v2-fade-up">
       <div className="flex-1 min-w-0">
         <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Eat again</p>
-        <p className="text-[13px] font-semibold text-foreground truncate">{suggestion.recipeTitle}</p>
+        <p className="text-[13px] font-semibold text-foreground line-clamp-2 break-words">{suggestion.recipeTitle}</p>
         {/* 2026-05-12 (premium-bar audit web parity, cross-cutting
             copy unify): macro format normalised to `698 kcal · 22g
             P · 95g C · 27g F` to match the canonical

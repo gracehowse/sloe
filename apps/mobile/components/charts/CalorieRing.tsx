@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Pressable, Text, View } from "react-native";
+import * as Haptics from "expo-haptics";
 import Svg, {
   Circle,
   Defs,
@@ -51,7 +52,7 @@ function useAnimatedNumber(
   target: number,
   options?: { snapOn?: unknown; duration?: number; reduceMotion?: boolean },
 ): number {
-  const duration = options?.duration ?? 800;
+  const duration = options?.duration ?? 400;
   const snapOn = options?.snapOn;
   const reduceMotion = options?.reduceMotion ?? false;
   const [value, setValue] = useState(target);
@@ -151,40 +152,48 @@ function MacroRing({
   color,
   trackColor,
   delay,
-  dim,
 }: {
   radius: number;
   pct: number;
   color: string;
   trackColor: string;
   delay: number;
-  /** 2026-05-12 (premium-bar DC1, Apple Watch borrow): when the outer
-   *  calorie ring is over-budget, dim the macro arcs to ~55% so the
-   *  destructive-red outer ring carries the over signal without the
-   *  macro colours fighting it. "Warm-shift" per audit — opacity
-   *  approximation that's cheap to render and reads correctly in dark
-   *  mode. If a true colour-warm-shift is wanted later, swap this
-   *  prop for a `tint` colour string. */
-  dim?: boolean;
 }) {
   const circ = CIRC(radius);
   const progress = useSharedValue(0);
+  const prevPctRef = useRef(pct);
 
   useEffect(() => {
-    progress.value = 0;
-    progress.value = withDelay(
-      delay,
-      withTiming(Math.min(pct, 0.999), {
-        duration: 800,
+    const prevPct = prevPctRef.current;
+    prevPctRef.current = pct;
+    if (prevPct === 0 && pct > 0) {
+      progress.value = 0;
+      progress.value = withDelay(
+        delay,
+        withTiming(Math.min(pct, 0.999), {
+          duration: 200,
+          easing: Easing.out(Easing.cubic),
+        }),
+      );
+    } else {
+      progress.value = withTiming(Math.min(pct, 0.999), {
+        duration: 200,
         easing: Easing.out(Easing.cubic),
-      }),
-    );
+      });
+    }
   }, [pct]);
 
   const animatedProps = useAnimatedProps(() => ({
     strokeDashoffset: circ * (1 - progress.value),
   }));
 
+  // 2026-05-14 — Grace's call: macro arcs always render in their own
+  // colour at full opacity, even when the user is over-budget. The
+  // previous amber-warm-tint treatment (`dim=true` shifted arc to
+  // Accent.warning at 0.6 opacity) collapsed the multi-colour
+  // language into a single warning hue and made the ring read as
+  // dimmer overall. The destructive outer kcal ring already carries
+  // the over-budget signal — the inner arcs don't need to repeat it.
   return (
     <G>
       <Circle
@@ -208,7 +217,6 @@ function MacroRing({
         strokeLinecap="round"
         rotation="-90"
         origin={`${CX},${CX}`}
-        opacity={dim ? 0.55 : 1}
       />
     </G>
   );
@@ -260,17 +268,25 @@ export default function CalorieRing({
   const progress = useSharedValue(0);
 
   // Tween from the current ring position to the new pct (do NOT snap to
-  // zero first — that produced a jarring "drain then refill" on every
-  // log because the prior snapshot was discarded). Reanimated 3
-  // continues the existing animation when withTiming is called on an
-  // already-animating shared value, which is the desired behaviour for
-  // a ring that updates as the user logs through the day.
+  // zero first). Reanimated 3 continues the existing animation when
+  // withTiming is called on an already-animating shared value.
   useEffect(() => {
     progress.value = withTiming(pct, {
       duration: 800,
       easing: Easing.out(Easing.cubic),
     });
   }, [pct]);
+
+  // Light haptic feedback when logged calories change — Withings-style
+  // confirmation that a new data point has landed. Skipped on mount
+  // (prevConsumedRef seeds to the initial value).
+  const prevConsumedRef = useRef(consumed);
+  useEffect(() => {
+    if (consumed !== prevConsumedRef.current && consumed > 0) {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    prevConsumedRef.current = consumed;
+  }, [consumed]);
 
   const animatedProps = useAnimatedProps(() => ({
     strokeDashoffset: mainCirc * (1 - progress.value),
@@ -403,7 +419,6 @@ export default function CalorieRing({
               color={MacroColors.protein}
               trackColor={trackColor}
               delay={80}
-              dim={isOver}
             />
           )}
           {expanded && !isEmpty && (
@@ -413,7 +428,6 @@ export default function CalorieRing({
               color={MacroColors.carbs}
               trackColor={trackColor}
               delay={160}
-              dim={isOver}
             />
           )}
           {expanded && !isEmpty && (
@@ -423,7 +437,6 @@ export default function CalorieRing({
               color={MacroColors.fat}
               trackColor={trackColor}
               delay={240}
-              dim={isOver}
             />
           )}
         </Svg>
@@ -510,6 +523,12 @@ export default function CalorieRing({
           </Text>
         ) : null}
       </View>
+      {/* 2026-05-14 — Grace's call: removed the
+          fraction + delta chip row below the ring. The hero kcal
+          inside the ring already shows the running total, and
+          long-press on the ring surfaces the over/remaining detail
+          — duplicating it as a static line under the ring was
+          redundant. */}
     </Pressable>
   );
 }

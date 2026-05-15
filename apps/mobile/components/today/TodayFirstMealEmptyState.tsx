@@ -72,6 +72,23 @@ export function TodayFirstMealEmptyState({
       >
         Search a food, scan a barcode, or paste a recipe — your day starts here.
       </Text>
+      {/* DC12 (2026-05-14, premium-bar audit) — Headspace-style
+          supportive moment-of-truth line for the empty-day surface.
+          The previous copy was already friendly but pushed the user
+          straight at the CTA; this calm sub-line lowers the pressure
+          before they tap. Web parity:
+          `src/app/components/suppr/today-first-meal-empty-state.tsx`. */}
+      <Text
+        testID="first-meal-empty-supportive-copy"
+        style={{
+          fontSize: 12,
+          color: textSecondaryColor,
+          textAlign: "center",
+          paddingHorizontal: 8,
+        }}
+      >
+        No pressure — log when you&apos;re ready.
+      </Text>
       <Pressable
         onPress={onLogMeal}
         accessibilityRole="button"

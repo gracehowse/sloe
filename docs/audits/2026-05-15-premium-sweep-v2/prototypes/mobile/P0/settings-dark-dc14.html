@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Suppr — mobile Settings dark DC14 adjacency prototype</title>
+  <style>
+    :root {
+      --pm-ease: cubic-bezier(0.22, 1, 0.36, 1);
+      --pm-duration: 150ms;
+      --background-light: #f4f5f7;
+      --foreground-light: #111118;
+      --card-light: #ffffff;
+      --primary: #4c6ce0;
+      --primary-foreground: #ffffff;
+      --muted-light: #e4e4ec;
+      --muted-foreground-light: #6b6b78;
+      --border-light: #e4e4ec;
+      /* Dark Suppr palette */
+      --dark-bg: #101014;
+      --dark-card: #1c1c22;
+      --dark-card-2: #16161c;
+      --dark-border: #2a2a32;
+      --dark-text: #e4e4e8;
+      --dark-text-muted: #8b8b94;
+      /* DC14 accents */
+      --amber: #e8a020;
+      --amber-soft: rgba(232, 160, 32, 0.10);
+      --pale-indigo: #8ba0e8;
+      --pale-indigo-soft: rgba(139, 160, 232, 0.10);
+      --success: #22a860;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+      background: var(--background-light); color: var(--foreground-light);
+      min-height: 100vh; font-size: 15px; line-height: 1.45;
+      -webkit-font-smoothing: antialiased;
+    }
+    .prototype-header {
+      position: sticky; top: 0; z-index: 10;
+      background: var(--card-light); border-bottom: 1px solid var(--border-light);
+      padding: 16px 24px; display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+    }
+    .prototype-header h1 { font-size: 18px; font-weight: 700; }
+    .prototype-header .meta { font-size: 12px; color: var(--muted-foreground-light); margin-top: 2px; }
+    .prototype-header nav { margin-left: auto; display: flex; gap: 4px; background: var(--muted-light); border-radius: 8px; padding: 3px; }
+    .prototype-header nav button {
+      border: 0; background: transparent; color: var(--muted-foreground-light);
+      padding: 6px 14px; font-size: 13px; font-weight: 600;
+      border-radius: 6px; cursor: pointer;
+    }
+    .prototype-header nav button[aria-current="true"] { background: var(--card-light); color: var(--foreground-light); box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+
+    .prototype-canvas { padding: 32px; display: grid; gap: 32px; }
+    .prototype-canvas[data-view="before"] .state--after { display: none; }
+    .prototype-canvas[data-view="after"] .state--before { display: none; }
+    .prototype-canvas[data-view="side-by-side"] { grid-template-columns: 1fr 1fr; }
+    .state {
+      background: var(--card-light); border: 1px solid var(--border-light);
+      border-radius: 12px; padding: 48px 24px 24px; position: relative;
+    }
+    .state::before {
+      content: attr(data-label); position: absolute; top: 12px; left: 12px;
+      font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+      padding: 3px 8px; border-radius: 4px;
+      background: var(--muted-light); color: var(--muted-foreground-light);
+    }
+    .state--after::before { background: var(--primary); color: var(--primary-foreground); }
+
+    /* iPhone — dark */
+    .iphone {
+      width: 430px; height: 932px;
+      border-radius: 50px; background: #000;
+      padding: 14px; margin: 0 auto;
+      box-shadow: 0 0 0 2px #1a1a1c, 0 24px 48px rgba(0, 0, 0, 0.18);
+      position: relative;
+    }
+    .iphone__screen {
+      width: 100%; height: 100%; border-radius: 38px; overflow: hidden;
+      background: var(--dark-bg); color: var(--dark-text);
+      position: relative;
+    }
+    .iphone__status-bar {
+      height: 47px; display: flex; align-items: center; justify-content: space-between;
+      padding: 0 28px 0 32px; font-size: 15px; font-weight: 600;
+      color: white; position: relative; z-index: 2;
+    }
+    .iphone__status-bar::before {
+      content: ""; position: absolute; left: 50%; top: 11px; transform: translateX(-50%);
+      width: 124px; height: 36px; background: #000; border-radius: 20px;
+    }
+    .iphone__status-bar-time, .iphone__status-bar-right { z-index: 3; }
+    .iphone__status-bar-right { display: flex; gap: 4px; align-items: center; font-size: 12px; }
+
+    /* Settings content */
+    .more-tag {
+      font-size: 10px; font-weight: 700;
+      color: var(--dark-text-muted);
+      letter-spacing: 0.18em;
+      padding: 16px 20px 8px;
+    }
+    .progress-settings-toggle {
+      display: flex; gap: 8px; padding: 0 20px 16px;
+    }
+    .progress-settings-toggle button {
+      flex: 1; padding: 10px;
+      background: var(--dark-card);
+      color: var(--dark-text-muted);
+      border: 0; border-radius: 10px;
+      font-weight: 700; font-size: 14px; cursor: pointer;
+    }
+    .progress-settings-toggle button[aria-current="true"] {
+      background: rgba(76, 108, 224, 0.18);
+      color: #a8b8ff;
+    }
+    .settings-title {
+      font-size: 28px; font-weight: 800;
+      padding: 8px 20px 4px;
+      letter-spacing: -0.02em;
+    }
+    .settings-sub {
+      font-size: 14px; color: var(--dark-text-muted);
+      padding: 0 20px 16px;
+    }
+    .settings-search {
+      margin: 0 20px 16px;
+      background: var(--dark-card);
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: 14px;
+      color: var(--dark-text-muted);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .profile-row {
+      margin: 0 20px 16px;
+      background: var(--dark-card);
+      border-radius: 14px;
+      padding: 16px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .profile-avatar {
+      width: 44px; height: 44px; border-radius: 50%;
+      background: linear-gradient(135deg, #c4419e, #5a4ad6);
+      display: flex; align-items: center; justify-content: center;
+      color: white; font-weight: 700; font-size: 18px;
+    }
+    .profile-text { flex: 1; }
+    .profile-text__name { font-size: 15px; font-weight: 700; }
+    .profile-text__meta { font-size: 12px; color: var(--dark-text-muted); margin-top: 2px; }
+    .profile-pill {
+      font-size: 11px; font-weight: 700;
+      padding: 4px 10px; border-radius: 12px;
+      background: var(--dark-card-2);
+      color: var(--dark-text);
+    }
+
+    /* Stat tiles — different between before and after */
+    .stat-tiles {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 0 20px 24px;
+    }
+    /* BEFORE — flat dark grey tiles, indigo digits */
+    .stat-tile-before {
+      background: var(--dark-card);
+      border-radius: 14px;
+      padding: 18px;
+      text-align: center;
+    }
+    .stat-tile-before .digit {
+      font-size: 28px; font-weight: 800;
+      color: var(--primary);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.02em;
+    }
+    .stat-tile-before .label {
+      font-size: 12px; color: var(--dark-text-muted);
+      margin-top: 2px;
+    }
+    /* AFTER — outlined coloured tiles per DC14 pattern */
+    .stat-tile-after {
+      background: transparent;
+      border: 1.5px solid;
+      border-radius: 14px;
+      padding: 18px;
+      text-align: center;
+    }
+    .stat-tile-after--recipes {
+      border-color: rgba(232, 160, 32, 0.55);
+      background: var(--amber-soft);
+    }
+    .stat-tile-after--streak {
+      border-color: rgba(139, 160, 232, 0.55);
+      background: var(--pale-indigo-soft);
+    }
+    .stat-tile-after .digit {
+      font-size: 28px; font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.02em;
+    }
+    .stat-tile-after--recipes .digit { color: var(--amber); }
+    .stat-tile-after--streak .digit { color: var(--pale-indigo); }
+    .stat-tile-after .label {
+      font-size: 12px;
+      margin-top: 2px;
+      color: var(--dark-text-muted);
+    }
+
+    .section-header {
+      font-size: 13px; font-weight: 700;
+      color: var(--dark-text);
+      padding: 0 20px 12px;
+    }
+    .membership-card {
+      margin: 0 20px;
+      background: var(--dark-card);
+      border-radius: 14px;
+      padding: 16px;
+    }
+    .upgrade-row {
+      display: flex; align-items: center; gap: 12px; padding-bottom: 14px;
+      border-bottom: 1px solid var(--dark-border);
+      margin-bottom: 14px;
+    }
+    .upgrade-icon {
+      width: 36px; height: 36px;
+      background: rgba(76, 108, 224, 0.18);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      color: #a8b8ff; font-size: 18px;
+    }
+    .upgrade-text { flex: 1; }
+    .upgrade-text strong { font-size: 14px; font-weight: 700; display: block; }
+    .upgrade-text small { font-size: 12px; color: var(--dark-text-muted); }
+    .promo-label { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+    .promo-hint { font-size: 12px; color: var(--dark-text-muted); margin-bottom: 10px; }
+    .promo-row { display: flex; gap: 8px; }
+    .promo-row input {
+      flex: 1; padding: 10px 14px;
+      background: var(--dark-card-2);
+      border: 0; border-radius: 10px;
+      color: var(--dark-text); font-size: 14px;
+      font-family: inherit;
+    }
+    .promo-row input::placeholder { color: var(--dark-text-muted); }
+    .promo-row button {
+      background: rgba(76, 108, 224, 0.18);
+      color: #a8b8ff;
+      border: 0; border-radius: 10px;
+      padding: 10px 20px;
+      font-size: 13px; font-weight: 700;
+      cursor: pointer;
+    }
+
+    .prototype-notes {
+      margin: 0 32px 64px; background: var(--card-light);
+      border: 1px solid var(--border-light); border-radius: 12px; padding: 24px;
+    }
+    .prototype-notes h2 { font-size: 14px; font-weight: 700; margin-bottom: 8px; margin-top: 16px; }
+    .prototype-notes h2:first-child { margin-top: 0; }
+    .prototype-notes ul { list-style: none; display: grid; gap: 8px; }
+    .prototype-notes li { padding-left: 8px; border-left: 2px solid var(--primary); font-size: 14px; }
+    .prototype-notes li strong {
+      display: inline-block; font-size: 11px; font-weight: 700;
+      background: var(--muted-light); color: var(--muted-foreground-light);
+      padding: 2px 6px; border-radius: 4px; margin-right: 6px;
+      text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .prototype-notes p { font-size: 14px; color: var(--muted-foreground-light); }
+    .prototype-notes code {
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+      font-size: 12px; background: var(--muted-light); color: var(--foreground-light);
+      padding: 1px 5px; border-radius: 3px;
+    }
+
+    [data-view="side-by-side"] .iphone {
+      transform: scale(0.7); transform-origin: top center;
+      margin-bottom: -280px;
+    }
+  </style>
+</head>
+<body>
+  <header class="prototype-header">
+    <div>
+      <h1>Mobile Settings dark — DC14 adjacency fix</h1>
+      <p class="meta">Surface: <code>apps/mobile/app/(tabs)/settings.tsx</code> · Row: #23.1 (REPLACE flat tiles with outlined-coloured pattern) · DC14 Allowed borrow</p>
+    </div>
+    <nav>
+      <button onclick="setView('before', this)">Before</button>
+      <button onclick="setView('after', this)" aria-current="true">After</button>
+      <button onclick="setView('side-by-side', this)">Side-by-side</button>
+    </nav>
+  </header>
+
+  <main class="prototype-canvas" data-view="after">
+
+    <section class="state state--before" data-label="Before (captured)">
+      <div class="iphone">
+        <div class="iphone__screen">
+          <div class="iphone__status-bar">
+            <span class="iphone__status-bar-time">9:41</span>
+            <span class="iphone__status-bar-right">●●● 100%</span>
+          </div>
+          <div class="more-tag">MORE</div>
+          <div class="progress-settings-toggle">
+            <button>Progress</button>
+            <button aria-current="true">Settings</button>
+          </div>
+          <h2 class="settings-title">Settings</h2>
+          <p class="settings-sub">Plan, targets, and how the app shows up.</p>
+          <div class="settings-search">⌕ Search settings</div>
+          <div class="profile-row">
+            <div class="profile-avatar">G</div>
+            <div class="profile-text">
+              <div class="profile-text__name">gracmturner</div>
+              <div class="profile-text__meta">Free tier · Joined 1mo ago</div>
+            </div>
+            <div class="profile-pill">Free</div>
+          </div>
+          <!-- BEFORE: flat dark-grey tiles -->
+          <div class="stat-tiles">
+            <div class="stat-tile-before">
+              <div class="digit">0</div>
+              <div class="label">Recipes</div>
+            </div>
+            <div class="stat-tile-before">
+              <div class="digit">0</div>
+              <div class="label">Streak</div>
+            </div>
+          </div>
+          <h3 class="section-header">Membership</h3>
+          <div class="membership-card">
+            <div class="upgrade-row">
+              <div class="upgrade-icon">⚡</div>
+              <div class="upgrade-text">
+                <strong>Upgrade your plan</strong>
+                <small>Unlimited recipes, multi-day plans, and AI logging</small>
+              </div>
+              <span style="color: var(--dark-text-muted);">›</span>
+            </div>
+            <div class="promo-label">Promo code</div>
+            <div class="promo-hint">Enter your code exactly as provided (letters are not case-sensitive).</div>
+            <div class="promo-row">
+              <input placeholder="Enter code">
+              <button>Apply</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="state state--after" data-label="After (DC14 outlined pattern)">
+      <div class="iphone">
+        <div class="iphone__screen">
+          <div class="iphone__status-bar">
+            <span class="iphone__status-bar-time">9:41</span>
+            <span class="iphone__status-bar-right">●●● 100%</span>
+          </div>
+          <div class="more-tag">MORE</div>
+          <div class="progress-settings-toggle">
+            <button>Progress</button>
+            <button aria-current="true">Settings</button>
+          </div>
+          <h2 class="settings-title">Settings</h2>
+          <p class="settings-sub">Plan, targets, and how the app shows up.</p>
+          <div class="settings-search">⌕ Search settings</div>
+          <div class="profile-row">
+            <div class="profile-avatar">G</div>
+            <div class="profile-text">
+              <div class="profile-text__name">gracmturner</div>
+              <div class="profile-text__meta">Free tier · Joined 1mo ago</div>
+            </div>
+            <div class="profile-pill">Free</div>
+          </div>
+          <!-- 23.1: outlined-coloured tile pattern (DC14 Allowed borrow) -->
+          <div class="stat-tiles">
+            <div class="stat-tile-after stat-tile-after--recipes">
+              <div class="digit">0</div>
+              <div class="label">Recipes</div>
+            </div>
+            <div class="stat-tile-after stat-tile-after--streak">
+              <div class="digit">0</div>
+              <div class="label">Streak</div>
+            </div>
+          </div>
+          <h3 class="section-header">Membership</h3>
+          <div class="membership-card">
+            <div class="upgrade-row">
+              <div class="upgrade-icon">⚡</div>
+              <div class="upgrade-text">
+                <strong>Upgrade your plan</strong>
+                <small>Unlimited recipes, multi-day plans, and AI logging</small>
+              </div>
+              <span style="color: var(--dark-text-muted);">›</span>
+            </div>
+            <div class="promo-label">Promo code</div>
+            <div class="promo-hint">Enter your code exactly as provided (letters are not case-sensitive).</div>
+            <div class="promo-row">
+              <input placeholder="Enter code">
+              <button>Apply</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <aside class="prototype-notes">
+    <h2>What changed</h2>
+    <ul>
+      <li>
+        <strong>#23.1 REPLACE</strong>
+        Replaced the flat-dark-grey "0 Recipes" + "0 Streak" tiles with the outlined-coloured-tile pattern from
+        Profile dark (DC14 Allowed borrow). Each tile carries its own accent: <strong>Recipes = amber outline +
+        amber-soft background + amber digit</strong>, <strong>Streak = pale-indigo outline + pale-indigo-soft
+        background + pale-indigo digit</strong>. Preserves the outlined-tile visual language across both Settings
+        and Profile dark surfaces.
+        <em>What it duplicates / weakens:</em> nothing — removes the DC14 adjacency erosion (where two adjacent
+        dark surfaces in the same nav flow rendered stat tiles in different visual languages). The DC14 reference
+        doc explicitly encourages replicating the outlined-coloured-tile + amber-warning pattern to other dark cards.
+      </li>
+    </ul>
+
+    <h2>DC14 preservation check</h2>
+    <p>
+      DC14 (profile dark mode — outlined coloured tiles + amber safety-floor warning) is the strongest dark surface
+      in the app. The bet is that <em>outlined</em> (not filled) coloured tiles on near-black canvas read as both
+      premium and informative. Settings was breaking this bet by using a different tile pattern in an adjacent
+      surface. The fix replicates Profile dark's tile shape so the visual language is unified.
+      <code>defended-choices.md</code> §DC14 Allowed borrows explicitly lists this replication as encouraged.
+    </p>
+
+    <h2>Accent colour choice rationale</h2>
+    <p>
+      Profile dark uses green / indigo / amber / pink for kcal / protein / carbs / fat — each tied to a specific
+      macro. For Settings, the tiles are non-macro stats, so the colours should NOT collide with the macro palette.
+      Recipes = amber (associated with cooking / warmth, not collision with macro carbs because the carb tile
+      uses orange not amber). Streak = pale-indigo (calm, matches DC8 streak-pip blue without shouting). Open
+      question for Grace: do the colours match her brand intuition or should they shift?
+    </p>
+
+    <h2>Refused borrows considered</h2>
+    <p>
+      Considered making the tiles tappable to drill into the Recipes library or streak history. Refused for this
+      sweep — that's a different proposal (navigation affordance) and would touch the routing layer. Pure visual
+      replication is the DC14 Allowed borrow.
+    </p>
+
+    <h2>Capture gaps still open</h2>
+    <p>
+      Captured pixel: <code>_context-mobile-settings-dark.png</code>. Implementation needs a re-capture after the
+      tile replacement to verify contrast (amber digit on near-black + amber-soft background should pass AA at body
+      text weight). Light-mode Settings is in P2 scope; this row is dark-mode only.
+    </p>
+  </aside>
+
+  <script>
+    function setView(view, btn) {
+      const canvas = document.querySelector('.prototype-canvas');
+      canvas.dataset.view = view;
+      document.querySelectorAll('.prototype-header nav button').forEach(b => b.removeAttribute('aria-current'));
+      btn.setAttribute('aria-current', 'true');
+    }
+  </script>
+</body>
+</html>

@@ -23,6 +23,39 @@ import { supabase } from "@/lib/supabase";
 /** Remember that the user completed Health connect so this screen shows Sync Now after navigation. */
 const HEALTH_APPLE_CONNECTED_KEY = "health_sync_apple_connected";
 
+/**
+ * 2026-05-14 (premium-bar audit Group J #9): per-category last-sync
+ * timestamps. Persisted to AsyncStorage on every successful `syncHealthData`
+ * call (one key per category). Reads back into local state on mount + focus
+ * so the rows always reflect what was last pulled.
+ */
+type HealthCategoryKey = "steps" | "weight" | "active_energy" | "resting_energy" | "workouts";
+const LAST_SYNC_KEYS: Record<HealthCategoryKey, string> = {
+  steps: "health_sync_last_steps_at",
+  weight: "health_sync_last_weight_at",
+  active_energy: "health_sync_last_active_energy_at",
+  resting_energy: "health_sync_last_resting_energy_at",
+  workouts: "health_sync_last_workouts_at",
+};
+
+/** Render-friendly "Synced 3 min ago" / "Synced just now" / "Never synced". */
+function formatLastSync(iso: string | null): string {
+  if (!iso) return "Never synced";
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return "Never synced";
+  const diffMs = Date.now() - t;
+  if (diffMs < 0) return "Synced just now";
+  const sec = Math.floor(diffMs / 1000);
+  if (sec < 45) return "Synced just now";
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `Synced ${min} min ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `Synced ${hr} hr ago`;
+  const day = Math.floor(hr / 24);
+  if (day < 7) return `Synced ${day} day${day === 1 ? "" : "s"} ago`;
+  return `Synced ${new Date(iso).toLocaleDateString()}`;
+}
+
 export default function HealthSyncScreen() {
   const insets = useSafeAreaInsets();
   const goBack = useSafeBack("/(tabs)/more");
@@ -38,6 +71,19 @@ export default function HealthSyncScreen() {
   const [genericImportLabels, setGenericImportLabels] = useState(false);
   const [exportEnabled, setExportEnabled] = useState(false);
   const available = isHealthSyncAvailable();
+
+  // 2026-05-14 (premium-bar audit Group J #9): per-category last-sync
+  // timestamps. Loaded from AsyncStorage on mount/focus; persisted in
+  // `handleSync` after a successful raceHealth run. `null` means the
+  // category has never been synced on this device — the row renders
+  // "Never synced" rather than blanking out the timestamp slot.
+  const [lastSyncTimes, setLastSyncTimes] = useState<Record<HealthCategoryKey, string | null>>({
+    steps: null,
+    weight: null,
+    active_energy: null,
+    resting_energy: null,
+    workouts: null,
+  });
 
   // F-57 follow-up (Build 41, 2026-05-01) — persistent error state
   // with recovery affordances. Previously a connect/sync failure left
@@ -74,6 +120,25 @@ export default function HealthSyncScreen() {
         if (gen === "true") setGenericImportLabels(true);
         if (exp === "true") setExportEnabled(true);
         if (apple === "true") setConnected(true);
+        // 2026-05-14 (premium-bar audit Group J #9): hydrate per-category
+        // last-sync timestamps. Each value is an ISO string (or null).
+        const entries = await Promise.all(
+          (Object.keys(LAST_SYNC_KEYS) as HealthCategoryKey[]).map(async (k) => {
+            const v = await AsyncStorage.getItem(LAST_SYNC_KEYS[k]);
+            return [k, v] as const;
+          }),
+        );
+        const next: Record<HealthCategoryKey, string | null> = {
+          steps: null,
+          weight: null,
+          active_energy: null,
+          resting_energy: null,
+          workouts: null,
+        };
+        for (const [k, v] of entries) {
+          if (v && typeof v === "string") next[k] = v;
+        }
+        setLastSyncTimes(next);
       } catch {}
     })();
   }, []);
@@ -294,6 +359,34 @@ export default function HealthSyncScreen() {
       if (result.workoutsUpdated) parts.push("workouts");
       if (result.basalBurnUpdated) parts.push("resting energy");
 
+      // 2026-05-14 (premium-bar audit Group J #9): persist a per-category
+      // last-sync timestamp for every flag that updated. Stamps the
+      // moment the bridge returned, not the moment the sample was
+      // generated upstream — close enough for "last pulled from
+      // Health" copy and lets the row update without a second fetch.
+      try {
+        const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+        const nowIso = new Date().toISOString();
+        const updates: Array<[HealthCategoryKey, string]> = [];
+        if (result.stepsUpdated) updates.push(["steps", nowIso]);
+        if (result.weightUpdated) updates.push(["weight", nowIso]);
+        if (result.activeEnergyUpdated) updates.push(["active_energy", nowIso]);
+        if (result.basalBurnUpdated) updates.push(["resting_energy", nowIso]);
+        if (result.workoutsUpdated) updates.push(["workouts", nowIso]);
+        await Promise.all(
+          updates.map(([k, iso]) => AsyncStorage.setItem(LAST_SYNC_KEYS[k], iso)),
+        );
+        if (updates.length > 0) {
+          setLastSyncTimes((prev) => {
+            const next = { ...prev };
+            for (const [k, iso] of updates) next[k] = iso;
+            return next;
+          });
+        }
+      } catch {
+        /* timestamp persistence is best-effort */
+      }
+
       let bodyMsg =
         parts.length > 0
           ? `Updated: ${parts.join(", ")}`
@@ -471,33 +564,53 @@ export default function HealthSyncScreen() {
         {/* P1-21 (2026-04-25 design-system-enforcer + Carryover rule
             #2): swap Ionicons for lucide-react-native to match the
             Claude Design prototype's icon language used everywhere else
-            in the product. */}
+            in the product.
+            2026-05-14 (premium-bar audit Group J #9): each row now
+            shows a "Synced X min ago" subtitle so the user can see at
+            a glance how fresh each category is. Pre-connect / pre-
+            first-sync rows render "Never synced" — same visual slot
+            so the layout doesn't jump after the first Sync Now. */}
         <View style={{ marginTop: Spacing.lg }}>
-          <View style={styles.feature}>
-            <Footprints size={20} color={Accent.primary} strokeWidth={1.75} />
-            <Text style={styles.featureText}>Daily step count</Text>
-            <Ionicons name={connected ? "checkmark-circle" : "ellipse-outline"} size={20} color={connected ? Accent.success : colors.textTertiary} />
-          </View>
-          <View style={styles.feature}>
-            <Scale size={20} color={Accent.primary} strokeWidth={1.75} />
-            <Text style={styles.featureText}>Weight measurements</Text>
-            <Ionicons name={connected ? "checkmark-circle" : "ellipse-outline"} size={20} color={connected ? Accent.success : colors.textTertiary} />
-          </View>
-          <View style={styles.feature}>
-            <Flame size={20} color={Accent.primary} strokeWidth={1.75} />
-            <Text style={styles.featureText}>Active energy burned</Text>
-            <Ionicons name={connected ? "checkmark-circle" : "ellipse-outline"} size={20} color={connected ? Accent.success : colors.textTertiary} />
-          </View>
-          <View style={styles.feature}>
-            <HeartPulse size={20} color={Accent.primary} strokeWidth={1.75} />
-            <Text style={styles.featureText}>Resting energy burned</Text>
-            <Ionicons name={connected ? "checkmark-circle" : "ellipse-outline"} size={20} color={connected ? Accent.success : colors.textTertiary} />
-          </View>
-          <View style={styles.feature}>
-            <Dumbbell size={20} color={Accent.primary} strokeWidth={1.75} />
-            <Text style={styles.featureText}>Workouts</Text>
-            <Ionicons name={connected ? "checkmark-circle" : "ellipse-outline"} size={20} color={connected ? Accent.success : colors.textTertiary} />
-          </View>
+          <HealthCategoryRow
+            icon={Footprints}
+            label="Daily step count"
+            lastSyncedAt={lastSyncTimes.steps}
+            connected={connected}
+            colors={colors}
+            styles={styles}
+          />
+          <HealthCategoryRow
+            icon={Scale}
+            label="Weight measurements"
+            lastSyncedAt={lastSyncTimes.weight}
+            connected={connected}
+            colors={colors}
+            styles={styles}
+          />
+          <HealthCategoryRow
+            icon={Flame}
+            label="Active energy burned"
+            lastSyncedAt={lastSyncTimes.active_energy}
+            connected={connected}
+            colors={colors}
+            styles={styles}
+          />
+          <HealthCategoryRow
+            icon={HeartPulse}
+            label="Resting energy burned"
+            lastSyncedAt={lastSyncTimes.resting_energy}
+            connected={connected}
+            colors={colors}
+            styles={styles}
+          />
+          <HealthCategoryRow
+            icon={Dumbbell}
+            label="Workouts"
+            lastSyncedAt={lastSyncTimes.workouts}
+            connected={connected}
+            colors={colors}
+            styles={styles}
+          />
         </View>
       </View>
 
@@ -740,6 +853,52 @@ function CardTitle({ styles, icon, text }: { styles: any; icon: string; text: st
     <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
       <Ionicons name={icon as any} size={20} color={Accent.primary} />
       <Text style={styles.cardTitle}>{text}</Text>
+    </View>
+  );
+}
+
+/**
+ * 2026-05-14 (premium-bar audit Group J #9): per-category row with
+ * label, last-sync subtitle, and connection check. Extracted so the
+ * five rows render identically without 5x duplication of the same
+ * layout JSX.
+ */
+function HealthCategoryRow({
+  icon: Icon,
+  label,
+  lastSyncedAt,
+  connected,
+  colors,
+  styles,
+}: {
+  icon: typeof Footprints;
+  label: string;
+  lastSyncedAt: string | null;
+  connected: boolean;
+  colors: ReturnType<typeof useThemeColors>;
+  styles: any;
+}) {
+  return (
+    <View style={styles.feature}>
+      <Icon size={20} color={Accent.primary} strokeWidth={1.75} />
+      <View style={{ flex: 1 }}>
+        <Text style={styles.featureText}>{label}</Text>
+        <Text
+          style={{
+            fontSize: 11,
+            color: colors.textTertiary,
+            marginTop: 2,
+            fontVariant: ["tabular-nums"],
+          }}
+        >
+          {connected ? formatLastSync(lastSyncedAt) : "Connect to enable"}
+        </Text>
+      </View>
+      <Ionicons
+        name={connected ? "checkmark-circle" : "ellipse-outline"}
+        size={20}
+        color={connected ? Accent.success : colors.textTertiary}
+      />
     </View>
   );
 }

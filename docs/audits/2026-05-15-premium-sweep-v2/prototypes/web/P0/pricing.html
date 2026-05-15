@@ -1,0 +1,515 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Suppr — web pricing prototype</title>
+  <style>
+    :root {
+      --pm-ease: cubic-bezier(0.22, 1, 0.36, 1);
+      --pm-duration: 150ms;
+      --background: #f4f5f7;
+      --foreground: #111118;
+      --card: #ffffff;
+      --primary: #4c6ce0;
+      --primary-foreground: #ffffff;
+      --muted: #e4e4ec;
+      --muted-foreground: #6b6b78;
+      --border: #e4e4ec;
+      --success: #22a860;
+      --success-soft: rgba(34, 168, 96, 0.08);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+      background: var(--background);
+      color: var(--foreground);
+      min-height: 100vh;
+      font-size: 15px;
+      line-height: 1.45;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Prototype shell ── */
+    .prototype-header {
+      position: sticky; top: 0; z-index: 10;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+    }
+    .prototype-header h1 { font-size: 18px; font-weight: 700; }
+    .prototype-header .meta { font-size: 12px; color: var(--muted-foreground); margin-top: 2px; }
+    .prototype-header nav { margin-left: auto; display: flex; gap: 4px; background: var(--muted); border-radius: 8px; padding: 3px; }
+    .prototype-header nav button {
+      border: 0; background: transparent; color: var(--muted-foreground);
+      padding: 6px 14px; font-size: 13px; font-weight: 600;
+      border-radius: 6px; cursor: pointer;
+      transition: background var(--pm-duration) var(--pm-ease), color var(--pm-duration) var(--pm-ease);
+    }
+    .prototype-header nav button[aria-current="true"] { background: var(--card); color: var(--foreground); box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+
+    .prototype-canvas { padding: 32px; display: grid; gap: 32px; }
+    .prototype-canvas[data-view="before"] .state--after { display: none; }
+    .prototype-canvas[data-view="after"]  .state--before { display: none; }
+    .prototype-canvas[data-view="side-by-side"] { grid-template-columns: 1fr 1fr; }
+
+    .state {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 48px 24px 24px;
+      position: relative;
+      overflow: hidden;
+    }
+    .state::before {
+      content: attr(data-label);
+      position: absolute; top: 12px; left: 12px;
+      font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      padding: 3px 8px; border-radius: 4px;
+      background: var(--muted); color: var(--muted-foreground);
+    }
+    .state--after::before { background: var(--primary); color: var(--primary-foreground); }
+
+    .prototype-notes {
+      margin: 0 32px 64px; background: var(--card);
+      border: 1px solid var(--border); border-radius: 12px; padding: 24px;
+    }
+    .prototype-notes h2 { font-size: 14px; font-weight: 700; margin-bottom: 8px; margin-top: 16px; }
+    .prototype-notes h2:first-child { margin-top: 0; }
+    .prototype-notes ul { list-style: none; display: grid; gap: 8px; }
+    .prototype-notes li { padding-left: 8px; border-left: 2px solid var(--primary); font-size: 14px; }
+    .prototype-notes li strong {
+      display: inline-block; font-size: 11px; font-weight: 700;
+      background: var(--muted); color: var(--muted-foreground);
+      padding: 2px 6px; border-radius: 4px; margin-right: 6px;
+      text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .prototype-notes p { font-size: 14px; color: var(--muted-foreground); }
+    .prototype-notes code {
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+      font-size: 12px; background: var(--muted); color: var(--foreground);
+      padding: 1px 5px; border-radius: 3px;
+    }
+
+    /* ── Pricing page approximation ── */
+    .page {
+      max-width: 1280px; margin: 0 auto; background: var(--card);
+      box-shadow: 0 1px 0 var(--border);
+    }
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 32px; border-bottom: 1px solid var(--border);
+    }
+    .topbar__wordmark { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; }
+    .topbar__signin { font-size: 13px; color: var(--muted-foreground); font-weight: 500; }
+
+    .hero {
+      background: linear-gradient(135deg, #5a4ad6 0%, #c4419e 100%);
+      color: white;
+      text-align: center;
+      position: relative;
+    }
+    /* BEFORE: tall hero panel */
+    .state--before .hero { padding: 96px 32px 80px; }
+    /* AFTER: compressed hero panel (~30% less vertical padding) */
+    .state--after  .hero { padding: 56px 32px 48px; }
+
+    .hero__chip-pro {
+      display: inline-block;
+      background: rgba(255,255,255,0.18);
+      color: white;
+      font-size: 11px; font-weight: 700;
+      padding: 4px 10px; border-radius: 12px;
+      letter-spacing: 0.04em;
+      margin-bottom: 16px;
+      backdrop-filter: blur(4px);
+    }
+    .hero__title {
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 12px;
+    }
+    .hero__sub {
+      font-size: 14px;
+      color: rgba(255,255,255,0.78);
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    /* BEFORE: SUPPR mini-badge inside hero (duplicate of top-bar wordmark) */
+    .hero__mini-badge {
+      position: absolute;
+      bottom: 24px; left: 50%;
+      transform: translateX(-50%);
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 0.18em;
+      color: rgba(255,255,255,0.55);
+    }
+
+    .below-hero {
+      padding: 24px 32px 12px;
+      display: flex; justify-content: center; align-items: center;
+      gap: 12px;
+    }
+
+    .trust-chips {
+      display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;
+      padding: 0 32px 16px;
+    }
+    .trust-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 12px;
+      background: var(--success-soft);
+      border-radius: 999px;
+      font-size: 12px; color: var(--foreground); font-weight: 500;
+    }
+    .trust-chip-icon {
+      width: 14px; height: 14px; border-radius: 50%;
+      background: var(--success); color: white;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 9px; font-weight: 700;
+    }
+
+    .toggle {
+      display: inline-flex;
+      background: var(--muted);
+      border-radius: 12px; padding: 4px;
+      margin: 0 auto;
+    }
+    .toggle button {
+      border: 0; background: transparent;
+      padding: 8px 24px;
+      font-weight: 600; font-size: 14px;
+      color: var(--muted-foreground);
+      border-radius: 8px; cursor: pointer;
+    }
+    .toggle button[aria-current="true"] {
+      background: var(--card); color: var(--foreground);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .toggle__save {
+      font-size: 11px; color: var(--success);
+      font-weight: 700; margin-left: 8px;
+    }
+
+    .tier-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      padding: 24px 32px 48px;
+    }
+
+    .tier-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+    }
+    .tier-card--pro {
+      border: 2px solid var(--primary);
+      box-shadow: 0 8px 24px rgba(76, 108, 224, 0.08);
+    }
+    .tier-card__heading {
+      font-size: 13px; font-weight: 700;
+      color: var(--muted-foreground);
+      text-transform: uppercase; letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+    .tier-card__price {
+      display: flex; align-items: baseline; gap: 6px;
+      margin-bottom: 4px;
+    }
+    .tier-card__price .currency {
+      font-size: 20px; font-weight: 700;
+    }
+    .tier-card__price .amount {
+      font-size: 44px; font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+    .tier-card__price .period {
+      font-size: 14px; color: var(--muted-foreground);
+    }
+    /* AFTER: inline VAT line under the price digit */
+    .tier-card__vat {
+      font-size: 12px; color: var(--muted-foreground);
+      margin-bottom: 14px; font-weight: 500;
+    }
+    /* BEFORE: no VAT line — gap absorbed into price-to-features spacing */
+    .state--before .tier-card__vat { display: none; }
+    .state--before .tier-card__price { margin-bottom: 24px; }
+
+    .tier-card__features {
+      list-style: none;
+      display: flex; flex-direction: column; gap: 8px;
+      margin: 18px 0 24px;
+    }
+    .tier-card__features li {
+      font-size: 13px;
+      padding-left: 22px;
+      position: relative;
+      color: var(--foreground);
+    }
+    .tier-card__features li::before {
+      content: "✓"; position: absolute; left: 0;
+      color: var(--success); font-weight: 700;
+    }
+    .tier-card__cta {
+      display: block; width: 100%; padding: 12px;
+      background: var(--primary); color: var(--primary-foreground);
+      border: 0; border-radius: 10px;
+      font-weight: 700; font-size: 14px; cursor: pointer;
+    }
+    .tier-card__cta--ghost {
+      background: var(--card);
+      color: var(--foreground);
+      border: 1px solid var(--border);
+    }
+
+    .cookies-banner {
+      background: var(--card);
+      border-top: 1px solid var(--border);
+      padding: 10px 32px;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px;
+      font-size: 12px; color: var(--muted-foreground);
+    }
+    .cookies-banner__actions { display: flex; gap: 6px; }
+    .cookies-banner__actions button {
+      padding: 6px 12px; border-radius: 6px;
+      border: 1px solid var(--border); background: var(--card);
+      font-size: 12px; font-weight: 600;
+      color: var(--foreground); cursor: pointer;
+    }
+    .cookies-banner__actions button:last-child {
+      background: var(--primary); color: white; border-color: var(--primary);
+    }
+  </style>
+</head>
+<body>
+  <header class="prototype-header">
+    <div>
+      <h1>Web /pricing — RTP-9 fix + hero polish</h1>
+      <p class="meta">Surface: <code>app/pricing/page.tsx</code> + <code>PricingTiersGrid.tsx</code> · Rows: #3.1 (TIGHTEN), #3.2 (NEW), #3.3 (SUBTRACT), #4.1, #4.2 · DC15 preserved (resolves active risk)</p>
+    </div>
+    <nav>
+      <button onclick="setView('before', this)">Before</button>
+      <button onclick="setView('after', this)" aria-current="true">After</button>
+      <button onclick="setView('side-by-side', this)">Side-by-side</button>
+    </nav>
+  </header>
+
+  <main class="prototype-canvas" data-view="after">
+
+    <!-- ─────────────── BEFORE ─────────────── -->
+    <section class="state state--before" data-label="Before (capture)">
+      <div class="page">
+        <div class="topbar">
+          <div class="topbar__wordmark">Suppr</div>
+          <div class="topbar__signin">Sign in</div>
+        </div>
+        <div class="hero">
+          <span class="hero__chip-pro">PRO</span>
+          <h2 class="hero__title">The full meal planning loop</h2>
+          <p class="hero__sub">Plans that hit your macros, one-tap shopping lists, calm-voice with-timers. Pick the plan that fits your goal.</p>
+          <span class="hero__mini-badge">SUPPR</span>
+        </div>
+        <div class="below-hero">
+          <span class="toggle">
+            <button>Monthly</button>
+            <button aria-current="true">Annual</button>
+          </span>
+          <span class="toggle__save">SAVE 38%</span>
+        </div>
+        <div class="trust-chips">
+          <span class="trust-chip"><span class="trust-chip-icon">✓</span> Cancel anytime in App Store</span>
+          <span class="trust-chip"><span class="trust-chip-icon">✓</span> 7-day refund, no email needed</span>
+          <span class="trust-chip"><span class="trust-chip-icon">✓</span> Price never changes mid-trial</span>
+        </div>
+        <div class="tier-grid">
+          <div class="tier-card tier-card--pro">
+            <div class="tier-card__heading">Suppr Pro</div>
+            <div class="tier-card__price">
+              <span class="currency">£</span><span class="amount">59.99</span><span class="period">/ year</span>
+            </div>
+            <ul class="tier-card__features">
+              <li>Full meal-planning loop, unlimited logging</li>
+              <li>Adaptive TDEE (Free in Suppr · £11.99/mo in MacroFactor)</li>
+              <li>Recipe import from TikTok / Instagram / YouTube</li>
+              <li>Photo + voice meal logging</li>
+              <li>Unlimited meal plans + shopping lists</li>
+              <li>Priority email support</li>
+            </ul>
+            <button class="tier-card__cta">Start 7-day free trial</button>
+          </div>
+          <div class="tier-card">
+            <div class="tier-card__heading">Free</div>
+            <div class="tier-card__price">
+              <span class="currency">£</span><span class="amount">0</span>
+            </div>
+            <ul class="tier-card__features">
+              <li>Save up to 25 recipes</li>
+              <li>Browse community recipes</li>
+              <li>Manual food tracking</li>
+              <li>Adaptive TDEE — your target re-tunes as you log</li>
+              <li>Apple Health sync</li>
+              <li>Daily reminders</li>
+            </ul>
+            <button class="tier-card__cta tier-card__cta--ghost">Continue with Free</button>
+          </div>
+        </div>
+        <div class="cookies-banner">
+          <span>Essential cookies on; analytics stay off until you accept. <a href="#" style="color:var(--primary);text-decoration:none;">Privacy</a></span>
+          <span class="cookies-banner__actions">
+            <button>Essential only</button>
+            <button>Accept all</button>
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────── AFTER ─────────────── -->
+    <section class="state state--after" data-label="After (proposed)">
+      <div class="page">
+        <div class="topbar">
+          <div class="topbar__wordmark">Suppr</div>
+          <div class="topbar__signin">Sign in</div>
+        </div>
+        <div class="hero">
+          <!-- 3.1 TIGHTEN: hero padding ~30% less (96→56 top, 80→48 bottom) -->
+          <span class="hero__chip-pro">PRO</span>
+          <h2 class="hero__title">The full meal planning loop</h2>
+          <p class="hero__sub">Plans that hit your macros, one-tap shopping lists, calm-voice with-timers. Pick the plan that fits your goal.</p>
+          <!-- 3.3 SUBTRACT: SUPPR mini-badge removed (duplicates top-bar wordmark) -->
+        </div>
+        <div class="below-hero">
+          <span class="toggle">
+            <button>Monthly</button>
+            <button aria-current="true">Annual</button>
+          </span>
+          <span class="toggle__save">SAVE 38%</span>
+        </div>
+        <div class="trust-chips">
+          <span class="trust-chip"><span class="trust-chip-icon">✓</span> Cancel anytime in App Store</span>
+          <span class="trust-chip"><span class="trust-chip-icon">✓</span> 7-day refund, no email needed</span>
+          <span class="trust-chip"><span class="trust-chip-icon">✓</span> Price never changes mid-trial</span>
+        </div>
+        <div class="tier-grid">
+          <div class="tier-card tier-card--pro">
+            <div class="tier-card__heading">Suppr Pro</div>
+            <div class="tier-card__price">
+              <span class="currency">£</span><span class="amount">59.99</span><span class="period">/ year</span>
+            </div>
+            <!-- 3.2 NEW: inline VAT line — DC15 allowed borrow (Stripe Checkout) -->
+            <div class="tier-card__vat">Includes VAT</div>
+            <ul class="tier-card__features">
+              <li>Full meal-planning loop, unlimited logging</li>
+              <li>Adaptive TDEE (Free in Suppr · £11.99/mo in MacroFactor)</li>
+              <li>Recipe import from TikTok / Instagram / YouTube</li>
+              <li>Photo + voice meal logging</li>
+              <li>Unlimited meal plans + shopping lists</li>
+              <li>Priority email support</li>
+            </ul>
+            <button class="tier-card__cta">Start 7-day free trial</button>
+          </div>
+          <div class="tier-card">
+            <div class="tier-card__heading">Free</div>
+            <div class="tier-card__price">
+              <span class="currency">£</span><span class="amount">0</span>
+            </div>
+            <ul class="tier-card__features">
+              <li>Save up to 25 recipes</li>
+              <li>Browse community recipes</li>
+              <li>Manual food tracking</li>
+              <li>Adaptive TDEE — your target re-tunes as you log</li>
+              <li>Apple Health sync</li>
+              <li>Daily reminders</li>
+            </ul>
+            <button class="tier-card__cta tier-card__cta--ghost">Continue with Free</button>
+          </div>
+        </div>
+        <div class="cookies-banner">
+          <span>Essential cookies on; analytics stay off until you accept. <a href="#" style="color:var(--primary);text-decoration:none;">Privacy</a></span>
+          <span class="cookies-banner__actions">
+            <button>Essential only</button>
+            <button>Accept all</button>
+          </span>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <aside class="prototype-notes">
+    <h2>What changed</h2>
+    <ul>
+      <li>
+        <strong>#3.1 TIGHTEN</strong>
+        Hero gradient panel vertical padding compressed ~30% (96px top / 80px bottom → 56px / 48px). Brings the Monthly/Annual toggle into the first 900px viewport without scroll, exposing the actual decision point above the fold.
+        <em>What it duplicates / weakens:</em> nothing — removes empty space, no content.
+      </li>
+      <li>
+        <strong>#3.2 NEW</strong>
+        Inline "Includes VAT" line directly under the £59.99 / £7.99 price digit (DC15 allowed borrow from Stripe Checkout — "inline VAT line directly under the price digit"). UK/EU surfaces only — region-gated via existing <code>regionCurrency</code> detection.
+        <em>What it duplicates / weakens:</em> nothing — adds 12px of visible-viewport text that previously wasn't there at all. **Resolves RTP-9 (active DC15 risk).**
+      </li>
+      <li>
+        <strong>#3.3 SUBTRACT</strong>
+        Removed the small "SUPPR" badge floating at the bottom of the hero gradient panel. The top-bar already carries "Suppr" 60px above; this floating mini-badge was duplicating the wordmark for no functional reason.
+        <em>What it duplicates / weakens:</em> duplicates the top-bar Suppr wordmark — competing instances of the brand mark in the same viewport.
+      </li>
+      <li>
+        <strong>#4.1 TIGHTEN</strong>
+        Same hero-padding compression applied at mobile viewport (≤768px) so the £7.99 Pro price reads in the first mobile viewport without scroll. Inherits from #3.1; no separate styling.
+        <em>What it duplicates / weakens:</em> nothing — subtractive.
+      </li>
+      <li>
+        <strong>#4.2 NEW</strong>
+        Mobile-viewport inherit of #3.2 — same inline "Includes VAT" line, same region gate.
+        <em>What it duplicates / weakens:</em> nothing — inherited.
+      </li>
+    </ul>
+
+    <h2>DC15 preservation check</h2>
+    <p>
+      DC15 (UK/EU VAT-inclusive pricing posture) — load-bearing differentiator is the visible "VAT-inclusive" disclosure
+      that most US-headquartered competitors get wrong. Pre-fix, the bet was real in code (Stripe Tax inclusive mode) but
+      invisible to the user — DC15 explicitly listed this as an active risk. Post-fix, the "Includes VAT" line is rendered
+      directly under the price digit in the first viewport. This is the exact Stripe Checkout allowed-borrow listed in
+      <code>defended-choices.md</code> §DC15. The compliance + trust signal now lands.
+    </p>
+
+    <h2>DC4 / DC12 preservation</h2>
+    <p>
+      Trust chips (DC4) unchanged — three explicit guarantees retained verbatim in their current placement above the
+      tier cards. No 4th "No price hikes ever" chip added. DC12 calm voice intact — hero copy is descriptive
+      ("The full meal planning loop"), not shouty growth copy.
+    </p>
+
+    <h2>Refused borrows considered</h2>
+    <p>
+      Considered widening the gradient hero panel to full-bleed (Linear's pricing pattern). Refused — the bordered hero
+      reads as "a card on a page" and matches the rest of Suppr's design language; full-bleed would over-promise marketing
+      energy at a surface that's already meant to convert (not impress). Stripe / Linear / Calm all use bordered hero
+      panels on pricing.
+    </p>
+
+    <h2>Capture gaps still open</h2>
+    <p>
+      Dark-mode pricing pixels exist (<code>web-desktop-dark-pricing.png</code>, <code>web-mobile-dark-pricing.png</code>)
+      and validated the same gradient. After-state in dark would mirror the after-state shown here with dark canvas; no
+      dark-specific concerns surfaced.
+    </p>
+  </aside>
+
+  <script>
+    function setView(view, btn) {
+      const canvas = document.querySelector('.prototype-canvas');
+      canvas.dataset.view = view;
+      document.querySelectorAll('.prototype-header nav button').forEach(b => b.removeAttribute('aria-current'));
+      btn.setAttribute('aria-current', 'true');
+    }
+  </script>
+</body>
+</html>

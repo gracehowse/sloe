@@ -1,5 +1,5 @@
 import { ShieldCheck } from "lucide-react";
-import { PAYWALL_TRUST_CHIPS } from "../../src/lib/landing/paywallTrust.ts";
+import { getPaywallTrustChips } from "../../src/lib/landing/paywallTrust.ts";
 
 /**
  * Three-chip trust strip rendered above the pricing tier grid.
@@ -15,14 +15,24 @@ import { PAYWALL_TRUST_CHIPS } from "../../src/lib/landing/paywallTrust.ts";
  * wording. Subtle styling — small chips, secondary text colour, no
  * jarring colours — so the strip reads as supporting context, not
  * an interruptive banner.
+ *
+ * DC4 (premium-bar audit 2026-05-14): the cancellation chip on web
+ * names the Stripe Customer Portal explicitly — generic "in-app"
+ * obscured whether web users cancelled through Apple, Stripe, or
+ * a support email. `getPaywallTrustChips("web")` resolves the web
+ * variant from the SSOT. The strip's bottom margin is reduced from
+ * `mb-10` → `mb-2` so the guarantees sit adjacent to (~8px above)
+ * the price grid that follows, per the Stripe Checkout precedent
+ * of putting trust copy directly next to the price digit.
  */
 export function PaywallTrustStrip() {
+  const chips = getPaywallTrustChips("web");
   return (
     <div
       data-testid="paywall-trust-strip"
-      className="mb-10 flex flex-wrap items-center justify-center gap-3 sm:gap-4"
+      className="mb-2 flex flex-wrap items-center justify-center gap-3 sm:gap-4"
     >
-      {PAYWALL_TRUST_CHIPS.map((chip) => (
+      {chips.map((chip) => (
         // 2026-05-13 (premium-bar audit DC4 polish — dark-mode contrast
         // audit on the green check glyph): emerald-500 was the same
         // colour in both modes; on the dark `bg-card/60` it read as

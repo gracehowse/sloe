@@ -8,7 +8,7 @@ import Svg, {
   Stop,
 } from "react-native-svg";
 import * as Haptics from "expo-haptics";
-import { BookOpen, Sparkles, Target } from "lucide-react-native";
+import { BookOpen, Scale, Sparkles, Target } from "lucide-react-native";
 import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { isFeatureEnabled } from "@/lib/analytics";
@@ -77,8 +77,18 @@ export function MobileRevealStep() {
   }, [target]);
 
   if (targets == null) {
-    const calibrateCopy = state.weightSkipped
-      ? "Your targets will calibrate from your meal logs over the first couple of weeks. You can add a weight any time from Settings."
+    // 2026-05-14 (premium-bar audit B5 #4): weight-skipped branch is
+    // rebuilt as a soft-illustration moment rather than a flat error /
+    // fallback. A `Scale` glyph in a brand-tinted circle reassures the
+    // user that skipping weight is an explicit, valid path — the plan
+    // will still build off their goal, and the precision lift from
+    // adding a weight is one tap away from Settings whenever they want
+    // it. The fallback when body-stats are entirely missing keeps the
+    // calmer copy + same visual treatment so the surface never lands
+    // as a stark "no value here" screen.
+    const skippedWeight = state.weightSkipped;
+    const calibrateCopy = skippedWeight
+      ? "We'll use your goal to estimate your targets — you can add your weight later for more precision."
       : "Answer the body-stats steps to see your daily targets.";
     return (
       <View
@@ -86,9 +96,25 @@ export function MobileRevealStep() {
           flex: 1,
           alignItems: "center",
           justifyContent: "center",
-          padding: 24,
+          paddingHorizontal: 24,
+          paddingVertical: 32,
+          gap: 18,
         }}
       >
+        <View
+          style={{
+            width: 88,
+            height: 88,
+            borderRadius: 44,
+            backgroundColor: `${Accent.primary}1A`,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
+          <Scale size={48} color={Accent.primaryLight} strokeWidth={1.75} />
+        </View>
         <Text
           style={{
             color: colors.textSecondary,

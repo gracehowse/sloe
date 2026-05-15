@@ -9,8 +9,12 @@ This is the operational sequence for going from "code-complete" to "TestFlight c
 The companion docs are:
 - [Legal finalization runbook](../operations/legal-finalization-runbook.md) — entity, DMCA, GDPR reps, vendor DPAs.
 - [RevenueCat webhook ops runbook](../operations/revenuecat-webhook-runbook.md) — RC dashboard + Vercel env wiring.
+- [Stripe webhook replay runbook](../operations/stripe-webhook-replay-runbook.md) — Stripe webhook ops + forensic replay (Blocker 2 of 2026-05-14 audit).
+- [Disaster recovery runbook](../runbooks/disaster-recovery.md) — backup posture, scenarios S1–S7, rehearsal protocol (Blocker 2 of 2026-05-14 audit).
+- [Alerting runbook](../operations/alerting.md) — the 6 minimum alarms (Blocker 1 of 2026-05-14 audit).
 - [App Store listing](./app-store-listing.md) — subtitle, description, keywords, screenshots, privacy labels.
 - [Opus 4.7 codebase review](../audits/2026-04-25-opus47-codebase-review.md) — origin of the P0/P1/P2 batch.
+- [2026-05-14 production-readiness audit verdict](../decisions/2026-05-14-production-readiness-audit-verdict.md) — origin of the Blocker 1–6 set.
 
 ## Phase 1 — Pre-cohort (gate: small TestFlight beyond Grace)
 
@@ -52,6 +56,8 @@ App Store + web public availability for UK + EU. Legal floor met; assets shipped
 | 23 | PostHog dashboards built per `docs/observability.md` § Suggested dashboards | — | Grace | [observability.md](../observability.md) |
 | 24 | All P1 items resolved | ✅ Tracked in Notion | Grace + Claude | Audit + Notion mirror |
 | 25 | Final re-sweep by security-reviewer + nutrition-engine + legal-reviewer + qa-lead | — | Claude | "Phase 3" gate of [2026-04-24 verdict](../decisions/2026-04-24-full-sweep-ship-verdict.md) |
+| 25a | DR runbook verifications complete (Supabase plan + retention confirmed; first PITR rehearsal recorded) | Pending Grace (deadline 2026-06-01) | Grace | [DR runbook § Pre-Phase-1 checklist](../runbooks/disaster-recovery.md) |
+| 25b | Stripe webhook delivery-failure alarm wired + tested | Pending Grace | Grace | [Stripe replay runbook](../operations/stripe-webhook-replay-runbook.md) + [Alerting runbook Alarm 4](../operations/alerting.md) |
 
 **Public launch gate:** all rows green + App Store reviewer accepts the build. Some rows are sequenced (#11 depends on #9; #18 on #13; etc.); the legal runbook captures the order.
 

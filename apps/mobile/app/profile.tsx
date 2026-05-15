@@ -379,7 +379,13 @@ export default function ProfileScreen() {
       dietary: [...dietary],
     };
     setSaving(false);
-    Alert.alert("Saved", "Your targets have been updated.");
+    // DC12 (2026-05-14, premium-bar audit) — low-emotion settings
+    // confirmation. "Saved" was generic; "Targets updated" is the
+    // specific outcome the user can verify against the field they
+    // just touched. Web parity: any settings-save toast on web
+    // should be similarly specific (Profile / Goals / Privacy
+    // setting / etc.).
+    Alert.alert("Targets updated", "Your targets have been updated.");
   };
 
   // P1-2 (parity spec 2026-04-27) — Cancel reverts every state value to

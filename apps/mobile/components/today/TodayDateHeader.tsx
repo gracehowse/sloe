@@ -10,6 +10,7 @@ import {
 import { Accent } from "@/constants/theme";
 import DayStrip from "@/components/charts/DayStrip";
 import { GradientAvatar } from "@/components/GradientAvatar";
+import { StreakPip } from "@/components/today/StreakPip";
 
 /**
  * TodayDateHeader — day/week nav buttons, title, view-mode toggle, avatar,
@@ -43,6 +44,28 @@ export interface TodayDateHeaderProps {
    *  glyph). Wired through from the host to avoid hardcoding `#fff`
    *  here — see Colors.{light,dark}.primaryForeground. */
   primaryForegroundColor: string;
+  /**
+   * Premium-bar audit DC8 polish (2026-05-14) — pass-through props for
+   * the inline StreakPip. The pip used to live above the date header
+   * row; the audit moves it next to the "Today" pill so the week-
+   * strip row reads as one calm unit. When `streakDays` is undefined
+   * the pip is suppressed (matches the existing day-1 carve-out: pip
+   * only renders for streaks ≥ 2; host gates that). `freezeProtected`
+   * flips the Flame glyph to a Shield when a freeze covered today.
+   * `onStreakPress` is the same router push the host used previously
+   * (typically to `/weekly-recap`).
+   */
+  streakDays?: number;
+  freezeProtected?: boolean;
+  onStreakPress?: () => void;
+  /**
+   * Premium-bar audit DC8 polish (2026-05-14) — when supplied AND the
+   * streak just reset (host detects with `didStreakReset`), render
+   * a calm supportive reset-day copy in place of the streak pip. The
+   * host owns the "just reset" detection (transient — one render
+   * window) so this component stays presentation-only.
+   */
+  streakResetCopyVisible?: boolean;
 }
 
 export function TodayDateHeader({
@@ -67,6 +90,10 @@ export function TodayDateHeader({
   cardColor,
   cardBorderColor,
   primaryForegroundColor,
+  streakDays,
+  freezeProtected,
+  onStreakPress,
+  streakResetCopyVisible = false,
 }: TodayDateHeaderProps) {
   const router = useRouter();
   return (
@@ -113,9 +140,31 @@ export function TodayDateHeader({
                   : `${selectedDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })} · ${selectedDate.toLocaleDateString("en-US", { weekday: "long" })}`}
               </Text>
             ) : null}
-            <Text style={{ fontSize: 22, fontWeight: "700", color: textColor, letterSpacing: -0.4, marginTop: 1 }}>
-              {viewMode === "week" ? "This Week" : isToday ? "Today" : formatDateLabel(selectedDate)}
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 1 }}>
+              <Text style={{ fontSize: 22, fontWeight: "700", color: textColor, letterSpacing: -0.4 }}>
+                {viewMode === "week" ? "This Week" : isToday ? "Today" : formatDateLabel(selectedDate)}
+              </Text>
+              {/* 2026-05-14 (premium-bar audit DC8 polish): streak pip
+                  rendered inline next to the "Today" h1 so the
+                  week-strip row reads as a single unit (was: pip
+                  floating above the date header). The host gates
+                  `streakDays >= 2` per the existing day-0 / day-1
+                  carve-out; this component just renders the pip
+                  when the host hands it a value. Suppress on week
+                  view to keep the week toggle uncrowded (matches
+                  pre-move behaviour). */}
+              {viewMode === "day" &&
+                isToday &&
+                typeof streakDays === "number" &&
+                streakDays >= 2 &&
+                !streakResetCopyVisible && (
+                  <StreakPip
+                    days={streakDays}
+                    freezeProtected={freezeProtected}
+                    onPress={onStreakPress}
+                  />
+                )}
+            </View>
           </Pressable>
           <Pressable
             onPress={onNavigateNext}
@@ -232,6 +281,36 @@ export function TodayDateHeader({
           textColor={textColor}
           secondaryColor={textSecondaryColor}
         />
+      )}
+      {/* 2026-05-14 (premium-bar audit DC8 polish — Duolingo
+          supportive reset-day copy): when the user's streak just
+          broke (host detects the >=1 → 0 transition with
+          `didStreakReset` and toggles `streakResetCopyVisible`), the
+          numeric streak pip is suppressed and this calm one-line
+          message takes its place under the week strip. Sits below
+          the DayStrip so the reset framing isn't crammed into the
+          tight header row. The pip continues to reappear once the
+          user logs and the streak climbs back to 2+. */}
+      {viewMode === "day" && isToday && streakResetCopyVisible && (
+        <View
+          accessibilityRole="text"
+          accessibilityLabel="Streak reset — start fresh today"
+          style={{
+            paddingHorizontal: 4,
+            paddingVertical: 6,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 12,
+              color: textSecondaryColor,
+              letterSpacing: 0.1,
+            }}
+            numberOfLines={2}
+          >
+            Every expert was once a beginner. Start fresh today.
+          </Text>
+        </View>
       )}
     </View>
   );

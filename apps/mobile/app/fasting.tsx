@@ -3,6 +3,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-nati
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { Ionicons } from "@expo/vector-icons";
+import { Timer } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import Svg, {
   Circle,
@@ -176,6 +177,38 @@ export default function FastingScreen() {
     setNow(Date.now());
   }, [sessions, persist]);
 
+  /**
+   * 2026-05-14 premium-bar polish #4 — Fasting tab landing.
+   * Quick-start the user's fast with a specific preset in one tap.
+   * Sets the fasting window (persists to `profiles.fasting_window`)
+   * and immediately starts a fast session. Used by the landing-card
+   * chips (16:8 / 18:6) to remove the two-step "pick window then
+   * tap Start Fast" hop for the most common journey. The Custom
+   * chip opens an Alert listing the remaining web-parity presets
+   * (20:4 / 14:10) since they live in the same data shape.
+   */
+  const quickStartFast = useCallback(
+    (window: string) => {
+      changeWindow(window);
+      const s: FastingSession = { start: new Date().toISOString(), end: null };
+      persist([...sessions, s]);
+      setNow(Date.now());
+    },
+    [changeWindow, sessions, persist],
+  );
+
+  const openCustomWindowPicker = useCallback(() => {
+    Alert.alert(
+      "Pick a fasting window",
+      "Custom presets — tap one to start a fast right away.",
+      [
+        { text: "20:4 (warrior)", onPress: () => quickStartFast("20:4") },
+        { text: "14:10 (gentle)", onPress: () => quickStartFast("14:10") },
+        { text: "Cancel", style: "cancel" },
+      ],
+    );
+  }, [quickStartFast]);
+
   const endFast = useCallback(() => {
     if (!activeFast) return;
     const updated = sessions.map((s) =>
@@ -272,10 +305,146 @@ export default function FastingScreen() {
         <View style={{ width: 32 }} />
       </View>
 
-      {/* Timer ring — 2026-04-30 audit visual-qa P1 #5: brand
+      {/* 2026-05-14 premium-bar polish #4 — Fasting tab landing.
+          When the user is NOT fasting, the screen shows a true
+          "landing" card: large Timer glyph, headline, sub-copy,
+          and quick-start chips (16:8 / 18:6 / Custom) that
+          set+start in one tap. The full preset window picker
+          remains below for users who want to change their default
+          without starting. When the user IS fasting, the ring +
+          live duration take over — same card geometry. */}
+      {!isFasting ? (
+        <View
+          style={[styles.card, { alignItems: "center" }]}
+          testID="fasting-landing"
+        >
+          <View
+            style={{
+              width: 96,
+              height: 96,
+              borderRadius: 48,
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: Accent.primary + "15",
+              marginBottom: Spacing.lg,
+            }}
+          >
+            <Timer size={64} color={Accent.primary} strokeWidth={1.5} />
+          </View>
+          <Text
+            style={{
+              fontSize: 22,
+              fontWeight: "800",
+              color: colors.text,
+              textAlign: "center",
+              marginBottom: Spacing.sm,
+            }}
+          >
+            Fast when you&apos;re ready
+          </Text>
+          <Text
+            style={{
+              fontSize: 14,
+              color: colors.textSecondary,
+              textAlign: "center",
+              lineHeight: 20,
+              marginBottom: Spacing.lg,
+              paddingHorizontal: Spacing.sm,
+            }}
+          >
+            Intermittent fasting can help with weight management and metabolic
+            health. Start a fast whenever you like.
+          </Text>
+          {/* Ready-when-you-are sub-label retained so the existing
+              Maestro 13_fasting flow regex
+              (Ready when you are|FASTING|FAST COMPLETE) keeps
+              matching the not-fasting state. */}
+          <Text style={[styles.stateLabel, { color: colors.textSecondary, marginTop: 0 }]}>
+            Ready when you are
+          </Text>
+          <Text style={styles.windowLabel}>
+            {fastHours}:{eatHours} — {fastHours}h fast, {eatHours}h eat
+          </Text>
+
+          <Pressable
+            testID="fasting-landing-start"
+            accessibilityRole="button"
+            accessibilityLabel={`Start a ${fastingWindow} fast`}
+            onPress={startFast}
+            style={{
+              marginTop: Spacing.lg,
+              paddingVertical: 14,
+              paddingHorizontal: 28,
+              borderRadius: Radius.md,
+              backgroundColor: Accent.primary,
+              alignItems: "center",
+              alignSelf: "stretch",
+            }}
+          >
+            <Text style={{ fontSize: 16, fontWeight: "700", color: Accent.primaryForeground }}>
+              Start Fast
+            </Text>
+          </Pressable>
+
+          {/* Quick-start chips — one tap = set window + start fast.
+              16:8 + 18:6 cover the two most-common presets the
+              FastingTimer surface already supports. Custom opens
+              an Alert listing the remaining web-parity presets
+              (20:4 + 14:10) so users with a non-default window
+              don't have to dig into the picker below. */}
+          <View
+            style={{
+              flexDirection: "row",
+              gap: 8,
+              marginTop: Spacing.md,
+              justifyContent: "center",
+            }}
+            testID="fasting-landing-chips"
+          >
+            {[
+              { label: "16:8", onPress: () => quickStartFast("16:8") },
+              { label: "18:6", onPress: () => quickStartFast("18:6") },
+              { label: "Custom", onPress: openCustomWindowPicker },
+            ].map((chip) => (
+              <Pressable
+                key={chip.label}
+                onPress={chip.onPress}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  chip.label === "Custom"
+                    ? "Pick a custom fasting window"
+                    : `Start a ${chip.label} fast`
+                }
+                testID={`fasting-landing-chip-${chip.label}`}
+                hitSlop={6}
+                style={{
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  borderRadius: 999,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  backgroundColor: colors.background,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: "700",
+                    color: colors.textSecondary,
+                    fontVariant: ["tabular-nums"],
+                  }}
+                >
+                  {chip.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      ) : (
+      /* Timer ring — 2026-04-30 audit visual-qa P1 #5: brand
           gradient stroke (matches onboarding reveal + Today calorie
           ring) so Fasting reads as part of the same premium visual
-          language, not a separate MVP feature. */}
+          language, not a separate MVP feature. */
       <View style={[styles.card, { alignItems: "center" }]}>
         <View style={{ width: RING_SIZE, height: RING_SIZE, alignItems: "center", justifyContent: "center" }}>
           <Svg width={RING_SIZE} height={RING_SIZE} style={{ position: "absolute" }}>
@@ -357,6 +526,7 @@ export default function FastingScreen() {
           </View>
         )}
       </View>
+      )}
 
       {/* Fasting window picker — 2026-05-02 (Build 40 outstanding
           feedback "Settings search 'fast' → no matches"). Pre-fix the
@@ -416,7 +586,12 @@ export default function FastingScreen() {
           it were "delete my data". Primary blue stays for Start
           Fast (the action we want to celebrate). End Fast demotes
           to a quieter outlined button. Complete Fast keeps the
-          success-green solid (it's a celebratory state). */}
+          success-green solid (it's a celebratory state).
+
+          2026-05-14 premium-bar polish #4: the not-fasting "Start
+          Fast" duplicate is now suppressed — the landing card above
+          renders its own primary Start Fast CTA. We only render the
+          isFasting branch (End Fast / Complete Fast) here. */}
       {isFasting && !isComplete ? (
         // 2026-05-12 (premium-bar audit J1 active timer): End Fast
         // promoted to long-press-to-end so a stray tap on an active
@@ -455,17 +630,17 @@ export default function FastingScreen() {
         >
           <Text style={[styles.btnText, { color: colors.textSecondary }]}>Hold to End Fast</Text>
         </Pressable>
-      ) : (
+      ) : isFasting && isComplete ? (
         <Pressable
           style={[
             styles.btn,
-            { backgroundColor: isComplete ? Accent.success : Accent.primary },
+            { backgroundColor: Accent.success },
           ]}
-          onPress={isFasting ? endFast : startFast}
+          onPress={endFast}
         >
-          <Text style={styles.btnText}>{isComplete ? "Complete Fast" : "Start Fast"}</Text>
+          <Text style={styles.btnText}>Complete Fast</Text>
         </Pressable>
-      )}
+      ) : null}
 
       {/* History */}
       {recentCompleted.length > 0 && (

@@ -71,6 +71,13 @@ export function WelcomeStep() {
             calibrates targets to you.
           </p>
 
+          {/* 2026-05-14 (premium-bar audit B1 #1, web parity): single
+              proof line directly above the primary CTA. Calm, no
+              metrics, no shaming — anchors the jump without
+              overpromising. */}
+          <p className="text-xs text-muted-foreground text-center mb-2 sm:text-left">
+            Join thousands tracking smarter
+          </p>
           <div className="mb-8 md:mb-10 flex flex-col sm:flex-row gap-3 md:gap-3.5">
             <Button
               size="lg"

@@ -9,7 +9,7 @@ import {
   FREE_PHOTO_LOG_WEEKLY_LIMIT,
   FREE_PHOTO_LOG_WINDOW_MS,
 } from "@/lib/nutrition/photoLogQuota";
-import { callAiVision } from "@/lib/server/aiProvider";
+import { AiBudgetExceededError, callAiVision } from "@/lib/server/aiProvider";
 import { normalizeImageForAi } from "@/lib/server/normalizeImageForAi";
 
 export const runtime = "nodejs";
@@ -203,16 +203,35 @@ export async function POST(req: Request) {
 
   const ac = new AbortController();
   const timeoutHandle = setTimeout(() => ac.abort(), AI_TIMEOUT_MS);
-  const visionResult = await callAiVision({
-    callSite: "photo-log",
-    systemPrompt: SYSTEM_PROMPT,
-    userText: USER_PROMPT,
-    imageDataUrl: dataUrl,
-    expectJson: true,
-    temperature: 0.3,
-    maxTokens: 2500,
-    signal: ac.signal,
-  });
+  let visionResult;
+  try {
+    visionResult = await callAiVision({
+      callSite: "photo-log",
+      userId,
+      systemPrompt: SYSTEM_PROMPT,
+      userText: USER_PROMPT,
+      imageDataUrl: dataUrl,
+      expectJson: true,
+      temperature: 0.3,
+      maxTokens: 2500,
+      signal: ac.signal,
+    });
+  } catch (err) {
+    clearTimeout(timeoutHandle);
+    if (err instanceof AiBudgetExceededError) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "ai_capacity_reached",
+          message:
+            "AI is temporarily at capacity. Try again in a few hours or log manually.",
+          retryAfterSec: err.retryAfterSec,
+        },
+        { status: 503, headers: { "Retry-After": String(err.retryAfterSec) } },
+      );
+    }
+    throw err;
+  }
   clearTimeout(timeoutHandle);
 
   if (!visionResult.ok) {

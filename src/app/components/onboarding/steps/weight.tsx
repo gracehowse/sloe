@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { Scale } from "lucide-react";
 import { RulerSlider } from "@/app/components/suppr/ruler-slider";
 import { Segmented } from "../segmented";
 import { useOnboarding } from "../context";
@@ -27,10 +28,30 @@ export function WeightStep() {
           subtitle="We'll calibrate your targets from your meal logs over the first couple of weeks. You can add a weight any time from Settings."
           compact
         />
+        {/* DC6 (premium-bar audit 2026-05-14) — Withings-style soft
+            illustration on the calibrate-copy fallback. Mirrors the
+            mobile weight-skipped surface: 80x80 brand-tinted circle
+            with a `Scale` glyph that fades + pulses on a 2s loop so
+            the surface reads as a deliberate calibration moment,
+            not a flat skip-confirmation. The pulse uses a CSS
+            `animate-pulse` keyframe (Tailwind default 2s ease-in-out
+            infinite) so we don't need a JS animator on web. The
+            `aria-hidden` flag prevents screen readers from
+            double-announcing the calibrate copy already carried by
+            the subtitle above. */}
+        <div className="flex justify-center my-3">
+          <div
+            aria-hidden="true"
+            className="w-20 h-20 rounded-full flex items-center justify-center animate-pulse"
+            style={{ backgroundColor: "rgba(76, 108, 224, 0.10)" }}
+          >
+            <Scale className="w-12 h-12" style={{ color: "#7a8fff" }} strokeWidth={1.75} />
+          </div>
+        </div>
         <button
           type="button"
           onClick={() => set({ weightSkipped: false })}
-          className="text-sm font-semibold text-primary self-start mt-2 bg-transparent border-0 cursor-pointer p-0"
+          className="text-sm font-semibold text-primary self-center mt-2 bg-transparent border-0 cursor-pointer p-0"
         >
           Actually, I&apos;ll enter it
         </button>

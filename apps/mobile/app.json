@@ -101,7 +101,7 @@
       "supabaseUrl": "https://fnfgxsignmuepshbebrl.supabase.co",
       "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZuZmd4c2lnbm11ZXBzaGJlYnJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1NzYxMzksImV4cCI6MjA5MTE1MjEzOX0.tTOwtZLREE3sfU6rOjLMRJ5bKYQW_zPj9yZiotfBad4",
       "posthogKey": "phc_yCobaLpX93MdmGkLDM33xKr5DRvUx2JaGJvjJ7jUR79E",
-      "posthogHost": "https://us.i.posthog.com",
+      "posthogHost": "https://suppr-club.com/ingest",
       "router": {},
       "eas": {
         "projectId": "16ff0460-233f-4126-b40e-4b5ad54057df"

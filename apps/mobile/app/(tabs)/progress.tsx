@@ -7,6 +7,7 @@ import {
   BarChart3,
   CalendarDays,
   CheckCircle2,
+  ArrowRight,
   ChevronDown,
   ChevronRight,
   ChevronUp,
@@ -2051,6 +2052,37 @@ export default function ProgressScreen() {
                 average. Last 30 days.") duplicated the new
                 WEIGHT/TREND header above the chart byte-for-byte.
                 Removed. The header is the source of truth now. */}
+
+            {/* 2026-05-14 (premium-bar audit Group H #1): labelled
+                "View all measurements →" link beneath the chart that
+                opens the AllWeightDataSheet. The 32px round list-icon
+                button next to the range toggle is the same affordance
+                but reads as decorative chrome — testers in pixel-audit
+                sessions missed it. A labelled text link makes the
+                "drill into raw weigh-ins" path discoverable without
+                changing the underlying sheet. */}
+            {Object.keys(weightKgByDay).length > 0 && (
+              <Pressable
+                onPress={() => setAllWeightDataOpen(true)}
+                accessibilityRole="button"
+                accessibilityLabel="View all measurements"
+                hitSlop={8}
+                testID="progress-view-all-measurements"
+                style={({ pressed }) => ({
+                  flexDirection: "row",
+                  alignItems: "center",
+                  alignSelf: "flex-start",
+                  gap: 4,
+                  marginTop: 10,
+                  opacity: pressed ? 0.7 : 1,
+                })}
+              >
+                <Text style={{ fontSize: 12, color: t.accent, fontWeight: "600" }}>
+                  View all measurements
+                </Text>
+                <ArrowRight size={12} color={t.accent} strokeWidth={2} />
+              </Pressable>
+            )}
           </View>
           ) : null}
 

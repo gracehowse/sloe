@@ -381,6 +381,27 @@ export default function FoodSearchPanel({
   const [results, setResults] = useState<SearchRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  // 2026-05-14 premium-bar polish #3: lightweight category-filter tab
+  // row. The active category is a presentational filter over the
+  // existing `results` list (and gates whether `recentFoods` renders).
+  // `All` keeps current behaviour. `Recents` only shows the recent-
+  // foods block + suppresses the FlatList. `Custom` filters to
+  // user-authored foods. `Branded` filters to FatSecret-sourced rows
+  // (Premier branded dataset). `Generic` filters to USDA / OFF /
+  // Edamam / Generic* fallbacks (no brand). `Favourites` is wired but
+  // returns []; the data shape (isFavourite per row) doesn't exist
+  // yet, so the tab renders the same as `All` for now to keep the
+  // contract visible while the favouriting workstream lands.
+  type FoodCategory = "All" | "Favourites" | "Recents" | "Custom" | "Branded" | "Generic";
+  const CATEGORY_LIST: readonly FoodCategory[] = [
+    "All",
+    "Favourites",
+    "Recents",
+    "Custom",
+    "Branded",
+    "Generic",
+  ];
+  const [activeCategory, setActiveCategory] = useState<FoodCategory>("All");
   /** Premier-tier autocomplete state (2026-04-26 — Premier Free upgrade). */
   const [autocomplete, setAutocomplete] = useState<{ tier: "basic" | "premier"; suggestions: string[] }>(
     { tier: "basic", suggestions: [] },
@@ -986,10 +1007,18 @@ export default function FoodSearchPanel({
   const previewMacros = useMemo(() => {
     if (!preview) return null;
     // 2026-05-06: per-serving-only path (FatSecret no-metric foods).
-    // gramWeight: 0 + macrosPer100g: null + macrosPerServing populated
-    // → scale by quantity directly without per-100g math.
+    // gramWeight: 0 + macrosPerServing populated → scale by quantity
+    // directly without per-100g math.
+    //
+    // 2026-05-14: the original condition also required
+    // `macrosPer100g === null`, which broke MIXED-grounding foods —
+    // primary serving like "8 pieces" (no metric, gramWeight 0) on a
+    // food that also has metric servings (per-100g exists). The server
+    // now populates `macrosPerServing` for every FatSecret food, and
+    // the per-serving branch fires whenever the chosen portion has
+    // gramWeight 0. Per-100g math still runs for any portion that DOES
+    // have a gram weight (g/oz/lb/etc.).
     if (
-      preview.macrosPer100g === null &&
       preview.macrosPerServing &&
       preview.chosenPortion.gramWeight === 0
     ) {
@@ -1164,6 +1193,45 @@ export default function FoodSearchPanel({
     },
     [loadingKey, onPickResult, colors, openCustomFoodActions, styles],
   );
+
+  // 2026-05-14 premium-bar polish #3: derive the filtered list once
+  // per render. `All` is identity. `Recents` suppresses results so
+  // only the recent-foods block above shows. `Custom`, `Branded`,
+  // `Generic` filter by `_source`. `Favourites` is a no-op-pass-
+  // through until the per-row isFavourite shape lands (kept visible
+  // to telegraph the upcoming surface).
+  const filteredResults = useMemo<SearchRow[]>(() => {
+    switch (activeCategory) {
+      case "Recents":
+        return [];
+      case "Custom":
+        return results.filter((r) => r._source === "CUSTOM");
+      case "Branded":
+        return results.filter((r) => r._source === "FatSecret");
+      case "Generic":
+        return results.filter(
+          (r) =>
+            r._source === "USDA" ||
+            r._source === "OFF" ||
+            r._source === "Edamam" ||
+            r._source === "GenericBeverage" ||
+            r._source === "GenericFood",
+        );
+      case "Favourites":
+      case "All":
+      default:
+        return results;
+    }
+  }, [results, activeCategory]);
+  // Recent-foods strip visibility — the block only renders when the
+  // user is on `All` or `Recents` (and the query is empty). On other
+  // tabs the filter intent is "search-result-shape", so suppressing
+  // Recents keeps the surface coherent.
+  const showRecentFoodsBlock =
+    !query.trim() &&
+    !!recentFoods &&
+    recentFoods.length > 0 &&
+    (activeCategory === "All" || activeCategory === "Recents");
 
   // Locale-resolved hint flag (2026-04-26 — Premier Free is US-only).
   // Hoisted ABOVE the preview-mode early return so React's hook-order
@@ -1408,6 +1476,58 @@ export default function FoodSearchPanel({
 
   return (
     <View style={{ flex: 1 }}>
+      {/* 2026-05-14 premium-bar polish #3: category-filter pill row.
+          Horizontal scroll so the six chips fit on every device width.
+          Active pill uses the brand primary fill; inactive pills sit
+          quiet on a transparent background with the standard border.
+          Filter logic lives in `filteredResults` above. */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{
+          paddingHorizontal: Spacing.md,
+          paddingTop: Spacing.sm,
+          paddingBottom: Spacing.xs,
+          gap: 8,
+        }}
+        keyboardShouldPersistTaps="handled"
+        testID="food-search-category-tabs"
+      >
+        {CATEGORY_LIST.map((cat) => {
+          const isActive = cat === activeCategory;
+          return (
+            <Pressable
+              key={cat}
+              onPress={() => setActiveCategory(cat)}
+              accessibilityRole="button"
+              accessibilityLabel={`${cat} foods`}
+              accessibilityState={{ selected: isActive }}
+              testID={`food-search-category-${cat}`}
+              hitSlop={6}
+              style={{
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderRadius: 999,
+                borderWidth: 1,
+                borderColor: isActive ? Accent.primary : colors.border,
+                backgroundColor: isActive ? Accent.primary : "transparent",
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontWeight: "700",
+                  color: isActive ? Accent.primaryForeground : colors.textSecondary,
+                  letterSpacing: 0.2,
+                }}
+              >
+                {cat}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+
       {/* Premier-tier autocomplete typeahead row. Hidden on Basic. */}
       {autocomplete.tier === "premier" && autocomplete.suggestions.length > 0 && query.trim() ? (
         <View
@@ -1447,7 +1567,7 @@ export default function FoodSearchPanel({
           or if no recents are supplied. The first 5 are rendered to
           keep the list scannable; if the user wants more they can
           type or tap into Recents on the canonical LogSheet. */}
-      {!query.trim() && recentFoods && recentFoods.length > 0 ? (
+      {showRecentFoodsBlock && recentFoods ? (
         <View
           style={{
             paddingHorizontal: Spacing.lg,
@@ -1542,7 +1662,7 @@ export default function FoodSearchPanel({
         </View>
       ) : (
         <FlatList<SearchRow>
-          data={results}
+          data={filteredResults}
           keyExtractor={(item) => item.key}
           renderItem={renderItem}
           contentContainerStyle={styles.list}

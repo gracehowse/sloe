@@ -1,0 +1,115 @@
+# Soft spot 6 (2026-05-14 production-readiness audit) — dependency auto-updates.
+#
+# Groups minor + patch bumps into one PR per ecosystem so the dependabot
+# noise floor is one PR/week per package tree, not one PR per dep.
+#
+# Major bumps for high-blast-radius packages (react, next, expo, Sentry,
+# Supabase, Stripe) get their own PR so they receive human eyeballs.
+#
+# Cap of 3 open PRs in flight is enforced repo-wide (CLAUDE.md "PR hygiene").
+# `open-pull-requests-limit: 1` per group keeps dependabot from blowing the cap.
+
+version: 2
+updates:
+  # Web — root package.json
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "07:00"
+      timezone: "Europe/London"
+    open-pull-requests-limit: 1
+    labels:
+      - "dependencies"
+      - "web"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    groups:
+      production-dependencies:
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+      development-dependencies:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      # Major bumps for these get their own PR (handled by the
+      # `package-ecosystem: "npm"` block below with version-update rules).
+      # Listed here so the grouped PR above never auto-bundles a major.
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "next"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@sentry/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@supabase/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "stripe"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "posthog-js"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+
+  # Mobile — apps/mobile/package.json
+  - package-ecosystem: "npm"
+    directory: "/apps/mobile"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "07:00"
+      timezone: "Europe/London"
+    open-pull-requests-limit: 1
+    labels:
+      - "dependencies"
+      - "mobile"
+    commit-message:
+      prefix: "deps(mobile)"
+      include: "scope"
+    groups:
+      production-dependencies:
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+      development-dependencies:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-native"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "expo"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "expo-*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@sentry/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@supabase/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "posthog-react-native"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-native-purchases"
+        update-types: ["version-update:semver-major"]
+
+  # GitHub Actions — keep CI runners + actions current.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 1
+    labels:
+      - "dependencies"
+      - "ci"
+    commit-message:
+      prefix: "deps(actions)"

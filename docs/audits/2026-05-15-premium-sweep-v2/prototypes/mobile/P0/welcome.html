@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Suppr — mobile Welcome prototype</title>
+  <style>
+    :root {
+      --pm-ease: cubic-bezier(0.22, 1, 0.36, 1);
+      --pm-duration: 150ms;
+      --background: #f4f5f7;
+      --foreground: #111118;
+      --card: #ffffff;
+      --primary: #4c6ce0;
+      --primary-foreground: #ffffff;
+      --muted: #e4e4ec;
+      --muted-foreground: #6b6b78;
+      --border: #e4e4ec;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+      background: var(--background); color: var(--foreground);
+      min-height: 100vh; font-size: 15px; line-height: 1.45;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .prototype-header {
+      position: sticky; top: 0; z-index: 10;
+      background: var(--card); border-bottom: 1px solid var(--border);
+      padding: 16px 24px; display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+    }
+    .prototype-header h1 { font-size: 18px; font-weight: 700; }
+    .prototype-header .meta { font-size: 12px; color: var(--muted-foreground); margin-top: 2px; }
+    .prototype-header nav { margin-left: auto; display: flex; gap: 4px; background: var(--muted); border-radius: 8px; padding: 3px; }
+    .prototype-header nav button {
+      border: 0; background: transparent; color: var(--muted-foreground);
+      padding: 6px 14px; font-size: 13px; font-weight: 600;
+      border-radius: 6px; cursor: pointer;
+    }
+    .prototype-header nav button[aria-current="true"] { background: var(--card); color: var(--foreground); box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+
+    .prototype-canvas { padding: 32px; display: grid; gap: 32px; }
+    .prototype-canvas[data-view="before"] .state--after { display: none; }
+    .prototype-canvas[data-view="after"] .state--before { display: none; }
+    .prototype-canvas[data-view="side-by-side"] { grid-template-columns: 1fr 1fr; }
+    .state {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 48px 24px 24px; position: relative;
+    }
+    .state::before {
+      content: attr(data-label); position: absolute; top: 12px; left: 12px;
+      font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+      padding: 3px 8px; border-radius: 4px;
+      background: var(--muted); color: var(--muted-foreground);
+    }
+    .state--after::before { background: var(--primary); color: var(--primary-foreground); }
+
+    /* iPhone */
+    .iphone {
+      width: 430px; height: 932px;
+      border-radius: 50px; background: #000;
+      padding: 14px; margin: 0 auto;
+      box-shadow: 0 0 0 2px #1a1a1c, 0 24px 48px rgba(0, 0, 0, 0.18);
+      position: relative;
+    }
+    .iphone__screen {
+      width: 100%; height: 100%;
+      border-radius: 38px; overflow: hidden;
+      background: var(--background); position: relative;
+    }
+    .iphone__status-bar {
+      height: 47px; display: flex; align-items: center; justify-content: space-between;
+      padding: 0 28px 0 32px;
+      font-size: 15px; font-weight: 600; color: var(--foreground);
+      position: relative; z-index: 2;
+    }
+    .iphone__status-bar::before {
+      content: ""; position: absolute; left: 50%; top: 11px; transform: translateX(-50%);
+      width: 124px; height: 36px; background: #000; border-radius: 20px;
+    }
+    .iphone__status-bar-time, .iphone__status-bar-right { z-index: 3; }
+    .iphone__status-bar-right { display: flex; gap: 4px; align-items: center; font-size: 12px; }
+    .iphone__viewport {
+      height: calc(100% - 47px); position: relative; overflow: hidden;
+      background: linear-gradient(180deg, rgba(76, 108, 224, 0.32) 0%, rgba(196, 65, 158, 0.16) 35%, var(--background) 65%);
+    }
+
+    /* Welcome screen */
+    .welcome {
+      display: flex; flex-direction: column;
+      align-items: center;
+      padding: 64px 32px 32px;
+      height: 100%;
+      text-align: center;
+    }
+    .welcome__brand-mark {
+      width: 72px; height: 72px;
+      background: var(--primary); border-radius: 18px;
+      display: flex; align-items: center; justify-content: center;
+      color: white; font-weight: 800; font-size: 36px;
+      letter-spacing: -0.02em;
+      margin-bottom: 32px;
+    }
+    .welcome__title {
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+      margin-bottom: 16px;
+    }
+    .welcome__sub {
+      font-size: 15px;
+      color: var(--muted-foreground);
+      max-width: 320px;
+      margin-bottom: 40px;
+    }
+    .welcome__cta-stack {
+      display: flex; flex-direction: column;
+      width: 100%;
+      gap: 12px;
+      margin-top: auto;
+      margin-bottom: 48px;
+    }
+    /* BEFORE 10.1: "Join thousands tracking smarter" proof line above primary CTA */
+    .welcome__proof-line {
+      font-size: 13px;
+      color: var(--muted-foreground);
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+    .welcome__cta-primary {
+      width: 100%;
+      padding: 16px;
+      background: var(--primary); color: var(--primary-foreground);
+      border: 0; border-radius: 14px;
+      font-weight: 700; font-size: 16px;
+      cursor: pointer;
+    }
+    /* BEFORE 10.2: outlined Sign in button below primary CTA */
+    .welcome__cta-signin-outlined {
+      width: 100%;
+      padding: 16px;
+      background: transparent; color: var(--foreground);
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      font-weight: 700; font-size: 16px;
+      cursor: pointer;
+    }
+    /* AFTER 10.2: smaller bottom text link */
+    .welcome__signin-link {
+      font-size: 14px;
+      color: var(--primary);
+      font-weight: 600;
+      text-decoration: none;
+      padding-top: 16px;
+    }
+
+    .prototype-notes {
+      margin: 0 32px 64px; background: var(--card);
+      border: 1px solid var(--border); border-radius: 12px; padding: 24px;
+    }
+    .prototype-notes h2 { font-size: 14px; font-weight: 700; margin-bottom: 8px; margin-top: 16px; }
+    .prototype-notes h2:first-child { margin-top: 0; }
+    .prototype-notes ul { list-style: none; display: grid; gap: 8px; }
+    .prototype-notes li { padding-left: 8px; border-left: 2px solid var(--primary); font-size: 14px; }
+    .prototype-notes li strong {
+      display: inline-block; font-size: 11px; font-weight: 700;
+      background: var(--muted); color: var(--muted-foreground);
+      padding: 2px 6px; border-radius: 4px; margin-right: 6px;
+      text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .prototype-notes p { font-size: 14px; color: var(--muted-foreground); }
+    .prototype-notes code {
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+      font-size: 12px; background: var(--muted); color: var(--foreground);
+      padding: 1px 5px; border-radius: 3px;
+    }
+
+    [data-view="side-by-side"] .iphone {
+      transform: scale(0.75); transform-origin: top center;
+      margin-bottom: -240px;
+    }
+  </style>
+</head>
+<body>
+  <header class="prototype-header">
+    <div>
+      <h1>Mobile Welcome — DC12 protection</h1>
+      <p class="meta">Surface: <code>apps/mobile/components/onboarding/steps/welcome.tsx</code> · Rows: #10.1 (SUBTRACT proof line), #10.2 (SUBTRACT/REPLACE outlined Sign in)</p>
+    </div>
+    <nav>
+      <button onclick="setView('before', this)">Before</button>
+      <button onclick="setView('after', this)" aria-current="true">After</button>
+      <button onclick="setView('side-by-side', this)">Side-by-side</button>
+    </nav>
+  </header>
+
+  <main class="prototype-canvas" data-view="after">
+
+    <section class="state state--before" data-label="Before (current)">
+      <div class="iphone">
+        <div class="iphone__screen">
+          <div class="iphone__status-bar">
+            <span class="iphone__status-bar-time">9:41</span>
+            <span class="iphone__status-bar-right">●●● 100%</span>
+          </div>
+          <div class="iphone__viewport">
+            <div class="welcome">
+              <div class="welcome__brand-mark">S</div>
+              <h2 class="welcome__title">Eat well, without overthinking it.</h2>
+              <p class="welcome__sub">A calmer way to track macros — plan, log, and learn what works for you.</p>
+              <div class="welcome__cta-stack">
+                <p class="welcome__proof-line">Join thousands tracking smarter</p>
+                <button class="welcome__cta-primary">Get started</button>
+                <button class="welcome__cta-signin-outlined">Sign in</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="state state--after" data-label="After (proposed)">
+      <div class="iphone">
+        <div class="iphone__screen">
+          <div class="iphone__status-bar">
+            <span class="iphone__status-bar-time">9:41</span>
+            <span class="iphone__status-bar-right">●●● 100%</span>
+          </div>
+          <div class="iphone__viewport">
+            <div class="welcome">
+              <div class="welcome__brand-mark">S</div>
+              <h2 class="welcome__title">Eat well, without overthinking it.</h2>
+              <p class="welcome__sub">A calmer way to track macros — plan, log, and learn what works for you.</p>
+              <div class="welcome__cta-stack">
+                <!-- 10.1 SUBTRACT: removed "Join thousands tracking smarter" proof line
+                     (unsubstantiated, drifts toward DC12-violating growth puffery) -->
+                <button class="welcome__cta-primary">Get started</button>
+                <!-- 10.2 REPLACE: outlined Sign in button → small bottom text link
+                     (was competing with primary CTA; Cal AI bottom-link pattern) -->
+                <a href="#" class="welcome__signin-link">Already have an account? <span style="text-decoration:underline;">Sign in</span></a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <aside class="prototype-notes">
+    <h2>What changed</h2>
+    <ul>
+      <li>
+        <strong>#10.1 SUBTRACT</strong>
+        Removed the "Join thousands tracking smarter" proof line above the Get started CTA. The line was added in
+        a prior sweep as a B1#1 conversion polish but is an unsubstantiated claim that drifts toward DC12-violating
+        growth-style puffery (Cal AI "Lose 10 lbs!" energy).
+        <em>What it duplicates / weakens:</em> weakens DC12 calm voice — adds vague proof not backed by truth.
+        Suppr has one tester right now; "thousands" is false.
+      </li>
+      <li>
+        <strong>#10.2 REPLACE</strong>
+        Replaced the outlined "Sign in" button below the primary CTA with a smaller text link at the very bottom
+        of the viewport ("Already have an account? Sign in" — Cal AI bottom-link pattern). The outlined button was
+        competing visually with the primary "Get started" CTA at cold-open, splitting the call to action between
+        two equal-weight buttons.
+        <em>What it duplicates / weakens:</em> duplicates the auth path that lives in-flow at step 2 (signup with
+        Apple SSO carries returning-user detection automatically). Outlined button was added in prior sweep B1#3
+        — same "additive flourish that degrades hierarchy" pattern as the 4 reverts on 2026-05-14.
+      </li>
+    </ul>
+
+    <h2>DC12 preservation check</h2>
+    <p>
+      DC12 (calm voice — "Eat well, without overthinking it.") is the load-bearing bet for Suppr's positioning vs.
+      MFP refugees fleeing toxic gamification. Both removed elements (proof line + outlined Sign in button) were
+      additive flourishes that drift this surface toward Cal AI's shouty energy. The headline is preserved verbatim;
+      the subtitle is preserved; the Get started CTA is the single primary action.
+    </p>
+
+    <h2>Refused borrows considered</h2>
+    <p>
+      Considered adding a Linear-style "Trusted by 50,000 home cooks" social-proof line. Refused — Suppr can't
+      currently honestly carry that claim (N=1 tester). DC12 voice rejects unsubstantiated puffery; even when the
+      numbers grow, the line should specify what's being measured.
+    </p>
+
+    <h2>Capture gaps still open</h2>
+    <p>
+      The mobile Welcome dark-mode capture wasn't surfaced in the P0 dark sweep (sweep died at meal-nutrition before
+      reaching paywall/onboarding). The Welcome.tsx already carries <code>gradTopOpacity = isDark ? 0.16 : 0.32</code>
+      which damps the gradient in dark mode (B1#2 from prior sweep). Row 10.3 (verification-only) confirms the
+      damp-down still reads correctly post-capture; not implementation work.
+    </p>
+  </aside>
+
+  <script>
+    function setView(view, btn) {
+      const canvas = document.querySelector('.prototype-canvas');
+      canvas.dataset.view = view;
+      document.querySelectorAll('.prototype-header nav button').forEach(b => b.removeAttribute('aria-current'));
+      btn.setAttribute('aria-current', 'true');
+    }
+  </script>
+</body>
+</html>

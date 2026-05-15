@@ -267,11 +267,11 @@ function DailyRing({
           style={{ transitionTimingFunction: "var(--pm-ease)" }}
         />
         {/* Macro rings (shown when expanded).
-            2026-05-12 (premium-bar DC1): when the outer calorie ring is
-            over-budget, dim each macro arc to ~55% opacity so the
-            destructive-red outer ring carries the over signal without
-            macro hues fighting it. "Warm-shift" per audit, approximated
-            as alpha to keep rendering cheap and dark-mode-safe. */}
+            2026-05-14 — Grace's call: macro arcs always render in
+            their own colour at full opacity, even when over-budget.
+            The destructive-red outer kcal ring carries the over-
+            budget signal — the inner arcs don't need to repeat it,
+            and dimming them collapsed the multi-colour language. */}
         {expanded && macroRings.map((ring, i) => {
           const c = 2 * Math.PI * ring.r;
           const o = c * (1 - Math.min(ring.pct, 0.999));
@@ -296,7 +296,6 @@ function DailyRing({
                 strokeLinecap="round"
                 strokeDasharray={c}
                 strokeDashoffset={o}
-                opacity={isOverBudget ? 0.55 : 1}
                 className="transition-[stroke-dashoffset] duration-700"
                 style={{
                   transitionTimingFunction: "var(--pm-ease)",

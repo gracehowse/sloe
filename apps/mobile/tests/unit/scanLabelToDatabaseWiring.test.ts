@@ -72,8 +72,12 @@ describe("build-45 fix — scan-label endpoint exists + uses Claude vision helpe
   const ROUTE = read("app/api/nutrition/scan-label/route.ts");
 
   it("imports callAiVision from the shared aiProvider helper (no inline OpenAI/Anthropic fetch)", () => {
+    // 2026-05-15: the B3 AI cost circuit-breaker (ENG-511) added
+    // `AiBudgetExceededError` alongside `callAiVision` in the same
+    // import statement. Match any named-import list that contains
+    // `callAiVision`, not just an exclusive single import.
     expect(ROUTE).toMatch(
-      /import\s*\{\s*callAiVision\s*\}\s*from\s*["'][^"']*aiProvider["']/,
+      /import\s*\{[^}]*\bcallAiVision\b[^}]*\}\s*from\s*["'][^"']*aiProvider["']/,
     );
   });
 

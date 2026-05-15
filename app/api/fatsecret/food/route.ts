@@ -172,26 +172,39 @@ export async function GET(req: Request) {
         }
       : null;
 
-    // Per-serving payload for the per-serving-only path. Always
-    // populated when `macrosPer100g` is null so the client knows what
-    // values to commit when the user picks "1 serving".
-    const macrosPerServing = isPerServingOnly
-      ? {
-          calories: Math.max(0, Math.round(perServing.calories)),
-          protein: Math.max(0, Math.round(perServing.protein * 10) / 10),
-          carbs: Math.max(0, Math.round(perServing.carbs * 10) / 10),
-          fat: Math.max(0, Math.round(perServing.fat * 10) / 10),
-        }
-      : null;
+    // Per-serving payload — always populated when `perServing` is
+    // computable from the primary serving's absolute values, not just
+    // when the food is per-serving-only.
+    //
+    // 2026-05-14 fix (ENG bug — Marketside Spicy Tuna Roll surfaced
+    // 0 kcal in preview): mixed-grounding foods (primary serving like
+    // "8 pieces" with NO metric, plus other servings WITH metric) hit
+    // the gap. `isPerServingOnly = false` (a metric serving exists),
+    // so `macrosPer100g` was populated and `macrosPerServing` was
+    // null. The client picked the "8 pieces" portion with gramWeight 0
+    // (sentinel from line 149 above) and the previewMacros branch
+    // computed `0 × per-100g = 0` macros across the board, even though
+    // the "If you log this" footer correctly carried the macros from
+    // the metric serving. Populating `macrosPerServing` for every
+    // FatSecret food lets the client switch to per-serving math
+    // whenever the chosen portion has gramWeight 0, regardless of
+    // whether other portions have metric.
+    const macrosPerServing =
+      Number.isFinite(perServing.calories)
+        ? {
+            calories: Math.max(0, Math.round(perServing.calories)),
+            protein: Math.max(0, Math.round(perServing.protein * 10) / 10),
+            carbs: Math.max(0, Math.round(perServing.carbs * 10) / 10),
+            fat: Math.max(0, Math.round(perServing.fat * 10) / 10),
+          }
+        : null;
 
-    // 2026-05-06: per-serving micros (absolute values, not per-100g)
-    // for the per-serving-only path. Same unit-safety filter as the
-    // per-100g extractor (no calcium/iron/vitamins). Lets the
-    // commit path scale by quantity to populate the meal-detail
-    // panel for FatSecret per-serving logs.
-    const microsPerServing = isPerServingOnly
-      ? fatSecretServingMicrosAbsolute(best)
-      : {};
+    // 2026-05-06 (extended 2026-05-14): per-serving micros (absolute,
+    // not per-100g). Same widening as `macrosPerServing` above — fire
+    // whenever we have the data, not just on the per-serving-only path,
+    // so the client can render fibre/sugar/sodium correctly when the
+    // user picks a gramWeight-0 portion.
+    const microsPerServing = fatSecretServingMicrosAbsolute(best);
 
     return NextResponse.json({
       ok: true,

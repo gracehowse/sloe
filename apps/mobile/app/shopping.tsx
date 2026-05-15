@@ -10,7 +10,9 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Check, ShoppingCart, Users } from "lucide-react-native";
+import { Check, ShoppingCart, Trash2, Users } from "lucide-react-native";
+import { Swipeable } from "react-native-gesture-handler";
+import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/context/auth";
@@ -843,8 +845,44 @@ export default function ShoppingListScreen() {
                       : null;
 
                     return (
-                      <Pressable
+                      // Premium-bar audit Group J line 436 — swipe-to-delete.
+                      // Right-swipe reveals a destructive zone that removes
+                      // every row in this display group (single + merged
+                      // duplicates). Mirrors the pattern used by Today
+                      // meals (`TodayMealsSection.tsx:Swipeable`). Haptic
+                      // medium-impact on swipe-trigger matches the meal
+                      // delete affordance so the gesture vocabulary is
+                      // consistent across the app.
+                      <Swipeable
                         key={group.key}
+                        overshootRight={false}
+                        friction={2}
+                        renderRightActions={() => (
+                          <View style={{ flexDirection: "row", alignItems: "stretch" }}>
+                            <Pressable
+                              onPress={() => {
+                                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                for (const item of group.items) removeItem(item.id);
+                              }}
+                              style={{
+                                width: 88,
+                                backgroundColor: Accent.destructive,
+                                justifyContent: "center",
+                                alignItems: "center",
+                              }}
+                              accessibilityRole="button"
+                              accessibilityLabel={`Remove ${displayName} from shopping list`}
+                              testID={`shopping-swipe-delete-${group.key}`}
+                            >
+                              <Trash2 size={22} color="#fff" />
+                              <Text style={{ color: "#fff", fontSize: 11, fontWeight: "700", marginTop: 4 }}>
+                                Delete
+                              </Text>
+                            </Pressable>
+                          </View>
+                        )}
+                      >
+                      <Pressable
                         style={styles.itemRow}
                         onPress={() => {
                           for (const item of group.items) {
@@ -928,6 +966,7 @@ export default function ShoppingListScreen() {
                           ) : null}
                         </View>
                       </Pressable>
+                      </Swipeable>
                     );
                   })}
                 </View>

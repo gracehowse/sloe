@@ -36,10 +36,12 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 import {
   Camera as CameraIcon,
   Mic as MicIcon,
   ScanBarcode,
+  ScanLine,
   Search as SearchIcon,
   X,
 } from "lucide-react-native";
@@ -116,8 +118,17 @@ export default function FoodSearchModal({
 }: Props) {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
+  const router = useRouter();
   const [query, setQuery] = useState(initialQuery);
   const hasQuickAdd = !!(onScanBarcode || onVoiceLog || onPhotoLog);
+  // 2026-05-14 premium-bar polish #1: inline ScanLine glyph at the
+  // right of the input as a low-friction barcode entry point. Only
+  // surfaces when (a) the query is empty (the user hasn't started
+  // typing) AND (b) the host has NOT wired its own onScanBarcode
+  // quick-add icon — otherwise we'd render two barcode affordances
+  // in the same row. Tap navigates directly to the barcode tab via
+  // expo-router (the canonical scanner surface).
+  const showInlineBarcodeShortcut = !query.trim() && !onScanBarcode;
 
   // On open, sync query → initialQuery so callers that re-mount with a
   // different initialQuery (e.g. recipe-verify) get the right starting
@@ -204,6 +215,23 @@ export default function FoodSearchModal({
             returnKeyType="search"
             accessibilityLabel="Search foods"
           />
+          {/* 2026-05-14 premium-bar polish #1: inline ScanLine glyph.
+              Hidden once the user types so the input chrome doesn't
+              compete with the keyboard, and suppressed if the host
+              already supplies its own onScanBarcode quick-add icon to
+              avoid two barcode affordances side-by-side. */}
+          {showInlineBarcodeShortcut ? (
+            <Pressable
+              onPress={() => router.push("/(tabs)/barcode")}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Scan a barcode"
+              testID="food-search-inline-barcode"
+              style={{ paddingHorizontal: 8, paddingVertical: 10 }}
+            >
+              <ScanLine size={18} color={colors.textSecondary} />
+            </Pressable>
+          ) : null}
           {/* F-128 quick-add row — mirrors LogSheet's right-edge input
               modes so the recipe-ingredient flow has the same "scan /
               voice / photo" affordances the food-log flow does. Each

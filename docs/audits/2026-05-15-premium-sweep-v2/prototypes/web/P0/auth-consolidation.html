@@ -1,0 +1,504 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Suppr — web auth consolidation prototype</title>
+  <style>
+    :root {
+      --pm-ease: cubic-bezier(0.22, 1, 0.36, 1);
+      --pm-duration: 150ms;
+      --background: #f4f5f7;
+      --foreground: #111118;
+      --card: #ffffff;
+      --primary: #4c6ce0;
+      --primary-foreground: #ffffff;
+      --muted: #e4e4ec;
+      --muted-foreground: #6b6b78;
+      --border: #e4e4ec;
+      --input-background: #ededf2;
+      --success: #22a860;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+      background: var(--background);
+      color: var(--foreground);
+      min-height: 100vh;
+      font-size: 15px;
+      line-height: 1.45;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .prototype-header {
+      position: sticky; top: 0; z-index: 10;
+      background: var(--card); border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+    }
+    .prototype-header h1 { font-size: 18px; font-weight: 700; }
+    .prototype-header .meta { font-size: 12px; color: var(--muted-foreground); margin-top: 2px; }
+    .prototype-header nav { margin-left: auto; display: flex; gap: 4px; background: var(--muted); border-radius: 8px; padding: 3px; }
+    .prototype-header nav button {
+      border: 0; background: transparent; color: var(--muted-foreground);
+      padding: 6px 14px; font-size: 13px; font-weight: 600;
+      border-radius: 6px; cursor: pointer;
+    }
+    .prototype-header nav button[aria-current="true"] { background: var(--card); color: var(--foreground); box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+
+    .prototype-canvas { padding: 32px; display: grid; gap: 32px; }
+    .prototype-canvas[data-view="before"] .state--after { display: none; }
+    .prototype-canvas[data-view="after"] .state--before { display: none; }
+    .prototype-canvas[data-view="side-by-side"] { grid-template-columns: 1fr 1fr; }
+
+    .state {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 48px 24px 24px;
+      position: relative;
+    }
+    .state::before {
+      content: attr(data-label);
+      position: absolute; top: 12px; left: 12px;
+      font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      padding: 3px 8px; border-radius: 4px;
+      background: var(--muted); color: var(--muted-foreground);
+    }
+    .state--after::before { background: var(--primary); color: var(--primary-foreground); }
+
+    .url-bar {
+      background: var(--muted); border-radius: 8px;
+      padding: 8px 14px; margin-bottom: 16px;
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+      font-size: 12px; color: var(--muted-foreground);
+      display: inline-block;
+    }
+    .url-bar strong { color: var(--foreground); }
+
+    /* Multi-route stack — each state shows 3 routes stacked */
+    .route-block {
+      margin-bottom: 32px;
+      padding-bottom: 32px;
+      border-bottom: 1px dashed var(--border);
+    }
+    .route-block:last-child { border-bottom: 0; }
+
+    /* ── Auth card ── */
+    .auth-page {
+      background: var(--background);
+      padding: 40px 20px 60px;
+      border-radius: 8px;
+    }
+    .auth-hero {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .auth-hero__icon-old {
+      width: 56px; height: 56px;
+      background: var(--primary); border-radius: 14px;
+      display: inline-flex; align-items: center; justify-content: center;
+      margin-bottom: 16px;
+      color: white; font-size: 24px;
+    }
+    .auth-hero__icon-new {
+      width: 56px; height: 56px;
+      background: var(--primary); border-radius: 14px;
+      display: inline-flex; align-items: center; justify-content: center;
+      margin-bottom: 16px;
+      color: white; font-size: 28px; font-weight: 800;
+      letter-spacing: -0.02em;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+    }
+    .auth-hero h2 {
+      font-size: 24px;
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+    .auth-hero p {
+      font-size: 14px;
+      color: var(--muted-foreground);
+    }
+
+    .auth-card {
+      max-width: 440px;
+      margin: 0 auto;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px;
+    }
+    .auth-card__title {
+      font-size: 20px; font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .auth-card__sub {
+      font-size: 13px;
+      color: var(--muted-foreground);
+      margin-bottom: 20px;
+    }
+
+    .toggle-pill {
+      display: flex; gap: 8px;
+      margin-bottom: 16px;
+    }
+    .toggle-pill button {
+      flex: 1;
+      padding: 10px 16px;
+      font-weight: 700; font-size: 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--foreground);
+    }
+    .toggle-pill button[aria-current="true"] {
+      background: var(--primary); color: var(--primary-foreground);
+      border-color: var(--primary);
+    }
+
+    .sso-button {
+      width: 100%;
+      padding: 12px;
+      background: #000;
+      color: white;
+      border: 0; border-radius: 10px;
+      font-weight: 600; font-size: 14px;
+      display: flex; align-items: center; justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      margin-bottom: 16px;
+    }
+
+    .or-sep {
+      display: flex; align-items: center; gap: 12px;
+      font-size: 11px; color: var(--muted-foreground);
+      margin: 16px 0;
+    }
+    .or-sep::before, .or-sep::after {
+      content: ""; flex: 1; height: 1px; background: var(--border);
+    }
+
+    .field {
+      margin-bottom: 14px;
+    }
+    .field label {
+      display: block;
+      font-size: 13px; font-weight: 500;
+      margin-bottom: 6px;
+    }
+    .field input {
+      width: 100%;
+      padding: 11px 14px;
+      background: var(--input-background);
+      border: 0; border-radius: 10px;
+      font-size: 14px;
+      font-family: inherit;
+    }
+
+    .submit-cta {
+      width: 100%;
+      padding: 12px;
+      background: var(--primary); color: var(--primary-foreground);
+      border: 0; border-radius: 10px;
+      font-weight: 700; font-size: 14px;
+      cursor: pointer;
+      margin-top: 6px;
+    }
+
+    .helpers {
+      display: flex; flex-direction: column; gap: 6px;
+      margin-top: 14px;
+      font-size: 13px;
+    }
+    .helpers a { color: var(--primary); text-decoration: none; }
+    .helpers .helper-muted { color: var(--muted-foreground); }
+
+    /* Home redirect demo */
+    .home-redirect-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 24px;
+      text-align: center;
+    }
+    .home-redirect-card .label {
+      font-size: 12px; color: var(--muted-foreground);
+      font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.04em; margin-bottom: 8px;
+    }
+    .home-redirect-card .from {
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+      font-size: 13px; color: var(--foreground);
+      background: var(--muted); display: inline-block;
+      padding: 4px 10px; border-radius: 6px;
+    }
+    .home-redirect-card .arrow {
+      font-size: 20px; color: var(--muted-foreground);
+      margin: 0 12px;
+    }
+    .home-redirect-card .to {
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+      font-size: 13px; color: var(--foreground);
+      background: var(--muted); display: inline-block;
+      padding: 4px 10px; border-radius: 6px;
+    }
+    .home-redirect-card .to--correct { background: rgba(34, 168, 96, 0.12); color: #1a7d47; }
+    .home-redirect-card .to--wrong { background: rgba(224, 72, 72, 0.12); color: #b03030; }
+
+    /* Strikethrough for removed elements in side-by-side legend */
+    .removed { text-decoration: line-through; opacity: 0.5; }
+    .added { background: rgba(76, 108, 224, 0.08); padding: 0 4px; border-radius: 3px; }
+
+    .prototype-notes {
+      margin: 0 32px 64px; background: var(--card);
+      border: 1px solid var(--border); border-radius: 12px; padding: 24px;
+    }
+    .prototype-notes h2 { font-size: 14px; font-weight: 700; margin-bottom: 8px; margin-top: 16px; }
+    .prototype-notes h2:first-child { margin-top: 0; }
+    .prototype-notes ul { list-style: none; display: grid; gap: 8px; }
+    .prototype-notes li { padding-left: 8px; border-left: 2px solid var(--primary); font-size: 14px; }
+    .prototype-notes li strong {
+      display: inline-block; font-size: 11px; font-weight: 700;
+      background: var(--muted); color: var(--muted-foreground);
+      padding: 2px 6px; border-radius: 4px; margin-right: 6px;
+      text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .prototype-notes p { font-size: 14px; color: var(--muted-foreground); }
+    .prototype-notes code {
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+      font-size: 12px; background: var(--muted); color: var(--foreground);
+      padding: 1px 5px; border-radius: 3px;
+    }
+  </style>
+</head>
+<body>
+  <header class="prototype-header">
+    <div>
+      <h1>Web auth consolidation — RTP-1 + RTP-4 + RTP-5 + RTP-10</h1>
+      <p class="meta">Surfaces: <code>app/login/ui.tsx</code>, <code>app/signin/page.tsx</code>, <code>app/signup/page.tsx</code>, <code>app/home/page.tsx</code> · Rows: #5.1–5.4, #6.1, #7.1, #7.2, #9.2</p>
+    </div>
+    <nav>
+      <button onclick="setView('before', this)">Before</button>
+      <button onclick="setView('after', this)" aria-current="true">After</button>
+      <button onclick="setView('side-by-side', this)">Side-by-side</button>
+    </nav>
+  </header>
+
+  <main class="prototype-canvas" data-view="after">
+
+    <!-- ─────────────── BEFORE ─────────────── -->
+    <section class="state state--before" data-label="Before (captured 4 routes)">
+
+      <!-- /login -->
+      <div class="route-block">
+        <div class="url-bar">https://suppr-club.com<strong>/login</strong></div>
+        <div class="auth-page">
+          <div class="auth-hero">
+            <span class="auth-hero__icon-old">📋✓</span>
+            <h2>Sign in to Suppr</h2>
+            <p>Welcome back. Your Today, plan, and recipes are waiting.</p>
+          </div>
+          <div class="auth-card">
+            <div class="auth-card__title">Welcome back</div>
+            <div class="auth-card__sub">Sign in to continue.</div>
+            <div class="toggle-pill">
+              <button>Sign up</button>
+              <button aria-current="true">Sign in</button>
+            </div>
+            <button class="sso-button"> Continue with Apple</button>
+            <div class="or-sep">OR</div>
+            <div class="field"><label>Email</label><input type="email" placeholder="you@domain.com"></div>
+            <div class="field"><label>Password</label><input type="password" placeholder="Your password"></div>
+            <button class="submit-cta">Sign in</button>
+            <div class="helpers">
+              <a href="#">Forgot password?</a>
+              <span class="helper-muted">Use a magic link instead (existing accounts)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- /signin (identical to /login — duplicate) -->
+      <div class="route-block">
+        <div class="url-bar">https://suppr-club.com<strong>/signin</strong> <span style="color:#b03030;font-weight:600;margin-left:8px;">(IDENTICAL to /login — RTP-5)</span></div>
+        <div class="auth-page" style="padding-top:12px;">
+          <p style="text-align:center; font-size:13px; color:var(--muted-foreground);">
+            <em>Same card as /login above — duplicate route. Three URLs reach the same form.</em>
+          </p>
+        </div>
+      </div>
+
+      <!-- /signup (renders the LANDING page) -->
+      <div class="route-block">
+        <div class="url-bar">https://suppr-club.com<strong>/signup</strong> <span style="color:#b03030;font-weight:600;margin-left:8px;">(renders LANDING — RTP-1)</span></div>
+        <div class="auth-page" style="padding: 40px 20px;">
+          <div style="background: linear-gradient(135deg, #5a4ad6 0%, #c4419e 100%); border-radius: 16px; padding: 48px 32px; text-align: center; color: white; max-width: 600px; margin: 0 auto;">
+            <h2 style="font-size: 28px; font-weight: 800; margin-bottom: 8px;">Join the Suppr Club</h2>
+            <p style="font-size: 14px; opacity: 0.85; margin-bottom: 24px;">Plans that hit your macros, calm-voice copy, recipe import from anywhere.</p>
+            <button style="background: white; color: #4c6ce0; border: 0; border-radius: 999px; padding: 12px 28px; font-weight: 700; font-size: 14px; cursor: pointer;">Get started — free</button>
+          </div>
+          <p style="text-align:center; margin-top: 24px; font-size: 13px; color: var(--muted-foreground);"><em>This is the same hero as <code>/</code> and <code>/onboarding</code>. No signup form exists.</em></p>
+        </div>
+      </div>
+
+      <!-- /home unauthed (redirects to /login) -->
+      <div class="route-block" style="border-bottom: 0; padding-bottom: 0;">
+        <div class="url-bar">https://suppr-club.com<strong>/home</strong> <span style="color:#b03030;font-weight:600;margin-left:8px;">(unauthed redirect — RTP-4)</span></div>
+        <div class="home-redirect-card">
+          <div class="label">Unauthed user lands at /home from a link share</div>
+          <span class="from">/home</span>
+          <span class="arrow">→</span>
+          <span class="to to--wrong">/login (forced login wall)</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────── AFTER ─────────────── -->
+    <section class="state state--after" data-label="After (proposed)">
+
+      <!-- /login — canonical sign-in route -->
+      <div class="route-block">
+        <div class="url-bar">https://suppr-club.com<strong>/login</strong> <span style="color:#1a7d47;font-weight:600;margin-left:8px;">canonical · sign-in only</span></div>
+        <div class="auth-page">
+          <div class="auth-hero">
+            <!-- 5.1 REPLACE: Suppr "S" mark replaces clipboard placeholder -->
+            <span class="auth-hero__icon-new">S</span>
+            <!-- 5.2 SUBTRACT: removed page H1 "Sign in to Suppr" + subtitle (card already carries them) -->
+          </div>
+          <div class="auth-card">
+            <div class="auth-card__title">Welcome back</div>
+            <div class="auth-card__sub">Sign in to continue.</div>
+            <!-- 5.3 SUBTRACT: removed in-card "Sign up / Sign in" toggle (signup routes to /signup) -->
+            <button class="sso-button"> Continue with Apple</button>
+            <div class="or-sep">OR</div>
+            <div class="field"><label>Email</label><input type="email" placeholder="you@domain.com"></div>
+            <div class="field"><label>Password</label><input type="password" placeholder="Your password"></div>
+            <button class="submit-cta">Sign in</button>
+            <div class="helpers">
+              <a href="#">Forgot password?</a>
+              <span class="helper-muted">Use a magic link instead (existing accounts)</span>
+              <span style="margin-top: 8px;">Don't have an account? <a href="#">Sign up</a></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- /signin — 301 to /login (RTP-5) -->
+      <div class="route-block">
+        <div class="url-bar">https://suppr-club.com<strong>/signin</strong> <span style="color:#1a7d47;font-weight:600;margin-left:8px;">301 → /login</span></div>
+        <div class="home-redirect-card">
+          <div class="label">Row 6.1 — duplicate route consolidation</div>
+          <span class="from">/signin</span>
+          <span class="arrow">→</span>
+          <span class="to to--correct">301 /login</span>
+        </div>
+      </div>
+
+      <!-- /signup — real signup form (RTP-1 fix) -->
+      <div class="route-block">
+        <div class="url-bar">https://suppr-club.com<strong>/signup</strong> <span style="color:#1a7d47;font-weight:600;margin-left:8px;">dedicated signup form</span></div>
+        <div class="auth-page">
+          <div class="auth-hero">
+            <span class="auth-hero__icon-new">S</span>
+          </div>
+          <div class="auth-card">
+            <div class="auth-card__title">Create your account</div>
+            <div class="auth-card__sub">Eat well, without overthinking it.</div>
+            <button class="sso-button"> Continue with Apple</button>
+            <div class="or-sep">OR</div>
+            <div class="field"><label>First name</label><input type="text" placeholder="Grace"></div>
+            <div class="field"><label>Email</label><input type="email" placeholder="you@domain.com"></div>
+            <div class="field"><label>Password</label><input type="password" placeholder="At least 8 characters"></div>
+            <button class="submit-cta">Create account</button>
+            <div class="helpers">
+              <span style="margin-top: 4px;">Already have an account? <a href="#">Sign in</a></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- /home unauthed → / -->
+      <div class="route-block" style="border-bottom: 0; padding-bottom: 0;">
+        <div class="url-bar">https://suppr-club.com<strong>/home</strong> <span style="color:#1a7d47;font-weight:600;margin-left:8px;">unauthed redirect fixed</span></div>
+        <div class="home-redirect-card">
+          <div class="label">Row 9.2 — unauthed /home redirects to public landing</div>
+          <span class="from">/home (unauthed)</span>
+          <span class="arrow">→</span>
+          <span class="to to--correct">/ (public landing)</span>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <aside class="prototype-notes">
+    <h2>What changed</h2>
+    <ul>
+      <li>
+        <strong>#5.1 REPLACE</strong>
+        Replaced the blue rounded-square clipboard-with-checkmark placeholder icon with the Suppr "S" wordmark tile (same mark as mobile Welcome). Brand consistency at the first auth touchpoint.
+        <em>What it duplicates / weakens:</em> nothing — replaces a stock placeholder with the real brand mark. Resolves RTP-10.
+      </li>
+      <li>
+        <strong>#5.2 SUBTRACT</strong>
+        Removed the page-level "Sign in to Suppr" H1 + "Welcome back. Your Today, plan, and recipes are waiting." subtitle. The card directly below already carries "Welcome back / Sign in to continue."
+        <em>What it duplicates / weakens:</em> duplicates the card title/subtitle — two competing headlines for the same surface.
+      </li>
+      <li>
+        <strong>#5.3 SUBTRACT</strong>
+        Removed the in-card "Sign up / Sign in" segmented toggle. Sign-in is the only path through this surface; signup routes to <code>/signup</code> via a small text link at the bottom.
+        <em>What it duplicates / weakens:</em> duplicates <code>/signup</code> route. The toggle made <code>/login</code> double as a signup entry, blurring the URL contract.
+      </li>
+      <li>
+        <strong>#5.4 SUBTRACT</strong> and <strong>#6.1 SUBTRACT</strong>
+        Collapsed <code>/login</code> and <code>/signin</code> to one canonical URL with the other 301-redirecting. Picking <code>/login</code> as canonical (more common in SaaS sign-in patterns and likely better-indexed). Resolves RTP-5.
+        <em>What it duplicates / weakens:</em> two URLs rendering the same form — full duplicate route.
+      </li>
+      <li>
+        <strong>#7.1 REPLACE</strong>
+        Replaced <code>/signup</code> content with a real signup form: First name + Email + Password + "Continue with Apple" SSO + Create account primary CTA + "Already have an account? Sign in" secondary link. Mirrors the login card structure for visual consistency.
+        <em>What it duplicates / weakens:</em> replaces the duplicated landing-page hero that was occupying <code>/signup</code>. Resolves RTP-1 (EMBARRASSING tier).
+      </li>
+      <li>
+        <strong>#7.2 SUBTRACT</strong>
+        After 7.1 lands: <code>/signup</code> stays as its own surface (not a redirect to <code>/login</code>) — password managers + email-confirm flows need a dedicated signup URL to attach to.
+        <em>What it duplicates / weakens:</em> nothing — preserves the route shape required by browser password managers.
+      </li>
+      <li>
+        <strong>#9.2 REPLACE</strong>
+        Unauthed users hitting <code>/home</code> directly (e.g., from a shared link) now redirect to <code>/</code> (public landing) instead of <code>/login</code> (forced login wall).
+        <em>What it duplicates / weakens:</em> removes a forced-login redirect that was treating link-share arrivals as suspicious. Resolves RTP-4.
+      </li>
+    </ul>
+
+    <h2>DC4 / DC12 preservation</h2>
+    <p>
+      No DC4 (trust chips) change — trust chips live on paywall, not auth surfaces. DC12 (calm voice) preserved
+      throughout — "Eat well, without overthinking it." reused on the signup card sub, matching the mobile Welcome
+      headline (cross-platform voice unity).
+    </p>
+
+    <h2>Refused borrows considered</h2>
+    <p>
+      Considered adding a "social proof" line above the auth cards ("Join thousands tracking smarter" — the same line
+      that gets removed from mobile Welcome in row 10.1). Refused — DC12 calm voice rejects unsubstantiated growth puffery.
+      Same rationale as why 10.1 is a subtractive row.
+    </p>
+
+    <h2>Capture gaps still open</h2>
+    <p>
+      Dark-mode auth captures exist (<code>web-desktop-dark-{login,signin,signup}.png</code>). Login + signin both render the
+      same broken duplicate. Dark signup also renders the landing hero. Post-fix captures need to verify the new "S" wordmark
+      tile reads correctly on near-black (CF-4 recapture covers this at sim validation).
+    </p>
+  </aside>
+
+  <script>
+    function setView(view, btn) {
+      const canvas = document.querySelector('.prototype-canvas');
+      canvas.dataset.view = view;
+      document.querySelectorAll('.prototype-header nav button').forEach(b => b.removeAttribute('aria-current'));
+      btn.setAttribute('aria-current', 'true');
+    }
+  </script>
+</body>
+</html>

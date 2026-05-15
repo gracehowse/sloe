@@ -135,13 +135,16 @@ export async function parseCaption(input: {
   captionText: string;
   sourceUrl: string;
   platform: "instagram" | "tiktok" | "youtube";
+  /** Blocker 3 (2026-05-14) — threaded through so the AI budget
+   *  counters know which user to attribute the LLM call to. */
+  userId?: string | null;
 }): Promise<ParsedCaptionRecipe> {
   const caption = (input.captionText ?? "").trim();
   if (caption.length < MIN_CAPTION_LEN) {
     throw new CaptionTooShortError();
   }
 
-  const raw = await extractRecipeFromCaption(caption, null);
+  const raw = await extractRecipeFromCaption(caption, null, input.userId ?? null);
 
   /**
    * Legal guardrail: every step is rewritten to imperative voice. This

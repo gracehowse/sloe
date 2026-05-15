@@ -1590,8 +1590,12 @@ export default function CookModeScreen() {
                 <CheckCircle2 size={16} color="#fff" strokeWidth={2.25} />
               )}
               <Text style={styles.saveBtnText}>
+                {/* DC12 (2026-05-14, premium-bar audit) — specific
+                    confirmation. Mirrors the "Save this cook" verb
+                    in the affirmed state so the user reads the
+                    same noun back. */}
                 {historySaved
-                  ? "Saved"
+                  ? "Cook saved"
                   : savingHistory
                     ? "Saving…"
                     : "Save this cook"}

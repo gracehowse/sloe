@@ -46,6 +46,16 @@ export type FoodHistoryMealLike = {
   micros?: Record<string, number> | null;
   caffeineMg?: number;
   alcoholG?: number;
+  /**
+   * Premium-bar audit DC3 polish (2026-05-14) — optional recipe hero
+   * image URL, when the journal row was logged from a recipe (web
+   * stores this as `recipeImageUrl` on the `LoggedMeal`; mobile may
+   * carry it under the same name). The bucket builder reads
+   * `recipeImageUrl` then falls back to `imageUrl` so both shapes
+   * fit. Never invented; only surfaced when a row already carries it.
+   */
+  recipeImageUrl?: string | null;
+  imageUrl?: string | null;
 };
 
 /** Normalised history item used by the Quick Add panel rows. */
@@ -61,6 +71,15 @@ export type FoodHistoryItem = {
   count: number;
   /** ISO timestamp or `YYYY-MM-DD` of the most recent logging, if available. */
   lastLoggedAt?: string;
+  /**
+   * Premium-bar audit DC3 polish (2026-05-14) — optional recipe hero image
+   * URL carried forward from the original journal row when present.
+   * Surface: `TodayEatAgainBanner` renders a 48×48 thumbnail when set;
+   * otherwise the banner falls back to its text-only layout. The
+   * field is opt-in: the bucket builder only populates it when the
+   * journal meal carries a real image URL — never invented.
+   */
+  imageUrl?: string;
   /**
    * Tracking-extras autoupdate (2026-05-01) — average per-serving caffeine /
    * alcohol contribution across occurrences. Set when ANY of the bucket's
@@ -110,6 +129,23 @@ function caffeineOf(m: FoodHistoryMealLike): number | undefined {
   return undefined;
 }
 
+/**
+ * Premium-bar audit DC3 polish (2026-05-14) — extract a usable image URL
+ * from a journal row, if any. Reads `recipeImageUrl` first (matches
+ * web's `LoggedMeal.recipeImageUrl`), then `imageUrl`. Returns
+ * `undefined` for empty / non-string values so callers can distinguish
+ * "no image" from "image present".
+ */
+function imageUrlOf(m: FoodHistoryMealLike): string | undefined {
+  const candidates = [m.recipeImageUrl, m.imageUrl];
+  for (const raw of candidates) {
+    if (raw == null) continue;
+    const s = String(raw).trim();
+    if (s.length > 0) return s;
+  }
+  return undefined;
+}
+
 /** Same shape as `caffeineOf` for ethanol grams. */
 function alcoholOf(m: FoodHistoryMealLike): number | undefined {
   const micro = m.micros && typeof m.micros === "object" ? m.micros.alcoholG : undefined;
@@ -152,6 +188,14 @@ type Bucket = {
   alcoholCount: number;
   /** Most recent provenance seen for this bucket. */
   source?: string;
+  /**
+   * Premium-bar audit DC3 polish (2026-05-14) — last-seen recipe
+   * image URL for the bucket. Updated whenever a later occurrence
+   * carries an image (a newly-logged row with the image wins over
+   * an older row that was logged before the image was known).
+   * Stored on the bucket so `finaliseBucket` can pass it through.
+   */
+  imageUrl?: string;
   count: number;
   /** Sort key for most-recent tie-break: `${dayKey}#${indexInDay}`. */
   lastSortKey: string;
@@ -208,6 +252,20 @@ function addToBucket(b: Bucket, m: FoodHistoryMealLike, dayKey: string, indexInD
   if (sortKey > b.lastSortKey) {
     b.lastSortKey = sortKey;
     b.lastLoggedAt = m.createdAt ?? dayKey;
+    // Premium-bar audit DC3 polish (2026-05-14) — latest-seen
+    // image URL wins, mirroring the lastLoggedAt rule. We only
+    // overwrite when the newer row actually carries an image so a
+    // recent text-only re-log doesn't clear a known image.
+    const img = imageUrlOf(m);
+    if (img) b.imageUrl = img;
+  } else {
+    // Earlier-in-time occurrence — only seed `imageUrl` if we
+    // haven't seen one yet on this bucket, so historical data
+    // still surfaces an image when the newest log didn't carry one.
+    if (!b.imageUrl) {
+      const img = imageUrlOf(m);
+      if (img) b.imageUrl = img;
+    }
   }
 }
 
@@ -236,6 +294,10 @@ function finaliseBucket(b: Bucket): FoodHistoryItem {
   }
   if (b.source) item.source = b.source;
   if (b.lastLoggedAt) item.lastLoggedAt = b.lastLoggedAt;
+  // Premium-bar audit DC3 polish (2026-05-14) — surface the last-seen
+  // image URL so the Eat-Again banner / Quick Add rows can render a
+  // thumbnail when present. Never invented.
+  if (b.imageUrl) item.imageUrl = b.imageUrl;
   return item;
 }
 
@@ -327,33 +389,66 @@ export function computeEatAgainForSlot<M extends FoodHistoryMealLike & { name?: 
   slot: string,
   now: Date,
 ): FoodHistoryItem | null {
-  if (!slot || !(now instanceof Date) || Number.isNaN(now.getTime())) return null;
+  const candidates = computeEatAgainCandidatesForSlot(byDay, slot, now, 1);
+  return candidates[0] ?? null;
+}
+
+/**
+ * Premium-bar audit DC3 polish (2026-05-14) — return up to `limit`
+ * distinct Eat-Again candidates for `slot`, ordered most-recently
+ * logged first. Powers the horizontal scroller on Today (MacroFactor
+ * stacked-suggestions parity). Each candidate is deduped by the
+ * `${title}|${rounded-kcal}` key so the user never sees the same meal
+ * twice in the same scroller.
+ *
+ * The candidate ordering matches the single-suggestion function: most
+ * recent prior day first, latest meal in that slot on each day. Days
+ * are walked newest→oldest; today is excluded; HealthKit-import
+ * fallback rows are skipped per the original N1 rule.
+ *
+ * Returns `[]` (never `null`) so the host can treat "no suggestions"
+ * uniformly without a null-check branch.
+ */
+export function computeEatAgainCandidatesForSlot<
+  M extends FoodHistoryMealLike & { name?: string },
+>(
+  byDay: Record<string, M[]>,
+  slot: string,
+  now: Date,
+  limit = 3,
+): FoodHistoryItem[] {
+  if (!slot || !(now instanceof Date) || Number.isNaN(now.getTime())) return [];
+  if (!Number.isFinite(limit) || limit <= 0) return [];
   const todayKey = formatDayKey(now);
-  // Canonical slot via the shared helper — accepts "Breakfast" / "breakfast" /
-  // "  BREAKFAST  " / "Snack" equally. Unknown slot → no suggestion.
   const targetSlot = normaliseMealSlot(slot);
-  if (!targetSlot) return null;
+  if (!targetSlot) return [];
+  const seen = new Set<string>();
+  const out: FoodHistoryItem[] = [];
   // Walk days newest → oldest, skipping today.
   const dayKeys = Object.keys(byDay).sort().reverse();
   for (const dk of dayKeys) {
+    if (out.length >= limit) break;
     if (dk >= todayKey) continue;
     const meals = byDay[dk];
     if (!Array.isArray(meals) || meals.length === 0) continue;
-    // Last meal in that slot on that day. Synthetic HealthKit-import
-    // fallback rows are skipped (N1 — they have no real food identity).
+    // Walk this day's slot-matching meals newest→oldest so the
+    // latest item in the slot surfaces first for that day.
     for (let i = meals.length - 1; i >= 0; i -= 1) {
+      if (out.length >= limit) break;
       const m = meals[i]!;
       if (normaliseMealSlot(m.name) !== targetSlot) continue;
       const title = titleOf(m);
       if (isHealthImportFallbackTitle(title)) continue;
       const cal = Math.round(safeNumber(m.calories));
       const key = foodHistoryKey(title, cal);
+      if (seen.has(key)) continue;
+      seen.add(key);
       const bucket = emptyBucket(title, cal, key);
       addToBucket(bucket, m, dk, i);
-      return finaliseBucket(bucket);
+      out.push(finaliseBucket(bucket));
     }
   }
-  return null;
+  return out;
 }
 
 function formatDayKey(d: Date): string {

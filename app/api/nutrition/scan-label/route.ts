@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { rateLimit } from "@/lib/server/rateLimit";
 import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
-import { callAiVision } from "@/lib/server/aiProvider";
+import { AiBudgetExceededError, callAiVision } from "@/lib/server/aiProvider";
 import { normalizeImageForAi } from "@/lib/server/normalizeImageForAi";
 
 export const runtime = "nodejs";
@@ -218,16 +218,35 @@ export async function POST(req: Request) {
 
   const ac = new AbortController();
   const timeoutHandle = setTimeout(() => ac.abort(), AI_TIMEOUT_MS);
-  const ai = await callAiVision({
-    callSite: "scan-label",
-    systemPrompt: SYSTEM_PROMPT,
-    userText: USER_PROMPT,
-    imageDataUrl: dataUrl,
-    expectJson: true,
-    temperature: 0.1, // tight — we want the model to read literal label values
-    maxTokens: 800,
-    signal: ac.signal,
-  });
+  let ai;
+  try {
+    ai = await callAiVision({
+      callSite: "scan-label",
+      userId,
+      systemPrompt: SYSTEM_PROMPT,
+      userText: USER_PROMPT,
+      imageDataUrl: dataUrl,
+      expectJson: true,
+      temperature: 0.1, // tight — we want the model to read literal label values
+      maxTokens: 800,
+      signal: ac.signal,
+    });
+  } catch (err) {
+    clearTimeout(timeoutHandle);
+    if (err instanceof AiBudgetExceededError) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "ai_capacity_reached",
+          message:
+            "AI is temporarily at capacity. Try again in a few hours or log manually.",
+          retryAfterSec: err.retryAfterSec,
+        },
+        { status: 503, headers: { "Retry-After": String(err.retryAfterSec) } },
+      );
+    }
+    throw err;
+  }
   clearTimeout(timeoutHandle);
 
   if (!ai.ok) {

@@ -128,8 +128,17 @@ describe("(tabs)/index.tsx — canonical Today composition root pin", () => {
     "utf-8",
   );
 
-  it("imports the new <StreakPip> primitive", () => {
-    expect(indexSrc).toContain("import { StreakPip }");
+  it("StreakPip is rendered through <TodayDateHeader> (inline, premium-bar DC8 polish 2026-05-14)", () => {
+    // 2026-05-14 (premium-bar audit DC8 polish): the streak pip is no
+    // longer rendered as a standalone block in the Today host — it now
+    // lives inline next to the "Today" pill, owned by
+    // `<TodayDateHeader>`. The host passes `streakDays`,
+    // `freezeProtected`, `onStreakPress`, and `streakResetCopyVisible`
+    // props through; the header decides when to mount the pip.
+    expect(indexSrc).not.toContain("import { StreakPip }");
+    expect(indexSrc).toMatch(/streakDays=\{protectedStreakLength\}/);
+    expect(indexSrc).toMatch(/onStreakPress=\{/);
+    expect(indexSrc).toMatch(/streakResetCopyVisible=\{/);
   });
 
   it("no longer imports the side <LogFab> (retired 2026-04-30 — the centered raised Log button lives in <SupprTabBar>)", () => {
@@ -140,13 +149,15 @@ describe("(tabs)/index.tsx — canonical Today composition root pin", () => {
     expect(indexSrc).not.toMatch(/^import\s*\{\s*LogFab\s*\}/m);
   });
 
-  it("renders the <StreakPip> on day-view (with protectedStreakLength passed in — audit S01, 2026-05-05)", () => {
+  it("Today still routes the freeze-protected streak to the pip (audit S01, 2026-05-05 — DC8 polish 2026-05-14)", () => {
     // S01 fix: Today now consumes the freeze-protected streak so the
     // pip matches Settings + weekly-recap + push-body, all of which
     // already used the protected count. Was `streakDays` (raw
-    // computeLoggingStreak) until 2026-05-05.
-    expect(indexSrc).toMatch(/<StreakPip\s+days=\{protectedStreakLength\}/);
-    expect(indexSrc).not.toMatch(/<StreakPip\s+days=\{streakDays\}/);
+    // computeLoggingStreak) until 2026-05-05. DC8 polish 2026-05-14
+    // moved the pip into <TodayDateHeader>; the value still flows via
+    // the `streakDays={protectedStreakLength}` prop.
+    expect(indexSrc).toMatch(/streakDays=\{protectedStreakLength\}/);
+    expect(indexSrc).not.toMatch(/streakDays=\{streakDays\}/);
   });
 
   it("renders the <TodaySnapShortcut> only when today AND no meals logged (audit T08, 2026-05-05)", () => {

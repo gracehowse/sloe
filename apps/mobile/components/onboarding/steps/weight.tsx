@@ -1,5 +1,6 @@
 import * as React from "react";
-import { Pressable, Text, View } from "react-native";
+import { Animated, Easing, Pressable, Text, View } from "react-native";
+import { Scale } from "lucide-react-native";
 import { Accent } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { RulerSlider } from "@/components/RulerSlider";
@@ -27,10 +28,20 @@ export function MobileWeightStep() {
           subtitle="We'll calibrate your targets from your meal logs over the first couple of weeks. You can add a weight any time from Settings."
           compact
         />
+        {/* DC6 (premium-bar audit 2026-05-14) — Withings-style soft
+            illustration on the calibrate-copy fallback. Was a flat
+            "Skipped" header + text; now leads with a brand-tinted
+            Scale glyph in an 80x80 circle that fades + pulses every
+            2s to signal "we're working in the background." Reads as
+            a deliberate calibration moment, not an empty state. The
+            "Actually, I'll enter it" affordance is preserved below
+            the illustration so the user can flip back without
+            scrolling. */}
+        <WeightSkippedIllustration />
         <Pressable
           onPress={() => set({ weightSkipped: false })}
           accessibilityRole="button"
-          style={{ alignSelf: "flex-start", marginTop: 8 }}
+          style={{ alignSelf: "center", marginTop: 8 }}
         >
           <Text
             style={{
@@ -126,5 +137,67 @@ export function MobileWeightStep() {
         </Text>
       </View>
     </MobileStepBody>
+  );
+}
+
+/**
+ * DC6 (premium-bar audit 2026-05-14) — animated Scale illustration
+ * shown on the weight-skipped calibrate-copy fallback. An 80x80
+ * brand-tinted circle with a `Scale` glyph fades opacity 0.6 -> 1.0
+ * on a 2s loop so the surface reads as "calibration in progress"
+ * rather than a static skip-confirmation. Animation is a single
+ * `Animated.Value` loop (RN-native, no native module dep) and
+ * stops + cleans up on unmount. The circle is `accessibilityElementsHidden`
+ * because the surrounding subtitle text already carries the
+ * semantic meaning for screen readers — no double-announce.
+ */
+function WeightSkippedIllustration() {
+  const pulse = React.useRef(new Animated.Value(0.6)).current;
+  React.useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, {
+          toValue: 1,
+          duration: 1000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulse, {
+          toValue: 0.6,
+          duration: 1000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    loop.start();
+    return () => {
+      loop.stop();
+    };
+  }, [pulse]);
+  return (
+    <View
+      style={{
+        alignItems: "center",
+        justifyContent: "center",
+        paddingVertical: 12,
+      }}
+    >
+      <Animated.View
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        style={{
+          width: 80,
+          height: 80,
+          borderRadius: 40,
+          backgroundColor: `${Accent.primary}1A`,
+          alignItems: "center",
+          justifyContent: "center",
+          opacity: pulse,
+        }}
+      >
+        <Scale size={48} color={Accent.primaryLight} strokeWidth={1.75} />
+      </Animated.View>
+    </View>
   );
 }

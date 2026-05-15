@@ -26,6 +26,7 @@ import { verifyIngredients, parseRawIngredients } from "@/lib/nutrition/verifyIn
 import { classifyMealType } from "@/lib/recipe-import/classifyMealType";
 import { extractCaptionNutrition } from "@/lib/recipe-import/extractCaptionNutrition";
 import { CaptionExtractionError, sanitiseImportedTitle } from "@/lib/recipe-import/extractSocialRecipe";
+import { AiBudgetExceededError } from "@/lib/server/aiProvider";
 import { normaliseSource } from "@/lib/recipes/persistSourceAttribution";
 import { importErrorResponse } from "@/lib/recipes/importErrorCopy";
 import {
@@ -129,8 +130,15 @@ export async function POST(req: Request) {
       captionText: trimmed,
       sourceUrl: url,
       platform,
+      userId,
     });
   } catch (e) {
+    if (e instanceof AiBudgetExceededError) {
+      return NextResponse.json(
+        { ...importErrorResponse("ai_capacity_reached"), retryAfterSec: e.retryAfterSec },
+        { status: 503, headers: { "Retry-After": String(e.retryAfterSec) } },
+      );
+    }
     if (e instanceof CaptionTooShortError) {
       return NextResponse.json(importErrorResponse("caption_too_short"), { status: 422 });
     }

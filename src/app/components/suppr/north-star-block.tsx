@@ -215,17 +215,22 @@ export function NorthStarBlock({
         </button>
       ) : null}
 
+      {/* 2026-05-14 (premium-bar audit DC2 polish — Recime hero image,
+          web parity): bumped 56→64 + radius lg→md (8) to match the
+          mobile `<NorthStarBlock>` spec. The thumbnail is the trust
+          signal that converts the suggestion into "yes I want that";
+          56 read as an avatar, 64 reads as a proper thumbnail. */}
       {suggestion.thumbnail ? (
         /* eslint-disable-next-line @next/next/no-img-element */
         <img
           src={suggestion.thumbnail}
           alt=""
-          className="h-14 w-14 shrink-0 rounded-xl object-cover"
+          className="h-16 w-16 shrink-0 rounded-lg object-cover"
         />
       ) : (
         <div
           aria-hidden
-          className="h-14 w-14 shrink-0 rounded-xl bg-gradient-to-br from-primary/20 to-pink-300/20"
+          className="h-16 w-16 shrink-0 rounded-lg bg-gradient-to-br from-primary/20 to-pink-300/20"
         />
       )}
 

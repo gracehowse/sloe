@@ -77,4 +77,23 @@ describe("TodaySnapShortcut (mobile)", () => {
     expect(queryByTestId("custom-snap-id")).toBeTruthy();
     expect(queryByTestId("today-snap-shortcut")).toBeNull();
   });
+
+  it("renders the 44x44 shutter button (premium-bar audit Feature 3 #6, 2026-05-14)", () => {
+    // The leading affordance was a 32x32 tinted square with a Camera
+    // glyph. The audit replaces it with an iOS Camera-style filled
+    // shutter button — 44x44, solid `Accent.primary` background,
+    // white 22pt glyph. The testID + layout style are pinned so a
+    // future refactor that tries to flatten the visual cue (e.g. to
+    // just `<Camera>` without the circle) fires this test.
+    const { getByTestId } = render(<TodaySnapShortcut onPress={() => {}} />);
+    const shutter = getByTestId("today-snap-shortcut-shutter");
+    expect(shutter).toBeTruthy();
+    const style = shutter.props.style;
+    const flat = Array.isArray(style)
+      ? Object.assign({}, ...style.filter(Boolean))
+      : style;
+    expect(flat.width).toBe(44);
+    expect(flat.height).toBe(44);
+    expect(flat.borderRadius).toBe(22);
+  });
 });
