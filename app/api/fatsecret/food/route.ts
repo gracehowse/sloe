@@ -136,7 +136,19 @@ export async function GET(req: Request) {
     // the user can pick "1 sandwich" without manually entering grams.
     // For per-serving-only foods, also include an entry with
     // gramWeight: 0 (sentinel meaning "no metric — log as-is").
-    type PortionOption = { label: string; gramWeight: number; amount: number };
+    //
+    // 2026-05-15: `servingFraction` is added per-portion so the client
+    // can scale `macrosPerServing` correctly. Default 1 (this portion =
+    // one whole FatSecret serving). When a compound primary serving
+    // like "8 pieces" is detected, we ALSO emit a derived "1 piece"
+    // portion with servingFraction = 1/N so a user logging individual
+    // pieces doesn't have to do 0.625-pack arithmetic.
+    type PortionOption = {
+      label: string;
+      gramWeight: number;
+      amount: number;
+      servingFraction?: number;
+    };
     const portions: PortionOption[] = [];
     const seen = new Set<string>();
     for (const s of list) {
@@ -146,13 +158,54 @@ export async function GET(req: Request) {
       const key = label.toLowerCase();
       if (seen.has(key)) continue;
       seen.add(key);
-      portions.push({ label, gramWeight: g ?? 0, amount: 1 });
+      portions.push({ label, gramWeight: g ?? 0, amount: 1, servingFraction: 1 });
     }
     // Make sure there's always at least one entry for per-serving-only
     // foods so the preview portion picker has something to render.
     if (portions.length === 0 && isPerServingOnly) {
       const label = (best.serving_description ?? "").trim() || "1 serving";
-      portions.push({ label, gramWeight: 0, amount: 1 });
+      portions.push({ label, gramWeight: 0, amount: 1, servingFraction: 1 });
+    }
+
+    // 2026-05-15: derive a "1 <unit-singular>" portion when the primary
+    // serving is a compound count like "8 pieces", "12 chips", "10
+    // crackers". FatSecret often ships these as a single per-pack
+    // serving, leaving users stuck logging in multiples of the pack
+    // count (or falling back to grams that don't exist for per-piece-
+    // only foods). The derived portion's servingFraction = 1/N so
+    // `macrosPerServing × quantity × servingFraction` produces the
+    // correct per-piece macros.
+    const primaryServingDesc = (best.serving_description ?? "").trim();
+    const countedMatch = primaryServingDesc.match(/^(\d+(?:\.\d+)?)\s+(.+)$/);
+    if (countedMatch) {
+      const n = parseFloat(countedMatch[1]);
+      const rest = countedMatch[2].trim();
+      // Only derive when N > 1 and the unit is a countable noun (not
+      // "100 g" / "2 oz" / "1.5 cups" — those have meaningful gram
+      // weights and the user can already enter fractional amounts).
+      const COUNTABLE = /^(pieces?|pcs?|slices?|crackers?|chips?|cookies?|wings?|nuggets?|rolls?|servings?|sandwiches?|burgers?|pizzas?|wraps?|tacos?|bars?|sticks?|bites?|patties?|cubes?|squares?|balls?|chunks?|strips?)$/i;
+      if (n > 1 && COUNTABLE.test(rest)) {
+        // Singularise: strip trailing "s" (or "es" for sandwich/burrito/wedge edge cases)
+        const singular = rest.endsWith("ies")
+          ? rest.slice(0, -3) + "y"
+          : rest.endsWith("ches") || rest.endsWith("shes")
+            ? rest.slice(0, -2)
+            : rest.endsWith("s") && !rest.endsWith("ss")
+              ? rest.slice(0, -1)
+              : rest;
+        const derivedLabel = `1 ${singular}`;
+        // Insert at front so it's the FIRST option after the user opens
+        // the preview — singular is the more intuitive default for
+        // ad-hoc logging. Keep the original N-count option in the list.
+        if (!portions.some((p) => p.label.toLowerCase() === derivedLabel.toLowerCase())) {
+          portions.unshift({
+            label: derivedLabel,
+            gramWeight: 0, // unknown per-piece weight (same as parent)
+            amount: 1,
+            servingFraction: 1 / n,
+          });
+        }
+      }
     }
 
     // Primary portion: surface the best metric-grounded serving so the

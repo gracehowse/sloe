@@ -119,7 +119,16 @@ export type MacrosPer100g = {
   alcoholGPer100g?: number | null;
 };
 
-export type FoodPortion = { label: string; gramWeight: number; amount: number };
+// 2026-05-15: `servingFraction` lets us derive a "1 piece" portion
+// from a "8 pieces" primary serving — fraction = 1/8, scales the
+// per-serving macros accordingly. Default 1 (full serving). See
+// `apps/mobile/lib/verifyRecipe.ts` for the canonical doc.
+export type FoodPortion = {
+  label: string;
+  gramWeight: number;
+  amount: number;
+  servingFraction?: number;
+};
 
 type SearchResult = {
   key: string;
@@ -1302,15 +1311,23 @@ export function FoodSearchPanel({
   const scaled = useMemo(() => {
     if (!preview) return null;
     // 2026-05-06 audit (D1): per-serving-only path (FatSecret no-
-    // metric foods). gramWeight: 0 + macrosPer100g: null +
-    // macrosPerServing populated → scale by quantity directly
-    // without per-100g math.
+    // metric foods). gramWeight: 0 + macrosPerServing populated →
+    // scale by quantity directly without per-100g math.
+    //
+    // 2026-05-15: condition widened to fire whenever the chosen
+    // portion has gramWeight = 0 (no metric grounding), regardless of
+    // whether macrosPer100g is populated — mixed-grounding FatSecret
+    // foods (e.g. "8 pieces" primary + "100 g" alternate) need this
+    // branch when the user picks the no-metric portion. Per-100g
+    // math still runs for any portion that DOES have a gram weight.
+    // `servingFraction` lets a derived "1 piece" portion scale the
+    // macros to 1/N of the full serving (default 1 = full serving).
     if (
-      preview.macrosPer100g === null &&
       preview.macrosPerServing &&
       preview.chosenPortion.gramWeight === 0
     ) {
-      const q = preview.quantity;
+      const fraction = preview.chosenPortion.servingFraction ?? 1;
+      const q = preview.quantity * fraction;
       const ps = preview.macrosPerServing;
       const m = preview.microsPerServing ?? {};
       const fiberPerServing = typeof m.fiberG === "number" ? m.fiberG : 0;

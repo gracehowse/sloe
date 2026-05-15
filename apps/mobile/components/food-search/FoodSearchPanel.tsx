@@ -1022,7 +1022,12 @@ export default function FoodSearchPanel({
       preview.macrosPerServing &&
       preview.chosenPortion.gramWeight === 0
     ) {
-      const q = preview.quantity;
+      // 2026-05-15: `servingFraction` lets a derived "1 piece" portion
+      // scale macros to 1/N of the FatSecret per-serving payload. The
+      // primary "N pieces" portion keeps servingFraction = 1 (full
+      // serving). Default 1 for back-compat with older portion data.
+      const fraction = preview.chosenPortion.servingFraction ?? 1;
+      const q = preview.quantity * fraction;
       const ps = preview.macrosPerServing;
       // 2026-05-06 audit (D3): pull fiber / sugar / sodium from
       // `microsPerServing` when available so the preview tile
