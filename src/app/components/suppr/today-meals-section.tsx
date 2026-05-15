@@ -28,7 +28,7 @@ import { Button } from "../ui/button";
 import type { SavedMeal } from "../../../lib/nutrition/savedMeals";
 import { summariseSavedMeal } from "../../../lib/nutrition/savedMealsLogic";
 import { buildMealShareText } from "../../../lib/share/buildMealShareText";
-import { track } from "../../../lib/analytics/track";
+import { track, isFeatureEnabled } from "../../../lib/analytics/track";
 import { toast } from "sonner";
 
 /**
@@ -181,6 +181,13 @@ export function TodayMealsSection({
     { slot: string; options: SavedMeal[] } | null
   >(null);
 
+  // 2026-05-15 (crowder task) — flag-gated header relayout. When ON,
+  // the `Log usual: <name>` button moves out of the section-header
+  // trailing cluster into a dedicated row directly under the header.
+  // Mirrors the mobile change. See
+  // `docs/decisions/2026-05-15-today-log-usual-row-v2.md`.
+  const usualRowV2 = isFeatureEnabled("today_log_usual_row_v2");
+
   return (
     <div className="mb-4">
       <div className="flex items-center justify-between mb-3">
@@ -249,8 +256,11 @@ export function TodayMealsSection({
                     ≥1 saved meal matching this slot. 2+ matches open the
                     picker sheet. Replaces the old 10px "Save combo"
                     metadata pill — that action now lives in the
-                    full-width row below the last item. */}
-                {hasSaved && primarySaved && (
+                    full-width row below the last item.
+                    2026-05-15 (crowder task) — when `usualRowV2` is ON,
+                    this chip moves to a dedicated row below the header
+                    so the header stays compact on narrow widths. */}
+                {!usualRowV2 && hasSaved && primarySaved && (
                   <button
                     type="button"
                     onClick={(e) => {
@@ -281,6 +291,46 @@ export function TodayMealsSection({
                 )}
                 <Icons.down className={`w-3.5 h-3.5 text-muted-foreground transition-transform ${collapsedSlots.has(sectionName) ? "-rotate-90" : ""}`} />
               </div>
+
+              {/* 2026-05-15 (crowder task) — flag-gated dedicated row for
+                  the `Log usual: <name>` button. Lives between the header
+                  and the food items so the header stays compact even
+                  when the saved-meal name is long. Renders regardless
+                  of collapse state so the affordance is reachable from
+                  collapsed slots too. */}
+              {usualRowV2 && hasSaved && primarySaved && (
+                <div className="flex items-center px-3.5 py-2 border-b border-border/10">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (slotSavedMeals.length >= 2) {
+                        setUsualPicker({ slot: sectionName, options: slotSavedMeals });
+                      } else {
+                        onLogSavedMeal(primarySaved, sectionName);
+                      }
+                    }}
+                    className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20"
+                    aria-label={
+                      slotSavedMeals.length >= 2
+                        ? `Log a usual ${sectionName} — choose from ${slotSavedMeals.length} saved meals`
+                        : `Log usual ${sectionName}: ${primarySaved.name}`
+                    }
+                    title={
+                      slotSavedMeals.length >= 2
+                        ? `Choose from ${slotSavedMeals.length} saved meals`
+                        : `Log ${primarySaved.name}`
+                    }
+                  >
+                    <Icons.refresh className="w-3.5 h-3.5 shrink-0" aria-hidden />
+                    <span className="truncate">
+                      {extraSavedCount > 0
+                        ? `Log usual ${sectionName}…`
+                        : `Log usual: ${primarySaved.name}`}
+                    </span>
+                  </button>
+                </div>
+              )}
 
               {/* Expanded meal items */}
               {!collapsedSlots.has(sectionName) && sectionMeals.length > 0 && (

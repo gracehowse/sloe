@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Alert, Modal, Pressable, ScrollView, Share, Text, View } from "react-native";
 import { buildMealShareText } from "../../../../src/lib/share/buildMealShareText";
-import { track } from "@/lib/analytics";
+import { track, isFeatureEnabled } from "@/lib/analytics";
 import { Swipeable } from "react-native-gesture-handler";
 import {
   Bookmark,
@@ -206,6 +206,15 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
   >(null);
   const [usualPickerShowAll, setUsualPickerShowAll] = useState(false);
 
+  // 2026-05-15 (crowder task) — flag-gated header relayout. When ON, the
+  // `Log usual: <name>` chip moves out of the section-header trailing
+  // cluster into a dedicated row directly under the header. The header
+  // was overflowing on narrow widths with a long saved-meal name
+  // (`Snacks` truncated to `S`, item-count digit overlapping the
+  // chevron). See `docs/decisions/2026-05-15-today-log-usual-row-v2.md`.
+  // Off-branch preserves the prior in-header chip verbatim.
+  const usualRowV2 = isFeatureEnabled("today_log_usual_row_v2");
+
   return (
     <View>
       {mealsTodayCount > 0 && (
@@ -391,8 +400,11 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                       <Plus size={16} color={Accent.primary} />
                     </Pressable>
                     {/* Ship M1 — `Log usual: {name}` pill. 2+ matches open
-                        the picker modal; 1 match logs on tap. */}
-                    {hasSaved && primarySaved && (
+                        the picker modal; 1 match logs on tap.
+                        2026-05-15 (crowder task) — when `usualRowV2` is
+                        ON, the chip moves to a dedicated row below the
+                        header (rendered after this header View). */}
+                    {!usualRowV2 && hasSaved && primarySaved && (
                       <Pressable
                         onPress={(e) => {
                           e.stopPropagation?.();
@@ -450,6 +462,70 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                   <Plus size={14} color={textTertiaryColor} />
                 )}
               </View>
+              {/* 2026-05-15 (crowder task) — flag-gated dedicated row for
+                  the `Log usual: <name>` pill. Lives between the header
+                  and the food items so the header stays compact even
+                  when the saved-meal name is long. Renders regardless
+                  of `isOpen` so the affordance is reachable from
+                  collapsed slots too. */}
+              {usualRowV2 && hasSaved && primarySaved && (
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    paddingVertical: 8,
+                    paddingLeft: 56,
+                    paddingRight: 14,
+                    borderBottomWidth: hasMeals && isOpen ? 1 : 0,
+                    borderBottomColor: cardBorderColor + "08",
+                  }}
+                >
+                  <Pressable
+                    onPress={() => {
+                      if (slotSaved.length >= 2) {
+                        setUsualPicker({ slot, options: slotSaved });
+                      } else {
+                        onLogSavedMeal(primarySaved, slot);
+                      }
+                    }}
+                    hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      slotSaved.length >= 2
+                        ? `Log a usual ${slot} — choose from ${slotSaved.length} saved meals`
+                        : `Log usual ${slot}: ${primarySaved.name}`
+                    }
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 6,
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      borderRadius: 999,
+                      backgroundColor: Accent.primary + "18",
+                      borderWidth: 1,
+                      borderColor: Accent.primary + "30",
+                      maxWidth: "100%",
+                      flexShrink: 1,
+                    }}
+                  >
+                    <RefreshCw size={12} color={Accent.primary} />
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        fontWeight: "700",
+                        color: Accent.primary,
+                        flexShrink: 1,
+                      }}
+                      numberOfLines={1}
+                    >
+                      {extraSavedCount > 0
+                        ? `Log usual ${slot}…`
+                        : `Log usual: ${primarySaved.name}`}
+                    </Text>
+                  </Pressable>
+                </View>
+              )}
               {hasMeals &&
                 isOpen &&
                 meals.map((m) => (
@@ -536,7 +612,19 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                       <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                           <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: Accent.success }} />
-                          <Text style={{ fontSize: 12, color: textColor }} numberOfLines={1}>
+                          {/* 2026-05-15 (crowder task) — `flexShrink: 1`
+                              + `minWidth: 0` so `numberOfLines: 1`
+                              actually ellipsises. Without these, the
+                              Text kept its full intrinsic width and
+                              ran underneath the right-column kcal
+                              value (e.g. "PB2 · Original Powdered
+                              Peanut Butter (2 tbsp)" overlapped "60"
+                              kcal). RN row children default to
+                              `flexShrink: 0`. */}
+                          <Text
+                            style={{ fontSize: 12, color: textColor, flexShrink: 1, minWidth: 0 }}
+                            numberOfLines={1}
+                          >
                             {m.recipeTitle}
                           </Text>
                         </View>
