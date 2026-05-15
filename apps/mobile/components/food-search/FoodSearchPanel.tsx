@@ -1007,10 +1007,18 @@ export default function FoodSearchPanel({
   const previewMacros = useMemo(() => {
     if (!preview) return null;
     // 2026-05-06: per-serving-only path (FatSecret no-metric foods).
-    // gramWeight: 0 + macrosPer100g: null + macrosPerServing populated
-    // → scale by quantity directly without per-100g math.
+    // gramWeight: 0 + macrosPerServing populated → scale by quantity
+    // directly without per-100g math.
+    //
+    // 2026-05-14: the original condition also required
+    // `macrosPer100g === null`, which broke MIXED-grounding foods —
+    // primary serving like "8 pieces" (no metric, gramWeight 0) on a
+    // food that also has metric servings (per-100g exists). The server
+    // now populates `macrosPerServing` for every FatSecret food, and
+    // the per-serving branch fires whenever the chosen portion has
+    // gramWeight 0. Per-100g math still runs for any portion that DOES
+    // have a gram weight (g/oz/lb/etc.).
     if (
-      preview.macrosPer100g === null &&
       preview.macrosPerServing &&
       preview.chosenPortion.gramWeight === 0
     ) {
