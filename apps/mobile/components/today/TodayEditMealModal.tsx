@@ -81,7 +81,7 @@ export function TodayEditMealModal(props: TodayEditMealModalProps) {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Dismiss"
-          style={[StyleSheet.absoluteFillObject, { backgroundColor: "rgba(0,0,0,0.5)" }]}
+          style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.5)" }]}
           onPress={onClose}
         />
         <View
