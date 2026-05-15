@@ -1,0 +1,39 @@
+#!/bin/sh
+# Soft spot 7 (2026-05-14 production-readiness audit) — secret-scan on commit.
+#
+# Runs gitleaks against staged changes so a secret never lands in a
+# local commit. Mirror of the `secret-scan` CI job in
+# .github/workflows/ci.yml — local fast-fail, CI floor.
+#
+# Enable on this clone:
+#   git config core.hooksPath scripts/git-hooks
+#
+# Bypass once (emergency): git commit --no-verify
+#
+# Install gitleaks:
+#   brew install gitleaks
+# or:
+#   npm install --global gitleaks
+#
+# Full docs: docs/operations/git-hooks.md
+
+set -e
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "[pre-commit] WARN: gitleaks not on PATH; skipping secret scan." >&2
+  echo "[pre-commit] WARN: install with 'brew install gitleaks' (CI still scans on push)." >&2
+  exit 0
+fi
+
+echo "[pre-commit] gitleaks — scanning staged changes for secrets"
+
+if ! gitleaks protect --staged --no-banner; then
+  echo
+  echo "[pre-commit] FAIL: secrets detected in staged changes." >&2
+  echo "[pre-commit] If real: remove + rotate the secret with the vendor." >&2
+  echo "[pre-commit] If false positive: add to .gitleaksignore with a reason." >&2
+  echo "[pre-commit] To bypass once (NOT recommended): git commit --no-verify" >&2
+  exit 1
+fi
+
+exit 0

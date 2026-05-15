@@ -116,3 +116,115 @@ jobs:
         run: npm run test:coverage
       - name: Maestro suite manifest (listed flows + shared runFlow exist)
         run: npm run test:e2e:verify-suite
+
+  # Soft spot 1 (2026-05-14 production-readiness audit) — secret scan
+  # on every push + PR. Mirrors the local pre-commit hook
+  # (scripts/git-hooks/pre-commit) so contributors who skip the local
+  # hook still hit the gate before merge.
+  # Docs: docs/operations/git-hooks.md
+  secret-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Fetch full history so gitleaks can scan back to the merge base
+          # of the PR — partial history misses secrets introduced in older
+          # commits on the branch.
+          fetch-depth: 0
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          # No GITLEAKS_LICENSE — org is small and the action runs free
+          # for public + small private repos without it. If the org is
+          # ever flagged, register a free licence and add as a secret.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: On failure — guidance
+        if: failure()
+        run: |
+          echo "::error::Secret detected in commit history. See gitleaks output above."
+          echo "::error::Remove the secret, ROTATE it with the vendor, then re-push."
+          echo "::error::Local fast-fail: install gitleaks + 'git config core.hooksPath scripts/git-hooks'."
+          echo "::error::Full docs: docs/operations/git-hooks.md"
+          exit 1
+
+  # Soft spot 1 (2026-05-14 production-readiness audit) — npm-audit gate.
+  # Runs against web root + mobile package tree separately because each
+  # has its own transitive dep set. --omit=dev skips findings on tooling
+  # that ships to no user (vitest, playwright, eslint, etc.).
+  # Allow-list mechanism: docs/operations/security-allowlist.md
+  dep-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Web — npm audit (production deps, high+ severity)
+        run: |
+          set +e
+          npm audit --audit-level=high --omit=dev
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ]; then
+            echo "::error::Web dep-audit found high or critical vulnerabilities."
+            echo "::error::Fix path: 'npm audit fix' locally. If can't patch today,"
+            echo "::error::see docs/operations/security-allowlist.md to consciously defer."
+            exit "$status"
+          fi
+      - name: Mobile — npm audit (production deps, high+ severity)
+        working-directory: apps/mobile
+        run: |
+          set +e
+          npm audit --audit-level=high --omit=dev
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ]; then
+            echo "::error::Mobile dep-audit found high or critical vulnerabilities."
+            echo "::error::Fix path: 'npm audit fix' in apps/mobile/. If can't patch today,"
+            echo "::error::see docs/operations/security-allowlist.md to consciously defer."
+            exit "$status"
+          fi
+
+  # Soft spot 1 (2026-05-14 production-readiness audit) — sourcemap
+  # verification. Asserts that 'next build' produced .js.map files in
+  # .next/static/ so Sentry has frames-not-minified to symbolicate
+  # against. The actual upload to Sentry happens in the Vercel deploy
+  # step (withSentryConfig hooks); this job verifies the build artefact
+  # locally so we catch a regression on the *generation* side before
+  # Vercel runs.
+  sourcemap-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      VERIFY_STRICT: "0"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install deps
+        run: npm ci
+      - name: Build (production)
+        run: npm run build
+      - name: Assert sourcemaps were generated
+        run: |
+          MAP_COUNT=$(find .next/static -type f -name '*.js.map' 2>/dev/null | wc -l | tr -d ' ')
+          echo "Found $MAP_COUNT sourcemap files under .next/static/"
+          if [ "$MAP_COUNT" -lt 1 ]; then
+            echo "::error::No .js.map files found under .next/static/."
+            echo "::error::Sentry symbolication will fail on production errors."
+            echo "::error::Check next.config.ts -> withSentryConfig({ hideSourceMaps }) and"
+            echo "::error::confirm productionBrowserSourceMaps is not disabled upstream."
+            exit 1
+          fi
+          echo "OK — sourcemaps present. (Upload to Sentry happens in Vercel deploy step.)"

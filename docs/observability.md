@@ -36,7 +36,7 @@ Create these once the project receives production traffic:
    - `SENTRY_DSN` or `NEXT_PUBLIC_SENTRY_DSN` (match how your Sentry project was created; server often uses `SENTRY_DSN`).
 2. Redeploy so the DSN is present at build/runtime.
 3. Trigger a test error (e.g. temporary `throw` in a dev-only API route) or use Sentry’s “send test event” from the wizard; confirm the event appears in the Sentry project.
-4. Add **alert rules** in Sentry for: spike in issue volume, new issues on `https://` routes matching your production domain.
+4. **Alert rules** — see [`docs/operations/alerting.md`](./operations/alerting.md) for the canonical alarm list (6 minimum alarms + 4 nice-to-haves, with vendor-by-vendor test procedures). The aspirational one-liner that used to live here was replaced 2026-05-14 after the audit found zero alarms actually wired.
 
 ### What to monitor
 
