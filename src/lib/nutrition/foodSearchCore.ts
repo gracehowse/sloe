@@ -19,6 +19,8 @@
  * `@/lib/nutrition/...` on web. This file follows the same shape.
  */
 
+import { primaryServingToPortionChip } from "./primaryServing";
+
 /**
  * A selectable portion in the food-search UI. Identical between web +
  * mobile (and mirrored in `apps/mobile/lib/verifyRecipe.ts` for legacy
@@ -36,6 +38,71 @@ export type FoodPortion = {
   amount: number;
   servingFraction?: number;
 };
+
+/**
+ * Standard unit portions always available in the food-search picker,
+ * regardless of the food's API-provided portion set. Provides g/oz/lb
+ * conversion + common volumetric units. `gramWeight: 1` for `g` / `ml`
+ * means "amount IS grams"; the picker treats those two as the gram
+ * basis for scaling.
+ */
+export const STANDARD_UNITS: FoodPortion[] = [
+  { label: "g", gramWeight: 1, amount: 1 },
+  { label: "oz", gramWeight: 28.35, amount: 1 },
+  { label: "lb", gramWeight: 453.59, amount: 1 },
+  { label: "tbsp", gramWeight: 14.79, amount: 1 },
+  { label: "tsp", gramWeight: 4.93, amount: 1 },
+  { label: "cup", gramWeight: 236.59, amount: 1 },
+  { label: "ml", gramWeight: 1, amount: 1 },
+];
+
+/**
+ * Build the dedup'd portion list shown in the picker for a food.
+ *
+ * Order:
+ *   1. The primary serving chip (if known) — e.g. "1 package", "8 pieces"
+ *   2. The standard units (g / oz / lb / tbsp / tsp / cup / ml)
+ *   3. Any API-provided portions (FatSecret / USDA / OFF / Edamam) that
+ *      aren't already represented, skipping the historical "100 g"
+ *      placeholder that USDA emits for per-100g foods.
+ *
+ * Dedup is case-insensitive on label, with the leading entries
+ * winning. The primary serving stays first so the picker defaults to
+ * the most "natural" portion (and matches the macros card preview).
+ */
+export function buildPortions(
+  apiPortions: FoodPortion[],
+  primary?: PrimaryServingChipInput | null,
+): FoodPortion[] {
+  const seen = new Set<string>();
+  const result: FoodPortion[] = [];
+  if (primary) {
+    const chip = primaryServingToPortionChip(primary);
+    seen.add(chip.label.toLowerCase());
+    result.push(chip);
+  }
+  for (const u of STANDARD_UNITS) {
+    const key = u.label.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(u);
+  }
+  for (const p of apiPortions) {
+    const key = p.label.toLowerCase().trim();
+    if (!seen.has(key) && key !== "100 g") {
+      seen.add(key);
+      result.push(p);
+    }
+  }
+  return result;
+}
+
+/**
+ * Thin local alias so `buildPortions` doesn't drag `PrimaryServing` into
+ * every test importer's surface. Web + mobile panels already import
+ * `PrimaryServing` themselves and pass values here.
+ */
+type PrimaryServingChipInput = Parameters<typeof primaryServingToPortionChip>[0];
 
 /**
  * Map a free-text unit string to the portion label(s) that should
