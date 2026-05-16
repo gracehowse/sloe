@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { AppLoadingSkeleton } from "@/app/components/AppLoadingSkeleton";
 import { supabase } from "@/lib/supabase/browserClient";
 import { toast } from "sonner";
@@ -123,6 +124,23 @@ export default function ResetPasswordPage() {
         >
           {working ? "Saving…" : "Update password"}
         </button>
+
+        {/*
+         * ENG-86 (audit 2026-04-30): users who landed here in error
+         * (wrong link, didn't actually request a reset) had no exit —
+         * no header, no logo, no link out. The "Back to sign in" link
+         * gives them the obvious way back without typing the URL.
+         * Muted styling so it doesn't compete with the primary CTA.
+         */}
+        <div className="mt-4 text-center">
+          <Link
+            href="/login"
+            className="text-sm underline-offset-2 hover:underline transition-colors"
+            style={{ color: "var(--muted-foreground)" }}
+          >
+            ← Back to sign in
+          </Link>
+        </div>
       </div>
     </div>
   );
