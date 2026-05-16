@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import React from "react";
-import { render } from "@testing-library/react-native";
+import { render, cleanup, act } from "@testing-library/react-native";
 
 const getItemMock = vi.fn();
 
@@ -25,14 +25,30 @@ function Probe(props: { onValues?: (v: { trackCaffeine: boolean; trackAlcohol: b
   return null;
 }
 
+// 2026-05-16: full-suite runs were flaking on test #3 (`trackCaffeine: true`)
+// because the post-mock async state updates from the hook's IIFE inside
+// `useFocusEffect` weren't being flushed inside React's `act` queue —
+// jsdom + vitest's vmThreads pool surfaces this differently than
+// running the file in isolation. Wrapping the flush in `act` makes
+// React commit the pending effect chain deterministically before the
+// assertion runs.
 async function flush() {
-  await new Promise((resolve) => setTimeout(resolve, 0));
-  await new Promise((resolve) => setTimeout(resolve, 0));
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
 }
 
 describe("useTrackingExtrasOnFocus (Today split #4)", () => {
   beforeEach(() => {
     getItemMock.mockReset();
+  });
+
+  afterEach(() => {
+    // Explicit unmount between tests so a stale Probe from a prior
+    // test never lingers and overwrites the new test's `last` via its
+    // residual onValues callback.
+    cleanup();
   });
 
   it("defaults to false / false on mount before storage resolves", () => {
