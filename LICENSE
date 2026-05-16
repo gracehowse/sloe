@@ -1,0 +1,36 @@
+Suppr — Proprietary License
+
+Copyright (c) 2026 Grace Howse. All rights reserved.
+
+This repository is **source-available, not open source**. The code is made
+publicly viewable for transparency and to enable free GitHub Actions on
+public repositories during the pre-launch period.
+
+No license is granted to copy, modify, distribute, sublicense, sell, publish,
+or use this software, in whole or in part, for any purpose — commercial or
+non-commercial — without prior written permission from the copyright holder.
+
+You MAY:
+  - View the source code for personal reference and learning.
+  - Open issues and pull requests for discussion. Acceptance of any
+    contribution is at the sole discretion of the copyright holder, and any
+    merged contribution becomes governed by this same license.
+
+You MAY NOT:
+  - Use the code, in whole or in part, in your own product, service, or
+    project.
+  - Distribute, redistribute, or republish modified or unmodified copies.
+  - Train, fine-tune, or evaluate machine-learning models on this source
+    code without prior written permission.
+  - Use the trade name "Suppr", "Suppr Club", related marks, the visual
+    identity, or any associated brand assets.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
+OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+For licensing enquiries: <gracehowse@outlook.com>.
