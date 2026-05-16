@@ -80,6 +80,7 @@ import { shouldPushWeeklyRecapNow } from "@/lib/push/weeklyRecapTzFilter";
 import { availableFreezes } from "@/lib/nutrition/streakFreeze";
 import { AnalyticsEvents } from "@/lib/analytics/events";
 import { serverTrack } from "@/lib/analytics/serverTrack";
+import { captureRouteError } from "@/lib/observability/captureRouteError";
 
 /** Maximum rows this route will fan out to per invocation. */
 const MAX_ROWS_PER_INVOCATION = 5000;
@@ -604,6 +605,7 @@ async function runWeeklyRecapPush(req: Request) {
           error: errMsg,
         }),
       );
+      captureRouteError(err, "/api/push/weekly-recap", { phase: "recap_compute", userId: row.id });
       // B10 (2026-05-11) — per-user outcome telemetry. Compute failure
       // is still a real attempt the user didn't see a push from; surface
       // it so the dashboard tracks it separately from "no token" /

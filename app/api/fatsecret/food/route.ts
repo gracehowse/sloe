@@ -14,6 +14,7 @@ import {
 import { rateLimit } from "@/lib/server/rateLimit";
 import { hasFatSecretConfig, misconfiguredFatSecretResponse } from "@/lib/server/serverEnv";
 import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
+import { captureRouteError } from "@/lib/observability/captureRouteError";
 
 /**
  * GET /api/fatsecret/food?foodId=<id>
@@ -273,6 +274,7 @@ export async function GET(req: Request) {
       "[/api/fatsecret/food] failed:",
       e instanceof Error ? e.message : e,
     );
+    captureRouteError(e, "/api/fatsecret/food");
     // 2026-05-06 audit (C1): user-facing message stays vendor-
     // neutral; the upstream error.message is logged server-side
     // only. Internal `error` code retains the vendor reference for

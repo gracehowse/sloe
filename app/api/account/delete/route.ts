@@ -4,6 +4,7 @@ import {
   createSupabaseServiceRoleClient,
 } from "@/lib/supabase/serverAnonClient";
 import { assertOrigin } from "@/lib/api/assertOrigin";
+import { captureRouteError } from "@/lib/observability/captureRouteError";
 
 /**
  * DELETE /api/account/delete
@@ -222,6 +223,7 @@ export async function DELETE(req: Request) {
   } catch (err) {
     const msg = (err as Error)?.message ?? "unknown";
     console.error("[account/delete] Unhandled error:", msg);
+    captureRouteError(err, "/api/account/delete");
     return NextResponse.json(
       {
         ok: false,

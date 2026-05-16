@@ -39,6 +39,7 @@ import {
 import { rateLimit } from "@/lib/server/rateLimit";
 import { serverTrack } from "@/lib/analytics/serverTrack";
 import { AnalyticsEvents } from "@/lib/analytics/events";
+import { captureRouteError } from "@/lib/observability/captureRouteError";
 import {
   SUPPR_EXPORT_SCHEMA_VERSION,
   SUPPR_EXPORT_LOG_DAYS,
@@ -336,6 +337,7 @@ export async function GET(req: Request) {
   } catch (err) {
     const message = (err as Error)?.message ?? "unknown";
     console.error("[export/me] failed:", message);
+    captureRouteError(err, "/api/export/me");
     return NextResponse.json(
       {
         ok: false,
