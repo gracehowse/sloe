@@ -22,6 +22,7 @@ import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
+import { fastingStageNarrative } from "../../../src/lib/nutrition/fastingStageNarrative";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -245,6 +246,17 @@ export default function FastingScreen() {
         label: { fontSize: 11, fontWeight: "600", color: colors.textSecondary, letterSpacing: 1, textAlign: "center" },
         stateLabel: { fontSize: 18, fontWeight: "800", textAlign: "center", marginTop: Spacing.sm },
         windowLabel: { fontSize: 13, color: colors.textSecondary, textAlign: "center", marginTop: 4 },
+        // ENG-52: stage-of-fasting narrative under the ring +
+        // state-label. Tertiary colour to keep visual weight low —
+        // it's contextual signal, not the headline.
+        stageNarrative: {
+          fontSize: 13,
+          color: colors.textTertiary,
+          textAlign: "center",
+          marginTop: Spacing.sm,
+          marginHorizontal: Spacing.xl,
+          lineHeight: 18,
+        },
         // Window picker — pill row matching the web FastingTimer
         // preset chips. Compact tabular-nums labels keep the four
         // pills visually balanced (`16:8` is narrower than `14:10`).
@@ -508,6 +520,15 @@ export default function FastingScreen() {
           {isFasting ? (isComplete ? "Fast complete" : "Fasting") : "Ready when you are"}
         </Text>
         <Text style={styles.windowLabel}>{fastHours}:{eatHours} — {fastHours}h fast, {eatHours}h eat</Text>
+
+        {/* ENG-52 (2026-05-16): stage-of-fasting narrative line below
+            the ring. Hedged copy (no absolute claims); pure
+            elapsed-time → string via `fastingStageNarrative` so the
+            buckets are testable independently of UI. Only renders
+            while a fast is active. */}
+        {isFasting && !isComplete && (
+          <Text style={styles.stageNarrative}>{fastingStageNarrative(elapsed)}</Text>
+        )}
 
         {isFasting && (
           <View style={{ flexDirection: "row", justifyContent: "space-around", width: "100%", marginTop: Spacing.lg }}>
