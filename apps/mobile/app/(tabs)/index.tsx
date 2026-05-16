@@ -24,6 +24,7 @@ import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useHealthSyncOnFocus } from "@/hooks/useHealthSyncOnFocus";
 import { useTodayMountAnimation } from "@/hooks/useTodayMountAnimation";
+import { useNutritionEntriesSync } from "@/hooks/useNutritionEntriesSync";
 import {
   dateKeyFromDate,
   newMealId,
@@ -3871,73 +3872,11 @@ export default function TrackerScreen() {
   // God-component split. Behaviour unchanged.
   useHealthSyncOnFocus(userId, loadProfileTargets, loadJournal);
 
-  // Sync journal to relational nutrition_entries table
-  useEffect(() => {
-    if (!userId || !hydrated) return;
-    const t = setTimeout(() => {
-      const dk = dateKeyFromDate(selectedDate);
-      const todayMeals = byDay[dk] ?? [];
-      if (todayMeals.length > 0) {
-        const rows = todayMeals.map((m) => ({
-          id: UUID_RE.test(m.id) ? m.id : newMealId(),
-          user_id: userId,
-          date_key: dk,
-          name: m.name,
-          recipe_title: m.recipeTitle,
-          time_label: m.time,
-          calories: m.calories,
-          protein: m.protein,
-          carbs: m.carbs,
-          fat: m.fat,
-          fiber_g: m.fiberG ?? null,
-          water_ml: m.waterMl ?? null,
-          portion_multiplier: m.portionMultiplier ?? 1,
-          nutrition_micros: m.micros && Object.keys(m.micros).length > 0 ? m.micros : {},
-          source: m.source ?? null,
-        }));
-        void supabase
-          .from("nutrition_entries")
-          .upsert(rows, { onConflict: "id" })
-          .then(({ error }) => {
-            if (error) console.error("[tracker] sync failed:", error.message);
-            else {
-              void refreshAdaptiveTdeeForUser(supabase, userId);
-              // F-2 (2026-04-19) — freeze today's target on first log of
-              // the day. Past days stop moving when the user later edits
-              // activity_level / plan_pace / goal. Fire-and-forget — the
-              // insert has `on conflict do nothing` so repeat calls are
-              // cheap no-ops.
-              void snapshotDailyTargetIfMissing(supabase, userId);
-              // Audit/2026-04-30 — per-meal Apple HealthKit write
-              // (parity with MFP / Cal AI). The debounced upsert covers
-              // every entry-point that mutates `byDay` (LogSheet barcode
-              // confirm, FoodSearch, manual add, copy-meal, plan-meal
-              // log). Idempotent on `meal.id`, so re-renders / multi-
-              // upserts don't double-count. Only fires for the
-              // selected day's meals — past-day backfills go through
-              // their own insert path which calls
-              // `writeMealToHealthKitIfEnabled` directly.
-              for (const m of todayMeals) {
-                void writeMealToHealthKitIfEnabled({
-                  mealId: UUID_RE.test(m.id) ? m.id : "",
-                  userId,
-                  name: m.recipeTitle || m.name,
-                  calories: m.calories,
-                  protein: m.protein,
-                  carbs: m.carbs,
-                  fat: m.fat,
-                  fiberG: m.fiberG ?? null,
-                  date: m.createdAt ?? undefined,
-                  source: m.source ?? null,
-                  origin: "journal-sync",
-                });
-              }
-            }
-          });
-      }
-    }, 600);
-    return () => clearTimeout(t);
-  }, [userId, hydrated, byDay, selectedDate]);
+  // Sync journal to relational nutrition_entries table.
+  // 2026-05-16 — extracted to `hooks/useNutritionEntriesSync` (Today
+  // split #3). Same 600ms debounce, same downstream adaptive-TDEE +
+  // target-snapshot + HealthKit-write side-effects.
+  useNutritionEntriesSync({ userId, hydrated, byDay, selectedDate });
 
   const addMeal = useCallback(() => {
     const cal = Number(kcal) || 0;
