@@ -833,6 +833,21 @@ export const AnalyticsEvents = {
    *      `kept_current`).
    *    - `platform`: "web" | "ios" | "android". */
   weekly_checkin_dismissed: "weekly_checkin_dismissed",
+  /**
+   * 2026-05-16 (ENG-553) — wall-time of one successful `loadJournal`
+   * cycle on the mobile Today screen. Emitted from the `finally` block
+   * of the load fn so both success + error paths are captured (a
+   * skewed slow-error distribution stays visible). Payload:
+   *  - `duration_ms`: integer milliseconds from the call entering the
+   *    `try` block to the `finally`. Includes the parallel-batched
+   *    `nutrition_entries` + `meal_plan_days` queries plus all the
+   *    derived setState work; the dedup-skipped path doesn't emit
+   *    (would inflate p50 with zero-time samples).
+   *
+   * Wired so we can MEASURE whether ENG-542 (last-35-day window) +
+   * ENG-543 (in-flight dedup) actually paid off in production.
+   */
+  today_journal_loaded_ms: "today_journal_loaded_ms",
 } as const;
 
 export type AnalyticsEventName = (typeof AnalyticsEvents)[keyof typeof AnalyticsEvents];
