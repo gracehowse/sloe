@@ -2,6 +2,8 @@
 
 Web app for macro-first meal planning, recipe discovery, nutrition logging, and shopping lists. Built with Next.js (App Router), React, Supabase, and Stripe.
 
+> **Source-available, not open source.** Public for transparency and free CI during pre-launch. All rights reserved. See [LICENSE](./LICENSE).
+
 ## Prerequisites
 
 - Node.js 20+ (recommended)

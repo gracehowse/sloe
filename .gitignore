@@ -3,6 +3,17 @@ dist/
 node_modules/
 .DS_Store
 .env.local
+# Belt-and-braces: cover every standard env variant that might hold secrets.
+# .env.example IS tracked deliberately as a placeholder template.
+.env
+.env.development
+.env.development.local
+.env.production
+.env.production.local
+.env.test
+.env.test.local
+.env.staging
+.env.staging.local
 .next
 dist
 node_modules
