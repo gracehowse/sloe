@@ -22,6 +22,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useHealthSyncOnFocus } from "@/hooks/useHealthSyncOnFocus";
 import {
   dateKeyFromDate,
   newMealId,
@@ -3888,22 +3889,11 @@ export default function TrackerScreen() {
     }, [userId]),
   );
 
-  // Pull steps / weight / active energy from HealthKit into `profiles`, then refresh targets (throttled app-wide).
-  useFocusEffect(
-    useCallback(() => {
-      if (!userId || !isHealthSyncAvailable()) return;
-      void (async () => {
-        try {
-          await syncHealthDataThrottled(userId);
-          await syncNutritionFromHealthThrottled(userId);
-          await loadProfileTargets();
-          await loadJournal();
-        } catch {
-          // HealthKit or network — ignore; user can sync from More → Connected
-        }
-      })();
-    }, [userId, loadProfileTargets, loadJournal]),
-  );
+  // Pull steps / weight / active energy from HealthKit into `profiles`,
+  // then refresh targets + journal. 2026-05-16: extracted to
+  // `hooks/useHealthSyncOnFocus` — first sliver of the Today
+  // God-component split. Behaviour unchanged.
+  useHealthSyncOnFocus(userId, loadProfileTargets, loadJournal);
 
   // Sync journal to relational nutrition_entries table
   useEffect(() => {
