@@ -1,4 +1,6 @@
-import { memo, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
+import { track } from "../../lib/analytics/track.ts";
+import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { Icons } from "./ui/icons";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import type { LibraryEntryKind, RecipeCard, UserTier } from "../../types/recipe.ts";
@@ -12,6 +14,7 @@ import {
 } from "../../lib/recipes/libraryFilters.ts";
 import { classifyLibraryEntry } from "../../lib/recipes/libraryEntryKind.ts";
 import { computeRecipeFitPercent } from "../../lib/nutrition/recipeFitPercent.ts";
+import { useLibraryDiscoverSearch } from "../../lib/libraryDiscoverSearchStore.ts";
 // GW-08 (audit 2026-04-28): `TrustChip` + `recipeLevelTrust` dropped
 // — Library cards no longer render the chip; see card-body comments.
 
@@ -77,7 +80,11 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
   const uid = userId;
   const router = useRouter();
   const [selectedRecipe, setSelectedRecipe] = useState<(RecipeCard & { savedAt: Date }) | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
+  // Shared with DiscoverFeed via `useLibraryDiscoverSearch` so the
+  // query survives view switches (ENG-53, 2026-05-16). Variable names
+  // kept (searchQuery / setSearchQuery) so all 10+ downstream usages
+  // — filter loops, render of the input, clear-button — stay untouched.
+  const { query: searchQuery, setQuery: setSearchQuery } = useLibraryDiscoverSearch();
   // 2026-04-20 prototype port: migrate web to the shared
   // `LIBRARY_FILTER_PILLS` set (All · Saved · High-Protein · Quick ·
   // Vegetarian · Created · Imported) that mobile already consumes.
@@ -144,6 +151,28 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
     }
     return sorted;
   }, [savedRecipesForLibrary, searchQuery, pill, libraryEntryKindByRecipeId, uid, sortKey]);
+
+  const handleSelectRecipe = useCallback(
+    (recipe: RecipeCard & { savedAt: Date }) => {
+      track(AnalyticsEvents.library_recipe_tapped, {
+        recipe_id: recipe.id,
+        entry_kind: entryKindForRecipe(recipe, libraryEntryKindByRecipeId[recipe.id], uid),
+      });
+      setSelectedRecipe(recipe);
+    },
+    [libraryEntryKindByRecipeId, uid],
+  );
+
+  const handlePillChange = useCallback(
+    (newPill: typeof pill) => {
+      setPill(newPill);
+      track(AnalyticsEvents.library_filter_changed, {
+        filter: newPill,
+        recipe_count: filteredRecipes.length,
+      });
+    },
+    [filteredRecipes.length],
+  );
 
   if (selectedRecipe) {
     return (
@@ -221,7 +250,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                 <button
                   key={f.id}
                   type="button"
-                  onClick={() => setPill(f.id)}
+                  onClick={() => handlePillChange(f.id)}
                   // 2026-05-02 (build-12): tester reported the pill
                   // text was squished against the border. Bumped
                   // horizontal padding (`px-3` → `px-3.5` == 14px) and
@@ -341,7 +370,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                 <button
                   key={`desktop-${recipe.id}`}
                   type="button"
-                  onClick={() => setSelectedRecipe(recipe)}
+                  onClick={() => handleSelectRecipe(recipe)}
                   className="group text-left rounded-2xl bg-card border border-border overflow-hidden cursor-pointer w-full hover:shadow-xl hover:shadow-foreground/5 hover:-translate-y-0.5 transition-all"
                 >
                   <div className="relative overflow-hidden" style={{ aspectRatio: "4 / 3" }}>
@@ -495,7 +524,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
               <div
                 key={recipe.id}
                 className="group bg-card border border-border rounded-2xl overflow-hidden hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 text-left shadow-lg cursor-pointer"
-                onClick={() => setSelectedRecipe(recipe)}
+                onClick={() => handleSelectRecipe(recipe)}
               >
                 <div className="relative overflow-hidden">
                   {recipe.image ? (
@@ -533,7 +562,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                   <h4 className="mb-3">
                     <button
                       type="button"
-                      onClick={(e) => { e.stopPropagation(); setSelectedRecipe(recipe); }}
+                      onClick={(e) => { e.stopPropagation(); handleSelectRecipe(recipe); }}
                       className="line-clamp-2 text-foreground group-hover:text-primary transition-colors text-left font-inherit hover:underline focus:outline-none focus:ring-2 focus:ring-primary/50 rounded"
                     >
                       {recipe.title}
