@@ -82,7 +82,6 @@ import {
 import {
   buildCustomFoodPortions,
   customFoodToMacrosPer100g,
-  customFoodToPrimaryServing,
   type CustomFood,
 } from "../../../lib/nutrition/customFoods";
 import {
@@ -104,7 +103,7 @@ import { track } from "../../../lib/analytics/track";
 import { fetchFatSecretAutocomplete } from "@/lib/nutrition/fatsecretAutocompleteClient";
 import { shouldShowBarcodeFallbackHint } from "@/lib/nutrition/foodSearchLocale";
 import { portionEqualsLabel } from "@/lib/nutrition/portionEqualsLabel";
-import { resolveInitialPortion, buildPortions } from "@/lib/nutrition/foodSearchCore";
+import { resolveInitialPortion, buildPortions, customFoodToHit } from "@/lib/nutrition/foodSearchCore";
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -555,21 +554,11 @@ async function fetchFatSecretDetail(
 // `UNIT_GRAMS` tables) was byte-identical to the mobile version apart
 // from formatting.
 
-function customFoodToSearchResult(food: CustomFood): SearchResult {
-  const macrosPer100g = customFoodToMacrosPer100g(food);
-  const displayName = food.brand ? `${food.name} · ${food.brand}` : food.name;
-  const primaryServing = customFoodToPrimaryServing(food);
-  return {
-    key: `custom-${food.id}`,
-    name: displayName,
-    calsPer100g: macrosPer100g.calories,
-    macrosPer100g,
-    verified: false,
-    primaryServing: primaryServing ?? null,
-    _source: "CUSTOM",
-    _custom: food,
-  };
-}
+// 2026-05-16 (ENG-550 phase 3): `customFoodToSearchResult` moved to
+// `@/lib/nutrition/foodSearchCore` as `customFoodToHit`. The web's
+// `SearchResult` accepts the returned `CustomFoodHit` structurally;
+// the alias below preserves the call-site for readability.
+const customFoodToSearchResult = customFoodToHit;
 
 function buildGenericMatchRow(query: string): SearchResult | null {
   const q = query.trim();

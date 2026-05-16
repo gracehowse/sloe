@@ -19,7 +19,13 @@
  * `@/lib/nutrition/...` on web. This file follows the same shape.
  */
 
-import { primaryServingToPortionChip } from "./primaryServing";
+import { primaryServingToPortionChip, type PrimaryServing } from "./primaryServing";
+import {
+  type CustomFood,
+  type CustomFoodMacrosPer100g,
+  customFoodToMacrosPer100g,
+  customFoodToPrimaryServing,
+} from "./customFoods";
 
 /**
  * A selectable portion in the food-search UI. Identical between web +
@@ -231,4 +237,58 @@ export function resolveInitialPortion(
   }
 
   return { portion: portions[0], quantity: amt };
+}
+
+/**
+ * 2026-05-16 (ENG-550 phase 3) — structural shape for a custom-food
+ * row in the food-search list. The `_source: "CUSTOM"` discriminator
+ * lets both web's `SearchResult` and mobile's `SearchRow` accept the
+ * value structurally — neither needs to know about the other's
+ * full union type.
+ *
+ * Kept intentionally narrow: only the fields `customFoodToHit` actually
+ * populates. Both panels happen to declare wider unions; structural
+ * subtyping covers the assignment.
+ */
+export type CustomFoodHit = {
+  key: string;
+  name: string;
+  calsPer100g: number;
+  macrosPer100g: CustomFoodMacrosPer100g;
+  verified: false;
+  primaryServing: PrimaryServing | null;
+  _source: "CUSTOM";
+  _custom: CustomFood;
+};
+
+/**
+ * 2026-05-16 (ENG-550 phase 3) — bridge a `CustomFood` (user-submitted
+ * food entry) into a search-list row.
+ *
+ * Both panels previously had this same function (web:
+ * `customFoodToSearchResult`, mobile: `customFoodToRow`) with byte-
+ * identical bodies — only the return type alias differed. This shared
+ * helper returns a structurally-narrow `CustomFoodHit` that fits both
+ * surfaces' wider list types via structural subtyping.
+ *
+ * Why "Custom Brand · Name" display:
+ *   - When a user submits a custom food with a brand attribution (e.g.
+ *     "Pret · Posh Cheddar"), surfacing the brand on the second line
+ *     mirrors FatSecret / Edamam restaurant rows and reduces the
+ *     identification load when the user has 10+ custom foods.
+ */
+export function customFoodToHit(food: CustomFood): CustomFoodHit {
+  const macrosPer100g = customFoodToMacrosPer100g(food);
+  const displayName = food.brand ? `${food.name} · ${food.brand}` : food.name;
+  const primaryServing = customFoodToPrimaryServing(food);
+  return {
+    key: `custom-${food.id}`,
+    name: displayName,
+    calsPer100g: macrosPer100g.calories,
+    macrosPer100g,
+    verified: false,
+    primaryServing: primaryServing ?? null,
+    _source: "CUSTOM",
+    _custom: food,
+  };
 }
