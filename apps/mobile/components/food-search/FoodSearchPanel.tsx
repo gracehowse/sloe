@@ -106,7 +106,6 @@ import {
 import {
   buildCustomFoodPortions,
   customFoodToMacrosPer100g,
-  customFoodToPrimaryServing,
   type CustomFood,
 } from "../../../../src/lib/nutrition/customFoods";
 import CreateCustomFoodSheet, {
@@ -119,7 +118,7 @@ import { fetchFatSecretAutocomplete } from "../../../../src/lib/nutrition/fatsec
 import { shouldShowBarcodeFallbackHint } from "../../../../src/lib/nutrition/foodSearchLocale";
 import { formatMacroTrailer } from "../../../../src/lib/nutrition/macroFormat";
 import { portionEqualsLabel } from "../../../../src/lib/nutrition/portionEqualsLabel";
-import { resolveInitialPortion, buildPortions } from "../../../../src/lib/nutrition/foodSearchCore";
+import { resolveInitialPortion, buildPortions, customFoodToHit } from "../../../../src/lib/nutrition/foodSearchCore";
 
 // 2026-05-15 (ENG-550 phase 2): `STANDARD_UNITS` and `buildPortionList`
 // extracted to `@/lib/nutrition/foodSearchCore` as `STANDARD_UNITS` and
@@ -249,21 +248,11 @@ export type FoodSearchPanelProps = {
 // `UNIT_TO_LABEL` and `UNIT_GRAMS` tables) was byte-identical to the
 // web version apart from formatting.
 
-function customFoodToRow(food: CustomFood): SearchRow {
-  const macrosPer100g = customFoodToMacrosPer100g(food);
-  const displayName = food.brand ? `${food.name} · ${food.brand}` : food.name;
-  const primaryServing = customFoodToPrimaryServing(food);
-  return {
-    key: `custom-${food.id}`,
-    name: displayName,
-    calsPer100g: macrosPer100g.calories,
-    macrosPer100g,
-    verified: false,
-    primaryServing: primaryServing ?? null,
-    _source: "CUSTOM",
-    _custom: food,
-  };
-}
+// 2026-05-16 (ENG-550 phase 3): `customFoodToRow` moved to
+// `@/lib/nutrition/foodSearchCore` as `customFoodToHit`. Mobile's
+// `SearchRow` accepts the returned `CustomFoodHit` structurally.
+// Alias kept for call-site readability.
+const customFoodToRow = customFoodToHit;
 
 export default function FoodSearchPanel({
   query,

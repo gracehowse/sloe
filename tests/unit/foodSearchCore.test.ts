@@ -3,8 +3,10 @@ import {
   resolveInitialPortion,
   buildPortions,
   STANDARD_UNITS,
+  customFoodToHit,
   type FoodPortion,
 } from "../../src/lib/nutrition/foodSearchCore";
+import type { CustomFood } from "../../src/lib/nutrition/customFoods";
 
 /**
  * 2026-05-15 (ENG-550) — pins `resolveInitialPortion` once for both
@@ -226,5 +228,66 @@ describe("buildPortions", () => {
     // Only one 'g' in result — the primary serving's
     const gCount = out.filter((u) => u.label.toLowerCase() === "g").length;
     expect(gCount).toBe(1);
+  });
+});
+
+describe("customFoodToHit", () => {
+  // Minimal CustomFood fixture — only the fields the helper reads.
+  // The real type has many more (visibility, evidence_url, etc.) but
+  // the helper just touches `id`, `name`, `brand`, and macros via the
+  // downstream `customFoodToMacrosPer100g` / `customFoodToPrimaryServing`
+  // helpers (which are exercised by their own test files).
+  const baseFood: CustomFood = {
+    id: "11111111-1111-1111-1111-111111111111",
+    user_id: "00000000-0000-0000-0000-000000000000",
+    name: "Posh Cheddar",
+    brand: null,
+    barcode: null,
+    serving_label: null,
+    serving_grams: null,
+    serving_ml: null,
+    calories: 400,
+    protein: 25,
+    carbs: 1,
+    fat: 33,
+    fiber_g: 0,
+    sugar_g: 0.5,
+    sodium_mg: 700,
+    serving_basis: "per_100g",
+    visibility: "private",
+    upvotes: 0,
+    downvotes: 0,
+    flagged_count: 0,
+    flagged_for_admin_at: null,
+    evidence_url: null,
+    submission_method: null,
+    verified: false,
+    archived_at: null,
+    created_at: "2026-05-16T00:00:00Z",
+    updated_at: "2026-05-16T00:00:00Z",
+  } as unknown as CustomFood;
+
+  it("produces a CUSTOM-sourced row with key prefixed `custom-{id}`", () => {
+    const hit = customFoodToHit(baseFood);
+    expect(hit.key).toBe("custom-11111111-1111-1111-1111-111111111111");
+    expect(hit._source).toBe("CUSTOM");
+    expect(hit._custom).toBe(baseFood);
+    expect(hit.verified).toBe(false);
+  });
+
+  it("uses the food name as display name when there's no brand", () => {
+    expect(customFoodToHit(baseFood).name).toBe("Posh Cheddar");
+  });
+
+  it("formats display as `{name} · {brand}` when brand is set", () => {
+    const branded = { ...baseFood, brand: "Pret" } as unknown as CustomFood;
+    expect(customFoodToHit(branded).name).toBe("Posh Cheddar · Pret");
+  });
+
+  it("surfaces calsPer100g + macrosPer100g via the per-100g helper", () => {
+    const hit = customFoodToHit(baseFood);
+    expect(hit.calsPer100g).toBe(hit.macrosPer100g.calories);
+    expect(hit.macrosPer100g.protein).toBe(25);
+    expect(hit.macrosPer100g.carbs).toBe(1);
   });
 });
