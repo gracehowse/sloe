@@ -419,7 +419,22 @@ export async function verifyIngredients(opts: {
   const edamamCfg = provider === "auto" && hasEdamamConfig() ? edamamConfigFromEnv() : null;
   const fatsecretCfg = wantFatSecret && hasFatSecretConfig() ? fatSecretConfigFromEnv() : null;
 
-  const CONCURRENCY = 4;
+  // 2026-05-15: bumped from 4 → 8 for the recipe-import critical path
+  // (TikTok recipe-import is the viral hook per growth strategy). A
+  // 20-ingredient recipe shaves from ~5 batches × ~800ms = 4s down to
+  // ~3 batches × ~800ms = 2.4s — directly affects share-loop conversion.
+  //
+  // Safety: per-user rate limits across USDA / FatSecret / OFF / Edamam
+  // all have 60s+ token windows that 8 concurrent in-flight per user
+  // can't blow through. Aggregate spike protection is a separate concern
+  // handled at the route layer.
+  //
+  // Env-tunable for emergency rollback without a deploy. Set
+  // `VERIFY_INGREDIENTS_CONCURRENCY=4` to revert.
+  const CONCURRENCY = Math.max(
+    1,
+    Math.min(16, parseInt(process.env.VERIFY_INGREDIENTS_CONCURRENCY ?? "8", 10) || 8),
+  );
 
   async function verifyOne(idx: number): Promise<VerifiedIngredient> {
     const raw = ingredients[idx]!;
