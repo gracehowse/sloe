@@ -1,6 +1,4 @@
-import { memo, useCallback, useMemo, useState } from "react";
-import { track } from "../../lib/analytics/track.ts";
-import { AnalyticsEvents } from "../../lib/analytics/events.ts";
+import { memo, useMemo, useState } from "react";
 import { Icons } from "./ui/icons";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import type { LibraryEntryKind, RecipeCard, UserTier } from "../../types/recipe.ts";
@@ -152,28 +150,6 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
     return sorted;
   }, [savedRecipesForLibrary, searchQuery, pill, libraryEntryKindByRecipeId, uid, sortKey]);
 
-  const handleSelectRecipe = useCallback(
-    (recipe: RecipeCard & { savedAt: Date }) => {
-      track(AnalyticsEvents.library_recipe_tapped, {
-        recipe_id: recipe.id,
-        entry_kind: entryKindForRecipe(recipe, libraryEntryKindByRecipeId[recipe.id], uid),
-      });
-      setSelectedRecipe(recipe);
-    },
-    [libraryEntryKindByRecipeId, uid],
-  );
-
-  const handlePillChange = useCallback(
-    (newPill: typeof pill) => {
-      setPill(newPill);
-      track(AnalyticsEvents.library_filter_changed, {
-        filter: newPill,
-        recipe_count: filteredRecipes.length,
-      });
-    },
-    [filteredRecipes.length],
-  );
-
   if (selectedRecipe) {
     return (
       <RecipeDetail
@@ -250,7 +226,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                 <button
                   key={f.id}
                   type="button"
-                  onClick={() => handlePillChange(f.id)}
+                  onClick={() => setPill(f.id)}
                   // 2026-05-02 (build-12): tester reported the pill
                   // text was squished against the border. Bumped
                   // horizontal padding (`px-3` → `px-3.5` == 14px) and
@@ -370,7 +346,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                 <button
                   key={`desktop-${recipe.id}`}
                   type="button"
-                  onClick={() => handleSelectRecipe(recipe)}
+                  onClick={() => setSelectedRecipe(recipe)}
                   className="group text-left rounded-2xl bg-card border border-border overflow-hidden cursor-pointer w-full hover:shadow-xl hover:shadow-foreground/5 hover:-translate-y-0.5 transition-all"
                 >
                   <div className="relative overflow-hidden" style={{ aspectRatio: "4 / 3" }}>
@@ -524,7 +500,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
               <div
                 key={recipe.id}
                 className="group bg-card border border-border rounded-2xl overflow-hidden hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 text-left shadow-lg cursor-pointer"
-                onClick={() => handleSelectRecipe(recipe)}
+                onClick={() => setSelectedRecipe(recipe)}
               >
                 <div className="relative overflow-hidden">
                   {recipe.image ? (
@@ -562,7 +538,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                   <h4 className="mb-3">
                     <button
                       type="button"
-                      onClick={(e) => { e.stopPropagation(); handleSelectRecipe(recipe); }}
+                      onClick={(e) => { e.stopPropagation(); setSelectedRecipe(recipe); }}
                       className="line-clamp-2 text-foreground group-hover:text-primary transition-colors text-left font-inherit hover:underline focus:outline-none focus:ring-2 focus:ring-primary/50 rounded"
                     >
                       {recipe.title}

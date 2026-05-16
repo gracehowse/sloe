@@ -1,6 +1,4 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { track } from "../../lib/analytics/track.ts";
-import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { Icons } from "./ui/icons";
 import { IconBox } from "./ui/icon-box";
 import { SourceBadge } from "./suppr/source-badge";
@@ -336,30 +334,6 @@ export const DiscoverFeed = memo(function DiscoverFeed({
     followedCreatorIds,
   ]);
 
-  // Track search use: fire once per committed non-empty query.
-  const lastTrackedQueryRef = useRef("");
-  useEffect(() => {
-    const q = searchQuery.trim();
-    if (!q || q === lastTrackedQueryRef.current) return;
-    lastTrackedQueryRef.current = q;
-    track(AnalyticsEvents.discover_search_used, {
-      query_length: q.length,
-      result_count: recipes.length,
-    });
-  }, [searchQuery, recipes.length]);
-
-  const handleSelectRecipe = useCallback(
-    (recipe: RecipeCard) => {
-      track(AnalyticsEvents.recipe_card_tapped, {
-        recipe_id: recipe.id,
-        source: "discover",
-        has_fit_chip: computeRecipeFitPercent(recipe, nutritionTargets).percent > 0,
-      });
-      setSelectedRecipe(recipe);
-    },
-    [nutritionTargets],
-  );
-
   // Wave 4 (2026-05-02) — group seed entries by cluster for the
   // cluster carousels (Mediterranean → Asian → Latin → Comfort →
   // Healthy bowls). Non-seed (community) entries flow through to
@@ -627,7 +601,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                           <button
                             key={`cluster-${recipe.id}`}
                             type="button"
-                            onClick={() => handleSelectRecipe(recipe)}
+                            onClick={() => setSelectedRecipe(recipe)}
                             className="shrink-0 w-[220px] text-left rounded-xl bg-card border border-border overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all"
                           >
                             <div
@@ -704,7 +678,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                   key={`desktop-${recipe.id}`}
                   type="button"
                   id={`discover-desktop-post-${recipe.id}`}
-                  onClick={() => handleSelectRecipe(recipe)}
+                  onClick={() => setSelectedRecipe(recipe)}
                   className="group text-left rounded-2xl bg-card border border-border overflow-hidden cursor-pointer w-full hover:shadow-xl hover:shadow-foreground/5 hover:-translate-y-0.5 transition-all"
                 >
                   <div
@@ -886,7 +860,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                     key={recipe.id}
                     type="button"
                     id={`discover-post-${recipe.id}`}
-                    onClick={() => handleSelectRecipe(recipe)}
+                    onClick={() => setSelectedRecipe(recipe)}
                     className="text-left rounded-[14px] bg-card border border-border overflow-hidden cursor-pointer w-full"
                   >
                     {/* P1-19 web parity: hero collapses to 8:1 band when
@@ -972,7 +946,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                         key={recipe.id}
                         type="button"
                         id={`discover-post-${recipe.id}`}
-                        onClick={() => handleSelectRecipe(recipe)}
+                        onClick={() => setSelectedRecipe(recipe)}
                         className={`w-full flex items-center gap-3 p-3 text-left hover:bg-muted/40 transition-colors ${idx > 0 ? "border-t border-border" : ""}`}
                       >
                         <span className="w-10 h-10 rounded-lg bg-muted text-muted-foreground inline-flex items-center justify-center shrink-0 overflow-hidden">
