@@ -12,6 +12,7 @@ import {
 import { AiBudgetExceededError, callAiVision } from "@/lib/server/aiProvider";
 import { normalizeImageForAi } from "@/lib/server/normalizeImageForAi";
 import { captureRouteError } from "@/lib/observability/captureRouteError";
+import { isServerFeatureEnabled } from "@/lib/server/featureFlags";
 
 export const runtime = "nodejs";
 
@@ -108,6 +109,19 @@ const USER_PROMPT =
   "Identify every food item on this plate. Return the JSON described in the system message.";
 
 export async function POST(req: Request) {
+  // 2026-05-16 (ENG-519) — kill switch for AI photo-log.
+  if (await isServerFeatureEnabled("kill_photo_log")) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "service_unavailable",
+        message: "Photo logging is temporarily unavailable. Try again shortly.",
+        retryAfterSec: 300,
+      },
+      { status: 503, headers: { "Retry-After": "300" } },
+    );
+  }
+
   const userId = await getUserIdFromRequest(req);
   if (!userId) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });

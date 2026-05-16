@@ -27,6 +27,7 @@ import { classifyMealType } from "@/lib/recipe-import/classifyMealType";
 import { extractCaptionNutrition } from "@/lib/recipe-import/extractCaptionNutrition";
 import { CaptionExtractionError, sanitiseImportedTitle } from "@/lib/recipe-import/extractSocialRecipe";
 import { captureRouteError } from "@/lib/observability/captureRouteError";
+import { isServerFeatureEnabled } from "@/lib/server/featureFlags";
 import { AiBudgetExceededError } from "@/lib/server/aiProvider";
 import { normaliseSource } from "@/lib/recipes/persistSourceAttribution";
 import { importErrorResponse } from "@/lib/recipes/importErrorCopy";
@@ -59,6 +60,15 @@ function flagOff() {
 export async function POST(req: Request) {
   if (!isIgTtImportEnabled()) {
     return flagOff();
+  }
+
+  // 2026-05-16 (ENG-519) — shared kill switch with URL + image
+  // import paths.
+  if (await isServerFeatureEnabled("kill_recipe_import")) {
+    return NextResponse.json(
+      { ...importErrorResponse("service_unavailable"), retryAfterSec: 300 },
+      { status: 503, headers: { "Retry-After": "300" } },
+    );
   }
 
   const userId = await getUserIdFromRequest(req);

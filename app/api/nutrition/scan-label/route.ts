@@ -4,6 +4,7 @@ import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
 import { AiBudgetExceededError, callAiVision } from "@/lib/server/aiProvider";
 import { normalizeImageForAi } from "@/lib/server/normalizeImageForAi";
 import { captureRouteError } from "@/lib/observability/captureRouteError";
+import { isServerFeatureEnabled } from "@/lib/server/featureFlags";
 
 export const runtime = "nodejs";
 export const maxDuration = 45;
@@ -140,6 +141,19 @@ function safeOptional(n: number | null | undefined, decimals: 0 | 1 = 1): number
 }
 
 export async function POST(req: Request) {
+  // 2026-05-16 (ENG-519) — kill switch for AI label scanning.
+  if (await isServerFeatureEnabled("kill_scan_label")) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "service_unavailable",
+        message: "Label scanning is temporarily unavailable. Try again shortly.",
+        retryAfterSec: 300,
+      },
+      { status: 503, headers: { "Retry-After": "300" } },
+    );
+  }
+
   const userId = await getUserIdFromRequest(req);
   if (!userId) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });

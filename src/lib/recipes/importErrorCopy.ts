@@ -66,6 +66,11 @@ export type ImportErrorCode =
   | "save_failed"
   | "rls_denied"
   | "duplicate_recipe"
+  // ENG-519 (2026-05-16) — PostHog kill-switch tripped on the
+  // recipe-import family. Distinct from `ai_capacity_reached` (daily
+  // cost ceiling) and `ai_unavailable` (vendor 5xx) so the client can
+  // surface a calm "back shortly" message without conflating intent.
+  | "service_unavailable"
   // Generic fallthroughs
   | "import_failed"
   | "network_error"
@@ -116,6 +121,7 @@ export const IMPORT_ERROR_COPY: Record<ImportErrorCode, string> = {
   save_failed: "We couldn't save the recipe. Try again.",
   rls_denied: "You don't have permission to save that recipe.",
   duplicate_recipe: "You've already saved this recipe.",
+  service_unavailable: "Recipe import is temporarily unavailable. Try again shortly.",
   import_failed: "We couldn't import that recipe. Try again, or paste it manually.",
   network_error: "Network error. Check your connection and try again.",
   unknown: "Something went wrong. Try again.",
