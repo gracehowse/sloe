@@ -26,6 +26,7 @@ import { decodeEntities } from "@/lib/decodeEntities";
 import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
 import type { RecipeCard } from "@/lib/types";
 import { useAuth } from "@/context/auth";
+import { useLibrarySearchStore } from "@/hooks/useLibrarySearchStore";
 import { supabase } from "@/lib/supabase";
 import { computeRecipeFitPercent } from "../../../../src/lib/nutrition/recipeFitPercent";
 import { DISCOVER_POPULAR_MIN_SAVES } from "../../../../src/lib/recipes/fetchPublicRecipeSaveCounts";
@@ -133,7 +134,10 @@ export default function DiscoverScreen() {
   const userId = session?.user?.id ?? null;
 
   const { recipes, loading, refresh } = useDiscoverRecipes();
-  const [search, setSearch] = useState("");
+  // Shared with Library via `useLibrarySearchStore` so the query
+  // survives tab switches (ENG-53, 2026-05-16). Variable names kept
+  // so all downstream filter/search-debounce logic stays untouched.
+  const { query: search, setQuery: setSearch } = useLibrarySearchStore();
   const [filter, setFilter] = useState("For You");
   const searchInputRef = useRef<TextInput>(null);
 

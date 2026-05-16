@@ -32,6 +32,7 @@ import {
   MoreHorizontal,
 } from "lucide-react-native";
 import { useAuth } from "@/context/auth";
+import { useLibrarySearchStore } from "@/hooks/useLibrarySearchStore";
 import { useSavedLibraryRecipes, useSavedRecipes } from "@/lib/recipes";
 import { RecipeCardImage } from "@/components/library/RecipeCardImage";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -111,7 +112,10 @@ export default function LibraryScreen() {
     }, [userId, refresh]),
   );
 
-  const [search, setSearch] = useState("");
+  // Shared with Discover via `useLibrarySearchStore` so the query
+  // survives tab switches (ENG-53, 2026-05-16). Variable names kept
+  // (search / setSearch) to leave all 100+ downstream usages alone.
+  const { query: search, setQuery: setSearch } = useLibrarySearchStore();
   const [sortKey, setSortKey] = useState<SortKey>("recent");
   // Web parity (Pass 6, 2026-04-18) + prototype port (2026-04-20):
   // single filter pill row covering entry-kind (All / Saved / Created

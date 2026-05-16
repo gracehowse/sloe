@@ -10,6 +10,7 @@ import type { RecipeCard } from "../../types/recipe.ts";
 import { computeRecipeFitPercent } from "../../lib/nutrition/recipeFitPercent.ts";
 import { DISCOVER_POPULAR_MIN_SAVES } from "../../lib/recipes/fetchPublicRecipeSaveCounts.ts";
 import { recipeSearchMatch } from "../../lib/recipes/recipeSearchMatch.ts";
+import { useLibraryDiscoverSearch } from "../../lib/libraryDiscoverSearchStore.ts";
 import {
   SEED_CLUSTERS,
   isSeedRecipeId,
@@ -75,7 +76,12 @@ export const DiscoverFeed = memo(function DiscoverFeed({
 }: DiscoverFeedProps) {
   const { discoverRecipes, nutritionTargets } = useAppData();
   const [selectedRecipe, setSelectedRecipe] = useState<RecipeCard | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
+  // Shared with Library via `useLibraryDiscoverSearch` so the query
+  // survives view switches (ENG-53, 2026-05-16). Variable names
+  // (searchQuery / setSearchQuery) preserved so the 20+ downstream
+  // references — Edamam debounce, recipeSearchMatch, render, etc. —
+  // stay untouched.
+  const { query: searchQuery, setQuery: setSearchQuery } = useLibraryDiscoverSearch();
   // Eating-out row — Edamam restaurant + branded results, debounced 350ms.
   // Surfaces only when the query is ≥ 3 chars to avoid noisy/empty calls.
   // TestFlight `AOI9xgY88Dx-uphiXI8IzEk` (2026-04-18). Mirrors mobile Discover.

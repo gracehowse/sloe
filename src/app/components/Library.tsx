@@ -12,6 +12,7 @@ import {
 } from "../../lib/recipes/libraryFilters.ts";
 import { classifyLibraryEntry } from "../../lib/recipes/libraryEntryKind.ts";
 import { computeRecipeFitPercent } from "../../lib/nutrition/recipeFitPercent.ts";
+import { useLibraryDiscoverSearch } from "../../lib/libraryDiscoverSearchStore.ts";
 // GW-08 (audit 2026-04-28): `TrustChip` + `recipeLevelTrust` dropped
 // — Library cards no longer render the chip; see card-body comments.
 
@@ -77,7 +78,11 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
   const uid = userId;
   const router = useRouter();
   const [selectedRecipe, setSelectedRecipe] = useState<(RecipeCard & { savedAt: Date }) | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
+  // Shared with DiscoverFeed via `useLibraryDiscoverSearch` so the
+  // query survives view switches (ENG-53, 2026-05-16). Variable names
+  // kept (searchQuery / setSearchQuery) so all 10+ downstream usages
+  // — filter loops, render of the input, clear-button — stay untouched.
+  const { query: searchQuery, setQuery: setSearchQuery } = useLibraryDiscoverSearch();
   // 2026-04-20 prototype port: migrate web to the shared
   // `LIBRARY_FILTER_PILLS` set (All · Saved · High-Protein · Quick ·
   // Vegetarian · Created · Imported) that mobile already consumes.
