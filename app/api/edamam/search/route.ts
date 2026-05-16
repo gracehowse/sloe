@@ -8,6 +8,7 @@ import {
 import { rateLimit } from "@/lib/server/rateLimit";
 import { hasEdamamConfig } from "@/lib/server/serverEnv";
 import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
+import { captureRouteError } from "@/lib/observability/captureRouteError";
 
 /**
  * GET /api/edamam/search?q=<query>&mode=<foods|meals>
@@ -113,6 +114,7 @@ export async function GET(req: Request) {
     });
     return NextResponse.json({ ok: true, mode, page: pageNumber, hits });
   } catch (e) {
+    captureRouteError(e, "/api/edamam/search");
     // 2026-05-06 (Grace) — log + return ok:true with `_diag` echo so
     // the merge contract is preserved (other 3 sources keep
     // rendering) AND the mobile / web client diagnostic surfaces the

@@ -8,6 +8,7 @@ import {
 import { rateLimit } from "@/lib/server/rateLimit";
 import { hasFatSecretConfig, misconfiguredFatSecretResponse } from "@/lib/server/serverEnv";
 import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
+import { captureRouteError } from "@/lib/observability/captureRouteError";
 
 /**
  * GET /api/fatsecret/autocomplete?q=<query>&max=<n>
@@ -85,6 +86,7 @@ export async function GET(req: Request) {
       // back gracefully instead of surfacing a 502.
       return NextResponse.json({ ok: true, tier: "basic", suggestions: [] });
     }
+    captureRouteError(e, "/api/fatsecret/autocomplete");
     return NextResponse.json(
       {
         ok: false,

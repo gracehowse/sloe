@@ -3,6 +3,7 @@ import { fdcConfigFromEnv, fdcFoodsSearch } from "@/lib/usda/fdcClient";
 import { rateLimit } from "@/lib/server/rateLimit";
 import { misconfiguredUsdaResponse } from "@/lib/server/serverEnv";
 import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
+import { captureRouteError } from "@/lib/observability/captureRouteError";
 
 export async function GET(req: Request) {
   const userId = await getUserIdFromRequest(req);
@@ -39,6 +40,7 @@ export async function GET(req: Request) {
     const hits = await fdcFoodsSearch(cfg, q, { pageNumber });
     return NextResponse.json({ ok: true, hits, page: pageNumber });
   } catch (e) {
+    captureRouteError(e, "/api/usda/search");
     return NextResponse.json(
       { ok: false, error: "usda_failed", message: e instanceof Error ? e.message : "USDA request failed" },
       { status: 502 },

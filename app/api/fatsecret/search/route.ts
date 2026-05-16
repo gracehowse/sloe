@@ -7,6 +7,7 @@ import { parseFatSecretFoodDescription } from "@/lib/fatsecret/parseFoodDescript
 import { rateLimit } from "@/lib/server/rateLimit";
 import { hasFatSecretConfig, misconfiguredFatSecretResponse } from "@/lib/server/serverEnv";
 import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
+import { captureRouteError } from "@/lib/observability/captureRouteError";
 
 /**
  * GET /api/fatsecret/search?q=<query>&page=<n>
@@ -142,6 +143,7 @@ export async function GET(req: Request) {
       "[/api/fatsecret/search] failed:",
       msg,
     );
+    captureRouteError(e, "/api/fatsecret/search");
     // 2026-05-06 (Grace) — also surface a non-fatal `_diag` token on the
     // empty response so the mobile client diagnostic
     // (`searchFatSecret`) can log it. Keeps `ok: true` and `hits: []` so

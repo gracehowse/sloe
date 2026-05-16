@@ -5,6 +5,7 @@ import { rateLimit } from "@/lib/server/rateLimit";
 import { misconfiguredUsdaResponse } from "@/lib/server/serverEnv";
 import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
 import { pickUsdaFoodPortionsPrimaryServing } from "@/lib/nutrition/primaryServing";
+import { captureRouteError } from "@/lib/observability/captureRouteError";
 
 export async function GET(req: Request) {
   const userId = await getUserIdFromRequest(req);
@@ -98,6 +99,7 @@ export async function GET(req: Request) {
       ...(primaryPortion ? { primaryPortion } : {}),
     });
   } catch (e) {
+    captureRouteError(e, "/api/usda/food");
     return NextResponse.json(
       { ok: false, error: "usda_failed", message: e instanceof Error ? e.message : "USDA request failed" },
       { status: 502 },
