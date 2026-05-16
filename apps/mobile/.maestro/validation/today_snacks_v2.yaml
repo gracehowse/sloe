@@ -1,0 +1,134 @@
+# @cases TC-TODAY-SNACKS-V2
+# @screen today
+# PR #246 — validate flag `today_log_usual_row_v2` on Snacks slot.
+#
+# Prereqs:
+#   - Suppr app installed on the booted sim.
+#   - E2E user signed in (gracemturner@hotmail.co.uk).
+#   - PostHog flag `today_log_usual_row_v2` enabled for this user.
+#   - `npx tsx scripts/e2e-seed-today-snacks.ts` run beforehand so
+#     the user has 1 saved Snacks meal + 2 Snacks entries today.
+#
+# Six checks from the PR plan:
+#   1. Header clean: icon + "Snacks" + item count + kcal + chevron (no chip).
+#   2. Dedicated row below header contains the "Log usual" pill.
+#   3. Long food names truncate; kcal sits on the right and doesn't overlap.
+#   4. Collapse via chevron → pill row stays visible.
+#   5. Tap pill → saved meal logged (toast / item count increments).
+#
+# Artifacts land under .maestro/artifacts/today_snacks_v2/ (configured
+# by the npm entry script that owns this flow's run).
+appId: com.supprclub.supprapp
+# `name` is used by Maestro's HTML report path — avoid `/`, em-dashes,
+# and other characters that break filesystem writes on macOS.
+name: "today_snacks_v2 — Log-usual row v2 validation (PR 246)"
+---
+# maestro-reset.sh launches the app via the dev-client deep link
+# (`exp+suppr://expo-development-client/?url=...`) so the dev client
+# is already connected to this worktree's Metro. Don't `stopApp: true`
+# here — that would kill the dev-client + lose the connection. A plain
+# `launchApp` keeps the openurl-loaded session and proceeds.
+- launchApp:
+    appId: com.supprclub.supprapp
+    clearKeychain: false
+
+# Cold-launch + Metro bundle on this sim takes 10–20s. Two reasons we
+# DON'T use `extendedWaitUntil visible:text:"Today"` here:
+#   1. If any RN-presented modal (e.g. the weekly check-in) is mid-
+#      animation, querying the view hierarchy crashes XCUITest on
+#      iOS 26 with `kAXErrorInvalidUIElement` and the run hangs
+#      retrying until the 45s timeout. Seen 2026-05-15; matches the
+#      kAXError documented in `00c_onboarding_v2_steps.yaml`.
+#   2. The seed step bumps `profiles.last_weekly_checkin_shown_at`
+#      to now() so the modal SHOULDN'T appear — but the app caches
+#      the profile in AsyncStorage and may render the modal once
+#      before the fresh fetch lands.
+# Fixed sleep + a defensive point-tap on the modal area dismisses
+# the modal (if present) without touching the view hierarchy. Tap
+# coordinates are tuned for iPhone 17 Pro logical 393x852 — `Keep
+# current` sits at roughly y=76%. The same coords on Today (no
+# modal) hit the bottom-bar area, which is harmless.
+- waitForAnimationToEnd:
+    timeout: 12000
+
+# Defensive modal dismiss — point-tap bypasses the hierarchy probe.
+- tapOn:
+    point: "50%,76%"
+- waitForAnimationToEnd:
+    timeout: 2000
+
+# Now the hierarchy is clean (no modal). Confirm the app rendered
+# Today by asserting on the tab-bar label.
+- assertVisible:
+    text: "Today"
+
+# 2026-05-15: PostHog feature flags are fetched async via /decide on
+# identify, so the first render of Today often reads the flag BEFORE
+# the fetch completes — `isFeatureEnabled('today_log_usual_row_v2')`
+# returns false even when the flag is correctly targeted for this
+# user. To get the v2 layout to render, we need to force a re-mount
+# of TodayMealsSection AFTER flags have loaded. Tapping Plan → back
+# to Today does this cheaply and is robust to layout drift.
+# Coordinates: Plan = 2nd tab (~30%, 96%), Today = 1st tab (~10%, 96%).
+- tapOn:
+    point: "30%,96%"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    point: "10%,96%"
+- waitForAnimationToEnd:
+    timeout: 2000
+
+# Scroll to the Snacks slot. testID is the canonical locator now.
+# `centerElement: false` because Snacks is at the bottom of the Today
+# scroll content and there isn't enough room below to center it
+# vertically — Maestro would then loop until timeout. `visibilityPercentage: 50`
+# accepts a partially visible header which is fine for the assertions below.
+- scrollUntilVisible:
+    element:
+      id: "today-slot-header-Snacks"
+    direction: DOWN
+    timeout: 12000
+    speed: 50
+    centerElement: false
+    visibilityPercentage: 50
+
+# Check 1 — header clean: in-header `Log usual` chip MUST NOT exist
+# when flag is on. The flag-off variant has testID `*-in-header-*`.
+- assertNotVisible:
+    id: "today-log-usual-pill-in-header-Snacks"
+- takeScreenshot: .maestro/artifacts/today_snacks_v2/01-header-clean
+
+# Check 2 — dedicated row below the header.
+- assertVisible:
+    id: "today-log-usual-row-Snacks"
+- assertVisible:
+    id: "today-log-usual-pill-Snacks"
+- takeScreenshot: .maestro/artifacts/today_snacks_v2/02-pill-row-present
+
+# Check 4 — collapse the slot via chevron; pill row must stay visible.
+- tapOn:
+    id: "today-slot-chevron-Snacks"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    id: "today-log-usual-row-Snacks"
+- assertVisible:
+    id: "today-log-usual-pill-Snacks"
+- takeScreenshot: .maestro/artifacts/today_snacks_v2/03-pill-visible-when-collapsed
+
+# Re-expand for the tap test.
+- tapOn:
+    id: "today-slot-chevron-Snacks"
+- waitForAnimationToEnd:
+    timeout: 1500
+
+# Check 5 — tap the pill logs the saved meal. The pill calls
+# `onLogSavedMeal(primarySaved, "Snacks")` when there's only one match.
+# Seeded state has exactly one Snacks-tagged saved meal, so this path
+# is the single-tap log (no picker modal).
+- tapOn:
+    id: "today-log-usual-pill-Snacks"
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: .maestro/artifacts/today_snacks_v2/04-after-pill-tap

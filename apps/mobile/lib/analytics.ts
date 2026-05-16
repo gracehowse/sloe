@@ -97,7 +97,21 @@ export function track(
 }
 
 export function identify(userId: string, traits?: Record<string, unknown>): void {
-  getPostHogClient()?.identify(userId, traits as CaptureProps);
+  const c = getPostHogClient();
+  if (!c) return;
+  c.identify(userId, traits as CaptureProps);
+  // 2026-05-15: force an immediate flag re-evaluation. The SDK's
+  // default behaviour is to re-fetch flags on identify, but the call
+  // is fire-and-forget and lands on the next flush tick — meaning
+  // `isFeatureEnabled` can return a stale `false` for the first
+  // render of any screen that depends on a flag-gated layout (e.g.
+  // `today_log_usual_row_v2`). Surfaced while wiring Maestro
+  // validation for PR #246: the user was identified with email, the
+  // flag was correctly targeted, but the Today screen still rendered
+  // the flag-off variant because flags hadn't refreshed yet.
+  // `reloadFeatureFlagsAsync` triggers an immediate /decide call so
+  // the next render sees the right value.
+  c.reloadFeatureFlagsAsync().catch(() => { /* swallow */ });
 }
 
 export function reset(): void {
@@ -106,8 +120,31 @@ export function reset(): void {
 
 /** Read a PostHog feature flag synchronously. Returns `false` when
  *  the client isn't initialised or the flag is unloaded. Mirror of
- *  `src/lib/analytics/track.ts#isFeatureEnabled` (web). */
+ *  `src/lib/analytics/track.ts#isFeatureEnabled` (web).
+ *
+ *  Dev / E2E override (2026-05-15): when `__DEV__` and the env var
+ *  `EXPO_PUBLIC_FLAG_FORCE_<FLAG_KEY>` is `"true"` / `"false"`, return
+ *  that value directly. Exists because PostHog's local-evaluation
+ *  cache races against first render in dev, so a Maestro flow that
+ *  exercises a flag-gated screen can't reliably trigger the flag-on
+ *  branch via PostHog targeting alone. Production builds ignore this
+ *  override completely (the `__DEV__` guard inlines to `false` and
+ *  the whole branch is dropped by Hermes' DCE).
+ *
+ *  Mapping: `today_log_usual_row_v2` →
+ *  `EXPO_PUBLIC_FLAG_FORCE_TODAY_LOG_USUAL_ROW_V2`.
+ */
 export function isFeatureEnabled(flag: string): boolean {
+  // `__DEV__` is a React Native runtime global, not defined in the
+  // vitest node environment. Guard with `typeof` so the unit tests
+  // that render this module under jsdom don't blow up with
+  // ReferenceError.
+  if (typeof __DEV__ !== "undefined" && __DEV__) {
+    const envKey = `EXPO_PUBLIC_FLAG_FORCE_${flag.toUpperCase()}`;
+    const override = process.env[envKey];
+    if (override === "true") return true;
+    if (override === "false") return false;
+  }
   const c = getPostHogClient();
   if (!c) return false;
   try {

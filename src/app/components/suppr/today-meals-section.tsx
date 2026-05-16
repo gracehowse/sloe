@@ -226,9 +226,14 @@ export function TodayMealsSection({
           const extraSavedCount = slotSavedMeals.length - 1;
 
           return (
-            <div key={sectionName} className="border-b border-border last:border-b-0">
+            <div
+              key={sectionName}
+              data-testid={`today-slot-${sectionName}`}
+              className="border-b border-border last:border-b-0"
+            >
               {/* Meal header row */}
               <div
+                data-testid={`today-slot-header-${sectionName}`}
                 className="flex items-center gap-2.5 px-3.5 py-3 border-b border-border cursor-pointer select-none"
                 onClick={() => onToggleSlot(sectionName)}
                 role="button"
@@ -263,6 +268,7 @@ export function TodayMealsSection({
                 {!usualRowV2 && hasSaved && primarySaved && (
                   <button
                     type="button"
+                    data-testid={`today-log-usual-pill-in-header-${sectionName}`}
                     onClick={(e) => {
                       e.stopPropagation();
                       if (slotSavedMeals.length >= 2) {
@@ -289,7 +295,10 @@ export function TodayMealsSection({
                     </span>
                   </button>
                 )}
-                <Icons.down className={`w-3.5 h-3.5 text-muted-foreground transition-transform ${collapsedSlots.has(sectionName) ? "-rotate-90" : ""}`} />
+                <Icons.down
+                  data-testid={`today-slot-chevron-${sectionName}`}
+                  className={`w-3.5 h-3.5 text-muted-foreground transition-transform ${collapsedSlots.has(sectionName) ? "-rotate-90" : ""}`}
+                />
               </div>
 
               {/* 2026-05-15 (crowder task) — flag-gated dedicated row for
@@ -299,9 +308,13 @@ export function TodayMealsSection({
                   of collapse state so the affordance is reachable from
                   collapsed slots too. */}
               {usualRowV2 && hasSaved && primarySaved && (
-                <div className="flex items-center px-3.5 py-2 border-b border-border/10">
+                <div
+                  data-testid={`today-log-usual-row-${sectionName}`}
+                  className="flex items-center px-3.5 py-2 border-b border-border/10"
+                >
                   <button
                     type="button"
+                    data-testid={`today-log-usual-pill-${sectionName}`}
                     onClick={(e) => {
                       e.stopPropagation();
                       if (slotSavedMeals.length >= 2) {
