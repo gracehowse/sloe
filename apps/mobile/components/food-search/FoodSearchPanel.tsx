@@ -1382,11 +1382,22 @@ export default function FoodSearchPanel({
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
+        // 2026-05-16 fix: without `flexGrow: 0`, this horizontal
+        // ScrollView (sitting inside the `flex: 1` outer View) expanded
+        // to fill the entire vertical space, which forced each child
+        // Pressable to stretch full-height and made the pill row
+        // dominate the whole sheet (Grace TF screenshot 2026-05-16).
+        // `flexGrow: 0` sizes the strip to its content, and
+        // `alignItems: "center"` on the content container is a belt-
+        // and-braces guard so the pills never expand vertically even
+        // if a future parent layout change reintroduces growth.
+        style={{ flexGrow: 0, flexShrink: 0 }}
         contentContainerStyle={{
           paddingHorizontal: Spacing.md,
           paddingTop: Spacing.sm,
           paddingBottom: Spacing.xs,
           gap: 8,
+          alignItems: "center",
         }}
         keyboardShouldPersistTaps="handled"
         testID="food-search-category-tabs"
