@@ -3595,6 +3595,13 @@ export default function TrackerScreen() {
     if (loadJournalInFlightRef.current) return;
     loadJournalInFlightRef.current = true;
 
+    // 2026-05-16: timing instrumentation so we can MEASURE whether the
+    // ENG-542 window + ENG-543 dedup actually paid off. Reported on
+    // every successful load (skipped path doesn't emit; would inflate
+    // p50 with zero-time samples). PostHog flag-able via
+    // `today_journal_loaded_ms`.
+    const loadStartedAt = Date.now();
+
     // Defence (2026-05-03): wrap the whole load in try/finally so
     // `hydrated` ALWAYS flips true, even if a supabase call throws
     // (network failure, RLS denial). Without this guarantee Today
@@ -3828,6 +3835,17 @@ export default function TrackerScreen() {
       // an empty Today shell rather than skeleton-forever.
       setHydrated(true);
       loadJournalInFlightRef.current = false;
+      // 2026-05-16 (ENG-553): emit per-load timing so we can see if the
+      // ENG-542 window + ENG-543 dedup paid off in production. Fire on
+      // both success + error paths so a skewed slow-error distribution
+      // is still visible. Truncated to int ms.
+      try {
+        track(AnalyticsEvents.today_journal_loaded_ms, {
+          duration_ms: Date.now() - loadStartedAt,
+        });
+      } catch {
+        /* analytics is best-effort */
+      }
     }
   }, [userId, selectedDate]);
 

@@ -45,6 +45,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "too_many_ingredients", max: 60 }, { status: 400 });
   }
 
+  // 2026-05-16 (ENG-553): wall-time on the recipe-import critical path
+  // so we can MEASURE the ENG-553 (verify-ingredients concurrency 4→8)
+  // bump in production. Reported on both success + failure paths.
+  const verifyStartedAt = Date.now();
   try {
     const result = await verifyIngredients({ ingredients, servings, provider, overrides });
     const confidenceTier =
@@ -53,13 +57,21 @@ export async function POST(req: Request) {
         : result.avgIngredientConfidence >= 0.5
           ? "medium"
           : "low";
-    return NextResponse.json({ ok: true, confidenceTier, ...result });
+    return NextResponse.json({
+      ok: true,
+      confidenceTier,
+      verifyDurationMs: Date.now() - verifyStartedAt,
+      ingredientCount: ingredients.length,
+      ...result,
+    });
   } catch (e) {
     return NextResponse.json(
       {
         ok: false,
         error: "verify_failed",
         provider,
+        verifyDurationMs: Date.now() - verifyStartedAt,
+        ingredientCount: ingredients.length,
         message: e instanceof Error ? e.message : "Verification request failed",
       },
       { status: 502 },
