@@ -7,11 +7,15 @@
  */
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
+// Helpers live in `src/lib/server/supabaseAdvisorCheck.ts` — the route
+// file can only export the canonical Next.js App Router handler names
+// (GET / POST / runtime / dynamic / revalidate). Non-handler exports
+// fail the route validator at build time.
 import {
   deriveProjectRef,
   runAdvisorCheck,
   type AdvisorLint,
-} from "../../app/api/cron/supabase-advisor-check/route";
+} from "../../src/lib/server/supabaseAdvisorCheck";
 
 // Sentry — replace captureMessage / captureException so we can assert
 // what was emitted without touching the real transport.
