@@ -25,6 +25,7 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useHealthSyncOnFocus } from "@/hooks/useHealthSyncOnFocus";
 import { useTodayMountAnimation } from "@/hooks/useTodayMountAnimation";
 import { useNutritionEntriesSync } from "@/hooks/useNutritionEntriesSync";
+import { useTrackingExtrasOnFocus } from "@/hooks/useTrackingExtrasOnFocus";
 import {
   dateKeyFromDate,
   newMealId,
@@ -591,49 +592,11 @@ export default function TrackerScreen() {
   // existing `targets.caffeineMg === 0` / `targets.alcoholGWeekly
   // === 0` rule — we just force the target prop to 0 at the call
   // site. Existing data is preserved (no DB writes).
-  const [trackCaffeine, setTrackCaffeine] = useState<boolean>(false);
-  const [trackAlcohol, setTrackAlcohol] = useState<boolean>(false);
-  // P0-3 (2026-04-28) — re-read tracking-extras prefs on every Today
-  // focus, not just mount. Settings -> Tracking extras toggle could
-  // run after Today mounted; the previous mount-only useEffect left
-  // Today stuck on stale prefs until full app reload.
-  useFocusEffect(
-    useCallback(() => {
-      let cancelled = false;
-      (async () => {
-        try {
-          const raw = await AsyncStorage.getItem(
-            // Inline the storage key string so this file doesn't need
-            // a new import — keeps the diff narrow. The key is
-            // exported from src/lib/nutrition/trackingExtras.ts as
-            // TRACKING_EXTRAS_STORAGE_KEY = "suppr.tracking-extras.v1".
-            "suppr.tracking-extras.v1",
-          );
-          if (cancelled) return;
-          if (!raw) {
-            // No prefs set yet — fall back to defaults so a focus
-            // event after the user clears the prefs (rare) doesn't
-            // leave a stale `true`.
-            setTrackCaffeine(false);
-            setTrackAlcohol(false);
-            return;
-          }
-          try {
-            const parsed = JSON.parse(raw) as { trackCaffeine?: boolean; trackAlcohol?: boolean } | null;
-            if (parsed && typeof parsed === "object") {
-              setTrackCaffeine(typeof parsed.trackCaffeine === "boolean" ? parsed.trackCaffeine : false);
-              setTrackAlcohol(typeof parsed.trackAlcohol === "boolean" ? parsed.trackAlcohol : false);
-            }
-          } catch {
-            // Malformed prefs — leave defaults.
-          }
-        } catch {
-          // AsyncStorage unavailable — keep defaults.
-        }
-      })();
-      return () => { cancelled = true; };
-    }, []),
-  );
+  // 2026-05-16 — extracted to `hooks/useTrackingExtrasOnFocus`
+  // (Today split #4). Same re-read-on-focus contract that closed the
+  // P0-3 (2026-04-28) stale-prefs regression. Setters live inside the
+  // hook; parent reads the two booleans.
+  const { trackCaffeine, trackAlcohol } = useTrackingExtrasOnFocus();
   const [stepsByDay, setStepsByDay] = useState<Record<string, number>>({});
   const [activityBurnByDay, setActivityBurnByDay] = useState<Record<string, number>>({});
   const [workoutsByDay, setWorkoutsByDay] = useState<Record<string, { type: string; minutes: number; calories: number; source: string }[]>>({});
