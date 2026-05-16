@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { rateLimit } from "@/lib/server/rateLimit";
 import { verifyIngredients, type IngredientOverride } from "@/lib/nutrition/verifyIngredients";
 import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
+import { captureRouteError } from "@/lib/observability/captureRouteError";
 
 type VerifyRequest = {
   ingredients: { name: string; amount: string; unit: string }[];
@@ -65,6 +66,11 @@ export async function POST(req: Request) {
       ...result,
     });
   } catch (e) {
+    captureRouteError(e, "/api/nutrition/verify-recipe", {
+      provider,
+      ingredientCount: ingredients.length,
+      verifyDurationMs: Date.now() - verifyStartedAt,
+    });
     return NextResponse.json(
       {
         ok: false,

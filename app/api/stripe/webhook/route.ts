@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { processStripeWebhookEvent } from "@/lib/stripe/webhookProcess";
 import { supabasePublicUrl } from "@/lib/supabase/serverAnonClient";
+import { captureRouteError } from "@/lib/observability/captureRouteError";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -50,6 +51,10 @@ export async function POST(req: Request) {
   } catch (e) {
     const message = e instanceof Error ? e.message : "webhook_handler_error";
     console.error("stripe_webhook_handler", message);
+    captureRouteError(e, "/api/stripe/webhook", {
+      eventType: event.type,
+      eventId: event.id,
+    });
     return NextResponse.json({ ok: false, error: "handler_failed", message }, { status: 500 });
   }
 
