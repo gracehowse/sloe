@@ -173,9 +173,13 @@ Set `health` deliberately — it's what the planning level looks at first. Initi
 
 Current initiative inventory (as of 2026-05-16):
 
-- **`Launch 2026-07-01`** — time-bound viral push (target 2026-07-01). Projects: Phase 0 — Viral push prep, Pre-launch monetisation + billing, Pre-launch incorporation + legal, MFP-refugee capture, Premium bar audit (2026-05-12).
-- **`Surface polish`** — non-time-bound per-tab UX polish. Projects: Today tab, Progress tab, Recipes tab, Plan tab, Onboarding + Auth, Landing + Marketing site.
+- **`Launch 2026-07-01`** — time-bound viral push (target 2026-07-01). Projects: Phase 0 — Viral push prep, Pre-launch monetisation + billing, Pre-launch incorporation + legal, MFP-refugee capture, Premium bar audit (2026-05-12), **Today tab** (dual), **Recipes tab** (dual).
+- **`Surface polish`** — non-time-bound per-tab UX polish. Projects: Today tab (dual), Progress tab, Recipes tab (dual), Plan tab, Onboarding + Auth, Landing + Marketing site.
 - **`Platform foundations`** — non-time-bound technical infra. Projects: Schema refactor, Operations, Design system cleanup, Post-iOS platform.
+
+**Dual-initiative pattern:** Today tab and Recipes tab roll up to BOTH Surface polish (ongoing polish home) and Launch 2026-07-01 (launch-blocking work home). These are the two surfaces genuinely on the launch critical path — Today = retention; Recipes = viral hook landing. Their health flows to both initiatives' rollups. Other surfaces stay single-initiative under Surface polish.
+
+**`launch-blocker` label (workspace-wide):** for issue-level granularity inside any project. Apply to any issue that must ship before 2026-07-01. Use the Linear filter `label:launch-blocker` for a cross-cutting "everything blocking launch" view that doesn't care which project/initiative the issue lives under.
 
 Don't try to enable project status updates — there's no workspace toggle for it; Linear removed the feature. `save_status_update type: "project"` returns "not enabled for this workspace" — don't retry.
 
