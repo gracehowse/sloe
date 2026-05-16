@@ -151,6 +151,38 @@ Mirror rules:
 
 If the Notion MCP isn't connected in a session, do the repo work as normal and list the pending Notion mirror actions at the end of the response so Grace can re-run them when connected.
 
+## Linear updates — non-negotiable
+
+Linear is the canonical task list (per `feedback_work_from_linear.md`). **Initiative status updates** are the rollup mechanism — project-level updates are deprecated on this workspace (confirmed 2026-05-16 against Business trial; the feature has been removed from newer Business workspaces in favour of initiatives, not a toggle).
+
+**When you close ≥1 issue, move state on any issue, or add new issues inside an initiative's projects, post an initiative status update before ending the session.** Don't post empty updates — silence is the right move when nothing moved.
+
+Tool call:
+
+```
+mcp__linear-server__save_status_update
+  type: "initiative"
+  initiative: "<name or id>"
+  health: "onTrack" | "atRisk" | "offTrack"
+  body: <markdown>
+```
+
+Body shape — group project work under `## <Project name>` subheaders so readers can scan by surface. Use a short shipped / open / deferred frame per project, then a brief health rationale at the end.
+
+Set `health` deliberately — it's what the planning level looks at first. Initial-health updates (first time setting health on an initiative that had `null`) are OK even without state movement; the health field itself is the change.
+
+Current initiative inventory (as of 2026-05-16):
+
+- **`Launch 2026-07-01`** — time-bound viral push (target 2026-07-01). Projects: Phase 0 — Viral push prep, Pre-launch monetisation + billing, Pre-launch incorporation + legal, MFP-refugee capture, Premium bar audit (2026-05-12), **Today tab** (dual), **Recipes tab** (dual).
+- **`Surface polish`** — non-time-bound per-tab UX polish. Projects: Today tab (dual), Progress tab, Recipes tab (dual), Plan tab, Onboarding + Auth, Landing + Marketing site.
+- **`Platform foundations`** — non-time-bound technical infra. Projects: Schema refactor, Operations, Design system cleanup, Post-iOS platform.
+
+**Dual-initiative pattern:** Today tab and Recipes tab roll up to BOTH Surface polish (ongoing polish home) and Launch 2026-07-01 (launch-blocking work home). These are the two surfaces genuinely on the launch critical path — Today = retention; Recipes = viral hook landing. Their health flows to both initiatives' rollups. Other surfaces stay single-initiative under Surface polish.
+
+**`launch-blocker` label (workspace-wide):** for issue-level granularity inside any project. Apply to any issue that must ship before 2026-07-01. Use the Linear filter `label:launch-blocker` for a cross-cutting "everything blocking launch" view that doesn't care which project/initiative the issue lives under.
+
+Don't try to enable project status updates — there's no workspace toggle for it; Linear removed the feature. `save_status_update type: "project"` returns "not enabled for this workspace" — don't retry.
+
 ## Git commits
 
 **One-time per clone:** strip tool footers from commit messages (e.g. `Made-with: Cursor`):
