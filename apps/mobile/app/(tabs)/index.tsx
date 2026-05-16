@@ -23,6 +23,7 @@ import * as Haptics from "expo-haptics";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useHealthSyncOnFocus } from "@/hooks/useHealthSyncOnFocus";
+import { useTodayMountAnimation } from "@/hooks/useTodayMountAnimation";
 import {
   dateKeyFromDate,
   newMealId,
@@ -2842,36 +2843,11 @@ export default function TrackerScreen() {
    * reports discomfort, a `useReducedMotion()` gate is a one-line
    * follow-up.
    */
-  const heroFadeAnim = useRef(new Animated.Value(0.85)).current;
-  const sectionSlideAnim = useRef(new Animated.Value(4)).current;
-  const sectionFadeAnim = useRef(new Animated.Value(0.8)).current;
-  const hasMountedFocusRef = useRef(false);
-  useFocusEffect(
-    useCallback(() => {
-      if (hasMountedFocusRef.current) return;
-      hasMountedFocusRef.current = true;
-      Animated.parallel([
-        Animated.timing(heroFadeAnim, {
-          toValue: 1,
-          duration: 200,
-          easing: Easing.out(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(sectionSlideAnim, {
-          toValue: 0,
-          duration: 200,
-          easing: Easing.out(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(sectionFadeAnim, {
-          toValue: 1,
-          duration: 200,
-          easing: Easing.out(Easing.quad),
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }, [heroFadeAnim, sectionSlideAnim, sectionFadeAnim]),
-  );
+  // 2026-05-16 — extracted to `hooks/useTodayMountAnimation`.
+  // Same 3 Animated.Value refs + focus-effect motion contract, just
+  // bundled. Today split #2.
+  const { heroFadeAnim, sectionSlideAnim, sectionFadeAnim } =
+    useTodayMountAnimation();
 
   const streakDays = useMemo(
     () => computeLoggingStreak(byDay as any),
