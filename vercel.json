@@ -4,6 +4,10 @@
     {
       "path": "/api/push/weekly-recap",
       "schedule": "0 23 * * *"
+    },
+    {
+      "path": "/api/cron/supabase-advisor-check",
+      "schedule": "0 6 * * *"
     }
   ]
 }

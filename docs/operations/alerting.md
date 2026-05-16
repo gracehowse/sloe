@@ -54,14 +54,18 @@ Every row below must be `Wired` before App Store submission. `Pending Grace` is 
 ### Alarm 3 — PostHog: event-cap at 70% of monthly cap
 
 - **Vendor:** PostHog
-- **Trigger condition:** Monthly ingested event volume reaches **70%** of plan cap. PostHog calls this **billing usage alerts**.
-- **Route:** Email to `gracehowse@outlook.com`.
+- **Trigger condition:** Monthly ingested event volume reaches **70%** of plan cap (default sized for free tier 1M events → fires at 700k).
+- **Route:** Email to `gracehowse@outlook.com` (founder account subscribed on the alert).
+- **Wired via:** PostHog MCP `insight-create` + `alert-create` (2026-05-16). No dashboard work needed; alarm is insight-based, not billing-based, so it works on any tier and the threshold is easy to adjust per plan.
+  - **Insight:** `BKkbFDjm` / id `8646872` — "Total events this month" (TrendsQuery, BoldNumber, monthly interval, `mStart`→now). https://us.posthog.com/project/389168/insights/BKkbFDjm
+  - **Alert:** id `019e31f3-8d77-0000-1e63-665550bc75cc` — threshold `upper: 700000`, daily check, `check_ongoing_interval: true` so mid-month spikes alarm without waiting for the month to close.
 - **Test procedure:**
-  1. PostHog → **Organization settings → Billing → Usage alerts**.
-  2. Confirm a usage alert for 70% of the monthly cap exists for both **events** and **session recordings**.
-  3. Validate by temporarily lowering threshold to 1% on a single product, wait for the daily polling, confirm email lands. Restore to 70%.
+  1. PostHog → Insights → search "PostHog event-cap monitor" → confirm value displays current month-to-date events.
+  2. Edit the alert → temporarily set `upper` to current count - 1 → save → wait one daily evaluation cycle (or click "Simulate" in the alert UI) → confirm email lands.
+  3. Restore upper bound to 700000.
 - **What to do when it fires:** Either bump plan or apply event-level filters in PostHog (drop high-volume noise events). The 70% threshold is deliberate — session replay is the priority data and gets cut first when you hit the hard cap, so 70% gives a working week of headroom.
-- **Status:** Not yet wired.
+- **If the plan changes:** edit the alert and update `upper`. The runbook value should reflect 70% of the new cap.
+- **Status:** ✅ Wired 2026-05-16.
 
 ### Alarm 4 — Stripe: webhook delivery failure
 
@@ -90,14 +94,25 @@ Every row below must be `Wired` before App Store submission. `Pending Grace` is 
 
 ### Alarm 6 — Supabase advisor: critical findings
 
-- **Vendor:** Supabase (currently no native alarm)
-- **Trigger condition:** `mcp__claude_ai_Supabase__get_advisors` returns at least one **critical** severity finding (RLS bypass, exposed function, missing-FK, lossy-cast).
-- **Route:** Manual today — Grace polls via Claude MCP weekly. **Flag:** this should be a cron-polled alarm. Currently there is no native Supabase Slack/Email integration for advisors. **Cron-poll candidate:** a Vercel cron route (`/api/cron/supabase-advisors`) that calls Supabase Management API's advisors endpoint and emails on critical findings. Out of scope for this PR; opened as Linear follow-up.
+- **Vendor:** Supabase Management API → Sentry (Vercel cron-poll bridge)
+- **Trigger condition:** Supabase Performance or Security advisor returns at least one finding at **ERROR** or **WARN** level. INFO is filtered out (intentional state like RLS-enabled-no-policy on write-only event tables).
+- **Route:** Sentry → email via the existing Alarm 1 (Sentry new-issue) route. Each finding becomes its own Sentry issue, deduplicated by stable `cache_key` fingerprint so recurring findings stay in one issue.
+- **Wired via:** Vercel cron route `app/api/cron/supabase-advisor-check/route.ts` (2026-05-16, ENG-509 alarm 6). Daily at 06:00 UTC.
+  - Schedule lives in `vercel.json` alongside the weekly-recap cron.
+  - Auth: same `SUPPR_CRON_SECRET` shared header as the weekly-recap cron.
+  - Calls Supabase Management API (`run-query` against `lint.security_advisor` + `lint.performance_advisor`; falls back to `/v1/projects/{ref}/advisors/{type}` if Supabase migrates the endpoint).
+  - Emits `Sentry.captureMessage` per ERROR/WARN finding with `fingerprint: ["supabase-advisor", finding.cache_key]` — Sentry groups by fingerprint, so the same finding never spam-resurfaces.
+- **Required env vars** (Grace action — set on Vercel production env, mirror to `.env.local` for dev):
+  - `SUPPR_CRON_SECRET` — already configured for the weekly-recap cron.
+  - `SUPABASE_PAT` — Supabase Management API personal access token. Create at https://supabase.com/dashboard/account/tokens. Single-use, revocable. Scope: project read.
 - **Test procedure:**
-  1. Today: `mcp__claude_ai_Supabase__get_advisors { type: "security" }` and `{ type: "performance" }`. Eyeball severity field.
-  2. Once cron-polled: deliberately create a public-readable table in a staging project, run the cron, confirm email.
-- **What to do when it fires:** Most critical-severity findings are RLS gaps (table without RLS, RLS without a deny-default policy, or function-with-elevated-privs callable by `anon`). Drop a fix migration the same day — these are entitlement-leak risks.
-- **Status:** Pending Grace (manual weekly poll); cron-poll: Not yet wired.
+  1. Confirm both env vars set on Vercel production.
+  2. Trigger manually: `curl -X POST -H "X-Cron-Secret: <secret>" https://suppr.app/api/cron/supabase-advisor-check` (or use Vercel's cron-trigger dashboard).
+  3. Confirm 200 OK with summary JSON `{ securityCount, performanceCount, emittedCount, skippedInfoCount }`.
+  4. Confirm Sentry issues appear in https://suppr-kr.sentry.io/issues/?query=type%3Asupabase-advisor (or filter by tag).
+  5. Email arrives via Alarm 1 routing.
+- **What to do when it fires:** Open the Sentry issue → read the `detail` + `remediation` link in the issue body. Most critical findings are RLS gaps (table without RLS, RLS without a deny-default policy, function-with-elevated-privs callable by `anon`). Drop a fix migration the same day — these are entitlement-leak risks.
+- **Status:** ✅ Wired 2026-05-16 (`SUPABASE_PAT` env var still to be set on Vercel by Grace).
 
 ---
 
