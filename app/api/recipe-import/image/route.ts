@@ -7,6 +7,7 @@ import { sanitiseImportedTitle } from "@/lib/recipe-import/extractSocialRecipe";
 import { AiBudgetExceededError, callAiVision, activeVendor } from "@/lib/server/aiProvider";
 import { normalizeImageForAi } from "@/lib/server/normalizeImageForAi";
 import { normaliseSource } from "@/lib/recipes/persistSourceAttribution";
+import { captureRouteError } from "@/lib/observability/captureRouteError";
 import {
   traceExtraction,
   traceParsing,
@@ -104,6 +105,7 @@ export async function POST(req: Request) {
     normalizedMime = normalized.mediaType;
   } catch (err) {
     console.warn("[recipe-import/image] image normalization failed", err);
+    captureRouteError(err, "/api/recipe-import/image", { stage: "normalize" });
     return NextResponse.json(importErrorResponse("file_too_large"), { status: 415 });
   }
   const b64 = normalizedBuf.toString("base64");
@@ -141,6 +143,7 @@ Rules:
         { status: 503, headers: { "Retry-After": String(err.retryAfterSec) } },
       );
     }
+    captureRouteError(err, "/api/recipe-import/image", { stage: "vision" });
     throw err;
   }
 

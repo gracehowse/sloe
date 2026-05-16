@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { rateLimit } from "@/lib/server/rateLimit";
 import { getUserIdFromAuthHeader } from "@/lib/supabase/serverAnonClient";
+import { captureRouteError } from "@/lib/observability/captureRouteError";
 
 export const runtime = "nodejs";
 
@@ -142,6 +143,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, url: session.url });
   } catch (e) {
     const message = e instanceof Error ? e.message : "checkout_failed";
+    captureRouteError(e, "/api/stripe/checkout");
     return NextResponse.json({ ok: false, error: "stripe_error", message }, { status: 500 });
   }
 }

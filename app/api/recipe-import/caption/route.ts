@@ -26,6 +26,7 @@ import { verifyIngredients, parseRawIngredients } from "@/lib/nutrition/verifyIn
 import { classifyMealType } from "@/lib/recipe-import/classifyMealType";
 import { extractCaptionNutrition } from "@/lib/recipe-import/extractCaptionNutrition";
 import { CaptionExtractionError, sanitiseImportedTitle } from "@/lib/recipe-import/extractSocialRecipe";
+import { captureRouteError } from "@/lib/observability/captureRouteError";
 import { AiBudgetExceededError } from "@/lib/server/aiProvider";
 import { normaliseSource } from "@/lib/recipes/persistSourceAttribution";
 import { importErrorResponse } from "@/lib/recipes/importErrorCopy";
@@ -156,6 +157,7 @@ export async function POST(req: Request) {
     }
     const msg = e instanceof Error ? e.message : "unknown";
     console.error("[recipe-import:caption] parse failed:", msg);
+    captureRouteError(e, "/api/recipe-import/caption", { stage: "parse" });
     return NextResponse.json(importErrorResponse("ai_request_failed"), { status: 502 });
   }
 

@@ -11,6 +11,7 @@ import {
 } from "@/lib/nutrition/photoLogQuota";
 import { AiBudgetExceededError, callAiVision } from "@/lib/server/aiProvider";
 import { normalizeImageForAi } from "@/lib/server/normalizeImageForAi";
+import { captureRouteError } from "@/lib/observability/captureRouteError";
 
 export const runtime = "nodejs";
 
@@ -189,6 +190,7 @@ export async function POST(req: Request) {
     normalizedMime = normalized.mediaType;
   } catch (err) {
     console.warn("[photo-log] image normalization failed", err);
+    captureRouteError(err, "/api/nutrition/photo-log", { stage: "normalize" });
     return NextResponse.json(
       {
         ok: false,
@@ -230,6 +232,7 @@ export async function POST(req: Request) {
         { status: 503, headers: { "Retry-After": String(err.retryAfterSec) } },
       );
     }
+    captureRouteError(err, "/api/nutrition/photo-log", { stage: "vision" });
     throw err;
   }
   clearTimeout(timeoutHandle);

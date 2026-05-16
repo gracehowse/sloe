@@ -3,6 +3,7 @@ import {
   processRevenueCatEvent,
   type RevenueCatEvent,
 } from "@/lib/revenuecat/webhookProcess";
+import { captureRouteError } from "@/lib/observability/captureRouteError";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -121,6 +122,7 @@ export async function POST(req: Request) {
   } catch (e) {
     const message = e instanceof Error ? e.message : "webhook_handler_error";
     console.error("revenuecat_webhook_handler", message);
+    captureRouteError(e, "/api/revenuecat/webhook");
     return NextResponse.json({ ok: false, error: "handler_failed", message }, { status: 500 });
   }
 }

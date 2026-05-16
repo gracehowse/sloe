@@ -3,6 +3,7 @@ import { rateLimit } from "@/lib/server/rateLimit";
 import { getUserIdFromRequest, getUserTier } from "@/lib/supabase/serverAnonClient";
 import { verifyIngredients } from "@/lib/nutrition/verifyIngredients";
 import { AiBudgetExceededError, callAiText } from "@/lib/server/aiProvider";
+import { captureRouteError } from "@/lib/observability/captureRouteError";
 
 export const runtime = "nodejs";
 
@@ -126,6 +127,7 @@ Rules:
         { status: 503, headers: { "Retry-After": String(err.retryAfterSec) } },
       );
     }
+    captureRouteError(err, "/api/nutrition/voice-log", { stage: "transcribe" });
     throw err;
   }
   if (!aiResult.ok) {

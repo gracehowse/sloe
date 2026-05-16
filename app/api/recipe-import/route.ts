@@ -13,6 +13,7 @@ import {
 import { AiBudgetExceededError } from "@/lib/server/aiProvider";
 import { rateLimit } from "@/lib/server/rateLimit";
 import { verifyIngredients, parseRawIngredients } from "@/lib/nutrition/verifyIngredients";
+import { captureRouteError } from "@/lib/observability/captureRouteError";
 import { extractCaptionNutrition } from "@/lib/recipe-import/extractCaptionNutrition";
 import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
 import { normaliseSource } from "@/lib/recipes/persistSourceAttribution";
@@ -703,6 +704,11 @@ export async function POST(req: Request) {
       );
     }
   } catch (e) {
+    // 2026-05-16 (ENG-518): capture every non-trivial error in this
+    // route to Sentry. The AI budget + caption-extraction branches are
+    // typed expected paths and don't need stack traces (they're product
+    // signals, not bugs); they're tagged-but-skipped below. The generic
+    // tail catches genuine bugs and gets the full stack.
     // Blocker 3 (2026-05-14) — AI daily budget caps. Surface 503 with
     // Retry-After so mobile + web clients can show a calm "try again
     // later" toast and a "log manually" CTA.
@@ -723,6 +729,7 @@ export async function POST(req: Request) {
       console.error("[recipe-import] extractor failed:", e.code, e.upstreamStatus);
       return NextResponse.json(importErrorResponse(e.code), { status, headers });
     }
+    captureRouteError(e, "/api/recipe-import");
     const msg = e instanceof Error ? e.message : "unknown";
     if (msg.includes("abort")) {
       return NextResponse.json(importErrorResponse("timeout"), { status: 504 });
