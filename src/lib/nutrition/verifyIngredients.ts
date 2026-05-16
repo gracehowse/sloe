@@ -595,14 +595,28 @@ export async function verifyIngredients(opts: {
               return b.dtRank - a.dtRank;
             })
             .slice(0, 5);
-          for (const { hit, conf } of ranked) {
-            if (conf < MIN_MATCH_CONFIDENCE) break; // sorted desc — no better hits after this
-            if (preparationStateMismatch(usdaQuery, hit.description)) continue;
+          // 2026-05-16 (ENG-560): fdcFoodGet for the top-2 ranked
+          // candidates fires in parallel. Pre-fix the loop awaited
+          // each fdcFoodGet sequentially — ~700-1500ms per call, and
+          // on cases where the top candidate fails plausibility (poor
+          // search match, unit-conversion miss) we paid the full
+          // serial cost for candidates 2+. Parallelising the top 2
+          // catches the most common "fall through to candidate 2"
+          // path without inflating USDA quota use beyond ~1.5×.
+          //
+          // Candidates 3-5 stay serial (rare; covers the tail when
+          // both top hits fail).
+          //
+          // Returns the *first* (highest-confidence) acceptable match
+          // even if a lower-ranked one resolves first — preserves the
+          // pre-fix ordering contract.
+          const processHit = async (hit: typeof ranked[number]["hit"], conf: number): Promise<VerifiedIngredient | null> => {
+            if (preparationStateMismatch(usdaQuery, hit.description)) return null;
             try {
               const food = await fdcFoodGet(usdaCfg, hit.fdcId);
-              if (!food?.foodNutrients?.length) continue;
+              if (!food?.foodNutrients?.length) return null;
               const per100g = fdcFoodMacrosPer100g(food);
-              if (!per100gPlausible(per100g)) continue;
+              if (!per100gPlausible(per100g)) return null;
 
               // Use food-specific portion weights when available.
               // E.g. "2 slices ham" — if this USDA food has a "slice" portion = 60g, use that
@@ -620,7 +634,7 @@ export async function verifyIngredients(opts: {
               }
 
               const usdaMacros = scaleMacros(per100g, effectiveGrams / 100);
-              if (!scaledMacrosPlausible(usdaMacros)) continue;
+              if (!scaledMacrosPlausible(usdaMacros)) return null;
 
               return {
                 input: raw, resolved,
@@ -631,7 +645,27 @@ export async function verifyIngredients(opts: {
                 macros: usdaMacros,
               };
             } catch {
-              continue;
+              return null;
+            }
+          };
+
+          // Filter candidates that fail the early confidence gate (no
+          // point paying the network round-trip on those). Pre-fix
+          // used a `break` on `conf < MIN_MATCH_CONFIDENCE` — since
+          // `ranked` is sorted desc, all remaining candidates after
+          // the first sub-threshold one are also sub-threshold.
+          const viable = ranked.filter((r) => r.conf >= MIN_MATCH_CONFIDENCE);
+          if (viable.length > 0) {
+            // Top-2 in parallel.
+            const top = viable.slice(0, 2);
+            const topResults = await Promise.all(top.map((r) => processHit(r.hit, r.conf)));
+            for (const result of topResults) {
+              if (result) return result;
+            }
+            // Tail (candidates 3-5) serial — rarely hit.
+            for (const { hit, conf } of viable.slice(2)) {
+              const result = await processHit(hit, conf);
+              if (result) return result;
             }
           }
         }
