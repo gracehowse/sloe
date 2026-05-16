@@ -153,4 +153,28 @@ describe("TodayMealsSection — today_log_usual_row_v2 flag", () => {
       getByLabelText("Log usual Snacks: Peanut Butter Smoothie"),
     ).toBeTruthy();
   });
+
+  it("flag ON: testIDs are present (Maestro contract)", () => {
+    flagFn.mockImplementation(
+      (flag: string) => flag === "today_log_usual_row_v2",
+    );
+    const { getByTestId, queryByTestId } = renderSection({});
+    // Stable locators for the Maestro validation flow at
+    // apps/mobile/.maestro/validation/today_snacks_v2.yaml. If these
+    // names change, update the flow too.
+    expect(getByTestId("today-slot-Snacks")).toBeTruthy();
+    expect(getByTestId("today-slot-header-Snacks")).toBeTruthy();
+    expect(getByTestId("today-log-usual-row-Snacks")).toBeTruthy();
+    expect(getByTestId("today-log-usual-pill-Snacks")).toBeTruthy();
+    // Flag-on must NOT render the in-header variant.
+    expect(queryByTestId("today-log-usual-pill-in-header-Snacks")).toBeNull();
+  });
+
+  it("flag OFF: the in-header pill testID is the one present", () => {
+    flagFn.mockImplementation(() => false);
+    const { getByTestId, queryByTestId } = renderSection({});
+    expect(getByTestId("today-log-usual-pill-in-header-Snacks")).toBeTruthy();
+    expect(queryByTestId("today-log-usual-row-Snacks")).toBeNull();
+    expect(queryByTestId("today-log-usual-pill-Snacks")).toBeNull();
+  });
 });

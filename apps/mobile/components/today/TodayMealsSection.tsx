@@ -262,8 +262,9 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
           const primarySaved = slotSaved[0];
           const extraSavedCount = slotSaved.length - 1;
           return (
-            <View key={slot}>
+            <View key={slot} testID={`today-slot-${slot}`}>
               <View
+                testID={`today-slot-header-${slot}`}
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
@@ -350,6 +351,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                 </Pressable>
                 {hasMeals && onPressSlotSummary ? (
                   <Pressable
+                    testID={`today-slot-chevron-${slot}`}
                     onPress={() => onToggleSlotCollapse(slot)}
                     hitSlop={10}
                     accessibilityRole="button"
@@ -406,6 +408,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                         header (rendered after this header View). */}
                     {!usualRowV2 && hasSaved && primarySaved && (
                       <Pressable
+                        testID={`today-log-usual-pill-in-header-${slot}`}
                         onPress={(e) => {
                           e.stopPropagation?.();
                           if (slotSaved.length >= 2) {
@@ -470,6 +473,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                   collapsed slots too. */}
               {usualRowV2 && hasSaved && primarySaved && (
                 <View
+                  testID={`today-log-usual-row-${slot}`}
                   style={{
                     flexDirection: "row",
                     alignItems: "center",
@@ -481,6 +485,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                   }}
                 >
                   <Pressable
+                    testID={`today-log-usual-pill-${slot}`}
                     onPress={() => {
                       if (slotSaved.length >= 2) {
                         setUsualPicker({ slot, options: slotSaved });

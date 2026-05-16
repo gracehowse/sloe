@@ -13,15 +13,25 @@ import { clearUserScopedAsyncStorage } from "@/lib/clearUserScopedStorage";
  * to triage per-user issues) and PostHog funnels stay anonymous until
  * an event manually identifies. Idempotent — safe to call on every
  * auth state change.
+ *
+ * 2026-05-15: also pass `email` to PostHog's identify so person-
+ * properties are populated. Without this, any feature flag that
+ * targets by `email` (e.g. allowlists for staged rollouts) silently
+ * evaluates to OFF on mobile because the SDK has no email to compare.
+ * Web has been doing this since src/context/AuthSessionContext.tsx;
+ * mobile was the divergence. Surfaced while wiring Maestro validation
+ * for `today_log_usual_row_v2` — the gracemturner test account was
+ * targeted by email but the flag stayed off in the sim.
  */
 function syncObservabilityUser(session: Session | null): void {
   const uid = session?.user?.id;
+  const email = session?.user?.email;
   if (uid) {
     try {
       sentrySetUser(uid);
     } catch { /* swallow — observability must never break auth */ }
     try {
-      posthogIdentify(uid);
+      posthogIdentify(uid, email ? { email } : undefined);
     } catch { /* swallow */ }
   } else {
     try {

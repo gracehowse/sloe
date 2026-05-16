@@ -203,3 +203,83 @@ Add to GitHub Actions:
 - name: Run Maestro tests
   run: ~/.maestro/bin/maestro test apps/mobile/.maestro/ --no-ansi
 ```
+
+## Per-PR validation flows (`.maestro/validation/`)
+
+Different from the regression suite above: these flows are short,
+testID-driven, and run against a known-seeded fixture. Built for the
+"validate this PR end-to-end before flag rollout" loop.
+
+| Flow | Validates | Seed |
+|---|---|---|
+| `validation/today_snacks_v2.yaml` | PR #246 — flag `today_log_usual_row_v2` Snacks header relayout | `npm run e2e:seed:today-snacks` |
+
+### Why testIDs not text
+
+Text-based `tapOn`/`assertVisible` for RN modal layers on iOS 26 fail
+silently — Maestro's view-hierarchy probe can return false even when the
+element is plainly on screen, and on certain RN trees the probe raises
+`kAXErrorInvalidUIElement`. Validation flows resolve every element by
+`testID`, which is stable across builds, accessibility-tree quirks, and
+locale. Components touched in a PR must carry a `testID` on the
+asserted element before the validation flow can be written.
+
+testID contract for `TodayMealsSection`:
+
+```
+today-slot-{Slot}                       container
+today-slot-header-{Slot}                clickable header row
+today-slot-chevron-{Slot}               collapse/expand chevron
+today-log-usual-pill-in-header-{Slot}   chip (flag-off / legacy)
+today-log-usual-row-{Slot}              v2 dedicated row (flag-on)
+today-log-usual-pill-{Slot}             v2 row pill (flag-on)
+```
+
+Mirrored on web (`src/app/components/suppr/today-meals-section.tsx`)
+with the same names so a single Playwright/Maestro contract works on
+both surfaces.
+
+### Maestro reliability scaffolding
+
+Run `npm run e2e:today-snacks` (which chains `maestro:reset` → seed →
+flow). The chain:
+
+1. **`scripts/maestro-reset.sh`** kills `maestro-driver-iosUITests-Runner`,
+   `maestro.cli.AppKt`, and the `xcodebuild` child from stale sessions
+   (the most common cause of "Maestro hangs / steps skip silently").
+   Then ensures the iPhone 17 Pro / iOS 26.4 sim is booted and
+   terminates a previous Suppr instance. Set `MAESTRO_SIM` to override
+   the sim name.
+
+2. **`scripts/e2e-seed-today-snacks.ts`** (service-role, scoped to
+   `E2E_EMAIL`) wipes prior `E2E:` fixtures and inserts:
+   - 1 `user_saved_meals` row with a deliberately long name and
+     `default_meal_slot='Snacks'`.
+   - 2 `user_saved_meal_items` children.
+   - 2 `nutrition_entries` rows for today with `name='Snacks'`.
+
+   Idempotent. Refuses to run against any email outside the allowed
+   domain list (`hotmail.co.uk`, `outlook.com`, `test.suppr.club`).
+
+3. **`apps/mobile/.maestro/validation/today_snacks_v2.yaml`** asserts
+   the 6 PR-plan checks via testIDs and writes screenshots to
+   `.maestro/artifacts/today_snacks_v2/`.
+
+### Suggested Bash allowlist additions
+
+For an agent driving these flows, add the following to
+`.claude/settings.local.json` so the routine cleanup + run steps don't
+hit permission walls (the agent cannot add these itself):
+
+```json
+"Bash(bash scripts/maestro-reset.sh*)",
+"Bash(./scripts/maestro-reset.sh*)",
+"Bash(npx tsx scripts/e2e-seed-today-snacks.ts*)",
+"Bash(pkill -u graceturner -f maestro-driver-iosUITests-Runner*)",
+"Bash(pkill -u graceturner -f maestro.cli.AppKt*)",
+"Bash(pkill -u graceturner -f maestro_xctestrunner_xcodebuild_output*)",
+"Bash(/Users/graceturner/.maestro/bin/maestro test apps/mobile/.maestro/validation/*)",
+"Bash(npm run e2e:today-snacks*)",
+"Bash(xcrun simctl terminate * com.supprclub.supprapp)",
+"Bash(xcrun simctl launch * com.supprclub.supprapp)"
+```
