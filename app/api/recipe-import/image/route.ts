@@ -8,6 +8,7 @@ import { AiBudgetExceededError, callAiVision, activeVendor } from "@/lib/server/
 import { normalizeImageForAi } from "@/lib/server/normalizeImageForAi";
 import { normaliseSource } from "@/lib/recipes/persistSourceAttribution";
 import { captureRouteError } from "@/lib/observability/captureRouteError";
+import { isServerFeatureEnabled } from "@/lib/server/featureFlags";
 import {
   traceExtraction,
   traceParsing,
@@ -24,6 +25,15 @@ const MAX_BYTES = 6 * 1024 * 1024;
  * `docs/decisions/2026-05-08-food-correction-verification-pipeline.md`.
  */
 export async function POST(req: Request) {
+  // 2026-05-16 (ENG-519) — shared kill switch with the URL + caption
+  // import paths (`kill_recipe_import`).
+  if (await isServerFeatureEnabled("kill_recipe_import")) {
+    return NextResponse.json(
+      { ...importErrorResponse("service_unavailable"), retryAfterSec: 300 },
+      { status: 503, headers: { "Retry-After": "300" } },
+    );
+  }
+
   const userId = await getUserIdFromRequest(req);
   if (!userId) {
     return NextResponse.json(importErrorResponse("unauthorized"), { status: 401 });

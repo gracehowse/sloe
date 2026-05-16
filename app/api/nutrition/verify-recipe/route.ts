@@ -3,6 +3,7 @@ import { rateLimit } from "@/lib/server/rateLimit";
 import { verifyIngredients, type IngredientOverride } from "@/lib/nutrition/verifyIngredients";
 import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
 import { captureRouteError } from "@/lib/observability/captureRouteError";
+import { isServerFeatureEnabled } from "@/lib/server/featureFlags";
 
 type VerifyRequest = {
   ingredients: { name: string; amount: string; unit: string }[];
@@ -12,6 +13,21 @@ type VerifyRequest = {
 };
 
 export async function POST(req: Request) {
+  // 2026-05-16 (ENG-519) — kill switch for the verify-ingredients
+  // pipeline (USDA + OFF + Edamam + FatSecret). Flip if any upstream
+  // provider misbehaves badly enough to warrant a calm "back shortly".
+  if (await isServerFeatureEnabled("kill_verify_recipe")) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "service_unavailable",
+        message: "Recipe verification is temporarily unavailable. Try again shortly.",
+        retryAfterSec: 300,
+      },
+      { status: 503, headers: { "Retry-After": "300" } },
+    );
+  }
+
   const userId = await getUserIdFromRequest(req);
   if (!userId) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });

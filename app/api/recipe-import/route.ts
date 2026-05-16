@@ -14,6 +14,7 @@ import { AiBudgetExceededError } from "@/lib/server/aiProvider";
 import { rateLimit } from "@/lib/server/rateLimit";
 import { verifyIngredients, parseRawIngredients } from "@/lib/nutrition/verifyIngredients";
 import { captureRouteError } from "@/lib/observability/captureRouteError";
+import { isServerFeatureEnabled } from "@/lib/server/featureFlags";
 import { extractCaptionNutrition } from "@/lib/recipe-import/extractCaptionNutrition";
 import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
 import { normaliseSource } from "@/lib/recipes/persistSourceAttribution";
@@ -152,6 +153,21 @@ async function resolvePinterestOutboundUrl(inputUrl: string): Promise<string | n
 export const maxDuration = 50;
 
 export async function POST(req: Request) {
+  // 2026-05-16 (ENG-519) — global kill switch. Flip the PostHog flag
+  // `kill_recipe_import` to 100% rollout to disable the whole import
+  // family (URL, image, caption) without a deploy. Useful if a provider
+  // misbehaves or cost runs hot.
+  if (await isServerFeatureEnabled("kill_recipe_import")) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "service_unavailable",
+        message: "Recipe import is temporarily unavailable. Try again shortly.",
+      },
+      { status: 503, headers: { "Retry-After": "300" } },
+    );
+  }
+
   const userId = await getUserIdFromRequest(req);
   if (!userId) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });

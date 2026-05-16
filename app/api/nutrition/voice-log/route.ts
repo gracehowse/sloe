@@ -4,6 +4,7 @@ import { getUserIdFromRequest, getUserTier } from "@/lib/supabase/serverAnonClie
 import { verifyIngredients } from "@/lib/nutrition/verifyIngredients";
 import { AiBudgetExceededError, callAiText } from "@/lib/server/aiProvider";
 import { captureRouteError } from "@/lib/observability/captureRouteError";
+import { isServerFeatureEnabled } from "@/lib/server/featureFlags";
 
 export const runtime = "nodejs";
 
@@ -35,6 +36,19 @@ export type VoiceLogResponse = {
 };
 
 export async function POST(req: Request) {
+  // 2026-05-16 (ENG-519) — kill switch for AI voice-log.
+  if (await isServerFeatureEnabled("kill_voice_log")) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "service_unavailable",
+        message: "Voice logging is temporarily unavailable. Try again shortly.",
+        retryAfterSec: 300,
+      },
+      { status: 503, headers: { "Retry-After": "300" } },
+    );
+  }
+
   const userId = await getUserIdFromRequest(req);
   if (!userId) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
