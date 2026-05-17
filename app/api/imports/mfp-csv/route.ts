@@ -1,30 +1,35 @@
 /**
- * POST /api/imports/mfp-csv — bulk import a MyFitnessPal CSV export.
+ * POST /api/imports/mfp-csv — bulk import a CSV export from a supported
+ * competitor app (MyFitnessPal, Lose It, Cronometer, …).
  *
- * Closes the MFP-refugee history-bridge gap (P1 customer-lens). MFP
- * users land on Suppr with months/years of meal history in CSV form;
- * without an importer they would have to either re-log or ditch their
- * history entirely. This route ingests the CSV, maps each row to a
- * `nutrition_entries` insert, and reports back what landed.
+ * Closes the MFP-refugee history-bridge gap (P1 customer-lens) and now
+ * the broader competitor-refugee gap (ENG-37). The URL still says
+ * `mfp-csv` for backwards compat with existing UI clients, but the
+ * route auto-detects the source format from the header row and
+ * dispatches to the right adapter under
+ * `src/lib/imports/csv/adapters/`. Supported sources land in the DB
+ * tagged with their adapter `source` so debugging + filtering can tell
+ * them apart.
  *
  * Decisions:
+ *   - Auto-detect via {@link parseCsvImport}. No `source` parameter on
+ *     the request — the header row is the source of truth. If the file
+ *     can't be auto-detected (header row matches no adapter), the
+ *     response surfaces `unknown_source` with a hint to pick a known
+ *     format.
  *   - Pure server-side parse + insert. We do not re-derive macros from
- *     ingredient strings — the CSV macros are MFP's pre-multiplied
- *     totals for the meal entry, so re-deriving would double-count
- *     (and most MFP rows do not have a parseable ingredient list to
- *     begin with).
+ *     ingredient strings — the CSV macros are the source app's
+ *     pre-multiplied totals for the meal entry, so re-deriving would
+ *     double-count (and most rows do not have a parseable ingredient
+ *     list to begin with).
  *   - We DO NOT re-run name matching against USDA / OFF / FatSecret
  *     synchronously. Per-row enrichment for a 1k-row import would
  *     blow the Vercel `maxDuration` budget several times over, and
- *     the CSV macros are MFP's user-confirmed totals (the user already
- *     resolved any matching ambiguity in MFP). Background re-matching
- *     for low-confidence rows is a deferred follow-up — see the
- *     decision doc `docs/decisions/2026-05-02-mfp-csv-import.md`. If
- *     a future change adds the enrichment pass, the threshold should
- *     be >= `MFP_MATCH_CONFIDENCE_THRESHOLD` (0.7, exported from
- *     `@/lib/imports/mfpCsvLimits`) — anything softer risks silently
- *     overriding correct CSV values with weak fuzzy matches, which
- *     CLAUDE.md prohibits.
+ *     the CSV macros are the source app's user-confirmed totals.
+ *     Background re-matching for low-confidence rows is a deferred
+ *     follow-up — see `docs/decisions/2026-05-02-mfp-csv-import.md`.
+ *     If a future change adds the enrichment pass, the threshold
+ *     should be >= `MFP_MATCH_CONFIDENCE_THRESHOLD` (0.7).
  *   - Hard cap at 1000 rows per request. Larger histories should be
  *     split into multiple uploads (UI handles this transparently).
  *   - Multipart form-data input — `<input type="file">` and
@@ -36,7 +41,9 @@
  *   - Idempotent on retry via `(source, source_id)` partial unique
  *     index (added in 20260421200050_nutrition_entries_source_dedup):
  *     each row's `source_id` is `<userId>:<date>:<rowIndex>` so a
- *     re-uploaded file does not duplicate.
+ *     re-uploaded file does not duplicate. The `source` segment is
+ *     `<adapter.source>_import` so MFP / Lose It / Cronometer rows
+ *     never collide on dedup even when row indexes overlap.
  */
 
 import { NextResponse } from "next/server";
@@ -45,11 +52,8 @@ import {
   getUserIdFromRequest,
   createSupabaseServiceRoleClient,
 } from "@/lib/supabase/serverAnonClient";
-import {
-  parseMfpCsv,
-  mapMfpMealToSlot,
-  type MfpCsvRow,
-} from "@/lib/imports/parseMfpCsv";
+import { parseCsvImport } from "@/lib/imports/csv/parseCsvImport";
+import type { CanonicalImportRow } from "@/lib/imports/csv/types";
 import {
   MFP_IMPORT_BYTE_CAP,
   MFP_IMPORT_ROW_CAP,
@@ -72,21 +76,32 @@ type EntryInsert = {
 };
 
 /**
- * Build a `nutrition_entries` insert payload from one CSV row. Returns
- * null if the row is missing the macros we treat as required for an
- * import (calories — the rest can default to 0 and still be useful).
+ * Build a `nutrition_entries` insert payload from one canonical CSV
+ * row. Returns null if the row is missing the macros we treat as
+ * required for an import (calories — the rest can default to 0 and
+ * still be useful).
+ *
+ * The `source` field encodes which adapter handled the file (e.g.
+ * `mfp_import`, `lose-it_import`, `cronometer_import`) so downstream
+ * dashboards can split metrics per competitor and debugging knows
+ * which export to consult.
  */
 function rowToEntry(
   userId: string,
-  row: MfpCsvRow,
+  row: CanonicalImportRow,
   rowIndex: number,
+  adapterSource: string,
 ): EntryInsert | null {
   // We require a date and name (parser already enforces) and a non-null
   // calories value. A row with `null` calories is effectively a stub
   // and would distort the day total without telling the user why.
   if (row.calories == null) return null;
 
-  const slot = mapMfpMealToSlot(row.meal);
+  // `slot` is the adapter's canonical mapping (one of breakfast / lunch
+  // / dinner / snack), or `null` if the adapter couldn't decide. Default
+  // to `snack` — least disruptive bucket — for ambiguous rows so they
+  // don't disappear from the day view.
+  const slot = row.slot ?? "snack";
   const sourceId = `${userId}:${row.date}:${rowIndex}`;
 
   return {
@@ -102,7 +117,7 @@ function rowToEntry(
     protein: row.protein ?? 0,
     carbs: row.carbs ?? 0,
     fat: row.fat ?? 0,
-    source: "mfp_import",
+    source: `${adapterSource}_import`,
     source_id: sourceId,
   };
 }
@@ -192,17 +207,32 @@ export async function POST(req: Request) {
     );
   }
 
-  // 4. Parse CSV.
-  const { rows, warnings } = parseMfpCsv(text);
+  // 4. Parse CSV with auto-detect. `parseCsvImport` sniffs the header
+  //    row and dispatches to the right adapter (MFP, Lose It, Cronometer,
+  //    …). `source` is `"unknown"` when no adapter recognised the file.
+  const { source, rows, warnings } = parseCsvImport(text);
+  if (source === "unknown") {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "unknown_source",
+        message:
+          "We couldn't identify this CSV's source format. Supported today: MyFitnessPal, Lose It, Cronometer. Re-export from a supported app or check the help docs.",
+        warnings,
+      },
+      { status: 422 },
+    );
+  }
   if (rows.length === 0) {
     return NextResponse.json(
       {
         ok: false,
         error: "no_rows",
         message: warnings.includes("missing_required_columns")
-          ? "We couldn't find a Date/Food column. Re-export from MyFitnessPal with the standard CSV format."
+          ? "We couldn't find a Date/Food column in this CSV. Re-export with the standard format."
           : "No usable rows in this CSV.",
         warnings,
+        source,
       },
       { status: 422 },
     );
@@ -217,7 +247,7 @@ export async function POST(req: Request) {
   const entries: EntryInsert[] = [];
   let unmatchedCount = 0;
   capped.forEach((row, i) => {
-    const entry = rowToEntry(userId, row, i);
+    const entry = rowToEntry(userId, row, i, source);
     if (!entry) {
       unmatchedCount++;
       return;
@@ -226,10 +256,11 @@ export async function POST(req: Request) {
   });
 
   // Sample is the first 5 mapped rows (post-CSV-parse, pre-insert) so
-  // the UI can show a confidence-building preview.
+  // the UI can show a confidence-building preview. The `meal` field is
+  // the canonical slot (or `snack` fallback for adapter `null`).
   const sample = capped.slice(0, 5).map((r) => ({
     date: r.date,
-    meal: mapMfpMealToSlot(r.meal),
+    meal: r.slot ?? "snack",
     name: r.name,
     calories: r.calories,
     protein: r.protein,
@@ -242,9 +273,10 @@ export async function POST(req: Request) {
       {
         ok: false,
         error: "no_valid_rows",
-        message: "Every row was missing a calories value. Check your MFP export.",
+        message: "Every row was missing a calories value. Check your CSV export.",
         warnings,
         sample,
+        source,
       },
       { status: 422 },
     );
@@ -295,6 +327,7 @@ export async function POST(req: Request) {
 
   return NextResponse.json({
     ok: true,
+    source,
     imported,
     unmatched: unmatchedCount,
     truncated,

@@ -113,15 +113,16 @@ describe("POST /api/imports/mfp-csv", () => {
     expect(json.error).toBe("rate_limited");
   });
 
-  // Scenario 3 (malformed CSV).
-  it("returns 422 when the CSV is malformed (missing required columns)", async () => {
+  // Scenario 3 (CSV doesn't match any registered adapter).
+  it("returns 422 unknown_source when no adapter recognises the header row", async () => {
     mockUserId.mockResolvedValue("u1");
+    // No `Meal` / `Food` (MFP), no `Quantity` / `Units` (Lose It),
+    // no `Day` / `Group` / `Food Name` (Cronometer). Detection fails.
     const garbage = "Calories,Carbs,Fat,Protein\n300,30,10,40";
     const res = await POST(reqWithFile(csvForm(garbage)));
     expect(res.status).toBe(422);
     const json = await res.json();
-    expect(json.error).toBe("no_rows");
-    expect(json.warnings).toContain("missing_required_columns");
+    expect(json.error).toBe("unknown_source");
   });
 
   // Scenario 4: oversize file.
@@ -262,5 +263,79 @@ describe("POST /api/imports/mfp-csv", () => {
     const json = await res.json();
     expect(json.imported).toBe(2);
     expect(json.unmatched).toBe(1);
+  });
+
+  // ENG-37 (2026-05-16) — auto-detect dispatches to the right adapter.
+  // The URL stayed `/api/imports/mfp-csv` for backwards compat with
+  // existing clients, but the route now serves every registered
+  // adapter via `parseCsvImport` auto-detect.
+  describe("auto-detect — multi-adapter coverage", () => {
+    it("imports a MyFitnessPal CSV and tags rows with source `mfp_import`", async () => {
+      mockUserId.mockResolvedValue("u1");
+      const stub = makeServiceRoleStub({ insertedPerBatch: 3 });
+      mockServiceRole.mockReturnValue(stub);
+      const res = await POST(reqWithFile(csvForm(CSV_FIXTURE)));
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.source).toBe("mfp");
+      expect(json.imported).toBe(3);
+      // First upsert call should have `source: "mfp_import"` on every row.
+      const firstBatch = stub._upsert.mock.calls[0]?.[0];
+      expect(firstBatch).toBeDefined();
+      expect(Array.isArray(firstBatch)).toBe(true);
+      for (const row of firstBatch as { source: string }[]) {
+        expect(row.source).toBe("mfp_import");
+      }
+    });
+
+    it("imports a Lose It CSV and tags rows with source `lose-it_import`", async () => {
+      mockUserId.mockResolvedValue("u1");
+      const LOSEIT_CSV = [
+        "Date,Name,Type,Quantity,Units,Calories,Fat (g),Cholesterol (mg),Sodium (mg),Carbohydrates (g),Fiber (g),Sugars (g),Protein (g)",
+        "8/12/2024,Oats with banana,Breakfast,1,Serving,420,10,0,180,68,8,18,14",
+        "8/12/2024,Chicken salad,Lunch,1,Bowl,540,18,85,820,42,6,8,52",
+      ].join("\n");
+      const stub = makeServiceRoleStub({ insertedPerBatch: 2 });
+      mockServiceRole.mockReturnValue(stub);
+      const res = await POST(reqWithFile(csvForm(LOSEIT_CSV)));
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.source).toBe("lose-it");
+      expect(json.imported).toBe(2);
+      const firstBatch = stub._upsert.mock.calls[0]?.[0] as {
+        source: string;
+        date_key: string;
+      }[];
+      expect(firstBatch[0].source).toBe("lose-it_import");
+      // Locale-date parsing — `8/12/2024` should canonicalise to ISO.
+      expect(firstBatch[0].date_key).toBe("2024-08-12");
+    });
+
+    it("imports a Cronometer CSV and tags rows with source `cronometer_import`", async () => {
+      mockUserId.mockResolvedValue("u1");
+      const CRONOMETER_CSV = [
+        "Day,Time,Group,Food Name,Amount,Energy (kcal),Fat (g),Protein (g),Carbs (g),Sodium (mg),Fiber (g),Sugars (g)",
+        "2024-08-12,08:30,Breakfast,Oats with banana,1 cup,420,10,14,68,180,8,18",
+        "2024-08-12,15:00,Snacks,Almonds,30 g,170,15,6,6,0,3,1",
+      ].join("\n");
+      const stub = makeServiceRoleStub({ insertedPerBatch: 2 });
+      mockServiceRole.mockReturnValue(stub);
+      const res = await POST(reqWithFile(csvForm(CRONOMETER_CSV)));
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.source).toBe("cronometer");
+      expect(json.imported).toBe(2);
+      const firstBatch = stub._upsert.mock.calls[0]?.[0] as {
+        source: string;
+        name: string;
+        recipe_title: string;
+      }[];
+      expect(firstBatch[0].source).toBe("cronometer_import");
+      // Slot mapping: `Snacks` (Cronometer Group) → `snack` (canonical).
+      expect(firstBatch[1].name).toBe("snack");
+      // Two-word `Food Name` header column lands on `recipe_title`, not
+      // on a different field due to column-shape drift.
+      expect(firstBatch[1].recipe_title).toBe("Almonds");
+    });
   });
 });
