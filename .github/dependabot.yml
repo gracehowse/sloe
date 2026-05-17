@@ -87,8 +87,18 @@ updates:
     ignore:
       - dependency-name: "react"
         update-types: ["version-update:semver-major"]
+      # react-native uses pre-1.0 versioning where 0.81 → 0.85 is functionally
+      # a major even though semver classifies it as minor. RN bumps MUST be
+      # coordinated with an Expo SDK bump (Expo's babel-preset-expo pins
+      # `@react-native/babel-preset` to a specific RN version, e.g. SDK 54
+      # pins 0.81.5). Auto-bumping RN without bumping Expo produces a broken
+      # bundle — see ENG-562 + docs/decisions/2026-05-17-rn-rollback.md.
+      # Ignore ALL update-types: do RN bumps manually with the Expo upgrade.
       - dependency-name: "react-native"
-        update-types: ["version-update:semver-major"]
+      # Same coupling applies to react-native-screens — it now declares hard
+      # RN peer constraints (e.g. 4.25 needs RN >= 0.82). Bump it together
+      # with RN/Expo, not in isolation.
+      - dependency-name: "react-native-screens"
       - dependency-name: "expo"
         update-types: ["version-update:semver-major"]
       - dependency-name: "expo-*"
