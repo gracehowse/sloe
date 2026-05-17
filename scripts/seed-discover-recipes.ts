@@ -20,6 +20,7 @@ import { createClient } from "@supabase/supabase-js";
 import { existsSync, readFileSync } from "node:fs";
 import { parseRecipeFromHtml, siteNameFromUrl } from "../src/lib/recipe-import/parseRecipeFromHtml";
 import { allocateIngredientMacrosFromLines } from "../src/lib/nutrition/allocateIngredientMacrosFromLines";
+import { readSeedRecipeUrls } from "./_lib/seedRecipeUrls";
 
 // GW-03/GW-04 fix (audit 2026-04-28): seeded rows now write
 // `author_id = NULL`. The previous SEED_AUTHOR_ID
@@ -50,14 +51,6 @@ function loadEnvLocal(): void {
   }
 }
 
-function readSeedUrls(): string[] {
-  const file = `${process.cwd()}/scripts/seed-recipe-urls.txt`;
-  if (!existsSync(file)) return [];
-  return readFileSync(file, "utf8")
-    .split("\n")
-    .map((l) => l.trim())
-    .filter((l) => l && !l.startsWith("#"));
-}
 
 function required(name: string): string {
   const v = process.env[name];
@@ -123,7 +116,7 @@ async function main() {
 
   const sb = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
 
-  const urls = readSeedUrls();
+  const urls = readSeedRecipeUrls();
   if (!urls.length) {
     console.error("No URLs in scripts/seed-recipe-urls.txt");
     process.exit(1);
