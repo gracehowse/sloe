@@ -1,0 +1,39 @@
+{
+  "brand": {
+    "ink":    "#14141a",
+    "cream":  "#f1ebdf",
+    "night":  "#0e0d0b"
+  },
+  "neutral": {
+    "stone":    "#a89a87",
+    "hairline": "#e6e1d6",
+    "paper":    "#f6f3ee"
+  },
+  "accent": {
+    "bronze":  "#8e6a3a",
+    "forest":  "#2f6b3a",
+    "slate":   "#3e4a5a",
+    "oxblood": "#6b1f24"
+  },
+  "macro": {
+    "protein": "#4c6ce0",
+    "carbs":   "#d68224",
+    "fat":     "#c4647d",
+    "fiber":   "#4a8a52"
+  },
+  "type": {
+    "sans":  "Inter",
+    "serif": "Newsreader",
+    "wordmark": {
+      "family":        "Inter",
+      "weight":        500,
+      "case":          "uppercase",
+      "letter_spacing": "0.42em"
+    }
+  },
+  "radius": {
+    "card": 16,
+    "chip": 12,
+    "pill": 9999
+  }
+}

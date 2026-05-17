@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 220" width="400" height="220" aria-label="Tare">
+  <title>Tare</title>
+  <circle cx="200" cy="80" r="40" fill="none" stroke="#14141a" stroke-width="6"></circle>
+  <circle cx="200" cy="80" r="24" fill="none" stroke="#14141a" stroke-width="3.5"></circle>
+  <text x="200" y="195" text-anchor="middle" font-family="Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif" font-weight="500" font-size="36" letter-spacing="15" fill="#14141a">TARE</text>
+</svg>

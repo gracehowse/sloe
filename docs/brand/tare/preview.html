@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Tare — brand assets</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="tokens.css">
+  <style>
+    :root { color-scheme: light; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 56px 40px 80px;
+      background: var(--tare-paper);
+      color: var(--tare-ink);
+      font-family: var(--tare-sans);
+      font-feature-settings: "ss01", "cv11";
+      -webkit-font-smoothing: antialiased;
+      max-width: 1100px; margin-inline: auto;
+    }
+    h1 {
+      font-size: 56px; font-weight: 700; letter-spacing: -0.03em;
+      margin: 0 0 12px; line-height: 1.0;
+    }
+    h2 {
+      font-size: 11px; font-weight: 600; letter-spacing: 0.18em;
+      text-transform: uppercase; color: var(--tare-stone);
+      margin: 56px 0 14px;
+    }
+    p { font-size: 14px; line-height: 1.6; color: #3a352e; max-width: 640px; }
+    code {
+      font-family: ui-monospace, "JetBrains Mono", Menlo, monospace;
+      font-size: 12px; background: rgba(20,20,26,0.05);
+      padding: 1px 6px; border-radius: 4px;
+    }
+    .lead { font-size: 18px; color: #3a352e; max-width: 620px; margin: 0 0 8px; }
+    .meta {
+      font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--tare-stone); font-weight: 600;
+    }
+    .row {
+      display: grid; grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+    }
+    .row.three { grid-template-columns: repeat(3, 1fr); }
+    .tile {
+      border: 1px solid var(--tare-hairline);
+      border-radius: var(--tare-radius-card);
+      padding: 28px; background: #fff;
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    .tile.dark { background: var(--tare-night); border-color: #2a2620; }
+    .tile.dark .label, .tile.dark .filename { color: var(--tare-cream); }
+    .tile.dark .filename { opacity: 0.6; }
+    .display {
+      flex: 1; min-height: 140px;
+      display: flex; align-items: center; justify-content: center;
+      padding: 8px 0;
+    }
+    .label {
+      font-size: 13px; font-weight: 600; color: var(--tare-ink);
+    }
+    .filename {
+      font-family: ui-monospace, "JetBrains Mono", Menlo, monospace;
+      font-size: 11px; color: var(--tare-stone);
+    }
+    .swatch-grid {
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;
+    }
+    .swatch {
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .swatch .chip {
+      height: 80px; border-radius: 10px;
+      box-shadow: inset 0 0 0 1px rgba(20,20,26,0.06);
+    }
+    .swatch .name {
+      font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+    }
+    .swatch .hex {
+      font-family: ui-monospace, "JetBrains Mono", Menlo, monospace;
+      font-size: 10.5px; color: var(--tare-stone);
+    }
+    .files {
+      list-style: none; padding: 0; margin: 0;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+      font-family: ui-monospace, "JetBrains Mono", Menlo, monospace;
+      font-size: 12px;
+    }
+    .files li {
+      padding: 8px 12px;
+      border: 1px solid var(--tare-hairline);
+      border-radius: 8px;
+      background: #fff;
+    }
+    img { display: block; }
+    .icon-stage {
+      display: flex; align-items: center; justify-content: center;
+      gap: 12px; flex-wrap: wrap;
+    }
+    .icon-stage .ios {
+      width: 88px; height: 88px;
+      border-radius: 19.8px;
+      overflow: hidden;
+      box-shadow: 0 6px 18px rgba(20,20,26,0.18), 0 1px 2px rgba(20,20,26,0.08);
+    }
+    .icon-stage .ios.big {
+      width: 168px; height: 168px;
+      border-radius: 38px;
+    }
+    .icon-stage .ios img { width: 100%; height: 100%; }
+    .header-mock {
+      background: var(--tare-paper);
+      border: 1px solid var(--tare-hairline);
+      border-radius: var(--tare-radius-card);
+      padding: 18px 22px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .header-mock .left { display: flex; align-items: center; gap: 10px; }
+    .header-mock img { height: 22px; }
+    .header-mock .avatar {
+      width: 28px; height: 28px; border-radius: 14px;
+      background: rgba(20,20,26,0.06);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 600;
+    }
+    .footer {
+      margin-top: 80px; padding-top: 24px;
+      border-top: 1px solid var(--tare-hairline);
+      display: flex; justify-content: space-between;
+      font-size: 11px; color: var(--tare-stone); letter-spacing: 0.04em;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="meta">Brand asset pack · v1</div>
+  <h1>Tare</h1>
+  <p class="lead">Hand-off package for engineering. Every asset is SVG and ships ready to drop into Apple Asset Catalog, web public folders, or design tools.</p>
+
+  <!-- ── Mark ─────────────────────────────────────────────── -->
+  <h2>1 · The mark</h2>
+  <div class="row">
+    <div class="tile">
+      <div class="display"><img src="mark.svg" width="120" height="120" alt="" /></div>
+      <div class="label">Ink · on light</div>
+      <div class="filename">brand/mark.svg</div>
+    </div>
+    <div class="tile dark">
+      <div class="display"><img src="mark-white.svg" width="120" height="120" alt="" /></div>
+      <div class="label">Cream · on dark</div>
+      <div class="filename">brand/mark-white.svg</div>
+    </div>
+  </div>
+  <p>Use the mark alone for favicons, app icon contents, social avatars, splash, and any context below ~48px where the wordmark wouldn't be legible.</p>
+
+  <!-- ── Wordmark ─────────────────────────────────────────── -->
+  <h2>2 · Wordmark</h2>
+  <div class="row">
+    <div class="tile">
+      <div class="display"><img src="wordmark.svg" width="280" alt="TARE" /></div>
+      <div class="label">Ink · on light</div>
+      <div class="filename">brand/wordmark.svg</div>
+    </div>
+    <div class="tile dark">
+      <div class="display"><img src="wordmark-white.svg" width="280" alt="TARE" /></div>
+      <div class="label">Cream · on dark</div>
+      <div class="filename">brand/wordmark-white.svg</div>
+    </div>
+  </div>
+  <p><strong>Setting:</strong> Inter Medium 500, uppercase, <code>letter-spacing: 0.42em</code>. Use the wordmark alone in contexts where the mark is established (inline body mentions, breadcrumbs, footers).</p>
+
+  <!-- ── Lockup ───────────────────────────────────────────── -->
+  <h2>3 · Lockup · horizontal</h2>
+  <div class="row">
+    <div class="tile">
+      <div class="display"><img src="lockup.svg" height="64" alt="Tare" /></div>
+      <div class="label">Ink · on light</div>
+      <div class="filename">brand/lockup.svg</div>
+    </div>
+    <div class="tile dark">
+      <div class="display"><img src="lockup-white.svg" height="64" alt="Tare" /></div>
+      <div class="label">Cream · on dark</div>
+      <div class="filename">brand/lockup-white.svg</div>
+    </div>
+  </div>
+  <p>Default treatment for app top-bars, web headers, and marketing pages.</p>
+
+  <h2>4 · Lockup · stacked</h2>
+  <div class="row">
+    <div class="tile">
+      <div class="display"><img src="lockup-stacked.svg" height="160" alt="Tare" /></div>
+      <div class="label">Ink · on light</div>
+      <div class="filename">brand/lockup-stacked.svg</div>
+    </div>
+    <div class="tile dark">
+      <div class="display"><img src="lockup-stacked-white.svg" height="160" alt="Tare" /></div>
+      <div class="label">Cream · on dark</div>
+      <div class="filename">brand/lockup-stacked-white.svg</div>
+    </div>
+  </div>
+  <p>Use for splash screens, packaging hangtags, and contained square moments.</p>
+
+  <!-- ── App icon ─────────────────────────────────────────── -->
+  <h2>5 · App icon</h2>
+  <div class="row">
+    <div class="tile">
+      <div class="display icon-stage">
+        <div class="ios big"><img src="app-icon-ink.svg" alt="" /></div>
+        <div class="ios"><img src="app-icon-ink.svg" alt="" /></div>
+      </div>
+      <div class="label">Ink · primary</div>
+      <div class="filename">brand/app-icon-ink.svg · 1024×1024</div>
+    </div>
+    <div class="tile">
+      <div class="display icon-stage">
+        <div class="ios big"><img src="app-icon-cream.svg" alt="" /></div>
+        <div class="ios"><img src="app-icon-cream.svg" alt="" /></div>
+      </div>
+      <div class="label">Cream · alternate</div>
+      <div class="filename">brand/app-icon-cream.svg · 1024×1024</div>
+    </div>
+  </div>
+  <p>Both are full-bleed 1024×1024 squares — iOS applies the squircle mask automatically. The corner radius shown here (~22.5%) is the iOS render. For Apple Asset Catalog, generate PNGs at: 1024, 180, 167, 152, 120, 87, 80, 76, 60, 58, 40, 29.</p>
+
+  <!-- ── In context ───────────────────────────────────────── -->
+  <h2>6 · In context · web/app header</h2>
+  <div class="row">
+    <div class="tile" style="padding: 14px;">
+      <div class="header-mock">
+        <div class="left"><img src="lockup.svg" alt="Tare" /></div>
+        <div class="avatar">G</div>
+      </div>
+    </div>
+    <div class="tile dark" style="padding: 14px;">
+      <div class="header-mock" style="background: var(--tare-night); border-color: #2a2620; color: var(--tare-cream);">
+        <div class="left"><img src="lockup-white.svg" alt="Tare" /></div>
+        <div class="avatar" style="background: rgba(255,250,235,0.08); color: var(--tare-cream);">G</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Colors ───────────────────────────────────────────── -->
+  <h2>7 · Colors</h2>
+  <div class="swatch-grid">
+    <div class="swatch"><div class="chip" style="background:#14141a"></div><div class="name">Ink</div><div class="hex">#14141A</div></div>
+    <div class="swatch"><div class="chip" style="background:#f1ebdf"></div><div class="name">Cream</div><div class="hex">#F1EBDF</div></div>
+    <div class="swatch"><div class="chip" style="background:#0e0d0b"></div><div class="name">Night</div><div class="hex">#0E0D0B</div></div>
+    <div class="swatch"><div class="chip" style="background:#a89a87"></div><div class="name">Stone</div><div class="hex">#A89A87</div></div>
+    <div class="swatch"><div class="chip" style="background:#8e6a3a"></div><div class="name">Bronze</div><div class="hex">#8E6A3A</div></div>
+    <div class="swatch"><div class="chip" style="background:#2f6b3a"></div><div class="name">Forest</div><div class="hex">#2F6B3A</div></div>
+    <div class="swatch"><div class="chip" style="background:#3e4a5a"></div><div class="name">Slate</div><div class="hex">#3E4A5A</div></div>
+    <div class="swatch"><div class="chip" style="background:#6b1f24"></div><div class="name">Oxblood</div><div class="hex">#6B1F24</div></div>
+    <div class="swatch"><div class="chip" style="background:#e6e1d6"></div><div class="name">Hairline</div><div class="hex">#E6E1D6</div></div>
+    <div class="swatch"><div class="chip" style="background:#f6f3ee"></div><div class="name">Paper</div><div class="hex">#F6F3EE</div></div>
+  </div>
+  <p>All tokens are in <code>brand/tokens.css</code> and <code>brand/colors.json</code>. Macro data colors (protein blue, carbs amber, fat magenta, fiber green) live there too — they're never used for branding, only for nutrition data.</p>
+
+  <!-- ── File index ──────────────────────────────────────── -->
+  <h2>8 · File index</h2>
+  <ul class="files">
+    <li>README.md</li>
+    <li>tokens.css</li>
+    <li>colors.json</li>
+    <li>mark.svg</li>
+    <li>mark-white.svg</li>
+    <li>wordmark.svg</li>
+    <li>wordmark-white.svg</li>
+    <li>lockup.svg</li>
+    <li>lockup-white.svg</li>
+    <li>lockup-stacked.svg</li>
+    <li>lockup-stacked-white.svg</li>
+    <li>app-icon-ink.svg</li>
+    <li>app-icon-cream.svg</li>
+    <li>preview.html</li>
+  </ul>
+
+  <div class="footer">
+    <span>Tare · brand pack v1</span>
+    <span>Open README.md for usage notes</span>
+  </div>
+
+</body>
+</html>

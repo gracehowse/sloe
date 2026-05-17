@@ -1,65 +1,64 @@
 import * as React from "react";
 import { View, ViewStyle, StyleProp, Text } from "react-native";
-import Svg, { Rect } from "react-native-svg";
-import { Accent } from "@/constants/theme";
+import Svg, { Circle } from "react-native-svg";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
- * SupprMark — the rounded-square "S" brand mark for mobile.
+ * Brand mark — the Tare bowl (two concentric circles).
  *
- * Mirrors the web component at `src/app/components/ui/suppr-mark.tsx`.
- * Always blue background with white "S" regardless of theme — matches
- * `public/logo-mark.svg` and `docs/ux/brand-guidelines.md`.
+ * Component is still exported as `SupprMark` to avoid touching every
+ * import site during the suppr → tare rebrand; the visual content is
+ * the new mark. Mirrors `src/app/components/ui/suppr-mark.tsx`. The
+ * canonical SVG lives at `docs/brand/tare/mark.svg`.
+ *
+ * Stroke colour follows `colors.text` so the mark inverts cleanly
+ * between light + dark themes (ink on cream, cream on ink). Override
+ * via the `color` prop for fixed-tone surfaces (splash, paywall hero).
  */
 
 export interface SupprMarkProps {
   size?: number;
-  /** Override the background colour (defaults to brand primary). */
+  /** Override the stroke colour (defaults to themed text colour). */
+  color?: string;
+  /** Legacy aliases kept so existing callsites don't break — the new
+   *  mark is a stroked outline; background/foreground are mapped to a
+   *  single `color` (foreground takes precedence). */
   background?: string;
-  /** Override the letter colour (defaults to white). */
   foreground?: string;
 }
 
 export function SupprMark({
   size = 32,
-  background = Accent.primary,
-  foreground = "#ffffff",
+  color,
+  background,
+  foreground,
 }: SupprMarkProps) {
+  const colors = useThemeColors();
+  const stroke = color ?? foreground ?? background ?? colors.text;
   return (
     <View
       style={{ width: size, height: size }}
       accessibilityRole="image"
-      accessibilityLabel="Suppr"
+      accessibilityLabel="Tare"
     >
-      <Svg width={size} height={size} viewBox="0 0 32 32">
-        <Rect width="32" height="32" rx="8" fill={background} />
+      <Svg width={size} height={size} viewBox="0 0 100 100">
+        <Circle
+          cx={50}
+          cy={50}
+          r={40}
+          fill="none"
+          stroke={stroke}
+          strokeWidth={6}
+        />
+        <Circle
+          cx={50}
+          cy={50}
+          r={24}
+          fill="none"
+          stroke={stroke}
+          strokeWidth={3.5}
+        />
       </Svg>
-      <View
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-        pointerEvents="none"
-      >
-        <Text
-          style={{
-            color: foreground,
-            fontSize: Math.round(size * 0.625),
-            fontWeight: "800",
-            letterSpacing: -0.5,
-            includeFontPadding: false,
-            // Slight optical lift to match web SVG baseline.
-            marginTop: -Math.round(size * 0.04),
-          }}
-        >
-          S
-        </Text>
-      </View>
     </View>
   );
 }
@@ -74,20 +73,25 @@ export function SupprWordmark({ size = 28, style }: SupprWordmarkProps) {
   return (
     <View
       accessibilityRole="image"
-      accessibilityLabel="Suppr"
+      accessibilityLabel="Tare"
       style={[{ flexDirection: "row", alignItems: "center", gap: 10 }, style]}
     >
       <SupprMark size={size} />
       <Text
         style={{
           color: colors.text,
-          fontSize: Math.round(size * 0.64),
-          fontWeight: "700",
-          letterSpacing: -0.4,
+          // Tare wordmark setting (docs/brand/tare/README.md):
+          // Inter Medium 500, uppercase, letter-spacing 0.42em. Mobile
+          // RN doesn't accept em units in letterSpacing — convert to
+          // px from the rendered font size.
+          fontSize: Math.round(size * 0.55),
+          fontWeight: "500",
+          letterSpacing: Math.round(size * 0.55 * 0.42),
+          textTransform: "uppercase",
           includeFontPadding: false,
         }}
       >
-        Suppr
+        Tare
       </Text>
     </View>
   );

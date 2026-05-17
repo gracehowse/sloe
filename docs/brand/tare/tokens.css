@@ -1,0 +1,48 @@
+/* Tare — design tokens
+ * Drop into the root of your stylesheet (or @import this file).
+ */
+
+:root {
+  /* Brand */
+  --tare-ink:    #14141a;  /* primary text, mark on light */
+  --tare-cream:  #f1ebdf;  /* primary surface, mark on dark */
+  --tare-night:  #0e0d0b;  /* dark-mode surface */
+
+  /* Neutrals */
+  --tare-stone:    #a89a87;  /* supporting text */
+  --tare-hairline: #e6e1d6;  /* card borders, dividers */
+  --tare-paper:    #f6f3ee;  /* page background light */
+
+  /* Accents (use one per surface, sparingly) */
+  --tare-bronze:  #8e6a3a;
+  --tare-forest:  #2f6b3a;
+  --tare-slate:   #3e4a5a;
+  --tare-oxblood: #6b1f24;
+
+  /* Functional data colors — DO NOT use for branding, only for macros */
+  --macro-protein: #4c6ce0;
+  --macro-carbs:   #d68224;
+  --macro-fat:     #c4647d;
+  --macro-fiber:   #4a8a52;
+
+  /* Type */
+  --tare-sans:  "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --tare-serif: "Newsreader", Georgia, serif;
+
+  /* Radius */
+  --tare-radius-card: 16px;
+  --tare-radius-chip: 12px;
+  --tare-radius-pill: 9999px;
+
+  /* Wordmark setting */
+  --tare-wordmark-tracking: 0.42em;
+  --tare-wordmark-weight:   500;
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --tare-paper:    #0e0d0b;
+    --tare-hairline: #2a2620;
+  }
+}

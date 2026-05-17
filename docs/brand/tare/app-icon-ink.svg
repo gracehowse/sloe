@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" aria-label="Tare">
+  <title>Tare app icon</title>
+  <rect width="1024" height="1024" fill="#14141a"></rect>
+  <circle cx="512" cy="512" r="280" fill="none" stroke="#f1ebdf" stroke-width="42"></circle>
+  <circle cx="512" cy="512" r="168" fill="none" stroke="#f1ebdf" stroke-width="24"></circle>
+</svg>

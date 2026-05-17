@@ -2,12 +2,17 @@ import * as React from "react";
 import { cn } from "./utils";
 
 /**
- * SupprMark — the rounded-square "S" brand mark.
+ * Brand mark — the Tare bowl (two concentric circles).
  *
- * Always blue background with white "S" regardless of theme,
- * matching `public/logo-mark.svg` and `docs/ux/brand-guidelines.md`.
- * The dark variant lifts the blue tint per `--primary` in dark mode
- * but keeps the same letterform.
+ * Component is still exported as `SupprMark` to avoid touching every
+ * import site during the suppr → tare rebrand; the visual content is
+ * the new mark. Mirrors `apps/mobile/components/SupprMark.tsx`. The
+ * canonical SVG lives at `docs/brand/tare/mark.svg`.
+ *
+ * Stroke uses `var(--foreground)` so the mark inverts cleanly between
+ * light + dark themes (ink on cream, cream on ink). The 0.42em tracking
+ * and Inter Medium 500 wordmark setting come straight from the Tare
+ * brand pack — never override.
  */
 
 interface SupprMarkProps extends Omit<React.SVGProps<SVGSVGElement>, "ref"> {
@@ -19,26 +24,29 @@ function SupprMark({ size = 32, className, ...props }: SupprMarkProps) {
     <svg
       width={size}
       height={size}
-      viewBox="0 0 32 32"
+      viewBox="0 0 100 100"
       data-slot="suppr-mark"
       className={cn(className)}
       role="img"
-      aria-label="Suppr"
+      aria-label="Tare"
       {...props}
     >
-      <rect width="32" height="32" rx="8" fill="var(--primary)" />
-      <text
-        x="16"
-        y="22.5"
-        textAnchor="middle"
-        fontFamily='"Inter", system-ui, sans-serif'
-        fontWeight={800}
-        fontSize={20}
-        letterSpacing="-0.02em"
-        fill="#ffffff"
-      >
-        S
-      </text>
+      <circle
+        cx="50"
+        cy="50"
+        r="40"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="6"
+      />
+      <circle
+        cx="50"
+        cy="50"
+        r="24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="3.5"
+      />
     </svg>
   );
 }
@@ -50,16 +58,32 @@ interface SupprWordmarkProps extends React.HTMLAttributes<HTMLDivElement> {
 function SupprWordmark({ size = 28, className, ...props }: SupprWordmarkProps) {
   return (
     <div
-      className={cn("inline-flex items-center gap-2.5", className)}
+      className={cn(
+        "inline-flex items-center gap-2.5 text-foreground",
+        className,
+      )}
       data-slot="suppr-wordmark"
       {...props}
     >
       <SupprMark size={size} />
       <span
-        className="text-foreground font-bold tracking-tight"
-        style={{ fontSize: Math.round(size * 0.64), letterSpacing: "-0.02em" }}
+        // Tare wordmark setting from docs/brand/tare/README.md:
+        // Inter Medium 500, uppercase, letter-spacing 0.42em. Never
+        // any other weight/case/tracking.
+        style={{
+          fontSize: Math.round(size * 0.55),
+          fontWeight: 500,
+          letterSpacing: "0.42em",
+          textTransform: "uppercase",
+          // Trailing letter-spacing leaves visual gap on the right;
+          // small negative margin re-centres the wordmark beside the
+          // mark.
+          marginRight: "-0.42em",
+          fontFamily:
+            'Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif',
+        }}
       >
-        Suppr
+        Tare
       </span>
     </div>
   );
