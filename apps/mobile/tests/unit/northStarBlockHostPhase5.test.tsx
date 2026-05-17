@@ -15,7 +15,7 @@ import { describe, it, expect, vi } from "vitest";
 import { fireEvent, render } from "@testing-library/react-native";
 
 import { NorthStarBlockHost } from "../../components/today/NorthStarBlockHost";
-import type { NorthStarRecipe } from "../../../../src/lib/nutrition/northStarSuggestion";
+import type { NorthStarRecipe } from "@suppr/shared/nutrition/northStarSuggestion";
 
 vi.mock("@react-native-async-storage/async-storage", () => ({
   default: {

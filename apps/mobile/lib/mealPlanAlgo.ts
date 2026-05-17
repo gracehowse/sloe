@@ -11,4 +11,4 @@ export {
   type PlannerSlotConfig,
   type DayPlan,
   type PlanMeal,
-} from "../../../src/lib/nutrition/mealPlanAlgo";
+} from "@suppr/shared/nutrition/mealPlanAlgo";

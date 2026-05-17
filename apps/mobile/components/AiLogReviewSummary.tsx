@@ -18,8 +18,8 @@ import {
   aggregateTotals,
   averageConfidence,
   type AiLoggedItem,
-} from "../../../src/lib/nutrition/aiLogging";
-import { formatMacroTrailer } from "../../../src/lib/nutrition/macroFormat";
+} from "@suppr/shared/nutrition/aiLogging";
+import { formatMacroTrailer } from "@suppr/shared/nutrition/macroFormat";
 import {
   confidenceColor,
   confidenceLabel,

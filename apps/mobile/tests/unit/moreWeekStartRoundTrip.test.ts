@@ -14,7 +14,7 @@ import { describe, expect, it } from "vitest";
 import {
   loadWeekStartDay,
   saveWeekStartDay,
-} from "../../../../src/lib/nutrition/weekStartDayClient";
+} from "@suppr/shared/nutrition/weekStartDayClient";
 
 type Call = {
   op: string;

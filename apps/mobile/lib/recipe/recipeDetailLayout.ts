@@ -8,8 +8,8 @@ export {
   shouldRenderTimeStats,
   composeSubtitleParts,
   computeFitsYourDayVerdict,
-} from "../../../../src/lib/recipe/recipeDetailLayout";
+} from "@suppr/shared/recipe/recipeDetailLayout";
 export type {
   FitsYourDayTone,
   FitsYourDayVerdict,
-} from "../../../../src/lib/recipe/recipeDetailLayout";
+} from "@suppr/shared/recipe/recipeDetailLayout";

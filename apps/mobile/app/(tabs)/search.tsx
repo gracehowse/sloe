@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Constants from "expo-constants";
 import { authedFetch } from "@/lib/authedFetch";
-import { effectiveFoodSearchQuery } from "../../../../src/lib/nutrition/foodSearchQuery";
+import { effectiveFoodSearchQuery } from "@suppr/shared/nutrition/foodSearchQuery";
 
 import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";

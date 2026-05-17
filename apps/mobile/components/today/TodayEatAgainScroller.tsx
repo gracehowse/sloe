@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { Dimensions, ScrollView, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 
 import { Accent, Spacing } from "@/constants/theme";
-import type { FoodHistoryItem } from "../../../../src/lib/nutrition/foodHistory";
+import type { FoodHistoryItem } from "@suppr/shared/nutrition/foodHistory";
 
 import { TodayEatAgainBanner } from "./TodayEatAgainBanner";
 

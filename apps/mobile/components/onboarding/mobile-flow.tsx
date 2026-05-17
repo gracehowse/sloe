@@ -16,22 +16,22 @@ import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { track } from "@/lib/analytics";
 import { supabase } from "@/lib/supabase";
-import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
+import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import {
   ONBOARDING_SEEDS,
   defaultOnboardingSeeds,
   type OnboardingSeed,
-} from "../../../../src/lib/onboarding/onboardingSeeds";
-import { buildFirstWeekFromSeeds } from "../../../../src/lib/onboarding/onboardingFirstWeek";
+} from "@suppr/shared/onboarding/onboardingSeeds";
+import { buildFirstWeekFromSeeds } from "@suppr/shared/onboarding/onboardingFirstWeek";
 import {
   resolveSeedsToRecipeIds,
   saveResolvedSeeds,
-} from "../../../../src/lib/onboarding/onboardingSeedResolver";
+} from "@suppr/shared/onboarding/onboardingSeedResolver";
 import {
   mapV2GoalToLegacy,
   persistOnboarding,
-} from "../../../../src/lib/onboarding/persist";
-import { clearLogsAndWeightHistory } from "../../../../src/lib/account/nukeAccountData";
+} from "@suppr/shared/onboarding/persist";
+import { clearLogsAndWeightHistory } from "@suppr/shared/account/nukeAccountData";
 import { useOnboarding } from "./context";
 import { MOBILE_STEP_COMPONENTS } from "./steps";
 

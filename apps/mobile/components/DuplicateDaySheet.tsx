@@ -18,7 +18,7 @@ import {
   addDays,
   expandDateRange,
   sanitizeCopyTargets,
-} from "../../../src/lib/nutrition/copyMeals";
+} from "@suppr/shared/nutrition/copyMeals";
 
 type Theme = {
   text: string;

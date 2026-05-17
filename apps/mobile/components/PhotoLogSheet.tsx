@@ -58,7 +58,7 @@ import { Accent, IconSize, Radius, Spacing } from "@/constants/theme";
 import {
   averageConfidence,
   type AiLoggedItem,
-} from "../../../src/lib/nutrition/aiLogging";
+} from "@suppr/shared/nutrition/aiLogging";
 import {
   formatRange,
   formatRangeKcal,
@@ -67,12 +67,12 @@ import {
   sumRanges,
   type PhotoLogAddon,
   type PhotoLogItemRanged,
-} from "../../../src/lib/nutrition/photoLogRanges";
-import { persistPhotoCorrections } from "../../../src/lib/nutrition/photoCorrectionPersist";
-import { FREE_PHOTO_LOG_WEEKLY_LIMIT } from "../../../src/lib/nutrition/photoLogQuota";
+} from "@suppr/shared/nutrition/photoLogRanges";
+import { persistPhotoCorrections } from "@suppr/shared/nutrition/photoCorrectionPersist";
+import { FREE_PHOTO_LOG_WEEKLY_LIMIT } from "@suppr/shared/nutrition/photoLogQuota";
 import { supabase } from "@/lib/supabase";
 import { track } from "@/lib/analytics";
-import { AnalyticsEvents } from "../../../src/lib/analytics/events";
+import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 
 /** AsyncStorage key for the one-time "we'll remember this for next
  *  time" tooltip on the first persisted photo-log correction. The

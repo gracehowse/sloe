@@ -51,12 +51,12 @@ import {
   setHouseholdShareLunch,
   setMemberSharePreset,
   type HouseholdData,
-} from "../../../src/lib/household/householdClient";
+} from "@suppr/shared/household/householdClient";
 import HouseholdInviteSheet from "@/components/household/HouseholdInviteSheet";
 import {
   SHARE_TARGETS_TOGGLE_HELPER,
   SHARE_TARGETS_TOGGLE_LABEL,
-} from "../../../src/lib/household/scopeCopy";
+} from "@suppr/shared/household/scopeCopy";
 import {
   HOUSEHOLD_DAY_IDS,
   HOUSEHOLD_SLOT_IDS,
@@ -74,17 +74,17 @@ import {
   type HouseholdDayId,
   type HouseholdSharingState,
   type HouseholdSlotId,
-} from "../../../src/lib/household/sharingGrid";
+} from "@suppr/shared/household/sharingGrid";
 import {
   readSharingState,
   writeSharingState,
   type SharingStorageAdapter,
-} from "../../../src/lib/household/sharingGridStorage";
+} from "@suppr/shared/household/sharingGridStorage";
 import {
   householdMemberAccent,
   householdMemberFirstName,
   householdMemberInitials,
-} from "../../../src/lib/household/memberAccents";
+} from "@suppr/shared/household/memberAccents";
 
 const DAY_LABELS: Record<HouseholdDayId, string> = {
   mon: "Mon",

@@ -14,7 +14,7 @@ import {
   ONBOARDING_SEEDS as MOBILE_SEEDS,
   filterOnboardingSeeds,
 } from "../../lib/onboardingSeeds";
-import { ONBOARDING_SEEDS as WEB_SEEDS } from "../../../../src/lib/onboarding/onboardingSeeds";
+import { ONBOARDING_SEEDS as WEB_SEEDS } from "@suppr/shared/onboarding/onboardingSeeds";
 
 describe("onboarding seed parity (mobile re-export)", () => {
   it("re-exports the identical 15 seeds", () => {

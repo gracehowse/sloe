@@ -32,7 +32,7 @@ import { MobileDataBridgesStep } from "../../components/onboarding/steps/data-br
 import {
   DEFAULT_ONBOARDING_STATE,
   type OnboardingState,
-} from "../../../../src/lib/onboarding/state";
+} from "@suppr/shared/onboarding/state";
 
 void React;
 

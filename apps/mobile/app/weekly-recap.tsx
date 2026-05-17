@@ -61,7 +61,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { formatMacro } from "../../../src/lib/nutrition/formatMacro";
+import { formatMacro } from "@suppr/shared/nutrition/formatMacro";
 import { supabase } from "@/lib/supabase";
 import { Accent, Radius, Spacing } from "@/constants/theme";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
@@ -71,7 +71,7 @@ import {
   type JournalMeal,
 } from "@/lib/nutritionJournal";
 import { buildWeekStats } from "@/lib/progressWeekReport";
-import { getDailyTargets, type DailyTarget } from "../../../src/lib/nutrition/dailyTargetRead";
+import { getDailyTargets, type DailyTarget } from "@suppr/shared/nutrition/dailyTargetRead";
 import {
   selectClosestToTargetDay,
   formatWeekLabel,
@@ -95,8 +95,8 @@ import {
 import { calculateTDEE } from "@/lib/calcTargets";
 import { GoalPaceRetuneSheet } from "@/components/recap/GoalPaceRetuneSheet";
 import { track } from "@/lib/analytics";
-import { AnalyticsEvents } from "../../../src/lib/analytics/events";
-import type { Sex, NutritionStrategy } from "../../../src/lib/nutrition/tdee";
+import { AnalyticsEvents } from "@suppr/shared/analytics/events";
+import type { Sex, NutritionStrategy } from "@suppr/shared/nutrition/tdee";
 
 type LoadState = "loading" | "ready" | "empty" | "error";
 

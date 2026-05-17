@@ -6,7 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Beaker, BookOpen, Database, Globe2, Utensils, type LucideIcon } from "lucide-react-native";
 import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { NUTRITION_SOURCES } from "../../../src/lib/landing/nutritionSources";
+import { NUTRITION_SOURCES } from "@suppr/shared/landing/nutritionSources";
 
 /**
  * Per-source description + public URL. Keyed on the canonical names that

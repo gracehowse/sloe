@@ -31,9 +31,9 @@ import {
   isLowConfidence,
   sanitiseAiItems,
   type AiLoggedItem,
-} from "../../../src/lib/nutrition/aiLogging";
+} from "@suppr/shared/nutrition/aiLogging";
 import { track } from "@/lib/analytics";
-import { AnalyticsEvents } from "../../../src/lib/analytics/events";
+import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import AiLogReviewItem from "./AiLogReviewItem";
 import AiLogReviewSummary from "./AiLogReviewSummary";
 

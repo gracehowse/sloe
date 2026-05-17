@@ -1,1 +1,1 @@
-export { computeLoggingStreak } from "../../../src/lib/nutrition/trackerStats";
+export { computeLoggingStreak } from "@suppr/shared/nutrition/trackerStats";

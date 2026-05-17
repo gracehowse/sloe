@@ -138,6 +138,11 @@ export default defineConfig({
   resolve: {
     alias: [
       { find: "@", replacement: path.resolve(__dirname, ".") },
+      // ENG-551 (2026-05-16) — mirror the `@suppr/shared/*` tsconfig
+      // path so vitest resolves shared-lib imports the same way the
+      // TS compiler does. Without this, every test that touches a
+      // shared module would fail to resolve under the new alias.
+      { find: /^@suppr\/shared\/(.*)$/, replacement: path.resolve(__dirname, "../../src/lib/$1") },
       // Route `react-native` to our host-shim so RNTL + components share
       // the same module. The shim exports `View`, `Text`, `Pressable`,
       // `TextInput`, `Modal`, `StyleSheet.flatten`, etc.

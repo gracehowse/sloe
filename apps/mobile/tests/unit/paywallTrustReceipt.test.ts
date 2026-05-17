@@ -15,7 +15,7 @@ import { describe, expect, it } from "vitest";
 import {
   PAYWALL_TRUST_CHIPS,
   buildReceiptTrustCopy,
-} from "../../../../src/lib/landing/paywallTrust";
+} from "@suppr/shared/landing/paywallTrust";
 
 describe("mobile — PAYWALL_TRUST_CHIPS shape", () => {
   it("imports cleanly via relative path (no @/... alias drift)", () => {

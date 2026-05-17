@@ -24,7 +24,7 @@ import {
 } from "react-native";
 import { Accent, Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import type { PlanTemplate } from "../../../src/lib/nutrition/planTemplates";
+import type { PlanTemplate } from "@suppr/shared/nutrition/planTemplates";
 
 type Mode = "save" | "list";
 

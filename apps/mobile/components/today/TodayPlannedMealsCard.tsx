@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Accent } from "@/constants/theme";
-import { formatPlannedMealKcalMacrosLine } from "../../../../src/lib/nutrition/plannedMealDisplay";
+import { formatPlannedMealKcalMacrosLine } from "@suppr/shared/nutrition/plannedMealDisplay";
 import { PortionPickerSheet } from "./PortionPickerSheet";
 
 /**

@@ -25,7 +25,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { NUTRITION_SOURCES } from "../../../../src/lib/landing/nutritionSources";
+import { NUTRITION_SOURCES } from "@suppr/shared/landing/nutritionSources";
 
 const MOBILE_PATH = resolve(__dirname, "../../app/nutrition-sources.tsx");
 

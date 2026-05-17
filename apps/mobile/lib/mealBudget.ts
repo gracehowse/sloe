@@ -1,1 +1,1 @@
-export * from "../../../src/lib/nutrition/mealBudget";
+export * from "@suppr/shared/nutrition/mealBudget";

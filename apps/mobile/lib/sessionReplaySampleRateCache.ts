@@ -5,7 +5,7 @@ import {
   SESSION_REPLAY_SAMPLE_RATE_FLAG,
   parseSampleRate,
   resolveSampleRate,
-} from "../../../src/lib/analytics/sessionReplaySampleRate";
+} from "@suppr/shared/analytics/sessionReplaySampleRate";
 
 /**
  * Mobile-side AsyncStorage glue for the `session-replay-sample-rate`

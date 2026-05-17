@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { dateKeyFromDate, newMealId, type JournalMeal } from "@/lib/nutritionJournal";
 import { refreshAdaptiveTdeeForUser } from "@/lib/refreshAdaptiveTdee";
 import { writeMealToHealthKitIfEnabled } from "@/lib/healthKitMealWriter";
-import { snapshotDailyTargetIfMissing } from "../../../src/lib/nutrition/dailyTargetSnapshot";
+import { snapshotDailyTargetIfMissing } from "@suppr/shared/nutrition/dailyTargetSnapshot";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

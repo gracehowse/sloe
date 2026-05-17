@@ -63,16 +63,16 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
 import { getSupprWebBase } from "@/lib/supprWeb";
 import { probeHealthAccess } from "@/lib/healthSync";
-import { nukeAllUserAppData } from "../../../../src/lib/account/nukeAccountData";
+import { nukeAllUserAppData } from "@suppr/shared/account/nukeAccountData";
 import { cancelWeeklyRecapPush } from "@/lib/weeklyRecapPush";
 import { normaliseDietaryFromProfile } from "../../../../src/constants/dietaryPreferences";
-import { saveWeekStartDay } from "../../../../src/lib/nutrition/weekStartDayClient";
-import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
+import { saveWeekStartDay } from "@suppr/shared/nutrition/weekStartDayClient";
+import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { track } from "@/lib/analytics";
 import {
   nutritionLogToCsv,
   nutritionLogCsvFilename,
-} from "../../../../src/lib/export/nutritionLogToCsv";
+} from "@suppr/shared/export/nutritionLogToCsv";
 import { exportEverythingToFile } from "@/lib/exportEverything";
 import { MobileMfpCsvImportCard } from "../imports/MfpCsvImportCard";
 import {
@@ -81,16 +81,16 @@ import {
   parseTrackingExtras,
   serializeTrackingExtras,
   type TrackingExtras,
-} from "../../../../src/lib/nutrition/trackingExtras";
-import { getMyHousehold } from "../../../../src/lib/household/householdClient";
+} from "@suppr/shared/nutrition/trackingExtras";
+import { getMyHousehold } from "@suppr/shared/household/householdClient";
 import {
   presetFromShareLunch,
   sharingPresetShortLabel,
-} from "../../../../src/lib/household/sharingGrid";
+} from "@suppr/shared/household/sharingGrid";
 import {
   parseSharingStateJson,
   sharingStorageKey,
-} from "../../../../src/lib/household/sharingGridStorage";
+} from "@suppr/shared/household/sharingGridStorage";
 
 /**
  * SettingsBundleContent — shared body of the legacy "More" tab.

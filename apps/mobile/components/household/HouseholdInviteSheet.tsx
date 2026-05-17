@@ -35,7 +35,7 @@ import {
   listSentHouseholdInvites,
   sendHouseholdInvite,
   type HouseholdInvite,
-} from "../../../../src/lib/household/householdClient";
+} from "@suppr/shared/household/householdClient";
 
 export interface HouseholdInviteSheetProps {
   visible: boolean;

@@ -4,11 +4,11 @@ import { formatRecipeMinutes } from "./formatRecipeMinutes";
 import { supabase } from "./supabase";
 import { cacheDiscoverRecipes, getCachedDiscoverRecipes } from "./offlineCache";
 import type { RecipeCard } from "./types";
-import { NEUTRAL_AVATAR_DATA_URI } from "../../../src/lib/ui/neutralAvatar";
-import { fetchPublicRecipeSaveCounts } from "../../../src/lib/recipes/fetchPublicRecipeSaveCounts";
-import { normalizeRecipeTitle } from "../../../src/lib/recipes/normalizeRecipeTitle";
-import { SEED_RECIPES_V2 } from "../../../src/lib/recipes/seedRecipesV2";
-import { seedsToRecipeCards } from "../../../src/lib/recipes/seedRecipesToCard";
+import { NEUTRAL_AVATAR_DATA_URI } from "@suppr/shared/ui/neutralAvatar";
+import { fetchPublicRecipeSaveCounts } from "@suppr/shared/recipes/fetchPublicRecipeSaveCounts";
+import { normalizeRecipeTitle } from "@suppr/shared/recipes/normalizeRecipeTitle";
+import { SEED_RECIPES_V2 } from "@suppr/shared/recipes/seedRecipesV2";
+import { seedsToRecipeCards } from "@suppr/shared/recipes/seedRecipesToCard";
 
 // F-21 (2026-04-21): when a recipe has no image_url we previously fell back to
 // a single shared Unsplash salad, so every placeholder recipe looked identical

@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { AppState } from "react-native";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
-import { syncProfileTimezone } from "../../../src/lib/profile/tzSync";
+import { syncProfileTimezone } from "@suppr/shared/profile/tzSync";
 import { setUser as sentrySetUser, clearUser as sentryClearUser } from "@/lib/errorTracking";
 import { identify as posthogIdentify, reset as posthogReset } from "@/lib/analytics";
 import { clearUserScopedAsyncStorage } from "@/lib/clearUserScopedStorage";

@@ -28,10 +28,10 @@ import type { RecipeCard } from "@/lib/types";
 import { useAuth } from "@/context/auth";
 import { useLibrarySearchStore } from "@/hooks/useLibrarySearchStore";
 import { supabase } from "@/lib/supabase";
-import { computeRecipeFitPercent } from "../../../../src/lib/nutrition/recipeFitPercent";
-import { DISCOVER_POPULAR_MIN_SAVES } from "../../../../src/lib/recipes/fetchPublicRecipeSaveCounts";
-import { recipeSearchMatch } from "../../../../src/lib/recipes/recipeSearchMatch";
-import { displayAttribution } from "../../../../src/lib/recipes/displayAttribution";
+import { computeRecipeFitPercent } from "@suppr/shared/nutrition/recipeFitPercent";
+import { DISCOVER_POPULAR_MIN_SAVES } from "@suppr/shared/recipes/fetchPublicRecipeSaveCounts";
+import { recipeSearchMatch } from "@suppr/shared/recipes/recipeSearchMatch";
+import { displayAttribution } from "@suppr/shared/recipes/displayAttribution";
 // GW-08 (audit 2026-04-28): `TrustChip` + `recipeLevelTrust` imports
 // dropped — the Discover hero card no longer renders the chip because
 // the underlying source signal is fabricated (see the comment by the

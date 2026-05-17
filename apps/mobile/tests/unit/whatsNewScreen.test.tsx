@@ -28,7 +28,7 @@ import {
   getLatestChangelog,
   groupChangelogItems,
   changelogKindLabel,
-} from "../../../../src/lib/changelog/entries";
+} from "@suppr/shared/changelog/entries";
 import WhatsNewScreen from "../../app/whats-new";
 
 void React;

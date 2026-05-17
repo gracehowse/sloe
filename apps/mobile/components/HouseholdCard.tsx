@@ -17,7 +17,7 @@ import {
   leaveHousehold as leaveHouseholdRemote,
   setHouseholdShareLunch,
   type HouseholdData,
-} from "../../../src/lib/household/householdClient";
+} from "@suppr/shared/household/householdClient";
 import ReceivedInvitesBanner from "@/components/household/ReceivedInvitesBanner";
 // Legal-approved copy + storage key (F-16, 2026-04-25). Imported from
 // the shared module so web + mobile can never silently diverge — the
@@ -31,7 +31,7 @@ import {
   SHARE_LUNCH_TOGGLE_HELPER,
   SHARE_LUNCH_TOGGLE_LABEL,
   TARGETS_PRIVATE_LABEL,
-} from "../../../src/lib/household/scopeCopy";
+} from "@suppr/shared/household/scopeCopy";
 
 // Map RPC / shared-client error codes to friendly Alert messages. Kept in
 // the component file so web (`HouseholdPanel.tsx`) can use the same map

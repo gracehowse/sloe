@@ -19,7 +19,7 @@ import {
   isOverTarget,
   weeklyAlcoholG,
   type StimulantTargets,
-} from "../../../src/lib/nutrition/hydrationStimulants";
+} from "@suppr/shared/nutrition/hydrationStimulants";
 
 /**
  * HydrationStimulantsCard (mobile).

@@ -43,7 +43,7 @@ describe("mobile cook analytics parity (audit R2)", () => {
     // Same import path as every other mobile file (parity with
     // PhotoLogSheet, VoiceLogSheet, more.tsx, planner.tsx …).
     expect(SOURCE).toMatch(
-      /AnalyticsEvents[^;]*from\s+["']\.\.\/\.\.\/\.\.\/src\/lib\/analytics\/events["']/,
+      /AnalyticsEvents[^;]*from\s+["']@suppr\/shared\/analytics\/events["']/,
     );
   });
 

@@ -11,7 +11,7 @@ import { render } from "@testing-library/react-native";
 
 import { ProgressHeadline } from "../../components/today/ProgressHeadline";
 import { generateProgressCommentary } from "@/lib/progressCommentary";
-import type { AdaptiveTdeeResult } from "../../../../src/lib/nutrition/adaptiveTdee";
+import type { AdaptiveTdeeResult } from "@suppr/shared/nutrition/adaptiveTdee";
 
 vi.mock("@/hooks/use-theme-colors", () => ({
   useThemeColors: () => ({

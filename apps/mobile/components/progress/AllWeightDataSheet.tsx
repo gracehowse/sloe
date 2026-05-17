@@ -15,7 +15,7 @@ import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
 import { refreshAdaptiveTdeeForUser } from "@/lib/refreshAdaptiveTdee";
-import { kgToLb } from "../../../../src/lib/units/imperial";
+import { kgToLb } from "@suppr/shared/units/imperial";
 
 /**
  * Withings-style "All data" weight list (Grace TF feedback, 2026-05-11).

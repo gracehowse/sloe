@@ -27,7 +27,7 @@ import {
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
 import { MobileMfpCsvImportCard } from "../../components/imports/MfpCsvImportCard";
-import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
+import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 
 void React;
 

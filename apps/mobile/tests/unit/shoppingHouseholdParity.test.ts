@@ -44,7 +44,7 @@ describe("shopping list household scope — cross-platform parity", () => {
   it("mobile shopping screen imports the shared scope helper", () => {
     const sql = readFileSync(MOBILE_SHOPPING, "utf8");
     expect(sql).toMatch(
-      /from\s+["'][^"']*src\/lib\/household\/shoppingScope/,
+      /from\s+["'][^"']*@suppr\/shared\/household\/shoppingScope/,
     );
     expect(sql).toMatch(/shoppingScopeFor/);
     expect(sql).toMatch(/shoppingScopeRealtimeFilter/);
@@ -53,7 +53,7 @@ describe("shopping list household scope — cross-platform parity", () => {
   it("mobile planner imports the shared scope helper for generation", () => {
     const sql = readFileSync(MOBILE_PLANNER, "utf8");
     expect(sql).toMatch(
-      /from\s+["'][^"']*src\/lib\/household\/shoppingScope/,
+      /from\s+["'][^"']*@suppr\/shared\/household\/shoppingScope/,
     );
     expect(sql).toMatch(/shoppingScopeInsertStamp/);
   });

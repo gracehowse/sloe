@@ -23,13 +23,13 @@ import { supabase } from "@/lib/supabase";
 import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { track } from "@/lib/analytics";
-import { AnalyticsEvents } from "../../../src/lib/analytics/events";
+import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import {
   parseTimersInStep,
   formatTimer as formatTimerShared,
   type ParsedTimer,
-} from "../../../src/lib/nutrition/recipeTimers";
-import { createSavedMeal } from "../../../src/lib/nutrition/savedMeals";
+} from "@suppr/shared/nutrition/recipeTimers";
+import { createSavedMeal } from "@suppr/shared/nutrition/savedMeals";
 import {
   COOK_SCALE_PRESETS,
   clampCookScale,
@@ -37,13 +37,13 @@ import {
   cookScaleStorageKey,
   formatCookScaleLabel,
   scaleAmountText,
-} from "../../../src/lib/nutrition/recipeScale";
+} from "@suppr/shared/nutrition/recipeScale";
 import {
   formatCookHistoryPreview,
   insertCookHistory,
   listRecentCookHistory,
   type CookHistoryRow,
-} from "../../../src/lib/nutrition/recipeCookHistoryClient";
+} from "@suppr/shared/nutrition/recipeCookHistoryClient";
 import {
   COOK_HISTORY_KEY_PREFIX,
   COOK_NOTE_MAX_LEN,
@@ -54,7 +54,7 @@ import {
   parseCookHistory,
   pickDefaultRegularsSlot,
 } from "@/lib/cookSession";
-import { extractVideoHost } from "../../../src/lib/recipes/heroImageFallback";
+import { extractVideoHost } from "@suppr/shared/recipes/heroImageFallback";
 import {
   COOK_HANDSFREE_FEATURE_ENABLED,
   readHandsfreeEnabled,

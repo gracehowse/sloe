@@ -13,4 +13,4 @@ export {
   SIRI_DEFAULT_WATER_ML,
   SIRI_DEFAULT_FAST_HOURS,
   type SiriAction,
-} from "../../../src/lib/nutrition/siriDeepLinks";
+} from "@suppr/shared/nutrition/siriDeepLinks";

@@ -43,8 +43,8 @@ import {
   LIBRARY_FILTER_PILLS,
   matchesNutritionPill,
   type LibraryFilterPillId,
-} from "../../../../src/lib/recipes/libraryFilters";
-import { classifyLibraryEntry } from "../../../../src/lib/recipes/libraryEntryKind";
+} from "@suppr/shared/recipes/libraryFilters";
+import { classifyLibraryEntry } from "@suppr/shared/recipes/libraryEntryKind";
 import { RecipesSubTabHeader } from "@/components/tabs/RecipesSubTabHeader";
 import { CreateRecipeActionSheet } from "@/components/recipe/CreateRecipeActionSheet";
 // GW-08 (audit 2026-04-28): `TrustChip` + `recipeLevelTrust` imports

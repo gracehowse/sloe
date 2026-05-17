@@ -8,8 +8,8 @@ import Animated, {
 } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import { Accent, Radius, Spacing } from "@/constants/theme";
-import { formatMacro } from "../../../../src/lib/nutrition/formatMacro";
-import type { FoodHistoryItem } from "../../../../src/lib/nutrition/foodHistory";
+import { formatMacro } from "@suppr/shared/nutrition/formatMacro";
+import type { FoodHistoryItem } from "@suppr/shared/nutrition/foodHistory";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 
 // 2026-05-12 (premium-bar audit DC3 polish — Cal AI 200ms fade-up

@@ -24,12 +24,12 @@ import { Accent, Radius } from "@/constants/theme";
 import {
   getMyHousehold,
   type HouseholdData,
-} from "../../../src/lib/household/householdClient";
+} from "@suppr/shared/household/householdClient";
 import {
   householdMemberAccent,
   householdMemberFirstName,
   householdMemberInitials,
-} from "../../../src/lib/household/memberAccents";
+} from "@suppr/shared/household/memberAccents";
 
 export type HouseholdBarProps = {
   selected?: string;

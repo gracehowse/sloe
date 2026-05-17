@@ -41,12 +41,12 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { formatMacro } from "../../../../src/lib/nutrition/formatMacro";
+import { formatMacro } from "@suppr/shared/nutrition/formatMacro";
 
 import { supabase } from "@/lib/supabase";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { Spacing, Radius, Accent } from "@/constants/theme";
-import { normalizeRecipeTitle } from "../../../../src/lib/recipes/normalizeRecipeTitle";
+import { normalizeRecipeTitle } from "@suppr/shared/recipes/normalizeRecipeTitle";
 import { decodeEntities } from "@/lib/decodeEntities";
 
 type Creator = {

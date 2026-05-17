@@ -20,28 +20,28 @@ import { supabase } from "@/lib/supabase";
 import {
   fetchShoppingListJsonItems,
   upsertShoppingListJsonItems,
-} from "../../../src/lib/supabase/shoppingJsonFallback";
+} from "@suppr/shared/supabase/shoppingJsonFallback";
 import {
   dedupeShoppingLabel,
   shoppingItemsTiedToCurrentPlan,
-} from "../../../src/lib/planning/shoppingListLifecycle";
+} from "@suppr/shared/planning/shoppingListLifecycle";
 import {
   formatMixedShoppingAmounts,
   groupShoppingItemsByIngredientName,
   isShoppingGroupFullyChecked,
   type ShoppingDisplayGroup,
-} from "../../../src/lib/planning/shoppingDisplayGroups";
-import { getMyHousehold, type HouseholdData } from "../../../src/lib/household/householdClient";
+} from "@suppr/shared/planning/shoppingDisplayGroups";
+import { getMyHousehold, type HouseholdData } from "@suppr/shared/household/householdClient";
 import {
   householdMemberAccent,
   householdMemberFirstName,
   householdMemberInitials,
-} from "../../../src/lib/household/memberAccents";
+} from "@suppr/shared/household/memberAccents";
 import {
   shoppingScopeFor,
   shoppingScopeRealtimeFilter,
   type ShoppingScope,
-} from "../../../src/lib/household/shoppingScope";
+} from "@suppr/shared/household/shoppingScope";
 import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";

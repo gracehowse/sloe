@@ -66,7 +66,7 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { track } from "@/lib/analytics";
-import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
+import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import FoodSearchModal, {
   type SelectedFood,
 } from "@/components/FoodSearchModal";
@@ -74,10 +74,10 @@ import BarcodeScannerModal from "@/components/BarcodeScannerModal";
 import VoiceLogSheet from "@/components/VoiceLogSheet";
 import PhotoLogSheet from "@/components/PhotoLogSheet";
 import type { BarcodeProduct } from "@/lib/verifyRecipe";
-import type { AiLoggedItem } from "../../../../src/lib/nutrition/aiLogging";
-import { parseIngredientLine } from "../../../../src/lib/recipe-ingredients/parseIngredientLine";
-import { normaliseInstructions } from "../../../../src/lib/recipes/normaliseInstructions";
-import { normalizeRecipeTitle } from "../../../../src/lib/recipes/normalizeRecipeTitle";
+import type { AiLoggedItem } from "@suppr/shared/nutrition/aiLogging";
+import { parseIngredientLine } from "@suppr/shared/recipe-ingredients/parseIngredientLine";
+import { normaliseInstructions } from "@suppr/shared/recipes/normaliseInstructions";
+import { normalizeRecipeTitle } from "@suppr/shared/recipes/normalizeRecipeTitle";
 import {
   CREATE_RECIPE_STEP_IDS,
   CREATE_RECIPE_TOTAL_STEPS,
@@ -100,7 +100,7 @@ import {
   type WizardIngredient,
   type WizardMacroOverrides,
   type WizardStep,
-} from "../../../../src/lib/recipes/createRecipeWizard";
+} from "@suppr/shared/recipes/createRecipeWizard";
 
 let ImagePicker: typeof import("expo-image-picker") | null = null;
 try {

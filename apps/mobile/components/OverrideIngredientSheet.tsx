@@ -23,7 +23,7 @@ import { Accent, Radius, Spacing } from "@/constants/theme";
 import {
   sanitizeOverrideInput,
   type IngredientOverride,
-} from "../../../src/lib/nutrition/ingredientOverrides";
+} from "@suppr/shared/nutrition/ingredientOverrides";
 
 type Theme = {
   text: string;

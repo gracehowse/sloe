@@ -20,12 +20,12 @@ import { describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react-native";
 
 import FullNutrientPanelSheet from "../../components/today/FullNutrientPanelSheet";
-import { DAILY_VALUES_SOURCE_LABEL } from "../../../../src/lib/nutrition/dailyValues";
+import { DAILY_VALUES_SOURCE_LABEL } from "@suppr/shared/nutrition/dailyValues";
 import {
   buildFullNutrientPanelRows,
   type FullNutrientPanelRow,
   type FullNutrientPanelSection,
-} from "../../../../src/lib/nutrition/fullNutrientPanel";
+} from "@suppr/shared/nutrition/fullNutrientPanel";
 
 void React;
 

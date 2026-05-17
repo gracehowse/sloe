@@ -39,7 +39,7 @@ import {
   type RecipeHeroGlyph,
   type RecipeHeroInput,
   type RecipeHeroPattern,
-} from "../../../src/lib/recipe/recipeHeroFallback";
+} from "@suppr/shared/recipe/recipeHeroFallback";
 
 type LucideRnIcon = ComponentType<{ size?: number; color?: string }>;
 

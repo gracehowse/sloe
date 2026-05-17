@@ -60,7 +60,7 @@ describe("mobile household card — direct-Supabase port (TestFlight AAegi1DJEis
   });
 
   it("imports all four household functions from the shared client", () => {
-    expect(MOBILE_SRC).toMatch(/from\s+["'][^"']*src\/lib\/household\/householdClient["']/);
+    expect(MOBILE_SRC).toMatch(/from\s+["'][^"']*@suppr\/shared\/household\/householdClient["']/);
     for (const fn of SHARED_FNS) {
       expect(MOBILE_SRC).toMatch(new RegExp(`\\b${fn}\\b`));
     }

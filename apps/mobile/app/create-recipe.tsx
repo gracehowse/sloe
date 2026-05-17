@@ -32,23 +32,23 @@ import {
   IMPORT_ERROR_COPY,
   mapPersistenceError,
   userFacingImportError,
-} from "../../../src/lib/recipes/importErrorCopy";
+} from "@suppr/shared/recipes/importErrorCopy";
 import { track } from "@/lib/analytics";
-import { AnalyticsEvents } from "../../../src/lib/analytics/events";
+import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import FoodSearchModal, { type SelectedFood } from "@/components/FoodSearchModal";
 import BarcodeScannerModal from "@/components/BarcodeScannerModal";
 import VoiceLogSheet from "@/components/VoiceLogSheet";
 import PhotoLogSheet from "@/components/PhotoLogSheet";
 import type { BarcodeProduct } from "@/lib/verifyRecipe";
-import type { AiLoggedItem } from "../../../src/lib/nutrition/aiLogging";
+import type { AiLoggedItem } from "@suppr/shared/nutrition/aiLogging";
 import MealTypePicker from "@/components/MealTypePicker";
-import { normaliseInstructions } from "../../../src/lib/recipes/normaliseInstructions";
-import { normalizeRecipeTitle } from "../../../src/lib/recipes/normalizeRecipeTitle";
-import { parseIngredientLine } from "../../../src/lib/recipe-ingredients/parseIngredientLine";
-import { parseRawIngredients } from "../../../src/lib/recipe-ingredients/parseRawIngredients";
-import { splitPastedIngredientLines } from "../../../src/lib/recipe-ingredients/splitPastedIngredientLines";
-import { flatMacroRowsFromVerifyJson } from "../../../src/lib/nutrition/verifyRecipeResponse";
-import { ingredientVerifyNeedsReview } from "../../../src/lib/nutrition/verifyConfidencePolicy";
+import { normaliseInstructions } from "@suppr/shared/recipes/normaliseInstructions";
+import { normalizeRecipeTitle } from "@suppr/shared/recipes/normalizeRecipeTitle";
+import { parseIngredientLine } from "@suppr/shared/recipe-ingredients/parseIngredientLine";
+import { parseRawIngredients } from "@suppr/shared/recipe-ingredients/parseRawIngredients";
+import { splitPastedIngredientLines } from "@suppr/shared/recipe-ingredients/splitPastedIngredientLines";
+import { flatMacroRowsFromVerifyJson } from "@suppr/shared/nutrition/verifyRecipeResponse";
+import { ingredientVerifyNeedsReview } from "@suppr/shared/nutrition/verifyConfidencePolicy";
 
 let ImagePicker: typeof import("expo-image-picker") | null = null;
 try {

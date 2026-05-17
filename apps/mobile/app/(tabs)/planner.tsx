@@ -22,17 +22,17 @@ import { useAuth } from "@/context/auth";
 import { useDiscoverRecipes, useSavedLibraryRecipes } from "@/lib/recipes";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
-import { upsertShoppingListJsonItems } from "../../../../src/lib/supabase/shoppingJsonFallback";
-import { getMyHousehold } from "../../../../src/lib/household/householdClient";
+import { upsertShoppingListJsonItems } from "@suppr/shared/supabase/shoppingJsonFallback";
+import { getMyHousehold } from "@suppr/shared/household/householdClient";
 import {
   shoppingScopeFor,
   shoppingScopeInsertStamp,
   shoppingScopeClearFilters,
   type ShoppingScope,
-} from "../../../../src/lib/household/shoppingScope";
+} from "@suppr/shared/household/shoppingScope";
 import { dateKeyFromDate, newMealId } from "@/lib/nutritionJournal";
-import { snapshotDailyTargetIfMissing } from "../../../../src/lib/nutrition/dailyTargetSnapshot";
-import { fetchPlannedMealMicros } from "../../../../src/lib/planning/plannedMealMicros";
+import { snapshotDailyTargetIfMissing } from "@suppr/shared/nutrition/dailyTargetSnapshot";
+import { fetchPlannedMealMicros } from "@suppr/shared/planning/plannedMealMicros";
 import {
   Check,
   CheckCircle2,
@@ -63,22 +63,22 @@ import {
   PORTION_MULTIPLIER_CLAMP,
   type PlannerTargets,
 } from "@/lib/mealPlanAlgo";
-import { isMealPlanPlaceholderLikeTitle } from "../../../../src/lib/nutrition/portionMultiplier";
-import { coerceMacrosWhenCaloriesButNoGrams } from "../../../../src/lib/nutrition/coerceRecipeMacrosForPlanning";
+import { isMealPlanPlaceholderLikeTitle } from "@suppr/shared/nutrition/portionMultiplier";
+import { coerceMacrosWhenCaloriesButNoGrams } from "@suppr/shared/nutrition/coerceRecipeMacrosForPlanning";
 import {
   findPlanDayIdForCalendarDate,
   planCalendarDateForIndex,
   startDateForOffset,
   stripMidnight,
-} from "../../../../src/lib/mealPlan/planCalendarAnchor";
-import { countChangedMealsInPlan } from "../../../../src/lib/mealPlan/planDiff";
-import { formatPlannedMealKcalMacrosLine } from "../../../../src/lib/nutrition/plannedMealDisplay";
-import { formatMacro } from "../../../../src/lib/nutrition/formatMacro";
+} from "@suppr/shared/mealPlan/planCalendarAnchor";
+import { countChangedMealsInPlan } from "@suppr/shared/mealPlan/planDiff";
+import { formatPlannedMealKcalMacrosLine } from "@suppr/shared/nutrition/plannedMealDisplay";
+import { formatMacro } from "@suppr/shared/nutrition/formatMacro";
 import {
   buildDayTotalVsGoalLine,
   formatDayTotalCell,
   type DayTotalTone,
-} from "../../../../src/lib/planning/dayTotalVsGoal";
+} from "@suppr/shared/planning/dayTotalVsGoal";
 import Badge from "@/components/Badge";
 import {
   countLeftoversOfRecipe,
@@ -86,25 +86,25 @@ import {
   markLeftoversOnSwap,
   moveMealInPlan,
   type LeftoverAwareMeal,
-} from "../../../../src/lib/nutrition/leftoversPlanner";
+} from "@suppr/shared/nutrition/leftoversPlanner";
 import {
   buildTemplateFromWeek,
   applyTemplateToWeek,
   type PlanTemplate,
-} from "../../../../src/lib/nutrition/planTemplates";
+} from "@suppr/shared/nutrition/planTemplates";
 import {
   createPlanTemplate,
   deletePlanTemplate,
   listPlanTemplates,
-} from "../../../../src/lib/nutrition/planTemplatesClient";
-import { normaliseMealSlot } from "../../../../src/lib/nutrition/mealSlots";
+} from "@suppr/shared/nutrition/planTemplatesClient";
+import { normaliseMealSlot } from "@suppr/shared/nutrition/mealSlots";
 import {
   isSameCalendarDay,
   resolvePlanSlotIconKey,
   shortWeekdayLabel,
   type PlanSlotIconKey,
-} from "../../../../src/lib/planning/planDayLabel";
-import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
+} from "@suppr/shared/planning/planDayLabel";
+import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { track } from "@/lib/analytics";
 import * as Haptics from "expo-haptics";
 import { HouseholdSummaryRow } from "@/components/HouseholdSummaryRow";

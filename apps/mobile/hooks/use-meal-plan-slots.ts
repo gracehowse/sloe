@@ -11,7 +11,7 @@ import {
   renameSlot,
   setActiveSlotPlan,
   type MealPlanNamedSlot,
-} from "../../../src/lib/mealPlan/namedSlots";
+} from "@suppr/shared/mealPlan/namedSlots";
 import type { DayPlan } from "../../../src/types/recipe";
 
 /**

@@ -26,8 +26,8 @@ import {
 } from "lucide-react-native";
 import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
 import type { JournalMeal } from "@/lib/nutritionJournal";
-import { carbsLabel, netCarbsForRow } from "../../../../src/lib/nutrition/netCarbs";
-import { formatMacro } from "../../../../src/lib/nutrition/formatMacro";
+import { carbsLabel, netCarbsForRow } from "@suppr/shared/nutrition/netCarbs";
+import { formatMacro } from "@suppr/shared/nutrition/formatMacro";
 
 /**
  * TodayDashboardMacroTiles — macro tiles grid for Today.

@@ -16,4 +16,4 @@ export {
   weekKeyFor,
   type UsualMealRecapInsight,
   type WeeklyRecap,
-} from "../../../src/lib/nutrition/weeklyRecap";
+} from "@suppr/shared/nutrition/weeklyRecap";

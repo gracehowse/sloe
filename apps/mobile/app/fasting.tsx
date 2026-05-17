@@ -22,7 +22,7 @@ import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
-import { fastingStageNarrative } from "../../../src/lib/nutrition/fastingStageNarrative";
+import { fastingStageNarrative } from "@suppr/shared/nutrition/fastingStageNarrative";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 

@@ -39,60 +39,60 @@ import { useAuth } from "@/context/auth";
 import { useSavedRecipes } from "@/lib/recipes";
 import { supabase } from "@/lib/supabase";
 import { dateKeyFromDate, newMealId } from "@/lib/nutritionJournal";
-import { snapshotDailyTargetIfMissing } from "../../../../src/lib/nutrition/dailyTargetSnapshot";
+import { snapshotDailyTargetIfMissing } from "@suppr/shared/nutrition/dailyTargetSnapshot";
 import { writeMealToHealthKitIfEnabled } from "@/lib/healthKitMealWriter";
 import {
   recipeAggregateHasFatSecret,
   scrubFatSecretMacros,
   ZEROED_RECIPE_AGGREGATE,
-} from "../../../../src/lib/nutrition/fatsecretCacheGuard";
+} from "@suppr/shared/nutrition/fatsecretCacheGuard";
 import { decodeEntities } from "@/lib/decodeEntities";
-import { normaliseRecipeDisplayTitle } from "../../../../src/lib/recipe/normaliseDisplayTitle";
+import { normaliseRecipeDisplayTitle } from "@suppr/shared/recipe/normaliseDisplayTitle";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { getSupprApiBase } from "@/lib/supprWeb";
 import { track } from "@/lib/analytics";
-import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
-import { webRecipeDeepLink } from "../../../../src/lib/share/recipeDeepLink";
-import { instagramHandleFromPostUrl, tiktokHandleFromPostUrl } from "../../../../src/lib/recipe-import/socialUrlHelpers";
-import { journalSlotFromMealTypes } from "../../../../src/lib/nutrition/recipeJournalSlot";
-import { normaliseInstructions } from "../../../../src/lib/recipes/normaliseInstructions";
-import { sanitizeRecipeDescription } from "../../../../src/lib/recipes/sanitizeRecipeDescription";
+import { AnalyticsEvents } from "@suppr/shared/analytics/events";
+import { webRecipeDeepLink } from "@suppr/shared/share/recipeDeepLink";
+import { instagramHandleFromPostUrl, tiktokHandleFromPostUrl } from "@suppr/shared/recipe-import/socialUrlHelpers";
+import { journalSlotFromMealTypes } from "@suppr/shared/nutrition/recipeJournalSlot";
+import { normaliseInstructions } from "@suppr/shared/recipes/normaliseInstructions";
+import { sanitizeRecipeDescription } from "@suppr/shared/recipes/sanitizeRecipeDescription";
 import {
   pickHeroImageUrl,
   extractVideoHost,
-} from "../../../../src/lib/recipes/heroImageFallback";
+} from "@suppr/shared/recipes/heroImageFallback";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
-import { formatMacroValue } from "../../../../src/lib/nutrition/formatMacro";
+import { formatMacroValue } from "@suppr/shared/nutrition/formatMacro";
 // GW-08 (audit 2026-04-28): `computeRecipeFitPercent` import dropped
 // when the always-85% pill was removed. Helper is still callable from
 // other surfaces (web Library card) where targets are passed for real.
-import { allocateIngredientMacrosFromLines } from "../../../../src/lib/nutrition/allocateIngredientMacrosFromLines";
+import { allocateIngredientMacrosFromLines } from "@suppr/shared/nutrition/allocateIngredientMacrosFromLines";
 import {
   findSeedRecipeById,
   isSeedRecipeId,
-} from "../../../../src/lib/recipes/seedRecipesV2";
+} from "@suppr/shared/recipes/seedRecipesV2";
 import {
   flatMacroRowsFromVerifyJson,
   overallConfidenceFromVerifyJson,
   perServingFromVerifyJson,
   type FlatVerifiedMacroRow,
-} from "../../../../src/lib/nutrition/verifyRecipeResponse";
-import { parseRawIngredients } from "../../../../src/lib/recipe-ingredients/parseRawIngredients";
+} from "@suppr/shared/nutrition/verifyRecipeResponse";
+import { parseRawIngredients } from "@suppr/shared/recipe-ingredients/parseRawIngredients";
 import {
   formatContainsLine,
   normaliseAllergenIds,
 } from "../../../../src/constants/regulatedAllergens";
-import { ingredientVerifyNeedsReview } from "../../../../src/lib/nutrition/verifyConfidencePolicy";
-import { scaleStepText } from "../../../../src/lib/nutrition/scaleStepText";
-import { formatIngredientAmountUnit } from "../../../../src/lib/recipe-ingredients/formatIngredientAmount";
+import { ingredientVerifyNeedsReview } from "@suppr/shared/nutrition/verifyConfidencePolicy";
+import { scaleStepText } from "@suppr/shared/nutrition/scaleStepText";
+import { formatIngredientAmountUnit } from "@suppr/shared/recipe-ingredients/formatIngredientAmount";
 import {
   deriveIngredientVerificationTier,
   ingredientShouldShowVerifyCta,
-} from "../../../../src/lib/recipe-ingredients/ingredientVerificationStatus";
-import { wouldCoerceMacros } from "../../../../src/lib/nutrition/coerceRecipeMacrosForPlanning";
+} from "@suppr/shared/recipe-ingredients/ingredientVerificationStatus";
+import { wouldCoerceMacros } from "@suppr/shared/nutrition/coerceRecipeMacrosForPlanning";
 // PR1 (Paprika parity, 2026-05-02 customer-lens audit) — viewing-
 // servings stepper helpers. Mobile uses the same module as web so
 // bounds + clamp + debounce stay in lock-step.
@@ -103,8 +103,8 @@ import {
   initialViewServings,
   stepViewServings,
   viewMultiplier as computeViewMultiplier,
-} from "../../../../src/lib/nutrition/recipeViewScale";
-import { carbsLabel, netCarbsForRow } from "../../../../src/lib/nutrition/netCarbs";
+} from "@suppr/shared/nutrition/recipeViewScale";
+import { carbsLabel, netCarbsForRow } from "@suppr/shared/nutrition/netCarbs";
 import { RecipeNotesCard } from "../../components/RecipeNotesCard";
 // Phase 4 / B3.X — trust posture sweep (D-2026-04-27-16).
 import { TrustChip } from "../../components/ui/TrustChip";
@@ -115,7 +115,7 @@ import { FatSecretBadge } from "../../components/ui/FatSecretBadge";
 // classifier is still load-bearing — it's a real ingredient-keyword
 // scan, not a fabricated source claim.
 import { classifyRecipeGluten } from "@/lib/recipeTrust";
-import { mapMealSourceToDot } from "../../../../src/lib/nutrition/sourceMap";
+import { mapMealSourceToDot } from "@suppr/shared/nutrition/sourceMap";
 import {
   composeSubtitleParts,
   computeFitsYourDayVerdict,

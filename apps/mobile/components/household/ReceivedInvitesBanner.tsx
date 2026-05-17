@@ -24,7 +24,7 @@ import {
   declineHouseholdInvite,
   listReceivedHouseholdInvites,
   type HouseholdInvite,
-} from "../../../../src/lib/household/householdClient";
+} from "@suppr/shared/household/householdClient";
 
 export interface ReceivedInvitesBannerProps {
   onAccepted?: () => void;

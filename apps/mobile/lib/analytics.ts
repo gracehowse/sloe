@@ -1,13 +1,13 @@
 import PostHog from "posthog-react-native";
 import Constants from "expo-constants";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { AnalyticsEventName } from "../../../src/lib/analytics/events";
+import type { AnalyticsEventName } from "@suppr/shared/analytics/events";
 import {
   FIRST_LOG_LOCAL_KEY,
   firstLogTimestamp,
   shouldMarkFirstLog,
-} from "../../../src/lib/analytics/firstLog";
-import { DEFAULT_SESSION_REPLAY_SAMPLE_RATE } from "../../../src/lib/analytics/sessionReplaySampleRate";
+} from "@suppr/shared/analytics/firstLog";
+import { DEFAULT_SESSION_REPLAY_SAMPLE_RATE } from "@suppr/shared/analytics/sessionReplaySampleRate";
 import {
   readCachedSampleRate,
   writeSampleRateFromClient,

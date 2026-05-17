@@ -11,4 +11,4 @@ export {
   filterOnboardingSeeds,
   type OnboardingSeed,
   type SeedFilterInput,
-} from "../../../src/lib/onboarding/onboardingSeeds";
+} from "@suppr/shared/onboarding/onboardingSeeds";

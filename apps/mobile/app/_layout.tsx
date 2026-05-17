@@ -114,7 +114,7 @@ import { decideDeepLinkAction } from '@/lib/deepLinkRouting';
 import { parseSiriDeepLink } from '@/lib/siriDeepLinks';
 import { setPendingSiriAction } from '@/lib/siriPending';
 import { track } from '@/lib/analytics';
-import { AnalyticsEvents } from '../../../src/lib/analytics/events';
+import { AnalyticsEvents } from '@suppr/shared/analytics/events';
 import {
   cancelWeeklyRecapPush,
   handleWeeklyRecapNotificationResponse,

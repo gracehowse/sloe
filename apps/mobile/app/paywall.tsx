@@ -40,9 +40,9 @@ import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { usePromoCode } from "@/hooks/usePromoCode";
 import { track } from "@/lib/analytics";
-import { AnalyticsEvents, type PaywallViewedFrom } from "../../../src/lib/analytics/events";
-import { PRICING_TIERS, type PricingTier, computeAnnualSavingsBadge } from "../../../src/lib/landing/pricingTiers";
-import { getPaywallTrustChips, buildReceiptTrustCopy, type PaywallTrustChip } from "../../../src/lib/landing/paywallTrust";
+import { AnalyticsEvents, type PaywallViewedFrom } from "@suppr/shared/analytics/events";
+import { PRICING_TIERS, type PricingTier, computeAnnualSavingsBadge } from "@suppr/shared/landing/pricingTiers";
+import { getPaywallTrustChips, buildReceiptTrustCopy, type PaywallTrustChip } from "@suppr/shared/landing/paywallTrust";
 
 /**
  * Mobile paywall — sells both Base and Pro across monthly + annual.

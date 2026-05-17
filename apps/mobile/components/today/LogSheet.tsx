@@ -37,7 +37,7 @@ import FoodSearchPanel, {
   type SelectedFood as InlineSelectedFood,
   type SupabaseLike as InlineSupabaseLike,
 } from "@/components/food-search/FoodSearchPanel";
-import type { MacroConsumed, MacroTargets } from "../../../../src/lib/nutrition/remainingMacros";
+import type { MacroConsumed, MacroTargets } from "@suppr/shared/nutrition/remainingMacros";
 
 /** Re-exported for hosts that want the inline-search payload type. */
 export type LogSheetInlineSelectedFood = InlineSelectedFood;

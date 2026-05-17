@@ -32,7 +32,7 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { authedFetch } from "@/lib/authedFetch";
 import { getSupprApiBase } from "@/lib/supprWeb";
 import { track } from "@/lib/analytics";
-import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
+import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 
 type Phase =
   | { kind: "idle" }

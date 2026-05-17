@@ -5,6 +5,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./*"],
+      "@suppr/shared/*": ["../../src/lib/*"],
       "@supabase/supabase-js": ["./node_modules/@supabase/supabase-js"]
     }
   },
