@@ -93,6 +93,8 @@ import { TodayStepsCard } from "./suppr/today-steps-card";
 import { TodayActivityBonusCard } from "./suppr/today-activity-bonus-card";
 import { TodayWeekView } from "./suppr/today-week-view";
 import { TodayDashboardMacroTiles } from "./suppr/today-dashboard-macro-tiles";
+import { TodayDashboardMacroBars } from "./suppr/today-dashboard-macro-bars";
+import { useMacroDisplayStyle } from "../../lib/preferences/useMacroDisplayStyle";
 import { FullNutrientPanelSheet } from "./suppr/full-nutrient-panel-sheet";
 import { FULL_NUTRIENT_PANEL_ROW_COUNT } from "../../lib/nutrition/fullNutrientPanel";
 import { TodaySnapShortcut } from "./suppr/today-snap-shortcut";
@@ -448,6 +450,10 @@ function NorthStarBlockHost({
 }
 
 export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpenProgress }: NutritionTrackerProps) {
+  // User-configurable macro display variant. Default `tiles` matches
+  // historic UI; `bars` is the Cronometer/Lose It-style list (Settings
+  // → Display → Macro display). Pref persists via localStorage.
+  const [macroDisplayStyle] = useMacroDisplayStyle();
   const {
     nutritionTargets,
     setNutritionTargets,
@@ -2463,27 +2469,46 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
           standalone block below now ship inline inside this component
           via the `nutrientRows` prop, so the above-meals composition
           stays at four blocks (date / hero / context / macro tiles). */}
-      <TodayDashboardMacroTiles
-        trackedMacros={trackedDashboardMacros}
-        proteinCurrent={totals.protein}
-        proteinTarget={targets.protein}
-        carbsCurrent={totals.carbs}
-        carbsTarget={targets.carbs}
-        fatCurrent={totals.fat}
-        fatTarget={targets.fat}
-        fiberCurrent={totals.fiber}
-        fiberTarget={targets.fiber}
-        sugarG={dayMicroSumForTracker.sugarG}
-        sodiumMg={dayMicroSumForTracker.sodiumMg}
-        waterCurrentMl={totalWaterMl}
-        waterTargetMl={targets.waterMl}
-        formatWaterLine={formatWaterLine}
-        onAddWaterMl={addWaterMlForSelectedDay}
-        netCarbsLensEnabled={netCarbsLensEnabled}
-        nutrientRows={dayNutrientDetailRows}
-        onPressViewAllNutrients={() => setFullNutrientPanelOpen(true)}
-        viewAllNutrientsCount={FULL_NUTRIENT_PANEL_ROW_COUNT}
-      />
+      {macroDisplayStyle === "bars" ? (
+        <TodayDashboardMacroBars
+          trackedMacros={trackedDashboardMacros}
+          proteinCurrent={totals.protein}
+          proteinTarget={targets.protein}
+          carbsCurrent={totals.carbs}
+          carbsTarget={targets.carbs}
+          fatCurrent={totals.fat}
+          fatTarget={targets.fat}
+          fiberCurrent={totals.fiber}
+          fiberTarget={targets.fiber}
+          sugarG={dayMicroSumForTracker.sugarG}
+          sodiumMg={dayMicroSumForTracker.sodiumMg}
+          waterCurrentMl={totalWaterMl}
+          waterTargetMl={targets.waterMl}
+          netCarbsLensEnabled={netCarbsLensEnabled}
+        />
+      ) : (
+        <TodayDashboardMacroTiles
+          trackedMacros={trackedDashboardMacros}
+          proteinCurrent={totals.protein}
+          proteinTarget={targets.protein}
+          carbsCurrent={totals.carbs}
+          carbsTarget={targets.carbs}
+          fatCurrent={totals.fat}
+          fatTarget={targets.fat}
+          fiberCurrent={totals.fiber}
+          fiberTarget={targets.fiber}
+          sugarG={dayMicroSumForTracker.sugarG}
+          sodiumMg={dayMicroSumForTracker.sodiumMg}
+          waterCurrentMl={totalWaterMl}
+          waterTargetMl={targets.waterMl}
+          formatWaterLine={formatWaterLine}
+          onAddWaterMl={addWaterMlForSelectedDay}
+          netCarbsLensEnabled={netCarbsLensEnabled}
+          nutrientRows={dayNutrientDetailRows}
+          onPressViewAllNutrients={() => setFullNutrientPanelOpen(true)}
+          viewAllNutrientsCount={FULL_NUTRIENT_PANEL_ROW_COUNT}
+        />
+      )}
 
       {/* PR #47 full-nutrient panel — opened from the
           TodayDashboardMacroTiles "View all N nutrients" pill above.
