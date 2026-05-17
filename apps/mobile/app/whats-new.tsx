@@ -33,7 +33,7 @@ import {
   changelogKindLabel,
   getLatestChangelog,
   groupChangelogItems,
-} from "../../../src/lib/changelog/entries";
+} from "@suppr/shared/changelog/entries";
 import {
   formatInstalledBuildLabel,
   readInstalledBuild,

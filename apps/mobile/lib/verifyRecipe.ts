@@ -5,39 +5,39 @@ import {
   buildOffServingOptionsFromProduct,
   pickDefaultServingGrams,
   type OffServingOption,
-} from "../../../src/lib/openFoodFacts/offServingPortions";
-import { scaleFromPer100gGrams } from "../../../src/lib/openFoodFacts/scaleFromPer100g";
-import { effectiveFoodSearchQuery } from "../../../src/lib/nutrition/foodSearchQuery";
-import { matchGenericBeverage } from "../../../src/lib/nutrition/genericBeverages";
-import { matchGenericFood } from "../../../src/lib/nutrition/genericFoods";
+} from "@suppr/shared/openFoodFacts/offServingPortions";
+import { scaleFromPer100gGrams } from "@suppr/shared/openFoodFacts/scaleFromPer100g";
+import { effectiveFoodSearchQuery } from "@suppr/shared/nutrition/foodSearchQuery";
+import { matchGenericBeverage } from "@suppr/shared/nutrition/genericBeverages";
+import { matchGenericFood } from "@suppr/shared/nutrition/genericFoods";
 import {
   pickEdamamPrimaryServing,
   pickUsdaBrandedPrimaryServing,
   pickUsdaFoodPortionsPrimaryServing,
   parseOffPrimaryServing,
   type PrimaryServing,
-} from "../../../src/lib/nutrition/primaryServing";
-import { inferNaturalServingFromName } from "../../../src/lib/nutrition/inferNaturalServing";
-import { measureToGrams } from "../../../src/lib/nutrition/measureToGrams";
-import { checkSubmissionPlausibility } from "../../../src/lib/foodCorrection/plausibility";
+} from "@suppr/shared/nutrition/primaryServing";
+import { inferNaturalServingFromName } from "@suppr/shared/nutrition/inferNaturalServing";
+import { measureToGrams } from "@suppr/shared/nutrition/measureToGrams";
+import { checkSubmissionPlausibility } from "@suppr/shared/foodCorrection/plausibility";
 import {
   effectiveMacros as effectiveIngredientMacros,
   recomputeRecipeTotals,
   type IngredientOverride,
-} from "../../../src/lib/nutrition/ingredientOverrides";
+} from "@suppr/shared/nutrition/ingredientOverrides";
 import {
   totalGramsForVerifyScale as totalGramsForVerifyScaleImpl,
   totalGramsForVerifyScaleDetailed as totalGramsForVerifyScaleDetailedImpl,
   type VerifyScaleResult,
-} from "../../../src/lib/nutrition/totalGramsForVerifyScale";
-import { inferAllergensFromIngredients } from "../../../src/lib/nutrition/inferAllergens";
-import { isPlausibleMacrosPer100g } from "../../../src/lib/nutrition/macroPlausibility";
+} from "@suppr/shared/nutrition/totalGramsForVerifyScale";
+import { inferAllergensFromIngredients } from "@suppr/shared/nutrition/inferAllergens";
+import { isPlausibleMacrosPer100g } from "@suppr/shared/nutrition/macroPlausibility";
 import {
   isBareGenericNounRow,
   isLowRelevanceNonVerifiedRow,
-} from "../../../src/lib/nutrition/searchRowTrust";
-import { parseOffMicrosPer100g } from "../../../src/lib/openFoodFacts/parseOffMicros";
-import { stripSectionPrefix } from "../../../src/lib/recipe-import/socialUrlHelpers";
+} from "@suppr/shared/nutrition/searchRowTrust";
+import { parseOffMicrosPer100g } from "@suppr/shared/openFoodFacts/parseOffMicros";
+import { stripSectionPrefix } from "@suppr/shared/recipe-import/socialUrlHelpers";
 
 /**
  * P1-8 (2026-04-25): re-export the canonical threshold from
@@ -45,7 +45,7 @@ import { stripSectionPrefix } from "../../../src/lib/recipe-import/socialUrlHelp
  * maintaining a hand-synced duplicate. Same value as before (0.50);
  * the import path is now stable across web + mobile.
  */
-import { RECIPE_INGREDIENT_REVIEW_CONFIDENCE } from "../../../src/lib/nutrition/verifyConfidencePolicy";
+import { RECIPE_INGREDIENT_REVIEW_CONFIDENCE } from "@suppr/shared/nutrition/verifyConfidencePolicy";
 export { RECIPE_INGREDIENT_REVIEW_CONFIDENCE };
 
 // Consolidation note (M4): shared parsing lives under `src/lib/recipe-ingredients/`
@@ -999,7 +999,7 @@ export async function searchFoods(
  * source if they need to (currently they don't — the macros + caffeine
  * are read directly).
  */
-function genericBeverageToUnifiedResult(b: import("../../../src/lib/nutrition/genericBeverages").GenericBeverage): UnifiedSearchResult {
+function genericBeverageToUnifiedResult(b: import("@suppr/shared/nutrition/genericBeverages").GenericBeverage): UnifiedSearchResult {
   return {
     key: `generic-beverage:${b.id}`,
     name: b.name,
@@ -1039,7 +1039,7 @@ function genericBeverageToUnifiedResult(b: import("../../../src/lib/nutrition/ge
  * primary serving carries the curated `servingLabel` (e.g.
  * "1 medium (182g)" for an apple).
  */
-function genericFoodToUnifiedResult(f: import("../../../src/lib/nutrition/genericFoods").GenericFood): UnifiedSearchResult {
+function genericFoodToUnifiedResult(f: import("@suppr/shared/nutrition/genericFoods").GenericFood): UnifiedSearchResult {
   return {
     key: `generic-food:${f.id}`,
     name: f.name,

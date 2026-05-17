@@ -47,7 +47,7 @@ describe("AiPaywallSheet module contract (Ship M2)", () => {
 
   it("imports AnalyticsEvents from the shared canonical registry", () => {
     expect(SHEET_SOURCE).toMatch(
-      /AnalyticsEvents[^;]*from\s+["']\.\.\/\.\.\/\.\.\/src\/lib\/analytics\/events["']/,
+      /AnalyticsEvents[^;]*from\s+["']@suppr\/shared\/analytics\/events["']/,
     );
   });
 

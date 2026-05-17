@@ -7,7 +7,7 @@ import { Accent, Radius, Spacing } from "@/constants/theme";
 import {
   buildWhyThisNumber,
   type WhyThisNumberInput,
-} from "../../../../src/lib/nutrition/whyThisNumber";
+} from "@suppr/shared/nutrition/whyThisNumber";
 
 /**
  * WhyThisNumberSheet — "Why this number?" tap-to-explain sheet for the

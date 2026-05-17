@@ -4,9 +4,9 @@ import { Accent, Radius, Spacing } from "@/constants/theme";
 import {
   weekSummaryDateKeys,
   type WeekSummaryMode,
-} from "../../../../src/lib/nutrition/weekSummaryWindow";
+} from "@suppr/shared/nutrition/weekSummaryWindow";
 import { dateKeyFromDate, type JournalMeal } from "@/lib/nutritionJournal";
-import { NET_DEFICIT_LABEL } from "../../../../src/lib/copy/today";
+import { NET_DEFICIT_LABEL } from "@suppr/shared/copy/today";
 
 /**
  * TodayDeficitInsight — small banner shown on today view when there's

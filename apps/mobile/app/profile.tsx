@@ -28,8 +28,8 @@ import {
 } from "../../../src/constants/dietaryPreferences";
 import { PROFILE_TARGETS_DIRTY_KEY } from "@/lib/profileTargetsDirtyFlag";
 import { track } from "@/lib/analytics";
-import { AnalyticsEvents } from "../../../src/lib/analytics/events";
-import { recordGoalHistory } from "../../../src/lib/nutrition/goalHistory";
+import { AnalyticsEvents } from "@suppr/shared/analytics/events";
+import { recordGoalHistory } from "@suppr/shared/nutrition/goalHistory";
 
 export default function ProfileScreen() {
   const colors = useThemeColors();

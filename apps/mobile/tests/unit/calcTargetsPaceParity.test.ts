@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateBudget, type PlanPace } from "../../../../src/lib/nutrition/tdee";
+import { calculateBudget, type PlanPace } from "@suppr/shared/nutrition/tdee";
 import { goalCalorieAdjustment, calcTargetsFromStats } from "../../lib/calcTargets";
 
 /**

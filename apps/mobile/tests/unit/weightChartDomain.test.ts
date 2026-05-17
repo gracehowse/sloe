@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { computeWeightChartDomain } from "../../../../src/lib/weightProjection";
+import { computeWeightChartDomain } from "@suppr/shared/weightProjection";
 
 /**
  * G-3 (TestFlight `AGJmliHTxnmt7sC1VpTZz5E`, 2026-04-19, build 11) —

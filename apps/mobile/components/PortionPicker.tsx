@@ -15,7 +15,7 @@ import {
   stepperStep,
   switchUnit,
   unitLabel,
-} from "../../../src/lib/nutrition/portionPicker";
+} from "@suppr/shared/nutrition/portionPicker";
 
 /**
  * PortionPicker — Lose It! / MFP-style amount + unit selector. Replaces

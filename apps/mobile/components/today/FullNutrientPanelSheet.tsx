@@ -17,8 +17,8 @@ import {
   type FullNutrientPanelInput,
   type FullNutrientPanelRow,
   type FullNutrientPanelSection,
-} from "../../../../src/lib/nutrition/fullNutrientPanel";
-import { DAILY_VALUES_SOURCE_LABEL } from "../../../../src/lib/nutrition/dailyValues";
+} from "@suppr/shared/nutrition/fullNutrientPanel";
+import { DAILY_VALUES_SOURCE_LABEL } from "@suppr/shared/nutrition/dailyValues";
 
 /**
  * FullNutrientPanelSheet — "View all 35 nutrients" bottom sheet.

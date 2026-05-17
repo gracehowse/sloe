@@ -16,7 +16,7 @@ import { dateKeyFromDate } from "@/lib/nutritionJournal";
 import {
   addDays,
   sanitizeCopyTargets,
-} from "../../../src/lib/nutrition/copyMeals";
+} from "@suppr/shared/nutrition/copyMeals";
 
 type Theme = {
   text: string;

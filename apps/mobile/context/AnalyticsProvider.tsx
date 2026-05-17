@@ -9,7 +9,7 @@ import {
   primeSessionReplaySampleRate,
   track,
 } from "../lib/analytics";
-import { AnalyticsEvents } from "../../../src/lib/analytics/events";
+import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 
 /**
  * Mobile analytics provider. Initialises posthog-react-native via

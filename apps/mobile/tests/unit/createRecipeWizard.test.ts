@@ -45,7 +45,7 @@ import {
   stepIndex,
   type WizardIngredient,
   type WizardState,
-} from "../../../../src/lib/recipes/createRecipeWizard";
+} from "@suppr/shared/recipes/createRecipeWizard";
 
 function ing(partial: Partial<WizardIngredient> = {}): WizardIngredient {
   return {

@@ -34,7 +34,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { PRICING_TIERS } from "../../../../src/lib/landing/pricingTiers";
+import { PRICING_TIERS } from "@suppr/shared/landing/pricingTiers";
 
 const PAYWALL_PATH = resolve(__dirname, "../../app/paywall.tsx");
 const PAYWALL_SRC = readFileSync(PAYWALL_PATH, "utf8");
@@ -53,7 +53,7 @@ describe("mobile paywall — feature parity with the web SSOT", () => {
     // that works under the mobile tsconfig. If someone moves this to
     // `src/lib/landing/content` the RN bundler graph blows up.
     expect(PAYWALL_SRC).toMatch(
-      /from\s+["'][^"']*\/src\/lib\/landing\/pricingTiers["']/,
+      /from\s+["'][^"']*@suppr\/shared\/landing\/pricingTiers["']/,
     );
   });
 

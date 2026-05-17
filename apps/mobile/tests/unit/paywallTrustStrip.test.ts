@@ -28,7 +28,7 @@ describe("mobile paywall — trust strip render", () => {
 
   it("imports the SSOT trust chips + receipt builder", () => {
     expect(src).toMatch(
-      /from\s+"\.\.\/\.\.\/\.\.\/src\/lib\/landing\/paywallTrust"/,
+      /from\s+"@suppr\/shared\/landing\/paywallTrust"/,
     );
     // 2026-05-15: was `PAYWALL_TRUST_CHIPS` static import; now
     // `getPaywallTrustChips` for platform-aware copy. SSOT root is

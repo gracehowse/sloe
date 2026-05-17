@@ -30,8 +30,8 @@ import {
   isAiSourcedFoodHistoryItem,
   type FoodHistoryItem,
   type FoodHistoryMealLike,
-} from "../../../src/lib/nutrition/foodHistory";
-import { mapMealSourceToDot } from "../../../src/lib/nutrition/sourceMap";
+} from "@suppr/shared/nutrition/foodHistory";
+import { mapMealSourceToDot } from "@suppr/shared/nutrition/sourceMap";
 import {
   addFavorite,
   favoriteKey,
@@ -39,8 +39,8 @@ import {
   removeFavorite,
   type FavoriteFood,
   type FavoriteFoodInput,
-} from "../../../src/lib/nutrition/favoriteFoods";
-import { formatMacroTrailer } from "../../../src/lib/nutrition/macroFormat";
+} from "@suppr/shared/nutrition/favoriteFoods";
+import { formatMacroTrailer } from "@suppr/shared/nutrition/macroFormat";
 import {
   deleteSavedMeal,
   incrementLogCount,
@@ -48,15 +48,15 @@ import {
   renameSavedMeal,
   type SavedMeal,
   type SavedMealItem,
-} from "../../../src/lib/nutrition/savedMeals";
+} from "@suppr/shared/nutrition/savedMeals";
 import {
   dominantSavedMealSource,
   summariseSavedMeal,
-} from "../../../src/lib/nutrition/savedMealsLogic";
+} from "@suppr/shared/nutrition/savedMealsLogic";
 import { track } from "@/lib/analytics";
-import { AnalyticsEvents } from "../../../src/lib/analytics/events";
+import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import EmptyState from "@/components/EmptyState";
-import { resolveQuickAddDefaultTab } from "../../../src/lib/nutrition/usualMealHint";
+import { resolveQuickAddDefaultTab } from "@suppr/shared/nutrition/usualMealHint";
 
 /**
  * Mobile `QuickAddPanel` — first-class React Native component that mirrors

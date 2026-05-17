@@ -43,27 +43,27 @@ import {
   weightJourneyProgress,
 } from "@/lib/weightProjection";
 import { calculateTDEE, getEffectiveTDEE } from "@/lib/calcTargets";
-import { resolveMaintenance , formatMaintenanceRecapLine } from "../../../../src/lib/nutrition/resolveMaintenance";
-import { buildMaintenanceChain } from "../../../../src/lib/nutrition/maintenanceChain";
-import type { PlanPace } from "../../../../src/lib/nutrition/tdee";
+import { resolveMaintenance , formatMaintenanceRecapLine } from "@suppr/shared/nutrition/resolveMaintenance";
+import { buildMaintenanceChain } from "@suppr/shared/nutrition/maintenanceChain";
+import type { PlanPace } from "@suppr/shared/nutrition/tdee";
 import {
   coerceMeasurementSystem,
   formatWeightForUnit,
   type MeasurementSystem,
-} from "../../../../src/lib/measurements";
+} from "@suppr/shared/measurements";
 import {
   coerceWeightSurfaceMode,
   type WeightSurfaceMode,
-} from "../../../../src/lib/nutrition/weightSurfaceMode";
-import { computeWeightTrendCopy } from "../../../../src/lib/nutrition/weightTrendTile";
+} from "@suppr/shared/nutrition/weightSurfaceMode";
+import { computeWeightTrendCopy } from "@suppr/shared/nutrition/weightTrendTile";
 import { syncHealthDataThrottled, isHealthSyncAvailable } from "@/lib/healthSync";
 import { buildWeekStats, formatAvgCaloriesLabel, formatMacroAdherenceBar } from "@/lib/progressWeekReport";
 import {
   buildCaloriesRangeStats,
   buildWeightRangeStats,
   type RangeKey,
-} from "../../../../src/lib/nutrition/progressRangeStats";
-import { getDailyTargets, type DailyTarget } from "../../../../src/lib/nutrition/dailyTargetRead";
+} from "@suppr/shared/nutrition/progressRangeStats";
+import { getDailyTargets, type DailyTarget } from "@suppr/shared/nutrition/dailyTargetRead";
 import {
   availableFreezes,
   computeProtectedStreak,
@@ -78,14 +78,14 @@ import {
   type UsualMealRecapInsight,
 } from "@/lib/weeklyRecap";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { listSavedMeals, type SavedMeal, type SavedMealItem } from "../../../../src/lib/nutrition/savedMeals";
-import { normaliseRecipeTitle, selectMostFrequentSlotSeed } from "../../../../src/lib/nutrition/usualMealHint";
+import { listSavedMeals, type SavedMeal, type SavedMealItem } from "@suppr/shared/nutrition/savedMeals";
+import { normaliseRecipeTitle, selectMostFrequentSlotSeed } from "@suppr/shared/nutrition/usualMealHint";
 import {
   PENDING_USUAL_MEAL_SAVE_KEY,
   serializePendingUsualMealSave,
-} from "../../../../src/lib/nutrition/pendingUsualMealSave";
+} from "@suppr/shared/nutrition/pendingUsualMealSave";
 import { formatRecapForShare } from "@/lib/weeklyRecap";
-import { resolveDigestHeadline } from "../../../../src/lib/nutrition/digest";
+import { resolveDigestHeadline } from "@suppr/shared/nutrition/digest";
 import { Digest, type DigestUsualMeal } from "@/components/Digest";
 import { HouseholdBar } from "@/components/HouseholdBar";
 // Phase 4 (B3.1, 2026-04-27) — Surface E "Progress hero (story-led)".
@@ -95,7 +95,7 @@ import { ProgressHeadline } from "@/components/today/ProgressHeadline";
 import { ProgressStoryGate } from "@/components/today/ProgressStoryGate";
 import { hasEnoughDataForStory } from "@/lib/progressStoryGate";
 import { DigestStoryCard } from "@/components/progress/DigestStoryCard";
-import { computeDayOfWeekPattern } from "../../../../src/lib/nutrition/dayOfWeekPattern";
+import { computeDayOfWeekPattern } from "@suppr/shared/nutrition/dayOfWeekPattern";
 import { generateProgressCommentary } from "@/lib/progressCommentary";
 import { WeightChart } from "@/components/progress/WeightChart";
 import { WeightRangeToggle } from "@/components/progress/WeightRangeToggle";

@@ -31,11 +31,11 @@ import { authedFetch } from "@/lib/authedFetch";
 import {
   sanitizeOverrideInput,
   type IngredientOverride,
-} from "../../../src/lib/nutrition/ingredientOverrides";
-import { ingredientVerifyNeedsReview } from "../../../src/lib/nutrition/verifyConfidencePolicy";
-import { formatMacro } from "../../../src/lib/nutrition/formatMacro";
+} from "@suppr/shared/nutrition/ingredientOverrides";
+import { ingredientVerifyNeedsReview } from "@suppr/shared/nutrition/verifyConfidencePolicy";
+import { formatMacro } from "@suppr/shared/nutrition/formatMacro";
 import { track } from "@/lib/analytics";
-import { AnalyticsEvents } from "../../../src/lib/analytics/events";
+import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 
 type Theme = {
   text: string;

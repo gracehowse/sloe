@@ -21,7 +21,7 @@ import {
   classifyConfidence,
   isLowConfidence,
   type AiLoggedItem,
-} from "../../../src/lib/nutrition/aiLogging";
+} from "@suppr/shared/nutrition/aiLogging";
 import Badge from "./Badge";
 
 type Theme = {

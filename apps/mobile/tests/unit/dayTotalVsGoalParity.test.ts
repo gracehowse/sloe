@@ -17,7 +17,7 @@ import {
   buildDayTotalVsGoalLine,
   classifyDayDelta,
   formatDayTotalCell,
-} from "../../../../src/lib/planning/dayTotalVsGoal";
+} from "@suppr/shared/planning/dayTotalVsGoal";
 
 const PLANNER_PATH = resolve(__dirname, "../../app/(tabs)/planner.tsx");
 const PLANNER_SRC = readFileSync(PLANNER_PATH, "utf8");
@@ -25,7 +25,7 @@ const PLANNER_SRC = readFileSync(PLANNER_PATH, "utf8");
 describe("mobile planner — day total vs goal wiring", () => {
   it("imports the shared helper from src/lib/planning/dayTotalVsGoal", () => {
     expect(PLANNER_SRC).toMatch(
-      /from\s+["'][^"']*src\/lib\/planning\/dayTotalVsGoal["']/,
+      /from\s+["'][^"']*@suppr\/shared\/planning\/dayTotalVsGoal["']/,
     );
     expect(PLANNER_SRC).toMatch(/\bbuildDayTotalVsGoalLine\b/);
     expect(PLANNER_SRC).toMatch(/\bformatDayTotalCell\b/);

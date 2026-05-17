@@ -24,7 +24,7 @@ import {
   WIDGET_TAP_DEEP_LINK,
   type WidgetSnapshot,
   type WidgetSnapshotInput,
-} from "../../../src/lib/nutrition/widgetSnapshot";
+} from "@suppr/shared/nutrition/widgetSnapshot";
 
 export {
   buildWidgetSnapshot,

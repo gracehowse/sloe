@@ -32,16 +32,16 @@ import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets, calculateTDEE } from "@/lib/calcTargets";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
-import { dateKeyFromDate } from "../../../src/lib/nutrition/trackerStats";
-import { resolveLatestWeightKg } from "../../../src/lib/weightProjection";
+import { dateKeyFromDate } from "@suppr/shared/nutrition/trackerStats";
+import { resolveLatestWeightKg } from "@suppr/shared/weightProjection";
 import {
   activityLevelCaption,
   deficitSurplusCaption,
   buildMacroTiles,
   buildGoalCard,
-} from "../../../src/lib/targets/targetsView";
+} from "@suppr/shared/targets/targetsView";
 import { WhyThisNumberSheet } from "@/components/today/WhyThisNumberSheet";
-import { paceKgPerWeekFromPreset } from "../../../src/lib/nutrition/whyThisNumber";
+import { paceKgPerWeekFromPreset } from "@suppr/shared/nutrition/whyThisNumber";
 
 /**
  * Targets screen — 2026-04-20 prototype port. Dedicated surface that

@@ -31,7 +31,7 @@ import { HydrationStimulantsCard } from "../../components/HydrationStimulantsCar
 import {
   WATER_QUICK_ADDS_ML,
   imperialWaterQuickAdds,
-} from "../../../../src/lib/nutrition/hydrationStimulants";
+} from "@suppr/shared/nutrition/hydrationStimulants";
 
 // Ensure React is not tree-shaken.
 void React;

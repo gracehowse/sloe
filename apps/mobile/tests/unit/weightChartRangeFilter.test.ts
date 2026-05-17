@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { filterByDateRangeDays } from "../../../../src/lib/weightProjection";
+import { filterByDateRangeDays } from "@suppr/shared/weightProjection";
 import { daysForRange, type TimeRange } from "../../components/charts/TimeRangeSelector";
 
 /**

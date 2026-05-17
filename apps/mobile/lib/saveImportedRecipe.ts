@@ -1,13 +1,13 @@
 import { supabase } from "@/lib/supabase";
 import { classifyMealType } from "./classifyMealType";
-import { normaliseInstructions } from "../../../src/lib/recipes/normaliseInstructions";
-import { normaliseSource } from "../../../src/lib/recipes/persistSourceAttribution";
-import { normalizeRecipeTitle } from "../../../src/lib/recipes/normalizeRecipeTitle";
-import { isStructuredSource } from "../../../src/lib/nutrition/structuredSourceGate";
+import { normaliseInstructions } from "@suppr/shared/recipes/normaliseInstructions";
+import { normaliseSource } from "@suppr/shared/recipes/persistSourceAttribution";
+import { normalizeRecipeTitle } from "@suppr/shared/recipes/normalizeRecipeTitle";
+import { isStructuredSource } from "@suppr/shared/nutrition/structuredSourceGate";
 import {
   IMPORT_ERROR_COPY,
   mapPersistenceError,
-} from "../../../src/lib/recipes/importErrorCopy";
+} from "@suppr/shared/recipes/importErrorCopy";
 
 /** Shape returned from `POST /api/recipe-import` (social + HTML paths). */
 export type ApiImportedRecipe = {

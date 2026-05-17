@@ -54,7 +54,7 @@ import {
   registerExpoPushTokenForUser,
 } from "@/lib/expoPushToken";
 import { track } from "@/lib/analytics";
-import { AnalyticsEvents } from "../../../../../src/lib/analytics/events";
+import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { useOnboarding } from "../context";
 import { MobileStepBody, MobileStepHeader, useStepOverline } from "../scaffold";
 import { MobileMfpCsvImportCard } from "../../imports/MfpCsvImportCard";

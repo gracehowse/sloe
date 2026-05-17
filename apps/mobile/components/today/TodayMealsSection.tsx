@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Alert, Modal, Pressable, ScrollView, Share, Text, View } from "react-native";
-import { buildMealShareText } from "../../../../src/lib/share/buildMealShareText";
+import { buildMealShareText } from "@suppr/shared/share/buildMealShareText";
 import { track, isFeatureEnabled } from "@/lib/analytics";
 import { Swipeable } from "react-native-gesture-handler";
 import {
@@ -21,11 +21,11 @@ import {
 import * as Haptics from "expo-haptics";
 import { Accent, Radius, SlotColors, Spacing } from "@/constants/theme";
 import { SourceDot } from "@/components/ui/SourceDot";
-import { mapMealSourceToDot } from "../../../../src/lib/nutrition/sourceMap";
-import { formatMacroTrailer } from "../../../../src/lib/nutrition/macroFormat";
+import { mapMealSourceToDot } from "@suppr/shared/nutrition/sourceMap";
+import { formatMacroTrailer } from "@suppr/shared/nutrition/macroFormat";
 import type { JournalMeal } from "@/lib/nutritionJournal";
-import type { SavedMeal } from "../../../../src/lib/nutrition/savedMeals";
-import { summariseSavedMeal } from "../../../../src/lib/nutrition/savedMealsLogic";
+import type { SavedMeal } from "@suppr/shared/nutrition/savedMeals";
+import { summariseSavedMeal } from "@suppr/shared/nutrition/savedMealsLogic";
 import { AiFirstLogTooltip } from "./AiFirstLogTooltip";
 
 /**

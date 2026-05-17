@@ -49,7 +49,7 @@ import * as Haptics from "expo-haptics";
 
 import { Accent, Radius, Spacing } from "@/constants/theme";
 import { track } from "@/lib/analytics";
-import { AnalyticsEvents } from "../../../src/lib/analytics/events";
+import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import Badge from "./Badge";
 
 export type AiPaywallFeature = "voice_log" | "photo_log";

@@ -69,35 +69,35 @@ import VoiceLogSheet from "@/components/VoiceLogSheet";
 import PhotoLogSheet from "@/components/PhotoLogSheet";
 import AiPaywallSheet, { type AiPaywallFeature } from "@/components/AiPaywallSheet";
 import { computeLoggingStreak } from "@/lib/trackerStats";
-import { computeActivityBonusKcal } from "../../../../src/lib/nutrition/activityBonus";
+import { computeActivityBonusKcal } from "@suppr/shared/nutrition/activityBonus";
 import {
   availableFreezes,
   computeProtectedStreak,
   readFreezeLedger,
   type FreezeLedger,
 } from "@/lib/streakFreeze";
-import { didStreakReset } from "../../../../src/lib/nutrition/streakReset";
+import { didStreakReset } from "@suppr/shared/nutrition/streakReset";
 import {
   MISSED_YESTERDAY_COPY,
   shouldShowMissedYesterday,
-} from "../../../../src/lib/nutrition/missedYesterday";
+} from "@suppr/shared/nutrition/missedYesterday";
 import {
   normalizeWeekSummaryMode,
   weekSummaryDateKeys,
   type WeekSummaryMode,
-} from "../../../../src/lib/nutrition/weekSummaryWindow";
+} from "@suppr/shared/nutrition/weekSummaryWindow";
 import { track, isFeatureEnabled } from "@/lib/analytics";
-import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
-import { findPlanDayIdForCalendarDate } from "../../../../src/lib/mealPlan/planCalendarAnchor";
-import { coerceMacrosWhenCaloriesButNoGrams } from "../../../../src/lib/nutrition/coerceRecipeMacrosForPlanning";
-import { fetchPlannedMealMicros, type SupabaseLike } from "../../../../src/lib/planning/plannedMealMicros";
+import { AnalyticsEvents } from "@suppr/shared/analytics/events";
+import { findPlanDayIdForCalendarDate } from "@suppr/shared/mealPlan/planCalendarAnchor";
+import { coerceMacrosWhenCaloriesButNoGrams } from "@suppr/shared/nutrition/coerceRecipeMacrosForPlanning";
+import { fetchPlannedMealMicros, type SupabaseLike } from "@suppr/shared/planning/plannedMealMicros";
 import { refreshAdaptiveTdeeForUser } from "@/lib/refreshAdaptiveTdee";
-import { snapshotDailyTargetIfMissing } from "../../../../src/lib/nutrition/dailyTargetSnapshot";
+import { snapshotDailyTargetIfMissing } from "@suppr/shared/nutrition/dailyTargetSnapshot";
 import { refreshExpoPushTokenIfChanged , registerExpoPushTokenForUser } from "@/lib/expoPushToken";
 import { subscribeOffline } from "@/lib/subscribeOffline";
 import { NUTRITION_DEFAULTS, type NutritionDefaults } from "@/constants/nutritionDefaults";
 import { calculateTDEE, maintenanceIntakeFromTargetCalories, resolveTargets } from "@/lib/calcTargets";
-import { resolveMaintenance } from "../../../../src/lib/nutrition/resolveMaintenance";
+import { resolveMaintenance } from "@suppr/shared/nutrition/resolveMaintenance";
 import {
   syncHealthDataThrottled,
   syncNutritionFromHealthThrottled,
@@ -112,11 +112,11 @@ import {
   foodHistoryKey,
   isAiSourcedFoodHistoryItem,
   type FoodHistoryItem,
-} from "../../../../src/lib/nutrition/foodHistory";
-import { isHealthImportFallbackTitle } from "../../../../src/lib/nutrition/healthImportLabels";
-import { mapMealSourceToDot } from "../../../../src/lib/nutrition/sourceMap";
-import { isMealSlot } from "../../../../src/lib/nutrition/mealSlots";
-import { journalSlotFromMealTypes } from "../../../../src/lib/nutrition/recipeJournalSlot";
+} from "@suppr/shared/nutrition/foodHistory";
+import { isHealthImportFallbackTitle } from "@suppr/shared/nutrition/healthImportLabels";
+import { mapMealSourceToDot } from "@suppr/shared/nutrition/sourceMap";
+import { isMealSlot } from "@suppr/shared/nutrition/mealSlots";
+import { journalSlotFromMealTypes } from "@suppr/shared/nutrition/recipeJournalSlot";
 import {
   LEGACY_STORAGE_KEY_V1 as EAT_AGAIN_LEGACY_KEY_V1,
   STORAGE_KEY as EAT_AGAIN_STORAGE_KEY,
@@ -125,25 +125,25 @@ import {
   serialiseDismissState as serialiseEatAgainDismiss,
   shouldShowEatAgain,
   type DismissState as EatAgainDismissState,
-} from "../../../../src/lib/nutrition/eatAgainDismiss";
+} from "@suppr/shared/nutrition/eatAgainDismiss";
 import {
   cloneMealWithoutId,
   sanitizeCopyTargets,
-} from "../../../../src/lib/nutrition/copyMeals";
+} from "@suppr/shared/nutrition/copyMeals";
 import {
   parseDayNumberMap,
-} from "../../../../src/lib/nutrition/hydrationStimulants";
+} from "@suppr/shared/nutrition/hydrationStimulants";
 import {
   QUICK_ADD_COLLAPSED_STORAGE_KEY,
   isHydrationCardVisible,
   isStepsCardVisible,
   parseQuickAddCollapsed,
   serializeQuickAddCollapsed,
-} from "../../../../src/lib/nutrition/todayProgressiveDisclosure";
-import { aiLoggingSourceLabel } from "../../../../src/lib/nutrition/aiLogging";
-import { scaleCaffeineAlcohol } from "../../../../src/lib/nutrition/scaleCaffeineAlcoholForGrams";
-import { scaleMicrosPerServing } from "../../../../src/lib/nutrition/scaleMicrosPerServing";
-import { scaleMicrosForGrams } from "../../../../src/lib/openFoodFacts/parseOffMicros";
+} from "@suppr/shared/nutrition/todayProgressiveDisclosure";
+import { aiLoggingSourceLabel } from "@suppr/shared/nutrition/aiLogging";
+import { scaleCaffeineAlcohol } from "@suppr/shared/nutrition/scaleCaffeineAlcoholForGrams";
+import { scaleMicrosPerServing } from "@suppr/shared/nutrition/scaleMicrosPerServing";
+import { scaleMicrosForGrams } from "@suppr/shared/openFoodFacts/parseOffMicros";
 import { HydrationStimulantsCard } from "@/components/HydrationStimulantsCard";
 import SaveMealSheet from "@/components/SaveMealSheet";
 import QuickAddPanel from "@/components/QuickAddPanel";
@@ -153,20 +153,20 @@ import {
   listSavedMeals,
   type SavedMeal,
   type SavedMealItem,
-} from "../../../../src/lib/nutrition/savedMeals";
+} from "@suppr/shared/nutrition/savedMeals";
 import {
   buildMealEntriesFromSavedMeal,
-} from "../../../../src/lib/nutrition/savedMealsLogic";
+} from "@suppr/shared/nutrition/savedMealsLogic";
 import {
   parseDismissedSlots,
   serializeDismissedSlots,
   shouldShowUsualMealHint,
   USUAL_MEAL_HINT_STORAGE_KEY,
-} from "../../../../src/lib/nutrition/usualMealHint";
+} from "@suppr/shared/nutrition/usualMealHint";
 import {
   PENDING_USUAL_MEAL_SAVE_KEY,
   parsePendingUsualMealSave,
-} from "../../../../src/lib/nutrition/pendingUsualMealSave";
+} from "@suppr/shared/nutrition/pendingUsualMealSave";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { PROFILE_TARGETS_DIRTY_KEY } from "@/lib/profileTargetsDirtyFlag";
 import { TodayHero } from "@/components/today/TodayHero";
@@ -179,7 +179,7 @@ import { TodayFastingPill } from "@/components/today/TodayFastingPill";
 // `<LogFab>` import path while the web still ships its own FAB.
 import { LogSheet } from "@/components/today/LogSheet";
 import CreateCustomFoodSheet, { type CreateCustomFoodPayload } from "@/components/CreateCustomFoodSheet";
-import { createCustomFood } from "../../../../src/lib/nutrition/customFoodsClient";
+import { createCustomFood } from "@suppr/shared/nutrition/customFoodsClient";
 import { TodayEatAgainBanner } from "@/components/today/TodayEatAgainBanner";
 import { TodayEatAgainScroller } from "@/components/today/TodayEatAgainScroller";
 import { WeeklyCheckinBanner } from "@/components/today/WeeklyCheckinBanner";
@@ -3014,7 +3014,7 @@ export default function TrackerScreen() {
   // Shared by the VoiceLogSheet + PhotoLogSheet. Mirrors the web's
   // `commitAiLoggedItems` in `NutritionTracker.tsx`.
   const commitAiLoggedItems = useCallback(
-    (aiItems: import("../../../../src/lib/nutrition/aiLogging").AiLoggedItem[]) => {
+    (aiItems: import("@suppr/shared/nutrition/aiLogging").AiLoggedItem[]) => {
       if (!aiItems.length) return;
       const timeLabel = new Date().toLocaleTimeString(undefined, {
         hour: "numeric",

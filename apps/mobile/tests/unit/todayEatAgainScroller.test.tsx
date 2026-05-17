@@ -17,7 +17,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, fireEvent } from "@testing-library/react-native";
 
 import { TodayEatAgainScroller } from "../../components/today/TodayEatAgainScroller";
-import type { FoodHistoryItem } from "../../../../src/lib/nutrition/foodHistory";
+import type { FoodHistoryItem } from "@suppr/shared/nutrition/foodHistory";
 
 vi.mock("expo-haptics", () => ({
   selectionAsync: vi.fn(async () => undefined),

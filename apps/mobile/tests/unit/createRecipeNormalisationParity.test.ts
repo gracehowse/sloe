@@ -46,7 +46,7 @@ const WEB_UPLOAD_SRC = readFileSync(WEB_UPLOAD_PATH, "utf8");
 describe("mobile create-recipe — placeholder + write-side normalise (E-1)", () => {
   it("imports normaliseInstructions from the shared helper", () => {
     expect(MOBILE_CREATE_SRC).toMatch(
-      /import\s*\{\s*normaliseInstructions\s*\}\s*from\s*["'][^"']*src\/lib\/recipes\/normaliseInstructions["']/,
+      /import\s*\{\s*normaliseInstructions\s*\}\s*from\s*["'][^"']*@suppr\/shared\/recipes\/normaliseInstructions["']/,
     );
   });
 
@@ -75,7 +75,7 @@ describe("mobile create-recipe — placeholder + write-side normalise (E-1)", ()
 describe("mobile import save path — normaliseInstructions wired in (E-1)", () => {
   it("imports the shared helper", () => {
     expect(MOBILE_IMPORT_SRC).toMatch(
-      /import\s*\{\s*normaliseInstructions\s*\}\s*from\s*["'][^"']*src\/lib\/recipes\/normaliseInstructions["']/,
+      /import\s*\{\s*normaliseInstructions\s*\}\s*from\s*["'][^"']*@suppr\/shared\/recipes\/normaliseInstructions["']/,
     );
   });
 

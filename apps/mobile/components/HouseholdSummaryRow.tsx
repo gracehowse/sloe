@@ -9,7 +9,7 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
   getMyHousehold,
   type HouseholdData,
-} from "../../../src/lib/household/householdClient";
+} from "@suppr/shared/household/householdClient";
 
 const HOUSEHOLD_SUMMARY_FETCH_TIMEOUT_MS = 18_000;
 const householdFetchTimedOut = Symbol("household_summary_timeout");

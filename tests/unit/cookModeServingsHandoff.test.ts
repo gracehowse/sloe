@@ -36,7 +36,7 @@ const WEB_RECIPE = readFileSync(
 describe("mobile cook-mode — servings handoff", () => {
   it("imports scaleStepText from the shared nutrition lib", () => {
     expect(MOBILE_RECIPE).toMatch(
-      /import\s*\{\s*scaleStepText\s*\}\s*from\s*["'][^"']*src\/lib\/nutrition\/scaleStepText["']/,
+      /import\s*\{\s*scaleStepText\s*\}\s*from\s*["'][^"']*\/nutrition\/scaleStepText["']/,
     );
   });
 

@@ -21,4 +21,20 @@ config.watchFolders = [
   path.resolve(projectRoot, "../../src"),
 ];
 
+// ENG-551 (2026-05-16) — `@suppr/shared/*` alias mirrors the
+// tsconfig path mapping so Metro resolves the same way the TS
+// compiler does. Before this, mobile files reached into the shared
+// `src/lib` tree via long `../../../../src/lib/...` chains (375
+// import statements across the mobile tree) — brittle on any move
+// and inconsistent with the `@/` alias used everywhere else in
+// mobile. Both resolvers (tsserver + Metro + vitest) must agree on
+// the mapping or builds and editor jump-to-definition diverge.
+config.resolver = {
+  ...(config.resolver ?? {}),
+  extraNodeModules: {
+    ...((config.resolver && config.resolver.extraNodeModules) || {}),
+    "@suppr/shared": path.resolve(projectRoot, "../../src/lib"),
+  },
+};
+
 module.exports = config;

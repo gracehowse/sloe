@@ -18,7 +18,7 @@ import Animated, {
 
 import { Accent, MacroColors } from "@/constants/theme";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
-import { RING_LABELS } from "../../../../src/lib/copy/today";
+import { RING_LABELS } from "@suppr/shared/copy/today";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 

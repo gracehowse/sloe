@@ -1,1 +1,1 @@
-export { decodeHtmlEntities as decodeEntities } from "../../../src/lib/text/decodeHtmlEntities";
+export { decodeHtmlEntities as decodeEntities } from "@suppr/shared/text/decodeHtmlEntities";

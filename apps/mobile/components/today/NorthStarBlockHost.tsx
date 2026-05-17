@@ -23,7 +23,7 @@ import {
   pickNorthStarSuggestion,
   whyLineForSuggestion,
   type NorthStarRecipe,
-} from "../../../../src/lib/nutrition/northStarSuggestion";
+} from "@suppr/shared/nutrition/northStarSuggestion";
 
 import { NorthStarBlock } from "./NorthStarBlock";
 

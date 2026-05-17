@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { track } from "@/lib/analytics";
-import { AnalyticsEvents } from "../../../../../src/lib/analytics/events";
+import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import {
   GOAL_DEFAULT_PACE,
   PACE_PRESETS,

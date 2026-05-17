@@ -85,40 +85,40 @@ import {
 import {
   primaryServingToPortionChip,
   type PrimaryServing,
-} from "../../../../src/lib/nutrition/primaryServing";
+} from "@suppr/shared/nutrition/primaryServing";
 import {
   resolveFoodSearchHeadline,
   FOOD_SEARCH_PER_SERVING_BADGE,
   FOOD_SEARCH_PER_100G_BADGE,
-} from "../../../../src/lib/nutrition/foodSearchHeadline";
+} from "@suppr/shared/nutrition/foodSearchHeadline";
 import {
   projectRemaining,
   type MacroConsumed,
   type MacroTargets,
-} from "../../../../src/lib/nutrition/remainingMacros";
+} from "@suppr/shared/nutrition/remainingMacros";
 import {
   createCustomFood,
   deleteCustomFood,
   listCustomFoods,
   searchCustomFoods,
   updateCustomFood,
-} from "../../../../src/lib/nutrition/customFoodsClient";
+} from "@suppr/shared/nutrition/customFoodsClient";
 import {
   buildCustomFoodPortions,
   customFoodToMacrosPer100g,
   type CustomFood,
-} from "../../../../src/lib/nutrition/customFoods";
+} from "@suppr/shared/nutrition/customFoods";
 import CreateCustomFoodSheet, {
   type CreateCustomFoodPayload,
 } from "../CreateCustomFoodSheet";
 import Badge from "../Badge";
 import { track } from "@/lib/analytics";
-import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
-import { fetchFatSecretAutocomplete } from "../../../../src/lib/nutrition/fatsecretAutocompleteClient";
-import { shouldShowBarcodeFallbackHint } from "../../../../src/lib/nutrition/foodSearchLocale";
-import { formatMacroTrailer } from "../../../../src/lib/nutrition/macroFormat";
-import { portionEqualsLabel } from "../../../../src/lib/nutrition/portionEqualsLabel";
-import { resolveInitialPortion, buildPortions, customFoodToHit } from "../../../../src/lib/nutrition/foodSearchCore";
+import { AnalyticsEvents } from "@suppr/shared/analytics/events";
+import { fetchFatSecretAutocomplete } from "@suppr/shared/nutrition/fatsecretAutocompleteClient";
+import { shouldShowBarcodeFallbackHint } from "@suppr/shared/nutrition/foodSearchLocale";
+import { formatMacroTrailer } from "@suppr/shared/nutrition/macroFormat";
+import { portionEqualsLabel } from "@suppr/shared/nutrition/portionEqualsLabel";
+import { resolveInitialPortion, buildPortions, customFoodToHit } from "@suppr/shared/nutrition/foodSearchCore";
 
 // 2026-05-15 (ENG-550 phase 2): `STANDARD_UNITS` and `buildPortionList`
 // extracted to `@/lib/nutrition/foodSearchCore` as `STANDARD_UNITS` and

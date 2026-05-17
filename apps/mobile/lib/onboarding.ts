@@ -19,5 +19,5 @@
  * persisted state and breaking dashboards.
  */
 
-export * from "../../../src/lib/onboarding/state";
-export * from "../../../src/lib/onboarding/targets";
+export * from "@suppr/shared/onboarding/state";
+export * from "@suppr/shared/onboarding/targets";

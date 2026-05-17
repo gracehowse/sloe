@@ -8,4 +8,4 @@
  * mobile-specific logic.
  */
 
-export * from "../../../../src/lib/progress/weightTrend";
+export * from "@suppr/shared/progress/weightTrend";

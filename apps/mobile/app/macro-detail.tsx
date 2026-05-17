@@ -8,7 +8,7 @@ import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
-import { dateKeyFromDate } from "../../../src/lib/nutrition/trackerStats";
+import { dateKeyFromDate } from "@suppr/shared/nutrition/trackerStats";
 
 type Meal = {
   name: string;

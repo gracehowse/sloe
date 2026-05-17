@@ -17,7 +17,7 @@
  * sync-enforcer's parity check stays green.
  */
 import { describe, expect, it } from "vitest";
-import { shouldShowBarcodeFallbackHint } from "../../../../src/lib/nutrition/foodSearchLocale";
+import { shouldShowBarcodeFallbackHint } from "@suppr/shared/nutrition/foodSearchLocale";
 import type { FoodSearchPanelProps } from "../../components/food-search/FoodSearchPanel";
 
 describe("Mobile FoodSearchPanel — locale hint contract", () => {

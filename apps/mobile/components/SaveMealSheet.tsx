@@ -30,9 +30,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { X } from "lucide-react-native";
 
 import { Accent, IconSize, Radius, Spacing } from "@/constants/theme";
-import { formatMacro } from "../../../src/lib/nutrition/formatMacro";
-import type { SavedMealItem } from "../../../src/lib/nutrition/savedMeals";
-import { formatMacroTrailer } from "../../../src/lib/nutrition/macroFormat";
+import { formatMacro } from "@suppr/shared/nutrition/formatMacro";
+import type { SavedMealItem } from "@suppr/shared/nutrition/savedMeals";
+import { formatMacroTrailer } from "@suppr/shared/nutrition/macroFormat";
 
 type Theme = {
   text: string;

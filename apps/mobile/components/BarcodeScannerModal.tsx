@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { track } from "@/lib/analytics";
-import { AnalyticsEvents } from "../../../src/lib/analytics/events";
+import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import {
   ActivityIndicator,
   Keyboard,
@@ -33,8 +33,8 @@ import {
   formatPortion,
   stateToGrams,
   type PortionState,
-} from "../../../src/lib/nutrition/portionPicker";
-import { formatMacro } from "../../../src/lib/nutrition/formatMacro";
+} from "@suppr/shared/nutrition/portionPicker";
+import { formatMacro } from "@suppr/shared/nutrition/formatMacro";
 import {
   getMyContributorStats,
   formatHelpedLine,

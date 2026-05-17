@@ -9,11 +9,11 @@ export {
   classifyRecipeGluten,
   type RecipeTrustInput,
   type RecipeGlutenResult,
-} from "../../../src/lib/nutrition/recipeTrust";
+} from "@suppr/shared/nutrition/recipeTrust";
 
 export {
   classifyIngredientGluten,
   type GlutenStatus,
   type GlutenConfidence,
   type GlutenClassification,
-} from "../../../src/lib/nutrition/glutenClassifier";
+} from "@suppr/shared/nutrition/glutenClassifier";

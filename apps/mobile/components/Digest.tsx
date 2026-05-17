@@ -26,15 +26,15 @@ import * as Haptics from "expo-haptics";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { Accent, Radius, Spacing } from "@/constants/theme";
 import { track } from "@/lib/analytics";
-import { AnalyticsEvents } from "../../../src/lib/analytics/events";
-import type { SavedMealItem } from "../../../src/lib/nutrition/savedMeals";
+import { AnalyticsEvents } from "@suppr/shared/analytics/events";
+import type { SavedMealItem } from "@suppr/shared/nutrition/savedMeals";
 import {
   decideWeightSurface,
   DIGEST_HIDDEN_WEIGHT_REPLACEMENT_HINT,
   DIGEST_HIDDEN_WEIGHT_REPLACEMENT_LABEL,
   formatLoggingConsistencyValue,
   type WeightSurfaceMode,
-} from "../../../src/lib/nutrition/weightSurfaceMode";
+} from "@suppr/shared/nutrition/weightSurfaceMode";
 
 export type DigestSlot = "Breakfast" | "Lunch" | "Dinner" | "Snacks";
 

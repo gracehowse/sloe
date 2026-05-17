@@ -37,7 +37,7 @@ import { Accent, Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
 import { track } from "@/lib/analytics";
-import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
+import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import {
   computeRetunedTargets,
   dbGoalForOnboardingGoal,
@@ -48,12 +48,12 @@ import {
 } from "@/lib/goalPaceRetune";
 import {
   onboardingGoalForDbGoal,
-} from "../../../../src/lib/nutrition/goalPaceRetune";
+} from "@suppr/shared/nutrition/goalPaceRetune";
 import { formatKcal } from "@/lib/weeklyCheckin";
-import { backfillDailyTargetsFromProfile } from "../../../../src/lib/nutrition/dailyTargetSnapshot";
-import { recordGoalHistory } from "../../../../src/lib/nutrition/goalHistory";
-import type { Goal } from "../../../../src/lib/onboarding/state";
-import type { NutritionStrategy, Sex } from "../../../../src/lib/nutrition/tdee";
+import { backfillDailyTargetsFromProfile } from "@suppr/shared/nutrition/dailyTargetSnapshot";
+import { recordGoalHistory } from "@suppr/shared/nutrition/goalHistory";
+import type { Goal } from "@suppr/shared/onboarding/state";
+import type { NutritionStrategy, Sex } from "@suppr/shared/nutrition/tdee";
 
 export interface GoalPaceRetuneSheetProps {
   visible: boolean;

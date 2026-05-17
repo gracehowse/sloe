@@ -11,4 +11,4 @@ export {
   detectSourcePlatform,
   isCaptionTextPlatform,
   type RecipeSourcePlatform,
-} from "../../../src/lib/recipes/resolveImportUrl";
+} from "@suppr/shared/recipes/resolveImportUrl";

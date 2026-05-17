@@ -27,8 +27,8 @@ import {
   getUserRecipeNotes,
   upsertUserRecipeNotes,
   type UserRecipeNotes,
-} from "../../../src/lib/nutrition/recipeNotesClient";
-import { AnalyticsEvents } from "../../../src/lib/analytics/events";
+} from "@suppr/shared/nutrition/recipeNotesClient";
+import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { track } from "@/lib/analytics";
 
 const MAX_NOTES_LEN = 10_000;

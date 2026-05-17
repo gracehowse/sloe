@@ -17,7 +17,7 @@ import {
   HEALTH_SYNC_TYPES,
   defaultHealthSyncTypePrefs,
   type HealthSyncTypeKey,
-} from "../../../src/lib/health/syncTypes";
+} from "@suppr/shared/health/syncTypes";
 
 /** Stable AsyncStorage key. `_v1` so a shape migration can move us to
  *  `_v2` without clobbering existing user prefs. */

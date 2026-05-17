@@ -17,7 +17,7 @@ import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
 import { refreshAdaptiveTdeeForUser } from "@/lib/refreshAdaptiveTdee";
-import { kgToLb, lbToKg } from "../../../../src/lib/units/imperial";
+import { kgToLb, lbToKg } from "@suppr/shared/units/imperial";
 
 /**
  * Weight chart consolidation Phase 1 (2026-05-11, B6 / F-132).

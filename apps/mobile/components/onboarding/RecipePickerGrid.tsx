@@ -27,7 +27,7 @@ import {
   derivePickerState,
   pickCounterLabel,
   togglePick,
-} from "../../../../src/lib/onboarding/finalStep";
+} from "@suppr/shared/onboarding/finalStep";
 
 export interface RecipePickerGridProps {
   diet?: readonly string[];

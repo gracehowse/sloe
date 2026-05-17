@@ -5,7 +5,7 @@ import { ArrowRight, TrendingDown, TrendingUp } from "lucide-react-native";
 import { Accent, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import type { WeightTrendResult } from "@/lib/progress/weightTrend";
-import { kgToLb } from "../../../../src/lib/units/imperial";
+import { kgToLb } from "@suppr/shared/units/imperial";
 
 /**
  * Withings-style chart header (Grace TF feedback 2026-05-11 — full

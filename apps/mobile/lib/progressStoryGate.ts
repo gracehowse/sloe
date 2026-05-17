@@ -8,4 +8,4 @@ export {
   buildProgressStoryPlaceholder,
   hasEnoughDataForStory,
   type ProgressStoryPlaceholder,
-} from "../../../src/lib/nutrition/progressStoryGate";
+} from "@suppr/shared/nutrition/progressStoryGate";

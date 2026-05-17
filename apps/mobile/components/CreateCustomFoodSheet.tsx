@@ -48,7 +48,7 @@ import {
   type CustomFood,
   type CustomFoodServing,
   type MacroBasis,
-} from "../../../src/lib/nutrition/customFoods";
+} from "@suppr/shared/nutrition/customFoods";
 
 /** F-156 PR-1 — AsyncStorage key for the user's last-chosen macro basis. */
 const MACRO_BASIS_STORAGE_KEY = "@suppr/customFood/macroBasis/v1";

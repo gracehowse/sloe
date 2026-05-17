@@ -25,7 +25,7 @@
 import { useEffect } from "react";
 import { Redirect } from "expo-router";
 import { track } from "@/lib/analytics";
-import { AnalyticsEvents } from "../../../src/lib/analytics/events";
+import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 
 export default function OnboardingV2RedirectScreen() {
   useEffect(() => {

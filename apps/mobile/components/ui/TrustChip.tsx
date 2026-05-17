@@ -2,7 +2,7 @@ import * as React from "react";
 import { StyleSheet, Text, View, type ViewStyle } from "react-native";
 import { Check, Sparkles } from "lucide-react-native";
 import { Radius } from "@/constants/theme";
-import type { TrustChipVariant } from "../../../../src/lib/types/trust";
+import type { TrustChipVariant } from "@suppr/shared/types/trust";
 
 /**
  * Mobile `<TrustChip>` — production design spec §1.6.
@@ -13,7 +13,7 @@ import type { TrustChipVariant } from "../../../../src/lib/types/trust";
  * Geometry: 22pt height, padding 3 x 8, radius `Radius.full`.
  */
 
-export type { TrustChipVariant } from "../../../../src/lib/types/trust";
+export type { TrustChipVariant } from "@suppr/shared/types/trust";
 
 export interface TrustChipProps {
   variant: TrustChipVariant;

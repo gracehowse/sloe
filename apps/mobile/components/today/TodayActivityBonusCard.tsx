@@ -5,7 +5,7 @@ import { Accent, Radius, Spacing } from "@/constants/theme";
 import {
   weekSummaryHeading,
   type WeekSummaryMode,
-} from "../../../../src/lib/nutrition/weekSummaryWindow";
+} from "@suppr/shared/nutrition/weekSummaryWindow";
 import {
   buildTdeeExplainerCopy,
   calculateBMR,
@@ -16,8 +16,8 @@ import {
   buildMaintenancePopoverCopy,
   type MaintenanceConfidence,
   type MaintenanceSource,
-} from "../../../../src/lib/nutrition/resolveMaintenance";
-import { weekDeficitToKg } from "../../../../src/lib/nutrition/maintenanceChain";
+} from "@suppr/shared/nutrition/resolveMaintenance";
+import { weekDeficitToKg } from "@suppr/shared/nutrition/maintenanceChain";
 import type { JournalMeal } from "@/lib/nutritionJournal";
 
 /**

@@ -36,7 +36,7 @@ describe("mobile onboarding flow — default-seed fallback wiring", () => {
   it("imports defaultOnboardingSeeds from shared onboardingSeeds", () => {
     expect(SOURCE).toMatch(/defaultOnboardingSeeds/);
     expect(SOURCE).toMatch(
-      /from\s+["'][^"']*src\/lib\/onboarding\/onboardingSeeds["']/,
+      /from\s+["'][^"']*@suppr\/shared\/onboarding\/onboardingSeeds["']/,
     );
   });
 

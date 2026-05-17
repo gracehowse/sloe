@@ -39,7 +39,7 @@ import FoodSearchModal, { type SelectedFood } from "@/components/FoodSearchModal
 import BarcodeScannerModal from "@/components/BarcodeScannerModal";
 import VoiceLogSheet from "@/components/VoiceLogSheet";
 import PhotoLogSheet from "@/components/PhotoLogSheet";
-import type { AiLoggedItem } from "../../../../src/lib/nutrition/aiLogging";
+import type { AiLoggedItem } from "@suppr/shared/nutrition/aiLogging";
 import AddIngredientSheet, {
   type AddIngredientPayload,
 } from "@/components/AddIngredientSheet";
@@ -49,14 +49,14 @@ import {
   effectiveMacros,
   hasOverride,
   recomputeRecipeTotals,
-} from "../../../../src/lib/nutrition/ingredientOverrides";
+} from "@suppr/shared/nutrition/ingredientOverrides";
 import { track } from "@/lib/analytics";
-import { AnalyticsEvents } from "../../../../src/lib/analytics/events";
-import { classifyConfidence } from "../../../../src/lib/nutrition/aiLogging";
+import { AnalyticsEvents } from "@suppr/shared/analytics/events";
+import { classifyConfidence } from "@suppr/shared/nutrition/aiLogging";
 import {
   nutritionDelta,
   type CaptionNutritionClaim,
-} from "../../../../src/lib/recipe-import/extractCaptionNutrition";
+} from "@suppr/shared/recipe-import/extractCaptionNutrition";
 
 /** Standard units always available for editing */
 const STANDARD_UNITS: FoodPortion[] = [

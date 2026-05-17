@@ -16,4 +16,4 @@ export {
   type MealMacros,
   type WeekDayTotals,
   type WeekStatsBundle,
-} from "../../../src/lib/nutrition/progressWeekReport";
+} from "@suppr/shared/nutrition/progressWeekReport";

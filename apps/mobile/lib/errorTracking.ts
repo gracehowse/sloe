@@ -1,6 +1,6 @@
 import * as Sentry from "@sentry/react-native";
 import Constants from "expo-constants";
-import { redactPII } from "../../../src/lib/observability/sentryRedaction";
+import { redactPII } from "@suppr/shared/observability/sentryRedaction";
 
 const DSN =
   Constants.expoConfig?.extra?.sentryDsn ??

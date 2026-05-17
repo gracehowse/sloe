@@ -33,7 +33,7 @@ import { classifyMealType } from "@/lib/classifyMealType";
 import {
   IMPORT_ERROR_COPY,
   userFacingImportError,
-} from "../../../src/lib/recipes/importErrorCopy";
+} from "@suppr/shared/recipes/importErrorCopy";
 import MealTypePicker from "@/components/MealTypePicker";
 import FoodSearchModal, { type SelectedFood } from "@/components/FoodSearchModal";
 import OverrideIngredientSheet from "@/components/OverrideIngredientSheet";

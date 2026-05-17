@@ -1,5 +1,5 @@
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
-import { calculateBudget, type PlanPace } from "../../../src/lib/nutrition/tdee";
+import { calculateBudget, type PlanPace } from "@suppr/shared/nutrition/tdee";
 
 /** Body-stat fields fetched from profiles */
 export type BodyStats = {

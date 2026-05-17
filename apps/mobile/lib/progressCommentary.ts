@@ -12,4 +12,4 @@ export {
   type ProgressCommentaryRegime,
   type ProgressCommentaryResult,
   type ProgressCommentaryConfidence,
-} from "../../../src/lib/nutrition/progressCommentary";
+} from "@suppr/shared/nutrition/progressCommentary";
