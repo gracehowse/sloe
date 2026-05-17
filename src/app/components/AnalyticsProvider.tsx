@@ -5,6 +5,54 @@ import { PostHogProvider } from "posthog-js/react";
 import { useEffect, useState, type ReactNode } from "react";
 import { getConsentChoice } from "./CookieConsent";
 import { AnalyticsEvents } from "../../lib/analytics/events";
+import {
+  DEFAULT_SESSION_REPLAY_SAMPLE_RATE,
+  SAMPLE_RATE_CACHE_KEY,
+  SESSION_REPLAY_SAMPLE_RATE_FLAG,
+  parseSampleRate,
+  resolveSampleRate,
+} from "../../lib/analytics/sessionReplaySampleRate";
+
+/** Read the session-replay sample rate cached from a previous session's
+ *  PostHog flag fetch. Falls back to the default 1.0 when the cache is
+ *  unset (first visit) or unreadable (private mode / storage denied).
+ *  See `sessionReplaySampleRate.ts` for the full pattern. */
+function readCachedSampleRate(): number {
+  if (typeof window === "undefined") return DEFAULT_SESSION_REPLAY_SAMPLE_RATE;
+  try {
+    return resolveSampleRate(window.localStorage.getItem(SAMPLE_RATE_CACHE_KEY));
+  } catch {
+    return DEFAULT_SESSION_REPLAY_SAMPLE_RATE;
+  }
+}
+
+/** After flags load, persist the `session-replay-sample-rate` flag
+ *  payload to localStorage so the next session boots with the latest
+ *  rate. PostHog session-replay sampling is decided at recording-start
+ *  time, so this lags by one session — acceptable for a slow-moving
+ *  config knob. Silent on failure (storage denied / SDK shape drift).
+ *
+ *  Typed as `unknown` instead of the SDK's `PostHogInterface` (which
+ *  differs from the default-imported `posthog` instance type) — we
+ *  only need `getFeatureFlagPayload`, so we narrow with a feature
+ *  check rather than a structural type assertion. */
+function persistSampleRateFromFlag(ph: unknown): void {
+  try {
+    const reader = ph as {
+      getFeatureFlagPayload?: (flag: string) => unknown;
+    };
+    const payload = reader.getFeatureFlagPayload?.(
+      SESSION_REPLAY_SAMPLE_RATE_FLAG,
+    );
+    const rate = parseSampleRate(payload);
+    if (rate === null) return;
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(SAMPLE_RATE_CACHE_KEY, String(rate));
+    }
+  } catch {
+    /* non-fatal */
+  }
+}
 
 export function AnalyticsProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
@@ -16,6 +64,7 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
       return;
     }
     const consent = getConsentChoice();
+    const sampleRate = readCachedSampleRate();
     posthog.init(key, {
       // 2026-05-14 — point at the Next.js reverse-proxy
       // (`next.config.ts` rewrites). `ui_host` keeps PostHog
@@ -51,16 +100,28 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
       //     this on weight numbers, journal text, recipe titles when
       //     they leave the dashboard for any audience beyond Grace.
       //
-      // sampleRate 1.0 = capture every session. Drop to 0.1 post-
-      // launch as traffic grows; sampling at N=1 is noise.
+      // sampleRate driven by the `session-replay-sample-rate` PostHog
+      // feature flag (ENG-516, 2026-05-16). Default 1.0 = capture every
+      // session — matches the pre-flag pre-launch posture. Flip to 0.1
+      // (or lower) in the PostHog dashboard post-launch as traffic
+      // grows. The value is read from the previous session's cached
+      // flag value (sampling is decided at recording-start, so a
+      // dashboard change takes effect on the user's next session — fine
+      // for a slow-moving knob).
       session_recording: {
         maskAllInputs: true,
         maskTextSelector: ".ph-mask",
+        sampleRate,
       },
       enable_recording_console_log: false,
       // `disable_session_recording: false` is the default and matches
       // the dashboard-level enable — both must be on for replay to
       // capture (project-level toggle is owned by Grace).
+      //
+      // `loaded` callback fires once flags have been fetched and the
+      // SDK is ready. We use it to persist the current sample-rate
+      // flag value for the NEXT session's `posthog.init` call above.
+      loaded: persistSampleRateFromFlag,
     });
     // If user already accepted, opt back in (handles returning visitors)
     if (consent === "accepted") {
