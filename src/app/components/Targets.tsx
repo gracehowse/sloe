@@ -430,11 +430,19 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
           </p>
           {goalWeightKg != null ? (
             <>
+              {/* ENG-534 (2026-05-16): goal-weight + current-weight are
+                  HIGH-class. Mask the actual numbers so session-replay
+                  renders them as grey blocks; keep the surrounding
+                  copy + projected-date label visible. */}
               <p className="text-[18px] font-bold text-foreground mt-2">
-                Reach {formatWeight(goalWeightKg)}
+                Reach <span className="ph-mask">{formatWeight(goalWeightKg)}</span>
               </p>
               <p className="text-[13px] text-muted-foreground mt-1">
-                {latestWeightKg != null ? `Currently ${formatWeight(latestWeightKg)}` : "Log a weight to start tracking"}
+                {latestWeightKg != null ? (
+                  <>Currently <span className="ph-mask">{formatWeight(latestWeightKg)}</span></>
+                ) : (
+                  "Log a weight to start tracking"
+                )}
                 {projectedDateLabel ? ` · could reach by ≈ ${projectedDateLabel}` : ""}
               </p>
             </>
