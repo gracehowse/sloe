@@ -276,7 +276,24 @@ describe("adapter registry", () => {
     expect(adapter?.source).toBe("lose-it");
   });
 
-  it("detectAdapter does not confuse MFP and Lose It (mutually exclusive detectors)", () => {
+  it("detectAdapter recognises a Cronometer header row", () => {
+    const headers = [
+      "Day",
+      "Time",
+      "Group",
+      "Food Name",
+      "Amount",
+      "Energy (kcal)",
+      "Fat (g)",
+      "Protein (g)",
+      "Carbs (g)",
+      "Sodium (mg)",
+    ];
+    const adapter = detectAdapter(headers);
+    expect(adapter?.source).toBe("cronometer");
+  });
+
+  it("detectAdapter — all three adapters mutually exclusive", () => {
     const mfpHeaders = ["Date", "Meal", "Food", "Calories", "Carbs", "Fat"];
     const loseItHeaders = [
       "Date",
@@ -286,8 +303,16 @@ describe("adapter registry", () => {
       "Units",
       "Calories",
     ];
+    const cronometerHeaders = [
+      "Day",
+      "Group",
+      "Food Name",
+      "Amount",
+      "Energy (kcal)",
+    ];
     expect(detectAdapter(mfpHeaders)?.source).toBe("mfp");
     expect(detectAdapter(loseItHeaders)?.source).toBe("lose-it");
+    expect(detectAdapter(cronometerHeaders)?.source).toBe("cronometer");
   });
 });
 
@@ -398,5 +423,65 @@ describe("parseCsvImport — Lose It adapter", () => {
     const result = parseCsvImport(LOSEIT_CSV, "lose-it");
     expect(result.source).toBe("lose-it");
     expect(result.rows).toHaveLength(3);
+  });
+});
+
+describe("parseCsvImport — Cronometer adapter", () => {
+  // Realistic Cronometer Servings CSV — `Day` not `Date`, `Group` not
+  // `Meal`/`Type`, `Food Name` (two words), `Amount` (single column
+  // with portion baked in as a string), ISO-format dates, unit-
+  // suffixed macro headers.
+  const CRONOMETER_CSV = [
+    "Day,Time,Group,Food Name,Amount,Energy (kcal),Fat (g),Protein (g),Carbs (g),Sodium (mg),Fiber (g),Sugars (g)",
+    "2024-08-12,08:30,Breakfast,Oats with banana,1 cup,420,10,14,68,180,8,18",
+    "2024-08-12,12:30,Lunch,Chicken salad bowl,1 bowl,540,18,52,42,820,6,8",
+    "2024-08-12,15:00,Snacks,Almonds,30 g,170,15,6,6,0,3,1",
+  ].join("\n");
+
+  it("auto-detects Cronometer and parses 3 rows", () => {
+    const result = parseCsvImport(CRONOMETER_CSV);
+    expect(result.source).toBe("cronometer");
+    expect(result.rows).toHaveLength(3);
+  });
+
+  it("parses headers with unit suffixes (Energy (kcal), Sodium (mg))", () => {
+    const result = parseCsvImport(CRONOMETER_CSV);
+    expect(result.rows[0]).toMatchObject({
+      name: "Oats with banana",
+      calories: 420,
+      fat: 10,
+      protein: 14,
+      carbs: 68,
+      sodium: 180,
+      fiber: 8,
+      sugar: 18,
+    });
+  });
+
+  it("parses ISO dates from the Day column", () => {
+    const result = parseCsvImport(CRONOMETER_CSV);
+    expect(result.rows[0].date).toBe("2024-08-12");
+  });
+
+  it("maps Group column to canonical slot", () => {
+    const result = parseCsvImport(CRONOMETER_CSV);
+    expect(result.rows[0].slot).toBe("breakfast");
+    expect(result.rows[1].slot).toBe("lunch");
+    expect(result.rows[2].slot).toBe("snack");
+  });
+
+  it("explicit source 'cronometer' bypasses detection", () => {
+    const result = parseCsvImport(CRONOMETER_CSV, "cronometer");
+    expect(result.source).toBe("cronometer");
+    expect(result.rows).toHaveLength(3);
+  });
+
+  it("preserves the 'Food Name' two-word header (canonHeader collapses spaces)", () => {
+    const result = parseCsvImport(CRONOMETER_CSV);
+    // Sanity: the food-name column did land on the name field, not
+    // some other slot (the worst-case bug would silently shift columns).
+    expect(result.rows[2].name).toBe("Almonds");
+    expect(result.rows[2].name).not.toBe("30 g"); // Amount column
+    expect(result.rows[2].name).not.toBe("Snacks"); // Group column
   });
 });
