@@ -59,11 +59,18 @@ import {
 } from "../../lib/nutrition/trackingExtras.ts";
 import { MACRO_COLOR_VARS } from "../../lib/theme/macroColors.ts";
 import { MfpCsvImportCard } from "./imports/MfpCsvImportCard";
+import { useMacroDisplayStyle } from "../../lib/preferences/useMacroDisplayStyle";
+import type { MacroDisplayStyle } from "../../lib/preferences/macroDisplayStyle";
 
 const THEME_OPTIONS = [
   { value: "system", label: "Auto" },
   { value: "light", label: "Light" },
   { value: "dark", label: "Dark" },
+] as const;
+
+const MACRO_DISPLAY_OPTIONS = [
+  { value: "tiles", label: "Tiles" },
+  { value: "bars", label: "Bars" },
 ] as const;
 
 /**
@@ -126,6 +133,11 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
     setProfileWeightSurfaceMode,
   } = useAppData();
   const { theme, setTheme } = useTheme();
+  // Macro display style — `tiles` (default) vs `bars` (Cronometer/Lose
+  // It-style list). Pref persisted via localStorage on web; mobile
+  // mirrors via AsyncStorage (`apps/mobile/lib/macroDisplayStyle.ts`).
+  // Grace ask 2026-05-17.
+  const [macroDisplayStyle, setMacroDisplayStyle] = useMacroDisplayStyle();
   const promoSectionRef = useRef<HTMLDivElement>(null);
   const [promoCode, setPromoCode] = useState("");
   const [promoSubmitting, setPromoSubmitting] = useState(false);
@@ -1040,6 +1052,36 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
               onChange={(next) => setTheme(next)}
               options={THEME_OPTIONS.map((opt) => ({ value: opt.value, label: opt.label }))}
             />
+          </div>
+
+          {/* Macro display style — Tiles vs Bars. Grace ask 2026-05-17:
+              the existing 2×2 emoji tiles plus a Cronometer/Lose
+              It-style vertical bar list as a user-configurable
+              alternative. Pref persists via localStorage on web; mobile
+              mirrors via AsyncStorage so the value reads identically
+              across surfaces when cross-device sync lands. */}
+          <div>
+            <label
+              htmlFor="settings-macro-display"
+              className="block mb-3 text-sm font-medium text-foreground"
+            >
+              Macro display
+            </label>
+            <SettingsSegmented<MacroDisplayStyle>
+              ariaLabel="Macro display"
+              value={macroDisplayStyle}
+              onChange={(next) => setMacroDisplayStyle(next)}
+              options={MACRO_DISPLAY_OPTIONS.map((opt) => ({
+                value: opt.value,
+                label: opt.label,
+              }))}
+            />
+            <p className="mt-2 text-xs text-muted-foreground">
+              Tiles is the 2×2 grid you&apos;ve seen since launch. Bars stacks
+              each macro as a row with a thin colored bar — denser, easier
+              to scan when you track sugar / sodium / water on top of
+              the four headline macros.
+            </p>
           </div>
 
           {/* Week start picker.

@@ -221,6 +221,8 @@ import { TodayEditMealModal } from "@/components/today/TodayEditMealModal";
 // now opens the richer Cronometer-parity panel from PR #47.
 import { TodayDateHeader } from "@/components/today/TodayDateHeader";
 import { TodayDashboardMacroTiles } from "@/components/today/TodayDashboardMacroTiles";
+import { TodayDashboardMacroBars } from "@/components/today/TodayDashboardMacroBars";
+import { useMacroDisplayStyle } from "@/lib/macroDisplayStyle";
 import { FullNutrientPanelSheet } from "@/components/today/FullNutrientPanelSheet";
 import { TodayQuickLogStrip } from "@/components/today/TodayQuickLogStrip";
 import { TodaySnapShortcut } from "@/components/today/TodaySnapShortcut";
@@ -390,6 +392,10 @@ export default function TrackerScreen() {
   const { session } = useAuth();
   const userId = session?.user.id;
   const colors = useThemeColors();
+  // User-configurable macro display variant (Settings → Display →
+  // Macro display). `tiles` (default) keeps the 2×2 grid; `bars`
+  // renders a vertical list of name + value/target + colored bar.
+  const [macroDisplayStyle] = useMacroDisplayStyle();
 
   const [byDay, setByDay] = useState<ByDay>({});
   const [hydrated, setHydrated] = useState(false);
@@ -4857,25 +4863,45 @@ export default function TrackerScreen() {
                 transform: [{ translateY: sectionSlideAnim }],
               }}
             >
-            <TodayDashboardMacroTiles
-              trackedMacros={trackedMacros}
-              totals={totals}
-              targets={targets}
-              totalWaterMl={totalWaterMl}
-              waterGoalMl={waterGoalMl}
-              mealsToday={mealsToday}
-              onPressMacro={(macro) => router.push({ pathname: "/macro-detail", params: { macro, date: dayKey } })}
-              showNutrientsLink={dayNutrientDetailRowsWithoutMacroDupes.length > 0}
-              onPressNutrients={() => setNutrientsModalOpen(true)}
-              cardColor={colors.card}
-              cardBorderColor={colors.cardBorder}
-              borderColor={colors.border}
-              textColor={colors.text}
-              textSecondaryColor={colors.textSecondary}
-              textTertiaryColor={colors.textTertiary}
-              mutedColor={colors.border}
-              netCarbsLensEnabled={netCarbsLensEnabled}
-            />
+            {macroDisplayStyle === "bars" ? (
+              <TodayDashboardMacroBars
+                trackedMacros={trackedMacros}
+                totals={totals}
+                targets={targets}
+                totalWaterMl={totalWaterMl}
+                waterGoalMl={waterGoalMl}
+                mealsToday={mealsToday}
+                onPressMacro={(macro) => router.push({ pathname: "/macro-detail", params: { macro, date: dayKey } })}
+                cardColor={colors.card}
+                cardBorderColor={colors.cardBorder}
+                borderColor={colors.border}
+                textColor={colors.text}
+                textSecondaryColor={colors.textSecondary}
+                textTertiaryColor={colors.textTertiary}
+                mutedColor={colors.border}
+                netCarbsLensEnabled={netCarbsLensEnabled}
+              />
+            ) : (
+              <TodayDashboardMacroTiles
+                trackedMacros={trackedMacros}
+                totals={totals}
+                targets={targets}
+                totalWaterMl={totalWaterMl}
+                waterGoalMl={waterGoalMl}
+                mealsToday={mealsToday}
+                onPressMacro={(macro) => router.push({ pathname: "/macro-detail", params: { macro, date: dayKey } })}
+                showNutrientsLink={dayNutrientDetailRowsWithoutMacroDupes.length > 0}
+                onPressNutrients={() => setNutrientsModalOpen(true)}
+                cardColor={colors.card}
+                cardBorderColor={colors.cardBorder}
+                borderColor={colors.border}
+                textColor={colors.text}
+                textSecondaryColor={colors.textSecondary}
+                textTertiaryColor={colors.textTertiary}
+                mutedColor={colors.border}
+                netCarbsLensEnabled={netCarbsLensEnabled}
+              />
+            )}
             </Animated.View>
             {/* TodayMicrosWidget removed 2026-05-02 (revert PR #30) —
                 user feedback: 4-tile widget on Today canvas duplicated

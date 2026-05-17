@@ -25,6 +25,7 @@ import { presentCustomerCenter } from "@/lib/purchases";
 import { CancelExportPromptSheet } from "@/components/settings/CancelExportPromptSheet";
 import { usePromoCode } from "@/hooks/usePromoCode";
 import {
+  AlignLeft,
   Bell,
   BookOpen,
   Calendar,
@@ -40,11 +41,14 @@ import {
   HelpCircle,
   LayoutGrid,
   Mail,
+  Moon,
   Palette,
   PlusCircle,
   RefreshCw,
+  Smartphone,
   Sparkles,
   Square,
+  Sun,
   Timer,
   Trash2,
   Users,
@@ -59,7 +63,12 @@ import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets, type ResolvedTargets } from "@/lib/calcTargets";
 import { computeProtectedStreak, readFreezeLedger } from "@/lib/streakFreeze";
 import { useAuth } from "@/context/auth";
+import { useTheme, type ThemePreference } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import {
+  useMacroDisplayStyle,
+  type MacroDisplayStyle,
+} from "@/lib/macroDisplayStyle";
 import { supabase } from "@/lib/supabase";
 import { getSupprWebBase } from "@/lib/supprWeb";
 import { probeHealthAccess } from "@/lib/healthSync";
@@ -154,6 +163,114 @@ function SectionHeading({ title }: { title: string }) {
     >
       {title}
     </Text>
+  );
+}
+
+/** A segmented-control row inside the Display & extras card. Used
+ *  for the macro-display style (tiles / bars) and theme preference
+ *  (auto / light / dark) pickers added 2026-05-17. Visual treatment
+ *  follows the same row shape as the SettingsRow + Switch pattern
+ *  above so the section reads consistently. */
+function SegmentedRow({
+  icon: Icon,
+  iconColor,
+  label,
+  description,
+  options,
+  value,
+  onChange,
+  colors,
+  testID,
+}: {
+  icon: LucideIcon;
+  iconColor: string;
+  label: string;
+  description?: string;
+  options: readonly { value: string; label: string }[];
+  value: string;
+  onChange: (next: string) => void;
+  colors: ReturnType<typeof useThemeColors>;
+  testID?: string;
+}) {
+  return (
+    <View
+      style={{
+        paddingVertical: 12,
+        paddingHorizontal: 14,
+        borderTopWidth: 1,
+        borderTopColor: colors.cardBorder,
+        gap: 10,
+      }}
+      testID={testID}
+    >
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+        <IconBox color={iconColor}>
+          <Icon size={18} color={iconColor} strokeWidth={1.75} />
+        </IconBox>
+        <View style={{ flex: 1 }}>
+          <Text
+            style={{
+              fontSize: 13,
+              fontWeight: "600",
+              color: colors.text,
+              lineHeight: 17,
+            }}
+          >
+            {label}
+          </Text>
+          {description ? (
+            <Text
+              style={{
+                fontSize: 11,
+                color: colors.textSecondary,
+                marginTop: 2,
+              }}
+            >
+              {description}
+            </Text>
+          ) : null}
+        </View>
+      </View>
+      <View
+        style={{
+          flexDirection: "row",
+          backgroundColor: colors.cardBorder,
+          borderRadius: 8,
+          padding: 2,
+        }}
+      >
+        {options.map((opt) => {
+          const active = opt.value === value;
+          return (
+            <Pressable
+              key={opt.value}
+              onPress={() => onChange(opt.value)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
+              accessibilityLabel={`${label}: ${opt.label}`}
+              testID={`${testID ?? "settings-segmented"}-option-${opt.value}`}
+              style={{
+                flex: 1,
+                paddingVertical: 6,
+                borderRadius: 6,
+                backgroundColor: active ? colors.card : "transparent",
+                alignItems: "center",
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontWeight: active ? "700" : "500",
+                  color: active ? colors.text : colors.textSecondary,
+                }}
+              >
+                {opt.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
   );
 }
 
@@ -587,6 +704,20 @@ export function SettingsBundleContent({ context }: { context: Context }) {
   // Journal display section into the bundle's Display & extras
   // section so the structural collapse doesn't lose this toggle.
   const [netCarbsLensEnabled, setNetCarbsLensEnabled] = useState(false);
+
+  // Theme preference (light / dark / system) — exposed via the
+  // context shipped 2026-04. The setter UI lived in the legacy
+  // settings shell and was lost in the 2026-05-01 structural fix;
+  // restored here so the existing context plumbing surfaces in the
+  // bundle for the first time. Grace flagged the missing UI 2026-05-17.
+  const { preference: themePreference, setPreference: setThemePreference } =
+    useTheme();
+
+  // Macro display style (tiles vs bars) — Today's macro block
+  // renders either the 2×2 emoji-icon tiles (default, unchanged) or
+  // the Cronometer/Lose It-style "Name … Value / Target" vertical
+  // list with thin colored bars (Grace 2026-05-17 ask).
+  const [macroDisplayStyle, setMacroDisplayStyle] = useMacroDisplayStyle();
   useEffect(() => {
     if (!userId) return;
     let cancelled = false;
@@ -1611,6 +1742,53 @@ export function SettingsBundleContent({ context }: { context: Context }) {
             trackColor={{ true: Accent.primary }}
           />
         </View>
+
+        {/* Macro display — tiles vs bars. Grace 2026-05-17 ask:
+            cronometer/lose-it-style bar list as an alternative to the
+            2×2 emoji tile grid. Pref persists via AsyncStorage
+            (`suppr.prefs.macro_display`); Today rebinds on next focus.
+            Bars option packs more macros per inch — better for users
+            tracking 5+ macros (sugar, sodium, water on top of P/C/F/Fb). */}
+        <SegmentedRow
+          testID="settings-macro-display-style"
+          icon={macroDisplayStyle === "bars" ? AlignLeft : LayoutGrid}
+          iconColor={t.accent}
+          label="Macro display"
+          description="Choose how today's macros render below the calorie ring."
+          options={[
+            { value: "tiles", label: "Tiles" },
+            { value: "bars", label: "Bars" },
+          ]}
+          value={macroDisplayStyle}
+          onChange={(next) => setMacroDisplayStyle(next as MacroDisplayStyle)}
+          colors={colors}
+        />
+
+        {/* Theme — light / dark / system. The context shipped 2026-04
+            but the picker UI was lost in the 2026-05-01 settings
+            structural fix; restored here so users can override the
+            system scheme without digging into device settings. */}
+        <SegmentedRow
+          testID="settings-theme-preference"
+          icon={
+            themePreference === "light"
+              ? Sun
+              : themePreference === "dark"
+                ? Moon
+                : Smartphone
+          }
+          iconColor={t.accent}
+          label="Theme"
+          description="Auto follows your phone's light/dark setting."
+          options={[
+            { value: "auto", label: "Auto" },
+            { value: "light", label: "Light" },
+            { value: "dark", label: "Dark" },
+          ]}
+          value={themePreference}
+          onChange={(next) => setThemePreference(next as ThemePreference)}
+          colors={colors}
+        />
       </View>
 
       {/* Connections */}
