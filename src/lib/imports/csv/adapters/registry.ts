@@ -1,5 +1,6 @@
 import { canonHeader } from "../csvPrimitives";
 import type { CsvImportAdapter } from "../types";
+import { cronometerAdapter } from "./cronometer";
 import { loseItAdapter } from "./loseIt";
 import { mfpAdapter } from "./mfp";
 
@@ -25,6 +26,7 @@ import { mfpAdapter } from "./mfp";
 export const REGISTERED_ADAPTERS: readonly CsvImportAdapter[] = [
   mfpAdapter,
   loseItAdapter,
+  cronometerAdapter,
 ];
 
 /**
