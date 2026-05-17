@@ -112,6 +112,24 @@ export default function LibraryScreen() {
     }, [userId, refresh]),
   );
 
+  // ENG-100 (2026-05-16, Grace decision = "default to Discover only"):
+  // Library is empty for new users — the first impression on tapping
+  // the Recipes tab is a blank slate that doesn't tell the user what
+  // the product can do. Redirect to /discover until they have ≥1
+  // saved recipe. After the first save they get the normal Library
+  // landing. The redirect intentionally fires on every focus while
+  // `savedRecipes.length === 0` so the rule is uniform regardless of
+  // entry path (tab tap, deep link, app cold-open) — there's no
+  // useful Library state at savedCount=0 to preserve. Gated on
+  // `!loading` to avoid bouncing during the initial fetch.
+  useFocusEffect(
+    useCallback(() => {
+      if (!loading && savedRecipes.length === 0) {
+        router.replace("/(tabs)/discover");
+      }
+    }, [loading, savedRecipes.length]),
+  );
+
   // Shared with Discover via `useLibrarySearchStore` so the query
   // survives tab switches (ENG-53, 2026-05-16). Variable names kept
   // (search / setSearch) to leave all 100+ downstream usages alone.
