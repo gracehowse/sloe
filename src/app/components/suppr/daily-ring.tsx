@@ -323,8 +323,15 @@ function DailyRing({
           </span>
         ) : (
           <>
+            {/* ENG-534 P1 (2026-05-16): centre kcal value is MEDIUM-class
+                (running daily total — high frequency in replays). Mask
+                so PostHog replay renders the number as a grey block;
+                the label below + budget line are also masked. The
+                "Start your day" empty-state copy above is intentionally
+                NOT masked (generic UI string). See
+                `docs/operations/session-replay-masking-audit.md`. */}
             <span
-              className="tabular-nums font-bold leading-none transition-[font-size] duration-300 text-foreground"
+              className="tabular-nums font-bold leading-none transition-[font-size] duration-300 text-foreground ph-mask"
               style={{
                 // Grace 2026-05-05: 4-digit values like "1,516" at 22px
                 // bold overlapped the innermost macro ring band; drop
@@ -361,7 +368,7 @@ function DailyRing({
                 Hidden when target <= 0 (no profile target yet) so the
                 ring doesn't render "of 0 kcal" — 2026-05-05 audit R03. */}
             {target > 0 ? (
-              <span className="text-[10px] text-muted-foreground mt-0.5 tabular-nums">
+              <span className="text-[10px] text-muted-foreground mt-0.5 tabular-nums ph-mask">
                 of {Math.round(target).toLocaleString()} kcal
               </span>
             ) : null}

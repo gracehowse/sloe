@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import * as Haptics from "expo-haptics";
+import { PostHogMaskView } from "posthog-react-native";
 import Svg, {
   Circle,
   Defs,
@@ -466,21 +467,30 @@ export default function CalorieRing({
             Start your day
           </Text>
         ) : (
-          <Text
-            style={{
-              // Grace 2026-05-05: 4-digit values like "1,516" at fontSize 22
-              // bold are ~80px wide and overlap the innermost macro ring
-              // (diameter ~64). Drop expanded centre to 18 so 4–5 char
-              // values fit cleanly inside the inner ring band. Collapsed
-              // mode (no macro rings) keeps the original 28 for readability.
-              fontSize: expanded ? 18 : 28,
-              fontWeight: "700",
-              color: isOver && displayMode !== "consumed" ? Accent.destructive : textColor,
-              fontVariant: ["tabular-nums"],
-            }}
-          >
-            {animatedCenterValue.toLocaleString()}
-          </Text>
+          // ENG-534 P1 (2026-05-16): centre kcal value is MEDIUM-class
+          // (running daily total — high frequency in replays, valuable
+          // signal at aggregate). Wrap in PostHogMaskView so replay
+          // renders the number as a grey block. The empty-state copy
+          // above is intentionally NOT masked — "Start your day" is
+          // generic UI copy. See
+          // `docs/operations/session-replay-masking-audit.md`.
+          <PostHogMaskView>
+            <Text
+              style={{
+                // Grace 2026-05-05: 4-digit values like "1,516" at fontSize 22
+                // bold are ~80px wide and overlap the innermost macro ring
+                // (diameter ~64). Drop expanded centre to 18 so 4–5 char
+                // values fit cleanly inside the inner ring band. Collapsed
+                // mode (no macro rings) keeps the original 28 for readability.
+                fontSize: expanded ? 18 : 28,
+                fontWeight: "700",
+                color: isOver && displayMode !== "consumed" ? Accent.destructive : textColor,
+                fontVariant: ["tabular-nums"],
+              }}
+            >
+              {animatedCenterValue.toLocaleString()}
+            </Text>
+          </PostHogMaskView>
         )}
         {/* Center label ("REMAINING" / "LOGGED" / "OVER"). Grace
             2026-04-28: the 10pt size + letterSpacing 0.8 ran ~54px
@@ -511,16 +521,20 @@ export default function CalorieRing({
             Also hidden when goal <= 0 (no profile target yet) so the
             ring doesn't render "of 0 kcal" — 2026-05-05 audit R03. */}
         {!expanded && goal > 0 ? (
-          <Text
-            style={{
-              fontSize: 10,
-              color: secondaryColor,
-              marginTop: 1,
-              fontVariant: ["tabular-nums"],
-            }}
-          >
-            {budgetLine}
-          </Text>
+          // ENG-534 P1 (2026-05-16): budget line shows the user's
+          // daily target — same MEDIUM-class as the centre value.
+          <PostHogMaskView>
+            <Text
+              style={{
+                fontSize: 10,
+                color: secondaryColor,
+                marginTop: 1,
+                fontVariant: ["tabular-nums"],
+              }}
+            >
+              {budgetLine}
+            </Text>
+          </PostHogMaskView>
         ) : null}
       </View>
       {/* 2026-05-14 — Grace's call: removed the
