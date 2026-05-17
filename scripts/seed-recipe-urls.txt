@@ -1,6 +1,7 @@
 # TEMPORARY test seeds for Discover feed (Grace, 2026-04-21).
-# NOT licensed for public redistribution. Purge before any external launch via:
-#   npx tsx scripts/delete-seeded-recipes.ts
+# NOT licensed for public redistribution. Purge before any external launch:
+#   npx tsx scripts/delete-seeded-recipes.ts            # dry-run, prints what would be deleted
+#   npx tsx scripts/delete-seeded-recipes.ts --apply    # actually delete
 # (The delete script reads this file and removes any matching recipes by source_url.)
 
 # --- Downshiftology (Lisa Bryan) ---
