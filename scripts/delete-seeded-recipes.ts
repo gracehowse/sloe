@@ -6,10 +6,17 @@
  *
  * Requires SUPABASE_SERVICE_ROLE_KEY (deletes bypass RLS). Loads `.env.local` from the project root.
  *
- * Usage: npx tsx scripts/delete-seeded-recipes.ts [--dry-run]
+ * Default is **dry-run** — pass `--apply` to actually delete. Previous
+ * default was destructive, which made the script a footgun when re-run from
+ * shell history without re-reading the flags. ENG-176.
+ *
+ * Usage:
+ *   npx tsx scripts/delete-seeded-recipes.ts           # dry-run, prints what would be deleted
+ *   npx tsx scripts/delete-seeded-recipes.ts --apply   # actually delete
  */
 import { createClient } from "@supabase/supabase-js";
 import { existsSync, readFileSync } from "node:fs";
+import { readSeedRecipeUrls } from "./_lib/seedRecipeUrls";
 
 const DEMO_RECIPE_IDS = [
   "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
@@ -49,15 +56,6 @@ function loadEnvLocal(): void {
   }
 }
 
-function readSeedUrls(): string[] {
-  const file = `${process.cwd()}/scripts/seed-recipe-urls.txt`;
-  if (!existsSync(file)) return [];
-  return readFileSync(file, "utf8")
-    .split("\n")
-    .map((l) => l.trim())
-    .filter((l) => l && !l.startsWith("#"));
-}
-
 function required(name: string): string {
   const v = process.env[name];
   if (!v) throw new Error(`Missing env var ${name}`);
@@ -66,15 +64,23 @@ function required(name: string): string {
 
 async function main() {
   loadEnvLocal();
-  const dryRun = process.argv.includes("--dry-run");
+  // Dry-run is the SAFE DEFAULT. `--apply` is required to actually delete.
+  // `--dry-run` is still accepted for clarity (and wins if both are passed —
+  // safer than picking the destructive branch when the operator's intent is
+  // ambiguous).
+  const wantsDryRun = process.argv.includes("--dry-run");
+  const wantsApply = process.argv.includes("--apply");
+  const dryRun = wantsDryRun || !wantsApply;
   const supabaseUrl = required("NEXT_PUBLIC_SUPABASE_URL");
   const serviceKey = required("SUPABASE_SERVICE_ROLE_KEY");
   const sb = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
 
-  const seedUrls = readSeedUrls();
+  const seedUrls = readSeedRecipeUrls();
   // eslint-disable-next-line no-console
   console.log(
-    dryRun ? "[dry-run] Would delete seeded recipes (no DB writes)." : "Deleting seeded recipes…",
+    dryRun
+      ? "[dry-run] Would delete seeded recipes (no DB writes). Re-run with --apply to actually delete."
+      : "Deleting seeded recipes…",
   );
 
   const logSelect = async (label: string, query: ReturnType<typeof sb.from>) => {

@@ -16,7 +16,7 @@ All scripts run from the project root with `npx tsx scripts/<name>.ts`. They loa
 
 | Script | Purpose | Usage |
 |--------|---------|-------|
-| `delete-seeded-recipes.ts` | Removes demo UUID recipes, legacy SQL batch rows, recipes owned by the historical seed author, and demo creators. Used for ad-hoc cleanup of residual seeded data. | `npx tsx scripts/delete-seeded-recipes.ts` (add `--dry-run` to preview) — or `npm run delete:seeded-recipes` |
+| `delete-seeded-recipes.ts` | Removes demo UUID recipes, legacy SQL batch rows, recipes whose `source_url` is in `scripts/seed-recipe-urls.txt`, and demo creators. Used for the pre-launch Discover-feed purge (ENG-176) and ad-hoc cleanup of residual seeded data. | **Default is dry-run** — `npx tsx scripts/delete-seeded-recipes.ts` prints what would be deleted. Add `--apply` to actually delete: `npx tsx scripts/delete-seeded-recipes.ts --apply` or `npm run delete:seeded-recipes -- --apply`. |
 | `fix-servings.ts` | Re-fetch servings from source URLs for recipes stuck at `servings=1` | `npx tsx scripts/fix-servings.ts [--dry-run]` |
 | `fix-html-entities.ts` | Decode HTML entities in existing recipe data | `npx tsx scripts/fix-html-entities.ts [--dry-run]` |
 | `classify-meals.ts` | Auto-classify `meal_type` for untagged recipes | `npx tsx scripts/classify-meals.ts [--dry-run]` |
