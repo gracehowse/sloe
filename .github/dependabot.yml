@@ -99,6 +99,16 @@ updates:
       # RN peer constraints (e.g. 4.25 needs RN >= 0.82). Bump it together
       # with RN/Expo, not in isolation.
       - dependency-name: "react-native-screens"
+      # react-native-worklets and react-native-reanimated both declare a
+      # narrow RN peer range (currently "0.81 - 0.85" on the installed
+      # versions). A future minor bump could drop our current RN, producing
+      # the same class of bug as ENG-562 — bundle works under one RN, breaks
+      # under another. The new metro-bundle-check CI step (.github/workflows/
+      # ci.yml mobile job) would catch the resulting Metro failure, but
+      # better to never open the dependabot PR in the first place. Bump
+      # these manually when you upgrade RN.
+      - dependency-name: "react-native-worklets"
+      - dependency-name: "react-native-reanimated"
       - dependency-name: "expo"
         update-types: ["version-update:semver-major"]
       - dependency-name: "expo-*"
