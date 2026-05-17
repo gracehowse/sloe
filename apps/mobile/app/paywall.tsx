@@ -14,7 +14,10 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { X, CheckCircle2, ChefHat, BarChart3, Flag, Check, CloudOff, Tag, ChevronDown, ChevronUp, ShieldCheck, type LucideIcon } from "lucide-react-native";
+// ENG-528 (2026-05-16): CloudOff dropped — the "Subscriptions
+// unavailable" card it iconified was removed per Grace decision
+// ("remove entirely; just show the Pro tier value ladder").
+import { X, CheckCircle2, ChefHat, BarChart3, Flag, Check, Tag, ChevronDown, ChevronUp, ShieldCheck, type LucideIcon } from "lucide-react-native";
 import Svg, { Defs, LinearGradient as SvgLinearGradient, Rect, Stop } from "react-native-svg";
 import * as Haptics from "expo-haptics";
 import type { PurchasesPackage } from "react-native-purchases";
@@ -1000,22 +1003,11 @@ export default function PaywallScreen() {
       marginBottom: Spacing.lg,
     },
 
-    unavailableCard: {
-      borderRadius: Radius.lg,
-      padding: Spacing.xl,
-      backgroundColor: colors.card,
-      borderWidth: 1,
-      borderColor: colors.border,
-      alignItems: "center",
-      gap: Spacing.sm,
-    },
-    unavailableTitle: { fontSize: 16, fontWeight: "700", color: colors.text, marginTop: Spacing.xs },
-    unavailableBody: {
-      fontSize: 14,
-      color: colors.textSecondary,
-      textAlign: "center",
-      lineHeight: 20,
-    },
+    // ENG-528 (2026-05-16): `unavailableCard` / `unavailableTitle` /
+    // `unavailableBody` styles removed alongside the explanatory
+    // card. Per Grace decision: show the Pro tier value ladder with
+    // no "Subscriptions unavailable" treatment.
+
 
     savingsBadgeRight: { marginLeft: "auto" },
   }), [colors, insets]);
@@ -1163,30 +1155,16 @@ export default function PaywallScreen() {
             <View style={styles.skeletonCard} />
           </>
         ) : subscriptionsUnavailable ? (
-          // Audit 2026-05-04 #4: previously this entire branch collapsed
-          // to a "Subscriptions unavailable" card with no value ladder
-          // — the conversion surface presented as broken in TestFlight
-          // and dev builds. Now we still render the Pro tier card with
-          // its full feature ladder + fallback price so the user can
-          // see what Pro actually offers, with the CTA disabled and
-          // copy that explains the temporary unavailability. Maintains
-          // trust while flagging the state cleanly.
+          // ENG-528 (2026-05-16, Grace decision = "remove entirely"):
+          // when RevenueCat offerings can't resolve we previously
+          // rendered an explanatory "Subscriptions unavailable" card
+          // alongside the value ladder. The card competed with trust
+          // chips and read as failed-load. Decision today: drop the
+          // card; show the Pro tier value ladder only. CTA stays
+          // disabled (no broken purchase), but no shouty "unavailable"
+          // signage. Trade: user might tap, the disabled state is the
+          // only feedback. Grace accepted that trade.
           <>
-            <View style={styles.unavailableCard}>
-              <CloudOff size={28} color={colors.textTertiary} strokeWidth={1.75} />
-              <Text style={styles.unavailableTitle}>Subscriptions unavailable</Text>
-              <Text style={styles.unavailableBody}>
-                {isPurchasesApiKeyPresent()
-                  ? "We couldn't load plans right now. You can still see what Pro includes below — try again later from Settings."
-                  : "In-app purchases aren't wired in this build. You can still see what Pro will include below."}
-              </Text>
-            </View>
-            {/* Always render the fallback Pro tier card in the unavailable
-                branch — `hasPro` is sourced from RevenueCat package state,
-                which is empty when subscriptions are unavailable, so
-                gating on it would defeat the whole "show value ladder
-                even without IAP" intent. PRO_TIER is statically loaded
-                from the SSOT in `pricingTiers.ts`. */}
             <TierCard
               tier="pro"
               title="Pro"
@@ -1208,7 +1186,10 @@ export default function PaywallScreen() {
               // badge — Pro is the only paid tier on the paywall, so
               // "most popular vs what?" reads as marketing fluff.
               isHero
-              ctaLabel="Subscriptions unavailable"
+              // ENG-528: neutral accessibility label (not "Subscriptions
+              // unavailable"). The rendered button text is governed by
+              // ctaDisabled → "Loading plans…" downstream.
+              ctaLabel="Pro plan"
               ctaColor={Accent.primary}
               ctaDisabled
               ctaLoading={false}
