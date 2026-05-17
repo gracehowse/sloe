@@ -1,13 +1,14 @@
 import { canonHeader } from "../csvPrimitives";
 import type { CsvImportAdapter } from "../types";
+import { loseItAdapter } from "./loseIt";
 import { mfpAdapter } from "./mfp";
 
 /**
- * Registered adapters in detection order. MFP is first today because
- * it's the only one shipped — when Lose It / Cronometer / MacroFactor
- * etc. land, the registration order matters less since the detectors
- * are designed to be mutually exclusive. If two ever overlap, the
- * order here decides — keep the most-distinctive detector first.
+ * Registered adapters in detection order. Detectors are designed to
+ * be mutually exclusive (MFP rejects any file with Quantity / Units;
+ * Lose It requires BOTH), so registration order only matters if two
+ * ever overlap — keep the most-distinctive detector first when that
+ * happens.
  *
  * Adding a new adapter:
  *   1. Drop a file under `adapters/<source>.ts` exporting a
@@ -23,6 +24,7 @@ import { mfpAdapter } from "./mfp";
  */
 export const REGISTERED_ADAPTERS: readonly CsvImportAdapter[] = [
   mfpAdapter,
+  loseItAdapter,
 ];
 
 /**
