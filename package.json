@@ -67,7 +67,8 @@
     "mobile:test:screens:diff": "npm run test:screens:diff --prefix apps/mobile",
     "mobile:test:screens:update-baseline": "npm run test:screens:update-baseline --prefix apps/mobile",
     "mobile:verify": "npm run mobile:lint && npm run mobile:typecheck && npm run mobile:test:coverage && npm run mobile:test:e2e:verify-suite",
-    "git:prune-locals": "bash scripts/git-prune-merged-locals.sh"
+    "git:prune-locals": "bash scripts/git-prune-merged-locals.sh",
+    "mobile:test:dark-sweep": "npm run --prefix apps/mobile test:dark-sweep"
   },
   "dependencies": {
     "@popperjs/core": "2.11.8",
