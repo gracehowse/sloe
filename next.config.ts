@@ -76,11 +76,15 @@ export default withSentryConfig(nextConfig, {
   // post-build so it can assert generation hasn't regressed. v10
   // deletes them unconditionally as part of `next build` (the upload
   // and the deletion are both wired into the runAfterProductionCompile
-  // hook, not gated on a successful upload). SENTRY_RETAIN_SOURCEMAPS=1
-  // opts that job out of deletion; Vercel leaves the var unset and gets
-  // the secure default.
+  // hook, not gated on a successful upload). Set
+  // SENTRY_RETAIN_SOURCEMAPS to the literal `"1"` to opt that job out
+  // of deletion; ANY other value (unset, `"0"`, `"false"`, …) keeps
+  // the secure default. Matches the existing `=== "1"` pattern used by
+  // VERIFY_STRICT / SUPPR_DEBUG / NEXT_PUBLIC_FORCE_SW so an operator
+  // who types `SENTRY_RETAIN_SOURCEMAPS=0` in Vercel's env panel doesn't
+  // accidentally retain maps in prod.
   sourcemaps: {
-    deleteSourcemapsAfterUpload: !process.env.SENTRY_RETAIN_SOURCEMAPS,
+    deleteSourcemapsAfterUpload: process.env.SENTRY_RETAIN_SOURCEMAPS !== "1",
   },
   // Proxy Sentry ingestion through /monitoring to bypass adblockers.
   // Without this, paid-acquisition users with uBlock / Brave / 1Blocker
