@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { PostHogMaskView } from "posthog-react-native";
 import {
   ChevronLeft,
   ChevronRight,
@@ -620,42 +621,47 @@ export default function TargetsScreen() {
             Based on your goal, weight, and activity level.
           </Text>
           {tdeeKcal != null ? (
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "baseline",
-                justifyContent: "center",
-                gap: 6,
-                marginTop: Spacing.md,
-                paddingTop: Spacing.md,
-                borderTopWidth: 1,
-                borderTopColor: colors.border,
-                alignSelf: "stretch",
-              }}
-              testID="targets-maintenance-row"
-            >
-              <Text
+            // ENG-534 (2026-05-16): maintenance TDEE is HIGH-class
+            // (derived body-stat). Mask the whole row so session-replay
+            // renders the kcal value as grey blocks.
+            <PostHogMaskView>
+              <View
                 style={{
-                  fontSize: 11,
-                  fontWeight: "800",
-                  color: colors.textSecondary,
-                  letterSpacing: 1.5,
+                  flexDirection: "row",
+                  alignItems: "baseline",
+                  justifyContent: "center",
+                  gap: 6,
+                  marginTop: Spacing.md,
+                  paddingTop: Spacing.md,
+                  borderTopWidth: 1,
+                  borderTopColor: colors.border,
+                  alignSelf: "stretch",
                 }}
+                testID="targets-maintenance-row"
               >
-                MAINTENANCE
-              </Text>
-              <Text
-                style={{
-                  fontSize: 15,
-                  fontWeight: "700",
-                  color: colors.text,
-                  fontVariant: ["tabular-nums"],
-                }}
-              >
-                {(adaptiveTdee ?? tdeeKcal).toLocaleString()}
-              </Text>
-              <Text style={{ fontSize: 12, color: colors.textSecondary }}>kcal / day</Text>
-            </View>
+                <Text
+                  style={{
+                    fontSize: 11,
+                    fontWeight: "800",
+                    color: colors.textSecondary,
+                    letterSpacing: 1.5,
+                  }}
+                >
+                  MAINTENANCE
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 15,
+                    fontWeight: "700",
+                    color: colors.text,
+                    fontVariant: ["tabular-nums"],
+                  }}
+                >
+                  {(adaptiveTdee ?? tdeeKcal).toLocaleString()}
+                </Text>
+                <Text style={{ fontSize: 12, color: colors.textSecondary }}>kcal / day</Text>
+              </View>
+            </PostHogMaskView>
           ) : null}
           <Pressable
             onPress={() => void onRecalculate()}

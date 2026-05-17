@@ -947,8 +947,12 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
             </div>
 
             <div className="bg-muted rounded-xl p-4 text-sm text-muted-foreground">
+              {/* ENG-534 (2026-05-16): BMR/TDEE are HIGH-class derived
+                  body-stats. `ph-mask` makes PostHog session-replay
+                  render the value spans as grey blocks. See
+                  `docs/operations/session-replay-masking-audit.md`. */}
               <p>
-                BMR: {computedTargets ? Math.round(computedTargets.bmr) : "—"} kcal · TDEE: {computedTargets ? Math.round(computedTargets.tdee) : "—"} kcal
+                BMR: <span className="ph-mask">{computedTargets ? Math.round(computedTargets.bmr) : "—"} kcal</span> · TDEE: <span className="ph-mask">{computedTargets ? Math.round(computedTargets.tdee) : "—"} kcal</span>
               </p>
               <p className="mt-1">Using Mifflin-St Jeor equation with activity multipliers</p>
             </div>

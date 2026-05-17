@@ -1836,13 +1836,17 @@ function ProgressDashboardContent() {
       {profileWeightSurfaceMode === "show" ? (
       <div className="rounded-xl bg-card border border-border p-4 mb-6 mt-6">
         <p className="text-sm font-semibold text-foreground mb-3">Weight</p>
+        {/* ENG-534 (2026-05-16): current + goal weight are HIGH-class
+            body-stats. `ph-mask` makes PostHog session-replay render
+            these as grey blocks. See
+            `docs/operations/session-replay-masking-audit.md`. */}
         <div className="flex gap-6 mb-3">
           <div className="text-center">
-            <p className="text-[22px] font-bold text-foreground tabular-nums">{weightKg != null ? formatWeight(weightKg) : "—"}</p>
+            <p className="text-[22px] font-bold text-foreground tabular-nums ph-mask">{weightKg != null ? formatWeight(weightKg) : "—"}</p>
             <p className="text-[10px] text-muted-foreground mt-0.5">Current</p>
           </div>
           <div className="text-center">
-            <p className="text-[22px] font-bold text-success tabular-nums">{goalWeightKg != null ? formatWeight(goalWeightKg) : "—"}</p>
+            <p className="text-[22px] font-bold text-success tabular-nums ph-mask">{goalWeightKg != null ? formatWeight(goalWeightKg) : "—"}</p>
             <p className="text-[10px] text-muted-foreground mt-0.5">Goal</p>
           </div>
         </div>
@@ -2047,7 +2051,10 @@ function ProgressDashboardContent() {
                 sliver that looked like a broken 3% reading
                 (TestFlight `AHEeeC9a4-lKIyW5n7HgJxs`). */}
             <div className="flex items-center gap-2 mb-1" data-testid="progress-journey-bar">
-              <span className="text-[11px] font-semibold text-muted-foreground tabular-nums">{formatWeight(weightKg)}</span>
+              {/* ENG-534 (2026-05-16): weight bookends on the progress
+                  bar are HIGH-class. `ph-mask` makes replay render
+                  them as grey blocks; the bar fill stays visible. */}
+              <span className="text-[11px] font-semibold text-muted-foreground tabular-nums ph-mask">{formatWeight(weightKg)}</span>
               <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
                 <div
                   className="h-full rounded-full transition-all duration-500"
@@ -2057,7 +2064,7 @@ function ProgressDashboardContent() {
                   }}
                 />
               </div>
-              <span className="text-[11px] font-semibold text-muted-foreground tabular-nums">{formatWeight(goalWeightKg)}</span>
+              <span className="text-[11px] font-semibold text-muted-foreground tabular-nums ph-mask">{formatWeight(goalWeightKg)}</span>
             </div>
             {progressCopy && (
               <p className="text-[11px] text-muted-foreground text-center mt-1" data-testid="progress-journey-copy">
@@ -2075,7 +2082,7 @@ function ProgressDashboardContent() {
               <div className="mt-3 pt-3 border-t border-border">
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   Last 7 days averaged {avgRecentCals.toLocaleString()} kcal/day. On that trend you&apos;d reach{" "}
-                  <span className="font-bold text-primary">{formatWeight(dailyProjection.projectedWeightKg)}</span> in ~{dailyProjection.projectionWeeks} weeks.
+                  <span className="font-bold text-primary ph-mask">{formatWeight(dailyProjection.projectedWeightKg)}</span> in ~{dailyProjection.projectionWeeks} weeks.
                 </p>
               </div>
             )}
@@ -2123,7 +2130,9 @@ function ProgressDashboardContent() {
       {/* BODY FAT */}
       <div className="rounded-xl bg-card border border-border p-4">
         <p className="text-sm font-semibold text-foreground mb-3">Body Fat</p>
-        <p className="text-[28px] font-bold text-foreground tabular-nums mb-3">{bodyFatPct != null ? `${Math.round(bodyFatPct * 10) / 10}%` : "—"}</p>
+        {/* ENG-534 (2026-05-16): body-fat % is HIGH-class. `ph-mask`
+            makes PostHog session-replay render this as a grey block. */}
+        <p className="text-[28px] font-bold text-foreground tabular-nums mb-3 ph-mask">{bodyFatPct != null ? `${Math.round(bodyFatPct * 10) / 10}%` : "—"}</p>
         <div className="flex gap-2">
           <input
             className="flex-1 bg-muted/50 rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none"

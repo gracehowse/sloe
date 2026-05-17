@@ -11,6 +11,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import { PostHogMaskView } from "posthog-react-native";
 
 import KeyboardSafeView from "@/components/KeyboardSafeView";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
@@ -857,83 +858,91 @@ export default function ProgressScreen() {
                     `AOOBv-1OwtDIoRVDRwH-S5k`, 2026-04-19) flipped the
                     original tent / flag / trophy emoji to Ionicons vectors
                     so they render crisp on every device. */}
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: Spacing.sm,
-                    marginTop: Spacing.xs,
-                  }}
-                >
-                  <View style={{ alignItems: "center", width: 52 }}>
-                    <Ionicons
-                      name="flag-outline"
-                      size={20}
-                      color={colors.textSecondary}
-                    />
-                    <View
-                      style={{
-                        marginTop: 2,
-                        paddingHorizontal: 6,
-                        paddingVertical: 2,
-                        borderRadius: 8,
-                        backgroundColor: Accent.success + "22",
-                      }}
-                    >
-                      <Text style={{ fontSize: 10, fontWeight: "700", color: Accent.success }}>
-                        0 {isImperial ? "lb" : "kg"}
-                      </Text>
+                {/* ENG-534 (2026-05-16): wrap weight-journey numbers in
+                    PostHogMaskView so session-replay renders these as
+                    grey blocks. They are HIGH-class (body-weight PHI)
+                    and rendered as plain Text by default would land in
+                    replay as cleartext. See
+                    `docs/operations/session-replay-masking-audit.md`. */}
+                <PostHogMaskView>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: Spacing.sm,
+                      marginTop: Spacing.xs,
+                    }}
+                  >
+                    <View style={{ alignItems: "center", width: 52 }}>
+                      <Ionicons
+                        name="flag-outline"
+                        size={20}
+                        color={colors.textSecondary}
+                      />
+                      <View
+                        style={{
+                          marginTop: 2,
+                          paddingHorizontal: 6,
+                          paddingVertical: 2,
+                          borderRadius: 8,
+                          backgroundColor: Accent.success + "22",
+                        }}
+                      >
+                        <Text style={{ fontSize: 10, fontWeight: "700", color: Accent.success }}>
+                          0 {isImperial ? "lb" : "kg"}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={[styles.journeyBar, { flex: 1 }]}>
+                      <View
+                        style={[
+                          styles.journeyFill,
+                          { width: `${Math.round(journey.pct * 100)}%` },
+                        ]}
+                      />
+                    </View>
+                    <View style={{ alignItems: "center", width: 52 }}>
+                      <Ionicons
+                        name={journey.pct >= 1 ? "trophy-outline" : "flag"}
+                        size={20}
+                        color={journey.pct >= 1 ? Accent.success : Accent.primary}
+                      />
+                      <View
+                        style={{
+                          marginTop: 2,
+                          paddingHorizontal: 6,
+                          paddingVertical: 2,
+                          borderRadius: 8,
+                          backgroundColor: colors.border,
+                        }}
+                      >
+                        <Text style={{ fontSize: 10, fontWeight: "700", color: colors.textSecondary }}>
+                          {isImperial
+                            ? `${Math.round(kgToLb(journey.totalToLose) * 10) / 10} lb`
+                            : `${Math.round(journey.totalToLose * 10) / 10} kg`}
+                        </Text>
+                      </View>
                     </View>
                   </View>
-                  <View style={[styles.journeyBar, { flex: 1 }]}>
-                    <View
-                      style={[
-                        styles.journeyFill,
-                        { width: `${Math.round(journey.pct * 100)}%` },
-                      ]}
-                    />
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      marginTop: 4,
+                    }}
+                  >
+                    <Text style={styles.muted}>
+                      {isImperial
+                        ? `${Math.round(kgToLb(journey.lost) * 10) / 10} lb ${journey.losingPhysique ? "lost" : "gained"}`
+                        : `${Math.round(journey.lost * 10) / 10} kg ${journey.losingPhysique ? "lost" : "gained"}`}
+                    </Text>
+                    <Text style={styles.muted}>
+                      {isImperial
+                        ? `${Math.round(kgToLb(journey.remaining) * 10) / 10} lb to goal`
+                        : `${Math.round(journey.remaining * 10) / 10} kg to goal`}
+                    </Text>
                   </View>
-                  <View style={{ alignItems: "center", width: 52 }}>
-                    <Ionicons
-                      name={journey.pct >= 1 ? "trophy-outline" : "flag"}
-                      size={20}
-                      color={journey.pct >= 1 ? Accent.success : Accent.primary}
-                    />
-                    <View
-                      style={{
-                        marginTop: 2,
-                        paddingHorizontal: 6,
-                        paddingVertical: 2,
-                        borderRadius: 8,
-                        backgroundColor: colors.border,
-                      }}
-                    >
-                      <Text style={{ fontSize: 10, fontWeight: "700", color: colors.textSecondary }}>
-                        {isImperial
-                          ? `${Math.round(kgToLb(journey.totalToLose) * 10) / 10} lb`
-                          : `${Math.round(journey.totalToLose * 10) / 10} kg`}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    justifyContent: "space-between",
-                    marginTop: 4,
-                  }}
-                >
-                  <Text style={styles.muted}>
-                    {isImperial
-                      ? `${Math.round(kgToLb(journey.lost) * 10) / 10} lb ${journey.losingPhysique ? "lost" : "gained"}`
-                      : `${Math.round(journey.lost * 10) / 10} kg ${journey.losingPhysique ? "lost" : "gained"}`}
-                  </Text>
-                  <Text style={styles.muted}>
-                    {isImperial
-                      ? `${Math.round(kgToLb(journey.remaining) * 10) / 10} lb to goal`
-                      : `${Math.round(journey.remaining * 10) / 10} kg to goal`}
-                  </Text>
-                </View>
+                </PostHogMaskView>
 
                 {/* Milestone markers */}
                 <View

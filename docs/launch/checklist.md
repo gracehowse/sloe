@@ -30,8 +30,9 @@ Soft TestFlight expansion to 5–20 internal/external testers. Critical correctn
 | 6 | Sentry production project receiving events from web + mobile | Verify | Grace | [observability.md](../observability.md) |
 | 7 | PostHog production project receiving events; key funnels populating | Verify | Grace | [observability.md](../observability.md) |
 | 8 | Smoke test the cohort journey end-to-end on a fresh device | — | Grace | (manual) |
+| 8a | Session-replay masking re-audit (any new HIGH-class surface since last sweep carries `.ph-mask` / `<PostHogMaskView>`) | — | Claude before each cohort add | [Masking audit](../operations/session-replay-masking-audit.md) |
 
-**Cohort expansion gate:** all rows green. The audit's 7 P0 items + 11 P1 items being closed in code is the floor; #2–#8 are operational confirmation.
+**Cohort expansion gate:** all rows green. The audit's 7 P0 items + 11 P1 items being closed in code is the floor; #2–#8a are operational confirmation.
 
 ## Phase 2 — Pre-public launch (gate: App Store submission)
 
