@@ -256,7 +256,7 @@ describe("adapter registry", () => {
     expect(detectAdapter(headers)).toBeNull();
   });
 
-  it("detectAdapter does not match MFP when Quantity column is present (Lose It marker)", () => {
+  it("detectAdapter recognises a Lose It header row", () => {
     const headers = [
       "Date",
       "Name",
@@ -264,13 +264,30 @@ describe("adapter registry", () => {
       "Quantity",
       "Units",
       "Calories",
-      "Fat",
-      "Protein",
-      "Carbohydrates",
+      "Fat (g)",
+      "Cholesterol (mg)",
+      "Sodium (mg)",
+      "Carbohydrates (g)",
+      "Fiber (g)",
+      "Sugars (g)",
+      "Protein (g)",
     ];
-    // No Lose It adapter yet, but the MFP detector should reject this
-    // file so future Lose It registration doesn't fight over it.
-    expect(detectAdapter(headers)).toBeNull();
+    const adapter = detectAdapter(headers);
+    expect(adapter?.source).toBe("lose-it");
+  });
+
+  it("detectAdapter does not confuse MFP and Lose It (mutually exclusive detectors)", () => {
+    const mfpHeaders = ["Date", "Meal", "Food", "Calories", "Carbs", "Fat"];
+    const loseItHeaders = [
+      "Date",
+      "Name",
+      "Type",
+      "Quantity",
+      "Units",
+      "Calories",
+    ];
+    expect(detectAdapter(mfpHeaders)?.source).toBe("mfp");
+    expect(detectAdapter(loseItHeaders)?.source).toBe("lose-it");
   });
 });
 
@@ -331,5 +348,55 @@ describe("parseCsvImport — top-level", () => {
     expect(result.source).toBe("not-a-real-source");
     expect(result.warnings).toEqual(["unknown_source"]);
     expect(result.rows).toEqual([]);
+  });
+});
+
+describe("parseCsvImport — Lose It adapter", () => {
+  // Realistic Lose It CSV — locale-aware US date, unit-suffixed
+  // macro headers, Quantity + Units columns. Pulled from the public
+  // Lose It export format docs.
+  const LOSEIT_CSV = [
+    "Date,Name,Type,Quantity,Units,Calories,Fat (g),Cholesterol (mg),Sodium (mg),Carbohydrates (g),Fiber (g),Sugars (g),Protein (g)",
+    "8/12/2024,Oats with banana,Breakfast,1,Serving,420,10,0,180,68,8,18,14",
+    "8/12/2024,Chicken salad,Lunch,1,Bowl,540,18,85,820,42,6,8,52",
+    "8/12/2024,Almonds,Snacks,30,g,170,15,0,0,6,3,1,6",
+  ].join("\n");
+
+  it("auto-detects Lose It and parses 3 rows", () => {
+    const result = parseCsvImport(LOSEIT_CSV);
+    expect(result.source).toBe("lose-it");
+    expect(result.rows).toHaveLength(3);
+  });
+
+  it("parses headers with unit suffixes (Fat (g), Sodium (mg))", () => {
+    const result = parseCsvImport(LOSEIT_CSV);
+    expect(result.rows[0]).toMatchObject({
+      name: "Oats with banana",
+      calories: 420,
+      fat: 10,
+      sodium: 180,
+      carbs: 68,
+      fiber: 8,
+      sugar: 18,
+      protein: 14,
+    });
+  });
+
+  it("parses US locale dates (m/d/yyyy → YYYY-MM-DD)", () => {
+    const result = parseCsvImport(LOSEIT_CSV);
+    expect(result.rows[0].date).toBe("2024-08-12");
+  });
+
+  it("maps Type column to canonical slot", () => {
+    const result = parseCsvImport(LOSEIT_CSV);
+    expect(result.rows[0].slot).toBe("breakfast");
+    expect(result.rows[1].slot).toBe("lunch");
+    expect(result.rows[2].slot).toBe("snack");
+  });
+
+  it("explicit source 'lose-it' bypasses detection", () => {
+    const result = parseCsvImport(LOSEIT_CSV, "lose-it");
+    expect(result.source).toBe("lose-it");
+    expect(result.rows).toHaveLength(3);
   });
 });
