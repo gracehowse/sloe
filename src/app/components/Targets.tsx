@@ -575,6 +575,24 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
           onNavigate?.("profile");
         }}
       />
+
+      {/*
+       * ENG-67 (2026-05-16, Grace decision = "Onboarding + Targets
+       * only"): the methodology / safety-floor disclaimer that lives
+       * inline at the foot of the onboarding pace step (see
+       * `src/app/components/onboarding/steps/pace.tsx`) also lives
+       * here — Targets is the dedicated review surface for the
+       * numbers, so the user gets the same hedge any time they're
+       * looking at those numbers, not just at the original setup.
+       * Removed from Today / Progress / Recipes per the same
+       * decision.
+       */}
+      <p className="mt-8 mb-2 text-xs leading-relaxed text-muted-foreground text-center max-w-md mx-auto">
+        Estimate uses ~7,700 kcal ≈ 1 kg of body mass. Safety floors reference NIH/NHS
+        guidance. Suppr is not a substitute for medical advice — consult your doctor before
+        any significant dietary change, especially if you&apos;re pregnant, under 18, or
+        managing a medical condition.
+      </p>
     </div>
   );
 }

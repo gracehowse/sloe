@@ -493,6 +493,20 @@ export default function TargetsScreen() {
           paddingHorizontal: Spacing.lg,
           lineHeight: 18,
         },
+        // ENG-67 disclaimer style — smaller + dimmer than the
+        // projections footnote above it. Sits at the very bottom of
+        // the scroll so it doesn't compete with the primary
+        // adjust-targets affordance.
+        disclaimer: {
+          fontSize: 11,
+          color: colors.textTertiary,
+          textAlign: "center",
+          paddingHorizontal: Spacing.lg,
+          lineHeight: 16,
+          marginTop: Spacing.md,
+          marginBottom: Spacing.lg,
+          opacity: 0.85,
+        },
         center: { flex: 1, justifyContent: "center", alignItems: "center" },
       }),
     [colors],
@@ -809,6 +823,23 @@ export default function TargetsScreen() {
 
         <Text style={styles.footnote}>
           Projections assume a 14-day moving average. Targets adapt weekly based on logged intake.
+        </Text>
+
+        {/*
+         * ENG-67 (2026-05-16, Grace decision = "Onboarding + Targets
+         * only"): the methodology / safety-floor disclaimer that
+         * lives inline at the foot of the onboarding pace step (see
+         * `apps/mobile/components/onboarding/steps/pace.tsx`) also
+         * lives here — Targets is the dedicated review surface for
+         * the numbers, so the user gets the same hedge any time
+         * they're looking at those numbers. Removed from Today /
+         * Progress / Recipes per the same decision.
+         */}
+        <Text style={styles.disclaimer}>
+          Estimate uses ~7,700 kcal ≈ 1 kg of body mass. Safety floors reference
+          NIH/NHS guidance. Suppr is not a substitute for medical advice — consult
+          your doctor before any significant dietary change, especially if you&apos;re
+          pregnant, under 18, or managing a medical condition.
         </Text>
       </ScrollView>
 
