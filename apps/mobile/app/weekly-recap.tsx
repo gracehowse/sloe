@@ -58,6 +58,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { PostHogMaskView } from "posthog-react-native";
 
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -694,17 +695,23 @@ export default function WeeklyRecapScreen() {
                 {checkin.headline}
               </Text>
               {checkin.deltaLine ? (
-                <Text
-                  testID="weekly-checkin-delta"
-                  style={{
-                    fontSize: 14,
-                    color: colors.textSecondary,
-                    marginBottom: Spacing.sm,
-                    fontVariant: ["tabular-nums"],
-                  }}
-                >
-                  {checkin.deltaLine}
-                </Text>
+                // ENG-534 P1 (2026-05-16): TDEE delta is HIGH-class
+                // (derived body stat). Mask in replay; the narrative
+                // headline + whyLine above/below stay visible for
+                // debugging context.
+                <PostHogMaskView>
+                  <Text
+                    testID="weekly-checkin-delta"
+                    style={{
+                      fontSize: 14,
+                      color: colors.textSecondary,
+                      marginBottom: Spacing.sm,
+                      fontVariant: ["tabular-nums"],
+                    }}
+                  >
+                    {checkin.deltaLine}
+                  </Text>
+                </PostHogMaskView>
               ) : null}
               {checkin.whyLine ? (
                 <Text
@@ -720,30 +727,38 @@ export default function WeeklyRecapScreen() {
                 </Text>
               ) : null}
               {checkin.intakeLine ? (
-                <Text
-                  testID="weekly-checkin-intake"
-                  style={{
-                    fontSize: 13,
-                    color: colors.textTertiary,
-                    lineHeight: 19,
-                    fontVariant: ["tabular-nums"],
-                  }}
-                >
-                  {checkin.intakeLine}
-                </Text>
+                // ENG-534 P1 (2026-05-16): weekly intake totals are
+                // MEDIUM-class (calorie-history signal).
+                <PostHogMaskView>
+                  <Text
+                    testID="weekly-checkin-intake"
+                    style={{
+                      fontSize: 13,
+                      color: colors.textTertiary,
+                      lineHeight: 19,
+                      fontVariant: ["tabular-nums"],
+                    }}
+                  >
+                    {checkin.intakeLine}
+                  </Text>
+                </PostHogMaskView>
               ) : null}
               {checkin.weightLine ? (
-                <Text
-                  testID="weekly-checkin-weight"
-                  style={{
-                    fontSize: 13,
-                    color: colors.textTertiary,
-                    lineHeight: 19,
-                    fontVariant: ["tabular-nums"],
-                  }}
-                >
-                  {checkin.weightLine}
-                </Text>
+                // ENG-534 P1 (2026-05-16): weight delta line is
+                // HIGH-class (body weight). Always mask.
+                <PostHogMaskView>
+                  <Text
+                    testID="weekly-checkin-weight"
+                    style={{
+                      fontSize: 13,
+                      color: colors.textTertiary,
+                      lineHeight: 19,
+                      fontVariant: ["tabular-nums"],
+                    }}
+                  >
+                    {checkin.weightLine}
+                  </Text>
+                </PostHogMaskView>
               ) : null}
               {/* Adjust goal pace — only when the body-stats slice
                   has enough data to make the re-tune sheet honest. We
