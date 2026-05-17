@@ -3,6 +3,13 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // Required for Sentry source-map upload on webpack builds. @sentry/nextjs
+  // v10 only auto-enables this for Turbopack; for webpack (our default) we
+  // must opt in explicitly or `next build` produces no .js.map files,
+  // breaking both Sentry symbolication AND the sourcemap-verify CI gate.
+  // Prod-served exposure is mitigated by `sourcemaps.deleteSourcemapsAfterUpload`
+  // below — Vercel uploads to Sentry and then removes maps from the bundle.
+  productionBrowserSourceMaps: true,
   // 2026-05-14 — PostHog reverse-proxy. Routes /ingest/* through this
   // origin so analytics requests look first-party. Bypasses content
   // blockers / DNS-level filters / hostile WiFi that drop *.posthog.com
@@ -39,6 +46,19 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "*.supabase.co" },
     ],
   },
+  webpack: (config, { isServer, dev }) => {
+    // Pair with `productionBrowserSourceMaps: true` above. Next's default
+    // for that option is `devtool: 'source-map'`, which emits a
+    // `//# sourceMappingURL=` comment in every client .js. In prod Sentry
+    // deletes the maps after upload, so the comment would point at a 404.
+    // `hidden-source-map` produces the same .map files (so Sentry can still
+    // upload them) but skips the comment, matching Sentry's own default
+    // when `productionBrowserSourceMaps` is not set.
+    if (!dev && !isServer) {
+      config.devtool = "hidden-source-map";
+    }
+    return config;
+  },
 };
 
 export default withSentryConfig(nextConfig, {
@@ -47,7 +67,21 @@ export default withSentryConfig(nextConfig, {
   authToken: process.env.SENTRY_AUTH_TOKEN,
   silent: !process.env.CI,
   widenClientFileUpload: true,
-  hideSourceMaps: true,
+  // v10 replacement for the removed `hideSourceMaps`. With
+  // `productionBrowserSourceMaps: true` above, Next produces .js.map
+  // files; Vercel uploads them to Sentry on deploy; this option then
+  // removes them from the served bundle so end users can't fetch them.
+  //
+  // CI's `sourcemap-verify` job needs the maps to remain on disk
+  // post-build so it can assert generation hasn't regressed. v10
+  // deletes them unconditionally as part of `next build` (the upload
+  // and the deletion are both wired into the runAfterProductionCompile
+  // hook, not gated on a successful upload). SENTRY_RETAIN_SOURCEMAPS=1
+  // opts that job out of deletion; Vercel leaves the var unset and gets
+  // the secure default.
+  sourcemaps: {
+    deleteSourcemapsAfterUpload: !process.env.SENTRY_RETAIN_SOURCEMAPS,
+  },
   // Proxy Sentry ingestion through /monitoring to bypass adblockers.
   // Without this, paid-acquisition users with uBlock / Brave / 1Blocker
   // (~30% of mobile-web TikTok traffic by industry estimates) silently

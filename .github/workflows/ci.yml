@@ -217,6 +217,12 @@ jobs:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       VERIFY_STRICT: "0"
+      # @sentry/nextjs v10 deletes client .map files at the end of
+      # `next build` regardless of whether upload succeeded. Without
+      # this, the assertion below always fails on CI (no auth token →
+      # no upload, but deletion still runs). Vercel leaves the var
+      # unset so prod retains the secure default.
+      SENTRY_RETAIN_SOURCEMAPS: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -234,8 +240,9 @@ jobs:
           if [ "$MAP_COUNT" -lt 1 ]; then
             echo "::error::No .js.map files found under .next/static/."
             echo "::error::Sentry symbolication will fail on production errors."
-            echo "::error::Check next.config.ts -> withSentryConfig({ hideSourceMaps }) and"
-            echo "::error::confirm productionBrowserSourceMaps is not disabled upstream."
+            echo "::error::Check next.config.ts -> productionBrowserSourceMaps and"
+            echo "::error::sourcemaps.deleteSourcemapsAfterUpload — the SENTRY_RETAIN_SOURCEMAPS"
+            echo "::error::env var on this job is what keeps the maps on disk for this assert."
             exit 1
           fi
           echo "OK — sourcemaps present. (Upload to Sentry happens in Vercel deploy step.)"
