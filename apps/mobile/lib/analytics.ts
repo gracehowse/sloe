@@ -7,6 +7,11 @@ import {
   firstLogTimestamp,
   shouldMarkFirstLog,
 } from "../../../src/lib/analytics/firstLog";
+import { DEFAULT_SESSION_REPLAY_SAMPLE_RATE } from "../../../src/lib/analytics/sessionReplaySampleRate";
+import {
+  readCachedSampleRate,
+  writeSampleRateFromClient,
+} from "./sessionReplaySampleRateCache";
 
 const POSTHOG_KEY =
   Constants.expoConfig?.extra?.posthogKey ??
@@ -24,6 +29,51 @@ const POSTHOG_HOST =
   "https://suppr-club.com/ingest";
 
 let client: PostHog | null = null;
+
+/** Session-replay sample rate read once at module load and applied at
+ *  PostHog SDK init. Default to 1.0 so the first install (and tests
+ *  that don't call `primeSessionReplaySampleRate`) match the pre-flag
+ *  pre-launch posture. {@link primeSessionReplaySampleRate} overwrites
+ *  this from AsyncStorage before the AnalyticsProvider creates the
+ *  client. ENG-516 (2026-05-16). */
+let initialSampleRate: number = DEFAULT_SESSION_REPLAY_SAMPLE_RATE;
+
+/**
+ * Read the cached `session-replay-sample-rate` value from AsyncStorage
+ * and prime the SDK init-time sample rate. Must be awaited BEFORE
+ * {@link getPostHogClient} is called for the value to take effect on
+ * this session — the mobile AnalyticsProvider does this in a one-shot
+ * effect before rendering `<PostHogProvider>`.
+ *
+ * Silent on failure (storage denied / no cached value): the default
+ * 1.0 stays in place.
+ */
+export async function primeSessionReplaySampleRate(): Promise<void> {
+  initialSampleRate = await readCachedSampleRate();
+}
+
+/** After flags load on the running session, persist the current
+ *  `session-replay-sample-rate` flag payload to AsyncStorage for the
+ *  next session. Sampling is a per-recording decision in the SDK, so
+ *  a dashboard change takes effect on the user's NEXT app launch. */
+export async function persistSessionReplaySampleRate(
+  c: PostHog,
+): Promise<void> {
+  await writeSampleRateFromClient(c);
+}
+
+/** Test-only: reset the cached sample rate back to the default. Lets
+ *  unit tests exercise `primeSessionReplaySampleRate` from a clean
+ *  baseline without forcing a module reset. */
+export function __resetInitialSampleRateForTests(): void {
+  initialSampleRate = DEFAULT_SESSION_REPLAY_SAMPLE_RATE;
+  client = null;
+}
+
+/** Test-only: read the current module-level initial sample rate. */
+export function __getInitialSampleRateForTests(): number {
+  return initialSampleRate;
+}
 
 export function getPostHogClient(): PostHog | null {
   if (client) return client;
@@ -64,12 +114,18 @@ export function getPostHogClient(): PostHog | null {
     // original text. Use `<PostHogMaskView>` from posthog-react-native
     // to opt MORE elements into masking if needed.
     //
-    // sampleRate 1.0 = capture every session. Drop to 0.1 (10%) post-
-    // launch when traffic grows; keep at 1.0 while N=1 because partial
-    // sampling on one tester is noise.
+    // sampleRate driven by the `session-replay-sample-rate` PostHog
+    // feature flag (ENG-516, 2026-05-16). Default 1.0 = capture every
+    // session — matches the pre-flag pre-launch posture. Flip to 0.1
+    // (or lower) in the PostHog dashboard post-launch as traffic
+    // grows. The value is read from AsyncStorage cache primed by
+    // `primeSessionReplaySampleRate()` before this function is called.
+    // Sampling is decided at recording-start, so a dashboard change
+    // takes effect on the user's next launch — fine for a slow-moving
+    // knob.
     enableSessionReplay: true,
     sessionReplayConfig: {
-      sampleRate: 1.0,
+      sampleRate: initialSampleRate,
       captureLog: false,
       captureNetworkTelemetry: false,
     },
