@@ -16,7 +16,16 @@ import {
  * On first mount the default `tiles` value renders while AsyncStorage
  * resolves — the swap to `bars` (if cached) happens silently within
  * a frame or two of boot. Matches the pattern in `context/theme.tsx`.
+ *
+ * In-process pub/sub keeps every live hook instance in sync. Without
+ * it, flipping the toggle in Settings updated only Settings' local
+ * useState — Today, mounted underneath the Settings screen in the
+ * navigation stack, stayed on the stale value and never re-rendered.
+ * Web's equivalent gets the same effect from `storage` events; here
+ * we notify subscribers directly.
  */
+const subscribers = new Set<(next: MacroDisplayStyle) => void>();
+
 export function useMacroDisplayStyle(): readonly [
   MacroDisplayStyle,
   (next: MacroDisplayStyle) => void,
@@ -35,13 +44,15 @@ export function useMacroDisplayStyle(): readonly [
       .catch(() => {
         /* storage denied — keep default */
       });
+    subscribers.add(setStyleState);
     return () => {
       cancelled = true;
+      subscribers.delete(setStyleState);
     };
   }, []);
 
   const setStyle = useCallback((next: MacroDisplayStyle) => {
-    setStyleState(next);
+    subscribers.forEach((notify) => notify(next));
     void AsyncStorage.setItem(MACRO_DISPLAY_STORAGE_KEY, next).catch(() => {
       /* storage denied — value lives in memory only this session */
     });
