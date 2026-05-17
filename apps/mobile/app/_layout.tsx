@@ -34,30 +34,22 @@ import { AccessibilityInfo, AppState, LogBox, Platform, Text, View } from 'react
 // internally; we just stop yelling about it in dev. Production keeps
 // reporting via Sentry through `initErrorTracking()`.
 if (__DEV__) {
-  const POSTHOG_FLUSH_FILTERS = [
-    /Error while flushing PostHog/,
-    /PostHogFetchNetworkError/,
-  ];
-  const matchesPostHogFlush = (input: unknown): boolean => {
-    const text =
-      typeof input === "string"
-        ? input
-        : input instanceof Error
-          ? `${input.name}: ${input.message}`
-          : String(input);
-    return POSTHOG_FLUSH_FILTERS.some((p) => p.test(text));
-  };
+  // Shared filter list — see `apps/mobile/lib/devSilencedErrors.ts` for
+  // the per-pattern context. We require() at module top so the patches
+  // below pick it up even if the file is later edited to add patterns.
+
+  const { matchesSilencedDevError, DEV_SILENCED_ERROR_PATTERNS } = require("@/lib/devSilencedErrors");
   // Patch console.error — direct SDK error path.
   const originalConsoleError = console.error;
   console.error = (...args: unknown[]) => {
-    if (args.length > 0 && matchesPostHogFlush(args[0])) return;
+    if (args.length > 0 && matchesSilencedDevError(args[0])) return;
     originalConsoleError.apply(console, args);
   };
   // Patch console.warn — RN's promise rejection tracker uses warn on
   // some versions; SDK also sometimes downgrades to warn.
   const originalConsoleWarn = console.warn;
   console.warn = (...args: unknown[]) => {
-    if (args.length > 0 && matchesPostHogFlush(args[0])) return;
+    if (args.length > 0 && matchesSilencedDevError(args[0])) return;
     originalConsoleWarn.apply(console, args);
   };
   // 2026-05-15: Hermes/JSC routes unhandled promise rejections through
@@ -66,13 +58,13 @@ if (__DEV__) {
   // Promise polyfill). The tracker calls console.warn after a short
   // delay, but it ALSO logs through ExceptionsManager which renders
   // the redbox directly. Wrap ExceptionsManager.reportException to
-  // silence PostHog flush errors before they hit the bridge.
+  // silence dev-only errors before they hit the bridge.
   try {
     const ExceptionsManager = require("react-native/Libraries/Core/ExceptionsManager");
     if (ExceptionsManager && typeof ExceptionsManager.handleException === "function") {
       const originalHandle = ExceptionsManager.handleException.bind(ExceptionsManager);
       ExceptionsManager.handleException = (e: unknown, isFatal: boolean) => {
-        if (e && typeof e === "object" && "message" in e && matchesPostHogFlush(e)) {
+        if (e && typeof e === "object" && "message" in e && matchesSilencedDevError(e)) {
           return;
         }
         return originalHandle(e, isFatal);
@@ -83,16 +75,10 @@ if (__DEV__) {
     // wrap fails, the console.error/warn patches still cover the
     // common paths.
   }
-  LogBox.ignoreLogs([
-    /TypeError: Network request failed/,
-    /\[expo-notifications\] Error thrown while updating the device push token/,
-    /\[expoPushToken\].*Network request failed/,
-    /\[tzSync\] profiles\.tz_iana update failed/,
-    /\[tracker\] (?:meal_plan_days|nutrition_entries|fetchMealPlanJson) timed out/,
-    /\[useSavedLibraryRecipes\] saves\+recipes batch timed out/,
-    /Error while flushing PostHog/,
-    /PostHogFetchNetworkError/,
-  ]);
+  // Spread the shared list directly so LogBox sees the same regexes
+  // as the console/ExceptionsManager patches above. Single source of
+  // truth keeps the three sinks in sync.
+  LogBox.ignoreLogs([...DEV_SILENCED_ERROR_PATTERNS]);
 }
 import { useShareIntent } from 'expo-share-intent';
 import { useCallback, useEffect, useRef } from 'react';
