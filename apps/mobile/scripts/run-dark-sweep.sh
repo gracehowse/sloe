@@ -120,12 +120,17 @@ restore() {
 }
 trap restore EXIT
 
-# ─── Force a fresh app launch so AsyncStorage is re-read ─────────────
-# If the app is currently running with the old preference cached in
-# memory, our manifest tweak won't take effect until next launch. Kill
-# and let the Maestro flow's launchApp do the cold start.
-echo "[dark-sweep] Terminating app for fresh AsyncStorage read on next launch..."
-xcrun simctl terminate booted "$APP_BUNDLE_ID" 2>/dev/null || true
+# ─── Force a fresh app launch ONLY if we changed the manifest ────────
+# If the manifest didn't need changing, the running app's in-memory
+# preference already matches what's on disk, so no terminate needed.
+# Terminating when not needed adds fragility — the cold-launched app
+# may not be ready to handle deeplinks before the flow fires them.
+if [ "$MANIFEST_BACKED_UP" = "1" ]; then
+  echo "[dark-sweep] Terminating app so the next launch re-reads AsyncStorage..."
+  xcrun simctl terminate booted "$APP_BUNDLE_ID" 2>/dev/null || true
+  # Give the system a moment to release the app before Maestro relaunches.
+  sleep 2
+fi
 
 # ─── Run the flow ────────────────────────────────────────────────────
 echo "[dark-sweep] Running Maestro flow: $FLOW"
