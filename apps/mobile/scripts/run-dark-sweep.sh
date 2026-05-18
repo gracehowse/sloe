@@ -105,6 +105,22 @@ else
   echo "[dark-sweep] No AsyncStorage manifest found yet (fresh install?) — relying on app default 'auto'."
 fi
 
+# ─── Pre-warm Metro so cold-bundle doesn't blow the flow's 30s ───────
+# extendedWaitUntil. Verified 2026-05-18: a cold Metro start was still
+# bundling at 52% when the first `screen-today` assertion timed out
+# after 30s, even though the app + theme were correctly loaded. Hitting
+# the bundle URL directly forces Metro to compile in advance, so by the
+# time the Maestro flow launches the app the bundle is cached and the
+# JS is interactive within a few seconds. Skip silently if Metro isn't
+# on 8081 — flow will surface its own clearer error than this would.
+if lsof -iTCP:8081 -sTCP:LISTEN -n -P 2>/dev/null | grep -q LISTEN; then
+  echo "[dark-sweep] Pre-warming Metro bundle (may take 30–60s on cold start)..."
+  curl -s -o /dev/null -w "%{http_code} in %{time_total}s\n" --max-time 120 \
+    "http://localhost:8081/index.bundle?platform=ios&dev=true&minify=false" || true
+else
+  echo "[dark-sweep] WARN: Metro not on :8081. Flow will fail at openLink; start Metro via 'npm start' in apps/mobile first." >&2
+fi
+
 # ─── Layer 1: sim appearance ─────────────────────────────────────────
 echo "[dark-sweep] Setting sim appearance to dark..."
 xcrun simctl ui booted appearance dark
