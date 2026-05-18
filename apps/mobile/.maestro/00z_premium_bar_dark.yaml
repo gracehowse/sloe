@@ -4,14 +4,23 @@ name: "Premium-bar dark sweep — canonical surfaces in dark appearance"
 # Premium-bar dark sweep.
 #
 # Mirrors the canonical surface list from 00z_expanded_visual_sweep.yaml,
-# but assumes the iOS sim has been put into dark appearance BEFORE the
-# run. Mobile Suppr's ThemeProvider defaults to `auto` (system scheme),
-# so flipping the sim appearance is enough — no in-app toggle exists.
+# but REQUIRES the iOS sim to already be in dark appearance. Mobile
+# Suppr's ThemeProvider defaults to `auto` (system scheme), so flipping
+# the sim appearance is what makes the app render dark — there's no
+# in-app toggle. Maestro can't shell out, so the appearance step has to
+# happen BEFORE the flow runs.
 #
-# Run sequence (from repo root):
-#   1. xcrun simctl ui booted appearance dark
-#   2. cd apps/mobile && maestro test .maestro/00z_premium_bar_dark.yaml
-#   3. xcrun simctl ui booted appearance light  # restore after
+# **DO NOT INVOKE THIS FLOW DIRECTLY.** Use the wrapper:
+#
+#   npm run mobile:test:dark-sweep
+#   # or, equivalently:
+#   apps/mobile/scripts/run-dark-sweep.sh
+#
+# The wrapper sets the sim appearance to dark, runs this flow, and
+# restores light on exit. Running `maestro test 00z_premium_bar_dark.yaml`
+# directly will produce LIGHT-mode captures in `dark-*.png` files —
+# a silent failure that wasted half a session on 2026-05-17. The retro
+# and the wrapper are why this comment exists.
 #
 # Output: apps/mobile/screenshots/latest/dark-<NN>-<name>.png (same dir
 # as every other capture, so the auditor finds them via one path).

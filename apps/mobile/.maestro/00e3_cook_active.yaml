@@ -1,8 +1,28 @@
 # @cases TC-FIX-COOK-ACTIVE
 # @screen cook
 appId: com.supprclub.supprapp
-name: "Fixture — Cook mode entry + scrolled"
+name: "Fixture — Cook mode entry + scrolled (populated)"
 ---
+
+# Captures the POPULATED cook mode (recipe with step-by-step
+# instructions). The `suppr:///cook` deeplink lands on the most-recent
+# cook session OR opens a default; if the test user has no recipe with
+# cook steps configured, the screen shows an empty fallback
+# ("No cook steps yet — This recipe doesn't have step-by-step
+# instructions"). That fallback is NOT what this flow is auditing —
+# the audit asked for cook-mode populated.
+#
+# The `assertNotVisible` guard below fails the flow loud if the cook
+# screen lands on the empty fallback. Pre-2026-05-17 the flow had no
+# guard and silently captured the empty state, which got committed as
+# "Done" evidence and had to be reverted. Don't repeat that.
+#
+# If this guard fires, the E2E test user needs a recipe with cook
+# steps in their library. Easiest fix:
+# - Open Discover (suppr:///discover), open a recipe with `instructions`
+#   populated, save it.
+# - Or seed a recipe via fixture in scripts/seed-discover-recipes.ts.
+# - Then re-run.
 
 - launchApp:
     appId: com.supprclub.supprapp
@@ -14,6 +34,12 @@ name: "Fixture — Cook mode entry + scrolled"
 - waitForAnimationToEnd
 - waitForAnimationToEnd
 - waitForAnimationToEnd
+
+# Guard: fail loud if the empty fallback is showing. The audit asked
+# for populated cook mode; an empty-state capture would silently miss
+# the ask.
+- assertNotVisible: "No cook steps yet"
+
 - takeScreenshot: screenshots/latest/state-80-cook-entry
 - swipe:
     direction: UP

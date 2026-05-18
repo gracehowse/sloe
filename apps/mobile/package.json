@@ -38,7 +38,8 @@
     "test:detox": "detox test --configuration ios.sim.release",
     "test:detox:build:debug": "detox build --configuration ios.sim.debug",
     "test:detox:debug": "detox test --configuration ios.sim.debug",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+    "test:dark-sweep": "bash ./scripts/run-dark-sweep.sh"
   },
   "dependencies": {
     "@expo/ngrok": "^4.1.3",
