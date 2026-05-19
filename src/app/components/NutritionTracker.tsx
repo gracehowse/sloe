@@ -2165,7 +2165,12 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
   const avatarLetter = (profileDisplayName?.trim()?.[0] ?? authEmail?.trim()?.[0] ?? "U").toUpperCase();
 
   return (
-    <div className="max-w-2xl mx-auto px-pm-5 py-pm-5">
+    // xl:pr-[280px] reserves horizontal space for the fixed-position
+    // TodayWeekSidebar (260px wide + 16px right offset + 4px buffer).
+    // Without this, the date strip's right cells (Sat / Sun) get
+    // overlapped by the LAST 7 DAYS panel at desktop widths (audit
+    // feedback 2026-05-18).
+    <div className="max-w-2xl mx-auto px-pm-5 py-pm-5 xl:pr-[280px]">
       {!isOnline ? (
         <div
           role="alert"
@@ -2593,8 +2598,9 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
           <span className="flex items-center gap-2 min-w-0">
             <Icons.energy className="h-4 w-4 text-primary" aria-hidden="true" />
             <span className="text-sm font-bold text-foreground">Quick add</span>
+            {/* 2026-05-18 — see mobile parity comment. */}
             <span className="text-xs text-muted-foreground truncate">
-              Usual meals, recent, frequent, favourites
+              Your usuals
             </span>
           </span>
           <Icons.down

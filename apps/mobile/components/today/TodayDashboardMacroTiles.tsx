@@ -148,38 +148,46 @@ export function TodayDashboardMacroTiles({
   // padding that Today's scroll container doesn't guarantee.
   return (
     <View style={{ marginBottom: Spacing.md }}>
-      {/* Phase 4 / Top-5 #2 (2026-04-28) — optional right-aligned
-          "Nutrients" link replaces the standalone centred link that
-          used to float below the tiles. Renders only when the host
-          flags it (i.e. there are non-macro nutrient rows worth
-          surfacing for the active day). */}
+      {/* 2026-05-18 (TF whole-app audit, harsh-review): the
+          "Nutrients >" link used to float right-aligned above the
+          tile grid with no visual anchor — looked like a leftover
+          link. Now styled as a subtle outlined chip so it reads as
+          an action affordance, and the wrapper has zero bottom
+          margin so it visually clings to the tile grid below it.
+          Renders only when the host flags it (i.e. there are
+          non-macro nutrient rows worth surfacing for the active day). */}
       {showNutrientsLink && onPressNutrients ? (
-        <Pressable
-          onPress={onPressNutrients}
-          accessibilityRole="button"
-          accessibilityLabel="View all nutrients for today"
-          hitSlop={6}
-          style={{
-            flexDirection: "row",
-            justifyContent: "flex-end",
-            alignItems: "center",
-            gap: 2,
-            paddingVertical: Spacing.xs,
-            marginBottom: Spacing.xs,
-          }}
-        >
-          <Text
+        <View style={{ flexDirection: "row", justifyContent: "flex-end", marginBottom: Spacing.xs }}>
+          <Pressable
+            onPress={onPressNutrients}
+            accessibilityRole="button"
+            accessibilityLabel="View all nutrients for today"
+            hitSlop={6}
             style={{
-              fontSize: 11,
-              fontWeight: "600",
-              color: Accent.primary,
-              letterSpacing: 0.4,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 4,
+              paddingHorizontal: 10,
+              paddingVertical: 4,
+              borderRadius: 999,
+              borderWidth: 1,
+              borderColor: Accent.primary + "30",
+              backgroundColor: Accent.primary + "08",
             }}
           >
-            Nutrients
-          </Text>
-          <ChevronRight size={12} color={Accent.primary} strokeWidth={2.25} />
-        </Pressable>
+            <Text
+              style={{
+                fontSize: 11,
+                fontWeight: "600",
+                color: Accent.primary,
+                letterSpacing: 0.3,
+              }}
+            >
+              All nutrients
+            </Text>
+            <ChevronRight size={11} color={Accent.primary} strokeWidth={2.25} />
+          </Pressable>
+        </View>
       ) : null}
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm }}>
       {trackedMacros.map((macro) => {
@@ -190,6 +198,18 @@ export function TodayDashboardMacroTiles({
         // calories+sodium stay integer. Trailing ".0" trimmed for readability.
         const value = formatMacro(def.current, macro);
         const pct = def.target > 0 ? Math.min(100, Math.round((def.current / def.target) * 100)) : 0;
+        // 2026-05-18 (TF whole-app audit, harsh-review): when the user
+        // is OVER target (carbs 244/116 = +128 g) the bar used to fill
+        // solid at 100% — visually identical to "hit target exactly".
+        // Now treat over-budget as a distinct state: bar fills the full
+        // width in the macro's warning tint (warmer + lighter) so the
+        // user reads "you went past it" not "you hit it".
+        const isOverBudget =
+          !def.referenceOnly && def.target > 0 && def.current > def.target;
+        const barColor = isOverBudget ? Accent.warning : def.color;
+        const barTrackColor = isOverBudget
+          ? `${Accent.warning}24`
+          : `${def.color}24`;
         // Audit T03 (2026-05-05) — caption "X g remaining" used to
         // round `def.target − def.current` directly, which produced
         // off-by-≤1g drift vs the displayed `value / target g` numerator
@@ -200,11 +220,22 @@ export function TodayDashboardMacroTiles({
         const displayedTarget = def.target;
         const remainDisplayed = displayedTarget - (Number.isFinite(displayedCurrent) ? displayedCurrent : def.current);
         const overBy = Math.round(Math.abs(remainDisplayed));
-        const captionText = def.referenceOnly
-          ? `ref ${def.target} ${def.unit}`
-          : remainDisplayed >= 0
-            ? `${overBy} ${def.unit} remaining`
-            : `${overBy} ${def.unit} over`;
+        // 2026-05-18 (TF whole-app audit, harsh-review): when nothing's
+        // logged the caption used to read "98 g remaining" / "116 g
+        // remaining" / "41 g remaining" / "27 g remaining" — four
+        // identical-shape sentences under empty tiles, very loud for an
+        // empty state. Now suppress the caption entirely when the tile
+        // is at zero; the `0 / 98 g` numerator/target above already
+        // says everything the user needs.
+        const isUnloggedTile =
+          !def.referenceOnly && def.current <= 0 && def.target > 0;
+        const captionText = isUnloggedTile
+          ? ""
+          : def.referenceOnly
+            ? `ref ${def.target} ${def.unit}`
+            : remainDisplayed >= 0
+              ? `${overBy} ${def.unit} left`
+              : `${overBy} ${def.unit} over`;
 
         return (
           <Pressable
@@ -283,27 +314,44 @@ export function TodayDashboardMacroTiles({
                   300ms with `Easing.out(cubic)`. Apple Watch + Cal AI
                   parity — the bar grows visibly as the user logs,
                   reinforcing the "you just made progress" beat. */}
-              <View
-                style={{
-                  height: 6,
-                  borderRadius: 999,
-                  backgroundColor: `${def.color}24`,
-                  marginTop: Spacing.sm + 2,
-                  overflow: "hidden",
-                }}
-              >
-                <MacroTileFill pct={pct} color={def.color} />
-              </View>
-              <Text
-                style={{
-                  fontSize: 11,
-                  color: textSecondaryColor,
-                  marginTop: Spacing.xs + 2,
-                  fontVariant: ["tabular-nums"],
-                }}
-              >
-                {captionText}
-              </Text>
+              {/* 2026-05-18 (TF whole-app audit, harsh-review): hide
+                  the bar entirely when nothing's been logged. The 14%
+                  alpha track was added in 2026-04-29 as a "premium
+                  feel" affordance but on the empty state it reads as
+                  noise — four parallel rails saying "you've done
+                  nothing here". Suppressing the track + the caption
+                  on unlogged tiles makes the empty state genuinely
+                  calm — just the macro label + `0 / target g` value
+                  line, no chrome. */}
+              {!isUnloggedTile ? (
+                <View
+                  style={{
+                    height: 6,
+                    borderRadius: 999,
+                    backgroundColor: barTrackColor,
+                    marginTop: Spacing.sm + 2,
+                    overflow: "hidden",
+                  }}
+                >
+                  <MacroTileFill pct={pct} color={barColor} />
+                </View>
+              ) : null}
+              {captionText ? (
+                <Text
+                  style={{
+                    fontSize: 11,
+                    // 2026-05-18 — amber caption colour on over-budget
+                    // tiles so the "X g over" line reads as a flag, not
+                    // a calm tally.
+                    color: isOverBudget ? Accent.warning : textSecondaryColor,
+                    fontWeight: isOverBudget ? "700" : "400",
+                    marginTop: Spacing.xs + 2,
+                    fontVariant: ["tabular-nums"],
+                  }}
+                >
+                  {captionText}
+                </Text>
+              ) : null}
           </Pressable>
         );
       })}
