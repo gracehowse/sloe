@@ -1,0 +1,267 @@
+/* ─────────────────────────────────────────────────────────────────────
+ * Tare aesthetic v1 — opt-in design language layer
+ * ─────────────────────────────────────────────────────────────────────
+ *
+ * Source of truth: /tmp/tare-brand/tare/project/tare-interactive.jsx
+ *                  (the final token set Grace approved in chat round 6)
+ *
+ * Brief: Soho House / Equinox / Third Space — neutral, classy,
+ * minimalist, premium. Gender-agnostic; no fitness-app clichés.
+ * True black/white surfaces, greyscale text ramp, Inter + Spectral
+ * upright, one warm accent (terracotta) used only where it earns
+ * its keep: streak count · ring progress · FAB · "Log meal" link ·
+ * today marker · active tab bar item label.
+ *
+ * Activation: this layer applies ONLY when `body.tare-on` is set.
+ * The feature flag `tare-aesthetic-v1` controls when the class
+ * is added (see src/app/layout.tsx wiring). Toggle off → all
+ * tokens revert to the existing Suppr palette.
+ *
+ * Surfaces NOT remapped (deliberate carve-outs):
+ *   - Apple Sign-In button colours (HIG requirement)
+ *   - Hydration-stimulant tokens (water/caffeine/alcohol — functional
+ *     indicators, not brand colours)
+ *   - --over-budget (amber, never red — see memory)
+ *   - --destructive (kept for legitimate alarm states)
+ *   - --success (kept for the calorie-ring "logged-and-under"
+ *     option, even though the default ring now uses --accent)
+ *
+ * Re-mapped tokens (every consumer reads these via var() — no
+ * downstream code change required):
+ *   - --primary → terracotta accent
+ *   - --background, --card, --foreground, --muted-foreground → true B/W
+ *   - --muted, --border, --input → greyscale rules
+ *   - --macro-protein/carbs/fat/calories → earth tones (sage/wheat/terra/forest)
+ *   - --sidebar-* → matched to new surface
+ *   - --ring-bg, --ring-track → matched
+ *
+ * Decision doc: docs/decisions/2026-05-18-tare-aesthetic-foundation.md
+ */
+
+body.tare-on {
+  /* ── Surfaces: true white (light) / true black (dark) ── */
+  --background: #ffffff;
+  --card: #ffffff;
+  --popover: #ffffff;
+  --secondary: #f6f6f6;
+  --muted: #fafafa;
+  --accent: #f6f6f6;
+  --input-background: #fafafa;
+
+  /* ── Text ramp: true greyscale, four steps ── */
+  --foreground: #0a0a0a;
+  --card-foreground: #0a0a0a;
+  --popover-foreground: #0a0a0a;
+  --secondary-foreground: #0a0a0a;
+  --accent-foreground: #0a0a0a;
+  --sidebar-foreground: #0a0a0a;
+  --sidebar-accent-foreground: #0a0a0a;
+  --muted-foreground: #5a5a5a;     /* fgMute   — secondary text */
+  --switch-background: #b8b8b8;    /* fgFaint  — disabled */
+
+  /* ── Rules / dividers: pure neutral greys ── */
+  --border: #eaeaea;
+  --border-strong: rgba(0, 0, 0, 0.08);
+  --sidebar-border: #eaeaea;
+
+  /* ── Brand accent: terracotta, ONE colour ──
+   * Used only in: streak count · ring progress · FAB · "Log meal"
+   * link · today marker · active tab bar item label. Discipline
+   * enforced by code review + the accent-audit lint rule (Phase 1). */
+  --primary: #a3522a;
+  --primary-foreground: #ffffff;
+  --primary-strong: #8a4524;       /* deeper for text-on-page-bg use */
+  --sidebar-primary: #a3522a;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-ring: #a3522a;
+  --accent-muted: rgba(163, 82, 42, 0.12);
+
+  /* ── Macro palette: earth tones, functional only ── */
+  --macro-protein: #6f8056;        /* sage */
+  --macro-protein-soft: rgba(111, 128, 86, 0.12);
+  --macro-carbs: #a87f3e;          /* wheat */
+  --macro-carbs-soft: rgba(168, 127, 62, 0.14);
+  --macro-fat: #a05238;            /* terra */
+  --macro-fat-soft: rgba(160, 82, 56, 0.12);
+  --macro-calories: #6f8056;       /* alias → protein-sage (calorie ring) */
+  /* water keeps its own cyan — not an earth-tone candidate; it's a
+     functional hydration indicator, not a macro identity */
+
+  /* ── Source / provenance dots: rebound to new palette ── */
+  --source-usda: #6f8056;
+  --source-off: #a3522a;
+  --source-fatsecret: #a87f3e;
+  --source-ai: #a05238;
+
+  /* ── Meal-slot tints: re-anchor to the macro palette ── */
+  --slot-breakfast: #a87f3e;       /* wheat */
+  --slot-breakfast-soft: rgba(168, 127, 62, 0.12);
+  --slot-lunch: #6f8056;            /* sage */
+  --slot-lunch-soft: rgba(111, 128, 86, 0.12);
+  --slot-dinner: #a3522a;           /* accent terracotta */
+  --slot-dinner-soft: rgba(163, 82, 42, 0.12);
+  --slot-snack: #a05238;            /* terra */
+  --slot-snack-soft: rgba(160, 82, 56, 0.12);
+
+  /* ── Ring tokens ── */
+  --ring-bg: #eaeaea;               /* track — pure neutral */
+  --ring-track: #a3522a;            /* progress arc — accent (under-budget) */
+
+  /* ── North-star block: remapped to accent ── */
+  --north-star-bg-from: rgba(163, 82, 42, 0.06);
+  --north-star-bg-to: rgba(160, 82, 56, 0.03);
+  --north-star-border: rgba(163, 82, 42, 0.14);
+
+  /* ── Sidebar surface ── */
+  --sidebar: #ffffff;
+  --sidebar-accent: #f6f6f6;
+
+  /* ── Elevation: same recipes, accent recoloured ── */
+  --elev-float-primary: 0 4px 16px rgba(163, 82, 42, 0.32);
+
+  /* ── Chart palette: earth tones ── */
+  --chart-1: #6f8056;
+  --chart-2: #a87f3e;
+  --chart-3: #a05238;
+  --chart-4: #3a5236;
+  --chart-5: #a3522a;
+
+  /* ── Glass / surface tokens (light) ── */
+  --glass: rgba(255, 255, 255, 0.78);
+  --glass-border: rgba(0, 0, 0, 0.06);
+
+  /* ── Confidence colours: drop the "traffic-light" model in favour
+   *    of the calmer greyscale + accent system ── */
+  --confidence-high: #6f8056;       /* sage — calm "settled" */
+  --confidence-med: #5a5a5a;        /* greyscale fgMute */
+  --confidence-low: #8a8a8a;        /* greyscale fgDim */
+  --confidence-neutral: #5a5a5a;
+}
+
+/* ── DARK MODE — true black surfaces, lighter accent ───────────────── */
+.dark body.tare-on,
+body.tare-on.dark {
+  --background: #000000;
+  --card: #141414;
+  --popover: #141414;
+  --secondary: #0e0e0e;
+  --muted: #161616;
+  --accent: #0e0e0e;
+  --input-background: #161616;
+
+  --foreground: #ffffff;
+  --card-foreground: #ffffff;
+  --popover-foreground: #ffffff;
+  --secondary-foreground: #ffffff;
+  --accent-foreground: #ffffff;
+  --sidebar-foreground: #ffffff;
+  --sidebar-accent-foreground: #ffffff;
+  --muted-foreground: #a8a8a8;
+  --switch-background: #4a4a4a;
+
+  --border: #242424;
+  --border-strong: rgba(255, 255, 255, 0.08);
+  --sidebar-border: #242424;
+
+  --primary: #d4824a;              /* warmer terracotta on dark */
+  --primary-foreground: #15090a;   /* accentInk — dark text on the warm accent */
+  --primary-strong: #c87544;
+  --sidebar-primary: #d4824a;
+  --sidebar-primary-foreground: #15090a;
+  --sidebar-ring: #d4824a;
+  --accent-muted: rgba(212, 130, 74, 0.18);
+
+  --macro-protein: #8a9a6b;        /* sage — lighter on dark */
+  --macro-protein-soft: rgba(138, 154, 107, 0.16);
+  --macro-carbs: #c8a050;          /* wheat — lighter on dark */
+  --macro-carbs-soft: rgba(200, 160, 80, 0.16);
+  --macro-fat: #b9694a;            /* terra — lighter on dark */
+  --macro-fat-soft: rgba(185, 105, 74, 0.16);
+  --macro-calories: #8a9a6b;
+
+  --source-usda: #8a9a6b;
+  --source-off: #d4824a;
+  --source-fatsecret: #c8a050;
+  --source-ai: #b9694a;
+
+  --slot-breakfast: #c8a050;
+  --slot-breakfast-soft: rgba(200, 160, 80, 0.16);
+  --slot-lunch: #8a9a6b;
+  --slot-lunch-soft: rgba(138, 154, 107, 0.16);
+  --slot-dinner: #d4824a;
+  --slot-dinner-soft: rgba(212, 130, 74, 0.16);
+  --slot-snack: #b9694a;
+  --slot-snack-soft: rgba(185, 105, 74, 0.16);
+
+  --ring-bg: #242424;
+  --ring-track: #d4824a;
+
+  --north-star-bg-from: rgba(212, 130, 74, 0.08);
+  --north-star-bg-to: rgba(185, 105, 74, 0.04);
+  --north-star-border: rgba(212, 130, 74, 0.18);
+
+  --sidebar: #141414;
+  --sidebar-accent: #0e0e0e;
+
+  --elev-float-primary: 0 4px 16px rgba(212, 130, 74, 0.38);
+
+  --chart-1: #8a9a6b;
+  --chart-2: #c8a050;
+  --chart-3: #b9694a;
+  --chart-4: #4d6a4a;
+  --chart-5: #d4824a;
+
+  --glass: rgba(20, 20, 20, 0.78);
+  --glass-border: rgba(255, 255, 255, 0.06);
+
+  --confidence-high: #8a9a6b;
+  --confidence-med: #a8a8a8;
+  --confidence-low: #6e6e6e;
+  --confidence-neutral: #a8a8a8;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+ * Typography layer — Inter + Spectral
+ * ─────────────────────────────────────────────────────────────────────
+ *
+ * The font families themselves are loaded in app/layout.tsx via
+ * next/font/google (Inter + Spectral). This block sets the body
+ * defaults and exposes utility classes for the editorial moments
+ * (greeting, hero numbers, day-of-year reference).
+ *
+ * Discipline: TWO families maximum. Inter for everything functional;
+ * Spectral upright (NOT italic, per chat round 7) for editorial.
+ * If you reach for a third family — Newsreader, Instrument Serif,
+ * Playfair, anything — stop and use Inter weight + tracking instead.
+ */
+
+body.tare-on {
+  --font-sans: var(--font-inter), system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-serif: var(--font-spectral), Georgia, "Times New Roman", serif;
+  font-family: var(--font-sans);
+}
+
+/* Editorial moments — apply via className="tare-editorial" */
+.tare-editorial {
+  font-family: var(--font-serif);
+  font-style: normal; /* upright — italic deliberately not used */
+  font-weight: 400;
+  letter-spacing: -0.015em;
+}
+
+/* Hero numbers in the ring centre and big-stat cards */
+.tare-hero-number {
+  font-family: var(--font-serif);
+  font-style: normal;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Day-of-year / week-of-year masthead reference ("No. 142", "No. 19") */
+.tare-masthead-ref {
+  font-family: var(--font-serif);
+  font-style: italic; /* deliberate exception — magazine convention */
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}

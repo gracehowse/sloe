@@ -1,14 +1,33 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
-import { Inter } from "next/font/google";
+import { Inter, Spectral } from "next/font/google";
 import "../src/styles/index.css";
 import { Providers } from "./providers";
+import { TareAestheticGate } from "./tare-aesthetic-gate";
 import { Analytics } from "@vercel/analytics/next";
 
 const inter = Inter({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-inter",
+});
+
+// 2026-05-18 — Tare aesthetic v1 foundation. Spectral is the second
+// family (editorial moments only: greeting, hero ring number, "No. NN"
+// masthead reference). Loaded with weights 400 + 500 + 600; italic is
+// ONLY pulled for the masthead reference (".tare-masthead-ref"). The
+// font is only activated visually when `body.tare-on` is set — see
+// `TareAestheticGate` below for the feature-flag wiring.
+//
+// Why two weights + italic on the variable: keeps the bundle minimal
+// while covering the three editorial slots — greeting (400), hero
+// number (500), masthead italic (400 italic).
+const spectral = Spectral({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  style: ["normal", "italic"],
+  display: "swap",
+  variable: "--font-spectral",
 });
 
 function resolveMetadataBase(): URL {
@@ -57,9 +76,15 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={inter.variable} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${inter.variable} ${spectral.variable}`}
+      suppressHydrationWarning
+    >
       <body className={inter.className}>
-        <Providers>{children}</Providers>
+        <Providers>
+          <TareAestheticGate>{children}</TareAestheticGate>
+        </Providers>
         <Analytics />
       </body>
     </html>
