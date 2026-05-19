@@ -247,7 +247,14 @@ export default function CalorieRing({
   // mapping memory stays intact. Falling back to Accent / MacroColors
   // when the gate is off keeps the legacy aesthetic the default.
   const tare = useTarePalette();
-  const underBudgetStroke = tare?.macroFiber ?? Accent.success;
+  // 2026-05-19 V1.3 — under-budget stroke is a calories-progress
+  // indicator semantically ("you're logging, under the calorie
+  // target"), not a fiber indicator. Pre-V1.3 macroFiber and
+  // macroCalories happened to share a green hex so the prior
+  // wiring worked by accident. V1.3 differentiates (fiber=olive,
+  // calories=emerald), so the ring routes through macroCalories.
+  // Tare-off path unchanged: still falls back to Accent.success.
+  const underBudgetStroke = tare?.macroCalories ?? Accent.success;
   const overBudgetStroke = tare?.destructive ?? Accent.destructive;
   const proteinArcColor = tare?.macroProtein ?? MacroColors.protein;
   const carbsArcColor = tare?.macroCarbs ?? MacroColors.carbs;

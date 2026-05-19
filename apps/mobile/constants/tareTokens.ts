@@ -160,34 +160,38 @@ export const TARE_LIGHT: TarePalette = {
   accentWarmInk: "#ffffff",
   accentWarmWash: "rgba(160,79,48,0.08)",
 
-  // 2026-05-19 V1.2 — softened palette brightened one click after sim
-  // review. Prior values were ~13% lower sat than legacy data-viz
-  // (denim/amber/rose/sage). Grace flagged them as too muted — bumped
-  // each by ~6-8% lightness so the colours read present without
-  // crossing back into iOS-data-bright territory. Soft-alpha variants
-  // tracked to the new base RGB.
-  macroProtein: "#6478c8",
-  macroProteinSoft: "rgba(100,120,200,0.15)",
-  macroCarbs: "#d3803e",
-  macroCarbsSoft: "rgba(211,128,62,0.15)",
-  macroFat: "#cf7895",
-  macroFatSoft: "rgba(207,120,149,0.15)",
-  macroFiber: "#669767",
-  macroFiberSoft: "rgba(102,151,103,0.15)",
-  macroCalories: "#558f55",
+  // 2026-05-19 V1.3 — palette tuned after sim review. Three fixes:
+  //   (1) Brighter — V1.2 was still muted. ~5-8% more saturation.
+  //   (2) Differentiate calories (emerald) from fiber (olive) so
+  //       they aren't two near-identical greens.
+  //   (3) Shift fat away from red (rose → magenta-pink) so it
+  //       doesn't read as a second red shade alongside destructive
+  //       on the over-budget calorie ring.
+  // Hue families stay distinct: indigo / amber / pink-magenta /
+  // olive-green / emerald-green / cyan. Soft-alpha tints tracked
+  // to the new base RGB.
+  macroProtein: "#5a76d6",
+  macroProteinSoft: "rgba(90,118,214,0.16)",
+  macroCarbs: "#dc8136",
+  macroCarbsSoft: "rgba(220,129,54,0.16)",
+  macroFat: "#dc6fa0",
+  macroFatSoft: "rgba(220,111,160,0.16)",
+  macroFiber: "#7da762",
+  macroFiberSoft: "rgba(125,167,98,0.16)",
+  macroCalories: "#3da66b",
   macroWater: "#06b6d4",
 
-  sourceUsda: "#558f55",
-  sourceOff: "#6478c8",
-  sourceFatSecret: "#d3803e",
-  sourceAi: "#cf7895",
+  sourceUsda: "#3da66b",
+  sourceOff: "#5a76d6",
+  sourceFatSecret: "#dc8136",
+  sourceAi: "#dc6fa0",
 
-  slotBreakfast: "#d3803e",
-  slotBreakfastSoft: "rgba(211,128,62,0.13)",
-  slotLunch: "#669767",
-  slotLunchSoft: "rgba(102,151,103,0.13)",
-  slotDinner: "#6478c8",
-  slotDinnerSoft: "rgba(100,120,200,0.13)",
+  slotBreakfast: "#dc8136",
+  slotBreakfastSoft: "rgba(220,129,54,0.13)",
+  slotLunch: "#7da762",
+  slotLunchSoft: "rgba(125,167,98,0.13)",
+  slotDinner: "#5a76d6",
+  slotDinnerSoft: "rgba(90,118,214,0.13)",
   slotSnack: "#0e8aa3",
   slotSnackSoft: "rgba(14,138,163,0.12)",
 

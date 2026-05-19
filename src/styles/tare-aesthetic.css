@@ -82,32 +82,39 @@ body.tare-on {
   --accent-warm-foreground: #ffffff;
   --accent-warm-soft: rgba(160, 79, 48, 0.10);
 
-  /* ── Macros: SOFTENED data palette (V1.2 brighter — 2026-05-19) ──
-   * One-click brighten of the Phase 0.8 softened palette after sim
-   * review. Same hue families (denim/amber/rose/sage), ~6-8% more
-   * lightness so the colours read present without going back to
-   * iOS-data-bright. Mirror of `apps/mobile/constants/tareTokens.ts`. */
-  --macro-protein: #6478c8;
-  --macro-protein-soft: rgba(100, 120, 200, 0.15);
-  --macro-carbs: #d3803e;
-  --macro-carbs-soft: rgba(211, 128, 62, 0.15);
-  --macro-fat: #cf7895;
-  --macro-fat-soft: rgba(207, 120, 149, 0.15);
-  --macro-calories: #558f55;
+  /* ── Macros: SOFTENED data palette (V1.3 — 2026-05-19) ──
+   * Tuned palette after sim review. Three fixes vs V1.2:
+   *   (1) Brighter — V1.2 was still muted. ~5-8% more saturation.
+   *   (2) Differentiate calories (emerald) from fiber (olive) so
+   *       they aren't two near-identical greens.
+   *   (3) Shift fat away from red (rose → magenta-pink) so it
+   *       doesn't read as a second red shade alongside destructive
+   *       on the over-budget calorie ring.
+   * Hue families: indigo / amber / pink-magenta / olive / emerald /
+   * cyan. Mirror of `apps/mobile/constants/tareTokens.ts`. */
+  --macro-protein: #5a76d6;
+  --macro-protein-soft: rgba(90, 118, 214, 0.16);
+  --macro-carbs: #dc8136;
+  --macro-carbs-soft: rgba(220, 129, 54, 0.16);
+  --macro-fat: #dc6fa0;
+  --macro-fat-soft: rgba(220, 111, 160, 0.16);
+  --macro-fiber: #7da762;
+  --macro-fiber-soft: rgba(125, 167, 98, 0.16);
+  --macro-calories: #3da66b;
 
   /* ── Source / provenance dots ── */
-  --source-usda: #558f55;
-  --source-off: #6478c8;
-  --source-fatsecret: #d3803e;
-  --source-ai: #cf7895;
+  --source-usda: #3da66b;
+  --source-off: #5a76d6;
+  --source-fatsecret: #dc8136;
+  --source-ai: #dc6fa0;
 
   /* ── Meal-slot tints: tied to macro identity ── */
-  --slot-breakfast: #d3803e;
-  --slot-breakfast-soft: rgba(211, 128, 62, 0.13);
-  --slot-lunch: #669767;
-  --slot-lunch-soft: rgba(102, 151, 103, 0.13);
-  --slot-dinner: #6478c8;
-  --slot-dinner-soft: rgba(100, 120, 200, 0.13);
+  --slot-breakfast: #dc8136;
+  --slot-breakfast-soft: rgba(220, 129, 54, 0.13);
+  --slot-lunch: #7da762;
+  --slot-lunch-soft: rgba(125, 167, 98, 0.13);
+  --slot-dinner: #5a76d6;
+  --slot-dinner-soft: rgba(90, 118, 214, 0.13);
   --slot-snack: #0e8aa3;
   --slot-snack-soft: rgba(14, 138, 163, 0.12);
 
@@ -127,11 +134,11 @@ body.tare-on {
   /* ── Elevation ── */
   --elev-float-primary: 0 4px 16px rgba(20, 20, 26, 0.24);
 
-  /* ── Chart palette: softened data colours (V1.2 brighter) ── */
-  --chart-1: #6478c8;
-  --chart-2: #d3803e;
-  --chart-3: #cf7895;
-  --chart-4: #669767;
+  /* ── Chart palette: softened data colours (V1.3) ── */
+  --chart-1: #5a76d6;
+  --chart-2: #dc8136;
+  --chart-3: #dc6fa0;
+  --chart-4: #7da762;
   --chart-5: #14141a;
 
   /* ── Glass / surface tokens (light) ── */

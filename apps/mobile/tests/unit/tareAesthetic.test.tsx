@@ -173,12 +173,14 @@ describe("useTarePalette — palette resolution", () => {
     // 2026-05-19 — lifted from `#f1ebdf` to `#f6f3ee` after sim review.
     expect(result.current?.bg).toBe("#f6f3ee");
     expect(result.current?.accent).toBe("#14141a");
-    // V1.2 brightened softened macros (one click brighter than the
-    // Phase 0.8 muted set — denim/amber/rose/sage at higher L):
-    expect(result.current?.macroProtein).toBe("#6478c8");
-    expect(result.current?.macroCarbs).toBe("#d3803e");
-    expect(result.current?.macroFat).toBe("#cf7895");
-    expect(result.current?.macroFiber).toBe("#669767");
+    // V1.3 tuned palette: brighter, differentiated calories vs fiber
+    // greens, fat shifted from rose toward magenta-pink so it doesn't
+    // pair with destructive red as a second red shade on the ring.
+    expect(result.current?.macroProtein).toBe("#5a76d6");
+    expect(result.current?.macroCarbs).toBe("#dc8136");
+    expect(result.current?.macroFat).toBe("#dc6fa0");
+    expect(result.current?.macroFiber).toBe("#7da762");
+    expect(result.current?.macroCalories).toBe("#3da66b");
     // Fonts default to family names (deferred font load — see
     // comments in constants/tareTokens.ts).
     expect(result.current?.fontSans).toBe("Inter");
