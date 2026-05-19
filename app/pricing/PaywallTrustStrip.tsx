@@ -1,4 +1,7 @@
+"use client";
+
 import { ShieldCheck } from "lucide-react";
+import { useFeatureFlagEnabled } from "posthog-js/react";
 import { getPaywallTrustChips } from "../../src/lib/landing/paywallTrust.ts";
 
 /**
@@ -26,6 +29,11 @@ import { getPaywallTrustChips } from "../../src/lib/landing/paywallTrust.ts";
  * of putting trust copy directly next to the price digit.
  */
 export function PaywallTrustStrip() {
+  // T2.3 (premium-sweep-v2 P0): when the chip-ribbon flag is on,
+  // chips render INSIDE the Pro card. Hide the external strip to
+  // avoid duplicate chip rows. When OFF: strip renders as before.
+  const chipRibbonOn = useFeatureFlagEnabled("premium-sweep-v2-p0-t23");
+  if (chipRibbonOn) return null;
   const chips = getPaywallTrustChips("web");
   return (
     <div

@@ -1,6 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { FlatCompat } from "@eslint/eslintrc";
+import supprTokens from "./eslint-plugin-suppr-tokens/index.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -63,6 +64,23 @@ export default [
           ],
         },
       ],
+    },
+  },
+  // Suppr token-enforcement plugin — Phase 1.5 of the UI elevation plan
+  // (/Users/graceturner/.claude/plans/i-m-really-struggling-to-goofy-rivest.md).
+  // Bans literal spacing / colour / font-size values so the design system
+  // can't silently drift. Starts as `warn` for a 1-week grace window; flips
+  // to `error` in Phase 4.1 once Phase 2-3 P0 surfaces have been cleaned.
+  // Applies to web app only (mobile has its own eslint config; tests + stories
+  // opt out below).
+  {
+    files: ["src/**/*.{ts,tsx}", "app/**/*.{ts,tsx}"],
+    ignores: ["**/*.test.{ts,tsx}", "**/*.spec.{ts,tsx}", "**/*.stories.{ts,tsx}"],
+    plugins: { "suppr-tokens": supprTokens },
+    rules: {
+      "suppr-tokens/no-literal-spacing": "warn",
+      "suppr-tokens/no-literal-color": "warn",
+      "suppr-tokens/no-literal-fontSize": "warn",
     },
   },
 ];

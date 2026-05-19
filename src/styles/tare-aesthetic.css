@@ -106,54 +106,62 @@ body.tare-on {
   --accent-warm-foreground: #ffffff;
   --accent-warm-soft: rgba(160, 79, 48, 0.10);
 
-  /* ── Macro palette: FUNCTIONAL DATA COLOURS (Phase 0.7 amendment
+  /* ── Macro palette: SOFTENED DATA COLOURS (Phase 0.8 amendment
    * 2026-05-19) ──
    *
-   * Phase 0.5 shipped earth-toned macros (sage/wheat/terra/forest).
-   * The print-bundle settled state at `screens-shared.jsx` lines
-   * 39-43 keeps Suppr's CURRENT functional data palette
-   * (blue/orange/pink/green) and Grace explicitly corrected the
-   * earth-tone direction in brand-bundle chat 2 ("that's a little
-   * soulless — the macros can have colours"). Reverting to
-   * functional data colours. This means Phase V2 (macro repalette)
-   * is CANCELLED — current Suppr macros are the target. ── */
-  --macro-protein: #4c6ce0;        /* blue */
-  --macro-protein-soft: rgba(76, 108, 224, 0.12);
-  --macro-carbs: #d68224;          /* orange */
-  --macro-carbs-soft: rgba(214, 130, 36, 0.14);
-  --macro-fat: #c4647d;            /* pink */
-  --macro-fat-soft: rgba(196, 100, 125, 0.14);
-  --macro-calories: #3a8a4a;       /* deep green — calorie ring */
+   * Phase 0.7 reverted from earth tones back to Suppr's functional
+   * data palette (cobalt/orange/pink/green). Grace's correction:
+   * those reads as iOS-default-data-viz sharp. Pulled each macro
+   * ~12-15% lower saturation while keeping the same hue family.
+   * Each macro is still unambiguously its colour (blue / orange /
+   * pink / green) but with a more considered tonality — closer to
+   * Noom's confident-but-restrained palette than to default
+   * Recharts. Earth tones explicitly rejected.
+   *
+   *   Protein: cobalt-electric → cobalt-denim
+   *   Carbs:   highlighter-orange → warm amber
+   *   Fat:     hot pink → soft rose
+   *   Fiber:   data-green → sage-leaning green
+   * ── */
+  --macro-protein: #5b6fb8;        /* blue (cobalt-denim) */
+  --macro-protein-soft: rgba(91, 111, 184, 0.13);
+  --macro-carbs: #c87935;          /* warm amber */
+  --macro-carbs-soft: rgba(200, 121, 53, 0.14);
+  --macro-fat: #c4708a;            /* soft rose */
+  --macro-fat-soft: rgba(196, 112, 138, 0.14);
+  --macro-fiber: #5d8a5c;          /* sage-leaning green */
+  --macro-fiber-soft: rgba(93, 138, 92, 0.14);
+  --macro-calories: #4d8a5c;       /* matches fiber tonality */
   /* water keeps its own cyan — not a macro identity */
 
-  /* ── Source / provenance dots: rebound to new palette ── */
-  --source-usda: #3a8a4a;
-  --source-off: #4c6ce0;
-  --source-fatsecret: #d68224;
-  --source-ai: #c4647d;
+  /* ── Source / provenance dots: matched to softened macros ── */
+  --source-usda: #4d8a5c;
+  --source-off: #5b6fb8;
+  --source-fatsecret: #c87935;
+  --source-ai: #c4708a;
 
   /* ── Meal-slot tints: tied to macro identity (print-bundle pattern)
-   * Each slot signals its dominant macro identity via the macro
-   * colour at low opacity. Print bundle uses:
+   * Each slot signals its dominant macro identity via the softened
+   * macro colour at low opacity. Phase 0.8 amendments propagate
+   * the softer saturation here too:
    *   Breakfast → carbs tint (wheat/oats)
    *   Lunch → fiber tint (green/vegetables)
    *   Dinner → protein tint (the main meal)
    *   Snacks → cyan (own identity) ── */
-  --slot-breakfast: #d68224;       /* carbs */
-  --slot-breakfast-soft: rgba(214, 130, 36, 0.12);
-  --slot-lunch: #4a8a52;            /* fiber */
-  --slot-lunch-soft: rgba(74, 138, 82, 0.12);
-  --slot-dinner: #4c6ce0;           /* protein */
-  --slot-dinner-soft: rgba(76, 108, 224, 0.12);
-  --slot-snack: #0891a8;            /* cyan */
-  --slot-snack-soft: rgba(8, 145, 168, 0.12);
+  --slot-breakfast: #c87935;       /* carbs */
+  --slot-breakfast-soft: rgba(200, 121, 53, 0.12);
+  --slot-lunch: #5d8a5c;            /* fiber */
+  --slot-lunch-soft: rgba(93, 138, 92, 0.12);
+  --slot-dinner: #5b6fb8;           /* protein */
+  --slot-dinner-soft: rgba(91, 111, 184, 0.12);
+  --slot-snack: #0e8aa3;            /* cyan (slightly softer) */
+  --slot-snack-soft: rgba(14, 138, 163, 0.12);
 
   /* ── Ring tokens ── */
   --ring-bg: #e6e1d6;               /* track — warm cream hairline */
-  --ring-track: #4a8a52;            /* progress arc — calorie green
+  --ring-track: #4d8a5c;            /* progress arc — softened green
                                        (matches --macro-calories /
-                                       print bundle mFiber for the
-                                       under-budget state) */
+                                       --macro-fiber, Phase 0.8) */
 
   /* ── North-star block: remapped to ink monochrome ── */
   --north-star-bg-from: rgba(20, 20, 26, 0.04);
@@ -167,19 +175,19 @@ body.tare-on {
   /* ── Elevation: same recipes, ink accent ── */
   --elev-float-primary: 0 4px 16px rgba(20, 20, 26, 0.24);
 
-  /* ── Chart palette: functional data colours ── */
-  --chart-1: #4c6ce0;       /* protein blue */
-  --chart-2: #d68224;       /* carbs orange */
-  --chart-3: #c4647d;       /* fat pink */
-  --chart-4: #4a8a52;       /* fiber green */
+  /* ── Chart palette: softened data colours (Phase 0.8) ── */
+  --chart-1: #5b6fb8;       /* protein — cobalt-denim */
+  --chart-2: #c87935;       /* carbs — warm amber */
+  --chart-3: #c4708a;       /* fat — soft rose */
+  --chart-4: #5d8a5c;       /* fiber — sage-leaning green */
   --chart-5: #14141a;       /* ink — accent slice */
 
   /* ── Glass / surface tokens (light) ── */
   --glass: rgba(255, 255, 255, 0.78);
   --glass-border: rgba(0, 0, 0, 0.06);
 
-  /* ── Confidence colours: greyscale + functional green ── */
-  --confidence-high: #4a8a52;       /* fiber green — "settled" */
+  /* ── Confidence colours: greyscale + softened green ── */
+  --confidence-high: #5d8a5c;       /* sage-green — "settled" */
   --confidence-med: #5a5a5a;        /* greyscale fgMute */
   --confidence-low: #8a8a8a;        /* greyscale fgDim */
   --confidence-neutral: #5a5a5a;
@@ -231,31 +239,35 @@ body.tare-on.dark {
   --accent-warm-foreground: #1a1815;
   --accent-warm-soft: rgba(214, 138, 106, 0.14);
 
-  /* Functional macros — lighter on dark for contrast */
-  --macro-protein: #8aa4ff;        /* blue lifted */
-  --macro-protein-soft: rgba(138, 164, 255, 0.16);
-  --macro-carbs: #e0a04a;           /* orange lifted */
-  --macro-carbs-soft: rgba(224, 160, 74, 0.16);
-  --macro-fat: #d88599;             /* pink lifted */
-  --macro-fat-soft: rgba(216, 133, 153, 0.16);
-  --macro-calories: #6fae7c;        /* green lifted */
+  /* Softened macros lifted for dark-mode contrast (Phase 0.8) —
+   * same hue rotation as light mode, brightened to maintain
+   * legibility on the warm-black surface. */
+  --macro-protein: #8696db;         /* cobalt-denim lifted */
+  --macro-protein-soft: rgba(134, 150, 219, 0.16);
+  --macro-carbs: #d69458;            /* warm amber lifted */
+  --macro-carbs-soft: rgba(214, 148, 88, 0.16);
+  --macro-fat: #d495a8;              /* soft rose lifted */
+  --macro-fat-soft: rgba(212, 149, 168, 0.16);
+  --macro-fiber: #86a888;             /* sage-green lifted */
+  --macro-fiber-soft: rgba(134, 168, 136, 0.16);
+  --macro-calories: #80a890;          /* matches fiber tonality */
 
-  --source-usda: #6fae7c;
-  --source-off: #8aa4ff;
-  --source-fatsecret: #e0a04a;
-  --source-ai: #d88599;
+  --source-usda: #80a890;
+  --source-off: #8696db;
+  --source-fatsecret: #d69458;
+  --source-ai: #d495a8;
 
-  --slot-breakfast: #e0a04a;
-  --slot-breakfast-soft: rgba(224, 160, 74, 0.16);
-  --slot-lunch: #7ab084;
-  --slot-lunch-soft: rgba(122, 176, 132, 0.16);
-  --slot-dinner: #8aa4ff;
-  --slot-dinner-soft: rgba(138, 164, 255, 0.16);
-  --slot-snack: #5cc6dc;
-  --slot-snack-soft: rgba(92, 198, 220, 0.16);
+  --slot-breakfast: #d69458;
+  --slot-breakfast-soft: rgba(214, 148, 88, 0.16);
+  --slot-lunch: #86a888;
+  --slot-lunch-soft: rgba(134, 168, 136, 0.16);
+  --slot-dinner: #8696db;
+  --slot-dinner-soft: rgba(134, 150, 219, 0.16);
+  --slot-snack: #5cb4cb;
+  --slot-snack-soft: rgba(92, 180, 203, 0.16);
 
   --ring-bg: #2a2620;
-  --ring-track: #7ab084;            /* fiber/calorie green on dark */
+  --ring-track: #80a890;             /* softened green on dark */
 
   --north-star-bg-from: rgba(232, 226, 212, 0.06);
   --north-star-bg-to: rgba(232, 226, 212, 0.03);
@@ -266,16 +278,16 @@ body.tare-on.dark {
 
   --elev-float-primary: 0 4px 16px rgba(232, 226, 212, 0.18);
 
-  --chart-1: #8aa4ff;
-  --chart-2: #e0a04a;
-  --chart-3: #d88599;
-  --chart-4: #7ab084;
+  --chart-1: #8696db;
+  --chart-2: #d69458;
+  --chart-3: #d495a8;
+  --chart-4: #86a888;
   --chart-5: #e8e2d4;
 
   --glass: rgba(20, 20, 20, 0.78);
   --glass-border: rgba(255, 255, 255, 0.06);
 
-  --confidence-high: #7ab084;
+  --confidence-high: #86a888;        /* softened sage-green on dark */
   --confidence-med: #a8a8a8;
   --confidence-low: #6e6e6e;
   --confidence-neutral: #a8a8a8;

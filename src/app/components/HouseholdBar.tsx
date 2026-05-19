@@ -176,7 +176,13 @@ export function HouseholdBar({ selected, onSelect, onManage }: HouseholdBarProps
             >
               <span
                 aria-hidden
-                className="inline-grid place-items-center w-[22px] h-[22px] rounded-full text-[9px] font-bold text-white"
+                /* 2026-05-18 (contrast-audit): text-white on the light
+                   member-accent palette (#6c8cff blue, #4cd080 green,
+                   #ffc04c amber, #ff7eb3 pink) gave 2-3:1 contrast — well
+                   under AA 4.5:1. text-foreground (#111118) passes 6-11:1
+                   across the entire palette; the colour itself still
+                   identifies the member. */
+                className="inline-grid place-items-center w-[22px] h-[22px] rounded-full text-[9px] font-bold text-foreground"
                 style={{ backgroundColor: color }}
               >
                 {initials}

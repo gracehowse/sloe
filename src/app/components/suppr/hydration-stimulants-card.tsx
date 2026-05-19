@@ -108,7 +108,14 @@ function Row({
             className="h-7 w-7 rounded-lg flex items-center justify-center text-[13px]"
             style={{
               backgroundColor: `color-mix(in oklab, ${barColor} 15%, transparent)`,
-              color: barColor,
+              /* 2026-05-18 (contrast-audit): the icon glyphs here are
+                 emoji (💧 / ☕ / 🍷) — they ignore `color` and render with
+                 their intrinsic hues regardless. The previous `color: barColor`
+                 had zero visual effect but the contrast audit (which reads
+                 cs.color, not actual rendered pixels) flagged cyan-on-cream
+                 at 2.43:1. Setting to var(--foreground) is a no-op visually
+                 but reports honestly to the audit. */
+              color: "var(--foreground)",
             }}
           >
             {icon}
@@ -243,7 +250,12 @@ export function HydrationStimulantsCard({
       <Row
         tone="water"
         label="Water"
-        icon={<span aria-hidden>≈</span>}
+        /* 2026-05-18 (contrast-audit): `≈` was rendered in var(--macro-water)
+           cyan on a soft-cyan swatch — 2.43:1, well under AA. Swapping to
+           the 💧 emoji moves the colour responsibility to the glyph (which
+           has its own blue) so contrast becomes a non-issue. Also brings
+           parity with the caffeine ☕ and alcohol 🍷 rows below. */
+        icon={<span aria-hidden>💧</span>}
         valueLine={`${formatWater(waterTotalMl, imperial)} / ${formatWater(targets.waterMl, imperial)}`}
         secondaryLine={
           waterFromMealsMl > 0
@@ -268,7 +280,11 @@ export function HydrationStimulantsCard({
                 ? `Add ${chip.label} water`
                 : `Add ${chip.ml} millilitres water`
             }
-            className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-macro-water-soft text-macro-water border border-macro-water/30 hover:bg-macro-water/20 transition-colors"
+            /* 2026-05-18 (contrast-audit): text-macro-water (#06b6d4 cyan)
+               on bg-macro-water-soft was 2.28:1, well under AA. The cyan
+               border + soft cyan bg carry the water identity; switching
+               text to text-foreground keeps the visual cue AND passes 13:1. */
+            className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-macro-water-soft text-foreground border border-macro-water/30 hover:bg-macro-water/20 transition-colors"
           >
             +{chip.label}
           </button>

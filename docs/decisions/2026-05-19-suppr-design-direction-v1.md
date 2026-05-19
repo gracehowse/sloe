@@ -24,6 +24,38 @@ last) is explicitly rejected here. The four references we landed on
 each contribute a specific lesson; together they describe one
 coherent app.
 
+## Phase 0.8 ledger (2026-05-19, macro softening) — most recent amendment
+
+Grace's correction on Phase 0.7: *"the macro ring colours could
+take from noom which is maybe a little softer but still bright -
+i just dont want them to be too dulled/ earthy."*
+
+The Phase 0.7 macros reverted to Suppr's current functional palette
+(`#4c6ce0` / `#d68224` / `#c4647d` / `#4a8a52`). Those read as
+iOS-default-data-viz sharp. Phase 0.8 pulls each one ~12-15% lower
+saturation while keeping the same hue family — each macro is still
+unambiguously its colour (blue / orange / pink / green) but with
+a more considered tonality.
+
+| Macro | Phase 0.7 (pure data) | Phase 0.8 (softened) — shipping |
+|---|---|---|
+| Protein | `#4c6ce0` cobalt-electric | **`#5b6fb8` cobalt-denim** |
+| Carbs | `#d68224` highlighter-orange | **`#c87935` warm amber** |
+| Fat | `#c4647d` hot pink | **`#c4708a` soft rose** |
+| Fiber | `#4a8a52` data-green | **`#5d8a5c` sage-leaning green** |
+| Calories (ring) | `#3a8a4a` | **`#4d8a5c`** matches fiber tonality |
+
+Dark-mode equivalents (lifted for contrast on warm-black surface):
+`#8696db / #d69458 / #d495a8 / #86a888 / #80a890`.
+
+Same rotations applied to meal-slot tints, chart palette, source
+dots, confidence-high. Calorie ring under-budget colour is the
+softened green; over-budget stays `--destructive`; empty stays
+faint accent.
+
+No architecture changes. Token values shift. The phase plan,
+feature flag, primitives, and approval flow are unchanged.
+
 ## Phase 0.7 ledger (2026-05-19, print-bundle alignment) — read this first
 
 Grace shared a new `Tare App-print.html` Claude Design bundle dated
@@ -394,7 +426,8 @@ ramps via PostHog before flag removal.
 | **0** ✓ | Token foundation + Spectral font load + feature flag gate | 4 | Done |
 | **0.5** ✓ | Cream surface revert + heavy-serif primitives + cutout/highlight components | 4 | Done |
 | **0.7** ✓ | **Print-bundle alignment — ink accent default + Newsreader serif default + warmer cream + functional macros revert + greeting/overline restored** | 3 | Token-only |
-| **0.8** | Synthesise final amendments after Grace's Phase 0.7 review | TBD | Token tweaks only |
+| **0.8** ✓ | **Macro softening — keep blue/orange/pink/green identity, ~12-15% saturation drop (denim/amber/rose/sage)** | 2 | Token-only |
+| **0.9** | Future amendments after Grace's Phase 0.8 review | TBD | Token tweaks only |
 | **V1** | **Class-walk every `--primary` blue → demote to GREYSCALE except in the six approved places (ink is the accent)** | ~120 | High but mechanical |
 | **V2** | ~~Macro repalette to earth tones~~ → **CANCELLED — Phase 0.7 reverted to functional data macros. Now only: calorie-ring three-state polish + meal-slot tints align to macro identity** | ~8 | Low |
 | **V3** | Editorial chrome — Newsreader screen titles + greeting line + overline as the canonical Today/Plan/Library/Progress header pattern | ~15 | Low |

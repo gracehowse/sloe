@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
+import { useFeatureFlagEnabled } from "posthog-js/react";
 import type { LucideIcon } from "lucide-react";
 import {
   Activity,
@@ -157,6 +158,21 @@ function ThemeToggle() {
 /* ─────────────── Hero ─────────────── */
 function Hero() {
   return (
+    <HeroSection />
+  );
+}
+
+function HeroSection() {
+  // T2.1 v2 (premium-sweep-v2 P0): when ON, suppress the eyebrow chip
+  // ("NEW · Paste a TikTok, get real macros"). Audit: eyebrow
+  // competes with H1 and dilutes the first 200ms. Linear's hero
+  // opens H1-first with tight rhythm. The H1's `<br />` is retained
+  // (the original line-break collapse had zero visible effect at the
+  // captured viewport because the column wrap forces the same break;
+  // a real "tighter rhythm" fix needs column-width / font-clamp work
+  // tracked as T2.1b). When OFF: behaviour unchanged.
+  const subtractEyebrow = useFeatureFlagEnabled("premium-sweep-v2-p0-t21");
+  return (
     <section className="lp-hero">
       <div className="lp-wrap lp-hero-grid">
         <div className="lp-hero-copy">
@@ -166,11 +182,13 @@ function Hero() {
               audit flagged this — users were reading it as a decorative
               chip; making it tappable + showing the arrow indicates
               "tap to learn more". */}
-          <a href="#features" className="lp-hero-chip lp-hero-chip-link">
-            <span className="lp-tag">New</span>
-            Paste a TikTok, get real macros
-            <ArrowRight width={12} height={12} aria-hidden style={{ marginLeft: 4 }} />
-          </a>
+          {!subtractEyebrow && (
+            <a href="#features" className="lp-hero-chip lp-hero-chip-link">
+              <span className="lp-tag">New</span>
+              Paste a TikTok, get real macros
+              <ArrowRight width={12} height={12} aria-hidden style={{ marginLeft: 4 }} />
+            </a>
+          )}
           <h1 className="lp-h-display">
             Import any recipe.
             <br />

@@ -62,6 +62,25 @@ Wait — 5+5 = 10. Re-count: Web 5 (3.1, 3.3, 4.1, 5.1, 5.2) + Mobile 5 (10.1, 1
 
 ---
 
+## Named comparables (Phase 2.1, locked 2026-05-17)
+
+Per the UI elevation plan (`/Users/graceturner/.claude/plans/i-m-really-struggling-to-goofy-rivest.md`) and the `feedback_conformity_trap.md` rule — comparable is the **bar**, not the template. Each P0 surface is judged against its named comparable using the two-axis verdict (Concept × Execution) with explicit BETTER THAN BAR carve-outs for the Defended Choices listed below the proposal table.
+
+| Surface | Comparable | Why this comparable |
+|---|---|---|
+| `/` (landing) | **Linear** | Typography discipline, white-space rhythm, scroll hierarchy, micro-interaction calm. Closest aesthetic match for the calm-tech direction Suppr is converging on. |
+| `/pricing` | **Whoop** | Single-product, multi-tier consumer subscription, trust-anchored. The closest pricing-page analogue Suppr can be judged against. |
+| `/login` + `/signin` | **Notion** | Minimal auth surfaces with strong typography and zero noise. Notion is the canonical "auth that feels considered, not bureaucratic" reference. |
+| `/onboarding` (canonical) | **Cal AI** | Direct nutrition-category competitor with the strongest onboarding flow per the 2026-04-27 user-sentiment audit. Must beat or convert worse. |
+| `/today` first-render (signed-in fresh) | **MacroFactor** | Category benchmark for daily-use dashboard restraint + numeric clarity. Distinct from `/today` populated, which is judged on retention not first-impression. |
+| Sidebar shell (248px, all authed) | **Linear** | Same reasoning as landing — Linear's left-rail is the canonical premium sidebar pattern. Sidebar drift is judged here, not per-surface. |
+
+**Capture set powering this comparable read:** `tests/e2e/visual-regression/web-baseline.spec.ts-snapshots/` (24 light-public baselines landed 2026-05-17; dark + authed re-run pending). For premium-auditor input, captures are duplicated into `docs/audits/2026-05-15-premium-sweep-v2/captures/P0/before/` via `scripts/copy-baselines-to-p0.sh`.
+
+**Auditor pre-prompt:** include `defended-choices.md` (DC1–DC15) verbatim before posing the comparable. The auditor must call out which DCs are touched and whether they are intact / at risk / violated, per the two-axis frame.
+
+---
+
 ## Proposal table
 
 `Item type`: SUBTRACT / TIGHTEN / REPLACE / NEW

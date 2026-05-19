@@ -41,16 +41,19 @@
   --accent-warm-ink: #ffffff;
   --accent-warm-wash: rgba(160,79,48,0.08);
 
-  /* Macros — FUNCTIONAL DATA palette (NOT earth tones — Phase 0.7) */
-  --macro-protein: #4c6ce0;
-  --macro-protein-soft: rgba(76,108,224,0.12);
-  --macro-carbs: #d68224;
-  --macro-carbs-soft: rgba(214,130,36,0.14);
-  --macro-fat: #c4647d;
-  --macro-fat-soft: rgba(196,100,125,0.14);
-  --macro-fiber: #4a8a52;
-  --macro-fiber-soft: rgba(74,138,82,0.14);
-  --macro-cal: #3a8a4a;
+  /* Macros — SOFTENED DATA palette (Phase 0.8) — each macro keeps
+   * its hue family (blue/orange/pink/green) but with ~12-15% lower
+   * saturation than Phase 0.7's pure data-viz values. Considered
+   * tonality without going earthy. */
+  --macro-protein: #5b6fb8;        /* cobalt-denim */
+  --macro-protein-soft: rgba(91,111,184,0.13);
+  --macro-carbs: #c87935;           /* warm amber */
+  --macro-carbs-soft: rgba(200,121,53,0.14);
+  --macro-fat: #c4708a;             /* soft rose */
+  --macro-fat-soft: rgba(196,112,138,0.14);
+  --macro-fiber: #5d8a5c;            /* sage-leaning green */
+  --macro-fiber-soft: rgba(93,138,92,0.14);
+  --macro-cal: #4d8a5c;
   --macro-water: #06b6d4;
 
   /* Semantic */
@@ -93,16 +96,17 @@ html.dark {
   --accent-warm-ink: #1a1815;
   --accent-warm-wash: rgba(214,138,106,0.12);
 
-  --macro-protein: #8aa4ff;
-  --macro-protein-soft: rgba(138,164,255,0.16);
-  --macro-carbs: #e0a04a;
-  --macro-carbs-soft: rgba(224,160,74,0.16);
-  --macro-fat: #d88599;
-  --macro-fat-soft: rgba(216,133,153,0.16);
-  --macro-fiber: #7ab084;
-  --macro-fiber-soft: rgba(122,176,132,0.16);
-  --macro-cal: #6fae7c;
-  --macro-water: #5cc6dc;
+  /* Dark-mode equivalents — Phase 0.8 softened, lifted for contrast */
+  --macro-protein: #8696db;
+  --macro-protein-soft: rgba(134,150,219,0.16);
+  --macro-carbs: #d69458;
+  --macro-carbs-soft: rgba(214,148,88,0.16);
+  --macro-fat: #d495a8;
+  --macro-fat-soft: rgba(212,149,168,0.16);
+  --macro-fiber: #86a888;
+  --macro-fiber-soft: rgba(134,168,136,0.16);
+  --macro-cal: #80a890;
+  --macro-water: #5cb4cb;
 
   --destructive: #d96a5b;
   --success: #7ab084;
@@ -712,14 +716,14 @@ body { padding-bottom: 120px; transition: background .25s, color .25s; }
     <span>·</span>
     <span>Ink accent (terracotta as opt-in warmth pack)</span>
     <span>·</span>
-    <span>Functional macros (blue / orange / pink / green)</span>
+    <span>Softened macros (denim / amber / rose / sage)</span>
     <span>·</span>
     <span>Native iOS</span>
     <span>·</span>
     <span>Cook Mode = ADA target</span>
   </div>
   <div style="margin-top: 16px; padding: 12px 16px; background: var(--accent-warm-wash); border-left: 3px solid var(--accent-warm); border-radius: 4px; font-family: var(--sans); font-size: 12px; line-height: 1.55; color: var(--fg-soft); max-width: 720px;">
-    <strong style="font-weight: 600; color: var(--fg);">Phase 0.7 amendments (2026-05-19, this turn):</strong> the print-bundle alignment shifted defaults — ink accent (NOT terracotta), Newsreader serif (NOT Spectral), warmer #f1ebdf cream (NOT #f6f3ee), and functional data macros (Phase V2 macro repalette CANCELLED — current Suppr macros are the target). Greeting line + overline restored on the screen header. See <code style="font-family: ui-monospace, monospace; font-size: 11px;">../2026-05-19-suppr-design-direction-v1.md</code> for the full ledger.
+    <strong style="font-weight: 600; color: var(--fg);">Phase 0.7 + 0.8 amendments (2026-05-19):</strong> ink accent (NOT terracotta), Newsreader serif (NOT Spectral), warmer #f1ebdf cream, functional macros pulled ~12-15% softer to a denim/amber/rose/sage tonality (NOT earthy, NOT iOS-data-viz-bright — the middle). Greeting + overline restored on the Today header. See <code style="font-family: ui-monospace, monospace; font-size: 11px;">../2026-05-19-suppr-design-direction-v1.md</code> for the full ledger.
   </div>
 </section>
 
@@ -885,12 +889,28 @@ body { padding-bottom: 120px; transition: background .25s, color .25s; }
     </div>
 
     <div class="token-block">
-      <div class="token-block-title">Macros — earth tones · functional only</div>
-      <div class="token-row"><div class="token-swatch" style="background:#6f8056"></div>Protein · sage<code>#6f8056</code></div>
-      <div class="token-row"><div class="token-swatch" style="background:#a87f3e"></div>Carbs · wheat<code>#a87f3e</code></div>
-      <div class="token-row"><div class="token-swatch" style="background:#a05238"></div>Fat · terra<code>#a05238</code></div>
-      <div class="token-row"><div class="token-swatch" style="background:#3a5236"></div>Fiber · forest (deep)<code>#3a5236</code></div>
+      <div class="token-block-title">Macros — softened data palette · functional only</div>
+      <div class="token-row"><div class="token-swatch" style="background:#5b6fb8"></div>Protein · cobalt-denim<code>#5b6fb8</code></div>
+      <div class="token-row"><div class="token-swatch" style="background:#c87935"></div>Carbs · warm amber<code>#c87935</code></div>
+      <div class="token-row"><div class="token-swatch" style="background:#c4708a"></div>Fat · soft rose<code>#c4708a</code></div>
+      <div class="token-row"><div class="token-swatch" style="background:#5d8a5c"></div>Fiber · sage-leaning green<code>#5d8a5c</code></div>
+      <div class="token-row"><div class="token-swatch" style="background:#4d8a5c"></div>Calories (ring)<code>#4d8a5c</code></div>
       <div class="token-row"><div class="token-swatch" style="background:#06b6d4"></div>Water · cyan (kept)<code>#06b6d4</code></div>
+    </div>
+
+    <!-- Side-by-side: current vs softened (Phase 0.8 visual receipt) -->
+    <div class="token-block">
+      <div class="token-block-title">Phase 0.8 receipt — same hue, softer saturation</div>
+      <div class="token-row" style="margin-bottom: 6px; font-weight: 600; color: var(--fg);">Phase 0.7 (pure data)</div>
+      <div class="token-row"><div class="token-swatch" style="background:#4c6ce0"></div>Protein<code>#4c6ce0</code></div>
+      <div class="token-row"><div class="token-swatch" style="background:#d68224"></div>Carbs<code>#d68224</code></div>
+      <div class="token-row"><div class="token-swatch" style="background:#c4647d"></div>Fat<code>#c4647d</code></div>
+      <div class="token-row"><div class="token-swatch" style="background:#4a8a52"></div>Fiber<code>#4a8a52</code></div>
+      <div class="token-row" style="margin-top: 12px; margin-bottom: 6px; font-weight: 600; color: var(--fg);">Phase 0.8 (softened) ← shipping</div>
+      <div class="token-row"><div class="token-swatch" style="background:#5b6fb8"></div>Protein<code>#5b6fb8</code></div>
+      <div class="token-row"><div class="token-swatch" style="background:#c87935"></div>Carbs<code>#c87935</code></div>
+      <div class="token-row"><div class="token-swatch" style="background:#c4708a"></div>Fat<code>#c4708a</code></div>
+      <div class="token-row"><div class="token-swatch" style="background:#5d8a5c"></div>Fiber<code>#5d8a5c</code></div>
     </div>
 
   </div>

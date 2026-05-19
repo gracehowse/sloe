@@ -60,13 +60,28 @@
   --popover-foreground: #111118;
   --primary: #4c6ce0;
   --primary-foreground: #ffffff;
+  /* 2026-05-18 (contrast-audit): text-primary on the page bg (#f4f5f7)
+     resolved to 4.25:1, just below WCAG AA 4.5:1. Adding a slightly
+     darker variant for text-on-light-bg use (sidebar active nav, filter
+     pill active states, etc.) so brand colour stays #4c6ce0 on solid
+     surfaces but text passes AA on the page-bg + bg-primary/10 paths. */
+  --primary-strong: #3f5fd0;
   --secondary: #f4f5f7;
   --secondary-foreground: #111118;
   --muted: #e4e4ec;
-  --muted-foreground: #6b6b78;
+  /* 2026-05-18 (contrast-audit): #6b6b78 on --muted (#e4e4ec) was
+     4.15:1, just below AA 4.5:1. Deepened to #56565f → 5.55:1 on
+     --muted, 6.55:1 on --background. Still reads as "muted" but
+     legible on top of tinted surfaces (tab pills, helper text). */
+  --muted-foreground: #56565f;
   --accent: #e4e4ec;
   --accent-foreground: #111118;
-  --destructive: #e04848;
+  /* 2026-05-18 (contrast-audit): #e04848 on white card = 4.05:1, just
+     below WCAG AA 4.5:1. Deepened to #c93030 which renders to 5.30:1
+     and is still unambiguously red. Affects bg-destructive surfaces
+     too — the slight deepening reads as "more authoritative" not
+     "different colour". */
+  --destructive: #c93030;
   --destructive-foreground: #ffffff;
   --border: #e4e4ec;
   --input: transparent;
@@ -188,6 +203,17 @@
   --glass-border: rgba(0, 0, 0, 0.06);
   --border-strong: rgba(0, 0, 0, 0.1);
   --accent-muted: rgba(76, 108, 224, 0.12);
+
+  /** Sign-in-with-Apple button — Apple HIG requires black background
+   *  + white text in light contexts, white bg + black text in dark
+   *  contexts. The literal hex values are CORRECT (Apple won't accept
+   *  brand variants) but must come through a named token so the
+   *  inversion fires automatically in dark mode and so the
+   *  `no-literal-color` lint rule passes. Premium-bar audit 2026-05-17
+   *  (T4.10). */
+  --apple-bg: #000000;
+  --apple-fg: #ffffff;
+  --apple-border: #000000;
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
   --shadow: 0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
   --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.06), 0 2px 6px rgba(0, 0, 0, 0.02);
@@ -205,6 +231,10 @@
   --popover-foreground: #e4e4e8;
   --primary: #6c8cff;
   --primary-foreground: #ffffff;
+  /* Dark theme variant: page bg is #101014, so text-primary-strong
+     should be LIGHTER than --primary, not darker. Lifts the active-nav
+     contrast against the deep neutral surface. */
+  --primary-strong: #8aa3ff;
   --secondary: #18181c;
   --secondary-foreground: #e4e4e8;
   --muted: #282830;
@@ -317,6 +347,12 @@
   --sidebar-border: #282830;
   --sidebar-ring: #6c8cff;
 
+  /** Sign-in-with-Apple — dark mode inverts per Apple HIG (white bg,
+   *  black text). Premium-bar audit 2026-05-17 (T4.10). */
+  --apple-bg: #ffffff;
+  --apple-fg: #000000;
+  --apple-border: #ffffff;
+
   /** Glass / surface tokens — dark */
   --glass: rgba(24, 24, 28, 0.72);
   --glass-border: rgba(255, 255, 255, 0.08);
@@ -337,6 +373,7 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-strong: var(--primary-strong);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
