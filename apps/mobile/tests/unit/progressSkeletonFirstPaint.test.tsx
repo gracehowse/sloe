@@ -143,6 +143,11 @@ vi.mock("../../../../src/lib/nutrition/savedMeals", () => ({
 // shared event-name table directly. That's fine — it's a plain module. ---
 vi.mock("@/lib/analytics", () => ({
   track: vi.fn(),
+  // 2026-05-19 V1.4 — progress.tsx now calls `useMacroColors()` which
+  // routes through `useTareEnabled() → isFeatureEnabled()`. The mock
+  // must expose this export or the hook chain throws "No 'isFeatureEnabled'
+  // export is defined on the '@/lib/analytics' mock."
+  isFeatureEnabled: () => false,
 }));
 
 // --- `Digest` — the mobile digest primitive pulls in shared shim paths;
