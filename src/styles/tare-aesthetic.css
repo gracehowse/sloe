@@ -101,8 +101,10 @@ body.tare-on {
   --macro-carbs-soft: rgba(249, 115, 22, 0.16);
   --macro-fat: #EC4899;
   --macro-fat-soft: rgba(236, 72, 153, 0.16);
-  --macro-fiber: #A855F7;
-  --macro-fiber-soft: rgba(168, 85, 247, 0.16);
+  /* V1.5 — fiber lime (not purple): leaf-icon-coherent green, but
+   * lime undertone distinct from emerald calories at a glance. */
+  --macro-fiber: #84CC16;
+  --macro-fiber-soft: rgba(132, 204, 22, 0.16);
   --macro-calories: #22C55E;
 
   /* ── Source / provenance dots ── */
@@ -141,7 +143,7 @@ body.tare-on {
   --chart-1: #3B82F6;
   --chart-2: #F97316;
   --chart-3: #EC4899;
-  --chart-4: #A855F7;
+  --chart-4: #84CC16;
   --chart-5: #14141a;
 
   /* ── Glass / surface tokens (light) ── */
@@ -208,8 +210,9 @@ body.tare-on.dark {
   --macro-carbs-soft: rgba(251, 146, 60, 0.18);
   --macro-fat: #f472b6;
   --macro-fat-soft: rgba(244, 114, 182, 0.18);
-  --macro-fiber: #c084fc;
-  --macro-fiber-soft: rgba(192, 132, 252, 0.18);
+  /* V1.5 fiber dark — lime-300 (one stop lighter than light's lime-500). */
+  --macro-fiber: #BEF264;
+  --macro-fiber-soft: rgba(190, 242, 100, 0.18);
   --macro-calories: #4ade80;
 
   --source-usda: #4ade80;
@@ -241,7 +244,7 @@ body.tare-on.dark {
   --chart-1: #60a5fa;
   --chart-2: #fb923c;
   --chart-3: #f472b6;
-  --chart-4: #c084fc;
+  --chart-4: #BEF264;
   --chart-5: #e8e2d4;
 
   --glass: rgba(20, 20, 20, 0.78);

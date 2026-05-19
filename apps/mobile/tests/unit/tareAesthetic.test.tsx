@@ -180,7 +180,7 @@ describe("useTarePalette — palette resolution", () => {
     expect(result.current?.macroProtein).toBe("#3B82F6");
     expect(result.current?.macroCarbs).toBe("#F97316");
     expect(result.current?.macroFat).toBe("#EC4899");
-    expect(result.current?.macroFiber).toBe("#A855F7");
+    expect(result.current?.macroFiber).toBe("#84CC16");
     expect(result.current?.macroCalories).toBe("#22C55E");
     // Fonts default to family names (deferred font load — see
     // comments in constants/tareTokens.ts).

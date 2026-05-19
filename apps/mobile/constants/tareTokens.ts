@@ -179,8 +179,13 @@ export const TARE_LIGHT: TarePalette = {
   macroCarbsSoft: "rgba(249,115,22,0.16)",
   macroFat: "#EC4899",
   macroFatSoft: "rgba(236,72,153,0.16)",
-  macroFiber: "#A855F7",
-  macroFiberSoft: "rgba(168,85,247,0.16)",
+  // 2026-05-19 V1.5 — fiber moved from purple `#A855F7` back to the
+  // green family (lime `#84CC16` Tailwind lime-500) so the leaf icon
+  // stays semantically coherent. Lime vs emerald is clearly distinct:
+  // lime has a yellow undertone, emerald has a blue undertone — eye
+  // reads them as different colours at a glance.
+  macroFiber: "#84CC16",
+  macroFiberSoft: "rgba(132,204,22,0.16)",
   macroCalories: "#22C55E",
   macroWater: "#06B6D4",
 
@@ -268,8 +273,10 @@ export const TARE_DARK: TarePalette = {
   macroCarbsSoft: "rgba(251,146,60,0.18)",
   macroFat: "#f472b6",
   macroFatSoft: "rgba(244,114,182,0.18)",
-  macroFiber: "#c084fc",
-  macroFiberSoft: "rgba(192,132,252,0.18)",
+  // V1.5 fiber dark-mode equivalent: lime-300 #BEF264 (one stop
+  // lighter than light-mode lime-500 to maintain contrast).
+  macroFiber: "#BEF264",
+  macroFiberSoft: "rgba(190,242,100,0.18)",
   macroCalories: "#4ade80",
   macroWater: "#22d3ee",
 
