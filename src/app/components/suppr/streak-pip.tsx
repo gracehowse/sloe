@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Flame, Shield } from "lucide-react";
+import { useFeatureFlagEnabled } from "posthog-js/react";
 
 /**
  * StreakPip — small pill that shows the user's current logging streak
@@ -62,6 +63,19 @@ export function StreakPip({
   const safeDays = Number.isFinite(days) && days >= 0 ? Math.floor(days) : 0;
   const active = safeDays >= 2;
   const isLg = size === "lg";
+
+  // T2.6 (premium-sweep-v2 P0): when the flag is on AND there's no
+  // streak to celebrate yet (days=0), suppress the pip entirely. The
+  // existing "Start your streak" copy reads as growth-shouty pressure
+  // and violates DC12 calm voice — the audit's "5→2 widget cluster"
+  // recommendation was a misread of the Day/Week toggle (real product
+  // feature, keep) + avatar G (parity, keep). The genuine cluster
+  // density that's wrong is this empty-state pip. When flag is OFF:
+  // behaviour unchanged (pip still renders the empty-state copy).
+  const suppressEmpty = useFeatureFlagEnabled("premium-sweep-v2-p0-t26");
+  if (suppressEmpty && safeDays === 0 && !freezeProtected) {
+    return null;
+  }
 
   const label = freezeProtected
     ? `${safeDays}-day streak · freeze`

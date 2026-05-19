@@ -18,8 +18,14 @@ node_modules/
 dist
 node_modules
 test-results
+playwright-report/
 coverage/
 tsconfig.tsbuildinfo
+
+# Lost Pixel — keep baseline tracked, ignore per-run output (Phase 1.4
+# of the UI elevation plan).
+.lost-pixel/current/
+.lost-pixel/difference/
 
 # Cursor
 .cursor/

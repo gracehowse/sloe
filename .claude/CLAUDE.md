@@ -4,11 +4,14 @@ This is one product across web and mobile.
 
 ## Non-negotiable rules
 - Web and mobile must stay in sync at all times
+- **Every change ships mobile + web in the SAME commit so both can be reviewed together.** No "web first, mobile catches up later." No "mobile leads, web follows in the next PR." If a single phase touches `apps/mobile/`, it touches `src/` and/or `app/` in the same commit with the equivalent change. Grace's rule, 2026-05-19: she's reviewing a single product, not two platforms on different cadences. Picking one platform to lead because it's easier-to-iterate tooling-wise is rejected — both ship together.
+- If the design materials are mobile-first (iPhone mockups, mobile chat transcript, iOS-focused references like Apple Design Awards), **start in `apps/mobile/`**. Don't default to web because CSS variables feel easier to wire than React Native theming.
+- Web layouts are NOT a narrow-column mirror of mobile. Desktop has horizontal space — use it. If a mobile layout stacks vertically, the web port should spread horizontally (two-column / sidebar + main / wider hero) so the experience reads as desktop-native, not phone-stretched. This applies retroactively to Today/Plan/Progress/Recipes/Library/Settings — currently squished into a centred narrow column on desktop, needs fixing.
 - No feature is complete without:
-  - implementation
-  - testing
+  - implementation (mobile + web together)
+  - testing (mobile + web together)
   - documentation
-  - cross-platform review
+  - cross-platform review (always — never separately)
 - Documentation must be updated immediately after every meaningful change
 - Tests must be updated immediately after every meaningful change
 - Prefer correctness over speed
@@ -182,6 +185,69 @@ Current initiative inventory (as of 2026-05-16):
 **`launch-blocker` label (workspace-wide):** for issue-level granularity inside any project. Apply to any issue that must ship before 2026-07-01. Use the Linear filter `label:launch-blocker` for a cross-cutting "everything blocking launch" view that doesn't care which project/initiative the issue lives under.
 
 Don't try to enable project status updates — there's no workspace toggle for it; Linear removed the feature. `save_status_update type: "project"` returns "not enabled for this workspace" — don't retry.
+
+## Visual elevation — premium-bar workflow
+
+The current premium-bar work is governed by the operating plan at
+`/Users/graceturner/.claude/plans/i-m-really-struggling-to-goofy-rivest.md`
+and the v2 sweep scaffold at `docs/audits/2026-05-15-premium-sweep-v2/`.
+
+Four rails for any web visual change. **All four are mandatory before
+declaring a visual fix "done" — eyeballing thumbnails has cost three
+sweep rounds patching downstream symptoms in a single day (2026-05-18,
+Tailwind v4 @source bug) and five rounds patching individual WCAG
+contrast failures one-by-one before building the walker.**
+
+1. **Token-drift scoreboard ratchets.** `eslint-plugin-suppr-tokens`
+   bans literal spacing / colour / font-size values. Run
+   `node --import tsx scripts/build-drift-scoreboard.ts` to refresh
+   `docs/audits/drift-scoreboard.md`. CI fails any PR that increases
+   a surface's count (Phase 4.2 floor lock pending; until then,
+   warnings only).
+2. **Visual-regression baselines on web.** `npx playwright test
+   tests/e2e/visual-regression/web-baseline.spec.ts` produces full-page
+   captures across breakpoints × themes × auth states. Update
+   intentionally with `--update-snapshots`; any unintentional pixel
+   drift fails CI. If a run silent-aborts after the first batch of
+   tests (only the first describe completes, rest listed but never
+   run): the browser binary is missing. `npm install`-ing
+   `lost-pixel` or `chromatic` bumps Playwright's expected binary
+   version. Fix: `npx playwright install chromium`. The `line` reporter
+   buffers the "Executable doesn't exist" error — use `--reporter=list`
+   to surface it.
+3. **Authed capture tour.** `tests/e2e/screenshots/web-authed-tour.spec.ts`
+   captures real signed-in surfaces to `apps/mobile/screenshots/latest/`
+   — use these for premium-auditor input. Cookie-consent suppression
+   and the `.last()` "Sign in" selector live in `tests/e2e/utils/auth.ts`
+   shared `signInFlow` helper; do not duplicate the flow per-spec.
+4. **Programmatic contrast audit.** `tests/e2e/verify/contrast-audit.spec.ts`
+   walks every text node on every surface (public + authed, 11 surfaces)
+   and computes the actual rendered WCAG AA contrast ratio against the
+   resolved background — handling transparent bgs, blended bgs, and CSS
+   gradients (which are skipped, not false-positive-flagged). Output:
+   `docs/audits/contrast-audit.md` sorted worst-first. Run it after
+   ANY token change (`--primary`, `--warning`, `--muted-foreground`,
+   `--lp-fg-tertiary`, etc.) or any visual fix that's plausibly one of
+   several instances. Run with:
+   ```bash
+   set -a; source /Users/graceturner/Suppr-1/.env.local; set +a; \
+     PLAYWRIGHT_SKIP_WEB_SERVER=1 PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 \
+     npx playwright test tests/e2e/verify/contrast-audit.spec.ts \
+     --project=chromium --workers=1 --reporter=list
+   ```
+   Use `--workers=1` (parallel sign-ins race each other on the same
+   credentials). Test fails the run on any AA failure — non-skippable
+   gate for visual fixes.
+
+**Non-negotiable: when ≥2 instances of the same shape of bug surface,
+STOP patching individuals. Two is a class.** Find the root (token,
+config, regex-able pattern) and run the relevant programmatic audit
+to confirm every instance is fixed. Detail:
+`feedback_root_cause_class_of_bug.md`. The "I'll just patch this one"
+reflex has cost an entire morning of round-trip work twice — once on
+Tailwind v4 `@source` (3 rounds of inline-style band-aids before the
+one-line CSS root-cause fix), once on WCAG contrast (5 rounds of
+component-level patches before building the walker).
 
 ## Git commits
 

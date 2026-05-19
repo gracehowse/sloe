@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Check } from "lucide-react";
+import { Check, ShieldCheck } from "lucide-react";
+import { useFeatureFlagEnabled } from "posthog-js/react";
 import type { BillingPeriod, PricingTier } from "../../src/lib/landing/content.ts";
 import { computeAnnualSavingsBadge } from "../../src/lib/landing/content.ts";
 import { AnalyticsEvents, type PaywallViewedFrom } from "../../src/lib/analytics/events.ts";
 import { track } from "../../src/lib/analytics/track.ts";
+import { getPaywallTrustChips } from "../../src/lib/landing/paywallTrust.ts";
 import { CurrentTierBadge } from "./CurrentTierBadge.tsx";
 import { CheckoutButton } from "./CheckoutButton.tsx";
 
@@ -119,6 +121,16 @@ export function PricingTiersGrid({
 }) {
   const [billing, setBilling] = useState<BillingPeriod>("monthly");
 
+  // T2.3 (premium-sweep-v2 P0): when ON, render the DC4 trust chips
+  // INSIDE the Pro card (between tier name + price) as a coloured
+  // ribbon. Currently chips render via PaywallTrustStrip ABOVE the
+  // grid as small grey pills — audit found them visually muted.
+  // Whoop's pattern: trust ribbon directly above the price digit on
+  // the card itself. When OFF: chips stay where they are; no inline
+  // render. Both layers don't overlap because chips inside the card
+  // visually anchor to the price, vs the floating strip above.
+  const showChipRibbon = useFeatureFlagEnabled("premium-sweep-v2-p0-t23");
+
   // Phase 5 / B1.3 (D-2026-04-27-05) — pricing collapses to Free + Pro.
   // PR-01 (audit 2026-04-28): the Base filter is now a no-op — Base
   // was removed from PRICING_TIERS in batch 19. Kept as a defensive
@@ -167,19 +179,43 @@ export function PricingTiersGrid({
           const price = showAnnual ? tier.annualPrice! : tier.price;
           const period = showAnnual ? tier.annualPeriod ?? "" : tier.period;
 
+          // Tailwind v4 isn't reliably generating `bg-gradient-to-b
+          // from-violet-100 to-indigo-100 dark:...`, `bg-white`,
+          // `dark:bg-slate-900`, etc. on demand — the classes were
+          // present in markup but the computed bg was transparent. White
+          // text floated over the page bg (invisible in light mode).
+          // Inline `background` forces the card bg deterministically
+          // regardless of Tailwind class generation. Uses theme-token
+          // CSS vars so light/dark inverts cleanly.
+          const cardStyle: React.CSSProperties = tier.highlighted
+            ? {
+                backgroundImage:
+                  "linear-gradient(to bottom, #1e1b4b 0%, #312e81 100%)",
+                // Force a light text colour on the dark Pro card.
+                // The Tailwind text-slate-200/300/400 utilities used
+                // by descendants don't generate reliably in v4 — they
+                // fall back to --foreground (dark in light mode), which
+                // becomes dark-on-dark on the always-dark Pro card.
+                // Explicit `color` here cascades to every text node
+                // that didn't get its Tailwind class applied.
+                color: "#e2e8f0",
+              }
+            : {
+                background: "var(--card)",
+                color: "var(--card-foreground)",
+              };
           return (
             <div
               key={tier.name}
+              style={cardStyle}
               className={`relative rounded-2xl flex flex-col ${
                 tier.highlighted
                   ? // Audit 2026-05-04 #23: deeper background, heavier
                     // border, bigger shadow so Pro reads as the primary
                     // path at first glance vs. the white Free card.
                     // `pt-10` clears the full-width ribbon at top.
-                    "bg-gradient-to-b from-violet-100 to-indigo-100 dark:from-violet-950/50 dark:to-indigo-950/50 border-2 border-violet-500 dark:border-violet-500 shadow-2xl shadow-violet-500/20 md:scale-105 md:-my-2 pt-10 pb-8 px-8"
-                  : tier.name === "Pro"
-                    ? "bg-slate-900 dark:bg-slate-800 border border-slate-700 shadow-lg p-8"
-                    : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm p-8"
+                    "border-2 border-violet-500 shadow-2xl shadow-violet-500/20 md:scale-105 md:-my-2 pt-10 pb-8 px-8"
+                  : "border border-slate-200 dark:border-slate-800 shadow-sm p-8"
               }`}
             >
               {tier.highlighted && (
@@ -197,6 +233,36 @@ export function PricingTiersGrid({
                 </h3>
                 <CurrentTierBadge tierName={tier.name} />
               </div>
+
+              {/* T2.3 — chip ribbon inside the highlighted card,
+                  anchored above the price (Whoop pattern). Pro card
+                  is the conversion target so only the highlighted
+                  tier gets the inline chips. Free + others continue
+                  to rely on the external PaywallTrustStrip. */}
+              {showChipRibbon && tier.highlighted ? (
+                <div className="-mt-0.5 mb-3 flex flex-wrap gap-1.5">
+                  {getPaywallTrustChips("web").map((chip) => (
+                    <span
+                      key={chip.label}
+                      aria-label={chip.a11yLabel}
+                      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                      style={{
+                        // Inline style — Tailwind v4's text-emerald-200
+                        // utility isn't being generated reliably in
+                        // this build (bg-emerald-500/15 works, but the
+                        // text shade was falling back to --foreground
+                        // and reading as grey on the green bg).
+                        backgroundColor: "rgba(16, 185, 129, 0.16)",
+                        color: "#a7f3d0",
+                        boxShadow: "inset 0 0 0 1px rgba(52, 211, 153, 0.32)",
+                      }}
+                    >
+                      <ShieldCheck className="h-3 w-3 shrink-0" aria-hidden />
+                      {chip.label}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
 
               <div className="mb-2 flex items-baseline gap-2">
                 <span className={`text-4xl font-bold ${tier.name === "Pro" ? "text-white" : "text-slate-900 dark:text-white"}`}>

@@ -130,7 +130,7 @@ export function DayStrip({ selectedDateKey, weekStartDay, loggedDays, protectedD
         <button
           type="button"
           onClick={handleToday}
-          className="shrink-0 py-2 px-1 text-sm font-bold text-primary hover:opacity-80"
+          className="shrink-0 py-2 px-1 text-sm font-bold text-primary-strong hover:opacity-80"
         >
           Today
         </button>
@@ -163,7 +163,7 @@ export function DayStrip({ selectedDateKey, weekStartDay, loggedDays, protectedD
                     >
                       <span
                         className={`text-[10px] font-semibold tracking-wide leading-none ${
-                          isSelected ? "text-primary" : "text-muted-foreground"
+                          isSelected ? "text-primary-strong" : "text-muted-foreground"
                         }`}
                       >
                         {label}

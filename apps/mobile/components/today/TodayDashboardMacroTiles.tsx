@@ -25,6 +25,7 @@ import {
   type LucideIcon,
 } from "lucide-react-native";
 import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
+import { useTarePalette } from "@/lib/tareAesthetic";
 import type { JournalMeal } from "@/lib/nutritionJournal";
 import { carbsLabel, netCarbsForRow } from "@suppr/shared/nutrition/netCarbs";
 import { formatMacro } from "@suppr/shared/nutrition/formatMacro";
@@ -111,11 +112,24 @@ export function TodayDashboardMacroTiles({
     { sugarG: 0, sodiumMg: 0 },
   );
 
+  // 2026-05-19 (Phase V1): when Tare preview / flag is on, the four
+  // macro colours (protein/carbs/fat/fiber) shift to the softened
+  // denim/amber/rose/sage palette. Water keeps cyan; sugar/sodium
+  // are reference-only so they keep the warning amber. Falls back to
+  // the legacy MacroColors when the gate is off so current users see
+  // no change.
+  const tare = useTarePalette();
+  const macroProteinColor = tare?.macroProtein ?? MacroColors.protein;
+  const macroCarbsColor = tare?.macroCarbs ?? MacroColors.carbs;
+  const macroFatColor = tare?.macroFat ?? MacroColors.fat;
+  const macroFiberColor = tare?.macroFiber ?? Accent.success;
+  const macroWaterColor = tare?.macroWater ?? MacroColors.water ?? Accent.info;
+
   // Icons mirror the 2026-04-19 prototype's lucide choices exactly:
   // protein=Beef, carbs=Wheat, fat=Droplets, fiber=Leaf. Extensible
   // macros (sugar/sodium/water) pick sensible lucide neighbours.
   const macroMap: Record<string, MacroDef> = {
-    protein: { label: "Protein", current: totals.protein, target: targets.protein, color: MacroColors.protein, unit: "g", Icon: Beef },
+    protein: { label: "Protein", current: totals.protein, target: targets.protein, color: macroProteinColor, unit: "g", Icon: Beef },
     carbs: {
       // P3-30 (2026-04-25): apply net-carbs lens. Helpers refuse "Net
       // carbs" when fibre is unknown so a misleading headline never
@@ -132,15 +146,15 @@ export function TodayDashboardMacroTiles({
       label: carbsLabel(targets.fiber, Boolean(netCarbsLensEnabled)),
       current: netCarbsForRow(totals.carbs, totals.fiber, Boolean(netCarbsLensEnabled)),
       target: netCarbsForRow(targets.carbs, targets.fiber, Boolean(netCarbsLensEnabled)),
-      color: MacroColors.carbs,
+      color: macroCarbsColor,
       unit: "g",
       Icon: Wheat,
     },
-    fat: { label: "Fat", current: totals.fat, target: targets.fat, color: MacroColors.fat, unit: "g", Icon: Droplets },
-    fiber: { label: "Fiber", current: totals.fiber, target: targets.fiber, color: Accent.success, unit: "g", Icon: Leaf },
+    fat: { label: "Fat", current: totals.fat, target: targets.fat, color: macroFatColor, unit: "g", Icon: Droplets },
+    fiber: { label: "Fiber", current: totals.fiber, target: targets.fiber, color: macroFiberColor, unit: "g", Icon: Leaf },
     sugar: { label: "Sugar", current: Math.round(microSum.sugarG * 10) / 10, target: 50, color: Accent.warning, unit: "g", Icon: Candy, referenceOnly: true },
     sodium: { label: "Sodium", current: Math.round(microSum.sodiumMg), target: 2300, color: MacroColors.sodium, unit: "mg", Icon: Gauge, referenceOnly: true },
-    water: { label: "Water", current: totalWaterMl, target: waterGoalMl, color: MacroColors.water ?? Accent.info, unit: "ml", Icon: Droplet },
+    water: { label: "Water", current: totalWaterMl, target: waterGoalMl, color: macroWaterColor, unit: "ml", Icon: Droplet },
   };
 
   // 2-col grid via flexbox gap + flex-basis (49%) instead of the
@@ -148,38 +162,46 @@ export function TodayDashboardMacroTiles({
   // padding that Today's scroll container doesn't guarantee.
   return (
     <View style={{ marginBottom: Spacing.md }}>
-      {/* Phase 4 / Top-5 #2 (2026-04-28) — optional right-aligned
-          "Nutrients" link replaces the standalone centred link that
-          used to float below the tiles. Renders only when the host
-          flags it (i.e. there are non-macro nutrient rows worth
-          surfacing for the active day). */}
+      {/* 2026-05-18 (TF whole-app audit, harsh-review): the
+          "Nutrients >" link used to float right-aligned above the
+          tile grid with no visual anchor — looked like a leftover
+          link. Now styled as a subtle outlined chip so it reads as
+          an action affordance, and the wrapper has zero bottom
+          margin so it visually clings to the tile grid below it.
+          Renders only when the host flags it (i.e. there are
+          non-macro nutrient rows worth surfacing for the active day). */}
       {showNutrientsLink && onPressNutrients ? (
-        <Pressable
-          onPress={onPressNutrients}
-          accessibilityRole="button"
-          accessibilityLabel="View all nutrients for today"
-          hitSlop={6}
-          style={{
-            flexDirection: "row",
-            justifyContent: "flex-end",
-            alignItems: "center",
-            gap: 2,
-            paddingVertical: Spacing.xs,
-            marginBottom: Spacing.xs,
-          }}
-        >
-          <Text
+        <View style={{ flexDirection: "row", justifyContent: "flex-end", marginBottom: Spacing.xs }}>
+          <Pressable
+            onPress={onPressNutrients}
+            accessibilityRole="button"
+            accessibilityLabel="View all nutrients for today"
+            hitSlop={6}
             style={{
-              fontSize: 11,
-              fontWeight: "600",
-              color: Accent.primary,
-              letterSpacing: 0.4,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 4,
+              paddingHorizontal: 10,
+              paddingVertical: 4,
+              borderRadius: 999,
+              borderWidth: 1,
+              borderColor: Accent.primary + "30",
+              backgroundColor: Accent.primary + "08",
             }}
           >
-            Nutrients
-          </Text>
-          <ChevronRight size={12} color={Accent.primary} strokeWidth={2.25} />
-        </Pressable>
+            <Text
+              style={{
+                fontSize: 11,
+                fontWeight: "600",
+                color: Accent.primary,
+                letterSpacing: 0.3,
+              }}
+            >
+              All nutrients
+            </Text>
+            <ChevronRight size={11} color={Accent.primary} strokeWidth={2.25} />
+          </Pressable>
+        </View>
       ) : null}
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm }}>
       {trackedMacros.map((macro) => {
@@ -190,6 +212,18 @@ export function TodayDashboardMacroTiles({
         // calories+sodium stay integer. Trailing ".0" trimmed for readability.
         const value = formatMacro(def.current, macro);
         const pct = def.target > 0 ? Math.min(100, Math.round((def.current / def.target) * 100)) : 0;
+        // 2026-05-18 (TF whole-app audit, harsh-review): when the user
+        // is OVER target (carbs 244/116 = +128 g) the bar used to fill
+        // solid at 100% — visually identical to "hit target exactly".
+        // Now treat over-budget as a distinct state: bar fills the full
+        // width in the macro's warning tint (warmer + lighter) so the
+        // user reads "you went past it" not "you hit it".
+        const isOverBudget =
+          !def.referenceOnly && def.target > 0 && def.current > def.target;
+        const barColor = isOverBudget ? Accent.warning : def.color;
+        const barTrackColor = isOverBudget
+          ? `${Accent.warning}24`
+          : `${def.color}24`;
         // Audit T03 (2026-05-05) — caption "X g remaining" used to
         // round `def.target − def.current` directly, which produced
         // off-by-≤1g drift vs the displayed `value / target g` numerator
@@ -200,11 +234,22 @@ export function TodayDashboardMacroTiles({
         const displayedTarget = def.target;
         const remainDisplayed = displayedTarget - (Number.isFinite(displayedCurrent) ? displayedCurrent : def.current);
         const overBy = Math.round(Math.abs(remainDisplayed));
-        const captionText = def.referenceOnly
-          ? `ref ${def.target} ${def.unit}`
-          : remainDisplayed >= 0
-            ? `${overBy} ${def.unit} remaining`
-            : `${overBy} ${def.unit} over`;
+        // 2026-05-18 (TF whole-app audit, harsh-review): when nothing's
+        // logged the caption used to read "98 g remaining" / "116 g
+        // remaining" / "41 g remaining" / "27 g remaining" — four
+        // identical-shape sentences under empty tiles, very loud for an
+        // empty state. Now suppress the caption entirely when the tile
+        // is at zero; the `0 / 98 g` numerator/target above already
+        // says everything the user needs.
+        const isUnloggedTile =
+          !def.referenceOnly && def.current <= 0 && def.target > 0;
+        const captionText = isUnloggedTile
+          ? ""
+          : def.referenceOnly
+            ? `ref ${def.target} ${def.unit}`
+            : remainDisplayed >= 0
+              ? `${overBy} ${def.unit} left`
+              : `${overBy} ${def.unit} over`;
 
         return (
           <Pressable
@@ -283,27 +328,44 @@ export function TodayDashboardMacroTiles({
                   300ms with `Easing.out(cubic)`. Apple Watch + Cal AI
                   parity — the bar grows visibly as the user logs,
                   reinforcing the "you just made progress" beat. */}
-              <View
-                style={{
-                  height: 6,
-                  borderRadius: 999,
-                  backgroundColor: `${def.color}24`,
-                  marginTop: Spacing.sm + 2,
-                  overflow: "hidden",
-                }}
-              >
-                <MacroTileFill pct={pct} color={def.color} />
-              </View>
-              <Text
-                style={{
-                  fontSize: 11,
-                  color: textSecondaryColor,
-                  marginTop: Spacing.xs + 2,
-                  fontVariant: ["tabular-nums"],
-                }}
-              >
-                {captionText}
-              </Text>
+              {/* 2026-05-18 (TF whole-app audit, harsh-review): hide
+                  the bar entirely when nothing's been logged. The 14%
+                  alpha track was added in 2026-04-29 as a "premium
+                  feel" affordance but on the empty state it reads as
+                  noise — four parallel rails saying "you've done
+                  nothing here". Suppressing the track + the caption
+                  on unlogged tiles makes the empty state genuinely
+                  calm — just the macro label + `0 / target g` value
+                  line, no chrome. */}
+              {!isUnloggedTile ? (
+                <View
+                  style={{
+                    height: 6,
+                    borderRadius: 999,
+                    backgroundColor: barTrackColor,
+                    marginTop: Spacing.sm + 2,
+                    overflow: "hidden",
+                  }}
+                >
+                  <MacroTileFill pct={pct} color={barColor} />
+                </View>
+              ) : null}
+              {captionText ? (
+                <Text
+                  style={{
+                    fontSize: 11,
+                    // 2026-05-18 — amber caption colour on over-budget
+                    // tiles so the "X g over" line reads as a flag, not
+                    // a calm tally.
+                    color: isOverBudget ? Accent.warning : textSecondaryColor,
+                    fontWeight: isOverBudget ? "700" : "400",
+                    marginTop: Spacing.xs + 2,
+                    fontVariant: ["tabular-nums"],
+                  }}
+                >
+                  {captionText}
+                </Text>
+              ) : null}
           </Pressable>
         );
       })}

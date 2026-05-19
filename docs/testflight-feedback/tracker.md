@@ -19,6 +19,52 @@ Data source: `docs/testflight-feedback/data/feedback-YYYY-MM-DD.json` (deduped A
 | ⏳ | Open, not yet scheduled |
 | 🔍 | Unverifiable from available evidence (insufficient data from tester) |
 
+## Snapshot (2026-05-18, harsh-review batch — Today screen visual + flash bug)
+
+Grace's harsh review on two TestFlight captures of Today (empty state + over-budget state) — bug + 9 visual items shipped in this turn:
+
+**Bug fix**
+- ✅ **Day-strip "flashing between days"**: every chevron tap synchronously re-renders the entire Today tree (ring + 4 macro tiles + meals + week summary + day-strip) — on mid-range devices the new frame is heavy enough to perceive as a flash between old/new state. Wrapped `navigateDay` / `navigateWeek` / day-strip `onSelectDate` / `onTapTitle` in React 18 `startTransition` so the urgent press feedback stays instant while the heavy re-render runs off-priority. `apps/mobile/app/(tabs)/index.tsx`.
+- ✅ **Toast clipping under FAB**: `scroll.paddingBottom` 120 → 168 so the bottom row (e.g. `Log usual: <name>` pill under Breakfast) clears the raised "+" FAB's blur halo and the tab bar's gradient backdrop. `apps/mobile/app/(tabs)/index.tsx`.
+- ℹ️ **`RAM/JSC/Views/UI/JS` overlay** in screenshot 2 = React Native's built-in PerfMonitor, toggled via Cmd+D → "Show Perf Monitor" in the sim's dev menu. Not in our codebase. Hide locally with Cmd+D → "Hide Perf Monitor"; cannot ship to TestFlight release builds.
+
+**Visual — Today screen (mobile + web parity where shared)**
+- ✅ **Header said the date twice**: overline `JUN 16 · TUESDAY` + h1 `Tue 16 Jun` was the same info in two formats. Overline now only renders on week view (where h1 is "This Week" and the eyebrow carries the range). Day view always hides it. `apps/mobile/components/today/TodayDateHeader.tsx`.
+- ✅ **0% progress bars hidden + empty captions suppressed**: the 14%-alpha track on unlogged tiles ("premium feel" addition from 2026-04-29) read as four parallel rails of "you've done nothing"; the four "X g remaining" captions repeated the same shape. Now: no bar + no caption when the tile is at zero. Non-empty under-budget caption renamed "remaining" → "left" (shorter, warmer). Web + mobile. `apps/mobile/components/today/TodayDashboardMacroTiles.tsx` + `src/app/components/suppr/today-dashboard-macro-tiles.tsx`.
+- ✅ **Quick-add subtitle de-listed**: `Usual meals, recent, frequent, favourites` (4-noun feature checklist) → `Your usuals` (single warm value line). Web + mobile. `apps/mobile/app/(tabs)/index.tsx` + `src/app/components/NutritionTracker.tsx`.
+- ✅ **Over-budget bars now communicate over**: previously a tile at 244/116 carbs rendered a solid full bar visually identical to "hit target exactly". Now: bar + track + caption all flip to `var(--warning)` (amber, bold) when `current > target` on a tracked macro. Fibre / water / sugar / sodium are exempt (over-target on these isn't a flag). Web + mobile.
+- ✅ **"107 OVER" centre treatment softer**: the OVER label was 700-weight destructive red competing with the already-red value for the user's eye. Dropped to 600-weight + 85% opacity so the number IS the alarm and the label is context. Colour-mapping memory (3-state rule) preserved. `apps/mobile/components/charts/CalorieRing.tsx`.
+- ✅ **"Duplicate day…" pill anchored**: was floating in dead space between Quick-add and the meals card. Moved INSIDE the meals card as a top-right header row with a thin bottom border — now reads as a section action, not an orphaned utility chip. `apps/mobile/components/today/TodayMealsSection.tsx`.
+- ✅ **"Nutrients >" link anchored**: floating right-aligned link above the tile grid → styled as a subtle outlined chip (`All nutrients ›`) so it reads as an action affordance with visual anchor. `apps/mobile/components/today/TodayDashboardMacroTiles.tsx`.
+- ✅ **Top-right CRM chrome demoted**: the Day/Week toggle's solid-fill `Accent.primary` active state competed with the chevrons + day-strip for attention. Active state demoted to 12%-alpha tint, primary-coloured icon. The avatar is now the only saturated element top-right, restoring the visual hierarchy. `apps/mobile/components/today/TodayDateHeader.tsx`.
+
+**Verification:** Web `tsc --noEmit` exit 0. Mobile TSX parse-check clean on all 5 modified files. Visual captures pending — Grace to eyeball.
+
+## Snapshot (2026-05-18, whole-app audit — P0/P1/M batch shipped)
+
+Continuation of the 2026-05-18 whole-app audit started in the prior chapter. Shipped this session — all behind the `feature-flag` pattern unless logic-only:
+
+**P0 (cold-open critical):**
+- ✅ P0-1/P0-2/P0-3 — dev-indicator overlap fix, `/account/profile` 404 redirect, Next.js dev indicator → bottom-right (`next.config.ts`, `app/account/profile/page.tsx`)
+- ✅ **P0-4 — Calorie ring brand-gradient restoration (web + mobile)**: empty state now shows the full-circumference indigo→pink gradient arc at full opacity instead of a near-invisible 0.18-opacity track. `src/app/components/suppr/daily-ring.tsx:274` + `apps/mobile/components/charts/CalorieRing.tsx:292-301`.
+- ✅ **P0-5 — Strip `E2E:` prefix from seed-script names**: Grace IS the E2E user on TestFlight, so the `E2E:` prefix was bleeding into her production-like captures. Switched to an exact-name allowlist for idempotent cleanup. `scripts/e2e-seed-today-snacks.ts`.
+- ✅ **P0-6 — Re-token amber "Create your own version" button**: `bg-warning text-background` → `border border-border bg-card text-foreground` (secondary outlined). 2 instances in `src/app/components/Library.tsx`.
+
+**P1 (high-impact daily-use):**
+- ✅ **P1-1 — Filter pill active state → solid-fill brand (Linear pattern)**: 6 surfaces upgraded — `Library.tsx` (kind filter), `DiscoverFeed.tsx` (quick-filter), `MealPlanner.tsx` × 4 (slot switcher / day-count / slot toggles / start-date). The 10%-tint active state read as "hovered" rather than "selected".
+- ✅ **P1-2 — Plan web config-wall → "Plan setup" cog disclosure**: 3 config rows (day-count, slot toggles, start-date) now collapse into a single disclosure with a summary line ("7 days · all slots · today") so a user landing on Plan sees plan cards first, not configuration UI. `src/app/components/MealPlanner.tsx`.
+- ✅ **P1-3 — Today web hydration restraint**: 2-button quick-add (`+250` / `+500`) inside the 80px water tile replaced with a single `+ 1 cup` stepper. Larger quantities live in the dedicated Hydration card below. `src/app/components/suppr/today-dashboard-macro-tiles.tsx`.
+- ✅ **P1-4 — Today web triplicate empty-state collapse**: removed the bottom "No meals logged on this day" + CTA block that duplicated both the per-slot "Tap to add" rows AND the top `TodayFirstMealEmptyState` card. `src/app/components/suppr/today-meals-section.tsx`.
+- ✅ P1-5 — Mobile macro tiles already render 2x2 via `flexBasis: 48.5%`; no change needed.
+- ✅ **P1-6 — Web Settings Display Name editable + Save button**: was `readOnly`. Round-trips via existing `savePref({display_name})` + `refreshProfileBasics()`. `src/app/components/Settings.tsx`.
+- ✅ **P1-7 — Mobile Daily Calories chart empty state**: when every visible-week day has 0 logged calories, render copy ("No calories logged this week yet · Log a meal on Today …") instead of 7 stub bars + target line. `apps/mobile/app/(tabs)/progress.tsx`.
+
+**M (medium-impact UX redesigns):**
+- ✅ **M3 — Delete ProgressStoryGate card; replace with goal-aware headline (web + mobile)**: the placeholder card was high-chrome empty-state (eyebrow + headline + body + ring + "N days logged · 3 needed to unlock"). Replaced with a single text headline that reflects what the user is working toward — "Working toward fat loss / muscle gain / maintenance / building your baseline" — inferred from latest vs goal weight. No card chrome, no countdown copy.
+- ✅ **M4 — Drop confidence bars; keep word + dot + tap-to-explain (web + mobile)**: the 3-bar ladder (low/medium/high segments) on the Maintenance card competed with the headline kcal number. Collapsed to a single coloured dot + capitalised word ("Medium"). The existing "How this works" disclosure remains the tap-to-explain affordance.
+
+**Verification status:** web `tsc --noEmit` clean (exit 0); mobile TSX files parse-checked clean (Expo `tsc` blocked at the worktree by missing devDeps — not a code defect). Fresh visual captures pending (`web-baseline.spec.ts` + Maestro tour) — Grace to eyeball before flag ramps.
+
 ## Reconciliation (2026-05-11)
 
 Full audit run on 2026-05-11 — every item below classified as one of: shipped (✅), shipped-pending-re-verify (🟡), explicitly-deferred-with-decision (⏳ + linked doc), or unverifiable (🔍). Zero items in fuzzy state. See [`docs/decisions/2026-05-11-tf-feedback-reconciliation.md`](../decisions/2026-05-11-tf-feedback-reconciliation.md) for the disposition of every still-open item and the three items shipping in this wave (F-149 schema, F-156 PR-3, F-157 copy reframe). Tracker status markers patched for F-142/143/144/145/146/147/149 (work shipped, marker was stale).

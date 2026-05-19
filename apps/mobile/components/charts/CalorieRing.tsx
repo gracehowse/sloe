@@ -18,6 +18,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { Accent, MacroColors } from "@/constants/theme";
+import { useTarePalette } from "@/lib/tareAesthetic";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
 import { RING_LABELS } from "@suppr/shared/copy/today";
 
@@ -239,6 +240,19 @@ export default function CalorieRing({
   onToggleDisplayMode,
   onLongPressExplain,
 }: Props) {
+  // 2026-05-19 (Phase V1): when the Tare preview / flag is on, the
+  // ring under-budget colour and macro arc colours use the softened
+  // Tare palette instead of the legacy data-blue/orange/pink/green.
+  // Over-budget keeps Accent.destructive — the three-state colour
+  // mapping memory stays intact. Falling back to Accent / MacroColors
+  // when the gate is off keeps the legacy aesthetic the default.
+  const tare = useTarePalette();
+  const underBudgetStroke = tare?.macroFiber ?? Accent.success;
+  const overBudgetStroke = tare?.destructive ?? Accent.destructive;
+  const proteinArcColor = tare?.macroProtein ?? MacroColors.protein;
+  const carbsArcColor = tare?.macroCarbs ?? MacroColors.carbs;
+  const fatArcColor = tare?.macroFat ?? MacroColors.fat;
+
   const diff = Math.round(goal - consumed);
   const isOver = consumed > goal;
   // Premium-feel papercut #2 (audit 2026-04-29): the empty-state ring
@@ -393,8 +407,8 @@ export default function CalorieRing({
               isEmpty
                 ? "url(#calorie-ring-gradient)"
                 : consumed > goal && goal > 0
-                  ? Accent.destructive
-                  : Accent.success
+                  ? overBudgetStroke
+                  : underBudgetStroke
             }
             strokeWidth={STROKE}
             fill="none"
@@ -417,7 +431,7 @@ export default function CalorieRing({
             <MacroRing
               radius={MACRO_R[0]}
               pct={proteinPct}
-              color={MacroColors.protein}
+              color={proteinArcColor}
               trackColor={trackColor}
               delay={80}
             />
@@ -426,7 +440,7 @@ export default function CalorieRing({
             <MacroRing
               radius={MACRO_R[1]}
               pct={carbsPct}
-              color={MacroColors.carbs}
+              color={carbsArcColor}
               trackColor={trackColor}
               delay={160}
             />
@@ -435,7 +449,7 @@ export default function CalorieRing({
             <MacroRing
               radius={MACRO_R[2]}
               pct={fatPct}
-              color={MacroColors.fat}
+              color={fatArcColor}
               trackColor={trackColor}
               delay={240}
             />
@@ -507,10 +521,19 @@ export default function CalorieRing({
           <Text
             style={{
               fontSize: expanded ? 8 : 10,
-              fontWeight: "700",
+              // 2026-05-18 (TF whole-app audit, harsh-review): label
+              // weight dropped from 700 → 600 when over-budget so the
+              // "OVER" tag doesn't double-shout alongside the already-
+              // red centre value. The number IS the alarm; the label
+              // is context. Same `Accent.destructive` token keeps the
+              // 3-state colour rule (empty=gradient / under=success /
+              // over=destructive — see calorie ring colour mapping
+              // memory) without the all-bold double-emphasis.
+              fontWeight: isOver && displayMode !== "consumed" ? "600" : "700",
               color: isOver && displayMode !== "consumed" ? Accent.destructive : secondaryColor,
               letterSpacing: expanded ? 0 : 0.8,
               marginTop: 1,
+              opacity: isOver && displayMode !== "consumed" ? 0.85 : 1,
             }}
           >
             {centerLabel}
