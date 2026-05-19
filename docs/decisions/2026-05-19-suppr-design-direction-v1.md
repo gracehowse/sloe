@@ -24,6 +24,54 @@ last) is explicitly rejected here. The four references we landed on
 each contribute a specific lesson; together they describe one
 coherent app.
 
+## Phase 0.9 ledger (2026-05-19, dev-preview gate) — most recent amendment
+
+Grace approved the Phase 0.7 + 0.8 token direction with the
+constraint: *"lets implement one big visual change at a time and
+review so we can roll back if needed."*
+
+To make per-increment review possible without exposing other users
+to half-finished visual states, V0.9 wires a dev-preview override on
+top of the existing PostHog gate. Architecture, tokens, and phased
+plan all unchanged — V0.9 is plumbing only.
+
+How the override resolves (first match wins):
+1. URL param `?tare=on` / `?tare=off` / `?tare=clear` (or empty value)
+2. localStorage key `suppr.tare-preview` (persists URL-param choice
+   across subsequent navigations within the app)
+3. PostHog flag `tare-aesthetic-v1` (the canonical roll mechanism;
+   default off until per-phase ramp)
+
+How Grace uses it:
+- **Preview ON:**  visit any page with `?tare=on` in the URL once.
+  The class flips on and persists across navigation via localStorage
+  until cleared.
+- **Preview OFF:** `?tare=off` (or `?tare=clear` to remove the
+  override and let the PostHog flag decide).
+- The URL param is NOT stripped from the address bar — leaves the
+  visible "you're in preview mode" signal. Removing the param
+  doesn't drop the override (localStorage carries it forward); to
+  drop it explicitly use `?tare=clear`.
+
+Why per-device, not per-account:
+- The point is fast local review, not coordinated rollout.
+- We don't want preview state following Grace into TestFlight or
+  another browser.
+- The PostHog flag stays canonical for everyone else.
+
+Pinned by `tests/unit/tareAestheticGate.test.tsx` (10 tests covering
+every resolution-order combination + malformed-param fallback +
+flag-transition rerenders). If the precedence ever drifts, the test
+trips.
+
+What this unlocks:
+- V1 (the accent class-walk — the first big visible change) can ship
+  behind the PostHog flag with no ramp yet. Grace previews on her
+  device via `?tare=on`. If V1 lands wrong → revert the commit
+  cleanly. If V1 lands right → next increment ships the same way.
+- Same pattern for every subsequent visible-change phase: ship → Grace
+  previews → approves or asks for changes → ramp the flag.
+
 ## Phase 0.8 ledger (2026-05-19, macro softening) — most recent amendment
 
 Grace's correction on Phase 0.7: *"the macro ring colours could
@@ -427,7 +475,7 @@ ramps via PostHog before flag removal.
 | **0.5** ✓ | Cream surface revert + heavy-serif primitives + cutout/highlight components | 4 | Done |
 | **0.7** ✓ | **Print-bundle alignment — ink accent default + Newsreader serif default + warmer cream + functional macros revert + greeting/overline restored** | 3 | Token-only |
 | **0.8** ✓ | **Macro softening — keep blue/orange/pink/green identity, ~12-15% saturation drop (denim/amber/rose/sage)** | 2 | Token-only |
-| **0.9** | Future amendments after Grace's Phase 0.8 review | TBD | Token tweaks only |
+| **0.9** ✓ | **Dev-preview override on the gate — URL param + localStorage beat the PostHog flag so Grace can review every increment per-device before ramp** | 2 + test | Plumbing-only |
 | **V1** | **Class-walk every `--primary` blue → demote to GREYSCALE except in the six approved places (ink is the accent)** | ~120 | High but mechanical |
 | **V2** | ~~Macro repalette to earth tones~~ → **CANCELLED — Phase 0.7 reverted to functional data macros. Now only: calorie-ring three-state polish + meal-slot tints align to macro identity** | ~8 | Low |
 | **V3** | Editorial chrome — Newsreader screen titles + greeting line + overline as the canonical Today/Plan/Library/Progress header pattern | ~15 | Low |
