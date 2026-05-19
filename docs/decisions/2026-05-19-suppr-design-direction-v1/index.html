@@ -6,48 +6,64 @@
 <title>Suppr — design direction v1 · approval bundle</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Spectral:ital,wght@0,400;0,500;0,600;1,500;1,600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Spectral:ital,wght@0,400;0,500;0,600;1,500;1,600&display=swap" rel="stylesheet">
 
 <style>
 :root {
-  /* Locked Suppr v1 tokens — see docs/decisions/2026-05-19-suppr-design-direction-v1.md */
-  --bg: #f6f3ee;
+  /* Locked Suppr v1 tokens + Phase 0.7 amendments.
+   * Phase 0.7 (2026-05-19, print-bundle alignment): ink accent
+   * default (NOT terracotta), Newsreader serif default (NOT Spectral),
+   * functional data macros (NOT earth tones), warmer #f1ebdf cream. */
+  --bg: #f1ebdf;
   --card: #ffffff;
-  --secondary: #f0ede6;
-  --muted: #ebe7df;
+  --secondary: #ebe5d8;
+  --muted: #e6dfd0;
   --surface-peach: #f6e4d6;
   --surface-peach-ink: #2a160e;
 
   --border: #e6e1d6;
   --border-strong: rgba(20,14,8,0.08);
 
-  --fg: #0a0a0a;
-  --fg-mute: #5a5a5a;
-  --fg-dim: #8a8a8a;
-  --fg-faint: #b8b8b8;
+  --fg: #14141a;
+  --fg-soft: #3a352e;
+  --fg-mute: #6f6a60;
+  --fg-dim: #a39d92;
+  --fg-faint: #c7c1b3;
 
-  --accent: #a3522a;
+  /* Accent: INK monochrome — the canonical default */
+  --accent: #14141a;
   --accent-ink: #ffffff;
-  --accent-strong: #8a4524;
-  --accent-wash: rgba(163,82,42,0.08);
+  --accent-strong: #000000;
+  --accent-wash: rgba(20,20,26,0.06);
 
-  /* Macros — earth tones */
-  --macro-protein: #6f8056;
-  --macro-carbs: #a87f3e;
-  --macro-fat: #a05238;
-  --macro-fiber: #3a5236;
+  /* Warmth-pack accent (terracotta) — opt-in for marketing/paywall */
+  --accent-warm: #a04f30;
+  --accent-warm-ink: #ffffff;
+  --accent-warm-wash: rgba(160,79,48,0.08);
+
+  /* Macros — FUNCTIONAL DATA palette (NOT earth tones — Phase 0.7) */
+  --macro-protein: #4c6ce0;
+  --macro-protein-soft: rgba(76,108,224,0.12);
+  --macro-carbs: #d68224;
+  --macro-carbs-soft: rgba(214,130,36,0.14);
+  --macro-fat: #c4647d;
+  --macro-fat-soft: rgba(196,100,125,0.14);
+  --macro-fiber: #4a8a52;
+  --macro-fiber-soft: rgba(74,138,82,0.14);
+  --macro-cal: #3a8a4a;
   --macro-water: #06b6d4;
 
   /* Semantic */
   --destructive: #b03a2e;
-  --success: #6f8056;
-  --warning: #a87f3e;
+  --success: #4a8a52;
+  --warning: #d68224;
 
-  /* Sage wash for the <TareHighlight> primitive */
-  --highlight-wash: rgba(106,138,92,0.18);
+  /* Highlight wash — solid sage from print bundle */
+  --highlight-wash: #c8d4b8;
+  --highlight-ink: #14141a;
 
   --sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --serif: 'Spectral', Georgia, serif;
+  --serif: 'Newsreader', 'Spectral', Georgia, serif;
 }
 
 html.dark {
@@ -61,26 +77,39 @@ html.dark {
   --border: #2a2620;
   --border-strong: rgba(246,243,238,0.08);
 
-  --fg: #ffffff;
-  --fg-mute: #a8a8a8;
-  --fg-dim: #6e6e6e;
-  --fg-faint: #4a4a4a;
+  --fg: #ece6d8;
+  --fg-soft: #c7c1b3;
+  --fg-mute: #8a857a;
+  --fg-dim: #5e5a51;
+  --fg-faint: #3a352e;
 
-  --accent: #d4824a;
-  --accent-ink: #15090a;
-  --accent-strong: #c87544;
-  --accent-wash: rgba(212,130,74,0.10);
+  /* Phase 0.7: ink accent on dark = cream-on-dark (ink's inverse) */
+  --accent: #e8e2d4;
+  --accent-ink: #14141a;
+  --accent-strong: #ffffff;
+  --accent-wash: rgba(232,226,212,0.10);
 
-  --macro-protein: #8a9a6b;
-  --macro-carbs: #c8a050;
-  --macro-fat: #b9694a;
-  --macro-fiber: #4d6a4a;
+  --accent-warm: #d68a6a;
+  --accent-warm-ink: #1a1815;
+  --accent-warm-wash: rgba(214,138,106,0.12);
+
+  --macro-protein: #8aa4ff;
+  --macro-protein-soft: rgba(138,164,255,0.16);
+  --macro-carbs: #e0a04a;
+  --macro-carbs-soft: rgba(224,160,74,0.16);
+  --macro-fat: #d88599;
+  --macro-fat-soft: rgba(216,133,153,0.16);
+  --macro-fiber: #7ab084;
+  --macro-fiber-soft: rgba(122,176,132,0.16);
+  --macro-cal: #6fae7c;
+  --macro-water: #5cc6dc;
 
   --destructive: #d96a5b;
-  --success: #8a9a6b;
-  --warning: #c8a050;
+  --success: #7ab084;
+  --warning: #e0a04a;
 
-  --highlight-wash: rgba(138,154,107,0.22);
+  --highlight-wash: #3a4e2f;
+  --highlight-ink: #ece6d8;
 }
 
 * { box-sizing: border-box; }
@@ -159,10 +188,13 @@ body { padding-bottom: 120px; transition: background .25s, color .25s; }
 }
 .cover-h .hl {
   font-style: italic;
+  font-weight: 500;
   background-color: var(--highlight-wash);
-  padding: 0 .18em .04em;
+  color: var(--highlight-ink);
+  padding: 0.05em .18em;
   margin: 0 -.06em;
   border-radius: .18em;
+  box-shadow: inset 0 -0.05em 0 rgba(20,20,26,0.04);
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
 }
@@ -297,13 +329,15 @@ body { padding-bottom: 120px; transition: background .25s, color .25s; }
   display: flex; justify-content: space-between; align-items: flex-start;
 }
 .p-h1 {
-  font-family: var(--sans); font-weight: 700; font-size: 26px;
+  /* Phase 0.7: screen title is Newsreader 600 (serif-heavy) by default */
+  font-family: var(--serif); font-weight: 600; font-size: 30px;
   letter-spacing: -0.02em; color: var(--fg);
-  margin: 0; line-height: 1.1;
+  margin: 0; line-height: 1.03;
 }
-.p-h1.serif {
-  font-family: var(--serif); font-weight: 600; font-size: 28px;
-  letter-spacing: -0.015em;
+.p-greeting {
+  font-family: var(--sans); font-weight: 500; font-size: 13px;
+  color: var(--fg-mute); letter-spacing: 0.02em;
+  margin-bottom: 6px;
 }
 .p-eyebrow {
   font-family: var(--sans); font-size: 10px; font-weight: 600;
@@ -363,17 +397,23 @@ body { padding-bottom: 120px; transition: background .25s, color .25s; }
 }
 .p-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
 .p-ring-track { fill: none; stroke: var(--border); stroke-width: 8; }
-.p-ring-fill { fill: none; stroke: var(--accent); stroke-width: 8; stroke-linecap: round; }
+/* Phase 0.7: under-budget ring uses --macro-fiber green (functional
+ * under-budget signal), not the accent. The 3-state mapping stays:
+ * empty=faint accent / under=fiber-green / over=destructive-red. */
+.p-ring-fill { fill: none; stroke: var(--macro-fiber); stroke-width: 8; stroke-linecap: round; }
 .p-ring-fill.over { stroke: var(--destructive); }
-.p-ring-fill.empty { stroke: var(--accent); opacity: 0.18; }
+.p-ring-fill.empty { stroke: var(--macro-fiber); opacity: 0.22; }
 .p-ring-centre {
   position: absolute; inset: 0;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 2px;
 }
 .p-ring-value {
-  font-family: var(--serif); font-weight: 600;
-  font-size: 36px; letter-spacing: -0.02em;
+  /* Phase 0.7 print-bundle pattern: hero ring value is Inter 700
+   * tabular at 46px / letter-spacing -0.03em — sans heavy, NOT
+   * Spectral. Sans-as-data discipline. */
+  font-family: var(--sans); font-weight: 700;
+  font-size: 36px; letter-spacing: -0.03em;
   color: var(--fg); font-variant-numeric: tabular-nums;
   line-height: 1;
 }
@@ -668,15 +708,18 @@ body { padding-bottom: 120px; transition: background .25s, color .25s; }
     The synthesis of every reference, screenshot, design-bundle iteration, and repo decision since 2026-05-18. The five principles, the locked token system, six iPhone-frame mockups showing the new aesthetic, the two-track phased plan, and the eight decisions Grace owns. Nothing implemented past Phase 0.5 until this is signed off.
   </p>
   <div class="cover-meta">
-    <span>Inter + Spectral</span>
+    <span>Inter + Newsreader</span>
     <span>·</span>
-    <span>Terracotta accent</span>
+    <span>Ink accent (terracotta as opt-in warmth pack)</span>
     <span>·</span>
-    <span>Sage / wheat / terra / forest</span>
+    <span>Functional macros (blue / orange / pink / green)</span>
     <span>·</span>
     <span>Native iOS</span>
     <span>·</span>
     <span>Cook Mode = ADA target</span>
+  </div>
+  <div style="margin-top: 16px; padding: 12px 16px; background: var(--accent-warm-wash); border-left: 3px solid var(--accent-warm); border-radius: 4px; font-family: var(--sans); font-size: 12px; line-height: 1.55; color: var(--fg-soft); max-width: 720px;">
+    <strong style="font-weight: 600; color: var(--fg);">Phase 0.7 amendments (2026-05-19, this turn):</strong> the print-bundle alignment shifted defaults — ink accent (NOT terracotta), Newsreader serif (NOT Spectral), warmer #f1ebdf cream (NOT #f6f3ee), and functional data macros (Phase V2 macro repalette CANCELLED — current Suppr macros are the target). Greeting line + overline restored on the screen header. See <code style="font-family: ui-monospace, monospace; font-size: 11px;">../2026-05-19-suppr-design-direction-v1.md</code> for the full ledger.
   </div>
 </section>
 
@@ -856,30 +899,40 @@ body { padding-bottom: 120px; transition: background .25s, color .25s; }
   <div class="type-specimen">
 
     <div class="specimen-row">
-      <div class="specimen-label">Screen title <code>Inter 700 · 28-34px</code></div>
-      <div class="specimen-text" style="font-family: var(--sans); font-weight: 700; font-size: 30px; letter-spacing: -0.02em;">Today</div>
+      <div class="specimen-label">Greeting <code>Inter 500 · 13px · sans-medium · NOT italic</code></div>
+      <div class="specimen-text" style="font-family: var(--sans); font-weight: 500; font-size: 13px; color: var(--fg-mute); letter-spacing: 0.02em;">Good afternoon, Grace</div>
     </div>
 
     <div class="specimen-row">
-      <div class="specimen-label">Editorial moment #1 — hero ring number <code>Spectral 600 · 36-44px tabular</code></div>
-      <div class="specimen-text" style="font-family: var(--serif); font-weight: 600; font-size: 40px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums;">1,224</div>
+      <div class="specimen-label">Overline <code>Inter 600 · 11px · letterSpacing 0.18em · upper</code></div>
+      <div class="specimen-text" style="font-family: var(--sans); font-weight: 600; font-size: 11px; color: var(--fg-mute); letter-spacing: 0.18em; text-transform: uppercase;">May 15 · Friday</div>
     </div>
 
     <div class="specimen-row">
-      <div class="specimen-label">Editorial moment #2 — weekly digest cover <code>Spectral 600 · 24px</code></div>
+      <div class="specimen-label">Screen title <code>Newsreader 600 · 36px · "serif-heavy"</code></div>
+      <div class="specimen-text" style="font-family: var(--serif); font-weight: 600; font-size: 36px; letter-spacing: -0.02em; line-height: 1.03;">Yesterday</div>
+    </div>
+
+    <div class="specimen-row">
+      <div class="specimen-label">Hero ring number <code>Inter 700 · 46px tabular · letter-spacing -0.03em</code></div>
+      <div class="specimen-text" style="font-family: var(--sans); font-weight: 700; font-size: 46px; letter-spacing: -0.03em; font-variant-numeric: tabular-nums;">380</div>
+    </div>
+
+    <div class="specimen-row">
+      <div class="specimen-label">Editorial card headline <code>Newsreader 600 · 24px</code></div>
       <div class="specimen-text" style="font-family: var(--serif); font-weight: 600; font-size: 24px; letter-spacing: -0.015em;">The week, in brief.</div>
     </div>
 
     <div class="specimen-row">
-      <div class="specimen-label">Editorial moment #3 — paywall headline (peach surface only) <code>Spectral 600 · 28px</code></div>
+      <div class="specimen-label">Paywall hero (peach surface) <code>Newsreader 600 · 28px</code></div>
       <div class="specimen-text" style="font-family: var(--serif); font-weight: 600; font-size: 28px; letter-spacing: -0.018em;">Recipes, verified — without the chaos.</div>
     </div>
 
     <div class="specimen-row">
-      <div class="specimen-label">Highlight wash — one word per headline <code>&lt;TareHighlight&gt; · Spectral italic 600</code></div>
+      <div class="specimen-label">Highlight wash — one word per headline <code>&lt;TareHighlight&gt; · Newsreader italic 500</code></div>
       <div class="specimen-text" style="font-family: var(--serif); font-weight: 600; font-size: 24px; letter-spacing: -0.015em;">
         Your
-        <span style="font-style: italic; background: var(--highlight-wash); padding: 0 .18em .04em; border-radius: .18em;">steadiest</span>
+        <span style="font-style: italic; font-weight: 500; background: var(--highlight-wash); color: var(--highlight-ink); padding: 0.05em 0.18em; border-radius: 0.18em; box-shadow: inset 0 -0.05em 0 rgba(20,20,26,0.04);">steadiest</span>
         week yet.
       </div>
     </div>
@@ -936,6 +989,8 @@ body { padding-bottom: 120px; transition: background .25s, color .25s; }
           <div class="p-screen">
             <div class="p-header">
               <div>
+                <div class="p-greeting">Good afternoon, Grace</div>
+                <div class="p-eyebrow">May 17 · Saturday</div>
                 <h1 class="p-h1">Today</h1>
                 <div class="p-streak">
                   <span>Day</span><strong>12</strong>
@@ -1006,6 +1061,8 @@ body { padding-bottom: 120px; transition: background .25s, color .25s; }
           <div class="p-screen">
             <div class="p-header">
               <div>
+                <div class="p-greeting">Good afternoon, Grace</div>
+                <div class="p-eyebrow">May 17 · Saturday</div>
                 <h1 class="p-h1">Today</h1>
                 <div class="p-streak">
                   <span>Day</span><strong>12</strong>
@@ -1100,6 +1157,8 @@ body { padding-bottom: 120px; transition: background .25s, color .25s; }
           <div class="p-screen">
             <div class="p-header">
               <div>
+                <div class="p-greeting">Good afternoon, Grace</div>
+                <div class="p-eyebrow">May 17 · Saturday</div>
                 <h1 class="p-h1">Today</h1>
                 <div class="p-streak">
                   <span>Day</span><strong>12</strong>

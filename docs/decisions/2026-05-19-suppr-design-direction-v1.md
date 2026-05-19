@@ -1,7 +1,7 @@
 # Suppr design direction v1 — comprehensive synthesised plan
 
-Date: 2026-05-19
-Status: **Awaiting Grace approval. Nothing implemented past Phase 0.5.**
+Date: 2026-05-19 (amended same day with Phase 0.7 ledger)
+Status: **Awaiting Grace approval. Nothing implemented past Phase 0.5 + 0.7 token shifts.**
 Approval artefact: `docs/decisions/2026-05-19-suppr-design-direction-v1/index.html`
 Owner: Grace
 Supersedes (synthesises, not replaces): the Tare Phase 0 + 0.5 foundation
@@ -23,6 +23,64 @@ The previous turn-by-turn pattern (each new reference replacing the
 last) is explicitly rejected here. The four references we landed on
 each contribute a specific lesson; together they describe one
 coherent app.
+
+## Phase 0.7 ledger (2026-05-19, print-bundle alignment) — read this first
+
+Grace shared a new `Tare App-print.html` Claude Design bundle dated
+2026-05-19 with the framing *"this aesthetic is closer."* The
+bundle's settled `PRINT_TWEAKS` at `print-app.jsx:3-13` reveals
+several adjustments to the v1 token defaults — these are
+**refinements** (token-value shifts), NOT a teardown (the
+architecture, phased plan, and approval flow are unchanged).
+
+What shifted:
+
+| Token / rule | v1 (locked Phase 0.5) | Phase 0.7 (print-bundle settled) |
+|---|---|---|
+| Default serif | Spectral 600 | **Newsreader 600** |
+| Screen title family | Inter bold (with Spectral on 3 moments) | **Newsreader 600 as the title family always; sans below it** |
+| Default accent | Terracotta `#a3522a` light / `#d4824a` dark | **INK `#14141a` light / cream-on-dark `#e8e2d4` dark** |
+| Accent role | The accent everywhere | **Ink default; terracotta + 9 others available as opt-in "warmth packs"** |
+| Page bg light | `#f6f3ee` | `#f1ebdf` (warmer cream) |
+| Macros | Earth tones (sage / wheat / terra / forest) | **Functional data palette (blue / orange / pink / green) — same as Suppr today** |
+| Phase V2 (macro repalette) | 25 files, 3 days | **CANCELLED — current Suppr macros are the target** |
+| Greeting line | Dropped | **Kept (sans-medium 13px, NOT italic)** |
+| Overline above screen title | Dropped (date-twice concern) | **Kept (carries date + day-of-week; h1 names the relative day — different info)** |
+| Calorie ring under-budget colour | Terracotta accent | **`mFiber` green `#4a8a52` — functional under-budget signal** |
+| `.tare-highlight` wash | Sage at 18% alpha | **Solid sage `#c8d4b8` light / `#3a4e2f` dark — reads as ink-on-paper, not UI tint** |
+
+Why the shift (Grace's "closer" framing):
+- **Ink on warm cream is more premium + more genuinely gender-neutral**
+  than terracotta on cream. Terracotta has a warmth that drifts toward
+  "wellness app marketing"; ink monochrome IS Soho House / Equinox /
+  Third Space's actual register. Terracotta and 8 others remain
+  available as opt-in warmth packs (future settings preset).
+- **Newsreader on screen titles is warmer + more humanist** than
+  Spectral at the same weight. Spectral 600 was over-corrected
+  toward "considered"; Newsreader 600 reads structural-authoritative
+  without going magazine-editorial.
+- **Functional data macros convey macro identity better** than earth
+  tones. Grace already corrected this in brand-bundle chat 2 (*"that's
+  a little soulless — the macros can have colours."*) — I missed it
+  in the v1 synthesis. The print bundle confirms.
+- **Greeting + overline aren't editorial chrome** — they're info
+  density done warmly. Apple's own apps use the time-of-day greeting;
+  the overline carries the numeric date while the h1 names the
+  relative day (Yesterday / Today / Yesterday) — different info, no
+  duplication.
+
+What's UNCHANGED from v1:
+- Two-track architecture (visual + interaction)
+- Phase 0 + 0.5 + 0.7 foundation layer (just-amended tokens)
+- TareHighlight + TareCutoutCard primitives
+- The six approved-accent places rule (ink replaces terracotta as
+  the colour used IN those six places)
+- Cook Mode as the Apple-Design-Award target (interaction track)
+- Photography commission as a parallel workstream
+- The phased rollout via feature flag + PostHog ramp
+
+The phase plan further down in this doc is the canonical sequence.
+Phase 0.7 amendments are reflected inline against each phase below.
 
 ---
 
@@ -335,17 +393,19 @@ ramps via PostHog before flag removal.
 |---|---|---|---|
 | **0** ✓ | Token foundation + Spectral font load + feature flag gate | 4 | Done |
 | **0.5** ✓ | Cream surface revert + heavy-serif primitives + cutout/highlight components | 4 | Done |
-| **0.6** | **THIS PLAN — synthesise + amend tokens to match locked direction** | 2 | Trivial — token tweaks only |
-| **V1** | **Class-walk every `--primary` blue → demote to greyscale except in the six approved places** | ~120 | High but mechanical |
-| **V2** | Calorie-ring three-state under new palette + macro repalette propagation across charts/tiles/rings/slots | ~25 | Medium |
-| **V3** | Editorial chrome — Spectral on hero ring number, weekly digest cover, paywall hero ONLY. Drop default-Spectral-everywhere. | ~15 | Low |
+| **0.7** ✓ | **Print-bundle alignment — ink accent default + Newsreader serif default + warmer cream + functional macros revert + greeting/overline restored** | 3 | Token-only |
+| **0.8** | Synthesise final amendments after Grace's Phase 0.7 review | TBD | Token tweaks only |
+| **V1** | **Class-walk every `--primary` blue → demote to GREYSCALE except in the six approved places (ink is the accent)** | ~120 | High but mechanical |
+| **V2** | ~~Macro repalette to earth tones~~ → **CANCELLED — Phase 0.7 reverted to functional data macros. Now only: calorie-ring three-state polish + meal-slot tints align to macro identity** | ~8 | Low |
+| **V3** | Editorial chrome — Newsreader screen titles + greeting line + overline as the canonical Today/Plan/Library/Progress header pattern | ~15 | Low |
 | **V4** | Interpretive copy pass — "REMAINING 380" → "380 kcal left for dinner" + macro captions + Progress headlines | ~20 | Low |
 | **V5** | Empty states → sentences (drop cards / glyphs / multi-row chrome) | ~25 | Medium — visible UX change |
-| **V6** | ALL-CAPS overline class-walk — keep only on system-nav cues (`TODAY` in day strip), drop everywhere else | ~40 | Medium |
+| **V6** | ALL-CAPS overline class-walk — keep where they carry info (date, week, section), drop where they say nothing | ~25 | Low — narrower scope than v1 |
 | **V7** | Discipline kills — persistent green toast suppression + dev-chrome lock-out + bordered-card-on-grey → hairline rule patterns | ~10 | Medium |
-| **V8** | Iconography pass — drop macro-tile + meal-slot decorative glyphs | ~10 | Low |
+| **V8** | Iconography pass — keep meal-slot tint icons (they carry macro identity per print bundle), drop redundant decorative glyphs only | ~10 | Low |
 | **V9** | Photography integration — commissioned + licensed + AI long-tail wired into Recipe Card / Library / Discover. Gradient placeholders removed. | ~10 | High — depends on photography commission landing |
 | **V10** | Illustration / character system integration on Today empty state + milestones | ~8 | Medium — depends on illustration commission |
+| **V11** | Optional warmth-pack accent presets — terracotta, bronze, sage, etc. as user-selectable themes in Settings | ~6 | Low — additive |
 
 ### Interaction track
 

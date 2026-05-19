@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
-import { Inter, Spectral } from "next/font/google";
+import { Inter, Newsreader, Spectral } from "next/font/google";
 import "../src/styles/index.css";
 import { Providers } from "./providers";
 import { TareAestheticGate } from "./tare-aesthetic-gate";
@@ -12,16 +12,24 @@ const inter = Inter({
   variable: "--font-inter",
 });
 
-// 2026-05-18 — Tare aesthetic v1 foundation. Spectral is the second
-// family (editorial moments only: greeting, hero ring number, "No. NN"
-// masthead reference). Loaded with weights 400 + 500 + 600; italic is
-// ONLY pulled for the masthead reference (".tare-masthead-ref"). The
-// font is only activated visually when `body.tare-on` is set — see
-// `TareAestheticGate` below for the feature-flag wiring.
-//
-// Why two weights + italic on the variable: keeps the bundle minimal
-// while covering the three editorial slots — greeting (400), hero
-// number (500), masthead italic (400 italic).
+// 2026-05-19 (Phase 0.7, print-bundle alignment) — Newsreader is now
+// the DEFAULT editorial serif (not Spectral). The print bundle's
+// settled state at `print-app.jsx:5` is `serif: 'Newsreader'`.
+// Newsreader is more humanist and readable at UI scale than Spectral
+// while keeping the same editorial register. Loaded with weights
+// 400 + 500 + 600 + italic; the highlight-wash primitive pulls
+// italic, screen titles use weight 600.
+const newsreader = Newsreader({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  style: ["normal", "italic"],
+  display: "swap",
+  variable: "--font-newsreader",
+});
+
+// 2026-05-18 — Spectral kept loaded as a TWEAKABLE alternative to
+// Newsreader (e.g. for a future "Editorial" theme preset). Not the
+// default any more (see comment above).
 const spectral = Spectral({
   subsets: ["latin"],
   weight: ["400", "500", "600"],
@@ -78,7 +86,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${spectral.variable}`}
+      className={`${inter.variable} ${newsreader.variable} ${spectral.variable}`}
       suppressHydrationWarning
     >
       <body className={inter.className}>
