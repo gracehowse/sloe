@@ -173,14 +173,15 @@ describe("useTarePalette — palette resolution", () => {
     // 2026-05-19 — lifted from `#f1ebdf` to `#f6f3ee` after sim review.
     expect(result.current?.bg).toBe("#f6f3ee");
     expect(result.current?.accent).toBe("#14141a");
-    // V1.3 tuned palette: brighter, differentiated calories vs fiber
-    // greens, fat shifted from rose toward magenta-pink so it doesn't
-    // pair with destructive red as a second red shade on the ring.
-    expect(result.current?.macroProtein).toBe("#5a76d6");
-    expect(result.current?.macroCarbs).toBe("#dc8136");
-    expect(result.current?.macroFat).toBe("#dc6fa0");
-    expect(result.current?.macroFiber).toBe("#7da762");
-    expect(result.current?.macroCalories).toBe("#3da66b");
+    // V1.4 Noom-style vivid palette: Tailwind 500-level saturation.
+    // Fiber moved OUT of green (now purple) so calories owns "green =
+    // on-track" cleanly. Five distinct hue families: blue / orange /
+    // magenta-pink / purple / green / cyan.
+    expect(result.current?.macroProtein).toBe("#3B82F6");
+    expect(result.current?.macroCarbs).toBe("#F97316");
+    expect(result.current?.macroFat).toBe("#EC4899");
+    expect(result.current?.macroFiber).toBe("#A855F7");
+    expect(result.current?.macroCalories).toBe("#22C55E");
     // Fonts default to family names (deferred font load — see
     // comments in constants/tareTokens.ts).
     expect(result.current?.fontSans).toBe("Inter");

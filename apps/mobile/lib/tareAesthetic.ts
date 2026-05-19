@@ -46,9 +46,10 @@
  */
 
 import { useColorScheme } from "react-native";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { isFeatureEnabled } from "./analytics";
+import { Accent, MacroColors } from "../constants/theme";
 import {
   getTarePalette,
   type TareMode,
@@ -195,6 +196,52 @@ export function useTarePalette(): TarePalette | null {
   if (!enabled) return null;
   const mode: TareMode = scheme === "dark" ? "dark" : "light";
   return getTarePalette(mode);
+}
+
+/**
+ * Return the active macro colour map, Tare-aware. Same shape as the
+ * legacy `MacroColors` static object — consumers swap `MacroColors.x`
+ * for `macroColors.x` and get the right value automatically based on
+ * the Tare gate state.
+ *
+ * Why a separate hook: 18+ files used `MacroColors.protein` etc as
+ * inline static references. The class-of-bug fix is to route them all
+ * through one Tare-aware lookup so flipping the gate updates every
+ * surface together. Each component does:
+ *
+ *   const macroColors = useMacroColors();
+ *   ... color: macroColors.protein
+ *
+ * Tare-off path returns the legacy `MacroColors` values verbatim; the
+ * fallback chain matches each consumer's prior inline default
+ * (e.g. fiber falls back through `MacroColors.fiber ?? Accent.success`
+ * because some legacy code paths used that ?? expression).
+ */
+export function useMacroColors(): {
+  calories: string;
+  protein: string;
+  carbs: string;
+  fat: string;
+  fiber: string;
+  sugar: string;
+  sodium: string;
+  water: string;
+} {
+  const tare = useTarePalette();
+  return useMemo(
+    () => ({
+      calories: tare?.macroCalories ?? MacroColors.calories,
+      protein: tare?.macroProtein ?? MacroColors.protein,
+      carbs: tare?.macroCarbs ?? MacroColors.carbs,
+      fat: tare?.macroFat ?? MacroColors.fat,
+      fiber: tare?.macroFiber ?? MacroColors.fiber ?? Accent.success,
+      // Not in the Tare palette yet — keep legacy mapping.
+      sugar: MacroColors.sugar,
+      sodium: MacroColors.sodium,
+      water: tare?.macroWater ?? MacroColors.water ?? Accent.info,
+    }),
+    [tare],
+  );
 }
 
 // Re-export the palette types for ergonomics.

@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { Accent, Radius, MacroColors } from "@/constants/theme";
+import { useMacroColors } from "@/lib/tareAesthetic";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 // Direct-to-Supabase household client. Replaced the old
 // `fetch("/api/household")` calls (which never worked from React Native —
@@ -72,6 +73,7 @@ export function HouseholdCard() {
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
   const colors = useThemeColors();
+  const macroColors = useMacroColors();
   const [data, setData] = useState<HouseholdData | null>(null);
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<"idle" | "create" | "join">("idle");
@@ -94,9 +96,9 @@ export function HouseholdCard() {
     accent: Accent.primary,
     green: Accent.success,
     amber: Accent.warning,
-    protein: MacroColors.protein,
-    carbs: MacroColors.carbs,
-    fat: MacroColors.fat,
+    protein: macroColors.protein,
+    carbs: macroColors.carbs,
+    fat: macroColors.fat,
   };
 
   const load = useCallback(async () => {

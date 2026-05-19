@@ -2,6 +2,7 @@ import React from "react";
 import { Linking, Pressable, Text, View, ActivityIndicator } from "react-native";
 import { Footprints, Flame, HeartPulse, Scale } from "lucide-react-native";
 import { Accent, MacroColors, Radius } from "@/constants/theme";
+import { useMacroColors } from "@/lib/tareAesthetic";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
@@ -62,6 +63,7 @@ export function AppleHealthCard({
   onRetry,
 }: AppleHealthCardProps) {
   const colors = useThemeColors();
+  const macroColors = useMacroColors();
   const t = {
     text: colors.text,
     sub: colors.textSecondary,
@@ -173,14 +175,14 @@ export function AppleHealthCard({
     {
       key: "resting",
       Icon: HeartPulse,
-      color: MacroColors.fat,
+      color: macroColors.fat,
       label: "Resting burn",
       value: formatKcal(restingBurnKcal),
     },
     {
       key: "weight",
       Icon: Scale,
-      color: MacroColors.protein,
+      color: macroColors.protein,
       label: "Weight",
       value: formatWeight(weightKg, useImperial),
       hint: status === "ready" && weightKg == null ? "No weigh-in today" : undefined,

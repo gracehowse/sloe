@@ -30,6 +30,7 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
+import { useMacroColors } from "@/lib/tareAesthetic";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { dateKeyFromDate, type ByDay } from "@/lib/nutritionJournal";
 import { computeLoggingStreak } from "@/lib/trackerStats";
@@ -149,6 +150,10 @@ export default function ProgressScreen() {
   const colors = useThemeColors();
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
+  // 2026-05-19 V1.4 — Tare-aware macro colour map. Progress charts +
+  // macro splits now route through this so they match Today / Plan
+  // when the Tare gate is on.
+  const macroColors = useMacroColors();
 
   const [loading, setLoading] = useState(true);
   const [targets, setTargets] = useState(DEFAULT_TARGETS);
@@ -830,9 +835,9 @@ export default function ProgressScreen() {
     green: Accent.success,
     amber: Accent.warning,
     red: Accent.destructive,
-    protein: MacroColors.protein,
-    carbs: MacroColors.carbs,
-    fat: MacroColors.fat,
+    protein: macroColors.protein,
+    carbs: macroColors.carbs,
+    fat: macroColors.fat,
   };
 
   const hasData = Object.keys(byDay).length > 0;

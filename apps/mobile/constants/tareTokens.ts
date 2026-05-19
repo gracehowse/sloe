@@ -160,43 +160,46 @@ export const TARE_LIGHT: TarePalette = {
   accentWarmInk: "#ffffff",
   accentWarmWash: "rgba(160,79,48,0.08)",
 
-  // 2026-05-19 V1.3 — palette tuned after sim review. Three fixes:
-  //   (1) Brighter — V1.2 was still muted. ~5-8% more saturation.
-  //   (2) Differentiate calories (emerald) from fiber (olive) so
-  //       they aren't two near-identical greens.
-  //   (3) Shift fat away from red (rose → magenta-pink) so it
-  //       doesn't read as a second red shade alongside destructive
-  //       on the over-budget calorie ring.
-  // Hue families stay distinct: indigo / amber / pink-magenta /
-  // olive-green / emerald-green / cyan. Soft-alpha tints tracked
-  // to the new base RGB.
-  macroProtein: "#5a76d6",
-  macroProteinSoft: "rgba(90,118,214,0.16)",
-  macroCarbs: "#dc8136",
-  macroCarbsSoft: "rgba(220,129,54,0.16)",
-  macroFat: "#dc6fa0",
-  macroFatSoft: "rgba(220,111,160,0.16)",
-  macroFiber: "#7da762",
-  macroFiberSoft: "rgba(125,167,98,0.16)",
-  macroCalories: "#3da66b",
-  macroWater: "#06b6d4",
+  // 2026-05-19 V1.4 — Noom-style vivid palette. Grace's direction
+  // through V1.1-V1.3 was that the softened register was wrong —
+  // the colours need to be present and friendly (Noom-bright), not
+  // muted. Jumped to Tailwind 500-level saturation. Fiber moves OUT
+  // of the green family entirely (purple) so calories owns "green =
+  // success / on-track" cleanly. Five distinct hue families:
+  //   protein = blue        (Tailwind blue-500   #3B82F6)
+  //   carbs   = orange      (Tailwind orange-500 #F97316)
+  //   fat     = magenta-pink (Tailwind pink-500  #EC4899)
+  //   fiber   = purple      (Tailwind purple-500 #A855F7)
+  //   calories= green       (Tailwind green-500  #22C55E)
+  //   water   = cyan        (Tailwind cyan-500   #06B6D4)
+  // Soft-alpha tints at 0.16 to read presently on the warm bg.
+  macroProtein: "#3B82F6",
+  macroProteinSoft: "rgba(59,130,246,0.16)",
+  macroCarbs: "#F97316",
+  macroCarbsSoft: "rgba(249,115,22,0.16)",
+  macroFat: "#EC4899",
+  macroFatSoft: "rgba(236,72,153,0.16)",
+  macroFiber: "#A855F7",
+  macroFiberSoft: "rgba(168,85,247,0.16)",
+  macroCalories: "#22C55E",
+  macroWater: "#06B6D4",
 
-  sourceUsda: "#3da66b",
-  sourceOff: "#5a76d6",
-  sourceFatSecret: "#dc8136",
-  sourceAi: "#dc6fa0",
+  sourceUsda: "#22C55E",
+  sourceOff: "#3B82F6",
+  sourceFatSecret: "#F97316",
+  sourceAi: "#EC4899",
 
-  slotBreakfast: "#dc8136",
-  slotBreakfastSoft: "rgba(220,129,54,0.13)",
-  slotLunch: "#7da762",
-  slotLunchSoft: "rgba(125,167,98,0.13)",
-  slotDinner: "#5a76d6",
-  slotDinnerSoft: "rgba(90,118,214,0.13)",
-  slotSnack: "#0e8aa3",
-  slotSnackSoft: "rgba(14,138,163,0.12)",
+  slotBreakfast: "#F97316",
+  slotBreakfastSoft: "rgba(249,115,22,0.13)",
+  slotLunch: "#22C55E",
+  slotLunchSoft: "rgba(34,197,94,0.13)",
+  slotDinner: "#3B82F6",
+  slotDinnerSoft: "rgba(59,130,246,0.13)",
+  slotSnack: "#06B6D4",
+  slotSnackSoft: "rgba(6,182,212,0.13)",
 
   ringBg: "#e6e1d6",
-  ringTrack: "#4d8a5c",
+  ringTrack: "#22C55E",
 
   highlightWash: "#c8d4b8",
   highlightInk: "#14141a",
@@ -254,33 +257,38 @@ export const TARE_DARK: TarePalette = {
   accentWarmInk: "#1a1815",
   accentWarmWash: "rgba(214,138,106,0.12)",
 
-  macroProtein: "#8696db",
-  macroProteinSoft: "rgba(134,150,219,0.16)",
-  macroCarbs: "#d69458",
-  macroCarbsSoft: "rgba(214,148,88,0.16)",
-  macroFat: "#d495a8",
-  macroFatSoft: "rgba(212,149,168,0.16)",
-  macroFiber: "#86a888",
-  macroFiberSoft: "rgba(134,168,136,0.16)",
-  macroCalories: "#80a890",
-  macroWater: "#5cb4cb",
+  // V1.4 — dark mode lifted to Tailwind 400-level (one stop lighter
+  // than the light-mode 500s) to maintain contrast against the warm-
+  // black background. Same hue families: blue / orange / pink-magenta
+  // / purple / green / cyan. Fiber is purple (not green) so calories
+  // owns the on-track green.
+  macroProtein: "#60a5fa",
+  macroProteinSoft: "rgba(96,165,250,0.18)",
+  macroCarbs: "#fb923c",
+  macroCarbsSoft: "rgba(251,146,60,0.18)",
+  macroFat: "#f472b6",
+  macroFatSoft: "rgba(244,114,182,0.18)",
+  macroFiber: "#c084fc",
+  macroFiberSoft: "rgba(192,132,252,0.18)",
+  macroCalories: "#4ade80",
+  macroWater: "#22d3ee",
 
-  sourceUsda: "#80a890",
-  sourceOff: "#8696db",
-  sourceFatSecret: "#d69458",
-  sourceAi: "#d495a8",
+  sourceUsda: "#4ade80",
+  sourceOff: "#60a5fa",
+  sourceFatSecret: "#fb923c",
+  sourceAi: "#f472b6",
 
-  slotBreakfast: "#d69458",
-  slotBreakfastSoft: "rgba(214,148,88,0.16)",
-  slotLunch: "#86a888",
-  slotLunchSoft: "rgba(134,168,136,0.16)",
-  slotDinner: "#8696db",
-  slotDinnerSoft: "rgba(134,150,219,0.16)",
-  slotSnack: "#5cb4cb",
-  slotSnackSoft: "rgba(92,180,203,0.16)",
+  slotBreakfast: "#fb923c",
+  slotBreakfastSoft: "rgba(251,146,60,0.18)",
+  slotLunch: "#4ade80",
+  slotLunchSoft: "rgba(74,222,128,0.18)",
+  slotDinner: "#60a5fa",
+  slotDinnerSoft: "rgba(96,165,250,0.18)",
+  slotSnack: "#22d3ee",
+  slotSnackSoft: "rgba(34,211,238,0.18)",
 
   ringBg: "#2a2620",
-  ringTrack: "#80a890",
+  ringTrack: "#4ade80",
 
   highlightWash: "#3a4e2f",
   highlightInk: "#ece6d8",

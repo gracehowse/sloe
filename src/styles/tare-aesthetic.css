@@ -82,45 +82,48 @@ body.tare-on {
   --accent-warm-foreground: #ffffff;
   --accent-warm-soft: rgba(160, 79, 48, 0.10);
 
-  /* ── Macros: SOFTENED data palette (V1.3 — 2026-05-19) ──
-   * Tuned palette after sim review. Three fixes vs V1.2:
-   *   (1) Brighter — V1.2 was still muted. ~5-8% more saturation.
-   *   (2) Differentiate calories (emerald) from fiber (olive) so
-   *       they aren't two near-identical greens.
-   *   (3) Shift fat away from red (rose → magenta-pink) so it
-   *       doesn't read as a second red shade alongside destructive
-   *       on the over-budget calorie ring.
-   * Hue families: indigo / amber / pink-magenta / olive / emerald /
-   * cyan. Mirror of `apps/mobile/constants/tareTokens.ts`. */
-  --macro-protein: #5a76d6;
-  --macro-protein-soft: rgba(90, 118, 214, 0.16);
-  --macro-carbs: #dc8136;
-  --macro-carbs-soft: rgba(220, 129, 54, 0.16);
-  --macro-fat: #dc6fa0;
-  --macro-fat-soft: rgba(220, 111, 160, 0.16);
-  --macro-fiber: #7da762;
-  --macro-fiber-soft: rgba(125, 167, 98, 0.16);
-  --macro-calories: #3da66b;
+  /* ── Macros: Noom-style vivid palette (V1.4 — 2026-05-19) ──
+   * Grace's direction through V1.1-V1.3 was that the softened register
+   * was wrong — colours should be present and friendly (Noom-bright),
+   * not muted. Jumped to Tailwind 500-level saturation. Fiber moves
+   * OUT of green entirely (purple) so calories owns "green = on-track".
+   * Five distinct hue families:
+   *   protein  = blue        #3B82F6
+   *   carbs    = orange      #F97316
+   *   fat      = magenta-pink #EC4899
+   *   fiber    = purple      #A855F7
+   *   calories = green       #22C55E
+   *   water    = cyan        #06B6D4
+   * Mirror of `apps/mobile/constants/tareTokens.ts`. */
+  --macro-protein: #3B82F6;
+  --macro-protein-soft: rgba(59, 130, 246, 0.16);
+  --macro-carbs: #F97316;
+  --macro-carbs-soft: rgba(249, 115, 22, 0.16);
+  --macro-fat: #EC4899;
+  --macro-fat-soft: rgba(236, 72, 153, 0.16);
+  --macro-fiber: #A855F7;
+  --macro-fiber-soft: rgba(168, 85, 247, 0.16);
+  --macro-calories: #22C55E;
 
   /* ── Source / provenance dots ── */
-  --source-usda: #3da66b;
-  --source-off: #5a76d6;
-  --source-fatsecret: #dc8136;
-  --source-ai: #dc6fa0;
+  --source-usda: #22C55E;
+  --source-off: #3B82F6;
+  --source-fatsecret: #F97316;
+  --source-ai: #EC4899;
 
   /* ── Meal-slot tints: tied to macro identity ── */
-  --slot-breakfast: #dc8136;
-  --slot-breakfast-soft: rgba(220, 129, 54, 0.13);
-  --slot-lunch: #7da762;
-  --slot-lunch-soft: rgba(125, 167, 98, 0.13);
-  --slot-dinner: #5a76d6;
-  --slot-dinner-soft: rgba(90, 118, 214, 0.13);
-  --slot-snack: #0e8aa3;
-  --slot-snack-soft: rgba(14, 138, 163, 0.12);
+  --slot-breakfast: #F97316;
+  --slot-breakfast-soft: rgba(249, 115, 22, 0.13);
+  --slot-lunch: #22C55E;
+  --slot-lunch-soft: rgba(34, 197, 94, 0.13);
+  --slot-dinner: #3B82F6;
+  --slot-dinner-soft: rgba(59, 130, 246, 0.13);
+  --slot-snack: #06B6D4;
+  --slot-snack-soft: rgba(6, 182, 212, 0.13);
 
   /* ── Ring tokens ── */
   --ring-bg: #e6e1d6;
-  --ring-track: #4d8a5c;
+  --ring-track: #22C55E;
 
   /* ── North-star block: ink monochrome ── */
   --north-star-bg-from: rgba(20, 20, 26, 0.04);
@@ -134,11 +137,11 @@ body.tare-on {
   /* ── Elevation ── */
   --elev-float-primary: 0 4px 16px rgba(20, 20, 26, 0.24);
 
-  /* ── Chart palette: softened data colours (V1.3) ── */
-  --chart-1: #5a76d6;
-  --chart-2: #dc8136;
-  --chart-3: #dc6fa0;
-  --chart-4: #7da762;
+  /* ── Chart palette: Noom-style vivid (V1.4) ── */
+  --chart-1: #3B82F6;
+  --chart-2: #F97316;
+  --chart-3: #EC4899;
+  --chart-4: #A855F7;
   --chart-5: #14141a;
 
   /* ── Glass / surface tokens (light) ── */
@@ -195,31 +198,36 @@ body.tare-on.dark {
   --accent-warm-foreground: #1a1815;
   --accent-warm-soft: rgba(214, 138, 106, 0.14);
 
-  /* Softened macros lifted for dark-mode contrast */
-  --macro-protein: #8696db;
-  --macro-protein-soft: rgba(134, 150, 219, 0.16);
-  --macro-carbs: #d69458;
-  --macro-carbs-soft: rgba(214, 148, 88, 0.16);
-  --macro-fat: #d495a8;
-  --macro-fat-soft: rgba(212, 149, 168, 0.16);
-  --macro-calories: #80a890;
+  /* V1.4 dark-mode macros — Tailwind 400-level (one stop lighter than
+   * light-mode 500s) to maintain contrast against the warm-black bg.
+   * Same hue families: blue / orange / pink-magenta / purple / green /
+   * cyan. Fiber is purple (NOT green) so calories owns on-track green. */
+  --macro-protein: #60a5fa;
+  --macro-protein-soft: rgba(96, 165, 250, 0.18);
+  --macro-carbs: #fb923c;
+  --macro-carbs-soft: rgba(251, 146, 60, 0.18);
+  --macro-fat: #f472b6;
+  --macro-fat-soft: rgba(244, 114, 182, 0.18);
+  --macro-fiber: #c084fc;
+  --macro-fiber-soft: rgba(192, 132, 252, 0.18);
+  --macro-calories: #4ade80;
 
-  --source-usda: #80a890;
-  --source-off: #8696db;
-  --source-fatsecret: #d69458;
-  --source-ai: #d495a8;
+  --source-usda: #4ade80;
+  --source-off: #60a5fa;
+  --source-fatsecret: #fb923c;
+  --source-ai: #f472b6;
 
-  --slot-breakfast: #d69458;
-  --slot-breakfast-soft: rgba(214, 148, 88, 0.16);
-  --slot-lunch: #86a888;
-  --slot-lunch-soft: rgba(134, 168, 136, 0.16);
-  --slot-dinner: #8696db;
-  --slot-dinner-soft: rgba(134, 150, 219, 0.16);
-  --slot-snack: #5cb4cb;
-  --slot-snack-soft: rgba(92, 180, 203, 0.16);
+  --slot-breakfast: #fb923c;
+  --slot-breakfast-soft: rgba(251, 146, 60, 0.18);
+  --slot-lunch: #4ade80;
+  --slot-lunch-soft: rgba(74, 222, 128, 0.18);
+  --slot-dinner: #60a5fa;
+  --slot-dinner-soft: rgba(96, 165, 250, 0.18);
+  --slot-snack: #22d3ee;
+  --slot-snack-soft: rgba(34, 211, 238, 0.18);
 
   --ring-bg: #2a2620;
-  --ring-track: #80a890;
+  --ring-track: #4ade80;
 
   --north-star-bg-from: rgba(232, 226, 212, 0.06);
   --north-star-bg-to: rgba(232, 226, 212, 0.03);
@@ -230,10 +238,10 @@ body.tare-on.dark {
 
   --elev-float-primary: 0 4px 16px rgba(232, 226, 212, 0.18);
 
-  --chart-1: #8696db;
-  --chart-2: #d69458;
-  --chart-3: #d495a8;
-  --chart-4: #86a888;
+  --chart-1: #60a5fa;
+  --chart-2: #fb923c;
+  --chart-3: #f472b6;
+  --chart-4: #c084fc;
   --chart-5: #e8e2d4;
 
   --glass: rgba(20, 20, 20, 0.78);

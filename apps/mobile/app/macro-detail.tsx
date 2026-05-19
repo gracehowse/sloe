@@ -4,8 +4,9 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
-import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
+import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useMacroColors } from "@/lib/tareAesthetic";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { dateKeyFromDate } from "@suppr/shared/nutrition/trackerStats";
@@ -22,19 +23,27 @@ type Meal = {
 };
 
 // 2026-05-14 (premium-bar audit Group H #4): brand-colour mapping for
-// all 4 macros + fibre + water. Protein/carbs/fat → MacroColors token
-// set. Calories → Accent.primary (canonical "energy" colour across the
-// app — calorie ring, paywall hero, etc.). Fibre → Accent.success
-// (green for plant fibre, distinct from the macro trio). Water →
-// Accent.info (blue, same as Today's water tile).
-const MACRO_CONFIG: Record<string, { label: string; color: string; unit: string; field: keyof Meal }> = {
-  protein: { label: "Protein", color: MacroColors.protein, unit: "g", field: "protein" },
-  carbs: { label: "Carbs", color: MacroColors.carbs, unit: "g", field: "carbs" },
-  fat: { label: "Fat", color: MacroColors.fat, unit: "g", field: "fat" },
-  fiber: { label: "Fiber", color: Accent.success, unit: "g", field: "fiberG" },
-  calories: { label: "Calories", color: Accent.primary, unit: "kcal", field: "calories" },
-  water: { label: "Water", color: Accent.info, unit: "ml", field: "waterMl" },
-};
+// all 4 macros + fibre + water. Protein/carbs/fat/fiber/water route
+// through `useMacroColors()` so the Tare gate state is honoured.
+// 2026-05-19 V1.4: moved from module-level static into a hook (was
+// frozen at import time as legacy `MacroColors.*` — when Tare flipped
+// on, this screen still rendered legacy colours, causing the
+// tab-to-tab drift Grace flagged).
+type MacroConfig = Record<
+  string,
+  { label: string; color: string; unit: string; field: keyof Meal }
+>;
+function useMacroConfig(): MacroConfig {
+  const macroColors = useMacroColors();
+  return {
+    protein: { label: "Protein", color: macroColors.protein, unit: "g", field: "protein" },
+    carbs: { label: "Carbs", color: macroColors.carbs, unit: "g", field: "carbs" },
+    fat: { label: "Fat", color: macroColors.fat, unit: "g", field: "fat" },
+    fiber: { label: "Fiber", color: macroColors.fiber, unit: "g", field: "fiberG" },
+    calories: { label: "Calories", color: macroColors.calories, unit: "kcal", field: "calories" },
+    water: { label: "Water", color: macroColors.water, unit: "ml", field: "waterMl" },
+  };
+}
 
 // 2026-05-14 (premium-bar audit Group H #3): segmented toggle between
 // "By meal" (current breakdown grouped by meal slot) and "By ingredient"
@@ -70,6 +79,7 @@ export default function MacroDetailScreen() {
   const { session } = useAuth();
   const userId = session?.user?.id;
 
+  const MACRO_CONFIG = useMacroConfig();
   const config = MACRO_CONFIG[macro] ?? MACRO_CONFIG.protein;
 
   const [meals, setMeals] = useState<Meal[]>([]);

@@ -29,6 +29,7 @@ import Svg, {
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
+import { useMacroColors } from "@/lib/tareAesthetic";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets, calculateTDEE } from "@/lib/calcTargets";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -59,6 +60,9 @@ export default function TargetsScreen() {
   const goBack = useSafeBack("/(tabs)");
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
+  // 2026-05-19 V1.4 — Tare-aware macro colour map for targets screen
+  // chips + ring gradient. Stays parity with Today.
+  const macroColors = useMacroColors();
 
   const [loading, setLoading] = useState(true);
   const [targets, setTargets] = useState({
@@ -322,14 +326,14 @@ export default function TargetsScreen() {
   const macroColorFor = (key: string): string => {
     switch (key) {
       case "protein":
-        return MacroColors.protein;
+        return macroColors.protein;
       case "carbs":
-        return MacroColors.carbs;
+        return macroColors.carbs;
       case "fat":
-        return MacroColors.fat;
+        return macroColors.fat;
       case "fiber":
       default:
-        return MacroColors.fiber;
+        return macroColors.fiber;
     }
   };
 
@@ -579,7 +583,7 @@ export default function TargetsScreen() {
               <Defs>
                 <SvgLinearGradient id="targets-grad" x1="0" y1="0" x2="1" y2="1">
                   <Stop offset="0" stopColor={Accent.primaryLight} />
-                  <Stop offset="1" stopColor={MacroColors.fat} />
+                  <Stop offset="1" stopColor={macroColors.fat} />
                 </SvgLinearGradient>
               </Defs>
               <Circle

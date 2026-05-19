@@ -53,6 +53,7 @@ import {
   type LucideIcon,
 } from "lucide-react-native";
 import { Accent, MacroColors, SlotColors, Spacing, Radius } from "@/constants/theme";
+import { useMacroColors } from "@/lib/tareAesthetic";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets } from "@/lib/calcTargets";
 import { SkeletonCard } from "@/components/ui/SkeletonRow";
@@ -265,6 +266,11 @@ export default function PlannerScreen() {
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
   const colors = useThemeColors();
+  // 2026-05-19 V1.4 — Tare-aware macro colour map. When the Tare gate
+  // is on, the planner's day-totals chips + macro overflow tint pick
+  // the Tare palette so they stay parity with Today's ring/tiles.
+  // Tare-off path returns legacy `MacroColors` verbatim.
+  const macroColors = useMacroColors();
 
   const { recipes: discoverRecipes } = useDiscoverRecipes();
   const { recipes: savedRecipes } = useSavedLibraryRecipes(userId);
@@ -2648,10 +2654,10 @@ export default function PlannerScreen() {
             {planTargets && (
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 4 }}>
                 {([
-                  { label: "P", val: dp.totals.protein, target: planTargets.protein, color: MacroColors.protein },
-                  { label: "C", val: dp.totals.carbs, target: planTargets.carbs, color: MacroColors.carbs },
-                  { label: "F", val: dp.totals.fat, target: planTargets.fat, color: MacroColors.fat },
-                  { label: "Fi", val: Math.round(dp.meals.reduce((s, m) => s + (m.fiberG ?? 0), 0) * 10) / 10, target: planTargets.fiber ?? 28, color: Accent.success },
+                  { label: "P", val: dp.totals.protein, target: planTargets.protein, color: macroColors.protein },
+                  { label: "C", val: dp.totals.carbs, target: planTargets.carbs, color: macroColors.carbs },
+                  { label: "F", val: dp.totals.fat, target: planTargets.fat, color: macroColors.fat },
+                  { label: "Fi", val: Math.round(dp.meals.reduce((s, m) => s + (m.fiberG ?? 0), 0) * 10) / 10, target: planTargets.fiber ?? 28, color: macroColors.fiber },
                 ] as const).map(({ label, val, target, color }) => {
                   const diff = val - target;
                   const pct = target > 0 ? Math.abs(diff) / target : 0;
@@ -3441,7 +3447,7 @@ export default function PlannerScreen() {
                     left: 0,
                     right: 0,
                     bottom: 0,
-                    backgroundColor: MacroColors.fat + "12",
+                    backgroundColor: macroColors.fat + "12",
                   }}
                 />
               </Animated.View>
