@@ -1,41 +1,14 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
-import { Inter, Newsreader, Spectral } from "next/font/google";
+import { Inter } from "next/font/google";
 import "../src/styles/index.css";
 import { Providers } from "./providers";
-import { TareAestheticGate } from "./tare-aesthetic-gate";
 import { Analytics } from "@vercel/analytics/next";
 
 const inter = Inter({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-inter",
-});
-
-// 2026-05-19 (Phase 0.7, print-bundle alignment) — Newsreader is now
-// the DEFAULT editorial serif (not Spectral). The print bundle's
-// settled state at `print-app.jsx:5` is `serif: 'Newsreader'`.
-// Newsreader is more humanist and readable at UI scale than Spectral
-// while keeping the same editorial register. Loaded with weights
-// 400 + 500 + 600 + italic; the highlight-wash primitive pulls
-// italic, screen titles use weight 600.
-const newsreader = Newsreader({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  style: ["normal", "italic"],
-  display: "swap",
-  variable: "--font-newsreader",
-});
-
-// 2026-05-18 — Spectral kept loaded as a TWEAKABLE alternative to
-// Newsreader (e.g. for a future "Editorial" theme preset). Not the
-// default any more (see comment above).
-const spectral = Spectral({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  style: ["normal", "italic"],
-  display: "swap",
-  variable: "--font-spectral",
 });
 
 function resolveMetadataBase(): URL {
@@ -84,18 +57,11 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html
-      lang="en"
-      className={`${inter.variable} ${newsreader.variable} ${spectral.variable}`}
-      suppressHydrationWarning
-    >
+    <html lang="en" className={inter.variable} suppressHydrationWarning>
       <body className={inter.className}>
-        <Providers>
-          <TareAestheticGate>{children}</TareAestheticGate>
-        </Providers>
+        <Providers>{children}</Providers>
         <Analytics />
       </body>
     </html>
   );
 }
-

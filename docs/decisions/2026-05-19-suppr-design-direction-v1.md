@@ -1,8 +1,92 @@
 # Suppr design direction v1 — comprehensive synthesised plan
 
-Date: 2026-05-19 (amended same day with Phase 0.7 ledger)
-Status: **Awaiting Grace approval. Nothing implemented past Phase 0.5 + 0.7 token shifts.**
+Date: 2026-05-19
+Status: **Plan + token system approved. Web foundation implementation REVERTED. Restarting mobile-first with simultaneous web parity per Phase 1.0 below.**
 Approval artefact: `docs/decisions/2026-05-19-suppr-design-direction-v1/index.html`
+(the HTML mockup stays as a visual reference — it doesn't ship as production code)
+
+## Phase 1.0 — RESET (2026-05-19) — read this before anything else
+
+Grace flagged 2026-05-19 that every commit in Phase 0 → 0.9 was web-only:
+*"the documents you were given were all mobile implementation so why
+did you decide web first?"*
+
+The Tare brand bundle, the App.html prototypes, the Apple Design Award
+research (Gentler Streak / Crouton / Mela / Kitchen Stories), the
+TestFlight screenshots that opened this conversation — all mobile-first.
+The CSS-variable / `body.tare-on` architecture I chose was a web-only
+superpower I leaned into for iteration speed; that was wrong-platform
+optimisation.
+
+**Decision:** revert the web Tare implementation cleanly. Restart from
+the same plan + token system, but ship **mobile + web in the SAME
+commit going forward**. The plan itself (tokens, principles, phased
+plan, reference benchmarks) is unchanged — only the implementation
+sequence pivots.
+
+What got reverted (this commit):
+- `src/styles/tare-aesthetic.css` — DELETED
+- `src/app/components/ui/tare-highlight.tsx` — DELETED
+- `src/app/components/ui/tare-cutout-card.tsx` — DELETED
+- `app/tare-aesthetic-gate.tsx` — DELETED
+- `tests/unit/tareAestheticGate.test.tsx` — DELETED
+- `src/styles/index.css` — `@import './tare-aesthetic.css'` removed
+- `app/layout.tsx` — Newsreader + Spectral font loads removed; `<TareAestheticGate>` wrapper removed
+
+What stays:
+- This doc — the plan + principles + token system + reference benchmarks
+- `docs/decisions/2026-05-19-suppr-design-direction-v1/index.html` — the HTML mockup, kept as a visual reference
+- `docs/decisions/2026-05-19-recipe-aggregator-architecture.md` — independent workstream
+- `docs/decisions/2026-05-18-tare-aesthetic-foundation.md` — kept as the record of what was tried
+- `b261c9e` harsh-review batch — those were mobile + web tactical fixes (PR #307 base), independent of the Tare aesthetic
+- All earlier session work (P0/P1/M batches) — unaffected
+
+What replaces "Phase 0 → 0.9 (web only)":
+- **Phase M0** — mobile foundation: tokens in `apps/mobile/constants/`, font loading via expo-font, AsyncStorage preview override, Settings toggle, mobile flag-gating hook
+- **Phase W0** — web foundation: equivalent CSS layer + body-class gate + URL-param preview (rebuild what Phase 0-0.9 did)
+- **Both phases land in the SAME commit.** Reviewable side by side.
+
+Then every subsequent phase (V1 accent class-walk, V3 editorial chrome,
+V4 interpretive copy, etc.) ships mobile + web together in one commit.
+
+## Desktop layout spec — addendum
+
+Grace 2026-05-19: *"its clear on the today page its all squished in to
+the middle vertically like its mobile it needs to be spread out for
+desktop"*
+
+The current web product renders Today / Plan / Progress / Recipes /
+Library / Settings inside a centred narrow column (~max-w-2xl) on
+desktop — basically the mobile layout stretched into a desktop browser.
+That's wrong. When we port any mobile design change to web, the web
+port must use the available horizontal space.
+
+**Concrete web layout rules going forward:**
+
+- **Today (desktop):** Two-column layout above the meals list.
+  Left column (~40%): calorie ring + macro tiles. Right column (~60%):
+  day strip + week summary + planned-meals card. Meals list below
+  spans full width with comfortable line-length max (~720px).
+- **Plan (desktop):** 7-day kanban already exists — keep the
+  horizontal grid, make sure it actually uses screen width (currently
+  truncates at narrow max-width).
+- **Progress (desktop):** Two-column. Left: hero number + weight chart.
+  Right: macro trend bars + week digest + insights stack.
+- **Recipes / Discover (desktop):** 3-column grid above 1280px, 4-column
+  above 1600px. Card aspect-ratio square (currently 4:3 looks awkward
+  in a 12-column desktop grid).
+- **Library (desktop):** Same as Recipes/Discover. Filter row gets a
+  proper sidebar at desktop width, not a horizontal pill scroll.
+- **Settings (desktop):** Two-column. Left rail = section nav. Right
+  pane = active section content. Currently a single narrow vertical
+  scroll on desktop, which is the obvious phone-stretched failure.
+
+This applies to **every** web change from Phase W0 onwards. If a phase
+ships mobile + web in the same commit (per the new parity rule), the
+web side MUST address the desktop layout for that surface, not just
+narrow-column mirror the mobile.
+
+## Plan + token system (unchanged from earlier ledger)
 Owner: Grace
 Supersedes (synthesises, not replaces): the Tare Phase 0 + 0.5 foundation
 docs at `docs/decisions/2026-05-18-tare-aesthetic-foundation.md` — those

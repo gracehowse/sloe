@@ -4,11 +4,14 @@ This is one product across web and mobile.
 
 ## Non-negotiable rules
 - Web and mobile must stay in sync at all times
+- **Every change ships mobile + web in the SAME commit so both can be reviewed together.** No "web first, mobile catches up later." No "mobile leads, web follows in the next PR." If a single phase touches `apps/mobile/`, it touches `src/` and/or `app/` in the same commit with the equivalent change. Grace's rule, 2026-05-19: she's reviewing a single product, not two platforms on different cadences. Picking one platform to lead because it's easier-to-iterate tooling-wise is rejected — both ship together.
+- If the design materials are mobile-first (iPhone mockups, mobile chat transcript, iOS-focused references like Apple Design Awards), **start in `apps/mobile/`**. Don't default to web because CSS variables feel easier to wire than React Native theming.
+- Web layouts are NOT a narrow-column mirror of mobile. Desktop has horizontal space — use it. If a mobile layout stacks vertically, the web port should spread horizontally (two-column / sidebar + main / wider hero) so the experience reads as desktop-native, not phone-stretched. This applies retroactively to Today/Plan/Progress/Recipes/Library/Settings — currently squished into a centred narrow column on desktop, needs fixing.
 - No feature is complete without:
-  - implementation
-  - testing
+  - implementation (mobile + web together)
+  - testing (mobile + web together)
   - documentation
-  - cross-platform review
+  - cross-platform review (always — never separately)
 - Documentation must be updated immediately after every meaningful change
 - Tests must be updated immediately after every meaningful change
 - Prefer correctness over speed
