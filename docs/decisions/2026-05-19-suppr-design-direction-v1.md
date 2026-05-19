@@ -435,6 +435,8 @@ These need answers before V1 starts:
 - **Does not** treat photography commission as a token problem. It's a content + spend decision that runs parallel.
 - **Does not** authorise any implementation past Phase 0.5 until Grace signs off via the interactive HTML at
   `docs/decisions/2026-05-19-suppr-design-direction-v1/index.html`.
+- **Does not** cover the recipe-aggregator (Deglaze-style search) workstream — that's a parallel product/data decision documented separately at
+  `docs/decisions/2026-05-19-recipe-aggregator-architecture.md`. The two plans reference each other (the V9 photography commission unlocks the aggregator's hero-recipe imagery) but neither blocks the other.
 
 ---
 
