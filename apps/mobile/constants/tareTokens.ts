@@ -129,7 +129,13 @@ export interface TarePalette {
 // Light mode palette
 // ─────────────────────────────────────────────────────────────────────
 export const TARE_LIGHT: TarePalette = {
-  bg: "#f1ebdf",
+  // 2026-05-19 — lifted from `#f1ebdf` (Phase 0.7 settled value) to
+  // `#f6f3ee` after sim review: the warmer/darker cream read as muddy
+  // against the white card. `#f6f3ee` is closer to a true warm-paper
+  // off-white — cards still have separation, but the page no longer
+  // pushes the reader's eye down. Mirror: `--background` in
+  // `src/styles/tare-aesthetic.css`. Same commit; web + mobile parity.
+  bg: "#f6f3ee",
   card: "#ffffff",
   secondary: "#ebe5d8",
   muted: "#e6dfd0",

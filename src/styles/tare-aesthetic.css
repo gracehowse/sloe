@@ -14,7 +14,10 @@
  *
  * Phase 0.7 + 0.8 settled state (kept from earlier reverted-then-restored
  * work):
- *   - Surfaces: warm cream `#f1ebdf` daily / peach `#f6e4d6` acquisition
+ *   - Surfaces: warm off-white `#f6f3ee` daily / peach `#f6e4d6` acquisition
+ *     (lifted 2026-05-19 from `#f1ebdf` after sim review — the warmer
+ *     cream read as muddy; the lighter value keeps card separation
+ *     without darkening the page)
  *   - Dark: warm-black `#0e0d0b` (not pure black — pairs with cream's
  *     emotional warmth)
  *   - Accent: INK monochrome (#14141a light / #e8e2d4 cream-on-dark).
@@ -36,8 +39,8 @@
  */
 
 body.tare-on {
-  /* ── Surfaces: warm cream daily / peach acquisition ── */
-  --background: #f1ebdf;
+  /* ── Surfaces: warm off-white daily / peach acquisition ── */
+  --background: #f6f3ee;
   --card: #ffffff;
   --popover: #ffffff;
   --secondary: #ebe5d8;

@@ -170,7 +170,8 @@ describe("useTarePalette — palette resolution", () => {
     mockFlag = true;
     const { result } = renderHook(() => useTarePalette());
     await waitFor(() => expect(result.current).not.toBe(null));
-    expect(result.current?.bg).toBe("#f1ebdf");
+    // 2026-05-19 — lifted from `#f1ebdf` to `#f6f3ee` after sim review.
+    expect(result.current?.bg).toBe("#f6f3ee");
     expect(result.current?.accent).toBe("#14141a");
     // Phase 0.8 softened macros:
     expect(result.current?.macroProtein).toBe("#5b6fb8");
