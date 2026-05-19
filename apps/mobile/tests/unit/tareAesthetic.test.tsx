@@ -173,11 +173,12 @@ describe("useTarePalette — palette resolution", () => {
     // 2026-05-19 — lifted from `#f1ebdf` to `#f6f3ee` after sim review.
     expect(result.current?.bg).toBe("#f6f3ee");
     expect(result.current?.accent).toBe("#14141a");
-    // Phase 0.8 softened macros:
-    expect(result.current?.macroProtein).toBe("#5b6fb8");
-    expect(result.current?.macroCarbs).toBe("#c87935");
-    expect(result.current?.macroFat).toBe("#c4708a");
-    expect(result.current?.macroFiber).toBe("#5d8a5c");
+    // V1.2 brightened softened macros (one click brighter than the
+    // Phase 0.8 muted set — denim/amber/rose/sage at higher L):
+    expect(result.current?.macroProtein).toBe("#6478c8");
+    expect(result.current?.macroCarbs).toBe("#d3803e");
+    expect(result.current?.macroFat).toBe("#cf7895");
+    expect(result.current?.macroFiber).toBe("#669767");
     // Fonts default to family names (deferred font load — see
     // comments in constants/tareTokens.ts).
     expect(result.current?.fontSans).toBe("Inter");

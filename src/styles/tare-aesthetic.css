@@ -82,28 +82,32 @@ body.tare-on {
   --accent-warm-foreground: #ffffff;
   --accent-warm-soft: rgba(160, 79, 48, 0.10);
 
-  /* ── Macros: SOFTENED data palette (Phase 0.8) ── */
-  --macro-protein: #5b6fb8;
-  --macro-protein-soft: rgba(91, 111, 184, 0.13);
-  --macro-carbs: #c87935;
-  --macro-carbs-soft: rgba(200, 121, 53, 0.14);
-  --macro-fat: #c4708a;
-  --macro-fat-soft: rgba(196, 112, 138, 0.14);
-  --macro-calories: #4d8a5c;
+  /* ── Macros: SOFTENED data palette (V1.2 brighter — 2026-05-19) ──
+   * One-click brighten of the Phase 0.8 softened palette after sim
+   * review. Same hue families (denim/amber/rose/sage), ~6-8% more
+   * lightness so the colours read present without going back to
+   * iOS-data-bright. Mirror of `apps/mobile/constants/tareTokens.ts`. */
+  --macro-protein: #6478c8;
+  --macro-protein-soft: rgba(100, 120, 200, 0.15);
+  --macro-carbs: #d3803e;
+  --macro-carbs-soft: rgba(211, 128, 62, 0.15);
+  --macro-fat: #cf7895;
+  --macro-fat-soft: rgba(207, 120, 149, 0.15);
+  --macro-calories: #558f55;
 
   /* ── Source / provenance dots ── */
-  --source-usda: #4d8a5c;
-  --source-off: #5b6fb8;
-  --source-fatsecret: #c87935;
-  --source-ai: #c4708a;
+  --source-usda: #558f55;
+  --source-off: #6478c8;
+  --source-fatsecret: #d3803e;
+  --source-ai: #cf7895;
 
   /* ── Meal-slot tints: tied to macro identity ── */
-  --slot-breakfast: #c87935;
-  --slot-breakfast-soft: rgba(200, 121, 53, 0.12);
-  --slot-lunch: #5d8a5c;
-  --slot-lunch-soft: rgba(93, 138, 92, 0.12);
-  --slot-dinner: #5b6fb8;
-  --slot-dinner-soft: rgba(91, 111, 184, 0.12);
+  --slot-breakfast: #d3803e;
+  --slot-breakfast-soft: rgba(211, 128, 62, 0.13);
+  --slot-lunch: #669767;
+  --slot-lunch-soft: rgba(102, 151, 103, 0.13);
+  --slot-dinner: #6478c8;
+  --slot-dinner-soft: rgba(100, 120, 200, 0.13);
   --slot-snack: #0e8aa3;
   --slot-snack-soft: rgba(14, 138, 163, 0.12);
 
@@ -123,11 +127,11 @@ body.tare-on {
   /* ── Elevation ── */
   --elev-float-primary: 0 4px 16px rgba(20, 20, 26, 0.24);
 
-  /* ── Chart palette: softened data colours ── */
-  --chart-1: #5b6fb8;
-  --chart-2: #c87935;
-  --chart-3: #c4708a;
-  --chart-4: #5d8a5c;
+  /* ── Chart palette: softened data colours (V1.2 brighter) ── */
+  --chart-1: #6478c8;
+  --chart-2: #d3803e;
+  --chart-3: #cf7895;
+  --chart-4: #669767;
   --chart-5: #14141a;
 
   /* ── Glass / surface tokens (light) ── */

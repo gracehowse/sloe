@@ -2,6 +2,7 @@ import * as React from "react";
 import { StyleSheet, Text, View, type ViewStyle } from "react-native";
 import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useTarePalette } from "@/lib/tareAesthetic";
 import {
   computeRemaining,
   projectRemaining,
@@ -38,19 +39,29 @@ type Column = {
   unit: "kcal" | "g";
 };
 
-const BASE_COLUMNS: Column[] = [
-  { key: "calories", label: "KCAL", color: MacroColors.calories, unit: "kcal" },
-  { key: "protein", label: "PROTEIN", color: MacroColors.protein, unit: "g" },
-  { key: "carbs", label: "CARBS", color: MacroColors.carbs, unit: "g" },
-  { key: "fat", label: "FAT", color: MacroColors.fat, unit: "g" },
-];
+// 2026-05-19 (Tare V1.2 parity fix) — column colours moved from
+// module-level static arrays into `useColumns()` hook so each render
+// can pick Tare or legacy values via `useTarePalette()`. Previously
+// these were frozen at import time as legacy MacroColors, which
+// caused the macros-bar to show legacy bright colours on past days
+// while CalorieRing on today showed softened Tare colours.
+function useColumns(includeFiber: boolean): Column[] {
+  const tare = useTarePalette();
+  const proteinColor = tare?.macroProtein ?? MacroColors.protein;
+  const carbsColor = tare?.macroCarbs ?? MacroColors.carbs;
+  const fatColor = tare?.macroFat ?? MacroColors.fat;
+  const fiberColor = tare?.macroFiber ?? MacroColors.fiber ?? Accent.success;
+  const caloriesColor = tare?.macroCalories ?? MacroColors.calories;
 
-const FIBER_COLUMN: Column = {
-  key: "fiber",
-  label: "FIBER",
-  color: MacroColors.fiber ?? Accent.success,
-  unit: "g",
-};
+  const base: Column[] = [
+    { key: "calories", label: "KCAL", color: caloriesColor, unit: "kcal" },
+    { key: "protein", label: "PROTEIN", color: proteinColor, unit: "g" },
+    { key: "carbs", label: "CARBS", color: carbsColor, unit: "g" },
+    { key: "fat", label: "FAT", color: fatColor, unit: "g" },
+  ];
+  if (!includeFiber) return base;
+  return [...base, { key: "fiber", label: "FIBER", color: fiberColor, unit: "g" }];
+}
 
 const ARIA_LABEL: Record<Column["key"], string> = {
   calories: "calories",
@@ -98,7 +109,7 @@ export function RemainingMacrosBar({
   );
 
   const includeFiber = typeof current.fiber === "number";
-  const columns = includeFiber ? [...BASE_COLUMNS, FIBER_COLUMN] : BASE_COLUMNS;
+  const columns = useColumns(includeFiber);
 
   return (
     <View

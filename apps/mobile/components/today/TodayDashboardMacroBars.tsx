@@ -4,6 +4,7 @@ import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
 import type { JournalMeal } from "@/lib/nutritionJournal";
 import { carbsLabel, netCarbsForRow } from "@suppr/shared/nutrition/netCarbs";
 import { formatMacro } from "@suppr/shared/nutrition/formatMacro";
+import { useTarePalette } from "@/lib/tareAesthetic";
 
 /**
  * TodayDashboardMacroBars — alternative macro display: a vertical
@@ -57,6 +58,18 @@ export function TodayDashboardMacroBars({
   textSecondaryColor,
   netCarbsLensEnabled,
 }: TodayDashboardMacroBarsProps) {
+  // 2026-05-19 (Tare V1.2 parity fix) — route macro bar colours
+  // through the Tare palette so this view matches CalorieRing +
+  // TodayDashboardMacroTiles + TodayWeekView when Tare is on.
+  // Fiber: legacy was Accent.success (bright green); Tare routes to
+  // macroFiber (sage) instead. Sodium/sugar/water keep legacy
+  // mappings — they're not part of the four primary macros.
+  const tare = useTarePalette();
+  const proteinColor = tare?.macroProtein ?? MacroColors.protein;
+  const carbsColor = tare?.macroCarbs ?? MacroColors.carbs;
+  const fatColor = tare?.macroFat ?? MacroColors.fat;
+  const fiberColor = tare?.macroFiber ?? Accent.success;
+
   const microSum = mealsToday.reduce(
     (a, m) => ({
       sugarG:
@@ -74,7 +87,7 @@ export function TodayDashboardMacroBars({
       label: "Protein",
       current: totals.protein,
       target: targets.protein,
-      color: MacroColors.protein,
+      color: proteinColor,
       unit: "g",
     },
     carbs: {
@@ -89,21 +102,21 @@ export function TodayDashboardMacroBars({
         targets.fiber,
         Boolean(netCarbsLensEnabled),
       ),
-      color: MacroColors.carbs,
+      color: carbsColor,
       unit: "g",
     },
     fat: {
       label: "Fat",
       current: totals.fat,
       target: targets.fat,
-      color: MacroColors.fat,
+      color: fatColor,
       unit: "g",
     },
     fiber: {
       label: "Fiber",
       current: totals.fiber,
       target: targets.fiber,
-      color: Accent.success,
+      color: fiberColor,
       unit: "g",
     },
     sugar: {

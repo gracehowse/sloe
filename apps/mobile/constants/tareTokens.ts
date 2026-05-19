@@ -160,28 +160,34 @@ export const TARE_LIGHT: TarePalette = {
   accentWarmInk: "#ffffff",
   accentWarmWash: "rgba(160,79,48,0.08)",
 
-  macroProtein: "#5b6fb8",
-  macroProteinSoft: "rgba(91,111,184,0.13)",
-  macroCarbs: "#c87935",
-  macroCarbsSoft: "rgba(200,121,53,0.14)",
-  macroFat: "#c4708a",
-  macroFatSoft: "rgba(196,112,138,0.14)",
-  macroFiber: "#5d8a5c",
-  macroFiberSoft: "rgba(93,138,92,0.14)",
-  macroCalories: "#4d8a5c",
+  // 2026-05-19 V1.2 — softened palette brightened one click after sim
+  // review. Prior values were ~13% lower sat than legacy data-viz
+  // (denim/amber/rose/sage). Grace flagged them as too muted — bumped
+  // each by ~6-8% lightness so the colours read present without
+  // crossing back into iOS-data-bright territory. Soft-alpha variants
+  // tracked to the new base RGB.
+  macroProtein: "#6478c8",
+  macroProteinSoft: "rgba(100,120,200,0.15)",
+  macroCarbs: "#d3803e",
+  macroCarbsSoft: "rgba(211,128,62,0.15)",
+  macroFat: "#cf7895",
+  macroFatSoft: "rgba(207,120,149,0.15)",
+  macroFiber: "#669767",
+  macroFiberSoft: "rgba(102,151,103,0.15)",
+  macroCalories: "#558f55",
   macroWater: "#06b6d4",
 
-  sourceUsda: "#4d8a5c",
-  sourceOff: "#5b6fb8",
-  sourceFatSecret: "#c87935",
-  sourceAi: "#c4708a",
+  sourceUsda: "#558f55",
+  sourceOff: "#6478c8",
+  sourceFatSecret: "#d3803e",
+  sourceAi: "#cf7895",
 
-  slotBreakfast: "#c87935",
-  slotBreakfastSoft: "rgba(200,121,53,0.12)",
-  slotLunch: "#5d8a5c",
-  slotLunchSoft: "rgba(93,138,92,0.12)",
-  slotDinner: "#5b6fb8",
-  slotDinnerSoft: "rgba(91,111,184,0.12)",
+  slotBreakfast: "#d3803e",
+  slotBreakfastSoft: "rgba(211,128,62,0.13)",
+  slotLunch: "#669767",
+  slotLunchSoft: "rgba(102,151,103,0.13)",
+  slotDinner: "#6478c8",
+  slotDinnerSoft: "rgba(100,120,200,0.13)",
   slotSnack: "#0e8aa3",
   slotSnackSoft: "rgba(14,138,163,0.12)",
 
