@@ -39,14 +39,24 @@
  */
 
 body.tare-on {
-  /* ── Surfaces: true white (light) / true black (dark) ── */
-  --background: #ffffff;
+  /* ── Surfaces: warm cream daily-use, with a separate peach
+   *    --surface-peach token reserved for paywall / onboarding /
+   *    marketing surfaces. (Phase 0.5 amendment 2026-05-18 — pure
+   *    white was clinical; per Noom comparative read, cream does
+   *    emotional work without going feminine-peach. Peach stays
+   *    available as an opt-in for acquisition surfaces.) ── */
+  --background: #f6f3ee;
   --card: #ffffff;
   --popover: #ffffff;
-  --secondary: #f6f6f6;
-  --muted: #fafafa;
-  --accent: #f6f6f6;
-  --input-background: #fafafa;
+  --secondary: #f0ede6;
+  --muted: #ebe7df;
+  --accent: #f0ede6;
+  --input-background: #faf7f1;
+  /* Acquisition-only surface — apply per-surface, never as page-bg
+   * for daily-use. Best on paywall hero, onboarding intro, weekly
+   * digest editorial card. Pair with the .tare-cutout-card primitive. */
+  --surface-peach: #f6e4d6;
+  --surface-peach-ink: #2a160e;
 
   /* ── Text ramp: true greyscale, four steps ── */
   --foreground: #0a0a0a;
@@ -59,10 +69,10 @@ body.tare-on {
   --muted-foreground: #5a5a5a;     /* fgMute   — secondary text */
   --switch-background: #b8b8b8;    /* fgFaint  — disabled */
 
-  /* ── Rules / dividers: pure neutral greys ── */
-  --border: #eaeaea;
-  --border-strong: rgba(0, 0, 0, 0.08);
-  --sidebar-border: #eaeaea;
+  /* ── Rules / dividers: warm hairlines (cream-bias) ── */
+  --border: #e6e1d6;
+  --border-strong: rgba(20, 14, 8, 0.08);
+  --sidebar-border: #e6e1d6;
 
   /* ── Brand accent: terracotta, ONE colour ──
    * Used only in: streak count · ring progress · FAB · "Log meal"
@@ -112,9 +122,9 @@ body.tare-on {
   --north-star-bg-to: rgba(160, 82, 56, 0.03);
   --north-star-border: rgba(163, 82, 42, 0.14);
 
-  /* ── Sidebar surface ── */
+  /* ── Sidebar surface — matches daily-use cream system ── */
   --sidebar: #ffffff;
-  --sidebar-accent: #f6f6f6;
+  --sidebar-accent: #f0ede6;
 
   /* ── Elevation: same recipes, accent recoloured ── */
   --elev-float-primary: 0 4px 16px rgba(163, 82, 42, 0.32);
@@ -138,16 +148,23 @@ body.tare-on {
   --confidence-neutral: #5a5a5a;
 }
 
-/* ── DARK MODE — true black surfaces, lighter accent ───────────────── */
+/* ── DARK MODE — warm-black surfaces (not pure black) so the
+ *    cream/peach light counterpart's emotional warmth carries
+ *    through. Phase 0.5 amendment: dropped #000 → #0e0d0b to
+ *    match the chat-round-3 "night" value paired with the cream
+ *    daily-use light theme. ─────────────────────────────────────── */
 .dark body.tare-on,
 body.tare-on.dark {
-  --background: #000000;
-  --card: #141414;
-  --popover: #141414;
-  --secondary: #0e0e0e;
-  --muted: #161616;
-  --accent: #0e0e0e;
-  --input-background: #161616;
+  --background: #0e0d0b;
+  --card: #1a1815;
+  --popover: #1a1815;
+  --secondary: #14130f;
+  --muted: #1a1815;
+  --accent: #14130f;
+  --input-background: #1a1815;
+  /* Acquisition-only dark surface — warmer night for peach pairing */
+  --surface-peach: #1d1410;
+  --surface-peach-ink: #f6e4d6;
 
   --foreground: #ffffff;
   --card-foreground: #ffffff;
@@ -159,9 +176,9 @@ body.tare-on.dark {
   --muted-foreground: #a8a8a8;
   --switch-background: #4a4a4a;
 
-  --border: #242424;
-  --border-strong: rgba(255, 255, 255, 0.08);
-  --sidebar-border: #242424;
+  --border: #2a2620;
+  --border-strong: rgba(246, 243, 238, 0.08);
+  --sidebar-border: #2a2620;
 
   --primary: #d4824a;              /* warmer terracotta on dark */
   --primary-foreground: #15090a;   /* accentInk — dark text on the warm accent */
@@ -200,8 +217,8 @@ body.tare-on.dark {
   --north-star-bg-to: rgba(185, 105, 74, 0.04);
   --north-star-border: rgba(212, 130, 74, 0.18);
 
-  --sidebar: #141414;
-  --sidebar-accent: #0e0e0e;
+  --sidebar: #1a1815;
+  --sidebar-accent: #14130f;
 
   --elev-float-primary: 0 4px 16px rgba(212, 130, 74, 0.38);
 
@@ -241,27 +258,160 @@ body.tare-on {
   font-family: var(--font-sans);
 }
 
-/* Editorial moments — apply via className="tare-editorial" */
-.tare-editorial {
+/* ─────────────────────────────────────────────────────────────────────
+ * Editorial primitives — Phase 0.5 (post-Noom comparative read)
+ *
+ * Discipline:
+ *   - Headlines = serif HEAVY (600+). Light editorial 400 reads
+ *     fashion-magazine fragile; heavy serif reads structural and
+ *     authoritative without going masculine-bro.
+ *   - Body / UI / data = sans. Never mix within a card.
+ *   - Italic is allowed but reserved for ONE-WORD highlights inside
+ *     a headline (via .tare-highlight) OR for the masthead ref. Not
+ *     blanket italic.
+ * ───────────────────────────────────────────────────────────────────── */
+
+/* Screen titles — Spectral 600, the daily-driver editorial class.
+ * "Today" / "Meal plan" / "Library" / "Progress" / hero headlines on
+ * paywall + onboarding all read with this class. Weight is the move,
+ * not family — bumping 400 → 600 closes the Noom-bar gap. */
+.tare-title-serif {
   font-family: var(--font-serif);
-  font-style: normal; /* upright — italic deliberately not used */
-  font-weight: 400;
+  font-style: normal;
+  font-weight: 600;
   letter-spacing: -0.015em;
+  line-height: 1.15;
 }
 
-/* Hero numbers in the ring centre and big-stat cards */
-.tare-hero-number {
+/* Smaller editorial moments — body headlines inside cards, supporting
+ * lines under hero titles. Use 500 weight so it reads warm without
+ * shouting. */
+.tare-editorial {
   font-family: var(--font-serif);
   font-style: normal;
   font-weight: 500;
+  letter-spacing: -0.005em;
+}
+
+/* Hero numbers in the ring centre and big-stat cards. Tabular figures
+ * + bumped to 600 weight so it carries authority alongside .tare-title-serif. */
+.tare-hero-number {
+  font-family: var(--font-serif);
+  font-style: normal;
+  font-weight: 600;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
 
-/* Day-of-year / week-of-year masthead reference ("No. 142", "No. 19") */
+/* Day-of-year / week-of-year masthead reference ("No. 142", "No. 19").
+ * The ONE deliberate italic moment outside of <TareHighlight>. Magazine
+ * convention — italicised numeric label tied to a periodical surface. */
 .tare-masthead-ref {
   font-family: var(--font-serif);
-  font-style: italic; /* deliberate exception — magazine convention */
+  font-style: italic;
   font-weight: 400;
   letter-spacing: 0.01em;
+}
+
+/* Highlight primitive — italic serif word + soft sage wash behind it.
+ * Per Noom comparative read: the italic isn't the lift, the wash is.
+ * Use on ONE word per headline maximum. Pair with .tare-title-serif:
+ *
+ *   <h1 class="tare-title-serif">
+ *     Your <span class="tare-highlight">steadiest</span> week yet
+ *   </h1>
+ *
+ * The wash colour is the calmest macro hue (forest sage) at very low
+ * saturation so it reads as parchment + watercolour, not a marker
+ * stripe. Inset slightly so it feels hand-placed, not drawn. */
+.tare-highlight {
+  font-style: italic;
+  background-color: rgba(106, 138, 92, 0.18);
+  padding: 0 0.18em 0.04em;
+  margin: 0 -0.06em;
+  border-radius: 0.18em;
+  /* Wash sits BEHIND the descenders — use box-decoration-break so a
+   * wrapped highlight gets a clean wash on each line, not one giant
+   * rectangle. */
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.dark .tare-highlight,
+body.tare-on.dark .tare-highlight {
+  background-color: rgba(138, 154, 107, 0.22);
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+ * Curved cutout card — Phase 0.5 (post-Noom comparative read)
+ *
+ * The single most signature shape move in the Noom acquisition surfaces:
+ * a card with a quarter-circle "bite" taken out of one corner, with
+ * optional arc text following the curve ("POWERED BY SCIENCE.").
+ *
+ * Use ONLY on: paywall hero, onboarding "why" cards, weekly digest
+ * editorial card. NEVER on Today / Plan / Library / daily-use surfaces.
+ *
+ * Implementation: a sibling circle absolute-positioned to overlap the
+ * card's corner. The circle's background must match the SURFACE behind
+ * the card (page bg or peach surface). This is faked-by-overlap, not a
+ * real cutout — but visually identical at any scale.
+ *
+ * Customisation:
+ *   - --cutout-surface : background colour BEHIND the card (CSS var or hex)
+ *   - --cutout-size    : diameter of the cutout in px (default 72px)
+ *   - --cutout-corner  : which corner to bite (default top-left)
+ *
+ * For best results, pair with peach surface (--surface-peach) and one
+ * heavy-serif headline. Arc text wraps via the <TareCutoutCard> React
+ * primitive (uses SVG <textPath>).
+ * ───────────────────────────────────────────────────────────────────── */
+.tare-cutout-card {
+  position: relative;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  --cutout-surface: var(--background);
+  --cutout-size: 72px;
+}
+
+.tare-cutout-card[data-cutout-surface="peach"] {
+  --cutout-surface: var(--surface-peach);
+}
+
+.tare-cutout-card::before {
+  content: "";
+  position: absolute;
+  top: calc(var(--cutout-size) / -2);
+  left: calc(var(--cutout-size) / -2);
+  width: var(--cutout-size);
+  height: var(--cutout-size);
+  background: var(--cutout-surface);
+  border-radius: 50%;
+  z-index: 1;
+}
+
+.tare-cutout-card[data-cutout-corner="top-right"]::before {
+  top: calc(var(--cutout-size) / -2);
+  right: calc(var(--cutout-size) / -2);
+  left: auto;
+}
+
+.tare-cutout-card[data-cutout-corner="bottom-left"]::before {
+  bottom: calc(var(--cutout-size) / -2);
+  left: calc(var(--cutout-size) / -2);
+  top: auto;
+}
+
+.tare-cutout-card[data-cutout-corner="bottom-right"]::before {
+  bottom: calc(var(--cutout-size) / -2);
+  right: calc(var(--cutout-size) / -2);
+  top: auto;
+  left: auto;
+}
+
+/* Content sits above the cutout circle */
+.tare-cutout-card > * {
+  position: relative;
+  z-index: 2;
 }

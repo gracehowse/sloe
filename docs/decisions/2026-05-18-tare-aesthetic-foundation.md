@@ -1,7 +1,8 @@
-# Tare aesthetic v1 — foundation (Phase 0)
+# Tare aesthetic v1 — foundation (Phase 0 + 0.5)
 
 Date: 2026-05-18
-Status: Phase 0 shipped, Phase 1+ pending
+Status: Phase 0 + 0.5 shipped, Phase 1+ pending
+Last amendment: 2026-05-18 Phase 0.5 (Noom comparative read)
 Area: design system / visual elevation
 Owner: Grace
 Source bundles (mirrored locally during analysis):
@@ -202,3 +203,147 @@ confirmation:
 - If a real user (TestFlight beta) reports the new palette feels
   off, we revert via the feature flag (zero-cost rollback) before
   patching.
+
+---
+
+## Phase 0.5 — Noom comparative read amendments (2026-05-18)
+
+Grace's pushback on Phase 0: the Tare round-6 spec (true white surface,
+Spectral-400 editorial, no italic anywhere) was over-corrected. Noom
+(used here as a *softness* benchmark, NOT a functional-product
+benchmark — their hooks, gamified streaks, and paywall pressure are
+explicitly rejected) does five things better:
+
+1. **Heavy serif headlines (600+).** Spectral / Newsreader at weight
+   400 reads fashion-magazine fragile; at 600 reads structural and
+   authoritative. Weight does the lifting, not family change.
+2. **Selective italic with a highlight wash.** Italic isn't the lift —
+   the wash is. ONE word per headline gets italic + sage wash. Used
+   like a hand-placed parchment mark, not a marker stripe.
+3. **Warmer surfaces.** Pure white is clinical; their peach/blush at
+   low saturation does emotional work without being literal about
+   food. **Cream stays for daily-use; peach is an opt-in surface for
+   marketing / paywall / onboarding only.**
+4. **Curved architectural cutouts.** A quarter-circle "bite" out of
+   one card corner, with optional arc text following the curve. Pure
+   shape language. Extends the brand's arc/bowl visual DNA into
+   surface treatment.
+5. **Photography is non-negotiable.** Recipe thumbnails rendering as
+   gradient/glyph placeholders is the single biggest visual gap. **No
+   token retune fixes this** — it requires a photography commission.
+   Tracked as a separate workstream below.
+6. **Serif/sans split principled.** Headlines = serif heavy. Body /
+   UI / data = sans. Never mix within a card.
+
+### What shipped in Phase 0.5
+
+**Surface tokens reverted from pure white to warm cream:**
+- `--background` (light): `#ffffff` → `#f6f3ee` (cream — same hue
+  family as Tare's original "paper" surface, low saturation)
+- `--background` (dark): `#000000` → `#0e0d0b` (warm-black, paired
+  with cream's warmth on light)
+- `--card` (light) stays `#ffffff` so cards lift cleanly off the
+  cream page
+- `--border` (light): `#eaeaea` → `#e6e1d6` (cream-bias hairline)
+- `--border` (dark): `#242424` → `#2a2620` (warm-black hairline)
+
+**New peach surface token for acquisition only:**
+- `--surface-peach: #f6e4d6` (light) / `#1d1410` (dark)
+- `--surface-peach-ink` for text-on-peach contrast
+- Applied per-surface via `style={{ background: 'var(--surface-peach)' }}`
+  or the `data-cutout-surface="peach"` attribute on cutout cards
+- **Never** the page-bg for daily-use surfaces
+
+**Editorial type primitives — heavy weight by default:**
+- `.tare-title-serif` — NEW. Spectral 600, screen titles ("Today",
+  "Meal plan", "Library", "Progress", hero headlines on paywall +
+  onboarding). The daily-driver editorial class.
+- `.tare-editorial` — weight bumped 400 → 500. Smaller editorial
+  moments inside cards.
+- `.tare-hero-number` — weight bumped 500 → 600. Ring-centre value,
+  big-stat hero numbers.
+- `.tare-masthead-ref` — unchanged (italic 400 — the masthead
+  exception).
+
+**Highlight primitive:**
+- `.tare-highlight` CSS class + `<TareHighlight>` React wrapper at
+  `src/app/components/ui/tare-highlight.tsx`
+- Italic serif + soft sage wash behind (forest sage at 18% alpha
+  light / 22% dark)
+- Inset slightly so it reads as parchment + watercolour, not a
+  marker stripe
+- `box-decoration-break: clone` so wrapped highlights get a clean
+  wash per line
+- **Discipline: one per headline maximum.** Reserved for the
+  weekly-recap card opener, onboarding intro, paywall hero. Never
+  on body / UI / data / button copy.
+
+**Curved cutout primitive:**
+- `.tare-cutout-card` CSS class + `<TareCutoutCard>` React wrapper at
+  `src/app/components/ui/tare-cutout-card.tsx`
+- Quarter-circle "bite" out of any of the four corners via
+  `data-cutout-corner` attribute
+- Surface-behind colour driven by `--cutout-surface` CSS var
+  (`var(--background)` default; switch to `var(--surface-peach)` via
+  `surfaceBg="peach"` prop on the React wrapper)
+- Optional arc label (`POWERED BY SCIENCE.`-style) renders via SVG
+  `<textPath>` so the type traces the curve
+- Implementation: faked by an absolute-positioned circle overlapping
+  the corner with the surface-behind colour. Faster + more reliable
+  than `clip-path` or `mask-image`, looks identical at any scale.
+- **Scope of use:** paywall hero, onboarding "Why Suppr" intro,
+  weekly digest editorial card. NEVER on Today / Plan / Library /
+  daily-use surfaces — the cutout retains signal value only when
+  rare.
+
+### Photography workstream (separate from this code commit)
+
+The 2026-05-18 Noom comparative read landed on this: **no token
+retune fixes gradient/glyph recipe thumbnails.** The single biggest
+visual elevation we can make is real food photography on the top
+~50 recipe cards (Library + Discover).
+
+This is a **content commission + spend decision**, not engineering
+work:
+
+- Budget estimate: £2,000 – £5,000 for 50 dishes at editorial
+  quality (warm sepia stylist + photographer, half-day shoot)
+- Alternative: licensed stock from Stocksy / Death to Stock with
+  consistent warm-tone styling — cheaper (£500-1,500) but loses
+  the "owned" feel
+- Worst-acceptable: AI-generated food photography via Midjourney
+  v6 or Flux Pro with consistent prompt scaffolding — £30 in
+  credits, but ethical + brand-positioning questions
+- Recommendation: commission 25 hero dishes (most-viewed Discover
+  + Library), license-stock the next 75, AI-generate the long-tail
+  rest — three-tier strategy, ~£1,500 total
+
+Tracked as a parallel workstream; this code commit cannot ship the
+photography. Owner: Grace.
+
+### Where Phase 0.5 challenged the original Noom direction
+
+1. **Noom is a marketing benchmark, not a daily-use benchmark.** Their
+   peach surface lives on acquisition; their in-app daily UI is much
+   quieter. Adopted accordingly: peach is a SEPARATE token, never the
+   page-bg for Today / Plan / Library.
+2. **Their gendered marketing-style colour application would alienate
+   our MFP-refugee cohort.** Held the line on calm cream for daily-use.
+3. **Real photography matters more than any token change.** Logged
+   as a parallel workstream rather than pretending we can ship it
+   with tokens.
+4. **Their italic-everywhere Instagram content is brand voice
+   exercise, NOT product UI.** The italic in `<TareHighlight>` is
+   strictly one-per-headline; the masthead reference is the only
+   other italic moment.
+
+### Re-entry to challenge Phase 0.5
+
+- If contrast-audit fails on the cream surface or the sage-wash
+  highlight on any combination, retune and update here.
+- If the photography workstream lands before Phase 1 ships, the
+  recipe-card render conditions in Phase 1 should assume photos
+  exist and remove the gradient-placeholder fallback path.
+- If user testing flags the cutout-card primitive as too
+  "marketing-coded" on the weekly digest, demote to paywall +
+  onboarding only.
