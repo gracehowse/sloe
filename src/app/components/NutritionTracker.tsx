@@ -2165,12 +2165,22 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
   const avatarLetter = (profileDisplayName?.trim()?.[0] ?? authEmail?.trim()?.[0] ?? "U").toUpperCase();
 
   return (
+    // 2026-05-19 (Phase V1 web): widened the daily-use Today container
+    // from `max-w-2xl` (672px) to `max-w-5xl` (1024px) so the desktop
+    // viewport actually uses its horizontal space rather than rendering
+    // a phone-stretched narrow column. Grace 2026-05-19: "the today
+    // page its all squished in to the middle vertically like its
+    // mobile it needs to be spread out for desktop." This is the V1
+    // first-pass — a future V-phase will restructure the day-view
+    // children into a proper 2-col grid (left: ring + macros; right:
+    // context + meals + planned).
+    //
     // xl:pr-[280px] reserves horizontal space for the fixed-position
     // TodayWeekSidebar (260px wide + 16px right offset + 4px buffer).
     // Without this, the date strip's right cells (Sat / Sun) get
     // overlapped by the LAST 7 DAYS panel at desktop widths (audit
     // feedback 2026-05-18).
-    <div className="max-w-2xl mx-auto px-pm-5 py-pm-5 xl:pr-[280px]">
+    <div className="max-w-5xl mx-auto px-pm-5 py-pm-5 xl:pr-[280px]">
       {!isOnline ? (
         <div
           role="alert"

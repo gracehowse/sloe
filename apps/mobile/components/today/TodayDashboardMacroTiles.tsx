@@ -25,6 +25,7 @@ import {
   type LucideIcon,
 } from "lucide-react-native";
 import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
+import { useTarePalette } from "@/lib/tareAesthetic";
 import type { JournalMeal } from "@/lib/nutritionJournal";
 import { carbsLabel, netCarbsForRow } from "@suppr/shared/nutrition/netCarbs";
 import { formatMacro } from "@suppr/shared/nutrition/formatMacro";
@@ -111,11 +112,24 @@ export function TodayDashboardMacroTiles({
     { sugarG: 0, sodiumMg: 0 },
   );
 
+  // 2026-05-19 (Phase V1): when Tare preview / flag is on, the four
+  // macro colours (protein/carbs/fat/fiber) shift to the softened
+  // denim/amber/rose/sage palette. Water keeps cyan; sugar/sodium
+  // are reference-only so they keep the warning amber. Falls back to
+  // the legacy MacroColors when the gate is off so current users see
+  // no change.
+  const tare = useTarePalette();
+  const macroProteinColor = tare?.macroProtein ?? MacroColors.protein;
+  const macroCarbsColor = tare?.macroCarbs ?? MacroColors.carbs;
+  const macroFatColor = tare?.macroFat ?? MacroColors.fat;
+  const macroFiberColor = tare?.macroFiber ?? Accent.success;
+  const macroWaterColor = tare?.macroWater ?? MacroColors.water ?? Accent.info;
+
   // Icons mirror the 2026-04-19 prototype's lucide choices exactly:
   // protein=Beef, carbs=Wheat, fat=Droplets, fiber=Leaf. Extensible
   // macros (sugar/sodium/water) pick sensible lucide neighbours.
   const macroMap: Record<string, MacroDef> = {
-    protein: { label: "Protein", current: totals.protein, target: targets.protein, color: MacroColors.protein, unit: "g", Icon: Beef },
+    protein: { label: "Protein", current: totals.protein, target: targets.protein, color: macroProteinColor, unit: "g", Icon: Beef },
     carbs: {
       // P3-30 (2026-04-25): apply net-carbs lens. Helpers refuse "Net
       // carbs" when fibre is unknown so a misleading headline never
@@ -132,15 +146,15 @@ export function TodayDashboardMacroTiles({
       label: carbsLabel(targets.fiber, Boolean(netCarbsLensEnabled)),
       current: netCarbsForRow(totals.carbs, totals.fiber, Boolean(netCarbsLensEnabled)),
       target: netCarbsForRow(targets.carbs, targets.fiber, Boolean(netCarbsLensEnabled)),
-      color: MacroColors.carbs,
+      color: macroCarbsColor,
       unit: "g",
       Icon: Wheat,
     },
-    fat: { label: "Fat", current: totals.fat, target: targets.fat, color: MacroColors.fat, unit: "g", Icon: Droplets },
-    fiber: { label: "Fiber", current: totals.fiber, target: targets.fiber, color: Accent.success, unit: "g", Icon: Leaf },
+    fat: { label: "Fat", current: totals.fat, target: targets.fat, color: macroFatColor, unit: "g", Icon: Droplets },
+    fiber: { label: "Fiber", current: totals.fiber, target: targets.fiber, color: macroFiberColor, unit: "g", Icon: Leaf },
     sugar: { label: "Sugar", current: Math.round(microSum.sugarG * 10) / 10, target: 50, color: Accent.warning, unit: "g", Icon: Candy, referenceOnly: true },
     sodium: { label: "Sodium", current: Math.round(microSum.sodiumMg), target: 2300, color: MacroColors.sodium, unit: "mg", Icon: Gauge, referenceOnly: true },
-    water: { label: "Water", current: totalWaterMl, target: waterGoalMl, color: MacroColors.water ?? Accent.info, unit: "ml", Icon: Droplet },
+    water: { label: "Water", current: totalWaterMl, target: waterGoalMl, color: macroWaterColor, unit: "ml", Icon: Droplet },
   };
 
   // 2-col grid via flexbox gap + flex-basis (49%) instead of the

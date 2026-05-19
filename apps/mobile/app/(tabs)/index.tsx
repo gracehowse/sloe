@@ -22,6 +22,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useTarePalette } from "@/lib/tareAesthetic";
 import { useHealthSyncOnFocus } from "@/hooks/useHealthSyncOnFocus";
 import { useTodayMountAnimation } from "@/hooks/useTodayMountAnimation";
 import { useNutritionEntriesSync } from "@/hooks/useNutritionEntriesSync";
@@ -392,6 +393,12 @@ export default function TrackerScreen() {
   const { session } = useAuth();
   const userId = session?.user.id;
   const colors = useThemeColors();
+  // 2026-05-19 (Phase V1): when Tare preview / flag is on, override
+  // the page background to the warm cream / warm-black surface. Other
+  // surfaces (cards etc) inherit from useThemeColors() until they're
+  // migrated component-by-component in subsequent V-phases.
+  const tare = useTarePalette();
+  const pageBg = tare?.bg ?? colors.background;
   // User-configurable macro display variant (Settings → Display →
   // Macro display). `tiles` (default) keeps the 2×2 grid; `bars`
   // renders a vertical list of name + value/target + colored bar.
@@ -4379,7 +4386,10 @@ export default function TrackerScreen() {
   return (
     <View
       testID="screen-today"
-      style={[styles.container, { paddingTop: insets.top, position: "relative" }]}
+      style={[
+        styles.container,
+        { backgroundColor: pageBg, paddingTop: insets.top, position: "relative" },
+      ]}
     >
       {/* Activation hooks (audit 2026-04-30) — mounted at the top of the
           container so the toast overlays the ScrollView and the modal
