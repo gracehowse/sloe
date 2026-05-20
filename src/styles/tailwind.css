@@ -1,4 +1,5 @@
-@import 'tailwindcss' source(none);
-@source '../**/*.{js,ts,jsx,tsx}';
+/* App Router pages live outside src/. Let Tailwind auto-detect sources so
+   production CSS includes classes used from both app/ and src/. */
+@import 'tailwindcss';
 
 @import 'tw-animate-css';
