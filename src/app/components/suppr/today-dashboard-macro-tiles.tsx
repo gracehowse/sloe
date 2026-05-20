@@ -12,7 +12,6 @@ import {
   Wheat,
   type LucideIcon,
 } from "lucide-react";
-import { useFeatureFlagEnabled } from "posthog-js/react";
 import { carbsLabel, netCarbsForRow } from "../../../lib/nutrition/netCarbs";
 import { formatMacro } from "../../../lib/nutrition/formatMacro";
 
@@ -88,10 +87,6 @@ type TileMeta = {
   caption: string;
   /** CSS color var (e.g. "var(--macro-protein)") for the progress fill. */
   fillVar: string;
-  /** 2026-05-18 — true when `current > target` on a tracked (non-ref)
-   *  macro. Drives the warm bar + bold amber caption so an over-budget
-   *  tile reads visually distinct from "hit target exactly". */
-  isOverBudget: boolean;
 };
 
 function buildMacroTile(
@@ -114,18 +109,11 @@ function buildMacroTile(
     formatWaterLine,
   } = props;
 
-  // 2026-05-18 (TF whole-app audit, harsh-review): empty tiles used to
-  // repeat "X g remaining" four times in identical-shape sentences —
-  // loud chrome for an empty state. Now suppress the caption when the
-  // tile is at zero; the `0 / target g` line above already says it.
-  // Also rename "remaining" → "left" for non-empty under-budget tiles
-  // (shorter + warmer).
   const plainRemainingCaption = (cur: number, tgt: number, unit: string): string => {
-    if (cur <= 0 && tgt > 0) return "";
     const remain = tgt - cur;
     const magnitude = Math.round(Math.abs(remain));
     return remain >= 0
-      ? `${magnitude} ${unit} left`
+      ? `${magnitude} ${unit} remaining`
       : `${magnitude} ${unit} over`;
   };
 
@@ -141,7 +129,6 @@ function buildMacroTile(
       pct,
       caption: plainRemainingCaption(cur, tgt, "g"),
       fillVar: "var(--macro-protein)",
-      isOverBudget: tgt > 0 && cur > tgt,
     };
   }
   if (macroKey === "carbs") {
@@ -170,7 +157,6 @@ function buildMacroTile(
       pct,
       caption: plainRemainingCaption(cur, tgt, "g"),
       fillVar: "var(--macro-carbs)",
-      isOverBudget: tgt > 0 && cur > tgt,
     };
   }
   if (macroKey === "fat") {
@@ -185,7 +171,6 @@ function buildMacroTile(
       pct,
       caption: plainRemainingCaption(cur, tgt, "g"),
       fillVar: "var(--macro-fat)",
-      isOverBudget: tgt > 0 && cur > tgt,
     };
   }
   if (macroKey === "fiber") {
@@ -200,7 +185,6 @@ function buildMacroTile(
       pct,
       caption: plainRemainingCaption(cur, tgt, "g"),
       fillVar: "var(--success)",
-      isOverBudget: false /* fibre over-target is not a flag — it's a win */,
     };
   }
   if (macroKey === "sugar") {
@@ -215,7 +199,6 @@ function buildMacroTile(
       pct,
       caption: `ref ${tgt} g`,
       fillVar: "var(--warning)",
-      isOverBudget: false /* sugar is reference-only — no over-budget state */,
     };
   }
   if (macroKey === "sodium") {
@@ -230,7 +213,6 @@ function buildMacroTile(
       pct,
       caption: `ref ${tgt} mg`,
       fillVar: "var(--macro-sodium)",
-      isOverBudget: false /* sodium is reference-only */,
     };
   }
   if (macroKey === "water") {
@@ -245,7 +227,6 @@ function buildMacroTile(
       pct,
       caption: plainRemainingCaption(cur, tgt, "ml"),
       fillVar: "var(--macro-water, var(--primary))",
-      isOverBudget: false /* water over-target is a win, not a flag */,
     };
   }
   return null;
@@ -253,27 +234,14 @@ function buildMacroTile(
 
 export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
   const { trackedMacros, onAddWaterMl, nutrientRows, onPressViewAllNutrients, viewAllNutrientsCount } = props;
-  // T2.7 v2 (premium-sweep-v2 P0): rather than DELETE the caption at
-  // zero-state (v1 left tiles as tall hollow rectangles with awkward
-  // whitespace), replace the redundant "X g remaining" line with a
-  // calmer "Log to start" affordance text. The tile retains visual
-  // weight; the user gets a tap-target hint instead of a double-stamp.
-  // When OFF: unchanged.
-  const calmerZeroState = useFeatureFlagEnabled("premium-sweep-v2-p0-t27");
 
   return (
     <div className="mb-4">
-    {/* gap-3 (12px) replaces gap-2 (8px) — macro tile rows were
-        squished against each other with no vertical breathing room
-        (audit feedback 2026-05-18). 12px matches the canonical
-        Spacing.md token. */}
-    <div className="grid grid-cols-2 gap-3">
+    <div className="grid grid-cols-2 gap-2">
       {trackedMacros.map((macroKey) => {
         const tile = buildMacroTile(macroKey, props);
         if (!tile) return null;
         const { Icon } = tile;
-        const isZeroState = tile.pct === 0 && /^\s*0\b/.test(tile.valueText);
-        const captionOverride = calmerZeroState && isZeroState ? "Log to start" : null;
         return (
           <div
             key={macroKey}
@@ -317,18 +285,16 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
                 {tile.targetText}
               </span>
             </div>
-            {/* 2026-05-18 (TF whole-app audit, harsh-review):
-                  - hide the bar entirely on unlogged tiles (was: four
-                    parallel rails saying "you haven't done anything")
-                  - flip bar + track to `var(--warning)` on over-budget
-                    tiles so e.g. carbs 244/116 doesn't render the same
-                    solid full bar as "hit target exactly". */}
-            {tile.pct === 0 ? null : (
+            {/* Premium-feel papercut #4 (audit 2026-04-29): the bar
+                exists but at 0% the fill is invisible against a
+                near-grey track, so empty tiles read as having a
+                divider, not a progress bar. Tint the track with the
+                macro's brand colour at ~14% so each tile is legible
+                as "your X progress" even before any logging. Mirror
+                of the same change in mobile `TodayDashboardMacroTiles`. */}
             <div
               className="mt-2.5 h-[6px] rounded-full overflow-hidden"
-              style={{
-                background: `color-mix(in_oklab, ${tile.isOverBudget ? "var(--warning)" : tile.fillVar} 14%, transparent)`,
-              }}
+              style={{ background: `color-mix(in_oklab, ${tile.fillVar} 14%, transparent)` }}
             >
               {/* 2026-05-12 (premium-bar audit web parity, Today F4 #4):
                   bar fill duration 700ms → 300ms with ease-out cubic
@@ -337,26 +303,12 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
                   Watch + Cal AI parity. */}
               <div
                 className="h-full rounded-full transition-[width] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]"
-                style={{
-                  width: `${tile.pct}%`,
-                  background: tile.isOverBudget ? "var(--warning)" : tile.fillVar,
-                }}
+                style={{ width: `${tile.pct}%`, background: tile.fillVar }}
               />
             </div>
-            )}
-            {(captionOverride || tile.caption) ? (
-              <span
-                className={`text-[11px] mt-1.5 tabular-nums ${
-                  captionOverride
-                    ? "font-semibold text-primary"
-                    : tile.isOverBudget
-                      ? "font-bold text-[color:var(--warning)]"
-                      : "text-muted-foreground"
-                }`}
-              >
-                {captionOverride ?? tile.caption}
-              </span>
-            ) : null}
+            <span className="text-[11px] text-muted-foreground mt-1.5 tabular-nums">
+              {tile.caption}
+            </span>
             {macroKey === "water" ? (
               <div className="flex gap-1 mt-2">
                 {([250, 500] as const).map((ml) => (

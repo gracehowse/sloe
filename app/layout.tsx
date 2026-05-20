@@ -3,17 +3,7 @@ import type { ReactNode } from "react";
 import { Inter } from "next/font/google";
 import "../src/styles/index.css";
 import { Providers } from "./providers";
-import { TareAestheticGate } from "./tare-aesthetic-gate";
 import { Analytics } from "@vercel/analytics/next";
-
-// 2026-05-19 (Phase W0): Newsreader + Spectral font loading is
-// deferred to the next visible-change increment so it lands
-// simultaneously with the mobile font load (@expo-google-fonts/
-// newsreader). Until then, the `--font-newsreader` and
-// `--font-spectral` CSS vars are unset and any `var(--font-serif)`
-// consumer falls back through Georgia → serif. Foundation is
-// invisible until `body.tare-on` is set, so this asymmetry has no
-// user-visible effect.
 
 const inter = Inter({
   subsets: ["latin"],
@@ -69,11 +59,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={inter.variable} suppressHydrationWarning>
       <body className={inter.className}>
-        <Providers>
-          <TareAestheticGate>{children}</TareAestheticGate>
-        </Providers>
+        <Providers>{children}</Providers>
         <Analytics />
       </body>
     </html>
   );
 }
+

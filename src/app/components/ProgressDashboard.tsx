@@ -1590,13 +1590,8 @@ function ProgressDashboardContent() {
                   />
                 </div>
                 <span
-                  /* 2026-05-18 (contrast-audit): saturated macro colours
-                     (carbs orange, fat fuchsia) as text on white card =
-                     3.12:1 and 3.85:1 — below AA. The bar + dot already
-                     carry the macro hue; the label is the data, so
-                     text-foreground keeps semantic clarity AND passes 16:1. */
-                  className="text-xs font-semibold tabular-nums text-right text-foreground"
-                  style={{ minWidth: "3.5rem" }}
+                  className="text-xs font-semibold tabular-nums text-right"
+                  style={{ color: tone, minWidth: "3.5rem" }}
                   data-testid={`macro-adherence-label-${name.toLowerCase()}`}
                 >
                   {bar.label}
@@ -1644,10 +1639,7 @@ function ProgressDashboardContent() {
               <span
                 data-testid="maintenance-source-pill"
                 data-source="adaptive"
-                /* 2026-05-18 (contrast-audit): bg-success/10 text-success
-                   was 3.07:1 on the white card. Solid bg with dark text
-                   keeps the green "adaptive = live" cue AND passes AA. */
-                className="ml-auto text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-success text-foreground"
+                className="ml-auto text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-success/10 text-success"
               >
                 Adaptive
               </span>
@@ -1711,11 +1703,7 @@ function ProgressDashboardContent() {
                   />
                 ))}
               </div>
-              {/* 2026-05-18 (contrast-audit): saturated colour as text on
-                  white = AA fail. The level dots to the left already carry
-                  the colour cue; text-foreground here keeps semantic meaning
-                  intact AND passes 12:1+ contrast. */}
-              <span className="text-xs font-medium capitalize text-foreground">
+              <span className="text-xs font-medium capitalize" style={{ color: adaptiveConfidence === "high" ? "var(--success)" : adaptiveConfidence === "medium" ? "var(--warning)" : "var(--muted-foreground)" }}>
                 {adaptiveConfidence}
               </span>
             </div>
@@ -2431,12 +2419,9 @@ function CaloriesRangeCardWeb({
                   data-testid="progress-calories-range-delta-pill"
                   className={[
                     "shrink-0 inline-flex items-center rounded-full text-[11px] font-semibold px-2 py-0.5 tabular-nums",
-                    // 2026-05-18 (contrast-audit): bg-X/15 text-X gives
-                    // amber-on-cream and green-on-cream contrast under 4.5:1.
-                    // Solid colour bg with dark text passes 8:1+ on both.
                     deltaVsTargetKcal <= 0
-                      ? "bg-success text-foreground"
-                      : "bg-warning text-foreground",
+                      ? "bg-success/15 text-success"
+                      : "bg-warning/15 text-warning",
                   ].join(" ")}
                 >
                   {deltaVsTargetKcal > 0 ? "+" : "−"}

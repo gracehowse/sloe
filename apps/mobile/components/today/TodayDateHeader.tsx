@@ -117,15 +117,14 @@ export function TodayDateHeader({
             <ChevronLeft size={16} color={textColor} />
           </Pressable>
           <Pressable onPress={onTapTitle} hitSlop={8}>
-            {/* 2026-05-18 (TF whole-app audit, harsh-review): the eyebrow
-                used to render `JUN 16 · TUESDAY` above an h1 of
-                `Tue 16 Jun` — the exact same information twice in
-                different formats. Now drop the eyebrow on ANY day-view
-                render (the h1 says "Today" / "Yesterday" / "Tue 16 Jun"
-                already; the user doesn't need a second copy of the
-                date). Keep the eyebrow only for week view, where the
-                h1 = "This Week" and the eyebrow carries the range. */}
-            {viewMode === "week" ? (
+            {/* 2026-05-12 (premium-bar audit, Today header upgrade):
+                drop the small-caps date eyebrow when the h1 is already
+                "Today" — the eyebrow's "Apr 22 · Tuesday" duplicates
+                what the h1 implies. Keep the eyebrow for non-today
+                date selections (so "Sat Apr 19" h1 still has the
+                weekday-name context above it) and for the week view
+                (`weekLabel` is the date range). */}
+            {!(viewMode === "day" && isToday) ? (
               <Text
                 numberOfLines={1}
                 style={{
@@ -136,7 +135,9 @@ export function TodayDateHeader({
                   textTransform: "uppercase",
                 }}
               >
-                {weekLabel}
+                {viewMode === "week"
+                  ? weekLabel
+                  : `${selectedDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })} · ${selectedDate.toLocaleDateString("en-US", { weekday: "long" })}`}
               </Text>
             ) : null}
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 1 }}>
@@ -183,15 +184,13 @@ export function TodayDateHeader({
           </Pressable>
         </View>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-          {/* 2026-05-18 (TF whole-app audit, harsh-review): the Day/Week
-              toggle's solid-fill active state (full `Accent.primary`
-              bg) competed with the chevrons + the date strip for
-              attention — the top-right corner read as CRM admin
-              filtering. Demoted active state to a TINT (12% alpha
-              primary bg) so the toggle reads as a quiet view-mode
-              affordance, not a loud primary action. The avatar to
-              the right is now the only saturated element in the
-              top-right corner, restoring the visual hierarchy. */}
+          {/* F-84 (2026-04-25) — icon-style scope toggle. Was "Day | Week"
+              text, which read as date-nav alongside the prev/next chevrons
+              and week strip and confused first-time users (customer-lens
+              2026-04-25: "three time-navigation things on one screen.
+              Why?"). Sun = Day (single-day dashboard), grid = Week (week
+              roll-up). Accessibility labels carry the original text so
+              screen readers still announce "Day view" / "Week view". */}
           <View
             style={{
               flexDirection: "row",
@@ -210,14 +209,14 @@ export function TodayDateHeader({
               style={{
                 paddingHorizontal: 8,
                 paddingVertical: 6,
-                backgroundColor: viewMode === "day" ? Accent.primary + "1F" : "transparent",
+                backgroundColor: viewMode === "day" ? Accent.primary : "transparent",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
               <Sun
                 size={14}
-                color={viewMode === "day" ? Accent.primary : textSecondaryColor}
+                color={viewMode === "day" ? primaryForegroundColor : textSecondaryColor}
               />
             </Pressable>
             <Pressable
@@ -228,14 +227,14 @@ export function TodayDateHeader({
               style={{
                 paddingHorizontal: 8,
                 paddingVertical: 6,
-                backgroundColor: viewMode === "week" ? Accent.primary + "1F" : "transparent",
+                backgroundColor: viewMode === "week" ? Accent.primary : "transparent",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
               <LayoutGrid
                 size={14}
-                color={viewMode === "week" ? Accent.primary : textSecondaryColor}
+                color={viewMode === "week" ? primaryForegroundColor : textSecondaryColor}
               />
             </Pressable>
           </View>

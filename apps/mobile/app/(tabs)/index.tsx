@@ -1,4 +1,4 @@
-import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Animated,
@@ -22,7 +22,6 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { useTarePalette } from "@/lib/tareAesthetic";
 import { useHealthSyncOnFocus } from "@/hooks/useHealthSyncOnFocus";
 import { useTodayMountAnimation } from "@/hooks/useTodayMountAnimation";
 import { useNutritionEntriesSync } from "@/hooks/useNutritionEntriesSync";
@@ -393,12 +392,6 @@ export default function TrackerScreen() {
   const { session } = useAuth();
   const userId = session?.user.id;
   const colors = useThemeColors();
-  // 2026-05-19 (Phase V1): when Tare preview / flag is on, override
-  // the page background to the warm cream / warm-black surface. Other
-  // surfaces (cards etc) inherit from useThemeColors() until they're
-  // migrated component-by-component in subsequent V-phases.
-  const tare = useTarePalette();
-  const pageBg = tare?.bg ?? colors.background;
   // User-configurable macro display variant (Settings → Display →
   // Macro display). `tiles` (default) keeps the 2×2 grid; `bars`
   // renders a vertical list of name + value/target + colored bar.
@@ -2143,25 +2136,11 @@ export default function TrackerScreen() {
     ],
   );
 
-  // 2026-05-18 (TF whole-app audit, P0 flash bug): Grace reported the
-  // Today screen flashes between days when tapping the chevron. Root
-  // cause: every chevron tap triggers a full re-render of the ring +
-  // 4 macro tiles + meals section + day-strip + week summary
-  // synchronously. The new frame is heavy enough that the user
-  // perceives a brief flash between old/new state on mid-range devices.
-  // Wrapping the setter in `startTransition` marks the update as
-  // non-urgent — React keeps the CURRENT painted frame on screen
-  // while it prepares the next one off-thread. The chevron button
-  // press still feels instant (the press feedback is its own urgent
-  // update), but the heavy re-render that follows no longer flashes.
-  // Same treatment for the week chevron below.
   const navigateDay = useCallback((offset: number) => {
-    startTransition(() => {
-      setSelectedDate((prev) => {
-        const next = new Date(prev);
-        next.setDate(next.getDate() + offset);
-        return clampJournalDate(next);
-      });
+    setSelectedDate((prev) => {
+      const next = new Date(prev);
+      next.setDate(next.getDate() + offset);
+      return clampJournalDate(next);
     });
   }, []);
 
@@ -2284,15 +2263,10 @@ export default function TrackerScreen() {
   }, [weekData.days, basalBurnByDay, activityBurnByDay, maintenanceKcal]);
 
   const navigateWeek = useCallback((offset: number) => {
-    // Same rationale as navigateDay — keep the chevron tap snappy and
-    // let the heavy re-render happen off-priority so the user doesn't
-    // see an intermediate flash.
-    startTransition(() => {
-      setSelectedDate((prev) => {
-        const next = new Date(prev);
-        next.setDate(next.getDate() + offset * 7);
-        return clampJournalDate(next);
-      });
+    setSelectedDate((prev) => {
+      const next = new Date(prev);
+      next.setDate(next.getDate() + offset * 7);
+      return clampJournalDate(next);
     });
   }, []);
 
@@ -3424,12 +3398,7 @@ export default function TrackerScreen() {
     () =>
       StyleSheet.create({
         container: { flex: 1, backgroundColor: colors.background },
-        // 2026-05-18 (TF whole-app audit, P0 toast-clip): bottom padding
-        // bumped 120 → 168 so the last visible row (e.g. `Log usual:
-        // <name>` pill under Breakfast) clears the raised "+" FAB and
-        // the tab bar's gradient backdrop. At 120 the FAB's blurred
-        // halo bled over the bottom pill, making it look clipped.
-        scroll: { paddingHorizontal: Spacing.xl, paddingBottom: 168, gap: Spacing.lg },
+        scroll: { paddingHorizontal: Spacing.xl, paddingBottom: 120, gap: Spacing.lg },
 
 
         dateNav: {
@@ -4386,10 +4355,7 @@ export default function TrackerScreen() {
   return (
     <View
       testID="screen-today"
-      style={[
-        styles.container,
-        { backgroundColor: pageBg, paddingTop: insets.top, position: "relative" },
-      ]}
+      style={[styles.container, { paddingTop: insets.top, position: "relative" }]}
     >
       {/* Activation hooks (audit 2026-04-30) — mounted at the top of the
           container so the toast overlays the ScrollView and the modal
@@ -4454,15 +4420,11 @@ export default function TrackerScreen() {
           weekStartDay={weekStartDay}
           loggedDays={loggedDays}
           protectedDateKeys={protectedDateKeys}
-          // 2026-05-18 — same startTransition treatment for day-strip
-          // pill taps. Without this the strip itself flashes when the
-          // user taps a date pill (the parent's heavy re-render is the
-          // bottleneck, not the strip's local highlight update).
-          onSelectDate={(d) => startTransition(() => setSelectedDate(clampJournalDate(d)))}
+          onSelectDate={(d) => setSelectedDate(clampJournalDate(d))}
           onOpenCalendar={() => setJournalCalendarOpen(true)}
           onNavigatePrev={() => (viewMode === "week" ? navigateWeek(-1) : navigateDay(-1))}
           onNavigateNext={() => (viewMode === "week" ? navigateWeek(1) : navigateDay(1))}
-          onTapTitle={() => { startTransition(() => setSelectedDate(new Date())); setViewMode("day"); }}
+          onTapTitle={() => { setSelectedDate(new Date()); setViewMode("day"); }}
           avatarLetter={session?.user?.email?.[0]?.toUpperCase() ?? "U"}
           textColor={colors.text}
           textSecondaryColor={colors.textSecondary}
@@ -5007,14 +4969,8 @@ export default function TrackerScreen() {
               <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
                 <Zap size={18} color={Accent.primary} strokeWidth={1.75} />
                 <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>Quick add</Text>
-                {/* 2026-05-18 (TF whole-app audit, harsh-review): the
-                    subtitle "Usual meals, recent, frequent, favourites"
-                    was a 4-noun feature checklist that read as Cronometer
-                    chrome. Replaced with a single warm value line
-                    ("Your usuals") so the row reads as a destination,
-                    not a category index. */}
                 <Text numberOfLines={1} style={{ flexShrink: 1, fontSize: 12, color: colors.textTertiary }}>
-                  Your usuals
+                  Usual meals, recent, frequent, favourites
                 </Text>
               </View>
               {quickAddCollapsed ? (

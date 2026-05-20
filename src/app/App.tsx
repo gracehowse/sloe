@@ -618,8 +618,6 @@ export default function App() {
         currentView={currentView}
         onNavigate={(view) => navigateToView(view as View)}
         shoppingUncheckedCount={shoppingUncheckedCount}
-        userTier={userTier}
-        displayName={displayName ?? (authEmail ? authEmail.split("@")[0] : null)}
       />
 
       <div className="flex flex-1 flex-col min-w-0">

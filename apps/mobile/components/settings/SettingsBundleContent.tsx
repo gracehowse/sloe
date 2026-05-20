@@ -69,7 +69,6 @@ import {
   useMacroDisplayStyle,
   type MacroDisplayStyle,
 } from "@/lib/macroDisplayStyle";
-import { useTarePreview } from "@/lib/tareAesthetic";
 import { supabase } from "@/lib/supabase";
 import { getSupprWebBase } from "@/lib/supprWeb";
 import { probeHealthAccess } from "@/lib/healthSync";
@@ -719,15 +718,6 @@ export function SettingsBundleContent({ context }: { context: Context }) {
   // the Cronometer/Lose It-style "Name … Value / Target" vertical
   // list with thin colored bars (Grace 2026-05-17 ask).
   const [macroDisplayStyle, setMacroDisplayStyle] = useMacroDisplayStyle();
-
-  // Tare aesthetic v1 — per-device preview override (2026-05-19, Phase
-  // M0). When `tarePreview === "on"` the new aesthetic foundation
-  // (cream surfaces, ink accent, softened macros, Newsreader serif
-  // titles) activates on this device only. When `null` the PostHog
-  // flag `tare-aesthetic-v1` decides (default off). When `"off"` the
-  // override force-disables even if the flag rolls on. See
-  // `apps/mobile/lib/tareAesthetic.ts` for the resolution order.
-  const [tarePreview, setTarePreview] = useTarePreview();
   useEffect(() => {
     if (!userId) return;
     let cancelled = false;
@@ -1799,58 +1789,6 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           onChange={(next) => setThemePreference(next as ThemePreference)}
           colors={colors}
         />
-
-        {/* Tare aesthetic v1 — per-device preview (Phase M0,
-            2026-05-19). Off by default. When on, this device renders
-            the new aesthetic foundation (cream surfaces, ink accent,
-            softened macros, Newsreader serif titles) so Grace can
-            review each visible-change increment before the PostHog
-            flag ramps to everyone. Setting to OFF after enabling
-            removes the override entirely — flag decides again.
-            Web parity: `?tare=on` URL param + localStorage override
-            in `app/tare-aesthetic-gate.tsx`. */}
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 12,
-            paddingVertical: 12,
-            paddingHorizontal: 14,
-            borderTopWidth: 1,
-            borderTopColor: colors.cardBorder,
-          }}
-        >
-          <IconBox color={t.accent}>
-            <Sparkles size={18} color={t.accent} strokeWidth={1.75} />
-          </IconBox>
-          <View style={{ flex: 1 }}>
-            <Text
-              style={{
-                fontSize: 13,
-                fontWeight: "600",
-                color: colors.text,
-                lineHeight: 17,
-              }}
-            >
-              Preview new aesthetic
-            </Text>
-            <Text
-              style={{
-                fontSize: 11,
-                color: colors.textSecondary,
-                marginTop: 2,
-              }}
-            >
-              Per-device preview of the Tare design refresh. Off by default; flip on to A/B before it ramps to everyone.
-            </Text>
-          </View>
-          <Switch
-            testID="settings-tare-preview-toggle"
-            value={tarePreview === "on"}
-            onValueChange={(v) => setTarePreview(v ? "on" : null)}
-            trackColor={{ true: Accent.primary }}
-          />
-        </View>
       </View>
 
       {/* Connections */}

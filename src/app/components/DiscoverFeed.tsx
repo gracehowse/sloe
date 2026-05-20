@@ -473,7 +473,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                   }}
                   className={`shrink-0 px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
                     isActive
-                      ? "border-2 border-primary bg-primary/15 text-primary-strong"
+                      ? "border-2 border-primary bg-primary/15 text-primary"
                       : "border border-border bg-card text-foreground hover:bg-muted"
                   }`}
                 >

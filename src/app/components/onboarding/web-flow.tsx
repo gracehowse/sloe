@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { ArrowRight, ChevronLeft } from "lucide-react";
-import { useFeatureFlagEnabled } from "posthog-js/react";
 import { Button } from "@/app/components/ui/button";
 import { SupprWordmark } from "@/app/components/ui/suppr-mark";
 import { AnalyticsEvents } from "@/lib/analytics/events";
@@ -311,14 +310,8 @@ export function WebFlow() {
           the narrative column's framing role (eyebrow + step-count) is
           already carried by the in-card StepHeader overline, so hiding
           the big headline column doesn't lose the user's place. Above
-          768px the desktop split returns (Grace 2026-04-20).
-          T2.5 (premium-sweep-v2 P0): when ON, cap the body at
-          1280px and centre it. Without this, at desktop-1920 the
-          narrative column floats in dead space and the card column
-          stretches; at 1280 the cards squeeze. Linear / Stripe /
-          Notion all hold a max-width on their onboarding cold-opens. */}
-      <BodyContainer>
-        <div className="flex-1 grid grid-cols-1 md:grid-cols-[1.1fr_1fr] min-h-0 overflow-hidden h-full">
+          768px the desktop split returns (Grace 2026-04-20). */}
+      <div className="flex-1 grid grid-cols-1 md:grid-cols-[1.1fr_1fr] min-h-0 overflow-hidden">
         {/* Narrative column — hidden on mobile viewports. */}
         <div
           key={`narr-${displayIndex}`}
@@ -422,8 +415,7 @@ export function WebFlow() {
             </div>
           </div>
         </div>
-        </div>
-      </BodyContainer>
+      </div>
 
       <style>{`
         @keyframes v2NarrativeFade {
@@ -431,22 +423,6 @@ export function WebFlow() {
           to   { opacity: 1; transform: translateY(0); }
         }
       `}</style>
-    </div>
-  );
-}
-
-/**
- * T2.5 (premium-sweep-v2 P0) — caps the onboarding body at 1280px
- * and centres it when the flag is ON. When OFF: pass-through, body
- * spans full viewport width (current behaviour). Premium-bar audit
- * called out desktop-1920 dead space + desktop-1280 squeeze.
- */
-function BodyContainer({ children }: { children: React.ReactNode }) {
-  const capOn = useFeatureFlagEnabled("premium-sweep-v2-p0-t25");
-  if (!capOn) return <>{children}</>;
-  return (
-    <div className="flex-1 mx-auto w-full md:max-w-[1280px] overflow-hidden flex flex-col">
-      {children}
     </div>
   );
 }

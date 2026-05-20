@@ -38,30 +38,9 @@ const MOBILE_SRC = readFileSync(MOBILE_PATH, "utf8");
 const WEB_SRC = readFileSync(WEB_PATH, "utf8");
 
 describe("Three-state ring — mobile CalorieRing", () => {
-  // 2026-05-19 (Phase V1): stroke colours now route through two local
-  // consts that fall back to `Accent.destructive` / `Accent.success`
-  // when the Tare preview / flag is off, and to softened Tare tokens
-  // when it's on. The three-state semantic guarantee (empty=gradient,
-  // over=red, under=green when Tare off) is preserved by pinning BOTH
-  // (a) the stroke ternary uses the named consts, AND
-  // (b) the consts resolve to the legacy Accent values when tare is null.
-  // A future refactor that reverts to always-gradient or breaks the
-  // three-state branching fails one of these pins.
-  it("empty → gradient, over → overBudgetStroke, under → underBudgetStroke", () => {
+  it("empty → gradient, over → destructive, under → success", () => {
     expect(MOBILE_SRC).toMatch(
-      /stroke=\{[\s\S]*?isEmpty[\s\S]*?\?\s*"url\(#calorie-ring-gradient\)"[\s\S]*?:\s*consumed > goal && goal > 0[\s\S]*?\?\s*overBudgetStroke[\s\S]*?:\s*underBudgetStroke[\s\S]*?\}/,
-    );
-  });
-
-  it("overBudgetStroke falls back to Accent.destructive (red when Tare off)", () => {
-    expect(MOBILE_SRC).toMatch(
-      /const overBudgetStroke\s*=\s*tare\?\.destructive\s*\?\?\s*Accent\.destructive\s*;/,
-    );
-  });
-
-  it("underBudgetStroke falls back to Accent.success (green when Tare off)", () => {
-    expect(MOBILE_SRC).toMatch(
-      /const underBudgetStroke\s*=\s*tare\?\.\w+\s*\?\?\s*Accent\.success\s*;/,
+      /stroke=\{[\s\S]*?isEmpty[\s\S]*?\?\s*"url\(#calorie-ring-gradient\)"[\s\S]*?:\s*consumed > goal && goal > 0[\s\S]*?\?\s*Accent\.destructive[\s\S]*?:\s*Accent\.success[\s\S]*?\}/,
     );
   });
 

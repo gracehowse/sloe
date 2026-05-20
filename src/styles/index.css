@@ -1,7 +1,3 @@
 @import './fonts.css';
 @import './tailwind.css';
 @import './theme.css';
-/* Tare aesthetic v1 — opt-in via body.tare-on. Activation gate is
- * app/tare-aesthetic-gate.tsx (URL param + localStorage + PostHog
- * flag). Imported AFTER theme.css so the override layer wins. */
-@import './tare-aesthetic.css';

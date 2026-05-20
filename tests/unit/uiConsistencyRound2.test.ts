@@ -26,30 +26,19 @@ describe("Round 2 — text / casing fixes", () => {
     // `docs/ux/teardown-2026-04-28-daily-loop.md`) went further:
     // the standalone centred link was moved out of the host
     // composition and into the macro-tiles section header as a
-    // small right-aligned label opened via `showNutrientsLink` +
-    // `onPressNutrients` props on TodayDashboardMacroTiles.
-    //
-    // 2026-05-18 (TF whole-app audit, harsh-review): the bare
-    // "Nutrients ›" floating link was upgraded to an anchored
-    // outlined-chip affordance reading "All nutrients ›" so it
-    // reads as an action with a visual anchor (instead of an
-    // orphaned floating link). The label change is the intended
-    // improvement — the pin tracks the chip label now.
-    //
-    // The pin asserts both halves:
-    //   (1) the old "View all nutrients" string is gone from the
-    //       host file
-    //   (2) the chip label "All nutrients" exists inside
-    //       TodayDashboardMacroTiles.tsx
-    //   (3) the count-appended variant the original audit flagged
-    //       does not exist on either label.
+    // small right-aligned "Nutrients" chevron link, opened via
+    // `showNutrientsLink` + `onPressNutrients` props on
+    // TodayDashboardMacroTiles. The pin asserts both halves:
+    // (1) the old "View all nutrients" string is gone from the
+    // host file, and (2) the new "Nutrients" label exists inside
+    // TodayDashboardMacroTiles.tsx. Neither file carries the
+    // count-appended variant the original audit flagged.
     const HOST = read("apps/mobile/app/(tabs)/index.tsx");
     expect(HOST).not.toMatch(/View all nutrients/);
     expect(HOST).not.toMatch(/dayNutrientDetailRowsWithoutMacroDupes\.length\}\)/);
 
     const TILES = read("apps/mobile/components/today/TodayDashboardMacroTiles.tsx");
-    expect(TILES).toMatch(/All nutrients\s*<\/Text>/);
-    expect(TILES).not.toMatch(/All nutrients \(\{[^}]+\.length\}\)/);
+    expect(TILES).toMatch(/Nutrients\b\s*<\/Text>/);
     expect(TILES).not.toMatch(/Nutrients \(\{[^}]+\.length\}\)/);
   });
 

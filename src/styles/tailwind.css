@@ -1,8 +1,4 @@
-/* 2026-05-18: was @import tailwindcss source(none) + @source ../path
-   relative-traversal which only reached src/ and skipped app/ entirely.
-   Dropping source(none) lets Tailwind v4 auto-detect both src/ and app/.
-   Root cause of the cascading dark-on-dark / transparent-bg bugs in
-   /pricing this morning. */
-@import 'tailwindcss';
+@import 'tailwindcss' source(none);
+@source '../**/*.{js,ts,jsx,tsx}';
 
 @import 'tw-animate-css';

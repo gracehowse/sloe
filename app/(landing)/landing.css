@@ -26,12 +26,8 @@
     0 8px 24px rgba(0, 0, 0, 0.06);
   --lp-hairline: 1px solid var(--lp-tile-border);
   --lp-fg-secondary: #475569;
-  /* 2026-05-18 (contrast-audit): #94a3b8 (slate-400) on white = 2.54:1,
-     well under AA 4.5:1. Used for meta labels, units (/ 140g), roadmap
-     timestamps. Lifted to slate-500 #64748b → 4.86:1 on white. Still
-     reads as "tertiary / muted" but legible. */
-  --lp-fg-tertiary: #64748b;
-  --lp-fg-muted: #56565f;
+  --lp-fg-tertiary: #94a3b8;
+  --lp-fg-muted: #6b6b78;
   --lp-success: var(--success);
   --lp-success-strong: #1f9954;
 
@@ -70,11 +66,8 @@
 .lp-root *::after {
   box-sizing: border-box;
 }
-.lp-root a:not(.lp-btn) {
+.lp-root a {
   color: inherit;
-  text-decoration: none;
-}
-.lp-root a.lp-btn {
   text-decoration: none;
 }
 .lp-root button {
@@ -175,10 +168,7 @@
 }
 .lp-btn-link {
   background: transparent;
-  /* 2026-05-18 (contrast-audit): var(--primary) #4c6ce0 on page-bg
-     was 4.25:1. Using --primary-strong (#3f5fd0) pulls to 5.0:1 — passes
-     AA. Keeps brand-recognisable but readable on landing. */
-  color: var(--primary-strong);
+  color: var(--primary);
   padding: 0;
 }
 .lp-btn-lg {
@@ -774,21 +764,17 @@
   color: var(--lp-fg-tertiary);
   margin-top: 1px;
 }
-/* 2026-05-18 (contrast-audit): green-on-soft-green (var(--lp-success-strong)
-   on rgba(34,168,96,0.12) blended over white) was 3.23:1, under AA. Solid
-   green bg with dark text (foreground) keeps the on-track semantic AND
-   passes 9:1. */
 .lp-mb-pill {
   font-size: 9px;
   font-weight: 600;
   padding: 2px 7px;
   border-radius: 99px;
-  background: var(--success);
-  color: var(--foreground);
+  background: rgba(34, 168, 96, 0.12);
+  color: var(--lp-success-strong);
 }
 :where(.dark) .lp-mb-pill {
-  background: #4cd080;
-  color: #101014;
+  background: rgba(76, 208, 128, 0.15);
+  color: #4cd080;
 }
 
 .lp-mb-hero {
@@ -1577,15 +1563,13 @@
   padding: 4px 8px;
   border-radius: 6px;
 }
-/* 2026-05-18 (contrast-audit): same green-on-soft-green pattern as
-   .lp-mb-pill (3.23:1). Solid green + dark text = 9:1 AA pass. */
 .lp-rm-badge.lp-now {
-  background: var(--success);
-  color: var(--foreground);
+  background: rgba(34, 168, 96, 0.12);
+  color: var(--lp-success-strong);
 }
 :where(.dark) .lp-rm-badge.lp-now {
-  background: #4cd080;
-  color: #101014;
+  background: rgba(76, 208, 128, 0.14);
+  color: #4cd080;
 }
 .lp-rm-badge.lp-next {
   background: var(--lp-chip-bg);
@@ -1981,12 +1965,6 @@
 .lp-f-col a:hover {
   color: var(--lp-footer-fg-strong);
 }
-/* 2026-05-18 (contrast-audit): .lp-f-bottom + .lp-f-disclaimer live
-   inside the dark .lp-footer (--lp-footer-bg #0a0a0f) but were using
-   --lp-fg-tertiary which I'd just darkened to #64748b for white-bg
-   AA compliance. That darkened value gives 4.0:1 on the dark footer
-   bg, below AA. Switching to --lp-footer-fg (#94a3b8) which is tuned
-   for the footer's dark surface and renders at 7.6:1. */
 .lp-f-bottom {
   border-top: 1px solid var(--lp-footer-border);
   padding-top: 24px;
@@ -1996,7 +1974,7 @@
   gap: 20px;
   flex-wrap: wrap;
   font-size: 12px;
-  color: var(--lp-footer-fg);
+  color: var(--lp-fg-tertiary);
 }
 .lp-f-bottom .lp-legal {
   display: flex;
@@ -2004,7 +1982,7 @@
 }
 .lp-f-disclaimer {
   font-size: 11px;
-  color: var(--lp-footer-fg);
+  color: var(--lp-fg-tertiary);
   max-width: 760px;
   margin: 32px 0 0;
   line-height: 1.6;

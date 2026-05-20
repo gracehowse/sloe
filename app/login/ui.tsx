@@ -289,13 +289,9 @@ export function LoginClient({ initialMode = "signin", hideTabs = false }: LoginC
             disabled={status === "working"}
             className="w-full mb-4 px-5 py-3.5 rounded-xl font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             style={{
-              // Apple HIG requires black-on-white in light mode and
-              // white-on-black in dark mode. Tokens carry the inversion
-              // — see `--apple-bg` / `--apple-fg` / `--apple-border` in
-              // src/styles/theme.css (added 2026-05-17, T4.10).
-              background: "var(--apple-bg)",
-              color: "var(--apple-fg)",
-              border: "1px solid var(--apple-border)",
+              background: "#000",
+              color: "#fff",
+              border: "1px solid #000",
             }}
             aria-label="Continue with Apple"
           >

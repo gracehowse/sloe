@@ -231,7 +231,7 @@ export function TodayWeekView({
                   }}
                 />
                 <span
-                  className={`text-[11px] font-semibold ${isCurrentDay || isScrubbed ? "text-primary-strong" : "text-muted-foreground"}`}
+                  className={`text-[11px] font-semibold ${isCurrentDay || isScrubbed ? "text-primary" : "text-muted-foreground"}`}
                 >
                   {day.short}
                 </span>
@@ -354,7 +354,7 @@ export function TodayWeekView({
                   </div>
                 </div>
                 <span
-                  className={`text-[10px] font-semibold ${isCurrentDay ? "text-primary-strong" : "text-muted-foreground"}`}
+                  className={`text-[10px] font-semibold ${isCurrentDay ? "text-primary" : "text-muted-foreground"}`}
                 >
                   {day.short}
                 </span>
