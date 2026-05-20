@@ -107,14 +107,21 @@ describe("cross-platform theme tokens (ENG-623)", () => {
     });
   });
 
-  it("Today rings use over-budget tokens, not destructive", () => {
+  it("Today rings use destructive red for over-budget", () => {
     const ringSrc = [
       readFileSync(resolve(ROOT, "src/app/components/suppr/daily-ring.tsx"), "utf8"),
       readFileSync(resolve(ROOT, "apps/mobile/components/charts/CalorieRing.tsx"), "utf8"),
     ].join("\n");
-    expect(ringSrc).toContain("over-budget-fg");
-    expect(ringSrc).toContain("overBudgetFg");
-    expect(ringSrc).not.toMatch(/isOver.*Accent\.destructive/);
-    expect(ringSrc).not.toMatch(/isOverBudget[\s\S]{0,80}--destructive/);
+    expect(ringSrc).toMatch(/isOver.*Accent\.destructive/);
+    expect(ringSrc).toMatch(/isOverBudget[\s\S]{0,80}--destructive/);
+  });
+
+  it("TodayHeroStats NET over-target uses destructive red", () => {
+    const hero = readFileSync(
+      resolve(ROOT, "src/app/components/suppr/today-hero-stats.tsx"),
+      "utf8",
+    );
+    expect(hero).toContain('valueTone === "over"');
+    expect(hero).toMatch(/valueTone === "over"[\s\S]{0,120}text-destructive/);
   });
 });

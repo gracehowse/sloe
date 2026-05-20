@@ -103,6 +103,46 @@ function renderSection(overrides: {
   return { ...utils, onLogSavedMeal };
 }
 
+describe("TodayMealsSection — empty day (ENG-635)", () => {
+  beforeEach(() => {
+    flagFn.mockReturnValue(false);
+  });
+
+  it("hides Log usual pills when mealsTodayCount is 0 even if saved meals exist", () => {
+    const { queryByLabelText } = render(
+      <TodayMealsSection
+        slots={["Breakfast", "Lunch", "Dinner", "Snacks"]}
+        mealGroups={{ Breakfast: [], Lunch: [], Dinner: [], Snacks: [] }}
+        mealsTodayCount={0}
+        collapsedSlots={new Set()}
+        onToggleSlotCollapse={() => undefined}
+        onOpenFabForSlot={() => undefined}
+        onOpenSaveUsualMealForSlot={() => undefined}
+        onOpenDuplicateDay={() => undefined}
+        onPressMeal={() => undefined}
+        onLongPressEdit={() => undefined}
+        onRequestCopyMeal={() => undefined}
+        onDeleteMeal={() => undefined}
+        showMealTimestamps={false}
+        formatMealMacroDetail={() => ""}
+        formatMealTimeDisplay={() => ""}
+        formatMealSourceLabelForRow={() => null}
+        textColor="#fff"
+        textSecondaryColor="#94a3b8"
+        textTertiaryColor="#64748b"
+        cardColor="#16161e"
+        cardBorderColor="#2a2a3a"
+        savedMeals={[PEANUT_BUTTER_SMOOTHIE]}
+        onLogSavedMeal={() => undefined}
+        hintVisibleForSlot={() => false}
+        onDismissUsualMealHint={() => undefined}
+        onAcceptUsualMealHint={() => undefined}
+      />,
+    );
+    expect(queryByLabelText(/Log usual/i)).toBeNull();
+  });
+});
+
 describe("TodayMealsSection — today_log_usual_row_v2 flag", () => {
   beforeEach(() => {
     flagFn.mockImplementation(() => false);

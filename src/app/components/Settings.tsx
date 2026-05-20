@@ -520,7 +520,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
         action: {
           label: "Edit targets",
           onClick: () => {
-            window.location.href = "/home?view=targets";
+            window.location.href = "/targets";
           },
         },
       });
@@ -693,7 +693,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           ) : null}
         </div>
         <Link
-          href="/home?view=profile"
+          href="/profile"
           data-testid="settings-edit-profile-link"
           className="inline-flex items-center gap-1.5 rounded-full bg-muted/60 px-3.5 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
           aria-label="Edit profile"

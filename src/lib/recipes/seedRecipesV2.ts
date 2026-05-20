@@ -264,7 +264,7 @@ const MEDITERRANEAN_SEEDS: ReadonlyArray<SeedRecipe> = [
     cluster: "mediterranean",
     title: "Fattoush with Sumac",
     heroImageUrl:
-      "https://images.unsplash.com/photo-1505253210343-65a4d6cb1ce3?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=900&q=70",
     totalTimeMin: 20,
     prepTimeMin: 15,
     cookTimeMin: 5,
@@ -297,7 +297,7 @@ const MEDITERRANEAN_SEEDS: ReadonlyArray<SeedRecipe> = [
       "Toss salad and dressing; scatter pitta on top just before serving.",
     ],
     attribution: suppr(
-      "https://images.unsplash.com/photo-1505253210343-65a4d6cb1ce3?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=900&q=70",
       "Levantine",
     ),
   },

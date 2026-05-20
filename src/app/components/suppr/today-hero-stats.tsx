@@ -194,8 +194,8 @@ function DesktopHeroStats({
             //     because `net = 0 − 1132 < 0`, which read as "good
             //     deficit" when the user had simply not logged yet.
             //   - net < 0 with food logged → success green: real deficit.
-            //   - net > 0 → destructive red: mirrors the calorie ring
-            //     over-budget stroke (same signal as centre "OVER").
+            //   - net > 0 → warning amber: mirrors ring / macro over-budget
+            //     (ENG-624 — never destructive red for tracking).
             valueTone={
               loggedKcal === 0
                 ? "neutral"

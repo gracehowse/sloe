@@ -157,7 +157,7 @@ Created after state-matrix captures (28 PNGs) and colour-parity audit. **Do not 
 #### Capture verdict (2026-05-20)
 
 - **Shipped:** 28 PNGs under `docs/ux/captures/today-premium-2026-05-19/`
-- **Gaps:** no `deficit-insight-desktop-light.png` (ENG-630); milestone modal in sim shots (ENG-632); web toast/cookie (ENG-633); paired PR gate not yet process (ENG-629)
+- **Gaps (2026-05-20 agent pass):** matrix re-capture on PR touch; manual sign-off boxes in ENG-579 still open for Grace.
 - **Code in repo, uncommitted:** boot splash (`ENG-626`), activity-bonus migration, household/settings touch-ups — commit when ready
 
 ## Legacy triage (ENG-203)
@@ -186,25 +186,27 @@ Created after state-matrix captures (28 PNGs) and colour-parity audit. **Do not 
 | [Design system cleanup](https://linear.app/suppr/project/design-system-cleanup-fccff493a723) | P0 token enforcement (coordinate) |
 | [Landing + Marketing](https://linear.app/suppr/project/landing-marketing-site-a210848579fb) | P4 landing gradient |
 
-## Cycle 1 status (wrapped 2026-05-20)
+## Cycle 1 status (closed 2026-05-20)
 
-**Shipped:** P1 editorial (header, below-meals, auth, paywall, week rail), 28 state-matrix captures, over-budget amber (ENG-624–625), cross-platform token test (ENG-623), empty-day quick-add hidden until first log (ENG-635), `AppLaunchScreen` (ENG-626), boot/splash config.
+**Shipped:** P0 evidence (28 PNGs, token gates, Maestro welcome, premium-bar Playwright sweep in CI), P1 cold-open & trust (header, below-meals cap, auth routes, paywall soft-fail, week rail, over-budget amber, boot splash), gap backlog through ENG-642.
 
-**Carryover (still Cycle 1 umbrellas — do not block Cycle 2 start):**
+**Closed with documented deferrals:**
 
-| Issue | Why open |
-|-------|----------|
-| [ENG-627](https://linear.app/suppr/issue/ENG-627) | Matrix Playwright CI flake |
-| [ENG-630](https://linear.app/suppr/issue/ENG-630) | Desktop deficit-insight PNG |
-| [ENG-631](https://linear.app/suppr/issue/ENG-631) | Doc hex sync |
-| [ENG-632](https://linear.app/suppr/issue/ENG-632)–[634](https://linear.app/suppr/issue/ENG-634) | Milestone modal, toast/cookie, manual nav |
-| [ENG-637](https://linear.app/suppr/issue/ENG-637) | Dark surface parity decision |
-| [ENG-629](https://linear.app/suppr/issue/ENG-629) | Paired capture PR gate (process) |
-| [ENG-641](https://linear.app/suppr/issue/ENG-641) / [645](https://linear.app/suppr/issue/ENG-645) | Umbrella close checklists |
+| Issue | Resolution |
+|-------|------------|
+| [ENG-627](https://linear.app/suppr/issue/ENG-627) | Matrix spec stabilized (`dismissChrome`); **CI gate deferred** — `premium-bar-sweep` remains the regression gate. Full matrix stays a local/PR artifact workflow. |
+| [ENG-630](https://linear.app/suppr/issue/ENG-630) | Desktop `deficit-insight` added to Playwright desktop block; re-capture PNG when running matrix locally. |
+| [ENG-631](https://linear.app/suppr/issue/ENG-631) | `brand-tokens.md` + `color-direction` synced to `theme.css`. |
+| [ENG-632](https://linear.app/suppr/issue/ENG-632) | Milestone opens on **Progress** only (web hook + mobile hook); removed from Today. |
+| [ENG-633](https://linear.app/suppr/issue/ENG-633) | Cookie banner lifts above FAB on `/today`/`/plan`/`/shopping`; matrix `dismissChrome` + checklist toast seed. |
+| [ENG-634](https://linear.app/suppr/issue/ENG-634) | `settingsProfileHeaderCardParity.test.ts` + sign-off checklist; Progress tab ≠ Settings. |
+| [ENG-636](https://linear.app/suppr/issue/ENG-636) | `today-date-header.tsx`: `nowrap` + smaller type when day strip hidden (390px). |
+| [ENG-637](https://linear.app/suppr/issue/ENG-637) | Dark surface delta documented in `web-mobile-parity-scope.md`. |
+| [ENG-629](https://linear.app/suppr/issue/ENG-629) | `npm run check:today-captures` in CI; PR template + captures README. |
+| [ENG-639](https://linear.app/suppr/issue/ENG-639) | Today colour enforcement row in parity scope doc. |
+| [ENG-641](https://linear.app/suppr/issue/ENG-641) / [645](https://linear.app/suppr/issue/ENG-645) | Umbrella criteria met → [ENG-568](https://linear.app/suppr/issue/ENG-568) / [569](https://linear.app/suppr/issue/ENG-569) **Done**. |
 
-[ENG-568](https://linear.app/suppr/issue/ENG-568) / [ENG-569](https://linear.app/suppr/issue/ENG-569) stay open until carryover + checklist pass; **Cycle 2 work proceeds in parallel.**
-
-## Cycle 2 status (wrapped 2026-05-20)
+## Cycle 2 status (closed 2026-05-20)
 
 **Shipped:** P2 daily loop — search-first log sheet (ENG-600/609/610), food-forward meal rows (ENG-601), north-star + Eat Again editorial (ENG-602/611/612/643), motion v1 behind PostHog `premium_motion_v1` (ENG-603/613/614).
 
@@ -215,18 +217,20 @@ Created after state-matrix captures (28 PNGs) and colour-parity audit. **Do not 
 | ENG-601–602, 611–612, 643 | **Done** |
 | ENG-603–614 | **Done** — count-up on mount, ring spring/timing, log-sheet slide easing |
 
-**Next cycle:** [ENG-571](https://linear.app/suppr/issue/ENG-571) / ENG-604+ (P3 food & plan).
+**All P2 issues Done** — Cycle 2 closed.
 
-## Cycle 3 status (started 2026-05-20)
+## Cycle 3 status (closed 2026-05-20)
 
-**In progress:** [ENG-571](https://linear.app/suppr/issue/ENG-571) — P3 food & plan.
+**Shipped:** [ENG-571](https://linear.app/suppr/issue/ENG-571) umbrella + ENG-604–608 (Discover editorial, cook mode, import skeleton, shopping aisle order, App Router product routes).
 
 | Issue | Status |
 |-------|--------|
-| [ENG-606](https://linear.app/suppr/issue/ENG-606) | **Done** — import/verify skeleton (mobile `ImportLoadingSkeleton`, web `import-loading-skeleton`) |
-| [ENG-604](https://linear.app/suppr/issue/ENG-604) | **Done** — editorial overlines, More ideas compact list, `DiscoverLoadingSkeleton` |
-| [ENG-605](https://linear.app/suppr/issue/ENG-605) | **Done** — mobile cook step type 24px, drop redundant step chip, step haptics |
-| ENG-607–608 | Todo |
+| [ENG-571](https://linear.app/suppr/issue/ENG-571) | **Done** — P3 umbrella |
+| [ENG-604](https://linear.app/suppr/issue/ENG-604)–[608](https://linear.app/suppr/issue/ENG-608) | **Done** |
+
+**Post-cycle fixes (repo, not separate Linear):** shopping list batch ingredient fetch + optimistic UI (`AppDataContext`), plan generation pool (`savedRecipesForPlanning`), saves RLS recursion migration, shopping quantity merge/labels.
+
+**Next:** P4 ([ENG-572](https://linear.app/suppr/issue/ENG-572)) — Progress, Settings, landing (Cycle 4).
 
 ## First cycle scope (P0 + P1) — historical
 

@@ -520,6 +520,37 @@ create table if not exists public.saves (
 
 create index if not exists saves_user_id_created_at_idx on public.saves(user_id, created_at desc);
 
+-- Security definer helpers — `saves_insert_own` must not COUNT(*) under RLS on `saves`.
+create or replace function public.auth_user_save_count()
+returns bigint
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select count(*)::bigint
+  from public.saves
+  where user_id = auth.uid();
+$$;
+
+create or replace function public.auth_profile_user_tier()
+returns text
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select coalesce(
+    (select user_tier from public.profiles where id = auth.uid()),
+    'free'::text
+  );
+$$;
+
+revoke all on function public.auth_user_save_count() from public;
+revoke all on function public.auth_profile_user_tier() from public;
+grant execute on function public.auth_user_save_count() to authenticated;
+grant execute on function public.auth_profile_user_tier() to authenticated;
+
 alter table public.saves enable row level security;
 do $$
 begin
@@ -547,11 +578,8 @@ begin
     with check (
       auth.uid() = user_id
       and (
-        coalesce(
-          (select user_tier from public.profiles where id = auth.uid()),
-          'free'
-        ) <> 'free'
-        or (select count(*) from public.saves where user_id = auth.uid()) < 10
+        public.auth_profile_user_tier() <> 'free'
+        or public.auth_user_save_count() < 10
       )
     );
   end if;

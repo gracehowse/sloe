@@ -3,7 +3,7 @@
  *
  *   1. Empty (consumed === 0) → neutral track (no blue→pink gradient).
  *   2. Logged-and-under → solid green (`Accent.success` / `--success`).
- *   3. Logged-and-over → solid red (`Accent.destructive` / `--destructive`).
+ *   3. Logged-and-over → destructive red (`Accent.destructive` / `--destructive`).
  *
  * Centre net number + label mirror the ring stroke when logged.
  */
@@ -24,7 +24,7 @@ const MOBILE_SRC = readFileSync(MOBILE_PATH, "utf8");
 const WEB_SRC = readFileSync(WEB_PATH, "utf8");
 
 describe("Three-state ring — mobile CalorieRing", () => {
-  it("logged → over destructive, under success (no gradient stroke)", () => {
+  it("logged → over red, under success (no gradient stroke)", () => {
     expect(MOBILE_SRC).toMatch(/ringStateColor = isOver \? Accent\.destructive : Accent\.success/);
     expect(MOBILE_SRC).toMatch(
       /stroke=\{[\s\S]*?isEmpty[\s\S]*?\? trackColor[\s\S]*?: ringStateColor/,
@@ -42,13 +42,13 @@ describe("Three-state ring — mobile CalorieRing", () => {
 });
 
 describe("Three-state ring — web DailyRing", () => {
-  it("logged → over destructive, under success (no gradient stroke)", () => {
+  it("logged → over red, under success (no gradient stroke)", () => {
     expect(WEB_SRC).toMatch(
       /stroke=\{[\s\S]*?isEmpty[\s\S]*?"var\(--ring-bg\)"[\s\S]*?: isOverBudget[\s\S]*?\?\s*"var\(--destructive\)"[\s\S]*?:\s*"var\(--success\)"/,
     );
   });
 
-  it("centre number is green or red when logged", () => {
+  it("centre number is red or green when logged", () => {
     expect(WEB_SRC).toMatch(
       /centerValueColor = isEmpty[\s\S]*\?\s*undefined[\s\S]*?: isOverBudget[\s\S]*\?\s*"var\(--destructive\)"[\s\S]*?:\s*"var\(--success\)"/,
     );

@@ -5,6 +5,7 @@ import { useFeatureFlagEnabled } from "posthog-js/react";
 import { Icons } from "../ui/icons";
 import { SupprPlateMark } from "../ui/suppr-mark";
 import type { UserTier } from "../../../types/recipe";
+import { formatSidebarBadge } from "../../../lib/navigation/sidebarBadge.ts";
 
 /**
  * DesktopSidebar — left-hand navigation for the web app on desktop +
@@ -118,7 +119,7 @@ const PRIMARY_ITEMS: PrimaryItem[] = [
     label: "Recipes",
     icon: "recipe",
     defaultLeaf: "library",
-    leaves: ["library", "discover"],
+    leaves: ["library", "discover", "create", "import"],
   },
   {
     view: "plan",
@@ -152,7 +153,7 @@ const SUB_TABS: Record<PrimaryView, SubTabItem[]> = {
 
 /** Map any leaf SidebarView to the primary group that should highlight. */
 export function resolvePrimaryFromView(view: SidebarView): PrimaryView {
-  // Settings / profile are avatar-entry surfaces — not a tab group.
+  // Settings / profile are avatar-entry surfaces — highlight Today group.
   if (view === "settings" || view === "profile") return "today";
   for (const item of PRIMARY_ITEMS) {
     if (item.leaves.includes(view)) return item.view;
@@ -559,7 +560,7 @@ function SubTabSidebarItem({
   sidebarProps: DesktopSidebarProps;
 }) {
   const isActive = currentView === sub.view;
-  const badgeCount = sub.badge?.(sidebarProps) ?? 0;
+  const badge = formatSidebarBadge(sub.badge?.(sidebarProps) ?? 0);
   return (
     <button
       type="button"
@@ -572,9 +573,14 @@ function SubTabSidebarItem({
       }`}
     >
       <span className="flex-1 text-left">{sub.label}</span>
-      {badgeCount > 0 ? (
-        <span className="min-w-[1.25rem] rounded-full bg-primary/15 px-1.5 text-[10px] font-bold text-primary text-center leading-5">
-          {badgeCount > 99 ? "99+" : badgeCount}
+      {badge.show ? (
+        <span
+          className={`min-w-[1.25rem] rounded-full bg-primary/15 text-[10px] font-bold text-primary text-center leading-5 ${
+            badge.label === "•" ? "px-1.5" : "px-1.5 tabular-nums"
+          }`}
+          aria-label={badge.label === "•" ? "Has unchecked items" : `${badge.label} unchecked`}
+        >
+          {badge.label}
         </span>
       ) : null}
     </button>

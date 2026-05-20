@@ -82,6 +82,8 @@ import { hasEnoughDataForStory } from "../../lib/nutrition/progressStoryGate.ts"
 import { DigestStoryCard } from "./suppr/digest-story-card.tsx";
 import { computeDayOfWeekPattern } from "../../lib/nutrition/dayOfWeekPattern.ts";
 import { generateProgressCommentary } from "../../lib/nutrition/progressCommentary.ts";
+import { useMilestone30DayOnProgress } from "../../hooks/useMilestone30DayOnProgress.ts";
+import { Milestone30DayDialog } from "./suppr/milestone-30-day-dialog.tsx";
 
 const PACES: PlanPace[] = ["relaxed", "steady", "accelerated", "vigorous"];
 
@@ -208,6 +210,7 @@ function ProgressDashboardContent() {
 
   // F-2 (2026-04-19) — daily target snapshots for past-day "% of goal".
   const [dailyTargetsByDay, setDailyTargetsByDay] = useState<Record<string, DailyTarget | null>>({});
+  const [milestone30ShownAt, setMilestone30ShownAt] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!authedUserId) {
@@ -229,7 +232,7 @@ function ProgressDashboardContent() {
     const { data, error } = await supabase
       .from("profiles")
       .select(
-        "weight_kg, goal_weight_kg, plan_pace, weight_kg_by_day, steps_by_day, daily_steps_goal, body_fat_pct, goal, sex, height_cm, age, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, week_start_day, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, weekly_recap_last_seen_week_key",
+        "weight_kg, goal_weight_kg, plan_pace, weight_kg_by_day, steps_by_day, daily_steps_goal, body_fat_pct, goal, sex, height_cm, age, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, week_start_day, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, weekly_recap_last_seen_week_key, milestone_30_shown_at",
       )
       .eq("id", authedUserId)
       .maybeSingle();
@@ -271,6 +274,8 @@ function ProgressDashboardContent() {
       const rawLastSeen = (data as { weekly_recap_last_seen_week_key?: string | null })
         .weekly_recap_last_seen_week_key;
       setRecapLastSeenWeekKey(typeof rawLastSeen === "string" ? rawLastSeen : null);
+      const rawMilestone = (data as { milestone_30_shown_at?: unknown }).milestone_30_shown_at;
+      setMilestone30ShownAt(typeof rawMilestone === "string" ? rawMilestone : null);
 
       // Compute TDEE values
       const sex = ((data as any).sex as Sex) ?? "unspecified";
@@ -835,6 +840,15 @@ function ProgressDashboardContent() {
     p.delete("metric");
     router.replace(`/home?${p.toString()}`, { scroll: false });
   }, [router, searchParams]);
+
+  const milestone30 = useMilestone30DayOnProgress({
+    active: !loading && !metricParam && Boolean(authedUserId),
+    authedUserId,
+    nutritionByDay: nutritionByDay as never,
+    weightKgByDay,
+    milestone30ShownAt,
+    onShownAtPersisted: setMilestone30ShownAt,
+  });
 
   const progressCalendarButton = (
     <button
@@ -2154,6 +2168,11 @@ function ProgressDashboardContent() {
         Nutrition data are estimates. Not medical or dietetic advice.
       </p>
     </div>
+    <Milestone30DayDialog
+      open={milestone30.open}
+      content={milestone30.content}
+      onDismiss={milestone30.dismiss}
+    />
     </>
   );
 }

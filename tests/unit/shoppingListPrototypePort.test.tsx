@@ -74,21 +74,21 @@ describe("ShoppingList — prototype rewrite (2026-04-21)", () => {
     expect(screen.getByText("Pantry")).toBeInTheDocument();
   });
 
-  it("renders each item as 'Name (qty unit)' inside its category card", () => {
+  it("renders each item with qty and name inside its category card", () => {
     seedItems();
     render(<ShoppingList userTier="free" />);
     const rows = screen.getAllByRole("listitem");
     const broc = rows.find((r) => /Broccoli/.test(r.textContent ?? ""));
-    expect(broc?.textContent ?? "").toMatch(/Broccoli\s*\(2\s*heads\)/);
+    expect(broc?.textContent ?? "").toMatch(/2\s*heads\s*Broccoli|Broccoli.*2\s*heads/);
     const rice = rows.find((r) => /Jasmine rice/.test(r.textContent ?? ""));
-    expect(rice?.textContent ?? "").toMatch(/Jasmine rice\s*\(500\s*g\)/);
+    expect(rice?.textContent ?? "").toMatch(/500\s*g\s*Jasmine rice|Jasmine rice.*500\s*g/);
   });
 
   it("tapping a circular checkbox toggles the item via the shared handler", () => {
     const toggle = vi.fn();
     seedItems({ toggleShoppingChecked: toggle });
     render(<ShoppingList userTier="free" />);
-    const btn = screen.getByRole("button", { name: /Check Broccoli/i });
+    const btn = screen.getByRole("button", { name: /Check.*Broccoli/i });
     fireEvent.click(btn);
     expect(toggle).toHaveBeenCalledWith("p1");
   });

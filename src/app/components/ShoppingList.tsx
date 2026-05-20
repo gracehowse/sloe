@@ -3,12 +3,13 @@ import { Users, X } from "lucide-react";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import {
-  formatMixedShoppingAmounts,
+  formatShoppingGroupLabel,
   groupShoppingItemsByIngredientName,
   isShoppingGroupFullyChecked,
   type ShoppingDisplayGroup,
 } from "../../lib/planning/shoppingDisplayGroups.ts";
-import { dedupeShoppingLabel } from "../../lib/planning/shoppingListLifecycle.ts";
+import { sortShoppingCategories } from "../../lib/planning/shoppingAisleOrder.ts";
+import { withNormalizedShoppingFields } from "../../lib/planning/normalizeShoppingIngredientRow.ts";
 import {
   getMyHousehold,
   type HouseholdData,
@@ -122,7 +123,7 @@ export const ShoppingList = memo(function ShoppingList({
   }, [household, userId]);
 
   const categories = useMemo(
-    () => Array.from(new Set(shoppingItems.map((item) => item.category))),
+    () => sortShoppingCategories(shoppingItems.map((item) => item.category)),
     [shoppingItems],
   );
 
@@ -131,7 +132,9 @@ export const ShoppingList = memo(function ShoppingList({
       categories.map((category) => ({
         name: category,
         groups: groupShoppingItemsByIngredientName(
-          shoppingItems.filter((item) => item.category === category),
+          shoppingItems
+            .filter((item) => item.category === category)
+            .map(withNormalizedShoppingFields),
         ),
       })),
     [categories, shoppingItems],
@@ -289,24 +292,7 @@ export const ShoppingList = memo(function ShoppingList({
               <ul className="flex flex-col">
                 {section.groups.map((group) => {
                   const allChecked = isShoppingGroupFullyChecked(group);
-                  const dedupedSingle =
-                    group.items.length === 1
-                      ? dedupeShoppingLabel({
-                          amount: group.items[0]!.amount,
-                          unit: group.items[0]!.unit,
-                          name: group.displayName,
-                        })
-                      : null;
-                  const qtyLine = dedupedSingle
-                    ? `${dedupedSingle.amount} ${dedupedSingle.unit}`.trim()
-                    : formatMixedShoppingAmounts(group.items);
-                  const displayName = dedupedSingle
-                    ? dedupedSingle.name
-                    : group.displayName;
-                  const rowLabel =
-                    qtyLine && !displayName.toLowerCase().includes(qtyLine.toLowerCase())
-                      ? `${displayName} (${qtyLine})`
-                      : displayName;
+                  const rowLabel = formatShoppingGroupLabel(group);
 
                   // Honeydew parity (2026-04-30): per-row check
                   // attribution. When the group is checked AND we
@@ -334,7 +320,7 @@ export const ShoppingList = memo(function ShoppingList({
                         type="button"
                         onClick={() => toggleGroupChecked(group)}
                         aria-pressed={allChecked}
-                        aria-label={`${allChecked ? "Uncheck" : "Check"} ${displayName}`}
+                        aria-label={`${allChecked ? "Uncheck" : "Check"} ${rowLabel}`}
                         className="shrink-0"
                         style={{
                           width: 18,
@@ -380,7 +366,7 @@ export const ShoppingList = memo(function ShoppingList({
                       <button
                         type="button"
                         onClick={() => removeGroup(group)}
-                        aria-label={`Remove ${displayName}`}
+                        aria-label={`Remove ${rowLabel}`}
                         data-testid={`shopping-row-remove-${group.key}`}
                         className="shrink-0 size-6 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-opacity opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                       >

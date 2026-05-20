@@ -113,7 +113,7 @@ describe("ShoppingList — F3 interaction parity (2026-04-28)", () => {
     seed({ removeShoppingItem });
     render(<ShoppingList userTier="free" />);
     // Find the row remove for Broccoli (single-item group, key starts with the ingredient name).
-    const removeBtn = screen.getByLabelText(/Remove Broccoli/i);
+    const removeBtn = screen.getByLabelText(/Remove.*Broccoli/i);
     fireEvent.click(removeBtn);
     expect(removeShoppingItem).toHaveBeenCalledWith("p1");
   });

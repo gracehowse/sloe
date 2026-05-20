@@ -79,11 +79,28 @@ export function TodayDateHeader({
             }
           >
             <p className="text-xs uppercase tracking-widest text-muted-foreground font-medium truncate">
-              {viewMode === "week"
-                ? weekLabel
-                : `${selectedDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })} · ${selectedDate.toLocaleDateString("en-US", { weekday: "long" })}`}
+              {viewMode === "week" ? (
+                weekLabel
+              ) : (
+                <>
+                  <span className="sm:hidden">
+                    {selectedDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}{" "}
+                    · {selectedDate.toLocaleDateString("en-US", { weekday: "short" })}
+                  </span>
+                  <span className="hidden sm:inline">
+                    {selectedDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}{" "}
+                    · {selectedDate.toLocaleDateString("en-US", { weekday: "long" })}
+                  </span>
+                </>
+              )}
             </p>
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground truncate">
+            <h1
+              className={`font-bold text-foreground ${
+                hideDayStrip
+                  ? "text-lg sm:text-xl whitespace-nowrap"
+                  : "text-xl sm:text-2xl truncate"
+              }`}
+            >
               {viewMode === "week" ? "This week" : formatDateLabel(selectedDate)}
             </h1>
           </button>

@@ -17,6 +17,7 @@ import {
   type SeedCuisineCluster,
 } from "../../lib/recipes/seedRecipesV2.ts";
 import { RecipeHeroFallback } from "./suppr/RecipeHeroFallback";
+import { DiscoverRecipeImage } from "./suppr/discover-recipe-image";
 // Phase 4 / B3.X — trust posture sweep (D-2026-04-27-16).
 // GW-08 (audit 2026-04-28): `TrustChip` + `recipeLevelTrust` dropped
 // from the Discover hero card — see the comment on the card body.
@@ -590,17 +591,13 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                             onClick={() => setSelectedRecipe(recipe)}
                             className="shrink-0 w-[220px] text-left rounded-xl bg-card border border-border overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all"
                           >
-                            <div
-                              className="relative overflow-hidden"
-                              style={{ aspectRatio: recipe.image ? "16 / 10" : "8 / 1" }}
-                            >
-                              {recipe.image ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img src={recipe.image} alt="" className="w-full h-full object-cover" />
-                              ) : (
-                                <RecipeHeroFallback id={recipe.id} title={recipe.title} iconSize={24} />
-                              )}
-                            </div>
+                            <DiscoverRecipeImage
+                              id={recipe.id}
+                              title={recipe.title}
+                              image={recipe.image}
+                              iconSize={24}
+                              aspectRatio={recipe.image ? "16 / 10" : "8 / 1"}
+                            />
                             <div className="p-2.5">
                               <p
                                 className="text-[13px] font-bold text-foreground leading-snug -tracking-[0.01em]"
@@ -667,33 +664,23 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                   onClick={() => setSelectedRecipe(recipe)}
                   className="group text-left rounded-2xl bg-card border border-border overflow-hidden cursor-pointer w-full hover:shadow-xl hover:shadow-foreground/5 hover:-translate-y-0.5 transition-all"
                 >
-                  <div
-                    className="relative overflow-hidden"
-                    // P1-19 web parity (2026-04-25 ui-critic): image-less
-                    // hero collapses from 16:10 to a thin 8:1 category
-                    // band so the title + macros below carry the
-                    // visual weight. Image-bearing rows keep the
-                    // full hero.
-                    style={{ aspectRatio: recipe.image ? "16 / 10" : "8 / 1" }}
-                  >
-                    {recipe.image ? (
-                      // eslint-disable-next-line @next/next/no-img-element -- remote creator URLs; next/image domains not enumerated
-                      <img
-                        src={recipe.image}
-                        alt=""
-                        className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
-                      />
-                    ) : (
-                      <RecipeHeroFallback id={recipe.id} title={recipe.title} iconSize={28} />
-                    )}
-                    {recipe.sourcePlatform && (
+                  <div className="relative overflow-hidden">
+                    <DiscoverRecipeImage
+                      id={recipe.id}
+                      title={recipe.title}
+                      image={recipe.image}
+                      iconSize={28}
+                      aspectRatio={recipe.image ? "16 / 10" : "8 / 1"}
+                      className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
+                    />
+                    {recipe.sourcePlatform ? (
                       <div className="absolute top-2 left-2">
                         <SourceBadge
                           source={recipe.sourcePlatform}
                           className="text-[9px] px-1.5 py-0.5"
                         />
                       </div>
-                    )}
+                    ) : null}
                   </div>
                   <div className="p-3.5">
                     <p
@@ -852,21 +839,19 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                     {/* P1-19 web parity: hero collapses to 8:1 band when
                         no image (mobile parity, see DiscoverFeed grid above
                         and apps/mobile/app/(tabs)/discover.tsx). */}
-                    <div
-                      className="flex items-center justify-center relative overflow-hidden"
-                      style={{ aspectRatio: recipe.image ? "16 / 10" : "8 / 1" }}
-                    >
-                      {recipe.image ? (
-                        // eslint-disable-next-line @next/next/no-img-element -- remote creator URLs; next/image domains not enumerated
-                        <img src={recipe.image} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        <RecipeHeroFallback id={recipe.id} title={recipe.title} iconSize={28} />
-                      )}
-                      {recipe.sourcePlatform && (
+                    <div className="relative overflow-hidden">
+                      <DiscoverRecipeImage
+                        id={recipe.id}
+                        title={recipe.title}
+                        image={recipe.image}
+                        iconSize={28}
+                        aspectRatio={recipe.image ? "16 / 10" : "8 / 1"}
+                      />
+                      {recipe.sourcePlatform ? (
                         <div className="absolute top-2 left-2">
                           <SourceBadge source={recipe.sourcePlatform} className="text-[9px] px-1.5 py-0.5" />
                         </div>
-                      )}
+                      ) : null}
                     </div>
                     <div className="p-3.5 relative">
                       {/* F-45: fit-percent pill removed — see
@@ -935,14 +920,14 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                         onClick={() => setSelectedRecipe(recipe)}
                         className={`w-full flex items-center gap-3 p-3 text-left hover:bg-muted/40 transition-colors ${idx > 0 ? "border-t border-border" : ""}`}
                       >
-                        <span className="w-10 h-10 rounded-lg bg-muted text-muted-foreground inline-flex items-center justify-center shrink-0 overflow-hidden">
-                          {recipe.image ? (
-                            // eslint-disable-next-line @next/next/no-img-element -- remote creator URLs; next/image domains not enumerated
-                            <img src={recipe.image} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            <Icons.chef className="w-[18px] h-[18px]" />
-                          )}
-                        </span>
+                        <DiscoverRecipeImage
+                          id={recipe.id}
+                          title={recipe.title}
+                          image={recipe.image}
+                          iconSize={18}
+                          variant="thumb"
+                          className="w-full h-full object-cover"
+                        />
                         <span className="flex-1 min-w-0">
                           <span className="block text-[13px] font-semibold text-foreground truncate">
                             {recipe.title}

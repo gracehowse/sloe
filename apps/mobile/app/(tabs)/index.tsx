@@ -199,12 +199,6 @@ import { TodayMealsSection } from "@/components/today/TodayMealsSection";
 import { TodayFirstMealEmptyState } from "@/components/today/TodayFirstMealEmptyState";
 import { TodayActivityBonusCard } from "@/components/today/TodayActivityBonusCard";
 import { TodayCompleteDayModal } from "@/components/today/TodayCompleteDayModal";
-import { Milestone30DayModal } from "@/components/today/Milestone30DayModal";
-import {
-  buildMilestone30DayContent,
-  shouldShowMilestone30Day,
-  type Milestone30DayContent,
-} from "@/lib/milestone30Day";
 // Weekly check-in ritual (PR claude/weekly-checkin-ritual-v2, 2026-05-02 —
 // rebuild of #26). MacroFactor-style soft prompt that surfaces the
 // adaptive-vs-formula TDEE delta + a suggested new daily target.
@@ -687,13 +681,6 @@ export default function TrackerScreen() {
   const [adaptiveTdee, setAdaptiveTdee] = useState<number | null>(null);
   const [adaptiveTdeeConfidence, setAdaptiveTdeeConfidence] = useState<string | null>(null);
   const [adaptiveTdeeUpdatedAt, setAdaptiveTdeeUpdatedAt] = useState<string | null>(null);
-  // 30-day milestone moment (PR claude/today-30-day-milestone, 2026-05-02).
-  // Fires once per user when they cross 30 distinct logged days. The
-  // gate + content build live in `src/lib/nutrition/milestone30Day.ts`
-  // and are pure / shared across web + mobile.
-  const [milestone30ShownAt, setMilestone30ShownAt] = useState<string | null>(null);
-  const [milestone30Open, setMilestone30Open] = useState(false);
-  const [milestone30Content, setMilestone30Content] = useState<Milestone30DayContent | null>(null);
   // Weekly TDEE check-in ritual (PR claude/weekly-checkin-ritual-v2,
   // 2026-05-02 — rebuild of #26). The MacroFactor-style modal that
   // surfaces the adaptive-vs-formula TDEE delta once a week. Gating +
@@ -708,7 +695,6 @@ export default function TrackerScreen() {
     useState<WeeklyCheckinContent | null>(null);
   const weeklyCheckinHandledRef = useRef(false);
   const [profileWeightKgByDay, setProfileWeightKgByDay] = useState<Record<string, number>>({});
-  const milestone30HandledRef = useRef(false);
   const targetHitPrevByDayRef = useRef<Record<string, boolean>>({});
   /** Once we celebrate (or user was already at goal on first load), do not celebrate again that calendar day if they dip and re-hit. */
   const targetsCelebratedForDayRef = useRef<Record<string, boolean>>({});
@@ -1773,15 +1759,6 @@ export default function TrackerScreen() {
     setAdaptiveTdeeUpdatedAt(
       typeof (d as any).adaptive_tdee_updated_at === "string" ? (d as any).adaptive_tdee_updated_at : null,
     );
-    // 30-day milestone state — `milestone_30_shown_at` ungates the
-    // moment once and only once. `weight_kg_by_day` feeds the total
-    // weight delta line. Both are null-safe; missing columns leave
-    // the surface honest (delta line is suppressed when empty).
-    setMilestone30ShownAt(
-      typeof (d as any).milestone_30_shown_at === "string"
-        ? (d as any).milestone_30_shown_at
-        : null,
-    );
     // Weekly check-in ritual — `last_weekly_checkin_shown_at` drives
     // the 6-day cooldown gate. Missing column ⇒ null ⇒ gate is open.
     setWeeklyCheckinShownAt(
@@ -2299,112 +2276,6 @@ export default function TrackerScreen() {
         return clampJournalDate(next);
       });
     });
-  }, []);
-
-  // 30-day milestone moment gate (PR claude/today-30-day-milestone,
-  // 2026-05-02; persistence hardening 2026-05-05 audit K1).
-  //
-  // Runs once per Today first-load AFTER the journal has hydrated.
-  // Three-layer suppression:
-  //   1. `milestone30HandledRef` — within-session ref guard.
-  //   2. AsyncStorage `suppr.milestone_30.shown_at_local` — local
-  //      persistence, survives cold launch even if the server write
-  //      fails (audit K1: server write was silently failing under
-  //      `void` and Grace's column stayed null across 49+ days,
-  //      causing the modal to re-fire every cold launch).
-  //   3. `profiles.milestone_30_shown_at` — server source of truth
-  //      on next refetch.
-  //
-  // Order matters: the local AsyncStorage write happens FIRST and is
-  // synchronous-after-await; the server update logs its error
-  // explicitly instead of swallowing under `void`.
-  useEffect(() => {
-    if (!isToday) return;
-    if (milestone30HandledRef.current) return;
-    if (!userId) return;
-    if (milestone30ShownAt) return;
-    // The journal has loaded once `byDay` has at least one key. We
-    // bail when empty rather than render the surface against a stale
-    // empty map on first paint.
-    if (Object.keys(byDay).length === 0) return;
-    const eligible = shouldShowMilestone30Day({
-      nutritionByDay: byDay as never,
-      shownAt: milestone30ShownAt,
-    });
-    if (!eligible) return;
-    milestone30HandledRef.current = true;
-    const content = buildMilestone30DayContent({
-      nutritionByDay: byDay as never,
-      weightKgByDay: profileWeightKgByDay,
-    });
-    setMilestone30Content(content);
-    setMilestone30Open(true);
-
-    const nowIso = new Date().toISOString();
-    setMilestone30ShownAt(nowIso);
-
-    // Layer 2: persist locally first — can't fail silently the way
-    // the supabase update did under `void` (audit K1).
-    void AsyncStorage.setItem("suppr.milestone_30.shown_at_local", nowIso).catch(
-      (err) => {
-        console.warn("[milestone30] AsyncStorage write failed:", err);
-      },
-    );
-
-    // Layer 3: server stamp. `await` + explicit error log so a
-    // future RLS / column / network failure surfaces in dev/Sentry
-    // instead of leaving the user re-firing the modal every launch.
-    void (async () => {
-      const { error } = await supabase
-        .from("profiles")
-        .update({ milestone_30_shown_at: nowIso } as never)
-        .eq("id", userId);
-      if (error) {
-        console.warn("[milestone30] server stamp failed:", error.message);
-      }
-    })();
-
-    try {
-      track(AnalyticsEvents.milestone_30_shown, {
-        daysLogged: content.daysLogged,
-        longestStreak: content.longestStreak,
-        topFoodCount: content.topFoods.length,
-        platform: "ios",
-      });
-    } catch {
-      /* noop */
-    }
-  }, [isToday, userId, byDay, profileWeightKgByDay, milestone30ShownAt]);
-
-  // Hydrate the local backstop. If a previous session wrote
-  // `suppr.milestone_30.shown_at_local` (e.g. server stamp failed),
-  // honour it before the server-fetched `milestone30ShownAt` lands.
-  // Without this, a cold launch with `milestone30ShownAt = null`
-  // (server NULL) would re-fire the modal even though the user has
-  // seen + dismissed it locally.
-  useEffect(() => {
-    if (milestone30ShownAt) return;
-    let cancelled = false;
-    void AsyncStorage.getItem("suppr.milestone_30.shown_at_local").then(
-      (raw) => {
-        if (cancelled) return;
-        if (typeof raw === "string" && raw) {
-          setMilestone30ShownAt(raw);
-        }
-      },
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, [milestone30ShownAt]);
-
-  const handleMilestone30Dismiss = useCallback(() => {
-    setMilestone30Open(false);
-    try {
-      track(AnalyticsEvents.milestone_30_dismissed, { platform: "ios" });
-    } catch {
-      /* noop */
-    }
   }, []);
 
   // Weekly check-in ritual gate (PR claude/weekly-checkin-ritual-v2,
@@ -5200,19 +5071,6 @@ export default function TrackerScreen() {
         )}
 
       </ScrollView>
-
-      {/* 30-day milestone moment (PR claude/today-30-day-milestone,
-          2026-05-02). Fires once per user when they cross 30 distinct
-          logged days. Pure trust moment — single CTA, no paywall. */}
-      <Milestone30DayModal
-        visible={milestone30Open}
-        content={milestone30Content}
-        onDismiss={handleMilestone30Dismiss}
-        cardColor={colors.card}
-        textColor={colors.text}
-        textSecondaryColor={colors.textSecondary}
-        borderColor={colors.border}
-      />
 
       {/* Weekly TDEE check-in ritual (PR claude/weekly-checkin-ritual-v2,
           2026-05-02 — rebuild of #26). MacroFactor-style soft prompt

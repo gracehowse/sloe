@@ -86,6 +86,10 @@ async function dismissChrome(page: Page): Promise<void> {
   if (await accept.isVisible({ timeout: 2500 }).catch(() => false)) {
     await accept.click();
   }
+  // ENG-633 — suppress first-run completion toast noise on Today captures.
+  await page.evaluate(() => {
+    localStorage.setItem("suppr-checklist-toast-shown", "1");
+  });
   const milestone = page.getByRole("dialog");
   if (await milestone.isVisible({ timeout: 2000 }).catch(() => false)) {
     const keep = milestone.getByRole("button", { name: /keep going/i });
@@ -213,6 +217,15 @@ test.describe("today premium matrix — desktop 1440", () => {
     colorScheme: "light",
   });
 
+  test.beforeAll(() => {
+    loadEnvLocal();
+    execSync("npx tsx scripts/e2e-seed-today-premium-matrix.ts", {
+      cwd: process.cwd(),
+      stdio: "inherit",
+      env: process.env,
+    });
+  });
+
   test.beforeEach(async ({ page }) => {
     await loginWithTestUser(page);
   });
@@ -220,6 +233,7 @@ test.describe("today premium matrix — desktop 1440", () => {
   for (const state of [
     "empty-day",
     "one-meal",
+    "deficit-insight",
     "eat-again",
     "over-budget",
   ] as const) {

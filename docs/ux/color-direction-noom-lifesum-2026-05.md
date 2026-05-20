@@ -18,7 +18,7 @@
 |------|-------|------|-------|
 | **Success** | `#62b35a` | `#82d878` | Leaf green — calories, lunch slot, USDA dot, confidence-high |
 | **Warning** | `#e0a838` | `#f0c058` | Golden amber — over-budget, breakfast slot, activity bonus |
-| **Carbs macro** | `#df7a4e` | `#f0956e` | Soft terracotta — distinct from warning amber |
+| **Carbs macro** | `#d4a02f` | `#e2b84c` | Golden terracotta — distinct from warning amber (enforced by `crossPlatformThemeTokens.test.ts`) |
 | **Background** | `#f6f3ee` | `#101014` | Warm cream (light); dark unchanged |
 | **Primary (UI)** | `#1c1916` | `#e8e7ed` | Warm ink — buttons, tabs, links |
 | **Brand blue** | `#4c6ce0` | `#7a90f5` | Protein macro / marketing only |
@@ -29,7 +29,7 @@
 |-------|-----|-----|
 | `--success` | `#22a860` | `#62b35a` |
 | `--warning` | `#e8a020` | `#e0a838` |
-| `--macro-carbs` | `#ed6b2a` | `#df7a4e` |
+| `--macro-carbs` | `#ed6b2a` | `#d4a02f` |
 | `--background` | `#f4f5f7` | `#f6f3ee` |
 
 ## Application rules

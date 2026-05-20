@@ -310,7 +310,7 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
                 }`}
                 style={
                   tile.isOverBudget
-                    ? { color: "var(--over-budget-fg)" }
+                    ? { color: "var(--destructive)" }
                     : undefined
                 }
               >

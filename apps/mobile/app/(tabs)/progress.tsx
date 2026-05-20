@@ -31,6 +31,8 @@ import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { Layout } from "@/constants/layout";
 import { ProgressTabChrome } from "@/components/tabs/ProgressTabChrome";
+import { Milestone30DayModal } from "@/components/today/Milestone30DayModal";
+import { useMilestone30DayOnProgress } from "@/hooks/useMilestone30DayOnProgress";
 import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { dateKeyFromDate, type ByDay } from "@/lib/nutritionJournal";
@@ -176,6 +178,15 @@ export default function ProgressScreen() {
   // *on that day*. Days with no snapshot (pre-migration) fall back to
   // the current target and the UI marks that row as approximate.
   const [dailyTargetsByDay, setDailyTargetsByDay] = useState<Record<string, DailyTarget | null>>({});
+  const [milestone30ShownAt, setMilestone30ShownAt] = useState<string | null>(null);
+  const [progressTabFocused, setProgressTabFocused] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      setProgressTabFocused(true);
+      return () => setProgressTabFocused(false);
+    }, []),
+  );
 
   // Batch 4.11 — streak freeze + weekly recap state
   const [freezeLedger, setFreezeLedger] = useState<FreezeLedger>({
@@ -384,7 +395,7 @@ export default function ProgressScreen() {
     const profilePromise = (async () =>
       await supabase
         .from("profiles")
-        .select("target_calories, target_protein, target_carbs, target_fat, weight_kg, goal_weight_kg, weight_kg_by_day, steps_by_day, daily_steps_goal, week_start_day, goal, plan_pace, sex, height_cm, age, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, weekly_recap_last_seen_week_key, weekly_recap_push_enabled, measurement_system, weight_surface_mode")
+        .select("target_calories, target_protein, target_carbs, target_fat, weight_kg, goal_weight_kg, weight_kg_by_day, steps_by_day, daily_steps_goal, week_start_day, goal, plan_pace, sex, height_cm, age, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, weekly_recap_last_seen_week_key, weekly_recap_push_enabled, measurement_system, weight_surface_mode, milestone_30_shown_at")
         .eq("id", userId)
         .maybeSingle())();
     const [entriesResult, profileResult] = await Promise.all([
@@ -464,6 +475,11 @@ export default function ProgressScreen() {
       setRecapLastSeenWeekKey(typeof rawLastSeen === "string" ? rawLastSeen : null);
       const rawPushEnabled = (profile as any).weekly_recap_push_enabled;
       setRecapPushEnabled(rawPushEnabled !== false);
+      setMilestone30ShownAt(
+        typeof (profile as { milestone_30_shown_at?: unknown }).milestone_30_shown_at === "string"
+          ? (profile as { milestone_30_shown_at: string }).milestone_30_shown_at
+          : null,
+      );
 
       // Compute TDEE values
       const sex = ((profile as any).sex as string) ?? "unspecified";
@@ -837,6 +853,15 @@ export default function ProgressScreen() {
   };
 
   const hasData = Object.keys(byDay).length > 0;
+
+  const milestone30 = useMilestone30DayOnProgress({
+    active: progressTabFocused && !loading && hasData,
+    userId,
+    byDay,
+    weightKgByDay,
+    milestone30ShownAt,
+    onShownAtPersisted: setMilestone30ShownAt,
+  });
 
   const progressScrollStyle = {
     paddingTop: Spacing.md,
@@ -2275,6 +2300,15 @@ export default function ProgressScreen() {
           .sort(([a], [b]) => b.localeCompare(a));
         setWeightKg(remaining.length > 0 ? (remaining[0][1] as number) : null);
       }}
+    />
+    <Milestone30DayModal
+      visible={milestone30.open}
+      content={milestone30.content}
+      onDismiss={milestone30.dismiss}
+      cardColor={colors.card}
+      textColor={colors.text}
+      textSecondaryColor={colors.textSecondary}
+      borderColor={colors.border}
     />
     </View>
   );

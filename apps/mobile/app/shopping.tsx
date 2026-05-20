@@ -26,11 +26,16 @@ import {
   shoppingItemsTiedToCurrentPlan,
 } from "@suppr/shared/planning/shoppingListLifecycle";
 import {
-  formatMixedShoppingAmounts,
+  formatShoppingGroupLabel,
   groupShoppingItemsByIngredientName,
   isShoppingGroupFullyChecked,
   type ShoppingDisplayGroup,
 } from "@suppr/shared/planning/shoppingDisplayGroups";
+import { sortShoppingCategories } from "@suppr/shared/planning/shoppingAisleOrder";
+import {
+  normalizeShoppingIngredientRow,
+  withNormalizedShoppingFields,
+} from "@suppr/shared/planning/normalizeShoppingIngredientRow";
 import { getMyHousehold, type HouseholdData } from "@suppr/shared/household/householdClient";
 import {
   householdMemberAccent,
@@ -223,16 +228,23 @@ export default function ShoppingListScreen() {
       })) as ShoppingItem[];
     }
 
-    return rows.map((r) => ({
-      id: (r as { id: string }).id,
-      name: ((r as { name?: string }).name) ?? "",
-      amount: ((r as { amount?: string }).amount) ?? "",
-      unit: ((r as { unit?: string }).unit) ?? "",
-      category: ((r as { category?: string }).category) ?? "Other",
-      checked: ((r as { checked?: boolean }).checked) ?? false,
-      from: ((r as { source?: string }).source) ?? "",
-      checkedBy: ((r as { checked_by?: string | null }).checked_by) ?? null,
-    })) as ShoppingItem[];
+    return rows.map((r) => {
+      const normalized = normalizeShoppingIngredientRow({
+        name: ((r as { name?: string }).name) ?? "",
+        amount: ((r as { amount?: string }).amount) ?? "",
+        unit: ((r as { unit?: string }).unit) ?? "",
+      });
+      return {
+        id: (r as { id: string }).id,
+        name: normalized.name,
+        amount: normalized.amount,
+        unit: normalized.unit,
+        category: ((r as { category?: string }).category) ?? "Other",
+        checked: ((r as { checked?: boolean }).checked) ?? false,
+        from: ((r as { source?: string }).source) ?? "",
+        checkedBy: ((r as { checked_by?: string | null }).checked_by) ?? null,
+      };
+    }) as ShoppingItem[];
   }, []);
 
   // Initial load.
@@ -582,48 +594,15 @@ export default function ShoppingListScreen() {
   // user can scan top-down without backtracking. Categories not in
   // the canonical order land at the end alphabetically. Mirrors the
   // pattern used by AnyList / OurGroceries.
-  const AISLE_ORDER = useMemo<readonly string[]>(
-    () => [
-      "Produce",
-      "Bakery",
-      "Meat",
-      "Seafood",
-      "Deli",
-      "Dairy",
-      "Eggs",
-      "Frozen",
-      "Pantry",
-      "Grains",
-      "Pasta",
-      "Canned",
-      "Condiments",
-      "Spices",
-      "Baking",
-      "Snacks",
-      "Drinks",
-      "Alcohol",
-      "Household",
-      "Other",
-    ],
-    [],
-  );
   const groupedSections = useMemo(() => {
-    const cats = [...new Set(items.map((i) => i.category))];
-    const orderedCats = cats.slice().sort((a, b) => {
-      const ai = AISLE_ORDER.indexOf(a);
-      const bi = AISLE_ORDER.indexOf(b);
-      if (ai === -1 && bi === -1) return a.localeCompare(b);
-      if (ai === -1) return 1;
-      if (bi === -1) return -1;
-      return ai - bi;
-    });
+    const orderedCats = sortShoppingCategories(items.map((i) => i.category));
     return orderedCats.map((category) => ({
       name: category,
       groups: groupShoppingItemsByIngredientName(
-        items.filter((i) => i.category === category),
+        items.filter((i) => i.category === category).map(withNormalizedShoppingFields),
       ),
     }));
-  }, [items, AISLE_ORDER]);
+  }, [items]);
   const totalGroupCount = useMemo(
     () => groupedSections.reduce((n, s) => n + s.groups.length, 0),
     [groupedSections],
@@ -799,23 +778,7 @@ export default function ShoppingListScreen() {
                   </View>
                   {section.groups.map((group: ShoppingDisplayGroup) => {
                     const allChecked = isShoppingGroupFullyChecked(group);
-                    const dedupedSingle =
-                      group.items.length === 1
-                        ? dedupeShoppingLabel({
-                            amount: group.items[0]!.amount,
-                            unit: group.items[0]!.unit,
-                            name: group.displayName,
-                          })
-                        : null;
-                    const qtyLine = dedupedSingle
-                      ? `${dedupedSingle.amount} ${dedupedSingle.unit}`.trim()
-                      : formatMixedShoppingAmounts(group.items);
-                    const displayName = dedupedSingle
-                      ? dedupedSingle.name
-                      : group.displayName;
-                    const rowLabel = qtyLine
-                      ? `${displayName} (${qtyLine})`
-                      : displayName;
+                    const rowLabel = formatShoppingGroupLabel(group);
                     const fromLabel = [
                       ...new Set(
                         group.items
@@ -873,7 +836,7 @@ export default function ShoppingListScreen() {
                                 alignItems: "center",
                               }}
                               accessibilityRole="button"
-                              accessibilityLabel={`Remove ${displayName} from shopping list`}
+                              accessibilityLabel={`Remove ${rowLabel} from shopping list`}
                               testID={`shopping-swipe-delete-${group.key}`}
                             >
                               <Trash2 size={22} color="#fff" />
@@ -899,8 +862,8 @@ export default function ShoppingListScreen() {
                           Alert.alert(
                             group.items.length > 1 ? "Remove items" : "Remove item",
                             group.items.length > 1
-                              ? `Delete ${group.items.length} rows for "${displayName}"?`
-                              : `Delete "${displayName}"?`,
+                              ? `Delete ${group.items.length} rows for "${rowLabel}"?`
+                              : `Delete "${rowLabel}"?`,
                             [
                               { text: "Cancel", style: "cancel" },
                               {

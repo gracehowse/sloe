@@ -7,7 +7,7 @@
  *   1. The header card lives in Settings.tsx and carries the
  *      `data-testid="settings-profile-header-card"` selector so any
  *      future visual rework can preserve the e2e hook.
- *   2. The "Edit profile" affordance routes to /home?view=profile so
+ *   2. The "Edit profile" affordance routes to /profile so
  *      bookmarks and the existing App.tsx view-router resolve.
  *   3. Desktop sidebar: Settings via bottom profile entry, not a Progress
  *      sub-tab (`desktop-sidebar-profile-entry`).
@@ -38,9 +38,9 @@ describe("Settings — profile header card (Group G IA Batch C)", () => {
     expect(settings).toContain('data-testid="settings-profile-header-card"');
   });
 
-  it("Edit-profile link routes to /home?view=profile", () => {
+  it("Edit-profile link routes to /profile", () => {
     expect(settings).toMatch(
-      /href="\/home\?view=profile"[\s\S]*?data-testid="settings-edit-profile-link"/,
+      /href="\/profile"[\s\S]*?data-testid="settings-edit-profile-link"/,
     );
   });
 

@@ -303,7 +303,7 @@ export function TodayMealsSection({
                     2026-05-15 (crowder task) — when `usualRowV2` is ON,
                     this chip moves to a dedicated row below the header
                     so the header stays compact on narrow widths. */}
-                {!usualRowV2 && hasSaved && primarySaved && (
+                {!usualRowV2 && mealsForSelectedDate.length > 0 && hasSaved && primarySaved && (
                   <button
                     type="button"
                     data-testid={`today-log-usual-pill-in-header-${sectionName}`}
@@ -345,7 +345,7 @@ export function TodayMealsSection({
                   when the saved-meal name is long. Renders regardless
                   of collapse state so the affordance is reachable from
                   collapsed slots too. */}
-              {usualRowV2 && hasSaved && primarySaved && (
+              {usualRowV2 && mealsForSelectedDate.length > 0 && hasSaved && primarySaved && (
                 <div
                   data-testid={`today-log-usual-row-${sectionName}`}
                   className="flex items-center px-3.5 py-2 border-b border-border/10"

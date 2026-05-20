@@ -173,7 +173,7 @@ export function TodayWeekSidebar({
                     className="h-full rounded-full transition-[width] duration-300"
                     style={{
                       width: `${pct * 100}%`,
-                      background: isOver ? "var(--warning)" : "var(--success)",
+                      background: isOver ? "var(--destructive)" : "var(--success)",
                     }}
                   />
                 </div>

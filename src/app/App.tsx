@@ -158,6 +158,9 @@ export default function App() {
       settings: "settings",
       notifications: "notifications",
       targets: "targets",
+      create: "create",
+      import: "import",
+      profile: "profile",
     };
     return pathMap[seg] ?? null;
   }, [pathname]);
@@ -225,13 +228,12 @@ export default function App() {
   useEffect(() => {
     if (!recipeDeepLinkId) return;
     setCurrentView("discover");
-    const v = searchParams.get("view");
-    if (v !== "discover") {
-      const p = new URLSearchParams(searchParams.toString());
-      p.set("view", "discover");
-      router.replace(`/home?${p.toString()}`, { scroll: false });
-    }
-  }, [recipeDeepLinkId, searchParams, router]);
+    if (pathname?.startsWith("/discover")) return;
+    const p = new URLSearchParams(searchParams.toString());
+    p.delete("view");
+    const q = p.toString();
+    router.replace(q ? `/discover?${q}` : "/discover", { scroll: false });
+  }, [recipeDeepLinkId, pathname, searchParams, router]);
 
   // 2026-05-12 (premium-bar audit refuse-to-pass #2): nav now pushes
   // path-based URLs so the browser bar shows `/today`, `/library`,
@@ -310,11 +312,14 @@ export default function App() {
   }, [pathname, router, searchParams]);
 
   const openRecipeById = useCallback(
-    (recipeId: string, opts?: { cook?: boolean }) => {
+    (recipeId: string, opts?: { cook?: boolean; portions?: number }) => {
       const params = new URLSearchParams(searchParams.toString());
       params.delete("view");
       params.set("recipe", recipeId);
       if (opts?.cook) params.set("cook", "1");
+      if (opts?.portions != null && opts.portions !== 1) {
+        params.set("portions", String(opts.portions));
+      }
       const q = params.toString();
       router.replace(q ? `/discover?${q}` : "/discover", { scroll: false });
       setCurrentView("discover");
@@ -360,10 +365,10 @@ export default function App() {
   const openLogSheetFromTabBar = useCallback(() => {
     setCurrentView("today");
     const params = new URLSearchParams(searchParams.toString());
-    params.set("view", "today");
+    params.delete("view");
     params.set("openLog", "1");
     const q = params.toString();
-    router.replace(`/home?${q}`, { scroll: false });
+    router.replace(q ? `/today?${q}` : "/today?openLog=1", { scroll: false });
   }, [router, searchParams]);
 
   const shoppingUncheckedCount = useMemo(
@@ -434,9 +439,9 @@ export default function App() {
     void refreshProfileBasics().then(() => {
       const params = new URLSearchParams(searchParams.toString());
       params.delete("checkout");
-      if (!params.get("view")) params.set("view", "today");
+      params.delete("view");
       const q = params.toString();
-      router.replace(q ? `/home?${q}` : "/home?view=today", { scroll: false });
+      router.replace(q ? `/today?${q}` : "/today", { scroll: false });
     });
   }, [searchParams, router, refreshProfileBasics]);
 
@@ -485,13 +490,10 @@ export default function App() {
                 onNavigate={(view) => navigateToView(view)}
                 onOpenRecipe={openRecipeById}
                 onCookRecipe={(id, portion) => {
-                  const params = new URLSearchParams(searchParams.toString());
-                  params.set("view", "discover");
-                  params.set("recipe", id);
-                  params.set("cook", "1");
-                  if (portion && portion !== 1) params.set("portions", String(portion));
-                  router.replace(`/home?${params.toString()}`, { scroll: false });
-                  setCurrentView("discover");
+                  openRecipeById(id, {
+                    cook: true,
+                    ...(portion && portion !== 1 ? { portions: portion } : {}),
+                  });
                 }}
               /></FeatureErrorBoundary>
             ) : (

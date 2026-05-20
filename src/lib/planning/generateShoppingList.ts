@@ -1,5 +1,6 @@
 import type { ShoppingItem } from "../../types/recipe.ts";
 import { guessGroceryCategory } from "./category.ts";
+import { normalizeShoppingIngredientRow } from "./normalizeShoppingIngredientRow.ts";
 
 function normalizeKey(name: string, unit: string): string {
   return `${name.trim().toLowerCase()}|${unit.trim().toLowerCase()}`;
@@ -19,17 +20,18 @@ function mergeRows(
   const mult =
     Number.isFinite(portionMultiplier) && portionMultiplier > 0 ? portionMultiplier : 1;
   for (const ing of rows) {
-    const category = guessGroceryCategory(ing.name);
-    const key = normalizeKey(ing.name, ing.unit);
+    const normalized = normalizeShoppingIngredientRow(ing);
+    const category = guessGroceryCategory(normalized.name);
+    const key = normalizeKey(normalized.name, normalized.unit);
     const existing = itemsByKey.get(key);
-    const parsed = Number.parseFloat(ing.amount);
+    const parsed = Number.parseFloat(normalized.amount);
     const scaled = Number.isFinite(parsed) ? parsed * mult : null;
     if (!existing) {
       itemsByKey.set(key, {
         id: key,
-        name: ing.name,
-        amount: scaled != null ? String(Math.round(scaled * 100) / 100) : ing.amount,
-        unit: ing.unit,
+        name: normalized.name,
+        amount: scaled != null ? String(Math.round(scaled * 100) / 100) : normalized.amount,
+        unit: normalized.unit,
         category,
         checked: false,
         from: title,
@@ -67,19 +69,33 @@ export function generateShoppingListFromRecipeTitles(input: {
   });
 }
 
+export type RecipeIngredientRow = { name: string; amount: string; unit: string };
+
+export function generateShoppingListFromRecipeEntries(input: {
+  entries: Array<{ title: string; multiplier: number }>;
+  recipeTitleToId: (title: string) => string | null;
+  ingredientsByRecipeId: Map<string, RecipeIngredientRow[]>;
+}): ShoppingItem[] {
+  const itemsByKey = new Map<string, ShoppingItem>();
+
+  for (const { title, multiplier } of input.entries) {
+    const id = input.recipeTitleToId(title);
+    if (!id) continue;
+    mergeRows(input.ingredientsByRecipeId.get(id) ?? [], title, itemsByKey, multiplier);
+  }
+
+  return sortItems(Array.from(itemsByKey.values()));
+}
+
+/** @deprecated Use {@link generateShoppingListFromRecipeEntries} with a pre-fetched ingredient map. */
 export function generateShoppingListFromRecipeEntriesSync(input: {
   entries: Array<{ title: string; multiplier: number }>;
   recipeTitleToId: (title: string) => string | null;
 }): ShoppingItem[] {
-  const itemsByKey = new Map<string, ShoppingItem>();
-
-  for (const { title } of input.entries) {
-    // Sync path: no ingredients available without DB fetch
-    // This path is unused now that catalog is removed
-    void title;
-  }
-
-  return sortItems(Array.from(itemsByKey.values()));
+  return generateShoppingListFromRecipeEntries({
+    ...input,
+    ingredientsByRecipeId: new Map(),
+  });
 }
 
 export async function generateShoppingListFromRecipeTitlesAsync(input: {
@@ -98,16 +114,32 @@ export async function generateShoppingListFromRecipeTitlesAsync(input: {
 export async function generateShoppingListFromRecipeEntriesAsync(input: {
   entries: Array<{ title: string; multiplier: number }>;
   recipeTitleToId: (title: string) => string | null;
-  fetchDbIngredients: (recipeId: string) => Promise<Array<{ name: string; amount: string; unit: string }>>;
+  fetchDbIngredients: (recipeId: string) => Promise<RecipeIngredientRow[]>;
+  fetchDbIngredientsBatch?: (recipeIds: string[]) => Promise<Map<string, RecipeIngredientRow[]>>;
 }): Promise<ShoppingItem[]> {
-  const itemsByKey = new Map<string, ShoppingItem>();
+  const uniqueIds = [
+    ...new Set(
+      input.entries
+        .map((e) => input.recipeTitleToId(e.title))
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
 
-  for (const { title, multiplier } of input.entries) {
-    const id = input.recipeTitleToId(title);
-    if (!id) continue;
-    const rows = await input.fetchDbIngredients(id);
-    mergeRows(rows, title, itemsByKey, multiplier);
+  let ingredientsByRecipeId: Map<string, RecipeIngredientRow[]>;
+  if (input.fetchDbIngredientsBatch) {
+    ingredientsByRecipeId = await input.fetchDbIngredientsBatch(uniqueIds);
+  } else {
+    ingredientsByRecipeId = new Map();
+    await Promise.all(
+      uniqueIds.map(async (id) => {
+        ingredientsByRecipeId.set(id, await input.fetchDbIngredients(id));
+      }),
+    );
   }
 
-  return sortItems(Array.from(itemsByKey.values()));
+  return generateShoppingListFromRecipeEntries({
+    entries: input.entries,
+    recipeTitleToId: input.recipeTitleToId,
+    ingredientsByRecipeId,
+  });
 }

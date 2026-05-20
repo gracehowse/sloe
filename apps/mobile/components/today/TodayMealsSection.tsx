@@ -477,7 +477,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                         2026-05-15 (crowder task) — when `usualRowV2` is
                         ON, the chip moves to a dedicated row below the
                         header (rendered after this header View). */}
-                    {!usualRowV2 && hasSaved && primarySaved && (
+                    {!usualRowV2 && mealsTodayCount > 0 && hasSaved && primarySaved && (
                       <Pressable
                         testID={`today-log-usual-pill-in-header-${slot}`}
                         onPress={(e) => {
@@ -542,7 +542,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                   when the saved-meal name is long. Renders regardless
                   of `isOpen` so the affordance is reachable from
                   collapsed slots too. */}
-              {usualRowV2 && hasSaved && primarySaved && (
+              {usualRowV2 && mealsTodayCount > 0 && hasSaved && primarySaved && (
                 <View
                   testID={`today-log-usual-row-${slot}`}
                   style={{

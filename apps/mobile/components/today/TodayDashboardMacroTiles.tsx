@@ -105,8 +105,7 @@ export function TodayDashboardMacroTiles({
   onPressNutrients,
 }: TodayDashboardMacroTilesProps) {
   const colorScheme = useColorScheme();
-  const overBudgetFg =
-    (colorScheme === "dark" ? Colors.dark : Colors.light).overBudgetFg;
+  const destructiveRed = Accent.destructive;
   const microSum = mealsToday.reduce(
     (a, m) => ({
       sugarG: a.sugarG + ((m.micros as { sugarG?: number } | null | undefined)?.sugarG ?? 0),
@@ -189,7 +188,7 @@ export function TodayDashboardMacroTiles({
         const value = formatMacro(def.current, macro);
         const pct = def.target > 0 ? Math.min(100, Math.round((def.current / def.target) * 100)) : 0;
         // Over-budget: keep the macro's identity colour on the bar;
-        // caption uses destructive red (matches calorie ring / NET).
+        // caption uses red when over.
         const isOverBudget =
           !def.referenceOnly && def.target > 0 && def.current > def.target;
         const barColor = def.color;
@@ -302,7 +301,7 @@ export function TodayDashboardMacroTiles({
                 <Text
                   style={{
                     fontSize: 11,
-                    color: isOverBudget ? overBudgetFg : textSecondaryColor,
+                    color: isOverBudget ? destructiveRed : textSecondaryColor,
                     fontWeight: isOverBudget ? "700" : "400",
                     marginTop: Spacing.xs + 2,
                     fontVariant: ["tabular-nums"],

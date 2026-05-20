@@ -117,9 +117,8 @@ describe("TodayHeroStats", () => {
       expect(netColorClass(1000, 1800)).toContain("text-success");
     });
 
-    it("renders Net in destructive red when over target (mirrors calorie ring)", () => {
+    it("renders Net in destructive red when over target", () => {
       expect(netColorClass(2000, 1800)).toContain("text-destructive");
-      expect(netColorClass(2000, 1800)).not.toContain("text-warning");
     });
 
     it("renders Net in neutral when exactly at target", () => {

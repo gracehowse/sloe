@@ -72,6 +72,7 @@ import {
   stripMidnight,
 } from "@suppr/shared/mealPlan/planCalendarAnchor";
 import { countChangedMealsInPlan } from "@suppr/shared/mealPlan/planDiff";
+import { normalizeShoppingIngredientRow } from "@suppr/shared/planning/normalizeShoppingIngredientRow";
 import { formatPlannedMealKcalMacrosLine } from "@suppr/shared/nutrition/plannedMealDisplay";
 import { formatMacro } from "@suppr/shared/nutrition/formatMacro";
 import {
@@ -1383,17 +1384,24 @@ export default function PlannerScreen() {
         { name: string; amount: number; unit: string; from: Set<string> }
       >();
       for (const ing of ingredients) {
-        const key = `${(ing.name ?? "").toLowerCase().trim()}|${(ing.unit ?? "").toLowerCase().trim()}`;
+        const normalized = normalizeShoppingIngredientRow({
+          name: String(ing.name ?? ""),
+          amount: ing.amount != null ? String(ing.amount) : "",
+          unit: String(ing.unit ?? ""),
+        });
+        const key = `${normalized.name.toLowerCase().trim()}|${normalized.unit.toLowerCase().trim()}`;
         const multiplier = recipeCounts[ing.recipe_id] ?? 1;
+        const parsed = Number.parseFloat(normalized.amount);
+        const baseAmount = Number.isFinite(parsed) ? parsed : 1;
         const existing = merged.get(key);
         if (existing) {
-          existing.amount += (ing.amount ?? 1) * multiplier;
+          existing.amount += baseAmount * multiplier;
           existing.from.add(recipeTitles[ing.recipe_id] ?? "");
         } else {
           merged.set(key, {
-            name: ing.name ?? "Unknown",
-            amount: (ing.amount ?? 1) * multiplier,
-            unit: ing.unit ?? "",
+            name: normalized.name,
+            amount: baseAmount * multiplier,
+            unit: normalized.unit,
             from: new Set([recipeTitles[ing.recipe_id] ?? ""]),
           });
         }

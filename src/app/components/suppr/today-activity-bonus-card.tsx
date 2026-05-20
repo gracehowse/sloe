@@ -255,7 +255,7 @@ export function TodayActivityBonusCard({
           </div>
         ) : null}
         <div className="border-l border-border">
-          <p className={`text-lg font-extrabold tabular-nums ${isDeficit ? "text-success" : "text-warning"}`}>{Math.abs(deficit).toLocaleString()}</p>
+          <p className={`text-lg font-extrabold tabular-nums ${isDeficit ? "text-success" : "text-destructive"}`}>{Math.abs(deficit).toLocaleString()}</p>
           <p className="text-[10px] text-muted-foreground">{isDeficit ? "Under" : "Over"}</p>
         </div>
       </div>
@@ -305,7 +305,7 @@ export function TodayActivityBonusCard({
             ? "text-muted-foreground"
             : isWeekDeficit
               ? "text-success"
-              : "text-warning";
+              : "text-destructive";
           return (
             <div className="mt-3 pt-3 border-t border-border space-y-1 text-xs">
               <p className="font-semibold text-foreground mb-1.5">{weekSummaryHeading(weekSummaryMode)}</p>

@@ -293,7 +293,7 @@ export function TodayWeekView({
                       delta === 0
                         ? "text-success"
                         : delta > 0
-                          ? "text-warning"
+                          ? "text-destructive"
                           : "text-success"
                     }`}
                   >
@@ -386,12 +386,9 @@ export function TodayWeekView({
                 `src/lib/copy/today.ts`. UCL Oct 2025 study + r/loseit
                 data show that judgmental framing drives logging
                 avoidance; "deficit"/"surplus" reads as observation,
-                not judgment. Colour also softened — green stays for
-                under-target, but the over-target tone moves from red
-                (`text-destructive`) to amber (`text-warning`) per
-                project memory + spec §1.4. Red is reserved for truly
-                destructive actions; tracking copy never punishes. */}
-            <p className={`text-2xl font-extrabold tabular-nums ${under ? "text-success" : "text-warning"}`}>
+                not judgment. Green for under-target, red for
+                over-target — clear at-a-glance signal. */}
+            <p className={`text-2xl font-extrabold tabular-nums ${under ? "text-success" : "text-destructive"}`}>
               {diff}
             </p>
             <p className="text-[11px] text-muted-foreground">{under ? "Net deficit" : "Net surplus"}</p>

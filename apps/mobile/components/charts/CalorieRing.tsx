@@ -264,8 +264,8 @@ export default function CalorieRing({
   const isEmpty = consumed === 0 || goal <= 0;
   const colorScheme = useColorScheme();
   const palette = colorScheme === "dark" ? Colors.dark : Colors.light;
-  /** Centre + outer ring: green on track, amber over (never destructive). */
-  const ringStateColor = isOver ? palette.overBudgetFg : Accent.success;
+  /** Centre + outer ring: green on track, red over. */
+  const ringStateColor = isOver ? Accent.destructive : Accent.success;
   const centerValue = displayMode === "consumed"
     ? Math.round(consumed)
     : Math.abs(diff);

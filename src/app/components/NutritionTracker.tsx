@@ -8,12 +8,6 @@ import { normalizeMacroTargets, DEFAULT_STEPS_GOAL } from "../../types/profile.t
 import { resolveMaintenance } from "../../lib/nutrition/resolveMaintenance.ts";
 import { computeActivityBonusKcal } from "../../lib/nutrition/activityBonus.ts";
 import { ACTIVITY_BUDGET_DISCOVERABILITY_KEY } from "../../lib/nutrition/activityBudgetDiscoverability.ts";
-import {
-  buildMilestone30DayContent,
-  shouldShowMilestone30Day,
-  type Milestone30DayContent,
-} from "../../lib/nutrition/milestone30Day.ts";
-import { Milestone30DayDialog } from "./suppr/milestone-30-day-dialog";
 // Weekly TDEE check-in ritual (PR claude/weekly-checkin-ritual-v2,
 // 2026-05-02 — rebuild of #26). Web parity of the mobile modal.
 import {
@@ -626,14 +620,7 @@ export const NutritionTracker = memo(function NutritionTracker({
    *  loosely as `string | null` to mirror the column's nullable nature. */
   const [profilePlanPace, setProfilePlanPace] = useState<string | null>(null);
   const [profileMaintenanceTdee, setProfileMaintenanceTdee] = useState<number | null>(null);
-  // 30-day milestone moment (PR claude/today-30-day-milestone, 2026-05-02).
-  // Mirrors mobile state shape. `milestone30HandledRef` suppresses
-  // re-fires within the session even if `nutritionByDay` recomputes.
-  const [milestone30ShownAt, setMilestone30ShownAt] = useState<string | null>(null);
-  const [milestone30Open, setMilestone30Open] = useState(false);
-  const [milestone30Content, setMilestone30Content] = useState<Milestone30DayContent | null>(null);
   const [profileWeightKgByDay, setProfileWeightKgByDay] = useState<Record<string, number>>({});
-  const milestone30HandledRef = useRef(false);
   // Weekly TDEE check-in ritual (PR claude/weekly-checkin-ritual-v2,
   // 2026-05-02 — rebuild of #26). Mirrors mobile state shape.
   // `weeklyCheckinHandledRef` suppresses re-fires within the session.
@@ -1311,7 +1298,7 @@ export const NutritionTracker = memo(function NutritionTracker({
     supabase
       .from("profiles")
       .select(
-        "weight_kg, weight_kg_by_day, goal, plan_pace, sex, age, height_cm, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, week_start_day, steps_by_day, daily_steps_goal, fasting_sessions, fasting_window, tracked_macros, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, milestone_30_shown_at, last_weekly_checkin_shown_at",
+        "weight_kg, weight_kg_by_day, goal, plan_pace, sex, age, height_cm, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, week_start_day, steps_by_day, daily_steps_goal, fasting_sessions, fasting_window, tracked_macros, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, last_weekly_checkin_shown_at",
       )
       .eq("id", authedUserId)
       .maybeSingle()
@@ -1429,10 +1416,6 @@ export const NutritionTracker = memo(function NutritionTracker({
             ? aConfRaw
             : null,
         );
-        // 30-day milestone hydration. Same null-safe pattern as
-        // mobile: missing column ⇒ null ⇒ gate is open.
-        const lastShown = (data as { milestone_30_shown_at?: unknown }).milestone_30_shown_at;
-        setMilestone30ShownAt(typeof lastShown === "string" ? lastShown : null);
         // Weekly check-in shown-at hydration. Drives the 6-day cooldown.
         const lastCheckin = (data as { last_weekly_checkin_shown_at?: unknown })
           .last_weekly_checkin_shown_at;
@@ -1828,62 +1811,6 @@ export const NutritionTracker = memo(function NutritionTracker({
       label: `${weekStartLabel} – ${weekEndLabel}`,
     };
   }, [selectedDate, nutritionByDay, weekStartDay, extraWaterByDay, stepsByDay]);
-
-  // 30-day milestone moment gate (PR claude/today-30-day-milestone,
-  // 2026-05-02). Mirrors mobile gating + content build. Runs once per
-  // Today first-load AFTER `nutritionByDay` has hydrated.
-  useEffect(() => {
-    if (selectedDateKey !== todayKey()) return;
-    if (milestone30HandledRef.current) return;
-    if (!authedUserId) return;
-    if (milestone30ShownAt) return;
-    if (Object.keys(nutritionByDay).length === 0) return;
-    const eligible = shouldShowMilestone30Day({
-      nutritionByDay: nutritionByDay as never,
-      shownAt: milestone30ShownAt,
-    });
-    if (!eligible) return;
-    milestone30HandledRef.current = true;
-    const content = buildMilestone30DayContent({
-      nutritionByDay: nutritionByDay as never,
-      weightKgByDay: profileWeightKgByDay,
-    });
-    setMilestone30Content(content);
-    setMilestone30Open(true);
-
-    const nowIso = new Date().toISOString();
-    setMilestone30ShownAt(nowIso);
-    void supabase
-      .from("profiles")
-      .update({ milestone_30_shown_at: nowIso } as never)
-      .eq("id", authedUserId);
-
-    try {
-      track(AnalyticsEvents.milestone_30_shown, {
-        daysLogged: content.daysLogged,
-        longestStreak: content.longestStreak,
-        topFoodCount: content.topFoods.length,
-        platform: "web",
-      });
-    } catch {
-      /* noop */
-    }
-  }, [
-    selectedDateKey,
-    authedUserId,
-    nutritionByDay,
-    profileWeightKgByDay,
-    milestone30ShownAt,
-  ]);
-
-  const handleMilestone30Dismiss = useCallback(() => {
-    setMilestone30Open(false);
-    try {
-      track(AnalyticsEvents.milestone_30_dismissed, { platform: "web" });
-    } catch {
-      /* noop */
-    }
-  }, []);
 
   // Weekly check-in ritual gate (PR claude/weekly-checkin-ritual-v2,
   // 2026-05-02 — rebuild of #26). Mirrors mobile gating + content build.
@@ -2823,14 +2750,6 @@ export const NutritionTracker = memo(function NutritionTracker({
           />
         ) : null}
       </div>
-
-      {/* 30-day milestone moment (PR claude/today-30-day-milestone,
-          2026-05-02). Pure trust moment, single CTA, no paywall. */}
-      <Milestone30DayDialog
-        open={milestone30Open}
-        content={milestone30Content}
-        onDismiss={handleMilestone30Dismiss}
-      />
 
       {/* Weekly TDEE check-in ritual (PR claude/weekly-checkin-ritual-v2,
           2026-05-02 — rebuild of #26). Mirror of the mobile modal — soft

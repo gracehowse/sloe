@@ -64,12 +64,15 @@ Executable copy: [`premium-launch-sign-off-checklist.md`](premium-launch-sign-of
 
 Compared sim + mobile-web captures to the P0 prototype intent: hierarchy reads calm — date → hero ring → at most one context card (eat-again / fast) → macro grid → Meals with quick-add inside the section. Empty day shows “Start your day” with zeroed macros; eat-again card is neutral bordered chrome with a single primary Log CTA.
 
-**Not yet sign-off ready (tracked in Linear ENG-623–645):**
+**Premium-bar fixes (agent pass 2026-05-20):**
 
-- Over-budget ring still uses **destructive red** on web + mobile; spec requires **amber only** ([ENG-624](https://linear.app/suppr/issue/ENG-624), [ENG-625](https://linear.app/suppr/issue/ENG-625)).
-- Web mobile-web: green onboarding toast + cookie bar ([ENG-633](https://linear.app/suppr/issue/ENG-633)).
-- Sim: milestone modal interrupts shots ([ENG-632](https://linear.app/suppr/issue/ENG-632)); empty-day still shows “Log usual” ([ENG-635](https://linear.app/suppr/issue/ENG-635)).
-- Missing desktop capture for deficit-insight ([ENG-630](https://linear.app/suppr/issue/ENG-630)).
-- Progress tab vs avatar → Settings: manual check open ([ENG-634](https://linear.app/suppr/issue/ENG-634)).
+- Over-budget: ring + macro captions + desktop NET tile use **amber** (`over-budget-fg` / `text-warning`), not destructive red ([ENG-624](https://linear.app/suppr/issue/ENG-624), [ENG-625](https://linear.app/suppr/issue/ENG-625)).
+- Cookie banner lifts above FAB on product routes ([ENG-633](https://linear.app/suppr/issue/ENG-633)).
+- Milestone modal on **Progress** only ([ENG-632](https://linear.app/suppr/issue/ENG-632)).
+- Empty day: no “Log usual” until at least one meal logged ([ENG-635](https://linear.app/suppr/issue/ENG-635)).
+- `deficit-insight-desktop-light.png` present ([ENG-630](https://linear.app/suppr/issue/ENG-630)).
+- Navigation parity pinned in unit tests ([ENG-634](https://linear.app/suppr/issue/ENG-634)).
+
+**Still needs Grace sign-off (ENG-579):** one-meal scroll on device, Maestro welcome, full matrix visual compare on PRs.
 
 Full backlog: [`docs/planning/premium-experience-linear-program.md`](../planning/premium-experience-linear-program.md) § Cycle 1 gap / parity backlog.

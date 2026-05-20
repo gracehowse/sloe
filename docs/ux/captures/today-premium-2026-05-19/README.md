@@ -30,6 +30,12 @@ bash scripts/copy-today-premium-mobile-captures.sh
 
 Outputs land in this folder as `{state}-{mobile|mobile-web|desktop}-{light|dark}.png`.
 
+### PR review gate (ENG-629)
+
+For Today visual PRs, reviewers should compare **paired** shots (native sim next to mobile-web for the same state/theme). PR template checklist links here.
+
+Desktop light matrix includes **deficit-insight** (`deficit-insight-desktop-light.png`) — re-run Playwright desktop block after seed changes.
+
 ## State matrix
 
 | # | State | Notes |

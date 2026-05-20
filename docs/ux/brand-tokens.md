@@ -51,7 +51,7 @@ Per-slot tint applied to the slot-header icon wrapper on Today's meal section an
 |------|-------|------|--------------|------------------|
 | Breakfast | `#e0a838` (amber) | `#f0c058` | `SlotColors.breakfast` | `--slot-breakfast` |
 | Lunch | `#62b35a` (green) | `#82d878` | `SlotColors.lunch` | `--slot-lunch` |
-| Dinner | `#4c6ce0` (blue) | `#7a90f5` | `SlotColors.dinner` | `--slot-dinner` |
+| Dinner | `#5e574e` (warm stone) | `#9490a0` | `SlotColors.dinner` | `--slot-dinner` |
 | Snack(s) | `#06b6d4` (cyan) | `#22d3ee` | `SlotColors.snack` | `--slot-snack` |
 
 Each slot also exposes a `--slot-<name>-soft` variant (12% alpha, matches the `--macro-*-soft` pattern) for tinted backgrounds (chip pills, icon wrappers).
