@@ -223,8 +223,10 @@ Created after state-matrix captures (28 PNGs) and colour-parity audit. **Do not 
 
 | Issue | Status |
 |-------|--------|
-| [ENG-606](https://linear.app/suppr/issue/ENG-606) | **In progress** — import/verify skeleton (mobile `ImportLoadingSkeleton`, web `import-loading-skeleton`) |
-| ENG-604–605, 607–608 | Todo |
+| [ENG-606](https://linear.app/suppr/issue/ENG-606) | **Done** — import/verify skeleton (mobile `ImportLoadingSkeleton`, web `import-loading-skeleton`) |
+| [ENG-604](https://linear.app/suppr/issue/ENG-604) | **Done** — editorial overlines, More ideas compact list, `DiscoverLoadingSkeleton` |
+| [ENG-605](https://linear.app/suppr/issue/ENG-605) | **Done** — mobile cook step type 24px, drop redundant step chip, step haptics |
+| ENG-607–608 | Todo |
 
 ## First cycle scope (P0 + P1) — historical
 

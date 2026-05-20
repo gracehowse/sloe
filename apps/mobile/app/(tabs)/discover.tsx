@@ -9,7 +9,6 @@ import {
   TextInput,
   ScrollView,
   RefreshControl,
-  ActivityIndicator,
   Image,
   type StyleProp,
   type ImageStyle,
@@ -37,6 +36,7 @@ import { displayAttribution } from "@suppr/shared/recipes/displayAttribution";
 // the underlying source signal is fabricated (see the comment by the
 // hero card body for the full rationale).
 import { RecipesTabChrome } from "@/components/tabs/RecipesTabChrome";
+import { DiscoverLoadingSkeleton } from "@/components/discover/DiscoverLoadingSkeleton";
 
 // B5 Phase 2c (2026-04-27) — "Following" pill added. Filters Discover
 // to recipes whose creator_id is in the set the user follows. Empty
@@ -799,17 +799,27 @@ export default function DiscoverScreen() {
             `src/app/components/DiscoverFeed.tsx`. */}
 
         {loading && filtered.length === 0 ? (
-          <View style={{ paddingTop: 60, alignItems: "center", gap: 8, paddingHorizontal: Spacing.lg }}>
-            <ActivityIndicator size="large" color={Accent.primary} />
-            <Text style={{ fontSize: 14, color: colors.textSecondary }}>Loading recipes...</Text>
+          <View style={{ paddingTop: Spacing.md }}>
+            <Text
+              style={{
+                fontSize: 11,
+                fontWeight: "700",
+                color: colors.textSecondary,
+                letterSpacing: 0.6,
+                textTransform: "uppercase",
+                marginBottom: Spacing.sm,
+              }}
+            >
+              Matches your day
+            </Text>
+            <DiscoverLoadingSkeleton />
             {slowLoad ? (
-              <>
+              <View style={{ alignItems: "center", marginTop: Spacing.lg, paddingHorizontal: Spacing.lg }}>
                 <Text
                   style={{
                     fontSize: 12,
                     color: colors.textTertiary,
                     textAlign: "center",
-                    marginTop: 4,
                     maxWidth: 280,
                     lineHeight: 17,
                   }}
@@ -835,7 +845,7 @@ export default function DiscoverScreen() {
                     Retry
                   </Text>
                 </Pressable>
-              </>
+              </View>
             ) : null}
           </View>
         ) : filtered.length === 0 ? (
@@ -854,7 +864,17 @@ export default function DiscoverScreen() {
           </View>
         ) : (
           <>
-            <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text, letterSpacing: -0.1, marginTop: 8, marginBottom: 10 }}>
+            <Text
+              style={{
+                fontSize: 11,
+                fontWeight: "700",
+                color: colors.textSecondary,
+                letterSpacing: 0.6,
+                textTransform: "uppercase",
+                marginTop: 8,
+                marginBottom: 10,
+              }}
+            >
               Matches your day
             </Text>
             <View style={{ gap: 12 }}>
@@ -863,11 +883,29 @@ export default function DiscoverScreen() {
 
             {filtered.length > 2 ? (
               <>
-                <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text, letterSpacing: -0.1, marginTop: 22, marginBottom: 10 }}>
+                <Text
+                  style={{
+                    fontSize: 11,
+                    fontWeight: "700",
+                    color: colors.textSecondary,
+                    letterSpacing: 0.6,
+                    textTransform: "uppercase",
+                    marginTop: 22,
+                    marginBottom: 10,
+                  }}
+                >
                   More ideas
                 </Text>
-                <View style={{ gap: 12 }}>
-                  {filtered.slice(2).map((r) => renderHeroCard(r))}
+                <View
+                  style={{
+                    borderRadius: Radius.lg,
+                    backgroundColor: colors.card,
+                    borderWidth: 1,
+                    borderColor: colors.cardBorder,
+                    overflow: "hidden",
+                  }}
+                >
+                  {filtered.slice(2).map((r, idx) => renderMoreIdeaRow(r, idx))}
                 </View>
               </>
             ) : null}

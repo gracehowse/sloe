@@ -823,7 +823,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
         {displayRecipes.length > 0 ? (
           <div className="md:hidden">
             {/* ── Matches your day (hero cards) ── */}
-            <h3 className="text-[14px] font-bold text-foreground -tracking-[0.01em] mt-[22px] mb-2.5 px-4">
+            <h3 className="text-[11px] font-bold uppercase tracking-[0.06em] text-muted-foreground mt-[22px] mb-2.5 px-4">
               Matches your day
             </h3>
             <div className="grid gap-3 px-4">
@@ -919,7 +919,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
             {/* ── More ideas (compact list) — only when there's a 3rd+ */}
             {displayRecipes.length > 2 ? (
               <>
-                <h3 className="text-[14px] font-bold text-foreground -tracking-[0.01em] mt-[22px] mb-2.5 px-4">
+                <h3 className="text-[11px] font-bold uppercase tracking-[0.06em] text-muted-foreground mt-[22px] mb-2.5 px-4">
                   More ideas
                 </h3>
                 <div className="mx-4 rounded-xl border border-border bg-card overflow-hidden">
