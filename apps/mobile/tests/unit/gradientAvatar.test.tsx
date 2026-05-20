@@ -1,30 +1,18 @@
 // @vitest-environment jsdom
 /**
- * `GradientAvatar` — brand-gradient avatar used on the More tab (D7,
- * 2026-04-21). Protects three invariants:
- *
- *   1. Renders the passed `initial` (so display-name → avatar-letter
- *      wiring can't silently regress to empty).
- *   2. Uses the canonical brand gradient endpoints (`#4c6ce0` → `#e04888`
- *      per `docs/ux/brand-guidelines.md`). If someone softens these
- *      back to `var(--primary)` or a `color-mix()` blend the test
- *      fails — which is the exact regression that shipped on the web
- *      side before D7.
- *   3. Emits two distinct `<Stop>` nodes in the gradient def — guards
- *      against a single-stop mis-wiring that would render flat colour
- *      while still typechecking.
+ * `GradientAvatar` — default ink fill; `variant="brand"` for marketing.
  */
 import * as React from "react";
 import { describe, expect, it } from "vitest";
 import { render } from "@testing-library/react-native";
 
+import { Stop } from "react-native-svg";
 import { GradientAvatar } from "../../components/GradientAvatar";
-import { Accent } from "../../constants/theme";
+import { Brand } from "../../constants/theme";
 
-// Keep React imported — otherwise TS tree-shakes it and RNTL errors.
 void React;
 
-describe("GradientAvatar (D7 — brand gradient on More tab avatars)", () => {
+describe("GradientAvatar", () => {
   it("renders the initial character", () => {
     const { getByText } = render(
       <GradientAvatar
@@ -37,29 +25,35 @@ describe("GradientAvatar (D7 — brand gradient on More tab avatars)", () => {
     expect(getByText("G")).toBeTruthy();
   });
 
-  it("uses the canonical brand gradient endpoints #4c6ce0 → #e04888", () => {
-    // The Accent theme constants are the single source of truth for the
-    // mobile brand gradient; this test pins them so a palette shift
-    // can't silently change what the avatar paints.
-    expect(Accent.primary.toLowerCase()).toBe("#4c6ce0");
-    expect(Accent.magenta.toLowerCase()).toBe("#e04888");
+  it("default ink variant does not emit brand gradient stops", () => {
+    const { UNSAFE_queryAllByType } = render(
+      <GradientAvatar
+        size={40}
+        initial="G"
+        fontSize={14}
+        gradientIdSuffix="test-ink"
+      />,
+    );
+    expect(UNSAFE_queryAllByType(Stop).length).toBe(0);
   });
 
-  it("emits two gradient stops (start + end)", () => {
+  it("brand variant uses canonical gradient endpoints #4c6ce0 → #e04888", () => {
+    expect(Brand.primary.toLowerCase()).toBe("#4c6ce0");
+    expect(Brand.accent.toLowerCase()).toBe("#e04888");
+
     const { UNSAFE_getAllByType } = render(
       <GradientAvatar
         size={40}
         initial="G"
         fontSize={14}
-        gradientIdSuffix="test-2"
+        gradientIdSuffix="test-brand"
+        variant="brand"
       />,
     );
-    // `Stop` is stubbed to `View` with `data-svg-stub="Stop"` by
-    // `tests/shims/react-native-svg.cjs` — so we query by stub name.
-    const stops = UNSAFE_getAllByType("View" as unknown as React.ComponentType)
-      .filter((n) => (n.props as Record<string, unknown>)["data-svg-stub"] === "Stop");
-    expect(stops).toHaveLength(2);
-    const colors = stops.map((s) => (s.props as { stopColor?: string }).stopColor?.toLowerCase());
+    const stops = UNSAFE_getAllByType(Stop);
+    const colors = stops.map(
+      (s: { props: { stopColor?: string } }) => s.props.stopColor,
+    );
     expect(colors).toContain("#4c6ce0");
     expect(colors).toContain("#e04888");
   });

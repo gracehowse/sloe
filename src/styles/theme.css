@@ -50,16 +50,17 @@
   --radius-card: 1rem;        /* 16px cards — matches mobile Radius.lg */
 
   /** ── LIGHT MODE PALETTE ──
-   *  2026-05-19: Elevated warm stone greys on cream + richer blue
-   *  soft tints (Noom/Lifesum lane). Primary blue unchanged. */
+   *  2026-05-20: `--primary` is warm ink for UI chrome (not brand blue).
+   *  Brand blue remains on `--macro-protein` / marketing only. */
   --background: #f6f3ee;
   --foreground: #1c1916;
   --card: #ffffff;
   --card-foreground: #1c1916;
   --popover: #ffffff;
   --popover-foreground: #1c1916;
-  --primary: #4c6ce0;
+  --primary: #1c1916;
   --primary-foreground: #ffffff;
+  --primary-soft: rgba(28, 25, 22, 0.06);
   --secondary: #f0ebe3;
   --secondary-foreground: #1c1916;
   --muted: #ddd5c8;
@@ -72,7 +73,7 @@
   --input: transparent;
   --input-background: #ebe5dc;
   --switch-background: #c8bfb4;
-  --ring: #4c6ce0;
+  --ring: #8c8378;
 
   /** Brand mark (plate / wordmark) — black on off-white in light mode. */
   --brand-mark-bg: #f6f3ee;
@@ -116,8 +117,8 @@
   --slot-breakfast-soft: #e0a83812;
   --slot-lunch: #62b35a;             /* green  ↔ Accent.success */
   --slot-lunch-soft: #62b35a12;
-  --slot-dinner: #4c6ce0;            /* blue   ↔ Accent.primary */
-  --slot-dinner-soft: #4c6ce01a;
+  --slot-dinner: #5e574e;            /* stone  ↔ Accent.primaryLight */
+  --slot-dinner-soft: #5e574e1a;
   --slot-snack: #06b6d4;             /* cyan — distinct from --macro-fat */
   --slot-snack-soft: #06b6d412;
 
@@ -146,9 +147,9 @@
   --source-ai: #e04888;
 
   /** North-star block — gradient SupprCard on Today. Spec §1.4. */
-  --north-star-bg-from: rgba(76, 108, 224, 0.08);
-  --north-star-bg-to: rgba(224, 72, 136, 0.04);
-  --north-star-border: rgba(76, 108, 224, 0.18);
+  --north-star-bg-from: rgba(98, 179, 90, 0.08);
+  --north-star-bg-to: rgba(28, 25, 22, 0.04);
+  --north-star-border: rgba(98, 179, 90, 0.18);
 
   /** Over-budget — amber, never red. Per project memory + spec §1.4. */
   --over-budget-fg: #e0a838;
@@ -160,17 +161,17 @@
   --elev-card: 0 1px 3px rgba(28, 25, 22, 0.06);
   --elev-sheet: 0 -8px 32px rgba(0, 0, 0, 0.12);
   --elev-float: 0 4px 16px rgba(0, 0, 0, 0.12);
-  --elev-float-primary: 0 4px 16px rgba(76, 108, 224, 0.45);
+  --elev-float-primary: 0 4px 16px rgba(28, 25, 22, 0.2);
 
   /** Chart colours (mapped to macro + accent system) */
-  --chart-1: #4c6ce0;
+  --chart-1: #62b35a;
   --chart-2: #62b35a;
   --chart-3: #e0a838;
   --chart-4: #e04888;
   --chart-5: #8b5cf6;
 
-  /** Ring component — blue-tinted track (elevates protein ring on cream) */
-  --ring-bg: #d8dff2;
+  /** Ring component — warm track on cream */
+  --ring-bg: #ebe5dc;
   --ring-track: #62b35a;
 
   /** Font weights */
@@ -182,18 +183,18 @@
   /** Sidebar */
   --sidebar: #ffffff;
   --sidebar-foreground: #1c1916;
-  --sidebar-primary: #4c6ce0;
+  --sidebar-primary: #1c1916;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #f0ebe3;
   --sidebar-accent-foreground: #1c1916;
   --sidebar-border: #ddd5c8;
-  --sidebar-ring: #4c6ce0;
+  --sidebar-ring: #8c8378;
 
   /** Glass / surface tokens (Apple-style, used by marketing pages) */
   --glass: rgba(255, 255, 255, 0.72);
   --glass-border: rgba(0, 0, 0, 0.06);
   --border-strong: rgba(0, 0, 0, 0.1);
-  --accent-muted: rgba(76, 108, 224, 0.12);
+  --accent-muted: rgba(28, 25, 22, 0.08);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
   --shadow: 0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
   --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.06), 0 2px 6px rgba(0, 0, 0, 0.02);
@@ -209,8 +210,9 @@
   --card-foreground: #e8e7ed;
   --popover: #202028;
   --popover-foreground: #e8e7ed;
-  --primary: #7a90f5;
-  --primary-foreground: #ffffff;
+  --primary: #e8e7ed;
+  --primary-foreground: #101014;
+  --primary-soft: rgba(232, 231, 237, 0.12);
   --secondary: #18181c;
   --secondary-foreground: #e8e7ed;
   --muted: #32313c;
@@ -223,7 +225,7 @@
   --input: #32313c;
   --input-background: #222028;
   --switch-background: #4a4a55;
-  --ring: #7a90f5;
+  --ring: #706c7c;
 
   /** Brand mark — white on black in dark mode. */
   --brand-mark-bg: #0a0a0f;
@@ -261,8 +263,8 @@
   --slot-breakfast-soft: #f0c05815;
   --slot-lunch: #82d878;              /* green-light */
   --slot-lunch-soft: #82d87815;
-  --slot-dinner: #7a90f5;             /* blue-light */
-  --slot-dinner-soft: #7a90f518;
+  --slot-dinner: #9490a0;             /* stone-light */
+  --slot-dinner-soft: #9490a018;
   --slot-snack: #22d3ee;              /* cyan-light */
   --slot-snack-soft: #22d3ee15;
 
@@ -288,9 +290,9 @@
 
   /** North-star block — dark. Stronger gradient + border for OLED.
    *  Visual-qa V-1 (spec): A/B against a more muted variant before locking. */
-  --north-star-bg-from: rgba(122, 144, 245, 0.16);
-  --north-star-bg-to: rgba(255, 126, 179, 0.09);
-  --north-star-border: rgba(122, 144, 245, 0.36);
+  --north-star-bg-from: rgba(130, 216, 120, 0.14);
+  --north-star-bg-to: rgba(232, 231, 237, 0.05);
+  --north-star-border: rgba(130, 216, 120, 0.28);
 
   /** Over-budget — dark amber. Spec §1.4. */
   --over-budget-fg: #f0c058;
@@ -306,10 +308,10 @@
   --elev-card: 0 1px 2px rgba(0, 0, 0, 0.4);
   --elev-sheet: 0 -8px 32px rgba(0, 0, 0, 0.5);
   --elev-float: 0 4px 16px rgba(0, 0, 0, 0.4);
-  --elev-float-primary: 0 4px 16px rgba(122, 144, 245, 0.45);
+  --elev-float-primary: 0 4px 16px rgba(0, 0, 0, 0.35);
 
   /** Chart colours — dark */
-  --chart-1: #7a90f5;
+  --chart-1: #82d878;
   --chart-2: #82d878;
   --chart-3: #f0c058;
   --chart-4: #ff7eb3;
@@ -322,8 +324,8 @@
   /** Sidebar — dark */
   --sidebar: #18181c;
   --sidebar-foreground: #e8e7ed;
-  --sidebar-primary: #7a90f5;
-  --sidebar-primary-foreground: #ffffff;
+  --sidebar-primary: #e8e7ed;
+  --sidebar-primary-foreground: #101014;
   --sidebar-accent: #202028;
   --sidebar-accent-foreground: #e8e7ed;
   --sidebar-border: #32313c;
@@ -333,7 +335,7 @@
   --glass: rgba(24, 24, 28, 0.72);
   --glass-border: rgba(255, 255, 255, 0.08);
   --border-strong: rgba(255, 255, 255, 0.12);
-  --accent-muted: rgba(122, 144, 245, 0.22);
+  --accent-muted: rgba(232, 231, 237, 0.12);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
   --shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.25);

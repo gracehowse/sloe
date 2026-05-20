@@ -160,6 +160,10 @@ describe("Today above-meals cap (mobile) — macro tiles to meals gap", () => {
     expect(between).not.toMatch(/<QuickAddPanel[\s/]/);
   });
 
+  it("QuickAddPanel is wired through TodayMealsSection (ENG-594)", () => {
+    expect(HOST_SRC).toMatch(/<TodayMealsSection[\s\S]+?quickAddPanel=\{[\s\S]+?<QuickAddPanel/);
+  });
+
   it("NorthStarBlockHost does not render between macro tiles and meals", () => {
     const between = macroGridToMealsSlice(HOST_SRC);
     expect(between).not.toMatch(/<NorthStarBlockHost[\s/]/);
@@ -167,11 +171,16 @@ describe("Today above-meals cap (mobile) — macro tiles to meals gap", () => {
 });
 
 describe("Today premium sprint (2026-05-19) — below-meals prompts", () => {
+  it("uses shared below-meals prompt cap (max 2, ENG-585)", () => {
+    expect(HOST_SRC).toMatch(/belowMealsPromptSelection/);
+    expect(HOST_SRC).toMatch(/isBelowMealsPromptVisible/);
+    expect(HOST_SRC).toMatch(/showBelowMealsNorthStar/);
+    expect(HOST_SRC).toMatch(/showBelowMealsCheckin/);
+  });
+
   it("NorthStarBlockHost renders below meals when empty day with remaining calories", () => {
     expect(HOST_SRC).toMatch(/Below-meals prompts \(Today premium sprint 2026-05-19\)/);
-    expect(HOST_SRC).toMatch(
-      /mealsToday\.length === 0[\s\S]+?<NorthStarBlockHost/,
-    );
+    expect(HOST_SRC).toMatch(/showBelowMealsNorthStar[\s\S]+?<NorthStarBlockHost/);
   });
 
   it("WeeklyCheckinBanner is in the below-meals block, not above macro tiles", () => {

@@ -20,25 +20,9 @@
  * compact week-at-a-glance strip — last 7 calendar days, each row
  * a tappable day with calories vs target.
  *
- * Wiring (deferred): the host's existing layout wrapper inside
- * `src/app/components/NutritionTracker.tsx` should add a flex
- * container at the `lg` breakpoint that places this sidebar to the
- * right of the today render. The intended snippet:
- *
- *   <div className="flex gap-6">
- *     <div className="flex-1 max-w-[440px]">
- *       {!! existing today JSX !!}
- *     </div>
- *     <aside className="hidden lg:block w-[260px] flex-shrink-0 sticky top-4 self-start">
- *       <TodayWeekSidebar
- *         byDay={nutritionByDay}
- *         calorieTarget={effectiveCalorieTarget}
- *         activeDateKey={selectedDateKey}
- *         todayDateKey={todayKey()}
- *         onSelectDayKey={(k) => setSelectedDateKey(k)}
- *       />
- *     </aside>
- *   </div>
+ * Wired in `NutritionTracker.tsx` (ENG-590): `md:flex` row (matches
+ * desktop app sidebar breakpoint) with the main Today column capped
+ * at 440px and this sidebar sticky on the right when `viewMode === "day"`.
  *
  * The sidebar is intentionally read-only — it does not own the
  * calendar pickers, the week aggregates, or any state. It reads

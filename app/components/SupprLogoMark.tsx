@@ -8,7 +8,7 @@ export function SupprLogoMark({ className = "" }: { className?: string }) {
       height={32}
       aria-hidden
     >
-      <rect width="32" height="32" rx="8" fill="var(--primary, #4c6ce0)" />
+      <rect width="32" height="32" rx="8" fill="var(--primary, #1c1916)" />
       <text
         x="16"
         y="22.5"

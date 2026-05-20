@@ -927,11 +927,7 @@ export default function ProgressScreen() {
 
         {/* Inline spinner under the skeleton — reassures the user that
             the view is live without starving the initial paint. */}
-        {/* P3 dark-mode fix (2026-04-28): the previous `t.accent`
-            resolves to `Accent.primary` (#4c6ce0) regardless of
-            scheme; in dark mode that's the wrong tone (too saturated
-            against the dark canvas). `colors.tint` resolves to
-            `Accent.primaryLight` in dark, matching the system tint. */}
+        {/* Spinner uses theme `colors.tint` (warm ink / light foreground). */}
         <View style={{ alignItems: "center", paddingVertical: 12 }}>
           <ActivityIndicator size="small" color={colors.tint} />
         </View>

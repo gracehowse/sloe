@@ -348,16 +348,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
   // display as "Free" — the user has no active paid entitlement
   // post-collapse.
   const tierLabel = userTier === "pro" ? "Pro" : "Free";
-  // Brand-gradient avatar (D7, 2026-04-21). Matches the mobile More tab
-  // `GradientAvatar` exactly, using the sanctioned brand gradient from
-  // `docs/ux/brand-guidelines.md`:
-  //   linear-gradient(135deg, #4c6ce0, #e04888)
-  // Previously this used a softer `var(--primary) → color-mix(...)`
-  // blend; the prototype (`screens-mobile.jsx:740`) and design-system
-  // enforcer both specify the full magenta endpoint for the avatar
-  // chip, so we land the exact gradient on both platforms.
-  const avatarGradient =
-    "linear-gradient(135deg, #4c6ce0 0%, #e04888 100%)";
+  // Ink avatar — matches mobile `GradientAvatar` default (premium chrome).
   const joinedLabel = joinedAt
     ? (() => {
         const d = new Date(joinedAt);
@@ -392,8 +383,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
         <button
           type="button"
           aria-label="Your profile"
-          className="shrink-0 w-10 h-10 rounded-full grid place-items-center text-[14px] font-bold text-white"
-          style={{ background: avatarGradient }}
+          className="shrink-0 w-10 h-10 rounded-full grid place-items-center text-[14px] font-bold bg-primary text-primary-foreground"
         >
           {avatarInitial}
         </button>
@@ -405,8 +395,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
           subtle tier-coloured pill on the right. */}
       <div className="flex items-center gap-3.5 mb-4 rounded-xl border border-border bg-card p-3.5">
         <div
-          className="w-[52px] h-[52px] rounded-full grid place-items-center text-lg font-bold text-white shrink-0"
-          style={{ background: avatarGradient }}
+          className="w-[52px] h-[52px] rounded-full grid place-items-center text-lg font-bold bg-primary text-primary-foreground shrink-0"
         >
           {avatarInitial}
         </div>

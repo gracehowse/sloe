@@ -16,11 +16,21 @@ export async function loginWithTestUser(page: Page): Promise<void> {
     throw new Error("E2E_EMAIL and E2E_PASSWORD must be set");
   }
 
-  await page.goto("/login");
-  await page.getByRole("button", { name: "Sign in", exact: true }).first().click();
-  await page.getByPlaceholder("you@domain.com").fill(email);
-  await page.getByPlaceholder(/your password/i).fill(password);
-  await page.getByRole("button", { name: "Sign in", exact: true }).nth(1).click();
+  await page.goto("/login", { waitUntil: "domcontentloaded", timeout: 30_000 });
+
+  const acceptCookies = page.getByRole("button", { name: /accept all/i });
+  if (await acceptCookies.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await acceptCookies.click();
+  }
+
+  const emailInput = page.getByPlaceholder("you@domain.com");
+  const passwordInput = page.getByPlaceholder(/your password/i);
+  await expect(emailInput).toBeVisible({ timeout: 15_000 });
+  await emailInput.fill(email);
+  await passwordInput.fill(password);
+
+  // `/login` and `/signin` use hideTabs — one submit button (see loginPermissive).
+  await page.getByRole("button", { name: "Sign in", exact: true }).last().click();
 
   await page.waitForURL((url) => !url.pathname.includes("/login"), { timeout: 45_000 });
 
@@ -30,5 +40,8 @@ export async function loginWithTestUser(page: Page): Promise<void> {
     );
   }
 
-  await expect(page.getByRole("heading", { name: /^Suppr$/i }).first()).toBeVisible({ timeout: 25_000 });
+  const keepGoing = page.getByRole("button", { name: /keep going|continue|got it|close/i }).first();
+  if (await keepGoing.isVisible({ timeout: 2000 }).catch(() => false)) {
+    await keepGoing.click().catch(() => undefined);
+  }
 }

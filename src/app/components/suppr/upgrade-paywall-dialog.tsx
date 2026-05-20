@@ -419,21 +419,16 @@ export function UpgradePaywallDialog({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Hero */}
-        <div
-          className="relative p-6 pb-7 text-white"
-          style={{
-            background: "linear-gradient(135deg, var(--primary) 0%, var(--macro-fat, #e04888) 100%)",
-          }}
-        >
+        <div className="relative p-6 pb-7 border-b border-border bg-card text-foreground">
           <button
             type="button"
             aria-label="Close"
             onClick={() => handleClose("close_button")}
-            className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 transition-colors grid place-items-center text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+            className="absolute top-4 right-4 w-8 h-8 rounded-full bg-muted hover:bg-muted/80 transition-colors grid place-items-center text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <XIcon size={16} />
           </button>
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/20 text-[11px] font-bold tracking-[0.05em] uppercase mb-3">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-bold tracking-[0.05em] uppercase mb-3">
             <Sparkles size={11} />
             {heroPill}
           </span>
@@ -443,7 +438,7 @@ export function UpgradePaywallDialog({
           >
             {heroHeadline}
           </h2>
-          <p className="text-[13px] opacity-85 leading-relaxed">{heroSubtitle}</p>
+          <p className="text-[13px] text-muted-foreground leading-relaxed">{heroSubtitle}</p>
           {/* PR-01 (2026-04-28) — the §3 edge-case note ("Voice and
               photo require Pro. Base unlocks everything else.") was
               removed when Base went away. The single Pro pitch already

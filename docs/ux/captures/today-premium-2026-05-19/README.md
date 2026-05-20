@@ -9,6 +9,17 @@
 2. Same account / seed data where possible.
 3. Name files: `{state}-{platform}-{theme}.png` (e.g. `one-meal-mobile-light.png`).
 
+### Playwright scaffold (local dev + auth)
+
+With the web app running and (ideally) a logged-in storage state:
+
+```bash
+PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 \
+  npx playwright test tests/e2e/screenshots/today-premium-2026-05-19.spec.ts
+```
+
+Outputs land in this folder. Extend `STATES` in the spec as you seed each matrix row.
+
 ## State matrix
 
 | # | State | Notes |

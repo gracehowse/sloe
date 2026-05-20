@@ -2,25 +2,27 @@ import { Platform } from 'react-native';
 
 /**
  * Suppr brand accents (mobile). Aligned with the web design-overhaul palette.
- * Primary: `Accent.primary` (#4c6ce0 blue). Use `Brand.gradient` for hero highlights only.
- * Canonical roles: `docs/ux/brand-tokens.md`.
+ *
+ * 2026-05-20 (Premium launch bar): `Accent.primary` is warm ink for UI
+ * chrome (buttons, tabs, links) — not brand blue. Legacy brand blue lives
+ * on `Accent.brandBlue` for protein macro, OFF provenance, and marketing
+ * gradient endpoints only. See `docs/ux/brand-tokens.md`.
  */
 /** Accent palette — aligned with web CSS custom properties in theme.css */
 export const Accent = {
-  primary: '#4c6ce0',
+  /** UI chrome — buttons, tabs, links, Log FAB (light). */
+  primary: '#1c1916',
   /**
-   * Canonical foreground colour for anything sitting on top of
-   * Accent.primary (CTAs, segmented-active states, halo pills). Always
-   * pure white — matches web's `--primary-foreground: #ffffff` token in
-   * both light and dark modes (the `Accent.primary` indigo is dark
-   * enough that white-on-indigo passes WCAG AA contrast 5.7:1; the
-   * previous `#0a0a0f` near-black on indigo only hit ~3.1:1, failing AA
-   * for normal text). Grace cohort 2026-05-12: standardised across
-   * onboarding to match the rest of the app + web.
+   * Foreground on filled primary buttons. Light: white on ink; dark mode
+   * uses inverted pair via `Colors.dark` (ink button on OLED).
    */
   primaryForeground: '#ffffff',
-  /** Lifted periwinkle — dark-mode primary, sugar macro, selected tabs. */
-  primaryLight: '#7a90f5',
+  /** Warm stone — secondary UI emphasis (onboarding icons, dinner slot). */
+  primaryLight: '#5e574e',
+  /** Legacy brand blue — protein macro, OFF dot, avatar gradient start. */
+  brandBlue: '#4c6ce0',
+  /** Lifted periwinkle — dark protein macro, sugar macro. */
+  brandBlueLight: '#7a90f5',
   /** Leaf green — confirmations, calorie ring under-target. */
   success: '#62b35a',
   successLight: '#82d878',
@@ -68,7 +70,7 @@ export const StimulantColors = {
 /** Macro-specific colors — aligned with web --macro-* CSS custom properties */
 export const MacroColors = {
   calories: Accent.success,       // web: --macro-calories (#62b35a)
-  protein: Accent.primary,        // web: --macro-protein  (#4c6ce0)
+  protein: Accent.brandBlue,      // web: --macro-protein  (#4c6ce0)
   // 2026-05-12 (premium-bar audit DC10): carbs split from
   // `Accent.warning` (amber) → `Accent.carbs` (warm orange). Amber is
   // now reserved for over-budget warnings only. See `Accent.carbs`
@@ -76,7 +78,7 @@ export const MacroColors = {
   carbs: Accent.carbs,            // web: --macro-carbs    (#ed6b2a)
   fat: Accent.magenta,            // web: --macro-fat      (#e04888)
   fiber: Accent.fiber,
-  sugar: Accent.primaryLight,
+  sugar: Accent.brandBlueLight,
   sodium: Accent.orange,
   water: Accent.cyan,
 };
@@ -99,7 +101,7 @@ export const MacroColors = {
 export const SlotColors = {
   breakfast: Accent.warning,      // web: --slot-breakfast (amber)
   lunch: Accent.success,          // web: --slot-lunch     (green)
-  dinner: Accent.primary,         // web: --slot-dinner    (brand blue)
+  dinner: Accent.primaryLight,    // web: --slot-dinner    (warm stone)
   snack: '#06b6d4',               // web: --slot-snack     (cyan)
 };
 
@@ -113,9 +115,9 @@ export const SlotColors = {
  * `docs/ux/brand-guidelines.md` Section 9.
  */
 export const Brand = {
-  primary: Accent.primary,
+  primary: Accent.brandBlue,
   accent: Accent.magenta,
-  gradient: [Accent.primary, Accent.magenta] as const,
+  gradient: [Accent.brandBlue, Accent.magenta] as const,
 };
 
 /**
@@ -162,9 +164,9 @@ export const Colors = {
     sourceAi: '#e04888',
     confidenceNeutral: '#8c8378',
     /** Production design spec §1.4 north-star + over-budget tokens. */
-    northStarBgFrom: 'rgba(76, 108, 224, 0.10)',
-    northStarBgTo: 'rgba(224, 72, 136, 0.05)',
-    northStarBorder: 'rgba(76, 108, 224, 0.22)',
+    northStarBgFrom: 'rgba(98, 179, 90, 0.10)',
+    northStarBgTo: 'rgba(28, 25, 22, 0.04)',
+    northStarBorder: 'rgba(98, 179, 90, 0.20)',
     overBudgetFg: '#e0a838',
     overBudgetSoft: 'rgba(224, 168, 56, 0.08)',
     /** Foreground tokens that previously lived only in CSS — wired
@@ -183,10 +185,10 @@ export const Colors = {
     card: '#16161e',                // intentional — sits on OLED-black bg
     cardBorder: '#32313c',          // ↔ web --border (dark)
     border: '#32313c',
-    tint: Accent.primaryLight,
+    tint: '#e8e7ed',
     icon: '#9490a0',                // ↔ web --muted-foreground (dark)
     tabIconDefault: '#5c5868',
-    tabIconSelected: Accent.primaryLight,
+    tabIconSelected: '#e8e7ed',
     inputBg: '#222028',             // ↔ web --input-background (dark)
     overlay: '#000000aa',
     /** Source / provenance dots — dark. Lifted hues for OLED contrast. */
@@ -197,13 +199,13 @@ export const Colors = {
     sourceAi: '#ff7eb3',
     confidenceNeutral: '#706c7c',
     /** North-star + over-budget — dark. Visual-qa V-1 to A/B saturation. */
-    northStarBgFrom: 'rgba(122, 144, 245, 0.16)',
-    northStarBgTo: 'rgba(255, 126, 179, 0.09)',
-    northStarBorder: 'rgba(122, 144, 245, 0.36)',
+    northStarBgFrom: 'rgba(130, 216, 120, 0.14)',
+    northStarBgTo: 'rgba(232, 231, 237, 0.05)',
+    northStarBorder: 'rgba(130, 216, 120, 0.28)',
     overBudgetFg: '#f0c058',
     overBudgetSoft: 'rgba(240, 192, 88, 0.14)',
     destructiveForeground: '#ffffff',
-    primaryForeground: '#ffffff',
+    primaryForeground: '#101014',
     brandMarkRing: '#ffffff',
   },
 };
@@ -307,9 +309,9 @@ export const Elevation = {
     shadowOffset: { width: 0, height: 4 },
     elevation: 8,
   },
-  /** FAB tint — primary-blue glow underneath. */
+  /** FAB — neutral warm shadow (no brand-blue glow). */
   floatPrimary: {
-    shadowColor: Accent.primary,
+    shadowColor: '#1c1916',
     shadowOpacity: 0.45,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 4 },

@@ -198,10 +198,6 @@ function writeCollapsedPref(value: boolean): void {
 const WIDTH_EXPANDED_PX = 248;
 const WIDTH_COLLAPSED_PX = 64;
 
-/** Same gradient as Settings profile card + mobile `GradientAvatar`. */
-const PROFILE_AVATAR_GRADIENT =
-  "linear-gradient(135deg, #4c6ce0 0%, #e04888 100%)";
-
 export function DesktopSidebar(props: DesktopSidebarProps) {
   const { currentView, onNavigate } = props;
   const activePrimary = resolvePrimaryFromView(currentView);
@@ -446,8 +442,7 @@ function SidebarProfileEntry({
     >
       <span
         aria-hidden
-        className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-bold text-white"
-        style={{ background: PROFILE_AVATAR_GRADIENT }}
+        className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-bold bg-primary text-primary-foreground"
       >
         {initial}
       </span>

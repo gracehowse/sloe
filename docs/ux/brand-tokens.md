@@ -10,8 +10,10 @@ Single reference for **accent roles** so colours do not drift between the Next.j
 
 | Role | Hex (canonical) | Mobile token | Web CSS variable | Usage |
 |------|-----------------|-------------|-----------------|--------|
-| **Primary** | `#4c6ce0` | `Accent.primary` | `--primary` | Buttons, selected states, links, brand wordmark, protein macro |
-| **Primary light** | `#7a90f5` | `Accent.primaryLight` | `--primary` (dark) | Dark mode tint, active tab (dark), sugar macro |
+| **Primary (UI chrome)** | `#1c1916` (light) / `#e8e7ed` (dark) | `Accent.primary` / `Colors.*.tint` | `--primary` | Buttons, selected states, links, tab bar — **not** brand blue |
+| **Brand blue** | `#4c6ce0` | `Accent.brandBlue` | `--macro-protein` | Protein macro, OFF provenance, avatar gradient start only |
+| **Brand blue light** | `#7a90f5` | `Accent.brandBlueLight` | `--macro-protein` (dark) | Dark protein macro, sugar macro |
+| **Primary light (stone)** | `#5e574e` | `Accent.primaryLight` | `--slot-dinner` | Dinner slot tint, secondary UI emphasis |
 | **Success** | `#62b35a` | `Accent.success` | `--success` | Confirmations, calorie ring under-target, positive states |
 | **Success light** | `#82d878` | `Accent.successLight` | `--success` (dark) | Dark mode success tint |
 | **Warning** | `#e0a838` | `Accent.warning` | `--warning` | Over-budget, breakfast slot, activity bonus — **not** carbs macro |

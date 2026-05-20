@@ -2,6 +2,7 @@ import React from "react";
 import { Pressable, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import {
+  Calendar,
   ChevronLeft,
   ChevronRight,
   LayoutGrid,
@@ -66,6 +67,16 @@ export interface TodayDateHeaderProps {
    * window) so this component stays presentation-only.
    */
   streakResetCopyVisible?: boolean;
+  /**
+   * Premium P1 cold-open (ENG-584): hide Day/Week toggle (Sun / grid).
+   */
+  hideViewModeToggle?: boolean;
+  /**
+   * Premium P1 cold-open (ENG-584): hide inline week day-strip row.
+   * When true, title + calendar button open `onOpenCalendar`; chevrons
+   * still step by day.
+   */
+  hideDayStrip?: boolean;
 }
 
 export function TodayDateHeader({
@@ -94,8 +105,22 @@ export function TodayDateHeader({
   freezeProtected,
   onStreakPress,
   streakResetCopyVisible = false,
+  hideViewModeToggle = false,
+  hideDayStrip = false,
 }: TodayDateHeaderProps) {
   const router = useRouter();
+  const calmDateNav = hideDayStrip && viewMode === "day";
+  const navIconButtonStyle = {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: cardColor,
+    borderWidth: 1,
+    borderColor: cardBorderColor,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  };
+
   return (
     <View style={{ gap: 8 }}>
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
@@ -103,20 +128,18 @@ export function TodayDateHeader({
           <Pressable
             onPress={onNavigatePrev}
             hitSlop={12}
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 8,
-              backgroundColor: cardColor,
-              borderWidth: 1,
-              borderColor: cardBorderColor,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
+            style={navIconButtonStyle}
           >
             <ChevronLeft size={16} color={textColor} />
           </Pressable>
-          <Pressable onPress={onTapTitle} hitSlop={8}>
+          <Pressable
+            onPress={calmDateNav ? onOpenCalendar : onTapTitle}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={
+              calmDateNav ? "Choose date" : isToday ? "Today" : formatDateLabel(selectedDate)
+            }
+          >
             {/* Drop the eyebrow on any day-view render — the h1
                 already says "Today" / "Yesterday" / "Tue 16 Jun"; the
                 user doesn't need a second copy. Keep only for week
@@ -162,76 +185,95 @@ export function TodayDateHeader({
                 )}
             </View>
           </Pressable>
+          {calmDateNav && !isToday ? (
+            <Pressable
+              onPress={onTapTitle}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Jump to today"
+            >
+              <Text
+                style={{
+                  fontSize: 13,
+                  fontWeight: "600",
+                  color: Accent.primary,
+                }}
+              >
+                Today
+              </Text>
+            </Pressable>
+          ) : null}
+          {calmDateNav ? (
+            <Pressable
+              onPress={onOpenCalendar}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel="Open calendar"
+              style={navIconButtonStyle}
+            >
+              <Calendar size={16} color={textSecondaryColor} strokeWidth={1.75} />
+            </Pressable>
+          ) : null}
           <Pressable
             onPress={onNavigateNext}
             hitSlop={12}
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 8,
-              backgroundColor: cardColor,
-              borderWidth: 1,
-              borderColor: cardBorderColor,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
+            disabled={calmDateNav && isToday}
+            accessibilityState={{ disabled: calmDateNav && isToday }}
+            style={[navIconButtonStyle, calmDateNav && isToday ? { opacity: 0.35 } : null]}
           >
             <ChevronRight size={16} color={textColor} />
           </Pressable>
         </View>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-          {/* Day/Week toggle: active state demoted from solid-fill
-              to 12% alpha tint so the toggle reads as a quiet view-mode
-              affordance, not a loud primary action. The avatar to the
-              right is now the only saturated element in the top-right
-              corner, restoring visual hierarchy. */}
-          <View
-            style={{
-              flexDirection: "row",
-              borderRadius: 8,
-              backgroundColor: cardColor,
-              borderWidth: 1,
-              borderColor: cardBorderColor,
-              overflow: "hidden",
-            }}
-          >
-            <Pressable
-              onPress={() => onViewModeChange("day")}
-              accessibilityRole="button"
-              accessibilityLabel="Day view"
-              accessibilityState={{ selected: viewMode === "day" }}
+          {!hideViewModeToggle ? (
+            <View
               style={{
-                paddingHorizontal: 8,
-                paddingVertical: 6,
-                backgroundColor: viewMode === "day" ? Accent.primary + "1F" : "transparent",
-                alignItems: "center",
-                justifyContent: "center",
+                flexDirection: "row",
+                borderRadius: 8,
+                backgroundColor: cardColor,
+                borderWidth: 1,
+                borderColor: cardBorderColor,
+                overflow: "hidden",
               }}
             >
-              <Sun
-                size={14}
-                color={viewMode === "day" ? Accent.primary : textSecondaryColor}
-              />
-            </Pressable>
-            <Pressable
-              onPress={() => onViewModeChange("week")}
-              accessibilityRole="button"
-              accessibilityLabel="Week view"
-              accessibilityState={{ selected: viewMode === "week" }}
-              style={{
-                paddingHorizontal: 8,
-                paddingVertical: 6,
-                backgroundColor: viewMode === "week" ? Accent.primary + "1F" : "transparent",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <LayoutGrid
-                size={14}
-                color={viewMode === "week" ? Accent.primary : textSecondaryColor}
-              />
-            </Pressable>
-          </View>
+              <Pressable
+                onPress={() => onViewModeChange("day")}
+                accessibilityRole="button"
+                accessibilityLabel="Day view"
+                accessibilityState={{ selected: viewMode === "day" }}
+                style={{
+                  paddingHorizontal: 8,
+                  paddingVertical: 6,
+                  backgroundColor: viewMode === "day" ? Accent.primary + "1F" : "transparent",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Sun
+                  size={14}
+                  color={viewMode === "day" ? Accent.primary : textSecondaryColor}
+                />
+              </Pressable>
+              <Pressable
+                onPress={() => onViewModeChange("week")}
+                accessibilityRole="button"
+                accessibilityLabel="Week view"
+                accessibilityState={{ selected: viewMode === "week" }}
+                style={{
+                  paddingHorizontal: 8,
+                  paddingVertical: 6,
+                  backgroundColor: viewMode === "week" ? Accent.primary + "1F" : "transparent",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <LayoutGrid
+                  size={14}
+                  color={viewMode === "week" ? Accent.primary : textSecondaryColor}
+                />
+              </Pressable>
+            </View>
+          ) : null}
           {/* Audit 2026-04-30: avatar pill is the universal profile-entry
               affordance (Cal AI / MFP / Lifesum all do this). Was a static
               `<View>` with no onPress — now routes to /profile. */}
@@ -242,19 +284,8 @@ export function TodayDateHeader({
             hitSlop={8}
             style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
           >
-            {/* Audit 2026-05-04 #12: previously a flat blue rounded
-                square. The prototype + brand carryover rules call for
-                the brand-gradient circular avatar (matches Profile,
-                Settings, the More tab) — same paint path as the
-                shared `<GradientAvatar>` primitive.
-
-                ENG-99 (2026-05-13): the prototype canon spec is a
-                **36×36** gradient avatar — bumped from 32 so the
-                Today header's primary profile-entry affordance
-                reaches the prototype size. Day/Week toggle to the
-                left of this is functional view-mode scope (not the
-                "theme toggle" the audit also called out — theme was
-                already moved to More/Settings). */}
+            {/* Premium ink avatar (2026-05-20) — 36×36, matches Profile
+                / Settings / sidebar; default `GradientAvatar` ink fill. */}
             <GradientAvatar
               size={36}
               initial={avatarLetter}
@@ -264,7 +295,7 @@ export function TodayDateHeader({
           </Pressable>
         </View>
       </View>
-      {viewMode === "day" && (
+      {viewMode === "day" && !hideDayStrip && (
         <DayStrip
           selectedDate={selectedDate}
           weekStartDay={weekStartDay}

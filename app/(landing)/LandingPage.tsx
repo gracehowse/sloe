@@ -59,9 +59,9 @@ const NAV_LINKS = [
   { href: "#faq", label: "FAQ" },
 ];
 
-// Sign Up = the v2 onboarding flow (real Supabase signUp inline at
-// step 02 — see app/signup/page.tsx which now 307s to /onboarding).
-// Sign In = /login (unchanged).
+// Get started = full v2 onboarding at /onboarding (profile + targets).
+// Dedicated email signup card = /signup (Premium P1 / RTP-1).
+// Sign In = /login (sign-in only; /signin alias).
 const SIGNUP_HREF = "/onboarding";
 const SIGNIN_HREF = "/login";
 

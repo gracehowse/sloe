@@ -54,7 +54,6 @@ import {
   ChevronUp,
   CloudOff,
   X,
-  Zap,
 } from "lucide-react-native";
 import { Accent, Spacing, Radius } from "@/constants/theme";
 import FoodSearchModal, { type SelectedFood as FoodSearchSelectedFood } from "@/components/FoodSearchModal";
@@ -77,6 +76,9 @@ import {
   type FreezeLedger,
 } from "@/lib/streakFreeze";
 import { didStreakReset } from "@suppr/shared/nutrition/streakReset";
+import {
+  isBelowMealsPromptVisible,
+} from "@suppr/shared/today/belowMealsPromptSelection";
 import {
   MISSED_YESTERDAY_COPY,
   shouldShowMissedYesterday,
@@ -2649,6 +2651,39 @@ export default function TrackerScreen() {
   const remainingCarbs = Math.max(0, targets.carbs - totals.carbs);
   const remainingFat = Math.max(0, targets.fat - totals.fat);
 
+  const belowMealsPromptEligible = useMemo(
+    () => ({
+      checkin:
+        viewMode === "day" &&
+        isToday &&
+        isCheckinBannerDay &&
+        checkinBannerDismissed === false,
+      northStar:
+        viewMode === "day" && isToday && remaining > 0 && mealsToday.length === 0,
+      snap: viewMode === "day" && isToday && mealsToday.length === 0,
+      nudge: viewMode === "day" && isToday && mealsToday.length > 0,
+    }),
+    [
+      viewMode,
+      isToday,
+      isCheckinBannerDay,
+      checkinBannerDismissed,
+      remaining,
+      mealsToday.length,
+    ],
+  );
+
+  const showBelowMealsCheckin = isBelowMealsPromptVisible(
+    "checkin",
+    belowMealsPromptEligible,
+  );
+  const showBelowMealsNorthStar = isBelowMealsPromptVisible(
+    "northStar",
+    belowMealsPromptEligible,
+  );
+  const showBelowMealsSnap = isBelowMealsPromptVisible("snap", belowMealsPromptEligible);
+  const showBelowMealsNudge = isBelowMealsPromptVisible("nudge", belowMealsPromptEligible);
+
   // Batch 5.12 — iOS widget snapshot. Writes today's totals + fast state
   // to a shared App Group-accessible snapshot (AsyncStorage always, file
   // best-effort). Debounced 500 ms so a rapid sequence of macro edits
@@ -4447,6 +4482,8 @@ export default function TrackerScreen() {
           freezeProtected={protectedDateKeys.has(dateKeyFromDate(new Date()))}
           onStreakPress={() => router.push("/weekly-recap" as never)}
           streakResetCopyVisible={streakJustReset}
+          hideViewModeToggle
+          hideDayStrip
         />
         </View>
 
@@ -4843,12 +4880,30 @@ export default function TrackerScreen() {
             onAcceptUsualMealHint={acceptUsualMealHint}
             aiFirstLogTooltipMealId={aiFirstLogTooltipMealId}
             onDismissAiFirstLogTooltip={dismissAiFirstLogTooltip}
+            quickAddCollapsed={quickAddCollapsed}
+            onToggleQuickAddCollapsed={() => void toggleQuickAddCollapsed()}
+            quickAddPanel={
+              quickAddPrefLoaded ? (
+                <QuickAddPanel
+                  byDay={byDay}
+                  activeSlot={activeMealSlot}
+                  supabase={supabase}
+                  userId={userId ?? ""}
+                  onLog={(item) => logHistoryItemToSlot(item, activeMealSlot)}
+                  onLogSavedMeal={(meal, slot) => logSavedMealFromPanel(meal, slot)}
+                  onOpenSaveCombo={(slot) => {
+                    if (slot) openSaveMealSheetForSlot(slot);
+                  }}
+                  savedMealsRefreshToken={savedMealsRefreshToken}
+                />
+              ) : null
+            }
           />
           </Animated.View>
         )}
 
-        {/* Below-meals prompts (Today premium sprint 2026-05-19). */}
-        {viewMode === "day" && isToday && remaining > 0 && mealsToday.length === 0 && (
+        {/* Below-meals prompts (Today premium sprint 2026-05-19). Max 2: ENG-585. */}
+        {showBelowMealsNorthStar && (
           <NorthStarBlockHost
             viewMode={viewMode}
             savedRecipesForLibrary={savedRecipesForLibrary}
@@ -4865,10 +4920,7 @@ export default function TrackerScreen() {
             )}
           />
         )}
-        {viewMode === "day" &&
-          isToday &&
-          isCheckinBannerDay &&
-          checkinBannerDismissed === false && (
+        {showBelowMealsCheckin && (
             <WeeklyCheckinBanner
               textColor={colors.text}
               textSecondaryColor={colors.textSecondary}
@@ -4878,13 +4930,13 @@ export default function TrackerScreen() {
               }}
             />
           )}
-        {viewMode === "day" && isToday && mealsToday.length > 0 && (
+        {showBelowMealsNudge && (
           <OnboardingNudgeBanner
             mealsTodayCount={mealsToday.length}
             libraryCount={savedLibraryRecipes.length}
           />
         )}
-        {viewMode === "day" && isToday && mealsToday.length === 0 && (
+        {showBelowMealsSnap && (
           <TodaySnapShortcut
             onPress={() => {
               track(AnalyticsEvents.today_snap_shortcut_tapped, {
@@ -4921,55 +4973,6 @@ export default function TrackerScreen() {
               cardBorderColor={colors.cardBorder}
             />
           )}
-        {viewMode === "day" && quickAddPrefLoaded && (
-          <View style={{ marginTop: Spacing.md, marginBottom: Spacing.md }}>
-            <Pressable
-              onPress={() => void toggleQuickAddCollapsed()}
-              accessibilityRole="button"
-              accessibilityLabel={quickAddCollapsed ? "Show quick add" : "Hide quick add"}
-              accessibilityState={{ expanded: !quickAddCollapsed }}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                paddingVertical: Spacing.sm,
-                paddingHorizontal: Spacing.md,
-              }}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
-                <Zap size={16} color={colors.textSecondary} strokeWidth={1.75} />
-                <Text style={{ fontSize: 13, fontWeight: "600", color: colors.textSecondary }}>
-                  Quick add
-                </Text>
-                <Text numberOfLines={1} style={{ flexShrink: 1, fontSize: 12, color: colors.textTertiary }}>
-                  Your usuals
-                </Text>
-              </View>
-              {quickAddCollapsed ? (
-                <ChevronDown size={16} color={colors.textTertiary} strokeWidth={2} />
-              ) : (
-                <ChevronUp size={16} color={colors.textTertiary} strokeWidth={2} />
-              )}
-            </Pressable>
-            {!quickAddCollapsed && (
-              <View style={{ marginTop: Spacing.sm }}>
-                <QuickAddPanel
-                  byDay={byDay}
-                  activeSlot={activeMealSlot}
-                  supabase={supabase}
-                  userId={userId ?? ""}
-                  onLog={(item) => logHistoryItemToSlot(item, activeMealSlot)}
-                  onLogSavedMeal={(meal, slot) => logSavedMealFromPanel(meal, slot)}
-                  onOpenSaveCombo={(slot) => {
-                    if (slot) openSaveMealSheetForSlot(slot);
-                  }}
-                  savedMealsRefreshToken={savedMealsRefreshToken}
-                />
-              </View>
-            )}
-          </View>
-        )}
-
         {/* Planned meals from the planner */}
         {viewMode === "day" && plannedMeals.length > 0 && (
           <TodayPlannedMealsCard

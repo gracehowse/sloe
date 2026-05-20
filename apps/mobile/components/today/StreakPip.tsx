@@ -97,12 +97,12 @@ export function StreakPip({
   const fg = freezeProtected
     ? colors.textSecondary
     : active
-      ? Accent.primary
+      ? colors.tint
       : colors.textSecondary;
   const bg = freezeProtected
     ? colors.cardBorder
     : active
-      ? `${Accent.primary}14`
+      ? `${colors.tint}14`
       : colors.cardBorder;
 
   // Accessibility label: dynamic per streak length AND whether the pip

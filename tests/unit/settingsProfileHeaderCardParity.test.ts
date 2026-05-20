@@ -44,10 +44,8 @@ describe("Settings — profile header card (Group G IA Batch C)", () => {
     );
   });
 
-  it("avatar uses the brand gradient (matches Profile.tsx + mobile)", () => {
-    expect(settings).toContain(
-      "linear-gradient(135deg, #4c6ce0 0%, #e04888 100%)",
-    );
+  it("avatar uses ink primary (matches Profile.tsx + mobile GradientAvatar)", () => {
+    expect(settings).toMatch(/bg-primary text-primary-foreground/);
   });
 
   it("tier label collapses base → Free per the Free+Pro consolidation", () => {

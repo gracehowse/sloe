@@ -18,7 +18,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 // unavailable" card it iconified was removed per Grace decision
 // ("remove entirely; just show the Pro tier value ladder").
 import { X, CheckCircle2, ChefHat, BarChart3, Flag, Check, Tag, ChevronDown, ChevronUp, ShieldCheck, type LucideIcon } from "lucide-react-native";
-import Svg, { Defs, LinearGradient as SvgLinearGradient, Rect, Stop } from "react-native-svg";
 import * as Haptics from "expo-haptics";
 import type { PurchasesPackage } from "react-native-purchases";
 
@@ -111,7 +110,7 @@ const TIMELINE: {
   },
   {
     icon: ChefHat,
-    color: Accent.primary,
+    color: Accent.success,
     title: "Today: Start importing recipes",
     desc: "Grab recipes from Instagram, TikTok, or any website — we'll handle the nutrition.",
   },
@@ -706,7 +705,9 @@ export default function PaywallScreen() {
       width: 36,
       height: 36,
       borderRadius: 18,
-      backgroundColor: "rgba(255,255,255,0.2)",
+      backgroundColor: colors.inputBg,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
       justifyContent: "center",
       alignItems: "center",
       zIndex: 10,
@@ -716,23 +717,23 @@ export default function PaywallScreen() {
       paddingTop: insets.top + Spacing.xl,
       paddingHorizontal: Spacing.xl,
       paddingBottom: Spacing.xl,
-      overflow: "hidden",
+      backgroundColor: colors.card,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
     },
     headerKicker: {
       fontSize: 11,
       fontWeight: "700",
-      color: "#ffffff",
+      color: colors.textTertiary,
       letterSpacing: 2,
       marginBottom: Spacing.sm,
-      opacity: 0.9,
     },
-    headerTitle: { fontSize: 24, fontWeight: "800", color: "#ffffff", lineHeight: 32 },
+    headerTitle: { fontSize: 24, fontWeight: "800", color: colors.text, lineHeight: 32 },
     headerSubtitle: {
       fontSize: 14,
-      color: "#ffffff",
+      color: colors.textSecondary,
       lineHeight: 20,
       marginTop: Spacing.xs,
-      opacity: 0.85,
     },
 
     // 2026-05-14 (premium-bar audit Group I #7): extra bottom padding
@@ -1003,11 +1004,17 @@ export default function PaywallScreen() {
       marginBottom: Spacing.lg,
     },
 
-    // ENG-528 (2026-05-16): `unavailableCard` / `unavailableTitle` /
-    // `unavailableBody` styles removed alongside the explanatory
-    // card. Per Grace decision: show the Pro tier value ladder with
-    // no "Subscriptions unavailable" treatment.
-
+    // ENG-528 / ENG-588: inline footnote when StoreKit offerings are
+    // empty — no full-width "unavailable" card (premium-sweep RTP-3).
+    offeringsFootnote: {
+      fontSize: 12,
+      color: colors.textTertiary,
+      textAlign: "center",
+      lineHeight: 17,
+      marginTop: Spacing.sm,
+      marginBottom: Spacing.md,
+      paddingHorizontal: Spacing.md,
+    },
 
     savingsBadgeRight: { marginLeft: "auto" },
   }), [colors, insets]);
@@ -1027,26 +1034,10 @@ export default function PaywallScreen() {
         accessibilityHint="Returns you to where you were"
         hitSlop={12}
       >
-        <X size={20} color="#ffffff" strokeWidth={1.75} />
+        <X size={20} color={colors.text} strokeWidth={1.75} />
       </Pressable>
 
       <View style={styles.header}>
-        {/*
-         * Brand-gradient hero banner — mirrors prototype `flows.jsx:555`
-         * (`linear-gradient(135deg, #4c6ce0, #e04888)`). Brand gradient is
-         * sanctioned on paywall surfaces per the design-system doc.
-         */}
-        <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-          <Svg width="100%" height="100%">
-            <Defs>
-              <SvgLinearGradient id="paywall-hero-grad" x1="0" y1="0" x2="1" y2="1">
-                <Stop offset="0%" stopColor={Accent.primary} stopOpacity={1} />
-                <Stop offset="100%" stopColor={Accent.magenta} stopOpacity={1} />
-              </SvgLinearGradient>
-            </Defs>
-            <Rect width="100%" height="100%" fill="url(#paywall-hero-grad)" />
-          </Svg>
-        </View>
         <Text style={styles.headerKicker}>{headerKicker}</Text>
         <Text style={styles.headerTitle}>{headerTitle}</Text>
         <Text style={styles.headerSubtitle}>{headerSubtitle}</Text>
@@ -1198,6 +1189,13 @@ export default function PaywallScreen() {
               colors={colors}
               styles={styles}
             />
+            <Text
+              testID="paywall-offerings-footnote"
+              style={styles.offeringsFootnote}
+            >
+              Plans are loading from the App Store. You can continue with the free
+              tier below — try again later to subscribe.
+            </Text>
           </>
         ) : (
           <>

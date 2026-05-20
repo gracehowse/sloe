@@ -59,7 +59,7 @@ export function TodayCompleteDayDialog({
           <p className="text-lg font-bold text-foreground mb-6">Day logged!</p>
           <div
             className="w-20 h-20 rounded-full flex items-center justify-center mb-6"
-            style={{ background: "var(--primary-soft, rgba(76,108,224,0.12))" }}
+            style={{ background: "var(--primary-soft)" }}
           >
             <Icons.check className="w-10 h-10 text-primary" />
           </div>

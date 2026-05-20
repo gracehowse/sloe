@@ -16,7 +16,7 @@ import {
 
 describe("householdMemberAccent", () => {
   it("returns the prototype palette for indices 0..3 verbatim", () => {
-    expect(householdMemberAccent(0)).toBe("#7a90f5");
+    expect(householdMemberAccent(0)).toBe("#5e574e");
     expect(householdMemberAccent(1)).toBe("#4cd080");
     expect(householdMemberAccent(2)).toBe("#ffc04c");
     expect(householdMemberAccent(3)).toBe("#ff7eb3");
@@ -29,10 +29,10 @@ describe("householdMemberAccent", () => {
     expect(householdMemberAccent(7)).toBe(__test__.EXTENDED_PALETTE[3]);
   });
 
-  it("never returns undefined — wraps for >=8 and returns blue for negative / NaN", () => {
-    expect(householdMemberAccent(8)).toBe("#7a90f5"); // wraps to index 0 of primary
-    expect(householdMemberAccent(-1)).toBe("#7a90f5");
-    expect(householdMemberAccent(Number.NaN)).toBe("#7a90f5");
+  it("never returns undefined — wraps for >=8 and returns stone for negative / NaN", () => {
+    expect(householdMemberAccent(8)).toBe("#5e574e"); // wraps to index 0 of primary
+    expect(householdMemberAccent(-1)).toBe("#5e574e");
+    expect(householdMemberAccent(Number.NaN)).toBe("#5e574e");
   });
 });
 

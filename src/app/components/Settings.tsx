@@ -634,8 +634,6 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
   const profileAvatarInitial = (
     profileDisplayName?.trim()?.[0] ?? authEmail?.[0] ?? "S"
   ).toUpperCase();
-  const profileAvatarGradient =
-    "linear-gradient(135deg, #4c6ce0 0%, #e04888 100%)";
   const profileTierLabel = userTier === "pro" ? "Pro" : "Free";
   const profileDisplayLabel =
     profileDisplayName?.trim()?.length
@@ -671,8 +669,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       >
         <div
           aria-hidden
-          className="w-14 h-14 rounded-full grid place-items-center text-lg font-bold text-white shrink-0"
-          style={{ background: profileAvatarGradient }}
+          className="w-14 h-14 rounded-full grid place-items-center text-lg font-bold bg-primary text-primary-foreground shrink-0"
         >
           {profileAvatarInitial}
         </div>

@@ -134,8 +134,8 @@ describe("mobile theme — Phase 1 production design spec coverage", () => {
       expect(Elevation.sheet.shadowOffset).toEqual({ width: 0, height: -8 });
     });
 
-    it("floatPrimary uses primary tint (#4c6ce0) for FAB", () => {
-      expect(Elevation.floatPrimary.shadowColor.toLowerCase()).toBe("#4c6ce0");
+    it("floatPrimary uses neutral warm shadow (not brand blue)", () => {
+      expect(Elevation.floatPrimary.shadowColor.toLowerCase()).toBe("#1c1916");
     });
   });
 

@@ -102,6 +102,10 @@ export interface TodayMealsSectionProps {
   onDismissUsualMealHint: (slot: string) => void;
   /** Ship M1 — user tapped "Save as usual" on the hint for `slot`. */
   onAcceptUsualMealHint: (slot: string) => void;
+  /** ENG-594 — Quick add accordion in the meals section header. */
+  quickAddCollapsed?: boolean;
+  onToggleQuickAddCollapsed?: () => void;
+  quickAddPanel?: React.ReactNode;
 }
 
 /**
@@ -168,7 +172,12 @@ export function TodayMealsSection({
   hintVisibleForSlot,
   onDismissUsualMealHint,
   onAcceptUsualMealHint,
+  quickAddCollapsed,
+  onToggleQuickAddCollapsed,
+  quickAddPanel,
 }: TodayMealsSectionProps) {
+  const showQuickAdd =
+    onToggleQuickAddCollapsed != null && quickAddPanel != null;
   // Audit M7 (2026-04-18) — themed destructive-confirm dialog
   // replacing the prior `window.confirm` on the Delete overflow item.
   const [deleteCandidate, setDeleteCandidate] = React.useState<
@@ -204,6 +213,32 @@ export function TodayMealsSection({
           </button>
         )}
       </div>
+      {showQuickAdd && (
+        <div className="mb-3 rounded-card bg-card border border-border overflow-hidden">
+          <button
+            type="button"
+            onClick={onToggleQuickAddCollapsed}
+            aria-expanded={!quickAddCollapsed}
+            aria-controls="today-meals-quick-add-panel"
+            className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <span className="flex items-center gap-2 min-w-0">
+              <Icons.energy className="h-4 w-4 opacity-70" aria-hidden="true" />
+              <span className="text-sm font-semibold">Quick add</span>
+              <span className="text-xs truncate opacity-80">Your usuals</span>
+            </span>
+            <Icons.down
+              className={`h-4 w-4 opacity-70 transition-transform ${quickAddCollapsed ? "" : "rotate-180"}`}
+              aria-hidden="true"
+            />
+          </button>
+          {!quickAddCollapsed ? (
+            <div id="today-meals-quick-add-panel" className="px-3 pb-3">
+              {quickAddPanel}
+            </div>
+          ) : null}
+        </div>
+      )}
       <div className="rounded-card bg-card border border-border overflow-hidden">
         {mealsGrouped.map(({ name: sectionName, meals: sectionMeals }) => {
           // Preserve the distributeMealBudget call so any downstream

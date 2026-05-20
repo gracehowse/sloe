@@ -128,20 +128,20 @@ export default function LoginScreen() {
       width: 72,
       height: 72,
       borderRadius: 36,
-      backgroundColor: Accent.primary,
+      backgroundColor: colors.tint,
       justifyContent: "center",
       alignItems: "center",
       marginBottom: Spacing.lg,
-      shadowColor: Accent.primary,
-      shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 0.5,
-      shadowRadius: 20,
+      shadowColor: "#1c1916",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.12,
+      shadowRadius: 12,
     },
-    brandLetter: { color: "#fff", fontSize: 32, fontWeight: "800" },
+    brandLetter: { color: colors.primaryForeground, fontSize: 32, fontWeight: "800" },
     title: {
       fontSize: 26,
       fontWeight: "800",
-      color: Accent.primary,
+      color: colors.text,
       letterSpacing: 4,
     },
     tagline: {
@@ -161,14 +161,14 @@ export default function LoginScreen() {
       fontSize: 16,
     },
     btn: {
-      backgroundColor: Accent.primary,
+      backgroundColor: colors.tint,
       paddingVertical: 16,
       borderRadius: Radius.md,
       alignItems: "center",
       marginTop: Spacing.sm,
     },
     btnDisabled: { opacity: 0.6 },
-    btnText: { color: "#fff", fontWeight: "700", fontSize: 17 },
+    btnText: { color: colors.primaryForeground, fontWeight: "700", fontSize: 17 },
     errorText: { color: Accent.destructive, fontSize: 13, textAlign: "center" },
     hint: {
       color: colors.tabIconDefault,
@@ -210,11 +210,11 @@ export default function LoginScreen() {
       marginTop: 2,
     },
     termsCheckboxChecked: {
-      backgroundColor: Accent.primary,
-      borderColor: Accent.primary,
+      backgroundColor: colors.tint,
+      borderColor: colors.tint,
     },
     termsText: { flex: 1, fontSize: 13, color: colors.textSecondary, lineHeight: 18 },
-    termsLink: { color: Accent.primary, textDecorationLine: "underline" },
+    termsLink: { color: colors.text, textDecorationLine: "underline", fontWeight: "600" },
   }), [colors]);
 
   if (!hasSupabaseConfig()) {
@@ -231,7 +231,7 @@ export default function LoginScreen() {
   if (loading) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        <ActivityIndicator size="large" color={Accent.primary} />
+        <ActivityIndicator size="large" color={colors.tint} />
       </View>
     );
   }
@@ -242,7 +242,7 @@ export default function LoginScreen() {
   if (session && !onboardingChecked) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        <ActivityIndicator size="large" color={Accent.primary} />
+        <ActivityIndicator size="large" color={colors.tint} />
         <Text style={[styles.tagline, { marginTop: Spacing.lg, textAlign: "center" }]}>
           Signing you in…
         </Text>
@@ -439,7 +439,7 @@ export default function LoginScreen() {
             if (error) { setMessage(formatAuthError(error)); return; }
             setMessage("Magic link sent! Check your email inbox.");
           }}>
-            <Text style={[styles.hint, { color: Accent.primary }]}>Sign in with magic link</Text>
+            <Text style={[styles.hint, { color: colors.text, fontWeight: "600" }]}>Sign in with magic link</Text>
           </Pressable>
         )}
 

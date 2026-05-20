@@ -3,7 +3,8 @@ import { Pressable, View } from "react-native";
 import { Plus } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 
-import { Accent, Elevation } from "@/constants/theme";
+import { Elevation } from "@/constants/theme";
+import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
  * LogTabBarButton — the centered, raised round Plus button that lives
@@ -21,7 +22,7 @@ import { Accent, Elevation } from "@/constants/theme";
  *
  * Visual:
  *   - 56pt diameter circle (matches the legacy LogFab).
- *   - `Accent.primary` (#4c6ce0) background.
+ *   - Theme `colors.tint` (warm ink) background.
  *   - Lucide `Plus` icon, 24pt, white, strokeWidth 2.5.
  *   - Raised 16pt above the tab bar fill line via `top: -16`.
  *   - `Elevation.floatPrimary` (primary-blue glow drop-shadow).
@@ -49,6 +50,7 @@ export interface LogTabBarButtonProps {
 }
 
 export function LogTabBarButton({ onPress }: LogTabBarButtonProps) {
+  const colors = useThemeColors();
   const handlePress = () => {
     if (process.env.EXPO_OS === "ios") {
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -84,7 +86,7 @@ export function LogTabBarButton({ onPress }: LogTabBarButtonProps) {
             width: 56,
             height: 56,
             borderRadius: 28,
-            backgroundColor: Accent.primary,
+            backgroundColor: colors.tint,
             alignItems: "center",
             justifyContent: "center",
             transform: [{ scale: pressed ? 0.94 : 1 }],
@@ -92,7 +94,7 @@ export function LogTabBarButton({ onPress }: LogTabBarButtonProps) {
           Elevation.floatPrimary,
         ]}
       >
-        <Plus size={24} color="#fff" strokeWidth={2.5} />
+        <Plus size={24} color={colors.primaryForeground} strokeWidth={2.5} />
       </Pressable>
     </View>
   );

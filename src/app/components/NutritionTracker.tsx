@@ -111,6 +111,7 @@ import {
 import { createCustomFood } from "../../lib/nutrition/customFoodsClient";
 import { TodayBrandBar } from "./suppr/today-brand-bar";
 import { TodayDateHeader } from "./suppr/today-date-header";
+import { isBelowMealsPromptVisible } from "../../lib/today/belowMealsPromptSelection";
 import { aiLoggingSourceLabel, type AiLoggedItem } from "../../lib/nutrition/aiLogging";
 import {
   computeEatAgainForSlot,
@@ -2028,6 +2029,31 @@ export const NutritionTracker = memo(function NutritionTracker({
     workoutKcal: dayWorkouts.reduce((sum, w) => sum + (w.calories ?? 0), 0),
   });
   const effectiveCalorieTarget = baseCalorieTarget + activityAdjustment;
+
+  const belowMealsPromptEligibleWeb = useMemo(
+    () => ({
+      northStar:
+        selectedDateKey === todayKey() &&
+        Math.max(0, effectiveCalorieTarget - totals.calories) > 0 &&
+        mealsForSelectedDate.length === 0,
+      snap: selectedDateKey === todayKey() && mealsForSelectedDate.length === 0,
+    }),
+    [
+      selectedDateKey,
+      effectiveCalorieTarget,
+      totals.calories,
+      mealsForSelectedDate.length,
+    ],
+  );
+  const showBelowMealsNorthStarWeb = isBelowMealsPromptVisible(
+    "northStar",
+    belowMealsPromptEligibleWeb,
+  );
+  const showBelowMealsSnapWeb = isBelowMealsPromptVisible(
+    "snap",
+    belowMealsPromptEligibleWeb,
+  );
+
   const totalWaterMl = totals.waterMl + extraWaterMlForSelectedDay;
 
   // Audit M4 (2026-04-18) — Today progressive disclosure gates.
@@ -2171,7 +2197,7 @@ export const NutritionTracker = memo(function NutritionTracker({
   const avatarLetter = (profileDisplayName?.trim()?.[0] ?? authEmail?.trim()?.[0] ?? "U").toUpperCase();
 
   return (
-    <div className="max-w-5xl mx-auto px-pm-6 py-pm-6 xl:pr-[280px] space-y-6">
+    <div className="max-w-5xl mx-auto px-pm-6 py-pm-6 space-y-6">
       {!isOnline ? (
         <div
           role="alert"
@@ -2210,6 +2236,14 @@ export const NutritionTracker = memo(function NutritionTracker({
         </div>
       ) : null}
 
+      <div className="md:flex md:gap-6 md:items-start">
+        <div
+          className={
+            viewMode === "day"
+              ? "flex-1 min-w-0 space-y-6 md:max-w-[440px]"
+              : "flex-1 min-w-0 space-y-6"
+          }
+        >
       <div className="space-y-4 lg:space-y-0">
         <TodayBrandBar />
         <TodayDateHeader
@@ -2227,6 +2261,8 @@ export const NutritionTracker = memo(function NutritionTracker({
         onNavigateNext={() => (viewMode === "week" ? navigateWeek(1) : navigateDay(1))}
         onOpenCalendar={() => calendarInputRef.current?.showPicker?.() ?? calendarInputRef.current?.click()}
         onOpenSettings={() => onOpenSettings?.()}
+        hideViewModeToggle
+        hideDayStrip
       />
       </div>
 
@@ -2515,12 +2551,24 @@ export const NutritionTracker = memo(function NutritionTracker({
         hintVisibleForSlot={hintVisibleForSlot}
         onDismissUsualMealHint={dismissUsualMealHint}
         onAcceptUsualMealHint={acceptUsualMealHint}
+        quickAddCollapsed={quickAddCollapsed}
+        onToggleQuickAddCollapsed={toggleQuickAddCollapsed}
+        quickAddPanel={
+          <QuickAddPanel
+            byDay={nutritionByDay}
+            activeSlot={mealSlot}
+            supabase={supabase}
+            userId={authedUserId ?? ""}
+            onLog={(item) => logHistoryItem(item, mealSlot)}
+            onLogSavedMeal={(meal, slot) => logSavedMeal(meal, slot)}
+            onOpenSaveCombo={handleOpenSaveCombo}
+            savedMealsRefreshToken={savedMealsRefreshToken}
+          />
+        }
       />
 
-      {/* Below-meals prompts (Today premium sprint 2026-05-19). */}
-      {selectedDateKey === todayKey() &&
-        Math.max(0, effectiveCalorieTarget - totals.calories) > 0 &&
-        mealsForSelectedDate.length === 0 && (
+      {/* Below-meals prompts (Today premium sprint 2026-05-19). Max 2: ENG-585. */}
+      {showBelowMealsNorthStarWeb && (
           <NorthStarBlockHost
             viewMode={viewMode}
             savedRecipesForLibrary={savedRecipesForLibrary as Array<NorthStarRecipe>}
@@ -2543,7 +2591,7 @@ export const NutritionTracker = memo(function NutritionTracker({
             )}
           />
         )}
-      {selectedDateKey === todayKey() && mealsForSelectedDate.length === 0 && (
+      {showBelowMealsSnapWeb && (
         <TodaySnapShortcut
           onPress={() => {
             track(AnalyticsEvents.today_snap_shortcut_tapped, {
@@ -2574,40 +2622,6 @@ export const NutritionTracker = memo(function NutritionTracker({
             }}
           />
         )}
-      <div className="mt-4 mb-4">
-        <button
-          type="button"
-          onClick={toggleQuickAddCollapsed}
-          aria-expanded={!quickAddCollapsed}
-          aria-controls="today-quick-add-panel"
-          className="w-full flex items-center justify-between gap-2 px-1 py-2 text-left text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md"
-        >
-          <span className="flex items-center gap-2 min-w-0">
-            <Icons.energy className="h-4 w-4 opacity-70" aria-hidden="true" />
-            <span className="text-sm font-semibold">Quick add</span>
-            <span className="text-xs truncate opacity-80">Your usuals</span>
-          </span>
-          <Icons.down
-            className={`h-4 w-4 opacity-70 transition-transform ${quickAddCollapsed ? "" : "rotate-180"}`}
-            aria-hidden="true"
-          />
-        </button>
-        {!quickAddCollapsed && (
-          <div id="today-quick-add-panel" className="mt-2">
-            <QuickAddPanel
-              byDay={nutritionByDay}
-              activeSlot={mealSlot}
-              supabase={supabase}
-              userId={authedUserId ?? ""}
-              onLog={(item) => logHistoryItem(item, mealSlot)}
-              onLogSavedMeal={(meal, slot) => logSavedMeal(meal, slot)}
-              onOpenSaveCombo={handleOpenSaveCombo}
-              savedMealsRefreshToken={savedMealsRefreshToken}
-            />
-          </div>
-        )}
-      </div>
-
       {/* Planned meals — show meals from today's plan so the user can
           one-tap log them at a chosen portion (½× / 1× / 1½× / 2×).
           Renders only when there's a plan with at least one meal for
@@ -2755,6 +2769,19 @@ export const NutritionTracker = memo(function NutritionTracker({
 
       </>
       )}
+        </div>
+
+        {viewMode === "day" ? (
+          <TodayWeekSidebar
+            className="hidden md:block w-[260px] shrink-0 sticky top-4 self-start"
+            byDay={nutritionByDay}
+            calorieTarget={effectiveCalorieTarget}
+            activeDateKey={selectedDateKey}
+            todayDateKey={todayKey()}
+            onSelectDayKey={(k) => setSelectedDateKey(k)}
+          />
+        ) : null}
+      </div>
 
       {/* 30-day milestone moment (PR claude/today-30-day-milestone,
           2026-05-02). Pure trust moment, single CTA, no paywall. */}
@@ -3376,22 +3403,6 @@ export const NutritionTracker = memo(function NutritionTracker({
         }}
       />
 
-      {/* Desktop Today right rail (Next-10 #14, 2026-04-28).
-          Fixed-position sidebar showing the last 7 days at xl+
-          (≥1280px) breakpoint where there's enough horizontal room
-          to clear both the DesktopSidebar nav (left) and the
-          centred max-w-2xl tracker (middle). Below xl, hidden — the
-          mobile-web user has the day/week toggle for the same
-          information. Reference:
-          `docs/ux/teardown-2026-04-28-daily-loop.md` Next-10 #14. */}
-      <TodayWeekSidebar
-        className="hidden xl:block fixed top-20 right-4 w-[260px] z-30"
-        byDay={nutritionByDay}
-        calorieTarget={effectiveCalorieTarget}
-        activeDateKey={selectedDateKey}
-        todayDateKey={todayKey()}
-        onSelectDayKey={(k) => setSelectedDateKey(k)}
-      />
     </div>
   );
 });

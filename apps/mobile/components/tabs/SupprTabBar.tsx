@@ -5,7 +5,6 @@ import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 
-import { Accent } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 import { LogTabBarButton } from "./LogTabBarButton";
@@ -118,7 +117,7 @@ export function SupprTabBar({
           navigation.emit({ type: "tabLongPress", target: route.key });
         };
 
-        const tintColor = isFocused ? Accent.primary : colors.tabIconDefault;
+        const tintColor = isFocused ? colors.tabIconSelected : colors.tabIconDefault;
         const label =
           typeof options.tabBarLabel === "string"
             ? options.tabBarLabel

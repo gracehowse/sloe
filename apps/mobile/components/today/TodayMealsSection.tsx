@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, type ReactNode } from "react";
 import { Alert, Modal, Pressable, ScrollView, Share, Text, View } from "react-native";
 import { buildMealShareText } from "@suppr/shared/share/buildMealShareText";
 import { track, isFeatureEnabled } from "@/lib/analytics";
@@ -8,6 +8,7 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronUp,
+  Zap,
   Coffee,
   Cookie,
   Copy,
@@ -93,6 +94,13 @@ export interface TodayMealsSectionProps {
   /** Phase 5 (2026-04-30) — fired on X tap or auto-fade. Host
    *  persists the storage key and clears `aiFirstLogTooltipMealId`. */
   onDismissAiFirstLogTooltip?: () => void;
+  /**
+   * ENG-594 — Quick add lives in the meals section header (not between
+   * macro tiles and meals). Host passes collapsed state + panel body.
+   */
+  quickAddCollapsed?: boolean;
+  onToggleQuickAddCollapsed?: () => void;
+  quickAddPanel?: ReactNode;
 }
 
 /**
@@ -199,7 +207,13 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
     onAcceptUsualMealHint,
     aiFirstLogTooltipMealId,
     onDismissAiFirstLogTooltip,
+    quickAddCollapsed,
+    onToggleQuickAddCollapsed,
+    quickAddPanel,
   } = props;
+
+  const showQuickAdd =
+    onToggleQuickAddCollapsed != null && quickAddPanel != null;
 
   const [usualPicker, setUsualPicker] = useState<
     { slot: string; options: SavedMeal[] } | null
@@ -231,13 +245,56 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
           marginBottom: Spacing.xl,
         }}
       >
+        {showQuickAdd && (
+          <View
+            style={{
+              borderBottomWidth: 1,
+              borderBottomColor: cardBorderColor + "60",
+            }}
+          >
+            <Pressable
+              onPress={onToggleQuickAddCollapsed}
+              accessibilityRole="button"
+              accessibilityLabel={quickAddCollapsed ? "Show quick add" : "Hide quick add"}
+              accessibilityState={{ expanded: !quickAddCollapsed }}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                paddingVertical: Spacing.sm,
+                paddingHorizontal: 14,
+              }}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
+                <Zap size={16} color={textSecondaryColor} strokeWidth={1.75} />
+                <Text style={{ fontSize: 13, fontWeight: "600", color: textSecondaryColor }}>
+                  Quick add
+                </Text>
+                <Text
+                  numberOfLines={1}
+                  style={{ flexShrink: 1, fontSize: 12, color: textTertiaryColor }}
+                >
+                  Your usuals
+                </Text>
+              </View>
+              {quickAddCollapsed ? (
+                <ChevronDown size={16} color={textTertiaryColor} strokeWidth={2} />
+              ) : (
+                <ChevronUp size={16} color={textTertiaryColor} strokeWidth={2} />
+              )}
+            </Pressable>
+            {!quickAddCollapsed ? (
+              <View style={{ paddingHorizontal: 12, paddingBottom: Spacing.sm }}>{quickAddPanel}</View>
+            ) : null}
+          </View>
+        )}
         {mealsTodayCount > 0 && (
           <View
             style={{
               flexDirection: "row",
               justifyContent: "flex-end",
               paddingHorizontal: 12,
-              paddingTop: 10,
+              paddingTop: showQuickAdd ? 6 : 10,
               paddingBottom: 6,
               borderBottomWidth: 1,
               borderBottomColor: cardBorderColor + "60",
