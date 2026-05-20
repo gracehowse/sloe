@@ -26,19 +26,24 @@ describe("Round 2 — text / casing fixes", () => {
     // `docs/ux/teardown-2026-04-28-daily-loop.md`) went further:
     // the standalone centred link was moved out of the host
     // composition and into the macro-tiles section header as a
-    // small right-aligned "Nutrients" chevron link, opened via
-    // `showNutrientsLink` + `onPressNutrients` props on
-    // TodayDashboardMacroTiles. The pin asserts both halves:
-    // (1) the old "View all nutrients" string is gone from the
-    // host file, and (2) the new "Nutrients" label exists inside
-    // TodayDashboardMacroTiles.tsx. Neither file carries the
-    // count-appended variant the original audit flagged.
+    // small right-aligned label opened via `showNutrientsLink` +
+    // `onPressNutrients` props on TodayDashboardMacroTiles.
+    //
+    // The chip label was upgraded from "Nutrients >" to
+    // "All nutrients >" so it reads as an action affordance.
+    //
+    // The pin asserts:
+    //   (1) the old "View all nutrients" string is gone from host
+    //   (2) the chip label "All nutrients" exists inside
+    //       TodayDashboardMacroTiles.tsx
+    //   (3) count-appended variant does not exist
     const HOST = read("apps/mobile/app/(tabs)/index.tsx");
     expect(HOST).not.toMatch(/View all nutrients/);
     expect(HOST).not.toMatch(/dayNutrientDetailRowsWithoutMacroDupes\.length\}\)/);
 
     const TILES = read("apps/mobile/components/today/TodayDashboardMacroTiles.tsx");
-    expect(TILES).toMatch(/Nutrients\b\s*<\/Text>/);
+    expect(TILES).toMatch(/All nutrients\s*<\/Text>/);
+    expect(TILES).not.toMatch(/All nutrients \(\{[^}]+\.length\}\)/);
     expect(TILES).not.toMatch(/Nutrients \(\{[^}]+\.length\}\)/);
   });
 

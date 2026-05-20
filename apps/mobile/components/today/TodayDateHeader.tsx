@@ -117,14 +117,12 @@ export function TodayDateHeader({
             <ChevronLeft size={16} color={textColor} />
           </Pressable>
           <Pressable onPress={onTapTitle} hitSlop={8}>
-            {/* 2026-05-12 (premium-bar audit, Today header upgrade):
-                drop the small-caps date eyebrow when the h1 is already
-                "Today" — the eyebrow's "Apr 22 · Tuesday" duplicates
-                what the h1 implies. Keep the eyebrow for non-today
-                date selections (so "Sat Apr 19" h1 still has the
-                weekday-name context above it) and for the week view
-                (`weekLabel` is the date range). */}
-            {!(viewMode === "day" && isToday) ? (
+            {/* Drop the eyebrow on any day-view render — the h1
+                already says "Today" / "Yesterday" / "Tue 16 Jun"; the
+                user doesn't need a second copy. Keep only for week
+                view where the h1 = "This Week" and the eyebrow carries
+                the range. */}
+            {viewMode === "week" ? (
               <Text
                 numberOfLines={1}
                 style={{
@@ -135,9 +133,7 @@ export function TodayDateHeader({
                   textTransform: "uppercase",
                 }}
               >
-                {viewMode === "week"
-                  ? weekLabel
-                  : `${selectedDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })} · ${selectedDate.toLocaleDateString("en-US", { weekday: "long" })}`}
+                {weekLabel}
               </Text>
             ) : null}
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 1 }}>
@@ -184,13 +180,11 @@ export function TodayDateHeader({
           </Pressable>
         </View>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-          {/* F-84 (2026-04-25) — icon-style scope toggle. Was "Day | Week"
-              text, which read as date-nav alongside the prev/next chevrons
-              and week strip and confused first-time users (customer-lens
-              2026-04-25: "three time-navigation things on one screen.
-              Why?"). Sun = Day (single-day dashboard), grid = Week (week
-              roll-up). Accessibility labels carry the original text so
-              screen readers still announce "Day view" / "Week view". */}
+          {/* Day/Week toggle: active state demoted from solid-fill
+              to 12% alpha tint so the toggle reads as a quiet view-mode
+              affordance, not a loud primary action. The avatar to the
+              right is now the only saturated element in the top-right
+              corner, restoring visual hierarchy. */}
           <View
             style={{
               flexDirection: "row",
@@ -209,14 +203,14 @@ export function TodayDateHeader({
               style={{
                 paddingHorizontal: 8,
                 paddingVertical: 6,
-                backgroundColor: viewMode === "day" ? Accent.primary : "transparent",
+                backgroundColor: viewMode === "day" ? Accent.primary + "1F" : "transparent",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
               <Sun
                 size={14}
-                color={viewMode === "day" ? primaryForegroundColor : textSecondaryColor}
+                color={viewMode === "day" ? Accent.primary : textSecondaryColor}
               />
             </Pressable>
             <Pressable
@@ -227,14 +221,14 @@ export function TodayDateHeader({
               style={{
                 paddingHorizontal: 8,
                 paddingVertical: 6,
-                backgroundColor: viewMode === "week" ? Accent.primary : "transparent",
+                backgroundColor: viewMode === "week" ? Accent.primary + "1F" : "transparent",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
               <LayoutGrid
                 size={14}
-                color={viewMode === "week" ? primaryForegroundColor : textSecondaryColor}
+                color={viewMode === "week" ? Accent.primary : textSecondaryColor}
               />
             </Pressable>
           </View>

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { ArrowRight, ChevronLeft } from "lucide-react";
+import { useFeatureFlagEnabled } from "posthog-js/react";
 import { Button } from "@/app/components/ui/button";
 import { SupprWordmark } from "@/app/components/ui/suppr-mark";
 import { AnalyticsEvents } from "@/lib/analytics/events";
@@ -311,7 +312,8 @@ export function WebFlow() {
           already carried by the in-card StepHeader overline, so hiding
           the big headline column doesn't lose the user's place. Above
           768px the desktop split returns (Grace 2026-04-20). */}
-      <div className="flex-1 grid grid-cols-1 md:grid-cols-[1.1fr_1fr] min-h-0 overflow-hidden">
+      <BodyContainer>
+        <div className="flex-1 grid grid-cols-1 md:grid-cols-[1.1fr_1fr] min-h-0 overflow-hidden h-full">
         {/* Narrative column — hidden on mobile viewports. */}
         <div
           key={`narr-${displayIndex}`}
@@ -415,7 +417,8 @@ export function WebFlow() {
             </div>
           </div>
         </div>
-      </div>
+        </div>
+      </BodyContainer>
 
       <style>{`
         @keyframes v2NarrativeFade {
@@ -423,6 +426,20 @@ export function WebFlow() {
           to   { opacity: 1; transform: translateY(0); }
         }
       `}</style>
+    </div>
+  );
+}
+
+/**
+ * Caps the onboarding body at 1280px and centres it when the flag is
+ * ON. When OFF: pass-through, body spans full viewport width.
+ */
+function BodyContainer({ children }: { children: React.ReactNode }) {
+  const capOn = useFeatureFlagEnabled("premium-sweep-v2-p0-t25");
+  if (!capOn) return <>{children}</>;
+  return (
+    <div className="flex-1 mx-auto w-full md:max-w-[1280px] overflow-hidden flex flex-col">
+      {children}
     </div>
   );
 }

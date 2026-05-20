@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Flame, Shield } from "lucide-react";
+import { useFeatureFlagEnabled } from "posthog-js/react";
 
 /**
  * StreakPip — small pill that shows the user's current logging streak
@@ -62,6 +63,14 @@ export function StreakPip({
   const safeDays = Number.isFinite(days) && days >= 0 ? Math.floor(days) : 0;
   const active = safeDays >= 2;
   const isLg = size === "lg";
+
+  // When flag is on and there's no streak yet, suppress the pip
+  // entirely -- the empty-state "Start your streak" copy reads as
+  // growth-shouty pressure and violates calm voice.
+  const suppressEmpty = useFeatureFlagEnabled("premium-sweep-v2-p0-t26");
+  if (suppressEmpty && safeDays === 0 && !freezeProtected) {
+    return null;
+  }
 
   const label = freezeProtected
     ? `${safeDays}-day streak · freeze`

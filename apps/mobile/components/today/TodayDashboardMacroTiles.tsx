@@ -148,38 +148,43 @@ export function TodayDashboardMacroTiles({
   // padding that Today's scroll container doesn't guarantee.
   return (
     <View style={{ marginBottom: Spacing.md }}>
-      {/* Phase 4 / Top-5 #2 (2026-04-28) — optional right-aligned
-          "Nutrients" link replaces the standalone centred link that
-          used to float below the tiles. Renders only when the host
-          flags it (i.e. there are non-macro nutrient rows worth
-          surfacing for the active day). */}
+      {/* "Nutrients >" upgraded to an outlined chip reading
+          "All nutrients ›" so it reads as an action affordance, not
+          an orphaned floating link. Renders only when the host flags
+          it (i.e. there are non-macro nutrient rows worth surfacing
+          for the active day). */}
       {showNutrientsLink && onPressNutrients ? (
-        <Pressable
-          onPress={onPressNutrients}
-          accessibilityRole="button"
-          accessibilityLabel="View all nutrients for today"
-          hitSlop={6}
-          style={{
-            flexDirection: "row",
-            justifyContent: "flex-end",
-            alignItems: "center",
-            gap: 2,
-            paddingVertical: Spacing.xs,
-            marginBottom: Spacing.xs,
-          }}
-        >
-          <Text
+        <View style={{ flexDirection: "row", justifyContent: "flex-end", marginBottom: Spacing.xs }}>
+          <Pressable
+            onPress={onPressNutrients}
+            accessibilityRole="button"
+            accessibilityLabel="View all nutrients for today"
+            hitSlop={6}
             style={{
-              fontSize: 11,
-              fontWeight: "600",
-              color: Accent.primary,
-              letterSpacing: 0.4,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 4,
+              paddingHorizontal: 10,
+              paddingVertical: 4,
+              borderRadius: 999,
+              borderWidth: 1,
+              borderColor: Accent.primary + "30",
+              backgroundColor: Accent.primary + "08",
             }}
           >
-            Nutrients
-          </Text>
-          <ChevronRight size={12} color={Accent.primary} strokeWidth={2.25} />
-        </Pressable>
+            <Text
+              style={{
+                fontSize: 11,
+                fontWeight: "600",
+                color: Accent.primary,
+                letterSpacing: 0.3,
+              }}
+            >
+              All nutrients
+            </Text>
+            <ChevronRight size={11} color={Accent.primary} strokeWidth={2.25} />
+          </Pressable>
+        </View>
       ) : null}
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm }}>
       {trackedMacros.map((macro) => {
@@ -190,6 +195,15 @@ export function TodayDashboardMacroTiles({
         // calories+sodium stay integer. Trailing ".0" trimmed for readability.
         const value = formatMacro(def.current, macro);
         const pct = def.target > 0 ? Math.min(100, Math.round((def.current / def.target) * 100)) : 0;
+        // Over-budget detection: when the user exceeds target on a
+        // tracked macro, the bar fills amber instead of the macro
+        // colour so "over" reads visually distinct from "hit target".
+        const isOverBudget =
+          !def.referenceOnly && def.target > 0 && def.current > def.target;
+        const barColor = isOverBudget ? Accent.warning : def.color;
+        const barTrackColor = isOverBudget
+          ? `${Accent.warning}24`
+          : `${def.color}24`;
         // Audit T03 (2026-05-05) — caption "X g remaining" used to
         // round `def.target − def.current` directly, which produced
         // off-by-≤1g drift vs the displayed `value / target g` numerator
@@ -200,11 +214,17 @@ export function TodayDashboardMacroTiles({
         const displayedTarget = def.target;
         const remainDisplayed = displayedTarget - (Number.isFinite(displayedCurrent) ? displayedCurrent : def.current);
         const overBy = Math.round(Math.abs(remainDisplayed));
-        const captionText = def.referenceOnly
-          ? `ref ${def.target} ${def.unit}`
-          : remainDisplayed >= 0
-            ? `${overBy} ${def.unit} remaining`
-            : `${overBy} ${def.unit} over`;
+        // Suppress caption on unlogged tiles — the `0 / target g`
+        // numerator already says everything the user needs.
+        const isUnloggedTile =
+          !def.referenceOnly && def.current <= 0 && def.target > 0;
+        const captionText = isUnloggedTile
+          ? ""
+          : def.referenceOnly
+            ? `ref ${def.target} ${def.unit}`
+            : remainDisplayed >= 0
+              ? `${overBy} ${def.unit} left`
+              : `${overBy} ${def.unit} over`;
 
         return (
           <Pressable
@@ -283,27 +303,34 @@ export function TodayDashboardMacroTiles({
                   300ms with `Easing.out(cubic)`. Apple Watch + Cal AI
                   parity — the bar grows visibly as the user logs,
                   reinforcing the "you just made progress" beat. */}
-              <View
-                style={{
-                  height: 6,
-                  borderRadius: 999,
-                  backgroundColor: `${def.color}24`,
-                  marginTop: Spacing.sm + 2,
-                  overflow: "hidden",
-                }}
-              >
-                <MacroTileFill pct={pct} color={def.color} />
-              </View>
-              <Text
-                style={{
-                  fontSize: 11,
-                  color: textSecondaryColor,
-                  marginTop: Spacing.xs + 2,
-                  fontVariant: ["tabular-nums"],
-                }}
-              >
-                {captionText}
-              </Text>
+              {/* Hide the bar entirely when nothing's been logged —
+                  the empty track is noise on the empty state. */}
+              {!isUnloggedTile ? (
+                <View
+                  style={{
+                    height: 6,
+                    borderRadius: 999,
+                    backgroundColor: barTrackColor,
+                    marginTop: Spacing.sm + 2,
+                    overflow: "hidden",
+                  }}
+                >
+                  <MacroTileFill pct={pct} color={barColor} />
+                </View>
+              ) : null}
+              {captionText ? (
+                <Text
+                  style={{
+                    fontSize: 11,
+                    color: isOverBudget ? Accent.warning : textSecondaryColor,
+                    fontWeight: isOverBudget ? "700" : "400",
+                    marginTop: Spacing.xs + 2,
+                    fontVariant: ["tabular-nums"],
+                  }}
+                >
+                  {captionText}
+                </Text>
+              ) : null}
           </Pressable>
         );
       })}

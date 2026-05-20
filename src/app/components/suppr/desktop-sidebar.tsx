@@ -1,7 +1,9 @@
 "use client";
 
 import * as React from "react";
+import { useFeatureFlagEnabled } from "posthog-js/react";
 import { Icons } from "../ui/icons";
+import type { UserTier } from "../../../types/recipe";
 
 /**
  * DesktopSidebar — left-hand navigation for the web app on desktop +
@@ -71,6 +73,12 @@ export interface DesktopSidebarProps {
   /** Saved-recipe count on the Library row, shown as a badge.
    *  Zero hides the badge (a fresh user shouldn't see "0"). */
   libraryRecipeCount?: number;
+  /** User tier -- drives the bottom-slot render (Free -> upgrade card,
+   *  Pro/Base -> plan chip). Optional; defaults to "free" if unset. */
+  userTier?: UserTier;
+  /** Profile display name -- used as the secondary line in the Pro/Base
+   *  plan chip. Optional; falls back to "You" if unset. */
+  displayName?: string | null;
 }
 
 type PrimaryView = "today" | "recipes" | "plan" | "you";
@@ -243,6 +251,41 @@ export function DesktopSidebar(props: DesktopSidebarProps) {
     return () => window.removeEventListener("keydown", handler);
   }, [toggleCollapsed]);
 
+  // J/K (or arrow up/down) move focus between primary nav items --
+  // same power-user pattern as Linear / Vim / Gmail. Only fires when
+  // focus is already inside the sidebar so it doesn't hijack page scroll.
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = (event: KeyboardEvent) => {
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const key = event.key.toLowerCase();
+      const isDown = key === "j" || event.key === "ArrowDown";
+      const isUp = key === "k" || event.key === "ArrowUp";
+      if (!isDown && !isUp) return;
+      const target = event.target as HTMLElement | null;
+      if (target) {
+        const tag = target.tagName?.toLowerCase();
+        if (tag === "input" || tag === "textarea" || target.isContentEditable) return;
+      }
+      const nav = document.getElementById("desktop-sidebar-nav");
+      if (!nav) return;
+      if (!nav.contains(document.activeElement)) return;
+      const buttons = Array.from(
+        nav.querySelectorAll<HTMLButtonElement>(":scope > ul > li > button"),
+      );
+      if (buttons.length === 0) return;
+      const currentIdx = buttons.findIndex((b) => b === document.activeElement);
+      const nextIdx =
+        currentIdx === -1
+          ? 0
+          : (currentIdx + (isDown ? 1 : -1) + buttons.length) % buttons.length;
+      event.preventDefault();
+      buttons[nextIdx]?.focus();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
   return (
     <aside
       data-testid="desktop-sidebar"
@@ -339,7 +382,76 @@ export function DesktopSidebar(props: DesktopSidebarProps) {
           })}
         </ul>
       </nav>
+
+      {/* Bottom slot -- Free users see upgrade card; Pro/Base see plan chip.
+          Hidden when collapsed; gated by feature flag. */}
+      {!collapsed && (
+        <SidebarBottomSlot
+          userTier={props.userTier ?? "free"}
+          displayName={props.displayName ?? null}
+          onNavigate={onNavigate}
+        />
+      )}
     </aside>
+  );
+}
+
+function SidebarBottomSlot({
+  userTier,
+  displayName,
+  onNavigate,
+}: {
+  userTier: UserTier;
+  displayName: string | null;
+  onNavigate: (view: SidebarView) => void;
+}) {
+  const gateOn = useFeatureFlagEnabled("premium-sweep-v2-p0-t12");
+  if (!gateOn) return null;
+  if (userTier === "pro" || userTier === "base") {
+    const planLabel = userTier === "pro" ? "Pro" : "Base";
+    const ident = displayName?.trim() || "You";
+    return (
+      <div className="border-t border-sidebar-border p-3">
+        <div className="flex items-center gap-2 rounded-lg bg-accent px-3 py-2">
+          <span className="rounded bg-primary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary-foreground shrink-0">
+            {planLabel}
+          </span>
+          <span className="truncate text-xs text-foreground" title={`${planLabel} · ${ident}`}>
+            {ident}
+          </span>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="border-t border-sidebar-border p-3">
+      <div
+        className="rounded-2xl p-3"
+        style={{
+          background: "linear-gradient(135deg, var(--north-star-bg-from), var(--north-star-bg-to))",
+          border: "1px solid var(--north-star-border)",
+        }}
+      >
+        <div className="mb-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-primary">
+          <Icons.sparkles className="h-3 w-3" aria-hidden />
+          Free plan
+        </div>
+        <div className="mb-1.5 text-sm font-semibold text-foreground">
+          Unlock the meal planner
+        </div>
+        <p className="mb-2.5 text-xs leading-snug text-muted-foreground">
+          Pro adds week planning, recipe import, and adaptive macro coaching.
+        </p>
+        <button
+          type="button"
+          onClick={() => onNavigate("settings")}
+          className="flex w-full items-center justify-center rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition-shadow hover:shadow-md"
+          style={{ boxShadow: "0 4px 12px color-mix(in srgb, var(--primary) 25%, transparent)" }}
+        >
+          See Pro
+        </button>
+      </div>
+    </div>
   );
 }
 

@@ -496,7 +496,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                             router.replace(`/home?${q}`, { scroll: false });
                           })();
                         }}
-                        className="mt-3 inline-flex items-center justify-center px-2.5 py-1 rounded-md bg-warning text-background text-[11px] font-semibold hover:opacity-90"
+                        className="mt-3 inline-flex items-center justify-center px-2.5 py-1 rounded-md bg-warning text-foreground text-[11px] font-semibold hover:opacity-90"
                       >
                         Create your own version
                       </button>
@@ -585,7 +585,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                           router.replace(`/home?${q}`, { scroll: false });
                         })();
                       }}
-                      className="mb-3 inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-warning text-background text-xs font-semibold hover:opacity-90"
+                      className="mb-3 inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-warning text-foreground text-xs font-semibold hover:opacity-90"
                     >
                       Create your own version
                     </button>

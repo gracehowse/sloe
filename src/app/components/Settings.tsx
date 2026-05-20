@@ -748,7 +748,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
                 });
                 setCancelPromptOpen(true);
               }}
-              className="text-sm font-medium text-success hover:text-success/80"
+              className="text-sm font-medium text-foreground underline underline-offset-4 hover:text-foreground/80"
             >
               Manage subscription
             </button>
@@ -1599,7 +1599,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             data-testid="settings-erase-everything-button"
             className="w-full text-left px-4 py-3 bg-warning/10 hover:bg-warning/15 disabled:opacity-50 rounded-lg transition-all text-foreground border border-warning/30"
           >
-            <p className="font-medium" style={{ color: "var(--warning)" }}>Erase everything</p>
+            <p className="font-medium text-foreground">Erase everything</p>
             <p className="text-xs mt-0.5 text-muted-foreground">
               Deletes food log, journal, library saves, shopping lists,
               imported recipes, and synced activity. Sends you through

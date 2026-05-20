@@ -108,7 +108,7 @@ function Row({
             className="h-7 w-7 rounded-lg flex items-center justify-center text-[13px]"
             style={{
               backgroundColor: `color-mix(in oklab, ${barColor} 15%, transparent)`,
-              color: barColor,
+              color: "var(--foreground)",
             }}
           >
             {icon}
@@ -243,7 +243,7 @@ export function HydrationStimulantsCard({
       <Row
         tone="water"
         label="Water"
-        icon={<span aria-hidden>≈</span>}
+        icon={<span aria-hidden>💧</span>}
         valueLine={`${formatWater(waterTotalMl, imperial)} / ${formatWater(targets.waterMl, imperial)}`}
         secondaryLine={
           waterFromMealsMl > 0
@@ -268,7 +268,7 @@ export function HydrationStimulantsCard({
                 ? `Add ${chip.label} water`
                 : `Add ${chip.ml} millilitres water`
             }
-            className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-macro-water-soft text-macro-water border border-macro-water/30 hover:bg-macro-water/20 transition-colors"
+            className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-macro-water-soft text-foreground border border-macro-water/30 hover:bg-macro-water/20 transition-colors"
           >
             +{chip.label}
           </button>

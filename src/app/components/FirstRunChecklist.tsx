@@ -3,11 +3,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Icons } from "./ui/icons";
 import { toast } from "sonner";
+import { useFeatureFlagEnabled } from "posthog-js/react";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { track } from "../../lib/analytics/track.ts";
 
 const DISMISSED_KEY = "suppr-checklist-dismissed";
+/** Once-per-user gate for the completion toast so it doesn't re-fire
+ *  on every navigation while allDone stays true. */
+const TOAST_SHOWN_KEY = "suppr-checklist-toast-shown";
 
 interface FirstRunChecklistProps {
   onNavigate: (view: string) => void;
@@ -42,6 +46,7 @@ const STEPS = [
 
 export function FirstRunChecklist({ onNavigate }: FirstRunChecklistProps) {
   const { savedRecipesForLibrary, mealPlan, nutritionByDay } = useAppData();
+  const toastGateOn = useFeatureFlagEnabled("premium-sweep-v2-p0-t11");
   const [dismissed, setDismissed] = useState(() => {
     if (typeof window === "undefined") return false;
     return localStorage.getItem(DISMISSED_KEY) === "1";
@@ -71,9 +76,15 @@ export function FirstRunChecklist({ onNavigate }: FirstRunChecklistProps) {
       // `onboarding_completed`. See plan doc §4.
       track(AnalyticsEvents.first_run_checklist_completed);
       track(AnalyticsEvents.onboarding_checklist_completed);
+
+      // When the flag is on, fire the toast at most once per user.
+      const alreadyShown = typeof window !== "undefined" && localStorage.getItem(TOAST_SHOWN_KEY) === "1";
+      if (toastGateOn && alreadyShown) return;
+
       toast.success("You're all set! Keep logging on the Tracker; add recipes and plans whenever you like.", { duration: 5000 });
+      if (typeof window !== "undefined") localStorage.setItem(TOAST_SHOWN_KEY, "1");
     }
-  }, [allDone]);
+  }, [allDone, toastGateOn]);
 
   const handleDismiss = useCallback(() => {
     setDismissed(true);

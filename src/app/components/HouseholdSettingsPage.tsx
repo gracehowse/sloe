@@ -429,7 +429,7 @@ export function HouseholdSettingsPage({ onBack }: HouseholdSettingsPageProps) {
               <>
                 <span
                   aria-hidden
-                  className="inline-grid place-items-center w-9 h-9 rounded-full text-xs font-bold text-white shrink-0"
+                  className="inline-grid place-items-center w-9 h-9 rounded-full text-xs font-bold text-foreground shrink-0"
                   style={{ backgroundColor: color }}
                 >
                   {initials}
@@ -640,7 +640,7 @@ export function HouseholdSettingsPage({ onBack }: HouseholdSettingsPageProps) {
             >
               <span
                 aria-hidden
-                className="inline-grid place-items-center w-[18px] h-[18px] rounded-full text-[9px] font-bold text-white"
+                className="inline-grid place-items-center w-[18px] h-[18px] rounded-full text-[9px] font-bold text-foreground"
                 style={{ backgroundColor: householdMemberAccent(idx) }}
               >
                 {householdMemberInitials(m.displayName)}
@@ -719,7 +719,7 @@ export function HouseholdSettingsPage({ onBack }: HouseholdSettingsPageProps) {
                 >
                   <span
                     aria-hidden
-                    className="inline-grid place-items-center w-8 h-8 rounded-full text-[11px] font-bold text-white shrink-0"
+                    className="inline-grid place-items-center w-8 h-8 rounded-full text-[11px] font-bold text-foreground shrink-0"
                     style={{ backgroundColor: color }}
                   >
                     {householdMemberInitials(m.displayName)}

@@ -217,27 +217,10 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
 
   return (
     <View>
-      {mealsTodayCount > 0 && (
-        <View style={{ flexDirection: "row", justifyContent: "flex-end", marginBottom: 6 }}>
-          <Pressable
-            onPress={onOpenDuplicateDay}
-            accessibilityRole="button"
-            accessibilityLabel="Duplicate this day to another day"
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 4,
-              paddingHorizontal: 10,
-              paddingVertical: 5,
-              borderRadius: 999,
-              backgroundColor: Accent.primary + "08",
-            }}
-          >
-            <Copy size={12} color={Accent.primary} />
-            <Text style={{ fontSize: 11, fontWeight: "600", color: Accent.primary }}>Duplicate day…</Text>
-          </Pressable>
-        </View>
-      )}
+      {/* "Duplicate day" pill moved inside the meals card as a
+          top-right header row so it visually anchors to the surface
+          it acts on, with a thin bottom border so it reads as a
+          section header, not a floating button. */}
       <View
         style={{
           backgroundColor: cardColor,
@@ -248,6 +231,34 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
           marginBottom: Spacing.lg,
         }}
       >
+        {mealsTodayCount > 0 && (
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "flex-end",
+              paddingHorizontal: 12,
+              paddingTop: 10,
+              paddingBottom: 6,
+              borderBottomWidth: 1,
+              borderBottomColor: cardBorderColor + "60",
+            }}
+          >
+            <Pressable
+              onPress={onOpenDuplicateDay}
+              accessibilityRole="button"
+              accessibilityLabel="Duplicate this day to another day"
+              hitSlop={8}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 4,
+              }}
+            >
+              <Copy size={11} color={Accent.primary} />
+              <Text style={{ fontSize: 11, fontWeight: "600", color: Accent.primary }}>Duplicate day</Text>
+            </Pressable>
+          </View>
+        )}
         {slots.map((slot) => {
           const meals = mealGroups[slot] ?? [];
           const slotCals = Math.round(meals.reduce((a, m) => a + m.calories, 0));

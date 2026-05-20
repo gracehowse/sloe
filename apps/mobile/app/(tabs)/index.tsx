@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Animated,
@@ -2137,10 +2137,12 @@ export default function TrackerScreen() {
   );
 
   const navigateDay = useCallback((offset: number) => {
-    setSelectedDate((prev) => {
-      const next = new Date(prev);
-      next.setDate(next.getDate() + offset);
-      return clampJournalDate(next);
+    startTransition(() => {
+      setSelectedDate((prev) => {
+        const next = new Date(prev);
+        next.setDate(next.getDate() + offset);
+        return clampJournalDate(next);
+      });
     });
   }, []);
 
@@ -2263,10 +2265,12 @@ export default function TrackerScreen() {
   }, [weekData.days, basalBurnByDay, activityBurnByDay, maintenanceKcal]);
 
   const navigateWeek = useCallback((offset: number) => {
-    setSelectedDate((prev) => {
-      const next = new Date(prev);
-      next.setDate(next.getDate() + offset * 7);
-      return clampJournalDate(next);
+    startTransition(() => {
+      setSelectedDate((prev) => {
+        const next = new Date(prev);
+        next.setDate(next.getDate() + offset * 7);
+        return clampJournalDate(next);
+      });
     });
   }, []);
 
@@ -3398,7 +3402,7 @@ export default function TrackerScreen() {
     () =>
       StyleSheet.create({
         container: { flex: 1, backgroundColor: colors.background },
-        scroll: { paddingHorizontal: Spacing.xl, paddingBottom: 120, gap: Spacing.lg },
+        scroll: { paddingHorizontal: Spacing.xl, paddingBottom: 168, gap: Spacing.lg },
 
 
         dateNav: {
@@ -4420,11 +4424,11 @@ export default function TrackerScreen() {
           weekStartDay={weekStartDay}
           loggedDays={loggedDays}
           protectedDateKeys={protectedDateKeys}
-          onSelectDate={(d) => setSelectedDate(clampJournalDate(d))}
+          onSelectDate={(d) => startTransition(() => setSelectedDate(clampJournalDate(d)))}
           onOpenCalendar={() => setJournalCalendarOpen(true)}
           onNavigatePrev={() => (viewMode === "week" ? navigateWeek(-1) : navigateDay(-1))}
           onNavigateNext={() => (viewMode === "week" ? navigateWeek(1) : navigateDay(1))}
-          onTapTitle={() => { setSelectedDate(new Date()); setViewMode("day"); }}
+          onTapTitle={() => { startTransition(() => setSelectedDate(new Date())); setViewMode("day"); }}
           avatarLetter={session?.user?.email?.[0]?.toUpperCase() ?? "U"}
           textColor={colors.text}
           textSecondaryColor={colors.textSecondary}
@@ -4970,7 +4974,7 @@ export default function TrackerScreen() {
                 <Zap size={18} color={Accent.primary} strokeWidth={1.75} />
                 <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>Quick add</Text>
                 <Text numberOfLines={1} style={{ flexShrink: 1, fontSize: 12, color: colors.textTertiary }}>
-                  Usual meals, recent, frequent, favourites
+                  Your usuals
                 </Text>
               </View>
               {quickAddCollapsed ? (

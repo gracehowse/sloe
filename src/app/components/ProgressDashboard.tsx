@@ -1590,8 +1590,8 @@ function ProgressDashboardContent() {
                   />
                 </div>
                 <span
-                  className="text-xs font-semibold tabular-nums text-right"
-                  style={{ color: tone, minWidth: "3.5rem" }}
+                  className="text-xs font-semibold tabular-nums text-right text-foreground"
+                  style={{ minWidth: "3.5rem" }}
                   data-testid={`macro-adherence-label-${name.toLowerCase()}`}
                 >
                   {bar.label}
@@ -1639,7 +1639,7 @@ function ProgressDashboardContent() {
               <span
                 data-testid="maintenance-source-pill"
                 data-source="adaptive"
-                className="ml-auto text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-success/10 text-success"
+                className="ml-auto text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-success text-foreground"
               >
                 Adaptive
               </span>
@@ -1703,7 +1703,7 @@ function ProgressDashboardContent() {
                   />
                 ))}
               </div>
-              <span className="text-xs font-medium capitalize" style={{ color: adaptiveConfidence === "high" ? "var(--success)" : adaptiveConfidence === "medium" ? "var(--warning)" : "var(--muted-foreground)" }}>
+              <span className="text-xs font-medium capitalize text-foreground">
                 {adaptiveConfidence}
               </span>
             </div>
@@ -2420,8 +2420,8 @@ function CaloriesRangeCardWeb({
                   className={[
                     "shrink-0 inline-flex items-center rounded-full text-[11px] font-semibold px-2 py-0.5 tabular-nums",
                     deltaVsTargetKcal <= 0
-                      ? "bg-success/15 text-success"
-                      : "bg-warning/15 text-warning",
+                      ? "bg-success text-foreground"
+                      : "bg-warning text-foreground",
                   ].join(" ")}
                 >
                   {deltaVsTargetKcal > 0 ? "+" : "−"}

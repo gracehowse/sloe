@@ -176,7 +176,7 @@ export function HouseholdBar({ selected, onSelect, onManage }: HouseholdBarProps
             >
               <span
                 aria-hidden
-                className="inline-grid place-items-center w-[22px] h-[22px] rounded-full text-[9px] font-bold text-white"
+                className="inline-grid place-items-center w-[22px] h-[22px] rounded-full text-[9px] font-bold text-foreground"
                 style={{ backgroundColor: color }}
               >
                 {initials}
