@@ -165,6 +165,8 @@ export interface LoggedMeal {
   /** Optional hero image when logged from a recipe or branded search hit. */
   recipeImageUrl?: string | null;
   imageUrl?: string | null;
+  /** ISO timestamp when the entry was logged (journal sort / recency). */
+  createdAt?: string;
 }
 
 export interface DayPlanMeal {

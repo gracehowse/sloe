@@ -217,6 +217,15 @@ Created after state-matrix captures (28 PNGs) and colour-parity audit. **Do not 
 
 **Next cycle:** [ENG-571](https://linear.app/suppr/issue/ENG-571) / ENG-604+ (P3 food & plan).
 
+## Cycle 3 status (started 2026-05-20)
+
+**In progress:** [ENG-571](https://linear.app/suppr/issue/ENG-571) — P3 food & plan.
+
+| Issue | Status |
+|-------|--------|
+| [ENG-606](https://linear.app/suppr/issue/ENG-606) | **In progress** — import/verify skeleton (mobile `ImportLoadingSkeleton`, web `import-loading-skeleton`) |
+| ENG-604–605, 607–608 | Todo |
+
 ## First cycle scope (P0 + P1) — historical
 
 1. ~~Triage legacy audit (ENG-203)~~ — **Done** ([ENG-574](https://linear.app/suppr/issue/ENG-574))  

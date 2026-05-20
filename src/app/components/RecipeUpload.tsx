@@ -28,6 +28,7 @@ import { parseRawIngredients } from "../../lib/recipe-ingredients/parseRawIngred
 import { splitPastedIngredientLines } from "../../lib/recipe-ingredients/splitPastedIngredientLines.ts";
 import { ingredientVerifyNeedsReview } from "../../lib/nutrition/verifyConfidencePolicy.ts";
 import { stripSectionPrefix } from "../../lib/recipe-import/extractSocialRecipe.ts";
+import { ImportLoadingSkeleton } from "./suppr/import-loading-skeleton.tsx";
 import {
   IMPORT_ERROR_COPY,
   mapPersistenceError,
@@ -1377,27 +1378,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
             </div>
             {importHint ? <p className="text-xs text-destructive mt-2">{importHint}</p> : null}
 
-            {/* 3-step extraction animation — shown during import */}
-            {importBusy && (
-              <div className="mt-4 space-y-2">
-                {[
-                  { label: "Fetching recipe page…", done: true },
-                  { label: "Analyzing ingredients…", done: false },
-                  { label: "Calculating nutrition…", done: false },
-                ].map((step, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                      step.done ? "bg-success text-white" : "bg-muted text-muted-foreground animate-pulse"
-                    }`}>
-                      {step.done ? <Icons.check className="w-3 h-3" strokeWidth={3} /> : i + 1}
-                    </span>
-                    <span className={`text-xs ${step.done ? "text-success font-medium" : "text-muted-foreground"}`}>
-                      {step.label}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
+            {importBusy ? <ImportLoadingSkeleton phase="importing" className="mt-4" /> : null}
           </div>
 
           {/* Recent Imports placeholder */}
