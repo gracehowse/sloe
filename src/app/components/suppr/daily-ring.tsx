@@ -3,6 +3,8 @@
 import * as React from "react";
 import { cn } from "../ui/utils";
 import { RING_LABELS } from "../../../lib/copy/today";
+import { isPremiumMotionV1Enabled } from "../../../lib/preferences/premiumMotionWeb";
+import { PREMIUM_MOTION_COUNT_MS } from "../../../lib/preferences/premiumMotion";
 
 /**
  * DailyRing — circular progress ring for daily calorie target.
@@ -36,11 +38,12 @@ import { RING_LABELS } from "../../../lib/copy/today";
  */
 function useAnimatedNumber(
   target: number,
-  options?: { snapOn?: unknown; duration?: number },
+  options?: { snapOn?: unknown; duration?: number; animateFromZeroOnMount?: boolean },
 ): number {
   const duration = options?.duration ?? 800;
   const snapOn = options?.snapOn;
-  const [value, setValue] = React.useState(target);
+  const animateFromZeroOnMount = options?.animateFromZeroOnMount ?? false;
+  const [value, setValue] = React.useState(animateFromZeroOnMount ? 0 : target);
   const valueRef = React.useRef(target);
   const lastSnapRef = React.useRef(snapOn);
   React.useEffect(() => {
@@ -172,11 +175,15 @@ function DailyRing({
   // fall into the calibrating-empty state until a profile target is
   // set.
 
+  const premiumMotion = isPremiumMotionV1Enabled();
+
   // Tween the displayed centre value over 800ms / cubic-out — same
   // curve as the SVG ring sweep so the number and arc finish
   // together. Snaps on display-mode toggle.
   const animatedCenterValue = useAnimatedNumber(centerValue, {
     snapOn: displayMode,
+    duration: premiumMotion ? PREMIUM_MOTION_COUNT_MS : 800,
+    animateFromZeroOnMount: premiumMotion,
   });
 
   // 2026-05-12 (premium-bar DC1, web parity with mobile CalorieRing):
@@ -234,8 +241,15 @@ function DailyRing({
           strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={offset}
-          className="transition-[stroke-dashoffset] duration-700"
-          style={{ transitionTimingFunction: "var(--pm-ease)" }}
+          className={cn(
+            "transition-[stroke-dashoffset]",
+            premiumMotion ? "duration-500" : "duration-700",
+          )}
+          style={{
+            transitionTimingFunction: premiumMotion
+              ? "cubic-bezier(0.32, 0.72, 0, 1)"
+              : "var(--pm-ease)",
+          }}
         />
         {/* Macro rings (shown when expanded).
             2026-05-14 — Grace's call: macro arcs always render in

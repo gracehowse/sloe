@@ -204,17 +204,18 @@ Created after state-matrix captures (28 PNGs) and colour-parity audit. **Do not 
 
 [ENG-568](https://linear.app/suppr/issue/ENG-568) / [ENG-569](https://linear.app/suppr/issue/ENG-569) stay open until carryover + checklist pass; **Cycle 2 work proceeds in parallel.**
 
-## Cycle 2 active (started 2026-05-20)
+## Cycle 2 status (wrapped 2026-05-20)
+
+**Shipped:** P2 daily loop — search-first log sheet (ENG-600/609/610), food-forward meal rows (ENG-601), north-star + Eat Again editorial (ENG-602/611/612/643), motion v1 behind PostHog `premium_motion_v1` (ENG-603/613/614).
 
 | Issue | Status |
 |-------|--------|
-| [ENG-570](https://linear.app/suppr/issue/ENG-570) | In Progress (umbrella) |
-| [ENG-600](https://linear.app/suppr/issue/ENG-600)–[610](https://linear.app/suppr/issue/ENG-610) | **Done** — search-first log sheet (already shipped) |
-| [ENG-601](https://linear.app/suppr/issue/ENG-601) | **Done** — food-forward meal rows (`046fb22`) |
-| [ENG-602](https://linear.app/suppr/issue/ENG-602) | **Done** — north-star + Eat Again editorial (`a89f848`) |
-| → ENG-611, ENG-612, [ENG-643](https://linear.app/suppr/issue/ENG-643) | **Done** (children of 602) |
-| [ENG-603](https://linear.app/suppr/issue/ENG-603) | **Next** — `premium_motion_v1` (count-up, ring fill, sheet spring) |
-| ENG-604–614 | Backlog (Cycles 3–5 / umbrella) |
+| [ENG-570](https://linear.app/suppr/issue/ENG-570) | **Done** — P2 umbrella |
+| ENG-600–610 | **Done** |
+| ENG-601–602, 611–612, 643 | **Done** |
+| ENG-603–614 | **Done** — count-up on mount, ring spring/timing, log-sheet slide easing |
+
+**Next cycle:** [ENG-571](https://linear.app/suppr/issue/ENG-571) / ENG-604+ (P3 food & plan).
 
 ## First cycle scope (P0 + P1) — historical
 

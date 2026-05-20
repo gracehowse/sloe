@@ -72,6 +72,7 @@ import {
   type SupabaseLike as InlineSupabaseLike,
 } from "../food-search/FoodSearchPanel";
 import type { MacroConsumed, MacroTargets } from "@/lib/nutrition/remainingMacros";
+import { isPremiumMotionV1Enabled } from "@/lib/preferences/premiumMotionWeb";
 
 /** Re-exported for hosts that want the inline-search payload type. */
 export type LogSheetInlineSelectedFood = InlineSelectedFood;
@@ -295,6 +296,7 @@ export function LogSheet({
   }, [open]);
 
   const inManualEntryMode = !!barcode?.manualEntry;
+  const premiumMotion = isPremiumMotionV1Enabled();
 
   return (
     <DrawerPrimitive.Root
@@ -323,6 +325,9 @@ export function LogSheet({
               ? "md:inset-auto md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:h-[640px] md:w-[480px] md:max-h-[640px] md:rounded-2xl md:border"
               : "",
             "shadow-[0_-8px_32px_rgba(0,0,0,0.12)]",
+            premiumMotion
+              ? "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]"
+              : "",
           )}
         >
           {/* Drag handle (mobile) — drops on desktop. */}

@@ -7,9 +7,16 @@ import Animated, {
   useSharedValue,
   useAnimatedProps,
   withTiming,
+  withSpring,
   withDelay,
   Easing,
 } from "react-native-reanimated";
+import { isFeatureEnabled } from "@/lib/analytics";
+import {
+  PREMIUM_MOTION_RING_MS,
+  PREMIUM_MOTION_V1_FLAG,
+  PREMIUM_MOTION_COUNT_MS,
+} from "@suppr/shared/preferences/premiumMotion";
 
 import { Accent, Colors, MacroColors } from "@/constants/theme";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
@@ -45,12 +52,19 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle);
  */
 function useAnimatedNumber(
   target: number,
-  options?: { snapOn?: unknown; duration?: number; reduceMotion?: boolean },
+  options?: {
+    snapOn?: unknown;
+    duration?: number;
+    reduceMotion?: boolean;
+    /** ENG-603: count up from 0 on first paint when flag is on. */
+    animateFromZeroOnMount?: boolean;
+  },
 ): number {
   const duration = options?.duration ?? 400;
   const snapOn = options?.snapOn;
   const reduceMotion = options?.reduceMotion ?? false;
-  const [value, setValue] = useState(target);
+  const animateFromZeroOnMount = options?.animateFromZeroOnMount ?? false;
+  const [value, setValue] = useState(animateFromZeroOnMount ? 0 : target);
   const valueRef = useRef(target);
   const lastSnapRef = useRef(snapOn);
   useEffect(() => {
@@ -265,16 +279,22 @@ export default function CalorieRing({
   const mainCirc = CIRC(R);
 
   const progress = useSharedValue(0);
+  const reduceMotion = useReduceMotion();
+  const premiumMotion = isFeatureEnabled(PREMIUM_MOTION_V1_FLAG);
 
   // Tween from the current ring position to the new pct (do NOT snap to
   // zero first). Reanimated 3 continues the existing animation when
   // withTiming is called on an already-animating shared value.
   useEffect(() => {
+    if (premiumMotion && !reduceMotion) {
+      progress.value = withSpring(pct, { damping: 22, stiffness: 120 });
+      return;
+    }
     progress.value = withTiming(pct, {
-      duration: 800,
+      duration: PREMIUM_MOTION_RING_MS,
       easing: Easing.out(Easing.cubic),
     });
-  }, [pct]);
+  }, [pct, premiumMotion, reduceMotion, progress]);
 
   // Light haptic feedback when logged calories change — Withings-style
   // confirmation that a new data point has landed. Skipped on mount
@@ -296,10 +316,11 @@ export default function CalorieRing({
   // (no tween) on display-mode toggle so a long-press doesn't read as
   // a slow countdown across two different metrics. Honours system
   // reduce-motion via `useReduceMotion()`.
-  const reduceMotion = useReduceMotion();
   const animatedCenterValue = useAnimatedNumber(centerValue, {
     snapOn: displayMode,
     reduceMotion,
+    duration: premiumMotion ? PREMIUM_MOTION_COUNT_MS : 400,
+    animateFromZeroOnMount: premiumMotion && !reduceMotion,
   });
 
   return (
