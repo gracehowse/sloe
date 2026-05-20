@@ -557,12 +557,18 @@ export default function CookModeScreen() {
 
   const goNext = () => {
     stopTimer();
-    if (current < totalSteps) setCurrent((c) => c + 1);
+    if (current < totalSteps) {
+      void Haptics.selectionAsync();
+      setCurrent((c) => c + 1);
+    }
   };
 
   const goPrev = () => {
     stopTimer();
-    if (current > 0) setCurrent((c) => c - 1);
+    if (current > 0) {
+      void Haptics.selectionAsync();
+      setCurrent((c) => c - 1);
+    }
   };
 
   const startTimer = () => {
@@ -882,26 +888,20 @@ export default function CookModeScreen() {
       flex: 1,
       justifyContent: "center",
       alignItems: "center",
-      paddingHorizontal: Spacing.xxl,
-      gap: Spacing.xl,
+      paddingHorizontal: Spacing.xl,
+      gap: Spacing.lg,
+      maxWidth: 520,
+      alignSelf: "center",
+      width: "100%",
     },
-
-    stepNumber: {
-      width: 40,
-      height: 40,
-      borderRadius: 8,
-      backgroundColor: Accent.primary + "20",
-      justifyContent: "center",
-      alignItems: "center",
-    },
-    stepNumberText: { color: Accent.primary, fontSize: 18, fontWeight: "700" },
 
     stepText: {
-      fontSize: 17,
-      fontWeight: "500",
+      fontSize: 24,
+      fontWeight: "600",
       color: colors.text,
       textAlign: "center",
-      lineHeight: 24,
+      lineHeight: 34,
+      letterSpacing: -0.3,
     },
 
     /** Recipe-scale segmented control (Paprika parity, 2026-04-30).
@@ -1363,11 +1363,6 @@ export default function CookModeScreen() {
 
       {!isDone ? (
         <View style={styles.stepContainer}>
-          {/* Step number */}
-          <View style={styles.stepNumber}>
-            <Text style={styles.stepNumberText}>{current + 1}</Text>
-          </View>
-
           {/* Recipe scale segmented control (Paprika parity, 2026-04-30).
               Tap a preset to rewrite the visible amounts in the step
               text. Persisted per (userId, recipeId). The caption below
