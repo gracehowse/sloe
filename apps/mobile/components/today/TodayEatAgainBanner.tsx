@@ -78,19 +78,19 @@ export function TodayEatAgainBanner({
   // at all, the original text-only layout is preserved so logs
   // without recipe metadata stay calm.
   const imageUrl = suggestion.imageUrl;
-  const showThumb = Boolean(imageUrl);
+  const showThumb = Boolean(imageUrl || suggestion.recipeTitle);
 
   return (
     <AnimatedView
       style={[
         {
-          marginBottom: Spacing.md,
+          marginBottom: Spacing.sm,
           backgroundColor: cardBg,
           borderWidth: 1,
           borderColor: cardBorder,
           borderRadius: Radius.lg,
           paddingHorizontal: Spacing.md,
-          paddingVertical: Spacing.sm,
+          paddingVertical: 10,
           flexDirection: "row",
           alignItems: "center",
           gap: Spacing.sm,
@@ -101,8 +101,8 @@ export function TodayEatAgainBanner({
       {showThumb ? (
         <View
           style={{
-            width: 48,
-            height: 48,
+            width: 64,
+            height: 64,
             borderRadius: 8,
             overflow: "hidden",
             flexShrink: 0,
@@ -118,14 +118,14 @@ export function TodayEatAgainBanner({
             <RecipeHeroFallback
               id={suggestion.recipeTitle}
               title={suggestion.recipeTitle}
-              iconSize={22}
+              iconSize={28}
             />
           )}
         </View>
       ) : null}
       <View style={{ flex: 1 }}>
         <Text style={{ fontSize: 10, fontWeight: "700", color: textSecondaryColor, letterSpacing: 1 }}>EAT AGAIN</Text>
-        <Text style={{ fontSize: 14, fontWeight: "600", color: textColor, marginTop: 2 }} numberOfLines={2} ellipsizeMode="tail">
+        <Text style={{ fontSize: 14, fontWeight: "600", color: textColor, marginTop: 2, lineHeight: 18 }} numberOfLines={2} ellipsizeMode="tail">
           {suggestion.recipeTitle}
         </Text>
         {/* 2026-05-12 (premium-bar audit, cross-cutting copy unify):

@@ -210,8 +210,11 @@ Created after state-matrix captures (28 PNGs) and colour-parity audit. **Do not 
 |-------|--------|
 | [ENG-570](https://linear.app/suppr/issue/ENG-570) | In Progress (umbrella) |
 | [ENG-600](https://linear.app/suppr/issue/ENG-600)–[610](https://linear.app/suppr/issue/ENG-610) | **Done** — search-first log sheet (already shipped) |
-| [ENG-601](https://linear.app/suppr/issue/ENG-601) | **In Progress** — food-forward meal rows |
-| ENG-602–614, [643](https://linear.app/suppr/issue/ENG-643) | Backlog |
+| [ENG-601](https://linear.app/suppr/issue/ENG-601) | **Done** — food-forward meal rows (`046fb22`) |
+| [ENG-602](https://linear.app/suppr/issue/ENG-602) | **In Progress** — north-star + Eat Again editorial |
+| → [ENG-612](https://linear.app/suppr/issue/ENG-612), [ENG-611](https://linear.app/suppr/issue/ENG-611) | Thumbs / fit chip (under 602) |
+| [ENG-643](https://linear.app/suppr/issue/ENG-643) | Eat-again density (under 602) |
+| ENG-603–614 | Backlog |
 
 ## First cycle scope (P0 + P1) — historical
 
