@@ -213,7 +213,9 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
   } = props;
 
   const showQuickAdd =
-    onToggleQuickAddCollapsed != null && quickAddPanel != null;
+    mealsTodayCount > 0 &&
+    onToggleQuickAddCollapsed != null &&
+    quickAddPanel != null;
 
   const [usualPicker, setUsualPicker] = useState<
     { slot: string; options: SavedMeal[] } | null

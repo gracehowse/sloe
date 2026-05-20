@@ -306,10 +306,13 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
             {tile.caption ? (
               <span
                 className={`text-[11px] mt-1.5 tabular-nums ${
-                  tile.isOverBudget
-                    ? "font-bold text-destructive"
-                    : "text-muted-foreground"
+                  tile.isOverBudget ? "font-bold" : "text-muted-foreground"
                 }`}
+                style={
+                  tile.isOverBudget
+                    ? { color: "var(--over-budget-fg)" }
+                    : undefined
+                }
               >
                 {tile.caption}
               </span>

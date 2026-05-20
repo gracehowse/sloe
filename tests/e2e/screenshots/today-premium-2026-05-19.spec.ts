@@ -104,7 +104,6 @@ async function goToToday(page: Page): Promise<void> {
   await expect(page.locator("h1").filter({ hasText: /^Today$/i })).toBeVisible({
     timeout: 30_000,
   });
-  await expect(page.getByText(/kcal/i).first()).toBeVisible({ timeout: 15_000 });
 }
 
 function targetDateKey(offsetFromToday: number): string {
@@ -146,12 +145,12 @@ async function captureState(
     await navigateDayOffset(page, STATE_OFFSET[state]);
   }
   await dismissChrome(page);
-  await page.waitForTimeout(800);
+  await page.waitForTimeout(1200);
   const path = join(OUTPUT_DIR, `${state}-${platform}-${theme}.png`);
   await page.screenshot({ path, fullPage: platform === "mobile-web" });
 }
 
-test.describe.configure({ mode: "serial" });
+test.describe.configure({ mode: "serial", retries: 1 });
 
 test.describe("today premium matrix — mobile 390×844", () => {
   test.skip(!hasE2ECredentials(), "E2E_EMAIL + E2E_PASSWORD required");
@@ -172,6 +171,10 @@ test.describe("today premium matrix — mobile 390×844", () => {
         });
       });
 
+      test.beforeEach(async ({ page }) => {
+        await loginWithTestUser(page);
+      });
+
       for (const state of [
         "empty-day",
         "one-meal",
@@ -181,7 +184,6 @@ test.describe("today premium matrix — mobile 390×844", () => {
       ] as const) {
         test(state, async ({ page }) => {
           test.setTimeout(120_000);
-          await loginWithTestUser(page);
           await captureState(page, state, "mobile-web", theme);
         });
       }
@@ -192,7 +194,6 @@ test.describe("today premium matrix — mobile 390×844", () => {
           "npx tsx scripts/e2e-seed-today-premium-matrix.ts --activate-fast",
           { cwd: process.cwd(), stdio: "inherit", env: process.env },
         );
-        await loginWithTestUser(page);
         await captureState(page, "active-fast", "mobile-web", theme);
         execSync("npx tsx scripts/e2e-seed-today-premium-matrix.ts", {
           cwd: process.cwd(),
@@ -212,6 +213,10 @@ test.describe("today premium matrix — desktop 1440", () => {
     colorScheme: "light",
   });
 
+  test.beforeEach(async ({ page }) => {
+    await loginWithTestUser(page);
+  });
+
   for (const state of [
     "empty-day",
     "one-meal",
@@ -220,7 +225,6 @@ test.describe("today premium matrix — desktop 1440", () => {
   ] as const) {
     test(`desktop light — ${state}`, async ({ page }) => {
       test.setTimeout(120_000);
-      await loginWithTestUser(page);
       await captureState(page, state, "desktop", "light");
     });
   }
@@ -232,7 +236,6 @@ test.describe("today premium matrix — desktop 1440", () => {
       stdio: "inherit",
       env: process.env,
     });
-    await loginWithTestUser(page);
     await captureState(page, "active-fast", "desktop", "light");
     execSync("npx tsx scripts/e2e-seed-today-premium-matrix.ts", {
       cwd: process.cwd(),

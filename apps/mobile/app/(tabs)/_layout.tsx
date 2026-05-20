@@ -1,6 +1,6 @@
 import { Tabs, Redirect, useRouter, usePathname } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { AppLaunchScreen } from '@/components/AppLaunchScreen';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Sun, BookOpen, CalendarDays, LineChart } from 'lucide-react-native';
@@ -89,12 +89,12 @@ export default function TabLayout() {
     return () => { cancelled = true; };
   }, [session?.user?.id]);
 
-  if (loading || (session && !onboardingChecked)) {
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}>
-        <ActivityIndicator size="large" color={Accent.primary} />
-      </View>
-    );
+  if (loading) {
+    return <AppLaunchScreen message="Checking your account…" />;
+  }
+
+  if (session && !onboardingChecked) {
+    return <AppLaunchScreen message="Getting Today ready…" />;
   }
 
   if (!session) {

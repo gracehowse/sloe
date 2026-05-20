@@ -9,16 +9,26 @@
 2. Same account / seed data where possible.
 3. Name files: `{state}-{platform}-{theme}.png` (e.g. `one-meal-mobile-light.png`).
 
-### Playwright scaffold (local dev + auth)
-
-With the web app running and (ideally) a logged-in storage state:
+### Automated capture (2026-05-20)
 
 ```bash
-PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 \
-  npx playwright test tests/e2e/screenshots/today-premium-2026-05-19.spec.ts
+# 1. Seed matrix rows (purges all meals on empty-day offset −14)
+set -a && source .env.local && set +a
+npx tsx scripts/e2e-seed-today-premium-matrix.ts
+
+# 2. Mobile-web + desktop (dev server on :3000)
+PLAYWRIGHT_SKIP_WEB_SERVER=1 PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 \
+  npx playwright test tests/e2e/screenshots/today-premium-2026-05-19.spec.ts --workers=1
+
+# 3. iOS sim (Metro on :8081/8082, booted sim)
+~/.maestro/bin/maestro test apps/mobile/.maestro/00d9_today_premium_matrix_full.yaml
+npx tsx scripts/e2e-seed-today-premium-matrix.ts --activate-fast
+~/.maestro/bin/maestro test apps/mobile/.maestro/00d9_today_premium_active_fast.yaml
+bash apps/mobile/scripts/run-today-premium-matrix-dark.sh
+bash scripts/copy-today-premium-mobile-captures.sh
 ```
 
-Outputs land in this folder. Extend `STATES` in the spec as you seed each matrix row.
+Outputs land in this folder as `{state}-{mobile|mobile-web|desktop}-{light|dark}.png`.
 
 ## State matrix
 

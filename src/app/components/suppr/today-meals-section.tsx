@@ -177,7 +177,9 @@ export function TodayMealsSection({
   quickAddPanel,
 }: TodayMealsSectionProps) {
   const showQuickAdd =
-    onToggleQuickAddCollapsed != null && quickAddPanel != null;
+    mealsForSelectedDate.length > 0 &&
+    onToggleQuickAddCollapsed != null &&
+    quickAddPanel != null;
   // Audit M7 (2026-04-18) — themed destructive-confirm dialog
   // replacing the prior `window.confirm` on the Delete overflow item.
   const [deleteCandidate, setDeleteCandidate] = React.useState<

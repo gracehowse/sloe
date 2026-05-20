@@ -1,0 +1,13 @@
+# Active-fast capture only — run after:
+#   npx tsx scripts/e2e-seed-today-premium-matrix.ts --activate-fast
+appId: com.supprclub.supprapp
+name: "Today premium matrix — active fast (light)"
+---
+- runFlow: shared/login.yaml
+- openLink: suppr:///
+- extendedWaitUntil:
+    visible:
+      id: "screen-today"
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/active-fast-mobile-light

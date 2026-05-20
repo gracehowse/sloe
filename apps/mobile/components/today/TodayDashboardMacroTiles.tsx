@@ -1,5 +1,5 @@
 import React from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, Text, useColorScheme, View } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -24,7 +24,7 @@ import {
   Wheat,
   type LucideIcon,
 } from "lucide-react-native";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Accent, Colors, Radius, Spacing } from "@/constants/theme";
 import { macroColorFor } from "@/lib/macroColors";
 import type { JournalMeal } from "@/lib/nutritionJournal";
 import { carbsLabel, netCarbsForRow } from "@suppr/shared/nutrition/netCarbs";
@@ -104,6 +104,9 @@ export function TodayDashboardMacroTiles({
   showNutrientsLink,
   onPressNutrients,
 }: TodayDashboardMacroTilesProps) {
+  const colorScheme = useColorScheme();
+  const overBudgetFg =
+    (colorScheme === "dark" ? Colors.dark : Colors.light).overBudgetFg;
   const microSum = mealsToday.reduce(
     (a, m) => ({
       sugarG: a.sugarG + ((m.micros as { sugarG?: number } | null | undefined)?.sugarG ?? 0),
@@ -299,7 +302,7 @@ export function TodayDashboardMacroTiles({
                 <Text
                   style={{
                     fontSize: 11,
-                    color: isOverBudget ? Accent.destructive : textSecondaryColor,
+                    color: isOverBudget ? overBudgetFg : textSecondaryColor,
                     fontWeight: isOverBudget ? "700" : "400",
                     marginTop: Spacing.xs + 2,
                     fontVariant: ["tabular-nums"],

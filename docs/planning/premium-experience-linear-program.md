@@ -17,6 +17,8 @@ Tab polish (Today tab, Recipes, Onboarding + Auth, etc.) stays under [Surface po
 | `docs/ux/today-premium-sprint-2026-05-19-baseline.md` | Sprint baseline + sign-off checklist |
 | `docs/ux/captures/today-premium-2026-05-19/README.md` | State-matrix capture instructions |
 | `docs/ux/color-direction-noom-lifesum-2026-05.md` | Noom/Lifesum palette |
+| `docs/ux/brand-tokens.md` | Canonical hex (sync via ENG-631) |
+| `docs/product/web-mobile-parity-scope.md` | Parity policy (Today colour → ENG-639) |
 | `docs/ux/teardown-2026-04-28-daily-loop.md` | Editorial discipline (≤4 blocks above meals) |
 | `docs/decisions/2026-05-14-premium-audit-sweep-retro.md` | Subtractive-first; sim validation |
 | `docs/planning/premium-bar-systematic-followups-2026-05-12.md` | May audit checklist (mostly shipped) |
@@ -25,7 +27,9 @@ Tab polish (Today tab, Recipes, Onboarding + Auth, etc.) stays under [Surface po
 
 1. **Subtractive-first** — no additive flourishes without sim proof  
 2. **Visual validation** — fill `docs/ux/captures/today-premium-2026-05-19/` before visual PRs ship  
+2b. **Automated captures** — regenerate matrix from `scripts/e2e-seed-today-premium-matrix.ts` + Playwright/Maestro; do not rely on ad-hoc sim shots ([ENG-628](https://linear.app/suppr/issue/ENG-628))  
 3. **Flag structural changes** — PostHog until Grace signs captures  
+4. **Colour parity** — Today macro hues and surfaces must match web ↔ mobile at a glance ([ENG-623](https://linear.app/suppr/issue/ENG-623)–625, [ENG-639](https://linear.app/suppr/issue/ENG-639)); paired captures required on visual PRs ([ENG-629](https://linear.app/suppr/issue/ENG-629))  
 
 ## Phase projects
 
@@ -38,7 +42,7 @@ Tab polish (Today tab, Recipes, Onboarding + Auth, etc.) stays under [Surface po
 | [Premium P4 — Progress, settings & membership](https://linear.app/suppr/project/premium-p4-progress-settings-and-membership-2dedeb10da86) | 2026-07-01 | [ENG-572](https://linear.app/suppr/issue/ENG-572) | Settings DC14, Progress hero, paywall dark |
 | [Premium P5 — Architecture enablers](https://linear.app/suppr/project/premium-p5-architecture-enablers-de2d5a11d2a3) | 2026-07-15 | [ENG-573](https://linear.app/suppr/issue/ENG-573) | `useToday`, `nutrition-core`, App Router (also [Platform foundations](https://linear.app/suppr/initiative/platform-foundations)) |
 
-## Issue map (ENG-567 → ENG-622)
+## Issue map (ENG-567 → ENG-645)
 
 ### P0 — Evidence & enforcement ([ENG-568](https://linear.app/suppr/issue/ENG-568))
 
@@ -110,6 +114,52 @@ Tab polish (Today tab, Recipes, Onboarding + Auth, etc.) stays under [Surface po
 | [ENG-622](https://linear.app/suppr/issue/ENG-622) | App Router migration |
 | [ENG-621](https://linear.app/suppr/issue/ENG-621) | 400-line rule in AGENTS.md |
 
+### Cycle 1 gap / parity backlog (2026-05-20 audit)
+
+Created after state-matrix captures (28 PNGs) and colour-parity audit. **Do not close** [ENG-568](https://linear.app/suppr/issue/ENG-568) / [ENG-569](https://linear.app/suppr/issue/ENG-569) until [ENG-641](https://linear.app/suppr/issue/ENG-641) / [ENG-645](https://linear.app/suppr/issue/ENG-645) checklists pass.
+
+| Issue | Cycle | Priority | Theme |
+|-------|--------|----------|--------|
+| [ENG-623](https://linear.app/suppr/issue/ENG-623) | 1 | Urgent | `theme.css` ↔ `Colors` parity test (CI) |
+| [ENG-624](https://linear.app/suppr/issue/ENG-624) | 1 | Urgent | Over-budget ring → amber (web + mobile) |
+| [ENG-625](https://linear.app/suppr/issue/ENG-625) | 1 | Urgent | Over-budget macro captions → amber |
+| [ENG-626](https://linear.app/suppr/issue/ENG-626) | 1 | Urgent | Branded boot splash + `AppLaunchScreen` (+ dev-client rebuild) |
+| [ENG-627](https://linear.app/suppr/issue/ENG-627) | 1 | High | Matrix Playwright CI + stabilize auth |
+| [ENG-628](https://linear.app/suppr/issue/ENG-628) | 1 | High | Capture harness docs + empty-day seed purge |
+| [ENG-629](https://linear.app/suppr/issue/ENG-629) | 1 | High | Paired side-by-side capture gate for Today PRs |
+| [ENG-630](https://linear.app/suppr/issue/ENG-630) | 1 | Medium | Desktop `deficit-insight` capture missing |
+| [ENG-631](https://linear.app/suppr/issue/ENG-631) | 1 | Medium | Sync `brand-tokens.md` + color-direction |
+| [ENG-632](https://linear.app/suppr/issue/ENG-632) | 1 | High | Milestone modal discipline on Today |
+| [ENG-633](https://linear.app/suppr/issue/ENG-633) | 1 | High | Dismiss toast + cookie on mobile-web Today |
+| [ENG-634](https://linear.app/suppr/issue/ENG-634) | 1 | High | Manual Progress tab vs avatar → Settings |
+| [ENG-635](https://linear.app/suppr/issue/ENG-635) | 1 | Medium | Empty-day: hide quick-add usuals |
+| [ENG-636](https://linear.app/suppr/issue/ENG-636) | 1 | Medium | Date header truncation at 390px |
+| [ENG-637](https://linear.app/suppr/issue/ENG-637) | 1 | Medium | Dark mode: align or document intentional delta |
+| [ENG-638](https://linear.app/suppr/issue/ENG-638) | 4 | Low | `TodayAtAGlance` legacy `#df7a4e` hex |
+| [ENG-639](https://linear.app/suppr/issue/ENG-639) | 1 | High | `web-mobile-parity-scope.md` — Today colour enforced |
+| [ENG-640](https://linear.app/suppr/issue/ENG-640) | 1 | Medium | Rescope cycles 3–5 (P3–P5 only); Cycle 2 = P2 |
+| [ENG-641](https://linear.app/suppr/issue/ENG-641) | 1 | Urgent | ENG-568 umbrella close criteria |
+| [ENG-642](https://linear.app/suppr/issue/ENG-642) | 1 | Medium | Verify `active-fast` capture shows fasting pill |
+| [ENG-643](https://linear.app/suppr/issue/ENG-643) | 2 | Medium | Eat-again card density (P2) |
+| [ENG-644](https://linear.app/suppr/issue/ENG-644) | 1 | Medium | Cycle 1 retrospective + this doc sync |
+| [ENG-645](https://linear.app/suppr/issue/ENG-645) | 1 | Urgent | ENG-569 umbrella close criteria |
+
+#### Colour parity findings (reference)
+
+| Area | Status | Fix |
+|------|--------|-----|
+| Light bg / ink / macro hues | Aligned in code | Enforce via ENG-623 |
+| Over-budget ring + captions | Red on both platforms | ENG-624–625 → `overBudgetFg` |
+| Dark surfaces | Mobile `#0a0a0f` vs web `#101014` | ENG-637 product call |
+| Docs | Dinner slot + carbs hex stale | ENG-631 |
+| Charts | `#df7a4e` in `TodayAtAGlance` | ENG-638 |
+
+#### Capture verdict (2026-05-20)
+
+- **Shipped:** 28 PNGs under `docs/ux/captures/today-premium-2026-05-19/`
+- **Gaps:** no `deficit-insight-desktop-light.png` (ENG-630); milestone modal in sim shots (ENG-632); web toast/cookie (ENG-633); paired PR gate not yet process (ENG-629)
+- **Code in repo, uncommitted:** boot splash (`ENG-626`), activity-bonus migration, household/settings touch-ups — commit when ready
+
 ## Legacy triage (ENG-203)
 
 **2026-05-20 pass:** 32 formerly-open children closed or migrated.
@@ -136,23 +186,51 @@ Tab polish (Today tab, Recipes, Onboarding + Auth, etc.) stays under [Surface po
 | [Design system cleanup](https://linear.app/suppr/project/design-system-cleanup-fccff493a723) | P0 token enforcement (coordinate) |
 | [Landing + Marketing](https://linear.app/suppr/project/landing-marketing-site-a210848579fb) | P4 landing gradient |
 
-## First cycle scope (P0 + P1)
+## Cycle 1 status (wrapped 2026-05-20)
+
+**Shipped:** P1 editorial (header, below-meals, auth, paywall, week rail), 28 state-matrix captures, over-budget amber (ENG-624–625), cross-platform token test (ENG-623), empty-day quick-add hidden until first log (ENG-635), `AppLaunchScreen` (ENG-626), boot/splash config.
+
+**Carryover (still Cycle 1 umbrellas — do not block Cycle 2 start):**
+
+| Issue | Why open |
+|-------|----------|
+| [ENG-627](https://linear.app/suppr/issue/ENG-627) | Matrix Playwright CI flake |
+| [ENG-630](https://linear.app/suppr/issue/ENG-630) | Desktop deficit-insight PNG |
+| [ENG-631](https://linear.app/suppr/issue/ENG-631) | Doc hex sync |
+| [ENG-632](https://linear.app/suppr/issue/ENG-632)–[634](https://linear.app/suppr/issue/ENG-634) | Milestone modal, toast/cookie, manual nav |
+| [ENG-637](https://linear.app/suppr/issue/ENG-637) | Dark surface parity decision |
+| [ENG-629](https://linear.app/suppr/issue/ENG-629) | Paired capture PR gate (process) |
+| [ENG-641](https://linear.app/suppr/issue/ENG-641) / [645](https://linear.app/suppr/issue/ENG-645) | Umbrella close checklists |
+
+[ENG-568](https://linear.app/suppr/issue/ENG-568) / [ENG-569](https://linear.app/suppr/issue/ENG-569) stay open until carryover + checklist pass; **Cycle 2 work proceeds in parallel.**
+
+## Cycle 2 active (started 2026-05-20)
+
+| Issue | Status |
+|-------|--------|
+| [ENG-570](https://linear.app/suppr/issue/ENG-570) | In Progress (umbrella) |
+| [ENG-600](https://linear.app/suppr/issue/ENG-600)–[610](https://linear.app/suppr/issue/ENG-610) | **Done** — search-first log sheet (already shipped) |
+| [ENG-601](https://linear.app/suppr/issue/ENG-601) | **In Progress** — food-forward meal rows |
+| ENG-602–614, [643](https://linear.app/suppr/issue/ENG-643) | Backlog |
+
+## First cycle scope (P0 + P1) — historical
 
 1. ~~Triage legacy audit (ENG-203)~~ — **Done** ([ENG-574](https://linear.app/suppr/issue/ENG-574))  
-2. State-matrix captures ([ENG-575](https://linear.app/suppr/issue/ENG-575))  
-3. Today header subtract + below-meals cap ([ENG-584](https://linear.app/suppr/issue/ENG-584), [ENG-585](https://linear.app/suppr/issue/ENG-585))  
-4. Auth signup/onboarding/login bundle ([ENG-586](https://linear.app/suppr/issue/ENG-586))  
-5. Paywall soft-fail ([ENG-588](https://linear.app/suppr/issue/ENG-588))  
-
-Everything else stays **Backlog** in phase projects until P0 sign-off.
+2. ~~State-matrix captures~~ — **Done** ([ENG-575](https://linear.app/suppr/issue/ENG-575))  
+3. ~~Today header subtract + below-meals cap~~ — **Done**  
+4. ~~Auth bundle~~ — **Done**  
+5. ~~Paywall soft-fail~~ — **Done**  
 
 ## Cycle assignment (Engineering)
 
-Linear currently has **two** scheduled cycles; all program issues (ENG-567 → ENG-622) are assigned — none sit outside a cycle.
+Five two-week cycles on **Engineering** (created 2026-05-20 via `cycleCreate`; P3–P5 reassigned from Cycle 2).
 
-| Cycle | Dates | Issues |
-|-------|--------|--------|
-| **Cycle 1** (current) | 18 May → 1 Jun 2026 | **P0 + P1** — ENG-567–583, ENG-569, ENG-584–599 |
-| **Cycle 2** (next) | 15 Jun → 29 Jun 2026 | **P2 + P3 + P4 + P5** — ENG-570–573, ENG-600–622 |
+| Cycle | Dates (UTC start) | Scope |
+|-------|-------------------|--------|
+| **Cycle 1** (current) | 18 May → 1 Jun 2026 | **P0 + P1 + gap backlog** — ENG-567–583, ENG-584–599, **ENG-623–642, ENG-639–641, ENG-644–645**, [ENG-640](https://linear.app/suppr/issue/ENG-640) |
+| **Cycle 2** (next) | 15 Jun → 29 Jun 2026 | **P2 only** — [ENG-570](https://linear.app/suppr/issue/ENG-570), ENG-600–614, ENG-643 |
+| **Cycle 3** | 29 Jun → 13 Jul 2026 | **P3** — [ENG-571](https://linear.app/suppr/issue/ENG-571), ENG-604–608 (Jul 1 phase target) |
+| **Cycle 4** | 13 Jul → 27 Jul 2026 | **P4** — [ENG-572](https://linear.app/suppr/issue/ENG-572), ENG-615–618, ENG-638 |
+| **Cycle 5** | 27 Jul → 10 Aug 2026 | **P5** — [ENG-573](https://linear.app/suppr/issue/ENG-573), ENG-619–622 (Jul 15 phase target) |
 
-**Intended split once Cycles 3–5 exist:** P2 → Cycle 2; P3 → Cycle 3 (Jul 1 target); P4 → Cycle 4 (Jul 1); P5 → Cycle 5 (Jul 15). Re-assign P3–P5 when those cycles are created in Linear team settings.
+**Note:** Linear MCP has `list_cycles` only — use GraphQL `cycleCreate` to add future cycles (same team id `e72181eb-19be-40ab-96e6-36230cc8352e`).

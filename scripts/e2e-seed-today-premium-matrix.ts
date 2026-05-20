@@ -5,8 +5,8 @@
  * prev/next day controls. All rows are prefixed `E2E-CAP:` and scoped
  * to E2E_EMAIL only (same guard as e2e-seed-today-snacks.ts).
  *
- *   offset +14  → empty day (no entries)
- *   offset  0  → one meal (~10am breakfast, cold-open bar)
+ *   offset -14 → empty day (all entries on that date purged)
+ *   offset  -2 → one meal (~10am breakfast, cold-open bar)
  *   offset -7  → over-budget day (high kcal sum)
  *   offset -6  → partial day (deficit / remaining > 0)
  *   offset -1  → prior lunch (feeds eat-again on today when today is full)
@@ -111,6 +111,13 @@ async function main() {
   }
 
   const kEmpty = offsetKey(CAPTURE_DATE_OFFSETS.empty);
+  const { error: emptyPurgeErr } = await admin
+    .from("nutrition_entries")
+    .delete()
+    .eq("user_id", user.id)
+    .eq("date_key", kEmpty);
+  if (emptyPurgeErr) throw emptyPurgeErr;
+
   const kOne = offsetKey(CAPTURE_DATE_OFFSETS.oneMeal);
   const kToday = offsetKey(CAPTURE_DATE_OFFSETS.eatAgainToday);
   const kOver = offsetKey(CAPTURE_DATE_OFFSETS.overBudget);

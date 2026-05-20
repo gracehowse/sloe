@@ -1,7 +1,13 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { ActivityIndicator, useColorScheme, View } from "react-native";
+import { useColorScheme } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Accent, Colors } from "@/constants/theme";
+import * as SplashScreen from "expo-splash-screen";
+import { AppLaunchScreen } from "@/components/AppLaunchScreen";
+import { Colors } from "@/constants/theme";
+
+void SplashScreen.preventAutoHideAsync().catch(() => {
+  /* Simulator / hot reload may call twice — safe to ignore. */
+});
 
 export type ThemePreference = "light" | "dark" | "auto";
 export type ResolvedTheme = "light" | "dark";
@@ -70,25 +76,17 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const colors = resolved === "light" ? Colors.light : Colors.dark;
 
-  // Boot gate: use system scheme for background immediately so the first
-  // paint is not RN's default white window while storage resolves.
+  useEffect(() => {
+    if (loaded) {
+      void SplashScreen.hideAsync();
+    }
+  }, [loaded]);
+
   if (!loaded) {
     const bootScheme: ResolvedTheme =
       systemScheme === "light" ? "light" : "dark";
-    const bootBg =
-      bootScheme === "light" ? Colors.light.background : Colors.dark.background;
     return (
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: bootBg,
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-        accessibilityLabel="Loading app theme"
-      >
-        <ActivityIndicator size="large" color={Accent.primary} />
-      </View>
+      <AppLaunchScreen scheme={bootScheme} message="Starting Suppr…" />
     );
   }
 

@@ -152,7 +152,7 @@ function DailyRing({
   const centerValueColor = isEmpty
     ? undefined
     : isOverBudget
-      ? "var(--destructive)"
+      ? "var(--over-budget-fg)"
       : "var(--success)";
   const centerLabelColor = centerValueColor;
   // Premium-feel papercut #2 (audit 2026-04-29): empty-state ring
@@ -227,7 +227,7 @@ function DailyRing({
             isEmpty
               ? "var(--ring-bg)"
               : isOverBudget
-                ? "var(--destructive)"
+                ? "var(--over-budget-fg)"
                 : "var(--success)"
           }
           strokeWidth={strokeWidth}

@@ -129,6 +129,8 @@ export function TodayDateHeader({
             onPress={onNavigatePrev}
             hitSlop={12}
             style={navIconButtonStyle}
+            accessibilityRole="button"
+            accessibilityLabel={viewMode === "week" ? "Previous week" : "Previous day"}
           >
             <ChevronLeft size={16} color={textColor} />
           </Pressable>
@@ -218,6 +220,8 @@ export function TodayDateHeader({
             onPress={onNavigateNext}
             hitSlop={12}
             disabled={calmDateNav && isToday}
+            accessibilityRole="button"
+            accessibilityLabel={viewMode === "week" ? "Next week" : "Next day"}
             accessibilityState={{ disabled: calmDateNav && isToday }}
             style={[navIconButtonStyle, calmDateNav && isToday ? { opacity: 0.35 } : null]}
           >

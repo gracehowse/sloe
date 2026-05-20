@@ -20,6 +20,7 @@ import { hasSupabaseConfig, supabase } from "@/lib/supabase";
 import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import KeyboardSafeView from "@/components/KeyboardSafeView";
+import { AppLaunchScreen } from "@/components/AppLaunchScreen";
 
 function createAppleRawNonce(): string {
   const c = globalThis.crypto;
@@ -240,14 +241,7 @@ export default function LoginScreen() {
     return <Redirect href={needsOnboarding ? "/onboarding" : "/(tabs)"} />;
   }
   if (session && !onboardingChecked) {
-    return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <ActivityIndicator size="large" color={colors.tint} />
-        <Text style={[styles.tagline, { marginTop: Spacing.lg, textAlign: "center" }]}>
-          Signing you in…
-        </Text>
-      </View>
-    );
+    return <AppLaunchScreen message="Signing you in…" />;
   }
 
   async function onSubmit() {

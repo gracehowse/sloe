@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, Text, useColorScheme, View } from "react-native";
 import * as Haptics from "expo-haptics";
 import { PostHogMaskView } from "posthog-react-native";
 import Svg, { Circle, G } from "react-native-svg";
@@ -11,7 +11,7 @@ import Animated, {
   Easing,
 } from "react-native-reanimated";
 
-import { Accent, MacroColors } from "@/constants/theme";
+import { Accent, Colors, MacroColors } from "@/constants/theme";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
 import { RING_LABELS } from "@suppr/shared/copy/today";
 
@@ -248,8 +248,10 @@ export default function CalorieRing({
   // fall into the calibrating-empty state until a profile target is
   // set.
   const isEmpty = consumed === 0 || goal <= 0;
-  /** Centre number + label mirror the outer ring: green on track, red over. */
-  const ringStateColor = isOver ? Accent.destructive : Accent.success;
+  const colorScheme = useColorScheme();
+  const palette = colorScheme === "dark" ? Colors.dark : Colors.light;
+  /** Centre + outer ring: green on track, amber over (never destructive). */
+  const ringStateColor = isOver ? palette.overBudgetFg : Accent.success;
   const centerValue = displayMode === "consumed"
     ? Math.round(consumed)
     : Math.abs(diff);

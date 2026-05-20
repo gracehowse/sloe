@@ -8,9 +8,9 @@
 - Mobile Today: `screens-mobile.jsx` → `TodayScreen`
 - Intent chat: `docs/ux/claude-design-bundles/prototype/chats/`
 
-## State matrix (sim capture — Grace)
+## State matrix (captures — automated 2026-05-20)
 
-Capture in iOS sim + mobile-web (390×844), dark + light into `docs/ux/captures/today-premium-2026-05-19/`:
+28 PNGs in `docs/ux/captures/today-premium-2026-05-19/` (6 states × mobile sim/web × light/dark + desktop light subset). Seed: `scripts/e2e-seed-today-premium-matrix.ts` (empty day = offset **−14**, all meals on that date purged).
 
 1. Empty day, brand-new
 2. One meal logged (~10am)
@@ -56,6 +56,20 @@ Executable copy: [`premium-launch-sign-off-checklist.md`](premium-launch-sign-of
 - [x] Desktop week rail (`Last 7 days`) beside 440px column at `md+` — browser pass 2026-05-20
 - [x] Auth: `/signup`, `/login` → `/signup`, `/signin` sign-in-only (see `tests/unit/authRoutesPremium.test.ts`)
 - [x] Paywall soft-fail when RC unavailable (mobile `paywall.tsx`)
-- [ ] Cold-open: one meal logged → ring + macros + meals visible without scroll (iPhone 13 class) — **Grace sim**
-- [ ] Progress tab opens Progress only; avatar opens Settings — **Grace sim**
-- [ ] State-matrix PNGs in `docs/ux/captures/today-premium-2026-05-19/`
+- [x] Cold-open: one meal (Mon 18 May seed) → ring + macro grid + Breakfast row visible without scroll — **sim capture verified**
+- [ ] Progress tab opens Progress only; avatar opens Settings — **quick manual tap** (not in matrix flows)
+- [x] State-matrix PNGs in `docs/ux/captures/today-premium-2026-05-19/`
+
+### Capture sign-off verdict (agent, 2026-05-20)
+
+Compared sim + mobile-web captures to the P0 prototype intent: hierarchy reads calm — date → hero ring → at most one context card (eat-again / fast) → macro grid → Meals with quick-add inside the section. Empty day shows “Start your day” with zeroed macros; eat-again card is neutral bordered chrome with a single primary Log CTA.
+
+**Not yet sign-off ready (tracked in Linear ENG-623–645):**
+
+- Over-budget ring still uses **destructive red** on web + mobile; spec requires **amber only** ([ENG-624](https://linear.app/suppr/issue/ENG-624), [ENG-625](https://linear.app/suppr/issue/ENG-625)).
+- Web mobile-web: green onboarding toast + cookie bar ([ENG-633](https://linear.app/suppr/issue/ENG-633)).
+- Sim: milestone modal interrupts shots ([ENG-632](https://linear.app/suppr/issue/ENG-632)); empty-day still shows “Log usual” ([ENG-635](https://linear.app/suppr/issue/ENG-635)).
+- Missing desktop capture for deficit-insight ([ENG-630](https://linear.app/suppr/issue/ENG-630)).
+- Progress tab vs avatar → Settings: manual check open ([ENG-634](https://linear.app/suppr/issue/ENG-634)).
+
+Full backlog: [`docs/planning/premium-experience-linear-program.md`](../planning/premium-experience-linear-program.md) § Cycle 1 gap / parity backlog.
