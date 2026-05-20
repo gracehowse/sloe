@@ -685,7 +685,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                         backgroundColor: cardColor,
                       }}
                     >
-                      <View style={{ flex: 1, gap: 2, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 10 }}>
+                      <View style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 10 }}>
                         {(() => {
                           const thumbUrl = mealRowImageUrl(m);
                           if (thumbUrl) {

@@ -38,6 +38,7 @@ import MealTypePicker from "@/components/MealTypePicker";
 import FoodSearchModal, { type SelectedFood } from "@/components/FoodSearchModal";
 import OverrideIngredientSheet from "@/components/OverrideIngredientSheet";
 import { ImportLoadingSkeleton } from "@/components/import/ImportLoadingSkeleton";
+import { SupprMark } from "@/components/SupprMark";
 import { scaleMacros , parseIngredientForSearch, type BarcodeProduct } from "@/lib/verifyRecipe";
 import BarcodeScannerModal from "@/components/BarcodeScannerModal";
 import {

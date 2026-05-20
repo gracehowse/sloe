@@ -240,6 +240,7 @@ export type FoodSearchPanelProps = {
     fat: number;
     fiber?: number;
     source?: string;
+    imageUrl?: string | null;
   }>;
 };
 
