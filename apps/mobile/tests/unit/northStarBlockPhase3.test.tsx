@@ -30,7 +30,7 @@ vi.mock("@/hooks/use-theme-colors", () => ({
     cardBorder: "#eee",
     border: "#eee",
     inputBg: "#f4f4f4",
-    sourceUsda: "#22a860",
+    sourceUsda: "#62b35a",
     sourceOff: "#4c6ce0",
     sourceFatsecret: "#f97316",
     sourceManual: "#94a3b8",
@@ -38,7 +38,7 @@ vi.mock("@/hooks/use-theme-colors", () => ({
     northStarBgFrom: "rgba(76,108,224,0.08)",
     northStarBgTo: "rgba(224,72,136,0.04)",
     northStarBorder: "rgba(76,108,224,0.18)",
-    overBudgetFg: "#e8a020",
+    overBudgetFg: "#e0a838",
     overBudgetSoft: "rgba(232,160,32,0.08)",
   }),
 }));

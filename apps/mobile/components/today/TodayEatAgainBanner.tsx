@@ -30,6 +30,10 @@ export interface TodayEatAgainBannerProps {
   slot: string;
   textColor: string;
   textSecondaryColor: string;
+  /** Neutral card chrome (Today premium sprint 2026-05-19). Defaults
+   *  to the legacy primary tint when omitted. */
+  surfaceBackgroundColor?: string;
+  surfaceBorderColor?: string;
   onLog: () => void;
   onDismiss: () => void;
 }
@@ -39,9 +43,13 @@ export function TodayEatAgainBanner({
   slot,
   textColor,
   textSecondaryColor,
+  surfaceBackgroundColor,
+  surfaceBorderColor,
   onLog,
   onDismiss,
 }: TodayEatAgainBannerProps) {
+  const cardBg = surfaceBackgroundColor ?? Accent.primary + "08";
+  const cardBorder = surfaceBorderColor ?? Accent.primary + "30";
   // 220ms ease-out fade + translate on first paint. No reduce-motion
   // gate here because the banner is a small accent (not a full-bleed
   // card); the motion is subtle enough that the reduce-motion budget
@@ -77,9 +85,9 @@ export function TodayEatAgainBanner({
       style={[
         {
           marginBottom: Spacing.md,
-          backgroundColor: Accent.primary + "08",
+          backgroundColor: cardBg,
           borderWidth: 1,
-          borderColor: Accent.primary + "30",
+          borderColor: cardBorder,
           borderRadius: Radius.lg,
           paddingHorizontal: Spacing.md,
           paddingVertical: Spacing.sm,
@@ -116,7 +124,7 @@ export function TodayEatAgainBanner({
         </View>
       ) : null}
       <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 10, fontWeight: "700", color: Accent.primary, letterSpacing: 1 }}>EAT AGAIN</Text>
+        <Text style={{ fontSize: 10, fontWeight: "700", color: textSecondaryColor, letterSpacing: 1 }}>EAT AGAIN</Text>
         <Text style={{ fontSize: 14, fontWeight: "600", color: textColor, marginTop: 2 }} numberOfLines={2} ellipsizeMode="tail">
           {suggestion.recipeTitle}
         </Text>

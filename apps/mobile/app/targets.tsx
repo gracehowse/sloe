@@ -381,7 +381,11 @@ export default function TargetsScreen() {
           backgroundColor: colors.card,
         },
         editText: { fontSize: 12, fontWeight: "600", color: colors.textSecondary },
-        scroll: { paddingHorizontal: Spacing.xl, paddingBottom: 100, gap: Spacing.lg },
+        scroll: {
+          paddingHorizontal: Spacing.xl,
+          paddingBottom: 120,
+          gap: Spacing.xxl,
+        },
         card: {
           backgroundColor: colors.card,
           borderRadius: Radius.lg,
@@ -579,7 +583,7 @@ export default function TargetsScreen() {
               <Defs>
                 <SvgLinearGradient id="targets-grad" x1="0" y1="0" x2="1" y2="1">
                   <Stop offset="0" stopColor={Accent.primaryLight} />
-                  <Stop offset="1" stopColor={MacroColors.fat} />
+                  <Stop offset="1" stopColor={Accent.primary} />
                 </SvgLinearGradient>
               </Defs>
               <Circle

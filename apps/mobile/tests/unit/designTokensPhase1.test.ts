@@ -57,9 +57,9 @@ describe("mobile theme — Phase 1 production design spec coverage", () => {
     }
 
     it("source-usda hex values match the production design spec §1.4 table", () => {
-      // Light = #22a860 (success-green); dark = #4cd080 (success-dark).
-      expect(Colors.light.sourceUsda.toLowerCase()).toBe("#22a860");
-      expect(Colors.dark.sourceUsda.toLowerCase()).toBe("#4cd080");
+      // Light = #62b35a (leaf green); dark = #82d878.
+      expect(Colors.light.sourceUsda.toLowerCase()).toBe("#62b35a");
+      expect(Colors.dark.sourceUsda.toLowerCase()).toBe("#82d878");
     });
 
     it("source-ai hex values match magenta", () => {
@@ -68,8 +68,8 @@ describe("mobile theme — Phase 1 production design spec coverage", () => {
     });
 
     it("over-budget-fg uses amber, NOT red (per project memory)", () => {
-      expect(Colors.light.overBudgetFg.toLowerCase()).toBe("#e8a020");
-      expect(Colors.dark.overBudgetFg.toLowerCase()).toBe("#ffc04c");
+      expect(Colors.light.overBudgetFg.toLowerCase()).toBe("#e0a838");
+      expect(Colors.dark.overBudgetFg.toLowerCase()).toBe("#f0c058");
     });
   });
 

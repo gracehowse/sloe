@@ -26,6 +26,7 @@ export interface TodayDateHeaderProps {
   onNavigatePrev: () => void;
   onNavigateNext: () => void;
   onOpenCalendar: () => void;
+  onOpenSettings: () => void;
 }
 
 export function TodayDateHeader({
@@ -42,9 +43,10 @@ export function TodayDateHeader({
   onNavigatePrev,
   onNavigateNext,
   onOpenCalendar,
+  onOpenSettings,
 }: TodayDateHeaderProps) {
   return (
-    <div className="mb-4 flex flex-col gap-3">
+    <div className="mb-6 flex flex-col gap-4">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <button
@@ -112,12 +114,19 @@ export function TodayDateHeader({
               <Icons.layoutGrid className="w-4 h-4" />
             </button>
           </div>
-          <div
-            className="w-9 h-9 rounded-[10px] bg-primary/10 flex items-center justify-center text-sm font-bold text-primary"
-            aria-hidden
+          {/* Mobile-web only — desktop opens Settings from the sidebar
+              profile entry (bottom-left), matching mobile’s Today avatar. */}
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            className="md:hidden w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white hover:opacity-90 transition-opacity"
+            style={{
+              background: "linear-gradient(135deg, #4c6ce0 0%, #e04888 100%)",
+            }}
+            aria-label="Open settings"
           >
             {avatarLetter}
-          </div>
+          </button>
         </div>
       </div>
 

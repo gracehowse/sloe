@@ -219,6 +219,7 @@ import { TodayEditMealModal } from "@/components/today/TodayEditMealModal";
 // TodayNutrientsModal replaced by FullNutrientPanelSheet on 2026-05-02
 // (revert of PR #30). The Nutrients link in TodayDashboardMacroTiles
 // now opens the richer Cronometer-parity panel from PR #47.
+import { TodayBrandBar } from "@/components/today/TodayBrandBar";
 import { TodayDateHeader } from "@/components/today/TodayDateHeader";
 import { TodayDashboardMacroTiles } from "@/components/today/TodayDashboardMacroTiles";
 import { TodayDashboardMacroBars } from "@/components/today/TodayDashboardMacroBars";
@@ -3402,7 +3403,11 @@ export default function TrackerScreen() {
     () =>
       StyleSheet.create({
         container: { flex: 1, backgroundColor: colors.background },
-        scroll: { paddingHorizontal: Spacing.xl, paddingBottom: 168, gap: Spacing.lg },
+        scroll: {
+          paddingHorizontal: Spacing.xl,
+          paddingBottom: 168,
+          gap: Spacing.xxl,
+        },
 
 
         dateNav: {
@@ -4414,7 +4419,9 @@ export default function TrackerScreen() {
             pill. The header gates the pip on day view + isToday +
             ≥2-day streak internally; the host owns the analytics-fire
             transition state via `streakResetCopyVisible`. */}
-        <TodayDateHeader
+        <View style={{ gap: Spacing.md }}>
+          <TodayBrandBar />
+          <TodayDateHeader
           viewMode={viewMode}
           onViewModeChange={setViewMode}
           selectedDate={selectedDate}
@@ -4441,6 +4448,7 @@ export default function TrackerScreen() {
           onStreakPress={() => router.push("/weekly-recap" as never)}
           streakResetCopyVisible={streakJustReset}
         />
+        </View>
 
         {isOffline && (
           <View style={styles.offlineBanner} accessibilityRole="alert">
@@ -4619,18 +4627,7 @@ export default function TrackerScreen() {
                   />
                 );
               }
-              // 1b. F-109: idle "Start fast" pill — only for users who
-              //     opted in to IF (`fasting_window != null`). A
-              //     non-IF user falls through to the eat-again /
-              //     north-star / deficit prompts, same as before.
-              if (fastingOptedIn) {
-                return (
-                  <TodayFastingPill
-                    mode="idle"
-                    onPress={() => router.push("/fasting")}
-                  />
-                );
-              }
+              // 1b. Idle "Start fast" removed (Today premium sprint 2026-05-19).
               // 2. Budget met or exceeded, with one or more re-log
               //    suggestions that haven't been dismissed today.
               //    Premium-bar audit DC3 polish (2026-05-14): when
@@ -4651,6 +4648,8 @@ export default function TrackerScreen() {
                       slot={currentSlotFromTime}
                       textColor={colors.text}
                       textSecondaryColor={colors.textSecondary}
+                      surfaceBackgroundColor={colors.cardBorder}
+                      surfaceBorderColor={colors.border}
                       onLog={() =>
                         logHistoryItemToSlot(eatAgainCandidates[0]!, currentSlotFromTime)
                       }
@@ -4665,49 +4664,14 @@ export default function TrackerScreen() {
                     textColor={colors.text}
                     textSecondaryColor={colors.textSecondary}
                     secondaryColor={colors.textSecondary}
+                    surfaceBackgroundColor={colors.cardBorder}
+                    surfaceBorderColor={colors.border}
                     onLog={(item) => logHistoryItemToSlot(item, currentSlotFromTime)}
                     onDismiss={dismissEatAgain}
                   />
                 );
               }
-              // 3. Remaining > 0 and the user hasn't logged anything
-              //    yet today — north-star recipe suggestion (the host
-              //    has its own internal gate that returns null when
-              //    no saved recipe matches; if so, the slot stays
-              //    empty rather than falling through to the deficit
-              //    insight, which would read odd at 0 logged kcal).
-              if (isToday && remaining > 0 && mealsToday.length === 0) {
-                return (
-                  <NorthStarBlockHost
-                    viewMode={viewMode}
-                    savedRecipesForLibrary={savedRecipesForLibrary}
-                    remainingCalories={remaining}
-                    remainingProtein={remainingProtein}
-                    remainingCarbs={remainingCarbs}
-                    remainingFat={remainingFat}
-                    onPrimaryCta={(recipeId) => router.push(`/recipe/${recipeId}`)}
-                    onBrowseLibrary={() => router.push("/(tabs)/library")}
-                    selectedDateKey={dayKey}
-                    // Activation leak fix #5 (round 2, 2026-04-30):
-                    // accounts < 30 days old fall back to the relaxed
-                    // library threshold (≥2 instead of ≥5) so a user
-                    // who only saved 2-3 recipes during onboarding (or
-                    // skipped seed-picking) still gets a real
-                    // suggestion on Today, not the empty-state.
-                    userCreatedAt={session?.user?.created_at ?? null}
-                    // ENG-94 (2026-05-13): on a true day-1 user with
-                    // no nutrition history yet, the host renders a
-                    // calmer "Log your first meal" card instead of
-                    // an algorithmic suggestion. `byDay` is the user's
-                    // full local nutrition log; if no day has any
-                    // meals, the algorithm has nothing to pattern-
-                    // match on yet.
-                    hasEverLoggedAnyMeal={Object.values(byDay).some(
-                      (meals) => Array.isArray(meals) && meals.length > 0,
-                    )}
-                  />
-                );
-              }
+              // 3. North-star moved below meals (Today premium sprint 2026-05-19).
               // 4. Remaining > 0 with logs already today — deficit
               //    insight summarises pace.
               if (isToday && remaining > 0) {
@@ -4740,116 +4704,6 @@ export default function TrackerScreen() {
               // No context block fits this state.
               return null;
             })()}
-
-            {/* Weekly Check-in banner (MacroFactor parity, 2026-04-30).
-                One-day-per-week prompt that lands on the first day of a
-                fresh week (Sun for Sunday-start, Mon for Monday-start)
-                pointing the user at the Weekly Recap surface where the
-                TDEE delta + goal-pace re-tune live. AsyncStorage-gated
-                per (user, weekKey) so it's dismissible. Mobile-only —
-                web's Digest already runs the Sunday-cadence gate.
-                Hidden until the dismissal state has hydrated to avoid a
-                flash-then-vanish. */}
-            {isToday &&
-              isCheckinBannerDay &&
-              checkinBannerDismissed === false && (
-                <WeeklyCheckinBanner
-                  textColor={colors.text}
-                  textSecondaryColor={colors.textSecondary}
-                  onOpen={openCheckin}
-                  onDismiss={() => {
-                    void dismissCheckinBanner();
-                  }}
-                />
-              )}
-
-            {/* Post-launch onboarding nudge banner (2026-04-30 follow-up
-                to the 15→12 onboarding shrink). Three nudges queued in
-                priority order — Permissions → Import → Recipes — shown
-                one at a time below the calorie ring. AsyncStorage-gated
-                cooldowns; the permissions nudge drops permanently after
-                the user answers the OS prompt. Mobile-only by design
-                (Apple Health is iOS-native; web has no equivalent
-                surface). See `docs/decisions/2026-04-30-onboarding-shrink-15-to-12.md`
-                §"Post-launch nudge queue" and
-                `apps/mobile/components/today/onboarding-nudges/types.ts`.
-
-                Visibility gate: only when viewing today AND at least
-                one meal has been logged. The empty-state moment (zero
-                meals on today) belongs to the calorie ring + north-star
-                block — adding a nudge there would clutter the most
-                important first impression. The banner is also internally
-                cooldown-gated, so a returning user sees at most one
-                eligible nudge per cooldown window. */}
-            {isToday && mealsToday.length > 0 && (
-              <OnboardingNudgeBanner
-                mealsTodayCount={mealsToday.length}
-                libraryCount={savedLibraryRecipes.length}
-              />
-            )}
-
-            {/* Snap-a-meal shortcut (audit 2026-04-30, Lose It "Closer"
-                parity). Surfaces PhotoLog as a discoverable, one-tap
-                affordance on Today instead of burying it inside the
-                LogSheet's right-edge icon row. Secondary affordance —
-                primary log-entry is still the centred raised "+" in
-                the tab bar. Tapping either opens PhotoLog directly
-                (Pro) or the AI paywall sheet (free / base) — same
-                routing the LogSheet `photo.onCapture` slot uses, so
-                Pro gating, paywall analytics, and the open-from-Today
-                analytics breadcrumb stay consistent. */}
-            {isToday && mealsToday.length === 0 && (
-              <TodaySnapShortcut
-                onPress={() => {
-                  track(AnalyticsEvents.today_snap_shortcut_tapped, {
-                    tier: userTier,
-                  });
-                  // 2026-05-02 — open for any tier; the in-sheet
-                  // quota line + 403 paywall handoff handle gating.
-                  setPhotoLogOpen(true);
-                }}
-                // Lock badge removed (2026-05-02).
-                locked={false}
-              />
-            )}
-
-            {/* 2026-05-01 (journey-architect P1) — first-meal empty
-                state. Renders only when the user has logged 0 meals
-                today AND has zero journal history at all (no point
-                pestering returning users with a "first meal" CTA).
-                Brand-new accounts (auth.users.created_at < 24h) get
-                an additional dismissable IG/TT tip line. The CTA
-                opens the unified LogSheet (same surface as the
-                centred raised tab-bar plus button + meal-slot taps).
-                Web parity in `src/app/components/NutritionTracker.tsx`. */}
-            {isToday &&
-              hydrated &&
-              mealsToday.length === 0 &&
-              !hasAnyJournalHistory && (
-                <TodayFirstMealEmptyState
-                  isBrandNew={isBrandNewUser}
-                  tipDismissed={firstMealTipDismissed}
-                  onDismissTip={dismissFirstMealTip}
-                  onLogMeal={() => {
-                    try {
-                      track(AnalyticsEvents.empty_state_cta_clicked, {
-                        surface: "today",
-                      });
-                    } catch {
-                      /* analytics fire-and-forget */
-                    }
-                    // 2026-05-08 build-47 follow-up — generic FAB path,
-                    // see deep-link path above for the same reset.
-                    setActiveMealSlot(slotForHour(new Date().getHours()));
-                    setFabSheetOpen(true);
-                  }}
-                  textColor={colors.text}
-                  textSecondaryColor={colors.textSecondary}
-                  cardColor={colors.card}
-                  cardBorderColor={colors.cardBorder}
-                />
-              )}
-
 
             {/* Macro tiles — 2x2 grid. The standalone all-nutrients
                 link that previously floated as a centred row below
@@ -4945,63 +4799,6 @@ export default function TrackerScreen() {
             vs deficit insight via the `!(remaining > 0)` gate, which we
             kept. Web parallel ships in NutritionTracker.tsx. */}
 
-        {/* Audit M4 (2026-04-18) — Quick add CTA above Meals.
-            Default collapsed on first run; user's last open/closed choice
-            persists via AsyncStorage (`suppr-quick-add-collapsed-v1`).
-            Keeps all 4 tabs reachable without drowning first-time users in
-            chips. The FAB's "Previous" action still opens the full-screen
-            overlay for power users. */}
-        {viewMode === "day" && quickAddPrefLoaded && (
-          <View style={{ marginBottom: Spacing.md }}>
-            <Pressable
-              onPress={() => void toggleQuickAddCollapsed()}
-              accessibilityRole="button"
-              accessibilityLabel={quickAddCollapsed ? "Show quick add" : "Hide quick add"}
-              accessibilityState={{ expanded: !quickAddCollapsed }}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                paddingVertical: 12,
-                paddingHorizontal: Spacing.md,
-                borderRadius: Radius.md,
-                backgroundColor: colors.card,
-                borderWidth: 1,
-                borderColor: colors.cardBorder,
-              }}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
-                <Zap size={18} color={Accent.primary} strokeWidth={1.75} />
-                <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>Quick add</Text>
-                <Text numberOfLines={1} style={{ flexShrink: 1, fontSize: 12, color: colors.textTertiary }}>
-                  Your usuals
-                </Text>
-              </View>
-              {quickAddCollapsed ? (
-                <ChevronDown size={18} color={colors.textSecondary} strokeWidth={2} />
-              ) : (
-                <ChevronUp size={18} color={colors.textSecondary} strokeWidth={2} />
-              )}
-            </Pressable>
-            {!quickAddCollapsed && (
-              <View style={{ marginTop: Spacing.sm }}>
-                <QuickAddPanel
-                  byDay={byDay}
-                  activeSlot={activeMealSlot}
-                  supabase={supabase}
-                  userId={userId ?? ""}
-                  onLog={(item) => logHistoryItemToSlot(item, activeMealSlot)}
-                  onLogSavedMeal={(meal, slot) => logSavedMealFromPanel(meal, slot)}
-                  onOpenSaveCombo={(slot) => {
-                    if (slot) openSaveMealSheetForSlot(slot);
-                  }}
-                  savedMealsRefreshToken={savedMealsRefreshToken}
-                />
-              </View>
-            )}
-          </View>
-        )}
-
         {viewMode === "day" && (
           /* Feature 9 (2026-05-14, premium-bar audit) — wrapped with
              the shared section slide+fade animation; see
@@ -5048,6 +4845,129 @@ export default function TrackerScreen() {
             onDismissAiFirstLogTooltip={dismissAiFirstLogTooltip}
           />
           </Animated.View>
+        )}
+
+        {/* Below-meals prompts (Today premium sprint 2026-05-19). */}
+        {viewMode === "day" && isToday && remaining > 0 && mealsToday.length === 0 && (
+          <NorthStarBlockHost
+            viewMode={viewMode}
+            savedRecipesForLibrary={savedRecipesForLibrary}
+            remainingCalories={remaining}
+            remainingProtein={remainingProtein}
+            remainingCarbs={remainingCarbs}
+            remainingFat={remainingFat}
+            onPrimaryCta={(recipeId) => router.push(`/recipe/${recipeId}`)}
+            onBrowseLibrary={() => router.push("/(tabs)/library")}
+            selectedDateKey={dayKey}
+            userCreatedAt={session?.user?.created_at ?? null}
+            hasEverLoggedAnyMeal={Object.values(byDay).some(
+              (meals) => Array.isArray(meals) && meals.length > 0,
+            )}
+          />
+        )}
+        {viewMode === "day" &&
+          isToday &&
+          isCheckinBannerDay &&
+          checkinBannerDismissed === false && (
+            <WeeklyCheckinBanner
+              textColor={colors.text}
+              textSecondaryColor={colors.textSecondary}
+              onOpen={openCheckin}
+              onDismiss={() => {
+                void dismissCheckinBanner();
+              }}
+            />
+          )}
+        {viewMode === "day" && isToday && mealsToday.length > 0 && (
+          <OnboardingNudgeBanner
+            mealsTodayCount={mealsToday.length}
+            libraryCount={savedLibraryRecipes.length}
+          />
+        )}
+        {viewMode === "day" && isToday && mealsToday.length === 0 && (
+          <TodaySnapShortcut
+            onPress={() => {
+              track(AnalyticsEvents.today_snap_shortcut_tapped, {
+                tier: userTier,
+              });
+              setPhotoLogOpen(true);
+            }}
+            locked={false}
+          />
+        )}
+        {viewMode === "day" &&
+          isToday &&
+          hydrated &&
+          mealsToday.length === 0 &&
+          !hasAnyJournalHistory && (
+            <TodayFirstMealEmptyState
+              isBrandNew={isBrandNewUser}
+              tipDismissed={firstMealTipDismissed}
+              onDismissTip={dismissFirstMealTip}
+              onLogMeal={() => {
+                try {
+                  track(AnalyticsEvents.empty_state_cta_clicked, {
+                    surface: "today",
+                  });
+                } catch {
+                  /* analytics fire-and-forget */
+                }
+                setActiveMealSlot(slotForHour(new Date().getHours()));
+                setFabSheetOpen(true);
+              }}
+              textColor={colors.text}
+              textSecondaryColor={colors.textSecondary}
+              cardColor={colors.card}
+              cardBorderColor={colors.cardBorder}
+            />
+          )}
+        {viewMode === "day" && quickAddPrefLoaded && (
+          <View style={{ marginTop: Spacing.md, marginBottom: Spacing.md }}>
+            <Pressable
+              onPress={() => void toggleQuickAddCollapsed()}
+              accessibilityRole="button"
+              accessibilityLabel={quickAddCollapsed ? "Show quick add" : "Hide quick add"}
+              accessibilityState={{ expanded: !quickAddCollapsed }}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                paddingVertical: Spacing.sm,
+                paddingHorizontal: Spacing.md,
+              }}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
+                <Zap size={16} color={colors.textSecondary} strokeWidth={1.75} />
+                <Text style={{ fontSize: 13, fontWeight: "600", color: colors.textSecondary }}>
+                  Quick add
+                </Text>
+                <Text numberOfLines={1} style={{ flexShrink: 1, fontSize: 12, color: colors.textTertiary }}>
+                  Your usuals
+                </Text>
+              </View>
+              {quickAddCollapsed ? (
+                <ChevronDown size={16} color={colors.textTertiary} strokeWidth={2} />
+              ) : (
+                <ChevronUp size={16} color={colors.textTertiary} strokeWidth={2} />
+              )}
+            </Pressable>
+            {!quickAddCollapsed && (
+              <View style={{ marginTop: Spacing.sm }}>
+                <QuickAddPanel
+                  byDay={byDay}
+                  activeSlot={activeMealSlot}
+                  supabase={supabase}
+                  userId={userId ?? ""}
+                  onLog={(item) => logHistoryItemToSlot(item, activeMealSlot)}
+                  onLogSavedMeal={(meal, slot) => logSavedMealFromPanel(meal, slot)}
+                  onOpenSaveCombo={(slot) => {
+                    if (slot) openSaveMealSheetForSlot(slot);
+                  }}
+                  savedMealsRefreshToken={savedMealsRefreshToken}
+                />
+              </View>
+            )}
+          </View>
         )}
 
         {/* Planned meals from the planner */}

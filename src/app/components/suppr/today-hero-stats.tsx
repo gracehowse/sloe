@@ -110,7 +110,7 @@ function DesktopHeroStats({
   const netStr = formatNet(net);
 
   return (
-    <div className="hidden md:block mb-4 rounded-card border border-border bg-card p-6">
+    <div className="hidden md:block mb-6 rounded-card border border-border bg-card p-6">
       {/* REMAINING / CONSUMED display-mode chip — header row.
           2026-05-12 (premium-bar audit, web parity round 2): was an
           absolutely-positioned chip in the top-right corner with a
@@ -194,11 +194,8 @@ function DesktopHeroStats({
             //     because `net = 0 − 1132 < 0`, which read as "good
             //     deficit" when the user had simply not logged yet.
             //   - net < 0 with food logged → success green: real deficit.
-            //   - net > 0 → over (amber/warning): over the target. The
-            //     prototype-carryover rule (memory: project_prototype_
-            //     carryover_rules) sets over-budget = amber across the
-            //     app; previously this tile rendered over as plain
-            //     foreground colour, which understated the signal.
+            //   - net > 0 → destructive red: mirrors the calorie ring
+            //     over-budget stroke (same signal as centre "OVER").
             valueTone={
               loggedKcal === 0
                 ? "neutral"
@@ -228,7 +225,7 @@ function StatTile({
     valueTone === "positive"
       ? "text-success"
       : valueTone === "over"
-        ? "text-warning"
+        ? "text-destructive"
         : "text-foreground";
   return (
     <div>

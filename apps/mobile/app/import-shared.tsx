@@ -938,7 +938,12 @@ export default function ImportSharedScreen() {
       fontWeight: "800",
       letterSpacing: 3,
     },
-    scroll: { paddingHorizontal: Spacing.xl, paddingBottom: 120, paddingTop: Spacing.lg, gap: Spacing.lg },
+    scroll: {
+      paddingHorizontal: Spacing.xl,
+      paddingBottom: 120,
+      paddingTop: Spacing.lg,
+      gap: Spacing.xxl,
+    },
     scrollCentered: { flexGrow: 1, justifyContent: "center", paddingTop: 0 },
 
     panelCard: {

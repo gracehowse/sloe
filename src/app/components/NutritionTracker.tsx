@@ -109,6 +109,7 @@ import {
   type CreateCustomFoodPayload,
 } from "./suppr/create-custom-food-dialog";
 import { createCustomFood } from "../../lib/nutrition/customFoodsClient";
+import { TodayBrandBar } from "./suppr/today-brand-bar";
 import { TodayDateHeader } from "./suppr/today-date-header";
 import { aiLoggingSourceLabel, type AiLoggedItem } from "../../lib/nutrition/aiLogging";
 import {
@@ -252,6 +253,7 @@ function dayActivityBudgetAddonWeb(
 interface NutritionTrackerProps {
   userTier: UserTier;
   onOpenProgress?: () => void;
+  onOpenSettings?: () => void;
 }
 
 function loadRecentFoods(): string[] {
@@ -449,7 +451,11 @@ function NorthStarBlockHost({
   );
 }
 
-export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpenProgress }: NutritionTrackerProps) {
+export const NutritionTracker = memo(function NutritionTracker({
+  userTier,
+  onOpenProgress,
+  onOpenSettings,
+}: NutritionTrackerProps) {
   // User-configurable macro display variant. Default `tiles` matches
   // historic UI; `bars` is the Cronometer/Lose It-style list (Settings
   // → Display → Macro display). Pref persists via localStorage.
@@ -2165,7 +2171,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
   const avatarLetter = (profileDisplayName?.trim()?.[0] ?? authEmail?.trim()?.[0] ?? "U").toUpperCase();
 
   return (
-    <div className="max-w-5xl mx-auto px-pm-5 py-pm-5 xl:pr-[280px]">
+    <div className="max-w-5xl mx-auto px-pm-6 py-pm-6 xl:pr-[280px] space-y-6">
       {!isOnline ? (
         <div
           role="alert"
@@ -2204,7 +2210,9 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         </div>
       ) : null}
 
-      <TodayDateHeader
+      <div className="space-y-4 lg:space-y-0">
+        <TodayBrandBar />
+        <TodayDateHeader
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         selectedDate={selectedDate}
@@ -2218,7 +2226,9 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         onNavigatePrev={() => (viewMode === "week" ? navigateWeek(-1) : navigateDay(-1))}
         onNavigateNext={() => (viewMode === "week" ? navigateWeek(1) : navigateDay(1))}
         onOpenCalendar={() => calendarInputRef.current?.showPicker?.() ?? calendarInputRef.current?.click()}
+        onOpenSettings={() => onOpenSettings?.()}
       />
+      </div>
 
       {/* DC12 (2026-05-14, premium-bar audit) — Headspace-style
           supportive missed-day line; web companion to the mobile
@@ -2325,17 +2335,7 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
             />
           );
         }
-        // 1b. F-109: idle "Start fast" pill — only for users who
-        //     opted in to IF (`fasting_window != null`). Non-IF users
-        //     fall through to the eat-again / north-star prompts.
-        if (fastingOptedIn) {
-          return (
-            <TodayFastingPill
-              activeFastElapsedLabel={null}
-              fastingOptedIn={true}
-            />
-          );
-        }
+        // 1b. Idle "Start fast" removed (Today premium sprint 2026-05-19).
         // 2. Budget met or exceeded, with a re-log suggestion that
         //    hasn't been dismissed today.
         if (
@@ -2352,116 +2352,14 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
             />
           );
         }
-        // 3. Phase 3 / B2.2 (D-2026-04-27-04) — north-star "What to eat
-        //    next" block. The presentation component is gated internally
-        //    on library size (V-6 default ≥5) and on remaining-calorie
-        //    envelope (over-budget hides / collapses); the canonical
-        //    scorer is `src/lib/nutrition/northStarSuggestion.ts`. The
-        //    CTA opens the LogSheet pre-tabbed to Search so the user
-        //    confirms the suggestion.
-        return (
-          <NorthStarBlockHost
-            viewMode={viewMode}
-            savedRecipesForLibrary={savedRecipesForLibrary as Array<NorthStarRecipe>}
-            remainingCalories={Math.max(0, effectiveCalorieTarget - totals.calories)}
-            remainingProtein={Math.max(0, targets.protein - totals.protein)}
-            remainingCarbs={Math.max(0, targets.carbs - totals.carbs)}
-            remainingFat={Math.max(0, targets.fat - totals.fat)}
-            onPrimaryCta={(_recipeId) => {
-              // Web routes the CTA into the unified LogSheet rather
-              // than opening the recipe directly — the user confirms
-              // the suggestion via search. _recipeId is unused here
-              // but the host contract requires the arg for cross-
-              // platform parity with mobile (which routes to
-              // /recipe/{id}).
-              // 2026-05-08 build-47 follow-up — generic FAB path,
-              // reset mealSlot to time-of-day. See deep-link path above.
-              setMealSlot(slotForHour(new Date().getHours()));
-              setLogSheetOpen(true);
-            }}
-            onBrowseLibrary={() => {
-              // The web Today is one route; "browse" is a no-op stub
-              // here (the user tab-clicks Recipes themselves).
-              // Logging surface is the LogSheet — opening it is a
-              // reasonable fallback.
-              setMealSlot(slotForHour(new Date().getHours()));
-              setLogSheetOpen(true);
-            }}
-            selectedDateKey={selectedDateKey}
-            // Activation leak fix #5 (round 2, 2026-04-30): accounts
-            // < 30 days old get the relaxed library threshold (≥2,
-            // not ≥5) so a new user with 2-3 recipes still sees a
-            // real suggestion instead of the empty-state.
-            userCreatedAt={authUserCreatedAt}
-            // ENG-94 (2026-05-13): on a true day-1 user (no
-            // nutrition history yet) the host renders a calmer
-            // "Log your first meal" card instead of an algorithmic
-            // suggestion the algorithm has nothing to base on.
-            hasEverLoggedAnyMeal={Object.values(nutritionByDay).some(
-              (meals) => Array.isArray(meals) && meals.length > 0,
-            )}
-          />
-        );
+        // 3. North-star moved below meals (Today premium sprint 2026-05-19).
+        return null;
       })()}
 
       {/* RemainingMacrosBar removed 2026-04-20 — duplicated the 2x2
           TodayDashboardMacroTiles grid below. Mobile parity: removed
           same day in apps/mobile/app/(tabs)/index.tsx. See
           feedback_no_duplicate_today_hero_content.md. */}
-
-      {/* Snap-a-meal shortcut (audit 2026-04-30, Lose It "Closer"
-          parity). Surfaces PhotoLog as a discoverable, one-tap
-          affordance on Today instead of burying it inside the
-          LogSheet's right-edge icon row. Secondary affordance —
-          primary log-entry stays the centred raised "+" in the bottom
-          tab bar. Mirrors the mobile placement (above macro tiles,
-          today-only). */}
-      {selectedDateKey === todayKey() && (
-        <TodaySnapShortcut
-          onPress={() => {
-            track(AnalyticsEvents.today_snap_shortcut_tapped, {
-              tier: userTier,
-            });
-            // 2026-05-02 — open for any tier; the in-dialog quota
-            // line shows the free-taster window, and on exhaustion
-            // the dialog routes to the AiPaywallDialog itself.
-            setPhotoLogOpen(true);
-          }}
-          // Lock badge removed (2026-05-02) — photo-log is no longer
-          // Pro-only at the entry point.
-          locked={false}
-        />
-      )}
-
-      {/* 2026-05-01 (journey-architect P1) — first-meal empty state.
-          Renders only on Today (selected === today) when the user has
-          logged 0 meals today AND has zero journal history at all
-          (returning users with prior days never see the card). The CTA
-          opens the unified LogSheet — same surface as the centred
-          raised tab-bar plus button. Mobile parity in
-          `apps/mobile/app/(tabs)/index.tsx`. */}
-      {selectedDateKey === todayKey() &&
-        mealsForSelectedDate.length === 0 &&
-        loggedDays.size === 0 && (
-          <TodayFirstMealEmptyState
-            isBrandNew={isBrandNewUser}
-            tipDismissed={firstMealTipDismissed}
-            onDismissTip={dismissFirstMealTip}
-            onLogMeal={() => {
-              try {
-                track(AnalyticsEvents.empty_state_cta_clicked, {
-                  surface: "today",
-                });
-              } catch {
-                /* analytics fire-and-forget */
-              }
-              // 2026-05-08 build-47 follow-up — generic empty-state CTA,
-              // see deep-link path for the same reset.
-              setMealSlot(slotForHour(new Date().getHours()));
-              setLogSheetOpen(true);
-            }}
-          />
-        )}
 
       {/* 3. Dashboard macro tiles — profile `tracked_macros` (Settings),
           same keys as mobile. Phase 4 / Top-5 #2 (2026-04-28): the
@@ -2582,41 +2480,6 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
           Audit M4 (2026-04-18): collapsed behind a single "Quick add" CTA
           above Meals. Default collapsed on first run; user's last choice
           persists via localStorage (`suppr-quick-add-collapsed-v1`). */}
-      <div className="mb-4">
-        <button
-          type="button"
-          onClick={toggleQuickAddCollapsed}
-          aria-expanded={!quickAddCollapsed}
-          aria-controls="today-quick-add-panel"
-          className="w-full flex items-center justify-between gap-2 rounded-card border border-border bg-card px-3 py-2.5 text-left hover:bg-muted/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-        >
-          <span className="flex items-center gap-2 min-w-0">
-            <Icons.energy className="h-4 w-4 text-primary" aria-hidden="true" />
-            <span className="text-sm font-bold text-foreground">Quick add</span>
-            <span className="text-xs text-muted-foreground truncate">
-              Your usuals
-            </span>
-          </span>
-          <Icons.down
-            className={`h-4 w-4 text-muted-foreground transition-transform ${quickAddCollapsed ? "" : "rotate-180"}`}
-            aria-hidden="true"
-          />
-        </button>
-        {!quickAddCollapsed && (
-          <div id="today-quick-add-panel" className="mt-2">
-            <QuickAddPanel
-              byDay={nutritionByDay}
-              activeSlot={mealSlot}
-              supabase={supabase}
-              userId={authedUserId ?? ""}
-              onLog={(item) => logHistoryItem(item, mealSlot)}
-              onLogSavedMeal={(meal, slot) => logSavedMeal(meal, slot)}
-              onOpenSaveCombo={handleOpenSaveCombo}
-              savedMealsRefreshToken={savedMealsRefreshToken}
-            />
-          </div>
-        )}
-      </div>
 
       {/* 5. Meals Section */}
       <TodayMealsSection
@@ -2653,6 +2516,97 @@ export const NutritionTracker = memo(function NutritionTracker({ userTier, onOpe
         onDismissUsualMealHint={dismissUsualMealHint}
         onAcceptUsualMealHint={acceptUsualMealHint}
       />
+
+      {/* Below-meals prompts (Today premium sprint 2026-05-19). */}
+      {selectedDateKey === todayKey() &&
+        Math.max(0, effectiveCalorieTarget - totals.calories) > 0 &&
+        mealsForSelectedDate.length === 0 && (
+          <NorthStarBlockHost
+            viewMode={viewMode}
+            savedRecipesForLibrary={savedRecipesForLibrary as Array<NorthStarRecipe>}
+            remainingCalories={Math.max(0, effectiveCalorieTarget - totals.calories)}
+            remainingProtein={Math.max(0, targets.protein - totals.protein)}
+            remainingCarbs={Math.max(0, targets.carbs - totals.carbs)}
+            remainingFat={Math.max(0, targets.fat - totals.fat)}
+            onPrimaryCta={(_recipeId) => {
+              setMealSlot(slotForHour(new Date().getHours()));
+              setLogSheetOpen(true);
+            }}
+            onBrowseLibrary={() => {
+              setMealSlot(slotForHour(new Date().getHours()));
+              setLogSheetOpen(true);
+            }}
+            selectedDateKey={selectedDateKey}
+            userCreatedAt={authUserCreatedAt}
+            hasEverLoggedAnyMeal={Object.values(nutritionByDay).some(
+              (meals) => Array.isArray(meals) && meals.length > 0,
+            )}
+          />
+        )}
+      {selectedDateKey === todayKey() && mealsForSelectedDate.length === 0 && (
+        <TodaySnapShortcut
+          onPress={() => {
+            track(AnalyticsEvents.today_snap_shortcut_tapped, {
+              tier: userTier,
+            });
+            setPhotoLogOpen(true);
+          }}
+          locked={false}
+        />
+      )}
+      {selectedDateKey === todayKey() &&
+        mealsForSelectedDate.length === 0 &&
+        loggedDays.size === 0 && (
+          <TodayFirstMealEmptyState
+            isBrandNew={isBrandNewUser}
+            tipDismissed={firstMealTipDismissed}
+            onDismissTip={dismissFirstMealTip}
+            onLogMeal={() => {
+              try {
+                track(AnalyticsEvents.empty_state_cta_clicked, {
+                  surface: "today",
+                });
+              } catch {
+                /* analytics fire-and-forget */
+              }
+              setMealSlot(slotForHour(new Date().getHours()));
+              setLogSheetOpen(true);
+            }}
+          />
+        )}
+      <div className="mt-4 mb-4">
+        <button
+          type="button"
+          onClick={toggleQuickAddCollapsed}
+          aria-expanded={!quickAddCollapsed}
+          aria-controls="today-quick-add-panel"
+          className="w-full flex items-center justify-between gap-2 px-1 py-2 text-left text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md"
+        >
+          <span className="flex items-center gap-2 min-w-0">
+            <Icons.energy className="h-4 w-4 opacity-70" aria-hidden="true" />
+            <span className="text-sm font-semibold">Quick add</span>
+            <span className="text-xs truncate opacity-80">Your usuals</span>
+          </span>
+          <Icons.down
+            className={`h-4 w-4 opacity-70 transition-transform ${quickAddCollapsed ? "" : "rotate-180"}`}
+            aria-hidden="true"
+          />
+        </button>
+        {!quickAddCollapsed && (
+          <div id="today-quick-add-panel" className="mt-2">
+            <QuickAddPanel
+              byDay={nutritionByDay}
+              activeSlot={mealSlot}
+              supabase={supabase}
+              userId={authedUserId ?? ""}
+              onLog={(item) => logHistoryItem(item, mealSlot)}
+              onLogSavedMeal={(meal, slot) => logSavedMeal(meal, slot)}
+              onOpenSaveCombo={handleOpenSaveCombo}
+              savedMealsRefreshToken={savedMealsRefreshToken}
+            />
+          </div>
+        )}
+      </div>
 
       {/* Planned meals — show meals from today's plan so the user can
           one-tap log them at a chosen portion (½× / 1× / 1½× / 2×).

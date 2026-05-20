@@ -33,7 +33,7 @@ name: "Tab navigation — all 4 tabs load and respond"
 - waitForAnimationToEnd
 - assertVisible: ".*Meal Plan.*"
 
-# You tab — Progress is the default sub-tab (per (tabs)/_layout.tsx).
+# Progress tab (testID tab-you for Maestro stability).
 - tapOn:
     id: "tab-you"
 - waitForAnimationToEnd
@@ -43,17 +43,18 @@ name: "Tab navigation — all 4 tabs load and respond"
 - waitForAnimationToEnd
 - assertVisible: ".*(?:LAST 30 DAYS|LAST 7 DAYS|LAST 90 DAYS|ALL TIME|progress will appear).*"
 
-# Settings sub-tab inside You — Group G IA (2026-04-28) collapsed to
-# Progress + Settings only. Settings page anchors verified here:
-# "Your plan" header, "Appearance", "Account" — all live on /settings
-# (not on /more). Goals & Targets is currently orphaned on /more
-# pending Group G batches B-E migration.
+# Settings — opened from Today header avatar (not a tab-bar sub-tab).
 - tapOn:
-    id: "subtab-settings"
+    id: "tab-today"
 - waitForAnimationToEnd
+- tapOn:
+    text: "Open settings"
 - waitForAnimationToEnd
 - waitForAnimationToEnd
 - assertVisible: ".*(?:Your plan|Appearance|Account).*"
+- tapOn:
+    text: "Go back"
+- waitForAnimationToEnd
 
 # Return to Today — round-trip complete
 - tapOn:

@@ -228,7 +228,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
           borderWidth: 1,
           borderColor: cardBorderColor,
           overflow: "hidden",
-          marginBottom: Spacing.lg,
+          marginBottom: Spacing.xl,
         }}
       >
         {mealsTodayCount > 0 && (

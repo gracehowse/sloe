@@ -34,6 +34,11 @@ import {
 const ROOT = resolve(__dirname, "..", "..");
 const THEME_PATH = resolve(ROOT, "src/styles/theme.css");
 const SETTINGS_PATH = resolve(ROOT, "src/app/components/Settings.tsx");
+const TODAY_MACRO_TILES_PATH = resolve(
+  ROOT,
+  "src/app/components/suppr/today-dashboard-macro-tiles.tsx",
+);
+const todayMacroTilesSrc = readFileSync(TODAY_MACRO_TILES_PATH, "utf8");
 
 const themeCss = readFileSync(THEME_PATH, "utf8");
 const settingsSrc = readFileSync(SETTINGS_PATH, "utf8");
@@ -83,25 +88,29 @@ describe("MACRO_COLORS_LIGHT pins canonical theme.css :root values", () => {
     expect(MACRO_COLORS_LIGHT.fat).toBe(readRootVar("macro-fat"));
   });
 
-  it("fiber matches --success", () => {
-    // Fibre rides on the success-green track.
-    expect(MACRO_COLORS_LIGHT.fiber).toBe(readRootVar("success"));
+  it("fiber matches --macro-fiber", () => {
+    expect(MACRO_COLORS_LIGHT.fiber).toBe(readRootVar("macro-fiber"));
   });
 
-  it("sodium matches --source-fatsecret (orange)", () => {
-    // Project carryover rule (2026-04-27): sodium = orange.
-    expect(MACRO_COLORS_LIGHT.sodium).toBe(readRootVar("source-fatsecret"));
+  it("fiber is not the same green as calories", () => {
+    expect(MACRO_COLORS_LIGHT.fiber).not.toBe(MACRO_COLORS_LIGHT.calories);
+    expect(readRootVar("macro-fiber")).not.toBe(readRootVar("macro-calories"));
+  });
+
+  it("sodium matches --macro-sodium", () => {
+    expect(MACRO_COLORS_LIGHT.sodium).toBe(readRootVar("macro-sodium"));
   });
 
   it("water matches --macro-water", () => {
     expect(MACRO_COLORS_LIGHT.water).toBe(readRootVar("macro-water"));
   });
 
-  it("sugar matches --chart-5 (violet) — distinct from protein-blue", () => {
-    // theme.css has no dedicated --sugar token; chart-5 is the
-    // canonical fifth-track violet. Keeps the swatch coherent in the
-    // dashboard widgets picker without clashing with protein.
-    expect(MACRO_COLORS_LIGHT.sugar).toBe(readRootVar("chart-5"));
+  it("sugar matches --macro-sugar (periwinkle — distinct from protein-blue)", () => {
+    expect(MACRO_COLORS_LIGHT.sugar).toBe(readRootVar("macro-sugar"));
+  });
+
+  it("calories matches --macro-calories", () => {
+    expect(MACRO_COLORS_LIGHT.calories).toBe(readRootVar("macro-calories"));
   });
 });
 
@@ -127,8 +136,28 @@ describe("Settings WIDGET_MACRO_OPTIONS routes through MACRO_COLOR_VARS", () => 
     const m = settingsSrc.match(/const WIDGET_MACRO_OPTIONS = \[([\s\S]*?)\] as const;/);
     expect(m).not.toBeNull();
     const block = m![1];
-    for (const key of Object.keys(MACRO_COLOR_VARS) as Array<keyof typeof MACRO_COLOR_VARS>) {
+    const settingsKeys = ["protein", "carbs", "fat", "fiber", "sugar", "sodium", "water"] as const;
+    for (const key of settingsKeys) {
       expect(block, `key=${key}`).toContain(`MACRO_COLOR_VARS.${key}`);
+    }
+  });
+});
+
+describe("Today macro tiles route through MACRO_COLOR_VARS", () => {
+  it("imports the canonical macro colour module", () => {
+    expect(todayMacroTilesSrc).toMatch(
+      /from\s+"\.\.\/\.\.\/\.\.\/lib\/theme\/macroColors"/,
+    );
+  });
+
+  it("never uses --warning or bare --success for macro tile fills", () => {
+    expect(todayMacroTilesSrc).not.toMatch(/fillVar:\s*"var\(--warning\)"/);
+    expect(todayMacroTilesSrc).not.toMatch(/fillVar:\s*"var\(--success\)"/);
+  });
+
+  it("protein/carbs/fat/sugar tiles use MACRO_COLOR_VARS", () => {
+    for (const key of ["protein", "carbs", "fat", "sugar", "fiber", "sodium", "water"] as const) {
+      expect(todayMacroTilesSrc).toContain(`MACRO_COLOR_VARS.${key}`);
     }
   });
 });

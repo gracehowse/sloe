@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Suppr — Today first-render (premium sprint)</title>
+  <style>
+    :root {
+      --bg: #f6f3ee;
+      --card: #fff;
+      --border: #e4e4ec;
+      --fg: #111118;
+      --fg-secondary: #6b6b78;
+      --success: #62b35a;
+      --primary: #4c6ce0;
+      font-family: Inter, system-ui, sans-serif;
+    }
+    body { margin: 0; background: var(--bg); color: var(--fg); }
+    .phone { max-width: 390px; margin: 24px auto; padding: 0 24px 120px; }
+    .brand {
+      display: flex; align-items: center; gap: 10px;
+      min-height: 44px; padding-bottom: 4px;
+    }
+    .brand-mark {
+      width: 26px; height: 26px; border-radius: 7px; background: var(--primary);
+      position: relative;
+    }
+    .brand-mark::before,
+    .brand-mark::after {
+      content: ""; position: absolute; border-radius: 50%; border: 2px solid #fff;
+      left: 50%; top: 50%; transform: translate(-50%, -50%);
+    }
+    .brand-mark::before { width: 16px; height: 16px; opacity: 0.95; }
+    .brand-mark::after { width: 10px; height: 10px; border-width: 1px; opacity: 0.35; }
+    .brand-name { font-size: 17px; font-weight: 700; letter-spacing: -0.02em; }
+    .date { font-size: 13px; color: var(--fg-secondary); }
+    .title { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; margin: 4px 0 20px; }
+    .ring {
+      background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+      padding: 24px; text-align: center; margin-bottom: 20px;
+    }
+    .ring-num { font-size: 36px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--success); }
+    .context {
+      background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+      padding: 16px 18px; margin-bottom: 20px; font-size: 13px;
+    }
+    .context-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg-secondary); margin: 0 0 4px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+    .tile {
+      background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 18px;
+    }
+    .tile-label { font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg-secondary); }
+    .tile-val { font-size: 22px; font-weight: 700; margin-top: 8px; font-variant-numeric: tabular-nums; }
+    .meals h3 { font-size: 15px; font-weight: 600; margin: 0 0 8px; }
+    .meal-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px; }
+    .meta { font-size: 12px; color: var(--fg-secondary); margin-top: 16px; }
+    .after { margin-top: 20px; font-size: 13px; color: var(--fg-secondary); }
+  </style>
+</head>
+<body>
+  <div class="phone">
+    <div class="brand" aria-label="Suppr">
+      <div class="brand-mark" aria-hidden="true"></div>
+      <span class="brand-name">Suppr</span>
+    </div>
+    <div class="date">Wed, 19 May</div>
+    <div class="title">Today</div>
+    <div class="ring">
+      <div style="font-size:11px;color:var(--fg-secondary);text-transform:uppercase;letter-spacing:.1em">Remaining</div>
+      <div class="ring-num">840</div>
+      <div style="font-size:13px;color:var(--fg-secondary);margin-top:4px">kcal</div>
+    </div>
+    <!-- Remove hidden to preview optional eat-again context between hero and macros -->
+    <div class="context" hidden>
+      <p class="context-eyebrow">Eat again</p>
+      <strong>Greek yogurt bowl</strong> · 420 kcal · into Lunch
+    </div>
+    <div class="grid">
+      <div class="tile"><div class="tile-label">Protein</div><div class="tile-val">42<span style="font-size:12px;color:var(--fg-secondary)"> / 120g</span></div></div>
+      <div class="tile"><div class="tile-label">Carbs</div><div class="tile-val">88<span style="font-size:12px;color:var(--fg-secondary)"> / 200g</span></div></div>
+      <div class="tile"><div class="tile-label">Fat</div><div class="tile-val">31<span style="font-size:12px;color:var(--fg-secondary)"> / 65g</span></div></div>
+      <div class="tile"><div class="tile-label">Fiber</div><div class="tile-val">12<span style="font-size:12px;color:var(--fg-secondary)"> / 30g</span></div></div>
+    </div>
+    <section class="meals">
+      <h3>Today's meals</h3>
+      <div class="meal-card">Breakfast · logged · 420 kcal</div>
+    </section>
+    <p class="after">Below meals only: recipe suggestion, quick add (collapsed), weekly check-in.</p>
+    <p class="meta">G3.5 reference — Today premium sprint 2026-05-19.</p>
+  </div>
+</body>
+</html>

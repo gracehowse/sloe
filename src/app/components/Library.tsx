@@ -174,7 +174,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-pm-5 py-pm-5 md:max-w-6xl">
+    <div className="max-w-4xl mx-auto px-pm-6 py-pm-6 md:max-w-6xl space-y-5">
       {/* Header
           2026-04-20 desktop prototype port
           (`docs/ux/claude-design-bundles/prototype/project/screens-web.jsx`
@@ -184,12 +184,6 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
           mobile-web pill row is preserved so narrow-width parity with
           the mobile tab stays intact. */}
       <div className="mb-4">
-        <div className="flex items-center justify-between mb-6 md:hidden">
-          <h1 className="text-foreground">Library</h1>
-          <div className="px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 border bg-muted text-foreground border-border">
-            {savedCount} recipe{savedCount === 1 ? "" : "s"}
-          </div>
-        </div>
         <div className="hidden md:block mb-6">
           <h1
             className="text-[24px] font-bold text-foreground -tracking-[0.02em]"

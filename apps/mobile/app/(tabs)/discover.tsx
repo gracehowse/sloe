@@ -36,7 +36,7 @@ import { displayAttribution } from "@suppr/shared/recipes/displayAttribution";
 // dropped — the Discover hero card no longer renders the chip because
 // the underlying source signal is fabricated (see the comment by the
 // hero card body for the full rationale).
-import { RecipesSubTabHeader } from "@/components/tabs/RecipesSubTabHeader";
+import { RecipesTabChrome } from "@/components/tabs/RecipesTabChrome";
 
 // B5 Phase 2c (2026-04-27) — "Following" pill added. Filters Discover
 // to recipes whose creator_id is in the set the user follows. Empty
@@ -590,12 +590,10 @@ export default function DiscoverScreen() {
       testID="screen-discover"
       style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top }}
     >
-      {/* Phase 2 / B1.1 — Recipes sub-tab pill bar (Library default,
-          Discover sibling). Lives at the top of every Recipes-group
-          screen so the user can flip without leaving the group. */}
-      <RecipesSubTabHeader />
+      <RecipesTabChrome />
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 40 }}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: Spacing.md, paddingBottom: insets.bottom + 40 }}
         refreshControl={
           <RefreshControl
             refreshing={loading}
@@ -605,24 +603,7 @@ export default function DiscoverScreen() {
         }
         keyboardShouldPersistTaps="handled"
       >
-        {/* Header — prototype treatment: BROWSE overline + large
-            Discover title + round search-icon button top-right. */}
-        {/* P2-34 (2026-04-25 visual-qa): the round search-icon button
-            in the top-right was a duplicate of the search bar
-            immediately below it. Two affordances for the same job on
-            the same screen reads as indecision. The header now carries
-            only the title; the search bar below is the single
-            search entry point. */}
-        <View style={{ paddingTop: 18, paddingBottom: 14 }}>
-          <Text style={{ fontSize: 11, fontWeight: "600", color: colors.textTertiary, letterSpacing: 1.4, textTransform: "uppercase" }}>
-            Browse
-          </Text>
-          <Text style={{ fontSize: 28, fontWeight: "800", color: colors.text, letterSpacing: -0.6, marginTop: 2 }}>
-            Discover
-          </Text>
-        </View>
-
-        {/* Search bar — prototype treatment: bigger, 48kcat placeholder. */}
+        {/* Search bar — title + Library/Discover tabs live in RecipesTabChrome. */}
         <View style={{
           flexDirection: "row",
           alignItems: "center",

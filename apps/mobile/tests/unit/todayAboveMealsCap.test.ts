@@ -61,16 +61,8 @@ describe("Today above-meals cap (mobile) — context block dispatch", () => {
   // doc-comment references like `\`<Foo>\`` which would otherwise
   // false-positive a `\b` boundary.
 
-  it("TodayFastingPill renders at most twice (active + idle modes, mutually exclusive in the unified dispatch)", () => {
-    // F-109 (TestFlight `AFHtAQRAWad1w8bDvSgZkUg`, 2026-05-06): the
-    // pill now has TWO render branches inside the same dispatch
-    // IIFE — one for the in-flight fast and one for the idle "Start
-    // fast" state shown to opted-in users. Both live inside the same
-    // mutually-exclusive `if/else` chain, so the runtime cap of "at
-    // most one above-meals block at a time" is preserved. Bumping the
-    // source-pin from 1 to 2 keeps that intent honest while letting
-    // the new branch land.
-    expect(countMatches(HOST_SRC, /<TodayFastingPill[\s/]/g)).toBeLessThanOrEqual(2);
+  it("TodayFastingPill renders at most once (active fast only; idle Start fast demoted 2026-05-19)", () => {
+    expect(countMatches(HOST_SRC, /<TodayFastingPill[\s/]/g)).toBeLessThanOrEqual(1);
   });
 
   it("TodayEatAgainBanner renders at most once (in the unified dispatch)", () => {
@@ -120,6 +112,12 @@ describe("Today above-meals cap (mobile) — folded primitives", () => {
   });
 });
 
+describe("Today branding row (mobile)", () => {
+  it("renders <TodayBrandBar> once above the date header", () => {
+    expect(countMatches(HOST_SRC, /<TodayBrandBar[\s/]/g)).toBe(1);
+  });
+});
+
 describe("Today above-meals cap (mobile) — canonical four primitives", () => {
   it("renders <TodayDateHeader> exactly once", () => {
     expect(countMatches(HOST_SRC, /<TodayDateHeader[\s/]/g)).toBe(1);
@@ -138,6 +136,77 @@ describe("Today above-meals cap (mobile) — canonical four primitives", () => {
 
   it("renders <TodayMealsSection> exactly once", () => {
     expect(countMatches(HOST_SRC, /<TodayMealsSection[\s/]/g)).toBe(1);
+  });
+});
+
+function macroGridToMealsSlice(src: string): string {
+  const mealsIdx = src.indexOf("<TodayMealsSection");
+  const tilesIdx = src.lastIndexOf("<TodayDashboardMacroTiles", mealsIdx);
+  const barsIdx = src.lastIndexOf("<TodayDashboardMacroBars", mealsIdx);
+  const macroIdx = Math.max(tilesIdx, barsIdx);
+  expect(macroIdx).toBeGreaterThan(-1);
+  expect(mealsIdx).toBeGreaterThan(macroIdx);
+  return src.slice(macroIdx, mealsIdx);
+}
+
+describe("Today above-meals cap (mobile) — macro tiles to meals gap", () => {
+  it("WeeklyCheckinBanner does not render between macro tiles and meals", () => {
+    const between = macroGridToMealsSlice(HOST_SRC);
+    expect(between).not.toMatch(/<WeeklyCheckinBanner[\s/]/);
+  });
+
+  it("QuickAddPanel does not render between macro tiles and meals", () => {
+    const between = macroGridToMealsSlice(HOST_SRC);
+    expect(between).not.toMatch(/<QuickAddPanel[\s/]/);
+  });
+
+  it("NorthStarBlockHost does not render between macro tiles and meals", () => {
+    const between = macroGridToMealsSlice(HOST_SRC);
+    expect(between).not.toMatch(/<NorthStarBlockHost[\s/]/);
+  });
+});
+
+describe("Today premium sprint (2026-05-19) — below-meals prompts", () => {
+  it("NorthStarBlockHost renders below meals when empty day with remaining calories", () => {
+    expect(HOST_SRC).toMatch(/Below-meals prompts \(Today premium sprint 2026-05-19\)/);
+    expect(HOST_SRC).toMatch(
+      /mealsToday\.length === 0[\s\S]+?<NorthStarBlockHost/,
+    );
+  });
+
+  it("WeeklyCheckinBanner is in the below-meals block, not above macro tiles", () => {
+    const belowIdx = HOST_SRC.indexOf("Below-meals prompts (Today premium sprint 2026-05-19)");
+    const weeklyIdx = HOST_SRC.indexOf("<WeeklyCheckinBanner", belowIdx);
+    const mealsIdx = HOST_SRC.indexOf("<TodayMealsSection");
+    expect(belowIdx).toBeGreaterThan(-1);
+    expect(weeklyIdx).toBeGreaterThan(belowIdx);
+    expect(weeklyIdx).toBeGreaterThan(mealsIdx);
+  });
+});
+
+describe("Today premium sprint (2026-05-19) — neutral context chrome", () => {
+  it("host wires neutral surfaces on TodayEatAgainBanner", () => {
+    expect(HOST_SRC).toMatch(
+      /<TodayEatAgainBanner[\s\S]+?surfaceBackgroundColor=\{colors\.cardBorder\}/,
+    );
+    expect(HOST_SRC).toMatch(
+      /<TodayEatAgainBanner[\s\S]+?surfaceBorderColor=\{colors\.border\}/,
+    );
+  });
+
+  it("host wires neutral surfaces on TodayEatAgainScroller", () => {
+    expect(HOST_SRC).toMatch(
+      /<TodayEatAgainScroller[\s\S]+?surfaceBackgroundColor=\{colors\.cardBorder\}/,
+    );
+  });
+
+  it("TodayEatAgainBanner defaults eyebrow to textSecondaryColor, not primary tint", () => {
+    const bannerSrc = fs.readFileSync(
+      path.resolve(__dirname, "../../components/today/TodayEatAgainBanner.tsx"),
+      "utf-8",
+    );
+    expect(bannerSrc).toMatch(/color:\s*textSecondaryColor/);
+    expect(bannerSrc).not.toMatch(/EAT AGAIN[\s\S]{0,80}color:\s*Accent\.primary/);
   });
 });
 

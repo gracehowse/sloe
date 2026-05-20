@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ChevronRight, LogOut, Search } from "lucide-react-native";
+import { ChevronLeft, ChevronRight, LogOut, Search } from "lucide-react-native";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
@@ -30,8 +30,7 @@ import { filterSettingsIndex } from "@/lib/settingsSearchIndex";
  * `claude/settings-mobile-structural-fix` audit (2026-05-01) collapsed
  * to a single shell:
  *
- *   1. `<YouSubTabHeader>`             — Progress / Settings pills.
- *   2. Title + sub                     — "Settings" / one-line subhead.
+ *   1. Title + sub                     — "Settings" / one-line subhead.
  *   3. Search input                    — pinned to the top of scroll.
  *   4. `<SettingsBundleContent>`       — canonical body (Profile,
  *      Stats, Membership, Goals & targets, Display & extras,
@@ -105,7 +104,28 @@ export default function SettingsScreen() {
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
-      <YouSubTabHeader />
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          paddingHorizontal: Spacing.lg,
+          paddingTop: Spacing.sm,
+          paddingBottom: Spacing.xs,
+        }}
+      >
+        <Pressable
+          onPress={() => {
+            if (router.canGoBack()) router.back();
+            else router.replace("/(tabs)" as never);
+          }}
+          hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          style={{ padding: 4, marginRight: Spacing.sm }}
+        >
+          <ChevronLeft size={22} color={colors.text} strokeWidth={2} />
+        </Pressable>
+      </View>
       <ScrollView
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}

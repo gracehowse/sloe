@@ -469,9 +469,9 @@ function RootLayoutInner() {
   // look like a blank grey screen with only a dev toast. Surface the
   // real problem up front (same signal as `app/login.tsx`).
   if (!hasSupabaseConfig()) {
-    const bg = resolved === 'dark' ? '#0a0a0f' : '#f4f5f7';
-    const fg = resolved === 'dark' ? '#e4e4e8' : '#111118';
-    const sub = resolved === 'dark' ? '#94a3b8' : '#475569';
+    const bg = resolved === 'dark' ? '#0a0a0f' : '#f6f3ee';
+    const fg = resolved === 'dark' ? '#e8e7ed' : '#1c1916';
+    const sub = resolved === 'dark' ? '#a8a4b4' : '#5e574e';
     return (
       <GestureHandlerRootView style={{ flex: 1, backgroundColor: bg }}>
         <View style={{ flex: 1, paddingHorizontal: 28, justifyContent: 'center', gap: 12 }}>

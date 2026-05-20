@@ -43,22 +43,38 @@ describe("Today above-meals cap (web) — context block dispatch", () => {
   // doc-comment references like `\`<Foo>\`` which would otherwise
   // false-positive a `\b` boundary.
 
-  it("TodayFastingPill renders at most twice (active + idle modes, mutually exclusive in the unified dispatch)", () => {
-    // F-109 (TestFlight `AFHtAQRAWad1w8bDvSgZkUg`, 2026-05-06): the
-    // pill now has TWO render branches inside the same dispatch
-    // IIFE — one for the in-flight fast and one for the idle "Start
-    // fast" state shown to opted-in users. Both live inside the same
-    // mutually-exclusive `if/else` chain, so the runtime cap of "at
-    // most one above-meals block at a time" is preserved.
-    expect(countMatches(HOST_SRC, /<TodayFastingPill[\s/]/g)).toBeLessThanOrEqual(2);
+  it("TodayFastingPill renders at most once (active fast only; idle Start fast demoted 2026-05-19)", () => {
+    expect(countMatches(HOST_SRC, /<TodayFastingPill[\s/]/g)).toBeLessThanOrEqual(1);
   });
 
   it("TodayEatAgainBanner renders at most once (in the unified dispatch)", () => {
     expect(countMatches(HOST_SRC, /<TodayEatAgainBanner[\s/]/g)).toBeLessThanOrEqual(1);
   });
 
-  it("NorthStarBlockHost renders at most once (in the unified dispatch)", () => {
+  it("NorthStarBlockHost renders at most once in the context dispatch (below-meals copy is separate)", () => {
     expect(countMatches(HOST_SRC, /<NorthStarBlockHost[\s/]/g)).toBeLessThanOrEqual(1);
+  });
+});
+
+function macroGridToMealsSlice(src: string): string {
+  const mealsIdx = src.indexOf("<TodayMealsSection");
+  const tilesIdx = src.lastIndexOf("<TodayDashboardMacroTiles", mealsIdx);
+  const barsIdx = src.lastIndexOf("<TodayDashboardMacroBars", mealsIdx);
+  const macroIdx = Math.max(tilesIdx, barsIdx);
+  expect(macroIdx).toBeGreaterThan(-1);
+  expect(mealsIdx).toBeGreaterThan(macroIdx);
+  return src.slice(macroIdx, mealsIdx);
+}
+
+describe("Today above-meals cap (web) — macro tiles to meals gap", () => {
+  it("QuickAddPanel does not render between macro tiles and meals", () => {
+    const between = macroGridToMealsSlice(HOST_SRC);
+    expect(between).not.toMatch(/<QuickAddPanel[\s/]/);
+  });
+
+  it("NorthStarBlockHost does not render between macro tiles and meals", () => {
+    const between = macroGridToMealsSlice(HOST_SRC);
+    expect(between).not.toMatch(/<NorthStarBlockHost[\s/]/);
   });
 });
 
@@ -95,6 +111,37 @@ describe("Today above-meals cap (web) — canonical four primitives", () => {
 
   it("renders <TodayDashboardMacroTiles> exactly once", () => {
     expect(countMatches(HOST_SRC, /<TodayDashboardMacroTiles[\s/]/g)).toBe(1);
+  });
+});
+
+describe("Today premium sprint (2026-05-19) — below-meals prompts", () => {
+  it("NorthStarBlockHost renders in the below-meals block, not the context IIFE", () => {
+    expect(HOST_SRC).toMatch(/Below-meals prompts \(Today premium sprint 2026-05-19\)/);
+    expect(HOST_SRC).toMatch(
+      /NorthStarBlockHost[\s\S]+?mealsForSelectedDate\.length === 0/,
+    );
+    expect(HOST_SRC).toMatch(
+      /\/\/ 3\. North-star moved below meals \(Today premium sprint 2026-05-19\)\.\s*\n\s*return null;/,
+    );
+  });
+
+  it("documents idle Start fast removal from the context IIFE", () => {
+    expect(HOST_SRC).toMatch(/Idle "Start fast" removed \(Today premium sprint 2026-05-19\)/);
+    // No second TodayFastingPill branch for opted-in-but-not-fasting users.
+    expect(HOST_SRC).not.toMatch(/fastingOptedIn\s*&&\s*!activeFast/);
+  });
+});
+
+describe("Today premium sprint (2026-05-19) — neutral context chrome", () => {
+  it("TodayEatAgainBanner uses neutral card chrome, not primary tint", () => {
+    const bannerSrc = readFileSync(
+      resolve(REPO, "src/app/components/suppr/today-eat-again-banner.tsx"),
+      "utf-8",
+    );
+    expect(bannerSrc).toMatch(/border-border bg-card/);
+    expect(bannerSrc).not.toMatch(/border-primary\/30 bg-primary\/5/);
+    expect(bannerSrc).toMatch(/text-muted-foreground">Eat again</);
+    expect(bannerSrc).not.toMatch(/tracking-widest text-primary">Eat again/);
   });
 });
 

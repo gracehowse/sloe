@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useFeatureFlagEnabled } from "posthog-js/react";
 import { Icons } from "../ui/icons";
+import { SupprPlateMark } from "../ui/suppr-mark";
 import type { UserTier } from "../../../types/recipe";
 
 /**
@@ -20,9 +21,9 @@ import type { UserTier } from "../../../types/recipe";
  *
  * Sub-tabs render below the active item when applicable. Recipes
  * groups Library (default) + Discover. You groups Progress (default)
- * + Settings (Group G IA Batch C, 2026-04-29: Profile sub-tab removed
- * — Profile is now a "Edit profile" header-card row inside Settings;
- * the /profile route remains alive as the full editor target).
+ * + Settings via the bottom-left profile entry (avatar + name), same
+ *   intent as mobile’s Today-header avatar. Profile sub-tab removed
+ *   (Group G IA Batch C, 2026-04-29) — edit profile lives in Settings.
  *
  * Routes that disappeared from primary nav: Discover (now sub-tab of
  * Recipes), Library (default of Recipes), Progress (default of You),
@@ -77,8 +78,12 @@ export interface DesktopSidebarProps {
    *  Pro/Base -> plan chip). Optional; defaults to "free" if unset. */
   userTier?: UserTier;
   /** Profile display name -- used as the secondary line in the Pro/Base
-   *  plan chip. Optional; falls back to "You" if unset. */
+   *  plan chip and the bottom profile entry. Optional; falls back to
+   *  "You" if unset. */
   displayName?: string | null;
+  /** Auth email — fallback for avatar initial + label when display name
+   *  is unset. Mirrors mobile Today header + Settings header card. */
+  authEmail?: string | null;
 }
 
 type PrimaryView = "today" | "recipes" | "plan" | "you";
@@ -124,10 +129,10 @@ const PRIMARY_ITEMS: PrimaryItem[] = [
   },
   {
     view: "you",
-    label: "More",
-    icon: "profile",
+    label: "Progress",
+    icon: "progress",
     defaultLeaf: "progress",
-    leaves: ["progress", "profile", "settings", "household-settings", "targets"],
+    leaves: ["progress", "household-settings", "targets"],
   },
 ];
 
@@ -142,14 +147,13 @@ const SUB_TABS: Record<PrimaryView, SubTabItem[]> = {
     { view: "plan", label: "This week" },
     { view: "shopping", label: "Shopping", badge: (p) => p.shoppingUncheckedCount ?? 0 },
   ],
-  you: [
-    { view: "progress", label: "Progress" },
-    { view: "settings", label: "Settings" },
-  ],
+  you: [],
 };
 
 /** Map any leaf SidebarView to the primary group that should highlight. */
 export function resolvePrimaryFromView(view: SidebarView): PrimaryView {
+  // Settings / profile are avatar-entry surfaces — not a tab group.
+  if (view === "settings" || view === "profile") return "today";
   for (const item of PRIMARY_ITEMS) {
     if (item.leaves.includes(view)) return item.view;
   }
@@ -193,6 +197,10 @@ function writeCollapsedPref(value: boolean): void {
 /** Width tokens — single source per state. */
 const WIDTH_EXPANDED_PX = 248;
 const WIDTH_COLLAPSED_PX = 64;
+
+/** Same gradient as Settings profile card + mobile `GradientAvatar`. */
+const PROFILE_AVATAR_GRADIENT =
+  "linear-gradient(135deg, #4c6ce0 0%, #e04888 100%)";
 
 export function DesktopSidebar(props: DesktopSidebarProps) {
   const { currentView, onNavigate } = props;
@@ -306,12 +314,7 @@ export function DesktopSidebar(props: DesktopSidebarProps) {
       >
         {!collapsed ? (
           <div className="flex items-center gap-2.5 min-w-0">
-            <span
-              aria-hidden
-              className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-primary-foreground text-sm font-extrabold tracking-tight shrink-0"
-            >
-              S
-            </span>
+            <SupprPlateMark size={32} className="shrink-0" />
             <span className="text-[15px] font-bold tracking-tight truncate">
               Suppr
             </span>
@@ -383,48 +386,92 @@ export function DesktopSidebar(props: DesktopSidebarProps) {
         </ul>
       </nav>
 
-      {/* Bottom slot -- Free users see upgrade card; Pro/Base see plan chip.
-          Hidden when collapsed; gated by feature flag. */}
-      {!collapsed && (
-        <SidebarBottomSlot
-          userTier={props.userTier ?? "free"}
+      {/* Bottom: optional upgrade promo, then profile → Settings (mobile
+          parity — avatar on Today on phone; persistent entry here on
+          desktop). Profile row stays visible when collapsed (icon only). */}
+      <div className="mt-auto border-t border-border shrink-0">
+        {!collapsed ? (
+          <SidebarUpgradeSlot
+            userTier={props.userTier ?? "free"}
+            onNavigate={onNavigate}
+          />
+        ) : null}
+        <SidebarProfileEntry
+          currentView={currentView}
+          collapsed={collapsed}
           displayName={props.displayName ?? null}
+          authEmail={props.authEmail ?? null}
           onNavigate={onNavigate}
         />
-      )}
+      </div>
     </aside>
   );
 }
 
-function SidebarBottomSlot({
-  userTier,
+function SidebarProfileEntry({
+  currentView,
+  collapsed,
   displayName,
+  authEmail,
+  onNavigate,
+}: {
+  currentView: SidebarView;
+  collapsed: boolean;
+  displayName: string | null;
+  authEmail: string | null;
+  onNavigate: (view: SidebarView) => void;
+}) {
+  const initial = (
+    displayName?.trim()?.[0] ?? authEmail?.trim()?.[0] ?? "U"
+  ).toUpperCase();
+  const label =
+    displayName?.trim() ||
+    authEmail?.split("@")[0]?.trim() ||
+    "You";
+  const isActive = currentView === "settings" || currentView === "profile";
+
+  return (
+    <button
+      type="button"
+      data-testid="desktop-sidebar-profile-entry"
+      onClick={() => onNavigate("settings")}
+      aria-current={isActive ? "page" : undefined}
+      aria-label={collapsed ? `Open settings (${label})` : undefined}
+      title={collapsed ? `Settings · ${label}` : undefined}
+      className={`flex w-full items-center transition-colors hover:bg-muted/60 ${
+        collapsed ? "justify-center p-3" : "gap-2.5 px-3 py-3"
+      } ${
+        isActive ? "bg-accent-muted text-primary" : "text-foreground"
+      }`}
+    >
+      <span
+        aria-hidden
+        className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-bold text-white"
+        style={{ background: PROFILE_AVATAR_GRADIENT }}
+      >
+        {initial}
+      </span>
+      {!collapsed ? (
+        <span className="min-w-0 flex-1 truncate text-left text-sm font-medium">
+          {label}
+        </span>
+      ) : null}
+    </button>
+  );
+}
+
+function SidebarUpgradeSlot({
+  userTier,
   onNavigate,
 }: {
   userTier: UserTier;
-  displayName: string | null;
   onNavigate: (view: SidebarView) => void;
 }) {
   const gateOn = useFeatureFlagEnabled("premium-sweep-v2-p0-t12");
   if (!gateOn) return null;
-  if (userTier === "pro" || userTier === "base") {
-    const planLabel = userTier === "pro" ? "Pro" : "Base";
-    const ident = displayName?.trim() || "You";
-    return (
-      <div className="border-t border-sidebar-border p-3">
-        <div className="flex items-center gap-2 rounded-lg bg-accent px-3 py-2">
-          <span className="rounded bg-primary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary-foreground shrink-0">
-            {planLabel}
-          </span>
-          <span className="truncate text-xs text-foreground" title={`${planLabel} · ${ident}`}>
-            {ident}
-          </span>
-        </div>
-      </div>
-    );
-  }
+  if (userTier === "pro" || userTier === "base") return null;
   return (
-    <div className="border-t border-sidebar-border p-3">
+    <div className="p-3 pb-0">
       <div
         className="rounded-2xl p-3"
         style={{

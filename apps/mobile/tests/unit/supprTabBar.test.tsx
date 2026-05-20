@@ -106,10 +106,10 @@ function makeProps(opts?: {
     },
     "progress-1": {
       options: {
-        title: "More",
+        title: "Progress",
         tabBarIcon: StubIcon,
         tabBarButtonTestID: "tab-you",
-        tabBarAccessibilityLabel: "More",
+        tabBarAccessibilityLabel: "Progress",
       },
     },
     // Hidden via href: null — should NOT render a tab button.
@@ -170,7 +170,7 @@ describe("SupprTabBar", () => {
     expect(getByLabelText("Today")).toBeTruthy();
     expect(getByLabelText("Recipes")).toBeTruthy();
     expect(getByLabelText("Plan")).toBeTruthy();
-    expect(getByLabelText("More")).toBeTruthy();
+    expect(getByLabelText("Progress")).toBeTruthy();
     // Hidden discover route must not produce a tab.
     expect(queryByLabelText("discover")).toBeNull();
   });
@@ -202,7 +202,7 @@ describe("SupprTabBar", () => {
     expect(getByLabelText("Plan").props.accessibilityState?.selected).toBe(true);
     expect(getByLabelText("Today").props.accessibilityState?.selected).toBeFalsy();
     expect(getByLabelText("Recipes").props.accessibilityState?.selected).toBeFalsy();
-    expect(getByLabelText("More").props.accessibilityState?.selected).toBeFalsy();
+    expect(getByLabelText("Progress").props.accessibilityState?.selected).toBeFalsy();
   });
 
   it("emits tabPress on tap and navigates to the route (un-focused tap)", () => {

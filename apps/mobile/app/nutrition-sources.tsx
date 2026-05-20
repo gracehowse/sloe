@@ -79,7 +79,7 @@ export default function NutritionSourcesScreen() {
         },
         backText: { color: colors.text, fontSize: 17, fontWeight: "600" },
         topTitle: { color: Accent.primary, fontSize: 13, fontWeight: "800", letterSpacing: 3 },
-        scroll: { padding: Spacing.xl, gap: Spacing.lg, paddingBottom: 60 },
+        scroll: { padding: Spacing.xl, gap: Spacing.xxl, paddingBottom: 60 },
         heading: { fontSize: 22, fontWeight: "700", color: colors.text },
         intro: { fontSize: 14, lineHeight: 22, color: colors.textSecondary },
         card: {

@@ -743,7 +743,7 @@ export default function CreateRecipeScreen() {
     },
     backText: { color: colors.text, fontSize: 17, fontWeight: "600" },
     topTitle: { color: Accent.primary, fontSize: 13, fontWeight: "800", letterSpacing: 3 },
-    scroll: { padding: Spacing.xl, gap: Spacing.lg, paddingBottom: 120 },
+    scroll: { padding: Spacing.xl, gap: Spacing.xxl, paddingBottom: 120 },
     label: { fontSize: 12, fontWeight: "700", color: colors.textTertiary, letterSpacing: 1, textTransform: "uppercase" as const },
     input: {
       backgroundColor: colors.card, borderRadius: Radius.md,

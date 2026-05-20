@@ -114,6 +114,7 @@ export function HouseholdSummaryRow() {
       style={{
         marginHorizontal: Spacing.xl,
         marginTop: Spacing.sm,
+        marginBottom: Spacing.md,
         flexDirection: "row",
         alignItems: "center",
         paddingHorizontal: Spacing.md,

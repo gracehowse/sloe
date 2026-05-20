@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Sun, BookOpen, CalendarDays, CircleUser } from 'lucide-react-native';
+import { Sun, BookOpen, CalendarDays, LineChart } from 'lucide-react-native';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { SupprTabBar } from '@/components/tabs/SupprTabBar';
@@ -31,8 +31,8 @@ import { supabase } from '@/lib/supabase';
  *  - Plan → unchanged route; planner now hosts the shopping list as a
  *    sub-tab via `<PlanSubTabHeader>` (the existing Plan/Shop toggle on
  *    web's mobile-web layout was the precedent).
- *  - You → groups Progress (default sub-tab) + Settings + More. Same
- *    sub-tab pattern as Recipes (custom highlight + sub-tab header).
+ *  - Progress → dedicated tab (`/(tabs)/progress`). Settings is
+ *    reached from the avatar on Today (and deep links), not the tab bar.
  *
  * `discover`, `progress`, `more`, `settings`, `search`, `barcode`, and
  * `notifications` remain as routable screens but are removed from the
@@ -188,29 +188,16 @@ export default function TabLayout() {
           },
         }}
       />
-      {/* More — primary tab points at Progress (the default sub-tab).
-          When on /settings or /more, the entry stays highlighted.
-          Renamed from "You" → "More" 2026-05-12 (premium-bar audit item
-          P1 + Grace approval). The tab is functionally a kitchen-sink
-          for Progress + Settings + Account; "You" read as a profile-only
-          tab and underplayed the actual surface. testID kept as
-          `tab-you` for Maestro stability across the rename. */}
+      {/* Progress — dedicated bottom-tab destination (2026-05-19 IA).
+          Settings lives behind the Today header avatar, not here.
+          testID stays `tab-you` for Maestro stability. */}
       <Tabs.Screen
         name="progress"
         options={{
-          title: 'More',
-          tabBarIcon: ({ color }) => <CircleUser size={22} color={color} strokeWidth={2} />,
-          tabBarAccessibilityLabel: 'More',
+          title: 'Progress',
+          tabBarIcon: ({ color }) => <LineChart size={22} color={color} strokeWidth={2} />,
+          tabBarAccessibilityLabel: 'Progress',
           tabBarButtonTestID: 'tab-you',
-        }}
-        listeners={{
-          tabPress: (e) => {
-            // Pressing More while on /settings returns to /progress.
-            if (pathname.startsWith('/settings')) {
-              e.preventDefault();
-              router.replace('/(tabs)/progress' as never);
-            }
-          },
         }}
       />
       {/* Hidden routes — accessible via deep links and sub-tab pills,

@@ -1748,7 +1748,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                 label: "Sugar",
                 cur: scaledMicros.sugarG,
                 tgt: REF_SUGAR_G,
-                color: "#6c8cff",
+                color: "var(--primary)",
                 unit: "g",
               },
               sodium: {

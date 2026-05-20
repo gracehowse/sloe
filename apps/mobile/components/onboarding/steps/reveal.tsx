@@ -192,7 +192,7 @@ export function MobileRevealStep() {
             <Defs>
               <SvgLinearGradient id="reveal-grad" x1="0" y1="0" x2="1" y2="1">
                 <Stop offset="0" stopColor={Accent.primaryLight} />
-                <Stop offset="1" stopColor={MacroColors.fat} />
+                <Stop offset="1" stopColor={Accent.primary} />
               </SvgLinearGradient>
             </Defs>
             <Circle

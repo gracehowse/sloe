@@ -148,8 +148,13 @@ function DailyRing({
       : isOverBudget
         ? RING_LABELS.over
         : RING_LABELS.remaining;
-  const centerValueColor = isOverBudget ? "var(--destructive)" : undefined;
-  const centerLabelColor = isOverBudget ? "var(--destructive)" : undefined;
+  const isEmpty = consumed === 0 || target <= 0;
+  const centerValueColor = isEmpty
+    ? undefined
+    : isOverBudget
+      ? "var(--destructive)"
+      : "var(--success)";
+  const centerLabelColor = centerValueColor;
   // Premium-feel papercut #2 (audit 2026-04-29): empty-state ring
   // dominated Today's first impression. Soft-mode the centre when
   // consumed is exactly 0 so the suggestion card + macro tiles can
@@ -166,7 +171,6 @@ function DailyRing({
   // the same input — cross-platform contradiction. Both platforms now
   // fall into the calibrating-empty state until a profile target is
   // set.
-  const isEmpty = consumed === 0 || target <= 0;
 
   // Tween the displayed centre value over 800ms / cubic-out — same
   // curve as the SVG ring sweep so the number and arc finish
@@ -205,48 +209,15 @@ function DailyRing({
         viewBox={`0 0 ${size} ${size}`}
         className="-rotate-90"
       >
-        {/* Brand gradient — same indigo→pink stops as the mobile
-            CalorieRing (`apps/mobile/components/charts/CalorieRing.tsx`)
-            and the onboarding reveal ring. Audit 2026-04-30 ui-critic
-            flagged that the solid green ring read as functional rather
-            than aesthetic. Pulling the gradient onto web closes the
-            cross-platform visual-language gap. Over-budget keeps the
-            destructive solid colour so the "you went over" signal stays
-            unambiguous. Stops use the literal hex from `Accent.primaryLight`
-            (#6c8cff) → `MacroColors.fat` (#e04888). */}
-        <defs>
-          <linearGradient id="daily-ring-gradient" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="#6c8cff" />
-            <stop offset="1" stopColor="#e04888" />
-          </linearGradient>
-        </defs>
-        {/* Main calorie ring track. Empty state (consumed=0,
-            displayMode="consumed") draws the track with the brand
-            gradient at low opacity so the brand is always present;
-            mirrors mobile `CalorieRing.tsx` ~L298-306. */}
         <circle
           cx={cx}
           cy={cx}
           r={radius}
           fill="none"
-          stroke={isEmpty ? "url(#daily-ring-gradient)" : "var(--ring-bg)"}
+          stroke="var(--ring-bg)"
           strokeWidth={strokeWidth}
-          opacity={isEmpty ? 0.18 : 1}
+          opacity={isEmpty ? 0.35 : 1}
         />
-        {/* Main calorie ring progress.
-            Three-state colour mapping (Grace 2026-05-05 audit feedback —
-            supersedes Build 41 two-state):
-              1. Empty (consumed === 0) → brand gradient at full opacity
-              2. Logged-and-under (0 < consumed <= target) → `--success`
-              3. Logged-and-over (consumed > target) → `--warning`
-                 (matches the centre digit, which already flips to
-                 `--warning` when over via centerValueColor above).
-
-            Build 41's mapping had under = gradient + over = green which
-            inverted the cue: a user who'd gone OVER saw a green ring
-            while the centre digit read amber, and a user who'd logged
-            UNDER saw the welcome gradient as if they hadn't started.
-            Mirrored in mobile `CalorieRing.tsx`. */}
         <circle
           cx={cx}
           cy={cx}
@@ -254,7 +225,7 @@ function DailyRing({
           fill="none"
           stroke={
             isEmpty
-              ? "url(#daily-ring-gradient)"
+              ? "var(--ring-bg)"
               : isOverBudget
                 ? "var(--destructive)"
                 : "var(--success)"
@@ -331,14 +302,14 @@ function DailyRing({
                 NOT masked (generic UI string). See
                 `docs/operations/session-replay-masking-audit.md`. */}
             <span
-              className="tabular-nums font-bold leading-none transition-[font-size] duration-300 text-foreground ph-mask"
+              className="tabular-nums font-bold leading-none transition-[font-size] duration-300 ph-mask"
               style={{
                 // Grace 2026-05-05: 4-digit values like "1,516" at 22px
                 // bold overlapped the innermost macro ring band; drop
                 // expanded to 18px so 4–5 char values fit. Mirrors mobile
                 // CalorieRing.tsx.
                 fontSize: expanded ? "18px" : "var(--text-display)",
-                color: centerValueColor,
+                color: centerValueColor ?? "var(--foreground)",
               }}
             >
               {animatedCenterValue.toLocaleString()}

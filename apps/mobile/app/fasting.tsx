@@ -5,12 +5,7 @@ import { useSafeBack } from "@/hooks/use-safe-back";
 import { Ionicons } from "@expo/vector-icons";
 import { Timer } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
-import Svg, {
-  Circle,
-  Defs,
-  LinearGradient as SvgLinearGradient,
-  Stop,
-} from "react-native-svg";
+import Svg, { Circle } from "react-native-svg";
 import Animated, {
   useSharedValue,
   useAnimatedProps,
@@ -18,7 +13,7 @@ import Animated, {
   Easing,
 } from "react-native-reanimated";
 
-import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
+import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
@@ -453,46 +448,27 @@ export default function FastingScreen() {
           </View>
         </View>
       ) : (
-      /* Timer ring — 2026-04-30 audit visual-qa P1 #5: brand
-          gradient stroke (matches onboarding reveal + Today calorie
-          ring) so Fasting reads as part of the same premium visual
-          language, not a separate MVP feature. */
       <View style={[styles.card, { alignItems: "center" }]}>
         <View style={{ width: RING_SIZE, height: RING_SIZE, alignItems: "center", justifyContent: "center" }}>
           <Svg width={RING_SIZE} height={RING_SIZE} style={{ position: "absolute" }}>
-            <Defs>
-              <SvgLinearGradient id="fasting-grad" x1="0" y1="0" x2="1" y2="1">
-                <Stop offset="0" stopColor={Accent.primaryLight} />
-                <Stop offset="1" stopColor={MacroColors.fat} />
-              </SvgLinearGradient>
-            </Defs>
-            {/* Zero / near-zero state previously showed a flat grey
-                track + a tiny rounded arc-cap that read as a magenta
-                dot at 12 o'clock (audit 2026-04-30 ui-critic A2: "looks
-                like a UI bug"). Fix: when the user is not actively
-                fasting (idle) OR is < 0.5% in (~ first 5 min of a 16h
-                fast), tint the track itself with the gradient at low
-                opacity so the brand reads as always-present, and skip
-                the rounded cap on the progress arc until it has enough
-                length to render as an arc rather than a dot. */}
             {(() => {
-              const showGradientTrack = !isFasting || pct < 0.005;
+              const idleTrack = !isFasting || pct < 0.005;
               return (
                 <>
                   <Circle
                     cx={RING_SIZE / 2}
                     cy={RING_SIZE / 2}
                     r={R}
-                    stroke={showGradientTrack ? "url(#fasting-grad)" : colors.border}
+                    stroke={colors.border}
                     strokeWidth={STROKE}
                     fill="none"
-                    opacity={showGradientTrack ? 0.18 : 1}
+                    opacity={idleTrack ? 0.35 : 1}
                   />
                   <AnimatedCircle
                     cx={RING_SIZE / 2}
                     cy={RING_SIZE / 2}
                     r={R}
-                    stroke={isComplete ? Accent.success : "url(#fasting-grad)"}
+                    stroke={isComplete ? Accent.success : Accent.primary}
                     strokeWidth={STROKE}
                     fill="none"
                     strokeDasharray={`${CIRC}`}

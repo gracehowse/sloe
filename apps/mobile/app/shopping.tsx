@@ -45,7 +45,8 @@ import {
 import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
-import { PlanSubTabHeader } from "@/components/tabs/PlanSubTabHeader";
+import { PlanTabChrome } from "@/components/tabs/PlanTabChrome";
+import { Layout } from "@/constants/layout";
 
 type ShoppingItem = {
   id: string;
@@ -439,7 +440,12 @@ export default function ShoppingListScreen() {
 
   const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    scroll: { paddingHorizontal: Spacing.xl, paddingBottom: 100, gap: Spacing.lg },
+    scroll: {
+      paddingHorizontal: Layout.screenPaddingX,
+      paddingTop: Spacing.md,
+      paddingBottom: Layout.screenPaddingBottom,
+      gap: Layout.screenGap,
+    },
     centered: { flex: 1, justifyContent: "center", alignItems: "center", paddingTop: 100 },
 
     headerRow: {
@@ -653,8 +659,9 @@ export default function ShoppingListScreen() {
       testID="screen-shopping"
       style={[styles.container, { paddingTop: insets.top }]}
     >
-      <PlanSubTabHeader
+      <PlanTabChrome
         value="shopping"
+        title="Shopping list"
         shoppingUncheckedCount={uncheckedCount}
         onChange={(next) => {
           if (next === "plan") {
@@ -663,12 +670,7 @@ export default function ShoppingListScreen() {
         }}
       />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        {/* Header */}
-        <View style={styles.headerRow}>
-          <Pressable onPress={goBack} hitSlop={12}>
-            <Text style={styles.backBtn}>‹</Text>
-          </Pressable>
-          <Text style={styles.headerTitle}>Shopping list</Text>
+        <View style={[styles.headerRow, { justifyContent: "flex-end" }]}>
           {items.length > 0 ? (
             <View style={{ flexDirection: "row", gap: Spacing.md }}>
               <Pressable hitSlop={12} onPress={exportList}>

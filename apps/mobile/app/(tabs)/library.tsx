@@ -45,7 +45,7 @@ import {
   type LibraryFilterPillId,
 } from "@suppr/shared/recipes/libraryFilters";
 import { classifyLibraryEntry } from "@suppr/shared/recipes/libraryEntryKind";
-import { RecipesSubTabHeader } from "@/components/tabs/RecipesSubTabHeader";
+import { RecipesTabChrome } from "@/components/tabs/RecipesTabChrome";
 import { CreateRecipeActionSheet } from "@/components/recipe/CreateRecipeActionSheet";
 // GW-08 (audit 2026-04-28): `TrustChip` + `recipeLevelTrust` imports
 // dropped — Library cards no longer render the chip; see the comment
@@ -244,23 +244,12 @@ export default function LibraryScreen() {
     // small uppercase overline + 28pt bold title in a vertical
     // block, with sort/create controls + count moved to a
     // secondary row below.
-    headerBlock: {
-      paddingHorizontal: Spacing.xl,
-      paddingTop: 18,
-      paddingBottom: 4,
-    },
-    headerOverline: {
-      fontSize: 11,
-      fontWeight: "600",
-      color: colors.textTertiary,
-      letterSpacing: 1.4,
-      textTransform: "uppercase",
-    },
     headerActionsRow: {
       flexDirection: "row",
       alignItems: "center",
       gap: Spacing.sm,
       paddingHorizontal: Spacing.xl,
+      paddingTop: Spacing.md,
       paddingBottom: 14,
     },
     // Legacy topBar / backHit / titleBlock kept for any other
@@ -276,15 +265,6 @@ export default function LibraryScreen() {
     },
     backHit: { padding: 6, marginLeft: -6 },
     titleBlock: { flex: 1 },
-    headerTitle: {
-      // 2026-05-06: bumped 24 → 28 (matches Discover) + bolder
-      // (700 → 800) + tighter letter-spacing.
-      fontSize: 28,
-      fontWeight: "800",
-      color: colors.text,
-      letterSpacing: -0.6,
-      marginTop: 2,
-    },
     headerSub: {
       fontSize: 13,
       color: colors.textSecondary,
@@ -387,8 +367,8 @@ export default function LibraryScreen() {
       alignItems: "center",
     },
     filterPillActive: {
-      backgroundColor: Accent.primary + "1A",
-      borderColor: Accent.primary,
+      backgroundColor: colors.backgroundSecondary,
+      borderColor: colors.text,
     },
     filterPillText: {
       // 12/18 — matches Discover's text scale (fontSize 12) but
@@ -400,8 +380,8 @@ export default function LibraryScreen() {
       color: colors.text,
     },
     filterPillTextActive: {
-      color: Accent.primary,
-      fontWeight: "600",
+      color: colors.text,
+      fontWeight: "700",
     },
     // 2026-05-06 (Grace) — search-input wrapper that holds the
     // magnifying-glass icon next to the TextInput. Mirrors the
@@ -669,114 +649,7 @@ export default function LibraryScreen() {
       testID="screen-library"
       style={[styles.container, { paddingTop: insets.top }]}
     >
-      {/* Phase 2 / B1.1 — Recipes sub-tab pill bar (Library default,
-          Discover sibling). Lives at the top of every Recipes-group
-          screen so the user can flip without leaving the group. */}
-      <RecipesSubTabHeader />
-      {/* 2026-05-06 (Grace) — restructured to match Discover's
-          header pattern: small uppercase overline + large 28pt
-          title. Was: back-chevron + smaller title + sort/create
-          buttons inline. The sort + create controls move to a
-          compact secondary row under the title; the count subtitle
-          is preserved next to the sort cycle so all the original
-          info is reachable. */}
-      <View style={styles.headerBlock}>
-        <Text style={styles.headerOverline}>RECIPES</Text>
-        <Text style={styles.headerTitle}>Library</Text>
-      </View>
-      <View style={styles.headerActionsRow}>
-        <Text style={styles.headerSub}>
-          {/*
-            E1 (2026-05-11 visual sweep): during the initial load, this
-            subtitle was rendering "0 recipes · 0 saved" — which reads
-            as "you have no recipes" rather than "we're still loading
-            them". Show "Loading..." while the hook is fetching the
-            first page; switch to the count once data arrives.
-          */}
-          {loading && savedRecipes.length === 0
-            ? "Loading…"
-            : `${savedRecipes.length} ${savedRecipes.length === 1 ? "recipe" : "recipes"} · ${savedCount} saved`}
-        </Text>
-        <Pressable style={styles.sortBtn} onPress={cycleSort} accessibilityLabel={`Sort by ${SORT_LABELS[sortKey]}`}>
-          <ArrowUpDown size={14} color={colors.textSecondary} />
-          <Text style={styles.sortText}>{SORT_LABELS[sortKey]}</Text>
-        </Pressable>
-        <Pressable
-          style={styles.createBtn}
-          onPress={() => setCreateSheetOpen(true)}
-          accessibilityLabel="Create a new recipe"
-          accessibilityHint="Opens a sheet with paste-link, photo, or manual entry options"
-        >
-          <Plus size={14} color="#fff" />
-          <Text style={styles.createBtnText}>Create</Text>
-        </Pressable>
-      </View>
-
-      {/* Search bar — matches Discover's pattern (icon + bigger
-          input + softer card style). */}
-      <View style={styles.searchRow}>
-        <View style={styles.searchInputWrap}>
-          <SearchIcon size={16} color={colors.textTertiary} />
-          <TextInput
-            value={search}
-            onChangeText={setSearch}
-            placeholder="Search your recipes"
-            placeholderTextColor={colors.textTertiary}
-            style={styles.searchInput}
-            accessibilityLabel="Search saved recipes"
-          />
-        </View>
-      </View>
-
-      {/* Filter pill row — horizontal scroll per prototype. Combines
-          entry-kind (All / Saved / Created / Imported) + nutrition /
-          time / diet (High-Protein / Quick / Vegetarian). Single row so
-          there's no ambiguity about which filter is active. */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.filterScrollStyle}
-        contentContainerStyle={styles.filterScroll}
-      >
-        {LIBRARY_FILTER_PILLS.map((f) => {
-          const active = pill === f.id;
-          // 2026-04-30 audit visual-qa P1 #7: show counts on the
-          // entry-kind pills (All / Saved) so the user knows the
-          // size of each bucket at a glance. Other pills are
-          // filters (High-Protein / Quick / Vegetarian) and don't
-          // need counts — the filtered list itself shows what's left.
-          // E1 (2026-05-11 visual sweep): suppress the `· 0` count
-          // during initial load so the pills don't read "All · 0 /
-          // Saved · 0" before recipes arrive.
-          const isInitialLoad = loading && savedRecipes.length === 0;
-          const count =
-            isInitialLoad
-              ? null
-              : f.id === "all"
-                ? savedRecipes.length
-                : f.id === "saved"
-                  ? savedCount
-                  : null;
-          const label = count != null ? `${f.label} · ${count}` : f.label;
-          return (
-            <Pressable
-              key={f.id}
-              onPress={() => setPill(f.id)}
-              style={[styles.filterPill, active && styles.filterPillActive]}
-              accessibilityRole="button"
-              accessibilityState={{ selected: active }}
-              accessibilityLabel={`Filter: ${f.label}${count != null ? `, ${count} recipes` : ""}`}
-            >
-              <Text
-                style={[styles.filterPillText, active && styles.filterPillTextActive]}
-                maxFontSizeMultiplier={1.2}
-              >
-                {label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
+      <RecipesTabChrome />
 
       {isLoading && savedRecipes.length === 0 ? (
         <View style={styles.loadingContainer}>
@@ -790,6 +663,84 @@ export default function LibraryScreen() {
           contentContainerStyle={styles.list}
           refreshControl={
             <RefreshControl refreshing={isLoading} onRefresh={refresh} tintColor={Accent.primary} />
+          }
+          ListHeaderComponent={
+            <>
+              <View style={styles.headerActionsRow}>
+                <Text style={styles.headerSub}>
+                  {loading && savedRecipes.length === 0
+                    ? "Loading…"
+                    : `${savedRecipes.length} ${savedRecipes.length === 1 ? "recipe" : "recipes"} · ${savedCount} saved`}
+                </Text>
+                <Pressable
+                  style={styles.sortBtn}
+                  onPress={cycleSort}
+                  accessibilityLabel={`Sort by ${SORT_LABELS[sortKey]}`}
+                >
+                  <ArrowUpDown size={14} color={colors.textSecondary} />
+                  <Text style={styles.sortText}>{SORT_LABELS[sortKey]}</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.createBtn}
+                  onPress={() => setCreateSheetOpen(true)}
+                  accessibilityLabel="Create a new recipe"
+                  accessibilityHint="Opens a sheet with paste-link, photo, or manual entry options"
+                >
+                  <Plus size={14} color="#fff" />
+                  <Text style={styles.createBtnText}>Create</Text>
+                </Pressable>
+              </View>
+              <View style={styles.searchRow}>
+                <View style={styles.searchInputWrap}>
+                  <SearchIcon size={16} color={colors.textTertiary} />
+                  <TextInput
+                    value={search}
+                    onChangeText={setSearch}
+                    placeholder="Search your recipes"
+                    placeholderTextColor={colors.textTertiary}
+                    style={styles.searchInput}
+                    accessibilityLabel="Search saved recipes"
+                  />
+                </View>
+              </View>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.filterScrollStyle}
+                contentContainerStyle={styles.filterScroll}
+              >
+                {LIBRARY_FILTER_PILLS.map((f) => {
+                  const active = pill === f.id;
+                  const isInitialLoad = loading && savedRecipes.length === 0;
+                  const count =
+                    isInitialLoad
+                      ? null
+                      : f.id === "all"
+                        ? savedRecipes.length
+                        : f.id === "saved"
+                          ? savedCount
+                          : null;
+                  const label = count != null ? `${f.label} · ${count}` : f.label;
+                  return (
+                    <Pressable
+                      key={f.id}
+                      onPress={() => setPill(f.id)}
+                      style={[styles.filterPill, active && styles.filterPillActive]}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: active }}
+                      accessibilityLabel={`Filter: ${f.label}${count != null ? `, ${count} recipes` : ""}`}
+                    >
+                      <Text
+                        style={[styles.filterPillText, active && styles.filterPillTextActive]}
+                        maxFontSizeMultiplier={1.2}
+                      >
+                        {label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </>
           }
           ListEmptyComponent={
             search.trim() ? (

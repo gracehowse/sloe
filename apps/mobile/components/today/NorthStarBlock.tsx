@@ -25,7 +25,7 @@ import * as Haptics from "expo-haptics";
 // vitest shim). Mirrors `PressableScale.tsx`.
 const AnimatedView = Animated.createAnimatedComponent(View);
 
-import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
+import { Accent, IconSize, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
 
@@ -418,7 +418,7 @@ function NorthStarDefault({
                 style={{
                   fontSize: 11,
                   fontWeight: "600",
-                  color: suggestion.bandTight ? "#22a860" : colors.textSecondary,
+                  color: suggestion.bandTight ? MacroColors.calories : colors.textSecondary,
                 }}
               >
                 {suggestion.bandLabel}

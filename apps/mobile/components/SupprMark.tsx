@@ -1,30 +1,32 @@
 import * as React from "react";
 import { View, ViewStyle, StyleProp, Text } from "react-native";
-import Svg, { Rect } from "react-native-svg";
-import { Accent } from "@/constants/theme";
+import Svg, { Circle, Rect } from "react-native-svg";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
- * SupprMark — the rounded-square "S" brand mark for mobile.
+ * SupprMark — rounded-square brand mark for mobile.
  *
- * Mirrors the web component at `src/app/components/ui/suppr-mark.tsx`.
- * Always blue background with white "S" regardless of theme — matches
- * `public/logo-mark.svg` and `docs/ux/brand-guidelines.md`.
+ * 2026-05-19: Logo is black-on-cream (light) and white-on-black (dark),
+ * not brand blue. Mirrors web `suppr-mark.tsx` + `--brand-mark-*` tokens.
  */
 
 export interface SupprMarkProps {
   size?: number;
-  /** Override the background colour (defaults to brand primary). */
+  /** Override tile fill (defaults to theme background / off-white). */
   background?: string;
-  /** Override the letter colour (defaults to white). */
+  /** Override glyph / ring colour (defaults to theme brandMarkRing). */
   foreground?: string;
 }
 
 export function SupprMark({
   size = 32,
-  background = Accent.primary,
-  foreground = "#ffffff",
+  background,
+  foreground,
 }: SupprMarkProps) {
+  const colors = useThemeColors();
+  const tileBg = background ?? colors.background;
+  const glyph = foreground ?? colors.brandMarkRing;
+
   return (
     <View
       style={{ width: size, height: size }}
@@ -32,7 +34,7 @@ export function SupprMark({
       accessibilityLabel="Suppr"
     >
       <Svg width={size} height={size} viewBox="0 0 32 32">
-        <Rect width="32" height="32" rx="8" fill={background} />
+        <Rect width="32" height="32" rx="8" fill={tileBg} />
       </Svg>
       <View
         style={{
@@ -48,12 +50,11 @@ export function SupprMark({
       >
         <Text
           style={{
-            color: foreground,
+            color: glyph,
             fontSize: Math.round(size * 0.625),
             fontWeight: "800",
             letterSpacing: -0.5,
             includeFontPadding: false,
-            // Slight optical lift to match web SVG baseline.
             marginTop: -Math.round(size * 0.04),
           }}
         >
@@ -78,6 +79,67 @@ export function SupprWordmark({ size = 28, style }: SupprWordmarkProps) {
       style={[{ flexDirection: "row", alignItems: "center", gap: 10 }, style]}
     >
       <SupprMark size={size} />
+      <Text
+        style={{
+          color: colors.text,
+          fontSize: Math.round(size * 0.64),
+          fontWeight: "700",
+          letterSpacing: -0.4,
+          includeFontPadding: false,
+        }}
+      >
+        Suppr
+      </Text>
+    </View>
+  );
+}
+
+/** Empty-plate mark — concentric rings on cream / black tile. */
+export function SupprPlateMark({ size = 32, background, foreground }: SupprMarkProps) {
+  const colors = useThemeColors();
+  const tileBg = background ?? colors.background;
+  const ring = foreground ?? colors.brandMarkRing;
+
+  return (
+    <View
+      style={{ width: size, height: size }}
+      accessibilityRole="image"
+      accessibilityLabel="Suppr"
+    >
+      <Svg width={size} height={size} viewBox="0 0 32 32">
+        <Rect width="32" height="32" rx="8" fill={tileBg} />
+        <Circle
+          cx="16"
+          cy="16"
+          r="9.5"
+          stroke={ring}
+          strokeWidth="2"
+          fill="none"
+          opacity={0.95}
+        />
+        <Circle
+          cx="16"
+          cy="16"
+          r="5.5"
+          stroke={ring}
+          strokeWidth="1"
+          fill="none"
+          opacity={0.35}
+        />
+      </Svg>
+    </View>
+  );
+}
+
+export function SupprPlateWordmark({ size = 28, style }: SupprWordmarkProps) {
+  const colors = useThemeColors();
+  return (
+    <View
+      accessibilityRole="image"
+      accessibilityLabel="Suppr"
+      style={[{ flexDirection: "row", alignItems: "center", gap: 10 }, style]}
+    >
+      <SupprPlateMark size={size} />
       <Text
         style={{
           color: colors.text,

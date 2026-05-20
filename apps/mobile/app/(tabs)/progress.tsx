@@ -29,6 +29,8 @@ import { AppleHealthCard, type AppleHealthCardStatus } from "@/components/AppleH
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
+import { Layout } from "@/constants/layout";
+import { ProgressTabChrome } from "@/components/tabs/ProgressTabChrome";
 import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { dateKeyFromDate, type ByDay } from "@/lib/nutritionJournal";
@@ -108,7 +110,6 @@ import {
   weightKgByDayToPoints,
   type WeightRange,
 } from "@/lib/progress/weightTrend";
-import { YouSubTabHeader } from "@/components/tabs/YouSubTabHeader";
 
 /* ── Helpers ── */
 function parseNumMap(raw: unknown): Record<string, number> {
@@ -837,49 +838,43 @@ export default function ProgressScreen() {
 
   const hasData = Object.keys(byDay).length > 0;
 
+  const progressScrollStyle = {
+    paddingTop: Spacing.md,
+    paddingHorizontal: Layout.screenPaddingX,
+    paddingBottom: insets.bottom + Spacing.xl,
+  };
+
+  const progressLogWeightButton = (
+    <Pressable
+      testID="progress-calendar-button"
+      accessibilityRole="button"
+      accessibilityLabel="Log weight"
+      onPress={() => setLogWeightOpen(true)}
+      style={({ pressed }) => [{
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: t.elevated,
+        borderWidth: 1,
+        borderColor: t.border,
+        alignItems: "center",
+        justifyContent: "center",
+        opacity: pressed ? 0.7 : 1,
+      }]}
+    >
+      <Scale size={16} color={t.text} strokeWidth={1.75} />
+    </Pressable>
+  );
+
   if (loading) {
     return (
       <View style={{ flex: 1, backgroundColor: t.bg, paddingTop: insets.top }}>
-        {/* Phase 2 / B1.1 — You sub-tab pill bar (Progress default,
-            Settings + More siblings). */}
-        <YouSubTabHeader />
+      <ProgressTabChrome overline={rangeLabel} trailing={progressLogWeightButton} />
       <ScrollView
         style={{ flex: 1, backgroundColor: t.bg }}
-        contentContainerStyle={{ paddingTop: 18, paddingHorizontal: 20, paddingBottom: insets.bottom + 20 }}
+        contentContainerStyle={progressScrollStyle}
         testID="progress-skeleton"
       >
-        {/* Header chrome — same position as post-load render so the
-            layout doesn't jump when data arrives. 2026-04-20 prototype
-            port: uppercase overline + large "Progress" title + round
-            calendar-icon button top-right. Pill calendar button is a
-            no-op during load — it becomes interactive once data lands. */}
-        <View
-          testID="progress-header"
-          style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}
-        >
-          <View>
-            <Text testID="progress-overline" style={{ fontSize: 11, color: t.dim, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.8 }}>{rangeLabel}</Text>
-            <Text style={{ fontSize: 28, fontWeight: "700", color: t.text, letterSpacing: -0.6, marginTop: 2 }}>Progress</Text>
-          </View>
-          <View
-            accessible
-            accessibilityRole="button"
-            accessibilityLabel="Open calendar"
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              backgroundColor: t.elevated,
-              borderWidth: 1,
-              borderColor: t.border,
-              alignItems: "center",
-              justifyContent: "center",
-              opacity: 0.6,
-            }}
-          >
-            <CalendarDays size={16} color={t.sub} strokeWidth={1.75} />
-          </View>
-        </View>
         {/* Range-picker pills — disabled-look during load so the
             skeleton doesn't look interactive. */}
         <View
@@ -947,50 +942,12 @@ export default function ProgressScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: t.bg, paddingTop: insets.top }}>
-      {/* Phase 2 / B1.1 — You sub-tab pill bar (Progress default,
-          Settings + More siblings). */}
-      <YouSubTabHeader />
-    <ScrollView style={{ flex: 1, backgroundColor: t.bg }} contentContainerStyle={{ paddingTop: 18, paddingHorizontal: 20, paddingBottom: insets.bottom + 20 }} keyboardShouldPersistTaps="handled">
-      {/* Header — 2026-04-20 Claude Design prototype port.
-          Uppercase overline reflects the currently-selected range,
-          large "Progress" title (28pt / -0.6 tracking), round
-          icon button top-right.
-
-          Debug audit 2026-05-04 (visual-qa P1): the icon was
-          `CalendarDays` routing to /weight-tracker — a calendar glyph
-          that opens a weight log is a false affordance. Until a
-          dedicated date-range picker is built, the icon now matches
-          its destination (`Scale`) so the user gets what the icon
-          promises. */}
-      <View
-        testID="progress-header"
-        style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}
-      >
-        <View>
-          <Text testID="progress-overline" style={{ fontSize: 11, color: t.dim, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.8 }}>{rangeLabel}</Text>
-          <Text style={{ fontSize: 28, fontWeight: "700", color: t.text, letterSpacing: -0.6, marginTop: 2 }}>Progress</Text>
-        </View>
-        <Pressable
-          testID="progress-calendar-button"
-          accessibilityRole="button"
-          accessibilityLabel="Log weight"
-          onPress={() => setLogWeightOpen(true)}
-          style={({ pressed }) => [{
-            width: 36,
-            height: 36,
-            borderRadius: 18,
-            backgroundColor: t.elevated,
-            borderWidth: 1,
-            borderColor: t.border,
-            alignItems: "center",
-            justifyContent: "center",
-            opacity: pressed ? 0.7 : 1,
-          }]}
-        >
-          <Scale size={16} color={t.text} strokeWidth={1.75} />
-        </Pressable>
-      </View>
-
+    <ProgressTabChrome overline={rangeLabel} trailing={progressLogWeightButton} />
+    <ScrollView
+      style={{ flex: 1, backgroundColor: t.bg }}
+      contentContainerStyle={progressScrollStyle}
+      keyboardShouldPersistTaps="handled"
+    >
       {/* HouseholdBar — 2026-04-20 prototype port. Appears between
           the header and the range-picker pills for household users;
           hidden otherwise (mirror of `screens-mobile.jsx` L580). */}

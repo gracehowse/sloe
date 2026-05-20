@@ -88,12 +88,10 @@ export function TodayHeroRing({
         borderWidth: 1,
         borderColor: borderColor,
         borderRadius: Radius.lg,
-        // F-60 (2026-04-22): xl(20) → md(12) to tighten the card
-        // vertical rhythm after the ring itself shrank 160 → 140.
-        paddingVertical: Spacing.md,
-        paddingHorizontal: Spacing.lg,
+        paddingVertical: Spacing.lg,
+        paddingHorizontal: Spacing.xl,
         alignItems: "center",
-        gap: Spacing.md,
+        gap: Spacing.lg,
       }}
     >
       <CalorieRing

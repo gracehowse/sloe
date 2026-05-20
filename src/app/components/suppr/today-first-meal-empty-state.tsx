@@ -33,7 +33,7 @@ export function TodayFirstMealEmptyState({
     <section
       role="region"
       aria-label="Ready to log your first meal?"
-      className="mb-4 flex flex-col items-center gap-2 rounded-card border border-border bg-card p-4 text-center"
+      className="mb-6 flex flex-col items-center gap-3 rounded-card border border-border bg-card p-5 text-center"
     >
       <h2 className="text-base font-bold text-foreground">
         Ready to log your first meal?

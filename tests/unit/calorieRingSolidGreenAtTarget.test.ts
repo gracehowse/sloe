@@ -1,25 +1,11 @@
 /**
- * Three-state ring colour mapping (Grace 2026-05-05 audit feedback) —
- * structural-pin test for the calorie ring stroke logic on web + mobile.
+ * Three-state ring colour mapping — structural pins for calorie rings.
  *
- * Supersedes the Build 41 two-state mapping (gradient-while-progressing,
- * solid-green-from-target-onward), which inverted the visual cue: a
- * user who'd gone OVER target saw a green ring while the centre digit
- * read destructive/warning, and a user who'd logged UNDER target saw
- * the welcome gradient as if they hadn't started yet.
+ *   1. Empty (consumed === 0) → neutral track (no blue→pink gradient).
+ *   2. Logged-and-under → solid green (`Accent.success` / `--success`).
+ *   3. Logged-and-over → solid red (`Accent.destructive` / `--destructive`).
  *
- * Three states the ring stroke must distinguish:
- *   1. Empty (consumed === 0) → brand gradient. "Welcome / haven't
- *      started yet."
- *   2. Logged-and-under (0 < consumed <= goal) → `Accent.success` /
- *      `var(--success)` solid green. "Logging, on track."
- *   3. Logged-and-over (consumed > goal) → `Accent.destructive` /
- *      `var(--destructive)` solid red. "Over budget." Matches the
- *      centre-digit colour, which already flips when over.
- *
- * This file pins the structural wiring on both platforms so a future
- * refactor that re-introduces always-gradient or two-state branching
- * fails CI. Source-grep style mirrors `foodSearchFatSecretMerge.test.ts`.
+ * Centre net number + label mirror the ring stroke when logged.
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -38,44 +24,38 @@ const MOBILE_SRC = readFileSync(MOBILE_PATH, "utf8");
 const WEB_SRC = readFileSync(WEB_PATH, "utf8");
 
 describe("Three-state ring — mobile CalorieRing", () => {
-  it("empty → gradient, over → destructive, under → success", () => {
+  it("logged → over destructive, under success (no gradient stroke)", () => {
+    expect(MOBILE_SRC).toMatch(/ringStateColor = isOver \? Accent\.destructive : Accent\.success/);
     expect(MOBILE_SRC).toMatch(
-      /stroke=\{[\s\S]*?isEmpty[\s\S]*?\?\s*"url\(#calorie-ring-gradient\)"[\s\S]*?:\s*consumed > goal && goal > 0[\s\S]*?\?\s*Accent\.destructive[\s\S]*?:\s*Accent\.success[\s\S]*?\}/,
+      /stroke=\{[\s\S]*?isEmpty[\s\S]*?\? trackColor[\s\S]*?: ringStateColor/,
     );
   });
 
-  it("does NOT use the old Build 41 two-state mapping (success-when-at-or-above-goal)", () => {
-    expect(MOBILE_SRC).not.toMatch(
-      /stroke=\{consumed >= goal && goal > 0\s*\?\s*Accent\.success\s*:\s*"url\(#calorie-ring-gradient\)"\}/,
-    );
+  it("centre number uses ringStateColor when logged", () => {
+    expect(MOBILE_SRC).toMatch(/color: ringStateColor/);
   });
 
-  it("retains the brand gradient definition so the empty-state stroke still uses it", () => {
-    expect(MOBILE_SRC).toMatch(/id="calorie-ring-gradient"/);
-    expect(MOBILE_SRC).toMatch(/Accent\.primaryLight/);
-    expect(MOBILE_SRC).toMatch(/MacroColors\.fat/);
+  it("does NOT use the blue→pink brand gradient on the Today ring", () => {
+    expect(MOBILE_SRC).not.toMatch(/calorie-ring-gradient/);
+    expect(MOBILE_SRC).not.toMatch(/SvgLinearGradient/);
   });
 });
 
 describe("Three-state ring — web DailyRing", () => {
-  it("empty → gradient, over → destructive, under → success", () => {
+  it("logged → over destructive, under success (no gradient stroke)", () => {
     expect(WEB_SRC).toMatch(
-      /stroke=\{[\s\S]*?isEmpty[\s\S]*?\?\s*"url\(#daily-ring-gradient\)"[\s\S]*?:\s*isOverBudget[\s\S]*?\?\s*"var\(--destructive\)"[\s\S]*?:\s*"var\(--success\)"[\s\S]*?\}/,
+      /stroke=\{[\s\S]*?isEmpty[\s\S]*?"var\(--ring-bg\)"[\s\S]*?: isOverBudget[\s\S]*?\?\s*"var\(--destructive\)"[\s\S]*?:\s*"var\(--success\)"/,
     );
   });
 
-  it("does NOT use the old Build 41 two-state mapping (success-when-at-or-above-target)", () => {
-    expect(WEB_SRC).not.toMatch(
-      /stroke=\{consumed >= target && target > 0\s*\?\s*"var\(--success\)"\s*:\s*"url\(#daily-ring-gradient\)"\}/,
+  it("centre number is green or red when logged", () => {
+    expect(WEB_SRC).toMatch(
+      /centerValueColor = isEmpty[\s\S]*\?\s*undefined[\s\S]*?: isOverBudget[\s\S]*\?\s*"var\(--destructive\)"[\s\S]*?:\s*"var\(--success\)"/,
     );
   });
 
-  it("retains the brand gradient definition so the empty-state stroke still uses it", () => {
-    expect(WEB_SRC).toMatch(/id="daily-ring-gradient"/);
-    // Stops use the literal hex from `Accent.primaryLight` →
-    // `MacroColors.fat`. Preserve so a colour migration fails this
-    // pin instead of silently shipping a different gradient.
-    expect(WEB_SRC).toMatch(/stopColor="#6c8cff"/);
-    expect(WEB_SRC).toMatch(/stopColor="#e04888"/);
+  it("does NOT use the blue→pink brand gradient on the Today ring", () => {
+    expect(WEB_SRC).not.toMatch(/daily-ring-gradient/);
+    expect(WEB_SRC).not.toMatch(/#e04888/);
   });
 });

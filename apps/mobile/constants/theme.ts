@@ -19,11 +19,14 @@ export const Accent = {
    * onboarding to match the rest of the app + web.
    */
   primaryForeground: '#ffffff',
-  primaryLight: '#6c8cff',
-  success: '#22a860',
-  successLight: '#4cd080',
-  warning: '#e8a020',
-  warningLight: '#ffc04c',
+  /** Lifted periwinkle — dark-mode primary, sugar macro, selected tabs. */
+  primaryLight: '#7a90f5',
+  /** Leaf green — confirmations, calorie ring under-target. */
+  success: '#62b35a',
+  successLight: '#82d878',
+  /** Golden amber (abstract art / breakfast slot); not yellow-neon. */
+  warning: '#e0a838',
+  warningLight: '#f0c058',
   destructive: '#e04848',
   destructiveLight: '#ff6c6c',
   cyan: '#06b6d4',
@@ -31,16 +34,12 @@ export const Accent = {
   magenta: '#e04888',
   /** Info / carbs-style accent (aligned with web macro-carbs tone where needed) */
   info: '#0ea5e9',
-  /** 2026-05-12 (premium-bar audit DC10 follow-through): carbs gets a
-   *  dedicated warm-orange hue. Amber (`warning`) is now reserved for
-   *  over-budget warnings only. Previously `MacroColors.carbs` collapsed
-   *  onto `warning`, which made an over-budget amber bar look identical
-   *  to a normal carbs bar. Light: #ed6b2a (deep warm orange, hue 16°);
-   *  dark: #ff9054 (lighter warm orange so it still pops on dark
-   *  backgrounds). Distinct from `orange` (#f97316, tailwind-500) which
-   *  is reserved for sodium drill-downs in the micros panel. */
-  carbs: '#ed6b2a',
-  carbsLight: '#ff9054',
+  /** Muted yellow-orange carbs — distinct from warning amber (#e0a838). */
+  carbs: '#d4a02f',
+  carbsLight: '#e2b84c',
+  /** Dusty blue-teal fibre — distinct hue from success/calories sage. */
+  fiber: '#4a7878',
+  fiberLight: '#5c8f8b',
 };
 
 /**
@@ -68,7 +67,7 @@ export const StimulantColors = {
 
 /** Macro-specific colors — aligned with web --macro-* CSS custom properties */
 export const MacroColors = {
-  calories: Accent.success,       // web: --macro-calories (#22a860)
+  calories: Accent.success,       // web: --macro-calories (#62b35a)
   protein: Accent.primary,        // web: --macro-protein  (#4c6ce0)
   // 2026-05-12 (premium-bar audit DC10): carbs split from
   // `Accent.warning` (amber) → `Accent.carbs` (warm orange). Amber is
@@ -76,7 +75,7 @@ export const MacroColors = {
   // comment in theme.ts for the hue rationale.
   carbs: Accent.carbs,            // web: --macro-carbs    (#ed6b2a)
   fat: Accent.magenta,            // web: --macro-fat      (#e04888)
-  fiber: Accent.success,
+  fiber: Accent.fiber,
   sugar: Accent.primaryLight,
   sodium: Accent.orange,
   water: Accent.cyan,
@@ -140,80 +139,85 @@ export const Brand = {
  */
 export const Colors = {
   light: {
-    text: '#111118',                // ↔ web --foreground
-    textSecondary: '#475569',
-    textTertiary: '#94a3b8',
-    background: '#f4f5f7',          // ↔ web --bg (prototype tint)
-    backgroundSecondary: '#f8fafc',
+    text: '#1c1916',                // ↔ web --foreground (warm ink)
+    textSecondary: '#5e574e',
+    textTertiary: '#8c8378',
+    background: '#f6f3ee',          // ↔ web --background (warm cream)
+    backgroundSecondary: '#f0ebe3',
     card: '#ffffff',                // ↔ web --card (pure white boxes)
-    cardBorder: '#e4e4ec',          // ↔ web --border
-    border: '#e4e4ec',              // ↔ web --border
+    cardBorder: '#ddd5c8',          // ↔ web --border (warm stone)
+    border: '#ddd5c8',
     tint: Accent.primary,
-    icon: '#6b6b78',                // ↔ web --fg-muted
-    tabIconDefault: '#94a3b8',
+    icon: '#5e574e',                // ↔ web --muted-foreground
+    tabIconDefault: '#a39a8f',
     tabIconSelected: Accent.primary,
-    inputBg: '#ededf2',             // ↔ web --input-background
+    inputBg: '#ebe5dc',             // ↔ web --input-background
     overlay: '#00000088',
     /** Production design spec §1.6 source / provenance dots. Mirrors web
      *  --source-* tokens. */
-    sourceUsda: '#22a860',
+    sourceUsda: '#62b35a',
     sourceOff: '#4c6ce0',
     sourceFatsecret: '#f97316',
-    sourceManual: '#94a3b8',
+    sourceManual: '#8c8378',
     sourceAi: '#e04888',
-    confidenceNeutral: '#94a3b8',
+    confidenceNeutral: '#8c8378',
     /** Production design spec §1.4 north-star + over-budget tokens. */
-    northStarBgFrom: 'rgba(76, 108, 224, 0.08)',
-    northStarBgTo: 'rgba(224, 72, 136, 0.04)',
-    northStarBorder: 'rgba(76, 108, 224, 0.18)',
-    overBudgetFg: '#e8a020',
-    overBudgetSoft: 'rgba(232, 160, 32, 0.08)',
+    northStarBgFrom: 'rgba(76, 108, 224, 0.10)',
+    northStarBgTo: 'rgba(224, 72, 136, 0.05)',
+    northStarBorder: 'rgba(76, 108, 224, 0.22)',
+    overBudgetFg: '#e0a838',
+    overBudgetSoft: 'rgba(224, 168, 56, 0.08)',
     /** Foreground tokens that previously lived only in CSS — wired
      *  here so RN consumers can stop hardcoding `#fff`. */
     destructiveForeground: '#ffffff',
     primaryForeground: '#ffffff',
+    /** Logo plate — black rings on cream (not brand blue). */
+    brandMarkRing: '#1c1916',
   },
   dark: {
-    text: '#e4e4e8',                // ↔ web --foreground (dark)
-    textSecondary: '#94a3b8',
-    textTertiary: '#64748b',
+    text: '#e8e7ed',                // ↔ web --foreground (dark)
+    textSecondary: '#a8a4b4',
+    textTertiary: '#706c7c',
     background: '#0a0a0f',          // intentional divergence — OLED-friendly
     backgroundSecondary: '#111118',
     card: '#16161e',                // intentional — sits on OLED-black bg
-    cardBorder: '#282830',          // ↔ web --border (dark)
-    border: '#282830',              // ↔ web --border (dark)
+    cardBorder: '#32313c',          // ↔ web --border (dark)
+    border: '#32313c',
     tint: Accent.primaryLight,
-    icon: '#7a7a88',                // ↔ web --fg-muted (dark)
-    tabIconDefault: '#4a4a5a',
+    icon: '#9490a0',                // ↔ web --muted-foreground (dark)
+    tabIconDefault: '#5c5868',
     tabIconSelected: Accent.primaryLight,
-    inputBg: '#202028',             // ↔ web --input-background (dark)
+    inputBg: '#222028',             // ↔ web --input-background (dark)
     overlay: '#000000aa',
     /** Source / provenance dots — dark. Lifted hues for OLED contrast. */
-    sourceUsda: '#4cd080',
-    sourceOff: '#6c8cff',
+    sourceUsda: '#82d878',
+    sourceOff: '#7a90f5',
     sourceFatsecret: '#fb923c',
-    sourceManual: '#64748b',
+    sourceManual: '#706c7c',
     sourceAi: '#ff7eb3',
-    confidenceNeutral: '#64748b',
+    confidenceNeutral: '#706c7c',
     /** North-star + over-budget — dark. Visual-qa V-1 to A/B saturation. */
-    northStarBgFrom: 'rgba(108, 140, 255, 0.14)',
-    northStarBgTo: 'rgba(255, 126, 179, 0.08)',
-    northStarBorder: 'rgba(108, 140, 255, 0.32)',
-    overBudgetFg: '#ffc04c',
-    overBudgetSoft: 'rgba(255, 192, 76, 0.14)',
+    northStarBgFrom: 'rgba(122, 144, 245, 0.16)',
+    northStarBgTo: 'rgba(255, 126, 179, 0.09)',
+    northStarBorder: 'rgba(122, 144, 245, 0.36)',
+    overBudgetFg: '#f0c058',
+    overBudgetSoft: 'rgba(240, 192, 88, 0.14)',
     destructiveForeground: '#ffffff',
     primaryForeground: '#ffffff',
+    brandMarkRing: '#ffffff',
   },
 };
 
+/** 4px grid — 2026-05-19 premium rhythm bump (Noom/Lifesum airy feel).
+ *  xs/sm unchanged for tight in-row gaps; md+ lifted ~4–8px. */
 export const Spacing = {
   xs: 4,
   sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 20,
-  xxl: 24,
-  xxxl: 32,
+  md: 16,
+  lg: 20,
+  xl: 24,
+  xxl: 32,
+  xxxl: 40,
 };
 
 export const Radius = {
@@ -283,9 +287,9 @@ export const Type = {
  */
 export const Elevation = {
   card: {
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
+    shadowColor: '#1c1916',
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
     shadowOffset: { width: 0, height: 1 },
     elevation: 1,
   },
@@ -306,7 +310,7 @@ export const Elevation = {
   /** FAB tint — primary-blue glow underneath. */
   floatPrimary: {
     shadowColor: Accent.primary,
-    shadowOpacity: 0.4,
+    shadowOpacity: 0.45,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 4 },
     elevation: 8,

@@ -2,13 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import * as Haptics from "expo-haptics";
 import { PostHogMaskView } from "posthog-react-native";
-import Svg, {
-  Circle,
-  Defs,
-  G,
-  LinearGradient as SvgLinearGradient,
-  Stop,
-} from "react-native-svg";
+import Svg, { Circle, G } from "react-native-svg";
 import Animated, {
   useSharedValue,
   useAnimatedProps,
@@ -254,6 +248,8 @@ export default function CalorieRing({
   // fall into the calibrating-empty state until a profile target is
   // set.
   const isEmpty = consumed === 0 || goal <= 0;
+  /** Centre number + label mirror the outer ring: green on track, red over. */
+  const ringStateColor = isOver ? Accent.destructive : Accent.success;
   const centerValue = displayMode === "consumed"
     ? Math.round(consumed)
     : Math.abs(diff);
@@ -327,74 +323,25 @@ export default function CalorieRing({
         }}
       >
         <Svg width={SIZE} height={SIZE} style={{ position: "absolute" }}>
-          {/* Brand gradient — same indigo→pink stops as the
-              onboarding reveal ring (`steps/reveal.tsx`). Audit
-              2026-04-30 ui-critic flagged that the solid green ring
-              was reading as functional ("you hit your target") rather
-              than aesthetic, while the onboarding reveal at step 12
-              uses the brand gradient that's the design ceiling. Pulling
-              the same gradient into the daily ring closes the
-              visual-language gap between first-time delight and daily
-              use. Over-budget keeps the destructive solid red so the
-              "you went over" signal stays unambiguous. */}
-          <Defs>
-            <SvgLinearGradient
-              id="calorie-ring-gradient"
-              x1="0"
-              y1="0"
-              x2="1"
-              y2="1"
-            >
-              <Stop offset="0" stopColor={Accent.primaryLight} />
-              <Stop offset="1" stopColor={MacroColors.fat} />
-            </SvgLinearGradient>
-          </Defs>
-          {/* Main calorie ring track. Zero/near-zero state previously
-              showed a flat grey track (gradient only became visible
-              once the user logged something), which read as "the
-              brand hasn't loaded yet" on first-launch captures. Audit
-              2026-04-30 ui-critic re-run flagged it as an A1 conversion
-              blocker. Fix: when consumed is exactly 0, draw the track
-              with the same gradient at low opacity so the brand is
-              always present; the empty arc still has zero length, so
-              progress reads identically once the user logs. */}
+          {/* Main calorie ring track — neutral when empty; no brand gradient. */}
           <Circle
             cx={CX}
             cy={CX}
             r={R}
             fill="none"
-            stroke={isEmpty ? "url(#calorie-ring-gradient)" : trackColor}
+            stroke={trackColor}
             strokeWidth={STROKE}
-            opacity={isEmpty ? 0.18 : 1}
+            opacity={isEmpty ? 0.35 : 1}
           />
-          {/* Main calorie ring progress.
-              Three-state colour mapping (Grace 2026-05-05 audit
-              feedback — supersedes the Build 41 two-state mapping):
-                1. Empty (consumed === 0) — brand gradient at full
-                   opacity. "You haven't started; here's the welcome".
-                2. Logged-and-under (0 < consumed <= goal) — solid
-                   `Accent.success` green. "You're logging and on
-                   track."
-                3. Logged-and-over (consumed > goal) — solid
-                   `Accent.destructive` red. "You're over the
-                   budget." Matches the centre-text colour, which
-                   already flips to destructive when over.
-
-              The Build 41 mapping had under = gradient + over =
-              green which inverted the cue: a user who'd gone OVER
-              their target saw a green ring while the centre digit
-              read red, and a user who'd logged UNDER saw the
-              welcome gradient as if they hadn't started. */}
+          {/* Progress: green under budget, red over. Empty = no visible arc. */}
           <AnimatedCircle
             cx={CX}
             cy={CX}
             r={R}
             stroke={
               isEmpty
-                ? "url(#calorie-ring-gradient)"
-                : consumed > goal && goal > 0
-                  ? Accent.destructive
-                  : Accent.success
+                ? trackColor
+                : ringStateColor
             }
             strokeWidth={STROKE}
             fill="none"
@@ -484,7 +431,7 @@ export default function CalorieRing({
                 // mode (no macro rings) keeps the original 28 for readability.
                 fontSize: expanded ? 18 : 28,
                 fontWeight: "700",
-                color: isOver && displayMode !== "consumed" ? Accent.destructive : textColor,
+                color: ringStateColor,
                 fontVariant: ["tabular-nums"],
               }}
             >
@@ -508,7 +455,7 @@ export default function CalorieRing({
             style={{
               fontSize: expanded ? 8 : 10,
               fontWeight: "700",
-              color: isOver && displayMode !== "consumed" ? Accent.destructive : secondaryColor,
+              color: ringStateColor,
               letterSpacing: expanded ? 0 : 0.8,
               marginTop: 1,
             }}

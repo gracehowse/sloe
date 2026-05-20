@@ -352,7 +352,7 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
             >
               <defs>
                 <linearGradient id="targets-ring-gradient" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0" stopColor="#6c8cff" />
+                  <stop offset="0" stopColor="#7a90f5" />
                   <stop offset="1" stopColor="#e04888" />
                 </linearGradient>
               </defs>

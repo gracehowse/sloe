@@ -11,7 +11,7 @@
  * can never drift.
  *
  * Palette (prototype order, preserved verbatim):
- *   index 0 → #6c8cff (blue)   — Alex
+ *   index 0 → #7a90f5 (blue)   — Alex
  *   index 1 → #4cd080 (green)  — Sam
  *   index 2 → #ffc04c (amber)  — Mia
  *   index 3 → #ff7eb3 (pink)   — Leo
@@ -28,7 +28,7 @@
  */
 
 const PRIMARY_PALETTE = [
-  "#6c8cff", // blue (prototype Alex)
+  "#7a90f5", // blue (elevated primary light)
   "#4cd080", // green (prototype Sam)
   "#ffc04c", // amber (prototype Mia)
   "#ff7eb3", // pink  (prototype Leo)
@@ -38,7 +38,7 @@ const EXTENDED_PALETTE = [
   "#06b6d4", // cyan     (Accent.cyan)
   "#f97316", // orange   (Accent.orange)
   "#8b5cf6", // violet   (StimulantColors.caffeine — reused as extra accent)
-  "#22a860", // success  (Accent.success)
+  "#62b35a", // success  (Accent.success)
 ] as const;
 
 /**

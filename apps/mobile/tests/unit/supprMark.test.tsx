@@ -13,7 +13,7 @@ import * as React from "react";
 import { describe, expect, it } from "vitest";
 import { render } from "@testing-library/react-native";
 
-import { SupprMark, SupprWordmark } from "../../components/SupprMark";
+import { SupprMark, SupprPlateMark, SupprPlateWordmark, SupprWordmark } from "../../components/SupprMark";
 
 void React;
 
@@ -26,6 +26,20 @@ describe("SupprMark (mobile)", () => {
   it("renders the white 'S' letter on top of the mark", () => {
     const { getByText } = render(<SupprMark />);
     expect(getByText("S")).toBeTruthy();
+  });
+});
+
+describe("SupprPlateMark (mobile)", () => {
+  it("renders with role=image and a brand accessibility label", () => {
+    const { getByLabelText } = render(<SupprPlateMark />);
+    expect(getByLabelText("Suppr")).toBeTruthy();
+  });
+});
+
+describe("SupprPlateWordmark (mobile)", () => {
+  it("renders the plate mark and Suppr label", () => {
+    const { getByText } = render(<SupprPlateWordmark />);
+    expect(getByText("Suppr")).toBeTruthy();
   });
 });
 

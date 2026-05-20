@@ -29,7 +29,10 @@ function read(relPath: string): string {
 
 describe("Progress prototype port — header + range picker", () => {
   const mobileSrc = read("apps/mobile/app/(tabs)/progress.tsx");
+  const mobileChromeSrc = read("apps/mobile/components/tabs/ProgressTabChrome.tsx");
+  const mobileSectionSrc = read("apps/mobile/components/suppr/screen-section-chrome.tsx");
   const webSrc = read("src/app/components/ProgressDashboard.tsx");
+  const webChromeSrc = read("src/app/components/suppr/progress-tab-chrome.tsx");
 
   it("mobile header carries an uppercase range overline (not 'Weekly report')", () => {
     // New state drives the overline label: `LAST 7 DAYS` / `LAST 30
@@ -42,16 +45,16 @@ describe("Progress prototype port — header + range picker", () => {
     // The old static "Weekly report" subtitle must be gone.
     expect(mobileSrc).not.toContain("Weekly report");
     // testID on the overline so e2e + unit tests can assert cleanly.
-    expect(mobileSrc).toContain('testID="progress-overline"');
-    // 28pt / -0.6 tracking title per the prototype.
-    expect(mobileSrc).toMatch(/fontSize: 28[^}]*letterSpacing: -0\.6/);
+    expect(mobileChromeSrc).toContain('overlineTestID="progress-overline"');
+    expect(mobileChromeSrc).toContain('titleTestID="progress-header"');
+    // 28pt / -0.6 tracking title per the prototype (shared chrome).
+    expect(mobileSectionSrc).toContain("fontSize: Layout.titleSize");
+    expect(mobileSectionSrc).toContain("letterSpacing: Layout.titleTracking");
   });
 
-  it("mobile header carries a calendar icon button", () => {
-    // `CalendarDays` (lucide-react-native) — prototype parity with the
-    // web `Icons.calendar` alias. Replaced the earlier Ionicons
-    // `calendar-outline` during the icon-exactness sweep.
-    expect(mobileSrc).toMatch(/<CalendarDays\b/);
+  it("mobile header carries a trailing log-weight control", () => {
+    // Trailing chrome button — `Scale` glyph, test id kept for e2e parity.
+    expect(mobileSrc).toMatch(/<Scale\b/);
     expect(mobileSrc).toContain('testID="progress-calendar-button"');
   });
 
@@ -86,9 +89,10 @@ describe("Progress prototype port — header + range picker", () => {
     expect(webSrc).toContain("LAST 90 DAYS");
     expect(webSrc).toContain("ALL TIME");
     expect(webSrc).not.toContain("Weekly report");
-    expect(webSrc).toContain('data-testid="progress-overline"');
+    expect(webSrc + webChromeSrc).toContain('data-testid="progress-overline"');
+    expect(webChromeSrc).toContain('data-testid="progress-header"');
     // 28pt per the prototype mirrors mobile.
-    expect(webSrc).toMatch(/text-\[28px\]/);
+    expect(webChromeSrc).toMatch(/text-\[28px\]/);
   });
 
   it("web header carries a calendar icon button", () => {

@@ -189,7 +189,7 @@ export function TodayMealsSection({
   const usualRowV2 = isFeatureEnabled("today_log_usual_row_v2");
 
   return (
-    <div className="mb-4">
+    <div className="mb-6">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Meals</h3>
         {mealsForSelectedDate.length > 0 && (

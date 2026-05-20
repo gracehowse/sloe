@@ -93,7 +93,11 @@ export default function ProfileScreen() {
 
   const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    scroll: { paddingHorizontal: Spacing.xl, paddingBottom: 100, gap: Spacing.lg },
+    scroll: {
+      paddingHorizontal: Spacing.xl,
+      paddingBottom: 120,
+      gap: Spacing.xxl,
+    },
     centered: { flex: 1, justifyContent: "center", alignItems: "center" },
 
     headerRow: {

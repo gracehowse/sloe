@@ -106,8 +106,8 @@ describe("SlotColors token (ui-critic P2 #10 — magenta=fat=snack collision fix
       const rootStart = src.indexOf(":root");
       const darkStart = src.indexOf(".dark {");
       const lightBlock = src.slice(rootStart, darkStart);
-      expect(lightBlock).toMatch(/--slot-breakfast:\s*#e8a020/i);
-      expect(lightBlock).toMatch(/--slot-lunch:\s*#22a860/i);
+      expect(lightBlock).toMatch(/--slot-breakfast:\s*#e0a838/i);
+      expect(lightBlock).toMatch(/--slot-lunch:\s*#62b35a/i);
       expect(lightBlock).toMatch(/--slot-dinner:\s*#4c6ce0/i);
       expect(lightBlock).toMatch(/--slot-snack:\s*#06b6d4/i);
       // Soft variants exist for tinted backgrounds (`bg-slot-snack-soft`).
@@ -119,9 +119,9 @@ describe("SlotColors token (ui-critic P2 #10 — magenta=fat=snack collision fix
       const darkStart = src.indexOf(".dark {");
       const themeStart = src.indexOf("@theme inline", darkStart);
       const darkBlock = src.slice(darkStart, themeStart);
-      expect(darkBlock).toMatch(/--slot-breakfast:\s*#ffc04c/i);
-      expect(darkBlock).toMatch(/--slot-lunch:\s*#4cd080/i);
-      expect(darkBlock).toMatch(/--slot-dinner:\s*#6c8cff/i);
+      expect(darkBlock).toMatch(/--slot-breakfast:\s*#f0c058/i);
+      expect(darkBlock).toMatch(/--slot-lunch:\s*#82d878/i);
+      expect(darkBlock).toMatch(/--slot-dinner:\s*#7a90f5/i);
       // Dark snack is the lifted cyan, NOT magenta.
       expect(darkBlock).toMatch(/--slot-snack:\s*#22d3ee/i);
       expect(darkBlock).not.toMatch(/--slot-snack:\s*#(ff7eb3|e04888)/i);

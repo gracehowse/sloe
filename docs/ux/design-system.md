@@ -35,11 +35,17 @@ Mobile tokens (`Spacing.*`):
 |-------|-----|-----------|
 | `xs` | 4 | Tight gaps within a row, icon-to-text |
 | `sm` | 8 | Standard inner gap, between related elements |
-| `md` | 12 | Card inner padding (compact), between sections |
-| `lg` | 16 | Card padding, section gaps, primary rhythm unit |
-| `xl` | 20 | Between major sections |
-| `xxl` | 24 | Page-level padding |
-| `xxxl` | 32 | Hero spacing, page top/bottom insets |
+| `md` | 16 | Card inner padding, between sections |
+| `lg` | 20 | Card padding, primary rhythm unit |
+| `xl` | 24 | Between major sections on a screen |
+| `xxl` | 32 | Page gutters (`px-pm-5`), Today scroll section gap |
+| `xxxl` | 40 | Hero spacing, page top/bottom insets |
+
+_2026-05-19: scale bumped for premium airy rhythm (Noom/Lifesum). xs/sm unchanged._
+
+### Branding row (Today)
+
+Reserved **44px min-height** row at the top of Today: `SupprPlateWordmark` (Tare-style empty plate + working name **Suppr**). Use `SupprPlateMark` / `SupprPlateWordmark` — not the legacy `S` tile — until rebrand. Web hides on `lg+` when the desktop sidebar carries the mark.
 
 **Rules:**
 - Never use raw pixel values (`paddingVertical: 14`). Use the nearest token.

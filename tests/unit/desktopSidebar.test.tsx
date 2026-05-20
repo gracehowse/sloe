@@ -6,12 +6,7 @@
  *
  * Phase 2 / B1.1 (2026-04-27 strategic spec, D-2026-04-27-02): the
  * sidebar collapses to four primary destinations (Today / Recipes /
- * Plan / More). Sub-tabs render below the active primary entry; the
- * test set pins both the primary structure and the sub-tab behaviour.
- *
- * 2026-05-12 (premium-bar audit): fourth tab label renamed "You" →
- * "More". Route key stays `you` for deeplink stability; only the
- * display string changed.
+ * Plan / Progress). Sub-tabs render below the active primary entry.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
@@ -24,19 +19,23 @@ import {
 } from "../../src/app/components/suppr/desktop-sidebar";
 
 describe("DesktopSidebar — Phase 2 (4 primary tabs)", () => {
+  beforeEach(() => {
+    window.localStorage.removeItem(SIDEBAR_COLLAPSED_STORAGE_KEY);
+  });
+
   it("renders exactly four primary nav items in the canonical order", () => {
     render(<DesktopSidebar currentView="today" onNavigate={() => {}} />);
     expect(screen.getByRole("button", { name: /^Today$/ })).toBeDefined();
     expect(screen.getByRole("button", { name: /^Recipes$/ })).toBeDefined();
     expect(screen.getByRole("button", { name: /^Plan$/ })).toBeDefined();
-    expect(screen.getByRole("button", { name: /^More$/ })).toBeDefined();
+    expect(screen.getByRole("button", { name: /^Progress$/ })).toBeDefined();
     // Demoted destinations no longer have a primary entry.
     expect(screen.queryByRole("button", { name: /^Discover$/ })).toBeNull();
-    expect(screen.queryByRole("button", { name: /^Progress$/ })).toBeNull();
     expect(screen.queryByRole("button", { name: /^Settings$/ })).toBeNull();
-    // 2026-05-12 rename: "You" → "More". The legacy "You" label must
-    // not appear on the new sidebar — assert it's gone.
-    expect(screen.queryByRole("button", { name: /^You$/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^More$/ })).toBeNull();
+    // No primary "You" tab — profile entry at the bottom may show "You"
+    // when display name is unset (see profile-entry test below).
+    expect(screen.getByTestId("desktop-sidebar-profile-entry")).toBeDefined();
   });
 
   it("highlights Today as active when on /today", () => {
@@ -55,11 +54,18 @@ describe("DesktopSidebar — Phase 2 (4 primary tabs)", () => {
     expect(screen.getByRole("button", { name: /^Recipes$/ }).getAttribute("aria-current")).toBe("page");
   });
 
-  it("highlights More when the leaf view is progress, settings, profile, or household-settings", () => {
-    const views = ["progress", "settings", "profile", "household-settings", "targets"] as const;
-    for (const v of views) {
+  it("highlights Progress when the leaf view is progress or progress-adjacent routes", () => {
+    for (const v of ["progress", "household-settings", "targets"] as const) {
       const { unmount } = render(<DesktopSidebar currentView={v} onNavigate={() => {}} />);
-      expect(screen.getByRole("button", { name: /^More$/ }).getAttribute("aria-current")).toBe("page");
+      expect(screen.getByRole("button", { name: /^Progress$/ }).getAttribute("aria-current")).toBe("page");
+      unmount();
+    }
+  });
+
+  it("does not highlight Progress when on settings or profile (avatar-entry surfaces)", () => {
+    for (const v of ["settings", "profile"] as const) {
+      const { unmount } = render(<DesktopSidebar currentView={v} onNavigate={() => {}} />);
+      expect(screen.getByRole("button", { name: /^Progress$/ }).getAttribute("aria-current")).toBeNull();
       unmount();
     }
   });
@@ -75,18 +81,51 @@ describe("DesktopSidebar — Phase 2 (4 primary tabs)", () => {
     expect(screen.getByRole("button", { name: /^Discover/ })).toBeDefined();
   });
 
-  it("renders More sub-tabs (Progress / Settings) only when More is active — Profile collapsed by Group G IA Batch C", () => {
+  it("does not render Progress sub-tabs (Settings is not a nav sub-tab, 2026-05-19)", () => {
     const { rerender } = render(<DesktopSidebar currentView="today" onNavigate={() => {}} />);
-    expect(screen.queryByRole("button", { name: /^Settings/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Settings$/ })).toBeNull();
 
     rerender(<DesktopSidebar currentView="progress" onNavigate={() => {}} />);
-    expect(screen.getByRole("button", { name: /^Progress/ })).toBeDefined();
-    expect(screen.getByRole("button", { name: /^Settings/ })).toBeDefined();
-    // Group G IA Batch C (2026-04-29): Profile sub-tab collapsed into
-    // the Settings header-card "Edit profile" affordance. The /profile
-    // route remains alive as the full editor (see leaves test below)
-    // — only the sidebar entry is gone.
-    expect(screen.queryByRole("button", { name: /^Profile$/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Settings$/ })).toBeNull();
+  });
+
+  it("renders bottom-left profile entry that opens settings (mobile parity)", () => {
+    const onNavigate = vi.fn();
+    render(
+      <DesktopSidebar
+        currentView="today"
+        onNavigate={onNavigate}
+        displayName="Grace"
+        authEmail="grace@example.com"
+      />,
+    );
+    const profile = screen.getByTestId("desktop-sidebar-profile-entry");
+    expect(profile.textContent).toContain("Grace");
+    fireEvent.click(profile);
+    expect(onNavigate).toHaveBeenCalledWith("settings");
+  });
+
+  it("highlights profile entry when on settings or profile", () => {
+    const { rerender } = render(
+      <DesktopSidebar currentView="settings" onNavigate={() => {}} displayName="Grace" />,
+    );
+    expect(screen.getByTestId("desktop-sidebar-profile-entry").getAttribute("aria-current")).toBe(
+      "page",
+    );
+
+    rerender(
+      <DesktopSidebar currentView="profile" onNavigate={() => {}} displayName="Grace" />,
+    );
+    expect(screen.getByTestId("desktop-sidebar-profile-entry").getAttribute("aria-current")).toBe(
+      "page",
+    );
+  });
+
+  it("keeps profile entry visible when sidebar is collapsed", () => {
+    render(<DesktopSidebar currentView="today" onNavigate={() => {}} displayName="Grace" />);
+    fireEvent.click(screen.getByTestId("desktop-sidebar-collapse-toggle"));
+    expect(screen.getByTestId("desktop-sidebar-profile-entry")).toBeDefined();
+    expect(screen.getByRole("button", { name: /Open settings \(Grace\)/ })).toBeDefined();
   });
 
   it("renders Plan sub-tabs (This week / Shopping) when Plan is active", () => {
@@ -101,7 +140,7 @@ describe("DesktopSidebar — Phase 2 (4 primary tabs)", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Recipes$/ }));
     expect(onNavigate).toHaveBeenCalledWith("library");
     onNavigate.mockClear();
-    fireEvent.click(screen.getByRole("button", { name: /^More$/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Progress$/ }));
     expect(onNavigate).toHaveBeenCalledWith("progress");
     onNavigate.mockClear();
     fireEvent.click(screen.getByRole("button", { name: /^Plan$/ }));
@@ -157,8 +196,8 @@ describe("resolvePrimaryFromView — leaf-to-primary mapping", () => {
   });
   it("maps Progress / Profile / Settings / household-settings / targets leaves to you primary", () => {
     expect(resolvePrimaryFromView("progress")).toBe("you");
-    expect(resolvePrimaryFromView("profile")).toBe("you");
-    expect(resolvePrimaryFromView("settings")).toBe("you");
+    expect(resolvePrimaryFromView("profile")).toBe("today");
+    expect(resolvePrimaryFromView("settings")).toBe("today");
     expect(resolvePrimaryFromView("household-settings")).toBe("you");
     expect(resolvePrimaryFromView("targets")).toBe("you");
   });
@@ -285,7 +324,7 @@ describe("DesktopSidebar — collapse affordance", () => {
     expect(toggle.getAttribute("aria-label")).toBe("Expand navigation");
   });
 
-  it("preserves Today/Recipes/Plan/More labels as accessible names while collapsed", () => {
+  it("preserves Today/Recipes/Plan/Progress labels as accessible names while collapsed", () => {
     render(<DesktopSidebar currentView="today" onNavigate={() => {}} />);
     fireEvent.click(screen.getByTestId("desktop-sidebar-collapse-toggle"));
     // Each primary button still announces its label even though the
@@ -293,6 +332,6 @@ describe("DesktopSidebar — collapse affordance", () => {
     expect(screen.getByRole("button", { name: /^Today$/ })).toBeDefined();
     expect(screen.getByRole("button", { name: /^Recipes$/ })).toBeDefined();
     expect(screen.getByRole("button", { name: /^Plan$/ })).toBeDefined();
-    expect(screen.getByRole("button", { name: /^More$/ })).toBeDefined();
+    expect(screen.getByRole("button", { name: /^Progress$/ })).toBeDefined();
   });
 });

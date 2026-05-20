@@ -504,7 +504,8 @@ export const MealPlanner = memo(function MealPlanner({
         : "md:grid-cols-7";
 
   return (
-    <div className="max-w-6xl mx-auto px-pm-5 py-pm-5">
+    <div className="max-w-6xl mx-auto px-pm-6 py-pm-6 space-y-5">
+      <div className="hidden md:block">
       <h1
         className="text-foreground font-bold -tracking-[0.02em]"
         style={{ fontSize: 24, margin: "0 0 4px" }}
@@ -518,6 +519,7 @@ export const MealPlanner = memo(function MealPlanner({
       >
         {subtitle}
       </p>
+      </div>
 
       {/* F2-L (audit 2026-04-28): household bar — mobile parity at
           `apps/mobile/app/(tabs)/planner.tsx:1708 <HouseholdSummaryRow />`.

@@ -30,9 +30,12 @@ describe('Tab navigation', () => {
     await expect(element(by.text('LAST 30 DAYS'))).toBeVisible();
   });
 
-  it('Profile tab loads', async () => {
-    await element(by.text('Profile')).tap();
-    await expect(element(by.text('Goals & Targets'))).toBeVisible();
+  it('Settings opens from Today avatar', async () => {
+    await element(by.text('Today')).tap();
+    await element(by.label('Open settings')).tap();
+    await expect(element(by.text('Settings'))).toBeVisible();
+    await expect(element(by.text('Your plan')).atIndex(0)).toBeVisible();
+    await element(by.label('Go back')).tap();
   });
 
   it('returns to Today — round-trip complete', async () => {
@@ -44,7 +47,7 @@ describe('Tab navigation', () => {
     await element(by.text('Discover')).tap();
     await element(by.text('Plan')).tap();
     await element(by.text('Progress')).tap();
-    await element(by.text('Profile')).tap();
+    await element(by.label('Open settings')).tap();
     await element(by.text('Today')).tap();
     await expect(element(by.text('Today'))).toBeVisible();
   });

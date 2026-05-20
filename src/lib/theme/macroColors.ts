@@ -12,44 +12,40 @@
  * `tests/unit/settingsMacroTokens.test.ts`.
  *
  * Keep the keys aligned with `WIDGET_MACRO_OPTIONS` in
- * `src/app/components/Settings.tsx` and the matching mobile `Macros.*`
- * tokens.
+ * `src/app/components/Settings.tsx` and mobile `MacroColors` in
+ * `apps/mobile/constants/theme.ts`.
  */
 
 /** Light-mode macro hexes — pinned to `:root` block in theme.css. */
 export const MACRO_COLORS_LIGHT = {
-  /** --macro-protein */
+  calories: "#62b35a",
   protein: "#4c6ce0",
-  /** --macro-carbs — 2026-05-12 (DC10): split from --warning (#e8a020
-   *  amber) to a dedicated warm-orange. Amber now reserved for
-   *  over-budget warnings only. */
-  carbs: "#ed6b2a",
-  /** --macro-fat */
+  carbs: "#d4a02f",
   fat: "#e04888",
-  /** --success — fibre rides on the success-green track. */
-  fiber: "#22a860",
-  /** --chart-5 / --stimulant-caffeine — violet hue. There is no
-   *  dedicated `--sugar` token in theme.css; chart-5 is the canonical
-   *  fifth-track colour and reads cleanly next to protein-blue +
-   *  carbs-amber in the same picker without clashing. */
-  sugar: "#8b5cf6",
-  /** --source-fatsecret / orange — sodium intentionally amber-orange.
-   *  Project carryover rule (2026-04-27): "sodium = orange". */
+  fiber: "#4a7878",
+  sugar: "#7a90f5",
   sodium: "#f97316",
-  /** --macro-water */
   water: "#06b6d4",
 } as const;
 
-/** CSS-var references — preferred for inline `style` values when the
- *  consumer can read from the cascade (auto dark-mode swap). */
+/** CSS-var references — preferred for inline `style` values (auto dark-mode). */
 export const MACRO_COLOR_VARS = {
+  calories: "var(--macro-calories)",
   protein: "var(--macro-protein)",
   carbs: "var(--macro-carbs)",
   fat: "var(--macro-fat)",
-  fiber: "var(--success)",
-  sugar: "var(--chart-5)",
-  sodium: "var(--source-fatsecret)",
+  fiber: "var(--macro-fiber)",
+  sugar: "var(--macro-sugar)",
+  sodium: "var(--macro-sodium)",
   water: "var(--macro-water)",
 } as const;
 
 export type MacroColorKey = keyof typeof MACRO_COLORS_LIGHT;
+
+/** Resolve a tracked-macro key to its canonical CSS variable. */
+export function macroColorVarFor(key: string): string {
+  if (key in MACRO_COLOR_VARS) {
+    return MACRO_COLOR_VARS[key as MacroColorKey];
+  }
+  return MACRO_COLOR_VARS.protein;
+}

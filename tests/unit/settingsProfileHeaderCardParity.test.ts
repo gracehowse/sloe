@@ -9,11 +9,10 @@
  *      future visual rework can preserve the e2e hook.
  *   2. The "Edit profile" affordance routes to /home?view=profile so
  *      bookmarks and the existing App.tsx view-router resolve.
- *   3. The sidebar's `you` sub-tab list is exactly Progress + Settings
- *      (Profile is gone) and `profile` remains in the `leaves` array
- *      so being on /profile still highlights "More" (renamed 2026-05-12).
- *   4. Mobile-web YouSubTabPill in App.tsx mirrors the sidebar — 2
- *      pills, no "profile" id.
+ *   3. Desktop sidebar: Settings via bottom profile entry, not a Progress
+ *      sub-tab (`desktop-sidebar-profile-entry`).
+ *   4. Mobile-web: Today header avatar opens settings (`md:hidden`); no
+ *      YouSubTabPill on Progress/Settings routes.
  *
  * Source-level structural check — no React rendering. (The full
  * sidebar render-test lives in `desktopSidebar.test.tsx`.)
@@ -56,39 +55,36 @@ describe("Settings — profile header card (Group G IA Batch C)", () => {
   });
 });
 
-describe("DesktopSidebar — You sub-tabs (Group G IA Batch C)", () => {
-  it("you sub-tab list is exactly Progress + Settings (no Profile)", () => {
-    // SUB_TABS.you in desktop-sidebar.tsx
-    const youSubTabs = sidebar.match(
-      /you:\s*\[([\s\S]*?)\],/,
-    );
-    expect(youSubTabs).not.toBeNull();
-    const block = youSubTabs![1];
-    expect(block).toMatch(/view:\s*"progress"/);
-    expect(block).toMatch(/view:\s*"settings"/);
-    expect(block).not.toMatch(/view:\s*"profile"/);
+describe("DesktopSidebar — Progress primary + profile entry (2026-05-19 IA)", () => {
+  it("Progress primary has no sub-tabs; Settings opens from profile entry", () => {
+    expect(sidebar).toMatch(/you:\s*\[\s*\]/);
+    expect(sidebar).toMatch(/label:\s*"Progress"/);
+    expect(sidebar).toMatch(/data-testid="desktop-sidebar-profile-entry"/);
+    expect(sidebar).toMatch(/onNavigate\("settings"\)/);
+    expect(sidebar).not.toMatch(/label:\s*"More"/);
   });
 
-  it("/profile leaf still maps to you primary so the sidebar highlights correctly", () => {
-    expect(sidebar).toMatch(
+  it("settings and profile are not Progress-tab leaves", () => {
+    expect(sidebar).not.toMatch(
       /leaves:\s*\[\s*"progress",\s*"profile",\s*"settings",/,
     );
   });
 });
 
-describe("Mobile-web YouSubTabPill — Group G IA Batch C", () => {
-  it("renders exactly two pills (Progress / Settings)", () => {
-    // Slice the YouSubTabPill component body and inspect its items
-    // array — drift on the labels would surface here before the e2e
-    // suite catches it.
-    const youPill = app.match(
-      /function YouSubTabPill[\s\S]*?accessibilityLabel="You sections"/,
-    );
-    expect(youPill).not.toBeNull();
-    const block = youPill![0];
-    expect(block).toMatch(/id:\s*"progress",\s*label:\s*"Progress"/);
-    expect(block).toMatch(/id:\s*"settings",\s*label:\s*"Settings"/);
-    expect(block).not.toMatch(/id:\s*"profile"/);
+describe("Web Today header — settings avatar mobile-web only", () => {
+  const headerPath = resolve(ROOT, "src/app/components/suppr/today-date-header.tsx");
+  const header = readFileSync(headerPath, "utf8");
+
+  it("avatar opens settings and is hidden on md+ (sidebar owns desktop entry)", () => {
+    expect(header).toMatch(/onClick={onOpenSettings}/);
+    expect(header).toMatch(/aria-label="Open settings"/);
+    expect(header).toMatch(/className="[^"]*md:hidden/);
+  });
+});
+
+describe("Mobile-web — Progress tab without YouSubTabPill (2026-05-19)", () => {
+  it("Progress render path does not mount YouSubTabPill", () => {
+    expect(app).not.toMatch(/case "progress":[\s\S]*?<YouSubTabPill/);
   });
 
   it("YouSubTabPill type signature drops 'profile' from the union", () => {
@@ -98,9 +94,7 @@ describe("Mobile-web YouSubTabPill — Group G IA Batch C", () => {
     expect(app).not.toMatch(/currentView:\s*"progress"\s*\|\s*"profile"\s*\|\s*"settings";/);
   });
 
-  it("/profile screen renders with Settings highlighted on the mobile-web pill", () => {
-    expect(app).toMatch(
-      /case "profile":[\s\S]*?<YouSubTabPill currentView="settings"/,
-    );
+  it("/profile screen does not mount YouSubTabPill (Settings is avatar-entry)", () => {
+    expect(app).not.toMatch(/case "profile":[\s\S]*?<YouSubTabPill/);
   });
 });

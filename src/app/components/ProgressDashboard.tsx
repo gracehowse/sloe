@@ -72,6 +72,7 @@ import { ProgressMetricDetail, type ProgressMetric } from "./ProgressMetricDetai
 // user is in a household. Hidden for solo users so the range-picker
 // pills stay flush against the header.
 import { HouseholdBar } from "./HouseholdBar.tsx";
+import { ProgressTabChrome } from "./suppr/progress-tab-chrome.tsx";
 // Phase 4 (B3.1, 2026-04-27) — Surface E "Progress hero (story-led)".
 // Authority: D-2026-04-27-17 (Progress is a story not a stat-card
 // dashboard) + D-2026-04-27-12 (adaptive TDEE always-on).
@@ -835,9 +836,41 @@ function ProgressDashboardContent() {
     router.replace(`/home?${p.toString()}`, { scroll: false });
   }, [router, searchParams]);
 
+  const progressCalendarButton = (
+    <button
+      type="button"
+      data-testid="progress-calendar-button"
+      aria-label="Open calendar"
+      onClick={() => router.replace("/home?view=weight-tracker")}
+      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-card text-foreground hover:bg-muted/40 transition-colors"
+    >
+      <Icons.calendar className="h-4 w-4" aria-hidden />
+    </button>
+  );
+
+  const progressDesktopHeader = (
+    <div className="hidden md:flex mb-6 items-start justify-between gap-3">
+      <div>
+        <p
+          data-testid="progress-overline"
+          className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground"
+        >
+          {rangeLabel}
+        </p>
+        <h1
+          data-testid="progress-header"
+          className="text-[28px] font-bold text-foreground tracking-tight mt-0.5"
+        >
+          Progress
+        </h1>
+      </div>
+      {progressCalendarButton}
+    </div>
+  );
+
   if (!authedUserId) {
     return (
-      <div className="max-w-2xl mx-auto px-pm-5 py-pm-5 text-muted-foreground">
+      <div className="max-w-2xl mx-auto px-pm-6 py-pm-6 text-muted-foreground">
         Sign in to track progress.
       </div>
     );
@@ -850,31 +883,24 @@ function ProgressDashboardContent() {
     // disabled-look range picker + a 2x2 skeleton grid so the user
     // sees the screen is alive and laying out. When `loading` flips
     // the existing post-load tree mounts without a layout jump.
+    const progressLoadingCalendar = (
+      <span
+        aria-hidden
+        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-card opacity-60"
+      >
+        <Icons.calendar className="h-4 w-4 text-muted-foreground" />
+      </span>
+    );
+
     return (
+      <>
+        <ProgressTabChrome overline={rangeLabel} trailing={progressLoadingCalendar} />
       <div
-        className="max-w-2xl mx-auto px-pm-5 py-pm-5"
+        className="max-w-2xl mx-auto px-pm-6 py-pm-6"
         data-testid="progress-loading-skeleton"
       >
-        <div className="mb-4 flex items-start justify-between gap-3">
-          <div>
-            <p
-              data-testid="progress-overline"
-              className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground"
-            >
-              {rangeLabel}
-            </p>
-            <h1 className="text-[28px] font-bold text-foreground tracking-tight mt-0.5">
-              Progress
-            </h1>
-          </div>
-          <span
-            aria-hidden
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-card opacity-60"
-          >
-            <Icons.calendar className="h-4 w-4 text-muted-foreground" />
-          </span>
-        </div>
-        <div className="flex gap-1.5 mb-4 p-1 rounded-[10px] bg-muted opacity-60">
+        {progressDesktopHeader}
+        <div className="flex gap-2 mb-5 p-1 rounded-[10px] bg-muted opacity-60">
           {(["7d", "30d", "90d", "all"] as const).map((k) => (
             <span
               key={k}
@@ -901,6 +927,7 @@ function ProgressDashboardContent() {
           ))}
         </div>
       </div>
+      </>
     );
   }
 
@@ -913,35 +940,10 @@ function ProgressDashboardContent() {
     : undefined;
 
   return (
-    <div className="max-w-2xl mx-auto px-pm-5 py-pm-5">
-      {/* HEADER — 2026-04-20 Claude Design prototype port.
-          Uppercase overline reflects the currently-selected range
-          (drives from `rangeLabel`); large "Progress" title; round
-          calendar-icon button top-right. Calendar button currently
-          surfaces `?view=weight-tracker` — a follow-up pass can swap
-          in a dedicated date-range picker modal. */}
-      <div className="mb-4 flex items-start justify-between gap-3">
-        <div>
-          <p
-            data-testid="progress-overline"
-            className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground"
-          >
-            {rangeLabel}
-          </p>
-          <h1 className="text-[28px] font-bold text-foreground tracking-tight mt-0.5">
-            Progress
-          </h1>
-        </div>
-        <button
-          type="button"
-          data-testid="progress-calendar-button"
-          aria-label="Open calendar"
-          onClick={() => router.replace("/home?view=weight-tracker")}
-          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-card text-foreground hover:bg-muted/40 transition-colors"
-        >
-          <Icons.calendar className="h-4 w-4" aria-hidden />
-        </button>
-      </div>
+    <>
+      <ProgressTabChrome overline={rangeLabel} trailing={progressCalendarButton} />
+    <div className="max-w-2xl mx-auto px-pm-6 py-pm-6">
+      {progressDesktopHeader}
 
       {/* HouseholdBar — 2026-04-20 prototype port. Appears immediately
           under the header on Progress (mirrors mobile Plan/Progress
@@ -2152,6 +2154,7 @@ function ProgressDashboardContent() {
         Nutrition data are estimates. Not medical or dietetic advice.
       </p>
     </div>
+    </>
   );
 }
 
@@ -2595,28 +2598,41 @@ function TrendSummaryCardWeb({
  * state inside `ProgressDashboardContent`.
  */
 function ProgressSuspenseFallback() {
-  return (
-    <div
-      className="max-w-2xl mx-auto px-pm-5 py-pm-5"
-      data-testid="progress-suspense-fallback"
+  const calendarPlaceholder = (
+    <span
+      aria-hidden
+      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-card opacity-60"
     >
-      <div className="mb-4 flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-            LAST 30 DAYS
-          </p>
-          <h1 className="text-[28px] font-bold text-foreground tracking-tight mt-0.5">
-            Progress
-          </h1>
+      <Icons.calendar className="h-4 w-4 text-muted-foreground" />
+    </span>
+  );
+
+  return (
+    <>
+      <ProgressTabChrome overline="LAST 30 DAYS" trailing={calendarPlaceholder} />
+      <div
+        className="hidden md:block max-w-2xl mx-auto px-pm-6 py-pm-6"
+        data-testid="progress-suspense-fallback"
+      >
+        <div className="mb-6 flex items-start justify-between gap-3">
+          <div>
+            <p
+              data-testid="progress-overline"
+              className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground"
+            >
+              LAST 30 DAYS
+            </p>
+            <h1
+              data-testid="progress-header"
+              className="text-[28px] font-bold text-foreground tracking-tight mt-0.5"
+            >
+              Progress
+            </h1>
+          </div>
+          {calendarPlaceholder}
         </div>
-        <span
-          aria-hidden
-          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-card opacity-60"
-        >
-          <Icons.calendar className="h-4 w-4 text-muted-foreground" />
-        </span>
       </div>
-    </div>
+    </>
   );
 }
 

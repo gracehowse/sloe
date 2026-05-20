@@ -174,7 +174,7 @@ export const ShoppingList = memo(function ShoppingList({
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-pm-5 py-pm-5">
+    <div className="max-w-5xl mx-auto px-pm-6 py-pm-6 space-y-5">
       {/* Honeydew parity banner — visible only when in a household.
           Renders above the title so the user sees who they're shopping
           with before scanning the list. Hidden for solo users. */}
@@ -195,6 +195,7 @@ export const ShoppingList = memo(function ShoppingList({
         </button>
       ) : null}
 
+      <div className="hidden md:block">
       <h1
         className="text-foreground font-bold -tracking-[0.02em]"
         style={{ fontSize: 24, margin: "0 0 4px" }}
@@ -204,6 +205,7 @@ export const ShoppingList = memo(function ShoppingList({
       <p className="text-muted-foreground" style={{ fontSize: 13, marginBottom: 12 }}>
         {subtitle}
       </p>
+      </div>
 
       {totalItemCount > 0 ? (
         <div

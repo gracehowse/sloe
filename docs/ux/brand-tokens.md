@@ -2,6 +2,8 @@
 
 Single reference for **accent roles** so colours do not drift between the Next.js web app and Expo mobile app.
 
+**Wellness palette rationale (2026-05):** `docs/ux/color-direction-noom-lifesum-2026-05.md`
+
 > **Note:** The palette shifted from violet (#7c3aed) to blue (#4c6ce0) during the 2026 design overhaul. Any remaining violet references in web components are legacy and should be migrated to the current blue primary.
 
 ## Accent palette
@@ -9,11 +11,14 @@ Single reference for **accent roles** so colours do not drift between the Next.j
 | Role | Hex (canonical) | Mobile token | Web CSS variable | Usage |
 |------|-----------------|-------------|-----------------|--------|
 | **Primary** | `#4c6ce0` | `Accent.primary` | `--primary` | Buttons, selected states, links, brand wordmark, protein macro |
-| **Primary light** | `#6c8cff` | `Accent.primaryLight` | `--primary` (dark) | Dark mode tint, active tab (dark), sugar macro |
-| **Success** | `#22a860` | `Accent.success` | `--success` | Confirmations, calorie/fiber macro, positive states |
-| **Success light** | `#4cd080` | `Accent.successLight` | `--success` (dark) | Dark mode success tint |
-| **Warning** | `#e8a020` | `Accent.warning` | `--warning` | Over-budget indicator, carbs macro, activity bonus |
-| **Warning light** | `#ffc04c` | `Accent.warningLight` | `--warning` (dark) | Dark mode warning tint |
+| **Primary light** | `#7a90f5` | `Accent.primaryLight` | `--primary` (dark) | Dark mode tint, active tab (dark), sugar macro |
+| **Success** | `#62b35a` | `Accent.success` | `--success` | Confirmations, calorie ring under-target, positive states |
+| **Success light** | `#82d878` | `Accent.successLight` | `--success` (dark) | Dark mode success tint |
+| **Warning** | `#e0a838` | `Accent.warning` | `--warning` | Over-budget, breakfast slot, activity bonus — **not** carbs macro |
+| **Warning light** | `#f0c058` | `Accent.warningLight` | `--warning` (dark) | Dark mode warning tint |
+| **Carbs** | `#d4a02f` | `Accent.carbs` | `--macro-carbs` | Carbs macro track (muted yellow-orange) |
+| **Fiber** | `#4a7878` | `Accent.fiber` | `--macro-fiber` | Fibre macro — dusty blue-teal, not success sage |
+| **Carbs light** | `#f0956e` | `Accent.carbsLight` | `--macro-carbs` (dark) | Dark mode carbs tint |
 | **Destructive** | `#e04848` | `Accent.destructive` | `--destructive` | Errors, dangerous actions only — never for over-budget |
 | **Destructive light** | `#ff6c6c` | `Accent.destructiveLight` | `--destructive` (dark) | Dark mode destructive tint |
 | **Magenta** | `#e04888` | `Accent.magenta` | `--macro-fat` | Fat macro, gradient accent — not for standalone body UI, **never for the Snacks slot** |
@@ -25,16 +30,16 @@ Single reference for **accent roles** so colours do not drift between the Next.j
 
 Fixed across all screens. Never hardcode — always reference `MacroColors` (mobile) or `--macro-*` (web).
 
-| Macro | Colour | Hex |
-|-------|--------|-----|
-| Calories | Success (green) | `#22a860` |
-| Protein | Primary (blue) | `#4c6ce0` |
-| Carbs | Warning (amber) | `#e8a020` |
-| Fat | Magenta (pink) | `#e04888` |
-| Fiber | Success (green) | `#22a860` |
-| Sugar | Primary light (blue) | `#6c8cff` |
-| Sodium | Orange | `#f97316` |
-| Water | Cyan | `#06b6d4` |
+| Macro | Colour | Hex | Web CSS variable |
+|-------|--------|-----|------------------|
+| Calories | Success (green) | `#62b35a` | `--macro-calories` |
+| Protein | Primary (blue) | `#4c6ce0` | `--macro-protein` |
+| Carbs | Yellow-orange | `#d4a02f` | `--macro-carbs` |
+| Fat | Magenta (pink) | `#e04888` | `--macro-fat` |
+| Fiber | Blue-teal | `#4a7878` | `--macro-fiber` (distinct from calories sage) |
+| Sugar | Primary light (periwinkle) | `#7a90f5` | `--macro-sugar` |
+| Sodium | Orange | `#f97316` | `--macro-sodium` |
+| Water | Cyan | `#06b6d4` | `--macro-water` |
 
 ## Meal-slot colours
 
@@ -42,9 +47,9 @@ Per-slot tint applied to the slot-header icon wrapper on Today's meal section an
 
 | Slot | Light | Dark | Mobile token | Web CSS variable |
 |------|-------|------|--------------|------------------|
-| Breakfast | `#e8a020` (amber) | `#ffc04c` | `SlotColors.breakfast` | `--slot-breakfast` |
-| Lunch | `#22a860` (green) | `#4cd080` | `SlotColors.lunch` | `--slot-lunch` |
-| Dinner | `#4c6ce0` (blue) | `#6c8cff` | `SlotColors.dinner` | `--slot-dinner` |
+| Breakfast | `#e0a838` (amber) | `#f0c058` | `SlotColors.breakfast` | `--slot-breakfast` |
+| Lunch | `#62b35a` (green) | `#82d878` | `SlotColors.lunch` | `--slot-lunch` |
+| Dinner | `#4c6ce0` (blue) | `#7a90f5` | `SlotColors.dinner` | `--slot-dinner` |
 | Snack(s) | `#06b6d4` (cyan) | `#22d3ee` | `SlotColors.snack` | `--slot-snack` |
 
 Each slot also exposes a `--slot-<name>-soft` variant (12% alpha, matches the `--macro-*-soft` pattern) for tinted backgrounds (chip pills, icon wrappers).
@@ -66,21 +71,21 @@ _Added 2026-04-18 (audit M9) — replaces the hardcoded hex values previously du
 
 | Role | Light | Dark | Mobile token |
 |------|-------|------|-------------|
-| Background | `#ffffff` | `#0a0a0f` | `Colors.*.background` |
-| Background secondary | `#f8fafc` | `#111118` | `Colors.*.backgroundSecondary` |
+| Background | `#f6f3ee` (warm cream) | `#0a0a0f` | `Colors.*.background` |
+| Background secondary | `#f0ebe3` | `#111118` | `Colors.*.backgroundSecondary` |
 | Card | `#ffffff` | `#16161e` | `Colors.*.card` |
-| Card border | `#e2e8f0` | `#2a2a3a` | `Colors.*.cardBorder` |
-| Border | `#e2e8f0` | `#1e1e2a` | `Colors.*.border` |
-| Input background | `#f1f5f9` | `#1e1e2a` | `Colors.*.inputBg` |
+| Card border | `#ddd5c8` | `#32313c` | `Colors.*.cardBorder` |
+| Border | `#ddd5c8` | `#32313c` | `Colors.*.border` |
+| Input background | `#ebe5dc` | `#222028` | `Colors.*.inputBg` |
 | Overlay | `#00000088` | `#000000aa` | `Colors.*.overlay` |
 
 ## Text colours
 
 | Role | Light | Dark |
 |------|-------|------|
-| Primary text | `#0f172a` | `#f8fafc` |
-| Secondary text | `#475569` | `#94a3b8` |
-| Tertiary text | `#94a3b8` | `#64748b` |
+| Primary text | `#1c1916` | `#e8e7ed` |
+| Secondary text | `#5e574e` | `#a8a4b4` |
+| Tertiary text | `#8c8378` | `#706c7c` |
 
 ## Where it lives in code
 
@@ -93,11 +98,11 @@ _Added 2026-04-18 (audit M9) — replaces the hardcoded hex values previously du
 |-------|-------|
 | `xs` | 4px |
 | `sm` | 8px |
-| `md` | 12px |
-| `lg` | 16px |
-| `xl` | 20px |
-| `xxl` | 24px |
-| `xxxl` | 32px |
+| `md` | 16px |
+| `lg` | 20px |
+| `xl` | 24px |
+| `xxl` | 32px |
+| `xxxl` | 40px |
 
 ## Radius tokens
 

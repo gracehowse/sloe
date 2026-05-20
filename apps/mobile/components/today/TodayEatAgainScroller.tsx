@@ -31,6 +31,8 @@ export interface TodayEatAgainScrollerProps {
    *  the host passes to `textSecondaryColor` — accepted as a separate
    *  prop so a caller can theme dots independently if needed. */
   secondaryColor: string;
+  surfaceBackgroundColor?: string;
+  surfaceBorderColor?: string;
   /** Tapping "Log it" on card `i` fires with the candidate at index `i`. */
   onLog: (item: FoodHistoryItem) => void;
   /** Dismissal closes the whole scroller for today (matches single-card behaviour). */
@@ -48,6 +50,8 @@ export function TodayEatAgainScroller({
   textColor,
   textSecondaryColor,
   secondaryColor,
+  surfaceBackgroundColor,
+  surfaceBorderColor,
   onLog,
   onDismiss,
 }: TodayEatAgainScrollerProps) {
@@ -94,6 +98,8 @@ export function TodayEatAgainScroller({
               slot={slot}
               textColor={textColor}
               textSecondaryColor={textSecondaryColor}
+              surfaceBackgroundColor={surfaceBackgroundColor}
+              surfaceBorderColor={surfaceBorderColor}
               onLog={() => onLog(c)}
               onDismiss={onDismiss}
             />
@@ -118,7 +124,7 @@ export function TodayEatAgainScroller({
               width: 6,
               height: 6,
               borderRadius: 3,
-              backgroundColor: i === activeIndex ? Accent.primary : `${secondaryColor}4D`,
+              backgroundColor: i === activeIndex ? textColor : `${secondaryColor}4D`,
             }}
           />
         ))}

@@ -26,7 +26,6 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 import { RecipesSubTabHeader } from "../../components/tabs/RecipesSubTabHeader";
-import { YouSubTabHeader } from "../../components/tabs/YouSubTabHeader";
 import {
   PlanSubTabHeader,
   type PlanSubTab,
@@ -91,31 +90,18 @@ describe("RecipesSubTabHeader", () => {
   });
 });
 
-describe("YouSubTabHeader (post-Group-G IA Batch E, 2026-05-14)", () => {
-  // Group G IA Batch E deleted more.tsx entirely. The pill bar is now
-  // 2 pills only (Progress + Settings); the /more route no longer exists.
-  it("renders exactly two You sub-tabs (Progress + Settings)", () => {
-    setPathname("/progress");
-    const { getByLabelText, queryByLabelText } = render(<YouSubTabHeader />);
-    expect(getByLabelText("Progress")).toBeTruthy();
-    expect(getByLabelText("Settings")).toBeTruthy();
-    expect(queryByLabelText("More")).toBeNull();
-  });
-
-  it("highlights Settings when on /settings", () => {
-    setPathname("/settings");
-    const { getByLabelText } = render(<YouSubTabHeader />);
-    expect(getByLabelText("Settings").props.accessibilityState.selected).toBe(true);
-    expect(getByLabelText("Progress").props.accessibilityState.selected).toBe(false);
-  });
-
-  it("routes to /(tabs)/settings when Settings is tapped from Progress", async () => {
-    setPathname("/progress");
-    const router = (await import("expo-router")).useRouter() as unknown as { replace: ReturnType<typeof vi.fn> };
-    router.replace.mockClear();
-    const { getByLabelText } = render(<YouSubTabHeader />);
-    fireEvent.press(getByLabelText("Settings"));
-    expect(router.replace).toHaveBeenCalledWith("/(tabs)/settings");
+describe("YouSubTabHeader (deprecated 2026-05-19 — Progress is a tab; Settings via avatar)", () => {
+  it("component file remains for deep-link era but is not mounted on Progress or Settings screens", () => {
+    const progressSrc = fs.readFileSync(
+      path.resolve(__dirname, "../../app/(tabs)/progress.tsx"),
+      "utf-8",
+    );
+    const settingsSrc = fs.readFileSync(
+      path.resolve(__dirname, "../../app/(tabs)/settings.tsx"),
+      "utf-8",
+    );
+    expect(progressSrc).not.toMatch(/<YouSubTabHeader/);
+    expect(settingsSrc).not.toMatch(/<YouSubTabHeader/);
   });
 });
 
@@ -210,11 +196,18 @@ describe("(tabs)/_layout.tsx — primary tab structure pin", () => {
     expect(layoutSrc).toMatch(/name="library"\s+options=\{\{[^}]*title:\s*'Recipes'/s);
   });
 
-  it("renames the Progress Tabs.Screen to More for the visible tab title", () => {
-    // 2026-05-12: renamed "You" → "More" per premium-bar audit. The
-    // tab is a kitchen-sink for Progress + Settings + Account; "You"
-    // read as a profile-only tab and underplayed the actual surface.
-    expect(layoutSrc).toMatch(/name="progress"\s+options=\{\{[^}]*title:\s*'More'/s);
+  it("exposes Progress as the visible fourth tab title (not More)", () => {
+    expect(layoutSrc).toMatch(/name="progress"\s+options=\{\{[^}]*title:\s*'Progress'/s);
+    expect(layoutSrc).not.toMatch(/name="progress"\s+options=\{\{[^}]*title:\s*'More'/s);
+  });
+
+  it("Today header avatar routes to Settings, not profile", () => {
+    const headerSrc = fs.readFileSync(
+      path.resolve(__dirname, "../../components/today/TodayDateHeader.tsx"),
+      "utf-8",
+    );
+    expect(headerSrc).toMatch(/router\.push\("\/\(tabs\)\/settings"\)/);
+    expect(headerSrc).not.toMatch(/router\.push\("\/profile"\)/);
   });
 
   it("uses the custom <SupprTabBar> renderer (2026-04-30 — centered raised Log button)", () => {

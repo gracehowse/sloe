@@ -24,7 +24,8 @@ import {
   Wheat,
   type LucideIcon,
 } from "lucide-react-native";
-import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
+import { Accent, Radius, Spacing } from "@/constants/theme";
+import { macroColorFor } from "@/lib/macroColors";
 import type { JournalMeal } from "@/lib/nutritionJournal";
 import { carbsLabel, netCarbsForRow } from "@suppr/shared/nutrition/netCarbs";
 import { formatMacro } from "@suppr/shared/nutrition/formatMacro";
@@ -115,7 +116,7 @@ export function TodayDashboardMacroTiles({
   // protein=Beef, carbs=Wheat, fat=Droplets, fiber=Leaf. Extensible
   // macros (sugar/sodium/water) pick sensible lucide neighbours.
   const macroMap: Record<string, MacroDef> = {
-    protein: { label: "Protein", current: totals.protein, target: targets.protein, color: MacroColors.protein, unit: "g", Icon: Beef },
+    protein: { label: "Protein", current: totals.protein, target: targets.protein, color: macroColorFor("protein"), unit: "g", Icon: Beef },
     carbs: {
       // P3-30 (2026-04-25): apply net-carbs lens. Helpers refuse "Net
       // carbs" when fibre is unknown so a misleading headline never
@@ -132,22 +133,22 @@ export function TodayDashboardMacroTiles({
       label: carbsLabel(targets.fiber, Boolean(netCarbsLensEnabled)),
       current: netCarbsForRow(totals.carbs, totals.fiber, Boolean(netCarbsLensEnabled)),
       target: netCarbsForRow(targets.carbs, targets.fiber, Boolean(netCarbsLensEnabled)),
-      color: MacroColors.carbs,
+      color: macroColorFor("carbs"),
       unit: "g",
       Icon: Wheat,
     },
-    fat: { label: "Fat", current: totals.fat, target: targets.fat, color: MacroColors.fat, unit: "g", Icon: Droplets },
-    fiber: { label: "Fiber", current: totals.fiber, target: targets.fiber, color: Accent.success, unit: "g", Icon: Leaf },
-    sugar: { label: "Sugar", current: Math.round(microSum.sugarG * 10) / 10, target: 50, color: Accent.warning, unit: "g", Icon: Candy, referenceOnly: true },
-    sodium: { label: "Sodium", current: Math.round(microSum.sodiumMg), target: 2300, color: MacroColors.sodium, unit: "mg", Icon: Gauge, referenceOnly: true },
-    water: { label: "Water", current: totalWaterMl, target: waterGoalMl, color: MacroColors.water ?? Accent.info, unit: "ml", Icon: Droplet },
+    fat: { label: "Fat", current: totals.fat, target: targets.fat, color: macroColorFor("fat"), unit: "g", Icon: Droplets },
+    fiber: { label: "Fiber", current: totals.fiber, target: targets.fiber, color: macroColorFor("fiber"), unit: "g", Icon: Leaf },
+    sugar: { label: "Sugar", current: Math.round(microSum.sugarG * 10) / 10, target: 50, color: macroColorFor("sugar"), unit: "g", Icon: Candy, referenceOnly: true },
+    sodium: { label: "Sodium", current: Math.round(microSum.sodiumMg), target: 2300, color: macroColorFor("sodium"), unit: "mg", Icon: Gauge, referenceOnly: true },
+    water: { label: "Water", current: totalWaterMl, target: waterGoalMl, color: macroColorFor("water"), unit: "ml", Icon: Droplet },
   };
 
   // 2-col grid via flexbox gap + flex-basis (49%) instead of the
   // earlier negative-margin hack, which relied on compensating parent
   // padding that Today's scroll container doesn't guarantee.
   return (
-    <View style={{ marginBottom: Spacing.md }}>
+    <View style={{ marginBottom: Spacing.lg }}>
       {/* "Nutrients >" upgraded to an outlined chip reading
           "All nutrients ›" so it reads as an action affordance, not
           an orphaned floating link. Renders only when the host flags
@@ -159,34 +160,23 @@ export function TodayDashboardMacroTiles({
             onPress={onPressNutrients}
             accessibilityRole="button"
             accessibilityLabel="View all nutrients for today"
-            hitSlop={6}
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 4,
-              paddingHorizontal: 10,
-              paddingVertical: 4,
-              borderRadius: 999,
-              borderWidth: 1,
-              borderColor: Accent.primary + "30",
-              backgroundColor: Accent.primary + "08",
-            }}
+            hitSlop={8}
+            style={{ flexDirection: "row", alignItems: "center", gap: 2 }}
           >
             <Text
               style={{
-                fontSize: 11,
+                fontSize: 12,
                 fontWeight: "600",
-                color: Accent.primary,
-                letterSpacing: 0.3,
+                color: textSecondaryColor,
               }}
             >
               All nutrients
             </Text>
-            <ChevronRight size={11} color={Accent.primary} strokeWidth={2.25} />
+            <ChevronRight size={12} color={textTertiaryColor} strokeWidth={2} />
           </Pressable>
         </View>
       ) : null}
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm }}>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: Spacing.md }}>
       {trackedMacros.map((macro) => {
         const def = macroMap[macro];
         if (!def) return null;
@@ -195,15 +185,12 @@ export function TodayDashboardMacroTiles({
         // calories+sodium stay integer. Trailing ".0" trimmed for readability.
         const value = formatMacro(def.current, macro);
         const pct = def.target > 0 ? Math.min(100, Math.round((def.current / def.target) * 100)) : 0;
-        // Over-budget detection: when the user exceeds target on a
-        // tracked macro, the bar fills amber instead of the macro
-        // colour so "over" reads visually distinct from "hit target".
+        // Over-budget: keep the macro's identity colour on the bar;
+        // caption uses destructive red (matches calorie ring / NET).
         const isOverBudget =
           !def.referenceOnly && def.target > 0 && def.current > def.target;
-        const barColor = isOverBudget ? Accent.warning : def.color;
-        const barTrackColor = isOverBudget
-          ? `${Accent.warning}24`
-          : `${def.color}24`;
+        const barColor = def.color;
+        const barTrackColor = `${def.color}24`;
         // Audit T03 (2026-05-05) — caption "X g remaining" used to
         // round `def.target − def.current` directly, which produced
         // off-by-≤1g drift vs the displayed `value / target g` numerator
@@ -241,7 +228,7 @@ export function TodayDashboardMacroTiles({
               borderWidth: 1,
               borderColor: cardBorderColor,
               borderRadius: Radius.lg,
-              padding: Spacing.lg - 2,
+              padding: Spacing.lg,
             }}
           >
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.sm }}>
@@ -256,17 +243,7 @@ export function TodayDashboardMacroTiles({
                 >
                   {def.label}
                 </Text>
-                {/* 2026-05-12 (premium-bar audit, Today F4 #2):
-                    chevron-right affordance signals each tile is
-                    tappable (deep-links to /macro-detail). Was just
-                    the macro icon — Cronometer / MacroFactor both
-                    show an explicit "tap for detail" cue. Kept the
-                    macro icon next to the chevron so colour-coding
-                    stays. */}
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                  <def.Icon size={13} color={def.color} strokeWidth={1.75} />
-                  <ChevronRight size={11} color={textTertiaryColor} strokeWidth={2} />
-                </View>
+                <def.Icon size={14} color={def.color} strokeWidth={1.75} />
               </View>
               <View style={{ flexDirection: "row", alignItems: "baseline" }}>
                 <Text
@@ -322,7 +299,7 @@ export function TodayDashboardMacroTiles({
                 <Text
                   style={{
                     fontSize: 11,
-                    color: isOverBudget ? Accent.warning : textSecondaryColor,
+                    color: isOverBudget ? Accent.destructive : textSecondaryColor,
                     fontWeight: isOverBudget ? "700" : "400",
                     marginTop: Spacing.xs + 2,
                     fontVariant: ["tabular-nums"],

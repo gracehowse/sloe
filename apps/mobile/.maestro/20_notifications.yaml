@@ -5,13 +5,12 @@ name: "Notifications — inbox, mark read, empty state"
 ---
 - runFlow: shared/login.yaml
 
-# You tab → Settings sub-tab. Notifications section + "Open notifications"
-# row both live on /settings (post Group G IA collapse).
+# Settings via Today header avatar. Notifications row lives on /settings.
 - tapOn:
-    id: "tab-you"
+    id: "tab-today"
 - waitForAnimationToEnd
 - tapOn:
-    id: "subtab-settings"
+    text: "Open settings"
 - waitForAnimationToEnd
 
 - scrollUntilVisible:

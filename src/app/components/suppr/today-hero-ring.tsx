@@ -67,7 +67,7 @@ export function TodayHeroRing({
   // is reachable from the Targets sub-tab (inside More) on web too,
   // not from Today's hero. Today stays clean.
   return (
-    <div className="flex flex-col items-center mb-4">
+    <div className="flex flex-col items-center mb-6">
       <DailyRing
         consumed={consumed}
         target={target}

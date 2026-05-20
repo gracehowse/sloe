@@ -48,7 +48,7 @@ const BASE_COLUMNS: Column[] = [
 const FIBER_COLUMN: Column = {
   key: "fiber",
   label: "FIBER",
-  color: MacroColors.fiber ?? Accent.success,
+  color: MacroColors.fiber,
   unit: "g",
 };
 

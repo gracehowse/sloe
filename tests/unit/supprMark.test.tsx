@@ -1,7 +1,12 @@
 import * as React from "react";
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { SupprMark, SupprWordmark } from "../../src/app/components/ui/suppr-mark";
+import {
+  SupprMark,
+  SupprPlateMark,
+  SupprPlateWordmark,
+  SupprWordmark,
+} from "../../src/app/components/ui/suppr-mark";
 
 void React;
 
@@ -46,6 +51,23 @@ describe("SupprMark", () => {
     const text = container.querySelector("text");
     expect(text?.textContent).toBe("S");
     expect(text?.getAttribute("fill")).toBe("#ffffff");
+  });
+});
+
+describe("SupprPlateMark", () => {
+  it("renders an SVG with role=img and a brand aria-label", () => {
+    render(<SupprPlateMark />);
+    const svg = screen.getByRole("img", { name: "Suppr" });
+    expect(svg.tagName.toLowerCase()).toBe("svg");
+    expect(svg).toHaveAttribute("data-slot", "suppr-plate-mark");
+  });
+});
+
+describe("SupprPlateWordmark", () => {
+  it("composes the plate mark with the Suppr word", () => {
+    render(<SupprPlateWordmark />);
+    expect(screen.getByText("Suppr")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Suppr" })).toBeInTheDocument();
   });
 });
 

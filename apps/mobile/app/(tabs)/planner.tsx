@@ -111,7 +111,8 @@ import { HouseholdSummaryRow } from "@/components/HouseholdSummaryRow";
 import { MoveMealSheet } from "@/components/MoveMealSheet";
 import { PlanTemplatesSheet } from "@/components/PlanTemplatesSheet";
 import { useMealPlanSlots } from "@/hooks/use-meal-plan-slots";
-import { PlanSubTabHeader } from "@/components/tabs/PlanSubTabHeader";
+import { PlanTabChrome } from "@/components/tabs/PlanTabChrome";
+import { Layout } from "@/constants/layout";
 
 function stripPlanPlaceholders<T extends { recipeTitle: string; isPlaceholder?: boolean }>(meals: T[]): T[] {
   return meals.filter(
@@ -919,7 +920,12 @@ export default function PlannerScreen() {
     () =>
       StyleSheet.create({
         container: { flex: 1, backgroundColor: colors.background },
-        scroll: { paddingHorizontal: Spacing.xl, paddingBottom: 120, gap: Spacing.lg },
+        scroll: {
+          paddingHorizontal: Layout.screenPaddingX,
+          paddingTop: Spacing.md,
+          paddingBottom: Layout.screenPaddingBottom,
+          gap: Layout.screenGap,
+        },
         // Prototype port — uppercase micro-overline above the big title.
         headerOverline: {
           fontSize: 11,
@@ -927,7 +933,6 @@ export default function PlannerScreen() {
           color: colors.textTertiary,
           letterSpacing: 1.2,
           textTransform: "uppercase",
-          paddingTop: 18,
         },
         headerTitle: {
           fontSize: 28,
@@ -942,7 +947,7 @@ export default function PlannerScreen() {
           justifyContent: "space-between",
           alignItems: "center",
           gap: Spacing.md,
-          marginBottom: Spacing.md,
+          marginBottom: Spacing.xl,
         },
         headerLeft: { flex: 1 },
         // Prototype port — round icon pill on the right of the header.
@@ -969,7 +974,7 @@ export default function PlannerScreen() {
           borderWidth: 1,
           borderColor: Accent.primary + "38",
           padding: Spacing.xl,
-          marginBottom: Spacing.md,
+          marginBottom: Spacing.xl,
         },
         summaryOverline: {
           fontSize: 11,
@@ -1056,8 +1061,8 @@ export default function PlannerScreen() {
           fontWeight: "700",
           color: colors.textSecondary,
           letterSpacing: 0.2,
-          marginTop: Spacing.sm,
-          marginBottom: Spacing.xs,
+          marginTop: Spacing.md,
+          marginBottom: Spacing.md,
         },
 
         card: {
@@ -1066,7 +1071,7 @@ export default function PlannerScreen() {
           borderWidth: 1,
           borderColor: colors.border,
           padding: Spacing.xl,
-          gap: Spacing.md,
+          gap: Spacing.lg,
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.06,
@@ -1810,8 +1815,9 @@ export default function PlannerScreen() {
           Shopping list as a sub-view). Tapping "Shopping" routes to
           the existing `/shopping` screen which carries a mirroring
           header so the user can return without losing their place. */}
-      <PlanSubTabHeader
+      <PlanTabChrome
         value="plan"
+        subtitle={getWeekOfLabel()}
         onChange={(next) => {
           if (next === "shopping") {
             router.push("/shopping" as Href);
@@ -1819,21 +1825,7 @@ export default function PlannerScreen() {
         }}
       />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        {/* Prototype port (2026-04-20) — overline + big title on the
-            left, round "options" pill on the right. The old inline
-            Regenerate/Generate-Plan text button was moved: the
-            "Regenerate" primary action now lives in the summary card
-            below for plans that already exist; the "Generate Plan"
-            empty-state CTA is still served by the generate controls
-            card further down (unchanged). The round button currently
-            re-uses the templates sheet as its "plan options" surface;
-            if a standalone filter/options sheet ships later, swap the
-            onPress target. */}
-        <View style={styles.headerRow}>
-          <View style={styles.headerLeft}>
-            <Text style={styles.headerOverline}>{getWeekOfLabel()}</Text>
-            <Text style={styles.headerTitle}>Meal plan</Text>
-          </View>
+        <View style={[styles.headerRow, { justifyContent: "flex-end" }]}>
           {/* F-29 (2026-04-21): Regenerate was previously only reachable
               via the "This week" summary card, which hides when
               summaryScore is null (e.g. empty-day view, no planTargets).
@@ -1885,8 +1877,8 @@ export default function PlannerScreen() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: 6, paddingBottom: 4, paddingRight: 4 }}
-          style={{ marginBottom: Spacing.md }}
+          contentContainerStyle={{ gap: 8, paddingBottom: 6, paddingRight: 4 }}
+          style={{ marginBottom: Spacing.lg }}
         >
           {planSlots.map((s) => {
             const active = s.id === activePlanSlotId;
@@ -2478,7 +2470,7 @@ export default function PlannerScreen() {
         {plan && plan.length > 0 && (
           <View
             style={{
-              marginBottom: Spacing.sm,
+              marginBottom: Spacing.lg,
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "space-between",
@@ -2545,7 +2537,7 @@ export default function PlannerScreen() {
             plan incoming". The cold-start path (no existing plan)
             still shows the 3 SkeletonCards above. */}
         {plan && (
-          <View style={{ position: "relative" }}>
+          <View style={{ position: "relative", gap: Spacing.xl }}>
         {plan.map((dp, dayIdx) => {
           // Build-12 H-5 (TestFlight `AH8csBqtZsBJJr0uHgXyEcE`,
           // 2026-04-19): "Plan doesn't tell me how close it is to my
@@ -2696,7 +2688,7 @@ export default function PlannerScreen() {
             })()}
 
             {dp.meals.length === 0 ? (
-              <Text style={{ fontSize: 14, color: colors.textSecondary, paddingVertical: Spacing.sm }}>
+              <Text style={{ fontSize: 14, color: colors.textSecondary, paddingVertical: Spacing.md, lineHeight: 20 }}>
                 No slots on this day yet. Add one below, or regenerate the plan.
               </Text>
             ) : null}
@@ -3335,16 +3327,17 @@ export default function PlannerScreen() {
               return (
                 <View
                   style={{
-                    marginTop: Spacing.sm,
-                    paddingTop: Spacing.sm,
+                    marginTop: Spacing.md,
+                    paddingTop: Spacing.md,
+                    paddingBottom: Spacing.xs,
                     borderTopWidth: StyleSheet.hairlineWidth,
                     borderTopColor: colors.border,
                   }}
                 >
-                  <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: Spacing.sm }}>
+                  <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: Spacing.md }}>
                     Add a meal slot
                   </Text>
-                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
                     {missing.map((slot) => (
                       <Pressable
                         key={slot}
@@ -3384,8 +3377,8 @@ export default function PlannerScreen() {
                           flexDirection: "row",
                           alignItems: "center",
                           gap: 4,
-                          paddingVertical: 8,
-                          paddingHorizontal: 12,
+                          paddingVertical: 10,
+                          paddingHorizontal: 14,
                           borderRadius: Radius.md,
                           borderWidth: 1,
                           borderColor: Accent.primary + "55",

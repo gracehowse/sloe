@@ -236,9 +236,9 @@ export function TodayDateHeader({
               affordance (Cal AI / MFP / Lifesum all do this). Was a static
               `<View>` with no onPress — now routes to /profile. */}
           <Pressable
-            onPress={() => router.push("/profile")}
+            onPress={() => router.push("/(tabs)/settings")}
             accessibilityRole="button"
-            accessibilityLabel="Open profile"
+            accessibilityLabel="Open settings"
             hitSlop={8}
             style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
           >

@@ -43,37 +43,37 @@ interface VariantConfig {
 
 const config: Record<TrustChipVariant, VariantConfig> = {
   usda: {
-    bg: "rgba(34, 168, 96, 0.08)",
+    bg: "rgba(98, 179, 90, 0.08)",
     fg: "var(--success)",
     glyph: "check",
     label: "USDA verified",
   },
   "off-adjusted": {
-    bg: "rgba(76, 108, 224, 0.08)",
+    bg: "rgba(76, 108, 224, 0.12)",
     fg: "var(--primary)",
     glyph: "check",
     label: "OFF · adjusted",
   },
   estimated: {
-    bg: "rgba(232, 160, 32, 0.10)",
+    bg: "rgba(224, 168, 56, 0.10)",
     fg: "var(--warning)",
     glyph: "sparkles",
     label: "Estimated · verify",
   },
   manual: {
-    bg: "rgba(148, 163, 184, 0.10)",
+    bg: "rgba(140, 131, 120, 0.12)",
     fg: "var(--muted-foreground)",
     glyph: null,
     label: "Manual",
   },
   "gluten-high-conf": {
-    bg: "rgba(34, 168, 96, 0.08)",
+    bg: "rgba(98, 179, 90, 0.08)",
     fg: "var(--success)",
     glyph: "check",
     label: "No gluten-containing ingredients",
   },
   "gluten-uncertain": {
-    bg: "rgba(232, 160, 32, 0.10)",
+    bg: "rgba(224, 168, 56, 0.10)",
     fg: "var(--warning)",
     glyph: "sparkles",
     label: "Contains potential gluten · review",

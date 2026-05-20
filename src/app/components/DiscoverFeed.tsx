@@ -402,28 +402,14 @@ export const DiscoverFeed = memo(function DiscoverFeed({
           the canonical way in, and the breadcrumb agent ships an
           additional top-bar search. Sticky/blur/border are dropped
           so the content canvas reads continuously with the sidebar. */}
-      <header className="sticky top-0 z-20 px-4 py-4 border-b border-border bg-card/90 backdrop-blur-md flex items-start justify-between gap-3 md:static md:px-0 md:py-4 md:border-0 md:bg-transparent md:backdrop-blur-0">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground md:hidden">Browse</p>
-          <h1 className="text-[28px] font-extrabold -tracking-[0.01em] text-foreground mt-0.5 md:text-[24px] md:font-bold md:-tracking-[0.02em] md:mt-0">Discover</h1>
-          <p
-            data-testid="discover-desktop-subtitle"
-            className="hidden md:block text-[13px] text-muted-foreground mt-0.5"
-          >
-            {recipes.length} recipe{recipes.length === 1 ? "" : "s"} · sorted by recent
-          </p>
-        </div>
-        <button
-          type="button"
-          aria-label="Focus search"
-          className="w-10 h-10 rounded-full border border-border bg-card flex items-center justify-center text-foreground hover:bg-muted md:hidden"
-          onClick={() => {
-            const input = document.querySelector<HTMLInputElement>('input[type="search"]');
-            input?.focus();
-          }}
+      <header className="hidden md:block mb-4">
+        <h1 className="text-[24px] font-bold -tracking-[0.02em] text-foreground">Discover</h1>
+        <p
+          data-testid="discover-desktop-subtitle"
+          className="text-[13px] text-muted-foreground mt-0.5"
         >
-          <Icons.search className="w-[18px] h-[18px]" />
-        </button>
+          {recipes.length} recipe{recipes.length === 1 ? "" : "s"} · sorted by recent
+        </p>
       </header>
 
       <div className="px-0 sm:px-2 md:px-0">

@@ -53,7 +53,7 @@ const FIBER_COLUMN: Column = {
   key: "fiber",
   label: "FIBER",
   unit: "g",
-  color: "var(--success)",
+  color: "var(--macro-fiber)",
 };
 
 const LABEL_FOR_ARIA: Record<Column["key"], string> = {

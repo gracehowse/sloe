@@ -39,65 +39,71 @@
    *  `docs/ux/design-system.md`. */
   --space-xs: 0.25rem;    /* 4px  ↔ Spacing.xs   */
   --space-sm: 0.5rem;     /* 8px  ↔ Spacing.sm   */
-  --space-md: 0.75rem;    /* 12px ↔ Spacing.md   */
-  --space-lg: 1rem;       /* 16px ↔ Spacing.lg   */
-  --space-xl: 1.25rem;    /* 20px ↔ Spacing.xl   */
-  --space-xxl: 1.5rem;    /* 24px ↔ Spacing.xxl  */
-  --space-xxxl: 2rem;     /* 32px ↔ Spacing.xxxl */
+  --space-md: 1rem;       /* 16px ↔ Spacing.md   */
+  --space-lg: 1.25rem;    /* 20px ↔ Spacing.lg   */
+  --space-xl: 1.5rem;     /* 24px ↔ Spacing.xl   */
+  --space-xxl: 2rem;      /* 32px ↔ Spacing.xxl  */
+  --space-xxxl: 2.5rem;   /* 40px ↔ Spacing.xxxl */
 
   /** Radius — larger, more refined */
   --radius: 0.75rem;         /* 12px base */
   --radius-card: 1rem;        /* 16px cards — matches mobile Radius.lg */
 
   /** ── LIGHT MODE PALETTE ──
-   *  Icon-driven & Structured: cool grays, blue accent, green success.
-   *  Designed for systematic, precise feel. */
-  --background: #f4f5f7;
-  --foreground: #111118;
+   *  2026-05-19: Elevated warm stone greys on cream + richer blue
+   *  soft tints (Noom/Lifesum lane). Primary blue unchanged. */
+  --background: #f6f3ee;
+  --foreground: #1c1916;
   --card: #ffffff;
-  --card-foreground: #111118;
+  --card-foreground: #1c1916;
   --popover: #ffffff;
-  --popover-foreground: #111118;
+  --popover-foreground: #1c1916;
   --primary: #4c6ce0;
   --primary-foreground: #ffffff;
-  --secondary: #f4f5f7;
-  --secondary-foreground: #111118;
-  --muted: #e4e4ec;
-  --muted-foreground: #6b6b78;
-  --accent: #e4e4ec;
-  --accent-foreground: #111118;
+  --secondary: #f0ebe3;
+  --secondary-foreground: #1c1916;
+  --muted: #ddd5c8;
+  --muted-foreground: #5e574e;
+  --accent: #ddd5c8;
+  --accent-foreground: #1c1916;
   --destructive: #e04848;
   --destructive-foreground: #ffffff;
-  --border: #e4e4ec;
+  --border: #ddd5c8;
   --input: transparent;
-  --input-background: #ededf2;
-  --switch-background: #c4c4cc;
+  --input-background: #ebe5dc;
+  --switch-background: #c8bfb4;
   --ring: #4c6ce0;
 
+  /** Brand mark (plate / wordmark) — black on off-white in light mode. */
+  --brand-mark-bg: #f6f3ee;
+  --brand-mark-ring: #1c1916;
+
   /** Semantic colours */
-  --success: #22a860;
+  --success: #62b35a;
   --success-foreground: #ffffff;
-  --success-soft: #22a86010;
-  --warning: #e8a020;
+  --success-soft: #62b35a10;
+  --warning: #e0a838;
   --warning-foreground: #ffffff;
-  --warning-soft: #e8a02010;
+  --warning-soft: #e0a83810;
 
   /** Macro colours */
   --macro-protein: #4c6ce0;
-  --macro-protein-soft: #4c6ce012;
-  /* 2026-05-12 (premium-bar audit DC10 follow-through): carbs split
-     from --warning (amber #e8a020) to its own warm-orange hue. Amber
-     now reserved for over-budget warnings only. Previously a
-     macro-carbs bar and an over-budget warning looked identical
-     because they shared the same token. Hue 16° (warm orange),
-     distinct from --warning (39°, yellow-orange), --destructive
-     (red), --macro-fat (magenta), and from sodium's tailwind-500
-     orange. Dark-mode equivalent further below. */
-  --macro-carbs: #ed6b2a;
-  --macro-carbs-soft: #ed6b2a14;
+  --macro-protein-soft: #4c6ce01a;
+  /* Yellow-orange carbs — distinct from over-budget warning (#e0a838)
+     and sodium orange (#f97316). */
+  --macro-carbs: #d4a02f;
+  --macro-carbs-soft: #d4a02f18;
   --macro-fat: #e04888;
   --macro-fat-soft: #e0488812;
-  --macro-calories: #22a860;
+  /* Calories ring / under-target — leaf green. */
+  --macro-calories: #62b35a;
+  /* Fibre — dusty blue-teal, distinct hue from --macro-calories. */
+  --macro-fiber: #4a7878;
+  --macro-fiber-soft: #4a787814;
+  --macro-sugar: #7a90f5;
+  --macro-sugar-soft: #7a90f51a;
+  --macro-sodium: #f97316;
+  --macro-sodium-soft: #f9731614;
   --macro-water: #06b6d4;
   --macro-water-soft: #06b6d412;
 
@@ -106,12 +112,12 @@
    *  1:1 with the Fat macro tile on Today. Snacks now ships its own
    *  cyan token; macro tokens stay reserved for the Macro tile row.
    *  Mirrors mobile `SlotColors` in `apps/mobile/constants/theme.ts`. */
-  --slot-breakfast: #e8a020;        /* amber  ↔ Accent.warning */
-  --slot-breakfast-soft: #e8a02012;
-  --slot-lunch: #22a860;             /* green  ↔ Accent.success */
-  --slot-lunch-soft: #22a86012;
+  --slot-breakfast: #e0a838;        /* amber  ↔ Accent.warning */
+  --slot-breakfast-soft: #e0a83812;
+  --slot-lunch: #62b35a;             /* green  ↔ Accent.success */
+  --slot-lunch-soft: #62b35a12;
   --slot-dinner: #4c6ce0;            /* blue   ↔ Accent.primary */
-  --slot-dinner-soft: #4c6ce012;
+  --slot-dinner-soft: #4c6ce01a;
   --slot-snack: #06b6d4;             /* cyan — distinct from --macro-fat */
   --slot-snack-soft: #06b6d412;
 
@@ -123,20 +129,20 @@
   --stimulant-alcohol: #f59e0b;
 
   /** Confidence colours */
-  --confidence-high: #22a860;
-  --confidence-med: #e8a020;
+  --confidence-high: #62b35a;
+  --confidence-med: #e0a838;
   --confidence-low: #e04848;
   /** Confidence chip — neutral grey base used for adaptive TDEE display
    *  (D-2026-04-27-12). NOT a warning state; ConfidenceChip is calm. */
-  --confidence-neutral: #94a3b8;
+  --confidence-neutral: #8c8378;
 
   /** Source / provenance dots — production design spec §1.6.
    *  USDA = success-green, OFF = primary-blue, FatSecret = orange,
    *  Manual = text-tertiary grey, AI = magenta (paired with sparkle glyph). */
-  --source-usda: #22a860;
+  --source-usda: #62b35a;
   --source-off: #4c6ce0;
   --source-fatsecret: #f97316;
-  --source-manual: #94a3b8;
+  --source-manual: #8c8378;
   --source-ai: #e04888;
 
   /** North-star block — gradient SupprCard on Today. Spec §1.4. */
@@ -145,27 +151,27 @@
   --north-star-border: rgba(76, 108, 224, 0.18);
 
   /** Over-budget — amber, never red. Per project memory + spec §1.4. */
-  --over-budget-fg: #e8a020;
-  --over-budget-soft: rgba(232, 160, 32, 0.08);
+  --over-budget-fg: #e0a838;
+  --over-budget-soft: rgba(224, 168, 56, 0.08);
 
   /** Depth ladder — production design spec §1.3.
    *  Card = list rows on a card. Sheet = bottom-sheets. Float = popovers.
    *  FloatPrimary = FAB (primary tint underneath). */
-  --elev-card: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --elev-card: 0 1px 3px rgba(28, 25, 22, 0.06);
   --elev-sheet: 0 -8px 32px rgba(0, 0, 0, 0.12);
   --elev-float: 0 4px 16px rgba(0, 0, 0, 0.12);
-  --elev-float-primary: 0 4px 16px rgba(76, 108, 224, 0.4);
+  --elev-float-primary: 0 4px 16px rgba(76, 108, 224, 0.45);
 
   /** Chart colours (mapped to macro + accent system) */
   --chart-1: #4c6ce0;
-  --chart-2: #22a860;
-  --chart-3: #e8a020;
+  --chart-2: #62b35a;
+  --chart-3: #e0a838;
   --chart-4: #e04888;
   --chart-5: #8b5cf6;
 
-  /** Ring component */
-  --ring-bg: #e4e4ec;
-  --ring-track: #22a860;
+  /** Ring component — blue-tinted track (elevates protein ring on cream) */
+  --ring-bg: #d8dff2;
+  --ring-track: #62b35a;
 
   /** Font weights */
   --font-weight-normal: 400;
@@ -175,12 +181,12 @@
 
   /** Sidebar */
   --sidebar: #ffffff;
-  --sidebar-foreground: #111118;
+  --sidebar-foreground: #1c1916;
   --sidebar-primary: #4c6ce0;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f4f5f7;
-  --sidebar-accent-foreground: #111118;
-  --sidebar-border: #e4e4ec;
+  --sidebar-accent: #f0ebe3;
+  --sidebar-accent-foreground: #1c1916;
+  --sidebar-border: #ddd5c8;
   --sidebar-ring: #4c6ce0;
 
   /** Glass / surface tokens (Apple-style, used by marketing pages) */
@@ -198,59 +204,65 @@
 
 .dark {
   --background: #101014;
-  --foreground: #e4e4e8;
+  --foreground: #e8e7ed;
   --card: #18181c;
-  --card-foreground: #e4e4e8;
+  --card-foreground: #e8e7ed;
   --popover: #202028;
-  --popover-foreground: #e4e4e8;
-  --primary: #6c8cff;
+  --popover-foreground: #e8e7ed;
+  --primary: #7a90f5;
   --primary-foreground: #ffffff;
   --secondary: #18181c;
-  --secondary-foreground: #e4e4e8;
-  --muted: #282830;
-  --muted-foreground: #7a7a88;
-  --accent: #282830;
-  --accent-foreground: #e4e4e8;
+  --secondary-foreground: #e8e7ed;
+  --muted: #32313c;
+  --muted-foreground: #9490a0;
+  --accent: #32313c;
+  --accent-foreground: #e8e7ed;
   --destructive: #ff6b6b;
   --destructive-foreground: #ffffff;
-  --border: #282830;
-  --input: #282830;
-  --input-background: #202028;
+  --border: #32313c;
+  --input: #32313c;
+  --input-background: #222028;
   --switch-background: #4a4a55;
-  --ring: #6c8cff;
+  --ring: #7a90f5;
+
+  /** Brand mark — white on black in dark mode. */
+  --brand-mark-bg: #0a0a0f;
+  --brand-mark-ring: #ffffff;
 
   /** Semantic colours — dark */
-  --success: #4cd080;
+  --success: #82d878;
   --success-foreground: #ffffff;
-  --success-soft: #4cd08015;
-  --warning: #ffc04c;
+  --success-soft: #82d87815;
+  --warning: #f0c058;
   --warning-foreground: #ffffff;
-  --warning-soft: #ffc04c15;
+  --warning-soft: #f0c05815;
 
   /** Macro colours — dark */
-  --macro-protein: #6c8cff;
-  --macro-protein-soft: #6c8cff15;
-  /* 2026-05-12 (premium-bar audit DC10): carbs dark hue split from
-     --warning (#ffc04c amber-light) → warm-orange (#ff9054). Lifted
-     for dark-mode legibility. Same rationale as light mode — amber
-     now reserved for over-budget warnings only. */
-  --macro-carbs: #ff9054;
-  --macro-carbs-soft: #ff905415;
+  --macro-protein: #7a90f5;
+  --macro-protein-soft: #7a90f518;
+  --macro-carbs: #e2b84c;
+  --macro-carbs-soft: #e2b84c18;
   --macro-fat: #ff7eb3;
   --macro-fat-soft: #ff7eb315;
-  --macro-calories: #4cd080;
+  --macro-calories: #82d878;
+  --macro-fiber: #5c8f8b;
+  --macro-fiber-soft: #5c8f8b18;
+  --macro-sugar: #9aaef7;
+  --macro-sugar-soft: #9aaef718;
+  --macro-sodium: #fb923c;
+  --macro-sodium-soft: #fb923c18;
   --macro-water: #22d3ee;
   --macro-water-soft: #22d3ee15;
 
   /** Meal-slot tints — dark. Mirrors light-mode roles with OLED-lifted
    *  hues. Snack stays cyan family (distinct from --macro-fat which
    *  is magenta in dark too). */
-  --slot-breakfast: #ffc04c;         /* amber-light */
-  --slot-breakfast-soft: #ffc04c15;
-  --slot-lunch: #4cd080;              /* green-light */
-  --slot-lunch-soft: #4cd08015;
-  --slot-dinner: #6c8cff;             /* blue-light */
-  --slot-dinner-soft: #6c8cff15;
+  --slot-breakfast: #f0c058;         /* amber-light */
+  --slot-breakfast-soft: #f0c05815;
+  --slot-lunch: #82d878;              /* green-light */
+  --slot-lunch-soft: #82d87815;
+  --slot-dinner: #7a90f5;             /* blue-light */
+  --slot-dinner-soft: #7a90f518;
   --slot-snack: #22d3ee;              /* cyan-light */
   --slot-snack-soft: #22d3ee15;
 
@@ -261,28 +273,28 @@
   --stimulant-alcohol: #f59e0b;
 
   /** Confidence colours — dark */
-  --confidence-high: #4cd080;
-  --confidence-med: #ffc04c;
+  --confidence-high: #82d878;
+  --confidence-med: #f0c058;
   --confidence-low: #ff6b6b;
-  --confidence-neutral: #64748b;
+  --confidence-neutral: #706c7c;
 
   /** Source / provenance dots — dark.
    *  Lifted hues for OLED contrast; mirrors macro/semantic dark adjustments. */
-  --source-usda: #4cd080;
-  --source-off: #6c8cff;
+  --source-usda: #82d878;
+  --source-off: #7a90f5;
   --source-fatsecret: #fb923c;
-  --source-manual: #64748b;
+  --source-manual: #706c7c;
   --source-ai: #ff7eb3;
 
   /** North-star block — dark. Stronger gradient + border for OLED.
    *  Visual-qa V-1 (spec): A/B against a more muted variant before locking. */
-  --north-star-bg-from: rgba(108, 140, 255, 0.14);
-  --north-star-bg-to: rgba(255, 126, 179, 0.08);
-  --north-star-border: rgba(108, 140, 255, 0.32);
+  --north-star-bg-from: rgba(122, 144, 245, 0.16);
+  --north-star-bg-to: rgba(255, 126, 179, 0.09);
+  --north-star-border: rgba(122, 144, 245, 0.36);
 
   /** Over-budget — dark amber. Spec §1.4. */
-  --over-budget-fg: #ffc04c;
-  --over-budget-soft: rgba(255, 192, 76, 0.14);
+  --over-budget-fg: #f0c058;
+  --over-budget-soft: rgba(240, 192, 88, 0.14);
 
   /** Depth ladder — dark.
    *  Per spec §1.3 dark-mode-shadow rules: shadows nearly invisible on
@@ -294,34 +306,34 @@
   --elev-card: 0 1px 2px rgba(0, 0, 0, 0.4);
   --elev-sheet: 0 -8px 32px rgba(0, 0, 0, 0.5);
   --elev-float: 0 4px 16px rgba(0, 0, 0, 0.4);
-  --elev-float-primary: 0 4px 16px rgba(108, 140, 255, 0.4);
+  --elev-float-primary: 0 4px 16px rgba(122, 144, 245, 0.45);
 
   /** Chart colours — dark */
-  --chart-1: #6c8cff;
-  --chart-2: #4cd080;
-  --chart-3: #ffc04c;
+  --chart-1: #7a90f5;
+  --chart-2: #82d878;
+  --chart-3: #f0c058;
   --chart-4: #ff7eb3;
   --chart-5: #a78bfa;
 
   /** Ring component — dark */
-  --ring-bg: #28283060;
-  --ring-track: #4cd080;
+  --ring-bg: #32313c80;
+  --ring-track: #82d878;
 
   /** Sidebar — dark */
   --sidebar: #18181c;
-  --sidebar-foreground: #e4e4e8;
-  --sidebar-primary: #6c8cff;
+  --sidebar-foreground: #e8e7ed;
+  --sidebar-primary: #7a90f5;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #202028;
-  --sidebar-accent-foreground: #e4e4e8;
-  --sidebar-border: #282830;
-  --sidebar-ring: #6c8cff;
+  --sidebar-accent-foreground: #e8e7ed;
+  --sidebar-border: #32313c;
+  --sidebar-ring: #7a90f5;
 
   /** Glass / surface tokens — dark */
   --glass: rgba(24, 24, 28, 0.72);
   --glass-border: rgba(255, 255, 255, 0.08);
   --border-strong: rgba(255, 255, 255, 0.12);
-  --accent-muted: rgba(108, 140, 255, 0.2);
+  --accent-muted: rgba(122, 144, 245, 0.22);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
   --shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.25);
@@ -367,6 +379,12 @@
   --color-macro-fat: var(--macro-fat);
   --color-macro-fat-soft: var(--macro-fat-soft);
   --color-macro-calories: var(--macro-calories);
+  --color-macro-fiber: var(--macro-fiber);
+  --color-macro-fiber-soft: var(--macro-fiber-soft);
+  --color-macro-sugar: var(--macro-sugar);
+  --color-macro-sugar-soft: var(--macro-sugar-soft);
+  --color-macro-sodium: var(--macro-sodium);
+  --color-macro-sodium-soft: var(--macro-sodium-soft);
   --color-macro-water: var(--macro-water);
   --color-macro-water-soft: var(--macro-water-soft);
 
@@ -438,11 +456,19 @@
      (renamed from `--spacing-pm-N` 2026-04-28, Next-10 #11). */
   --space-xs: 0.25rem;
   --space-sm: 0.5rem;
-  --space-md: 0.75rem;
-  --space-lg: 1rem;
-  --space-xl: 1.25rem;
-  --space-xxl: 1.5rem;
-  --space-xxxl: 2rem;
+  --space-md: 1rem;
+  --space-lg: 1.25rem;
+  --space-xl: 1.5rem;
+  --space-xxl: 2rem;
+  --space-xxxl: 2.5rem;
+
+  /** Legacy `px-pm-*` utilities — map to semantic space tokens. */
+  --spacing-pm-1: var(--space-xs);
+  --spacing-pm-2: var(--space-sm);
+  --spacing-pm-3: var(--space-md);
+  --spacing-pm-4: var(--space-lg);
+  --spacing-pm-5: var(--space-xxl);
+  --spacing-pm-6: var(--space-xxxl);
 
   /* Transition defaults */
   --default-transition-duration: var(--pm-duration);

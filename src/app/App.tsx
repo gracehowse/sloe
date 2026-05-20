@@ -6,6 +6,7 @@ import { Plus } from "lucide-react";
 import { AnalyticsEvents, type PaywallViewedFrom } from "../lib/analytics/events.ts";
 import { track } from "../lib/analytics/track.ts";
 import { Icons } from "./components/ui/icons";
+import { SupprPlateWordmark } from "./components/ui/suppr-mark";
 import dynamic from "next/dynamic";
 import { DiscoverFeed } from "./components/DiscoverFeed.tsx";
 import { NotificationsBell } from "./components/NotificationsBell.tsx";
@@ -13,6 +14,8 @@ import { Library } from "./components/Library.tsx";
 import { AppLoadingSkeleton } from "./components/AppLoadingSkeleton.tsx";
 import { DesktopSidebar, resolvePrimaryFromView, type SidebarView } from "./components/suppr/desktop-sidebar.tsx";
 import { SubTabPill } from "./components/ui/sub-tab-pill.tsx";
+import { RecipesTabChrome } from "./components/suppr/recipes-tab-chrome.tsx";
+import { PlanTabChrome } from "./components/suppr/plan-tab-chrome.tsx";
 
 const NotificationsCenter = dynamic(
   () => import("./components/NotificationsCenter.tsx").then((m) => ({ default: m.NotificationsCenter })),
@@ -90,28 +93,6 @@ type View =
  * the old inline components carried — kept here in the host so the
  * primitive stays generic.
  */
-function RecipesSubTabPill({
-  currentView,
-  onNavigate,
-}: {
-  currentView: "library" | "discover";
-  onNavigate: (view: "library" | "discover") => void;
-}) {
-  return (
-    <div className="md:hidden sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur-md">
-      <SubTabPill
-        items={[
-          { id: "library", label: "Library" },
-          { id: "discover", label: "Discover" },
-        ]}
-        activeId={currentView}
-        onSelect={onNavigate}
-        accessibilityLabel="Recipes sections"
-      />
-    </div>
-  );
-}
-
 /**
  * YouSubTabPill — mobile-web sub-tab pill (>= md hidden). Group G IA
  * Batch C (2026-04-29) collapsed this from 3 pills (Progress / Profile
@@ -462,11 +443,19 @@ export default function App() {
   const renderView = () => {
     switch (currentView) {
       case "today":
-        return <FeatureErrorBoundary feature="Nutrition Tracker"><NutritionTracker userTier={userTier} onOpenProgress={() => navigateToView("progress")} /></FeatureErrorBoundary>;
+        return (
+          <FeatureErrorBoundary feature="Nutrition Tracker">
+            <NutritionTracker
+              userTier={userTier}
+              onOpenProgress={() => navigateToView("progress")}
+              onOpenSettings={() => navigateToView("settings")}
+            />
+          </FeatureErrorBoundary>
+        );
       case "discover":
         return (
           <>
-            <RecipesSubTabPill currentView="discover" onNavigate={navigateToView} />
+            <RecipesTabChrome activeId="discover" onSelect={navigateToView} />
             <DiscoverFeed
               userTier={userTier}
               initialOpenRecipeId={deepLinkRecipeId}
@@ -480,17 +469,12 @@ export default function App() {
       case "plan":
         return (
           <>
-            <div className="md:hidden sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur-md">
-              <SubTabPill
-                items={[
-                  { id: "plan", label: "Plan" },
-                  { id: "shop", label: "Shopping", badge: shoppingUncheckedCount },
-                ]}
-                activeId={plannerMobileTab}
-                onSelect={setPlannerMobileTab}
-                accessibilityLabel="Plan sections"
-              />
-            </div>
+            <PlanTabChrome
+              activeId={plannerMobileTab === "shop" ? "shopping" : "plan"}
+              title={plannerMobileTab === "shop" ? "Shopping list" : "Meal plan"}
+              shoppingUncheckedCount={shoppingUncheckedCount}
+              onSelect={(id) => setPlannerMobileTab(id === "shopping" ? "shop" : "plan")}
+            />
             {plannerMobileTab === "plan" ? (
               <FeatureErrorBoundary feature="Meal Planner"><MealPlanner
                 userTier={userTier}
@@ -517,10 +501,9 @@ export default function App() {
         );
       case "progress":
         return (
-          <>
-            <YouSubTabPill currentView="progress" onNavigate={navigateToView} />
-            <FeatureErrorBoundary feature="Progress"><ProgressDashboard /></FeatureErrorBoundary>
-          </>
+          <FeatureErrorBoundary feature="Progress">
+            <ProgressDashboard />
+          </FeatureErrorBoundary>
         );
       case "profile":
         // Group G IA Batch C (2026-04-29): /profile is now a drill-down
@@ -531,7 +514,6 @@ export default function App() {
         // up the IA tree.
         return (
           <>
-            <YouSubTabPill currentView="settings" onNavigate={navigateToView} />
             <Profile
               userTier={userTier}
               displayName={displayName}
@@ -546,7 +528,7 @@ export default function App() {
       case "library":
         return (
           <>
-            <RecipesSubTabPill currentView="library" onNavigate={navigateToView} />
+            <RecipesTabChrome activeId="library" onSelect={navigateToView} />
             <Library userTier={userTier} onUpgrade={() => openUpgradePromo("recipes_library")} onGoDiscover={() => navigateToView("discover")} />
           </>
         );
@@ -555,7 +537,6 @@ export default function App() {
       case "settings":
         return (
           <>
-            <YouSubTabPill currentView="settings" onNavigate={navigateToView} />
             <Settings
               userTier={userTier}
               authEmail={authEmail}
@@ -601,7 +582,15 @@ export default function App() {
           </FeatureErrorBoundary>
         );
       default:
-        return <FeatureErrorBoundary feature="Nutrition Tracker"><NutritionTracker userTier={userTier} onOpenProgress={() => navigateToView("progress")} /></FeatureErrorBoundary>;
+        return (
+          <FeatureErrorBoundary feature="Nutrition Tracker">
+            <NutritionTracker
+              userTier={userTier}
+              onOpenProgress={() => navigateToView("progress")}
+              onOpenSettings={() => navigateToView("settings")}
+            />
+          </FeatureErrorBoundary>
+        );
     }
   };
 
@@ -618,6 +607,9 @@ export default function App() {
         currentView={currentView}
         onNavigate={(view) => navigateToView(view as View)}
         shoppingUncheckedCount={shoppingUncheckedCount}
+        displayName={displayName}
+        authEmail={authEmail}
+        userTier={userTier}
       />
 
       <div className="flex flex-1 flex-col min-w-0">
@@ -626,8 +618,10 @@ export default function App() {
             to a slim row with just the notifications bell pinned right.
             Skipping the border on desktop keeps the canvas continuous
             from the sidebar boundary. */}
-        <header className="flex items-center justify-between sticky top-0 z-40 bg-background/95 backdrop-blur-sm px-5 py-3 border-b border-border md:py-2 md:border-b-0">
-          <h1 className="text-lg font-bold text-foreground tracking-tight md:hidden">Suppr</h1>
+        <header className="flex items-center justify-between sticky top-0 z-40 bg-background/95 backdrop-blur-sm px-pm-5 py-4 border-b border-border md:py-3 md:border-b-0">
+          <div className="md:hidden">
+            <SupprPlateWordmark size={22} />
+          </div>
           <div className="hidden md:block" aria-hidden />
           <div className="flex items-center gap-1">
             <button
@@ -682,7 +676,7 @@ export default function App() {
               { primary: "today" as const, defaultLeaf: "today" as const, icon: <Icons.home className="w-5 h-5" />, label: "Today" },
               { primary: "recipes" as const, defaultLeaf: "library" as const, icon: <Icons.recipe className="w-5 h-5" />, label: "Recipes" },
               { primary: "plan" as const, defaultLeaf: "plan" as const, icon: <Icons.plan className="w-5 h-5" />, label: "Plan" },
-              { primary: "you" as const, defaultLeaf: "progress" as const, icon: <Icons.user className="w-5 h-5" />, label: "More" },
+              { primary: "you" as const, defaultLeaf: "progress" as const, icon: <Icons.progress className="w-5 h-5" />, label: "Progress" },
             ] as const).map((tab, tabIndex) => {
               const activePrimary = resolvePrimaryFromView(currentView as SidebarView);
               const isActive = activePrimary === tab.primary;

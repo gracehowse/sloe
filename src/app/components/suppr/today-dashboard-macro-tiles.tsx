@@ -4,7 +4,6 @@ import * as React from "react";
 import {
   Beef,
   Candy,
-  ChevronRight,
   Droplet,
   Droplets,
   Gauge,
@@ -14,6 +13,7 @@ import {
 } from "lucide-react";
 import { carbsLabel, netCarbsForRow } from "../../../lib/nutrition/netCarbs";
 import { formatMacro } from "../../../lib/nutrition/formatMacro";
+import { MACRO_COLOR_VARS } from "../../../lib/theme/macroColors";
 
 /**
  * TodayDashboardMacroTiles — macro tiles grid for Today.
@@ -88,8 +88,7 @@ type TileMeta = {
   /** CSS color var (e.g. "var(--macro-protein)") for the progress fill. */
   fillVar: string;
   /** True when `current > target` on a tracked (non-ref) macro.
-   *  Drives the amber bar + bold amber caption so an over-budget
-   *  tile reads visually distinct from "hit target exactly". */
+   *  Bar keeps the macro identity colour; caption uses destructive. */
   isOverBudget: boolean;
 };
 
@@ -135,7 +134,7 @@ function buildMacroTile(
       targetText: `/ ${tgt} g`,
       pct,
       caption: plainRemainingCaption(cur, tgt, "g"),
-      fillVar: "var(--macro-protein)",
+      fillVar: MACRO_COLOR_VARS.protein,
       isOverBudget: tgt > 0 && cur > tgt,
     };
   }
@@ -164,7 +163,7 @@ function buildMacroTile(
       targetText: `/ ${formatMacro(tgt, "carbs")} g`,
       pct,
       caption: plainRemainingCaption(cur, tgt, "g"),
-      fillVar: "var(--macro-carbs)",
+      fillVar: MACRO_COLOR_VARS.carbs,
       isOverBudget: tgt > 0 && cur > tgt,
     };
   }
@@ -179,7 +178,7 @@ function buildMacroTile(
       targetText: `/ ${tgt} g`,
       pct,
       caption: plainRemainingCaption(cur, tgt, "g"),
-      fillVar: "var(--macro-fat)",
+      fillVar: MACRO_COLOR_VARS.fat,
       isOverBudget: tgt > 0 && cur > tgt,
     };
   }
@@ -194,7 +193,7 @@ function buildMacroTile(
       targetText: `/ ${tgt} g`,
       pct,
       caption: plainRemainingCaption(cur, tgt, "g"),
-      fillVar: "var(--success)",
+      fillVar: MACRO_COLOR_VARS.fiber,
       isOverBudget: false /* fibre over-target is not a flag -- it's a win */,
     };
   }
@@ -209,7 +208,7 @@ function buildMacroTile(
       targetText: `/ ${tgt} g`,
       pct,
       caption: `ref ${tgt} g`,
-      fillVar: "var(--warning)",
+      fillVar: MACRO_COLOR_VARS.sugar,
       isOverBudget: false /* sugar is reference-only */,
     };
   }
@@ -224,7 +223,7 @@ function buildMacroTile(
       targetText: `/ ${tgt} mg`,
       pct,
       caption: `ref ${tgt} mg`,
-      fillVar: "var(--macro-sodium)",
+      fillVar: MACRO_COLOR_VARS.sodium,
       isOverBudget: false /* sodium is reference-only */,
     };
   }
@@ -239,7 +238,7 @@ function buildMacroTile(
       targetText: `/ ${formatWaterLine(tgt)}`,
       pct,
       caption: plainRemainingCaption(cur, tgt, "ml"),
-      fillVar: "var(--macro-water, var(--primary))",
+      fillVar: MACRO_COLOR_VARS.water,
       isOverBudget: false /* water over-target is a win, not a flag */,
     };
   }
@@ -250,8 +249,8 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
   const { trackedMacros, onAddWaterMl, nutrientRows, onPressViewAllNutrients, viewAllNutrientsCount } = props;
 
   return (
-    <div className="mb-4">
-    <div className="grid grid-cols-2 gap-3">
+    <div className="mb-6">
+    <div className="grid grid-cols-2 gap-4">
       {trackedMacros.map((macroKey) => {
         const tile = buildMacroTile(macroKey, props);
         if (!tile) return null;
@@ -259,30 +258,18 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
         return (
           <div
             key={macroKey}
-            className="rounded-[14px] bg-card border border-border p-3.5 flex flex-col"
+            className="rounded-[14px] bg-card border border-border p-4 flex flex-col"
           >
             <div className="flex items-center justify-between mb-2">
               <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 {tile.label}
               </span>
-              {/* 2026-05-12 (premium-bar audit web parity, Today F4 #2):
-                  ChevronRight signals each tile is tappable to a
-                  detail surface. Mirror of mobile macro-tile pattern
-                  (Cronometer / MacroFactor parity). */}
-              <span className="flex items-center gap-1">
-                <Icon
-                  size={13}
-                  strokeWidth={1.75}
-                  style={{ color: tile.fillVar }}
-                  aria-hidden
-                />
-                <ChevronRight
-                  size={11}
-                  strokeWidth={2}
-                  className="text-muted-foreground"
-                  aria-hidden
-                />
-              </span>
+              <Icon
+                size={14}
+                strokeWidth={1.75}
+                style={{ color: tile.fillVar }}
+                aria-hidden
+              />
             </div>
             {/* Prototype port (2026-04-20, mobile parity): value
                 bumped from 18pt → 22pt per mobile's ui-critic fix so
@@ -299,19 +286,19 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
                 {tile.targetText}
               </span>
             </div>
-            {/* Hide bar on unlogged tiles; flip to amber on over-budget. */}
+            {/* Hide bar on unlogged tiles; macro colour always on the fill. */}
             {tile.pct === 0 ? null : (
             <div
               className="mt-2.5 h-[6px] rounded-full overflow-hidden"
               style={{
-                background: `color-mix(in_oklab, ${tile.isOverBudget ? "var(--warning)" : tile.fillVar} 14%, transparent)`,
+                background: `color-mix(in_oklab, ${tile.fillVar} 14%, transparent)`,
               }}
             >
               <div
                 className="h-full rounded-full transition-[width] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]"
                 style={{
                   width: `${tile.pct}%`,
-                  background: tile.isOverBudget ? "var(--warning)" : tile.fillVar,
+                  background: tile.fillVar,
                 }}
               />
             </div>
@@ -320,7 +307,7 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
               <span
                 className={`text-[11px] mt-1.5 tabular-nums ${
                   tile.isOverBudget
-                    ? "font-bold text-[color:var(--warning)]"
+                    ? "font-bold text-destructive"
                     : "text-muted-foreground"
                 }`}
               >
@@ -334,7 +321,7 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
                     key={ml}
                     type="button"
                     onClick={() => onAddWaterMl(ml)}
-                    className="flex-1 px-1 py-1 rounded-md text-[9px] font-semibold bg-[color-mix(in_oklab,var(--macro-water,var(--primary))_12%,transparent)] text-[var(--macro-water,var(--primary))] border border-[color-mix(in_oklab,var(--macro-water,var(--primary))_30%,transparent)] hover:bg-[color-mix(in_oklab,var(--macro-water,var(--primary))_20%,transparent)] transition-colors"
+                    className="flex-1 px-1 py-1 rounded-md text-[9px] font-semibold bg-[color-mix(in_oklab,var(--macro-water)_12%,transparent)] text-[var(--macro-water)] border border-[color-mix(in_oklab,var(--macro-water)_30%,transparent)] hover:bg-[color-mix(in_oklab,var(--macro-water)_20%,transparent)] transition-colors"
                     aria-label={`Add ${ml}ml water`}
                   >
                     +{ml}

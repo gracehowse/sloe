@@ -29,7 +29,7 @@ vi.mock("@/hooks/use-theme-colors", () => ({
     cardBorder: "#eee",
     border: "#eee",
     inputBg: "#f4f4f4",
-    sourceUsda: "#22a860",
+    sourceUsda: "#62b35a",
     sourceOff: "#4c6ce0",
     sourceFatsecret: "#f97316",
     sourceManual: "#94a3b8",
