@@ -232,6 +232,20 @@ Created after state-matrix captures (28 PNGs) and colour-parity audit. **Do not 
 
 **Next:** P5 ([ENG-573](https://linear.app/suppr/issue/ENG-573)) — Architecture enablers (Cycle 5).
 
+## Backlog polish sweep (2026-05-20)
+
+**Shipped:** Premium polish across first-impression and daily-use surfaces.
+
+| Issue | Status |
+|-------|--------|
+| [ENG-70](https://linear.app/suppr/issue/ENG-70) | **Done** — Mobile search empty state: initial hint + no-results state with `EmptyState` component |
+| [ENG-81](https://linear.app/suppr/issue/ENG-81) | **Done** — Roadmap row differentiation: emerald/amber left-border accent + bg tint per status |
+| [ENG-88](https://linear.app/suppr/issue/ENG-88) | **Done** — Auth hero already trimmed by premium-sweep-v2 (verified) |
+| [ENG-90](https://linear.app/suppr/issue/ENG-90) | **Done** — Landing footer: 4-column grid, pre-footer CTA, "Built in London" region, `What's new` link |
+| [ENG-91](https://linear.app/suppr/issue/ENG-91) | **Done** — Settings gradient avatar + tier pill badge (2/6 bundle adopts; remainder deferred) |
+| [ENG-55](https://linear.app/suppr/issue/ENG-55) | **Done** — Streak milestone labels (week/month/100-day/year) + warm amber tint at thresholds |
+| [ENG-530](https://linear.app/suppr/issue/ENG-530) | **Done** — Duplicate of ENG-615 (Settings DC14 tiles) |
+
 ## Cycle 4 status (closed 2026-05-20)
 
 **Shipped:** P4 — Settings DC14 outlined tiles (ENG-615), Progress hero metric (ENG-616), paywall dark contrast (ENG-617), landing gradient (ENG-618, already shipped), legacy hex cleanup (ENG-638).

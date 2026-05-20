@@ -116,7 +116,7 @@ export function TodayWeekSidebar({
       aria-label="Last 7 days"
     >
       <header className="mb-2 flex items-baseline justify-between px-1">
-        <h2 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+        <h2 className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
           Last 7 days
         </h2>
       </header>

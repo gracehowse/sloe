@@ -669,7 +669,11 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       >
         <div
           aria-hidden
-          className="w-14 h-14 rounded-full grid place-items-center text-lg font-bold bg-primary text-primary-foreground shrink-0"
+          className="w-14 h-14 rounded-full grid place-items-center text-lg font-bold text-white shrink-0"
+          style={{
+            background: "linear-gradient(135deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 70%, #e04888) 100%)",
+            boxShadow: "0 2px 8px color-mix(in srgb, var(--primary) 25%, transparent)",
+          }}
         >
           {profileAvatarInitial}
         </div>
@@ -683,9 +687,13 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
               lines: tier label is short and never needs truncating;
               email gets its own line with `truncate` so the dot-and-tld
               doesn't run under the avatar. */}
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {profileTierLabel} tier
-          </p>
+          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase mt-1 ${
+            userTier === "pro"
+              ? "bg-primary/10 text-primary"
+              : "bg-muted text-muted-foreground"
+          }`}>
+            {profileTierLabel}
+          </span>
           {authEmail ? (
             <p className="text-xs text-muted-foreground truncate">
               {authEmail}

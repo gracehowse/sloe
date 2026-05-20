@@ -55,7 +55,7 @@ export function ProgressHeadline({
         .join(" ")}
       aria-label="This week"
     >
-      <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-primary">
+      <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-primary">
         THIS WEEK
       </p>
       <h2

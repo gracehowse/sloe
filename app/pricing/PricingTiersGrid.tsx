@@ -160,7 +160,7 @@ export function PricingTiersGrid({
       ) : null}
       <BillingToggle billing={billing} onChange={onPeriodCommit} tiers={tiers} />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start max-w-3xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start max-w-3xl mx-auto">
         {visibleTiers.map((tier) => {
           const isAnnual = billing === "annual";
           const showAnnual = isAnnual && Boolean(tier.annualPrice);
@@ -176,10 +176,10 @@ export function PricingTiersGrid({
                     // border, bigger shadow so Pro reads as the primary
                     // path at first glance vs. the white Free card.
                     // `pt-10` clears the full-width ribbon at top.
-                    "bg-gradient-to-b from-violet-100 to-indigo-100 dark:from-violet-950/50 dark:to-indigo-950/50 border-2 border-violet-500 dark:border-violet-500 shadow-2xl shadow-violet-500/20 md:scale-105 md:-my-2 pt-10 pb-8 px-8"
+                    "bg-gradient-to-b from-violet-100 to-indigo-100 dark:from-violet-950/50 dark:to-indigo-950/50 border-2 border-violet-500 dark:border-violet-500 shadow-2xl shadow-violet-500/20 md:scale-105 md:-my-2 pt-10 pb-6 px-6"
                   : tier.name === "Pro"
-                    ? "bg-slate-900 dark:bg-slate-800 border border-slate-700 shadow-lg p-8"
-                    : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm p-8"
+                    ? "bg-slate-900 dark:bg-slate-800 border border-slate-700 shadow-lg p-6"
+                    : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm p-6"
               }`}
             >
               {tier.highlighted && (
@@ -268,11 +268,11 @@ export function PricingTiersGrid({
                 );
               })() : null}
 
-              <p className={`text-sm mb-6 ${tier.name === "Pro" ? "text-slate-300" : "text-slate-600 dark:text-slate-400"}`}>
+              <p className={`text-sm mb-5 ${tier.name === "Pro" ? "text-slate-300" : "text-slate-600 dark:text-slate-400"}`}>
                 {tier.tag.replace(/\.$/, "")}
               </p>
 
-              <ul className="space-y-2.5 mb-6 flex-1">
+              <ul className="space-y-2 mb-5 flex-1">
                 {tier.featHeadStripped ? (
                   <li className={`text-sm font-medium ${tier.name === "Pro" ? "text-slate-200" : "text-slate-700 dark:text-slate-300"}`}>
                     {tier.featHeadStripped}
@@ -349,7 +349,7 @@ function BillingToggle({
   const headlineTier = tiers.find((t) => Boolean(t.annualPrice));
   const annualBadge = headlineTier ? computeAnnualSavingsBadge(headlineTier) : null;
   return (
-    <div className="flex flex-col items-center mb-10 gap-2">
+    <div className="flex flex-col items-center mb-8 gap-2">
       {/* 2026-05-13 (premium-bar audit Group I #4): web parity mirror
           of the mobile paywall eyebrow. TF feedback found that the
           period toggle floated with no label, and testers thought

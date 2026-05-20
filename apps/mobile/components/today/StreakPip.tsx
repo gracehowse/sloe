@@ -94,16 +94,21 @@ export function StreakPip({
   // DC8 freeze-shield variant takes precedence over the active/inactive
   // tone so the user reads "freeze covered for you" instead of
   // "fired up today".
+  const isMilestone = [7, 14, 21, 30, 60, 90, 100, 365].includes(safeDays);
   const fg = freezeProtected
     ? colors.textSecondary
-    : active
-      ? colors.tint
-      : colors.textSecondary;
+    : isMilestone
+      ? Accent.warning
+      : active
+        ? colors.tint
+        : colors.textSecondary;
   const bg = freezeProtected
     ? colors.cardBorder
-    : active
-      ? `${colors.tint}14`
-      : colors.cardBorder;
+    : isMilestone
+      ? `${Accent.warning}1A`
+      : active
+        ? `${colors.tint}14`
+        : colors.cardBorder;
 
   // Accessibility label: dynamic per streak length AND whether the pip
   // is interactive. The "tap for weekly recap" suffix is only added
@@ -131,11 +136,22 @@ export function StreakPip({
   // DC8 freeze-shield variant: replace the count with a calm "Freeze
   // saved" + retained day count so the user reads what happened in
   // plain English. Duolingo + Headspace's pattern.
+  const streakLabel = (d: number): string => {
+    if (d === 0) return "Start streak";
+    if (d === 7) return "1 week streak";
+    if (d === 14) return "2 week streak";
+    if (d === 21) return "3 week streak";
+    if (d === 30) return "1 month streak";
+    if (d === 60) return "2 month streak";
+    if (d === 90) return "3 month streak";
+    if (d === 100) return "100 day streak!";
+    if (d === 365) return "1 year streak!";
+    return `${d}-day streak`;
+  };
+
   const labelText = freezeProtected
     ? `${safeDays}-day streak · freeze`
-    : safeDays === 0
-      ? "Start streak"
-      : `${safeDays}-day streak`;
+    : streakLabel(safeDays);
 
   const Glyph = freezeProtected ? Shield : Flame;
 

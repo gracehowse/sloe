@@ -264,7 +264,7 @@ function NorthStarDefaultBlock({
       </div>
 
       <div className="flex flex-1 flex-col gap-1">
-        <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.08em] text-primary">
+        <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.1em] text-primary">
           <Sparkles aria-hidden width={10} height={10} />
           What to eat next
         </span>

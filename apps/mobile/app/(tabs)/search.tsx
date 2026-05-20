@@ -1,12 +1,14 @@
-import { useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { useMemo, useRef, useState } from "react";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Constants from "expo-constants";
+import { Search, SearchX } from "lucide-react-native";
 import { authedFetch } from "@/lib/authedFetch";
 import { effectiveFoodSearchQuery } from "@suppr/shared/nutrition/foodSearchQuery";
 
 import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 function apiBase(): string {
   const extra = Constants.expoConfig?.extra as { supprApiUrl?: string } | undefined;
@@ -27,6 +29,7 @@ export default function SearchScreen() {
   const [busy, setBusy] = useState(false);
   const [hits, setHits] = useState<Hit[]>([]);
   const [err, setErr] = useState<string | null>(null);
+  const hasSearched = useRef(false);
 
   const runSearch = async () => {
     if (!base) {
@@ -50,6 +53,7 @@ export default function SearchScreen() {
         setHits([]);
         return;
       }
+      hasSearched.current = true;
       setHits(Array.isArray(data.hits) ? data.hits.slice(0, 15) : []);
     } catch {
       setErr("Network error.");
@@ -84,7 +88,8 @@ export default function SearchScreen() {
     },
     btnText: { color: "#fff", fontWeight: "600", fontSize: 14 },
     err: { color: Accent.warning, fontSize: 13 },
-    list: { marginTop: Spacing.md, gap: Spacing.sm },
+    list: { flex: 1, marginTop: Spacing.md },
+    listContent: { gap: Spacing.sm, paddingBottom: Spacing.xxl },
     item: {
       padding: Spacing.md,
       borderRadius: Radius.md,
@@ -116,16 +121,32 @@ export default function SearchScreen() {
 
       {err ? <Text style={styles.err}>{err}</Text> : null}
 
-      <View style={styles.list}>
-        {hits.map((h, i) => (
-          <View key={`${h.fdcId ?? i}`} style={styles.item}>
-            <Text style={styles.itemText}>{h.description ?? "(no name)"}</Text>
-            {h.fdcId != null ? (
-              <Text style={styles.meta}>FDC {h.fdcId}</Text>
-            ) : null}
-          </View>
-        ))}
-      </View>
+      <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
+        {hits.length > 0 ? (
+          hits.map((h, i) => (
+            <View key={`${h.fdcId ?? i}`} style={styles.item}>
+              <Text style={styles.itemText}>{h.description ?? "(no name)"}</Text>
+              {h.fdcId != null ? (
+                <Text style={styles.meta}>FDC {h.fdcId}</Text>
+              ) : null}
+            </View>
+          ))
+        ) : !busy && hasSearched.current ? (
+          <EmptyState
+            testID="search-no-results"
+            icon={<SearchX size={28} color={colors.textTertiary} />}
+            title={`No results for "${q}"`}
+            body="Try a simpler term, check the spelling, or search for a generic food name instead of a brand."
+          />
+        ) : !busy && !hasSearched.current ? (
+          <EmptyState
+            testID="search-initial-hint"
+            icon={<Search size={28} color={colors.textTertiary} />}
+            title="Search any food"
+            body="Type a food name and tap Search to look up nutrition info from the USDA database."
+          />
+        ) : null}
+      </ScrollView>
     </View>
   );
 }
