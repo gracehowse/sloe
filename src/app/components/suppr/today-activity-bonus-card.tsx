@@ -18,6 +18,12 @@ import {
   type MaintenanceSource,
 } from "../../../lib/nutrition/resolveMaintenance";
 import { weekDeficitToKg } from "../../../lib/nutrition/maintenanceChain";
+import {
+  ACTIVITY_BUDGET_DISCOVER_BODY,
+  ACTIVITY_BUDGET_DISCOVER_CTA,
+  ACTIVITY_BUDGET_DISCOVER_TITLE,
+} from "../../../lib/nutrition/activityBudgetDiscoverability";
+import { todayKey } from "../../../lib/nutrition/trackerDate";
 
 /**
  * TodayActivityBonusCard — summary + per-workout + weekly deficit.
@@ -74,6 +80,12 @@ export interface TodayActivityBonusCardProps {
    */
   maintenanceSource?: MaintenanceSource | null;
   maintenanceConfidence?: MaintenanceConfidence;
+  /** F-161 — bonus kcal that would apply when preference is on. */
+  activityBudgetAddonKcal?: number;
+  preferActivityAdjustedCalories?: boolean;
+  showActivityBudgetDiscoverBanner?: boolean;
+  onEnableActivityBudget?: () => void;
+  onDismissActivityBudgetDiscover?: () => void;
 }
 
 export function TodayActivityBonusCard({
@@ -99,8 +111,19 @@ export function TodayActivityBonusCard({
   profileActivityLevel,
   maintenanceSource,
   maintenanceConfidence,
+  activityBudgetAddonKcal = 0,
+  preferActivityAdjustedCalories = true,
+  showActivityBudgetDiscoverBanner = false,
+  onEnableActivityBudget,
+  onDismissActivityBudgetDiscover,
 }: TodayActivityBonusCardProps) {
   if (!hasBurnData) return null;
+
+  const showDiscover =
+    showActivityBudgetDiscoverBanner &&
+    !preferActivityAdjustedCalories &&
+    activityBudgetAddonKcal > 0 &&
+    selectedDateKey === todayKey();
 
   const deficit = totalBurnKcal - consumedCalories;
   const isDeficit = deficit >= 0;
@@ -164,6 +187,28 @@ export function TodayActivityBonusCard({
 
   return (
     <div className="rounded-card border border-border bg-card p-4 mt-4">
+      {showDiscover ? (
+        <div className="mb-3 rounded-lg border border-border bg-muted/30 p-3">
+          <p className="text-[12px] font-semibold text-foreground">{ACTIVITY_BUDGET_DISCOVER_TITLE}</p>
+          <p className="text-[11px] text-muted-foreground mt-1 leading-snug">{ACTIVITY_BUDGET_DISCOVER_BODY}</p>
+          <div className="flex items-center gap-3 mt-2">
+            <button
+              type="button"
+              onClick={onEnableActivityBudget}
+              className="rounded-md bg-primary px-3 py-1.5 text-[11px] font-semibold text-primary-foreground hover:opacity-90"
+            >
+              {ACTIVITY_BUDGET_DISCOVER_CTA}
+            </button>
+            <button
+              type="button"
+              onClick={onDismissActivityBudgetDiscover}
+              className="text-[11px] font-semibold text-muted-foreground hover:text-foreground"
+            >
+              Not now
+            </button>
+          </div>
+        </div>
+      ) : null}
       <div className="flex items-center gap-2 mb-3">
         <Icons.calories className="h-5 w-5 text-warning" />
         <h3 className="text-sm font-bold text-foreground flex-1">Activity Bonus</h3>

@@ -7,6 +7,7 @@ import { useAppData } from "../../context/AppDataContext.tsx";
 import { normalizeMacroTargets, DEFAULT_STEPS_GOAL } from "../../types/profile.ts";
 import { resolveMaintenance } from "../../lib/nutrition/resolveMaintenance.ts";
 import { computeActivityBonusKcal } from "../../lib/nutrition/activityBonus.ts";
+import { ACTIVITY_BUDGET_DISCOVERABILITY_KEY } from "../../lib/nutrition/activityBudgetDiscoverability.ts";
 import {
   buildMilestone30DayContent,
   shouldShowMilestone30Day,
@@ -478,6 +479,7 @@ export const NutritionTracker = memo(function NutritionTracker({
     mealPlan,
     savedRecipesForLibrary,
     preferActivityAdjustedCalories,
+    setPreferActivityAdjustedCalories,
     activityBurnForSelectedDay,
     activityBurnByDay,
     addWaterMlForSelectedDay,
@@ -671,6 +673,17 @@ export const NutritionTracker = memo(function NutritionTracker({
   >(null);
   const [viewMode, setViewMode] = useState<"day" | "week">("day");
   const [weekStartDay, setWeekStartDay] = useState<"monday" | "sunday">("monday");
+  const [activityBudgetDiscoverDismissed, setActivityBudgetDiscoverDismissed] = useState(true);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      setActivityBudgetDiscoverDismissed(
+        window.localStorage.getItem(ACTIVITY_BUDGET_DISCOVERABILITY_KEY) === "1",
+      );
+    } catch {
+      setActivityBudgetDiscoverDismissed(false);
+    }
+  }, []);
   /**
    * DC12 (2026-05-14, premium-bar audit) — web parity for the
    * mobile "missed-day" supportive banner. Renders only when the
@@ -2711,6 +2724,32 @@ export const NutritionTracker = memo(function NutritionTracker({
         profileActivityLevel={profileActivityLevel}
         maintenanceSource={profileMaintenanceSource}
         maintenanceConfidence={profileMaintenanceConfidence}
+        activityBudgetAddonKcal={activityAdjustment}
+        preferActivityAdjustedCalories={preferActivityAdjustedCalories}
+        showActivityBudgetDiscoverBanner={!activityBudgetDiscoverDismissed}
+        onEnableActivityBudget={() => {
+          setPreferActivityAdjustedCalories(true);
+          if (authedUserId) {
+            void supabase
+              .from("profiles")
+              .update({ prefer_activity_adjusted_calories: true })
+              .eq("id", authedUserId);
+          }
+          try {
+            window.localStorage.setItem(ACTIVITY_BUDGET_DISCOVERABILITY_KEY, "1");
+          } catch {
+            /* ignore */
+          }
+          setActivityBudgetDiscoverDismissed(true);
+        }}
+        onDismissActivityBudgetDiscover={() => {
+          try {
+            window.localStorage.setItem(ACTIVITY_BUDGET_DISCOVERABILITY_KEY, "1");
+          } catch {
+            /* ignore */
+          }
+          setActivityBudgetDiscoverDismissed(true);
+        }}
       />
 
       {/* Hydration & stimulants card (Batch 2.5).

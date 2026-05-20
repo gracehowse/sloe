@@ -18,6 +18,11 @@ import {
   type MaintenanceSource,
 } from "@suppr/shared/nutrition/resolveMaintenance";
 import { weekDeficitToKg } from "@suppr/shared/nutrition/maintenanceChain";
+import {
+  ACTIVITY_BUDGET_DISCOVER_BODY,
+  ACTIVITY_BUDGET_DISCOVER_CTA,
+  ACTIVITY_BUDGET_DISCOVER_TITLE,
+} from "@suppr/shared/nutrition/activityBudgetDiscoverability";
 import type { JournalMeal } from "@/lib/nutritionJournal";
 
 /**
@@ -90,6 +95,11 @@ export interface TodayActivityBonusCardProps {
    * here and see what it's made up of").
    */
   onShowBurnProvenance?: () => void;
+  /** F-161 — when false and bonus > 0, show one-time enable banner. */
+  preferActivityAdjustedCalories?: boolean;
+  onEnableActivityBudget?: () => void;
+  onDismissActivityBudgetDiscover?: () => void;
+  showActivityBudgetDiscoverBanner?: boolean;
 }
 
 export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
@@ -125,8 +135,17 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
     profileActivityLevel,
     maintenanceSource,
     maintenanceConfidence,
+    preferActivityAdjustedCalories = true,
+    onEnableActivityBudget,
+    onDismissActivityBudgetDiscover,
+    showActivityBudgetDiscoverBanner = false,
   } = props;
   const [infoOpen, setInfoOpen] = React.useState(false);
+  const showDiscover =
+    showActivityBudgetDiscoverBanner &&
+    !preferActivityAdjustedCalories &&
+    todayActivityBudgetAddon > 0 &&
+    isToday;
 
   // 4th "Maintenance" tile + info popover — render only when we know
   // maintenance TDEE. Zero/null = omit (no misleading "0 kcal" cell).
@@ -182,6 +201,45 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
 
   return (
     <View style={styles.card}>
+      {showDiscover ? (
+        <View
+          style={{
+            marginBottom: Spacing.sm,
+            padding: Spacing.sm,
+            borderRadius: Radius.md,
+            borderWidth: 1,
+            borderColor: cardBorderColor,
+            backgroundColor: cardColor,
+          }}
+        >
+          <Text style={{ fontSize: 12, fontWeight: "700", color: textColor }}>{ACTIVITY_BUDGET_DISCOVER_TITLE}</Text>
+          <Text style={{ fontSize: 11, color: textSecondaryColor, marginTop: 4, lineHeight: 15 }}>
+            {ACTIVITY_BUDGET_DISCOVER_BODY}
+          </Text>
+          <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={onEnableActivityBudget}
+              style={{
+                paddingHorizontal: 10,
+                paddingVertical: 6,
+                borderRadius: Radius.sm,
+                backgroundColor: Accent.primary,
+              }}
+            >
+              <Text style={{ fontSize: 11, fontWeight: "700", color: "#fff" }}>{ACTIVITY_BUDGET_DISCOVER_CTA}</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Dismiss"
+              onPress={onDismissActivityBudgetDiscover}
+              hitSlop={8}
+            >
+              <Text style={{ fontSize: 11, fontWeight: "600", color: textSecondaryColor }}>Not now</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: Spacing.sm }}>
         <Ionicons name="flame" size={20} color={Accent.warning} />
         <Text style={[styles.cardTitle, { flex: 1 }]}>Activity Bonus</Text>

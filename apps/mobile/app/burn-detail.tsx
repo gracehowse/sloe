@@ -66,7 +66,7 @@ export default function BurnDetailScreen() {
   const [dailyStepsGoal, setDailyStepsGoal] = useState(NUTRITION_DEFAULTS.steps);
   // 2026-05-13 (TF feedback `AOc1nHHposbaZ7yEgDLwPdE` — "this should
   // be a toggle so user can choose"): inline switch on this screen
-  // for `prefer_activity_adjusted_calories`. Default off — the user
+  // for `prefer_activity_adjusted_calories`. Default on for new users (ENG-566).
   // opts in to having today's burn bonus add to the food budget.
   const [preferActivityAdjustedCalories, setPreferActivityAdjustedCalories] = useState(false);
   const [savingPreference, setSavingPreference] = useState(false);

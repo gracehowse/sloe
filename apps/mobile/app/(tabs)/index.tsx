@@ -69,6 +69,7 @@ import PhotoLogSheet from "@/components/PhotoLogSheet";
 import AiPaywallSheet, { type AiPaywallFeature } from "@/components/AiPaywallSheet";
 import { computeLoggingStreak } from "@/lib/trackerStats";
 import { computeActivityBonusKcal } from "@suppr/shared/nutrition/activityBonus";
+import { ACTIVITY_BUDGET_DISCOVERABILITY_KEY } from "@suppr/shared/nutrition/activityBudgetDiscoverability";
 import {
   availableFreezes,
   computeProtectedStreak,
@@ -917,6 +918,7 @@ export default function TrackerScreen() {
    */
   const AI_TOOLTIP_STORAGE_KEY = "suppr.ai-explainer-shown.v1";
   const [aiTooltipShown, setAiTooltipShown] = useState<boolean | null>(null);
+  const [activityBudgetDiscoverDismissed, setActivityBudgetDiscoverDismissed] = useState<boolean | null>(null);
   useEffect(() => {
     let cancelled = false;
     AsyncStorage.getItem(AI_TOOLTIP_STORAGE_KEY)
@@ -929,6 +931,25 @@ export default function TrackerScreen() {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    AsyncStorage.getItem(ACTIVITY_BUDGET_DISCOVERABILITY_KEY)
+      .then((raw) => {
+        if (!cancelled) setActivityBudgetDiscoverDismissed(raw != null);
+      })
+      .catch(() => {
+        if (!cancelled) setActivityBudgetDiscoverDismissed(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const dismissActivityBudgetDiscover = useCallback(() => {
+    setActivityBudgetDiscoverDismissed(true);
+    void AsyncStorage.setItem(ACTIVITY_BUDGET_DISCOVERABILITY_KEY, "1").catch(() => {});
   }, []);
 
   const dismissAiFirstLogTooltip = useCallback(() => {
@@ -5084,6 +5105,13 @@ export default function TrackerScreen() {
             profileActivityLevel={profileActivityLevel}
             maintenanceSource={profileMaintenanceSource}
             maintenanceConfidence={profileMaintenanceConfidence}
+            preferActivityAdjustedCalories={preferActivityAdjustedCalories}
+            showActivityBudgetDiscoverBanner={activityBudgetDiscoverDismissed === false}
+            onEnableActivityBudget={() => {
+              void persistPreferActivityAdjustedCalories(true);
+              dismissActivityBudgetDiscover();
+            }}
+            onDismissActivityBudgetDiscover={dismissActivityBudgetDiscover}
             styles={styles}
             textColor={colors.text}
             textSecondaryColor={colors.textSecondary}
