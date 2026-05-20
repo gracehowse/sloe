@@ -1,5 +1,5 @@
-import React, { useMemo } from "react";
-import { StyleSheet, Text, View, type ReactNode } from "react-native";
+import React, { useMemo, type ReactNode } from "react";
+import { StyleSheet, Text, View } from "react-native";
 
 import { TodayBrandBar } from "@/components/today/TodayBrandBar";
 import { Layout } from "@/constants/layout";
