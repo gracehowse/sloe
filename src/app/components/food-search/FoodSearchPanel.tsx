@@ -170,6 +170,7 @@ export type FoodSearchSelection = {
   quantity: number;
   customFoodId?: string;
   servingLabel?: string;
+  imageUrl?: string | null;
 };
 
 /**
@@ -685,6 +686,7 @@ export function FoodSearchPanel({
     chosenPortion: FoodPortion;
     quantity: number;
     customFoodId?: string;
+    imageUrl?: string | null;
   } | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const backfillRef = useRef(0);
@@ -1052,14 +1054,31 @@ export function FoodSearchPanel({
       const { portion, quantity } = item.primaryServing
         ? { portion: portions[0], quantity: 1 }
         : resolveInitialPortion(portions, initialAmount, initialUnit);
-      setPreview({ name: item.name, source: "OFF", macrosPer100g: item.macrosPer100g, microsPer100g: item.microsPer100g, portions, chosenPortion: portion, quantity });
+      setPreview({
+        name: item.name,
+        source: "OFF",
+        macrosPer100g: item.macrosPer100g,
+        microsPer100g: item.microsPer100g,
+        portions,
+        chosenPortion: portion,
+        quantity,
+        imageUrl: item.imageUrl,
+      });
     } else if (item._source === "Edamam" && item.macrosPer100g) {
       setLoadingKey(null);
       const portions = buildPortions([], item.primaryServing);
       const { portion, quantity } = item.primaryServing
         ? { portion: portions[0], quantity: 1 }
         : resolveInitialPortion(portions, initialAmount, initialUnit);
-      setPreview({ name: item.name, source: "Edamam", macrosPer100g: item.macrosPer100g, portions, chosenPortion: portion, quantity });
+      setPreview({
+        name: item.name,
+        source: "Edamam",
+        macrosPer100g: item.macrosPer100g,
+        portions,
+        chosenPortion: portion,
+        quantity,
+        imageUrl: item.imageUrl,
+      });
     } else if (item._source === "FatSecret" && item._fatSecretFoodId) {
       // Branded FatSecret rows usually surface in the search list with
       // null per-100g macros (the row was per-serving). Fetch the full
@@ -1197,6 +1216,7 @@ export function FoodSearchPanel({
       portions: preview.portions,
       chosenPortion: preview.chosenPortion,
       quantity: preview.quantity,
+      ...(preview.imageUrl ? { imageUrl: preview.imageUrl } : {}),
     };
     if (preview.source === "CUSTOM") {
       selection.customFoodId = preview.customFoodId;

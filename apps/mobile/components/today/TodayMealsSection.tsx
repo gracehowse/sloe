@@ -1,5 +1,5 @@
 import React, { useState, type ReactNode } from "react";
-import { Alert, Modal, Pressable, ScrollView, Share, Text, View } from "react-native";
+import { Alert, Image, Modal, Pressable, ScrollView, Share, Text, View } from "react-native";
 import { buildMealShareText } from "@suppr/shared/share/buildMealShareText";
 import { track, isFeatureEnabled } from "@/lib/analytics";
 import { Swipeable } from "react-native-gesture-handler";
@@ -28,6 +28,7 @@ import type { JournalMeal } from "@/lib/nutritionJournal";
 import type { SavedMeal } from "@suppr/shared/nutrition/savedMeals";
 import { summariseSavedMeal } from "@suppr/shared/nutrition/savedMealsLogic";
 import { AiFirstLogTooltip } from "./AiFirstLogTooltip";
+import { mealRowImageUrl } from "@suppr/shared/nutrition/foodHistory";
 
 /**
  * TodayMealsSection — per-slot meal list with swipe-to-delete, long-press
@@ -674,7 +675,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                       }}
                       style={{
                         paddingVertical: 9,
-                        paddingLeft: 56,
+                        paddingLeft: 14,
                         paddingRight: 14,
                         flexDirection: "row",
                         justifyContent: "space-between",
@@ -684,9 +685,34 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                         backgroundColor: cardColor,
                       }}
                     >
-                      <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
+                      <View style={{ flex: 1, gap: 2, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 10 }}>
+                        {(() => {
+                          const thumbUrl = mealRowImageUrl(m);
+                          if (thumbUrl) {
+                            return (
+                              <View
+                                style={{
+                                  width: 40,
+                                  height: 40,
+                                  borderRadius: 8,
+                                  overflow: "hidden",
+                                  flexShrink: 0,
+                                }}
+                              >
+                                <Image
+                                  source={{ uri: thumbUrl }}
+                                  style={{ width: 40, height: 40 }}
+                                  accessibilityIgnoresInvertColors
+                                />
+                              </View>
+                            );
+                          }
+                          return (
+                            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: Accent.success, flexShrink: 0 }} />
+                          );
+                        })()}
+                        <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: Accent.success }} />
                           {/* 2026-05-15 (crowder task) — `flexShrink: 1`
                               + `minWidth: 0` so `numberOfLines: 1`
                               actually ellipsises. Without these, the
@@ -731,6 +757,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                             </Text>
                           </View>
                         ) : null}
+                      </View>
                       </View>
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                         <Text style={{ fontSize: 12, color: textSecondaryColor, fontVariant: ["tabular-nums"] }}>

@@ -162,6 +162,7 @@ export type SelectedFood = {
   customFoodId?: string;
   fatSecretFoodId?: string;
   servingLabel?: string;
+  imageUrl?: string | null;
 };
 
 export type SupabaseLike = { from: (table: string) => unknown };
@@ -330,6 +331,7 @@ export default function FoodSearchPanel({
     barcode?: string;
     customFoodId?: string;
     fatSecretFoodId?: string;
+    imageUrl?: string | null;
   } | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const backfillRef = useRef(0);
@@ -618,6 +620,7 @@ export default function FoodSearchPanel({
           quantity,
           quantityText: String(quantity),
           barcode: item._offCode,
+          imageUrl: item.imageUrl,
         });
       } else if (item._source === "Edamam" && item.macrosPer100g) {
         setLoadingKey(null);
@@ -637,6 +640,7 @@ export default function FoodSearchPanel({
           chosenPortion: portion,
           quantity,
           quantityText: String(quantity),
+          imageUrl: item.imageUrl,
         });
       } else if (item._source === "FatSecret" && item._fatSecretFoodId) {
         // Lane-A (2026-04-30) — branded FatSecret rows usually surface
@@ -892,6 +896,7 @@ export default function FoodSearchPanel({
         ...(preview.customFoodId ? { customFoodId: preview.customFoodId } : {}),
         ...(preview.fatSecretFoodId ? { fatSecretFoodId: preview.fatSecretFoodId } : {}),
         ...(servingLabel ? { servingLabel } : {}),
+        ...(preview.imageUrl ? { imageUrl: preview.imageUrl } : {}),
       });
       setPreview(null);
     }
@@ -1522,6 +1527,7 @@ export default function FoodSearchPanel({
                   quantity: 1,
                   chosenPortion: { label: "1 serving", gramWeight: 0 },
                   portions: [{ label: "1 serving", gramWeight: 0 }],
+                  ...(item.imageUrl ? { imageUrl: item.imageUrl } : {}),
                 } as never);
               }}
               style={({ pressed }) => ({

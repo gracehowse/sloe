@@ -29,6 +29,7 @@ import type { SavedMeal } from "../../../lib/nutrition/savedMeals";
 import { summariseSavedMeal } from "../../../lib/nutrition/savedMealsLogic";
 import { buildMealShareText } from "../../../lib/share/buildMealShareText";
 import { track, isFeatureEnabled } from "../../../lib/analytics/track";
+import { mealRowImageUrl } from "../../../lib/nutrition/foodHistory";
 import { toast } from "sonner";
 
 /**
@@ -397,11 +398,26 @@ export function TodayMealsSection({
                       className="flex items-center justify-between px-4 py-2.5 border-b border-border/10"
                       style={{ paddingLeft: 14 }}
                     >
-                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                        {/* Phase 3 / B2.4 (D-2026-04-27-16) — source dot
-                            replaces the bare success bullet so every
-                            macro-bearing row carries provenance colour. */}
-                        <SourceDot source={mapMealSourceToDot(meal.source)} size={6} className="shrink-0" />
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        {(() => {
+                          const thumbUrl = mealRowImageUrl(meal);
+                          if (thumbUrl) {
+                            return (
+                              <img
+                                src={thumbUrl}
+                                alt=""
+                                className="h-10 w-10 rounded-lg object-cover shrink-0"
+                              />
+                            );
+                          }
+                          return (
+                            <SourceDot
+                              source={mapMealSourceToDot(meal.source)}
+                              size={6}
+                              className="shrink-0"
+                            />
+                          );
+                        })()}
                         <span className="text-xs text-foreground truncate">{meal.recipeTitle}</span>
                         {meal.source && <NutritionSourceBadge source={meal.source} />}
                       </div>

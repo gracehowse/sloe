@@ -1929,6 +1929,9 @@ export default function TrackerScreen() {
         fat: mealFat,
         source,
         ...(Object.keys(micros).length > 0 ? { micros } : {}),
+        ...(result.imageUrl
+          ? { recipeImageUrl: String(result.imageUrl).trim() }
+          : {}),
       };
       setByDay((prev) => ({
         ...prev,

@@ -97,6 +97,12 @@ export function normalizeLoggedMealRow(m: unknown): LoggedMeal | null {
           portionMultiplier: Math.min(8, Math.max(0.5, Math.round(o.portionMultiplier * 2) / 2)),
         }
       : {}),
+    ...(typeof o.source === "string" ? { source: o.source } : {}),
+    ...(typeof o.recipeId === "string" ? { recipeId: o.recipeId } : {}),
+    ...(typeof o.recipeImageUrl === "string" ? { recipeImageUrl: o.recipeImageUrl } : {}),
+    ...(typeof o.imageUrl === "string" ? { imageUrl: o.imageUrl } : {}),
+    ...(o.micros && typeof o.micros === "object" ? { micros: o.micros as LoggedMeal["micros"] } : {}),
+    ...(typeof o.createdAt === "string" ? { createdAt: o.createdAt } : {}),
   };
 }
 

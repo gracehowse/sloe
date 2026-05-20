@@ -103,6 +103,7 @@ import { TodayFirstMealEmptyState } from "./suppr/today-first-meal-empty-state";
 import { TodayCompleteDayDialog } from "./suppr/today-complete-day-dialog";
 import { TodayAddMealDialog } from "./suppr/today-add-meal-dialog";
 import { FoodSearch, type FoodSearchSelection } from "./FoodSearch.tsx";
+import { mealImageFields } from "../../lib/nutrition/foodHistory";
 import { TodayBarcodeDialog, type TodayBarcodeConfirmPayload } from "./suppr/today-barcode-dialog";
 import {
   CreateCustomFoodDialog,
@@ -1620,6 +1621,7 @@ export const NutritionTracker = memo(function NutritionTracker({
           source: sourceLabel,
           ...(mealFiberG > 0 ? { fiberG: mealFiberG } : {}),
           ...(Object.keys(micros).length > 0 ? { micros } : {}),
+          ...mealImageFields(selection.imageUrl),
         },
         // Mirror mobile's `food_logged.source` mapping: custom food
         // logs fire with `"custom_food"`, USDA/OFF/Edamam/FatSecret
