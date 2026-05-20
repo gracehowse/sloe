@@ -123,9 +123,9 @@ describe("mobile theme — Phase 1 production design spec coverage", () => {
       expect(Elevation.floatPrimary).toBeDefined();
     });
 
-    it("card uses 0.04 opacity / 4 radius / +1 height (per spec §1.3)", () => {
-      expect(Elevation.card.shadowOpacity).toBe(0.04);
-      expect(Elevation.card.shadowRadius).toBe(4);
+    it("card uses 0.06 opacity / 6 radius / +1 height (per spec §1.3)", () => {
+      expect(Elevation.card.shadowOpacity).toBe(0.06);
+      expect(Elevation.card.shadowRadius).toBe(6);
       expect(Elevation.card.shadowOffset).toEqual({ width: 0, height: 1 });
       expect(Elevation.card.elevation).toBe(1);
     });

@@ -49,8 +49,8 @@ describe("Round 2 — text / casing fixes", () => {
 
   it("D19: shopping list screen title is Sentence Case (matches other top-level screens)", () => {
     const SRC = read("apps/mobile/app/shopping.tsx");
-    expect(SRC).toMatch(/styles\.headerTitle\}>Shopping list</);
-    expect(SRC).not.toMatch(/styles\.headerTitle\}>SHOPPING LIST</);
+    expect(SRC).toMatch(/title="Shopping list"/);
+    expect(SRC).not.toMatch(/title="SHOPPING LIST"/);
   });
 });
 

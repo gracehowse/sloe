@@ -14,10 +14,8 @@ void React;
  * Tests for the `SupprMark` brand-mark primitive (Phase 1 of the
  * onboarding redesign — see `docs/decisions/2026-04-19-onboarding-redesign-scope.md`).
  *
- * Locks in the invariants from `docs/ux/brand-guidelines.md`:
- *   - Mark is always rendered with the brand primary background and a
- *     white "S" — never themed away from white. (The dark-mode lift to
- *     a brighter blue happens via `--primary` in `theme.css`.)
+ * Locks in the monochrome plate mark (`--brand-mark-bg` / `--brand-mark-ring`)
+ * from `docs/ux/brand-guidelines.md` — not the legacy blue primary tile.
  *   - Wordmark composes Mark + the Suppr label with the canonical
  *     spacing (gap-2.5) so both surfaces stay in sync.
  */
@@ -36,21 +34,19 @@ describe("SupprMark", () => {
     expect(svg.getAttribute("height")).toBe("48");
   });
 
-  it("draws a rounded rect with the brand primary as the background fill", () => {
+  it("draws a rounded rect with brand-mark tokens (cream bg, ink ring)", () => {
     const { container } = render(<SupprMark />);
     const rect = container.querySelector("rect");
     expect(rect).not.toBeNull();
-    // The rect must reference the CSS variable so dark-mode swaps the
-    // hex automatically — never a hardcoded hex.
-    expect(rect?.getAttribute("fill")).toBe("var(--primary)");
+    expect(rect?.getAttribute("fill")).toBe("var(--brand-mark-bg)");
     expect(rect?.getAttribute("rx")).toBe("8");
   });
 
-  it("renders the white 'S' letter on top", () => {
+  it("renders the 'S' letter using --brand-mark-ring", () => {
     const { container } = render(<SupprMark />);
     const text = container.querySelector("text");
     expect(text?.textContent).toBe("S");
-    expect(text?.getAttribute("fill")).toBe("#ffffff");
+    expect(text?.getAttribute("fill")).toBe("var(--brand-mark-ring)");
   });
 });
 
