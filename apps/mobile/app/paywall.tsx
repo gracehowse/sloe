@@ -724,7 +724,7 @@ export default function PaywallScreen() {
     headerKicker: {
       fontSize: 11,
       fontWeight: "700",
-      color: colors.textTertiary,
+      color: colors.textSecondary,
       letterSpacing: 2,
       marginBottom: Spacing.sm,
     },
@@ -791,7 +791,7 @@ export default function PaywallScreen() {
       fontSize: 10,
       fontWeight: "700",
       letterSpacing: 1.2,
-      color: colors.textTertiary,
+      color: colors.textSecondary,
     },
     toggleRow: {
       flexDirection: "row",
@@ -870,10 +870,10 @@ export default function PaywallScreen() {
     },
     cardCtaText: { color: "#fff", fontWeight: "700", fontSize: 16 },
     cardCtaDisabled: { backgroundColor: colors.inputBg },
-    cardCtaDisabledText: { color: colors.textTertiary },
+    cardCtaDisabledText: { color: colors.textSecondary },
 
     freeBtn: { paddingVertical: Spacing.md, alignItems: "center" },
-    freeBtnText: { color: colors.textTertiary, fontWeight: "600", fontSize: 15 },
+    freeBtnText: { color: colors.textSecondary, fontWeight: "600", fontSize: 15 },
 
     disclosure: {
       fontSize: 13,
@@ -938,7 +938,7 @@ export default function PaywallScreen() {
     },
     promoHint: {
       fontSize: 12,
-      color: colors.textTertiary,
+      color: colors.textSecondary,
       lineHeight: 17,
     },
     promoInputRow: {
@@ -983,13 +983,13 @@ export default function PaywallScreen() {
     secondaryDot: { fontSize: 14, color: colors.border },
     secondaryNote: {
       fontSize: 11,
-      color: colors.textTertiary,
+      color: colors.textSecondary,
       textAlign: "center",
       marginTop: Spacing.sm,
     },
     nutritionEstimateNote: {
       fontSize: 12,
-      color: colors.textTertiary,
+      color: colors.textSecondary,
       textAlign: "center",
       lineHeight: 17,
       marginTop: Spacing.xs,
@@ -1008,7 +1008,7 @@ export default function PaywallScreen() {
     // empty — no full-width "unavailable" card (premium-sweep RTP-3).
     offeringsFootnote: {
       fontSize: 12,
-      color: colors.textTertiary,
+      color: colors.textSecondary,
       textAlign: "center",
       lineHeight: 17,
       marginTop: Spacing.sm,

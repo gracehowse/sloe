@@ -230,7 +230,20 @@ Created after state-matrix captures (28 PNGs) and colour-parity audit. **Do not 
 
 **Post-cycle fixes (repo, not separate Linear):** shopping list batch ingredient fetch + optimistic UI (`AppDataContext`), plan generation pool (`savedRecipesForPlanning`), saves RLS recursion migration, shopping quantity merge/labels.
 
-**Next:** P4 ([ENG-572](https://linear.app/suppr/issue/ENG-572)) — Progress, Settings, landing (Cycle 4).
+**Next:** P5 ([ENG-573](https://linear.app/suppr/issue/ENG-573)) — Architecture enablers (Cycle 5).
+
+## Cycle 4 status (closed 2026-05-20)
+
+**Shipped:** P4 — Settings DC14 outlined tiles (ENG-615), Progress hero metric (ENG-616), paywall dark contrast (ENG-617), landing gradient (ENG-618, already shipped), legacy hex cleanup (ENG-638).
+
+| Issue | Status |
+|-------|--------|
+| [ENG-572](https://linear.app/suppr/issue/ENG-572) | **Done** — P4 umbrella |
+| [ENG-615](https://linear.app/suppr/issue/ENG-615) | **Done** — Settings stat tiles → DC14 outlined-coloured pattern (accent-tinted borders) |
+| [ENG-616](https://linear.app/suppr/issue/ENG-616) | **Done** — Oura-style calorie adherence ring + hero metric at top of Progress (web + mobile) |
+| [ENG-617](https://linear.app/suppr/issue/ENG-617) | **Done** — Paywall dark contrast: textTertiary → textSecondary for WCAG AA compliance |
+| [ENG-618](https://linear.app/suppr/issue/ENG-618) | **Done** — Dark gradient already symmetric (previous audit fix) |
+| [ENG-638](https://linear.app/suppr/issue/ENG-638) | **Done** — Replaced `#df7a4e` with canonical `#d4a02f` in confetti palette |
 
 ## First cycle scope (P0 + P1) — historical
 

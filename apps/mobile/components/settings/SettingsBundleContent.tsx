@@ -1238,9 +1238,9 @@ export function SettingsBundleContent({ context }: { context: Context }) {
               alignItems: "center",
               paddingVertical: 12,
               borderRadius: 14,
-              backgroundColor: colors.card,
+              backgroundColor: colors.inputBg,
               borderWidth: 1,
-              borderColor: colors.cardBorder,
+              borderColor: c + "55",
             }}
           >
             <Text style={{ fontSize: 18, fontWeight: "700", color: c }}>

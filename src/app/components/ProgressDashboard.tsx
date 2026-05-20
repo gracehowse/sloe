@@ -73,6 +73,7 @@ import { ProgressMetricDetail, type ProgressMetric } from "./ProgressMetricDetai
 // pills stay flush against the header.
 import { HouseholdBar } from "./HouseholdBar.tsx";
 import { ProgressTabChrome } from "./suppr/progress-tab-chrome.tsx";
+import { ProgressHeroMetric } from "./suppr/progress-hero-metric.tsx";
 // Phase 4 (B3.1, 2026-04-27) — Surface E "Progress hero (story-led)".
 // Authority: D-2026-04-27-17 (Progress is a story not a stat-card
 // dashboard) + D-2026-04-27-12 (adaptive TDEE always-on).
@@ -985,6 +986,15 @@ function ProgressDashboardContent() {
           `hasEnoughDataForStory(daysLogged)` and render the
           `<ProgressStoryGate>` placeholder card until the floor is
           reached. Geometry matches so the slot doesn't jump. */}
+      {/* ENG-616: Oura-style hero metric — one big number at the top. */}
+      <ProgressHeroMetric
+        adherencePct={caloriesRange.adherencePct}
+        avgCaloriesPerDay={caloriesRange.avgCaloriesPerDay}
+        targetCalories={nutritionTargets.calories}
+        daysLogged={caloriesRange.daysLogged}
+        streak={streakDays}
+      />
+
       {(() => {
         const daysLogged = weekStatsBundle.daysWithFood;
         if (!hasEnoughDataForStory(daysLogged)) {

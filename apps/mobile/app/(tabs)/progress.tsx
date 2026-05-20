@@ -97,6 +97,7 @@ import { HouseholdBar } from "@/components/HouseholdBar";
 // dashboard) + D-2026-04-27-12 (adaptive TDEE always-on).
 import { ProgressHeadline } from "@/components/today/ProgressHeadline";
 import { ProgressStoryGate } from "@/components/today/ProgressStoryGate";
+import { ProgressHeroMetric } from "@/components/progress/ProgressHeroMetric";
 import { hasEnoughDataForStory } from "@/lib/progressStoryGate";
 import { DigestStoryCard } from "@/components/progress/DigestStoryCard";
 import { computeDayOfWeekPattern } from "@suppr/shared/nutrition/dayOfWeekPattern";
@@ -974,22 +975,16 @@ export default function ProgressScreen() {
           hidden otherwise (mirror of `screens-mobile.jsx` L580). */}
       <HouseholdBar />
 
-      {/* Phase 4 / B3.1 — Progress story headline (Surface E).
-          Engine-led commentary line replacing the stat-card dashboard
-          as the visual focus. The maintenance card / charts / stat
-          chips beneath remain (demoted) — this card is the lead.
-          Authority: D-2026-04-27-12 (always-on TDEE) +
-          D-2026-04-27-17 (Progress is a story).
+      {/* ENG-616: Oura-style hero metric — one big number at the top. */}
+      <ProgressHeroMetric
+        adherencePct={caloriesRange.adherencePct}
+        avgCaloriesPerDay={caloriesRange.avgCaloriesPerDay}
+        targetCalories={targets.calories}
+        daysLogged={caloriesRange.daysLogged}
+        streak={streakDays}
+      />
 
-          customer-lens audit (2026-04-30): the live story renders
-          even when `adaptiveTdee == null` and the user has < 3
-          logged days, which produces narrative based on null. Gate
-          via `hasEnoughDataForStory(daysLogged)` and render the
-          `<ProgressStoryGate>` placeholder card instead until the
-          floor is reached. Geometry matches so the slot doesn't jump.
-
-          See ProgressDashboard.tsx (web) for the deferred-data notes
-          on `prevWeekTdee` / `avgIntakeOnLossWeeksKcal`. */}
+      {/* Phase 4 / B3.1 — Progress story headline (Surface E). */}
       <View style={{ marginBottom: 14 }}>
         {hasEnoughDataForStory(weekStats.daysWithFood) ? (
           <ProgressHeadline
