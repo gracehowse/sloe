@@ -93,14 +93,6 @@ type View =
  * the old inline components carried — kept here in the host so the
  * primitive stays generic.
  */
-/**
- * YouSubTabPill — mobile-web sub-tab pill (>= md hidden). Group G IA
- * Batch C (2026-04-29) collapsed this from 3 pills (Progress / Profile
- * / Settings) to 2 (Progress / Settings) to mirror the mobile-app
- * YouSubTabHeader. Profile is now reachable from the Settings header
- * card. The /profile route remains alive as a deep-link target for
- * the full editor.
- */
 function YouSubTabPill({
   currentView,
   onNavigate,

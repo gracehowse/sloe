@@ -25,7 +25,6 @@ import {
 } from "../../../lib/barcodePortionMemory";
 import {
   buildPickerOptions,
-  formatPortion,
   stateToGrams,
   type PortionState,
 } from "../../../lib/nutrition/portionPicker";
@@ -185,7 +184,7 @@ export function TodayBarcodeDialog(props: TodayBarcodeDialogProps) {
     onBarcodeBusyChange,
     barcodePreview,
     onBarcodePreviewChange,
-    barcodeGramsStr,
+    barcodeGramsStr: _barcodeGramsStr,
     onBarcodeGramsStrChange,
     barcodeGramsParsed,
     barcodeTitleOverride,

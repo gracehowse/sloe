@@ -167,9 +167,7 @@ export function HouseholdPanel() {
           const { track } = await import("@/lib/analytics/track");
           track("household_create_failed", {
             code: createErr.code,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             raw_message: (createErr.raw as any)?.message ?? null,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             raw_code: (createErr.raw as any)?.code ?? null,
           });
         } catch {

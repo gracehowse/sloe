@@ -132,7 +132,7 @@ export function TodayWeekView({
   weekTotals,
   weekAvg,
   loggedDaysInWeek,
-  weekEffectiveCalorieBudget,
+  weekEffectiveCalorieBudget: _weekEffectiveCalorieBudget,
   weekBurnTotal,
   calorieTarget,
   proteinTarget,

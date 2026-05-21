@@ -89,7 +89,6 @@ import {
   pickUsdaBrandedPrimaryServing,
   pickUsdaFoodPortionsPrimaryServing,
   parseOffPrimaryServing,
-  primaryServingToPortionChip,
   type PrimaryServing,
 } from "../../../lib/nutrition/primaryServing";
 import { inferNaturalServingFromName } from "../../../lib/nutrition/inferNaturalServing";

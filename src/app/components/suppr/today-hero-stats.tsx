@@ -104,7 +104,7 @@ function DesktopHeroStats({
   onToggleExpanded,
   displayMode,
   onDisplayModeChange,
-  onPressWhy,
+  onPressWhy: _onPressWhy,
 }: TodayHeroStatsProps) {
   const net = loggedKcal - targetKcal;
   const netStr = formatNet(net);

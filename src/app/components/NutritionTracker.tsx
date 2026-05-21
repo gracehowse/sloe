@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { WifiOff } from "lucide-react";
-import { Icons } from "./ui/icons";
+
 import { toast } from "sonner";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { normalizeMacroTargets, DEFAULT_STEPS_GOAL } from "../../types/profile.ts";
@@ -618,9 +618,9 @@ export const NutritionTracker = memo(function NutritionTracker({
   /** `plan_pace` preset enum from `profiles.plan_pace` — used by the
    *  WhyThisNumberDialog to compute the user's weekly kg pace. Stored
    *  loosely as `string | null` to mirror the column's nullable nature. */
-  const [profilePlanPace, setProfilePlanPace] = useState<string | null>(null);
+  const [_profilePlanPace, setProfilePlanPace] = useState<string | null>(null);
   const [profileMaintenanceTdee, setProfileMaintenanceTdee] = useState<number | null>(null);
-  const [profileWeightKgByDay, setProfileWeightKgByDay] = useState<Record<string, number>>({});
+  const [_profileWeightKgByDay, setProfileWeightKgByDay] = useState<Record<string, number>>({});
   // Weekly TDEE check-in ritual (PR claude/weekly-checkin-ritual-v2,
   // 2026-05-02 — rebuild of #26). Mirrors mobile state shape.
   // `weeklyCheckinHandledRef` suppresses re-fires within the session.
