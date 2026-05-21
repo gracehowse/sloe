@@ -17,7 +17,6 @@ import {
   isSeedRecipeId,
   type SeedCuisineCluster,
 } from "../../lib/recipes/seedRecipesV2.ts";
-import { RecipeHeroFallback } from "./suppr/RecipeHeroFallback";
 import { DiscoverRecipeImage } from "./suppr/discover-recipe-image";
 // Phase 4 / B3.X — trust posture sweep (D-2026-04-27-16).
 // GW-08 (audit 2026-04-28): `TrustChip` + `recipeLevelTrust` dropped

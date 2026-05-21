@@ -1,6 +1,5 @@
 import type { ShoppingItem } from "../../types/recipe";
 import { normalizeIngredientNameKey } from "./ingredientNameKey";
-import { dedupeShoppingLabel } from "./shoppingListLifecycle";
 import {
   formatMergedShoppingAmounts,
   shoppingIngredientHeadline,

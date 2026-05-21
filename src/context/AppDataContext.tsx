@@ -14,7 +14,6 @@ import { toast } from "sonner";
 import {
   effectivePortionMultiplier,
   isMealPlanPlaceholderLikeTitle,
-  normalizeDayPlans,
 } from "../lib/nutrition/portionMultiplier.ts";
 import { formatRecipeMinutes } from "../lib/recipe/formatRecipeMinutes.ts";
 import { supabase } from "../lib/supabase/browserClient.ts";
