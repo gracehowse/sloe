@@ -48,6 +48,22 @@ export function sanitizeShoppingIngredientName(name: string): string {
   n = n.replace(/\b1\s+undetermined\s+medium\s*\([^)]*\)\s*/gi, "");
   n = n.replace(/\bundetermined\s+medium\s*\([^)]*\)\s*/gi, "");
   n = n.replace(/\b\d+\s+undetermined\s+/gi, "");
+
+  // USDA parenthetical descriptors: "(includes tops and bulb)", "(yield from 1 lb)"
+  n = n.replace(/\s*\(includes\s[^)]*\)/gi, "");
+  n = n.replace(/\s*\(yield\s[^)]*\)/gi, "");
+
+  // USDA trailing state descriptors: ", raw", ", fresh", ", uncooked"
+  n = n.replace(/,\s*(?:raw|fresh|uncooked)\s*$/i, "");
+
+  // USDA inverted-name format: "Onions, spring or scallions" → "Spring onions"
+  // Only fires when "or <alt>" is present (distinguishes from prep instructions like "spinach, chopped")
+  const invertedMatch = n.match(/^(\w+),\s+([\w-]+(?:\s[\w-]+)?)\s+or\s+[\w-]+(?:\s[\w-]+)?\s*$/i);
+  if (invertedMatch) {
+    const [, category, modifier] = invertedMatch;
+    n = modifier!.charAt(0).toUpperCase() + modifier!.slice(1) + " " + category!.toLowerCase();
+  }
+
   n = stripDuplicateCountPrefix(n);
   n = collapseRepeatedWord(n);
 

@@ -443,7 +443,11 @@ function SidebarProfileEntry({
     >
       <span
         aria-hidden
-        className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-bold bg-primary text-primary-foreground"
+        className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-bold text-white"
+        style={{
+          background: "linear-gradient(135deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 70%, #e04888) 100%)",
+          boxShadow: "0 2px 6px color-mix(in srgb, var(--primary) 20%, transparent)",
+        }}
       >
         {initial}
       </span>

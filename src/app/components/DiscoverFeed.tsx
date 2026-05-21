@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Icons } from "./ui/icons";
 import { IconBox } from "./ui/icon-box";
 import { SourceBadge } from "./suppr/source-badge";
@@ -75,6 +76,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
   onConsumedDeepLinkRecipe,
   onViewTracker,
 }: DiscoverFeedProps) {
+  const router = useRouter();
   const { discoverRecipes, nutritionTargets } = useAppData();
   const [selectedRecipe, setSelectedRecipe] = useState<RecipeCard | null>(null);
   // Shared with Library via `useLibraryDiscoverSearch` so the query
@@ -695,16 +697,20 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                       {recipe.title}
                     </p>
                     <p className="text-[11px] text-muted-foreground mt-1 truncate">
-                      {recipe.creatorName || ""}
+                      {recipe.creatorId ? (
+                        <span
+                          role="link"
+                          tabIndex={0}
+                          className="hover:text-primary hover:underline cursor-pointer"
+                          onClick={(e) => { e.stopPropagation(); router.push(`/creator/${recipe.creatorId}`); }}
+                          onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); router.push(`/creator/${recipe.creatorId}`); } }}
+                        >
+                          {recipe.creatorName}
+                        </span>
+                      ) : (
+                        recipe.creatorName || ""
+                      )}
                     </p>
-                    {/* Polish (2026-04-25 visual-qa): pre-fix only kcal +
-                        protein had icons. Tester feedback: "on the discover
-                        page protein has an icon but none of the other macro
-                        nutrients do. also fibre is not shown - same rule
-                        should apply it should show whats configured in
-                        settings eg fibre etc". Now each macro gets its own
-                        icon + value pair; fibre joins when the recipe carries
-                        a non-zero value. */}
                     <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2.5 text-[11px] text-muted-foreground tabular-nums">
                       <span className="inline-flex items-center gap-1">
                         <Icons.calories
@@ -860,11 +866,20 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                         {recipe.title}
                       </p>
                       <p className="text-[12px] text-muted-foreground mt-1 truncate">
-                        {recipe.creatorName || ""}
+                        {recipe.creatorId ? (
+                          <span
+                            role="link"
+                            tabIndex={0}
+                            className="hover:text-primary hover:underline cursor-pointer"
+                            onClick={(e) => { e.stopPropagation(); router.push(`/creator/${recipe.creatorId}`); }}
+                            onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); router.push(`/creator/${recipe.creatorId}`); } }}
+                          >
+                            {recipe.creatorName}
+                          </span>
+                        ) : (
+                          recipe.creatorName || ""
+                        )}
                       </p>
-                      {/* Polish (2026-04-25 visual-qa): mobile-web hero now
-                          renders one icon per macro (matches desktop grid
-                          and mobile native). Fibre joins when present. */}
                       <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2.5">
                         <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground tabular-nums">
                           <Icons.calories className="w-[11px] h-[11px]" style={{ color: "var(--macro-calories)" }} />
@@ -933,7 +948,19 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                             {recipe.title}
                           </span>
                           <span className="block text-[11px] text-muted-foreground truncate">
-                            {recipe.creatorName || ""}
+                            {recipe.creatorId ? (
+                              <span
+                                role="link"
+                                tabIndex={0}
+                                className="hover:text-primary hover:underline cursor-pointer"
+                                onClick={(e) => { e.stopPropagation(); router.push(`/creator/${recipe.creatorId}`); }}
+                                onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); router.push(`/creator/${recipe.creatorId}`); } }}
+                              >
+                                {recipe.creatorName}
+                              </span>
+                            ) : (
+                              recipe.creatorName || ""
+                            )}
                             {recipe.cookTime ? ` · ${recipe.cookTime}` : ""}
                           </span>
                         </span>

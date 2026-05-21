@@ -8,9 +8,7 @@ describe("sanitizeShoppingIngredientName", () => {
   it("removes USDA undetermined medium boilerplate", () => {
     const raw =
       '8 1 undetermined medium (4-1/8" long) Onions, spring or scallions (includes tops and bulb), raw';
-    expect(sanitizeShoppingIngredientName(raw)).toBe(
-      "Onions, spring or scallions (includes tops and bulb), raw",
-    );
+    expect(sanitizeShoppingIngredientName(raw)).toBe("Spring onions");
   });
 
   it("removes stray percent signs", () => {

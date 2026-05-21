@@ -166,6 +166,7 @@ type FullRecipe = {
   source_url: string | null;
   source_name: string | null;
   author_id: string | null;
+  creator_id: string | null;
   author: { display_name: string | null; avatar_url: string | null } | null;
   /** T12 (2026-04-24) — regulated allergens from recipes.allergens. */
   allergens: string[] | null;
@@ -708,6 +709,7 @@ export default function RecipeDetailScreen() {
           source_url: null,
           source_name: seed.attribution.author,
           author_id: null,
+          creator_id: null,
           author: null,
           allergens: [],
         } as FullRecipe);
@@ -742,7 +744,7 @@ export default function RecipeDetailScreen() {
         let recipeRes = await supabase
           .from("recipes")
           .select(
-            "id, title, description, instructions, image_url, servings, prep_time_min, cook_time_min, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, meal_type, source_url, source_name, author_id, allergens",
+            "id, title, description, instructions, image_url, servings, prep_time_min, cook_time_min, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, meal_type, source_url, source_name, author_id, creator_id, allergens",
           )
           .eq("id", recipeId)
           .maybeSingle();
@@ -750,7 +752,7 @@ export default function RecipeDetailScreen() {
           recipeRes = await supabase
             .from("recipes")
             .select(
-              "id, title, description, instructions, image_url, servings, prep_time_min, cook_time_min, calories, protein, carbs, fat, meal_type, author_id",
+              "id, title, description, instructions, image_url, servings, prep_time_min, cook_time_min, calories, protein, carbs, fat, meal_type, author_id, creator_id",
             )
             .eq("id", recipeId)
             .maybeSingle();
@@ -792,6 +794,7 @@ export default function RecipeDetailScreen() {
             source_url: (r.source_url as string | null | undefined) ?? null,
             source_name: (r.source_name as string | null | undefined) ?? null,
             author_id: aid,
+            creator_id: (r.creator_id as string | null | undefined) ?? null,
             author,
             allergens: Array.isArray(r.allergens) ? (r.allergens as string[]) : [],
           } as FullRecipe);
@@ -829,7 +832,10 @@ export default function RecipeDetailScreen() {
       }
     }
     const author = recipe.author?.display_name?.trim();
-    if (author) return { label: author, href: null };
+    if (author) {
+      const creatorHref = recipe.creator_id ? `/creator/${recipe.creator_id}` : null;
+      return { label: author, href: creatorHref };
+    }
     if (src) return { label: src, href: recipe.source_url?.trim() ?? null };
     return { label: "", href: null };
   }, [recipe]);
@@ -1973,8 +1979,12 @@ export default function RecipeDetailScreen() {
                       {isAuthor ? (
                         <Pressable
                           onPress={() => {
-                            if (recipeByline.href)
+                            if (!recipeByline.href) return;
+                            if (recipeByline.href.startsWith("/")) {
+                              router.push(recipeByline.href as never);
+                            } else {
                               void Linking.openURL(recipeByline.href);
+                            }
                           }}
                           accessibilityRole="link"
                           accessibilityLabel={`Open source: ${recipeByline.label}`}

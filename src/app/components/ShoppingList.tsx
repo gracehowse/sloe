@@ -279,7 +279,7 @@ export const ShoppingList = memo(function ShoppingList({
                 className="flex items-center justify-between"
                 style={{ marginBottom: 10 }}
               >
-                <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
                   {section.name}
                 </p>
                 <span
