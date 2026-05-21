@@ -163,11 +163,8 @@ export function TodayWeekSidebar({
                   </span>
                 ) : null}
 
-                {/* Calorie bar — visualises pct toward target. Uses
-                    success colour for in-range, warning for over.
-                    Mirrors the over-budget=amber rule from
-                    `docs/ux/brand-guidelines.md` Section 9
-                    (never red). */}
+                {/* Calorie bar — success green for in-range,
+                    destructive red for over-target. */}
                 <div className="relative h-2 flex-1 min-w-0 overflow-hidden rounded-full bg-muted">
                   <div
                     className="h-full rounded-full transition-[width] duration-300"

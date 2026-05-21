@@ -31,12 +31,13 @@ function adherenceTone(pct: number): {
   if (pct >= 90 && pct <= 110) {
     return { ring: "var(--success)", text: "text-success", label: "On target" };
   }
-  if (pct >= 75 && pct <= 125) {
-    return { ring: "var(--warning)", text: "text-warning", label: pct < 90 ? "Under target" : "Over target" };
+  if (pct < 90 && pct >= 75) {
+    return { ring: "var(--warning)", text: "text-warning", label: "Under target" };
   }
   if (pct < 75) {
     return { ring: "var(--warning)", text: "text-warning", label: "Under target" };
   }
+  // Over target (>110%) is always destructive red
   return { ring: "var(--destructive)", text: "text-destructive", label: "Over target" };
 }
 

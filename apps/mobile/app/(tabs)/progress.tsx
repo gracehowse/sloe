@@ -2321,6 +2321,7 @@ type CardTheme = {
   accent: string;
   green: string;
   amber: string;
+  red: string;
 };
 
 /**
@@ -2659,13 +2660,13 @@ function CaloriesRangeCard({
               {deltaVsTargetKcal != null ? (
                 <View
                   testID="progress-calories-range-delta-pill"
-                  style={pillStyle(deltaVsTargetKcal <= 0 ? theme.green + "22" : theme.amber + "22")}
+                  style={pillStyle(deltaVsTargetKcal <= 0 ? theme.green + "22" : theme.red + "22")}
                 >
                   <Text
                     style={{
                       fontSize: 11,
                       fontWeight: "700",
-                      color: deltaVsTargetKcal <= 0 ? theme.green : theme.amber,
+                      color: deltaVsTargetKcal <= 0 ? theme.green : theme.red,
                       fontVariant: ["tabular-nums"],
                     }}
                   >

@@ -29,12 +29,13 @@ function adherenceTone(pct: number): { color: string; label: string } {
   if (pct >= 90 && pct <= 110) {
     return { color: Accent.success, label: "On target" };
   }
-  if (pct >= 75 && pct <= 125) {
-    return { color: Accent.warning, label: pct < 90 ? "Under target" : "Over target" };
+  if (pct < 90 && pct >= 75) {
+    return { color: Accent.warning, label: "Under target" };
   }
   if (pct < 75) {
     return { color: Accent.warning, label: "Under target" };
   }
+  // Over target (>110%) is always destructive red
   return { color: Accent.destructive, label: "Over target" };
 }
 

@@ -2453,7 +2453,7 @@ function CaloriesRangeCardWeb({
                     "shrink-0 inline-flex items-center rounded-full text-[11px] font-semibold px-2 py-0.5 tabular-nums",
                     deltaVsTargetKcal <= 0
                       ? "bg-success text-foreground"
-                      : "bg-warning text-foreground",
+                      : "bg-destructive text-destructive-foreground",
                   ].join(" ")}
                 >
                   {deltaVsTargetKcal > 0 ? "+" : "−"}
