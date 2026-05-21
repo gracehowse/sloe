@@ -21,9 +21,9 @@ name: "Tab navigation — all 4 tabs load and respond"
 - tapOn:
     id: "subtab-discover"
 - waitForAnimationToEnd
-# Discover prototype header (Browse + Discover); not the old macro subtitle.
-- assertVisible: ".*Browse.*"
+# Discover sub-tab loaded — verify search bar and filter pills.
 - assertVisible: ".*Discover.*"
+- assertVisible: ".*(?:Search recipes|For You|Popular).*"
 
 # Plan tab — verify content loads
 - tapOn:
@@ -51,7 +51,7 @@ name: "Tab navigation — all 4 tabs load and respond"
     text: "Open settings"
 - waitForAnimationToEnd
 - waitForAnimationToEnd
-- assertVisible: ".*(?:Your plan|Appearance|Account).*"
+- assertVisible: ".*(?:Settings|Membership|People|Manage subscription).*"
 - tapOn:
     text: "Go back"
 - waitForAnimationToEnd
