@@ -121,6 +121,9 @@ export async function processRevenueCatEvent(event: RevenueCatEvent): Promise<Pr
 
   if (eventTypeIsTierGrant(event.type)) {
     const entitlements = extractEntitlements(event);
+    if (!entitlements) {
+      return { ok: true, outcome: "no_op", eventType: event.type };
+    }
     const tier = tierFromRevenueCatEntitlements(entitlements);
     const ok = await updateProfileTierServiceRole(userId, tier);
     return ok

@@ -5,10 +5,11 @@
  * RC's webhook payload includes one of:
  *   * `entitlement_id`  — the active entitlement (newer events)
  *   * `entitlement_ids` — array of currently active entitlements
- * We accept either. When both are absent (e.g. NON_RENEWING_PURCHASE
- * with no entitlement gating, or our own product naming missed an
- * entitlement attach in the RC dashboard), the result is `"free"` —
- * the caller decides whether that means a downgrade or a no-op.
+ * We accept either. `extractEntitlements` returns null when both are
+ * absent or empty so the webhook handler can no-op grant-style events
+ * instead of downgrading a paying user on a partial/misconfigured RC
+ * payload. Expiration-like event types are the authoritative downgrade
+ * path.
  *
  * Highest-tier-wins ordering: pro > base > free.
  *

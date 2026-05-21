@@ -19,7 +19,8 @@ export const dynamic = "force-dynamic";
  * Events accepted (handled in webhookProcess.ts):
  *   - INITIAL_PURCHASE / RENEWAL / PRODUCT_CHANGE / UNCANCELLATION /
  *     NON_RENEWING_PURCHASE / TEMPORARY_ENTITLEMENT_GRANT → tier
- *     resolved from `entitlement_ids` and persisted via service role.
+ *     resolved from `entitlement_ids` and persisted via service role
+ *     when the entitlement payload is present.
  *   - CANCELLATION / BILLING_ISSUE → no-op (auto-renew off / grace
  *     period; entitlement still active).
  *   - EXPIRATION / SUBSCRIPTION_PAUSED → tier → free.

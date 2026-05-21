@@ -75,6 +75,35 @@ describe("processRevenueCatEvent", () => {
     expect(mockTierWrite).toHaveBeenCalledWith(userId, "base");
   });
 
+  it("grant events without entitlement fields do not overwrite the current tier", async () => {
+    const result = await processRevenueCatEvent({
+      id: "evt_initial_missing_entitlement",
+      type: "INITIAL_PURCHASE",
+      app_user_id: userId,
+    });
+    expect(result).toEqual({
+      ok: true,
+      outcome: "no_op",
+      eventType: "INITIAL_PURCHASE",
+    });
+    expect(mockTierWrite).not.toHaveBeenCalled();
+  });
+
+  it("grant events with empty entitlement arrays do not downgrade the user", async () => {
+    const result = await processRevenueCatEvent({
+      id: "evt_renewal_empty_entitlement",
+      type: "RENEWAL",
+      app_user_id: userId,
+      entitlement_ids: [],
+    });
+    expect(result).toEqual({
+      ok: true,
+      outcome: "no_op",
+      eventType: "RENEWAL",
+    });
+    expect(mockTierWrite).not.toHaveBeenCalled();
+  });
+
   it("EXPIRATION downgrades to free regardless of entitlement payload", async () => {
     const result = await processRevenueCatEvent({
       id: "evt_expiration",
