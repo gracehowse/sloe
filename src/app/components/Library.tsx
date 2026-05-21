@@ -195,7 +195,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
             className="text-[13px] text-muted-foreground mt-0.5 tabular-nums"
             data-testid="library-desktop-subtitle"
           >
-            {filteredRecipes.length} recipe{filteredRecipes.length === 1 ? "" : "s"} · sorted by {sortLabel.toLowerCase()}
+            {`${filteredRecipes.length} recipe${filteredRecipes.length === 1 ? "" : "s"} · sorted by ${sortLabel.toLowerCase()}`}
           </p>
         </div>
 

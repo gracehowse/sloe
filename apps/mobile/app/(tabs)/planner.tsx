@@ -2047,7 +2047,7 @@ export default function PlannerScreen() {
               })()}
             </Text>
             <Text style={styles.summaryTitle}>
-              Hits your targets {summaryScore.hits} of {summaryScore.total} day{summaryScore.total === 1 ? "" : "s"}
+              {`Hits your targets ${summaryScore.hits} of ${summaryScore.total} day${summaryScore.total === 1 ? "" : "s"}`}
             </Text>
             <Text style={styles.summarySubtitle}>
               {summaryScore.hits === summaryScore.total

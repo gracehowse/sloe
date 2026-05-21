@@ -165,7 +165,7 @@ export function PlanTemplatesSheet({
               ]}
             />
             <Text style={[styles.label, { color: colors.text, marginTop: Spacing.md }]}>
-              Day count: {dayCount} day{dayCount === 1 ? "" : "s"}
+              {`Day count: ${dayCount} day${dayCount === 1 ? "" : "s"}`}
             </Text>
             <View style={styles.daySelector}>
               {Array.from({ length: clampedMax }, (_, i) => i + 1).map((d) => (
@@ -198,8 +198,7 @@ export function PlanTemplatesSheet({
               </Text>
             ) : (
               <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: Spacing.md }}>
-                Will save the first {dayCount} day{dayCount === 1 ? "" : "s"} ·{" "}
-                {sourceMealCount} meal{sourceMealCount === 1 ? "" : "s"} eligible.
+                {`Will save the first ${dayCount} day${dayCount === 1 ? "" : "s"} · ${sourceMealCount} meal${sourceMealCount === 1 ? "" : "s"} eligible.`}
               </Text>
             )}
             {error ? (
@@ -246,8 +245,7 @@ export function PlanTemplatesSheet({
                       {t.name}
                     </Text>
                     <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-                      {t.dayCount} day{t.dayCount === 1 ? "" : "s"} · {t.slots.length} meal
-                      {t.slots.length === 1 ? "" : "s"}
+                      {`${t.dayCount} day${t.dayCount === 1 ? "" : "s"} · ${t.slots.length} meal${t.slots.length === 1 ? "" : "s"}`}
                     </Text>
                   </View>
                   <Pressable

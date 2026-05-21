@@ -71,7 +71,7 @@ export function TodayStreakInsightCard({
             icon={<Snowflake size={10} color={Accent.cyan} strokeWidth={1.75} />}
             style={{ marginTop: 4 }}
           >
-            {freezesAvailableToday} freeze{freezesAvailableToday === 1 ? "" : "s"} available
+            {`${freezesAvailableToday} freeze${freezesAvailableToday === 1 ? "" : "s"} available`}
           </Badge>
         ) : null}
         {hasUnseenFreezeEarned ? (

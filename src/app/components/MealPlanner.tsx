@@ -547,7 +547,7 @@ export const MealPlanner = memo(function MealPlanner({
                 className="text-foreground font-bold -tracking-[0.01em]"
                 style={{ fontSize: 15 }}
               >
-                Hits your targets {summary.hits} of {summary.total} day{summary.total === 1 ? "" : "s"}
+                Hits your targets {summary.hits} of {`${summary.total} day${summary.total === 1 ? "" : "s"}`}
               </p>
               {summarySubtitle ? (
                 <p
@@ -1313,7 +1313,7 @@ export const MealPlanner = memo(function MealPlanner({
                       className="text-muted-foreground"
                       style={{ fontSize: 11, marginTop: 2 }}
                     >
-                      {r.servings ?? 1} serving{(r.servings ?? 1) === 1 ? "" : "s"}
+                      {`${r.servings ?? 1} serving${(r.servings ?? 1) === 1 ? "" : "s"}`}
                     </p>
                   </div>
                   <div

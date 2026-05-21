@@ -44,7 +44,7 @@ export function TodayStreakInsightCard({
             icon={<Icons.streakFreeze />}
             className="mt-1"
           >
-            {freezesAvailableToday} freeze{freezesAvailableToday === 1 ? "" : "s"} available
+            {`${freezesAvailableToday} freeze${freezesAvailableToday === 1 ? "" : "s"} available`}
           </Badge>
         ) : null}
         {hasUnseenFreezeEarned ? (

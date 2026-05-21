@@ -411,7 +411,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
           data-testid="discover-desktop-subtitle"
           className="text-[13px] text-muted-foreground mt-0.5"
         >
-          {recipes.length} recipe{recipes.length === 1 ? "" : "s"} · sorted by recent
+          {`${recipes.length} recipe${recipes.length === 1 ? "" : "s"} · sorted by recent`}
         </p>
       </header>
 

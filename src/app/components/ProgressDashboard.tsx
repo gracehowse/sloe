@@ -1383,10 +1383,10 @@ function ProgressDashboardContent() {
               Streak
             </p>
             <p className="text-[13px] font-semibold tabular-nums text-foreground truncate">
-              {streakDays} day{streakDays === 1 ? "" : "s"}
+              {`${streakDays} day${streakDays === 1 ? "" : "s"}`}
               {freezesAvailable > 0 ? (
                 <span className="ml-1.5 text-[11px] font-normal text-primary">
-                  · {freezesAvailable} freeze{freezesAvailable === 1 ? "" : "s"}
+                  {`· ${freezesAvailable} freeze${freezesAvailable === 1 ? "" : "s"}`}
                 </span>
               ) : null}
             </p>
@@ -1447,7 +1447,7 @@ function ProgressDashboardContent() {
             <p className="text-sm font-semibold text-foreground">Streak freezes</p>
           </div>
           <p className="text-xs text-muted-foreground mb-3">
-            Freezes cover one empty day each so a sick or travel day doesn&apos;t break your streak. You earn one every 7-day streak, up to a cap of {freezeBudgetMax}.
+            {`Freezes cover one empty day each so a sick or travel day doesn\u2019t break your streak. You earn one every 7-day streak, up to a cap of ${freezeBudgetMax}.`}
           </p>
           <div className="grid grid-cols-3 gap-2 mb-2">
             <FreezeStat label="Available" value={String(freezesAvailable)} />
@@ -1470,7 +1470,7 @@ function ProgressDashboardContent() {
           ) : null}
           {rawStreakDays !== streakDays ? (
             <p className="text-[11px] text-muted-foreground mt-2">
-              Raw streak (without freezes): {rawStreakDays} day{rawStreakDays === 1 ? "" : "s"}.
+              {`Raw streak (without freezes): ${rawStreakDays} day${rawStreakDays === 1 ? "" : "s"}.`}
             </p>
           ) : null}
         </div>
