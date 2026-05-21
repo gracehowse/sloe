@@ -581,17 +581,23 @@ export function TodayMealsSection({
         {mealsForSelectedDate.length === 0 && (
           <div
             data-testid="today-meals-empty-state"
-            className="px-4 py-8 text-center"
+            className="px-4 py-10 text-center"
           >
-            <p className="mb-4 text-sm text-muted-foreground">
+            <div className="mx-auto mb-4 grid h-11 w-11 place-items-center rounded-full bg-muted">
+              <Icons.dinner className="h-5 w-5 text-muted-foreground" aria-hidden />
+            </div>
+            <p className="text-sm font-medium text-foreground mb-1">
               No meals logged on this day
+            </p>
+            <p className="text-[13px] text-muted-foreground mb-5">
+              Tap below to search, scan, snap a photo, or use your voice.
             </p>
             <button
               type="button"
               onClick={onOpenLogSheet}
               data-testid="today-meals-empty-cta"
               aria-label="Log a meal"
-              className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 font-semibold text-white transition-pm hover:bg-primary/90"
+              className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
             >
               <Icons.add className="h-5 w-5" />
               Log a meal

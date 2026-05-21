@@ -976,9 +976,12 @@ export const DiscoverFeed = memo(function DiscoverFeed({
             ) : null}
           </div>
         ) : showClusterCarousels ? null : (
-          <div className="mt-6 mx-4 rounded-2xl border border-dashed border-border bg-card/60 p-8 text-center md:mx-0">
-            <p className="text-foreground font-medium mb-2">Nothing to show</p>
-            <p className="text-sm text-muted-foreground mb-4">
+          <div className="mt-6 mx-4 rounded-2xl border border-dashed border-border bg-card/60 px-6 py-10 text-center md:mx-0">
+            <div className="mx-auto mb-3 grid h-10 w-10 place-items-center rounded-full bg-muted">
+              <Icons.discover className="h-5 w-5 text-muted-foreground" aria-hidden />
+            </div>
+            <p className="text-sm font-medium text-foreground mb-1">Nothing to show</p>
+            <p className="text-[13px] text-muted-foreground mb-4 max-w-sm mx-auto">
               {discoverRecipes.length === 0
                 ? "Nothing in the feed yet. Check your connection, then pull to refresh. If you're setting up the app, publish a recipe with an author so community posts can appear here."
                 : feedScope === "following"
@@ -996,9 +999,9 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                   setActiveCollectionId(null);
                   setFeedScope("forYou");
                 }}
-                className="text-sm font-semibold text-primary"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
               >
-                Reset
+                Reset filters
               </button>
             ) : null}
           </div>
