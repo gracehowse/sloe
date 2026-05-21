@@ -1,5 +1,6 @@
 import { memo, useEffect, useMemo, useState } from "react";
-import { Users, X } from "lucide-react";
+import { Check, Users, X } from "lucide-react";
+import { Icons } from "./ui/icons";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import {
@@ -252,12 +253,27 @@ export const ShoppingList = memo(function ShoppingList({
 
       {totalItemCount === 0 ? (
         <div
-          className="bg-card border border-border rounded-2xl"
-          style={{ padding: 14, maxWidth: 900 }}
+          className="bg-card border border-border rounded-2xl px-6 py-10 text-center"
+          style={{ maxWidth: 900 }}
         >
-          <p className="text-muted-foreground" style={{ fontSize: 13 }}>
-            No items
+          <div className="mx-auto mb-3 grid h-10 w-10 place-items-center rounded-full bg-muted">
+            <Icons.shopping className="h-5 w-5 text-muted-foreground" aria-hidden />
+          </div>
+          <p className="text-sm font-medium text-foreground mb-1">
+            No items yet
           </p>
+          <p className="text-[13px] text-muted-foreground">
+            Build a meal plan, then generate your shopping list from there.
+          </p>
+          {_onNavigate ? (
+            <button
+              type="button"
+              onClick={() => _onNavigate("plan")}
+              className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              Go to Plan
+            </button>
+          ) : null}
         </div>
       ) : (
         <div
@@ -321,16 +337,20 @@ export const ShoppingList = memo(function ShoppingList({
                         onClick={() => toggleGroupChecked(group)}
                         aria-pressed={allChecked}
                         aria-label={`${allChecked ? "Uncheck" : "Check"} ${rowLabel}`}
-                        className="shrink-0"
+                        className="shrink-0 grid place-items-center transition-colors"
                         style={{
                           width: 18,
                           height: 18,
                           borderRadius: 9,
-                          border: "1.5px solid var(--border)",
+                          border: allChecked ? "1.5px solid var(--primary)" : "1.5px solid var(--border)",
                           background: allChecked ? "var(--primary)" : "transparent",
                           cursor: "pointer",
                         }}
-                      />
+                      >
+                        {allChecked ? (
+                          <Check width={11} height={11} strokeWidth={3} className="text-primary-foreground" aria-hidden />
+                        ) : null}
+                      </button>
                       <span
                         className={`flex-1 ${
                           allChecked

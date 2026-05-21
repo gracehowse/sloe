@@ -578,7 +578,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                   <h2 className="text-[14px] font-bold text-foreground -tracking-[0.01em] px-4 md:px-0 mb-2.5">
                     {cluster.title}
                   </h2>
-                  <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
+                  <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory scroll-pl-4 md:scroll-pl-0">
                     <div className="flex gap-3 pb-2" style={{ minWidth: "max-content" }}>
                       {items.map((recipe) => {
                         const kcal = Math.round(recipe.calories);
@@ -590,7 +590,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                             key={`cluster-${recipe.id}`}
                             type="button"
                             onClick={() => setSelectedRecipe(recipe)}
-                            className="shrink-0 w-[220px] text-left rounded-xl bg-card border border-border overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all"
+                            className="shrink-0 w-[220px] snap-start text-left rounded-xl bg-card border border-border overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all"
                           >
                             <DiscoverRecipeImage
                               id={recipe.id}
@@ -599,7 +599,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                               iconSize={24}
                               aspectRatio={recipe.image ? "16 / 10" : "8 / 1"}
                             />
-                            <div className="p-2.5">
+                            <div className="px-3 py-2.5">
                               <p
                                 className="text-[13px] font-bold text-foreground leading-snug -tracking-[0.01em]"
                                 style={{
@@ -611,24 +611,24 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                               >
                                 {recipe.title}
                               </p>
-                              <div className="flex flex-wrap gap-x-2 gap-y-1 mt-1.5 text-[11px] text-muted-foreground tabular-nums">
+                              <div className="flex flex-wrap gap-x-2.5 gap-y-1 mt-1.5 text-[11px] text-muted-foreground tabular-nums">
                                 <span className="inline-flex items-center gap-1">
                                   <Icons.calories
-                                    className="w-[11px] h-[11px]"
+                                    className="w-3 h-3"
                                     style={{ color: "var(--macro-calories)" }}
                                   />
                                   {kcal} kcal
                                 </span>
                                 <span className="inline-flex items-center gap-1">
                                   <Icons.protein
-                                    className="w-[11px] h-[11px]"
+                                    className="w-3 h-3"
                                     style={{ color: "var(--macro-protein)" }}
                                   />
                                   {protein}g
                                 </span>
                                 {cookTime ? (
                                   <span className="inline-flex items-center gap-1">
-                                    <Icons.time className="w-[11px] h-[11px] text-muted-foreground" />
+                                    <Icons.time className="w-3 h-3 text-muted-foreground" />
                                     {cookTime}
                                   </span>
                                 ) : null}
@@ -839,7 +839,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                     type="button"
                     id={`discover-post-${recipe.id}`}
                     onClick={() => setSelectedRecipe(recipe)}
-                    className="text-left rounded-[14px] bg-card border border-border overflow-hidden cursor-pointer w-full"
+                    className="group text-left rounded-[14px] bg-card border border-border overflow-hidden cursor-pointer w-full hover:shadow-lg hover:shadow-foreground/5 hover:-translate-y-0.5 transition-all"
                   >
                     {/* P1-19 web parity: hero collapses to 8:1 band when
                         no image (mobile parity, see DiscoverFeed grid above
@@ -851,6 +851,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                         image={recipe.image}
                         iconSize={28}
                         aspectRatio={recipe.image ? "16 / 10" : "8 / 1"}
+                        className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
                       />
                       {recipe.sourcePlatform ? (
                         <div className="absolute top-2 left-2">
