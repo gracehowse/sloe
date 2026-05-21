@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { Icons } from "./ui/icons";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import type { LibraryEntryKind, RecipeCard, UserTier } from "../../types/recipe.ts";
@@ -13,8 +13,45 @@ import {
 import { classifyLibraryEntry } from "../../lib/recipes/libraryEntryKind.ts";
 import { computeRecipeFitPercent } from "../../lib/nutrition/recipeFitPercent.ts";
 import { useLibraryDiscoverSearch } from "../../lib/libraryDiscoverSearchStore.ts";
-// GW-08 (audit 2026-04-28): `TrustChip` + `recipeLevelTrust` dropped
-// — Library cards no longer render the chip; see card-body comments.
+
+/**
+ * Renders a recipe image with automatic fallback to RecipeHeroFallback
+ * when the URL fails to load (e.g. hot-linked external images that
+ * return 403/404). Without this, broken images render as blank areas.
+ */
+function RecipeCardImage({
+  src,
+  recipeId,
+  recipeTitle,
+  iconSize = 32,
+  className,
+  style,
+}: {
+  src: string;
+  recipeId: string;
+  recipeTitle: string;
+  iconSize?: number;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  const [broken, setBroken] = useState(false);
+  const handleError = useCallback(() => setBroken(true), []);
+
+  if (broken) {
+    return <RecipeHeroFallback id={recipeId} title={recipeTitle} iconSize={iconSize} />;
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt=""
+      className={className}
+      style={style}
+      onError={handleError}
+    />
+  );
+}
 
 interface LibraryProps {
   userTier: UserTier;
@@ -365,20 +402,15 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                         regression. The matching name lives on the
                         detail hero (RecipeDetail.tsx). */}
                     {recipe.image ? (
-                      // eslint-disable-next-line @next/next/no-img-element -- viewTransitionName + arbitrary recipe image URLs
-                      <img
+                      <RecipeCardImage
                         src={recipe.image}
-                        alt=""
+                        recipeId={recipe.id}
+                        recipeTitle={recipe.title}
+                        iconSize={32}
                         className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
                         style={{ viewTransitionName: `recipe-${recipe.id}-image` }}
                       />
                     ) : (
-                      // Recipe-wave (2026-05-10) — Library cards used to
-                      // render a broken `<img>` (no `src`) when a recipe
-                      // had no `image`. Closes the "Library inconsistency:
-                      // some recipes have images, some don't" tester
-                      // report by showing the deterministic hero
-                      // fallback that Discover already uses.
                       <div
                         className="w-full h-full"
                         style={{ viewTransitionName: `recipe-${recipe.id}-image` }}
@@ -511,12 +543,14 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
               >
                 <div className="relative overflow-hidden">
                   {recipe.image ? (
-                    // eslint-disable-next-line @next/next/no-img-element -- arbitrary recipe image URLs
-                    <img src={recipe.image} alt={recipe.title} className="w-full aspect-[4/3] object-cover group-hover:scale-110 transition-transform duration-500" />
+                    <RecipeCardImage
+                      src={recipe.image}
+                      recipeId={recipe.id}
+                      recipeTitle={recipe.title}
+                      iconSize={36}
+                      className="w-full aspect-[4/3] object-cover group-hover:scale-110 transition-transform duration-500"
+                    />
                   ) : (
-                    // Recipe-wave (2026-05-10) — same fallback as the
-                    // desktop card path. Mobile-web cards historically
-                    // rendered a broken `<img>` when image was null.
                     <div className="w-full aspect-[4/3]">
                       <RecipeHeroFallback id={recipe.id} title={recipe.title} iconSize={36} />
                     </div>

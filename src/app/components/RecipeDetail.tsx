@@ -205,6 +205,35 @@ function formatIngredientAmount(raw: number): string {
   return rounded.toFixed(2).replace(/\.?0+$/, "");
 }
 
+function RecipeHeroImage({
+  src,
+  alt,
+  recipeId,
+  recipeTitle,
+  className,
+  style,
+}: {
+  src: string;
+  alt: string;
+  recipeId: string;
+  recipeTitle: string;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  const [broken, setBroken] = useState(false);
+  if (broken) {
+    return (
+      <div className="w-full aspect-video" style={style}>
+        <RecipeHeroFallback id={recipeId} title={recipeTitle} iconSize={48} />
+      </div>
+    );
+  }
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={src} alt={alt} className={className} style={style} onError={() => setBroken(true)} />
+  );
+}
+
 export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initialServings, onViewTracker }: RecipeDetailProps) {
   const {
     toggleSaveRecipe,
@@ -1318,10 +1347,11 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           return (
             <div className="relative rounded-2xl overflow-hidden shadow-2xl group">
               {heroSrc ? (
-                // eslint-disable-next-line @next/next/no-img-element -- viewTransitionName + arbitrary hero ladder URLs
-                <img
+                <RecipeHeroImage
                   src={heroSrc}
                   alt={recipe.title}
+                  recipeId={recipe.id}
+                  recipeTitle={recipe.title}
                   className="w-full aspect-video object-cover group-hover:scale-105 transition-transform duration-500"
                   style={{ viewTransitionName: `recipe-${recipe.id}-image` }}
                 />
