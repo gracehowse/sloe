@@ -102,7 +102,7 @@ describe("buildProfileUpsertRow — happy path", () => {
       target_carbs: targets!.carbsG,
       target_fat: targets!.fatG,
       target_fiber_g: targets!.fiberG,
-      prefer_activity_adjusted_calories: false,
+      prefer_activity_adjusted_calories: true,
       onboarding_completed: true,
     });
     // Defensive: target_water_ml MUST NOT appear — column doesn't

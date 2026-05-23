@@ -305,7 +305,7 @@ export function buildProfileUpsertRow(args: {
     target_carbs: hasTargets ? targets!.carbsG : null,
     target_fat: hasTargets ? targets!.fatG : null,
     target_fiber_g: hasTargets ? targets!.fiberG : null,
-    prefer_activity_adjusted_calories: false,
+    prefer_activity_adjusted_calories: true,
     onboarding_completed: true,
   };
 }
