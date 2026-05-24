@@ -3,9 +3,11 @@
  *
  *   1. Empty (consumed === 0) → neutral track (no blue→pink gradient).
  *   2. Logged-and-under → solid green (`Accent.success` / `--success`).
- *   3. Logged-and-over → destructive red (`Accent.destructive` / `--destructive`).
+ *   3. Logged-and-over → destructive red (`Accent.destructive` /
+ *      `--destructive`). TF49 baseline for the calorie ring stroke;
+ *      NET stats / chips may still use over-budget amber elsewhere.
  *
- * Centre net number + label mirror the ring stroke when logged.
+ * Centre number + label use foreground ink; stroke carries budget state.
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -31,8 +33,9 @@ describe("Three-state ring — mobile CalorieRing", () => {
     );
   });
 
-  it("centre number uses ringStateColor when logged", () => {
-    expect(MOBILE_SRC).toMatch(/color: ringStateColor/);
+  it("centre number + label use textColor (ink), not ring stroke hue", () => {
+    expect(MOBILE_SRC).toMatch(/color: textColor/);
+    expect(MOBILE_SRC).not.toMatch(/color: ringStateColor/);
   });
 
   it("does NOT use the blue→pink brand gradient on the Today ring", () => {
@@ -42,15 +45,17 @@ describe("Three-state ring — mobile CalorieRing", () => {
 });
 
 describe("Three-state ring — web DailyRing", () => {
-  it("logged → over red, under success (no gradient stroke)", () => {
+  it("logged → over red, under success (solid stroke, no gradient)", () => {
+    expect(WEB_SRC).not.toContain("ring-grad-over");
+    expect(WEB_SRC).not.toContain("ring-grad-success");
     expect(WEB_SRC).toMatch(
-      /stroke=\{[\s\S]*?isEmpty[\s\S]*?"var\(--ring-bg\)"[\s\S]*?: isOverBudget[\s\S]*?\?\s*"var\(--destructive\)"[\s\S]*?:\s*"var\(--success\)"/,
+      /stroke=\{[\s\S]*?isEmpty[\s\S]*?"var\(--ring-bg\)"[\s\S]*?: isOverBudget[\s\S]*\?\s*"var\(--destructive\)"[\s\S]*?:\s*"var\(--success\)"/,
     );
   });
 
-  it("centre number is red or green when logged", () => {
+  it("centre number + label use foreground when logged", () => {
     expect(WEB_SRC).toMatch(
-      /centerValueColor = isEmpty[\s\S]*\?\s*undefined[\s\S]*?: isOverBudget[\s\S]*\?\s*"var\(--destructive\)"[\s\S]*?:\s*"var\(--success\)"/,
+      /centerValueColor = isEmpty[\s\S]*\?\s*undefined[\s\S]*?:\s*"var\(--foreground\)"/,
     );
   });
 

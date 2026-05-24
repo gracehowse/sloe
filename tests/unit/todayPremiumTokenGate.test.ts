@@ -30,12 +30,9 @@ const HEX_ONLY_FILES = [
   "src/app/components/suppr/today-dashboard-macro-tiles.tsx",
 ] as const;
 
-/** Retired UI chrome blues — use `--primary` / `Accent.primary` (ink). */
+/** Raw ink hex in Today sprint files — use `Accent.primary` tokens instead. */
 const BANNED_HEX = [
-  "#7a90f5",
-  "#6379c6",
-  "#5b7cf0",
-  "#4f6fe8",
+  "#1c1916",
 ] as const;
 
 /** Arbitrary Tailwind spacing on mobile Today files only (web uses compact px ladder). */

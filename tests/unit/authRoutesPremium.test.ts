@@ -34,12 +34,12 @@ describe("auth routes (Premium P1)", () => {
 });
 
 describe("desktop Today week rail (ENG-590)", () => {
-  it("NutritionTracker wires TodayWeekSidebar in a flex row at lg+", () => {
+  it("NutritionTracker wires right-rail in a flex row at lg+", () => {
     const src = read("src/app/components/NutritionTracker.tsx");
-    expect(src).toMatch(/md:flex md:gap-6 md:items-start/);
-    expect(src).toMatch(/md:max-w-\[440px\]/);
+    expect(src).toMatch(/lg:flex lg:gap-8 lg:items-start/);
+    expect(src).toMatch(/lg:max-w-\[480px\]/);
     expect(src).toMatch(
-      /viewMode === "day"[\s\S]+?<TodayWeekSidebar[\s\S]+?sticky top-4/,
+      /viewMode === "day"[\s\S]+?<TodayDesktopRightRail[\s\S]+?sticky top-4/,
     );
     expect(src).not.toMatch(/fixed top-20 right-4/);
   });

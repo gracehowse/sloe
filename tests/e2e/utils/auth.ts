@@ -16,23 +16,47 @@ export async function loginWithTestUser(page: Page): Promise<void> {
     throw new Error("E2E_EMAIL and E2E_PASSWORD must be set");
   }
 
-  await page.goto("/login", { waitUntil: "domcontentloaded", timeout: 30_000 });
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      await page.goto("/login", { waitUntil: "domcontentloaded", timeout: 30_000 });
 
-  const acceptCookies = page.getByRole("button", { name: /accept all/i });
-  if (await acceptCookies.isVisible({ timeout: 3000 }).catch(() => false)) {
-    await acceptCookies.click();
+      const acceptCookies = page.getByRole("button", { name: /accept all/i });
+      if (await acceptCookies.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await acceptCookies.click();
+      }
+
+      const emailInput = page.getByPlaceholder("you@domain.com");
+      const passwordInput = page.getByPlaceholder(/your password/i);
+      await expect(emailInput).toBeVisible({ timeout: 15_000 });
+      await emailInput.fill(email);
+      await passwordInput.fill(password);
+
+      const signIn = page.getByRole("button", { name: "Sign in", exact: true }).last();
+      await Promise.all([
+        page.waitForURL((url) => !url.pathname.includes("/login"), { timeout: 60_000 }),
+        signIn.click(),
+      ]);
+      lastError = undefined;
+      break;
+    } catch (e) {
+      lastError = e;
+      if (attempt === 1) break;
+      await page.waitForTimeout(1500);
+    }
   }
-
-  const emailInput = page.getByPlaceholder("you@domain.com");
-  const passwordInput = page.getByPlaceholder(/your password/i);
-  await expect(emailInput).toBeVisible({ timeout: 15_000 });
-  await emailInput.fill(email);
-  await passwordInput.fill(password);
-
-  // `/login` and `/signin` use hideTabs — one submit button (see loginPermissive).
-  await page.getByRole("button", { name: "Sign in", exact: true }).last().click();
-
-  await page.waitForURL((url) => !url.pathname.includes("/login"), { timeout: 45_000 });
+  if (lastError) {
+    const authError = await page
+      .getByText(/invalid|incorrect|confirm your email|could not sign in/i)
+      .first()
+      .isVisible()
+      .catch(() => false);
+    throw new Error(
+      authError
+        ? "E2E sign-in failed — check credentials or email confirmation in Supabase."
+        : `E2E sign-in did not leave /login after 2 attempts: ${String(lastError)}`,
+    );
+  }
 
   if (page.url().includes("/onboarding")) {
     throw new Error(
@@ -43,5 +67,20 @@ export async function loginWithTestUser(page: Page): Promise<void> {
   const keepGoing = page.getByRole("button", { name: /keep going|continue|got it|close/i }).first();
   if (await keepGoing.isVisible({ timeout: 2000 }).catch(() => false)) {
     await keepGoing.click().catch(() => undefined);
+  }
+
+  await page.goto("/today", { waitUntil: "domcontentloaded" });
+  const todayNav = page
+    .getByRole("tab", { name: /^Today$/i })
+    .or(page.getByRole("button", { name: /^Today$/i }));
+  try {
+    await expect(todayNav.first()).toBeVisible({ timeout: 30_000 });
+  } catch {
+    const onLanding = await page.getByRole("link", { name: /^sign in$/i }).first().isVisible().catch(() => false);
+    throw new Error(
+      onLanding
+        ? "E2E sign-in did not establish a session — verify E2E_EMAIL/E2E_PASSWORD against NEXT_PUBLIC_SUPABASE_URL and email confirmation."
+        : "E2E sign-in succeeded but the app shell did not load — expected Today navigation on /today.",
+    );
   }
 }

@@ -36,7 +36,7 @@ describe("ProgressHeroMetric (ENG-616)", () => {
   });
 
   it("web shows empty state when no data", () => {
-    expect(WEB_SRC).toContain("Log meals on Today to see your score here.");
+    expect(WEB_SRC).toContain("Your score builds over time");
   });
 
   it("mobile shows empty state when no data", () => {

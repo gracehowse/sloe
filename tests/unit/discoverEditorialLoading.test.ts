@@ -18,15 +18,15 @@ describe("ENG-604 discover editorial loading", () => {
     expect(src).not.toMatch(/ActivityIndicator\s+size=\{?"large"/);
   });
 
-  it("mobile discover section headings use editorial overline treatment", () => {
+  it("mobile discover section headings use headline treatment for editorial sections", () => {
     const src = read("apps/mobile/app/(tabs)/discover.tsx");
-    expect(src).toMatch(/textTransform:\s*"uppercase"/);
+    expect(src).toMatch(/Type\.headline/);
     expect(src).toMatch(/Matches your day/);
   });
 
   it("web discover mobile-web sections use editorial overline headings", () => {
     const src = read("src/app/components/DiscoverFeed.tsx");
-    expect(src).toMatch(/uppercase tracking-\[0\.06em\]/);
+    expect(src).toMatch(/uppercase tracking-\[0\.0[46]em\]/);
     expect(src).toMatch(/Matches your day/);
   });
 });

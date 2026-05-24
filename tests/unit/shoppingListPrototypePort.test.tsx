@@ -93,13 +93,13 @@ describe("ShoppingList — prototype rewrite (2026-04-21)", () => {
     expect(toggle).toHaveBeenCalledWith("p1");
   });
 
-  it("renders an empty 'No items' card when the list is empty", () => {
+  it("renders an empty-state card when the list is empty", () => {
     appDataState.current = {
       ...appDataState.current,
       shoppingItems: [],
     };
     render(<ShoppingList userTier="free" />);
-    expect(screen.getByText(/No items/i)).toBeInTheDocument();
+    expect(screen.getByText(/shopping list builds itself/i)).toBeInTheDocument();
     expect(screen.queryAllByRole("listitem")).toHaveLength(0);
   });
 

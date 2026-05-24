@@ -92,9 +92,12 @@ describe("MACRO_COLORS_LIGHT pins canonical theme.css :root values", () => {
     expect(MACRO_COLORS_LIGHT.fiber).toBe(readRootVar("macro-fiber"));
   });
 
-  it("fiber is not the same green as calories", () => {
-    expect(MACRO_COLORS_LIGHT.fiber).not.toBe(MACRO_COLORS_LIGHT.calories);
-    expect(readRootVar("macro-fiber")).not.toBe(readRootVar("macro-calories"));
+  it("fiber and calories share the Green slot (8-slot palette)", () => {
+    // 2026-05-22 evening: 8-slot palette consolidates fiber + calories
+    // onto Green. Icon (Beef/Leaf) + unit (kcal/g) carry the
+    // differentiation on tiles and rings; colour parity is intentional.
+    expect(MACRO_COLORS_LIGHT.fiber).toBe(MACRO_COLORS_LIGHT.calories);
+    expect(readRootVar("macro-fiber")).toBe(readRootVar("macro-calories"));
   });
 
   it("sodium matches --macro-sodium", () => {
@@ -105,7 +108,7 @@ describe("MACRO_COLORS_LIGHT pins canonical theme.css :root values", () => {
     expect(MACRO_COLORS_LIGHT.water).toBe(readRootVar("macro-water"));
   });
 
-  it("sugar matches --macro-sugar (periwinkle — distinct from protein-blue)", () => {
+  it("sugar matches --macro-sugar (Yellow — sugar is a carb)", () => {
     expect(MACRO_COLORS_LIGHT.sugar).toBe(readRootVar("macro-sugar"));
   });
 

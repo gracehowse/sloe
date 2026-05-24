@@ -79,10 +79,15 @@ describe("cross-platform theme tokens (ENG-623)", () => {
     });
 
     it("macro hues", () => {
-      expect(readCssVar(LIGHT, "macro-protein")).toBe(readMobileAccent("brandBlue"));
+      expect(readCssVar(LIGHT, "macro-protein")).toBe(readMobileAccent("primary"));
       expect(readCssVar(LIGHT, "macro-carbs")).toBe(readMobileAccent("carbs"));
       expect(readCssVar(LIGHT, "macro-fat")).toBe(readMobileAccent("magenta"));
       expect(readCssVar(LIGHT, "macro-calories")).toBe(readMobileAccent("success"));
+    });
+
+    it("calorie ring empty track", () => {
+      expect(readCssVar(LIGHT, "ring-bg")).toBe(readMobileColor("light", "ringTrack"));
+      expect(readCssVar(LIGHT, "ring-track")).toBe(readMobileColor("light", "ringTrack"));
     });
   });
 
@@ -107,21 +112,22 @@ describe("cross-platform theme tokens (ENG-623)", () => {
     });
   });
 
-  it("Today rings use destructive red for over-budget", () => {
+  it("Today calorie rings use destructive red when over budget (TF49)", () => {
     const ringSrc = [
       readFileSync(resolve(ROOT, "src/app/components/suppr/daily-ring.tsx"), "utf8"),
       readFileSync(resolve(ROOT, "apps/mobile/components/charts/CalorieRing.tsx"), "utf8"),
     ].join("\n");
     expect(ringSrc).toMatch(/isOver.*Accent\.destructive/);
-    expect(ringSrc).toMatch(/isOverBudget[\s\S]{0,80}--destructive/);
+    expect(ringSrc).toMatch(/isOverBudget[\s\S]{0,120}--destructive/);
   });
 
-  it("TodayHeroStats NET over-target uses destructive red", () => {
+  it("TodayHeroStats NET over-target uses over-budget amber (not red)", () => {
+    // 2026-05-21: see above note. NET that's over goal renders amber.
     const hero = readFileSync(
       resolve(ROOT, "src/app/components/suppr/today-hero-stats.tsx"),
       "utf8",
     );
     expect(hero).toContain('valueTone === "over"');
-    expect(hero).toMatch(/valueTone === "over"[\s\S]{0,120}text-destructive/);
+    expect(hero).toMatch(/valueTone === "over"[\s\S]{0,120}over-budget-fg/);
   });
 });

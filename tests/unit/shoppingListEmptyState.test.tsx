@@ -35,13 +35,13 @@ vi.mock("../../src/context/AppDataContext.tsx", () => ({
 import { ShoppingList } from "../../src/app/components/ShoppingList";
 
 describe("ShoppingList empty-state (prototype rewrite)", () => {
-  it("renders a muted 'No items' card when shoppingItems is empty", () => {
+  it("renders the empty-state card when shoppingItems is empty", () => {
     appDataState.current = {
       ...appDataState.current,
       shoppingItems: [],
     };
     render(<ShoppingList userTier="free" />);
-    expect(screen.getByText(/No items/i)).toBeInTheDocument();
+    expect(screen.getByText(/shopping list builds itself/i)).toBeInTheDocument();
   });
 
   it("does NOT render the legacy illustrated empty state or the 'Go to Meal Planner' CTA", () => {
@@ -74,6 +74,6 @@ describe("ShoppingList empty-state (prototype rewrite)", () => {
       ],
     };
     render(<ShoppingList userTier="free" />);
-    expect(screen.queryByText(/^No items$/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/shopping list builds itself/i)).not.toBeInTheDocument();
   });
 });
