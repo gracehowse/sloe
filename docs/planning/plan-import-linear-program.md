@@ -63,6 +63,18 @@ Import a third-party meal plan (paste / PDF / screenshot) as a **new plan templa
 
 One parse pipeline for all inputs — adaptors at the input layer only.
 
+## HTML prototype (approve before build)
+
+Interactive mobile flow mockup — step tabs walk ENG-647 → ENG-652:
+
+**`docs/prototypes/2026-05-24-plan-import/index.html`**
+
+```bash
+open docs/prototypes/2026-05-24-plan-import/index.html
+```
+
+Screens: Plan tab **Generate ▾** · paste sheet · Sprint 2 source tabs (preview) · parsing · review + assessment · activate modal · saved template.
+
 ## Repo tooling
 
 ```bash

@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Suppr — Plan Import (HTML prototype)</title>
+  <link rel="stylesheet" href="../../audits/2026-05-15-premium-sweep-v2/prototypes/_shared/tokens.css">
+  <link rel="stylesheet" href="../../audits/2026-05-15-premium-sweep-v2/prototypes/_shared/iphone-frame.css">
+  <link rel="stylesheet" href="../../audits/2026-05-15-premium-sweep-v2/prototypes/_shared/prototype.css">
+  <link rel="stylesheet" href="plan-import.css">
+  <style>
+    .flow-spec {
+      max-width: 900px;
+      margin: 0 auto 16px;
+      padding: 0 24px;
+      font-size: 13px;
+      color: var(--muted-foreground);
+      line-height: 1.5;
+    }
+    .flow-spec strong { color: var(--foreground); }
+    .prototype-canvas--single {
+      display: block;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+    .callout-panel {
+      max-width: 900px;
+      margin: 24px auto 48px;
+      padding: 16px 20px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+    .callout-panel h2 { font-size: 15px; margin-bottom: 8px; }
+    .callout-panel ul { margin-left: 18px; }
+    .callout-panel li { margin-bottom: 6px; }
+  </style>
+</head>
+<body>
+  <header class="prototype-header">
+    <div>
+      <h1>Plan Import — mobile flow</h1>
+      <p class="meta">Sprint 1 paste + rebalance · ENG-647–652 · May 2026</p>
+    </div>
+    <nav id="flow-nav" aria-label="Flow steps">
+      <button type="button" data-step="plan" aria-current="true">1 Plan</button>
+      <button type="button" data-step="paste">2 Paste</button>
+      <button type="button" data-step="sources">2b Sources</button>
+      <button type="button" data-step="parsing">3 Parse</button>
+      <button type="button" data-step="review">4 Review</button>
+      <button type="button" data-step="activate">5 Activate</button>
+      <button type="button" data-step="done">6 Done</button>
+    </nav>
+  </header>
+
+  <p class="flow-spec">
+    <strong>Locked:</strong> Plan tab only · new template (never silent replace) · editable plan name ·
+    dual kcal when source claims differ · auto-rebalance protein → carbs → fat (never vegetables).
+    Use the step tabs to walk the flow. Step <strong>2b</strong> previews Sprint 2 inputs (PDF / photo).
+  </p>
+
+  <main class="prototype-canvas prototype-canvas--single">
+    <div class="iphone">
+      <div class="iphone__screen">
+        <div class="iphone__status-bar">
+          <span class="iphone__status-bar-time">9:41</span>
+          <span class="iphone__status-bar-right">●●● ▮</span>
+        </div>
+        <div class="iphone__viewport" id="viewport">
+
+          <!-- 1: Plan tab + Generate dropdown -->
+          <section class="plan-screen is-active" data-screen="plan">
+            <div class="plan-nav">
+              <span class="plan-nav__title">Plan</span>
+            </div>
+            <div class="plan-scroll">
+              <div class="summary-card">
+                <div class="summary-card__eyebrow">This week</div>
+                <div class="summary-card__row">
+                  <span class="summary-card__kcal">12,450 kcal</span>
+                  <span class="summary-card__fit">Fits 94%</span>
+                </div>
+                <p style="font-size:12px;color:var(--muted-foreground);margin-top:6px;">
+                  P 142g · C 198g · F 58g avg / day
+                </p>
+              </div>
+              <div class="chip-row">
+                <button type="button" class="chip">7 days · Today ▾</button>
+                <button type="button" class="chip">Brk · Lun · Din · Snk ▾</button>
+                <div class="generate-wrap">
+                  <button type="button" class="btn-generate" id="btn-open-dropdown">
+                    Generate ▾
+                  </button>
+                  <div class="dropdown-menu" id="generate-dropdown" hidden>
+                    <button type="button" data-goto="plan">
+                      Generate from library
+                      <span class="hint">Uses saved recipes · current behaviour</span>
+                    </button>
+                    <button type="button" data-goto="paste">
+                      Import existing plan
+                      <span class="hint">Paste, PDF, or photo · new template</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="day-card">
+                <div class="day-card__head">
+                  <span class="day-card__weekday">Mon</span>
+                  <span class="pill-today">Today</span>
+                </div>
+                <div class="meal-row">
+                  <div class="meal-row__icon meal-row__icon--breakfast">☀</div>
+                  <div class="meal-row__body">
+                    <div class="meal-row__slot">Breakfast</div>
+                    <div class="meal-row__title">Greek yogurt & berries</div>
+                  </div>
+                </div>
+                <div class="meal-row">
+                  <div class="meal-row__icon meal-row__icon--lunch">🍴</div>
+                  <div class="meal-row__body">
+                    <div class="meal-row__slot">Lunch</div>
+                    <div class="meal-row__title">Chicken rice bowl</div>
+                  </div>
+                </div>
+              </div>
+              <p class="annot">ENG-647: Replace ghost <em>Regenerate</em> with primary <strong>Generate ▾</strong> when a plan exists. Library path unchanged.</p>
+            </div>
+            <nav class="tab-bar" aria-hidden="true">
+              <span>Today</span><span>Recipes</span><span class="is-active">Plan</span><span>Progress</span>
+            </nav>
+          </section>
+
+          <!-- 2: Paste sheet (Sprint 1) -->
+          <section class="plan-screen" data-screen="paste">
+            <div class="plan-nav" style="opacity:0.3">
+              <span class="plan-nav__title">Plan</span>
+            </div>
+            <div class="scrim"></div>
+            <div class="sheet" role="dialog" aria-label="Import meal plan">
+              <div class="sheet__grab"></div>
+              <h2 class="sheet__title">Import meal plan</h2>
+              <p class="sheet__subtitle">Paste your meal plan. Suppr will figure out the rest — meals, portions, and how it fits your targets.</p>
+              <label class="field-label" for="paste-body">Plan text</label>
+              <textarea class="paste-area" id="paste-body">Coach Jake — Week 1
+
+Mon
+Breakfast: Greek yogurt 350 kcal
+Lunch: Chicken rice bowl 580 kcal
+Dinner: Salmon tray bake 620 kcal
+
+Tue
+Breakfast: Oats & protein 400 kcal
+Lunch: Turkey wrap 520 kcal
+...</textarea>
+              <label class="field-label" for="plan-name">Plan name</label>
+              <input class="text-input" id="plan-name" type="text" value="Coach Jake — Week 1" autocomplete="off">
+              <button type="button" class="btn-primary" data-goto="parsing">Parse plan</button>
+              <button type="button" class="btn-secondary" data-goto="plan">Cancel</button>
+            </div>
+          </section>
+
+          <!-- 2b: Multi-source (Sprint 2 preview) -->
+          <section class="plan-screen" data-screen="sources">
+            <div class="plan-nav" style="opacity:0.3"><span class="plan-nav__title">Plan</span></div>
+            <div class="scrim"></div>
+            <div class="sheet">
+              <div class="sheet__grab"></div>
+              <h2 class="sheet__title">Import meal plan</h2>
+              <p class="sheet__subtitle">Same review screen for every input — only the adaptor changes.</p>
+              <div class="source-tabs" role="tablist">
+                <button type="button" class="is-active" data-source="paste">Paste</button>
+                <button type="button" data-source="pdf">PDF</button>
+                <button type="button" data-source="photo">Photo</button>
+              </div>
+              <div id="panel-paste">
+                <textarea class="paste-area" style="min-height:100px">Mon Lunch: Chicken rice bowl 580 kcal…</textarea>
+              </div>
+              <div id="panel-pdf" hidden>
+                <div class="upload-zone">Tap to choose PDF<br><small>pdf.js → same parse pipeline</small></div>
+              </div>
+              <div id="panel-photo" hidden>
+                <div class="upload-zone">Take photo or choose screenshot<br><small>Vision → same parse pipeline</small></div>
+              </div>
+              <label class="field-label">Plan name</label>
+              <input class="text-input" type="text" value="Coach Jake — Week 1">
+              <button type="button" class="btn-primary" data-goto="parsing">Continue</button>
+            </div>
+          </section>
+
+          <!-- 3: Parsing -->
+          <section class="plan-screen" data-screen="parsing">
+            <div class="plan-nav">
+              <button type="button" class="plan-nav__action" data-goto="paste">Cancel</button>
+              <span class="plan-nav__title">Import</span>
+              <span style="width:48px"></span>
+            </div>
+            <div class="parse-center">
+              <div class="spinner" aria-hidden="true"></div>
+              <h2 style="font-size:18px;font-weight:700;margin-bottom:6px">Reading your plan…</h2>
+              <p style="font-size:14px;color:var(--muted-foreground);max-width:260px">
+                Matching meals to your library and estimating portions.
+              </p>
+              <div class="parse-steps">
+                <div class="parse-step is-done">✓ Structure days & slots</div>
+                <div class="parse-step is-active">● Estimating nutrition</div>
+                <div class="parse-step">○ Checking confidence</div>
+              </div>
+              <p class="annot" style="margin-top:24px">ENG-649: LLM → JSON schema. Auto-advance to review in product; tap step 4 to skip wait.</p>
+              <button type="button" class="btn-primary" style="margin-top:16px;max-width:280px" data-goto="review">Skip to review (proto)</button>
+            </div>
+          </section>
+
+          <!-- 4: Review + assessment -->
+          <section class="plan-screen" data-screen="review">
+            <div class="plan-nav">
+              <button type="button" class="plan-nav__action" data-goto="paste">Back</button>
+              <span class="plan-nav__title">Review import</span>
+              <button type="button" class="plan-nav__action" data-goto="activate">Save</button>
+            </div>
+            <div class="plan-scroll">
+              <div class="assessment">
+                <p class="assessment__stats">
+                  Plan averages <strong>1,840 kcal/day</strong> · Your target <strong>2,000</strong> ·
+                  <em>−8%</em> below target
+                </p>
+                <div class="action-seg" role="group" aria-label="Import actions">
+                  <button type="button" class="is-selected" data-action="rebalance">
+                    <strong>Auto-rebalance to my targets</strong>
+                    <span>Scale portions · protein first · never vegetables</span>
+                  </button>
+                  <button type="button" data-action="asis">
+                    <strong>Use as-is</strong>
+                    <span>Keep claimed portions from the source</span>
+                  </button>
+                  <button type="button" data-action="meals">
+                    <strong>Save meals only</strong>
+                    <span>Library recipes · no plan slots</span>
+                  </button>
+                </div>
+              </div>
+              <label class="field-label" for="review-plan-name">Plan name</label>
+              <input class="text-input" id="review-plan-name" type="text" value="Coach Jake — Week 1" style="margin-bottom:8px">
+
+              <div class="day-label">Monday</div>
+              <div class="day-card" style="padding:8px 12px">
+                <div class="review-row">
+                  <div class="meal-row__icon meal-row__icon--breakfast">☀</div>
+                  <div class="review-row__edit">
+                    <input class="review-row__title-input" value="Greek yogurt & berries" aria-label="Meal title">
+                    <div class="review-row__meta">Breakfast · portion 1×</div>
+                    <span class="confidence confidence--high">High match</span>
+                  </div>
+                  <div class="review-row__kcal">
+                    <strong>348</strong>
+                    <span class="review-row__claimed">claimed 350</span>
+                  </div>
+                </div>
+                <div class="review-row">
+                  <div class="meal-row__icon meal-row__icon--lunch">🍴</div>
+                  <div class="review-row__edit">
+                    <input class="review-row__title-input" value="Chicken rice bowl">
+                    <div class="review-row__meta">Lunch · portion 1.1× after rebalance</div>
+                    <span class="confidence confidence--med">Medium</span>
+                  </div>
+                  <div class="review-row__kcal">
+                    <strong>562</strong>
+                    <span class="review-row__claimed">claimed 580</span>
+                  </div>
+                </div>
+                <div class="review-row">
+                  <div class="meal-row__icon meal-row__icon--dinner">🌙</div>
+                  <div class="review-row__edit">
+                    <input class="review-row__title-input" value="Salmon tray bake">
+                    <div class="review-row__meta">Dinner</div>
+                    <span class="confidence confidence--low">Low — verify</span>
+                  </div>
+                  <div class="review-row__kcal">
+                    <strong>598</strong>
+                    <span class="review-row__claimed">claimed 620</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="day-label">Tuesday · 3 meals</div>
+              <p style="font-size:13px;color:var(--muted-foreground);margin-bottom:12px">+ 5 more days in scroll…</p>
+
+              <p class="annot">ENG-650: Suppr kcal primary; <em>claimed</em> secondary when parse provides it. ENG-651: three actions above list.</p>
+
+              <div class="review-footer">
+                <button type="button" class="btn-primary" data-goto="activate">Save as template</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- 5: Activate prompt -->
+          <section class="plan-screen" data-screen="activate">
+            <div class="plan-nav"><span class="plan-nav__title">Review import</span></div>
+            <div class="plan-scroll" style="filter:blur(2px);opacity:0.5">
+              <div class="assessment"><p class="assessment__stats">…</p></div>
+            </div>
+            <div class="scrim"></div>
+            <div class="modal-card" role="dialog" aria-labelledby="activate-title">
+              <h2 id="activate-title">Activate imported plan?</h2>
+              <p>
+                <strong>Coach Jake — Week 1</strong> will be saved as a new template.
+                Your current plan stays active unless you switch.
+              </p>
+              <label class="radio-option is-selected">
+                <input type="radio" name="activate" value="keep" checked>
+                <span>
+                  <strong>Keep current plan</strong><br>
+                  <small style="color:var(--muted-foreground)">Imported template available in switcher</small>
+                </span>
+              </label>
+              <label class="radio-option">
+                <input type="radio" name="activate" value="switch">
+                <span>
+                  <strong>Activate imported plan</strong><br>
+                  <small style="color:var(--muted-foreground)">Replace visible week with import</small>
+                </span>
+              </label>
+              <button type="button" class="btn-primary" data-goto="done" style="margin-top:8px">Confirm</button>
+              <button type="button" class="btn-secondary" data-goto="review">Back</button>
+              <p class="annot">ENG-652: Never silent replace. Default = keep current.</p>
+            </div>
+          </section>
+
+          <!-- 6: Success -->
+          <section class="plan-screen" data-screen="done">
+            <div class="plan-nav"><span class="plan-nav__title">Plan</span></div>
+            <div class="toast">
+              Template saved · <a href="#">Coach Jake — Week 1</a>
+              <br>Meals tagged <strong>Imported · Coach Jake — Week 1</strong> in Library
+            </div>
+            <div class="plan-scroll" style="padding-top:48px">
+              <div class="summary-card">
+                <div class="summary-card__eyebrow">This week</div>
+                <div class="summary-card__row">
+                  <span class="summary-card__kcal">12,450 kcal</span>
+                  <span class="summary-card__fit">Fits 94%</span>
+                </div>
+              </div>
+              <div class="chip-row">
+                <button type="button" class="chip">7 days · Today ▾</button>
+                <button type="button" class="chip">Brk · Lun · Din · Snk ▾</button>
+                <button type="button" class="btn-generate">Generate ▾</button>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+                <span class="chip" style="background:var(--slot-dinner-soft);color:var(--primary);font-weight:700">Coach Jake — Week 1</span>
+                <span class="chip">Default plan</span>
+              </div>
+              <p class="annot">ENG-653: Library filter chip <em>Imported · {plan name}</em>. Template switcher shows new template.</p>
+            </div>
+            <nav class="tab-bar" aria-hidden="true">
+              <span>Today</span><span class="is-active">Recipes</span><span>Plan</span><span>Progress</span>
+            </nav>
+          </section>
+
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <aside class="callout-panel">
+    <h2>Implementation map (Sprint 1)</h2>
+    <ul>
+      <li><strong>ENG-647</strong> — <code>planner.tsx</code> chip row: <code>Generate ▾</code> menu</li>
+      <li><strong>ENG-648</strong> — Bottom sheet route/modal: paste + plan name</li>
+      <li><strong>ENG-649–654</strong> — API parse + rate limit</li>
+      <li><strong>ENG-650–651</strong> — Review stack + assessment panel</li>
+      <li><strong>ENG-652</strong> — Template commit + activate modal</li>
+      <li><strong>ENG-653</strong> — Library filter chip</li>
+    </ul>
+    <p style="margin-top:12px;color:var(--muted-foreground)">
+      Open locally: <code>open docs/prototypes/2026-05-24-plan-import/index.html</code>
+      · Spec: <code>docs/planning/plan-import-linear-program.md</code>
+    </p>
+  </aside>
+
+  <script>
+    const screens = document.querySelectorAll(".plan-screen");
+    const nav = document.getElementById("flow-nav");
+    const dropdown = document.getElementById("generate-dropdown");
+    const openDropdown = document.getElementById("btn-open-dropdown");
+
+    function show(step) {
+      screens.forEach((s) => s.classList.toggle("is-active", s.dataset.screen === step));
+      nav.querySelectorAll("button").forEach((b) => {
+        b.setAttribute("aria-current", b.dataset.step === step ? "true" : "false");
+      });
+      if (dropdown) dropdown.hidden = true;
+    }
+
+    nav.addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-step]");
+      if (btn) show(btn.dataset.step);
+    });
+
+    document.getElementById("viewport").addEventListener("click", (e) => {
+      const goto = e.target.closest("[data-goto]");
+      if (goto) {
+        e.preventDefault();
+        show(goto.dataset.goto);
+        return;
+      }
+      if (e.target === openDropdown) {
+        dropdown.hidden = !dropdown.hidden;
+        return;
+      }
+      if (!e.target.closest(".generate-wrap")) {
+        dropdown.hidden = true;
+      }
+    });
+
+    document.querySelectorAll(".action-seg button").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".action-seg button").forEach((b) => b.classList.remove("is-selected"));
+        btn.classList.add("is-selected");
+      });
+    });
+
+    document.querySelectorAll(".radio-option").forEach((label) => {
+      label.addEventListener("click", () => {
+        document.querySelectorAll(".radio-option").forEach((l) => l.classList.remove("is-selected"));
+        label.classList.add("is-selected");
+        const input = label.querySelector("input");
+        if (input) input.checked = true;
+      });
+    });
+
+    document.querySelectorAll(".source-tabs button").forEach((tab) => {
+      tab.addEventListener("click", () => {
+        document.querySelectorAll(".source-tabs button").forEach((t) => t.classList.remove("is-active"));
+        tab.classList.add("is-active");
+        const id = tab.dataset.source;
+        ["paste", "pdf", "photo"].forEach((k) => {
+          const el = document.getElementById("panel-" + k);
+          if (el) el.hidden = k !== id;
+        });
+      });
+    });
+
+    // Auto-advance parsing demo (optional)
+    let parseTimer;
+    nav.querySelector('[data-step="parsing"]')?.addEventListener("click", () => {
+      clearTimeout(parseTimer);
+      parseTimer = setTimeout(() => show("review"), 2800);
+    });
+  </script>
+</body>
+</html>
