@@ -71,6 +71,7 @@ Interactive mobile flow mockup — step tabs walk ENG-647 → ENG-652:
 
 ```bash
 open docs/prototypes/2026-05-24-plan-import/index.html
+# Styles are self-contained under docs/prototypes/2026-05-24-plan-import/_shared/
 ```
 
 Screens: Plan tab **Generate ▾** · paste sheet · Sprint 2 source tabs (preview) · parsing · review + assessment · activate modal · saved template.
