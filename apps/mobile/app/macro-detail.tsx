@@ -10,6 +10,8 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { dateKeyFromDate } from "@suppr/shared/nutrition/trackerStats";
+import { mealContributedFiberG } from "@/lib/healthDietaryNutrients";
+import { parseNutritionMicrosJson } from "@/lib/nutritionJournal";
 
 type Meal = {
   name: string;
@@ -94,7 +96,7 @@ export default function MacroDetailScreen() {
     const timer = setTimeout(finish, TIMEOUT_MS);
     supabase
       .from("nutrition_entries")
-      .select("name, recipe_title, calories, protein, carbs, fat, fiber_g, water_ml")
+      .select("name, recipe_title, calories, protein, carbs, fat, fiber_g, water_ml, nutrition_micros")
       .eq("user_id", userId)
       .eq("date_key", dateKey)
       .order("created_at", { ascending: true })
@@ -102,14 +104,17 @@ export default function MacroDetailScreen() {
         if (cancelled) return;
         clearTimeout(timer);
         setMeals(
-          (rows ?? []).map((r: any) => ({
-            name: r.name ?? "",
-            recipeTitle: r.recipe_title ?? "",
+          (rows ?? []).map((r: Record<string, unknown>) => ({
+            name: (r.name as string) ?? "",
+            recipeTitle: (r.recipe_title as string) ?? "",
             calories: Number(r.calories) || 0,
             protein: Number(r.protein) || 0,
             carbs: Number(r.carbs) || 0,
             fat: Number(r.fat) || 0,
-            fiberG: r.fiber_g != null ? Number(r.fiber_g) : 0,
+            fiberG: mealContributedFiberG({
+              fiberG: r.fiber_g != null ? Number(r.fiber_g) : undefined,
+              micros: parseNutritionMicrosJson(r.nutrition_micros),
+            }),
             waterMl: r.water_ml != null ? Number(r.water_ml) : 0,
           })),
         );

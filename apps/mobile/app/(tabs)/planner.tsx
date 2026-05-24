@@ -17,7 +17,7 @@ import {
   Easing,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter, type Href } from "expo-router";
+import { useFocusEffect, useRouter, type Href } from "expo-router";
 import { useAuth } from "@/context/auth";
 import { useDiscoverRecipes, useSavedLibraryRecipes } from "@/lib/recipes";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -79,6 +79,11 @@ import { countChangedMealsInPlan } from "@suppr/shared/mealPlan/planDiff";
 import { normalizeShoppingIngredientRow } from "@suppr/shared/planning/normalizeShoppingIngredientRow";
 import { formatPlannedMealKcalMacrosLine } from "@suppr/shared/nutrition/plannedMealDisplay";
 import { formatMacro } from "@suppr/shared/nutrition/formatMacro";
+import {
+  enrichPlanMealsFiber,
+  planMealFiberG,
+  type RecipeFiberRef,
+} from "@/lib/planMealFiber";
 import {
   buildDayTotalVsGoalLine,
   formatDayTotalCell,
@@ -258,6 +263,61 @@ function snapDisplayMultiplier(raw: number): number {
 }
 
 /** Portion vs library recipe card — used for "(2.5x)" label and `/recipe?id&portion=` when multiplier isn't stored. */
+function enrichPlanDaysFiber(days: DayPlan[], pool: RecipeFiberRef[]): DayPlan[] {
+  if (pool.length === 0) return days;
+  return days.map((dp) => ({
+    ...dp,
+    meals: enrichPlanMealsFiber(dp.meals, pool),
+  }));
+}
+
+async function fetchPlanTargetsFromProfile(userId: string): Promise<{
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiber: number;
+}> {
+  let resolved = {
+    calories: NUTRITION_DEFAULTS.calories,
+    protein: NUTRITION_DEFAULTS.protein,
+    carbs: NUTRITION_DEFAULTS.carbs,
+    fat: NUTRITION_DEFAULTS.fat,
+    fiber: NUTRITION_DEFAULTS.fiber,
+  };
+  const { data } = await supabase
+    .from("profiles")
+    .select(
+      "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, weight_kg, height_cm, sex, activity_level, goal, dob, age, plan_pace",
+    )
+    .eq("id", userId)
+    .single();
+  if (data) {
+    const d = data as Record<string, unknown>;
+    const t = resolveTargets(
+      {
+        target_calories: d.target_calories as number | null,
+        target_protein: d.target_protein as number | null,
+        target_carbs: d.target_carbs as number | null,
+        target_fat: d.target_fat as number | null,
+        target_fiber_g: d.target_fiber_g as number | null,
+      },
+      {
+        weight_kg: d.weight_kg as number | null,
+        height_cm: d.height_cm as number | null,
+        sex: d.sex as string | null,
+        activity_level: d.activity_level as string | null,
+        goal: d.goal as string | null,
+        dob: d.dob as string | null,
+        age: d.age != null ? Number(d.age) : null,
+        plan_pace: d.plan_pace as string | null,
+      },
+    );
+    resolved = { calories: t.calories, protein: t.protein, carbs: t.carbs, fat: t.fat, fiber: t.fiber };
+  }
+  return resolved;
+}
+
 function planMealPortionMeta(meal: PlanMeal, pool: PlanRecipeRef[]): { displayMult: number; label: string } {
   const pm = meal.portionMultiplier;
   if (typeof pm === "number" && Number.isFinite(pm) && Math.abs(pm - 1) > 0.001) {
@@ -492,7 +552,19 @@ export default function PlannerScreen() {
       setDays(1);
     }
   }, [isFree]);
-  const [planTargets, setPlanTargets] = useState<{ calories: number; protein: number; carbs: number; fat: number; fiber?: number } | null>(null);
+  const [planTargets, setPlanTargets] = useState<{
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    fiber: number;
+  }>(() => ({
+    calories: NUTRITION_DEFAULTS.calories,
+    protein: NUTRITION_DEFAULTS.protein,
+    carbs: NUTRITION_DEFAULTS.carbs,
+    fat: NUTRITION_DEFAULTS.fat,
+    fiber: NUTRITION_DEFAULTS.fiber,
+  }));
   const [enabledSlots, setEnabledSlots] = useState<Set<string>>(new Set(ALL_MEAL_SLOTS));
   const [shoppingItemCount, setShoppingItemCount] = useState(0);
 
@@ -540,6 +612,37 @@ export default function PlannerScreen() {
     if (!userId) return null;
     return shoppingScopeFor({ userId, householdId: activeHouseholdId });
   }, [userId, activeHouseholdId]);
+
+  const recipeFiberPool = useMemo((): RecipeFiberRef[] => {
+    const seen = new Set<string>();
+    const out: RecipeFiberRef[] = [];
+    for (const r of [...savedRecipes, ...discoverRecipes]) {
+      if (seen.has(r.id)) continue;
+      seen.add(r.id);
+      out.push({
+        id: r.id,
+        title: r.title,
+        calories: r.calories,
+        fiberG: (r as { fiberG?: number }).fiberG,
+        fiber_g: (r as { fiber_g?: number }).fiber_g,
+        fiber_per_serving: (r as { fiber_per_serving?: number }).fiber_per_serving,
+      });
+    }
+    return out;
+  }, [savedRecipes, discoverRecipes]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!userId) return;
+      let cancelled = false;
+      void fetchPlanTargetsFromProfile(userId).then((t) => {
+        if (!cancelled) setPlanTargets(t);
+      });
+      return () => {
+        cancelled = true;
+      };
+    }, [userId]),
+  );
 
   // Batch 3.10 — plan templates state.
   const [templatesOpen, setTemplatesOpen] = useState(false);
@@ -808,6 +911,18 @@ export default function PlannerScreen() {
                 if (di !== dayIndex) return dp;
                 const newMeals = dp.meals.map((m, mi) => {
                   if (mi !== mealIndex) return m;
+                  const pickedFiber =
+                    (picked as { fiberG?: number }).fiberG ??
+                    planMealFiberG(
+                      {
+                        ...m,
+                        recipeId: picked.id,
+                        recipeTitle: picked.title,
+                        calories: Math.round(picked.calories * mult),
+                        portionMultiplier: mult,
+                      },
+                      recipeFiberPool,
+                    );
                   return {
                     ...m,
                     recipeTitle: picked.title,
@@ -816,6 +931,7 @@ export default function PlannerScreen() {
                     protein: Math.round(picked.protein * mult),
                     carbs: Math.round(picked.carbs * mult),
                     fat: Math.round(picked.fat * mult),
+                    fiberG: Math.round(pickedFiber * 10) / 10,
                     isPlaceholder: false,
                     leftoverOf: undefined,
                     isLeftover: undefined,
@@ -851,7 +967,7 @@ export default function PlannerScreen() {
         },
       })),
     );
-  }, [savedRecipes, discoverRecipes, plan, planTargets, persistPlan]);
+  }, [savedRecipes, discoverRecipes, plan, planTargets, persistPlan, recipeFiberPool]);
 
   // Batch 3.10 mobile parity — move a meal between slots / days.
   // Uses the shared `moveMealInPlan` helper. Two-way swap when destination
@@ -1387,7 +1503,7 @@ export default function PlannerScreen() {
       const { data: dayRows, error: dayErr } = await supabase
         .from("meal_plan_days")
         .select(
-          "id, day, start_date, meals:meal_plan_meals(plan_day_id, slot_index, name, recipe_title, calories, protein, carbs, fat, portion_multiplier, is_placeholder)",
+          "id, day, start_date, meals:meal_plan_meals(plan_day_id, slot_index, name, recipe_title, recipe_id, calories, protein, carbs, fat, portion_multiplier, is_placeholder)",
         )
         .eq("user_id", userId)
         .eq("slot_id", "default")
@@ -1407,6 +1523,7 @@ export default function PlannerScreen() {
               return {
                 name: (m.name as string) ?? "",
                 recipeTitle: (m.recipe_title as string) ?? "",
+                recipeId: (m.recipe_id as string) ?? undefined,
                 calories: coerced.calories,
                 protein: coerced.protein,
                 carbs: coerced.carbs,
@@ -1429,7 +1546,7 @@ export default function PlannerScreen() {
           );
           return { day: d.day, meals, totals };
         });
-        setPlan(plans);
+        setPlan(enrichPlanDaysFiber(plans, recipeFiberPool));
         return;
       }
 
@@ -1438,7 +1555,21 @@ export default function PlannerScreen() {
       // exclusively from `meal_plan_days` + `meal_plan_meals` above.
     })();
     return () => { cancelled = true; };
-  }, [userId]);
+  }, [userId, recipeFiberPool]);
+
+  // When the recipe library hydrates after the plan, backfill fibre on rows
+  // (meal_plan_meals does not persist fibre; we derive from linked recipes).
+  useEffect(() => {
+    if (!plan?.length || recipeFiberPool.length === 0) return;
+    setPlan((prev) => {
+      if (!prev?.length) return prev;
+      const enriched = enrichPlanDaysFiber(prev, recipeFiberPool);
+      const changed = enriched.some((dp, di) =>
+        dp.meals.some((m, mi) => (m.fiberG ?? 0) !== (prev[di]?.meals[mi]?.fiberG ?? 0)),
+      );
+      return changed ? enriched : prev;
+    });
+  }, [recipeFiberPool, plan?.length]);
 
   // Keep "Plan length" chips aligned with the loaded plan (e.g. after sync).
   useEffect(() => {
@@ -1649,32 +1780,15 @@ export default function PlannerScreen() {
 
     // Smart macro-aware plan generation
     {
-      // Load targets from user profile
-      let resolved = { calories: NUTRITION_DEFAULTS.calories, protein: NUTRITION_DEFAULTS.protein, carbs: NUTRITION_DEFAULTS.carbs, fat: NUTRITION_DEFAULTS.fat, fiber: NUTRITION_DEFAULTS.fiber };
-      if (userId) {
-        const { data } = await supabase
-          .from("profiles")
-          .select("target_calories, target_protein, target_carbs, target_fat, target_fiber_g, weight_kg, height_cm, sex, activity_level, goal, dob, age, plan_pace")
-          .eq("id", userId)
-          .single();
-        if (data) {
-          const d = data as any;
-          const t = resolveTargets(
-            { target_calories: d.target_calories, target_protein: d.target_protein, target_carbs: d.target_carbs, target_fat: d.target_fat, target_fiber_g: d.target_fiber_g },
-            {
-              weight_kg: d.weight_kg,
-              height_cm: d.height_cm,
-              sex: d.sex,
-              activity_level: d.activity_level,
-              goal: d.goal,
-              dob: d.dob,
-              age: d.age != null ? Number(d.age) : null,
-              plan_pace: d.plan_pace,
-            },
-          );
-          resolved = { calories: t.calories, protein: t.protein, carbs: t.carbs, fat: t.fat, fiber: t.fiber };
-        }
-      }
+      const resolved = userId
+        ? await fetchPlanTargetsFromProfile(userId)
+        : {
+            calories: NUTRITION_DEFAULTS.calories,
+            protein: NUTRITION_DEFAULTS.protein,
+            carbs: NUTRITION_DEFAULTS.carbs,
+            fat: NUTRITION_DEFAULTS.fat,
+            fiber: NUTRITION_DEFAULTS.fiber,
+          };
 
       const targets: PlannerTargets = {
         calories: resolved.calories,
@@ -1726,6 +1840,7 @@ export default function PlannerScreen() {
             protein: c.protein,
             carbs: c.carbs,
             fat: c.fat,
+            fiberG: c.fiberG ?? (r as { fiber_g?: number }).fiber_g ?? (r as { fiberG?: number }).fiberG ?? 0,
             mealType: (r as { mealSlots?: string[] | null }).mealSlots ?? null,
           };
         });
@@ -2605,21 +2720,25 @@ export default function PlannerScreen() {
                 <Text style={styles.dayTotals}>{Math.round(dayTotalKcal).toLocaleString("en-US")} kcal</Text>
               )}
             </View>
-            {planTargets && (
-              <View
-                style={{
-                  flexDirection: "row",
-                  flexWrap: "wrap",
-                  gap: 6,
-                  marginBottom: 6,
-                  paddingHorizontal: 2,
-                }}
-              >
-                {([
+            <View
+              style={{
+                flexDirection: "row",
+                flexWrap: "wrap",
+                gap: 6,
+                marginBottom: 6,
+                paddingHorizontal: 2,
+              }}
+            >
+              {(() => {
+                const dayFiber =
+                  Math.round(
+                    dp.meals.reduce((s, m) => s + planMealFiberG(m, recipeFiberPool), 0) * 10,
+                  ) / 10;
+                return ([
                   { label: "P", val: dp.totals.protein, target: planTargets.protein, color: MacroColors.protein },
                   { label: "C", val: dp.totals.carbs, target: planTargets.carbs, color: MacroColors.carbs },
                   { label: "F", val: dp.totals.fat, target: planTargets.fat, color: MacroColors.fat },
-                  { label: "Fi", val: Math.round(dp.meals.reduce((s, m) => s + (m.fiberG ?? 0), 0) * 10) / 10, target: planTargets.fiber ?? 28, color: Accent.success },
+                  { label: "Fi", val: dayFiber, target: planTargets.fiber, color: Accent.success },
                 ] as const).map(({ label, val, target, color }) => {
                   const diff = val - target;
                   const pct = target > 0 ? Math.abs(diff) / target : 0;
@@ -2636,9 +2755,9 @@ export default function PlannerScreen() {
                       )}
                     </View>
                   );
-                })}
-              </View>
-            )}
+                });
+              })()}
+            </View>
             {/* F-15 — residual protein gap hint (web/mobile parity). Only
                 rendered when the joint-fit scaler left this day more than
                 10g under the protein target. Points at the lowest-protein
