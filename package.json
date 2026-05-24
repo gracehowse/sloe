@@ -45,6 +45,8 @@
     "linear:create-dashboard-views": "node scripts/linear/create-suppr-dashboard-views.mjs",
     "linear:create-dashboard-views:all-teams": "node scripts/linear/create-suppr-dashboard-views.mjs --teams=all",
     "linear:create-plan-import-program": "node scripts/linear/create-plan-import-program.mjs",
+    "linear:create-tech-debt-issues": "node scripts/linear/create-tech-debt-issues.mjs",
+    "linear:link-tech-debt-hierarchy": "node scripts/linear/link-tech-debt-hierarchy.mjs",
     "backfill:fatsecret": "node scripts/backfill-fatsecret-premier.mjs",
     "mobile:dev": "npm run start --prefix apps/mobile",
     "mobile:dev:clear": "npm run start:clear --prefix apps/mobile",
