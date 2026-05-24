@@ -130,6 +130,55 @@ function getMealIcon(name: string): {
   return { icon: Icons.add as React.ComponentType<React.SVGProps<SVGSVGElement>>, tone: "primary" };
 }
 
+/** Slot-tinted pill chrome — avoids ink (`text-primary`) on every row. */
+function slotPillClassName(sectionName: string): string {
+  const { tone } = getMealIcon(sectionName);
+  switch (tone) {
+    case "slot-breakfast":
+      return "border-slot-breakfast/30 bg-slot-breakfast-soft text-slot-breakfast hover:opacity-90";
+    case "slot-lunch":
+      return "border-slot-lunch/30 bg-slot-lunch-soft text-slot-lunch hover:opacity-90";
+    case "slot-dinner":
+      return "border-slot-dinner/30 bg-slot-dinner-soft text-slot-dinner hover:opacity-90";
+    case "slot-snack":
+      return "border-slot-snack/30 bg-slot-snack-soft text-slot-snack hover:opacity-90";
+    default:
+      return "border-border bg-muted text-muted-foreground";
+  }
+}
+
+function slotHintClassName(sectionName: string): string {
+  const { tone } = getMealIcon(sectionName);
+  switch (tone) {
+    case "slot-breakfast":
+      return "border-slot-breakfast/25 bg-slot-breakfast-soft";
+    case "slot-lunch":
+      return "border-slot-lunch/25 bg-slot-lunch-soft";
+    case "slot-dinner":
+      return "border-slot-dinner/25 bg-slot-dinner-soft";
+    case "slot-snack":
+      return "border-slot-snack/25 bg-slot-snack-soft";
+    default:
+      return "border-border/40 bg-muted/50";
+  }
+}
+
+function slotHintCtaClassName(sectionName: string): string {
+  const { tone } = getMealIcon(sectionName);
+  switch (tone) {
+    case "slot-breakfast":
+      return "bg-slot-breakfast text-white hover:opacity-90";
+    case "slot-lunch":
+      return "bg-slot-lunch text-white hover:opacity-90";
+    case "slot-dinner":
+      return "bg-slot-dinner text-white hover:opacity-90";
+    case "slot-snack":
+      return "bg-slot-snack text-white hover:opacity-90";
+    default:
+      return "bg-foreground text-primary-foreground hover:bg-foreground/90";
+  }
+}
+
 /**
  * Saved meals matching a slot. A meal matches when either:
  *   - `defaultMealSlot === slot` (user explicitly tagged it); OR
@@ -291,7 +340,7 @@ export function TodayMealsSection({
                   <p className="text-[13px] font-semibold text-foreground">{sectionName}</p>
                   <p className="text-[11px] text-muted-foreground">{sectionMeals.length} item{sectionMeals.length !== 1 ? "s" : ""}</p>
                 </div>
-                <span className="text-sm font-bold text-foreground tabular-nums">
+                <span className="text-sm font-semibold text-muted-foreground tabular-nums">
                   {Math.round(sectionMeals.reduce((sum, m) => sum + scaledMacro(m.calories, m.portionMultiplier ?? 1), 0))}
                 </span>
                 <span className="text-[10px] text-muted-foreground mr-1">kcal</span>
@@ -315,7 +364,7 @@ export function TodayMealsSection({
                         onLogSavedMeal(primarySaved, sectionName);
                       }
                     }}
-                    className="mr-1 inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary hover:bg-primary/20"
+                    className={`mr-1 inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${slotPillClassName(sectionName)}`}
                     aria-label={
                       slotSavedMeals.length >= 2
                         ? `Log a usual ${sectionName} — choose from ${slotSavedMeals.length} saved meals`
@@ -361,7 +410,7 @@ export function TodayMealsSection({
                         onLogSavedMeal(primarySaved, sectionName);
                       }
                     }}
-                    className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20"
+                    className={`inline-flex max-w-full items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold ${slotPillClassName(sectionName)}`}
                     aria-label={
                       slotSavedMeals.length >= 2
                         ? `Log a usual ${sectionName} — choose from ${slotSavedMeals.length} saved meals`
@@ -502,7 +551,7 @@ export function TodayMealsSection({
                     <div
                       role="note"
                       aria-label={`Tip — make this your usual ${sectionName}`}
-                      className="mx-3.5 my-2 rounded-card border border-primary/25 bg-primary/5 p-3"
+                      className={`mx-3.5 my-2 rounded-card border p-3 ${slotHintClassName(sectionName)}`}
                     >
                       <p className="text-[13px] font-semibold text-foreground">
                         Make this your usual {sectionName.toLowerCase()}.
@@ -514,7 +563,7 @@ export function TodayMealsSection({
                         <button
                           type="button"
                           onClick={() => onAcceptUsualMealHint(sectionName)}
-                          className="inline-flex items-center gap-1 rounded-md bg-primary px-2.5 py-1 text-[11px] font-semibold text-primary-foreground hover:bg-primary/90"
+                          className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-semibold ${slotHintCtaClassName(sectionName)}`}
                           aria-label={`Save ${sectionName} as a usual meal`}
                         >
                           <Icons.save className="w-3 h-3" aria-hidden />
@@ -541,7 +590,7 @@ export function TodayMealsSection({
                     <button
                       type="button"
                       onClick={() => onOpenSaveUsualMeal(sectionName)}
-                      className="w-full flex items-center justify-center gap-2 px-3.5 py-2.5 border-t border-border/40 text-[13px] font-semibold text-primary hover:bg-primary/5 transition-colors"
+                      className="w-full flex items-center justify-center gap-2 px-3.5 py-2.5 border-t border-border/40 text-[13px] font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
                       aria-label={`Save ${sectionName} as a usual meal — one tap to re-log next time`}
                     >
                       <Icons.save className="w-4 h-4" aria-hidden />

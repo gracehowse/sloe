@@ -110,7 +110,7 @@ export function TodayWeekSidebar({
   return (
     <aside
       className={cn(
-        "rounded-card border border-border bg-card p-3",
+        "rounded-card border border-border bg-card p-3 card-elevated",
         className,
       )}
       aria-label="Last 7 days"
@@ -147,7 +147,7 @@ export function TodayWeekSidebar({
                     column alignment across rows. */}
                 <span
                   className={cn(
-                    "w-9 shrink-0 text-[12px] font-semibold tabular-nums",
+                    "w-9 shrink-0 text-[11px] font-semibold tabular-nums",
                     isActive ? "text-primary" : "text-foreground",
                   )}
                 >
@@ -170,7 +170,7 @@ export function TodayWeekSidebar({
                     className="h-full rounded-full transition-[width] duration-300"
                     style={{
                       width: `${pct * 100}%`,
-                      background: isOver ? "var(--destructive)" : "var(--success)",
+                      background: isOver ? "var(--over-budget-fg)" : "var(--success)",
                     }}
                   />
                 </div>

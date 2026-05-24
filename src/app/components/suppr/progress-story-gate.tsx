@@ -98,7 +98,7 @@ export function ProgressStoryGate({
           />
         </svg>
       </div>
-      <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
+      <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
         {placeholder.body}
       </p>
       <p

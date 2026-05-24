@@ -69,8 +69,8 @@ const THEME_OPTIONS = [
 ] as const;
 
 const MACRO_DISPLAY_OPTIONS = [
-  { value: "tiles", label: "Tiles" },
-  { value: "bars", label: "Bars" },
+  { value: "tiles", label: "Tiles (2×2)" },
+  { value: "bars", label: "Bars (list)" },
 ] as const;
 
 /**
@@ -641,7 +641,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       : authEmail?.split("@")[0] ?? "Your profile";
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-8">
+    <div className="product-shell py-8">
       {/* Header.
           Audit 2026-04-30 P1-5 — Stripped the `bg-clip-text text-transparent`
           combo (no gradient was set, so the text was being clipped against
@@ -654,7 +654,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           <div className="p-2 bg-muted rounded-xl">
             <Icons.settings className="w-5 h-5 text-muted-foreground" />
           </div>
-          <h1 className="text-foreground">Settings</h1>
+          <h1 className="text-foreground font-bold tracking-tight" style={{ fontSize: 24, letterSpacing: "-0.4px" }}>Settings</h1>
         </div>
         <p className="text-muted-foreground">Manage your account and preferences</p>
       </div>
@@ -665,13 +665,13 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           profile" link to /profile (the full editor). */}
       <div
         data-testid="settings-profile-header-card"
-        className="bg-card border border-border rounded-2xl p-5 mb-6 shadow-sm flex items-center gap-4"
+        className="bg-card border border-border rounded-2xl p-5 mb-6 card-elevated-hero flex items-center gap-4"
       >
         <div
           aria-hidden
           className="w-14 h-14 rounded-full grid place-items-center text-lg font-bold text-white shrink-0"
           style={{
-            background: "linear-gradient(135deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 70%, #e04888) 100%)",
+            background: "linear-gradient(135deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 70%, #DF5EBC) 100%)",
             boxShadow: "0 2px 8px color-mix(in srgb, var(--primary) 25%, transparent)",
           }}
         >
@@ -712,7 +712,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       </div>
 
       {/* Current plan */}
-      <div className="bg-card border border-border rounded-2xl p-6 mb-6">
+      <div className="bg-card border border-border rounded-2xl p-6 mb-6 card-elevated">
         <div className="flex items-center gap-2 mb-4">
           <Icons.sparkles className="w-5 h-5 text-muted-foreground" />
           <h3 className="text-foreground">Your plan</h3>
@@ -761,65 +761,8 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
         </div>
       </div>
 
-      {/* Promo code (e.g. testing / partner access) */}
-      <div
-        ref={promoSectionRef}
-        className="bg-card border border-border rounded-2xl p-6 mb-6 scroll-mt-8"
-      >
-        <div className="flex items-center gap-2 mb-4">
-          <Icons.ticket className="w-5 h-5 text-muted-foreground" />
-          <h3 className="text-foreground">Promo code</h3>
-        </div>
-        <p className="text-sm text-muted-foreground mb-4">
-          Redeem a code to upgrade your plan (one use per account per code).
-        </p>
-        <div className="flex flex-col sm:flex-row gap-3">
-          <input
-            type="text"
-            value={promoCode}
-            onChange={(e) => setPromoCode(e.target.value)}
-            placeholder="e.g. SUPPR_PRO"
-            autoComplete="off"
-            className="flex-1 px-4 py-2.5 rounded-xl border border-border bg-card/80 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-          />
-          <button
-            type="button"
-            disabled={promoSubmitting || !promoCode.trim()}
-            onClick={async () => {
-              setPromoSubmitting(true);
-              try {
-                const result = await redeemPromoCode(promoCode);
-                if (result.ok) {
-                  if (result.alreadyRedeemed) {
-                    toast.success(`Plan confirmed: ${result.tier} (this code was already applied to your account).`);
-                  } else {
-                    toast.success(`Plan updated: ${result.tier}`);
-                  }
-                  setPromoCode("");
-                } else {
-                  const messages: Record<string, string> = {
-                    not_authenticated: "Sign in to redeem a code.",
-                    invalid_code: "Enter a promo code.",
-                    invalid_or_expired: "That code is not valid or has expired.",
-                    already_redeemed: "You have already redeemed this code.",
-                    rpc_error: result.message ?? "Could not redeem code.",
-                    not_deployed: "Promo codes aren't available in this build yet.",
-                  };
-                  toast.error(messages[result.error] ?? "Could not redeem code.");
-                }
-              } finally {
-                setPromoSubmitting(false);
-              }
-            }}
-            className="px-6 py-2.5 rounded-xl bg-foreground text-background font-medium hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
-          >
-            {promoSubmitting ? "Applying…" : "Apply"}
-          </button>
-        </div>
-      </div>
-
       {/* Account Section */}
-      <div className="bg-card border border-border rounded-2xl p-6 mb-6">
+      <div className="bg-card border border-border rounded-2xl p-6 mb-6 card-elevated">
         <div className="flex items-center gap-2 mb-6">
           <Icons.user className="w-5 h-5 text-muted-foreground" />
           <h3 className="text-foreground">Account</h3>
@@ -863,7 +806,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       </div>
 
       {/* Preferences */}
-      <div className="bg-card border border-border rounded-2xl p-6 mb-6">
+      <div className="bg-card border border-border rounded-2xl p-6 mb-6 card-elevated">
         <div className="flex items-center gap-2 mb-6">
           <Icons.settings className="w-5 h-5 text-muted-foreground" />
           <h3 className="text-foreground">Preferences</h3>
@@ -1082,10 +1025,9 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
               }))}
             />
             <p className="mt-2 text-xs text-muted-foreground">
-              Tiles is the 2×2 grid you&apos;ve seen since launch. Bars stacks
-              each macro as a row with a thin colored bar — denser, easier
-              to scan when you track sugar / sodium / water on top of
-              the four headline macros.
+              Tiles (recommended) — four compact squares below the ring. Bars —
+              one full-width list; better only if you track many extras
+              (sugar, sodium, water).
             </p>
           </div>
 
@@ -1145,7 +1087,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             {/* Audit 2026-04-30 round-2 fix #3 — each toggle now
                 carries a one-line helper so the user knows what
                 enabling it does. Mirror of mobile settings. */}
-            <div className="rounded-xl border border-border bg-card divide-y divide-border">
+            <div className="rounded-xl border border-border bg-card divide-y divide-border card-elevated">
               <label className="flex items-center justify-between gap-3 px-4 py-3 cursor-pointer">
                 <span className="flex-1 min-w-0">
                   <span className="block text-sm text-foreground">Track caffeine</span>
@@ -1330,7 +1272,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       </div>
 
       {/* Notifications */}
-      <div className="bg-card border border-border rounded-2xl p-6 mb-6">
+      <div className="bg-card border border-border rounded-2xl p-6 mb-6 card-elevated">
         <div className="flex items-center gap-2 mb-6">
           <Icons.notifications className="w-5 h-5 text-muted-foreground" />
           <h3 className="text-foreground">Notifications</h3>
@@ -1424,7 +1366,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           (2026-04-19): single reliable entry point for testers to see
           which of their feedback items shipped in the latest build.
           Mirrors the mobile Settings "About" section. */}
-      <div className="bg-card border border-border rounded-2xl p-6 mb-6">
+      <div className="bg-card border border-border rounded-2xl p-6 mb-6 card-elevated">
         <div className="flex items-center gap-2 mb-6">
           <Icons.sparkles className="w-5 h-5 text-muted-foreground" />
           <h3 className="text-foreground">About</h3>
@@ -1440,8 +1382,65 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
         </div>
       </div>
 
+      {/* Promo code — de-emphasised; most users won't need this */}
+      <div
+        ref={promoSectionRef}
+        className="bg-card border border-border rounded-2xl p-6 mb-6 scroll-mt-8 card-elevated"
+      >
+        <div className="flex items-center gap-2 mb-4">
+          <Icons.ticket className="w-5 h-5 text-muted-foreground" />
+          <h3 className="text-foreground">Promo code</h3>
+        </div>
+        <p className="text-sm text-muted-foreground mb-4">
+          Redeem a code to upgrade your plan (one use per account per code).
+        </p>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <input
+            type="text"
+            value={promoCode}
+            onChange={(e) => setPromoCode(e.target.value)}
+            placeholder="e.g. SUPPR_PRO"
+            autoComplete="off"
+            className="flex-1 px-4 py-2.5 rounded-xl border border-border bg-card/80 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+          />
+          <button
+            type="button"
+            disabled={promoSubmitting || !promoCode.trim()}
+            onClick={async () => {
+              setPromoSubmitting(true);
+              try {
+                const result = await redeemPromoCode(promoCode);
+                if (result.ok) {
+                  if (result.alreadyRedeemed) {
+                    toast.success(`Plan confirmed: ${result.tier} (this code was already applied to your account).`);
+                  } else {
+                    toast.success(`Plan updated: ${result.tier}`);
+                  }
+                  setPromoCode("");
+                } else {
+                  const messages: Record<string, string> = {
+                    not_authenticated: "Sign in to redeem a code.",
+                    invalid_code: "Enter a promo code.",
+                    invalid_or_expired: "That code is not valid or has expired.",
+                    already_redeemed: "You have already redeemed this code.",
+                    rpc_error: result.message ?? "Could not redeem code.",
+                    not_deployed: "Promo codes aren't available in this build yet.",
+                  };
+                  toast.error(messages[result.error] ?? "Could not redeem code.");
+                }
+              } finally {
+                setPromoSubmitting(false);
+              }
+            }}
+            className="px-6 py-2.5 rounded-xl bg-foreground text-background font-medium hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+          >
+            {promoSubmitting ? "Applying…" : "Apply"}
+          </button>
+        </div>
+      </div>
+
       {/* Privacy */}
-      <div className="bg-card border border-border rounded-2xl p-6">
+      <div className="bg-card border border-border rounded-2xl p-6 card-elevated">
         <div className="flex items-center gap-2 mb-6">
           <Icons.shield className="w-5 h-5 text-muted-foreground" />
           <h3 className="text-foreground">Privacy & Security</h3>

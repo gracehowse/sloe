@@ -361,7 +361,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
     : "Joined recently";
 
   return (
-    <div className="max-w-2xl mx-auto px-pm-5 py-pm-5">
+    <div className="product-shell py-pm-5">
       {/* Phone-top header — prototype port (2026-04-20, web parity
           with mobile More commit 26a63bf): ACCOUNT overline + large
           "More" title + round avatar-initial button on the right.
@@ -376,14 +376,14 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
           <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
             Account
           </p>
-          <h1 className="text-[28px] font-bold text-foreground -tracking-[0.02em] mt-0.5 leading-tight">
+          <h1 className="text-[28px] font-bold text-foreground -tracking-[0.02em] mt-0.5 leading-tight font-serif">
             More
           </h1>
         </div>
         <button
           type="button"
           aria-label="Your profile"
-          className="shrink-0 w-10 h-10 rounded-full grid place-items-center text-[14px] font-bold bg-primary text-primary-foreground"
+          className="shrink-0 w-10 h-10 rounded-full grid place-items-center text-[13px] font-bold bg-primary text-primary-foreground"
         >
           {avatarInitial}
         </button>
@@ -393,7 +393,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
           tier·joined subline + tier pill. Matches the mobile profile
           card (`apps/mobile/app/(tabs)/more.tsx` ~L451) including the
           subtle tier-coloured pill on the right. */}
-      <div className="flex items-center gap-3.5 mb-4 rounded-xl border border-border bg-card p-3.5">
+      <div className="flex items-center gap-3.5 mb-4 rounded-xl border border-border bg-card p-3.5 card-elevated">
         <div
           className="w-[52px] h-[52px] rounded-full grid place-items-center text-lg font-bold bg-primary text-primary-foreground shrink-0"
         >
@@ -423,11 +423,11 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
           ("doesn't mean anything, remove"). Mobile parity:
           `apps/mobile/app/(tabs)/more.tsx`. Recipes + Streak stay. */}
       <div className="flex gap-2 mb-4">
-        <div className="flex-1 text-center p-3 rounded-xl bg-card border border-border">
+        <div className="flex-1 text-center p-3 rounded-xl bg-card border border-border card-elevated">
           <p className="text-lg font-bold text-primary tabular-nums">{recipeCount}</p>
           <p className="text-[10px] text-muted-foreground mt-0.5">Recipes</p>
         </div>
-        <div className="flex-1 text-center p-3 rounded-xl bg-card border border-border">
+        <div className="flex-1 text-center p-3 rounded-xl bg-card border border-border card-elevated">
           <p className="text-lg font-bold text-success tabular-nums">{streakDays}</p>
           <p className="text-[10px] text-muted-foreground mt-0.5">Streak</p>
         </div>
@@ -477,10 +477,10 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
           `apps/mobile/components/settings/SettingsBundleContent.tsx`. */}
       {householdSummary ? (
         <div className="mb-4">
-          <h3 className="text-[14px] font-bold text-foreground -tracking-[0.01em] mt-[22px] mb-2.5">
+          <h3 className="text-[13px] font-bold text-foreground -tracking-[0.01em] mt-[22px] mb-2.5">
             People
           </h3>
-          <div className="bg-card rounded-xl border border-border overflow-hidden">
+          <div className="bg-card rounded-xl border border-border overflow-hidden card-elevated">
             <a
               href="/home?view=household-settings"
               data-testid="profile-household-row"
@@ -506,8 +506,8 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
           was replaced across every group on this page so it matches
           the mobile "More" treatment. */}
       <div className="mb-4">
-        <h3 className="text-[14px] font-bold text-foreground -tracking-[0.01em] mt-[22px] mb-2.5">Settings</h3>
-        <div className="bg-card rounded-xl border border-border overflow-hidden">
+        <h3 className="text-[13px] font-bold text-foreground -tracking-[0.01em] mt-[22px] mb-2.5">Settings</h3>
+        <div className="bg-card rounded-xl border border-border overflow-hidden card-elevated">
           {/* Daily Targets Row */}
           <div className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer">
             <IconBox tone="primary" size="md" className="rounded-[10px]">
@@ -664,8 +664,8 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
 
       {/* Creator Tools Section — sentence-case heading (prototype parity). */}
       <div className="mb-4">
-        <h3 className="text-[14px] font-bold text-foreground -tracking-[0.01em] mt-[22px] mb-2.5">Creator tools</h3>
-        <div className="bg-card rounded-xl border border-border overflow-hidden">
+        <h3 className="text-[13px] font-bold text-foreground -tracking-[0.01em] mt-[22px] mb-2.5">Creator tools</h3>
+        <div className="bg-card rounded-xl border border-border overflow-hidden card-elevated">
           {/* Published Recipes Row */}
           <div className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer">
             <IconBox tone="success" size="md" className="rounded-[10px]">
@@ -706,8 +706,8 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
 
       {/* Legal Section — sentence-case heading (prototype parity). */}
       <div className="mb-4">
-        <h3 className="text-[14px] font-bold text-foreground -tracking-[0.01em] mt-[22px] mb-2.5">Legal</h3>
-        <div className="bg-card rounded-xl border border-border overflow-hidden">
+        <h3 className="text-[13px] font-bold text-foreground -tracking-[0.01em] mt-[22px] mb-2.5">Legal</h3>
+        <div className="bg-card rounded-xl border border-border overflow-hidden card-elevated">
           <div className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer">
             <span className="text-[13px] font-semibold text-foreground">Terms of Service</span>
             <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0 ml-auto" />
@@ -760,7 +760,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
       {activeTab === "targets" && (
         <div className="space-y-8">
           {/* Macro Calculator */}
-          <div className="bg-card border border-border rounded-xl p-4">
+          <div className="bg-card border border-border rounded-xl p-4 card-elevated">
             <div className="flex items-center gap-2 mb-6">
               <IconBox tone="primary" size="md">
                 <Icons.target className="w-5 h-5" />
@@ -948,7 +948,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
           </div>
 
           {/* Calculated Targets */}
-          <div className="bg-card border border-border rounded-xl overflow-hidden">
+          <div className="bg-card border border-border rounded-xl overflow-hidden card-elevated">
             <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
               <IconBox tone="primary" size="sm">
                 <Icons.trendUp className="w-4 h-4" />
@@ -1097,7 +1097,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
 
       {activeTab === "progress" && (
         <div className="space-y-6">
-          <div className="bg-card border border-border rounded-xl p-4">
+          <div className="bg-card border border-border rounded-xl p-4 card-elevated">
             <div className="flex items-center gap-2 mb-3">
               <IconBox tone="primary" size="md">
                 <Icons.activity className="w-5 h-5" />
@@ -1118,7 +1118,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
           </div>
 
           <div className="grid md:grid-cols-2 gap-6">
-            <div className="bg-card border border-border rounded-xl p-4">
+            <div className="bg-card border border-border rounded-xl p-4 card-elevated">
               <div className="flex items-center gap-2 mb-2">
                 <IconBox tone="success" size="sm">
                   <Icons.target className="w-5 h-5" />
@@ -1128,7 +1128,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
               <p className="text-4xl font-bold text-foreground">{loggingStats.daysWithLogs}</p>
               <p className="text-xs text-muted-foreground mt-2">Distinct days in your nutrition journal</p>
             </div>
-            <div className="bg-card border border-border rounded-xl p-4">
+            <div className="bg-card border border-border rounded-xl p-4 card-elevated">
               <div className="flex items-center gap-2 mb-2">
                 <IconBox tone="primary" size="sm">
                   <Icons.dinner className="w-5 h-5" />
@@ -1140,7 +1140,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
             </div>
           </div>
 
-          <div className="bg-card border border-border rounded-xl p-4">
+          <div className="bg-card border border-border rounded-xl p-4 card-elevated">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
               <h3 className="text-foreground">Recent days</h3>
               {onOpenNutrition ? (

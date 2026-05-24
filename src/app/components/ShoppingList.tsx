@@ -178,7 +178,7 @@ export const ShoppingList = memo(function ShoppingList({
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-pm-6 py-pm-6 space-y-5">
+    <div className="product-shell py-pm-6 space-y-5">
       {/* Honeydew parity banner — visible only when in a household.
           Renders above the title so the user sees who they're shopping
           with before scanning the list. Hidden for solo users. */}
@@ -192,7 +192,7 @@ export const ShoppingList = memo(function ShoppingList({
           style={{ maxWidth: 900 }}
         >
           <Users width={14} height={14} className="text-primary shrink-0" aria-hidden />
-          <span className="text-[12px] font-semibold">{sharedWithLabel}</span>
+          <span className="text-[11px] font-semibold">{sharedWithLabel}</span>
           <span className="text-[11px] text-muted-foreground ml-auto">
             Synced live across your household
           </span>
@@ -202,7 +202,7 @@ export const ShoppingList = memo(function ShoppingList({
       <div className="hidden md:block">
       <h1
         className="text-foreground font-bold -tracking-[0.02em]"
-        style={{ fontSize: 24, margin: "0 0 4px" }}
+        style={{ fontSize: 28, margin: "0 0 4px", letterSpacing: "-0.5px" }}
       >
         Shopping list
       </h1>
@@ -243,7 +243,7 @@ export const ShoppingList = memo(function ShoppingList({
               type="button"
               onClick={handleClearChecked}
               data-testid="shopping-clear-checked"
-              className="text-[12px] font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded shrink-0"
+              className="text-[11px] font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded shrink-0"
             >
               Remove {checkedCount} checked
             </button>
@@ -253,25 +253,25 @@ export const ShoppingList = memo(function ShoppingList({
 
       {totalItemCount === 0 ? (
         <div
-          className="bg-card border border-border rounded-2xl px-6 py-10 text-center"
+          className="bg-card border border-border rounded-2xl px-6 py-12 text-center card-elevated"
           style={{ maxWidth: 900 }}
         >
-          <div className="mx-auto mb-3 grid h-10 w-10 place-items-center rounded-full bg-muted">
-            <Icons.shopping className="h-5 w-5 text-muted-foreground" aria-hidden />
+          <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-xl bg-primary/[0.08]">
+            <Icons.shopping className="h-6 w-6 text-primary" aria-hidden />
           </div>
-          <p className="text-sm font-medium text-foreground mb-1">
-            No items yet
+          <p className="text-[18px] font-semibold text-foreground mb-1.5">
+            Your shopping list builds itself
           </p>
-          <p className="text-[13px] text-muted-foreground">
-            Build a meal plan, then generate your shopping list from there.
+          <p className="text-[13px] text-muted-foreground max-w-xs mx-auto leading-relaxed">
+            Plan your meals for the week and we&apos;ll gather every ingredient into one list, grouped by aisle.
           </p>
           {_onNavigate ? (
             <button
               type="button"
               onClick={() => _onNavigate("plan")}
-              className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
+              className="mt-5 inline-flex items-center gap-1.5 rounded-lg bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground hover:bg-primary/90 transition-all shadow-sm hover:shadow-md"
             >
-              Go to Plan
+              Start planning
             </button>
           ) : null}
         </div>
@@ -288,7 +288,7 @@ export const ShoppingList = memo(function ShoppingList({
             return (
             <div
               key={section.name}
-              className="bg-card border border-border rounded-2xl"
+              className="bg-card border border-border rounded-2xl card-elevated"
               style={{ padding: 14 }}
             >
               <div

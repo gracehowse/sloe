@@ -50,7 +50,7 @@ export default function WebPlannerStubPage() {
       <div className="max-w-md w-full text-center">
         <div
           className="mx-auto mb-6 w-16 h-16 rounded-full flex items-center justify-center"
-          style={{ backgroundColor: "rgba(76, 108, 224, 0.10)" }}
+          style={{ backgroundColor: "rgba(88, 140, 228, 0.10)" }}
           aria-hidden="true"
         >
           <CalendarDays className="w-12 h-12" style={{ color: "#7a8fff" }} strokeWidth={1.75} />

@@ -264,7 +264,7 @@ const MEDITERRANEAN_SEEDS: ReadonlyArray<SeedRecipe> = [
     cluster: "mediterranean",
     title: "Fattoush with Sumac",
     heroImageUrl:
-      "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1568803776583-814f843046a0?auto=format&fit=crop&w=900&q=70",
     totalTimeMin: 20,
     prepTimeMin: 15,
     cookTimeMin: 5,
@@ -297,7 +297,7 @@ const MEDITERRANEAN_SEEDS: ReadonlyArray<SeedRecipe> = [
       "Toss salad and dressing; scatter pitta on top just before serving.",
     ],
     attribution: suppr(
-      "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1568803776583-814f843046a0?auto=format&fit=crop&w=900&q=70",
       "Levantine",
     ),
   },
@@ -421,7 +421,7 @@ const MEDITERRANEAN_SEEDS: ReadonlyArray<SeedRecipe> = [
     cluster: "mediterranean",
     title: "Baba Ganoush Bowl",
     heroImageUrl:
-      "https://images.unsplash.com/photo-1604152135912-04a022e23696?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1594555158954-6988f2d6cad4?auto=format&fit=crop&w=900&q=70",
     totalTimeMin: 45,
     prepTimeMin: 10,
     cookTimeMin: 35,
@@ -453,7 +453,7 @@ const MEDITERRANEAN_SEEDS: ReadonlyArray<SeedRecipe> = [
       "Drizzle with olive oil and serve pitta alongside.",
     ],
     attribution: suppr(
-      "https://images.unsplash.com/photo-1604152135912-04a022e23696?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1594555158954-6988f2d6cad4?auto=format&fit=crop&w=900&q=70",
       "Levantine",
     ),
   },
@@ -505,7 +505,7 @@ const MEDITERRANEAN_SEEDS: ReadonlyArray<SeedRecipe> = [
     cluster: "mediterranean",
     title: "Chicken Souvlaki Bowl",
     heroImageUrl:
-      "https://images.unsplash.com/photo-1604908554049-29c4eaa48cd2?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1744444202869-54debf97b285?auto=format&fit=crop&w=900&q=70",
     totalTimeMin: 35,
     prepTimeMin: 15,
     cookTimeMin: 20,
@@ -537,7 +537,7 @@ const MEDITERRANEAN_SEEDS: ReadonlyArray<SeedRecipe> = [
       "Drizzle the remaining olive oil over and serve.",
     ],
     attribution: suppr(
-      "https://images.unsplash.com/photo-1604908554049-29c4eaa48cd2?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1744444202869-54debf97b285?auto=format&fit=crop&w=900&q=70",
       "Greek",
     ),
   },
@@ -591,7 +591,7 @@ const ASIAN_SEEDS: ReadonlyArray<SeedRecipe> = [
     cluster: "asian",
     title: "Quick Chicken Pad Thai",
     heroImageUrl:
-      "https://images.unsplash.com/photo-1559314809-0d155014e29e?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1754887966237-3295dcc4a5db?auto=format&fit=crop&w=900&q=70",
     totalTimeMin: 25,
     prepTimeMin: 10,
     cookTimeMin: 15,
@@ -626,7 +626,7 @@ const ASIAN_SEEDS: ReadonlyArray<SeedRecipe> = [
       "Plate up; finish with peanuts and the remaining spring onion.",
     ],
     attribution: suppr(
-      "https://images.unsplash.com/photo-1559314809-0d155014e29e?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1754887966237-3295dcc4a5db?auto=format&fit=crop&w=900&q=70",
       "Thai",
     ),
   },
@@ -675,7 +675,7 @@ const ASIAN_SEEDS: ReadonlyArray<SeedRecipe> = [
     cluster: "asian",
     title: "Salmon Sushi Bowl",
     heroImageUrl:
-      "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1768326119213-e0ad875083a3?auto=format&fit=crop&w=900&q=70",
     totalTimeMin: 20,
     prepTimeMin: 15,
     cookTimeMin: 5,
@@ -706,7 +706,7 @@ const ASIAN_SEEDS: ReadonlyArray<SeedRecipe> = [
       "Drizzle with soy sauce; finish with sesame seeds and spring onion.",
     ],
     attribution: suppr(
-      "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1768326119213-e0ad875083a3?auto=format&fit=crop&w=900&q=70",
       "Japanese-inspired",
     ),
   },
@@ -798,7 +798,7 @@ const ASIAN_SEEDS: ReadonlyArray<SeedRecipe> = [
     cluster: "asian",
     title: "Beef Bulgogi Bibimbap",
     heroImageUrl:
-      "https://images.unsplash.com/photo-1580554530778-ca36943938b2?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1744444204256-9678abf3209d?auto=format&fit=crop&w=900&q=70",
     totalTimeMin: 35,
     prepTimeMin: 15,
     cookTimeMin: 20,
@@ -833,7 +833,7 @@ const ASIAN_SEEDS: ReadonlyArray<SeedRecipe> = [
       "Top with the egg and a sprinkle of sesame seeds.",
     ],
     attribution: suppr(
-      "https://images.unsplash.com/photo-1580554530778-ca36943938b2?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1744444204256-9678abf3209d?auto=format&fit=crop&w=900&q=70",
       "Korean",
     ),
   },
@@ -884,7 +884,7 @@ const ASIAN_SEEDS: ReadonlyArray<SeedRecipe> = [
     cluster: "asian",
     title: "Chicken Katsu Bowl",
     heroImageUrl:
-      "https://images.unsplash.com/photo-1604908554027-c5b85f1d6e72?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1765510295901-3aa756cc1471?auto=format&fit=crop&w=900&q=70",
     totalTimeMin: 30,
     prepTimeMin: 10,
     cookTimeMin: 20,
@@ -918,7 +918,7 @@ const ASIAN_SEEDS: ReadonlyArray<SeedRecipe> = [
       "Finish with spring onion.",
     ],
     attribution: suppr(
-      "https://images.unsplash.com/photo-1604908554027-c5b85f1d6e72?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1765510295901-3aa756cc1471?auto=format&fit=crop&w=900&q=70",
       "Japanese",
     ),
   },
@@ -927,7 +927,7 @@ const ASIAN_SEEDS: ReadonlyArray<SeedRecipe> = [
     cluster: "asian",
     title: "Salmon Teriyaki Bowl",
     heroImageUrl:
-      "https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1771384552858-feb0574f958d?auto=format&fit=crop&w=900&q=70",
     totalTimeMin: 25,
     prepTimeMin: 10,
     cookTimeMin: 15,
@@ -961,7 +961,7 @@ const ASIAN_SEEDS: ReadonlyArray<SeedRecipe> = [
       "Finish with sesame seeds.",
     ],
     attribution: suppr(
-      "https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1771384552858-feb0574f958d?auto=format&fit=crop&w=900&q=70",
       "Japanese",
     ),
   },
@@ -973,7 +973,7 @@ const LATIN_SEEDS: ReadonlyArray<SeedRecipe> = [
     cluster: "latin",
     title: "Tacos al Pastor",
     heroImageUrl:
-      "https://images.unsplash.com/photo-1565299585323-15d11d1c5ea8?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1707603571504-86c1ea50903e?auto=format&fit=crop&w=900&q=70",
     totalTimeMin: 35,
     prepTimeMin: 15,
     cookTimeMin: 20,
@@ -1006,7 +1006,7 @@ const LATIN_SEEDS: ReadonlyArray<SeedRecipe> = [
       "Serve with lime wedges.",
     ],
     attribution: suppr(
-      "https://images.unsplash.com/photo-1565299585323-15d11d1c5ea8?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1707603571504-86c1ea50903e?auto=format&fit=crop&w=900&q=70",
       "Mexican",
     ),
   },
@@ -1091,7 +1091,7 @@ const LATIN_SEEDS: ReadonlyArray<SeedRecipe> = [
     cluster: "latin",
     title: "Cuban Ropa Vieja",
     heroImageUrl:
-      "https://images.unsplash.com/photo-1547573854-74d2a71d0826?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1746587021271-8de34530e438?auto=format&fit=crop&w=900&q=70",
     totalTimeMin: 150,
     prepTimeMin: 15,
     cookTimeMin: 135,
@@ -1126,7 +1126,7 @@ const LATIN_SEEDS: ReadonlyArray<SeedRecipe> = [
       "Reduce sauce 5 minutes if needed; season and serve.",
     ],
     attribution: suppr(
-      "https://images.unsplash.com/photo-1547573854-74d2a71d0826?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1746587021271-8de34530e438?auto=format&fit=crop&w=900&q=70",
       "Cuban",
     ),
   },
@@ -1135,7 +1135,7 @@ const LATIN_SEEDS: ReadonlyArray<SeedRecipe> = [
     cluster: "latin",
     title: "Chicken Fajita Bowl",
     heroImageUrl:
-      "https://images.unsplash.com/photo-1604152135912-04a022e23696?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1756521973435-4e4e1d2884b7?auto=format&fit=crop&w=900&q=70",
     totalTimeMin: 30,
     prepTimeMin: 10,
     cookTimeMin: 20,
@@ -1168,7 +1168,7 @@ const LATIN_SEEDS: ReadonlyArray<SeedRecipe> = [
       "Top with avocado and a squeeze of lime.",
     ],
     attribution: suppr(
-      "https://images.unsplash.com/photo-1604152135912-04a022e23696?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1756521973435-4e4e1d2884b7?auto=format&fit=crop&w=900&q=70",
       "Tex-Mex",
     ),
   },
@@ -1177,7 +1177,7 @@ const LATIN_SEEDS: ReadonlyArray<SeedRecipe> = [
     cluster: "latin",
     title: "Black Bean Tostadas",
     heroImageUrl:
-      "https://images.unsplash.com/photo-1600267185393-e158a98703de?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1699736686322-f040b289cff6?auto=format&fit=crop&w=900&q=70",
     totalTimeMin: 25,
     prepTimeMin: 10,
     cookTimeMin: 15,
@@ -1209,7 +1209,7 @@ const LATIN_SEEDS: ReadonlyArray<SeedRecipe> = [
       "Top with avocado, tomato, pickled onion and coriander.",
     ],
     attribution: suppr(
-      "https://images.unsplash.com/photo-1600267185393-e158a98703de?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1699736686322-f040b289cff6?auto=format&fit=crop&w=900&q=70",
       "Mexican",
     ),
   },
@@ -1218,7 +1218,7 @@ const LATIN_SEEDS: ReadonlyArray<SeedRecipe> = [
     cluster: "latin",
     title: "Pollo a la Plancha",
     heroImageUrl:
-      "https://images.unsplash.com/photo-1532550907401-a500c9a57435?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1762631383556-7fa1365898b7?auto=format&fit=crop&w=900&q=70",
     totalTimeMin: 30,
     prepTimeMin: 15,
     cookTimeMin: 15,
@@ -1249,7 +1249,7 @@ const LATIN_SEEDS: ReadonlyArray<SeedRecipe> = [
       "Slice chicken; serve over rice with plantain alongside and the pan juices spooned over.",
     ],
     attribution: suppr(
-      "https://images.unsplash.com/photo-1532550907401-a500c9a57435?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1762631383556-7fa1365898b7?auto=format&fit=crop&w=900&q=70",
       "Cuban",
     ),
   },
@@ -1258,7 +1258,7 @@ const LATIN_SEEDS: ReadonlyArray<SeedRecipe> = [
     cluster: "latin",
     title: "Pico de Gallo with Tortilla Chips",
     heroImageUrl:
-      "https://images.unsplash.com/photo-1582169296194-e4d644c48063?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1756129725761-09b86c4a9935?auto=format&fit=crop&w=900&q=70",
     totalTimeMin: 15,
     prepTimeMin: 15,
     cookTimeMin: 0,
@@ -1286,7 +1286,7 @@ const LATIN_SEEDS: ReadonlyArray<SeedRecipe> = [
       "Serve with tortilla chips for scooping.",
     ],
     attribution: suppr(
-      "https://images.unsplash.com/photo-1582169296194-e4d644c48063?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1756129725761-09b86c4a9935?auto=format&fit=crop&w=900&q=70",
       "Mexican",
     ),
   },
@@ -1298,7 +1298,7 @@ const COMFORT_SEEDS: ReadonlyArray<SeedRecipe> = [
     cluster: "comfort",
     title: "Stovetop Mac and Cheese",
     heroImageUrl:
-      "https://images.unsplash.com/photo-1543339308-43e59d6b73a6?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1667499989723-c4ab9549d63c?auto=format&fit=crop&w=900&q=70",
     totalTimeMin: 25,
     prepTimeMin: 5,
     cookTimeMin: 20,
@@ -1328,7 +1328,7 @@ const COMFORT_SEEDS: ReadonlyArray<SeedRecipe> = [
       "Season generously and serve straight away.",
     ],
     attribution: suppr(
-      "https://images.unsplash.com/photo-1543339308-43e59d6b73a6?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1667499989723-c4ab9549d63c?auto=format&fit=crop&w=900&q=70",
       "American comfort",
     ),
   },
@@ -1337,7 +1337,7 @@ const COMFORT_SEEDS: ReadonlyArray<SeedRecipe> = [
     cluster: "comfort",
     title: "Classic Shepherd's Pie",
     heroImageUrl:
-      "https://images.unsplash.com/photo-1599321955726-e0f3aae3a44d?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1664187878525-b8ad94fe569b?auto=format&fit=crop&w=900&q=70",
     totalTimeMin: 75,
     prepTimeMin: 20,
     cookTimeMin: 55,
@@ -1371,7 +1371,7 @@ const COMFORT_SEEDS: ReadonlyArray<SeedRecipe> = [
       "Bake at 200C / 180C fan 25 minutes until golden.",
     ],
     attribution: suppr(
-      "https://images.unsplash.com/photo-1599321955726-e0f3aae3a44d?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1664187878525-b8ad94fe569b?auto=format&fit=crop&w=900&q=70",
       "British",
     ),
   },
@@ -1380,7 +1380,7 @@ const COMFORT_SEEDS: ReadonlyArray<SeedRecipe> = [
     cluster: "comfort",
     title: "Sunday Beef Stew",
     heroImageUrl:
-      "https://images.unsplash.com/photo-1542901031-ec5eeb518e35?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1689860892307-7db54ab276ba?auto=format&fit=crop&w=900&q=70",
     totalTimeMin: 150,
     prepTimeMin: 20,
     cookTimeMin: 130,
@@ -1415,7 +1415,7 @@ const COMFORT_SEEDS: ReadonlyArray<SeedRecipe> = [
       "Uncover and reduce 15 minutes if gravy needs thickening.",
     ],
     attribution: suppr(
-      "https://images.unsplash.com/photo-1542901031-ec5eeb518e35?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1689860892307-7db54ab276ba?auto=format&fit=crop&w=900&q=70",
       "British / Northern European",
     ),
   },
@@ -1424,7 +1424,7 @@ const COMFORT_SEEDS: ReadonlyArray<SeedRecipe> = [
     cluster: "comfort",
     title: "Chicken Pot Pie",
     heroImageUrl:
-      "https://images.unsplash.com/photo-1587814242123-a4c9168f7064?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1650915850372-a92360254e89?auto=format&fit=crop&w=900&q=70",
     totalTimeMin: 60,
     prepTimeMin: 20,
     cookTimeMin: 40,
@@ -1458,7 +1458,7 @@ const COMFORT_SEEDS: ReadonlyArray<SeedRecipe> = [
       "Bake at 200C / 180C fan 25-30 minutes until pastry is golden.",
     ],
     attribution: suppr(
-      "https://images.unsplash.com/photo-1587814242123-a4c9168f7064?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1650915850372-a92360254e89?auto=format&fit=crop&w=900&q=70",
       "British / American comfort",
     ),
   },
@@ -1555,7 +1555,7 @@ const COMFORT_SEEDS: ReadonlyArray<SeedRecipe> = [
     cluster: "comfort",
     title: "Chicken Alfredo",
     heroImageUrl:
-      "https://images.unsplash.com/photo-1574484284002-952d92456975?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1768668053140-f589ed4bef31?auto=format&fit=crop&w=900&q=70",
     totalTimeMin: 30,
     prepTimeMin: 10,
     cookTimeMin: 20,
@@ -1586,7 +1586,7 @@ const COMFORT_SEEDS: ReadonlyArray<SeedRecipe> = [
       "Slice chicken on top; finish with parsley.",
     ],
     attribution: suppr(
-      "https://images.unsplash.com/photo-1574484284002-952d92456975?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1768668053140-f589ed4bef31?auto=format&fit=crop&w=900&q=70",
       "Italian-American",
     ),
   },
@@ -1595,7 +1595,7 @@ const COMFORT_SEEDS: ReadonlyArray<SeedRecipe> = [
     cluster: "comfort",
     title: "Beef Stroganoff",
     heroImageUrl:
-      "https://images.unsplash.com/photo-1432139509613-5c4255815697?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1544378730-5977b137f929?auto=format&fit=crop&w=900&q=70",
     totalTimeMin: 35,
     prepTimeMin: 10,
     cookTimeMin: 25,
@@ -1630,7 +1630,7 @@ const COMFORT_SEEDS: ReadonlyArray<SeedRecipe> = [
       "Toss with noodles; finish with parsley.",
     ],
     attribution: suppr(
-      "https://images.unsplash.com/photo-1432139509613-5c4255815697?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1544378730-5977b137f929?auto=format&fit=crop&w=900&q=70",
       "Russian / Eastern European",
     ),
   },
@@ -1844,7 +1844,7 @@ const HEALTHY_BOWLS_SEEDS: ReadonlyArray<SeedRecipe> = [
     cluster: "healthy-bowls",
     title: "Black Bean Burrito Bowl",
     heroImageUrl:
-      "https://images.unsplash.com/photo-1543339531-c41cf3a4e13b?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1762631383378-115f2d4cbe07?auto=format&fit=crop&w=900&q=70",
     totalTimeMin: 25,
     prepTimeMin: 10,
     cookTimeMin: 15,
@@ -1877,7 +1877,7 @@ const HEALTHY_BOWLS_SEEDS: ReadonlyArray<SeedRecipe> = [
       "Scatter coriander to finish.",
     ],
     attribution: suppr(
-      "https://images.unsplash.com/photo-1543339531-c41cf3a4e13b?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1762631383378-115f2d4cbe07?auto=format&fit=crop&w=900&q=70",
       "Tex-Mex-inspired",
     ),
   },
@@ -1886,7 +1886,7 @@ const HEALTHY_BOWLS_SEEDS: ReadonlyArray<SeedRecipe> = [
     cluster: "healthy-bowls",
     title: "Crispy Tofu & Greens Bowl",
     heroImageUrl:
-      "https://images.unsplash.com/photo-1604908554007-cd54f8ed0c5b?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1744612190414-f8844313befb?auto=format&fit=crop&w=900&q=70",
     totalTimeMin: 30,
     prepTimeMin: 10,
     cookTimeMin: 20,
@@ -1918,7 +1918,7 @@ const HEALTHY_BOWLS_SEEDS: ReadonlyArray<SeedRecipe> = [
       "Finish with sesame seeds.",
     ],
     attribution: suppr(
-      "https://images.unsplash.com/photo-1604908554007-cd54f8ed0c5b?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1744612190414-f8844313befb?auto=format&fit=crop&w=900&q=70",
     ),
   },
   {
@@ -1926,7 +1926,7 @@ const HEALTHY_BOWLS_SEEDS: ReadonlyArray<SeedRecipe> = [
     cluster: "healthy-bowls",
     title: "Mediterranean Chickpea Bowl",
     heroImageUrl:
-      "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1688923130928-8468d6af8d7e?auto=format&fit=crop&w=900&q=70",
     totalTimeMin: 20,
     prepTimeMin: 20,
     cookTimeMin: 0,
@@ -1957,7 +1957,7 @@ const HEALTHY_BOWLS_SEEDS: ReadonlyArray<SeedRecipe> = [
       "Scatter feta and parsley to finish.",
     ],
     attribution: suppr(
-      "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1688923130928-8468d6af8d7e?auto=format&fit=crop&w=900&q=70",
     ),
   },
   {
@@ -1965,7 +1965,7 @@ const HEALTHY_BOWLS_SEEDS: ReadonlyArray<SeedRecipe> = [
     cluster: "healthy-bowls",
     title: "Sweet Potato & Kale Bowl",
     heroImageUrl:
-      "https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1543352634-a1c51d9f1fa7?auto=format&fit=crop&w=900&q=70",
     totalTimeMin: 35,
     prepTimeMin: 10,
     cookTimeMin: 25,
@@ -1997,7 +1997,7 @@ const HEALTHY_BOWLS_SEEDS: ReadonlyArray<SeedRecipe> = [
       "Drizzle remaining dressing; scatter seeds and cranberries.",
     ],
     attribution: suppr(
-      "https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1543352634-a1c51d9f1fa7?auto=format&fit=crop&w=900&q=70",
     ),
   },
   {
@@ -2005,7 +2005,7 @@ const HEALTHY_BOWLS_SEEDS: ReadonlyArray<SeedRecipe> = [
     cluster: "healthy-bowls",
     title: "Tuna Nicoise Bowl",
     heroImageUrl:
-      "https://images.unsplash.com/photo-1505253758473-96b7015fcd40?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1557736398-a966fe2f0e20?auto=format&fit=crop&w=900&q=70",
     totalTimeMin: 25,
     prepTimeMin: 10,
     cookTimeMin: 15,
@@ -2038,7 +2038,7 @@ const HEALTHY_BOWLS_SEEDS: ReadonlyArray<SeedRecipe> = [
       "Top with egg halves; spoon dressing over.",
     ],
     attribution: suppr(
-      "https://images.unsplash.com/photo-1505253758473-96b7015fcd40?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1557736398-a966fe2f0e20?auto=format&fit=crop&w=900&q=70",
       "French (Nicoise)",
     ),
   },
@@ -2047,7 +2047,7 @@ const HEALTHY_BOWLS_SEEDS: ReadonlyArray<SeedRecipe> = [
     cluster: "healthy-bowls",
     title: "Tofu Peanut Bowl",
     heroImageUrl:
-      "https://images.unsplash.com/photo-1518779578993-ec3579fee39f?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1764674963000-0d113663bc0d?auto=format&fit=crop&w=900&q=70",
     totalTimeMin: 30,
     prepTimeMin: 10,
     cookTimeMin: 20,
@@ -2081,7 +2081,7 @@ const HEALTHY_BOWLS_SEEDS: ReadonlyArray<SeedRecipe> = [
       "Drizzle remaining sauce; scatter coriander.",
     ],
     attribution: suppr(
-      "https://images.unsplash.com/photo-1518779578993-ec3579fee39f?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1764674963000-0d113663bc0d?auto=format&fit=crop&w=900&q=70",
       "Pan-Asian-inspired",
     ),
   },
@@ -2090,7 +2090,7 @@ const HEALTHY_BOWLS_SEEDS: ReadonlyArray<SeedRecipe> = [
     cluster: "healthy-bowls",
     title: "Southwestern Quinoa Bowl",
     heroImageUrl:
-      "https://images.unsplash.com/photo-1546833999-b9f581a1996d?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1762631383378-115f2d4cbe07?auto=format&fit=crop&w=900&q=70",
     totalTimeMin: 30,
     prepTimeMin: 10,
     cookTimeMin: 20,
@@ -2124,7 +2124,7 @@ const HEALTHY_BOWLS_SEEDS: ReadonlyArray<SeedRecipe> = [
       "Top with tomato, avocado and coriander; spoon over the lime dressing.",
     ],
     attribution: suppr(
-      "https://images.unsplash.com/photo-1546833999-b9f581a1996d?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1762631383378-115f2d4cbe07?auto=format&fit=crop&w=900&q=70",
       "American Southwestern",
     ),
   },
@@ -2133,7 +2133,7 @@ const HEALTHY_BOWLS_SEEDS: ReadonlyArray<SeedRecipe> = [
     cluster: "healthy-bowls",
     title: "Greek Grain Bowl",
     heroImageUrl:
-      "https://images.unsplash.com/photo-1502301103665-0b95cc738daf?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1745126010010-da1c6f5300a9?auto=format&fit=crop&w=900&q=70",
     totalTimeMin: 25,
     prepTimeMin: 15,
     cookTimeMin: 10,
@@ -2165,7 +2165,7 @@ const HEALTHY_BOWLS_SEEDS: ReadonlyArray<SeedRecipe> = [
       "Scatter feta and dill; spoon remaining dressing over.",
     ],
     attribution: suppr(
-      "https://images.unsplash.com/photo-1502301103665-0b95cc738daf?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1745126010010-da1c6f5300a9?auto=format&fit=crop&w=900&q=70",
       "Greek-inspired",
     ),
   },
@@ -2174,7 +2174,7 @@ const HEALTHY_BOWLS_SEEDS: ReadonlyArray<SeedRecipe> = [
     cluster: "healthy-bowls",
     title: "Mexican Power Bowl",
     heroImageUrl:
-      "https://images.unsplash.com/photo-1551782450-a2132b4ba21d?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1716392976013-66d90cac4411?auto=format&fit=crop&w=900&q=70",
     totalTimeMin: 30,
     prepTimeMin: 10,
     cookTimeMin: 20,
@@ -2207,7 +2207,7 @@ const HEALTHY_BOWLS_SEEDS: ReadonlyArray<SeedRecipe> = [
       "Build bowls with rice, beans, chicken, corn and the salsa.",
     ],
     attribution: suppr(
-      "https://images.unsplash.com/photo-1551782450-a2132b4ba21d?auto=format&fit=crop&w=900&q=70",
+      "https://images.unsplash.com/photo-1716392976013-66d90cac4411?auto=format&fit=crop&w=900&q=70",
       "Mexican-inspired",
     ),
   },

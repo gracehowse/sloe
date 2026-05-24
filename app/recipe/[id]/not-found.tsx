@@ -7,7 +7,7 @@ export default function RecipeNotFound() {
         <div className="w-20 h-20 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center mx-auto mb-6">
           <span className="text-3xl">🍽️</span>
         </div>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2 font-serif">
           Recipe not found
         </h1>
         <p className="text-slate-600 dark:text-slate-400 mb-8">

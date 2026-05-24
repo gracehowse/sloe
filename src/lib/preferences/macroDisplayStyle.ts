@@ -29,7 +29,11 @@ export const MACRO_DISPLAY_STYLES: readonly MacroDisplayStyle[] = [
   "bars",
 ] as const;
 
-export const DEFAULT_MACRO_DISPLAY_STYLE: MacroDisplayStyle = "tiles";
+// Canonical 2026-05-22 C1: default flipped from "tiles" → "bars".
+// Single-ring Today hero + 4 horizontal macro bars is now the canonical
+// layout. Tiles preference still available in Settings for users who
+// prefer the grid; default is bars.
+export const DEFAULT_MACRO_DISPLAY_STYLE: MacroDisplayStyle = "bars";
 
 export const MACRO_DISPLAY_STORAGE_KEY = "suppr.prefs.macro_display";
 

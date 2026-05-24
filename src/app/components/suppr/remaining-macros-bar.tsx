@@ -109,7 +109,7 @@ function RemainingMacrosBar({
   return (
     <div
       className={cn(
-        "grid gap-2 rounded-card border border-border bg-card p-2.5",
+        "grid gap-2 rounded-card border border-border bg-card p-2.5 card-elevated",
         className,
       )}
       style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr))` }}

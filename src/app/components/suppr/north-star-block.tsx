@@ -126,7 +126,7 @@ export function NorthStarBlock({
       >
         <Sparkles aria-hidden width={18} height={18} className="text-primary shrink-0" />
         <div className="flex flex-1 flex-col gap-1">
-          <p className="text-[14px] font-semibold">
+          <p className="text-[13px] font-semibold">
             Log your first meal — suggestions get smarter once we've seen you eat.
           </p>
         </div>
@@ -146,7 +146,7 @@ export function NorthStarBlock({
       >
         <Sparkles aria-hidden width={18} height={18} className="text-primary shrink-0" />
         <div className="flex flex-1 flex-col gap-1">
-          <p className="text-[14px] font-semibold">
+          <p className="text-[13px] font-semibold">
             Pick a few recipes you'd actually cook — we'll suggest from there.
           </p>
         </div>
@@ -154,7 +154,7 @@ export function NorthStarBlock({
           type="button"
           onClick={onOpenLibrary}
           className={cn(
-            "shrink-0 rounded-md bg-primary px-3 py-1.5 text-[12px] font-semibold text-primary-foreground",
+            "shrink-0 rounded-md bg-primary px-3 py-1.5 text-[11px] font-semibold text-primary-foreground",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
           )}
         >
@@ -179,7 +179,7 @@ export function NorthStarBlock({
         <button
           type="button"
           onClick={onBrowse}
-          className="shrink-0 text-[12px] font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
+          className="shrink-0 text-[11px] font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
         >
           Browse →
         </button>
@@ -279,7 +279,7 @@ function NorthStarDefaultBlock({
             <button
               type="button"
               onClick={() => setWhyOpen(true)}
-              className="text-left text-[12px] text-muted-foreground leading-tight underline decoration-dotted underline-offset-2 hover:text-foreground"
+              className="text-left text-[11px] text-muted-foreground leading-tight underline decoration-dotted underline-offset-2 hover:text-foreground"
               aria-label={`${suggestion.whyLine}. Open why this recommendation.`}
             >
               {suggestion.whyLine}

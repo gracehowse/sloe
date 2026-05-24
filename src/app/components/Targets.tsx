@@ -312,7 +312,7 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
 
       {/* Title + subtitle */}
       <div className="mb-5">
-        <h1 className="text-[24px] md:text-[26px] font-bold text-foreground -tracking-[0.02em]">
+        <h1 className="text-[24px] md:text-[28px] font-bold text-foreground -tracking-[0.02em]">
           Targets
         </h1>
         <p className="text-[13px] text-muted-foreground mt-1">
@@ -390,7 +390,7 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
               this static base, which a user can mis-read as a number
               divergence. */}
           {preferActivityAdjustedCalories ? (
-            <p className="text-[12px] text-muted-foreground mt-1 text-center">
+            <p className="text-[11px] text-muted-foreground mt-1 text-center">
               Today&apos;s goal adjusts upward by your active-burn calories.
             </p>
           ) : null}
@@ -413,7 +413,7 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
                 aria-hidden
                 className="mt-1 inline-block w-2.5 h-2.5 rounded-full bg-warning shrink-0"
               />
-              <p className="text-[12px] text-foreground leading-snug flex-1">
+              <p className="text-[11px] text-foreground leading-snug flex-1">
                 <span className="font-bold">Below 1,200 kcal.</span> This is
                 under the safety floor we recommend for adults. Consider
                 raising your target — or talk to a clinician if a lower
@@ -466,7 +466,7 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
 
       {/* Macros section label */}
       <div className="mb-3">
-        <h2 className="text-[14px] font-bold text-foreground -tracking-[0.01em]">Macros</h2>
+        <h2 className="text-[13px] font-bold text-foreground -tracking-[0.01em]">Macros</h2>
       </div>
 
       {/* Macro tiles — 4 across on desktop, 2 across on sm, 1 on mobile */}
@@ -533,10 +533,10 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
           <HelpCircle size={14} strokeWidth={2} />
         </span>
         <span className="flex-1 min-w-0">
-          <span className="block text-[14px] font-semibold text-foreground">
+          <span className="block text-[13px] font-semibold text-foreground">
             How is this calculated?
           </span>
-          <span className="block text-[12px] text-muted-foreground mt-0.5">
+          <span className="block text-[11px] text-muted-foreground mt-0.5">
             See the maintenance TDEE, goal, and pace behind today&apos;s target.
           </span>
         </span>

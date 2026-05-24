@@ -64,7 +64,7 @@ export function ProgressHeadline({
       >
         {commentary.headline}
       </h2>
-      <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
+      <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
         {segments.map((seg, i) =>
           seg.highlight ? (
             <strong

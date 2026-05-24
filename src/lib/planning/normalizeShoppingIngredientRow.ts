@@ -1,4 +1,5 @@
 import type { ShoppingItem } from "../../types/recipe";
+import { decodeHtmlEntities } from "../text/decodeHtmlEntities";
 import { dedupeShoppingLabel } from "./shoppingListLifecycle";
 import {
   extractLeadingQuantityFromName,
@@ -35,6 +36,8 @@ function stripDuplicateCountPrefix(text: string): string {
   return text.replace(/^(\d+(?:\.\d+)?(?:\s*\/\s*\d+)?)\s+\1\s+/, "$1 ");
 }
 
+const MAX_INGREDIENT_NAME_LENGTH = 120;
+
 /**
  * Cleans nutrition-db noise and stray characters before amount/name split.
  * Safe at generation time and when hydrating rows from the DB.
@@ -42,6 +45,12 @@ function stripDuplicateCountPrefix(text: string): string {
 export function sanitizeShoppingIngredientName(name: string): string {
   let n = name.trim();
   if (!n) return n;
+
+  // Decode HTML entities that leak from imported social media captions
+  n = decodeHtmlEntities(n);
+
+  // Strip emoji (common in Instagram/TikTok imports)
+  n = n.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]/gu, "");
 
   n = n.replace(/\s*%+\s*/g, " ");
   n = n.replace(/\d+\s+1\s+undetermined\s+medium\s*\([^)]*\)\s*/gi, "");
@@ -66,8 +75,15 @@ export function sanitizeShoppingIngredientName(name: string): string {
 
   n = stripDuplicateCountPrefix(n);
   n = collapseRepeatedWord(n);
+  n = n.replace(/\s+/g, " ").trim();
 
-  return n.replace(/\s+/g, " ").trim();
+  // Truncate overly long names (raw social caption text leaking as ingredients)
+  if (n.length > MAX_INGREDIENT_NAME_LENGTH) {
+    n = n.slice(0, MAX_INGREDIENT_NAME_LENGTH).replace(/\s\S*$/, "").trim();
+    if (n.length > 0) n += "…";
+  }
+
+  return n;
 }
 
 /**

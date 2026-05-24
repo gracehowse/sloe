@@ -19,7 +19,7 @@ export default function NotFound() {
         <p className="text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
           404
         </p>
-        <h1 className="text-slate-900 dark:text-white mb-2">
+        <h1 className="text-slate-900 dark:text-white mb-2 font-serif text-xl font-bold -tracking-[0.02em]">
           We couldn&apos;t find that page
         </h1>
         {/* 2026-05-12 (premium-bar audit copy fix): old copy assumed the

@@ -49,12 +49,16 @@ import {
 import "./landing.css";
 import { FatSecretBadge } from "../../src/app/components/ui/FatSecretBadge";
 
+// Audit 2026-05-22: 5 nav links read busy vs Linear/Vercel's restraint.
+// FAQ dropped — the page anchor stays so deep-links work, but FAQ is
+// also reachable from Help and Pricing, the surfaces where users
+// actually look for it. Net result: 5 → 4 primary nav items, less
+// noise above the H1.
 const NAV_LINKS = [
   { href: "#what", label: "How it works" },
   { href: "#features", label: "Features" },
   { href: "#roadmap", label: "Roadmap" },
   { href: "#pricing", label: "Pricing" },
-  { href: "#faq", label: "FAQ" },
 ];
 
 // Get started = full v2 onboarding at /onboarding (profile + targets).

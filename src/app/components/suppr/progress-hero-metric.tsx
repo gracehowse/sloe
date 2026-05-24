@@ -25,20 +25,20 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
 function adherenceTone(pct: number): {
   ring: string;
+  gradientId: string;
   text: string;
   label: string;
 } {
   if (pct >= 90 && pct <= 110) {
-    return { ring: "var(--success)", text: "text-success", label: "On target" };
+    return { ring: "var(--success)", gradientId: "url(#prog-grad-success)", text: "text-success", label: "On target" };
   }
-  if (pct < 90 && pct >= 75) {
-    return { ring: "var(--warning)", text: "text-warning", label: "Under target" };
+  if (pct < 90) {
+    return { ring: "var(--warning)", gradientId: "url(#prog-grad-warning)", text: "text-warning", label: "Under target" };
   }
-  if (pct < 75) {
-    return { ring: "var(--warning)", text: "text-warning", label: "Under target" };
-  }
-  // Over target (>110%) is always destructive red
-  return { ring: "var(--destructive)", text: "text-destructive", label: "Over target" };
+  // Over-target (>110%) is WARNING AMBER. Canonical 2026-05-22 v2 —
+  // anti-MFP brand: over-budget is a gentle nudge, not an alarm.
+  // Reverted from the 2026-05-05 "destructive red" rule. Memory updated.
+  return { ring: "var(--warning)", gradientId: "url(#prog-grad-over)", text: "text-warning", label: "Over target" };
 }
 
 export function ProgressHeroMetric({
@@ -52,10 +52,19 @@ export function ProgressHeroMetric({
     return (
       <div
         data-testid="progress-hero-metric"
-        className="flex flex-col items-center py-6 mb-4 rounded-2xl border border-border bg-card"
+        className="flex flex-col items-center py-8 mb-4 rounded-2xl border border-border bg-card"
       >
-        <p className="text-sm text-muted-foreground">
-          Log meals on Today to see your score here.
+        <div
+          className="flex items-center justify-center rounded-2xl bg-primary/10"
+          style={{ width: 56, height: 56, marginBottom: 16 }}
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
+            <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+          </svg>
+        </div>
+        <p className="text-[15px] font-semibold text-foreground">Your score builds over time</p>
+        <p className="text-sm text-muted-foreground mt-1 text-center" style={{ maxWidth: 280 }}>
+          Log meals on Today and we&apos;ll show how closely you&apos;re hitting your targets.
         </p>
       </div>
     );
@@ -69,7 +78,7 @@ export function ProgressHeroMetric({
   return (
     <div
       data-testid="progress-hero-metric"
-      className="flex flex-col items-center py-6 mb-4 rounded-2xl border border-border bg-card"
+      className="flex flex-col items-center py-6 mb-3 rounded-2xl border border-border bg-card"
     >
       <div className="relative" style={{ width: RING_SIZE, height: RING_SIZE }}>
         <svg
@@ -79,6 +88,20 @@ export function ProgressHeroMetric({
           className="block -rotate-90"
           aria-hidden
         >
+          <defs>
+            <linearGradient id="prog-grad-success" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stopColor="var(--success)" stopOpacity="0.8" />
+              <stop offset="100%" stopColor="var(--success)" />
+            </linearGradient>
+            <linearGradient id="prog-grad-warning" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stopColor="var(--warning)" stopOpacity="0.8" />
+              <stop offset="100%" stopColor="var(--warning)" />
+            </linearGradient>
+            <linearGradient id="prog-grad-over" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stopColor="var(--over-budget-fg)" stopOpacity="0.8" />
+              <stop offset="100%" stopColor="var(--over-budget-fg)" />
+            </linearGradient>
+          </defs>
           <circle
             cx={RING_SIZE / 2}
             cy={RING_SIZE / 2}
@@ -91,7 +114,7 @@ export function ProgressHeroMetric({
             cx={RING_SIZE / 2}
             cy={RING_SIZE / 2}
             r={RADIUS}
-            stroke={tone.ring}
+            stroke={tone.gradientId}
             strokeWidth={STROKE}
             fill="none"
             strokeLinecap="round"

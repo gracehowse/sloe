@@ -206,12 +206,25 @@ export function LoginClient({
             back / Sign in to continue.") — two competing headlines for
             the same surface. */}
         <div className="text-center mb-6 sm:mb-8">
+          {/* 2026-05-22 (DRIFT-01 fix): aligned with the 2026-05-19
+              brand-mark decision — black-on-cream / white-on-black
+              via the same `--brand-mark-*` tokens used by the
+              canonical SupprMark and the mobile SupprMark. Previous
+              `var(--primary)` indigo treatment created three different
+              brand badges (web indigo / mobile light cream / mobile
+              dark black). */}
+          {/* Canonical 2026-05-22: brand mark is paper-on-paper (light)
+              / ink-on-ink (dark) per the lock. No coloured tile, no
+              shadow chip — the "S" is a glyph sitting on the page,
+              like a magazine drop-cap. The letterform alone carries
+              the brand. */}
           <div
-            className="inline-flex items-center justify-center w-12 h-12 rounded-2xl mb-4 text-white font-extrabold text-2xl"
+            className="inline-flex items-center justify-center mb-4 font-extrabold"
             style={{
-              background: "var(--primary)",
-              boxShadow: "0 8px 24px color-mix(in srgb, var(--primary) 25%, transparent)",
-              letterSpacing: "-0.02em",
+              color: "var(--brand-mark-ring)",
+              fontSize: 32,
+              letterSpacing: "-0.04em",
+              lineHeight: 1,
             }}
             aria-label="Suppr"
           >
@@ -229,7 +242,7 @@ export function LoginClient({
           }}
         >
           <h2
-            className="text-lg font-semibold mb-1"
+            className="text-2xl font-bold mb-1 -tracking-[0.01em]"
             style={{ color: "var(--foreground)" }}
           >
             {mode === "signup" ? "Create your account" : "Welcome back"}
@@ -430,8 +443,8 @@ export function LoginClient({
             <button
               type="button"
               onClick={() => setShowMagicLink((v) => !v)}
-              className="text-sm font-medium transition-colors"
-              style={{ color: "var(--muted-foreground)" }}
+              className="text-sm font-medium hover:underline transition-colors"
+              style={{ color: "var(--primary)" }}
             >
               {showMagicLink ? "Hide magic link option" : "Use a magic link instead (existing accounts)"}
             </button>

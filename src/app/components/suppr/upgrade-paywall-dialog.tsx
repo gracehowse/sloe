@@ -434,7 +434,7 @@ export function UpgradePaywallDialog({
           </span>
           <h2
             id="upgrade-paywall-title"
-            className="text-[24px] md:text-[26px] font-bold -tracking-[0.02em] leading-tight mb-2"
+            className="text-[24px] md:text-[28px] font-bold -tracking-[0.02em] leading-tight mb-2"
           >
             {heroHeadline}
           </h2>
@@ -466,10 +466,10 @@ export function UpgradePaywallDialog({
                   <f.icon size={18} strokeWidth={1.75} />
                 </span>
                 <div className="min-w-0">
-                  <p className="text-[14px] font-semibold text-foreground leading-snug">
+                  <p className="text-[13px] font-semibold text-foreground leading-snug">
                     {f.title}
                   </p>
-                  <p className="text-[12px] text-muted-foreground mt-0.5 leading-relaxed">
+                  <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
                     {f.description}
                   </p>
                 </div>
@@ -492,7 +492,7 @@ export function UpgradePaywallDialog({
               aria-selected={!isAnnual}
               data-testid="upsell-period-monthly"
               onClick={() => setPeriod("monthly")}
-              className={`flex-1 rounded-lg px-3 py-2 text-[12px] font-semibold transition-colors ${
+              className={`flex-1 rounded-lg px-3 py-2 text-[11px] font-semibold transition-colors ${
                 !isAnnual
                   ? "bg-primary/15 text-primary"
                   : "text-muted-foreground hover:text-foreground"
@@ -506,7 +506,7 @@ export function UpgradePaywallDialog({
               aria-selected={isAnnual}
               data-testid="upsell-period-annual"
               onClick={() => setPeriod("annual")}
-              className={`flex-1 rounded-lg px-3 py-2 text-[12px] font-semibold transition-colors flex items-center justify-center gap-1.5 ${
+              className={`flex-1 rounded-lg px-3 py-2 text-[11px] font-semibold transition-colors flex items-center justify-center gap-1.5 ${
                 isAnnual
                   ? "bg-primary/15 text-primary"
                   : "text-muted-foreground hover:text-foreground"
@@ -535,7 +535,7 @@ export function UpgradePaywallDialog({
                   </span>
                 ) : null}
               </div>
-              <p className="text-[12px] text-muted-foreground leading-snug">
+              <p className="text-[11px] text-muted-foreground leading-snug">
                 {cardDescriptor}
               </p>
             </div>
@@ -563,7 +563,7 @@ export function UpgradePaywallDialog({
             type="button"
             onClick={handleStartCheckout}
             disabled={busy}
-            className="w-full py-3 rounded-xl bg-primary text-primary-foreground text-[14px] font-bold hover:opacity-95 disabled:opacity-60 transition-opacity shadow-sm"
+            className="w-full py-3 rounded-xl bg-primary text-primary-foreground text-[13px] font-bold hover:opacity-95 disabled:opacity-60 transition-opacity shadow-sm"
           >
             {busy ? "Opening checkout..." : primaryCtaLabel}
           </button>

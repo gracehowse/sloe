@@ -66,7 +66,7 @@ export function TodayAtAGlance({
           particleCount: 60,
           spread: 70,
           origin: { y: 0.7 },
-          colors: ["#62b35a", "#d4a02f", "#e04888", "#5e574e"],
+          colors: ["#56A775", "#F3C336", "#DF5EBC", "#5e574e"],
           disableForReducedMotion: true,
         });
       });

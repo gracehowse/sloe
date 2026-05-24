@@ -344,7 +344,7 @@ export function LogSheet({
             data-slot="log-sheet-header"
             className="flex items-center justify-between border-b px-4 pb-3 pt-3"
           >
-            <DrawerPrimitive.Title className="text-[17px] font-bold tracking-tight">
+            <DrawerPrimitive.Title className="text-[18px] font-bold tracking-tight">
               Log a meal
             </DrawerPrimitive.Title>
             <DrawerPrimitive.Close
@@ -497,7 +497,7 @@ function DefaultComposition({
             onClick={() => search?.onOpen?.()}
             aria-label="Search foods"
             className={cn(
-              "relative flex h-12 w-full items-center gap-2 rounded-lg bg-muted pl-3 pr-1 text-left text-[14px] text-muted-foreground",
+              "relative flex h-12 w-full items-center gap-2 rounded-lg bg-muted pl-3 pr-1 text-left text-[13px] text-muted-foreground",
               "hover:bg-muted/80 transition-colors",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
             )}
@@ -612,7 +612,7 @@ function DefaultComposition({
               <SavedList saved={saved!} />
             ) : null}
             {!showRecent && !showSaved && !showLibrary ? (
-              <p className="py-12 text-center text-[12px] text-muted-foreground">
+              <p className="py-12 text-center text-[11px] text-muted-foreground">
                 Search above for foods, or scan / speak / snap a photo.
               </p>
             ) : null}
@@ -628,7 +628,7 @@ function DefaultComposition({
               onClick={onAddManually}
               aria-label="Or add manually"
               className={cn(
-                "flex w-full items-center gap-2 border-t px-4 py-3 text-left text-[14px] text-muted-foreground",
+                "flex w-full items-center gap-2 border-t px-4 py-3 text-left text-[13px] text-muted-foreground",
                 "hover:bg-muted/40 transition-colors",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
               )}
@@ -739,10 +739,10 @@ function RecentList({ recent }: { recent: NonNullable<LogSheetProps["recent"]> }
     return (
       <div className="rounded-lg border border-dashed p-8 text-center">
         <Clock width={28} height={28} className="mx-auto text-muted-foreground" aria-hidden />
-        <p className="mt-2 text-[14px] font-semibold text-foreground">
+        <p className="mt-2 text-[13px] font-semibold text-foreground">
           Your recent foods will appear here
         </p>
-        <p className="mt-1 text-[12px] text-muted-foreground">
+        <p className="mt-1 text-[11px] text-muted-foreground">
           Log something once and it&rsquo;ll show up next time.
         </p>
       </div>
@@ -801,8 +801,8 @@ function SavedList({ saved }: { saved: NonNullable<LogSheetProps["saved"]> }) {
     return (
       <div className="rounded-lg border border-dashed p-8 text-center">
         <History width={28} height={28} className="mx-auto text-muted-foreground" aria-hidden />
-        <p className="mt-2 text-[14px] font-semibold text-foreground">No saved meals yet</p>
-        <p className="mt-1 text-[12px] text-muted-foreground">
+        <p className="mt-2 text-[13px] font-semibold text-foreground">No saved meals yet</p>
+        <p className="mt-1 text-[11px] text-muted-foreground">
           Save a meal you eat often to log it in one tap.
         </p>
       </div>
@@ -835,8 +835,8 @@ function LibraryList({ library }: { library: NonNullable<LogSheetProps["library"
     return (
       <div className="rounded-lg border border-dashed p-8 text-center">
         <BookmarkCheck width={28} height={28} className="mx-auto text-muted-foreground" aria-hidden />
-        <p className="mt-2 text-[14px] font-semibold text-foreground">No saved recipes yet</p>
-        <p className="mt-1 text-[12px] text-muted-foreground">
+        <p className="mt-2 text-[13px] font-semibold text-foreground">No saved recipes yet</p>
+        <p className="mt-1 text-[11px] text-muted-foreground">
           Save recipes from the Recipes tab to see them here. We&rsquo;ll show your most-cooked recipes first.
         </p>
         {onBrowseRecipes ? (
@@ -845,7 +845,7 @@ function LibraryList({ library }: { library: NonNullable<LogSheetProps["library"
             onClick={onBrowseRecipes}
             aria-label="Browse recipes"
             className={cn(
-              "mt-3 h-10 rounded-md bg-primary px-5 text-[14px] font-bold text-primary-foreground",
+              "mt-3 h-10 rounded-md bg-primary px-5 text-[13px] font-bold text-primary-foreground",
               "hover:bg-primary/90 transition-colors",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
             )}
@@ -898,7 +898,7 @@ function LibraryRow({
         <div className="size-9 rounded-md bg-muted shrink-0" aria-hidden />
       )}
       <div className="ml-2 flex-1 min-w-0">
-        <p className="truncate text-[14px] text-foreground">{recipe.title}</p>
+        <p className="truncate text-[13px] text-foreground">{recipe.title}</p>
         <div className="mt-0.5 flex items-center gap-1.5">
           <span className="text-[11px] tabular-nums text-muted-foreground">
             {recipe.kcalPerPortion} kcal
@@ -940,7 +940,7 @@ function BrowseRow({
     >
       <div className="size-9 rounded-md bg-muted shrink-0" aria-hidden />
       <div className="ml-2 flex-1 min-w-0">
-        <p className="truncate text-[14px] text-foreground">{title}</p>
+        <p className="truncate text-[13px] text-foreground">{title}</p>
         <div className="mt-0.5 flex items-center gap-1.5">
           <SourceDot source={source} size={6} />
           <span className="text-[11px] tabular-nums text-muted-foreground">{kcal} kcal</span>
@@ -986,20 +986,20 @@ function BarcodeManualEntry({
   return (
     <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
       <div className="rounded-md border bg-card p-3 space-y-1.5">
-        <p className="text-[14px] font-bold text-foreground">{entry.productName}</p>
+        <p className="text-[13px] font-bold text-foreground">{entry.productName}</p>
         {entry.brand ? (
-          <p className="text-[12px] text-muted-foreground">{entry.brand}</p>
+          <p className="text-[11px] text-muted-foreground">{entry.brand}</p>
         ) : null}
         <TrustChip variant="manual" />
       </div>
 
-      <p className="text-[12px] text-muted-foreground">
+      <p className="text-[11px] text-muted-foreground">
         No nutrition data — enter manually. We&rsquo;ll save this so the next scan
         finds it.
       </p>
 
       <div className="flex items-center justify-between gap-2">
-        <label className="text-[14px] text-muted-foreground" htmlFor="bme-portion">
+        <label className="text-[13px] text-muted-foreground" htmlFor="bme-portion">
           Portion (g)
         </label>
         <input
@@ -1013,7 +1013,7 @@ function BarcodeManualEntry({
         />
       </div>
       <div className="flex items-center justify-between gap-2">
-        <label className="text-[14px] text-muted-foreground" htmlFor="bme-kcal">
+        <label className="text-[13px] text-muted-foreground" htmlFor="bme-kcal">
           kcal
         </label>
         <input
@@ -1066,7 +1066,7 @@ function BarcodeManualEntry({
           });
         }}
         className={cn(
-          "h-11 w-full rounded-md bg-primary text-[14px] font-bold text-primary-foreground",
+          "h-11 w-full rounded-md bg-primary text-[13px] font-bold text-primary-foreground",
           "hover:bg-primary/90 transition-colors",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
         )}

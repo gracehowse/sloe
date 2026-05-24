@@ -7,7 +7,7 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Recipes, verified macros, and meal planning in one workspace.",
     start_url: "/",
     display: "standalone",
-    background_color: "#f6f3ee",
+    background_color: "#fafaf8",
     theme_color: "#1c1916",
     icons: [
       {

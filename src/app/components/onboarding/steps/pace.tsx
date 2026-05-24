@@ -145,7 +145,7 @@ export function PaceStep() {
         </div>
         <div className="flex items-baseline gap-1.5 mb-2.5">
           <span
-            className="text-[34px] font-extrabold tracking-tight tabular-nums leading-none text-foreground"
+            className="text-[36px] font-extrabold tracking-tight tabular-nums leading-none text-foreground"
             style={{ letterSpacing: "-0.02em" }}
           >
             {pace.toFixed(pace < 0.1 ? 3 : 2)}

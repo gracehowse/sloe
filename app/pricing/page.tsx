@@ -179,7 +179,7 @@ export default async function PricingPage({
           <Link
             href="/"
             className="text-lg font-bold bg-clip-text text-transparent"
-            style={{ backgroundImage: "linear-gradient(135deg, #4c6ce0 0%, #e04888 100%)" }}
+            style={{ backgroundImage: "linear-gradient(135deg, #588CE4 0%, #DF5EBC 100%)" }}
           >
             Suppr
           </Link>

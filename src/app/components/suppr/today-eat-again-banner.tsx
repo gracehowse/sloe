@@ -30,7 +30,7 @@ export function TodayEatAgainBanner({
   const showThumb = Boolean(imageUrl || suggestion.recipeTitle);
 
   return (
-    <div className="mb-3 rounded-card border border-border bg-card px-3 py-2.5 flex items-center gap-3 v2-fade-up">
+    <div className="mb-3 rounded-card border border-border bg-card px-3 py-2.5 flex items-center gap-3 v2-fade-up card-elevated">
       {showThumb ? (
         <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg relative">
           {imageUrl ? (
@@ -43,7 +43,7 @@ export function TodayEatAgainBanner({
       ) : null}
       <div className="flex-1 min-w-0">
         <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Eat again</p>
-        <p className="text-[14px] font-semibold text-foreground line-clamp-2 break-words leading-snug">
+        <p className="text-[13px] font-semibold text-foreground line-clamp-2 break-words leading-snug">
           {suggestion.recipeTitle}
         </p>
         <p className="text-[11px] text-muted-foreground mt-0.5">

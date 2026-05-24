@@ -302,7 +302,7 @@ export function DesktopSidebar(props: DesktopSidebarProps) {
         width: collapsed ? WIDTH_COLLAPSED_PX : WIDTH_EXPANDED_PX,
         transition: "width 200ms ease-in-out",
       }}
-      className="hidden md:flex md:flex-col md:shrink-0 md:h-screen md:sticky md:top-0 md:border-r md:border-border md:bg-background md:overflow-hidden"
+      className="hidden md:flex md:flex-col md:shrink-0 md:h-screen md:sticky md:top-0 md:border-r md:border-border/60 md:bg-background md:overflow-hidden"
       aria-label="Primary"
     >
       {/* Brand + collapse toggle */}
@@ -312,7 +312,7 @@ export function DesktopSidebar(props: DesktopSidebarProps) {
         {!collapsed ? (
           <div className="flex items-center gap-2.5 min-w-0">
             <SupprPlateMark size={32} className="shrink-0" />
-            <span className="text-[15px] font-bold tracking-tight truncate">
+            <span className="text-[15px] font-bold tracking-tight truncate font-serif">
               Suppr
             </span>
           </div>
@@ -435,17 +435,17 @@ function SidebarProfileEntry({
       aria-current={isActive ? "page" : undefined}
       aria-label={collapsed ? `Open settings (${label})` : undefined}
       title={collapsed ? `Settings · ${label}` : undefined}
-      className={`flex w-full items-center transition-colors hover:bg-muted/60 ${
+      className={`flex w-full items-center transition-all duration-150 hover:bg-muted/60 ${
         collapsed ? "justify-center p-3" : "gap-2.5 px-3 py-3"
       } ${
-        isActive ? "bg-accent-muted text-primary" : "text-foreground"
+        isActive ? "bg-primary/[0.06] text-primary" : "text-foreground"
       }`}
     >
       <span
         aria-hidden
         className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-bold text-white"
         style={{
-          background: "linear-gradient(135deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 70%, #e04888) 100%)",
+          background: "linear-gradient(135deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 70%, #DF5EBC) 100%)",
           boxShadow: "0 2px 6px color-mix(in srgb, var(--primary) 20%, transparent)",
         }}
       >
@@ -518,31 +518,31 @@ function PrimarySidebarItem({
     <button
       type="button"
       onClick={() => {
-        // Tapping a primary entry routes to its default leaf so the
-        // user always lands on a known anchor. If the user is already
-        // somewhere within the group (e.g. on /discover and they tap
-        // Recipes), we still re-route to the default leaf so the
-        // primary press is predictable.
         onNavigate(item.defaultLeaf);
       }}
       aria-current={isActive ? "page" : undefined}
-      // When collapsed, expose the label as accessible-name + tooltip
-      // so screen-reader users still hear "Today" / "Recipes" / etc.
-      // when the visible label is hidden.
       aria-label={collapsed ? item.label : undefined}
       title={collapsed ? item.label : undefined}
-      className={`group relative flex w-full items-center rounded-lg text-sm font-medium transition-colors ${
+      className={`group relative flex w-full items-center rounded-lg text-sm font-medium transition-all duration-150 ${
         collapsed
           ? "justify-center h-10 px-0"
           : "gap-2.5 px-3 py-2"
       } ${
         isActive
-          ? "bg-accent-muted text-primary"
+          ? "bg-primary/[0.08] text-primary"
           : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
       }`}
     >
+      {/* Active accent bar — 3px rounded pill on the left edge */}
+      {isActive ? (
+        <span
+          className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-full bg-primary"
+          style={{ transition: "height 150ms ease" }}
+          aria-hidden
+        />
+      ) : null}
       <Icon
-        className={`h-4 w-4 shrink-0 ${isActive ? "" : "text-muted-foreground group-hover:text-foreground"}`}
+        className={`h-[18px] w-[18px] shrink-0 transition-colors duration-150 ${isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`}
         aria-hidden
       />
       {!collapsed ? (
@@ -570,9 +570,9 @@ function SubTabSidebarItem({
       type="button"
       onClick={() => onNavigate(sub.view)}
       aria-current={isActive ? "page" : undefined}
-      className={`group relative flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors ${
+      className={`group relative flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-all duration-150 ${
         isActive
-          ? "bg-primary/10 text-primary"
+          ? "bg-primary/[0.08] text-primary font-semibold"
           : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
       }`}
     >

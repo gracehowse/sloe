@@ -2,7 +2,6 @@
 
 import type { ReactNode } from "react";
 
-import { TodayBrandBar } from "./today-brand-bar";
 import { cn } from "../ui/utils";
 
 export interface ProgressTabChromeProps {
@@ -23,10 +22,9 @@ export function ProgressTabChrome({ overline, trailing, className }: ProgressTab
       )}
       data-testid="progress-tab-chrome"
     >
-      <div className="px-6 pt-2 pb-3 space-y-1">
-        <TodayBrandBar />
+      <div className="px-6 pt-2 pb-2 space-y-0.5">
         <div className="flex items-start justify-between gap-3">
-          <div className="space-y-1">
+          <div className="space-y-0.5">
             <p
               data-testid="progress-overline"
               className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground"
@@ -35,7 +33,7 @@ export function ProgressTabChrome({ overline, trailing, className }: ProgressTab
             </p>
             <h1
               data-testid="progress-header"
-              className="text-[28px] font-extrabold tracking-tight text-foreground"
+              className="text-[24px] font-extrabold tracking-tight text-foreground"
             >
               Progress
             </h1>

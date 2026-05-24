@@ -874,7 +874,8 @@ function ProgressDashboardContent() {
         </p>
         <h1
           data-testid="progress-header"
-          className="text-[28px] font-bold text-foreground tracking-tight mt-0.5"
+          className="text-[24px] font-bold text-foreground tracking-tight mt-0.5"
+          style={{ letterSpacing: "-0.5px" }}
         >
           Progress
         </h1>
@@ -885,7 +886,7 @@ function ProgressDashboardContent() {
 
   if (!authedUserId) {
     return (
-      <div className="max-w-2xl mx-auto px-pm-6 py-pm-6 text-muted-foreground">
+      <div className="product-shell py-pm-6 text-muted-foreground">
         Sign in to track progress.
       </div>
     );
@@ -911,7 +912,7 @@ function ProgressDashboardContent() {
       <>
         <ProgressTabChrome overline={rangeLabel} trailing={progressLoadingCalendar} />
       <div
-        className="max-w-2xl mx-auto px-pm-6 py-pm-6"
+        className="product-shell py-pm-6"
         data-testid="progress-loading-skeleton"
       >
         {progressDesktopHeader}
@@ -920,7 +921,7 @@ function ProgressDashboardContent() {
             <span
               key={k}
               className={[
-                "flex-1 rounded-[7px] px-3 py-1.5 text-[12px] font-semibold text-center",
+                "flex-1 rounded-[7px] px-3 py-1.5 text-[11px] font-semibold text-center",
                 k === range ? "bg-card text-foreground shadow-sm" : "text-muted-foreground",
               ].join(" ")}
             >
@@ -933,7 +934,7 @@ function ProgressDashboardContent() {
             <div
               key={i}
               data-testid={`progress-skeleton-tile-${i}`}
-              className="rounded-xl bg-card border border-border p-3 min-h-[86px]"
+              className="rounded-xl bg-card border border-border p-3 min-h-[86px] card-elevated"
             >
               <div className="h-3 w-16 rounded bg-border mb-2" />
               <div className="h-5 w-20 rounded bg-border mb-1.5" />
@@ -957,7 +958,7 @@ function ProgressDashboardContent() {
   return (
     <>
       <ProgressTabChrome overline={rangeLabel} trailing={progressCalendarButton} />
-    <div className="max-w-2xl mx-auto px-pm-6 py-pm-6">
+    <div className="product-shell py-pm-6">
       {progressDesktopHeader}
 
       {/* HouseholdBar — 2026-04-20 prototype port. Appears immediately
@@ -999,7 +1000,7 @@ function ProgressDashboardContent() {
         const daysLogged = weekStatsBundle.daysWithFood;
         if (!hasEnoughDataForStory(daysLogged)) {
           return (
-            <div className="mb-4">
+            <div className="mb-3">
               <ProgressStoryGate daysLogged={daysLogged} />
             </div>
           );
@@ -1025,7 +1026,7 @@ function ProgressDashboardContent() {
           loggingDays: daysLogged,
         });
         return (
-          <div className="mb-4">
+          <div className="mb-3">
             <ProgressHeadline commentary={commentary} />
           </div>
         );
@@ -1042,7 +1043,7 @@ function ProgressDashboardContent() {
         role="tablist"
         aria-label="Progress time range"
         data-testid="progress-range-picker"
-        className="flex gap-1.5 mb-4 p-1 rounded-[10px] bg-muted"
+        className="flex gap-1.5 mb-3 p-1 rounded-[10px] bg-muted"
       >
         {(["7d", "30d", "90d", "all"] as const).map((k) => {
           const active = range === k;
@@ -1057,7 +1058,7 @@ function ProgressDashboardContent() {
               data-testid={`progress-range-pill-${k}`}
               onClick={() => setRange(k)}
               className={[
-                "flex-1 rounded-[7px] px-3 py-1.5 text-[12px] font-semibold transition-colors",
+                "flex-1 rounded-[7px] px-3 py-1.5 text-[11px] font-semibold transition-colors",
                 active
                   ? "bg-card text-foreground shadow-sm"
                   : "bg-transparent text-muted-foreground hover:text-foreground",
@@ -1088,7 +1089,7 @@ function ProgressDashboardContent() {
           (kept intact for parity) so we don't need mobile duplicates. */}
       <div
         data-testid="progress-phase2-grid"
-        className="md:grid md:grid-cols-2 md:gap-3"
+        className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start mb-4"
       >
         {/*
           T13.2 (full-sweep follow-up, 2026-04-25): honour
@@ -1124,12 +1125,15 @@ function ProgressDashboardContent() {
             the right-hand column of the prototype's 2×2 grid. Values
             are pulled from the already-computed `weekStatsBundle`
             (shared helper output) so mobile/web numbers can't drift. */}
-        <ProteinRangeCardWeb
-          avgProteinPerDay={Math.round(weekStatsBundle.avgProtein ?? 0)}
-          targetProteinG={targets.protein}
-          series={weekStatsBundle.days.map((d) => Math.round(d.protein))}
-        />
-        <TrendSummaryCardWeb
+        <div className="hidden md:block">
+          <ProteinRangeCardWeb
+            avgProteinPerDay={Math.round(weekStatsBundle.avgProtein ?? 0)}
+            targetProteinG={targets.protein}
+            series={weekStatsBundle.days.map((d) => Math.round(d.protein))}
+          />
+        </div>
+        <div className="hidden md:block md:col-span-2">
+          <TrendSummaryCardWeb
           daysHitCalorieTarget={(() => {
             // "Hit calorie target" = within ±10% of day's target
             // calories (whichever target the week bundle resolved —
@@ -1149,7 +1153,8 @@ function ProgressDashboardContent() {
           goalWeightKg={goalWeightKg}
           goalDateLabel={goalDateLabel}
           measurementSystem={profileMeasurementSystem}
-        />
+          />
+        </div>
       </div>
 
       {/* WEEK DIGEST (D3) — replaces the legacy WeeklyRecapCard. Host
@@ -1441,7 +1446,7 @@ function ProgressDashboardContent() {
       {/* STREAK FREEZES (Batch 4.11) — visible when the user can earn or has
           freezes, or has consumed any. Hidden entirely when budget = 0. */}
       {freezeBudgetMax > 0 ? (
-        <div className="rounded-xl bg-card border border-border p-4 mb-6">
+        <div className="rounded-xl bg-card border border-border p-4 mb-6 card-elevated">
           <div className="flex items-center gap-2 mb-2">
             <IconBox size="sm" tone="primary"><Icons.streakFreeze /></IconBox>
             <p className="text-sm font-semibold text-foreground">Streak freezes</p>
@@ -1487,65 +1492,67 @@ function ProgressDashboardContent() {
           target (no `daily_targets` snapshot) render with a small
           striped border + tooltip so the user knows the bar's
           colour decision is approximate. */}
-      <div className="rounded-xl bg-card border border-border p-4 mb-6">
+      {/* Daily Calories + Macro Adherence — mobile parity for bar scale
+          (maxCal * 1.15, barMax = 78% of chart height) and typography.
+          On lg+ sit side-by-side so charts use the wider desktop shell. */}
+      <div
+        data-testid="progress-week-charts-grid"
+        className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6"
+      >
+      <div className="rounded-xl bg-card border border-border p-4 card-elevated">
         <p className="text-sm font-semibold text-foreground mb-3">Daily Calories</p>
-        <div className="relative flex items-end gap-2" style={{ height: 90 }}>
-          {/* Dashed target line — mirror of mobile chart. Pointer-events
-              off so the bars stay clickable. */}
-          {(() => {
-            const maxCalForLine = Math.max(
-              targets.calories,
-              ...dailyCaloriesData.map((dd) => dd.calories),
-              1,
-            );
-            if (targets.calories <= 0) return null;
-            const lineY = (targets.calories / maxCalForLine) * 70;
-            return (
+        {(() => {
+          const chartHeight = 90;
+          const dayLabelReserve = 16;
+          const barMax = chartHeight * 0.78;
+          const maxCal = Math.max(
+            targets.calories,
+            ...dailyCaloriesData.map((dd) => dd.calories),
+            1,
+          );
+          const scaleMax = maxCal * 1.15;
+          const targetLineBottom =
+            targets.calories > 0 && maxCal > 0
+              ? dayLabelReserve + (targets.calories / scaleMax) * barMax
+              : null;
+          return (
+            <>
+        <div className="relative" style={{ height: chartHeight }}>
+          {targetLineBottom != null ? (
               <div
                 aria-hidden
                 className="pointer-events-none absolute left-0 right-0 border-t border-dashed border-primary/70"
-                style={{ bottom: lineY }}
+                style={{ bottom: targetLineBottom }}
               />
-            );
-          })()}
-          {(() => {
-            const maxCal = Math.max(
-              targets.calories,
-              ...dailyCaloriesData.map((dd) => dd.calories),
-              1,
-            );
-            return dailyCaloriesData.map((d) => {
+          ) : null}
+          <div className="flex items-end gap-2 h-full">
+            {dailyCaloriesData.map((d) => {
               const overTarget = d.calories > d.target;
-              const barH = (d.calories / maxCal) * 70;
-              // Action 5 Item 2 — match by date key. Mirror of mobile's
-              // `isDayToday = d.key === todayKey` rule in
-              // `apps/mobile/app/(tabs)/progress.tsx`. Future days in
-              // the week (e.g. Sunday for a Wednesday user) render at
-              // the 0.75 baseline; only today renders dimmed.
+              const barH =
+                maxCal > 0
+                  ? Math.max(4, (d.calories / scaleMax) * barMax)
+                  : 4;
               const isDayToday = d.key === todayDateKey;
-              // Item #11 — past days without a target snapshot render
-              // with a dashed outline. Today and future days are
-              // skipped (no historical-target ambiguity for those).
               const isPast = d.key < todayDateKey;
               const showApproxCue = isPast && !d.isSnapshot && d.calories > 0;
-              // Audit 2026-05-12 (premium-bar #16 — DC10): match the
-              // calorie-ring 3-state rule — empty=border tint,
-              // under=success green, over=destructive red. Web was
-              // using `var(--warning)` (amber) for over which broke
-              // parity with mobile and collapsed the over-budget signal
-              // with the under-target state in dark mode.
               const bg = d.calories === 0
                 ? "var(--border)"
                 : overTarget
-                  ? "var(--destructive)"
+                  ? "var(--over-budget-fg)"
                   : "var(--success)";
+              const valueLabel =
+                d.calories > 0
+                  ? d.calories >= 1000
+                    ? `${(d.calories / 1000).toFixed(1)}k`
+                    : String(d.calories)
+                  : "";
               return (
-                <div key={d.key} className="flex-1 flex flex-col items-center gap-1">
-                  <span className="text-[9px] text-muted-foreground tabular-nums">
-                    {d.calories >= 1000 ? `${(d.calories / 1000).toFixed(1)}k` : d.calories}
+                <div key={d.key} className="flex-1 flex flex-col items-center gap-1 min-w-0">
+                  <span className="text-[11px] text-muted-foreground tabular-nums leading-none min-h-[14px]">
+                    {valueLabel}
                   </span>
                   <div
-                    className="w-full rounded-md"
+                    className="w-full rounded-[5px]"
                     data-testid={`progress-day-bar-${d.key}`}
                     data-today={isDayToday ? "true" : "false"}
                     data-approx={showApproxCue ? "true" : "false"}
@@ -1562,22 +1569,26 @@ function ProgressDashboardContent() {
                         : {}),
                     }}
                   />
-                  <span className="text-[10px] text-muted-foreground font-medium">{d.day}</span>
+                  <span
+                    className={[
+                      "text-[10px] font-medium leading-none",
+                      isDayToday ? "text-primary font-bold" : "text-muted-foreground",
+                    ].join(" ")}
+                  >
+                    {d.day}
+                  </span>
                 </div>
               );
-            });
-          })()}
+            })}
+          </div>
         </div>
-        {/* Legend — mirror of mobile progress.tsx. TestFlight feedback
-            (2026-04-18 AISAWnLgU9cjRBOuEY-HuJU) "not intuitive"
-            without a colour key. */}
         <div className="flex items-center gap-3 mt-2 text-[10px] text-muted-foreground flex-wrap">
           <span className="flex items-center gap-1">
             <span className="inline-block w-2 h-2 rounded-sm" style={{ background: "var(--success)" }} />
             At or under target
           </span>
           <span className="flex items-center gap-1">
-            <span className="inline-block w-2 h-2 rounded-sm" style={{ background: "var(--destructive)" }} />
+            <span className="inline-block w-2 h-2 rounded-sm" style={{ background: "var(--over-budget-fg)" }} />
             Over target
           </span>
           {targets.calories > 0 ? (
@@ -1587,15 +1598,23 @@ function ProgressDashboardContent() {
             </span>
           ) : null}
         </div>
+            </>
+          );
+        })()}
       </div>
 
       {/* MACRO ADHERENCE — F-117 v2 (Grace, 2026-05-07): bar fill
           clamps to 100% via `formatMacroAdherenceBar`; over-target
-          rows render the % in destructive (red) so the bar + label
-          together communicate "over budget". The "(capped at 150)"
-          parenthetical is gone. */}
-      <div className="rounded-xl bg-card border border-border p-4 mb-6">
+          rows render bar + label in over-budget amber (NOT red) so
+          the row reads "over budget" without feeling like an error.
+          Per brand-tokens.md + project memory ("over-budget is amber,
+          never red"). */}
+      <div className="rounded-xl bg-card border border-border p-4 card-elevated">
         <p className="text-sm font-semibold text-foreground mb-3">Macro Adherence</p>
+        <p className="text-[10px] text-muted-foreground mb-2">
+          Based on {weekStatsBundle.daysWithFood}{" "}
+          {weekStatsBundle.daysWithFood === 1 ? "day" : "days"} with logged food
+        </p>
         <div className="space-y-2">
           {([
             ["Protein", proteinAdherence, "var(--macro-protein)"],
@@ -1603,7 +1622,7 @@ function ProgressDashboardContent() {
             ["Fat", fatAdherence, "var(--macro-fat)"],
           ] as const).map(([name, pct, color]) => {
             const bar = formatMacroAdherenceBar({ adherencePct: pct });
-            const tone = bar.isOver ? "var(--destructive)" : color;
+            const tone = bar.isOver ? "var(--over-budget-fg)" : color;
             return (
               <div key={name} className="flex items-center gap-2.5">
                 <div className="w-2 h-2 rounded-sm" style={{ background: color }} />
@@ -1626,6 +1645,7 @@ function ProgressDashboardContent() {
             );
           })}
         </div>
+      </div>
       </div>
 
       {/* WEEKLY INSIGHT — removed (Action 5 Item 1, 2026-04-19).
@@ -1657,7 +1677,7 @@ function ProgressDashboardContent() {
         if (!resolved) return null;
         const showAdaptiveExtras = resolved.source === "adaptive";
         return (
-        <div className="rounded-xl bg-card border border-border p-4 mb-6 mt-6" data-testid="progress-maintenance-card">
+        <div className="rounded-xl bg-card border border-border p-4 mb-6 mt-6 card-elevated" data-testid="progress-maintenance-card">
           <div className="flex items-center gap-2 mb-3">
             <IconBox size="sm" tone="primary"><Icons.calories /></IconBox>
             <p className="text-sm font-semibold text-foreground">Maintenance</p>
@@ -1691,7 +1711,7 @@ function ProgressDashboardContent() {
           </div>
 
           <div className="flex items-baseline gap-2 mb-1">
-            <p className={`text-[32px] font-bold tabular-nums ${showAdaptiveExtras ? "text-success" : "text-foreground"}`}>
+            <p className={`text-[28px] font-bold tabular-nums ${showAdaptiveExtras ? "text-success" : "text-foreground"}`}>
               {resolved.kcal.toLocaleString()}
             </p>
             <p className="text-xs text-muted-foreground">kcal/day</p>
@@ -1860,7 +1880,7 @@ function ProgressDashboardContent() {
           mode flip back to "show" in Settings — that's the explicit
           opt-in we want, not a secondary side-channel here. */}
       {profileWeightSurfaceMode === "show" ? (
-      <div className="rounded-xl bg-card border border-border p-4 mb-6 mt-6">
+      <div className="rounded-xl bg-card border border-border p-4 mb-6 mt-6 card-elevated">
         <p className="text-sm font-semibold text-foreground mb-3">Weight</p>
         {/* ENG-534 (2026-05-16): current + goal weight are HIGH-class
             body-stats. `ph-mask` makes PostHog session-replay render
@@ -1885,7 +1905,7 @@ function ProgressDashboardContent() {
                 mobile got in dd043c3 + 7b0b9b6, ported to the
                 Recharts surface so the web chart no longer reads
                 as the cheap default. */}
-            <ResponsiveContainer width="100%" height={140}>
+            <ResponsiveContainer width="100%" height={170}>
               <LineChart data={weightChartData}>
                 <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" />
                 <YAxis hide domain={["dataMin - 1", "dataMax + 1"]} />
@@ -2041,7 +2061,7 @@ function ProgressDashboardContent() {
           : null;
 
         return (
-          <div className="rounded-xl bg-card border border-border p-4 mb-6">
+          <div className="rounded-xl bg-card border border-border p-4 mb-6 card-elevated">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <IconBox size="sm" tone="success"><Icons.check /></IconBox>
@@ -2117,7 +2137,7 @@ function ProgressDashboardContent() {
       })()}
 
       {/* STEPS */}
-      <div className="rounded-xl bg-card border border-border p-4 mb-6">
+      <div className="rounded-xl bg-card border border-border p-4 mb-6 card-elevated">
         <p className="text-sm font-semibold text-foreground mb-3">Steps</p>
         <div className="flex gap-6 mb-3">
           <div className="text-center">
@@ -2154,7 +2174,7 @@ function ProgressDashboardContent() {
       </div>
 
       {/* BODY FAT */}
-      <div className="rounded-xl bg-card border border-border p-4">
+      <div className="rounded-xl bg-card border border-border p-4 card-elevated">
         <p className="text-sm font-semibold text-foreground mb-3">Body Fat</p>
         {/* ENG-534 (2026-05-16): body-fat % is HIGH-class. `ph-mask`
             makes PostHog session-replay render this as a grey block. */}
@@ -2281,7 +2301,7 @@ function WeightTrendOnlyCardWeb({
   return (
     <div
       data-testid="progress-weight-trend-only-card"
-      className="rounded-xl bg-card border border-border p-4 mb-4"
+      className="rounded-xl bg-card border border-border p-4 mb-4 card-elevated"
     >
       <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
         Weight trend
@@ -2329,11 +2349,19 @@ function WeightRangeCardWeb({
     return (
       <div
         data-testid="progress-weight-range-card-empty"
-        className="rounded-xl bg-card border border-border p-4 mb-4"
+        className="rounded-xl bg-card border border-border p-5 mb-4 card-elevated"
       >
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Weight</p>
-        <p className="text-sm text-muted-foreground mt-2">
-          Log a weight on the tracker to see your trend here.
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-8 h-8 rounded-lg bg-primary/8 flex items-center justify-center">
+            <Icons.scale className="h-4 w-4 text-primary" aria-hidden />
+          </div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">Weight</p>
+        </div>
+        <p className="text-[15px] font-semibold text-foreground">
+          Your trend starts with a weigh-in
+        </p>
+        <p className="text-[13px] text-muted-foreground mt-1">
+          Log a weight and we&apos;ll chart your trajectory over time.
         </p>
       </div>
     );
@@ -2352,7 +2380,7 @@ function WeightRangeCardWeb({
   return (
     <div
       data-testid="progress-weight-range-card"
-      className="rounded-xl bg-card border border-border p-4 mb-4"
+      className="rounded-xl bg-card border border-border p-4 card-elevated h-full"
     >
       <div className="flex items-start justify-between mb-1">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Weight</p>
@@ -2406,6 +2434,9 @@ function WeightRangeCardWeb({
   );
 }
 
+const PROGRESS_RANGE_OVERLINE =
+  "text-[11px] font-semibold uppercase tracking-widest text-muted-foreground";
+
 function CaloriesRangeCardWeb({
   avgCaloriesPerDay,
   deltaVsTargetKcal,
@@ -2420,25 +2451,26 @@ function CaloriesRangeCardWeb({
   targetCalories: number;
 }) {
   return (
-    <div data-testid="progress-calories-range-wrapper" className="mb-4">
-      {/* 17pt bold header OUTSIDE the card per prototype. */}
-      <h2
-        data-testid="progress-calories-range-header"
-        className="text-[17px] font-bold text-foreground -tracking-[0.01em] mb-2"
-      >
-        Calories
-      </h2>
+    <div data-testid="progress-calories-range-wrapper" className="h-full">
       <div
         data-testid="progress-calories-range-card"
-        className="rounded-xl bg-card border border-border p-4"
+        className="rounded-xl bg-card border border-border p-4 card-elevated h-full"
       >
+        <p data-testid="progress-calories-range-header" className={PROGRESS_RANGE_OVERLINE}>
+          Calories (avg/day)
+        </p>
         {avgCaloriesPerDay == null ? (
-          <p className="text-sm text-muted-foreground">
-            Log meals on Today to see your average calories for this range.
-          </p>
+          <div className="py-2 mt-2">
+            <p className="text-[15px] font-semibold text-foreground">
+              Your calorie trends will show here
+            </p>
+            <p className="text-[13px] text-muted-foreground mt-1">
+              Log meals on Today and your averages will build over time.
+            </p>
+          </div>
         ) : (
           <>
-            <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start justify-between gap-3 mt-2">
               <p
                 data-testid="progress-calories-range-avg"
                 className="text-[24px] font-bold text-foreground tabular-nums -tracking-[0.01em]"
@@ -2449,11 +2481,15 @@ function CaloriesRangeCardWeb({
               {deltaVsTargetKcal != null ? (
                 <span
                   data-testid="progress-calories-range-delta-pill"
+                  // 2026-05-21: over-target pill is amber, never red.
+                  // Per brand-tokens.md + project memory ("over-budget
+                  // is amber, never red"). Red was alarming/clinical
+                  // for a wellness app.
                   className={[
                     "shrink-0 inline-flex items-center rounded-full text-[11px] font-semibold px-2 py-0.5 tabular-nums",
                     deltaVsTargetKcal <= 0
                       ? "bg-success text-foreground"
-                      : "bg-destructive text-destructive-foreground",
+                      : "bg-[var(--over-budget-soft)] text-[var(--over-budget-fg)]",
                   ].join(" ")}
                 >
                   {deltaVsTargetKcal > 0 ? "+" : "−"}
@@ -2497,20 +2533,17 @@ function ProteinRangeCardWeb({
 }) {
   const max = Math.max(1, targetProteinG, ...series);
   return (
-    <div data-testid="progress-protein-range-wrapper" className="mb-4">
-      <h2
-        data-testid="progress-protein-range-header"
-        className="text-[17px] font-bold text-foreground -tracking-[0.01em] mb-2"
-      >
-        Protein
-      </h2>
+    <div data-testid="progress-protein-range-wrapper" className="h-full">
       <div
         data-testid="progress-protein-range-card"
-        className="rounded-xl bg-card border border-border p-4"
+        className="rounded-xl bg-card border border-border p-4 card-elevated h-full"
       >
+        <p data-testid="progress-protein-range-header" className={PROGRESS_RANGE_OVERLINE}>
+          Protein (avg/day)
+        </p>
         <p
           data-testid="progress-protein-range-avg"
-          className="text-[24px] font-bold text-foreground tabular-nums -tracking-[0.01em]"
+          className="text-[24px] font-bold text-foreground tabular-nums -tracking-[0.01em] mt-2"
         >
           {avgProteinPerDay}
           <span className="text-sm font-medium text-muted-foreground"> g avg/day</span>
@@ -2572,18 +2605,15 @@ function TrendSummaryCardWeb({
         ? `${Math.round(kgToLb(goalWeightKg) * 10) / 10} lb`
         : `${Math.round(goalWeightKg * 10) / 10} kg`;
   return (
-    <div data-testid="progress-trend-summary-wrapper" className="mb-4">
-      <h2
-        data-testid="progress-trend-summary-header"
-        className="text-[17px] font-bold text-foreground -tracking-[0.01em] mb-2"
-      >
-        Trend summary
-      </h2>
+    <div data-testid="progress-trend-summary-wrapper">
       <div
         data-testid="progress-trend-summary-card"
-        className="rounded-xl bg-card border border-border p-4"
+        className="rounded-xl bg-card border border-border p-4 card-elevated"
       >
-        <dl className="flex flex-col gap-2.5 text-[13px]">
+        <p data-testid="progress-trend-summary-header" className={PROGRESS_RANGE_OVERLINE}>
+          Trend summary
+        </p>
+        <dl className="flex flex-col gap-2.5 text-[13px] mt-3.5">
           <div className="flex items-center justify-between gap-3">
             <dt className="text-muted-foreground">Days hit calorie target</dt>
             <dd className="font-bold text-foreground tabular-nums">
@@ -2640,7 +2670,7 @@ function ProgressSuspenseFallback() {
     <>
       <ProgressTabChrome overline="LAST 30 DAYS" trailing={calendarPlaceholder} />
       <div
-        className="hidden md:block max-w-2xl mx-auto px-pm-6 py-pm-6"
+        className="hidden md:block product-shell py-pm-6"
         data-testid="progress-suspense-fallback"
       >
         <div className="mb-6 flex items-start justify-between gap-3">
@@ -2653,7 +2683,8 @@ function ProgressSuspenseFallback() {
             </p>
             <h1
               data-testid="progress-header"
-              className="text-[28px] font-bold text-foreground tracking-tight mt-0.5"
+              className="text-[24px] font-bold text-foreground tracking-tight mt-0.5"
+              style={{ letterSpacing: "-0.5px" }}
             >
               Progress
             </h1>

@@ -1,5 +1,6 @@
 import { memo, useMemo, useState } from "react";
 import {
+  CalendarRange,
   Coffee,
   Cookie,
   Lock,
@@ -483,12 +484,7 @@ export const MealPlanner = memo(function MealPlanner({
   }, [discoverRecipes, savedRecipesForLibrary]);
 
   const plan = mealPlan ?? [];
-  // F2-B (2026-04-28): the rendered grid follows the actual plan
-  // length now that day-count is user-selectable (1 / 3 / 7). Pre-
-  // fix the grid was hardcoded to 7 columns regardless of how many
-  // days the sampler produced. Empty plans still render the full
-  // 7-column placeholder grid so the regenerate target is visible
-  // before the user has any plan data.
+  const isPlanEmpty = plan.length === 0 || plan.every((d) => d.meals.length === 0);
   const renderDayCount = plan.length > 0 ? plan.length : 7;
   const days: DayPlan[] = Array.from({ length: renderDayCount }, (_, i) => {
     return plan[i] ?? ({ day: i + 1, meals: [], totals: { calories: 0, protein: 0, carbs: 0, fat: 0 } } as DayPlan);
@@ -504,11 +500,11 @@ export const MealPlanner = memo(function MealPlanner({
         : "md:grid-cols-7";
 
   return (
-    <div className="max-w-6xl mx-auto px-pm-6 py-pm-6 space-y-5">
+    <div className="product-shell py-pm-6 space-y-5">
       <div className="hidden md:block">
       <h1
         className="text-foreground font-bold -tracking-[0.02em]"
-        style={{ fontSize: 24, margin: "0 0 4px" }}
+        style={{ fontSize: 28, margin: "0 0 4px", letterSpacing: "-0.5px" }}
       >
         Meal plan
       </h1>
@@ -538,7 +534,7 @@ export const MealPlanner = memo(function MealPlanner({
       {showSummaryCard && summary ? (
         <div
           data-testid="planner-week-summary-card"
-          className="rounded-2xl border border-border bg-card mb-4"
+          className="rounded-2xl border border-border bg-card mb-4 card-elevated"
           style={{ padding: 16 }}
         >
           <div className="flex items-start justify-between gap-3 mb-3">
@@ -615,7 +611,7 @@ export const MealPlanner = memo(function MealPlanner({
                 title="Click to switch · double-click to rename"
                 data-testid={`planner-slot-chip-${s.id}`}
                 className={[
-                  "inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-semibold border transition-all",
+                  "inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all",
                   active
                     ? "border-primary bg-primary/10 text-primary"
                     : "border-border text-foreground hover:bg-muted/60",
@@ -651,7 +647,7 @@ export const MealPlanner = memo(function MealPlanner({
             type="button"
             onClick={() => setNewPlanOpen(true)}
             data-testid="planner-slot-new"
-            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-semibold border border-dashed border-border text-muted-foreground hover:bg-muted/60 transition-all"
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-semibold border border-dashed border-border text-muted-foreground hover:bg-muted/60 transition-all"
           >
             + New
           </button>
@@ -725,7 +721,7 @@ export const MealPlanner = memo(function MealPlanner({
               onClick={() => handleSlotToggle(slot)}
               data-testid={`planner-slot-toggle-${slot}`}
               className={[
-                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold border transition-all capitalize",
+                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all capitalize",
                 enabled
                   ? "border-primary bg-primary/10 text-primary"
                   : "border-border text-muted-foreground hover:bg-muted/60",
@@ -778,6 +774,38 @@ export const MealPlanner = memo(function MealPlanner({
         })}
       </div>
 
+      {isPlanEmpty ? (
+        <div
+          data-testid="planner-empty-state"
+          className="flex flex-col items-center justify-center rounded-2xl border border-border bg-card card-elevated"
+          style={{ padding: "48px 24px", minHeight: 320 }}
+        >
+          <div
+            className="flex items-center justify-center rounded-2xl bg-primary/10"
+            style={{ width: 64, height: 64, marginBottom: 20 }}
+          >
+            <CalendarRange size={28} className="text-primary" strokeWidth={1.5} />
+          </div>
+          <p className="text-foreground text-center" style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>
+            Ready to plan your week?
+          </p>
+          <p
+            className="text-muted-foreground text-center"
+            style={{ fontSize: 13, lineHeight: "1.5", maxWidth: 340, marginBottom: 24 }}
+          >
+            Hit generate and we&apos;ll build a {planDays}-day meal plan from your saved recipes, balanced to your calorie and macro targets.
+          </p>
+          <button
+            data-testid="planner-empty-generate-btn"
+            className="rounded-full bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
+            style={{ fontSize: 14, fontWeight: 600, padding: "10px 28px" }}
+            onClick={handleRegenerate}
+            disabled={isGenerating}
+          >
+            {isGenerating ? "Generating…" : "Generate meal plan"}
+          </button>
+        </div>
+      ) : (
       <div
         data-testid="planner-desktop-kanban"
         className={`grid grid-cols-1 ${gridColsClass}`}
@@ -825,7 +853,7 @@ export const MealPlanner = memo(function MealPlanner({
               // to Tailwind utilities (`p-3.5`, `gap-2.5`) so spacing
               // is consistent with the rest of the system and easier
               // to track via the design tokens.
-              className={`rounded-2xl border flex flex-col p-3.5 gap-2.5 ${
+              className={`rounded-2xl border flex flex-col p-3.5 gap-2.5 card-elevated ${
                 isTodayCol
                   ? "bg-primary/10 border-primary/30"
                   : "bg-card border-border"
@@ -946,7 +974,7 @@ export const MealPlanner = memo(function MealPlanner({
                         <SlotIcon size={11} aria-hidden />
                         {slot}
                       </p>
-                      <p className="text-muted-foreground" style={{ fontSize: 12 }}>
+                      <p className="text-[11px] text-muted-foreground">
                         Empty slot
                       </p>
                     </div>
@@ -1172,22 +1200,27 @@ export const MealPlanner = memo(function MealPlanner({
                 if (missing.length === 0) return null;
                 return (
                   <div
-                    className="border-t border-border pt-2 mt-1 flex flex-wrap gap-1.5"
+                    className="border-t border-border px-3 py-2 mt-1 flex items-center gap-2"
                     data-testid={`planner-add-slot-back-${dp.day}`}
                   >
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground shrink-0">
+                      Add
+                    </span>
+                    <div className="flex flex-1 min-w-0 flex-nowrap gap-1.5">
                     {missing.map((slot) => (
                       <button
                         key={slot}
                         type="button"
                         onClick={() => handleAddSlotBack(di, slot)}
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-primary border border-primary/40 bg-primary/10 hover:bg-primary/15 transition-colors"
-                        style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase" }}
+                        className="flex-1 min-w-0 inline-flex items-center justify-center gap-0.5 px-1.5 py-1 rounded-md text-primary border border-primary/40 bg-primary/10 hover:bg-primary/15 transition-colors"
+                        style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.02em" }}
                         aria-label={`Add ${SLOT_TITLE[slot]} slot`}
                       >
-                        <Plus size={10} aria-hidden />
-                        {slot}
+                        <Plus size={10} aria-hidden className="shrink-0" />
+                        <span className="truncate">{SLOT_TITLE[slot]}</span>
                       </button>
                     ))}
+                    </div>
                   </div>
                 );
               })()}
@@ -1195,6 +1228,7 @@ export const MealPlanner = memo(function MealPlanner({
           );
         })}
       </div>
+      )}
 
       {/* F2-F (2026-04-28): bottom CTA row only renders when the
           summary card isn't taking the lead — i.e. on empty plans

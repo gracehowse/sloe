@@ -172,15 +172,27 @@ export function PricingTiersGrid({
               key={tier.name}
               className={`relative rounded-2xl flex flex-col ${
                 tier.highlighted
-                  ? // Audit 2026-05-04 #23: deeper background, heavier
-                    // border, bigger shadow so Pro reads as the primary
-                    // path at first glance vs. the white Free card.
-                    // `pt-10` clears the full-width ribbon at top.
-                    "bg-gradient-to-b from-violet-100 to-indigo-100 dark:from-violet-950/50 dark:to-indigo-950/50 border-2 border-violet-500 dark:border-violet-500 shadow-2xl shadow-violet-500/20 md:scale-105 md:-my-2 pt-10 pb-6 px-6"
-                  : tier.name === "Pro"
-                    ? "bg-slate-900 dark:bg-slate-800 border border-slate-700 shadow-lg p-6"
-                    : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm p-6"
+                  ? // Canonical palette 2026-05-22: premium tier surface
+                    // is `--card-elevated` (warm cream lift), NOT a dark
+                    // slate card. Dark-on-cream reads richer than white-
+                    // on-slate on the warm palette. Indigo accent ring
+                    // (transparent --accent-primary-ring) replaces the
+                    // solid violet border so the Pro card harmonises
+                    // with the cream surface family rather than
+                    // looking like a different platform.
+                    "border-2 shadow-2xl md:scale-105 md:-my-2 pt-10 pb-6 px-6"
+                  : "bg-card border border-border shadow-sm p-6"
               }`}
+              style={
+                tier.highlighted
+                  ? {
+                      background: "var(--card-elevated)",
+                      borderColor: "var(--accent-primary-ring)",
+                      boxShadow:
+                        "0 4px 16px var(--accent-primary-soft), 0 12px 32px rgba(26, 23, 20, 0.08)",
+                    }
+                  : undefined
+              }
             >
               {tier.highlighted && (
                 // Audit 2026-05-04 #23: full-width ribbon spans the
@@ -192,17 +204,17 @@ export function PricingTiersGrid({
               )}
 
               <div className="flex items-center gap-2 mb-1">
-                <h3 className={`text-lg font-semibold ${tier.name === "Pro" ? "text-white" : "text-slate-900 dark:text-white"}`}>
+                <h3 className={`text-lg font-semibold text-foreground`}>
                   {tier.name}
                 </h3>
                 <CurrentTierBadge tierName={tier.name} />
               </div>
 
               <div className="mb-2 flex items-baseline gap-2">
-                <span className={`text-4xl font-bold ${tier.name === "Pro" ? "text-white" : "text-slate-900 dark:text-white"}`}>
+                <span className={`text-4xl font-bold text-foreground`}>
                   {price}
                 </span>
-                <span className={`text-sm ${tier.name === "Pro" ? "text-slate-400" : "text-slate-500 dark:text-slate-400"}`}>
+                <span className={`text-sm text-muted-foreground`}>
                   {period}
                 </span>
                 {showAnnual ? (() => {
@@ -229,11 +241,7 @@ export function PricingTiersGrid({
               {regionVatNote && tier.checkoutTier ? (
                 <p
                   data-testid={`pricing-vat-inclusive-${tier.name.toLowerCase()}`}
-                  className={`-mt-1 mb-2 text-xs ${
-                    tier.name === "Pro"
-                      ? "text-slate-300"
-                      : "text-slate-500 dark:text-slate-400"
-                  }`}
+                  className="-mt-1 mb-2 text-xs text-muted-foreground"
                 >
                   Includes VAT
                 </p>
@@ -261,27 +269,27 @@ export function PricingTiersGrid({
                 return (
                   <p
                     data-testid={`pricing-annual-reference-${tier.name.toLowerCase()}`}
-                    className={`-mt-1 mb-2 text-xs ${tier.name === "Pro" ? "text-slate-400" : "text-slate-500 dark:text-slate-400"}`}
+                    className={`-mt-1 mb-2 text-xs text-muted-foreground`}
                   >
                     {refLine}
                   </p>
                 );
               })() : null}
 
-              <p className={`text-sm mb-5 ${tier.name === "Pro" ? "text-slate-300" : "text-slate-600 dark:text-slate-400"}`}>
+              <p className={`text-sm mb-5 text-muted-foreground`}>
                 {tier.tag.replace(/\.$/, "")}
               </p>
 
               <ul className="space-y-2 mb-5 flex-1">
                 {tier.featHeadStripped ? (
-                  <li className={`text-sm font-medium ${tier.name === "Pro" ? "text-slate-200" : "text-slate-700 dark:text-slate-300"}`}>
+                  <li className={`text-sm font-medium text-foreground`}>
                     {tier.featHeadStripped}
                   </li>
                 ) : null}
                 {tier.features.map((feature) => (
                   <li
                     key={feature}
-                    className={`flex items-start gap-2 text-sm ${tier.name === "Pro" ? "text-slate-200" : "text-slate-700 dark:text-slate-300"}`}
+                    className={`flex items-start gap-2 text-sm text-foreground`}
                   >
                     <Check
                       className={`w-4 h-4 shrink-0 mt-0.5 ${

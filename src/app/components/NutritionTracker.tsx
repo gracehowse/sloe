@@ -81,6 +81,7 @@ import { PhotoLogDialog } from "./suppr/photo-log-dialog";
 import { AiPaywallDialog, type AiPaywallFeature } from "./suppr/ai-paywall-dialog";
 import { TodayHeroStats } from "./suppr/today-hero-stats";
 import { TodayWeekSidebar } from "./suppr/today-week-sidebar";
+import { TodayDesktopRightRail } from "./suppr/today-desktop-right-rail";
 import { TodayPlannedMealsCard } from "./suppr/today-planned-meals-card";
 import { TodayEatAgainBanner } from "./suppr/today-eat-again-banner";
 import { TodayFastingPill } from "./suppr/today-fasting-pill";
@@ -105,7 +106,6 @@ import {
   type CreateCustomFoodPayload,
 } from "./suppr/create-custom-food-dialog";
 import { createCustomFood } from "../../lib/nutrition/customFoodsClient";
-import { TodayBrandBar } from "./suppr/today-brand-bar";
 import { TodayDateHeader } from "./suppr/today-date-header";
 import { isBelowMealsPromptVisible } from "../../lib/today/belowMealsPromptSelection";
 import { aiLoggingSourceLabel, type AiLoggedItem } from "../../lib/nutrition/aiLogging";
@@ -512,7 +512,7 @@ export const NutritionTracker = memo(function NutritionTracker({
     }
     return s;
   }, [nutritionByDay]);
-  const [ringExpanded, setRingExpanded] = useState(true);
+  const [ringExpanded, setRingExpanded] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   /** Batch 1.4 — meal row context menu: target meal id for the Copy dialog. */
   const [copyMealTargetId, setCopyMealTargetId] = useState<string | null>(null);
@@ -2138,8 +2138,13 @@ export const NutritionTracker = memo(function NutritionTracker({
 
   const avatarLetter = (profileDisplayName?.trim()?.[0] ?? authEmail?.trim()?.[0] ?? "U").toUpperCase();
 
+  const firstName = profileDisplayName?.trim()?.split(/\s/)[0] ?? null;
+  const greetingName = firstName || null;
+  const hour = new Date().getHours();
+  const timeGreeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+
   return (
-    <div className="max-w-5xl mx-auto px-pm-6 py-pm-6 space-y-6">
+    <div className="product-shell py-pm-5 space-y-4">
       {!isOnline ? (
         <div
           role="alert"
@@ -2172,22 +2177,18 @@ export const NutritionTracker = memo(function NutritionTracker({
           mobile-web the pip is right-aligned above the date header to
           mirror the mobile composition. Suppressed on week-view to
           keep the week toggle uncrowded. */}
-      {viewMode === "day" ? (
-        <div className="flex justify-end pt-1.5 -mb-1 px-1">
-          <StreakPip days={streakDays} />
-        </div>
-      ) : null}
-
-      <div className="md:flex md:gap-6 md:items-start">
+      {/* Streak pip — mobile-web only. On desktop (`lg+`) the streak
+          lives in the right rail's hero card so a second pip up here
+          would double-render the same fact. */}
+      <div className="lg:flex lg:gap-8 lg:items-start">
         <div
           className={
             viewMode === "day"
-              ? "flex-1 min-w-0 space-y-6 md:max-w-[440px]"
-              : "flex-1 min-w-0 space-y-6"
+              ? "flex-1 min-w-0 space-y-4 lg:max-w-[480px]"
+              : "flex-1 min-w-0 space-y-4"
           }
         >
-      <div className="space-y-4 lg:space-y-0">
-        <TodayBrandBar />
+      <div className="space-y-1 lg:space-y-0">
         <TodayDateHeader
         viewMode={viewMode}
         onViewModeChange={setViewMode}
@@ -2205,13 +2206,18 @@ export const NutritionTracker = memo(function NutritionTracker({
         onOpenSettings={() => onOpenSettings?.()}
         hideViewModeToggle
         hideDayStrip
+        dayGreeting={
+          selectedDateKey === todayKey() && viewMode === "day"
+            ? greetingName
+              ? `${timeGreeting}, ${greetingName}`
+              : timeGreeting
+            : undefined
+        }
+        streakDays={protectedStreakLength}
+        freezeProtected={protectedDateKeys.has(todayKey())}
       />
       </div>
 
-      {/* DC12 (2026-05-14, premium-bar audit) — Headspace-style
-          supportive missed-day line; web companion to the mobile
-          `today-missed-yesterday-copy` block. Gate logic lives in
-          `missedYesterdayVisible`. */}
       {missedYesterdayVisible && (
         <p
           data-testid="today-missed-yesterday-copy"
@@ -2740,12 +2746,17 @@ export const NutritionTracker = memo(function NutritionTracker({
         </div>
 
         {viewMode === "day" ? (
-          <TodayWeekSidebar
-            className="hidden md:block w-[260px] shrink-0 sticky top-4 self-start"
-            byDay={nutritionByDay}
-            calorieTarget={effectiveCalorieTarget}
+          <TodayDesktopRightRail
+            className="hidden lg:block sticky top-4 self-start"
+            targetKcal={Math.round(effectiveCalorieTarget)}
+            weekDailyKcal={weekData.days.map((d) => d.totals.calories)}
+            weekDayLabels={weekData.days.map((d) => d.short)}
+            weekLoggedDays={weekData.loggedDaysInWeek}
+            weekAvgKcal={weekData.loggedDaysInWeek > 0 ? weekData.weekAvg.calories : null}
+            streakDays={streakDays}
             activeDateKey={selectedDateKey}
             todayDateKey={todayKey()}
+            byDay={nutritionByDay}
             onSelectDayKey={(k) => setSelectedDateKey(k)}
           />
         ) : null}

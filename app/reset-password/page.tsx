@@ -45,11 +45,31 @@ export default function ResetPasswordPage() {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center px-6"
+      className="min-h-screen flex items-center justify-center px-4 sm:px-6 py-8"
       style={{ background: "var(--background)" }}
     >
+      <div className="w-full max-w-md">
+        {/* Brand mark above the card — matches /login, /signup, /signin.
+            Neutral `--brand-mark-*` tokens per the 2026-05-19 brand
+            decision (not indigo primary). DRIFT-01 fix 2026-05-22. */}
+        <div className="text-center mb-6 sm:mb-8">
+          {/* Canonical brand mark — paper-on-paper drop-cap. */}
+          <div
+            className="inline-flex items-center justify-center mb-4 font-extrabold"
+            style={{
+              color: "var(--brand-mark-ring)",
+              fontSize: 32,
+              letterSpacing: "-0.04em",
+              lineHeight: 1,
+            }}
+            aria-label="Suppr"
+          >
+            S
+          </div>
+        </div>
+
       <div
-        className="w-full max-w-md rounded-2xl p-8"
+        className="rounded-2xl p-8"
         style={{
           background: "var(--card)",
           border: "1px solid var(--border)",
@@ -141,6 +161,7 @@ export default function ResetPasswordPage() {
             ← Back to sign in
           </Link>
         </div>
+      </div>
       </div>
     </div>
   );

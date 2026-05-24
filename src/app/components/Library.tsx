@@ -211,7 +211,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-pm-6 py-pm-6 md:max-w-6xl space-y-5">
+    <div className="product-shell py-pm-6 space-y-5">
       {/* Header
           2026-04-20 desktop prototype port
           (`docs/ux/claude-design-bundles/prototype/project/screens-web.jsx`
@@ -391,7 +391,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                   key={`desktop-${recipe.id}`}
                   type="button"
                   onClick={() => setSelectedRecipe(recipe)}
-                  className="group text-left rounded-2xl bg-card border border-border overflow-hidden cursor-pointer w-full hover:shadow-xl hover:shadow-foreground/5 hover:-translate-y-0.5 transition-all"
+                  className="group text-left rounded-2xl bg-card border border-border overflow-hidden cursor-pointer w-full card-elevated hover:shadow-xl hover:shadow-foreground/5 hover:-translate-y-0.5 transition-all"
                 >
                   <div className="relative overflow-hidden" style={{ aspectRatio: "4 / 3" }}>
                     {/* Phase 5 / B5 (2026-04-27) — view-transition-name
@@ -437,7 +437,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                         <Icons.saved className="w-[14px] h-[14px] text-primary" />
                       </div>
                     ) : (
-                      <div className="absolute top-3 right-3 px-2.5 py-1 bg-card/95 backdrop-blur-sm rounded-md text-[12px] font-semibold shadow-sm text-foreground tabular-nums">
+                      <div className="absolute top-3 right-3 px-2.5 py-1 bg-card/95 backdrop-blur-sm rounded-md text-[11px] font-semibold shadow-sm text-foreground tabular-nums">
                         {kcal} kcal
                       </div>
                     )}
@@ -450,7 +450,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                       {fitPct}%
                     </span>
                     <p
-                      className="text-[14px] font-bold text-foreground leading-snug -tracking-[0.01em] pr-12"
+                      className="text-[13px] font-bold text-foreground leading-snug -tracking-[0.01em] pr-12"
                       style={{
                         display: "-webkit-box",
                         WebkitLineClamp: 2,

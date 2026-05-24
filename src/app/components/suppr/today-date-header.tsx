@@ -3,15 +3,9 @@
 import * as React from "react";
 import { Icons } from "../ui/icons";
 import { DayStrip } from "../DayStrip";
+import { StreakPip } from "./streak-pip";
 import { todayKey, formatDateLabel } from "../../../lib/nutrition/trackerDate";
 
-/**
- * TodayDateHeader — day/week navigation, view-mode toggle, avatar,
- * and the `DayStrip` row.
- *
- * Extracted from `NutritionTracker.tsx` (audit H3, 2026-04-18). Pure
- * presentation; all state lives in the composition root.
- */
 export interface TodayDateHeaderProps {
   viewMode: "day" | "week";
   onViewModeChange: (mode: "day" | "week") => void;
@@ -27,11 +21,19 @@ export interface TodayDateHeaderProps {
   onNavigateNext: () => void;
   onOpenCalendar: () => void;
   onOpenSettings: () => void;
-  /** Premium P1 (ENG-584): hide day/week view toggle. */
   hideViewModeToggle?: boolean;
-  /** Premium P1 (ENG-584): hide week day-strip row. */
   hideDayStrip?: boolean;
+  dayGreeting?: string;
+  streakDays?: number;
+  freezeProtected?: boolean;
+  onStreakPress?: () => void;
 }
+
+const ghostNav =
+  "w-7 h-7 shrink-0 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors";
+
+const chromeNav =
+  "w-8 h-8 shrink-0 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors border border-border bg-card";
 
 export function TodayDateHeader({
   viewMode,
@@ -50,16 +52,98 @@ export function TodayDateHeader({
   onOpenSettings,
   hideViewModeToggle = false,
   hideDayStrip = false,
+  dayGreeting,
+  streakDays,
+  freezeProtected,
+  onStreakPress,
 }: TodayDateHeaderProps) {
+  const calmDateNav = hideDayStrip && viewMode === "day";
+  const isToday = selectedDateKey === todayKey();
+  const showStreakPip =
+    viewMode === "day" &&
+    isToday &&
+    typeof streakDays === "number" &&
+    streakDays >= 2;
+  const titleText =
+    viewMode === "week" ? "This week" : formatDateLabel(selectedDate);
+
+  if (calmDateNav) {
+    return (
+      <div className="mb-2 flex flex-col gap-1.5">
+        <div className="flex items-center gap-1 min-w-0">
+          <button type="button" aria-label="Previous day" onClick={onNavigatePrev} className={ghostNav}>
+            <Icons.back className="w-5 h-5" />
+          </button>
+          <div className="min-w-0 flex-1 px-0.5">
+            <button
+              type="button"
+              className="w-full text-left"
+              onClick={onOpenCalendar}
+              aria-label="Choose date"
+            >
+              <h1
+                className="font-bold text-foreground tracking-tight text-[17px] leading-tight"
+                style={{ letterSpacing: "-0.35px" }}
+              >
+                {titleText}
+              </h1>
+              {dayGreeting && isToday ? (
+                <p data-testid="today-greeting" className="text-[12px] text-muted-foreground mt-0.5 truncate">
+                  {dayGreeting}
+                </p>
+              ) : null}
+            </button>
+            {!isToday ? (
+              <button
+                type="button"
+                onClick={() => {
+                  onSelectDateKey(todayKey());
+                  onViewModeChange("day");
+                }}
+                className="text-[11px] font-semibold text-primary hover:opacity-80 mt-0.5"
+              >
+                Jump to today
+              </button>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            aria-label="Next day"
+            onClick={onNavigateNext}
+            disabled={isToday}
+            className={`${ghostNav} disabled:opacity-20 disabled:cursor-not-allowed`}
+          >
+            <Icons.forward className="w-5 h-5" />
+          </button>
+          {showStreakPip ? (
+            <StreakPip
+              days={streakDays!}
+              freezeProtected={freezeProtected}
+              onPress={onStreakPress}
+            />
+          ) : null}
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            className="md:hidden w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-primary text-primary-foreground shrink-0"
+            aria-label="Open settings"
+          >
+            {avatarLetter}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="mb-6 flex flex-col gap-4">
+    <div className="mb-3 flex flex-col gap-2">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <button
             type="button"
             aria-label={viewMode === "week" ? "Previous week" : "Previous day"}
             onClick={onNavigatePrev}
-            className="w-8 h-8 shrink-0 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors border border-border bg-card"
+            className={chromeNav}
           >
             <Icons.back className="w-4 h-4" />
           </button>
@@ -67,81 +151,38 @@ export function TodayDateHeader({
             type="button"
             className="text-center min-w-0 flex-1"
             onClick={() => {
-              if (hideDayStrip && viewMode === "day") {
-                onOpenCalendar();
-                return;
-              }
               onSelectDateKey(todayKey());
               onViewModeChange("day");
             }}
-            aria-label={
-              hideDayStrip && viewMode === "day" ? "Choose date" : undefined
-            }
           >
-            <p className="text-xs uppercase tracking-widest text-muted-foreground font-medium truncate">
-              {viewMode === "week" ? (
-                weekLabel
-              ) : (
-                <>
-                  <span className="sm:hidden">
-                    {selectedDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}{" "}
-                    · {selectedDate.toLocaleDateString("en-US", { weekday: "short" })}
-                  </span>
-                  <span className="hidden sm:inline">
-                    {selectedDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}{" "}
-                    · {selectedDate.toLocaleDateString("en-US", { weekday: "long" })}
-                  </span>
-                </>
-              )}
-            </p>
+            {viewMode === "week" ? (
+              <p className="text-xs uppercase tracking-widest text-muted-foreground font-medium truncate">
+                {weekLabel}
+              </p>
+            ) : null}
             <h1
-              className={`font-bold text-foreground ${
-                hideDayStrip
-                  ? "text-lg sm:text-xl whitespace-nowrap"
-                  : "text-xl sm:text-2xl truncate"
-              }`}
+              className="font-bold text-foreground tracking-tight text-xl sm:text-2xl truncate"
+              style={{ fontSize: 24, letterSpacing: "-0.4px" }}
             >
-              {viewMode === "week" ? "This week" : formatDateLabel(selectedDate)}
+              {titleText}
             </h1>
+            {dayGreeting && viewMode === "day" && isToday ? (
+              <p data-testid="today-greeting" className="text-[12px] text-muted-foreground mt-0.5">
+                {dayGreeting}
+              </p>
+            ) : null}
           </button>
           <button
             type="button"
             aria-label={viewMode === "week" ? "Next week" : "Next day"}
             onClick={onNavigateNext}
-            disabled={viewMode === "day" && selectedDateKey === todayKey()}
-            className="w-8 h-8 shrink-0 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors border border-border bg-card disabled:opacity-30 disabled:cursor-not-allowed"
+            disabled={viewMode === "day" && isToday}
+            className={`${chromeNav} disabled:opacity-30 disabled:cursor-not-allowed`}
           >
             <Icons.forward className="w-4 h-4" />
           </button>
-          {hideDayStrip && viewMode === "day" && selectedDateKey !== todayKey() ? (
-            <button
-              type="button"
-              onClick={() => {
-                onSelectDateKey(todayKey());
-                onViewModeChange("day");
-              }}
-              className="shrink-0 text-sm font-semibold text-primary hover:opacity-80"
-            >
-              Today
-            </button>
-          ) : null}
-          {hideDayStrip && viewMode === "day" ? (
-            <button
-              type="button"
-              onClick={onOpenCalendar}
-              aria-label="Open calendar"
-              className="w-8 h-8 shrink-0 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors border border-border bg-card"
-            >
-              <Icons.calendar className="w-4 h-4" />
-            </button>
-          ) : null}
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {/* F-84 web parity (2026-04-25 sync-enforcer D-1) — mobile
-              shipped a Sun/Grid icon-only toggle but web kept text labels.
-              Same intent, same accessibility names; icon-only matches the
-              prototype carryover and resolves the customer-lens
-              "three time-navigation things" pile-up. */}
           {!hideViewModeToggle ? (
             <div className="flex rounded-lg border border-border bg-muted/50 p-0.5">
               <button
@@ -150,7 +191,9 @@ export function TodayDateHeader({
                 aria-label="Day view"
                 aria-pressed={viewMode === "day"}
                 className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors ${
-                  viewMode === "day" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  viewMode === "day"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <Icons.lightMode className="w-4 h-4" />
@@ -161,19 +204,19 @@ export function TodayDateHeader({
                 aria-label="Week view"
                 aria-pressed={viewMode === "week"}
                 className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors ${
-                  viewMode === "week" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  viewMode === "week"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <Icons.layoutGrid className="w-4 h-4" />
               </button>
             </div>
           ) : null}
-          {/* Mobile-web only — desktop opens Settings from the sidebar
-              profile entry (bottom-left), matching mobile’s Today avatar. */}
           <button
             type="button"
             onClick={onOpenSettings}
-            className="md:hidden w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
+            className="md:hidden w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-primary text-primary-foreground"
             aria-label="Open settings"
           >
             {avatarLetter}

@@ -7,6 +7,8 @@ import { supabase } from "../../lib/supabase/browserClient.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { useSearchParams } from "next/navigation";
 import { parseIngredientLine } from "../../lib/recipe-ingredients/parseIngredientLine.ts";
+import { resolveStructuredIngredient } from "../../lib/recipe-ingredients/structuredIngredientsForVerify.ts";
+import { isStructuredSource } from "../../lib/nutrition/structuredSourceGate.ts";
 import { estimateLineMacros, sumMacros } from "../../lib/nutrition/estimateIngredientMacros.ts";
 import { effectiveFoodSearchQuery } from "../../lib/nutrition/foodSearchQuery.ts";
 import { inferAllergensFromIngredients } from "../../lib/nutrition/inferAllergens.ts";
@@ -92,7 +94,7 @@ function MacroWheel(props: {
   const fallback = [{ name: "—", value: 1, color: "rgba(16,185,129,0.15)" }];
   const data = [
     { name: "Protein", value: Math.max(0, props.proteinG), color: "var(--macro-protein)" },
-    { name: "Carbs", value: Math.max(0, props.carbsG), color: "#f59e0b" }, // amber
+    { name: "Carbs", value: Math.max(0, props.carbsG), color: "#F3C336" }, // amber
     { name: "Fat", value: Math.max(0, props.fatG), color: "#22c55e" }, // green
   ].filter((d) => d.value > 0);
   const chartData = data.length ? data : fallback;
@@ -117,7 +119,7 @@ function MacroWheel(props: {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[12px] text-success/80">
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-success/80">
         <div className="flex items-center justify-between gap-2">
           <span className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-[var(--macro-protein)]" />
@@ -127,7 +129,7 @@ function MacroWheel(props: {
         </div>
         <div className="flex items-center justify-between gap-2">
           <span className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: "#f59e0b" }} />
+            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: "#F3C336" }} />
             Carbs
           </span>
           <span className="font-semibold tabular-nums">{Math.round(props.carbsG * 10) / 10}g</span>
@@ -162,27 +164,6 @@ function amountToNumeric(raw: string): number | null {
   }
   const v = Number.parseFloat(t);
   return Number.isFinite(v) ? v : null;
-}
-
-/** When amount is empty but the name still contains "500g …", parse so nutrition + save match */
-function resolveStructuredIngredient(i: { name: string; amount: string; unit: string }): {
-  name: string;
-  amount: string;
-  unit: string;
-} {
-  const name = i.name.trim();
-  let amount = i.amount.trim();
-  let unit = i.unit.trim();
-  let foodName = name;
-  if (!amount && foodName) {
-    const p = parseIngredientLine(foodName);
-    if (p.amount && p.name.trim()) {
-      amount = p.amount;
-      unit = p.unit || unit;
-      foodName = p.name.trim();
-    }
-  }
-  return { name: foodName, amount, unit };
 }
 
 export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchToImport, onSwitchToCreate }: RecipeUploadProps) {
@@ -1177,7 +1158,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
           sodium_mg: roundMacro(macros?.sodiumMg ?? 0),
           fatsecret_food_id: v?.fatSecretFoodId ?? null,
           confidence: v?.confidence ?? null,
-          is_verified: Boolean(macros),
+          is_verified: isStructuredSource(rowSource) && Boolean(macros),
           source: rowSource,
         };
         return scrubFatSecretMacros(baseRow);
@@ -2025,7 +2006,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
                     <p className="text-xl font-extrabold text-emerald-950 dark:text-emerald-50">
                       {displayPerServing.calories} kcal
                     </p>
-                    <div className="mt-2 space-y-1 text-[12px] text-emerald-900/90 dark:text-emerald-200/90">
+                    <div className="mt-2 space-y-1 text-[11px] text-emerald-900/90 dark:text-emerald-200/90">
                       <div className="flex justify-between">
                         <span>Protein</span>
                         <span className="font-semibold">{displayPerServing.protein} g</span>
@@ -2057,7 +2038,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
                     <p className="text-xl font-extrabold text-emerald-950 dark:text-emerald-50">
                       {displayTotals.calories} kcal
                     </p>
-                    <div className="mt-2 space-y-1 text-[12px] text-emerald-900/90 dark:text-emerald-200/90">
+                    <div className="mt-2 space-y-1 text-[11px] text-emerald-900/90 dark:text-emerald-200/90">
                       <div className="flex justify-between">
                         <span>Protein</span>
                         <span className="font-semibold">{displayTotals.protein} g</span>
