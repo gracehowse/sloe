@@ -6,6 +6,7 @@ import {
   buildIndependentSlotDayGeneric,
   findBestMealSetGeneric,
   fitDayToTargets,
+  refitDayMealsToTargets,
   mulberry32,
   scaleMacros,
 } from "../nutrition/mealPlanAlgo";
@@ -63,9 +64,11 @@ export interface PlannerTargets {
   protein: number;
   carbs: number;
   fat: number;
+  /** Daily fibre target (g). Pass 0 to skip fibre in scoring / joint-fit. */
+  fiber: number;
   /** ±% around calorie goal (e.g. 12 → 88%–112% of calories). */
   calorieBandPct: number;
-  /** ±% around carb and fat day targets. */
+  /** ±% around carb, fat, and fibre day targets. */
   carbFatBandPct: number;
 }
 
@@ -263,4 +266,4 @@ export function generatePlanFromLibrary(input: {
 
 // fitDayToTargets is exported by mealPlanAlgo.ts; re-exported here for
 // any web-side caller that imported it through this file historically.
-export { fitDayToTargets };
+export { fitDayToTargets, refitDayMealsToTargets };

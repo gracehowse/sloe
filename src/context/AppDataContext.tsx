@@ -1082,6 +1082,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           protein: o.protein ?? nutritionTargets.protein,
           carbs: o.carbs ?? nutritionTargets.carbs,
           fat: o.fat ?? nutritionTargets.fat,
+          fiber: o.fiber ?? nutritionTargets.fiber,
           calorieBandPct: o.calorieBandPct ?? DEFAULT_PLANNER_BANDS.calorieBandPct,
           carbFatBandPct: o.carbFatBandPct ?? DEFAULT_PLANNER_BANDS.carbFatBandPct,
         };

@@ -127,15 +127,12 @@ export async function buildFirstWeekFromSeeds(
 
   const recipes = seedsToPlannerRecipes(args.resolved);
 
-  // PlannerTargets shape — fibre lives on the per-recipe SimpleRecipe
-  // record, not on the targets object. The planner uses calorieBandPct
-  // / carbFatBandPct as default 0.15 / 0.20 — match the canonical
-  // DEFAULT_PLANNER_BANDS value via the planner module.
   const plannerTargets: PlannerTargets = {
     calories: args.targets.calories,
     protein: args.targets.proteinG,
     carbs: args.targets.carbsG,
     fat: args.targets.fatG,
+    fiber: args.targets.fiberG ?? 0,
     calorieBandPct: 0.15,
     carbFatBandPct: 0.2,
   };

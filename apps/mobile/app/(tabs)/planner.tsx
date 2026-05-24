@@ -65,6 +65,10 @@ import {
   ALL_MEAL_SLOTS,
   DEFAULT_PLANNER_BANDS,
   PORTION_MULTIPLIER_CLAMP,
+  refitDayMealsToTargets,
+  scaleMacros,
+  slotMacroTargets,
+  recipeSlotFitScore,
   type PlannerTargets,
 } from "@/lib/mealPlanAlgo";
 import { isMealPlanPlaceholderLikeTitle } from "@suppr/shared/nutrition/portionMultiplier";
@@ -855,14 +859,24 @@ export default function PlannerScreen() {
       return;
     }
 
-    // Sort by calorie closeness to target slot budget
-    const slotRatio =
-      canonicalSlot === "Breakfast" ? 0.25 :
-      canonicalSlot === "Lunch" ? 0.3 :
-      canonicalSlot === "Dinner" ? 0.35 :
-      0.1;
-    const slotTarget = planTargets ? planTargets.calories * slotRatio : 400;
-    const sorted = [...fits].sort((a, b) => Math.abs(a.calories - slotTarget) - Math.abs(b.calories - slotTarget));
+    const plannerTargets: PlannerTargets | null = planTargets
+      ? {
+          calories: planTargets.calories,
+          protein: planTargets.protein,
+          carbs: planTargets.carbs,
+          fat: planTargets.fat,
+          fiber: planTargets.fiber,
+          calorieBandPct: DEFAULT_PLANNER_BANDS.calorieBandPct,
+          carbFatBandPct: DEFAULT_PLANNER_BANDS.carbFatBandPct,
+        }
+      : null;
+    const slotMacro = plannerTargets
+      ? slotMacroTargets([canonicalSlot], plannerTargets)[0]!
+      : { calories: 400, protein: 30, carbs: 45, fat: 15, fiber: 0 };
+    const sorted = [...fits].sort(
+      (a, b) => recipeSlotFitScore(a, slotMacro) - recipeSlotFitScore(b, slotMacro),
+    );
+    const slotTarget = slotMacro.calories;
 
     // P1-22 (TestFlight `APHEBaM02gFAhoeHQ5mtxuE`,
     // `AFF_UA88-CeE5TDCRhbaY_M`, 2026-04-24): tester couldn't find a
@@ -890,72 +904,117 @@ export default function PlannerScreen() {
         style: idx === options.length - 1 ? "cancel" as const : "default" as const,
         onPress: idx === options.length - 1 ? undefined : () => {
           const picked = sorted[idx];
-          if (!picked || !plan) return;
+          if (!picked || !plan || !plannerTargets) return;
 
-          // Calculate ideal portion to hit slot target
-          const idealMult = picked.calories > 0 ? Math.round((slotTarget / picked.calories) * 4) / 4 : 1;
-          const mult = Math.max(0.25, Math.min(2, idealMult));
-          const scaledCals = Math.round(picked.calories * mult);
-
-          // Compute new day total
           const currentDay = plan[dayIndex];
           if (!currentDay) return;
-          const otherMealsCals = currentDay.meals.reduce((s, m, mi) => mi === mealIndex ? s : s + m.calories, 0);
-          const newDayTotal = otherMealsCals + scaledCals;
-          const dayTarget = planTargets?.calories ?? 2000;
+
+          const baseFromPool = (r: (typeof fits)[number]) => {
+            const c = coerceMacrosWhenCaloriesButNoGrams({
+              calories: r.calories,
+              protein: r.protein,
+              carbs: r.carbs,
+              fat: r.fat,
+              fiberG: (r as { fiberG?: number }).fiberG,
+            });
+            return {
+              calories: c.calories,
+              protein: c.protein,
+              carbs: c.carbs,
+              fat: c.fat,
+              fiberG:
+                c.fiberG ??
+                (r as { fiber_g?: number }).fiber_g ??
+                (r as { fiberG?: number }).fiberG ??
+                0,
+            };
+          };
+
+          const trialBase = currentDay.meals.map((m, mi) =>
+            mi === mealIndex ? baseFromPool(picked) : (() => {
+              const ref = allPool.find((r) => r.id === m.recipeId);
+              if (ref) return baseFromPool(ref);
+              return {
+                calories: m.calories,
+                protein: m.protein,
+                carbs: m.carbs,
+                fat: m.fat,
+                fiberG: planMealFiberG(m, recipeFiberPool),
+              };
+            })(),
+          );
+          const trialFit = refitDayMealsToTargets({ recipes: trialBase, targets: plannerTargets });
+          const trialDayCals = trialBase.reduce(
+            (s, r, i) => s + r.calories * (trialFit.multipliers[i] ?? 1),
+            0,
+          );
+          const dayTarget = planTargets.calories;
 
           const doSwap = () => {
             setPlan((prev) => {
               if (!prev) return prev;
               const next = prev.map((dp, di) => {
                 if (di !== dayIndex) return dp;
+                const baseRecipes = dp.meals.map((m, mi) =>
+                  mi === mealIndex ? baseFromPool(picked) : (() => {
+                    const ref = allPool.find((r) => r.id === m.recipeId);
+                    if (ref) return baseFromPool(ref);
+                    return {
+                      calories: m.calories,
+                      protein: m.protein,
+                      carbs: m.carbs,
+                      fat: m.fat,
+                      fiberG: planMealFiberG(m, recipeFiberPool),
+                    };
+                  })(),
+                );
+                const fit = refitDayMealsToTargets({ recipes: baseRecipes, targets: plannerTargets });
                 const newMeals = dp.meals.map((m, mi) => {
-                  if (mi !== mealIndex) return m;
-                  const pickedFiber =
-                    (picked as { fiberG?: number }).fiberG ??
-                    planMealFiberG(
-                      {
-                        ...m,
-                        recipeId: picked.id,
-                        recipeTitle: picked.title,
-                        calories: Math.round(picked.calories * mult),
-                        portionMultiplier: mult,
-                      },
-                      recipeFiberPool,
-                    );
+                  const scaled = scaleMacros(baseRecipes[mi]!, fit.multipliers[mi] ?? 1);
                   return {
                     ...m,
-                    recipeTitle: picked.title,
-                    recipeId: picked.id,
-                    calories: Math.round(picked.calories * mult),
-                    protein: Math.round(picked.protein * mult),
-                    carbs: Math.round(picked.carbs * mult),
-                    fat: Math.round(picked.fat * mult),
-                    fiberG: Math.round(pickedFiber * 10) / 10,
-                    isPlaceholder: false,
-                    leftoverOf: undefined,
-                    isLeftover: undefined,
+                    ...(mi === mealIndex
+                      ? {
+                          recipeTitle: picked.title,
+                          recipeId: picked.id,
+                          isPlaceholder: false,
+                          leftoverOf: undefined,
+                          isLeftover: undefined,
+                        }
+                      : {}),
+                    calories: scaled.calories,
+                    protein: scaled.protein,
+                    carbs: scaled.carbs,
+                    fat: scaled.fat,
+                    fiberG: scaled.fiberG,
                     portionMultiplier: undefined,
-                    // Portion is baked into macros — never persist a parallel
-                    // multiplier or day totals / goal header double-count (F-70).
                   };
                 });
                 const totals = newMeals.reduce(
-                  (a, m) => ({ calories: a.calories + m.calories, protein: a.protein + m.protein, carbs: a.carbs + m.carbs, fat: a.fat + m.fat }),
+                  (a, m) => ({
+                    calories: a.calories + m.calories,
+                    protein: a.protein + m.protein,
+                    carbs: a.carbs + m.carbs,
+                    fat: a.fat + m.fat,
+                  }),
                   { calories: 0, protein: 0, carbs: 0, fat: 0 },
                 );
-                return { ...dp, meals: newMeals, totals };
+                return {
+                  ...dp,
+                  meals: newMeals,
+                  totals,
+                  ...(fit.residualProteinGap < 0 ? { residualProteinGap: fit.residualProteinGap } : {}),
+                };
               });
               void persistPlan(next);
               return next;
             });
           };
 
-          // Warn if >10% over target
-          if (newDayTotal > dayTarget * 1.1) {
+          if (trialDayCals > dayTarget * 1.1) {
             Alert.alert(
               "Over calorie target",
-              `This swap puts the day at ${newDayTotal.toLocaleString()} kcal (target: ${dayTarget.toLocaleString()}).\n\nPortion: ${mult}x = ${scaledCals} kcal`,
+              `After re-fitting portions, this day is about ${Math.round(trialDayCals).toLocaleString()} kcal (target: ${dayTarget.toLocaleString()}).`,
               [
                 { text: "Cancel", style: "cancel" },
                 { text: "Swap anyway", onPress: doSwap },
@@ -1795,8 +1854,7 @@ export default function PlannerScreen() {
         protein: resolved.protein,
         carbs: resolved.carbs,
         fat: resolved.fat,
-        // P1-9 (2026-04-25): import shared defaults so web + mobile
-        // can't drift on macro tolerance bands.
+        fiber: resolved.fiber,
         calorieBandPct: DEFAULT_PLANNER_BANDS.calorieBandPct,
         carbFatBandPct: DEFAULT_PLANNER_BANDS.carbFatBandPct,
       };

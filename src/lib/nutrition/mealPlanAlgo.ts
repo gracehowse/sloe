@@ -8,8 +8,8 @@
  * identical algorithmic logic.
  *
  * F-15 (2026-04-19, TestFlight `APO0Nk_bre`, product-lead 2026-04-19):
- * multiplier objective is now **joint** (protein-leading, then calories,
- * then carbs+fat) rather than per-slot calorie share. The day-level scaler
+ * multiplier objective is **joint** (protein → calories → carbs → fat →
+ * fibre) rather than per-slot calorie share. The day-level scaler
  * `fitDayToTargets` iterates picked recipes' multipliers within the shared
  * `PORTION_MULTIPLIER_CLAMP` and returns a `residualProteinGap` when the
  * library can't reach the protein target. Clamp parity: mobile's 0.2..2.5
@@ -104,7 +104,10 @@ export type PlannerTargets = {
   protein: number;
   carbs: number;
   fat: number;
+  /** Daily fibre target (g). Pass 0 to skip fibre in scoring / joint-fit. */
+  fiber: number;
   calorieBandPct: number;
+  /** ±% band for carbs, fat, and fibre day targets. */
   carbFatBandPct: number;
 };
 
@@ -256,6 +259,79 @@ export function scoreMealSetCanonical(
   return scoreMealSet(meals, targets, recipeIds, recentIds);
 }
 
+type ScaledMacroSum = {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiberG: number;
+};
+
+function macroBandTolerance(target: number, bandPct: number): number {
+  return Math.max(target * (bandPct / 100), target > 0 ? 1 : 0);
+}
+
+function sumScaledMacros(rs: readonly Macros[], mults: readonly number[]): ScaledMacroSum {
+  let calories = 0;
+  let protein = 0;
+  let carbs = 0;
+  let fat = 0;
+  let fiberG = 0;
+  for (let i = 0; i < rs.length; i++) {
+    const m = mults[i] ?? 1;
+    const r = rs[i]!;
+    calories += r.calories * m;
+    protein += r.protein * m;
+    carbs += r.carbs * m;
+    fat += r.fat * m;
+    fiberG += (r.fiberG ?? 0) * m;
+  }
+  return {
+    calories,
+    protein,
+    carbs,
+    fat,
+    fiberG: Math.round(fiberG * 10) / 10,
+  };
+}
+
+function dayFitStatus(
+  recipes: readonly Macros[],
+  mults: readonly number[],
+  targets: PlannerTargets,
+): {
+  proOk: boolean;
+  calOk: boolean;
+  carbOk: boolean;
+  fatOk: boolean;
+  fiberOk: boolean;
+  all: boolean;
+  sum: ScaledMacroSum;
+} {
+  const s = sumScaledMacros(recipes, mults);
+  const macroBand = targets.carbFatBandPct;
+  const proLo = targets.protein * 0.9;
+  const proHi = targets.protein * 1.1;
+  const calLo = targets.calories * 0.95;
+  const calHi = targets.calories * 1.05;
+  const proOk = s.protein >= proLo && s.protein <= proHi;
+  const calOk = s.calories >= calLo && s.calories <= calHi;
+  const carbOk = Math.abs(s.carbs - targets.carbs) <= macroBandTolerance(targets.carbs, macroBand);
+  const fatOk = Math.abs(s.fat - targets.fat) <= macroBandTolerance(targets.fat, macroBand);
+  const fiberOk =
+    targets.fiber <= 0 ||
+    Math.abs(s.fiberG - targets.fiber) <= macroBandTolerance(targets.fiber, macroBand);
+  return {
+    proOk,
+    calOk,
+    carbOk,
+    fatOk,
+    fiberOk,
+    all: proOk && calOk && carbOk && fatOk && fiberOk,
+    sum: s,
+  };
+}
+
 function scoreMealSet(
   meals: Macros[],
   targets: PlannerTargets,
@@ -263,8 +339,14 @@ function scoreMealSet(
   recentIds: Set<string>,
 ): number {
   const sum = meals.reduce(
-    (a, m) => ({ calories: a.calories + m.calories, protein: a.protein + m.protein, carbs: a.carbs + m.carbs, fat: a.fat + m.fat }),
-    { calories: 0, protein: 0, carbs: 0, fat: 0 },
+    (a, m) => ({
+      calories: a.calories + m.calories,
+      protein: a.protein + m.protein,
+      carbs: a.carbs + m.carbs,
+      fat: a.fat + m.fat,
+      fiberG: (a.fiberG ?? 0) + (m.fiberG ?? 0),
+    }),
+    { calories: 0, protein: 0, carbs: 0, fat: 0, fiberG: 0 },
   );
 
   let e = 0;
@@ -305,6 +387,16 @@ function scoreMealSet(
     e += Math.abs(fatDiff) * 0.8;
   }
 
+  if (targets.fiber > 0) {
+    const fiberDiff = (sum.fiberG ?? 0) - targets.fiber;
+    const fiberBand = macroBandTolerance(targets.fiber, targets.carbFatBandPct);
+    if (Math.abs(fiberDiff) <= fiberBand) {
+      e += Math.abs(fiberDiff) * 0.08;
+    } else {
+      e += Math.abs(fiberDiff) * 1.2;
+    }
+  }
+
   // Hard reject — never the same recipe twice in one day
   const uniq = new Set(recipeIds);
   if (uniq.size < recipeIds.length) return Infinity;
@@ -328,11 +420,43 @@ const SLOT_WEIGHTS: Record<string, number> = {
 
 /** P2-28: exported so the web wrapper can reuse the slot weighting. */
 export function slotCalorieTargets(slots: string[], targets: PlannerTargets): number[] {
+  return slotMacroTargets(slots, targets).map((t) => t.calories);
+}
+
+/** Per-slot share of daily kcal + macros (same weights as slotCalorieTargets). */
+export function slotMacroTargets(
+  slots: string[],
+  targets: PlannerTargets,
+): Array<{ calories: number; protein: number; carbs: number; fat: number; fiber: number }> {
   const totalWeight = slots.reduce((a, s) => a + (SLOT_WEIGHTS[s.toLowerCase()] ?? 0.25), 0);
   return slots.map((s) => {
     const w = (SLOT_WEIGHTS[s.toLowerCase()] ?? 0.25) / totalWeight;
-    return targets.calories * w;
+    return {
+      calories: targets.calories * w,
+      protein: targets.protein * w,
+      carbs: targets.carbs * w,
+      fat: targets.fat * w,
+      fiber: targets.fiber * w,
+    };
   });
+}
+
+/** Lower = better fit for a slot (kcal-led + macro balance). */
+export function recipeSlotFitScore(
+  recipe: MealPlanRecipe,
+  slotTargets: { calories: number; protein: number; carbs: number; fat: number; fiber: number },
+): number {
+  const rel = (actual: number, target: number) =>
+    target > 0 ? Math.abs(actual - target) / target : Math.abs(actual);
+  let score =
+    rel(recipe.calories, slotTargets.calories) * 0.35 +
+    rel(recipe.protein, slotTargets.protein) * 0.25 +
+    rel(recipe.carbs, slotTargets.carbs) * 0.15 +
+    rel(recipe.fat, slotTargets.fat) * 0.15;
+  if (slotTargets.fiber > 0) {
+    score += rel(recipe.fiberG ?? 0, slotTargets.fiber) * 0.1;
+  }
+  return score;
 }
 
 // ---------------------------------------------------------------------------
@@ -346,8 +470,9 @@ export function slotCalorieTargets(slots: string[], targets: PlannerTargets): nu
 // Objective (weighted, highest priority first):
 //   1. Protein — within ±10% of the daily protein target.
 //   2. Calories — within ±5% of the daily calorie target.
-//   3. Carbs + fat — within ±15% combined; if conflict, minimise
-//      |carbs_delta| + |fat_delta|.
+//   3. Carbs — within ±carbFatBandPct of the daily carbs target.
+//   4. Fat — within ±carbFatBandPct of the daily fat target.
+//   5. Fibre — within ±carbFatBandPct when `targets.fiber` > 0.
 //
 // Algorithm: iterate slots largest-to-smallest by default calories, adjusting
 // each multiplier within the shared `PORTION_MULTIPLIER_CLAMP`. Stop when
@@ -374,19 +499,6 @@ export type JointFitResult = {
   residualProteinGap: number;
 };
 
-function sumMacros(rs: readonly Macros[], mults: readonly number[]): Macros {
-  let calories = 0, protein = 0, carbs = 0, fat = 0;
-  for (let i = 0; i < rs.length; i++) {
-    const m = mults[i] ?? 1;
-    const r = rs[i]!;
-    calories += r.calories * m;
-    protein += r.protein * m;
-    carbs += r.carbs * m;
-    fat += r.fat * m;
-  }
-  return { calories, protein, carbs, fat };
-}
-
 /** Sampler score bump: prefer per-slot multipliers near 1.0× (full portions). */
 export function mealPlanDeviationFromOnePenalty(multipliers: readonly number[]): number {
   let s = 0;
@@ -409,18 +521,7 @@ function snapMultipliersTowardOneWhileFeasible(
   const n = recipes.length;
   if (n === 0) return [];
   const mults = multsIn.map((m) => clampPlannerMultiplier(m));
-  const proLo = targets.protein * 0.9;
-  const proHi = targets.protein * 1.1;
-  const calLo = targets.calories * 0.95;
-  const calHi = targets.calories * 1.05;
-  const cfBand = (targets.carbs + targets.fat) * 0.15;
-  const inBand = (m: readonly number[]) => {
-    const s = sumMacros(recipes, m);
-    const proOk = s.protein >= proLo && s.protein <= proHi;
-    const calOk = s.calories >= calLo && s.calories <= calHi;
-    const cfOk = Math.abs(s.carbs - targets.carbs) + Math.abs(s.fat - targets.fat) <= cfBand;
-    return proOk && calOk && cfOk;
-  };
+  const inBand = (m: readonly number[]) => dayFitStatus(recipes, m, targets).all;
   if (!inBand(mults)) return mults;
 
   const { step } = PORTION_MULTIPLIER_CLAMP;
@@ -458,12 +559,10 @@ export function fitDayToTargets(input: JointFitInput): JointFitResult {
   // Clamp the starting multipliers to the shared clamp.
   const mults = input.multipliers.map((m) => clampPlannerMultiplier(m));
 
-  // Band edges (protein ±10%, calories ±5%, carbs+fat combined ±15%).
   const proLo = targets.protein * 0.9;
   const proHi = targets.protein * 1.1;
   const calLo = targets.calories * 0.95;
   const calHi = targets.calories * 1.05;
-  const cfBand = (targets.carbs + targets.fat) * 0.15;
 
   // Slot order: largest default calories first (largest levers first).
   const order = recipes
@@ -471,13 +570,7 @@ export function fitDayToTargets(input: JointFitInput): JointFitResult {
     .sort((a, b) => b.cals - a.cals)
     .map((x) => x.i);
 
-  const inBand = () => {
-    const s = sumMacros(recipes, mults);
-    const proOk = s.protein >= proLo && s.protein <= proHi;
-    const calOk = s.calories >= calLo && s.calories <= calHi;
-    const cfOk = Math.abs(s.carbs - targets.carbs) + Math.abs(s.fat - targets.fat) <= cfBand;
-    return { proOk, calOk, cfOk, all: proOk && calOk && cfOk };
-  };
+  const inBand = () => dayFitStatus(recipes, mults, targets);
 
   // Cap iterations: each slot can move at most (max - min) / step times
   // per direction; several sweeps handles the worst case comfortably.
@@ -500,9 +593,9 @@ export function fitDayToTargets(input: JointFitInput): JointFitResult {
       for (const i of lever) {
         const r = recipes[i]!;
         if (r.protein <= 0) continue;
-        const s = sumMacros(recipes, mults);
+        const s = sumScaledMacros(recipes, mults);
         const gap = targets.protein - s.protein;
-        if (gap >= -(targets.protein * 0.1) && gap <= (targets.protein * 0.1)) break;
+        if (gap >= -(targets.protein * 0.1) && gap <= targets.protein * 0.1) break;
         const delta = gap / r.protein;
         mults[i] = clampPlannerMultiplier(mults[i]! + delta);
       }
@@ -522,45 +615,90 @@ export function fitDayToTargets(input: JointFitInput): JointFitResult {
       for (const i of lever) {
         const r = recipes[i]!;
         if (r.calories <= 0) continue;
-        const s = sumMacros(recipes, mults);
+        const s = sumScaledMacros(recipes, mults);
         const diff = targets.calories - s.calories;
         if (Math.abs(diff) <= targets.calories * 0.05) break;
-        // Cap at ±0.5 per step so a single cheap slot can't absorb the
-        // whole delta and blow up protein.
         const raw = diff / r.calories;
         const clamped = Math.max(-0.5, Math.min(0.5, raw));
         const next = clampPlannerMultiplier(mults[i]! + clamped);
         const prevMult = mults[i]!;
         mults[i] = next;
-        const after = sumMacros(recipes, mults);
+        const after = sumScaledMacros(recipes, mults);
         if (after.protein < proLo || after.protein > proHi) {
-          // Walk back — calories win was not worth the protein breach.
           mults[i] = prevMult;
         }
       }
     }
 
-    // Priority 3: carbs + fat polish. Nudge the largest-calorie slot by
-    // one step in the right direction — but only when it keeps protein
-    // and calories in band.
-    const postCalStatus = inBand();
-    if (!postCalStatus.cfOk && postCalStatus.proOk && postCalStatus.calOk) {
-      const s = sumMacros(recipes, mults);
-      const cfDiff = (targets.carbs + targets.fat) - (s.carbs + s.fat);
-      if (cfDiff !== 0) {
-        const i = order[0]!;
+    const nudgeMacroField = (
+      field: "carbs" | "fat",
+      targetValue: number,
+      density: (r: Macros) => number,
+    ) => {
+      const st = inBand();
+      if (st.all || !st.proOk || !st.calOk) return;
+      const fieldOk = field === "carbs" ? st.carbOk : st.fatOk;
+      if (fieldOk) return;
+      const s = st.sum;
+      const diff = targetValue - s[field];
+      const band = macroBandTolerance(targetValue, targets.carbFatBandPct);
+      if (Math.abs(diff) <= band) return;
+      const lever = order
+        .slice()
+        .sort((a, b) => (diff > 0 ? density(recipes[b]!) - density(recipes[a]!) : density(recipes[a]!) - density(recipes[b]!)));
+      for (const i of lever) {
         const r = recipes[i]!;
-        if (r.carbs + r.fat > 0) {
-          const dir = cfDiff > 0 ? 1 : -1;
-          const trial = clampPlannerMultiplier(mults[i]! + dir * PORTION_MULTIPLIER_CLAMP.step);
-          const saved = mults[i]!;
-          mults[i] = trial;
-          const after = sumMacros(recipes, mults);
-          const stillPro = after.protein >= proLo && after.protein <= proHi;
-          const stillCal = after.calories >= calLo && after.calories <= calHi;
-          if (!stillPro || !stillCal) {
-            mults[i] = saved;
-          }
+        const contrib = r[field];
+        if (contrib <= 0) continue;
+        const raw = diff / contrib;
+        const clamped = Math.max(-0.5, Math.min(0.5, raw));
+        const next = clampPlannerMultiplier(mults[i]! + clamped);
+        const prevMult = mults[i]!;
+        mults[i] = next;
+        const after = dayFitStatus(recipes, mults, targets);
+        if (!after.proOk || !after.calOk) mults[i] = prevMult;
+        else if ((field === "carbs" ? after.carbOk : after.fatOk)) break;
+      }
+    };
+
+    nudgeMacroField("carbs", targets.carbs, (r) => (r.calories > 0 ? r.carbs / r.calories : 0));
+    nudgeMacroField("fat", targets.fat, (r) => (r.calories > 0 ? r.fat / r.calories : 0));
+
+    const postMacroStatus = inBand();
+    if (
+      targets.fiber > 0 &&
+      !postMacroStatus.fiberOk &&
+      postMacroStatus.proOk &&
+      postMacroStatus.calOk &&
+      postMacroStatus.carbOk &&
+      postMacroStatus.fatOk
+    ) {
+      const s = postMacroStatus.sum;
+      const diff = targets.fiber - s.fiberG;
+      const band = macroBandTolerance(targets.fiber, targets.carbFatBandPct);
+      if (Math.abs(diff) > band) {
+        const lever = order
+          .slice()
+          .sort((a, b) => {
+            const dA =
+              recipes[a]!.calories > 0 ? (recipes[a]!.fiberG ?? 0) / recipes[a]!.calories : 0;
+            const dB =
+              recipes[b]!.calories > 0 ? (recipes[b]!.fiberG ?? 0) / recipes[b]!.calories : 0;
+            return diff > 0 ? dB - dA : dA - dB;
+          });
+        for (const i of lever) {
+          const r = recipes[i]!;
+          const contrib = r.fiberG ?? 0;
+          if (contrib <= 0) continue;
+          const raw = diff / contrib;
+          const clamped = Math.max(-0.5, Math.min(0.5, raw));
+          const next = clampPlannerMultiplier(mults[i]! + clamped);
+          const prevMult = mults[i]!;
+          mults[i] = next;
+          const after = dayFitStatus(recipes, mults, targets);
+          if (!after.proOk || !after.calOk || !after.carbOk || !after.fatOk) {
+            mults[i] = prevMult;
+          } else if (after.fiberOk) break;
         }
       }
     }
@@ -578,13 +716,30 @@ export function fitDayToTargets(input: JointFitInput): JointFitResult {
     mults[i] = snapped[i]!;
   }
 
-  const final = sumMacros(recipes, mults);
+  const final = sumScaledMacros(recipes, mults);
   // Residual protein gap — negative grams below lower band; 0 when at or
   // above the lower band. UI surfaces it only at `< -10g` (don't nag).
   const proteinShort = proLo - final.protein;
   const residualProteinGap = proteinShort > 0 ? -Math.round(proteinShort) : 0;
 
   return { multipliers: mults, residualProteinGap };
+}
+
+/**
+ * Re-run joint day fit on fixed recipe picks (e.g. after a manual swap).
+ * Seeds every slot at 1.0× then applies the same priority stack as generate.
+ */
+export function refitDayMealsToTargets(input: {
+  recipes: readonly Macros[];
+  targets: PlannerTargets;
+}): JointFitResult {
+  const n = input.recipes.length;
+  if (n === 0) return { multipliers: [], residualProteinGap: 0 };
+  return fitDayToTargets({
+    recipes: input.recipes,
+    multipliers: input.recipes.map(() => 1),
+    targets: input.targets,
+  });
 }
 
 // P2-28 (2026-04-25): the closed-over `findBestMealSet` for SimpleRecipe
@@ -614,7 +769,7 @@ export function findBestMealSetGeneric<R extends MealPlanRecipe>(
   const perSlot = slots.map((slot) => pool.filter((r) => slotFitPredicate(r, slot)));
   if (perSlot.some((p) => p.length === 0)) return null;
 
-  const slotCalTargets = slotCalorieTargets(slots, targets);
+  const slotTargets = slotMacroTargets(slots, targets);
 
   let best:
     | { recipes: R[]; multipliers: number[]; score: number; residualProteinGap: number }
@@ -622,12 +777,10 @@ export function findBestMealSetGeneric<R extends MealPlanRecipe>(
 
   const samples = Math.min(MEAL_PLAN_SAMPLER_CAP, perSlot.reduce((a, p) => a * p.length, 1));
 
-  // Pre-sort each slot's pool by closeness to slot target (best-fit first).
+  // Pre-sort each slot's pool by macro balance + kcal (not kcal alone).
   const sortedPerSlot = perSlot.map((slotPool, j) =>
     [...slotPool].sort(
-      (a, b) =>
-        Math.abs(a.calories - slotCalTargets[j]!) -
-        Math.abs(b.calories - slotCalTargets[j]!),
+      (a, b) => recipeSlotFitScore(a, slotTargets[j]!) - recipeSlotFitScore(b, slotTargets[j]!),
     ),
   );
 

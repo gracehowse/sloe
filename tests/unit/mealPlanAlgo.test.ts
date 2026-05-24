@@ -12,7 +12,7 @@ const dinner2: SimpleRecipe = { id: "d2", title: "Curry", calories: 550, protein
 const snack: SimpleRecipe = { id: "s1", title: "Banana", calories: 100, protein: 1, carbs: 25, fat: 0, mealType: ["snack"] };
 const untagged: SimpleRecipe = { id: "u1", title: "Mystery", calories: 300, protein: 15, carbs: 30, fat: 10 };
 
-const targets = { calories: 1400, protein: 100, carbs: 160, fat: 45, calorieBandPct: 15, carbFatBandPct: 20 };
+const targets = { calories: 1400, protein: 100, carbs: 160, fat: 45, fiber: 28, calorieBandPct: 15, carbFatBandPct: 20 };
 
 describe("generateSmartPlan", () => {
   it("generates the requested number of days", () => {
@@ -82,6 +82,7 @@ describe("generateSmartPlan", () => {
         protein: 50,
         carbs: 80,
         fat: 22,
+        fiber: 28,
         calorieBandPct: 15,
         carbFatBandPct: 20,
       },

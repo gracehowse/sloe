@@ -23,6 +23,7 @@ function makeTargets(calories: number) {
     protein: (calories * 0.3) / 4,
     carbs: (calories * 0.4) / 4,
     fat: (calories * 0.3) / 9,
+    fiber: 28,
     calorieBandPct: 5,
     carbFatBandPct: 15,
   };
