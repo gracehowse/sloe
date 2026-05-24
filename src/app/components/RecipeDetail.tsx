@@ -37,6 +37,20 @@ import {
   deriveIngredientVerificationTier,
   ingredientShouldShowVerifyCta,
 } from "../../lib/recipe-ingredients/ingredientVerificationStatus.ts";
+import { structuredIngredientsForVerify } from "../../lib/recipe-ingredients/structuredIngredientsForVerify.ts";
+import {
+  flatMacroRowsFromVerifyJson,
+  mergeVerifiedMacroRows,
+  overallConfidenceFromVerifyJson,
+  perServingFromVerifyJson,
+} from "../../lib/nutrition/verifyRecipeResponse.ts";
+import { ingredientVerifyNeedsReview } from "../../lib/nutrition/verifyConfidencePolicy.ts";
+import {
+  recipeAggregateHasFatSecret,
+  scrubFatSecretMacros,
+  ZEROED_RECIPE_AGGREGATE,
+} from "../../lib/nutrition/fatsecretCacheGuard.ts";
+import { isStructuredSource } from "../../lib/nutrition/structuredSourceGate.ts";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { track } from "../../lib/analytics/track.ts";
 import {
@@ -330,6 +344,9 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
   const [dbFetchFailed, setDbFetchFailed] = useState(false);
   const [verifySearchOpen, setVerifySearchOpen] = useState(false);
   const [verifyIndex, setVerifyIndex] = useState<number | null>(null);
+  /** USDA / OFF / FatSecret / Edamam via `/api/nutrition/verify-recipe`. */
+  const [autoVerifyingIngredients, setAutoVerifyingIngredients] = useState(false);
+  const autoVerifySucceededForRecipeId = useRef<string | null>(null);
   // Batch 2.7 — add-ingredient + per-ingredient override dialogs.
   const [addIngOpen, setAddIngOpen] = useState(false);
   const [overrideIndex, setOverrideIndex] = useState<number | null>(null);
@@ -705,6 +722,149 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
   }, [dbInstructionsText]);
 
   const baseServings = dbServings ?? recipe.servings;
+  const ingredientsHaveNutrition = useMemo(
+    () =>
+      ingredients.some(
+        (i) => i.calories > 0 || i.protein > 0 || i.carbs > 0 || i.fat > 0,
+      ),
+    [ingredients],
+  );
+
+  useEffect(() => {
+    autoVerifySucceededForRecipeId.current = null;
+  }, [recipe.id]);
+
+  /** Auto-match unverified ingredient rows on open (mobile parity). */
+  useEffect(() => {
+    if (isCatalogRecipe || dbLoading || dbFetchFailed || ingredients.length === 0) return;
+    if (!authUserId) return;
+    if (autoVerifySucceededForRecipeId.current === recipe.id) return;
+    if (ingredientsHaveNutrition) return;
+
+    const macroCal = dbMacros?.calories ?? recipe.calories ?? 0;
+    const macroPro = dbMacros?.protein ?? recipe.protein ?? 0;
+    const macroCarb = dbMacros?.carbs ?? recipe.carbs ?? 0;
+    const macroFat = dbMacros?.fat ?? recipe.fat ?? 0;
+    if (macroCal <= 0 && macroPro <= 0 && macroCarb <= 0 && macroFat <= 0) return;
+
+    let cancelled = false;
+    const snap = ingredients;
+    const snapIds = dbIngredientIds;
+
+    (async () => {
+      setAutoVerifyingIngredients(true);
+      try {
+        const res = await fetch("/api/nutrition/verify-recipe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({
+            ingredients: structuredIngredientsForVerify(snap),
+            servings: baseServings,
+          }),
+        });
+        const json = (await res.json()) as Record<string, unknown>;
+        if (cancelled) return;
+        const rows = flatMacroRowsFromVerifyJson(json);
+        const perServing = perServingFromVerifyJson(json, { servings: baseServings });
+        if (!json.ok || !rows?.length || !perServing) return;
+
+        setDbIngredients(
+          mergeVerifiedMacroRows(snap as unknown as Record<string, unknown>[], rows) as unknown as IngredientRow[],
+        );
+        setDbMacros({
+          calories: Math.round(perServing.calories),
+          protein: Math.round(perServing.protein),
+          carbs: Math.round(perServing.carbs),
+          fat: Math.round(perServing.fat),
+          fiberG: perServing.fiberG != null ? Math.round(perServing.fiberG * 10) / 10 : 0,
+          sugarG: perServing.sugarG != null ? Math.round(perServing.sugarG * 10) / 10 : 0,
+          sodiumMg: perServing.sodiumMg != null ? Math.round(perServing.sodiumMg) : 0,
+        });
+
+        if (isMyRecipe && snapIds.length > 0) {
+          for (let i = 0; i < Math.min(rows.length, snapIds.length); i++) {
+            const r = rows[i]!;
+            const scrubbed = scrubFatSecretMacros({
+              calories: Math.round(r.calories),
+              protein: Math.round(r.protein),
+              carbs: Math.round(r.carbs),
+              fat: Math.round(r.fat),
+              fiber_g: Math.round(r.fiber * 10) / 10,
+              sugar_g: Math.round(r.sugar * 10) / 10,
+              sodium_mg: Math.round(r.sodium),
+              source: r.source,
+              confidence: r.confidence,
+              is_verified: isStructuredSource(r.source) && r.confidence >= 0.5,
+            });
+            await supabase.from("recipe_ingredients").update(scrubbed).eq("id", snapIds[i]!);
+          }
+
+          const aggregateHasFs = recipeAggregateHasFatSecret(rows.map((r) => ({ source: r.source ?? null })));
+          const overallConf = overallConfidenceFromVerifyJson(json);
+          const aggregateUpdate = aggregateHasFs
+            ? ZEROED_RECIPE_AGGREGATE
+            : {
+                calories: Math.round(perServing.calories),
+                protein: Math.round(perServing.protein),
+                carbs: Math.round(perServing.carbs),
+                fat: Math.round(perServing.fat),
+                fiber_g: perServing.fiberG != null ? Math.round(perServing.fiberG * 10) / 10 : 0,
+                sugar_g: perServing.sugarG != null ? Math.round(perServing.sugarG * 10) / 10 : 0,
+                sodium_mg: perServing.sodiumMg != null ? Math.round(perServing.sodiumMg) : 0,
+                is_verified: true,
+                verified_at: new Date().toISOString(),
+                verified_confidence: overallConf,
+                verified_source: "auto_verify",
+              };
+          await supabase.from("recipes").update(aggregateUpdate).eq("id", recipe.id);
+        }
+
+        autoVerifySucceededForRecipeId.current = recipe.id;
+        const avg = json.avgIngredientConfidence;
+        const min = json.minIngredientConfidence;
+        if (
+          ingredientVerifyNeedsReview(
+            typeof avg === "number" ? avg : undefined,
+            typeof min === "number" ? min : undefined,
+          )
+        ) {
+          track(AnalyticsEvents.recipe_verify_needs_review, {
+            recipe_id: recipe.id,
+            source: "auto_verify",
+            platform: "web",
+            avgIngredientConfidence: avg,
+            minIngredientConfidence: min,
+          });
+        }
+      } catch {
+        /* silent — user can still verify manually */
+      } finally {
+        if (!cancelled) setAutoVerifyingIngredients(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isCatalogRecipe,
+    dbLoading,
+    dbFetchFailed,
+    ingredients,
+    dbIngredientIds,
+    authUserId,
+    recipe.id,
+    recipe.calories,
+    recipe.protein,
+    recipe.carbs,
+    recipe.fat,
+    ingredientsHaveNutrition,
+    dbMacros,
+    baseServings,
+    isMyRecipe,
+  ]);
+
   const prepDisplay =
     formatRecipeMinutes(dbPrepMin) ?? recipe.prepTime ?? "—";
   const cookDisplay =
@@ -770,9 +930,22 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
 
   // Top-of-recipe "portions to view" macros — prefer live ingredient totals
   // (per-serving) scaled by the viewer's chosen portion count when we have
-  // ingredient rows; else fall back to the persisted recipe per-serving
-  // macros scaled the same way.
-  const perServingBase = ingredients.length > 0
+  // ingredient rows with real nutrition data; else fall back to the
+  // persisted recipe per-serving macros scaled the same way.
+  //
+  // Seed/catalog recipes hydrate ingredient rows with 0 macros (the
+  // per-ingredient pipeline hasn't matched them), so the live totals would
+  // be all-zero despite the recipe itself having valid kcalPerPortion /
+  // proteinG / carbsG / fatG. Guard: only prefer live ingredient totals
+  // when at least one macro is non-zero OR when there are no ingredients.
+  const liveHasNutrition =
+    !isCatalogRecipe &&
+    ingredients.length > 0 &&
+    (liveIngredientPerServing.calories > 0 ||
+      liveIngredientPerServing.protein > 0 ||
+      liveIngredientPerServing.carbs > 0 ||
+      liveIngredientPerServing.fat > 0);
+  const perServingBase = liveHasNutrition
     ? liveIngredientPerServing
     : {
         calories: displayRecipe.calories,
@@ -1426,7 +1599,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                   aria-label={`${kcalForLine} kilocalories per portion`}
                 >
                   <span
-                    className="text-[17px] font-bold text-foreground tabular-nums leading-none"
+                    className="text-[18px] font-bold text-foreground tabular-nums leading-none"
                     data-testid="recipe-kcal-number"
                   >
                     {kcalForLine} kcal
@@ -1785,7 +1958,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                 label: "Sodium",
                 cur: scaledMicros.sodiumMg,
                 tgt: REF_SODIUM_MG,
-                color: "#f97316",
+                color: "#F78A32",
                 unit: "mg",
               },
             };
@@ -1896,6 +2069,11 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
         {/* Ingredients Tab */}
         {activeTab === "ingredients" && (
           <>
+          {autoVerifyingIngredients ? (
+            <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
+              Matching each line against the food database (USDA / Open Food Facts / FatSecret / Edamam when configured)…
+            </p>
+          ) : null}
           <div className="bg-card border border-border rounded-2xl overflow-hidden">
             {ingredients.length === 0 ? (
               <div className="px-6 py-8 text-center text-muted-foreground text-sm">No ingredients listed yet.</div>
