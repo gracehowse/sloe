@@ -849,7 +849,7 @@ export default function PlannerScreen() {
     // so "breakfast" / "Breakfast" / "BREAKFAST" all collapse to the
     // same branch. Unknown slots fall through to the snack ratio
     // (matches the prior default branch).
-    const canonicalSlot = normaliseMealSlot(slotName);
+    const canonicalSlot = normaliseMealSlot(slotName) ?? "Snacks";
     const fits = allPool.filter((r) => {
       const tags = r.mealSlots ?? [];
       return tags.length === 0 || tags.some((t: string) => normaliseMealSlot(t) === canonicalSlot);
