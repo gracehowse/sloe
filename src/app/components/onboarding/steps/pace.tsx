@@ -59,6 +59,15 @@ export function PaceStep() {
   const accent = ACCENT_BY_GOAL[goal];
   const pace = state.paceKgPerWeek ?? GOAL_DEFAULT_PACE[goal];
 
+  // Commit the visible default into state so Continue works on first
+  // paint and persisted onboarding records the chosen pace.
+  React.useEffect(() => {
+    if (state.goal === "maintain" || state.goal === null) return;
+    if (state.paceKgPerWeek === null) {
+      set({ paceKgPerWeek: GOAL_DEFAULT_PACE[state.goal] });
+    }
+  }, [state.goal, state.paceKgPerWeek, set]);
+
   const projectedTarget = targets?.target ?? null;
   const sign =
     goal === "lose" || goal === "recomp"
