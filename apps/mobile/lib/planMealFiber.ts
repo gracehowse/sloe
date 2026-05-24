@@ -13,12 +13,25 @@ export type RecipeFiberRef = {
   fiberG?: number | null;
   fiber_g?: number | null;
   fiber_per_serving?: number | null;
+  fiber?: number | null;
 };
 
 function snapDisplayMultiplier(raw: number): number {
   if (!Number.isFinite(raw) || raw <= 0) return 1;
   const stepped = Math.round(raw * 2) / 2;
   return Math.min(2, Math.max(0.5, stepped));
+}
+
+export function resolveRecipeFiberG(ref: {
+  fiberG?: number | null;
+  fiber_g?: number | null;
+  fiber_per_serving?: number | null;
+  fiber?: number | null;
+}): number {
+  for (const v of [ref.fiberG, ref.fiber_g, ref.fiber_per_serving, ref.fiber]) {
+    if (typeof v === "number" && Number.isFinite(v) && v > 0) return v;
+  }
+  return 0;
 }
 
 /** Fibre for a plan row — stored `fiberG` or scaled from the linked recipe. */
@@ -30,11 +43,7 @@ export function planMealFiberG(meal: PlanMealFiberInput, pool: RecipeFiberRef[])
     (meal.recipeId ? pool.find((r) => r.id === meal.recipeId) : undefined) ??
     pool.find((r) => r.title.trim() === meal.recipeTitle.trim());
   if (!ref) return 0;
-  const base =
-    (typeof ref.fiberG === "number" && ref.fiberG > 0 ? ref.fiberG : 0) ||
-    (typeof ref.fiber_g === "number" && ref.fiber_g > 0 ? ref.fiber_g : 0) ||
-    (typeof ref.fiber_per_serving === "number" && ref.fiber_per_serving > 0 ? ref.fiber_per_serving : 0);
-  if (base <= 0) return 0;
+  const base = resolveRecipeFiberG(ref);
   const pm = meal.portionMultiplier;
   if (typeof pm === "number" && Number.isFinite(pm) && pm > 0) {
     return Math.round(base * pm * 10) / 10;

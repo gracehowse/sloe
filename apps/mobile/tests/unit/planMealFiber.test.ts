@@ -26,9 +26,12 @@ describe("planMealFiberG", () => {
     ).toBe(8);
   });
 
-  it("scales fibre when meal calories differ from recipe card", () => {
+  it("reads legacy fiber field names on recipe refs", () => {
     expect(
-      planMealFiberG({ recipeTitle: "Oats bowl", calories: 200, recipeId: "r1" }, POOL),
-    ).toBe(4);
+      planMealFiberG(
+        { recipeTitle: "Salad", calories: 300, recipeId: "r2" },
+        [{ id: "r2", title: "Salad", calories: 300, fiber: 9 }],
+      ),
+    ).toBe(9);
   });
 });

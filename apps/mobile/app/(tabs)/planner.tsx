@@ -89,6 +89,7 @@ import { formatMacro } from "@suppr/shared/nutrition/formatMacro";
 import {
   enrichPlanMealsFiber,
   planMealFiberG,
+  resolveRecipeFiberG,
   type RecipeFiberRef,
 } from "@/lib/planMealFiber";
 import {
@@ -570,13 +571,7 @@ export default function PlannerScreen() {
     carbs: number;
     fat: number;
     fiber: number;
-  }>(() => ({
-    calories: NUTRITION_DEFAULTS.calories,
-    protein: NUTRITION_DEFAULTS.protein,
-    carbs: NUTRITION_DEFAULTS.carbs,
-    fat: NUTRITION_DEFAULTS.fat,
-    fiber: NUTRITION_DEFAULTS.fiber,
-  }));
+  } | null>(null);
   const [enabledSlots, setEnabledSlots] = useState<Set<string>>(new Set(ALL_MEAL_SLOTS));
   const [shoppingItemCount, setShoppingItemCount] = useState(0);
 
@@ -635,9 +630,7 @@ export default function PlannerScreen() {
         id: r.id,
         title: r.title,
         calories: r.calories,
-        fiberG: (r as { fiberG?: number }).fiberG,
-        fiber_g: (r as { fiber_g?: number }).fiber_g,
-        fiber_per_serving: (r as { fiber_per_serving?: number }).fiber_per_serving,
+        fiberG: resolveRecipeFiberG(r as RecipeFiberRef),
       });
     }
     return out;
@@ -645,7 +638,10 @@ export default function PlannerScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      if (!userId) return;
+      if (!userId) {
+        setPlanTargets(null);
+        return;
+      }
       let cancelled = false;
       void fetchPlanTargetsFromProfile(userId).then((t) => {
         if (!cancelled) setPlanTargets(t);
@@ -970,7 +966,7 @@ export default function PlannerScreen() {
             (s, r, i) => s + r.calories * (trialFit.multipliers[i] ?? 1),
             0,
           );
-          const dayTarget = planTargets.calories;
+          const dayTarget = plannerTargets.calories;
 
           const doSwap = () => {
             setPlan((prev) => {
@@ -1986,7 +1982,7 @@ export default function PlannerScreen() {
         }
       }
 
-      setPlan(newPlan);
+      setPlan(enrichPlanDaysFiber(newPlan, recipeFiberPool));
       setPlanTargets(resolved);
 
       // Group E Card 4 (premium-bar audit 2026-05-14): count how
@@ -2067,7 +2063,7 @@ export default function PlannerScreen() {
     } finally {
       setGenerating(false);
     }
-  }, [savedRecipes, days, userId, enabledSlots]);
+  }, [savedRecipes, discoverRecipes, days, userId, enabledSlots, recipeFiberPool]);
 
   const openGenerateMenu = useCallback(() => {
     if (generating) return;
@@ -2849,6 +2845,7 @@ export default function PlannerScreen() {
                 <Text style={styles.dayTotals}>{Math.round(dayTotalKcal).toLocaleString("en-US")} kcal</Text>
               )}
             </View>
+            {planTargets ? (
             <View
               style={{
                 flexDirection: "row",
@@ -2887,6 +2884,7 @@ export default function PlannerScreen() {
                 });
               })()}
             </View>
+            ) : null}
             {/* F-15 — residual protein gap hint (web/mobile parity). Only
                 rendered when the joint-fit scaler left this day more than
                 10g under the protein target. Points at the lowest-protein
