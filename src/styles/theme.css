@@ -2,7 +2,6 @@
 
 :root {
   --font-size: 16px;
-  --font-serif: ui-serif, Georgia, 'Times New Roman', serif;
 
   /** Suppr v2: snappier easing — fast-in, gentle-out. */
   --pm-ease: cubic-bezier(0.22, 1, 0.36, 1);
@@ -635,10 +634,6 @@
 }
 
 @layer utilities {
-  .font-serif {
-    font-family: var(--font-serif);
-  }
-
   .card-elevated {
     box-shadow: var(--shadow);
     border-color: transparent;

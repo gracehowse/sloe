@@ -312,7 +312,7 @@ export function DesktopSidebar(props: DesktopSidebarProps) {
         {!collapsed ? (
           <div className="flex items-center gap-2.5 min-w-0">
             <SupprPlateMark size={32} className="shrink-0" />
-            <span className="text-[15px] font-bold tracking-tight truncate font-serif">
+            <span className="text-[15px] font-bold tracking-tight truncate">
               Suppr
             </span>
           </div>

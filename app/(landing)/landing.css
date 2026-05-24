@@ -111,7 +111,6 @@
 }
 
 .lp-h-display {
-  font-family: var(--font-serif);
   font-size: clamp(40px, 6.2vw, 72px);
   font-weight: 700;
   letter-spacing: -0.035em;
@@ -120,7 +119,6 @@
   text-wrap: balance;
 }
 .lp-h-section {
-  font-family: var(--font-serif);
   font-size: clamp(28px, 3.6vw, 44px);
   font-weight: 700;
   letter-spacing: -0.028em;
@@ -1701,7 +1699,6 @@
   box-shadow: 0 4px 14px rgba(88, 140, 228, 0.3);
 }
 .lp-tier h3 {
-  font-family: var(--font-serif);
   font-size: 20px;
   font-weight: 700;
   margin: 0 0 4px;
@@ -1865,7 +1862,6 @@
   pointer-events: none;
 }
 .lp-cta-block h2 {
-  font-family: var(--font-serif);
   color: #fff;
   font-size: clamp(28px, 4vw, 44px);
   font-weight: 700;
@@ -1924,7 +1920,6 @@
   gap: 16px;
 }
 .lp-pre-footer-inner h2 {
-  font-family: var(--font-serif);
   font-size: clamp(24px, 3vw, 36px);
   font-weight: 700;
   letter-spacing: -0.02em;

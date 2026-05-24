@@ -304,12 +304,10 @@ export const FontWeight = {
 export const Fonts = Platform.select({
   ios: {
     sans: 'System',
-    serif: 'ui-serif',
     mono: 'Menlo',
   },
   default: {
     sans: 'System',
-    serif: 'serif',
     mono: 'monospace',
   },
 });
@@ -344,10 +342,6 @@ export const Type = {
     fontWeight: '700' as const,
     letterSpacing: -0.35,
   },
-  /** Serif editorial variants — Apple New York (ui-serif) on iOS, system serif on Android. */
-  serifDisplay: { fontSize: 28, lineHeight: 34, fontWeight: '700' as const, letterSpacing: -0.4, fontFamily: Fonts?.serif },
-  serifTitle:   { fontSize: 22, lineHeight: 28, fontWeight: '700' as const, letterSpacing: -0.3, fontFamily: Fonts?.serif },
-  serifHeadline:{ fontSize: 17, lineHeight: 22, fontWeight: '700' as const, letterSpacing: -0.1, fontFamily: Fonts?.serif },
   /** Numeric specials — pair with `fontVariant: ['tabular-nums']` per usage. */
   ringValue:   { fontSize: 36, lineHeight: 36, fontWeight: '700' as const, letterSpacing: -0.7 },
   ringValueLg: { fontSize: 56, lineHeight: 56, fontWeight: '700' as const, letterSpacing: -1.2 },

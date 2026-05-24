@@ -8,18 +8,9 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 /**
  * PushScreenHeader — canonical chrome for non-tab push screens.
  *
- * 2026-05-22 (DRIFT-04 fix): unifies five different push-screen header
- * treatments that drifted across the app (Profile centred serif, Fasting
- * centred serif, Burn Detail left-aligned serif + caption, Meal Nutrition
- * stack sans-bold, Macro Detail double-chrome). Burn Detail was the
- * cleanest variant; this component bakes that pattern in:
- *
- *   ← Activity Bonus
- *     Today
- *
- * Back chevron on the left, serif title, optional caption underneath in
- * `textSecondary`, optional right slot for a contextual action (e.g.
- * the "g" value pill on Macro Detail).
+ * 2026-05-22 (DRIFT-04 fix): unifies push-screen header chrome.
+ * Back chevron on the left, bold sans title (`Type.headline`), optional
+ * caption underneath in `textSecondary`, optional right slot.
  *
  * Screens that use this MUST be added to `STACK_HEADER_HIDDEN` in
  * `apps/mobile/app/_layout.tsx` so the auto-stack chrome doesn't
@@ -72,7 +63,7 @@ export function PushScreenHeader({
         <ChevronLeft size={24} color={colors.text} strokeWidth={1.75} />
       </Pressable>
       <View style={{ flex: 1 }}>
-        <Text style={{ ...Type.serifTitle, color: colors.text }} numberOfLines={1}>
+        <Text style={{ ...Type.headline, color: colors.text }} numberOfLines={1}>
           {title}
         </Text>
         {caption ? (
