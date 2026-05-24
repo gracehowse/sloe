@@ -4,7 +4,8 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
-import { Accent, Spacing, Radius } from "@/constants/theme";
+import { Accent, Spacing, Radius, Type } from "@/constants/theme";
+import { PushScreenHeader } from "@/components/PushScreenHeader";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
@@ -205,15 +206,11 @@ export default function BurnDetailScreen() {
 
   return (
     <View testID="screen-burn-detail" style={{ flex: 1, backgroundColor: colors.background }}>
-      <View style={{ paddingTop: insets.top + Spacing.sm, paddingHorizontal: Spacing.lg, paddingBottom: Spacing.md, flexDirection: "row", alignItems: "center", gap: Spacing.md }}>
-        <Pressable onPress={() => router.back()} hitSlop={12}>
-          <Ionicons name="chevron-back" size={24} color={colors.text} />
-        </Pressable>
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 22, fontWeight: "700", color: colors.text }}>{isPast ? "Activity Summary" : "Activity Bonus"}</Text>
-          <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>{formatDateLabel(viewKey)}</Text>
-        </View>
-      </View>
+      <PushScreenHeader
+        title={isPast ? "Activity Summary" : "Activity Bonus"}
+        caption={formatDateLabel(viewKey)}
+        onBack={() => router.back()}
+      />
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: Spacing.lg, paddingBottom: insets.bottom + 40 }}>
         {!data && loadError ? (

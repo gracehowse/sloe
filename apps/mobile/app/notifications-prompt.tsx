@@ -12,7 +12,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { X } from "lucide-react-native";
-import { Accent, Spacing, Radius } from "@/constants/theme";
+import { Accent, Spacing, Radius, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
 import {
@@ -143,7 +143,7 @@ export default function NotificationsPromptScreen() {
       backgroundColor: Accent.destructive, justifyContent: "center", alignItems: "center",
     },
     notifBadgeText: { color: "#fff", fontSize: 14, fontWeight: "800" },
-    heading: { fontSize: 22, fontWeight: "700", color: colors.text, textAlign: "center", lineHeight: 30 },
+    heading: { ...Type.serifTitle, color: colors.text, textAlign: "center" },
     stat: {
       fontSize: 15, color: colors.textSecondary, textAlign: "center",
       marginTop: Spacing.xl, lineHeight: 22, paddingHorizontal: Spacing.lg,

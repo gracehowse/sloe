@@ -113,8 +113,8 @@ describe("Today above-meals cap (mobile) — folded primitives", () => {
 });
 
 describe("Today branding row (mobile)", () => {
-  it("renders <TodayBrandBar> once above the date header", () => {
-    expect(countMatches(HOST_SRC, /<TodayBrandBar[\s/]/g)).toBe(1);
+  it("does not duplicate brand wordmark in Today scroll (tab title is enough)", () => {
+    expect(HOST_SRC).not.toMatch(/<TodayBrandBar[\s/]/);
   });
 });
 

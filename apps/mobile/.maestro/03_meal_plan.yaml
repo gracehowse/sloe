@@ -7,7 +7,7 @@ name: "Meal plan — generate, view, shopping list"
 
 - tapOn:
     id: "tab-plan"
-- assertVisible: ".*Meal Plan.*"
+- assertVisible: ".*Meal [Pp]lan.*"
 
 # Visual baseline #1 — Plan landing (idle / generated state).
 - takeScreenshot: screenshots/latest/plan-01-landing

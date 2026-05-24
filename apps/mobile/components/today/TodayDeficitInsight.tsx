@@ -1,6 +1,6 @@
 import React from "react";
 import { Text, View } from "react-native";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import {
   weekSummaryDateKeys,
   type WeekSummaryMode,
@@ -131,7 +131,7 @@ export function TodayDeficitInsight({
         borderColor: resolvedBorder,
       }}
     >
-      <Text style={{ fontSize: 13, fontWeight: "600", color: resolvedLabel }}>
+      <Text style={{ ...Type.body, color: resolvedLabel }}>
         ~{todayNetDeficit.toLocaleString()} kcal {NET_DEFICIT_LABEL} so far today
       </Text>
       {/* F-83 (2026-04-25) — hide the rolling-average sub-line when it
@@ -143,7 +143,7 @@ export function TodayDeficitInsight({
           deficit signal. Sub-line returns once the average crosses that
           floor in either direction. */}
       {avgDeficit != null && Math.abs(avgDeficit) >= 50 ? (
-        <Text style={{ fontSize: 11, color: textSecondaryColor, marginTop: 4 }}>
+        <Text style={{ ...Type.caption, color: textSecondaryColor, marginTop: 4 }}>
           {weekSummaryMode === "calendar_week" ? "Week avg" : "7-day avg"}: ~{avgDeficit.toLocaleString()} kcal/day {NET_DEFICIT_LABEL}
         </Text>
       ) : null}

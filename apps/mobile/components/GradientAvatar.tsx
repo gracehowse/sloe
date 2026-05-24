@@ -35,7 +35,7 @@ export function GradientAvatar({
           borderRadius: size / 2,
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: colors.tint,
+          backgroundColor: colors.icon,
           borderWidth: borderColor ? 1 : 0,
           borderColor,
         }}

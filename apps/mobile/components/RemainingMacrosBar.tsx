@@ -1,6 +1,6 @@
 import * as React from "react";
 import { StyleSheet, Text, View, type ViewStyle } from "react-native";
-import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
+import { Accent, Elevation, MacroColors, Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
   computeRemaining,
@@ -150,7 +150,7 @@ export function RemainingMacrosBar({
             <Text
               style={[
                 styles.value,
-                { color: over ? Accent.destructive : colors.text },
+                { color: over ? Accent.warning : colors.text },
               ]}
             >
               {display}
@@ -169,7 +169,7 @@ export function RemainingMacrosBar({
                 <Text
                   style={[
                     styles.afterValue,
-                    { color: pOver ? Accent.destructive : colors.text },
+                    { color: pOver ? Accent.warning : colors.text },
                   ]}
                 >
                   {pDisplay}
@@ -194,6 +194,7 @@ const styles = StyleSheet.create({
     // of the Today cards (mobile convention, matches web `rounded-card`).
     borderRadius: Radius.lg,
     borderWidth: 1,
+    ...Elevation.card,
   },
   col: {
     flex: 1,

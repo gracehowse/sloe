@@ -1,14 +1,8 @@
 import React from "react";
 import { Pressable, Text, View } from "react-native";
 import { useRouter } from "expo-router";
-import {
-  Calendar,
-  ChevronLeft,
-  ChevronRight,
-  LayoutGrid,
-  Sun,
-} from "lucide-react-native";
-import { Accent } from "@/constants/theme";
+import { ChevronLeft, ChevronRight, LayoutGrid, Sun } from "lucide-react-native";
+import { Spacing, Type } from "@/constants/theme";
 import DayStrip from "@/components/charts/DayStrip";
 import { GradientAvatar } from "@/components/GradientAvatar";
 import { StreakPip } from "@/components/today/StreakPip";
@@ -16,9 +10,6 @@ import { StreakPip } from "@/components/today/StreakPip";
 /**
  * TodayDateHeader — day/week nav buttons, title, view-mode toggle, avatar,
  * and the DayStrip row.
- *
- * Extracted from `apps/mobile/app/(tabs)/index.tsx` (audit H3,
- * 2026-04-18).
  */
 export interface TodayDateHeaderProps {
   viewMode: "day" | "week";
@@ -41,42 +32,14 @@ export interface TodayDateHeaderProps {
   textTertiaryColor: string;
   cardColor: string;
   cardBorderColor: string;
-  /** Foreground for the primary-tinted active toggle pill (Day / Week
-   *  glyph). Wired through from the host to avoid hardcoding `#fff`
-   *  here — see Colors.{light,dark}.primaryForeground. */
   primaryForegroundColor: string;
-  /**
-   * Premium-bar audit DC8 polish (2026-05-14) — pass-through props for
-   * the inline StreakPip. The pip used to live above the date header
-   * row; the audit moves it next to the "Today" pill so the week-
-   * strip row reads as one calm unit. When `streakDays` is undefined
-   * the pip is suppressed (matches the existing day-1 carve-out: pip
-   * only renders for streaks ≥ 2; host gates that). `freezeProtected`
-   * flips the Flame glyph to a Shield when a freeze covered today.
-   * `onStreakPress` is the same router push the host used previously
-   * (typically to `/weekly-recap`).
-   */
   streakDays?: number;
   freezeProtected?: boolean;
   onStreakPress?: () => void;
-  /**
-   * Premium-bar audit DC8 polish (2026-05-14) — when supplied AND the
-   * streak just reset (host detects with `didStreakReset`), render
-   * a calm supportive reset-day copy in place of the streak pip. The
-   * host owns the "just reset" detection (transient — one render
-   * window) so this component stays presentation-only.
-   */
   streakResetCopyVisible?: boolean;
-  /**
-   * Premium P1 cold-open (ENG-584): hide Day/Week toggle (Sun / grid).
-   */
   hideViewModeToggle?: boolean;
-  /**
-   * Premium P1 cold-open (ENG-584): hide inline week day-strip row.
-   * When true, title + calendar button open `onOpenCalendar`; chevrons
-   * still step by day.
-   */
   hideDayStrip?: boolean;
+  dayGreeting?: string;
 }
 
 export function TodayDateHeader({
@@ -107,10 +70,12 @@ export function TodayDateHeader({
   streakResetCopyVisible = false,
   hideViewModeToggle = false,
   hideDayStrip = false,
+  dayGreeting,
 }: TodayDateHeaderProps) {
   const router = useRouter();
   const calmDateNav = hideDayStrip && viewMode === "day";
-  const navIconButtonStyle = {
+
+  const navChromeStyle = {
     width: 32,
     height: 32,
     borderRadius: 8,
@@ -121,6 +86,115 @@ export function TodayDateHeader({
     justifyContent: "center" as const,
   };
 
+  const navGhostStyle = {
+    width: 28,
+    height: 28,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  };
+
+  const titleText =
+    viewMode === "week" ? "This Week" : isToday ? "Today" : formatDateLabel(selectedDate);
+
+  // Canonical 2026-05-22 A3: streak chip removed from cold-open Today.
+  // Anti-MFP brand should not surface streak shame as a default. Streak
+  // data still flows through here; chip rendering is now permanently
+  // gated. If we later want a tap-to-reveal affordance, the gate can
+  // flip to `streakRevealRequested` (a future state). For now, hidden.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _streakAvailable = typeof streakDays === "number" && streakDays >= 2 && !streakResetCopyVisible;
+  void _streakAvailable;
+  const showStreakPip = false;
+
+  if (calmDateNav) {
+    return (
+      <View style={{ gap: Spacing.xs }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+          <Pressable
+            onPress={onNavigatePrev}
+            hitSlop={14}
+            style={navGhostStyle}
+            accessibilityRole="button"
+            accessibilityLabel="Previous day"
+          >
+            <ChevronLeft size={20} color={textSecondaryColor} strokeWidth={2} />
+          </Pressable>
+
+          <View style={{ flex: 1, minWidth: 0, paddingHorizontal: 2 }}>
+            <Pressable
+              onPress={onOpenCalendar}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Choose date"
+            >
+              <Text style={{ ...Type.headline, color: textColor }} numberOfLines={1}>
+                {titleText}
+              </Text>
+              {dayGreeting && isToday ? (
+                <Text
+                  testID="today-greeting"
+                  numberOfLines={1}
+                  style={{ ...Type.caption, color: textSecondaryColor, marginTop: 1 }}
+                >
+                  {dayGreeting}
+                </Text>
+              ) : null}
+            </Pressable>
+            {!isToday ? (
+              <Pressable
+                onPress={onTapTitle}
+                hitSlop={6}
+                accessibilityRole="button"
+                accessibilityLabel="Jump to today"
+                style={{ marginTop: 2, alignSelf: "flex-start" }}
+              >
+                <Text style={{ ...Type.caption, fontWeight: "600", color: textSecondaryColor }}>
+                  Jump to today
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
+
+          <Pressable
+            onPress={onNavigateNext}
+            hitSlop={14}
+            disabled={isToday}
+            style={[navGhostStyle, isToday ? { opacity: 0.2 } : null]}
+            accessibilityRole="button"
+            accessibilityLabel="Next day"
+            accessibilityState={{ disabled: isToday }}
+          >
+            <ChevronRight size={20} color={textSecondaryColor} strokeWidth={2} />
+          </Pressable>
+
+          {showStreakPip ? (
+            <StreakPip
+              days={streakDays!}
+              freezeProtected={freezeProtected}
+              onPress={onStreakPress}
+            />
+          ) : null}
+
+          <Pressable
+            onPress={() => router.push("/(tabs)/settings")}
+            accessibilityRole="button"
+            accessibilityLabel="Open settings"
+            hitSlop={8}
+            style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1, marginLeft: 2 })}
+          >
+            <GradientAvatar size={32} initial={avatarLetter} fontSize={12} gradientIdSuffix="today-header" />
+          </Pressable>
+        </View>
+
+        {streakResetCopyVisible ? (
+          <Text style={{ ...Type.caption, color: textSecondaryColor }} numberOfLines={2}>
+            Every expert was once a beginner. Start fresh today.
+          </Text>
+        ) : null}
+      </View>
+    );
+  }
+
   return (
     <View style={{ gap: 8 }}>
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
@@ -128,102 +202,49 @@ export function TodayDateHeader({
           <Pressable
             onPress={onNavigatePrev}
             hitSlop={12}
-            style={navIconButtonStyle}
+            style={navChromeStyle}
             accessibilityRole="button"
             accessibilityLabel={viewMode === "week" ? "Previous week" : "Previous day"}
           >
             <ChevronLeft size={16} color={textColor} />
           </Pressable>
           <Pressable
-            onPress={calmDateNav ? onOpenCalendar : onTapTitle}
+            onPress={onTapTitle}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel={
-              calmDateNav ? "Choose date" : isToday ? "Today" : formatDateLabel(selectedDate)
-            }
+            accessibilityLabel={isToday ? "Today" : formatDateLabel(selectedDate)}
           >
-            {/* Drop the eyebrow on any day-view render — the h1
-                already says "Today" / "Yesterday" / "Tue 16 Jun"; the
-                user doesn't need a second copy. Keep only for week
-                view where the h1 = "This Week" and the eyebrow carries
-                the range. */}
             {viewMode === "week" ? (
-              <Text
-                numberOfLines={1}
-                style={{
-                  fontSize: 11,
-                  fontWeight: "500",
-                  color: textTertiaryColor,
-                  letterSpacing: 0.5,
-                  textTransform: "uppercase",
-                }}
-              >
+              <Text numberOfLines={1} style={{ ...Type.label, color: textTertiaryColor }}>
                 {weekLabel}
               </Text>
             ) : null}
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 1 }}>
-              <Text style={{ fontSize: 22, fontWeight: "700", color: textColor, letterSpacing: -0.4 }}>
-                {viewMode === "week" ? "This Week" : isToday ? "Today" : formatDateLabel(selectedDate)}
-              </Text>
-              {/* 2026-05-14 (premium-bar audit DC8 polish): streak pip
-                  rendered inline next to the "Today" h1 so the
-                  week-strip row reads as a single unit (was: pip
-                  floating above the date header). The host gates
-                  `streakDays >= 2` per the existing day-0 / day-1
-                  carve-out; this component just renders the pip
-                  when the host hands it a value. Suppress on week
-                  view to keep the week toggle uncrowded (matches
-                  pre-move behaviour). */}
-              {viewMode === "day" &&
-                isToday &&
-                typeof streakDays === "number" &&
-                streakDays >= 2 &&
-                !streakResetCopyVisible && (
-                  <StreakPip
-                    days={streakDays}
-                    freezeProtected={freezeProtected}
-                    onPress={onStreakPress}
-                  />
-                )}
+              <Text style={{ ...Type.headline, color: textColor }}>{titleText}</Text>
+              {showStreakPip ? (
+                <StreakPip
+                  days={streakDays!}
+                  freezeProtected={freezeProtected}
+                  onPress={onStreakPress}
+                />
+              ) : null}
             </View>
-          </Pressable>
-          {calmDateNav && !isToday ? (
-            <Pressable
-              onPress={onTapTitle}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel="Jump to today"
-            >
+            {dayGreeting && viewMode === "day" && isToday ? (
               <Text
-                style={{
-                  fontSize: 13,
-                  fontWeight: "600",
-                  color: Accent.primary,
-                }}
+                testID="today-greeting"
+                numberOfLines={1}
+                style={{ ...Type.caption, color: textSecondaryColor, marginTop: 2 }}
               >
-                Today
+                {dayGreeting}
               </Text>
-            </Pressable>
-          ) : null}
-          {calmDateNav ? (
-            <Pressable
-              onPress={onOpenCalendar}
-              hitSlop={12}
-              accessibilityRole="button"
-              accessibilityLabel="Open calendar"
-              style={navIconButtonStyle}
-            >
-              <Calendar size={16} color={textSecondaryColor} strokeWidth={1.75} />
-            </Pressable>
-          ) : null}
+            ) : null}
+          </Pressable>
           <Pressable
             onPress={onNavigateNext}
             hitSlop={12}
-            disabled={calmDateNav && isToday}
+            style={navChromeStyle}
             accessibilityRole="button"
             accessibilityLabel={viewMode === "week" ? "Next week" : "Next day"}
-            accessibilityState={{ disabled: calmDateNav && isToday }}
-            style={[navIconButtonStyle, calmDateNav && isToday ? { opacity: 0.35 } : null]}
           >
             <ChevronRight size={16} color={textColor} />
           </Pressable>
@@ -248,15 +269,13 @@ export function TodayDateHeader({
                 style={{
                   paddingHorizontal: 8,
                   paddingVertical: 6,
-                  backgroundColor: viewMode === "day" ? Accent.primary + "1F" : "transparent",
+                  backgroundColor:
+                    viewMode === "day" ? textSecondaryColor + "18" : "transparent",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <Sun
-                  size={14}
-                  color={viewMode === "day" ? Accent.primary : textSecondaryColor}
-                />
+                <Sun size={14} color={viewMode === "day" ? textColor : textSecondaryColor} />
               </Pressable>
               <Pressable
                 onPress={() => onViewModeChange("week")}
@@ -266,21 +285,19 @@ export function TodayDateHeader({
                 style={{
                   paddingHorizontal: 8,
                   paddingVertical: 6,
-                  backgroundColor: viewMode === "week" ? Accent.primary + "1F" : "transparent",
+                  backgroundColor:
+                    viewMode === "week" ? textSecondaryColor + "18" : "transparent",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
                 <LayoutGrid
                   size={14}
-                  color={viewMode === "week" ? Accent.primary : textSecondaryColor}
+                  color={viewMode === "week" ? textColor : textSecondaryColor}
                 />
               </Pressable>
             </View>
           ) : null}
-          {/* Audit 2026-04-30: avatar pill is the universal profile-entry
-              affordance (Cal AI / MFP / Lifesum all do this). Was a static
-              `<View>` with no onPress — now routes to /profile. */}
           <Pressable
             onPress={() => router.push("/(tabs)/settings")}
             accessibilityRole="button"
@@ -288,14 +305,7 @@ export function TodayDateHeader({
             hitSlop={8}
             style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
           >
-            {/* Premium ink avatar (2026-05-20) — 36×36, matches Profile
-                / Settings / sidebar; default `GradientAvatar` ink fill. */}
-            <GradientAvatar
-              size={36}
-              initial={avatarLetter}
-              fontSize={13}
-              gradientIdSuffix="today-header"
-            />
+            <GradientAvatar size={36} initial={avatarLetter} fontSize={13} gradientIdSuffix="today-header" />
           </Pressable>
         </View>
       </View>
@@ -311,35 +321,10 @@ export function TodayDateHeader({
           secondaryColor={textSecondaryColor}
         />
       )}
-      {/* 2026-05-14 (premium-bar audit DC8 polish — Duolingo
-          supportive reset-day copy): when the user's streak just
-          broke (host detects the >=1 → 0 transition with
-          `didStreakReset` and toggles `streakResetCopyVisible`), the
-          numeric streak pip is suppressed and this calm one-line
-          message takes its place under the week strip. Sits below
-          the DayStrip so the reset framing isn't crammed into the
-          tight header row. The pip continues to reappear once the
-          user logs and the streak climbs back to 2+. */}
       {viewMode === "day" && isToday && streakResetCopyVisible && (
-        <View
-          accessibilityRole="text"
-          accessibilityLabel="Streak reset — start fresh today"
-          style={{
-            paddingHorizontal: 4,
-            paddingVertical: 6,
-          }}
-        >
-          <Text
-            style={{
-              fontSize: 12,
-              color: textSecondaryColor,
-              letterSpacing: 0.1,
-            }}
-            numberOfLines={2}
-          >
-            Every expert was once a beginner. Start fresh today.
-          </Text>
-        </View>
+        <Text style={{ ...Type.caption, color: textSecondaryColor }} numberOfLines={2}>
+          Every expert was once a beginner. Start fresh today.
+        </Text>
       )}
     </View>
   );

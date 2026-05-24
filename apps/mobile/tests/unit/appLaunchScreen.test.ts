@@ -31,6 +31,6 @@ describe("AppLaunchScreen", () => {
     const splashPlugin = appJson.expo.plugins.find(
       (p) => Array.isArray(p) && p[0] === "expo-splash-screen",
     ) as [string, Record<string, unknown>] | undefined;
-    expect(splashPlugin?.[1]?.backgroundColor).toBe("#f6f3ee");
+    expect(splashPlugin?.[1]?.backgroundColor).toBe("#fafaf8");
   });
 });

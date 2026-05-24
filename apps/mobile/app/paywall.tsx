@@ -21,7 +21,7 @@ import { X, CheckCircle2, ChefHat, BarChart3, Flag, Check, Tag, ChevronDown, Che
 import * as Haptics from "expo-haptics";
 import type { PurchasesPackage } from "react-native-purchases";
 
-import { Accent, Spacing, Radius } from "@/constants/theme";
+import { Accent, Spacing, Radius, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { Badge } from "@/components/Badge";
 import {
@@ -728,7 +728,7 @@ export default function PaywallScreen() {
       letterSpacing: 2,
       marginBottom: Spacing.sm,
     },
-    headerTitle: { fontSize: 24, fontWeight: "800", color: colors.text, lineHeight: 32 },
+    headerTitle: { ...Type.serifTitle, color: colors.text, lineHeight: 32 },
     headerSubtitle: {
       fontSize: 14,
       color: colors.textSecondary,
@@ -765,6 +765,9 @@ export default function PaywallScreen() {
       marginBottom: Spacing.sm,
     },
     trustChip: {
+      // Canonical 2026-05-22: chips use --background-secondary, NOT
+      // --input-background. Inputs and chips were sharing a token,
+      // which is wrong — they have different roles (field vs chip).
       flexDirection: "row",
       alignItems: "center",
       gap: 6,
@@ -773,7 +776,7 @@ export default function PaywallScreen() {
       borderRadius: Radius.full,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: colors.border,
-      backgroundColor: colors.inputBg,
+      backgroundColor: colors.backgroundSecondary,
     },
     trustChipText: {
       fontSize: 11,
@@ -1141,62 +1144,83 @@ export default function PaywallScreen() {
             price. */}
 
         {!offeringsReady ? (
-          <>
-            <View style={styles.skeletonCard} />
-            <View style={styles.skeletonCard} />
-          </>
+          // Audit 2026-05-22: previously rendered a pair of grey
+          // skeleton cards while RevenueCat resolved. The skeleton
+          // flash was the user's first impression on every paywall
+          // mount — sometimes the only impression, when offerings
+          // never returned packages. Replace with an optimistic Pro
+          // card backed by FALLBACK_PRICES so the price + features +
+          // trust chips render on first paint. CTA stays disabled
+          // with explicit "Loading plans…" copy until offerings
+          // resolve; price string updates to the live RC priceString
+          // in the normal render branch once ready.
+          <TierCard
+            tier="pro"
+            title="Pro"
+            tag="Log by photo and voice, faster."
+            priceString={billing === "annual" ? FALLBACK_PRICES.proAnnual : FALLBACK_PRICES.proMonthly}
+            periodSuffix={periodSuffix}
+            showSavings={billing === "annual"}
+            referenceLine={
+              billing === "annual"
+                ? computeAnnualReferenceLine(
+                    FALLBACK_PRICES.proAnnual,
+                    FALLBACK_PRICES.proMonthly,
+                  )
+                : null
+            }
+            featHead={PRO_FEATURE_HEAD}
+            features={PRO_FEATURES}
+            isHero
+            ctaLabel="Loading plans…"
+            ctaColor={Accent.primary}
+            ctaDisabled
+            ctaLoading={false}
+            onPress={() => undefined}
+            trustChips={trustChips}
+            colors={colors}
+            styles={styles}
+          />
         ) : subscriptionsUnavailable ? (
-          // ENG-528 (2026-05-16, Grace decision = "remove entirely"):
-          // when RevenueCat offerings can't resolve we previously
-          // rendered an explanatory "Subscriptions unavailable" card
-          // alongside the value ladder. The card competed with trust
-          // chips and read as failed-load. Decision today: drop the
-          // card; show the Pro tier value ladder only. CTA stays
-          // disabled (no broken purchase), but no shouty "unavailable"
-          // signage. Trade: user might tap, the disabled state is the
-          // only feedback. Grace accepted that trade.
-          <>
-            <TierCard
-              tier="pro"
-              title="Pro"
-              tag="Log by photo and voice, faster."
-              priceString={billing === "annual" ? FALLBACK_PRICES.proAnnual : FALLBACK_PRICES.proMonthly}
-              periodSuffix={periodSuffix}
-              showSavings={billing === "annual"}
-              referenceLine={
-                billing === "annual"
-                  ? computeAnnualReferenceLine(
-                      FALLBACK_PRICES.proAnnual,
-                      FALLBACK_PRICES.proMonthly,
-                    )
-                  : null
-              }
-              featHead={PRO_FEATURE_HEAD}
-              features={PRO_FEATURES}
-              // 2026-05-12 (premium-bar audit #1.7): drop "MOST POPULAR"
-              // badge — Pro is the only paid tier on the paywall, so
-              // "most popular vs what?" reads as marketing fluff.
-              isHero
-              // ENG-528: neutral accessibility label (not "Subscriptions
-              // unavailable"). The rendered button text is governed by
-              // ctaDisabled → "Loading plans…" downstream.
-              ctaLabel="Pro plan"
-              ctaColor={Accent.primary}
-              ctaDisabled
-              ctaLoading={false}
-              onPress={() => undefined}
-              trustChips={trustChips}
-              colors={colors}
-              styles={styles}
-            />
-            <Text
-              testID="paywall-offerings-footnote"
-              style={styles.offeringsFootnote}
-            >
-              Plans are loading from the App Store. You can continue with the free
-              tier below — try again later to subscribe.
-            </Text>
-          </>
+          // ENG-528 (2026-05-16) + audit 2026-05-22: when RevenueCat
+          // returns 0 packages (dev/TF builds without provisioned IAPs,
+          // or App Store unreachable), render the Pro value ladder
+          // with fallback prices and offer a real escape hatch via
+          // the App Store subscriptions URL. Previously the CTA was
+          // disabled and showed "Loading plans…" forever — the audit
+          // flagged this as the entire conversion surface being dead.
+          // Subtractive: dropped the "Plans are loading from the App
+          // Store…" footnote that contradicted the loaded-but-empty
+          // state.
+          <TierCard
+            tier="pro"
+            title="Pro"
+            tag="Log by photo and voice, faster."
+            priceString={billing === "annual" ? FALLBACK_PRICES.proAnnual : FALLBACK_PRICES.proMonthly}
+            periodSuffix={periodSuffix}
+            showSavings={billing === "annual"}
+            referenceLine={
+              billing === "annual"
+                ? computeAnnualReferenceLine(
+                    FALLBACK_PRICES.proAnnual,
+                    FALLBACK_PRICES.proMonthly,
+                  )
+                : null
+            }
+            featHead={PRO_FEATURE_HEAD}
+            features={PRO_FEATURES}
+            isHero
+            ctaLabel="Open App Store to subscribe"
+            ctaColor={Accent.primary}
+            ctaDisabled={false}
+            ctaLoading={false}
+            onPress={() => {
+              void Linking.openURL("itms-apps://apps.apple.com/account/subscriptions");
+            }}
+            trustChips={trustChips}
+            colors={colors}
+            styles={styles}
+          />
         ) : (
           <>
             {hasPro ? (
@@ -1220,9 +1244,11 @@ export default function PaywallScreen() {
                 // 2026-05-12 (premium-bar audit #1.7): see note above.
                 isHero
                 ctaLabel={
-                  trialApplies
-                    ? "Start 7-Day Free Trial"
-                    : `Subscribe — ${currentProPkg?.product.priceString ?? fallbackProPrice}${periodSuffix}`
+                  !currentProPkg
+                    ? "Loading plans…"
+                    : trialApplies
+                      ? "Start 7-Day Free Trial"
+                      : `Subscribe — ${currentProPkg.product.priceString}${periodSuffix}`
                 }
                 ctaColor={trialApplies ? Accent.success : Accent.primary}
                 ctaDisabled={!currentProPkg || purchasing !== null}
@@ -1572,11 +1598,16 @@ function TierCard({
           <ActivityIndicator color="#fff" />
         ) : (
           <Text style={[styles.cardCtaText, ctaDisabled && styles.cardCtaDisabledText]}>
-            {/* Audit 2026-04-30: was `${ctaLabel} (unavailable)` which
-                concatenated "(unavailable)" onto the price string and read
-                like part of the SKU. Now we render a clean fallback when
-                the package is missing — never compound with the price. */}
-            {ctaDisabled ? "Loading plans…" : ctaLabel}
+            {/* ctaLabel is now the source of truth — callers pass the
+                right copy per state ("Loading plans…" while offerings
+                resolve, "Open App Store to subscribe" when offerings
+                resolved empty, normal CTA otherwise). Previously the
+                renderer overwrote ctaLabel with "Loading plans…"
+                whenever ctaDisabled was true, which made an
+                offerings-empty state read identically to a still-loading
+                one — confusingly stuck "Loading…" forever on TF and dev
+                builds where IAP products aren't provisioned. */}
+            {ctaLabel}
           </Text>
         )}
       </Pressable>

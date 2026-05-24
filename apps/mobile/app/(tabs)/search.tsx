@@ -6,7 +6,7 @@ import { Search, SearchX } from "lucide-react-native";
 import { authedFetch } from "@/lib/authedFetch";
 import { effectiveFoodSearchQuery } from "@suppr/shared/nutrition/foodSearchQuery";
 
-import { Accent, Spacing, Radius } from "@/constants/theme";
+import { Accent, Spacing, Radius, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { EmptyState } from "@/components/ui/EmptyState";
 
@@ -65,7 +65,7 @@ export default function SearchScreen() {
 
   const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, padding: Spacing.xl, gap: Spacing.sm, backgroundColor: colors.background },
-    title: { fontSize: 22, fontWeight: "700", color: colors.text },
+    title: { ...Type.title, color: colors.text },
     sub: { fontSize: 14, color: colors.textSecondary },
     row: { flexDirection: "row", gap: Spacing.sm, marginTop: Spacing.sm },
     input: {

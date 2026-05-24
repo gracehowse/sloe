@@ -9,7 +9,7 @@ name: "Tab navigation — all 4 tabs load and respond"
 - assertVisible:
     id: "tab-today"
 - assertVisible:
-    text: ".*(?:LOGGED|kcal).*"
+    text: ".*(?:LOGGED|kcal|Start your day).*"
 
 # Recipes tab — Library is the default sub-tab (per (tabs)/_layout.tsx).
 # Discover lives behind a sub-tab pill inside Recipes (RecipesSubTabHeader).
@@ -31,7 +31,7 @@ name: "Tab navigation — all 4 tabs load and respond"
 - waitForAnimationToEnd
 - waitForAnimationToEnd
 - waitForAnimationToEnd
-- assertVisible: ".*Meal Plan.*"
+- assertVisible: ".*Meal [Pp]lan.*"
 
 # Progress tab (testID tab-you for Maestro stability).
 - tapOn:

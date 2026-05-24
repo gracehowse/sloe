@@ -1,10 +1,10 @@
 import React from "react";
 import { Pressable, View } from "react-native";
 import { Plus } from "lucide-react-native";
-import * as Haptics from "expo-haptics";
 
 import { Elevation } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useHaptics } from "@/hooks/useHaptics";
 
 /**
  * LogTabBarButton — the centered, raised round Plus button that lives
@@ -51,10 +51,9 @@ export interface LogTabBarButtonProps {
 
 export function LogTabBarButton({ onPress }: LogTabBarButtonProps) {
   const colors = useThemeColors();
+  const haptics = useHaptics();
   const handlePress = () => {
-    if (process.env.EXPO_OS === "ios") {
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
+    haptics.confirm();
     onPress();
   };
 
@@ -96,6 +95,12 @@ export function LogTabBarButton({ onPress }: LogTabBarButtonProps) {
       >
         <Plus size={24} color={colors.primaryForeground} strokeWidth={2.5} />
       </Pressable>
+      {/* Canonical 2026-05-22 C11: no label below the FAB. The added
+          label flattened the FAB into "just another tab" — Cal AI /
+          Instagram / Twitter / X all leave their primary action button
+          unlabeled. The FAB's position + size + colour IS its
+          hierarchy. Reverted from the earlier "+ Log" label addition
+          (same session). */}
     </View>
   );
 }

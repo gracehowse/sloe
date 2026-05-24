@@ -11,9 +11,10 @@
  *
  * The component renders the wrapper as
  *   `<View style={{ backgroundColor: col + "18", ... }}>`
- * where `col = SLOT_COLOR[slot]`. Cyan starts `#06b6d4`; magenta is
- * `#e04888`. We assert the snack wrapper's background starts with
- * the cyan hex prefix and explicitly is NOT the magenta hex prefix.
+ * where `col = SLOT_COLOR[slot]`. Post 2026-05-22 8-slot palette,
+ * snack tint is Purple (`#9679D9`); Fat macro is Magenta (`#DF5EBC`).
+ * We assert the snack wrapper's bg uses the Purple prefix and is
+ * explicitly NOT the magenta hex prefix.
  */
 import * as React from "react";
 import { describe, expect, it } from "vitest";
@@ -99,20 +100,21 @@ describe("TodayMealsSection — slot icon tint (ui-critic P2 #10)", () => {
     expect(tree.getByText("Snacks")).toBeTruthy();
   });
 
-  it("includes the cyan Snacks tint (SlotColors.snack), NOT the magenta MacroColors.fat tint", () => {
+  it("includes the Purple Snacks tint (SlotColors.snack), NOT the Magenta MacroColors.fat tint", () => {
     const tree = render(<TodayMealsSection {...BASE_PROPS} />);
     const tints = collectIconWrapperBackgrounds(tree);
-    // The cyan snack tint MUST be present.
+    // The Purple snack tint MUST be present (8-slot palette).
     expect(tints).toContain(`${SlotColors.snack.toLowerCase()}18`);
-    // The magenta fat-macro tint MUST NOT be present anywhere in the
+    // The Magenta fat-macro tint MUST NOT be present anywhere in the
     // rendered Today meal section. This is the regression-pin: if
     // someone re-points Snacks back at `MacroColors.fat`, the magenta
     // bg appears here and the test fails.
     expect(tints).not.toContain(`${MacroColors.fat.toLowerCase()}18`);
-    // Defence-in-depth — the literal magenta hex must not bleed in via
-    // any other code path.
+    // Defence-in-depth — neither the new nor the legacy magenta hex
+    // must bleed in via any other code path.
     for (const t of tints) {
-      expect(t).not.toContain("e04888");
+      expect(t).not.toContain("df5ebc"); // new magenta (fat)
+      expect(t).not.toContain("e04888"); // legacy TF49 magenta
     }
   });
 

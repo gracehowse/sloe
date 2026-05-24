@@ -37,9 +37,12 @@ describe("GradientAvatar", () => {
     expect(UNSAFE_queryAllByType(Stop).length).toBe(0);
   });
 
-  it("brand variant uses canonical gradient endpoints #4c6ce0 → #e04888", () => {
-    expect(Brand.primary.toLowerCase()).toBe("#4c6ce0");
-    expect(Brand.accent.toLowerCase()).toBe("#e04888");
+  it("brand variant uses canonical gradient endpoints #588CE4 → #DF5EBC", () => {
+    // 2026-05-22 evening: 8-slot palette lock. Brand gradient endpoints
+    // updated from TF49 hexes (#4c6ce0 / #e04888) to the 8-slot Blue +
+    // Magenta hexes.
+    expect(Brand.primary.toLowerCase()).toBe("#588ce4");
+    expect(Brand.accent.toLowerCase()).toBe("#df5ebc");
 
     const { UNSAFE_getAllByType } = render(
       <GradientAvatar
@@ -54,7 +57,7 @@ describe("GradientAvatar", () => {
     const colors = stops.map(
       (s: { props: { stopColor?: string } }) => s.props.stopColor,
     );
-    expect(colors).toContain("#4c6ce0");
-    expect(colors).toContain("#e04888");
+    expect(colors).toContain("#588CE4");
+    expect(colors).toContain("#DF5EBC");
   });
 });

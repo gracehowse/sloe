@@ -2,6 +2,7 @@ import * as React from "react";
 import { Pressable, Text, View, ViewStyle, StyleProp } from "react-native";
 import { Accent, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useHaptics } from "@/hooks/useHaptics";
 
 /**
  * Mobile Segmented — small pill toggle for the metric/imperial switch
@@ -30,6 +31,7 @@ export function MobileSegmented<T extends string = string>({
   style,
 }: MobileSegmentedProps<T>) {
   const colors = useThemeColors();
+  const haptics = useHaptics();
   return (
     <View
       accessibilityRole="radiogroup"
@@ -41,7 +43,7 @@ export function MobileSegmented<T extends string = string>({
           backgroundColor: colors.card,
           borderWidth: 1,
           borderColor: colors.border,
-          borderRadius: Radius.md - 2,
+          borderRadius: Radius.md,
           padding: 3,
           gap: 2,
         },
@@ -53,21 +55,26 @@ export function MobileSegmented<T extends string = string>({
         return (
           <Pressable
             key={opt.value}
-            onPress={() => onChange(opt.value)}
+            onPress={() => {
+              if (!on) haptics.select();
+              onChange(opt.value);
+            }}
             accessibilityRole="radio"
             accessibilityState={{ selected: on }}
             style={{
               paddingHorizontal: 14,
               paddingVertical: 6,
-              borderRadius: 7,
-              backgroundColor: on ? Accent.primary : "transparent",
+              borderRadius: Radius.sm,
+              // Canonical 2026-05-22: selected = soft fill + primary text,
+              // NOT solid indigo. Solid reserved for primary action only.
+              backgroundColor: on ? Accent.primarySoft : "transparent",
             }}
           >
             <Text
               style={{
                 fontSize: 12,
                 fontWeight: "700",
-                color: on ? Accent.primaryForeground : colors.textSecondary,
+                color: on ? Accent.primary : colors.textSecondary,
               }}
             >
               {opt.label}

@@ -19,10 +19,11 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { consumeNewSocialRecipeUrlFromClipboard } from "@/lib/clipboardShareForward";
 import { useDiscoverRecipes } from "@/lib/recipes";
 import { searchEdamam, type EdamamSearchResult } from "@/lib/verifyRecipe";
-import { Search, Utensils, Flame, Beef, Wheat, Droplets, Leaf, Clock, Bookmark, Link as LinkIcon, ChevronRight, ChefHat } from "lucide-react-native";
+import { Search, Utensils, Bookmark, Link as LinkIcon, ChevronRight, ChefHat } from "lucide-react-native";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { decodeEntities } from "@/lib/decodeEntities";
-import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
+import { Accent, Elevation, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
+import { MacroIconRow } from "@/components/nutrition/MacroIconRow";
 import type { RecipeCard } from "@/lib/types";
 import { useAuth } from "@/context/auth";
 import { useLibrarySearchStore } from "@/hooks/useLibrarySearchStore";
@@ -67,7 +68,7 @@ function SourceBadge({ source }: { source?: string }) {
   if (!source) return null;
   return (
     <View style={{ position: "absolute", top: 8, left: 8, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: "#00000066" }}>
-      <Text style={{ fontSize: 9, fontWeight: "500", color: "#fff" }}>{source}</Text>
+      <Text style={{ ...Type.caption, color: "#fff" }}>{source}</Text>
     </View>
   );
 }
@@ -423,7 +424,7 @@ export default function DiscoverScreen() {
                 computation available via `computeRecipeFitPercent` in
                 case a future ranking pass wants it. */}
             <Text
-              style={{ fontSize: 15, fontWeight: "700", color: colors.text, lineHeight: 19, letterSpacing: -0.1, paddingRight: 48 }}
+              style={{ ...Type.body, fontWeight: '700', color: colors.text, paddingRight: 48 }}
               numberOfLines={2}
             >
               {decodeEntities(item.title)}
@@ -443,70 +444,33 @@ export default function DiscoverScreen() {
                 style={{ marginTop: 4 }}
               >
                 <Text
-                  style={{ fontSize: 12, color: colors.textSecondary, textDecorationLine: "underline" }}
+                  style={{ ...Type.caption, color: colors.textSecondary, textDecorationLine: "underline" }}
                   numberOfLines={1}
                 >
                   {displayAttribution({ creatorName: item.creatorName, source: item.source })}
                 </Text>
               </Pressable>
             ) : (
-              <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 4 }} numberOfLines={1}>
+              <Text style={{ ...Type.caption, color: colors.textSecondary, marginTop: 4 }} numberOfLines={1}>
                 {displayAttribution({ creatorName: item.creatorName, source: item.source })}
               </Text>
             )}
-            {/* Polish (2026-04-25 visual-qa): pre-fix, only kcal and
-                protein had icons — carbs and fat were tacked onto the
-                protein row as plain text ("Xg P · Yg C · Zg F"). Tester
-                feedback: "on the discover page protein has an icon but
-                none of the other macro nutrients do". Each macro now
-                gets its own icon + value pair, matching the prototype's
-                visual treatment. Fibre joins when the recipe carries it.
-
-                Audit 2026-05-04 #15: customer-lens called out that 5
-                numbers in a row without P/C/F letter labels reads as
-                "memorize the order". Add a low-emphasis macro letter
-                after each value (e.g. `Beef 13g P`) so the row is
-                self-explanatory without losing icon redundancy. */}
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 10 }}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                <Flame size={11} color={MacroColors.calories} />
-                <Text style={{ fontSize: 11, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
-                  {kcal} kcal
-                </Text>
-              </View>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                <Beef size={11} color={MacroColors.protein} />
-                <Text style={{ fontSize: 11, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
-                  {protein}g <Text style={{ color: colors.textTertiary }}>P</Text>
-                </Text>
-              </View>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                <Wheat size={11} color={MacroColors.carbs} />
-                <Text style={{ fontSize: 11, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
-                  {carbs}g <Text style={{ color: colors.textTertiary }}>C</Text>
-                </Text>
-              </View>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                <Droplets size={11} color={MacroColors.fat} />
-                <Text style={{ fontSize: 11, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
-                  {fat}g <Text style={{ color: colors.textTertiary }}>F</Text>
-                </Text>
-              </View>
-              {Number.isFinite(item.fiberG) && (item.fiberG ?? 0) > 0 ? (
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                  <Leaf size={11} color={Accent.success} />
-                  <Text style={{ fontSize: 11, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
-                    {Math.round((item.fiberG ?? 0) * 10) / 10}g
-                  </Text>
-                </View>
-              ) : null}
-              {item.cookTime ? (
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                  <Clock size={11} color={colors.textTertiary} />
-                  <Text style={{ fontSize: 11, color: colors.textSecondary }}>{item.cookTime}</Text>
-                </View>
-              ) : null}
-            </View>
+            {/* MacroIconRow — shared with Library + Today (2026-05-22
+                consolidation per Grace: "everything in library and
+                discover should display like this"). Was 60 lines of
+                inline duplicate; component owns the icon/colour/letter
+                grammar so any palette token shift cascades cleanly. */}
+            <MacroIconRow
+              kcal={kcal}
+              protein={protein}
+              carbs={carbs}
+              fat={fat}
+              fiber={item.fiberG}
+              cookTime={item.cookTime}
+              textColor={colors.textSecondary}
+              textTertiaryColor={colors.textTertiary}
+              style={{ marginTop: 10 }}
+            />
             {/* GW-08 (audit 2026-04-28): pre-fix this card rendered a
                 TrustChip whose source was fabricated from `item.isVerified`
                 via the recipe-trust helper. That bool is set by the
@@ -567,15 +531,15 @@ export default function DiscoverScreen() {
             }
           />
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }} numberOfLines={1}>
+            <Text style={{ ...Type.body, color: colors.text }} numberOfLines={1}>
               {decodeEntities(item.title)}
             </Text>
-            <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 1 }} numberOfLines={1}>
+            <Text style={{ ...Type.caption, color: colors.textSecondary, marginTop: 1 }} numberOfLines={1}>
               {displayAttribution({ creatorName: item.creatorName, source: item.source })}
               {item.cookTime ? ` · ${item.cookTime}` : ""}
             </Text>
           </View>
-          <Text style={{ fontSize: 11, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
+          <Text style={{ ...Type.caption, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
             <Text style={{ fontWeight: "600", color: colors.text }}>{kcal}</Text>
             {` · ${protein}P · ${carbs}C`}
           </Text>
@@ -674,7 +638,7 @@ export default function DiscoverScreen() {
             >
               <Text
                 numberOfLines={1}
-                style={{ fontSize: 12, lineHeight: 18, fontWeight: "600", color: filter === f ? t.accent : colors.textSecondary }}
+                style={{ ...Type.caption, fontWeight: '600', lineHeight: 18, color: filter === f ? t.accent : colors.textSecondary }}
               >
                 {f}
               </Text>
@@ -689,13 +653,13 @@ export default function DiscoverScreen() {
         {(eatingOutLoading || eatingOut.length > 0) && (
           <View style={{ marginBottom: 14 }}>
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-              <Text style={{ fontSize: 12, fontWeight: "700", color: colors.textSecondary, letterSpacing: 0.4, textTransform: "uppercase" }}>
+              <Text style={{ ...Type.label, color: colors.textSecondary }}>
                 Eating out
               </Text>
               {eatingOutLoading ? (
-                <Text style={{ fontSize: 10, color: colors.textTertiary }}>Searching…</Text>
+                <Text style={{ ...Type.caption, color: colors.textTertiary }}>Searching…</Text>
               ) : (
-                <Text style={{ fontSize: 10, color: colors.textTertiary }}>
+                <Text style={{ ...Type.caption, color: colors.textTertiary }}>
                   {eatingOut.length} restaurant {eatingOut.length === 1 ? "match" : "matches"}
                 </Text>
               )}
@@ -729,17 +693,17 @@ export default function DiscoverScreen() {
                   }}
                 >
                   {m.brand ? (
-                    <Text style={{ fontSize: 10, fontWeight: "700", color: t.accent, marginBottom: 2 }} numberOfLines={1}>
+                    <Text style={{ ...Type.label, color: t.accent, marginBottom: 2 }} numberOfLines={1}>
                       {m.brand.toUpperCase()}
                     </Text>
                   ) : null}
-                  <Text style={{ fontSize: 12, fontWeight: "600", color: colors.text, marginBottom: 6 }} numberOfLines={2}>
+                  <Text style={{ ...Type.caption, fontWeight: '600', color: colors.text, marginBottom: 6 }} numberOfLines={2}>
                     {m.label}
                   </Text>
-                  <Text style={{ fontSize: 11, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
+                  <Text style={{ ...Type.caption, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
                     {Math.round(m.calories)} kcal · {Math.round(m.protein)}p
                   </Text>
-                  <Text style={{ fontSize: 9, color: colors.textTertiary, marginTop: 2 }}>per 100 g</Text>
+                  <Text style={{ ...Type.caption, color: colors.textTertiary, marginTop: 2 }}>per 100 g</Text>
                 </Pressable>
               ))}
             </ScrollView>
@@ -773,8 +737,8 @@ export default function DiscoverScreen() {
             <LinkIcon size={18} color={t.accent} />
           </IconBox>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }}>Import from TikTok, Instagram...</Text>
-            <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 1 }}>Paste a link or share from any app</Text>
+            <Text style={{ ...Type.body, fontWeight: '600', color: colors.text }}>Import from TikTok, Instagram...</Text>
+            <Text style={{ ...Type.caption, color: colors.textSecondary, marginTop: 1 }}>Paste a link or share from any app</Text>
           </View>
           <ChevronRight size={16} color={colors.textTertiary} />
         </Pressable>
@@ -802,11 +766,8 @@ export default function DiscoverScreen() {
           <View style={{ paddingTop: Spacing.md }}>
             <Text
               style={{
-                fontSize: 11,
-                fontWeight: "700",
-                color: colors.textSecondary,
-                letterSpacing: 0.6,
-                textTransform: "uppercase",
+                ...Type.headline,
+                color: colors.text,
                 marginBottom: Spacing.sm,
               }}
             >
@@ -817,7 +778,7 @@ export default function DiscoverScreen() {
               <View style={{ alignItems: "center", marginTop: Spacing.lg, paddingHorizontal: Spacing.lg }}>
                 <Text
                   style={{
-                    fontSize: 12,
+                    ...Type.caption,
                     color: colors.textTertiary,
                     textAlign: "center",
                     maxWidth: 280,
@@ -841,7 +802,7 @@ export default function DiscoverScreen() {
                     opacity: pressed ? 0.7 : 1,
                   })}
                 >
-                  <Text style={{ fontSize: 13, fontWeight: "600", color: Accent.primary }}>
+                  <Text style={{ ...Type.caption, fontWeight: '600', color: Accent.primary }}>
                     Retry
                   </Text>
                 </Pressable>
@@ -855,43 +816,42 @@ export default function DiscoverScreen() {
             ) : (
               <Utensils size={40} color={colors.textTertiary} style={{ marginBottom: 4 }} />
             )}
-            <Text style={{ fontSize: 18, fontWeight: "600", color: colors.text }}>
+            <Text style={{ ...Type.headline, color: colors.text }}>
               {search.trim() ? `No results for "${search.trim()}"` : "No recipes yet"}
             </Text>
-            <Text style={{ fontSize: 14, color: colors.textSecondary, textAlign: "center", maxWidth: 260 }}>
+            <Text style={{ ...Type.bodyMuted, color: colors.textSecondary, textAlign: "center", maxWidth: 260 }}>
               {search.trim() ? "Try a different search term." : "Pull down to refresh, or check your connection."}
             </Text>
           </View>
         ) : (
           <>
+            {/* 2026-05-22 evening (Grace): editorial hero (overlay
+                title on top of full-bleed image) replaced with the
+                same MacroIconRow card style as the rest of the feed —
+                "everything should be like the bottom one". Single
+                consistent grammar across the whole Discover stream;
+                no special-case treatment for the first card. */}
             <Text
               style={{
-                fontSize: 11,
-                fontWeight: "700",
-                color: colors.textSecondary,
-                letterSpacing: 0.6,
-                textTransform: "uppercase",
-                marginTop: 8,
-                marginBottom: 10,
+                ...Type.headline,
+                color: colors.text,
+                marginBottom: Spacing.sm,
               }}
             >
               Matches your day
             </Text>
             <View style={{ gap: 12 }}>
-              {filtered.slice(0, 2).map((r) => renderHeroCard(r))}
+              {filtered.slice(0, 3).map((r) => renderHeroCard(r))}
             </View>
 
-            {filtered.length > 2 ? (
+            {filtered.length > 3 ? (
               <>
                 <Text
                   style={{
-                    fontSize: 11,
-                    fontWeight: "700",
-                    color: colors.textSecondary,
-                    letterSpacing: 0.6,
-                    textTransform: "uppercase",
-                    marginTop: 22,
-                    marginBottom: 10,
+                    ...Type.headline,
+                    color: colors.text,
+                    marginTop: Spacing.xl,
+                    marginBottom: Spacing.sm,
                   }}
                 >
                   More ideas
@@ -905,7 +865,7 @@ export default function DiscoverScreen() {
                     overflow: "hidden",
                   }}
                 >
-                  {filtered.slice(2).map((r, idx) => renderMoreIdeaRow(r, idx))}
+                  {filtered.slice(3).map((r, idx) => renderMoreIdeaRow(r, idx))}
                 </View>
               </>
             ) : null}
@@ -917,7 +877,7 @@ export default function DiscoverScreen() {
             sections (2026-05-12 audit). Always renders so users can
             navigate to their saved recipes from the discovery feed
             even when the feed is empty. */}
-        <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text, letterSpacing: -0.1, marginTop: 22, marginBottom: 10 }}>
+        <Text style={{ ...Type.headline, color: colors.text, marginTop: Spacing.xl, marginBottom: Spacing.sm }}>
           My Library
         </Text>
 
@@ -928,7 +888,7 @@ export default function DiscoverScreen() {
             flexDirection: "row",
             alignItems: "center",
             gap: 12,
-            padding: 14,
+            padding: Spacing.md,
             borderRadius: Radius.lg,
             backgroundColor: colors.card,
             borderWidth: 1,
@@ -939,8 +899,8 @@ export default function DiscoverScreen() {
             <Bookmark size={18} color={Accent.success} />
           </IconBox>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }}>My Library</Text>
-            <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 1 }}>Saved and imported recipes</Text>
+            <Text style={{ ...Type.body, fontWeight: '600', color: colors.text }}>My Library</Text>
+            <Text style={{ ...Type.caption, color: colors.textSecondary, marginTop: 1 }}>Saved and imported recipes</Text>
           </View>
           <ChevronRight size={16} color={colors.textTertiary} />
         </Pressable>

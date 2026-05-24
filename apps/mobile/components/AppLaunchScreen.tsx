@@ -2,7 +2,7 @@ import React from "react";
 import { ActivityIndicator, Text, View } from "react-native";
 
 import { SupprPlateWordmark } from "@/components/SupprMark";
-import { Accent, Colors, Spacing } from "@/constants/theme";
+import { Colors, Spacing } from "@/constants/theme";
 import type { ResolvedTheme } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
@@ -46,7 +46,7 @@ export function AppLaunchScreen({
       <SupprPlateWordmark size={48} />
       <ActivityIndicator
         size="small"
-        color={Accent.primary}
+        color={colors.tint}
         style={{ marginTop: Spacing.xl }}
       />
       <Text

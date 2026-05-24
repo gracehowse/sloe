@@ -10,8 +10,9 @@ name: "Today screen — ring, macros, raised tab-bar Log button → LogSheet"
 - waitForAnimationToEnd
 
 # Calorie ring visible — canonical "Today loaded" signal.
+# Empty-day shows "Start your day"; populated day shows "LOGGED" or "kcal".
 - assertVisible:
-    text: ".*(?:LOGGED|kcal).*"
+    text: ".*(?:LOGGED|kcal|Start your day).*"
 
 # Centered raised Log button — 56pt circular Plus button living in the
 # global SupprTabBar between Recipes and Plan (2026-04-30; replaced the

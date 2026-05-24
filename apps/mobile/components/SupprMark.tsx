@@ -2,6 +2,7 @@ import * as React from "react";
 import { View, ViewStyle, StyleProp, Text } from "react-native";
 import Svg, { Circle, Rect } from "react-native-svg";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { Fonts } from "@/constants/theme";
 
 /**
  * SupprMark — rounded-square brand mark for mobile.
@@ -82,9 +83,10 @@ export function SupprWordmark({ size = 28, style }: SupprWordmarkProps) {
       <Text
         style={{
           color: colors.text,
-          fontSize: Math.round(size * 0.64),
+          fontSize: Math.round(size * 0.72),
           fontWeight: "700",
           letterSpacing: -0.4,
+          fontFamily: Fonts?.serif,
           includeFontPadding: false,
         }}
       >
@@ -143,9 +145,10 @@ export function SupprPlateWordmark({ size = 28, style }: SupprWordmarkProps) {
       <Text
         style={{
           color: colors.text,
-          fontSize: Math.round(size * 0.64),
+          fontSize: Math.round(size * 0.72),
           fontWeight: "700",
           letterSpacing: -0.4,
+          fontFamily: Fonts?.serif,
           includeFontPadding: false,
         }}
       >

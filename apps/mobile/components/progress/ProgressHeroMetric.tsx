@@ -1,7 +1,7 @@
 import { Text, View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Accent, Spacing } from "@/constants/theme";
 
 /**
  * ProgressHeroMetric — Oura-style "one big thing" for the Progress tab.
@@ -20,22 +20,29 @@ export interface ProgressHeroMetricProps {
   streak: number;
 }
 
-const RING_SIZE = 120;
-const STROKE = 8;
+// 2026-05-22 evening (Grace): ring shrunk from 120 → 64 and pulled
+// out of its bordered card wrapper. "Ring at the top seems way too
+// intrusive" — at 120 it dominated the whole Progress viewport and
+// out-shouted the charts that should lead the page. New scale lets
+// the ring sit inline as a status badge next to the stat line, not
+// a hero element. Stroke trimmed 8 → 5 to match the smaller radius.
+const RING_SIZE = 64;
+const STROKE = 5;
 const RADIUS = (RING_SIZE - STROKE) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
+// 2026-05-22 evening (Grace): ring tone now mirrors Today's calorie
+// ring — green when in 90-110%, red when over, green-when-under.
+// Owns one rule across both rings instead of Today saying green/red
+// and Progress saying green/amber.
 function adherenceTone(pct: number): { color: string; label: string } {
   if (pct >= 90 && pct <= 110) {
     return { color: Accent.success, label: "On target" };
   }
-  if (pct < 90 && pct >= 75) {
-    return { color: Accent.warning, label: "Under target" };
+  if (pct < 90) {
+    return { color: Accent.success, label: "Under target" };
   }
-  if (pct < 75) {
-    return { color: Accent.warning, label: "Under target" };
-  }
-  // Over target (>110%) is always destructive red
+  // Over (> 110%) — red, owning the same green/red rule Today uses.
   return { color: Accent.destructive, label: "Over target" };
 }
 
@@ -53,13 +60,8 @@ export function ProgressHeroMetric({
       <View
         testID="progress-hero-metric"
         style={{
-          alignItems: "center",
-          paddingVertical: 24,
-          marginBottom: 14,
-          borderRadius: Radius.lg,
-          borderWidth: 1,
-          borderColor: colors.cardBorder,
-          backgroundColor: colors.card,
+          paddingVertical: Spacing.md,
+          marginBottom: Spacing.md,
         }}
       >
         <Text style={{ fontSize: 13, color: colors.textSecondary }}>
@@ -83,17 +85,19 @@ export function ProgressHeroMetric({
     statLine.push(`${streak}-day streak`);
   }
 
+  // 2026-05-22 evening (Grace): inline horizontal layout — ring on
+  // left, stack on right (adherence label + %, stat line below). No
+  // bordered card wrapper. Sits flush on the page so the charts
+  // below lead the visual hierarchy.
   return (
     <View
       testID="progress-hero-metric"
       style={{
+        flexDirection: "row",
         alignItems: "center",
-        paddingVertical: 24,
-        marginBottom: 14,
-        borderRadius: Radius.lg,
-        borderWidth: 1,
-        borderColor: colors.cardBorder,
-        backgroundColor: colors.card,
+        gap: Spacing.md,
+        paddingVertical: Spacing.md,
+        marginBottom: Spacing.md,
       }}
     >
       <View style={{ width: RING_SIZE, height: RING_SIZE, alignItems: "center", justifyContent: "center" }}>
@@ -126,8 +130,8 @@ export function ProgressHeroMetric({
         <Text
           testID="progress-hero-pct"
           style={{
-            fontSize: 28,
-            fontWeight: "800",
+            fontSize: 14,
+            fontWeight: "700",
             fontVariant: ["tabular-nums"],
             color: tone.color,
           }}
@@ -136,20 +140,21 @@ export function ProgressHeroMetric({
         </Text>
       </View>
 
-      <Text style={{ marginTop: 8, fontSize: 13, fontWeight: "600", color: tone.color }}>
-        {tone.label}
-      </Text>
-
-      <Text
-        style={{
-          marginTop: Spacing.sm,
-          fontSize: 11,
-          color: colors.textTertiary,
-          fontVariant: ["tabular-nums"],
-        }}
-      >
-        {statLine.join("  ·  ")}
-      </Text>
+      <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+        <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text }}>
+          {tone.label}
+        </Text>
+        <Text
+          style={{
+            fontSize: 11,
+            color: colors.textTertiary,
+            fontVariant: ["tabular-nums"],
+          }}
+          numberOfLines={1}
+        >
+          {statLine.join("  ·  ")}
+        </Text>
+      </View>
     </View>
   );
 }

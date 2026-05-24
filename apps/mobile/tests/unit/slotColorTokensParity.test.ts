@@ -51,21 +51,25 @@ describe("SlotColors token (ui-critic P2 #10 — magenta=fat=snack collision fix
       });
     });
 
-    it("snack tint is cyan (#06b6d4), distinct from MacroColors.fat", () => {
-      expect(SlotColors.snack.toLowerCase()).toBe("#06b6d4");
-      // MacroColors.fat must remain magenta so this guard catches drift
-      // from either side.
-      expect(MacroColors.fat.toLowerCase()).toBe("#e04888");
+    it("snack tint is purple (#9679D9), distinct from MacroColors.fat", () => {
+      // 2026-05-22 evening: 8-slot palette. Snack swapped from cyan
+      // (#06b6d4) to Purple (#9679D9) — cyan was dropped from the 8.
+      // Fat stays Magenta (#DF5EBC).
+      expect(SlotColors.snack.toLowerCase()).toBe("#9679d9");
+      expect(MacroColors.fat.toLowerCase()).toBe("#df5ebc");
       expect(SlotColors.snack.toLowerCase()).not.toBe(
         MacroColors.fat.toLowerCase(),
       );
     });
 
-    it("breakfast/lunch/dinner mirror warning/success/warm-stone (not brand blue)", () => {
-      expect(SlotColors.breakfast).toBe(Accent.warning);
-      expect(SlotColors.lunch).toBe(Accent.success);
-      expect(SlotColors.dinner).toBe(Accent.primaryLight);
-      expect(SlotColors.dinner).not.toBe(Accent.brandBlue);
+    it("breakfast/lunch/dinner map to Yellow/Green/Blue (8-slot palette)", () => {
+      // 8-slot palette (2026-05-22 evening): meal slots map to their own
+      // palette positions, not to semantic Accents. Breakfast was
+      // Accent.warning (amber) — now Yellow so Orange stays reserved
+      // for activity/bonus semantics.
+      expect(SlotColors.breakfast.toLowerCase()).toBe("#f3c336");
+      expect(SlotColors.lunch).toBe(Accent.success); // Green — same token still
+      expect(SlotColors.dinner).toBe(Accent.primary); // Blue — same token still
     });
   });
 
@@ -107,12 +111,14 @@ describe("SlotColors token (ui-critic P2 #10 — magenta=fat=snack collision fix
       const rootStart = src.indexOf(":root");
       const darkStart = src.indexOf(".dark {");
       const lightBlock = src.slice(rootStart, darkStart);
-      expect(lightBlock).toMatch(/--slot-breakfast:\s*#e0a838/i);
-      expect(lightBlock).toMatch(/--slot-lunch:\s*#62b35a/i);
-      expect(lightBlock).toMatch(/--slot-dinner:\s*#5e574e/i);
-      expect(lightBlock).toMatch(/--slot-snack:\s*#06b6d4/i);
+      // 8-slot palette (2026-05-22 evening): Breakfast Yellow, Lunch
+      // Green, Dinner Blue, Snack Purple.
+      expect(lightBlock).toMatch(/--slot-breakfast:\s*#F3C336/i);
+      expect(lightBlock).toMatch(/--slot-lunch:\s*#56A775/i);
+      expect(lightBlock).toMatch(/--slot-dinner:\s*#588CE4/i);
+      expect(lightBlock).toMatch(/--slot-snack:\s*#9679D9/i);
       // Soft variants exist for tinted backgrounds (`bg-slot-snack-soft`).
-      expect(lightBlock).toMatch(/--slot-snack-soft:\s*#06b6d412/i);
+      expect(lightBlock).toMatch(/--slot-snack-soft:\s*#9679D912/i);
     });
 
     it("theme.css declares --slot-* tokens for dark mode (cyan family)", () => {
@@ -120,12 +126,13 @@ describe("SlotColors token (ui-critic P2 #10 — magenta=fat=snack collision fix
       const darkStart = src.indexOf(".dark {");
       const themeStart = src.indexOf("@theme inline", darkStart);
       const darkBlock = src.slice(darkStart, themeStart);
-      expect(darkBlock).toMatch(/--slot-breakfast:\s*#f0c058/i);
-      expect(darkBlock).toMatch(/--slot-lunch:\s*#82d878/i);
-      expect(darkBlock).toMatch(/--slot-dinner:\s*#9490a0/i);
-      // Dark snack is the lifted cyan, NOT magenta.
-      expect(darkBlock).toMatch(/--slot-snack:\s*#22d3ee/i);
-      expect(darkBlock).not.toMatch(/--slot-snack:\s*#(ff7eb3|e04888)/i);
+      // 8-slot palette dark — OLED-lifted variants of light hexes.
+      expect(darkBlock).toMatch(/--slot-breakfast:\s*#F5D162/i);
+      expect(darkBlock).toMatch(/--slot-lunch:\s*#7ABE93/i);
+      expect(darkBlock).toMatch(/--slot-dinner:\s*#7BA3EA/i);
+      // Dark snack is lifted purple, NOT magenta or cyan.
+      expect(darkBlock).toMatch(/--slot-snack:\s*#AC93E2/i);
+      expect(darkBlock).not.toMatch(/--slot-snack:\s*#(ff7eb3|e04888|22d3ee)/i);
     });
 
     it("theme.css exposes --color-slot-* in @theme inline so Tailwind picks them up", () => {

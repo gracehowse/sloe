@@ -56,20 +56,24 @@ describe("mobile theme — Phase 1 production design spec coverage", () => {
       });
     }
 
-    it("source-usda hex values match the production design spec §1.4 table", () => {
-      // Light = #62b35a (leaf green); dark = #82d878.
-      expect(Colors.light.sourceUsda.toLowerCase()).toBe("#62b35a");
-      expect(Colors.dark.sourceUsda.toLowerCase()).toBe("#82d878");
+    it("source-usda maps to Green slot (8-slot palette)", () => {
+      // 2026-05-22 evening: 8-slot palette. Was #62b35a → now #56A775.
+      expect(Colors.light.sourceUsda.toLowerCase()).toBe("#56a775");
+      expect(Colors.dark.sourceUsda.toLowerCase()).toBe("#7abe93");
     });
 
-    it("source-ai hex values match magenta", () => {
-      expect(Colors.light.sourceAi.toLowerCase()).toBe("#e04888");
-      expect(Colors.dark.sourceAi.toLowerCase()).toBe("#ff7eb3");
+    it("source-ai maps to Magenta slot", () => {
+      // Was #e04888 → now #DF5EBC.
+      expect(Colors.light.sourceAi.toLowerCase()).toBe("#df5ebc");
+      expect(Colors.dark.sourceAi.toLowerCase()).toBe("#e689cb");
     });
 
-    it("over-budget-fg uses amber, NOT red (per project memory)", () => {
-      expect(Colors.light.overBudgetFg.toLowerCase()).toBe("#e0a838");
-      expect(Colors.dark.overBudgetFg.toLowerCase()).toBe("#f0c058");
+    it("over-budget-fg maps to Orange slot (calmer than ring's red)", () => {
+      // The ring uses Accent.destructive (Red) for the over arc; the
+      // overBudgetFg text token stays Orange (calmer for inline copy
+      // like "over by 50 kcal"). Was #e0a838 → now #F78A32.
+      expect(Colors.light.overBudgetFg.toLowerCase()).toBe("#f78a32");
+      expect(Colors.dark.overBudgetFg.toLowerCase()).toBe("#faa45f");
     });
   });
 
@@ -82,6 +86,7 @@ describe("mobile theme — Phase 1 production design spec coverage", () => {
       "bodyMuted",
       "label",
       "caption",
+      "macroValue",
       "ringValue",
       "ringValueLg",
     ] as const;
@@ -101,6 +106,13 @@ describe("mobile theme — Phase 1 production design spec coverage", () => {
       expect(Type.title.lineHeight).toBe(28);
       expect(Type.title.fontWeight).toBe("700");
       expect(Type.title.letterSpacing).toBe(-0.5);
+    });
+
+    it("Type.macroValue matches Today macro tiles (20/24/700/-0.35)", () => {
+      expect(Type.macroValue.fontSize).toBe(20);
+      expect(Type.macroValue.lineHeight).toBe(24);
+      expect(Type.macroValue.fontWeight).toBe("700");
+      expect(Type.macroValue.letterSpacing).toBe(-0.35);
     });
 
     it("Type.label is uppercase + 0.08em letterSpacing (= 0.88)", () => {
@@ -123,10 +135,10 @@ describe("mobile theme — Phase 1 production design spec coverage", () => {
       expect(Elevation.floatPrimary).toBeDefined();
     });
 
-    it("card uses 0.06 opacity / 6 radius / +1 height (per spec §1.3)", () => {
-      expect(Elevation.card.shadowOpacity).toBe(0.06);
-      expect(Elevation.card.shadowRadius).toBe(6);
-      expect(Elevation.card.shadowOffset).toEqual({ width: 0, height: 1 });
+    it("card uses 0.10 opacity / 12 radius / +3 height (premium depth)", () => {
+      expect(Elevation.card.shadowOpacity).toBe(0.05);
+      expect(Elevation.card.shadowRadius).toBe(8);
+      expect(Elevation.card.shadowOffset).toEqual({ width: 0, height: 2 });
       expect(Elevation.card.elevation).toBe(1);
     });
 
@@ -134,8 +146,10 @@ describe("mobile theme — Phase 1 production design spec coverage", () => {
       expect(Elevation.sheet.shadowOffset).toEqual({ width: 0, height: -8 });
     });
 
-    it("floatPrimary uses neutral warm shadow (not brand blue)", () => {
-      expect(Elevation.floatPrimary.shadowColor.toLowerCase()).toBe("#1c1916");
+    it("floatPrimary shadow is brand-blue (tracks Accent.primary)", () => {
+      // 8-slot palette: Accent.primary is now #588CE4 (was warm
+      // periwinkle #5b6ee8 → reverted to canonical Blue 2026-05-22).
+      expect(Elevation.floatPrimary.shadowColor.toLowerCase()).toBe("#588ce4");
     });
   });
 

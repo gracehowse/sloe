@@ -17,7 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { useAuth } from "@/context/auth";
 import { hasSupabaseConfig, supabase } from "@/lib/supabase";
-import { Accent, Spacing, Radius } from "@/constants/theme";
+import { Accent, Spacing, Radius, Fonts } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import KeyboardSafeView from "@/components/KeyboardSafeView";
 import { AppLaunchScreen } from "@/components/AppLaunchScreen";
@@ -140,10 +140,10 @@ export default function LoginScreen() {
     },
     brandLetter: { color: colors.primaryForeground, fontSize: 32, fontWeight: "800" },
     title: {
-      fontSize: 26,
-      fontWeight: "800",
+      fontSize: 28,
+      fontWeight: "700",
       color: colors.text,
-      letterSpacing: 4,
+      letterSpacing: -0.4,
     },
     tagline: {
       fontSize: 14,

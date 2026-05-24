@@ -146,7 +146,7 @@ export function MobileWelcomeStep() {
               textAlign: "center",
             }}
           >
-            Already have an account? <Text style={{ color: Accent.primary, fontWeight: "600" }}>Sign in</Text>
+            Already have an account? <Text style={{ color: colors.tint, fontWeight: "600" }}>Sign in</Text>
           </Text>
         </Pressable>
       </View>
