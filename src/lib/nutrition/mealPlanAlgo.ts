@@ -1034,8 +1034,8 @@ export function generateSmartPlan(input: {
                 recipeTitle: r.title,
                 recipeId: r.id,
                 ...scaled,
-                // Same as primary branch — fit multiplier is baked into macros;
-                // never set `portionMultiplier` or day totals double-apply (F-70).
+                fiberG: scaled.fiberG,
+                ...((r as { isCoerced?: boolean }).isCoerced ? { macrosAreEstimated: true as const } : {}),
               };
             });
             residualProteinGap = retryJoint.residualProteinGap;

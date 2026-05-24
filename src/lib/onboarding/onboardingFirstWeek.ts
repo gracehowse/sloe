@@ -27,6 +27,7 @@
  */
 
 import {
+  DEFAULT_PLANNER_BANDS,
   generateSmartPlan,
   type DayPlan,
   type SimpleRecipe,
@@ -133,8 +134,8 @@ export async function buildFirstWeekFromSeeds(
     carbs: args.targets.carbsG,
     fat: args.targets.fatG,
     fiber: args.targets.fiberG ?? 0,
-    calorieBandPct: 0.15,
-    carbFatBandPct: 0.2,
+    calorieBandPct: DEFAULT_PLANNER_BANDS.calorieBandPct,
+    carbFatBandPct: DEFAULT_PLANNER_BANDS.carbFatBandPct,
   };
 
   let plan: DayPlan[] = [];

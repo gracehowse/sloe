@@ -188,6 +188,7 @@ export function generatePlanFromLibrary(input: {
           protein: scaled.protein,
           carbs: scaled.carbs,
           fat: scaled.fat,
+          fiberG: scaled.fiberG,
           // P1-19: thread coercion flag through to the planner row chip.
           ...((r as { isCoerced?: boolean }).isCoerced ? { macrosAreEstimated: true as const } : {}),
           // portionMultiplier not set: fit mult is baked into calories already.
@@ -246,6 +247,7 @@ export function generatePlanFromLibrary(input: {
           protein: scaled.protein,
           carbs: scaled.carbs,
           fat: scaled.fat,
+          fiberG: scaled.fiberG,
           ...((pick as { isCoerced?: boolean }).isCoerced ? { macrosAreEstimated: true as const } : {}),
         };
       });
