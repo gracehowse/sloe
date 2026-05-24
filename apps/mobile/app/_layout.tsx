@@ -397,6 +397,7 @@ const STACK_HEADER_HIDDEN = new Set([
   "(tabs)",
   "login",
   "import-shared",
+  "plan-import",
   "cook",
   "recipe/verify",
   "shopping",
@@ -519,6 +520,7 @@ function RootLayoutInner() {
         <Stack.Screen name="progress-metric" />
         <Stack.Screen name="meal-nutrition" />
         <Stack.Screen name="import-shared" options={{ headerShown: false }} />
+        <Stack.Screen name="plan-import" options={{ headerShown: false }} />
         <Stack.Screen name="cook" options={{ headerShown: false }} />
         <Stack.Screen name="recipe/verify" options={{ headerShown: false }} />
         {/* 2026-05-12 (premium-bar audit #18): redirect screen for

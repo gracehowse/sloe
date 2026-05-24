@@ -9,6 +9,8 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
+  ActionSheetIOS,
+  Platform,
   Image,
   Modal,
   FlatList,
@@ -50,6 +52,7 @@ import {
   Settings2,
   Sliders,
   Sun,
+  Upload,
   UtensilsCrossed,
   X,
   type LucideIcon,
@@ -127,6 +130,7 @@ import { PlanTemplatesSheet } from "@/components/PlanTemplatesSheet";
 import { useMealPlanSlots } from "@/hooks/use-meal-plan-slots";
 import { PlanTabChrome } from "@/components/tabs/PlanTabChrome";
 import { Layout } from "@/constants/layout";
+import { consumePendingImportDayPlan } from "@/lib/planImportPendingApply";
 
 function stripPlanPlaceholders<T extends { recipeTitle: string; isPlaceholder?: boolean }>(meals: T[]): T[] {
   return meals.filter(
@@ -408,6 +412,10 @@ export default function PlannerScreen() {
     deleteExistingSlot: deletePlanSlot,
   } = useMealPlanSlots();
   const [generating, setGenerating] = useState(false);
+
+  const openPlanImport = useCallback(() => {
+    router.push("/plan-import");
+  }, [router]);
   // Group E Card 4 (premium-bar audit 2026-05-14): regenerate diff
   // toast. When the user taps Regenerate against an existing plan,
   // we snapshot the prior plan in `prevPlanForDiffRef`, run the
@@ -843,6 +851,20 @@ export default function PlannerScreen() {
     [userId, startOffset],
   );
 
+  useFocusEffect(
+    useCallback(() => {
+      const pending = consumePendingImportDayPlan();
+      if (!pending?.length) return;
+      setPlan(pending as DayPlan[]);
+      void persistPlan(pending as DayPlan[]);
+      track(AnalyticsEvents.plan_template_applied, {
+        dayCount: pending.length,
+        slotCount: pending.reduce((n, d) => n + d.meals.length, 0),
+        source: "plan_import",
+      });
+    }, [persistPlan, setPlan]),
+  );
+
   const swapMeal = useCallback((dayIndex: number, mealIndex: number, slotName: string) => {
     const allPool = [...savedRecipes, ...discoverRecipes];
     // Audit L5 (2026-04-18): canonical slot via `normaliseMealSlot`
@@ -1145,7 +1167,7 @@ export default function PlannerScreen() {
           letterSpacing: 1.2,
         },
         headerTitle: {
-          ...Type.serifDisplay,
+          ...Type.title,
           color: colors.text,
           marginTop: 2,
           paddingBottom: 4,
@@ -2047,6 +2069,33 @@ export default function PlannerScreen() {
     }
   }, [savedRecipes, days, userId, enabledSlots]);
 
+  const openGenerateMenu = useCallback(() => {
+    if (generating) return;
+    const labels = ["Generate from library", "Import existing plan", "Cancel"] as const;
+    const runLibrary = () => {
+      void generatePlan();
+    };
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          title: "Generate",
+          options: [...labels],
+          cancelButtonIndex: 2,
+        },
+        (idx) => {
+          if (idx === 0) runLibrary();
+          else if (idx === 1) openPlanImport();
+        },
+      );
+      return;
+    }
+    Alert.alert("Generate", undefined, [
+      { text: "Generate from library", onPress: runLibrary },
+      { text: "Import existing plan", onPress: openPlanImport },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  }, [generating, generatePlan, openPlanImport]);
+
   return (
     <View
       testID="screen-planner"
@@ -2125,15 +2174,27 @@ export default function PlannerScreen() {
           }
         }}
         trailing={
-          <Pressable
-            style={styles.headerIconBtn}
-            onPress={() => setTemplatesOpen(true)}
-            accessibilityRole="button"
-            accessibilityLabel="Plan settings and templates"
-            accessibilityHint="Opens plan-setup controls: meal slots, day count, saved templates"
-          >
-            <Settings2 size={18} color={colors.text} strokeWidth={1.75} />
-          </Pressable>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+            <Pressable
+              style={styles.headerIconBtn}
+              onPress={openPlanImport}
+              accessibilityRole="button"
+              accessibilityLabel="Import existing meal plan"
+              accessibilityHint="Paste a meal plan or program to import recipes and schedule"
+              testID="plan-header-import"
+            >
+              <Upload size={18} color={colors.text} strokeWidth={1.75} />
+            </Pressable>
+            <Pressable
+              style={styles.headerIconBtn}
+              onPress={() => setTemplatesOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Plan settings and templates"
+              accessibilityHint="Opens plan-setup controls: meal slots, day count, saved templates"
+            >
+              <Settings2 size={18} color={colors.text} strokeWidth={1.75} />
+            </Pressable>
+          </View>
         }
       />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
@@ -2337,17 +2398,17 @@ export default function PlannerScreen() {
             <View style={styles.summaryActions}>
               <Pressable
                 style={styles.summaryPrimaryBtn}
-                onPress={generatePlan}
+                onPress={openGenerateMenu}
                 disabled={generating}
                 accessibilityRole="button"
-                accessibilityLabel="Regenerate plan"
+                accessibilityLabel="Generate or import plan"
               >
                 {generating ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
                   <>
                     <RefreshCw size={14} color="#fff" strokeWidth={1.75} />
-                    <Text style={styles.summaryPrimaryText}>Regenerate</Text>
+                    <Text style={styles.summaryPrimaryText}>Generate ▾</Text>
                   </>
                 )}
               </Pressable>
@@ -2453,17 +2514,17 @@ export default function PlannerScreen() {
               </Pressable>
               <View style={{ flex: 1 }} />
               <Pressable
-                testID="plan-regenerate-ghost"
+                testID="plan-generate-menu"
                 accessibilityRole="button"
-                accessibilityLabel="Regenerate plan with current setup"
-                onPress={generatePlan}
+                accessibilityLabel="Generate plan menu"
+                onPress={openGenerateMenu}
                 disabled={generating}
                 hitSlop={8}
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
                   gap: 4,
-                  paddingHorizontal: 6,
+                  paddingHorizontal: 8,
                   paddingVertical: 6,
                   opacity: generating ? 0.5 : 1,
                 }}
@@ -2471,10 +2532,10 @@ export default function PlannerScreen() {
                 {generating ? (
                   <ActivityIndicator size="small" color={Accent.primary} />
                 ) : (
-                  <RotateCw size={13} color={Accent.primary} strokeWidth={2.25} />
+                  <ChevronDown size={13} color={Accent.primary} strokeWidth={2.25} />
                 )}
                 <Text style={{ fontSize: 13, fontWeight: "600", color: Accent.primary }}>
-                  Regenerate
+                  Generate ▾
                 </Text>
               </Pressable>
             </View>
@@ -2640,6 +2701,16 @@ export default function PlannerScreen() {
                    the system's). */
                 <Text style={styles.generateBtnText}>Generate my plan</Text>
               )}
+            </Pressable>
+            <Pressable
+              onPress={openPlanImport}
+              accessibilityRole="button"
+              accessibilityLabel="Import existing meal plan"
+              style={{ alignItems: "center", marginTop: Spacing.md, paddingVertical: Spacing.sm }}
+            >
+              <Text style={{ fontSize: 14, fontWeight: "600", color: Accent.primary }}>
+                Import existing plan
+              </Text>
             </Pressable>
           </View>
         )}

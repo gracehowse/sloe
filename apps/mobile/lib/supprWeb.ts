@@ -22,10 +22,16 @@ export function getSupprWebBase(): string {
  */
 export function getSupprApiBase(): string {
   const extra = (Constants.expoConfig?.extra ?? {}) as Extra;
+  // In dev, explicit env wins over app.json so the sim can hit local
+  // Next.js while testing routes that aren't deployed yet.
+  if (typeof __DEV__ !== "undefined" && __DEV__) {
+    const fromEnv = process.env.EXPO_PUBLIC_API_URL?.trim();
+    if (fromEnv) return fromEnv.replace(/\/$/, "");
+  }
   const fromExtra = extra.supprApiUrl?.trim();
   if (fromExtra) return fromExtra.replace(/\/$/, "");
   const fromEnv = process.env.EXPO_PUBLIC_API_URL?.trim();
   if (fromEnv) return fromEnv.replace(/\/$/, "");
-  if (typeof __DEV__ !== "undefined" && __DEV__) return "http://localhost:3000";
+  if (typeof __DEV__ !== "undefined" && __DEV__) return "http://127.0.0.1:3000";
   return "";
 }

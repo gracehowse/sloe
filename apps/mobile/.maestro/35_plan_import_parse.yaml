@@ -1,0 +1,36 @@
+# @cases TC-PLAN-IMPORT-02
+# @screen plan-import
+# Local-only: paste fixture → parse → review. Requires:
+#   npm run dev
+#   EXPO_PUBLIC_API_URL=http://127.0.0.1:3000 npm run mobile:dev:local
+# Not listed in config.yaml — run manually or in local validation bundles.
+appId: com.supprclub.supprapp
+name: "Plan import — parse to review (local API)"
+---
+- runFlow: shared/login.yaml
+
+- tapOn:
+    id: "tab-plan"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "plan-header-import"
+- waitForAnimationToEnd
+
+- assertVisible:
+    id: "screen-plan-import"
+
+- tapOn:
+    id: "plan-import-parse"
+
+- extendedWaitUntil:
+    visible:
+      id: "screen-plan-import-review"
+    timeout: 120000
+
+- assertVisible: ".*Review import.*"
+- assertVisible: ".*Match & verify.*"
+- takeScreenshot: screenshots/latest/plan-import-02-review
+
+- tapOn: ".*Back.*"
+- waitForAnimationToEnd

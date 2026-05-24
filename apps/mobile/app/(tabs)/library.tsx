@@ -39,6 +39,11 @@ import {
   matchesNutritionPill,
   type LibraryFilterPillId,
 } from "@suppr/shared/recipes/libraryFilters";
+import {
+  matchesPlanImportPill,
+  planImportFilterLabels,
+  planImportPillId,
+} from "@suppr/shared/planning/planImport/libraryFilters";
 import { classifyLibraryEntry } from "@suppr/shared/recipes/libraryEntryKind";
 import { RecipesTabChrome } from "@/components/tabs/RecipesTabChrome";
 import { CreateRecipeActionSheet } from "@/components/recipe/CreateRecipeActionSheet";
@@ -135,7 +140,7 @@ export default function LibraryScreen() {
   // / Imported) and nutrition / time / diet (High-Protein / Quick /
   // Vegetarian). See `src/lib/recipes/libraryFilters.ts` for the
   // canonical ordering + predicate shape.
-  const [pill, setPill] = useState<LibraryFilterPillId>("all");
+  const [pill, setPill] = useState<LibraryFilterPillId | string>("all");
   // 2026-05-12 (premium-bar audit #8): tapping "+ Create" opens a
   // multi-source action sheet instead of hard-routing to manual entry.
   const [createSheetOpen, setCreateSheetOpen] = useState(false);
@@ -152,16 +157,23 @@ export default function LibraryScreen() {
     [savedRecipes],
   );
 
+  const importPlanPills = useMemo(
+    () => planImportFilterLabels(savedRecipes.map((r) => r.sourceName)),
+    [savedRecipes],
+  );
+
   const filtered = useMemo(() => {
     let list = savedRecipes;
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter((r) => r.title.toLowerCase().includes(q));
     }
-    if (pill === "saved" || pill === "created" || pill === "imported") {
+    if (typeof pill === "string" && pill.startsWith("plan-import:")) {
+      list = list.filter((r) => matchesPlanImportPill(pill, r.sourceName));
+    } else if (pill === "saved" || pill === "created" || pill === "imported") {
       list = list.filter((r) => entryKindForCard(r, userId) === pill);
     } else if (pill !== "all") {
-      list = list.filter((r) => matchesNutritionPill(pill, r));
+      list = list.filter((r) => matchesNutritionPill(pill as LibraryFilterPillId, r));
     }
     if (sortKey === "calories") {
       list = [...list].sort((a, b) => b.calories - a.calories);
@@ -710,6 +722,28 @@ export default function LibraryScreen() {
                         maxFontSizeMultiplier={1.2}
                       >
                         {label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+                {importPlanPills.map((label) => {
+                  const id = planImportPillId(label);
+                  const active = pill === id;
+                  const short = label.replace(/^Imported · /, "");
+                  return (
+                    <Pressable
+                      key={id}
+                      onPress={() => setPill(id)}
+                      style={[styles.filterPill, active && styles.filterPillActive]}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: active }}
+                      accessibilityLabel={`Filter imported plan: ${short}`}
+                    >
+                      <Text
+                        style={[styles.filterPillText, active && styles.filterPillTextActive]}
+                        maxFontSizeMultiplier={1.2}
+                      >
+                        {short}
                       </Text>
                     </Pressable>
                   );

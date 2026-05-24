@@ -13,9 +13,52 @@ Import a third-party meal plan (paste / PDF / screenshot) as a **new plan templa
 | Entry point | **Plan tab only** — wholesale plan import. Individual meals: clients save to Library + auto-gen plan as today (no Library import entry). |
 | Commit behaviour | Import creates a **new template**; user chooses whether to **activate** it (never silent replace of current plan). |
 | Plan name | Auto-parse from source where possible; **always editable** before commit. |
-| Trust | When source kcal ≠ Suppr calc: show **both** on review rows (source as "claimed", Suppr as primary). |
-| Auto-rebalance | Scale protein-lean items → carbs → fats; **never scale vegetables**. |
+| Trust / nutrition | Two modes at review: **(A) Author as published** — no ingredient matching; cals/macros imported and logged as stated; Library = **Published** (manual from source). **(B) Match & verify** — match to Suppr foods; show author vs Suppr on each row; per meal: accept Suppr / review & edit ingredients (brand swaps) / keep author's. Library = **Verified** when confidence allows. User can upgrade Published → verify later. |
+| Dual kcal display | Match mode: Suppr primary. Author secondary when source provides kcal **or partial per-serving macros** (e.g. `Protein ~38 g` — show alongside Suppr full calc). |
+| Plan portion fit | Optional **auto-rebalance** (protein → carbs → fat; never vegetables) — applies in match mode when user wants plan to hit targets. Hidden in author-as-published mode. |
+| Library import | Separate toggle: import all recipes to Library; same nutrition pref applies; tag `Imported · {plan name}`. |
 | Library hygiene | Meals saved under `Imported · {plan name}` + filter chip ([ENG-653](https://linear.app/suppr/issue/ENG-653/library-imported-plans-filter-chip)). |
+
+## Source requirements (eligible plans)
+
+Import needs enough structure to compute or carry nutrition. **A weekly grid of dish names alone is not enough.**
+
+| Source shape | Example | Import behaviour |
+|--------------|---------|------------------|
+| **Recipe-backed plan** | Weekly schedule + recipe appendix (PDF or paste) | **Recipes parsed first** (ingredients → Suppr). Schedule linked to those recipes. **Plan compiled** from matched refs. |
+| **Meal-prep components** | Batch recipes with `Serves N`, optional `Per serving: Protein ~X g`, full ingredients + method | Same pipeline. Slots may reference **one or several** recipes. Partial author macros for compare; Suppr calc for kcal. |
+| **Program PDF** | Fitness/wellness week plan: **p.1 calendar grid** (meal names per day) + **recipe pages** with ingredients, method, and **full nutrition panel** (kcal, P, C, F, fibre, etc.) + optional daily summary + shopping list | Same pipeline. Grid labels link to recipe pages. **Author as published** viable (full kcal per recipe). Daily summary pages optional cross-check vs compiled totals. Ingredient lines may lack weights — match & review expected. |
+| **Kcal-per-meal list** | `Mon Lunch: Chicken bowl 580 kcal` | **Author as published** when full kcal provided; match mode if ingredients also present. |
+| **Names only** | `Mon lunch: Greek salad` | **Block** at review — no recipe, no nutrition. |
+
+**Parse pipeline (ENG-649) — recipes first, plan compiled second:**
+
+Nutrition lives on **recipes**, not on schedule labels. The weekly grid is only references; we never guess kcal from a dish name.
+
+```
+Source (paste / PDF)
+  │
+  ├─① Extract recipe blocks (title, time, ingredients, method, optional author nutrition panel)
+  │     └─ Parse ingredients → match Suppr foods → per-recipe macros  ← canonical in match mode
+  │     └─ Store author panel (kcal, P, C, F, fibre…) when present  ← for author mode / diff
+  │
+  ├─② Extract weekly schedule — calendar grid and/or day × slot list
+  │     └─ Fuzzy-link labels → parsed recipes  ("Cilantro Chicken Curry" on Tue lunch → recipe page)
+  │
+  └─③ Compile plan template from matched recipe refs (+ portion / leftover notes)
+        └─ Slot kcal = recipe kcal × portion multiplier — no second nutrition pass
+```
+
+| Stage | Output |
+|-------|--------|
+| **Recipe parse** | N library-ready recipe objects with verified ingredient rows + totals |
+| **Schedule parse** | Day/slot grid with text labels only |
+| **Link** | Each slot → `recipeId` (or blocked if no match & no kcal) |
+| **Compile** | Plan template rows pointing at one or more recipes per slot; day totals = sum of linked recipe nutrition |
+
+4. Flag unlinked slots; user must attach a parsed recipe or skip slot before commit.
+
+**Validation fixtures:** (1) meal-prep paste — partial per-serving protein/fibre; (2) program PDF — calendar grid + recipe pages with full nutrition panels + optional daily totals; (3) coach PDF — grid + ingredients only; (4) kcal-per-meal list.
 
 ## Sprint projects
 
@@ -33,9 +76,9 @@ Import a third-party meal plan (paste / PDF / screenshot) as a **new plan templa
 | [ENG-646](https://linear.app/suppr/issue/ENG-646) | Program coordination (parent) |
 | [ENG-647](https://linear.app/suppr/issue/ENG-647) | Generate ▾ dropdown: library vs import |
 | [ENG-648](https://linear.app/suppr/issue/ENG-648) | Paste sheet + plan name field |
-| [ENG-649](https://linear.app/suppr/issue/ENG-649) | LLM parse → structured plan JSON |
+| [ENG-649](https://linear.app/suppr/issue/ENG-649) | Parse recipes (ingredients → Suppr) → link schedule → compile plan from matched recipe refs |
 | [ENG-650](https://linear.app/suppr/issue/ENG-650) | Review screen + dual kcal trust |
-| [ENG-651](https://linear.app/suppr/issue/ENG-651) | Assessment panel + 3 actions |
+| [ENG-651](https://linear.app/suppr/issue/ENG-651) | Review: nutrition mode (author vs match), Library toggle, plan rebalance, per-meal resolve |
 | [ENG-652](https://linear.app/suppr/issue/ENG-652) | Commit as template + optional activate |
 | [ENG-653](https://linear.app/suppr/issue/ENG-653) | Library: Imported plans filter chip |
 | [ENG-654](https://linear.app/suppr/issue/ENG-654) | API route + auth + rate limit |
@@ -65,7 +108,9 @@ One parse pipeline for all inputs — adaptors at the input layer only.
 
 ## HTML prototype (approve before build)
 
-Interactive mobile flow mockup — step tabs walk ENG-647 → ENG-652:
+Interactive mobile flow mockup — step tabs walk ENG-647 → ENG-652.
+
+Reference source shapes: meal-prep paste, **program PDF** (weekly grid + recipe pages with kcal panels), coach PDF. Same pipeline: recipes first, plan compiled from matched refs.
 
 **`docs/prototypes/2026-05-24-plan-import/index.html`**
 
