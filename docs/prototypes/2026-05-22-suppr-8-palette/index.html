@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Suppr 8-colour palette — Apple-Photos-anchored (2026-05-22)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<style>
+  :root {
+    --background: #fbfaf6;
+    --card: #ffffff;
+    --foreground: #1a1714;
+    --foreground-secondary: #5b554b;
+    --foreground-tertiary: #8a8377;
+    --border: #ebe7dc;
+    --border-strong: #ddd6c5;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: #e9e6df;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+    color: var(--foreground);
+    -webkit-font-smoothing: antialiased;
+  }
+  .page {
+    max-width: 1100px; margin: 0 auto;
+    padding: 36px 24px 64px;
+  }
+  h1 {
+    font-family: ui-serif, Georgia, serif;
+    font-size: 26px; letter-spacing: -0.02em; margin: 0 0 8px;
+    color: #1a1714;
+  }
+  .lead {
+    font-size: 14px; line-height: 1.55; color: #66605a;
+    max-width: 780px; margin: 0 0 28px;
+  }
+
+  /* The wheel */
+  .wheel-wrap {
+    display: flex; align-items: center; gap: 32px;
+    margin-bottom: 40px;
+    background: var(--background);
+    border-radius: 18px; padding: 28px;
+    border: 1px solid var(--border);
+  }
+  .wheel { flex-shrink: 0; }
+  .wheel-side {
+    flex: 1;
+  }
+  .wheel-side h2 {
+    font-family: ui-serif, Georgia, serif;
+    font-size: 17px; font-weight: 700; margin: 0 0 8px;
+  }
+  .wheel-side p {
+    font-size: 12.5px; line-height: 1.55; color: #66605a;
+    margin: 0 0 12px;
+  }
+
+  /* Swatch grid */
+  .swatch-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+  .swatch {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .swatch-chip {
+    height: 88px;
+    width: 100%;
+  }
+  .swatch-body {
+    padding: 10px 12px 12px;
+  }
+  .swatch-name {
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--foreground-tertiary);
+    margin-bottom: 3px;
+  }
+  .swatch-hex {
+    font-size: 14px; font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--foreground);
+  }
+  .swatch-uses {
+    font-size: 11px; line-height: 1.5;
+    color: var(--foreground-secondary);
+    margin-top: 6px;
+  }
+  .swatch-uses .new {
+    display: inline-block; padding: 1px 6px; margin-right: 4px;
+    border-radius: 4px; background: rgba(91, 110, 232, 0.12);
+    color: #3b4ca3; font-size: 10px; font-weight: 700; letter-spacing: 0.04em;
+  }
+  .swatch-uses .merged {
+    display: inline-block; padding: 1px 6px; margin-right: 4px;
+    border-radius: 4px; background: rgba(232, 160, 32, 0.16);
+    color: #876200; font-size: 10px; font-weight: 700; letter-spacing: 0.04em;
+  }
+
+  /* Out-of-band table */
+  table.usage {
+    width: 100%; border-collapse: collapse;
+    background: var(--card); border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  table.usage th, table.usage td {
+    text-align: left;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12.5px;
+    vertical-align: top;
+  }
+  table.usage th {
+    background: var(--background);
+    font-size: 10.5px; font-weight: 700; letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--foreground-tertiary);
+  }
+  table.usage tr:last-child td { border-bottom: none; }
+  .chip-inline {
+    display: inline-block; width: 12px; height: 12px;
+    border-radius: 3px; vertical-align: -2px;
+    margin-right: 6px;
+  }
+
+  h3.section {
+    font-family: ui-serif, Georgia, serif;
+    font-size: 18px; font-weight: 700;
+    margin: 36px 0 12px;
+    color: #1a1714;
+  }
+  p.section-note {
+    font-size: 12.5px; line-height: 1.55; color: #66605a;
+    margin: 0 0 14px; max-width: 780px;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <h1>Suppr 8-colour palette — Apple Photos anchor</h1>
+  <p class="lead">Constrained palette: every colour anywhere in the app (macros, slots, accents, semantic states, marketing) maps to one of these 8 slots. Same tonal family — saturated but not eye-bleeding, all sitting at roughly the same brightness. Grace's brief 2026-05-22: "they are all the right shade / tone … provides a comfortable limit so we don't go creating too many colours and is a good palette tonally."</p>
+
+  <!-- The wheel visualisation -->
+  <div class="wheel-wrap">
+    <svg class="wheel" width="200" height="200" viewBox="-100 -100 200 200">
+      <!-- 8 pie segments at 45deg each, starting at top -->
+      <!-- Segment helper: each slice is 45deg = pi/4 -->
+      <!-- Top (Magenta) -->
+      <path d="M0,0 L0,-90 A90,90 0 0,1 63.64,-63.64 Z" fill="#e04888" />
+      <!-- Top-right (Orange) -->
+      <path d="M0,0 L63.64,-63.64 A90,90 0 0,1 90,0 Z" fill="#f97316" />
+      <!-- Right (Yellow) -->
+      <path d="M0,0 L90,0 A90,90 0 0,1 63.64,63.64 Z" fill="#eab308" />
+      <!-- Bottom-right (Lime) -->
+      <path d="M0,0 L63.64,63.64 A90,90 0 0,1 0,90 Z" fill="#7ec92b" />
+      <!-- Bottom (Green) -->
+      <path d="M0,0 L0,90 A90,90 0 0,1 -63.64,63.64 Z" fill="#22a860" />
+      <!-- Bottom-left (Cyan) -->
+      <path d="M0,0 L-63.64,63.64 A90,90 0 0,1 -90,0 Z" fill="#06b6d4" />
+      <!-- Left (Blue) -->
+      <path d="M0,0 L-90,0 A90,90 0 0,1 -63.64,-63.64 Z" fill="#4c6ce0" />
+      <!-- Top-left (Purple) -->
+      <path d="M0,0 L-63.64,-63.64 A90,90 0 0,1 0,-90 Z" fill="#a855f7" />
+      <!-- Centre cap for the brand mark -->
+      <circle cx="0" cy="0" r="22" fill="#fbfaf6" />
+      <text x="0" y="5" text-anchor="middle" font-family="ui-serif, Georgia, serif" font-size="14" font-weight="700" fill="#1a1714">S</text>
+    </svg>
+    <div class="wheel-side">
+      <h2>Eight slots, every colour in the app fits.</h2>
+      <p>Going clockwise from 12 o'clock: <strong>magenta · orange · yellow · lime · green · cyan · blue · purple</strong>. Each ~45° apart on the wheel; same saturation + brightness family. Any new colour need that comes up in design (a new tab tint, an experimental state) must map to one of these eight — or it doesn't ship.</p>
+      <p style="color: #8a8377;">7 of the 8 are already in the code. <strong>Lime</strong> + <strong>purple</strong> are net-new and need a home; suggestions below.</p>
+    </div>
+  </div>
+
+  <!-- 8 swatches -->
+  <h3 class="section">The 8 swatches</h3>
+  <p class="section-note">Hex values picked to match the Apple Photos icon's tonal range (saturated mid-bright). Existing app uses listed in each card. <span style="background:rgba(91,110,232,0.12); padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; color:#3b4ca3;">NEW</span> = needs assignment. <span style="background:rgba(232,160,32,0.16); padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; color:#876200;">MERGED</span> = consolidating two close shades.</p>
+  <div class="swatch-grid">
+
+    <div class="swatch">
+      <div class="swatch-chip" style="background: #e04888;"></div>
+      <div class="swatch-body">
+        <div class="swatch-name">Magenta</div>
+        <div class="swatch-hex">#e04888</div>
+        <div class="swatch-uses">Fat macro · alerts / destructive · brand accent gradient stop</div>
+      </div>
+    </div>
+
+    <div class="swatch">
+      <div class="swatch-chip" style="background: #f97316;"></div>
+      <div class="swatch-body">
+        <div class="swatch-name">Orange</div>
+        <div class="swatch-hex">#f97316</div>
+        <div class="swatch-uses"><span class="merged">MERGED</span>Activity / bonus / burn / sodium. Replaces the duplicate Accent.warning #e8a020 — one orange, not two close shades.</div>
+      </div>
+    </div>
+
+    <div class="swatch">
+      <div class="swatch-chip" style="background: #eab308;"></div>
+      <div class="swatch-body">
+        <div class="swatch-name">Yellow</div>
+        <div class="swatch-hex">#eab308</div>
+        <div class="swatch-uses">Carbs macro · sugar / caffeine accents · breakfast slot</div>
+      </div>
+    </div>
+
+    <div class="swatch">
+      <div class="swatch-chip" style="background: #7ec92b;"></div>
+      <div class="swatch-body">
+        <div class="swatch-name">Lime</div>
+        <div class="swatch-hex">#7ec92b</div>
+        <div class="swatch-uses"><span class="new">NEW</span>Suggested home: <em>fresh / produce / "Eat Again" / library "match-your-day" pill</em>. Or hold as future.</div>
+      </div>
+    </div>
+
+    <div class="swatch">
+      <div class="swatch-chip" style="background: #22a860;"></div>
+      <div class="swatch-body">
+        <div class="swatch-name">Green</div>
+        <div class="swatch-hex">#22a860</div>
+        <div class="swatch-uses">Fiber macro · success state · food fill on calorie ring · lunch slot</div>
+      </div>
+    </div>
+
+    <div class="swatch">
+      <div class="swatch-chip" style="background: #06b6d4;"></div>
+      <div class="swatch-body">
+        <div class="swatch-name">Cyan</div>
+        <div class="swatch-hex">#06b6d4</div>
+        <div class="swatch-uses">Water / hydration · snack slot tint</div>
+      </div>
+    </div>
+
+    <div class="swatch">
+      <div class="swatch-chip" style="background: #4c6ce0;"></div>
+      <div class="swatch-body">
+        <div class="swatch-name">Blue</div>
+        <div class="swatch-hex">#4c6ce0</div>
+        <div class="swatch-uses">Protein macro · brand primary / Suppr blue · dinner slot · CTAs · FAB</div>
+      </div>
+    </div>
+
+    <div class="swatch">
+      <div class="swatch-chip" style="background: #a855f7;"></div>
+      <div class="swatch-body">
+        <div class="swatch-name">Purple</div>
+        <div class="swatch-hex">#a855f7</div>
+        <div class="swatch-uses"><span class="new">NEW</span>Suggested home: <em>streaks · milestones · weekly recap moment · Pro/premium accent</em>.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Out-of-band: what gets dropped -->
+  <h3 class="section">Colours currently in the app that don't fit — what they map to</h3>
+  <p class="section-note">Any current usage outside the 8 slots gets remapped. Most of these are duplicates or near-neighbours that can collapse.</p>
+  <table class="usage">
+    <thead>
+      <tr>
+        <th>Current value</th>
+        <th>Used for</th>
+        <th>Maps to</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="chip-inline" style="background: #e8a020;"></span>#e8a020 (amber warning)</td>
+        <td>Activity / bonus / burn-detail / sodium</td>
+        <td><span class="chip-inline" style="background: #f97316;"></span>#f97316 Orange — consolidate to one orange</td>
+      </tr>
+      <tr>
+        <td><span class="chip-inline" style="background: #5b6ee8;"></span>#5b6ee8 (warmed periwinkle)</td>
+        <td>Accent.primary / current brand primary</td>
+        <td><span class="chip-inline" style="background: #4c6ce0;"></span>#4c6ce0 Blue — revert primary to TF49 blue so it matches the protein macro and the wheel</td>
+      </tr>
+      <tr>
+        <td><span class="chip-inline" style="background: #7a90f5;"></span>#7a90f5 (sugar accent)</td>
+        <td>Sugar macro tint</td>
+        <td><span class="chip-inline" style="background: #eab308;"></span>Yellow at lower alpha — sugar is a carbohydrate; same family</td>
+      </tr>
+      <tr>
+        <td>Various beiges / khakis on cards</td>
+        <td>Background, divider, secondary</td>
+        <td>Stay neutral (greyscale). Tonal palette is for accents only; surfaces stay warm-white-on-paper.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Surface-by-surface mapping -->
+  <h3 class="section">Surface map — every coloured pixel finds a slot</h3>
+  <table class="usage">
+    <thead>
+      <tr><th>Surface</th><th>Element</th><th>Slot</th></tr>
+    </thead>
+    <tbody>
+      <tr><td rowspan="4">Today — calorie ring</td><td>Food fill (under)</td><td><span class="chip-inline" style="background: #22a860;"></span>Green</td></tr>
+      <tr><td>Bonus segment</td><td><span class="chip-inline" style="background: #f97316;"></span>Orange</td></tr>
+      <tr><td>Brand mode (default for over)</td><td><span class="chip-inline" style="background: #4c6ce0;"></span>Blue</td></tr>
+      <tr><td>Traffic-light mode (opt-in for over)</td><td><span class="chip-inline" style="background: #e04888;"></span>Magenta (substitutes destructive red)</td></tr>
+
+      <tr><td rowspan="4">Macro arcs + bars</td><td>Protein</td><td><span class="chip-inline" style="background: #4c6ce0;"></span>Blue</td></tr>
+      <tr><td>Carbs</td><td><span class="chip-inline" style="background: #eab308;"></span>Yellow</td></tr>
+      <tr><td>Fat</td><td><span class="chip-inline" style="background: #e04888;"></span>Magenta</td></tr>
+      <tr><td>Fiber</td><td><span class="chip-inline" style="background: #22a860;"></span>Green</td></tr>
+
+      <tr><td rowspan="4">Meal slots</td><td>Breakfast</td><td><span class="chip-inline" style="background: #eab308;"></span>Yellow (was amber #e8a020)</td></tr>
+      <tr><td>Lunch</td><td><span class="chip-inline" style="background: #22a860;"></span>Green</td></tr>
+      <tr><td>Dinner</td><td><span class="chip-inline" style="background: #4c6ce0;"></span>Blue</td></tr>
+      <tr><td>Snack</td><td><span class="chip-inline" style="background: #06b6d4;"></span>Cyan</td></tr>
+
+      <tr><td rowspan="3">Net-new</td><td>Streaks / milestones / weekly recap</td><td><span class="chip-inline" style="background: #a855f7;"></span>Purple</td></tr>
+      <tr><td>Library "match-your-day" pill / freshness</td><td><span class="chip-inline" style="background: #7ec92b;"></span>Lime <em>(or roll into Green)</em></td></tr>
+      <tr><td>Brand mark gradient</td><td>All 8 stops on the SupprMark when feeling celebratory (onboarding reveal, paywall hero, week-closed moment)</td></tr>
+    </tbody>
+  </table>
+
+</div>
+</body>
+</html>
