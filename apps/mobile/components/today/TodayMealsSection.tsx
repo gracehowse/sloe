@@ -1,5 +1,6 @@
 import React, { useState, type ReactNode } from "react";
 import { Alert, Image, Modal, Pressable, ScrollView, Share, Text, View } from "react-native";
+import ReAnimated, { FadeInDown } from "react-native-reanimated";
 import { buildMealShareText } from "@suppr/shared/share/buildMealShareText";
 import { track, isFeatureEnabled } from "@/lib/analytics";
 import { Swipeable } from "react-native-gesture-handler";
@@ -17,11 +18,13 @@ import {
   Sun,
   Trash2,
   UtensilsCrossed,
+  X,
   type LucideIcon,
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
-import { Accent, Radius, SlotColors, Spacing } from "@/constants/theme";
+import { Accent, MacroColors, Radius, SlotColors, Spacing, Type } from "@/constants/theme";
 import { SourceDot } from "@/components/ui/SourceDot";
+import { MacroIconRow } from "@/components/nutrition/MacroIconRow";
 import { mapMealSourceToDot } from "@suppr/shared/nutrition/sourceMap";
 import { formatMacroTrailer } from "@suppr/shared/nutrition/macroFormat";
 import type { JournalMeal } from "@/lib/nutritionJournal";
@@ -213,11 +216,29 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
     quickAddPanel,
   } = props;
 
-  const showQuickAdd =
-    mealsTodayCount > 0 &&
-    onToggleQuickAddCollapsed != null &&
-    quickAddPanel != null;
+  // 2026-05-23 (Grace): "usuals etc can just be in the logging section"
+  // — the collapsible "Your usuals" header + Duplicate-day pill above
+  // the slots were reading as clutter. The same content is reachable
+  // via the central + log sheet (QuickAddPanel) and via Plan-tab day
+  // operations, so hide both surfaces on Today's main scroll. Props
+  // stay wired so a future "logging section" surface can pick them up.
+  const showQuickAdd = false;
+  const showDuplicateDayInline = false;
 
+  // 2026-05-22 evening (Grace): per-session dismissed "Log usual"
+  // pills. Tap the X on a pill → hides for this slot until next app
+  // launch. No persistence yet — escalate to AsyncStorage if Grace
+  // wants permanent dismissal.
+  const [dismissedUsualFor, setDismissedUsualFor] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const dismissUsualFor = (slot: string) =>
+    setDismissedUsualFor((prev) => {
+      if (prev.has(slot)) return prev;
+      const next = new Set(prev);
+      next.add(slot);
+      return next;
+    });
   const [usualPicker, setUsualPicker] = useState<
     { slot: string; options: SavedMeal[] } | null
   >(null);
@@ -245,7 +266,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
           borderWidth: 1,
           borderColor: cardBorderColor,
           overflow: "hidden",
-          marginBottom: Spacing.xl,
+          marginBottom: Spacing.sm,
         }}
       >
         {showQuickAdd && (
@@ -270,13 +291,13 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
             >
               <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
                 <Zap size={16} color={textSecondaryColor} strokeWidth={1.75} />
-                <Text style={{ fontSize: 13, fontWeight: "600", color: textSecondaryColor }}>
-                  Quick add
-                </Text>
-                <Text
-                  numberOfLines={1}
-                  style={{ flexShrink: 1, fontSize: 12, color: textTertiaryColor }}
-                >
+                {/* Canonical 2026-05-22 D3: header simplified from
+                    "Quick add" + "Your usuals" (two phrases doing one
+                    job) to just "Your usuals". The Zap glyph + the
+                    section's tab strip below already communicate
+                    "quick add"; the explicit feature naming was
+                    redundant chrome. */}
+                <Text style={{ ...Type.body, color: textSecondaryColor }}>
                   Your usuals
                 </Text>
               </View>
@@ -291,7 +312,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
             ) : null}
           </View>
         )}
-        {mealsTodayCount > 0 && (
+        {mealsTodayCount > 0 && showDuplicateDayInline && (
           <View
             style={{
               flexDirection: "row",
@@ -314,14 +335,22 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                 gap: 4,
               }}
             >
-              <Copy size={11} color={Accent.primary} />
-              <Text style={{ fontSize: 11, fontWeight: "600", color: Accent.primary }}>Duplicate day</Text>
+              <Copy size={11} color={textSecondaryColor} />
+              <Text style={{ ...Type.caption, color: textSecondaryColor }}>Duplicate day</Text>
             </Pressable>
           </View>
         )}
-        {slots.map((slot) => {
+        {slots.map((slot, slotIndex) => {
           const meals = mealGroups[slot] ?? [];
           const slotCals = Math.round(meals.reduce((a, m) => a + m.calories, 0));
+          // 2026-05-22 — slot-total macro icon row (Grace ask: "macro
+          // strip needs to match the discover tiles with the little
+          // icons, next to the icon and meal name"). Sum across all
+          // logged items in this slot for the four canonical macros.
+          const slotProtein = meals.reduce((a, m) => a + (m.protein ?? 0), 0);
+          const slotCarbs   = meals.reduce((a, m) => a + (m.carbs ?? 0), 0);
+          const slotFat     = meals.reduce((a, m) => a + (m.fat ?? 0), 0);
+          const slotFiber   = meals.reduce((a, m) => a + (m.fiberG ?? 0), 0);
           const isOpen = !collapsedSlots.has(slot);
           const hasMeals = meals.length > 0;
           const ic = slotIcon(slot);
@@ -333,7 +362,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
           const primarySaved = slotSaved[0];
           const extraSavedCount = slotSaved.length - 1;
           return (
-            <View key={slot} testID={`today-slot-${slot}`}>
+            <ReAnimated.View key={slot} entering={FadeInDown.delay(slotIndex * 50).duration(350)} testID={`today-slot-${slot}`}>
               <View
                 testID={`today-slot-header-${slot}`}
                 style={{
@@ -398,26 +427,38 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                         pressure (RN flex defaults to `minWidth: auto` which is
                         content-width and prevents shrink). */}
                     <Text
-                      style={{ fontSize: 13, fontWeight: "600", color: textColor }}
+                      style={{ ...Type.body, fontWeight: "600", color: textColor }}
                       numberOfLines={1}
                     >
                       {slot}
                     </Text>
                     {hasMeals ? (
-                      <Text
-                        style={{ fontSize: 11, color: textTertiaryColor }}
-                        numberOfLines={1}
-                      >
-                        {meals.length} item{meals.length > 1 ? "s" : ""}
-                        {onPressSlotSummary
-                          ? " · tap for combined macros"
-                          : " · tap an item for nutrition"}
-                      </Text>
-                    ) : (
-                      <Text style={{ fontSize: 11, color: textTertiaryColor }} numberOfLines={1}>
-                        Tap to add
-                      </Text>
-                    )}
+                      // 2026-05-22 evening — macro icon strip replaces
+                      // the "X items · tap for combined macros" caption.
+                      // Same MacroIconRow component Discover + Library
+                      // use, so the four surfaces share one grammar.
+                      // Grace ask: "needs to match the discover tiles
+                      // with the little icons, next to the icon and
+                      // meal name".
+                      // 2026-05-22 evening (Grace): kcal moves inline into
+                      // the MacroIconRow so all four macros + kcal fit
+                      // on one line, matching Discover/Library cards.
+                      // Right-side big-kcal + "+" pill removed below.
+                      <MacroIconRow
+                        kcal={slotCals}
+                        protein={slotProtein}
+                        carbs={slotCarbs}
+                        fat={slotFat}
+                        fiber={slotFiber}
+                        textColor={textSecondaryColor}
+                        textTertiaryColor={textTertiaryColor}
+                        iconSize={11}
+                        showMacroLetters={false}
+                        style={{ marginTop: 3, gap: 6, flexWrap: "nowrap" }}
+                      />
+                    ) : null /* Canonical 2026-05-22 D2: "Tap to add" microcopy
+                        removed on empty slots — the row IS the tap target,
+                        explicit instruction is iOS 6-era hand-holding. */}
                   </View>
                 </Pressable>
                 {hasMeals && onPressSlotSummary ? (
@@ -442,59 +483,21 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                 ) : null}
                 {hasMeals ? (
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 0 }}>
-                    {/* F-17 (2026-04-19, TestFlight `AIjmgrBMmY-M6B363x_hT8I`)
-                        — populated slots had no "+" affordance, leaving the
-                        tester stuck ("now I've added yogurt for breakfast
-                        I can't add anything else"). Render a compact plus
-                        pill on populated rows that opens the same
-                        slot-scoped food search the empty-state "Tap to add"
-                        uses. `stopPropagation` prevents the outer row
-                        Pressable (which toggles slot collapse) from
-                        firing. */}
-                    <Pressable
-                      onPress={(e) => {
-                        e?.stopPropagation?.();
-                        onOpenFabForSlot(slot);
-                      }}
-                      hitSlop={10}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Add another item to ${slot}`}
-                      style={{
-                        width: 26,
-                        height: 26,
-                        borderRadius: 13,
-                        alignItems: "center",
-                        justifyContent: "center",
-                        backgroundColor: Accent.primary + "18",
-                        borderWidth: 1,
-                        borderColor: Accent.primary + "30",
-                      }}
-                    >
-                      <Plus size={16} color={Accent.primary} />
-                    </Pressable>
+                    {/* 2026-05-22 evening (Grace): "+" pill removed
+                        from populated slot headers — adding items
+                        routes through the bottom FAB instead. Right-
+                        side "{slotCals} kcal" text also removed — kcal
+                        now lives inline in the MacroIconRow above so
+                        the slot reads as one tidy line of macros + cals
+                        like Discover/Library. The empty-state Plus
+                        below stays since empty slots have no FAB cue. */}
                     {/* Ship M1 — `Log usual: {name}` pill. 2+ matches open
                         the picker modal; 1 match logs on tap.
                         2026-05-15 (crowder task) — when `usualRowV2` is
                         ON, the chip moves to a dedicated row below the
                         header (rendered after this header View). */}
-                    {!usualRowV2 && mealsTodayCount > 0 && hasSaved && primarySaved && (
-                      <Pressable
-                        testID={`today-log-usual-pill-in-header-${slot}`}
-                        onPress={(e) => {
-                          e.stopPropagation?.();
-                          if (slotSaved.length >= 2) {
-                            setUsualPicker({ slot, options: slotSaved });
-                          } else {
-                            onLogSavedMeal(primarySaved, slot);
-                          }
-                        }}
-                        hitSlop={8}
-                        accessibilityRole="button"
-                        accessibilityLabel={
-                          slotSaved.length >= 2
-                            ? `Log a usual ${slot} — choose from ${slotSaved.length} saved meals`
-                            : `Log usual ${slot}: ${primarySaved.name}`
-                        }
+                    {!usualRowV2 && mealsTodayCount > 0 && hasSaved && primarySaved && !dismissedUsualFor.has(slot) && (
+                      <View
                         style={{
                           flexDirection: "row",
                           alignItems: "center",
@@ -502,35 +505,61 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                           paddingHorizontal: 10,
                           paddingVertical: 4,
                           borderRadius: 999,
-                          backgroundColor: Accent.primary + "18",
+                          backgroundColor: col + "18",
                           borderWidth: 1,
-                          borderColor: Accent.primary + "30",
-                          // F-80 — cap the chip so it cannot starve the title
-                          // column when the meal name is long. `flexShrink: 1`
-                          // lets it compress further if both columns are
-                          // squeezed (e.g. larger Dynamic Type).
-                          maxWidth: 160,
+                          borderColor: col + "30",
+                          maxWidth: 180,
                           flexShrink: 1,
                         }}
                       >
-                        <RefreshCw size={11} color={Accent.primary} />
-                        <Text
-                          style={{
-                            fontSize: 11,
-                            fontWeight: "700",
-                            color: Accent.primary,
-                            maxWidth: 120,
+                        <Pressable
+                          testID={`today-log-usual-pill-in-header-${slot}`}
+                          onPress={(e) => {
+                            e.stopPropagation?.();
+                            if (slotSaved.length >= 2) {
+                              setUsualPicker({ slot, options: slotSaved });
+                            } else {
+                              onLogSavedMeal(primarySaved, slot);
+                            }
                           }}
-                          numberOfLines={1}
+                          hitSlop={6}
+                          accessibilityRole="button"
+                          accessibilityLabel={
+                            slotSaved.length >= 2
+                              ? `Log a usual ${slot} — choose from ${slotSaved.length} saved meals`
+                              : `Log usual ${slot}: ${primarySaved.name}`
+                          }
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 4,
+                            flexShrink: 1,
+                          }}
                         >
-                          {extraSavedCount > 0 ? "Log usual…" : `Log usual: ${primarySaved.name}`}
-                        </Text>
-                      </Pressable>
+                          <RefreshCw size={11} color={col} />
+                          <Text
+                            style={{ ...Type.caption, color: col, maxWidth: 120 }}
+                            numberOfLines={1}
+                          >
+                            {extraSavedCount > 0 ? "Log usual…" : `Log usual: ${primarySaved.name}`}
+                          </Text>
+                        </Pressable>
+                        {/* Dismiss X — per-session hide. Grace 2026-05-22. */}
+                        <Pressable
+                          testID={`today-log-usual-dismiss-in-header-${slot}`}
+                          onPress={(e) => {
+                            e.stopPropagation?.();
+                            dismissUsualFor(slot);
+                          }}
+                          hitSlop={8}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Dismiss Log usual suggestion for ${slot}`}
+                          style={{ paddingHorizontal: 2 }}
+                        >
+                          <X size={11} color={col} strokeWidth={2.25} />
+                        </Pressable>
+                      </View>
                     )}
-                    <Text style={{ fontSize: 14, fontWeight: "700", color: textColor, fontVariant: ["tabular-nums"] }}>
-                      {slotCals}
-                    </Text>
-                    <Text style={{ fontSize: 10, color: textTertiaryColor }}>kcal</Text>
                   </View>
                 ) : (
                   <Plus size={14} color={textTertiaryColor} />
@@ -542,7 +571,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                   when the saved-meal name is long. Renders regardless
                   of `isOpen` so the affordance is reachable from
                   collapsed slots too. */}
-              {usualRowV2 && mealsTodayCount > 0 && hasSaved && primarySaved && (
+              {usualRowV2 && mealsTodayCount > 0 && hasSaved && primarySaved && !dismissedUsualFor.has(slot) && (
                 <View
                   testID={`today-log-usual-row-${slot}`}
                   style={{
@@ -555,22 +584,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                     borderBottomColor: cardBorderColor + "08",
                   }}
                 >
-                  <Pressable
-                    testID={`today-log-usual-pill-${slot}`}
-                    onPress={() => {
-                      if (slotSaved.length >= 2) {
-                        setUsualPicker({ slot, options: slotSaved });
-                      } else {
-                        onLogSavedMeal(primarySaved, slot);
-                      }
-                    }}
-                    hitSlop={8}
-                    accessibilityRole="button"
-                    accessibilityLabel={
-                      slotSaved.length >= 2
-                        ? `Log a usual ${slot} — choose from ${slotSaved.length} saved meals`
-                        : `Log usual ${slot}: ${primarySaved.name}`
-                    }
+                  <View
                     style={{
                       flexDirection: "row",
                       alignItems: "center",
@@ -578,28 +592,58 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                       paddingHorizontal: 12,
                       paddingVertical: 6,
                       borderRadius: 999,
-                      backgroundColor: Accent.primary + "18",
+                      backgroundColor: col + "18",
                       borderWidth: 1,
-                      borderColor: Accent.primary + "30",
+                      borderColor: col + "30",
                       maxWidth: "100%",
                       flexShrink: 1,
                     }}
                   >
-                    <RefreshCw size={12} color={Accent.primary} />
-                    <Text
+                    <Pressable
+                      testID={`today-log-usual-pill-${slot}`}
+                      onPress={() => {
+                        if (slotSaved.length >= 2) {
+                          setUsualPicker({ slot, options: slotSaved });
+                        } else {
+                          onLogSavedMeal(primarySaved, slot);
+                        }
+                      }}
+                      hitSlop={6}
+                      accessibilityRole="button"
+                      accessibilityLabel={
+                        slotSaved.length >= 2
+                          ? `Log a usual ${slot} — choose from ${slotSaved.length} saved meals`
+                          : `Log usual ${slot}: ${primarySaved.name}`
+                      }
                       style={{
-                        fontSize: 12,
-                        fontWeight: "700",
-                        color: Accent.primary,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 6,
                         flexShrink: 1,
                       }}
-                      numberOfLines={1}
                     >
-                      {extraSavedCount > 0
-                        ? `Log usual ${slot}…`
-                        : `Log usual: ${primarySaved.name}`}
-                    </Text>
-                  </Pressable>
+                      <RefreshCw size={12} color={col} />
+                      <Text
+                        style={{ ...Type.caption, color: col, flexShrink: 1 }}
+                        numberOfLines={1}
+                      >
+                        {extraSavedCount > 0
+                          ? `Log usual ${slot}…`
+                          : `Log usual: ${primarySaved.name}`}
+                      </Text>
+                    </Pressable>
+                    {/* Dismiss X — per-session hide. */}
+                    <Pressable
+                      testID={`today-log-usual-dismiss-${slot}`}
+                      onPress={() => dismissUsualFor(slot)}
+                      hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Dismiss Log usual suggestion for ${slot}`}
+                      style={{ paddingHorizontal: 2 }}
+                    >
+                      <X size={12} color={col} strokeWidth={2.25} />
+                    </Pressable>
+                  </View>
                 </View>
               )}
               {hasMeals &&
@@ -633,7 +677,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                           accessibilityLabel="Remove meal"
                         >
                           <Trash2 size={22} color="#fff" />
-                          <Text style={{ color: "#fff", fontSize: 11, fontWeight: "700", marginTop: 4 }}>Remove</Text>
+                          <Text style={{ ...Type.caption, color: "#fff", marginTop: 4 }}>Remove</Text>
                         </Pressable>
                       </View>
                     )}
@@ -723,7 +767,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                               kcal). RN row children default to
                               `flexShrink: 0`. */}
                           <Text
-                            style={{ fontSize: 12, color: textColor, flexShrink: 1, minWidth: 0 }}
+                            style={{ ...Type.caption, color: textColor, flexShrink: 1, minWidth: 0 }}
                             numberOfLines={1}
                           >
                             {m.recipeTitle}
@@ -733,36 +777,25 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                           ? (() => {
                               const ts = formatMealTimeDisplay(m.time, m.createdAt);
                               return ts ? (
-                                <Text style={{ fontSize: 10, color: textTertiaryColor, marginLeft: 12 }}>{ts}</Text>
+                                <Text style={{ ...Type.caption, color: textTertiaryColor, marginLeft: 12 }}>{ts}</Text>
                               ) : null;
                             })()
                           : null}
-                        {formatMealSourceLabelForRow(m.source) ? (
-                          <View
-                            style={{
-                              flexDirection: "row",
-                              alignItems: "center",
-                              gap: 4,
-                              marginLeft: 12,
-                            }}
-                          >
-                            {/* Phase 3 / B2.4 (D-2026-04-27-16) trust
-                                posture sweep — every macro-bearing
-                                meal row carries the SourceDot. */}
-                            <SourceDot source={mapMealSourceToDot(m.source)} size={6} />
-                            <Text
-                              style={{ fontSize: 9, color: textTertiaryColor, fontWeight: "500" }}
-                            >
-                              {formatMealSourceLabelForRow(m.source)}
-                            </Text>
-                          </View>
-                        ) : null}
+                        {/* 2026-05-22 evening (Grace): per-meal source
+                            badge ("Manual" / "FatSecret") and inline
+                            macro strip both removed — they were eating
+                            too much vertical real estate on the meal
+                            row. Source provenance + full macros live on
+                            the meal detail page (chevron right). The
+                            chevron + kcal on the right side make the
+                            tap affordance obvious. */}
                       </View>
                       </View>
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                        <Text style={{ fontSize: 12, color: textSecondaryColor, fontVariant: ["tabular-nums"] }}>
+                        <Text style={{ ...Type.caption, color: textSecondaryColor, fontVariant: ["tabular-nums"] }}>
                           {Math.round(m.calories)}
                         </Text>
+                        <Text style={{ fontSize: 10, color: textTertiaryColor, marginLeft: -2 }}>kcal</Text>
                         <ChevronRight size={12} color={textTertiaryColor} />
                       </View>
                     </Pressable>
@@ -794,18 +827,18 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                     marginVertical: 6,
                     padding: 12,
                     borderRadius: Radius.md,
-                    backgroundColor: Accent.primary + "08",
+                    backgroundColor: col + "0C",
                     borderWidth: 1,
-                    borderColor: Accent.primary + "30",
+                    borderColor: col + "28",
                   }}
                 >
-                  <Text style={{ fontSize: 13, fontWeight: "700", color: textColor }}>
+                  <Text style={{ ...Type.body, color: textColor }}>
                     {/* 2026-04-26 polish (round 2): match the rendered
                         meal-slot pill casing — slot is already Title-cased
                         in PLANNER_MEAL_SLOT_LABELS. Drop the toLowerCase. */}
                     Make this your usual {slot}.
                   </Text>
-                  <Text style={{ fontSize: 11, color: textTertiaryColor, marginTop: 2 }}>
+                  <Text style={{ ...Type.caption, color: textTertiaryColor, marginTop: 2 }}>
                     One tap to re-log it tomorrow.
                   </Text>
                   <View style={{ flexDirection: "row", gap: 6, marginTop: 8 }}>
@@ -820,11 +853,11 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                         paddingHorizontal: 10,
                         paddingVertical: 6,
                         borderRadius: Radius.sm,
-                        backgroundColor: Accent.primary,
+                        backgroundColor: col,
                       }}
                     >
                       <Bookmark size={12} color="#fff" />
-                      <Text style={{ fontSize: 11, fontWeight: "700", color: "#fff" }}>
+                      <Text style={{ ...Type.caption, color: "#fff" }}>
                         Save as usual
                       </Text>
                     </Pressable>
@@ -837,7 +870,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                         paddingVertical: 6,
                       }}
                     >
-                      <Text style={{ fontSize: 11, fontWeight: "600", color: textSecondaryColor }}>
+                      <Text style={{ ...Type.caption, color: textSecondaryColor }}>
                         Not now
                       </Text>
                     </Pressable>
@@ -862,18 +895,20 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                     borderTopColor: cardBorderColor + "30",
                   }}
                 >
-                  <Bookmark size={14} color={Accent.primary} />
-                  <Text style={{ fontSize: 13, fontWeight: "700", color: Accent.primary }}>
+                  <Bookmark size={14} color={textSecondaryColor} />
+                  <Text style={{ ...Type.body, color: textSecondaryColor }}>
                     Save {slot} as a meal
                   </Text>
                 </Pressable>
               )}
-            </View>
+            </ReAnimated.View>
           );
         })}
-        <Pressable style={{ padding: 12, alignItems: "center" }} onPress={() => onOpenFabForSlot("Snacks")}>
-          <Text style={{ fontSize: 12, color: Accent.primary, fontWeight: "500" }}>+ Add Food</Text>
-        </Pressable>
+        {/* Removed "+ Add Food" footer 2026-05-22: redundant with the
+            centre FAB which is the canonical single Log surface (per
+            2026-04-27 strategic direction: "single Log sheet"). The
+            footer added a fifth "tap to add" affordance below four
+            empty slot rows; subtractively this reads tighter. */}
       </View>
 
       {/* Ship M1 — usual-meal picker for slots with 2+ matches.
@@ -907,10 +942,10 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
               maxHeight: "80%",
             }}
           >
-            <Text style={{ fontSize: 15, fontWeight: "700", color: textColor, marginBottom: 2 }}>
+            <Text style={{ ...Type.headline, color: textColor, marginBottom: 2 }}>
               {usualPicker ? `Log a usual ${usualPicker.slot}` : "Log a usual meal"}
             </Text>
-            <Text style={{ fontSize: 12, color: textSecondaryColor, marginBottom: Spacing.md }}>
+            <Text style={{ ...Type.caption, color: textSecondaryColor, marginBottom: Spacing.md }}>
               Pick which saved meal to log. Newest logged first.
             </Text>
             {(() => {
@@ -945,10 +980,10 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                           marginBottom: Spacing.sm,
                         }}
                       >
-                        <Text style={{ fontSize: 14, fontWeight: "700", color: textColor }} numberOfLines={1}>
+                        <Text style={{ ...Type.body, color: textColor }} numberOfLines={1}>
                           {m.name}
                         </Text>
-                        <Text style={{ fontSize: 11, color: textSecondaryColor, marginTop: 2 }}>
+                        <Text style={{ ...Type.caption, color: textSecondaryColor, marginTop: 2 }}>
                           {itemsLabel} · {formatMacroTrailer({
                             calories: summary.totalCalories,
                             protein: summary.totalProtein,
@@ -970,7 +1005,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                         marginBottom: Spacing.sm,
                       }}
                     >
-                      <Text style={{ fontSize: 13, fontWeight: "600", color: Accent.primary }}>
+                      <Text style={{ ...Type.body, color: textSecondaryColor }}>
                         {`Show all ${total} saved meals →`}
                       </Text>
                     </Pressable>
@@ -994,7 +1029,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                 marginTop: Spacing.xs,
               }}
             >
-              <Text style={{ fontSize: 13, fontWeight: "600", color: textColor }}>Cancel</Text>
+              <Text style={{ ...Type.body, color: textColor }}>Cancel</Text>
             </Pressable>
           </Pressable>
         </Pressable>

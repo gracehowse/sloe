@@ -33,7 +33,9 @@ import { Layout } from "@/constants/layout";
 import { ProgressTabChrome } from "@/components/tabs/ProgressTabChrome";
 import { Milestone30DayModal } from "@/components/today/Milestone30DayModal";
 import { useMilestone30DayOnProgress } from "@/hooks/useMilestone30DayOnProgress";
-import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
+import { Accent, MacroColors, Spacing, Radius, Type } from "@/constants/theme";
+import { useEntranceAnimation } from "@/hooks/useEntranceAnimation";
+import ReAnimated from "react-native-reanimated";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { dateKeyFromDate, type ByDay } from "@/lib/nutritionJournal";
 import { computeLoggingStreak } from "@/lib/trackerStats";
@@ -868,7 +870,12 @@ export default function ProgressScreen() {
     paddingTop: Spacing.md,
     paddingHorizontal: Layout.screenPaddingX,
     paddingBottom: insets.bottom + Spacing.xl,
+    gap: Spacing.lg,
   };
+
+  const heroEntrance = useEntranceAnimation({ delay: 0 });
+  const chartsEntrance = useEntranceAnimation({ delay: 80 });
+  const detailsEntrance = useEntranceAnimation({ delay: 160 });
 
   const progressLogWeightButton = (
     <Pressable
@@ -905,7 +912,7 @@ export default function ProgressScreen() {
             skeleton doesn't look interactive. */}
         <View
           testID="progress-range-picker-skeleton"
-          style={{ flexDirection: "row", gap: 6, marginBottom: 14 }}
+          style={{ flexDirection: "row", gap: 6, marginBottom: Spacing.md }}
         >
           {(["7d", "30d", "90d", "all"] as const).map((k) => (
             <View
@@ -929,7 +936,7 @@ export default function ProgressScreen() {
         {/* 2x2 tile skeletons — match real tile footprint (47% width,
             padding 14, radius). No numbers are shown; placeholders are
             a neutral block so we never invent data. */}
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: Spacing.md }}>
           {[0, 1, 2, 3].map((i) => (
             <View
               key={i}
@@ -976,6 +983,7 @@ export default function ProgressScreen() {
       <HouseholdBar />
 
       {/* ENG-616: Oura-style hero metric — one big number at the top. */}
+      <ReAnimated.View style={heroEntrance.style}>
       <ProgressHeroMetric
         adherencePct={caloriesRange.adherencePct}
         avgCaloriesPerDay={caloriesRange.avgCaloriesPerDay}
@@ -985,7 +993,7 @@ export default function ProgressScreen() {
       />
 
       {/* Phase 4 / B3.1 — Progress story headline (Surface E). */}
-      <View style={{ marginBottom: 14 }}>
+      <View style={{ marginBottom: Spacing.md }}>
         {hasEnoughDataForStory(weekStats.daysWithFood) ? (
           <ProgressHeadline
             commentary={generateProgressCommentary({
@@ -1013,7 +1021,9 @@ export default function ProgressScreen() {
           <ProgressStoryGate daysLogged={weekStats.daysWithFood} />
         )}
       </View>
+      </ReAnimated.View>
 
+      <ReAnimated.View style={chartsEntrance.style}>
       {/* Range-picker segmented control — [7d, 30d, 90d, All]. Port
           of prototype `screens-mobile.jsx:581-591` (2026-04-21 D5):
           single muted container with an inset active chip that uses
@@ -1027,7 +1037,7 @@ export default function ProgressScreen() {
         style={{
           flexDirection: "row",
           gap: 6,
-          marginBottom: 14,
+          marginBottom: Spacing.md,
           backgroundColor: t.border,
           borderRadius: 10,
           padding: 4,
@@ -1117,14 +1127,16 @@ export default function ProgressScreen() {
         targetCalories={targets.calories}
         theme={t}
       />
+      </ReAnimated.View>
 
+      <ReAnimated.View style={detailsEntrance.style}>
       {!hasData ? (
         <View style={{ padding: 24, borderRadius: Radius.lg, backgroundColor: t.elevated, borderWidth: 1, borderColor: t.border, alignItems: "center", gap: Spacing.md }}>
           <IconBox color={t.accent} size={40}>
             <BarChart3 size={20} color={t.accent} strokeWidth={1.75} />
           </IconBox>
-          <Text style={{ fontSize: 15, fontWeight: "600", color: t.text, textAlign: "center" }}>Your progress will appear here</Text>
-          <Text style={{ fontSize: 13, color: t.sub, textAlign: "center", maxWidth: 260, lineHeight: 18 }}>
+          <Text style={{ ...Type.headline, color: t.text, textAlign: "center" }}>Your progress will appear here</Text>
+          <Text style={{ ...Type.body, color: t.sub, textAlign: "center", maxWidth: 260, lineHeight: 18 }}>
             Log meals on the Today tab and your weekly trends, macro adherence, and charts will populate.
           </Text>
         </View>
@@ -1232,7 +1244,7 @@ export default function ProgressScreen() {
               (audit 2026-04-30) — observational pattern across the
               rolling 4-week window. Helper enforces the 14-day +
               200-kcal-delta gates so we don't surface noise. */}
-          <View style={{ marginBottom: 14 }}>
+          <View style={{ marginBottom: Spacing.md }}>
             <DigestStoryCard
               weekLabel={recap.weekLabel}
               daysLogged={weekStats.daysWithFood}
@@ -1258,26 +1270,18 @@ export default function ProgressScreen() {
               link out to per-metric drill-downs (`progress-metric` +
               `weight-tracker`). Smaller padding, smaller numerals,
               no IconBox tinted backgrounds — reads as a footer
-              summary, not the lead. */}
+              summary, not the lead.
+              2026-05-23 (Grace de-dup ask) — dropped Avg Calories +
+              Protein Hit tiles because they now duplicate the
+              reworked WEEK DIGEST hero row (which shows days-logged,
+              calorie delta, and avg/protein in one block). Streak +
+              Trend remain because the digest doesn't carry those —
+              they're the unique-data tiles. */}
           <View
             testID="progress-demoted-chips"
-            style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 14 }}
+            style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: Spacing.md }}
           >
             {([
-              [
-                formatAvgCaloriesLabel(weekStats.daysWithFood),
-                String(weekStats.avgCalories.toLocaleString()),
-                `vs ${targets.calories.toLocaleString()} target`,
-                weekStats.avgCalories > targets.calories ? t.amber : t.green,
-                Flame,
-              ],
-              [
-                "Protein Hit",
-                `${weekStats.proteinOnTarget}/${weekStats.daysWithFood || 0}`,
-                `day${weekStats.daysWithFood !== 1 ? "s" : ""} on target`,
-                weekStats.daysWithFood > 0 && weekStats.proteinOnTarget >= weekStats.daysWithFood * 0.7 ? t.green : t.amber,
-                CheckCircle2,
-              ],
               [
                 "Streak",
                 `${streakDays} day${streakDays !== 1 ? "s" : ""}`,
@@ -1306,17 +1310,12 @@ export default function ProgressScreen() {
               ],
             ] as const).map(([title, val, sub, color, IconCmp], i) => {
               const Icon = IconCmp as LucideIcon;
-              // Match by prefix — `formatAvgCaloriesLabel` returns
-              // either "Avg Calories" or "Avg on logged days (X/7)".
-              const isAvgCaloriesTile =
-                title === "Avg Calories" || title.startsWith("Avg on logged days");
               const openTile = () => {
                 if (title === "Trend") {
                   setLogWeightOpen(true);
                   return;
                 }
-                const metric =
-                  isAvgCaloriesTile ? "calories" : title === "Protein Hit" ? "protein" : title === "Streak" ? "streak" : null;
+                const metric = title === "Streak" ? "streak" : null;
                 if (metric) {
                   router.push({ pathname: "/progress-metric" as any, params: { metric } });
                 }
@@ -1324,11 +1323,7 @@ export default function ProgressScreen() {
               const a11yLabel =
                 title === "Trend"
                   ? `Weight trend, ${val}, ${sub}`
-                  : isAvgCaloriesTile
-                    ? `Average calories ${val}, ${sub}`
-                    : title === "Protein Hit"
-                      ? `Protein on target ${val}, ${sub}`
-                      : `Logging streak ${val}, ${sub}`;
+                  : `Logging streak, ${val}, ${sub}`;
               return (
                 <Pressable
                   key={i}
@@ -1402,7 +1397,7 @@ export default function ProgressScreen() {
                 borderWidth: 1,
                 borderColor: t.border,
                 padding: 16,
-                marginBottom: 14,
+                marginBottom: Spacing.md,
                 minHeight: 140,
               }}
             >
@@ -1420,8 +1415,8 @@ export default function ProgressScreen() {
               full chart at `targets.calories`, with its value labelled
               at the right edge; (b) a one-line legend under the chart
               stating exactly what each colour means. */}
-          <View style={{ backgroundColor: t.elevated, borderRadius: Radius.lg, borderWidth: 1, borderColor: t.border, padding: 16, marginBottom: 14 }}>
-            <Text style={{ fontSize: 13, fontWeight: "600", color: t.text, marginBottom: 12 }}>Daily Calories</Text>
+          <View style={{ backgroundColor: t.elevated, borderRadius: Radius.lg, borderWidth: 1, borderColor: t.border, padding: 16, marginBottom: Spacing.md }}>
+            <Text style={{ ...Type.headline, color: t.text, marginBottom: 12 }}>Daily Calories</Text>
             {(() => {
               const chartHeight = 90;
               const maxCal = Math.max(targets.calories, ...weekStats.days.map((dd) => dd.calories));
@@ -1466,13 +1461,13 @@ export default function ProgressScreen() {
                               width: "100%",
                               height: barH,
                               borderRadius: 5,
-                              // Audit 2026-05-12 (premium-bar DC10): match the
-                              // calorie-ring 3-state rule — empty=border tint,
-                              // under=success green, over=destructive red.
-                              // Previously over used `t.amber` which collapsed
-                              // visual signal with the under-target state at
-                              // low lightness in dark mode.
-                              backgroundColor: d.calories === 0 ? t.border : overTarget ? t.red : t.green,
+                              // Match the calorie-ring 3-state rule:
+                              // empty=border tint, under=success green,
+                              // over=WARNING AMBER. Canonical 2026-05-22 v2
+                              // (anti-MFP nudge, not alarm). Memory file
+                              // `feedback_calorie_ring_colour_mapping.md`
+                              // reverted from red to amber.
+                              backgroundColor: d.calories === 0 ? t.border : overTarget ? t.amber : t.green,
                               opacity: isDayToday ? 1 : 0.75,
                               ...(showApproxCue
                                 ? {
@@ -1518,7 +1513,7 @@ export default function ProgressScreen() {
                   <Text style={{ fontSize: 10, color: t.dim }}>At or under target</Text>
                 </View>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                  <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: t.red }} />
+                  <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: t.amber }} />
                   <Text style={{ fontSize: 10, color: t.dim }}>Over target</Text>
                 </View>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
@@ -1530,8 +1525,8 @@ export default function ProgressScreen() {
           </View>
 
           {/* Macro Adherence */}
-          <View style={{ backgroundColor: t.elevated, borderRadius: Radius.lg, borderWidth: 1, borderColor: t.border, padding: 16, marginBottom: 14 }}>
-            <Text style={{ fontSize: 13, fontWeight: "600", color: t.text, marginBottom: 12 }}>Macro Adherence</Text>
+          <View style={{ backgroundColor: t.elevated, borderRadius: Radius.lg, borderWidth: 1, borderColor: t.border, padding: 16, marginBottom: Spacing.md }}>
+            <Text style={{ ...Type.headline, color: t.text, marginBottom: 12 }}>Macro Adherence</Text>
             <Text style={{ fontSize: 10, color: t.dim, marginBottom: 8 }}>
               Based on {weekStats.daysWithFood} day{weekStats.daysWithFood !== 1 ? "s" : ""} with logged food
             </Text>
@@ -1572,7 +1567,7 @@ export default function ProgressScreen() {
                         width: `${bar.barFillPct}%`,
                         height: "100%",
                         borderRadius: 3,
-                        backgroundColor: bar.isOver ? Accent.destructive : color,
+                        backgroundColor: bar.isOver ? Accent.warning : color,
                       }}
                     />
                   </View>
@@ -1581,7 +1576,7 @@ export default function ProgressScreen() {
                     style={{
                       fontSize: 12,
                       fontWeight: "600",
-                      color: bar.isOver ? Accent.destructive : color,
+                      color: bar.isOver ? Accent.warning : color,
                       minWidth: 56,
                       textAlign: "right",
                       fontVariant: ["tabular-nums"],
@@ -1630,14 +1625,14 @@ export default function ProgressScreen() {
             return (
             <View
               testID="progress-maintenance-card"
-              style={{ backgroundColor: t.elevated, borderRadius: Radius.lg, borderWidth: 1, borderColor: t.border, padding: 16, marginBottom: 14 }}
+              style={{ backgroundColor: t.elevated, borderRadius: Radius.lg, borderWidth: 1, borderColor: t.border, padding: 16, marginBottom: Spacing.md }}
             >
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                   <IconBox color={t.accent} size={28}>
                     <Zap size={14} color={t.accent} strokeWidth={1.75} />
                   </IconBox>
-                  <Text style={{ fontSize: 13, fontWeight: "600", color: t.text }}>Maintenance</Text>
+                  <Text style={{ ...Type.headline, color: t.text }}>Maintenance</Text>
                 </View>
                 {showAdaptiveExtras ? (
                   <View
@@ -1842,13 +1837,13 @@ export default function ProgressScreen() {
               normal "you haven't walked yet". */}
           <View
             testID="progress-steps-card"
-            style={{ backgroundColor: t.elevated, borderRadius: Radius.lg, borderWidth: 1, borderColor: t.border, padding: 16, marginBottom: 14 }}
+            style={{ backgroundColor: t.elevated, borderRadius: Radius.lg, borderWidth: 1, borderColor: t.border, padding: 16, marginBottom: Spacing.md }}
           >
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
               <IconBox color={t.green} size={28}>
                 <Footprints size={14} color={t.green} strokeWidth={1.75} />
               </IconBox>
-              <Text style={{ fontSize: 13, fontWeight: "600", color: t.text }}>Steps Today</Text>
+              <Text style={{ ...Type.headline, color: t.text }}>Steps Today</Text>
             </View>
             {stepsSyncStatus === "pending" ? (
               <View testID="progress-steps-skeleton" style={{ height: 30, justifyContent: "center" }}>
@@ -1926,7 +1921,7 @@ export default function ProgressScreen() {
               borderWidth: 1,
               borderColor: t.border,
               padding: 16,
-              marginBottom: 14,
+              marginBottom: Spacing.md,
             }}
           >
             {/* 2026-05-11 (Grace TF feedback — mockup signed off):
@@ -2151,7 +2146,7 @@ export default function ProgressScreen() {
                     borderWidth: 1,
                     borderColor: t.border,
                     padding: 16,
-                    marginBottom: 14,
+                    marginBottom: Spacing.md,
                     opacity: pressed ? 0.94 : 1,
                   })}
                 >
@@ -2160,7 +2155,7 @@ export default function ProgressScreen() {
                       <IconBox color={t.green} size={28}>
                         <Flag size={14} color={t.green} strokeWidth={1.75} />
                       </IconBox>
-                      <Text style={{ fontSize: 13, fontWeight: "600", color: t.text }}>Journey</Text>
+                      <Text style={{ ...Type.headline, color: t.text }}>Journey</Text>
                     </View>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                       {timeline.daysToGoal != null ? (
@@ -2267,6 +2262,7 @@ export default function ProgressScreen() {
       >
         Nutrition data are estimates. Not medical or dietetic advice.
       </Text>
+      </ReAnimated.View>
     </ScrollView>
     <LogWeightSheet
       visible={logWeightOpen}
@@ -2461,7 +2457,7 @@ function WeightTrendOnlyCard({
         borderWidth: 1,
         borderColor: theme.border,
         padding: 16,
-        marginBottom: 14,
+        marginBottom: Spacing.md,
       }}
     >
       <Text style={{ fontSize: 11, fontWeight: "700", color: theme.dim, textTransform: "uppercase", letterSpacing: 1.1 }}>
@@ -2511,13 +2507,28 @@ function WeightRangeCard({
           borderRadius: Radius.lg,
           borderWidth: 1,
           borderColor: theme.border,
-          padding: 16,
-          marginBottom: 14,
+          padding: 20,
+          marginBottom: Spacing.md,
         }}
       >
-        <Text style={{ fontSize: 11, fontWeight: "600", color: theme.dim, textTransform: "uppercase", letterSpacing: 0.8 }}>Weight</Text>
-        <Text style={{ fontSize: 13, color: theme.sub, marginTop: 8, lineHeight: 18 }}>
-          Log a weight on the tracker to see your trend here.
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+          <View style={{
+            width: 32,
+            height: 32,
+            borderRadius: 8,
+            backgroundColor: theme.accent + "14",
+            alignItems: "center",
+            justifyContent: "center",
+          }}>
+            <Scale size={16} color={theme.accent} strokeWidth={1.75} />
+          </View>
+          <Text style={{ fontSize: 11, fontWeight: "700", color: theme.dim, textTransform: "uppercase", letterSpacing: 1 }}>Weight</Text>
+        </View>
+        <Text style={{ fontSize: 15, fontWeight: "600", color: theme.text }}>
+          Your trend starts with a weigh-in
+        </Text>
+        <Text style={{ fontSize: 13, color: theme.sub, marginTop: 4, lineHeight: 18 }}>
+          Log a weight and we&apos;ll chart your trajectory over time.
         </Text>
       </View>
     );
@@ -2552,7 +2563,7 @@ function WeightRangeCard({
         borderWidth: 1,
         borderColor: theme.border,
         padding: 16,
-        marginBottom: 14,
+        marginBottom: Spacing.md,
       }}
     >
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
@@ -2624,7 +2635,7 @@ function CaloriesRangeCard({
   theme: CardTheme;
 }) {
   return (
-    <View testID="progress-calories-range-wrapper" style={{ marginBottom: 14 }}>
+    <View testID="progress-calories-range-wrapper" style={{ marginBottom: Spacing.md }}>
       {/* 17pt bold header sits OUTSIDE the card per the prototype. */}
       <Text
         testID="progress-calories-range-header"
@@ -2643,9 +2654,14 @@ function CaloriesRangeCard({
         }}
       >
         {avgCaloriesPerDay == null ? (
-          <Text style={{ fontSize: 13, color: theme.sub, lineHeight: 18 }}>
-            Log meals on Today to see your average calories for this range.
-          </Text>
+          <View style={{ paddingVertical: 8 }}>
+            <Text style={{ fontSize: 15, fontWeight: "600", color: theme.text }}>
+              Your calorie trends will show here
+            </Text>
+            <Text style={{ fontSize: 13, color: theme.sub, marginTop: 4, lineHeight: 18 }}>
+              Log meals on Today and your averages will build over time.
+            </Text>
+          </View>
         ) : (
           <>
             <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}>
