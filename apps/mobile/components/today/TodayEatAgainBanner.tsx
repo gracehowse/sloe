@@ -1,5 +1,5 @@
 import React from "react";
-import { Image, Pressable, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -7,10 +7,9 @@ import Animated, {
   Easing,
 } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { formatMacro } from "@suppr/shared/nutrition/formatMacro";
 import type { FoodHistoryItem } from "@suppr/shared/nutrition/foodHistory";
-import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 
 // 2026-05-12 (premium-bar audit DC3 polish — Cal AI 200ms fade-up
 // on first paint): the EatAgain banner now eases in over 220ms with
@@ -70,27 +69,21 @@ export function TodayEatAgainBanner({
     opacity: opacity.value,
     transform: [{ translateY: translate.value }],
   }));
-  // 2026-05-14 (premium-bar audit DC3 polish — Recime card-layout
-  // polish when image present): the banner conditionally renders a
-  // 48×48 hero thumbnail on the left when the suggestion carries an
-  // image URL (or the deterministic `RecipeHeroFallback` when we
-  // know the recipe but have no image). When no image is available
-  // at all, the original text-only layout is preserved so logs
-  // without recipe metadata stay calm.
-  const imageUrl = suggestion.imageUrl;
-  const showThumb = Boolean(imageUrl);
-
+  // Canonical 2026-05-22: hero thumbnail removed per Grace call. The
+  // gradient/image was the only purple-pink chrome on Today and clashed
+  // with the warm cohesive palette. Text-only banner reads as a clean
+  // suggestion card matching the macro tile genre.
   return (
     <AnimatedView
       style={[
         {
-          marginBottom: Spacing.md,
+          marginBottom: Spacing.sm,
           backgroundColor: cardBg,
           borderWidth: 1,
           borderColor: cardBorder,
           borderRadius: Radius.lg,
           paddingHorizontal: Spacing.md,
-          paddingVertical: Spacing.sm,
+          paddingVertical: 10,
           flexDirection: "row",
           alignItems: "center",
           gap: Spacing.sm,
@@ -98,34 +91,9 @@ export function TodayEatAgainBanner({
         fadeStyle,
       ]}
     >
-      {showThumb ? (
-        <View
-          style={{
-            width: 48,
-            height: 48,
-            borderRadius: 8,
-            overflow: "hidden",
-            flexShrink: 0,
-            position: "relative",
-          }}
-        >
-          {imageUrl ? (
-            <Image
-              source={{ uri: imageUrl }}
-              style={{ width: "100%", height: "100%", borderRadius: 8 }}
-            />
-          ) : (
-            <RecipeHeroFallback
-              id={suggestion.recipeTitle}
-              title={suggestion.recipeTitle}
-              iconSize={22}
-            />
-          )}
-        </View>
-      ) : null}
       <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 10, fontWeight: "700", color: textSecondaryColor, letterSpacing: 1 }}>EAT AGAIN</Text>
-        <Text style={{ fontSize: 14, fontWeight: "600", color: textColor, marginTop: 2 }} numberOfLines={2} ellipsizeMode="tail">
+        <Text style={{ ...Type.label, color: textSecondaryColor }}>EAT AGAIN</Text>
+        <Text style={{ ...Type.body, color: textColor, marginTop: 2 }} numberOfLines={2} ellipsizeMode="tail">
           {suggestion.recipeTitle}
         </Text>
         {/* 2026-05-12 (premium-bar audit, cross-cutting copy unify):
@@ -133,7 +101,7 @@ export function TodayEatAgainBanner({
             C · 27g F`. Was `P 22g · C 95g · F 27g` here (letter-first)
             and `22P / 95C / 27F` on NorthStarBlock (slash-separated).
             Unified to the audit's spec across all Today surfaces. */}
-        <Text style={{ fontSize: 11, color: textSecondaryColor, marginTop: 2 }}>
+        <Text style={{ ...Type.caption, color: textSecondaryColor, marginTop: 2 }}>
           {Math.round(suggestion.calories)} kcal · {formatMacro(suggestion.protein, "protein")}g P ·{" "}
           {formatMacro(suggestion.carbs, "carbs")}g C · {formatMacro(suggestion.fat, "fat")}g F · into {slot}
         </Text>
@@ -148,7 +116,7 @@ export function TodayEatAgainBanner({
             was the lone outlier across Today CTAs. The canonical verb
             on the Today + LogSheet + NorthStar surfaces is "Log it"
             (sentence case). This banner now matches. */}
-        <Text style={{ fontSize: 11, fontWeight: "700", color: "#fff", letterSpacing: 0.5 }}>Log it</Text>
+        <Text style={{ ...Type.caption, color: "#fff" }}>Log it</Text>
       </Pressable>
       <Pressable
         accessibilityRole="button"

@@ -129,7 +129,7 @@ export function TodayDashboardMacroBars({
 
   return (
     <div
-      className="bg-card border border-border rounded-2xl p-4 mb-3 flex flex-col gap-4"
+      className="bg-card border border-border rounded-2xl p-3 mb-2 flex flex-col gap-3"
       data-testid="today-macro-bars"
     >
       {trackedMacros.map((macro) => {
@@ -153,7 +153,12 @@ export function TodayDashboardMacroBars({
                 {targetLabel} {def.unit}
               </span>
             </div>
-            <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+            <div
+              className="h-1.5 rounded-full overflow-hidden"
+              style={{
+                background: `color-mix(in oklab, ${def.colorVar} 16%, transparent)`,
+              }}
+            >
               <div
                 className="h-full rounded-full transition-[width] duration-500"
                 style={{

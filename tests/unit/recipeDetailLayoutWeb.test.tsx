@@ -74,12 +74,11 @@ describe("web recipe-detail v4 — Fix 1 (subtitle + dedicated kcal line)", () =
     expect(SRC).toMatch(/data-testid="recipe-kcal-number"/);
   });
 
-  it("dedicated kcal line uses 17-pt headline weight + tabular-nums + foreground colour", () => {
-    // Spec: Type.headline, 17pt+, tabular-nums. We pin the exact
-    // class string so the `text-[17px]` literal can't drift back to
-    // a smaller `text-sm` accidentally.
+  it("dedicated kcal line uses 18-pt headline weight + tabular-nums + foreground colour", () => {
+    // Spec: Type.headline, 18pt (on-scale), tabular-nums. We pin the exact
+    // class string so the font size can't drift back to a smaller text-sm.
     expect(SRC).toMatch(
-      /text-\[17px\]\s+font-bold\s+text-foreground\s+tabular-nums/,
+      /text-\[18px\]\s+font-bold\s+text-foreground\s+tabular-nums/,
     );
   });
 
@@ -258,7 +257,7 @@ describe("web recipe-detail v4 — helper-driven render assertions", () => {
           >
             <span
               data-testid="recipe-kcal-number"
-              className="text-[17px] font-bold text-foreground tabular-nums leading-none"
+              className="text-[18px] font-bold text-foreground tabular-nums leading-none"
             >
               {Math.round(args.kcal)} kcal
             </span>
@@ -362,9 +361,7 @@ describe("web recipe-detail v4 — helper-driven render assertions", () => {
     expect(subtitle.textContent).toMatch(/by emthenutritionist/);
   });
 
-  it("v4: kcal number element renders at fontSize ≥ 16px (≥ 17px in spec)", () => {
-    // The product feedback was "cals need to be clearer" — pin the
-    // visual size so a future class drift back to text-sm shows up.
+  it("v4: kcal number element renders at fontSize ≥ 18px (on-scale)", () => {
     const { getByTestId } = render(
       <HeroHarness
         prepMin={null}
@@ -379,8 +376,7 @@ describe("web recipe-detail v4 — helper-driven render assertions", () => {
       />,
     );
     const kcalNumber = getByTestId("recipe-kcal-number");
-    // The harness mirrors the production class string verbatim.
-    expect(kcalNumber.className).toMatch(/text-\[17px\]/);
+    expect(kcalNumber.className).toMatch(/text-\[18px\]/);
     expect(kcalNumber.className).toMatch(/font-bold/);
     expect(kcalNumber.className).toMatch(/tabular-nums/);
   });

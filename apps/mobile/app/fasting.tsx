@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSafeBack } from "@/hooks/use-safe-back";
+import { PushScreenHeader } from "@/components/PushScreenHeader";
+import { useHaptics } from "@/hooks/useHaptics";
 import { Ionicons } from "@expo/vector-icons";
 import { Timer } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
@@ -13,7 +15,7 @@ import Animated, {
   Easing,
 } from "react-native-reanimated";
 
-import { Accent, Spacing, Radius } from "@/constants/theme";
+import { Accent, Spacing, Radius, Type } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
@@ -61,6 +63,7 @@ function formatDuration(ms: number): { hours: number; minutes: number; seconds: 
 export default function FastingScreen() {
   const insets = useSafeAreaInsets();
   const goBack = useSafeBack("/(tabs)");
+  const haptics = useHaptics();
   const { session } = useAuth();
   const userId = session?.user?.id;
   const colors = useThemeColors();
@@ -157,6 +160,7 @@ export default function FastingScreen() {
   const changeWindow = useCallback(
     (next: string) => {
       if (next === fastingWindow) return;
+      haptics.select();
       setFastingWindow(next);
       if (!userId) return;
       void supabase
@@ -164,7 +168,7 @@ export default function FastingScreen() {
         .update({ fasting_window: next })
         .eq("id", userId);
     },
-    [fastingWindow, userId],
+    [fastingWindow, userId, haptics],
   );
 
   const startFast = useCallback(() => {
@@ -228,7 +232,7 @@ export default function FastingScreen() {
         container: { flex: 1, backgroundColor: colors.background },
         header: { flexDirection: "row", alignItems: "center", paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md },
         backBtn: { padding: 4 },
-        title: { flex: 1, fontSize: 22, fontWeight: "700", color: colors.text, textAlign: "center" },
+        title: { flex: 1, ...Type.headline, color: colors.text, textAlign: "center" },
         card: {
           marginHorizontal: Spacing.xl,
           backgroundColor: colors.card,
@@ -304,13 +308,7 @@ export default function FastingScreen() {
       style={[styles.container, { paddingTop: insets.top }]}
       contentContainerStyle={{ paddingBottom: 40 }}
     >
-      <View style={styles.header}>
-        <Pressable onPress={goBack} style={styles.backBtn} hitSlop={12}>
-          <Ionicons name="chevron-back" size={24} color={colors.text} />
-        </Pressable>
-        <Text style={styles.title}>Intermittent Fasting</Text>
-        <View style={{ width: 32 }} />
-      </View>
+      <PushScreenHeader title="Intermittent Fasting" onBack={goBack} />
 
       {/* 2026-05-14 premium-bar polish #4 — Fasting tab landing.
           When the user is NOT fasting, the screen shows a true
@@ -393,59 +391,13 @@ export default function FastingScreen() {
             </Text>
           </Pressable>
 
-          {/* Quick-start chips — one tap = set window + start fast.
-              16:8 + 18:6 cover the two most-common presets the
-              FastingTimer surface already supports. Custom opens
-              an Alert listing the remaining web-parity presets
-              (20:4 + 14:10) so users with a non-default window
-              don't have to dig into the picker below. */}
-          <View
-            style={{
-              flexDirection: "row",
-              gap: 8,
-              marginTop: Spacing.md,
-              justifyContent: "center",
-            }}
-            testID="fasting-landing-chips"
-          >
-            {[
-              { label: "16:8", onPress: () => quickStartFast("16:8") },
-              { label: "18:6", onPress: () => quickStartFast("18:6") },
-              { label: "Custom", onPress: openCustomWindowPicker },
-            ].map((chip) => (
-              <Pressable
-                key={chip.label}
-                onPress={chip.onPress}
-                accessibilityRole="button"
-                accessibilityLabel={
-                  chip.label === "Custom"
-                    ? "Pick a custom fasting window"
-                    : `Start a ${chip.label} fast`
-                }
-                testID={`fasting-landing-chip-${chip.label}`}
-                hitSlop={6}
-                style={{
-                  paddingHorizontal: 12,
-                  paddingVertical: 6,
-                  borderRadius: 999,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  backgroundColor: colors.background,
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 12,
-                    fontWeight: "700",
-                    color: colors.textSecondary,
-                    fontVariant: ["tabular-nums"],
-                  }}
-                >
-                  {chip.label}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
+          {/* Audit 2026-05-22 subtractive: inner quick-start chips
+              (16:8 / 18:6 / Custom) removed. They duplicated the wider
+              outer preset picker (16:8 / 18:6 / 20:4 / 14:10) visually
+              even though their function differed (quick-start vs change
+              default). Users couldn't tell which row did which just by
+              looking. Net result: single preset row below, plus Start
+              Fast button = same flow, one less chip set to scan. */}
         </View>
       ) : (
       <View style={[styles.card, { alignItems: "center" }]}>
@@ -548,8 +500,12 @@ export default function FastingScreen() {
                   style={[
                     styles.presetPill,
                     {
+                      // Canonical 2026-05-22: selected segmented controls
+                      // use --accent-primary-soft + --accent-primary text,
+                      // NOT solid indigo. Solid is reserved for the one
+                      // primary action per screen (Start Fast button).
                       backgroundColor: selected
-                        ? Accent.primary
+                        ? Accent.primarySoft
                         : colors.card,
                       borderColor: selected
                         ? Accent.primary
@@ -561,7 +517,7 @@ export default function FastingScreen() {
                   <Text
                     style={[
                       styles.presetPillText,
-                      { color: selected ? "#fff" : colors.text },
+                      { color: selected ? Accent.primary : colors.text },
                     ]}
                   >
                     {w}
@@ -570,9 +526,10 @@ export default function FastingScreen() {
               );
             })}
           </View>
-          <Text style={styles.presetHelp}>
-            Tap a preset to change your fasting window.
-          </Text>
+          {/* Audit 2026-05-22 subtractive: "Tap a preset to change
+              your fasting window" instructional caption removed. The
+              chip set itself is the affordance; explicit "tap me" copy
+              read as iOS 7-era tutorial chrome. */}
         </>
       )}
 

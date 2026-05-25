@@ -88,5 +88,6 @@ export const BASE_PAYWALL_HERO = {
 /** Brand gradient colours for the hero. `from` → top-left,
  *  `to` → bottom-right. Matches the prototype literal values and the
  *  `Accent.primary` + `Accent.magenta` palette on mobile. */
-export const BASE_PAYWALL_GRADIENT_FROM = "#4c6ce0"; // Accent.primary
-export const BASE_PAYWALL_GRADIENT_TO = "#e04888"; // Accent.magenta
+/** Marketing-only hero gradient endpoints (not UI `--primary`). */
+export const BASE_PAYWALL_GRADIENT_FROM = "#588CE4"; // Brand.primary
+export const BASE_PAYWALL_GRADIENT_TO = "#DF5EBC"; // Brand.accent

@@ -78,6 +78,30 @@ function baseProps(
   };
 }
 
+describe("TodayMealsSection (web) — empty day (ENG-635)", () => {
+  beforeEach(() => {
+    flagFn.mockImplementation(() => false);
+  });
+
+  it("hides Log usual pills when no meals logged on the selected day", () => {
+    render(
+      <TodayMealsSection
+        {...baseProps({
+          mealsForSelectedDate: [],
+          mealsGrouped: [
+            { name: "Breakfast", meals: [] },
+            { name: "Lunch", meals: [] },
+            { name: "Dinner", meals: [] },
+            { name: "Snacks", meals: [] },
+          ],
+        })}
+      />,
+    );
+    expect(screen.queryByTestId("today-log-usual-pill-in-header-Snacks")).toBeNull();
+    expect(screen.queryByTestId("today-log-usual-row-Snacks")).toBeNull();
+  });
+});
+
 describe("TodayMealsSection (web) — today_log_usual_row_v2 flag", () => {
   beforeEach(() => {
     flagFn.mockImplementation(() => false);

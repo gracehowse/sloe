@@ -46,7 +46,7 @@ export function TodaySnapShortcut({
       data-testid={testID ?? "today-snap-shortcut"}
       aria-label={locked ? "Snap a meal (Pro)" : "Snap a meal"}
       className={[
-        "mb-3 w-full flex items-center gap-2 rounded-card border border-border bg-card px-3 py-2.5 text-left",
+        "mb-3 w-full flex items-center gap-2 rounded-card border border-border bg-card px-3 py-2.5 text-left card-elevated",
         "hover:bg-muted/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
         className ?? "",
       ]
@@ -72,7 +72,7 @@ export function TodaySnapShortcut({
             before the user clicks. Mobile mirror at
             `apps/mobile/components/today/TodaySnapShortcut.tsx`. */}
         <span className="flex items-center gap-1.5">
-          <span className="text-[14px] font-bold text-foreground leading-tight">
+          <span className="text-[13px] font-bold text-foreground leading-tight">
             Snap a meal
           </span>
           {locked ? (
@@ -88,7 +88,7 @@ export function TodaySnapShortcut({
         {/* 2026-05-12 (premium-bar audit Today F3 #2): subtitle now
             carries the speed signal + the AI-estimate trust signal.
             Mobile mirrored in `apps/mobile/components/today/TodaySnapShortcut.tsx`. */}
-        <span className="text-[12px] text-muted-foreground leading-tight mt-0.5">
+        <span className="text-[11px] text-muted-foreground leading-tight mt-0.5">
           ~3 seconds · AI estimates macros, review before saving.
         </span>
       </span>

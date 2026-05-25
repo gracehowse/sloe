@@ -15,7 +15,7 @@ import Animated, {
   withTiming,
   Easing,
 } from "react-native-reanimated";
-import { Sparkles, X } from "lucide-react-native";
+import { ChevronRight, Sparkles, X } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 
 // 2026-05-12 (premium-bar audit motion polish): use the reanimated
@@ -147,31 +147,33 @@ export function NorthStarBlock({
   }
 
   if (kind === "library-empty") {
+    // 2026-05-23 — flattened from a primary-tinted SupprCard with a
+    // separate solid CTA pill into a single tappable inset row with a
+    // chevron. Same grammar as the Discover "Import from TikTok" row
+    // and the Today section dividers — much quieter, doesn't compete
+    // with the meal slots above. The whole row is the tap target.
     return (
-      <SupprCard
+      <Pressable
         testID={testID ?? "north-star-library-empty"}
-        tone="primary"
-        padding="md"
-        style={styles.row}
+        accessibilityRole="button"
+        accessibilityLabel="Pick recipes for your library"
+        onPress={onOpenLibrary}
+        style={({ pressed }) => [
+          styles.libraryEmptyRow,
+          { opacity: pressed ? 0.6 : 1 },
+        ]}
       >
-        <Sparkles size={IconSize.lg} color={colors.text} />
-        <View style={{ flex: 1 }}>
-          <Text style={[Type.body, { color: colors.text, fontWeight: "600" }]}>
-            {"Pick a few recipes you'd actually cook — we'll suggest from there."}
-          </Text>
-        </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Open Library"
-          onPress={onOpenLibrary}
-          style={({ pressed }) => [
-            styles.cta,
-            { backgroundColor: Accent.primary, opacity: pressed ? 0.85 : 1 },
+        <Sparkles size={18} color={colors.textTertiary} />
+        <Text
+          style={[
+            Type.body,
+            { color: colors.textSecondary, flex: 1, fontSize: 14 },
           ]}
         >
-          <Text style={styles.ctaLabel}>Open Library →</Text>
-        </Pressable>
-      </SupprCard>
+          {"Pick a few recipes — we'll suggest from there."}
+        </Text>
+        <ChevronRight size={18} color={colors.textTertiary} />
+      </Pressable>
     );
   }
 
@@ -475,6 +477,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: Spacing.md,
+  },
+  libraryEmptyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingHorizontal: 4,
+    paddingVertical: 12,
   },
   defaultCard: {
     flexDirection: "row",

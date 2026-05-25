@@ -147,7 +147,7 @@ function computeToneStyle(
       };
     case "magenta":
       return {
-        backgroundColor: "rgba(224, 72, 136, 0.08)",
+        backgroundColor: "rgba(223, 94, 188, 0.08)",
         borderColor: border ? colors.sourceAi : "transparent",
       };
     case "neutral":

@@ -7,13 +7,19 @@ import { Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 export interface ScreenSectionChromeProps {
-  overline: string;
+  /** Eyebrow above the title. Pass an empty string / null to hide it
+   *  entirely — useful on tabs where the tab bar already carries the
+   *  surface name (Plan / Progress) and the overline reads as
+   *  redundant shouting. (Grace 2026-05-22 continuity sweep.) */
+  overline?: string | null;
   title: string;
   /** Optional line under the title (e.g. week range on Plan). */
   subtitle?: string;
   showBrand?: boolean;
   /** Trailing control aligned with the title row (e.g. calendar). */
   trailing?: ReactNode;
+  /** Tighter title block for Plan / data-heavy tabs. */
+  compact?: boolean;
   children?: ReactNode;
   testID?: string;
   overlineTestID?: string;
@@ -28,8 +34,9 @@ export function ScreenSectionChrome({
   overline,
   title,
   subtitle,
-  showBrand = true,
+  showBrand = false,
   trailing,
+  compact = false,
   children,
   testID,
   overlineTestID,
@@ -66,10 +73,10 @@ export function ScreenSectionChrome({
           textTransform: "uppercase",
         },
         title: {
-          fontSize: Layout.titleSize,
+          fontSize: compact ? 22 : Layout.titleSize,
           fontWeight: "800",
           color: colors.text,
-          letterSpacing: Layout.titleTracking,
+          letterSpacing: compact ? -0.4 : Layout.titleTracking,
         },
         subtitle: {
           fontSize: Layout.subtitleSize,
@@ -79,7 +86,7 @@ export function ScreenSectionChrome({
           marginTop: 2,
         },
       }),
-    [colors, subtitle],
+    [colors, subtitle, compact],
   );
 
   return (
@@ -88,9 +95,11 @@ export function ScreenSectionChrome({
         {showBrand ? <TodayBrandBar /> : null}
         <View style={styles.titleRow}>
           <View style={styles.titleCol}>
-            <Text style={styles.overline} testID={overlineTestID}>
-              {overline}
-            </Text>
+            {overline ? (
+              <Text style={styles.overline} testID={overlineTestID}>
+                {overline}
+              </Text>
+            ) : null}
             <Text style={styles.title} accessibilityRole="header" testID={titleTestID}>
               {title}
             </Text>

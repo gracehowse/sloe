@@ -329,7 +329,7 @@ export function HouseholdSettingsPage({ onBack }: HouseholdSettingsPageProps) {
 
   if (!authedUserId) {
     return (
-      <div className="max-w-2xl mx-auto px-pm-5 py-pm-5">
+      <div className="product-shell py-pm-5">
         <p className="text-sm text-muted-foreground">Sign in to manage your household.</p>
       </div>
     );
@@ -337,7 +337,7 @@ export function HouseholdSettingsPage({ onBack }: HouseholdSettingsPageProps) {
 
   if (loading) {
     return (
-      <div className="max-w-2xl mx-auto px-pm-5 py-pm-5">
+      <div className="product-shell py-pm-5">
         <p className="text-sm text-muted-foreground">Loading household…</p>
       </div>
     );
@@ -345,7 +345,7 @@ export function HouseholdSettingsPage({ onBack }: HouseholdSettingsPageProps) {
 
   if (!data?.household) {
     return (
-      <div className="max-w-2xl mx-auto px-pm-5 py-pm-5">
+      <div className="product-shell py-pm-5">
         <Header onBack={onBack} />
         <div className="mt-6 rounded-xl border border-border bg-card p-5">
           <p className="text-sm font-semibold text-foreground mb-2">No household yet</p>
@@ -378,7 +378,7 @@ export function HouseholdSettingsPage({ onBack }: HouseholdSettingsPageProps) {
     : null;
 
   return (
-    <div className="max-w-2xl mx-auto px-pm-5 py-pm-5 pb-32">
+    <div className="product-shell py-pm-5 pb-32">
       <Header onBack={onBack} />
 
       {error ? (
@@ -399,7 +399,7 @@ export function HouseholdSettingsPage({ onBack }: HouseholdSettingsPageProps) {
           <button
             type="button"
             onClick={() => setInviteDialogOpen(true)}
-            className="inline-flex items-center gap-1 text-[12px] font-semibold text-primary hover:underline"
+            className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
             data-testid="household-settings-add"
             aria-label="Invite a household member"
           >
@@ -793,7 +793,7 @@ function Header({ onBack }: { onBack?: () => void }) {
       >
         <Icons.back className="w-5 h-5" aria-hidden />
       </button>
-      <h1 className="text-[20px] font-bold text-foreground -tracking-[0.01em]">Household</h1>
+      <h1 className="text-[22px] font-bold text-foreground -tracking-[0.01em]">Household</h1>
     </div>
   );
 }

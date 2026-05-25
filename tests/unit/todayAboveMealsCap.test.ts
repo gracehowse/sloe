@@ -72,6 +72,10 @@ describe("Today above-meals cap (web) — macro tiles to meals gap", () => {
     expect(between).not.toMatch(/<QuickAddPanel[\s/]/);
   });
 
+  it("QuickAddPanel is wired through TodayMealsSection (ENG-594)", () => {
+    expect(HOST_SRC).toMatch(/<TodayMealsSection[\s\S]+?quickAddPanel=\{[\s\S]+?<QuickAddPanel/);
+  });
+
   it("NorthStarBlockHost does not render between macro tiles and meals", () => {
     const between = macroGridToMealsSlice(HOST_SRC);
     expect(between).not.toMatch(/<NorthStarBlockHost[\s/]/);

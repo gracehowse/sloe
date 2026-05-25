@@ -16,7 +16,6 @@ import {
   ChevronDown,
   Cloud,
   Coffee,
-  Compass,
   Database,
   Download,
   Flame,
@@ -33,7 +32,6 @@ import {
   Sun,
   Target,
   Timer,
-  TrendingUp,
   User,
   Utensils,
   Wifi,
@@ -51,17 +49,21 @@ import {
 import "./landing.css";
 import { FatSecretBadge } from "../../src/app/components/ui/FatSecretBadge";
 
+// Audit 2026-05-22: 5 nav links read busy vs Linear/Vercel's restraint.
+// FAQ dropped — the page anchor stays so deep-links work, but FAQ is
+// also reachable from Help and Pricing, the surfaces where users
+// actually look for it. Net result: 5 → 4 primary nav items, less
+// noise above the H1.
 const NAV_LINKS = [
   { href: "#what", label: "How it works" },
   { href: "#features", label: "Features" },
   { href: "#roadmap", label: "Roadmap" },
   { href: "#pricing", label: "Pricing" },
-  { href: "#faq", label: "FAQ" },
 ];
 
-// Sign Up = the v2 onboarding flow (real Supabase signUp inline at
-// step 02 — see app/signup/page.tsx which now 307s to /onboarding).
-// Sign In = /login (unchanged).
+// Get started = full v2 onboarding at /onboarding (profile + targets).
+// Dedicated email signup card = /signup (Premium P1 / RTP-1).
+// Sign In = /login (sign-in only; /signin alias).
 const SIGNUP_HREF = "/onboarding";
 const SIGNIN_HREF = "/login";
 
@@ -77,6 +79,7 @@ export function LandingPage() {
       <Pricing />
       <Faq />
       <CtaBlock />
+      <PreFooterCta />
       <LandingFooter />
     </div>
   );
@@ -1107,6 +1110,21 @@ function CtaBlock() {
   );
 }
 
+/* ─────────────── Pre-footer CTA ─────────────── */
+function PreFooterCta() {
+  return (
+    <section className="lp-pre-footer-cta">
+      <div className="lp-wrap lp-pre-footer-inner">
+        <h2>Ready to start cooking?</h2>
+        <p>Track nutrition without overthinking it. Free to start, no credit card required.</p>
+        <Link href={SIGNUP_HREF} className="lp-btn lp-btn-primary lp-btn-lg">
+          Get started for free
+        </Link>
+      </div>
+    </section>
+  );
+}
+
 /* ─────────────── Footer ─────────────── */
 function LandingFooter() {
   return (
@@ -1114,11 +1132,11 @@ function LandingFooter() {
       <div className="lp-wrap">
         <div className="lp-f-grid-foot">
           <div className="lp-f-brand">
-            <div className="lp-brand">
+            <div className="lp-brand lp-brand-footer">
               <span className="lp-mk">S</span>
               Suppr
             </div>
-            <p>The recipe and nutrition platform for people who actually cook. Built in London.</p>
+            <p>The recipe and nutrition platform for people who actually cook.</p>
           </div>
           <div className="lp-f-col">
             <h4>Product</h4>
@@ -1133,8 +1151,16 @@ function LandingFooter() {
                 <Link href="/roadmap">Roadmap</Link>
               </li>
               <li>
-                <Link href="/help">Help</Link>
+                <Link href="/whats-new">What&apos;s new</Link>
               </li>
+              <li>
+                <Link href="/help">Help centre</Link>
+              </li>
+            </ul>
+          </div>
+          <div className="lp-f-col">
+            <h4>Account</h4>
+            <ul>
               <li>
                 <Link href={SIGNUP_HREF}>Get started</Link>
               </li>
@@ -1172,7 +1198,6 @@ function LandingFooter() {
             <Link href="/privacy">Privacy</Link>
             <Link href="/terms">Terms</Link>
             <Link href="/dmca">DMCA</Link>
-            <Link href="/licences">Licences</Link>
           </div>
         </div>
       </div>

@@ -1,17 +1,24 @@
 import { useEffect, useRef, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, Text, useColorScheme, View } from "react-native";
 import * as Haptics from "expo-haptics";
 import { PostHogMaskView } from "posthog-react-native";
-import Svg, { Circle, G } from "react-native-svg";
+import Svg, { Circle, G, Defs, Pattern, Line } from "react-native-svg";
 import Animated, {
   useSharedValue,
   useAnimatedProps,
   withTiming,
+  withSpring,
   withDelay,
   Easing,
 } from "react-native-reanimated";
+import { isFeatureEnabled } from "@/lib/analytics";
+import {
+  PREMIUM_MOTION_RING_MS,
+  PREMIUM_MOTION_V1_FLAG,
+  PREMIUM_MOTION_COUNT_MS,
+} from "@suppr/shared/preferences/premiumMotion";
 
-import { Accent, MacroColors } from "@/constants/theme";
+import { Accent, Colors, MacroColors, Type } from "@/constants/theme";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
 import { RING_LABELS } from "@suppr/shared/copy/today";
 
@@ -45,12 +52,19 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle);
  */
 function useAnimatedNumber(
   target: number,
-  options?: { snapOn?: unknown; duration?: number; reduceMotion?: boolean },
+  options?: {
+    snapOn?: unknown;
+    duration?: number;
+    reduceMotion?: boolean;
+    /** ENG-603: count up from 0 on first paint when flag is on. */
+    animateFromZeroOnMount?: boolean;
+  },
 ): number {
   const duration = options?.duration ?? 400;
   const snapOn = options?.snapOn;
   const reduceMotion = options?.reduceMotion ?? false;
-  const [value, setValue] = useState(target);
+  const animateFromZeroOnMount = options?.animateFromZeroOnMount ?? false;
+  const [value, setValue] = useState(animateFromZeroOnMount ? 0 : target);
   const valueRef = useRef(target);
   const lastSnapRef = useRef(snapOn);
   useEffect(() => {
@@ -89,19 +103,15 @@ function useAnimatedNumber(
   return value;
 }
 
-// F-60 (2026-04-22): 160 → 140 to address repeat tester complaints
-// ("calorie section still massive" / "cals still too big hasn't been
-// fixed" on build 28). Macro-ring radii stay proportional.
+// TF49 ring diameter (140). Hero box padding is separate from ring size.
 const SIZE = 140;
 const STROKE = 8;
-// 2026-05-12 (premium-bar DC1): macro arc stroke 5 → 6.5. Audit flagged
-// "macro arcs too thin to read at a glance" — Apple Watch's nested
-// rings ship at ~7-8px on a similar diameter. We bump to 6.5 (not 7)
-// because MACRO_R[2] = R - 32 = 30, and a 7px stroke at radius 30 has
-// the inner edge at 26.5px which starts crowding the centre text.
-// 6.5 keeps centre text breathing room while making each arc readable
-// as a macro indicator instead of a faint hairline.
-const MACRO_STROKE = 6.5;
+// 2026-05-22 (multi-ring revival A1): inner macro arc stroke = 6 (was 6.5).
+// HTML prototype A1 trim to keep the centre kcal value as the focal point
+// while preserving the multi-ring identity that MFP-defectors expect. The
+// 6.5 → 6 step is small but the diff at three concentric arcs is
+// perceptible; calmer hero, macros still readable.
+const MACRO_STROKE = 6;
 const CX = SIZE / 2;
 const R = (SIZE - STROKE) / 2 - 2;
 const MACRO_R = [R - 12, R - 22, R - 32];
@@ -248,7 +258,14 @@ export default function CalorieRing({
   // fall into the calibrating-empty state until a profile target is
   // set.
   const isEmpty = consumed === 0 || goal <= 0;
-  /** Centre number + label mirror the outer ring: green on track, red over. */
+  const colorScheme = useColorScheme();
+  const palette = colorScheme === "dark" ? Colors.dark : Colors.light;
+  /** Centre + outer ring colour. 2026-05-22 evening lock (Grace call):
+   *  own the green-under / red-over treatment — no toggle, no brand
+   *  mode. The earlier `Accent.warning` (orange) treatment was the
+   *  bonus colour, so going over read as "all bonus" instead of "you
+   *  went past." Red on the over arc makes the state unambiguous and
+   *  keeps a different colour from the bonus segment. */
   const ringStateColor = isOver ? Accent.destructive : Accent.success;
   const centerValue = displayMode === "consumed"
     ? Math.round(consumed)
@@ -263,16 +280,22 @@ export default function CalorieRing({
   const mainCirc = CIRC(R);
 
   const progress = useSharedValue(0);
+  const reduceMotion = useReduceMotion();
+  const premiumMotion = isFeatureEnabled(PREMIUM_MOTION_V1_FLAG);
 
   // Tween from the current ring position to the new pct (do NOT snap to
   // zero first). Reanimated 3 continues the existing animation when
   // withTiming is called on an already-animating shared value.
   useEffect(() => {
+    if (premiumMotion && !reduceMotion) {
+      progress.value = withSpring(pct, { damping: 22, stiffness: 120 });
+      return;
+    }
     progress.value = withTiming(pct, {
-      duration: 800,
+      duration: PREMIUM_MOTION_RING_MS,
       easing: Easing.out(Easing.cubic),
     });
-  }, [pct]);
+  }, [pct, premiumMotion, reduceMotion, progress]);
 
   // Light haptic feedback when logged calories change — Withings-style
   // confirmation that a new data point has landed. Skipped on mount
@@ -294,10 +317,11 @@ export default function CalorieRing({
   // (no tween) on display-mode toggle so a long-press doesn't read as
   // a slow countdown across two different metrics. Honours system
   // reduce-motion via `useReduceMotion()`.
-  const reduceMotion = useReduceMotion();
   const animatedCenterValue = useAnimatedNumber(centerValue, {
     snapOn: displayMode,
     reduceMotion,
+    duration: premiumMotion ? PREMIUM_MOTION_COUNT_MS : 400,
+    animateFromZeroOnMount: premiumMotion && !reduceMotion,
   });
 
   return (
@@ -323,7 +347,30 @@ export default function CalorieRing({
         }}
       >
         <Svg width={SIZE} height={SIZE} style={{ position: "absolute" }}>
-          {/* Main calorie ring track — neutral when empty; no brand gradient. */}
+          {/* MFP-style diagonal hash pattern. Layered over the red over-
+              budget arc to mark the portion past goal. Hue matches
+              Accent.destructive so the pattern reads as part of the red
+              arc, not a separate colour layer. Grace 2026-05-22:
+              "mfp used to make it a hashed colour like this". */}
+          <Defs>
+            <Pattern
+              id="overHash"
+              patternUnits="userSpaceOnUse"
+              width={6}
+              height={6}
+              patternTransform="rotate(45)"
+            >
+              <Line
+                x1={0}
+                y1={0}
+                x2={0}
+                y2={6}
+                stroke={Accent.destructive}
+                strokeWidth={3}
+              />
+            </Pattern>
+          </Defs>
+          {/* Outer calorie ring track — neutral when empty. */}
           <Circle
             cx={CX}
             cy={CX}
@@ -331,9 +378,46 @@ export default function CalorieRing({
             fill="none"
             stroke={trackColor}
             strokeWidth={STROKE}
-            opacity={isEmpty ? 0.35 : 1}
+            opacity={isEmpty ? 0.55 : 1}
           />
-          {/* Progress: green under budget, red over. Empty = no visible arc. */}
+          {/* Bonus calorie segment (orange). Canonical 2026-05-22 v4
+              multi-ring revival: when exercise has bumped the daily
+              goal above the base target, render the "earned" territory
+              as an orange arc at the end of the ring. This restores
+              the MFP visual language MFP-defectors specifically asked
+              for ("I want to see my burn in the ring"). Renders behind
+              the food fill so consumed calories overlap correctly when
+              the user eats into the bonus territory. */}
+          {!isEmpty && baseGoal && baseGoal < goal && goal > 0 ? (
+            (() => {
+              const bonusFraction = (goal - baseGoal) / goal;
+              const bonusLen = mainCirc * bonusFraction;
+              return (
+                <Circle
+                  cx={CX}
+                  cy={CX}
+                  r={R}
+                  fill="none"
+                  // Canonical 2026-05-22 — bonus uses Accent.warning
+                  // (amber #e8a020) to match the activity/burn card +
+                  // burn-detail screen which already use the same token
+                  // for "earned via exercise" semantics. Grace 2026-05-22:
+                  // "bonus on ring is not matching activity on the top
+                  // of the page".
+                  stroke={Accent.warning}
+                  strokeWidth={STROKE}
+                  strokeDasharray={`${bonusLen} ${mainCirc}`}
+                  strokeDashoffset={-(mainCirc - bonusLen)}
+                  rotation="-90"
+                  origin={`${CX},${CX}`}
+                />
+              );
+            })()
+          ) : null}
+          {/* Food progress: green under budget, warning amber over.
+              Empty = no visible arc. Renders ON TOP of the bonus
+              segment so the green arc visibly "eats into" the orange
+              when consumption exceeds the base goal. */}
           <AnimatedCircle
             cx={CX}
             cy={CX}
@@ -351,42 +435,65 @@ export default function CalorieRing({
             rotation="-90"
             origin={`${CX},${CX}`}
           />
-          {/* Macro rings (shown when expanded AND not empty).
-              Empty + expanded previously rendered three nested grey
-              tracks plus the unfilled calorie ring — four concentric
-              empty rings that read as a wireframe placeholder rather
-              than an intentional "ready to start" state. Audit
-              2026-04-30 ui-critic flagged this as the single biggest
-              first-impression gap vs Cal AI / Lifesum / MFP. Hiding
-              the macro rings in the empty state collapses the visual
-              to one clean track + the soft "Start your day" copy. */}
-          {expanded && !isEmpty && (
-            <MacroRing
-              radius={MACRO_R[0]}
-              pct={proteinPct}
-              color={MacroColors.protein}
-              trackColor={trackColor}
-              delay={80}
-            />
-          )}
-          {expanded && !isEmpty && (
-            <MacroRing
-              radius={MACRO_R[1]}
-              pct={carbsPct}
-              color={MacroColors.carbs}
-              trackColor={trackColor}
-              delay={160}
-            />
-          )}
-          {expanded && !isEmpty && (
-            <MacroRing
-              radius={MACRO_R[2]}
-              pct={fatPct}
-              color={MacroColors.fat}
-              trackColor={trackColor}
-              delay={240}
-            />
-          )}
+          {/* Hashed overage segment — only renders when consumed > goal.
+              Sits ON TOP of the solid red food arc, starting at 12
+              o'clock and going clockwise for `(over / goal) * mainCirc`.
+              Capped at one full lap so going 2x over doesn't render a
+              full lap twice (the centre digit carries the magnitude). */}
+          {!isEmpty && isOver && goal > 0 ? (
+            (() => {
+              const overFraction = Math.min((consumed - goal) / goal, 1);
+              const overLen = mainCirc * overFraction;
+              return (
+                <Circle
+                  cx={CX}
+                  cy={CX}
+                  r={R}
+                  fill="none"
+                  stroke="url(#overHash)"
+                  strokeWidth={STROKE}
+                  strokeDasharray={`${overLen} ${mainCirc}`}
+                  strokeDashoffset={0}
+                  strokeLinecap="butt"
+                  rotation="-90"
+                  origin={`${CX},${CX}`}
+                />
+              );
+            })()
+          ) : null}
+          {/* Inner macro arcs — Canonical 2026-05-22 v4 multi-ring revival.
+              Restored after the brief C1 single-ring experiment. Each
+              macro gets its own concentric arc inside the calorie ring,
+              following the TF49 multi-ring grammar that MFP-defectors
+              are familiar with. Stroke trimmed 6.5 → 6 (variant A1) so
+              the centre kcal value remains the clear focal point.
+              Hidden in empty state — three nested grey tracks read as
+              wireframe placeholder, not an intentional "ready" state. */}
+          {!isEmpty && expanded ? (
+            <>
+              <MacroRing
+                radius={MACRO_R[0]}
+                pct={proteinPct}
+                color={MacroColors.protein}
+                trackColor={trackColor}
+                delay={100}
+              />
+              <MacroRing
+                radius={MACRO_R[1]}
+                pct={carbsPct}
+                color={MacroColors.carbs}
+                trackColor={trackColor}
+                delay={200}
+              />
+              <MacroRing
+                radius={MACRO_R[2]}
+                pct={fatPct}
+                color={MacroColors.fat}
+                trackColor={trackColor}
+                delay={300}
+              />
+            </>
+          ) : null}
         </Svg>
         {/* Center text — number tweens to `centerValue` via
             `useAnimatedNumber`. The displayed integer counts up
@@ -403,16 +510,34 @@ export default function CalorieRing({
             value renders with `.toLocaleString()` so 4-digit kcal
             ("1,832") matches the budget line below. */}
         {isEmpty ? (
-          <Text
-            style={{
-              fontSize: expanded ? 14 : 16,
-              fontWeight: "500",
-              color: secondaryColor,
-              textAlign: "center",
-            }}
-          >
-            Start your day
-          </Text>
+          // 2026-05-23 (Grace clarification): empty-state ring keeps
+          // "Start your day" + "{goal} kcal goal" — what we needed to
+          // remove was the THIRD line ("of {goal} kcal" from the
+          // budgetLine block below), which was the same number twice.
+          // The budgetLine is now suppressed when `isEmpty` so the ring
+          // shows the invitation + goal exactly once.
+          <View style={{ alignItems: "center", gap: 2 }}>
+            <Text
+              style={{
+                ...Type.headline,
+                color: textColor,
+                textAlign: "center",
+              }}
+            >
+              Start your day
+            </Text>
+            {goal > 0 ? (
+              <Text
+                style={{
+                  ...Type.caption,
+                  color: secondaryColor,
+                  fontVariant: ["tabular-nums"],
+                }}
+              >
+                {Math.round(goal).toLocaleString()} kcal goal
+              </Text>
+            ) : null}
+          </View>
         ) : (
           // ENG-534 P1 (2026-05-16): centre kcal value is MEDIUM-class
           // (running daily total — high frequency in replays, valuable
@@ -424,14 +549,8 @@ export default function CalorieRing({
           <PostHogMaskView>
             <Text
               style={{
-                // Grace 2026-05-05: 4-digit values like "1,516" at fontSize 22
-                // bold are ~80px wide and overlap the innermost macro ring
-                // (diameter ~64). Drop expanded centre to 18 so 4–5 char
-                // values fit cleanly inside the inner ring band. Collapsed
-                // mode (no macro rings) keeps the original 28 for readability.
-                fontSize: expanded ? 18 : 28,
-                fontWeight: "700",
-                color: ringStateColor,
+                ...Type.macroValue,
+                color: textColor,
                 fontVariant: ["tabular-nums"],
               }}
             >
@@ -453,27 +572,24 @@ export default function CalorieRing({
         {!isEmpty && (
           <Text
             style={{
-              fontSize: expanded ? 8 : 10,
-              fontWeight: "700",
-              color: ringStateColor,
-              letterSpacing: expanded ? 0 : 0.8,
+              ...Type.label,
+              color: textColor,
               marginTop: 1,
             }}
           >
             {centerLabel}
           </Text>
         )}
-        {/* Budget line hidden when the concentric macro rings are
-            showing — Grace 2026-04-20: text + rings looked squished.
-            Also hidden when goal <= 0 (no profile target yet) so the
-            ring doesn't render "of 0 kcal" — 2026-05-05 audit R03. */}
-        {!expanded && goal > 0 ? (
-          // ENG-534 P1 (2026-05-16): budget line shows the user's
-          // daily target — same MEDIUM-class as the centre value.
+        {/* Budget line shows under the centre label only when collapsed.
+            Multi-ring revival 2026-05-22 v4: when expanded, the budget
+            line conflicts visually with the innermost macro arc; the
+            stats row below the ring (Goal / Food / Exercise) carries
+            the explicit numbers in that case. */}
+        {goal > 0 && !expanded && !isEmpty ? (
           <PostHogMaskView>
             <Text
               style={{
-                fontSize: 10,
+                ...Type.caption,
                 color: secondaryColor,
                 marginTop: 1,
                 fontVariant: ["tabular-nums"],

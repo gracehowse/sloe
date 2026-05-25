@@ -57,7 +57,7 @@ export function ProgressStoryGate({
         .join(" ")}
       aria-label={`This week: ${placeholder.headline}. ${placeholder.body} ${placeholder.ringLabel} days logged.`}
     >
-      <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-primary">
+      <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-primary">
         {placeholder.eyebrow}
       </p>
       <div className="mt-1.5 flex items-center justify-between gap-3">
@@ -98,7 +98,7 @@ export function ProgressStoryGate({
           />
         </svg>
       </div>
-      <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
+      <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
         {placeholder.body}
       </p>
       <p

@@ -1,5 +1,7 @@
 # CODING AGENTS: READ THIS FIRST
 
+> **⚠️ Colour tokens in this bundle are not production.** The HTML/JSX uses cool grey (`#f4f5f7`) and brand-blue chrome (`#4c6ce0`). Shipped web + mobile use the **warm palette** in `src/styles/theme.css` and `docs/ux/brand-tokens.md`. Use this bundle for **layout, hierarchy, and component structure** (e.g. `.meal-row`, macro 2×2 grid). For hex values, read `theme.css` or run `npm run visual:compare`.
+
 This is a **handoff bundle** from Claude Design (claude.ai/design).
 
 A user mocked up designs in HTML/CSS/JS using an AI design tool, then exported this bundle so a coding agent can implement the designs for real.

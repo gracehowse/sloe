@@ -72,11 +72,22 @@ export function StreakPip({
     return null;
   }
 
+  const streakLabel = (d: number): string => {
+    if (d === 0) return "Start your streak";
+    if (d === 7) return "1 week streak";
+    if (d === 14) return "2 week streak";
+    if (d === 21) return "3 week streak";
+    if (d === 30) return "1 month streak";
+    if (d === 60) return "2 month streak";
+    if (d === 90) return "3 month streak";
+    if (d === 100) return "100 day streak!";
+    if (d === 365) return "1 year streak!";
+    return `${d}-day streak`;
+  };
+
   const label = freezeProtected
     ? `${safeDays}-day streak · freeze`
-    : safeDays === 0
-      ? "Start your streak"
-      : `${safeDays}-day streak`;
+    : streakLabel(safeDays);
 
   const baseAria = freezeProtected
     ? `${safeDays}-day streak — freeze used today`
@@ -85,13 +96,14 @@ export function StreakPip({
     ? `${ariaLabel ?? baseAria} — tap for weekly recap`
     : (ariaLabel ?? baseAria);
 
-  // DC8 freeze-shield takes precedence: muted slate tone instead of
-  // the primary active tint.
+  const isMilestone = [7, 14, 21, 30, 60, 90, 100, 365].includes(safeDays);
   const toneClass = freezeProtected
     ? "bg-muted text-muted-foreground"
-    : active
-      ? "bg-primary/10 text-primary"
-      : "bg-muted text-muted-foreground";
+    : isMilestone
+      ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+      : active
+        ? "bg-primary/10 text-primary"
+        : "bg-muted text-muted-foreground";
 
   const sizeClass = isLg
     ? "h-7 px-3 text-[13px] gap-1.5"

@@ -34,6 +34,7 @@ import { resolve as pathResolve } from "node:path";
 const RN_SHIM_PATH = pathResolve(__dirname, "shims", "react-native.cjs");
 const RN_SVG_SHIM_PATH = pathResolve(__dirname, "shims", "react-native-svg.cjs");
 const RN_GH_SHIM_PATH = pathResolve(__dirname, "shims", "react-native-gesture-handler.cjs");
+const LUCIDE_SHIM_PATH = pathResolve(__dirname, "shims", "lucide-react-native.cjs");
 
 type RequireInternal = typeof require & {
   resolve: RequireResolve;
@@ -73,6 +74,9 @@ ModuleRef._resolveFilename = function patchedResolveFilename(
   ) {
     return RN_GH_SHIM_PATH;
   }
+  if (request === "lucide-react-native" || request === "lucide-react-native/") {
+    return LUCIDE_SHIM_PATH;
+  }
   return originalResolveFilename.call(
     ModuleRef,
     request,
@@ -93,6 +97,8 @@ const REDIRECTS: Record<string, string> = {
   "react-native-svg/": RN_SVG_SHIM_PATH,
   "react-native-gesture-handler": RN_GH_SHIM_PATH,
   "react-native-gesture-handler/": RN_GH_SHIM_PATH,
+  "lucide-react-native": LUCIDE_SHIM_PATH,
+  "lucide-react-native/": LUCIDE_SHIM_PATH,
 };
 
 const originalCreateRequire = Module.createRequire;

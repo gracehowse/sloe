@@ -169,6 +169,46 @@ export function perServingFromVerifyJson(
   return null;
 }
 
+import { isStructuredSource } from "./structuredSourceGate";
+
+/** Whether a verified line should flip `is_verified` in UI + DB. */
+export function isVerifiedFromVerifyRow(confidence: number, source: string): boolean {
+  return (
+    isStructuredSource(source) &&
+    typeof confidence === "number" &&
+    Number.isFinite(confidence) &&
+    confidence >= 0.5
+  );
+}
+
+/** Merge flat verify rows back onto ingredient rows (index-aligned). */
+export function mergeVerifiedMacroRows<T extends Record<string, unknown>>(
+  base: T[],
+  rows: FlatVerifiedMacroRow[],
+): T[] {
+  return base.map((ing, i) => {
+    const r = rows[i];
+    if (!r) return ing;
+    return {
+      ...ing,
+      calories: r.calories,
+      protein: r.protein,
+      carbs: r.carbs,
+      fat: r.fat,
+      fiber_g: r.fiber,
+      fiberG: r.fiber,
+      sugar_g: r.sugar,
+      sugarG: r.sugar,
+      sodium_mg: r.sodium,
+      sodiumMg: r.sodium,
+      confidence: r.confidence,
+      source: r.source,
+      is_verified: isVerifiedFromVerifyRow(r.confidence, r.source),
+      isVerified: isVerifiedFromVerifyRow(r.confidence, r.source),
+    };
+  });
+}
+
 /** Overall numeric confidence for `recipes.verified_confidence` (0–1). */
 export function overallConfidenceFromVerifyJson(json: Record<string, unknown>): number | null {
   const a = json.avgIngredientConfidence;

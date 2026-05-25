@@ -92,7 +92,7 @@ export function AppleHealthCard({
   const shell = (children: React.ReactNode, extra?: React.ReactNode) => (
     <section
       aria-label="Apple Health"
-      className={`rounded-card bg-card border border-border p-4 max-w-[480px] ${className ?? ""}`}
+      className={`rounded-card bg-card border border-border p-4 max-w-[480px] card-elevated ${className ?? ""}`}
       data-testid="apple-health-card"
     >
       <h3 className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground mb-3">
@@ -234,7 +234,7 @@ export function AppleHealthCard({
               </div>
             </div>
             <span
-              className={`text-[14px] font-bold tabular-nums ${
+              className={`text-[13px] font-bold tabular-nums ${
                 missing ? "text-muted-foreground" : "text-foreground"
               }`}
             >

@@ -37,6 +37,7 @@ import {
 import MealTypePicker from "@/components/MealTypePicker";
 import FoodSearchModal, { type SelectedFood } from "@/components/FoodSearchModal";
 import OverrideIngredientSheet from "@/components/OverrideIngredientSheet";
+import { ImportLoadingSkeleton } from "@/components/import/ImportLoadingSkeleton";
 import { SupprMark } from "@/components/SupprMark";
 import { scaleMacros , parseIngredientForSearch, type BarcodeProduct } from "@/lib/verifyRecipe";
 import BarcodeScannerModal from "@/components/BarcodeScannerModal";
@@ -1353,12 +1354,11 @@ export default function ImportSharedScreen() {
       >
         {(authLoading || state === "checking") && (
           <View style={styles.panelCard}>
-            <SupprMark size={56} />
-            <ActivityIndicator size="large" color={Accent.primary} style={styles.loaderGap} />
             <Text style={styles.panelTitle}>Looking for a link…</Text>
-            <Text style={styles.panelSub}>
+            <Text style={[styles.panelSub, { marginBottom: Spacing.lg }]}>
               {`Instagram, TikTok, or any recipe page — we'll save it to your library.`}
             </Text>
+            <ImportLoadingSkeleton phase="checking" onCancel={goBack} />
           </View>
         )}
 
@@ -1370,32 +1370,11 @@ export default function ImportSharedScreen() {
             <Text style={[styles.panelSub, { marginBottom: Spacing.lg }]}>
               Parsing ingredients and calculating macros
             </Text>
-
-            <View style={styles.progressStepsContainer}>
-              {(["ingredients", "nutrition", "macros"] as ProgressStep[]).map((step, idx) => {
-                const isDone = completedSteps.includes(step);
-                const stepLabels: Record<ProgressStep, string> = {
-                  ingredients: "Extracting ingredients",
-                  nutrition: "Matching nutrition data",
-                  macros: "Calculating macros",
-                };
-                return (
-                  <View key={step} style={styles.progressStep}>
-                    <View
-                      style={[
-                        styles.stepIcon,
-                        isDone ? styles.stepIconDone : styles.stepIconPending,
-                      ]}
-                    >
-                      {isDone && (
-                        <Ionicons name="checkmark" size={14} color="#fff" />
-                      )}
-                    </View>
-                    <Text style={styles.stepLabel}>{stepLabels[step]}</Text>
-                  </View>
-                );
-              })}
-            </View>
+            <ImportLoadingSkeleton
+              phase="importing"
+              completedSteps={completedSteps}
+              onCancel={goBack}
+            />
           </View>
         )}
 

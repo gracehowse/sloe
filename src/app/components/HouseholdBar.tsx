@@ -144,7 +144,7 @@ export function HouseholdBar({ selected, onSelect, onManage }: HouseholdBarProps
           data-testid="household-bar-pill-all"
           className={[
             "inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 rounded-full px-2.5 py-1.5",
-            "text-[12px] font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+            "text-[11px] font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
             currentSel === "all"
               ? "bg-primary/15 text-primary"
               : "bg-muted text-muted-foreground hover:bg-muted/80",
@@ -168,7 +168,7 @@ export function HouseholdBar({ selected, onSelect, onManage }: HouseholdBarProps
               data-testid={`household-bar-pill-${m.userId}`}
               className={[
                 "inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 rounded-full py-1 pl-1 pr-2.5",
-                "text-[12px] font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                "text-[11px] font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                 active
                   ? "bg-primary/15 text-primary"
                   : "bg-muted text-muted-foreground hover:bg-muted/80",

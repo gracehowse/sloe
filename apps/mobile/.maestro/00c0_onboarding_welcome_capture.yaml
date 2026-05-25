@@ -1,0 +1,25 @@
+# @cases TC-ONB-WELCOME-CAPTURE
+# @screen onboarding-welcome
+# Premium P0 (ENG-577) — cold-open welcome screenshot before Goal step.
+#
+# Prerequisites: signed-out sim OR fresh install so /onboarding shows Welcome.
+# Authed users skip welcome; use Erase app data or sign out first.
+#
+appId: com.supprclub.supprapp
+name: "Onboarding — welcome capture (cold open)"
+---
+- launchApp:
+    appId: com.supprclub.supprapp
+- waitForAnimationToEnd
+
+- openLink: suppr:///onboarding
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/onb-01-welcome-cold-open
+
+# Advance past welcome — point tap avoids Maestro text-probe crashes (iOS 26).
+- tapOn:
+    point: "50%,92%"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/onb-02-after-welcome-continue

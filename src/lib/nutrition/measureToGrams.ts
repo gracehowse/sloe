@@ -31,6 +31,15 @@ export type MeasureResult = {
   densityDefaulted?: boolean;
 };
 
+/** Cooked vs raw per-piece breast weight (F-158 / ENG-564). */
+export function poultryBreastGramsEach(ingredientName: string): number {
+  const name = ingredientName.trim().toLowerCase();
+  const cooked =
+    /\b(cooked|roasted|grilled|baked|fried|boiled|steamed|smoked)\b/i.test(name) &&
+    !/\b(raw|uncooked)\b/i.test(name);
+  return cooked ? 150 : 200;
+}
+
 const COUNT_WEIGHT_G: Record<string, number> = {
   clove: 4,
   sprig: 2,
@@ -170,6 +179,11 @@ export function measureToGramsDetailed(input: MeasureInput): MeasureResult {
   }
   if (u === "pack") return { grams: amt * (/basil|herb|lettuce|salad|rocket|arugula|spinach/.test(name) ? 35 : 120) };
 
+  // F-158: "2 × breast" on cooked chicken must not use raw 200g/breast.
+  if ((u === "breast" || u === "breasts") && /(?:chicken|turkey)/.test(name)) {
+    return { grams: amt * poultryBreastGramsEach(name) };
+  }
+
   // Lookup unit in the COUNT_WEIGHT_G table (handles drizzle, dash, handful, etc.)
   if (COUNT_WEIGHT_G[u] != null) return { grams: amt * COUNT_WEIGHT_G[u] };
 
@@ -179,7 +193,9 @@ export function measureToGramsDetailed(input: MeasureInput): MeasureResult {
       if (name.includes(word)) return { grams: amt * g };
     }
     // Meat cuts — use realistic per-piece weights
-    if (/chicken breast/.test(name)) return { grams: amt * 200 };
+    if (/(?:chicken|turkey).{0,24}breast|breast.{0,24}(?:chicken|turkey)|chicken breast/.test(name)) {
+      return { grams: amt * poultryBreastGramsEach(name) };
+    }
     if (/chicken thigh/.test(name)) return { grams: amt * 120 };
     if (/drumstick/.test(name)) return { grams: amt * 90 };
     if (/(?:chicken|turkey) wing/.test(name)) return { grams: amt * 40 };

@@ -142,7 +142,7 @@ export function PlanTemplatesDialog({
             </label>
             <label className="grid gap-1.5">
               <span className="text-sm font-medium text-foreground">
-                Day count: {dayCount} day{dayCount === 1 ? "" : "s"}
+                {`Day count: ${dayCount} day${dayCount === 1 ? "" : "s"}`}
               </span>
               <input
                 type="range"
@@ -191,8 +191,7 @@ export function PlanTemplatesDialog({
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-foreground truncate">{t.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {t.dayCount} day{t.dayCount === 1 ? "" : "s"} · {t.slots.length} meal
-                        {t.slots.length === 1 ? "" : "s"}
+                        {`${t.dayCount} day${t.dayCount === 1 ? "" : "s"} · ${t.slots.length} meal${t.slots.length === 1 ? "" : "s"}`}
                       </p>
                     </div>
                     <Button

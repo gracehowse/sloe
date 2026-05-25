@@ -47,8 +47,8 @@ export function MobileWelcomeStep() {
           <Svg width="100%" height="100%">
             <Defs>
               <LinearGradient id="welcome-grad" x1="0" y1="0" x2="0" y2="1">
-                <Stop offset="0%" stopColor={Accent.primary} stopOpacity={gradTopOpacity} />
-                <Stop offset="50%" stopColor={Accent.magenta} stopOpacity={gradMidOpacity} />
+                <Stop offset="0%" stopColor={Accent.success} stopOpacity={gradTopOpacity} />
+                <Stop offset="50%" stopColor={Accent.magenta} stopOpacity={gradMidOpacity * 0.75} />
                 <Stop
                   offset="100%"
                   stopColor={colors.background}
@@ -108,13 +108,13 @@ export function MobileWelcomeStep() {
           style={({ pressed }) => ({
             height: 56,
             borderRadius: 14,
-            backgroundColor: Accent.primary,
+            backgroundColor: colors.tint,
             alignItems: "center",
             justifyContent: "center",
             opacity: pressed ? 0.9 : 1,
           })}
         >
-          <Text style={{ fontSize: 16, fontWeight: "700", color: Accent.primaryForeground }}>
+          <Text style={{ fontSize: 16, fontWeight: "700", color: colors.primaryForeground }}>
             Get started
           </Text>
         </Pressable>
@@ -146,7 +146,7 @@ export function MobileWelcomeStep() {
               textAlign: "center",
             }}
           >
-            Already have an account? <Text style={{ color: Accent.primary, fontWeight: "600" }}>Sign in</Text>
+            Already have an account? <Text style={{ color: colors.tint, fontWeight: "600" }}>Sign in</Text>
           </Text>
         </Pressable>
       </View>

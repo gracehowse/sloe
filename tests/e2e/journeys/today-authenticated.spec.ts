@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { hasE2ECredentials, loginWithTestUser } from "../utils/auth";
+import { hasE2ECredentials } from "../utils/auth";
 
 /**
  * Minimal authenticated **Today / tracker** smoke — complements the wider
@@ -12,18 +12,19 @@ test.describe("Today critical path (authenticated)", () => {
   });
 
   test("after login, Today tracker shows Meals and calorie guidance", async ({ page }) => {
-    await loginWithTestUser(page);
+    await page.goto("/today");
 
     const acceptBtn = page.getByRole("button", { name: /accept all/i });
     if (await acceptBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
       await acceptBtn.click();
     }
-
-    await page.goto("/?view=tracker");
-    await expect(page.getByRole("tab", { name: /^Today$/i })).toHaveAttribute("aria-selected", "true");
+    const todayNav = page
+      .getByRole("tab", { name: /^Today$/i })
+      .or(page.getByRole("button", { name: /^Today$/i }));
+    await expect(todayNav.first()).toBeVisible();
     await expect(page.getByRole("heading", { name: /^Meals$/i })).toBeVisible();
     await expect(
-      page.getByText(/Click (the )?ring to (show|hide) macros|Tap for macro breakdown|Showing macro breakdown/i),
+      page.locator('[data-testid="today-hero-desktop"] [data-testid="today-macro-rings-toggle"]'),
     ).toBeVisible();
   });
 });

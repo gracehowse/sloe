@@ -28,6 +28,14 @@ import * as React from "react";
 import { Sparkles, X } from "lucide-react";
 
 import { SupprCard } from "../ui/suppr-card";
+import { RecipeHeroFallback } from "./RecipeHeroFallback";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/dialog";
 import { cn } from "../ui/utils";
 
 export type NorthStarKind =
@@ -118,7 +126,7 @@ export function NorthStarBlock({
       >
         <Sparkles aria-hidden width={18} height={18} className="text-primary shrink-0" />
         <div className="flex flex-1 flex-col gap-1">
-          <p className="text-[14px] font-semibold">
+          <p className="text-[13px] font-semibold">
             Log your first meal — suggestions get smarter once we've seen you eat.
           </p>
         </div>
@@ -138,7 +146,7 @@ export function NorthStarBlock({
       >
         <Sparkles aria-hidden width={18} height={18} className="text-primary shrink-0" />
         <div className="flex flex-1 flex-col gap-1">
-          <p className="text-[14px] font-semibold">
+          <p className="text-[13px] font-semibold">
             Pick a few recipes you'd actually cook — we'll suggest from there.
           </p>
         </div>
@@ -146,7 +154,7 @@ export function NorthStarBlock({
           type="button"
           onClick={onOpenLibrary}
           className={cn(
-            "shrink-0 rounded-md bg-primary px-3 py-1.5 text-[12px] font-semibold text-primary-foreground",
+            "shrink-0 rounded-md bg-primary px-3 py-1.5 text-[11px] font-semibold text-primary-foreground",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
           )}
         >
@@ -171,7 +179,7 @@ export function NorthStarBlock({
         <button
           type="button"
           onClick={onBrowse}
-          className="shrink-0 text-[12px] font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
+          className="shrink-0 text-[11px] font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
         >
           Browse →
         </button>
@@ -183,6 +191,32 @@ export function NorthStarBlock({
   if (!suggestion) {
     return null;
   }
+
+  return (
+    <NorthStarDefaultBlock
+      suggestion={suggestion}
+      ctaLabel={ctaLabel}
+      onPrimaryCta={onPrimaryCta}
+      onSkip={onSkip}
+      testID={testID}
+    />
+  );
+}
+
+function NorthStarDefaultBlock({
+  suggestion,
+  ctaLabel,
+  onPrimaryCta,
+  onSkip,
+  testID,
+}: {
+  suggestion: NorthStarBlockSuggestion;
+  ctaLabel: string;
+  onPrimaryCta?: () => void;
+  onSkip?: () => void;
+  testID?: string;
+}) {
+  const [whyOpen, setWhyOpen] = React.useState(false);
 
   return (
     // 2026-05-12 (premium-bar audit web parity, DC2 polish): 200ms
@@ -220,22 +254,17 @@ export function NorthStarBlock({
           mobile `<NorthStarBlock>` spec. The thumbnail is the trust
           signal that converts the suggestion into "yes I want that";
           56 read as an avatar, 64 reads as a proper thumbnail. */}
-      {suggestion.thumbnail ? (
-        /* eslint-disable-next-line @next/next/no-img-element */
-        <img
-          src={suggestion.thumbnail}
-          alt=""
-          className="h-16 w-16 shrink-0 rounded-lg object-cover"
-        />
-      ) : (
-        <div
-          aria-hidden
-          className="h-16 w-16 shrink-0 rounded-lg bg-gradient-to-br from-primary/20 to-pink-300/20"
-        />
-      )}
+      <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg relative">
+        {suggestion.thumbnail ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img src={suggestion.thumbnail} alt="" className="h-full w-full object-cover rounded-lg" />
+        ) : (
+          <RecipeHeroFallback id={suggestion.recipeId} title={suggestion.title} iconSize={28} />
+        )}
+      </div>
 
       <div className="flex flex-1 flex-col gap-1">
-        <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.08em] text-primary">
+        <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.1em] text-primary">
           <Sparkles aria-hidden width={10} height={10} />
           What to eat next
         </span>
@@ -246,12 +275,39 @@ export function NorthStarBlock({
             mid-word truncating. */}
         <span className="text-[15px] font-bold leading-tight line-clamp-2">{suggestion.title}</span>
         {suggestion.whyLine ? (
-          // Activation hook (audit 2026-04-30 — leak fix #5). 12px
-          // muted matches the existing card cadence; tells the user
-          // WHICH macro fits so "Close fit" stops reading as black-box.
-          <span className="text-[12px] text-muted-foreground leading-tight">
-            {suggestion.whyLine}
-          </span>
+          <>
+            <button
+              type="button"
+              onClick={() => setWhyOpen(true)}
+              className="text-left text-[11px] text-muted-foreground leading-tight underline decoration-dotted underline-offset-2 hover:text-foreground"
+              aria-label={`${suggestion.whyLine}. Open why this recommendation.`}
+            >
+              {suggestion.whyLine}
+            </button>
+            <Dialog open={whyOpen} onOpenChange={setWhyOpen}>
+              <DialogContent className="bg-card border-border max-w-sm">
+                <DialogHeader>
+                  <DialogTitle className="text-foreground">Why this suggestion?</DialogTitle>
+                  <DialogDescription asChild>
+                    <div className="space-y-3 text-[13px] text-muted-foreground leading-relaxed">
+                      <p>{suggestion.whyLine}</p>
+                      <p>Macro fit: {suggestion.bandLabel.toLowerCase()}.</p>
+                      <p>
+                        Predicted: {suggestion.predictedCalories} kcal ·{" "}
+                        {Math.round(suggestion.predictedProtein)}g P ·{" "}
+                        {Math.round(suggestion.predictedCarbs)}g C ·{" "}
+                        {Math.round(suggestion.predictedFat)}g F.
+                      </p>
+                      <p>
+                        Suppr picks the saved recipe that best closes the gap to your remaining macros for
+                        today. Skip (×) to see another candidate.
+                      </p>
+                    </div>
+                  </DialogDescription>
+                </DialogHeader>
+              </DialogContent>
+            </Dialog>
+          </>
         ) : null}
         <div className="flex flex-wrap items-center gap-2">
           <span

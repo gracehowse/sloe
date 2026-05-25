@@ -15,7 +15,8 @@
  *
  * Documented anchor exceptions (must NOT be flagged):
  *   - `Badge.tsx` — `#94a3b8` slate-400 neutral variant anchor
- *   - `Badge.tsx` — `#8b5cf6` AI violet variant anchor
+ *   - `Badge.tsx` — `#9679D9` Purple AI variant anchor (was `#8b5cf6`
+ *     pre-2026-05-22 8-slot palette consolidation)
  *   - `#00000066` — modal overlay tint shared with web
  *
  * The test reads each file's source and asserts no banned hex
@@ -66,12 +67,12 @@ describe("hex token sweep — destructive / warning / primary-foreground (2026-0
     });
   }
 
-  it("Badge.tsx still anchors the documented exception hexes (#94a3b8 + #8b5cf6)", () => {
+  it("Badge.tsx still anchors the documented exception hexes (#94a3b8 + #9679D9)", () => {
     const fullPath = resolve(__dirname, "../../components/Badge.tsx");
     const src = readFileSync(fullPath, "utf8");
-    // These are intentional anchors — slate-400 neutral + AI violet.
+    // Intentional anchors — slate-400 neutral + 8-slot Purple AI.
     expect(src).toMatch(/#94a3b8/);
-    expect(src).toMatch(/#8b5cf6/);
+    expect(src).toMatch(/#9679D9/);
   });
 
   it("modal overlay tint #00000066 stays shared between VoiceLogSheet and PhotoLogSheet", () => {

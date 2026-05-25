@@ -1,18 +1,13 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { WifiOff } from "lucide-react";
-import { Icons } from "./ui/icons";
+
 import { toast } from "sonner";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { normalizeMacroTargets, DEFAULT_STEPS_GOAL } from "../../types/profile.ts";
 import { resolveMaintenance } from "../../lib/nutrition/resolveMaintenance.ts";
 import { computeActivityBonusKcal } from "../../lib/nutrition/activityBonus.ts";
-import {
-  buildMilestone30DayContent,
-  shouldShowMilestone30Day,
-  type Milestone30DayContent,
-} from "../../lib/nutrition/milestone30Day.ts";
-import { Milestone30DayDialog } from "./suppr/milestone-30-day-dialog";
+import { ACTIVITY_BUDGET_DISCOVERABILITY_KEY } from "../../lib/nutrition/activityBudgetDiscoverability.ts";
 // Weekly TDEE check-in ritual (PR claude/weekly-checkin-ritual-v2,
 // 2026-05-02 — rebuild of #26). Web parity of the mobile modal.
 import {
@@ -86,6 +81,7 @@ import { PhotoLogDialog } from "./suppr/photo-log-dialog";
 import { AiPaywallDialog, type AiPaywallFeature } from "./suppr/ai-paywall-dialog";
 import { TodayHeroStats } from "./suppr/today-hero-stats";
 import { TodayWeekSidebar } from "./suppr/today-week-sidebar";
+import { TodayDesktopRightRail } from "./suppr/today-desktop-right-rail";
 import { TodayPlannedMealsCard } from "./suppr/today-planned-meals-card";
 import { TodayEatAgainBanner } from "./suppr/today-eat-again-banner";
 import { TodayFastingPill } from "./suppr/today-fasting-pill";
@@ -103,14 +99,15 @@ import { TodayFirstMealEmptyState } from "./suppr/today-first-meal-empty-state";
 import { TodayCompleteDayDialog } from "./suppr/today-complete-day-dialog";
 import { TodayAddMealDialog } from "./suppr/today-add-meal-dialog";
 import { FoodSearch, type FoodSearchSelection } from "./FoodSearch.tsx";
+import { mealImageFields } from "../../lib/nutrition/foodHistory";
 import { TodayBarcodeDialog, type TodayBarcodeConfirmPayload } from "./suppr/today-barcode-dialog";
 import {
   CreateCustomFoodDialog,
   type CreateCustomFoodPayload,
 } from "./suppr/create-custom-food-dialog";
 import { createCustomFood } from "../../lib/nutrition/customFoodsClient";
-import { TodayBrandBar } from "./suppr/today-brand-bar";
 import { TodayDateHeader } from "./suppr/today-date-header";
+import { isBelowMealsPromptVisible } from "../../lib/today/belowMealsPromptSelection";
 import { aiLoggingSourceLabel, type AiLoggedItem } from "../../lib/nutrition/aiLogging";
 import {
   computeEatAgainForSlot,
@@ -476,6 +473,7 @@ export const NutritionTracker = memo(function NutritionTracker({
     mealPlan,
     savedRecipesForLibrary,
     preferActivityAdjustedCalories,
+    setPreferActivityAdjustedCalories,
     activityBurnForSelectedDay,
     activityBurnByDay,
     addWaterMlForSelectedDay,
@@ -514,7 +512,7 @@ export const NutritionTracker = memo(function NutritionTracker({
     }
     return s;
   }, [nutritionByDay]);
-  const [ringExpanded, setRingExpanded] = useState(true);
+  const [ringExpanded, setRingExpanded] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   /** Batch 1.4 — meal row context menu: target meal id for the Copy dialog. */
   const [copyMealTargetId, setCopyMealTargetId] = useState<string | null>(null);
@@ -620,16 +618,9 @@ export const NutritionTracker = memo(function NutritionTracker({
   /** `plan_pace` preset enum from `profiles.plan_pace` — used by the
    *  WhyThisNumberDialog to compute the user's weekly kg pace. Stored
    *  loosely as `string | null` to mirror the column's nullable nature. */
-  const [profilePlanPace, setProfilePlanPace] = useState<string | null>(null);
+  const [_profilePlanPace, setProfilePlanPace] = useState<string | null>(null);
   const [profileMaintenanceTdee, setProfileMaintenanceTdee] = useState<number | null>(null);
-  // 30-day milestone moment (PR claude/today-30-day-milestone, 2026-05-02).
-  // Mirrors mobile state shape. `milestone30HandledRef` suppresses
-  // re-fires within the session even if `nutritionByDay` recomputes.
-  const [milestone30ShownAt, setMilestone30ShownAt] = useState<string | null>(null);
-  const [milestone30Open, setMilestone30Open] = useState(false);
-  const [milestone30Content, setMilestone30Content] = useState<Milestone30DayContent | null>(null);
-  const [profileWeightKgByDay, setProfileWeightKgByDay] = useState<Record<string, number>>({});
-  const milestone30HandledRef = useRef(false);
+  const [_profileWeightKgByDay, setProfileWeightKgByDay] = useState<Record<string, number>>({});
   // Weekly TDEE check-in ritual (PR claude/weekly-checkin-ritual-v2,
   // 2026-05-02 — rebuild of #26). Mirrors mobile state shape.
   // `weeklyCheckinHandledRef` suppresses re-fires within the session.
@@ -669,6 +660,17 @@ export const NutritionTracker = memo(function NutritionTracker({
   >(null);
   const [viewMode, setViewMode] = useState<"day" | "week">("day");
   const [weekStartDay, setWeekStartDay] = useState<"monday" | "sunday">("monday");
+  const [activityBudgetDiscoverDismissed, setActivityBudgetDiscoverDismissed] = useState(true);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      setActivityBudgetDiscoverDismissed(
+        window.localStorage.getItem(ACTIVITY_BUDGET_DISCOVERABILITY_KEY) === "1",
+      );
+    } catch {
+      setActivityBudgetDiscoverDismissed(false);
+    }
+  }, []);
   /**
    * DC12 (2026-05-14, premium-bar audit) — web parity for the
    * mobile "missed-day" supportive banner. Renders only when the
@@ -1296,7 +1298,7 @@ export const NutritionTracker = memo(function NutritionTracker({
     supabase
       .from("profiles")
       .select(
-        "weight_kg, weight_kg_by_day, goal, plan_pace, sex, age, height_cm, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, week_start_day, steps_by_day, daily_steps_goal, fasting_sessions, fasting_window, tracked_macros, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, milestone_30_shown_at, last_weekly_checkin_shown_at",
+        "weight_kg, weight_kg_by_day, goal, plan_pace, sex, age, height_cm, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, week_start_day, steps_by_day, daily_steps_goal, fasting_sessions, fasting_window, tracked_macros, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, last_weekly_checkin_shown_at",
       )
       .eq("id", authedUserId)
       .maybeSingle()
@@ -1414,10 +1416,6 @@ export const NutritionTracker = memo(function NutritionTracker({
             ? aConfRaw
             : null,
         );
-        // 30-day milestone hydration. Same null-safe pattern as
-        // mobile: missing column ⇒ null ⇒ gate is open.
-        const lastShown = (data as { milestone_30_shown_at?: unknown }).milestone_30_shown_at;
-        setMilestone30ShownAt(typeof lastShown === "string" ? lastShown : null);
         // Weekly check-in shown-at hydration. Drives the 6-day cooldown.
         const lastCheckin = (data as { last_weekly_checkin_shown_at?: unknown })
           .last_weekly_checkin_shown_at;
@@ -1619,6 +1617,7 @@ export const NutritionTracker = memo(function NutritionTracker({
           source: sourceLabel,
           ...(mealFiberG > 0 ? { fiberG: mealFiberG } : {}),
           ...(Object.keys(micros).length > 0 ? { micros } : {}),
+          ...mealImageFields(selection.imageUrl),
         },
         // Mirror mobile's `food_logged.source` mapping: custom food
         // logs fire with `"custom_food"`, USDA/OFF/Edamam/FatSecret
@@ -1813,62 +1812,6 @@ export const NutritionTracker = memo(function NutritionTracker({
     };
   }, [selectedDate, nutritionByDay, weekStartDay, extraWaterByDay, stepsByDay]);
 
-  // 30-day milestone moment gate (PR claude/today-30-day-milestone,
-  // 2026-05-02). Mirrors mobile gating + content build. Runs once per
-  // Today first-load AFTER `nutritionByDay` has hydrated.
-  useEffect(() => {
-    if (selectedDateKey !== todayKey()) return;
-    if (milestone30HandledRef.current) return;
-    if (!authedUserId) return;
-    if (milestone30ShownAt) return;
-    if (Object.keys(nutritionByDay).length === 0) return;
-    const eligible = shouldShowMilestone30Day({
-      nutritionByDay: nutritionByDay as never,
-      shownAt: milestone30ShownAt,
-    });
-    if (!eligible) return;
-    milestone30HandledRef.current = true;
-    const content = buildMilestone30DayContent({
-      nutritionByDay: nutritionByDay as never,
-      weightKgByDay: profileWeightKgByDay,
-    });
-    setMilestone30Content(content);
-    setMilestone30Open(true);
-
-    const nowIso = new Date().toISOString();
-    setMilestone30ShownAt(nowIso);
-    void supabase
-      .from("profiles")
-      .update({ milestone_30_shown_at: nowIso } as never)
-      .eq("id", authedUserId);
-
-    try {
-      track(AnalyticsEvents.milestone_30_shown, {
-        daysLogged: content.daysLogged,
-        longestStreak: content.longestStreak,
-        topFoodCount: content.topFoods.length,
-        platform: "web",
-      });
-    } catch {
-      /* noop */
-    }
-  }, [
-    selectedDateKey,
-    authedUserId,
-    nutritionByDay,
-    profileWeightKgByDay,
-    milestone30ShownAt,
-  ]);
-
-  const handleMilestone30Dismiss = useCallback(() => {
-    setMilestone30Open(false);
-    try {
-      track(AnalyticsEvents.milestone_30_dismissed, { platform: "web" });
-    } catch {
-      /* noop */
-    }
-  }, []);
-
   // Weekly check-in ritual gate (PR claude/weekly-checkin-ritual-v2,
   // 2026-05-02 — rebuild of #26). Mirrors mobile gating + content build.
   // Runs once per Today first-load. `weeklyCheckinHandledRef` suppresses
@@ -2028,6 +1971,31 @@ export const NutritionTracker = memo(function NutritionTracker({
     workoutKcal: dayWorkouts.reduce((sum, w) => sum + (w.calories ?? 0), 0),
   });
   const effectiveCalorieTarget = baseCalorieTarget + activityAdjustment;
+
+  const belowMealsPromptEligibleWeb = useMemo(
+    () => ({
+      northStar:
+        selectedDateKey === todayKey() &&
+        Math.max(0, effectiveCalorieTarget - totals.calories) > 0 &&
+        mealsForSelectedDate.length === 0,
+      snap: selectedDateKey === todayKey() && mealsForSelectedDate.length === 0,
+    }),
+    [
+      selectedDateKey,
+      effectiveCalorieTarget,
+      totals.calories,
+      mealsForSelectedDate.length,
+    ],
+  );
+  const showBelowMealsNorthStarWeb = isBelowMealsPromptVisible(
+    "northStar",
+    belowMealsPromptEligibleWeb,
+  );
+  const showBelowMealsSnapWeb = isBelowMealsPromptVisible(
+    "snap",
+    belowMealsPromptEligibleWeb,
+  );
+
   const totalWaterMl = totals.waterMl + extraWaterMlForSelectedDay;
 
   // Audit M4 (2026-04-18) — Today progressive disclosure gates.
@@ -2170,8 +2138,13 @@ export const NutritionTracker = memo(function NutritionTracker({
 
   const avatarLetter = (profileDisplayName?.trim()?.[0] ?? authEmail?.trim()?.[0] ?? "U").toUpperCase();
 
+  const firstName = profileDisplayName?.trim()?.split(/\s/)[0] ?? null;
+  const greetingName = firstName || null;
+  const hour = new Date().getHours();
+  const timeGreeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+
   return (
-    <div className="max-w-5xl mx-auto px-pm-6 py-pm-6 xl:pr-[280px] space-y-6">
+    <div className="product-shell py-pm-5 space-y-4">
       {!isOnline ? (
         <div
           role="alert"
@@ -2204,14 +2177,18 @@ export const NutritionTracker = memo(function NutritionTracker({
           mobile-web the pip is right-aligned above the date header to
           mirror the mobile composition. Suppressed on week-view to
           keep the week toggle uncrowded. */}
-      {viewMode === "day" ? (
-        <div className="flex justify-end pt-1.5 -mb-1 px-1">
-          <StreakPip days={streakDays} />
-        </div>
-      ) : null}
-
-      <div className="space-y-4 lg:space-y-0">
-        <TodayBrandBar />
+      {/* Streak pip — mobile-web only. On desktop (`lg+`) the streak
+          lives in the right rail's hero card so a second pip up here
+          would double-render the same fact. */}
+      <div className="lg:flex lg:gap-8 lg:items-start">
+        <div
+          className={
+            viewMode === "day"
+              ? "flex-1 min-w-0 space-y-4 lg:max-w-[480px]"
+              : "flex-1 min-w-0 space-y-4"
+          }
+        >
+      <div className="space-y-1 lg:space-y-0">
         <TodayDateHeader
         viewMode={viewMode}
         onViewModeChange={setViewMode}
@@ -2227,13 +2204,20 @@ export const NutritionTracker = memo(function NutritionTracker({
         onNavigateNext={() => (viewMode === "week" ? navigateWeek(1) : navigateDay(1))}
         onOpenCalendar={() => calendarInputRef.current?.showPicker?.() ?? calendarInputRef.current?.click()}
         onOpenSettings={() => onOpenSettings?.()}
+        hideViewModeToggle
+        hideDayStrip
+        dayGreeting={
+          selectedDateKey === todayKey() && viewMode === "day"
+            ? greetingName
+              ? `${timeGreeting}, ${greetingName}`
+              : timeGreeting
+            : undefined
+        }
+        streakDays={protectedStreakLength}
+        freezeProtected={protectedDateKeys.has(todayKey())}
       />
       </div>
 
-      {/* DC12 (2026-05-14, premium-bar audit) — Headspace-style
-          supportive missed-day line; web companion to the mobile
-          `today-missed-yesterday-copy` block. Gate logic lives in
-          `missedYesterdayVisible`. */}
       {missedYesterdayVisible && (
         <p
           data-testid="today-missed-yesterday-copy"
@@ -2515,12 +2499,24 @@ export const NutritionTracker = memo(function NutritionTracker({
         hintVisibleForSlot={hintVisibleForSlot}
         onDismissUsualMealHint={dismissUsualMealHint}
         onAcceptUsualMealHint={acceptUsualMealHint}
+        quickAddCollapsed={quickAddCollapsed}
+        onToggleQuickAddCollapsed={toggleQuickAddCollapsed}
+        quickAddPanel={
+          <QuickAddPanel
+            byDay={nutritionByDay}
+            activeSlot={mealSlot}
+            supabase={supabase}
+            userId={authedUserId ?? ""}
+            onLog={(item) => logHistoryItem(item, mealSlot)}
+            onLogSavedMeal={(meal, slot) => logSavedMeal(meal, slot)}
+            onOpenSaveCombo={handleOpenSaveCombo}
+            savedMealsRefreshToken={savedMealsRefreshToken}
+          />
+        }
       />
 
-      {/* Below-meals prompts (Today premium sprint 2026-05-19). */}
-      {selectedDateKey === todayKey() &&
-        Math.max(0, effectiveCalorieTarget - totals.calories) > 0 &&
-        mealsForSelectedDate.length === 0 && (
+      {/* Below-meals prompts (Today premium sprint 2026-05-19). Max 2: ENG-585. */}
+      {showBelowMealsNorthStarWeb && (
           <NorthStarBlockHost
             viewMode={viewMode}
             savedRecipesForLibrary={savedRecipesForLibrary as Array<NorthStarRecipe>}
@@ -2543,7 +2539,7 @@ export const NutritionTracker = memo(function NutritionTracker({
             )}
           />
         )}
-      {selectedDateKey === todayKey() && mealsForSelectedDate.length === 0 && (
+      {showBelowMealsSnapWeb && (
         <TodaySnapShortcut
           onPress={() => {
             track(AnalyticsEvents.today_snap_shortcut_tapped, {
@@ -2574,40 +2570,6 @@ export const NutritionTracker = memo(function NutritionTracker({
             }}
           />
         )}
-      <div className="mt-4 mb-4">
-        <button
-          type="button"
-          onClick={toggleQuickAddCollapsed}
-          aria-expanded={!quickAddCollapsed}
-          aria-controls="today-quick-add-panel"
-          className="w-full flex items-center justify-between gap-2 px-1 py-2 text-left text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md"
-        >
-          <span className="flex items-center gap-2 min-w-0">
-            <Icons.energy className="h-4 w-4 opacity-70" aria-hidden="true" />
-            <span className="text-sm font-semibold">Quick add</span>
-            <span className="text-xs truncate opacity-80">Your usuals</span>
-          </span>
-          <Icons.down
-            className={`h-4 w-4 opacity-70 transition-transform ${quickAddCollapsed ? "" : "rotate-180"}`}
-            aria-hidden="true"
-          />
-        </button>
-        {!quickAddCollapsed && (
-          <div id="today-quick-add-panel" className="mt-2">
-            <QuickAddPanel
-              byDay={nutritionByDay}
-              activeSlot={mealSlot}
-              supabase={supabase}
-              userId={authedUserId ?? ""}
-              onLog={(item) => logHistoryItem(item, mealSlot)}
-              onLogSavedMeal={(meal, slot) => logSavedMeal(meal, slot)}
-              onOpenSaveCombo={handleOpenSaveCombo}
-              savedMealsRefreshToken={savedMealsRefreshToken}
-            />
-          </div>
-        )}
-      </div>
-
       {/* Planned meals — show meals from today's plan so the user can
           one-tap log them at a chosen portion (½× / 1× / 1½× / 2×).
           Renders only when there's a plan with at least one meal for
@@ -2695,6 +2657,32 @@ export const NutritionTracker = memo(function NutritionTracker({
         profileActivityLevel={profileActivityLevel}
         maintenanceSource={profileMaintenanceSource}
         maintenanceConfidence={profileMaintenanceConfidence}
+        activityBudgetAddonKcal={activityAdjustment}
+        preferActivityAdjustedCalories={preferActivityAdjustedCalories}
+        showActivityBudgetDiscoverBanner={!activityBudgetDiscoverDismissed}
+        onEnableActivityBudget={() => {
+          setPreferActivityAdjustedCalories(true);
+          if (authedUserId) {
+            void supabase
+              .from("profiles")
+              .update({ prefer_activity_adjusted_calories: true })
+              .eq("id", authedUserId);
+          }
+          try {
+            window.localStorage.setItem(ACTIVITY_BUDGET_DISCOVERABILITY_KEY, "1");
+          } catch {
+            /* ignore */
+          }
+          setActivityBudgetDiscoverDismissed(true);
+        }}
+        onDismissActivityBudgetDiscover={() => {
+          try {
+            window.localStorage.setItem(ACTIVITY_BUDGET_DISCOVERABILITY_KEY, "1");
+          } catch {
+            /* ignore */
+          }
+          setActivityBudgetDiscoverDismissed(true);
+        }}
       />
 
       {/* Hydration & stimulants card (Batch 2.5).
@@ -2755,14 +2743,24 @@ export const NutritionTracker = memo(function NutritionTracker({
 
       </>
       )}
+        </div>
 
-      {/* 30-day milestone moment (PR claude/today-30-day-milestone,
-          2026-05-02). Pure trust moment, single CTA, no paywall. */}
-      <Milestone30DayDialog
-        open={milestone30Open}
-        content={milestone30Content}
-        onDismiss={handleMilestone30Dismiss}
-      />
+        {viewMode === "day" ? (
+          <TodayDesktopRightRail
+            className="hidden lg:block sticky top-4 self-start"
+            targetKcal={Math.round(effectiveCalorieTarget)}
+            weekDailyKcal={weekData.days.map((d) => d.totals.calories)}
+            weekDayLabels={weekData.days.map((d) => d.short)}
+            weekLoggedDays={weekData.loggedDaysInWeek}
+            weekAvgKcal={weekData.loggedDaysInWeek > 0 ? weekData.weekAvg.calories : null}
+            streakDays={streakDays}
+            activeDateKey={selectedDateKey}
+            todayDateKey={todayKey()}
+            byDay={nutritionByDay}
+            onSelectDayKey={(k) => setSelectedDateKey(k)}
+          />
+        ) : null}
+      </div>
 
       {/* Weekly TDEE check-in ritual (PR claude/weekly-checkin-ritual-v2,
           2026-05-02 — rebuild of #26). Mirror of the mobile modal — soft
@@ -3376,22 +3374,6 @@ export const NutritionTracker = memo(function NutritionTracker({
         }}
       />
 
-      {/* Desktop Today right rail (Next-10 #14, 2026-04-28).
-          Fixed-position sidebar showing the last 7 days at xl+
-          (≥1280px) breakpoint where there's enough horizontal room
-          to clear both the DesktopSidebar nav (left) and the
-          centred max-w-2xl tracker (middle). Below xl, hidden — the
-          mobile-web user has the day/week toggle for the same
-          information. Reference:
-          `docs/ux/teardown-2026-04-28-daily-loop.md` Next-10 #14. */}
-      <TodayWeekSidebar
-        className="hidden xl:block fixed top-20 right-4 w-[260px] z-30"
-        byDay={nutritionByDay}
-        calorieTarget={effectiveCalorieTarget}
-        activeDateKey={selectedDateKey}
-        todayDateKey={todayKey()}
-        onSelectDayKey={(k) => setSelectedDateKey(k)}
-      />
     </div>
   );
 });

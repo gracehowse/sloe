@@ -4,7 +4,7 @@ import { useSafeBack } from "@/hooks/use-safe-back";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Beaker, BookOpen, Database, Globe2, Utensils, type LucideIcon } from "lucide-react-native";
-import { Accent, Spacing, Radius } from "@/constants/theme";
+import { Accent, Spacing, Radius, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { NUTRITION_SOURCES } from "@suppr/shared/landing/nutritionSources";
 
@@ -80,7 +80,7 @@ export default function NutritionSourcesScreen() {
         backText: { color: colors.text, fontSize: 17, fontWeight: "600" },
         topTitle: { color: Accent.primary, fontSize: 13, fontWeight: "800", letterSpacing: 3 },
         scroll: { padding: Spacing.xl, gap: Spacing.xxl, paddingBottom: 60 },
-        heading: { fontSize: 22, fontWeight: "700", color: colors.text },
+        heading: { ...Type.title, color: colors.text },
         intro: { fontSize: 14, lineHeight: 22, color: colors.textSecondary },
         card: {
           backgroundColor: colors.card,

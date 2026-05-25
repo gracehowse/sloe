@@ -12,7 +12,7 @@ import { PricingHero } from "../../app/pricing/PricingHero.tsx";
  *     planning loop"). The SUPPR pill was removed in premium-sweep-v2
  *     P0 row 3.3 (commit 139c874, 2026-05-14) as duplicate-of-top-bar-
  *     wordmark; the title remains the primary identifier.
- *  2. The brand gradient (fixed hex pair `#4c6ce0` → `#e04888`) is
+ *  2. The brand gradient (fixed hex pair `#588CE4` → `#DF5EBC`) is
  *     preserved on the hero background. Sync-enforcer-equivalent
  *     guard — the gradient must match the header wordmark and the
  *     mobile paywall banner.
@@ -36,8 +36,8 @@ describe("PricingHero (D13)", () => {
     const hero = container.firstElementChild as HTMLElement | null;
     expect(hero).not.toBeNull();
     const bg = hero?.style.backgroundImage ?? "";
-    expect(bg).toContain("#4c6ce0");
-    expect(bg).toContain("#e04888");
+    expect(bg).toContain("#588CE4");
+    expect(bg).toContain("#DF5EBC");
   });
 });
 

@@ -1021,7 +1021,7 @@ export default function WeeklyRecapScreen() {
                   fontVariant: ["tabular-nums"],
                 }}
               >
-                {streakDays} day{streakDays === 1 ? "" : "s"} in a row
+                {`${streakDays} day${streakDays === 1 ? "" : "s"} in a row`}
               </Text>
               <Text
                 style={{
@@ -1046,7 +1046,7 @@ export default function WeeklyRecapScreen() {
                     marginTop: Spacing.sm,
                   }}
                 >
-                  {freezesAvailableNow} freeze{freezesAvailableNow === 1 ? "" : "s"} available
+                  {`${freezesAvailableNow} freeze${freezesAvailableNow === 1 ? "" : "s"} available`}
                   {protectedStreak.freezesConsumed > 0
                     ? ` (${protectedStreak.freezesConsumed} used to protect this streak).`
                     : "."}

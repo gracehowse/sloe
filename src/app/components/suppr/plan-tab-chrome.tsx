@@ -1,7 +1,6 @@
 "use client";
 
 import { SubTabPill } from "../ui/sub-tab-pill";
-import { TodayBrandBar } from "./today-brand-bar";
 import { cn } from "../ui/utils";
 
 export type PlanTab = "plan" | "shopping";
@@ -34,12 +33,11 @@ export function PlanTabChrome({
       )}
       data-testid="plan-tab-chrome"
     >
-      <div className="px-6 pt-2 pb-1 space-y-1">
-        <TodayBrandBar />
+      <div className="px-6 pt-2 pb-1 space-y-0.5">
         <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
           Plan
         </p>
-        <h1 className="text-[28px] font-extrabold tracking-tight text-foreground">{title}</h1>
+        <h1 className="text-[24px] font-extrabold tracking-tight text-foreground">{title}</h1>
         {subtitle ? (
           <p className="text-[13px] font-semibold text-muted-foreground">{subtitle}</p>
         ) : null}

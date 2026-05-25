@@ -179,7 +179,7 @@ export default async function PricingPage({
           <Link
             href="/"
             className="text-lg font-bold bg-clip-text text-transparent"
-            style={{ backgroundImage: "linear-gradient(135deg, #4c6ce0 0%, #e04888 100%)" }}
+            style={{ backgroundImage: "linear-gradient(135deg, #588CE4 0%, #DF5EBC 100%)" }}
           >
             Suppr
           </Link>
@@ -245,7 +245,7 @@ export default async function PricingPage({
         />
 
         {/* Trust signals */}
-        <div className="mt-12 flex flex-wrap items-center justify-center gap-8">
+        <div className="mt-10 flex flex-wrap items-center justify-center gap-6">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Shield className="w-4 h-4 text-[var(--macro-calories)]" />
             Cancel anytime
@@ -261,11 +261,11 @@ export default async function PricingPage({
         </div>
 
         {/* FAQ */}
-        <div className="mt-16 max-w-2xl mx-auto">
-          <h2 className="text-2xl font-bold text-foreground text-center mb-8">
+        <div className="mt-14 max-w-2xl mx-auto">
+          <h2 className="text-2xl font-bold text-foreground text-center mb-6">
             Frequently asked questions
           </h2>
-          <div className="rounded-2xl border border-border bg-card px-6">
+          <div className="rounded-2xl border border-border bg-card px-5">
             {FAQ.map((item) => (
               <FaqItem key={item.q} q={item.q} a={item.a} />
             ))}

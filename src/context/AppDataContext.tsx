@@ -14,7 +14,6 @@ import { toast } from "sonner";
 import {
   effectivePortionMultiplier,
   isMealPlanPlaceholderLikeTitle,
-  normalizeDayPlans,
 } from "../lib/nutrition/portionMultiplier.ts";
 import { formatRecipeMinutes } from "../lib/recipe/formatRecipeMinutes.ts";
 import { supabase } from "../lib/supabase/browserClient.ts";
@@ -74,6 +73,11 @@ import {
 import { isAuthLockAbort } from "../lib/supabase/isAuthLockAbort.ts";
 import { filterOrphanSaves } from "../lib/recipes/filterOrphanSaves.ts";
 import { composeLibraryEntries } from "../lib/recipes/composeLibraryEntries.ts";
+import { savedRecipesForPlanning } from "../lib/planning/savedRecipesForPlanning.ts";
+import {
+  generateShoppingListFromRecipeEntries,
+  type RecipeIngredientRow,
+} from "../lib/planning/generateShoppingList.ts";
 import { shoppingListShouldClear } from "../lib/planning/shoppingListLifecycle.ts";
 
 export type RedeemPromoResult =
@@ -1078,16 +1082,25 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           protein: o.protein ?? nutritionTargets.protein,
           carbs: o.carbs ?? nutritionTargets.carbs,
           fat: o.fat ?? nutritionTargets.fat,
+          fiber: o.fiber ?? nutritionTargets.fiber,
           calorieBandPct: o.calorieBandPct ?? DEFAULT_PLANNER_BANDS.calorieBandPct,
           carbFatBandPct: o.carbFatBandPct ?? DEFAULT_PLANNER_BANDS.carbFatBandPct,
         };
         const days = options?.days ?? 1;
-        const savedRecipes = savedRecipeIds
-          .map((id) => uploadedRecipes.find((r) => r.id === id) ?? null)
-          .filter((r): r is NonNullable<typeof r> => Boolean(r));
+        const savedRecipes = savedRecipesForPlanning({
+          savedRecipeIds,
+          myLibraryRecipes,
+          uploadedRecipes,
+        });
         if (savedRecipes.length === 0) {
-          toast.error("Save at least one recipe from Discover (or your uploads) to generate a macro-aware plan.");
+          toast.error("Save at least one recipe from Discover (or your Library) to generate a macro-aware plan.");
           return;
+        }
+        if (savedRecipes.length < savedRecipeIds.length) {
+          console.warn(
+            "[generateMealPlan] Some saved recipes could not be resolved for planning:",
+            savedRecipeIds.length - savedRecipes.length,
+          );
         }
         // T14 (full-sweep 2026-04-24): instrument generation duration +
         // pool size so we can set the sampler cap from real data and
@@ -1152,17 +1165,19 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       pushNotification,
       savedRecipeIds,
       uploadedRecipes,
+      myLibraryRecipes,
       setMealPlan,
     ],
   );
 
   const generateShoppingListFromPlan = useCallback(async () => {
-    const { generateShoppingListFromRecipeEntriesAsync } = await import(
-      "../lib/planning/generateShoppingList.ts"
-    );
+    const planningPool = savedRecipesForPlanning({
+      savedRecipeIds,
+      myLibraryRecipes,
+      uploadedRecipes,
+    });
     const titleToId = (title: string) => {
-      const u = uploadedRecipes.find((x) => x.title === title);
-      return u?.id ?? null;
+      return planningPool.find((x) => x.title === title)?.id ?? null;
     };
     const entries = (mealPlan ?? [])
       .flatMap((d) => d.meals)
@@ -1180,53 +1195,71 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         title: m.recipeTitle,
         multiplier: effectivePortionMultiplier(m.portionMultiplier),
       }));
-    const fetchDbIngredients = async (recipeId: string) => {
+
+    const recipeIds = [
+      ...new Set(
+        entries
+          .map((e) => titleToId(e.title))
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
+    const ingredientsByRecipeId = new Map<string, RecipeIngredientRow[]>();
+    if (recipeIds.length > 0) {
       const { data, error } = await supabase
         .from("recipe_ingredients")
-        .select("name, amount, unit")
-        .eq("recipe_id", recipeId)
+        .select("recipe_id, name, amount, unit")
+        .in("recipe_id", recipeIds)
         .order("created_at", { ascending: true });
       if (error) {
-        toast.error("Could not load ingredients for a saved recipe.");
-        return [];
+        toast.error("Could not load ingredients for your planned recipes.");
+      } else {
+        for (const row of data ?? []) {
+          const recipeId = String((row as { recipe_id: string }).recipe_id ?? "");
+          if (!recipeId) continue;
+          const bucket = ingredientsByRecipeId.get(recipeId) ?? [];
+          bucket.push({
+            name: String((row as { name: string }).name ?? ""),
+            amount:
+              (row as { amount: number | null }).amount != null
+                ? String((row as { amount: number | null }).amount)
+                : "",
+            unit: String((row as { unit: string | null }).unit ?? ""),
+          });
+          ingredientsByRecipeId.set(recipeId, bucket);
+        }
       }
-      if (!data?.length) return [];
-      return data.map((row) => ({
-        name: String((row as { name: string }).name ?? ""),
-        amount:
-          (row as { amount: number | null }).amount != null
-            ? String((row as { amount: number | null }).amount)
-            : "",
-        unit: String((row as { unit: string | null }).unit ?? ""),
-      }));
-    };
-    const list = await generateShoppingListFromRecipeEntriesAsync({
+    }
+
+    const list = generateShoppingListFromRecipeEntries({
       entries,
       recipeTitleToId: titleToId,
-      fetchDbIngredients,
+      ingredientsByRecipeId,
     });
     setShoppingItems(list);
     setShoppingListSourceFingerprint(fingerprintMealPlanForShopping(mealPlan));
+    toast.success("Shopping list generated");
+    track(AnalyticsEvents.shopping_list_generated, { itemCount: list.length });
 
     // G-2 (TestFlight `ALU8hrB1I9Sn4ysqoR_ocEs`, 2026-04-19): on
     // regenerate, purge the old `shopping_items` rows *before*
     // writing the fresh list — otherwise rows tied to recipes that
     // are no longer in the plan survive forever and re-hydrate on
     // next cold start from the DB load in `useShoppingListState`.
-    // The null-transition effect above only fires on plan → null,
-    // so regenerate (truthy → truthy) never touches the server.
+    // Persist in the background so the Shopping tab updates immediately.
     if (authedUserId && shoppingScope) {
-      // 2026-04-30 (Honeydew parity): scope-aware purge + insert. Solo
-      // wipes its own per-user rows; household wipes the shared row
-      // set so a regenerate doesn't double-stack items.
-      let delQ = supabase.from("shopping_items").delete();
-      if (shoppingScope.kind === "household") {
-        delQ = delQ.eq("household_id", shoppingScope.householdId);
-      } else {
-        delQ = delQ.eq("user_id", authedUserId).is("household_id", null);
-      }
-      const { error: delErr } = await delQ;
-      if (!delErr && list.length > 0) {
+      void (async () => {
+        let delQ = supabase.from("shopping_items").delete();
+        if (shoppingScope.kind === "household") {
+          delQ = delQ.eq("household_id", shoppingScope.householdId);
+        } else {
+          delQ = delQ.eq("user_id", authedUserId).is("household_id", null);
+        }
+        const { error: delErr } = await delQ;
+        if (delErr) {
+          toast.error(syncFailedRetryMessage("shopping list", delErr.message ?? ""));
+          return;
+        }
+        if (list.length === 0) return;
         const stamp = shoppingScopeInsertStamp(shoppingScope);
         const inserts = list.map((item) => ({
           user_id: stamp.user_id,
@@ -1239,14 +1272,17 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           source: item.from,
         }));
         for (let i = 0; i < inserts.length; i += 50) {
-          await supabase.from("shopping_items").insert(inserts.slice(i, i + 50));
+          const { error: insErr } = await supabase
+            .from("shopping_items")
+            .insert(inserts.slice(i, i + 50));
+          if (insErr) {
+            toast.error(syncFailedRetryMessage("shopping list", insErr.message ?? ""));
+            return;
+          }
         }
-      }
+      })();
     }
-
-    toast.success("Shopping list generated");
-    track(AnalyticsEvents.shopping_list_generated, { itemCount: list.length });
-  }, [mealPlan, uploadedRecipes, authedUserId, shoppingScope, setShoppingItems]);
+  }, [mealPlan, savedRecipeIds, myLibraryRecipes, uploadedRecipes, authedUserId, shoppingScope, setShoppingItems]);
 
   // Sync DB-backed saves (Phase 0). Other state remains local for now.
   useEffect(() => {

@@ -64,7 +64,13 @@ function metroStatusUrl(expoDevServerUrl) {
 function buildChildEnv() {
   const fromRoot = parseEnvFile(repoRootEnvLocal);
   const fromMobile = parseEnvFile(mobileEnv);
-  return { ...process.env, ...fromRoot, ...fromMobile };
+  return {
+    ...process.env,
+    ...fromRoot,
+    ...fromMobile,
+    MAESTRO_DRIVER_STARTUP_TIMEOUT:
+      process.env.MAESTRO_DRIVER_STARTUP_TIMEOUT ?? fromRoot.MAESTRO_DRIVER_STARTUP_TIMEOUT ?? "180000",
+  };
 }
 
 async function sleep(ms) {

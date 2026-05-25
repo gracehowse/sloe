@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { expectNoSeriousA11yViolations } from "../utils/a11y";
-import { hasE2ECredentials, loginWithTestUser } from "../utils/auth";
+import { hasE2ECredentials } from "../utils/auth";
 
 /**
  * QA matrix: in-app `view` query values (see navigateToView in App.tsx).
@@ -12,29 +12,35 @@ test.describe("Authenticated app view matrix", () => {
   });
 
   test("when signed in I can open each main view and see the expected shell", async ({ page }) => {
-    await loginWithTestUser(page);
-
-    // Dismiss cookie consent banner if visible
+    test.setTimeout(120_000);
     const acceptBtn = page.getByRole("button", { name: /accept all/i });
     if (await acceptBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
       await acceptBtn.click();
     }
 
+    const gotoView = (path: string) => page.goto(path, { waitUntil: "domcontentloaded" });
+
     await test.step("Discover", async () => {
-      await page.goto("/?view=discover");
-      await expect(page.getByRole("heading", { name: /^Suppr$/i }).first()).toBeVisible();
-      await expect(page.getByPlaceholder("Search")).toBeVisible();
+      await gotoView("/discover");
+      await expect(page.getByRole("heading", { name: /^Discover$/i }).first()).toBeVisible();
+      await expect(page.getByPlaceholder(/search recipes/i)).toBeVisible();
       await expectNoSeriousA11yViolations(page);
     });
 
     await test.step("Library", async () => {
-      await page.goto("/?view=library");
-      await expect(page.getByRole("heading", { name: /^Library$/i })).toBeVisible();
+      await gotoView("/library");
+      // Empty library redirects to Discover (parity with mobile).
+      const libraryTitle = page.getByTestId("library-desktop-title");
+      if (await libraryTitle.isVisible({ timeout: 5000 }).catch(() => false)) {
+        await expect(page.getByPlaceholder(/search recipes/i)).toBeVisible();
+      } else {
+        await expect(page.getByRole("heading", { name: /^Discover$/i }).first()).toBeVisible();
+      }
       await expectNoSeriousA11yViolations(page);
     });
 
     await test.step("Meal planner", async () => {
-      await page.goto("/?view=planner");
+      await page.goto("/plan");
       // Heading copy: the web MealPlanner h1 was renamed from
       // "Meal planner" → "Meal plan" in the 2026-04-20 prototype-port
       // parity work (matches mobile). Accept either token so this
@@ -45,47 +51,50 @@ test.describe("Authenticated app view matrix", () => {
     });
 
     await test.step("Nutrition tracker", async () => {
-      await page.goto("/?view=tracker");
-      await expect(page.getByRole("tab", { name: /^Today$/i })).toHaveAttribute("aria-selected", "true");
+      await gotoView("/today");
+      const todayNav = page
+        .getByRole("tab", { name: /^Today$/i })
+        .or(page.getByRole("button", { name: /^Today$/i }));
+      await expect(todayNav.first()).toBeVisible();
       await expect(page.getByRole("heading", { name: /^Meals$/i })).toBeVisible();
       await expect(
-        page.getByText(/Click (the )?ring to (show|hide) macros|Tap for macro breakdown|Showing macro breakdown/i),
+        page.locator('[data-testid="today-hero-desktop"] [data-testid="today-macro-rings-toggle"]'),
       ).toBeVisible();
       await expectNoSeriousA11yViolations(page);
     });
 
     await test.step("Shopping list", async () => {
-      await page.goto("/?view=shopping");
-      await expect(page.getByRole("heading", { name: /Shopping List/i }).first()).toBeVisible();
+      await gotoView("/shopping");
+      await expect(page.getByRole("heading", { name: /Shopping list/i }).first()).toBeVisible();
       await expectNoSeriousA11yViolations(page);
     });
 
     await test.step("Settings", async () => {
-      await page.goto("/?view=settings");
+      await gotoView("/settings");
       await expect(page.getByRole("heading", { name: /^Settings$/i })).toBeVisible();
       await expect(page.getByRole("link", { name: /privacy policy/i })).toBeVisible();
       await expectNoSeriousA11yViolations(page);
     });
 
     await test.step("Profile", async () => {
-      await page.goto("/?view=profile");
-      await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
-      await expect(page.getByText(/\b(Free|Base|Pro)\b.*Joined/i)).toBeVisible();
+      await gotoView("/profile");
+      await expect(page.getByRole("heading", { name: /^More$/i })).toBeVisible();
+      await expect(page.getByText(/\b(Free|Pro)\b/i).first()).toBeVisible();
+      await expect(page.getByText(/Joined/i).first()).toBeVisible();
       await expectNoSeriousA11yViolations(page);
     });
 
-    await test.step("Create recipe (upload) — Pro upsell or creator", async () => {
-      await page.goto("/?view=upload");
-      await expect(
-        page.getByRole("heading", { name: /Recipe Creator|Create Recipe/i }).first(),
-      ).toBeVisible();
-      const upgrade = page.getByRole("button", { name: /upgrade to pro/i });
-      const importHeading = page.getByRole("heading", { name: /Import from URL/i });
-      if (await upgrade.isVisible().catch(() => false)) {
-        await expect(upgrade).toBeVisible();
-      } else {
-        await expect(importHeading).toBeVisible();
-      }
+    await test.step("Create recipe", async () => {
+      await gotoView("/create");
+      await expect(page.getByRole("heading", { name: /^Create recipe$/i })).toBeVisible();
+      await expect(page.getByRole("button", { name: /Import instead/i })).toBeVisible();
+      await expectNoSeriousA11yViolations(page);
+    });
+
+    await test.step("Import recipe", async () => {
+      await gotoView("/import");
+      await expect(page.getByRole("heading", { name: /^Import recipe$/i })).toBeVisible();
+      await expect(page.getByRole("heading", { name: /Paste a recipe link/i })).toBeVisible();
       await expectNoSeriousA11yViolations(page);
     });
   });

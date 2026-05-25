@@ -30,6 +30,7 @@ interface RecipeRow {
   sodium_mg: number | null;
   verified_confidence: number | null;
   source_name: string | null;
+  creator_id: string | null;
   author: { display_name: string | null } | null;
 }
 
@@ -56,7 +57,7 @@ async function fetchRecipe(id: string) {
     sb
       .from("recipes")
       .select(
-        "id, title, description, instructions, image_url, servings, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, verified_confidence, source_name, author:profiles!author_id(display_name)",
+        "id, title, description, instructions, image_url, servings, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, verified_confidence, source_name, creator_id, author:profiles!author_id(display_name)",
       )
       .eq("id", id)
       .eq("published", true)
@@ -98,6 +99,7 @@ async function fetchRecipe(id: string) {
       sugarG: row.sugar_g,
       sodiumMg: row.sodium_mg,
       authorName: row.author?.display_name ?? "Community",
+      creatorId: row.creator_id,
       verifiedConfidence: row.verified_confidence,
       sourceName: row.source_name,
     },
@@ -273,7 +275,18 @@ export default async function RecipePage({ params }: Props) {
           {recipe.title}
         </h1>
         <p className="text-slate-600 dark:text-slate-400 mb-6">
-          By {recipe.authorName} · {recipe.servings} serving{recipe.servings !== 1 ? "s" : ""}
+          By{" "}
+          {recipe.creatorId ? (
+            <Link
+              href={`/creator/${recipe.creatorId}`}
+              className="font-medium text-violet-600 dark:text-violet-400 hover:underline"
+            >
+              {recipe.authorName}
+            </Link>
+          ) : (
+            recipe.authorName
+          )}
+          {" "}· {recipe.servings} serving{recipe.servings !== 1 ? "s" : ""}
         </p>
 
         {recipe.description && (

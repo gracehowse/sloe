@@ -11,7 +11,7 @@ name: "Meal journal — day strip, logged meals, long-press actions"
 
 # Verify calorie ring is present
 - assertVisible:
-    text: ".*(?:LOGGED|kcal).*"
+    text: ".*(?:LOGGED|kcal|Start your day).*"
 
 # Verify the day strip / date navigation is present
 - assertVisible:

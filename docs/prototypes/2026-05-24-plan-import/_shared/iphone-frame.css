@@ -1,0 +1,116 @@
+/**
+ * iPhone frame for mobile prototypes — premium-sweep-v2.
+ *
+ * Wraps a mobile prototype in an approximate iPhone 17 Pro bezel
+ * (430 × 932 logical pt) so the prototype reads as a phone, not a
+ * cropped web viewport. Includes Dynamic Island + status bar.
+ */
+
+.iphone {
+  width: 430px;
+  height: 932px;
+  border-radius: 50px;
+  background: #000;
+  padding: 14px;
+  margin: 0 auto;
+  box-shadow:
+    0 0 0 2px #1a1a1c,
+    0 24px 48px rgba(0, 0, 0, 0.18);
+  position: relative;
+}
+
+.iphone__screen {
+  width: 100%;
+  height: 100%;
+  border-radius: 38px;
+  overflow: hidden;
+  background: var(--background);
+  position: relative;
+}
+
+.iphone__status-bar {
+  height: 47px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--foreground);
+  position: relative;
+  z-index: 2;
+}
+
+.iphone__status-bar::before {
+  /* Dynamic Island */
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 11px;
+  transform: translateX(-50%);
+  width: 124px;
+  height: 36px;
+  background: #000;
+  border-radius: 20px;
+}
+
+.iphone__status-bar-time {
+  z-index: 3;
+}
+
+.iphone__status-bar-right {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  z-index: 3;
+}
+
+.iphone__viewport {
+  height: calc(100% - 47px);
+  overflow-y: auto;
+  padding-bottom: 100px;  /* tab bar safe area */
+}
+
+.iphone__tab-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 88px;
+  background: var(--card);
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-start;
+  padding-top: 8px;
+  z-index: 5;
+}
+
+.iphone__tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: 10px;
+  color: var(--muted-foreground);
+  font-weight: 500;
+}
+
+.iphone__tab[aria-current="page"] {
+  color: var(--primary);
+}
+
+.iphone__tab-icon {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* In side-by-side mode, scale iPhones down to fit the column */
+[data-view="side-by-side"] .iphone {
+  transform: scale(0.85);
+  transform-origin: top center;
+  margin-bottom: -120px;  /* compensate scale gap */
+}

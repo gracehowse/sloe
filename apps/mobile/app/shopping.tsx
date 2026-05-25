@@ -26,11 +26,16 @@ import {
   shoppingItemsTiedToCurrentPlan,
 } from "@suppr/shared/planning/shoppingListLifecycle";
 import {
-  formatMixedShoppingAmounts,
+  formatShoppingGroupLabel,
   groupShoppingItemsByIngredientName,
   isShoppingGroupFullyChecked,
   type ShoppingDisplayGroup,
 } from "@suppr/shared/planning/shoppingDisplayGroups";
+import { sortShoppingCategories } from "@suppr/shared/planning/shoppingAisleOrder";
+import {
+  normalizeShoppingIngredientRow,
+  withNormalizedShoppingFields,
+} from "@suppr/shared/planning/normalizeShoppingIngredientRow";
 import { getMyHousehold, type HouseholdData } from "@suppr/shared/household/householdClient";
 import {
   householdMemberAccent,
@@ -42,7 +47,9 @@ import {
   shoppingScopeRealtimeFilter,
   type ShoppingScope,
 } from "@suppr/shared/household/shoppingScope";
-import { Accent, Spacing, Radius } from "@/constants/theme";
+import { Accent, Spacing, Radius, Type } from "@/constants/theme";
+import { useEntranceAnimation } from "@/hooks/useEntranceAnimation";
+import ReAnimated from "react-native-reanimated";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { PlanTabChrome } from "@/components/tabs/PlanTabChrome";
@@ -89,6 +96,9 @@ export default function ShoppingListScreen() {
   const goBack = useSafeBack("/(tabs)/planner");
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
+
+  const progressEntrance = useEntranceAnimation({ delay: 0 });
+  const listEntrance = useEntranceAnimation({ delay: 80 });
 
   const [items, setItems] = useState<ShoppingItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -223,16 +233,23 @@ export default function ShoppingListScreen() {
       })) as ShoppingItem[];
     }
 
-    return rows.map((r) => ({
-      id: (r as { id: string }).id,
-      name: ((r as { name?: string }).name) ?? "",
-      amount: ((r as { amount?: string }).amount) ?? "",
-      unit: ((r as { unit?: string }).unit) ?? "",
-      category: ((r as { category?: string }).category) ?? "Other",
-      checked: ((r as { checked?: boolean }).checked) ?? false,
-      from: ((r as { source?: string }).source) ?? "",
-      checkedBy: ((r as { checked_by?: string | null }).checked_by) ?? null,
-    })) as ShoppingItem[];
+    return rows.map((r) => {
+      const normalized = normalizeShoppingIngredientRow({
+        name: ((r as { name?: string }).name) ?? "",
+        amount: ((r as { amount?: string }).amount) ?? "",
+        unit: ((r as { unit?: string }).unit) ?? "",
+      });
+      return {
+        id: (r as { id: string }).id,
+        name: normalized.name,
+        amount: normalized.amount,
+        unit: normalized.unit,
+        category: ((r as { category?: string }).category) ?? "Other",
+        checked: ((r as { checked?: boolean }).checked) ?? false,
+        from: ((r as { source?: string }).source) ?? "",
+        checkedBy: ((r as { checked_by?: string | null }).checked_by) ?? null,
+      };
+    }) as ShoppingItem[];
   }, []);
 
   // Initial load.
@@ -456,10 +473,9 @@ export default function ShoppingListScreen() {
     },
     backBtn: { color: colors.text, fontSize: 28, fontWeight: "600" },
     headerTitle: {
+      ...Type.title,
       fontSize: 22,
-      fontWeight: "800",
       color: colors.text,
-      letterSpacing: -0.4,
     },
 
     card: {
@@ -472,17 +488,14 @@ export default function ShoppingListScreen() {
     },
 
     progressRow: { flexDirection: "row", justifyContent: "space-between" },
-    progressLabel: { color: colors.text, fontWeight: "600", fontSize: 14 },
+    progressLabel: { ...Type.body, fontWeight: "600", color: colors.text },
     progressCount: { color: Accent.primary, fontWeight: "700", fontSize: 14, fontVariant: ["tabular-nums"] },
     progressTrack: { height: 6, backgroundColor: colors.inputBg, borderRadius: 3, overflow: "hidden" },
     progressFill: { height: 6, backgroundColor: Accent.primary, borderRadius: 3 },
 
     categoryTitle: {
-      fontSize: 11,
-      fontWeight: "700",
+      ...Type.headline,
       color: colors.textSecondary,
-      letterSpacing: 2,
-      textTransform: "uppercase",
     },
     itemRow: {
       flexDirection: "row",
@@ -502,8 +515,8 @@ export default function ShoppingListScreen() {
       alignItems: "center",
     },
     checkboxChecked: { backgroundColor: Accent.primary, borderColor: Accent.primary },
-    itemName: { fontSize: 14, color: colors.text },
-    itemChecked: { textDecorationLine: "line-through", color: colors.tabIconDefault },
+    itemName: { ...Type.body, color: colors.text },
+    itemChecked: { ...Type.bodyMuted, textDecorationLine: "line-through", color: colors.tabIconDefault },
     itemFrom: { fontSize: 11, color: colors.textTertiary, marginTop: 1 },
 
     emptyCard: {
@@ -516,8 +529,8 @@ export default function ShoppingListScreen() {
       gap: Spacing.md,
     },
     emptyIcon: { fontSize: 40 },
-    emptyTitle: { fontSize: 18, fontWeight: "700", color: colors.text },
-    emptyDesc: { fontSize: 14, color: colors.textSecondary, textAlign: "center", lineHeight: 20 },
+    emptyTitle: { ...Type.headline, fontSize: 18, color: colors.text },
+    emptyDesc: { ...Type.body, color: colors.textSecondary, textAlign: "center", lineHeight: 20 },
     ctaBtn: {
       backgroundColor: Accent.primary,
       borderRadius: Radius.md,
@@ -582,48 +595,15 @@ export default function ShoppingListScreen() {
   // user can scan top-down without backtracking. Categories not in
   // the canonical order land at the end alphabetically. Mirrors the
   // pattern used by AnyList / OurGroceries.
-  const AISLE_ORDER = useMemo<readonly string[]>(
-    () => [
-      "Produce",
-      "Bakery",
-      "Meat",
-      "Seafood",
-      "Deli",
-      "Dairy",
-      "Eggs",
-      "Frozen",
-      "Pantry",
-      "Grains",
-      "Pasta",
-      "Canned",
-      "Condiments",
-      "Spices",
-      "Baking",
-      "Snacks",
-      "Drinks",
-      "Alcohol",
-      "Household",
-      "Other",
-    ],
-    [],
-  );
   const groupedSections = useMemo(() => {
-    const cats = [...new Set(items.map((i) => i.category))];
-    const orderedCats = cats.slice().sort((a, b) => {
-      const ai = AISLE_ORDER.indexOf(a);
-      const bi = AISLE_ORDER.indexOf(b);
-      if (ai === -1 && bi === -1) return a.localeCompare(b);
-      if (ai === -1) return 1;
-      if (bi === -1) return -1;
-      return ai - bi;
-    });
+    const orderedCats = sortShoppingCategories(items.map((i) => i.category));
     return orderedCats.map((category) => ({
       name: category,
       groups: groupShoppingItemsByIngredientName(
-        items.filter((i) => i.category === category),
+        items.filter((i) => i.category === category).map(withNormalizedShoppingFields),
       ),
     }));
-  }, [items, AISLE_ORDER]);
+  }, [items]);
   const totalGroupCount = useMemo(
     () => groupedSections.reduce((n, s) => n + s.groups.length, 0),
     [groupedSections],
@@ -725,24 +705,55 @@ export default function ShoppingListScreen() {
             </Text>
           </View>
         ) : items.length === 0 ? (
-          <View style={styles.emptyCard}>
-            {/* 2026-05-06 audit (F-107): swap 🛒 emoji for lucide
-                ShoppingCart per project icon-registry rule (Pattern
-                #7 in TestFlight tracker). Emojis render
-                inconsistently across iOS / Android / web fonts. */}
-            <View style={{ alignItems: "center", marginBottom: Spacing.sm }}>
-              <ShoppingCart size={48} color={Accent.primary} strokeWidth={1.5} />
+          // 2026-05-23 — empty state rebuilt. Was a bordered card with
+          // a serif headline + body + big primary CTA pill, all wrapped
+          // in chrome that pushed content down behind a huge top gap.
+          // Now a centered, calm column at the top of the surface:
+          // small cart glyph, sans-serif headline matching the rest of
+          // the app, one quiet body line, and a ghost link CTA. No card
+          // surface — the empty page is the empty state.
+          <View style={{ alignItems: "center", paddingTop: Spacing.lg, paddingHorizontal: Spacing.xl }}>
+            <View style={{
+              width: 44,
+              height: 44,
+              borderRadius: 12,
+              backgroundColor: Accent.primary + "14",
+              alignItems: "center",
+              justifyContent: "center",
+              marginBottom: Spacing.md,
+            }}>
+              <ShoppingCart size={22} color={Accent.primary} strokeWidth={1.75} />
             </View>
-            <Text style={styles.emptyTitle}>No shopping list yet</Text>
-            <Text style={styles.emptyDesc}>
-              Generate a meal plan first — your shopping list is created automatically.
+            <Text style={{ ...Type.headline, color: colors.text, textAlign: "center" }}>
+              No items yet
             </Text>
-            <Pressable style={styles.ctaBtn} onPress={() => router.push("/(tabs)/planner")}>
-              <Text style={styles.ctaBtnText}>Open Planner</Text>
+            <Text
+              style={{
+                ...Type.body,
+                color: colors.textSecondary,
+                textAlign: "center",
+                lineHeight: 20,
+                marginTop: 4,
+                maxWidth: 280,
+              }}
+            >
+              Plan your meals and we&apos;ll gather every ingredient into one list, grouped by aisle.
+            </Text>
+            <Pressable
+              onPress={() => router.push("/(tabs)/planner")}
+              accessibilityRole="button"
+              accessibilityLabel="Go to planning"
+              hitSlop={8}
+              style={{ marginTop: Spacing.md, paddingVertical: 6, paddingHorizontal: 8 }}
+            >
+              <Text style={{ ...Type.body, fontWeight: "600", color: Accent.primary }}>
+                Go to plan →
+              </Text>
             </Pressable>
           </View>
         ) : (
           <>
+            <ReAnimated.View style={progressEntrance.style}>
             <View style={styles.card}>
               <View style={styles.progressRow}>
                 <Text style={styles.progressLabel}>Progress</Text>
@@ -758,12 +769,14 @@ export default function ShoppingListScreen() {
                 onPress={clearChecked}
                 style={{ alignSelf: "center", paddingVertical: 8, paddingHorizontal: Spacing.xl }}
               >
-                <Text style={{ color: Accent.primary, fontWeight: "600", fontSize: 14 }}>
+                <Text style={{ ...Type.body, fontWeight: "600", color: Accent.primary }}>
                   Remove {checkedCount} checked item{checkedCount !== 1 ? "s" : ""}
                 </Text>
               </Pressable>
             )}
+            </ReAnimated.View>
 
+            <ReAnimated.View style={listEntrance.style}>
             {groupedSections.map((section) => {
               // 2026-04-30 audit visual-qa P1 #8: section-level
               // progress so the user feels each category complete
@@ -799,23 +812,7 @@ export default function ShoppingListScreen() {
                   </View>
                   {section.groups.map((group: ShoppingDisplayGroup) => {
                     const allChecked = isShoppingGroupFullyChecked(group);
-                    const dedupedSingle =
-                      group.items.length === 1
-                        ? dedupeShoppingLabel({
-                            amount: group.items[0]!.amount,
-                            unit: group.items[0]!.unit,
-                            name: group.displayName,
-                          })
-                        : null;
-                    const qtyLine = dedupedSingle
-                      ? `${dedupedSingle.amount} ${dedupedSingle.unit}`.trim()
-                      : formatMixedShoppingAmounts(group.items);
-                    const displayName = dedupedSingle
-                      ? dedupedSingle.name
-                      : group.displayName;
-                    const rowLabel = qtyLine
-                      ? `${displayName} (${qtyLine})`
-                      : displayName;
+                    const rowLabel = formatShoppingGroupLabel(group);
                     const fromLabel = [
                       ...new Set(
                         group.items
@@ -873,7 +870,7 @@ export default function ShoppingListScreen() {
                                 alignItems: "center",
                               }}
                               accessibilityRole="button"
-                              accessibilityLabel={`Remove ${displayName} from shopping list`}
+                              accessibilityLabel={`Remove ${rowLabel} from shopping list`}
                               testID={`shopping-swipe-delete-${group.key}`}
                             >
                               <Trash2 size={22} color="#fff" />
@@ -899,8 +896,8 @@ export default function ShoppingListScreen() {
                           Alert.alert(
                             group.items.length > 1 ? "Remove items" : "Remove item",
                             group.items.length > 1
-                              ? `Delete ${group.items.length} rows for "${displayName}"?`
-                              : `Delete "${displayName}"?`,
+                              ? `Delete ${group.items.length} rows for "${rowLabel}"?`
+                              : `Delete "${rowLabel}"?`,
                             [
                               { text: "Cancel", style: "cancel" },
                               {
@@ -974,6 +971,7 @@ export default function ShoppingListScreen() {
                 </View>
               );
             })}
+            </ReAnimated.View>
           </>
         )}
       </ScrollView>

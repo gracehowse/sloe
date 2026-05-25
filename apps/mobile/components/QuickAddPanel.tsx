@@ -19,7 +19,7 @@ import {
   PlusCircle,
   Star as StarIcon,
 } from "lucide-react-native";
-import { Accent, IconSize, Radius, Spacing } from "@/constants/theme";
+import { Accent, Elevation, IconSize, Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import Badge from "@/components/Badge";
 import { SourceDot } from "@/components/ui/SourceDot";
@@ -619,6 +619,7 @@ export function QuickAddPanel({
                     borderWidth: 1,
                     borderColor: colors.border,
                     opacity: pending ? 0.6 : 1,
+                    ...Elevation.card,
                   }}
                 >
                   <SourceDot
@@ -711,6 +712,7 @@ export function QuickAddPanel({
                   alignItems: "center",
                   borderWidth: 1,
                   borderColor: colors.border,
+                  ...Elevation.card,
                 }}
                 accessibilityRole="button"
                 accessibilityLabel={`Log ${row.recipeTitle} to ${activeSlot}`}
@@ -766,8 +768,8 @@ export function QuickAddPanel({
                 >
                   <StarIcon
                     size={22}
-                    color={starred ? "#f59e0b" : colors.textSecondary}
-                    fill={starred ? "#f59e0b" : "transparent"}
+                    color={starred ? "#F78A32" : colors.textSecondary}
+                    fill={starred ? "#F78A32" : "transparent"}
                     strokeWidth={2.25}
                   />
                 </Pressable>

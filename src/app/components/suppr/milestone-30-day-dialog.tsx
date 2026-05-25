@@ -45,7 +45,7 @@ export function Milestone30DayDialog({
         <div className="flex flex-col items-center pt-2 pb-1">
           <div
             className="w-16 h-16 rounded-full flex items-center justify-center mb-3"
-            style={{ background: "var(--primary-soft, rgba(76,108,224,0.12))" }}
+            style={{ background: "var(--primary-soft)" }}
           >
             <Sparkles className="w-8 h-8 text-primary" />
           </div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 const CONSENT_KEY = "suppr_cookie_consent";
 
@@ -14,8 +15,16 @@ export function getConsentChoice(): ConsentChoice {
   return null;
 }
 
+/** ENG-633 — FAB + bottom nav sit above the consent strip on Today. */
+function isProductFabRoute(pathname: string): boolean {
+  const seg = pathname.replace(/^\/+|\/+$/g, "").split("/")[0] ?? "";
+  return seg === "today" || seg === "plan" || seg === "shopping";
+}
+
 export function CookieConsent() {
+  const pathname = usePathname() ?? "";
   const [visible, setVisible] = useState(false);
+  const liftAboveFab = visible && isProductFabRoute(pathname);
 
   useEffect(() => {
     if (!getConsentChoice()) setVisible(true);
@@ -57,7 +66,11 @@ export function CookieConsent() {
   // line and lets it ellipsis on the tightest screens rather than
   // wrap.
   return (
-    <div className="fixed bottom-0 inset-x-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-t border-slate-200 dark:border-slate-800 shadow-lg pb-[env(safe-area-inset-bottom)]">
+    <div
+      className={`fixed inset-x-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-t border-slate-200 dark:border-slate-800 shadow-lg pb-[env(safe-area-inset-bottom)] ${
+        liftAboveFab ? "bottom-[calc(4.5rem+env(safe-area-inset-bottom))]" : "bottom-0"
+      }`}
+    >
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-2 flex flex-row items-center gap-3">
         <p className="text-xs text-slate-700 dark:text-slate-300 flex-1 line-clamp-1 min-w-0">
           Essential cookies on; analytics stay off until you accept.{" "}

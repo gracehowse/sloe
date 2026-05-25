@@ -3,6 +3,8 @@
 import * as React from "react";
 import { cn } from "../ui/utils";
 import { RING_LABELS } from "../../../lib/copy/today";
+import { isPremiumMotionV1Enabled } from "../../../lib/preferences/premiumMotionWeb";
+import { PREMIUM_MOTION_COUNT_MS } from "../../../lib/preferences/premiumMotion";
 
 /**
  * DailyRing — circular progress ring for daily calorie target.
@@ -36,11 +38,12 @@ import { RING_LABELS } from "../../../lib/copy/today";
  */
 function useAnimatedNumber(
   target: number,
-  options?: { snapOn?: unknown; duration?: number },
+  options?: { snapOn?: unknown; duration?: number; animateFromZeroOnMount?: boolean },
 ): number {
   const duration = options?.duration ?? 800;
   const snapOn = options?.snapOn;
-  const [value, setValue] = React.useState(target);
+  const animateFromZeroOnMount = options?.animateFromZeroOnMount ?? false;
+  const [value, setValue] = React.useState(animateFromZeroOnMount ? 0 : target);
   const valueRef = React.useRef(target);
   const lastSnapRef = React.useRef(snapOn);
   React.useEffect(() => {
@@ -149,11 +152,8 @@ function DailyRing({
         ? RING_LABELS.over
         : RING_LABELS.remaining;
   const isEmpty = consumed === 0 || target <= 0;
-  const centerValueColor = isEmpty
-    ? undefined
-    : isOverBudget
-      ? "var(--destructive)"
-      : "var(--success)";
+  /** Centre copy stays ink — ring stroke carries green/red budget state. */
+  const centerValueColor = isEmpty ? undefined : "var(--foreground)";
   const centerLabelColor = centerValueColor;
   // Premium-feel papercut #2 (audit 2026-04-29): empty-state ring
   // dominated Today's first impression. Soft-mode the centre when
@@ -167,16 +167,20 @@ function DailyRing({
   // has selected. Mirror of the same change in mobile `CalorieRing.tsx`.
   // 2026-05-05 (audit R03) — also treat `target <= 0` as empty (no
   // profile target yet). Without this guard, mobile renders gradient
-  // stroke ("calibrating") while web renders destructive red over for
+  // stroke ("calibrating") while web renders over-budget amber for
   // the same input — cross-platform contradiction. Both platforms now
   // fall into the calibrating-empty state until a profile target is
   // set.
+
+  const premiumMotion = isPremiumMotionV1Enabled();
 
   // Tween the displayed centre value over 800ms / cubic-out — same
   // curve as the SVG ring sweep so the number and arc finish
   // together. Snaps on display-mode toggle.
   const animatedCenterValue = useAnimatedNumber(centerValue, {
     snapOn: displayMode,
+    duration: premiumMotion ? PREMIUM_MOTION_COUNT_MS : 800,
+    animateFromZeroOnMount: premiumMotion,
   });
 
   // 2026-05-12 (premium-bar DC1, web parity with mobile CalorieRing):
@@ -193,14 +197,26 @@ function DailyRing({
     { r: macroRadii[2], pct: fatPct, color: "var(--macro-fat)" },
   ];
 
+  const interactive = Boolean(onToggle);
+
   return (
     <div
-      className={cn("relative inline-flex items-center justify-center cursor-pointer", className)}
+      className={cn(
+        "relative inline-flex items-center justify-center",
+        interactive && "cursor-pointer",
+        className,
+      )}
       style={{ width: size, height: size }}
-      onClick={onToggle}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onToggle?.(); }}
+      onClick={interactive ? onToggle : undefined}
+      role={interactive ? "button" : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      onKeyDown={
+        interactive
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") onToggle?.();
+            }
+          : undefined
+      }
       {...props}
     >
       <svg
@@ -209,6 +225,28 @@ function DailyRing({
         viewBox={`0 0 ${size} ${size}`}
         className="-rotate-90"
       >
+        {/* MFP-style diagonal hash pattern — mirrors mobile
+            `CalorieRing.tsx`. Hue matches --destructive so the
+            pattern reads as part of the red arc, not a new colour
+            layer. Grace 2026-05-22: own green/red + hashed overage. */}
+        <defs>
+          <pattern
+            id="overHash"
+            patternUnits="userSpaceOnUse"
+            width={6}
+            height={6}
+            patternTransform="rotate(45)"
+          >
+            <line
+              x1={0}
+              y1={0}
+              x2={0}
+              y2={6}
+              stroke="var(--destructive)"
+              strokeWidth={3}
+            />
+          </pattern>
+        </defs>
         <circle
           cx={cx}
           cy={cx}
@@ -234,15 +272,48 @@ function DailyRing({
           strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={offset}
-          className="transition-[stroke-dashoffset] duration-700"
-          style={{ transitionTimingFunction: "var(--pm-ease)" }}
+          className={cn(
+            "transition-[stroke-dashoffset]",
+            premiumMotion ? "duration-500" : "duration-700",
+          )}
+          style={{
+            transitionTimingFunction: premiumMotion
+              ? "cubic-bezier(0.32, 0.72, 0, 1)"
+              : "var(--pm-ease)",
+          }}
         />
+        {/* Hashed overage segment — only when over budget. Starts at
+            top (12 o'clock after the parent's -rotate-90) and runs
+            clockwise for `(over / target) * circumference`. Capped
+            at one full lap. */}
+        {!isEmpty && isOverBudget && target > 0
+          ? (() => {
+              const overFraction = Math.min(
+                (consumed - target) / target,
+                1,
+              );
+              const overLen = circumference * overFraction;
+              return (
+                <circle
+                  cx={cx}
+                  cy={cx}
+                  r={radius}
+                  fill="none"
+                  stroke="url(#overHash)"
+                  strokeWidth={strokeWidth}
+                  strokeDasharray={`${overLen} ${circumference}`}
+                  strokeDashoffset={0}
+                  strokeLinecap="butt"
+                />
+              );
+            })()
+          : null}
         {/* Macro rings (shown when expanded).
             2026-05-14 — Grace's call: macro arcs always render in
             their own colour at full opacity, even when over-budget.
-            The destructive-red outer kcal ring carries the over-
-            budget signal — the inner arcs don't need to repeat it,
-            and dimming them collapsed the multi-colour language. */}
+            The red outer kcal ring carries the over-budget signal
+            — the inner arcs don't need to repeat it, and dimming
+            them collapsed the multi-colour language. */}
         {expanded && macroRings.map((ring, i) => {
           const c = 2 * Math.PI * ring.r;
           const o = c * (1 - Math.min(ring.pct, 0.999));
@@ -286,12 +357,16 @@ function DailyRing({
           dominating Today's first impression. */}
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         {isEmpty ? (
-          <span
-            className="font-medium leading-tight text-center text-muted-foreground"
-            style={{ fontSize: expanded ? "14px" : "16px" }}
-          >
-            Start your day
-          </span>
+          <div className="flex flex-col items-center justify-center gap-1 px-2">
+            <span className="text-[17px] font-bold leading-none text-center text-foreground tracking-tight">
+              Start your day
+            </span>
+            {target > 0 ? (
+              <span className="text-xs text-muted-foreground tabular-nums">
+                {Math.round(target).toLocaleString()} kcal goal
+              </span>
+            ) : null}
+          </div>
         ) : (
           <>
             {/* ENG-534 P1 (2026-05-16): centre kcal value is MEDIUM-class
@@ -302,44 +377,22 @@ function DailyRing({
                 NOT masked (generic UI string). See
                 `docs/operations/session-replay-masking-audit.md`. */}
             <span
-              className="tabular-nums font-bold leading-none transition-[font-size] duration-300 ph-mask"
-              style={{
-                // Grace 2026-05-05: 4-digit values like "1,516" at 22px
-                // bold overlapped the innermost macro ring band; drop
-                // expanded to 18px so 4–5 char values fit. Mirrors mobile
-                // CalorieRing.tsx.
-                fontSize: expanded ? "18px" : "var(--text-display)",
-                color: centerValueColor ?? "var(--foreground)",
-              }}
+              className="text-[22px] font-bold tabular-nums text-foreground -tracking-[0.02em] leading-none ph-mask"
+              style={{ color: centerValueColor ?? undefined }}
             >
               {animatedCenterValue.toLocaleString()}
             </span>
-            {/* Centre label ("REMAINING" / "LOGGED" / "OVER"). Grace
-                2026-04-28: mobile flagged the label clipping inner-most
-                macro ring at the label's y. Web's ring is bigger
-                (160 vs 140) so the inner-most macro ring at r≈38 has
-                more horizontal room at the label's y (~±33 vs the label
-                width of ~54px → ±27, fits with margin). Web doesn't
-                have the same overlap, but for symmetry with the mobile
-                shrink we use a smaller `text-[9px]` + drop tracking
-                when expanded so the label always sits comfortably
-                inside the inner ring instead of grazing it. */}
             <span
-              className={`font-semibold mt-0.5 uppercase ${expanded ? "text-[9px] tracking-normal" : "text-[11px] tracking-wider"}`}
-              style={{ color: centerLabelColor ?? "var(--muted-foreground)" }}
+              className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-foreground ph-mask"
+              style={{ color: centerLabelColor ?? undefined }}
             >
               {centerLabel}
             </span>
-            {/* Budget line renders in BOTH expanded + collapsed states
-                (parity with mobile `CalorieRing` — commit 26a63bf, 2026-04-20).
-                ui-critic called out that the expanded view hid the
-                denominator and left the user looking at a number with no
-                anchor. We keep the same 10px tabular caption in both
-                modes so the centre of the ring always carries its target.
-                Hidden when target <= 0 (no profile target yet) so the
-                ring doesn't render "of 0 kcal" — 2026-05-05 audit R03. */}
-            {target > 0 ? (
-              <span className="text-[10px] text-muted-foreground mt-0.5 tabular-nums ph-mask">
+            {/* Budget anchor only when macro rings are hidden (collapsed
+                ring). Parity with mobile `CalorieRing` — expanded +
+                "of X kcal" squished the centre copy. */}
+            {!expanded && target > 0 ? (
+              <span className="text-xs text-muted-foreground mt-0.5 tabular-nums ph-mask">
                 of {Math.round(target).toLocaleString()} kcal
               </span>
             ) : null}

@@ -97,10 +97,28 @@ describe("NorthStarBlock (web) — default kind", () => {
     expect(looseChip.getAttribute("data-band")).toBe("soft");
   });
 
-  it("uses the placeholder gradient when thumbnail is absent", () => {
+  it("uses RecipeHeroFallback when thumbnail is absent", () => {
     render(<NorthStarBlock kind="default" suggestion={baseSuggestion} />);
-    // No img element when thumbnail is undefined.
     expect(screen.queryByRole("img")).toBeNull();
+  });
+
+  it("opens why dialog when whyLine is tapped", () => {
+    render(
+      <NorthStarBlock
+        kind="default"
+        suggestion={{
+          ...baseSuggestion,
+          whyLine: "Closes your protein gap for lunch",
+        }}
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /Closes your protein gap/,
+      }),
+    );
+    expect(screen.getByRole("dialog")).toBeDefined();
+    expect(screen.getByRole("heading", { name: "Why this suggestion?" })).toBeDefined();
   });
 
   it("renders an img when thumbnail is supplied", () => {

@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Today multi-ring Variant A — tweaked sub-variants (2026-05-22)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<style>
+  :root {
+    --background: #fbfaf6;
+    --background-secondary: #f5f3ec;
+    --card: #ffffff;
+    --foreground: #1a1714;
+    --foreground-secondary: #5b554b;
+    --foreground-tertiary: #8a8377;
+    --border: #ebe7dc;
+    --border-strong: #ddd6c5;
+    --input-background: #f0ece4;
+
+    --accent-primary: #5b6ee8;
+    --accent-success: #22a860;
+    --accent-warning: #e8a020;
+    --accent-bonus: #f97316;
+    --accent-food: #22a860;
+
+    --ring-track: #d4cfc1;
+
+    --macro-protein: #4c6ce0;
+    --macro-carbs:   #e8a020;
+    --macro-fat:     #e04888;
+    --macro-fiber:   #22a860;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: #e9e6df;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+    color: var(--foreground);
+    -webkit-font-smoothing: antialiased;
+  }
+  .page-wrap {
+    min-height: 100vh; padding: 24px 16px 48px;
+    display: flex; flex-direction: column; align-items: center; gap: 16px;
+  }
+  .page-header { text-align: center; max-width: 1100px; color: #3a3631; }
+  .page-header h1 {
+    font-family: ui-serif, Georgia, serif;
+    font-size: 22px; letter-spacing: -0.02em; margin: 0 0 6px;
+  }
+  .page-header p { font-size: 12px; line-height: 1.55; color: #66605a; margin: 0; }
+  .variants-row {
+    display: grid; grid-template-columns: repeat(4, 320px);
+    gap: 18px; justify-content: center; align-items: start;
+  }
+  .variant-col {
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+  }
+  .variant-name {
+    text-align: center;
+    font-family: ui-serif, Georgia, serif;
+    font-size: 14px; font-weight: 700; color: #3a3631;
+  }
+  .variant-desc {
+    text-align: center; max-width: 300px;
+    font-size: 11px; line-height: 1.45; color: #66605a;
+    min-height: 50px;
+  }
+
+  .iphone {
+    width: 320px; height: 690px;
+    background: var(--background);
+    border: 11px solid #1a1714; border-radius: 42px;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.16);
+    position: relative; overflow: hidden;
+  }
+  .iphone-statusbar {
+    height: 32px; padding: 11px 22px 0;
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 11px; font-weight: 600;
+  }
+  .iphone-statusbar .dynamic-island {
+    width: 88px; height: 24px; background: #000; border-radius: 12px;
+    position: absolute; top: 7px; left: 50%; transform: translateX(-50%);
+  }
+  .iphone-statusbar .right { display: flex; gap: 4px; font-size: 9px; }
+
+  .today { padding: 6px 12px 70px; }
+
+  .today-header {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px;
+  }
+  .nav-pair { display: flex; align-items: center; gap: 7px; }
+  .nav-arrow {
+    width: 22px; height: 22px; border-radius: 4px;
+    background: var(--card); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center; font-size: 11px;
+  }
+  .today-title { font-family: ui-serif, Georgia, serif; font-size: 15px; font-weight: 700; letter-spacing: -0.02em; }
+  .avatar {
+    width: 24px; height: 24px; border-radius: 12px;
+    background: #3a3631; color: #fff; display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 700;
+  }
+
+  .day-strip {
+    display: grid; grid-template-columns: repeat(7, 1fr);
+    gap: 2px; align-items: center; margin-bottom: 10px;
+  }
+  .day-strip .day { text-align: center; padding: 2px 0 4px; }
+  .day-strip .day-label { font-size: 8px; color: var(--foreground-tertiary); font-weight: 600; margin-bottom: 2px; }
+  .day-strip .day-num {
+    font-size: 10px; font-weight: 700;
+    width: 18px; height: 18px; border-radius: 9px;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .day-strip .day.today .day-num { background: var(--accent-primary); color: #fff; }
+  .day-strip .day.logged .day-num { background: var(--accent-success); color: #fff; opacity: 0.85; }
+
+  .hero-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 12px 10px; margin-bottom: 8px;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+  }
+  .ring-wrap { position: relative; flex-shrink: 0; }
+  .ring-center {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  .ring-center .value {
+    font-weight: 800; letter-spacing: -0.02em;
+    color: var(--foreground); line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .ring-center .label {
+    font-weight: 600;
+    color: var(--foreground-secondary);
+    margin-top: 2px;
+  }
+
+  /* default ring centre sizing */
+  .ring-center .value { font-size: 26px; }
+  .ring-center .label { font-size: 9px; }
+  .v-a3 .ring-center .value { font-size: 32px; }
+  .v-a3 .ring-center .label { font-size: 10px; }
+
+  .stats-row {
+    width: 100%;
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+  }
+  .stat {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    position: relative;
+  }
+  .stat + .stat::before {
+    content: ""; position: absolute; left: 0; top: 3px; bottom: 3px;
+    width: 1px; background: var(--border);
+  }
+  .stat-icon {
+    width: 16px; height: 16px; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center; font-size: 9px;
+  }
+  .stat-icon.goal { background: rgba(91, 110, 232, 0.08); }
+  .stat-icon.food { background: rgba(34, 168, 96, 0.12); }
+  .stat-icon.exercise { background: rgba(249, 115, 22, 0.12); }
+  .stat-label { font-size: 8px; font-weight: 600; color: var(--foreground-tertiary); text-transform: uppercase; letter-spacing: 0.05em; }
+  .stat-value { font-size: 12px; font-weight: 700; color: var(--foreground); font-variant-numeric: tabular-nums; }
+
+  .macro-bars {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 10px 6px;
+  }
+  .macro-row { padding: 4px 0; }
+  .macro-row + .macro-row { border-top: 1px solid var(--border); }
+  .macro-row-top {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 6px; margin-bottom: 2px;
+  }
+  .macro-label {
+    font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em;
+    color: var(--foreground-tertiary);
+  }
+  .macro-value {
+    font-size: 10px; color: var(--foreground-secondary);
+    font-variant-numeric: tabular-nums;
+  }
+  .macro-value strong { color: var(--foreground); font-weight: 700; }
+  .macro-value .caption { color: var(--foreground-tertiary); }
+  .macro-bar-track {
+    height: 4px; border-radius: 2px;
+    background: var(--ring-track); overflow: hidden;
+  }
+  .macro-bar-fill { height: 100%; border-radius: 2px; }
+  .protein .macro-bar-fill { background: var(--macro-protein); }
+  .carbs .macro-bar-fill { background: var(--macro-carbs); }
+  .fat .macro-bar-fill { background: var(--macro-fat); }
+  .fiber .macro-bar-fill { background: var(--macro-fiber); }
+
+  .tabbar {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 58px;
+    background: var(--background); border-top: 1px solid var(--border);
+    display: flex; align-items: flex-start; padding-top: 6px;
+  }
+  .tab {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+    color: var(--foreground-tertiary); font-size: 8px; font-weight: 600;
+  }
+  .tab.active { color: var(--accent-primary); }
+  .tab .tab-icon { font-size: 13px; }
+  .fab-slot { flex: 1; position: relative; }
+  .fab {
+    width: 40px; height: 40px; border-radius: 20px;
+    background: var(--accent-primary); color: #fff; border: 0;
+    position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+    box-shadow: 0 4px 12px rgba(91, 110, 232, 0.45);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+  }
+</style>
+</head>
+<body>
+<div class="page-wrap">
+
+  <div class="page-header">
+    <h1>Variant A — 4 tweaks. Pick one.</h1>
+    <p>All four keep the 3-segment outer calorie ring (food <strong style="color:#22a860">green</strong> + remaining <strong style="color:#8a8377">grey</strong> + exercise bonus <strong style="color:#f97316">orange</strong>) and the Goal/Food/Exercise stats row + macro bars. TF49 saturated macro palette throughout.<br/>What differs: <strong>A1</strong> slims inner arcs (6px). <strong>A2</strong> drops fat arc, keeps P+C inner only. <strong>A3</strong> bigger 240px ring with breathing room. <strong>A4</strong> all 4 macros inner (adds fiber arc).</p>
+  </div>
+
+  <div class="variants-row">
+
+    <!-- A1: slim inner arcs (6px stroke) -->
+    <div class="variant-col v-a1">
+      <div class="variant-name">A1 — Slim inner arcs (6px)</div>
+      <div class="variant-desc">Same 3 inner arcs (P/C/F) but stroke trimmed from 9 → 6px. Calmer hero, centre value dominates, macros still readable.</div>
+      <div class="iphone">
+        <div class="iphone-statusbar"><span>9:41</span><div class="dynamic-island"></div><div class="right">▮▮▮</div></div>
+        <div class="today">
+          <div class="today-header">
+            <div class="nav-pair"><span class="nav-arrow">‹</span><span class="today-title">Today</span><span class="nav-arrow">›</span></div>
+            <div class="avatar">G</div>
+          </div>
+          <div class="day-strip">
+            <div class="day"><div class="day-label">M</div><span class="day-num">18</span></div>
+            <div class="day"><div class="day-label">T</div><span class="day-num">19</span></div>
+            <div class="day logged"><div class="day-label">W</div><span class="day-num">20</span></div>
+            <div class="day logged"><div class="day-label">T</div><span class="day-num">21</span></div>
+            <div class="day today"><div class="day-label">F</div><span class="day-num">22</span></div>
+            <div class="day"><div class="day-label">S</div><span class="day-num">23</span></div>
+            <div class="day"><div class="day-label">S</div><span class="day-num">24</span></div>
+          </div>
+
+          <div class="hero-card">
+            <div class="ring-wrap" style="width: 170px; height: 170px;">
+              <svg width="170" height="170" viewBox="0 0 220 220">
+                <!-- outer calorie ring track -->
+                <circle cx="110" cy="110" r="100" stroke="var(--ring-track)" stroke-width="12" fill="none" />
+                <!-- bonus segment (orange) -->
+                <circle cx="110" cy="110" r="100"
+                        stroke="var(--accent-bonus)" stroke-width="12" fill="none"
+                        stroke-linecap="butt"
+                        stroke-dasharray="132.3 496.0" stroke-dashoffset="-496.0"
+                        transform="rotate(-90 110 110)" />
+                <!-- food fill (green) -->
+                <circle cx="110" cy="110" r="100"
+                        stroke="var(--accent-food)" stroke-width="12" fill="none"
+                        stroke-linecap="round"
+                        stroke-dasharray="214.9 413.4"
+                        transform="rotate(-90 110 110)" />
+                <!-- inner protein -->
+                <circle cx="110" cy="110" r="80" stroke="var(--ring-track)" stroke-width="6" fill="none" />
+                <circle cx="110" cy="110" r="80" stroke="var(--macro-protein)" stroke-width="6" fill="none" stroke-linecap="round" stroke-dasharray="502.7" stroke-dashoffset="90.5" transform="rotate(-90 110 110)" />
+                <!-- inner carbs -->
+                <circle cx="110" cy="110" r="68" stroke="var(--ring-track)" stroke-width="6" fill="none" />
+                <circle cx="110" cy="110" r="68" stroke="var(--macro-carbs)" stroke-width="6" fill="none" stroke-linecap="round" stroke-dasharray="427.3" stroke-dashoffset="119.6" transform="rotate(-90 110 110)" />
+                <!-- inner fat -->
+                <circle cx="110" cy="110" r="56" stroke="var(--ring-track)" stroke-width="6" fill="none" />
+                <circle cx="110" cy="110" r="56" stroke="var(--macro-fat)" stroke-width="6" fill="none" stroke-linecap="round" stroke-dasharray="351.9" stroke-dashoffset="84.5" transform="rotate(-90 110 110)" />
+              </svg>
+              <div class="ring-center">
+                <div class="value">1,250</div>
+                <div class="label">Remaining</div>
+              </div>
+            </div>
+            <div class="stats-row">
+              <div class="stat"><div class="stat-icon goal">🏁</div><div class="stat-label">Goal</div><div class="stat-value">1,500</div></div>
+              <div class="stat"><div class="stat-icon food">🍽</div><div class="stat-label">Food</div><div class="stat-value">650</div></div>
+              <div class="stat"><div class="stat-icon exercise">🔥</div><div class="stat-label">Ex</div><div class="stat-value">400</div></div>
+            </div>
+          </div>
+
+          <div class="macro-bars">
+            <div class="macro-row protein"><div class="macro-row-top"><span class="macro-label">PROTEIN</span><span class="macro-value"><strong>80</strong>/98g <span class="caption">· 18 left</span></span></div><div class="macro-bar-track"><div class="macro-bar-fill" style="width: 82%;"></div></div></div>
+            <div class="macro-row carbs"><div class="macro-row-top"><span class="macro-label">CARBS</span><span class="macro-value"><strong>84</strong>/116g <span class="caption">· 32 left</span></span></div><div class="macro-bar-track"><div class="macro-bar-fill" style="width: 72%;"></div></div></div>
+            <div class="macro-row fat"><div class="macro-row-top"><span class="macro-label">FAT</span><span class="macro-value"><strong>31</strong>/41g <span class="caption">· 10 left</span></span></div><div class="macro-bar-track"><div class="macro-bar-fill" style="width: 75%;"></div></div></div>
+            <div class="macro-row fiber"><div class="macro-row-top"><span class="macro-label">FIBER</span><span class="macro-value"><strong>14</strong>/27g <span class="caption">· 13 left</span></span></div><div class="macro-bar-track"><div class="macro-bar-fill" style="width: 52%;"></div></div></div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tab active"><span class="tab-icon">☀</span><span>Today</span></div>
+          <div class="tab"><span class="tab-icon">▦</span><span>Plan</span></div>
+          <div class="fab-slot"><button class="fab">+</button></div>
+          <div class="tab"><span class="tab-icon">▤</span><span>Recipes</span></div>
+          <div class="tab"><span class="tab-icon">∿</span><span>Progress</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- A2: only P + C inner (drop fat arc) -->
+    <div class="variant-col v-a2">
+      <div class="variant-name">A2 — Drop fat, keep P+C inner</div>
+      <div class="variant-desc">Inner arcs only for the macros people tune most (protein + carbs). Fat falls out of the ring and lives only in the bars. Two-ring restraint.</div>
+      <div class="iphone">
+        <div class="iphone-statusbar"><span>9:41</span><div class="dynamic-island"></div><div class="right">▮▮▮</div></div>
+        <div class="today">
+          <div class="today-header">
+            <div class="nav-pair"><span class="nav-arrow">‹</span><span class="today-title">Today</span><span class="nav-arrow">›</span></div>
+            <div class="avatar">G</div>
+          </div>
+          <div class="day-strip">
+            <div class="day"><div class="day-label">M</div><span class="day-num">18</span></div>
+            <div class="day"><div class="day-label">T</div><span class="day-num">19</span></div>
+            <div class="day logged"><div class="day-label">W</div><span class="day-num">20</span></div>
+            <div class="day logged"><div class="day-label">T</div><span class="day-num">21</span></div>
+            <div class="day today"><div class="day-label">F</div><span class="day-num">22</span></div>
+            <div class="day"><div class="day-label">S</div><span class="day-num">23</span></div>
+            <div class="day"><div class="day-label">S</div><span class="day-num">24</span></div>
+          </div>
+
+          <div class="hero-card">
+            <div class="ring-wrap" style="width: 170px; height: 170px;">
+              <svg width="170" height="170" viewBox="0 0 220 220">
+                <circle cx="110" cy="110" r="100" stroke="var(--ring-track)" stroke-width="12" fill="none" />
+                <circle cx="110" cy="110" r="100"
+                        stroke="var(--accent-bonus)" stroke-width="12" fill="none"
+                        stroke-linecap="butt"
+                        stroke-dasharray="132.3 496.0" stroke-dashoffset="-496.0"
+                        transform="rotate(-90 110 110)" />
+                <circle cx="110" cy="110" r="100"
+                        stroke="var(--accent-food)" stroke-width="12" fill="none"
+                        stroke-linecap="round"
+                        stroke-dasharray="214.9 413.4"
+                        transform="rotate(-90 110 110)" />
+                <!-- inner protein -->
+                <circle cx="110" cy="110" r="78" stroke="var(--ring-track)" stroke-width="8" fill="none" />
+                <circle cx="110" cy="110" r="78" stroke="var(--macro-protein)" stroke-width="8" fill="none" stroke-linecap="round" stroke-dasharray="490.1" stroke-dashoffset="88.2" transform="rotate(-90 110 110)" />
+                <!-- inner carbs -->
+                <circle cx="110" cy="110" r="62" stroke="var(--ring-track)" stroke-width="8" fill="none" />
+                <circle cx="110" cy="110" r="62" stroke="var(--macro-carbs)" stroke-width="8" fill="none" stroke-linecap="round" stroke-dasharray="389.6" stroke-dashoffset="109.1" transform="rotate(-90 110 110)" />
+              </svg>
+              <div class="ring-center">
+                <div class="value">1,250</div>
+                <div class="label">Remaining</div>
+              </div>
+            </div>
+            <div class="stats-row">
+              <div class="stat"><div class="stat-icon goal">🏁</div><div class="stat-label">Goal</div><div class="stat-value">1,500</div></div>
+              <div class="stat"><div class="stat-icon food">🍽</div><div class="stat-label">Food</div><div class="stat-value">650</div></div>
+              <div class="stat"><div class="stat-icon exercise">🔥</div><div class="stat-label">Ex</div><div class="stat-value">400</div></div>
+            </div>
+          </div>
+
+          <div class="macro-bars">
+            <div class="macro-row protein"><div class="macro-row-top"><span class="macro-label">PROTEIN</span><span class="macro-value"><strong>80</strong>/98g <span class="caption">· 18 left</span></span></div><div class="macro-bar-track"><div class="macro-bar-fill" style="width: 82%;"></div></div></div>
+            <div class="macro-row carbs"><div class="macro-row-top"><span class="macro-label">CARBS</span><span class="macro-value"><strong>84</strong>/116g <span class="caption">· 32 left</span></span></div><div class="macro-bar-track"><div class="macro-bar-fill" style="width: 72%;"></div></div></div>
+            <div class="macro-row fat"><div class="macro-row-top"><span class="macro-label">FAT</span><span class="macro-value"><strong>31</strong>/41g <span class="caption">· 10 left</span></span></div><div class="macro-bar-track"><div class="macro-bar-fill" style="width: 75%;"></div></div></div>
+            <div class="macro-row fiber"><div class="macro-row-top"><span class="macro-label">FIBER</span><span class="macro-value"><strong>14</strong>/27g <span class="caption">· 13 left</span></span></div><div class="macro-bar-track"><div class="macro-bar-fill" style="width: 52%;"></div></div></div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tab active"><span class="tab-icon">☀</span><span>Today</span></div>
+          <div class="tab"><span class="tab-icon">▦</span><span>Plan</span></div>
+          <div class="fab-slot"><button class="fab">+</button></div>
+          <div class="tab"><span class="tab-icon">▤</span><span>Recipes</span></div>
+          <div class="tab"><span class="tab-icon">∿</span><span>Progress</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- A3: bigger 240px ring -->
+    <div class="variant-col v-a3">
+      <div class="variant-name">A3 — Bigger ring (240px)</div>
+      <div class="variant-desc">Scale ring up. Inner arcs get breathing room; centre kcal value dominates. Hero card takes more vertical space — meals push further down.</div>
+      <div class="iphone">
+        <div class="iphone-statusbar"><span>9:41</span><div class="dynamic-island"></div><div class="right">▮▮▮</div></div>
+        <div class="today">
+          <div class="today-header">
+            <div class="nav-pair"><span class="nav-arrow">‹</span><span class="today-title">Today</span><span class="nav-arrow">›</span></div>
+            <div class="avatar">G</div>
+          </div>
+          <div class="day-strip">
+            <div class="day"><div class="day-label">M</div><span class="day-num">18</span></div>
+            <div class="day"><div class="day-label">T</div><span class="day-num">19</span></div>
+            <div class="day logged"><div class="day-label">W</div><span class="day-num">20</span></div>
+            <div class="day logged"><div class="day-label">T</div><span class="day-num">21</span></div>
+            <div class="day today"><div class="day-label">F</div><span class="day-num">22</span></div>
+            <div class="day"><div class="day-label">S</div><span class="day-num">23</span></div>
+            <div class="day"><div class="day-label">S</div><span class="day-num">24</span></div>
+          </div>
+
+          <div class="hero-card">
+            <div class="ring-wrap" style="width: 220px; height: 220px;">
+              <svg width="220" height="220" viewBox="0 0 220 220">
+                <circle cx="110" cy="110" r="100" stroke="var(--ring-track)" stroke-width="14" fill="none" />
+                <circle cx="110" cy="110" r="100"
+                        stroke="var(--accent-bonus)" stroke-width="14" fill="none"
+                        stroke-linecap="butt"
+                        stroke-dasharray="132.3 496.0" stroke-dashoffset="-496.0"
+                        transform="rotate(-90 110 110)" />
+                <circle cx="110" cy="110" r="100"
+                        stroke="var(--accent-food)" stroke-width="14" fill="none"
+                        stroke-linecap="round"
+                        stroke-dasharray="214.9 413.4"
+                        transform="rotate(-90 110 110)" />
+                <!-- inner protein -->
+                <circle cx="110" cy="110" r="80" stroke="var(--ring-track)" stroke-width="8" fill="none" />
+                <circle cx="110" cy="110" r="80" stroke="var(--macro-protein)" stroke-width="8" fill="none" stroke-linecap="round" stroke-dasharray="502.7" stroke-dashoffset="90.5" transform="rotate(-90 110 110)" />
+                <!-- inner carbs -->
+                <circle cx="110" cy="110" r="64" stroke="var(--ring-track)" stroke-width="8" fill="none" />
+                <circle cx="110" cy="110" r="64" stroke="var(--macro-carbs)" stroke-width="8" fill="none" stroke-linecap="round" stroke-dasharray="402.1" stroke-dashoffset="112.6" transform="rotate(-90 110 110)" />
+                <!-- inner fat -->
+                <circle cx="110" cy="110" r="48" stroke="var(--ring-track)" stroke-width="8" fill="none" />
+                <circle cx="110" cy="110" r="48" stroke="var(--macro-fat)" stroke-width="8" fill="none" stroke-linecap="round" stroke-dasharray="301.6" stroke-dashoffset="72.4" transform="rotate(-90 110 110)" />
+              </svg>
+              <div class="ring-center">
+                <div class="value">1,250</div>
+                <div class="label">Remaining</div>
+              </div>
+            </div>
+            <div class="stats-row">
+              <div class="stat"><div class="stat-icon goal">🏁</div><div class="stat-label">Goal</div><div class="stat-value">1,500</div></div>
+              <div class="stat"><div class="stat-icon food">🍽</div><div class="stat-label">Food</div><div class="stat-value">650</div></div>
+              <div class="stat"><div class="stat-icon exercise">🔥</div><div class="stat-label">Ex</div><div class="stat-value">400</div></div>
+            </div>
+          </div>
+
+          <div class="macro-bars">
+            <div class="macro-row protein"><div class="macro-row-top"><span class="macro-label">PROTEIN</span><span class="macro-value"><strong>80</strong>/98g <span class="caption">· 18 left</span></span></div><div class="macro-bar-track"><div class="macro-bar-fill" style="width: 82%;"></div></div></div>
+            <div class="macro-row carbs"><div class="macro-row-top"><span class="macro-label">CARBS</span><span class="macro-value"><strong>84</strong>/116g <span class="caption">· 32 left</span></span></div><div class="macro-bar-track"><div class="macro-bar-fill" style="width: 72%;"></div></div></div>
+            <div class="macro-row fat"><div class="macro-row-top"><span class="macro-label">FAT</span><span class="macro-value"><strong>31</strong>/41g <span class="caption">· 10 left</span></span></div><div class="macro-bar-track"><div class="macro-bar-fill" style="width: 75%;"></div></div></div>
+            <div class="macro-row fiber"><div class="macro-row-top"><span class="macro-label">FIBER</span><span class="macro-value"><strong>14</strong>/27g <span class="caption">· 13 left</span></span></div><div class="macro-bar-track"><div class="macro-bar-fill" style="width: 52%;"></div></div></div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tab active"><span class="tab-icon">☀</span><span>Today</span></div>
+          <div class="tab"><span class="tab-icon">▦</span><span>Plan</span></div>
+          <div class="fab-slot"><button class="fab">+</button></div>
+          <div class="tab"><span class="tab-icon">▤</span><span>Recipes</span></div>
+          <div class="tab"><span class="tab-icon">∿</span><span>Progress</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- A4: all 4 macros inner (add fiber arc) -->
+    <div class="variant-col v-a4">
+      <div class="variant-name">A4 — All 4 macros inner (+ fiber)</div>
+      <div class="variant-desc">Maximum density: every macro gets its own arc, fiber innermost. Bars below become a reading reference; ring carries the whole story.</div>
+      <div class="iphone">
+        <div class="iphone-statusbar"><span>9:41</span><div class="dynamic-island"></div><div class="right">▮▮▮</div></div>
+        <div class="today">
+          <div class="today-header">
+            <div class="nav-pair"><span class="nav-arrow">‹</span><span class="today-title">Today</span><span class="nav-arrow">›</span></div>
+            <div class="avatar">G</div>
+          </div>
+          <div class="day-strip">
+            <div class="day"><div class="day-label">M</div><span class="day-num">18</span></div>
+            <div class="day"><div class="day-label">T</div><span class="day-num">19</span></div>
+            <div class="day logged"><div class="day-label">W</div><span class="day-num">20</span></div>
+            <div class="day logged"><div class="day-label">T</div><span class="day-num">21</span></div>
+            <div class="day today"><div class="day-label">F</div><span class="day-num">22</span></div>
+            <div class="day"><div class="day-label">S</div><span class="day-num">23</span></div>
+            <div class="day"><div class="day-label">S</div><span class="day-num">24</span></div>
+          </div>
+
+          <div class="hero-card">
+            <div class="ring-wrap" style="width: 170px; height: 170px;">
+              <svg width="170" height="170" viewBox="0 0 220 220">
+                <circle cx="110" cy="110" r="100" stroke="var(--ring-track)" stroke-width="11" fill="none" />
+                <circle cx="110" cy="110" r="100"
+                        stroke="var(--accent-bonus)" stroke-width="11" fill="none"
+                        stroke-linecap="butt"
+                        stroke-dasharray="132.3 496.0" stroke-dashoffset="-496.0"
+                        transform="rotate(-90 110 110)" />
+                <circle cx="110" cy="110" r="100"
+                        stroke="var(--accent-food)" stroke-width="11" fill="none"
+                        stroke-linecap="round"
+                        stroke-dasharray="214.9 413.4"
+                        transform="rotate(-90 110 110)" />
+                <!-- inner protein -->
+                <circle cx="110" cy="110" r="82" stroke="var(--ring-track)" stroke-width="6" fill="none" />
+                <circle cx="110" cy="110" r="82" stroke="var(--macro-protein)" stroke-width="6" fill="none" stroke-linecap="round" stroke-dasharray="515.2" stroke-dashoffset="92.7" transform="rotate(-90 110 110)" />
+                <!-- inner carbs -->
+                <circle cx="110" cy="110" r="70" stroke="var(--ring-track)" stroke-width="6" fill="none" />
+                <circle cx="110" cy="110" r="70" stroke="var(--macro-carbs)" stroke-width="6" fill="none" stroke-linecap="round" stroke-dasharray="439.8" stroke-dashoffset="123.1" transform="rotate(-90 110 110)" />
+                <!-- inner fat -->
+                <circle cx="110" cy="110" r="58" stroke="var(--ring-track)" stroke-width="6" fill="none" />
+                <circle cx="110" cy="110" r="58" stroke="var(--macro-fat)" stroke-width="6" fill="none" stroke-linecap="round" stroke-dasharray="364.4" stroke-dashoffset="87.5" transform="rotate(-90 110 110)" />
+                <!-- inner fiber -->
+                <circle cx="110" cy="110" r="46" stroke="var(--ring-track)" stroke-width="6" fill="none" />
+                <circle cx="110" cy="110" r="46" stroke="var(--macro-fiber)" stroke-width="6" fill="none" stroke-linecap="round" stroke-dasharray="289.0" stroke-dashoffset="138.7" transform="rotate(-90 110 110)" />
+              </svg>
+              <div class="ring-center">
+                <div class="value">1,250</div>
+                <div class="label">Remaining</div>
+              </div>
+            </div>
+            <div class="stats-row">
+              <div class="stat"><div class="stat-icon goal">🏁</div><div class="stat-label">Goal</div><div class="stat-value">1,500</div></div>
+              <div class="stat"><div class="stat-icon food">🍽</div><div class="stat-label">Food</div><div class="stat-value">650</div></div>
+              <div class="stat"><div class="stat-icon exercise">🔥</div><div class="stat-label">Ex</div><div class="stat-value">400</div></div>
+            </div>
+          </div>
+
+          <div class="macro-bars">
+            <div class="macro-row protein"><div class="macro-row-top"><span class="macro-label">PROTEIN</span><span class="macro-value"><strong>80</strong>/98g <span class="caption">· 18 left</span></span></div><div class="macro-bar-track"><div class="macro-bar-fill" style="width: 82%;"></div></div></div>
+            <div class="macro-row carbs"><div class="macro-row-top"><span class="macro-label">CARBS</span><span class="macro-value"><strong>84</strong>/116g <span class="caption">· 32 left</span></span></div><div class="macro-bar-track"><div class="macro-bar-fill" style="width: 72%;"></div></div></div>
+            <div class="macro-row fat"><div class="macro-row-top"><span class="macro-label">FAT</span><span class="macro-value"><strong>31</strong>/41g <span class="caption">· 10 left</span></span></div><div class="macro-bar-track"><div class="macro-bar-fill" style="width: 75%;"></div></div></div>
+            <div class="macro-row fiber"><div class="macro-row-top"><span class="macro-label">FIBER</span><span class="macro-value"><strong>14</strong>/27g <span class="caption">· 13 left</span></span></div><div class="macro-bar-track"><div class="macro-bar-fill" style="width: 52%;"></div></div></div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tab active"><span class="tab-icon">☀</span><span>Today</span></div>
+          <div class="tab"><span class="tab-icon">▦</span><span>Plan</span></div>
+          <div class="fab-slot"><button class="fab">+</button></div>
+          <div class="tab"><span class="tab-icon">▤</span><span>Recipes</span></div>
+          <div class="tab"><span class="tab-icon">∿</span><span>Progress</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+</body>
+</html>

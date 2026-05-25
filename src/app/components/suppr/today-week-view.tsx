@@ -132,7 +132,7 @@ export function TodayWeekView({
   weekTotals,
   weekAvg,
   loggedDaysInWeek,
-  weekEffectiveCalorieBudget,
+  weekEffectiveCalorieBudget: _weekEffectiveCalorieBudget,
   weekBurnTotal,
   calorieTarget,
   proteinTarget,
@@ -174,7 +174,7 @@ export function TodayWeekView({
 
   return (
     <div className="flex flex-col gap-4 mb-4">
-      <div className="rounded-card bg-card border border-border p-4">
+      <div className="rounded-card bg-card border border-border p-4 card-elevated">
         <p className="text-sm font-semibold text-foreground mb-1">Weekly calories</p>
         {/* Above-chart summary — only when at least one day was logged. */}
         {loggedDaysInWeek > 0 && (
@@ -284,7 +284,7 @@ export function TodayWeekView({
                   className={`absolute top-0 ${isLeftHalf ? "left-0" : "right-0"} rounded-md border border-border bg-card px-3 py-2 shadow-sm`}
                   style={{ minWidth: 140 }}
                 >
-                  <p className="text-[12px] font-bold text-foreground">{day.short}</p>
+                  <p className="text-[11px] font-bold text-foreground">{day.short}</p>
                   <p className="text-[11px] text-muted-foreground tabular-nums">
                     {Math.round(day.totals.calories)} / {Math.round(goal)} kcal
                   </p>
@@ -293,7 +293,7 @@ export function TodayWeekView({
                       delta === 0
                         ? "text-success"
                         : delta > 0
-                          ? "text-warning"
+                          ? "text-destructive"
                           : "text-success"
                     }`}
                   >
@@ -311,7 +311,7 @@ export function TodayWeekView({
         </p>
       </div>
 
-      <div className="rounded-card bg-card border border-border p-4">
+      <div className="rounded-card bg-card border border-border p-4 card-elevated">
         <p className="text-sm font-semibold text-foreground mb-2">Steps & water</p>
         {/* 2026-05-08 ui-critic F8 web parity: kept the legend (it disambiguates
             two stacked metrics that share columns); dropped the "Tap a day to open
@@ -364,7 +364,7 @@ export function TodayWeekView({
         </div>
       </div>
 
-      <div className="rounded-card bg-card border border-border p-4">
+      <div className="rounded-card bg-card border border-border p-4 card-elevated">
         <p className="text-sm font-semibold text-foreground mb-3">Weekly summary</p>
         <div className="flex justify-around text-center">
           <div>
@@ -386,12 +386,9 @@ export function TodayWeekView({
                 `src/lib/copy/today.ts`. UCL Oct 2025 study + r/loseit
                 data show that judgmental framing drives logging
                 avoidance; "deficit"/"surplus" reads as observation,
-                not judgment. Colour also softened — green stays for
-                under-target, but the over-target tone moves from red
-                (`text-destructive`) to amber (`text-warning`) per
-                project memory + spec §1.4. Red is reserved for truly
-                destructive actions; tracking copy never punishes. */}
-            <p className={`text-2xl font-extrabold tabular-nums ${under ? "text-success" : "text-warning"}`}>
+                not judgment. Green for under-target, red for
+                over-target — clear at-a-glance signal. */}
+            <p className={`text-2xl font-extrabold tabular-nums ${under ? "text-success" : "text-destructive"}`}>
               {diff}
             </p>
             <p className="text-[11px] text-muted-foreground">{under ? "Net deficit" : "Net surplus"}</p>
@@ -399,7 +396,7 @@ export function TodayWeekView({
         </div>
       </div>
 
-      <div className="rounded-card bg-card border border-border p-4">
+      <div className="rounded-card bg-card border border-border p-4 card-elevated">
         <p className="text-sm font-semibold text-foreground mb-1">Daily averages</p>
         <p className="text-[11px] text-muted-foreground mb-3">
           Based on {loggedDaysInWeek} day{loggedDaysInWeek !== 1 ? "s" : ""} with logged food
@@ -409,7 +406,7 @@ export function TodayWeekView({
         <MacroBarRowWeb label="FATS" current={weekAvg.fat} goal={fatTarget} colorVar="var(--macro-fat)" />
       </div>
 
-      <div className="rounded-card bg-card border border-border p-4">
+      <div className="rounded-card bg-card border border-border p-4 card-elevated">
         <p className="text-sm font-semibold text-foreground mb-2">Macro breakdown</p>
         <div className="flex flex-col gap-2 mt-2">
           {days.map((day) => (

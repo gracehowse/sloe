@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Icons } from "./ui/icons";
 import { IconBox } from "./ui/icon-box";
 import { SourceBadge } from "./suppr/source-badge";
@@ -16,7 +17,7 @@ import {
   isSeedRecipeId,
   type SeedCuisineCluster,
 } from "../../lib/recipes/seedRecipesV2.ts";
-import { RecipeHeroFallback } from "./suppr/RecipeHeroFallback";
+import { DiscoverRecipeImage } from "./suppr/discover-recipe-image";
 // Phase 4 / B3.X — trust posture sweep (D-2026-04-27-16).
 // GW-08 (audit 2026-04-28): `TrustChip` + `recipeLevelTrust` dropped
 // from the Discover hero card — see the comment on the card body.
@@ -74,6 +75,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
   onConsumedDeepLinkRecipe,
   onViewTracker,
 }: DiscoverFeedProps) {
+  const router = useRouter();
   const { discoverRecipes, nutritionTargets } = useAppData();
   const [selectedRecipe, setSelectedRecipe] = useState<RecipeCard | null>(null);
   // Shared with Library via `useLibraryDiscoverSearch` so the query
@@ -402,13 +404,13 @@ export const DiscoverFeed = memo(function DiscoverFeed({
           the canonical way in, and the breadcrumb agent ships an
           additional top-bar search. Sticky/blur/border are dropped
           so the content canvas reads continuously with the sidebar. */}
-      <header className="hidden md:block mb-4">
-        <h1 className="text-[24px] font-bold -tracking-[0.02em] text-foreground">Discover</h1>
+      <header className="hidden md:block mb-6">
+        <h1 className="text-[24px] font-extrabold -tracking-[0.03em] text-foreground" style={{ letterSpacing: "-0.4px" }}>Discover</h1>
         <p
           data-testid="discover-desktop-subtitle"
-          className="text-[13px] text-muted-foreground mt-0.5"
+          className="text-[13px] text-muted-foreground mt-1"
         >
-          {recipes.length} recipe{recipes.length === 1 ? "" : "s"} · sorted by recent
+          {`${recipes.length} recipe${recipes.length === 1 ? "" : "s"} · sorted by recent`}
         </p>
       </header>
 
@@ -420,7 +422,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
             "48,000+ recipes & foods" — aspirational catalog size, not
             the real one. Now honest until we either ship a real
             catalog count or pivot the placeholder to talk about Edamam. */}
-        <div className="mx-4 mt-4 flex items-center gap-2.5 rounded-xl border border-border bg-card px-3.5 py-3.5 md:mx-0">
+        <div className="mx-4 mt-4 flex items-center gap-2.5 rounded-2xl bg-muted/50 px-4 py-3.5 md:mx-0 focus-within:ring-2 focus-within:ring-primary/20 transition-all">
           <Icons.search className="w-4 h-4 text-muted-foreground shrink-0" />
           <input
             type="search"
@@ -457,10 +459,10 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                       setQuickFilter(label);
                     }
                   }}
-                  className={`shrink-0 px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+                  className={`shrink-0 px-4 py-2 rounded-full text-[13px] font-semibold whitespace-nowrap transition-all duration-200 ${
                     isActive
-                      ? "border-2 border-primary bg-primary/15 text-primary"
-                      : "border border-border bg-card text-foreground hover:bg-muted"
+                      ? "bg-foreground text-background shadow-sm"
+                      : "bg-card text-muted-foreground border border-border hover:text-foreground hover:bg-muted"
                   }`}
                 >
                   {label}
@@ -491,7 +493,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                   key={m.foodId}
                   type="button"
                   onClick={() => onViewTracker?.()}
-                  className="shrink-0 w-44 p-3 rounded-xl border border-border bg-card text-left hover:bg-muted transition-colors"
+                  className="shrink-0 w-44 p-3 rounded-xl border border-border bg-card text-left hover:bg-muted transition-colors card-elevated"
                   title={m.label}
                 >
                   {m.brand ? (
@@ -563,7 +565,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
             (`nonSeedRecipes`) so community content is never hidden
             behind seeds. */}
         {showClusterCarousels ? (
-          <div data-testid="discover-cluster-carousels" className="mt-4 space-y-6">
+          <div data-testid="discover-cluster-carousels" className="mt-6 space-y-10">
             {SEED_CLUSTERS.map((cluster) => {
               const items = seedRecipesByCluster.get(cluster.id) ?? [];
               if (items.length === 0) return null;
@@ -573,67 +575,62 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                   data-testid={`discover-cluster-${cluster.id}`}
                   aria-label={cluster.title}
                 >
-                  <h2 className="text-[14px] font-bold text-foreground -tracking-[0.01em] px-4 md:px-0 mb-2.5">
+                  <h2 className="text-[18px] font-extrabold text-foreground -tracking-[0.02em] px-4 md:px-0 mb-3">
                     {cluster.title}
                   </h2>
-                  <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
-                    <div className="flex gap-3 pb-2" style={{ minWidth: "max-content" }}>
-                      {items.map((recipe) => {
+                  <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory scroll-pl-4 md:scroll-pl-0">
+                    <div className="flex gap-3.5 pb-2" style={{ minWidth: "max-content" }}>
+                      {items.map((recipe, idx) => {
                         const kcal = Math.round(recipe.calories);
                         const protein = Math.round(recipe.protein);
                         const cookTime =
                           recipe.cookTime ?? (recipe.cookTimeMin ? `${recipe.cookTimeMin} min` : null);
+                        const isHero = idx === 0;
                         return (
                           <button
                             key={`cluster-${recipe.id}`}
                             type="button"
                             onClick={() => setSelectedRecipe(recipe)}
-                            className="shrink-0 w-[220px] text-left rounded-xl bg-card border border-border overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all"
+                            className={`group shrink-0 snap-start text-left rounded-2xl overflow-hidden relative cursor-pointer hover:shadow-lg hover:shadow-black/10 hover:-translate-y-0.5 transition-all duration-200 ease-out ${isHero ? "w-[280px] md:w-[320px]" : "w-[200px] md:w-[240px]"}`}
                           >
-                            <div
-                              className="relative overflow-hidden"
-                              style={{ aspectRatio: recipe.image ? "16 / 10" : "8 / 1" }}
-                            >
-                              {recipe.image ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img src={recipe.image} alt="" className="w-full h-full object-cover" />
-                              ) : (
-                                <RecipeHeroFallback id={recipe.id} title={recipe.title} iconSize={24} />
-                              )}
-                            </div>
-                            <div className="p-2.5">
-                              <p
-                                className="text-[13px] font-bold text-foreground leading-snug -tracking-[0.01em]"
-                                style={{
-                                  display: "-webkit-box",
-                                  WebkitLineClamp: 2,
-                                  WebkitBoxOrient: "vertical",
-                                  overflow: "hidden",
-                                }}
-                              >
-                                {recipe.title}
-                              </p>
-                              <div className="flex flex-wrap gap-x-2 gap-y-1 mt-1.5 text-[11px] text-muted-foreground tabular-nums">
-                                <span className="inline-flex items-center gap-1">
-                                  <Icons.calories
-                                    className="w-[11px] h-[11px]"
-                                    style={{ color: "var(--macro-calories)" }}
-                                  />
-                                  {kcal} kcal
-                                </span>
-                                <span className="inline-flex items-center gap-1">
-                                  <Icons.protein
-                                    className="w-[11px] h-[11px]"
-                                    style={{ color: "var(--macro-protein)" }}
-                                  />
-                                  {protein}g
-                                </span>
-                                {cookTime ? (
+                            <div className="relative overflow-hidden" style={{ aspectRatio: isHero ? "3 / 4" : "4 / 5" }}>
+                              <DiscoverRecipeImage
+                                id={recipe.id}
+                                title={recipe.title}
+                                image={recipe.image}
+                                iconSize={24}
+                                aspectRatio={isHero ? "3 / 4" : "4 / 5"}
+                                className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out"
+                              />
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                              <div className="absolute bottom-0 left-0 right-0 p-3.5">
+                                <p
+                                  className={`font-bold text-white leading-snug -tracking-[0.01em] drop-shadow-sm ${isHero ? "text-[15px]" : "text-[13px]"}`}
+                                  style={{
+                                    display: "-webkit-box",
+                                    WebkitLineClamp: 2,
+                                    WebkitBoxOrient: "vertical",
+                                    overflow: "hidden",
+                                  }}
+                                >
+                                  {recipe.title}
+                                </p>
+                                <div className="flex flex-wrap gap-x-2.5 gap-y-1 mt-1.5 text-[11px] text-white/80 tabular-nums">
                                   <span className="inline-flex items-center gap-1">
-                                    <Icons.time className="w-[11px] h-[11px] text-muted-foreground" />
-                                    {cookTime}
+                                    <Icons.calories className="w-3 h-3 text-white/70" />
+                                    {kcal} kcal
                                   </span>
-                                ) : null}
+                                  <span className="inline-flex items-center gap-1">
+                                    <Icons.protein className="w-3 h-3 text-white/70" />
+                                    {protein}g
+                                  </span>
+                                  {cookTime ? (
+                                    <span className="inline-flex items-center gap-1">
+                                      <Icons.time className="w-3 h-3 text-white/70" />
+                                      {cookTime}
+                                    </span>
+                                  ) : null}
+                                </div>
                               </div>
                             </div>
                           </button>
@@ -650,14 +647,11 @@ export const DiscoverFeed = memo(function DiscoverFeed({
         {displayRecipes.length > 0 ? (
           <div
             data-testid="discover-desktop-grid"
-            className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-5 mt-6"
+            className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-5 mt-8"
           >
             {displayRecipes.map((recipe) => {
               const kcal = Math.round(recipe.calories);
               const protein = Math.round(recipe.protein);
-              const carbs = Math.round(recipe.carbs);
-              const fat = Math.round(recipe.fat);
-              const fiber = Number.isFinite(recipe.fiberG) ? Math.round((recipe.fiberG ?? 0) * 10) / 10 : 0;
               const cookTime = recipe.cookTime ?? (recipe.cookTimeMin ? `${recipe.cookTimeMin} min` : null);
               return (
                 <button
@@ -665,113 +659,72 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                   type="button"
                   id={`discover-desktop-post-${recipe.id}`}
                   onClick={() => setSelectedRecipe(recipe)}
-                  className="group text-left rounded-2xl bg-card border border-border overflow-hidden cursor-pointer w-full hover:shadow-xl hover:shadow-foreground/5 hover:-translate-y-0.5 transition-all"
+                  className="group text-left rounded-2xl overflow-hidden cursor-pointer w-full relative hover:shadow-lg hover:shadow-black/10 hover:-translate-y-0.5 transition-all duration-200 ease-out"
                 >
-                  <div
-                    className="relative overflow-hidden"
-                    // P1-19 web parity (2026-04-25 ui-critic): image-less
-                    // hero collapses from 16:10 to a thin 8:1 category
-                    // band so the title + macros below carry the
-                    // visual weight. Image-bearing rows keep the
-                    // full hero.
-                    style={{ aspectRatio: recipe.image ? "16 / 10" : "8 / 1" }}
-                  >
-                    {recipe.image ? (
-                      // eslint-disable-next-line @next/next/no-img-element -- remote creator URLs; next/image domains not enumerated
-                      <img
-                        src={recipe.image}
-                        alt=""
-                        className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
-                      />
-                    ) : (
-                      <RecipeHeroFallback id={recipe.id} title={recipe.title} iconSize={28} />
-                    )}
-                    {recipe.sourcePlatform && (
-                      <div className="absolute top-2 left-2">
+                  <div className="relative overflow-hidden" style={{ aspectRatio: recipe.image ? "4 / 5" : "8 / 1" }}>
+                    <DiscoverRecipeImage
+                      id={recipe.id}
+                      title={recipe.title}
+                      image={recipe.image}
+                      iconSize={28}
+                      aspectRatio={recipe.image ? "4 / 5" : "8 / 1"}
+                      className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out"
+                    />
+                    {recipe.sourcePlatform ? (
+                      <div className="absolute top-3 left-3 z-10">
                         <SourceBadge
                           source={recipe.sourcePlatform}
                           className="text-[9px] px-1.5 py-0.5"
                         />
                       </div>
-                    )}
-                  </div>
-                  <div className="p-3.5">
-                    <p
-                      className="text-[14px] font-bold text-foreground leading-snug -tracking-[0.01em]"
-                      style={{
-                        display: "-webkit-box",
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: "vertical",
-                        overflow: "hidden",
-                      }}
-                    >
-                      {recipe.title}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground mt-1 truncate">
-                      {recipe.creatorName || ""}
-                    </p>
-                    {/* Polish (2026-04-25 visual-qa): pre-fix only kcal +
-                        protein had icons. Tester feedback: "on the discover
-                        page protein has an icon but none of the other macro
-                        nutrients do. also fibre is not shown - same rule
-                        should apply it should show whats configured in
-                        settings eg fibre etc". Now each macro gets its own
-                        icon + value pair; fibre joins when the recipe carries
-                        a non-zero value. */}
-                    <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2.5 text-[11px] text-muted-foreground tabular-nums">
-                      <span className="inline-flex items-center gap-1">
-                        <Icons.calories
-                          className="w-[11px] h-[11px]"
-                          style={{ color: "var(--macro-calories)" }}
-                        />
-                        {kcal} kcal
-                      </span>
-                      <span className="inline-flex items-center gap-1">
-                        <Icons.protein
-                          className="w-[11px] h-[11px]"
-                          style={{ color: "var(--macro-protein)" }}
-                        />
-                        {protein}g
-                      </span>
-                      <span className="inline-flex items-center gap-1">
-                        <Icons.carbs
-                          className="w-[11px] h-[11px]"
-                          style={{ color: "var(--macro-carbs)" }}
-                        />
-                        {carbs}g
-                      </span>
-                      <span className="inline-flex items-center gap-1">
-                        <Icons.fat
-                          className="w-[11px] h-[11px]"
-                          style={{ color: "var(--macro-fat)" }}
-                        />
-                        {fat}g
-                      </span>
-                      {fiber > 0 ? (
-                        <span className="inline-flex items-center gap-1">
-                          <Icons.fiber
-                            className="w-[11px] h-[11px]"
-                            style={{ color: "var(--success)" }}
-                          />
-                          {fiber}g
-                        </span>
+                    ) : null}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/15 to-transparent" />
+                    <div className="absolute bottom-0 left-0 right-0 p-4">
+                      <p
+                        className="text-[15px] font-bold text-white leading-snug -tracking-[0.01em] drop-shadow-sm"
+                        style={{
+                          display: "-webkit-box",
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: "vertical",
+                          overflow: "hidden",
+                        }}
+                      >
+                        {recipe.title}
+                      </p>
+                      {recipe.creatorName ? (
+                        <p className="text-[11px] text-white/70 mt-1 truncate">
+                          {recipe.creatorId ? (
+                            <span
+                              role="link"
+                              tabIndex={0}
+                              className="hover:text-white hover:underline cursor-pointer"
+                              onClick={(e) => { e.stopPropagation(); router.push(`/creator/${recipe.creatorId}`); }}
+                              onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); router.push(`/creator/${recipe.creatorId}`); } }}
+                            >
+                              {recipe.creatorName}
+                            </span>
+                          ) : (
+                            recipe.creatorName
+                          )}
+                        </p>
                       ) : null}
-                      {cookTime ? (
+                      <div className="flex flex-wrap gap-x-2.5 gap-y-1 mt-2 text-[11px] text-white/80 tabular-nums">
                         <span className="inline-flex items-center gap-1">
-                          <Icons.time className="w-[11px] h-[11px] text-muted-foreground" />
-                          {cookTime}
+                          <Icons.calories className="w-3 h-3 text-white/60" />
+                          {kcal} kcal
                         </span>
-                      ) : null}
+                        <span className="inline-flex items-center gap-1">
+                          <Icons.protein className="w-3 h-3 text-white/60" />
+                          {protein}g
+                        </span>
+                        {cookTime ? (
+                          <span className="inline-flex items-center gap-1">
+                            <Icons.time className="w-3 h-3 text-white/60" />
+                            {cookTime}
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
-                    {/* GW-08 (audit 2026-04-28): TrustChip removed —
-                        the source label was fabricated from
-                        `recipe.isVerified`, which is set by the
-                        importer at `apps/mobile/lib/saveImportedRecipe.ts:210`
-                        as `is_verified: (m?.calories ?? 0) > 0` (true
-                        whenever the LLM extracts non-zero calories).
-                        Restoring it requires real per-recipe
-                        match-source data — P1/P2 work in the GW-08
-                        audit. */}
                   </div>
                 </button>
               );
@@ -823,22 +776,13 @@ export const DiscoverFeed = memo(function DiscoverFeed({
         {displayRecipes.length > 0 ? (
           <div className="md:hidden">
             {/* ── Matches your day (hero cards) ── */}
-            <h3 className="text-[14px] font-bold text-foreground -tracking-[0.01em] mt-[22px] mb-2.5 px-4">
+            <h3 className="text-[13px] font-extrabold uppercase tracking-[0.04em] text-muted-foreground mt-[22px] mb-3 px-4">
               Matches your day
             </h3>
-            <div className="grid gap-3 px-4">
+            <div className="grid gap-3.5 px-4">
               {displayRecipes.slice(0, 2).map((recipe) => {
                 const kcal = Math.round(recipe.calories);
                 const protein = Math.round(recipe.protein);
-                const carbs = Math.round(recipe.carbs);
-                const fat = Math.round(recipe.fat);
-                // 2026-04-20 prototype port — primary-tinted fit-percent
-                // pill top-right of the card body. `nutritionTargets`
-                // feeds the shared helper; when targets aren't loaded
-                // yet the helper returns a synthesised neutral value so
-                // every card still shows a value.
-                // F-45 (2026-04-22): fit-percent pill removed per repeated
-                // tester feedback ("Score means nothing — remove").
                 void computeRecipeFitPercent;
                 void nutritionTargets;
                 return (
@@ -847,68 +791,60 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                     type="button"
                     id={`discover-post-${recipe.id}`}
                     onClick={() => setSelectedRecipe(recipe)}
-                    className="text-left rounded-[14px] bg-card border border-border overflow-hidden cursor-pointer w-full"
+                    className="group text-left rounded-2xl overflow-hidden cursor-pointer w-full relative hover:shadow-lg hover:shadow-black/10 hover:-translate-y-0.5 transition-all duration-200 ease-out"
                   >
-                    {/* P1-19 web parity: hero collapses to 8:1 band when
-                        no image (mobile parity, see DiscoverFeed grid above
-                        and apps/mobile/app/(tabs)/discover.tsx). */}
-                    <div
-                      className="flex items-center justify-center relative overflow-hidden"
-                      style={{ aspectRatio: recipe.image ? "16 / 10" : "8 / 1" }}
-                    >
-                      {recipe.image ? (
-                        // eslint-disable-next-line @next/next/no-img-element -- remote creator URLs; next/image domains not enumerated
-                        <img src={recipe.image} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        <RecipeHeroFallback id={recipe.id} title={recipe.title} iconSize={28} />
-                      )}
-                      {recipe.sourcePlatform && (
-                        <div className="absolute top-2 left-2">
+                    <div className="relative overflow-hidden" style={{ aspectRatio: recipe.image ? "3 / 4" : "8 / 1" }}>
+                      <DiscoverRecipeImage
+                        id={recipe.id}
+                        title={recipe.title}
+                        image={recipe.image}
+                        iconSize={28}
+                        aspectRatio={recipe.image ? "3 / 4" : "8 / 1"}
+                        className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out"
+                      />
+                      {recipe.sourcePlatform ? (
+                        <div className="absolute top-3 left-3 z-10">
                           <SourceBadge source={recipe.sourcePlatform} className="text-[9px] px-1.5 py-0.5" />
                         </div>
-                      )}
-                    </div>
-                    <div className="p-3.5 relative">
-                      {/* F-45: fit-percent pill removed — see
-                          mobile discover.tsx for the matching change. */}
-                      <p className="text-[15px] font-bold text-foreground leading-tight -tracking-[0.01em]" style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                        {recipe.title}
-                      </p>
-                      <p className="text-[12px] text-muted-foreground mt-1 truncate">
-                        {recipe.creatorName || ""}
-                      </p>
-                      {/* Polish (2026-04-25 visual-qa): mobile-web hero now
-                          renders one icon per macro (matches desktop grid
-                          and mobile native). Fibre joins when present. */}
-                      <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2.5">
-                        <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground tabular-nums">
-                          <Icons.calories className="w-[11px] h-[11px]" style={{ color: "var(--macro-calories)" }} />
-                          {kcal} kcal
-                        </span>
-                        <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground tabular-nums">
-                          <Icons.protein className="w-[11px] h-[11px]" style={{ color: "var(--macro-protein)" }} />
-                          {protein}g
-                        </span>
-                        <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground tabular-nums">
-                          <Icons.carbs className="w-[11px] h-[11px]" style={{ color: "var(--macro-carbs)" }} />
-                          {carbs}g
-                        </span>
-                        <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground tabular-nums">
-                          <Icons.fat className="w-[11px] h-[11px]" style={{ color: "var(--macro-fat)" }} />
-                          {fat}g
-                        </span>
-                        {Number.isFinite(recipe.fiberG) && (recipe.fiberG ?? 0) > 0 ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground tabular-nums">
-                            <Icons.fiber className="w-[11px] h-[11px]" style={{ color: "var(--success)" }} />
-                            {Math.round((recipe.fiberG ?? 0) * 10) / 10}g
-                          </span>
+                      ) : null}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
+                      <div className="absolute bottom-0 left-0 right-0 p-4">
+                        <p className="text-[18px] font-bold text-white leading-tight -tracking-[0.01em] drop-shadow-sm" style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                          {recipe.title}
+                        </p>
+                        {recipe.creatorName ? (
+                          <p className="text-[11px] text-white/70 mt-1 truncate">
+                            {recipe.creatorId ? (
+                              <span
+                                role="link"
+                                tabIndex={0}
+                                className="hover:text-white hover:underline cursor-pointer"
+                                onClick={(e) => { e.stopPropagation(); router.push(`/creator/${recipe.creatorId}`); }}
+                                onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); router.push(`/creator/${recipe.creatorId}`); } }}
+                              >
+                                {recipe.creatorName}
+                              </span>
+                            ) : (
+                              recipe.creatorName
+                            )}
+                          </p>
                         ) : null}
-                        {recipe.cookTime ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-                            <Icons.time className="w-[11px] h-[11px] text-muted-foreground" />
-                            {recipe.cookTime}
+                        <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
+                          <span className="inline-flex items-center gap-1 text-[11px] text-white/80 tabular-nums">
+                            <Icons.calories className="w-3 h-3 text-white/60" />
+                            {kcal} kcal
                           </span>
-                        ) : null}
+                          <span className="inline-flex items-center gap-1 text-[11px] text-white/80 tabular-nums">
+                            <Icons.protein className="w-3 h-3 text-white/60" />
+                            {protein}g
+                          </span>
+                          {recipe.cookTime ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] text-white/80">
+                              <Icons.time className="w-3 h-3 text-white/60" />
+                              {recipe.cookTime}
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
                     </div>
                   </button>
@@ -919,10 +855,10 @@ export const DiscoverFeed = memo(function DiscoverFeed({
             {/* ── More ideas (compact list) — only when there's a 3rd+ */}
             {displayRecipes.length > 2 ? (
               <>
-                <h3 className="text-[14px] font-bold text-foreground -tracking-[0.01em] mt-[22px] mb-2.5 px-4">
+                <h3 className="text-[13px] font-extrabold uppercase tracking-[0.04em] text-muted-foreground mt-[28px] mb-3 px-4">
                   More ideas
                 </h3>
-                <div className="mx-4 rounded-xl border border-border bg-card overflow-hidden">
+                <div className="mx-4 rounded-xl border border-border bg-card overflow-hidden card-elevated">
                   {displayRecipes.slice(2).map((recipe, idx) => {
                     const kcal = Math.round(recipe.calories);
                     const protein = Math.round(recipe.protein);
@@ -935,20 +871,32 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                         onClick={() => setSelectedRecipe(recipe)}
                         className={`w-full flex items-center gap-3 p-3 text-left hover:bg-muted/40 transition-colors ${idx > 0 ? "border-t border-border" : ""}`}
                       >
-                        <span className="w-10 h-10 rounded-lg bg-muted text-muted-foreground inline-flex items-center justify-center shrink-0 overflow-hidden">
-                          {recipe.image ? (
-                            // eslint-disable-next-line @next/next/no-img-element -- remote creator URLs; next/image domains not enumerated
-                            <img src={recipe.image} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            <Icons.chef className="w-[18px] h-[18px]" />
-                          )}
-                        </span>
+                        <DiscoverRecipeImage
+                          id={recipe.id}
+                          title={recipe.title}
+                          image={recipe.image}
+                          iconSize={18}
+                          variant="thumb"
+                          className="w-full h-full object-cover"
+                        />
                         <span className="flex-1 min-w-0">
                           <span className="block text-[13px] font-semibold text-foreground truncate">
                             {recipe.title}
                           </span>
                           <span className="block text-[11px] text-muted-foreground truncate">
-                            {recipe.creatorName || ""}
+                            {recipe.creatorId ? (
+                              <span
+                                role="link"
+                                tabIndex={0}
+                                className="hover:text-primary hover:underline cursor-pointer"
+                                onClick={(e) => { e.stopPropagation(); router.push(`/creator/${recipe.creatorId}`); }}
+                                onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); router.push(`/creator/${recipe.creatorId}`); } }}
+                              >
+                                {recipe.creatorName}
+                              </span>
+                            ) : (
+                              recipe.creatorName || ""
+                            )}
                             {recipe.cookTime ? ` · ${recipe.cookTime}` : ""}
                           </span>
                         </span>
@@ -964,9 +912,12 @@ export const DiscoverFeed = memo(function DiscoverFeed({
             ) : null}
           </div>
         ) : showClusterCarousels ? null : (
-          <div className="mt-6 mx-4 rounded-2xl border border-dashed border-border bg-card/60 p-8 text-center md:mx-0">
-            <p className="text-foreground font-medium mb-2">Nothing to show</p>
-            <p className="text-sm text-muted-foreground mb-4">
+          <div className="mt-6 mx-4 rounded-2xl border border-dashed border-border bg-card/60 px-6 py-10 text-center md:mx-0">
+            <div className="mx-auto mb-3 grid h-10 w-10 place-items-center rounded-full bg-muted">
+              <Icons.discover className="h-5 w-5 text-muted-foreground" aria-hidden />
+            </div>
+            <p className="text-sm font-medium text-foreground mb-1">Nothing to show</p>
+            <p className="text-[13px] text-muted-foreground mb-4 max-w-sm mx-auto">
               {discoverRecipes.length === 0
                 ? "Nothing in the feed yet. Check your connection, then pull to refresh. If you're setting up the app, publish a recipe with an author so community posts can appear here."
                 : feedScope === "following"
@@ -984,9 +935,9 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                   setActiveCollectionId(null);
                   setFeedScope("forYou");
                 }}
-                className="text-sm font-semibold text-primary"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
               >
-                Reset
+                Reset filters
               </button>
             ) : null}
           </div>
@@ -998,7 +949,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
             Import moved to a permanent first card above the feed
             (2026-05-12 audit, mirror of mobile). */}
         <div className="md:hidden">
-        <h3 className="text-[14px] font-bold text-foreground -tracking-[0.01em] mt-[22px] mb-2.5 px-4">
+        <h3 className="text-[13px] font-bold text-foreground -tracking-[0.01em] mt-[22px] mb-2.5 px-4">
           My Library
         </h3>
 
@@ -1015,7 +966,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
             window.dispatchEvent(new PopStateEvent("popstate"));
           }}
           onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.click(); }}
-          className="mx-4 mt-3 rounded-xl border border-border bg-card p-3.5 flex items-center gap-3 cursor-pointer hover:bg-muted/40 transition-colors"
+          className="mx-4 mt-3 rounded-xl border border-border bg-card p-3.5 flex items-center gap-3 cursor-pointer hover:bg-muted/40 transition-colors card-elevated"
         >
           <IconBox size="lg" tone="success">
             <Icons.save />

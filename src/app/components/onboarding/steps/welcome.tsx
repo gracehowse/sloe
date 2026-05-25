@@ -28,7 +28,7 @@ export function WelcomeStep() {
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse at 30% 20%, color-mix(in oklab, var(--primary) 28%, transparent), transparent 50%)",
+            "radial-gradient(ellipse at 30% 20%, color-mix(in oklab, var(--success) 22%, transparent), transparent 50%)",
         }}
       />
       <div
@@ -64,20 +64,13 @@ export function WelcomeStep() {
             Suppr Club.
           </h1>
           <p
-            className="m-0 mb-7 md:mb-9 max-w-[520px] text-[15px] md:text-[17px] leading-[1.55] text-muted-foreground"
+            className="m-0 mb-7 md:mb-9 max-w-[520px] text-[15px] md:text-[18px] leading-[1.55] text-muted-foreground"
           >
             Eat well. Cook what you want. Know what&apos;s in it. Import recipes
             from the sites you already use — Suppr breaks down the macros and
             calibrates targets to you.
           </p>
 
-          {/* 2026-05-14 (premium-bar audit B1 #1, web parity): single
-              proof line directly above the primary CTA. Calm, no
-              metrics, no shaming — anchors the jump without
-              overpromising. */}
-          <p className="text-xs text-muted-foreground text-center mb-2 sm:text-left">
-            Join thousands tracking smarter
-          </p>
           <div className="mb-8 md:mb-10 flex flex-col sm:flex-row gap-3 md:gap-3.5">
             <Button
               size="lg"
@@ -211,7 +204,7 @@ function WebWelcomeVisual() {
                 left
               </div>
               <div
-                className="text-[26px] font-extrabold leading-none tabular-nums text-foreground"
+                className="text-[24px] font-extrabold leading-none tabular-nums text-foreground"
                 style={{ letterSpacing: "-0.03em" }}
               >
                 380

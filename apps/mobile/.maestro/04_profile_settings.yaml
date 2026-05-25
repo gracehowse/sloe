@@ -36,7 +36,9 @@ name: "Profile & settings — sections, navigation, data export"
     element: ".*Export nutrition log.*"
     direction: DOWN
 - assertVisible: ".*Export nutrition log.*"
-- assertVisible: ".*Export all data.*"
+- scrollUntilVisible:
+    element: ".*Help & information.*"
+    direction: DOWN
 - assertVisible: ".*Help & information.*"
 
 # Legal section

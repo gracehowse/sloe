@@ -14,6 +14,7 @@ import {
   shoppingScopeRealtimeFilter,
   type ShoppingScope,
 } from "../../lib/household/shoppingScope.ts";
+import { normalizeShoppingIngredientRow } from "../../lib/planning/normalizeShoppingIngredientRow.ts";
 
 type ShoppingItemRow = {
   id: string;
@@ -33,11 +34,16 @@ type ShoppingItemRow = {
 };
 
 function rowToShoppingItem(row: ShoppingItemRow): ShoppingItem {
-  return {
-    id: row.id,
+  const normalized = normalizeShoppingIngredientRow({
     name: row.name,
     amount: row.amount,
     unit: row.unit,
+  });
+  return {
+    id: row.id,
+    name: normalized.name,
+    amount: normalized.amount,
+    unit: normalized.unit,
     category: row.category,
     checked: row.checked,
     from: row.source,

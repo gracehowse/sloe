@@ -32,7 +32,7 @@ const variantColors: Record<BadgeVariant, string> = {
   warn: Accent.warning,
   pro: Accent.primary,
   // AI — violet/purple. Mirrors web --chart-5.
-  ai: "#8b5cf6",
+  ai: "#9679D9",
   added: Accent.success,
   override: Accent.warning,
   leftover: Accent.warning,

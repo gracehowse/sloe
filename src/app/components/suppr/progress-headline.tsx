@@ -55,7 +55,7 @@ export function ProgressHeadline({
         .join(" ")}
       aria-label="This week"
     >
-      <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-primary">
+      <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-primary">
         THIS WEEK
       </p>
       <h2
@@ -64,7 +64,7 @@ export function ProgressHeadline({
       >
         {commentary.headline}
       </h2>
-      <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
+      <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
         {segments.map((seg, i) =>
           seg.highlight ? (
             <strong

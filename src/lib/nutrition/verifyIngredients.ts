@@ -318,7 +318,9 @@ const NAME_ALIASES: [RegExp, string][] = [
   // rewritten to firm (firm ≈ 145 kcal/100 g vs silken ≈ 55 kcal/100 g).
   [/\bsilken tofu\b/i, "tofu silken"],
   [/^(?!.*\bsilken\b)tofu$/i, "tofu firm raw"],
-  // Poultry cuts
+  // Poultry — cooked before raw (F-158 / ENG-564)
+  [/\bchicken\b.*\bcooked\b/i, "chicken breast meat cooked roasted"],
+  [/\bcooked\b.*\bchicken\b/i, "chicken breast meat cooked roasted"],
   [/^chicken breasts?$/i, "chicken breast meat raw"],
   [/^chicken thighs?$/i, "chicken thigh meat raw"],
   [/^chicken drumsticks?$/i, "chicken drumstick meat raw"],
@@ -629,7 +631,19 @@ export async function verifyIngredients(opts: {
                   return desc.includes(unit);
                 });
                 if (portionMatch?.gramWeight && portionMatch.gramWeight > 0) {
-                  effectiveGrams = portionMatch.gramWeight * amt;
+                  const portionGrams = portionMatch.gramWeight * amt;
+                  const wantsCooked =
+                    QUERY_COOKED_METHOD.test(usdaQuery) ||
+                    (QUERY_COOKED_GENERIC.test(usdaQuery) && !QUERY_RAW.test(usdaQuery));
+                  if (wantsCooked && candidateLooksRawOnly(hit.description)) {
+                    effectiveGrams = measureToGrams({
+                      name: resolved.name,
+                      amount: amt,
+                      unit: resolved.unit || "",
+                    });
+                  } else {
+                    effectiveGrams = portionGrams;
+                  }
                 }
               }
 

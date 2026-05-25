@@ -70,12 +70,11 @@ const baseProps = {
 };
 
 describe("TodayDateHeader — inline StreakPip (DC8 polish 2026-05-14)", () => {
-  it("renders the inline streak pip when streakDays >= 2 on day+today", () => {
-    const { getByLabelText } = render(
+  it("suppresses the inline streak pip on cold-open Today (2026-05-22 A3)", () => {
+    const { queryByLabelText } = render(
       <TodayDateHeader {...baseProps} streakDays={5} onStreakPress={() => {}} />,
     );
-    // StreakPip a11y label is "{n}-day logging streak — tap for weekly recap".
-    expect(getByLabelText(/5-day logging streak/i)).toBeTruthy();
+    expect(queryByLabelText(/logging streak/i)).toBeNull();
   });
 
   it("suppresses the pip when streakDays < 2 (day-0 / day-1 carve-out)", () => {
@@ -128,5 +127,39 @@ describe("TodayDateHeader — inline StreakPip (DC8 polish 2026-05-14)", () => {
     );
     expect(getByText(/Every expert was once a beginner/i)).toBeTruthy();
     expect(queryByLabelText(/logging streak/i)).toBeNull();
+  });
+});
+
+describe("TodayDateHeader — calm date nav (hideDayStrip, ENG-584)", () => {
+  it("shows choose-date on title when day strip hidden (calm date nav)", () => {
+    const onOpenCalendar = vi.fn();
+    const { getByLabelText, queryByLabelText } = render(
+      <TodayDateHeader
+        {...baseProps}
+        hideDayStrip
+        onOpenCalendar={onOpenCalendar}
+      />,
+    );
+    expect(queryByLabelText("Open calendar")).toBeNull();
+    const chooseDate = getByLabelText("Choose date");
+    expect(chooseDate).toBeTruthy();
+    chooseDate.props.onPress?.();
+    expect(onOpenCalendar).toHaveBeenCalled();
+  });
+
+  it("shows Jump to today when viewing a past day with strip hidden", () => {
+    const onTapTitle = vi.fn();
+    const { getByLabelText } = render(
+      <TodayDateHeader
+        {...baseProps}
+        hideDayStrip
+        isToday={false}
+        onTapTitle={onTapTitle}
+      />,
+    );
+    const todayBtn = getByLabelText("Jump to today");
+    expect(todayBtn).toBeTruthy();
+    todayBtn.props.onPress?.();
+    expect(onTapTitle).toHaveBeenCalled();
   });
 });

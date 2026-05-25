@@ -3,23 +3,8 @@
  * Verifies that private/reserved IPs are blocked.
  */
 import { describe, it, expect } from "vitest";
-
-// Re-implement the isPrivateHost function for testing (same logic as route.ts)
-function isPrivateHost(hostname: string): boolean {
-  const h = hostname.toLowerCase();
-  if (h === "localhost" || h === "127.0.0.1" || h === "[::1]" || h === "::1") return true;
-  if (/^10\./.test(h)) return true;
-  if (/^172\.(1[6-9]|2\d|3[01])\./.test(h)) return true;
-  if (/^192\.168\./.test(h)) return true;
-  if (/^169\.254\./.test(h)) return true;
-  if (h.startsWith("fd") || h.startsWith("fe80") || h.startsWith("fc")) return true;
-  if (h === "metadata.google.internal" || h === "169.254.169.254") return true;
-  if (/^::ffff:/.test(h)) {
-    const mapped = h.replace("::ffff:", "");
-    if (/^10\./.test(mapped) || /^172\.(1[6-9]|2\d|3[01])\./.test(mapped) || /^192\.168\./.test(mapped) || /^169\.254\./.test(mapped) || mapped === "127.0.0.1") return true;
-  }
-  return false;
-}
+// Import the REAL guard (no re-implementation — the prior copy could drift; ENG-682).
+import { isPrivateHost, isAllowedUrl } from "@/lib/recipe-import/ssrfGuard";
 
 describe("SSRF isPrivateHost", () => {
   it("blocks localhost", () => {
@@ -77,5 +62,30 @@ describe("SSRF isPrivateHost", () => {
     expect(isPrivateHost("172.16.0.1")).toBe(true);
     expect(isPrivateHost("172.31.0.1")).toBe(true);
     expect(isPrivateHost("172.32.0.1")).toBe(false);
+  });
+});
+
+describe("SSRF isAllowedUrl", () => {
+  it("allows public http(s) URLs", () => {
+    expect(isAllowedUrl("https://halfbakedharvest.com/recipe")).toBe(true);
+    expect(isAllowedUrl("http://example.com")).toBe(true);
+  });
+
+  it("rejects private / metadata hosts", () => {
+    expect(isAllowedUrl("http://169.254.169.254/latest/meta-data/")).toBe(false);
+    expect(isAllowedUrl("http://127.0.0.1:8080/")).toBe(false);
+    expect(isAllowedUrl("https://192.168.1.1/")).toBe(false);
+    expect(isAllowedUrl("http://metadata.google.internal/")).toBe(false);
+  });
+
+  it("rejects non-http(s) schemes", () => {
+    expect(isAllowedUrl("ftp://example.com/x")).toBe(false);
+    expect(isAllowedUrl("file:///etc/passwd")).toBe(false);
+    expect(isAllowedUrl("gopher://example.com")).toBe(false);
+  });
+
+  it("rejects malformed URLs", () => {
+    expect(isAllowedUrl("not a url")).toBe(false);
+    expect(isAllowedUrl("")).toBe(false);
   });
 });

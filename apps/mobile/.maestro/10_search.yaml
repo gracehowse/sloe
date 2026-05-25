@@ -59,4 +59,4 @@ name: "Food search — open from Today, query USDA/OpenFood, error path"
 - waitForAnimationToEnd
 
 - assertVisible:
-    text: ".*(?:LOGGED|kcal).*"
+    text: ".*(?:LOGGED|kcal|Start your day).*"

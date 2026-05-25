@@ -17,23 +17,35 @@ export const metadata: Metadata = {
  * parity tests catch drift.
  */
 
-const STATUS_COPY: Record<RoadmapStatus, { label: string; className: string; dotClass: string }> = {
+const STATUS_COPY: Record<RoadmapStatus, {
+  label: string;
+  className: string;
+  dotClass: string;
+  rowBg: string;
+  borderAccent: string;
+}> = {
   shipped: {
     label: "Shipped",
     className:
       "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
     dotClass: "bg-emerald-500 dark:bg-emerald-400",
+    rowBg: "bg-emerald-50/40 dark:bg-emerald-950/20",
+    borderAccent: "border-l-emerald-500 dark:border-l-emerald-400",
   },
   building: {
     label: "Building",
     className:
       "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
     dotClass: "bg-amber-500 dark:bg-amber-400",
+    rowBg: "bg-amber-50/40 dark:bg-amber-950/20",
+    borderAccent: "border-l-amber-500 dark:border-l-amber-400",
   },
   planned: {
     label: "Planned",
     className: "bg-muted text-muted-foreground",
     dotClass: "bg-slate-400 dark:bg-slate-500",
+    rowBg: "",
+    borderAccent: "border-l-transparent",
   },
 };
 
@@ -118,22 +130,18 @@ export default function RoadmapPage() {
                 <ul className="mt-3 rounded-2xl border border-border bg-card overflow-hidden divide-y divide-border text-sm leading-relaxed sm:text-base">
                   {bucket.items.map((item) => {
                     const status = STATUS_COPY[item.status];
-                    // 2026-05-12 (premium-bar audit Group A Roadmap #3):
-                    // shipped rows link to /whats-new so the user can
-                    // see the actual release notes for the item.
-                    // Building / planned rows stay non-interactive
-                    // (no destination to send the user to yet).
+                    const rowClasses = `flex items-center gap-3 px-4 py-2.5 sm:py-3 border-l-[3px] ${status.borderAccent} ${status.rowBg}`;
                     const Wrapper = status.label === "Shipped"
                       ? (props: React.PropsWithChildren) => (
                           <Link
                             href="/whats-new"
-                            className="flex items-center gap-3 px-4 py-2.5 sm:py-3 hover:bg-accent/50 transition-colors"
+                            className={`${rowClasses} hover:bg-accent/50 transition-colors`}
                           >
                             {props.children}
                           </Link>
                         )
                       : (props: React.PropsWithChildren) => (
-                          <div className="flex items-center gap-3 px-4 py-2.5 sm:py-3">
+                          <div className={rowClasses}>
                             {props.children}
                           </div>
                         );

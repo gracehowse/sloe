@@ -122,7 +122,7 @@ describe("Settings — page header (P1-5)", () => {
     // a plain text-foreground heading.
     expect(SRC).not.toMatch(/<h1[^>]*bg-clip-text/);
     expect(SRC).not.toMatch(/<h1[^>]*text-transparent/);
-    expect(SRC).toMatch(/<h1 className="text-foreground">Settings<\/h1>/);
+    expect(SRC).toMatch(/<h1 className="text-foreground font-bold tracking-tight"[^>]*>Settings<\/h1>/);
   });
 
   it("page-header cog uses a neutral muted background, not bg-primary/30", () => {

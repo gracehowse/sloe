@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { cn } from "./utils";
+import { formatSidebarBadge } from "../../../lib/navigation/sidebarBadge.ts";
 
 /**
  * `<SubTabPill>` — sub-tab navigation inside a primary tab group.
@@ -81,18 +82,23 @@ export function SubTabPill<TId extends string>({
               )}
             >
               <span>{item.label}</span>
-              {item.badge !== undefined && item.badge > 0 ? (
-                <span
-                  className={cn(
-                    "inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1.5 text-[10px] font-bold",
-                    active
-                      ? "bg-foreground text-background"
-                      : "bg-border text-muted-foreground",
-                  )}
-                >
-                  {item.badge > 999 ? "999+" : item.badge}
-                </span>
-              ) : null}
+              {item.badge !== undefined
+                ? (() => {
+                    const b = formatSidebarBadge(item.badge);
+                    return b.show ? (
+                      <span
+                        className={cn(
+                          "inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1.5 text-[10px] font-bold",
+                          active
+                            ? "bg-foreground text-background"
+                            : "bg-border text-muted-foreground",
+                        )}
+                      >
+                        {b.label}
+                      </span>
+                    ) : null;
+                  })()
+                : null}
             </button>
           );
         })}

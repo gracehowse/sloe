@@ -10,6 +10,7 @@ executionOrder:
     - 02_today_screen.yaml
     - 33_meal_journal.yaml
     - 03_meal_plan.yaml
+    - 35_plan_import.yaml
     - 04_profile_settings.yaml
     - 31_settings_hub.yaml
     - 34_profile_targets.yaml

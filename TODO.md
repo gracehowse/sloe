@@ -309,7 +309,7 @@ Specs ready (designer brief in session memory + `project_progress_direction.md`)
 
 ### IP P1/P2
 
-- [ ] **[E] OFF-1 OFF ODbL — implement Option A (cache-only).** Per [docs/decisions/2026-04-19-off-odbl-architecture.md](docs/decisions/2026-04-19-off-odbl-architecture.md). Treat OFF as pass-through: cache at edge (Upstash Redis, short TTL); snapshot macros to private `meal`/`journal` rows on log; do NOT write to `foods`/`user_foods`. Touches `src/lib/openFoodFacts/fetchProductByBarcode.ts`, `src/lib/openFoodFacts/searchProducts.ts`, `src/context/AppDataContext.tsx`, migration `20260408170000_food_db_unification.sql`. **1–3 eng-days** + prune migration. Trigger: before `foods` table growth argues "substantial part" of OFF.
+- [ ] **[E] OFF-1 OFF ODbL — implement Option A (cache-only).** Linear: [ENG-661](https://linear.app/suppr/issue/ENG-661). Per [docs/decisions/2026-04-19-off-odbl-architecture.md](docs/decisions/2026-04-19-off-odbl-architecture.md). Treat OFF as pass-through: cache at edge (Upstash Redis, short TTL); snapshot macros to private `meal`/`journal` rows on log; do NOT write to `foods`/`user_foods`. Touches `src/lib/openFoodFacts/fetchProductByBarcode.ts`, `src/lib/openFoodFacts/searchProducts.ts`, `src/context/AppDataContext.tsx`, migration `20260408170000_food_db_unification.sql`. **1–3 eng-days** + prune migration. Trigger: before `foods` table growth argues "substantial part" of OFF.
 - [ ] **[G] FS-1 FatSecret caching — decide tier.** Confirmed 2026-04-19: `src/app/components/RecipeUpload.tsx:909-919` + `verifyIngredients.ts:706` write full macros alongside `fatsecret_food_id`. Options: (A) confirm Platform Premier tier, document in `docs/environment.md` + `/licences`, no code change; (B) rework to persist only `fatsecret_food_id`, re-fetch macros on display (1 eng-day).
 - [ ] **[E] PRIV-1 Cookie/tracking-tech disclosure banner** on first web visit (PostHog cookies, Sentry replay). GDPR/UK PECR expects banner/layered consent, not just privacy-policy mention.
 - [ ] **[G] PRIV-2 Publish international-transfer safeguards** (SCCs, UK IDTA) on request. Needs internal record of signed DPAs with OpenAI, Stripe, Upstash, RevenueCat, Expo, Edamam, FatSecret.
@@ -325,6 +325,7 @@ Specs ready (designer brief in session memory + `project_progress_direction.md`)
 
 ### Cleanup / follow-ups
 
+- [ ] **[G] Creator marketplace — paid recipes & meal plans.** Linear: [ENG-666](https://linear.app/suppr/issue/ENG-666/creator-marketplace-paid-recipes-and-meal-plans-backlog). Trainers/creators monetise through Suppr (paid Library saves / paid plan templates). Likely require a **minimum free quota** (recipes + sample plan days) so discovery isn’t entirely paywalled — or alternate incentives (rev-share, tips, coaching link-out). **Backlog only** — see [docs/decisions/2026-05-24-creator-monetization-backlog.md](docs/decisions/2026-05-24-creator-monetization-backlog.md). Surfaces in What's new as Coming soon; no eng until product shape locked (`monetisation-architect`, `legal-reviewer`).
 - [ ] **[E]** TODO comment at `apps/mobile/app/(tabs)/progress.tsx:628-632` references missing delivery listener (`addNotificationReceivedListener`). T5 wired the tap listener; delivery-rate listener still open. Scope first via `planner`.
 - [ ] **[SP code-quality]** Mobile Trend tile — adopt `computeWeightTrendCopy` helper (currently uses own 90-day code path).
 - [ ] **[SP qa-lead]** Mobile Steps card RNTL test — lock 3 sync states (`pending`/`success`/`failed`). testIDs already exposed.
@@ -332,9 +333,9 @@ Specs ready (designer brief in session memory + `project_progress_direction.md`)
 - [ ] **[SP code-quality]** `weight-tracker.tsx` consolidation — replace inline `kgToLb`/`fmtW` (lines 113-118) with shared `formatWeightForUnit`.
 - [ ] **[E]** Pre-existing failing test `tests/unit/analyticsEvents.test.ts` — `from=meal_planner` regex vs `app/pricing/page.tsx`. Not this session's work.
 - [ ] **[E]** `tests/unit/weeklyRecapPushRoute.test.ts:194` expects `{ deepLink, kind }`; prod emits `{ deepLink, kind, weekKey }`. `product-lead` call on whether deep-link carries week key.
-- [ ] **[E]** `saveVerifiedIngredients` atomicity (`apps/mobile/lib/verifyRecipe.ts:~1005`) — writes totals first then loops per-ingredient; failure = inconsistent state. Needs Supabase RPC wrapping both in a transaction. Review: `data-integrity`.
+- [ ] **[E]** `saveVerifiedIngredients` atomicity (`apps/mobile/lib/verifyRecipe.ts:~1005`) — Linear: [ENG-662](https://linear.app/suppr/issue/ENG-662). Writes totals first then loops per-ingredient; failure = inconsistent state. Needs Supabase RPC wrapping both in a transaction. Review: `data-integrity`.
 - [ ] **[E]** Residual `catch {}` at `apps/mobile/lib/verifyRecipe.ts:843` + others — route to Sentry.
-- [ ] **[SP ui-product-designer]** Onboarding divergence — web 4 steps vs mobile 11 steps (`app/onboarding/page.tsx#L270` vs `apps/mobile/app/onboarding.tsx#L71`). Needs spec first.
+- [ ] **[SP ui-product-designer]** Onboarding divergence — Linear: [ENG-663](https://linear.app/suppr/issue/ENG-663). Web 4 steps vs mobile 11 steps (`app/onboarding/page.tsx#L270` vs `apps/mobile/app/onboarding.tsx#L71`). Needs spec first.
 - [ ] **[E]** Household feature regressions — enumerate edge cases + regression tests before marketing.
 - [ ] **[E]** Food diary CSV export — low priority, strong trust signal.
 - [ ] **[SP product-lead]** First community surface — pick one loop (ratings vs leaderboard vs follows), not all three.

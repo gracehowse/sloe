@@ -183,6 +183,10 @@ const CHANGELOGS: ChangelogEntry[] = [
         kind: "fixed",
         text: "Move-meal sheet now shows the source meal (\"From: Breakfast · Thu · Tofu poke bowl\") so you can confirm which row you grabbed.",
       },
+      {
+        kind: "coming_soon",
+        text: "Creators and coaches will sell recipes and meal plans in Suppr — with free samples so you can try before you buy.",
+      },
     ],
   },
   // Placeholder for the next build. Kept deliberately empty so a

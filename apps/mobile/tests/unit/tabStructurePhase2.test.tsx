@@ -106,21 +106,21 @@ describe("YouSubTabHeader (deprecated 2026-05-19 — Progress is a tab; Settings
 });
 
 describe("PlanSubTabHeader", () => {
-  it("renders 'This week' and 'Shopping' pills in canonical order", () => {
+  it("renders 'This week' and 'Shopping list' pills in canonical order", () => {
     const onChange = vi.fn();
     const { getByLabelText } = render(
       <PlanSubTabHeader value="plan" onChange={onChange} />,
     );
     expect(getByLabelText("This week")).toBeTruthy();
-    expect(getByLabelText("Shopping")).toBeTruthy();
+    expect(getByLabelText("Shopping list")).toBeTruthy();
   });
 
-  it("calls onChange('shopping') when Shopping is tapped from Plan", () => {
+  it("calls onChange('shopping') when Shopping list is tapped from Plan", () => {
     const onChange = vi.fn();
     const { getByLabelText } = render(
       <PlanSubTabHeader value="plan" onChange={onChange} />,
     );
-    fireEvent.press(getByLabelText("Shopping"));
+    fireEvent.press(getByLabelText("Shopping list"));
     expect(onChange).toHaveBeenCalledWith("shopping");
   });
 

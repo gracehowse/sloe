@@ -15,7 +15,7 @@ import { useRouter } from "expo-router";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 
 type AppNotifRow = {
   id: string;
@@ -77,7 +77,7 @@ export default function NotificationsScreen() {
       StyleSheet.create({
         container: { flex: 1, backgroundColor: colors.background, paddingHorizontal: Spacing.xl, gap: Spacing.md },
         header: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12 },
-        title: { fontSize: 22, fontWeight: "700", color: colors.text },
+        title: { ...Type.title, color: colors.text },
         sub: { color: colors.textSecondary, marginTop: 4, fontSize: 14 },
         center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24, gap: 12 },
         err: { color: "#f87171", textAlign: "center", fontSize: 15 },

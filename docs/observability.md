@@ -30,6 +30,18 @@ Create these once the project receives production traffic:
 
 ## Sentry (errors)
 
+### Sentry MCP in Cursor (optional)
+
+[Sentry MCP](https://docs.sentry.io/ai/mcp/) lets the IDE pull issue details and traces via OAuth against your Sentry account. Add a hosted server in **Cursor Settings → MCP** (user config file `~/.cursor/mcp.json` on macOS):
+
+```json
+"sentry": {
+  "url": "https://mcp.sentry.dev/mcp"
+}
+```
+
+After saving, complete the OAuth prompt once. Scope to a single org or project so tools stay constrained: use `https://mcp.sentry.dev/mcp/<organization>` or `https://mcp.sentry.dev/mcp/<organization>/<project>` ([path constraints](https://docs.sentry.io/ai/mcp/)). Align `<organization>` / `<project>` with the slugs shown in `SENTRY_ORG` / `SENTRY_PROJECT` in deployment env when applicable.
+
 ### Verify in Vercel (checklist)
 
 1. In the Vercel project → **Settings → Environment Variables**, set for **Production** and **Preview** (as needed):

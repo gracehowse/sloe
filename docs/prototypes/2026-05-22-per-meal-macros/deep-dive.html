@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Per-meal macros — tap-to-deep-dive proposals (2026-05-22)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<style>
+  :root {
+    --background: #fbfaf6;
+    --card: #ffffff;
+    --foreground: #1a1714;
+    --foreground-secondary: #5b554b;
+    --foreground-tertiary: #8a8377;
+    --border: #ebe7dc;
+    --ring-track: #d4cfc1;
+
+    --accent-primary: #5b6ee8;
+    --accent-success: #22a860;
+    --accent-orange: #f97316;
+
+    --macro-protein: #4c6ce0;
+    --macro-carbs:   #eab308;
+    --macro-fat:     #e04888;
+    --macro-fiber:   #22a860;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: #e9e6df;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+    color: var(--foreground);
+    -webkit-font-smoothing: antialiased;
+  }
+  .page-wrap {
+    min-height: 100vh; padding: 28px 16px 48px;
+    display: flex; flex-direction: column; align-items: center; gap: 24px;
+  }
+  .page-header { text-align: center; max-width: 980px; color: #3a3631; }
+  .page-header h1 {
+    font-family: ui-serif, Georgia, serif;
+    font-size: 22px; letter-spacing: -0.02em; margin: 0 0 6px;
+  }
+  .page-header p { font-size: 13px; line-height: 1.55; color: #66605a; margin: 0; }
+
+  .row {
+    display: grid;
+    grid-template-columns: repeat(3, 360px);
+    gap: 24px; justify-content: center;
+  }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .col-label {
+    font-family: ui-serif, Georgia, serif;
+    font-size: 16px; font-weight: 700; color: #3a3631;
+  }
+  .col-desc {
+    font-size: 11.5px; line-height: 1.5; color: #66605a;
+    max-width: 340px; text-align: center;
+    min-height: 56px;
+  }
+
+  /* iPhone */
+  .iphone {
+    width: 360px; height: 770px;
+    background: var(--background);
+    border: 12px solid #1a1714; border-radius: 48px;
+    box-shadow: 0 18px 50px rgba(0,0,0,0.16);
+    position: relative; overflow: hidden;
+  }
+  .iphone-statusbar {
+    height: 36px; padding: 12px 22px 0;
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 12px; font-weight: 600;
+  }
+  .iphone-statusbar .dynamic-island {
+    width: 96px; height: 26px; background: #000; border-radius: 13px;
+    position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
+  }
+  .iphone-statusbar .right { font-size: 10px; }
+
+  .sheet-header {
+    padding: 14px 18px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sheet-handle {
+    width: 36px; height: 4px; border-radius: 2px;
+    background: var(--ring-track);
+    margin: 0 auto 12px;
+  }
+  .sheet-title-row { display: flex; align-items: center; gap: 10px; }
+  .sheet-icon {
+    width: 28px; height: 28px; border-radius: 7px;
+    background: rgba(232, 160, 32, 0.12);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; flex-shrink: 0;
+  }
+  .sheet-title {
+    font-family: ui-serif, Georgia, serif;
+    font-size: 17px; font-weight: 700; letter-spacing: -0.02em;
+    flex: 1;
+  }
+  .sheet-close {
+    width: 26px; height: 26px; border-radius: 13px;
+    background: var(--ring-track);
+    color: var(--foreground-secondary);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
+  }
+  .sheet-meta {
+    font-size: 11px; color: var(--foreground-tertiary);
+    margin-top: 5px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .sheet-body { padding: 14px 18px; }
+
+  .summary-row {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .summary-stat {
+    display: flex; flex-direction: column; gap: 2px;
+    align-items: center;
+  }
+  .summary-stat .dot {
+    width: 6px; height: 6px; border-radius: 3px;
+  }
+  .summary-stat .dot.p { background: var(--macro-protein); }
+  .summary-stat .dot.c { background: var(--macro-carbs); }
+  .summary-stat .dot.f { background: var(--macro-fat); }
+  .summary-stat .dot.fb { background: var(--macro-fiber); }
+  .summary-stat .label {
+    font-size: 9px; font-weight: 600; letter-spacing: 0.05em;
+    color: var(--foreground-tertiary); text-transform: uppercase;
+  }
+  .summary-stat .value {
+    font-size: 14px; font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .summary-stat .unit {
+    font-size: 10px; color: var(--foreground-tertiary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .section-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+    color: var(--foreground-tertiary);
+    text-transform: uppercase;
+    margin: 16px 0 8px;
+  }
+
+  /* D1: macro pie + foods list */
+  .d1-pie-row {
+    display: flex; align-items: center; gap: 14px;
+    margin-bottom: 14px;
+  }
+  .d1-pie-legend {
+    display: flex; flex-direction: column; gap: 7px;
+    flex: 1;
+  }
+  .d1-pie-legend .row-item {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11px;
+  }
+  .d1-pie-legend .row-item .dot {
+    width: 8px; height: 8px; border-radius: 4px;
+  }
+  .d1-pie-legend .row-item .dot.p { background: var(--macro-protein); }
+  .d1-pie-legend .row-item .dot.c { background: var(--macro-carbs); }
+  .d1-pie-legend .row-item .dot.f { background: var(--macro-fat); }
+  .d1-pie-legend .row-item .dot.fb { background: var(--macro-fiber); }
+  .d1-pie-legend .row-item .name {
+    flex: 1; color: var(--foreground-secondary);
+  }
+  .d1-pie-legend .row-item .pct {
+    font-weight: 700; font-variant-numeric: tabular-nums;
+  }
+
+  .food-row {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .food-row:last-child { border-bottom: 0; }
+  .food-row-top {
+    display: flex; justify-content: space-between; align-items: baseline;
+    gap: 8px;
+  }
+  .food-name {
+    font-size: 13px; font-weight: 600;
+    flex: 1; min-width: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .food-portion {
+    font-size: 10px; color: var(--foreground-tertiary);
+    margin-top: 1px;
+  }
+  .food-kcal {
+    font-size: 12px; font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+  }
+  .food-pips {
+    display: flex; gap: 10px; margin-top: 5px;
+    font-size: 10px; color: var(--foreground-tertiary);
+    font-variant-numeric: tabular-nums;
+  }
+  .food-pip { display: inline-flex; align-items: center; gap: 3px; }
+  .food-pip::before {
+    content: ""; width: 5px; height: 5px; border-radius: 3px;
+  }
+  .food-pip.p::before { background: var(--macro-protein); }
+  .food-pip.c::before { background: var(--macro-carbs); }
+  .food-pip.f::before { background: var(--macro-fat); }
+  .food-pip.fb::before { background: var(--macro-fiber); }
+
+  /* D2: stacked bars per macro */
+  .d2-macro-block + .d2-macro-block { margin-top: 12px; }
+  .d2-macro-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 4px;
+  }
+  .d2-macro-name {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.05em;
+    text-transform: uppercase; color: var(--foreground-secondary);
+  }
+  .d2-macro-total {
+    font-size: 11px; font-variant-numeric: tabular-nums;
+  }
+  .d2-macro-total strong { font-weight: 700; }
+  .d2-bar {
+    height: 18px; border-radius: 4px;
+    background: var(--ring-track);
+    overflow: hidden;
+    display: flex;
+  }
+  .d2-bar-seg {
+    height: 100%;
+    border-right: 1px solid #fff;
+    display: flex; align-items: center; padding: 0 4px;
+    font-size: 9px; color: rgba(255,255,255,0.95);
+    font-weight: 600;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  .d2-bar-seg:last-child { border-right: 0; }
+  .d2-bar.protein .d2-bar-seg { background: var(--macro-protein); }
+  .d2-bar.protein .d2-bar-seg:nth-child(2) { background: rgba(76, 108, 224, 0.75); }
+  .d2-bar.protein .d2-bar-seg:nth-child(3) { background: rgba(76, 108, 224, 0.55); }
+  .d2-bar.carbs .d2-bar-seg { background: var(--macro-carbs); color: #5d4500; }
+  .d2-bar.carbs .d2-bar-seg:nth-child(2) { background: rgba(234, 179, 8, 0.75); }
+  .d2-bar.carbs .d2-bar-seg:nth-child(3) { background: rgba(234, 179, 8, 0.55); }
+  .d2-bar.fat .d2-bar-seg { background: var(--macro-fat); }
+  .d2-bar.fat .d2-bar-seg:nth-child(2) { background: rgba(224, 72, 136, 0.75); }
+  .d2-bar.fat .d2-bar-seg:nth-child(3) { background: rgba(224, 72, 136, 0.55); }
+  .d2-bar.fiber .d2-bar-seg { background: var(--macro-fiber); }
+  .d2-bar.fiber .d2-bar-seg:nth-child(2) { background: rgba(34, 168, 96, 0.75); }
+  .d2-bar.fiber .d2-bar-seg:nth-child(3) { background: rgba(34, 168, 96, 0.55); }
+  .d2-key {
+    display: flex; gap: 8px; margin-top: 12px;
+    font-size: 10px; color: var(--foreground-tertiary);
+  }
+  .d2-key span { display: inline-flex; align-items: center; gap: 4px; }
+  .d2-key span::before {
+    content: ""; width: 8px; height: 8px; border-radius: 2px;
+    background: var(--ring-track);
+  }
+  .d2-key .full::before { background: #888; opacity: 1; }
+  .d2-key .mid::before  { background: #888; opacity: 0.75; }
+  .d2-key .low::before  { background: #888; opacity: 0.55; }
+
+  /* D3: full food cards with progress contribution */
+  .d3-card {
+    border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px; margin-bottom: 10px;
+    background: var(--card);
+  }
+  .d3-card-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 8px;
+  }
+  .d3-food-name { font-size: 13px; font-weight: 600; }
+  .d3-food-meta { font-size: 10px; color: var(--foreground-tertiary); margin-top: 1px; }
+  .d3-food-kcal { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .d3-macros { display: flex; flex-direction: column; gap: 5px; }
+  .d3-macro-line { display: flex; align-items: center; gap: 8px; }
+  .d3-macro-label {
+    font-size: 9px; font-weight: 700; letter-spacing: 0.05em;
+    text-transform: uppercase; color: var(--foreground-tertiary);
+    width: 38px; flex-shrink: 0;
+  }
+  .d3-macro-bar {
+    flex: 1; height: 5px; border-radius: 3px;
+    background: var(--ring-track);
+    position: relative;
+    overflow: hidden;
+  }
+  .d3-macro-bar-fill {
+    height: 100%; border-radius: 3px;
+  }
+  .d3-macro-bar-fill.p { background: var(--macro-protein); }
+  .d3-macro-bar-fill.c { background: var(--macro-carbs); }
+  .d3-macro-bar-fill.f { background: var(--macro-fat); }
+  .d3-macro-bar-fill.fb { background: var(--macro-fiber); }
+  .d3-macro-value {
+    font-size: 10px; font-variant-numeric: tabular-nums;
+    color: var(--foreground-secondary);
+    width: 50px; text-align: right; flex-shrink: 0;
+  }
+
+</style>
+</head>
+<body>
+<div class="page-wrap">
+
+  <div class="page-header">
+    <h1>Per-meal macros — tap-to-deep-dive sheet proposals</h1>
+    <p>Goal: when user taps the slot (or a meal row), open a sheet showing kcal + every macro + per-food contribution. Three approaches below — ranked from "summary-first" to "contribution-first".</p>
+  </div>
+
+  <div class="row">
+
+    <!-- ── D1: Pie + foods list ── -->
+    <div class="col">
+      <div class="col-label">D1 — Pie + foods list</div>
+      <div class="col-desc">Macro pie up top (kcal split). Below: each food as a row with its own per-macro pips. "How did this meal break down" answered at-a-glance, with per-food drill if needed.</div>
+      <div class="iphone">
+        <div class="iphone-statusbar"><span>9:41</span><div class="dynamic-island"></div><div class="right">▮▮▮</div></div>
+        <div style="height: 80px;"></div>
+        <div class="sheet-header">
+          <div class="sheet-handle"></div>
+          <div class="sheet-title-row">
+            <div class="sheet-icon">☕</div>
+            <div style="flex: 1;">
+              <div class="sheet-title">Breakfast</div>
+              <div class="sheet-meta">3 items · 542 kcal</div>
+            </div>
+            <div class="sheet-close">✕</div>
+          </div>
+        </div>
+        <div class="sheet-body">
+          <div class="d1-pie-row">
+            <svg width="100" height="100" viewBox="0 0 36 36">
+              <circle cx="18" cy="18" r="14" fill="none" stroke="var(--ring-track)" stroke-width="6" />
+              <!-- protein 35g=140kcal, carbs 52g=208kcal, fat 18g=162kcal, fiber 8g=32kcal; total 542 -->
+              <circle cx="18" cy="18" r="14" fill="none" stroke="var(--macro-protein)" stroke-width="6"
+                      stroke-dasharray="22.7 121" transform="rotate(-90 18 18)" />
+              <circle cx="18" cy="18" r="14" fill="none" stroke="var(--macro-carbs)" stroke-width="6"
+                      stroke-dasharray="33.7 99" stroke-dashoffset="-22.7" transform="rotate(-90 18 18)" />
+              <circle cx="18" cy="18" r="14" fill="none" stroke="var(--macro-fat)" stroke-width="6"
+                      stroke-dasharray="26.3 89" stroke-dashoffset="-56.4" transform="rotate(-90 18 18)" />
+              <circle cx="18" cy="18" r="14" fill="none" stroke="var(--macro-fiber)" stroke-width="6"
+                      stroke-dasharray="5.2 110" stroke-dashoffset="-82.7" transform="rotate(-90 18 18)" />
+              <text x="18" y="17" text-anchor="middle" font-size="6" font-weight="700">542</text>
+              <text x="18" y="22" text-anchor="middle" font-size="3" fill="#888">kcal</text>
+            </svg>
+            <div class="d1-pie-legend">
+              <div class="row-item"><span class="dot p"></span><span class="name">Protein</span><span class="pct">26%</span></div>
+              <div class="row-item"><span class="dot c"></span><span class="name">Carbs</span><span class="pct">38%</span></div>
+              <div class="row-item"><span class="dot f"></span><span class="name">Fat</span><span class="pct">30%</span></div>
+              <div class="row-item"><span class="dot fb"></span><span class="name">Fiber</span><span class="pct">6%</span></div>
+            </div>
+          </div>
+          <div class="section-label">Foods · 3 items</div>
+          <div class="food-row">
+            <div class="food-row-top">
+              <div>
+                <div class="food-name">Greek yoghurt with berries</div>
+                <div class="food-portion">200g · bowl</div>
+              </div>
+              <div class="food-kcal">182 kcal</div>
+            </div>
+            <div class="food-pips">
+              <span class="food-pip p">22g P</span>
+              <span class="food-pip c">14g C</span>
+              <span class="food-pip f">4g F</span>
+              <span class="food-pip fb">3g Fb</span>
+            </div>
+          </div>
+          <div class="food-row">
+            <div class="food-row-top">
+              <div>
+                <div class="food-name">Sourdough toast with avocado</div>
+                <div class="food-portion">1 slice · 60g toast + 80g avo</div>
+              </div>
+              <div class="food-kcal">280 kcal</div>
+            </div>
+            <div class="food-pips">
+              <span class="food-pip p">7g P</span>
+              <span class="food-pip c">28g C</span>
+              <span class="food-pip f">14g F</span>
+              <span class="food-pip fb">4g Fb</span>
+            </div>
+          </div>
+          <div class="food-row">
+            <div class="food-row-top">
+              <div>
+                <div class="food-name">Black coffee</div>
+                <div class="food-portion">240ml · mug</div>
+              </div>
+              <div class="food-kcal">80 kcal</div>
+            </div>
+            <div class="food-pips">
+              <span class="food-pip p">6g P</span>
+              <span class="food-pip c">10g C</span>
+              <span class="food-pip f">0g F</span>
+              <span class="food-pip fb">1g Fb</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── D2: Stacked bar per macro ── -->
+    <div class="col">
+      <div class="col-label">D2 — Stacked bar per macro</div>
+      <div class="col-desc">One horizontal stacked bar per macro, segments coloured by food. Answers "which food drove the protein" instantly: longest segment = biggest contributor. Most analytical — data-tool feel.</div>
+      <div class="iphone">
+        <div class="iphone-statusbar"><span>9:41</span><div class="dynamic-island"></div><div class="right">▮▮▮</div></div>
+        <div style="height: 80px;"></div>
+        <div class="sheet-header">
+          <div class="sheet-handle"></div>
+          <div class="sheet-title-row">
+            <div class="sheet-icon">☕</div>
+            <div style="flex: 1;">
+              <div class="sheet-title">Breakfast</div>
+              <div class="sheet-meta">3 items · 542 kcal</div>
+            </div>
+            <div class="sheet-close">✕</div>
+          </div>
+        </div>
+        <div class="sheet-body">
+          <div class="summary-row">
+            <div class="summary-stat">
+              <div class="dot p"></div>
+              <div class="label">Protein</div>
+              <div class="value">35</div>
+              <div class="unit">g</div>
+            </div>
+            <div class="summary-stat">
+              <div class="dot c"></div>
+              <div class="label">Carbs</div>
+              <div class="value">52</div>
+              <div class="unit">g</div>
+            </div>
+            <div class="summary-stat">
+              <div class="dot f"></div>
+              <div class="label">Fat</div>
+              <div class="value">18</div>
+              <div class="unit">g</div>
+            </div>
+            <div class="summary-stat">
+              <div class="dot fb"></div>
+              <div class="label">Fiber</div>
+              <div class="value">8</div>
+              <div class="unit">g</div>
+            </div>
+          </div>
+          <div class="section-label">Contribution by food</div>
+          <div class="d2-macro-block">
+            <div class="d2-macro-head">
+              <span class="d2-macro-name">Protein</span>
+              <span class="d2-macro-total"><strong>35</strong>g</span>
+            </div>
+            <div class="d2-bar protein">
+              <div class="d2-bar-seg" style="flex: 22;">Yoghurt 22g</div>
+              <div class="d2-bar-seg" style="flex: 7;">Toast</div>
+              <div class="d2-bar-seg" style="flex: 6;">Coffee</div>
+            </div>
+          </div>
+          <div class="d2-macro-block">
+            <div class="d2-macro-head">
+              <span class="d2-macro-name">Carbs</span>
+              <span class="d2-macro-total"><strong>52</strong>g</span>
+            </div>
+            <div class="d2-bar carbs">
+              <div class="d2-bar-seg" style="flex: 28;">Toast 28g</div>
+              <div class="d2-bar-seg" style="flex: 14;">Yoghurt 14g</div>
+              <div class="d2-bar-seg" style="flex: 10;">Coffee</div>
+            </div>
+          </div>
+          <div class="d2-macro-block">
+            <div class="d2-macro-head">
+              <span class="d2-macro-name">Fat</span>
+              <span class="d2-macro-total"><strong>18</strong>g</span>
+            </div>
+            <div class="d2-bar fat">
+              <div class="d2-bar-seg" style="flex: 14;">Toast 14g</div>
+              <div class="d2-bar-seg" style="flex: 4;">Yog</div>
+            </div>
+          </div>
+          <div class="d2-macro-block">
+            <div class="d2-macro-head">
+              <span class="d2-macro-name">Fiber</span>
+              <span class="d2-macro-total"><strong>8</strong>g</span>
+            </div>
+            <div class="d2-bar fiber">
+              <div class="d2-bar-seg" style="flex: 4;">Toast</div>
+              <div class="d2-bar-seg" style="flex: 3;">Yog</div>
+              <div class="d2-bar-seg" style="flex: 1;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── D3: Food cards with per-macro bars ── -->
+    <div class="col">
+      <div class="col-label">D3 — Food cards with macro bars</div>
+      <div class="col-desc">Each food = a card with 4 mini-bars inside (one per macro). Reads as "this food's macro profile". Best for "is this dish actually a protein source?" vs "is this carbs-heavy?". Most food-centric.</div>
+      <div class="iphone">
+        <div class="iphone-statusbar"><span>9:41</span><div class="dynamic-island"></div><div class="right">▮▮▮</div></div>
+        <div style="height: 80px;"></div>
+        <div class="sheet-header">
+          <div class="sheet-handle"></div>
+          <div class="sheet-title-row">
+            <div class="sheet-icon">☕</div>
+            <div style="flex: 1;">
+              <div class="sheet-title">Breakfast</div>
+              <div class="sheet-meta">3 items · 542 kcal</div>
+            </div>
+            <div class="sheet-close">✕</div>
+          </div>
+        </div>
+        <div class="sheet-body">
+          <div class="summary-row">
+            <div class="summary-stat">
+              <div class="dot p"></div>
+              <div class="label">P</div>
+              <div class="value">35g</div>
+            </div>
+            <div class="summary-stat">
+              <div class="dot c"></div>
+              <div class="label">C</div>
+              <div class="value">52g</div>
+            </div>
+            <div class="summary-stat">
+              <div class="dot f"></div>
+              <div class="label">F</div>
+              <div class="value">18g</div>
+            </div>
+            <div class="summary-stat">
+              <div class="dot fb"></div>
+              <div class="label">Fb</div>
+              <div class="value">8g</div>
+            </div>
+          </div>
+          <div class="section-label">Foods</div>
+          <div class="d3-card">
+            <div class="d3-card-head">
+              <div>
+                <div class="d3-food-name">Greek yoghurt with berries</div>
+                <div class="d3-food-meta">200g · bowl</div>
+              </div>
+              <div class="d3-food-kcal">182</div>
+            </div>
+            <div class="d3-macros">
+              <div class="d3-macro-line">
+                <span class="d3-macro-label">Protein</span>
+                <div class="d3-macro-bar"><div class="d3-macro-bar-fill p" style="width: 78%;"></div></div>
+                <span class="d3-macro-value">22g</span>
+              </div>
+              <div class="d3-macro-line">
+                <span class="d3-macro-label">Carbs</span>
+                <div class="d3-macro-bar"><div class="d3-macro-bar-fill c" style="width: 30%;"></div></div>
+                <span class="d3-macro-value">14g</span>
+              </div>
+              <div class="d3-macro-line">
+                <span class="d3-macro-label">Fat</span>
+                <div class="d3-macro-bar"><div class="d3-macro-bar-fill f" style="width: 22%;"></div></div>
+                <span class="d3-macro-value">4g</span>
+              </div>
+              <div class="d3-macro-line">
+                <span class="d3-macro-label">Fiber</span>
+                <div class="d3-macro-bar"><div class="d3-macro-bar-fill fb" style="width: 38%;"></div></div>
+                <span class="d3-macro-value">3g</span>
+              </div>
+            </div>
+          </div>
+          <div class="d3-card">
+            <div class="d3-card-head">
+              <div>
+                <div class="d3-food-name">Sourdough toast w/ avo</div>
+                <div class="d3-food-meta">60g + 80g avocado</div>
+              </div>
+              <div class="d3-food-kcal">280</div>
+            </div>
+            <div class="d3-macros">
+              <div class="d3-macro-line">
+                <span class="d3-macro-label">Protein</span>
+                <div class="d3-macro-bar"><div class="d3-macro-bar-fill p" style="width: 24%;"></div></div>
+                <span class="d3-macro-value">7g</span>
+              </div>
+              <div class="d3-macro-line">
+                <span class="d3-macro-label">Carbs</span>
+                <div class="d3-macro-bar"><div class="d3-macro-bar-fill c" style="width: 60%;"></div></div>
+                <span class="d3-macro-value">28g</span>
+              </div>
+              <div class="d3-macro-line">
+                <span class="d3-macro-label">Fat</span>
+                <div class="d3-macro-bar"><div class="d3-macro-bar-fill f" style="width: 78%;"></div></div>
+                <span class="d3-macro-value">14g</span>
+              </div>
+              <div class="d3-macro-line">
+                <span class="d3-macro-label">Fiber</span>
+                <div class="d3-macro-bar"><div class="d3-macro-bar-fill fb" style="width: 50%;"></div></div>
+                <span class="d3-macro-value">4g</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+</body>
+</html>

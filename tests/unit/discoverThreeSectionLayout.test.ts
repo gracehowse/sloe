@@ -84,6 +84,13 @@ describe("Discover tab — three-section layout (2026-04-20 prototype port)", ()
     it("mobile uses recipes from index 2+ in the More ideas list", () => {
       expect(MOBILE_SRC).toMatch(/filtered\.slice\(2\)/);
     });
+
+    it("mobile renders More ideas as compact meal rows inside one card (not hero cards)", () => {
+      expect(MOBILE_SRC).toMatch(/renderMoreIdeaRow/);
+      expect(MOBILE_SRC).not.toMatch(
+        /More ideas[\s\S]{0,400}filtered\.slice\(2\)\.map\(\(r\) => renderHeroCard/,
+      );
+    });
   });
 
   describe("CTA reordering (Import as permanent first card; My Library at bottom)", () => {

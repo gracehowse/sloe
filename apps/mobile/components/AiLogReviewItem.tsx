@@ -181,7 +181,7 @@ export default function AiLogReviewItem({
           <Badge
             variant="ai"
             accessibilityLabel="AI estimated nutrition"
-            icon={<Sparkles size={10} color="#8b5cf6" strokeWidth={2.25} />}
+            icon={<Sparkles size={10} color="#9679D9" strokeWidth={2.25} />}
           >
             AI estimate
           </Badge>
