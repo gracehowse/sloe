@@ -10,8 +10,8 @@
  * index here and share the helper across web + mobile so the palette
  * can never drift.
  *
- * Palette (prototype order, preserved verbatim):
- *   index 0 → #7a90f5 (blue)   — Alex
+ * Palette (2026-05-20 — index 0 moved off brand blue to warm stone):
+ *   index 0 → #5e574e (stone)  — Alex
  *   index 1 → #4cd080 (green)  — Sam
  *   index 2 → #ffc04c (amber)  — Mia
  *   index 3 → #ff7eb3 (pink)   — Leo
@@ -28,7 +28,7 @@
  */
 
 const PRIMARY_PALETTE = [
-  "#7a90f5", // blue (elevated primary light)
+  "#5e574e", // warm stone (was brand blue — clashes with premium chrome)
   "#4cd080", // green (prototype Sam)
   "#ffc04c", // amber (prototype Mia)
   "#ff7eb3", // pink  (prototype Leo)

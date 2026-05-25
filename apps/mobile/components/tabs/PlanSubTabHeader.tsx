@@ -42,7 +42,7 @@ export function PlanSubTabHeader({
     <SubTabPill<PlanSubTab>
       items={[
         { id: "plan", label: "This week" },
-        { id: "shopping", label: "Shopping", badge: shoppingUncheckedCount },
+        { id: "shopping", label: "Shopping list", badge: shoppingUncheckedCount },
       ]}
       activeId={value}
       onSelect={onChange}

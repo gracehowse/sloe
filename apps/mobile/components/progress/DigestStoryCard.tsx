@@ -89,46 +89,152 @@ export function DigestStoryCard(props: DigestStoryCardProps) {
           Quiet week — log a meal to start your story.
         </Text>
       ) : (
-        <View style={{ marginTop: 10, gap: 6 }}>
-          <Text
-            testID="digest-story-days-line"
-            style={[styles.body, { color: colors.text, fontWeight: "600" }]}
-          >
-            {story.daysLine}
-          </Text>
-          {story.caloriesLine ? (
-            <Text
-              testID="digest-story-calories-line"
-              style={[styles.body, { color: colors.textSecondary }]}
-            >
-              {story.caloriesLine}
-            </Text>
-          ) : null}
-          {story.proteinLine ? (
-            <Text
-              testID="digest-story-protein-line"
-              style={[styles.body, { color: colors.textSecondary }]}
-            >
-              {story.proteinLine}
-            </Text>
-          ) : null}
-          {story.closestLine ? (
-            <Text
-              testID="digest-story-closest-line"
-              style={[styles.body, { color: colors.textSecondary }]}
-            >
-              {story.closestLine}
-            </Text>
-          ) : null}
-          {story.dayOfWeekPatternLine ? (
-            <Text
-              testID="digest-story-dow-pattern-line"
-              style={[styles.body, { color: colors.textSecondary }]}
-            >
-              {story.dayOfWeekPatternLine}
-            </Text>
-          ) : null}
-        </View>
+        // 2026-05-23 — was a stack of 5 prose sentences (text wall).
+        // Restructured into:
+        //   1. Hero row: big "X/7 days logged" + calorie-delta pill
+        //   2. One compact supporting stat line (avg kcal + protein hits)
+        //   3. Insight prose (closest day + dow pattern, combined)
+        // Same data, real visual hierarchy.
+        (() => {
+          const daysLogged = Math.max(0, Math.floor(input.daysLogged));
+          const target = input.targetCalories ?? 0;
+          const avg = input.avgCalories ?? 0;
+          const deltaKcal = avg && target ? Math.round(avg - target) : null;
+          // Delta pill colour follows the calorie-ring rule
+          // (`feedback_calorie_ring_colour_mapping.md`): under → green,
+          // over → red; tiny tolerance for "on target".
+          const deltaTone =
+            deltaKcal == null
+              ? null
+              : Math.abs(deltaKcal) <= Math.max(40, target * 0.04)
+                ? "neutral"
+                : deltaKcal > 0
+                  ? "over"
+                  : "under";
+          const deltaLabel =
+            deltaKcal == null
+              ? null
+              : deltaTone === "neutral"
+                ? "On target"
+                : deltaTone === "over"
+                  ? `+${deltaKcal.toLocaleString()} over`
+                  : `${Math.abs(deltaKcal).toLocaleString()} under`;
+          const deltaBg =
+            deltaTone === "over"
+              ? Accent.destructive + "1a"
+              : deltaTone === "under"
+                ? Accent.success + "1f"
+                : colors.border;
+          const deltaFg =
+            deltaTone === "over"
+              ? Accent.destructive
+              : deltaTone === "under"
+                ? Accent.success
+                : colors.textSecondary;
+
+          // Supporting stat — compress avg + protein into one line.
+          const supportParts: string[] = [];
+          if (avg && target) {
+            supportParts.push(`Avg ${Math.round(avg).toLocaleString()} kcal`);
+          }
+          if (
+            input.proteinOnTargetDays != null &&
+            daysLogged > 0
+          ) {
+            supportParts.push(
+              `Protein ${input.proteinOnTargetDays}/${daysLogged} days`,
+            );
+          }
+          const supportLine = supportParts.join(" · ");
+
+          // Insight prose — collapse closest + dow pattern into a
+          // single quiet line. Only render when at least one is set.
+          const insightParts: string[] = [];
+          if (story.closestLine) insightParts.push(story.closestLine);
+          if (story.dayOfWeekPatternLine) insightParts.push(story.dayOfWeekPatternLine);
+          const insight = insightParts.join(" ");
+
+          return (
+            <View style={{ marginTop: 12 }}>
+              <View style={styles.heroRow} testID="digest-hero-row">
+                <Text
+                  style={{
+                    fontSize: 30,
+                    fontWeight: "700",
+                    color: colors.text,
+                    fontVariant: ["tabular-nums"],
+                    letterSpacing: -0.6,
+                  }}
+                >
+                  {daysLogged}
+                  <Text style={{ fontSize: 18, color: colors.textTertiary, fontWeight: "600" }}>
+                    /7
+                  </Text>
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 13,
+                    color: colors.textSecondary,
+                    marginLeft: 8,
+                    flex: 1,
+                  }}
+                >
+                  days logged
+                </Text>
+                {deltaLabel ? (
+                  <View
+                    testID="digest-delta-pill"
+                    style={{
+                      paddingHorizontal: 10,
+                      paddingVertical: 4,
+                      borderRadius: 999,
+                      backgroundColor: deltaBg,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        fontWeight: "600",
+                        color: deltaFg,
+                        fontVariant: ["tabular-nums"],
+                      }}
+                    >
+                      {deltaLabel}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+
+              {supportLine ? (
+                <Text
+                  testID="digest-support-line"
+                  style={[
+                    styles.body,
+                    { color: colors.textSecondary, marginTop: 6 },
+                  ]}
+                >
+                  {supportLine}
+                </Text>
+              ) : null}
+
+              {insight ? (
+                <Text
+                  testID="digest-insight-line"
+                  style={[
+                    styles.body,
+                    {
+                      color: colors.textTertiary,
+                      marginTop: 10,
+                      fontStyle: "italic",
+                    },
+                  ]}
+                >
+                  {insight}
+                </Text>
+              ) : null}
+            </View>
+          );
+        })()
       )}
     </View>
   );
@@ -145,6 +251,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+  },
+  heroRow: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   body: {
     fontSize: 13,

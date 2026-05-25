@@ -21,13 +21,13 @@ export default function RecipeNotFound() {
             keep browsing. */}
         <div className="flex flex-wrap gap-3 justify-center">
           <Link
-            href="/home?view=discover"
+            href="/discover"
             className="px-6 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold hover:shadow-lg hover:shadow-violet-500/25 transition-all"
           >
             Browse recipes
           </Link>
           <Link
-            href="/home"
+            href="/today"
             className="px-6 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
           >
             Back to Today

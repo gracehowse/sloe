@@ -16,16 +16,19 @@
  * `apps/mobile/constants/theme.ts`.
  */
 
-/** Light-mode macro hexes — pinned to `:root` block in theme.css. */
+/** Light-mode macro hexes — pinned to `:root` block in theme.css.
+ *  2026-05-22 evening: 8-slot palette lock. Sugar folds into Yellow
+ *  (sugar IS a carb). Water folds into Blue (cyan dropped from the 8).
+ *  Fiber folds into Green (icon + label do the differentiation). */
 export const MACRO_COLORS_LIGHT = {
-  calories: "#62b35a",
-  protein: "#4c6ce0",
-  carbs: "#d4a02f",
-  fat: "#e04888",
-  fiber: "#4a7878",
-  sugar: "#7a90f5",
-  sodium: "#f97316",
-  water: "#06b6d4",
+  calories: "#56A775",
+  protein:  "#588CE4",
+  carbs:    "#F3C336",
+  fat:      "#DF5EBC",
+  fiber:    "#56A775",
+  sugar:    "#F3C336",
+  sodium:   "#F78A32",
+  water:    "#588CE4",
 } as const;
 
 /** CSS-var references — preferred for inline `style` values (auto dark-mode). */

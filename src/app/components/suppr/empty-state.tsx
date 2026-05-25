@@ -15,8 +15,8 @@
  * over a tiny gap — too quiet to read as a state. The new primitive:
  *  - Optional `illustration` slot rendered inside a 72px circular
  *    `bg-primary/10` disc.
- *  - Title at 17px (`text-[17px] font-semibold leading-[22px]`) —
- *    mirrors mobile `Type.headline`.
+ *  - Title at 18px (`text-[18px] font-semibold leading-[22px]`) —
+ *    on-scale per theme.css type ladder.
  *  - Description at 14px (`text-sm leading-5 text-muted-foreground`)
  *    — mirrors mobile `Type.body`.
  *  - 12px rhythm between elements; 24px paddingTop/Bottom.
@@ -89,7 +89,7 @@ export function EmptyState({
           {icon}
         </div>
       ) : null}
-      <p className="text-[17px] font-semibold leading-[22px] text-foreground">
+      <p className="text-[18px] font-semibold leading-[22px] text-foreground">
         {title}
       </p>
       {description ? (

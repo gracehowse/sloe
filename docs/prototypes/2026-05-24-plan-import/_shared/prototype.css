@@ -1,0 +1,167 @@
+/**
+ * Shared prototype shell — premium-sweep-v2 G3.5 gate.
+ * Wraps before/after states with a view toggle so Grace can scan
+ * each prototype in seconds.
+ *
+ * Loaded after tokens.css so it can reference --background,
+ * --foreground, --card, --border, etc.
+ */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text",
+               "Segoe UI", Roboto, sans-serif;
+  background: var(--background);
+  color: var(--foreground);
+  min-height: 100vh;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.prototype-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.prototype-header h1 {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.prototype-header .meta {
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+
+.prototype-header nav {
+  margin-left: auto;
+  display: flex;
+  gap: 4px;
+  background: var(--muted);
+  border-radius: 8px;
+  padding: 3px;
+}
+
+.prototype-header nav button {
+  border: 0;
+  background: transparent;
+  color: var(--muted-foreground);
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background var(--pm-duration) var(--pm-ease),
+              color var(--pm-duration) var(--pm-ease);
+}
+
+.prototype-header nav button[aria-current="true"] {
+  background: var(--card);
+  color: var(--foreground);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+}
+
+.prototype-canvas {
+  padding: 32px;
+  display: grid;
+  gap: 32px;
+}
+
+.prototype-canvas[data-view="before"] .state--after { display: none; }
+.prototype-canvas[data-view="after"]  .state--before { display: none; }
+.prototype-canvas[data-view="side-by-side"] {
+  grid-template-columns: 1fr 1fr;
+}
+
+.state {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  position: relative;
+}
+
+.state::before {
+  content: attr(data-label);
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+
+.state--after::before {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.prototype-notes {
+  margin: 0 32px 64px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.prototype-notes h2 {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  margin-top: 16px;
+}
+
+.prototype-notes h2:first-child { margin-top: 0; }
+
+.prototype-notes ul {
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.prototype-notes li {
+  padding-left: 8px;
+  border-left: 2px solid var(--primary);
+  font-size: 14px;
+}
+
+.prototype-notes li strong {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-right: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.prototype-notes p {
+  font-size: 14px;
+  color: var(--muted-foreground);
+}
+
+/* Minimal client-side JS via a tiny inline script in each prototype
+ * file flips data-view on the canvas. Kept dependency-free so the
+ * HTML files are double-clickable in Finder. */

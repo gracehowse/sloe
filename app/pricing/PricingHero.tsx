@@ -16,7 +16,7 @@
  * a sibling surface. No client interactivity — rendered directly in the
  * RSC tree.
  *
- * The gradient hex pair (`#4c6ce0` → `#e04888`) matches the wordmark in
+ * The gradient hex pair (`#588CE4` → `#DF5EBC`) matches the wordmark in
  * the header and the prototype's paywall banner one-to-one. Do not
  * replace with a token — this is the fixed brand gradient.
  */
@@ -31,7 +31,7 @@ export function PricingHero() {
       className="relative rounded-3xl px-8 py-6 sm:py-10 mb-12 text-white overflow-hidden"
       style={{
         backgroundImage:
-          "linear-gradient(135deg, #4c6ce0 0%, #e04888 100%)",
+          "linear-gradient(135deg, #588CE4 0%, #DF5EBC 100%)",
       }}
     >
       <div className="max-w-2xl mx-auto text-center">

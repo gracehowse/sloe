@@ -27,7 +27,7 @@ function StatTile({
   sub: string;
 }) {
   return (
-    <div className="rounded-card bg-card border border-border p-4">
+    <div className="rounded-card bg-card border border-border p-4 card-elevated">
       <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium mb-1.5">
         {icon}
         {label}
@@ -55,7 +55,7 @@ export function TrackerSummaryCard({
   const hasEnoughData = totalDaysLogged >= 1;
 
   return (
-    <div className="rounded-card bg-card border border-border p-5 mb-6">
+    <div className="rounded-card bg-card border border-border p-5 mb-6 card-elevated">
       <div className="flex items-center gap-2.5 mb-4">
         <IconBox size="sm" tone="primary">
           <Icons.calendarCheck />

@@ -10,8 +10,10 @@ Single reference for **accent roles** so colours do not drift between the Next.j
 
 | Role | Hex (canonical) | Mobile token | Web CSS variable | Usage |
 |------|-----------------|-------------|-----------------|--------|
-| **Primary** | `#4c6ce0` | `Accent.primary` | `--primary` | Buttons, selected states, links, brand wordmark, protein macro |
-| **Primary light** | `#7a90f5` | `Accent.primaryLight` | `--primary` (dark) | Dark mode tint, active tab (dark), sugar macro |
+| **Primary (UI chrome)** | `#4c6ce0` (light) / `#7a90f5` (dark) | `Accent.primary` / `Colors.*.tint` | `--primary` | Buttons, selected states, links, tab bar (TF49 baseline) |
+| **Primary light** | `#7a90f5` | `Accent.primaryLight` | `--macro-protein` (dark) | Dark tabs, sugar macro |
+| **Body ink** | `#1c1916` (light) / `#e8e7ed` (dark) | `Colors.*.text` | `--foreground` | Headlines and body copy — not button fill |
+| **brandBlue alias** | `#4c6ce0` | `Accent.brandBlue` | `--macro-protein` | Stable import alias; same as `Accent.primary` |
 | **Success** | `#62b35a` | `Accent.success` | `--success` | Confirmations, calorie ring under-target, positive states |
 | **Success light** | `#82d878` | `Accent.successLight` | `--success` (dark) | Dark mode success tint |
 | **Warning** | `#e0a838` | `Accent.warning` | `--warning` | Over-budget, breakfast slot, activity bonus — **not** carbs macro |
@@ -71,13 +73,21 @@ _Added 2026-04-18 (audit M9) — replaces the hardcoded hex values previously du
 
 | Role | Light | Dark | Mobile token |
 |------|-------|------|-------------|
-| Background | `#f6f3ee` (warm cream) | `#0a0a0f` | `Colors.*.background` |
+| Background | `#fafaf8` (crisp warm white) | `#0a0a0f` | `Colors.*.background` |
 | Background secondary | `#f0ebe3` | `#111118` | `Colors.*.backgroundSecondary` |
+| Ring empty track | `#d8dff2` | `rgba(122,144,245,0.35)` | `Colors.*.ringTrack` / `--ring-bg` |
 | Card | `#ffffff` | `#16161e` | `Colors.*.card` |
-| Card border | `#ddd5c8` | `#32313c` | `Colors.*.cardBorder` |
-| Border | `#ddd5c8` | `#32313c` | `Colors.*.border` |
-| Input background | `#ebe5dc` | `#222028` | `Colors.*.inputBg` |
+| Card border | `#e3dccc` (warm stone) | `#32313c` | `Colors.*.cardBorder` |
+| Border | `#e3dccc` (warm stone) | `#32313c` | `Colors.*.border` |
+| Input background | `#ede7dc` | `#222028` | `Colors.*.inputBg` |
 | Overlay | `#00000088` | `#000000aa` | `Colors.*.overlay` |
+
+> **2026-05-21 palette refresh:** Background went from the warm cream
+> `#f6f3ee` (read as "yellow/papery") to the crisp warm white
+> `#fafaf8`, **and** borders went from cool grey `#e8e6e1` (read as
+> "grey/cold/clinical") back to warm stone `#e3dccc`. Muted/accent
+> moved to the slightly lifted warm stone `#e8e1d2`. The combination
+> keeps the page reading crisp without losing the warm brand identity.
 
 ## Text colours
 

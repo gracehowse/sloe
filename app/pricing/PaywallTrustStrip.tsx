@@ -43,7 +43,11 @@ export function PaywallTrustStrip() {
         <div
           key={chip.label}
           aria-label={chip.a11yLabel}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-border bg-card/60 text-xs font-medium text-slate-700 dark:text-slate-200"
+          // Canonical 2026-05-22: trust chips use --background-secondary,
+          // NOT --input-background. Inputs and chips have different
+          // roles; they were sharing a token by accident.
+          className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-border text-xs font-medium text-foreground"
+          style={{ background: "var(--background-secondary)" }}
         >
           <ShieldCheck
             className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400"

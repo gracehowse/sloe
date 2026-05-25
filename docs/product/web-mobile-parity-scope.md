@@ -2,7 +2,7 @@
 
 **Status:** Active product decisions (engineering follows; do not “fix” as unscoped parity bugs).
 
-**Last confirmed:** 2026-04-25
+**Last confirmed:** 2026-05-20
 
 **D-P1-7 maintenance (2026-04-25):** No new **intentional** divergences were recorded this cycle. Optional product follow-up (tickets, copy spec) for visual / voice-photo parity lives in [`PARITY_PRODUCT_QUEUE.md`](PARITY_PRODUCT_QUEUE.md), not as “open” audit rows. Re-open **exceptions** in this document (or `docs/decisions/`) only when product signs a new intentional divergence.
 
@@ -37,6 +37,9 @@ Any change that **ships, removes, improves, or fixes** a user-visible feature on
 | **Apple Health / Apple Sign-In** | **Mobile-first / native** | Web has manual steps / different OS capabilities — **intentional**. |
 | **Fasting timer** | **Aligned (web expanded 2026-05-14)** | [`../decisions/2026-04-fasting-web-scope.md`](../decisions/2026-04-fasting-web-scope.md) — web ships ring + milestones + projected end + history + landing card; remaining deliberate deltas are long-press End Fast (mobile only), long-press delete history row (mobile only), push notifications (mobile only, web notifications deferred). |
 | **Discover / Plan / Profile chrome** | **May diverge visually** | Styling and density may differ until a **product pass** tickets explicit UI parity. |
+| **Today — colour + macro hues (light)** | **Enforced** | `theme.css` ↔ `Colors.light` parity test (`tests/unit/crossPlatformThemeTokens.test.ts`); over-budget ring + macro captions use amber tokens (ENG-624–625); state-matrix captures in `docs/ux/captures/today-premium-2026-05-19/`. |
+| **Today — dark surfaces** | **Intentional delta (documented)** | Mobile dark bg `#0a0a0f` vs web `#101014` — platform-native depth; not a regression. Revisit in P4 if product wants pixel-match. |
+| **Today — layout / chrome** | **Aligned (P1)** | Calm date header, ≤2 below-meals prompts, desktop week rail, auth cold-open routes — see Premium P1 sign-off checklist. |
 
 ---
 

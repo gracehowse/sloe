@@ -9,36 +9,23 @@ name: "Shopping list — items, check off, share"
     id: "tab-plan"
 - waitForAnimationToEnd
 
-# Same tab as meal plan; list CTA is often below the first screenful
-- scrollUntilVisible:
-    element: ".*Shopping List.*"
-    direction: DOWN
+# Shopping is now a sub-tab inside Plan (not a separate screen).
+- tapOn: ".*Shopping.*"
+- waitForAnimationToEnd
 
-# Shopping List button should be visible after a plan is generated
+# Should see Shopping content — items or empty state.
 - runFlow:
     when:
-      visible: ".*Shopping List.*"
+      visible: ".*(?:No items|shopping list is empty|Add meals).*"
     commands:
-      - tapOn: ".*Shopping List.*"
-      - waitForAnimationToEnd
+      - assertVisible: ".*(?:No items|shopping list is empty|Add meals).*"
 
-      # Should see Shopping List header
-      - assertVisible: ".*Shopping List.*"
+- runFlow:
+    when:
+      visible: ".*(?:Produce|Dairy|Meat|Pantry|Baking|Frozen|check).*"
+    commands:
+      - assertVisible: ".*(?:Produce|Dairy|Meat|Pantry|Baking|Frozen|check).*"
 
-      # If items exist, verify list structure
-      - runFlow:
-          when:
-            visible: ".*✓.*"
-          commands:
-            - assertVisible: ".*✓.*"
-
-      # If empty, verify empty state
-      - runFlow:
-          when:
-            visible: ".*No items.*"
-          commands:
-            - assertVisible: ".*No items.*"
-
-      # Navigate back
-      - tapOn:
-          point: "5%,8%"
+# Switch back to This week
+- tapOn: ".*This week.*"
+- waitForAnimationToEnd

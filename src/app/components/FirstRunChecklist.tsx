@@ -79,7 +79,11 @@ export function FirstRunChecklist({ onNavigate }: FirstRunChecklistProps) {
 
       // When the flag is on, fire the toast at most once per user.
       const alreadyShown = typeof window !== "undefined" && localStorage.getItem(TOAST_SHOWN_KEY) === "1";
-      if (toastGateOn && alreadyShown) return;
+      const onToday =
+        typeof window !== "undefined" &&
+        (window.location.pathname === "/today" ||
+          window.location.pathname.endsWith("/today"));
+      if (toastGateOn && (alreadyShown || onToday)) return;
 
       toast.success("You're all set! Keep logging on the Tracker; add recipes and plans whenever you like.", { duration: 5000 });
       if (typeof window !== "undefined") localStorage.setItem(TOAST_SHOWN_KEY, "1");

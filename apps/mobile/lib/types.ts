@@ -36,6 +36,8 @@ export interface RecipeCard {
   creatorCalories?: number;
   feedCreatedAt?: string;
   sourceUrl?: string | null;
+  /** Plan import / URL attribution label (e.g. Imported · Week 1). */
+  sourceName?: string | null;
   mealSlots?: readonly PlannerMealSlot[] | string[];
   feedSource?: "catalog" | "community";
   /** Human-readable prep time (e.g. "15 min"). */

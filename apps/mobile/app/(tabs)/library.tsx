@@ -17,12 +17,6 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import {
-  Beef,
-  Wheat,
-  Droplets,
-  Leaf,
-  Flame,
-  Clock,
   Bookmark,
   ChevronLeft,
   ArrowUpDown,
@@ -31,19 +25,25 @@ import {
   BookOpen,
   MoreHorizontal,
 } from "lucide-react-native";
+import { MacroIconRow } from "@/components/nutrition/MacroIconRow";
 import { useAuth } from "@/context/auth";
 import { useLibrarySearchStore } from "@/hooks/useLibrarySearchStore";
 import { useSavedLibraryRecipes, useSavedRecipes } from "@/lib/recipes";
 import { RecipeCardImage } from "@/components/library/RecipeCardImage";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
-import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
+import { Accent, Elevation, MacroColors, Spacing, Radius } from "@/constants/theme";
 import type { RecipeCard } from "@/lib/types";
 import {
   LIBRARY_FILTER_PILLS,
   matchesNutritionPill,
   type LibraryFilterPillId,
 } from "@suppr/shared/recipes/libraryFilters";
+import {
+  matchesPlanImportPill,
+  planImportFilterLabels,
+  planImportPillId,
+} from "@suppr/shared/planning/planImport/libraryFilters";
 import { classifyLibraryEntry } from "@suppr/shared/recipes/libraryEntryKind";
 import { RecipesTabChrome } from "@/components/tabs/RecipesTabChrome";
 import { CreateRecipeActionSheet } from "@/components/recipe/CreateRecipeActionSheet";
@@ -140,7 +140,7 @@ export default function LibraryScreen() {
   // / Imported) and nutrition / time / diet (High-Protein / Quick /
   // Vegetarian). See `src/lib/recipes/libraryFilters.ts` for the
   // canonical ordering + predicate shape.
-  const [pill, setPill] = useState<LibraryFilterPillId>("all");
+  const [pill, setPill] = useState<LibraryFilterPillId | string>("all");
   // 2026-05-12 (premium-bar audit #8): tapping "+ Create" opens a
   // multi-source action sheet instead of hard-routing to manual entry.
   const [createSheetOpen, setCreateSheetOpen] = useState(false);
@@ -157,16 +157,23 @@ export default function LibraryScreen() {
     [savedRecipes],
   );
 
+  const importPlanPills = useMemo(
+    () => planImportFilterLabels(savedRecipes.map((r) => r.sourceName)),
+    [savedRecipes],
+  );
+
   const filtered = useMemo(() => {
     let list = savedRecipes;
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter((r) => r.title.toLowerCase().includes(q));
     }
-    if (pill === "saved" || pill === "created" || pill === "imported") {
+    if (typeof pill === "string" && pill.startsWith("plan-import:")) {
+      list = list.filter((r) => matchesPlanImportPill(pill, r.sourceName));
+    } else if (pill === "saved" || pill === "created" || pill === "imported") {
       list = list.filter((r) => entryKindForCard(r, userId) === pill);
     } else if (pill !== "all") {
-      list = list.filter((r) => matchesNutritionPill(pill, r));
+      list = list.filter((r) => matchesNutritionPill(pill as LibraryFilterPillId, r));
     }
     if (sortKey === "calories") {
       list = [...list].sort((a, b) => b.calories - a.calories);
@@ -414,6 +421,7 @@ export default function LibraryScreen() {
       borderWidth: 1,
       borderColor: colors.border,
       overflow: "hidden",
+      ...Elevation.card,
     },
     // Prototype: "big recipe cards (120-ish tall image gradient)".
     cardImageWrap: {
@@ -591,45 +599,24 @@ export default function LibraryScreen() {
             {item.creatorName ? (
               <Text style={styles.cardSource} numberOfLines={1}>{item.creatorName}</Text>
             ) : null}
-            {/* 2026-04-26 polish (round 3): bring Library cards to
-                Discover-card parity. Pre-fix this row showed only
-                "kcal · P" — Discover shows kcal + protein + carbs +
-                fat + (fibre when present) each with its own coloured
-                icon. Tester: "library tiles look different to
-                discovery screen tiles - they only show P not the
-                full macros with icons etc". */}
-            <View style={[styles.metaRow, { flexWrap: "wrap", gap: 10 }]}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                <Flame size={11} color={MacroColors.calories} />
-                <Text style={[styles.metaChunk, { fontVariant: ["tabular-nums"] }]}>{Math.round(item.calories)} kcal</Text>
-              </View>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                <Beef size={11} color={MacroColors.protein} />
-                <Text style={[styles.metaChunk, { fontVariant: ["tabular-nums"] }]}>{Math.round(item.protein)}g</Text>
-              </View>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                <Wheat size={11} color={MacroColors.carbs} />
-                <Text style={[styles.metaChunk, { fontVariant: ["tabular-nums"] }]}>{Math.round(item.carbs)}g</Text>
-              </View>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                <Droplets size={11} color={MacroColors.fat} />
-                <Text style={[styles.metaChunk, { fontVariant: ["tabular-nums"] }]}>{Math.round(item.fat)}g</Text>
-              </View>
-              {Number.isFinite(item.fiberG) && (item.fiberG ?? 0) > 0 ? (
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                  <Leaf size={11} color={MacroColors.fiber} />
-                  <Text style={[styles.metaChunk, { fontVariant: ["tabular-nums"] }]}>
-                    {Math.round((item.fiberG ?? 0) * 10) / 10}g
-                  </Text>
-                </View>
-              ) : null}
-              {totalTime ? (
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                  <Clock size={11} color={Accent.primary} />
-                  <Text style={styles.metaChunk}>{totalTime}</Text>
-                </View>
-              ) : null}
-            </View>
+            {/* Canonical 2026-05-22 v4: macro row consolidated into the
+                shared MacroIconRow component. Was duplicated inline at
+                Library + Discover; now sourced from one place so any
+                hue / icon / layout change cascades. See
+                `components/nutrition/MacroIconRow.tsx`. */}
+            <MacroIconRow
+              kcal={item.calories}
+              protein={item.protein}
+              carbs={item.carbs}
+              fat={item.fat}
+              fiber={item.fiberG}
+              cookTime={totalTime ?? undefined}
+              textColor={colors.textSecondary}
+              textTertiaryColor={colors.textTertiary}
+              showMacroLetters={false}
+              style={[styles.metaRow, { flexWrap: "wrap", gap: 10 }]}
+              textStyle={styles.metaChunk}
+            />
             {/* GW-08 (audit 2026-04-28): TrustChip removed for the same
                 reason as Discover hero — the source label was fabricated
                 from `item.isVerified` (which is itself written by the
@@ -735,6 +722,28 @@ export default function LibraryScreen() {
                         maxFontSizeMultiplier={1.2}
                       >
                         {label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+                {importPlanPills.map((label) => {
+                  const id = planImportPillId(label);
+                  const active = pill === id;
+                  const short = label.replace(/^Imported · /, "");
+                  return (
+                    <Pressable
+                      key={id}
+                      onPress={() => setPill(id)}
+                      style={[styles.filterPill, active && styles.filterPillActive]}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: active }}
+                      accessibilityLabel={`Filter imported plan: ${short}`}
+                    >
+                      <Text
+                        style={[styles.filterPillText, active && styles.filterPillTextActive]}
+                        maxFontSizeMultiplier={1.2}
+                      >
+                        {short}
                       </Text>
                     </Pressable>
                   );

@@ -1,7 +1,6 @@
 "use client";
 
 import { SubTabPill } from "../ui/sub-tab-pill";
-import { TodayBrandBar } from "./today-brand-bar";
 import { cn } from "../ui/utils";
 
 export type RecipesTab = "library" | "discover";
@@ -35,12 +34,11 @@ export function RecipesTabChrome({
       )}
       data-testid="recipes-tab-chrome"
     >
-      <div className="px-6 pt-2 pb-1 space-y-1">
-        <TodayBrandBar />
+      <div className="px-6 pt-2 pb-1 space-y-0.5">
         <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
           Recipes
         </p>
-        <h1 className="text-[28px] font-extrabold tracking-tight text-foreground">
+        <h1 className="text-[24px] font-extrabold tracking-tight text-foreground">
           {SECTION_TITLE[activeId]}
         </h1>
       </div>

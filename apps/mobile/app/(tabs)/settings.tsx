@@ -13,7 +13,7 @@ import { ChevronLeft, ChevronRight, LogOut, Search } from "lucide-react-native";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
-import { Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing, Type } from "@/constants/theme";
 import { YouSubTabHeader } from "@/components/tabs/YouSubTabHeader";
 import { SettingsBundleContent } from "@/components/settings/SettingsBundleContent";
 import { filterSettingsIndex } from "@/lib/settingsSearchIndex";
@@ -87,7 +87,7 @@ export default function SettingsScreen() {
           paddingBottom: 120,
           gap: Spacing.md,
         },
-        title: { fontSize: 22, fontWeight: "700", color: colors.text },
+        title: { ...Type.title, color: colors.text },
         sub: { color: colors.textSecondary, fontSize: 14, lineHeight: 20 },
         muted: { color: colors.textSecondary, paddingHorizontal: Spacing.xl },
       }),
@@ -109,7 +109,10 @@ export default function SettingsScreen() {
           flexDirection: "row",
           alignItems: "center",
           paddingHorizontal: Spacing.lg,
-          paddingTop: Spacing.sm,
+          // DRIFT-11 fix (2026-05-22): bumped from Spacing.sm to
+          // Spacing.md so the Settings header carries the same top
+          // breathing room as Discover / Plan / Progress.
+          paddingTop: Spacing.md,
           paddingBottom: Spacing.xs,
         }}
       >

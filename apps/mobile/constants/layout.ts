@@ -6,9 +6,21 @@ import { Spacing } from "./theme";
  */
 export const Layout = {
   /** Default vertical gap between major blocks inside a scroll view. */
-  screenGap: Spacing.xxl,
+  screenGap: Spacing.lg,
   screenPaddingX: Spacing.xl,
   screenPaddingBottom: 120,
+  /**
+   * Today tab — v49 / Claude Design density (prototype `gap: 10–14`,
+   * phone horizontal padding 20px). Tighter than the 2026-05-19 global
+   * `Spacing.md` (16px) bump that made mobile Today feel airy vs web.
+   */
+  todayScrollGap: 10,
+  todayScreenPaddingX: Spacing.lg,
+  macroTileGridGap: 10,
+  /** Plan tab — same density bar as Today; day blocks are section + flat meal card. */
+  planScrollGap: 10,
+  planScreenPaddingX: Spacing.lg,
+  planDayGap: 12,
   /** Sticky tab chrome — title block padding. */
   chromePaddingTop: Spacing.sm,
   chromeTitleGap: 4,
@@ -16,7 +28,7 @@ export const Layout = {
   /** Section header typography (overline + title). */
   overlineSize: 11,
   overlineTracking: 1.2,
-  titleSize: 28,
+  titleSize: 24,
   titleTracking: -0.6,
   subtitleSize: 13,
 } as const;

@@ -25,21 +25,25 @@ describe("macroColorFor — canonical palette", () => {
     expect(macroColorFor("water")).toBe(MacroColors.water);
   });
 
-  it("sugar is periwinkle — not warning amber", () => {
-    expect(MacroColors.sugar).toBe(Accent.primaryLight);
+  it("sugar maps to Yellow (8-slot — sugar is a carb)", () => {
+    // 2026-05-22 evening: sugar folded into Yellow slot. Was periwinkle.
+    expect(MacroColors.sugar.toLowerCase()).toBe("#f3c336");
     expect(MacroColors.sugar).not.toBe(Accent.warning);
   });
 
-  it("fiber green is distinct from calories / success green", () => {
+  it("fiber and calories both map to Green slot (icons differentiate)", () => {
+    // 2026-05-22 evening: 8-slot palette consolidates fiber + calories
+    // onto Green. The Beef vs Leaf icon + the kcal-vs-g unit are the
+    // differentiators on tiles + rings; colour parity is intentional.
     expect(MacroColors.fiber).toBe(Accent.fiber);
     expect(MacroColors.calories).toBe(Accent.success);
-    expect(MacroColors.fiber).not.toBe(MacroColors.calories);
-    expect(MacroColors.fiber.toLowerCase()).toBe("#4a7878");
-    expect(MacroColors.calories.toLowerCase()).toBe("#62b35a");
+    expect(MacroColors.fiber.toLowerCase()).toBe("#56a775");
+    expect(MacroColors.calories.toLowerCase()).toBe("#56a775");
   });
 
-  it("carbs is yellow-orange — not warning amber or sodium orange", () => {
+  it("carbs maps to Yellow — not Orange (Orange reserved for activity/bonus)", () => {
     expect(MacroColors.carbs).toBe(Accent.carbs);
+    expect(MacroColors.carbs.toLowerCase()).toBe("#f3c336");
     expect(MacroColors.carbs).not.toBe(Accent.warning);
     expect(MacroColors.carbs).not.toBe(Accent.orange);
   });
@@ -68,9 +72,16 @@ describe("TodayDashboardMacroTiles — uses macroColorFor", () => {
     expect(src).not.toMatch(/sugar:[\s\S]*?color:\s*Accent\.warning/);
   });
 
-  it("keeps macro identity colour on over-budget bars (caption uses destructive)", () => {
+  it("keeps macro identity colour on over-budget bars (caption uses over-budget amber)", () => {
+    // 2026-05-21: over-budget caption is amber (Accent.warning), never
+    // red. Per brand-tokens.md + project memory ("over-budget is amber,
+    // never red"). The bar itself still uses the macro identity colour
+    // (def.color); only the caption flips to amber to signal "over".
     expect(src).toMatch(/const barColor = def\.color/);
-    expect(src).not.toMatch(/barColor = isOverBudget \? Accent\.warning/);
-    expect(src).toMatch(/isOverBudget \? Accent\.destructive/);
+    expect(src).not.toMatch(/barColor = isOverBudget \? Accent\.(warning|destructive)/);
+    expect(src).toMatch(/isOverBudget \? overBudgetAmber/);
+    // Defense in depth: the file should NOT use destructive for an
+    // over-budget caption — that was the old alarming pattern.
+    expect(src).not.toMatch(/isOverBudget \? Accent\.destructive/);
   });
 });

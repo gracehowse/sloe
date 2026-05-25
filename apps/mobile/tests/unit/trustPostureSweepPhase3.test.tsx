@@ -29,11 +29,11 @@ vi.mock("@/hooks/use-theme-colors", () => ({
     cardBorder: "#eee",
     border: "#eee",
     inputBg: "#f4f4f4",
-    sourceUsda: "#62b35a",
-    sourceOff: "#4c6ce0",
-    sourceFatsecret: "#f97316",
+    sourceUsda: "#56A775",
+    sourceOff: "#588CE4",
+    sourceFatsecret: "#F78A32",
     sourceManual: "#94a3b8",
-    sourceAi: "#e04888",
+    sourceAi: "#DF5EBC",
   }),
 }));
 

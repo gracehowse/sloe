@@ -312,7 +312,7 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
 
       {/* Title + subtitle */}
       <div className="mb-5">
-        <h1 className="text-[24px] md:text-[26px] font-bold text-foreground -tracking-[0.02em]">
+        <h1 className="text-[24px] md:text-[28px] font-bold text-foreground -tracking-[0.02em]">
           Targets
         </h1>
         <p className="text-[13px] text-muted-foreground mt-1">
@@ -333,7 +333,7 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
             the daily-ring gradient to avoid SVG id collision when both
             mount together. */}
         <div className="bg-card border border-border rounded-2xl p-5 shadow-sm flex flex-col items-center">
-          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground self-start">
+          <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground self-start">
             Daily calorie target
           </p>
           <div
@@ -352,8 +352,8 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
             >
               <defs>
                 <linearGradient id="targets-ring-gradient" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0" stopColor="#7a90f5" />
-                  <stop offset="1" stopColor="#e04888" />
+                  <stop offset="0" stopColor="var(--macro-calories)" />
+                  <stop offset="1" stopColor="var(--macro-fat)" />
                 </linearGradient>
               </defs>
               <circle
@@ -375,7 +375,7 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-[42px] font-extrabold text-foreground tabular-nums -tracking-[0.03em] leading-none">
+              <span className="text-[48px] font-extrabold text-foreground tabular-nums -tracking-[0.03em] leading-none">
                 {targets.calories > 0 ? targets.calories.toLocaleString("en-US") : "—"}
               </span>
               <span className="text-[11px] text-muted-foreground tabular-nums mt-1">
@@ -390,7 +390,7 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
               this static base, which a user can mis-read as a number
               divergence. */}
           {preferActivityAdjustedCalories ? (
-            <p className="text-[12px] text-muted-foreground mt-1 text-center">
+            <p className="text-[11px] text-muted-foreground mt-1 text-center">
               Today&apos;s goal adjusts upward by your active-burn calories.
             </p>
           ) : null}
@@ -413,7 +413,7 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
                 aria-hidden
                 className="mt-1 inline-block w-2.5 h-2.5 rounded-full bg-warning shrink-0"
               />
-              <p className="text-[12px] text-foreground leading-snug flex-1">
+              <p className="text-[11px] text-foreground leading-snug flex-1">
                 <span className="font-bold">Below 1,200 kcal.</span> This is
                 under the safety floor we recommend for adults. Consider
                 raising your target — or talk to a clinician if a lower
@@ -425,7 +425,7 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
 
         {/* Goal */}
         <div className="bg-card border border-border rounded-2xl p-5 shadow-sm">
-          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+          <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
             Goal
           </p>
           {goalWeightKg != null ? (
@@ -466,7 +466,7 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
 
       {/* Macros section label */}
       <div className="mb-3">
-        <h2 className="text-[14px] font-bold text-foreground -tracking-[0.01em]">Macros</h2>
+        <h2 className="text-[13px] font-bold text-foreground -tracking-[0.01em]">Macros</h2>
       </div>
 
       {/* Macro tiles — 4 across on desktop, 2 across on sm, 1 on mobile */}
@@ -487,7 +487,7 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
               className="group text-left bg-card border border-border rounded-2xl p-4 shadow-sm hover:border-primary/40 hover:bg-muted/30 transition-colors"
             >
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
                   {tile.label}
                 </span>
                 <Icon
@@ -533,10 +533,10 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
           <HelpCircle size={14} strokeWidth={2} />
         </span>
         <span className="flex-1 min-w-0">
-          <span className="block text-[14px] font-semibold text-foreground">
+          <span className="block text-[13px] font-semibold text-foreground">
             How is this calculated?
           </span>
-          <span className="block text-[12px] text-muted-foreground mt-0.5">
+          <span className="block text-[11px] text-muted-foreground mt-0.5">
             See the maintenance TDEE, goal, and pace behind today&apos;s target.
           </span>
         </span>

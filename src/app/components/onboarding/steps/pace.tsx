@@ -59,6 +59,15 @@ export function PaceStep() {
   const accent = ACCENT_BY_GOAL[goal];
   const pace = state.paceKgPerWeek ?? GOAL_DEFAULT_PACE[goal];
 
+  // Commit the visible default into state so Continue works on first
+  // paint and persisted onboarding records the chosen pace.
+  React.useEffect(() => {
+    if (state.goal === "maintain" || state.goal === null) return;
+    if (state.paceKgPerWeek === null) {
+      set({ paceKgPerWeek: GOAL_DEFAULT_PACE[state.goal] });
+    }
+  }, [state.goal, state.paceKgPerWeek, set]);
+
   const projectedTarget = targets?.target ?? null;
   const sign =
     goal === "lose" || goal === "recomp"
@@ -145,7 +154,7 @@ export function PaceStep() {
         </div>
         <div className="flex items-baseline gap-1.5 mb-2.5">
           <span
-            className="text-[34px] font-extrabold tracking-tight tabular-nums leading-none text-foreground"
+            className="text-[36px] font-extrabold tracking-tight tabular-nums leading-none text-foreground"
             style={{ letterSpacing: "-0.02em" }}
           >
             {pace.toFixed(pace < 0.1 ? 3 : 2)}

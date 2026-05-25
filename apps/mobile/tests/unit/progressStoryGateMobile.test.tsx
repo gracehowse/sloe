@@ -23,7 +23,7 @@ vi.mock("@/hooks/use-theme-colors", () => ({
     border: "#eee",
     inputBg: "#f4f4f4",
     confidenceNeutral: "#475569",
-    tint: "#4c6ce0",
+    tint: "#1c1916",
   }),
 }));
 

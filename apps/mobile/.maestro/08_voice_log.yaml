@@ -27,7 +27,7 @@ name: "Voice log — Pro sheet + free-tier paywall sheet (M2 2026-04-18)"
       - tapOn: ".*Not now.*"
       - waitForAnimationToEnd
       - assertVisible:
-          text: ".*(?:LOGGED|kcal).*"
+          text: ".*(?:LOGGED|kcal|Start your day).*"
       - stopApp
 
 # Pro branch — the real voice-log sheet opened.
@@ -58,7 +58,7 @@ name: "Voice log — Pro sheet + free-tier paywall sheet (M2 2026-04-18)"
 
 # Verify we're back on Today screen
 - assertVisible:
-    text: ".*(?:LOGGED|kcal).*"
+    text: ".*(?:LOGGED|kcal|Start your day).*"
 
 - tapOn:
     id: "today-quick-log-voice"

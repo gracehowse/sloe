@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Suppr — Plan Import (HTML prototype)</title>
+  <link rel="stylesheet" href="_shared/tokens.css">
+  <link rel="stylesheet" href="_shared/iphone-frame.css">
+  <link rel="stylesheet" href="_shared/prototype.css">
+  <link rel="stylesheet" href="plan-import.css">
+</head>
+<body>
+  <header class="prototype-header">
+    <div>
+      <h1>Plan Import — mobile flow</h1>
+      <p class="meta">Sprint 1 paste + rebalance · ENG-647–652 · May 2026</p>
+    </div>
+    <nav id="flow-nav" aria-label="Flow steps">
+      <button type="button" data-step="plan" aria-current="true">1 Plan</button>
+      <button type="button" data-step="paste">2 Paste</button>
+      <button type="button" data-step="sources">2b Sources</button>
+      <button type="button" data-step="parsing">3 Parse</button>
+      <button type="button" data-step="review">4 Review</button>
+      <button type="button" data-step="activate">5 Activate</button>
+      <button type="button" data-step="done">6 Done</button>
+    </nav>
+  </header>
+
+  <p class="flow-spec">
+    <strong>Pipeline:</strong> parse <strong>recipes</strong> (ingredients → Suppr nutrition) → read weekly schedule → <strong>compile plan</strong> from matched recipe refs.
+    Source must include recipe pages, not dish names alone. Nutrition modes + Library import as locked above.
+  </p>
+
+  <main class="prototype-canvas prototype-canvas--single">
+    <div class="iphone">
+      <div class="iphone__screen">
+        <div class="iphone__status-bar">
+          <span class="iphone__status-bar-time">9:41</span>
+          <span class="iphone__status-bar-right">●●● ▮</span>
+        </div>
+        <div class="iphone__viewport" id="viewport">
+
+          <!-- 1: Plan tab + Generate dropdown -->
+          <section class="plan-screen is-active" data-screen="plan">
+            <div class="plan-nav">
+              <span class="plan-nav__title">Plan</span>
+            </div>
+            <div class="plan-scroll">
+              <div class="summary-card">
+                <div class="summary-card__eyebrow">This week</div>
+                <div class="summary-card__row">
+                  <span class="summary-card__kcal">12,450 kcal</span>
+                  <span class="summary-card__fit">Fits 94%</span>
+                </div>
+                <p style="font-size:12px;color:var(--muted-foreground);margin-top:6px;">
+                  P 142g · C 198g · F 58g avg / day
+                </p>
+              </div>
+              <div class="chip-row">
+                <button type="button" class="chip">7 days · Today ▾</button>
+                <button type="button" class="chip">Brk · Lun · Din · Snk ▾</button>
+                <div class="generate-wrap">
+                  <button type="button" class="btn-generate" id="btn-open-dropdown">
+                    Generate ▾
+                  </button>
+                  <div class="dropdown-menu" id="generate-dropdown" hidden>
+                    <button type="button" data-goto="plan">
+                      Generate from library
+                      <span class="hint">Uses saved recipes · current behaviour</span>
+                    </button>
+                    <button type="button" data-goto="paste">
+                      Import existing plan
+                      <span class="hint">Paste or PDF · must include recipes</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="day-card">
+                <div class="day-card__head">
+                  <span class="day-card__weekday">Mon</span>
+                  <span class="pill-today">Today</span>
+                </div>
+                <div class="meal-row">
+                  <div class="meal-row__icon meal-row__icon--breakfast">☀</div>
+                  <div class="meal-row__body">
+                    <div class="meal-row__slot">Breakfast</div>
+                    <div class="meal-row__title">Greek yogurt & berries</div>
+                  </div>
+                </div>
+                <div class="meal-row">
+                  <div class="meal-row__icon meal-row__icon--lunch">🍴</div>
+                  <div class="meal-row__body">
+                    <div class="meal-row__slot">Lunch</div>
+                    <div class="meal-row__title">Chicken rice bowl</div>
+                  </div>
+                </div>
+              </div>
+              <p class="annot">ENG-647: Replace ghost <em>Regenerate</em> with primary <strong>Generate ▾</strong> when a plan exists. Library path unchanged.</p>
+            </div>
+            <nav class="tab-bar" aria-hidden="true">
+              <span>Today</span><span>Recipes</span><span class="is-active">Plan</span><span>Progress</span>
+            </nav>
+          </section>
+
+          <!-- 2: Paste sheet (Sprint 1) -->
+          <section class="plan-screen" data-screen="paste">
+            <div class="plan-nav" style="opacity:0.3">
+              <span class="plan-nav__title">Plan</span>
+            </div>
+            <div class="scrim"></div>
+            <div class="sheet" role="dialog" aria-label="Import meal plan">
+              <div class="sheet__grab"></div>
+              <h2 class="sheet__title">Import meal plan</h2>
+              <p class="sheet__subtitle">Paste a plan that includes <strong>recipes</strong> (ingredients + method) or kcal per meal — not just dish names.</p>
+              <div class="eligibility-callout" role="note">
+                <strong>What works</strong>
+                <ul class="eligibility-list">
+                  <li><strong>Program PDF</strong> — week calendar grid + recipe pages with kcal / macro panels</li>
+                  <li><strong>Meal-prep paste</strong> — batch recipes with ingredients (optional <em>Protein ~X g</em> lines)</li>
+                  <li><strong>Coach PDF</strong> — weekly schedule + recipe appendix (ingredients, no kcal)</li>
+                </ul>
+                <p class="eligibility-callout__warn"><strong>Won't work alone:</strong> a grid of dish names with no linked recipe pages.</p>
+              </div>
+              <label class="field-label" for="paste-body">Plan + recipes</label>
+              <textarea class="paste-area" id="paste-body">Meal prep — Week 1
+
+WEEKLY PLAN
+Mon Lunch: Chicken thigh bowl
+Mon Snack: Matcha pudding
+Tue Lunch: Chicken thigh bowl (leftover)
+
+--- recipes ---
+
+Peanut Butter, Tamari & Ginger Chicken Thighs
+Serves 4
+Per serving: Protein ~38 g · Fibre ~2 g
+Ingredients: 800 g skinless chicken thighs, 4 tbsp smooth peanut butter, 3 tbsp tamari, 2 tbsp rice wine vinegar, 2 tbsp chilli sauce, 1 tbsp ginger, 1 tbsp maple syrup, 1 tbsp sesame oil, 2 cloves garlic…
+Method: Whisk marinade. Coat chicken. Roast 200°C 25–30 min. Slice.
+
+Sesame Spinach & Edamame · Serves 4 · Per serving: Protein ~11 g · Fibre ~6 g
+Ingredients: 300 g frozen edamame, 200 g spinach, 1 tbsp sesame oil, 1 tbsp tamari, 1 tbsp sesame seeds…
+
+Cold-Rinsed Soba Noodles · Serves 4 · Per serving: Protein ~7 g · Fibre ~3 g
+Ingredients: 250 g soba noodles…
+
+Matcha White Chocolate Tofu Puddings · Makes 4
+Per pudding: Protein ~9 g · Fibre ~2 g
+Ingredients: 300 g silken tofu, 100 g white chocolate, 1–1½ tsp matcha, 1 tbsp maple syrup…
+...</textarea>
+              <label class="field-label" for="plan-name">Plan name</label>
+              <input class="text-input" id="plan-name" type="text" value="Meal prep — Week 1" autocomplete="off">
+              <button type="button" class="btn-primary" data-goto="parsing">Parse plan</button>
+              <button type="button" class="btn-secondary" data-goto="plan">Cancel</button>
+            </div>
+          </section>
+
+          <!-- 2b: Multi-source (Sprint 2 preview) -->
+          <section class="plan-screen" data-screen="sources">
+            <div class="plan-nav" style="opacity:0.3"><span class="plan-nav__title">Plan</span></div>
+            <div class="scrim"></div>
+            <div class="sheet">
+              <div class="sheet__grab"></div>
+              <h2 class="sheet__title">Import meal plan</h2>
+              <p class="sheet__subtitle">PDF, paste, or photo — same pipeline. Source must include recipes or per-meal kcal.</p>
+              <div class="eligibility-callout eligibility-callout--compact" role="note">
+                <strong>Program PDF:</strong> Page 1 = week grid (meal names). Later pages = one recipe each with ingredients + kcal panel. Upload the full file.
+              </div>
+              <div class="source-tabs" role="tablist">
+                <button type="button" data-source="paste">Paste</button>
+                <button type="button" class="is-active" data-source="pdf">PDF</button>
+                <button type="button" data-source="photo">Photo</button>
+              </div>
+              <div id="panel-paste" hidden>
+                <textarea class="paste-area" style="min-height:100px">Weekly plan + recipe section…</textarea>
+              </div>
+              <div id="panel-pdf">
+                <div class="upload-zone upload-zone--file">
+                  <strong>Week 1 Meal Plan.pdf</strong>
+                  <small>24 pages · p.1 calendar grid · 28 recipes with kcal / macro panels · daily summaries</small>
+                </div>
+              </div>
+              <div id="panel-photo" hidden>
+                <div class="upload-zone">Take photo or choose screenshot<br><small>Single recipe page only — full weeks need PDF</small></div>
+              </div>
+              <label class="field-label">Plan name</label>
+              <input class="text-input" type="text" value="Week 1 Meal Plan">
+              <button type="button" class="btn-primary" data-goto="parsing">Continue</button>
+            </div>
+          </section>
+
+          <!-- 3: Parsing -->
+          <section class="plan-screen" data-screen="parsing">
+            <div class="plan-nav">
+              <button type="button" class="plan-nav__action" data-goto="paste">Cancel</button>
+              <span class="plan-nav__title">Import</span>
+              <span style="width:48px"></span>
+            </div>
+            <div class="parse-center">
+              <div class="spinner" aria-hidden="true"></div>
+              <h2 style="font-size:18px;font-weight:700;margin-bottom:6px">Building your plan…</h2>
+              <p style="font-size:14px;color:var(--muted-foreground);max-width:280px">
+                Recipes first — ingredients matched to Suppr — then the weekly schedule is compiled from those recipes.
+              </p>
+              <div class="parse-steps">
+                <div class="parse-step is-done">✓ Parse 28 recipes · author kcal panels captured</div>
+                <div class="parse-step is-active">● Link calendar grid → recipes</div>
+                <div class="parse-step">○ Compile week plan from matched recipes</div>
+              </div>
+              <p class="annot" style="margin-top:24px">ENG-649: Program PDF — grid slot <em>Tue lunch · Cilantro Chicken Curry</em> links to recipe page (author 291 kcal). Optional: cross-check daily summary totals vs compiled plan.</p>
+              <button type="button" class="btn-primary" style="margin-top:16px;max-width:280px" data-goto="review">Skip to review (proto)</button>
+            </div>
+          </section>
+
+          <!-- 4: Review + assessment -->
+          <section class="plan-screen" data-screen="review">
+            <div class="plan-nav">
+              <button type="button" class="plan-nav__action" data-goto="paste">Back</button>
+              <span class="plan-nav__title">Review import</span>
+              <button type="button" class="plan-nav__action" data-goto="activate">Save</button>
+            </div>
+            <div class="plan-scroll" id="review-scroll">
+              <div class="assessment">
+                <p class="assessment__stats">
+                  Plan averages <strong>1,940 kcal/day</strong> (Suppr calc) · Your target <strong>2,000</strong> ·
+                  <em>−3%</em> below target
+                </p>
+                <p class="assessment__meta">4 recipes parsed · 6 slots compiled (2 multi-recipe bowls) · 0 unlinked</p>
+
+                <p class="pref-label">How should we handle nutrition?</p>
+                <div class="action-seg action-seg--nutrition" role="group" aria-label="Nutrition handling">
+                  <button type="button" data-nutrition="author">
+                    <strong>Author's numbers — as published</strong>
+                    <span>Use stated protein/fibre where provided. Suppr fills kcal and any missing macros from ingredients.</span>
+                  </button>
+                  <button type="button" class="is-selected" data-nutrition="match">
+                    <strong>Match &amp; verify with Suppr</strong>
+                    <span>Match ingredients to our database. Show author vs Suppr on each meal — swap brands, review, or keep theirs.</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="pref-card" id="library-import-card">
+                <label class="toggle-row">
+                  <input type="checkbox" id="library-import" checked>
+                  <span>
+                    <strong>Import all recipes to Library</strong>
+                    <span class="toggle-row__hint">Same nutrition choice above applies to saved recipes.</span>
+                  </span>
+                </label>
+                <p class="pref-note" id="library-note-author" hidden>
+                  Recipes saved as <strong>Published</strong> — manual entry from the source. You can edit ingredients later if you want Suppr to verify accuracy.
+                </p>
+                <p class="pref-note" id="library-note-match">
+                  Recipes get the usual <strong>Verified</strong> marker when confidence is high. Low-confidence meals stay editable — review ingredients any time.
+                </p>
+              </div>
+
+              <div class="pref-card pref-card--subtle" id="plan-fit-block">
+                <p class="pref-label" style="margin-bottom:8px">Fit plan to your targets</p>
+                <label class="toggle-row toggle-row--compact">
+                  <input type="checkbox" id="plan-rebalance" checked>
+                  <span>
+                    <strong>Auto-rebalance portions</strong>
+                    <span class="toggle-row__hint">Scale servings protein → carbs → fat to hit your targets. Never vegetables. Uses Suppr numbers when match mode is on.</span>
+                  </span>
+                </label>
+              </div>
+
+              <label class="field-label" for="review-plan-name">Plan name</label>
+              <input class="text-input" id="review-plan-name" type="text" value="Meal prep — Week 1" style="margin-bottom:8px">
+
+              <div class="day-label">Monday</div>
+              <div class="day-card day-card--review" style="padding:8px 12px">
+                <div class="review-row" data-author-kcal="" data-suppr-kcal="687" data-match="high">
+                  <div class="meal-row__icon meal-row__icon--lunch">🍴</div>
+                  <div class="review-row__edit">
+                    <input class="review-row__title-input" value="Chicken thigh bowl" aria-label="Meal title">
+                    <div class="review-row__meta">Lunch · bowl = chicken + soba + spinach · 1 serving each</div>
+                    <span class="badge-published">Published</span>
+                    <span class="confidence confidence--high">High match · 9 ingredients</span>
+                    <div class="review-row__actions">
+                      <button type="button" class="row-action is-selected">Accept Suppr</button>
+                      <button type="button" class="row-action">Review ingredients</button>
+                      <button type="button" class="row-action">Keep author's</button>
+                    </div>
+                  </div>
+                  <div class="review-row__kcal">
+                    <strong class="kcal-primary">687</strong>
+                    <span class="review-row__claimed">author P ~56 g</span>
+                    <span class="review-row__author-only">687</span>
+                  </div>
+                </div>
+                <div class="review-row" data-author-kcal="" data-suppr-kcal="548" data-match="med">
+                  <div class="meal-row__icon meal-row__icon--dinner">🌙</div>
+                  <div class="review-row__edit">
+                    <input class="review-row__title-input" value="Peanut butter chicken thighs">
+                    <div class="review-row__meta">Recipe · 1 of 4 · linked to bowls above</div>
+                    <span class="badge-published">Published</span>
+                    <span class="confidence confidence--med">Author P ~38 g · Suppr P 41 g</span>
+                    <div class="review-row__actions">
+                      <button type="button" class="row-action is-selected">Accept Suppr</button>
+                      <button type="button" class="row-action">Review ingredients</button>
+                      <button type="button" class="row-action">Keep author's</button>
+                    </div>
+                  </div>
+                  <div class="review-row__kcal">
+                    <strong class="kcal-primary">548</strong>
+                    <span class="review-row__claimed">author P ~38 g</span>
+                    <span class="review-row__author-only">548</span>
+                  </div>
+                </div>
+                <div class="review-row" data-author-kcal="" data-suppr-kcal="142" data-match="high">
+                  <div class="meal-row__icon meal-row__icon--snacks">🍮</div>
+                  <div class="review-row__edit">
+                    <input class="review-row__title-input" value="Matcha white chocolate pudding">
+                    <div class="review-row__meta">Snack · <em>Matcha Tofu Puddings</em> · 1 pudding</div>
+                    <span class="badge-published">Published</span>
+                    <span class="confidence confidence--high">Author P ~9 g · Suppr P 10 g</span>
+                    <div class="review-row__actions">
+                      <button type="button" class="row-action is-selected">Accept Suppr</button>
+                      <button type="button" class="row-action">Review ingredients</button>
+                      <button type="button" class="row-action">Keep author's</button>
+                    </div>
+                  </div>
+                  <div class="review-row__kcal">
+                    <strong class="kcal-primary">142</strong>
+                    <span class="review-row__claimed">author P ~9 g</span>
+                    <span class="review-row__author-only">142</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="day-label">Tuesday · 2 more meals</div>
+              <p style="font-size:13px;color:var(--muted-foreground);margin-bottom:12px">+ 3 more days in scroll…</p>
+
+              <p class="annot">
+                Meal-prep format: component recipes parsed first; bowls compile several refs.
+                Partial <em>Per serving: Protein ~X g</em> lines shown alongside Suppr kcal calc.
+              </p>
+
+              <div class="review-footer">
+                <button type="button" class="btn-primary" data-goto="activate">Save as template</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- 5: Activate prompt -->
+          <section class="plan-screen" data-screen="activate">
+            <div class="plan-nav"><span class="plan-nav__title">Review import</span></div>
+            <div class="plan-scroll" style="filter:blur(2px);opacity:0.5">
+              <div class="assessment"><p class="assessment__stats">…</p></div>
+            </div>
+            <div class="scrim"></div>
+            <div class="modal-card" role="dialog" aria-labelledby="activate-title">
+              <h2 id="activate-title">Activate imported plan?</h2>
+              <p>
+                <strong>Meal prep — Week 1</strong> will be saved as a new template.
+                Your current plan stays active unless you switch.
+              </p>
+              <label class="radio-option is-selected">
+                <input type="radio" name="activate" value="keep" checked>
+                <span>
+                  <strong>Keep current plan</strong><br>
+                  <small style="color:var(--muted-foreground)">Imported template available in switcher</small>
+                </span>
+              </label>
+              <label class="radio-option">
+                <input type="radio" name="activate" value="switch">
+                <span>
+                  <strong>Activate imported plan</strong><br>
+                  <small style="color:var(--muted-foreground)">Replace visible week with import</small>
+                </span>
+              </label>
+              <button type="button" class="btn-primary" data-goto="done" style="margin-top:8px">Confirm</button>
+              <button type="button" class="btn-secondary" data-goto="review">Back</button>
+              <p class="annot">ENG-652: Never silent replace. Default = keep current.</p>
+            </div>
+          </section>
+
+          <!-- 6: Success -->
+          <section class="plan-screen" data-screen="done">
+            <div class="plan-nav"><span class="plan-nav__title">Plan</span></div>
+            <div class="toast">
+              Template saved · <a href="#">Meal prep — Week 1</a>
+              <br>4 recipes imported · tagged <strong>Imported · Meal prep — Week 1</strong>
+            </div>
+            <div class="plan-scroll" style="padding-top:48px">
+              <div class="summary-card">
+                <div class="summary-card__eyebrow">This week</div>
+                <div class="summary-card__row">
+                  <span class="summary-card__kcal">12,450 kcal</span>
+                  <span class="summary-card__fit">Fits 94%</span>
+                </div>
+              </div>
+              <div class="chip-row">
+                <button type="button" class="chip">7 days · Today ▾</button>
+                <button type="button" class="chip">Brk · Lun · Din · Snk ▾</button>
+                <button type="button" class="btn-generate">Generate ▾</button>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+                <span class="chip" style="background:var(--slot-dinner-soft);color:var(--primary);font-weight:700">Meal prep — Week 1</span>
+                <span class="chip">Default plan</span>
+              </div>
+              <p class="annot">ENG-653: Library filter chip <em>Imported · {plan name}</em>. Template switcher shows new template.</p>
+            </div>
+            <nav class="tab-bar" aria-hidden="true">
+              <span>Today</span><span>Recipes</span><span class="is-active">Plan</span><span>Progress</span>
+            </nav>
+          </section>
+
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <aside class="callout-panel">
+    <h2>Implementation map (Sprint 1)</h2>
+    <ul>
+      <li><strong>ENG-647</strong> — <code>planner.tsx</code> chip row: <code>Generate ▾</code> menu</li>
+      <li><strong>ENG-648</strong> — Bottom sheet route/modal: paste + plan name</li>
+      <li><strong>ENG-649</strong> — Recipe parse (ingredients → Suppr) → schedule link → compile plan</li>
+      <li><strong>ENG-650–651</strong> — Review: nutrition mode (author vs match), Library import toggle, per-meal resolve</li>
+      <li><strong>ENG-652</strong> — Template commit + activate modal</li>
+      <li><strong>ENG-653</strong> — Library filter chip</li>
+    </ul>
+    <p style="margin-top:12px;color:var(--muted-foreground)">
+      Open locally: <code>open docs/prototypes/2026-05-24-plan-import/index.html</code>
+      · Spec: <code>docs/planning/plan-import-linear-program.md</code>
+    </p>
+  </aside>
+
+  <script>
+    const screens = document.querySelectorAll(".plan-screen");
+    const nav = document.getElementById("flow-nav");
+    const dropdown = document.getElementById("generate-dropdown");
+    const openDropdown = document.getElementById("btn-open-dropdown");
+
+    function show(step) {
+      screens.forEach((s) => s.classList.toggle("is-active", s.dataset.screen === step));
+      nav.querySelectorAll("button").forEach((b) => {
+        b.setAttribute("aria-current", b.dataset.step === step ? "true" : "false");
+      });
+      if (dropdown) dropdown.hidden = true;
+    }
+
+    nav.addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-step]");
+      if (btn) show(btn.dataset.step);
+    });
+
+    document.getElementById("viewport").addEventListener("click", (e) => {
+      const goto = e.target.closest("[data-goto]");
+      if (goto) {
+        e.preventDefault();
+        show(goto.dataset.goto);
+        return;
+      }
+      if (e.target === openDropdown) {
+        dropdown.hidden = !dropdown.hidden;
+        return;
+      }
+      if (!e.target.closest(".generate-wrap")) {
+        dropdown.hidden = true;
+      }
+    });
+
+    document.querySelectorAll(".action-seg button").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const seg = btn.closest(".action-seg");
+        seg.querySelectorAll("button").forEach((b) => b.classList.remove("is-selected"));
+        btn.classList.add("is-selected");
+        if (btn.dataset.nutrition) setNutritionMode(btn.dataset.nutrition);
+      });
+    });
+
+    document.querySelectorAll(".review-row__actions .row-action").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const row = btn.closest(".review-row");
+        row.querySelectorAll(".row-action").forEach((b) => b.classList.remove("is-selected"));
+        btn.classList.add("is-selected");
+      });
+    });
+
+    function setNutritionMode(mode) {
+      const scroll = document.getElementById("review-scroll");
+      if (!scroll) return;
+      scroll.dataset.nutritionMode = mode;
+      document.getElementById("library-note-author").hidden = mode !== "author";
+      document.getElementById("library-note-match").hidden = mode !== "match";
+      document.getElementById("plan-fit-block").hidden = mode === "author";
+      scroll.querySelectorAll(".review-row").forEach((row) => {
+        const author = row.dataset.authorKcal;
+        const suppr = row.dataset.supprKcal;
+        const primary = row.querySelector(".kcal-primary");
+        if (primary) primary.textContent = mode === "author" ? author : suppr;
+      });
+    }
+    setNutritionMode("match");
+
+    document.querySelectorAll(".radio-option").forEach((label) => {
+      label.addEventListener("click", () => {
+        document.querySelectorAll(".radio-option").forEach((l) => l.classList.remove("is-selected"));
+        label.classList.add("is-selected");
+        const input = label.querySelector("input");
+        if (input) input.checked = true;
+      });
+    });
+
+    document.querySelectorAll(".source-tabs button").forEach((tab) => {
+      tab.addEventListener("click", () => {
+        document.querySelectorAll(".source-tabs button").forEach((t) => t.classList.remove("is-active"));
+        tab.classList.add("is-active");
+        const id = tab.dataset.source;
+        ["paste", "pdf", "photo"].forEach((k) => {
+          const el = document.getElementById("panel-" + k);
+          if (el) el.hidden = k !== id;
+        });
+      });
+    });
+
+    // Auto-advance parsing demo (optional)
+    let parseTimer;
+    nav.querySelector('[data-step="parsing"]')?.addEventListener("click", () => {
+      clearTimeout(parseTimer);
+      parseTimer = setTimeout(() => show("review"), 2800);
+    });
+  </script>
+</body>
+</html>

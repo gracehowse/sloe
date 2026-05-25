@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Suppr — Today MFP-style ring + macro rings (2026-05-22)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<style>
+  :root {
+    --background: #fbfaf6;
+    --background-secondary: #f5f3ec;
+    --card: #ffffff;
+    --foreground: #1a1714;
+    --foreground-secondary: #5b554b;
+    --foreground-tertiary: #8a8377;
+    --border: #ebe7dc;
+    --border-strong: #ddd6c5;
+    --input-background: #f0ece4;
+
+    --accent-primary: #5b6ee8;
+    --accent-success: #5ea854;
+    --accent-warning: #d49a2e;
+    --accent-destructive: #d44545;
+    --accent-bonus: #ed8a3a;   /* exercise bonus orange */
+    --accent-food: #3b7ee0;    /* food blue — MFP-style */
+
+    --ring-track: #d4cfc1;     /* warm-grey track (remaining) */
+
+    --macro-protein: #7a85d4;
+    --macro-carbs: #ccaa64;
+    --macro-fat: #d68a9e;
+    --macro-fiber: #7da57b;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: #e9e6df;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+    color: var(--foreground);
+    -webkit-font-smoothing: antialiased;
+  }
+  .page-wrap {
+    min-height: 100vh; padding: 32px 16px 64px;
+    display: flex; flex-direction: column; align-items: center; gap: 24px;
+  }
+  .page-header { text-align: center; max-width: 720px; color: #3a3631; }
+  .page-header h1 {
+    font-family: ui-serif, Georgia, serif;
+    font-size: 26px; letter-spacing: -0.02em; margin: 0 0 8px;
+  }
+  .page-header p { font-size: 14px; line-height: 1.5; color: #66605a; margin: 0; }
+
+  .iphone {
+    width: 390px; height: 844px;
+    background: var(--background);
+    border: 14px solid #1a1714; border-radius: 56px;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.18);
+    position: relative; overflow: hidden;
+  }
+  .iphone-statusbar {
+    height: 44px; padding: 16px 32px 0;
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 15px; font-weight: 600;
+  }
+  .iphone-statusbar .dynamic-island {
+    width: 122px; height: 36px; background: #000; border-radius: 18px;
+    position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+  }
+  .iphone-statusbar .right { display: flex; gap: 6px; }
+
+  .today { padding: 12px 20px 100px; }
+
+  .today-header {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px;
+  }
+  .nav-pair { display: flex; align-items: center; gap: 12px; }
+  .nav-arrow {
+    width: 32px; height: 32px; border-radius: 6px;
+    background: var(--card); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center; font-size: 16px;
+  }
+  .today-title { font-family: ui-serif, Georgia, serif; font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+  .avatar {
+    width: 36px; height: 36px; border-radius: 18px;
+    background: #3a3631; color: #fff; display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700;
+  }
+
+  .day-strip {
+    display: grid; grid-template-columns: repeat(7, 1fr) auto;
+    gap: 4px; align-items: center; margin-bottom: 16px;
+  }
+  .day-strip .day { text-align: center; padding: 4px 0 6px; }
+  .day-strip .day-label { font-size: 11px; color: var(--foreground-tertiary); font-weight: 600; margin-bottom: 4px; }
+  .day-strip .day-num {
+    font-size: 15px; font-weight: 700;
+    width: 28px; height: 28px; border-radius: 14px;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .day-strip .day.today .day-num { background: var(--accent-primary); color: #fff; }
+  .day-strip .day.logged .day-num { background: var(--accent-success); color: #fff; opacity: 0.85; }
+  .day-strip .calendar-glyph { color: var(--accent-primary); padding-left: 6px; }
+
+  /* Hero card: multi-ring centred, Goal/Food/Exercise stats below */
+  .hero-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 8px; padding: 16px 16px 14px; margin-bottom: 12px;
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+  }
+  .ring-wrap { position: relative; width: 220px; height: 220px; flex-shrink: 0; }
+  .ring-center {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  .ring-center .value {
+    font-size: 36px; font-weight: 800; letter-spacing: -0.02em;
+    color: var(--foreground); line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .ring-center .label {
+    font-size: 11px; font-weight: 600;
+    color: var(--foreground-secondary);
+    margin-top: 4px;
+  }
+
+  /* Goal/Food/Exercise row — sits below the ring inside the same card */
+  .stats-row {
+    width: 100%;
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+  .stat {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    position: relative;
+  }
+  .stat + .stat::before {
+    content: ""; position: absolute; left: 0; top: 4px; bottom: 4px;
+    width: 1px; background: var(--border);
+  }
+  .stat-icon {
+    width: 24px; height: 24px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center; font-size: 13px;
+  }
+  .stat-icon.goal { background: rgba(91, 110, 232, 0.08); color: var(--accent-primary); }
+  .stat-icon.food { background: rgba(59, 126, 224, 0.10); color: var(--accent-food); }
+  .stat-icon.exercise { background: rgba(237, 138, 58, 0.12); color: var(--accent-bonus); }
+  .stat-label { font-size: 10px; font-weight: 600; color: var(--foreground-tertiary); text-transform: uppercase; letter-spacing: 0.06em; }
+  .stat-value { font-size: 16px; font-weight: 700; color: var(--foreground); font-variant-numeric: tabular-nums; }
+
+  /* Macro bars below ring */
+  .macro-bars {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 8px; padding: 14px 14px 10px; margin-bottom: 12px;
+  }
+  .macro-row { padding: 6px 0; }
+  .macro-row + .macro-row { border-top: 1px solid var(--border); }
+  .macro-row-top {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 10px; margin-bottom: 4px;
+  }
+  .macro-label {
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--foreground-tertiary);
+  }
+  .macro-value {
+    font-size: 13px; color: var(--foreground-secondary);
+    font-variant-numeric: tabular-nums;
+  }
+  .macro-value strong { color: var(--foreground); font-weight: 700; }
+  .macro-value .caption { color: var(--foreground-tertiary); margin-left: 4px; }
+  .macro-bar-track {
+    height: 6px; border-radius: 3px;
+    background: var(--ring-track); overflow: hidden;
+  }
+  .macro-bar-fill { height: 100%; border-radius: 3px; }
+  .protein .macro-bar-fill { background: var(--macro-protein); }
+  .carbs .macro-bar-fill { background: var(--macro-carbs); }
+  .fat .macro-bar-fill { background: var(--macro-fat); }
+  .fiber .macro-bar-fill { background: var(--macro-fiber); }
+
+  /* Meals card with per-meal P/C/F/Fb inline */
+  .meals-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 8px; padding: 4px 14px;
+  }
+  .meal-slot {
+    padding: 10px 0;
+    display: flex; flex-direction: column; gap: 4px;
+    border-bottom: 1px solid var(--border);
+  }
+  .meal-slot:last-child { border-bottom: none; }
+  .meal-slot-top { display: flex; align-items: center; gap: 10px; }
+  .meal-slot .slot-icon {
+    width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 14px;
+  }
+  .meal-slot .slot-name {
+    flex: 1; font-size: 15px; font-weight: 600;
+  }
+  .meal-slot.empty .slot-name { color: var(--foreground-tertiary); font-weight: 500; }
+  .meal-slot .slot-kcal {
+    font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--foreground);
+  }
+  .meal-slot.empty .slot-kcal { color: var(--foreground-tertiary); font-weight: 400; }
+  .meal-slot-macros {
+    display: flex; gap: 10px; padding-left: 32px;
+    font-size: 11px; color: var(--foreground-tertiary);
+    font-variant-numeric: tabular-nums;
+  }
+  .meal-slot-macros .macro-pip { display: inline-flex; align-items: center; gap: 4px; }
+  .meal-slot-macros .macro-pip::before {
+    content: ""; width: 5px; height: 5px; border-radius: 3px;
+  }
+  .meal-slot-macros .p::before { background: var(--macro-protein); }
+  .meal-slot-macros .c::before { background: var(--macro-carbs); }
+  .meal-slot-macros .f::before { background: var(--macro-fat); }
+  .meal-slot-macros .fb::before { background: var(--macro-fiber); }
+
+  /* Tab bar */
+  .tabbar {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 80px;
+    background: var(--background); border-top: 1px solid var(--border);
+    display: flex; align-items: flex-start; padding-top: 8px;
+  }
+  .tab {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
+    color: var(--foreground-tertiary); font-size: 11px; font-weight: 600;
+  }
+  .tab.active { color: var(--accent-primary); }
+  .tab .tab-icon { font-size: 18px; }
+  .fab-slot { flex: 1; position: relative; }
+  .fab {
+    width: 56px; height: 56px; border-radius: 28px;
+    background: var(--accent-primary); color: #fff; border: 0;
+    position: absolute; top: -16px; left: 50%; transform: translateX(-50%);
+    box-shadow: 0 4px 16px rgba(91, 110, 232, 0.45);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+  }
+
+  .annot {
+    max-width: 880px; color: #66605a; font-size: 13px; line-height: 1.6;
+    margin-top: 24px; padding: 16px 20px; background: rgba(255,255,255,0.6);
+    border-radius: 8px; border: 1px solid #d8d2c2;
+  }
+  .annot h2 {
+    font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+    color: #3a3631; margin: 0 0 8px;
+  }
+  .annot ul { margin: 8px 0 0; padding-left: 18px; }
+  .annot li { margin: 4px 0; }
+  .annot code { background: #ece8df; padding: 1px 5px; border-radius: 3px; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="page-wrap">
+
+  <div class="page-header">
+    <h1>Today — MFP-style calorie ring (matching reference image)</h1>
+    <p>Three-segment ring: <strong>blue food eaten</strong> + <strong>grey remaining</strong> + <strong>orange exercise bonus</strong>. Side legend with Base Goal / Food / Exercise. Macro detail lives in bars below the ring. Per-meal kcal + P/C/F/Fb inline. No Eat Again on Today (moves to FAB sheet — C2 follow-up).</p>
+  </div>
+
+  <div class="iphone">
+    <div class="iphone-statusbar">
+      <span>9:41</span>
+      <div class="dynamic-island"></div>
+      <div class="right">▮ ▮ ▮</div>
+    </div>
+
+    <div class="today">
+
+      <div class="today-header">
+        <div class="nav-pair">
+          <span class="nav-arrow">‹</span>
+          <span class="today-title">Today</span>
+          <span class="nav-arrow">›</span>
+        </div>
+        <div class="avatar">G</div>
+      </div>
+
+      <div class="day-strip">
+        <div class="day"><div class="day-label">Mon</div><span class="day-num">18</span></div>
+        <div class="day"><div class="day-label">Tue</div><span class="day-num">19</span></div>
+        <div class="day logged"><div class="day-label">Wed</div><span class="day-num">20</span></div>
+        <div class="day logged"><div class="day-label">Thu</div><span class="day-num">21</span></div>
+        <div class="day today"><div class="day-label">Fri</div><span class="day-num">22</span></div>
+        <div class="day"><div class="day-label">Sat</div><span class="day-num">23</span></div>
+        <div class="day"><div class="day-label">Sun</div><span class="day-num">24</span></div>
+        <div class="calendar-glyph">📅</div>
+      </div>
+
+      <!-- Hero card: multi-ring centred + Goal/Food/Exercise below -->
+      <div class="hero-card">
+        <!-- Multi-ring.
+             Outer calorie ring (r=100, stroke 13) — 3 segments:
+               Base goal=1500, food=650, bonus=400 → total=1900.
+               food   = 650/1900 = 34.21% → arc 214.9
+               remain = 850/1900 = 44.74% → arc 281.1 (grey track shows through)
+               bonus  = 400/1900 = 21.05% → arc 132.3
+             circumference at r=100 = 628.3.
+             Inner rings (protein r=82, carbs r=66, fat r=50, stroke 9). -->
+        <div class="ring-wrap">
+          <svg width="220" height="220" viewBox="0 0 220 220">
+            <!-- Outer ring track (grey) -->
+            <circle cx="110" cy="110" r="100" stroke="var(--ring-track)" stroke-width="13" fill="none" />
+
+            <!-- Orange exercise bonus segment (last 21.05% of ring) -->
+            <circle cx="110" cy="110" r="100"
+                    stroke="var(--accent-bonus)" stroke-width="13" fill="none"
+                    stroke-linecap="butt"
+                    stroke-dasharray="132.3 496.0"
+                    stroke-dashoffset="-496.0"
+                    transform="rotate(-90 110 110)" />
+
+            <!-- Blue food eaten segment (first 34.21% of ring) -->
+            <circle cx="110" cy="110" r="100"
+                    stroke="var(--accent-food)" stroke-width="13" fill="none"
+                    stroke-linecap="round"
+                    stroke-dasharray="214.9 413.4"
+                    transform="rotate(-90 110 110)" />
+
+            <!-- Inner ring 1: PROTEIN (r=82, stroke 9). 80/98 = 82% -->
+            <circle cx="110" cy="110" r="82" stroke="var(--ring-track)" stroke-width="9" fill="none" />
+            <circle cx="110" cy="110" r="82"
+                    stroke="var(--macro-protein)" stroke-width="9" fill="none"
+                    stroke-linecap="round"
+                    stroke-dasharray="515.2"
+                    stroke-dashoffset="92.7"
+                    transform="rotate(-90 110 110)" />
+
+            <!-- Inner ring 2: CARBS (r=66, stroke 9). 84/116 = 72% -->
+            <circle cx="110" cy="110" r="66" stroke="var(--ring-track)" stroke-width="9" fill="none" />
+            <circle cx="110" cy="110" r="66"
+                    stroke="var(--macro-carbs)" stroke-width="9" fill="none"
+                    stroke-linecap="round"
+                    stroke-dasharray="414.7"
+                    stroke-dashoffset="116.1"
+                    transform="rotate(-90 110 110)" />
+
+            <!-- Inner ring 3: FAT (r=50, stroke 9). 31/41 = 76% -->
+            <circle cx="110" cy="110" r="50" stroke="var(--ring-track)" stroke-width="9" fill="none" />
+            <circle cx="110" cy="110" r="50"
+                    stroke="var(--macro-fat)" stroke-width="9" fill="none"
+                    stroke-linecap="round"
+                    stroke-dasharray="314.2"
+                    stroke-dashoffset="75.4"
+                    transform="rotate(-90 110 110)" />
+          </svg>
+          <div class="ring-center">
+            <div class="value">1,250</div>
+            <div class="label">Remaining</div>
+          </div>
+        </div>
+
+        <!-- Goal / Food / Exercise stats row below the ring -->
+        <div class="stats-row">
+          <div class="stat">
+            <div class="stat-icon goal">🏁</div>
+            <div class="stat-label">Goal</div>
+            <div class="stat-value">1,500</div>
+          </div>
+          <div class="stat">
+            <div class="stat-icon food">🍽</div>
+            <div class="stat-label">Food</div>
+            <div class="stat-value">650</div>
+          </div>
+          <div class="stat">
+            <div class="stat-icon exercise">🔥</div>
+            <div class="stat-label">Exercise</div>
+            <div class="stat-value">400</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Macro bars below -->
+      <div class="macro-bars">
+        <div class="macro-row protein">
+          <div class="macro-row-top">
+            <span class="macro-label">PROTEIN</span>
+            <span class="macro-value"><strong>80</strong> / 98 g <span class="caption">· 18 g left</span></span>
+          </div>
+          <div class="macro-bar-track"><div class="macro-bar-fill" style="width: 82%;"></div></div>
+        </div>
+        <div class="macro-row carbs">
+          <div class="macro-row-top">
+            <span class="macro-label">CARBS</span>
+            <span class="macro-value"><strong>84</strong> / 116 g <span class="caption">· 32 g left</span></span>
+          </div>
+          <div class="macro-bar-track"><div class="macro-bar-fill" style="width: 72%;"></div></div>
+        </div>
+        <div class="macro-row fat">
+          <div class="macro-row-top">
+            <span class="macro-label">FAT</span>
+            <span class="macro-value"><strong>31</strong> / 41 g <span class="caption">· 10 g left</span></span>
+          </div>
+          <div class="macro-bar-track"><div class="macro-bar-fill" style="width: 75%;"></div></div>
+        </div>
+        <div class="macro-row fiber">
+          <div class="macro-row-top">
+            <span class="macro-label">FIBER</span>
+            <span class="macro-value"><strong>14</strong> / 27 g <span class="caption">· 13 g left</span></span>
+          </div>
+          <div class="macro-bar-track"><div class="macro-bar-fill" style="width: 52%;"></div></div>
+        </div>
+      </div>
+
+      <!-- Meals card -->
+      <div class="meals-card">
+
+        <div class="meal-slot">
+          <div class="meal-slot-top">
+            <span class="slot-icon">☕</span>
+            <span class="slot-name">Breakfast</span>
+            <span class="slot-kcal">270 kcal</span>
+          </div>
+          <div class="meal-slot-macros">
+            <span class="macro-pip p">32g P</span>
+            <span class="macro-pip c">24g C</span>
+            <span class="macro-pip f">8g F</span>
+            <span class="macro-pip fb">5g Fb</span>
+          </div>
+        </div>
+
+        <div class="meal-slot">
+          <div class="meal-slot-top">
+            <span class="slot-icon">🥗</span>
+            <span class="slot-name">Lunch</span>
+            <span class="slot-kcal">380 kcal</span>
+          </div>
+          <div class="meal-slot-macros">
+            <span class="macro-pip p">48g P</span>
+            <span class="macro-pip c">46g C</span>
+            <span class="macro-pip f">17g F</span>
+            <span class="macro-pip fb">9g Fb</span>
+          </div>
+        </div>
+
+        <div class="meal-slot empty">
+          <div class="meal-slot-top">
+            <span class="slot-icon" style="opacity: 0.4">🍽</span>
+            <span class="slot-name">Dinner</span>
+            <span class="slot-kcal">—</span>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <div class="tabbar">
+      <div class="tab active"><span class="tab-icon">☀</span><span>Today</span></div>
+      <div class="tab"><span class="tab-icon">▦</span><span>Plan</span></div>
+      <div class="fab-slot"><button class="fab">+</button></div>
+      <div class="tab"><span class="tab-icon">▤</span><span>Recipes</span></div>
+      <div class="tab"><span class="tab-icon">∿</span><span>Progress</span></div>
+    </div>
+
+  </div>
+
+  <div class="annot">
+    <h2>What's in this version</h2>
+    <ul>
+      <li><strong>MFP-exact ring layout</strong>: ring on left, legend on right. Three-segment ring (blue food + grey remaining + orange exercise). Centre = "1,250 Remaining". Matches the reference image you sent ("THIS").</li>
+      <li><strong>Side legend</strong>: Base Goal 1,500 (flag) · Food 650 (cutlery) · Exercise 400 (flame). Each row: tinted glyph + label + bold value.</li>
+      <li><strong>Macro rings live in BARS below</strong>, not as inner ring arcs in this card. The MFP layout doesn't have room for inner macro arcs alongside the side legend. If you want inner macro arcs <em>too</em>, we have two options:
+        <ul>
+          <li>Drop the side legend, render legend stats inside ring centre as a small caption ("1,500 goal · 650 food · 400 ex"). Frees the right side for inner arcs.</li>
+          <li>Keep MFP layout for the hero card; add a SECOND card below with the multi-ring + macros. More vertical scroll.</li>
+        </ul>
+      </li>
+      <li><strong>Per-meal kcal + P/C/F/Fb inline</strong>: every meal slot row shows <code>270 kcal</code> right-aligned + macro pip row below with coloured dots. Protein-balancer scan.</li>
+      <li><strong>No Eat Again card on Today</strong> (C2 move pending). No carousel dots.</li>
+      <li><strong>Long-press the ring</strong> switches "Remaining ⇆ Logged" centre view. Defaults configurable in Settings.</li>
+    </ul>
+
+    <h2 style="margin-top: 16px;">Open question — macro rings</h2>
+    <p>The MFP layout you picked doesn't include inner macro arcs (its right side is occupied by the legend). Three paths:</p>
+    <ul>
+      <li><strong>(A)</strong> MFP layout only (current mock): calorie ring + side legend + macros as bars below. No inner macro arcs.</li>
+      <li><strong>(B)</strong> MFP layout + a SECOND ring card below: macro multi-ring as its own card. More vertical but both ideas honoured.</li>
+      <li><strong>(C)</strong> Hybrid: calorie ring with INNER macro arcs (no side legend); legend stats inside the ring centre as compact captions. Loses the MFP legend layout but keeps macro rings as inner arcs.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

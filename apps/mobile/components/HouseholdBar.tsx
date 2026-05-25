@@ -93,6 +93,11 @@ export function HouseholdBar({ selected, onSelect, onManage }: HouseholdBarProps
 
   if (!userId || loading) return null;
   if (!data?.household || members.length === 0) return null;
+  // 2026-05-22 evening (Grace): hide for solo households — "All 1" +
+  // "Member" pills next to "Manage" link with no other members read
+  // as visual clutter, not a useful affordance. Multi-member
+  // households still get the switcher.
+  if (members.length <= 1) return null;
 
   const currentSel = selected ?? localSelected;
   const chipColors = (active: boolean) => ({

@@ -150,7 +150,7 @@ export function SignupStep() {
         />
       </div>
 
-      <label className="mt-4 flex items-start gap-2 text-[12px] text-muted-foreground leading-snug cursor-pointer">
+      <label className="mt-4 flex items-start gap-2 text-[11px] text-muted-foreground leading-snug cursor-pointer">
         <input
           type="checkbox"
           checked={acceptedTerms}
@@ -192,7 +192,7 @@ export function SignupStep() {
 
       {error && (
         <p
-          className="mt-3 text-[12px] text-destructive leading-snug"
+          className="mt-3 text-[11px] text-destructive leading-snug"
           role="alert"
         >
           {error}{" "}

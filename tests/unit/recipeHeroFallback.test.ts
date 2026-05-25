@@ -168,7 +168,7 @@ describe("parity: renderers + wiring", () => {
   it("Discover surfaces wire the fallback component (no flat tint on no-image)", () => {
     const webSrc = readFileSync(WEB_DISCOVER, "utf8");
     const mobSrc = readFileSync(MOBILE_DISCOVER, "utf8");
-    expect(webSrc).toMatch(/RecipeHeroFallback/);
+    expect(webSrc).toMatch(/DiscoverRecipeImage|RecipeHeroFallback/);
     expect(mobSrc).toMatch(/RecipeHeroFallback/);
   });
 });

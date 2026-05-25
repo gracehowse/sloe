@@ -10,8 +10,9 @@ name: "Today screen — ring, macros, raised tab-bar Log button → LogSheet"
 - waitForAnimationToEnd
 
 # Calorie ring visible — canonical "Today loaded" signal.
+# Empty-day shows "Start your day"; populated day shows "LOGGED" or "kcal".
 - assertVisible:
-    text: ".*(?:LOGGED|kcal).*"
+    text: ".*(?:LOGGED|kcal|Start your day).*"
 
 # Centered raised Log button — 56pt circular Plus button living in the
 # global SupprTabBar between Recipes and Plan (2026-04-30; replaced the
@@ -30,15 +31,12 @@ name: "Today screen — ring, macros, raised tab-bar Log button → LogSheet"
 # also removed in the same cleanup pass.
 - takeScreenshot: screenshots/latest/today-01-loaded
 
-# Scroll down to verify macros + meal journal section loads
-- swipe:
-    direction: UP
-    duration: 400
-- waitForAnimationToEnd
-
-# Macro tiles should now be visible after scroll.
-- assertVisible:
-    text: ".*(?:Protein|Carbs|Fat).*"
+# Scroll until macros are in view (a blind swipe can overshoot on tall screens).
+- scrollUntilVisible:
+    element:
+      text: ".*(?:Protein|Carbs|Fat).*"
+    direction: DOWN
+    timeout: 10000
 
 # Visual baseline #2 — scrolled state. Macro tiles + meal-slot cards.
 - takeScreenshot: screenshots/latest/today-02-scrolled
@@ -56,14 +54,21 @@ name: "Today screen — ring, macros, raised tab-bar Log button → LogSheet"
 - tapOn:
     id: "today-log-fab"
 - waitForAnimationToEnd
+# Modal testID can be invisible to Maestro on iOS 26 during the slide
+# animation; fall back to the sheet's visible header text.
 - assertVisible:
-    id: "log-sheet-root"
+    text: ".*(?:Log a meal|Search foods).*"
 
 # Visual baseline #3 — LogSheet open from the centered raised tab-bar button.
 - takeScreenshot: screenshots/latest/today-03-log-sheet
 
 # Voice icon — Pro: voice sheet; Free/Base: in-flow Pro upsell.
 # accessibilityLabel is "Voice log" (or "Voice log (Pro)" when locked).
+# iOS 26 modal slide animation can invalidate the accessibility tree
+# (kAXErrorInvalidUIElement) — wait until the sheet content stabilises.
+- extendedWaitUntil:
+    visible: ".*(?:Voice log|Search foods).*"
+    timeout: 5000
 - tapOn:
     text: ".*Voice log.*"
 - waitForAnimationToEnd
@@ -81,8 +86,11 @@ name: "Today screen — ring, macros, raised tab-bar Log button → LogSheet"
     commands:
       # Visual baseline #4b — voice sheet (Pro tier path).
       - takeScreenshot: screenshots/latest/today-04-voice-sheet
-      - assertVisible:
-          text: ".*(?:Describe what you ate|Cancel).*"
+      # Brief pause — iOS 26 modal transitions can invalidate the
+      # accessibility tree momentarily (kAXErrorInvalidUIElement).
+      - extendedWaitUntil:
+          visible: ".*(?:Describe what you ate|Cancel).*"
+          timeout: 5000
       - tapOn: ".*Cancel.*"
       - waitForAnimationToEnd
 

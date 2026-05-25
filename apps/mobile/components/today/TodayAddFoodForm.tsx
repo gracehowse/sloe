@@ -1,6 +1,6 @@
 import React from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Search } from "lucide-react-native";
 import { Accent, Radius, Spacing } from "@/constants/theme";
 
 /**
@@ -131,7 +131,7 @@ export function TodayAddFoodForm(props: TodayAddFoodFormProps) {
           style={[styles.submitBtn, { flex: 1, backgroundColor: Accent.primary }]}
           onPress={onOpenSearch}
         >
-          <Ionicons name="search" size={16} color="#fff" style={{ marginRight: 4 }} />
+          <Search size={16} color="#fff" style={{ marginRight: 4 }} />
           <Text style={styles.submitBtnText}>Search</Text>
         </Pressable>
       </View>

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
-import { Accent, Spacing, Radius } from "@/constants/theme";
+import { Accent, Elevation, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 const STORAGE_KEY = "suppr-checklist-dismissed";
@@ -45,6 +45,7 @@ export default function FirstRunChecklist({ savedCount, hasPlan, hasLoggedMeal, 
       backgroundColor: colors.card, borderRadius: Radius.lg,
       borderWidth: 1, borderColor: Accent.success + "30",
       padding: Spacing.lg, gap: Spacing.md,
+      ...Elevation.card,
     },
     header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
     title: { fontSize: 15, fontWeight: "700", color: colors.text },

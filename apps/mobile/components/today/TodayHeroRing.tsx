@@ -1,7 +1,8 @@
 import React from "react";
-import { View } from "react-native";
+import { Text, View } from "react-native";
 import CalorieRing from "@/components/charts/CalorieRing";
-import { Radius, Spacing } from "@/constants/theme";
+import { Layout } from "@/constants/layout";
+import { Accent, Radius, Spacing } from "@/constants/theme";
 
 /**
  * TodayHeroRing — ring hero variant.
@@ -62,6 +63,49 @@ export interface TodayHeroRingProps {
   onPressWhy?: () => void;
 }
 
+interface StatProps {
+  label: string;
+  value: string;
+  valueColor: string;
+  textSecondaryColor: string;
+}
+
+/**
+ * Streamlined Goal/Food/Bonus stat. Canonical 2026-05-22 v4: no icon,
+ * no divider line. Label sits above the value; value is coloured to
+ * match the corresponding ring segment so the stats row visually
+ * reads as a numeric legend for the ring above (Goal=neutral text,
+ * Food=success green, Bonus=warm orange).
+ */
+function Stat({ label, value, valueColor, textSecondaryColor }: StatProps) {
+  return (
+    <View style={{ flex: 1, alignItems: "center", gap: 3 }}>
+      <Text
+        style={{
+          fontSize: 9,
+          fontWeight: "600",
+          color: textSecondaryColor,
+          textTransform: "uppercase",
+          letterSpacing: 0.5,
+        }}
+      >
+        {label}
+      </Text>
+      <Text
+        style={{
+          fontSize: 14,
+          fontWeight: "700",
+          color: valueColor,
+          fontVariant: ["tabular-nums"],
+        }}
+        numberOfLines={1}
+      >
+        {value}
+      </Text>
+    </View>
+  );
+}
+
 export function TodayHeroRing({
   consumed,
   goal,
@@ -88,10 +132,10 @@ export function TodayHeroRing({
         borderWidth: 1,
         borderColor: borderColor,
         borderRadius: Radius.lg,
-        paddingVertical: Spacing.lg,
-        paddingHorizontal: Spacing.xl,
+        paddingVertical: Spacing.sm,
+        paddingHorizontal: Spacing.md,
         alignItems: "center",
-        gap: Spacing.lg,
+        gap: Layout.todayScrollGap,
       }}
     >
       <CalorieRing
@@ -109,18 +153,51 @@ export function TodayHeroRing({
         displayMode={displayMode}
         onToggleDisplayMode={onToggleDisplayMode}
       />
-      {/* 2026-05-12 round 3 (Grace TF): "Why this number?" affordance
-          is removed from Today entirely. The explainer is now reachable
-          from the Targets screen (Settings → Targets → "How is this
-          calculated?"). The Reveal step in onboarding already explains
-          the math at first run; post-onboarding the explainer's job is
-          debugging-mode access, which tolerates 2-3 taps. Today's hero
-          stays clean.
-
-          The `onPressWhy` prop is preserved on the type for backwards
-          compat with the host wiring in `app/(tabs)/index.tsx`, but no
-          UI surfaces it here. If a future iteration brings the
-          affordance back, the wiring is still in place. */}
+      {/* Canonical 2026-05-22 v4 multi-ring revival: Goal / Food /
+          Bonus stats row sits directly below the ring inside the
+          same hero card. Streamlined per Grace 2026-05-22 follow-up
+          — no icons, no vertical dividers; value colour links each
+          stat to its ring segment (Food → green arc, Bonus → orange
+          arc, Goal → neutral text since it's the whole). Renders
+          only when the ring is non-empty so the first-run "Start
+          your day" empty state stays clean. */}
+      {consumed > 0 && goal > 0 ? (
+        <View
+          style={{
+            width: "100%",
+            flexDirection: "row",
+            paddingTop: Spacing.sm,
+            borderTopWidth: 1,
+            borderTopColor: borderColor,
+          }}
+        >
+          <Stat
+            label="Goal"
+            value={Math.round(goal).toLocaleString()}
+            valueColor={textColor}
+            textSecondaryColor={secondaryColor}
+          />
+          <Stat
+            label="Food"
+            value={Math.round(consumed).toLocaleString()}
+            valueColor={Accent.success}
+            textSecondaryColor={secondaryColor}
+          />
+          <Stat
+            label="Bonus"
+            value={
+              baseGoal && baseGoal < goal
+                ? Math.round(goal - baseGoal).toLocaleString()
+                : "0"
+            }
+            // Amber to match activity card + burn-detail screen
+            // (`Accent.warning` is the app-wide token for earned-via-
+            // exercise calories).
+            valueColor={Accent.warning}
+            textSecondaryColor={secondaryColor}
+          />
+        </View>
+      ) : null}
     </View>
   );
 }

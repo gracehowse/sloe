@@ -45,114 +45,164 @@
   --space-xxl: 2rem;      /* 32px ↔ Spacing.xxl  */
   --space-xxxl: 2.5rem;   /* 40px ↔ Spacing.xxxl */
 
-  /** Radius — larger, more refined */
-  --radius: 0.75rem;         /* 12px base */
-  --radius-card: 1rem;        /* 16px cards — matches mobile Radius.lg */
+  /** Radius — Canonical 2026-05-22 lock (tighter ladder).
+   *  Previous 12/16 read as consumer wellness app. Tightened to 6/8
+   *  to match Linear / Stripe / Things 3 / Notion premium tier.
+   *  --radius-sm/md/lg/xl derive from these below. */
+  --radius: 0.375rem;         /* 6px base */
+  --radius-card: 0.5rem;       /* 8px cards — matches mobile Radius.lg */
 
-  /** ── LIGHT MODE PALETTE ──
-   *  2026-05-19: Elevated warm stone greys on cream + richer blue
-   *  soft tints (Noom/Lifesum lane). Primary blue unchanged. */
-  --background: #f6f3ee;
-  --foreground: #1c1916;
+  /** ── LIGHT MODE PALETTE — Canonical 2026-05-22 v2 (chroma pull) ──
+   *  v1 (warmed paper + beige secondary) read as "khaki cottage" not
+   *  "premium publication". Pulled chroma down ~40% on secondary
+   *  surfaces while keeping the warm hue. Now: page is warm white,
+   *  cards are pure white, secondary surfaces are *barely* warmer
+   *  than card. The warmth lives in the INK (`--foreground` warm
+   *  chocolate) and HAIRLINES (`--border`), not in the fills.
+   *  Reference: Notion bg `#f7f6f3`, Things 3 `#fafafa`, Cron pure
+   *  white. Warm without yoghurt-pot vibes. */
+  --background: #fbfaf6;
+  --background-secondary: #f5f3ec;
+  --foreground: #1a1714;
+  --foreground-secondary: #5b554b;
+  --foreground-tertiary: #8a8377;
   --card: #ffffff;
-  --card-foreground: #1c1916;
+  --card-elevated: #fbf8f0;
+  --card-foreground: #1a1714;
   --popover: #ffffff;
-  --popover-foreground: #1c1916;
-  --primary: #4c6ce0;
-  --primary-foreground: #ffffff;
-  --secondary: #f0ebe3;
-  --secondary-foreground: #1c1916;
-  --muted: #ddd5c8;
-  --muted-foreground: #5e574e;
-  --accent: #ddd5c8;
-  --accent-foreground: #1c1916;
-  --destructive: #e04848;
-  --destructive-foreground: #ffffff;
-  --border: #ddd5c8;
+  --popover-foreground: #1a1714;
+
+  /** 8-slot palette lock — 2026-05-22 evening. Every accent hue in
+   *  the app maps to one of: Red #F16264 / Magenta #DF5EBC /
+   *  Purple #9679D9 / Blue #588CE4 / Green #56A775 / Lime #81BE38 /
+   *  Yellow #F3C336 / Orange #F78A32. Anchored on the Apple Photos
+   *  wheel tonal family (saturated mid-bright). Water and cyan-snack
+   *  folded into Blue per Grace 2026-05-22.
+   *
+   *  Single accent (action) family. `--accent-primary` is the only
+   *  hue you should reach for outside semantic states (success /
+   *  warning / destructive) and macro tokens. Selected segmented
+   *  controls + filter chips use `--accent-primary-soft`, never
+   *  solid. */
+  --accent-primary: #588CE4;
+  --accent-primary-foreground: #ffffff;
+  --accent-primary-soft: rgba(88, 140, 228, 0.10);
+  --accent-primary-ring: rgba(88, 140, 228, 0.22);
+
+  /** Legacy aliases — old token names still resolve to new values so
+   *  callers can be migrated in passes without breaking compile. */
+  --primary: var(--accent-primary);
+  --primary-foreground: var(--accent-primary-foreground);
+  --primary-soft: var(--accent-primary-soft);
+  --secondary: var(--background-secondary);
+  --secondary-foreground: var(--foreground);
+  --muted: var(--background-secondary);
+  --muted-foreground: var(--foreground-secondary);
+  --accent: var(--background-secondary);
+  --accent-foreground: var(--foreground);
+
+  /** Semantic states (palette-locked, 8-slot). */
+  --accent-success: #56A775;
+  --accent-success-soft: rgba(86, 167, 117, 0.12);
+  --accent-warning: #F78A32;
+  --accent-warning-soft: rgba(247, 138, 50, 0.12);
+  --accent-destructive: #F16264;
+  --accent-destructive-foreground: #ffffff;
+  --accent-info: #588CE4;
+
+  /** Legacy semantic aliases. */
+  --destructive: var(--accent-destructive);
+  --destructive-foreground: var(--accent-destructive-foreground);
+
+  --border: #ebe7dc;
+  --border-strong: #ddd6c5;
   --input: transparent;
-  --input-background: #ebe5dc;
-  --switch-background: #c8bfb4;
-  --ring: #4c6ce0;
+  --input-background: #f0ece4;
+  --switch-background: #ddd6c5;
+  --ring: var(--accent-primary);
 
-  /** Brand mark (plate / wordmark) — black on off-white in light mode. */
-  --brand-mark-bg: #f6f3ee;
-  --brand-mark-ring: #1c1916;
+  /** Brand mark — paper-on-paper (light) per 2026-05-22 lock. The mark
+   *  is a glyph, not a logo lockup with a tile. */
+  --brand-mark-bg: #fbfaf6;
+  --brand-mark-ring: #1a1714;
 
-  /** Semantic colours */
-  --success: #62b35a;
+  /** Legacy semantic aliases — route to new accent tokens. */
+  --success: var(--accent-success);
   --success-foreground: #ffffff;
-  --success-soft: #62b35a10;
-  --warning: #e0a838;
+  --success-soft: var(--accent-success-soft);
+  --warning: var(--accent-warning);
   --warning-foreground: #ffffff;
-  --warning-soft: #e0a83810;
+  --warning-soft: var(--accent-warning-soft);
 
-  /** Macro colours */
-  --macro-protein: #4c6ce0;
-  --macro-protein-soft: #4c6ce01a;
-  /* Yellow-orange carbs — distinct from over-budget warning (#e0a838)
-     and sodium orange (#f97316). */
-  --macro-carbs: #d4a02f;
-  --macro-carbs-soft: #d4a02f18;
-  --macro-fat: #e04888;
-  --macro-fat-soft: #e0488812;
-  /* Calories ring / under-target — leaf green. */
-  --macro-calories: #62b35a;
-  /* Fibre — dusty blue-teal, distinct hue from --macro-calories. */
-  --macro-fiber: #4a7878;
-  --macro-fiber-soft: #4a787814;
-  --macro-sugar: #7a90f5;
-  --macro-sugar-soft: #7a90f51a;
-  --macro-sodium: #f97316;
-  --macro-sodium-soft: #f9731614;
-  --macro-water: #06b6d4;
-  --macro-water-soft: #06b6d412;
+  /** Macro colours — 8-slot palette (2026-05-22 evening lock).
+   *  Each macro maps to one of the 8 canonical slots. Sugar folds into
+   *  Yellow (sugar IS a carb). Water folds into Blue (cyan dropped from
+   *  the 8 per Grace 2026-05-22). Sodium = Orange (alert family).
+   *  Calories stays as success-green via the state token. */
+  --macro-protein: #588CE4;
+  --macro-protein-soft: rgba(88, 140, 228, 0.10);
+  --macro-carbs: #F3C336;
+  --macro-carbs-soft: rgba(243, 195, 54, 0.12);
+  --macro-fat: #DF5EBC;
+  --macro-fat-soft: rgba(223, 94, 188, 0.10);
+  --macro-calories: #56A775;
+  --macro-fiber: #56A775;
+  --macro-fiber-soft: rgba(86, 167, 117, 0.10);
+  --macro-sugar: #F3C336;
+  --macro-sugar-soft: rgba(243, 195, 54, 0.10);
+  --macro-sodium: #F78A32;
+  --macro-sodium-soft: rgba(247, 138, 50, 0.08);
+  --macro-water: #588CE4;
+  --macro-water-soft: rgba(88, 140, 228, 0.08);
 
-  /** Meal-slot tints — production design spec (ui-critic P2 #10, 2026-05-01).
-   *  Snacks previously borrowed `--macro-fat` (magenta) which collided
-   *  1:1 with the Fat macro tile on Today. Snacks now ships its own
-   *  cyan token; macro tokens stay reserved for the Macro tile row.
-   *  Mirrors mobile `SlotColors` in `apps/mobile/constants/theme.ts`. */
-  --slot-breakfast: #e0a838;        /* amber  ↔ Accent.warning */
-  --slot-breakfast-soft: #e0a83812;
-  --slot-lunch: #62b35a;             /* green  ↔ Accent.success */
-  --slot-lunch-soft: #62b35a12;
-  --slot-dinner: #4c6ce0;            /* blue   ↔ Accent.primary */
-  --slot-dinner-soft: #4c6ce01a;
-  --slot-snack: #06b6d4;             /* cyan — distinct from --macro-fat */
-  --slot-snack-soft: #06b6d412;
+  /** Meal-slot tints — 8-slot palette (2026-05-22 evening lock).
+   *  Breakfast → Yellow (frees orange for activity/bonus semantics).
+   *  Lunch → Green. Dinner → Blue. Snack → Purple (cyan dropped from
+   *  the 8; Purple is the only remaining slot that doesn't collide
+   *  with a macro). Mirrors mobile `SlotColors` in
+   *  `apps/mobile/constants/theme.ts`. */
+  --slot-breakfast: #F3C336;         /* yellow  ↔ palette slot */
+  --slot-breakfast-soft: #F3C33612;
+  --slot-lunch: #56A775;              /* green   ↔ palette slot */
+  --slot-lunch-soft: #56A77512;
+  --slot-dinner: #588CE4;             /* blue    ↔ palette slot */
+  --slot-dinner-soft: #588CE41a;
+  --slot-snack: #9679D9;              /* purple  ↔ palette slot */
+  --slot-snack-soft: #9679D912;
 
-  /** Stimulant tracker colours (Batch 2.5 hydration & stimulants).
-   *  Caffeine: violet (not a macro role). Alcohol: amber — intentionally
-   *  shares the --warning hue because "approaching weekly limit" is the
-   *  same semantic category. Documented in docs/ux/brand-tokens.md. */
-  --stimulant-caffeine: #8b5cf6;
-  --stimulant-alcohol: #f59e0b;
+  /** Stimulant tracker colours — 8-slot palette.
+   *  Caffeine → Purple (matches its previous violet semantic).
+   *  Alcohol → Orange (warning-family, "approaching limit"). */
+  --stimulant-caffeine: #9679D9;
+  --stimulant-alcohol: #F78A32;
 
-  /** Confidence colours */
-  --confidence-high: #62b35a;
-  --confidence-med: #e0a838;
-  --confidence-low: #e04848;
+  /** Confidence colours — 8-slot palette */
+  --confidence-high: #56A775;
+  --confidence-med: #F78A32;
+  --confidence-low: #F16264;
   /** Confidence chip — neutral grey base used for adaptive TDEE display
    *  (D-2026-04-27-12). NOT a warning state; ConfidenceChip is calm. */
   --confidence-neutral: #8c8378;
 
-  /** Source / provenance dots — production design spec §1.6.
-   *  USDA = success-green, OFF = primary-blue, FatSecret = orange,
-   *  Manual = text-tertiary grey, AI = magenta (paired with sparkle glyph). */
-  --source-usda: #62b35a;
-  --source-off: #4c6ce0;
-  --source-fatsecret: #f97316;
+  /** Source / provenance dots — 8-slot palette.
+   *  USDA = Green, OFF = Blue, FatSecret = Orange, Manual = grey,
+   *  AI = Magenta (paired with sparkle glyph). */
+  --source-usda: #56A775;
+  --source-off: #588CE4;
+  --source-fatsecret: #F78A32;
   --source-manual: #8c8378;
-  --source-ai: #e04888;
+  --source-ai: #DF5EBC;
 
-  /** North-star block — gradient SupprCard on Today. Spec §1.4. */
-  --north-star-bg-from: rgba(76, 108, 224, 0.08);
-  --north-star-bg-to: rgba(224, 72, 136, 0.04);
-  --north-star-border: rgba(76, 108, 224, 0.18);
+  /** North-star block — gradient SupprCard on Today. Spec §1.4.
+   *  Blue → Magenta gradient (both in the 8-slot palette). */
+  --north-star-bg-from: rgba(88, 140, 228, 0.10);
+  --north-star-bg-to: rgba(223, 94, 188, 0.05);
+  --north-star-border: rgba(88, 140, 228, 0.22);
 
-  /** Over-budget — amber, never red. Per project memory + spec §1.4. */
-  --over-budget-fg: #e0a838;
-  --over-budget-soft: rgba(224, 168, 56, 0.08);
+  /** Over-budget — Orange default. Per project memory + spec §1.4.
+   *  Traffic-light mode (opt-in Settings toggle) substitutes Red. */
+  --over-budget-fg: #F78A32;
+  --over-budget-soft: rgba(247, 138, 50, 0.08);
 
   /** Depth ladder — production design spec §1.3.
    *  Card = list rows on a card. Sheet = bottom-sheets. Float = popovers.
@@ -160,18 +210,19 @@
   --elev-card: 0 1px 3px rgba(28, 25, 22, 0.06);
   --elev-sheet: 0 -8px 32px rgba(0, 0, 0, 0.12);
   --elev-float: 0 4px 16px rgba(0, 0, 0, 0.12);
-  --elev-float-primary: 0 4px 16px rgba(76, 108, 224, 0.45);
+  --elev-float-primary: 0 4px 16px rgba(88, 140, 228, 0.45);
 
-  /** Chart colours (mapped to macro + accent system) */
-  --chart-1: #4c6ce0;
-  --chart-2: #62b35a;
-  --chart-3: #e0a838;
-  --chart-4: #e04888;
-  --chart-5: #8b5cf6;
+  /** Chart colours — 8-slot palette. */
+  --chart-1: #56A775;
+  --chart-2: #56A775;
+  --chart-3: #F78A32;
+  --chart-4: #DF5EBC;
+  --chart-5: #9679D9;
 
-  /** Ring component — blue-tinted track (elevates protein ring on cream) */
-  --ring-bg: #d8dff2;
-  --ring-track: #62b35a;
+  /** Ring empty track — 8-slot Blue tint (readable on white hero; parity mobile `ringTrack`). */
+  --ring-bg: #D6E0F5;
+  /** Alias of `--ring-bg`; progress arc uses `--success` / `--over-budget-fg`. */
+  --ring-track: #D6E0F5;
 
   /** Font weights */
   --font-weight-normal: 400;
@@ -179,122 +230,143 @@
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
 
-  /** Sidebar */
+  /** Sidebar — 8-slot palette */
   --sidebar: #ffffff;
   --sidebar-foreground: #1c1916;
-  --sidebar-primary: #4c6ce0;
+  --sidebar-primary: #588CE4;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #f0ebe3;
   --sidebar-accent-foreground: #1c1916;
-  --sidebar-border: #ddd5c8;
-  --sidebar-ring: #4c6ce0;
+  --sidebar-border: #e3dccc;
+  --sidebar-ring: #588CE4;
 
   /** Glass / surface tokens (Apple-style, used by marketing pages) */
   --glass: rgba(255, 255, 255, 0.72);
   --glass-border: rgba(0, 0, 0, 0.06);
   --border-strong: rgba(0, 0, 0, 0.1);
-  --accent-muted: rgba(76, 108, 224, 0.12);
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
-  --shadow: 0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
-  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.06), 0 2px 6px rgba(0, 0, 0, 0.02);
+  --accent-muted: rgba(88, 140, 228, 0.12);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.10), 0 4px 8px rgba(0, 0, 0, 0.04);
   --radius-xl-landing: 20px;
   --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-fast: 0.15s ease;
 }
 
 .dark {
-  --background: #101014;
-  --foreground: #e8e7ed;
-  --card: #18181c;
-  --card-foreground: #e8e7ed;
-  --popover: #202028;
-  --popover-foreground: #e8e7ed;
-  --primary: #7a90f5;
-  --primary-foreground: #ffffff;
-  --secondary: #18181c;
-  --secondary-foreground: #e8e7ed;
-  --muted: #32313c;
-  --muted-foreground: #9490a0;
-  --accent: #32313c;
-  --accent-foreground: #e8e7ed;
-  --destructive: #ff6b6b;
-  --destructive-foreground: #ffffff;
-  --border: #32313c;
-  --input: #32313c;
-  --input-background: #222028;
-  --switch-background: #4a4a55;
-  --ring: #7a90f5;
+  /** ── DARK MODE PALETTE — Canonical 2026-05-22 lock ──
+   *  Warm-dark, not cool-dark. All neutrals shifted toward warm graphite
+   *  (ivory text, not cool slate). Single accent stays in the same
+   *  periwinkle family as light, lifted for OLED contrast. */
+  --background: #0f0e12;
+  --background-secondary: #16151a;
+  --foreground: #ece8df;
+  --foreground-secondary: #a39d92;
+  --foreground-tertiary: #6e695f;
+  --card: #1a181f;
+  --card-elevated: #221f29;
+  --card-foreground: #ece8df;
+  --popover: #221f29;
+  --popover-foreground: #ece8df;
 
-  /** Brand mark — white on black in dark mode. */
-  --brand-mark-bg: #0a0a0f;
+  /** Dark mode 8-slot palette — same hues, lifted ~10% for OLED contrast. */
+  --accent-primary: #7BA3EA;
+  --accent-primary-foreground: #ffffff;
+  --accent-primary-soft: rgba(123, 163, 234, 0.16);
+  --accent-primary-ring: rgba(123, 163, 234, 0.30);
+
+  --primary: var(--accent-primary);
+  --primary-foreground: var(--accent-primary-foreground);
+  --primary-soft: var(--accent-primary-soft);
+  --secondary: var(--background-secondary);
+  --secondary-foreground: var(--foreground);
+  --muted: var(--background-secondary);
+  --muted-foreground: var(--foreground-secondary);
+  --accent: var(--background-secondary);
+  --accent-foreground: var(--foreground);
+
+  --accent-success: #7ABE93;
+  --accent-success-soft: rgba(122, 190, 147, 0.18);
+  --accent-warning: #FAA45F;
+  --accent-warning-soft: rgba(250, 164, 95, 0.18);
+  --accent-destructive: #F58385;
+  --accent-destructive-foreground: #ffffff;
+  --accent-info: #7BA3EA;
+
+  --destructive: var(--accent-destructive);
+  --destructive-foreground: var(--accent-destructive-foreground);
+
+  --border: #2a2630;
+  --border-strong: #3a3640;
+  --input: var(--border);
+  --input-background: #1f1c25;
+  --switch-background: #3a3640;
+  --ring: var(--accent-primary);
+
+  /** Brand mark — ivory on near-black in dark mode. */
+  --brand-mark-bg: #0f0e12;
   --brand-mark-ring: #ffffff;
 
-  /** Semantic colours — dark */
-  --success: #82d878;
+  /** Legacy semantic aliases — dark. */
+  --success: var(--accent-success);
   --success-foreground: #ffffff;
-  --success-soft: #82d87815;
-  --warning: #f0c058;
+  --success-soft: var(--accent-success-soft);
+  --warning: var(--accent-warning);
   --warning-foreground: #ffffff;
-  --warning-soft: #f0c05815;
+  --warning-soft: var(--accent-warning-soft);
 
-  /** Macro colours — dark */
-  --macro-protein: #7a90f5;
-  --macro-protein-soft: #7a90f518;
-  --macro-carbs: #e2b84c;
-  --macro-carbs-soft: #e2b84c18;
-  --macro-fat: #ff7eb3;
-  --macro-fat-soft: #ff7eb315;
-  --macro-calories: #82d878;
-  --macro-fiber: #5c8f8b;
-  --macro-fiber-soft: #5c8f8b18;
-  --macro-sugar: #9aaef7;
-  --macro-sugar-soft: #9aaef718;
-  --macro-sodium: #fb923c;
-  --macro-sodium-soft: #fb923c18;
-  --macro-water: #22d3ee;
-  --macro-water-soft: #22d3ee15;
+  /** Macro colours — dark. 8-slot palette, OLED-lifted. */
+  --macro-protein: #7BA3EA;
+  --macro-protein-soft: rgba(123, 163, 234, 0.16);
+  --macro-carbs: #F5D162;
+  --macro-carbs-soft: rgba(245, 209, 98, 0.16);
+  --macro-fat: #E689CB;
+  --macro-fat-soft: rgba(230, 137, 203, 0.16);
+  --macro-calories: #7ABE93;
+  --macro-fiber: #7ABE93;
+  --macro-fiber-soft: rgba(122, 190, 147, 0.14);
+  --macro-sugar: #F5D162;
+  --macro-sugar-soft: rgba(245, 209, 98, 0.16);
+  --macro-sodium: #FAA45F;
+  --macro-sodium-soft: rgba(250, 164, 95, 0.16);
+  --macro-water: #7BA3EA;
+  --macro-water-soft: rgba(123, 163, 234, 0.16);
 
-  /** Meal-slot tints — dark. Mirrors light-mode roles with OLED-lifted
-   *  hues. Snack stays cyan family (distinct from --macro-fat which
-   *  is magenta in dark too). */
-  --slot-breakfast: #f0c058;         /* amber-light */
-  --slot-breakfast-soft: #f0c05815;
-  --slot-lunch: #82d878;              /* green-light */
-  --slot-lunch-soft: #82d87815;
-  --slot-dinner: #7a90f5;             /* blue-light */
-  --slot-dinner-soft: #7a90f518;
-  --slot-snack: #22d3ee;              /* cyan-light */
-  --slot-snack-soft: #22d3ee15;
+  /** Meal-slot tints — dark. 8-slot palette, OLED-lifted. */
+  --slot-breakfast: #F5D162;         /* yellow-light  ↔ palette slot */
+  --slot-breakfast-soft: #F5D16215;
+  --slot-lunch: #7ABE93;              /* green-light   ↔ palette slot */
+  --slot-lunch-soft: #7ABE9315;
+  --slot-dinner: #7BA3EA;             /* blue-light    ↔ palette slot */
+  --slot-dinner-soft: #7BA3EA18;
+  --slot-snack: #AC93E2;              /* purple-light  ↔ palette slot */
+  --slot-snack-soft: #AC93E215;
 
-  /** Stimulant tracker colours — dark. Kept at the same hex as light
-   *  for now; the hydration cards render chips on a --muted surface so
-   *  the violet/amber tones hold up against dark backgrounds. */
-  --stimulant-caffeine: #8b5cf6;
-  --stimulant-alcohol: #f59e0b;
+  /** Stimulant tracker — dark, 8-slot palette. */
+  --stimulant-caffeine: #AC93E2;
+  --stimulant-alcohol: #FAA45F;
 
-  /** Confidence colours — dark */
-  --confidence-high: #82d878;
-  --confidence-med: #f0c058;
-  --confidence-low: #ff6b6b;
+  /** Confidence colours — dark, 8-slot palette */
+  --confidence-high: #7ABE93;
+  --confidence-med: #FAA45F;
+  --confidence-low: #F58385;
   --confidence-neutral: #706c7c;
 
-  /** Source / provenance dots — dark.
-   *  Lifted hues for OLED contrast; mirrors macro/semantic dark adjustments. */
-  --source-usda: #82d878;
-  --source-off: #7a90f5;
-  --source-fatsecret: #fb923c;
+  /** Source / provenance dots — dark, 8-slot palette. */
+  --source-usda: #7ABE93;
+  --source-off: #7BA3EA;
+  --source-fatsecret: #FAA45F;
   --source-manual: #706c7c;
-  --source-ai: #ff7eb3;
+  --source-ai: #E689CB;
 
-  /** North-star block — dark. Stronger gradient + border for OLED.
-   *  Visual-qa V-1 (spec): A/B against a more muted variant before locking. */
-  --north-star-bg-from: rgba(122, 144, 245, 0.16);
-  --north-star-bg-to: rgba(255, 126, 179, 0.09);
-  --north-star-border: rgba(122, 144, 245, 0.36);
+  /** North-star block — dark. Blue → Magenta gradient (8-slot). */
+  --north-star-bg-from: rgba(123, 163, 234, 0.14);
+  --north-star-bg-to: rgba(230, 137, 203, 0.05);
+  --north-star-border: rgba(123, 163, 234, 0.28);
 
-  /** Over-budget — dark amber. Spec §1.4. */
-  --over-budget-fg: #f0c058;
-  --over-budget-soft: rgba(240, 192, 88, 0.14);
+  /** Over-budget — dark, Orange default. */
+  --over-budget-fg: #FAA45F;
+  --over-budget-soft: rgba(250, 164, 95, 0.14);
 
   /** Depth ladder — dark.
    *  Per spec §1.3 dark-mode-shadow rules: shadows nearly invisible on
@@ -306,34 +378,34 @@
   --elev-card: 0 1px 2px rgba(0, 0, 0, 0.4);
   --elev-sheet: 0 -8px 32px rgba(0, 0, 0, 0.5);
   --elev-float: 0 4px 16px rgba(0, 0, 0, 0.4);
-  --elev-float-primary: 0 4px 16px rgba(122, 144, 245, 0.45);
+  --elev-float-primary: 0 4px 16px rgba(123, 163, 234, 0.45);
 
-  /** Chart colours — dark */
-  --chart-1: #7a90f5;
-  --chart-2: #82d878;
-  --chart-3: #f0c058;
-  --chart-4: #ff7eb3;
-  --chart-5: #a78bfa;
+  /** Chart colours — dark, 8-slot palette */
+  --chart-1: #7ABE93;
+  --chart-2: #7ABE93;
+  --chart-3: #FAA45F;
+  --chart-4: #E689CB;
+  --chart-5: #AC93E2;
 
-  /** Ring component — dark */
-  --ring-bg: #32313c80;
-  --ring-track: #82d878;
+  /** Ring empty track — dark, 8-slot Blue at low alpha. */
+  --ring-bg: rgba(123, 163, 234, 0.35);
+  --ring-track: rgba(123, 163, 234, 0.35);
 
-  /** Sidebar — dark */
+  /** Sidebar — dark, 8-slot palette */
   --sidebar: #18181c;
   --sidebar-foreground: #e8e7ed;
-  --sidebar-primary: #7a90f5;
+  --sidebar-primary: #7BA3EA;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #202028;
   --sidebar-accent-foreground: #e8e7ed;
   --sidebar-border: #32313c;
-  --sidebar-ring: #7a90f5;
+  --sidebar-ring: #7BA3EA;
 
   /** Glass / surface tokens — dark */
   --glass: rgba(24, 24, 28, 0.72);
   --glass-border: rgba(255, 255, 255, 0.08);
   --border-strong: rgba(255, 255, 255, 0.12);
-  --accent-muted: rgba(122, 144, 245, 0.22);
+  --accent-muted: rgba(123, 163, 234, 0.15);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
   --shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.25);
@@ -562,10 +634,30 @@
 }
 
 @layer utilities {
+  .card-elevated {
+    box-shadow: var(--shadow);
+    border-color: transparent;
+  }
+
+  .card-elevated-hero {
+    box-shadow: var(--shadow-md);
+    border-color: transparent;
+  }
+
   .transition-pm {
     transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform;
     transition-duration: var(--pm-duration);
     transition-timing-function: var(--pm-ease);
+  }
+
+  /**
+   * Primary app surfaces (Today, Progress, Library, Settings, etc.).
+   * Mobile-web stays full-width; from md up the shell expands to use
+   * the desktop canvas beside the sidebar (was inconsistently max-w-2xl
+   * on Progress, which squished charts).
+   */
+  .product-shell {
+    @apply w-full max-w-4xl mx-auto px-pm-6 md:max-w-6xl xl:max-w-7xl;
   }
 
   /** Section label — the uppercase overline used throughout the new design */

@@ -24,6 +24,7 @@ const baseTargets: PlannerTargets = {
   protein: 120,
   carbs: 220,
   fat: 65,
+  fiber: 28,
   calorieBandPct: 5,
   carbFatBandPct: 15,
 };
@@ -125,7 +126,7 @@ describe("fitDayToTargets — joint scaler", () => {
     // surface the gap.
     // Scenario: a single tiny recipe and a high protein target.
     const recipes = [macro(100, 5, 10, 2)];
-    const targets: PlannerTargets = { calories: 100, protein: 200, carbs: 20, fat: 5, calorieBandPct: 5, carbFatBandPct: 15 };
+    const targets: PlannerTargets = { calories: 100, protein: 200, carbs: 20, fat: 5, fiber: 0, calorieBandPct: 5, carbFatBandPct: 15 };
     const fit = fitDayToTargets({ recipes, multipliers: [1], targets });
     expect(fit.multipliers[0]).toBeGreaterThanOrEqual(PORTION_MULTIPLIER_CLAMP.min);
     expect(fit.multipliers[0]).toBeLessThanOrEqual(PORTION_MULTIPLIER_CLAMP.max);
@@ -153,7 +154,7 @@ describe("fitDayToTargets — joint scaler", () => {
   it("never reports a positive residualProteinGap (overshooting is not a gap)", () => {
     // High-protein library that easily clears the target.
     const recipes = [macro(400, 50, 10, 10), macro(500, 60, 20, 12)];
-    const targets: PlannerTargets = { calories: 900, protein: 50, carbs: 30, fat: 22, calorieBandPct: 10, carbFatBandPct: 20 };
+    const targets: PlannerTargets = { calories: 900, protein: 50, carbs: 30, fat: 22, fiber: 0, calorieBandPct: 10, carbFatBandPct: 20 };
     const fit = fitDayToTargets({ recipes, multipliers: [1, 1], targets });
     expect(fit.residualProteinGap).toBeLessThanOrEqual(0);
   });
@@ -169,6 +170,7 @@ describe("fitDayToTargets — joint scaler", () => {
       protein: 90,
       carbs: 115,
       fat: 37,
+      fiber: 0,
       calorieBandPct: 5,
       carbFatBandPct: 15,
     };
@@ -188,7 +190,7 @@ describe("fitDayToTargets — joint scaler", () => {
       macro(500, 40, 20, 10),  // protein-rich
       macro(900, 20, 120, 20), // carb-heavy
     ];
-    const targets: PlannerTargets = { calories: 1200, protein: 60, carbs: 140, fat: 30, calorieBandPct: 5, carbFatBandPct: 15 };
+    const targets: PlannerTargets = { calories: 1200, protein: 60, carbs: 140, fat: 30, fiber: 0, calorieBandPct: 5, carbFatBandPct: 15 };
     const fit = fitDayToTargets({ recipes, multipliers: [1, 1], targets });
     const protein = recipes.reduce((a, r, i) => a + r.protein * fit.multipliers[i]!, 0);
     // Protein must stay in band (±10%) — must NOT be dropped to help calories.

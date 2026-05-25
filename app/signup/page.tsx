@@ -1,15 +1,19 @@
+import type { Metadata } from "next";
+import { LoginClient } from "../login/ui";
+
+export const metadata: Metadata = {
+  title: "Suppr — Create account",
+  robots: { index: false, follow: false },
+};
+
 /**
- * /signup → /onboarding (server-side 307).
+ * Dedicated signup surface (Premium P1 / RTP-1).
  *
- * Sign-up is now part of the v2 onboarding flow (real Supabase signUp
- * happens inline at the second step). Keeping a separate /signup form
- * was the source of the duplicate-account-creation loop on
- * suppr-club.com (legacy flow → /signup → real auth → /onboarding/v2 →
- * cosmetic v2 signup step that asked again).
+ * Account creation used to 307 to `/onboarding`, which rendered the
+ * marketing hero — not a form. Sign-up stays on its own URL for
+ * password managers and email-confirm flows; the v2 onboarding flow
+ * at `/onboarding` still owns profile + targets after first sign-in.
  */
-
-import { redirect } from "next/navigation";
-
 export default function SignupPage() {
-  redirect("/onboarding");
+  return <LoginClient initialMode="signup" hideTabs postSignInHref="/onboarding" />;
 }

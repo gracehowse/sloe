@@ -329,7 +329,7 @@ async function incrBy(key: string, delta: number): Promise<number | null> {
   }
 }
 
-async function getValue(key: string): Promise<number | null> {
+async function _getValue(key: string): Promise<number | null> {
   const redis = getRedis();
   if (!redis) {
     return memGet(key);

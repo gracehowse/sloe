@@ -130,3 +130,34 @@ describe("TodayDateHeader — inline StreakPip (DC8 polish 2026-05-14)", () => {
     expect(queryByLabelText(/logging streak/i)).toBeNull();
   });
 });
+
+describe("TodayDateHeader — calm date nav (hideDayStrip, ENG-584)", () => {
+  it("shows calendar control and choose-date on title when day strip hidden", () => {
+    const onOpenCalendar = vi.fn();
+    const { getByLabelText } = render(
+      <TodayDateHeader
+        {...baseProps}
+        hideDayStrip
+        onOpenCalendar={onOpenCalendar}
+      />,
+    );
+    expect(getByLabelText("Open calendar")).toBeTruthy();
+    expect(getByLabelText("Choose date")).toBeTruthy();
+  });
+
+  it("shows Jump to today when viewing a past day with strip hidden", () => {
+    const onTapTitle = vi.fn();
+    const { getByLabelText } = render(
+      <TodayDateHeader
+        {...baseProps}
+        hideDayStrip
+        isToday={false}
+        onTapTitle={onTapTitle}
+      />,
+    );
+    const todayBtn = getByLabelText("Jump to today");
+    expect(todayBtn).toBeTruthy();
+    todayBtn.props.onPress?.();
+    expect(onTapTitle).toHaveBeenCalled();
+  });
+});

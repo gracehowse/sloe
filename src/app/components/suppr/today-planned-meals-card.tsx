@@ -34,7 +34,7 @@ export function TodayPlannedMealsCard({
 }: TodayPlannedMealsCardProps) {
   return (
     <section
-      className="rounded-card border border-border bg-card mb-6"
+      className="rounded-card border border-border bg-card mb-6 card-elevated"
       aria-label="Planned meals for today"
     >
       <header className="flex items-center justify-between px-4 pt-4 pb-3">

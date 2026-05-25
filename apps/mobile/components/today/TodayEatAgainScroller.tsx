@@ -106,29 +106,13 @@ export function TodayEatAgainScroller({
           </View>
         ))}
       </ScrollView>
-      <View
-        style={{
-          flexDirection: "row",
-          justifyContent: "center",
-          alignItems: "center",
-          gap: 6,
-          marginTop: -4,
-        }}
-        accessibilityRole="adjustable"
-        accessibilityLabel={`Eat Again page ${activeIndex + 1} of ${candidates.length}`}
-      >
-        {candidates.map((_, i) => (
-          <View
-            key={`dot-${i}`}
-            style={{
-              width: 6,
-              height: 6,
-              borderRadius: 3,
-              backgroundColor: i === activeIndex ? textColor : `${secondaryColor}4D`,
-            }}
-          />
-        ))}
-      </View>
+      {/* Canonical 2026-05-22: pagination dots removed per Grace call.
+          Swipe gesture alone carries the "more cards available" affordance.
+          The dots row was visual chrome competing with the warm cohesive
+          palette; the scroll-snap behaviour + horizontal scroll bar
+          (hidden) is enough signal for users who interact, and absent
+          dots match calmer brands (Things 3, Notion) over MFP-grade
+          carousel indicators. */}
     </View>
   );
 }

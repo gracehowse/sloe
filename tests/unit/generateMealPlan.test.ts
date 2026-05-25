@@ -23,6 +23,7 @@ const targets = {
   protein: 150,
   carbs: 200,
   fat: 70,
+  fiber: 28,
   calorieBandPct: 12,
   carbFatBandPct: 18,
 };

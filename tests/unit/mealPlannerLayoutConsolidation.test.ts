@@ -29,9 +29,9 @@ const SRC = readFileSync(
 );
 
 describe("MealPlanner prototype rewrite (2026-04-21)", () => {
-  it("renders the 24px 'Meal plan' title", () => {
+  it("renders the 'Meal plan' title at prototype scale", () => {
     expect(SRC).toMatch(/Meal plan/);
-    expect(SRC).toMatch(/fontSize: 24/);
+    expect(SRC).toMatch(/fontSize: 28/);
   });
 
   it("subtitle carries the 'hits targets N of M day(s)' pattern", () => {

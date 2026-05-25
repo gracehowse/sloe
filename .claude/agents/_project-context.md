@@ -79,6 +79,18 @@ Both mobile and web use this mapping. **Other over-budget signals (macros, sodiu
 
 ---
 
+## Screen file size limit
+
+Screen-level files (`app/(tabs)/*.tsx`, `app/*.tsx` on mobile; page-level components on web) must stay under **400 lines**. When a screen file approaches this limit:
+
+1. Extract hooks into a co-located `use<Screen>.ts` (composition root pattern — see ENG-619 for the canonical example).
+2. Extract sub-sections into `components/<screen>/` with one component per file.
+3. Keep the screen file as a thin composition shell: imports, layout, data wiring.
+
+Files over 400 lines signal that state, layout, and logic are tangled. The limit is enforced by convention (no lint rule yet — see ENG-119 for the type-ladder lint precedent).
+
+---
+
 ## Prototype carryover rules
 
 The Claude Design bundles at `docs/ux/claude-design-bundles/{prototype,onboarding}` are the **design language reference**. Not a mandate.

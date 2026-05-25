@@ -1,5 +1,5 @@
 import React from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, Text, useColorScheme, View } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -24,7 +24,8 @@ import {
   Wheat,
   type LucideIcon,
 } from "lucide-react-native";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Layout } from "@/constants/layout";
+import { Accent, Colors, Radius, Spacing, Type } from "@/constants/theme";
 import { macroColorFor } from "@/lib/macroColors";
 import type { JournalMeal } from "@/lib/nutritionJournal";
 import { carbsLabel, netCarbsForRow } from "@suppr/shared/nutrition/netCarbs";
@@ -104,6 +105,11 @@ export function TodayDashboardMacroTiles({
   showNutrientsLink,
   onPressNutrients,
 }: TodayDashboardMacroTilesProps) {
+  const colorScheme = useColorScheme();
+  // 2026-05-21: over-budget is amber, never red. Per brand-tokens.md +
+  // project memory ("over-budget is amber, never red"). Red was
+  // alarming/clinical; amber is the calm wellness nudge.
+  const overBudgetAmber = Accent.warning;
   const microSum = mealsToday.reduce(
     (a, m) => ({
       sugarG: a.sugarG + ((m.micros as { sugarG?: number } | null | undefined)?.sugarG ?? 0),
@@ -148,7 +154,7 @@ export function TodayDashboardMacroTiles({
   // earlier negative-margin hack, which relied on compensating parent
   // padding that Today's scroll container doesn't guarantee.
   return (
-    <View style={{ marginBottom: Spacing.lg }}>
+    <View style={{ marginBottom: Spacing.sm }}>
       {/* "Nutrients >" upgraded to an outlined chip reading
           "All nutrients ›" so it reads as an action affordance, not
           an orphaned floating link. Renders only when the host flags
@@ -165,8 +171,7 @@ export function TodayDashboardMacroTiles({
           >
             <Text
               style={{
-                fontSize: 12,
-                fontWeight: "600",
+                ...Type.caption,
                 color: textSecondaryColor,
               }}
             >
@@ -176,7 +181,7 @@ export function TodayDashboardMacroTiles({
           </Pressable>
         </View>
       ) : null}
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: Spacing.md }}>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: Layout.macroTileGridGap }}>
       {trackedMacros.map((macro) => {
         const def = macroMap[macro];
         if (!def) return null;
@@ -186,7 +191,7 @@ export function TodayDashboardMacroTiles({
         const value = formatMacro(def.current, macro);
         const pct = def.target > 0 ? Math.min(100, Math.round((def.current / def.target) * 100)) : 0;
         // Over-budget: keep the macro's identity colour on the bar;
-        // caption uses destructive red (matches calorie ring / NET).
+        // caption uses red when over.
         const isOverBudget =
           !def.referenceOnly && def.target > 0 && def.current > def.target;
         const barColor = def.color;
@@ -220,25 +225,25 @@ export function TodayDashboardMacroTiles({
             accessibilityRole="button"
             accessibilityLabel={`${def.label}: ${value} of ${def.target} ${def.unit}. Tap for detail.`}
             style={{
-              // `flexBasis: 49%` + gap gives a stable 2-col layout
-              // that survives odd parent paddings.
-              flexBasis: "48.5%",
-              flexGrow: 1,
+              // 2×2 grid: fixed half-width cells. `flexGrow: 0` stops a
+              // lone tile on the last row stretching full width (was
+              // reading as one "wide screen" card).
+              width: "48%",
+              maxWidth: "48%",
+              flexGrow: 0,
+              flexShrink: 0,
               backgroundColor: cardColor,
               borderWidth: 1,
               borderColor: cardBorderColor,
-              borderRadius: Radius.lg,
-              padding: Spacing.lg,
+              borderRadius: Radius.md,
+              padding: Spacing.sm + 2,
             }}
           >
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.sm }}>
                 <Text
                   style={{
-                    fontSize: 11,
-                    fontWeight: "600",
+                    ...Type.label,
                     color: textTertiaryColor,
-                    letterSpacing: 1.1,
-                    textTransform: "uppercase",
                   }}
                 >
                   {def.label}
@@ -248,9 +253,7 @@ export function TodayDashboardMacroTiles({
               <View style={{ flexDirection: "row", alignItems: "baseline" }}>
                 <Text
                   style={{
-                    fontSize: 22,
-                    fontWeight: "700",
-                    letterSpacing: -0.4,
+                    ...Type.macroValue,
                     color: textColor,
                     fontVariant: ["tabular-nums"],
                   }}
@@ -259,7 +262,7 @@ export function TodayDashboardMacroTiles({
                   {value}
                 </Text>
                 <Text
-                  style={{ flexShrink: 1, fontSize: 12, color: textSecondaryColor, marginLeft: 3 }}
+                  style={{ ...Type.caption, flexShrink: 1, color: textSecondaryColor, marginLeft: 3 }}
                   numberOfLines={1}
                 >
                   / {def.target} {def.unit}
@@ -280,27 +283,26 @@ export function TodayDashboardMacroTiles({
                   300ms with `Easing.out(cubic)`. Apple Watch + Cal AI
                   parity — the bar grows visibly as the user logs,
                   reinforcing the "you just made progress" beat. */}
-              {/* Hide the bar entirely when nothing's been logged —
-                  the empty track is noise on the empty state. */}
-              {!isUnloggedTile ? (
-                <View
-                  style={{
-                    height: 6,
-                    borderRadius: 999,
-                    backgroundColor: barTrackColor,
-                    marginTop: Spacing.sm + 2,
-                    overflow: "hidden",
-                  }}
-                >
-                  <MacroTileFill pct={pct} color={barColor} />
-                </View>
-              ) : null}
+              <View
+                style={{
+                  height: 6,
+                  borderRadius: 999,
+                  backgroundColor: barTrackColor,
+                  marginTop: Spacing.sm + 2,
+                  overflow: "hidden",
+                }}
+              >
+                <MacroTileFill pct={pct} color={barColor} />
+              </View>
               {captionText ? (
                 <Text
                   style={{
-                    fontSize: 11,
-                    color: isOverBudget ? Accent.destructive : textSecondaryColor,
-                    fontWeight: isOverBudget ? "700" : "400",
+                    ...Type.caption,
+                    // Canonical 2026-05-22 A2: macro captions stay neutral
+                    // textTertiary regardless of over/under. The bar fill
+                    // at >=100% carries the over-budget signal — the words
+                    // don't need to shout. Bar weight stays 400 (no bold).
+                    color: textTertiaryColor,
                     marginTop: Spacing.xs + 2,
                     fontVariant: ["tabular-nums"],
                   }}

@@ -93,33 +93,33 @@ describe("TodayHeroStats", () => {
   describe("Net tile colour tone (N4)", () => {
     function netColorClass(loggedKcal: number, targetKcal: number): string {
       const { container } = renderStats({ loggedKcal, targetKcal, burnedKcal: 0 });
-      // Find the Net tile by label, then read its sibling value div.
-      const tiles = container.querySelectorAll("div > div > .text-\\[10px\\]");
+      const row = container.querySelector('[data-testid="today-hero-stat-row"]');
+      if (!row) throw new Error("Stat row not rendered (desktop hides row until loggedKcal > 0)");
+      const tiles = row.querySelectorAll(".text-\\[10px\\]");
       const tileMap: Record<string, Element | null> = {};
       tiles.forEach((label) => {
         const txt = (label.textContent ?? "").trim();
-        // The value is the next sibling div with `text-2xl`.
-        tileMap[txt] = label.parentElement?.querySelector(".text-2xl") ?? null;
+        tileMap[txt] = label.parentElement?.querySelector(".text-\\[18px\\]") ?? null;
       });
       const netValue = tileMap[TODAY_STAT_LABELS.net];
       if (!netValue) throw new Error("Net tile not found in render");
       return netValue.className;
     }
 
-    it("renders Net in neutral foreground when nothing has been logged", () => {
-      // loggedKcal === 0 → NEVER green, even though net < 0.
-      expect(netColorClass(0, 1132)).toContain("text-foreground");
-      expect(netColorClass(0, 1132)).not.toContain("text-success");
-      expect(netColorClass(0, 1132)).not.toContain("text-warning");
+    it("hides the desktop stat row until the user has logged food", () => {
+      const { container } = renderStats({ loggedKcal: 0, targetKcal: 1132, burnedKcal: 0 });
+      expect(container.querySelector('[data-testid="today-hero-stat-row"]')).toBeNull();
     });
 
     it("renders Net in success when under target with food logged", () => {
       expect(netColorClass(1000, 1800)).toContain("text-success");
     });
 
-    it("renders Net in destructive red when over target (mirrors calorie ring)", () => {
-      expect(netColorClass(2000, 1800)).toContain("text-destructive");
-      expect(netColorClass(2000, 1800)).not.toContain("text-warning");
+    it("renders Net in over-budget amber when over target", () => {
+      // 2026-05-21: switched from destructive red to over-budget amber
+      // per brand-tokens.md + project memory ("over-budget is amber,
+      // never red"). Red was alarming/clinical for a wellness app.
+      expect(netColorClass(2000, 1800)).toContain("over-budget-fg");
     });
 
     it("renders Net in neutral when exactly at target", () => {

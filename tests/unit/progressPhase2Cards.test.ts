@@ -5,7 +5,7 @@
  *   1. WEIGHT card — uppercase overline, on-track green pill, big
  *      weight number, weekly delta with trend icon, sparkline,
  *      projection caption.
- *   2. Calories card — 17pt bold header OUTSIDE the card; card shows
+ *   2. Calories card — overline inside the card; card shows
  *      big `avg/day`, `vs target` pill top-right, adherence subtitle.
  *
  * Both cards read from the shared `progressRangeStats` helpers so web

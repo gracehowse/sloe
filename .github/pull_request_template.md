@@ -12,3 +12,10 @@
 ## Screenshots / clips
 
 <!-- Optional: UI before/after. Delete if N/A. -->
+
+### Today visual changes (Premium program)
+
+If this PR touches **Today** layout, colour, or cold-open chrome on web or mobile:
+
+- [ ] Attach **paired** captures: same state on native sim and mobile-web (e.g. `one-meal-mobile-light.png` + `one-meal-mobile-web-light.png`). See [`docs/ux/captures/today-premium-2026-05-19/README.md`](../docs/ux/captures/today-premium-2026-05-19/README.md).
+- [ ] `npm run test -- tests/unit/crossPlatformThemeTokens.test.ts` and `tests/unit/todayPremiumTokenGate.test.ts` pass when tokens changed.

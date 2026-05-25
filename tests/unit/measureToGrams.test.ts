@@ -10,6 +10,7 @@ import {
   ML_PER_CUP_UK,
   ML_PER_CUP_METRIC,
   EGG_SIZE_G,
+  poultryBreastGramsEach,
 } from "@/lib/nutrition/measureToGrams";
 
 describe("measureToGrams", () => {
@@ -86,8 +87,13 @@ describe("measureToGrams", () => {
     expect(measureToGrams({ name: "pepper", amount: 1, unit: "large" })).toBe(180);
   });
 
-  it("breast = 200g", () => {
+  it("breast = 200g (raw)", () => {
     expect(measureToGrams({ name: "chicken", amount: 2, unit: "breast" })).toBe(400);
+  });
+
+  it("F-158: cooked chicken shredded × 2 breast = 300g (150g each)", () => {
+    expect(poultryBreastGramsEach("cooked chicken shredded")).toBe(150);
+    expect(measureToGrams({ name: "cooked chicken shredded", amount: 2, unit: "breast" })).toBe(300);
   });
 
   it("thigh = 120g", () => {

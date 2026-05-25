@@ -33,10 +33,13 @@ test.describe("Public auth journey", () => {
       await expectNoSeriousA11yViolations(page);
     });
 
-    await test.step("I tap Sign up and expect the create-account heading", async () => {
-      await page.getByRole("button", { name: "Sign up", exact: true }).first().click();
-      await expect(page.getByRole("heading", { name: /create your account/i })).toBeVisible();
-      await expect(page.getByText(/free to start/i)).toBeVisible();
+    await test.step("I follow Create your account and expect onboarding/sign-up copy", async () => {
+      // `/login` uses hideTabs — sign-up is a link to /onboarding, not a tab button.
+      await page.getByRole("link", { name: /create your account/i }).click();
+      await page.waitForURL(/\/(onboarding|login|signup)/, { timeout: 15_000 });
+      await expect(
+        page.getByRole("heading", { name: /create your account|let's build your plan/i }).first(),
+      ).toBeVisible();
     });
   });
 

@@ -1,4 +1,8 @@
-@import 'tailwindcss' source(none);
-@source '../**/*.{js,ts,jsx,tsx}';
+/* App Router pages live outside src/. Tailwind v4 source globs from
+   src/styles/ would only reach src/ -- silently dropping every class
+   used in app/. Letting Tailwind auto-detect picks up both. See memory
+   feedback_tailwind_v4_source_globs.md. Re-applied after the revert
+   in 02916353 wiped the original f88bbdd6 fix as collateral damage. */
+@import 'tailwindcss';
 
 @import 'tw-animate-css';

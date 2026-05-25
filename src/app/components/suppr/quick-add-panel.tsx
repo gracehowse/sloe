@@ -483,7 +483,7 @@ export function QuickAddPanel({
   );
 
   return (
-    <div className={["rounded-card border border-border bg-card overflow-hidden", className].filter(Boolean).join(" ")}>
+    <div className={["rounded-card border border-border bg-card overflow-hidden card-elevated", className].filter(Boolean).join(" ")}>
       {/* Header + tab row */}
       <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-border">
         <div>

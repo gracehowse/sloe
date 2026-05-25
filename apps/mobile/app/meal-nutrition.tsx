@@ -10,7 +10,8 @@ import { useSafeBack } from "@/hooks/use-safe-back";
 import { listMicroNutrientsCompleteDisplay, mealContributedFiberG, sumDayFiberFromMeals, sumMicrosFromLoggedMeals } from "@/lib/healthDietaryNutrients";
 import { parseNutritionMicrosJson, type JournalMeal, normalizeJournalSlotName, dateKeyFromDate } from "@/lib/nutritionJournal";
 import { supabase } from "@/lib/supabase";
-import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
+import { Accent, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
+import { PushScreenHeader } from "@/components/PushScreenHeader";
 import {
   macroSplitConfidence,
   macroSplitIncompleteCopy,
@@ -408,48 +409,32 @@ export default function MealNutritionScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: isSlotAggregate ? colors.background : colors.backgroundSecondary }}>
       {isSlotAggregate ? (
-        <View
-          style={{
-            paddingTop: insets.top + Spacing.sm,
-            paddingHorizontal: Spacing.lg,
-            paddingBottom: Spacing.md,
-            flexDirection: "row",
-            alignItems: "center",
-            gap: Spacing.md,
-            backgroundColor: colors.background,
-          }}
-        >
-          <Pressable onPress={goBack} hitSlop={12} accessibilityRole="button" accessibilityLabel="Go back">
-            <Ionicons name="chevron-back" size={24} color={colors.text} />
-          </Pressable>
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={{ fontSize: 22, fontWeight: "700", color: colors.text }} numberOfLines={1}>
-              {meal.name}
-            </Text>
-            <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }} numberOfLines={1}>
-              {slotDateLabel} · {slotLineItems?.length ?? 0} item{(slotLineItems?.length ?? 0) !== 1 ? "s" : ""}
-            </Text>
-          </View>
-          <View
-            style={{
-              backgroundColor: Accent.primary + "20",
-              paddingHorizontal: 12,
-              paddingVertical: 6,
-              borderRadius: Radius.sm,
-            }}
-          >
-            <Text
+        <PushScreenHeader
+          title={meal.name}
+          caption={`${slotDateLabel} · ${slotLineItems?.length ?? 0} item${(slotLineItems?.length ?? 0) !== 1 ? "s" : ""}`}
+          onBack={goBack}
+          rightSlot={
+            <View
               style={{
-                fontSize: 16,
-                fontWeight: "800",
-                color: Accent.primary,
-                fontVariant: ["tabular-nums"],
+                backgroundColor: Accent.primary + "20",
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderRadius: Radius.sm,
               }}
             >
-              {Math.round(meal.calories)} kcal
-            </Text>
-          </View>
-        </View>
+              <Text
+                style={{
+                  fontSize: 16,
+                  fontWeight: "800",
+                  color: Accent.primary,
+                  fontVariant: ["tabular-nums"],
+                }}
+              >
+                {Math.round(meal.calories)} kcal
+              </Text>
+            </View>
+          }
+        />
       ) : null}
       <ScrollView
         testID="screen-meal-nutrition"

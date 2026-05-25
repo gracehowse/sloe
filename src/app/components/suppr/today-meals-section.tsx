@@ -29,6 +29,7 @@ import type { SavedMeal } from "../../../lib/nutrition/savedMeals";
 import { summariseSavedMeal } from "../../../lib/nutrition/savedMealsLogic";
 import { buildMealShareText } from "../../../lib/share/buildMealShareText";
 import { track, isFeatureEnabled } from "../../../lib/analytics/track";
+import { mealRowImageUrl } from "../../../lib/nutrition/foodHistory";
 import { toast } from "sonner";
 
 /**
@@ -102,6 +103,10 @@ export interface TodayMealsSectionProps {
   onDismissUsualMealHint: (slot: string) => void;
   /** Ship M1 — user tapped "Save as usual" on the hint for `slot`. */
   onAcceptUsualMealHint: (slot: string) => void;
+  /** ENG-594 — Quick add accordion in the meals section header. */
+  quickAddCollapsed?: boolean;
+  onToggleQuickAddCollapsed?: () => void;
+  quickAddPanel?: React.ReactNode;
 }
 
 /**
@@ -123,6 +128,55 @@ function getMealIcon(name: string): {
   if (name === "Dinner") return { icon: Icons.dinner as React.ComponentType<React.SVGProps<SVGSVGElement>>, tone: "slot-dinner" };
   if (name === "Snacks") return { icon: Icons.snack as React.ComponentType<React.SVGProps<SVGSVGElement>>, tone: "slot-snack" };
   return { icon: Icons.add as React.ComponentType<React.SVGProps<SVGSVGElement>>, tone: "primary" };
+}
+
+/** Slot-tinted pill chrome — avoids ink (`text-primary`) on every row. */
+function slotPillClassName(sectionName: string): string {
+  const { tone } = getMealIcon(sectionName);
+  switch (tone) {
+    case "slot-breakfast":
+      return "border-slot-breakfast/30 bg-slot-breakfast-soft text-slot-breakfast hover:opacity-90";
+    case "slot-lunch":
+      return "border-slot-lunch/30 bg-slot-lunch-soft text-slot-lunch hover:opacity-90";
+    case "slot-dinner":
+      return "border-slot-dinner/30 bg-slot-dinner-soft text-slot-dinner hover:opacity-90";
+    case "slot-snack":
+      return "border-slot-snack/30 bg-slot-snack-soft text-slot-snack hover:opacity-90";
+    default:
+      return "border-border bg-muted text-muted-foreground";
+  }
+}
+
+function slotHintClassName(sectionName: string): string {
+  const { tone } = getMealIcon(sectionName);
+  switch (tone) {
+    case "slot-breakfast":
+      return "border-slot-breakfast/25 bg-slot-breakfast-soft";
+    case "slot-lunch":
+      return "border-slot-lunch/25 bg-slot-lunch-soft";
+    case "slot-dinner":
+      return "border-slot-dinner/25 bg-slot-dinner-soft";
+    case "slot-snack":
+      return "border-slot-snack/25 bg-slot-snack-soft";
+    default:
+      return "border-border/40 bg-muted/50";
+  }
+}
+
+function slotHintCtaClassName(sectionName: string): string {
+  const { tone } = getMealIcon(sectionName);
+  switch (tone) {
+    case "slot-breakfast":
+      return "bg-slot-breakfast text-white hover:opacity-90";
+    case "slot-lunch":
+      return "bg-slot-lunch text-white hover:opacity-90";
+    case "slot-dinner":
+      return "bg-slot-dinner text-white hover:opacity-90";
+    case "slot-snack":
+      return "bg-slot-snack text-white hover:opacity-90";
+    default:
+      return "bg-foreground text-primary-foreground hover:bg-foreground/90";
+  }
 }
 
 /**
@@ -168,7 +222,14 @@ export function TodayMealsSection({
   hintVisibleForSlot,
   onDismissUsualMealHint,
   onAcceptUsualMealHint,
+  quickAddCollapsed,
+  onToggleQuickAddCollapsed,
+  quickAddPanel,
 }: TodayMealsSectionProps) {
+  const showQuickAdd =
+    mealsForSelectedDate.length > 0 &&
+    onToggleQuickAddCollapsed != null &&
+    quickAddPanel != null;
   // Audit M7 (2026-04-18) — themed destructive-confirm dialog
   // replacing the prior `window.confirm` on the Delete overflow item.
   const [deleteCandidate, setDeleteCandidate] = React.useState<
@@ -204,6 +265,32 @@ export function TodayMealsSection({
           </button>
         )}
       </div>
+      {showQuickAdd && (
+        <div className="mb-3 rounded-card bg-card border border-border overflow-hidden">
+          <button
+            type="button"
+            onClick={onToggleQuickAddCollapsed}
+            aria-expanded={!quickAddCollapsed}
+            aria-controls="today-meals-quick-add-panel"
+            className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <span className="flex items-center gap-2 min-w-0">
+              <Icons.energy className="h-4 w-4 opacity-70" aria-hidden="true" />
+              <span className="text-sm font-semibold">Quick add</span>
+              <span className="text-xs truncate opacity-80">Your usuals</span>
+            </span>
+            <Icons.down
+              className={`h-4 w-4 opacity-70 transition-transform ${quickAddCollapsed ? "" : "rotate-180"}`}
+              aria-hidden="true"
+            />
+          </button>
+          {!quickAddCollapsed ? (
+            <div id="today-meals-quick-add-panel" className="px-3 pb-3">
+              {quickAddPanel}
+            </div>
+          ) : null}
+        </div>
+      )}
       <div className="rounded-card bg-card border border-border overflow-hidden">
         {mealsGrouped.map(({ name: sectionName, meals: sectionMeals }) => {
           // Preserve the distributeMealBudget call so any downstream
@@ -253,7 +340,7 @@ export function TodayMealsSection({
                   <p className="text-[13px] font-semibold text-foreground">{sectionName}</p>
                   <p className="text-[11px] text-muted-foreground">{sectionMeals.length} item{sectionMeals.length !== 1 ? "s" : ""}</p>
                 </div>
-                <span className="text-sm font-bold text-foreground tabular-nums">
+                <span className="text-sm font-semibold text-muted-foreground tabular-nums">
                   {Math.round(sectionMeals.reduce((sum, m) => sum + scaledMacro(m.calories, m.portionMultiplier ?? 1), 0))}
                 </span>
                 <span className="text-[10px] text-muted-foreground mr-1">kcal</span>
@@ -265,7 +352,7 @@ export function TodayMealsSection({
                     2026-05-15 (crowder task) — when `usualRowV2` is ON,
                     this chip moves to a dedicated row below the header
                     so the header stays compact on narrow widths. */}
-                {!usualRowV2 && hasSaved && primarySaved && (
+                {!usualRowV2 && mealsForSelectedDate.length > 0 && hasSaved && primarySaved && (
                   <button
                     type="button"
                     data-testid={`today-log-usual-pill-in-header-${sectionName}`}
@@ -277,7 +364,7 @@ export function TodayMealsSection({
                         onLogSavedMeal(primarySaved, sectionName);
                       }
                     }}
-                    className="mr-1 inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary hover:bg-primary/20"
+                    className={`mr-1 inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${slotPillClassName(sectionName)}`}
                     aria-label={
                       slotSavedMeals.length >= 2
                         ? `Log a usual ${sectionName} — choose from ${slotSavedMeals.length} saved meals`
@@ -307,7 +394,7 @@ export function TodayMealsSection({
                   when the saved-meal name is long. Renders regardless
                   of collapse state so the affordance is reachable from
                   collapsed slots too. */}
-              {usualRowV2 && hasSaved && primarySaved && (
+              {usualRowV2 && mealsForSelectedDate.length > 0 && hasSaved && primarySaved && (
                 <div
                   data-testid={`today-log-usual-row-${sectionName}`}
                   className="flex items-center px-3.5 py-2 border-b border-border/10"
@@ -323,7 +410,7 @@ export function TodayMealsSection({
                         onLogSavedMeal(primarySaved, sectionName);
                       }
                     }}
-                    className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20"
+                    className={`inline-flex max-w-full items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold ${slotPillClassName(sectionName)}`}
                     aria-label={
                       slotSavedMeals.length >= 2
                         ? `Log a usual ${sectionName} — choose from ${slotSavedMeals.length} saved meals`
@@ -360,11 +447,26 @@ export function TodayMealsSection({
                       className="flex items-center justify-between px-4 py-2.5 border-b border-border/10"
                       style={{ paddingLeft: 14 }}
                     >
-                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                        {/* Phase 3 / B2.4 (D-2026-04-27-16) — source dot
-                            replaces the bare success bullet so every
-                            macro-bearing row carries provenance colour. */}
-                        <SourceDot source={mapMealSourceToDot(meal.source)} size={6} className="shrink-0" />
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        {(() => {
+                          const thumbUrl = mealRowImageUrl(meal);
+                          if (thumbUrl) {
+                            return (
+                              <img
+                                src={thumbUrl}
+                                alt=""
+                                className="h-10 w-10 rounded-lg object-cover shrink-0"
+                              />
+                            );
+                          }
+                          return (
+                            <SourceDot
+                              source={mapMealSourceToDot(meal.source)}
+                              size={6}
+                              className="shrink-0"
+                            />
+                          );
+                        })()}
                         <span className="text-xs text-foreground truncate">{meal.recipeTitle}</span>
                         {meal.source && <NutritionSourceBadge source={meal.source} />}
                       </div>
@@ -449,7 +551,7 @@ export function TodayMealsSection({
                     <div
                       role="note"
                       aria-label={`Tip — make this your usual ${sectionName}`}
-                      className="mx-3.5 my-2 rounded-card border border-primary/25 bg-primary/5 p-3"
+                      className={`mx-3.5 my-2 rounded-card border p-3 ${slotHintClassName(sectionName)}`}
                     >
                       <p className="text-[13px] font-semibold text-foreground">
                         Make this your usual {sectionName.toLowerCase()}.
@@ -461,7 +563,7 @@ export function TodayMealsSection({
                         <button
                           type="button"
                           onClick={() => onAcceptUsualMealHint(sectionName)}
-                          className="inline-flex items-center gap-1 rounded-md bg-primary px-2.5 py-1 text-[11px] font-semibold text-primary-foreground hover:bg-primary/90"
+                          className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-semibold ${slotHintCtaClassName(sectionName)}`}
                           aria-label={`Save ${sectionName} as a usual meal`}
                         >
                           <Icons.save className="w-3 h-3" aria-hidden />
@@ -488,7 +590,7 @@ export function TodayMealsSection({
                     <button
                       type="button"
                       onClick={() => onOpenSaveUsualMeal(sectionName)}
-                      className="w-full flex items-center justify-center gap-2 px-3.5 py-2.5 border-t border-border/40 text-[13px] font-semibold text-primary hover:bg-primary/5 transition-colors"
+                      className="w-full flex items-center justify-center gap-2 px-3.5 py-2.5 border-t border-border/40 text-[13px] font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
                       aria-label={`Save ${sectionName} as a usual meal — one tap to re-log next time`}
                     >
                       <Icons.save className="w-4 h-4" aria-hidden />
@@ -528,17 +630,23 @@ export function TodayMealsSection({
         {mealsForSelectedDate.length === 0 && (
           <div
             data-testid="today-meals-empty-state"
-            className="px-4 py-8 text-center"
+            className="px-4 py-10 text-center"
           >
-            <p className="mb-4 text-sm text-muted-foreground">
+            <div className="mx-auto mb-4 grid h-11 w-11 place-items-center rounded-full bg-muted">
+              <Icons.dinner className="h-5 w-5 text-muted-foreground" aria-hidden />
+            </div>
+            <p className="text-sm font-medium text-foreground mb-1">
               No meals logged on this day
+            </p>
+            <p className="text-[13px] text-muted-foreground mb-5">
+              Tap below to search, scan, snap a photo, or use your voice.
             </p>
             <button
               type="button"
               onClick={onOpenLogSheet}
               data-testid="today-meals-empty-cta"
               aria-label="Log a meal"
-              className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 font-semibold text-white transition-pm hover:bg-primary/90"
+              className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
             >
               <Icons.add className="h-5 w-5" />
               Log a meal

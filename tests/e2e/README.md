@@ -43,7 +43,7 @@ Stop the server when finished (foreground **Ctrl+C** or `kill` the background PI
 
 | Variable | When | Purpose |
 |----------|------|---------|
-| `E2E_EMAIL` / `E2E_PASSWORD` | Optional | Enables authenticated journeys: [`journeys/authenticated-views.spec.ts`](journeys/authenticated-views.spec.ts) (full view matrix) and [`journeys/today-authenticated.spec.ts`](journeys/today-authenticated.spec.ts) (minimal Today / tracker smoke). Omit both to skip those tests. Account must be fully onboarded (complete `profiles` row) or login redirects to `/onboarding` and the helper throws. |
+| `E2E_EMAIL` / `E2E_PASSWORD` | Optional | Enables authenticated journeys: [`journeys/authenticated-views.spec.ts`](journeys/authenticated-views.spec.ts) (full view matrix) and [`journeys/today-authenticated.spec.ts`](journeys/today-authenticated.spec.ts) (minimal Today / tracker smoke). Omit both to skip those tests. Account must be fully onboarded (complete `profiles` row) or login redirects to `/onboarding` and the helper throws. **`playwright.config.ts` loads `.env.local`** so you do not need to export these manually. Prefer canonical routes (`/today`, `/discover`, …) over legacy `/?view=`. Use `--workers=1` if `next dev` is slow. Optional one-shot login: [`global-setup.ts`](global-setup.ts) (writes `tests/e2e/.auth/user.json`, gitignored). |
 | `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Build + runtime | Required for the app to talk to Supabase during E2E (same as normal dev). |
 | `MIDSCENE_MODEL_API_KEY`, `MIDSCENE_MODEL_NAME`, `MIDSCENE_MODEL_FAMILY` | Optional | Plus usually `MIDSCENE_MODEL_BASE_URL`. Enables AI specs under [`ai/`](ai/). Run with `npm run test:e2e:ai` (nightly / pre-release). |
 

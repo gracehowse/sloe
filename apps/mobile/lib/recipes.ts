@@ -143,6 +143,7 @@ export function useDiscoverRecipes() {
           // creations (only curated `creators` table rows have an id).
           creatorId: r.creator_id ?? null,
           sourceUrl: r.source_url ?? null,
+          sourceName: (r.source_name as string | null | undefined) ?? null,
           mealSlots: Array.isArray(r.meal_type) ? r.meal_type : r.meal_type ? [r.meal_type] : undefined,
           feedSource: "community" as const,
           prepTimeMin: prepOk ? Math.round(prepM) : null,
@@ -533,6 +534,7 @@ export function useSavedLibraryRecipes(userId: string | null) {
           // creations (only curated `creators` table rows have an id).
           creatorId: r.creator_id ?? null,
           sourceUrl: r.source_url ?? null,
+          sourceName: (r.source_name as string | null | undefined) ?? null,
           mealSlots: Array.isArray(r.meal_type) ? r.meal_type : r.meal_type ? [r.meal_type] : undefined,
           prepTimeMin: prepOk ? Math.round(prepM) : null,
           cookTimeMin: cookOk ? Math.round(cookM) : null,

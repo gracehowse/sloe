@@ -8,18 +8,27 @@ import { track } from "../../src/lib/analytics/track.ts";
 
 export type LoginClientProps = {
   /** Default tab; `/signin` defaults to "signin" with `hideTabs` so
-   *  there's no Sign Up tab visible (Sign Up flow lives at /onboarding). */
+   *  there's no Sign Up tab visible (Sign Up flow lives at /signup). */
   initialMode?: "signin" | "signup";
   /** When true the Sign Up / Sign In tab strip is hidden and the user
-   *  cannot switch mode inline. Used by `/signin` (sign-in only) so the
-   *  account-creation entry point stays canonically at /onboarding. */
+   *  cannot switch mode inline. Used by `/signin` and `/signup`. */
   hideTabs?: boolean;
+  /** Where to send the user after a successful sign-in event.
+   *  Signup defaults to `/onboarding` so new accounts enter the v2
+   *  profile flow instead of bypassing it via `/home`. */
+  postSignInHref?: string;
 };
 
 // Debug audit 2026-05-04 (customer-lens #8): default flipped from
 // "signup" → "signin". Canonical signup lives at /onboarding; this
 // route is the signin destination from the landing's "Sign in" link.
-export function LoginClient({ initialMode = "signin", hideTabs = false }: LoginClientProps) {
+export function LoginClient({
+  initialMode = "signin",
+  hideTabs = false,
+  postSignInHref,
+}: LoginClientProps) {
+  const redirectAfterSignIn =
+    postSignInHref ?? (initialMode === "signup" ? "/onboarding" : "/home");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [mode, setMode] = useState<"signin" | "signup">(initialMode);
@@ -51,12 +60,11 @@ export function LoginClient({ initialMode = "signin", hideTabs = false }: LoginC
       // /onboarding. That chain read as "the landing keeps
       // redirecting" (Grace 2026-04-20).
       if (event === "SIGNED_IN" && session?.user) {
-        // Dashboard lives at /home; / is the marketing landing.
-        window.location.href = "/home";
+        window.location.href = redirectAfterSignIn;
       }
     });
     return () => subscription.unsubscribe();
-  }, []);
+  }, [redirectAfterSignIn]);
 
   const validateEmail = () => {
     const trimmed = email.trim();
@@ -198,12 +206,25 @@ export function LoginClient({ initialMode = "signin", hideTabs = false }: LoginC
             back / Sign in to continue.") — two competing headlines for
             the same surface. */}
         <div className="text-center mb-6 sm:mb-8">
+          {/* 2026-05-22 (DRIFT-01 fix): aligned with the 2026-05-19
+              brand-mark decision — black-on-cream / white-on-black
+              via the same `--brand-mark-*` tokens used by the
+              canonical SupprMark and the mobile SupprMark. Previous
+              `var(--primary)` indigo treatment created three different
+              brand badges (web indigo / mobile light cream / mobile
+              dark black). */}
+          {/* Canonical 2026-05-22: brand mark is paper-on-paper (light)
+              / ink-on-ink (dark) per the lock. No coloured tile, no
+              shadow chip — the "S" is a glyph sitting on the page,
+              like a magazine drop-cap. The letterform alone carries
+              the brand. */}
           <div
-            className="inline-flex items-center justify-center w-12 h-12 rounded-2xl mb-4 text-white font-extrabold text-2xl"
+            className="inline-flex items-center justify-center mb-4 font-extrabold"
             style={{
-              background: "var(--primary)",
-              boxShadow: "0 8px 24px color-mix(in srgb, var(--primary) 25%, transparent)",
-              letterSpacing: "-0.02em",
+              color: "var(--brand-mark-ring)",
+              fontSize: 32,
+              letterSpacing: "-0.04em",
+              lineHeight: 1,
             }}
             aria-label="Suppr"
           >
@@ -221,7 +242,7 @@ export function LoginClient({ initialMode = "signin", hideTabs = false }: LoginC
           }}
         >
           <h2
-            className="text-lg font-semibold mb-1"
+            className="text-2xl font-bold mb-1 -tracking-[0.01em]"
             style={{ color: "var(--foreground)" }}
           >
             {mode === "signup" ? "Create your account" : "Welcome back"}
@@ -231,7 +252,7 @@ export function LoginClient({ initialMode = "signin", hideTabs = false }: LoginC
             style={{ color: "var(--muted-foreground)" }}
           >
             {mode === "signup"
-              ? "Free to start. Set your targets and plan your first week."
+              ? "Eat well, without overthinking it. Free to start."
               : "Sign in to continue."}
           </p>
 
@@ -422,8 +443,8 @@ export function LoginClient({ initialMode = "signin", hideTabs = false }: LoginC
             <button
               type="button"
               onClick={() => setShowMagicLink((v) => !v)}
-              className="text-sm font-medium transition-colors"
-              style={{ color: "var(--muted-foreground)" }}
+              className="text-sm font-medium hover:underline transition-colors"
+              style={{ color: "var(--primary)" }}
             >
               {showMagicLink ? "Hide magic link option" : "Use a magic link instead (existing accounts)"}
             </button>
@@ -455,10 +476,6 @@ export function LoginClient({ initialMode = "signin", hideTabs = false }: LoginC
             </p>
           )}
 
-          {/* Cross-link to the canonical Sign Up entry point. Only
-              shown on /signin (hideTabs) so the legacy /login page —
-              which still has Sign Up / Sign In tabs — doesn't get a
-              redundant nudge. */}
           {hideTabs && mode === "signin" && (
             <p
               className="mt-6 text-xs text-center"
@@ -466,11 +483,27 @@ export function LoginClient({ initialMode = "signin", hideTabs = false }: LoginC
             >
               New to Suppr?{" "}
               <a
-                href="/onboarding"
+                href="/signup"
                 className="font-semibold underline"
                 style={{ color: "var(--primary)" }}
               >
                 Create your account
+              </a>
+            </p>
+          )}
+
+          {hideTabs && mode === "signup" && (
+            <p
+              className="mt-6 text-xs text-center"
+              style={{ color: "var(--muted-foreground)" }}
+            >
+              Already have an account?{" "}
+              <a
+                href="/login"
+                className="font-semibold underline"
+                style={{ color: "var(--primary)" }}
+              >
+                Sign in
               </a>
             </p>
           )}

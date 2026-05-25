@@ -53,6 +53,8 @@ jobs:
         run: npm run lint
       - name: Unit/component tests (with coverage report)
         run: npm run test:coverage
+      - name: Today premium capture pairs (ENG-629)
+        run: npm run check:today-captures
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
       - name: Build

@@ -136,7 +136,16 @@ function caffeineOf(m: FoodHistoryMealLike): number | undefined {
  * `undefined` for empty / non-string values so callers can distinguish
  * "no image" from "image present".
  */
-function imageUrlOf(m: FoodHistoryMealLike): string | undefined {
+/** Persistable image fields for a logged meal row. */
+export function mealImageFields(url?: string | null): {
+  recipeImageUrl?: string;
+} {
+  const s = url == null ? "" : String(url).trim();
+  return s.length > 0 ? { recipeImageUrl: s } : {};
+}
+
+/** Meal row / journal image URL (recipe hero when logged from a recipe). */
+export function mealRowImageUrl(m: FoodHistoryMealLike): string | undefined {
   const candidates = [m.recipeImageUrl, m.imageUrl];
   for (const raw of candidates) {
     if (raw == null) continue;
@@ -256,14 +265,14 @@ function addToBucket(b: Bucket, m: FoodHistoryMealLike, dayKey: string, indexInD
     // image URL wins, mirroring the lastLoggedAt rule. We only
     // overwrite when the newer row actually carries an image so a
     // recent text-only re-log doesn't clear a known image.
-    const img = imageUrlOf(m);
+    const img = mealRowImageUrl(m);
     if (img) b.imageUrl = img;
   } else {
     // Earlier-in-time occurrence — only seed `imageUrl` if we
     // haven't seen one yet on this bucket, so historical data
     // still surfaces an image when the newest log didn't carry one.
     if (!b.imageUrl) {
-      const img = imageUrlOf(m);
+      const img = mealRowImageUrl(m);
       if (img) b.imageUrl = img;
     }
   }

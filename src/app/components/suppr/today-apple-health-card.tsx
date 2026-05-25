@@ -93,7 +93,7 @@ export function TodayAppleHealthCard({
   return (
     <section
       aria-label="Apple Health today"
-      className={`rounded-card bg-card border border-border p-4 ${className ?? ""}`}
+      className={`rounded-card bg-card border border-border p-4 card-elevated ${className ?? ""}`}
     >
       <div className="flex items-center gap-2 mb-3">
         <Icons.activity className="h-4 w-4 text-primary" aria-hidden />
