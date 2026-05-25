@@ -145,7 +145,7 @@
   --macro-carbs-soft: rgba(243, 195, 54, 0.12);
   --macro-fat: #DF5EBC;
   --macro-fat-soft: rgba(223, 94, 188, 0.10);
-  --macro-calories: var(--accent-success);
+  --macro-calories: #56A775;
   --macro-fiber: #56A775;
   --macro-fiber-soft: rgba(86, 167, 117, 0.10);
   --macro-sugar: #F3C336;
@@ -322,7 +322,7 @@
   --macro-carbs-soft: rgba(245, 209, 98, 0.16);
   --macro-fat: #E689CB;
   --macro-fat-soft: rgba(230, 137, 203, 0.16);
-  --macro-calories: var(--accent-success);
+  --macro-calories: #7ABE93;
   --macro-fiber: #7ABE93;
   --macro-fiber-soft: rgba(122, 190, 147, 0.14);
   --macro-sugar: #F5D162;

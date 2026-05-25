@@ -473,7 +473,7 @@ export default function ShoppingListScreen() {
     },
     backBtn: { color: colors.text, fontSize: 28, fontWeight: "600" },
     headerTitle: {
-      ...Type.serifDisplay,
+      ...Type.title,
       fontSize: 22,
       color: colors.text,
     },
@@ -494,7 +494,7 @@ export default function ShoppingListScreen() {
     progressFill: { height: 6, backgroundColor: Accent.primary, borderRadius: 3 },
 
     categoryTitle: {
-      ...Type.serifHeadline,
+      ...Type.headline,
       color: colors.textSecondary,
     },
     itemRow: {
@@ -529,7 +529,7 @@ export default function ShoppingListScreen() {
       gap: Spacing.md,
     },
     emptyIcon: { fontSize: 40 },
-    emptyTitle: { ...Type.serifTitle, fontSize: 18, color: colors.text },
+    emptyTitle: { ...Type.headline, fontSize: 18, color: colors.text },
     emptyDesc: { ...Type.body, color: colors.textSecondary, textAlign: "center", lineHeight: 20 },
     ctaBtn: {
       backgroundColor: Accent.primary,

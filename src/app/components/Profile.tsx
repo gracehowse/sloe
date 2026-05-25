@@ -376,7 +376,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
           <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
             Account
           </p>
-          <h1 className="text-[28px] font-bold text-foreground -tracking-[0.02em] mt-0.5 leading-tight font-serif">
+          <h1 className="text-[28px] font-bold text-foreground -tracking-[0.02em] mt-0.5 leading-tight">
             More
           </h1>
         </div>

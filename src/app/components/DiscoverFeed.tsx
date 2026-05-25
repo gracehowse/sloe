@@ -575,7 +575,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                   data-testid={`discover-cluster-${cluster.id}`}
                   aria-label={cluster.title}
                 >
-                  <h2 className="text-[18px] font-extrabold text-foreground -tracking-[0.02em] px-4 md:px-0 mb-3 font-serif">
+                  <h2 className="text-[18px] font-extrabold text-foreground -tracking-[0.02em] px-4 md:px-0 mb-3">
                     {cluster.title}
                   </h2>
                   <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory scroll-pl-4 md:scroll-pl-0">
@@ -605,7 +605,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
                               <div className="absolute bottom-0 left-0 right-0 p-3.5">
                                 <p
-                                  className={`font-bold text-white leading-snug -tracking-[0.01em] drop-shadow-sm font-serif ${isHero ? "text-[15px]" : "text-[13px]"}`}
+                                  className={`font-bold text-white leading-snug -tracking-[0.01em] drop-shadow-sm ${isHero ? "text-[15px]" : "text-[13px]"}`}
                                   style={{
                                     display: "-webkit-box",
                                     WebkitLineClamp: 2,
@@ -681,7 +681,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/15 to-transparent" />
                     <div className="absolute bottom-0 left-0 right-0 p-4">
                       <p
-                        className="text-[15px] font-bold text-white leading-snug -tracking-[0.01em] drop-shadow-sm font-serif"
+                        className="text-[15px] font-bold text-white leading-snug -tracking-[0.01em] drop-shadow-sm"
                         style={{
                           display: "-webkit-box",
                           WebkitLineClamp: 2,
@@ -809,7 +809,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                       ) : null}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
                       <div className="absolute bottom-0 left-0 right-0 p-4">
-                        <p className="text-[18px] font-bold text-white leading-tight -tracking-[0.01em] drop-shadow-sm font-serif" style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                        <p className="text-[18px] font-bold text-white leading-tight -tracking-[0.01em] drop-shadow-sm" style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                           {recipe.title}
                         </p>
                         {recipe.creatorName ? (

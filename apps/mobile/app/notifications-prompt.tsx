@@ -143,7 +143,7 @@ export default function NotificationsPromptScreen() {
       backgroundColor: Accent.destructive, justifyContent: "center", alignItems: "center",
     },
     notifBadgeText: { color: "#fff", fontSize: 14, fontWeight: "800" },
-    heading: { ...Type.serifTitle, color: colors.text, textAlign: "center" },
+    heading: { ...Type.title, color: colors.text, textAlign: "center" },
     stat: {
       fontSize: 15, color: colors.textSecondary, textAlign: "center",
       marginTop: Spacing.xl, lineHeight: 22, paddingHorizontal: Spacing.lg,

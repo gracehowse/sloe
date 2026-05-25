@@ -107,8 +107,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 20,
   },
-  title: {
-    ...Type.serifDisplay,
+    title: {
+    ...Type.title,
     color: "#ffffff",
     marginBottom: 8,
   },

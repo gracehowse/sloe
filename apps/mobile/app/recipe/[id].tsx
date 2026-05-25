@@ -1463,7 +1463,7 @@ export default function RecipeDetailScreen() {
     // reads as one composed unit instead of five separate cards.
     body: { padding: Spacing.xl, gap: Spacing.md },
 
-    title: { ...Type.serifTitle, color: colors.text },
+    title: { ...Type.title, color: colors.text },
     authorName: { fontSize: 14, color: colors.textSecondary },
     // 2026-05-02 v4 polish (recipe-detail-tiles-and-kcal): kcal got
     // promoted out of the subtitle into its own dedicated headline

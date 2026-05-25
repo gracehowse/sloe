@@ -232,7 +232,7 @@ export default function FastingScreen() {
         container: { flex: 1, backgroundColor: colors.background },
         header: { flexDirection: "row", alignItems: "center", paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md },
         backBtn: { padding: 4 },
-        title: { flex: 1, ...Type.serifTitle, color: colors.text, textAlign: "center" },
+        title: { flex: 1, ...Type.headline, color: colors.text, textAlign: "center" },
         card: {
           marginHorizontal: Spacing.xl,
           backgroundColor: colors.card,

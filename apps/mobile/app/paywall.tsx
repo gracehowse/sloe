@@ -728,7 +728,7 @@ export default function PaywallScreen() {
       letterSpacing: 2,
       marginBottom: Spacing.sm,
     },
-    headerTitle: { ...Type.serifTitle, color: colors.text, lineHeight: 32 },
+    headerTitle: { ...Type.title, color: colors.text, lineHeight: 32 },
     headerSubtitle: {
       fontSize: 14,
       color: colors.textSecondary,

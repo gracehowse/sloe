@@ -111,7 +111,7 @@ export default function ProfileScreen() {
     // 2026-04-30 (visual-qa #5, ui-critic): drop the all-caps + tracked
     // accent-blue title — every other nav header is title-case neutral.
     // Aligns with Claude Design phone-top spec (24/700/-0.02em, fg).
-    headerTitle: { ...Type.serifTitle, color: colors.text },
+    headerTitle: { ...Type.headline, color: colors.text },
 
     card: {
       backgroundColor: colors.card,
