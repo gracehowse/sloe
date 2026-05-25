@@ -30,8 +30,8 @@ line(has(priceBase), "STRIPE_PRICE_BASE_MONTHLY", has(priceBase) ? "set" : "miss
 line(has(pricePro), "STRIPE_PRICE_PRO_MONTHLY", has(pricePro) ? "set" : "missing");
 line(
   has(upstashUrl) && has(upstashToken),
-  "Upstash Redis (optional)",
-  has(upstashUrl) && has(upstashToken) ? "configured" : "not set (in-memory rate limits)",
+  "Upstash Redis (required in prod)",
+  has(upstashUrl) && has(upstashToken) ? "configured" : "MISSING — required for safe rate limiting",
 );
 line(has(supabaseUrl), "NEXT_PUBLIC_SUPABASE_URL");
 line(has(serviceRole), "SUPABASE_SERVICE_ROLE_KEY");
@@ -62,8 +62,9 @@ if (has(stripeSecret) && (!has(priceBase) || !has(pricePro))) {
 
 if (!has(upstashUrl) || !has(upstashToken)) {
   console.log(
-    "[--] Rate limits: without Upstash, API rate limits use in-memory buckets (weak on serverless). Set UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN.",
+    "[!!] Rate limits: Upstash is REQUIRED in production. Without it the limiter falls back to per-instance in-memory buckets (effective cap = limit × lambdas → AI/photo quota bypass) and now fails CLOSED at request time. Set UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN in Vercel (prod + preview). [ENG-668]",
   );
+  strictFail = true;
 }
 
 // 2026-04-26 — VAPID keypair for web push (weekly recap delivery to web).

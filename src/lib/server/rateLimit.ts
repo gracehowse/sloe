@@ -11,6 +11,11 @@ function nowMs() {
   return Date.now();
 }
 
+/** Vercel sets NODE_ENV=production for prod AND preview deployments. */
+function isProductionRuntime(): boolean {
+  return process.env.NODE_ENV === "production";
+}
+
 function getIpFromHeaders(h: { get: (name: string) => string | null }): string | null {
   const xff = h.get("x-forwarded-for");
   if (xff) return xff.split(",")[0]?.trim() || null;
@@ -140,6 +145,23 @@ export async function rateLimit(opts: RateLimitOptions): Promise<RateLimitResult
   const upstash = getUpstashLimiter(opts.limit, opts.windowMs);
   if (upstash) {
     return rateLimitUpstash(key, ip, upstash);
+  }
+  // ENG-668: production MUST have Upstash. The per-instance in-memory fallback
+  // makes the effective cap `limit × lambda count`, silently bypassing AI/photo
+  // quotas. verify-production-env (VERIFY_STRICT=1) hard-fails a deploy without
+  // Upstash; this is the request-time backstop — fail CLOSED, never allow
+  // unlimited. Local dev (NODE_ENV !== "production") keeps the in-memory bucket.
+  if (isProductionRuntime()) {
+    console.error(
+      `[rateLimit] Upstash env missing in production — failing closed for "${opts.keyPrefix}". Set UPSTASH_REDIS_REST_URL/TOKEN.`,
+    );
+    return {
+      ok: false,
+      remaining: 0,
+      resetAtMs: nowMs() + opts.windowMs,
+      retryAfterSec: Math.max(1, Math.ceil(opts.windowMs / 1000)),
+      ip: ip === "no-ip" ? null : ip,
+    };
   }
   return rateLimitMemory(opts, key, ip);
 }
