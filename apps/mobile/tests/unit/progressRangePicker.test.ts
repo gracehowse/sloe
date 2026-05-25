@@ -34,7 +34,7 @@ describe("Progress prototype port — header + range picker", () => {
   const webSrc = read("src/app/components/ProgressDashboard.tsx");
   const webChromeSrc = read("src/app/components/suppr/progress-tab-chrome.tsx");
 
-  it("mobile header carries an uppercase range overline (not 'Weekly report')", () => {
+  it("mobile header omits the duplicate range overline (pills carry time context)", () => {
     // New state drives the overline label: `LAST 7 DAYS` / `LAST 30
     // DAYS` / `LAST 90 DAYS` / `ALL TIME`. Default range is `30d`.
     expect(mobileSrc).toMatch(/const \[rangeKey, setRangeKey\] = useState<"7d" \| "30d" \| "90d" \| "all">\("30d"\)/);
@@ -44,12 +44,12 @@ describe("Progress prototype port — header + range picker", () => {
     expect(mobileSrc).toContain("ALL TIME");
     // The old static "Weekly report" subtitle must be gone.
     expect(mobileSrc).not.toContain("Weekly report");
-    // testID on the overline so e2e + unit tests can assert cleanly.
-    expect(mobileChromeSrc).toContain('overlineTestID="progress-overline"');
+    // 2026-05-22 — overline removed from sticky chrome (duplicated the pills).
+    expect(mobileChromeSrc).toContain("overline={null}");
     expect(mobileChromeSrc).toContain('titleTestID="progress-header"');
-    // 28pt / -0.6 tracking title per the prototype (shared chrome).
-    expect(mobileSectionSrc).toContain("fontSize: Layout.titleSize");
-    expect(mobileSectionSrc).toContain("letterSpacing: Layout.titleTracking");
+    // Progress chrome uses compact title sizing (22pt) via ScreenSectionChrome.
+    expect(mobileSectionSrc).toMatch(/fontSize:\s*compact\s*\?\s*22\s*:\s*Layout\.titleSize/);
+    expect(mobileSectionSrc).toMatch(/letterSpacing:\s*compact\s*\?\s*-0\.4\s*:\s*Layout\.titleTracking/);
   });
 
   it("mobile header carries a trailing log-weight control", () => {
@@ -91,8 +91,8 @@ describe("Progress prototype port — header + range picker", () => {
     expect(webSrc).not.toContain("Weekly report");
     expect(webSrc + webChromeSrc).toContain('data-testid="progress-overline"');
     expect(webChromeSrc).toContain('data-testid="progress-header"');
-    // 28pt per the prototype mirrors mobile.
-    expect(webChromeSrc).toMatch(/text-\[28px\]/);
+    // 24pt per the prototype mirrors mobile title size after 2026-05-22 sweep.
+    expect(webChromeSrc).toMatch(/text-\[24px\]/);
   });
 
   it("web header carries a calendar icon button", () => {

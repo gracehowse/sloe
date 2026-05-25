@@ -72,16 +72,10 @@ describe("TodayDashboardMacroTiles — uses macroColorFor", () => {
     expect(src).not.toMatch(/sugar:[\s\S]*?color:\s*Accent\.warning/);
   });
 
-  it("keeps macro identity colour on over-budget bars (caption uses over-budget amber)", () => {
-    // 2026-05-21: over-budget caption is amber (Accent.warning), never
-    // red. Per brand-tokens.md + project memory ("over-budget is amber,
-    // never red"). The bar itself still uses the macro identity colour
-    // (def.color); only the caption flips to amber to signal "over".
+  it("keeps macro identity colour on bars; captions stay neutral (2026-05-22 A2)", () => {
     expect(src).toMatch(/const barColor = def\.color/);
     expect(src).not.toMatch(/barColor = isOverBudget \? Accent\.(warning|destructive)/);
-    expect(src).toMatch(/isOverBudget \? overBudgetAmber/);
-    // Defense in depth: the file should NOT use destructive for an
-    // over-budget caption — that was the old alarming pattern.
-    expect(src).not.toMatch(/isOverBudget \? Accent\.destructive/);
+    expect(src).toMatch(/color: textTertiaryColor/);
+    expect(src).not.toMatch(/isOverBudget \? overBudgetAmber/);
   });
 });

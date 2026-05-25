@@ -13,8 +13,8 @@ const page = fs.readFileSync(
 
 describe("ENG-63 · Pricing card tightening", () => {
   it("uses p-6 for regular card padding (not p-8)", () => {
-    expect(grid).toContain("shadow-lg p-6");
     expect(grid).toContain("shadow-sm p-6");
+    expect(grid).toContain("px-6");
     expect(grid).not.toContain("p-8");
   });
 

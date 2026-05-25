@@ -67,23 +67,15 @@ describe("<DigestStoryCard /> (mobile)", () => {
     closestToTarget: { label: "Tuesday", calories: 2105, protein: 152 },
   };
 
-  it("renders eyebrow + week label + four narrative lines", () => {
+  it("renders hero digest row + supporting stats when days are logged", () => {
     const { getByText, getByTestId } = render(<DigestStoryCard {...base} />);
     expect(getByText("WEEK DIGEST")).toBeTruthy();
     expect(getByText("Apr 6 – Apr 12")).toBeTruthy();
-    expect(getByTestId("digest-story-days-line")).toBeTruthy();
-    expect(getByTestId("digest-story-calories-line")).toBeTruthy();
-    expect(getByTestId("digest-story-protein-line")).toBeTruthy();
-    expect(getByTestId("digest-story-closest-line")).toBeTruthy();
-    expect(
-      getByText("You averaged 1,980 kcal vs 2,100 target — 120 under."),
-    ).toBeTruthy();
-    expect(
-      getByText("Hit your protein target on 4 of 5 days logged."),
-    ).toBeTruthy();
-    expect(
-      getByText("Tuesday was your closest day (2,105 kcal vs 2,100 target)."),
-    ).toBeTruthy();
+    expect(getByTestId("digest-hero-row")).toBeTruthy();
+    expect(getByTestId("digest-support-line")).toBeTruthy();
+    expect(getByText(/days logged/i)).toBeTruthy();
+    expect(getByText(/Avg 1,980 kcal/i)).toBeTruthy();
+    expect(getByText(/Protein 4\/5 days/i)).toBeTruthy();
   });
 
   it("renders the calm empty state when daysLogged = 0 — no numeral lines", () => {

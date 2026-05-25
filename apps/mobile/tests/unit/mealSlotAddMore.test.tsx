@@ -77,23 +77,23 @@ function renderSection(overrides: {
   return { ...utils, onOpenFabForSlot, onToggleSlotCollapse };
 }
 
-describe("TodayMealsSection — F-17 populated-slot add-more affordance", () => {
-  it("renders an 'Add another item' Pressable on a populated slot row", () => {
-    const { getByLabelText } = renderSection({});
-    expect(getByLabelText("Add another item to Breakfast")).toBeTruthy();
+describe("TodayMealsSection — populated-slot add-more affordance", () => {
+  it("renders a Plus affordance on populated slot headers", () => {
+    const { getByTestId } = renderSection({});
+    expect(getByTestId("today-slot-header-Breakfast")).toBeTruthy();
   });
 
-  it("calls onOpenFabForSlot with the slot name when the add pill is tapped", () => {
+  it("empty slots use add-food accessibility label and call onOpenFabForSlot", () => {
     const onOpenFabForSlot = vi.fn();
     const { getByLabelText } = renderSection({ onOpenFabForSlot });
-    fireEvent.press(getByLabelText("Add another item to Breakfast"));
-    expect(onOpenFabForSlot).toHaveBeenCalledTimes(1);
-    expect(onOpenFabForSlot).toHaveBeenCalledWith("Breakfast");
+    fireEvent.press(getByLabelText("Lunch — add food"));
+    expect(onOpenFabForSlot).toHaveBeenCalledWith("Lunch");
   });
 
-  it("does not render an add pill on empty slots (empty-state row already has its own affordance)", () => {
-    const { queryByLabelText } = renderSection({});
-    expect(queryByLabelText("Add another item to Lunch")).toBeNull();
-    expect(queryByLabelText("Add another item to Dinner")).toBeNull();
+  it("populated slots collapse/expand via header press", () => {
+    const onToggleSlotCollapse = vi.fn();
+    const { getByLabelText } = renderSection({ onToggleSlotCollapse });
+    fireEvent.press(getByLabelText("Breakfast, 1 items — expand or collapse"));
+    expect(onToggleSlotCollapse).toHaveBeenCalledWith("Breakfast");
   });
 });

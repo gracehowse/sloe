@@ -27,23 +27,23 @@ describe("useMacroDisplayStyle — cross-instance sync", () => {
     const settings = renderHook(() => useMacroDisplayStyle());
     const today = renderHook(() => useMacroDisplayStyle());
 
-    // Both start on the default.
-    expect(settings.result.current[0]).toBe("tiles");
-    expect(today.result.current[0]).toBe("tiles");
+    // Default is bars (premium sprint 2026-05-20).
+    expect(settings.result.current[0]).toBe("bars");
+    expect(today.result.current[0]).toBe("bars");
 
-    // Settings flips to bars.
+    // Settings flips to tiles.
     act(() => {
-      settings.result.current[1]("bars");
+      settings.result.current[1]("tiles");
     });
 
     // Today (a separate hook instance) must see it.
-    expect(today.result.current[0]).toBe("bars");
-    expect(settings.result.current[0]).toBe("bars");
+    expect(today.result.current[0]).toBe("tiles");
+    expect(settings.result.current[0]).toBe("tiles");
 
     // And the write persisted.
     await waitFor(async () => {
       expect(await AsyncStorage.getItem(MACRO_DISPLAY_STORAGE_KEY)).toBe(
-        "bars",
+        "tiles",
       );
     });
 

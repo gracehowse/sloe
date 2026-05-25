@@ -36,7 +36,13 @@ function block(selector: ":root" | ".dark"): string {
 function readCssVar(blockSrc: string, name: string): string {
   const m = blockSrc.match(new RegExp(`--${name}:\\s*([^;]+);`));
   expect(m, `--${name} in block`).not.toBeNull();
-  return m![1].trim().toLowerCase();
+  let value = m![1].trim().toLowerCase();
+  // Resolve one hop: `--primary: var(--accent-primary)` → `#588ce4`.
+  const varRef = value.match(/^var\(--([^)]+)\)$/);
+  if (varRef) {
+    value = readCssVar(blockSrc, varRef[1]);
+  }
+  return value;
 }
 
 /** Read `key: '#hex'` from `Colors.light` / `Colors.dark` object literals. */
@@ -97,12 +103,9 @@ describe("cross-platform theme tokens (ENG-623)", () => {
       expect(readCssVar(DARK, "border")).toBe(readMobileColor("dark", "border"));
     });
 
-    it("documents intentional surface divergence until ENG-637", () => {
-      // Mobile OLED-black vs web raised grey — product call pending.
-      expect(readCssVar(DARK, "background")).toBe("#101014");
-      expect(readMobileColor("dark", "background")).toBe("#0a0a0f");
-      expect(readCssVar(DARK, "card")).toBe("#18181c");
-      expect(readMobileColor("dark", "card")).toBe("#16161e");
+    it("surfaces aligned (premium sprint 2026-05-20)", () => {
+      expect(readCssVar(DARK, "background")).toBe(readMobileColor("dark", "background"));
+      expect(readCssVar(DARK, "card")).toBe(readMobileColor("dark", "card"));
     });
 
     it("over-budget amber", () => {

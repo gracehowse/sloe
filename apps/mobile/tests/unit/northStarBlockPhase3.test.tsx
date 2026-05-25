@@ -92,13 +92,13 @@ describe("NorthStarBlock (mobile) — default kind", () => {
 });
 
 describe("NorthStarBlock (mobile) — non-default kinds", () => {
-  it("library-empty: renders invitation copy + Open Library button", () => {
+  it("library-empty: renders invitation copy + tappable row", () => {
     const onOpenLibrary = vi.fn();
     const { getByText, getByLabelText } = render(
       <NorthStarBlock kind="library-empty" onOpenLibrary={onOpenLibrary} />,
     );
-    expect(getByText(/Pick a few recipes you'd actually cook/)).toBeTruthy();
-    fireEvent.press(getByLabelText("Open Library"));
+    expect(getByText(/Pick a few recipes — we'll suggest from there\./)).toBeTruthy();
+    fireEvent.press(getByLabelText("Pick recipes for your library"));
     expect(onOpenLibrary).toHaveBeenCalled();
   });
 

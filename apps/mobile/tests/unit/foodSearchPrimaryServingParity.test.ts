@@ -94,12 +94,12 @@ describe("food search primary-serving parity (TestFlight APo0qS9vcFvmBJEJJ_-61YA
     expect(MOBILE_COMBINED_SRC).toMatch(/\bprimaryServingToPortionChip\b/);
   });
 
-  it("web FoodSearch.tsx imports every inference helper from the shared module", () => {
+  it("web FoodSearchPanel imports inference helpers and buildPortions", () => {
     expect(WEB_SRC).toMatch(/from\s+["'][^"']*\/nutrition\/primaryServing["']/);
     for (const fn of SOURCE_HELPERS) {
       expect(WEB_SRC).toMatch(new RegExp(`\\b${fn}\\b`));
     }
-    expect(WEB_SRC).toMatch(/\bprimaryServingToPortionChip\b/);
+    expect(WEB_SRC).toMatch(/\bbuildPortions\b/);
   });
 
   it("both platforms delegate the row headline to the shared helper", () => {

@@ -111,7 +111,7 @@ describe("Bug 1 — verified state persists past manual verify", () => {
 
   it("web recipe-detail auto-verify matches mobile (structured rows + merge)", () => {
     expect(SRC.webRecipe).toMatch(/structuredIngredientsForVerify\(snap\)/);
-    expect(SRC.webRecipe).toMatch(/mergeVerifiedMacroRows\(snap, rows\)/);
+    expect(SRC.webRecipe).toMatch(/mergeVerifiedMacroRows\(snap[\s\S]*?rows\)/);
     expect(SRC.webRecipe).toMatch(/autoVerifyingIngredients/);
   });
 });

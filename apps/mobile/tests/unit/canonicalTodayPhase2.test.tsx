@@ -160,12 +160,10 @@ describe("(tabs)/index.tsx — canonical Today composition root pin", () => {
     expect(indexSrc).not.toMatch(/streakDays=\{streakDays\}/);
   });
 
-  it("renders the <TodaySnapShortcut> only when today AND no meals logged (audit T08, 2026-05-05)", () => {
-    // T08 fix: snap shortcut treats itself as an empty-day prompt
-    // rather than an always-on speed-logger. Without this gate, four
-    // logging entry points (FAB, snap shortcut, meal-slot taps,
-    // quick-log strip) competed for the same action all day.
-    expect(indexSrc).toMatch(/isToday\s*&&\s*mealsToday\.length\s*===\s*0\s*&&\s*\(\s*<TodaySnapShortcut/);
+  it("TodaySnapShortcut removed from main scroll — empty day uses TodayFirstMealEmptyState (2026-05-23)", () => {
+    expect(indexSrc).not.toMatch(/<TodaySnapShortcut/);
+    expect(indexSrc).toMatch(/<TodayFirstMealEmptyState/);
+    expect(indexSrc).toMatch(/mealsToday\.length\s*===\s*0/);
   });
 
   it("Phase 3 (2026-04-28): the variant picker has been removed entirely (no variant / hidePicker / onVariantChange props)", () => {

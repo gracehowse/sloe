@@ -24,15 +24,11 @@ describe("ProgressHeroMetric (ENG-616)", () => {
     expect(MOBILE_SRC).toContain("strokeDashoffset");
   });
 
-  it("web and mobile use the same ring geometry", () => {
+  it("web uses a larger ring than mobile (desktop vs compact tab)", () => {
     const webRingSize = WEB_SRC.match(/RING_SIZE\s*=\s*(\d+)/)?.[1];
     const mobileRingSize = MOBILE_SRC.match(/RING_SIZE\s*=\s*(\d+)/)?.[1];
-    expect(webRingSize).toBe(mobileRingSize);
     expect(webRingSize).toBe("120");
-
-    const webStroke = WEB_SRC.match(/STROKE\s*=\s*(\d+)/)?.[1];
-    const mobileStroke = MOBILE_SRC.match(/STROKE\s*=\s*(\d+)/)?.[1];
-    expect(webStroke).toBe(mobileStroke);
+    expect(mobileRingSize).toBe("64");
   });
 
   it("web shows empty state when no data", () => {

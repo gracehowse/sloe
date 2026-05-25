@@ -230,39 +230,17 @@ describe("Fix 4 — Profile target editor matches web parity", () => {
 // on both platforms. Reference:
 // `docs/ux/teardown-2026-04-28-daily-loop.md` Top-5 #2.
 
-describe("Fix 5 — Phase 4 (2026-04-28): eat-again banner is part of the post-hero context block", () => {
-  it("mobile composition root puts TodayEatAgainBanner after TodayHero", () => {
-    const eatIdx = SRC.today.indexOf("<TodayEatAgainBanner");
-    // Pin to the JSX prop signature (`<TodayHero\n  consumed=`) so we
-    // match the actual hero render call, not an interface or type
-    // declaration. `consumed` is TodayHero's first prop (Phase 3,
-    // D-2026-04-27-03 finished — variant picker removed).
-    const heroMatch = SRC.today.match(/<TodayHero[\s\n]+consumed=/);
-    expect(eatIdx).toBeGreaterThan(0);
-    expect(heroMatch).not.toBeNull();
-    const heroIdx = heroMatch!.index ?? -1;
-    expect(heroIdx).toBeGreaterThan(0);
-    expect(eatIdx).toBeGreaterThan(heroIdx);
+describe("Fix 5 — Eat-again removed from Today host (2026-05-22 v4)", () => {
+  it("mobile composition root no longer renders TodayEatAgainBanner", () => {
+    expect(SRC.today).not.toContain("<TodayEatAgainBanner");
+    expect(SRC.today).not.toContain("<TodayEatAgainScroller");
   });
 
-  it("web NutritionTracker puts TodayEatAgainBanner after TodayHeroStats", () => {
+  it("web NutritionTracker still renders eat-again below hero when candidates exist", () => {
     const eatIdx = SRC.webTracker.indexOf("<TodayEatAgainBanner");
     const heroIdx = SRC.webTracker.indexOf("<TodayHeroStats");
     expect(eatIdx).toBeGreaterThan(0);
     expect(heroIdx).toBeGreaterThan(0);
     expect(eatIdx).toBeGreaterThan(heroIdx);
-  });
-
-  it("mobile keeps the conditional gate (no banner when there's no recommendation)", () => {
-    // The banner collapses to zero height when there are no candidates
-    // OR dismissed OR remaining > 0 (existing behaviour). Premium-bar
-    // audit DC3 polish (2026-05-14) renamed the gate's left operand
-    // from the single `eatAgainSuggestion` to
-    // `eatAgainCandidates.length > 0` so the new horizontal scroller
-    // path can fire when 2+ are present. The rest of the gate is
-    // unchanged.
-    expect(SRC.today).toMatch(
-      /eatAgainCandidates\.length\s*>\s*0\s*&&\s*!eatAgainDismissedForToday\s*&&\s*!\(remaining\s*>\s*0\)/,
-    );
   });
 });

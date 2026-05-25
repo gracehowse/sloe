@@ -65,8 +65,12 @@ describe("Today above-meals cap (mobile) — context block dispatch", () => {
     expect(countMatches(HOST_SRC, /<TodayFastingPill[\s/]/g)).toBeLessThanOrEqual(1);
   });
 
-  it("TodayEatAgainBanner renders at most once (in the unified dispatch)", () => {
-    expect(countMatches(HOST_SRC, /<TodayEatAgainBanner[\s/]/g)).toBeLessThanOrEqual(1);
+  it("TodayEatAgainBanner is not rendered on Today (moved to Log sheet, 2026-05-22 v4)", () => {
+    expect(countMatches(HOST_SRC, /<TodayEatAgainBanner[\s/]/g)).toBe(0);
+  });
+
+  it("TodayEatAgainScroller is not rendered on Today", () => {
+    expect(countMatches(HOST_SRC, /<TodayEatAgainScroller[\s/]/g)).toBe(0);
   });
 
   it("NorthStarBlockHost renders at most once (in the unified dispatch)", () => {
@@ -178,37 +182,25 @@ describe("Today premium sprint (2026-05-19) — below-meals prompts", () => {
     expect(HOST_SRC).toMatch(/showBelowMealsCheckin/);
   });
 
-  it("NorthStarBlockHost renders below meals when empty day with remaining calories", () => {
-    expect(HOST_SRC).toMatch(/Below-meals prompts \(Today premium sprint 2026-05-19\)/);
-    expect(HOST_SRC).toMatch(/showBelowMealsNorthStar[\s\S]+?<NorthStarBlockHost/);
+  it("NorthStarBlockHost is not rendered below meals (discovery moved to Log sheet, 2026-05-23)", () => {
+    const mealsIdx = HOST_SRC.indexOf("<TodayMealsSection");
+    const northStarBelowIdx = HOST_SRC.indexOf("<NorthStarBlockHost", mealsIdx);
+    expect(mealsIdx).toBeGreaterThan(-1);
+    expect(northStarBelowIdx).toBe(-1);
+    expect(HOST_SRC).toMatch(/showBelowMealsNorthStar/);
   });
 
   it("WeeklyCheckinBanner is in the below-meals block, not above macro tiles", () => {
-    const belowIdx = HOST_SRC.indexOf("Below-meals prompts (Today premium sprint 2026-05-19)");
-    const weeklyIdx = HOST_SRC.indexOf("<WeeklyCheckinBanner", belowIdx);
+    const checkinIdx = HOST_SRC.indexOf("showBelowMealsCheckin");
+    const weeklyIdx = HOST_SRC.indexOf("<WeeklyCheckinBanner", checkinIdx);
     const mealsIdx = HOST_SRC.indexOf("<TodayMealsSection");
-    expect(belowIdx).toBeGreaterThan(-1);
-    expect(weeklyIdx).toBeGreaterThan(belowIdx);
+    expect(checkinIdx).toBeGreaterThan(-1);
+    expect(weeklyIdx).toBeGreaterThan(checkinIdx);
     expect(weeklyIdx).toBeGreaterThan(mealsIdx);
   });
 });
 
 describe("Today premium sprint (2026-05-19) — neutral context chrome", () => {
-  it("host wires neutral surfaces on TodayEatAgainBanner", () => {
-    expect(HOST_SRC).toMatch(
-      /<TodayEatAgainBanner[\s\S]+?surfaceBackgroundColor=\{colors\.cardBorder\}/,
-    );
-    expect(HOST_SRC).toMatch(
-      /<TodayEatAgainBanner[\s\S]+?surfaceBorderColor=\{colors\.border\}/,
-    );
-  });
-
-  it("host wires neutral surfaces on TodayEatAgainScroller", () => {
-    expect(HOST_SRC).toMatch(
-      /<TodayEatAgainScroller[\s\S]+?surfaceBackgroundColor=\{colors\.cardBorder\}/,
-    );
-  });
-
   it("TodayEatAgainBanner defaults eyebrow to textSecondaryColor, not primary tint", () => {
     const bannerSrc = fs.readFileSync(
       path.resolve(__dirname, "../../components/today/TodayEatAgainBanner.tsx"),
@@ -230,7 +222,7 @@ describe("Today above-meals cap (mobile) — context dispatch shape", () => {
     // The pin matches any IIFE that returns one of the four
     // context-block components — generous enough to survive
     // refactors, strict enough to catch the regression.
-    const hasIIFE = /\(\(\)\s*=>\s*\{[\s\S]+?<(TodayFastingPill|TodayEatAgainBanner|NorthStarBlockHost|TodayDeficitInsight)/.test(
+    const hasIIFE = /\(\(\)\s*=>\s*\{[\s\S]+?<(TodayFastingPill|TodayDeficitInsight)/.test(
       HOST_SRC,
     );
     expect(hasIIFE).toBe(true);

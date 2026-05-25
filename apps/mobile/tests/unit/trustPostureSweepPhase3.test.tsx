@@ -71,7 +71,7 @@ describe("TrustChip (mobile) — every variant renders the spec copy", () => {
 });
 
 describe("Phase 3 trust posture sweep — mobile source pins", () => {
-  it("TodayMealsSection imports SourceDot + mapMealSourceToDot", () => {
+  it("TodayMealsSection keeps meal-row source attribution wiring", () => {
     const filePath = path.resolve(
       __dirname,
       "../../components/today/TodayMealsSection.tsx",
@@ -79,7 +79,10 @@ describe("Phase 3 trust posture sweep — mobile source pins", () => {
     const src = fs.readFileSync(filePath, "utf8");
     expect(src).toMatch(/import\s*\{\s*SourceDot/);
     expect(src).toMatch(/mapMealSourceToDot/);
-    expect(src).toMatch(/<SourceDot[\s\S]+?size=\{6\}/);
+    // 2026-05-24 — inline 6pt success dot on meal rows (SourceDot
+    // import retained for parity with LogSheet; row chrome uses the
+    // compact dot so the header doesn't compete with MacroIconRow).
+    expect(src).toMatch(/width:\s*6,\s*height:\s*6,\s*borderRadius:\s*3/);
   });
 
   it("LogSheet (mobile) imports SourceDot + TrustChip", () => {

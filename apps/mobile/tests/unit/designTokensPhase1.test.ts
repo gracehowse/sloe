@@ -135,11 +135,11 @@ describe("mobile theme — Phase 1 production design spec coverage", () => {
       expect(Elevation.floatPrimary).toBeDefined();
     });
 
-    it("card uses 0.10 opacity / 12 radius / +3 height (premium depth)", () => {
-      expect(Elevation.card.shadowOpacity).toBe(0.05);
-      expect(Elevation.card.shadowRadius).toBe(8);
-      expect(Elevation.card.shadowOffset).toEqual({ width: 0, height: 2 });
-      expect(Elevation.card.elevation).toBe(1);
+    it("card is flat (hairline-only hierarchy, 2026-05-22 lock)", () => {
+      expect(Elevation.card.shadowOpacity).toBe(0);
+      expect(Elevation.card.shadowRadius).toBe(0);
+      expect(Elevation.card.shadowOffset).toEqual({ width: 0, height: 0 });
+      expect(Elevation.card.elevation).toBe(0);
     });
 
     it("sheet uses negative height (-8) for top-edge shadow", () => {
