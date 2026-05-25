@@ -190,10 +190,11 @@ export function TodayHeroRing({
                 ? Math.round(goal - baseGoal).toLocaleString()
                 : "0"
             }
-            // Amber to match activity card + burn-detail screen
-            // (`Accent.warning` is the app-wide token for earned-via-
-            // exercise calories).
-            valueColor={Accent.warning}
+            // Yellow to match activity card + burn-detail screen
+            // (`Accent.activity` is the app-wide token for earned-via-
+            // exercise calories, distinct from the orange warning/
+            // over-budget family as of 2026-05-25).
+            valueColor={Accent.activity}
             textSecondaryColor={secondaryColor}
           />
         </View>

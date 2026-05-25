@@ -263,7 +263,7 @@ export default function BurnDetailScreen() {
                     <Ionicons name="barbell-outline" size={14} color={Accent.primary} />
                     <Text style={{ fontSize: 13, color: colors.text, flex: 1 }}>{w.type}</Text>
                     {w.minutes > 0 && <Text style={{ fontSize: 12, color: colors.textSecondary }}>{w.minutes} min</Text>}
-                    {w.calories > 0 && <Text style={{ fontSize: 12, fontWeight: "700", color: Accent.warning, fontVariant: ["tabular-nums"] }}>{w.calories}</Text>}
+                    {w.calories > 0 && <Text style={{ fontSize: 12, fontWeight: "700", color: Accent.activity, fontVariant: ["tabular-nums"] }}>{w.calories}</Text>}
                   </View>
                 ))}
               </View>
@@ -313,10 +313,10 @@ export default function BurnDetailScreen() {
                 )}
                 {data.maintenanceKcal > 0 && (
                   <View style={{ flexDirection: "row", justifyContent: "space-between", paddingTop: 8, borderTopWidth: 1, borderTopColor: colors.border }}>
-                    <Text style={{ fontSize: 14, fontWeight: "800", color: totals.bonus > 0 ? Accent.warning : colors.textTertiary }}>
+                    <Text style={{ fontSize: 14, fontWeight: "800", color: totals.bonus > 0 ? Accent.activity : colors.textTertiary }}>
                       {totals.bonus > 0 ? "Bonus earned" : "No bonus earned"}
                     </Text>
-                    <Text style={{ fontSize: 16, fontWeight: "800", color: totals.bonus > 0 ? Accent.warning : colors.textTertiary, fontVariant: ["tabular-nums"] }}>
+                    <Text style={{ fontSize: 16, fontWeight: "800", color: totals.bonus > 0 ? Accent.activity : colors.textTertiary, fontVariant: ["tabular-nums"] }}>
                       {totals.bonus > 0 ? `+${totals.bonus.toLocaleString()}` : "0"}
                     </Text>
                   </View>

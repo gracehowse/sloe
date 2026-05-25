@@ -32,7 +32,8 @@ export const Accent = {
   /** Green slot — success, calorie ring under-target. */
   success: '#56A775',
   successLight: '#7ABE93',
-  /** Orange slot — bonus, burn, activity, sodium, approaching limits. */
+  /** Orange slot — warning, over-budget, sodium, approaching limits.
+   *  (bonus/burn/activity now own the Yellow slot via `Accent.activity`) */
   warning: '#F78A32',
   warningLight: '#FAA45F',
   /** Red slot — destructive, error, over-budget (traffic-light mode). */
@@ -46,9 +47,14 @@ export const Accent = {
   magenta: '#DF5EBC',
   /** Info — folded to Blue (info family). */
   info: '#588CE4',
-  /** Carbs alias — Yellow slot. */
-  carbs: '#F3C336',
-  carbsLight: '#F5D162',
+  /** Carbs (+ sugar) — deep amber-orange. Distinct from sodium's orange
+   *  and from the Yellow activity slot. */
+  carbs: '#E8721E',
+  carbsLight: '#F2904A',
+  /** Activity / burn / earned-bonus — Yellow slot (vacated by carbs).
+   *  Ring bonus arc, activity cards, burn-detail bonus. */
+  activity: '#F3C336',
+  activityLight: '#F5D162',
   /** Fiber — Green slot (folded with success). */
   fiber: '#56A775',
   fiberLight: '#7ABE93',
@@ -107,18 +113,18 @@ export const StimulantColors = {
  *  Sodium / sugar / water keep their original hues (niche
  *  micronutrient/alert/hydration semantics).
  */
-/** Macro-specific colors — 8-slot palette (2026-05-22 evening lock).
- *  Each macro is one of the 8 canonical slots. Sugar folds into Yellow
- *  (sugar IS a carb). Water folds into Blue (cyan dropped from the 8).
- *  Sodium = Orange (alert family). Calories stays as success-green. */
+/** Macro-specific colors — palette (2026-05-25 carbs/activity de-collide).
+ *  Carbs + sugar move to amber-orange (#E8721E), distinct from sodium's
+ *  orange (#F78A32) and from the Yellow slot (now owned by Accent.activity
+ *  for burn/bonus). Water folds into Blue. Calories stays success-green. */
 export const MacroColors = {
   calories: Accent.success,    // Green slot — state colour, locked
   protein:  '#588CE4',         // Blue slot
-  carbs:    '#F3C336',         // Yellow slot
+  carbs:    Accent.carbs,      // Amber-orange (#E8721E) — distinct from sodium
   fat:      '#DF5EBC',         // Magenta slot
   fiber:    '#56A775',         // Green slot (paired with calories — see icon for differentiation)
-  sugar:    '#F3C336',         // Yellow (sugar = carb)
-  sodium:   '#F78A32',         // Orange slot
+  sugar:    Accent.carbs,      // Sugar follows carbs (#E8721E)
+  sodium:   '#F78A32',         // Orange slot — distinct tint from carbs
   water:    '#588CE4',         // Blue (folded from cyan)
 };
 

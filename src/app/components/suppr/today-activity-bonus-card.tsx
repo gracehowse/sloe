@@ -210,7 +210,7 @@ export function TodayActivityBonusCard({
         </div>
       ) : null}
       <div className="flex items-center gap-2 mb-3">
-        <Icons.calories className="h-5 w-5 text-warning" />
+        <Icons.calories className="h-5 w-5 text-activity" />
         <h3 className="text-sm font-bold text-foreground flex-1">Activity Bonus</h3>
         {popoverCopy ? (
           <Popover>
@@ -285,7 +285,7 @@ export function TodayActivityBonusCard({
               <Icons.dumbbell className="h-4 w-4 text-primary" />
               <span className="flex-1 text-foreground">{w.type}</span>
               {w.minutes > 0 && <span className="text-muted-foreground tabular-nums">{w.minutes} min</span>}
-              {w.calories > 0 && <span className="font-semibold text-warning tabular-nums">{w.calories} kcal</span>}
+              {w.calories > 0 && <span className="font-semibold text-activity tabular-nums">{w.calories} kcal</span>}
             </div>
           ))}
         </div>

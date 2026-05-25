@@ -141,15 +141,15 @@
    *  Calories stays as success-green via the state token. */
   --macro-protein: #588CE4;
   --macro-protein-soft: rgba(88, 140, 228, 0.10);
-  --macro-carbs: #F3C336;
-  --macro-carbs-soft: rgba(243, 195, 54, 0.12);
+  --macro-carbs: #E8721E;
+  --macro-carbs-soft: rgba(232, 114, 30, 0.12);
   --macro-fat: #DF5EBC;
   --macro-fat-soft: rgba(223, 94, 188, 0.10);
   --macro-calories: #56A775;
   --macro-fiber: #56A775;
   --macro-fiber-soft: rgba(86, 167, 117, 0.10);
-  --macro-sugar: #F3C336;
-  --macro-sugar-soft: rgba(243, 195, 54, 0.10);
+  --macro-sugar: #E8721E;
+  --macro-sugar-soft: rgba(232, 114, 30, 0.10);
   --macro-sodium: #F78A32;
   --macro-sodium-soft: rgba(247, 138, 50, 0.08);
   --macro-water: #588CE4;
@@ -203,6 +203,13 @@
    *  Traffic-light mode (opt-in Settings toggle) substitutes Red. */
   --over-budget-fg: #F78A32;
   --over-budget-soft: rgba(247, 138, 50, 0.08);
+
+  /** Activity / burn / earned-bonus — Yellow slot (vacated by carbs,
+   *  which moved to amber-orange). Ring bonus arc, activity cards,
+   *  burn-detail bonus. Distinct from warning (Orange) so "earned via
+   *  exercise" never reads as an over-budget alert. */
+  --activity: #F3C336;
+  --activity-soft: rgba(243, 195, 54, 0.14);
 
   /** Depth ladder — production design spec §1.3.
    *  Card = list rows on a card. Sheet = bottom-sheets. Float = popovers.
@@ -318,15 +325,15 @@
   /** Macro colours — dark. 8-slot palette, OLED-lifted. */
   --macro-protein: #7BA3EA;
   --macro-protein-soft: rgba(123, 163, 234, 0.16);
-  --macro-carbs: #F5D162;
-  --macro-carbs-soft: rgba(245, 209, 98, 0.16);
+  --macro-carbs: #F2904A;
+  --macro-carbs-soft: rgba(242, 144, 74, 0.16);
   --macro-fat: #E689CB;
   --macro-fat-soft: rgba(230, 137, 203, 0.16);
   --macro-calories: #7ABE93;
   --macro-fiber: #7ABE93;
   --macro-fiber-soft: rgba(122, 190, 147, 0.14);
-  --macro-sugar: #F5D162;
-  --macro-sugar-soft: rgba(245, 209, 98, 0.16);
+  --macro-sugar: #F2904A;
+  --macro-sugar-soft: rgba(242, 144, 74, 0.16);
   --macro-sodium: #FAA45F;
   --macro-sodium-soft: rgba(250, 164, 95, 0.16);
   --macro-water: #7BA3EA;
@@ -367,6 +374,10 @@
   /** Over-budget — dark, Orange default. */
   --over-budget-fg: #FAA45F;
   --over-budget-soft: rgba(250, 164, 95, 0.14);
+
+  /** Activity / burn / earned-bonus — dark, Yellow slot (OLED-lifted). */
+  --activity: #F5D162;
+  --activity-soft: rgba(245, 209, 98, 0.18);
 
   /** Depth ladder — dark.
    *  Per spec §1.3 dark-mode-shadow rules: shadows nearly invisible on
@@ -486,6 +497,10 @@
   /* Over-budget */
   --color-over-budget-fg: var(--over-budget-fg);
   --color-over-budget-soft: var(--over-budget-soft);
+
+  /* Activity / burn / earned-bonus (Yellow) */
+  --color-activity: var(--activity);
+  --color-activity-soft: var(--activity-soft);
 
   /* North-star (gradient bounds + border) */
   --color-north-star-bg-from: var(--north-star-bg-from);

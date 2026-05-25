@@ -241,7 +241,7 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
         </View>
       ) : null}
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: Spacing.sm }}>
-        <Ionicons name="flame" size={20} color={Accent.warning} />
+        <Ionicons name="flame" size={20} color={Accent.activity} />
         <Text style={[styles.cardTitle, { flex: 1 }]}>Activity Bonus</Text>
         {popoverCopy ? (
           <Pressable
@@ -351,7 +351,7 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
         >
           <View style={{ flex: 1, gap: 4 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-              <Ionicons name="flame-outline" size={14} color={Accent.warning} />
+              <Ionicons name="flame-outline" size={14} color={Accent.activity} />
               <Text style={{ fontSize: 13, fontWeight: "700", color: textColor }}>
                 {(basalBurnKcal + (activityBurnKcal ?? 0)).toLocaleString()} kcal {isToday ? "burned so far" : "burned"}
               </Text>
@@ -389,7 +389,7 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
                 </Text>
               )}
               {todayActivityBudgetAddon > 0 && (
-                <Text style={{ fontSize: 11, fontWeight: "700", color: Accent.warning }}>
+                <Text style={{ fontSize: 11, fontWeight: "700", color: Accent.activity }}>
                   +{todayActivityBudgetAddon.toLocaleString()} bonus earned
                 </Text>
               )}
@@ -409,7 +409,7 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
               <Text style={{ fontSize: 12, color: textSecondaryColor, fontVariant: ["tabular-nums"] }}>
                 {w.minutes > 0 ? `${w.minutes} min` : ""}
               </Text>
-              <Text style={{ fontSize: 12, fontWeight: "700", color: Accent.warning, fontVariant: ["tabular-nums"] }}>
+              <Text style={{ fontSize: 12, fontWeight: "700", color: Accent.activity, fontVariant: ["tabular-nums"] }}>
                 {w.calories > 0 ? `${w.calories} kcal` : ""}
               </Text>
             </View>

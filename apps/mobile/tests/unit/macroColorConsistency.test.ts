@@ -25,9 +25,11 @@ describe("macroColorFor — canonical palette", () => {
     expect(macroColorFor("water")).toBe(MacroColors.water);
   });
 
-  it("sugar maps to Yellow (8-slot — sugar is a carb)", () => {
-    // 2026-05-22 evening: sugar folded into Yellow slot. Was periwinkle.
-    expect(MacroColors.sugar.toLowerCase()).toBe("#f3c336");
+  it("sugar follows carbs (amber-orange — sugar is a carb)", () => {
+    // 2026-05-25: carbs + sugar moved from Yellow to amber-orange
+    // (#E8721E) so they de-collide from the activity/burn Yellow slot.
+    expect(MacroColors.sugar.toLowerCase()).toBe("#e8721e");
+    expect(MacroColors.sugar).toBe(MacroColors.carbs);
     expect(MacroColors.sugar).not.toBe(Accent.warning);
   });
 
@@ -41,11 +43,15 @@ describe("macroColorFor — canonical palette", () => {
     expect(MacroColors.calories.toLowerCase()).toBe("#56a775");
   });
 
-  it("carbs maps to Yellow — not Orange (Orange reserved for activity/bonus)", () => {
+  it("carbs maps to amber-orange — distinct from sodium (de-collide)", () => {
+    // 2026-05-25: carbs moved to amber-orange (#E8721E); the Yellow slot
+    // it vacated is now the dedicated activity/burn token. The real
+    // invariant is that carbs stays distinct from sodium's orange so the
+    // two orange-family hues never read as the same role on one screen.
     expect(MacroColors.carbs).toBe(Accent.carbs);
-    expect(MacroColors.carbs.toLowerCase()).toBe("#f3c336");
+    expect(MacroColors.carbs.toLowerCase()).toBe("#e8721e");
     expect(MacroColors.carbs).not.toBe(Accent.warning);
-    expect(MacroColors.carbs).not.toBe(Accent.orange);
+    expect(MacroColors.carbs).not.toBe(MacroColors.sodium);
   });
 });
 

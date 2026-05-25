@@ -398,13 +398,14 @@ export default function CalorieRing({
                   cy={CX}
                   r={R}
                   fill="none"
-                  // Canonical 2026-05-22 — bonus uses Accent.warning
-                  // (amber #e8a020) to match the activity/burn card +
-                  // burn-detail screen which already use the same token
-                  // for "earned via exercise" semantics. Grace 2026-05-22:
-                  // "bonus on ring is not matching activity on the top
-                  // of the page".
-                  stroke={Accent.warning}
+                  // 2026-05-25 — bonus uses Accent.activity (Yellow
+                  // #F3C336) to match the activity/burn card +
+                  // burn-detail screen which now use the dedicated
+                  // activity token for "earned via exercise" semantics.
+                  // Carbs vacated Yellow for amber-orange; the bonus arc
+                  // moved with the activity family so it stays distinct
+                  // from the orange warning/over-budget signals.
+                  stroke={Accent.activity}
                   strokeWidth={STROKE}
                   strokeDasharray={`${bonusLen} ${mainCirc}`}
                   strokeDashoffset={-(mainCirc - bonusLen)}
