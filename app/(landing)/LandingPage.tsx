@@ -1137,7 +1137,6 @@ function LandingFooter() {
               Suppr
             </div>
             <p>The recipe and nutrition platform for people who actually cook.</p>
-            <p className="lp-f-region">Built in London</p>
           </div>
           <div className="lp-f-col">
             <h4>Product</h4>

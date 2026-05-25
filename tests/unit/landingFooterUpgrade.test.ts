@@ -27,11 +27,6 @@ describe("ENG-90 · Landing footer upgrade", () => {
     expect(landingTsx).toContain("What&apos;s new");
   });
 
-  it("shows region note in footer", () => {
-    expect(landingTsx).toContain("Built in London");
-    expect(landingTsx).toContain("lp-f-region");
-  });
-
   it("has a 4-column footer grid in CSS", () => {
     expect(landingCss).toContain("2.5fr 1fr 1fr 1fr");
   });
