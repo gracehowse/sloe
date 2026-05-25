@@ -25,40 +25,11 @@ import {
   traceNutritionLookup,
   traceCaptionNutrition,
 } from "@/lib/analytics/recipeImportPipelineTrace";
+import { isAllowedUrl, followWithSsrfGuard } from "@/lib/recipe-import/ssrfGuard";
 
-/** Block private/reserved IP ranges to prevent SSRF attacks. */
-function isPrivateHost(hostname: string): boolean {
-  const h = hostname.toLowerCase();
-  // Localhost
-  if (h === "localhost" || h === "127.0.0.1" || h === "[::1]" || h === "::1") return true;
-  // IPv4 private ranges
-  if (/^10\./.test(h)) return true;
-  if (/^172\.(1[6-9]|2\d|3[01])\./.test(h)) return true;
-  if (/^192\.168\./.test(h)) return true;
-  // Link-local
-  if (/^169\.254\./.test(h)) return true;
-  // IPv6 private
-  if (h.startsWith("fd") || h.startsWith("fe80") || h.startsWith("fc")) return true;
-  // Metadata endpoints (cloud providers)
-  if (h === "metadata.google.internal" || h === "169.254.169.254") return true;
-  // IPv6-mapped IPv4 private addresses (e.g. ::ffff:10.0.0.1, ::ffff:169.254.169.254)
-  if (/^::ffff:/.test(h)) {
-    const mapped = h.replace("::ffff:", "");
-    if (/^10\./.test(mapped) || /^172\.(1[6-9]|2\d|3[01])\./.test(mapped) || /^192\.168\./.test(mapped) || /^169\.254\./.test(mapped) || mapped === "127.0.0.1") return true;
-  }
-  return false;
-}
-
-function isAllowedUrl(url: string): boolean {
-  try {
-    const u = new URL(url);
-    if (u.protocol !== "https:" && u.protocol !== "http:") return false;
-    if (isPrivateHost(u.hostname)) return false;
-    return true;
-  } catch {
-    return false;
-  }
-}
+// SSRF guard (isPrivateHost / isAllowedUrl / followWithSsrfGuard) is shared in
+// @/lib/recipe-import/ssrfGuard so both the importer loop and the Pinterest
+// resolver re-validate every redirect hop against the same allowlist (ENG-682).
 
 function isPinterestUrl(url: string): boolean {
   try {
@@ -96,10 +67,10 @@ function isProbablyPinterestInternal(url: string): boolean {
 
 async function resolvePinterestOutboundUrl(inputUrl: string): Promise<string | null> {
   // Strategy:
-  // 1) Follow redirects; if we end up off Pinterest, that final URL is already the outbound URL.
+  // 1) Follow redirects (each hop allowlist-checked — ENG-682); if we end up
+  //    off Pinterest, that final URL is already the outbound URL.
   // 2) If still on Pinterest, fetch HTML and pick the best-looking external href.
-  const res = await fetch(inputUrl, {
-    redirect: "follow",
+  const fetched = await followWithSsrfGuard(inputUrl, {
     headers: {
       Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
       "Accept-Language": "en-US,en;q=0.9",
@@ -107,9 +78,10 @@ async function resolvePinterestOutboundUrl(inputUrl: string): Promise<string | n
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
     },
   });
+  if (!fetched) return null; // entry or a redirect hop hit the SSRF blocklist
+  const { res, finalUrl } = fetched;
 
   // If the final URL after redirects is not Pinterest, we're done.
-  const finalUrl = res.url;
   if (finalUrl && !isPinterestUrl(finalUrl)) {
     return finalUrl;
   }
@@ -133,7 +105,9 @@ async function resolvePinterestOutboundUrl(inputUrl: string): Promise<string | n
       }
       return h;
     })
-    .filter((h) => !isProbablyPinterestInternal(h));
+    .filter((h) => !isProbablyPinterestInternal(h))
+    // SSRF guard (ENG-682): never hand back a private/reserved or non-http(s) host.
+    .filter((h) => isAllowedUrl(h));
 
   // Heuristic: pick the first candidate that doesn't look like an ad/analytics redirect.
   const best =
