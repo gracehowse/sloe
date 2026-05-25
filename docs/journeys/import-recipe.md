@@ -5,6 +5,10 @@
 ## Overview
 User finds a recipe online and imports it into their Suppr library with verified nutrition data.
 
+## Related journeys
+
+- **[Import a cookbook (PDF)](import-cookbook.md)** — batch digitise a scanned book into Library (Pro); build the week in Plan separately.
+
 ## Entry Points
 1. **Share sheet** (iOS) — share a recipe URL from Safari/Instagram/TikTok to Suppr
 2. **Clipboard auto-detect** — open the Import screen, app detects a recipe URL on clipboard

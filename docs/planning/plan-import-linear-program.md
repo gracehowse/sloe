@@ -130,6 +130,10 @@ node scripts/linear/create-plan-import-program.mjs
 node scripts/linear/create-plan-import-program.mjs --dry-run
 ```
 
+## Cookbook PDF import (Library path)
+
+Separate from Plan tab import: **one PDF → many Library recipes** tagged `Imported · {book name}`, no weekly template. Shares extract/parse/verify stack; see [Import a cookbook (PDF)](../journeys/import-cookbook.md). User builds the week in Plan manually or uses Plan Import after recipes exist.
+
 ## Screen context (macros / fibre bugs)
 
 | Screen | Route | When |
