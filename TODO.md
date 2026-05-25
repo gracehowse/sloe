@@ -325,6 +325,7 @@ Specs ready (designer brief in session memory + `project_progress_direction.md`)
 
 ### Cleanup / follow-ups
 
+- [ ] **[G] Creator marketplace — paid recipes & meal plans.** Linear: [ENG-666](https://linear.app/suppr/issue/ENG-666/creator-marketplace-paid-recipes-and-meal-plans-backlog). Trainers/creators monetise through Suppr (paid Library saves / paid plan templates). Likely require a **minimum free quota** (recipes + sample plan days) so discovery isn’t entirely paywalled — or alternate incentives (rev-share, tips, coaching link-out). **Backlog only** — see [docs/decisions/2026-05-24-creator-monetization-backlog.md](docs/decisions/2026-05-24-creator-monetization-backlog.md). Surfaces in What's new as Coming soon; no eng until product shape locked (`monetisation-architect`, `legal-reviewer`).
 - [ ] **[E]** TODO comment at `apps/mobile/app/(tabs)/progress.tsx:628-632` references missing delivery listener (`addNotificationReceivedListener`). T5 wired the tap listener; delivery-rate listener still open. Scope first via `planner`.
 - [ ] **[SP code-quality]** Mobile Trend tile — adopt `computeWeightTrendCopy` helper (currently uses own 90-day code path).
 - [ ] **[SP qa-lead]** Mobile Steps card RNTL test — lock 3 sync states (`pending`/`success`/`failed`). testIDs already exposed.
