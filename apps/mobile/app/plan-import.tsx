@@ -13,6 +13,8 @@ import {
   TextInput,
   View,
 } from "react-native";
+import * as DocumentPicker from "expo-document-picker";
+import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/context/auth";
@@ -46,6 +48,9 @@ type PlanImportParseApiResponse = {
 };
 
 type Step = "paste" | "parsing" | "review";
+type ImportSource = "paste" | "pdf" | "photo";
+
+type PickedFile = { uri: string; name: string; mimeType: string };
 
 export default function PlanImportScreen() {
   const router = useRouter();
@@ -55,8 +60,11 @@ export default function PlanImportScreen() {
   const userId = session?.user?.id ?? null;
 
   const [step, setStep] = useState<Step>("paste");
+  const [source, setSource] = useState<ImportSource>("paste");
   const [pasteText, setPasteText] = useState(MEAL_PREP_WEEK1_PASTE);
   const [planName, setPlanName] = useState("Meal prep — Week 1");
+  const [pickedFile, setPickedFile] = useState<PickedFile | null>(null);
+  const [parsingMessage, setParsingMessage] = useState("Building your plan…");
   const [parseResult, setParseResult] = useState<PlanImportParseResult | null>(null);
   const [slots, setSlots] = useState<PlanImportCompiledSlot[]>([]);
   const [recipes, setRecipes] = useState<PlanImportVerifiedRecipe[]>([]);
@@ -69,7 +77,51 @@ export default function PlanImportScreen() {
 
   const apiBase = getSupprApiBase();
 
-  const runParse = useCallback(async () => {
+  const extractSourceText = useCallback(
+    async (file: PickedFile, kind: "pdf" | "image"): Promise<string | null> => {
+      if (!apiBase) return null;
+      const fd = new FormData();
+      fd.append("source", kind);
+      fd.append(
+        "file",
+        {
+          uri: file.uri,
+          name: file.name,
+          type: file.mimeType,
+        } as unknown as Blob,
+      );
+      const res = await authedFetch(`${apiBase}/api/plan-import/extract`, {
+        method: "POST",
+        body: fd,
+      });
+      const raw = await res.text();
+      let json: { ok?: boolean; text?: string; message?: string; error?: string };
+      try {
+        json = JSON.parse(raw) as typeof json;
+      } catch {
+        if (res.status === 404) {
+          Alert.alert(
+            "Plan import not on this server",
+            __DEV__
+              ? "Extract route isn’t deployed yet. Run npm run dev, then npm run mobile:dev:local and reload."
+              : "Plan import isn’t available yet — update after the next release.",
+          );
+        } else {
+          Alert.alert("Server error", __DEV__ ? `HTTP ${res.status} from ${apiBase}` : "Try again shortly.");
+        }
+        return null;
+      }
+      if (!json.ok || !json.text?.trim()) {
+        Alert.alert("Could not read file", json.message ?? "Try paste or a clearer photo.");
+        return null;
+      }
+      return json.text;
+    },
+    [apiBase],
+  );
+
+  const runParse = useCallback(
+    async (textOverride?: string) => {
     if (!userId) {
       Alert.alert("Sign in", "Sign in to import a meal plan.");
       return;
@@ -78,16 +130,37 @@ export default function PlanImportScreen() {
       Alert.alert("API not configured", "Set supprApiUrl in app config or EXPO_PUBLIC_API_URL.");
       return;
     }
-    if (!pasteText.trim()) {
+    let text = (textOverride ?? pasteText).trim();
+    if (!text && source !== "paste") {
+      Alert.alert("File required", source === "pdf" ? "Choose a PDF first." : "Choose a photo first.");
+      return;
+    }
+    if (!text) {
       Alert.alert("Paste required", "Include your weekly plan and recipe sections.");
       return;
     }
+    setParsingMessage("Building your plan…");
     setStep("parsing");
     try {
+      if (source !== "paste" && !textOverride && pickedFile) {
+        setParsingMessage(source === "pdf" ? "Reading PDF…" : "Reading photo…");
+        const extracted = await extractSourceText(pickedFile, source === "pdf" ? "pdf" : "image");
+        if (!extracted) {
+          setStep("paste");
+          return;
+        }
+        text = extracted;
+        setPasteText(extracted);
+        if (!planName.trim() || planName === "Meal prep — Week 1") {
+          const stem = pickedFile.name.replace(/\.[^.]+$/, "").slice(0, 80);
+          if (stem) setPlanName(stem);
+        }
+        setParsingMessage("Building your plan…");
+      }
       const res = await authedFetch(`${apiBase}/api/plan-import/parse`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: pasteText, planName }),
+        body: JSON.stringify({ text, planName }),
       });
       const raw = await res.text();
       let json: PlanImportParseApiResponse;
@@ -132,7 +205,42 @@ export default function PlanImportScreen() {
       Alert.alert("Network error", "Check your connection and try again.");
       setStep("paste");
     }
-  }, [apiBase, pasteText, planName, userId]);
+  },
+    [apiBase, extractSourceText, pasteText, pickedFile, planName, source, userId],
+  );
+
+  const pickPdf = useCallback(async () => {
+    const res = await DocumentPicker.getDocumentAsync({
+      type: "application/pdf",
+      copyToCacheDirectory: true,
+    });
+    if (res.canceled || !res.assets?.[0]) return;
+    const asset = res.assets[0];
+    setPickedFile({
+      uri: asset.uri,
+      name: asset.name ?? "plan.pdf",
+      mimeType: asset.mimeType ?? "application/pdf",
+    });
+  }, []);
+
+  const pickPhoto = useCallback(async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert("Photos access", "Allow photo access to import a plan screenshot.");
+      return;
+    }
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 0.9,
+    });
+    if (res.canceled || !res.assets?.[0]) return;
+    const asset = res.assets[0];
+    setPickedFile({
+      uri: asset.uri,
+      name: asset.fileName ?? "plan-photo.jpg",
+      mimeType: asset.mimeType ?? "image/jpeg",
+    });
+  }, []);
 
   const displaySlots = useMemo(() => {
     if (!autoRebalance || nutritionMode !== "match") return slots;
@@ -256,6 +364,29 @@ export default function PlanImportScreen() {
           backgroundColor: colors.card,
         },
         segBtnActive: { borderColor: Accent.primary, backgroundColor: Accent.primary + "12" },
+        sourceTabs: { flexDirection: "row", gap: 8, marginBottom: Spacing.md },
+        sourceTab: {
+          flex: 1,
+          paddingVertical: 10,
+          borderRadius: Radius.md,
+          borderWidth: 1,
+          borderColor: colors.border,
+          alignItems: "center",
+          backgroundColor: colors.card,
+        },
+        sourceTabActive: { borderColor: Accent.primary, backgroundColor: Accent.primary + "12" },
+        uploadZone: {
+          backgroundColor: colors.card,
+          borderRadius: Radius.md,
+          borderWidth: 1,
+          borderColor: colors.border,
+          borderStyle: "dashed",
+          padding: Spacing.lg,
+          alignItems: "center",
+          marginBottom: Spacing.sm,
+        },
+        uploadTitle: { fontSize: 15, fontWeight: "700", color: colors.text, textAlign: "center" },
+        uploadHint: { fontSize: 12, color: colors.textSecondary, marginTop: 6, textAlign: "center", lineHeight: 18 },
         assessment: {
           backgroundColor: colors.card,
           borderRadius: Radius.md,
@@ -288,7 +419,7 @@ export default function PlanImportScreen() {
         <View style={styles.parseCenter}>
           <ActivityIndicator size="large" color={Accent.primary} />
           <Text style={{ marginTop: Spacing.lg, fontSize: 18, fontWeight: "700", color: colors.text }}>
-            Building your plan…
+            {parsingMessage}
           </Text>
           <Text style={{ marginTop: 8, fontSize: 14, color: colors.textSecondary, textAlign: "center" }}>
             Recipes first — ingredients matched to Suppr — then the weekly schedule is compiled.
@@ -429,7 +560,7 @@ export default function PlanImportScreen() {
       <PushScreenHeader title="Import meal plan" onBack={() => router.back()} />
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <Text style={styles.subtitle}>
-          Paste a plan that includes recipes (ingredients + method) or kcal per meal — not just dish names.
+          PDF, paste, or photo — same pipeline. Source must include recipes or per-meal kcal.
         </Text>
         <View style={styles.callout}>
           <Text style={styles.calloutTitle}>What works</Text>
@@ -437,16 +568,63 @@ export default function PlanImportScreen() {
           <Text style={styles.calloutItem}>Meal-prep paste — batch recipes with ingredients</Text>
           <Text style={styles.calloutItem}>Coach PDF — schedule + recipe appendix</Text>
         </View>
-        <Text style={styles.label}>Plan + recipes</Text>
-        <TextInput
-          testID="plan-import-paste"
-          style={styles.input}
-          multiline
-          value={pasteText}
-          onChangeText={setPasteText}
-          autoCorrect={false}
-          spellCheck={false}
-        />
+        <View style={styles.sourceTabs} accessibilityRole="tablist">
+          {(
+            [
+              ["paste", "Paste"],
+              ["pdf", "PDF"],
+              ["photo", "Photo"],
+            ] as const
+          ).map(([key, label]) => (
+            <Pressable
+              key={key}
+              testID={`plan-import-source-${key}`}
+              style={[styles.sourceTab, source === key && styles.sourceTabActive]}
+              onPress={() => {
+                setSource(key);
+                if (key === "paste") setPickedFile(null);
+              }}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: source === key }}
+            >
+              <Text style={{ fontWeight: "700", fontSize: 13, color: colors.text }}>{label}</Text>
+            </Pressable>
+          ))}
+        </View>
+        {source === "paste" ? (
+          <>
+            <Text style={styles.label}>Plan + recipes</Text>
+            <TextInput
+              testID="plan-import-paste"
+              style={styles.input}
+              multiline
+              value={pasteText}
+              onChangeText={setPasteText}
+              autoCorrect={false}
+              spellCheck={false}
+            />
+          </>
+        ) : source === "pdf" ? (
+          <Pressable testID="plan-import-pick-pdf" style={styles.uploadZone} onPress={() => void pickPdf()}>
+            <Text style={styles.uploadTitle}>
+              {pickedFile ? pickedFile.name : "Choose program PDF"}
+            </Text>
+            <Text style={styles.uploadHint}>
+              {pickedFile
+                ? "Tap to replace · full file with week grid + recipe pages"
+                : "Upload the full file — page 1 calendar + recipe appendix with ingredients"}
+            </Text>
+          </Pressable>
+        ) : (
+          <Pressable testID="plan-import-pick-photo" style={styles.uploadZone} onPress={() => void pickPhoto()}>
+            <Text style={styles.uploadTitle}>
+              {pickedFile ? pickedFile.name : "Choose photo or screenshot"}
+            </Text>
+            <Text style={styles.uploadHint}>
+              Single recipe page works · full weeks need PDF
+            </Text>
+          </Pressable>
+        )}
         <Text style={styles.label}>Plan name</Text>
         <TextInput
           testID="plan-import-name"
@@ -459,7 +637,9 @@ export default function PlanImportScreen() {
           style={styles.primaryBtn}
           onPress={() => void runParse()}
         >
-          <Text style={styles.primaryBtnText}>Parse plan</Text>
+          <Text style={styles.primaryBtnText}>
+            {source === "paste" ? "Parse plan" : "Continue"}
+          </Text>
         </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
