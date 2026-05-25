@@ -1,7 +1,7 @@
 # Pricing default billing period divergence — web monthly, mobile annual
 
 **Date:** 2026-04-19
-**Status:** Active
+**Status:** SUPERSEDED 2026-05-25 — this divergence is RETIRED. Both platforms now default to **monthly** (sweep decision, ENG-698; see `docs/decisions/2026-05-25-sweep-parity-ia-pricing-resolutions.md`). Verify the Apple IAP trial SKU still surfaces with a monthly default. The rationale below is preserved for history only — do **not** treat web-monthly/mobile-annual as a live carve-out.
 **Decision owner:** product-lead
 **Agents involved:** product-lead, sync-enforcer (flagged), ops-log (recorded)
 **Related:** `docs/decisions/2026-04-19-pricing-v1.md`, `docs/decisions/2026-04-19-billing-architecture-pattern-a.md`

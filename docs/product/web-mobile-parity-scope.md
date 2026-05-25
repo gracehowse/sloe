@@ -2,7 +2,7 @@
 
 **Status:** Active product decisions (engineering follows; do not “fix” as unscoped parity bugs).
 
-**Last confirmed:** 2026-05-20
+**Last confirmed:** 2026-05-25
 
 **D-P1-7 maintenance (2026-04-25):** No new **intentional** divergences were recorded this cycle. Optional product follow-up (tickets, copy spec) for visual / voice-photo parity lives in [`PARITY_PRODUCT_QUEUE.md`](PARITY_PRODUCT_QUEUE.md), not as “open” audit rows. Re-open **exceptions** in this document (or `docs/decisions/`) only when product signs a new intentional divergence.
 
@@ -40,6 +40,20 @@ Any change that **ships, removes, improves, or fixes** a user-visible feature on
 | **Today — colour + macro hues (light)** | **Enforced** | `theme.css` ↔ `Colors.light` parity test (`tests/unit/crossPlatformThemeTokens.test.ts`); over-budget ring + macro captions use amber tokens (ENG-624–625); state-matrix captures in `docs/ux/captures/today-premium-2026-05-19/`. |
 | **Today — dark surfaces** | **Intentional delta (documented)** | Mobile dark bg `#0a0a0f` vs web `#101014` — platform-native depth; not a regression. Revisit in P4 if product wants pixel-match. |
 | **Today — layout / chrome** | **Aligned (P1)** | Calm date header, ≤2 below-meals prompts, desktop week rail, auth cold-open routes — see Premium P1 sign-off checklist. |
+
+### 2026-05-25 sweep — retired divergences + convergence decisions
+
+The full-product sweep RETIRED five previously-documented divergences — engineering should now drive these to **parity** (no longer "intentional"):
+
+| Was a carve-out | Now | Issue |
+|---|---|---|
+| Paywall default (web monthly / mobile annual) | Unify to **monthly** both platforms (verify IAP trial SKU) | ENG-698 |
+| Move-meal (mobile-only) | Add to web `/planner` | ENG-699 |
+| Recipe "Go Public" (web-only) | Add to mobile | ENG-700 |
+| Onboarding Welcome copy (web vs mobile) | Fresh copy pass, matched | ENG-697 |
+| Discover IA (may diverge visually) | Converge mobile to web cuisine-carousel | ENG-695 |
+
+**Still intentional (KEEP):** onboarding step count web N/13 vs mobile N/12; iOS-only; calorie-ring colour map; Stripe vs IAP rails; Apple Health mobile-first; Today dark tone. Fourth-tab canonical label = **"Progress"** (testID `tab-you` kept for Maestro). Full rationale: [`../decisions/2026-05-25-sweep-parity-ia-pricing-resolutions.md`](../decisions/2026-05-25-sweep-parity-ia-pricing-resolutions.md).
 
 ---
 
