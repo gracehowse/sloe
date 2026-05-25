@@ -300,6 +300,16 @@ shouting would erase this positioning advantage.
   (anti-shaming is the bet).
 - **Aspirational body-shaming hero imagery** on landing/onboarding.
 
+**Clarified 2026-05-25:** "anti-toxic-gamification" forbids the *punitive*
+kind (streaks-you-can-break, decay, points-as-pressure, rewards,
+leaderboards, missed-day shame copy) — it does **not** forbid shame-free,
+reward-only delight. Celebration moments, haptics, interactivity, and
+achievements that only ever reward (no decay, no break-penalty) are
+**permitted and wanted** (Grace, premium/wow-moments direction). The test:
+*does the mechanic punish a missed day?* See
+`docs/decisions/2026-05-25-noom-delight-vs-gamification-line.md` and epic
+ENG-725. Calm = non-manipulative + shame-free, not flat/joyless.
+
 ---
 
 ## DC13 — Recipe import from social-video paste-link

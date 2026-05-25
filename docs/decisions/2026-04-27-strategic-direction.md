@@ -35,7 +35,7 @@
 **Reconsider on:** external research with 3+ users consistently asks for a different primary view. Internal taste disagreements are not a trigger.
 
 ### D-2026-04-27-04: "What to eat next, from your library, that hits your remaining macros" is the north-star moment and a permanent block on Today
-**Status:** Resolved-pending-execution
+**Status:** SUPERSEDED 2026-05-25 — the "permanent block on Today" placement is retired. North-star now renders **empty-day-only** (Grace's 2026-05-23 call; ENG-690). See `docs/decisions/2026-05-25-sweep-parity-ia-pricing-resolutions.md`. The north-star moment itself remains the differentiator; only its always-on placement changed.
 **Decision:** Yes. Promote the gated "Dinner could hit" suggestion from a card to a permanent block on Today, second thing the eye lands on after the calorie ring. One suggested recipe at a time, swipeable to skip, one tap to log/cook.
 **Reasoning:** This is the single moment Suppr does what no competitor can. MacroFactor doesn't have your recipes. Mob/Paprika don't know your macros. The data and scoring exist; the integration into Today's render path is what's missing. Every screenshot, every TestFlight description, every landing-hero should be this moment.
 **Prerequisite:** Planner scoring threaded into Today render path. Library must have ≥5 saved recipes to render — handled by D-2026-04-27-14 (onboarding produces a first plan).
