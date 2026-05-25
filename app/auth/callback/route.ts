@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { projectId, publicAnonKey } from "../../../utils/supabase/info.tsx";
+import { safeAuthRedirectPath } from "@/lib/auth/safeRedirectPath";
 
 /**
  * Completes Supabase OAuth / magic-link PKCE: exchanges `?code=` for a session cookie.
@@ -59,7 +60,7 @@ async function handleCallback(request: Request) {
     return NextResponse.redirect(login);
   }
 
-  const safePath = next.startsWith("/") ? next : "/";
+  const safePath = safeAuthRedirectPath(next);
   return NextResponse.redirect(new URL(safePath, requestUrl.origin));
 }
 
