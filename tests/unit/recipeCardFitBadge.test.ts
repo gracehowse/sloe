@@ -41,8 +41,9 @@ describe("F-45 — fit-percent pill is NOT rendered on Discover hero cards", () 
     expect(MOBILE_DISCOVER_SRC).toMatch(/<ChefHat\s/);
   });
 
-  it("web More-ideas rows still use the lucide ChefHat (via Icons.chef)", () => {
-    expect(WEB_DISCOVER_SRC).toMatch(/Icons\.chef\b/);
+  it("web Discover does not use ChefHat icon (removed in discover redesign)", () => {
+    expect(WEB_DISCOVER_SRC).not.toMatch(/Icons\.chef\b/);
+    expect(WEB_DISCOVER_SRC).not.toMatch(/ChefHat/);
   });
 
   it("shared helper is still exported (kept for future ranking)", () => {

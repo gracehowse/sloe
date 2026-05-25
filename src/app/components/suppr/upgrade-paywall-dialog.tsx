@@ -419,31 +419,26 @@ export function UpgradePaywallDialog({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Hero */}
-        <div
-          className="relative p-6 pb-7 text-white"
-          style={{
-            background: "linear-gradient(135deg, var(--primary) 0%, var(--macro-fat, #e04888) 100%)",
-          }}
-        >
+        <div className="relative p-6 pb-7 border-b border-border bg-card text-foreground">
           <button
             type="button"
             aria-label="Close"
             onClick={() => handleClose("close_button")}
-            className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 transition-colors grid place-items-center text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+            className="absolute top-4 right-4 w-8 h-8 rounded-full bg-muted hover:bg-muted/80 transition-colors grid place-items-center text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <XIcon size={16} />
           </button>
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/20 text-[11px] font-bold tracking-[0.05em] uppercase mb-3">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-bold tracking-[0.05em] uppercase mb-3">
             <Sparkles size={11} />
             {heroPill}
           </span>
           <h2
             id="upgrade-paywall-title"
-            className="text-[24px] md:text-[26px] font-bold -tracking-[0.02em] leading-tight mb-2"
+            className="text-[24px] md:text-[28px] font-bold -tracking-[0.02em] leading-tight mb-2"
           >
             {heroHeadline}
           </h2>
-          <p className="text-[13px] opacity-85 leading-relaxed">{heroSubtitle}</p>
+          <p className="text-[13px] text-muted-foreground leading-relaxed">{heroSubtitle}</p>
           {/* PR-01 (2026-04-28) — the §3 edge-case note ("Voice and
               photo require Pro. Base unlocks everything else.") was
               removed when Base went away. The single Pro pitch already
@@ -471,10 +466,10 @@ export function UpgradePaywallDialog({
                   <f.icon size={18} strokeWidth={1.75} />
                 </span>
                 <div className="min-w-0">
-                  <p className="text-[14px] font-semibold text-foreground leading-snug">
+                  <p className="text-[13px] font-semibold text-foreground leading-snug">
                     {f.title}
                   </p>
-                  <p className="text-[12px] text-muted-foreground mt-0.5 leading-relaxed">
+                  <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
                     {f.description}
                   </p>
                 </div>
@@ -497,7 +492,7 @@ export function UpgradePaywallDialog({
               aria-selected={!isAnnual}
               data-testid="upsell-period-monthly"
               onClick={() => setPeriod("monthly")}
-              className={`flex-1 rounded-lg px-3 py-2 text-[12px] font-semibold transition-colors ${
+              className={`flex-1 rounded-lg px-3 py-2 text-[11px] font-semibold transition-colors ${
                 !isAnnual
                   ? "bg-primary/15 text-primary"
                   : "text-muted-foreground hover:text-foreground"
@@ -511,7 +506,7 @@ export function UpgradePaywallDialog({
               aria-selected={isAnnual}
               data-testid="upsell-period-annual"
               onClick={() => setPeriod("annual")}
-              className={`flex-1 rounded-lg px-3 py-2 text-[12px] font-semibold transition-colors flex items-center justify-center gap-1.5 ${
+              className={`flex-1 rounded-lg px-3 py-2 text-[11px] font-semibold transition-colors flex items-center justify-center gap-1.5 ${
                 isAnnual
                   ? "bg-primary/15 text-primary"
                   : "text-muted-foreground hover:text-foreground"
@@ -540,7 +535,7 @@ export function UpgradePaywallDialog({
                   </span>
                 ) : null}
               </div>
-              <p className="text-[12px] text-muted-foreground leading-snug">
+              <p className="text-[11px] text-muted-foreground leading-snug">
                 {cardDescriptor}
               </p>
             </div>
@@ -568,7 +563,7 @@ export function UpgradePaywallDialog({
             type="button"
             onClick={handleStartCheckout}
             disabled={busy}
-            className="w-full py-3 rounded-xl bg-primary text-primary-foreground text-[14px] font-bold hover:opacity-95 disabled:opacity-60 transition-opacity shadow-sm"
+            className="w-full py-3 rounded-xl bg-primary text-primary-foreground text-[13px] font-bold hover:opacity-95 disabled:opacity-60 transition-opacity shadow-sm"
           >
             {busy ? "Opening checkout..." : primaryCtaLabel}
           </button>

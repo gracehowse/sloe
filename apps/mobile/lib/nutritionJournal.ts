@@ -26,6 +26,8 @@ export type JournalMeal = {
    * undefined for Health-import / manual / barcode-only logs.
    */
   recipeId?: string;
+  recipeImageUrl?: string | null;
+  imageUrl?: string | null;
 };
 
 /** One journal slot for all snacks; migrate legacy DB value `Snack` → `Snacks`. */

@@ -12,15 +12,16 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Check, Circle } from "lucide-react-native";
+import { Beef, Check, Circle, Flame, Leaf, Wheat, Droplet } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
-import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
+import { Accent, MacroColors, Spacing, Radius, Type } from "@/constants/theme";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets } from "@/lib/calcTargets";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
+import { PushScreenHeader } from "@/components/PushScreenHeader";
 import {
   DIETARY_PREFERENCE_ENTRIES,
   normaliseDietaryFromProfile,
@@ -110,7 +111,7 @@ export default function ProfileScreen() {
     // 2026-04-30 (visual-qa #5, ui-critic): drop the all-caps + tracked
     // accent-blue title — every other nav header is title-case neutral.
     // Aligns with Claude Design phone-top spec (24/700/-0.02em, fg).
-    headerTitle: { fontSize: 22, fontWeight: "700", color: colors.text, letterSpacing: -0.4 },
+    headerTitle: { ...Type.headline, color: colors.text },
 
     card: {
       backgroundColor: colors.card,
@@ -130,15 +131,28 @@ export default function ProfileScreen() {
       paddingVertical: Spacing.sm,
     },
     targetTile: {
+      // DRIFT-03 + DRIFT-07 (2026-05-22): white card surface + macro-
+      // coloured outline border (the Profile watch-face moment), with
+      // an interior layout that matches `TodayDashboardMacroTiles`
+      // (uppercase label top-left + icon top-right + big tabular
+      // value). Beige token now reserved for chips / pills / inputs.
       width: "47%",
       borderRadius: Radius.md,
       borderWidth: 1,
-      backgroundColor: colors.inputBg,
-      paddingVertical: Spacing.md,
-      paddingHorizontal: Spacing.sm,
-      alignItems: "center",
-      gap: 4,
+      backgroundColor: colors.card,
+      paddingVertical: Spacing.sm + 2,
+      paddingHorizontal: Spacing.sm + 2,
     },
+    targetTileHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: Spacing.sm,
+    },
+    targetTileLabel: { ...Type.label, color: colors.textTertiary },
+    targetTileValue: { ...Type.macroValue, fontVariant: ["tabular-nums"] },
+    targetTileUnit: { ...Type.caption, color: colors.textSecondary, marginLeft: 3 },
+    // Legacy aliases kept for any future callers — match Today tokens.
     targetValue: { fontSize: 20, fontWeight: "800", fontVariant: ["tabular-nums"] },
     targetLabel: { fontSize: 11, color: colors.textSecondary, fontWeight: "600" },
 
@@ -197,11 +211,42 @@ export default function ProfileScreen() {
     dietaryLabel: { fontSize: 13, fontWeight: "600", color: colors.textSecondary },
   }), [colors]);
 
-  function TargetStat({ value, label, color }: { value: number; label: string; color: string }) {
+  function TargetStat({
+    value,
+    label,
+    unit,
+    color,
+    Icon,
+  }: {
+    value: number;
+    label: string;
+    unit: string;
+    color: string;
+    Icon: typeof Beef;
+  }) {
+    // DRIFT-07 fix (2026-05-22): align Profile Daily Targets tile with
+    // Today's macro tile visual language — uppercase label top-left,
+    // macro icon top-right, big tabular value below. Profile keeps its
+    // macro-coloured outline border (defended choice — the watch-face
+    // moment). Difference from Today: no /denominator and no progress
+    // bar, since this surface displays targets, not current vs target.
     return (
-      <View style={[styles.targetTile, { borderColor: color + "55" }]}>
-        <Text style={[styles.targetValue, { color }]}>{value}</Text>
-        <Text style={styles.targetLabel}>{label}</Text>
+      // Canonical 2026-05-22 C9: target tile outline is neutral
+      // `colors.border`, not macro-coloured. Macro identity comes from
+      // the icon + label (the value tints the digit only). Profile is
+      // a summary card, not a state-tracking screen — less chrome,
+      // more premium. Icon + value keep the macro hue.
+      <View style={[styles.targetTile, { borderColor: colors.border }]}>
+        <View style={styles.targetTileHeader}>
+          <Text style={styles.targetTileLabel}>{label}</Text>
+          <Icon size={14} color={color} strokeWidth={1.75} />
+        </View>
+        <View style={{ flexDirection: "row", alignItems: "baseline" }}>
+          <Text style={[styles.targetTileValue, { color }]} numberOfLines={1}>
+            {value}
+          </Text>
+          <Text style={styles.targetTileUnit}>{unit}</Text>
+        </View>
       </View>
     );
   }
@@ -425,14 +470,8 @@ export default function ProfileScreen() {
       testID="screen-profile"
       style={[styles.container, { paddingTop: insets.top }]}
     >
+      <PushScreenHeader title="Profile" onBack={goBack} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        <View style={styles.headerRow}>
-          <Pressable onPress={goBack} hitSlop={12}>
-            <Text style={styles.backBtn}>‹</Text>
-          </Pressable>
-          <Text style={styles.headerTitle}>Profile</Text>
-          <View style={{ width: 28 }} />
-        </View>
 
         {/* Current targets summary.
             Audit 2026-05-04 #29: previously the outer card border + 4
@@ -450,10 +489,10 @@ export default function ProfileScreen() {
                 (destructive), Carbs=blue (info), Fat=amber (warning) —
                 breaks the across-app convention where Protein=blue,
                 Carbs=amber, Fat=magenta. */}
-            <TargetStat value={Number(calories) || 0} label="kcal" color={MacroColors.calories} />
-            <TargetStat value={Number(protein) || 0} label="Protein" color={MacroColors.protein} />
-            <TargetStat value={Number(carbs) || 0} label="Carbs" color={MacroColors.carbs} />
-            <TargetStat value={Number(fat) || 0} label="Fat" color={MacroColors.fat} />
+            <TargetStat value={Number(calories) || 0} label="CALORIES" unit="kcal" color={MacroColors.calories} Icon={Flame} />
+            <TargetStat value={Number(protein) || 0} label="PROTEIN" unit="g" color={MacroColors.protein} Icon={Beef} />
+            <TargetStat value={Number(carbs) || 0} label="CARBS" unit="g" color={MacroColors.carbs} Icon={Wheat} />
+            <TargetStat value={Number(fat) || 0} label="FAT" unit="g" color={MacroColors.fat} Icon={Droplet} />
           </View>
           {/*
             E3 (2026-05-11 visual sweep): the Profile screen showed a

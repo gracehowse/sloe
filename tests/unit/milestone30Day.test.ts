@@ -316,8 +316,8 @@ describe("buildMilestone30DayContent", () => {
 // and the backstop's contract so a future refactor can't quietly
 // rename either side and re-introduce the same leak.
 describe("audit K1 — AsyncStorage backstop contract", () => {
-  it("pins the AsyncStorage key string used by mobile Today", () => {
-    // Mobile Today and any future readers MUST agree on this key.
+  it("pins the AsyncStorage key string used by mobile Progress", () => {
+    // Mobile Progress and any future readers MUST agree on this key.
     // If you rename either side, update both — and bump this test.
     const KEY = "suppr.milestone_30.shown_at_local";
     expect(KEY).toBe("suppr.milestone_30.shown_at_local");

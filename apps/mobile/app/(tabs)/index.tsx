@@ -3,7 +3,6 @@ import {
   Alert,
   Animated,
   AppState,
-  Easing,
   Keyboard,
   Modal,
   Platform,
@@ -23,7 +22,8 @@ import * as Haptics from "expo-haptics";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useHealthSyncOnFocus } from "@/hooks/useHealthSyncOnFocus";
-import { useTodayMountAnimation } from "@/hooks/useTodayMountAnimation";
+import { useEntranceAnimation } from "@/hooks/useEntranceAnimation";
+import ReAnimated from "react-native-reanimated";
 import { useNutritionEntriesSync } from "@/hooks/useNutritionEntriesSync";
 import { useTrackingExtrasOnFocus } from "@/hooks/useTrackingExtrasOnFocus";
 import {
@@ -54,9 +54,9 @@ import {
   ChevronUp,
   CloudOff,
   X,
-  Zap,
 } from "lucide-react-native";
-import { Accent, Spacing, Radius } from "@/constants/theme";
+import { Accent, Spacing, Radius, Type } from "@/constants/theme";
+import { Layout } from "@/constants/layout";
 import FoodSearchModal, { type SelectedFood as FoodSearchSelectedFood } from "@/components/FoodSearchModal";
 import BarcodeScannerModal from "@/components/BarcodeScannerModal";
 import { Shimmer } from "@/components/ui/SkeletonRow";
@@ -70,6 +70,7 @@ import PhotoLogSheet from "@/components/PhotoLogSheet";
 import AiPaywallSheet, { type AiPaywallFeature } from "@/components/AiPaywallSheet";
 import { computeLoggingStreak } from "@/lib/trackerStats";
 import { computeActivityBonusKcal } from "@suppr/shared/nutrition/activityBonus";
+import { ACTIVITY_BUDGET_DISCOVERABILITY_KEY } from "@suppr/shared/nutrition/activityBudgetDiscoverability";
 import {
   availableFreezes,
   computeProtectedStreak,
@@ -77,6 +78,9 @@ import {
   type FreezeLedger,
 } from "@/lib/streakFreeze";
 import { didStreakReset } from "@suppr/shared/nutrition/streakReset";
+import {
+  isBelowMealsPromptVisible,
+} from "@suppr/shared/today/belowMealsPromptSelection";
 import {
   MISSED_YESTERDAY_COPY,
   shouldShowMissedYesterday,
@@ -180,8 +184,10 @@ import { TodayFastingPill } from "@/components/today/TodayFastingPill";
 import { LogSheet } from "@/components/today/LogSheet";
 import CreateCustomFoodSheet, { type CreateCustomFoodPayload } from "@/components/CreateCustomFoodSheet";
 import { createCustomFood } from "@suppr/shared/nutrition/customFoodsClient";
-import { TodayEatAgainBanner } from "@/components/today/TodayEatAgainBanner";
-import { TodayEatAgainScroller } from "@/components/today/TodayEatAgainScroller";
+// TodayEatAgainBanner/Scroller imports removed 2026-05-22 v4 — the
+// render path was suppressed (see comment in fasting-or-eat-again
+// block ~L4570). The component files remain in the tree so the FAB
+// Log sheet "Eat again" tab follow-up can import them.
 import { WeeklyCheckinBanner } from "@/components/today/WeeklyCheckinBanner";
 import {
   isCheckinBannerDismissed,
@@ -196,12 +202,6 @@ import { TodayMealsSection } from "@/components/today/TodayMealsSection";
 import { TodayFirstMealEmptyState } from "@/components/today/TodayFirstMealEmptyState";
 import { TodayActivityBonusCard } from "@/components/today/TodayActivityBonusCard";
 import { TodayCompleteDayModal } from "@/components/today/TodayCompleteDayModal";
-import { Milestone30DayModal } from "@/components/today/Milestone30DayModal";
-import {
-  buildMilestone30DayContent,
-  shouldShowMilestone30Day,
-  type Milestone30DayContent,
-} from "@/lib/milestone30Day";
 // Weekly check-in ritual (PR claude/weekly-checkin-ritual-v2, 2026-05-02 —
 // rebuild of #26). MacroFactor-style soft prompt that surfaces the
 // adaptive-vs-formula TDEE delta + a suggested new daily target.
@@ -219,7 +219,6 @@ import { TodayEditMealModal } from "@/components/today/TodayEditMealModal";
 // TodayNutrientsModal replaced by FullNutrientPanelSheet on 2026-05-02
 // (revert of PR #30). The Nutrients link in TodayDashboardMacroTiles
 // now opens the richer Cronometer-parity panel from PR #47.
-import { TodayBrandBar } from "@/components/today/TodayBrandBar";
 import { TodayDateHeader } from "@/components/today/TodayDateHeader";
 import { TodayDashboardMacroTiles } from "@/components/today/TodayDashboardMacroTiles";
 import { TodayDashboardMacroBars } from "@/components/today/TodayDashboardMacroBars";
@@ -396,6 +395,7 @@ export default function TrackerScreen() {
   // User-configurable macro display variant (Settings → Display →
   // Macro display). `tiles` (default) keeps the 2×2 grid; `bars`
   // renders a vertical list of name + value/target + colored bar.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [macroDisplayStyle] = useMacroDisplayStyle();
 
   const [byDay, setByDay] = useState<ByDay>({});
@@ -542,7 +542,13 @@ export default function TrackerScreen() {
   const [profileTargets, setProfileTargets] = useState(DEFAULT_TRACKER_TARGETS);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<"day" | "week">("day");
-  const [ringExpanded, setRingExpanded] = useState(true);
+  // Canonical 2026-05-22 C1: multi-ring removed entirely. Inner macro
+  // arcs are no longer rendered by CalorieRing — the ring is now a
+  // single outer calorie ring + macro bars below. The `ringExpanded`
+  // state stays for backwards compat with downstream callers (and the
+  // long-press toggle hook) but no longer drives any inner-arc visual.
+  // Set to false to keep the centre + label clean.
+  const [ringExpanded, setRingExpanded] = useState(false);
   const [calorieDisplayMode, setCalorieDisplayMode] = useState<"remaining" | "consumed">("consumed");
   // Phase 3 (2026-04-28, D-2026-04-27-03 finished): canonical Today is
   // the ring hero. The 3-variant picker (ring / bar / number) was
@@ -684,13 +690,6 @@ export default function TrackerScreen() {
   const [adaptiveTdee, setAdaptiveTdee] = useState<number | null>(null);
   const [adaptiveTdeeConfidence, setAdaptiveTdeeConfidence] = useState<string | null>(null);
   const [adaptiveTdeeUpdatedAt, setAdaptiveTdeeUpdatedAt] = useState<string | null>(null);
-  // 30-day milestone moment (PR claude/today-30-day-milestone, 2026-05-02).
-  // Fires once per user when they cross 30 distinct logged days. The
-  // gate + content build live in `src/lib/nutrition/milestone30Day.ts`
-  // and are pure / shared across web + mobile.
-  const [milestone30ShownAt, setMilestone30ShownAt] = useState<string | null>(null);
-  const [milestone30Open, setMilestone30Open] = useState(false);
-  const [milestone30Content, setMilestone30Content] = useState<Milestone30DayContent | null>(null);
   // Weekly TDEE check-in ritual (PR claude/weekly-checkin-ritual-v2,
   // 2026-05-02 — rebuild of #26). The MacroFactor-style modal that
   // surfaces the adaptive-vs-formula TDEE delta once a week. Gating +
@@ -705,7 +704,6 @@ export default function TrackerScreen() {
     useState<WeeklyCheckinContent | null>(null);
   const weeklyCheckinHandledRef = useRef(false);
   const [profileWeightKgByDay, setProfileWeightKgByDay] = useState<Record<string, number>>({});
-  const milestone30HandledRef = useRef(false);
   const targetHitPrevByDayRef = useRef<Record<string, boolean>>({});
   /** Once we celebrate (or user was already at goal on first load), do not celebrate again that calendar day if they dip and re-hit. */
   const targetsCelebratedForDayRef = useRef<Record<string, boolean>>({});
@@ -915,6 +913,7 @@ export default function TrackerScreen() {
    */
   const AI_TOOLTIP_STORAGE_KEY = "suppr.ai-explainer-shown.v1";
   const [aiTooltipShown, setAiTooltipShown] = useState<boolean | null>(null);
+  const [activityBudgetDiscoverDismissed, setActivityBudgetDiscoverDismissed] = useState<boolean | null>(null);
   useEffect(() => {
     let cancelled = false;
     AsyncStorage.getItem(AI_TOOLTIP_STORAGE_KEY)
@@ -927,6 +926,25 @@ export default function TrackerScreen() {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    AsyncStorage.getItem(ACTIVITY_BUDGET_DISCOVERABILITY_KEY)
+      .then((raw) => {
+        if (!cancelled) setActivityBudgetDiscoverDismissed(raw != null);
+      })
+      .catch(() => {
+        if (!cancelled) setActivityBudgetDiscoverDismissed(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const dismissActivityBudgetDiscover = useCallback(() => {
+    setActivityBudgetDiscoverDismissed(true);
+    void AsyncStorage.setItem(ACTIVITY_BUDGET_DISCOVERABILITY_KEY, "1").catch(() => {});
   }, []);
 
   const dismissAiFirstLogTooltip = useCallback(() => {
@@ -1750,15 +1768,6 @@ export default function TrackerScreen() {
     setAdaptiveTdeeUpdatedAt(
       typeof (d as any).adaptive_tdee_updated_at === "string" ? (d as any).adaptive_tdee_updated_at : null,
     );
-    // 30-day milestone state — `milestone_30_shown_at` ungates the
-    // moment once and only once. `weight_kg_by_day` feeds the total
-    // weight delta line. Both are null-safe; missing columns leave
-    // the surface honest (delta line is suppressed when empty).
-    setMilestone30ShownAt(
-      typeof (d as any).milestone_30_shown_at === "string"
-        ? (d as any).milestone_30_shown_at
-        : null,
-    );
     // Weekly check-in ritual — `last_weekly_checkin_shown_at` drives
     // the 6-day cooldown gate. Missing column ⇒ null ⇒ gate is open.
     setWeeklyCheckinShownAt(
@@ -1927,6 +1936,9 @@ export default function TrackerScreen() {
         fat: mealFat,
         source,
         ...(Object.keys(micros).length > 0 ? { micros } : {}),
+        ...(result.imageUrl
+          ? { recipeImageUrl: String(result.imageUrl).trim() }
+          : {}),
       };
       setByDay((prev) => ({
         ...prev,
@@ -2275,112 +2287,6 @@ export default function TrackerScreen() {
     });
   }, []);
 
-  // 30-day milestone moment gate (PR claude/today-30-day-milestone,
-  // 2026-05-02; persistence hardening 2026-05-05 audit K1).
-  //
-  // Runs once per Today first-load AFTER the journal has hydrated.
-  // Three-layer suppression:
-  //   1. `milestone30HandledRef` — within-session ref guard.
-  //   2. AsyncStorage `suppr.milestone_30.shown_at_local` — local
-  //      persistence, survives cold launch even if the server write
-  //      fails (audit K1: server write was silently failing under
-  //      `void` and Grace's column stayed null across 49+ days,
-  //      causing the modal to re-fire every cold launch).
-  //   3. `profiles.milestone_30_shown_at` — server source of truth
-  //      on next refetch.
-  //
-  // Order matters: the local AsyncStorage write happens FIRST and is
-  // synchronous-after-await; the server update logs its error
-  // explicitly instead of swallowing under `void`.
-  useEffect(() => {
-    if (!isToday) return;
-    if (milestone30HandledRef.current) return;
-    if (!userId) return;
-    if (milestone30ShownAt) return;
-    // The journal has loaded once `byDay` has at least one key. We
-    // bail when empty rather than render the surface against a stale
-    // empty map on first paint.
-    if (Object.keys(byDay).length === 0) return;
-    const eligible = shouldShowMilestone30Day({
-      nutritionByDay: byDay as never,
-      shownAt: milestone30ShownAt,
-    });
-    if (!eligible) return;
-    milestone30HandledRef.current = true;
-    const content = buildMilestone30DayContent({
-      nutritionByDay: byDay as never,
-      weightKgByDay: profileWeightKgByDay,
-    });
-    setMilestone30Content(content);
-    setMilestone30Open(true);
-
-    const nowIso = new Date().toISOString();
-    setMilestone30ShownAt(nowIso);
-
-    // Layer 2: persist locally first — can't fail silently the way
-    // the supabase update did under `void` (audit K1).
-    void AsyncStorage.setItem("suppr.milestone_30.shown_at_local", nowIso).catch(
-      (err) => {
-        console.warn("[milestone30] AsyncStorage write failed:", err);
-      },
-    );
-
-    // Layer 3: server stamp. `await` + explicit error log so a
-    // future RLS / column / network failure surfaces in dev/Sentry
-    // instead of leaving the user re-firing the modal every launch.
-    void (async () => {
-      const { error } = await supabase
-        .from("profiles")
-        .update({ milestone_30_shown_at: nowIso } as never)
-        .eq("id", userId);
-      if (error) {
-        console.warn("[milestone30] server stamp failed:", error.message);
-      }
-    })();
-
-    try {
-      track(AnalyticsEvents.milestone_30_shown, {
-        daysLogged: content.daysLogged,
-        longestStreak: content.longestStreak,
-        topFoodCount: content.topFoods.length,
-        platform: "ios",
-      });
-    } catch {
-      /* noop */
-    }
-  }, [isToday, userId, byDay, profileWeightKgByDay, milestone30ShownAt]);
-
-  // Hydrate the local backstop. If a previous session wrote
-  // `suppr.milestone_30.shown_at_local` (e.g. server stamp failed),
-  // honour it before the server-fetched `milestone30ShownAt` lands.
-  // Without this, a cold launch with `milestone30ShownAt = null`
-  // (server NULL) would re-fire the modal even though the user has
-  // seen + dismissed it locally.
-  useEffect(() => {
-    if (milestone30ShownAt) return;
-    let cancelled = false;
-    void AsyncStorage.getItem("suppr.milestone_30.shown_at_local").then(
-      (raw) => {
-        if (cancelled) return;
-        if (typeof raw === "string" && raw) {
-          setMilestone30ShownAt(raw);
-        }
-      },
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, [milestone30ShownAt]);
-
-  const handleMilestone30Dismiss = useCallback(() => {
-    setMilestone30Open(false);
-    try {
-      track(AnalyticsEvents.milestone_30_dismissed, { platform: "ios" });
-    } catch {
-      /* noop */
-    }
-  }, []);
-
   // Weekly check-in ritual gate (PR claude/weekly-checkin-ritual-v2,
   // 2026-05-02 — rebuild of #26). Runs once per Today first-load —
   // `weeklyCheckinHandledRef` suppresses re-fires for the rest of the
@@ -2649,6 +2555,39 @@ export default function TrackerScreen() {
   const remainingCarbs = Math.max(0, targets.carbs - totals.carbs);
   const remainingFat = Math.max(0, targets.fat - totals.fat);
 
+  const belowMealsPromptEligible = useMemo(
+    () => ({
+      checkin:
+        viewMode === "day" &&
+        isToday &&
+        isCheckinBannerDay &&
+        checkinBannerDismissed === false,
+      northStar:
+        viewMode === "day" && isToday && remaining > 0 && mealsToday.length === 0,
+      snap: viewMode === "day" && isToday && mealsToday.length === 0,
+      nudge: viewMode === "day" && isToday && mealsToday.length > 0,
+    }),
+    [
+      viewMode,
+      isToday,
+      isCheckinBannerDay,
+      checkinBannerDismissed,
+      remaining,
+      mealsToday.length,
+    ],
+  );
+
+  const showBelowMealsCheckin = isBelowMealsPromptVisible(
+    "checkin",
+    belowMealsPromptEligible,
+  );
+  const showBelowMealsNorthStar = isBelowMealsPromptVisible(
+    "northStar",
+    belowMealsPromptEligible,
+  );
+  const showBelowMealsSnap = isBelowMealsPromptVisible("snap", belowMealsPromptEligible);
+  const showBelowMealsNudge = isBelowMealsPromptVisible("nudge", belowMealsPromptEligible);
+
   // Batch 5.12 — iOS widget snapshot. Writes today's totals + fast state
   // to a shared App Group-accessible snapshot (AsyncStorage always, file
   // best-effort). Debounced 500 ms so a rapid sequence of macro edits
@@ -2818,11 +2757,10 @@ export default function TrackerScreen() {
    * reports discomfort, a `useReducedMotion()` gate is a one-line
    * follow-up.
    */
-  // 2026-05-16 — extracted to `hooks/useTodayMountAnimation`.
-  // Same 3 Animated.Value refs + focus-effect motion contract, just
-  // bundled. Today split #2.
-  const { heroFadeAnim, sectionSlideAnim, sectionFadeAnim } =
-    useTodayMountAnimation();
+  const heroEntrance = useEntranceAnimation({ delay: 0 });
+  const contextEntrance = useEntranceAnimation({ delay: 80 });
+  const macroTilesEntrance = useEntranceAnimation({ delay: 160 });
+  const mealsEntrance = useEntranceAnimation({ delay: 240 });
 
   const streakDays = useMemo(
     () => computeLoggingStreak(byDay as any),
@@ -3404,9 +3342,10 @@ export default function TrackerScreen() {
       StyleSheet.create({
         container: { flex: 1, backgroundColor: colors.background },
         scroll: {
-          paddingHorizontal: Spacing.xl,
-          paddingBottom: 168,
-          gap: Spacing.xxl,
+          paddingHorizontal: Layout.todayScreenPaddingX,
+          paddingBottom: Layout.screenPaddingBottom,
+          gap: Layout.todayScrollGap,
+          paddingTop: Spacing.sm,
         },
 
 
@@ -3420,27 +3359,22 @@ export default function TrackerScreen() {
           paddingHorizontal: Spacing.xl,
         },
         dateNavArrow: { color: colors.textSecondary, fontSize: 22, fontWeight: "600" },
-        dateNavLabel: { color: colors.text, fontSize: 16, fontWeight: "600" },
+        dateNavLabel: { color: colors.text, ...Type.headline },
 
         card: {
           backgroundColor: colors.card,
           borderRadius: Radius.lg,
           borderWidth: 1,
           borderColor: colors.border,
-          padding: Spacing.xl,
+          padding: Spacing.lg,
           gap: Spacing.md,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.06,
-          shadowRadius: 8,
-          elevation: 2,
         },
-        cardTitle: { color: colors.text, fontSize: 16, fontWeight: "700" },
+        cardTitle: { color: colors.text, ...Type.headline },
 
         macroBarBlock: { gap: Spacing.xs, paddingVertical: Spacing.sm },
         macroBarTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 },
-        macroBarTitle: { fontSize: 12, fontWeight: "800", letterSpacing: 1 },
-        macroBarNums: { fontSize: 12, color: colors.textTertiary, fontVariant: ["tabular-nums"] },
+        macroBarTitle: { ...Type.label },
+        macroBarNums: { ...Type.caption, color: colors.textTertiary, fontVariant: ["tabular-nums"] },
         macroBarTrack: {
           height: 6,
           backgroundColor: colors.border,
@@ -3457,9 +3391,9 @@ export default function TrackerScreen() {
           gap: Spacing.md,
         },
         calorieMathItem: { alignItems: "center" },
-        calorieMathNumber: { fontSize: 20, fontWeight: "700", fontVariant: ["tabular-nums"] },
-        calorieMathLabel: { fontSize: 11, color: colors.textSecondary, marginTop: 2 },
-        calorieMathOp: { fontSize: 18, color: colors.textTertiary, fontWeight: "600" },
+        calorieMathNumber: { fontSize: 20, fontWeight: "700", fontVariant: ["tabular-nums"], letterSpacing: -0.3 },
+        calorieMathLabel: { ...Type.caption, color: colors.textSecondary, marginTop: 2 },
+        calorieMathOp: { ...Type.headline, color: colors.textTertiary },
 
         // Meal sections
         mealSlotHeader: {
@@ -3467,9 +3401,9 @@ export default function TrackerScreen() {
           justifyContent: "space-between",
           alignItems: "center",
         },
-        mealSlotName: { fontSize: 18, fontWeight: "700", color: colors.text },
-        mealSlotCals: { fontSize: 15, fontWeight: "600", color: colors.textSecondary, fontVariant: ["tabular-nums"] },
-        mealSlotMacros: { fontSize: 12, color: colors.textSecondary },
+        mealSlotName: { ...Type.headline, color: colors.text },
+        mealSlotCals: { ...Type.body, color: colors.textSecondary, fontVariant: ["tabular-nums"] },
+        mealSlotMacros: { ...Type.caption, color: colors.textSecondary },
         mealRow: {
           flexDirection: "row",
           alignItems: "center",
@@ -3477,21 +3411,21 @@ export default function TrackerScreen() {
           borderTopWidth: 1,
           borderTopColor: colors.border,
         },
-        mealName: { fontSize: 15, fontWeight: "500", color: colors.text },
-        mealMeta: { fontSize: 12, color: colors.textTertiary, marginTop: 2 },
-        mealCals: { fontSize: 16, fontWeight: "600", color: colors.text, fontVariant: ["tabular-nums"] },
+        mealName: { ...Type.body, color: colors.text },
+        mealMeta: { ...Type.caption, color: colors.textTertiary, marginTop: 2 },
+        mealCals: { ...Type.headline, color: colors.text, fontVariant: ["tabular-nums"] },
 
         addFoodBtn: {
           borderWidth: 1,
-          borderColor: Accent.primary + "30",
+          borderColor: colors.border,
           borderRadius: Radius.md,
-          paddingVertical: 14,
+          paddingVertical: 12,
           alignItems: "center",
-          backgroundColor: Accent.primary + "08",
+          backgroundColor: colors.backgroundSecondary,
         },
-        addFoodBtnText: { color: Accent.primary, fontWeight: "700", fontSize: 14 },
+        addFoodBtnText: { color: colors.textSecondary, ...Type.caption, fontWeight: "600" },
 
-        emptyText: { color: colors.textTertiary, textAlign: "center", fontSize: 14 },
+        emptyText: { color: colors.textTertiary, textAlign: "center", ...Type.bodyMuted },
 
         // Add food form
         input: {
@@ -3500,7 +3434,7 @@ export default function TrackerScreen() {
           paddingHorizontal: Spacing.lg,
           paddingVertical: Spacing.md,
           color: colors.text,
-          fontSize: 15,
+          ...Type.body,
         },
         inputRow: { flexDirection: "row", gap: Spacing.sm },
         submitBtn: {
@@ -3509,7 +3443,7 @@ export default function TrackerScreen() {
           paddingVertical: 14,
           alignItems: "center",
         },
-        submitBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+        submitBtnText: { color: "#fff", ...Type.headline },
 
         // Audit 2026-05-04 #34: previously a full-card offline banner
         // crowded the Today top and looked like a content row. Slim pill
@@ -3527,7 +3461,7 @@ export default function TrackerScreen() {
           borderColor: Accent.primary + "30",
           alignSelf: "flex-start",
         },
-        offlineBannerText: { fontSize: 12, fontWeight: "600", color: colors.text },
+        offlineBannerText: { ...Type.caption, fontWeight: "600", color: colors.text },
 
       }),
     [colors],
@@ -4419,8 +4353,7 @@ export default function TrackerScreen() {
             pill. The header gates the pip on day view + isToday +
             ≥2-day streak internally; the host owns the analytics-fire
             transition state via `streakResetCopyVisible`. */}
-        <View style={{ gap: Spacing.md }}>
-          <TodayBrandBar />
+        <View>
           <TodayDateHeader
           viewMode={viewMode}
           onViewModeChange={setViewMode}
@@ -4447,6 +4380,19 @@ export default function TrackerScreen() {
           freezeProtected={protectedDateKeys.has(dateKeyFromDate(new Date()))}
           onStreakPress={() => router.push("/weekly-recap" as never)}
           streakResetCopyVisible={streakJustReset}
+          // Canonical 2026-05-22: Day/Week toggle removed from Today.
+          // Plan tab already shows the week; Today's job is the day.
+          // Two surfaces, one job each. DayStrip (the 7-dot row) stays
+          // because day-nav is the core Today affordance.
+          hideViewModeToggle
+          // Canonical 2026-05-22 C4: drop time-of-day greetings.
+          // Premium calendar/data tools (Cron, Things 3, Notion) don't
+          // greet — the page title alone is enough chrome. Greeting
+          // was "Good morning / afternoon / evening" — now always
+          // undefined so the date header skips the subtitle slot.
+          dayGreeting={
+            undefined
+          }
         />
         </View>
 
@@ -4464,7 +4410,7 @@ export default function TrackerScreen() {
             style={{ backgroundColor: Accent.destructive + "18", borderRadius: Radius.md, padding: Spacing.md, flexDirection: "row", alignItems: "center", gap: Spacing.sm }}
           >
             <AlertCircle size={18} color={Accent.destructive} strokeWidth={1.75} />
-            <Text style={{ flex: 1, fontSize: 13, color: Accent.destructive, fontWeight: "600" }}>
+            <Text style={{ flex: 1, ...Type.caption, color: Accent.destructive, fontWeight: "600" }}>
               {loadError}
               {" Tap to retry."}
             </Text>
@@ -4483,7 +4429,7 @@ export default function TrackerScreen() {
           <Text
             testID="today-missed-yesterday-copy"
             style={{
-              fontSize: 12,
+              ...Type.caption,
               color: colors.textSecondary,
               textAlign: "center",
               paddingHorizontal: Spacing.md,
@@ -4577,7 +4523,7 @@ export default function TrackerScreen() {
                 an Animated.View driven by `heroFadeAnim`. First focus
                 after mount fades 0.85 → 1.0 over 200ms; subsequent
                 focuses are no-ops (latched via `hasMountedFocusRef`). */}
-            <Animated.View style={{ opacity: heroFadeAnim }}>
+            <ReAnimated.View style={heroEntrance.style}>
               <TodayHero
                 consumed={totals.calories}
                 goal={effectiveCalorieGoal}
@@ -4586,29 +4532,20 @@ export default function TrackerScreen() {
                 textSecondaryColor={colors.textSecondary}
                 textTertiaryColor={colors.textTertiary}
                 cardBackgroundColor={colors.card}
-                borderColor={colors.border}
-                trackColor={colors.border}
+                borderColor={colors.cardBorder}
+                trackColor={colors.ringTrack}
                 proteinPct={targets.protein > 0 ? Math.min(totals.protein / targets.protein, 1) : 0}
                 carbsPct={targets.carbs > 0 ? Math.min(totals.carbs / targets.carbs, 1) : 0}
                 fatPct={targets.fat > 0 ? Math.min(totals.fat / targets.fat, 1) : 0}
                 expanded={ringExpanded}
                 onToggleExpanded={() => setRingExpanded((e) => !e)}
                 displayMode={calorieDisplayMode}
-                // 2026-05-12 round 2 (Grace TF revert): long-press is back
-                // to its canonical role — toggle display-mode AND show /
-                // hide the macro sub-rings in lock-step. The short-lived
-                // long-press-opens-explainer experiment was reverted
-                // after the centre delta chip + pill drop made the ring
-                // "super crowded". The explainer is now reached via a
-                // subtle "Why?" link below the ring in TodayHeroRing
-                // (much smaller than the old pill, doesn't fight the
-                // ring's gestures).
                 onToggleDisplayMode={() => {
                   setCalorieDisplayMode((m) => m === "remaining" ? "consumed" : "remaining");
                   setRingExpanded((e) => !e);
                 }}
               />
-            </Animated.View>
+            </ReAnimated.View>
 
             {/* Single context block — priority order: fasting >
                 eat-again > north-star > deficit. Mutually exclusive.
@@ -4616,6 +4553,7 @@ export default function TrackerScreen() {
                 conditionals (sometimes multiple at once); the cap
                 rule (teardown §2) is "never more than one prompt
                 above the meals". */}
+            <ReAnimated.View style={contextEntrance.style}>
             {(() => {
               // 1. Active fast wins outright.
               if (activeFastStart) {
@@ -4628,49 +4566,20 @@ export default function TrackerScreen() {
                 );
               }
               // 1b. Idle "Start fast" removed (Today premium sprint 2026-05-19).
-              // 2. Budget met or exceeded, with one or more re-log
-              //    suggestions that haven't been dismissed today.
-              //    Premium-bar audit DC3 polish (2026-05-14): when
-              //    we have 2+ candidates, render a paginated
-              //    horizontal scroller (MacroFactor parity) instead
-              //    of a single banner. Single-candidate path stays
-              //    on the original banner shape.
-              if (
-                isToday &&
-                eatAgainCandidates.length > 0 &&
-                !eatAgainDismissedForToday &&
-                !(remaining > 0)
-              ) {
-                if (eatAgainCandidates.length === 1) {
-                  return (
-                    <TodayEatAgainBanner
-                      suggestion={eatAgainCandidates[0]!}
-                      slot={currentSlotFromTime}
-                      textColor={colors.text}
-                      textSecondaryColor={colors.textSecondary}
-                      surfaceBackgroundColor={colors.cardBorder}
-                      surfaceBorderColor={colors.border}
-                      onLog={() =>
-                        logHistoryItemToSlot(eatAgainCandidates[0]!, currentSlotFromTime)
-                      }
-                      onDismiss={dismissEatAgain}
-                    />
-                  );
-                }
-                return (
-                  <TodayEatAgainScroller
-                    candidates={eatAgainCandidates}
-                    slot={currentSlotFromTime}
-                    textColor={colors.text}
-                    textSecondaryColor={colors.textSecondary}
-                    secondaryColor={colors.textSecondary}
-                    surfaceBackgroundColor={colors.cardBorder}
-                    surfaceBorderColor={colors.border}
-                    onLog={(item) => logHistoryItemToSlot(item, currentSlotFromTime)}
-                    onDismiss={dismissEatAgain}
-                  />
-                );
-              }
+              // 2. Budget met / over — Eat Again candidates.
+              //    Canonical 2026-05-22 v4: Eat Again is REMOVED from
+              //    the Today surface entirely. The candidate data
+              //    pipeline below (`computeEatAgainCandidatesForSlot`)
+              //    is kept intact so the FAB Log sheet can surface
+              //    "Eat again" as a logging shortcut tab in a follow-
+              //    up. The Today card was visual chrome on a screen
+              //    we're trying to calm down; logging shortcuts
+              //    belong inside the Log sheet, not on the dashboard.
+              //    Grace call: "Move into FAB Log sheet (C2)".
+              //
+              //    NB: dismissal state + reads kept alive so existing
+              //    analytics + tests continue to pass; only the
+              //    render is suppressed.
               // 3. North-star moved below meals (Today premium sprint 2026-05-19).
               // 4. Remaining > 0 with logs already today — deficit
               //    insight summarises pace.
@@ -4696,7 +4605,7 @@ export default function TrackerScreen() {
                     // chrome is now neutral; the leading "~X kcal" line
                     // still carries the primary blue so the number reads
                     // as the focal point.
-                    surfaceBackgroundColor={colors.cardBorder}
+                    surfaceBackgroundColor={colors.card}
                     surfaceBorderColor={colors.border}
                   />
                 );
@@ -4704,6 +4613,7 @@ export default function TrackerScreen() {
               // No context block fits this state.
               return null;
             })()}
+            </ReAnimated.View>
 
             {/* Macro tiles — 2x2 grid. The standalone all-nutrients
                 link that previously floated as a centred row below
@@ -4715,52 +4625,52 @@ export default function TrackerScreen() {
                 with the shared section slide+fade animation. See
                 `sectionSlideAnim` / `sectionFadeAnim` declarations
                 above for the mount-time motion contract. */}
-            <Animated.View
-              style={{
-                opacity: sectionFadeAnim,
-                transform: [{ translateY: sectionSlideAnim }],
-              }}
-            >
-            {macroDisplayStyle === "bars" ? (
-              <TodayDashboardMacroBars
-                trackedMacros={trackedMacros}
-                totals={totals}
-                targets={targets}
-                totalWaterMl={totalWaterMl}
-                waterGoalMl={waterGoalMl}
-                mealsToday={mealsToday}
-                onPressMacro={(macro) => router.push({ pathname: "/macro-detail", params: { macro, date: dayKey } })}
-                cardColor={colors.card}
-                cardBorderColor={colors.cardBorder}
-                borderColor={colors.border}
-                textColor={colors.text}
-                textSecondaryColor={colors.textSecondary}
-                textTertiaryColor={colors.textTertiary}
-                mutedColor={colors.border}
-                netCarbsLensEnabled={netCarbsLensEnabled}
-              />
-            ) : (
-              <TodayDashboardMacroTiles
-                trackedMacros={trackedMacros}
-                totals={totals}
-                targets={targets}
-                totalWaterMl={totalWaterMl}
-                waterGoalMl={waterGoalMl}
-                mealsToday={mealsToday}
-                onPressMacro={(macro) => router.push({ pathname: "/macro-detail", params: { macro, date: dayKey } })}
-                showNutrientsLink={dayNutrientDetailRowsWithoutMacroDupes.length > 0}
-                onPressNutrients={() => setNutrientsModalOpen(true)}
-                cardColor={colors.card}
-                cardBorderColor={colors.cardBorder}
-                borderColor={colors.border}
-                textColor={colors.text}
-                textSecondaryColor={colors.textSecondary}
-                textTertiaryColor={colors.textTertiary}
-                mutedColor={colors.border}
-                netCarbsLensEnabled={netCarbsLensEnabled}
-              />
-            )}
-            </Animated.View>
+            <ReAnimated.View style={macroTilesEntrance.style}>
+              {/* Canonical 2026-05-22 v4: the `macroDisplayStyle`
+                  Settings preference is honoured again now that the
+                  multi-ring has been restored. The C1 single-ring
+                  experiment hardcoded MacroBars; the revival reverts
+                  to the user-controllable toggle. Default still ships
+                  bars (set in `macroDisplayStyle.ts`); tiles is the
+                  opt-in alternate for the Cronometer-style grid look. */}
+              {macroDisplayStyle === "tiles" ? (
+                <TodayDashboardMacroTiles
+                  trackedMacros={trackedMacros}
+                  totals={totals}
+                  targets={targets}
+                  totalWaterMl={totalWaterMl}
+                  waterGoalMl={waterGoalMl}
+                  mealsToday={mealsToday}
+                  onPressMacro={(macro) => router.push({ pathname: "/macro-detail", params: { macro, date: dayKey } })}
+                  cardColor={colors.card}
+                  cardBorderColor={colors.cardBorder}
+                  borderColor={colors.border}
+                  textColor={colors.text}
+                  textSecondaryColor={colors.textSecondary}
+                  textTertiaryColor={colors.textTertiary}
+                  mutedColor={colors.border}
+                  netCarbsLensEnabled={netCarbsLensEnabled}
+                />
+              ) : (
+                <TodayDashboardMacroBars
+                  trackedMacros={trackedMacros}
+                  totals={totals}
+                  targets={targets}
+                  totalWaterMl={totalWaterMl}
+                  waterGoalMl={waterGoalMl}
+                  mealsToday={mealsToday}
+                  onPressMacro={(macro) => router.push({ pathname: "/macro-detail", params: { macro, date: dayKey } })}
+                  cardColor={colors.card}
+                  cardBorderColor={colors.cardBorder}
+                  borderColor={colors.border}
+                  textColor={colors.text}
+                  textSecondaryColor={colors.textSecondary}
+                  textTertiaryColor={colors.textTertiary}
+                  mutedColor={colors.border}
+                  netCarbsLensEnabled={netCarbsLensEnabled}
+                />
+              )}
+            </ReAnimated.View>
             {/* TodayMicrosWidget removed 2026-05-02 (revert PR #30) —
                 user feedback: 4-tile widget on Today canvas duplicated
                 fibre and over-cluttered the screen. Micronutrient depth
@@ -4800,15 +4710,7 @@ export default function TrackerScreen() {
             kept. Web parallel ships in NutritionTracker.tsx. */}
 
         {viewMode === "day" && (
-          /* Feature 9 (2026-05-14, premium-bar audit) — wrapped with
-             the shared section slide+fade animation; see
-             `sectionSlideAnim` / `sectionFadeAnim`. */
-          <Animated.View
-            style={{
-              opacity: sectionFadeAnim,
-              transform: [{ translateY: sectionSlideAnim }],
-            }}
-          >
+          <ReAnimated.View style={mealsEntrance.style}>
           <TodayMealsSection
             slots={MEAL_SLOTS}
             mealGroups={mealGroups}
@@ -4843,32 +4745,39 @@ export default function TrackerScreen() {
             onAcceptUsualMealHint={acceptUsualMealHint}
             aiFirstLogTooltipMealId={aiFirstLogTooltipMealId}
             onDismissAiFirstLogTooltip={dismissAiFirstLogTooltip}
+            quickAddCollapsed={quickAddCollapsed}
+            onToggleQuickAddCollapsed={() => void toggleQuickAddCollapsed()}
+            quickAddPanel={
+              quickAddPrefLoaded ? (
+                <QuickAddPanel
+                  byDay={byDay}
+                  activeSlot={activeMealSlot}
+                  supabase={supabase}
+                  userId={userId ?? ""}
+                  onLog={(item) => logHistoryItemToSlot(item, activeMealSlot)}
+                  onLogSavedMeal={(meal, slot) => logSavedMealFromPanel(meal, slot)}
+                  onOpenSaveCombo={(slot) => {
+                    if (slot) openSaveMealSheetForSlot(slot);
+                  }}
+                  savedMealsRefreshToken={savedMealsRefreshToken}
+                />
+              ) : null
+            }
           />
-          </Animated.View>
+          </ReAnimated.View>
         )}
 
-        {/* Below-meals prompts (Today premium sprint 2026-05-19). */}
-        {viewMode === "day" && isToday && remaining > 0 && mealsToday.length === 0 && (
-          <NorthStarBlockHost
-            viewMode={viewMode}
-            savedRecipesForLibrary={savedRecipesForLibrary}
-            remainingCalories={remaining}
-            remainingProtein={remainingProtein}
-            remainingCarbs={remainingCarbs}
-            remainingFat={remainingFat}
-            onPrimaryCta={(recipeId) => router.push(`/recipe/${recipeId}`)}
-            onBrowseLibrary={() => router.push("/(tabs)/library")}
-            selectedDateKey={dayKey}
-            userCreatedAt={session?.user?.created_at ?? null}
-            hasEverLoggedAnyMeal={Object.values(byDay).some(
-              (meals) => Array.isArray(meals) && meals.length > 0,
-            )}
-          />
-        )}
-        {viewMode === "day" &&
-          isToday &&
-          isCheckinBannerDay &&
-          checkinBannerDismissed === false && (
+        {/* 2026-05-23 — NorthStarBlockHost removed from Today's main
+            scroll (Grace ask: "this needs to have recently logged /
+            your usuals and suggestions etc"). The "Pick recipes" /
+            "what to eat next" / "library empty" prompts were stacking
+            below the meal slots even when the plan already had
+            recipes, reading as stale discovery clutter on a screen
+            whose job is at-a-glance adherence. Discovery + suggestions
+            now live inside the central + LogSheet (`LogSheet.tsx`)
+            where the user actually goes when they want to log
+            something. */}
+        {showBelowMealsCheckin && (
             <WeeklyCheckinBanner
               textColor={colors.text}
               textSecondaryColor={colors.textSecondary}
@@ -4878,23 +4787,18 @@ export default function TrackerScreen() {
               }}
             />
           )}
-        {viewMode === "day" && isToday && mealsToday.length > 0 && (
+        {showBelowMealsNudge && (
           <OnboardingNudgeBanner
             mealsTodayCount={mealsToday.length}
             libraryCount={savedLibraryRecipes.length}
           />
         )}
-        {viewMode === "day" && isToday && mealsToday.length === 0 && (
-          <TodaySnapShortcut
-            onPress={() => {
-              track(AnalyticsEvents.today_snap_shortcut_tapped, {
-                tier: userTier,
-              });
-              setPhotoLogOpen(true);
-            }}
-            locked={false}
-          />
-        )}
+        {/* 2026-05-23 — TodaySnapShortcut removed from Today's main
+            scroll (Grace: "this can also be kept to the logging
+            section to keep things clean"). The camera icon already
+            lives in LogSheet's search row as a peer entry method
+            alongside barcode + voice, so discoverability isn't lost —
+            it just stops competing with the meal slots on Today. */}
         {viewMode === "day" &&
           isToday &&
           hydrated &&
@@ -4921,55 +4825,6 @@ export default function TrackerScreen() {
               cardBorderColor={colors.cardBorder}
             />
           )}
-        {viewMode === "day" && quickAddPrefLoaded && (
-          <View style={{ marginTop: Spacing.md, marginBottom: Spacing.md }}>
-            <Pressable
-              onPress={() => void toggleQuickAddCollapsed()}
-              accessibilityRole="button"
-              accessibilityLabel={quickAddCollapsed ? "Show quick add" : "Hide quick add"}
-              accessibilityState={{ expanded: !quickAddCollapsed }}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                paddingVertical: Spacing.sm,
-                paddingHorizontal: Spacing.md,
-              }}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
-                <Zap size={16} color={colors.textSecondary} strokeWidth={1.75} />
-                <Text style={{ fontSize: 13, fontWeight: "600", color: colors.textSecondary }}>
-                  Quick add
-                </Text>
-                <Text numberOfLines={1} style={{ flexShrink: 1, fontSize: 12, color: colors.textTertiary }}>
-                  Your usuals
-                </Text>
-              </View>
-              {quickAddCollapsed ? (
-                <ChevronDown size={16} color={colors.textTertiary} strokeWidth={2} />
-              ) : (
-                <ChevronUp size={16} color={colors.textTertiary} strokeWidth={2} />
-              )}
-            </Pressable>
-            {!quickAddCollapsed && (
-              <View style={{ marginTop: Spacing.sm }}>
-                <QuickAddPanel
-                  byDay={byDay}
-                  activeSlot={activeMealSlot}
-                  supabase={supabase}
-                  userId={userId ?? ""}
-                  onLog={(item) => logHistoryItemToSlot(item, activeMealSlot)}
-                  onLogSavedMeal={(meal, slot) => logSavedMealFromPanel(meal, slot)}
-                  onOpenSaveCombo={(slot) => {
-                    if (slot) openSaveMealSheetForSlot(slot);
-                  }}
-                  savedMealsRefreshToken={savedMealsRefreshToken}
-                />
-              </View>
-            )}
-          </View>
-        )}
-
         {/* Planned meals from the planner */}
         {viewMode === "day" && plannedMeals.length > 0 && (
           <TodayPlannedMealsCard
@@ -5038,7 +4893,7 @@ export default function TrackerScreen() {
             accessibilityLabel="Connect health"
             style={{ paddingVertical: 4, marginBottom: Spacing.sm }}
           >
-            <Text style={{ fontSize: 12, color: Accent.primary, fontWeight: "600", textAlign: "center" }}>
+            <Text style={{ ...Type.caption, color: colors.textSecondary, fontWeight: "600", textAlign: "center" }}>
               Connect health
             </Text>
           </Pressable>
@@ -5078,6 +4933,13 @@ export default function TrackerScreen() {
             profileActivityLevel={profileActivityLevel}
             maintenanceSource={profileMaintenanceSource}
             maintenanceConfidence={profileMaintenanceConfidence}
+            preferActivityAdjustedCalories={preferActivityAdjustedCalories}
+            showActivityBudgetDiscoverBanner={activityBudgetDiscoverDismissed === false}
+            onEnableActivityBudget={() => {
+              void persistPreferActivityAdjustedCalories(true);
+              dismissActivityBudgetDiscover();
+            }}
+            onDismissActivityBudgetDiscover={dismissActivityBudgetDiscover}
             styles={styles}
             textColor={colors.text}
             textSecondaryColor={colors.textSecondary}
@@ -5130,7 +4992,7 @@ export default function TrackerScreen() {
             accessibilityLabel="Track hydration"
             style={{ paddingVertical: 4, marginBottom: Spacing.sm }}
           >
-            <Text style={{ fontSize: 12, color: Accent.primary, fontWeight: "600", textAlign: "center" }}>
+            <Text style={{ ...Type.caption, color: colors.textSecondary, fontWeight: "600", textAlign: "center" }}>
               Track hydration?
             </Text>
           </Pressable>
@@ -5161,24 +5023,11 @@ export default function TrackerScreen() {
               alignItems: "center",
             }}
           >
-            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>Complete Day</Text>
+            <Text style={{ color: "#fff", ...Type.headline }}>Complete Day</Text>
           </Pressable>
         )}
 
       </ScrollView>
-
-      {/* 30-day milestone moment (PR claude/today-30-day-milestone,
-          2026-05-02). Fires once per user when they cross 30 distinct
-          logged days. Pure trust moment — single CTA, no paywall. */}
-      <Milestone30DayModal
-        visible={milestone30Open}
-        content={milestone30Content}
-        onDismiss={handleMilestone30Dismiss}
-        cardColor={colors.card}
-        textColor={colors.text}
-        textSecondaryColor={colors.textSecondary}
-        borderColor={colors.border}
-      />
 
       {/* Weekly TDEE check-in ritual (PR claude/weekly-checkin-ritual-v2,
           2026-05-02 — rebuild of #26). MacroFactor-style soft prompt
@@ -5501,7 +5350,7 @@ export default function TrackerScreen() {
             <View style={{ flexShrink: 1 }}>
               <Text
                 style={{
-                  fontSize: 15,
+                  ...Type.body,
                   fontWeight: "700",
                   color: colors.text,
                 }}
@@ -5510,8 +5359,7 @@ export default function TrackerScreen() {
               </Text>
               <Text
                 style={{
-                  fontSize: 12,
-                  fontWeight: "500",
+                  ...Type.caption,
                   color: colors.textSecondary,
                   marginTop: 2,
                 }}
@@ -5735,8 +5583,8 @@ export default function TrackerScreen() {
         }}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md }}>
             <View>
-              <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text }}>Quick add</Text>
-              <Text style={{ fontSize: 12, color: Accent.primary, fontWeight: "600", marginTop: 2 }}>
+              <Text style={{ ...Type.headline, color: colors.text }}>Quick add</Text>
+              <Text style={{ ...Type.caption, color: Accent.primary, fontWeight: "600", marginTop: 2 }}>
                 Logging to {activeMealSlot}
               </Text>
             </View>

@@ -1,7 +1,7 @@
 import React from "react";
 import { Pressable, Text, View } from "react-native";
 import { Plus, Sparkles } from "lucide-react-native";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 
 /**
  * TodayFirstMealEmptyState — friendly empty card surfaced under the
@@ -54,17 +54,17 @@ export function TodayFirstMealEmptyState({
         borderWidth: 1,
         borderColor: cardBorderColor,
         padding: Spacing.lg,
-        marginBottom: Spacing.lg,
+        marginBottom: Spacing.md,
         alignItems: "center",
         gap: 10,
       }}
     >
-      <Text style={{ fontSize: 15, fontWeight: "700", color: textColor, textAlign: "center" }}>
+      <Text style={{ ...Type.body, fontWeight: "700", color: textColor, textAlign: "center" }}>
         Ready to log your first meal?
       </Text>
       <Text
         style={{
-          fontSize: 12,
+          ...Type.caption,
           color: textSecondaryColor,
           textAlign: "center",
           paddingHorizontal: 8,
@@ -81,7 +81,7 @@ export function TodayFirstMealEmptyState({
       <Text
         testID="first-meal-empty-supportive-copy"
         style={{
-          fontSize: 12,
+          ...Type.caption,
           color: textSecondaryColor,
           textAlign: "center",
           paddingHorizontal: 8,
@@ -105,7 +105,7 @@ export function TodayFirstMealEmptyState({
         }}
       >
         <Plus size={16} color="#fff" />
-        <Text style={{ fontSize: 13, fontWeight: "700", color: "#fff" }}>Log a meal</Text>
+        <Text style={{ ...Type.body, fontWeight: "700", color: "#fff" }}>Log a meal</Text>
       </Pressable>
       {showTip && (
         <View
@@ -122,7 +122,7 @@ export function TodayFirstMealEmptyState({
           <Sparkles size={11} color={textSecondaryColor} />
           <Text
             style={{
-              fontSize: 11,
+              ...Type.caption,
               color: textSecondaryColor,
               flexShrink: 1,
               textAlign: "center",
@@ -137,7 +137,7 @@ export function TodayFirstMealEmptyState({
             accessibilityLabel="Dismiss tip"
             style={{ paddingHorizontal: 4 }}
           >
-            <Text style={{ fontSize: 14, color: textSecondaryColor, fontWeight: "600" }}>×</Text>
+            <Text style={{ ...Type.body, color: textSecondaryColor }}>×</Text>
           </Pressable>
         </View>
       )}

@@ -66,7 +66,7 @@ describe("F-80 — meal-card header survives `Log usual` chip", () => {
   });
 
   it("Log-usual chip caps maxWidth and is itself flexShrink: 1", () => {
-    expect(SRC.mealsSection).toMatch(/maxWidth:\s*160[^}]*flexShrink:\s*1/s);
+    expect(SRC.mealsSection).toMatch(/maxWidth:\s*180[^}]*flexShrink:\s*1/s);
   });
 });
 

@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { hasE2ECredentials, loginWithTestUser } from "../utils/auth";
+import { hasE2ECredentials } from "../utils/auth";
 
 /**
  * Create recipe — bulk paste + verify (mocked API so CI does not need USDA keys).
@@ -23,17 +23,15 @@ test.describe("Recipe create — paste ingredient list", () => {
       });
     });
 
-    await loginWithTestUser(page);
+    await page.goto("/create", { waitUntil: "domcontentloaded" });
 
     const acceptBtn = page.getByRole("button", { name: /accept all/i });
     if (await acceptBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
       await acceptBtn.click();
     }
-
-    await page.goto("/?view=upload");
-    await expect(
-      page.getByRole("heading", { name: /Recipe Creator|Create Recipe/i }).first(),
-    ).toBeVisible({ timeout: 25_000 });
+    await expect(page.getByRole("heading", { name: /^Create recipe$/i })).toBeVisible({
+      timeout: 25_000,
+    });
 
     await page.getByRole("button", { name: /Paste ingredient list/i }).click();
     await expect(page.getByRole("heading", { name: /Paste ingredient list/i })).toBeVisible();
@@ -42,7 +40,10 @@ test.describe("Recipe create — paste ingredient list", () => {
     await box.fill("1 cup flour\n2 eggs");
     await page.getByRole("button", { name: /Match to database/i }).click();
 
-    await expect(page.getByText(/flour/i).first()).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText(/eggs/i).first()).toBeVisible({ timeout: 15_000 });
+    const nameInputs = page.getByPlaceholder("Ingredient name");
+    await expect(nameInputs).toHaveCount(2, { timeout: 15_000 });
+    await expect(nameInputs.nth(0)).toHaveValue(/flour/i);
+    await expect(nameInputs.nth(1)).toHaveValue(/eggs/i);
+    await expect(page.getByText(/Wheat flour/i)).toBeAttached();
   });
 });

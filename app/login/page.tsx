@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { LoginClient } from "./ui";
 
 type LoginPageProps = {
@@ -5,26 +6,17 @@ type LoginPageProps = {
 };
 
 /**
- * Debug audit 2026-05-04 (customer-lens P0 #8 + P2 #17): the landing's
- * "Sign in" CTA routes to `/login`, while "Get started" / "Sign up"
- * routes to `/onboarding` (the canonical signup surface). With the
- * old default, a returning user clicking "Sign in" landed on `/login`
- * with the **Sign Up** tab selected, an empty password field, and a
- * subtitle reading "Free to start. Set your targets and plan your
- * first week." A user could complete signup here and end up at /home
- * with no targets / no onboarding profile — bypassing the canonical
- * onboarding flow entirely.
+ * Canonical sign-in route (`/login`). Sign-up lives at `/signup`.
  *
- * Now: `/login` defaults to **signin** mode. Account creation lives
- * at /onboarding. Tabs remain visible so a user who arrived in error
- * can still switch, but the default reflects what the route is for.
- * Pass `?mode=signup` to opt in to the signup tab from this route
- * (used by historic deep links).
+ * Historic `?mode=signup` deep links redirect to the dedicated signup
+ * page so `/login` stays sign-in-only (Premium P1 / RTP-5).
  */
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const sp = await searchParams;
   const raw = sp.mode;
   const modeStr = Array.isArray(raw) ? raw[0] : raw;
-  const initialMode = modeStr === "signup" ? "signup" : "signin";
-  return <LoginClient initialMode={initialMode} />;
+  if (modeStr === "signup") {
+    redirect("/signup");
+  }
+  return <LoginClient initialMode="signin" hideTabs />;
 }

@@ -25,6 +25,7 @@ const TARGETS: PlannerTargets = {
   protein: 150,
   carbs: 200,
   fat: 65,
+  fiber: 28,
   calorieBandPct: 12,
   carbFatBandPct: 18,
 };

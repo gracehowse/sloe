@@ -177,6 +177,7 @@ export default defineConfig({
       // useAnimatedStyle, createAnimatedComponent) so render tests can
       // mount the components without exercising animation internals.
       { find: /^react-native-reanimated$/, replacement: path.resolve(__dirname, "./tests/shims/react-native-reanimated.cjs") },
+      { find: /^lucide-react-native$/, replacement: path.resolve(__dirname, "./tests/shims/lucide-react-native.cjs") },
     ],
   },
 });

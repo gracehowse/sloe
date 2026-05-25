@@ -120,21 +120,47 @@ const Animated = {
   createAnimatedComponent,
 };
 
-module.exports = {
-  __esModule: true,
-  default: Animated,
-  Animated,
-  useSharedValue,
-  useAnimatedStyle,
-  useAnimatedProps,
-  useDerivedValue,
-  withTiming,
-  withSpring,
-  withSequence,
-  withRepeat,
-  withDelay,
-  runOnJS,
-  runOnUI,
-  Easing,
-  createAnimatedComponent,
-};
+function layoutEntering() {
+  const chain = {
+    delay: () => chain,
+    duration: () => chain,
+    springify: () => chain,
+  };
+  return chain;
+}
+
+const FadeInDown = layoutEntering();
+const FadeIn = layoutEntering();
+const FadeOut = layoutEntering();
+const FadeOutDown = layoutEntering();
+const SlideInDown = layoutEntering();
+const SlideOutDown = layoutEntering();
+
+function useReducedMotion() {
+  return false;
+}
+
+module.exports = Animated;
+module.exports.__esModule = true;
+module.exports.default = Animated;
+module.exports.Animated = Animated;
+module.exports.FadeInDown = FadeInDown;
+module.exports.FadeIn = FadeIn;
+module.exports.FadeOut = FadeOut;
+module.exports.FadeOutDown = FadeOutDown;
+module.exports.SlideInDown = SlideInDown;
+module.exports.SlideOutDown = SlideOutDown;
+module.exports.useSharedValue = useSharedValue;
+module.exports.useAnimatedStyle = useAnimatedStyle;
+module.exports.useAnimatedProps = useAnimatedProps;
+module.exports.useDerivedValue = useDerivedValue;
+module.exports.withTiming = withTiming;
+module.exports.withSpring = withSpring;
+module.exports.withSequence = withSequence;
+module.exports.withRepeat = withRepeat;
+module.exports.withDelay = withDelay;
+module.exports.runOnJS = runOnJS;
+module.exports.runOnUI = runOnUI;
+module.exports.Easing = Easing;
+module.exports.createAnimatedComponent = createAnimatedComponent;
+module.exports.useReducedMotion = useReducedMotion;

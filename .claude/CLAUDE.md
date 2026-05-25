@@ -2,6 +2,16 @@
 
 This is one product across web and mobile.
 
+## Decision framework — before answering
+
+Before answering any non-trivial question or implementing a change:
+
+1. List the top 3 ways this could fail in production or real-world usage.
+2. Give 3 alternative approaches with trade-offs.
+3. Rate your confidence from 1-10 and explain what you are uncertain about.
+
+Then provide your recommended approach.
+
 ## Non-negotiable rules
 - Web and mobile must stay in sync at all times
 - No feature is complete without:
@@ -24,6 +34,7 @@ This is one product across web and mobile.
 - Strong state handling
 - Clear user journeys
 - No accidental divergence between platforms
+- **No screen file over 400 lines.** If a component grows past 400 lines, extract a `use<Screen>()` hook or break child components into their own files. The 3,400-line `(tabs)/index.tsx` and 2,671-line `NutritionTracker.tsx` are legacy — every new touch should move toward the 400-line target, not away from it. (ENG-621)
 
 ## Required workflow
 For any meaningful feature, fix, or change:

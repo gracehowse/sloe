@@ -29,6 +29,7 @@ import {
   Bell,
   BookOpen,
   Calendar,
+  ChevronDown,
   ChevronRight,
   CheckCircle2,
   CheckSquare,
@@ -616,6 +617,11 @@ export function SettingsBundleContent({ context }: { context: Context }) {
   const [eraseConfirmInput, setEraseConfirmInput] = useState("");
   const [widgetPickerOpen, setWidgetPickerOpen] = useState(false);
   const [weekStartPickerOpen, setWeekStartPickerOpen] = useState(false);
+  // Audit 2026-05-22 subtractive: Promo code block was always-expanded
+  // (input field + Apply button + caption visible for every user even
+  // when most never use a code). Collapsed by default behind a chevron
+  // row that mirrors the Membership row pattern; expands on tap.
+  const [promoExpanded, setPromoExpanded] = useState(false);
   const [trackedMacros, setTrackedMacros] = useState<string[]>([
     "protein",
     "carbs",
@@ -1216,44 +1222,48 @@ export function SettingsBundleContent({ context }: { context: Context }) {
       </View>
 
       {/* Stats strip — Recipes / Streak.
-          Audit 2026-05-04 #21: streak=0 styled identically to a positive
-          streak (green) was misleading. Default text colour for 0;
-          green only when the user genuinely has a streak ≥ 1.
-          Audit P1 ENG-40 (2026-05-15): streak=0 still anchored on a
-          literal "0". Render an em-dash for zero — same shape as the
-          Today hero rule (`feedback_no_duplicate_today_hero_content`)
-          applied here for adjacency consistency. The empty state reads
-          as "no streak yet" rather than "0 streak". */}
-      <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
-        {(
-          [
-            [String(profileData.savedCount), "Recipes", t.accent],
-            [profileData.streak > 0 ? String(profileData.streak) : "—", "Streak", profileData.streak > 0 ? t.green : colors.textTertiary],
-          ] as [string, string, string][]
-        ).map(([v, l, c]) => (
-          <Pressable
-            key={l}
-            style={{
-              flex: 1,
-              alignItems: "center",
-              paddingVertical: 12,
-              borderRadius: 14,
-              backgroundColor: colors.card,
-              borderWidth: 1,
-              borderColor: colors.cardBorder,
-            }}
-          >
-            <Text style={{ fontSize: 18, fontWeight: "700", color: c }}>
-              {v}
-            </Text>
-            <Text
-              style={{ fontSize: 10, color: colors.textTertiary, marginTop: 2 }}
+          Audit 2026-05-22 subtractive: hide tiles whose value is zero
+          (and the whole row if both are zero). "0 Recipes · — Streak"
+          on a brand-new account read as dead chrome — two tiles
+          shouting nothing. Tiles reappear individually as the user
+          accumulates a streak or saves a recipe, so the row earns its
+          space rather than reserving it pre-emptively. */}
+      {(profileData.savedCount > 0 || profileData.streak > 0) ? (
+        <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
+          {(
+            [
+              profileData.savedCount > 0
+                ? [String(profileData.savedCount), "Recipes", t.accent]
+                : null,
+              profileData.streak > 0
+                ? [String(profileData.streak), "Streak", t.green]
+                : null,
+            ].filter((x): x is [string, string, string] => x !== null)
+          ).map(([v, l, c]) => (
+            <Pressable
+              key={l}
+              style={{
+                flex: 1,
+                alignItems: "center",
+                paddingVertical: 12,
+                borderRadius: 14,
+                backgroundColor: colors.inputBg,
+                borderWidth: 1,
+                borderColor: c + "55",
+              }}
             >
-              {l}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+              <Text style={{ fontSize: 18, fontWeight: "700", color: c }}>
+                {v}
+              </Text>
+              <Text
+                style={{ fontSize: 10, color: colors.textTertiary, marginTop: 2 }}
+              >
+                {l}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
 
       {/* Membership — restructured 2026-05-01
           (`claude/settings-mobile-structural-fix` P0-1). The card now
@@ -1374,26 +1384,41 @@ export function SettingsBundleContent({ context }: { context: Context }) {
         ) : null}
         {/* Promo-code redemption — testers + creator codes. Sits
             beneath both upgrade / manage rows so it's reachable
-            regardless of tier. Logic lives in `usePromoCode`. */}
-        <View
+            regardless of tier. Logic lives in `usePromoCode`.
+            Audit 2026-05-22: collapsed by default — most users will
+            never redeem a code. Tap the row to expand the input. */}
+        <Pressable
+          testID="settings-bundle-promo-code-toggle"
+          onPress={() => setPromoExpanded((v) => !v)}
+          accessibilityRole="button"
+          accessibilityLabel={promoExpanded ? "Collapse promo code" : "Have a promo code?"}
           style={{
-            paddingHorizontal: 14,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 12,
             paddingVertical: 14,
-            gap: 10,
+            paddingHorizontal: 14,
             borderTopWidth: 1,
             borderTopColor: colors.cardBorder,
           }}
         >
-          <Text
-            style={{
-              fontSize: 14,
-              fontWeight: "700",
-              color: colors.text,
-              letterSpacing: -0.1,
-            }}
-          >
-            Promo code
+          <Text style={{ flex: 1, fontSize: 14, fontWeight: "600", color: colors.text }}>
+            Have a promo code?
           </Text>
+          {promoExpanded ? (
+            <ChevronDown size={16} color={colors.textTertiary} strokeWidth={1.75} />
+          ) : (
+            <ChevronRight size={16} color={colors.textTertiary} strokeWidth={1.75} />
+          )}
+        </Pressable>
+        {promoExpanded ? (
+        <View
+          style={{
+            paddingHorizontal: 14,
+            paddingBottom: 14,
+            gap: 10,
+          }}
+        >
           <Text style={{ fontSize: 12, color: colors.textSecondary }}>
             Enter your code exactly as provided (letters are not
             case-sensitive).
@@ -1438,6 +1463,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
             </Pressable>
           </View>
         </View>
+        ) : null}
       </View>
 
       {/* Household — hides when the user isn't in a household */}
@@ -1754,10 +1780,10 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           icon={macroDisplayStyle === "bars" ? AlignLeft : LayoutGrid}
           iconColor={t.accent}
           label="Macro display"
-          description="Choose how today's macros render below the calorie ring."
+          description="Tiles = 2×2 squares (recommended). Bars = one full-width list."
           options={[
-            { value: "tiles", label: "Tiles" },
-            { value: "bars", label: "Bars" },
+            { value: "tiles", label: "Tiles (2×2)" },
+            { value: "bars", label: "Bars (list)" },
           ]}
           value={macroDisplayStyle}
           onChange={(next) => setMacroDisplayStyle(next as MacroDisplayStyle)}

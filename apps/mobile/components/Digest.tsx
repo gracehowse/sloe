@@ -24,7 +24,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Accent, Elevation, Radius, Spacing } from "@/constants/theme";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import type { SavedMealItem } from "@suppr/shared/nutrition/savedMeals";
@@ -267,6 +267,7 @@ export function Digest(props: DigestProps) {
         borderColor: colors.cardBorder,
         padding: Spacing.lg,
         marginBottom: 14,
+        ...Elevation.card,
       }}
     >
       {/* Dismiss */}

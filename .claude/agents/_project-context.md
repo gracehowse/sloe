@@ -20,7 +20,7 @@ The product is a **macro-tracker spine** with recipes, planning, and nutrition c
 ## Strategic direction (locked 2026-04-27)
 
 17 ratified decisions; the load-bearing ones every agent must respect:
-- **4 tabs** in mobile (Today / Plan / Recipes / More — Profile collapsed into More)
+- **4 tabs** in mobile (Today / Plan / Recipes / Progress — Profile/Settings collapsed into Progress; canonical label is "Progress", testID stays `tab-you` for Maestro)
 - **Free + Pro** (no third tier)
 - **Canonical Today** is the home and the spine; everything else is a branch off it
 - **"What to eat next"** is the north-star moment — the question the product answers better than any competitor
@@ -79,6 +79,18 @@ Both mobile and web use this mapping. **Other over-budget signals (macros, sodiu
 
 ---
 
+## Screen file size limit
+
+Screen-level files (`app/(tabs)/*.tsx`, `app/*.tsx` on mobile; page-level components on web) must stay under **400 lines**. When a screen file approaches this limit:
+
+1. Extract hooks into a co-located `use<Screen>.ts` (composition root pattern — see ENG-619 for the canonical example).
+2. Extract sub-sections into `components/<screen>/` with one component per file.
+3. Keep the screen file as a thin composition shell: imports, layout, data wiring.
+
+Files over 400 lines signal that state, layout, and logic are tangled. The limit is enforced by convention (no lint rule yet — see ENG-119 for the type-ladder lint precedent).
+
+---
+
 ## Prototype carryover rules
 
 The Claude Design bundles at `docs/ux/claude-design-bundles/{prototype,onboarding}` are the **design language reference**. Not a mandate.
@@ -99,10 +111,14 @@ The Claude Design bundles at `docs/ux/claude-design-bundles/{prototype,onboardin
 **Default:** web and mobile must match in feature presence, flow shape, naming, microcopy, event names, states.
 
 **Documented intentional divergences (do NOT flag as drift):**
-- **Pricing default billing period** — web `/pricing` defaults monthly (cold-traffic anchor); mobile paywall defaults annual (trial SKU + paywall conversion surface). Both surfaces show both options.
-- **Move-meal** — `MoveMealSheet.tsx` exists on mobile only. Web `/planner` has no equivalent. Deferred, not drift.
-- **Recipe Go Public** — `GoPublicDialog` exists on web only. Mobile is import-only by design.
-- **Onboarding Welcome copy** — web "Join the Suppr Club" vs mobile prototype copy. Carve-out logged 2026-04-21.
+- **Onboarding step count** — web N/13 vs mobile N/12 (mobile refresh-plan step). Intentional.
+- **iOS-only build target** — Android config is vestigial; not a parity gap.
+- **Calorie-ring colour map** — empty=gradient, under=success green, over=destructive red (other over-budget signals stay amber).
+- **Stripe (web) vs IAP (mobile)** billing rails — entitlements reconcile in `profiles.user_tier`.
+- **Apple Health / Apple Sign-In** — mobile-first/native; web has manual equivalents.
+- **Today dark surface tone** — mobile `#0a0a0f` vs web `#101014` (platform-native depth).
+
+**RETIRED 2026-05-25 (now converging to parity — no longer carve-outs):** pricing default → unify monthly (ENG-698); move-meal → web `/planner` (ENG-699); Recipe Go Public → mobile (ENG-700); onboarding Welcome copy → fresh pass (ENG-697); Discover IA → converge to web layout (ENG-695). See `docs/decisions/2026-05-25-sweep-parity-ia-pricing-resolutions.md`.
 
 **Implication:** every meaningful UI decision Grace makes on mobile must land on the equivalent web surface in the same commit, *unless* the change is on the documented carve-out list above.
 
@@ -164,9 +180,9 @@ Grace is the only TestFlight tester until she says otherwise. Scope cohort think
 - `apps/mobile/app/(tabs)/index.tsx` — Today
 - `apps/mobile/app/(tabs)/planner.tsx` — Plan
 - `apps/mobile/app/(tabs)/library.tsx` — Recipes
-- `apps/mobile/app/(tabs)/more.tsx` — More (Profile collapsed in here)
+- `apps/mobile/app/(tabs)/progress.tsx` — Progress (the 4th bottom tab, label "Progress"; Profile/Settings collapsed in). `more.tsx` also exists as a secondary route, not the bottom-tab label.
 
-(User-facing tab labels per 2026-04-27 strategic direction: **Today / Plan / Recipes / More**. The file names and the user-facing labels intentionally differ — don't flag this as drift.)
+(User-facing tab labels per the 2026-05-19 IA: **Today / Plan / Recipes / Progress**. File names and labels intentionally differ — e.g. the Progress tab keeps testID `tab-you` for Maestro stability — don't flag this as drift.)
 
 ### Landing SSOT
 - `src/lib/landing/content.ts` — single source of truth for all landing/pricing/roadmap claims. Re-exports algorithm constants (`adaptiveTdee.ts` thresholds, `FREE_SAVE_LIMIT`, etc.) so marketing copy never hardcodes numbers.
@@ -235,7 +251,7 @@ For each integration, agents must enforce: signature verification on webhooks, i
 
 - **Free + Pro** tier structure (locked 2026-04-27 strategic direction — no third tier)
 - Pricing copy in `src/lib/landing/content.ts` (`PRICING_TIERS`)
-- Web `/pricing` defaults monthly; mobile paywall defaults annual (intentional divergence — see top of this file)
+- Web `/pricing` + mobile paywall both default **monthly** (unified 2026-05-25, ENG-698; pricing-default-divergence doc RETIRED — verify IAP trial SKU)
 - Region-aware required: currency, tax, disclosure all vary
 - UK/EU consumer VAT applies from £1/€1 — prices VAT-inclusive on those surfaces; Stripe Tax in inclusive mode
 - Web billing → Stripe direct; mobile billing → RevenueCat / App Store

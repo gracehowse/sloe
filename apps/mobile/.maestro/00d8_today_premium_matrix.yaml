@@ -1,0 +1,23 @@
+# @cases TC-TODAY-PREMIUM-MATRIX
+# @screen (tabs)/index
+# ENG-575 / ENG-582 — mobile sim captures (light). Run after:
+#   npx tsx scripts/e2e-seed-today-premium-matrix.ts
+appId: com.supprclub.supprapp
+name: "Today premium matrix — sim captures"
+---
+- runFlow: shared/login.yaml
+
+- tapOn:
+    id: "tab-today"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# Today (offset 0) — eat-again / logged day
+- takeScreenshot: screenshots/latest/capture-today-00-eat-again-mobile-light
+
+# Scroll to show meals + below-meals cap region
+- swipe:
+    direction: UP
+    duration: 350
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/capture-today-00-scrolled-mobile-light

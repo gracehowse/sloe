@@ -49,7 +49,7 @@ import {
 import { decodeEntities } from "@/lib/decodeEntities";
 import { normaliseRecipeDisplayTitle } from "@suppr/shared/recipe/normaliseDisplayTitle";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
-import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
+import { Accent, MacroColors, Spacing, Radius, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { getSupprApiBase } from "@/lib/supprWeb";
@@ -76,11 +76,12 @@ import {
 } from "@suppr/shared/recipes/seedRecipesV2";
 import {
   flatMacroRowsFromVerifyJson,
+  mergeVerifiedMacroRows,
   overallConfidenceFromVerifyJson,
   perServingFromVerifyJson,
-  type FlatVerifiedMacroRow,
 } from "@suppr/shared/nutrition/verifyRecipeResponse";
-import { parseRawIngredients } from "@suppr/shared/recipe-ingredients/parseRawIngredients";
+import { structuredIngredientsForVerify } from "@suppr/shared/recipe-ingredients/structuredIngredientsForVerify";
+import { isStructuredSource } from "@suppr/shared/nutrition/structuredSourceGate";
 import {
   formatContainsLine,
   normaliseAllergenIds,
@@ -166,6 +167,7 @@ type FullRecipe = {
   source_url: string | null;
   source_name: string | null;
   author_id: string | null;
+  creator_id: string | null;
   author: { display_name: string | null; avatar_url: string | null } | null;
   /** T12 (2026-04-24) — regulated allergens from recipes.allergens. */
   allergens: string[] | null;
@@ -209,25 +211,6 @@ type Ingredient = {
       zeroed FatSecret cache and trigger a runtime re-fetch. */
   fatsecret_food_id?: string | null;
 };
-
-function mergeVerifiedMacroRows(base: Ingredient[], rows: FlatVerifiedMacroRow[]): Ingredient[] {
-  return base.map((ing, i) => {
-    const r = rows[i];
-    if (!r) return ing;
-    return {
-      ...ing,
-      calories: r.calories,
-      protein: r.protein,
-      carbs: r.carbs,
-      fat: r.fat,
-      fiber_g: r.fiber,
-      sugar_g: r.sugar,
-      sodium_mg: r.sodium,
-      confidence: r.confidence,
-      source: r.source,
-    };
-  });
-}
 
 function MacroRing({ value, goal, color, label, size = 56, ringBgColor, labelColor }: { value: number; goal: number; color: string; label: string; size?: number; ringBgColor: string; labelColor: string }) {
   const r = (size - 6) / 2;
@@ -558,7 +541,10 @@ export default function RecipeDetailScreen() {
               sodium_mg: Math.round(r.sodium),
               source: r.source,
               confidence: r.confidence,
-              is_verified: typeof r.confidence === "number" && r.confidence >= 0.5,
+              is_verified:
+                isStructuredSource(r.source) &&
+                typeof r.confidence === "number" &&
+                r.confidence >= 0.5,
             });
             const { error: ingErr } = await supabase
               .from("recipe_ingredients")
@@ -634,7 +620,7 @@ export default function RecipeDetailScreen() {
           Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          ingredients: parseRawIngredients(ingredients.map((ing) => ing.name)),
+          ingredients: structuredIngredientsForVerify(ingredients),
           servings: recipe.servings ?? 1,
         }),
       });
@@ -708,6 +694,7 @@ export default function RecipeDetailScreen() {
           source_url: null,
           source_name: seed.attribution.author,
           author_id: null,
+          creator_id: null,
           author: null,
           allergens: [],
         } as FullRecipe);
@@ -742,7 +729,7 @@ export default function RecipeDetailScreen() {
         let recipeRes = await supabase
           .from("recipes")
           .select(
-            "id, title, description, instructions, image_url, servings, prep_time_min, cook_time_min, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, meal_type, source_url, source_name, author_id, allergens",
+            "id, title, description, instructions, image_url, servings, prep_time_min, cook_time_min, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, meal_type, source_url, source_name, author_id, creator_id, allergens",
           )
           .eq("id", recipeId)
           .maybeSingle();
@@ -750,7 +737,7 @@ export default function RecipeDetailScreen() {
           recipeRes = await supabase
             .from("recipes")
             .select(
-              "id, title, description, instructions, image_url, servings, prep_time_min, cook_time_min, calories, protein, carbs, fat, meal_type, author_id",
+              "id, title, description, instructions, image_url, servings, prep_time_min, cook_time_min, calories, protein, carbs, fat, meal_type, author_id, creator_id",
             )
             .eq("id", recipeId)
             .maybeSingle();
@@ -792,6 +779,7 @@ export default function RecipeDetailScreen() {
             source_url: (r.source_url as string | null | undefined) ?? null,
             source_name: (r.source_name as string | null | undefined) ?? null,
             author_id: aid,
+            creator_id: (r.creator_id as string | null | undefined) ?? null,
             author,
             allergens: Array.isArray(r.allergens) ? (r.allergens as string[]) : [],
           } as FullRecipe);
@@ -829,7 +817,10 @@ export default function RecipeDetailScreen() {
       }
     }
     const author = recipe.author?.display_name?.trim();
-    if (author) return { label: author, href: null };
+    if (author) {
+      const creatorHref = recipe.creator_id ? `/creator/${recipe.creator_id}` : null;
+      return { label: author, href: creatorHref };
+    }
     if (src) return { label: src, href: recipe.source_url?.trim() ?? null };
     return { label: "", href: null };
   }, [recipe]);
@@ -1041,10 +1032,10 @@ export default function RecipeDetailScreen() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${session.access_token}`,
           },
-          body: JSON.stringify({
-            ingredients: parseRawIngredients(snap.map((ing) => ing.name)),
-            servings: recipe.servings ?? 1,
-          }),
+        body: JSON.stringify({
+          ingredients: structuredIngredientsForVerify(snap),
+          servings: recipe.servings ?? 1,
+        }),
         });
         const json = (await res.json()) as Record<string, unknown>;
         if (cancelled) return;
@@ -1472,7 +1463,7 @@ export default function RecipeDetailScreen() {
     // reads as one composed unit instead of five separate cards.
     body: { padding: Spacing.xl, gap: Spacing.md },
 
-    title: { fontSize: 24, fontWeight: "700", color: colors.text },
+    title: { ...Type.title, color: colors.text },
     authorName: { fontSize: 14, color: colors.textSecondary },
     // 2026-05-02 v4 polish (recipe-detail-tiles-and-kcal): kcal got
     // promoted out of the subtitle into its own dedicated headline
@@ -1973,8 +1964,12 @@ export default function RecipeDetailScreen() {
                       {isAuthor ? (
                         <Pressable
                           onPress={() => {
-                            if (recipeByline.href)
+                            if (!recipeByline.href) return;
+                            if (recipeByline.href.startsWith("/")) {
+                              router.push(recipeByline.href as never);
+                            } else {
                               void Linking.openURL(recipeByline.href);
+                            }
                           }}
                           accessibilityRole="link"
                           accessibilityLabel={`Open source: ${recipeByline.label}`}

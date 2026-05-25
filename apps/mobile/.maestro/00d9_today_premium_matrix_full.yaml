@@ -1,0 +1,68 @@
+# @cases TC-TODAY-PREMIUM-MATRIX-FULL
+# @screen (tabs)/index
+# ENG-575 / ENG-582 — iOS sim captures for all six matrix states (light).
+#
+# Prerequisite:
+#   npx tsx scripts/e2e-seed-today-premium-matrix.ts
+#   npm run mobile:dev:maestro  (Metro on :8082)
+#
+# Run:
+#   ~/.maestro/bin/maestro test apps/mobile/.maestro/00d9_today_premium_matrix_full.yaml
+appId: com.supprclub.supprapp
+name: "Today premium matrix — full sim (light)"
+---
+- runFlow: shared/login.yaml
+
+- openLink: suppr:///
+- extendedWaitUntil:
+    visible:
+      id: "screen-today"
+    timeout: 30000
+- waitForAnimationToEnd
+
+# ── empty-day (−14) ─────────────────────────────────────────────────
+- repeat:
+    times: 14
+    commands:
+      - tapOn:
+          text: "Previous day"
+      - waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/empty-day-mobile-light
+
+# ── one-meal (−2 from empty = +12 forward) ──────────────────────────
+- repeat:
+    times: 12
+    commands:
+      - tapOn:
+          text: "Next day"
+      - waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/one-meal-mobile-light
+
+# ── deficit-insight (−6 from one-meal = −4 back) ─────────────────────
+- repeat:
+    times: 4
+    commands:
+      - tapOn:
+          text: "Previous day"
+      - waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/deficit-insight-mobile-light
+
+# ── over-budget (−7 from deficit = −1 back) ─────────────────────────
+- tapOn:
+    text: "Previous day"
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/over-budget-mobile-light
+
+# ── eat-again (today: +7 forward from over-budget) ─────────────────
+- repeat:
+    times: 7
+    commands:
+      - tapOn:
+          text: "Next day"
+      - waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/eat-again-mobile-light
+
+# ── active-fast (today + seeded fast) ───────────────────────────────
+# Re-seed with --activate-fast before this flow, or run the dedicated
+# subflow after `npx tsx scripts/e2e-seed-today-premium-matrix.ts --activate-fast`
+- takeScreenshot: screenshots/latest/active-fast-mobile-light

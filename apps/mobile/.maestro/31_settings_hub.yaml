@@ -38,9 +38,12 @@ name: "Settings hub — sections, navigation, profile info"
 
 # Connections
 - scrollUntilVisible:
-    element: ".*Connections.*"
+    element: ".*Apple Health.*"
     direction: DOWN
 - assertVisible: ".*Apple Health.*"
+- scrollUntilVisible:
+    element: ".*Notifications.*"
+    direction: DOWN
 - assertVisible: ".*Notifications.*"
 
 # Recipes section

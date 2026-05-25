@@ -561,7 +561,7 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
       // Scaled mode — pill buttons live below the paragraph because
       // offsets in the rewritten text aren't safe to index against.
       return (
-        <div className="text-2xl sm:text-3xl leading-relaxed text-white">
+        <div className="text-2xl sm:text-3xl leading-relaxed text-foreground">
           <p>{currentStepText}</p>
           {stepTimers.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-2 justify-center">
@@ -586,7 +586,7 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
       );
     }
     if (stepTimers.length === 0) {
-      return <p className="text-2xl sm:text-3xl leading-relaxed text-white">{currentStepCleaned}</p>;
+      return <p className="text-2xl sm:text-3xl leading-relaxed text-foreground">{currentStepCleaned}</p>;
     }
     const nodes: React.ReactNode[] = [];
     let cursor = 0;
@@ -614,7 +614,7 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
       nodes.push(currentStepCleaned.slice(cursor));
     }
     return (
-      <p className="text-2xl sm:text-3xl leading-relaxed text-white">
+      <p className="text-2xl sm:text-3xl leading-relaxed text-foreground">
         {nodes}
       </p>
     );
@@ -647,8 +647,8 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
   }, [watchOriginalUrl, recipe.id]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-background text-white flex flex-col">
-      {/* Header — always dark for kitchen context */}
+    <div className="fixed inset-0 z-50 bg-background text-foreground flex flex-col">
+      {/* Header — uses theme tokens so light/dark both stay readable */}
       <div className="shrink-0 px-4 py-3 border-b border-border flex items-center justify-between">
         <button
           type="button"
@@ -658,7 +658,7 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
           <Icons.back className="w-4 h-4" />
           Exit Cook Mode
         </button>
-        <h2 className="text-sm font-semibold text-white truncate max-w-[40%]">
+        <h2 className="text-sm font-semibold text-foreground truncate max-w-[40%]">
           {recipe.title}
         </h2>
         <div className="flex items-center gap-2">
@@ -796,7 +796,7 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
                   <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                     Last time
                   </p>
-                  <p className="text-sm text-white font-medium mt-1">
+                  <p className="text-sm text-foreground font-medium mt-1">
                     {formatCookHistoryPreview(recentHistory[0]!)}
                   </p>
                   {recentHistory.length > 1 && (
@@ -832,7 +832,7 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
                         className={`min-w-[44px] px-3.5 py-1.5 rounded-full text-sm font-semibold tabular-nums transition-colors ${
                           active
                             ? "bg-primary text-primary-foreground shadow"
-                            : "text-muted-foreground hover:text-white"
+                            : "text-muted-foreground hover:text-foreground"
                         }`}
                       >
                         {formatCookScaleLabel(preset)}
@@ -890,7 +890,7 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
               <div className="w-20 h-20 rounded-full bg-success flex items-center justify-center mx-auto mb-6 shadow-lg shadow-success/30">
                 <Icons.cook className="w-10 h-10 text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-white mb-2">
+              <h2 className="text-2xl font-bold text-foreground mb-2">
                 Enjoy your meal!
               </h2>
               <p className="text-muted-foreground mb-6">
@@ -945,7 +945,7 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
                 onChange={(e) => setNoteDraft(e.target.value)}
                 disabled={historySaved}
                 maxLength={COOK_HISTORY_NOTE_MAX_LEN}
-                className="w-full mb-2 px-3 py-2 rounded-lg bg-card border border-border text-sm text-white placeholder:text-muted-foreground resize-y min-h-[64px] disabled:opacity-70"
+                className="w-full mb-2 px-3 py-2 rounded-lg bg-card border border-border text-sm text-foreground placeholder:text-muted-foreground resize-y min-h-[64px] disabled:opacity-70"
                 rows={3}
               />
               {noteDraft.length > Math.floor(COOK_HISTORY_NOTE_MAX_LEN * 0.8) && (
@@ -1024,7 +1024,7 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
         {showIngredients && (
           <div className="w-80 shrink-0 border-l border-border bg-card overflow-y-auto p-4 hidden sm:block">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-white text-sm">
+              <h3 className="font-semibold text-foreground text-sm">
                 Ingredients ({servings} serving{servings !== 1 ? "s" : ""})
               </h3>
               <button

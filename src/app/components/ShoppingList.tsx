@@ -1,14 +1,16 @@
 import { memo, useEffect, useMemo, useState } from "react";
-import { Users, X } from "lucide-react";
+import { Check, Users, X } from "lucide-react";
+import { Icons } from "./ui/icons";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import {
-  formatMixedShoppingAmounts,
+  formatShoppingGroupLabel,
   groupShoppingItemsByIngredientName,
   isShoppingGroupFullyChecked,
   type ShoppingDisplayGroup,
 } from "../../lib/planning/shoppingDisplayGroups.ts";
-import { dedupeShoppingLabel } from "../../lib/planning/shoppingListLifecycle.ts";
+import { sortShoppingCategories } from "../../lib/planning/shoppingAisleOrder.ts";
+import { withNormalizedShoppingFields } from "../../lib/planning/normalizeShoppingIngredientRow.ts";
 import {
   getMyHousehold,
   type HouseholdData,
@@ -122,7 +124,7 @@ export const ShoppingList = memo(function ShoppingList({
   }, [household, userId]);
 
   const categories = useMemo(
-    () => Array.from(new Set(shoppingItems.map((item) => item.category))),
+    () => sortShoppingCategories(shoppingItems.map((item) => item.category)),
     [shoppingItems],
   );
 
@@ -131,7 +133,9 @@ export const ShoppingList = memo(function ShoppingList({
       categories.map((category) => ({
         name: category,
         groups: groupShoppingItemsByIngredientName(
-          shoppingItems.filter((item) => item.category === category),
+          shoppingItems
+            .filter((item) => item.category === category)
+            .map(withNormalizedShoppingFields),
         ),
       })),
     [categories, shoppingItems],
@@ -174,7 +178,7 @@ export const ShoppingList = memo(function ShoppingList({
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-pm-6 py-pm-6 space-y-5">
+    <div className="product-shell py-pm-6 space-y-5">
       {/* Honeydew parity banner — visible only when in a household.
           Renders above the title so the user sees who they're shopping
           with before scanning the list. Hidden for solo users. */}
@@ -188,7 +192,7 @@ export const ShoppingList = memo(function ShoppingList({
           style={{ maxWidth: 900 }}
         >
           <Users width={14} height={14} className="text-primary shrink-0" aria-hidden />
-          <span className="text-[12px] font-semibold">{sharedWithLabel}</span>
+          <span className="text-[11px] font-semibold">{sharedWithLabel}</span>
           <span className="text-[11px] text-muted-foreground ml-auto">
             Synced live across your household
           </span>
@@ -198,7 +202,7 @@ export const ShoppingList = memo(function ShoppingList({
       <div className="hidden md:block">
       <h1
         className="text-foreground font-bold -tracking-[0.02em]"
-        style={{ fontSize: 24, margin: "0 0 4px" }}
+        style={{ fontSize: 28, margin: "0 0 4px", letterSpacing: "-0.5px" }}
       >
         Shopping list
       </h1>
@@ -239,7 +243,7 @@ export const ShoppingList = memo(function ShoppingList({
               type="button"
               onClick={handleClearChecked}
               data-testid="shopping-clear-checked"
-              className="text-[12px] font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded shrink-0"
+              className="text-[11px] font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded shrink-0"
             >
               Remove {checkedCount} checked
             </button>
@@ -249,12 +253,27 @@ export const ShoppingList = memo(function ShoppingList({
 
       {totalItemCount === 0 ? (
         <div
-          className="bg-card border border-border rounded-2xl"
-          style={{ padding: 14, maxWidth: 900 }}
+          className="bg-card border border-border rounded-2xl px-6 py-12 text-center card-elevated"
+          style={{ maxWidth: 900 }}
         >
-          <p className="text-muted-foreground" style={{ fontSize: 13 }}>
-            No items
+          <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-xl bg-primary/[0.08]">
+            <Icons.shopping className="h-6 w-6 text-primary" aria-hidden />
+          </div>
+          <p className="text-[18px] font-semibold text-foreground mb-1.5">
+            Your shopping list builds itself
           </p>
+          <p className="text-[13px] text-muted-foreground max-w-xs mx-auto leading-relaxed">
+            Plan your meals for the week and we&apos;ll gather every ingredient into one list, grouped by aisle.
+          </p>
+          {_onNavigate ? (
+            <button
+              type="button"
+              onClick={() => _onNavigate("plan")}
+              className="mt-5 inline-flex items-center gap-1.5 rounded-lg bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground hover:bg-primary/90 transition-all shadow-sm hover:shadow-md"
+            >
+              Start planning
+            </button>
+          ) : null}
         </div>
       ) : (
         <div
@@ -269,14 +288,14 @@ export const ShoppingList = memo(function ShoppingList({
             return (
             <div
               key={section.name}
-              className="bg-card border border-border rounded-2xl"
+              className="bg-card border border-border rounded-2xl card-elevated"
               style={{ padding: 14 }}
             >
               <div
                 className="flex items-center justify-between"
                 style={{ marginBottom: 10 }}
               >
-                <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
                   {section.name}
                 </p>
                 <span
@@ -289,24 +308,7 @@ export const ShoppingList = memo(function ShoppingList({
               <ul className="flex flex-col">
                 {section.groups.map((group) => {
                   const allChecked = isShoppingGroupFullyChecked(group);
-                  const dedupedSingle =
-                    group.items.length === 1
-                      ? dedupeShoppingLabel({
-                          amount: group.items[0]!.amount,
-                          unit: group.items[0]!.unit,
-                          name: group.displayName,
-                        })
-                      : null;
-                  const qtyLine = dedupedSingle
-                    ? `${dedupedSingle.amount} ${dedupedSingle.unit}`.trim()
-                    : formatMixedShoppingAmounts(group.items);
-                  const displayName = dedupedSingle
-                    ? dedupedSingle.name
-                    : group.displayName;
-                  const rowLabel =
-                    qtyLine && !displayName.toLowerCase().includes(qtyLine.toLowerCase())
-                      ? `${displayName} (${qtyLine})`
-                      : displayName;
+                  const rowLabel = formatShoppingGroupLabel(group);
 
                   // Honeydew parity (2026-04-30): per-row check
                   // attribution. When the group is checked AND we
@@ -334,17 +336,21 @@ export const ShoppingList = memo(function ShoppingList({
                         type="button"
                         onClick={() => toggleGroupChecked(group)}
                         aria-pressed={allChecked}
-                        aria-label={`${allChecked ? "Uncheck" : "Check"} ${displayName}`}
-                        className="shrink-0"
+                        aria-label={`${allChecked ? "Uncheck" : "Check"} ${rowLabel}`}
+                        className="shrink-0 grid place-items-center transition-colors"
                         style={{
                           width: 18,
                           height: 18,
                           borderRadius: 9,
-                          border: "1.5px solid var(--border)",
+                          border: allChecked ? "1.5px solid var(--primary)" : "1.5px solid var(--border)",
                           background: allChecked ? "var(--primary)" : "transparent",
                           cursor: "pointer",
                         }}
-                      />
+                      >
+                        {allChecked ? (
+                          <Check width={11} height={11} strokeWidth={3} className="text-primary-foreground" aria-hidden />
+                        ) : null}
+                      </button>
                       <span
                         className={`flex-1 ${
                           allChecked
@@ -380,7 +386,7 @@ export const ShoppingList = memo(function ShoppingList({
                       <button
                         type="button"
                         onClick={() => removeGroup(group)}
-                        aria-label={`Remove ${displayName}`}
+                        aria-label={`Remove ${rowLabel}`}
                         data-testid={`shopping-row-remove-${group.key}`}
                         className="shrink-0 size-6 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-opacity opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                       >

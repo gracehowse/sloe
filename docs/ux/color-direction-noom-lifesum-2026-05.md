@@ -2,7 +2,7 @@
 
 **Status:** Applied to canonical tokens (`theme.css`, `apps/mobile/constants/theme.ts`, `docs/ux/brand-tokens.md`) on 2026-05-19.
 
-**Goal:** Bright, natural greens and golden-oranges that feel editorial and premium — not neon “fitness app” or tacky primary-saturated UI. Primary brand **stays blue** (`#4c6ce0`); only semantic wellness hues and the page backdrop shift.
+**Goal:** Bright, natural greens and golden-oranges that feel editorial and premium — not neon “fitness app” or tacky primary-saturated UI. **UI chrome** uses warm ink (`#1c1916`); brand blue (`#4c6ce0`) is reserved for protein macro, OFF provenance, and marketing/avatar gradient only (2026-05-20).
 
 ## Reference mapping
 
@@ -18,9 +18,10 @@
 |------|-------|------|-------|
 | **Success** | `#62b35a` | `#82d878` | Leaf green — calories, lunch slot, USDA dot, confidence-high |
 | **Warning** | `#e0a838` | `#f0c058` | Golden amber — over-budget, breakfast slot, activity bonus |
-| **Carbs macro** | `#df7a4e` | `#f0956e` | Soft terracotta — distinct from warning amber |
+| **Carbs macro** | `#d4a02f` | `#e2b84c` | Golden terracotta — distinct from warning amber (enforced by `crossPlatformThemeTokens.test.ts`) |
 | **Background** | `#f6f3ee` | `#101014` | Warm cream (light); dark unchanged |
-| **Primary** | `#4c6ce0` | `#7a90f5` | Brand blue unchanged (light); lifted periwinkle in dark |
+| **Primary (UI)** | `#1c1916` | `#e8e7ed` | Warm ink — buttons, tabs, links |
+| **Brand blue** | `#4c6ce0` | `#7a90f5` | Protein macro / marketing only |
 
 ### Previous → new (light)
 
@@ -28,7 +29,7 @@
 |-------|-----|-----|
 | `--success` | `#22a860` | `#62b35a` |
 | `--warning` | `#e8a020` | `#e0a838` |
-| `--macro-carbs` | `#ed6b2a` | `#df7a4e` |
+| `--macro-carbs` | `#ed6b2a` | `#d4a02f` |
 | `--background` | `#f4f5f7` | `#f6f3ee` |
 
 ## Application rules
@@ -37,7 +38,7 @@
 2. **Carbs macro ≠ warning** — warm orange track for carbs; amber reserved for “over” semantics.
 3. **Surfaces:** cream `--background` + white `--card` separation (Lifesum-style depth without heavy shadow).
 4. **Typography (future):** editorial serif for section titles on recipe/detail flows only; Today stays sans for scan speed.
-5. **Do not** raise saturation on `--primary` (light) or slot dinner blue to “match” the warmer palette — elevation is via warm greys, blue-tinted surfaces, and `#7a90f5` dark tint only.
+5. **Do not** use brand blue on buttons, tabs, or meal-slot chrome — elevation is via warm greys and leaf-green north-star tints.
 
 ## Grey + blue elevation (2026-05-19)
 

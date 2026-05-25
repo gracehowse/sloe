@@ -1,5 +1,6 @@
 import React from "react";
 import { Pressable, Text, View } from "react-native";
+import { Layout } from "@/constants/layout";
 import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
 import type { JournalMeal } from "@/lib/nutritionJournal";
 import { carbsLabel, netCarbsForRow } from "@suppr/shared/nutrition/netCarbs";
@@ -136,12 +137,16 @@ export function TodayDashboardMacroBars({
         borderColor: cardBorderColor,
         borderWidth: 1,
         borderRadius: Radius.lg,
-        padding: Spacing.md,
-        marginBottom: Spacing.md,
-        gap: Spacing.md,
+        padding: Spacing.sm + 2,
+        marginBottom: Spacing.sm,
+        gap: Layout.todayScrollGap,
       }}
       testID="today-macro-bars"
     >
+      {/* Canonical 2026-05-22 C1: each macro is a single row —
+          UPPERCASE label + bar fill + value/target with inline caption
+          ("· 12 over" / "· 18 left"). No separate caption row — captions
+          inline per C1.a. Bar fill at 100% is the over signal. */}
       {trackedMacros.map((macro) => {
         const def = barMap[macro];
         if (!def) return null;
@@ -151,6 +156,14 @@ export function TodayDashboardMacroBars({
           def.target > 0
             ? Math.min(100, Math.max(0, (def.current / def.target) * 100))
             : 0;
+        const remainDisplayed = def.target - def.current;
+        const overBy = Math.round(Math.abs(remainDisplayed));
+        const inlineCaption =
+          def.current <= 0 && def.target > 0
+            ? null
+            : remainDisplayed >= 0
+              ? `${overBy} ${def.unit} left`
+              : `${overBy} ${def.unit} over`;
         return (
           <Pressable
             key={macro}
@@ -166,36 +179,49 @@ export function TodayDashboardMacroBars({
                 justifyContent: "space-between",
                 alignItems: "baseline",
                 marginBottom: 6,
+                gap: Spacing.sm,
               }}
             >
               <Text
                 style={{
-                  fontSize: 15,
-                  fontWeight: "600",
-                  color: textColor,
+                  fontSize: 11,
+                  fontWeight: "700",
+                  letterSpacing: 0.8,
+                  textTransform: "uppercase",
+                  color: textSecondaryColor,
+                  flexShrink: 0,
                 }}
               >
                 {def.label}
               </Text>
               <Text
                 style={{
-                  fontSize: 14,
+                  fontSize: 13,
                   color: textSecondaryColor,
                   fontVariant: ["tabular-nums"],
+                  flexShrink: 1,
+                  textAlign: "right",
                 }}
+                numberOfLines={1}
               >
                 <Text style={{ fontWeight: "700", color: textColor }}>
                   {value}
                 </Text>
                 {" / "}
                 {targetLabel} {def.unit}
+                {inlineCaption ? (
+                  <Text style={{ color: textSecondaryColor }}>
+                    {"  ·  "}
+                    {inlineCaption}
+                  </Text>
+                ) : null}
               </Text>
             </View>
             <View
               style={{
                 height: 6,
                 borderRadius: 3,
-                backgroundColor: cardBorderColor,
+                backgroundColor: `${def.color}28`,
                 overflow: "hidden",
               }}
             >

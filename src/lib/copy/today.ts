@@ -46,6 +46,14 @@ export const TODAY_STAT_LABELS = {
   net: "Net",
 } as const;
 
+/** Opt-in affordance for inner protein/carbs/fat rings on the calorie
+ *  hero. Macros stay hidden by default; the macro tile grid below the
+ *  hero is the primary surface. */
+export const MACRO_RING_TOGGLE = {
+  show: "Show macro rings",
+  hide: "Hide macro rings",
+} as const;
+
 /** Detail line for the `Net` stat — describes which side of maintenance
  *  the user is on in plain deficit/surplus terms. "Deficit" is the
  *  canonical word across product (matches mobile `Net deficit / Net

@@ -1,0 +1,38 @@
+# @cases TC-PLAN-IMPORT-01
+# @screen plan-import
+# Paste-screen smoke — navigation, fixture pre-fill, Parse CTA visible.
+# Full parse→review: run locally with `npm run dev` + `npm run mobile:dev:local`,
+# then `maestro test apps/mobile/.maestro/35_plan_import_parse.yaml`.
+appId: com.supprclub.supprapp
+name: "Plan import — paste screen smoke"
+---
+- runFlow: shared/login.yaml
+
+- tapOn:
+    id: "tab-plan"
+- waitForAnimationToEnd
+- assertVisible: ".*Meal [Pp]lan.*"
+
+- tapOn:
+    id: "plan-header-import"
+- waitForAnimationToEnd
+
+- assertVisible:
+    id: "screen-plan-import"
+- assertVisible: ".*Import meal plan.*"
+- assertVisible: ".*What works.*"
+- assertVisible:
+    id: "plan-import-source-paste"
+- assertVisible:
+    id: "plan-import-source-pdf"
+- assertVisible:
+    id: "plan-import-source-photo"
+- assertVisible:
+    id: "plan-import-paste"
+- assertVisible:
+    id: "plan-import-parse"
+
+- takeScreenshot: screenshots/latest/plan-import-01-paste
+
+- tapOn: ".*Back.*"
+- waitForAnimationToEnd

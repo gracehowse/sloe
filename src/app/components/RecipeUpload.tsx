@@ -7,6 +7,8 @@ import { supabase } from "../../lib/supabase/browserClient.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { useSearchParams } from "next/navigation";
 import { parseIngredientLine } from "../../lib/recipe-ingredients/parseIngredientLine.ts";
+import { resolveStructuredIngredient } from "../../lib/recipe-ingredients/structuredIngredientsForVerify.ts";
+import { isStructuredSource } from "../../lib/nutrition/structuredSourceGate.ts";
 import { estimateLineMacros, sumMacros } from "../../lib/nutrition/estimateIngredientMacros.ts";
 import { effectiveFoodSearchQuery } from "../../lib/nutrition/foodSearchQuery.ts";
 import { inferAllergensFromIngredients } from "../../lib/nutrition/inferAllergens.ts";
@@ -28,6 +30,7 @@ import { parseRawIngredients } from "../../lib/recipe-ingredients/parseRawIngred
 import { splitPastedIngredientLines } from "../../lib/recipe-ingredients/splitPastedIngredientLines.ts";
 import { ingredientVerifyNeedsReview } from "../../lib/nutrition/verifyConfidencePolicy.ts";
 import { stripSectionPrefix } from "../../lib/recipe-import/extractSocialRecipe.ts";
+import { ImportLoadingSkeleton } from "./suppr/import-loading-skeleton.tsx";
 import {
   IMPORT_ERROR_COPY,
   mapPersistenceError,
@@ -90,8 +93,8 @@ function MacroWheel(props: {
 }) {
   const fallback = [{ name: "—", value: 1, color: "rgba(16,185,129,0.15)" }];
   const data = [
-    { name: "Protein", value: Math.max(0, props.proteinG), color: "#4c6ce0" }, // violet
-    { name: "Carbs", value: Math.max(0, props.carbsG), color: "#f59e0b" }, // amber
+    { name: "Protein", value: Math.max(0, props.proteinG), color: "var(--macro-protein)" },
+    { name: "Carbs", value: Math.max(0, props.carbsG), color: "#F3C336" }, // amber
     { name: "Fat", value: Math.max(0, props.fatG), color: "#22c55e" }, // green
   ].filter((d) => d.value > 0);
   const chartData = data.length ? data : fallback;
@@ -116,17 +119,17 @@ function MacroWheel(props: {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[12px] text-success/80">
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-success/80">
         <div className="flex items-center justify-between gap-2">
           <span className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: "#4c6ce0" }} />
+            <span className="h-2 w-2 rounded-full bg-[var(--macro-protein)]" />
             Protein
           </span>
           <span className="font-semibold tabular-nums">{Math.round(props.proteinG * 10) / 10}g</span>
         </div>
         <div className="flex items-center justify-between gap-2">
           <span className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: "#f59e0b" }} />
+            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: "#F3C336" }} />
             Carbs
           </span>
           <span className="font-semibold tabular-nums">{Math.round(props.carbsG * 10) / 10}g</span>
@@ -161,27 +164,6 @@ function amountToNumeric(raw: string): number | null {
   }
   const v = Number.parseFloat(t);
   return Number.isFinite(v) ? v : null;
-}
-
-/** When amount is empty but the name still contains "500g …", parse so nutrition + save match */
-function resolveStructuredIngredient(i: { name: string; amount: string; unit: string }): {
-  name: string;
-  amount: string;
-  unit: string;
-} {
-  const name = i.name.trim();
-  let amount = i.amount.trim();
-  let unit = i.unit.trim();
-  let foodName = name;
-  if (!amount && foodName) {
-    const p = parseIngredientLine(foodName);
-    if (p.amount && p.name.trim()) {
-      amount = p.amount;
-      unit = p.unit || unit;
-      foodName = p.name.trim();
-    }
-  }
-  return { name: foodName, amount, unit };
 }
 
 export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchToImport, onSwitchToCreate }: RecipeUploadProps) {
@@ -1176,7 +1158,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
           sodium_mg: roundMacro(macros?.sodiumMg ?? 0),
           fatsecret_food_id: v?.fatSecretFoodId ?? null,
           confidence: v?.confidence ?? null,
-          is_verified: Boolean(macros),
+          is_verified: isStructuredSource(rowSource) && Boolean(macros),
           source: rowSource,
         };
         return scrubFatSecretMacros(baseRow);
@@ -1377,27 +1359,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
             </div>
             {importHint ? <p className="text-xs text-destructive mt-2">{importHint}</p> : null}
 
-            {/* 3-step extraction animation — shown during import */}
-            {importBusy && (
-              <div className="mt-4 space-y-2">
-                {[
-                  { label: "Fetching recipe page…", done: true },
-                  { label: "Analyzing ingredients…", done: false },
-                  { label: "Calculating nutrition…", done: false },
-                ].map((step, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                      step.done ? "bg-success text-white" : "bg-muted text-muted-foreground animate-pulse"
-                    }`}>
-                      {step.done ? <Icons.check className="w-3 h-3" strokeWidth={3} /> : i + 1}
-                    </span>
-                    <span className={`text-xs ${step.done ? "text-success font-medium" : "text-muted-foreground"}`}>
-                      {step.label}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
+            {importBusy ? <ImportLoadingSkeleton phase="importing" className="mt-4" /> : null}
           </div>
 
           {/* Recent Imports placeholder */}
@@ -2044,7 +2006,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
                     <p className="text-xl font-extrabold text-emerald-950 dark:text-emerald-50">
                       {displayPerServing.calories} kcal
                     </p>
-                    <div className="mt-2 space-y-1 text-[12px] text-emerald-900/90 dark:text-emerald-200/90">
+                    <div className="mt-2 space-y-1 text-[11px] text-emerald-900/90 dark:text-emerald-200/90">
                       <div className="flex justify-between">
                         <span>Protein</span>
                         <span className="font-semibold">{displayPerServing.protein} g</span>
@@ -2076,7 +2038,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
                     <p className="text-xl font-extrabold text-emerald-950 dark:text-emerald-50">
                       {displayTotals.calories} kcal
                     </p>
-                    <div className="mt-2 space-y-1 text-[12px] text-emerald-900/90 dark:text-emerald-200/90">
+                    <div className="mt-2 space-y-1 text-[11px] text-emerald-900/90 dark:text-emerald-200/90">
                       <div className="flex justify-between">
                         <span>Protein</span>
                         <span className="font-semibold">{displayTotals.protein} g</span>

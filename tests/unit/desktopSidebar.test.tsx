@@ -156,19 +156,19 @@ describe("DesktopSidebar — Phase 2 (4 primary tabs)", () => {
 
   it("renders the Library badge with the saved-recipe count when > 0 and Recipes is active", () => {
     const { rerender } = render(
-      <DesktopSidebar currentView="library" onNavigate={() => {}} libraryRecipeCount={42} />,
+      <DesktopSidebar currentView="library" onNavigate={() => {}} libraryRecipeCount={5} />,
     );
     const library = screen.getByRole("button", { name: /^Library/ });
-    expect(library.textContent).toContain("42");
+    expect(library.textContent).toContain("5");
 
     rerender(<DesktopSidebar currentView="library" onNavigate={() => {}} libraryRecipeCount={0} />);
     const libraryZero = screen.getByRole("button", { name: /^Library/ });
     expect(/[0-9]/.test(libraryZero.textContent ?? "")).toBe(false);
   });
 
-  it("caps the Library badge at 99+", () => {
+  it("collapses Library badge to dot when count >= 10", () => {
     render(<DesktopSidebar currentView="library" onNavigate={() => {}} libraryRecipeCount={500} />);
-    expect(screen.getByRole("button", { name: /^Library/ }).textContent).toContain("99+");
+    expect(screen.getByRole("button", { name: /^Library/ }).textContent).toContain("•");
   });
 
   it("renders the Shopping badge with the unchecked count when > 0 and Plan is active", () => {
@@ -176,9 +176,9 @@ describe("DesktopSidebar — Phase 2 (4 primary tabs)", () => {
     expect(screen.getByRole("button", { name: /Shopping/ }).textContent).toContain("4");
   });
 
-  it("caps the Shopping badge at 99+", () => {
+  it("collapses Shopping badge to dot when count >= 10", () => {
     render(<DesktopSidebar currentView="plan" onNavigate={() => {}} shoppingUncheckedCount={1234} />);
-    expect(screen.getByRole("button", { name: /Shopping/ }).textContent).toContain("99+");
+    expect(screen.getByRole("button", { name: /Shopping/ }).textContent).toContain("•");
   });
 });
 

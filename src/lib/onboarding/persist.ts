@@ -39,7 +39,7 @@
  *  - `user_tier`: "free"
  *  - `goal_weight_kg`: null (v2 doesn't ask; legacy only writes
  *    non-null for cut goals anyway)
- *  - `prefer_activity_adjusted_calories`: false (legacy default)
+ *  - `prefer_activity_adjusted_calories`: true (ENG-566 — MFP/Lose It default)
  *  - `target_calories_source`: "onboarding" — same value the legacy
  *    form writes. data-integrity rejected `"onboarding_v2"` because
  *    the column has a 5-value CHECK constraint that would throw

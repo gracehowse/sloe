@@ -160,4 +160,20 @@ describe("DailyRing — centre value", () => {
       expect(container.textContent).not.toContain("of 0 kcal");
     });
   });
+
+  describe("budget line — only when macro rings are collapsed", () => {
+    it("shows 'of X kcal' when expanded=false and target>0", () => {
+      const { container } = render(
+        <DailyRing consumed={500} target={1707} expanded={false} />,
+      );
+      expect(container.textContent).toContain("of 1,707 kcal");
+    });
+
+    it("hides 'of X kcal' when expanded=true (macro rings visible)", () => {
+      const { container } = render(
+        <DailyRing consumed={1664} target={1707} expanded={true} />,
+      );
+      expect(container.textContent).not.toMatch(/of\s+1,707\s+kcal/i);
+    });
+  });
 });

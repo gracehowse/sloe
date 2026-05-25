@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { DailyRing, type CalorieRingDisplayMode } from "./daily-ring";
+import { MACRO_RING_TOGGLE } from "../../../lib/copy/today";
 
 /**
  * TodayHeroRing — Today-screen calorie ring wrapper.
@@ -67,19 +68,26 @@ export function TodayHeroRing({
   // is reachable from the Targets sub-tab (inside More) on web too,
   // not from Today's hero. Today stays clean.
   return (
-    <div className="flex flex-col items-center mb-6">
+    <div className="flex flex-col items-center mb-3 rounded-card border border-border bg-card px-4 py-3 gap-2">
       <DailyRing
         consumed={consumed}
         target={target}
-        size={160}
-        strokeWidth={10}
+        size={128}
+        strokeWidth={9}
         proteinPct={proteinPct}
         carbsPct={carbsPct}
         fatPct={fatPct}
         expanded={expanded}
-        onToggle={onToggleExpanded}
         displayMode={displayMode}
       />
+      <button
+        type="button"
+        data-testid="today-macro-rings-toggle"
+        onClick={onToggleExpanded}
+        className="text-[11px] font-semibold text-primary hover:opacity-80 transition-opacity"
+      >
+        {expanded ? MACRO_RING_TOGGLE.hide : MACRO_RING_TOGGLE.show}
+      </button>
     </div>
   );
 }

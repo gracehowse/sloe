@@ -8,7 +8,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Accent, MacroColors, Radius, Spacing, StimulantColors } from "@/constants/theme";
+import { Accent, Elevation, MacroColors, Radius, Spacing, StimulantColors } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
   ALCOHOL_QUICK_ADDS,
@@ -306,6 +306,7 @@ export function HydrationStimulantsCard({
           borderRadius: Radius.lg,
           paddingHorizontal: Spacing.xl,
           paddingVertical: Spacing.md,
+          ...Elevation.card,
         },
         style,
       ]}

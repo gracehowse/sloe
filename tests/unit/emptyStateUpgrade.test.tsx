@@ -39,9 +39,9 @@ describe("EmptyState (web) — 72px illustration + headline ladder + CTA", () =>
     expect(disc?.querySelector('[data-testid="illustration-svg"]')).not.toBeNull();
   });
 
-  it("title uses 17px / leading-[22px] (mirrors mobile Type.headline)", () => {
+  it("title uses 18px / leading-[22px] (on-scale per theme.css type ladder)", () => {
     const { container } = render(<EmptyState title="My title" />);
-    const titleP = container.querySelector("p.text-\\[17px\\]");
+    const titleP = container.querySelector("p.text-\\[18px\\]");
     expect(titleP).not.toBeNull();
     expect(titleP?.textContent).toBe("My title");
     // The legacy 13px size must be gone.

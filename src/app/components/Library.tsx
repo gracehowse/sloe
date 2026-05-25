@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { Icons } from "./ui/icons";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import type { LibraryEntryKind, RecipeCard, UserTier } from "../../types/recipe.ts";
@@ -13,8 +13,45 @@ import {
 import { classifyLibraryEntry } from "../../lib/recipes/libraryEntryKind.ts";
 import { computeRecipeFitPercent } from "../../lib/nutrition/recipeFitPercent.ts";
 import { useLibraryDiscoverSearch } from "../../lib/libraryDiscoverSearchStore.ts";
-// GW-08 (audit 2026-04-28): `TrustChip` + `recipeLevelTrust` dropped
-// — Library cards no longer render the chip; see card-body comments.
+
+/**
+ * Renders a recipe image with automatic fallback to RecipeHeroFallback
+ * when the URL fails to load (e.g. hot-linked external images that
+ * return 403/404). Without this, broken images render as blank areas.
+ */
+function RecipeCardImage({
+  src,
+  recipeId,
+  recipeTitle,
+  iconSize = 32,
+  className,
+  style,
+}: {
+  src: string;
+  recipeId: string;
+  recipeTitle: string;
+  iconSize?: number;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  const [broken, setBroken] = useState(false);
+  const handleError = useCallback(() => setBroken(true), []);
+
+  if (broken) {
+    return <RecipeHeroFallback id={recipeId} title={recipeTitle} iconSize={iconSize} />;
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt=""
+      className={className}
+      style={style}
+      onError={handleError}
+    />
+  );
+}
 
 interface LibraryProps {
   userTier: UserTier;
@@ -174,7 +211,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-pm-6 py-pm-6 md:max-w-6xl space-y-5">
+    <div className="product-shell py-pm-6 space-y-5">
       {/* Header
           2026-04-20 desktop prototype port
           (`docs/ux/claude-design-bundles/prototype/project/screens-web.jsx`
@@ -195,7 +232,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
             className="text-[13px] text-muted-foreground mt-0.5 tabular-nums"
             data-testid="library-desktop-subtitle"
           >
-            {filteredRecipes.length} recipe{filteredRecipes.length === 1 ? "" : "s"} · sorted by {sortLabel.toLowerCase()}
+            {`${filteredRecipes.length} recipe${filteredRecipes.length === 1 ? "" : "s"} · sorted by ${sortLabel.toLowerCase()}`}
           </p>
         </div>
 
@@ -354,7 +391,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                   key={`desktop-${recipe.id}`}
                   type="button"
                   onClick={() => setSelectedRecipe(recipe)}
-                  className="group text-left rounded-2xl bg-card border border-border overflow-hidden cursor-pointer w-full hover:shadow-xl hover:shadow-foreground/5 hover:-translate-y-0.5 transition-all"
+                  className="group text-left rounded-2xl bg-card border border-border overflow-hidden cursor-pointer w-full card-elevated hover:shadow-xl hover:shadow-foreground/5 hover:-translate-y-0.5 transition-all"
                 >
                   <div className="relative overflow-hidden" style={{ aspectRatio: "4 / 3" }}>
                     {/* Phase 5 / B5 (2026-04-27) — view-transition-name
@@ -365,20 +402,15 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                         regression. The matching name lives on the
                         detail hero (RecipeDetail.tsx). */}
                     {recipe.image ? (
-                      // eslint-disable-next-line @next/next/no-img-element -- viewTransitionName + arbitrary recipe image URLs
-                      <img
+                      <RecipeCardImage
                         src={recipe.image}
-                        alt=""
+                        recipeId={recipe.id}
+                        recipeTitle={recipe.title}
+                        iconSize={32}
                         className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
                         style={{ viewTransitionName: `recipe-${recipe.id}-image` }}
                       />
                     ) : (
-                      // Recipe-wave (2026-05-10) — Library cards used to
-                      // render a broken `<img>` (no `src`) when a recipe
-                      // had no `image`. Closes the "Library inconsistency:
-                      // some recipes have images, some don't" tester
-                      // report by showing the deterministic hero
-                      // fallback that Discover already uses.
                       <div
                         className="w-full h-full"
                         style={{ viewTransitionName: `recipe-${recipe.id}-image` }}
@@ -405,7 +437,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                         <Icons.saved className="w-[14px] h-[14px] text-primary" />
                       </div>
                     ) : (
-                      <div className="absolute top-3 right-3 px-2.5 py-1 bg-card/95 backdrop-blur-sm rounded-md text-[12px] font-semibold shadow-sm text-foreground tabular-nums">
+                      <div className="absolute top-3 right-3 px-2.5 py-1 bg-card/95 backdrop-blur-sm rounded-md text-[11px] font-semibold shadow-sm text-foreground tabular-nums">
                         {kcal} kcal
                       </div>
                     )}
@@ -418,7 +450,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                       {fitPct}%
                     </span>
                     <p
-                      className="text-[14px] font-bold text-foreground leading-snug -tracking-[0.01em] pr-12"
+                      className="text-[13px] font-bold text-foreground leading-snug -tracking-[0.01em] pr-12"
                       style={{
                         display: "-webkit-box",
                         WebkitLineClamp: 2,
@@ -511,12 +543,14 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
               >
                 <div className="relative overflow-hidden">
                   {recipe.image ? (
-                    // eslint-disable-next-line @next/next/no-img-element -- arbitrary recipe image URLs
-                    <img src={recipe.image} alt={recipe.title} className="w-full aspect-[4/3] object-cover group-hover:scale-110 transition-transform duration-500" />
+                    <RecipeCardImage
+                      src={recipe.image}
+                      recipeId={recipe.id}
+                      recipeTitle={recipe.title}
+                      iconSize={36}
+                      className="w-full aspect-[4/3] object-cover group-hover:scale-110 transition-transform duration-500"
+                    />
                   ) : (
-                    // Recipe-wave (2026-05-10) — same fallback as the
-                    // desktop card path. Mobile-web cards historically
-                    // rendered a broken `<img>` when image was null.
                     <div className="w-full aspect-[4/3]">
                       <RecipeHeroFallback id={recipe.id} title={recipe.title} iconSize={36} />
                     </div>

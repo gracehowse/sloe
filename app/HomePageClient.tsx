@@ -28,10 +28,29 @@ function AuthedHome() {
   );
 }
 
+/** Survives tab-to-tab navigations so `/today` → `/discover` does not replay the splash. */
+let sessionBootstrapComplete = false;
+
+const SESSION_BOOTSTRAP_KEY = "suppr.session.bootstrap";
+
+function readSessionBootstrapped(): boolean {
+  if (sessionBootstrapComplete) return true;
+  if (typeof window === "undefined") return false;
+  if (sessionStorage.getItem(SESSION_BOOTSTRAP_KEY) === "1") {
+    sessionBootstrapComplete = true;
+    return true;
+  }
+  return false;
+}
+
 export function HomePageClient() {
-  const [ready, setReady] = useState(false);
+  const [ready, setReady] = useState(readSessionBootstrapped);
 
   useEffect(() => {
+    if (readSessionBootstrapped()) {
+      setReady(true);
+      return;
+    }
     let cancelled = false;
     supabase.auth.getSession().then(({ data }) => {
       if (cancelled) return;
@@ -40,6 +59,12 @@ export function HomePageClient() {
       if (!data.session?.user) {
         window.location.href = "/login";
         return;
+      }
+      sessionBootstrapComplete = true;
+      try {
+        sessionStorage.setItem(SESSION_BOOTSTRAP_KEY, "1");
+      } catch {
+        /* private mode */
       }
       setReady(true);
     });

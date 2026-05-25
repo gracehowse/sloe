@@ -341,7 +341,7 @@ function RevealShowTheMaths({
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-label={open ? "Hide the maths" : "Show the maths"}
-        className="inline-flex items-center gap-1.5 py-2 text-[12px] font-semibold text-primary hover:opacity-70 transition-opacity"
+        className="inline-flex items-center gap-1.5 py-2 text-[11px] font-semibold text-primary hover:opacity-70 transition-opacity"
       >
         {open ? "Hide the maths" : "Show the maths"}
         {open ? (
@@ -399,8 +399,8 @@ function RevealNextRow({
         <Icon size={16} strokeWidth={2} style={{ color: iconColor }} />
       </div>
       <div className="flex-1 min-w-0">
-        <div className="text-[14px] font-semibold text-foreground">{title}</div>
-        <div className="text-[12px] text-muted-foreground mt-0.5 leading-snug">
+        <div className="text-[13px] font-semibold text-foreground">{title}</div>
+        <div className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
           {sub}
         </div>
       </div>

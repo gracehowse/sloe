@@ -70,24 +70,27 @@ Run agents in this order. Group within phases can run in parallel.
 19. `legal-reviewer`
 20. `diversity-inclusion` — inclusive language, body-neutral framing, cultural respect, accessibility, equitable defaults
 
-### Phase 6 — Quality gate
-21. `qa-lead`
+### Phase 6 — Operational readiness
+21. `production-readiness` — operational fitness to run at scale (monitoring, alerting, backups/DR, secrets, scaling headroom, cost guardrails, runbooks, solo-founder safety net); independent of any single release. Distinct lens from `release-gate` (per-change ship decision) and `security-reviewer` (auth/data scope) — do not dedupe these three together during consolidation
 
-### Phase 7 — Market position and growth
-22. `user-sentiment` — ground truth on what real users love, hate, request
-23. `competitor-intelligence`
-24. `feature-scout` — specific feature gaps and unmet needs from public feedback
-25. `growth-strategist`
-26. `monetisation-architect`
-27. `analytics-engineer`
+### Phase 7 — Quality gate
+22. `qa-lead`
 
-### Phase 8 — Documentation and memory
-28. `docs-keeper`
-29. `product-memory`
+### Phase 8 — Market position and growth
+23. `user-sentiment` — ground truth on what real users love, hate, request
+24. `competitor-intelligence`
+25. `feature-scout` — specific feature gaps and unmet needs from public feedback
+26. `growth-strategist`
+27. `monetisation-architect`
+28. `analytics-engineer`
 
-### Phase 9 — Plan and gate
-30. `planner`
-31. `release-gate`
+### Phase 9 — Documentation and memory
+29. `docs-keeper`
+30. `product-memory`
+
+### Phase 10 — Plan and gate
+31. `planner`
+32. `release-gate`
 
 Note: `executor` is intentionally not a sweep phase (the sweep reads, it doesn't write). `executor` is named as the owner on any action in the ranked list that requires implementation, and receives the handoff via `planner`.
 

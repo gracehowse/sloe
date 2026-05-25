@@ -4,11 +4,14 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
-import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
+import { Accent, MacroColors, Spacing, Radius, Type } from "@/constants/theme";
+import { PushScreenHeader } from "@/components/PushScreenHeader";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { dateKeyFromDate } from "@suppr/shared/nutrition/trackerStats";
+import { mealContributedFiberG } from "@/lib/healthDietaryNutrients";
+import { parseNutritionMicrosJson } from "@/lib/nutritionJournal";
 
 type Meal = {
   name: string;
@@ -93,7 +96,7 @@ export default function MacroDetailScreen() {
     const timer = setTimeout(finish, TIMEOUT_MS);
     supabase
       .from("nutrition_entries")
-      .select("name, recipe_title, calories, protein, carbs, fat, fiber_g, water_ml")
+      .select("name, recipe_title, calories, protein, carbs, fat, fiber_g, water_ml, nutrition_micros")
       .eq("user_id", userId)
       .eq("date_key", dateKey)
       .order("created_at", { ascending: true })
@@ -101,14 +104,17 @@ export default function MacroDetailScreen() {
         if (cancelled) return;
         clearTimeout(timer);
         setMeals(
-          (rows ?? []).map((r: any) => ({
-            name: r.name ?? "",
-            recipeTitle: r.recipe_title ?? "",
+          (rows ?? []).map((r: Record<string, unknown>) => ({
+            name: (r.name as string) ?? "",
+            recipeTitle: (r.recipe_title as string) ?? "",
             calories: Number(r.calories) || 0,
             protein: Number(r.protein) || 0,
             carbs: Number(r.carbs) || 0,
             fat: Number(r.fat) || 0,
-            fiberG: r.fiber_g != null ? Number(r.fiber_g) : 0,
+            fiberG: mealContributedFiberG({
+              fiberG: r.fiber_g != null ? Number(r.fiber_g) : undefined,
+              micros: parseNutritionMicrosJson(r.nutrition_micros),
+            }),
             waterMl: r.water_ml != null ? Number(r.water_ml) : 0,
           })),
         );
@@ -164,28 +170,20 @@ export default function MacroDetailScreen() {
 
   return (
     <View testID="screen-macro-detail" style={{ flex: 1, backgroundColor: colors.background }}>
-      {/* Header */}
-      <View style={{ paddingTop: insets.top + Spacing.sm, paddingHorizontal: Spacing.lg, paddingBottom: Spacing.md, flexDirection: "row", alignItems: "center", gap: Spacing.md }}>
-        <Pressable onPress={() => router.back()} hitSlop={12}>
-          <Ionicons name="chevron-back" size={24} color={colors.text} />
-        </Pressable>
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 22, fontWeight: "700", color: colors.text }}>{config.label}</Text>
-          <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>{formatDateLabel(dateKey)}</Text>
-        </View>
-        {/* Numbers audit 2026-05-04 #10 (cross-cuts full-sweep #16):
-            header pill was rendering `Math.round(total * 10) / 10` against
-            an empty `meals[]` array on first paint — `0g` shown while the
-            body said "Loading...". Same screen, two different states for
-            the same metric at the same instant. Now: render an em-dash
-            placeholder while loading; total only paints once data resolves
-            (or empty state triggers). */}
-        <View style={{ backgroundColor: config.color + "20", paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.sm }}>
-          <Text style={{ fontSize: 16, fontWeight: "800", color: config.color, fontVariant: ["tabular-nums"] }}>
-            {loading ? `—${config.unit}` : `${Math.round(total * 10) / 10}${config.unit}`}
-          </Text>
-        </View>
-      </View>
+      {/* Header — DRIFT-04 unified push-screen primitive.
+          Right-slot carries the value pill that was previously inline. */}
+      <PushScreenHeader
+        title={config.label}
+        caption={formatDateLabel(dateKey)}
+        onBack={() => router.back()}
+        rightSlot={
+          <View style={{ backgroundColor: config.color + "20", paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.sm }}>
+            <Text style={{ fontSize: 16, fontWeight: "800", color: config.color, fontVariant: ["tabular-nums"] }}>
+              {loading ? `—${config.unit}` : `${Math.round(total * 10) / 10}${config.unit}`}
+            </Text>
+          </View>
+        }
+      />
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: Spacing.lg, paddingBottom: insets.bottom + 40 }}>
         {/* 2026-05-14 (premium-bar audit Group H #3): segmented control

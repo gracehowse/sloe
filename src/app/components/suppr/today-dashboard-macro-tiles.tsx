@@ -249,8 +249,8 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
   const { trackedMacros, onAddWaterMl, nutrientRows, onPressViewAllNutrients, viewAllNutrientsCount } = props;
 
   return (
-    <div className="mb-6">
-    <div className="grid grid-cols-2 gap-4">
+    <div className="mb-3">
+    <div className="grid grid-cols-2 gap-2.5 max-w-[480px]">
       {trackedMacros.map((macroKey) => {
         const tile = buildMacroTile(macroKey, props);
         if (!tile) return null;
@@ -258,12 +258,19 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
         return (
           <div
             key={macroKey}
-            className="rounded-[14px] bg-card border border-border p-4 flex flex-col"
+            className="rounded-[14px] bg-card border border-border p-3 flex flex-col"
           >
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                {tile.label}
-              </span>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span
+                  className="inline-block h-1.5 w-1.5 shrink-0 rounded-full"
+                  style={{ background: tile.fillVar }}
+                  aria-hidden
+                />
+                <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
+                  {tile.label}
+                </span>
+              </div>
               <Icon
                 size={14}
                 strokeWidth={1.75}
@@ -286,12 +293,10 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
                 {tile.targetText}
               </span>
             </div>
-            {/* Hide bar on unlogged tiles; macro colour always on the fill. */}
-            {tile.pct === 0 ? null : (
             <div
               className="mt-2.5 h-[6px] rounded-full overflow-hidden"
               style={{
-                background: `color-mix(in_oklab, ${tile.fillVar} 14%, transparent)`,
+                background: `color-mix(in_oklab, ${tile.fillVar} 16%, transparent)`,
               }}
             >
               <div
@@ -302,14 +307,16 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
                 }}
               />
             </div>
-            )}
             {tile.caption ? (
               <span
                 className={`text-[11px] mt-1.5 tabular-nums ${
-                  tile.isOverBudget
-                    ? "font-bold text-destructive"
-                    : "text-muted-foreground"
+                  tile.isOverBudget ? "font-bold" : "text-muted-foreground"
                 }`}
+                style={
+                  tile.isOverBudget
+                    ? { color: "var(--over-budget-fg)" }
+                    : undefined
+                }
               >
                 {tile.caption}
               </span>
@@ -371,7 +378,7 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
                 ? `View all ${viewAllNutrientsCount} nutrients`
                 : "View all nutrients"
             }
-            className="mt-3 inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1.5 text-[12px] font-semibold text-foreground hover:bg-muted/50 transition-colors"
+            className="mt-3 inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-semibold text-foreground hover:bg-muted/50 transition-colors"
           >
             {viewAllNutrientsCount
               ? `View all ${viewAllNutrientsCount} nutrients`

@@ -228,7 +228,7 @@ export function HydrationStimulantsCard({
   return (
     <section
       className={cn(
-        "rounded-card bg-card border border-border p-3 mb-4",
+        "rounded-card bg-card border border-border p-3 mb-4 card-elevated",
         className,
       )}
       aria-label="Hydration and stimulants"

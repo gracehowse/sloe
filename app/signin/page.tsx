@@ -1,14 +1,17 @@
+import type { Metadata } from "next";
+import { LoginClient } from "../login/ui";
+
+export const metadata: Metadata = {
+  title: "Suppr — Sign in",
+  robots: { index: false, follow: false },
+};
+
 /**
- * /signin → /login (server-side 307).
+ * `/signin` — sign-in-only alias (Premium P1 / RTP-5).
  *
- * Short-lived alias. Grace 2026-04-20 set the canonical sign-in route
- * back to /login after one session where we'd split it into /signin.
- * Kept as a redirect (not deleted) so any bookmark / email link that
- * leaked out during that window still works.
+ * Renders the same card as `/login` without an in-card mode toggle.
+ * Bookmarks from the brief `/signin` split (2026-04-20) keep working.
  */
-
-import { redirect } from "next/navigation";
-
 export default function SigninPage() {
-  redirect("/login");
+  return <LoginClient initialMode="signin" hideTabs />;
 }

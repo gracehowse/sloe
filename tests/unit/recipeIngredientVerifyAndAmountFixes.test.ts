@@ -100,6 +100,20 @@ describe("Bug 1 — verified state persists past manual verify", () => {
     // missing on legacy data.
     expect(SRC.mobileRecipe).toMatch(/backgroundColor:\s*tierColor/);
   });
+
+  it("auto-verify sends structured amount/unit rows to verify-recipe (not name-only)", () => {
+    expect(SRC.mobileRecipe).toMatch(/structuredIngredientsForVerify\(snap\)/);
+    expect(SRC.mobileRecipe).toMatch(/structuredIngredientsForVerify\(ingredients\)/);
+    expect(SRC.mobileRecipe).not.toMatch(
+      /parseRawIngredients\(snap\.map\(\(ing\) => ing\.name\)\)/,
+    );
+  });
+
+  it("web recipe-detail auto-verify matches mobile (structured rows + merge)", () => {
+    expect(SRC.webRecipe).toMatch(/structuredIngredientsForVerify\(snap\)/);
+    expect(SRC.webRecipe).toMatch(/mergeVerifiedMacroRows\(snap[\s\S]*?rows\)/);
+    expect(SRC.webRecipe).toMatch(/autoVerifyingIngredients/);
+  });
 });
 
 describe("Bug 2 — amount renders without duplicated tokens", () => {

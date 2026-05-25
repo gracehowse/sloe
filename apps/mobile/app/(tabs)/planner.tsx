@@ -9,6 +9,8 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
+  ActionSheetIOS,
+  Platform,
   Image,
   Modal,
   FlatList,
@@ -17,10 +19,11 @@ import {
   Easing,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter, type Href } from "expo-router";
+import { useFocusEffect, useRouter, type Href } from "expo-router";
 import { useAuth } from "@/context/auth";
 import { useDiscoverRecipes, useSavedLibraryRecipes } from "@/lib/recipes";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { MacroIconRow } from "@/components/nutrition/MacroIconRow";
 import { supabase } from "@/lib/supabase";
 import { upsertShoppingListJsonItems } from "@suppr/shared/supabase/shoppingJsonFallback";
 import { getMyHousehold } from "@suppr/shared/household/householdClient";
@@ -45,14 +48,18 @@ import {
   MoreHorizontal,
   Plus,
   RefreshCw,
+  RotateCw,
   Settings2,
   Sliders,
   Sun,
+  Upload,
   UtensilsCrossed,
   X,
   type LucideIcon,
 } from "lucide-react-native";
-import { Accent, MacroColors, SlotColors, Spacing, Radius } from "@/constants/theme";
+import { Accent, Elevation, MacroColors, SlotColors, Spacing, Radius, Type } from "@/constants/theme";
+import { useEntranceAnimation } from "@/hooks/useEntranceAnimation";
+import ReAnimated from "react-native-reanimated";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets } from "@/lib/calcTargets";
 import { SkeletonCard } from "@/components/ui/SkeletonRow";
@@ -61,6 +68,10 @@ import {
   ALL_MEAL_SLOTS,
   DEFAULT_PLANNER_BANDS,
   PORTION_MULTIPLIER_CLAMP,
+  refitDayMealsToTargets,
+  scaleMacros,
+  slotMacroTargets,
+  recipeSlotFitScore,
   type PlannerTargets,
 } from "@/lib/mealPlanAlgo";
 import { isMealPlanPlaceholderLikeTitle } from "@suppr/shared/nutrition/portionMultiplier";
@@ -72,8 +83,15 @@ import {
   stripMidnight,
 } from "@suppr/shared/mealPlan/planCalendarAnchor";
 import { countChangedMealsInPlan } from "@suppr/shared/mealPlan/planDiff";
+import { normalizeShoppingIngredientRow } from "@suppr/shared/planning/normalizeShoppingIngredientRow";
 import { formatPlannedMealKcalMacrosLine } from "@suppr/shared/nutrition/plannedMealDisplay";
 import { formatMacro } from "@suppr/shared/nutrition/formatMacro";
+import {
+  enrichPlanMealsFiber,
+  planMealFiberG,
+  resolveRecipeFiberG,
+  type RecipeFiberRef,
+} from "@/lib/planMealFiber";
 import {
   buildDayTotalVsGoalLine,
   formatDayTotalCell,
@@ -113,6 +131,7 @@ import { PlanTemplatesSheet } from "@/components/PlanTemplatesSheet";
 import { useMealPlanSlots } from "@/hooks/use-meal-plan-slots";
 import { PlanTabChrome } from "@/components/tabs/PlanTabChrome";
 import { Layout } from "@/constants/layout";
+import { consumePendingImportDayPlan } from "@/lib/planImportPendingApply";
 
 function stripPlanPlaceholders<T extends { recipeTitle: string; isPlaceholder?: boolean }>(meals: T[]): T[] {
   return meals.filter(
@@ -142,6 +161,22 @@ function slotsPresentInDay(meals: { name: string }[]): Set<string> {
 function canonicalSlotsMissingFromDay(meals: { name: string }[]): string[] {
   const present = slotsPresentInDay(meals);
   return ALL_MEAL_SLOTS.filter((slot) => !present.has(slot));
+}
+
+/** Compact chip label so four slots fit one row on narrow phones. */
+function compactPlanSlotLabel(slot: string): string {
+  switch (slot) {
+    case "Breakfast":
+      return "Bfast";
+    case "Lunch":
+      return "Lunch";
+    case "Dinner":
+      return "Dinner";
+    case "Snacks":
+      return "Snack";
+    default:
+      return slot;
+  }
 }
 
 /** True when this row has a chosen recipe (ignore stale `isPlaceholder` flags). */
@@ -237,6 +272,61 @@ function snapDisplayMultiplier(raw: number): number {
 }
 
 /** Portion vs library recipe card — used for "(2.5x)" label and `/recipe?id&portion=` when multiplier isn't stored. */
+function enrichPlanDaysFiber(days: DayPlan[], pool: RecipeFiberRef[]): DayPlan[] {
+  if (pool.length === 0) return days;
+  return days.map((dp) => ({
+    ...dp,
+    meals: enrichPlanMealsFiber(dp.meals, pool),
+  }));
+}
+
+async function fetchPlanTargetsFromProfile(userId: string): Promise<{
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiber: number;
+}> {
+  let resolved = {
+    calories: NUTRITION_DEFAULTS.calories,
+    protein: NUTRITION_DEFAULTS.protein,
+    carbs: NUTRITION_DEFAULTS.carbs,
+    fat: NUTRITION_DEFAULTS.fat,
+    fiber: NUTRITION_DEFAULTS.fiber,
+  };
+  const { data } = await supabase
+    .from("profiles")
+    .select(
+      "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, weight_kg, height_cm, sex, activity_level, goal, dob, age, plan_pace",
+    )
+    .eq("id", userId)
+    .single();
+  if (data) {
+    const d = data as Record<string, unknown>;
+    const t = resolveTargets(
+      {
+        target_calories: d.target_calories as number | null,
+        target_protein: d.target_protein as number | null,
+        target_carbs: d.target_carbs as number | null,
+        target_fat: d.target_fat as number | null,
+        target_fiber_g: d.target_fiber_g as number | null,
+      },
+      {
+        weight_kg: d.weight_kg as number | null,
+        height_cm: d.height_cm as number | null,
+        sex: d.sex as string | null,
+        activity_level: d.activity_level as string | null,
+        goal: d.goal as string | null,
+        dob: d.dob as string | null,
+        age: d.age != null ? Number(d.age) : null,
+        plan_pace: d.plan_pace as string | null,
+      },
+    );
+    resolved = { calories: t.calories, protein: t.protein, carbs: t.carbs, fat: t.fat, fiber: t.fiber };
+  }
+  return resolved;
+}
+
 function planMealPortionMeta(meal: PlanMeal, pool: PlanRecipeRef[]): { displayMult: number; label: string } {
   const pm = meal.portionMultiplier;
   if (typeof pm === "number" && Number.isFinite(pm) && Math.abs(pm - 1) > 0.001) {
@@ -323,6 +413,10 @@ export default function PlannerScreen() {
     deleteExistingSlot: deletePlanSlot,
   } = useMealPlanSlots();
   const [generating, setGenerating] = useState(false);
+
+  const openPlanImport = useCallback(() => {
+    router.push("/plan-import");
+  }, [router]);
   // Group E Card 4 (premium-bar audit 2026-05-14): regenerate diff
   // toast. When the user taps Regenerate against an existing plan,
   // we snapshot the prior plan in `prevPlanForDiffRef`, run the
@@ -471,7 +565,13 @@ export default function PlannerScreen() {
       setDays(1);
     }
   }, [isFree]);
-  const [planTargets, setPlanTargets] = useState<{ calories: number; protein: number; carbs: number; fat: number; fiber?: number } | null>(null);
+  const [planTargets, setPlanTargets] = useState<{
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    fiber: number;
+  } | null>(null);
   const [enabledSlots, setEnabledSlots] = useState<Set<string>>(new Set(ALL_MEAL_SLOTS));
   const [shoppingItemCount, setShoppingItemCount] = useState(0);
 
@@ -520,12 +620,56 @@ export default function PlannerScreen() {
     return shoppingScopeFor({ userId, householdId: activeHouseholdId });
   }, [userId, activeHouseholdId]);
 
+  const recipeFiberPool = useMemo((): RecipeFiberRef[] => {
+    const seen = new Set<string>();
+    const out: RecipeFiberRef[] = [];
+    for (const r of [...savedRecipes, ...discoverRecipes]) {
+      if (seen.has(r.id)) continue;
+      seen.add(r.id);
+      out.push({
+        id: r.id,
+        title: r.title,
+        calories: r.calories,
+        fiberG: resolveRecipeFiberG(r as RecipeFiberRef),
+      });
+    }
+    return out;
+  }, [savedRecipes, discoverRecipes]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!userId) {
+        setPlanTargets(null);
+        return;
+      }
+      let cancelled = false;
+      void fetchPlanTargetsFromProfile(userId).then((t) => {
+        if (!cancelled) setPlanTargets(t);
+      });
+      return () => {
+        cancelled = true;
+      };
+    }, [userId]),
+  );
+
   // Batch 3.10 — plan templates state.
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [planTemplates, setPlanTemplates] = useState<PlanTemplate[]>([]);
   const [templatesLoading, setTemplatesLoading] = useState(false);
   /** When a plan exists: expand to change day count / slots / start before regenerating. */
   const [planSetupExpanded, setPlanSetupExpanded] = useState(false);
+  // 2026-05-23 — Plan setup rework. Replaces the three-section inline
+  // setup card with two tappable chips + a ghost Regenerate link.
+  // Tapping a chip opens a focused bottom sheet (one decision at a
+  // time). HTML prototype: /tmp/suppr-prototypes/plan-chip-variants.html
+  // (variant B).
+  const [chipSheet, setChipSheet] = useState<"lengthStart" | "meals" | null>(null);
+  // 2026-05-23 — Plan-row action sheet. Replaces the iOS fat-pill
+  // `Alert.alert` action menu the [⋯] overflow used to launch. Same
+  // actions (Log as planned, Change portion size, Move to different
+  // meal, Remove from plan) but on an on-brand bottom sheet that
+  // matches the rest of the app.
+  const [rowMenu, setRowMenu] = useState<{ dayIdx: number; mealIndexInDay: number } | null>(null);
   // 2026-05-13 (premium-bar audit Plan Card 4 #4): instruction copy
   // ("Change options below, then regenerate. Edits to individual
   // meals…") used to render every time the Plan setup was expanded.
@@ -703,13 +847,27 @@ export default function PlannerScreen() {
     [userId, startOffset],
   );
 
+  useFocusEffect(
+    useCallback(() => {
+      const pending = consumePendingImportDayPlan();
+      if (!pending?.length) return;
+      setPlan(pending as DayPlan[]);
+      void persistPlan(pending as DayPlan[]);
+      track(AnalyticsEvents.plan_template_applied, {
+        dayCount: pending.length,
+        slotCount: pending.reduce((n, d) => n + d.meals.length, 0),
+        source: "plan_import",
+      });
+    }, [persistPlan, setPlan]),
+  );
+
   const swapMeal = useCallback((dayIndex: number, mealIndex: number, slotName: string) => {
     const allPool = [...savedRecipes, ...discoverRecipes];
     // Audit L5 (2026-04-18): canonical slot via `normaliseMealSlot`
     // so "breakfast" / "Breakfast" / "BREAKFAST" all collapse to the
     // same branch. Unknown slots fall through to the snack ratio
     // (matches the prior default branch).
-    const canonicalSlot = normaliseMealSlot(slotName);
+    const canonicalSlot = normaliseMealSlot(slotName) ?? "Snacks";
     const fits = allPool.filter((r) => {
       const tags = r.mealSlots ?? [];
       return tags.length === 0 || tags.some((t: string) => normaliseMealSlot(t) === canonicalSlot);
@@ -719,14 +877,24 @@ export default function PlannerScreen() {
       return;
     }
 
-    // Sort by calorie closeness to target slot budget
-    const slotRatio =
-      canonicalSlot === "Breakfast" ? 0.25 :
-      canonicalSlot === "Lunch" ? 0.3 :
-      canonicalSlot === "Dinner" ? 0.35 :
-      0.1;
-    const slotTarget = planTargets ? planTargets.calories * slotRatio : 400;
-    const sorted = [...fits].sort((a, b) => Math.abs(a.calories - slotTarget) - Math.abs(b.calories - slotTarget));
+    const plannerTargets: PlannerTargets | null = planTargets
+      ? {
+          calories: planTargets.calories,
+          protein: planTargets.protein,
+          carbs: planTargets.carbs,
+          fat: planTargets.fat,
+          fiber: planTargets.fiber,
+          calorieBandPct: DEFAULT_PLANNER_BANDS.calorieBandPct,
+          carbFatBandPct: DEFAULT_PLANNER_BANDS.carbFatBandPct,
+        }
+      : null;
+    const slotMacro = plannerTargets
+      ? slotMacroTargets([canonicalSlot], plannerTargets)[0]!
+      : { calories: 400, protein: 30, carbs: 45, fat: 15, fiber: 0 };
+    const sorted = [...fits].sort(
+      (a, b) => recipeSlotFitScore(a, slotMacro) - recipeSlotFitScore(b, slotMacro),
+    );
+    const slotTarget = slotMacro.calories;
 
     // P1-22 (TestFlight `APHEBaM02gFAhoeHQ5mtxuE`,
     // `AFF_UA88-CeE5TDCRhbaY_M`, 2026-04-24): tester couldn't find a
@@ -754,59 +922,117 @@ export default function PlannerScreen() {
         style: idx === options.length - 1 ? "cancel" as const : "default" as const,
         onPress: idx === options.length - 1 ? undefined : () => {
           const picked = sorted[idx];
-          if (!picked || !plan) return;
+          if (!picked || !plan || !plannerTargets) return;
 
-          // Calculate ideal portion to hit slot target
-          const idealMult = picked.calories > 0 ? Math.round((slotTarget / picked.calories) * 4) / 4 : 1;
-          const mult = Math.max(0.25, Math.min(2, idealMult));
-          const scaledCals = Math.round(picked.calories * mult);
-
-          // Compute new day total
           const currentDay = plan[dayIndex];
           if (!currentDay) return;
-          const otherMealsCals = currentDay.meals.reduce((s, m, mi) => mi === mealIndex ? s : s + m.calories, 0);
-          const newDayTotal = otherMealsCals + scaledCals;
-          const dayTarget = planTargets?.calories ?? 2000;
+
+          const baseFromPool = (r: (typeof fits)[number]) => {
+            const c = coerceMacrosWhenCaloriesButNoGrams({
+              calories: r.calories,
+              protein: r.protein,
+              carbs: r.carbs,
+              fat: r.fat,
+              fiberG: (r as { fiberG?: number }).fiberG,
+            });
+            return {
+              calories: c.calories,
+              protein: c.protein,
+              carbs: c.carbs,
+              fat: c.fat,
+              fiberG:
+                c.fiberG ??
+                (r as { fiber_g?: number }).fiber_g ??
+                (r as { fiberG?: number }).fiberG ??
+                0,
+            };
+          };
+
+          const trialBase = currentDay.meals.map((m, mi) =>
+            mi === mealIndex ? baseFromPool(picked) : (() => {
+              const ref = allPool.find((r) => r.id === m.recipeId);
+              if (ref) return baseFromPool(ref);
+              return {
+                calories: m.calories,
+                protein: m.protein,
+                carbs: m.carbs,
+                fat: m.fat,
+                fiberG: planMealFiberG(m, recipeFiberPool),
+              };
+            })(),
+          );
+          const trialFit = refitDayMealsToTargets({ recipes: trialBase, targets: plannerTargets });
+          const trialDayCals = trialBase.reduce(
+            (s, r, i) => s + r.calories * (trialFit.multipliers[i] ?? 1),
+            0,
+          );
+          const dayTarget = plannerTargets.calories;
 
           const doSwap = () => {
             setPlan((prev) => {
               if (!prev) return prev;
               const next = prev.map((dp, di) => {
                 if (di !== dayIndex) return dp;
+                const baseRecipes = dp.meals.map((m, mi) =>
+                  mi === mealIndex ? baseFromPool(picked) : (() => {
+                    const ref = allPool.find((r) => r.id === m.recipeId);
+                    if (ref) return baseFromPool(ref);
+                    return {
+                      calories: m.calories,
+                      protein: m.protein,
+                      carbs: m.carbs,
+                      fat: m.fat,
+                      fiberG: planMealFiberG(m, recipeFiberPool),
+                    };
+                  })(),
+                );
+                const fit = refitDayMealsToTargets({ recipes: baseRecipes, targets: plannerTargets });
                 const newMeals = dp.meals.map((m, mi) => {
-                  if (mi !== mealIndex) return m;
+                  const scaled = scaleMacros(baseRecipes[mi]!, fit.multipliers[mi] ?? 1);
                   return {
                     ...m,
-                    recipeTitle: picked.title,
-                    recipeId: picked.id,
-                    calories: Math.round(picked.calories * mult),
-                    protein: Math.round(picked.protein * mult),
-                    carbs: Math.round(picked.carbs * mult),
-                    fat: Math.round(picked.fat * mult),
-                    isPlaceholder: false,
-                    leftoverOf: undefined,
-                    isLeftover: undefined,
+                    ...(mi === mealIndex
+                      ? {
+                          recipeTitle: picked.title,
+                          recipeId: picked.id,
+                          isPlaceholder: false,
+                          leftoverOf: undefined,
+                          isLeftover: undefined,
+                        }
+                      : {}),
+                    calories: scaled.calories,
+                    protein: scaled.protein,
+                    carbs: scaled.carbs,
+                    fat: scaled.fat,
+                    fiberG: scaled.fiberG,
                     portionMultiplier: undefined,
-                    // Portion is baked into macros — never persist a parallel
-                    // multiplier or day totals / goal header double-count (F-70).
                   };
                 });
                 const totals = newMeals.reduce(
-                  (a, m) => ({ calories: a.calories + m.calories, protein: a.protein + m.protein, carbs: a.carbs + m.carbs, fat: a.fat + m.fat }),
+                  (a, m) => ({
+                    calories: a.calories + m.calories,
+                    protein: a.protein + m.protein,
+                    carbs: a.carbs + m.carbs,
+                    fat: a.fat + m.fat,
+                  }),
                   { calories: 0, protein: 0, carbs: 0, fat: 0 },
                 );
-                return { ...dp, meals: newMeals, totals };
+                return {
+                  ...dp,
+                  meals: newMeals,
+                  totals,
+                  ...(fit.residualProteinGap < 0 ? { residualProteinGap: fit.residualProteinGap } : {}),
+                };
               });
               void persistPlan(next);
               return next;
             });
           };
 
-          // Warn if >10% over target
-          if (newDayTotal > dayTarget * 1.1) {
+          if (trialDayCals > dayTarget * 1.1) {
             Alert.alert(
               "Over calorie target",
-              `This swap puts the day at ${newDayTotal.toLocaleString()} kcal (target: ${dayTarget.toLocaleString()}).\n\nPortion: ${mult}x = ${scaledCals} kcal`,
+              `After re-fitting portions, this day is about ${Math.round(trialDayCals).toLocaleString()} kcal (target: ${dayTarget.toLocaleString()}).`,
               [
                 { text: "Cancel", style: "cancel" },
                 { text: "Swap anyway", onPress: doSwap },
@@ -818,7 +1044,7 @@ export default function PlannerScreen() {
         },
       })),
     );
-  }, [savedRecipes, discoverRecipes, plan, planTargets, persistPlan]);
+  }, [savedRecipes, discoverRecipes, plan, planTargets, persistPlan, recipeFiberPool]);
 
   // Batch 3.10 mobile parity — move a meal between slots / days.
   // Uses the shared `moveMealInPlan` helper. Two-way swap when destination
@@ -910,35 +1136,35 @@ export default function PlannerScreen() {
   const getProgressColor = (cals: number, target: number) => {
     if (target <= 0) return colors.border;
     const pct = (cals / target) * 100;
-    if (pct > 105) return Accent.destructive; // Over target
+    if (pct > 105) return Accent.warning; // Over target — amber, never red
     if (pct >= 95 && pct <= 105) return Accent.success; // Within ±5%
     if (pct >= 50) return Accent.warning; // Under but getting there
     return colors.border; // Way under
   };
+
+  const headerEntrance = useEntranceAnimation({ delay: 0 });
+  const summaryEntrance = useEntranceAnimation({ delay: 80 });
+  const planEntrance = useEntranceAnimation({ delay: 160 });
 
   const styles = useMemo(
     () =>
       StyleSheet.create({
         container: { flex: 1, backgroundColor: colors.background },
         scroll: {
-          paddingHorizontal: Layout.screenPaddingX,
-          paddingTop: Spacing.md,
+          paddingHorizontal: Layout.planScreenPaddingX,
+          paddingTop: Spacing.sm,
           paddingBottom: Layout.screenPaddingBottom,
-          gap: Layout.screenGap,
+          gap: Layout.planScrollGap,
         },
         // Prototype port — uppercase micro-overline above the big title.
         headerOverline: {
-          fontSize: 11,
-          fontWeight: "700",
+          ...Type.label,
           color: colors.textTertiary,
           letterSpacing: 1.2,
-          textTransform: "uppercase",
         },
         headerTitle: {
-          fontSize: 28,
-          fontWeight: "700",
+          ...Type.title,
           color: colors.text,
-          letterSpacing: -0.6,
           marginTop: 2,
           paddingBottom: 4,
         },
@@ -969,29 +1195,26 @@ export default function PlannerScreen() {
         // the inner content in <LinearGradient> with the same two colours
         // the prototype uses (primary 12% → fat 8%).
         summaryCard: {
-          backgroundColor: Accent.primary + "14",
+          backgroundColor: colors.backgroundSecondary,
           borderRadius: Radius.lg,
           borderWidth: 1,
-          borderColor: Accent.primary + "38",
-          padding: Spacing.xl,
-          marginBottom: Spacing.xl,
+          borderColor: colors.border,
+          padding: Spacing.md,
+          marginBottom: Spacing.xs,
         },
         summaryOverline: {
-          fontSize: 11,
-          fontWeight: "700",
-          color: Accent.primaryLight,
+          ...Type.label,
+          color: colors.textTertiary,
           letterSpacing: 1.2,
-          textTransform: "uppercase",
-          marginBottom: 6,
+          marginBottom: 4,
         },
         summaryTitle: {
-          fontSize: 17,
-          fontWeight: "700",
+          ...Type.headline,
           color: colors.text,
-          letterSpacing: -0.2,
           marginBottom: 4,
         },
         summarySubtitle: {
+          ...Type.caption,
           fontSize: 12,
           color: colors.textSecondary,
           lineHeight: 18,
@@ -1057,12 +1280,50 @@ export default function PlannerScreen() {
         dayCardCalories: { fontSize: 10, color: colors.textTertiary, fontVariant: ["tabular-nums"] },
 
         sectionLabel: {
-          fontSize: 13,
-          fontWeight: "700",
+          ...Type.label,
           color: colors.textSecondary,
-          letterSpacing: 0.2,
-          marginTop: Spacing.md,
-          marginBottom: Spacing.md,
+          marginTop: Spacing.sm,
+          marginBottom: Spacing.sm,
+        },
+
+        // 2026-05-22 evening (Grace 3-C): Plan now reads as a flat
+        // continuous list. Day sections separated by a hairline divider
+        // at the top (suppressed on the first day) instead of each
+        // day being its own bordered card. Section header has more
+        // breathing room above the meals it introduces.
+        daySection: {
+          marginBottom: Layout.planDayGap,
+          paddingTop: Spacing.lg,
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+        },
+        daySectionFirst: {
+          borderTopWidth: 0,
+          paddingTop: 0,
+        },
+        daySectionHeader: {
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 10,
+          paddingHorizontal: 2,
+        },
+        // 2026-05-22 evening (Grace 3-C): strip per-day card chrome
+        // so Plan reads as one continuous list with day section
+        // headers (like Today) instead of seven distinct bordered
+        // rectangles stacked. Day separation now comes from the
+        // section header overline + a hairline divider between days.
+        planDayCard: {
+          backgroundColor: "transparent",
+          borderRadius: 0,
+          borderWidth: 0,
+          borderColor: "transparent",
+          overflow: "visible",
+        },
+        planDayCardMeta: {
+          paddingHorizontal: 14,
+          paddingTop: 10,
+          paddingBottom: 6,
         },
 
         card: {
@@ -1070,16 +1331,11 @@ export default function PlannerScreen() {
           borderRadius: Radius.lg,
           borderWidth: 1,
           borderColor: colors.border,
-          padding: Spacing.xl,
-          gap: Spacing.lg,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.06,
-          shadowRadius: 8,
-          elevation: 2,
+          padding: Spacing.md,
+          gap: Spacing.md,
         },
-        cardTitle: { fontSize: 18, fontWeight: "700", color: colors.text },
-        cardDesc: { fontSize: 14, color: colors.textSecondary, lineHeight: 20 },
+        cardTitle: { ...Type.headline, fontSize: 18, color: colors.text },
+        cardDesc: { ...Type.body, color: colors.textSecondary, lineHeight: 20 },
 
         daysRow: { flexDirection: "row", gap: Spacing.sm },
         dayBtn: {
@@ -1095,9 +1351,12 @@ export default function PlannerScreen() {
         // dark mode and weakly tinted in light. Bumped to `+ "26"`
         // (≈15%) so the active state lifts visibly above the card
         // surface in both themes without dominating like a solid fill.
-        dayBtnActive: { borderColor: Accent.primary, backgroundColor: Accent.primary + "26" },
+        dayBtnActive: {
+          borderColor: colors.textSecondary,
+          backgroundColor: colors.textSecondary + "18",
+        },
         dayBtnText: { color: colors.textTertiary, fontWeight: "600", fontSize: 14 },
-        dayBtnTextActive: { color: Accent.primary },
+        dayBtnTextActive: { color: colors.text, fontWeight: "700" },
 
         generateBtn: {
           backgroundColor: Accent.primary,
@@ -1107,19 +1366,14 @@ export default function PlannerScreen() {
         },
         generateBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
 
-        dayHeader: {
-          flexDirection: "row",
-          justifyContent: "space-between",
-          alignItems: "center",
-        },
-        dayTitle: { fontSize: 18, fontWeight: "700", color: colors.text },
+        dayTitle: { ...Type.body, fontSize: 15, fontWeight: "700", color: colors.text },
         // Prototype port (2026-04-20) — small uppercase "TODAY" pill
         // next to the weekday label. Primary-color text, no pill
         // background — matches prototype `screens-mobile.jsx:482`.
         dayTodayPill: {
           fontSize: 10,
           fontWeight: "700",
-          color: Accent.primary,
+          color: colors.textSecondary,
           letterSpacing: 1.4,
         },
         // 2026-05-14 (premium-bar audit Plan Card 2 #5) — companion
@@ -1134,13 +1388,58 @@ export default function PlannerScreen() {
         },
         dayTotals: { fontSize: 12, color: colors.textSecondary, fontVariant: ["tabular-nums"] },
 
+        // 2026-05-22 evening (Grace): tightened vertical padding 10→8
+        // so 4 meals × 7 days fits closer to 2 screens not 3.
         mealRow: {
           flexDirection: "row",
           alignItems: "flex-start",
-          paddingVertical: Spacing.md,
+          paddingVertical: 8,
+          paddingHorizontal: 14,
           borderTopWidth: 1,
-          borderTopColor: colors.border,
+          borderTopColor: colors.border + "99",
           gap: Spacing.sm,
+        },
+        /** Single-row add-slot chips — kept tight so empty/partial days
+         *  don't balloon card height (Grace TF, 2026-05-21). */
+        addSlotBar: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 8,
+          paddingHorizontal: 12,
+          paddingVertical: 8,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopColor: colors.border,
+        },
+        addSlotLabel: {
+          fontSize: 11,
+          fontWeight: "600",
+          color: colors.textTertiary,
+          letterSpacing: 0.3,
+        },
+        addSlotRow: {
+          flex: 1,
+          flexDirection: "row",
+          gap: 6,
+          minWidth: 0,
+        },
+        addSlotChip: {
+          flex: 1,
+          minWidth: 0,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 3,
+          paddingVertical: 6,
+          paddingHorizontal: 4,
+          borderRadius: Radius.sm,
+          borderWidth: 1,
+          borderColor: colors.border,
+          backgroundColor: colors.backgroundSecondary,
+        },
+        addSlotChipText: {
+          fontSize: 11,
+          fontWeight: "600",
+          color: colors.textSecondary,
         },
         // Prototype port (2026-04-20) — 36×36 muted square on the
         // left of every meal row carrying a slot-appropriate icon.
@@ -1152,9 +1451,22 @@ export default function PlannerScreen() {
           alignItems: "center",
           justifyContent: "center",
         },
-        mealSlot: { fontSize: 11, fontWeight: "700", color: Accent.primary, letterSpacing: 1 },
-        mealTitle: { fontSize: 15, fontWeight: "600", color: colors.text, marginTop: 4, lineHeight: 21 },
-        mealMacros: { fontSize: 12, color: colors.textSecondary, marginTop: 4, fontVariant: ["tabular-nums"] },
+        mealSlot: { ...Type.label, letterSpacing: 0.8 },
+        mealTitle: {
+          ...Type.body,
+          fontSize: 14,
+          fontWeight: "600",
+          color: colors.text,
+          marginTop: 2,
+          lineHeight: 19,
+        },
+        mealMacros: {
+          ...Type.caption,
+          fontSize: 11,
+          color: colors.textSecondary,
+          marginTop: 2,
+          fontVariant: ["tabular-nums"],
+        },
         // Prototype port (2026-04-20) — 30×30 square swap button. Sits
         // immediately before the existing "Log today" button (both
         // right-aligned). Tapping opens the same swap flow the row's
@@ -1180,12 +1492,14 @@ export default function PlannerScreen() {
           paddingHorizontal: 10,
           minWidth: 90,
           borderRadius: 8,
-          backgroundColor: `${Accent.primary}14`,
+          backgroundColor: colors.backgroundSecondary,
+          borderWidth: 1,
+          borderColor: colors.border,
           alignItems: "center",
           justifyContent: "center",
           marginTop: 4,
         },
-        mealLogBtnText: { fontSize: 11, fontWeight: "600", color: Accent.primary, textAlign: "center" },
+        mealLogBtnText: { fontSize: 11, fontWeight: "600", color: colors.textSecondary, textAlign: "center" },
         // 2026-05-14 (premium-bar audit Plan Card 2 #4) — `…` overflow
         // sits adjacent to the primary Log-as-planned button and opens
         // an action sheet with the same actions long-press exposes.
@@ -1234,8 +1548,8 @@ export default function PlannerScreen() {
         },
         shoppingListIcon: { width: 48, height: 48, borderRadius: Radius.md, backgroundColor: Accent.warning + "15", alignItems: "center", justifyContent: "center", marginRight: Spacing.md },
         shoppingListContent: { flex: 1 },
-        shoppingListTitle: { fontSize: 16, fontWeight: "700", color: colors.text },
-        shoppingListSubtitle: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
+        shoppingListTitle: { ...Type.headline, fontSize: 16, color: colors.text },
+        shoppingListSubtitle: { ...Type.body, fontSize: 13, color: colors.textSecondary, marginTop: 2 },
 
         actionsRow: { gap: Spacing.md },
         regenBtn: {
@@ -1266,7 +1580,7 @@ export default function PlannerScreen() {
       const { data: dayRows, error: dayErr } = await supabase
         .from("meal_plan_days")
         .select(
-          "id, day, start_date, meals:meal_plan_meals(plan_day_id, slot_index, name, recipe_title, calories, protein, carbs, fat, portion_multiplier, is_placeholder)",
+          "id, day, start_date, meals:meal_plan_meals(plan_day_id, slot_index, name, recipe_title, recipe_id, calories, protein, carbs, fat, portion_multiplier, is_placeholder)",
         )
         .eq("user_id", userId)
         .eq("slot_id", "default")
@@ -1286,6 +1600,7 @@ export default function PlannerScreen() {
               return {
                 name: (m.name as string) ?? "",
                 recipeTitle: (m.recipe_title as string) ?? "",
+                recipeId: (m.recipe_id as string) ?? undefined,
                 calories: coerced.calories,
                 protein: coerced.protein,
                 carbs: coerced.carbs,
@@ -1308,7 +1623,7 @@ export default function PlannerScreen() {
           );
           return { day: d.day, meals, totals };
         });
-        setPlan(plans);
+        setPlan(enrichPlanDaysFiber(plans, recipeFiberPool));
         return;
       }
 
@@ -1317,7 +1632,21 @@ export default function PlannerScreen() {
       // exclusively from `meal_plan_days` + `meal_plan_meals` above.
     })();
     return () => { cancelled = true; };
-  }, [userId]);
+  }, [userId, recipeFiberPool]);
+
+  // When the recipe library hydrates after the plan, backfill fibre on rows
+  // (meal_plan_meals does not persist fibre; we derive from linked recipes).
+  useEffect(() => {
+    if (!plan?.length || recipeFiberPool.length === 0) return;
+    setPlan((prev) => {
+      if (!prev?.length) return prev;
+      const enriched = enrichPlanDaysFiber(prev, recipeFiberPool);
+      const changed = enriched.some((dp, di) =>
+        dp.meals.some((m, mi) => (m.fiberG ?? 0) !== (prev[di]?.meals[mi]?.fiberG ?? 0)),
+      );
+      return changed ? enriched : prev;
+    });
+  }, [recipeFiberPool, plan?.length]);
 
   // Keep "Plan length" chips aligned with the loaded plan (e.g. after sync).
   useEffect(() => {
@@ -1383,17 +1712,24 @@ export default function PlannerScreen() {
         { name: string; amount: number; unit: string; from: Set<string> }
       >();
       for (const ing of ingredients) {
-        const key = `${(ing.name ?? "").toLowerCase().trim()}|${(ing.unit ?? "").toLowerCase().trim()}`;
+        const normalized = normalizeShoppingIngredientRow({
+          name: String(ing.name ?? ""),
+          amount: ing.amount != null ? String(ing.amount) : "",
+          unit: String(ing.unit ?? ""),
+        });
+        const key = `${normalized.name.toLowerCase().trim()}|${normalized.unit.toLowerCase().trim()}`;
         const multiplier = recipeCounts[ing.recipe_id] ?? 1;
+        const parsed = Number.parseFloat(normalized.amount);
+        const baseAmount = Number.isFinite(parsed) ? parsed : 1;
         const existing = merged.get(key);
         if (existing) {
-          existing.amount += (ing.amount ?? 1) * multiplier;
+          existing.amount += baseAmount * multiplier;
           existing.from.add(recipeTitles[ing.recipe_id] ?? "");
         } else {
           merged.set(key, {
-            name: ing.name ?? "Unknown",
-            amount: (ing.amount ?? 1) * multiplier,
-            unit: ing.unit ?? "",
+            name: normalized.name,
+            amount: baseAmount * multiplier,
+            unit: normalized.unit,
             from: new Set([recipeTitles[ing.recipe_id] ?? ""]),
           });
         }
@@ -1521,40 +1857,22 @@ export default function PlannerScreen() {
 
     // Smart macro-aware plan generation
     {
-      // Load targets from user profile
-      let resolved = { calories: NUTRITION_DEFAULTS.calories, protein: NUTRITION_DEFAULTS.protein, carbs: NUTRITION_DEFAULTS.carbs, fat: NUTRITION_DEFAULTS.fat, fiber: NUTRITION_DEFAULTS.fiber };
-      if (userId) {
-        const { data } = await supabase
-          .from("profiles")
-          .select("target_calories, target_protein, target_carbs, target_fat, target_fiber_g, weight_kg, height_cm, sex, activity_level, goal, dob, age, plan_pace")
-          .eq("id", userId)
-          .single();
-        if (data) {
-          const d = data as any;
-          const t = resolveTargets(
-            { target_calories: d.target_calories, target_protein: d.target_protein, target_carbs: d.target_carbs, target_fat: d.target_fat, target_fiber_g: d.target_fiber_g },
-            {
-              weight_kg: d.weight_kg,
-              height_cm: d.height_cm,
-              sex: d.sex,
-              activity_level: d.activity_level,
-              goal: d.goal,
-              dob: d.dob,
-              age: d.age != null ? Number(d.age) : null,
-              plan_pace: d.plan_pace,
-            },
-          );
-          resolved = { calories: t.calories, protein: t.protein, carbs: t.carbs, fat: t.fat, fiber: t.fiber };
-        }
-      }
+      const resolved = userId
+        ? await fetchPlanTargetsFromProfile(userId)
+        : {
+            calories: NUTRITION_DEFAULTS.calories,
+            protein: NUTRITION_DEFAULTS.protein,
+            carbs: NUTRITION_DEFAULTS.carbs,
+            fat: NUTRITION_DEFAULTS.fat,
+            fiber: NUTRITION_DEFAULTS.fiber,
+          };
 
       const targets: PlannerTargets = {
         calories: resolved.calories,
         protein: resolved.protein,
         carbs: resolved.carbs,
         fat: resolved.fat,
-        // P1-9 (2026-04-25): import shared defaults so web + mobile
-        // can't drift on macro tolerance bands.
+        fiber: resolved.fiber,
         calorieBandPct: DEFAULT_PLANNER_BANDS.calorieBandPct,
         carbFatBandPct: DEFAULT_PLANNER_BANDS.carbFatBandPct,
       };
@@ -1598,6 +1916,7 @@ export default function PlannerScreen() {
             protein: c.protein,
             carbs: c.carbs,
             fat: c.fat,
+            fiberG: c.fiberG ?? (r as { fiber_g?: number }).fiber_g ?? (r as { fiberG?: number }).fiberG ?? 0,
             mealType: (r as { mealSlots?: string[] | null }).mealSlots ?? null,
           };
         });
@@ -1663,7 +1982,7 @@ export default function PlannerScreen() {
         }
       }
 
-      setPlan(newPlan);
+      setPlan(enrichPlanDaysFiber(newPlan, recipeFiberPool));
       setPlanTargets(resolved);
 
       // Group E Card 4 (premium-bar audit 2026-05-14): count how
@@ -1744,7 +2063,34 @@ export default function PlannerScreen() {
     } finally {
       setGenerating(false);
     }
-  }, [savedRecipes, days, userId, enabledSlots]);
+  }, [savedRecipes, discoverRecipes, days, userId, enabledSlots, recipeFiberPool]);
+
+  const openGenerateMenu = useCallback(() => {
+    if (generating) return;
+    const labels = ["Generate from library", "Import existing plan", "Cancel"] as const;
+    const runLibrary = () => {
+      void generatePlan();
+    };
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          title: "Generate",
+          options: [...labels],
+          cancelButtonIndex: 2,
+        },
+        (idx) => {
+          if (idx === 0) runLibrary();
+          else if (idx === 1) openPlanImport();
+        },
+      );
+      return;
+    }
+    Alert.alert("Generate", undefined, [
+      { text: "Generate from library", onPress: runLibrary },
+      { text: "Import existing plan", onPress: openPlanImport },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  }, [generating, generatePlan, openPlanImport]);
 
   return (
     <View
@@ -1823,62 +2169,47 @@ export default function PlannerScreen() {
             router.push("/shopping" as Href);
           }
         }}
+        trailing={
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+            <Pressable
+              style={styles.headerIconBtn}
+              onPress={openPlanImport}
+              accessibilityRole="button"
+              accessibilityLabel="Import existing meal plan"
+              accessibilityHint="Paste a meal plan or program to import recipes and schedule"
+              testID="plan-header-import"
+            >
+              <Upload size={18} color={colors.text} strokeWidth={1.75} />
+            </Pressable>
+            <Pressable
+              style={styles.headerIconBtn}
+              onPress={() => setTemplatesOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Plan settings and templates"
+              accessibilityHint="Opens plan-setup controls: meal slots, day count, saved templates"
+            >
+              <Settings2 size={18} color={colors.text} strokeWidth={1.75} />
+            </Pressable>
+          </View>
+        }
       />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        <View style={[styles.headerRow, { justifyContent: "flex-end" }]}>
-          {/* F-29 (2026-04-21): Regenerate was previously only reachable
-              via the "This week" summary card, which hides when
-              summaryScore is null (e.g. empty-day view, no planTargets).
-              TestFlight AAtQgwFWaQTF — "regenerate section is missing".
-              Surface the action at the header level whenever a plan
-              exists so it's always one tap away. */}
-          {/* Group E Card 1 (premium-bar audit 2026-05-14): the two
-              circular header buttons (Regenerate + Plan options) are
-              icon-only — without an a11y label the screen reader
-              announces them as anonymous buttons. Each carries a
-              descriptive accessibilityLabel naming the action and a
-              short accessibilityHint explaining the outcome so
-              VoiceOver / TalkBack users get the same context sighted
-              users get from the icon shape. accessibilityRole="button"
-              + state guards (disabled spinner) are already in place. */}
-          {plan && plan.length > 0 ? (
-            <Pressable
-              style={[styles.headerIconBtn, { marginRight: 8 }]}
-              onPress={generatePlan}
-              disabled={generating}
-              accessibilityRole="button"
-              accessibilityLabel="Regenerate this week's meal plan"
-              accessibilityHint="Rebuilds the plan with a fresh combination of your saved recipes"
-              accessibilityState={{ disabled: generating, busy: generating }}
-            >
-              {generating ? (
-                <ActivityIndicator size="small" color={colors.text} />
-              ) : (
-                <RefreshCw size={16} color={colors.text} strokeWidth={1.75} />
-              )}
-            </Pressable>
-          ) : null}
-          <Pressable
-            style={styles.headerIconBtn}
-            onPress={() => setTemplatesOpen(true)}
-            accessibilityRole="button"
-            accessibilityLabel="Plan settings and templates"
-            accessibilityHint="Opens plan-setup controls: meal slots, day count, saved templates"
-          >
-            <Settings2 size={18} color={colors.text} strokeWidth={1.75} />
-          </Pressable>
-        </View>
-
-        {/* Named plan slots — mobile parity for web's "Named plans"
-            switcher (`MealPlanner.tsx` 679). Horizontal scrollable
-            row of pills, one per slot, plus a "+ New" affordance.
-            Long-press a pill for rename / delete. Cloud syncs only
-            the active slot's plan; slot names + ids stay device-local. */}
+        <ReAnimated.View style={headerEntrance.style}>
+        {/* Named plan slots switcher — pre-2026-05-22 this rendered
+            unconditionally, which on a single-plan setup put a "This
+            week" pill right under the "This week" sub-tab and a
+            redundant "+ New" affordance with no obvious purpose.
+            Grace 2026-05-22: "drop the redundant This week pill row".
+            Gate behind >1 plan slot so multi-plan users keep the
+            switcher; single-plan users see a cleaner Plan tab.
+            Creating a new plan slot moves through Settings → Plan
+            slots when only one plan exists. */}
+        {planSlots.length > 1 ? (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ gap: 8, paddingBottom: 6, paddingRight: 4 }}
-          style={{ marginBottom: Spacing.lg }}
+          style={{ marginBottom: Spacing.sm }}
         >
           {planSlots.map((s) => {
             const active = s.id === activePlanSlotId;
@@ -1941,21 +2272,21 @@ export default function PlannerScreen() {
                   paddingVertical: 6,
                   borderRadius: 999,
                   borderWidth: 1,
-                  borderColor: active ? Accent.primary : colors.border,
-                  backgroundColor: active ? Accent.primary + "1A" : colors.card,
+                  borderColor: active ? colors.textSecondary : colors.border,
+                  backgroundColor: active ? colors.textSecondary + "18" : colors.card,
                 }}
                 accessibilityRole="button"
                 accessibilityState={{ selected: active }}
                 accessibilityLabel={`Plan: ${s.name}${active ? ", active" : ""}. Long-press to rename or delete.`}
               >
                 {active ? (
-                  <Check size={11} color={Accent.primary} strokeWidth={1.75} />
+                  <Check size={11} color={colors.text} strokeWidth={1.75} />
                 ) : null}
                 <Text
                   style={{
                     fontSize: 12,
                     fontWeight: active ? "700" : "500",
-                    color: active ? Accent.primary : colors.textSecondary,
+                    color: active ? colors.text : colors.textSecondary,
                   }}
                 >
                   {s.name}
@@ -2001,7 +2332,10 @@ export default function PlannerScreen() {
             <Text style={{ fontSize: 12, fontWeight: "500", color: colors.textSecondary }}>New</Text>
           </Pressable>
         </ScrollView>
+        ) : null}
+        </ReAnimated.View>
 
+        <ReAnimated.View style={summaryEntrance.style}>
         {/* Prototype port (2026-04-20) — weekly summary card.
             Rendered only when we have both a plan and resolved targets.
             - "Hits your targets N of 7 days" counts days whose total
@@ -2039,7 +2373,7 @@ export default function PlannerScreen() {
               })()}
             </Text>
             <Text style={styles.summaryTitle}>
-              Hits your targets {summaryScore.hits} of {summaryScore.total} day{summaryScore.total === 1 ? "" : "s"}
+              {`Hits your targets ${summaryScore.hits} of ${summaryScore.total} day${summaryScore.total === 1 ? "" : "s"}`}
             </Text>
             <Text style={styles.summarySubtitle}>
               {summaryScore.hits === summaryScore.total
@@ -2060,17 +2394,17 @@ export default function PlannerScreen() {
             <View style={styles.summaryActions}>
               <Pressable
                 style={styles.summaryPrimaryBtn}
-                onPress={generatePlan}
+                onPress={openGenerateMenu}
                 disabled={generating}
                 accessibilityRole="button"
-                accessibilityLabel="Regenerate plan"
+                accessibilityLabel="Generate or import plan"
               >
                 {generating ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
                   <>
                     <RefreshCw size={14} color="#fff" strokeWidth={1.75} />
-                    <Text style={styles.summaryPrimaryText}>Regenerate</Text>
+                    <Text style={styles.summaryPrimaryText}>Generate ▾</Text>
                   </>
                 )}
               </Pressable>
@@ -2096,213 +2430,113 @@ export default function PlannerScreen() {
             screen; tester ask was explicit ("this page should just be
             showing the household, like the prototype"). */}
         <HouseholdSummaryRow />
+        </ReAnimated.View>
 
-        {/* Plan setup — visible whenever a plan exists so users can change
-            day count, start date, and included slots before regenerating
-            without clearing the whole plan first.
-            2026-04-30 audit visual-qa P1 #6: when collapsed, was a
-            full-width card with body copy ("Tap to change how many
-            days...") that competed with the actual meal rows. Now
-            renders as a quiet single-line header in collapsed state —
-            settings UI shouldn't dominate the surface that's supposed
-            to show this week's plan. Expanded state still shows the
-            full options below. */}
-        {plan && plan.length > 0 ? (
-          <View style={[styles.card, !planSetupExpanded && { paddingVertical: Spacing.md }]}>
-            <Pressable
-              onPress={() => setPlanSetupExpanded((v) => !v)}
-              style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
-              accessibilityRole="button"
-              accessibilityLabel={planSetupExpanded ? "Collapse plan setup" : "Expand plan setup"}
+        <ReAnimated.View style={planEntrance.style}>
+        {/* 2026-05-23 — Plan setup chip row (variant B).
+            Replaces the three-section inline setup card. Two borderless
+            tinted chips condense plan length+start and meal-toggle
+            settings; tapping a chip opens a focused bottom sheet.
+            Regenerate moves to a ghost text-link on the right so it
+            doesn't compete visually with the primary FAB. Day cards
+            stay primary on first scroll instead of being pushed below
+            a settings form. HTML prototype:
+            `/tmp/suppr-prototypes/plan-chip-variants.html` (B). */}
+        {plan && plan.length > 0 ? (() => {
+          const startLabelForChip =
+            startOffset === 0 ? "Today" : startOffset === 1 ? "Tomorrow" : "Next week";
+          const lengthStartLabel = `${days} day${days > 1 ? "s" : ""} · ${startLabelForChip}`;
+          const enabledList = ALL_MEAL_SLOTS.filter((s) => enabledSlots.has(s));
+          const SHORT: Record<string, string> = {
+            Breakfast: "Brk",
+            Lunch: "Lun",
+            Dinner: "Din",
+            Snacks: "Snk",
+          };
+          const mealsLabel =
+            enabledList.length === ALL_MEAL_SLOTS.length
+              ? "All meals"
+              : enabledList.length === 0
+              ? "No meals"
+              : enabledList.map((s) => SHORT[s] ?? s).join(" · ");
+          return (
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+                marginBottom: Spacing.md,
+              }}
             >
-              <View style={{ flex: 1, paddingRight: 8 }}>
-                <Text style={styles.cardTitle}>Plan setup</Text>
-                {/* 2026-05-13 (premium-bar audit Plan Card 4 #4): the
-                    instruction copy now renders only until the user
-                    dismisses it. After dismissal, the
-                    `suppr-plan-setup-instr-seen-v1` flag keeps it
-                    hidden on that device forever. Reduces repeat-
-                    visit noise on the Plan tab while still giving
-                    first-time users the orientation. */}
-                {planSetupExpanded && !planInstrSeen ? (
-                  <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 6, marginTop: 4 }}>
-                    <Text style={[styles.cardDesc, { flex: 1, marginTop: 0 }]}>
-                      Change options below, then regenerate. Edits to individual meals (swap, portion, clear) apply immediately.
-                    </Text>
-                    <Pressable
-                      onPress={(e) => {
-                        // Stop the parent header's expand/collapse
-                        // toggle from firing when the user just wants
-                        // to dismiss the tooltip.
-                        e.stopPropagation?.();
-                        dismissPlanInstruction();
-                      }}
-                      hitSlop={8}
-                      accessibilityRole="button"
-                      accessibilityLabel="Dismiss tip"
-                      testID="plan-setup-instr-dismiss"
-                      style={{ padding: 2 }}
-                    >
-                      <X size={14} color={colors.textTertiary} strokeWidth={2} />
-                    </Pressable>
-                  </View>
-                ) : null}
-              </View>
-              {/* 2026-05-12 (premium-bar audit Plan Card 1): replaced
-                  the raw "▶ / ▼" Unicode glyphs with lucide chevrons
-                  matching the rest of the app's disclosure pattern.
-                  The Unicode markers read as placeholder; the proper
-                  chevron icon is the prototype + design-system spec. */}
-              {/* 2026-05-13 (premium-bar audit Plan Card 6 #3): chevron
-                  used `textSecondary` which read as faded against the
-                  card surface in dark mode — testers reported the
-                  expander affordance disappeared at a glance. Bumped
-                  to `text` so the chevron carries the same weight as
-                  the card title in both themes. */}
-              {planSetupExpanded ? (
-                <ChevronDown size={18} color={colors.text} strokeWidth={2.25} />
-              ) : (
-                <ChevronRight size={18} color={colors.text} strokeWidth={2.25} />
-              )}
-            </Pressable>
-            {planSetupExpanded ? (
-              <View style={{ marginTop: Spacing.md, gap: Spacing.md }}>
-                <Text style={styles.sectionLabel}>Plan length</Text>
-                <View style={styles.daysRow}>
-                  {([1, 3, 7] as const).map((d) => {
-                    const locked = isFree && d > 1;
-                    return (
-                      <Pressable
-                        key={d}
-                        style={[styles.dayBtn, days === d && styles.dayBtnActive, locked && { opacity: 0.5 }]}
-                        onPress={() => {
-                          if (locked) {
-                            Alert.alert("Upgrade required", "Plan your full week and generate a ready-to-shop list. Available with Pro.", [
-                              { text: "Continue for free", style: "cancel" },
-                              { text: "See plans", onPress: () => router.push("/paywall?from=meal_planner" as any) },
-                            ]);
-                            return;
-                          }
-                          userPickedDaysRef.current = true;
-                          setDays(d);
-                        }}
-                      >
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                          <Text style={[styles.dayBtnText, days === d && styles.dayBtnTextActive]}>
-                            {d} day{d > 1 ? "s" : ""}
-                          </Text>
-                          {locked ? (
-                            <Lock
-                              size={11}
-                              color={days === d ? Accent.success : Accent.warning}
-                              strokeWidth={2}
-                              accessibilityLabel="Pro only"
-                            />
-                          ) : null}
-                        </View>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-                <Text style={styles.sectionLabel}>Start from</Text>
-                <View style={styles.daysRow}>
-                  {([
-                    { val: 0 as const, label: "Today" },
-                    { val: 1 as const, label: "Tomorrow" },
-                    { val: 7 as const, label: "Next week" },
-                  ]).map((o) => (
-                    <Pressable
-                      key={o.val}
-                      style={[styles.dayBtn, startOffset === o.val && styles.dayBtnActive]}
-                      onPress={() => setStartOffset(o.val)}
-                    >
-                      <Text style={[styles.dayBtnText, startOffset === o.val && styles.dayBtnTextActive]}>{o.label}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-                <Text style={styles.sectionLabel}>Include when regenerating</Text>
-                <View style={[styles.daysRow, { flexWrap: "wrap" }]}>
-                  {ALL_MEAL_SLOTS.map((slot) => {
-                    const active = enabledSlots.has(slot);
-                    return (
-                      <Pressable
-                        key={slot}
-                        style={[styles.dayBtn, active && styles.dayBtnActive]}
-                        onPress={() => toggleSlot(slot)}
-                      >
-                        {/* 2026-05-06 (Grace) — was `color="#fff"` on
-                            an `Accent.primary + "15"` tinted background
-                            (~8% opacity). White-on-very-light-blue made
-                            the check icon invisible. Both states now
-                            use a colour that contrasts against the
-                            chip's tinted background: active uses the
-                            primary blue (matches `dayBtnTextActive`);
-                            inactive stays muted text-secondary. */}
-                        {active ? (
-                          <CheckCircle2 size={14} color={Accent.primary} strokeWidth={2} style={{ marginRight: 4 }} />
-                        ) : (
-                          <Circle size={14} color={colors.textSecondary} strokeWidth={1.75} style={{ marginRight: 4 }} />
-                        )}
-                        <Text style={[styles.dayBtnText, active && styles.dayBtnTextActive]}>{slot}</Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-                <Text style={{ fontSize: 12, color: colors.textTertiary, lineHeight: 17 }}>
-                  To drop a slot on one day, long-press that row →{" "}
-                  <Text style={{ fontWeight: "700" }}>Remove slot (this day)</Text>. Use{" "}
-                  <Text style={{ fontWeight: "700" }}>+ Add …</Text> under the day to bring a slot back.
+              <Pressable
+                testID="plan-chip-length-start"
+                accessibilityRole="button"
+                accessibilityLabel={`Plan length and start: ${lengthStartLabel}`}
+                onPress={() => setChipSheet("lengthStart")}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 4,
+                  paddingHorizontal: 10,
+                  paddingVertical: 6,
+                  borderRadius: 8,
+                  backgroundColor: colors.border,
+                }}
+              >
+                <Text style={{ fontSize: 12.5, fontWeight: "500", color: colors.text }}>
+                  {lengthStartLabel}
                 </Text>
-                <Pressable
-                  style={[styles.generateBtn, { marginTop: Spacing.sm }, generating && { opacity: 0.7 }]}
-                  onPress={generatePlan}
-                  disabled={generating}
-                  accessibilityRole="button"
-                  accessibilityLabel="Regenerate plan with current setup"
-                >
-                  {generating ? <ActivityIndicator color="#fff" /> : <Text style={styles.generateBtnText}>Regenerate with these settings</Text>}
-                </Pressable>
-              </View>
-            ) : null}
-          </View>
-        ) : null}
-
-        {/* Day summary strip — compact row that fits on screen */}
-        {plan && plan.length > 1 && planTargets && (
-          <View style={{ flexDirection: "row", gap: 6, marginBottom: Spacing.md }}>
-            {plan.map((dp, idx) => {
-              const cal = planCalendarDateForIndex(idx, startOffset);
-              const isTodayCard = dateKeyFromDate(cal) === dateKeyFromDate(stripMidnight(new Date()));
-              const progressPct = planTargets.calories > 0 ? Math.min((dp.totals.calories / planTargets.calories) * 100, 100) : 0;
-              const progressColor = getProgressColor(dp.totals.calories, planTargets.calories);
-              return (
-                <View
-                  key={dp.day}
-                  style={{
-                    flex: 1,
-                    backgroundColor: isTodayCard ? Accent.primary + "08" : colors.card,
-                    borderRadius: Radius.md,
-                    borderWidth: 1,
-                    borderColor: isTodayCard ? Accent.primary : colors.border,
-                    padding: 8,
-                    alignItems: "center",
-                    gap: 4,
-                  }}
-                >
-                  <Text style={{ fontSize: 11, fontWeight: "700", color: isTodayCard ? Accent.primary : colors.text }}>
-                    {WEEKDAY_SHORT[cal.getDay()]}
-                  </Text>
-                  <View style={{ width: "100%", height: 3, borderRadius: 1.5, backgroundColor: colors.border }}>
-                    <View style={{ width: `${progressPct}%` as any, height: 3, borderRadius: 1.5, backgroundColor: progressColor }} />
-                  </View>
-                  <Text style={{ fontSize: 11, color: colors.textTertiary, fontVariant: ["tabular-nums"] }}>
-                    {Math.round(dp.totals.calories)}
-                  </Text>
-                </View>
-              );
-            })}
-          </View>
-        )}
+                <ChevronDown size={11} color={colors.textTertiary} strokeWidth={2} />
+              </Pressable>
+              <Pressable
+                testID="plan-chip-meals"
+                accessibilityRole="button"
+                accessibilityLabel={`Meals: ${mealsLabel}`}
+                onPress={() => setChipSheet("meals")}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 4,
+                  paddingHorizontal: 10,
+                  paddingVertical: 6,
+                  borderRadius: 8,
+                  backgroundColor: colors.border,
+                }}
+              >
+                <Text style={{ fontSize: 12.5, fontWeight: "500", color: colors.text }}>
+                  {mealsLabel}
+                </Text>
+                <ChevronDown size={11} color={colors.textTertiary} strokeWidth={2} />
+              </Pressable>
+              <View style={{ flex: 1 }} />
+              <Pressable
+                testID="plan-generate-menu"
+                accessibilityRole="button"
+                accessibilityLabel="Generate plan menu"
+                onPress={openGenerateMenu}
+                disabled={generating}
+                hitSlop={8}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 4,
+                  paddingHorizontal: 8,
+                  paddingVertical: 6,
+                  opacity: generating ? 0.5 : 1,
+                }}
+              >
+                {generating ? (
+                  <ActivityIndicator size="small" color={Accent.primary} />
+                ) : (
+                  <ChevronDown size={13} color={Accent.primary} strokeWidth={2.25} />
+                )}
+                <Text style={{ fontSize: 13, fontWeight: "600", color: Accent.primary }}>
+                  Generate ▾
+                </Text>
+              </Pressable>
+            </View>
+          );
+        })() : null}
 
         {/* Generate controls */}
         {!plan && (
@@ -2325,7 +2559,7 @@ export default function PlannerScreen() {
               accessibilityLabel="Open recipe library"
               style={{ alignSelf: "flex-start", marginTop: Spacing.sm, marginBottom: Spacing.xs }}
             >
-              <Text style={{ fontSize: 14, fontWeight: "700", color: Accent.primary }}>
+              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.textSecondary }}>
                 Open recipe library
               </Text>
             </Pressable>
@@ -2464,51 +2698,25 @@ export default function PlannerScreen() {
                 <Text style={styles.generateBtnText}>Generate my plan</Text>
               )}
             </Pressable>
-          </View>
-        )}
-
-        {plan && plan.length > 0 && (
-          <View
-            style={{
-              marginBottom: Spacing.lg,
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: Spacing.sm,
-            }}
-          >
-            <Text style={styles.sectionLabel}>
-              {plan.length === 1
-                ? `${WEEKDAY_LONG[planCalendarDateForIndex(0, startOffset).getDay()]}'s plan`
-                : `Your ${plan.length}-day plan`}
-            </Text>
-            {/* 2026-05-13 (premium-bar audit Plan Card 1 #6): demoted
-                "Browse recipe library" from a full-width primary-tinted
-                pressable into a small secondary chip sitting beside the
-                section label. The link was the same visual weight as
-                the section title which made the page eyebrow row look
-                like two competing headers. Same destination, quieter
-                affordance. */}
             <Pressable
-              onPress={() => router.push("/(tabs)/library" as Href)}
+              onPress={openPlanImport}
               accessibilityRole="button"
-              accessibilityLabel="Browse recipe library"
-              hitSlop={8}
-              style={{
-                paddingHorizontal: 10,
-                paddingVertical: 4,
-                borderRadius: 999,
-                borderWidth: 1,
-                borderColor: colors.border,
-                backgroundColor: colors.card,
-              }}
+              accessibilityLabel="Import existing meal plan"
+              style={{ alignItems: "center", marginTop: Spacing.md, paddingVertical: Spacing.sm }}
             >
-              <Text style={{ fontSize: 11, fontWeight: "600", color: colors.textSecondary }}>
-                Browse library →
+              <Text style={{ fontSize: 14, fontWeight: "600", color: Accent.primary }}>
+                Import existing plan
               </Text>
             </Pressable>
           </View>
         )}
+
+        {/* 2026-05-23 — removed "YOUR 7-DAY PLAN" uppercase overline +
+            "Browse library" outline pill. The "This week" sub-tab
+            above already labels the section; the day-cards below speak
+            for themselves. The overline + pill read as a third competing
+            header. Browse library lives in the bottom + log sheet for
+            users who want to add a recipe to the plan. */}
 
         {/* 2026-05-13 (premium-bar audit Plan Card 4 #5 — Generation
             skeleton state): when the user taps "Generate Plan" with
@@ -2537,7 +2745,7 @@ export default function PlannerScreen() {
             plan incoming". The cold-start path (no existing plan)
             still shows the 3 SkeletonCards above. */}
         {plan && (
-          <View style={{ position: "relative", gap: Spacing.xl }}>
+          <View style={{ position: "relative", gap: Layout.planDayGap }}>
         {plan.map((dp, dayIdx) => {
           // Build-12 H-5 (TestFlight `AH8csBqtZsBJJr0uHgXyEcE`,
           // 2026-04-19): "Plan doesn't tell me how close it is to my
@@ -2585,8 +2793,8 @@ export default function PlannerScreen() {
           const weekdayLabel = shortWeekdayLabel(dayCal);
           const isTodayRow = isSameCalendarDay(dayCal);
           return (
-          <View key={dp.day} style={styles.card}>
-            <View style={styles.dayHeader}>
+          <View key={dp.day} style={styles.daySection}>
+            <View style={styles.daySectionHeader}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                 <Text style={styles.dayTitle}>{weekdayLabel}</Text>
                 {isTodayRow && (
@@ -2637,13 +2845,26 @@ export default function PlannerScreen() {
                 <Text style={styles.dayTotals}>{Math.round(dayTotalKcal).toLocaleString("en-US")} kcal</Text>
               )}
             </View>
-            {planTargets && (
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 4 }}>
-                {([
+            {planTargets ? (
+            <View
+              style={{
+                flexDirection: "row",
+                flexWrap: "wrap",
+                gap: 6,
+                marginBottom: 6,
+                paddingHorizontal: 2,
+              }}
+            >
+              {(() => {
+                const dayFiber =
+                  Math.round(
+                    dp.meals.reduce((s, m) => s + planMealFiberG(m, recipeFiberPool), 0) * 10,
+                  ) / 10;
+                return ([
                   { label: "P", val: dp.totals.protein, target: planTargets.protein, color: MacroColors.protein },
                   { label: "C", val: dp.totals.carbs, target: planTargets.carbs, color: MacroColors.carbs },
                   { label: "F", val: dp.totals.fat, target: planTargets.fat, color: MacroColors.fat },
-                  { label: "Fi", val: Math.round(dp.meals.reduce((s, m) => s + (m.fiberG ?? 0), 0) * 10) / 10, target: planTargets.fiber ?? 28, color: Accent.success },
+                  { label: "Fi", val: dayFiber, target: planTargets.fiber, color: Accent.success },
                 ] as const).map(({ label, val, target, color }) => {
                   const diff = val - target;
                   const pct = target > 0 ? Math.abs(diff) / target : 0;
@@ -2654,15 +2875,16 @@ export default function PlannerScreen() {
                       {isClose ? (
                         <Check size={11} color={Accent.success} strokeWidth={3} />
                       ) : (
-                        <Text style={{ fontSize: 10, color: diff > 0 ? Accent.destructive : Accent.warning }}>
+                        <Text style={{ fontSize: 10, color: Accent.warning }}>
                           {diff > 0 ? `+${Math.round(diff)}` : `${Math.round(diff)}`}
                         </Text>
                       )}
                     </View>
                   );
-                })}
-              </View>
-            )}
+                });
+              })()}
+            </View>
+            ) : null}
             {/* F-15 — residual protein gap hint (web/mobile parity). Only
                 rendered when the joint-fit scaler left this day more than
                 10g under the protein target. Points at the lowest-protein
@@ -2687,9 +2909,19 @@ export default function PlannerScreen() {
               );
             })()}
 
+            <View style={styles.planDayCard}>
             {dp.meals.length === 0 ? (
-              <Text style={{ fontSize: 14, color: colors.textSecondary, paddingVertical: Spacing.md, lineHeight: 20 }}>
-                No slots on this day yet. Add one below, or regenerate the plan.
+              <Text
+                style={{
+                  fontSize: 12,
+                  color: colors.textSecondary,
+                  paddingTop: 10,
+                  paddingBottom: 4,
+                  paddingHorizontal: 12,
+                  lineHeight: 16,
+                }}
+              >
+                No slots yet — add one or regenerate.
               </Text>
             ) : null}
             {(() => {
@@ -2728,145 +2960,16 @@ export default function PlannerScreen() {
                 style={styles.mealRow}
                 delayLongPress={400}
                 onLongPress={() => {
-                  // Batch 3.10 mobile parity (2026-04-18 audit C2).
-                  // Long-press → action sheet with Move / Swap / Delete / Cancel.
-                  // Factual copy, no shame.
+                  // 2026-05-23 — all 3 row triggers (long-press, tap,
+                  // overflow) now route to the same on-brand `rowMenu`
+                  // bottom sheet. Long-press keeps its haptic since it
+                  // was already the most-discoverable gesture for the
+                  // action menu.
                   void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  const hasRecipe = planMealHasRecipe(meal);
-                  const isEmptyRow = !hasRecipe;
-                  const sourceDay = plan?.[dayIdx]?.day;
-                  if (sourceDay == null || mealIndexInDay < 0) return;
-                  Alert.alert(
-                    hasRecipe ? meal.recipeTitle! : "Empty slot",
-                    isEmptyRow
-                      ? "No meal in this slot."
-                      : `${Math.round(meal.calories)} kcal · ${meal.name}`,
-                    [
-                      {
-                        text: "Move to another slot…",
-                        onPress: () => {
-                          if (isEmptyRow) {
-                            Alert.alert("Nothing to move", "This slot is empty.");
-                            return;
-                          }
-                          // If this meal is a parent of downstream leftovers,
-                          // factually confirm the N we'll clear before the move.
-                          const rid = meal.recipeId;
-                          const leftoverCount =
-                            rid && plan ? countLeftoversOfRecipe(plan, rid) : 0;
-                          const openSheet = () => {
-                            setMoveSource({ day: sourceDay, slotIndex: mealIndexInDay });
-                            setMoveSheetOpen(true);
-                          };
-                          if (leftoverCount > 0 && rid && plan) {
-                            Alert.alert(
-                              "Move meal",
-                              `This will remove ${leftoverCount} leftover meal${leftoverCount === 1 ? "" : "s"}.`,
-                              [
-                                { text: "Cancel", style: "cancel" },
-                                {
-                                  text: "Continue",
-                                  onPress: () => {
-                                    setPlan((prev) => {
-                                      if (!prev) return prev;
-                                      const dayIndexInArr = prev.findIndex(
-                                        (d) => d.day === sourceDay,
-                                      );
-                                      const { plan: cleaned } = markLeftoversOnSwap(prev, {
-                                        dayIndex: dayIndexInArr,
-                                        slot: meal.name,
-                                        previousRecipeId: rid,
-                                      });
-                                      return cleaned as DayPlan[];
-                                    });
-                                    openSheet();
-                                  },
-                                },
-                              ],
-                            );
-                          } else {
-                            openSheet();
-                          }
-                        },
-                      },
-                      {
-                        text: "Swap with another meal…",
-                        onPress: () => {
-                          swapMeal(dayIdx, mealIndexInDay, meal.name);
-                        },
-                      },
-                      ...(hasRecipe
-                        ? [
-                            {
-                              text: "Change portion size…",
-                              onPress: () => setPortionModal({ dayIdx, mealIndex: mealIndexInDay }),
-                            },
-                          ]
-                        : []),
-                      {
-                        text: "Remove slot (this day)",
-                        style: "destructive" as const,
-                        onPress: () => {
-                          setPlan((prev) => {
-                            if (!prev) return prev;
-                            const next = prev.map((dpRow, di) => {
-                              if (di !== dayIdx) return dpRow;
-                              const newMeals = sortMealsBySlotOrder(
-                                dpRow.meals.filter((_, mi) => mi !== mealIndexInDay),
-                              );
-                              const totals = newMeals.reduce(
-                                (a, m) => ({
-                                  calories: a.calories + m.calories,
-                                  protein: a.protein + m.protein,
-                                  carbs: a.carbs + m.carbs,
-                                  fat: a.fat + m.fat,
-                                }),
-                                { calories: 0, protein: 0, carbs: 0, fat: 0 },
-                              );
-                              return { ...dpRow, meals: newMeals, totals };
-                            });
-                            void persistPlan(next);
-                            return next;
-                          });
-                        },
-                      },
-                      { text: "Cancel", style: "cancel" },
-                    ],
-                  );
+                  setRowMenu({ dayIdx, mealIndexInDay });
                 }}
                 onPress={() => {
-                  const hasRecipeTap = planMealHasRecipe(meal);
-                  Alert.alert(
-                    hasRecipeTap ? meal.recipeTitle! : meal.name,
-                    hasRecipeTap
-                      ? `${Math.round(meal.calories)} kcal · ${multLabel}x portion`
-                      : "Tap Swap to choose a recipe for this slot.",
-                    [
-                      {
-                        text: "Swap meal",
-                        onPress: () => swapMeal(dayIdx, mealIndexInDay, meal.name),
-                      },
-                      ...(hasRecipeTap
-                        ? [
-                            {
-                              text: "Change portion size…",
-                              onPress: () => setPortionModal({ dayIdx, mealIndex: mealIndexInDay }),
-                            },
-                            {
-                              text: "View recipe",
-                              onPress: () => {
-                                const id =
-                                  meal.recipeId ??
-                                  savedRecipes.find((x) => x.title === meal.recipeTitle)?.id ??
-                                  discoverRecipes.find((x) => x.title === meal.recipeTitle)?.id;
-                                if (id) router.push(`/recipe/${id}?portion=${currentMult}`);
-                              },
-                            },
-                          ]
-                        : []),
-                      { text: "Cancel", style: "cancel" },
-                    ],
-                  );
+                  setRowMenu({ dayIdx, mealIndexInDay });
                 }}
               >
                 {/* Prototype port (2026-04-20) — 36×36 thumbnail on the
@@ -2911,7 +3014,14 @@ export default function PlannerScreen() {
                   );
                 })()}
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.mealSlot}>{meal.name}</Text>
+                  <Text
+                    style={[
+                      styles.mealSlot,
+                      { color: SLOT_COLOR_MOBILE[resolvePlanSlotIconKey(meal.name)] },
+                    ]}
+                  >
+                    {meal.name}
+                  </Text>
                   {(meal as LeftoverAwareMeal).leftoverOf ? (
                     <Badge
                       variant="leftover"
@@ -2951,7 +3061,9 @@ export default function PlannerScreen() {
                           paddingHorizontal: 6,
                           paddingVertical: 1,
                           borderRadius: 4,
-                          backgroundColor: Accent.primary + "1A",
+                          backgroundColor: colors.backgroundSecondary,
+                          borderWidth: 1,
+                          borderColor: colors.border,
                           flexShrink: 0,
                         }}
                         accessibilityLabel={`${multLabel} times portion`}
@@ -2959,8 +3071,8 @@ export default function PlannerScreen() {
                         <Text
                           style={{
                             fontSize: 11,
-                            fontWeight: "700",
-                            color: Accent.primary,
+                            fontWeight: "600",
+                            color: colors.textSecondary,
                             fontVariant: ["tabular-nums"],
                           }}
                         >
@@ -2978,23 +3090,20 @@ export default function PlannerScreen() {
                       adjacent title above is still `numberOfLines={1}`
                       so the meal name stays single-line and only
                       the informational macro line wraps. */}
-                  {/* 2026-05-14 (premium-bar audit Plan Card 2 #3):
-                      meal row macro line shows all four macros via the
-                      shared `formatPlannedMealKcalMacrosLine` helper —
-                      "NNN kcal · P NNg · C NNg · F NNg". Rounding is
-                      centralised through `formatMacro` inside the
-                      helper so we never drift to "105.80000000000001g"
-                      on RN floats. */}
-                  <Text style={styles.mealMacros} numberOfLines={2}>
-                    {planMealHasRecipe(meal)
-                      ? formatPlannedMealKcalMacrosLine(
-                          meal.calories,
-                          meal.protein,
-                          meal.carbs,
-                          meal.fat,
-                        )
-                      : `${formatMacro(0, "calories")} kcal · P —g · C —g · F —g`}
-                  </Text>
+                  {/* 2026-05-22 evening (Grace): per-meal macros
+                      removed from the inline Plan row to neaten the
+                      surface — full macros live on tap-through to the
+                      meal detail. Empty slot still shows the dash line
+                      so users see the slot exists but isn't planned. */}
+                  {planMealHasRecipe(meal) ? (
+                    <Text style={styles.mealMacros} numberOfLines={1}>
+                      {`${Math.round(meal.calories)} kcal`}
+                    </Text>
+                  ) : (
+                    <Text style={styles.mealMacros} numberOfLines={1}>
+                      Empty
+                    </Text>
+                  )}
                   {/* 2026-05-14 (premium-bar audit Plan Card 2 #1) — per-
                       row fit chip. "Fits N%" when running day total
                       stays at or below the day's kcal goal; "Over by
@@ -3101,214 +3210,26 @@ export default function PlannerScreen() {
                     </View>
                   ) : null}
                 </View>
-                {/* Swap shortcut — prototype-port (2026-04-20). 30×30
-                    square button that opens the same swap alert the
-                    row's `onPress` already offers; surfaces the swap
-                    action visibly instead of hiding it behind a
-                    tap-anywhere menu. Placeholder / empty slots also
-                    trigger the swap picker (it's how you fill them). */}
-                <Pressable
-                  hitSlop={6}
-                  onPress={(e) => {
-                    e.stopPropagation?.();
-                    swapMeal(dayIdx, mealIndexInDay, meal.name);
-                  }}
-                  style={styles.mealSwapBtn}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Pick a recipe for ${meal.name} from your library or Discover`}
-                >
-                  <RefreshCw size={13} color={colors.textSecondary} strokeWidth={1.75} />
-                </Pressable>
-                {/* Log to tracker — Suppr-specific action kept next to
-                    the swap button (the prototype omits Log). */}
-                <Pressable
-                  hitSlop={8}
-                  onPress={async (e) => {
-                    e.stopPropagation?.();
-                    const dk = dateKeyFromDate(new Date());
-                    const entryId = newMealId();
-                    // F-74 follow-up (2026-05-07, repo-auditor flag): the
-                    // "Log today" path was writing only the big-four
-                    // macros — fiber / sugar / sodium were silently
-                    // dropped vs the recipe-detail "Add to today" path
-                    // which already persists them. Pull them from the
-                    // recipe row at log time (same shape as
-                    // `logPlannedMealWithPortion` in Today). Caffeine /
-                    // alcohol are still absent because `recipes` doesn't
-                    // store them aggregated — see recipe/[id].tsx for
-                    // the documented gap.
-                    const microsRes = meal.recipeId
-                      ? await fetchPlannedMealMicros(
-                          supabase as unknown as Parameters<typeof fetchPlannedMealMicros>[0],
-                          meal.recipeId,
-                          1,
-                        )
-                      : { fiberG: null, micros: {}, macrosAreCoerced: false };
-                    // F30 fix (audit 2026-04-28): `meal.calories` etc.
-                    // are already post-portion (the planner bakes
-                    // portion into macros — see the per-meal storage
-                    // contract). Persisting BOTH the post-portion
-                    // macros AND `portion_multiplier: currentMult`
-                    // would double-apply if any reader (tracker
-                    // backfill, recap, weekly digest) multiplied
-                    // again. Persist `portion_multiplier: 1` since
-                    // the macros already reflect the user's choice.
-                    const { error } = await supabase
-                      .from("nutrition_entries")
-                      .insert({
-                        id: entryId,
-                        user_id: userId,
-                        date_key: dk,
-                        name: meal.name,
-                        recipe_title: meal.recipeTitle,
-                        time_label: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
-                        calories: meal.calories,
-                        protein: meal.protein,
-                        carbs: meal.carbs,
-                        fat: meal.fat,
-                        fiber_g: microsRes.fiberG,
-                        ...(Object.keys(microsRes.micros).length > 0
-                          ? { nutrition_micros: microsRes.micros }
-                          : {}),
-                        portion_multiplier: 1,
-                      });
-                    if (error) {
-                      console.error("[planner] log entry failed:", error.message);
-                      Alert.alert("Log failed", "Could not save to tracker. " + error.message);
-                    } else {
-                      // F-2 — snapshot today's target on first log.
-                      void snapshotDailyTargetIfMissing(supabase, userId);
-                      // DC12 (2026-05-14, premium-bar audit) —
-                      // specific log confirmation. Surfaces the meal
-                      // name in the title; body holds the routing
-                      // context. Mobile parity sweep.
-                      Alert.alert(`${meal.recipeTitle} logged`, "Added to today's tracker.");
-                    }
-                  }}
-                  style={styles.mealLogBtn}
-                >
-                  {/* V6 (2026-05-11 visual sweep) — "Log today" → "Log"
-                      so the meal title stops getting clipped to
-                      "Peanut Butter Prot..." on standard iPhone widths.
-                      "Today" is redundant context (the user is already
-                      viewing today's row in the planner).
-                      2026-05-14 (premium-bar audit Plan Card 2 #4):
-                      relabelled to "Log as planned" to disambiguate
-                      against the overflow menu's "Change portion size…"
-                      / "Move to different meal" alternatives. */}
-                  <Text style={styles.mealLogBtnText} numberOfLines={1}>Log as planned</Text>
-                </Pressable>
+                {/* 2026-05-22 evening (Grace 3-row cleanup): inline
+                    Swap (refresh icon) + Log as planned buttons removed
+                    from each Plan row. Both actions remain available
+                    via the overflow [⋯] menu (already exposes "Log as
+                    planned" + "Swap recipe" + "Change portion size" +
+                    "Move to different meal" + "Remove from plan").
+                    Reduces trailing chrome from three buttons → one
+                    per row × 28 rows = much calmer scroll. */}
                 <Pressable
                   hitSlop={8}
                   onPress={(e) => {
                     e.stopPropagation?.();
-                    // 2026-05-14 (premium-bar audit Plan Card 2 #4):
-                    // overflow menu that surfaces the same actions
-                    // long-press already exposes. Primary "Log as
-                    // planned" stays as the dedicated button; "…"
-                    // gives keyboard-shy testers a tappable affordance
-                    // for "Change portion size…" / "Move to different
-                    // meal" / "Remove from plan" without having to
-                    // discover the long-press gesture.
-                    const hasRecipeOv = planMealHasRecipe(meal);
-                    const sourceDayOv = plan?.[dayIdx]?.day;
-                    Alert.alert(
-                      hasRecipeOv ? meal.recipeTitle! : meal.name,
-                      hasRecipeOv ? `${Math.round(meal.calories)} kcal · ${meal.name}` : "Empty slot",
-                      [
-                        ...(hasRecipeOv
-                          ? [
-                              {
-                                text: "Log as planned",
-                                onPress: async () => {
-                                  const dk = dateKeyFromDate(new Date());
-                                  const entryId = newMealId();
-                                  const microsResOv = meal.recipeId
-                                    ? await fetchPlannedMealMicros(
-                                        supabase as unknown as Parameters<typeof fetchPlannedMealMicros>[0],
-                                        meal.recipeId,
-                                        1,
-                                      )
-                                    : { fiberG: null, micros: {}, macrosAreCoerced: false };
-                                  const { error } = await supabase
-                                    .from("nutrition_entries")
-                                    .insert({
-                                      id: entryId,
-                                      user_id: userId,
-                                      date_key: dk,
-                                      name: meal.name,
-                                      recipe_title: meal.recipeTitle,
-                                      time_label: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
-                                      calories: meal.calories,
-                                      protein: meal.protein,
-                                      carbs: meal.carbs,
-                                      fat: meal.fat,
-                                      fiber_g: microsResOv.fiberG,
-                                      ...(Object.keys(microsResOv.micros).length > 0
-                                        ? { nutrition_micros: microsResOv.micros }
-                                        : {}),
-                                      portion_multiplier: 1,
-                                    });
-                                  if (error) {
-                                    Alert.alert("Log failed", "Could not save to tracker. " + error.message);
-                                  } else {
-                                    void snapshotDailyTargetIfMissing(supabase, userId);
-                                    // DC12 (2026-05-14, premium-bar audit) —
-                      // specific log confirmation. Surfaces the meal
-                      // name in the title; body holds the routing
-                      // context. Mobile parity sweep.
-                      Alert.alert(`${meal.recipeTitle} logged`, "Added to today's tracker.");
-                                  }
-                                },
-                              },
-                              {
-                                text: "Change portion size…",
-                                onPress: () => setPortionModal({ dayIdx, mealIndex: mealIndexInDay }),
-                              },
-                            ]
-                          : []),
-                        {
-                          text: "Move to different meal",
-                          onPress: () => {
-                            if (!hasRecipeOv) {
-                              Alert.alert("Nothing to move", "This slot is empty.");
-                              return;
-                            }
-                            if (sourceDayOv == null || mealIndexInDay < 0) return;
-                            setMoveSource({ day: sourceDayOv, slotIndex: mealIndexInDay });
-                            setMoveSheetOpen(true);
-                          },
-                        },
-                        {
-                          text: "Remove from plan",
-                          style: "destructive" as const,
-                          onPress: () => {
-                            setPlan((prev) => {
-                              if (!prev) return prev;
-                              const next = prev.map((dpRow, di) => {
-                                if (di !== dayIdx) return dpRow;
-                                const newMeals = sortMealsBySlotOrder(
-                                  dpRow.meals.filter((_, mi) => mi !== mealIndexInDay),
-                                );
-                                const totals = newMeals.reduce(
-                                  (a, m) => ({
-                                    calories: a.calories + m.calories,
-                                    protein: a.protein + m.protein,
-                                    carbs: a.carbs + m.carbs,
-                                    fat: a.fat + m.fat,
-                                  }),
-                                  { calories: 0, protein: 0, carbs: 0, fat: 0 },
-                                );
-                                return { ...dpRow, meals: newMeals, totals };
-                              });
-                              void persistPlan(next);
-                              return next;
-                            });
-                          },
-                        },
-                        { text: "Cancel", style: "cancel" },
-                      ],
-                    );
+                    // 2026-05-23 — was launching `Alert.alert` with a
+                    // 4-button stack which iOS 26 renders as the fat
+                    // "Liquid Glass" pill alert (out of character vs
+                    // the rest of Suppr's UI). Now opens the on-brand
+                    // `rowMenu` bottom sheet defined below. Same
+                    // actions, same handlers — just on a surface that
+                    // matches the chip-sheet + portion-modal pattern.
+                    setRowMenu({ dayIdx, mealIndexInDay });
                   }}
                   style={styles.mealOverflowBtn}
                   accessibilityRole="button"
@@ -3326,18 +3247,11 @@ export default function PlannerScreen() {
               if (missing.length === 0) return null;
               return (
                 <View
-                  style={{
-                    marginTop: Spacing.md,
-                    paddingTop: Spacing.md,
-                    paddingBottom: Spacing.xs,
-                    borderTopWidth: StyleSheet.hairlineWidth,
-                    borderTopColor: colors.border,
-                  }}
+                  style={styles.addSlotBar}
+                  testID={`planner-add-slot-back-${dp.day}`}
                 >
-                  <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: Spacing.md }}>
-                    Add a meal slot
-                  </Text>
-                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+                  <Text style={styles.addSlotLabel}>Add</Text>
+                  <View style={styles.addSlotRow}>
                     {missing.map((slot) => (
                       <Pressable
                         key={slot}
@@ -3373,28 +3287,22 @@ export default function PlannerScreen() {
                             return next;
                           });
                         }}
-                        style={{
-                          flexDirection: "row",
-                          alignItems: "center",
-                          gap: 4,
-                          paddingVertical: 10,
-                          paddingHorizontal: 14,
-                          borderRadius: Radius.md,
-                          borderWidth: 1,
-                          borderColor: Accent.primary + "55",
-                          backgroundColor: Accent.primary + "12",
-                        }}
+                        style={styles.addSlotChip}
                         accessibilityRole="button"
                         accessibilityLabel={`Add ${slot} slot`}
+                        testID={`planner-add-slot-${dp.day}-${slot}`}
                       >
-                        <Plus size={14} color={Accent.primary} strokeWidth={2} />
-                        <Text style={{ fontSize: 13, fontWeight: "700", color: Accent.primary }}>{slot}</Text>
+                        <Plus size={12} color={colors.textSecondary} strokeWidth={2} />
+                        <Text style={styles.addSlotChipText} numberOfLines={1}>
+                          {compactPlanSlotLabel(slot)}
+                        </Text>
                       </Pressable>
                     ))}
                   </View>
                 </View>
               );
             })()}
+            </View>
           </View>
           );
         })}
@@ -3635,6 +3543,7 @@ export default function PlannerScreen() {
             </Pressable>
           </View>
         )}
+        </ReAnimated.View>
       </ScrollView>
       <PlanTemplatesSheet
         visible={templatesOpen}
@@ -3697,6 +3606,414 @@ export default function PlannerScreen() {
           return { ok: true };
         }}
       />
+      {/* 2026-05-23 — Plan chip-sheets. Two focused bottom sheets that
+          back the two chips above the day stack: length+start, and
+          which meals to include. Each sheet exposes the same controls
+          the inline setup card used to host, but one decision at a
+          time on a dedicated surface. */}
+      <Modal
+        visible={chipSheet === "lengthStart"}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setChipSheet(null)}
+      >
+        <Pressable
+          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" }}
+          onPress={() => setChipSheet(null)}
+        >
+          <Pressable
+            onPress={(e) => e.stopPropagation?.()}
+            style={{
+              backgroundColor: colors.card,
+              borderTopLeftRadius: Radius.lg,
+              borderTopRightRadius: Radius.lg,
+              paddingTop: Spacing.md,
+              paddingBottom: insets.bottom + Spacing.lg,
+              paddingHorizontal: Spacing.xl,
+            }}
+          >
+            <View style={{ width: 36, height: 4, backgroundColor: colors.border, borderRadius: 999, alignSelf: "center", marginBottom: Spacing.md }} />
+            <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text, marginBottom: 4 }}>
+              Plan length & start
+            </Text>
+            <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: Spacing.md }}>
+              How many days, and when does the plan start?
+            </Text>
+
+            <Text style={styles.sectionLabel}>Plan length</Text>
+            <View style={styles.daysRow}>
+              {([1, 3, 7] as const).map((d) => {
+                const locked = isFree && d > 1;
+                return (
+                  <Pressable
+                    key={d}
+                    style={[styles.dayBtn, days === d && styles.dayBtnActive, locked && { opacity: 0.5 }]}
+                    onPress={() => {
+                      if (locked) {
+                        Alert.alert("Upgrade required", "Plan your full week and generate a ready-to-shop list. Available with Pro.", [
+                          { text: "Continue for free", style: "cancel" },
+                          { text: "See plans", onPress: () => router.push("/paywall?from=meal_planner" as any) },
+                        ]);
+                        return;
+                      }
+                      userPickedDaysRef.current = true;
+                      setDays(d);
+                    }}
+                  >
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                      <Text style={[styles.dayBtnText, days === d && styles.dayBtnTextActive]}>
+                        {d} day{d > 1 ? "s" : ""}
+                      </Text>
+                      {locked ? (
+                        <Lock size={11} color={days === d ? Accent.success : Accent.warning} strokeWidth={2} accessibilityLabel="Pro only" />
+                      ) : null}
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <Text style={[styles.sectionLabel, { marginTop: Spacing.md }]}>Start from</Text>
+            <View style={styles.daysRow}>
+              {([
+                { val: 0 as const, label: "Today" },
+                { val: 1 as const, label: "Tomorrow" },
+                { val: 7 as const, label: "Next week" },
+              ]).map((o) => (
+                <Pressable
+                  key={o.val}
+                  style={[styles.dayBtn, startOffset === o.val && styles.dayBtnActive]}
+                  onPress={() => setStartOffset(o.val)}
+                >
+                  <Text style={[styles.dayBtnText, startOffset === o.val && styles.dayBtnTextActive]}>{o.label}</Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <Pressable
+              onPress={() => setChipSheet(null)}
+              style={{
+                marginTop: Spacing.lg,
+                backgroundColor: Accent.primary,
+                paddingVertical: 13,
+                borderRadius: Radius.md,
+                alignItems: "center",
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Done"
+            >
+              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Done</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal
+        visible={chipSheet === "meals"}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setChipSheet(null)}
+      >
+        <Pressable
+          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" }}
+          onPress={() => setChipSheet(null)}
+        >
+          <Pressable
+            onPress={(e) => e.stopPropagation?.()}
+            style={{
+              backgroundColor: colors.card,
+              borderTopLeftRadius: Radius.lg,
+              borderTopRightRadius: Radius.lg,
+              paddingTop: Spacing.md,
+              paddingBottom: insets.bottom + Spacing.lg,
+              paddingHorizontal: Spacing.xl,
+            }}
+          >
+            <View style={{ width: 36, height: 4, backgroundColor: colors.border, borderRadius: 999, alignSelf: "center", marginBottom: Spacing.md }} />
+            <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text, marginBottom: 4 }}>
+              Which meals?
+            </Text>
+            <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: Spacing.md }}>
+              Pick which slots Suppr fills when you regenerate.
+            </Text>
+
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm }}>
+              {ALL_MEAL_SLOTS.map((slot) => {
+                const active = enabledSlots.has(slot);
+                return (
+                  <Pressable
+                    key={slot}
+                    style={[styles.dayBtn, active && styles.dayBtnActive]}
+                    onPress={() => toggleSlot(slot)}
+                  >
+                    {active ? (
+                      <CheckCircle2 size={14} color={Accent.primary} strokeWidth={2} style={{ marginRight: 4 }} />
+                    ) : (
+                      <Circle size={14} color={colors.textSecondary} strokeWidth={1.75} style={{ marginRight: 4 }} />
+                    )}
+                    <Text style={[styles.dayBtnText, active && styles.dayBtnTextActive]}>{slot}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <Pressable
+              onPress={() => setChipSheet(null)}
+              style={{
+                marginTop: Spacing.lg,
+                backgroundColor: Accent.primary,
+                paddingVertical: 13,
+                borderRadius: Radius.md,
+                alignItems: "center",
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Done"
+            >
+              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Done</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* 2026-05-23 — Row action sheet. Triggered from the [⋯] overflow
+          on any plan-row. Shows Log as planned / Change portion size /
+          Move to different meal / Remove from plan as flat list rows
+          on a calm bottom sheet — replaces the iOS fat-pill Alert that
+          read as out-of-character UI on iOS 26. */}
+      <Modal
+        visible={rowMenu != null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setRowMenu(null)}
+      >
+        <Pressable
+          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" }}
+          onPress={() => setRowMenu(null)}
+        >
+          {(() => {
+            if (!rowMenu) return <View />;
+            const meal = plan?.[rowMenu.dayIdx]?.meals[rowMenu.mealIndexInDay];
+            if (!meal) return <View />;
+            const hasRecipeOv = planMealHasRecipe(meal);
+            const sourceDayOv = plan?.[rowMenu.dayIdx]?.day;
+            const dayIdx = rowMenu.dayIdx;
+            const mealIndexInDay = rowMenu.mealIndexInDay;
+
+            const doLogAsPlanned = async () => {
+              setRowMenu(null);
+              const dk = dateKeyFromDate(new Date());
+              const entryId = newMealId();
+              const microsResOv = meal.recipeId
+                ? await fetchPlannedMealMicros(
+                    supabase as unknown as Parameters<typeof fetchPlannedMealMicros>[0],
+                    meal.recipeId,
+                    1,
+                  )
+                : { fiberG: null, micros: {}, macrosAreCoerced: false };
+              const { error } = await supabase
+                .from("nutrition_entries")
+                .insert({
+                  id: entryId,
+                  user_id: userId,
+                  date_key: dk,
+                  name: meal.name,
+                  recipe_title: meal.recipeTitle,
+                  time_label: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
+                  calories: meal.calories,
+                  protein: meal.protein,
+                  carbs: meal.carbs,
+                  fat: meal.fat,
+                  fiber_g: microsResOv.fiberG,
+                  ...(Object.keys(microsResOv.micros).length > 0
+                    ? { nutrition_micros: microsResOv.micros }
+                    : {}),
+                  portion_multiplier: 1,
+                });
+              if (error) {
+                Alert.alert("Log failed", "Could not save to tracker. " + error.message);
+              } else {
+                void snapshotDailyTargetIfMissing(supabase, userId);
+                Alert.alert(`${meal.recipeTitle} logged`, "Added to today's tracker.");
+              }
+            };
+            const doViewRecipe = () => {
+              setRowMenu(null);
+              const id =
+                meal.recipeId ??
+                savedRecipes.find((x) => x.title === meal.recipeTitle)?.id ??
+                discoverRecipes.find((x) => x.title === meal.recipeTitle)?.id;
+              if (id) router.push(`/recipe/${id}` as Href);
+            };
+            const doSwap = () => {
+              setRowMenu(null);
+              swapMeal(dayIdx, mealIndexInDay, meal.name);
+            };
+            const doChangePortion = () => {
+              setRowMenu(null);
+              setPortionModal({ dayIdx, mealIndex: mealIndexInDay });
+            };
+            const doMove = () => {
+              setRowMenu(null);
+              if (!hasRecipeOv) {
+                Alert.alert("Nothing to move", "This slot is empty.");
+                return;
+              }
+              if (sourceDayOv == null || mealIndexInDay < 0) return;
+              // Leftover-aware confirmation — if this meal is a parent
+              // of downstream leftovers, flag the N we'll clear before
+              // opening the move sheet (parity with the prior long-
+              // press flow).
+              const rid = meal.recipeId;
+              const leftoverCount =
+                rid && plan ? countLeftoversOfRecipe(plan, rid) : 0;
+              const openSheet = () => {
+                setMoveSource({ day: sourceDayOv, slotIndex: mealIndexInDay });
+                setMoveSheetOpen(true);
+              };
+              if (leftoverCount > 0 && rid && plan) {
+                Alert.alert(
+                  "Move meal",
+                  `This will remove ${leftoverCount} leftover meal${leftoverCount === 1 ? "" : "s"}.`,
+                  [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                      text: "Continue",
+                      onPress: () => {
+                        setPlan((prev) => {
+                          if (!prev) return prev;
+                          const dayIndexInArr = prev.findIndex(
+                            (d) => d.day === sourceDayOv,
+                          );
+                          const { plan: cleaned } = markLeftoversOnSwap(prev, {
+                            dayIndex: dayIndexInArr,
+                            slot: meal.name,
+                            previousRecipeId: rid,
+                          });
+                          return cleaned as DayPlan[];
+                        });
+                        openSheet();
+                      },
+                    },
+                  ],
+                );
+              } else {
+                openSheet();
+              }
+            };
+            const doRemove = () => {
+              setRowMenu(null);
+              setPlan((prev) => {
+                if (!prev) return prev;
+                const next = prev.map((dpRow, di) => {
+                  if (di !== dayIdx) return dpRow;
+                  const newMeals = sortMealsBySlotOrder(
+                    dpRow.meals.filter((_, mi) => mi !== mealIndexInDay),
+                  );
+                  const totals = newMeals.reduce(
+                    (a, m) => ({
+                      calories: a.calories + m.calories,
+                      protein: a.protein + m.protein,
+                      carbs: a.carbs + m.carbs,
+                      fat: a.fat + m.fat,
+                    }),
+                    { calories: 0, protein: 0, carbs: 0, fat: 0 },
+                  );
+                  return { ...dpRow, meals: newMeals, totals };
+                });
+                void persistPlan(next);
+                return next;
+              });
+            };
+
+            const ActionRow = ({
+              label,
+              onPress,
+              destructive,
+              testID,
+            }: {
+              label: string;
+              onPress: () => void;
+              destructive?: boolean;
+              testID?: string;
+            }) => (
+              <Pressable
+                onPress={onPress}
+                accessibilityRole="button"
+                accessibilityLabel={label}
+                testID={testID}
+                style={({ pressed }) => ({
+                  paddingVertical: 14,
+                  paddingHorizontal: Spacing.xl,
+                  borderTopWidth: 1,
+                  borderTopColor: colors.border + "60",
+                  backgroundColor: pressed ? colors.border + "30" : "transparent",
+                })}
+              >
+                <Text
+                  style={{
+                    fontSize: 15,
+                    fontWeight: "500",
+                    color: destructive ? Accent.destructive : colors.text,
+                  }}
+                >
+                  {label}
+                </Text>
+              </Pressable>
+            );
+
+            return (
+              <Pressable
+                onPress={(e) => e.stopPropagation?.()}
+                style={{
+                  backgroundColor: colors.card,
+                  borderTopLeftRadius: Radius.lg,
+                  borderTopRightRadius: Radius.lg,
+                  paddingTop: Spacing.md,
+                  paddingBottom: insets.bottom + Spacing.sm,
+                }}
+              >
+                <View style={{ width: 36, height: 4, backgroundColor: colors.border, borderRadius: 999, alignSelf: "center", marginBottom: Spacing.md }} />
+                <View style={{ paddingHorizontal: Spacing.xl, paddingBottom: Spacing.md }}>
+                  <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text }} numberOfLines={1}>
+                    {hasRecipeOv ? meal.recipeTitle : meal.name}
+                  </Text>
+                  <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 2 }}>
+                    {hasRecipeOv ? `${Math.round(meal.calories)} kcal · ${meal.name}` : "Empty slot"}
+                  </Text>
+                </View>
+                {hasRecipeOv ? (
+                  <>
+                    <ActionRow label="Log as planned" onPress={doLogAsPlanned} testID="row-action-log" />
+                    <ActionRow label="View recipe" onPress={doViewRecipe} testID="row-action-view" />
+                    <ActionRow label="Swap meal" onPress={doSwap} testID="row-action-swap" />
+                    <ActionRow label="Change portion size…" onPress={doChangePortion} testID="row-action-portion" />
+                  </>
+                ) : (
+                  <ActionRow label="Swap meal" onPress={doSwap} testID="row-action-swap" />
+                )}
+                <ActionRow label="Move to different meal" onPress={doMove} testID="row-action-move" />
+                <ActionRow label="Remove from plan" onPress={doRemove} destructive testID="row-action-remove" />
+                <View style={{ height: Spacing.sm }} />
+                <Pressable
+                  onPress={() => setRowMenu(null)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cancel"
+                  style={{
+                    marginHorizontal: Spacing.xl,
+                    paddingVertical: 13,
+                    borderRadius: Radius.md,
+                    backgroundColor: colors.border + "60",
+                    alignItems: "center",
+                  }}
+                >
+                  <Text style={{ fontSize: 15, fontWeight: "600", color: colors.text }}>Cancel</Text>
+                </Pressable>
+              </Pressable>
+            );
+          })()}
+        </Pressable>
+      </Modal>
+
       <Modal
         visible={portionModal != null}
         transparent

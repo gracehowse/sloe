@@ -3,7 +3,32 @@
  * Run before Playwright locally: disk sanity + optional reachability when
  * PLAYWRIGHT_SKIP_WEB_SERVER is set (you must start Next yourself).
  */
+import { readFileSync, existsSync } from "node:fs";
+import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
+
+/** Load root `.env.local` so E2E_EMAIL / E2E_PASSWORD are available without manual export. */
+function loadEnvLocal() {
+  const path = resolve(process.cwd(), ".env.local");
+  if (!existsSync(path)) return;
+  for (const line of readFileSync(path, "utf8").split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const eq = trimmed.indexOf("=");
+    if (eq <= 0) continue;
+    const key = trimmed.slice(0, eq).trim();
+    let value = trimmed.slice(eq + 1).trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+    if (process.env[key] === undefined) process.env[key] = value;
+  }
+}
+
+loadEnvLocal();
 
 const baseURL = (process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000").replace(/\/$/, "");
 /** When set, Playwright will not start `next dev`; the app must already be listening on `baseURL`. */

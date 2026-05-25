@@ -219,7 +219,7 @@ function ImportDone({ source }: { source: ImportSource }) {
           <Check className="size-3.5" strokeWidth={2.5} />
           Example · matched against USDA
         </div>
-        <div className="text-[17px] font-bold text-foreground tracking-tight mb-1">
+        <div className="text-[18px] font-bold text-foreground tracking-tight mb-1">
           Sheet-pan chicken with roasted peppers
         </div>
         <div className="text-xs text-muted-foreground mb-3.5">

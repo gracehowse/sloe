@@ -87,6 +87,7 @@ import 'react-native-reanimated';
 import { AuthProvider } from '@/context/auth';
 import { AnalyticsProvider } from '@/context/AnalyticsProvider';
 import { ThemeProvider as SupprThemeProvider, useTheme } from '@/context/theme';
+import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { consumeNewSocialRecipeUrlFromClipboard } from '@/lib/clipboardShareForward';
 import { initErrorTracking } from '@/lib/errorTracking';
@@ -396,6 +397,7 @@ const STACK_HEADER_HIDDEN = new Set([
   "(tabs)",
   "login",
   "import-shared",
+  "plan-import",
   "cook",
   "recipe/verify",
   "shopping",
@@ -431,6 +433,12 @@ const STACK_HEADER_HIDDEN = new Set([
   // AND an in-card "Activity Bonus" sub-header with another back
   // chevron — duplicate back affordances.
   "burn-detail",
+  // DRIFT-04 fix (2026-05-22): Macro Detail rendered the auto-stack
+  // "Macro Detail" header AND an in-screen "Protein / Today" header
+  // with its own back chevron + value pill. Two back chevrons, two
+  // titles. The in-screen header is the canonical one (matches
+  // burn-detail's pattern).
+  "macro-detail",
 ]);
 
 /** Readable titles (route `name` from Expo Router file path). */
@@ -469,9 +477,10 @@ function RootLayoutInner() {
   // look like a blank grey screen with only a dev toast. Surface the
   // real problem up front (same signal as `app/login.tsx`).
   if (!hasSupabaseConfig()) {
-    const bg = resolved === 'dark' ? '#0a0a0f' : '#f6f3ee';
-    const fg = resolved === 'dark' ? '#e8e7ed' : '#1c1916';
-    const sub = resolved === 'dark' ? '#a8a4b4' : '#5e574e';
+    const palette = resolved === 'dark' ? Colors.dark : Colors.light;
+    const bg = palette.background;
+    const fg = palette.text;
+    const sub = palette.textSecondary;
     return (
       <GestureHandlerRootView style={{ flex: 1, backgroundColor: bg }}>
         <View style={{ flex: 1, paddingHorizontal: 28, justifyContent: 'center', gap: 12 }}>
@@ -511,6 +520,7 @@ function RootLayoutInner() {
         <Stack.Screen name="progress-metric" />
         <Stack.Screen name="meal-nutrition" />
         <Stack.Screen name="import-shared" options={{ headerShown: false }} />
+        <Stack.Screen name="plan-import" options={{ headerShown: false }} />
         <Stack.Screen name="cook" options={{ headerShown: false }} />
         <Stack.Screen name="recipe/verify" options={{ headerShown: false }} />
         {/* 2026-05-12 (premium-bar audit #18): redirect screen for

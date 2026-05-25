@@ -365,7 +365,9 @@ export function canAdvance(
     case "pace":
       // Maintain doesn't reach this branch (auto-skipped) but defend anyway.
       if (state.goal === "maintain") return true;
-      if (state.paceKgPerWeek === null) return false;
+      // `null` means the UI + target math use `GOAL_DEFAULT_PACE[goal]`
+      // (Steady is shown selected). Don't block Continue until the user
+      // taps a preset — the default is a valid choice.
       // Danger banner → require explicit acknowledgement. Other
       // warning levels (info, warn) advance with one tap, so the
       // soft-warn product decision still holds for the gentler

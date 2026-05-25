@@ -20,25 +20,9 @@
  * compact week-at-a-glance strip — last 7 calendar days, each row
  * a tappable day with calories vs target.
  *
- * Wiring (deferred): the host's existing layout wrapper inside
- * `src/app/components/NutritionTracker.tsx` should add a flex
- * container at the `lg` breakpoint that places this sidebar to the
- * right of the today render. The intended snippet:
- *
- *   <div className="flex gap-6">
- *     <div className="flex-1 max-w-[440px]">
- *       {!! existing today JSX !!}
- *     </div>
- *     <aside className="hidden lg:block w-[260px] flex-shrink-0 sticky top-4 self-start">
- *       <TodayWeekSidebar
- *         byDay={nutritionByDay}
- *         calorieTarget={effectiveCalorieTarget}
- *         activeDateKey={selectedDateKey}
- *         todayDateKey={todayKey()}
- *         onSelectDayKey={(k) => setSelectedDateKey(k)}
- *       />
- *     </aside>
- *   </div>
+ * Wired in `NutritionTracker.tsx` (ENG-590): `md:flex` row (matches
+ * desktop app sidebar breakpoint) with the main Today column capped
+ * at 440px and this sidebar sticky on the right when `viewMode === "day"`.
  *
  * The sidebar is intentionally read-only — it does not own the
  * calendar pickers, the week aggregates, or any state. It reads
@@ -126,13 +110,13 @@ export function TodayWeekSidebar({
   return (
     <aside
       className={cn(
-        "rounded-card border border-border bg-card p-3",
+        "rounded-card border border-border bg-card p-3 card-elevated",
         className,
       )}
       aria-label="Last 7 days"
     >
       <header className="mb-2 flex items-baseline justify-between px-1">
-        <h2 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+        <h2 className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
           Last 7 days
         </h2>
       </header>
@@ -163,7 +147,7 @@ export function TodayWeekSidebar({
                     column alignment across rows. */}
                 <span
                   className={cn(
-                    "w-9 shrink-0 text-[12px] font-semibold tabular-nums",
+                    "w-9 shrink-0 text-[11px] font-semibold tabular-nums",
                     isActive ? "text-primary" : "text-foreground",
                   )}
                 >
@@ -179,17 +163,14 @@ export function TodayWeekSidebar({
                   </span>
                 ) : null}
 
-                {/* Calorie bar — visualises pct toward target. Uses
-                    success colour for in-range, warning for over.
-                    Mirrors the over-budget=amber rule from
-                    `docs/ux/brand-guidelines.md` Section 9
-                    (never red). */}
+                {/* Calorie bar — success green for in-range,
+                    destructive red for over-target. */}
                 <div className="relative h-2 flex-1 min-w-0 overflow-hidden rounded-full bg-muted">
                   <div
                     className="h-full rounded-full transition-[width] duration-300"
                     style={{
                       width: `${pct * 100}%`,
-                      background: isOver ? "var(--warning)" : "var(--success)",
+                      background: isOver ? "var(--over-budget-fg)" : "var(--success)",
                     }}
                   />
                 </div>

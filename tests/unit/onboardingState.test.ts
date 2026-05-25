@@ -271,9 +271,9 @@ describe("onboarding v2 — pace safety floor is SOFT-WARN", () => {
     ).toBe(true);
   });
 
-  it("returns false only when the user hasn't picked a pace at all", () => {
+  it("allows advance when pace is null — default preset applies", () => {
     const state = baseState({ goal: "lose", paceKgPerWeek: null });
-    expect(canAdvance("pace", state)).toBe(false);
+    expect(canAdvance("pace", state)).toBe(true);
   });
 
   it("auto-passes the pace step when goal is maintain (defence-in-depth)", () => {

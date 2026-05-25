@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Per-meal macros — slot-header glance proposals (2026-05-22)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<style>
+  :root {
+    --background: #fbfaf6;
+    --card: #ffffff;
+    --foreground: #1a1714;
+    --foreground-secondary: #5b554b;
+    --foreground-tertiary: #8a8377;
+    --border: #ebe7dc;
+    --ring-track: #d4cfc1;
+
+    --accent-primary: #5b6ee8;
+    --accent-success: #22a860;
+    --accent-orange: #f97316;
+
+    --macro-protein: #4c6ce0;
+    --macro-carbs:   #eab308;
+    --macro-fat:     #e04888;
+    --macro-fiber:   #22a860;
+
+    --slot-breakfast: #e8a020;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: #e9e6df;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+    color: var(--foreground);
+    -webkit-font-smoothing: antialiased;
+  }
+  .page-wrap {
+    min-height: 100vh; padding: 28px 16px 48px;
+    display: flex; flex-direction: column; align-items: center; gap: 28px;
+  }
+  .page-header { text-align: center; max-width: 880px; color: #3a3631; }
+  .page-header h1 {
+    font-family: ui-serif, Georgia, serif;
+    font-size: 22px; letter-spacing: -0.02em; margin: 0 0 6px;
+  }
+  .page-header p { font-size: 13px; line-height: 1.55; color: #66605a; margin: 0; }
+
+  .proposal {
+    background: var(--background);
+    border-radius: 16px;
+    padding: 18px 18px 22px;
+    width: 100%; max-width: 460px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.04);
+  }
+  .proposal-label {
+    font-family: ui-serif, Georgia, serif;
+    font-size: 15px; font-weight: 700; color: #3a3631;
+    margin-bottom: 4px;
+  }
+  .proposal-desc {
+    font-size: 12px; line-height: 1.5; color: #66605a;
+    margin-bottom: 14px;
+  }
+
+  /* Slot row (collapsed) */
+  .slot {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 12px 14px;
+  }
+  .slot + .slot { margin-top: 8px; }
+  .slot-top { display: flex; align-items: center; gap: 10px; }
+  .slot-icon {
+    width: 28px; height: 28px; border-radius: 7px;
+    background: rgba(232, 160, 32, 0.12);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; flex-shrink: 0;
+  }
+  .slot-name {
+    font-size: 15px; font-weight: 700; flex: 1;
+  }
+  .slot-meta {
+    font-size: 11px; color: var(--foreground-tertiary);
+    margin-top: 2px;
+  }
+  .slot-chev {
+    width: 18px; height: 18px; color: var(--foreground-tertiary);
+    font-size: 13px; display: flex; align-items: center; justify-content: center;
+  }
+  .slot-add {
+    width: 26px; height: 26px; border-radius: 13px;
+    background: rgba(232, 160, 32, 0.15);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; color: #b07a00; font-weight: 700;
+  }
+  .slot-kcal {
+    font-size: 14px; font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .slot-kcal-unit {
+    font-size: 11px; color: var(--foreground-tertiary); margin-left: 2px;
+  }
+
+  /* G1: inline text pips on second line */
+  .g1-meta-row {
+    display: flex; align-items: center; gap: 10px;
+    margin-top: 6px;
+    flex-wrap: wrap;
+  }
+  .pip {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; color: var(--foreground-secondary);
+    font-variant-numeric: tabular-nums;
+  }
+  .pip::before {
+    content: ""; width: 6px; height: 6px; border-radius: 3px;
+  }
+  .pip.p::before { background: var(--macro-protein); }
+  .pip.c::before { background: var(--macro-carbs); }
+  .pip.f::before { background: var(--macro-fat); }
+  .pip.fb::before { background: var(--macro-fiber); }
+
+  /* G2: stacked horizontal kcal bar */
+  .g2-bar {
+    height: 6px; border-radius: 3px;
+    background: var(--ring-track);
+    overflow: hidden;
+    display: flex;
+    margin-top: 8px;
+  }
+  .g2-bar-seg { height: 100%; }
+  .g2-bar-seg.p  { background: var(--macro-protein); }
+  .g2-bar-seg.c  { background: var(--macro-carbs); }
+  .g2-bar-seg.f  { background: var(--macro-fat); }
+  .g2-bar-seg.fb { background: var(--macro-fiber); }
+  .g2-legend {
+    display: flex; gap: 10px; margin-top: 6px;
+    font-size: 10px; color: var(--foreground-tertiary);
+    font-variant-numeric: tabular-nums;
+  }
+  .g2-legend .lp::before { background: var(--macro-protein); }
+  .g2-legend .lc::before { background: var(--macro-carbs); }
+  .g2-legend .lf::before { background: var(--macro-fat); }
+  .g2-legend .lfb::before { background: var(--macro-fiber); }
+  .g2-legend span {
+    display: inline-flex; align-items: center; gap: 3px;
+  }
+  .g2-legend span::before {
+    content: ""; width: 5px; height: 5px; border-radius: 3px;
+  }
+
+  /* G3: macro tag chips */
+  .g3-tags {
+    display: flex; gap: 6px; margin-top: 8px;
+    flex-wrap: wrap;
+  }
+  .tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 8px; border-radius: 999px;
+    background: var(--background);
+    font-size: 10px; font-weight: 600;
+    color: var(--foreground-secondary);
+    font-variant-numeric: tabular-nums;
+  }
+  .tag::before {
+    content: ""; width: 5px; height: 5px; border-radius: 3px;
+  }
+  .tag.p::before { background: var(--macro-protein); }
+  .tag.c::before { background: var(--macro-carbs); }
+  .tag.f::before { background: var(--macro-fat); }
+  .tag.fb::before { background: var(--macro-fiber); }
+
+  /* G4: right-side mini-bars */
+  .g4-row { display: flex; align-items: center; gap: 10px; }
+  .g4-mini-bars {
+    display: flex; gap: 3px;
+    height: 24px; align-items: end;
+    flex-shrink: 0;
+  }
+  .g4-mini-bar {
+    width: 4px; border-radius: 2px;
+    background: var(--ring-track);
+    position: relative;
+    height: 100%;
+  }
+  .g4-mini-bar-fill {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    border-radius: 2px;
+  }
+  .g4-mini-bar.p .g4-mini-bar-fill { background: var(--macro-protein); }
+  .g4-mini-bar.c .g4-mini-bar-fill { background: var(--macro-carbs); }
+  .g4-mini-bar.f .g4-mini-bar-fill { background: var(--macro-fat); }
+  .g4-mini-bar.fb .g4-mini-bar-fill { background: var(--macro-fiber); }
+
+  /* G5: micro donut */
+  .g5-row { display: flex; align-items: center; gap: 10px; }
+  .donut-wrap { flex-shrink: 0; }
+
+</style>
+</head>
+<body>
+<div class="page-wrap">
+
+  <div class="page-header">
+    <h1>Per-meal macros — slot-header glance proposals</h1>
+    <p>Goal: see kcal + macros for each slot WITHOUT expanding. Today only shows kcal in the collapsed state — protein-watcher can't tune their day without tapping into every meal. Five glance treatments below, ranked from calm-text to data-vis.</p>
+  </div>
+
+  <!-- ─── G1: Inline pip row (calmest) ─── -->
+  <div class="proposal">
+    <div class="proposal-label">G1 — Inline pip row (calmest)</div>
+    <div class="proposal-desc">A row of small coloured-dot + number pips on the meta line under the slot name. No new visual primitive, just an extra row of typography. Cheapest to scan; loses the "comparative" feel of bars.</div>
+    <div class="slot">
+      <div class="slot-top">
+        <div class="slot-icon">☕</div>
+        <div style="flex: 1;">
+          <div class="slot-name">Breakfast</div>
+          <div class="slot-meta">1 item · tap to expand</div>
+          <div class="g1-meta-row">
+            <span class="pip p">35g P</span>
+            <span class="pip c">12g C</span>
+            <span class="pip f">18g F</span>
+            <span class="pip fb">4g Fb</span>
+          </div>
+        </div>
+        <div class="slot-chev">⌃</div>
+        <div class="slot-add">+</div>
+        <div>
+          <span class="slot-kcal">342</span>
+          <span class="slot-kcal-unit">kcal</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── G2: Stacked kcal bar + legend (MFP-like) ─── -->
+  <div class="proposal">
+    <div class="proposal-label">G2 — Stacked kcal bar + legend (MFP-like)</div>
+    <div class="proposal-desc">A thin (6px) horizontal bar showing each macro's KCAL contribution as a segment. Legend below maps colour → grams. Most data-rich; reads instantly as "this meal was carbs-heavy / fat-heavy". MFP's per-meal bar pattern.</div>
+    <div class="slot">
+      <div class="slot-top">
+        <div class="slot-icon">☕</div>
+        <div style="flex: 1;">
+          <div class="slot-name">Breakfast</div>
+          <div class="slot-meta">1 item · tap to expand</div>
+        </div>
+        <div class="slot-chev">⌃</div>
+        <div class="slot-add">+</div>
+        <div>
+          <span class="slot-kcal">342</span>
+          <span class="slot-kcal-unit">kcal</span>
+        </div>
+      </div>
+      <div class="g2-bar">
+        <div class="g2-bar-seg p"  style="flex: 35;"></div>
+        <div class="g2-bar-seg c"  style="flex: 12;"></div>
+        <div class="g2-bar-seg f"  style="flex: 18;"></div>
+        <div class="g2-bar-seg fb" style="flex: 4;"></div>
+      </div>
+      <div class="g2-legend">
+        <span class="lp">35g P</span>
+        <span class="lc">12g C</span>
+        <span class="lf">18g F</span>
+        <span class="lfb">4g Fb</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── G3: Tag chips ─── -->
+  <div class="proposal">
+    <div class="proposal-label">G3 — Tag chips</div>
+    <div class="proposal-desc">Each macro becomes a small soft-fill chip on the meta row. Touch-friendly (each could be tappable into the macro-detail filter). Slightly more chrome than G1; calmer than G2's bar.</div>
+    <div class="slot">
+      <div class="slot-top">
+        <div class="slot-icon">☕</div>
+        <div style="flex: 1;">
+          <div class="slot-name">Breakfast</div>
+          <div class="slot-meta">1 item · tap to expand</div>
+          <div class="g3-tags">
+            <span class="tag p">35g P</span>
+            <span class="tag c">12g C</span>
+            <span class="tag f">18g F</span>
+            <span class="tag fb">4g Fb</span>
+          </div>
+        </div>
+        <div class="slot-chev">⌃</div>
+        <div class="slot-add">+</div>
+        <div>
+          <span class="slot-kcal">342</span>
+          <span class="slot-kcal-unit">kcal</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── G4: 4 mini-bars (sparkline) ─── -->
+  <div class="proposal">
+    <div class="proposal-label">G4 — 4 vertical mini-bars (sparkline)</div>
+    <div class="proposal-desc">Tiny vertical bar chart, 4 columns (P/C/F/Fb), height = grams. Sits on the right next to kcal. Most "data-tool" feel — Bloomberg/Linear vibe. Cost: hard to read exact numbers without tapping in.</div>
+    <div class="slot">
+      <div class="g4-row">
+        <div class="slot-icon">☕</div>
+        <div style="flex: 1;">
+          <div class="slot-name">Breakfast</div>
+          <div class="slot-meta">1 item · tap to expand</div>
+        </div>
+        <div class="g4-mini-bars" title="P 35g · C 12g · F 18g · Fb 4g">
+          <div class="g4-mini-bar p"><div class="g4-mini-bar-fill" style="height: 100%;"></div></div>
+          <div class="g4-mini-bar c"><div class="g4-mini-bar-fill" style="height: 34%;"></div></div>
+          <div class="g4-mini-bar f"><div class="g4-mini-bar-fill" style="height: 51%;"></div></div>
+          <div class="g4-mini-bar fb"><div class="g4-mini-bar-fill" style="height: 11%;"></div></div>
+        </div>
+        <div class="slot-chev">⌃</div>
+        <div class="slot-add">+</div>
+        <div>
+          <span class="slot-kcal">342</span>
+          <span class="slot-kcal-unit">kcal</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── G5: Micro donut ─── -->
+  <div class="proposal">
+    <div class="proposal-label">G5 — Micro donut sparkline</div>
+    <div class="proposal-desc">22px donut showing macro kcal split. Reads as "this meal was N% carbs". Compact and modern. Cost: tiny rings sacrifice exact gram values entirely (must tap to learn).</div>
+    <div class="slot">
+      <div class="g5-row">
+        <div class="slot-icon">☕</div>
+        <div style="flex: 1;">
+          <div class="slot-name">Breakfast</div>
+          <div class="slot-meta">1 item · tap to expand</div>
+        </div>
+        <div class="donut-wrap">
+          <svg width="26" height="26" viewBox="0 0 36 36">
+            <circle cx="18" cy="18" r="14" fill="none" stroke="var(--ring-track)" stroke-width="6" />
+            <!-- protein 35g = 140kcal, carbs 12g = 48kcal, fat 18g = 162kcal, fiber 4g = 16kcal; total 366 -->
+            <circle cx="18" cy="18" r="14" fill="none" stroke="var(--macro-protein)" stroke-width="6"
+                    stroke-dasharray="33.6 87.9" transform="rotate(-90 18 18)" />
+            <circle cx="18" cy="18" r="14" fill="none" stroke="var(--macro-carbs)" stroke-width="6"
+                    stroke-dasharray="11.5 110" stroke-dashoffset="-33.6" transform="rotate(-90 18 18)" />
+            <circle cx="18" cy="18" r="14" fill="none" stroke="var(--macro-fat)" stroke-width="6"
+                    stroke-dasharray="38.9 82.6" stroke-dashoffset="-45.1" transform="rotate(-90 18 18)" />
+            <circle cx="18" cy="18" r="14" fill="none" stroke="var(--macro-fiber)" stroke-width="6"
+                    stroke-dasharray="3.8 117.7" stroke-dashoffset="-84.0" transform="rotate(-90 18 18)" />
+          </svg>
+        </div>
+        <div class="slot-chev">⌃</div>
+        <div class="slot-add">+</div>
+        <div>
+          <span class="slot-kcal">342</span>
+          <span class="slot-kcal-unit">kcal</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

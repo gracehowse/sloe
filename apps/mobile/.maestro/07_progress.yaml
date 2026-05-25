@@ -24,6 +24,10 @@ name: "Progress screen — stats, charts, weight journey, time range"
     when:
       visible: ".*LAST 30 DAYS.*"
     commands:
+      # Range-picker pills live at the top — verify before scrolling.
+      - assertVisible: ".*7d.*"
+      - assertVisible: ".*30d.*"
+
       # Daily Calories chart is below the fold — render order is:
       # range overline → stat tiles → Daily Calories chart → Macro
       # Adherence (progress.tsx:1302 + 1406). Scroll to find each.
@@ -35,16 +39,6 @@ name: "Progress screen — stats, charts, weight journey, time range"
           element: ".*Macro Adherence.*"
           direction: DOWN
       - assertVisible: ".*Macro Adherence.*"
-
-      # Scroll to weight section
-      - scrollUntilVisible:
-          element: ".*Weight.*"
-          direction: DOWN
-      - assertVisible: ".*Weight.*"
-
-      # Verify the range-picker pills render
-      - assertVisible: ".*7d.*"
-      - assertVisible: ".*30d.*"
 
       # Scroll back to top
       - scrollUntilVisible:

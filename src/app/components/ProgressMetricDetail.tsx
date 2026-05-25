@@ -142,7 +142,7 @@ export function ProgressMetricDetail({ metric, weekStartDay, onClose }: Props) {
   };
 
   return (
-    <div className="max-w-2xl mx-auto px-pm-5 py-pm-5">
+    <div className="product-shell py-pm-5">
       <div className="flex items-center gap-2 mb-4">
         <button
           type="button"
@@ -158,7 +158,7 @@ export function ProgressMetricDetail({ metric, weekStartDay, onClose }: Props) {
 
       {metric === "calories" && (
         <>
-          <div className="rounded-xl bg-card border border-border p-4 mb-4">
+          <div className="rounded-xl bg-card border border-border p-4 mb-4 card-elevated">
             <p className="text-sm font-semibold text-foreground mb-3">Daily intake</p>
             <div className="flex items-end gap-2 h-32">
               {weekStats.days.map((d) => {

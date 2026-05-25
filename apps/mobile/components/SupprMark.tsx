@@ -82,7 +82,7 @@ export function SupprWordmark({ size = 28, style }: SupprWordmarkProps) {
       <Text
         style={{
           color: colors.text,
-          fontSize: Math.round(size * 0.64),
+          fontSize: Math.round(size * 0.72),
           fontWeight: "700",
           letterSpacing: -0.4,
           includeFontPadding: false,
@@ -143,7 +143,7 @@ export function SupprPlateWordmark({ size = 28, style }: SupprWordmarkProps) {
       <Text
         style={{
           color: colors.text,
-          fontSize: Math.round(size * 0.64),
+          fontSize: Math.round(size * 0.72),
           fontWeight: "700",
           letterSpacing: -0.4,
           includeFontPadding: false,

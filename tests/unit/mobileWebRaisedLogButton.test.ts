@@ -103,15 +103,10 @@ describe("mobile-web raised Log button — App.tsx", () => {
     expect(APP).toMatch(/onClick=\{openLogSheetFromTabBar\}/);
   });
 
-  it("`openLogSheetFromTabBar` stamps view=today + openLog=1 on the URL", () => {
-    // Mirrors mobile's `router.push({ pathname: "/(tabs)", params: {
-    // openLog: "1" } })`. The URL-param dispatch (vs CustomEvent)
-    // means the raised button works from any tab even when
-    // <NutritionTracker> is not yet mounted (Plan / You / Recipes):
-    // the `view=today` switch mounts the tracker, which then sees
-    // `openLog=1` on first render and opens the sheet.
+  it("`openLogSheetFromTabBar` switches to today and stamps openLog=1 on the URL", () => {
     expect(APP).toMatch(/const openLogSheetFromTabBar = useCallback/);
-    expect(APP).toMatch(/params\.set\("view", "today"\);[\s\S]+?params\.set\("openLog", "1"\)/);
+    expect(APP).toMatch(/setCurrentView\("today"\)/);
+    expect(APP).toMatch(/params\.set\("openLog", "1"\)/);
   });
 
   it("does not render the legacy side <LogFab> from App.tsx", () => {

@@ -224,7 +224,7 @@ export function Digest(props: DigestProps) {
     return (
       <section
         className={cn(
-          "rounded-card border border-border bg-card p-5 mb-5 text-sm text-muted-foreground",
+          "rounded-card border border-border bg-card p-5 mb-5 text-sm text-muted-foreground card-elevated",
           className,
         )}
         data-testid="digest-error"
@@ -252,7 +252,7 @@ export function Digest(props: DigestProps) {
         aria-busy="true"
         aria-live="polite"
         className={cn(
-          "rounded-card border border-border bg-card p-5 mb-5 animate-pulse",
+          "rounded-card border border-border bg-card p-5 mb-5 animate-pulse card-elevated",
           className,
         )}
         data-testid="digest-skeleton"
@@ -301,7 +301,7 @@ export function Digest(props: DigestProps) {
     <section
       aria-labelledby="digest-heading"
       className={cn(
-        "relative rounded-card border border-border bg-card p-5 mb-5 shadow-sm",
+        "relative rounded-card border border-border bg-card p-5 mb-5 card-elevated",
         className,
       )}
       data-testid="digest"
@@ -451,14 +451,14 @@ export function Digest(props: DigestProps) {
           </p>
           <p
             data-testid="digest-weekly-checkin-headline"
-            className="text-[14px] font-bold text-foreground mb-1"
+            className="text-[13px] font-bold text-foreground mb-1"
           >
             {narrative.weeklyCheckin.headline}
           </p>
           {narrative.weeklyCheckin.deltaLine ? (
             <p
               data-testid="digest-weekly-checkin-delta"
-              className="text-[12px] text-muted-foreground tabular-nums mb-1"
+              className="text-[11px] text-muted-foreground tabular-nums mb-1"
             >
               {narrative.weeklyCheckin.deltaLine}
             </p>
@@ -466,7 +466,7 @@ export function Digest(props: DigestProps) {
           {narrative.weeklyCheckin.whyLine ? (
             <p
               data-testid="digest-weekly-checkin-why"
-              className="text-[12px] text-muted-foreground mb-1 leading-relaxed"
+              className="text-[11px] text-muted-foreground mb-1 leading-relaxed"
             >
               {narrative.weeklyCheckin.whyLine}
             </p>

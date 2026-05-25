@@ -167,9 +167,7 @@ export function HouseholdPanel() {
           const { track } = await import("@/lib/analytics/track");
           track("household_create_failed", {
             code: createErr.code,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             raw_message: (createErr.raw as any)?.message ?? null,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             raw_code: (createErr.raw as any)?.code ?? null,
           });
         } catch {
@@ -261,7 +259,7 @@ export function HouseholdPanel() {
   // No household — show create/join options
   if (!data?.household) {
     return (
-      <div className="rounded-xl bg-card border border-border p-4">
+      <div className="rounded-xl bg-card border border-border p-4 card-elevated">
         {scopeBanner}
         {/* F-111 (TestFlight `AGthJykAoNdxEYKsRoLWf-c`, 2026-05-06):
             received-invites banner above the create/join CTAs. When
@@ -333,7 +331,7 @@ export function HouseholdPanel() {
     <div className="space-y-4">
       {scopeBanner}
       {/* Header */}
-      <div className="rounded-xl bg-card border border-border p-4">
+      <div className="rounded-xl bg-card border border-border p-4 card-elevated">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <IconBox size="sm" tone="primary"><Icons.users /></IconBox>
@@ -471,7 +469,7 @@ export function HouseholdPanel() {
       </div>
 
       {/* Today's shared meals */}
-      <div className="rounded-xl bg-card border border-border p-4">
+      <div className="rounded-xl bg-card border border-border p-4 card-elevated">
         <p className="text-sm font-semibold text-foreground mb-2">Today&apos;s Shared Meals</p>
         {todayMeals.length === 0 ? (
           <p className="text-xs text-muted-foreground">No shared meals planned for today.</p>
@@ -512,7 +510,7 @@ export function HouseholdPanel() {
 
       {/* Upcoming meals */}
       {upcomingMeals.length > 0 && (
-        <div className="rounded-xl bg-card border border-border p-4">
+        <div className="rounded-xl bg-card border border-border p-4 card-elevated">
           <p className="text-sm font-semibold text-foreground mb-2">Upcoming</p>
           <div className="space-y-1.5">
             {upcomingMeals.slice(0, 7).map((meal) => (

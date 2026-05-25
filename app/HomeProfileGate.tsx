@@ -13,6 +13,8 @@ import { Button } from "../src/app/components/ui/button.tsx";
 
 type GateState = "loading" | "ready" | "onboarding" | "error";
 
+const PROFILE_GATE_READY_KEY = "suppr.profile.gate.ready";
+
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
@@ -22,13 +24,23 @@ export function useHomeProfileGate(): {
   errorMessage: string | null;
   retry: () => void;
 } {
-  const [gate, setGate] = useState<GateState>("loading");
+  const [gate, setGate] = useState<GateState>(() => {
+    if (typeof window !== "undefined" && sessionStorage.getItem(PROFILE_GATE_READY_KEY) === "1") {
+      return "ready";
+    }
+    return "loading";
+  });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
 
   const run = useCallback(async () => {
-    setGate("loading");
-    setErrorMessage(null);
+    const skipSplash =
+      typeof window !== "undefined" &&
+      sessionStorage.getItem(PROFILE_GATE_READY_KEY) === "1";
+    if (!skipSplash) {
+      setGate("loading");
+      setErrorMessage(null);
+    }
 
     const {
       data: { session },
@@ -58,6 +70,9 @@ export function useHomeProfileGate(): {
           // DB table missing — check if local profile exists (onboarding completed offline)
           const local = loadLocalProfile(uid);
           if (local?.targets?.calories && local.age && local.heightCm && local.weightKg) {
+            if (typeof window !== "undefined") {
+              sessionStorage.setItem(PROFILE_GATE_READY_KEY, "1");
+            }
             setGate("ready");
             return;
           }
@@ -74,6 +89,9 @@ export function useHomeProfileGate(): {
         // DB error but local profile may exist — let user through if onboarding was completed
         const local = loadLocalProfile(uid);
         if (local?.targets?.calories && local.age && local.heightCm && local.weightKg) {
+          if (typeof window !== "undefined") {
+            sessionStorage.setItem(PROFILE_GATE_READY_KEY, "1");
+          }
           setGate("ready");
           return;
         }
@@ -87,6 +105,9 @@ export function useHomeProfileGate(): {
         // No DB profile — check local fallback before redirecting to onboarding
         const local = loadLocalProfile(uid);
         if (local?.targets?.calories && local.age && local.heightCm && local.weightKg) {
+          if (typeof window !== "undefined") {
+            sessionStorage.setItem(PROFILE_GATE_READY_KEY, "1");
+          }
           setGate("ready");
           return;
         }
@@ -97,6 +118,9 @@ export function useHomeProfileGate(): {
         return;
       }
 
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem(PROFILE_GATE_READY_KEY, "1");
+      }
       setGate("ready");
       return;
     }

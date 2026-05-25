@@ -236,6 +236,14 @@ No meaningful change is complete without testing review.
 ### Always use `docs-keeper` before completion
 No meaningful change is complete without documentation review.
 
+### Always use `production-readiness` when
+- monitoring, alerting, logging, or observability gaps are in question
+- backups, disaster recovery, or data-restore confidence matter
+- secrets handling, scaling headroom, cost guardrails, or rate limits are involved
+- runbooks, on-call, or the solo-founder safety net come up
+- the question is "if 10,000 users land tomorrow, does this hold?" — operational fitness at scale, independent of any single change
+- distinct from `release-gate` (per-change ship decision) and `security-reviewer` (auth/data scope); pair all three before a milestone but do not treat them as interchangeable
+
 ### Always use `release-gate` when
 - deciding whether something is ready to ship
 - reviewing milestone readiness
