@@ -105,9 +105,13 @@ async function dismissChrome(page: Page): Promise<void> {
 async function goToToday(page: Page): Promise<void> {
   await page.goto("/today", { waitUntil: "domcontentloaded", timeout: 45_000 });
   await dismissChrome(page);
-  await expect(page.locator("h1").filter({ hasText: /^Today$/i })).toBeVisible({
-    timeout: 30_000,
-  });
+  // Desktop Today uses a formatted date in `<h1>` (not the literal "Today"
+  // string). Mobile-web calm nav still renders "Today" when viewing today.
+  const ready = page
+    .locator('input[type="date"]')
+    .or(page.getByText(/^MEALS$/i))
+    .or(page.locator("h1").filter({ hasText: /^Today$/i }));
+  await expect(ready.first()).toBeVisible({ timeout: 30_000 });
 }
 
 function targetDateKey(offsetFromToday: number): string {
@@ -143,7 +147,13 @@ async function captureState(
     });
     await page.reload({ waitUntil: "domcontentloaded" });
     await dismissChrome(page);
-    await expect(page.locator("h1").filter({ hasText: /^Today$/i })).toBeVisible({
+    await expect(
+      page
+        .locator('input[type="date"]')
+        .or(page.getByText(/^MEALS$/i))
+        .or(page.locator("h1").filter({ hasText: /^Today$/i }))
+        .first(),
+    ).toBeVisible({
       timeout: 30_000,
     });
     await navigateDayOffset(page, STATE_OFFSET[state]);
