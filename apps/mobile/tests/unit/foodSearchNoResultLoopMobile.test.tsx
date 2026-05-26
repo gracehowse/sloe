@@ -72,7 +72,7 @@ vi.mock("@/lib/verifyRecipe", () => ({
   searchFoods: vi.fn(async () => []),
   getFoodMacros: vi.fn(async () => null),
   getFatSecretFood: vi.fn(async () => null),
-  scaleMacros: (m: unknown) => m,
+  scaleMacrosByGrams: (m: unknown) => m,
 }));
 
 // FatSecret autocomplete (Premier-tier) — stub to empty so the

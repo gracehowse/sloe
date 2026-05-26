@@ -182,21 +182,21 @@ export function BurnDetailPanel({
             <div
               className={`rounded-xl border p-4 space-y-1.5 ${
                 bonusCalories > 0
-                  ? "border-amber-400/40 bg-amber-500/10"
+                  ? "border-activity/40 bg-activity-soft"
                   : "border-border bg-card"
               }`}
             >
               <div className="flex items-center justify-between">
                 <span
                   className={`text-sm font-extrabold ${
-                    bonusCalories > 0 ? "text-amber-500" : "text-muted-foreground"
+                    bonusCalories > 0 ? "text-activity" : "text-muted-foreground"
                   }`}
                 >
                   {bonusCalories > 0 ? "Bonus Calories Earned" : "No Bonus Yet"}
                 </span>
                 <span
                   className={`text-xl font-extrabold tabular-nums ${
-                    bonusCalories > 0 ? "text-amber-500" : "text-muted-foreground"
+                    bonusCalories > 0 ? "text-activity" : "text-muted-foreground"
                   }`}
                 >
                   {bonusCalories > 0 ? `+${bonusCalories.toLocaleString()}` : "0"}

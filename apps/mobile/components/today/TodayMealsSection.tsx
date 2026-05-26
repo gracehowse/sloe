@@ -26,6 +26,7 @@ import { Accent, MacroColors, Radius, SlotColors, Spacing, Type } from "@/consta
 import { SourceDot } from "@/components/ui/SourceDot";
 import { MacroIconRow } from "@/components/nutrition/MacroIconRow";
 import { mapMealSourceToDot } from "@suppr/shared/nutrition/sourceMap";
+import { mealContributedFiberG } from "@/lib/healthDietaryNutrients";
 import { formatMacroTrailer } from "@suppr/shared/nutrition/macroFormat";
 import type { JournalMeal } from "@/lib/nutritionJournal";
 import type { SavedMeal } from "@suppr/shared/nutrition/savedMeals";
@@ -350,7 +351,12 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
           const slotProtein = meals.reduce((a, m) => a + (m.protein ?? 0), 0);
           const slotCarbs   = meals.reduce((a, m) => a + (m.carbs ?? 0), 0);
           const slotFat     = meals.reduce((a, m) => a + (m.fat ?? 0), 0);
-          const slotFiber   = meals.reduce((a, m) => a + (m.fiberG ?? 0), 0);
+          // Fibre can live in `fiber_g` OR `nutrition_micros` (Health /
+          // dense logs). Mirror the day-total + macro-detail screen by
+          // resolving via mealContributedFiberG so the slot chip doesn't
+          // drop micros-only fibre (e.g. breakfast showed 0g while the
+          // Fibre detail + day tile counted it). 2026-05-25.
+          const slotFiber   = meals.reduce((a, m) => a + mealContributedFiberG(m), 0);
           const isOpen = !collapsedSlots.has(slot);
           const hasMeals = meals.length > 0;
           const ic = slotIcon(slot);

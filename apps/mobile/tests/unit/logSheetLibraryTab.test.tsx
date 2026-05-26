@@ -41,7 +41,7 @@ vi.mock("expo-haptics", () => ({
 vi.mock("@/lib/verifyRecipe", () => ({
   searchFoods: vi.fn(async () => []),
   getFoodMacros: vi.fn(async () => null),
-  scaleMacros: vi.fn(() => ({
+  scaleMacrosByGrams: vi.fn(() => ({
     calories: 0, protein: 0, carbs: 0, fat: 0,
     fiberG: 0, sugarG: 0, sodiumMg: 0,
   })),

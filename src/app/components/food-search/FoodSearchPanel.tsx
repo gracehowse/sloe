@@ -495,6 +495,11 @@ async function fetchUsdaDetail(
   fdcId: number,
 ): Promise<{
   macrosPer100g: MacrosPer100g;
+  // 2026-05-26 fix: the /api/usda/food route returns the full micro panel
+  // (fdcFoodMicrosPer100g, added 2026-05-06), but this client detail-fetch
+  // was never updated to read it — so USDA foods logged macros only while
+  // OFF / FatSecret carried micros. Thread it through like the others.
+  microsPer100g?: Record<string, number>;
   portions: FoodPortion[];
   primaryPortion?: PrimaryServing | null;
 } | null> {
@@ -504,6 +509,7 @@ async function fetchUsdaDetail(
     if (!json.ok) return null;
     return {
       macrosPer100g: json.macrosPer100g,
+      ...(json.microsPer100g ? { microsPer100g: json.microsPer100g } : {}),
       portions: Array.isArray(json.portions) ? json.portions : [],
       primaryPortion: json.primaryPortion ?? null,
     };
@@ -1046,7 +1052,7 @@ export function FoodSearchPanel({
       const { portion, quantity } = effectivePrimary
         ? { portion: portions[0], quantity: 1 }
         : resolveInitialPortion(portions, initialAmount, initialUnit);
-      setPreview({ name: item.name, source: "USDA", macrosPer100g: detail.macrosPer100g, portions, chosenPortion: portion, quantity });
+      setPreview({ name: item.name, source: "USDA", macrosPer100g: detail.macrosPer100g, ...(detail.microsPer100g ? { microsPer100g: detail.microsPer100g } : {}), portions, chosenPortion: portion, quantity });
     } else if (item._source === "OFF" && item.macrosPer100g) {
       setLoadingKey(null);
       const portions = buildPortions([], item.primaryServing);

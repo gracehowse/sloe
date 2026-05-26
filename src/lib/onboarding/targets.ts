@@ -27,7 +27,6 @@ import {
   ACTIVITY_MULTIPLIERS,
   budgetSafety,
   calculateBMR,
-  calculateMacros,
   type ActivityLevel,
   type NutritionStrategy,
   type Sex,
@@ -37,6 +36,16 @@ import {
   type Goal,
   type OnboardingState,
 } from "./state";
+// Canonical target-recompute core. computeV2Targets routes through it so
+// onboarding shares ONE deficit / strategy / safety-floor implementation
+// with the editor + weekly check-in (target-recompute unification,
+// 2026-05-26). Static relative import (mobile resolves this file via the
+// `@suppr/shared` alias — dynamic relative imports break Metro). This is a
+// deliberate `targets.ts ↔ goalPaceRetune.ts` import cycle: both sides are
+// hoisted function declarations with no module-level execution, so neither
+// load order can observe a half-initialised binding (verified by the
+// onboarding parity + retune suites).
+import { deriveTargets } from "../nutrition/goalPaceRetune";
 
 /** Energy balance — 1 kg of body mass ≈ 7,700 kcal. Mirrors
  *  `KCAL_PER_KG` in `src/lib/nutrition/adaptiveTdee.ts` (we don't
@@ -228,31 +237,47 @@ export function computeV2Targets(state: OnboardingState): V2Targets | null {
   }
 
   const bmr = calculateBMR(sex, weightKg, heightCm, age);
+  // Maintenance for a NEW user is the static Mifflin × activity number —
+  // a fresh profile has no adaptive data. Rounded BEFORE the deficit so
+  // `deriveTargets` applies the pace adjustment to a whole-kcal baseline
+  // (identical to the prior inline `Math.round(bmr * mult)`).
   const tdee = Math.round(bmr * ACTIVITY_MULTIPLIERS[activity as ActivityLevel]);
   const pace = paceKgPerWeek ?? GOAL_DEFAULT_PACE[goal];
-  const kcalAdj = paceToKcalAdjustment(goal, pace);
-  const target = Math.round(tdee + kcalAdj);
 
-  // The user can override the goal-derived strategy on the Strategy
-  // step — Grace 2026-04-20, parity with the legacy onboarding's
-  // explicit picker. `null` falls back to the goal default.
-  const strategy = state.nutritionStrategy ?? mapGoalToStrategy(goal);
-  const macros = calculateMacros(target, strategy, weightKg);
+  // Route through the canonical core. The user can override the
+  // goal-derived strategy on the Strategy step (Grace 2026-04-20, parity
+  // with the legacy onboarding's explicit picker); `null` falls back to
+  // the goal default inside `deriveTargets`. Behaviour-preserving: this
+  // produces byte-identical numbers to the prior inline pipeline (pinned
+  // by tests/unit/onboardingTargets.test.ts + onboardingTargetsParity).
+  const derived = deriveTargets({
+    maintenanceKcal: tdee,
+    goal,
+    paceKgPerWeek: pace,
+    strategy: state.nutritionStrategy ?? null,
+    weightKg,
+    sex,
+  });
+  // `derived` is non-null here: tdee and weightKg are both finite + > 0
+  // (guarded above). The fallback keeps the type narrow without inventing
+  // numbers — it can only be reached if calculateBMR ever returns ≤ 0.
+  if (!derived) return null;
 
-  const floor = safetyFloorFor(sex);
+  const kcalAdj = derived.kcalAdjustment;
+  const target = derived.targetCalories;
+
   return {
     bmr: Math.round(bmr),
     tdee,
     target,
-    proteinG: macros.protein,
-    carbsG: macros.carbs,
-    fatG: macros.fat,
-    fiberG: macros.fiber,
+    proteinG: derived.proteinG,
+    carbsG: derived.carbsG,
+    fatG: derived.fatG,
+    fiberG: derived.fiberG,
     pace,
     kcalAdj,
-    strategy,
-    belowSafetyFloor:
-      (goal === "lose" || goal === "recomp") && target < floor,
-    safety: budgetSafety(target, sex),
+    strategy: derived.strategyUsed,
+    belowSafetyFloor: derived.belowSafetyFloor,
+    safety: derived.safety,
   };
 }

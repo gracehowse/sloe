@@ -1,7 +1,13 @@
 import * as React from "react";
 import { Modal, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Link as LinkIcon, Camera, Pencil, Clipboard as ClipboardIcon } from "lucide-react-native";
+import {
+  Link as LinkIcon,
+  Camera,
+  Pencil,
+  Clipboard as ClipboardIcon,
+  BookOpen,
+} from "lucide-react-native";
 import { useRouter } from "expo-router";
 
 import { Accent, Radius, Spacing } from "@/constants/theme";
@@ -217,6 +223,15 @@ export function CreateRecipeActionSheet({ visible, onClose }: CreateRecipeAction
             title="Photo of a recipe"
             subtitle="Snap a printed recipe or book page — AI fills in the macros."
             onPress={() => go("/create-recipe", { autoPhoto: "1" })}
+            colors={colors}
+          />
+          <ActionRow
+            testID="create-action-sheet-cookbook"
+            Icon={BookOpen}
+            iconColor={Accent.primary}
+            title="Import cookbook (PDF)"
+            subtitle="One scanned book → many recipes in Library, tagged by book name."
+            onPress={() => go("/cookbook-import")}
             colors={colors}
           />
           <ActionRow

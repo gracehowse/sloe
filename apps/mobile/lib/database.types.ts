@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       admin_users: {
@@ -97,6 +72,13 @@ export type Database = {
             columns: ["recipe_id"]
             isOneToOne: false
             referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "app_notifications_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes_implausible_macros"
             referencedColumns: ["id"]
           },
           {
@@ -217,6 +199,13 @@ export type Database = {
             columns: ["recipe_id"]
             isOneToOne: false
             referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creator_publish_notifications_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes_implausible_macros"
             referencedColumns: ["id"]
           },
           {
@@ -715,6 +704,13 @@ export type Database = {
             referencedRelation: "recipes"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "household_meals_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes_implausible_macros"
+            referencedColumns: ["id"]
+          },
         ]
       }
       household_members: {
@@ -933,6 +929,13 @@ export type Database = {
             referencedRelation: "recipes"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "meal_plan_meals_recipe_id_uuid_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes_implausible_macros"
+            referencedColumns: ["id"]
+          },
         ]
       }
       nutrition_entries: {
@@ -1007,6 +1010,13 @@ export type Database = {
             referencedRelation: "recipes"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "nutrition_entries_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes_implausible_macros"
+            referencedColumns: ["id"]
+          },
         ]
       }
       profiles: {
@@ -1050,6 +1060,7 @@ export type Database = {
           notifications_seeded: boolean
           nutrition_strategy: string | null
           onboarding_completed: boolean | null
+          pace_kg_per_week: number | null
           plan_pace: string | null
           prefer_activity_adjusted_calories: boolean | null
           sex: string | null
@@ -1119,6 +1130,7 @@ export type Database = {
           notifications_seeded?: boolean
           nutrition_strategy?: string | null
           onboarding_completed?: boolean | null
+          pace_kg_per_week?: number | null
           plan_pace?: string | null
           prefer_activity_adjusted_calories?: boolean | null
           sex?: string | null
@@ -1188,6 +1200,7 @@ export type Database = {
           notifications_seeded?: boolean
           nutrition_strategy?: string | null
           onboarding_completed?: boolean | null
+          pace_kg_per_week?: number | null
           plan_pace?: string | null
           prefer_activity_adjusted_calories?: boolean | null
           sex?: string | null
@@ -1331,6 +1344,13 @@ export type Database = {
             referencedRelation: "recipes"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "recipe_cook_history_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes_implausible_macros"
+            referencedColumns: ["id"]
+          },
         ]
       }
       recipe_ingredients: {
@@ -1421,6 +1441,13 @@ export type Database = {
             referencedRelation: "recipes"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "recipe_ingredients_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes_implausible_macros"
+            referencedColumns: ["id"]
+          },
         ]
       }
       recipe_plan_add_events: {
@@ -1448,6 +1475,13 @@ export type Database = {
             columns: ["recipe_id"]
             isOneToOne: false
             referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_plan_add_events_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes_implausible_macros"
             referencedColumns: ["id"]
           },
           {
@@ -1634,6 +1668,13 @@ export type Database = {
             columns: ["recipe_id"]
             isOneToOne: false
             referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saves_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes_implausible_macros"
             referencedColumns: ["id"]
           },
           {
@@ -2047,6 +2088,13 @@ export type Database = {
             referencedRelation: "recipes"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "user_recipe_notes_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes_implausible_macros"
+            referencedColumns: ["id"]
+          },
         ]
       }
       user_saved_meal_items: {
@@ -2232,10 +2280,64 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      recipes_implausible_macros: {
+        Row: {
+          author_id: string | null
+          carbs: number | null
+          created_at: string | null
+          fat: number | null
+          id: string | null
+          kcal_per_serving: number | null
+          macro_derived_kcal: number | null
+          protein: number | null
+          servings: number | null
+          source_name: string | null
+          title: string | null
+          verdict: string | null
+        }
+        Insert: {
+          author_id?: string | null
+          carbs?: number | null
+          created_at?: string | null
+          fat?: number | null
+          id?: string | null
+          kcal_per_serving?: number | null
+          macro_derived_kcal?: never
+          protein?: number | null
+          servings?: number | null
+          source_name?: string | null
+          title?: string | null
+          verdict?: never
+        }
+        Update: {
+          author_id?: string | null
+          carbs?: number | null
+          created_at?: string | null
+          fat?: number | null
+          id?: string | null
+          kcal_per_serving?: number | null
+          macro_derived_kcal?: never
+          protein?: number | null
+          servings?: number | null
+          source_name?: string | null
+          title?: string | null
+          verdict?: never
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipes_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       auth_household_ids: { Args: never; Returns: string[] }
+      auth_profile_user_tier: { Args: never; Returns: string }
+      auth_user_save_count: { Args: never; Returns: number }
       claim_web_push_subscription: {
         Args: {
           p_auth: string
@@ -2501,9 +2603,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },

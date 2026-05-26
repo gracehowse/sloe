@@ -51,6 +51,7 @@
     "backfill:fatsecret": "node scripts/backfill-fatsecret-premier.mjs",
     "mobile:dev": "npm run start --prefix apps/mobile",
     "mobile:dev:local": "EXPO_PUBLIC_API_URL=http://127.0.0.1:3000 npm run start --prefix apps/mobile",
+    "mobile:ios:sim:local": "EXPO_PUBLIC_API_URL=http://127.0.0.1:3000 npm run ios:simulator --prefix apps/mobile",
     "mobile:dev:local:clear": "EXPO_PUBLIC_API_URL=http://127.0.0.1:3000 npm run start:clear --prefix apps/mobile",
     "mobile:dev:clear": "npm run start:clear --prefix apps/mobile",
     "mobile:dev:tunnel": "npm run start:tunnel --prefix apps/mobile",

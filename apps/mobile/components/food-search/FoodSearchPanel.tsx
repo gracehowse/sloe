@@ -78,7 +78,7 @@ import {
   searchFoods,
   getFoodMacros,
   getFatSecretFood,
-  scaleMacros,
+  scaleMacrosByGrams,
   type UnifiedSearchResult,
   type FoodPortion,
 } from "@/lib/verifyRecipe";
@@ -950,7 +950,7 @@ export default function FoodSearchPanel({
     }
     if (!preview.macrosPer100g) return null;
     const grams = preview.chosenPortion.gramWeight * preview.quantity;
-    return scaleMacros(preview.macrosPer100g, grams);
+    return scaleMacrosByGrams(preview.macrosPer100g, grams);
   }, [preview]);
 
   const totalGrams = useMemo(() => {

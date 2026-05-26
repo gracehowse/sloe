@@ -36,7 +36,7 @@
  * separate design task and is out of scope for this port.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Beef, Wheat, Droplets, Leaf, HelpCircle, ChevronRight, type LucideIcon } from "lucide-react";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
@@ -48,7 +48,9 @@ import { kgToLb } from "../../lib/units/imperial.ts";
 import { carbsLabel, netCarbsForRow } from "../../lib/nutrition/netCarbs.ts";
 import { activityLevelCaption, deficitSurplusCaption, type Goal } from "../../lib/targets/targetsView.ts";
 import { WhyThisNumberDialog } from "./suppr/why-this-number-dialog.tsx";
+import { GoalPaceEditorDialog } from "./suppr/goal-pace-editor-dialog.tsx";
 import { paceKgPerWeekFromPreset } from "../../lib/nutrition/whyThisNumber.ts";
+import { isFeatureEnabled } from "../../lib/analytics/track.ts";
 
 export interface TargetsProps {
   /**
@@ -102,11 +104,35 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
   // already anchor location). Silence the unused warning without
   // dropping the prop from the public shape.
   void onBack;
+  // ENG goal-editor (2026-05-25): when the `goal-editor` flag is on, the
+  // Goal card's edit affordance opens the in-place "Edit goal & pace"
+  // dialog (recompute + goal-weight). When off, it keeps the old
+  // behaviour — deep-link to the Profile screen (which has no goal
+  // control, the gap this feature closes). The flag gates only the new
+  // UI entry; the recompute logic itself is unconditional.
+  const goalEditorEnabled = isFeatureEnabled("goal_editor");
+  const [goalEditorOpen, setGoalEditorOpen] = useState(false);
+  // Goal / pace edit affordance (Goal card, "Set a goal", "Why this
+  // number" → Adjust). Opens the in-place editor when the flag is on,
+  // else deep-links to the Profile screen.
   const goEdit = () => {
+    if (goalEditorEnabled) {
+      setGoalEditorOpen(true);
+      return;
+    }
     if (onEdit) onEdit();
     else onNavigate?.("profile");
   };
-  const { nutritionTargets, nutritionByDay, profileMeasurementSystem, netCarbsLensEnabled, preferActivityAdjustedCalories } = useAppData();
+  // Macro tiles (incl. Fibre) ALWAYS route to the manual /profile editor —
+  // the goal editor recomputes macros from goal/pace but doesn't own the
+  // fibre goal or per-macro overrides. The `goal-editor` flag had orphaned
+  // this path; macro tiles restore it directly (thread C, target-recompute
+  // unification 2026-05-26).
+  const goEditMacros = () => {
+    if (onEdit) onEdit();
+    else onNavigate?.("profile");
+  };
+  const { nutritionTargets, nutritionByDay, profileMeasurementSystem, netCarbsLensEnabled, preferActivityAdjustedCalories, refreshProfileBasics } = useAppData();
   const { authedUserId } = useAuthSession();
 
   const [weightKg, setWeightKg] = useState<number | null>(null);
@@ -123,10 +149,14 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
   const [profilePlanPace, setProfilePlanPace] = useState<string | null>(null);
   const [whyOpen, setWhyOpen] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    if (!authedUserId) return;
-    (async () => {
+  // Extracted so the goal-editor `onSaved` callback can re-run it after a
+  // save — the goal card's goal/goalWeight/plan_pace must refresh in
+  // place once the user changes their plan (mirrors the mobile sheet's
+  // onSaved → reload contract). `cancelled` is optional so the manual
+  // re-run from onSaved doesn't need a sentinel.
+  const loadGoalProfile = useCallback(
+    async (signal?: { cancelled: boolean }) => {
+      if (!authedUserId) return;
       const { data, error } = await supabase
         .from("profiles")
         .select(
@@ -134,7 +164,7 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
         )
         .eq("id", authedUserId)
         .maybeSingle();
-      if (error || !data || cancelled) return;
+      if (error || !data || signal?.cancelled) return;
       const w = data.weight_kg != null ? Number(data.weight_kg) : null;
       const gw = data.goal_weight_kg != null ? Number(data.goal_weight_kg) : null;
       setWeightKg(Number.isFinite(w) ? w : null);
@@ -158,11 +188,18 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
       setProfileGoal(typeof g === "string" ? g : null);
       const pp = (data as { plan_pace?: string }).plan_pace;
       setProfilePlanPace(typeof pp === "string" ? pp : null);
-    })();
+    },
+    [authedUserId],
+  );
+
+  useEffect(() => {
+    if (!authedUserId) return;
+    const signal = { cancelled: false };
+    void loadGoalProfile(signal);
     return () => {
-      cancelled = true;
+      signal.cancelled = true;
     };
-  }, [authedUserId]);
+  }, [authedUserId, loadGoalProfile]);
 
   const targets = useMemo(() => normalizeMacroTargets(nutritionTargets), [nutritionTargets]);
 
@@ -482,7 +519,7 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
             <button
               key={tile.key}
               type="button"
-              onClick={goEdit}
+              onClick={goEditMacros}
               aria-label={`Edit ${tile.label} target`}
               className="group text-left bg-card border border-border rounded-2xl p-4 shadow-sm hover:border-primary/40 hover:bg-muted/30 transition-colors"
             >
@@ -580,7 +617,37 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
         weightLogCount={Object.keys(weightKgByDay).length}
         onAdjustTarget={() => {
           setWhyOpen(false);
-          onNavigate?.("profile");
+          // When the goal editor is live, "Adjust target" opens it in
+          // place rather than deep-linking to Profile (no goal control).
+          if (goalEditorEnabled) {
+            setGoalEditorOpen(true);
+          } else {
+            onNavigate?.("profile");
+          }
+        }}
+      />
+
+      {/* ENG goal-editor (2026-05-25): the post-onboarding "Edit goal &
+          pace" editor. Reachable from the Goal card's edit affordance and
+          the "Why this number" adjust action. Recompute + goal-weight +
+          provenance all run through the shared `persistRecomputedTargets`
+          helper. On save we refresh both the AppData targets (calorie +
+          macro tiles) and this screen's local goal/goalWeight/plan_pace
+          state so the change shows in place. */}
+      <GoalPaceEditorDialog
+        open={goalEditorOpen}
+        onOpenChange={setGoalEditorOpen}
+        onSaved={() => {
+          void refreshProfileBasics();
+          void loadGoalProfile();
+        }}
+        // Fibre + per-macro overrides live on the manual /profile editor;
+        // the goal editor only recomputes macros from the goal/pace. This
+        // link restores the path the `goal-editor` flag had orphaned
+        // (thread C, target-recompute unification 2026-05-26).
+        onCustomiseMacros={() => {
+          if (onEdit) onEdit();
+          else onNavigate?.("profile");
         }}
       />
 

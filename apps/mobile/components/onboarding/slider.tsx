@@ -55,6 +55,10 @@ export function MobileMiniSlider({
   const pan = React.useMemo(
     () =>
       Gesture.Pan()
+        // Only claim horizontal drags so vertical scrolls pass through to the
+        // surrounding ScrollView (otherwise the slider eats the scroll). 2026-05-25.
+        .activeOffsetX([-12, 12])
+        .failOffsetY([-12, 12])
         .onBegin(() => {
           startValueRef.current = value;
         })

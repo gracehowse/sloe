@@ -130,16 +130,32 @@ export function TodayActivityBonusCard({
 
   let weekBurn = 0;
   let weekConsumed = 0;
+  // 2026-05-26 fix (Grace): the daily AVERAGE must divide by the days
+  // actually logged, not a hardcoded /7 — mid-week a calendar window has
+  // only the elapsed days logged, so /7 diluted the average toward zero
+  // (Mon −800 + today −220 read as ~148/day instead of ~510). The weekly
+  // TOTAL + kg-rate still sum over all window days (unchanged).
+  let loggedBurn = 0;
+  let loggedConsumed = 0;
+  let loggedDays = 0;
   for (const dk of weekSummaryKeys) {
     const activeKcal =
       activityBurnByDay[dk] ?? (dk === selectedDateKey ? activityBurnForSelectedDay : 0);
-    weekBurn += activeKcal + (basalBurnByDay[dk] ?? 0);
+    const dayBurn = activeKcal + (basalBurnByDay[dk] ?? 0);
     const dayMeals = nutritionByDay[dk] ?? [];
-    weekConsumed += dayMeals.reduce((s, m) => s + Math.max(0, m.calories ?? 0), 0);
+    const dayConsumed = dayMeals.reduce((s, m) => s + Math.max(0, m.calories ?? 0), 0);
+    weekBurn += dayBurn;
+    weekConsumed += dayConsumed;
+    if (dayMeals.length > 0) {
+      loggedBurn += dayBurn;
+      loggedConsumed += dayConsumed;
+      loggedDays += 1;
+    }
   }
   const showWeekly = weekBurn > 0;
   const weekDeficit = weekBurn - weekConsumed;
-  const dailyAvgDeficit = Math.round(weekDeficit / 7);
+  const dailyAvgDeficit =
+    loggedDays > 0 ? Math.round((loggedBurn - loggedConsumed) / loggedDays) : 0;
   // 2026-05-05 — single 7700 kcal/kg path; mirrors onboarding pace
   // promises + whyThisNumber explainer. Was 3500/lb * 0.4536/kg.
   const weeklyKgRate = weekDeficitToKg(weekDeficit);
@@ -210,7 +226,7 @@ export function TodayActivityBonusCard({
         </div>
       ) : null}
       <div className="flex items-center gap-2 mb-3">
-        <Icons.calories className="h-5 w-5 text-warning" />
+        <Icons.calories className="h-5 w-5 text-activity" />
         <h3 className="text-sm font-bold text-foreground flex-1">Activity Bonus</h3>
         {popoverCopy ? (
           <Popover>
@@ -285,7 +301,7 @@ export function TodayActivityBonusCard({
               <Icons.dumbbell className="h-4 w-4 text-primary" />
               <span className="flex-1 text-foreground">{w.type}</span>
               {w.minutes > 0 && <span className="text-muted-foreground tabular-nums">{w.minutes} min</span>}
-              {w.calories > 0 && <span className="font-semibold text-warning tabular-nums">{w.calories} kcal</span>}
+              {w.calories > 0 && <span className="font-semibold text-activity tabular-nums">{w.calories} kcal</span>}
             </div>
           ))}
         </div>
@@ -308,6 +324,9 @@ export function TodayActivityBonusCard({
               : "text-destructive";
           return (
             <div className="mt-3 pt-3 border-t border-border space-y-1 text-xs">
+              {/* The deficit window (rolling 7-day vs calendar week) is
+                  changed from Settings ("Burn / deficit summary"), not in
+                  place here. This heading reflects the hydrated mode. */}
               <p className="font-semibold text-foreground mb-1.5">{weekSummaryHeading(weekSummaryMode)}</p>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Avg daily {isWeekDeficit ? "deficit" : "surplus"}</span>

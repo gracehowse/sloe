@@ -18,6 +18,7 @@
  */
 import { describe, expect, it, vi } from "vitest";
 import { recomputeTargetsForActivity } from "../../src/lib/nutrition/recomputeTargetsForActivity";
+import { persistRecomputedTargets } from "../../src/lib/nutrition/persistRecomputedTargets";
 
 const TESTER = {
   sex: "female" as const,
@@ -155,5 +156,86 @@ describe("target_calories provenance write contract", () => {
     expect(isUserSetRecently(userWriteRecent)).toBe(true); // suppress Rule 2
     expect(isUserSetRecently(userWriteOld)).toBe(false); // don't suppress
     expect(isUserSetRecently(recomputeWrite)).toBe(false); // don't suppress
+  });
+
+  // ENG goal-editor (2026-05-25): the new "Edit goal & pace" editor is a
+  // second non-onboarding write site that must stamp "recompute" (NOT
+  // "user"). Both platforms route through `persistRecomputedTargets`, so
+  // pinning it here guards the provenance contract for the goal-change
+  // path the same way the activity-level path is pinned above. A goal
+  // change is intent, not a manual override — "user" would wrongly trip
+  // the 14-day digest-suppression cooldown.
+  it("goal-change recompute (via persistRecomputedTargets) stamps 'recompute', never 'user'", async () => {
+    const updates: Array<Record<string, unknown>> = [];
+    const supabase = {
+      from: (table: string) => {
+        if (table === "profiles") {
+          return {
+            select: () => ({
+              eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }),
+            }),
+            update: (payload: Record<string, unknown>) => {
+              updates.push(payload);
+              return { eq: async () => ({ error: null }) };
+            },
+          };
+        }
+        if (table === "daily_targets") return { upsert: async () => ({ error: null }) };
+        // goal_history read+insert
+        return {
+          select: () => ({
+            eq: () => ({
+              order: () => ({
+                order: () => ({
+                  limit: () => ({ maybeSingle: async () => ({ data: null, error: null }) }),
+                }),
+              }),
+            }),
+          }),
+          insert: async () => ({ error: null }),
+        };
+      },
+    };
+
+    const recomputed = recomputeTargetsForActivity({
+      sex: "female",
+      weightKg: 55,
+      heightCm: 163,
+      age: 34,
+      activityLevel: "moderate",
+      goal: "bulk", // goal CHANGE
+      planPace: "steady",
+      nutritionStrategy: "balanced",
+    });
+    if (!recomputed) throw new Error("recompute returned null — fixture is valid");
+
+    const now = new Date("2026-05-25T10:00:00.000Z");
+    const result = await persistRecomputedTargets(supabase as never, "user-xyz", {
+      profileUpdate: { goal: "bulk", plan_pace: "steady" },
+      recomputed,
+      source: "recompute",
+      now,
+    });
+
+    expect(result.ok).toBe(true);
+    const written = updates.at(-1)!;
+    expect(written.target_calories_source).toBe("recompute");
+    expect(written.target_calories_set_at).toBe(now.toISOString());
+
+    // The Rule 2 suppression check must NOT fire for this write (it only
+    // fires for source === "user"). Mirror the predicate from above.
+    const fourteenDaysMs = 14 * 24 * 60 * 60 * 1000;
+    const isUserSetRecently = (row: {
+      target_calories_source: unknown;
+      target_calories_set_at: unknown;
+    }) =>
+      row.target_calories_source === "user" &&
+      Date.now() - new Date(String(row.target_calories_set_at)).getTime() <= fourteenDaysMs;
+    expect(
+      isUserSetRecently({
+        target_calories_source: written.target_calories_source,
+        target_calories_set_at: written.target_calories_set_at,
+      }),
+    ).toBe(false);
   });
 });

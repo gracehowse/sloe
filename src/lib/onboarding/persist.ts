@@ -59,10 +59,12 @@
  *    provenance overload.
  *
  * Things we deliberately do NOT do here:
- *  - **No `target_water_ml` write.** Column doesn't exist in any
- *    migration. Legacy was silently dead-writing it (PostgREST drops
- *    unknown columns when schema cache permits). Water is tracked
- *    via `extra_water_by_day jsonb` separately.
+ *  - **No `target_water_ml` write.** The column DOES exist (see
+ *    `supabase/schema.sql` + `20260503104000_profiles_fiber_hydration_targets.sql`),
+ *    but onboarding deliberately doesn't set it here — daily hydration is
+ *    tracked via `extra_water_by_day jsonb` and the water goal has its own
+ *    surface. (Corrected 2026-05-26: the prior comment wrongly claimed the
+ *    column didn't exist.)
  *  - **No `daily_targets` snapshot call from this path.** That helper
  *    is "first food log of the day wins" by design (see F-2 invariant
  *    in `dailyTargetSnapshot.ts`). Snapshotting on onboarding
@@ -82,6 +84,7 @@
 // via `apps/mobile/components/onboarding-v2/mobile-flow.tsx` for the
 // terminal-step completion handler.
 import type { ActivityLevel, Sex } from "../nutrition/tdee";
+import { GOAL_DEFAULT_PACE } from "./state";
 // `Goal` lives at `src/types/profile.ts` (the legacy DB-aligned enum
 // `"cut" | "maintain" | "bulk"`). tdee.ts uses `goalType: string`
 // because legacy onboarding mixes UI labels in.
@@ -175,6 +178,11 @@ export interface ProfileUpsertRow {
   goal: ProductionGoal | null;
   goal_weight_kg: number | null;
   plan_pace: "relaxed" | "steady" | "accelerated" | "vigorous" | null;
+  /** Lossless continuous pace (kg/week) — the source of truth that
+   *  `plan_pace` snaps from. NULL for maintain / weight-skipped (no pace
+   *  applies). Column added by migration 20260526100000; PostgREST drops
+   *  it gracefully on an env where the migration isn't pushed. */
+  pace_kg_per_week: number | null;
   nutrition_strategy: string | null;
   dietary: string[];
   measurement_system: "metric" | "imperial";
@@ -316,6 +324,16 @@ export function buildProfileUpsertRow(args: {
       state.goal === "maintain" || state.weightSkipped
         ? null
         : mapPaceToPreset(state.paceKgPerWeek),
+    // Continuous source of truth alongside the snapped preset above. Same
+    // gating as plan_pace: null when no pace applies (maintain / weight-
+    // skipped), else the resolved continuous value (slider value, or the
+    // goal default when the user never touched the slider). Mirrors the
+    // resolution computeV2Targets uses so the persisted pace matches the
+    // pace the displayed targets were computed from.
+    pace_kg_per_week:
+      state.goal === "maintain" || state.weightSkipped || state.goal === null
+        ? null
+        : state.paceKgPerWeek ?? GOAL_DEFAULT_PACE[state.goal],
     nutrition_strategy: targets?.strategy ?? null,
     dietary: state.diet,
     measurement_system: state.unitSystem,
@@ -352,17 +370,41 @@ export async function persistOnboarding(
 
   let upsertError: string | undefined;
   try {
-    const { error } = await supabase
+    let { error } = await supabase
       .from("profiles")
       .upsert(row, { onConflict: "id" });
+
+    // DEFENSIVE retry — exactly the same guard `persistRecomputedTargets`
+    // uses: if `pace_kg_per_week` (migration 20260526100000) isn't pushed
+    // on this env, PostgREST rejects the whole upsert with a schema-cache
+    // error naming the column. We strip it and retry so the new column can
+    // NEVER block onboarding completion (the same failure mode the
+    // 2026-05-25 user_tier fix closed). Any other error falls through.
+    if (
+      error &&
+      typeof error.message === "string" &&
+      error.message.includes("pace_kg_per_week")
+    ) {
+      // Observability (data-integrity nit 2026-05-26): make a misordered
+      // deploy (code before migration push) visible instead of silent.
+      console.warn(
+        "[onboarding-v2] pace_kg_per_week column absent — stripped + retried (apply migration 20260526100000)",
+      );
+      const { pace_kg_per_week: _dropped, ...withoutPace } = row;
+      const retry = await supabase
+        .from("profiles")
+        .upsert(withoutPace, { onConflict: "id" });
+      error = retry.error;
+    }
+
     if (error) {
       upsertError = error.message ?? "profiles upsert failed";
-       
+
       console.warn("[onboarding-v2] profiles upsert failed:", upsertError);
     }
   } catch (e) {
     upsertError = e instanceof Error ? e.message : String(e);
-     
+
     console.warn("[onboarding-v2] profiles upsert threw:", upsertError);
   }
 

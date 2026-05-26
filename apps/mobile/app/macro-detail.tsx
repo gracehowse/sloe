@@ -275,46 +275,21 @@ export default function MacroDetailScreen() {
             </Pressable>
           </View>
         ) : breakdownMode === "ingredient" ? (
-          // 2026-05-14 (premium-bar audit Group H #3): ingredient
-          // breakdown placeholder. The `nutrition_entries` schema
-          // here doesn't carry per-ingredient macro rows yet — only
-          // the aggregated meal totals. Until the upstream import +
-          // verify pipeline persists component-level breakdowns to
-          // a queryable column on `nutrition_entries`, we render an
-          // informative empty state with the meal list visible
-          // below so the user still has data on screen.
-          // TODO(nutrition-engine): wire per-ingredient breakdown
-          // once `nutrition_entries.components` (or equivalent) is
-          // available — same row shape as meal mode but keyed on
-          // ingredient name.
-          <View>
-            <View
-              style={{
-                padding: Spacing.lg,
-                borderRadius: Radius.md,
-                backgroundColor: config.color + "10",
-                marginBottom: Spacing.md,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 13,
-                  color: colors.textSecondary,
-                  lineHeight: 18,
-                  textAlign: "center",
-                }}
-              >
-                Per-ingredient breakdown is coming soon — for now, here&apos;s
-                your {config.label.toLowerCase()} grouped by meal.
-              </Text>
-            </View>
-            <MealList
-              meals={meals}
-              config={config}
-              total={total}
-              colors={colors}
-            />
-          </View>
+          // Per-item breakdown: each logged entry rendered individually
+          // (slot label + food name + its contribution), in log order —
+          // the user's "ingredients" are the foods they logged. Distinct
+          // from the by-meal view, which rolls items up under slot
+          // subtotal headers. (Removed the "coming soon" banner 2026-05-25
+          // — this flat per-entry list IS the breakdown.) A future true
+          // sub-recipe ingredient split (one logged recipe → its
+          // components) is tracked separately and needs
+          // `nutrition_entries.components`.
+          <MealList
+            meals={meals}
+            config={config}
+            total={total}
+            colors={colors}
+          />
         ) : (
           <View style={{ gap: 0 }}>
             {/* By-meal view: render a slot header per meal slot

@@ -21,6 +21,7 @@ import { edamamConfigFromEnv, edamamFoodSearch, edamamFoodMacrosPer100g } from "
 import { hasFatSecretConfig, hasEdamamConfig, hasUsdaConfig, hasSupabaseServiceConfig } from "@/lib/server/serverEnv";
 import { estimateLineMacros } from "@/lib/nutrition/estimateIngredientMacros";
 import { searchUserFoods } from "@/lib/nutrition/userFoodsLookup";
+import { checkScaledLogPlausibility } from "@/lib/nutrition/macroPlausibility";
 
 export type VerifiedIngredient = {
   input: { name: string; amount: string; unit: string };
@@ -468,12 +469,20 @@ export async function verifyIngredients(opts: {
           { ...off.product, sugarG: off.product.sugarG ?? 0, sodiumMg: off.product.sodiumMg ?? 0 },
           factor,
         );
-        if (scaledMacrosPlausible(barcodeMacros)) {
+        // P0 (2026-05-26) — post-scale physical-plausibility guard + OFF
+        // basis cross-check. `off.product` is the per-100g panel
+        // (reconcileOffPer100g already corrected its basis in
+        // fetchProductByBarcode). Demote confidence when the basis was
+        // corrected so a barcode override can't claim 100% on suspect math.
+        if (
+          scaledMacrosPlausible(barcodeMacros) &&
+          checkScaledLogPlausibility(barcodeMacros, gramsToUse, off.product).ok
+        ) {
           return {
             input: raw, resolved,
             fatSecretFoodId: override.barcode,
             matchedName: override.description ?? off.product.name,
-            confidence: 1,
+            confidence: off.product.basisCorrected ? 0.6 : 1,
             source: "OFF",
             macros: barcodeMacros,
           };
@@ -503,6 +512,10 @@ export async function verifyIngredients(opts: {
           if (!per100gPlausible(per100g)) continue;
           const supprMacros = scaleMacros(per100g, grams / 100);
           if (!scaledMacrosPlausible(supprMacros)) continue;
+          // P0 (2026-05-26) — post-scale physical-plausibility guard. The
+          // per-100g cross-check guards against a corrupt user_foods row
+          // (e.g. per-serving values stored where per-100g is expected).
+          if (!checkScaledLogPlausibility(supprMacros, grams, per100g).ok) continue;
           // Verified entries get higher confidence boost
           const confBoost = uf.verificationStatus === "verified" ? 0.08 : 0.03;
           return {
@@ -649,6 +662,9 @@ export async function verifyIngredients(opts: {
 
               const usdaMacros = scaleMacros(per100g, effectiveGrams / 100);
               if (!scaledMacrosPlausible(usdaMacros)) return null;
+              // P0 (2026-05-26) — post-scale physical-plausibility guard with
+              // the per-100g panel cross-check.
+              if (!checkScaledLogPlausibility(usdaMacros, effectiveGrams, per100g).ok) return null;
 
               return {
                 input: raw, resolved,
@@ -702,6 +718,8 @@ export async function verifyIngredients(opts: {
           if (!per100gPlausible(per100g)) continue;
           const edamamMacros = scaleMacros(per100g, grams / 100);
           if (!scaledMacrosPlausible(edamamMacros)) continue;
+          // P0 (2026-05-26) — post-scale physical-plausibility guard.
+          if (!checkScaledLogPlausibility(edamamMacros, grams, per100g).ok) continue;
           return {
             input: raw, resolved,
             fatSecretFoodId: hit.food.foodId,
@@ -741,11 +759,24 @@ export async function verifyIngredients(opts: {
             if (!per100gPlausible(per100g)) continue;
             const offMacros = scaleMacros(per100g, grams / 100);
             if (!scaledMacrosPlausible(offMacros)) continue;
+            // P0 (2026-05-26) — post-scale plausibility + OFF basis cross-
+            // check. Catches the "500 g Greek yogurt → 1,325 kcal / 265 g
+            // protein" class where a per-serving-basis OFF row's `*_100g`
+            // fields were really per-serving. The source-basis arm asserts
+            // scaledKcal ≈ per100g.calories × grams/100 within 25%, the most
+            // direct catch. reconcileOffPer100g (searchProducts) already
+            // rebuilds the basis upstream; this is defence-in-depth at commit.
+            if (!checkScaledLogPlausibility(offMacros, grams, per100g).ok) continue;
+            // Demote confidence when the upstream reconcile corrected the
+            // per-100g basis — the row is real but its label math was suspect.
+            const offConf = hit._basisCorrected
+              ? Math.min(0.60, conf - 0.10)
+              : Math.min(0.90, conf - 0.03);
             return {
               input: raw, resolved,
               fatSecretFoodId: hit.code,
               matchedName: label,
-              confidence: Math.min(0.90, conf - 0.03),
+              confidence: offConf,
               source: "OFF",
               macros: offMacros,
             };
@@ -811,7 +842,18 @@ export async function verifyIngredients(opts: {
                 sugarG: Math.max(0, Math.round(perGram.sugarG * grams * 10) / 10),
                 sodiumMg: Math.max(0, Math.round(perGram.sodiumMg * grams)),
               };
-              if (scaledMacrosPlausible(fsMacros)) {
+              // P0 (2026-05-26) — post-scale physical-plausibility guard with
+              // the reconstructed per-100g panel (perGram × 100) cross-check.
+              const fsPer100g = {
+                calories: perGram.calories * 100,
+                protein: perGram.protein * 100,
+                carbs: perGram.carbs * 100,
+                fat: perGram.fat * 100,
+              };
+              if (
+                scaledMacrosPlausible(fsMacros) &&
+                checkScaledLogPlausibility(fsMacros, grams, fsPer100g).ok
+              ) {
                 return {
                   input: raw, resolved,
                   fatSecretFoodId: best.food_id,

@@ -106,16 +106,26 @@ export function TodayDeficitInsight({
   // colour; don't double-render with a confusing positive-framed line.
   if (todayNetDeficit <= 0) return null;
 
+  // 2026-05-26 fix (Grace): average over days the user ACTUALLY logged,
+  // not a hardcoded /7. Mid-week the calendar window has only the elapsed
+  // days logged; dividing by 7 diluted the average toward zero with the
+  // empty future days (e.g. Mon −800 + Tue −220 = −1020 read as ~148/day
+  // instead of ~510). Sum burn + consumed only over days with a meal
+  // logged, and divide by that count.
   let weekBurn = 0;
   let weekConsumed = 0;
+  let loggedDays = 0;
   for (const dk of keys) {
+    const meals = byDay[dk] ?? [];
+    if (meals.length === 0) continue;
     weekBurn += (activityBurnByDay[dk] ?? 0) + (basalBurnByDay[dk] ?? 0);
-    weekConsumed += (byDay[dk] ?? []).reduce(
-      (a, m) => a + Math.max(0, m.calories),
-      0,
-    );
+    weekConsumed += meals.reduce((a, m) => a + Math.max(0, m.calories), 0);
+    loggedDays += 1;
   }
-  const avgDeficit = weekBurn > 0 ? Math.round((weekBurn - weekConsumed) / 7) : null;
+  const avgDeficit =
+    weekBurn > 0 && loggedDays > 0
+      ? Math.round((weekBurn - weekConsumed) / loggedDays)
+      : null;
 
   const resolvedBg = surfaceBackgroundColor ?? Accent.primary + "08";
   const resolvedBorder = surfaceBorderColor ?? Accent.primary + "30";
@@ -143,7 +153,10 @@ export function TodayDeficitInsight({
           deficit signal. Sub-line returns once the average crosses that
           floor in either direction. */}
       {avgDeficit != null && Math.abs(avgDeficit) >= 50 ? (
-        <Text style={{ ...Type.caption, color: textSecondaryColor, marginTop: 4 }}>
+        // The window (rolling 7-day vs calendar week) is controlled from
+        // Settings ("Burn / deficit summary" row) — mirroring web — so
+        // this line is read-only and reflects the hydrated mode.
+        <Text style={{ ...Type.caption, color: textSecondaryColor, marginTop: Spacing.xs }}>
           {weekSummaryMode === "calendar_week" ? "Week avg" : "7-day avg"}: ~{avgDeficit.toLocaleString()} kcal/day {NET_DEFICIT_LABEL}
         </Text>
       ) : null}

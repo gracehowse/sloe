@@ -231,6 +231,46 @@ A **usual meal** (internally `SavedMeal`) is a user-named bundle of 2+ foods the
 - Weekly average calculated from days with logged food only
 - Week boundary respects `profiles.week_start_day` (Monday or Sunday). In calendar-week mode the seven displayed days start on the user's chosen day. In rolling mode the window is always the 7 days ending on the selected date, ignoring week start.
 
+### Deficit-window mode (changed in Settings)
+
+The Today deficit/burn summary sums energy over a 7-day window. Two
+modes (`src/lib/nutrition/weekSummaryWindow.ts`):
+
+- `rolling` — the 7 days ending on the selected date (default).
+- `calendar_week` — the current calendar week, respecting `week_start_day`.
+
+The mode hydrates from `profiles.notification_prefs.weekSummaryMode`
+(normalised via `normalizeWeekSummaryMode` — any unknown value falls
+back to `rolling`) and drives the Today summary window on both
+platforms. The Today summary line itself is **read-only** — it shows the
+current mode ("7-day avg" vs "Week avg") but is not tappable.
+
+**The control to change the mode lives in Settings → "Burn / deficit
+summary"** (2026-05-26 — moved off the Today card per Grace; a Settings
+preference, not a per-screen toggle). A segmented "Last 7 days" /
+"Mon–Sun" control on both platforms:
+
+- **Web** — `src/app/components/Settings.tsx` (`SettingsSegmented`,
+  `ariaLabel="Burn / deficit summary window"`). Writes via the shared
+  `NotificationPrefs` setter, which auto-persists `notification_prefs`
+  to the DB through `NotificationContext`'s save effect.
+- **Mobile** — `apps/mobile/components/settings/SettingsBundleContent.tsx`
+  (`settings-bundle-deficit-window-row` opening a bottom-sheet picker,
+  mirroring the "Week starts on" row). On select it read-merge-writes
+  `profiles.notification_prefs.weekSummaryMode` so sibling prefs
+  (`reminder_time`, `activity_bonus_calories`, …) are preserved.
+
+Both Settings controls share `normalizeWeekSummaryMode` from
+`src/lib/nutrition/weekSummaryWindow.ts` for hydration and use the same
+"Last 7 days" / "Mon–Sun" wording so the surfaces stay in lockstep.
+
+> **History:** a flagged (`deficit_window_toggle`) in-place tappable
+> control briefly lived on the Today summary itself (2026-05-26). It was
+> removed the same day in favour of the Settings control — Grace's call:
+> "the toggle should be in settings not here". The flag and its env
+> override (`EXPO_PUBLIC_FLAG_FORCE_DEFICIT_WINDOW_TOGGLE`) are gone; the
+> shared helpers (`weekSummaryDateKeys`, `normalizeWeekSummaryMode`) stay.
+
 ## Hydration & Stimulants Card (Batch 2.5)
 
 > **Phase 2 update (2026-04-27, B1.4):** caffeine + alcohol rows are

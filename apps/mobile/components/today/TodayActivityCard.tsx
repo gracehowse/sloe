@@ -92,7 +92,7 @@ export function TodayActivityCard({
 
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <Flame size={18} color={Accent.warning} strokeWidth={2.25} />
+            <Flame size={18} color={Accent.activity} strokeWidth={2.25} />
             <Text style={{ fontSize: 13, fontWeight: "600", color: textColor }}>Active energy</Text>
           </View>
           <Text style={{ fontSize: 16, fontWeight: "800", color: textColor, fontVariant: ["tabular-nums"] }}>

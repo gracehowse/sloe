@@ -23,6 +23,7 @@ import { View } from "react-native";
 
 import { TodayMealsSection } from "../../components/today/TodayMealsSection";
 import { MacroColors, SlotColors } from "../../constants/theme";
+import type { JournalMeal } from "../../lib/nutritionJournal";
 
 void React;
 
@@ -125,6 +126,49 @@ describe("TodayMealsSection — slot icon tint (ui-critic P2 #10)", () => {
     expect(tints).toContain(`${SlotColors.lunch.toLowerCase()}18`);
     expect(tints).toContain(`${SlotColors.dinner.toLowerCase()}18`);
     expect(tints).toContain(`${SlotColors.snack.toLowerCase()}18`);
+  });
+});
+
+/**
+ * 2026-05-25 regression — the slot-header fibre chip must include
+ * fibre that lives in `nutrition_micros` (Health / dense logs), not
+ * just the top-level `fiberG` column. Breakfast was showing no fibre
+ * chip while the Fibre detail screen + day tile counted it, because
+ * the slot summed raw `m.fiberG` instead of `mealContributedFiberG`.
+ */
+describe("TodayMealsSection — slot fibre chip counts micros-derived fibre", () => {
+  const microsFibreMeal: JournalMeal = {
+    id: "bk-1",
+    name: "Breakfast",
+    recipeTitle: "Cavendish · Hash Brown Patty",
+    time: "",
+    calories: 205,
+    protein: 20,
+    carbs: 30,
+    fat: 11,
+    fiberG: undefined, // no top-level fibre column …
+    micros: { fiberG: 7 }, // … fibre lives only in micros
+    source: undefined,
+  } as unknown as JournalMeal;
+
+  it("surfaces a micros-only fibre value (7g) in the Breakfast slot header", () => {
+    const tree = render(
+      <TodayMealsSection
+        {...BASE_PROPS}
+        mealGroups={
+          {
+            Breakfast: [microsFibreMeal],
+            Lunch: [],
+            Dinner: [],
+            Snacks: [],
+          } as unknown as Record<string, never[]>
+        }
+        mealsTodayCount={1}
+      />,
+    );
+    // The fibre chip renders `${round1(fiber)}g`. Pre-fix this was absent
+    // (slotFiber === 0 because the column was undefined and micros ignored).
+    expect(tree.queryAllByText("7g").length).toBeGreaterThan(0);
   });
 });
 

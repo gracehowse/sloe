@@ -37,7 +37,7 @@ No third path. If you are about to add a new approximation and it isn't listed, 
   - `nutrition_entries` inserts from recipe-detail "Add to Today" (mobile, P0-3 2026-04-25): `addRecipeToTodayJournal` in `apps/mobile/app/recipe/[id].tsx` calls `wouldCoerceMacros(scaledForLog)` against the in-memory ingredient sum and refuses to insert when the gram columns don't explain the stated calories. Routes the user to `/recipe/verify?id=<id>`. (Web has no equivalent direct-log CTA on the recipe page; web users reach the journal through the planner path which is already guarded.)
 - **Allow-listed surfaces (no coercion possible by provenance):**
   - HealthKit sync (`apps/mobile/lib/healthSync.ts`) — Apple-Health-sourced macros, never run through Suppr's coercion path.
-  - Barcode log (`apps/mobile/app/(tabs)/barcode.tsx`) — explicit kcal + P/C/F resolved by the barcode → OFF/USDA pipeline, gated through `macroPlausibility` (F-77).
+  - Barcode log (`apps/mobile/app/(tabs)/barcode.tsx`) — explicit kcal + P/C/F resolved by the barcode → OFF/USDA pipeline, gated through `macroPlausibility` (F-77 per-100g Atwater gate + G2 post-scale guard below).
   - Copy-meal / duplicate-day bulk inserts (`apps/mobile/app/(tabs)/index.tsx`, `src/context/appData/useNutritionJournalState.ts`) — rows clone existing `nutrition_entries` data that was already validated when first inserted.
 - **Detection helper for write-path guards:** [`wouldCoerceMacros`](../../src/lib/nutrition/coerceRecipeMacrosForPlanning.ts) — cheap boolean, takes only the raw recipe macros.
 - **Follow-up (P1):** the planner display should show a "Estimated · verify" chip on coerced rows so users can see the planner is showing a neutral split before deciding to log. Today the journal-write refusal catches the bad path; the chip is a visual-honesty enhancement. Tracked as P1 in the launch roadmap.
@@ -66,6 +66,44 @@ No third path. If you are about to add a new approximation and it isn't listed, 
   - "1 large avocado" → 180 g (within typical range; low error).
 - **Status:** known ordering bug; scheduled for fix — evaluate name-specific rules first, fall through to size defaults.
 - **Workaround for callers:** when the food match provides a gram weight, pass it via `chosenPortion.gramWeight` and skip this path.
+
+---
+
+## Plausibility guards (rejection, not approximation)
+
+These are the "refuse" arm of the contract — code that detects a physically-
+impossible nutrition value and rejects / soft-flags it rather than persisting
+it.
+
+### G1 — Open Food Facts per-100g basis reconcile (`reconcileOffPer100g`)
+
+- **File:** [`src/lib/openFoodFacts/reconcilePer100g.ts`](../../src/lib/openFoodFacts/reconcilePer100g.ts)
+- **Problem (P0, 2026-05-26):** OFF products with `nutrition_data_per: "serving"` store per-serving values in the `*_100g` fields. The code trusted `energy-kcal_100g` as genuine per-100g, so a 500 g pot of Greek yogurt's per-pot energy scaled ×5 to a physically-impossible **1,325 kcal / 265 g protein**.
+- **Fires when:** `nutrition_data_per === "serving"` OR a `serving_quantity` is present, AND per-serving fields + a serving mass are available.
+- **Output:** reconstructs per-100g as `(*_serving) / (serving_quantity/100)` and cross-checks against the published `*_100g`. When they disagree by >25% on a per-serving-basis row, the reconstructed value wins and the row is flagged `corrected: true` (→ `basisCorrected` / `_basisCorrected` downstream). When no per-serving fields exist, falls back to published (no invention).
+- **Wired at every OFF ingest point (web + mobile parity):**
+  - Web search: `src/lib/openFoodFacts/searchProducts.ts`
+  - Web barcode: `src/lib/openFoodFacts/fetchProductByBarcode.ts` (also **removed** the `?? n["energy-kcal"]` / `?? n.proteins` per-serving fallbacks that masqueraded as per-100g)
+  - Mobile search + barcode: `apps/mobile/lib/verifyRecipe.ts` (`searchOpenFoodFacts`, `lookupBarcode`)
+- **Confidence consequence:** `verifyIngredients.ts` demotes a `_basisCorrected` OFF row's confidence (≤ 0.60) so a corrected row can't claim a high-trust match.
+
+### G2 — Post-scale log plausibility guard (`checkScaledLogPlausibility`)
+
+- **File:** [`src/lib/nutrition/macroPlausibility.ts`](../../src/lib/nutrition/macroPlausibility.ts)
+- **Why distinct from the Atwater gate (F-77):** the Atwater gate runs on PER-100g rows and checks macro internal consistency. It does NOT catch the yogurt bug, because the inflated row is internally Atwater-consistent — the fault is the source basis, not the macro sum. This guard runs on POST-SCALE macros for a known gram weight.
+- **Flags implausible when ANY of:**
+  - kcal per gram > **9.1** (nothing edible exceeds pure fat ~9 kcal/g)
+  - protein > grams × **0.95** (no whole food is >95% protein by mass)
+  - derived per-100g (scaled ÷ grams/100) exceeds ceilings: kcal/100g > **900**, protein/100g > **90**, carbs/100g > **100**, fat/100g > **100**
+  - **source-basis cross-check** (the most direct catch): when a `sourcePer100g` panel is supplied, scaled kcal must be within **25%** of `sourcePer100g.calories × grams/100`
+- **Generous by design:** pure oil (~884 kcal/100g, 9 kcal/g) and protein isolate (~90 g/100g) PASS. The yogurt bug (1,325 kcal / 265 g protein / 500 g, panel 60 kcal/100g) FAILS on the source-basis arm.
+- **Wired at both write boundaries (web + mobile parity):**
+  - Recipe verify pipeline: `src/lib/nutrition/verifyIngredients.ts` — runs on every source branch (OFF, USDA, Edamam, Suppr DB, FatSecret, barcode override) after `scaleMacros(...)`. Failure → the candidate is rejected and the pipeline falls through (never persists the bad number).
+  - Barcode / direct-log commit (soft-flag, not hard-block): mobile `apps/mobile/app/(tabs)/barcode.tsx` + `apps/mobile/components/BarcodeScannerModal.tsx`; web `src/app/components/suppr/today-barcode-dialog.tsx`. On failure (or `basisCorrected`), surface a "Double-check these numbers" warning with Edit / Log-anyway — never silently log, never trap a legit edge food.
+
+### Parity footgun fix — `scaleMacrosByGrams`
+
+Web `verifyIngredients.scaleMacros` takes a **factor** (grams/100); mobile `verifyRecipe.scaleMacros` took **grams**. Same name, different arg meaning — a second-order cause of this bug class. Mobile's is renamed to `scaleMacrosByGrams` (2026-05-26) so a grams value can never flow into a factor slot. Behaviour unchanged. (Note: `mealPlanAlgo.scaleMacros` is a separate, multiplier-taking function and is intentionally not renamed.)
 
 ---
 

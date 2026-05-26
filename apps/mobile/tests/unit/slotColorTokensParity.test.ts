@@ -71,6 +71,17 @@ describe("SlotColors token (ui-critic P2 #10 — magenta=fat=snack collision fix
       expect(SlotColors.lunch).toBe(Accent.success); // Green — same token still
       expect(SlotColors.dinner).toBe(Accent.primary); // Blue — same token still
     });
+
+    it("Accent.activity owns the Yellow slot, distinct from carbs", () => {
+      // 2026-05-25: carbs vacated Yellow for amber-orange; the dedicated
+      // activity/burn token now owns Yellow (#F3C336). Breakfast shares
+      // the Yellow hue with activity by design — different namespaces
+      // (slot vs accent) that never co-occur on the same surface.
+      expect(Accent.activity.toLowerCase()).toBe("#f3c336");
+      expect(Accent.activity).not.toBe(Accent.carbs);
+      // Breakfast slot intentionally shares the Yellow hue with activity.
+      expect(Accent.activity.toLowerCase()).toBe(SlotColors.breakfast.toLowerCase());
+    });
   });
 
   describe("mobile source — no MacroColors.fat in slot-colour files", () => {

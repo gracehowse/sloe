@@ -17,16 +17,17 @@
  */
 
 /** Light-mode macro hexes — pinned to `:root` block in theme.css.
- *  2026-05-22 evening: 8-slot palette lock. Sugar folds into Yellow
- *  (sugar IS a carb). Water folds into Blue (cyan dropped from the 8).
+ *  2026-05-25: carbs + sugar move to amber-orange (#E8721E), distinct
+ *  from sodium's orange (#F78A32); the vacated Yellow slot now belongs
+ *  to the activity/burn token (`--activity`). Water folds into Blue.
  *  Fiber folds into Green (icon + label do the differentiation). */
 export const MACRO_COLORS_LIGHT = {
   calories: "#56A775",
   protein:  "#588CE4",
-  carbs:    "#F3C336",
+  carbs:    "#E8721E",
   fat:      "#DF5EBC",
   fiber:    "#56A775",
-  sugar:    "#F3C336",
+  sugar:    "#E8721E",
   sodium:   "#F78A32",
   water:    "#588CE4",
 } as const;
