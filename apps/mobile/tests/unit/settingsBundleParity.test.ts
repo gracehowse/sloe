@@ -93,12 +93,15 @@ describe("SettingsBundleContent — parity contract", () => {
     }
   });
 
-  it("renders the 7 modals (reset, type-confirm-erase, widgets, week-start, caffeine, alcohol, weekly recap)", () => {
+  it("renders the 8 modals (reset, type-confirm-erase, widgets, week-start, caffeine, alcohol, weekly recap, deficit-summary)", () => {
     // 2026-05-12 (premium-bar audit DC9): a 7th modal was added for
     // the type-RESET-to-confirm gate on Erase Everything. The Apple
     // pattern for irreversible destruction — friction proportional to
     // consequence. Replaces the earlier Alert.alert version (no text
     // input possible).
+    // 2026-05-26: an 8th modal — the "Deficit summary" window picker —
+    // moved here from the Today card (Grace: the toggle belongs in
+    // Settings). Mirrors the web Settings "Deficit summary" control.
     expect(bundle).toContain("setResetModalOpen");
     expect(bundle).toContain("setEraseConfirmOpen");
     expect(bundle).toContain("setWidgetPickerOpen");
@@ -106,9 +109,10 @@ describe("SettingsBundleContent — parity contract", () => {
     expect(bundle).toContain("setCaffeineTargetPickerOpen");
     expect(bundle).toContain("setAlcoholTargetPickerOpen");
     expect(bundle).toContain("setWeeklyRecapPushPickerOpen");
-    // 7 <Modal> mounts.
+    expect(bundle).toContain("setDeficitWindowPickerOpen");
+    // 8 <Modal> mounts.
     const modalCount = (bundle.match(/<Modal\b/g) ?? []).length;
-    expect(modalCount).toBe(7);
+    expect(modalCount).toBe(8);
   });
 
   it("erase-everything modal enforces type-RESET-to-confirm (DC9, 2026-05-12)", () => {
