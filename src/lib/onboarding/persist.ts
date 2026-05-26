@@ -36,7 +36,19 @@
  *    path handles null targets gracefully.
  *
  * Defaults for fields the legacy form captured but v2 doesn't:
- *  - `user_tier`: "free"
+ *  - `user_tier`: NOT WRITTEN. (2026-05-25 bug fix.) Onboarding used to
+ *    hardcode `user_tier: "free"` in the upsert. On a re-run (Settings →
+ *    "Refresh my plan") that upsert is an UPDATE, so for any paid user it
+ *    tried to flip their tier `pro → free`, which the
+ *    `profiles_tier_column_lockdown` BEFORE-UPDATE trigger (migration
+ *    20260503100000) rejects with errcode 42501 — failing the ENTIRE row
+ *    write, target_calories included. The write error was then swallowed
+ *    here and the caller navigated home as if it had saved, so every paid
+ *    user's plan edits silently no-op'd. Fix: never write `user_tier` from
+ *    the client. The column DEFAULT is `'free'`, so a brand-new user's
+ *    INSERT still lands as free; tier is owned exclusively by the
+ *    server-side Stripe / RevenueCat webhooks (the only writers the
+ *    lockdown trigger permits).
  *  - `goal_weight_kg`: null (v2 doesn't ask; legacy only writes
  *    non-null for cut goals anyway)
  *  - `prefer_activity_adjusted_calories`: true (ENG-566 — MFP/Lose It default)
@@ -76,6 +88,17 @@ import type { ActivityLevel, Sex } from "../nutrition/tdee";
 import type { Goal as ProductionGoal } from "../../types/profile";
 import type { Goal as V2Goal, OnboardingState } from "./state";
 import type { V2Targets } from "./targets";
+// 2026-05-25 bug fix: STATIC import (was `await import("../nutrition/goalHistory")`).
+// The dynamic relative import failed to resolve on Metro when this module
+// is pulled into the mobile bundle via the `@suppr/shared/onboarding/persist`
+// alias — Metro resolves static relative imports through the alias but not
+// the dynamic specifier, so it threw "Unable to resolve module
+// ./src/lib/nutrition/goalHistory". The sibling `persistRecomputedTargets.ts`
+// already imports this statically and bundles fine on mobile; goalHistory
+// only depends on `trackerStats`, so there's no circular-import risk. The
+// dynamic form was never reached before this date because the upsert above
+// always failed first for paid users (the tier-lockdown bug), masking it.
+import { recordGoalHistory } from "../nutrition/goalHistory";
 
 /** Map v2 continuous pace to nearest legacy `plan_pace` preset.
  *  Mirrors the kg/week values `PACE_WEEKLY_KG` defines in tdee.ts.
@@ -140,7 +163,10 @@ export interface PersistResult {
 export interface ProfileUpsertRow {
   id: string;
   display_name: string | null;
-  user_tier: "free";
+  // NOTE: `user_tier` is deliberately absent. See the module header
+  // (2026-05-25 bug fix) — writing it from the client trips the
+  // tier-column lockdown trigger for paid users and fails the whole
+  // upsert. The DB column default ('free') covers new-user inserts.
   sex: Sex | null;
   age: number | null;
   height_cm: number | null;
@@ -275,7 +301,6 @@ export function buildProfileUpsertRow(args: {
   return {
     id: userId,
     display_name: state.name.trim() ? state.name.trim() : null,
-    user_tier: "free",
     sex: state.sex,
     age: Number.isFinite(state.age) ? state.age : null,
     height_cm: Number.isFinite(state.heightCm) ? state.heightCm : null,
@@ -355,22 +380,32 @@ export async function persistOnboarding(
   // The helper dedupes by goal-shape, so re-running onboarding mid-day
   // with identical values is a no-op. Fire-and-forget.
   if (upsertError == null) {
-    const { recordGoalHistory } = await import("../nutrition/goalHistory");
-    void recordGoalHistory(
-      supabase as Parameters<typeof recordGoalHistory>[0],
-      args.userId,
-      {
-        activity_level: typeof row.activity_level === "string" ? row.activity_level : null,
-        goal: typeof row.goal === "string" ? row.goal : null,
-        plan_pace: typeof row.plan_pace === "string" ? row.plan_pace : null,
-        target_calories: typeof row.target_calories === "number" ? row.target_calories : null,
-        target_protein_g: typeof row.target_protein === "number" ? row.target_protein : null,
-        target_carbs_g: typeof row.target_carbs === "number" ? row.target_carbs : null,
-        target_fat_g: typeof row.target_fat === "number" ? row.target_fat : null,
-        target_fiber_g: typeof row.target_fiber_g === "number" ? row.target_fiber_g : null,
-      },
-      "onboarding",
-    );
+    // Best-effort + fully isolated: the goal_history seed must NEVER
+    // break onboarding completion. Wrapped in try/catch so even a
+    // synchronous throw here can't propagate out of persistOnboarding
+    // (which would otherwise surface as "Couldn't finish setup" after
+    // the profile already saved). recordGoalHistory itself is
+    // fire-and-forget (`void`).
+    try {
+      void recordGoalHistory(
+        supabase as Parameters<typeof recordGoalHistory>[0],
+        args.userId,
+        {
+          activity_level: typeof row.activity_level === "string" ? row.activity_level : null,
+          goal: typeof row.goal === "string" ? row.goal : null,
+          plan_pace: typeof row.plan_pace === "string" ? row.plan_pace : null,
+          target_calories: typeof row.target_calories === "number" ? row.target_calories : null,
+          target_protein_g: typeof row.target_protein === "number" ? row.target_protein : null,
+          target_carbs_g: typeof row.target_carbs === "number" ? row.target_carbs : null,
+          target_fat_g: typeof row.target_fat === "number" ? row.target_fat : null,
+          target_fiber_g: typeof row.target_fiber_g === "number" ? row.target_fiber_g : null,
+        },
+        "onboarding",
+      );
+    } catch (e) {
+
+      console.warn("[onboarding-v2] recordGoalHistory seed failed (non-fatal):", e instanceof Error ? e.message : e);
+    }
   }
 
   return {

@@ -83,7 +83,6 @@ describe("buildProfileUpsertRow — happy path", () => {
     expect(row).toEqual({
       id: "u1",
       display_name: "Grace",
-      user_tier: "free",
       sex: "female",
       age: 28,
       height_cm: 168,
@@ -108,6 +107,12 @@ describe("buildProfileUpsertRow — happy path", () => {
     // Defensive: target_water_ml MUST NOT appear — column doesn't
     // exist (data-integrity flag).
     expect(row).not.toHaveProperty("target_water_ml");
+    // 2026-05-25 bug fix: `user_tier` MUST NOT appear. Writing it from
+    // the client trips the `profiles_tier_column_lockdown` trigger for
+    // paid users (pro → free), failing the whole upsert. The DB column
+    // default ('free') covers new-user inserts; tier is owned by the
+    // server-side billing webhooks.
+    expect(row).not.toHaveProperty("user_tier");
     // target_calories_source must NEVER be "onboarding_v2" — the
     // CHECK constraint rejects it.
     expect(row.target_calories_source).not.toBe("onboarding_v2");
