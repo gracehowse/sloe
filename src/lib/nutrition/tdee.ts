@@ -38,8 +38,14 @@ export const ACTIVITY_SHORT_LABELS: Record<ActivityLevel, string> = {
   very_active: "Very active",
 };
 
-/** Weekly kg loss for each pace */
-const PACE_WEEKLY_KG: Record<PlanPace, number> = {
+/** Weekly kg loss for each pace. Exported so the canonical
+ *  `deriveTargets` core (goalPaceRetune.ts) can map a legacy
+ *  `plan_pace` preset → continuous kg/week and feed the same
+ *  continuous-pace math onboarding uses — retiring the preset
+ *  `PACE_DAILY_DEFICIT` buckets from the recompute path. The four
+ *  values mirror `mapPaceToPreset` in onboarding/persist.ts; if you
+ *  change one, change both. */
+export const PACE_WEEKLY_KG: Record<PlanPace, number> = {
   relaxed: 0.25,
   steady: 0.5,
   accelerated: 0.75,

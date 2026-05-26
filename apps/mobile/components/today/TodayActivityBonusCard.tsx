@@ -182,16 +182,33 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
   const net = totalBurnKcal - consumedCalories;
   const isDeficit = net >= 0;
 
+  // 2026-05-26 fix (Grace): the daily AVERAGE divides by the days
+  // actually logged, not a hardcoded /7 — a mid-week calendar window was
+  // diluted by empty future days (e.g. 5,002 over 7 read as ~715/day
+  // instead of the real per-logged-day figure). The weekly TOTAL +
+  // kg-rate still sum over all window days (unchanged). Mirrors the web
+  // TodayActivityBonusCard + the deficit-insight banner.
   let weekBurn = 0;
   let weekConsumed = 0;
+  let loggedBurn = 0;
+  let loggedConsumed = 0;
+  let loggedDays = 0;
   for (const dk of trackerWeekSummaryKeys) {
-    weekBurn += (activityBurnByDay[dk] ?? 0) + (basalBurnByDay[dk] ?? 0);
+    const dayBurn = (activityBurnByDay[dk] ?? 0) + (basalBurnByDay[dk] ?? 0);
     const dayMeals = byDay[dk] ?? [];
-    weekConsumed += dayMeals.reduce((s, m) => s + Math.max(0, m.calories), 0);
+    const dayConsumed = dayMeals.reduce((s, m) => s + Math.max(0, m.calories), 0);
+    weekBurn += dayBurn;
+    weekConsumed += dayConsumed;
+    if (dayMeals.length > 0) {
+      loggedBurn += dayBurn;
+      loggedConsumed += dayConsumed;
+      loggedDays += 1;
+    }
   }
   const showWeekly = weekBurn > 0;
   const weekDeficit = weekBurn - weekConsumed;
-  const dailyAvgDeficit = Math.round(weekDeficit / 7);
+  const dailyAvgDeficit =
+    loggedDays > 0 ? Math.round((loggedBurn - loggedConsumed) / loggedDays) : 0;
   // 2026-05-05 — single 7700 kcal/kg path; matches onboarding pace
   // promises and whyThisNumber explainer. Was 3500/lb * 0.4536/kg
   // (~0.2% drift across surfaces).

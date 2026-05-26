@@ -22,7 +22,7 @@ import { supabase } from "@/lib/supabase";
 import {
   fetchIngredientsForVerification,
   saveVerifiedIngredients,
-  scaleMacros,
+  scaleMacrosByGrams,
   totalGramsForVerifyScale,
   totalGramsForVerifyScaleDetailed,
   parseIngredientForSearch,
@@ -232,7 +232,7 @@ export default function VerifyScreen() {
             sugarG: 0,
             sodiumMg: 0,
           }
-        : scaleMacros(result.macrosPer100g!, grams);
+        : scaleMacrosByGrams(result.macrosPer100g!, grams);
       updateIngredient(searchIndex, {
         matchedName: result.name,
         source: result.source,
@@ -280,7 +280,7 @@ export default function VerifyScreen() {
       const seen = new Set(offPortions.map((p) => p.label));
       const mergedPortions = [...offPortions, ...STANDARD_UNITS.filter((s) => !seen.has(s.label))];
       const chosenPortion: FoodPortion = { label: "g", gramWeight: 1, amount: 1 };
-      const scaled = scaleMacros(per100g, defaultGrams);
+      const scaled = scaleMacrosByGrams(per100g, defaultGrams);
       updateIngredient(barcodeIndex, {
         matchedName: product.name, source: "OFF",
         confidence: 1.0, isVerified: true,
@@ -305,7 +305,7 @@ export default function VerifyScreen() {
       if (!ing) return;
       if (ing.macrosPer100g && num != null && num > 0) {
         const grams = totalGramsForVerifyScale({ ...ing, amount: num }, num);
-        const scaled = scaleMacros(ing.macrosPer100g, grams);
+        const scaled = scaleMacrosByGrams(ing.macrosPer100g, grams);
         updateIngredient(index, { amount: num, ...scaled });
       } else {
         updateIngredient(index, { amount: num });
@@ -331,7 +331,7 @@ export default function VerifyScreen() {
       if (ing.macrosPer100g && qty > 0) {
         const nextIng: VerifiableIngredient = { ...ing, ...updates, amount: qty };
         const grams = totalGramsForVerifyScale(nextIng, qty);
-        Object.assign(updates, scaleMacros(ing.macrosPer100g, grams));
+        Object.assign(updates, scaleMacrosByGrams(ing.macrosPer100g, grams));
       }
       updateIngredient(index, updates);
     },

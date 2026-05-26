@@ -45,6 +45,50 @@
 import type { RecomputedTargets } from "./recomputeTargetsForActivity";
 import { backfillDailyTargetsFromProfile } from "./dailyTargetSnapshot";
 import { recordGoalHistory, type GoalHistorySource } from "./goalHistory";
+import { PACE_WEEKLY_KG, type PlanPace } from "./tdee";
+
+/** The four legacy `plan_pace` preset names. */
+const PLAN_PACE_PRESETS: readonly PlanPace[] = [
+  "relaxed",
+  "steady",
+  "accelerated",
+  "vigorous",
+];
+
+/**
+ * Resolve the lossless continuous pace (kg/week) to persist into the new
+ * `profiles.pace_kg_per_week` column, given the editor's profile update.
+ *
+ * Precedence:
+ *   1. An explicit `paceKgPerWeek` on the input (continuous value the
+ *      caller already holds — the most faithful source). Set this once
+ *      the editor UI exposes a continuous slider.
+ *   2. The `plan_pace` preset in `profileUpdate` → its `PACE_WEEKLY_KG`
+ *      value (the editor passes a snapped preset today, so this is the
+ *      best continuous reconstruction available until the slider lands).
+ *   3. `plan_pace === null` (goal → maintain) → `0` kg/week.
+ *
+ * Returns `undefined` when no pace signal is present (e.g. a goal-weight-
+ * only edit) so the caller can omit the column from the write entirely.
+ */
+function resolveContinuousPace(
+  profileUpdate: Record<string, unknown>,
+  explicit: number | null | undefined,
+): number | undefined {
+  if (typeof explicit === "number" && Number.isFinite(explicit) && explicit >= 0) {
+    return explicit;
+  }
+  if (!("plan_pace" in profileUpdate)) return undefined;
+  const preset = profileUpdate.plan_pace;
+  if (preset === null) return 0; // maintain
+  if (
+    typeof preset === "string" &&
+    (PLAN_PACE_PRESETS as readonly string[]).includes(preset)
+  ) {
+    return PACE_WEEKLY_KG[preset as PlanPace];
+  }
+  return undefined;
+}
 
 /** Same loose client shape the sibling helpers use — both web
  *  `SupabaseClient<Database>` and mobile `@/lib/supabase` satisfy it. */
@@ -79,6 +123,15 @@ export type PersistRecomputedTargetsInput = {
    * intent is exactly a retune.
    */
   historySource?: GoalHistorySource;
+  /**
+   * Lossless continuous pace (kg/week) to persist into the
+   * `profiles.pace_kg_per_week` column. OPTIONAL: when omitted, it's
+   * reconstructed from the `plan_pace` preset in `profileUpdate` (the
+   * editor passes a snapped preset today; pass the exact value once the
+   * editor exposes a continuous slider). Only written when targets move
+   * (a goal/pace change) — a goal-weight-only edit doesn't touch pace.
+   */
+  paceKgPerWeek?: number | null;
 };
 
 export type PersistRecomputedTargetsResult = {
@@ -131,13 +184,54 @@ export async function persistRecomputedTargets(
     Object.assign(update, writeableTargets);
     update.target_calories_source = input.source ?? "recompute";
     update.target_calories_set_at = now.toISOString();
+
+    // Lossless continuous pace alongside the snapped `plan_pace` preset
+    // (target-recompute unification, 2026-05-26). Only on a target move —
+    // a goal-weight-only edit (recomputed === null) skips this branch.
+    // DEFENSIVE: `pace_kg_per_week` may not exist yet on an env where the
+    // migration hasn't been pushed. PostgREST drops unknown columns from
+    // the write payload when the schema cache permits, so this degrades
+    // gracefully; if the column IS known but the write otherwise fails,
+    // the existing error path below surfaces it. We never let an unknown
+    // column break the goal edit.
+    const continuousPace = resolveContinuousPace(profileUpdate, input.paceKgPerWeek);
+    if (continuousPace !== undefined) {
+      update.pace_kg_per_week = continuousPace;
+    }
   }
 
   // Step 3 — write the profile row.
-  const { error } = await supabase
+  let { error } = await supabase
     .from("profiles")
     .update(update)
     .eq("id", userId);
+
+  // DEFENSIVE retry: if the ONLY problem is that `pace_kg_per_week`
+  // doesn't exist on this env (migration 20260526100000 not pushed yet),
+  // strip it and write the rest. PostgREST surfaces an unknown column as
+  // a schema-cache error (PGRST204) naming the column. We never let the
+  // new column block a goal edit on an un-migrated env. Any OTHER error
+  // (or a failure after stripping) falls through to the error return.
+  if (
+    error &&
+    "pace_kg_per_week" in update &&
+    typeof error.message === "string" &&
+    error.message.includes("pace_kg_per_week")
+  ) {
+    // Observability (data-integrity nit 2026-05-26): a misordered deploy
+    // (code shipped before migration pushed) would otherwise silently fall
+    // back to preset-only. Warn so it's visible rather than invisible.
+    console.warn(
+      "[persistRecomputedTargets] pace_kg_per_week column absent — stripped + retried (apply migration 20260526100000)",
+    );
+    const { pace_kg_per_week: _dropped, ...withoutPace } = update;
+    const retry = await supabase
+      .from("profiles")
+      .update(withoutPace)
+      .eq("id", userId);
+    error = retry.error;
+  }
+
   if (error) {
     return {
       ok: false,

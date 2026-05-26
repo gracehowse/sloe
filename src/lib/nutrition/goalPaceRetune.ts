@@ -10,6 +10,23 @@
  * stays identical to onboarding's Reveal step. Mobile re-exports.
  *
  * Spec: extended-competitor-audit task (2026-04-30, Step 2).
+ *
+ * ── CANONICAL CORE (2026-05-26, target-recompute unification) ─────────
+ * `deriveTargets(input)` is now THE single place every target recompute
+ * flows through:
+ *   - onboarding (`computeV2Targets`) — static maintenance (new user has
+ *     no adaptive data) + continuous pace.
+ *   - post-onboarding editor (`recomputeTargetsFromProfile`) — adaptive
+ *     maintenance when confident + fresh, else static Mifflin; continuous
+ *     pace mapped from the legacy `plan_pace` preset.
+ *   - weekly check-in (`computeRetunedTargets`, the thin alias below) —
+ *     adaptive maintenance (already sourced by the caller) + continuous
+ *     pace.
+ * One deficit model (continuous, `paceToKcalAdjustment`), one strategy
+ * default (`mapGoalToStrategy` when null), one safety-floor rule. The
+ * preset `PACE_DAILY_DEFICIT` buckets are retired from the recompute
+ * path — they only ever lived in `calculateBudget`, which is no longer
+ * on this path.
  */
 
 import {
@@ -27,6 +44,140 @@ import {
   mapGoalToStrategy,
 } from "../onboarding/targets";
 import type { Goal } from "../onboarding/state";
+
+/**
+ * The goal vocabulary `deriveTargets` accepts. The onboarding `Goal`
+ * type uses `lose | recomp | maintain | gain`; the DB `profiles.goal`
+ * column uses `cut | maintain | bulk`. `deriveTargets` normalises DB
+ * values so the editor (which reads the DB enum) and onboarding (which
+ * holds the UI enum) can both call the same core without re-deriving
+ * the mapping at every call-site.
+ */
+export type DeriveTargetsGoal = Goal | "cut" | "bulk";
+
+/**
+ * Normalise an incoming goal to the onboarding `Goal` vocabulary the
+ * downstream math (`paceToKcalAdjustment`, `mapGoalToStrategy`) speaks.
+ *
+ *   cut / lose / recomp → deficit (cut + lose → "lose"; recomp stays
+ *                  "recomp" — both are deficits, but recomp maps to a
+ *                  higher-protein strategy. We cannot recover "recomp"
+ *                  from "cut" alone, so a DB "cut" reads as "lose"; the
+ *                  nutrition_strategy column carries the recomp signal.)
+ *   bulk / gain / strength → surplus
+ *   maintain / health      → maintain
+ *
+ * Accepts the wider `string` (not just `DeriveTargetsGoal`) so the legacy
+ * UI labels `health` / `strength` that some call-sites still carry don't
+ * silently fall through to a deficit. Unknown → "maintain" (the safe
+ * default the previous `calculateBudget` path used: never apply a deficit
+ * to a goal we don't recognise).
+ */
+export function normaliseGoal(goal: DeriveTargetsGoal | string): Goal {
+  switch (goal) {
+    case "cut":
+    case "lose":
+      return "lose";
+    case "recomp":
+      return "recomp";
+    case "bulk":
+    case "gain":
+    case "strength":
+      return "gain";
+    case "maintain":
+    case "health":
+      return "maintain";
+    default:
+      return "maintain";
+  }
+}
+
+export interface DeriveTargetsInput {
+  /** Maintenance kcal — the explicit baseline the deficit is applied to.
+   *  Caller decides the source: static Mifflin × activity for a new user
+   *  (onboarding), adaptive-when-confident for an existing user (editor /
+   *  weekly check-in). Required + > 0. */
+  maintenanceKcal: number;
+  /** Goal context. Accepts onboarding (`lose|recomp|maintain|gain`) and
+   *  DB (`cut|bulk`) vocabulary, plus the legacy UI labels
+   *  (`health|strength`) — all normalised internally. Unknown strings
+   *  resolve to `maintain` (never silently apply a deficit). */
+  goal: DeriveTargetsGoal | string;
+  /** Desired weekly rate of change, in kg/week (always positive). The
+   *  deficit/surplus direction is derived from `goal`. */
+  paceKgPerWeek: number;
+  /** Strategy carries from the user's profile. When `null` we infer it
+   *  from the goal via `mapGoalToStrategy` so the macro split is valid. */
+  strategy: NutritionStrategy | null;
+  /** Body stats for macro derivation. Weight is required. */
+  weightKg: number;
+  /** Used for the safety floor. */
+  sex: Sex;
+}
+
+export interface DeriveTargetsResult {
+  /** New daily calorie target (kcal). Rounded at this display/persist
+   *  boundary — maintenance is rounded by the caller BEFORE the deficit,
+   *  per the spec, so the deficit is applied to a whole-kcal baseline. */
+  targetCalories: number;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
+  fiberG: number;
+  /** kcal adjustment vs maintenance. Negative deficit / positive surplus. */
+  kcalAdjustment: number;
+  /** True when the (adaptive-based) target dips below the sex floor for a
+   *  loss goal. Soft-warn-not-block on ALL paths. */
+  belowSafetyFloor: boolean;
+  /** `budgetSafety` translation of the final target. */
+  safety: ReturnType<typeof budgetSafety>;
+  /** Strategy actually used for the macro split. */
+  strategyUsed: NutritionStrategy;
+}
+
+/**
+ * THE canonical target-recompute core. Pure. Returns `null` only when
+ * `maintenanceKcal` or `weightKg` is non-finite / non-positive — every
+ * other branch yields a result the caller can preview + persist.
+ *
+ * Rounding contract: the caller rounds `maintenanceKcal` BEFORE passing
+ * it in (so the deficit lands on a whole-kcal baseline); we round only
+ * at this display/persist boundary (`targetCalories`). The safety-floor
+ * flag is computed from the final (adaptive-or-static-based) target.
+ */
+export function deriveTargets(
+  input: DeriveTargetsInput,
+): DeriveTargetsResult | null {
+  const { maintenanceKcal, paceKgPerWeek, strategy, weightKg, sex } = input;
+  if (!Number.isFinite(maintenanceKcal) || maintenanceKcal <= 0) return null;
+  if (!Number.isFinite(weightKg) || weightKg <= 0) return null;
+
+  const goal = normaliseGoal(input.goal);
+
+  const kcalAdjustment = paceToKcalAdjustment(goal, paceKgPerWeek);
+  // maintenanceKcal is already rounded by the caller; round again only to
+  // absorb any non-integer maintenance a caller forgot to round.
+  const targetCalories = Math.round(maintenanceKcal + kcalAdjustment);
+
+  const strategyUsed = strategy ?? mapGoalToStrategy(goal);
+  const macros = calculateMacros(targetCalories, strategyUsed, weightKg);
+
+  const floor = safetyFloorFor(sex);
+  const belowSafetyFloor =
+    (goal === "lose" || goal === "recomp") && targetCalories < floor;
+
+  return {
+    targetCalories,
+    proteinG: macros.protein,
+    carbsG: macros.carbs,
+    fatG: macros.fat,
+    fiberG: macros.fiber,
+    kcalAdjustment,
+    belowSafetyFloor,
+    safety: budgetSafety(targetCalories, sex),
+    strategyUsed,
+  };
+}
 
 /** The full set of pace presets the re-tune sheet exposes. We mirror
  *  the canonical onboarding presets (relaxed / steady / accelerated /
@@ -79,38 +230,28 @@ export interface GoalPaceRetuneResult {
 }
 
 /**
- * Compute the new targets for a desired pace. Returns `null` only
- * when `tdeeKcal` is non-finite or non-positive — every other branch
- * yields a result the caller can preview live.
+ * Compute the new targets for a desired pace — the Weekly Check-in
+ * call-site. Thin alias over the canonical `deriveTargets` core (the
+ * input here pre-sources its `tdeeKcal` from the adaptive value when
+ * present, so it maps directly onto `maintenanceKcal`). Returns `null`
+ * only when `tdeeKcal` is non-finite / non-positive — every other
+ * branch yields a result the caller can preview live.
+ *
+ * Kept as a distinct export so the weekly-checkin sheet and its tests
+ * don't have to change shape; `GoalPaceRetuneResult` is structurally a
+ * `DeriveTargetsResult`.
  */
 export function computeRetunedTargets(
   input: GoalPaceRetuneInput,
 ): GoalPaceRetuneResult | null {
-  const { tdeeKcal, goal, strategy, weightKg, sex, paceKgPerWeek } = input;
-  if (!Number.isFinite(tdeeKcal) || tdeeKcal <= 0) return null;
-  if (!Number.isFinite(weightKg) || weightKg <= 0) return null;
-
-  const kcalAdjustment = paceToKcalAdjustment(goal, paceKgPerWeek);
-  const targetCalories = Math.round(tdeeKcal + kcalAdjustment);
-
-  const strategyUsed = strategy ?? mapGoalToStrategy(goal);
-  const macros = calculateMacros(targetCalories, strategyUsed, weightKg);
-
-  const floor = safetyFloorFor(sex);
-  const belowSafetyFloor =
-    (goal === "lose" || goal === "recomp") && targetCalories < floor;
-
-  return {
-    targetCalories,
-    proteinG: macros.protein,
-    carbsG: macros.carbs,
-    fatG: macros.fat,
-    fiberG: macros.fiber,
-    kcalAdjustment,
-    belowSafetyFloor,
-    safety: budgetSafety(targetCalories, sex),
-    strategyUsed,
-  };
+  return deriveTargets({
+    maintenanceKcal: input.tdeeKcal,
+    goal: input.goal,
+    paceKgPerWeek: input.paceKgPerWeek,
+    strategy: input.strategy,
+    weightKg: input.weightKg,
+    sex: input.sex,
+  });
 }
 
 /**

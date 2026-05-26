@@ -3,62 +3,61 @@ import {
   recomputeTargetsFromProfile,
 } from "@suppr/shared/nutrition/recomputeTargetsForActivity";
 import { persistRecomputedTargets } from "@suppr/shared/nutrition/persistRecomputedTargets";
+import { mapPaceToPreset } from "@suppr/shared/onboarding/persist";
+import {
+  paceChanged,
+  seatPaceForEditor,
+  parseWeightInputToKg,
+  parseHeightInputToCm,
+  type EditorDbGoal,
+} from "@suppr/shared/nutrition/goalEditorPace";
+import { lbToKg, feetInchesToCm } from "@suppr/shared/units/imperial";
 
 /**
- * Mobile GoalPaceEditorSheet save-logic contract (ENG goal-editor,
- * 2026-05-25).
+ * Mobile GoalPaceEditorSheet save-logic contract (ENG goal-editor;
+ * Stage 2 of the target-recompute unification, 2026-05-26).
  *
- * The mobile sheet (`apps/mobile/components/recap/GoalPaceEditorSheet.tsx`)
- * shares the recompute + persistence pipeline with web via `@suppr/shared`.
- * This test pins the mobile-distinct decision logic the component applies
- * before calling `persistRecomputedTargets`:
- *   - the goal/pace diff (`goalOrPaceChanged`) that decides whether to
- *     recompute;
+ * The mobile sheet's logic lives in `useGoalPaceEditor`, which shares the
+ * recompute + persistence pipeline with the web dialog via `@suppr/shared`.
+ * This test pins the decision logic the hook applies before calling
+ * `persistRecomputedTargets`:
+ *   - the recompute diff (goal / continuous-pace / weight / height) that
+ *     decides whether to recompute;
+ *   - dirty-tracking against the SEATED continuous pace (a no-op save
+ *     must NOT move the target — the 901→846 preset-snap drift fix);
  *   - the maintain → clear-pace mapping;
- *   - the goal-weight-only path (recomputed = null → no calorie write).
+ *   - the goal-weight-only path (recomputed = null → no calorie write);
+ *   - the continuous `pace_kg_per_week` written alongside `plan_pace`.
  *
- * We replicate the component's decision functions here (they're the exact
- * same expressions used inline in the sheet) and assert the payload that
- * flows into the shared helper — proving mobile builds the same write the
- * web dialog does.
+ * We exercise the same shared helpers the hook calls, then assert the
+ * payload that flows into the shared persist helper — proving mobile
+ * builds the same write the web dialog does.
  */
 
-type DbGoal = "cut" | "maintain" | "bulk";
+type DbGoal = EditorDbGoal;
 
-/** Mirror of the sheet's `goalOrPaceChanged` memo. */
-function goalOrPaceChanged(
-  loaded: { goal: DbGoal; planPace: string },
-  goal: DbGoal,
-  planPace: string,
-): boolean {
-  if (goal !== loaded.goal) return true;
-  if (goal === "maintain") return false;
-  return planPace !== loaded.planPace;
-}
-
-/** Mirror of the sheet's profileUpdate builder. */
-function buildProfileUpdate(
-  loaded: { goal: DbGoal; planPace: string; goalWeightKg: number | null },
-  goal: DbGoal,
-  planPace: string,
-  goalWeightKg: number | null,
-): Record<string, unknown> {
-  const changed = goalOrPaceChanged(loaded, goal, planPace);
-  const goalWeightChanged =
-    (loaded.goalWeightKg == null) !== (goalWeightKg == null) ||
-    (loaded.goalWeightKg != null &&
-      goalWeightKg != null &&
-      Math.abs(loaded.goalWeightKg - goalWeightKg) > 0.05);
-
-  const profileUpdate: Record<string, unknown> = {};
-  if (goal !== loaded.goal) profileUpdate.goal = goal;
-  if (goal === "maintain") {
-    if (loaded.goal !== "maintain") profileUpdate.plan_pace = null;
-  } else if (changed) {
-    profileUpdate.plan_pace = planPace;
-  }
-  if (goalWeightChanged) profileUpdate.goal_weight_kg = goalWeightKg;
-  return profileUpdate;
+/** Mirror of the hook's recompute-dirty diff. */
+function recomputeChanged(input: {
+  loadedGoal: DbGoal;
+  goal: DbGoal;
+  seatedPace: number;
+  pace: number;
+  loadedWeightKg: number | null;
+  editedWeightKg: number | null;
+  loadedHeightCm: number | null;
+  editedHeightCm: number | null;
+}): boolean {
+  const goalChanged = input.goal !== input.loadedGoal;
+  const paceMoved = input.goal !== "maintain" && paceChanged(input.pace, input.seatedPace);
+  const weightChanged =
+    input.editedWeightKg != null &&
+    (input.loadedWeightKg == null ||
+      Math.abs(input.editedWeightKg - input.loadedWeightKg) > 0.05);
+  const heightChanged =
+    input.editedHeightCm != null &&
+    (input.loadedHeightCm == null ||
+      Math.abs(input.editedHeightCm - input.loadedHeightCm) >= 1);
+  return goalChanged || paceMoved || weightChanged || heightChanged;
 }
 
 function makeMockSupabase(oldProfile: Record<string, unknown> | null) {
@@ -92,62 +91,179 @@ function makeMockSupabase(oldProfile: Record<string, unknown> | null) {
   return { from, updates };
 }
 
-const LOADED = {
-  goal: "maintain" as DbGoal,
-  planPace: "steady",
-  goalWeightKg: null as number | null,
-};
 const BODY = {
   sex: "female" as const,
   weightKg: 60,
   heightCm: 165,
   age: 30,
   activityLevel: "moderate" as const,
-  planPace: "steady" as const,
   nutritionStrategy: "balanced" as const,
 };
 
-describe("mobile GoalPaceEditorSheet — decision logic", () => {
-  it("goal change maintain→cut triggers a recompute + writes goal + pace", async () => {
-    const profileUpdate = buildProfileUpdate(LOADED, "cut", "steady", null);
-    expect(profileUpdate).toEqual({ goal: "cut", plan_pace: "steady" });
+const OLD_PROFILE = {
+  target_calories: 2046,
+  sex: "female",
+  weight_kg: 60,
+  height_cm: 165,
+  age: 30,
+  activity_level: "moderate",
+  goal: "maintain",
+};
 
+describe("mobile GoalPaceEditorSheet — recompute diff", () => {
+  it("a goal change maintain→cut triggers a recompute", () => {
+    const seated = seatPaceForEditor({ goal: "cut", paceKgPerWeek: null, planPace: "steady" });
+    expect(
+      recomputeChanged({
+        loadedGoal: "maintain",
+        goal: "cut",
+        seatedPace: seated,
+        pace: seated,
+        loadedWeightKg: 60,
+        editedWeightKg: 60,
+        loadedHeightCm: 165,
+        editedHeightCm: 165,
+      }),
+    ).toBe(true);
+  });
+
+  it("a NO-OP open+save does NOT recompute (dirty diffs against seated pace)", () => {
+    // The user opens the editor on a stored continuous pace (0.42), never
+    // touches anything, and hits Save. Nothing must move — this is the
+    // silent preset-snap drift this Stage fixes.
+    const seated = seatPaceForEditor({ goal: "cut", paceKgPerWeek: 0.42, planPace: "steady" });
+    expect(seated).toBe(0.42);
+    expect(
+      recomputeChanged({
+        loadedGoal: "cut",
+        goal: "cut",
+        seatedPace: seated,
+        pace: seated,
+        loadedWeightKg: 60,
+        editedWeightKg: 60,
+        loadedHeightCm: 165,
+        editedHeightCm: 165,
+      }),
+    ).toBe(false);
+    // And the snapped preset that WOULD have been persisted differs from
+    // the seated continuous value — proving the old preset-diff would have
+    // mis-fired here (0.42 snaps to "steady" = 0.5).
+    expect(mapPaceToPreset(seated)).toBe("steady");
+  });
+
+  it("a real slider move recomputes", () => {
+    const seated = seatPaceForEditor({ goal: "cut", paceKgPerWeek: 0.42, planPace: "steady" });
+    expect(
+      recomputeChanged({
+        loadedGoal: "cut",
+        goal: "cut",
+        seatedPace: seated,
+        pace: 0.6, // dragged
+        loadedWeightKg: 60,
+        editedWeightKg: 60,
+        loadedHeightCm: 165,
+        editedHeightCm: 165,
+      }),
+    ).toBe(true);
+  });
+
+  it("a weight edit recomputes", () => {
+    const seated = seatPaceForEditor({ goal: "cut", paceKgPerWeek: 0.5, planPace: "steady" });
+    const edited = parseWeightInputToKg("65", "metric", lbToKg);
+    expect(
+      recomputeChanged({
+        loadedGoal: "cut",
+        goal: "cut",
+        seatedPace: seated,
+        pace: seated,
+        loadedWeightKg: 60,
+        editedWeightKg: edited,
+        loadedHeightCm: 165,
+        editedHeightCm: 165,
+      }),
+    ).toBe(true);
+  });
+
+  it("a height edit recomputes", () => {
+    const seated = seatPaceForEditor({ goal: "cut", paceKgPerWeek: 0.5, planPace: "steady" });
+    const edited = parseHeightInputToCm({ measurementSystem: "metric", cm: "170" }, feetInchesToCm);
+    expect(
+      recomputeChanged({
+        loadedGoal: "cut",
+        goal: "cut",
+        seatedPace: seated,
+        pace: seated,
+        loadedWeightKg: 60,
+        editedWeightKg: 60,
+        loadedHeightCm: 165,
+        editedHeightCm: edited,
+      }),
+    ).toBe(true);
+  });
+});
+
+describe("mobile GoalPaceEditorSheet — persisted write", () => {
+  it("writes goal + snapped pace + lossless continuous pace on a recompute", async () => {
+    const pace = 0.42; // exact slider value
     const recomputed = recomputeTargetsFromProfile({ ...BODY, goal: "cut" })!;
-    const supabase = makeMockSupabase({
-      target_calories: 2046,
-      sex: "female",
-      weight_kg: 60,
-      height_cm: 165,
-      age: 30,
-      activity_level: "moderate",
-      goal: "maintain",
-    });
+    const supabase = makeMockSupabase(OLD_PROFILE);
+
     const res = await persistRecomputedTargets(supabase as never, "u1", {
-      profileUpdate,
+      profileUpdate: { goal: "cut", plan_pace: mapPaceToPreset(pace) },
       recomputed,
       source: "recompute",
+      paceKgPerWeek: pace,
     });
     expect(res.ok).toBe(true);
     const written = supabase.updates.at(-1)!;
     expect(written.target_calories_source).toBe("recompute");
     expect(written.target_calories).toBe(recomputed.target_calories);
+    expect(written.goal).toBe("cut");
+    expect(written.plan_pace).toBe("steady"); // 0.42 snaps to steady
+    expect(written.pace_kg_per_week).toBe(0.42); // lossless value wins
   });
 
-  it("cut→maintain clears plan_pace", () => {
-    const loaded = { goal: "cut" as DbGoal, planPace: "steady", goalWeightKg: null };
-    const profileUpdate = buildProfileUpdate(loaded, "maintain", "steady", null);
-    expect(profileUpdate.goal).toBe("maintain");
-    expect(profileUpdate.plan_pace).toBeNull();
+  it("writes an edited weight + height alongside the recompute", async () => {
+    const recomputed = recomputeTargetsFromProfile({
+      ...BODY,
+      weightKg: 65,
+      heightCm: 170,
+      goal: "cut",
+    })!;
+    const supabase = makeMockSupabase(OLD_PROFILE);
+
+    await persistRecomputedTargets(supabase as never, "u1", {
+      profileUpdate: { plan_pace: "steady", weight_kg: 65, height_cm: 170 },
+      recomputed,
+      source: "recompute",
+      paceKgPerWeek: 0.5,
+    });
+    const written = supabase.updates.at(-1)!;
+    expect(written.weight_kg).toBe(65);
+    expect(written.height_cm).toBe(170);
+    expect(written.target_calories).toBe(recomputed.target_calories);
+  });
+
+  it("cut→maintain clears plan_pace and writes pace_kg_per_week = 0", async () => {
+    const recomputed = recomputeTargetsFromProfile({ ...BODY, goal: "maintain", planPace: null })!;
+    const supabase = makeMockSupabase({ ...OLD_PROFILE, goal: "cut", plan_pace: "steady" });
+
+    await persistRecomputedTargets(supabase as never, "u1", {
+      profileUpdate: { goal: "maintain", plan_pace: null },
+      recomputed,
+      source: "recompute",
+      paceKgPerWeek: 0,
+    });
+    const written = supabase.updates.at(-1)!;
+    expect(written.goal).toBe("maintain");
+    expect(written.plan_pace).toBeNull();
+    expect(written.pace_kg_per_week).toBe(0);
   });
 
   it("goal-weight-only edit does not recompute (recomputed = null → no target write)", async () => {
-    const profileUpdate = buildProfileUpdate(LOADED, "maintain", "steady", 58);
-    expect(profileUpdate).toEqual({ goal_weight_kg: 58 });
-    expect(goalOrPaceChanged(LOADED, "maintain", "steady")).toBe(false);
-
     const supabase = makeMockSupabase(null);
     const res = await persistRecomputedTargets(supabase as never, "u1", {
-      profileUpdate,
+      profileUpdate: { goal_weight_kg: 58 },
       recomputed: null,
       source: "recompute",
     });
@@ -156,19 +272,21 @@ describe("mobile GoalPaceEditorSheet — decision logic", () => {
     const written = supabase.updates.at(-1)!;
     expect(written).toEqual({ goal_weight_kg: 58 });
     expect(written).not.toHaveProperty("target_calories");
-    expect(written).not.toHaveProperty("target_calories_source");
+    expect(written).not.toHaveProperty("pace_kg_per_week");
   });
 
-  it("pace-only change within a directional goal recomputes", () => {
-    const loaded = { goal: "cut" as DbGoal, planPace: "steady", goalWeightKg: null };
-    expect(goalOrPaceChanged(loaded, "cut", "vigorous")).toBe(true);
-    const profileUpdate = buildProfileUpdate(loaded, "cut", "vigorous", null);
-    expect(profileUpdate).toEqual({ plan_pace: "vigorous" });
-  });
-
-  it("no change at all builds an empty update", () => {
-    const loaded = { goal: "cut" as DbGoal, planPace: "steady", goalWeightKg: 58 };
-    expect(goalOrPaceChanged(loaded, "cut", "steady")).toBe(false);
-    expect(buildProfileUpdate(loaded, "cut", "steady", 58)).toEqual({});
+  it("preview uses adaptive maintenance when confident + fresh", () => {
+    const now = new Date("2026-05-26T09:00:00.000Z");
+    const adaptive = recomputeTargetsFromProfile({
+      ...BODY,
+      goal: "cut",
+      adaptiveTdee: 1700,
+      adaptiveTdeeConfidence: "medium",
+      adaptiveTdeeUpdatedAt: "2026-05-22T09:00:00.000Z",
+      now,
+    })!;
+    expect(adaptive.maintenanceTdee).toBe(1700);
+    // 1700 - 550 (steady) = 1150 — below the floor, fires the soft-warn.
+    expect(adaptive.target_calories).toBe(1150);
   });
 });

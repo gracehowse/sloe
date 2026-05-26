@@ -7,6 +7,15 @@ import { extractPdfText } from "@/lib/planning/planImport/extractPdfText";
 
 export const runtime = "nodejs";
 
+// NOTE: this 20 MB check is a backstop, NOT the effective limit. The PDF
+// arrives as a multipart request body, and Vercel's Node serverless runtime
+// caps the request body at ~4.5 MB — so any larger upload is rejected by
+// Vercel's infra (413) before this handler runs. The client mirrors a 4 MB
+// ceiling (apps/mobile/app/cookbook-import.tsx MAX_PDF_BYTES) for an honest,
+// immediate error. To genuinely support large cookbooks, switch to a
+// direct-to-Supabase-Storage upload + server-side fetch (the bucket allows
+// 50 MiB) so the binary never transits this function body; then this
+// constant becomes the real limit.
 const MAX_PDF_BYTES = 20 * 1024 * 1024;
 
 /** PDF text extraction for cookbook import (shared pipeline with plan-import). */

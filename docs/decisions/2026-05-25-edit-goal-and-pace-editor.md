@@ -44,12 +44,25 @@ action keeps the old behaviour (deep-link to the Profile manual editor).
 
 ## Locked correctness decisions
 
-1. **Goal-type or pace change → recompute `target_calories` + ALL FOUR
+1. ~~**Goal-type or pace change → recompute `target_calories` + ALL FOUR
    macros atomically** via `recomputeTargetsFromProfile` (the same static
    formula the Settings activity-level edit uses). Never calories without
    macros. The adaptive `computeRetunedTargets` path is NOT used here —
    Settings-style edits use the static formula, matching the
-   activity-level precedent.
+   activity-level precedent.~~
+
+   > **SUPERSEDED 2026-05-26** — see
+   > `docs/decisions/2026-05-26-unified-recompute-adaptive-base.md`.
+   > Grace caught (via her own profile) that the editor's static base
+   > (1,671) disagreed with her adaptive maintenance (1,582, high
+   > confidence) shown everywhere else, and that the preset-bucket
+   > deficit silently drifted her target (901→846) vs onboarding's
+   > continuous pace. nutrition-engine adjudicated: the editor MUST
+   > measure the deficit from `resolveMaintenance` (adaptive-when-
+   > confident-and-fresh, else static) and use CONTINUOUS pace, sharing
+   > ONE `deriveTargets` core with onboarding + the weekly check-in.
+   > The "all four macros atomically" + "never calories without macros"
+   > parts of this decision still hold.
 
 2. **`goal_weight_kg` change → does NOT recompute calories.** Goal weight
    does not feed TDEE or the budget — it drives the projected reach-date

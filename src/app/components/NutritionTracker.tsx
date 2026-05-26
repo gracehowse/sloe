@@ -2644,6 +2644,10 @@ export const NutritionTracker = memo(function NutritionTracker({
         workouts={dayWorkouts}
         weekSummaryMode={weekSummaryMode}
         weekSummaryKeys={trackerWeekSummaryKeys}
+        // The deficit window (rolling 7-day vs calendar week) is changed
+        // from Settings ("Burn / deficit summary"), not in-place on Today.
+        // The mode still drives this card's summary; it hydrates from
+        // `notification_prefs.weekSummaryMode` via NotificationContext.
         activityBurnByDay={activityBurnByDay}
         basalBurnByDay={basalBurnByDay}
         nutritionByDay={nutritionByDay}

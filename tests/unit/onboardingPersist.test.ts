@@ -83,7 +83,6 @@ describe("buildProfileUpsertRow — happy path", () => {
     expect(row).toEqual({
       id: "u1",
       display_name: "Grace",
-      user_tier: "free",
       sex: "female",
       age: 28,
       height_cm: 168,
@@ -92,6 +91,11 @@ describe("buildProfileUpsertRow — happy path", () => {
       goal: "cut",
       goal_weight_kg: null,
       plan_pace: "steady",
+      // target-recompute unification (2026-05-26): the lossless continuous
+      // pace is persisted alongside the snapped `plan_pace` preset. 0.4
+      // kg/week is the slider value from COMPLETE_PROFILE; it snaps to
+      // `steady` for plan_pace but persists exactly here.
+      pace_kg_per_week: 0.4,
       nutrition_strategy: "high_satisfaction",
       dietary: ["vegetarian"],
       measurement_system: "metric",
@@ -108,6 +112,12 @@ describe("buildProfileUpsertRow — happy path", () => {
     // Defensive: target_water_ml MUST NOT appear — column doesn't
     // exist (data-integrity flag).
     expect(row).not.toHaveProperty("target_water_ml");
+    // 2026-05-25 bug fix: `user_tier` MUST NOT appear. Writing it from
+    // the client trips the `profiles_tier_column_lockdown` trigger for
+    // paid users (pro → free), failing the whole upsert. The DB column
+    // default ('free') covers new-user inserts; tier is owned by the
+    // server-side billing webhooks.
+    expect(row).not.toHaveProperty("user_tier");
     // target_calories_source must NEVER be "onboarding_v2" — the
     // CHECK constraint rejects it.
     expect(row.target_calories_source).not.toBe("onboarding_v2");
@@ -131,6 +141,9 @@ describe("buildProfileUpsertRow — weightSkipped", () => {
     expect(row.target_calories_source).toBeNull();
     expect(row.target_calories_set_at).toBeNull();
     expect(row.plan_pace).toBeNull();
+    // Continuous pace is null when weight was skipped — same gating as
+    // plan_pace (no pace applies to a partial profile).
+    expect(row.pace_kg_per_week).toBeNull();
     // The captured fields still write — display_name, sex, age, etc.
     expect(row.display_name).toBe("Grace");
     expect(row.sex).toBe("female");
@@ -159,6 +172,8 @@ describe("buildProfileUpsertRow — maintain goal", () => {
     });
     expect(row.goal).toBe("maintain");
     expect(row.plan_pace).toBeNull();
+    // Continuous pace is null for maintain (no deficit/surplus applies).
+    expect(row.pace_kg_per_week).toBeNull();
     // Targets still written — maintain has a TDEE-equal target.
     expect(row.target_calories).toBe(targets!.target);
   });
@@ -181,6 +196,11 @@ describe("buildProfileUpsertRow — recomp", () => {
     // nutrition_strategy field carries the differentiating signal.
     expect(row.goal).toBe("cut");
     expect(row.nutrition_strategy).toBe("high_protein");
+    // Continuous pace persists the exact recomp slider value (0.15),
+    // which snaps to `relaxed` (0.25) for the legacy plan_pace column —
+    // the lossy snap is exactly why we keep the continuous column.
+    expect(row.pace_kg_per_week).toBe(0.15);
+    expect(row.plan_pace).toBe("relaxed");
   });
 });
 

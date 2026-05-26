@@ -121,7 +121,7 @@ export default function TargetsScreen() {
   // old behaviour (route to /profile, which has no goal control — the gap
   // this closes). The flag gates only the new UI entry; the recompute
   // logic itself is unconditional.
-  const goalEditorEnabled = isFeatureEnabled("goal-editor");
+  const goalEditorEnabled = isFeatureEnabled("goal_editor");
   const [goalEditorOpen, setGoalEditorOpen] = useState(false);
 
   const loadTargets = useCallback(async (signal?: { cancelled: boolean }) => {
@@ -319,14 +319,25 @@ export default function TargetsScreen() {
     [latestWeightKg, goalWeightKg, weightKgByDay],
   );
   const tdeeCaption = useMemo(() => {
-    const base = `Estimated TDEE based on Mifflin-St Jeor · ${activityLevelCaption(activityLevel)}`;
+    // 2026-05-26 consistency fix: the deficit MUST be computed from the
+    // same maintenance the MAINTENANCE row shows (adaptive when present),
+    // otherwise the screen contradicts itself — e.g. maintenance 1,568 with
+    // a static-derived "750 kcal deficit" on a 901 target (1,568 − 901 =
+    // 667, not 750). Use one number for both, and label its source
+    // honestly (adaptive is measured, not Mifflin-St Jeor). Matches web.
+    const maintenance = adaptiveTdee ?? tdeeKcal;
+    const basis =
+      adaptiveTdee != null
+        ? "Maintenance from your recent intake"
+        : "Estimated TDEE · Mifflin-St Jeor";
+    const base = `${basis} · ${activityLevelCaption(activityLevel)}`;
     const tail = deficitSurplusCaption({
       targetCalories: targets.calories,
-      tdeeKcal,
+      tdeeKcal: maintenance,
       goal,
     });
     return tail ? `${base} · ${tail}` : base;
-  }, [activityLevel, targets.calories, tdeeKcal, goal]);
+  }, [activityLevel, targets.calories, tdeeKcal, adaptiveTdee, goal]);
 
   const macroColorFor = (key: string): string => {
     switch (key) {
@@ -727,13 +738,24 @@ export default function TargetsScreen() {
           ) : null}
         </View>
 
-        {/* Macros */}
+        {/* Macros — each tile taps through to the manual /profile editor
+            (incl. the fibre goal + per-macro overrides). The goal editor
+            recomputes macros from goal/pace but doesn't own those manual
+            fields; the `goal-editor` flag had orphaned this path. Restored
+            here (thread C, target-recompute unification 2026-05-26). */}
         <Text style={styles.sectionHeading}>Macros</Text>
         <View style={styles.macroGrid}>
           {macroTiles.map((m) => {
             const color = macroColorFor(m.key);
             return (
-              <View key={m.key} style={styles.macroTile}>
+              <Pressable
+                key={m.key}
+                style={styles.macroTile}
+                onPress={() => router.push("/profile")}
+                accessibilityRole="button"
+                accessibilityLabel={`Edit ${m.label} target`}
+                testID={`targets-macro-tile-${m.key}`}
+              >
                 <View style={styles.macroHead}>
                   <Text style={styles.macroLabel}>{m.label}</Text>
                   <MacroIconFor macroKey={m.key} color={color} />
@@ -768,7 +790,7 @@ export default function TargetsScreen() {
                   )}
                 </View>
                 <Text style={styles.macroRemaining}>{m.remainingLabel}</Text>
-              </View>
+              </Pressable>
             );
           })}
         </View>

@@ -18,6 +18,7 @@ import {
   type OffProductMacros,
 } from "../../../lib/openFoodFacts/fetchProductByBarcode";
 import { scaleFromPer100gGrams } from "../../../lib/openFoodFacts/scaleFromPer100g";
+import { checkScaledLogPlausibility } from "../../../lib/nutrition/macroPlausibility";
 import {
   clampRememberedToServingOptions,
   getRememberedPortion,
@@ -175,6 +176,11 @@ export function TodayBarcodeDialog(props: TodayBarcodeDialogProps) {
   // Audit/2026-04-30 — barcode portion memory parity with mobile.
   // Cleared on close so a fresh open doesn't surface a stale hint.
   const [rememberedPortion, setRememberedPortion] = React.useState<number | null>(null);
+  // P0 (2026-05-26) — once the user confirms past a physical-plausibility
+  // warning, the next "Add to diary" tap proceeds. Reset on close + on a
+  // new barcode lookup. Parity with mobile barcode.tsx
+  // `plausibilityOverrideRef`.
+  const plausibilityOverrideRef = React.useRef(false);
   const {
     open,
     onOpenChange,
@@ -207,6 +213,13 @@ export function TodayBarcodeDialog(props: TodayBarcodeDialogProps) {
     onPhotoFallback,
     onAddAsCustomFood,
   } = props;
+
+  React.useEffect(() => {
+    if (!open) plausibilityOverrideRef.current = false;
+  }, [open]);
+  React.useEffect(() => {
+    plausibilityOverrideRef.current = false;
+  }, [barcodePreview]);
 
   // Audit 2026-04-30 — local "not found" state. Surfaced as a
   // friendly empty state with a primary "Snap the label instead"
@@ -587,6 +600,32 @@ export function TodayBarcodeDialog(props: TodayBarcodeDialogProps) {
                       fiberG = scaled.fiberG > 0 ? scaled.fiberG : undefined;
                     }
                     const adjusted = barcodeMacrosManual || titleForLog.trim() !== p.name.trim();
+                    // P0 (2026-05-26) — physical-plausibility guard before
+                    // logging. Catches the OFF per-serving-basis bug (e.g.
+                    // 500 g Greek yogurt → ~1,325 kcal / 265 g protein) and
+                    // any physically-impossible scaled value. Skips the
+                    // manual-override path (the user set those values on
+                    // purpose). Soft-flag: warn + require a second tap to
+                    // confirm; never silently log a bad number, never hard-
+                    // block a legit edge food. `p.{calories,…}` is the per-
+                    // 100g panel for the source-basis cross-check. Parity:
+                    // mobile barcode.tsx. `basisCorrected` from the OFF
+                    // reconcile also trips the warning.
+                    const plausible =
+                      barcodeMacrosManual ||
+                      (checkScaledLogPlausibility(
+                        { calories, protein, carbs, fat },
+                        barcodeGramsParsed,
+                        { calories: p.calories, protein: p.protein, carbs: p.carbs, fat: p.fat },
+                      ).ok &&
+                        !p.basisCorrected);
+                    if (!plausible && !plausibilityOverrideRef.current) {
+                      plausibilityOverrideRef.current = true;
+                      toast.warning(
+                        `${calories} kcal and ${protein} g protein for ${Math.round(barcodeGramsParsed)} g looks unusually high — this product's label data may be per serving, not per 100 g. Edit the values or amount, or tap "Add to diary" again to log as-is.`,
+                      );
+                      return;
+                    }
                     // Audit/2026-04-30 — remember this portion for the
                     // next lookup of the same barcode (parity with mobile).
                     recordPortion(barcodeValue, barcodeGramsParsed);

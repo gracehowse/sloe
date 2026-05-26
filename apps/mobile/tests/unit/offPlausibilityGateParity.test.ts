@@ -102,3 +102,83 @@ describe("F-78 barcode scan dedup — synchronous useRef", () => {
     expect(occurrences.length).toBeGreaterThanOrEqual(3);
   });
 });
+
+/**
+ * P0 (2026-05-26) — OFF per-100g basis reconcile + post-scale plausibility
+ * guard. Closes the "Chobani Greek yogurt · 500 g · 1,325 kcal · 265 g
+ * protein" failure where a `nutrition_data_per:"serving"` row's per-serving
+ * values masqueraded as per-100g. Source-pin parity across web + mobile.
+ */
+const MOBILE_SCANNER_MODAL = resolve(__dirname, "../../components/BarcodeScannerModal.tsx");
+const WEB_OFF_RECONCILE = resolve(
+  __dirname,
+  "../../../../src/lib/openFoodFacts/reconcilePer100g.ts",
+);
+const WEB_BARCODE_DIALOG = resolve(
+  __dirname,
+  "../../../../src/app/components/suppr/today-barcode-dialog.tsx",
+);
+const WEB_VERIFY = resolve(__dirname, "../../../../src/lib/nutrition/verifyIngredients.ts");
+const SCANNER_MODAL_SRC = readFileSync(MOBILE_SCANNER_MODAL, "utf8");
+const WEB_RECONCILE_SRC = readFileSync(WEB_OFF_RECONCILE, "utf8");
+const WEB_BARCODE_DIALOG_SRC = readFileSync(WEB_BARCODE_DIALOG, "utf8");
+const WEB_VERIFY_SRC = readFileSync(WEB_VERIFY, "utf8");
+
+describe("P0 OFF per-100g basis reconcile — every OFF ingest point", () => {
+  it("shared reconcile module reconstructs per-100g from per-serving", () => {
+    expect(WEB_RECONCILE_SRC).toMatch(/export function reconcileOffPer100g/);
+    expect(WEB_RECONCILE_SRC).toMatch(/perServing\s*\/\s*\(servingG\s*\/\s*100\)/);
+  });
+
+  it("web searchProducts reconciles before building the hit", () => {
+    expect(WEB_OFF_SEARCH_SRC).toMatch(/import\s*\{\s*reconcileOffPer100g\s*\}/);
+    expect(WEB_OFF_SEARCH_SRC).toMatch(/reconcileOffPer100g\(n,\s*p\)/);
+  });
+
+  it("web fetchProductByBarcode reconciles and drops the per-serving fallbacks", () => {
+    expect(WEB_OFF_BARCODE_SRC).toMatch(/reconcileOffPer100g\(n,\s*p\)/);
+    // The bare per-serving fallbacks must be gone.
+    expect(WEB_OFF_BARCODE_SRC).not.toMatch(/n\["energy-kcal_100g"\]\s*\?\?\s*n\["energy-kcal"\]/);
+    expect(WEB_OFF_BARCODE_SRC).not.toMatch(/n\.proteins_100g\s*\?\?\s*n\.proteins\b/);
+  });
+
+  it("mobile searchOpenFoodFacts + lookupBarcode both reconcile", () => {
+    expect(VERIFY_SRC).toMatch(/import\s*\{\s*reconcileOffPer100g\s*\}/);
+    const occurrences = VERIFY_SRC.match(/reconcileOffPer100g\(n,\s*p\)/g) ?? [];
+    expect(occurrences.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe("P0 post-scale plausibility guard — wired at both boundaries", () => {
+  it("web verifyIngredients runs checkScaledLogPlausibility on every source branch", () => {
+    expect(WEB_VERIFY_SRC).toMatch(/import\s*\{\s*checkScaledLogPlausibility\s*\}/);
+    const occurrences = WEB_VERIFY_SRC.match(/checkScaledLogPlausibility\(/g) ?? [];
+    // OFF + USDA + Edamam + Suppr + FatSecret + barcode override = 6.
+    expect(occurrences.length).toBeGreaterThanOrEqual(5);
+  });
+
+  it("mobile barcode screen guards before the nutrition_entries insert", () => {
+    expect(BARCODE_SRC).toMatch(/checkScaledLogPlausibility/);
+    expect(BARCODE_SRC).toMatch(/Double-check these numbers/);
+  });
+
+  it("mobile BarcodeScannerModal guards before handing the row to the host", () => {
+    expect(SCANNER_MODAL_SRC).toMatch(/checkScaledLogPlausibility/);
+    expect(SCANNER_MODAL_SRC).toMatch(/Double-check these numbers/);
+  });
+
+  it("web barcode dialog guards before onConfirm (skips manual-override)", () => {
+    expect(WEB_BARCODE_DIALOG_SRC).toMatch(/checkScaledLogPlausibility/);
+    expect(WEB_BARCODE_DIALOG_SRC).toMatch(/barcodeMacrosManual\s*\|\|/);
+  });
+});
+
+describe("P0 parity footgun — mobile scaleMacrosByGrams", () => {
+  it("mobile verifyRecipe exports scaleMacrosByGrams (grams), not a bare scaleMacros", () => {
+    expect(VERIFY_SRC).toMatch(/export function scaleMacrosByGrams\(/);
+    // The bare grams-taking scaleMacros export must be gone (the only
+    // remaining `scaleMacros` is mealPlanAlgo's multiplier-taking one,
+    // which lives in a different module).
+    expect(VERIFY_SRC).not.toMatch(/export function scaleMacros\(/);
+  });
+});

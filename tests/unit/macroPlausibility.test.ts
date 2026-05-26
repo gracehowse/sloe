@@ -11,7 +11,9 @@
 import { describe, expect, it } from "vitest";
 import {
   checkMacroPlausibility,
+  checkScaledLogPlausibility,
   isPlausibleMacrosPer100g,
+  isPlausibleScaledLog,
 } from "@/lib/nutrition/macroPlausibility";
 
 describe("macroPlausibility — Atwater gate", () => {
@@ -66,5 +68,107 @@ describe("macroPlausibility — Atwater gate", () => {
     // 3g fat for a chili crisp serving) and shouldn't trigger the
     // single-macro guard.
     expect(isPlausibleMacrosPer100g({ calories: 30, protein: 0, carbs: 0, fat: 3 })).toBe(true);
+  });
+});
+
+/**
+ * P0 (2026-05-26) — post-scale log plausibility guard. Closes the
+ * "Chobani Greek yogurt · 500 g · 1,325 kcal · 265 g protein" failure where
+ * an OFF `nutrition_data_per:"serving"` row's per-serving (per-500g) values
+ * masqueraded as per-100g, so the legitimate ×5 grams-scale became ×25.
+ */
+describe("checkScaledLogPlausibility — post-scale physical guard", () => {
+  it("PASSES a normal 500 g pot of Greek yogurt (~300 kcal / 50 g protein)", () => {
+    // 60 kcal/100g, 10 g protein/100g → ×5 = 300 kcal / 50 g protein.
+    const v = checkScaledLogPlausibility(
+      { calories: 300, protein: 50, carbs: 18, fat: 0 },
+      500,
+      { calories: 60, protein: 10, carbs: 3.6, fat: 0 },
+    );
+    expect(v.ok).toBe(true);
+  });
+
+  it("FAILS the bug case — 500 g · 1,325 kcal · 265 g protein", () => {
+    // The per-100g panel is genuine (60/10/3.6/0) but the scaled row was
+    // built from a per-500g base scaled again ×5. The source-basis cross-
+    // check is the load-bearing catch: 1,325 kcal vs 60 × 5 = 300 kcal.
+    const v = checkScaledLogPlausibility(
+      { calories: 1325, protein: 265, carbs: 90, fat: 0 },
+      500,
+      { calories: 60, protein: 10, carbs: 3.6, fat: 0 },
+    );
+    expect(v.ok).toBe(false);
+    if (!v.ok) expect(v.reason).toBe("source_basis_mismatch");
+  });
+
+  it("FAILS the bug case on density alone when no source panel is supplied", () => {
+    // Without the panel, the kcal-per-gram + protein-mass arms still catch
+    // it: 265 g protein from 500 g is 53% protein by mass (< 0.95, passes),
+    // but 1,325 kcal / 500 g = 2.65 kcal/g (passes density)… so the absolute
+    // catch here is protein/100g: 265 × (100/500) = 53 g/100g (passes 90
+    // ceiling). The standalone guard is intentionally lenient — the panel
+    // cross-check is what nails this exact shape. A grosser inflation does
+    // trip the standalone arms:
+    const grosslyInflated = checkScaledLogPlausibility(
+      { calories: 6625, protein: 1325, carbs: 450, fat: 0 },
+      500,
+    );
+    expect(grosslyInflated.ok).toBe(false);
+  });
+
+  it("PASSES pure oil — 884 kcal/100g, ~9 kcal/g (the generous-ceiling boundary)", () => {
+    // 15 g olive oil ≈ 133 kcal, 15 g fat.
+    expect(isPlausibleScaledLog({ calories: 133, protein: 0, carbs: 0, fat: 15 }, 15)).toBe(true);
+    // 100 g oil ≈ 884 kcal, 100 g fat — must pass kcal/100g + fat/100g ceilings.
+    expect(isPlausibleScaledLog({ calories: 884, protein: 0, carbs: 0, fat: 100 }, 100)).toBe(true);
+  });
+
+  it("PASSES protein isolate — ~90 g protein / 100g (the protein ceiling boundary)", () => {
+    // 30 g scoop of whey isolate ≈ 27 g protein, ~110 kcal.
+    expect(isPlausibleScaledLog({ calories: 110, protein: 27, carbs: 1, fat: 1 }, 30)).toBe(true);
+    // 100 g isolate ≈ 90 g protein — must pass the 90 g/100g ceiling.
+    expect(isPlausibleScaledLog({ calories: 370, protein: 90, carbs: 2, fat: 1 }, 100)).toBe(true);
+  });
+
+  it("FAILS when kcal-per-gram exceeds pure fat (> 9.1 kcal/g)", () => {
+    const v = checkScaledLogPlausibility({ calories: 1000, protein: 0, carbs: 0, fat: 50 }, 100);
+    expect(v.ok).toBe(false);
+    if (!v.ok) expect(v.reason).toBe("kcal_per_gram");
+  });
+
+  it("FAILS when protein exceeds 95% of the food's mass", () => {
+    const v = checkScaledLogPlausibility({ calories: 400, protein: 98, carbs: 0, fat: 0 }, 100);
+    expect(v.ok).toBe(false);
+    if (!v.ok) expect(v.reason).toBe("protein_exceeds_mass");
+  });
+
+  it("FAILS when derived protein/100g exceeds 90 (without tripping mass/density first)", () => {
+    // 40 g portion with 38 g protein → 95 g protein/100g (> 90 ceiling), but
+    // protein is only 95% of mass (boundary, passes) and kcal/g is fine.
+    const v = checkScaledLogPlausibility({ calories: 160, protein: 38, carbs: 1, fat: 0 }, 40);
+    expect(v.ok).toBe(false);
+    if (!v.ok) expect(v.reason).toBe("protein_per_100g_ceiling");
+  });
+
+  it("FAILS when derived carbs/100g exceeds 100", () => {
+    // 50 g portion, 60 g carbs → 120 g carbs/100g (impossible).
+    const v = checkScaledLogPlausibility({ calories: 240, protein: 0, carbs: 60, fat: 0 }, 50);
+    expect(v.ok).toBe(false);
+    if (!v.ok) expect(v.reason).toBe("carbs_per_100g_ceiling");
+  });
+
+  it("treats zero grams and all-zero macros as plausible (can't reason / legit)", () => {
+    expect(isPlausibleScaledLog({ calories: 100, protein: 5, carbs: 5, fat: 5 }, 0)).toBe(true);
+    expect(isPlausibleScaledLog({ calories: 0, protein: 0, carbs: 0, fat: 0 }, 250)).toBe(true);
+  });
+
+  it("PASSES when scaled kcal agrees with the source panel within 25%", () => {
+    // 200 g of a 150 kcal/100g food → 300 kcal; panel says 150/100g.
+    const v = checkScaledLogPlausibility(
+      { calories: 300, protein: 20, carbs: 30, fat: 8 },
+      200,
+      { calories: 150, protein: 10, carbs: 15, fat: 4 },
+    );
+    expect(v.ok).toBe(true);
   });
 });

@@ -1,8 +1,9 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import {
   ActivityIndicator,
+  Alert,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -23,7 +24,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { lookupBarcode, scaleMacros, submitFoodCorrection, type BarcodeProduct } from "@/lib/verifyRecipe";
+import { lookupBarcode, scaleMacrosByGrams, submitFoodCorrection, type BarcodeProduct } from "@/lib/verifyRecipe";
+import { checkScaledLogPlausibility } from "@suppr/shared/nutrition/macroPlausibility";
 import { scaleCorrectionToPer100g, type CorrectionBasis } from "@/lib/barcodeCorrection";
 import { useAuth } from "@/context/auth";
 import { clampRememberedToServingOptions, getRememberedPortion, recordPortion } from "@/lib/barcodePortionMemory";
@@ -114,6 +116,14 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
   const [manualFat, setManualFat] = useState("");
   const [manualServing, setManualServing] = useState("100");
 
+  // P0 (2026-05-26) — physical-plausibility override. Once the user
+  // confirms past a "numbers look unusually high" warning, the next Confirm
+  // proceeds. Reset on every fresh scan. Parity with barcode.tsx.
+  const plausibilityOverrideRef = useRef(false);
+  // Holds the latest `onConfirm` so the "Log anyway" branch can re-invoke it
+  // without a circular useCallback dependency.
+  const onConfirmRef = useRef<() => void>(() => {});
+
   // Correction mode (edit scanned product data and save to DB)
   const [correctionMode, setCorrectionMode] = useState(false);
   const [corrName, setCorrName] = useState("");
@@ -166,7 +176,7 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
 
   const scaled = useMemo(() => {
     if (!product) return null;
-    return scaleMacros(
+    return scaleMacrosByGrams(
       { calories: product.calories, protein: product.protein, carbs: product.carbs, fat: product.fat, fiberG: product.fiberG },
       grams,
     );
@@ -180,6 +190,7 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
       setError(null);
       setProduct(null);
       setManualMode(false);
+      plausibilityOverrideRef.current = false;
 
       const result = await lookupBarcode(e.data);
       setLoading(false);
@@ -258,6 +269,52 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
 
   const onConfirm = useCallback(() => {
     if (scanned && product && scaled) {
+      // P0 (2026-05-26) — physical-plausibility guard before handing the
+      // scaled product to the host (which writes nutrition_entries). Catches
+      // the OFF per-serving-basis bug. Soft-flag: warn + let the user edit or
+      // confirm; never silently pass a physically-impossible row, never hard-
+      // block a legit edge food. `product.{calories,…}` is the per-100g panel
+      // for the source-basis cross-check. Parity with barcode.tsx.
+      const plausibility = checkScaledLogPlausibility(
+        { calories: scaled.calories, protein: scaled.protein, carbs: scaled.carbs, fat: scaled.fat },
+        grams,
+        { calories: product.calories, protein: product.protein, carbs: product.carbs, fat: product.fat },
+      );
+      if ((!plausibility.ok || product.basisCorrected) && !plausibilityOverrideRef.current) {
+        const warnKcal = Math.round(scaled.calories);
+        // protein is already rounded to 0.1 g by scaleMacrosByGrams; toFixed
+        // keeps the warning copy whole-gram (the display tiles use formatMacro).
+        const warnProtein = scaled.protein.toFixed(0);
+        const warnGrams = Math.round(grams);
+        Alert.alert(
+          "Double-check these numbers",
+          `${warnKcal} kcal and ${warnProtein} g protein for ${warnGrams} g looks unusually high — this product's label data may be per serving, not per 100 g. Edit the values or amount if they look wrong.`,
+          [
+            {
+              text: "Edit",
+              style: "cancel",
+              onPress: () => {
+                setCorrName(product.name);
+                setCorrCalories(String(product.calories));
+                setCorrProtein(String(product.protein));
+                setCorrCarbs(String(product.carbs));
+                setCorrFat(String(product.fat));
+                setCorrectionMode(true);
+              },
+            },
+            {
+              text: "Log anyway",
+              onPress: () => {
+                plausibilityOverrideRef.current = true;
+                // Re-run with the override set; the ref short-circuits the
+                // warning on the second pass.
+                queueMicrotask(onConfirmRef.current);
+              },
+            },
+          ],
+        );
+        return;
+      }
       // Pass a scaled product to the parent
       // F-13 (2026-04-19) — preserve caffeine/alcohol per 100 g from the
       // OFF lookup so the host screen can call `scaleCaffeineAlcohol` on
@@ -286,6 +343,7 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
       setRememberedPortion(null);
     }
   }, [scanned, product, scaled, grams, portionSummary, onScan]);
+  onConfirmRef.current = onConfirm;
 
   const onManualSubmit = useCallback(() => {
     const cal = Number(manualCalories) || 0;

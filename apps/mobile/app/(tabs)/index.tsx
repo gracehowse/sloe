@@ -90,7 +90,7 @@ import {
   weekSummaryDateKeys,
   type WeekSummaryMode,
 } from "@suppr/shared/nutrition/weekSummaryWindow";
-import { track, isFeatureEnabled } from "@/lib/analytics";
+import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { findPlanDayIdForCalendarDate } from "@suppr/shared/mealPlan/planCalendarAnchor";
 import { coerceMacrosWhenCaloriesButNoGrams } from "@suppr/shared/nutrition/coerceRecipeMacrosForPlanning";
@@ -2093,6 +2093,14 @@ export default function TrackerScreen() {
     },
     [userId],
   );
+
+  // The deficit-window mode (rolling vs current calendar week) is still
+  // hydrated from `notification_prefs.weekSummaryMode` at load (see
+  // `setWeekSummaryMode(normalizeWeekSummaryMode(...))` above) and still
+  // drives the Today summary window. The CONTROL that changes it now
+  // lives in Settings (`SettingsBundleContent.tsx`, "Burn / deficit
+  // summary" row) — mirroring web Settings — rather than an in-place
+  // Today toggle, so Today no longer needs a persist path for it.
 
   /** Master switch: without this, Health burn is never added to the calorie ring goal (web-only before). */
   const persistPreferActivityAdjustedCalories = useCallback(

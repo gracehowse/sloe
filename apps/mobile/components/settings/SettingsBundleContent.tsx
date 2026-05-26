@@ -77,6 +77,10 @@ import { nukeAllUserAppData } from "@suppr/shared/account/nukeAccountData";
 import { cancelWeeklyRecapPush } from "@/lib/weeklyRecapPush";
 import { normaliseDietaryFromProfile } from "../../../../src/constants/dietaryPreferences";
 import { saveWeekStartDay } from "@suppr/shared/nutrition/weekStartDayClient";
+import {
+  normalizeWeekSummaryMode,
+  type WeekSummaryMode,
+} from "@suppr/shared/nutrition/weekSummaryWindow";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { track } from "@/lib/analytics";
 import {
@@ -630,6 +634,15 @@ export function SettingsBundleContent({ context }: { context: Context }) {
   const [weekStartDay, setWeekStartDay] = useState<"sunday" | "monday">(
     "monday",
   );
+  // Deficit/burn summary window (rolling 7-day vs current calendar week).
+  // Hydrated from `profiles.notification_prefs.weekSummaryMode` and
+  // changed here in Settings — mirrors web Settings → "Burn / deficit
+  // summary" (the in-place Today toggle was removed 2026-05-26). The
+  // chosen mode drives the Today summary window on next load.
+  const [weekSummaryMode, setWeekSummaryMode] =
+    useState<WeekSummaryMode>("rolling");
+  const [deficitWindowPickerOpen, setDeficitWindowPickerOpen] =
+    useState(false);
   // Fasting window — read from `profiles.fasting_window` so the
   // Settings row can show the current preference (e.g. "16:8 — 16h
   // fast / 8h eat") without forcing the user to tap through to
@@ -992,6 +1005,49 @@ export function SettingsBundleContent({ context }: { context: Context }) {
     }
   }, [userId, exportingCsv]);
 
+  /**
+   * Persist the deficit/burn summary window into the same
+   * `notification_prefs` jsonb the Today summary hydrates from. Optimistic
+   * local set first for instant UI; read-merge-write the DB so sibling
+   * prefs (`reminder_time`, `activity_bonus_calories`, …) are preserved.
+   * On failure, revert local state and surface an alert. Mirrors the web
+   * Settings "Deficit summary" control and the "Week starts on"
+   * row's save shape.
+   */
+  const persistWeekSummaryMode = useCallback(
+    async (next: WeekSummaryMode) => {
+      const previous = weekSummaryMode;
+      if (previous === next) return;
+      setWeekSummaryMode(next);
+      if (!userId) return;
+      try {
+        const { data } = await supabase
+          .from("profiles")
+          .select("notification_prefs")
+          .eq("id", userId)
+          .maybeSingle();
+        const raw = (data as { notification_prefs?: unknown } | null)
+          ?.notification_prefs;
+        const prev =
+          raw && typeof raw === "object" && !Array.isArray(raw)
+            ? { ...(raw as Record<string, unknown>) }
+            : {};
+        const { error } = await supabase
+          .from("profiles")
+          .update({ notification_prefs: { ...prev, weekSummaryMode: next } })
+          .eq("id", userId);
+        if (error) throw error;
+      } catch {
+        setWeekSummaryMode(previous);
+        Alert.alert(
+          "Could not save",
+          "We couldn't save your burn / deficit summary preference. Please try again.",
+        );
+      }
+    },
+    [userId, weekSummaryMode],
+  );
+
   useEffect(() => {
     if (!userId) return;
     void (async () => {
@@ -999,7 +1055,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
       let resp = await supabase
         .from("profiles")
         .select(
-          "tracked_macros, week_start_day, target_caffeine_mg, target_alcohol_g_weekly, weekly_recap_push_enabled, fasting_window",
+          "tracked_macros, week_start_day, target_caffeine_mg, target_alcohol_g_weekly, weekly_recap_push_enabled, fasting_window, notification_prefs",
         )
         .eq("id", userId)
         .maybeSingle();
@@ -1044,6 +1100,16 @@ export function SettingsBundleContent({ context }: { context: Context }) {
       if (typeof fw === "string" && /^\d+:\d+$/.test(fw)) {
         setFastingWindow(fw);
       }
+      // Deficit/burn summary window — read from the same
+      // `notification_prefs.weekSummaryMode` the Today summary hydrates
+      // from. `normalizeWeekSummaryMode` falls back to "rolling" for any
+      // missing/unknown value, matching Today's hydration.
+      const np = (data as any).notification_prefs;
+      const rawMode =
+        np && typeof np === "object" && !Array.isArray(np)
+          ? (np as Record<string, unknown>).weekSummaryMode
+          : undefined;
+      setWeekSummaryMode(normalizeWeekSummaryMode(rawMode));
     })();
   }, [userId]);
 
@@ -1546,6 +1612,24 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           label="Week starts on"
           sub={weekStartDay === "monday" ? "Monday" : "Sunday"}
           onPress={() => setWeekStartPickerOpen(true)}
+        />
+        {/* Deficit summary window — controls whether the Today
+            burn/deficit averages cover the last 7 days ending on the
+            day you view, or the current calendar week. Moved here from
+            an in-place Today toggle (2026-05-26, Grace) so it's a
+            durable preference; mirrors web Settings → "Burn / deficit
+            summary". Persists to `notification_prefs.weekSummaryMode`. */}
+        <SettingsRow
+          testID="settings-bundle-deficit-window-row"
+          icon={Flame}
+          iconColor={t.accent}
+          label="Deficit summary"
+          sub={
+            weekSummaryMode === "calendar_week"
+              ? "This week (Mon–Sun)"
+              : "Last 7 days"
+          }
+          onPress={() => setDeficitWindowPickerOpen(true)}
         />
         <SettingsRow
           testID="settings-bundle-caffeine-row"
@@ -3216,6 +3300,120 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                   {day === "monday" ? "Monday" : "Sunday"}
                 </Text>
                 {weekStartDay === day && (
+                  <CheckCircle2
+                    size={22}
+                    color={Accent.primary}
+                    strokeWidth={1.75}
+                  />
+                )}
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Deficit summary window picker. Mirrors the week-start
+          picker pattern + web Settings "Deficit summary"
+          segmented control. Persists to
+          `notification_prefs.weekSummaryMode`. */}
+      <Modal
+        visible={deficitWindowPickerOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setDeficitWindowPickerOpen(false)}
+      >
+        <View style={{ flex: 1, justifyContent: "flex-end" }}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Dismiss"
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(0,0,0,0.5)",
+            }}
+            onPress={() => setDeficitWindowPickerOpen(false)}
+          />
+          <View
+            style={{
+              backgroundColor: colors.card,
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              paddingTop: Spacing.lg,
+              paddingBottom: insets.bottom + Spacing.xl,
+              paddingHorizontal: Spacing.xl,
+            }}
+          >
+            <View
+              style={{
+                width: 36,
+                height: 4,
+                borderRadius: 2,
+                backgroundColor: colors.border,
+                alignSelf: "center",
+                marginBottom: Spacing.lg,
+              }}
+            />
+            <Text
+              style={{
+                fontSize: 16,
+                fontWeight: "700",
+                color: colors.text,
+                marginBottom: Spacing.xs,
+              }}
+            >
+              Deficit summary
+            </Text>
+            <Text
+              style={{
+                fontSize: 13,
+                color: colors.textSecondary,
+                marginBottom: Spacing.lg,
+                lineHeight: 18,
+              }}
+            >
+              On Today, when you have burn data: show averages for the last
+              seven days ending on the day you view, or for the current
+              calendar week (respecting your week start).
+            </Text>
+            {(
+              [
+                { value: "rolling", label: "Last 7 days" },
+                { value: "calendar_week", label: "This week (Mon–Sun)" },
+              ] as const
+            ).map((opt) => (
+              <Pressable
+                key={opt.value}
+                testID={`settings-bundle-deficit-window-option-${opt.value}`}
+                accessibilityRole="button"
+                accessibilityState={{
+                  selected: weekSummaryMode === opt.value,
+                }}
+                onPress={() => {
+                  setDeficitWindowPickerOpen(false);
+                  void persistWeekSummaryMode(opt.value);
+                }}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  paddingVertical: 14,
+                  borderBottomWidth: 1,
+                  borderBottomColor: colors.cardBorder,
+                }}
+              >
+                <Text
+                  style={{
+                    flex: 1,
+                    fontSize: 15,
+                    fontWeight: "500",
+                    color: colors.text,
+                  }}
+                >
+                  {opt.label}
+                </Text>
+                {weekSummaryMode === opt.value && (
                   <CheckCircle2
                     size={22}
                     color={Accent.primary}

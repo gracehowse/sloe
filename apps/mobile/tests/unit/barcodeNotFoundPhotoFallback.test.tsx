@@ -84,7 +84,7 @@ vi.mock("@/hooks/use-theme-colors", () => ({
 
 vi.mock("@/lib/verifyRecipe", () => ({
   lookupBarcode: (...args: any[]) => lookupBarcode(...args),
-  scaleMacros: vi.fn(() => ({
+  scaleMacrosByGrams: vi.fn(() => ({
     calories: 0, protein: 0, carbs: 0, fat: 0, fiberG: 0,
   })),
   submitFoodCorrection: vi.fn(async () => ({ ok: true })),

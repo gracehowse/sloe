@@ -84,7 +84,7 @@ vi.mock("@/lib/verifyRecipe", () => {
     // seed; `getFoodMacros` is only consulted for USDA, so a
     // no-op impl is safe here.
     getFoodMacros: vi.fn(async () => null),
-    scaleMacros: (per100g: typeof PER_100G, grams: number) => {
+    scaleMacrosByGrams: (per100g: typeof PER_100G, grams: number) => {
       const factor = grams / 100;
       return {
         calories: Math.round(per100g.calories * factor),

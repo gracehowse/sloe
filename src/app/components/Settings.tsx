@@ -876,7 +876,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             />
           </div>
           <div>
-            <label className="block mb-3 text-sm font-medium text-foreground">Burn / deficit summary</label>
+            <label className="block mb-3 text-sm font-medium text-foreground">Deficit summary</label>
             <p className="text-xs text-muted-foreground mb-3 max-w-xl">
               On the nutrition tracker, when you expand your calorie ring: show averages for the last seven days ending on the day you view, or for the current calendar week (Monday–Sunday).
             </p>
@@ -884,7 +884,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
                 migrated to SettingsSegmented. Imperative labels stay
                 in lockstep with mobile settings. */}
             <SettingsSegmented<"rolling" | "calendar_week">
-              ariaLabel="Burn / deficit summary window"
+              ariaLabel="Deficit summary window"
               value={normalizeWeekSummaryMode(notifications.weekSummaryMode) === "calendar_week" ? "calendar_week" : "rolling"}
               onChange={(next) => setNotifications({ ...notifications, weekSummaryMode: next })}
               options={[

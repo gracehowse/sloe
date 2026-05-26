@@ -110,13 +110,25 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
   // behaviour — deep-link to the Profile screen (which has no goal
   // control, the gap this feature closes). The flag gates only the new
   // UI entry; the recompute logic itself is unconditional.
-  const goalEditorEnabled = isFeatureEnabled("goal-editor");
+  const goalEditorEnabled = isFeatureEnabled("goal_editor");
   const [goalEditorOpen, setGoalEditorOpen] = useState(false);
+  // Goal / pace edit affordance (Goal card, "Set a goal", "Why this
+  // number" → Adjust). Opens the in-place editor when the flag is on,
+  // else deep-links to the Profile screen.
   const goEdit = () => {
     if (goalEditorEnabled) {
       setGoalEditorOpen(true);
       return;
     }
+    if (onEdit) onEdit();
+    else onNavigate?.("profile");
+  };
+  // Macro tiles (incl. Fibre) ALWAYS route to the manual /profile editor —
+  // the goal editor recomputes macros from goal/pace but doesn't own the
+  // fibre goal or per-macro overrides. The `goal-editor` flag had orphaned
+  // this path; macro tiles restore it directly (thread C, target-recompute
+  // unification 2026-05-26).
+  const goEditMacros = () => {
     if (onEdit) onEdit();
     else onNavigate?.("profile");
   };
@@ -507,7 +519,7 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
             <button
               key={tile.key}
               type="button"
-              onClick={goEdit}
+              onClick={goEditMacros}
               aria-label={`Edit ${tile.label} target`}
               className="group text-left bg-card border border-border rounded-2xl p-4 shadow-sm hover:border-primary/40 hover:bg-muted/30 transition-colors"
             >
@@ -628,6 +640,14 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
         onSaved={() => {
           void refreshProfileBasics();
           void loadGoalProfile();
+        }}
+        // Fibre + per-macro overrides live on the manual /profile editor;
+        // the goal editor only recomputes macros from the goal/pace. This
+        // link restores the path the `goal-editor` flag had orphaned
+        // (thread C, target-recompute unification 2026-05-26).
+        onCustomiseMacros={() => {
+          if (onEdit) onEdit();
+          else onNavigate?.("profile");
         }}
       />
 

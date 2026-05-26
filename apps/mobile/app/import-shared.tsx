@@ -39,7 +39,7 @@ import FoodSearchModal, { type SelectedFood } from "@/components/FoodSearchModal
 import OverrideIngredientSheet from "@/components/OverrideIngredientSheet";
 import { ImportLoadingSkeleton } from "@/components/import/ImportLoadingSkeleton";
 import { SupprMark } from "@/components/SupprMark";
-import { scaleMacros , parseIngredientForSearch, type BarcodeProduct } from "@/lib/verifyRecipe";
+import { scaleMacrosByGrams , parseIngredientForSearch, type BarcodeProduct } from "@/lib/verifyRecipe";
 import BarcodeScannerModal from "@/components/BarcodeScannerModal";
 import {
   extractUrlFromShareText,
@@ -632,7 +632,7 @@ export default function ImportSharedScreen() {
               sugarG: 0,
               sodiumMg: 0,
             }
-          : scaleMacros(result.macrosPer100g!, grams);
+          : scaleMacrosByGrams(result.macrosPer100g!, grams);
         const next = prev.ingredientMacros.map((row, i) =>
           i === idx
             ? {

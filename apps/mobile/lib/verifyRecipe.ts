@@ -37,6 +37,7 @@ import {
   isLowRelevanceNonVerifiedRow,
 } from "@suppr/shared/nutrition/searchRowTrust";
 import { parseOffMicrosPer100g } from "@suppr/shared/openFoodFacts/parseOffMicros";
+import { reconcileOffPer100g } from "@suppr/shared/openFoodFacts/reconcilePer100g";
 import { stripSectionPrefix } from "@suppr/shared/recipe-import/socialUrlHelpers";
 
 /**
@@ -210,6 +211,12 @@ export type BarcodeProduct = {
   source?: "user" | "verified" | "open_food_facts";
   /** Whether this is a verified community entry */
   verified?: boolean;
+  /**
+   * P0 (2026-05-26) — true when OFF's published `*_100g` macros disagreed
+   * with the per-serving basis and were reconstructed. Barcode commit path
+   * surfaces a "double-check these numbers" warning when set.
+   */
+  basisCorrected?: boolean;
 };
 
 const FRAC_MAP: Record<string, number> = {
@@ -547,7 +554,9 @@ export async function searchOpenFoodFacts(query: string, opts?: { page?: number 
     const ac = new AbortController();
     const t = setTimeout(() => ac.abort(), 12000);
     const res = await fetch(
-      `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q.trim())}&search_simple=1&action=process&json=1&page_size=10&page=${page}&fields=code,product_name,brands,nutriments,image_small_url,serving_size`,
+      // P0 (2026-05-26) — request nutrition_data_per + serving_quantity for
+      // the per-100g basis reconcile (parity with web searchProducts.ts).
+      `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q.trim())}&search_simple=1&action=process&json=1&page_size=10&page=${page}&fields=code,product_name,brands,nutriments,image_small_url,serving_size,nutrition_data_per,serving_quantity`,
       {
         signal: ac.signal,
         headers: {
@@ -591,14 +600,19 @@ export async function searchOpenFoodFacts(query: string, opts?: { page?: number 
           typeof alcRaw === "number" && Number.isFinite(alcRaw) && alcRaw > 0
             ? Math.round(alcRaw * 100) / 100
             : null;
+        // P0 (2026-05-26) — reconcile macros to a genuine per-100g basis.
+        // `nutrition_data_per:"serving"` rows store per-serving values in
+        // `*_100g`; reconcileOffPer100g rebuilds them from `*_serving` /
+        // `serving_quantity`. Web parity: src/lib/openFoodFacts/searchProducts.ts.
+        const recon = reconcileOffPer100g(n, p);
         return {
           code: p.code ?? "",
           name: p.product_name ?? "Unknown",
           brand: (p.brands ?? "").split(",")[0]?.trim() ?? "",
-          calories: Math.round(n["energy-kcal_100g"] ?? 0),
-          protein: Math.round((n.proteins_100g ?? 0) * 10) / 10,
-          carbs: Math.round((n.carbohydrates_100g ?? 0) * 10) / 10,
-          fat: Math.round((n.fat_100g ?? 0) * 10) / 10,
+          calories: Math.round(recon.calories),
+          protein: Math.round(recon.protein * 10) / 10,
+          carbs: Math.round(recon.carbs * 10) / 10,
+          fat: Math.round(recon.fat * 10) / 10,
           fiberG: Math.round((n.fiber_100g ?? 0) * 10) / 10,
           sugarG: Math.round((n["sugars_100g"] ?? 0) * 10) / 10,
           sodiumMg: Math.round((n.sodium_100g ?? 0) * 1000),
@@ -1599,9 +1613,14 @@ export async function lookupBarcode(
       serving_size?: string;
       serving_quantity?: string | number;
       serving_quantity_unit?: string;
+      /** P0 (2026-05-26) — "100g" | "serving"; drives per-100g reconcile. */
+      nutrition_data_per?: string;
       nutriments?: Record<string, number | undefined>;
     };
     const n = p.nutriments ?? {};
+    // P0 (2026-05-26) — reconcile macros to a genuine per-100g basis before
+    // they scale (web parity: src/lib/openFoodFacts/fetchProductByBarcode.ts).
+    const recon = reconcileOffPer100g(n, p);
     const brand = (p.brands ?? "").split(",")[0]?.trim() ?? "";
     const baseName =
       (p.product_name ?? p.product_name_en ?? p.generic_name ?? "").trim() ||
@@ -1625,12 +1644,13 @@ export async function lookupBarcode(
 
     return {
       name: [brand, baseName].filter(Boolean).join(" · "),
-      calories: Math.round(n["energy-kcal_100g"] ?? 0),
-      protein: Math.round((n.proteins_100g ?? 0) * 10) / 10,
-      carbs: Math.round((n.carbohydrates_100g ?? 0) * 10) / 10,
-      fat: Math.round((n.fat_100g ?? 0) * 10) / 10,
+      calories: Math.round(recon.calories),
+      protein: Math.round(recon.protein * 10) / 10,
+      carbs: Math.round(recon.carbs * 10) / 10,
+      fat: Math.round(recon.fat * 10) / 10,
       fiberG: Math.round((n.fiber_100g ?? 0) * 10) / 10,
       servingSizeG,
+      basisCorrected: recon.corrected,
       caffeineMgPer100g,
       alcoholGPer100g,
       // F-79 (2026-04-25) — full micros per 100g for scanned barcode.
@@ -1729,8 +1749,18 @@ export function totalGramsForVerifyScaleDetailed(
   return totalGramsForVerifyScaleDetailedImpl(ing, amountNum);
 }
 
-/** Scale per-100g macros to a given gram weight. */
-export function scaleMacros(
+/**
+ * Scale per-100g macros to a given gram weight.
+ *
+ * P0 parity footgun (2026-05-26): renamed from `scaleMacros` →
+ * `scaleMacrosByGrams`. The web `verifyIngredients.scaleMacros` takes a
+ * FACTOR (grams/100); this one takes GRAMS. Same-named functions with
+ * different arg meanings let a grams value silently flow into a factor slot
+ * (or vice-versa) — the second-order cause of the 1,325-kcal-yogurt class of
+ * bug. The explicit `ByGrams` suffix makes the unit un-confusable at every
+ * call site. Behaviour is unchanged.
+ */
+export function scaleMacrosByGrams(
   per100g: { calories: number; protein: number; carbs: number; fat: number; fiberG: number; sugarG?: number; sodiumMg?: number },
   grams: number,
 ) {

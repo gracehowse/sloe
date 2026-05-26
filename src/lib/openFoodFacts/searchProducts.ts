@@ -6,6 +6,7 @@
 
 import { isPlausibleMacrosPer100g } from "../nutrition/macroPlausibility";
 import { parseOffMicrosPer100g } from "./parseOffMicros";
+import { reconcileOffPer100g } from "./reconcilePer100g";
 
 export type OffSearchHit = {
   code: string;
@@ -19,6 +20,12 @@ export type OffSearchHit = {
   fiberG: number;
   sugarG: number;
   sodiumMg: number;
+  /**
+   * P0 (2026-05-26) — true when the published `*_100g` fields disagreed with
+   * the per-serving basis and were reconstructed (or the row is otherwise
+   * low-confidence on basis). Callers may demote / drop these rows.
+   */
+  _basisCorrected?: boolean;
   /** F-79 — full micronutrient set per 100g, canonical camelCase keys. */
   microsPer100g?: Record<string, number>;
 };
@@ -41,7 +48,11 @@ export async function searchOffProducts(
     action: "process",
     json: "1",
     page_size: String(pageSize),
-    fields: "code,product_name,brands,nutriments,serving_size",
+    // P0 (2026-05-26) — request `nutrition_data_per` + `serving_quantity` so
+    // we can detect rows whose `*_100g` fields actually hold per-serving
+    // values and reconstruct a genuine per-100g basis (reconcileOffPer100g).
+    fields:
+      "code,product_name,brands,nutriments,serving_size,nutrition_data_per,serving_quantity",
   });
   // Optionally filter by country (e.g. "united-kingdom", "france")
   if (opts?.countryTag) {
@@ -74,17 +85,24 @@ export async function searchOffProducts(
       .filter((p: any) => p.product_name && p.nutriments)
       .map((p: any) => {
         const n = p.nutriments ?? {};
+        // P0 (2026-05-26) — reconcile macros to a genuine per-100g basis.
+        // For `nutrition_data_per:"serving"` rows the published `*_100g`
+        // fields can secretly be per-serving (per-500g for a 500 g pot of
+        // yogurt); reconcileOffPer100g rebuilds them from `*_serving` /
+        // `serving_quantity` and flags the row when the bases disagree.
+        const recon = reconcileOffPer100g(n, p);
         return {
           code: p.code ?? "",
           name: p.product_name ?? "Unknown",
           brand: (p.brands ?? "").split(",")[0]?.trim() ?? "",
-          calories: Math.round(n["energy-kcal_100g"] ?? 0),
-          protein: Math.round((n.proteins_100g ?? 0) * 10) / 10,
-          carbs: Math.round((n.carbohydrates_100g ?? 0) * 10) / 10,
-          fat: Math.round((n.fat_100g ?? 0) * 10) / 10,
+          calories: Math.round(recon.calories),
+          protein: Math.round(recon.protein * 10) / 10,
+          carbs: Math.round(recon.carbs * 10) / 10,
+          fat: Math.round(recon.fat * 10) / 10,
           fiberG: Math.round((n.fiber_100g ?? 0) * 10) / 10,
           sugarG: Math.round((n["sugars_100g"] ?? 0) * 10) / 10,
           sodiumMg: Math.round((n.sodium_100g ?? 0) * 1000),
+          _basisCorrected: recon.corrected,
           // F-79 — pull every micro OFF exposes; commit sites scale + persist.
           microsPer100g: parseOffMicrosPer100g(n),
         };

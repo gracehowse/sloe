@@ -24,13 +24,14 @@ import { AlertCircle, Camera, Check, PlusCircle, X } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, type Href } from "expo-router";
 
-import { lookupBarcode, scaleMacros, submitFoodCorrection, type BarcodeProduct } from "@/lib/verifyRecipe";
+import { lookupBarcode, scaleMacrosByGrams, submitFoodCorrection, type BarcodeProduct } from "@/lib/verifyRecipe";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { Accent, Spacing, Radius, Colors } from "@/constants/theme";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/auth";
 import { dateKeyFromDate, newMealId } from "@/lib/nutritionJournal";
 import { snapshotDailyTargetIfMissing } from "@suppr/shared/nutrition/dailyTargetSnapshot";
+import { checkScaledLogPlausibility } from "@suppr/shared/nutrition/macroPlausibility";
 import { scaleCaffeineAlcohol } from "@suppr/shared/nutrition/scaleCaffeineAlcoholForGrams";
 import { scaleMicrosForGrams } from "@suppr/shared/openFoodFacts/parseOffMicros";
 import { clampRememberedToServingOptions, getRememberedPortion, recordPortion } from "@/lib/barcodePortionMemory";
@@ -79,6 +80,11 @@ export default function BarcodeScreen() {
   const [corrFat, setCorrFat] = useState("");
   const [corrSaving, setCorrSaving] = useState(false);
 
+  // P0 (2026-05-26) — once the user confirms past a "numbers look unusually
+  // high" plausibility warning, this ref lets the next Log tap proceed
+  // without re-prompting. Reset on every fresh scan / portion change.
+  const plausibilityOverrideRef = useRef(false);
+
   const grams = useMemo(() => {
     const n = Number.parseFloat(String(gramsInput).replace(",", ".").trim());
     if (!Number.isFinite(n) || n <= 0) return 100;
@@ -87,7 +93,7 @@ export default function BarcodeScreen() {
 
   const scaled = useMemo(() => {
     if (!product) return null;
-    return scaleMacros(
+    return scaleMacrosByGrams(
       { calories: product.calories, protein: product.protein, carbs: product.carbs, fat: product.fat, fiberG: product.fiberG },
       grams,
     );
@@ -107,6 +113,7 @@ export default function BarcodeScreen() {
       setLoading(true);
       setError(null);
       setProduct(null);
+      plausibilityOverrideRef.current = false;
       const result = await lookupBarcode(e.data);
       setLoading(false);
       if (result) {
@@ -141,11 +148,8 @@ export default function BarcodeScreen() {
     [loading],
   );
 
-  const handleLog = useCallback(async () => {
-    if (!scaled || !product || !userId) {
-      if (!userId) Alert.alert("Sign in", "Sign in to log food to your tracker.");
-      return;
-    }
+  const commitLog = useCallback(async () => {
+    if (!scaled || !product || !userId) return;
     setLogging(true);
     const dateKey = dateKeyFromDate(new Date());
     const mealId = newMealId();
@@ -224,11 +228,61 @@ export default function BarcodeScreen() {
       // the user reads back exactly what they just logged (Cal AI /
       // MFP parity, the "what" not the verb). Mobile parity sweep.
       Alert.alert(`${product.name} logged`, `Added to today's tracker (${portionSummary}).`, [
-        { text: "Scan another", onPress: () => { lastRef.current = null; setLast(null); setProduct(null); setError(null); setRememberedPortion(null); } },
+        { text: "Scan another", onPress: () => { lastRef.current = null; setLast(null); setProduct(null); setError(null); setRememberedPortion(null); plausibilityOverrideRef.current = false; } },
         { text: "Go to tracker", onPress: () => router.push("/(tabs)/index" as Href) },
       ]);
     }
   }, [scaled, product, userId, grams, portionSummary, router, last]);
+
+  const handleLog = useCallback(async () => {
+    if (!scaled || !product || !userId) {
+      if (!userId) Alert.alert("Sign in", "Sign in to log food to your tracker.");
+      return;
+    }
+    // P0 (2026-05-26) — physical-plausibility guard before writing the row.
+    // Catches the OFF per-serving-basis bug (e.g. 500 g Greek yogurt scaling
+    // to ~1,325 kcal / 265 g protein) and any other physically-impossible
+    // scaled value. Soft-flag: warn + let the user confirm or edit; never a
+    // hard block (legit edge foods like oil/protein isolate must pass) and
+    // never a silent bad write. `product.{calories,…}` is the per-100g panel
+    // for the source-basis cross-check.
+    const plausibility = checkScaledLogPlausibility(
+      { calories: scaled.calories, protein: scaled.protein, carbs: scaled.carbs, fat: scaled.fat },
+      grams,
+      { calories: product.calories, protein: product.protein, carbs: product.carbs, fat: product.fat },
+    );
+    if ((!plausibility.ok || product.basisCorrected) && !plausibilityOverrideRef.current) {
+      Alert.alert(
+        "Double-check these numbers",
+        `${Math.round(scaled.calories)} kcal and ${Math.round(scaled.protein)} g protein for ${Math.round(grams)} g looks unusually high — this product's label data may be per serving, not per 100 g. Edit the values or amount if they look wrong.`,
+        [
+          {
+            text: "Edit",
+            style: "cancel",
+            // Inline the same state openCorrectionMode sets (defined below);
+            // avoids a forward reference inside this useCallback.
+            onPress: () => {
+              setCorrName(product.name);
+              setCorrCalories(String(product.calories));
+              setCorrProtein(String(product.protein));
+              setCorrCarbs(String(product.carbs));
+              setCorrFat(String(product.fat));
+              setCorrectionMode(true);
+            },
+          },
+          {
+            text: "Log anyway",
+            onPress: () => {
+              plausibilityOverrideRef.current = true;
+              void commitLog();
+            },
+          },
+        ],
+      );
+      return;
+    }
+    await commitLog();
+  }, [scaled, product, userId, grams, commitLog]);
 
   const handleManualLog = useCallback(async () => {
     const cal = Number(manualCalories) || 0;
@@ -324,6 +378,8 @@ export default function BarcodeScreen() {
       setProduct(corrected);
       setCorrectionMode(false);
       setGramsInput("100");
+      // Corrected values supersede the OFF basis warning; re-evaluate fresh.
+      plausibilityOverrideRef.current = false;
     }
   }, [last, userId, corrName, corrCalories, corrProtein, corrCarbs, corrFat, product]);
 
@@ -334,6 +390,7 @@ export default function BarcodeScreen() {
     setError(null);
     setManualMode(false);
     setCorrectionMode(false);
+    plausibilityOverrideRef.current = false;
   }, []);
 
   const styles = useMemo(

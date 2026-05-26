@@ -50,6 +50,16 @@ function defaultBookNameFromFile(name: string): string {
   return name.replace(/\.pdf$/i, "").replace(/[_-]+/g, " ").trim().slice(0, 80) || "Imported cookbook";
 }
 
+// Client-side PDF size ceiling. The HARD limit is Vercel's ~4.5 MB
+// serverless request-body cap: the PDF is POSTed as multipart FormData to
+// /api/cookbook-import/extract (NOT uploaded to Storage), so a larger file is
+// rejected by Vercel's infra (413) BEFORE our server-side 20 MB check ever
+// runs. We validate at 4 MB on the client so the user gets an honest,
+// immediate message instead of a confusing "Server error". Raising this
+// requires the direct-to-Supabase-Storage upload path — see the cookbook
+// import follow-up; bumping the number alone does nothing.
+const MAX_PDF_BYTES = 4 * 1024 * 1024;
+
 export default function CookbookImportScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -77,6 +87,14 @@ export default function CookbookImportScreen() {
     });
     if (result.canceled || !result.assets?.[0]) return;
     const asset = result.assets[0];
+    if (typeof asset.size === "number" && asset.size > MAX_PDF_BYTES) {
+      const mb = (asset.size / (1024 * 1024)).toFixed(1);
+      Alert.alert(
+        "PDF too large",
+        `This PDF is ${mb} MB — the current limit is 4 MB. Export a searchable PDF (selectable text, not a flat scan); those are far smaller than a scanned image. If it's still too big, split the cookbook into sections and import each.`,
+      );
+      return;
+    }
     setPickedFile({
       uri: asset.uri,
       name: asset.name ?? "cookbook.pdf",
@@ -152,7 +170,7 @@ export default function CookbookImportScreen() {
           "Cookbook PDF import is included with Suppr Pro — same as photo recipe import.",
           [
             { text: "Not now", style: "cancel" },
-            { text: "View plans", onPress: () => router.push("/paywall") },
+            { text: "View plans", onPress: () => router.push("/paywall?from=recipe_import") },
           ],
         );
         return;
@@ -230,7 +248,7 @@ export default function CookbookImportScreen() {
           `Free plan is limited to ${COOKBOOK_IMPORT_FREE_SAVE_CAP} saved recipes.`,
           [
             { text: "Cancel", style: "cancel" },
-            { text: "Upgrade", onPress: () => router.push("/paywall") },
+            { text: "Upgrade", onPress: () => router.push("/paywall?from=recipe_import") },
           ],
         );
         return;
@@ -485,7 +503,7 @@ export default function CookbookImportScreen() {
           <Text style={styles.uploadHint}>
             {pickedFile
               ? "Tap to replace · export a searchable PDF (not a flat scan)"
-              : "Adobe Scan, Notes, or similar — 20 MB max"}
+              : "Searchable PDF export (not a flat scan) — 4 MB max"}
           </Text>
         </Pressable>
         <Text style={styles.label}>Book name</Text>

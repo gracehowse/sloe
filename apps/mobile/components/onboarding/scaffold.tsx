@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Text, View, ViewStyle, StyleProp } from "react-native";
+import { ScrollView, Text, View, ViewStyle, StyleProp } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Accent, Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -83,20 +83,27 @@ export function MobileStepBody({
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
 }) {
+  // Scrollable so content-heavy steps (e.g. the pace screen with the
+  // safety-floor warning) don't overflow with no way to reach the rest.
+  // `flexGrow: 1` preserves the prior flex:1 fill for steps whose content
+  // is shorter than the viewport. 2026-05-25.
   return (
-    <View
-      style={[
+    <ScrollView
+      style={{ flex: 1 }}
+      contentContainerStyle={[
         {
-          flex: 1,
+          flexGrow: 1,
           paddingHorizontal: Spacing.xl,
           paddingTop: Spacing.xl,
           paddingBottom: Spacing.md,
         },
         style,
       ]}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
     >
       {children}
-    </View>
+    </ScrollView>
   );
 }
 

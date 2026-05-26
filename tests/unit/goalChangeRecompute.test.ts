@@ -117,10 +117,26 @@ describe("goal-change recompute — pure compute", () => {
     const maintain = recomputeTargetsFromProfile({ ...FIXTURE, goal: "maintain" })!;
     const gain = recomputeTargetsFromProfile({ ...FIXTURE, goal: "bulk" })!;
 
+    // Maintenance = static Mifflin × moderate (no adaptive fields passed →
+    // resolveMaintenance falls back to the formula). 1320.25 BMR × 1.55
+    // → 2046.
     expect(maintain.maintenanceTdee).toBe(2046);
+    // steady = 0.5 kg/week. Continuous pace (target-recompute unification,
+    // 2026-05-26): deficit = round(0.5 × 7700 / 7) = 550.
+    //   lose:     2046 - 550 = 1496  (UNCHANGED — for a deficit, the
+    //             continuous model and the old PACE_DAILY_DEFICIT.steady
+    //             bucket both equal 550).
+    //   maintain: 2046          (UNCHANGED).
+    //   gain:     2046 + 550 = 2596  (CHANGED, was 2321). The OLD editor
+    //             path applied a HALF-magnitude surplus (+275 = the steady
+    //             bucket × 0.5) via calculateBudget — a bug: onboarding's
+    //             continuous-pace gain surplus was always the full 550, so
+    //             the editor under-fed gainers. The editor now matches
+    //             onboarding + the weekly check-in. 2596 is the correct,
+    //             unified number.
     expect(lose.target_calories).toBe(1496);
     expect(maintain.target_calories).toBe(2046);
-    expect(gain.target_calories).toBe(2321);
+    expect(gain.target_calories).toBe(2596);
   });
 
   it("recomputes ALL FOUR macros (not calories alone) on a goal change", () => {
@@ -258,6 +274,206 @@ describe("goal-change recompute — persistence contract", () => {
     expect(written).not.toHaveProperty("target_calories_set_at");
     // No backfill / no goal_history insert for a weight-only change.
     expect(supabase.inserts).toHaveLength(0);
+  });
+
+  it("writes pace_kg_per_week (continuous) alongside the plan_pace preset on a recompute", async () => {
+    // target-recompute unification (2026-05-26): the lossless continuous
+    // pace is persisted next to the snapped preset. The editor passes a
+    // `plan_pace` preset today, so persist reconstructs the continuous
+    // value from PACE_WEEKLY_KG[preset].
+    const supabase = makeMockSupabase({
+      target_calories: 2046,
+      sex: "female",
+      weight_kg: 60,
+      height_cm: 165,
+      age: 30,
+      activity_level: "moderate",
+      goal: "maintain",
+    });
+    const recomputed = recomputeTargetsFromProfile({ ...FIXTURE, goal: "cut" })!;
+
+    await persistRecomputedTargets(supabase, "user-1", {
+      profileUpdate: { goal: "cut", plan_pace: "accelerated" },
+      recomputed,
+      source: "recompute",
+    });
+
+    const written = supabase.updates.at(-1)!;
+    expect(written.plan_pace).toBe("accelerated");
+    // accelerated = 0.75 kg/week.
+    expect(written.pace_kg_per_week).toBe(0.75);
+  });
+
+  it("prefers an explicit continuous paceKgPerWeek over the snapped preset", async () => {
+    const supabase = makeMockSupabase({
+      target_calories: 2046,
+      sex: "female",
+      weight_kg: 60,
+      height_cm: 165,
+      age: 30,
+      activity_level: "moderate",
+      goal: "maintain",
+    });
+    const recomputed = recomputeTargetsFromProfile({ ...FIXTURE, goal: "cut" })!;
+
+    await persistRecomputedTargets(supabase, "user-1", {
+      profileUpdate: { goal: "cut", plan_pace: "steady" },
+      recomputed,
+      source: "recompute",
+      paceKgPerWeek: 0.42, // exact slider value, between steady + relaxed
+    });
+
+    const written = supabase.updates.at(-1)!;
+    expect(written.plan_pace).toBe("steady"); // snapped mirror preserved
+    expect(written.pace_kg_per_week).toBe(0.42); // lossless value wins
+  });
+
+  it("writes pace_kg_per_week = 0 when the goal becomes maintain", async () => {
+    const supabase = makeMockSupabase({
+      target_calories: 1496,
+      sex: "female",
+      weight_kg: 60,
+      height_cm: 165,
+      age: 30,
+      activity_level: "moderate",
+      goal: "cut",
+      plan_pace: "steady",
+    });
+    const recomputed = recomputeTargetsFromProfile({ ...FIXTURE, goal: "maintain", planPace: null })!;
+
+    await persistRecomputedTargets(supabase, "user-1", {
+      profileUpdate: { goal: "maintain", plan_pace: null },
+      recomputed,
+      source: "recompute",
+    });
+
+    const written = supabase.updates.at(-1)!;
+    expect(written.plan_pace).toBeNull();
+    expect(written.pace_kg_per_week).toBe(0);
+  });
+
+  it("does NOT write pace_kg_per_week on a goal-weight-only edit", async () => {
+    const supabase = makeMockSupabase();
+    await persistRecomputedTargets(supabase, "user-1", {
+      profileUpdate: { goal_weight_kg: 58 },
+      recomputed: null,
+      source: "recompute",
+    });
+    const written = supabase.updates.at(-1)!;
+    expect(written).not.toHaveProperty("pace_kg_per_week");
+  });
+
+  it("degrades gracefully when pace_kg_per_week column is missing (retries without it)", async () => {
+    // Simulate an env where migration 20260526100000 hasn't been pushed:
+    // the first update fails with a schema-cache error naming the column;
+    // persist must strip it and retry so the goal edit still lands.
+    const updates: Array<Record<string, unknown>> = [];
+    let call = 0;
+    const supabase = {
+      from: (table: string) => {
+        if (table === "profiles") {
+          return {
+            select: () => ({
+              eq: () => ({ maybeSingle: async () => ({ data: { target_calories: 2046, sex: "female", weight_kg: 60, height_cm: 165, age: 30, activity_level: "moderate", goal: "maintain" }, error: null }) }),
+            }),
+            update: (payload: Record<string, unknown>) => {
+              updates.push(payload);
+              call += 1;
+              const hasPace = "pace_kg_per_week" in payload;
+              return {
+                eq: async () => ({
+                  error:
+                    call === 1 && hasPace
+                      ? { message: "Could not find the 'pace_kg_per_week' column of 'profiles' in the schema cache" }
+                      : null,
+                }),
+              };
+            },
+          };
+        }
+        if (table === "goal_history") {
+          return {
+            select: () => ({ eq: () => ({ order: () => ({ order: () => ({ limit: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }) }) }) }),
+            insert: async () => ({ error: null }),
+          };
+        }
+        throw new Error(`unexpected table ${table}`);
+      },
+    };
+    const recomputed = recomputeTargetsFromProfile({ ...FIXTURE, goal: "cut" })!;
+
+    const result = await persistRecomputedTargets(supabase, "user-1", {
+      profileUpdate: { goal: "cut", plan_pace: "steady" },
+      recomputed,
+      source: "recompute",
+    });
+
+    // First attempt included the column + failed; retry stripped it + succeeded.
+    expect(result.ok).toBe(true);
+    expect(updates).toHaveLength(2);
+    expect("pace_kg_per_week" in updates[0]).toBe(true);
+    expect("pace_kg_per_week" in updates[1]).toBe(false);
+    // The rest of the goal edit still wrote.
+    expect(updates[1].target_calories).toBe(recomputed.target_calories);
+    expect(updates[1].goal).toBe("cut");
+  });
+
+  it("computes the preview off ADAPTIVE maintenance when confident + fresh", async () => {
+    // Stage 2 (target-recompute unification, 2026-05-26): the editor now
+    // passes the adaptive columns. With a LOWER adaptive maintenance than
+    // the static Mifflin (2046 for this fixture), the cut target must drop
+    // — the core fix (editor used to show targets off static TDEE).
+    const now = new Date("2026-05-26T09:00:00.000Z");
+    const fresh = "2026-05-20T09:00:00.000Z"; // 6 days old → fresh (<14d)
+
+    const staticCut = recomputeTargetsFromProfile({ ...FIXTURE, goal: "cut", now })!;
+    const adaptiveCut = recomputeTargetsFromProfile({
+      ...FIXTURE,
+      goal: "cut",
+      adaptiveTdee: 1700, // lower than static 2046
+      adaptiveTdeeConfidence: "high",
+      adaptiveTdeeUpdatedAt: fresh,
+      now,
+    })!;
+
+    // Adaptive maintenance is the deficit baseline → lower target + lower
+    // reported maintenance.
+    expect(adaptiveCut.maintenanceTdee).toBe(1700);
+    expect(staticCut.maintenanceTdee).toBe(2046);
+    expect(adaptiveCut.target_calories).toBeLessThan(staticCut.target_calories);
+    // steady = 0.5 kg/week → -550 deficit. 1700 - 550 = 1150, below the
+    // female safety floor (1200) — so the floor flag fires more often off
+    // the adaptive number. That's correct, per the spec.
+    expect(adaptiveCut.target_calories).toBe(1150);
+  });
+
+  it("falls back to STATIC maintenance when the adaptive value is stale", () => {
+    const now = new Date("2026-05-26T09:00:00.000Z");
+    const stale = "2026-05-01T09:00:00.000Z"; // 25 days old → stale (>14d)
+    const result = recomputeTargetsFromProfile({
+      ...FIXTURE,
+      goal: "cut",
+      adaptiveTdee: 1700,
+      adaptiveTdeeConfidence: "high",
+      adaptiveTdeeUpdatedAt: stale,
+      now,
+    })!;
+    // Stale adaptive is rejected → static Mifflin 2046 baseline.
+    expect(result.maintenanceTdee).toBe(2046);
+    expect(result.target_calories).toBe(1496);
+  });
+
+  it("falls back to STATIC maintenance when adaptive confidence is low", () => {
+    const now = new Date("2026-05-26T09:00:00.000Z");
+    const result = recomputeTargetsFromProfile({
+      ...FIXTURE,
+      goal: "cut",
+      adaptiveTdee: 1700,
+      adaptiveTdeeConfidence: "low",
+      adaptiveTdeeUpdatedAt: "2026-05-25T09:00:00.000Z",
+      now,
+    })!;
+    expect(result.maintenanceTdee).toBe(2046);
   });
 
   it("records a goal_history row on a recompute (today-and-forward seal)", async () => {
