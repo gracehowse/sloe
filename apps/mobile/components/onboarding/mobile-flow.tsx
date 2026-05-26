@@ -138,11 +138,27 @@ export function MobileFlow() {
     }
     setCompleting(true);
     try {
-      await persistOnboarding(supabase, {
+      // 2026-05-25 bug fix: persistOnboarding catches + returns its
+      // profile-write error rather than throwing. We MUST inspect the
+      // result — pre-fix this value was ignored, so a rejected write
+      // (e.g. the tier-lockdown trigger firing for a paid user) was
+      // invisible: the flow seeded recipes, fired `onboarding_completed`,
+      // and navigated home as if the plan had saved, leaving the user on
+      // their OLD target with no error. Throw into the catch below so the
+      // user sees "Couldn't finish setup" and we do NOT navigate as if it
+      // worked.
+      const persistResult = await persistOnboarding(supabase, {
         userId,
         state,
         targets,
       });
+      if (!persistResult.ok) {
+        throw new Error(
+          persistResult.error
+            ? `We couldn't save your plan (${persistResult.error}). Please try again.`
+            : "We couldn't save your plan. Please try again.",
+        );
+      }
 
       // Activation hook (audit 2026-04-30): the Recipes step was pulled
       // from the linear flow in the 15→12 shrink, so for a normal

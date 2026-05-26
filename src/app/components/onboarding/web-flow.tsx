@@ -59,6 +59,12 @@ export function WebFlow() {
   const [, setCompletionStatus] = React.useState<
     null | { ok: boolean; planFailed?: boolean; missingCount?: number }
   >(null);
+  // 2026-05-25 bug fix — surface a failed profile write on the terminal
+  // step. Pre-fix `persistOnboarding`'s error was ignored and we bounced
+  // to /home as if the plan had saved (the same swallowed-write bug that
+  // left paid users on their OLD target). Now we render this message and
+  // keep the user on the step so they can retry.
+  const [completionError, setCompletionError] = React.useState<string | null>(null);
 
   // Auto-skip the signup step when the visitor is already authed (e.g.
   // they came from /signin → /onboarding directly). The step renders
@@ -89,6 +95,7 @@ export function WebFlow() {
    */
   const handleComplete = React.useCallback(async () => {
     setCompleting(true);
+    setCompletionError(null);
     try {
       // Build-40 (2026-05-01) — local profile mirrors the manual-target
       // override path. `effectiveTargetsForPersist` returns the manual
@@ -128,11 +135,24 @@ export function WebFlow() {
       }
 
       if (authedUserId) {
-        await persistOnboarding(supabase, {
+        const persistResult = await persistOnboarding(supabase, {
           userId: authedUserId,
           state,
           targets,
         });
+        if (!persistResult.ok) {
+          // 2026-05-25 bug fix — parity with mobile-flow handleComplete.
+          // Don't seed recipes / fire onboarding_completed / navigate to
+          // /home when the profile row itself didn't save. The `finally`
+          // below resets `completing`; we keep the user on the step.
+          setCompletionStatus({ ok: false });
+          setCompletionError(
+            persistResult.error
+              ? `We couldn't save your plan (${persistResult.error}). Please try again.`
+              : "We couldn't save your plan. Please try again.",
+          );
+          return;
+        }
 
         // Phase 5 / B2.3 — seed-and-plan flow per spec Surface F.
         // Best-effort: each step is independently observable so a
@@ -379,6 +399,15 @@ export function WebFlow() {
             >
               <StepComponent />
             </div>
+            {completionError ? (
+              <p
+                role="alert"
+                data-testid="onboarding-completion-error"
+                className="mt-4 rounded-xl border border-destructive/40 bg-destructive/10 px-3.5 py-2.5 text-[13px] leading-snug text-foreground"
+              >
+                {completionError}
+              </p>
+            ) : null}
             <div className="mt-5 flex gap-3 justify-between items-center">
               <button
                 type="button"
