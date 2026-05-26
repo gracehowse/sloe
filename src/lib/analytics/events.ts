@@ -423,7 +423,20 @@ export const AnalyticsEvents = {
    *     below the soft-warn floor. Suppr policy: soft-warn-not-block,
    *     so this is informational not blocking.
    *   - `surface`: "weekly_checkin_sheet" | "settings_targets" — which
-   *     entry point the user used. */
+   *     entry point the user used.
+   *
+   * The post-onboarding "Edit goal & pace" editor (ENG goal-editor,
+   * 2026-05-25 — `surface: "settings_targets"`) reuses this event and
+   * adds, for the goal-change dimension:
+   *   - `previousGoal` / `newGoal`: "cut" | "maintain" | "bulk".
+   *   - `previousPlanPace` / `newPlanPace`: PlanPace | null (null on
+   *     maintain — pace is cleared).
+   *   - `goalWeightChanged`: boolean — the goal-weight field moved
+   *     (does NOT recompute calories; projection input only).
+   *   - `recomputed`: boolean — true when calories + macros were
+   *     recomputed (goal/pace changed); false on a goal-weight-only save.
+   *   - `newTargetKcal`: number | null — the new target when recomputed,
+   *     else null. */
   goal_pace_adjusted: "goal_pace_adjusted",
   /** User dismissed the Sunday "Weekly check-in available" banner on
    * Today (mobile-only — web does not surface the same banner because

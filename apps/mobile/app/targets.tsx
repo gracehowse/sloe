@@ -42,7 +42,9 @@ import {
   buildGoalCard,
 } from "@suppr/shared/targets/targetsView";
 import { WhyThisNumberSheet } from "@/components/today/WhyThisNumberSheet";
+import { GoalPaceEditorSheet } from "@/components/recap/GoalPaceEditorSheet";
 import { paceKgPerWeekFromPreset } from "@suppr/shared/nutrition/whyThisNumber";
+import { isFeatureEnabled } from "@/lib/analytics";
 
 /**
  * Targets screen — 2026-04-20 prototype port. Dedicated surface that
@@ -114,6 +116,13 @@ export default function TargetsScreen() {
   // semantics are identical.
   const [recalculating, setRecalculating] = useState(false);
   const [recalcToast, setRecalcToast] = useState(false);
+  // ENG goal-editor (2026-05-25): the Edit action opens the "Edit goal &
+  // pace" sheet when the `goal-editor` flag is on; otherwise it keeps the
+  // old behaviour (route to /profile, which has no goal control — the gap
+  // this closes). The flag gates only the new UI entry; the recompute
+  // logic itself is unconditional.
+  const goalEditorEnabled = isFeatureEnabled("goal-editor");
+  const [goalEditorOpen, setGoalEditorOpen] = useState(false);
 
   const loadTargets = useCallback(async (signal?: { cancelled: boolean }) => {
     if (!userId) return;
@@ -549,8 +558,15 @@ export default function TargetsScreen() {
         <Text style={styles.title}>Daily targets</Text>
         <Pressable
           style={styles.editBtn}
-          onPress={() => router.push("/profile")}
-          accessibilityLabel="Edit targets"
+          onPress={() => {
+            if (goalEditorEnabled) {
+              setGoalEditorOpen(true);
+            } else {
+              router.push("/profile");
+            }
+          }}
+          accessibilityLabel="Edit goal and pace"
+          testID="targets-edit"
         >
           <Text style={styles.editText}>Edit</Text>
         </Pressable>
@@ -889,7 +905,13 @@ export default function TargetsScreen() {
         weightLogCount={Object.keys(weightKgByDay).length}
         onPressAdjustTarget={() => {
           setWhySheetOpen(false);
-          router.push("/profile?focus=plan" as never);
+          // When the goal editor is live, "Adjust target" opens it in
+          // place rather than routing to /profile (no goal control).
+          if (goalEditorEnabled) {
+            setGoalEditorOpen(true);
+          } else {
+            router.push("/profile?focus=plan" as never);
+          }
         }}
         backgroundColor={colors.background}
         cardColor={colors.card}
@@ -898,6 +920,21 @@ export default function TargetsScreen() {
         textSecondaryColor={colors.textSecondary}
         textTertiaryColor={colors.textTertiary}
       />
+
+      {/* ENG goal-editor (2026-05-25): post-onboarding "Edit goal & pace"
+          sheet. On save, reload the screen's targets so the new calorie
+          number + macro tiles + goal card update in place (mirrors
+          GoalPaceRetuneSheet's onSaved → refetch contract). */}
+      {userId ? (
+        <GoalPaceEditorSheet
+          visible={goalEditorOpen}
+          onClose={() => setGoalEditorOpen(false)}
+          userId={userId}
+          onSaved={() => {
+            void loadTargets();
+          }}
+        />
+      ) : null}
     </View>
   );
 }

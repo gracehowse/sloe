@@ -63,7 +63,7 @@ export type RecomputedTargets = {
  * We deliberately do not invent fallbacks here (no "close enough"
  * nutrition).
  */
-export function recomputeTargetsForActivity(
+export function recomputeTargetsFromProfile(
   input: RecomputeTargetsInput,
 ): RecomputedTargets | null {
   const { sex, weightKg, heightCm, age, activityLevel } = input;
@@ -92,3 +92,13 @@ export function recomputeTargetsForActivity(
     maintenanceTdee: tdee,
   };
 }
+
+/**
+ * Back-compat alias. The helper was named for the activity-level edit
+ * path (build 10 fix E-2), but it recomputes the full target set from
+ * ALL body stats + goal + pace + strategy — so the goal/pace editor
+ * (ENG goal-editor, 2026-05-25) reuses it verbatim. Renamed to
+ * `recomputeTargetsFromProfile` to reflect that; this alias keeps the
+ * existing Settings + provenance-test call-sites working unchanged.
+ */
+export const recomputeTargetsForActivity = recomputeTargetsFromProfile;

@@ -341,6 +341,44 @@ Web `Profile.tsx` writes `prefer_activity_adjusted_calories` as part of the targ
 
 ---
 
+## 10. Update 2026-05-25 — "Edit goal & pace" editor (goal/pace recompute path)
+
+This spec covers the **manual targets editor** (`source = "user"`) and
+references the **activity-level recompute path** (`source = "recompute"`).
+A third edit path now exists: the post-onboarding **"Edit goal & pace"
+editor**, which lets the user change goal type / pace / goal weight and
+recomputes the target via the static formula. It is a `source =
+"recompute"` write, NOT a `source = "user"` write — a goal change is
+intent, not a manual override, so it must not trip the 14-day digest
+cooldown.
+
+- **Web:** `src/app/components/suppr/goal-pace-editor-dialog.tsx`,
+  reached from `Targets.tsx` (`goEdit`).
+- **Mobile:** `apps/mobile/components/recap/GoalPaceEditorSheet.tsx`,
+  reached from `apps/mobile/app/targets.tsx`'s Edit button.
+- Both call the shared compute helper `recomputeTargetsFromProfile`
+  (alias of `recomputeTargetsForActivity`) and the shared write helper
+  `src/lib/nutrition/persistRecomputedTargets.ts`.
+- Gated behind `isFeatureEnabled("goal-editor")`. When off, the Edit
+  action keeps the old behaviour (deep-link to the Profile manual editor).
+
+This **resolves P1-3 / the "broken Daily Targets row" / weak-discoverability
+gaps for the GOAL dimension specifically**: the Goal-card edit affordance,
+previously a dead-end into a profile screen with no goal control, now opens
+a real goal/pace editor. The manual calorie/macro editor (this spec's
+primary subject) is unchanged.
+
+Full decision + locked correctness rules:
+`docs/decisions/2026-05-25-edit-goal-and-pace-editor.md`.
+
+| Field | DB column | Recompute on change? |
+|---|---|---|
+| Goal type (cut/maintain/bulk) | `goal` | Yes — recompute calories + all 4 macros |
+| Pace (relaxed…vigorous) | `plan_pace` | Yes — recompute calories + all 4 macros |
+| Goal weight | `goal_weight_kg` | **No** — projection input only, never feeds TDEE |
+
+---
+
 ## Appendix: File Cross-Reference
 
 | File | Role | Key lines |
