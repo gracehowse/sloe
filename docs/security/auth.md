@@ -40,6 +40,22 @@
 
 **Ops / local:** Apple provider secret for **hosted** projects lives in the Supabase Dashboard. For **`supabase start`**, set `SUPABASE_AUTH_EXTERNAL_APPLE_SECRET` in `supabase/.env` (see [`docs/environment.md`](../environment.md#supabase-cli-local-stack-supabase-start) and `supabase/.env.example`).
 
+### Onboarding signup is session-gated (ENG-672, 2026-05-26)
+
+The signup step inside onboarding (`steps/signup.tsx` on both platforms)
+**cannot be advanced past without a real Supabase session.** The shared
+validator `canAdvance("signup", …)` returns `true` only when the flow shell
+passes `hasSession: true` (web `authedUserId != null`; mobile
+`session?.user?.id != null`), and the footer Continue is suppressed on this
+step on both platforms. This prevents a user completing onboarding
+unauthenticated and losing every answer on a `/login` bounce. Mobile is
+Apple-Sign-In-only here (no email path built yet); web keeps its email
+signUp form but only advances once a session lands (confirm-email mode shows
+a "check your email" interstitial). On a defence-in-depth unauthenticated
+terminal-step state, both platforms return the user to the signup step with
+answers intact rather than discarding them. Decision:
+[`docs/decisions/2026-05-26-onboarding-signup-session-gate.md`](../decisions/2026-05-26-onboarding-signup-session-gate.md).
+
 ## Row-Level Security (RLS)
 
 All tables have RLS enabled. Key policies:

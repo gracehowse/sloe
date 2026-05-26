@@ -327,9 +327,18 @@ export function resolveNextStep(
 /** Optional context for `canAdvance` — provider passes the live
  *  `paceWarning` so the Pace step's acknowledgement gate can fire
  *  without state.ts importing from targets.ts (circular). Duck-typed
- *  on `level` to keep the type cycle out. */
+ *  on `level` to keep the type cycle out.
+ *
+ *  ENG-672 (2026-05-26) — `hasSession` carries whether a real Supabase
+ *  session exists right now (web: `authedUserId != null`; mobile:
+ *  `session?.user?.id != null`). The Signup step's Continue affordance
+ *  must stay DISABLED until this is true, so a user can never walk past
+ *  signup unauthenticated and then lose every answer on a /login bounce
+ *  from the terminal step. The flow shells compute `canAdvance` with
+ *  this field populated from their platform auth context. */
 export interface CanAdvanceContext {
   paceWarning?: { level: "info" | "warn" | "danger" } | null;
+  hasSession?: boolean;
 }
 
 /** Per-step validation. Returns true when "Continue" should enable.
@@ -352,14 +361,20 @@ export function canAdvance(
     case "welcome":
       return true;
     case "signup":
-      // The Signup step owns its own "Create account" CTA which fires
-      // the real Supabase signUp and then advances the flow itself
-      // (via context.go). The global footer Continue is suppressed on
-      // this step in the shell — see `web-flow.tsx`. canAdvance
-      // returns true defensively so any code path that doesn't honour
-      // the suppression (e.g. keyboard shortcut, deep-link) still
-      // permits forward motion rather than soft-locking the flow.
-      return true;
+      // ENG-672 (2026-05-26) — advancing past Signup is gated on a REAL
+      // Supabase session. Pre-fix this returned `true` unconditionally,
+      // which let a user tap the footer Continue (mobile never suppressed
+      // it on this step) and walk the rest of the flow unauthenticated;
+      // the terminal step then bounced them to /login, DISCARDING every
+      // computed target + seed. Now the only forward path off Signup is a
+      // landed session (Apple Sign-In on mobile / email signUp on web).
+      // The step still owns its own auth CTA; this guard backstops the
+      // footer Continue and any deep-link / keyboard path so none of them
+      // can leap the auth handshake. `ctx?.hasSession` is supplied by the
+      // flow shells from their platform auth context — when undefined
+      // (e.g. a unit test that doesn't thread auth) we default to the
+      // safe answer: do not advance.
+      return ctx?.hasSession === true;
     case "goal":
       return state.goal !== null;
     case "pace":

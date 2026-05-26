@@ -120,20 +120,26 @@ describe("onboarding v2 — canAdvance per step", () => {
   const cases: Array<[StepId, OnboardingState, boolean, string]> = [
     // welcome — no inputs required
     ["welcome", baseState(), true, "always advances"],
-    // signup — always advanceable from the shared canAdvance contract.
-    // The Signup step owns its own "Create account" CTA which fires
-    // the real Supabase signUp and advances the flow itself; the
-    // global footer Continue is suppressed on this step in the shell.
-    // canAdvance returns true defensively so any code path that
-    // doesn't honour the suppression (keyboard shortcut, deep-link)
-    // still permits forward motion rather than soft-locking the flow.
-    ["signup", baseState(), true, "always advances (step owns its own auth gate)"],
-    ["signup", baseState({ authMethod: "email" }), true, "email auth method"],
+    // signup — ENG-672 (2026-05-26): advancing past Signup is gated on a
+    // REAL Supabase session. Without `hasSession` in the ctx (or with it
+    // false) `canAdvance` returns false — this is the guard that stops a
+    // user walking the rest of the flow unauthenticated and losing every
+    // answer on the terminal /login bounce. The session-true cases live
+    // in their own describe block below (the `cases` table here doesn't
+    // thread ctx). Here we pin the default-deny: even with name/email/
+    // authMethod set, NO session means NO advance.
+    ["signup", baseState(), false, "blocks without a session (default-deny)"],
+    [
+      "signup",
+      baseState({ authMethod: "email" }),
+      false,
+      "authMethod set but no session → still blocked",
+    ],
     [
       "signup",
       baseState({ name: "Grace", email: "grace@example.com" }),
-      true,
-      "name + valid email",
+      false,
+      "name + email typed but no session → still blocked",
     ],
     // strategy — informational (default = goal-derived)
     ["strategy", baseState(), true, "always advances (default = goal-derived)"],
@@ -195,6 +201,57 @@ describe("onboarding v2 — canAdvance per step", () => {
       expect(canAdvance(step, state)).toBe(expected);
     });
   }
+});
+
+describe("onboarding v2 — signup advance is gated on a real session (ENG-672)", () => {
+  /**
+   * ENG-672 (2026-05-26) — Urgent / launch-blocker.
+   *
+   * Pre-fix `canAdvance("signup", …)` returned `true` unconditionally.
+   * On mobile the footer Continue was NOT suppressed on the signup
+   * step, so a user could tap it and walk the entire flow
+   * unauthenticated; the terminal step then bounced them to /login,
+   * DISCARDING every computed target + seed — the worst first
+   * impression for an MFP refugee.
+   *
+   * The guard: forward motion off Signup requires a REAL Supabase
+   * session (`ctx.hasSession === true`), supplied by each flow shell
+   * from its platform auth context. These tests fail loudly if the
+   * gate is ever loosened back to an unconditional `true`.
+   */
+  it("BLOCKS advance when no session has landed (the data-loss guard)", () => {
+    expect(canAdvance("signup", baseState(), { hasSession: false })).toBe(false);
+    // Undefined hasSession (e.g. a deep-link path that didn't thread
+    // auth) must default to the SAFE answer — do not advance.
+    expect(canAdvance("signup", baseState(), {})).toBe(false);
+    expect(canAdvance("signup", baseState())).toBe(false);
+  });
+
+  it("ALLOWS advance only once a real session exists", () => {
+    expect(canAdvance("signup", baseState(), { hasSession: true })).toBe(true);
+  });
+
+  it("a session gates advance even with no name/email typed (Apple-only path)", () => {
+    // Apple Sign-In can land a session without the user ever typing the
+    // optional name field. The session — not the form fields — is the
+    // gate.
+    expect(
+      canAdvance("signup", baseState({ name: "", email: "" }), {
+        hasSession: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("typed credentials WITHOUT a session never advance (premature-advance regression)", () => {
+    // This is the precise shape of the pre-fix bug: the user filled in
+    // fields, the step optimistically advanced before auth resolved.
+    const typed = baseState({
+      name: "Grace",
+      email: "grace@example.com",
+      authMethod: "email",
+    });
+    expect(canAdvance("signup", typed, { hasSession: false })).toBe(false);
+  });
 });
 
 describe("onboarding v2 — pace safety floor is SOFT-WARN", () => {
