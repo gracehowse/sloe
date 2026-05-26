@@ -119,7 +119,7 @@ import { fetchFatSecretAutocomplete } from "@suppr/shared/nutrition/fatsecretAut
 import { shouldShowBarcodeFallbackHint } from "@suppr/shared/nutrition/foodSearchLocale";
 import { formatMacroTrailer } from "@suppr/shared/nutrition/macroFormat";
 import { portionEqualsLabel } from "@suppr/shared/nutrition/portionEqualsLabel";
-import { resolveInitialPortion, buildPortions, customFoodToHit } from "@suppr/shared/nutrition/foodSearchCore";
+import { resolveInitialPortion, buildPortions, customFoodToHit, isPerServingPortion } from "@suppr/shared/nutrition/foodSearchCore";
 
 // 2026-05-15 (ENG-550 phase 2): `STANDARD_UNITS` and `buildPortionList`
 // extracted to `@/lib/nutrition/foodSearchCore` as `STANDARD_UNITS` and
@@ -935,9 +935,12 @@ export default function FoodSearchPanel({
     // the per-serving branch fires whenever the chosen portion has
     // gramWeight 0. Per-100g math still runs for any portion that DOES
     // have a gram weight (g/oz/lb/etc.).
+    // ENG-745: one shared predicate across preview + both commits.
     if (
-      preview.macrosPerServing &&
-      preview.chosenPortion.gramWeight === 0
+      isPerServingPortion({
+        gramWeight: preview.chosenPortion.gramWeight,
+        hasMacrosPerServing: Boolean(preview.macrosPerServing),
+      })
     ) {
       // 2026-05-15: `servingFraction` lets a derived "1 piece" portion
       // scale macros to 1/N of the FatSecret per-serving payload. The
@@ -945,7 +948,7 @@ export default function FoodSearchPanel({
       // serving). Default 1 for back-compat with older portion data.
       const fraction = preview.chosenPortion.servingFraction ?? 1;
       const q = preview.quantity * fraction;
-      const ps = preview.macrosPerServing;
+      const ps = preview.macrosPerServing!;
       // 2026-05-06 audit (D3): pull fiber / sugar / sodium from
       // `microsPerServing` when available so the preview tile
       // matches the meal-detail panel that ultimately gets persisted.

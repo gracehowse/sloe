@@ -4,6 +4,7 @@ import {
   buildPortions,
   STANDARD_UNITS,
   customFoodToHit,
+  isPerServingPortion,
   type FoodPortion,
 } from "../../src/lib/nutrition/foodSearchCore";
 import type { CustomFood } from "../../src/lib/nutrition/customFoods";
@@ -289,5 +290,32 @@ describe("customFoodToHit", () => {
     expect(hit.calsPer100g).toBe(hit.macrosPer100g.calories);
     expect(hit.macrosPer100g.protein).toBe(25);
     expect(hit.macrosPer100g.carbs).toBe(1);
+  });
+});
+
+describe("isPerServingPortion (ENG-745 regression)", () => {
+  it("is TRUE for a count / no-metric serving with per-serving macros (gramWeight 0)", () => {
+    // The FatSecret "1 large tomato" case: gramWeight 0, macrosPerServing
+    // present. MUST be per-serving regardless of whether a (zero) per-100g
+    // panel also exists — this is the bug that logged 0 kcal.
+    expect(isPerServingPortion({ gramWeight: 0, hasMacrosPerServing: true })).toBe(true);
+  });
+
+  it("is FALSE for a metric serving (gramWeight > 0) even with per-serving macros", () => {
+    // "g" / "oz" / "1 cup (170g)" → scale by grams, not per-serving.
+    expect(isPerServingPortion({ gramWeight: 170, hasMacrosPerServing: true })).toBe(false);
+    expect(isPerServingPortion({ gramWeight: 1, hasMacrosPerServing: true })).toBe(false);
+  });
+
+  it("is FALSE when there are no per-serving macros to use", () => {
+    // No payload to scale by quantity → fall through to per-100g math.
+    expect(isPerServingPortion({ gramWeight: 0, hasMacrosPerServing: false })).toBe(false);
+  });
+
+  it("does NOT depend on macrosPer100g being null (the bug the old guard had)", () => {
+    // The old commit guard also required `macrosPer100g === null`; a
+    // FatSecret food carrying a non-null zero per-100g panel then logged
+    // 0 kcal. This predicate ignores per-100g entirely — by design.
+    expect(isPerServingPortion({ gramWeight: 0, hasMacrosPerServing: true })).toBe(true);
   });
 });

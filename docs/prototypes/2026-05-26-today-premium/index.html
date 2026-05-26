@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Today — premium redesign (prototype)</title>
+<style>
+  :root{
+    --cream:#F6F4EE; --card:#FFFFFF; --border:#ECE9E1; --hairline:#EFECE4;
+    --fill:#F8F6F0; --ink:#1C1B19; --sub:#6B665C; --dim:#9A958A; --faint:#B4AFA4;
+    --green:#3E9D74; --greenbg:#E9F5EF; --blue:#4763E4; --amber:#E08A3C;
+    --protein:#3E9D74; --carbs:#E08A3C; --fat:#E0B84C; --fibre:#6FA8B8;
+    --radius:20px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;background:#ECEAE3;color:var(--ink);padding:32px;-webkit-font-smoothing:antialiased}
+  h1{font-size:20px;margin-bottom:4px}
+  .lede{color:#555;font-size:13px;margin-bottom:26px;max-width:860px;line-height:1.55}
+  .row{display:flex;gap:44px;align-items:flex-start;flex-wrap:wrap}
+  .col-title{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#8a8579;margin-bottom:12px;font-weight:700}
+  .tnum{font-variant-numeric:tabular-nums}
+
+  .phone{width:344px;border:10px solid #111;border-radius:46px;background:var(--cream);padding:12px 12px 20px;position:relative;box-shadow:0 22px 54px rgba(0,0,0,.24)}
+  .notch{width:120px;height:24px;background:#111;border-radius:0 0 16px 16px;position:absolute;top:0;left:50%;transform:translateX(-50%)}
+  .statusbar{display:flex;justify-content:space-between;font-size:12px;color:#111;font-weight:600;padding:6px 8px 8px}
+  .scroll{padding:0 4px}
+
+  .datehdr{display:flex;justify-content:space-between;align-items:center;padding:4px 6px 8px}
+  .datehdr .d{font-size:22px;font-weight:800}
+  .datehdr .sub{font-size:12px;color:var(--dim)}
+  .daystrip{display:flex;gap:6px;padding:0 4px 10px}
+  .daystrip .day{flex:1;text-align:center;font-size:11px;color:var(--dim);padding:6px 0;border-radius:10px}
+  .daystrip .day.on{background:var(--ink);color:#fff;font-weight:700}
+  .calm{font-size:12px;color:var(--dim);text-align:center;padding:2px 0 12px}
+
+  /* HERO — the one filled region */
+  .hero{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 16px 14px;box-shadow:0 1px 2px rgba(0,0,0,.04),0 10px 30px rgba(0,0,0,.05);margin-bottom:14px}
+  .ring-wrap{display:flex;justify-content:center;margin-bottom:6px}
+  .ring{position:relative;width:188px;height:188px}
+  .ring .ctr{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .ring .rem{font-size:38px;font-weight:800;letter-spacing:-1px;color:var(--green);line-height:1}
+  .ring .of{font-size:12px;color:var(--dim);margin-top:3px}
+  .ring .st{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--green);font-weight:700;margin-top:6px}
+  .earned{text-align:center;font-size:11.5px;color:var(--sub);margin:2px 0 12px}
+  .earned b{color:var(--green);font-weight:700}
+
+  .hr{height:1px;background:var(--hairline);margin:0 -2px}
+
+  .macros{display:flex;padding:14px 0 2px}
+  .macros .m{flex:1;padding:0 4px}
+  .m .v{font-size:16px;font-weight:800;letter-spacing:-.3px}
+  .m .v small{font-size:11px;font-weight:500;color:var(--dim)}
+  .m .k{font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--dim);font-weight:700;margin:3px 0 5px}
+  .m .track{height:3px;border-radius:2px;background:#EEEBE3;overflow:hidden}
+  .m .track > i{display:block;height:100%;border-radius:2px}
+  .allnutr{text-align:right;font-size:12px;color:var(--blue);font-weight:600;margin-top:10px}
+
+  /* MEALS card */
+  .meals{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:6px 16px;margin-bottom:14px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .planrow{display:flex;align-items:center;justify-content:space-between;padding:12px 0}
+  .planrow .pl{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);font-weight:700}
+  .plan-item{display:flex;align-items:center;justify-content:space-between;padding:8px 0}
+  .plan-item .nm{font-size:13.5px;color:var(--ink)}
+  .plan-item .nm small{color:var(--dim);font-weight:500}
+  .plan-item .log{font-size:13px;color:var(--blue);font-weight:600}
+  .slot{padding:12px 0}
+  .slot .shd{display:flex;align-items:center;gap:9px;margin-bottom:8px}
+  .slot .ic{width:28px;height:28px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:14px}
+  .slot .nm{font-size:15px;font-weight:700}
+  .slot .kc{margin-left:auto;font-size:13px;color:var(--sub);font-weight:600}
+  .item{display:flex;align-items:center;gap:9px;padding:6px 0 6px 37px;font-size:13px;color:var(--sub)}
+  .item .dot{width:6px;height:6px;border-radius:50%;background:var(--green)}
+  .item .ikc{margin-left:auto;color:var(--dim)}
+  .addrow{display:flex;align-items:center;gap:6px;padding:11px 0 11px 37px;font-size:13px;color:var(--dim);font-weight:600}
+
+  /* ACTIVITY — borderless section */
+  .sect{padding:4px 18px 2px;margin-bottom:6px}
+  .sect .shd{font-size:13px;font-weight:800;color:var(--ink);padding:6px 0 10px}
+  .astrip{display:flex;padding-bottom:10px}
+  .astrip .a{flex:1}
+  .a .v{font-size:16px;font-weight:800}
+  .a .v.green{color:var(--green)}
+  .a .k{font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--dim);font-weight:700;margin-top:3px}
+  .pace{padding:10px 0 2px;font-size:12px;color:var(--sub)}
+  .pace b{color:var(--ink);font-weight:700}
+  .arow{display:flex;align-items:center;gap:9px;padding:9px 0;font-size:13px;color:var(--sub)}
+  .arow .bk{margin-left:auto;color:var(--amber);font-weight:700;font-size:12px}
+  .connect{padding:11px 0;font-size:13px;color:var(--blue);font-weight:600}
+
+  .complete{margin:14px 6px 4px;background:var(--blue);color:#fff;border:none;border-radius:14px;padding:15px;font-size:15px;font-weight:700;width:calc(100% - 12px);cursor:pointer}
+
+  .ann{max-width:320px;font-size:12.5px;line-height:1.55;color:#444}
+  .ann h3{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#8a8579;margin:16px 0 8px}
+  .ann li{margin:0 0 7px 18px}
+  .ann .before{color:#a23;font-weight:600}
+</style>
+</head>
+<body>
+  <h1>Today — premium redesign · prototype</h1>
+  <p class="lede">
+    Same eye as the digest. Before: 6–7 stacked bordered cards below the ring, the remaining-kcal number shown 3×, a 2×2 macro tile grid, and an
+    activity card running 3 colours with bordered sub-rows. After: <b>one</b> filled hero (ring + a borderless macro strip), the meals card absorbs the
+    Planned section, the activity box-soup collapses into one hairline section with a single signal colour, and one primary "Complete day" at the foot.
+  </p>
+
+  <div class="row">
+    <div>
+      <div class="col-title">Mobile — logged day</div>
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="statusbar"><span>16:11</span><span>5G ▰▰▰</span></div>
+        <div class="scroll">
+
+          <div class="datehdr"><span class="d">Today</span><span class="sub">Tue, May 26</span></div>
+          <div class="daystrip">
+            <span class="day">F</span><span class="day">S</span><span class="day">S</span>
+            <span class="day">M</span><span class="day on">T</span><span class="day">W</span><span class="day">T</span>
+          </div>
+          <div class="calm">A fresh start — log when you're ready.</div>
+
+          <!-- HERO -->
+          <div class="hero">
+            <div class="ring-wrap">
+              <div class="ring">
+                <svg width="188" height="188" viewBox="0 0 188 188">
+                  <circle cx="94" cy="94" r="84" fill="none" stroke="#EEEBE3" stroke-width="14"/>
+                  <circle cx="94" cy="94" r="84" fill="none" stroke="#3E9D74" stroke-width="14" stroke-linecap="round"
+                    stroke-dasharray="527.8" stroke-dashoffset="142" transform="rotate(-90 94 94)"/>
+                </svg>
+                <div class="ctr">
+                  <div class="rem tnum">537</div>
+                  <div class="of tnum">of 2,000 kcal left</div>
+                  <div class="st">On track</div>
+                </div>
+              </div>
+            </div>
+            <div class="earned">+180 kcal earned from activity today</div>
+            <div class="hr"></div>
+            <div class="macros">
+              <div class="m"><div class="v tnum">88<small>/140g</small></div><div class="k">Protein</div><div class="track"><i style="width:63%;background:var(--protein)"></i></div></div>
+              <div class="m"><div class="v tnum">110<small>/200g</small></div><div class="k">Carbs</div><div class="track"><i style="width:55%;background:var(--carbs)"></i></div></div>
+              <div class="m"><div class="v tnum">43<small>/65g</small></div><div class="k">Fat</div><div class="track"><i style="width:66%;background:var(--fat)"></i></div></div>
+              <div class="m"><div class="v tnum">18<small>/30g</small></div><div class="k">Fibre</div><div class="track"><i style="width:60%;background:var(--fibre)"></i></div></div>
+            </div>
+            <div class="allnutr">All nutrients ›</div>
+          </div>
+
+          <!-- MEALS (absorbs Planned) -->
+          <div class="meals">
+            <div class="planrow"><span class="pl">Planned for today</span></div>
+            <div class="plan-item"><span class="nm">Sunday Beef Stew <small>· 520 kcal</small></span><span class="log">Log</span></div>
+            <div class="plan-item"><span class="nm">Soothing Chicken Congee <small>· 190 kcal</small></span><span class="log">Log</span></div>
+            <div class="hr" style="margin:6px -2px"></div>
+
+            <div class="slot">
+              <div class="shd"><span class="ic" style="background:#EAF4EF">🥗</span><span class="nm">Lunch</span><span class="kc tnum">388 kcal</span></div>
+              <div class="item"><span class="dot"></span>Miracle Noodle · Fettuccine<span class="ikc tnum">12</span></div>
+              <div class="item"><span class="dot"></span>Thai Peanut Sauce (30 g)<span class="ikc tnum">95</span></div>
+              <div class="item"><span class="dot"></span>Bell &amp; Evans · Chicken Breast<span class="ikc tnum">206</span></div>
+            </div>
+            <div class="hr" style="margin:0 -2px"></div>
+            <div class="slot">
+              <div class="shd"><span class="ic" style="background:#F1ECF7">🍪</span><span class="nm">Snacks</span><span class="kc tnum">112 kcal</span></div>
+              <div class="item"><span class="dot"></span>Good Culture · Cottage Cheese<span class="ikc tnum">50</span></div>
+              <div class="item"><span class="dot"></span>Costco · Beefsteak Tomato<span class="ikc tnum">50</span></div>
+            </div>
+            <div class="hr" style="margin:0 -2px"></div>
+            <div class="addrow">+ Add to breakfast or dinner</div>
+          </div>
+
+          <!-- ACTIVITY — one borderless section -->
+          <div class="sect">
+            <div class="shd">Activity</div>
+            <div class="astrip">
+              <div class="a"><div class="v tnum">1,019</div><div class="k">Burned</div></div>
+              <div class="a"><div class="v tnum">1,463</div><div class="k">Food</div></div>
+              <div class="a"><div class="v green tnum">697</div><div class="k">Net deficit</div></div>
+              <div class="a"><div class="v tnum">1,568</div><div class="k">Maintenance</div></div>
+            </div>
+            <div class="hr"></div>
+            <div class="pace">Averaging <b>~510 kcal/day</b> deficit this week · about <b>0.5 kg</b>.</div>
+            <div class="arow">🏃 Walking · 90 min<span class="bk tnum">199 kcal</span></div>
+          </div>
+
+          <button class="complete">Complete day</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="ann">
+      <div class="col-title">What changed</div>
+      <h3>Removed (subtractive-first)</h3>
+      <ul>
+        <li><span class="before">−</span> 2×2 bordered macro tile grid → <b>borderless strip with thin tracks</b></li>
+        <li><span class="before">−</span> duplicate Goal/Food/Bonus row under the ring (number was shown 3×)</li>
+        <li><span class="before">−</span> separate bordered "Planned" card → folded into the meals card</li>
+        <li><span class="before">−</span> Activity card + Activity-Bonus card (bordered sub-rows, 3 colours) → <b>one hairline section, Burned/Food/Net strip, one signal colour on Net</b></li>
+        <li><span class="before">−</span> "Connect health" / "Track hydration?" orphan text links between cards</li>
+        <li><span class="before">−</span> gray-paragraph empty states → single tappable rows</li>
+      </ul>
+      <h3>Kept (differentiators)</h3>
+      <ul>
+        <li>Calorie ring as hero + 3-state colour (empty/green/red)</li>
+        <li>Multi-macro depth (long-press ring to expand arcs)</li>
+        <li>Single centre FAB = the one Log action</li>
+        <li>Calm, observational voice ("averaging ~510/day", not "great deficit!")</li>
+      </ul>
+      <h3>Borrowed</h3>
+      <ul>
+        <li><b>Oura</b> — one filled hero, everything else borderless rows</li>
+        <li><b>Whoop</b> — borderless number-over-label metric strips (macros + activity)</li>
+      </ul>
+      <h3>Open calls for you</h3>
+      <ul>
+        <li>Retire the macro "tiles vs bars" Settings toggle and ship just the strip?</li>
+        <li>Move the projected-kg weekly number off Today → Progress (daily weigh-in anxiety)?</li>
+        <li>Empty meal slots: collapse to one "+ Add" row (shown) vs disappear entirely?</li>
+      </ul>
+      <p style="margin-top:14px;font-size:11.5px;color:#888">Note: grounded on cold-open + code; a logged-day Maestro capture would sharpen the before/after in pixels before build.</p>
+    </div>
+  </div>
+</body>
+</html>

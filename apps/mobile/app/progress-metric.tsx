@@ -340,7 +340,7 @@ export default function ProgressMetricDetailScreen() {
                       user knows the comparison is retroactive. */}
                   {d.calories > 0
                     ? `${Math.round((d.calories / Math.max(d.targetCalories, 1)) * 100)}% of goal${!d.isSnapshot && d.key !== todayKey ? " (approx)" : ""}`
-                    : "No meals"}
+                    : "Nothing logged"}
                 </Text>
               </View>
               <ChevronRight size={18} color={t.dim} strokeWidth={1.75} />
@@ -444,7 +444,7 @@ export default function ProgressMetricDetailScreen() {
                   <View>
                     <Text style={{ fontSize: 14, fontWeight: "700", color: t.text }}>{formatLongDate(row.key)}</Text>
                     <Text style={{ fontSize: 12, color: t.dim, marginTop: 2 }}>
-                      {row.mealCount} meal{row.mealCount !== 1 ? "s" : ""} · {row.calories.toLocaleString()} kcal
+                      {row.mealCount} item{row.mealCount !== 1 ? "s" : ""} · {row.calories.toLocaleString()} kcal
                     </Text>
                   </View>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>

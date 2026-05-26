@@ -85,7 +85,9 @@ afterEach(() => {
 describe("MobileMfpCsvImportCard", () => {
   it("renders the idle state with the choose-file affordance", () => {
     render(<MobileMfpCsvImportCard surface="onboarding" />);
-    expect(screen.getByText("Import from MyFitnessPal")).toBeTruthy();
+    // Copy generalised from MyFitnessPal-specific to multi-app (CSV
+    // adapter framework) in the working tree — assert the heading.
+    expect(screen.getByText("Import from another app")).toBeTruthy();
     expect(screen.getByTestId("mfp-csv-choose-file")).toBeTruthy();
   });
 
@@ -115,9 +117,7 @@ describe("MobileMfpCsvImportCard", () => {
     fireEvent.press(screen.getByTestId("mfp-csv-choose-file"));
 
     await waitFor(() =>
-      expect(
-        screen.getByText(/Imported 7 meals from MyFitnessPal/),
-      ).toBeTruthy(),
+      expect(screen.getByText(/Imported 7 meals/)).toBeTruthy(),
     );
 
     // Verify the upload fired with the right URL + method.

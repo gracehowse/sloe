@@ -16,6 +16,66 @@ export type DigestHeadlineInput = {
 };
 
 /**
+ * ENG-740 — extra data the blended Week-Digest card consumes that the
+ * legacy two-card layout did not surface as a single struct. Shared
+ * across web + mobile so the merged card cannot drift.
+ *
+ * Every field is optional / nullable: the card gracefully omits the
+ * element it backs when the host can't supply a real value. We never
+ * invent a number to fill the hero track or pattern bars.
+ */
+export type DigestBlendedExtras = {
+  /**
+   * Day-of-week pattern from `computeDayOfWeekPattern` — drives the
+   * PATTERN row's two-bar comparison + delta. `null` → suppress the
+   * whole PATTERN row (insufficient data or sub-threshold delta).
+   * The host should additionally suppress it under ~4 logged days.
+   */
+  dayOfWeekPattern: {
+    highDay: string;
+    lowDay: string;
+    deltaKcal: number;
+    highDayAvg: number;
+    lowDayAvg: number;
+  } | null;
+  /**
+   * Per-day calorie target active on the closest-to-target day (from
+   * `recap.bestDay.targetCalories`). Drives the hero track denominator.
+   * `0` / `null` → render the hero day + calories without the track.
+   */
+  closestDayTargetCalories: number | null;
+};
+
+/** Calorie-ring 3-state classifier for the blended hero dot + number.
+ *  Mirrors `feedback_calorie_ring_colour_mapping.md`:
+ *    under target → success green, over → destructive red,
+ *    within ±4% (min ±40 kcal) of target → neutral.
+ *  Returns "neutral" when no target is set (track is suppressed then,
+ *  but the classifier stays total). */
+export function classifyDigestHeroTone(
+  dayCalories: number,
+  targetCalories: number,
+): "under" | "over" | "neutral" {
+  if (!(targetCalories > 0) || !Number.isFinite(dayCalories)) return "neutral";
+  const diff = dayCalories - targetCalories;
+  const tolerance = Math.max(40, targetCalories * 0.04);
+  if (Math.abs(diff) <= tolerance) return "neutral";
+  return diff > 0 ? "over" : "under";
+}
+
+/** Clamp the hero-track dot position to [0,1] given day vs target.
+ *  `0` target → returns 0 (caller suppresses the track anyway). */
+export function digestHeroTrackFraction(
+  dayCalories: number,
+  targetCalories: number,
+): number {
+  if (!(targetCalories > 0) || !Number.isFinite(dayCalories)) return 0;
+  const frac = dayCalories / targetCalories;
+  if (!Number.isFinite(frac)) return 0;
+  return Math.min(1, Math.max(0, frac));
+}
+
+/**
  * Resolve the single headline string per §5.
  *
  * Rules (first match wins):

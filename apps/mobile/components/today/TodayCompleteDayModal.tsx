@@ -126,9 +126,16 @@ export function TodayCompleteDayModal({
                     paddingHorizontal: 20,
                   }}
                 >
+                  {/* ENG-741 \u2014 dropped the "Your Journey page uses your
+                      7-day average\u2026" sentence. The Progress trajectory /
+                      Journey projection is gated to \u22655 logged days, so a
+                      user seeing this modal on day 1-4 was pointed at a
+                      projection that isn't on Progress yet. The remaining
+                      copy is truthful about THIS modal's single-day basis
+                      without promising a Progress projection. */}
                   {isToday
-                    ? "Based on today\u2019s logged calories repeated daily (7,700 kcal \u2248 1 kg). Your Journey page uses your 7-day average, so the number there may differ."
-                    : "Based on this day\u2019s logged calories repeated daily (7,700 kcal \u2248 1 kg). Your Journey page uses your 7-day average, so the number there may differ."}
+                    ? "Based on today\u2019s logged calories repeated daily (7,700 kcal \u2248 1 kg). An estimate, not a promise."
+                    : "Based on this day\u2019s logged calories repeated daily (7,700 kcal \u2248 1 kg). An estimate, not a promise."}
                 </Text>
               </>
             );

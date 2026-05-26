@@ -104,7 +104,7 @@ import { track } from "../../../lib/analytics/track";
 import { fetchFatSecretAutocomplete } from "@/lib/nutrition/fatsecretAutocompleteClient";
 import { shouldShowBarcodeFallbackHint } from "@/lib/nutrition/foodSearchLocale";
 import { portionEqualsLabel } from "@/lib/nutrition/portionEqualsLabel";
-import { resolveInitialPortion, buildPortions, customFoodToHit } from "@/lib/nutrition/foodSearchCore";
+import { resolveInitialPortion, buildPortions, customFoodToHit, isPerServingPortion } from "@/lib/nutrition/foodSearchCore";
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -1326,13 +1326,16 @@ export function FoodSearchPanel({
     // math still runs for any portion that DOES have a gram weight.
     // `servingFraction` lets a derived "1 piece" portion scale the
     // macros to 1/N of the full serving (default 1 = full serving).
+    // ENG-745: one shared predicate across preview + both commits.
     if (
-      preview.macrosPerServing &&
-      preview.chosenPortion.gramWeight === 0
+      isPerServingPortion({
+        gramWeight: preview.chosenPortion.gramWeight,
+        hasMacrosPerServing: Boolean(preview.macrosPerServing),
+      })
     ) {
       const fraction = preview.chosenPortion.servingFraction ?? 1;
       const q = preview.quantity * fraction;
-      const ps = preview.macrosPerServing;
+      const ps = preview.macrosPerServing!;
       const m = preview.microsPerServing ?? {};
       const fiberPerServing = typeof m.fiberG === "number" ? m.fiberG : 0;
       const sugarPerServing = typeof m.sugarG === "number" ? m.sugarG : 0;

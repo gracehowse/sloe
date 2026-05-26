@@ -87,7 +87,7 @@ export function MfpCsvImportCard({
         if (!token) {
           setPhase({
             kind: "error",
-            message: "Sign in to import your MyFitnessPal history.",
+            message: "Sign in to import your history.",
           });
           track(AnalyticsEvents.mfp_csv_import_failed, {
             error: "unauthorized",
@@ -140,7 +140,7 @@ export function MfpCsvImportCard({
           platform: "web",
         });
         toast.success(
-          `Imported ${json.imported} meal${json.imported === 1 ? "" : "s"} from MyFitnessPal.`,
+          `Imported ${json.imported} meal${json.imported === 1 ? "" : "s"}.`,
         );
       } catch (e) {
         const message = e instanceof Error ? e.message : "Import failed.";
@@ -170,7 +170,7 @@ export function MfpCsvImportCard({
         type="file"
         accept=".csv,text/csv"
         className="sr-only"
-        aria-label="MyFitnessPal CSV file"
+        aria-label="CSV file to import"
         data-testid="mfp-csv-file-input"
         onChange={(e) => {
           const f = e.target.files?.[0];
@@ -187,7 +187,7 @@ export function MfpCsvImportCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <h3 className="flex-1 text-sm font-bold text-foreground tracking-tight">
-              Import from MyFitnessPal
+              Import from another app
             </h3>
             {phase.kind === "success" ? (
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-500">
@@ -197,8 +197,9 @@ export function MfpCsvImportCard({
             ) : null}
           </div>
           <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-            Upload your MFP CSV export — we&rsquo;ll bring your meal history
-            into Suppr without changing the macros you already logged.
+            MyFitnessPal, Lose It, or Cronometer — upload the CSV export and
+            we&rsquo;ll bring your meal history into Suppr without changing the
+            macros you already logged.
           </p>
 
           {phase.kind === "idle" && (
@@ -231,7 +232,7 @@ export function MfpCsvImportCard({
               <div className="flex-1">
                 <div className="font-semibold">
                   Imported {phase.imported} meal
-                  {phase.imported === 1 ? "" : "s"} from MyFitnessPal
+                  {phase.imported === 1 ? "" : "s"}
                 </div>
                 {phase.unmatched > 0 && (
                   <div className="text-muted-foreground mt-0.5">

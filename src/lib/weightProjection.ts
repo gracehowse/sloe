@@ -169,6 +169,166 @@ export function projectWeight(opts: {
   };
 }
 
+/**
+ * ENG-741 — average calories over the most recent `windowDays` calendar
+ * days that actually have logged food. Both the Progress "Journey" card
+ * and the new Trajectory card project from this number, so it lives in
+ * one place to guarantee the two surfaces (and web ↔ mobile) can't drift.
+ *
+ * Behaviour mirrors the prior inline derivations exactly:
+ *   - keys are sorted ascending, the trailing `windowDays` *food-logged*
+ *     days are taken (slice(-windowDays))
+ *   - per-day calories sum each entry's `calories`, flooring negatives at
+ *     0 so a malformed entry can't drag the average down
+ *   - returns `{ avgCalories, daysWithFood }`. `avgCalories` is `0` when
+ *     there are no food-logged days (callers gate on `daysWithFood`).
+ *
+ * Generic over the entry shape — only `calories` is read — so it works
+ * with both the mobile `ByDay` meal shape and the web `nutritionByDay`
+ * shape without coupling to either.
+ */
+export function avgCaloriesOverRecentLoggedDays(
+  byDay: Record<string, Array<{ calories?: number | null }>>,
+  windowDays = 7,
+): { avgCalories: number; daysWithFood: number } {
+  const loggedKeys = Object.keys(byDay)
+    .filter((k) => (byDay[k] ?? []).length > 0)
+    .sort();
+  const recent = windowDays > 0 ? loggedKeys.slice(-windowDays) : loggedKeys;
+  if (recent.length === 0) return { avgCalories: 0, daysWithFood: 0 };
+  const total = recent.reduce(
+    (sum, k) =>
+      sum +
+      (byDay[k] ?? []).reduce(
+        (a, m) => a + Math.max(0, Number(m.calories) || 0),
+        0,
+      ),
+    0,
+  );
+  return {
+    avgCalories: Math.round(total / recent.length),
+    // `daysWithFood` is the TOTAL count of food-logged days (not just the
+    // windowed slice) — that's the value the ≥5-day projection floor is
+    // measured against, matching the inline Journey-card behaviour.
+    daysWithFood: loggedKeys.length,
+  };
+}
+
+/**
+ * ENG-741 — signed observed weekly rate (kg/week) derived from a
+ * `WeightGoalTimeline`. Negative = losing, positive = gaining, 0 =
+ * stalled. Extracted from the identical inline expression both Progress
+ * surfaces used before feeding `projectWeight({ observedKgPerWeek })`.
+ */
+export function signedObservedKgPerWeek(timeline: WeightGoalTimeline): number {
+  if (typeof timeline.weeklyRateKg !== "number") return 0;
+  if (timeline.trendDirection === "losing") return -Math.abs(timeline.weeklyRateKg);
+  if (timeline.trendDirection === "gaining") return Math.abs(timeline.weeklyRateKg);
+  return 0;
+}
+
+export type TrajectoryState =
+  | {
+      kind: "projection";
+      /** Projected weight in kg if the recent pace holds. */
+      projectedKg: number;
+      /** Projection horizon in weeks (matches `projectWeight`'s `weeksOut`). */
+      weeks: number;
+      /** Average kcal/day over the recent food-logged window. */
+      avgCalories: number;
+      /** The user's daily calorie target. */
+      targetCalories: number;
+    }
+  | {
+      kind: "placeholder";
+      /** How many more food-logged days are needed to cross the floor. */
+      daysRemaining: number;
+      /** Days logged so far (for the thin progress bar). */
+      daysLogged: number;
+      /** The floor itself (denominator for the progress bar). */
+      daysRequired: number;
+    };
+
+/**
+ * ENG-741 — single source of truth for the Trajectory card's state.
+ *
+ * Reuses `avgCaloriesOverRecentLoggedDays`, `shouldRenderDailyProjection`,
+ * `signedObservedKgPerWeek`, and `projectWeight` — the same maths the
+ * Journey card runs inline — so the new card never re-derives a number.
+ *
+ * Returns:
+ *   - `projection`  when ≥`MIN_DAYS_FOR_PROJECTION` food-logged days exist
+ *                   AND a real average + current weight are available.
+ *   - `placeholder` when below the floor (shows exact days remaining).
+ *   - `null`        when there's no current weight at all — we never
+ *                   invent a projection from a missing input.
+ *
+ * Hiding when weight tracking is opted out is the *caller's* job (same
+ * `weightSurfaceMode === "show"` gate the Journey card uses) — this helper
+ * is pure maths and doesn't know about the surface mode.
+ */
+export function computeTrajectory(opts: {
+  byDay: Record<string, Array<{ calories?: number | null }>>;
+  latestWeightKg: number | null;
+  targetCalories: number;
+  maintenanceTdeeKcal?: number | null;
+  goal?: string | null;
+  timeline?: WeightGoalTimeline | null;
+  weeksOut?: number;
+}): TrajectoryState | null {
+  const {
+    byDay,
+    latestWeightKg,
+    targetCalories,
+    maintenanceTdeeKcal,
+    goal,
+    timeline,
+    weeksOut = 5,
+  } = opts;
+
+  if (latestWeightKg == null || !Number.isFinite(latestWeightKg)) return null;
+
+  const { avgCalories, daysWithFood } = avgCaloriesOverRecentLoggedDays(byDay, 7);
+
+  if (!shouldRenderDailyProjection(daysWithFood)) {
+    return {
+      kind: "placeholder",
+      daysRemaining: Math.max(0, MIN_DAYS_FOR_PROJECTION - daysWithFood),
+      daysLogged: daysWithFood,
+      daysRequired: MIN_DAYS_FOR_PROJECTION,
+    };
+  }
+
+  // Eligible but no real average to project from (e.g. all recent days
+  // logged 0 kcal). Don't fabricate — fall back to placeholder copy.
+  if (avgCalories <= 0) {
+    return {
+      kind: "placeholder",
+      daysRemaining: 0,
+      daysLogged: daysWithFood,
+      daysRequired: MIN_DAYS_FOR_PROJECTION,
+    };
+  }
+
+  const projection = projectWeight({
+    currentWeightKg: latestWeightKg,
+    todayCalories: avgCalories,
+    targetCalories,
+    maintenanceTdeeKcal,
+    goal,
+    weeksOut,
+    observedKgPerWeek: timeline ? signedObservedKgPerWeek(timeline) : null,
+  });
+
+  return {
+    kind: "projection",
+    projectedKg: projection.projectedWeightKg,
+    weeks: projection.projectionWeeks,
+    avgCalories,
+    targetCalories,
+  };
+}
+
 /** Default window for journey peak/trough — ignores very old Health rows that blow up “lost”. */
 export const WEIGHT_JOURNEY_LOOKBACK_DAYS = 540;
 

@@ -123,7 +123,7 @@ import {
   type PlanSlotIconKey,
 } from "@suppr/shared/planning/planDayLabel";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
-import { track } from "@/lib/analytics";
+import { isFeatureEnabled, track } from "@/lib/analytics";
 import * as Haptics from "expo-haptics";
 import { HouseholdSummaryRow } from "@/components/HouseholdSummaryRow";
 import { MoveMealSheet } from "@/components/MoveMealSheet";
@@ -413,6 +413,14 @@ export default function PlannerScreen() {
     deleteExistingSlot: deletePlanSlot,
   } = useMealPlanSlots();
   const [generating, setGenerating] = useState(false);
+
+  // ENG-742 (2026-05-26) — Plan Import is cut from the 2026-07-01 launch
+  // build (not launch-ready; Grace wants more testing without blocking
+  // launch). Gate every entry point on the `plan_import_enabled` flag,
+  // default-off (absent flag → false → hidden). Force-enable for testing
+  // via PostHog targeting (TestFlight) or `EXPO_PUBLIC_FLAG_FORCE_PLAN_IMPORT_ENABLED=true`
+  // in the sim. The screen + API routes stay alive behind the flag.
+  const planImportEnabled = isFeatureEnabled("plan_import_enabled");
 
   const openPlanImport = useCallback(() => {
     router.push("/plan-import");
@@ -2067,6 +2075,12 @@ export default function PlannerScreen() {
 
   const openGenerateMenu = useCallback(() => {
     if (generating) return;
+    // ENG-742 — when Plan Import is cut from launch the menu has only one
+    // real action, so skip it and run the library generator directly.
+    if (!planImportEnabled) {
+      void generatePlan();
+      return;
+    }
     const labels = ["Generate from library", "Import existing plan", "Cancel"] as const;
     const runLibrary = () => {
       void generatePlan();
@@ -2090,7 +2104,7 @@ export default function PlannerScreen() {
       { text: "Import existing plan", onPress: openPlanImport },
       { text: "Cancel", style: "cancel" },
     ]);
-  }, [generating, generatePlan, openPlanImport]);
+  }, [generating, generatePlan, openPlanImport, planImportEnabled]);
 
   return (
     <View
@@ -2171,16 +2185,18 @@ export default function PlannerScreen() {
         }}
         trailing={
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-            <Pressable
-              style={styles.headerIconBtn}
-              onPress={openPlanImport}
-              accessibilityRole="button"
-              accessibilityLabel="Import existing meal plan"
-              accessibilityHint="Paste a meal plan or program to import recipes and schedule"
-              testID="plan-header-import"
-            >
-              <Upload size={18} color={colors.text} strokeWidth={1.75} />
-            </Pressable>
+            {planImportEnabled && (
+              <Pressable
+                style={styles.headerIconBtn}
+                onPress={openPlanImport}
+                accessibilityRole="button"
+                accessibilityLabel="Import existing meal plan"
+                accessibilityHint="Paste a meal plan or program to import recipes and schedule"
+                testID="plan-header-import"
+              >
+                <Upload size={18} color={colors.text} strokeWidth={1.75} />
+              </Pressable>
+            )}
             <Pressable
               style={styles.headerIconBtn}
               onPress={() => setTemplatesOpen(true)}
@@ -2698,16 +2714,18 @@ export default function PlannerScreen() {
                 <Text style={styles.generateBtnText}>Generate my plan</Text>
               )}
             </Pressable>
-            <Pressable
-              onPress={openPlanImport}
-              accessibilityRole="button"
-              accessibilityLabel="Import existing meal plan"
-              style={{ alignItems: "center", marginTop: Spacing.md, paddingVertical: Spacing.sm }}
-            >
-              <Text style={{ fontSize: 14, fontWeight: "600", color: Accent.primary }}>
-                Import existing plan
-              </Text>
-            </Pressable>
+            {planImportEnabled && (
+              <Pressable
+                onPress={openPlanImport}
+                accessibilityRole="button"
+                accessibilityLabel="Import existing meal plan"
+                style={{ alignItems: "center", marginTop: Spacing.md, paddingVertical: Spacing.sm }}
+              >
+                <Text style={{ fontSize: 14, fontWeight: "600", color: Accent.primary }}>
+                  Import existing plan
+                </Text>
+              </Pressable>
+            )}
           </View>
         )}
 
@@ -2926,34 +2944,11 @@ export default function PlannerScreen() {
             ) : null}
             {(() => {
               const sortedMeals = sortMealsBySlotOrder(dp.meals);
-              // 2026-05-14 (premium-bar audit Plan Card 2 #1): cumulative
-              // kcal up to and including each row, used to render a
-              // per-row fit pill ("Fits 92%" / "Over by 220 kcal").
-              // Computed in slot order so the fit value reflects how
-              // the day is filling up as the user reads downward.
-              let running = 0;
-              const cumKcal = sortedMeals.map((m) => {
-                if (planMealHasRecipe(m) && Number.isFinite(m.calories)) {
-                  running += m.calories || 0;
-                }
-                return running;
-              });
-              return sortedMeals.map((meal, sortedIdx) => {
+              return sortedMeals.map((meal) => {
               const mealIndexInDay = dp.meals.indexOf(meal);
               const multMeta = planMealPortionMeta(meal, planRecipePool);
               const currentMult = multMeta.displayMult;
               const multLabel = multMeta.label;
-              const dayCalGoal = planTargets?.calories ?? 0;
-              const cumKcalForRow = cumKcal[sortedIdx] ?? 0;
-              const showFitPill =
-                planMealHasRecipe(meal) &&
-                Number.isFinite(meal.calories) &&
-                meal.calories > 0 &&
-                dayCalGoal > 0;
-              const overByKcal = cumKcalForRow - dayCalGoal;
-              const fitPctRaw = dayCalGoal > 0 ? (cumKcalForRow / dayCalGoal) * 100 : 0;
-              const fitPct = Math.round(fitPctRaw);
-              const fitOver = overByKcal > 0;
               return (
               <Pressable
                 key={`${dp.day}-${mealIndexInDay}-${meal.name}`}
@@ -3104,43 +3099,12 @@ export default function PlannerScreen() {
                       Empty
                     </Text>
                   )}
-                  {/* 2026-05-14 (premium-bar audit Plan Card 2 #1) — per-
-                      row fit chip. "Fits N%" when running day total
-                      stays at or below the day's kcal goal; "Over by
-                      N kcal" once cumulative exceeds the goal. Hidden
-                      when the row has no kcal or the user has no
-                      daily kcal target. Amber tint on over (matches
-                      the over-budget rule from
-                      project_prototype_carryover_rules — never red). */}
-                  {showFitPill ? (
-                    <View
-                      style={[
-                        styles.mealFitPill,
-                        {
-                          backgroundColor: fitOver
-                            ? Accent.warning + "1F"
-                            : Accent.success + "1F",
-                        },
-                      ]}
-                      accessibilityLabel={
-                        fitOver
-                          ? `Over the daily target by ${Math.round(overByKcal)} kilocalories at this row`
-                          : `Fits ${fitPct}% of the daily target at this row`
-                      }
-                      testID={`meal-fit-pill-${dp.day}-${mealIndexInDay}`}
-                    >
-                      <Text
-                        style={[
-                          styles.mealFitPillText,
-                          { color: fitOver ? Accent.warning : Accent.success },
-                        ]}
-                      >
-                        {fitOver
-                          ? `Over by ${Math.round(overByKcal)} kcal`
-                          : `Fits ${fitPct}%`}
-                      </Text>
-                    </View>
-                  ) : null}
+                  {/* ENG-744 (2026-05-26, Grace) — removed the per-row
+                      "Fits N%" / "Over by N kcal" chip. Per-meal fit %
+                      was ambiguous (fits what?) and cumulative "over by"
+                      on individual rows read oddly; the day header
+                      ("1,225 / 901 kcal" + P/C/F/Fi deltas) carries the
+                      useful signal. */}
                   {/* Recipe-wave (2026-05-10) — "Recipe removed" badge
                       for plan rows whose `recipeId` is set but no
                       longer resolves to any known recipe. Pre-fix the

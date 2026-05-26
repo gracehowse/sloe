@@ -71,7 +71,9 @@ function pickFile(file: File) {
 describe("MfpCsvImportCard (web)", () => {
   it("renders the idle state with the choose-file affordance", () => {
     render(<MfpCsvImportCard surface="onboarding" />);
-    expect(screen.getByText("Import from MyFitnessPal")).toBeInTheDocument();
+    // Copy generalised from MyFitnessPal-specific to multi-app (CSV
+    // adapter framework) in the working tree — assert the heading.
+    expect(screen.getByText("Import from another app")).toBeInTheDocument();
     expect(screen.getByTestId("mfp-csv-choose-file")).toBeInTheDocument();
   });
 
@@ -94,7 +96,7 @@ describe("MfpCsvImportCard (web)", () => {
 
     await waitFor(() =>
       expect(
-        screen.getByText(/Imported 5 meals from MyFitnessPal/),
+        screen.getByText(/Imported 5 meals/),
       ).toBeInTheDocument(),
     );
 
@@ -175,7 +177,7 @@ describe("MfpCsvImportCard (web)", () => {
 
     await waitFor(() =>
       expect(
-        screen.getByText(/Sign in to import your MyFitnessPal history/),
+        screen.getByText(/Sign in to import your history/),
       ).toBeInTheDocument(),
     );
     expect(fetchMock).not.toHaveBeenCalled();
