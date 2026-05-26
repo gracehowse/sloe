@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { persistImportRecipe } from "./persistImportRecipe.ts";
-import type { PlanImportNutritionMode, PlanImportVerifiedRecipe } from "./types.ts";
+import { persistImportRecipe } from "./persistImportRecipe";
+import type { PlanImportNutritionMode, PlanImportVerifiedRecipe } from "./types";
 
 export type CookbookImportCommitInput = {
   userId: string;

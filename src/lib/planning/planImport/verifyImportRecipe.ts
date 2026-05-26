@@ -1,10 +1,10 @@
-import { verifyIngredients } from "../../nutrition/verifyIngredients.ts";
-import { ingredientRowsFromRecipe } from "./compilePlanImport.ts";
+import { verifyIngredients } from "../../nutrition/verifyIngredients";
+import { ingredientRowsFromRecipe } from "./compilePlanImport";
 import type {
   PlanImportConfidence,
   PlanImportParsedRecipe,
   PlanImportVerifiedRecipe,
-} from "./types.ts";
+} from "./types";
 
 function confidenceFromTier(tier: string): PlanImportConfidence {
   if (tier === "high") return "high";

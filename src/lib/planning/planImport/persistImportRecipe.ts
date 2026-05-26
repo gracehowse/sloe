@@ -1,13 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { normaliseInstructions } from "../../recipes/normaliseInstructions.ts";
-import { normalizeRecipeTitle } from "../../recipes/normalizeRecipeTitle.ts";
-import { isStructuredSource } from "../../nutrition/structuredSourceGate.ts";
+import { normaliseInstructions } from "../../recipes/normaliseInstructions";
+import { normalizeRecipeTitle } from "../../recipes/normalizeRecipeTitle";
+import { isStructuredSource } from "../../nutrition/structuredSourceGate";
 import {
   IMPORT_ERROR_COPY,
   mapPersistenceError,
-} from "../../recipes/importErrorCopy.ts";
-import { PLAN_IMPORT_SOURCE_PREFIX } from "./types.ts";
-import type { PlanImportNutritionMode, PlanImportVerifiedRecipe } from "./types.ts";
+} from "../../recipes/importErrorCopy";
+import { PLAN_IMPORT_SOURCE_PREFIX } from "./types";
+import type { PlanImportNutritionMode, PlanImportVerifiedRecipe } from "./types";
 
 export type PersistImportRecipeResult = { recipeId: string } | { error: string };
 

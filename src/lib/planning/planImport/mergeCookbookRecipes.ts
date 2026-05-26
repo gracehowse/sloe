@@ -1,4 +1,4 @@
-import type { PlanImportParsedRecipe } from "./types.ts";
+import type { PlanImportParsedRecipe } from "./types";
 
 /** Merge recipe lists from chunked parses; later chunks do not overwrite existing keys. */
 export function mergeCookbookRecipes(
