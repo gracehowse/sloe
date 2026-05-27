@@ -95,13 +95,15 @@ describe("F-79 — shared OFF micro parser", () => {
 describe("F-79 — ingest layer pulls full micro set", () => {
   it("mobile searchOpenFoodFacts attaches microsPer100g to every hit", () => {
     expect(SRC.verify).toMatch(/import\s*\{\s*parseOffMicrosPer100g\s*\}/);
-    expect(SRC.verify).toMatch(/microsPer100g:\s*parseOffMicrosPer100g\(n\)/);
+    // ENG-738 — micros now scaled by the reconcile per-100g factor (`, f`).
+    expect(SRC.verify).toMatch(/microsPer100g:\s*parseOffMicrosPer100g\(n,\s*f\)/);
   });
 
   it("mobile lookupBarcode attaches microsPer100g to BarcodeProduct", () => {
     // The OFF v2 fetch path (after F-78 res.ok guard).
+    // ENG-738 — micros now scaled by the reconcile per-100g factor (`, f`).
     const idx = SRC.verify.indexOf("api/v2/product/${trimmed}.json");
-    const microsIdx = SRC.verify.indexOf("microsPer100g: parseOffMicrosPer100g(n)", idx);
+    const microsIdx = SRC.verify.indexOf("microsPer100g: parseOffMicrosPer100g(n, f)", idx);
     expect(microsIdx).toBeGreaterThan(idx);
   });
 
@@ -112,12 +114,14 @@ describe("F-79 — ingest layer pulls full micro set", () => {
 
   it("web searchOffProducts attaches microsPer100g", () => {
     expect(SRC.webOffSearch).toMatch(/import\s*\{\s*parseOffMicrosPer100g\s*\}/);
-    expect(SRC.webOffSearch).toMatch(/microsPer100g:\s*parseOffMicrosPer100g\(n\)/);
+    // ENG-738 — micros now scaled by the reconcile per-100g factor (`, f`).
+    expect(SRC.webOffSearch).toMatch(/microsPer100g:\s*parseOffMicrosPer100g\(n,\s*f\)/);
   });
 
   it("web FoodSearch.tsx (Today search) attaches microsPer100g on OFF hits", () => {
     expect(SRC.webSearch).toMatch(/import\s*\{\s*parseOffMicrosPer100g\s*\}/);
-    expect(SRC.webSearch).toMatch(/microsPer100g:\s*parseOffMicrosPer100g\(n\)/);
+    // ENG-738 — micros now scaled by the reconcile per-100g factor (`, f`).
+    expect(SRC.webSearch).toMatch(/microsPer100g:\s*parseOffMicrosPer100g\(n,\s*f\)/);
   });
 });
 
@@ -137,6 +141,113 @@ describe("F-79 — UnifiedSearchResult / SelectedFood / FoodSearchSelection carr
     expect(SRC.webSearch).toMatch(/microsPer100g\?\:\s*Record<string,\s*number>/);
     expect(SRC.webSearch).toMatch(/microsPer100g:\s*item\.microsPer100g/);
     expect(SRC.webSearch).toMatch(/preview\.microsPer100g\s*\?\s*\{\s*microsPer100g:/);
+  });
+});
+
+describe("ENG-738 — generic-food micros thread through both platforms", () => {
+  // Same pull-through chain as OFF, but the source is the in-memory
+  // generic-food dictionary (carrot, spinach, …) keyed by the baked
+  // `genericFoodMicros.ts` table. Pre-ENG-738 the GenericFood row + select
+  // branch dropped `microsPer100g`, so logging a generic staple wrote an
+  // empty `nutrition_micros`. Pin the new threading on both platforms.
+  it("mobile genericFoodToUnifiedResult attaches the baked micros to the row", () => {
+    expect(SRC.verify).toMatch(
+      /import\s*\{\s*genericFoodMicrosPer100g\s*\}\s*from\s*"@suppr\/shared\/nutrition\/genericFoodMicros"/,
+    );
+    // Looks up the panel by the food id and conditionally spreads it onto
+    // the UnifiedSearchResult exactly like the OFF row.
+    expect(SRC.verify).toMatch(/genericFoodMicrosPer100g\(f\.id\)/);
+    expect(SRC.verify).toMatch(
+      /\.\.\.\(genericMicros\s*\?\s*\{\s*microsPer100g:\s*genericMicros\s*\}\s*:\s*\{\}\)/,
+    );
+  });
+
+  it("mobile FoodSearchPanel threads item.microsPer100g through the generic select branch", () => {
+    // GenericBeverage + GenericFood share a select branch; the conditional
+    // spread covers the GenericFood case (beverages carry no micros yet).
+    expect(SRC.panel).toMatch(
+      /\.\.\.\(item\.microsPer100g\s*\?\s*\{\s*microsPer100g:\s*item\.microsPer100g\s*\}\s*:\s*\{\}\)/,
+    );
+  });
+
+  it("web buildGenericMatchRow attaches the baked micros + select branch threads them", () => {
+    expect(SRC.webSearch).toMatch(
+      /import\s*\{\s*genericFoodMicrosPer100g\s*\}\s*from\s*"@\/lib\/nutrition\/genericFoodMicros"/,
+    );
+    expect(SRC.webSearch).toMatch(/genericFoodMicrosPer100g\(food\.id\)/);
+    expect(SRC.webSearch).toMatch(
+      /\.\.\.\(genericMicros\s*\?\s*\{\s*microsPer100g:\s*genericMicros\s*\}\s*:\s*\{\}\)/,
+    );
+    // The combined Generic select branch threads item.microsPer100g onward.
+    expect(SRC.webSearch).toMatch(
+      /\.\.\.\(item\.microsPer100g\s*\?\s*\{\s*microsPer100g:\s*item\.microsPer100g\s*\}\s*:\s*\{\}\)/,
+    );
+  });
+
+  it("the commit-path scale (scaleMicrosForGrams) is the same helper for generic foods", () => {
+    // No new commit code — generic micros ride the existing
+    // `scaleMicrosForGrams(result.microsPer100g ?? {}, grams, …)` path that
+    // already handles OFF/USDA. Pin that the field name the commit reads
+    // (`result.microsPer100g`) is what the generic branch now populates.
+    expect(SRC.todayIndex).toMatch(/scaleMicrosForGrams\(\s*result\.microsPer100g/);
+    expect(SRC.webTracker).toMatch(/scaleMicrosForGrams\(/);
+  });
+});
+
+describe("ENG-738 — every OFF call site applies the per-100g factor to micros/fiber/sugar/sodium", () => {
+  // The SCALE bug: micros + fiber/sugar/sodium were read raw from `*_100g`
+  // (per-serving on serving-basis rows) while macros were reconciled. Each
+  // call site must now derive `const f = recon.per100gFactor` and multiply
+  // the raw micro reads by it. If any site drops `f`, the bug recurs there.
+  it("the helper threads a factor arg through to the raw `*_100g` reads", () => {
+    // `read(...)` takes the factor and multiplies before unit-convert/round.
+    expect(SRC.parser).toMatch(/function\s+read\([^)]*factor:\s*number\)/);
+    expect(SRC.parser).toMatch(/raw\s*\*\s*factor/);
+    // Public signature takes an optional factor (default 1, no-op).
+    expect(SRC.parser).toMatch(/parseOffMicrosPer100g\(\s*[\s\S]*?factor:\s*number\s*=\s*1/);
+  });
+
+  it("reconcile exposes per100gFactor", () => {
+    const recon = readFileSync(
+      resolve(__dirname, "../../../../src/lib/openFoodFacts/reconcilePer100g.ts"),
+      "utf8",
+    );
+    expect(recon).toMatch(/per100gFactor:\s*number/);
+    expect(recon).toMatch(/per100gFactor\s*=\s*cal\.value\s*\/\s*rawEnergyKcal100g/);
+    expect(recon).toMatch(/per100gFactor\s*=\s*100\s*\/\s*servingG/);
+  });
+
+  it("web searchOffProducts scales fiber/sugar/sodium by f", () => {
+    expect(SRC.webOffSearch).toMatch(/const\s+f\s*=\s*recon\.per100gFactor/);
+    expect(SRC.webOffSearch).toMatch(/n\.fiber_100g\s*\?\?\s*0\)\s*\*\s*f/);
+    expect(SRC.webOffSearch).toMatch(/n\["sugars_100g"\]\s*\?\?\s*0\)\s*\*\s*f/);
+    expect(SRC.webOffSearch).toMatch(/n\.sodium_100g\s*\?\?\s*0\)\s*\*\s*f/);
+  });
+
+  it("web fetchProductByBarcode scales fiber/sugar/sodium by f", () => {
+    expect(SRC.webOffBarcode).toMatch(/const\s+f\s*=\s*recon\.per100gFactor/);
+    expect(SRC.webOffBarcode).toMatch(/n\.fiber_100g\s*\?\?\s*0\)\s*\*\s*f/);
+    expect(SRC.webOffBarcode).toMatch(/n\["sugars_100g"\]\s*\?\?\s*0\)\s*\*\s*f/);
+    expect(SRC.webOffBarcode).toMatch(/n\.sodium_100g\s*\?\?\s*0\)\s*\*\s*f/);
+  });
+
+  it("web FoodSearchPanel now reconciles OFF macros + scales micros by f", () => {
+    // Was reading raw `*_100g` with no reconcile — the most divergent site.
+    expect(SRC.webSearch).toMatch(
+      /import\s*\{\s*reconcileOffPer100g\s*\}\s*from\s*"@\/lib\/openFoodFacts\/reconcilePer100g"/,
+    );
+    expect(SRC.webSearch).toMatch(/const\s+recon\s*=\s*reconcileOffPer100g\(n,\s*p\)/);
+    expect(SRC.webSearch).toMatch(/const\s+f\s*=\s*recon\.per100gFactor/);
+    // And its OFF search fetch must request the fields reconcile needs.
+    expect(SRC.webSearch).toMatch(/nutrition_data_per,serving_quantity/);
+  });
+
+  it("mobile verifyRecipe scales fiber/sugar/sodium by f at BOTH OFF mappings", () => {
+    const occurrences = SRC.verify.match(/const\s+f\s*=\s*recon\.per100gFactor/g) ?? [];
+    expect(occurrences.length).toBeGreaterThanOrEqual(2); // searchOFF + lookupBarcode
+    expect(SRC.verify).toMatch(/n\.fiber_100g\s*\?\?\s*0\)\s*\*\s*f/);
+    expect(SRC.verify).toMatch(/n\["sugars_100g"\]\s*\?\?\s*0\)\s*\*\s*f/);
+    expect(SRC.verify).toMatch(/n\.sodium_100g\s*\?\?\s*0\)\s*\*\s*f/);
   });
 });
 

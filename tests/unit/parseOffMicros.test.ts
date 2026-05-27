@@ -19,6 +19,7 @@ import {
   parseOffMicrosPer100g,
   scaleMicrosForGrams,
 } from "@/../src/lib/openFoodFacts/parseOffMicros";
+import { reconcileOffPer100g } from "@/../src/lib/openFoodFacts/reconcilePer100g";
 
 describe("parseOffMicrosPer100g", () => {
   it("returns an empty object when nutriments is null / undefined / empty", () => {
@@ -155,5 +156,125 @@ describe("scaleMicrosForGrams", () => {
   it("drops keys that scale to zero", () => {
     const scaled = scaleMicrosForGrams({ ironMg: 0.1 }, 1); // 0.001 mg → rounds to 0
     expect(scaled.ironMg).toBeUndefined();
+  });
+});
+
+describe("parseOffMicrosPer100g — per-100g factor (ENG-738 micro scale)", () => {
+  it("applies a factor < 1 to every micro (serving-basis rescale)", () => {
+    // Same payload as the F-79 sodium/cholesterol/iron test, but the row is a
+    // 50 g serving-basis pack whose `*_100g` fields hold per-50g values, so the
+    // true-per-100g factor is 100/50 = 2... here we instead simulate a factor
+    // of 0.5 (a 200 g serving) to prove the multiply lands before rounding.
+    const out = parseOffMicrosPer100g(
+      { sodium_100g: 0.28, cholesterol_100g: 0.744, iron_100g: 0.0034, calcium_100g: 0.1 },
+      0.5,
+    );
+    expect(out.sodiumMg).toBe(140); // 0.28 * 0.5 * 1000
+    expect(out.cholesterolMg).toBe(372); // 0.744 * 0.5 * 1000
+    expect(out.ironMg).toBe(1.7); // 0.0034 * 0.5 * 1000
+    expect(out.calciumMg).toBe(50); // 0.1 * 0.5 * 1000
+  });
+
+  it("factor defaults to 1 (omitted arg leaves values unchanged)", () => {
+    const out = parseOffMicrosPer100g({ sodium_100g: 0.14, calcium_100g: 0.05 });
+    expect(out.sodiumMg).toBe(140);
+    expect(out.calciumMg).toBe(50);
+  });
+
+  it("a garbage factor (0 / negative / NaN) is treated as 1 — never zeroes micros", () => {
+    for (const bad of [0, -2, Number.NaN, Number.POSITIVE_INFINITY]) {
+      const out = parseOffMicrosPer100g({ sodium_100g: 0.14 }, bad);
+      expect(out.sodiumMg).toBe(140);
+    }
+  });
+});
+
+/**
+ * ENG-738 (2026-05-26) — the correctness gate. A KNOWN serving-based OFF
+ * product (`nutrition_data_per:"serving"`, `serving_quantity: 30`) whose
+ * `*_100g` micro fields actually hold the per-30g values. Reconciled +
+ * factor-scaled micros MUST equal raw × (100 / 30) — i.e. true per-100g.
+ *
+ * This pins the END-TO-END call-site composition the search / barcode
+ * mappers run: `const recon = reconcileOffPer100g(n, p)` →
+ * `parseOffMicrosPer100g(n, recon.per100gFactor)`.
+ */
+describe("ENG-738 — serving-basis micros reconcile to true per-100g (fixture gate)", () => {
+  // A 30 g serving snack. `*_100g` fields hold the per-30g values:
+  //   calcium  0.030 g / 30 g  →  100 mg per 30 g  → 333 mg per 100 g
+  //   iron     0.0021 g / 30 g →  2.1 mg per 30 g  → 7   mg per 100 g
+  //   vit C    0.018 g / 30 g  →  18 mg per 30 g   → 60  mg per 100 g
+  //   sodium   0.150 g / 30 g  →  150 mg per 30 g  → 500 mg per 100 g
+  //   sugars   6 g / 30 g                          → 20  g per 100 g
+  //   fiber    2 g / 30 g                          → 6.7 g per 100 g
+  const SCALE = 100 / 30;
+  const product = { nutrition_data_per: "serving", serving_quantity: 30 } as const;
+  const nutriments = {
+    // Macros (per-30g in disguise) — reconcileOne corrects these from *_serving.
+    "energy-kcal_100g": 150,
+    "energy-kcal_serving": 150,
+    proteins_100g: 4.5,
+    proteins_serving: 4.5,
+    carbohydrates_100g: 24,
+    carbohydrates_serving: 24,
+    fat_100g: 3,
+    fat_serving: 3,
+    // Micros + fiber/sugar/sodium (per-30g in disguise, no *_serving twin).
+    calcium_100g: 0.03,
+    iron_100g: 0.0021,
+    "vitamin-c_100g": 0.018,
+    sodium_100g: 0.15,
+    sugars_100g: 6,
+    fiber_100g: 2,
+  };
+
+  it("reconcile flags the row corrected and derives factor = 100/30", () => {
+    const recon = reconcileOffPer100g(nutriments, product);
+    expect(recon.corrected).toBe(true);
+    expect(recon.servingBasis).toBe(true);
+    expect(recon.per100gFactor).toBeCloseTo(SCALE, 4); // 3.333…
+  });
+
+  it("micros equal raw × (100/30) — true per-100g", () => {
+    const recon = reconcileOffPer100g(nutriments, product);
+    const micros = parseOffMicrosPer100g(nutriments, recon.per100gFactor);
+    // calcium: 0.03 g * (100/30) * 1000 = 100 mg → wait: 0.03*3.333*1000 = 100
+    expect(micros.calciumMg).toBe(100);
+    expect(micros.ironMg).toBeCloseTo(7, 1); // 0.0021 * 3.333 * 1000
+    expect(micros.vitaminCMg).toBeCloseTo(60, 1); // 0.018 * 3.333 * 1000
+    expect(micros.sodiumMg).toBe(500); // 0.15 * 3.333 * 1000
+    expect(micros.sugarG).toBeCloseTo(20, 1); // 6 * 3.333
+    expect(micros.fiberG).toBeCloseTo(6.7, 1); // 2 * 3.333
+  });
+
+  it("a per-100g-basis twin of the same product leaves micros unchanged (factor 1)", () => {
+    // Identical nutriment magnitudes but declared per-100g and bases agree →
+    // factor 1, micros read straight through.
+    const per100Product = { nutrition_data_per: "100g", serving_quantity: 30 } as const;
+    const per100Nutriments = {
+      "energy-kcal_100g": 150,
+      "energy-kcal_serving": 45, // 150 * (30/100) — agrees with per-100g basis
+      proteins_100g: 4.5,
+      proteins_serving: 1.35,
+      carbohydrates_100g: 24,
+      carbohydrates_serving: 7.2,
+      fat_100g: 3,
+      fat_serving: 0.9,
+      calcium_100g: 0.03,
+      iron_100g: 0.0021,
+      "vitamin-c_100g": 0.018,
+      sodium_100g: 0.15,
+      sugars_100g: 6,
+      fiber_100g: 2,
+    };
+    const recon = reconcileOffPer100g(per100Nutriments, per100Product);
+    expect(recon.corrected).toBe(false);
+    expect(recon.per100gFactor).toBe(1);
+    const micros = parseOffMicrosPer100g(per100Nutriments, recon.per100gFactor);
+    // Unchanged from raw: calcium 0.03 g → 30 mg, sodium 0.15 g → 150 mg.
+    expect(micros.calciumMg).toBe(30);
+    expect(micros.sodiumMg).toBe(150);
+    expect(micros.sugarG).toBe(6);
+    expect(micros.fiberG).toBe(2);
   });
 });

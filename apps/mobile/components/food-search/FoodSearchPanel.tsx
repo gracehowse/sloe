@@ -77,6 +77,7 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
   searchFoods,
   getFoodMacros,
+  getEdamamFoodMicros,
   getFatSecretFood,
   scaleMacrosByGrams,
   type UnifiedSearchResult,
@@ -574,6 +575,11 @@ export default function FoodSearchPanel({
           name: item.name,
           source: "USDA",
           macrosPer100g: item.macrosPer100g,
+          // ENG-738 — thread the baked generic-food micros through to the
+          // preview (and onward to the commit/scale path) exactly like the
+          // OFF/USDA branches. GenericBeverage rows carry no micros (beverage
+          // micros deferred), so the conditional spread leaves them untouched.
+          ...(item.microsPer100g ? { microsPer100g: item.microsPer100g } : {}),
           portions: allPortions,
           chosenPortion: portion,
           quantity,
@@ -624,7 +630,21 @@ export default function FoodSearchPanel({
           imageUrl: item.imageUrl,
         });
       } else if (item._source === "Edamam" && item.macrosPer100g) {
+        // ENG-738 (2026-05-26) — fetch the full per-100g micronutrient
+        // panel from Edamam's `/nutrients` endpoint on select. The
+        // search hit only carries fiber/sugar/sodium; `/api/edamam/food`
+        // returns the fat breakdown + cholesterol + vitamins + minerals.
+        // Merge the fetched set OVER the search-hit micros (the fetch is
+        // the authoritative superset; `{}` on failure leaves the
+        // search-hit micros intact so the food still logs). The commit
+        // path then scales + persists via `scaleMicrosForGrams`. Mirrors
+        // the USDA detail branch above. Web mirror in
+        // `src/app/components/food-search/FoodSearchPanel.tsx`.
+        const fetchedMicros = item._edamamFoodId
+          ? await getEdamamFoodMicros(item._edamamFoodId)
+          : {};
         setLoadingKey(null);
+        const mergedMicros = { ...(item.microsPer100g ?? {}), ...fetchedMicros };
         const allPortions = buildPortions([], item.primaryServing);
         const { portion, quantity } = item.primaryServing
           ? { portion: allPortions[0], quantity: 1 }
@@ -633,10 +653,7 @@ export default function FoodSearchPanel({
           name: item.name,
           source: "Edamam",
           macrosPer100g: item.macrosPer100g,
-          // 2026-05-06 — Edamam Food Database only ships fiber/sugar/
-          // sodium on this endpoint, but pulling those through still
-          // populates the first three rows of the meal-detail panel.
-          ...(item.microsPer100g ? { microsPer100g: item.microsPer100g } : {}),
+          ...(Object.keys(mergedMicros).length > 0 ? { microsPer100g: mergedMicros } : {}),
           portions: allPortions,
           chosenPortion: portion,
           quantity,

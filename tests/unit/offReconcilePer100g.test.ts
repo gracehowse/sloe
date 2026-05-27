@@ -126,3 +126,83 @@ describe("reconcileOffPer100g — per-serving-basis hardening", () => {
     expect(recon.corrected).toBe(false);
   });
 });
+
+describe("reconcileOffPer100g — per100gFactor (ENG-738 micro/fiber/sugar/sodium scale)", () => {
+  it("corrected serving-basis row: factor = recon.calories / rawEnergyKcal100g (= 100/serving)", () => {
+    // 500 g pot whose `*_100g` hold per-pot values; energy present.
+    const nutriments = {
+      "energy-kcal_100g": 1325,
+      "energy-kcal_serving": 1325,
+      proteins_100g: 265,
+      proteins_serving: 265,
+      carbohydrates_100g: 90,
+      carbohydrates_serving: 90,
+      fat_100g: 0,
+      fat_serving: 0,
+    };
+    const recon = reconcileOffPer100g(nutriments, {
+      nutrition_data_per: "serving",
+      serving_quantity: 500,
+    });
+    expect(recon.corrected).toBe(true);
+    // recon.calories ≈ 265; raw energy 1325 → factor ≈ 0.2 = 100/500.
+    expect(recon.per100gFactor).toBeCloseTo(recon.calories / 1325, 5);
+    expect(recon.per100gFactor).toBeCloseTo(0.2, 3); // 100 / 500
+  });
+
+  it("corrected serving-basis row with energy ABSENT: factor falls back to 100 / serving_quantity", () => {
+    // No energy field at all; protein carries the disagreement.
+    const nutriments = {
+      proteins_100g: 75, // per-pot
+      proteins_serving: 75,
+      carbohydrates_100g: 30,
+      carbohydrates_serving: 30,
+      fat_100g: 6,
+      fat_serving: 6,
+    };
+    const recon = reconcileOffPer100g(nutriments, {
+      nutrition_data_per: "serving",
+      serving_quantity: 250,
+    });
+    expect(recon.corrected).toBe(true);
+    expect(recon.per100gFactor).toBeCloseTo(100 / 250, 5); // 0.4
+  });
+
+  it("genuine per-100g row: factor = 1 (no-op)", () => {
+    const nutriments = {
+      "energy-kcal_100g": 60,
+      "energy-kcal_serving": 102,
+      proteins_100g: 10,
+      proteins_serving: 17,
+      carbohydrates_100g: 3.6,
+      carbohydrates_serving: 6.1,
+      fat_100g: 0,
+      fat_serving: 0,
+    };
+    const recon = reconcileOffPer100g(nutriments, {
+      nutrition_data_per: "100g",
+      serving_quantity: 170,
+    });
+    expect(recon.corrected).toBe(false);
+    expect(recon.per100gFactor).toBe(1);
+  });
+
+  it("no per-serving fields / no serving_quantity: factor = 1 (no-op)", () => {
+    const recon = reconcileOffPer100g(
+      { "energy-kcal_100g": 250, proteins_100g: 8, carbohydrates_100g: 30, fat_100g: 10 },
+      {},
+    );
+    expect(recon.per100gFactor).toBe(1);
+  });
+
+  it("never returns a degenerate factor (NaN / ≤0)", () => {
+    // serving_quantity 0 is rejected by servingQuantityGrams → not serving
+    // basis → factor 1, never a divide-by-zero.
+    const recon = reconcileOffPer100g(
+      { "energy-kcal_100g": 100, "energy-kcal_serving": 100 },
+      { nutrition_data_per: "serving", serving_quantity: 0 },
+    );
+    expect(Number.isFinite(recon.per100gFactor)).toBe(true);
+    expect(recon.per100gFactor).toBeGreaterThan(0);
+  });
+});

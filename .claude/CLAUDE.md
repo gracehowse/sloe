@@ -194,6 +194,22 @@ Current initiative inventory (as of 2026-05-16):
 
 Don't try to enable project status updates — there's no workspace toggle for it; Linear removed the feature. `save_status_update type: "project"` returns "not enabled for this workspace" — don't retry.
 
+## No silent deferrals — non-negotiable
+
+On 2026-05-26 Grace kept re-discovering the same gaps (FatSecret micros silently skipped, OFF micros stale, onboarding-seed persistence "staged for follow-up") because prior sessions parked them in **code comments** — `TODO`, `intentionally skipped`, `for now`, `not yet wired`, `staged for follow-up` — never tracked anywhere. A `code-quality` audit found ~22 such untracked gaps. Buried-in-a-comment is invisible: it rots until the founder trips over it again.
+
+Rule: **a deferral is never silent.** When you defer real work, do ONE of:
+
+1. **Fix it now** (preferred for anything bounded/small), or
+2. **Open a Linear issue** and reference its ID in the comment (`// deferred: see ENG-NNN`), or
+3. If it's a permanent, correct design choice, say so explicitly (`intentionally <reason> — not a gap`) so it never reads as pending.
+
+Banned: a comment describing unresolved work with no Linear reference (`TODO`, `for now`, `not yet`, `staged for follow-up`, `known gap`, `should eventually`). If it's worth a comment, it's worth a ticket or a fix.
+
+When a flow/step is **removed or superseded**, delete the dead code + its stale "staged for follow-up" comments in the same change (e.g. the cut onboarding recipe-picker `finalStep.ts`/`recipes.tsx`) — don't leave them implying pending work.
+
+Audit cadence: run the `code-quality` silent-deferral sweep at each milestone review; every new `TRACK` item gets a Linear issue that turn.
+
 ## Git commits
 
 **One-time per clone:** strip tool footers from commit messages (e.g. `Made-with: Cursor`):

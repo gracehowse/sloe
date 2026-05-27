@@ -17,6 +17,21 @@ function num(x: string | undefined): number {
   return Number.isFinite(v) ? v : 0;
 }
 
+// FDA 2016 Daily Values — FatSecret returns calcium/iron/vitamins as a
+// percentage of these (%DV), not absolute units. Verified live 2026-05-26
+// across generic + branded + fortified foods (see fatSecretServingMicrosPer100g).
+const DV_CALCIUM_MG = 1300;
+const DV_IRON_MG = 18;
+const DV_VITAMIN_A_MCG = 900; // mcg RAE
+const DV_VITAMIN_C_MG = 90;
+const DV_VITAMIN_D_MCG = 20;
+
+/** Convert a FatSecret %DV field (e.g. calcium="55") to absolute units. */
+function dvToAbsolute(percentRaw: string | undefined, dvReference: number): number {
+  const pct = num(percentRaw);
+  return pct > 0 ? (pct / 100) * dvReference : 0;
+}
+
 export function normalizeServingToMacros(s: FatSecretServing): VerifiedMacros {
   return {
     calories: Math.max(0, Math.round(num(s.calories))),
@@ -48,9 +63,10 @@ export function pickBestServing(serving: FatSecretServing | FatSecretServing[]):
  * 2026-05-06: TestFlight feedback — FatSecret-sourced meals showed
  * "FatSecret did not publish vitamin or mineral data" because the
  * food route never plumbed micros through. This extractor closes that
- * gap. Vitamins (A/C/D) are intentionally skipped — FatSecret returns
- * them in inconsistent units across response shapes, so we'd risk
- * fabricated mcg-vs-IU values.
+ * gap. 2026-05-26: calcium/iron/vitamins A/C/D now emitted too — they
+ * arrive as %DV (FatSecret's %RDI), converted to absolute via the FDA
+ * Daily Values (verified live across 6 foods; see the inline note +
+ * docs/decisions/2026-05-26-fatsecret-percent-dv-micros.md).
  */
 export function fatSecretServingMicrosPer100g(
   s: FatSecretServing,
@@ -86,25 +102,23 @@ export function fatSecretServingMicrosPer100g(
   emit("cholesterolMg", num(s.cholesterol), 0);
   emit("potassiumMg", num(s.potassium), 0);
 
-  // Calcium + iron + vitamins (A / C / D) — intentionally NOT
-  // emitted.
+  // Calcium / iron / vitamins (A / C / D) — FatSecret returns these as
+  // %DV (percent of FDA Daily Value), NOT mg, for the described serving.
+  // Convert to absolute units with the FDA 2016 Daily Values before the
+  // (per-serving → per-100g) scale that `emit` applies.
   //
-  // 2026-05-06: TestFlight verification of McDonald's Big Mac (food
-  // id 3145844) `food.get` returns calcium="9" and iron="22".
-  // Treating these as mg-per-serving gives 9 mg calcium (real Big
-  // Mac is ~280 mg) and 22 mg iron (real is ~4 mg). The "22" only
-  // matches reality if interpreted as %DV (DV=18 mg → 22% = 4 mg).
-  // FatSecret returns these in inconsistent units across foods
-  // (sometimes %DV, sometimes absolute mg, sometimes IU for
-  // vitamins) with no flag in the response. Emitting blindly
-  // fabricates values, which violates the project "never invent"
-  // rule.
-  //
-  // Net: FatSecret-sourced meals will show "FatSecret did not
-  // publish" for calcium / iron / vitamins in the meal-detail
-  // panel. That's accurate — we don't have unit-safe extractions
-  // for these fields, and an honest gap is better than a wrong
-  // number.
+  // 2026-05-26: re-verified live against 6 foods (cheddar, orange, spinach,
+  // Big Mac, Total cereal, fortified puffed rice) — every value is cleanly
+  // %DV and converts to within a few % of USDA reality (cheddar Ca 55%→715mg
+  // vs 720; spinach Fe 15%→2.7mg vs 2.7; Big Mac Ca 9%→117mg vs ~115; Total
+  // Fe 100%→18mg = exactly the DV). The earlier "inconsistent units" note was
+  // a mis-estimate of the Big Mac's real calcium (~115mg, not ~280mg). See
+  // docs/decisions/2026-05-26-fatsecret-percent-dv-micros.md.
+  emit("calciumMg", dvToAbsolute(s.calcium, DV_CALCIUM_MG), 0);
+  emit("ironMg", dvToAbsolute(s.iron, DV_IRON_MG), 1);
+  emit("vitaminAMcgRae", dvToAbsolute(s.vitamin_a, DV_VITAMIN_A_MCG), 0);
+  emit("vitaminCMg", dvToAbsolute(s.vitamin_c, DV_VITAMIN_C_MG), 1);
+  emit("vitaminDMcg", dvToAbsolute(s.vitamin_d, DV_VITAMIN_D_MCG), 1);
 
   return out;
 }
@@ -141,6 +155,12 @@ export function fatSecretServingMicrosAbsolute(
   emit("transFatG", num(s.trans_fat), 1);
   emit("cholesterolMg", num(s.cholesterol), 0);
   emit("potassiumMg", num(s.potassium), 0);
+  // %DV → absolute (no gram scaling here — these are per-serving absolute).
+  emit("calciumMg", dvToAbsolute(s.calcium, DV_CALCIUM_MG), 0);
+  emit("ironMg", dvToAbsolute(s.iron, DV_IRON_MG), 1);
+  emit("vitaminAMcgRae", dvToAbsolute(s.vitamin_a, DV_VITAMIN_A_MCG), 0);
+  emit("vitaminCMg", dvToAbsolute(s.vitamin_c, DV_VITAMIN_C_MG), 1);
+  emit("vitaminDMcg", dvToAbsolute(s.vitamin_d, DV_VITAMIN_D_MCG), 1);
   return out;
 }
 

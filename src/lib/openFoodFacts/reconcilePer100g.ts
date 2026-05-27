@@ -119,6 +119,21 @@ export type ReconciledOffPer100g = {
    * a disagreement.
    */
   servingBasis: boolean;
+  /**
+   * ENG-738 (2026-05-26) — the multiplier that converts a RAW `*_100g`
+   * nutriment (which secretly holds per-serving data on a corrected
+   * serving-basis row) to a TRUE per-100g value. It is the SAME transform
+   * `reconcileOne` applied to the macros above, so micros / fiber / sugar /
+   * sodium — which are still read straight off the raw `*_100g` fields at the
+   * call sites — can be brought onto the same basis as the macros.
+   *
+   * - When the row was corrected (serving-basis, mislabeled): the energy
+   *   ratio `recon.calories / rawEnergyKcal100g` (guarded `rawEnergy > 0`),
+   *   falling back to `100 / serving_quantity` when energy is absent.
+   * - Otherwise (not serving-basis, or bases agreed): `1` — a no-op, the
+   *   common case. Multiplying any raw value by 1 leaves it unchanged.
+   */
+  per100gFactor: number;
 };
 
 /**
@@ -166,6 +181,27 @@ export function reconcileOffPer100g(
 
   const corrected = cal.corrected || protein.corrected || carbs.corrected || fat.corrected;
 
+  // ENG-738 — derive the raw-`*_100g` → true-per-100g multiplier so the
+  // micros / fiber / sugar / sodium reads at the call sites land on the same
+  // basis as the macros. When nothing was corrected the factor is 1 (no-op).
+  const rawEnergyKcal100g = num(n["energy-kcal_100g"]);
+  let per100gFactor = 1;
+  if (corrected) {
+    if (rawEnergyKcal100g != null && rawEnergyKcal100g > 0) {
+      // Prefer the energy ratio: it is exactly the transform reconcileOne
+      // applied to the (now-trusted) per-100g calories.
+      per100gFactor = cal.value / rawEnergyKcal100g;
+    } else if (servingG != null && servingG > 0) {
+      // Energy absent — fall back to the serving-mass ratio (per-serving
+      // fields are published against `serving_quantity` grams).
+      per100gFactor = 100 / servingG;
+    }
+  }
+  // Guard against a degenerate ratio (NaN / ≤0) — never scale by garbage.
+  if (!Number.isFinite(per100gFactor) || per100gFactor <= 0) {
+    per100gFactor = 1;
+  }
+
   return {
     calories: cal.value,
     protein: protein.value,
@@ -173,5 +209,6 @@ export function reconcileOffPer100g(
     fat: fat.value,
     corrected,
     servingBasis,
+    per100gFactor,
   };
 }

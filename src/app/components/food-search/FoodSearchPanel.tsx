@@ -61,12 +61,14 @@ import { DestructiveConfirmDialog } from "../suppr/destructive-confirm-dialog";
 import { effectiveFoodSearchQuery } from "@/lib/nutrition/foodSearchQuery";
 import { matchGenericBeverage } from "@/lib/nutrition/genericBeverages";
 import { matchGenericFood } from "@/lib/nutrition/genericFoods";
+import { genericFoodMicrosPer100g } from "@/lib/nutrition/genericFoodMicros";
 import { isPlausibleMacrosPer100g } from "@/lib/nutrition/macroPlausibility";
 import {
   isBareGenericNounRow,
   isLowRelevanceNonVerifiedRow,
 } from "@/lib/nutrition/searchRowTrust";
 import { parseOffMicrosPer100g } from "@/lib/openFoodFacts/parseOffMicros";
+import { reconcileOffPer100g } from "@/lib/openFoodFacts/reconcilePer100g";
 import {
   projectRemaining,
   type MacroConsumed,
@@ -317,7 +319,11 @@ async function searchOff(query: string, page: number = 1): Promise<SearchResult[
   if (!q.trim()) return [];
   try {
     const res = await fetch(
-      `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q.trim())}&search_simple=1&action=process&json=1&page_size=10&page=${page}&fields=code,product_name,brands,nutriments,serving_size`,
+      // ENG-738 (2026-05-26) — request `nutrition_data_per` + `serving_quantity`
+      // so reconcileOffPer100g can detect rows whose `*_100g` fields actually
+      // hold per-serving values and rebuild a genuine per-100g basis. Web
+      // parity with src/lib/openFoodFacts/searchProducts.ts.
+      `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q.trim())}&search_simple=1&action=process&json=1&page_size=10&page=${page}&fields=code,product_name,brands,nutriments,serving_size,nutrition_data_per,serving_quantity`,
     );
     const data = await res.json();
     if (!Array.isArray(data.products)) return [];
@@ -328,16 +334,22 @@ async function searchOff(query: string, page: number = 1): Promise<SearchResult[
         const brand = titleCase((p.brands ?? "").split(",")[0]?.trim() ?? "");
         const name = titleCase(p.product_name ?? "Unknown");
         const displayName = [brand, name].filter(Boolean).join(" · ");
-        const cals = Math.round(n["energy-kcal_100g"] ?? 0);
+        // ENG-738 (2026-05-26) — reconcile macros to a genuine per-100g basis
+        // (was reading raw `*_100g`, which is per-serving on serving-basis
+        // rows). recon.per100gFactor rescales the micros + fiber/sugar/sodium
+        // onto the same basis (=1 for genuine per-100g rows, a no-op).
+        const recon = reconcileOffPer100g(n, p);
+        const f = recon.per100gFactor;
+        const cals = Math.round(recon.calories);
         const macros = cals > 0
           ? {
               calories: cals,
-              protein: Math.round((n.proteins_100g ?? 0) * 10) / 10,
-              carbs: Math.round((n.carbohydrates_100g ?? 0) * 10) / 10,
-              fat: Math.round((n.fat_100g ?? 0) * 10) / 10,
-              fiberG: Math.round((n.fiber_100g ?? 0) * 10) / 10,
-              sugarG: Math.round((n["sugars_100g"] ?? 0) * 10) / 10,
-              sodiumMg: Math.round((n.sodium_100g ?? 0) * 1000),
+              protein: Math.round(recon.protein * 10) / 10,
+              carbs: Math.round(recon.carbs * 10) / 10,
+              fat: Math.round(recon.fat * 10) / 10,
+              fiberG: Math.round((n.fiber_100g ?? 0) * f * 10) / 10,
+              sugarG: Math.round((n["sugars_100g"] ?? 0) * f * 10) / 10,
+              sodiumMg: Math.round((n.sodium_100g ?? 0) * f * 1000),
             }
           : undefined;
         const primaryServing = macros
@@ -351,7 +363,7 @@ async function searchOff(query: string, page: number = 1): Promise<SearchResult[
           name: displayName,
           calsPer100g: cals,
           macrosPer100g: macros,
-          microsPer100g: parseOffMicrosPer100g(n),
+          microsPer100g: parseOffMicrosPer100g(n, f),
           primaryServing,
           _source: "OFF" as const,
           _offCode: p.code,
@@ -382,6 +394,7 @@ async function searchEdamam(query: string, page: number = 1): Promise<SearchResu
       category: string; categoryLabel: string; imageUrl: string | null;
       calories: number; protein: number; carbs: number; fat: number;
       fiberG: number; sugarG: number; sodiumMg: number;
+      microsPer100g?: Record<string, number>;
       servingSizes?: Array<{ uri?: string; label?: string; quantity?: number }>;
     }>).map((h) => {
       const brand = h.brand ? titleCase(h.brand) : "";
@@ -408,6 +421,14 @@ async function searchEdamam(query: string, page: number = 1): Promise<SearchResu
           sugarG: h.sugarG,
           sodiumMg: h.sodiumMg,
         },
+        // ENG-738 (2026-05-26) — carry the route's minimal micros panel
+        // (fiber/sugar/sodium) through to the row, matching mobile
+        // (`verifyRecipe.ts` Edamam mapping). Pre-ENG-738 web dropped it
+        // entirely, so web Edamam logs persisted NO micros while mobile
+        // kept three. The select path merges the `/nutrients` superset
+        // OVER this on tap. Conditional spread keeps the key absent (not
+        // null) when the route shipped no micros.
+        ...(h.microsPer100g ? { microsPer100g: h.microsPer100g } : {}),
         imageUrl: h.imageUrl,
         primaryServing,
         _source: "Edamam" as const,
@@ -517,6 +538,31 @@ async function fetchUsdaDetail(
 }
 
 /**
+ * Fetch the full per-100g micronutrient panel for an Edamam food.
+ *
+ * ENG-738 (2026-05-26) — the `/api/edamam/search` hit only carries the
+ * minimal panel (fiber/sugar/sodium). The full set (fat breakdown,
+ * cholesterol, vitamins, minerals) lives behind Edamam's `/nutrients`
+ * endpoint, keyed by `foodId`. We fetch it on select and thread it into
+ * the preview so the commit path scales + persists it — exactly like the
+ * USDA branch threads `fetchUsdaDetail.microsPer100g`.
+ *
+ * Returns `{}` on any failure so the Edamam log path never breaks — the
+ * food still logs with its macros, just without the extra micros. Mobile
+ * mirror: `getEdamamFoodMicros` in `apps/mobile/lib/verifyRecipe.ts`.
+ */
+async function fetchEdamamMicros(foodId: string): Promise<Record<string, number>> {
+  try {
+    const res = await fetch(`/api/edamam/food?foodId=${encodeURIComponent(foodId)}`);
+    const json = await res.json();
+    if (!json.ok || !json.microsPer100g || typeof json.microsPer100g !== "object") return {};
+    return json.microsPer100g as Record<string, number>;
+  } catch {
+    return {};
+  }
+}
+
+/**
  * Fetch the canonical per-100g macro panel + portions for a FatSecret
  * food. Mirrors `fetchUsdaDetail`. Returns null on failure so the
  * on-tap handler quietly drops the row instead of surfacing a broken
@@ -602,6 +648,12 @@ function buildGenericMatchRow(query: string): SearchResult | null {
   }
   const food = matchGenericFood(q);
   if (food) {
+    // ENG-738 — attach the baked per-100g USDA micronutrient panel for
+    // this generic food so the meal-detail "Vitamins, minerals & more"
+    // card populates after it's logged. Mirrors the OFF row, which also
+    // carries `microsPer100g` at construction. `undefined` for an unbaked
+    // id (the conditional spread keeps the key absent rather than null).
+    const genericMicros = genericFoodMicrosPer100g(food.id);
     return {
       key: `generic-food:${food.id}`,
       name: food.name,
@@ -619,6 +671,7 @@ function buildGenericMatchRow(query: string): SearchResult | null {
         caffeineMgPer100g: 0,
         alcoholGPer100g: 0,
       },
+      ...(genericMicros ? { microsPer100g: genericMicros } : {}),
       calsPer100g: food.per100g.calories,
       primaryServing: {
         label: food.servingLabel,
@@ -1037,6 +1090,11 @@ export function FoodSearchPanel({
         name: item.name,
         source: "USDA",
         macrosPer100g: item.macrosPer100g,
+        // ENG-738 — thread the baked generic-food micros through to the
+        // preview (and onward to the commit/scale path) exactly like the
+        // OFF/USDA branches. GenericBeverage rows carry no micros (beverage
+        // micros deferred), so the conditional spread leaves them untouched.
+        ...(item.microsPer100g ? { microsPer100g: item.microsPer100g } : {}),
         portions,
         chosenPortion: portion,
         quantity,
@@ -1070,7 +1128,19 @@ export function FoodSearchPanel({
         imageUrl: item.imageUrl,
       });
     } else if (item._source === "Edamam" && item.macrosPer100g) {
+      // ENG-738 (2026-05-26) — fetch the full per-100g micronutrient
+      // panel from Edamam's `/nutrients` endpoint on select. The search
+      // hit only carries fiber/sugar/sodium; `/api/edamam/food` returns
+      // the fat breakdown + cholesterol + vitamins + minerals. We merge
+      // the fetched set OVER the search-hit micros (the fetch is the
+      // authoritative superset; `{}` on failure leaves the search-hit
+      // micros intact so the food still logs). The commit path then
+      // scales + persists via `scaleMicrosForGrams`.
+      const fetchedMicros = item._edamamFoodId
+        ? await fetchEdamamMicros(item._edamamFoodId)
+        : {};
       setLoadingKey(null);
+      const mergedMicros = { ...(item.microsPer100g ?? {}), ...fetchedMicros };
       const portions = buildPortions([], item.primaryServing);
       const { portion, quantity } = item.primaryServing
         ? { portion: portions[0], quantity: 1 }
@@ -1079,6 +1149,7 @@ export function FoodSearchPanel({
         name: item.name,
         source: "Edamam",
         macrosPer100g: item.macrosPer100g,
+        ...(Object.keys(mergedMicros).length > 0 ? { microsPer100g: mergedMicros } : {}),
         portions,
         chosenPortion: portion,
         quantity,
