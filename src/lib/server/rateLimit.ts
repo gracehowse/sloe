@@ -11,6 +11,19 @@ function nowMs() {
   return Date.now();
 }
 
+/**
+ * True only on the real production deployment. Prefer `VERCEL_ENV` — it is
+ * "production" only on the suppr.club deploy, "preview" on preview deploys, and
+ * unset locally / in CI (where `NODE_ENV` is "production" under `next start`).
+ * This matches the prod-gating convention in `middleware.ts`. Falling back to
+ * `NODE_ENV` keeps non-Vercel prod hosts fail-closed too. Preview + CI are NOT
+ * treated as production, so they keep the in-memory fallback instead of 429ing.
+ */
+function isProductionRuntime(): boolean {
+  if (process.env.VERCEL_ENV) return process.env.VERCEL_ENV === "production";
+  return process.env.NODE_ENV === "production";
+}
+
 function getIpFromHeaders(h: { get: (name: string) => string | null }): string | null {
   const xff = h.get("x-forwarded-for");
   if (xff) return xff.split(",")[0]?.trim() || null;
@@ -140,6 +153,25 @@ export async function rateLimit(opts: RateLimitOptions): Promise<RateLimitResult
   const upstash = getUpstashLimiter(opts.limit, opts.windowMs);
   if (upstash) {
     return rateLimitUpstash(key, ip, upstash);
+  }
+  // ENG-668: production MUST have Upstash. The per-instance in-memory fallback
+  // makes the effective cap `limit × lambda count`, silently bypassing AI/photo
+  // quotas. This request-time fail-CLOSED is the real protection — it never
+  // allows unlimited in prod. `verify-production-env` also flags missing Upstash
+  // and exits non-zero under VERIFY_STRICT=1 (or VERCEL_ENV=production), so it
+  // can be wired as a deploy-time gate. Non-prod (preview/CI/local) keeps the
+  // in-memory bucket rather than 429ing.
+  if (isProductionRuntime()) {
+    console.error(
+      `[rateLimit] Upstash env missing in production — failing closed for "${opts.keyPrefix}". Set UPSTASH_REDIS_REST_URL/TOKEN.`,
+    );
+    return {
+      ok: false,
+      remaining: 0,
+      resetAtMs: nowMs() + opts.windowMs,
+      retryAfterSec: Math.max(1, Math.ceil(opts.windowMs / 1000)),
+      ip: ip === "no-ip" ? null : ip,
+    };
   }
   return rateLimitMemory(opts, key, ip);
 }
