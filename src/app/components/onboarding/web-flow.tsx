@@ -93,6 +93,16 @@ export function WebFlow() {
     }
   }, [isSignup, authedUserId, go]);
 
+  // ENG-1 — fire onboarding_started once when a new user first sees the
+  // Welcome step. Web has no refresh-plan concept, so no guard needed.
+  const startedFired = React.useRef(false);
+  React.useEffect(() => {
+    if (isWelcome && !startedFired.current) {
+      startedFired.current = true;
+      track(AnalyticsEvents.onboarding_started, { platform: "web" });
+    }
+  }, [isWelcome]);
+
   /**
    * OB2-1 — terminal-step completion handler. Mirrors the legacy
    * `app/onboarding/page.tsx:handleSubmit` write flow so a v2

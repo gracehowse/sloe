@@ -1,0 +1,14 @@
+filename,actual_calories,actual_protein_g,actual_carbs_g,actual_fat_g
+# Instructions:
+# 1. Add one row per meal photo.
+# 2. Weigh every component separately on a food scale before plating (or after eating).
+# 3. Look up each component in USDA FoodData or Cronometer for accurate macros.
+# 4. Sum all components to get plate totals.
+# 5. Photo must be taken BEFORE eating, same angle/light as real use.
+# 6. Aim for 20 meals covering: chicken mains, fish, rice dishes, pasta, mixed salads,
+#    eggs, stir fry, soup + bread, burger/sandwich, breakfast plate.
+#
+# Example row (delete before running):
+# meal_01_chicken_rice.jpg,480,42,55,8
+# meal_02_salmon_veg.jpg,390,35,12,22
+# meal_03_pasta_bolognese.jpg,620,38,72,18
