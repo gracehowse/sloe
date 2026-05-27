@@ -41,9 +41,28 @@ const nextConfig: NextConfig = {
     // publisher CDN imagery on a commercial SaaS is direct reproduction under 17 USC § 106
     // and UK CDPA 1988. Imported recipes fall back to a neutral placeholder; the user keeps
     // a link-out to the original page so traffic still goes to the publisher.
+    //
+    // remotePatterns is the ALLOWLIST of hosts whose images we route through the
+    // Next on-the-fly optimizer (AVIF/WebP + srcset). It must stay bounded + trusted:
+    //   - images.unsplash.com — seed recipe heroes + DEFAULT_UPLOADED_RECIPE_IMAGE
+    //   - *.supabase.co        — user-uploaded recipe images in storage
+    //   - img.youtube.com      — YouTube thumbnails derived at render time
+    //                            (heroImageFallback.extractYoutubeThumbnail)
+    //
+    // Recipe images can ALSO be arbitrary user-imported URLs (og:image / JSON-LD
+    // scraped from any recipe page or social post — parseRecipeFromHtml.ts). That
+    // host set is unbounded + user-controlled, so it is deliberately NOT allowlisted:
+    // routing it through the optimizer would turn /_next/image into an open fetch
+    // proxy for any URL a user can paste (SSRF-adjacent + bandwidth amplification).
+    // `DiscoverRecipeImage` renders those URLs with `unoptimized` (still lazy +
+    // intrinsically sized, just no server transcode). Keep the two in sync:
+    // `OPTIMIZABLE_HOST_SUFFIXES` in discover-recipe-image.tsx mirrors this list.
+    // Long-term fix = rehost imported images into Supabase storage at import time
+    // so the whole feed becomes optimizable under this single allowlist.
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },
       { protocol: "https", hostname: "*.supabase.co" },
+      { protocol: "https", hostname: "img.youtube.com" },
     ],
   },
   webpack: (config, { isServer, dev }) => {
