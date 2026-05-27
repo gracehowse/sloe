@@ -1960,6 +1960,45 @@ export default function TrackerScreen() {
     [activeMealSlot, dayKey, userId, supabase, persistMealsImmediate],
   );
 
+  /**
+   * Build-meal cart commit (ENG-757). Fires ONCE with the combined
+   * totals when the user logs a multi-item cart from the LogSheet. We
+   * insert a single `JournalMeal` row (not N rows) — the cart's
+   * per-item math is already summed by `buildMealCartTotals` in the
+   * LogSheet, so this just persists the combined macros. Only invoked
+   * when the `log-sheet-build-meal-cart` flag is on AND the cart has
+   * items. Mirrors web `onLogCombined` in `NutritionTracker.tsx`.
+   */
+  const handleLogCombinedMeal = useCallback(
+    (combined: { title: string; kcal: number; protein: number; carbs: number; fat: number }) => {
+      const meal: JournalMeal = {
+        id: newMealId(),
+        name: activeMealSlot,
+        recipeTitle: combined.title,
+        time: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
+        calories: Math.max(0, Math.round(combined.kcal)),
+        protein: Math.max(0, Math.round(combined.protein)),
+        carbs: Math.max(0, Math.round(combined.carbs)),
+        fat: Math.max(0, Math.round(combined.fat)),
+        source: "Manual",
+      };
+      setByDay((prev) => ({
+        ...prev,
+        [dayKey]: [...(prev[dayKey] ?? []), meal],
+      }));
+      void persistMealsImmediate(dayKey, [meal]);
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      try {
+        track(AnalyticsEvents.food_logged, {
+          source: "manual",
+          calories: meal.calories,
+          slot: activeMealSlot,
+        });
+      } catch { /* noop */ }
+    },
+    [activeMealSlot, dayKey, persistMealsImmediate],
+  );
+
   const trackerWeekSummaryKeys = useMemo(
     () => weekSummaryDateKeys(weekSummaryMode, selectedDate, weekStartDay),
     [weekSummaryMode, selectedDate, weekStartDay],
@@ -5108,6 +5147,11 @@ export default function TrackerScreen() {
           // fallback for hosts that haven't migrated yet — Today uses
           // the inline path.
           onSelect: handleFoodSearchSelect,
+          // Build-meal cart (ENG-757). Fires once with the combined
+          // totals when the user logs a multi-item cart. Only invoked
+          // when the `log-sheet-build-meal-cart` flag is on AND the
+          // LogSheet's cart has items.
+          onLogCombined: handleLogCombinedMeal,
           macroTargets: {
             calories: effectiveCalorieGoal,
             protein: targets.protein,
