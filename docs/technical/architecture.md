@@ -200,7 +200,7 @@ User's saved recipes + profile targets + slot config
 | FatSecret | No | Additional nutrition source | Skipped |
 | OpenAI | No | Social recipe import (IG/TikTok) | Returns 503 |
 | Stripe | No* | Payments (web) | Paywall disabled |
-| Upstash Redis | No | Distributed rate limiting | In-memory fallback |
+| Upstash Redis | **Yes (prod)** | Distributed rate limiting | In-memory in dev; **fails CLOSED in prod** (ENG-668) — missing `UPSTASH_REDIS_REST_*` 429s every rate-limited route |
 | Sentry | No | Error tracking | Disabled |
 | PostHog | No | Analytics | Disabled |
 
