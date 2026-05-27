@@ -425,13 +425,29 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
       }
       const fd = new FormData();
       fd.append("image", file);
-      // F-156-recipe-wave (2026-05-10) — forward an optional source URL
-      // so image-imported recipes can carry attribution. Reuses the
-      // same `importUrl` field the URL-import branch already collects;
-      // the server runs it through `normaliseSource` and returns
-      // sanitised `sourceUrl` + `sourceName` we persist below.
-      const sourceUrlForImage = importUrl.trim();
-      if (sourceUrlForImage) fd.append("sourceUrl", sourceUrlForImage);
+      // F-156-recipe-wave (2026-05-10) — forward an optional source for
+      // image-imported recipes so they carry attribution. Reuses the
+      // same `importUrl` field the URL-import branch already collects.
+      //
+      // ENG-748 #13 (2026-05-27) — previously we sent the raw pasted text
+      // as `sourceUrl` unconditionally; the server's `normaliseSource`
+      // then NULLed anything that didn't parse as a URL, and because we
+      // never sent a `sourceName`, malformed pastes lost the creator's
+      // attribution entirely with no feedback. Fix (mirrors mobile
+      // import-shared.tsx): classify the pasted text via `normaliseSource`.
+      // If it resolves to a valid URL, send it as `sourceUrl` (linked
+      // attribution). If it's non-empty but doesn't parse, send it as
+      // `sourceName` so the creator's note survives as a non-linked source
+      // note rather than being silently dropped.
+      const rawSource = importUrl.trim();
+      if (rawSource) {
+        const classified = normaliseSource({ url: rawSource });
+        if (classified.source_url) {
+          fd.append("sourceUrl", classified.source_url);
+        } else {
+          fd.append("sourceName", rawSource);
+        }
+      }
       const res = await fetch("/api/recipe-import/image", { method: "POST", body: fd });
       const data = (await res.json()) as {
         ok?: boolean;

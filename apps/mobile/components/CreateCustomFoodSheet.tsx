@@ -49,6 +49,15 @@ import {
   type CustomFoodServing,
   type MacroBasis,
 } from "@suppr/shared/nutrition/customFoods";
+// ENG-748 #15 (2026-05-27) — density-aware "1 cup → grams" converter for
+// custom-food entry. Reuses the shared, sourced density table + conversion
+// math (no invented densities); only converts when the food's density is
+// known, else falls back to manual grams.
+import {
+  isVolumeUnit,
+  volumeToGrams,
+} from "@suppr/shared/nutrition/volumeToGrams";
+import { parseIngredientLine } from "@suppr/shared/recipe-ingredients/parseIngredientLine";
 
 /** F-156 PR-1 — AsyncStorage key for the user's last-chosen macro basis. */
 const MACRO_BASIS_STORAGE_KEY = "@suppr/customFood/macroBasis/v1";
@@ -294,6 +303,35 @@ export default function CreateCustomFoodSheet({
   const servingLabelClean = servingLabel.trim();
   const hasServingLabel = servingLabelClean.length > 0;
   const hasServingGrams = servingGrams > 0;
+
+  // ENG-748 #15 — density-aware "1 cup → grams" helper for the primary
+  // serving row. When the serving label parses to a volume measure
+  // (e.g. "1 cup", "2 tbsp") we try to convert it to grams using the
+  // food's known density (resolved from the shared sourced staple table
+  // via `volumeToGrams`). Three outcomes the UI reacts to:
+  //   - "known": offer a "Convert to grams" button that fills the field
+  //   - "unknown": calm hint that we can't auto-convert this food (no
+  //     guessed density — weigh it instead)
+  //   - null: the label isn't a volume measure, show nothing extra
+  const volumeConversion = useMemo<
+    | { kind: "known"; grams: number; unitLabel: string; gPerMl: number }
+    | { kind: "unknown"; unitLabel: string }
+    | null
+  >(() => {
+    if (!hasServingLabel) return null;
+    const parsed = parseIngredientLine(servingLabelClean);
+    const unit = parsed.unit.trim().toLowerCase();
+    if (!isVolumeUnit(unit)) return null;
+    const amount = Number.parseFloat(parsed.amount);
+    if (!Number.isFinite(amount) || amount <= 0) return null;
+    // Density is resolved from the FOOD NAME, not the serving label.
+    const result = volumeToGrams({ foodName: name, amount, unit });
+    const unitLabel = `${amount} ${unit}`;
+    if (result.densityKnown) {
+      return { kind: "known", grams: result.grams, unitLabel, gPerMl: result.gPerMl };
+    }
+    return { kind: "unknown", unitLabel };
+  }, [hasServingLabel, servingLabelClean, name]);
   // Both fields are "required together or both empty". Disallow half-
   // filled combos (label without grams, grams without label).
   const firstServingValid =
@@ -629,6 +667,47 @@ export default function CreateCustomFoodSheet({
                 />
               </View>
 
+              {/* ENG-748 #15 (2026-05-27) — density-aware volume→grams
+                  converter. Shows ONLY when the serving label is a volume
+                  measure ("1 cup", "2 tbsp"). When the food's density is
+                  known we offer a one-tap convert; when it isn't we say so
+                  plainly rather than guessing a wrong gram weight. */}
+              {volumeConversion?.kind === "known" && !hasServingGrams && (
+                <Pressable
+                  onPress={() => setServingGramsText(formatNumber(volumeConversion.grams))}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Convert ${volumeConversion.unitLabel} to ${volumeConversion.grams} grams`}
+                  testID="custom-food-volume-convert"
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 4,
+                    paddingVertical: 6,
+                    marginBottom: 4,
+                  }}
+                >
+                  <Ionicons name="swap-horizontal" size={16} color={Accent.primary} />
+                  <Text style={{ fontSize: 13, color: Accent.primary, fontWeight: "600" }}>
+                    Convert {volumeConversion.unitLabel} → {formatNumber(volumeConversion.grams)} g
+                  </Text>
+                </Pressable>
+              )}
+              {volumeConversion?.kind === "unknown" && !hasServingGrams && (
+                <Text
+                  testID="custom-food-volume-unknown"
+                  style={{
+                    fontSize: 11,
+                    color: colors.textTertiary,
+                    lineHeight: 16,
+                    marginBottom: 4,
+                  }}
+                  accessibilityLiveRegion="polite"
+                >
+                  We can&apos;t auto-convert {volumeConversion.unitLabel} for this food — its weight
+                  depends on density. Pop it on a scale and enter grams.
+                </Text>
+              )}
+
               {/* F-156 PR-2 (2026-05-10) — additional serving rows.
                   Compact list ([label] [grams] [×]) below the first
                   serving so the user can add "1 slice" + "1 loaf" +
@@ -705,13 +784,12 @@ export default function CreateCustomFoodSheet({
               {/* 2026-05-13 (TF feedback `AMbt66gRLJwsjswlQ2aKpG4` —
                   "more options for servings different weights ...
                   parity with mfp"): hint row with common-serving
-                  conversions. Users coming from MFP expect "1 cup"
-                  to auto-fill its gram weight; we don't have a
-                  density-aware converter yet (deferred), so the
-                  next-best UX is showing the canonical values
-                  inline so the user can fill grams without leaving
-                  the sheet. Reference values are the food-industry
-                  defaults used by USDA + MyFitnessPal. */}
+                  conversions for fixed-weight units. Volume units (cup
+                  / tbsp / tsp) are now handled by the density-aware
+                  converter above for the primary serving — these are
+                  the unambiguous mass + count references that don't
+                  depend on density. Reference values are the
+                  food-industry defaults used by USDA + MyFitnessPal. */}
               <Text
                 style={{
                   fontSize: 11,
@@ -720,7 +798,7 @@ export default function CreateCustomFoodSheet({
                   marginBottom: Spacing.sm,
                 }}
               >
-                Tip — common sizes:  1 cup ≈ 240 g  ·  1 oz ≈ 28 g  ·  1 tbsp ≈ 15 g  ·  1 tsp ≈ 5 g  ·  1 slice ≈ 30 g
+                Tip — common sizes:  1 oz ≈ 28 g  ·  1 slice ≈ 30 g.  For cups / spoons, type e.g. &quot;1 cup&quot; in the serving box above to convert.
               </Text>
 
               <View

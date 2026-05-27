@@ -81,6 +81,10 @@ const STAPLES: Record<string, Staple> = {
   pepper: { per100g: { calories: 251, protein: 10, carbs: 64, fat: 3.3, fiberG: 25.3 } },
   tomato: { per100g: { calories: 18, protein: 0.9, carbs: 3.9, fat: 0.2, fiberG: 1.2 } },
   potato: { per100g: { calories: 77, protein: 2, carbs: 17, fat: 0.1, fiberG: 2.2 } },
+  // Water — zero macros, density 1.0 g/ml (the canonical reference). Added
+  // 2026-05-27 (ENG-748 #15) so the custom-food volume→grams converter can
+  // resolve "1 cup water" precisely; harmless in macro estimation (0 kcal).
+  water: { per100g: { calories: 0, protein: 0, carbs: 0, fat: 0, fiberG: 0, sugarG: 0, sodiumMg: 0 }, gPerMl: 1.0 },
   milk: { per100g: { calories: 42, protein: 3.4, carbs: 5, fat: 1, fiberG: 0, sugarG: 5 }, gPerMl: 1.03 },
   cream: { per100g: { calories: 340, protein: 2.8, carbs: 2.8, fat: 36, fiberG: 0 }, gPerMl: 0.99 },
   egg: { per100g: { calories: 143, protein: 13, carbs: 1.1, fat: 9.5, fiberG: 0 } },

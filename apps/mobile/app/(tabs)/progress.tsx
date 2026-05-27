@@ -232,9 +232,16 @@ export default function ProgressScreen() {
   // backwards compat; Phase 3 deletes it.
   const [logWeightOpen, setLogWeightOpen] = useState(false);
 
+  // ENG-748 #9 (2026-05-27): when set, the LogWeightSheet opens in
+  // edit-in-place mode targeting this date (correct a mistyped past
+  // weigh-in, keep its date) rather than logging a new entry for today.
+  // Cleared whenever the sheet closes so the next plain "Log weight" CTA
+  // is a fresh today-log.
+  const [editWeightDate, setEditWeightDate] = useState<string | null>(null);
+
   // 2026-05-11 (Grace TF feedback): Withings-style "All data" list view
   // for weigh-ins. Opens from the list icon next to the Weight chart
-  // header. Tap-and-hold on a row deletes that entry.
+  // header. Long-press a row to edit or delete that entry.
   const [allWeightDataOpen, setAllWeightDataOpen] = useState(false);
 
   // H-4 (build 12, 2026-04-19, TestFlight `AEb7NcjnvK`): defer the
@@ -2268,11 +2275,15 @@ export default function ProgressScreen() {
     </ScrollView>
     <LogWeightSheet
       visible={logWeightOpen}
-      onClose={() => setLogWeightOpen(false)}
+      onClose={() => {
+        setLogWeightOpen(false);
+        setEditWeightDate(null);
+      }}
       userId={userId ?? null}
       isImperial={measurementSystem === "imperial"}
       weightKgByDay={weightKgByDay}
       weightKg={weightKg}
+      editDate={editWeightDate}
       onSaved={({ weightKgByDay: next, weightKg: kg }) => {
         setWeightKgByDay(next);
         setWeightKg(kg);
@@ -2284,6 +2295,12 @@ export default function ProgressScreen() {
       userId={userId ?? null}
       isImperial={measurementSystem === "imperial"}
       weightKgByDay={weightKgByDay}
+      onEditEntry={(dateISO) => {
+        // The all-data sheet closes itself before calling this; open the
+        // log sheet in edit mode for the chosen date.
+        setEditWeightDate(dateISO);
+        setLogWeightOpen(true);
+      }}
       onEntryDeleted={(_dateISO, nextMap) => {
         setWeightKgByDay(nextMap);
         // Refresh the latest scalar in case we just deleted today's

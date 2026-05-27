@@ -289,6 +289,26 @@ describe("Create custom food form parity (TestFlight AE52_fIRZ-ZIupmoJ8T4yaI)", 
     }
   });
 
+  // ENG-748 #15 (2026-05-27) — density-aware "1 cup → grams" converter must
+  // exist on BOTH surfaces (MFP-parity gap). Pinned so it can't be added to
+  // one platform and forgotten on the other.
+  it("both surfaces wire the shared density-aware volume→grams converter", () => {
+    for (const src of [MOBILE_SRC, WEB_SRC]) {
+      expect(src).toMatch(/volumeToGrams/);
+      expect(src).toMatch(/isVolumeUnit/);
+      expect(src).toMatch(/parseIngredientLine/);
+      // Both render the convert button + the unknown-density fallback hint.
+      expect(src).toMatch(/custom-food-volume-convert/);
+      expect(src).toMatch(/custom-food-volume-unknown/);
+    }
+  });
+
+  it("the volume converter imports from the shared sourced density module (no per-platform density table)", () => {
+    for (const src of [MOBILE_SRC, WEB_SRC]) {
+      expect(src).toMatch(/nutrition\/volumeToGrams/);
+    }
+  });
+
   it("the BarcodeScannerModal exposes an onAddAsCustomFood callback for the not-found CTA (mobile)", () => {
     const scanner = readFileSync(
       resolve(__dirname, "../../components/BarcodeScannerModal.tsx"),
