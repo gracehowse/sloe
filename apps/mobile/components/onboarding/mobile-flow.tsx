@@ -36,6 +36,7 @@ import {
   STEP_IDS,
   canAdvance as canAdvanceStep,
 } from "@/lib/onboarding";
+import { getSupprApiBase } from "@/lib/supprWeb";
 import { useOnboarding } from "./context";
 import { MOBILE_STEP_COMPONENTS } from "./steps";
 
@@ -268,6 +269,30 @@ export function MobileFlow() {
         });
       } catch {
         /* analytics is fire-and-forget */
+      }
+
+      // ENG-5: redeem referral code if the user entered one during onboarding.
+      const trimmedRef = state.referralCode?.trim() ?? "";
+      if (trimmedRef && userId) {
+        void fetch(`${getSupprApiBase()}/api/referral/redeem`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token ?? ""}`,
+          },
+          body: JSON.stringify({ code: trimmedRef }),
+        })
+          .then((r) => r.json())
+          .then((data: { ok: boolean; referrerId?: string }) => {
+            if (data.ok) {
+              track(AnalyticsEvents.referral_install_attributed, {
+                referrerId: data.referrerId,
+                refereeId: userId,
+                code: trimmedRef,
+              });
+            }
+          })
+          .catch(() => { /* fire-and-forget */ });
       }
 
       // MV-03: clear persisted state so a fresh signup on this device

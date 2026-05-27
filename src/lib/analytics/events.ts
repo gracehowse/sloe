@@ -861,6 +861,25 @@ export const AnalyticsEvents = {
    * ENG-543 (in-flight dedup) actually paid off in production.
    */
   today_journal_loaded_ms: "today_journal_loaded_ms",
+
+  // ─── ENG-5 Referral mechanic ──────────────────────────────────────────────
+  // Note: spec uses dot-notation (referral.link_generated) but the
+  // registry enforces snake_case value === key. PostHog event names
+  // are snake_case here; docs/growth spec is the aspirational notation.
+  /** User generated their unique referral link for the first time.
+   *  Payload: `{ userId }`. */
+  referral_link_generated: "referral_link_generated",
+  /** User tapped the Share button and the system share sheet appeared.
+   *  Payload: `{ userId, channel: 'sms'|'whatsapp'|'copy'|'other' }`. */
+  referral_link_shared: "referral_link_shared",
+  /** A referee completed onboarding via a referral link.
+   *  Payload: `{ referrerId, refereeId }`. */
+  referral_install_attributed: "referral_install_attributed",
+  /** 30/60 days of Pro were applied to a user's account.
+   *  Stubbed until ENG-198 RevenueCat provisioning; fires when
+   *  `referral_credits.reward_granted_at` is written.
+   *  Payload: `{ userId, daysCredited }`. */
+  referral_reward_granted: "referral_reward_granted",
 } as const;
 
 export type AnalyticsEventName = (typeof AnalyticsEvents)[keyof typeof AnalyticsEvents];

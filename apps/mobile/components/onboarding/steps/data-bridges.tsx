@@ -77,6 +77,7 @@ export function MobileDataBridgesStep() {
       <NotificationsCard userId={userId} />
       <RecipeUrlCard />
       <MobileMfpCsvImportCard surface="onboarding" />
+      <ReferralCodeCard />
 
       {/*
         P1 (customer-lens 2026-05-11): the in-body "Maybe later" link
@@ -567,5 +568,87 @@ function BridgeCard({
       </View>
       {children}
     </View>
+  );
+}
+
+/* ---------------------------------------------------------------- */
+/* Referral code card (ENG-5)                                       */
+/* ---------------------------------------------------------------- */
+
+function ReferralCodeCard() {
+  const { state, set } = useOnboarding();
+  const colors = useThemeColors();
+  const [expanded, setExpanded] = React.useState(false);
+  const [localCode, setLocalCode] = React.useState(state.referralCode ?? "");
+
+  const commit = React.useCallback(() => {
+    set({ referralCode: localCode.trim() });
+  }, [localCode, set]);
+
+  return (
+    <BridgeCard
+      icon="gift-outline"
+      iconColor="#16A34A"
+      title="Have a referral code?"
+      body="A friend shared their invite link — enter the code to get a free month of Pro."
+    >
+      {expanded ? (
+        <View style={{ marginTop: 12, gap: 10 }}>
+          <TextInput
+            testID="onboarding-referral-code-input"
+            value={localCode}
+            onChangeText={setLocalCode}
+            onBlur={commit}
+            placeholder="Enter code (e.g. ABC12345)"
+            placeholderTextColor={colors.textTertiary}
+            autoCapitalize="characters"
+            autoCorrect={false}
+            style={{
+              paddingHorizontal: 14,
+              paddingVertical: 12,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: localCode.trim() ? "#16A34A" : colors.border,
+              backgroundColor: colors.background,
+              color: colors.text,
+              fontSize: 15,
+              fontWeight: "600",
+              letterSpacing: 1,
+            }}
+          />
+          {localCode.trim().length > 0 ? (
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+                paddingHorizontal: 4,
+              }}
+            >
+              <Ionicons name="checkmark-circle" size={14} color="#16A34A" />
+              <Text style={{ fontSize: 12, color: "#16A34A" }}>
+                Code saved — your free month will be applied after setup.
+              </Text>
+            </View>
+          ) : null}
+        </View>
+      ) : (
+        <Pressable
+          onPress={() => setExpanded(true)}
+          style={{ marginTop: 10 }}
+          accessibilityRole="button"
+        >
+          <Text
+            style={{
+              fontSize: 13,
+              fontWeight: "600",
+              color: "#16A34A",
+            }}
+          >
+            Enter code →
+          </Text>
+        </Pressable>
+      )}
+    </BridgeCard>
   );
 }

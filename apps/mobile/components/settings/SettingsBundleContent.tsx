@@ -52,6 +52,7 @@ import {
   Sun,
   Timer,
   Trash2,
+  Gift,
   Users,
   Wine,
   type LucideIcon,
@@ -71,7 +72,7 @@ import {
   type MacroDisplayStyle,
 } from "@/lib/macroDisplayStyle";
 import { supabase } from "@/lib/supabase";
-import { getSupprWebBase } from "@/lib/supprWeb";
+import { getSupprWebBase, getSupprApiBase } from "@/lib/supprWeb";
 import { probeHealthAccess } from "@/lib/healthSync";
 import { nukeAllUserAppData } from "@suppr/shared/account/nukeAccountData";
 import { cancelWeeklyRecapPush } from "@/lib/weeklyRecapPush";
@@ -82,7 +83,7 @@ import {
   type WeekSummaryMode,
 } from "@suppr/shared/nutrition/weekSummaryWindow";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
-import { track } from "@/lib/analytics";
+import { track, isFeatureEnabled } from "@/lib/analytics";
 import {
   nutritionLogToCsv,
   nutritionLogCsvFilename,
@@ -857,6 +858,41 @@ export function SettingsBundleContent({ context }: { context: Context }) {
     setCancelPromptOpen(true);
   }, [profileData.userTier]);
 
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const handleInviteFriend = useCallback(async () => {
+    if (!userId || inviteLoading) return;
+    setInviteLoading(true);
+    try {
+      const base = getSupprApiBase();
+      const res = await fetch(`${base}/api/referral/generate`, {
+        credentials: "include",
+        headers: { Authorization: `Bearer ${session?.access_token ?? ""}` },
+      });
+      const data = (await res.json()) as { ok: boolean; shareUrl?: string; created?: boolean };
+      if (!data.ok || !data.shareUrl) {
+        Alert.alert("Not available yet", "Your invite link isn't ready yet — try again in a few days.");
+        return;
+      }
+      if (data.created) {
+        track(AnalyticsEvents.referral_link_generated, { userId });
+      }
+      const result = await Share.share({
+        url: data.shareUrl,
+        title: "Join me on Suppr — get 1 month Pro free",
+      });
+      if (result.action !== Share.dismissedAction) {
+        track(AnalyticsEvents.referral_link_shared, {
+          userId,
+          channel: "system_share",
+        });
+      }
+    } catch {
+      Alert.alert("Couldn't open share sheet", "Please try again.");
+    } finally {
+      setInviteLoading(false);
+    }
+  }, [userId, inviteLoading, session?.access_token]);
+
   const runExportEverything = useCallback(async () => {
     if (!userId) return;
     if (exportingEverything) return;
@@ -1448,6 +1484,50 @@ export function SettingsBundleContent({ context }: { context: Context }) {
             />
           </Pressable>
         ) : null}
+        {/* ENG-5: Referral row — "Earn free Pro". Behind
+            referral-mechanic flag so it can be ramped gradually. */}
+        {isFeatureEnabled("referral-mechanic") ? (
+          <Pressable
+            testID="settings-bundle-earn-pro-row"
+            onPress={() => void handleInviteFriend()}
+            disabled={inviteLoading}
+            accessibilityRole="button"
+            accessibilityLabel="Invite a friend and earn free Pro"
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 12,
+              paddingVertical: 14,
+              paddingHorizontal: 14,
+              borderTopWidth: 1,
+              borderTopColor: colors.cardBorder,
+              opacity: inviteLoading ? 0.6 : 1,
+            }}
+          >
+            <View
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                backgroundColor: "#16A34A18",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Gift size={18} color="#16A34A" strokeWidth={1.75} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>
+                Earn free Pro
+              </Text>
+              <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
+                Invite a friend — you both get 1&nbsp;month free
+              </Text>
+            </View>
+            <ChevronRight size={16} color={colors.textTertiary} strokeWidth={1.75} />
+          </Pressable>
+        ) : null}
+
         {/* Promo-code redemption — testers + creator codes. Sits
             beneath both upgrade / manage rows so it's reachable
             regardless of tier. Logic lives in `usePromoCode`.

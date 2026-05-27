@@ -218,6 +218,12 @@ export interface OnboardingState {
    * payload + future post-launch nudge sequencing.
    */
   dataBridgeChosen: DataBridgeOption;
+  /**
+   * ENG-5 (2026-05-27) — optional referral code entered by the user
+   * during onboarding. Redeemed via POST /api/referral/redeem after
+   * handleComplete. Empty string = no code.
+   */
+  referralCode: string;
 }
 
 /** Default pace per goal — applied when the user hasn't dragged the
@@ -301,6 +307,7 @@ export const DEFAULT_ONBOARDING_STATE: OnboardingState = {
   manualTargetsCarbsG: null,
   manualTargetsFatG: null,
   dataBridgeChosen: null,
+  referralCode: "",
 };
 
 /** Resolve the step index a navigation should land on, accounting for

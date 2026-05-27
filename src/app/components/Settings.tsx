@@ -173,6 +173,37 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
   const [cancelPromptOpen, setCancelPromptOpen] = useState(false);
   const [cancelPromptExporting, setCancelPromptExporting] = useState(false);
 
+  // ENG-5: referral link share
+  const [referralLink, setReferralLink] = useState<string | null>(null);
+  const [referralLoading, setReferralLoading] = useState(false);
+  const handleShareReferral = useCallback(async () => {
+    if (referralLoading) return;
+    setReferralLoading(true);
+    try {
+      const res = await fetch("/api/referral/generate", { credentials: "include" });
+      const data = (await res.json()) as { ok: boolean; shareUrl?: string; created?: boolean };
+      if (!data.ok || !data.shareUrl) return;
+      if (data.created) {
+        track(AnalyticsEvents.referral_link_generated, {});
+      }
+      setReferralLink(data.shareUrl);
+      if (typeof navigator.share === "function") {
+        try {
+          await navigator.share({
+            title: "Join me on Suppr",
+            text: "I've been tracking macros with Suppr — we both get 1 month Pro free if you sign up.",
+            url: data.shareUrl,
+          });
+          track(AnalyticsEvents.referral_link_shared, { channel: "web_share" });
+        } catch {
+          // User cancelled share — still show the copy link row below
+        }
+      }
+    } finally {
+      setReferralLoading(false);
+    }
+  }, [referralLoading]);
+
   useEffect(() => {
     if (!scrollToPromoOnOpen) return;
     const id = requestAnimationFrame(() => {
@@ -1390,6 +1421,43 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           </Link>
         </div>
       </div>
+
+      {/* ENG-5: Earn free Pro — referral row, flag-gated */}
+      {isFeatureEnabled("referral-mechanic") ? (
+        <div className="bg-card border border-border rounded-2xl p-6 mb-6 card-elevated">
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-green-600/10 flex items-center justify-center">
+              <span className="text-green-600 text-lg">🎁</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-foreground font-semibold mb-1">Earn free Pro</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Invite a friend — you both get 1 month of Pro free when they complete setup.
+              </p>
+              <button
+                onClick={() => void handleShareReferral()}
+                disabled={referralLoading}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-semibold transition-colors disabled:opacity-60"
+              >
+                {referralLoading ? "Getting your link…" : "Share invite link"}
+              </button>
+              {referralLink ? (
+                <div className="mt-3 flex items-center gap-2">
+                  <code className="flex-1 text-xs bg-muted px-3 py-2 rounded-lg break-all select-all">
+                    {referralLink}
+                  </code>
+                  <button
+                    onClick={() => void navigator.clipboard.writeText(referralLink)}
+                    className="flex-shrink-0 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Copy
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {/* Promo code — de-emphasised; most users won't need this */}
       <div

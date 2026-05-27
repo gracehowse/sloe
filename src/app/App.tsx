@@ -62,6 +62,7 @@ const UpgradePaywallDialog = dynamic(
 );
 import { useAppData } from "../context/AppDataContext.tsx";
 import { FirstRunChecklist } from "./components/FirstRunChecklist.tsx";
+import { ReferralRedeemer } from "./components/ReferralRedeemer.tsx";
 import { FeatureErrorBoundary } from "./components/FeatureErrorBoundary.tsx";
 
 type View =
@@ -117,6 +118,7 @@ function YouSubTabPill({
 
 export default function App() {
   const {
+    userId,
     profileTier: userTier,
     profileDisplayName: displayName,
     authEmail,
@@ -735,6 +737,9 @@ export default function App() {
 
       {/* First-run guided checklist */}
       <FirstRunChecklist onNavigate={(view) => navigateToView(view as View)} />
+
+      {/* ENG-5: redeem referral cookie after onboarding */}
+      <ReferralRedeemer userId={userId} />
 
       {/* Claude Design 2026-04-20 upgrade paywall dialog. Lifts the
           in-app "Upgrade" flow from a /pricing redirect into a modal
