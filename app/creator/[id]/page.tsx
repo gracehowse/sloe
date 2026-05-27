@@ -15,17 +15,29 @@
  * Phase 2a deliberately ships the same surface as mobile:
  *   - Header (avatar, display name, handle, bio, verified tick).
  *   - Follower count + Follow / Following toggle (optimistic).
- *   - Recipe grid (newest-first, paginated to 50; load-more deferred).
+ *   - Recipe list (newest-first, paginated — see below).
  *   - Honest empty state when the creator has no published recipes.
+ *
+ * ENG-748 #14 (2026-05-27) — pagination. The list used to hard-cap at
+ * 50 (`.limit(50)`), so creators with >50 published recipes had older
+ * ones silently invisible. We now fetch the first page server-side
+ * (`CREATOR_RECIPES_PAGE_SIZE`, good for SEO + fast paint) and hand off
+ * to the `CreatorRecipeList` client component, which appends further
+ * pages via the same public query on "Load more". The header shows the
+ * TRUE total recipe count (a separate `head: true` count) — not the
+ * number currently loaded — so the count never under-reports.
  */
 
 import { createClient } from "@supabase/supabase-js";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { projectId, publicAnonKey } from "../../../utils/supabase/info.tsx";
-import { normalizeRecipeTitle } from "../../../src/lib/recipes/normalizeRecipeTitle";
 import { CreatorFollowButton } from "../../../src/app/components/creator/CreatorFollowButton";
+import {
+  CreatorRecipeList,
+  CREATOR_RECIPES_PAGE_SIZE,
+  type CreatorRecipeRow,
+} from "../../../src/app/components/creator/CreatorRecipeList";
 
 const supabaseUrl = `https://${projectId}.supabase.co`;
 
@@ -42,25 +54,16 @@ interface CreatorRow {
   is_verified: boolean;
 }
 
-interface CreatorRecipeRow {
-  id: string;
-  title: string;
-  image_url: string | null;
-  calories: number;
-  protein: number;
-  carbs: number;
-  cook_time_min: number | null;
-  prep_time_min: number | null;
-}
-
 async function fetchCreatorBundle(id: string) {
   const sb = getServerClient();
-  const [creatorRes, recipesRes, followCountRes] = await Promise.all([
+  const [creatorRes, recipesRes, recipeCountRes, followCountRes] = await Promise.all([
     sb
       .from("creators")
       .select("id, display_name, handle, avatar_url, bio, is_verified")
       .eq("id", id)
       .maybeSingle<CreatorRow>(),
+    // ENG-748 #14: first page only — the client component loads the rest
+    // on "Load more". `range(0, PAGE_SIZE - 1)` instead of `limit(50)`.
     sb
       .from("recipes")
       .select(
@@ -69,15 +72,26 @@ async function fetchCreatorBundle(id: string) {
       .eq("creator_id", id)
       .eq("published", true)
       .order("created_at", { ascending: false })
-      .limit(50)
+      .range(0, CREATOR_RECIPES_PAGE_SIZE - 1)
       .returns<CreatorRecipeRow[]>(),
+    // True total published-recipe count for the header stat — decoupled
+    // from how many are currently loaded so the count never under-reports.
+    sb
+      .from("recipes")
+      .select("id", { count: "exact", head: true })
+      .eq("creator_id", id)
+      .eq("published", true),
     sb.from("follows").select("user_id", { count: "exact", head: true }).eq("creator_id", id),
   ]);
 
   if (!creatorRes.data) return null;
+  const recipes = (recipesRes.data ?? []) as CreatorRecipeRow[];
   return {
     creator: creatorRes.data,
-    recipes: (recipesRes.data ?? []) as CreatorRecipeRow[],
+    recipes,
+    recipeCount: recipeCountRes.count ?? recipes.length,
+    // The first page came back full → there may be more to load.
+    hasMore: recipes.length === CREATOR_RECIPES_PAGE_SIZE,
     followerCount: followCountRes.count ?? 0,
   };
 }
@@ -109,7 +123,7 @@ export default async function CreatorPage({ params }: Props) {
   const data = await fetchCreatorBundle(id);
   if (!data) notFound();
 
-  const { creator, recipes, followerCount } = data;
+  const { creator, recipes, recipeCount, hasMore, followerCount } = data;
   const followerLabel = followerCount === 1 ? "follower" : "followers";
 
   return (
@@ -155,7 +169,7 @@ export default async function CreatorPage({ params }: Props) {
           </span>
           <span> · </span>
           <span>
-            <span className="font-bold text-foreground">{recipes.length}</span> recipe{recipes.length === 1 ? "" : "s"}
+            <span className="font-bold text-foreground">{recipeCount}</span> recipe{recipeCount === 1 ? "" : "s"}
           </span>
         </div>
 
@@ -179,45 +193,11 @@ export default async function CreatorPage({ params }: Props) {
             </p>
           </div>
         ) : (
-          <ul className="rounded-card border border-border bg-card overflow-hidden">
-            {recipes.map((r, idx) => {
-              const kcal = Math.round(r.calories ?? 0);
-              const protein = Math.round(r.protein ?? 0);
-              return (
-                <li
-                  key={r.id}
-                  className={idx > 0 ? "border-t border-border" : undefined}
-                >
-                  <Link
-                    href={`/recipe/${r.id}`}
-                    className="flex items-center gap-3 p-3 hover:bg-muted/40 transition-colors"
-                  >
-                    {r.image_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={r.image_url}
-                        alt=""
-                        className="w-14 h-14 rounded-lg object-cover bg-muted"
-                      />
-                    ) : (
-                      <div className="w-14 h-14 rounded-lg bg-muted flex items-center justify-center text-muted-foreground text-xs">
-                        🍳
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-foreground truncate">
-                        {normalizeRecipeTitle(r.title)}
-                      </p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {kcal} kcal · {protein}g protein
-                        {r.cook_time_min ? ` · ${r.cook_time_min} min` : ""}
-                      </p>
-                    </div>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+          <CreatorRecipeList
+            creatorId={creator.id}
+            initialRecipes={recipes}
+            initialHasMore={hasMore}
+          />
         )}
       </div>
     </div>

@@ -17,17 +17,30 @@
  *     suggestionRule }` so the open-rate funnel has a real
  *     denominator.
  *
+ * ENG-748 #7 (2026-05-27) — dual-rail fan-out. The route used to select
+ * only profiles with a non-null `expo_push_token`, so browser-only
+ * subscribers (Web Push, no app install) never received the recap. The
+ * select now pulls every opted-in profile; the delivery rail is chosen
+ * per-user after cross-referencing `web_push_subscriptions`. Mobile
+ * tokens → Expo; browser subscriptions → Web Push (VAPID). A user with
+ * both rails gets both and is stamped once.
+ *
  * Invocation chain:
  *   Vercel cron → POST here with `X-Cron-Secret: SUPPR_CRON_SECRET`
- *                 → service-role select of opted-in profiles with a token
- *                 → dedupe filter (skip rows pushed in last 6 days)
+ *                 → service-role select of ALL opted-in profiles
+ *                 → dedupe filter (skip rows pushed in last 6 days) + tz
+ *                 → cross-reference `web_push_subscriptions` (step 4a),
+ *                   drop candidates with neither rail (step 4b)
  *                 → IN(...) select on `nutrition_entries` for eligible users
  *                 → per-user `buildWeeklyRecap` + `selectDigestSuggestion`
  *                 → `formatWeeklyRecapPushBody(recap, suggestion)`
- *                 → `sendExpoPush` → Expo → APNs → devices
- *                 → post-send writes `last_weekly_recap_push_sent_at`,
- *                   nulls `expo_push_token` for `DeviceNotRegistered` rows,
- *                   and emits `weekly_recap_push_sent` per success.
+ *                 → mobile: `sendExpoPush` → Expo → APNs → devices
+ *                 → web:    `sendWebPushFanout` → web-push → browsers
+ *                 → post-send writes `last_weekly_recap_push_sent_at` for
+ *                   every user delivered on either rail, nulls
+ *                   `expo_push_token` for `DeviceNotRegistered` rows,
+ *                   deletes dead web-push endpoints, and emits
+ *                   `weekly_recap_push_sent` per success.
  *
  * Guardrails:
  *   - Auth is a shared-secret header, not a user JWT.
@@ -254,11 +267,20 @@ async function runWeeklyRecapPush(req: Request) {
   // 3. Select profiles. The full column list is required because the
   //    recap + cascade run server-side now (T3/T4) — we can't do per-
   //    user fetches in a follow-up RTT without ballooning latency.
+  //
+  //    ENG-748 #7 (2026-05-27): we no longer filter on a non-null
+  //    `expo_push_token` at the DB layer. Web-only subscribers (browser
+  //    Web Push subscription, no Expo token) opt in via the SAME
+  //    `weekly_recap_push_enabled` flag but were previously excluded
+  //    here, so they never received the recap. We now pull every
+  //    opted-in profile and decide per-user which rail(s) to dispatch
+  //    over (Expo for mobile tokens, Web Push for browser subs) after
+  //    cross-referencing `web_push_subscriptions`. Users with neither
+  //    rail are dropped before any compute (step 4b).
   const query = supabase
     .from("profiles")
     .select(PROFILE_SELECT_COLUMNS)
-    .eq("weekly_recap_push_enabled", true)
-    .not("expo_push_token", "is", null);
+    .eq("weekly_recap_push_enabled", true);
 
   const { data: rows, error: selectErr } = await query.range(
     0,
@@ -288,8 +310,12 @@ async function runWeeklyRecapPush(req: Request) {
   // Cast through `unknown` because supabase-js infers
   // `GenericStringError[]` for the long, comma-joined column list and
   // refuses the direct cast. Runtime shape is the row shape.
-  const eligible = ((rows ?? []) as unknown as ProfileRow[]).filter((r) => {
-    if (!r.expo_push_token) return false;
+  //
+  // ENG-748 #7: the rail filter (expo token OR web sub) moved DOWN to
+  // step 4b — here we only apply the rail-agnostic predicates (dedupe +
+  // tz). A web-only user has no `expo_push_token` but is still a
+  // candidate; we discover their web subscription in 4a.
+  const candidates = ((rows ?? []) as unknown as ProfileRow[]).filter((r) => {
     // Dedupe: skip if pushed within the last 6 days.
     if (r.last_weekly_recap_push_sent_at) {
       const lastSentMs = Date.parse(r.last_weekly_recap_push_sent_at);
@@ -304,6 +330,53 @@ async function runWeeklyRecapPush(req: Request) {
       r.week_start_day === "sunday" ? "sunday" : "monday";
     return shouldPushWeeklyRecapNow({ tzIana: r.tz_iana ?? null, weekStartDay: wsd }, nowUtc);
   });
+
+  // 4a. Cross-reference web subscriptions for the candidate set. One
+  //     IN(...) select, grouped client-side by user. We fetch this
+  //     BEFORE composing so we can (a) keep web-only candidates in the
+  //     eligible set and (b) drop candidates with NO rail at all without
+  //     paying for their recap compute. Web-sub fetch failure is
+  //     non-fatal — we log + continue with mobile-only fan-out so a flaky
+  //     web_push_subscriptions read never blocks the (larger) mobile
+  //     cohort.
+  type WebSub = { endpoint: string; p256dh: string; auth: string };
+  const webSubsByUser = new Map<string, WebSub[]>();
+  if (candidates.length > 0) {
+    const candidateIds = candidates.map((r) => r.id);
+    const { data: webSubRows, error: webSelErr } = await supabase
+      .from("web_push_subscriptions")
+      .select("user_id, endpoint, p256dh, auth")
+      .in("user_id", candidateIds);
+    if (webSelErr) {
+      console.log(
+        JSON.stringify({
+          at: "push.weekly_recap",
+          phase: "web_select_failed",
+          error: webSelErr.message,
+        }),
+      );
+    } else {
+      for (const row of (webSubRows ?? []) as Array<{
+        user_id: string;
+        endpoint: string;
+        p256dh: string;
+        auth: string;
+      }>) {
+        const list = webSubsByUser.get(row.user_id) ?? [];
+        list.push({ endpoint: row.endpoint, p256dh: row.p256dh, auth: row.auth });
+        webSubsByUser.set(row.user_id, list);
+      }
+    }
+  }
+
+  // 4b. Rail filter — a candidate is eligible only if it has at least
+  //     one delivery rail: a mobile Expo token OR a browser Web Push
+  //     subscription. Users opted in via the flag but with neither rail
+  //     (e.g. revoked browser permission AND no app install) are dropped
+  //     here before any per-user compute.
+  const eligible = candidates.filter(
+    (r) => Boolean(r.expo_push_token) || (webSubsByUser.get(r.id)?.length ?? 0) > 0,
+  );
 
   const attempted = eligible.length;
   if (attempted === 0) {
@@ -399,9 +472,18 @@ async function runWeeklyRecapPush(req: Request) {
   // 7. Compose per-user message. Per-user compute failure → silent
   //    skip + structured log. Do NOT fall back to the generic body —
   //    that would mask a real bug. (Sunday push rewrite — T3, 2026-04-19.)
+  //
+  //    ENG-748 #7: `message` is now nullable — web-only users (no Expo
+  //    token) get a `null` Expo message and are dispatched over Web Push
+  //    only. `title`/`body` are hoisted onto the composed record so the
+  //    web-push fan-out reuses the exact same copy without reaching into
+  //    a possibly-null Expo message.
+  const RECAP_TITLE = "Your week in Suppr";
   type Composed = {
     row: ProfileRow;
-    message: ExpoPushMessage;
+    message: ExpoPushMessage | null;
+    title: string;
+    body: string;
     weekKey: string;
     bodyVariant: string;
     suggestionRule: string | null;
@@ -576,22 +658,28 @@ async function runWeeklyRecapPush(req: Request) {
         weekKey: descriptor.weekKey,
         bodyVariant: bodyOut.variant,
         suggestionRule,
-        message: {
-          to: row.expo_push_token as string,
-          title: "Your week in Suppr",
-          body: bodyOut.body,
-          // T5: weekKey + T4: bodyVariant in the data payload so the
-          // open-listener can attribute opens to body variants in
-          // analytics later.
-          data: {
-            deepLink: "/progress",
-            kind: "weekly_recap",
-            weekKey: descriptor.weekKey,
-            bodyVariant: bodyOut.variant,
-          },
-          sound: "default",
-          priority: "high",
-        },
+        title: RECAP_TITLE,
+        body: bodyOut.body,
+        // ENG-748 #7: only token-holders get an Expo message. Web-only
+        // users carry `message: null` and are reached via Web Push below.
+        message: row.expo_push_token
+          ? {
+              to: row.expo_push_token,
+              title: RECAP_TITLE,
+              body: bodyOut.body,
+              // T5: weekKey + T4: bodyVariant in the data payload so the
+              // open-listener can attribute opens to body variants in
+              // analytics later.
+              data: {
+                deepLink: "/progress",
+                kind: "weekly_recap",
+                weekKey: descriptor.weekKey,
+                bodyVariant: bodyOut.variant,
+              },
+              sound: "default",
+              priority: "high",
+            }
+          : null,
       });
     } catch (err) {
       // Per-user compute failure: silent skip + structured log. Do NOT
@@ -638,130 +726,126 @@ async function runWeeklyRecapPush(req: Request) {
     });
   }
 
-  const messages = composed.map((c) => c.message);
-  const result = await sendExpoPush(messages);
+  // 8. Mobile (Expo) fan-out. ENG-748 #7: only compose entries WITH an
+  //    Expo message go to Expo; web-only users (`message: null`) are
+  //    handled in the Web Push fan-out below. If every eligible user is
+  //    web-only, the Expo batch is empty — we skip the Expo POST entirely
+  //    rather than POST an empty array (which Expo would reject) and we
+  //    do NOT treat that as a failure.
+  const mobileComposed = composed.filter(
+    (c): c is Composed & { message: ExpoPushMessage } => c.message !== null,
+  );
+  const messages = mobileComposed.map((c) => c.message);
 
-  if (!result.ok) {
-    console.log(
-      JSON.stringify({
-        at: "push.weekly_recap",
-        phase: "send_failed",
-        attempted,
-        error: result.error,
-        statusCode: result.statusCode,
-      }),
-    );
-    // B10 (2026-05-11) — per-user outcome telemetry. The whole batch
-    // failed at the Expo API layer; emit a `send_failed` outcome for
-    // every user that would have been in the batch so the dashboard
-    // doesn't undercount this case as silent.
-    for (const c of composed) {
-      void serverTrack(AnalyticsEvents.weekly_recap_push_attempted, c.row.id, {
-        outcome: "send_failed",
-        weekKey: c.weekKey,
-        bodyVariant: c.bodyVariant,
-        errorCode: result.error?.slice(0, 200) ?? "unknown",
-      });
-    }
-    return NextResponse.json(
-      { ok: false, error: "send_failed", message: result.error, statusCode: result.statusCode },
-      { status: 502 },
-    );
-  }
-
-  // 8. Post-send bookkeeping. For every successful ticket, stamp
-  //    `last_weekly_recap_push_sent_at` and emit
-  //    `weekly_recap_push_sent` (T6). For every DeviceNotRegistered
-  //    ticket, null the token so we stop pushing to a dead install.
-  const deregisteredSet = new Set(result.deregisteredTokens);
   const succeededUserIds: string[] = [];
   const deregisteredUserIds: string[] = [];
 
-  for (let i = 0; i < messages.length; i += 1) {
-    const ticket = result.tickets[i];
-    const c = composed[i];
-    if (!ticket || !c) continue;
+  if (messages.length > 0) {
+    const result = await sendExpoPush(messages);
 
-    if (deregisteredSet.has(messages[i].to)) {
-      deregisteredUserIds.push(c.row.id);
-      // B10 (2026-05-11) — per-user outcome telemetry: deregistered.
-      void serverTrack(AnalyticsEvents.weekly_recap_push_attempted, c.row.id, {
-        outcome: "deregistered",
-        weekKey: c.weekKey,
-        bodyVariant: c.bodyVariant,
-        errorCode: "DeviceNotRegistered",
-      });
-      continue;
-    }
-    if (ticket.status === "ok") {
-      succeededUserIds.push(c.row.id);
-      // T6 — fire-and-forget per-user analytics. The variant comes
-      // straight off the formatter's return so the dashboard slice
-      // and the rendered body cannot disagree. `weekKey` is the
-      // recap window's key (NOT `currentWeekKey`), so the join
-      // against `weekly_recap_push_opened` lines up cleanly.
-      void serverTrack(AnalyticsEvents.weekly_recap_push_sent, c.row.id, {
-        weekKey: c.weekKey,
-        bodyVariant: c.bodyVariant,
-        suggestionRule: c.suggestionRule,
-      });
-      // B10 (2026-05-11) — also emit the unified outcome event so the
-      // dashboard can compute % succeeded across all attempts in one
-      // query (no joining required between sent + attempted).
-      void serverTrack(AnalyticsEvents.weekly_recap_push_attempted, c.row.id, {
-        outcome: "sent",
-        weekKey: c.weekKey,
-        bodyVariant: c.bodyVariant,
-      });
-    } else if (ticket.status === "error") {
-      // B10 (2026-05-11) — per-user outcome telemetry: ticket error
-      // (MessageTooBig, InvalidCredentials, etc.). The next cron run
-      // retries these, but we emit the failure now so the dashboard
-      // sees the spike if a deploy regresses message size.
-      void serverTrack(AnalyticsEvents.weekly_recap_push_attempted, c.row.id, {
-        outcome: "ticket_error",
-        weekKey: c.weekKey,
-        bodyVariant: c.bodyVariant,
-        errorCode: ticket.details?.error ?? ticket.message?.slice(0, 200) ?? "unknown",
-      });
-    }
-  }
-
-  // B10 (2026-05-11) — `result.invalidTokens` are tokens our local
-  // regex rejected before POSTing. Map back to user ids via the
-  // message index. These weren't in `messages` (the helper filtered
-  // them), so we look them up from `composed` by token match.
-  if (result.invalidTokens.length > 0) {
-    const invalidSet = new Set(result.invalidTokens);
-    for (const c of composed) {
-      if (invalidSet.has(c.message.to)) {
+    if (!result.ok) {
+      console.log(
+        JSON.stringify({
+          at: "push.weekly_recap",
+          phase: "send_failed",
+          attempted,
+          error: result.error,
+          statusCode: result.statusCode,
+        }),
+      );
+      // B10 (2026-05-11) — per-user outcome telemetry. The whole batch
+      // failed at the Expo API layer; emit a `send_failed` outcome for
+      // every user that would have been in the batch so the dashboard
+      // doesn't undercount this case as silent.
+      for (const c of mobileComposed) {
         void serverTrack(AnalyticsEvents.weekly_recap_push_attempted, c.row.id, {
-          outcome: "invalid_token",
+          outcome: "send_failed",
           weekKey: c.weekKey,
-          errorCode: "local_regex_rejected",
+          bodyVariant: c.bodyVariant,
+          errorCode: result.error?.slice(0, 200) ?? "unknown",
         });
+      }
+      return NextResponse.json(
+        { ok: false, error: "send_failed", message: result.error, statusCode: result.statusCode },
+        { status: 502 },
+      );
+    }
+
+    // Post-send bookkeeping. For every successful ticket, stamp
+    // `last_weekly_recap_push_sent_at` and emit `weekly_recap_push_sent`
+    // (T6). For every DeviceNotRegistered ticket, null the token so we
+    // stop pushing to a dead install.
+    const deregisteredSet = new Set(result.deregisteredTokens);
+
+    for (let i = 0; i < messages.length; i += 1) {
+      const ticket = result.tickets[i];
+      const c = mobileComposed[i];
+      if (!ticket || !c) continue;
+
+      if (deregisteredSet.has(messages[i].to)) {
+        deregisteredUserIds.push(c.row.id);
+        // B10 (2026-05-11) — per-user outcome telemetry: deregistered.
+        void serverTrack(AnalyticsEvents.weekly_recap_push_attempted, c.row.id, {
+          outcome: "deregistered",
+          weekKey: c.weekKey,
+          bodyVariant: c.bodyVariant,
+          errorCode: "DeviceNotRegistered",
+        });
+        continue;
+      }
+      if (ticket.status === "ok") {
+        succeededUserIds.push(c.row.id);
+        // T6 — fire-and-forget per-user analytics. The variant comes
+        // straight off the formatter's return so the dashboard slice
+        // and the rendered body cannot disagree. `weekKey` is the
+        // recap window's key (NOT `currentWeekKey`), so the join
+        // against `weekly_recap_push_opened` lines up cleanly.
+        void serverTrack(AnalyticsEvents.weekly_recap_push_sent, c.row.id, {
+          weekKey: c.weekKey,
+          bodyVariant: c.bodyVariant,
+          suggestionRule: c.suggestionRule,
+        });
+        // B10 (2026-05-11) — also emit the unified outcome event so the
+        // dashboard can compute % succeeded across all attempts in one
+        // query (no joining required between sent + attempted).
+        void serverTrack(AnalyticsEvents.weekly_recap_push_attempted, c.row.id, {
+          outcome: "sent",
+          weekKey: c.weekKey,
+          bodyVariant: c.bodyVariant,
+        });
+      } else if (ticket.status === "error") {
+        // B10 (2026-05-11) — per-user outcome telemetry: ticket error
+        // (MessageTooBig, InvalidCredentials, etc.). The next cron run
+        // retries these, but we emit the failure now so the dashboard
+        // sees the spike if a deploy regresses message size.
+        void serverTrack(AnalyticsEvents.weekly_recap_push_attempted, c.row.id, {
+          outcome: "ticket_error",
+          weekKey: c.weekKey,
+          bodyVariant: c.bodyVariant,
+          errorCode: ticket.details?.error ?? ticket.message?.slice(0, 200) ?? "unknown",
+        });
+      }
+    }
+
+    // B10 (2026-05-11) — `result.invalidTokens` are tokens our local
+    // regex rejected before POSTing. Map back to user ids via the
+    // message index. These weren't in `messages` (the helper filtered
+    // them), so we look them up from `mobileComposed` by token match.
+    if (result.invalidTokens.length > 0) {
+      const invalidSet = new Set(result.invalidTokens);
+      for (const c of mobileComposed) {
+        if (invalidSet.has(c.message.to)) {
+          void serverTrack(AnalyticsEvents.weekly_recap_push_attempted, c.row.id, {
+            outcome: "invalid_token",
+            weekKey: c.weekKey,
+            errorCode: "local_regex_rejected",
+          });
+        }
       }
     }
   }
 
   const nowIso = new Date(now).toISOString();
-
-  if (succeededUserIds.length > 0) {
-    const { error: stampErr } = await supabase
-      .from("profiles")
-      .update({ last_weekly_recap_push_sent_at: nowIso })
-      .in("id", succeededUserIds);
-    if (stampErr) {
-      console.log(
-        JSON.stringify({
-          at: "push.weekly_recap",
-          phase: "stamp_failed",
-          count: succeededUserIds.length,
-          error: stampErr.message,
-        }),
-      );
-    }
-  }
 
   if (deregisteredUserIds.length > 0) {
     const { error: clearErr } = await supabase
@@ -780,84 +864,124 @@ async function runWeeklyRecapPush(req: Request) {
     }
   }
 
-  // Web-push fan-out. Best-effort: iterates the same `composed` set and
-  // sends the identical title/body to every web subscription the user
-  // has. Web-only users (no expo_push_token) aren't in `composed` —
-  // the select filter above requires a mobile token — so the first
-  // iteration still misses them. Tracked TODO: broaden eligibility to
-  // users with web subs but no expo token (follow-up).
+  // 9. Web Push fan-out. ENG-748 #7: this now covers BOTH web-only users
+  //    (no Expo token) and dual-rail users (Expo + browser), reusing the
+  //    `webSubsByUser` map built in step 4a (no second DB read). For
+  //    every composed user with at least one browser subscription we
+  //    send the identical title/body. A web-push success is a real
+  //    delivery, so it contributes to `webSucceededUserIds` and the
+  //    `last_weekly_recap_push_sent_at` stamp below — otherwise a
+  //    web-only user would be re-pushed on every hourly cron inside their
+  //    tz window until the 6-day dedupe lapsed.
   //
-  // VAPID not configured → `sendWebPush` short-circuits; we still log
-  // the phase so Grace can verify the cron loop once keys are set.
+  //    VAPID not configured → `sendWebPushFanout` short-circuits with
+  //    `vapidUnset`; we log the phase + emit a per-user `vapid_unset`
+  //    outcome so a misconfigured deploy is never silent, and we do NOT
+  //    stamp those users (no push was actually delivered).
   let webSent = 0;
   let webDeadCount = 0;
   let webFailed = 0;
   let webVapidUnset = false;
-  if (composed.length > 0) {
-    const composedUserIds = composed.map((c) => c.row.id);
-    const { data: webSubRows, error: webSelErr } = await supabase
-      .from("web_push_subscriptions")
-      .select("user_id, endpoint, p256dh, auth")
-      .in("user_id", composedUserIds);
-    if (webSelErr) {
+  const webSucceededUserIds: string[] = [];
+  if (webSubsByUser.size > 0) {
+    const deadEndpoints: string[] = [];
+    for (const c of composed) {
+      const subs = webSubsByUser.get(c.row.id);
+      if (!subs || subs.length === 0) continue;
+      const res = await sendWebPushFanout(subs, {
+        title: c.title,
+        body: c.body,
+        url: "/home?view=progress",
+        tag: `weekly_recap:${c.weekKey}`,
+      });
+      webSent += res.sent;
+      webFailed += res.failed;
+      if (res.vapidUnset) {
+        webVapidUnset = true;
+        // Emit a per-user outcome for the web-only users we couldn't
+        // reach — never silent. (Dual-rail users already got a mobile
+        // `sent`/`ticket_error`, so we only surface this for web-only.)
+        if (!c.message) {
+          void serverTrack(AnalyticsEvents.weekly_recap_push_attempted, c.row.id, {
+            outcome: "send_failed",
+            weekKey: c.weekKey,
+            bodyVariant: c.bodyVariant,
+            errorCode: "web_vapid_unset",
+          });
+        }
+        break;
+      }
+      if (res.sent > 0) {
+        webSucceededUserIds.push(c.row.id);
+        // Per-user outcome for web-only users (dual-rail users already
+        // emitted a mobile outcome above; we don't double-count them).
+        if (!c.message) {
+          void serverTrack(AnalyticsEvents.weekly_recap_push_sent, c.row.id, {
+            weekKey: c.weekKey,
+            bodyVariant: c.bodyVariant,
+            suggestionRule: c.suggestionRule,
+          });
+          void serverTrack(AnalyticsEvents.weekly_recap_push_attempted, c.row.id, {
+            outcome: "sent",
+            weekKey: c.weekKey,
+            bodyVariant: c.bodyVariant,
+          });
+        }
+      } else if (res.failed > 0 && !c.message) {
+        // Web-only user, all browser subs failed (no dead, transient
+        // network). Surface it so the dashboard tracks it; the next cron
+        // retries (no stamp written → still inside the eligible set).
+        void serverTrack(AnalyticsEvents.weekly_recap_push_attempted, c.row.id, {
+          outcome: "send_failed",
+          weekKey: c.weekKey,
+          bodyVariant: c.bodyVariant,
+          errorCode: "web_push_failed",
+        });
+      }
+      if (res.dead.length > 0) {
+        deadEndpoints.push(...res.dead);
+      }
+    }
+    if (deadEndpoints.length > 0) {
+      webDeadCount = deadEndpoints.length;
+      const { error: webDelErr } = await supabase
+        .from("web_push_subscriptions")
+        .delete()
+        .in("endpoint", deadEndpoints);
+      if (webDelErr) {
+        console.log(
+          JSON.stringify({
+            at: "push.weekly_recap",
+            phase: "web_delete_failed",
+            count: deadEndpoints.length,
+            error: webDelErr.message,
+          }),
+        );
+      }
+    }
+  }
+
+  // 10. Stamp `last_weekly_recap_push_sent_at` for every user who got a
+  //     real delivery on EITHER rail (Expo success ∪ web-push success),
+  //     deduped. Stamping after the web fan-out is what stops web-only
+  //     users being re-pushed every hourly cron inside their tz window.
+  const stampUserIds = Array.from(
+    new Set([...succeededUserIds, ...webSucceededUserIds]),
+  );
+  if (stampUserIds.length > 0) {
+    const { error: stampErr } = await supabase
+      .from("profiles")
+      .update({ last_weekly_recap_push_sent_at: nowIso })
+      .in("id", stampUserIds);
+    if (stampErr) {
       console.log(
         JSON.stringify({
           at: "push.weekly_recap",
-          phase: "web_select_failed",
-          error: webSelErr.message,
+          phase: "stamp_failed",
+          count: stampUserIds.length,
+          error: stampErr.message,
         }),
       );
-    } else if (webSubRows && webSubRows.length > 0) {
-      const byUser = new Map<
-        string,
-        Array<{ endpoint: string; p256dh: string; auth: string }>
-      >();
-      for (const row of webSubRows) {
-        const list = byUser.get(row.user_id as string) ?? [];
-        list.push({
-          endpoint: row.endpoint as string,
-          p256dh: row.p256dh as string,
-          auth: row.auth as string,
-        });
-        byUser.set(row.user_id as string, list);
-      }
-      const deadEndpoints: string[] = [];
-      for (const c of composed) {
-        const subs = byUser.get(c.row.id);
-        if (!subs || subs.length === 0) continue;
-        const res = await sendWebPushFanout(subs, {
-          title: c.message.title ?? "Your week in Suppr",
-          body: c.message.body ?? "",
-          url: "/home?view=progress",
-          tag: `weekly_recap:${c.weekKey}`,
-        });
-        webSent += res.sent;
-        webFailed += res.failed;
-        if (res.vapidUnset) {
-          webVapidUnset = true;
-          break;
-        }
-        if (res.dead.length > 0) {
-          deadEndpoints.push(...res.dead);
-        }
-      }
-      if (deadEndpoints.length > 0) {
-        webDeadCount = deadEndpoints.length;
-        const { error: webDelErr } = await supabase
-          .from("web_push_subscriptions")
-          .delete()
-          .in("endpoint", deadEndpoints);
-        if (webDelErr) {
-          console.log(
-            JSON.stringify({
-              at: "push.weekly_recap",
-              phase: "web_delete_failed",
-              count: deadEndpoints.length,
-              error: webDelErr.message,
-            }),
-          );
-        }
-      }
     }
   }
 
@@ -865,9 +989,10 @@ async function runWeeklyRecapPush(req: Request) {
     JSON.stringify({
       at: "push.weekly_recap",
       attempted,
-      succeeded: succeededUserIds.length,
+      succeeded: stampUserIds.length,
+      mobileSucceeded: succeededUserIds.length,
+      webSucceeded: webSucceededUserIds.length,
       deregistered: deregisteredUserIds.length,
-      invalidTokens: result.invalidTokens.length,
       webSent,
       webDead: webDeadCount,
       webFailed,
@@ -875,10 +1000,14 @@ async function runWeeklyRecapPush(req: Request) {
     }),
   );
 
+  // ENG-748 #7: `succeeded` is the count of users who got a real
+  // delivery on EITHER rail (mobile Expo ∪ browser Web Push), deduped —
+  // i.e. `stampUserIds.length`. For mobile-only cohorts this equals the
+  // old mobile-only count, so existing callers/tests are unaffected.
   return NextResponse.json({
     ok: true,
     attempted,
-    succeeded: succeededUserIds.length,
+    succeeded: stampUserIds.length,
     deregistered: deregisteredUserIds.length,
   });
 }
