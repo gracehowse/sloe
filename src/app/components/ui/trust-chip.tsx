@@ -9,7 +9,10 @@
  *   - `off-adjusted`      → blue tint, Check glyph + "OFF · adjusted"
  *   - `estimated`         → amber tint, Sparkles glyph + "Estimated · verify"
  *   - `manual`            → grey tint, no glyph + "Manual"
- *   - `gluten-high-conf`  → green tint, Check glyph + "No gluten-containing ingredients"
+ *   - `gluten-high-conf`  → green tint, Sparkles glyph + "No gluten-containing ingredients"
+ *                           (Sparkles, not Check — ENG-748: a coeliac surface must not
+ *                           read as a verified safety guarantee; see the persistent
+ *                           disclaimer beneath the chip on recipe-detail heroes)
  *   - `gluten-uncertain`  → amber tint, Sparkles glyph + "Contains potential gluten · review"
  *
  * Pill geometry: 24px height, padding 3px x 8px, radius 999px.
@@ -69,7 +72,13 @@ const config: Record<TrustChipVariant, VariantConfig> = {
   "gluten-high-conf": {
     bg: "rgba(98, 179, 90, 0.08)",
     fg: "var(--success)",
-    glyph: "check",
+    // ENG-748 (legal-reviewer P0): the gluten chip must NOT read as a
+    // verified safety guarantee on a coeliac surface. The `check` glyph
+    // is the "verified" mark — swapped to `sparkles` (the "estimated"
+    // glyph, shared with `gluten-uncertain`) so the chip reads as an
+    // ingredient-name estimate, paired with the persistent disclaimer
+    // caption rendered beneath it on the recipe-detail heroes.
+    glyph: "sparkles",
     label: "No gluten-containing ingredients",
   },
   "gluten-uncertain": {

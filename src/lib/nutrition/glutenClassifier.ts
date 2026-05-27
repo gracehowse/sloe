@@ -30,11 +30,20 @@
  *     coeliac-grade copy ("Gluten contamination risk · review") rather
  *     than a 12-allergen surface treatment that would dilute every claim.
  *
- * Legal-reviewer note: copy strings are sourced from production design
- * spec §1.6 and remain pending pre-App-Store-submission review. This
- * classifier owns the *detection* logic; the *display* copy is the
- * legal-reviewer surface. See docs/journeys/gluten-depth-2026-04-27.md
- * for the open follow-ups list.
+ * Legal-reviewer note (signed off — ENG-748): this classifier owns the
+ * *detection* logic; the *display* copy is the legal-reviewer surface.
+ * The shipped chip copy is descriptive, not regulated:
+ *   - `gluten-high-conf` → "No gluten-containing ingredients"
+ *   - `gluten-uncertain` → "Contains potential gluten · review"
+ * The regulated term "Gluten-free" must NEVER render as a label
+ * (EU/UK Reg 828/2014 reserves it for verified ≤20 ppm products; an
+ * ingredient-name estimate cannot make that claim). On coeliac
+ * surfaces the chip uses the Sparkles ("estimated") glyph — not a
+ * verified Check — and a PERSISTENT disclaimer caption ("Estimated
+ * from ingredient names — not a guarantee. Always check labels and
+ * packaging if you avoid gluten for medical reasons.") is rendered
+ * directly beneath the chip on every recipe-detail hero (web +
+ * mobile). See docs/journeys/gluten-depth-2026-04-27.md.
  */
 
 export type GlutenStatus = "free" | "contains" | "risk";

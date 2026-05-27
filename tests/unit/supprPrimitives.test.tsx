@@ -95,14 +95,34 @@ describe("TrustChip", () => {
     expect(screen.getByText(label)).toBeInTheDocument();
   });
 
-  it("emits a Check glyph on usda + off-adjusted + gluten-high-conf", () => {
-    const { container } = render(<TrustChip variant="usda" />);
-    expect(container.querySelector("svg")).toBeInTheDocument();
+  it("emits a Check glyph on usda + off-adjusted", () => {
+    for (const v of ["usda", "off-adjusted"] as const) {
+      const { container } = render(<TrustChip variant={v} />);
+      const svg = container.querySelector("svg");
+      expect(svg).toBeInTheDocument();
+      expect(svg?.getAttribute("class") ?? "").toContain("lucide-check");
+    }
   });
 
   it("emits a Sparkles glyph on estimated + gluten-uncertain", () => {
-    const { container } = render(<TrustChip variant="estimated" />);
-    expect(container.querySelector("svg")).toBeInTheDocument();
+    for (const v of ["estimated", "gluten-uncertain"] as const) {
+      const { container } = render(<TrustChip variant={v} />);
+      const svg = container.querySelector("svg");
+      expect(svg).toBeInTheDocument();
+      expect(svg?.getAttribute("class") ?? "").toContain("lucide-sparkles");
+    }
+  });
+
+  // ENG-748: the gluten high-confidence chip must NOT render the
+  // verified Check glyph on a coeliac surface — it uses the Sparkles
+  // ("estimated") glyph so it never reads as a safety guarantee.
+  it("gluten-high-conf emits Sparkles, NOT Check (ENG-748)", () => {
+    const { container } = render(<TrustChip variant="gluten-high-conf" />);
+    const svg = container.querySelector("svg");
+    expect(svg).toBeInTheDocument();
+    const cls = svg?.getAttribute("class") ?? "";
+    expect(cls).toContain("lucide-sparkles");
+    expect(cls).not.toContain("lucide-check");
   });
 
   it("manual variant has no glyph (no svg)", () => {

@@ -1668,12 +1668,30 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             ingredients.map((ing) => String(ing.name ?? "")),
           );
           if (!glutenResult.variant) return null;
+          // ENG-748 (legal-reviewer P0): a PERSISTENT disclaimer caption
+          // sits directly beneath the chip — not a tooltip/tap/global
+          // ToS — whenever EITHER gluten chip renders. The chip is an
+          // estimate from ingredient names on a coeliac-sensitive
+          // surface; the caption must always be visible so the chip is
+          // never read as a safety guarantee. The regulated term
+          // "Gluten-free" is never rendered as a label (EU/UK Reg
+          // 828/2014). Mirror: apps/mobile/app/recipe/[id].tsx.
           return (
-            <div className="flex flex-wrap items-center gap-1.5" aria-label="Recipe tags">
-              <TrustChip
-                variant={glutenResult.variant}
-                data-testid="recipe-detail-gluten-chip"
-              />
+            <div className="flex flex-col gap-1">
+              <div className="flex flex-wrap items-center gap-1.5" aria-label="Recipe tags">
+                <TrustChip
+                  variant={glutenResult.variant}
+                  data-testid="recipe-detail-gluten-chip"
+                />
+              </div>
+              <p
+                className="text-[11px] leading-snug text-muted-foreground"
+                data-testid="recipe-detail-gluten-disclaimer"
+              >
+                Estimated from ingredient names — not a guarantee. Always
+                check labels and packaging if you avoid gluten for medical
+                reasons.
+              </p>
             </div>
           );
         })()}

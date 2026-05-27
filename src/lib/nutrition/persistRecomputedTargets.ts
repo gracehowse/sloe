@@ -206,23 +206,25 @@ export async function persistRecomputedTargets(
     .update(update)
     .eq("id", userId);
 
-  // DEFENSIVE retry: if the ONLY problem is that `pace_kg_per_week`
-  // doesn't exist on this env (migration 20260526100000 not pushed yet),
-  // strip it and write the rest. PostgREST surfaces an unknown column as
-  // a schema-cache error (PGRST204) naming the column. We never let the
-  // new column block a goal edit on an un-migrated env. Any OTHER error
-  // (or a failure after stripping) falls through to the error return.
+  // DEFENSIVE retry (belt-and-braces): migration 20260526100000 shipped
+  // the `pace_kg_per_week` column, so this branch should never fire in
+  // practice. It's retained only to survive a hypothetical misordered
+  // deploy (code reaching an env where the migration somehow hasn't
+  // applied). PostgREST surfaces an unknown column as a schema-cache
+  // error (PGRST204) naming the column; if that's the ONLY problem we
+  // strip it and write the rest so a goal edit is never blocked. Any
+  // OTHER error (or a failure after stripping) falls through to the
+  // error return.
   if (
     error &&
     "pace_kg_per_week" in update &&
     typeof error.message === "string" &&
     error.message.includes("pace_kg_per_week")
   ) {
-    // Observability (data-integrity nit 2026-05-26): a misordered deploy
-    // (code shipped before migration pushed) would otherwise silently fall
-    // back to preset-only. Warn so it's visible rather than invisible.
+    // Warn so a misordered deploy is visible rather than silently
+    // falling back to preset-only.
     console.warn(
-      "[persistRecomputedTargets] pace_kg_per_week column absent — stripped + retried (apply migration 20260526100000)",
+      "[persistRecomputedTargets] pace_kg_per_week column absent — stripped + retried (migration 20260526100000 should already be applied)",
     );
     const { pace_kg_per_week: _dropped, ...withoutPace } = update;
     const retry = await supabase

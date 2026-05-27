@@ -58,7 +58,13 @@ const config: Record<TrustChipVariant, VariantConfig> = {
   "gluten-high-conf": {
     bg: "rgba(98, 179, 90, 0.08)",
     fg: Accent.success,
-    glyph: "check",
+    // ENG-748 (legal-reviewer P0): the gluten chip must NOT read as a
+    // verified safety guarantee on a coeliac surface. The `check` glyph
+    // is the "verified" mark — swapped to `sparkles` (the "estimated"
+    // glyph, shared with `gluten-uncertain`) so the chip reads as an
+    // ingredient-name estimate, paired with the persistent disclaimer
+    // caption rendered beneath it on the recipe-detail heroes.
+    glyph: "sparkles",
     label: "No gluten-containing ingredients",
   },
   "gluten-uncertain": {

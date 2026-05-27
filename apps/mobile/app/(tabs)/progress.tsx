@@ -795,12 +795,14 @@ export default function ProgressScreen() {
   // Mobile-local weekly recap scheduling was removed 2026-04-20
   // (see docs/decisions/2026-04-20-weekly-recap-mobile-local-killed.md).
   // Server cron `app/api/push/weekly-recap/route.ts` owns delivery for
-  // installs with a synced Expo push token; installs without a token
-  // receive no weekly push (the upstream fix is token registration —
-  // TODO P0-1). The `weekly_recap_push_sent` / `_scheduled` analytics
-  // used to fire from this effect with a `currentWeekKey` payload that
-  // carried a week-boundary off-by-one bug; removing the schedule also
-  // removes the bug. Server-side emit remains the canonical signal.
+  // installs with a synced Expo push token. Token registration IS wired
+  // — `registerExpoPushTokenForUser` / `refreshExpoPushTokenIfChanged`
+  // (apps/mobile/lib/expoPushToken.ts) run from the Today tab and write
+  // `profiles.expo_push_token`, so synced installs receive the push.
+  // The `weekly_recap_push_sent` / `_scheduled` analytics used to fire
+  // from this effect with a `currentWeekKey` payload that carried a
+  // week-boundary off-by-one bug; removing the schedule also removed the
+  // bug. Server-side emit remains the canonical signal.
 
   // Weight trend (last entries)
   const weightTrend = useMemo(() => {

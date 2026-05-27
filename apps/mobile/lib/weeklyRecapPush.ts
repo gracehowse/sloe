@@ -7,8 +7,10 @@
  * decision at docs/decisions/2026-04-20-weekly-recap-mobile-local-killed.md —
  * we ship one good weekly push (server-cron content-specific body) or
  * nothing, never a generic placeholder. Installs without a synced
- * Expo push token receive no weekly push; the upstream fix is
- * `profiles.expo_push_token` registration (see TODO P0-1).
+ * Expo push token receive no weekly push; token registration IS wired
+ * (`registerExpoPushTokenForUser` / `refreshExpoPushTokenIfChanged` in
+ * `apps/mobile/lib/expoPushToken.ts`, called from the Today tab, write
+ * `profiles.expo_push_token`), so synced installs do receive it.
  *
  * What remains in this module:
  *   1. `cancelWeeklyRecapPush` — OS-level cancellation of any stale

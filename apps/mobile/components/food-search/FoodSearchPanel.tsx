@@ -284,14 +284,15 @@ export default function FoodSearchPanel({
   // foods block + suppresses the FlatList. `Custom` filters to
   // user-authored foods. `Branded` filters to FatSecret-sourced rows
   // (Premier branded dataset). `Generic` filters to USDA / OFF /
-  // Edamam / Generic* fallbacks (no brand). `Favourites` is wired but
-  // returns []; the data shape (isFavourite per row) doesn't exist
-  // yet, so the tab renders the same as `All` for now to keep the
-  // contract visible while the favouriting workstream lands.
-  type FoodCategory = "All" | "Favourites" | "Recents" | "Custom" | "Branded" | "Generic";
+  // Edamam / Generic* fallbacks (no brand).
+  // Favourites tab removed pending a real favourites model — see
+  // ENG-748 #8. It rendered as a visible tab that always returned the
+  // unfiltered list (no isFavourite-per-row data shape exists), so it
+  // was a dead affordance; removing it (rather than shipping a no-op
+  // tab) is the honest state until the favouriting workstream lands.
+  type FoodCategory = "All" | "Recents" | "Custom" | "Branded" | "Generic";
   const CATEGORY_LIST: readonly FoodCategory[] = [
     "All",
-    "Favourites",
     "Recents",
     "Custom",
     "Branded",
@@ -1118,9 +1119,7 @@ export default function FoodSearchPanel({
   // 2026-05-14 premium-bar polish #3: derive the filtered list once
   // per render. `All` is identity. `Recents` suppresses results so
   // only the recent-foods block above shows. `Custom`, `Branded`,
-  // `Generic` filter by `_source`. `Favourites` is a no-op-pass-
-  // through until the per-row isFavourite shape lands (kept visible
-  // to telegraph the upcoming surface).
+  // `Generic` filter by `_source`. (Favourites removed — see ENG-748 #8.)
   const filteredResults = useMemo<SearchRow[]>(() => {
     switch (activeCategory) {
       case "Recents":
@@ -1138,7 +1137,6 @@ export default function FoodSearchPanel({
             r._source === "GenericBeverage" ||
             r._source === "GenericFood",
         );
-      case "Favourites":
       case "All":
       default:
         return results;

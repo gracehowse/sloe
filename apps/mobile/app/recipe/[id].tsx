@@ -1484,6 +1484,14 @@ export default function RecipeDetailScreen() {
       fontVariant: ["tabular-nums"] as ["tabular-nums"],
     },
     kcalQualifier: { fontSize: 13, color: colors.textSecondary },
+    // ENG-748: persistent gluten-chip disclaimer caption — muted,
+    // 11pt, sits directly beneath the chip (marginTop 4).
+    glutenDisclaimer: {
+      fontSize: 11,
+      lineHeight: 15,
+      color: colors.textSecondary,
+      marginTop: 4,
+    },
     // 2026-04-30 ui-product-designer recipe-detail audit: subtitle is
     // a single flex-wrap row joined by `·` separators ("by author ·
     // lunch · serves 3"). The standalone `mealTypeBadge` pill +
@@ -1887,19 +1895,38 @@ export default function RecipeDetailScreen() {
               end-to-end (P2 work in the GW-08 audit). The gluten
               classifier chip stays — it walks the ingredient list
               against a real keyword set and is honest. */}
-          <View style={{ marginTop: 6, flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
-            {(() => {
-              const gluten = classifyRecipeGluten(
-                ingredients.map((ing) => String(ing.name ?? "")),
-              );
-              return gluten.variant ? (
-                <TrustChip
-                  variant={gluten.variant}
-                  testID="recipe-detail-gluten-chip"
-                />
-              ) : null;
-            })()}
-          </View>
+          {(() => {
+            const gluten = classifyRecipeGluten(
+              ingredients.map((ing) => String(ing.name ?? "")),
+            );
+            if (!gluten.variant) return null;
+            // ENG-748 (legal-reviewer P0): a PERSISTENT disclaimer caption
+            // sits directly beneath the chip — not a tooltip/tap/global
+            // ToS — whenever EITHER gluten chip renders. The chip is an
+            // estimate from ingredient names on a coeliac-sensitive
+            // surface; the caption must always be visible so the chip is
+            // never read as a safety guarantee. The regulated term
+            // "Gluten-free" is never rendered as a label (EU/UK Reg
+            // 828/2014). Mirror: src/app/components/RecipeDetail.tsx.
+            return (
+              <View style={{ marginTop: 6 }}>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                  <TrustChip
+                    variant={gluten.variant}
+                    testID="recipe-detail-gluten-chip"
+                  />
+                </View>
+                <Text
+                  style={styles.glutenDisclaimer}
+                  testID="recipe-detail-gluten-disclaimer"
+                >
+                  Estimated from ingredient names — not a guarantee. Always
+                  check labels and packaging if you avoid gluten for medical
+                  reasons.
+                </Text>
+              </View>
+            );
+          })()}
           {/* 2026-05-02 v4 (recipe-detail-tiles-and-kcal): user feedback
               "cals need to be clearer" — kcal got promoted out of the
               subtitle row (where it was buried at 13-pt grey-with-bold
