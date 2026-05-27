@@ -1,6 +1,7 @@
 /**
  * Prints production readiness for Stripe, Upstash, and Supabase.
- * Exit 0 always unless VERIFY_STRICT=1 and a blocking misconfiguration is found.
+ * Exit 0 always, unless a blocking misconfiguration is found AND we're in strict
+ * mode — i.e. VERIFY_STRICT=1 or running on the prod deployment (VERCEL_ENV=production).
  *
  * Usage: npm run verify:production-env
  */
@@ -92,8 +93,13 @@ console.log("");
 console.log("Stripe Dashboard: create endpoint POST /api/stripe/webhook with events:");
 console.log("  checkout.session.completed, customer.subscription.created, customer.subscription.updated, customer.subscription.deleted");
 
-if (process.env.VERIFY_STRICT === "1" && strictFail) {
-  console.error("\nverify-production-env: VERIFY_STRICT=1 and blocking issues above.");
+// Hard-fail on blocking misconfig when explicitly strict (VERIFY_STRICT=1) OR
+// when running on the real production deployment (VERCEL_ENV=production) — so
+// wiring this into a prod `prebuild`/CI step fails the deploy instead of
+// shipping e.g. a rate-limiter quota bypass. Preview/CI/local stay advisory.
+const strictMode = process.env.VERIFY_STRICT === "1" || process.env.VERCEL_ENV === "production";
+if (strictMode && strictFail) {
+  console.error("\nverify-production-env: strict mode and blocking issues above.");
   process.exit(1);
 }
 
