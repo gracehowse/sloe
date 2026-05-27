@@ -91,6 +91,12 @@ export async function searchOffProducts(
         // yogurt); reconcileOffPer100g rebuilds them from `*_serving` /
         // `serving_quantity` and flags the row when the bases disagree.
         const recon = reconcileOffPer100g(n, p);
+        // ENG-738 (2026-05-26) — micros + fiber/sugar/sodium are read straight
+        // off the raw `*_100g` fields, which on a `nutrition_data_per:"serving"`
+        // row secretly hold per-serving values. Rescale them onto the same
+        // true-per-100g basis the macros use via recon.per100gFactor (=1 for
+        // genuine per-100g rows, a no-op).
+        const f = recon.per100gFactor;
         return {
           code: p.code ?? "",
           name: p.product_name ?? "Unknown",
@@ -99,12 +105,13 @@ export async function searchOffProducts(
           protein: Math.round(recon.protein * 10) / 10,
           carbs: Math.round(recon.carbs * 10) / 10,
           fat: Math.round(recon.fat * 10) / 10,
-          fiberG: Math.round((n.fiber_100g ?? 0) * 10) / 10,
-          sugarG: Math.round((n["sugars_100g"] ?? 0) * 10) / 10,
-          sodiumMg: Math.round((n.sodium_100g ?? 0) * 1000),
+          fiberG: Math.round((n.fiber_100g ?? 0) * f * 10) / 10,
+          sugarG: Math.round((n["sugars_100g"] ?? 0) * f * 10) / 10,
+          sodiumMg: Math.round((n.sodium_100g ?? 0) * f * 1000),
           _basisCorrected: recon.corrected,
           // F-79 — pull every micro OFF exposes; commit sites scale + persist.
-          microsPer100g: parseOffMicrosPer100g(n),
+          // ENG-738 — scaled by the per-100g factor to match the macro basis.
+          microsPer100g: parseOffMicrosPer100g(n, f),
         };
       })
       // F-77 (2026-04-25) — drop OFF rows that fail an Atwater plausibility

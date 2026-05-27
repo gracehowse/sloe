@@ -139,19 +139,20 @@ export function edamamFoodMacrosPer100g(food: EdamamFoodHit["food"]): {
 }
 
 /**
- * Extract the per-100g micronutrient panel from an Edamam food hit.
+ * Extract the per-100g micronutrient panel from an Edamam SEARCH hit.
  *
- * Edamam Food Database (`/parser`) is intentionally minimal — the
+ * The `/parser` search endpoint is intentionally minimal — the
  * `nutrients` block on a hit only carries
- * `ENERC_KCAL/PROCNT/FAT/CHOCDF/FIBTG/SUGAR/NA`. There is no fat
- * breakdown, no cholesterol, no vitamins, no minerals beyond sodium.
+ * `ENERC_KCAL/PROCNT/FAT/CHOCDF/FIBTG/SUGAR/NA`. So this extractor only
+ * emits `fiberG/sugarG/sodiumMg` — the three the search hit can ground.
  *
- * So this extractor only emits `fiberG/sugarG/sodiumMg` — the meal
- * detail panel will still show the empty-state copy ("Edamam did not
- * publish vitamin or mineral data") because that's accurate: Edamam
- * Food Database genuinely does not publish them on this endpoint.
- * The richer `Nutrition Analysis` API does, but it's a separate
- * paid product and uses ingredient-line input, not food IDs.
+ * ENG-738 (2026-05-26): the FULL 35-field panel (fat breakdown,
+ * cholesterol, vitamins, minerals) IS available from the SAME food
+ * database via the `/nutrients` POST endpoint, keyed by `foodId` — see
+ * `fetchEdamamMicrosPer100g` below. The food-log SELECT path now calls
+ * that on tap, so a logged Edamam food ends with the full panel, not
+ * just these three. This search-hit extractor stays minimal because the
+ * search list doesn't pay the extra per-hit `/nutrients` round-trip.
  */
 export function edamamFoodMicrosPer100g(
   food: EdamamFoodHit["food"],
@@ -168,6 +169,160 @@ export function edamamFoodMicrosPer100g(
   emit("sugarG", n.SUGAR, 1);
   emit("sodiumMg", n.NA, 0);
   return out;
+}
+
+/* ────────────────────────────────────────────────────
+ * Edamam Food Database `/nutrients` endpoint — full
+ * per-100g micronutrient panel for a single foodId.
+ *
+ * ENG-738 (2026-05-26). The `/parser` search endpoint
+ * (`edamamFoodSearch`) only carries the minimal nutrient
+ * block (ENERC_KCAL/PROCNT/FAT/CHOCDF/FIBTG/SUGAR/NA). The
+ * full 35-field panel — fat breakdown, cholesterol, all the
+ * vitamins + minerals — is available from the SAME database
+ * via the `/nutrients` POST endpoint, keyed by `foodId`.
+ *
+ * We POST a single ingredient at exactly 100 g (gram measure
+ * URI), so the returned `totalNutrients[CODE].quantity` values
+ * ARE per-100g — no division needed. Units already match our
+ * canonical `nutrition_micros` keys (mg / mcg / g), so we emit
+ * `quantity` verbatim with NO unit conversion — only the
+ * code → key remap below. (Contrast OFF, which reports grams
+ * across the board and needs ×1000 / ×1e6 scaling.)
+ * ──────────────────────────────────────────────────── */
+
+const NUTRIENTS_API_URL = `${BASE_URL}/nutrients`;
+
+/** The gram-measure ontology URI Edamam expects for a 100 g basis. */
+const GRAM_MEASURE_URI =
+  "http://www.edamam.com/ontologies/edamam.owl#Measure_gram";
+
+/**
+ * Edamam `totalNutrients` code → our canonical `nutrition_micros` key.
+ * Units already match (Edamam emits mg / mcg / g exactly as our keys
+ * expect), so the value is emitted verbatim. Codes absent from this map
+ * are dropped. Keys here MUST match what `parseOffMicrosPer100g` /
+ * `fdcFoodMicrosPer100g` emit and `MICRO_LINES` reads.
+ */
+const EDAMAM_NUTRIENT_KEY_MAP: Readonly<Record<string, string>> = {
+  // Minerals
+  NA: "sodiumMg",
+  CA: "calciumMg",
+  MG: "magnesiumMg",
+  K: "potassiumMg",
+  FE: "ironMg",
+  ZN: "zincMg",
+  P: "phosphorusMg",
+  // Vitamins
+  VITA_RAE: "vitaminAMcgRae",
+  VITC: "vitaminCMg",
+  THIA: "thiaminMg",
+  RIBF: "riboflavinMg",
+  NIA: "niacinMg",
+  VITB6A: "vitaminB6Mg",
+  FOLDFE: "folateMcg",
+  VITB12: "vitaminB12Mcg",
+  VITD: "vitaminDMcg",
+  TOCPHA: "vitaminEMg",
+  VITK1: "vitaminKMcg",
+  // Fat breakdown + cholesterol
+  FASAT: "saturatedFatG",
+  FAMS: "monoFatG",
+  FAPU: "polyFatG",
+  FATRN: "transFatG",
+  CHOLE: "cholesterolMg",
+  // Macros that double as micros (uniform with OFF / USDA panels)
+  FIBTG: "fiberG",
+  SUGAR: "sugarG",
+};
+
+/**
+ * Map an Edamam `totalNutrients` payload (the `/nutrients` response shape)
+ * to our canonical per-100g `nutrition_micros` record.
+ *
+ * Pure, sync, and exported for unit testing. Emits `quantity` verbatim —
+ * no unit conversion (Edamam units already match our keys). Drops any code
+ * not in `EDAMAM_NUTRIENT_KEY_MAP` and any zero / non-finite value (the
+ * shared "drop zero / non-finite" emit convention).
+ */
+export function mapEdamamNutrientsToMicros(
+  totalNutrients: Record<string, { label?: string; quantity?: number; unit?: string }> | null | undefined,
+): Record<string, number> {
+  const tn = totalNutrients ?? {};
+  const out: Record<string, number> = {};
+  for (const [code, key] of Object.entries(EDAMAM_NUTRIENT_KEY_MAP)) {
+    const raw = tn[code]?.quantity;
+    if (typeof raw !== "number" || !Number.isFinite(raw) || raw <= 0) continue;
+    // Round to the same precision the display rows use: 1dp for grams,
+    // 1dp for the few mg/mcg keys that lose meaning at 0dp, else 0dp.
+    const decimals = key.endsWith("G")
+      ? 1
+      : key === "ironMg" || key === "vitaminB12Mcg" || key === "vitaminCMg" || key === "vitaminDMcg" || key === "vitaminEMg" || key.startsWith("thiamin") || key.startsWith("riboflavin") || key.startsWith("niacin") || key === "vitaminB6Mg"
+        ? 1
+        : 0;
+    const f = 10 ** decimals;
+    const rounded = Math.round(raw * f) / f;
+    if (rounded > 0) out[key] = rounded;
+  }
+  return out;
+}
+
+/**
+ * Fetch the full per-100g micronutrient panel for a single Edamam food.
+ *
+ * POSTs the food at a 100 g gram-measure basis to the `/nutrients`
+ * endpoint, so the returned quantities are already per-100g, then remaps
+ * via `EDAMAM_NUTRIENT_KEY_MAP`. Returns `{}` on ANY failure (bad config,
+ * network, non-2xx, malformed body, empty foodId) so this NEVER throws
+ * into the food-log path — the caller just logs without the extra micros.
+ */
+export async function fetchEdamamMicrosPer100g(
+  config: EdamamConfig,
+  foodId: string,
+): Promise<Record<string, number>> {
+  const id = foodId?.trim();
+  if (!id) return {};
+
+  const url = new URL(NUTRIENTS_API_URL);
+  url.searchParams.set("app_id", config.appId);
+  url.searchParams.set("app_key", config.appKey);
+
+  try {
+    const res = await fetch(url.toString(), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        ingredients: [
+          {
+            quantity: 100,
+            measureURI: GRAM_MEASURE_URI,
+            foodId: id,
+          },
+        ],
+      }),
+      signal: AbortSignal.timeout(8000),
+    });
+
+    if (!res.ok) {
+      if (res.status === 429) {
+        console.warn("[edamam] /nutrients rate limited — daily quota may be exhausted");
+      } else {
+        console.error(`[edamam] /nutrients failed: ${res.status} ${res.statusText}`);
+      }
+      return {};
+    }
+
+    const data = (await res.json()) as {
+      totalNutrients?: Record<string, { label?: string; quantity?: number; unit?: string }>;
+    };
+    return mapEdamamNutrientsToMicros(data.totalNutrients);
+  } catch (e) {
+    console.error("[edamam] /nutrients error:", e instanceof Error ? e.message : e);
+    return {};
+  }
 }
 
 /* ────────────────────────────────────────────────────

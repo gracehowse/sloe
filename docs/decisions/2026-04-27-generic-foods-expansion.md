@@ -78,6 +78,56 @@ If we ever start mixing in non-USDA-derived rows (e.g. brand partnerships, manua
 
 ---
 
+## Follow-up: micronutrient pull-through (ENG-738, 2026-05-26)
+
+**Gap:** the generic-food rows above seeded only the seven `per100g`
+macros (kcal/P/C/F/fibre/sugar/sodium). When a user logged a generic
+staple (carrot, spinach, …) the select→commit path never attached a
+`microsPer100g` panel, so `nutrition_micros` was written empty and the
+meal-detail "Vitamins, minerals & more" card showed "did not publish…".
+The real-USDA and OFF branches already threaded `microsPer100g` (F-79);
+the GenericFood branch did not.
+
+**Data (already baked, not regenerated here):**
+`src/lib/nutrition/genericFoodMicros.ts` — a per-100g micronutrient panel
+for all **35 generic FOODS**, keyed by the `GenericFood.id` and using the
+same canonical camelCase keys as the runtime USDA path
+(`fdcFoodMicrosPer100g`). Auto-generated from real USDA Foundation /
+SR-Legacy rows, calorie-anchored at bake time so a wrong row can't slip
+in. Each entry cites its source `fdcId`. **Do not hand-edit numbers —
+re-run the bake.** Beverages are deliberately out of scope (deferred).
+
+**Wiring (web + mobile, byte-for-byte equivalent logic):**
+- Row construction attaches the panel the same way the OFF row does:
+  - web `src/app/components/food-search/FoodSearchPanel.tsx`
+    `buildGenericMatchRow()` → `...(genericMicros ? { microsPer100g } : {})`
+  - mobile `apps/mobile/lib/verifyRecipe.ts` `genericFoodToUnifiedResult()`
+    → same conditional spread, via `genericFoodMicrosPer100g(f.id)`.
+- The select branch threads `item.microsPer100g` onward (both panels),
+  identical to the OFF branch. The combined GenericBeverage/GenericFood
+  branch uses a conditional spread, so beverages (no baked micros) are
+  untouched.
+- **No commit-path change.** The existing
+  `scaleMicrosForGrams(result.microsPer100g ?? {}, grams, …)` callsite
+  (mobile `(tabs)/index.tsx`, web `NutritionTracker.tsx`) already scales +
+  persists once `microsPer100g` is present on the selection.
+
+**Tests:**
+- `tests/unit/genericFoodMicros.test.ts` — table shape (35 foods, 1:1 with
+  the dictionary, every panel non-empty + all values > 0) + spot-checked
+  USDA values (carrot vitamin A ≈ 835 µg / potassium ≈ 320 mg; spinach
+  vitamin K ≈ 483 µg / folate ≈ 194 µg).
+- `tests/unit/foodSearchPanelGenericMicros.test.tsx` — web select→commit:
+  picking a carrot / spinach row emits an `onSelect` selection carrying the
+  baked micros.
+- `apps/mobile/tests/unit/genericFoodMicrosCommit.test.ts` — mobile
+  select→commit: real `searchFoods` → generic row → real
+  `scaleMicrosForGrams` → non-empty, grams-scaled `nutrition_micros`.
+- `apps/mobile/tests/unit/offMicrosPullThroughParity.test.ts` — extended
+  with an ENG-738 section pinning the threading on both platforms.
+
+---
+
 ## Outcome
 
 - F-73 cortado pattern extended from 12 coffee drinks to 30 beverages (coffee + tea + milk + juice + alcohol) and 33 generic foods (fruit + veg + grains + protein + dairy + nuts).

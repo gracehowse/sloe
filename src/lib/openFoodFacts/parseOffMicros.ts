@@ -15,11 +15,22 @@
 
 type Nutriments = Record<string, number | undefined>;
 
-/** Read the first non-zero finite number from a list of OFF nutriment keys. */
-function read(n: Nutriments, keys: readonly string[]): number {
+/**
+ * Read the first non-zero finite number from a list of OFF nutriment keys,
+ * scaled by `factor`.
+ *
+ * ENG-738 (2026-05-26) — on OFF rows with `nutrition_data_per:"serving"` the
+ * `*_100g` nutriment fields actually hold per-SERVING values. The macros are
+ * already reconciled to a true per-100g basis by `reconcileOffPer100g`; the
+ * micros read here are NOT, so the caller passes `recon.per100gFactor` (the
+ * same raw-`*_100g` → true-per-100g multiplier) and we apply it before the
+ * unit conversion + rounding in `emit`. For per-100g-basis rows the factor is
+ * 1 (a no-op) — the common case.
+ */
+function read(n: Nutriments, keys: readonly string[], factor: number): number {
   for (const k of keys) {
     const raw = n[k];
-    if (typeof raw === "number" && Number.isFinite(raw) && raw > 0) return raw;
+    if (typeof raw === "number" && Number.isFinite(raw) && raw > 0) return raw * factor;
   }
   return 0;
 }
@@ -41,57 +52,68 @@ function emit(out: Record<string, number>, key: string, value: number, decimals:
  * already top-level columns on `nutrition_entries` (`calories`, `protein`,
  * `carbs`, `fat`). Sugar/sodium/fiber overlap with the existing parser at
  * `fetchProductByBarcode.ts` so callers can pick whichever they need.
+ *
+ * @param factor ENG-738 (2026-05-26) — the raw-`*_100g` → true-per-100g
+ *   multiplier from `reconcileOffPer100g(...).per100gFactor`. On
+ *   `nutrition_data_per:"serving"` rows the `*_100g` fields secretly hold
+ *   per-serving values, so this rescales them onto the same per-100g basis
+ *   the macros already use. Defaults to 1 (no-op) for per-100g-basis rows.
  */
-export function parseOffMicrosPer100g(nutriments: Nutriments | null | undefined): Record<string, number> {
+export function parseOffMicrosPer100g(
+  nutriments: Nutriments | null | undefined,
+  factor: number = 1,
+): Record<string, number> {
   const n = nutriments ?? {};
   const out: Record<string, number> = {};
+  // Guard a garbage factor (NaN / ≤0) — never scale micros by it.
+  const f = Number.isFinite(factor) && factor > 0 ? factor : 1;
 
   // Sugars / fibre / sodium — already extracted by the macro parser, but
   // emit here too so callers using only this helper get a complete shape.
-  emit(out, "sugarG", read(n, ["sugars_100g", "sugars"]), 1);
-  emit(out, "fiberG", read(n, ["fiber_100g", "fiber"]), 1);
+  emit(out, "sugarG", read(n, ["sugars_100g", "sugars"], f), 1);
+  emit(out, "fiberG", read(n, ["fiber_100g", "fiber"], f), 1);
   // OFF sodium is in g per 100g; convert to mg.
-  emit(out, "sodiumMg", read(n, ["sodium_100g", "sodium"]) * 1000, 0);
+  emit(out, "sodiumMg", read(n, ["sodium_100g", "sodium"], f) * 1000, 0);
 
   // Fat breakdown — all in grams.
-  emit(out, "saturatedFatG", read(n, ["saturated-fat_100g", "saturated-fat"]), 1);
-  emit(out, "monoFatG", read(n, ["monounsaturated-fat_100g", "monounsaturated-fat"]), 1);
-  emit(out, "polyFatG", read(n, ["polyunsaturated-fat_100g", "polyunsaturated-fat"]), 1);
-  emit(out, "transFatG", read(n, ["trans-fat_100g", "trans-fat"]), 1);
+  emit(out, "saturatedFatG", read(n, ["saturated-fat_100g", "saturated-fat"], f), 1);
+  emit(out, "monoFatG", read(n, ["monounsaturated-fat_100g", "monounsaturated-fat"], f), 1);
+  emit(out, "polyFatG", read(n, ["polyunsaturated-fat_100g", "polyunsaturated-fat"], f), 1);
+  emit(out, "transFatG", read(n, ["trans-fat_100g", "trans-fat"], f), 1);
 
   // Cholesterol + caffeine — OFF reports in grams; convert to mg.
-  emit(out, "cholesterolMg", read(n, ["cholesterol_100g", "cholesterol"]) * 1000, 0);
-  emit(out, "caffeineMg", read(n, ["caffeine_100g", "caffeine"]) * 1000, 1);
+  emit(out, "cholesterolMg", read(n, ["cholesterol_100g", "cholesterol"], f) * 1000, 0);
+  emit(out, "caffeineMg", read(n, ["caffeine_100g", "caffeine"], f) * 1000, 1);
 
   // Minerals — OFF in grams → mg (or mcg for trace minerals).
-  emit(out, "calciumMg", read(n, ["calcium_100g", "calcium"]) * 1000, 0);
-  emit(out, "ironMg", read(n, ["iron_100g", "iron"]) * 1000, 1);
-  emit(out, "magnesiumMg", read(n, ["magnesium_100g", "magnesium"]) * 1000, 0);
-  emit(out, "phosphorusMg", read(n, ["phosphorus_100g", "phosphorus"]) * 1000, 0);
-  emit(out, "potassiumMg", read(n, ["potassium_100g", "potassium"]) * 1000, 0);
-  emit(out, "zincMg", read(n, ["zinc_100g", "zinc"]) * 1000, 1);
-  emit(out, "copperMg", read(n, ["copper_100g", "copper"]) * 1000, 2);
-  emit(out, "manganeseMg", read(n, ["manganese_100g", "manganese"]) * 1000, 2);
-  emit(out, "chlorideMg", read(n, ["chloride_100g", "chloride"]) * 1000, 0);
-  emit(out, "seleniumMcg", read(n, ["selenium_100g", "selenium"]) * 1_000_000, 0);
-  emit(out, "iodineMcg", read(n, ["iodine_100g", "iodine"]) * 1_000_000, 0);
-  emit(out, "chromiumMcg", read(n, ["chromium_100g", "chromium"]) * 1_000_000, 0);
-  emit(out, "molybdenumMcg", read(n, ["molybdenum_100g", "molybdenum"]) * 1_000_000, 0);
+  emit(out, "calciumMg", read(n, ["calcium_100g", "calcium"], f) * 1000, 0);
+  emit(out, "ironMg", read(n, ["iron_100g", "iron"], f) * 1000, 1);
+  emit(out, "magnesiumMg", read(n, ["magnesium_100g", "magnesium"], f) * 1000, 0);
+  emit(out, "phosphorusMg", read(n, ["phosphorus_100g", "phosphorus"], f) * 1000, 0);
+  emit(out, "potassiumMg", read(n, ["potassium_100g", "potassium"], f) * 1000, 0);
+  emit(out, "zincMg", read(n, ["zinc_100g", "zinc"], f) * 1000, 1);
+  emit(out, "copperMg", read(n, ["copper_100g", "copper"], f) * 1000, 2);
+  emit(out, "manganeseMg", read(n, ["manganese_100g", "manganese"], f) * 1000, 2);
+  emit(out, "chlorideMg", read(n, ["chloride_100g", "chloride"], f) * 1000, 0);
+  emit(out, "seleniumMcg", read(n, ["selenium_100g", "selenium"], f) * 1_000_000, 0);
+  emit(out, "iodineMcg", read(n, ["iodine_100g", "iodine"], f) * 1_000_000, 0);
+  emit(out, "chromiumMcg", read(n, ["chromium_100g", "chromium"], f) * 1_000_000, 0);
+  emit(out, "molybdenumMcg", read(n, ["molybdenum_100g", "molybdenum"], f) * 1_000_000, 0);
 
   // Vitamins — OFF in grams → mg or mcg per display convention.
-  emit(out, "thiaminMg", read(n, ["vitamin-b1_100g", "vitamin-b1"]) * 1000, 2);
-  emit(out, "riboflavinMg", read(n, ["vitamin-b2_100g", "vitamin-b2"]) * 1000, 2);
-  emit(out, "niacinMg", read(n, ["vitamin-pp_100g", "vitamin-pp", "vitamin-b3_100g", "vitamin-b3"]) * 1000, 1);
-  emit(out, "pantothenicAcidMg", read(n, ["pantothenic-acid_100g", "pantothenic-acid", "vitamin-b5_100g", "vitamin-b5"]) * 1000, 2);
-  emit(out, "vitaminB6Mg", read(n, ["vitamin-b6_100g", "vitamin-b6"]) * 1000, 2);
-  emit(out, "biotinMcg", read(n, ["biotin_100g", "biotin", "vitamin-b8_100g", "vitamin-b8"]) * 1_000_000, 0);
-  emit(out, "folateMcg", read(n, ["folates_100g", "folates", "folate_100g", "folate", "vitamin-b9_100g", "vitamin-b9"]) * 1_000_000, 0);
-  emit(out, "vitaminB12Mcg", read(n, ["vitamin-b12_100g", "vitamin-b12"]) * 1_000_000, 1);
-  emit(out, "vitaminCMg", read(n, ["vitamin-c_100g", "vitamin-c"]) * 1000, 1);
-  emit(out, "vitaminDMcg", read(n, ["vitamin-d_100g", "vitamin-d"]) * 1_000_000, 1);
-  emit(out, "vitaminEMg", read(n, ["vitamin-e_100g", "vitamin-e"]) * 1000, 1);
-  emit(out, "vitaminKMcg", read(n, ["vitamin-k_100g", "vitamin-k"]) * 1_000_000, 1);
-  emit(out, "vitaminAMcgRae", read(n, ["vitamin-a_100g", "vitamin-a"]) * 1_000_000, 0);
+  emit(out, "thiaminMg", read(n, ["vitamin-b1_100g", "vitamin-b1"], f) * 1000, 2);
+  emit(out, "riboflavinMg", read(n, ["vitamin-b2_100g", "vitamin-b2"], f) * 1000, 2);
+  emit(out, "niacinMg", read(n, ["vitamin-pp_100g", "vitamin-pp", "vitamin-b3_100g", "vitamin-b3"], f) * 1000, 1);
+  emit(out, "pantothenicAcidMg", read(n, ["pantothenic-acid_100g", "pantothenic-acid", "vitamin-b5_100g", "vitamin-b5"], f) * 1000, 2);
+  emit(out, "vitaminB6Mg", read(n, ["vitamin-b6_100g", "vitamin-b6"], f) * 1000, 2);
+  emit(out, "biotinMcg", read(n, ["biotin_100g", "biotin", "vitamin-b8_100g", "vitamin-b8"], f) * 1_000_000, 0);
+  emit(out, "folateMcg", read(n, ["folates_100g", "folates", "folate_100g", "folate", "vitamin-b9_100g", "vitamin-b9"], f) * 1_000_000, 0);
+  emit(out, "vitaminB12Mcg", read(n, ["vitamin-b12_100g", "vitamin-b12"], f) * 1_000_000, 1);
+  emit(out, "vitaminCMg", read(n, ["vitamin-c_100g", "vitamin-c"], f) * 1000, 1);
+  emit(out, "vitaminDMcg", read(n, ["vitamin-d_100g", "vitamin-d"], f) * 1_000_000, 1);
+  emit(out, "vitaminEMg", read(n, ["vitamin-e_100g", "vitamin-e"], f) * 1000, 1);
+  emit(out, "vitaminKMcg", read(n, ["vitamin-k_100g", "vitamin-k"], f) * 1_000_000, 1);
+  emit(out, "vitaminAMcgRae", read(n, ["vitamin-a_100g", "vitamin-a"], f) * 1_000_000, 0);
 
   return out;
 }

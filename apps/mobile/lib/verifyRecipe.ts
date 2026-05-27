@@ -10,6 +10,7 @@ import { scaleFromPer100gGrams } from "@suppr/shared/openFoodFacts/scaleFromPer1
 import { effectiveFoodSearchQuery } from "@suppr/shared/nutrition/foodSearchQuery";
 import { matchGenericBeverage } from "@suppr/shared/nutrition/genericBeverages";
 import { matchGenericFood } from "@suppr/shared/nutrition/genericFoods";
+import { genericFoodMicrosPer100g } from "@suppr/shared/nutrition/genericFoodMicros";
 import {
   pickEdamamPrimaryServing,
   pickUsdaBrandedPrimaryServing,
@@ -588,23 +589,30 @@ export async function searchOpenFoodFacts(query: string, opts?: { page?: number 
       .filter((p: any) => p.product_name && p.nutriments)
       .map((p: any) => {
         const n = p.nutriments ?? {};
-        // F-13 (2026-04-19) — caffeine + alcohol per 100 g. OFF reports
-        // caffeine in g (convert to mg) and alcohol in g already.
-        const caffRaw = n.caffeine_100g ?? n.caffeine;
-        const caffeineMgPer100g =
-          typeof caffRaw === "number" && Number.isFinite(caffRaw) && caffRaw > 0
-            ? Math.round(caffRaw * 1000 * 10) / 10
-            : null;
-        const alcRaw = n.alcohol_100g ?? n.alcohol;
-        const alcoholGPer100g =
-          typeof alcRaw === "number" && Number.isFinite(alcRaw) && alcRaw > 0
-            ? Math.round(alcRaw * 100) / 100
-            : null;
         // P0 (2026-05-26) — reconcile macros to a genuine per-100g basis.
         // `nutrition_data_per:"serving"` rows store per-serving values in
         // `*_100g`; reconcileOffPer100g rebuilds them from `*_serving` /
         // `serving_quantity`. Web parity: src/lib/openFoodFacts/searchProducts.ts.
         const recon = reconcileOffPer100g(n, p);
+        // ENG-738 (2026-05-26) — micros + fiber/sugar/sodium + caffeine/alcohol
+        // are read straight off the raw `*_100g` fields, which on a
+        // `nutrition_data_per:"serving"` row secretly hold per-serving values.
+        // Rescale them onto the same true-per-100g basis the macros use via
+        // recon.per100gFactor (=1 for genuine per-100g rows, a no-op).
+        // Web parity: src/lib/openFoodFacts/searchProducts.ts.
+        const f = recon.per100gFactor;
+        // F-13 (2026-04-19) — caffeine + alcohol per 100 g. OFF reports
+        // caffeine in g (convert to mg) and alcohol in g already.
+        const caffRaw = n.caffeine_100g ?? n.caffeine;
+        const caffeineMgPer100g =
+          typeof caffRaw === "number" && Number.isFinite(caffRaw) && caffRaw > 0
+            ? Math.round(caffRaw * f * 1000 * 10) / 10
+            : null;
+        const alcRaw = n.alcohol_100g ?? n.alcohol;
+        const alcoholGPer100g =
+          typeof alcRaw === "number" && Number.isFinite(alcRaw) && alcRaw > 0
+            ? Math.round(alcRaw * f * 100) / 100
+            : null;
         return {
           code: p.code ?? "",
           name: p.product_name ?? "Unknown",
@@ -613,13 +621,14 @@ export async function searchOpenFoodFacts(query: string, opts?: { page?: number 
           protein: Math.round(recon.protein * 10) / 10,
           carbs: Math.round(recon.carbs * 10) / 10,
           fat: Math.round(recon.fat * 10) / 10,
-          fiberG: Math.round((n.fiber_100g ?? 0) * 10) / 10,
-          sugarG: Math.round((n["sugars_100g"] ?? 0) * 10) / 10,
-          sodiumMg: Math.round((n.sodium_100g ?? 0) * 1000),
+          fiberG: Math.round((n.fiber_100g ?? 0) * f * 10) / 10,
+          sugarG: Math.round((n["sugars_100g"] ?? 0) * f * 10) / 10,
+          sodiumMg: Math.round((n.sodium_100g ?? 0) * f * 1000),
           caffeineMgPer100g,
           alcoholGPer100g,
           // F-79 (2026-04-25) — extract every micro OFF exposes.
-          microsPer100g: parseOffMicrosPer100g(n),
+          // ENG-738 — scaled by the per-100g factor to match the macro basis.
+          microsPer100g: parseOffMicrosPer100g(n, f),
           imageUrl: p.image_small_url ?? null,
           servingSize: typeof p.serving_size === "string" && p.serving_size.trim()
             ? p.serving_size.trim()
@@ -1054,6 +1063,12 @@ function genericBeverageToUnifiedResult(b: import("@suppr/shared/nutrition/gener
  * "1 medium (182g)" for an apple).
  */
 function genericFoodToUnifiedResult(f: import("@suppr/shared/nutrition/genericFoods").GenericFood): UnifiedSearchResult {
+  // ENG-738 — attach the baked per-100g USDA micronutrient panel for this
+  // generic food so the meal-detail "Vitamins, minerals & more" card
+  // populates after it's logged. Mirrors the OFF row (which carries
+  // `microsPer100g` at construction) and the web `buildGenericMatchRow`.
+  // `undefined` for an unbaked id keeps the key absent rather than null.
+  const genericMicros = genericFoodMicrosPer100g(f.id);
   return {
     key: `generic-food:${f.id}`,
     name: f.name,
@@ -1070,6 +1085,7 @@ function genericFoodToUnifiedResult(f: import("@suppr/shared/nutrition/genericFo
       caffeineMgPer100g: 0,
       alcoholGPer100g: 0,
     },
+    ...(genericMicros ? { microsPer100g: genericMicros } : {}),
     calsPer100g: f.per100g.calories,
     verified: true,
     primaryServing: {
@@ -1421,6 +1437,45 @@ export async function getFoodMacros(
 }
 
 /**
+ * Fetch the full per-100g micronutrient panel for an Edamam food via
+ * `/api/edamam/food`. Mirrors `getFoodMacros` (USDA detail).
+ *
+ * ENG-738 (2026-05-26) — the `/api/edamam/search` hit only carries the
+ * minimal panel (fiber/sugar/sodium). The full set (fat breakdown,
+ * cholesterol, vitamins, minerals) lives behind Edamam's `/nutrients`
+ * endpoint, keyed by `foodId`. We fetch it on select and thread it into
+ * the preview so the commit path scales + persists it — exactly like
+ * USDA threads its detail micros.
+ *
+ * Returns `{}` on ANY failure so the Edamam log path never breaks — the
+ * food still logs with its macros, just without the extra micros. Web
+ * mirror: `fetchEdamamMicros` in
+ * `src/app/components/food-search/FoodSearchPanel.tsx`.
+ */
+export async function getEdamamFoodMicros(
+  foodId: string,
+): Promise<Record<string, number>> {
+  const base = apiBase();
+  if (!base || !foodId) return {};
+  try {
+    const ac = new AbortController();
+    const t = setTimeout(() => ac.abort(), 12000);
+    const res = await authedFetch(
+      `${base}/api/edamam/food?foodId=${encodeURIComponent(foodId)}`,
+      { signal: ac.signal },
+    );
+    clearTimeout(t);
+    const json = await res.json();
+    if (!json.ok || !json.microsPer100g || typeof json.microsPer100g !== "object") return {};
+    return json.microsPer100g as Record<string, number>;
+  } catch (e) {
+    if (isBenignAbort(e)) return {};
+    console.error("[getEdamamFoodMicros] failed for foodId", foodId, ":", e instanceof Error ? e.message : e);
+    return {};
+  }
+}
+
+/**
  * Fetch the canonical per-100g macro panel + portions for a FatSecret
  * food via `/api/fatsecret/food`. Mirrors `getFoodMacros` (USDA detail).
  *
@@ -1621,6 +1676,12 @@ export async function lookupBarcode(
     // P0 (2026-05-26) — reconcile macros to a genuine per-100g basis before
     // they scale (web parity: src/lib/openFoodFacts/fetchProductByBarcode.ts).
     const recon = reconcileOffPer100g(n, p);
+    // ENG-738 (2026-05-26) — fiber + micros + caffeine/alcohol below read the
+    // raw `*_100g` fields, which secretly hold per-serving values on a
+    // `nutrition_data_per:"serving"` row. Rescale them onto the same
+    // true-per-100g basis the macros use (factor = 1 for genuine per-100g).
+    // Web parity: src/lib/openFoodFacts/fetchProductByBarcode.ts.
+    const f = recon.per100gFactor;
     const brand = (p.brands ?? "").split(",")[0]?.trim() ?? "";
     const baseName =
       (p.product_name ?? p.product_name_en ?? p.generic_name ?? "").trim() ||
@@ -1634,12 +1695,12 @@ export async function lookupBarcode(
     const caffRaw = n.caffeine_100g ?? n.caffeine;
     const caffeineMgPer100g =
       typeof caffRaw === "number" && Number.isFinite(caffRaw) && caffRaw > 0
-        ? Math.round(caffRaw * 1000 * 10) / 10
+        ? Math.round(caffRaw * f * 1000 * 10) / 10
         : null;
     const alcRaw = n.alcohol_100g ?? n.alcohol;
     const alcoholGPer100g =
       typeof alcRaw === "number" && Number.isFinite(alcRaw) && alcRaw > 0
-        ? Math.round(alcRaw * 100) / 100
+        ? Math.round(alcRaw * f * 100) / 100
         : null;
 
     return {
@@ -1648,13 +1709,14 @@ export async function lookupBarcode(
       protein: Math.round(recon.protein * 10) / 10,
       carbs: Math.round(recon.carbs * 10) / 10,
       fat: Math.round(recon.fat * 10) / 10,
-      fiberG: Math.round((n.fiber_100g ?? 0) * 10) / 10,
+      fiberG: Math.round((n.fiber_100g ?? 0) * f * 10) / 10,
       servingSizeG,
       basisCorrected: recon.corrected,
       caffeineMgPer100g,
       alcoholGPer100g,
       // F-79 (2026-04-25) — full micros per 100g for scanned barcode.
-      microsPer100g: parseOffMicrosPer100g(n),
+      // ENG-738 — scaled by the per-100g factor to match the macro basis.
+      microsPer100g: parseOffMicrosPer100g(n, f),
       servingOptions,
       source: "open_food_facts",
       verified: false,

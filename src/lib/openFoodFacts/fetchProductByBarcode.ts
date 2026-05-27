@@ -95,15 +95,20 @@ export async function fetchProductByBarcode(code: string): Promise<
     // basis disagreement. fiber/sugar/sodium stay on their `_100g` fields
     // only (no per-serving fallback) for the same reason.
     const recon = reconcileOffPer100g(n, p);
+    // ENG-738 (2026-05-26) — fiber/sugar/sodium + micros below still read the
+    // raw `*_100g` fields, which secretly hold per-serving values on a
+    // `nutrition_data_per:"serving"` row. Rescale them onto the same
+    // true-per-100g basis the macros use (factor = 1 for genuine per-100g).
+    const f = recon.per100gFactor;
     const calories = Math.round(recon.calories);
     const protein = Math.round(recon.protein);
     const carbs = Math.round(recon.carbs);
     const fat = Math.round(recon.fat);
-    const fiberG = Math.round(n.fiber_100g ?? 0);
+    const fiberG = Math.round((n.fiber_100g ?? 0) * f);
     // P0 (2026-05-26) — sugar/sodium use the `_100g` field only; the bare
     // `n.sugars` / `n.sodium` fallbacks were per-serving in disguise.
-    const sugarG = Math.round((n["sugars_100g"] ?? 0) * 10) / 10;
-    const sodiumMg = Math.round((n.sodium_100g ?? 0) * 1000);
+    const sugarG = Math.round((n["sugars_100g"] ?? 0) * f * 10) / 10;
+    const sodiumMg = Math.round((n.sodium_100g ?? 0) * f * 1000);
     // F-79 (2026-04-25) — extract F-13 caffeine/alcohol + the full
     // micronutrient set so commit sites can persist them on
     // `nutrition_entries.nutrition_micros`. Caffeine/alcohol keep their
@@ -112,14 +117,15 @@ export async function fetchProductByBarcode(code: string): Promise<
     const caffRaw = n.caffeine_100g ?? n.caffeine;
     const caffeineMgPer100g =
       typeof caffRaw === "number" && Number.isFinite(caffRaw) && caffRaw > 0
-        ? Math.round(caffRaw * 1000 * 10) / 10
+        ? Math.round(caffRaw * f * 1000 * 10) / 10
         : null;
     const alcRaw = n.alcohol_100g ?? n.alcohol;
     const alcoholGPer100g =
       typeof alcRaw === "number" && Number.isFinite(alcRaw) && alcRaw > 0
-        ? Math.round(alcRaw * 100) / 100
+        ? Math.round(alcRaw * f * 100) / 100
         : null;
-    const microsPer100g = parseOffMicrosPer100g(n);
+    // ENG-738 — scale micros by the per-100g factor to match the macro basis.
+    const microsPer100g = parseOffMicrosPer100g(n, f);
     const servingOptions = buildOffServingOptionsFromProduct(p);
     const servingSizeG = pickDefaultServingGrams(servingOptions);
     const rawServing = (p.serving_size ?? "").trim();

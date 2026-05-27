@@ -79,3 +79,4 @@ docs/audits/*-sweep-screenshots/
 .maestro/.metro-state
 .maestro/.metro.log
 .maestro/artifacts/
+scripts/out/
