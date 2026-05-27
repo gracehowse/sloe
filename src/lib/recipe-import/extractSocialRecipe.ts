@@ -91,6 +91,103 @@ function guessTikTokAuthorDisplay(caption: string, pageTitle: string | null): st
 }
 
 /**
+ * TikTok-specific embedded JSON extraction.
+ *
+ * TikTok serves minimal og:description to non-browser UAs. The full video
+ * caption ("desc") is embedded as JSON in one of three known script tags:
+ *   1. `__UNIVERSAL_DATA_FOR_REHYDRATION__` — TikTok web app 2024+
+ *   2. `SIGI_STATE` — older pages / some regions
+ *   3. `__NEXT_DATA__` — some page variants
+ *   4. Broad `"desc"` field scan as last resort
+ *
+ * Exported so unit tests can exercise it against HTML fixtures without
+ * mocking `fetch`.
+ */
+export function extractFromTikTokEmbeddedJson(
+  html: string,
+): { caption: string; imageUrl: string | null } | null {
+  // Strategy 1: __UNIVERSAL_DATA_FOR_REHYDRATION__ (TikTok web app 2024+)
+  const univMatch = html.match(
+    /<script[^>]*id=["']__UNIVERSAL_DATA_FOR_REHYDRATION__["'][^>]*>([\s\S]*?)<\/script>/i,
+  );
+  if (univMatch?.[1]) {
+    try {
+      const root = JSON.parse(univMatch[1]) as Record<string, unknown>;
+      const scope = root["__DEFAULT_SCOPE__"] as Record<string, unknown> | undefined;
+      const videoDetail = scope?.["webapp.video-detail"] as Record<string, unknown> | undefined;
+      const itemInfo = videoDetail?.["itemInfo"] as Record<string, unknown> | undefined;
+      const itemStruct = itemInfo?.["itemStruct"] as Record<string, unknown> | undefined;
+      const desc = itemStruct?.["desc"];
+      if (typeof desc === "string" && desc.length > 10) {
+        const vidObj = itemStruct?.["video"] as Record<string, unknown> | undefined;
+        const cover = vidObj?.["cover"];
+        return {
+          caption: decodeHtmlEntities(desc),
+          imageUrl: typeof cover === "string" ? cover : null,
+        };
+      }
+    } catch { /* continue */ }
+  }
+
+  // Strategy 2: SIGI_STATE (older TikTok pages / some regions)
+  const sigiMatch = html.match(/<script[^>]*id=["']SIGI_STATE["'][^>]*>([\s\S]*?)<\/script>/i);
+  if (sigiMatch?.[1]) {
+    try {
+      const root = JSON.parse(sigiMatch[1]) as Record<string, unknown>;
+      const ItemModule = root["ItemModule"] as
+        | Record<string, Record<string, unknown>>
+        | undefined;
+      if (ItemModule) {
+        for (const item of Object.values(ItemModule)) {
+          const desc = item["desc"];
+          if (typeof desc === "string" && desc.length > 10) {
+            const vidObj = item["video"] as Record<string, unknown> | undefined;
+            const cover = vidObj?.["cover"];
+            return {
+              caption: decodeHtmlEntities(desc),
+              imageUrl: typeof cover === "string" ? cover : null,
+            };
+          }
+        }
+      }
+    } catch { /* continue */ }
+  }
+
+  // Strategy 3: __NEXT_DATA__ (some TikTok page variants)
+  const nextDataMatch = html.match(
+    /<script[^>]*id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/i,
+  );
+  if (nextDataMatch?.[1]) {
+    try {
+      const root = JSON.parse(nextDataMatch[1]) as Record<string, unknown>;
+      const props = root["props"] as Record<string, unknown> | undefined;
+      const pageProps = props?.["pageProps"] as Record<string, unknown> | undefined;
+      const itemInfo = pageProps?.["itemInfo"] as Record<string, unknown> | undefined;
+      const itemStruct = itemInfo?.["itemStruct"] as Record<string, unknown> | undefined;
+      const desc = itemStruct?.["desc"];
+      if (typeof desc === "string" && desc.length > 10) {
+        return { caption: decodeHtmlEntities(desc), imageUrl: null };
+      }
+    } catch { /* continue */ }
+  }
+
+  // Strategy 4: Broad scan for "desc" field in any script block.
+  // "desc" is TikTok's canonical name for the video caption. Require
+  // > 20 chars to skip short author bios / display names.
+  const descMatch = html.match(/"desc"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+  if (descMatch?.[1] && descMatch[1].length > 20) {
+    try {
+      const decoded = JSON.parse(`"${descMatch[1]}"`);
+      if (typeof decoded === "string" && decoded.length > 20) {
+        return { caption: decodeHtmlEntities(decoded), imageUrl: null };
+      }
+    } catch { /* continue */ }
+  }
+
+  return null;
+}
+
+/**
  * User-Agent strings tried when fetching Instagram/TikTok/YouTube pages.
  *
  * We use only an honest, identified Suppr UA that links to a public bot page.
@@ -166,6 +263,9 @@ export async function fetchSocialPostMeta(url: string): Promise<SocialPostMeta |
   // We'll use this image URL in preference to og:image if available.
   let oembedImageUrl: string | null = null;
   let authorDisplay: string | null = null;
+  // TikTok oEmbed `title` is often the full caption (truncated ~150 chars).
+  // Used as last-resort caption when the page HTML is thin.
+  let tikTokOembedTitle: string | null = null;
   if (platform === "instagram") {
     const oem = await fetchInstagramOembed(url);
     oembedImageUrl = oem.thumbnailUrl;
@@ -173,7 +273,7 @@ export async function fetchSocialPostMeta(url: string): Promise<SocialPostMeta |
   }
   if (platform === "tiktok") {
     authorDisplay = tiktokHandleFromPostUrl(url);
-    // TikTok oEmbed gives a clean thumbnail without the play-button overlay
+    // TikTok oEmbed gives thumbnail, author_name, and a truncated title
     try {
       const oembedUrl = `https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`;
       const oRes = await fetch(oembedUrl, {
@@ -181,12 +281,19 @@ export async function fetchSocialPostMeta(url: string): Promise<SocialPostMeta |
         headers: { Accept: "application/json" },
       });
       if (oRes.ok) {
-        const oData = await oRes.json() as { thumbnail_url?: string; author_name?: string };
+        const oData = await oRes.json() as {
+          thumbnail_url?: string;
+          author_name?: string;
+          title?: string;
+        };
         if (typeof oData.thumbnail_url === "string" && oData.thumbnail_url.startsWith("http")) {
           oembedImageUrl = oData.thumbnail_url;
         }
         if (!authorDisplay && typeof oData.author_name === "string" && oData.author_name.trim()) {
           authorDisplay = oData.author_name.trim();
+        }
+        if (typeof oData.title === "string" && oData.title.trim().length > 10) {
+          tikTokOembedTitle = oData.title.trim();
         }
       }
     } catch { /* oEmbed optional */ }
@@ -247,6 +354,29 @@ export async function fetchSocialPostMeta(url: string): Promise<SocialPostMeta |
       extractMetaContent(html, "og:video:secure_url") ||
       null;
 
+    // Strategy 1b: TikTok-specific embedded JSON (run before the og:description
+    // early-return because TikTok serves truncated/generic og:description to
+    // non-browser UAs while embedding the full caption in page script tags).
+    if (platform === "tiktok") {
+      const tiktokEmbedded = extractFromTikTokEmbeddedJson(html);
+      if (tiktokEmbedded?.caption) {
+        if (!authorDisplay) authorDisplay = guessTikTokAuthorDisplay(tiktokEmbedded.caption, title);
+        if (!authorDisplay) {
+          const h = tiktokEmbedded.caption.match(/@([a-z0-9._]{2,30})\b/i);
+          if (h) authorDisplay = `@${h[1]}`;
+        }
+        return {
+          platform,
+          caption: tiktokEmbedded.caption,
+          imageUrl: oembedImageUrl ?? tiktokEmbedded.imageUrl ?? ogImage,
+          title: title ? decodeHtmlEntities(title) : null,
+          authorDisplay,
+          rawHtml: html,
+          videoUrl: ogVideo,
+        };
+      }
+    }
+
     if (caption || title) {
       if (platform === "tiktok" && !authorDisplay) {
         authorDisplay = guessTikTokAuthorDisplay(caption, title);
@@ -266,7 +396,7 @@ export async function fetchSocialPostMeta(url: string): Promise<SocialPostMeta |
       };
     }
 
-    // Strategy 2: Embedded JSON data in the page
+    // Strategy 2: Embedded JSON data in the page (Instagram-specific patterns)
     const embedded = extractFromEmbeddedJson(html);
     if (embedded) {
       if (platform === "tiktok" && !authorDisplay) {
@@ -286,6 +416,22 @@ export async function fetchSocialPostMeta(url: string): Promise<SocialPostMeta |
         videoUrl: ogVideo ?? embedded.videoUrl,
       };
     }
+  }
+
+  // Last resort for TikTok: use oEmbed title if the page HTML was unreadable.
+  // TikTok's oEmbed title is the caption truncated to ~150 chars — enough
+  // for simple ingredient lists common in short-form recipe videos.
+  if (platform === "tiktok" && tikTokOembedTitle) {
+    if (!authorDisplay) authorDisplay = guessTikTokAuthorDisplay(tikTokOembedTitle, null);
+    return {
+      platform,
+      caption: tikTokOembedTitle,
+      imageUrl: oembedImageUrl,
+      title: null,
+      authorDisplay,
+      rawHtml: undefined,
+      videoUrl: null,
+    };
   }
 
   return null;

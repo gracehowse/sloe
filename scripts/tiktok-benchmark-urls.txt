@@ -1,0 +1,12 @@
+# ENG-7 — TikTok recipe import benchmark URL list
+# One URL per line. Lines starting with # are ignored.
+# Target: 100 food Reel URLs covering:
+#   - Long caption with full ingredient list
+#   - Short caption (hashtag-heavy, ingredient list in first comment)
+#   - vm.tiktok.com short-link format
+#   - Various cuisines (pasta, Asian, baking, salads, drinks)
+#
+# To generate a token:
+#   Sign in → DevTools → Application → Cookies → supabase-auth-token → access_token
+
+# ADD YOUR 100 TIKTOK FOOD REEL URLS BELOW:
