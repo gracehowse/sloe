@@ -31,7 +31,7 @@ Canonical implementation paths live under `app/api/**/route.ts`. Detail for heav
 | `/api/household/meals` | GET, POST, DELETE | Bearer | Shared household meals |
 | `/api/user-foods` | GET, POST | Bearer | Community custom foods search / submit |
 | `/api/user-foods/vote` | POST | Bearer | Vote on pending food |
-| `/api/push/weekly-recap` | POST | `X-Cron-Secret` | Cron fan-out to Expo push |
+| `/api/push/weekly-recap` | POST | `X-Cron-Secret` | Cron fan-out to Expo push (mobile) + Web Push (browser) |
 
 ## Recipe Import
 
@@ -257,10 +257,21 @@ Community barcode correction mapping.
 ### `POST /api/push/weekly-recap`
 
 Server-to-server cron endpoint that fans out the weekly recap push to
-every opted-in user whose `profiles.expo_push_token` is non-null. Calls
-the Expo push API, which delivers via APNs (iOS) / FCM (Android). Shipped
-2026-04-19 — see `docs/testflight-feedback/resolved.md` entry "Server-side
+every opted-in user on **whatever delivery rail(s) they have** — a mobile
+Expo push token (APNs/FCM via the Expo push API) and/or a browser Web
+Push subscription (VAPID via the `web-push` library). Shipped 2026-04-19
+(Expo) — see `docs/testflight-feedback/resolved.md` entry "Server-side
 weekly recap push fan-out" for rationale.
+
+**ENG-748 #7 (2026-05-27) — web-only subscribers now covered.** The route
+used to filter the profile select on a non-null `expo_push_token`, so
+users who only subscribed to Web Push in the browser (no app install)
+never received the recap even though they opted in via the same
+`weekly_recap_push_enabled` flag. The select no longer filters on the
+token; the rail is now chosen per-user after cross-referencing
+`web_push_subscriptions`. A user with both rails gets the recap on both
+and is stamped once. Web Push uses the same title/body as the mobile push
+and deep-links to `/home?view=progress`.
 
 **Auth:** shared-secret header, NOT user auth.
 
@@ -280,21 +291,38 @@ weekly recap push fan-out" for rationale.
 
 **Behaviour:**
 
-- Selects `profiles` where `weekly_recap_push_enabled = true` and
-  `expo_push_token IS NOT NULL`, capped at 5000 rows per invocation.
+- Selects `profiles` where `weekly_recap_push_enabled = true`, capped at
+  5000 rows per invocation. (ENG-748 #7: the `expo_push_token IS NOT NULL`
+  filter was removed so web-only subscribers survive the select.)
 - Skips rows whose `last_weekly_recap_push_sent_at` is within the last
   6 days (dedupe across back-to-back cron runs).
-- Fans out via Expo push API in batches of 100, with a single retry on
-  5xx / network failure. No retry on 4xx.
-- For every successfully-ticketed user, stamps
-  `last_weekly_recap_push_sent_at = now()`.
-- For every ticket returned with `details.error === "DeviceNotRegistered"`
-  the route nulls the offending `profiles.expo_push_token` so we stop
-  pushing to dead installs.
+- Cross-references `web_push_subscriptions` for the candidate set, then
+  drops any candidate with **neither** rail (no Expo token AND no web
+  subscription) before paying for the per-user recap compute.
+- **Mobile rail:** fans out via the Expo push API in batches of 100, with
+  a single retry on 5xx / network failure. No retry on 4xx. If every
+  eligible user is web-only the Expo POST is skipped entirely (not an
+  error).
+- **Web rail:** sends the identical title/body to every browser
+  subscription via `web-push` (VAPID). `404`/`410` responses mark a
+  subscription dead and the row is deleted. If VAPID env is unset the web
+  rail short-circuits (`webVapidUnset`) and those users are NOT stamped
+  so the next cron retries once keys are configured.
+- For every user who got a real delivery on **either** rail, stamps
+  `last_weekly_recap_push_sent_at = now()` (deduped union of the two
+  rails). Stamping after the web fan-out is what stops web-only users
+  being re-pushed every hourly cron inside their tz window.
+- For every Expo ticket returned with
+  `details.error === "DeviceNotRegistered"` the route nulls the offending
+  `profiles.expo_push_token` so we stop pushing to dead installs.
+- Per-user outcomes (`sent` / `deregistered` / `ticket_error` /
+  `send_failed` / `invalid_token`) are emitted as
+  `weekly_recap_push_attempted` for both rails — no delivery failure is
+  silent.
 - Copy is aligned with the mobile local-push fallback in
   `apps/mobile/lib/weeklyRecapPush.ts` — title `"Your week in Suppr"`,
-  body `"Tap to see your weekly recap — avg calories, protein, streak,
-  and weight trend."`, deep link `/progress`.
+  body composed per-user from the recap, deep link `/progress` (mobile) /
+  `/home?view=progress` (web).
 
 **Response (success):**
 

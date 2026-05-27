@@ -69,6 +69,9 @@ type UpdateCall = {
 };
 const updateCalls: UpdateCall[] = [];
 
+type DeleteCall = { table: string; col: string; ids: string[] };
+const deleteCalls: DeleteCall[] = [];
+
 /** Track the column lists requested per table so tests can pin the
  *  schema-aware select extension. */
 const lastSelectColumns: Record<string, string> = {};
@@ -141,6 +144,14 @@ const supabaseMock = {
           return { error: null };
         }),
       })),
+      // ENG-748 #7: dead web-push endpoint cleanup uses
+      // `from("web_push_subscriptions").delete().in("endpoint", [...])`.
+      delete: vi.fn(() => ({
+        in: vi.fn(async (col: string, ids: string[]) => {
+          deleteCalls.push({ table, col, ids });
+          return { error: null };
+        }),
+      })),
     };
   }),
 };
@@ -158,6 +169,27 @@ vi.mock("@/lib/supabase/serverAdminClient", () => ({
 // `weeklyRecapTzFilter.test.ts`.
 vi.mock("@/lib/push/weeklyRecapTzFilter", () => ({
   shouldPushWeeklyRecapNow: () => true,
+}));
+
+// --- web-push fan-out mock --------------------------------------------------
+//
+// ENG-748 #7 (2026-05-27): the route now dispatches Web Push to web-only +
+// dual-rail subscribers. We mock the sender so tests can (a) assert the
+// route reached the web rail with the right payload and (b) drive the
+// return shape (sent / dead / failed / vapidUnset) without hitting the
+// real `web-push` library or the network. Each test sets
+// `webPushFanoutMock`'s implementation; the default delivers everything.
+const webPushFanoutMock = vi.fn(
+  async (subs: Array<{ endpoint: string }>) => ({
+    sent: subs.length,
+    dead: [] as string[],
+    failed: 0,
+    vapidUnset: false,
+  }),
+);
+vi.mock("@/lib/push/webPushSend", () => ({
+  sendWebPushFanout: (...args: unknown[]) =>
+    (webPushFanoutMock as unknown as (...a: unknown[]) => unknown)(...args),
 }));
 
 // --- fetch mock -------------------------------------------------------------
@@ -203,9 +235,21 @@ beforeEach(() => {
   fetchMock.mockReset();
   supabaseMock.from.mockClear();
   updateCalls.length = 0;
+  deleteCalls.length = 0;
   tableResults.profiles = { data: [], error: null };
   tableResults.nutrition_entries = { data: [], error: null };
   tableResults.saves = { data: [], error: null };
+  tableResults.web_push_subscriptions = { data: [], error: null };
+  // ENG-748 #7: default web-push mock delivers every subscription.
+  webPushFanoutMock.mockReset();
+  webPushFanoutMock.mockImplementation(
+    async (subs: Array<{ endpoint: string }>) => ({
+      sent: subs.length,
+      dead: [] as string[],
+      failed: 0,
+      vapidUnset: false,
+    }),
+  );
   for (const k of Object.keys(lastSelectColumns)) delete lastSelectColumns[k];
 });
 
@@ -278,7 +322,14 @@ describe("fan-out flow", () => {
 
     // Select filters on the right columns.
     expect(selectQueryBuilder.eq).toHaveBeenCalledWith("weekly_recap_push_enabled", true);
-    expect(selectQueryBuilder.not).toHaveBeenCalledWith("expo_push_token", "is", null);
+    // ENG-748 #7: the route NO LONGER filters on a non-null expo token at
+    // the DB layer — web-only subscribers (no token) must survive the
+    // select so they can be reached via Web Push. The rail filter is now
+    // applied in-memory after cross-referencing web_push_subscriptions.
+    const expoTokenNotFilter = selectQueryBuilder.not.mock.calls.find(
+      (args) => args[0] === "expo_push_token",
+    );
+    expect(expoTokenNotFilter).toBeUndefined();
     expect(selectQueryBuilder.range).toHaveBeenCalledWith(0, 4999);
 
     // Expo push API hit once with two messages.
@@ -899,5 +950,228 @@ describe("T6 — server-side weekly_recap_push_sent emit per success", () => {
     // analytics off-by-one bug" — server-side uses recap-window weekKey
     // throughout, never `currentWeekKey`.
     expect(phPayload.properties.weekKey).toBe(sentWeekKey);
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────
+// ENG-748 #7 (2026-05-27) — Web Push fan-out for web-only + dual-rail
+// subscribers. Before this change the profiles select filtered on a
+// non-null expo_push_token, so browser-only subscribers never received
+// the weekly recap. Now the route reaches them via Web Push.
+// ───────────────────────────────────────────────────────────────────
+
+describe("ENG-748 #7 — web-push fan-out for web-only + dual-rail users", () => {
+  function webSub(userId: string, endpoint: string) {
+    return { user_id: userId, endpoint, p256dh: `p-${endpoint}`, auth: `a-${endpoint}` };
+  }
+
+  it("reaches a web-only user (no expo token) via Web Push and stamps them", async () => {
+    tableResults.profiles = {
+      data: [makeProfile({ id: "user-web", expo_push_token: null })],
+      error: null,
+    };
+    tableResults.web_push_subscriptions = {
+      data: [webSub("user-web", "https://push.example/web-1")],
+      error: null,
+    };
+
+    const POST = await loadRoute();
+    const res = await POST(makeReq({ secret: "test-cron-secret" }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    // Web-only delivery counts as a success.
+    expect(body).toEqual({ ok: true, attempted: 1, succeeded: 1, deregistered: 0 });
+
+    // No Expo POST — the only eligible user has no mobile token.
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    // Web Push sender called once with the recap copy + progress deep link.
+    expect(webPushFanoutMock).toHaveBeenCalledTimes(1);
+    const [subs, payload] = webPushFanoutMock.mock.calls[0] as [
+      Array<{ endpoint: string }>,
+      { title: string; body: string; url: string; tag: string },
+    ];
+    expect(subs).toHaveLength(1);
+    expect(subs[0].endpoint).toBe("https://push.example/web-1");
+    expect(payload.title).toBe("Your week in Suppr");
+    expect(payload.body).toBe(
+      "Nothing logged this week. Open Suppr to get back on track.",
+    );
+    expect(payload.url).toBe("/home?view=progress");
+    expect(payload.tag).toMatch(/^weekly_recap:\d{4}-W\d{2}$/);
+
+    // The web-only user IS stamped — otherwise the next hourly cron in
+    // their tz window would re-push them until the 6-day dedupe lapsed.
+    const stamp = updateCalls.find(
+      (c) => c.payload.last_weekly_recap_push_sent_at !== undefined,
+    );
+    expect(stamp?.ids).toEqual(["user-web"]);
+  });
+
+  it("reaches a dual-rail user on BOTH rails but stamps them exactly once", async () => {
+    tableResults.profiles = {
+      data: [
+        makeProfile({ id: "user-both", expo_push_token: "ExponentPushToken[both]" }),
+      ],
+      error: null,
+    };
+    tableResults.web_push_subscriptions = {
+      data: [webSub("user-both", "https://push.example/dual-1")],
+      error: null,
+    };
+    fetchMock.mockResolvedValueOnce(jsonResponse({ data: [{ status: "ok", id: "tk" }] }));
+
+    const POST = await loadRoute();
+    const res = await POST(makeReq({ secret: "test-cron-secret" }));
+    const body = await res.json();
+    expect(body).toEqual({ ok: true, attempted: 1, succeeded: 1, deregistered: 0 });
+
+    // Expo hit once (mobile rail).
+    const expoCalls = fetchMock.mock.calls.filter(
+      ([url]) => !String(url).includes("/capture/"),
+    );
+    expect(expoCalls).toHaveLength(1);
+    // Web Push hit once (browser rail).
+    expect(webPushFanoutMock).toHaveBeenCalledTimes(1);
+
+    // Exactly one stamp update, exactly one id (no duplicate from the
+    // union of the two rails).
+    const stamps = updateCalls.filter(
+      (c) => c.payload.last_weekly_recap_push_sent_at !== undefined,
+    );
+    expect(stamps).toHaveLength(1);
+    expect(stamps[0].ids).toEqual(["user-both"]);
+  });
+
+  it("drops a user opted in via the flag but with NEITHER rail before any compute", async () => {
+    tableResults.profiles = {
+      data: [makeProfile({ id: "user-norail", expo_push_token: null })],
+      error: null,
+    };
+    tableResults.web_push_subscriptions = { data: [], error: null };
+
+    const POST = await loadRoute();
+    const res = await POST(makeReq({ secret: "test-cron-secret" }));
+    const body = await res.json();
+    // No rail → not attempted, no push on either rail.
+    expect(body).toEqual({ ok: true, attempted: 0, succeeded: 0, deregistered: 0 });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(webPushFanoutMock).not.toHaveBeenCalled();
+    // And the route did NOT pay for the nutrition_entries compute.
+    const nutritionCalls = supabaseMock.from.mock.calls.filter(
+      (c) => c[0] === "nutrition_entries",
+    );
+    expect(nutritionCalls.length).toBe(0);
+  });
+
+  it("deletes dead web-push endpoints (410/404) returned by the sender", async () => {
+    tableResults.profiles = {
+      data: [makeProfile({ id: "user-web", expo_push_token: null })],
+      error: null,
+    };
+    tableResults.web_push_subscriptions = {
+      data: [
+        webSub("user-web", "https://push.example/live"),
+        webSub("user-web", "https://push.example/dead"),
+      ],
+      error: null,
+    };
+    // One delivered, one dead.
+    webPushFanoutMock.mockImplementation(async () => ({
+      sent: 1,
+      dead: ["https://push.example/dead"],
+      failed: 0,
+      vapidUnset: false,
+    }));
+
+    const POST = await loadRoute();
+    const res = await POST(makeReq({ secret: "test-cron-secret" }));
+    const body = await res.json();
+    // At least one sub delivered → user counts as succeeded + stamped.
+    expect(body).toEqual({ ok: true, attempted: 1, succeeded: 1, deregistered: 0 });
+
+    const del = deleteCalls.find((c) => c.table === "web_push_subscriptions");
+    expect(del?.col).toBe("endpoint");
+    expect(del?.ids).toEqual(["https://push.example/dead"]);
+  });
+
+  it("does NOT stamp a web-only user when VAPID is unset (no delivery happened)", async () => {
+    tableResults.profiles = {
+      data: [makeProfile({ id: "user-web", expo_push_token: null })],
+      error: null,
+    };
+    tableResults.web_push_subscriptions = {
+      data: [webSub("user-web", "https://push.example/web-1")],
+      error: null,
+    };
+    webPushFanoutMock.mockImplementation(async () => ({
+      sent: 0,
+      dead: [] as string[],
+      failed: 0,
+      vapidUnset: true,
+    }));
+
+    const POST = await loadRoute();
+    const res = await POST(makeReq({ secret: "test-cron-secret" }));
+    const body = await res.json();
+    // Attempted, but nothing delivered → succeeded 0, NOT stamped so the
+    // next cron retries once keys are configured.
+    expect(body).toEqual({ ok: true, attempted: 1, succeeded: 0, deregistered: 0 });
+    const stamp = updateCalls.find(
+      (c) => c.payload.last_weekly_recap_push_sent_at !== undefined,
+    );
+    expect(stamp).toBeUndefined();
+  });
+
+  it("continues mobile fan-out when the web_push_subscriptions select errors", async () => {
+    tableResults.profiles = {
+      data: [makeProfile({ id: "user-a", expo_push_token: "ExponentPushToken[a]" })],
+      error: null,
+    };
+    tableResults.web_push_subscriptions = {
+      data: null,
+      error: { message: "web subs table flake" },
+    };
+    fetchMock.mockResolvedValueOnce(jsonResponse({ data: [{ status: "ok", id: "tk" }] }));
+
+    const POST = await loadRoute();
+    const res = await POST(makeReq({ secret: "test-cron-secret" }));
+    const body = await res.json();
+    // Mobile push still goes out; the web rail is just skipped this run.
+    expect(body).toEqual({ ok: true, attempted: 1, succeeded: 1, deregistered: 0 });
+    expect(webPushFanoutMock).not.toHaveBeenCalled();
+  });
+
+  it("emits a web-only success as weekly_recap_push_sent + attempted=sent", async () => {
+    vi.stubEnv("NEXT_PUBLIC_POSTHOG_KEY", "phc_test_key");
+    tableResults.profiles = {
+      data: [makeProfile({ id: "user-web", expo_push_token: null })],
+      error: null,
+    };
+    tableResults.web_push_subscriptions = {
+      data: [webSub("user-web", "https://push.example/web-1")],
+      error: null,
+    };
+    fetchMock.mockResolvedValue(jsonResponse({ status: 1 }));
+
+    const POST = await loadRoute();
+    await POST(makeReq({ secret: "test-cron-secret" }));
+    await new Promise((r) => setTimeout(r, 0));
+
+    const phCalls = fetchMock.mock.calls.filter(([url]) =>
+      String(url).includes("/capture/"),
+    );
+    const events = phCalls.map(([, init]) => {
+      const payload = JSON.parse(String((init as RequestInit).body));
+      return { event: payload.event, distinctId: payload.distinct_id, props: payload.properties };
+    });
+    const sent = events.find(
+      (e) => e.event === "weekly_recap_push_sent" && e.distinctId === "user-web",
+    );
+    expect(sent).toBeDefined();
+    const attempted = events.find(
+      (e) => e.event === "weekly_recap_push_attempted" && e.distinctId === "user-web",
+    );
+    expect(attempted?.props.outcome).toBe("sent");
   });
 });

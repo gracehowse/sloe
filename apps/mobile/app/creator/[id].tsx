@@ -18,8 +18,18 @@
  * Phase 2a deliberately ships:
  *   - Header (avatar, display name, handle, bio, verified tick).
  *   - Follower count + Follow / Following toggle (optimistic update).
- *   - Recipe grid (newest-first, paginated to 50; scroll-to-load deferred).
+ *   - Recipe list (newest-first, paginated — see ENG-748 #14 below).
  *   - Honest empty state when the creator has no published recipes.
+ *
+ * ENG-748 #14 (2026-05-27) — pagination. The list used to hard-cap at
+ * 50 (`.limit(50)`), so creators with >50 published recipes had older
+ * ones silently invisible. We now fetch the first `RECIPES_PAGE_SIZE`
+ * on mount and append further pages via the same public query on a
+ * "Load more" button. The follower/recipe stat shows the TRUE total
+ * count (a separate `head: true` count), decoupled from how many rows
+ * are currently loaded. Web parallel: app/creator/[id]/page.tsx +
+ * src/app/components/creator/CreatorRecipeList.tsx (same page size,
+ * same newest-first ordering, same "Load more" affordance).
  *
  * Phase 2a deliberately does NOT ship (queued for 2.5/2.b):
  *   - Sort toggle (recent vs popular). Default sort is recent.
@@ -47,6 +57,11 @@ import { supabase } from "@/lib/supabase";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { Spacing, Radius, Accent } from "@/constants/theme";
 import { normalizeRecipeTitle } from "@suppr/shared/recipes/normalizeRecipeTitle";
+import {
+  mergeRecipePage,
+  nextPageRange,
+  pageHasMore,
+} from "@suppr/shared/recipes/creatorRecipePagination";
 import { decodeEntities } from "@/lib/decodeEntities";
 
 type Creator = {
@@ -78,6 +93,10 @@ export default function CreatorProfileScreen() {
 
   const [creator, setCreator] = useState<Creator | null>(null);
   const [recipes, setRecipes] = useState<CreatorRecipeRow[]>([]);
+  const [recipeCount, setRecipeCount] = useState<number | null>(null);
+  const [hasMore, setHasMore] = useState<boolean>(false);
+  const [loadingMore, setLoadingMore] = useState<boolean>(false);
+  const [loadMoreError, setLoadMoreError] = useState<boolean>(false);
   const [followerCount, setFollowerCount] = useState<number | null>(null);
   const [isFollowing, setIsFollowing] = useState<boolean>(false);
   const [authedUserId, setAuthedUserId] = useState<string | null>(null);
@@ -103,13 +122,14 @@ export default function CreatorProfileScreen() {
         if (cancelled) return;
         setAuthedUserId(uid);
 
-        const [creatorRes, recipesRes, followCountRes, followStateRes] =
+        const [creatorRes, recipesRes, recipeCountRes, followCountRes, followStateRes] =
           await Promise.all([
             supabase
               .from("creators")
               .select("id, display_name, handle, avatar_url, bio, is_verified")
               .eq("id", creatorId)
               .maybeSingle(),
+            // ENG-748 #14: first page only — the rest loads on "Load more".
             supabase
               .from("recipes")
               .select(
@@ -118,7 +138,14 @@ export default function CreatorProfileScreen() {
               .eq("creator_id", creatorId)
               .eq("published", true)
               .order("created_at", { ascending: false })
-              .limit(50),
+              .range(...nextPageRange(0)),
+            // ENG-748 #14: true total published-recipe count for the stat
+            // row, decoupled from how many rows are currently loaded.
+            supabase
+              .from("recipes")
+              .select("id", { count: "exact", head: true })
+              .eq("creator_id", creatorId)
+              .eq("published", true),
             // SECURITY DEFINER follower count is the eventual goal; for
             // Phase 2a we count rows directly. The count query is
             // O(followers); fine until any creator hits ~10k.
@@ -146,7 +173,13 @@ export default function CreatorProfileScreen() {
         setCreator(creatorRes.data as Creator);
 
         if (!recipesRes.error && Array.isArray(recipesRes.data)) {
-          setRecipes(recipesRes.data as CreatorRecipeRow[]);
+          const firstPage = recipesRes.data as CreatorRecipeRow[];
+          setRecipes(firstPage);
+          // First page came back full → there may be more to load.
+          setHasMore(pageHasMore(firstPage.length));
+        }
+        if (!recipeCountRes.error) {
+          setRecipeCount(recipeCountRes.count ?? null);
         }
         if (!followCountRes.error) {
           setFollowerCount(followCountRes.count ?? 0);
@@ -200,6 +233,37 @@ export default function CreatorProfileScreen() {
       setFollowBusy(false);
     }
   }, [creatorId, authedUserId, followBusy, isFollowing, followerCount]);
+
+  // ENG-748 #14: append the next page of recipes. Same public query as
+  // the initial fetch, offset by how many rows are already loaded.
+  // De-dupes by id so a recipe published since first paint can't render
+  // twice. On error we keep `hasMore` true and surface a retry line —
+  // never silently drop the tap.
+  const onLoadMore = useCallback(async () => {
+    if (!creatorId || loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    setLoadMoreError(false);
+    const [from, to] = nextPageRange(recipes.length);
+    try {
+      const { data, error } = await supabase
+        .from("recipes")
+        .select(
+          "id, title, image_url, calories, protein, carbs, cook_time_min, prep_time_min",
+        )
+        .eq("creator_id", creatorId)
+        .eq("published", true)
+        .order("created_at", { ascending: false })
+        .range(from, to);
+      if (error) throw error;
+      const page = (data ?? []) as CreatorRecipeRow[];
+      setRecipes((prev) => mergeRecipePage(prev, page));
+      setHasMore(pageHasMore(page.length));
+    } catch (_e) {
+      setLoadMoreError(true);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [creatorId, loadingMore, hasMore, recipes.length]);
 
   const styles = useMemo(() => buildStyles(colors), [colors]);
 
@@ -277,7 +341,7 @@ export default function CreatorProfileScreen() {
           </Text>
           <Text style={styles.statDivider}> · </Text>
           <Text style={styles.statText}>
-            <Text style={styles.statNumber}>{recipes.length}</Text> recipe{recipes.length === 1 ? "" : "s"}
+            <Text style={styles.statNumber}>{recipeCount ?? recipes.length}</Text> recipe{(recipeCount ?? recipes.length) === 1 ? "" : "s"}
           </Text>
         </View>
 
@@ -348,6 +412,31 @@ export default function CreatorProfileScreen() {
           ))}
         </View>
       )}
+
+      {/* ENG-748 #14 — Load more. Only rendered when the creator has more
+          published recipes than are currently loaded. */}
+      {recipes.length > 0 && hasMore ? (
+        <View style={styles.loadMoreWrap}>
+          <Pressable
+            onPress={onLoadMore}
+            disabled={loadingMore}
+            style={[styles.loadMoreBtn, loadingMore ? styles.loadMoreBtnBusy : null]}
+            accessibilityRole="button"
+            accessibilityLabel="Load more recipes"
+          >
+            {loadingMore ? (
+              <ActivityIndicator size="small" color={colors.text} />
+            ) : (
+              <Text style={styles.loadMoreText}>Load more</Text>
+            )}
+          </Pressable>
+          {loadMoreError ? (
+            <Text style={styles.loadMoreError}>
+              Couldn&apos;t load more recipes. Tap to try again.
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
     </ScrollView>
   );
 }
@@ -519,6 +608,36 @@ function buildStyles(colors: ReturnType<typeof useThemeColors>) {
       textAlign: "center",
       marginTop: Spacing.xs,
       lineHeight: 18,
+    },
+    loadMoreWrap: {
+      alignItems: "center",
+      marginTop: Spacing.md,
+      gap: Spacing.xs,
+    },
+    loadMoreBtn: {
+      minWidth: 140,
+      minHeight: 42,
+      paddingHorizontal: 24,
+      paddingVertical: 10,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
+      backgroundColor: "transparent",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    loadMoreBtnBusy: {
+      opacity: 0.6,
+    },
+    loadMoreText: {
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: "600",
+    },
+    loadMoreError: {
+      color: colors.textSecondary,
+      fontSize: 12,
+      textAlign: "center",
     },
   });
 }

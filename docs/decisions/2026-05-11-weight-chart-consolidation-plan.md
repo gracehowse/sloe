@@ -81,3 +81,25 @@ This is too large for a single PR. Splitting:
 `/weight-tracker` is 812 lines and contains the only `LogWeight` input
 on mobile. Deleting it without first migrating that UI would
 silently break weight-logging. Phasing keeps every step revertible.
+
+## Edit-in-place for past weigh-ins (ENG-748 #9, shipped 2026-05-27)
+
+The Withings-style "All data" sheet (`AllWeightDataSheet`) was originally
+read + delete only. A user who mistyped a past weigh-in (e.g. 87 → 187 kg)
+could only delete and re-add, and the re-add always landed on today — the
+original date was lost.
+
+**Now:** long-pressing a row opens an Edit / Delete action sheet. "Edit"
+closes the all-data sheet and reopens `LogWeightSheet` in **edit mode**
+(new `editDate` prop) targeting that date. The value changes, the date is
+preserved. The scalar `weight_kg` ("latest weight") is only updated when the
+edited entry is the newest one — editing an older entry must not clobber the
+current weight. Persistence is the existing `profiles.weight_kg_by_day`
+JSONB write path (RLS-scoped to `id = userId`); the `{ error }` result is
+checked and surfaced via Alert on failure (never ignored).
+
+**Web parity:** none required. Web (`ProgressDashboard.tsx`) logs today's
+weight and renders the trend chart, but has no per-day weight-history list
+to edit — the editable "All data" list is a mobile-only surface. Noted as a
+parity gap, not drift. If web later grows a weight-history list, mirror the
+edit affordance there.

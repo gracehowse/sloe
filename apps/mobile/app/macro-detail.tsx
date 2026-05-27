@@ -1,28 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
 
-import { Accent, MacroColors, Spacing, Radius, Type } from "@/constants/theme";
+import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { PushScreenHeader } from "@/components/PushScreenHeader";
+import { MacroIngredientList } from "@/components/nutrition/MacroIngredientList";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
-import { supabase } from "@/lib/supabase";
 import { dateKeyFromDate } from "@suppr/shared/nutrition/trackerStats";
-import { mealContributedFiberG } from "@/lib/healthDietaryNutrients";
-import { parseNutritionMicrosJson } from "@/lib/nutritionJournal";
-
-type Meal = {
-  name: string;
-  recipeTitle: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  fiberG: number;
-  waterMl: number;
-};
+import { useMacroDetail, type Meal } from "./useMacroDetail";
 
 // 2026-05-14 (premium-bar audit Group H #4): brand-colour mapping for
 // all 4 macros + fibre + water. Protein/carbs/fat → MacroColors token
@@ -39,13 +26,20 @@ const MACRO_CONFIG: Record<string, { label: string; color: string; unit: string;
   water: { label: "Water", color: Accent.info, unit: "ml", field: "waterMl" },
 };
 
-// 2026-05-14 (premium-bar audit Group H #3): segmented toggle between
-// "By meal" (current breakdown grouped by meal slot) and "By ingredient"
-// (per-ingredient breakdown). Ingredient breakdown is a TODO — the
-// current `nutrition_entries` query doesn't carry per-ingredient
-// macro rows. When available, the "By ingredient" view will read
-// from `nutrition_entries.components` (or whichever schema lands) and
-// render the same row layout keyed on ingredient name.
+// Segmented toggle between "By meal" (breakdown grouped by meal slot) and
+// "By ingredient" (per-ingredient breakdown). The ingredient breakdown is
+// DERIVED from existing schema (ENG-748 #10) — no `nutrition_entries.components`
+// migration: each logged entry carries `recipe_id` + `portion_multiplier`, and
+// `recipe_ingredients` rows hold each ingredient's full base-servings macro, so
+// per-ingredient contribution = ingredient.<macro> × entry.portion_multiplier,
+// reconciled to the entry's stored total. See
+// `src/lib/nutrition/macroIngredientBreakdown.ts` for the shared web+mobile logic.
+//
+// Entries with no recipe (single foods, deleted recipes, AI/photo multi-item
+// meals) fall back to one self-named line. AI/photo multi-item splitting needs a
+// `nutrition_entry_ingredients` snapshot child table — deferred, see ENG-751
+// (tracked separately; not built here). The supported-macros gating + the
+// derive/scale/reconcile data flow live in the `useMacroDetail` hook.
 type BreakdownMode = "meal" | "ingredient";
 
 function formatDateLabel(dateKey: string): string {
@@ -75,98 +69,20 @@ export default function MacroDetailScreen() {
 
   const config = MACRO_CONFIG[macro] ?? MACRO_CONFIG.protein;
 
-  const [meals, setMeals] = useState<Meal[]>([]);
-  const [loading, setLoading] = useState(true);
   const [breakdownMode, setBreakdownMode] = useState<BreakdownMode>("meal");
 
-  useEffect(() => {
-    if (!userId) return;
-    let cancelled = false;
-    // Audit 2026-05-04 #16: previous code had no error/timeout handling
-    // — when the request rejected (network wedge, RLS, hung PostgREST),
-    // `setLoading(false)` never ran and the screen stayed on "Loading…"
-    // forever. Same network-resilience pattern as the c9ebfac perpetual-
-    // spinner fix: race the fetch against an 8s deadline so the gate
-    // always opens, then either render the list (success) or the empty
-    // state (timeout / failure).
-    const TIMEOUT_MS = 8_000;
-    const finish = () => {
-      if (!cancelled) setLoading(false);
-    };
-    const timer = setTimeout(finish, TIMEOUT_MS);
-    supabase
-      .from("nutrition_entries")
-      .select("name, recipe_title, calories, protein, carbs, fat, fiber_g, water_ml, nutrition_micros")
-      .eq("user_id", userId)
-      .eq("date_key", dateKey)
-      .order("created_at", { ascending: true })
-      .then(({ data: rows }) => {
-        if (cancelled) return;
-        clearTimeout(timer);
-        setMeals(
-          (rows ?? []).map((r: Record<string, unknown>) => ({
-            name: (r.name as string) ?? "",
-            recipeTitle: (r.recipe_title as string) ?? "",
-            calories: Number(r.calories) || 0,
-            protein: Number(r.protein) || 0,
-            carbs: Number(r.carbs) || 0,
-            fat: Number(r.fat) || 0,
-            fiberG: mealContributedFiberG({
-              fiberG: r.fiber_g != null ? Number(r.fiber_g) : undefined,
-              micros: parseNutritionMicrosJson(r.nutrition_micros),
-            }),
-            waterMl: r.water_ml != null ? Number(r.water_ml) : 0,
-          })),
-        );
-        finish();
-      }, (err: unknown) => {
-        if (cancelled) return;
-        clearTimeout(timer);
-        if (typeof console !== "undefined") {
-          console.warn(
-            "[macro-detail] nutrition_entries fetch failed:",
-            err instanceof Error ? err.message : err,
-          );
-        }
-        finish();
-      });
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [userId, dateKey]);
-
-  const total = meals.reduce((sum, m) => sum + (Number(m[config.field]) || 0), 0);
-
-  // 2026-05-14 (premium-bar audit Group H #3): a meal slot in this
-  // codebase is the `name` field on nutrition_entries (Breakfast /
-  // Lunch / Dinner / Snack). Group meals by that bucket so the
-  // "By meal" view shows aggregated slot totals + a sub-row per meal.
-  const mealsBySlot = useMemo(() => {
-    const buckets: Record<string, Meal[]> = {};
-    for (const m of meals) {
-      const slot = m.name || "Other";
-      if (!buckets[slot]) buckets[slot] = [];
-      buckets[slot].push(m);
-    }
-    return buckets;
-  }, [meals]);
-
-  const slotOrder = useMemo(() => {
-    // Canonical meal-slot order so Breakfast renders first even if
-    // logged out of sequence. Anything off-canonical keeps insertion
-    // order at the tail.
-    const canonical = ["Breakfast", "Lunch", "Dinner", "Snack"];
-    const present = Object.keys(mealsBySlot);
-    const ordered: string[] = [];
-    for (const k of canonical) {
-      if (present.includes(k)) ordered.push(k);
-    }
-    for (const k of present) {
-      if (!canonical.includes(k)) ordered.push(k);
-    }
-    return ordered;
-  }, [mealsBySlot]);
+  // All data + derivation lives in the composition-root hook (ENG-621):
+  // entries fetch, batched recipe_ingredients fetch, slot grouping, and the
+  // shared derive/scale/reconcile breakdown.
+  const {
+    meals,
+    loading,
+    total,
+    mealsBySlot,
+    slotOrder,
+    supportsIngredientBreakdown,
+    ingredientBreakdown,
+  } = useMacroDetail({ userId, dateKey, macro, field: config.field });
 
   return (
     <View testID="screen-macro-detail" style={{ flex: 1, backgroundColor: colors.background }}>
@@ -190,7 +106,7 @@ export default function MacroDetailScreen() {
             so the breakdown can pivot between meal slot and ingredient.
             Rendered above the list so the user sees both modes at a
             glance even when "By ingredient" is the active view. */}
-        {!loading && meals.length > 0 && (
+        {!loading && meals.length > 0 && supportsIngredientBreakdown && (
           <View
             testID="macro-detail-breakdown-toggle"
             accessibilityRole="tablist"
@@ -274,22 +190,16 @@ export default function MacroDetailScreen() {
               </Text>
             </Pressable>
           </View>
-        ) : breakdownMode === "ingredient" ? (
-          // Per-item breakdown: each logged entry rendered individually
-          // (slot label + food name + its contribution), in log order —
-          // the user's "ingredients" are the foods they logged. Distinct
-          // from the by-meal view, which rolls items up under slot
-          // subtotal headers. (Removed the "coming soon" banner 2026-05-25
-          // — this flat per-entry list IS the breakdown.) A future true
-          // sub-recipe ingredient split (one logged recipe → its
-          // components) is tracked separately and needs
-          // `nutrition_entries.components`.
-          <MealList
-            meals={meals}
-            config={config}
-            total={total}
-            colors={colors}
-          />
+        ) : breakdownMode === "ingredient" && supportsIngredientBreakdown ? (
+          // Per-ingredient breakdown (ENG-748 #10): each logged recipe's
+          // `recipe_ingredients` rows are scaled by the entry's
+          // `portion_multiplier` and reconciled to the entry's stored macro
+          // total, then aggregated by ingredient name across the day. Entries
+          // with no recipe (single foods / deleted recipes / AI multi-item
+          // meals) fall back to one self-named line. The shared derive/scale/
+          // reconcile logic lives in
+          // `src/lib/nutrition/macroIngredientBreakdown.ts` (web parity).
+          <MacroIngredientList breakdown={ingredientBreakdown} config={config} />
         ) : (
           <View style={{ gap: 0 }}>
             {/* By-meal view: render a slot header per meal slot
@@ -424,87 +334,3 @@ export default function MacroDetailScreen() {
   );
 }
 
-/**
- * 2026-05-14 (premium-bar audit Group H #3): the legacy flat meal list
- * is now reusable so the ingredient-breakdown placeholder can fall back
- * to it rather than render an empty surface. Same visual treatment as
- * the pre-toggle screen.
- */
-function MealList({
-  meals,
-  config,
-  total,
-  colors,
-}: {
-  meals: Meal[];
-  config: { label: string; color: string; unit: string; field: keyof Meal };
-  total: number;
-  colors: ReturnType<typeof useThemeColors>;
-}) {
-  return (
-    <View style={{ gap: 0 }}>
-      {meals.map((meal, i) => {
-        const val = Number(meal[config.field]) || 0;
-        const pct = total > 0 ? val / total : 0;
-        return (
-          <View
-            key={i}
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              paddingVertical: 14,
-              borderBottomWidth: i < meals.length - 1 ? 1 : 0,
-              borderBottomColor: colors.border,
-              gap: 12,
-            }}
-          >
-            <View
-              style={{
-                width: 10,
-                height: 10,
-                borderRadius: 5,
-                backgroundColor: config.color,
-                opacity: 0.3 + pct * 0.7,
-              }}
-            />
-            <View style={{ flex: 1 }}>
-              <Text
-                style={{
-                  fontSize: 11,
-                  fontWeight: "600",
-                  color: colors.textTertiary,
-                  textTransform: "uppercase",
-                  letterSpacing: 0.5,
-                }}
-              >
-                {meal.name}
-              </Text>
-              <Text
-                style={{
-                  fontSize: 14,
-                  fontWeight: "500",
-                  color: colors.text,
-                  marginTop: 2,
-                }}
-                numberOfLines={1}
-              >
-                {meal.recipeTitle}
-              </Text>
-            </View>
-            <Text
-              style={{
-                fontSize: 15,
-                fontWeight: "700",
-                color: config.color,
-                fontVariant: ["tabular-nums"],
-              }}
-            >
-              {Math.round(val * 10) / 10}
-              {config.unit}
-            </Text>
-          </View>
-        );
-      })}
-    </View>
-  );
-}

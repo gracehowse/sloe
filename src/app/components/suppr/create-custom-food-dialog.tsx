@@ -32,7 +32,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronUp, Plus, X } from "lucide-react";
+import { ArrowLeftRight, ChevronDown, ChevronUp, Plus, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -54,6 +54,11 @@ import {
   type CustomFoodServing,
   type MacroBasis,
 } from "../../../lib/nutrition/customFoods";
+// ENG-748 #15 (2026-05-27) — density-aware "1 cup → grams" converter
+// (web parity with the mobile CreateCustomFoodSheet). Same shared, sourced
+// density table + conversion math; only converts when density is known.
+import { isVolumeUnit, volumeToGrams } from "../../../lib/nutrition/volumeToGrams";
+import { parseIngredientLine } from "../../../lib/recipe-ingredients/parseIngredientLine";
 
 /** F-156 PR-1 — localStorage key for the user's last-chosen macro basis. */
 const MACRO_BASIS_STORAGE_KEY = "suppr.customFood.macroBasis.v1";
@@ -268,6 +273,30 @@ export function CreateCustomFoodDialog({
   const servingLabelClean = servingLabel.trim();
   const hasServingLabel = servingLabelClean.length > 0;
   const hasServingGrams = servingGrams > 0;
+
+  // ENG-748 #15 — density-aware volume→grams helper for the primary serving
+  // row (mirrors the mobile sheet). When the serving label parses to a volume
+  // measure and the food's density is known, offer a one-tap convert; when
+  // the density is unknown, say so plainly rather than guessing.
+  const volumeConversion = useMemo<
+    | { kind: "known"; grams: number; unitLabel: string; gPerMl: number }
+    | { kind: "unknown"; unitLabel: string }
+    | null
+  >(() => {
+    if (!hasServingLabel) return null;
+    const parsed = parseIngredientLine(servingLabelClean);
+    const unit = parsed.unit.trim().toLowerCase();
+    if (!isVolumeUnit(unit)) return null;
+    const amount = Number.parseFloat(parsed.amount);
+    if (!Number.isFinite(amount) || amount <= 0) return null;
+    const result = volumeToGrams({ foodName: name, amount, unit });
+    const unitLabel = `${amount} ${unit}`;
+    if (result.densityKnown) {
+      return { kind: "known", grams: result.grams, unitLabel, gPerMl: result.gPerMl };
+    }
+    return { kind: "unknown", unitLabel };
+  }, [hasServingLabel, servingLabelClean, name]);
+
   const firstServingValid =
     (!hasServingLabel && !hasServingGrams) ||
     (hasServingLabel && hasServingGrams);
@@ -505,6 +534,34 @@ export function CreateCustomFoodDialog({
                 className="w-24"
               />
             </div>
+
+            {/* ENG-748 #15 (2026-05-27) — density-aware volume→grams
+                converter. Shows only when the serving label is a volume
+                measure. Known density → one-tap convert; unknown → say so
+                rather than guessing a wrong gram weight. */}
+            {volumeConversion?.kind === "known" && !hasServingGrams && (
+              <button
+                type="button"
+                onClick={() => setServingGramsText(formatNumber(volumeConversion.grams))}
+                data-testid="custom-food-volume-convert"
+                aria-label={`Convert ${volumeConversion.unitLabel} to ${volumeConversion.grams} grams`}
+                className="flex items-center gap-1 text-sm font-medium text-primary hover:underline self-start py-1"
+              >
+                <ArrowLeftRight className="w-4 h-4" />
+                Convert {volumeConversion.unitLabel} → {formatNumber(volumeConversion.grams)} g
+              </button>
+            )}
+            {volumeConversion?.kind === "unknown" && !hasServingGrams && (
+              <p
+                data-testid="custom-food-volume-unknown"
+                role="status"
+                aria-live="polite"
+                className="text-xs text-muted-foreground leading-relaxed"
+              >
+                We can&apos;t auto-convert {volumeConversion.unitLabel} for this food — its weight
+                depends on density. Weigh it and enter grams.
+              </p>
+            )}
 
             {/* F-156 PR-2 (2026-05-10) — additional serving rows.
                 Compact list ([label] [grams] [×]) under the first

@@ -3,7 +3,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -421,36 +420,31 @@ export function QuickAddPanel({
   const promptRename = useCallback(
     (meal: SavedMeal) => {
       if (!userId) return;
-      // `Alert.prompt` is iOS-only; Android gets a graceful fallback.
-      if (Platform.OS === "ios" && typeof (Alert as any).prompt === "function") {
-        (Alert as any).prompt(
-          "Rename meal",
-          "Enter a new name.",
-          async (text: string | undefined) => {
-            const next = (text ?? "").trim();
-            if (!next || next === meal.name) return;
-            const snapshot = savedMeals;
-            setSavedMeals((prev) =>
-              prev.map((m) => (m.id === meal.id ? { ...m, name: next } : m)),
-            );
-            try {
-              await renameSavedMeal(supabase, userId, meal.id, next);
-            } catch (err) {
-              setSavedMeals(snapshot);
-              Alert.alert("Could not rename", "Please try again.");
-               
-              console.warn("QuickAddPanel saved-meal rename failed", err);
-            }
-          },
-          "plain-text",
-          meal.name,
-        );
-      } else {
-        Alert.alert(
-          "Rename meal",
-          "Renaming is coming to Android in a future update. For now, delete and re-create the meal with a new name.",
-        );
-      }
+      // iOS-only build target — `Alert.prompt` is always available, so
+      // the prompt is the only path (the prior Android-fallback branch
+      // referenced a platform that will never ship; removed per ENG-748).
+      (Alert as any).prompt(
+        "Rename meal",
+        "Enter a new name.",
+        async (text: string | undefined) => {
+          const next = (text ?? "").trim();
+          if (!next || next === meal.name) return;
+          const snapshot = savedMeals;
+          setSavedMeals((prev) =>
+            prev.map((m) => (m.id === meal.id ? { ...m, name: next } : m)),
+          );
+          try {
+            await renameSavedMeal(supabase, userId, meal.id, next);
+          } catch (err) {
+            setSavedMeals(snapshot);
+            Alert.alert("Could not rename", "Please try again.");
+
+            console.warn("QuickAddPanel saved-meal rename failed", err);
+          }
+        },
+        "plain-text",
+        meal.name,
+      );
     },
     [savedMeals, supabase, userId],
   );

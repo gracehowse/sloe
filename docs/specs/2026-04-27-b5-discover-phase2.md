@@ -50,6 +50,16 @@ Page sections (top → bottom):
    - Same RecipeCard primitive used on Discover, paginated.
    - Default sort: most-recent. Secondary sort pill: "Popular" (saves desc).
    - Empty state: "No recipes yet" — never inflate with placeholders.
+   - **Pagination (shipped ENG-748 #14, 2026-05-27):** the list loads in
+     pages of `CREATOR_RECIPES_PAGE_SIZE` (24). Phase 2a shipped a
+     hard-capped 50 with load-more deferred, which silently hid older
+     recipes for creators with >50. The list now renders the first page
+     server-side (web) / on mount (mobile) and appends further pages via
+     a "Load more" button. The header stat shows the TRUE total count (a
+     separate `head: true` count), never the loaded count. Offset / dedupe
+     / has-more logic is shared across platforms in
+     `src/lib/recipes/creatorRecipePagination.ts`
+     (`@suppr/shared/recipes/creatorRecipePagination` on mobile).
 
 ### B. Filter chips beyond the 5 pills
 

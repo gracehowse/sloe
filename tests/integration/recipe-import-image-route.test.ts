@@ -254,7 +254,11 @@ describe("POST /api/recipe-import/image", () => {
       expect(body.sourceName).toBe("Esther Clark");
     });
 
-    it("silently drops a malformed sourceUrl (existing 'no attribution' behaviour preserved)", async () => {
+    it("drops a malformed value sent as sourceUrl (server contract: no URL, no name)", async () => {
+      // Server-level contract: a malformed string arriving in the `sourceUrl`
+      // field with no `sourceName` still normalises to null/null. The CLIENT
+      // no longer sends malformed text this way (see the sourceName test
+      // below) — this guards the route's own normalisation boundary.
       mockUserId.mockResolvedValue("u1");
       mockTier.mockResolvedValue("pro");
       mockOpenAi({ title: "X", ingredients: ["1 egg"], steps: [], notes: null });
@@ -268,6 +272,27 @@ describe("POST /api/recipe-import/image", () => {
       const body = (await res.json()) as { sourceUrl: string | null; sourceName: string | null };
       expect(body.sourceUrl).toBeNull();
       expect(body.sourceName).toBeNull();
+    });
+
+    // ENG-748 #13 (2026-05-27) — when the pasted attribution text can't be
+    // parsed as a URL, the web + mobile clients now send it in the
+    // `sourceName` field instead of `sourceUrl`, so the creator's note
+    // survives as a non-linked source note rather than being silently
+    // dropped (ODbL / viral-hook attribution correctness).
+    it("keeps a malformed paste as a non-linked sourceName when sent that way", async () => {
+      mockUserId.mockResolvedValue("u1");
+      mockTier.mockResolvedValue("pro");
+      mockOpenAi({ title: "X", ingredients: ["1 egg"], steps: [], notes: null });
+      const fd = new FormData();
+      fd.append("image", new Blob([new Uint8Array([1, 2, 3])], { type: "image/jpeg" }), "x.jpg");
+      fd.append("sourceName", "from @nonna_kitchen on IG");
+      const res = await POST(
+        new Request("http://localhost/api/recipe-import/image", { method: "POST", body: fd }),
+      );
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { sourceUrl: string | null; sourceName: string | null };
+      expect(body.sourceUrl).toBeNull();
+      expect(body.sourceName).toBe("from @nonna_kitchen on IG");
     });
   });
 });

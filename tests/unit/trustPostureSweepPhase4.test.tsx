@@ -167,6 +167,21 @@ describe("Trust posture sweep — source pins (post-GW-08, 2026-04-28)", () => {
     expect(src).toMatch(/data-testid="recipe-detail-gluten-chip"/);
   });
 
+  // ENG-748 (legal-reviewer P0): a persistent disclaimer caption must
+  // sit directly beneath the gluten chip on the web hero whenever it
+  // renders — not a tooltip / tap / global ToS.
+  it("RecipeDetail (web) renders the persistent gluten disclaimer caption (ENG-748)", () => {
+    const src = read("src/app/components/RecipeDetail.tsx");
+    expect(src).toMatch(/data-testid="recipe-detail-gluten-disclaimer"/);
+    expect(src).toMatch(/Estimated from ingredient names — not a guarantee\./);
+    expect(src).toMatch(/Always[\s\S]{0,40}check labels and packaging if you avoid gluten for medical/);
+    // It must live in the SAME conditional as the chip (rendered only
+    // when a gluten variant resolves), so chip + caption appear together.
+    expect(src).toMatch(
+      /if \(!glutenResult\.variant\) return null;[\s\S]*recipe-detail-gluten-disclaimer/,
+    );
+  });
+
   it("RecipeDetail renders SourceDot per ingredient row at size=6", () => {
     const src = read("src/app/components/RecipeDetail.tsx");
     expect(src).toMatch(/<SourceDot[\s\S]+?size=\{6\}/);
@@ -218,6 +233,38 @@ describe("Trust posture sweep — source pins (post-GW-08, 2026-04-28)", () => {
     const src = read("apps/mobile/app/recipe/[id].tsx");
     expect(src).toMatch(/classifyRecipeGluten/);
     expect(src).toMatch(/testID="recipe-detail-gluten-chip"/);
+  });
+
+  // ENG-748 (legal-reviewer P0): the mobile hero mirrors the web
+  // persistent disclaimer caption beneath the gluten chip.
+  it("Mobile recipe detail renders the persistent gluten disclaimer caption (ENG-748)", () => {
+    const src = read("apps/mobile/app/recipe/[id].tsx");
+    expect(src).toMatch(/testID="recipe-detail-gluten-disclaimer"/);
+    expect(src).toMatch(/Estimated from ingredient names — not a guarantee\./);
+    expect(src).toMatch(/Always[\s\S]{0,40}check labels and packaging if you avoid gluten for medical/);
+    // Same conditional as the chip (rendered only when a variant resolves).
+    expect(src).toMatch(
+      /if \(!gluten\.variant\) return null;[\s\S]*recipe-detail-gluten-disclaimer/,
+    );
+  });
+
+  // ENG-748: the gluten-high-conf TrustChip variant must use the
+  // Sparkles ("estimated") glyph, not Check ("verified"), on a coeliac
+  // surface — pinned at the primitive on BOTH platforms so the swap
+  // can't silently revert.
+  it("TrustChip gluten-high-conf maps to the Sparkles glyph (web + mobile) — ENG-748", () => {
+    for (const rel of [
+      "src/app/components/ui/trust-chip.tsx",
+      "apps/mobile/components/ui/TrustChip.tsx",
+    ]) {
+      const src = read(rel);
+      // Isolate the gluten-high-conf config block and assert its glyph.
+      const block = src.match(
+        /"gluten-high-conf":\s*\{[\s\S]*?\bglyph:\s*"([a-z]+)"/,
+      );
+      expect(block, `${rel} must define a gluten-high-conf glyph`).toBeTruthy();
+      expect(block?.[1]).toBe("sparkles");
+    }
   });
 
   it("Mobile Discover hero does NOT render TrustChip (GW-08 removal)", () => {

@@ -25,9 +25,11 @@ import { kgToLb } from "@suppr/shared/units/imperial";
  * (newest first). Each row shows the weight, a relative date label
  * ("Today" / "Yesterday" / "5 May 2026"), and the data source.
  *
- * Currently read+delete only. Edit-in-place is deferred to a Phase 2
- * follow-up that needs the `LogWeightSheet` to accept a target date
- * (today, it always logs to the current day). See
+ * Long-press a row to edit (correct a mistyped value, keeping the
+ * original date) or delete it. Edit routes back up to the parent's
+ * `LogWeightSheet` in edit mode (ENG-748 #9, 2026-05-27) — before that
+ * a mistyped past weigh-in could only be deleted + re-added, and the
+ * re-add always landed on today, losing the original date. See
  * `docs/decisions/2026-05-11-weight-chart-consolidation-plan.md`.
  */
 
@@ -53,6 +55,13 @@ export interface AllWeightDataSheetProps {
    * was removed.
    */
   onEntryDeleted: (dateISO: string, nextMap: Record<string, number>) => void;
+  /**
+   * ENG-748 #9 — called when the user chooses "Edit" on a row. The parent
+   * opens its `LogWeightSheet` in edit mode targeting this date (value can
+   * change, date is preserved). Mobile-only surface; web has no per-day
+   * weight-history list yet (see #9 parity note).
+   */
+  onEditEntry: (dateISO: string) => void;
 }
 
 type Section = { monthLabel: string; entries: WeightEntry[] };
@@ -109,6 +118,7 @@ export function AllWeightDataSheet({
   isImperial,
   weightKgByDay,
   onEntryDeleted,
+  onEditEntry,
 }: AllWeightDataSheetProps) {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
@@ -160,6 +170,35 @@ export function AllWeightDataSheet({
       );
     },
     [isImperial, handleDelete],
+  );
+
+  // ENG-748 #9 — long-press now offers Edit (correct a mistyped value,
+  // keep the date) before Delete. Edit routes up to the parent's
+  // LogWeightSheet in edit mode; the sheet must close first so the two
+  // modals don't stack.
+  const showRowActions = React.useCallback(
+    (entry: WeightEntry) => {
+      Alert.alert(
+        `${formatWeight(entry.kg, isImperial)} · ${relativeDateLabel(entry.dateISO)}`,
+        undefined,
+        [
+          {
+            text: "Edit",
+            onPress: () => {
+              onClose();
+              onEditEntry(entry.dateISO);
+            },
+          },
+          {
+            text: "Delete",
+            style: "destructive",
+            onPress: () => confirmDelete(entry),
+          },
+          { text: "Cancel", style: "cancel" },
+        ],
+      );
+    },
+    [isImperial, onClose, onEditEntry, confirmDelete],
   );
 
   // Flatten sections into a list of items with `kind` markers so a
@@ -256,7 +295,8 @@ export function AllWeightDataSheet({
               const { entry } = item;
               return (
                 <Pressable
-                  onLongPress={() => confirmDelete(entry)}
+                  onPress={() => showRowActions(entry)}
+                  onLongPress={() => showRowActions(entry)}
                   delayLongPress={350}
                   style={({ pressed }) => [
                     styles.row,
@@ -267,7 +307,7 @@ export function AllWeightDataSheet({
                   ]}
                   testID={`all-weight-data-row-${entry.dateISO}`}
                   accessibilityRole="button"
-                  accessibilityLabel={`${formatWeight(entry.kg, isImperial)} on ${relativeDateLabel(entry.dateISO)}. Long-press to delete.`}
+                  accessibilityLabel={`${formatWeight(entry.kg, isImperial)} on ${relativeDateLabel(entry.dateISO)}. Tap to edit or delete.`}
                 >
                   <View
                     style={[

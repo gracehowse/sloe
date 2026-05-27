@@ -42,6 +42,7 @@ import { SupprMark } from "@/components/SupprMark";
 import { scaleMacrosByGrams , parseIngredientForSearch, type BarcodeProduct } from "@/lib/verifyRecipe";
 import BarcodeScannerModal from "@/components/BarcodeScannerModal";
 import {
+  classifyImportSource,
   extractUrlFromShareText,
   urlFromDeepLink,
   urlFromRouterParams,
@@ -531,14 +532,25 @@ export default function ImportSharedScreen() {
         type: asset.mimeType ?? "image/jpeg",
       } as any);
       // F-156-recipe-wave (2026-05-10) — forward an optional source
-      // URL so image-imported recipes can carry attribution. Reuses
+      // for image-imported recipes so they carry attribution. Reuses
       // the `manualUrl` state from the URL-import flow: if a user
-      // pasted a URL there but pivoted to the photo-pick path, we
-      // still capture the link rather than silently losing it. The
-      // server runs it through `normaliseSource`; empty / malformed
-      // values silently fall through to "no attribution".
-      const sourceUrlForImage = manualUrl.trim();
-      if (sourceUrlForImage) form.append("sourceUrl", sourceUrlForImage);
+      // pasted a link there but pivoted to the photo-pick path, we
+      // still capture it.
+      //
+      // ENG-748 #13 (2026-05-27) — previously we sent the raw pasted
+      // text as `sourceUrl` unconditionally; the server's
+      // `normaliseSource` then NULLed anything that didn't parse as a
+      // URL, and because we never sent a `sourceName`, malformed pastes
+      // (typos, partial links, "from @creator on IG") lost the creator's
+      // attribution entirely with no feedback — an ODbL / viral-hook
+      // correctness gap. Fix: parse the pasted text here. If it resolves
+      // to a real URL, send it as `sourceUrl` (linked attribution). If
+      // it's non-empty but doesn't parse, send it as `sourceName` so the
+      // creator's note survives as a non-linked source note rather than
+      // being silently dropped. Empty stays empty (no attribution).
+      const importSource = classifyImportSource(manualUrl);
+      if (importSource.sourceUrl) form.append("sourceUrl", importSource.sourceUrl);
+      if (importSource.sourceName) form.append("sourceName", importSource.sourceName);
 
       const res = await authedFetch(`${base}/api/recipe-import/image`, {
         method: "POST",
@@ -594,7 +606,9 @@ export default function ImportSharedScreen() {
       setState("error");
       setError(IMPORT_ERROR_COPY.network_error);
     }
-  }, [base, userId]);
+    // `manualUrl` is read for attribution (ENG-748 #13) — keep it in deps so
+    // the handler captures the latest pasted value rather than a stale closure.
+  }, [base, userId, manualUrl]);
 
   useEffect(() => {
     if (!pendingRecipe || state !== "review") return;

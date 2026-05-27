@@ -8,7 +8,7 @@ const supabaseUrl = `https://${projectId}.supabase.co`;
  * Generated types are available in `./database.types.ts` for type-safe queries:
  *   import type { Database } from "./database.types";
  *   supabase.from("recipes").select("...") // typed once Database generic is applied
- * Not wired up yet — several tables in migrations are missing from the remote schema.
+ * Applying the typed Database generic is tracked in ENG-749.
  */
 export const supabase = createBrowserClient(supabaseUrl, publicAnonKey);
 

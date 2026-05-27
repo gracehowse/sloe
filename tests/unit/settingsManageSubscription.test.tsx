@@ -1,39 +1,41 @@
 /**
- * Settings — Manage subscription opens cancel-flow export prompt
- * dialog (PR replaces #43, 2026-05-02).
+ * Settings — Manage subscription opens the cancel-flow export prompt
+ * dialog, then routes to the Stripe portal.
  *
  * History:
- *   - 2026-04-30 P0-1: Pro users finally got an in-app cancel path on
- *     web. The "Your plan" card surfaced a `Link` straight to
- *     `/account/billing` (Stripe Customer Portal shell).
- *   - 2026-05-02 (this PR, replaces stale PR #43): the Link is
- *     replaced with a button that opens the Suppr-owned
- *     `<CancelExportPromptDialog>` first. Two equal-weight cards;
- *     the dialog's "Continue to manage" CTA is what now navigates to
- *     `/account/billing`. Closes journey-architect P1 — surfaces the
- *     data-export prompt AT the cancel touchpoint instead of leaving
- *     it buried in Settings → Privacy & Security.
- *
- *   The gate also widened from `userTier === "pro"` to
- *   `userTier !== "free"` — base-tier users (legacy Stripe webhook
- *   safety branch) reach the same surface; free users still see "View
- *   plans" → `/pricing`.
+ *   - 2026-04-30 P0-1: Pro users got an in-app cancel path on web. The
+ *     "Your plan" card surfaced a `Link` straight to `/account/billing`.
+ *   - 2026-05-02 (PR replaces #43): the Link became a button that opens
+ *     the Suppr-owned `<CancelExportPromptDialog>` first (two
+ *     equal-weight cards; "Continue to manage" navigates to
+ *     `/account/billing`). Closed journey-architect P1.
+ *   - 2026-05-27 (ENG-748 #11): the manage/cancel control moved out of
+ *     the "Your plan" card and into the dedicated
+ *     `<SubscriptionCard>` (`settings/SubscriptionCard.tsx`), which
+ *     renders the full billing state. Settings wires the card's
+ *     `onManageSubscription` prop to fire `setCancelPromptOpen(true)`
+ *     — the SAME cancel-flow export prompt → portal path. The "Your
+ *     plan" card keeps only the at-a-glance tier pill + the Free "View
+ *     plans" link; there is exactly ONE manage path so two cancel
+ *     controls can't compete.
  *
  * The tests below confirm:
- *   1. Manage subscription button has the canonical testID.
- *   2. The button is wired to open `setCancelPromptOpen(true)` (no
- *      direct nav; the dialog owns the route).
- *   3. Copy stays "Manage subscription" — Stripe / iOS Settings own
- *      the word "Cancel".
- *   4. The button is gated on `userTier !== "free"`.
- *   5. View plans Link is gated on `userTier === "free"`.
- *   6. The CancelExportPromptDialog is mounted once in the component.
- *   7. The dialog's onContinueToManage routes to `/account/billing`
- *      via `window.location.href` (hard nav, not Link, because the
- *      destination is outside the SPA shell).
+ *   1. The SubscriptionCard is mounted in Settings, gated on
+ *      `userTier !== "free"`.
+ *   2. Its `onManageSubscription` is wired to `setCancelPromptOpen(true)`
+ *      (no direct nav; the dialog owns the route).
+ *   3. The legacy in-card `settings-manage-subscription-button` is
+ *      gone — the manage control lives in one place now.
+ *   4. View plans Link is still gated on `userTier === "free"`.
+ *   5. The CancelExportPromptDialog is mounted exactly once.
+ *   6. The dialog's onContinueToManage routes to `/account/billing`
+ *      via `window.location.href` (hard nav — destination is outside
+ *      the SPA shell).
  *
  * Source-level structural test — keeps fast and avoids the deep
- * AppDataContext stack the full Settings tree depends on.
+ * AppDataContext stack the full Settings tree depends on. The
+ * SubscriptionCard's own render behaviour is pinned by
+ * `tests/unit/subscriptionCard.test.tsx`.
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -42,43 +44,32 @@ import { describe, expect, it } from "vitest";
 const SETTINGS_PATH = resolve(__dirname, "../../src/app/components/Settings.tsx");
 const SRC = readFileSync(SETTINGS_PATH, "utf8");
 
-describe("Settings — Manage subscription opens cancel-flow export prompt (PR replaces #43, 2026-05-02)", () => {
-  it("renders a Manage subscription button with the canonical testID", () => {
-    expect(SRC).toContain('data-testid="settings-manage-subscription-button"');
-  });
-
-  it("the Manage subscription button opens setCancelPromptOpen(true) (dialog-first, not direct nav)", () => {
-    // The button must NOT navigate directly to /account/billing —
-    // the cancel-flow export prompt dialog owns the route. This pin
-    // catches the regression where someone re-introduces a Link
-    // alongside the button and short-circuits the export prompt.
+describe("Settings — Manage subscription via SubscriptionCard → cancel-flow export prompt (ENG-748 #11)", () => {
+  it("mounts <SubscriptionCard> gated on userTier !== 'free'", () => {
     expect(SRC).toMatch(
-      /data-testid="settings-manage-subscription-button"[\s\S]{0,400}?setCancelPromptOpen\(true\)/,
+      /\{userTier !== "free" \? \(\s*<SubscriptionCard/,
     );
   });
 
-  it("uses 'Manage subscription' copy (Stripe / iOS Settings own 'Cancel')", () => {
-    const block = SRC.match(
-      /\{userTier !== "free" && \(\s*<button[\s\S]*?<\/button>\s*\)\}/,
-    );
-    expect(block).not.toBeNull();
-    expect(block![0]).toContain("Manage subscription");
-    // The button itself does not say "Cancel" — Stripe / iOS Settings
-    // own that word.
-    expect(block![0]).not.toContain(">Cancel<");
-  });
-
-  it("the Manage subscription button is gated on userTier !== 'free'", () => {
-    // Widened from `userTier === "pro"` (2026-04-30) to
-    // `userTier !== "free"` (2026-05-02) so base-tier safety-branch
-    // users also reach the cancel-flow export prompt.
+  it("wires SubscriptionCard.onManageSubscription to setCancelPromptOpen(true) (dialog-first, not direct nav)", () => {
+    // The card's manage CTA must NOT navigate directly to
+    // /account/billing — the cancel-flow export prompt dialog owns the
+    // route. This pin catches the regression where someone re-points
+    // onManageSubscription straight at the portal and short-circuits
+    // the export prompt.
     expect(SRC).toMatch(
-      /\{userTier !== "free" && \(\s*<button\s+type="button"\s+data-testid="settings-manage-subscription-button"/,
+      /onManageSubscription=\{[\s\S]{0,400}?setCancelPromptOpen\(true\)/,
     );
+  });
+
+  it("does not re-introduce a second manage control in the 'Your plan' card", () => {
+    // The legacy in-card button moved into SubscriptionCard. Two
+    // competing cancel controls is a legal-UX regression (one clear
+    // path). Guard that the old testID does not come back.
+    expect(SRC).not.toContain('data-testid="settings-manage-subscription-button"');
   });
 
   it("the View plans link is gated on userTier === 'free'", () => {
-    // Mirror guard for the free-tier branch.
     expect(SRC).toMatch(/\{userTier === "free" && \(\s*<Link\s+href="\/pricing"/);
   });
 

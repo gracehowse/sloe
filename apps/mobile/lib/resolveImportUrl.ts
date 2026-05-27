@@ -29,6 +29,32 @@ export function extractUrlFromShareText(text: string): string | null {
   return null;
 }
 
+/**
+ * ENG-748 #13 (2026-05-27) — classify a pasted attribution string for the
+ * image-import path. Image imports reuse the URL-paste field to carry a
+ * creator's source. Previously the raw text was sent as `sourceUrl`
+ * unconditionally; the server's `normaliseSource` then NULLed anything that
+ * didn't parse, dropping the attribution silently (no `sourceName` fallback).
+ *
+ * This returns which form field the value should occupy:
+ *   - a parseable link → `{ sourceUrl }` (linked attribution)
+ *   - non-empty but unparseable → `{ sourceName }` (non-linked source note,
+ *     preserved rather than dropped)
+ *   - empty / whitespace → `{}` (genuinely no attribution)
+ */
+export interface ImportSourceField {
+  sourceUrl?: string;
+  sourceName?: string;
+}
+
+export function classifyImportSource(raw: string): ImportSourceField {
+  const trimmed = raw.trim();
+  if (!trimmed) return {};
+  const url = extractUrlFromShareText(trimmed);
+  if (url) return { sourceUrl: url };
+  return { sourceName: trimmed };
+}
+
 function paramFirst(v: string | string[] | undefined): string | undefined {
   if (v == null) return undefined;
   return Array.isArray(v) ? v[0] : v;

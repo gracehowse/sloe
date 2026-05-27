@@ -51,6 +51,31 @@ function isoTodayKey(): string {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+/** Human label for an edit target, e.g. "5 May 2026". */
+function editDateLabel(dateISO: string): string {
+  const d = new Date(dateISO + "T00:00:00");
+  return d.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+/**
+ * Newest entry date in the by-day map, or null when empty. Used to decide
+ * whether an edit should also update the scalar `weight_kg` ("latest weight"):
+ * editing the most-recent weigh-in updates it; editing an older one must not
+ * clobber the current weight.
+ */
+function newestDateKey(map: Record<string, number>): string | null {
+  const keys = Object.entries(map)
+    .filter(([, kg]) => Number.isFinite(kg) && kg > 0)
+    .map(([k]) => k)
+    .sort()
+    .reverse();
+  return keys[0] ?? null;
+}
+
 export interface LogWeightSheetProps {
   visible: boolean;
   onClose: () => void;
@@ -58,6 +83,13 @@ export interface LogWeightSheetProps {
   isImperial: boolean;
   weightKgByDay: Record<string, number>;
   weightKg: number | null;
+  /**
+   * ENG-748 #9 (2026-05-27) — edit-in-place target. When set, the sheet
+   * edits the existing weigh-in on that date (value changes, date kept)
+   * rather than logging a new entry for today. Pre-fills with the stored
+   * value for that date. Null/undefined = the normal "log today" flow.
+   */
+  editDate?: string | null;
   onSaved: (next: {
     weightKgByDay: Record<string, number>;
     weightKg: number;
@@ -71,6 +103,7 @@ export function LogWeightSheet({
   isImperial,
   weightKgByDay,
   weightKg,
+  editDate,
   onSaved,
 }: LogWeightSheetProps) {
   const colors = useThemeColors();
@@ -78,18 +111,22 @@ export function LogWeightSheet({
   const [input, setInput] = React.useState("");
   const [saving, setSaving] = React.useState(false);
 
+  const isEditing = Boolean(editDate);
+
   React.useEffect(() => {
     if (visible) {
-      // Pre-populate with the current weight so the user can nudge up/down
-      // rather than retyping. Mirrors the /weight-tracker prefill behaviour.
-      const display = weightKg
+      // In edit mode pre-fill with the stored value for the target date so
+      // the user nudges from the mistyped figure; otherwise pre-fill with
+      // the current weight (mirrors the /weight-tracker prefill behaviour).
+      const seedKg = editDate ? weightKgByDay[editDate] : weightKg;
+      const display = seedKg
         ? isImperial
-          ? `${Math.round(kgToLb(weightKg) * 10) / 10}`
-          : `${Math.round(weightKg * 10) / 10}`
+          ? `${Math.round(kgToLb(seedKg) * 10) / 10}`
+          : `${Math.round(seedKg * 10) / 10}`
         : "";
       setInput(display);
     }
-  }, [visible, weightKg, isImperial]);
+  }, [visible, weightKg, isImperial, editDate, weightKgByDay]);
 
   const handleSave = React.useCallback(async () => {
     if (!userId) return;
@@ -102,23 +139,42 @@ export function LogWeightSheet({
       return;
     }
     const kg = isImperial ? lbToKg(v) : v;
-    const todayKey = isoTodayKey();
-    const next = pruneByDay({ ...weightKgByDay, [todayKey]: kg });
+    // ENG-748 #9 — write to the edited date when editing, else today's key.
+    const targetKey = editDate ?? isoTodayKey();
+    const next = pruneByDay({ ...weightKgByDay, [targetKey]: kg });
+    // The scalar `weight_kg` represents the latest weight. Only update it
+    // when the edited/logged entry IS (or becomes) the newest dated entry —
+    // editing an OLD weigh-in must not overwrite the current weight.
+    const newest = newestDateKey(next);
+    const touchesLatest = newest === targetKey;
     setSaving(true);
+    const update: { weight_kg_by_day: Record<string, number>; weight_kg?: number } = {
+      weight_kg_by_day: next,
+    };
+    if (touchesLatest) update.weight_kg = kg;
     const { error } = await supabase
       .from("profiles")
-      .update({ weight_kg: kg, weight_kg_by_day: next })
+      .update(update)
       .eq("id", userId);
     setSaving(false);
     if (error) {
-      Alert.alert("Couldn't save weight", error.message ?? "Try again.");
+      Alert.alert(
+        isEditing ? "Couldn't update weight" : "Couldn't save weight",
+        error.message ?? "Try again.",
+      );
       return;
     }
     // Fire-and-forget — TDEE re-learn pulls from the fresh log.
     void refreshAdaptiveTdeeForUser(supabase, userId);
-    onSaved({ weightKgByDay: next, weightKg: kg });
+    onSaved({
+      weightKgByDay: next,
+      // Report the scalar the parent should show: the latest weight after the
+      // write. If we edited the latest entry that's `kg`; otherwise it's the
+      // existing newest value (unchanged).
+      weightKg: touchesLatest ? kg : (newest ? next[newest] : kg),
+    });
     onClose();
-  }, [input, isImperial, userId, weightKgByDay, onSaved, onClose]);
+  }, [input, isImperial, userId, weightKgByDay, editDate, isEditing, onSaved, onClose]);
 
   return (
     <Modal
@@ -148,7 +204,7 @@ export function LogWeightSheet({
           </View>
           <View style={styles.headerRow}>
             <Text style={[styles.title, { color: colors.text }]}>
-              Log your weight
+              {isEditing ? "Edit weigh-in" : "Log your weight"}
             </Text>
             <Pressable
               onPress={onClose}
@@ -160,8 +216,9 @@ export function LogWeightSheet({
             </Pressable>
           </View>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Today&apos;s weight. We&apos;ll re-learn your TDEE from the
-            update.
+            {isEditing && editDate
+              ? `Correcting your weigh-in for ${editDateLabel(editDate)}. We'll re-learn your TDEE from the update.`
+              : "Today's weight. We'll re-learn your TDEE from the update."}
           </Text>
           <View
             style={[
@@ -213,7 +270,11 @@ export function LogWeightSheet({
             testID="log-weight-save"
           >
             <Text style={styles.ctaLabel}>
-              {saving ? "Saving..." : "Save weight"}
+              {saving
+                ? "Saving..."
+                : isEditing
+                  ? "Update weigh-in"
+                  : "Save weight"}
             </Text>
           </Pressable>
         </View>

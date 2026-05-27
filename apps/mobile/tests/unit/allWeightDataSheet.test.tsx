@@ -8,6 +8,8 @@
  *   - Imperial vs metric formatting
  *   - Long-press delete dispatches the correct Supabase update
  *   - Empty state copy when there are no entries
+ *   - ENG-748 #9 (2026-05-27): long-press offers Edit, which closes the
+ *     sheet and routes the date up via `onEditEntry`
  */
 import React from "react";
 import { Alert } from "react-native";
@@ -85,6 +87,7 @@ describe("<AllWeightDataSheet>", () => {
         isImperial={false}
         weightKgByDay={SAMPLE}
         onEntryDeleted={() => {}}
+        onEditEntry={() => {}}
       />,
     );
     expect(queryByTestId("all-weight-data-sheet")).toBeNull();
@@ -99,6 +102,7 @@ describe("<AllWeightDataSheet>", () => {
         isImperial={false}
         weightKgByDay={SAMPLE}
         onEntryDeleted={() => {}}
+        onEditEntry={() => {}}
       />,
     );
     expect(getByText("Today")).toBeTruthy();
@@ -114,6 +118,7 @@ describe("<AllWeightDataSheet>", () => {
         isImperial={false}
         weightKgByDay={SAMPLE}
         onEntryDeleted={() => {}}
+        onEditEntry={() => {}}
       />,
     );
     expect(getByText("54.9 kg")).toBeTruthy();
@@ -125,6 +130,7 @@ describe("<AllWeightDataSheet>", () => {
         isImperial
         weightKgByDay={SAMPLE}
         onEntryDeleted={() => {}}
+        onEditEntry={() => {}}
       />,
     );
     // 54.9 kg → 121.0 lb (54.9 × 2.20462 = 121.0)
@@ -140,6 +146,7 @@ describe("<AllWeightDataSheet>", () => {
         isImperial={false}
         weightKgByDay={SAMPLE}
         onEntryDeleted={() => {}}
+        onEditEntry={() => {}}
       />,
     );
     expect(queryAllByText(/May 2026/i).length).toBeGreaterThan(0);
@@ -156,6 +163,7 @@ describe("<AllWeightDataSheet>", () => {
         isImperial={false}
         weightKgByDay={{}}
         onEntryDeleted={() => {}}
+        onEditEntry={() => {}}
       />,
     );
     expect(getByText("No weigh-ins yet")).toBeTruthy();
@@ -163,10 +171,12 @@ describe("<AllWeightDataSheet>", () => {
     expect(queryByText(/May 2026/i)).toBeNull();
   });
 
-  it("long-press → confirm Delete fires a Supabase update with the entry removed", async () => {
+  it("long-press → Delete → confirm fires a Supabase update with the entry removed", async () => {
     const onEntryDeleted = vi.fn();
+    // Two Alerts in the new flow: (1) the row action sheet (Edit / Delete /
+    // Cancel), then (2) the delete confirmation (Cancel / Delete). Auto-tap
+    // "Delete" on whichever Alert is shown so the chain runs to completion.
     const alertSpy = vi.spyOn(Alert, "alert").mockImplementation(((title, msg, buttons) => {
-      // Auto-tap the Delete button so the test stays sync-ish.
       if (Array.isArray(buttons)) {
         const del = buttons.find((b: { text?: string }) => b.text === "Delete");
         del?.onPress?.();
@@ -181,6 +191,7 @@ describe("<AllWeightDataSheet>", () => {
         isImperial={false}
         weightKgByDay={SAMPLE}
         onEntryDeleted={onEntryDeleted}
+        onEditEntry={() => {}}
       />,
     );
     fireEvent(getByTestId(`all-weight-data-row-${TODAY_ISO}`), "longPress");
@@ -197,10 +208,10 @@ describe("<AllWeightDataSheet>", () => {
     alertSpy.mockRestore();
   });
 
-  it("Cancel on the delete confirmation does NOT fire the Supabase update", async () => {
+  it("Cancel on the row action sheet does NOT fire the Supabase update", async () => {
     const onEntryDeleted = vi.fn();
     const alertSpy = vi.spyOn(Alert, "alert").mockImplementation(((title, msg, buttons) => {
-      // No-op: user taps Cancel implicitly by us not calling Delete.
+      // No-op: user taps Cancel implicitly by us not calling any onPress.
       void buttons;
     }) as typeof Alert.alert);
 
@@ -212,11 +223,42 @@ describe("<AllWeightDataSheet>", () => {
         isImperial={false}
         weightKgByDay={SAMPLE}
         onEntryDeleted={onEntryDeleted}
+        onEditEntry={() => {}}
       />,
     );
     fireEvent(getByTestId(`all-weight-data-row-${TODAY_ISO}`), "longPress");
     expect(updateSpy).not.toHaveBeenCalled();
     expect(onEntryDeleted).not.toHaveBeenCalled();
+    alertSpy.mockRestore();
+  });
+
+  it("long-press → Edit closes the sheet and routes the date up via onEditEntry", () => {
+    const onClose = vi.fn();
+    const onEditEntry = vi.fn();
+    const alertSpy = vi.spyOn(Alert, "alert").mockImplementation(((title, msg, buttons) => {
+      if (Array.isArray(buttons)) {
+        const edit = buttons.find((b: { text?: string }) => b.text === "Edit");
+        edit?.onPress?.();
+      }
+    }) as typeof Alert.alert);
+
+    const { getByTestId } = render(
+      <AllWeightDataSheet
+        visible
+        onClose={onClose}
+        userId="u-1"
+        isImperial={false}
+        weightKgByDay={SAMPLE}
+        onEntryDeleted={() => {}}
+        onEditEntry={onEditEntry}
+      />,
+    );
+    fireEvent(getByTestId(`all-weight-data-row-${"2026-05-06"}`), "longPress");
+    // Edit must NOT write anything itself — it only routes up.
+    expect(updateSpy).not.toHaveBeenCalled();
+    // Sheet closes first so the two modals don't stack, then edit fires.
+    expect(onClose).toHaveBeenCalled();
+    expect(onEditEntry).toHaveBeenCalledWith("2026-05-06");
     alertSpy.mockRestore();
   });
 });
