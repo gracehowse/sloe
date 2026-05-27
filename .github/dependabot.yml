@@ -85,8 +85,16 @@ updates:
           - "minor"
           - "patch"
     ignore:
+      # react / react-dom MUST match react-native's bundled renderer EXACTLY.
+      # RN 0.81.5 ships react-native-renderer 19.1.0; React throws
+      # "Incompatible React versions" on launch if `react` differs at all.
+      # This is an exact pin, not a floor — even a MINOR bump breaks it:
+      # dependabot proposed react 19.1.0 → 19.2.6 (a minor) in #324, which
+      # would have crashed the app. So ignore ALL update-types and bump react
+      # only when the Expo SDK / RN upgrade moves the renderer.
+      # See project mobile-build memory + ENG-562.
       - dependency-name: "react"
-        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-dom"
       # react-native uses pre-1.0 versioning where 0.81 → 0.85 is functionally
       # a major even though semver classifies it as minor. RN bumps MUST be
       # coordinated with an Expo SDK bump (Expo's babel-preset-expo pins
