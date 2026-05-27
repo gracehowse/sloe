@@ -14,7 +14,7 @@ import { type UserProfile } from "@/types/profile";
 import { useOnboarding } from "./context";
 import { STEP_COMPONENTS } from "./steps";
 import { NARRATIVE } from "./narrative";
-import { STEP_IDS } from "@/lib/onboarding/state";
+import { STEP_IDS, canAdvance as canAdvanceStep } from "@/lib/onboarding/state";
 import {
   effectiveTargetsForPersist,
   mapV2GoalToLegacy,
@@ -42,9 +42,22 @@ import { buildFirstWeekFromSeeds } from "@/lib/onboarding/onboardingFirstWeek";
  */
 
 export function WebFlow() {
-  const { currentStepId, displayIndex, displayTotal, go, goTo, canAdvance, state, targets, warning } =
+  const { currentStepId, displayIndex, displayTotal, go, goTo, state, targets, warning } =
     useOnboarding();
   const { authedUserId } = useAuthSession();
+  // ENG-672 (2026-05-26) — recompute `canAdvance` HERE with the live
+  // session threaded in, mirroring mobile-flow.tsx. The shared context's
+  // `canAdvance` is auth-agnostic (the provider deliberately can't reach
+  // the web auth context — see the auto-skip comment below), so the
+  // Signup step's `canAdvance("signup", …)` defaults to `false`. Threading
+  // `hasSession` makes the gate genuine defence-in-depth rather than relying
+  // on footer suppression alone: the Continue stays inert until a real
+  // Supabase session exists. Every other step is unchanged (their rules
+  // don't read `hasSession`).
+  const canAdvance = canAdvanceStep(currentStepId, state, {
+    paceWarning: warning,
+    hasSession: authedUserId != null,
+  });
   const StepComponent = STEP_COMPONENTS[currentStepId];
   const isWelcome = currentStepId === "welcome";
   const isSignup = currentStepId === "signup";
