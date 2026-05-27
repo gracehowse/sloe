@@ -105,6 +105,7 @@ import { ProgressHeroMetric } from "@/components/progress/ProgressHeroMetric";
 import { hasEnoughDataForStory } from "@/lib/progressStoryGate";
 import { DigestStoryCard } from "@/components/progress/DigestStoryCard";
 import { TrajectoryCard } from "@/components/progress/TrajectoryCard";
+import { TrendSummaryCard } from "@/components/progress/TrendSummaryCard";
 import { computeDayOfWeekPattern } from "@suppr/shared/nutrition/dayOfWeekPattern";
 import { generateProgressCommentary } from "@/lib/progressCommentary";
 import { WeightChart } from "@/components/progress/WeightChart";
@@ -1288,6 +1289,56 @@ export default function ProgressScreen() {
               />
             );
           })() : null}
+
+          {/* ENG-755 — trend summary tiles (mobile port of web's
+              `TrendSummaryCardWeb`). Flag-gated; renders ABOVE the week
+              digest. Every figure is a count derived from `weekStats`
+              (calorie / protein adherence) + `weightKgByDay` (weigh-ins)
+              the screen already holds. The projected-goal row shows only
+              when a goal weight + a finite days-to-goal are known. */}
+          {(() => {
+            const daysHitCalorieTarget = weekStats.days.reduce((n, d) => {
+              if (d.targetCalories <= 0 || d.calories <= 0) return n;
+              const pct = Math.abs(d.calories - d.targetCalories) / d.targetCalories;
+              return pct <= 0.1 ? n + 1 : n;
+            }, 0);
+            const weighInsThisWeek = weekStats.days.filter(
+              (d) => (weightKgByDay[d.key] ?? 0) > 0,
+            ).length;
+            let goalWeightDisplay: string | null = null;
+            let goalDateLabel: string | null = null;
+            if (goalWeightKg != null && latestWeightKg != null) {
+              const timeline = calcGoalTimeline({
+                currentWeightKg: latestWeightKg,
+                goalWeightKg,
+                weightKgByDay,
+              });
+              if (timeline.daysToGoal != null && Number.isFinite(timeline.daysToGoal)) {
+                goalWeightDisplay = formatWeightForUnit({
+                  kg: goalWeightKg,
+                  system: measurementSystem,
+                });
+                const goalDate = new Date();
+                goalDate.setDate(goalDate.getDate() + timeline.daysToGoal);
+                goalDateLabel = goalDate.toLocaleDateString("en-GB", {
+                  day: "numeric",
+                  month: "short",
+                });
+              }
+            }
+            return (
+              <View style={{ marginBottom: Spacing.md }}>
+                <TrendSummaryCard
+                  daysHitCalorieTarget={daysHitCalorieTarget}
+                  totalDaysInWindow={weekStats.days.length}
+                  daysHitProteinTarget={weekStats.proteinOnTarget}
+                  weighInsThisWeek={weighInsThisWeek}
+                  goalWeightDisplay={goalWeightDisplay}
+                  goalDateLabel={goalDateLabel}
+                />
+              </View>
+            );
+          })()}
 
           {/* Week digest — narrative LEAD card. Replaces the 2x2 grid
               as the visual focus. customer-lens audit 2026-04-30 +
