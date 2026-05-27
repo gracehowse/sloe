@@ -1294,9 +1294,13 @@ Metric in {calories, protein, streak}.
 ## 23. Macro detail — `app/macro-detail.tsx`
 
 - Header with macro + colour + total.
-- List of contributing meals + amounts.
-- EDGE 0 → "No {macro} logged today."
-- EDGE water → ml.
+- "By meal / By ingredient" segmented toggle (hidden for the water macro, which has no per-ingredient split).
+- **By meal:** meals grouped under slot headers (Breakfast/Lunch/Dinner/Snack) with slot subtotals + per-meal sub-rows.
+- **By ingredient (ENG-748 #10):** per-ingredient breakdown DERIVED from existing schema — each logged recipe's `recipe_ingredients` rows scaled by the entry's `portion_multiplier`, reconciled so the displayed ingredient macros sum exactly to the entry's stored total, then aggregated by ingredient name across the day. Shared web+mobile logic in `src/lib/nutrition/macroIngredientBreakdown.ts`.
+- EDGE recipe edited after logging → ingredient rows reconcile to the STORED total (never the live recipe's new total).
+- EDGE single food / deleted recipe (`recipe_id` null) / AI-photo multi-item meal → one self-named "ingredient" line (never blank).
+- EDGE 0 → "No meals logged for this day" + "Log a meal" CTA.
+- EDGE water → ml (no ingredient toggle).
 
 ---
 
