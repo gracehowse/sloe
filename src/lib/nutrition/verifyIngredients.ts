@@ -33,7 +33,7 @@ export type VerifiedIngredient = {
   macros: VerifiedMacros | null;
   /**
    * ENG-691 (Decision D-05, 2026-05-25): true when this row's confidence is
-   * below {@link MIN_ACCEPT_CONFIDENCE} (0.70). Its `macros` (if any) are kept
+   * below {@link MIN_ACCEPT_CONFIDENCE} (0.55). Its `macros` (if any) are kept
    * on the row so the UI can show the best estimate behind an "ask to verify"
    * affordance, but the row is EXCLUDED from `totals`/`perServing` — we never
    * silently sum a sub-threshold guess into the recipe's headline numbers.
@@ -69,23 +69,28 @@ export type IngredientOverride = {
 
 /**
  * Single tunable accept floor for ingredient matches (ENG-691, Decision D-05,
- * Grace 2026-05-25). The published confidence bands say **reject < 0.70**; the
- * engine previously accepted down to 0.42 (0.52 for OFF) with only a "needs
- * review" badge below. This constant is the one knob to turn if a
- * nutrition-engine impact review shows 0.70 over-rejects common foods.
+ * Grace 2026-05-25; value set by the nutrition-engine impact review 2026-05-26).
  *
- * NOTE (nutrition-engine impact review REQUIRED before merge): raising the
- * floor means more verify prompts and risk of over-rejecting common foods that
- * legitimately score in the 0.42–0.70 band. The change is implemented behind
- * this single constant precisely so the floor can be re-tuned without touching
- * pipeline logic once that modeling lands.
+ * The engine previously accepted down to 0.42 (0.52 OFF) with only a "needs
+ * review" badge below — much weaker matches than policy claimed. D-05 proposed
+ * raising it to 0.70 (the published "reject < 0.70" band), but the required
+ * impact review found 0.70 over-rejects verbose-descriptor staples (brown rice
+ * ~0.50, canned tomatoes ~0.46, salmon ~0.36, flour, whole milk ~0.66) — correct
+ * matches with multi-word USDA labels, not wrong matches.
+ *
+ * SHIPPED at 0.55: above 0.42 (still tightens, kills weak dish-word matches)
+ * while keeping staples accepted. The 0.70 *band* stays as the display/trust
+ * signal in `verifyConfidencePolicy` (acceptance ≠ display confidence). One knob
+ * to re-tune; ENG-746 tracks the genericFoods-wiring + scorer work that makes a
+ * genuine 0.70 accept floor achievable.
  */
-export const MIN_ACCEPT_CONFIDENCE = 0.7;
+export const MIN_ACCEPT_CONFIDENCE = 0.55;
 
 /**
  * Minimum confidence for USDA / FatSecret name overlap before accepting a match.
- * Raised 0.25 → 0.42 → 0.70 (ENG-691): aligns the accept gate with the
- * published "reject < 0.70" confidence band.
+ * Raised 0.25 → 0.42 → 0.55 (ENG-691): tightens the accept gate without
+ * over-rejecting verbose-descriptor staples (the 0.70 *band* stays the
+ * display/trust signal; see {@link MIN_ACCEPT_CONFIDENCE}).
  */
 export const MIN_MATCH_CONFIDENCE = MIN_ACCEPT_CONFIDENCE;
 
@@ -93,7 +98,7 @@ export const MIN_MATCH_CONFIDENCE = MIN_ACCEPT_CONFIDENCE;
  * Minimum confidence for Open Food Facts (stricter — noisy product names).
  * Held one notch above the general floor so OFF stays the strictest source.
  */
-export const MIN_OFF_CONFIDENCE = 0.72;
+export const MIN_OFF_CONFIDENCE = 0.57;
 
 /**
  * Recipe verify UI: lines below this show "needs review" until the user
@@ -104,12 +109,12 @@ export const MIN_OFF_CONFIDENCE = 0.72;
  * don't need to switch imports. Same module also exports the
  * recipe-level mean + min nudge thresholds, all unified at 0.50.
  *
- * ENG-691 (2026-05-25): the *accept* floor ({@link MIN_ACCEPT_CONFIDENCE} =
- * 0.70) is now ABOVE this review badge (0.50). A matched row that clears the
- * accept floor but still wants a human glance does not exist by this gate
- * anymore — any auto-accepted row is ≥ 0.70 and so above the review badge.
- * Below-floor rows are flagged `belowAcceptFloor` and excluded from totals
- * rather than badged-and-summed.
+ * ENG-691 (2026-05-26): the *accept* floor ({@link MIN_ACCEPT_CONFIDENCE} =
+ * 0.55) is now ABOVE this review badge (0.50). A matched row that clears the
+ * accept floor but still wants a human glance barely exists by this gate
+ * (the 0.50–0.55 sliver) — any auto-accepted row is ≥ 0.55. Below-floor rows
+ * are flagged `belowAcceptFloor` and excluded from totals rather than
+ * badged-and-summed.
  */
 export { RECIPE_INGREDIENT_REVIEW_CONFIDENCE } from "./verifyConfidencePolicy";
 

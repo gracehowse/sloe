@@ -22,18 +22,18 @@ describe("confidenceForMatch", () => {
     expect(confidenceForMatch("chicken breast", "chicken breast")).toBe(1);
   });
 
-  it("scores high (clears 0.70 accept floor) for exact food with neutral USDA descriptors", () => {
+  it("scores high (clears the accept floor) for exact food with neutral USDA descriptors", () => {
     const conf = confidenceForMatch("chicken breast", "Chicken, breast, meat only, cooked, roasted");
     expect(conf).toBeGreaterThanOrEqual(MIN_MATCH_CONFIDENCE);
     expect(conf).toBeGreaterThan(0.9);
   });
 
-  it("scores high (clears 0.70 accept floor) for eggs → 'Egg, whole, raw, fresh'", () => {
+  it("scores high (clears the accept floor) for eggs → 'Egg, whole, raw, fresh'", () => {
     const conf = confidenceForMatch("eggs", "Egg, whole, raw, fresh");
     expect(conf).toBeGreaterThanOrEqual(MIN_MATCH_CONFIDENCE);
   });
 
-  it("scores high (clears 0.70 accept floor) for olive oil → 'Oil, olive, salad or cooking'", () => {
+  it("scores high (clears the accept floor) for olive oil → 'Oil, olive, salad or cooking'", () => {
     const conf = confidenceForMatch("olive oil", "Oil, olive, salad or cooking");
     expect(conf).toBeGreaterThanOrEqual(MIN_MATCH_CONFIDENCE);
   });
@@ -45,7 +45,7 @@ describe("confidenceForMatch", () => {
   // If a nutrition-engine impact review re-tunes MIN_ACCEPT_CONFIDENCE or the
   // scorer, this block is the canary that flips. See verifyIngredients.ts
   // header on MIN_ACCEPT_CONFIDENCE.
-  it("KNOWN over-rejection: 'brown rice' scores below the 0.70 floor on the current scorer", () => {
+  it("KNOWN over-rejection: 'brown rice' scores below the 0.55 floor on the current scorer", () => {
     const conf = confidenceForMatch("brown rice", "Rice, brown, long-grain, cooked");
     expect(conf).toBeGreaterThan(0.4); // it IS a reasonable match…
     expect(conf).toBeLessThan(MIN_ACCEPT_CONFIDENCE); // …but the raised floor rejects it.
@@ -101,17 +101,22 @@ describe("confidenceForMatch", () => {
 });
 
 describe("threshold constants (ENG-691, Decision D-05)", () => {
-  it("MIN_ACCEPT_CONFIDENCE is the published reject floor, 0.70", () => {
-    expect(MIN_ACCEPT_CONFIDENCE).toBe(0.7);
+  // ENG-691 shipped at 0.55, not 0.70: nutrition-engine impact model (2026-05-26)
+  // found 0.70 over-rejects verbose-descriptor staples (brown rice/salmon/tomatoes/
+  // flour/milk). 0.55 still tightens from the old 0.42. The 0.70 *band* remains the
+  // display/trust signal in verifyConfidencePolicy; ENG-746 tracks the path to a
+  // genuine 0.70 accept floor.
+  it("MIN_ACCEPT_CONFIDENCE is the tightened accept floor, 0.55", () => {
+    expect(MIN_ACCEPT_CONFIDENCE).toBe(0.55);
   });
 
-  it("MIN_MATCH_CONFIDENCE equals the accept floor (0.70)", () => {
+  it("MIN_MATCH_CONFIDENCE equals the accept floor (0.55)", () => {
     expect(MIN_MATCH_CONFIDENCE).toBe(MIN_ACCEPT_CONFIDENCE);
-    expect(MIN_MATCH_CONFIDENCE).toBe(0.7);
+    expect(MIN_MATCH_CONFIDENCE).toBe(0.55);
   });
 
-  it("MIN_OFF_CONFIDENCE is stricter than the general floor (0.72)", () => {
-    expect(MIN_OFF_CONFIDENCE).toBe(0.72);
+  it("MIN_OFF_CONFIDENCE is stricter than the general floor (0.57)", () => {
+    expect(MIN_OFF_CONFIDENCE).toBe(0.57);
     expect(MIN_OFF_CONFIDENCE).toBeGreaterThan(MIN_MATCH_CONFIDENCE);
   });
 

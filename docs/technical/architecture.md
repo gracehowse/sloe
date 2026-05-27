@@ -123,13 +123,13 @@ Ingredient list + servings
       2. Normalise query (strip prep words, extract paren hints)
       3. Search USDA FDC (Foundation/SR Legacy first, then Branded)
       4. Rank by confidenceForMatch() (recall + precision + first-word bonus)
-      5. REJECT matches below MIN_MATCH_CONFIDENCE (0.70, ENG-691) — fall through
+      5. REJECT matches below MIN_MATCH_CONFIDENCE (0.55, ENG-691) — fall through
       6. Skip candidates with preparationStateMismatch (e.g. grilled vs raw-only FDC row)
       7. Fetch top candidate's full food data
       8. Reject scaled macros failing scaledMacrosPlausible (Atwater sanity)
       9. Use USDA food portions for gram weight when available
-      10. Fall back to OFF text search — requires MIN_OFF_CONFIDENCE (0.72)
-      11. Fall back to FatSecret — requires MIN_MATCH_CONFIDENCE (0.70)
+      10. Fall back to OFF text search — requires MIN_OFF_CONFIDENCE (0.57)
+      11. Fall back to FatSecret — requires MIN_MATCH_CONFIDENCE (0.55)
       12. Fall back to local estimation (60+ staples with fiber)
     → Sum per-ingredient macros for recipe total — EXCLUDING rows below the
       accept floor (those keep their estimate on the row, flagged
@@ -143,15 +143,15 @@ Ingredient list + servings
 
 All external nutrition sources must meet a minimum confidence threshold before their match is accepted. Matches below the threshold fall through to the next source or to local estimation. Any line that ends up below the accept floor (including local estimates) keeps its best-estimate macros on the row but is **excluded from the recipe totals** and flagged `belowAcceptFloor` — the engine never silently sums a sub-threshold guess into the headline numbers (ENG-691).
 
-The accept floor was raised from 0.42/0.52 to **0.70** (Decision D-05, 2026-05-25) to match the published "reject < 0.70" confidence band. The single tunable knob is `MIN_ACCEPT_CONFIDENCE`.
+The accept floor was raised from 0.42/0.52 to **0.55** (Decision D-05, 2026-05-25, value set by the 2026-05-26 nutrition-engine impact review). The single tunable knob is `MIN_ACCEPT_CONFIDENCE`.
 
 | Source | Threshold | Rationale |
 |--------|-----------|-----------|
-| USDA FDC | `MIN_MATCH_CONFIDENCE` (= `MIN_ACCEPT_CONFIDENCE`, 0.70) | Accept floor matching the published confidence band |
-| Open Food Facts | `MIN_OFF_CONFIDENCE` (0.72) | One notch stricter — product names contain brand/variant noise that inflates false positives |
-| FatSecret | `MIN_MATCH_CONFIDENCE` (0.70) | Same name-overlap bar as USDA |
+| USDA FDC | `MIN_MATCH_CONFIDENCE` (= `MIN_ACCEPT_CONFIDENCE`, 0.55) | Tightened accept floor; below it the row is excluded from totals + flagged `belowAcceptFloor` |
+| Open Food Facts | `MIN_OFF_CONFIDENCE` (0.57) | One notch stricter — product names contain brand/variant noise that inflates false positives |
+| FatSecret | `MIN_MATCH_CONFIDENCE` (0.55) | Same name-overlap bar as USDA |
 
-> **ENG-691 caveat — nutrition-engine impact review required before merge.** Raising the floor to 0.70 means more verify prompts and risks over-rejecting common foods that legitimately score in the 0.42–0.70 band (e.g. "brown rice", "whole milk", "canned tomatoes" on the current scorer). The change is implemented behind the single `MIN_ACCEPT_CONFIDENCE` constant so the floor can be re-tuned without touching pipeline logic once that modeling lands.
+> **ENG-691 — review done, shipped at 0.55 (not 0.70).** D-05 proposed 0.70; the required nutrition-engine impact review (2026-05-26) found 0.70 over-rejects verbose-descriptor staples (brown rice ~0.50, canned tomatoes ~0.46, salmon ~0.36, flour, whole milk ~0.66) because the scorer punishes multi-word USDA descriptors — these are correct matches with verbose labels, not wrong matches. 0.55 still tightens from the old 0.42 (kills weak dish-word matches) while keeping staples accepted. The **0.70 *band* remains the display/trust signal** in `verifyConfidencePolicy` (acceptance ≠ display confidence). A *genuine* 0.70 accept floor needs scorer/alias work — tracked in **ENG-746** (wire `genericFoods` into the recipe pipeline + neutralise agricultural descriptors).
 
 Constants are exported from `src/lib/nutrition/verifyIngredients.ts`. Tests in `tests/unit/confidenceGating.test.ts`.
 
