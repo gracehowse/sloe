@@ -19,9 +19,16 @@
  *     plans" link; there is exactly ONE manage path so two cancel
  *     controls can't compete.
  *
+ *   - 2026-05-27 (ENG-748 #11, follow-up): the SubscriptionCard mount
+ *     is flag-gated behind `web-subscription-card` (PostHog 692291,
+ *     created active at 0% rollout) per the feature-flag non-negotiable.
+ *     Flag off → the card falls back to its prior hidden state (null).
+ *     The tier gate (`userTier !== "free"`) is preserved as a second
+ *     condition so free users never see it even when the flag ramps.
+ *
  * The tests below confirm:
- *   1. The SubscriptionCard is mounted in Settings, gated on
- *      `userTier !== "free"`.
+ *   1. The SubscriptionCard is mounted in Settings, flag-gated behind
+ *      `web-subscription-card` AND gated on `userTier !== "free"`.
  *   2. Its `onManageSubscription` is wired to `setCancelPromptOpen(true)`
  *      (no direct nav; the dialog owns the route).
  *   3. The legacy in-card `settings-manage-subscription-button` is
@@ -45,9 +52,11 @@ const SETTINGS_PATH = resolve(__dirname, "../../src/app/components/Settings.tsx"
 const SRC = readFileSync(SETTINGS_PATH, "utf8");
 
 describe("Settings — Manage subscription via SubscriptionCard → cancel-flow export prompt (ENG-748 #11)", () => {
-  it("mounts <SubscriptionCard> gated on userTier !== 'free'", () => {
+  it("mounts <SubscriptionCard> flag-gated behind web-subscription-card AND gated on userTier !== 'free'", () => {
+    // Flag gate first (visual changes ship behind isFeatureEnabled),
+    // then the tier gate so free users never see it even at 100% ramp.
     expect(SRC).toMatch(
-      /\{userTier !== "free" \? \(\s*<SubscriptionCard/,
+      /\{isFeatureEnabled\("web-subscription-card"\) && userTier !== "free" \? \(\s*<SubscriptionCard/,
     );
   });
 

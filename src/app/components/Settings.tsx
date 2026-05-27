@@ -34,7 +34,7 @@ import type { WeightSurfaceMode } from "../../lib/nutrition/weightSurfaceMode.ts
 import { saveWeekStartDay } from "../../lib/nutrition/weekStartDayClient.ts";
 import type { NotificationPrefs } from "../../types/notifications.ts";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
-import { track } from "../../lib/analytics/track.ts";
+import { track, isFeatureEnabled } from "../../lib/analytics/track.ts";
 import { DestructiveConfirmDialog } from "./suppr/destructive-confirm-dialog";
 import { ActivityLevelPickerDialog } from "./suppr/activity-level-picker-dialog";
 import { CancelExportPromptDialog } from "./suppr/cancel-export-prompt-dialog";
@@ -1354,8 +1354,11 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           for Pro users. The "Manage or cancel" CTA fires the SAME
           cancel-export prompt → /account/billing → Stripe portal flow
           the legacy button used, so the export-prompt interstitial is
-          unchanged. Web-only — mobile billing is IAP. */}
-      {userTier !== "free" ? (
+          unchanged. Web-only — mobile billing is IAP.
+          Flag-gated (ENG-748 #11) behind `web-subscription-card` — billing
+          surface ramps via PostHog after public-launch counsel + visual QA;
+          flag off → falls back to the prior hidden state (null). */}
+      {isFeatureEnabled("web-subscription-card") && userTier !== "free" ? (
         <SubscriptionCard
           userTier={userTier}
           onManageSubscription={() => {
