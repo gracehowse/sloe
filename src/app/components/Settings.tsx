@@ -59,6 +59,7 @@ import {
 } from "../../lib/nutrition/trackingExtras.ts";
 import { MACRO_COLOR_VARS } from "../../lib/theme/macroColors.ts";
 import { MfpCsvImportCard } from "./imports/MfpCsvImportCard";
+import { SubscriptionCard } from "./settings/SubscriptionCard";
 import { useMacroDisplayStyle } from "../../lib/preferences/useMacroDisplayStyle";
 import type { MacroDisplayStyle } from "../../lib/preferences/macroDisplayStyle";
 
@@ -734,30 +735,13 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
               View plans
             </Link>
           )}
-          {/* PR replaces #43 (2026-05-02): Manage subscription now
-              opens the Suppr-owned cancel-flow export prompt dialog
-              FIRST, instead of routing straight to /account/billing.
-              Two equal-weight cards surface the data-export prompt at
-              the cancel touchpoint so it's proactive, not buried in
-              Settings. Closes journey-architect P1. Mobile parity at
-              `apps/mobile/components/settings/SettingsBundleContent.tsx`
-              (`handleManageSubscription`). */}
-          {userTier !== "free" && (
-            <button
-              type="button"
-              data-testid="settings-manage-subscription-button"
-              onClick={() => {
-                track(AnalyticsEvents.cancel_export_prompt_shown, {
-                  source: "web",
-                  tier: userTier,
-                });
-                setCancelPromptOpen(true);
-              }}
-              className="text-sm font-medium text-foreground underline underline-offset-4 hover:text-foreground/80"
-            >
-              Manage subscription
-            </button>
-          )}
+          {/* ENG-748 #11: the "Manage subscription" control moved into
+              the dedicated SubscriptionCard below (which renders the
+              full billing state + the cancel/manage CTA). Keeping a
+              second manage button here would give two competing cancel
+              paths; the at-a-glance "Your plan" pill stays, the action
+              lives in one place. The cancel-export-prompt → portal
+              flow itself is unchanged. */}
         </div>
       </div>
 
@@ -1360,7 +1344,29 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
         </div>
       </div>
 
-      {/* Subscription plans are hidden for now. */}
+      {/* Subscription management (ENG-748 #11). Replaces the old
+          "hidden for now" stub. Self-contained card extracted to
+          `settings/SubscriptionCard.tsx` (Settings.tsx is already
+          1700+ lines — screen-size rule). Renders the 4 Stripe states
+          (active / trial / canceled-but-active / past-due), the IAP
+          App-Store copy for RevenueCat subscribers (NO web cancel
+          control), and a Free fallback. Only fetches the status route
+          for Pro users. The "Manage or cancel" CTA fires the SAME
+          cancel-export prompt → /account/billing → Stripe portal flow
+          the legacy button used, so the export-prompt interstitial is
+          unchanged. Web-only — mobile billing is IAP. */}
+      {userTier !== "free" ? (
+        <SubscriptionCard
+          userTier={userTier}
+          onManageSubscription={() => {
+            track(AnalyticsEvents.cancel_export_prompt_shown, {
+              source: "web",
+              tier: userTier,
+            });
+            setCancelPromptOpen(true);
+          }}
+        />
+      ) : null}
 
       {/* About — houses the "What's new in Suppr" link. F-0
           (2026-04-19): single reliable entry point for testers to see

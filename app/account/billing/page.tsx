@@ -117,7 +117,10 @@ export default async function AccountBillingPage() {
       ? () =>
           stripe.billingPortal.sessions.create({
             customer: stripeCustomerId,
-            return_url: `${appOrigin()}/`,
+            // ENG-748 #11: post-portal land back on /settings (the
+            // subscription card) rather than the app root, so the user
+            // sees their freshly-updated billing state.
+            return_url: `${appOrigin()}/settings`,
           })
       : null;
 
