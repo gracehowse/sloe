@@ -14,6 +14,7 @@ import { type UserProfile } from "@/types/profile";
 import { useOnboarding } from "./context";
 import { STEP_COMPONENTS } from "./steps";
 import { NARRATIVE } from "./narrative";
+import { STEP_IDS, canAdvance as canAdvanceStep } from "@/lib/onboarding/state";
 import {
   effectiveTargetsForPersist,
   mapV2GoalToLegacy,
@@ -41,9 +42,22 @@ import { buildFirstWeekFromSeeds } from "@/lib/onboarding/onboardingFirstWeek";
  */
 
 export function WebFlow() {
-  const { currentStepId, displayIndex, displayTotal, go, canAdvance, state, targets, warning } =
+  const { currentStepId, displayIndex, displayTotal, go, goTo, state, targets, warning } =
     useOnboarding();
   const { authedUserId } = useAuthSession();
+  // ENG-672 (2026-05-26) — recompute `canAdvance` HERE with the live
+  // session threaded in, mirroring mobile-flow.tsx. The shared context's
+  // `canAdvance` is auth-agnostic (the provider deliberately can't reach
+  // the web auth context — see the auto-skip comment below), so the
+  // Signup step's `canAdvance("signup", …)` defaults to `false`. Threading
+  // `hasSession` makes the gate genuine defence-in-depth rather than relying
+  // on footer suppression alone: the Continue stays inert until a real
+  // Supabase session exists. Every other step is unchanged (their rules
+  // don't read `hasSession`).
+  const canAdvance = canAdvanceStep(currentStepId, state, {
+    paceWarning: warning,
+    hasSession: authedUserId != null,
+  });
   const StepComponent = STEP_COMPONENTS[currentStepId];
   const isWelcome = currentStepId === "welcome";
   const isSignup = currentStepId === "signup";
@@ -226,25 +240,32 @@ export function WebFlow() {
           : "?onboarding_complete=1";
         window.location.href = `/home${homeQs}`;
       } else {
-        // Anonymous completer — bounce to the canonical sign-up entry
-        // point (/onboarding now runs the real auth inline; /signup
-        // 307s there). The local profile cache means their answers
-        // persist across the auth handoff. Rare branch: the v2 flow's
-        // Signup step normally requires real auth before advancing,
-        // so reaching the terminal step anonymously means the user
-        // URL-stuffed past it.
+        // ENG-672 (2026-05-26) — anonymous completer. With the Signup
+        // session gate (`canAdvance("signup", …)` requires `hasSession`)
+        // and the footer suppression on Signup, a user shouldn't reach
+        // the terminal step unauthenticated via the normal flow. If they
+        // did (a session expired, or they URL-stuffed past Signup), we
+        // jump them BACK to the Signup step in-place rather than reload
+        // /onboarding (which would just restore them to the terminal step
+        // from localStorage and loop). State stays in memory + the local
+        // profile cache, so they lose nothing — they just sign in and
+        // resume. The `completionError` surfaces why.
         track(AnalyticsEvents.onboarding_completed, {
           flow: "v2",
           weight_skipped: state.weightSkipped,
           goal: state.goal,
           unauthenticated: true,
         });
-        window.location.href = "/onboarding";
+        const signupIndex = STEP_IDS.indexOf("signup");
+        goTo(signupIndex >= 0 ? signupIndex : 0);
+        setCompletionError(
+          "Sign in to save your plan — your answers are saved.",
+        );
       }
     } finally {
       setCompleting(false);
     }
-  }, [authedUserId, state, targets]);
+  }, [authedUserId, state, targets, goTo]);
 
   // Stage E — when the user clicks Continue from the Pace step while
   // a soft-warn banner is showing, fire the `advanced` variant of

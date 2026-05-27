@@ -8,6 +8,7 @@
 import { describe, it, expect } from "vitest";
 import {
   confidenceForMatch,
+  MIN_ACCEPT_CONFIDENCE,
   MIN_MATCH_CONFIDENCE,
   MIN_OFF_CONFIDENCE,
   preparationStateMismatch,
@@ -21,25 +22,33 @@ describe("confidenceForMatch", () => {
     expect(confidenceForMatch("chicken breast", "chicken breast")).toBe(1);
   });
 
-  it("scores high for exact food with neutral USDA descriptors", () => {
+  it("scores high (clears the accept floor) for exact food with neutral USDA descriptors", () => {
     const conf = confidenceForMatch("chicken breast", "Chicken, breast, meat only, cooked, roasted");
     expect(conf).toBeGreaterThanOrEqual(MIN_MATCH_CONFIDENCE);
-    expect(conf).toBeGreaterThan(0.5);
+    expect(conf).toBeGreaterThan(0.9);
   });
 
-  it("scores high for eggs → 'Egg, whole, raw, fresh'", () => {
+  it("scores high (clears the accept floor) for eggs → 'Egg, whole, raw, fresh'", () => {
     const conf = confidenceForMatch("eggs", "Egg, whole, raw, fresh");
     expect(conf).toBeGreaterThanOrEqual(MIN_MATCH_CONFIDENCE);
   });
 
-  it("scores high for brown rice → 'Rice, brown, long-grain, cooked'", () => {
-    const conf = confidenceForMatch("brown rice", "Rice, brown, long-grain, cooked");
+  it("scores high (clears the accept floor) for olive oil → 'Oil, olive, salad or cooking'", () => {
+    const conf = confidenceForMatch("olive oil", "Oil, olive, salad or cooking");
     expect(conf).toBeGreaterThanOrEqual(MIN_MATCH_CONFIDENCE);
   });
 
-  it("scores high for olive oil → 'Oil, olive, salad or cooking'", () => {
-    const conf = confidenceForMatch("olive oil", "Oil, olive, salad or cooking");
-    expect(conf).toBeGreaterThanOrEqual(MIN_MATCH_CONFIDENCE);
+  // ── ENG-691 over-rejection watch (nutrition-engine impact review REQUIRED) ──
+  // These common staples score in the OLD 0.42–0.70 accepted band but FAIL the
+  // raised 0.70 floor on the current scorer. They are pinned here NOT as a
+  // desired outcome but so the over-rejection surface is visible and tracked.
+  // If a nutrition-engine impact review re-tunes MIN_ACCEPT_CONFIDENCE or the
+  // scorer, this block is the canary that flips. See verifyIngredients.ts
+  // header on MIN_ACCEPT_CONFIDENCE.
+  it("KNOWN over-rejection: 'brown rice' scores below the 0.55 floor on the current scorer", () => {
+    const conf = confidenceForMatch("brown rice", "Rice, brown, long-grain, cooked");
+    expect(conf).toBeGreaterThan(0.4); // it IS a reasonable match…
+    expect(conf).toBeLessThan(MIN_ACCEPT_CONFIDENCE); // …but the raised floor rejects it.
   });
 
   // --- Low-confidence matches (should be rejected) ---
@@ -83,25 +92,37 @@ describe("confidenceForMatch", () => {
     expect(MIN_OFF_CONFIDENCE).toBeGreaterThan(MIN_MATCH_CONFIDENCE);
   });
 
-  it("a marginal match passes general threshold but fails OFF threshold", () => {
-    // This simulates a case where a generic query gets a partial product match
+  it("a noisy ready-meal match fails both the general and the OFF threshold", () => {
+    // A generic query against a dish/product name — well below both gates.
     const conf = confidenceForMatch("chicken", "Chicken Tikka Masala Ready Meal");
-    // Should be above general threshold (it contains "chicken") but ideally below OFF threshold
-    // due to the extra dish/product words
+    expect(conf).toBeLessThan(MIN_MATCH_CONFIDENCE);
     expect(conf).toBeLessThan(MIN_OFF_CONFIDENCE);
   });
 });
 
-describe("threshold constants", () => {
-  it("MIN_MATCH_CONFIDENCE is 0.42", () => {
-    expect(MIN_MATCH_CONFIDENCE).toBe(0.42);
+describe("threshold constants (ENG-691, Decision D-05)", () => {
+  // ENG-691 shipped at 0.55, not 0.70: nutrition-engine impact model (2026-05-26)
+  // found 0.70 over-rejects verbose-descriptor staples (brown rice/salmon/tomatoes/
+  // flour/milk). 0.55 still tightens from the old 0.42. The 0.70 *band* remains the
+  // display/trust signal in verifyConfidencePolicy; ENG-746 tracks the path to a
+  // genuine 0.70 accept floor.
+  it("MIN_ACCEPT_CONFIDENCE is the tightened accept floor, 0.55", () => {
+    expect(MIN_ACCEPT_CONFIDENCE).toBe(0.55);
   });
 
-  it("MIN_OFF_CONFIDENCE is 0.52", () => {
-    expect(MIN_OFF_CONFIDENCE).toBe(0.52);
+  it("MIN_MATCH_CONFIDENCE equals the accept floor (0.55)", () => {
+    expect(MIN_MATCH_CONFIDENCE).toBe(MIN_ACCEPT_CONFIDENCE);
+    expect(MIN_MATCH_CONFIDENCE).toBe(0.55);
+  });
+
+  it("MIN_OFF_CONFIDENCE is stricter than the general floor (0.57)", () => {
+    expect(MIN_OFF_CONFIDENCE).toBe(0.57);
+    expect(MIN_OFF_CONFIDENCE).toBeGreaterThan(MIN_MATCH_CONFIDENCE);
   });
 
   it("thresholds are reasonable (0 < threshold < 1)", () => {
+    expect(MIN_ACCEPT_CONFIDENCE).toBeGreaterThan(0);
+    expect(MIN_ACCEPT_CONFIDENCE).toBeLessThan(1);
     expect(MIN_MATCH_CONFIDENCE).toBeGreaterThan(0);
     expect(MIN_MATCH_CONFIDENCE).toBeLessThan(1);
     expect(MIN_OFF_CONFIDENCE).toBeGreaterThan(0);

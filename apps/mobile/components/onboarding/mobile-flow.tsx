@@ -32,6 +32,10 @@ import {
   persistOnboarding,
 } from "@suppr/shared/onboarding/persist";
 import { clearLogsAndWeightHistory } from "@suppr/shared/account/nukeAccountData";
+import {
+  STEP_IDS,
+  canAdvance as canAdvanceStep,
+} from "@/lib/onboarding";
 import { useOnboarding } from "./context";
 import { MOBILE_STEP_COMPONENTS } from "./steps";
 
@@ -53,7 +57,7 @@ export function MobileFlow() {
     displayIndex,
     displayTotal,
     go,
-    canAdvance,
+    goTo,
     state,
     targets,
     warning,
@@ -73,6 +77,20 @@ export function MobileFlow() {
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
   const StepComponent = MOBILE_STEP_COMPONENTS[currentStepId];
+
+  // ENG-672 (2026-05-26) — the footer Continue is gated on a REAL
+  // Supabase session, not just the shared per-step validation. The
+  // context's `canAdvance` is auth-agnostic (it can't reach the mobile
+  // auth context without coupling the shared provider to it), so the
+  // Signup step's `canAdvance("signup", …)` returns `false` by default.
+  // We re-run the shared validator HERE with `hasSession` threaded from
+  // the live auth context so the button enables the moment Apple
+  // Sign-In lands a session — and stays disabled before that. Every
+  // other step is unchanged (their rules don't read `hasSession`).
+  const canAdvance = canAdvanceStep(currentStepId, state, {
+    paceWarning: warning,
+    hasSession: userId != null,
+  });
   const isWelcome = currentStepId === "welcome";
   const [completing, setCompleting] = React.useState(false);
 
@@ -129,11 +147,25 @@ export function MobileFlow() {
    */
   const handleComplete = React.useCallback(async () => {
     if (!userId) {
+      // ENG-672 (2026-05-26): defence-in-depth. The Signup gate
+      // (`canAdvance("signup", …)` requires `hasSession`) means a user
+      // should never reach the terminal step unauthenticated via the
+      // normal flow. But if a session expired mid-flow (or a deep-link
+      // jumped past Signup), we must NOT bounce to a bare /login that
+      // discards every answer. Instead, send the user back to the
+      // Signup step with all their state intact (it persists in
+      // AsyncStorage and stays in memory) so they can re-authenticate
+      // and pick up exactly where they were.
       track(AnalyticsEvents.onboarding_completed, {
         flow: "v2",
         unauthenticated: true,
       });
-      router.replace("/login");
+      const signupIndex = STEP_IDS.indexOf("signup");
+      goTo(signupIndex >= 0 ? signupIndex : 0);
+      Alert.alert(
+        "Sign in to save your plan",
+        "We couldn't confirm your account. Sign in with Apple to finish — your answers are saved.",
+      );
       return;
     }
     setCompleting(true);
@@ -312,7 +344,7 @@ export function MobileFlow() {
           : "Something went wrong. Please try again.",
       );
     }
-  }, [userId, state, targets, router]);
+  }, [userId, state, targets, router, goTo]);
 
   // Stage E — fire the soft-warn `advanced` analytics event when the
   // user taps Continue from the Pace step while a warning is showing.
@@ -482,7 +514,16 @@ export function MobileFlow() {
         <StepComponent compact />
       </View>
 
-      {/* Footer Continue */}
+      {/* Footer Continue.
+          ENG-672 (2026-05-26): suppressed on the Signup step — parity
+          with the web shell's `!isSignup` guard. The Signup step owns
+          its own "Sign in with Apple" CTA; showing a disabled footer
+          Continue alongside it read as a dead-end (the user couldn't
+          tell which button advanced the flow). The shared
+          `canAdvance("signup", …)` gate still keeps the footer inert
+          until a session lands — this just removes the confusing inert
+          control entirely on that one step. */}
+      {isSignup ? null : (
       <View
         style={{
           paddingHorizontal: Spacing.xl,
@@ -547,6 +588,7 @@ export function MobileFlow() {
           )}
         </Pressable>
       </View>
+      )}
     </View>
   );
 }

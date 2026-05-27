@@ -20,6 +20,8 @@
 
 Acceptance gates (`MIN_MATCH_CONFIDENCE = 0.42`, `MIN_OFF_CONFIDENCE = 0.52`) remain in `verifyIngredients.ts`. They serve a different role — they decide whether to accept a candidate match at all, before any UI threshold applies. Conflating them with the review thresholds would change the meaning, not just the value.
 
+> **Superseded for the acceptance-gate values (2026-05-25, ENG-691 / Decision D-05):** the accept gate was raised to `MIN_ACCEPT_CONFIDENCE = 0.70` (`MIN_MATCH_CONFIDENCE = 0.70`, `MIN_OFF_CONFIDENCE = 0.72`) to match the published "reject < 0.70" confidence band, and sub-floor rows (including local estimates) are now excluded from recipe totals rather than silently summed. The **review** thresholds in this doc (per-line/mean 0.50, min-nudge 0.20) are unchanged. A nutrition-engine over-rejection impact review is REQUIRED before the ENG-691 PR merges. See `docs/product/nutrition-approximation-policy.md` and `docs/technical/architecture.md` for the current contract.
+
 ## Rationale
 
 The pre-fix split created a real silent zone: a recipe with mean confidence 0.46 saw the per-line "needs review" badge on every borderline line (because per-line bar was 0.50) but **no** recipe-level "review suggested" CTA at the top of the screen (because the mean cleared the 0.45 bar). The user got a wall of badges with no top-level action prompt — confusing UX and a partial CLAUDE.md non-negotiable violation ("if nutrition is uncertain, do not guess").

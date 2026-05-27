@@ -1,0 +1,62 @@
+# @cases TC-ONB-SIGNUP-PREAUTH-GUARD
+# @screen onboarding-signup
+# ENG-672 (2026-05-26, Urgent / launch-blocker) — pre-auth signup guard.
+#
+# Validates that a user CANNOT walk past the Signup step without a real
+# Supabase session, and that the step is honest about email sign-up not
+# being available yet (Apple Sign-In is the only path).
+#
+# Pre-fix bug: the footer Continue was active on the Signup step and the
+# step's own post-sign-in `go(1)` could fire before a session landed, so
+# a user could complete the entire flow unauthenticated and lose every
+# computed target + seed on the terminal /login bounce.
+#
+# PREREQUISITES (cannot be satisfied by the always-authed E2E seam):
+#   - Signed-OUT sim, OR fresh install so /onboarding shows Welcome.
+#   - Do NOT set EXPO_PUBLIC_E2E_AUTH_ENABLED for this run (it auto-signs
+#     in, which would auto-skip Signup and defeat the test).
+#   - Erase app data or sign out first if the account is cached.
+#
+# MANUAL CHECK (when a signed-out sim isn't available in CI):
+#   1. Reach the Signup step signed out (Welcome → Continue).
+#   2. Confirm there is NO email input field, only "Sign in with Apple"
+#      plus an optional First name and the "Email sign-up is coming soon"
+#      note.
+#   3. Confirm there is NO bottom Continue button on this step (it is
+#      suppressed — the Apple button is the only forward affordance).
+#   4. Without signing in, confirm you cannot advance to the Goal step
+#      by any tap.
+#   5. (Auth-timeout) Trigger an Apple sign-in that fails/cancels:
+#      confirm you STAY on Signup with the First name value intact, and
+#      an error is shown — never a bare /login bounce.
+#
+appId: com.supprclub.supprapp
+name: "Onboarding — signup pre-auth guard (ENG-672)"
+---
+- launchApp:
+    appId: com.supprclub.supprapp
+- waitForAnimationToEnd
+
+- openLink: suppr:///onboarding
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/onb-672-01-welcome
+
+# Welcome → Continue to reach Signup (point tap avoids the iOS 26
+# text-probe crash).
+- tapOn:
+    point: "50%,92%"
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/latest/onb-672-02-signup
+
+# Honest path: Apple Sign-In present; email field absent.
+- assertVisible: "Sign in with Apple"
+- assertNotVisible: "you@example.com"
+- assertVisible:
+    text: ".*Email sign-up is coming soon.*"
+
+# The footer Continue is suppressed on Signup — there must be no
+# enabled "Continue" affordance to leap the auth handshake.
+- assertNotVisible:
+    text: "^Continue$"

@@ -16,7 +16,7 @@ Suppr's ingredient verification follows a waterfall:
 3. **FatSecret** (fallback API search)
 4. **Local estimation** (hardcoded STAPLES table, ~100 foods in `estimateIngredientMacros.ts`)
 
-Each match is scored with `confidenceForMatch()` (stemmed token overlap + penalty for extra/dish words). Minimum thresholds: 0.42 (USDA/FatSecret), 0.52 (OFF). All matches are Atwater-validated before acceptance.
+Each match is scored with `confidenceForMatch()` (stemmed token overlap + penalty for extra/dish words). Minimum thresholds: **0.70** (USDA/FatSecret, `MIN_ACCEPT_CONFIDENCE`), **0.72** (OFF) — raised from 0.42/0.52 in ENG-691 (2026-05-25) to match the published "reject < 0.70" band; pending a nutrition-engine over-rejection impact review. All matches are Atwater-validated before acceptance, and any line below the accept floor is excluded from recipe totals rather than silently summed.
 
 ### Current env keys
 
@@ -66,7 +66,7 @@ Each match is scored with `confidenceForMatch()` (stemmed token overlap + penalt
 | **Data quality** | Crowd-sourced. Quality varies significantly by product. ~30% of entries have incomplete nutrition |
 | **Gaps** | Many entries missing key nutrients (fiber, sodium). No restaurant. Quality inconsistent |
 
-**Suppr status:** Used for barcode scanning (Base+) and text search fallback. Confidence threshold set higher (0.52) due to noisy data.
+**Suppr status:** Used for barcode scanning (Base+) and text search fallback. Confidence threshold set higher (0.72, one notch above the 0.70 general accept floor) due to noisy data.
 
 ---
 

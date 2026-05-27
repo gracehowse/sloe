@@ -26,6 +26,28 @@ describe("ENG-608 web route completion", () => {
     expect(appSrc).toMatch(/profile:\s*"profile"/);
   });
 
+  // ENG-669 (launch-blocker): `/import` was a blank white page. Two
+  // things must be true for the route to render its (already-built)
+  // import UI, and the blank-page bug was caused by the FIRST being
+  // absent: (1) the `pathDerivedView` map must include the `import`
+  // segment so the URL switches `currentView` to "import"; (2)
+  // `renderView()` must have a `case "import"` that renders
+  // `<RecipeUpload mode="import" />`. Pin BOTH so removing either half
+  // reintroduces the blank page and breaks this test. The rendered UI
+  // itself is pinned by `tests/unit/recipeImportSurface.test.tsx`.
+  it("renders RecipeUpload(mode=import) for the /import view (ENG-669)", () => {
+    const appSrc = readFileSync(resolve(REPO, "src/app/App.tsx"), "utf8");
+    // (1) path → view is reachable.
+    expect(appSrc).toMatch(/import:\s*"import"/);
+    // (2) the view renders the import surface, in import mode.
+    expect(appSrc).toMatch(/case\s+"import":/);
+    expect(appSrc).toMatch(/mode="import"/);
+    // The create twin is wired the same way (it also returned a blank
+    // page before the path→view map carried the segment).
+    expect(appSrc).toMatch(/case\s+"create":/);
+    expect(appSrc).toMatch(/mode="create"/);
+  });
+
   it("navigates log sheet and checkout success to /today", () => {
     const appSrc = readFileSync(resolve(REPO, "src/app/App.tsx"), "utf8");
     expect(appSrc).toMatch(/\/today\?openLog=1/);

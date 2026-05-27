@@ -11,7 +11,7 @@ import { MobileStepBody, MobileStepHeader, useStepOverline } from "../scaffold";
 
 /**
  * MobileSignupStep — onboarding v2 step 02. Apple Sign-In is the
- * primary path on iOS per App Store guidelines.
+ * primary (and currently only) path on iOS per App Store guidelines.
  *
  * MV-02 fix (audit 2026-04-28): pre-fix the Apple button was a fake
  * — `set({ authMethod: "apple" }); go(1)` set a string in state and
@@ -21,12 +21,22 @@ import { MobileStepBody, MobileStepHeader, useStepOverline } from "../scaffold";
  * real `expo-apple-authentication` flow + `signInWithIdToken`,
  * mirroring `apps/mobile/app/login.tsx#onAppleSignIn`.
  *
- * Email/password is a stub for the v1 launch — Apple-only is the
- * lowest-risk path per the planner doc Q1 (avoid the email-confirm
- * interstitial that breaks the linear flow). The fields capture
- * `name` and `email` into state so the persist call has them, but
- * tapping Continue without using Apple Sign-In leaves the user
- * unauthenticated and the terminal handler will route them to /login.
+ * ENG-672 fix (2026-05-26): two defects fixed here.
+ *   1. The post-sign-in `go(1)` is REMOVED. Advancing past Signup is
+ *      now owned exclusively by the flow shell's auto-skip effect,
+ *      which fires only once a real `session` lands in the auth
+ *      context (`mobile-flow.tsx`). The old `go(1)` could advance
+ *      before the session resolved, letting the user complete the
+ *      flow unauthenticated and lose every answer on the terminal
+ *      /login bounce. The shared `canAdvance("signup", …)` gate now
+ *      keeps the footer Continue disabled until `hasSession` is true.
+ *   2. The email field is GONE. It advertised an email path that
+ *      didn't exist ("arrives in a future build" buried in fine
+ *      print) — a trust-killer for MFP refugees. Until real email
+ *      sign-up ships, Apple Sign-In is surfaced as the single, honest
+ *      path. `name` is still captured (optional) so Apple's
+ *      first-sign-in fullName isn't the only source for
+ *      `display_name`.
  */
 function createAppleRawNonce(): string {
   const c = globalThis.crypto;
@@ -41,7 +51,7 @@ function createAppleRawNonce(): string {
 }
 
 export function MobileSignupStep() {
-  const { state, set, go } = useOnboarding();
+  const { state, set } = useOnboarding();
   const colors = useThemeColors();
   const overline = useStepOverline();
   const [busy, setBusy] = React.useState(false);
@@ -86,10 +96,15 @@ export function MobileSignupStep() {
       } else {
         set({ authMethod: "apple" });
       }
-      // Advance — the mobile-flow auto-skip useEffect will also fire
-      // once the userId resolves from the auth context, so this go(1)
-      // is a defensive double-advance for fast-resolution sessions.
-      go(1);
+      // ENG-672 (2026-05-26): do NOT advance here. Advancing past
+      // Signup is owned by the flow shell's auto-skip effect, which
+      // fires only once the real `session` lands in the auth context
+      // (`mobile-flow.tsx`). The old `go(1)` could fire before the
+      // session resolved — letting the user proceed unauthenticated and
+      // lose every answer on the terminal /login bounce. The session is
+      // the single gate now: when it resolves, the shell advances; if it
+      // never lands (auth failure / timeout), the user stays right here
+      // with all their answers intact and can retry Apple Sign-In.
     } catch (e: unknown) {
       const code = e && typeof e === "object" && "code" in e ? (e as { code?: string }).code : undefined;
       if (code === "ERR_REQUEST_CANCELED") return;
@@ -97,7 +112,7 @@ export function MobileSignupStep() {
     } finally {
       setBusy(false);
     }
-  }, [set, go, state.name]);
+  }, [set, state.name]);
 
   return (
     <MobileStepBody>
@@ -156,6 +171,12 @@ export function MobileSignupStep() {
         </View>
       ) : null}
 
+      {/* Optional first name. ENG-672 (2026-05-26): the email field was
+          removed — it advertised a sign-up path that doesn't exist yet.
+          Apple Sign-In above is the single, honest path. First name is
+          optional: Apple sends `fullName` only on the FIRST sign-in, so
+          capturing it here gives the persist helper a fallback for
+          `display_name` if the user has signed in with Apple before. */}
       <View
         style={{
           flexDirection: "row",
@@ -174,7 +195,7 @@ export function MobileSignupStep() {
             textTransform: "uppercase",
           }}
         >
-          Or
+          Optional
         </Text>
         <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
       </View>
@@ -185,14 +206,6 @@ export function MobileSignupStep() {
         onChange={(v) => set({ name: v })}
         placeholder="Grace"
       />
-      <View style={{ height: 10 }} />
-      <LabelledField
-        label="Email"
-        value={state.email}
-        onChange={(v) => set({ email: v })}
-        placeholder="you@example.com"
-        keyboardType="email-address"
-      />
 
       <Text
         style={{
@@ -202,8 +215,8 @@ export function MobileSignupStep() {
           lineHeight: 17,
         }}
       >
-        By signing in with Apple you agree to Suppr&apos;s Terms and Privacy Policy.
-        Email sign-up arrives in a future build.
+        By signing in with Apple you agree to Suppr&apos;s Terms and Privacy
+        Policy. Email sign-up is coming soon.
       </Text>
     </MobileStepBody>
   );

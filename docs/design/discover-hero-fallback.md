@@ -10,6 +10,14 @@
 > Current `RecipeCard` type has no `tags` field, so v1 resolves cuisine
 > off `title` only; §9 open question (server-side `cuisine_bucket`) still
 > applies.
+>
+> **2026-05-26 (ENG-704):** the web Discover image element migrated from a
+> raw `<img>` to `next/image` (`src/app/components/suppr/discover-recipe-image.tsx`).
+> This gradient fallback is still the renderer for missing images AND for
+> images that error at runtime (`onError → broken`). See
+> `docs/decisions/2026-05-26-discover-image-next-image-optimizer-allowlist.md`
+> for the optimizer-allowlist decision (why arbitrary user-imported image
+> hosts render `unoptimized`).
 
 Target file: `apps/mobile/app/(tabs)/discover.tsx:224` (and the equivalent web Discover card when a recipe has no image).
 

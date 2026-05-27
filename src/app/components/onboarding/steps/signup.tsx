@@ -41,6 +41,17 @@ export function SignupStep() {
   const [acceptedTerms, setAcceptedTerms] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  // ENG-672 (2026-05-26) — confirm-email mode. When Supabase is
+  // configured with email confirmations ON, `signUp` returns a `user`
+  // but NO `session`. Pre-fix the step advanced anyway (`go(1)`),
+  // walking the user into the rest of the flow unauthenticated; the
+  // terminal step then bounced them to /onboarding, and any answer the
+  // user had NOT yet given was lost. Now we DON'T advance — we surface
+  // an honest "confirm your email" state and keep the user on Signup.
+  // Their answers persist in localStorage, so when they confirm and the
+  // email-redirect lands them back on /onboarding with a real session,
+  // the auto-skip effect in `web-flow.tsx` carries them forward.
+  const [confirmEmailSent, setConfirmEmailSent] = React.useState(false);
 
   // Already-authed branch (rare — usually the WebFlow shell auto-bumps
   // past this step). Show a friendly continue card instead of the form
@@ -60,6 +71,35 @@ export function SignupStep() {
         >
           Continue
         </Button>
+      </StepBody>
+    );
+  }
+
+  // ENG-672 (2026-05-26) — confirm-email interstitial. Honest about
+  // where the user is: the account exists but isn't usable until they
+  // click the link. We deliberately keep them on Signup rather than
+  // advancing into the flow unauthenticated. Their answers are safe in
+  // localStorage; the email-redirect lands them back on /onboarding
+  // with a session, and the shell auto-advances from there.
+  if (confirmEmailSent) {
+    return (
+      <StepBody>
+        <StepHeader
+          overline={overline}
+          title="Check your email"
+          subtitle={`We sent a confirmation link to ${state.email.trim()}. Open it to finish setting up — your answers are saved.`}
+        />
+        <p className="text-[13px] text-muted-foreground leading-relaxed">
+          Didn&apos;t get it? Check your spam folder, or{" "}
+          <button
+            type="button"
+            onClick={() => setConfirmEmailSent(false)}
+            className="text-foreground/80 underline font-semibold"
+          >
+            try a different email
+          </button>
+          .
+        </p>
       </StepBody>
     );
   }
@@ -103,13 +143,22 @@ export function SignupStep() {
         }
         track(AnalyticsEvents.user_signed_up, { method: "email", flow: "v2" });
         set({ authMethod: "email" });
-        // Auth-state subscriber in AuthSessionContext will flip
-        // `authedUserId`; the WebFlow shell's effect then auto-advances.
-        // Belt-and-braces: if Supabase is in confirm-email mode and no
-        // session lands, we still nudge forward so the user doesn't get
-        // stuck. The terminal step's persistence layer also tolerates
-        // an anonymous completer (it bounces to /login?).
-        go(1);
+        // ENG-672 (2026-05-26) — advance ONLY when a real session lands.
+        //   - Confirmations OFF: `signUp` returns a `session` immediately;
+        //     the AuthSessionContext subscriber flips `authedUserId` and
+        //     the WebFlow shell's auto-skip effect carries the user past
+        //     Signup. We do NOT call `go(1)` here — letting the session-
+        //     driven effect own the advance keeps a single source of truth
+        //     and avoids advancing a frame before auth state settles.
+        //   - Confirmations ON: `signUp` returns a `user` but NO
+        //     `session`. We must NOT advance — the user is still
+        //     unauthenticated. Show the "check your email" state and keep
+        //     them on Signup. Their answers persist in localStorage, so
+        //     the email-redirect back to /onboarding resumes the flow with
+        //     a real session.
+        if (!data.session) {
+          setConfirmEmailSent(true);
+        }
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Sign-up failed. Try again.");

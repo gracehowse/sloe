@@ -55,17 +55,17 @@ No third path. If you are about to add a new approximation and it isn't listed, 
 - **Status:** **FIXED.** Tests in `tests/unit/totalGramsForVerifyScale.test.ts` cover priority order, name lookup, options override, trivial-placeholder routing, and refusal. The previously deliberate `it.fails(...)` markers are now plain `it(...)` and pass.
 - **Workaround when STAPLES misses a food:** add the ingredient to STAPLES with its `gPerMl` density (USDA / CIBSE / standard sources), or pass `options.gPerMl` from the caller, or have the user pick the g portion in verify.tsx. Mobile verify screen renders the "needs density — switch to g/oz" hint inline.
 
-### A3 — Size-fallback ordering in `measureToGrams`
+### A3 — Size-fallback ordering in `measureToGrams` — FIXED (ENG-701, 2026-05-26)
 
 - **File:** [`src/lib/nutrition/measureToGrams.ts`](../../src/lib/nutrition/measureToGrams.ts)
-- **Fires when:** a unit parses as a size word (`large` / `medium` / `small`) before a food-specific count rule is checked.
-- **Output today:** generic `COUNT_WEIGHT_G.large = 180 g` is applied regardless of the food.
-- **Known error cases:**
-  - "2 large chicken breasts" → 360 g (generic 180 × 2) vs the food-specific intended 400 g (breast = 200 g × 2). **-10%**.
-  - "1 large chicken thigh" → 180 g vs 120 g intended. **+50%**.
-  - "1 large avocado" → 180 g (within typical range; low error).
-- **Status:** known ordering bug; scheduled for fix — evaluate name-specific rules first, fall through to size defaults.
-- **Workaround for callers:** when the food match provides a gram weight, pass it via `chosenPortion.gramWeight` and skip this path.
+- **Was:** a unit parsing as a size word (`large` / `medium` / `small`) matched the generic `COUNT_WEIGHT_G.large = 180 g` (etc.) *before* any food-specific count rule, so the per-piece weight of the actual food was ignored.
+- **Fixed error cases:**
+  - "2 large chicken breasts" → was 360 g (generic 180 × 2); now **400 g** (food-specific breast 200 g × 2).
+  - "1 large chicken thigh" → was 180 g; now **120 g** (food-specific).
+  - "1 large walnut" → was 180 g (generic); now **5 g** (walnut-specific).
+- **Fix:** introduced `foodSpecificCountGramsEach(name)` as the single source of truth for "what does ONE of this food weigh?". It is consulted FIRST by both the size-word path and the count/no-unit path. Lookup order is now **food-specific override → generic size → default**. Eggs keep their dedicated `EGG_SIZE_G` table (checked before the resolver). Bulk staples (rice/pasta/herbs) return `null` from the resolver and fall through to the generic size / heuristic path, as "one large rice" is not a meaningful piece.
+- **Status:** **FIXED.** Pinned in `tests/unit/measureToGrams.test.ts` (ENG-701 block): walnut + large → 5 g, 2 large chicken breasts → 400 g, cooked-aware 300 g, count-path and size-word path agree for a discrete piece, and bulk staples still fall through to generic large (180 g).
+- **Workaround for callers (still valid):** when the food match provides a gram weight, pass it via `chosenPortion.gramWeight` and skip this path.
 
 ---
 
@@ -100,6 +100,18 @@ it.
 - **Wired at both write boundaries (web + mobile parity):**
   - Recipe verify pipeline: `src/lib/nutrition/verifyIngredients.ts` — runs on every source branch (OFF, USDA, Edamam, Suppr DB, FatSecret, barcode override) after `scaleMacros(...)`. Failure → the candidate is rejected and the pipeline falls through (never persists the bad number).
   - Barcode / direct-log commit (soft-flag, not hard-block): mobile `apps/mobile/app/(tabs)/barcode.tsx` + `apps/mobile/components/BarcodeScannerModal.tsx`; web `src/app/components/suppr/today-barcode-dialog.tsx`. On failure (or `basisCorrected`), surface a "Double-check these numbers" warning with Edit / Log-anyway — never silently log, never trap a legit edge food.
+
+### G3 — Accept floor + sub-floor totals exclusion (ENG-691, Decision D-05, 2026-05-25)
+
+- **File:** [`src/lib/nutrition/verifyIngredients.ts`](../../src/lib/nutrition/verifyIngredients.ts)
+- **Problem:** the engine accepted matches down to `MIN_MATCH_CONFIDENCE = 0.42` (`MIN_OFF_CONFIDENCE = 0.52`) with only a "needs review" badge below, while the published confidence bands say **reject < 0.70**. Worse, local-estimator rows (0.15–0.35 confidence) summed into recipe totals — a guess presented as part of the headline number, contradicting "if nutrition is uncertain, do not guess".
+- **Fix:**
+  - Single tunable accept floor `MIN_ACCEPT_CONFIDENCE = 0.55`. `MIN_MATCH_CONFIDENCE = 0.55`; `MIN_OFF_CONFIDENCE = 0.57` (one notch stricter for noisy product names). (D-05 proposed 0.70; the nutrition-engine review set it to 0.55 — see below.)
+  - Any line whose final confidence is `< MIN_ACCEPT_CONFIDENCE` is flagged `belowAcceptFloor: true`. Its best-estimate macros stay on the row (so the UI can show "estimated — please verify"), but it is **excluded from `totals` / `perServing`**. `VerifyResult.belowAcceptFloorCount` reports how many lines were excluded so callers can prompt verification (`ingredientVerifyNeedsReview` already fires because the low confidences pull `minIngredientConfidence` down).
+- **Single tuning knob:** `MIN_ACCEPT_CONFIDENCE`. Re-tune here (not in pipeline logic) once the impact review lands.
+- **✅ NUTRITION-ENGINE IMPACT REVIEW DONE (2026-05-26) → shipped at 0.55, not 0.70.** The review (hand-verified against the scorer + alias pipeline) found 0.70 over-rejects verbose-descriptor staples — "brown rice" (~0.50), "whole milk" vs "Whole milk, 3.25%" (~0.66), "canned tomatoes" (~0.46), "all-purpose flour" (~0.28–0.46), "salmon" → "Fish, salmon, Atlantic, wild" (~0.36) — because the precision/extra-word penalties punish multi-word USDA descriptors (correct matches, verbose labels), and `genericFoods.ts` (clean aliases) isn't wired into the recipe pipeline. 0.55 tightens from the old 0.42 (kills weak dish-word matches) while keeping staples. The 0.70 *band* stays the display/trust signal in `verifyConfidencePolicy`. A genuine 0.70 accept floor needs scorer/alias work → **ENG-746**. Brown rice (~0.50 < 0.55) is still pinned as a canary in `tests/unit/confidenceGating.test.ts`.
+- **Status:** implemented + pinned. Tests: `tests/unit/confidenceGating.test.ts` (constants + over-rejection canary), `tests/integration/verify-ingredients-fatsecret-mock.test.ts` (accepted row sums, sub-floor row excluded, mixed recipe), `tests/integration/verify-ingredients-golden.test.ts` (estimation-only rows excluded from totals).
+- **Parity:** the accept gate lives only in the shared `verifyIngredients.ts`; mobile's recipe-import verify path consumes it via the `/api/nutrition/verify-recipe` route + `verifyImportRecipe`, so the change applies to both platforms with no mobile-side edit. Mobile's `verifyRecipe.ts` search/picker flow has no independent accept gate (it keys on `RECIPE_INGREDIENT_REVIEW_CONFIDENCE`).
 
 ### Parity footgun fix — `scaleMacrosByGrams`
 

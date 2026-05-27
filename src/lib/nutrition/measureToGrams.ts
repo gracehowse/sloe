@@ -73,6 +73,55 @@ const COUNT_WEIGHT_G: Record<string, number> = {
 };
 
 /**
+ * ENG-701 — food-specific per-piece ("count") weight for a discrete, countable
+ * ingredient, or `null` when no food-specific rule applies.
+ *
+ * This is the single source of truth for "what does ONE of this food weigh?"
+ * It is consulted FIRST by both the count/no-unit path AND the generic size
+ * word (large/medium/small) path, so a food-specific weight always beats the
+ * generic ~180/110/80 g size fallback. Pre-fix the size words were matched
+ * before food-specific rules, so "2 large chicken breasts" → 360 g (generic)
+ * instead of 400 g (food-specific). Lookup order is now:
+ *   food-specific override → generic size → default.
+ *
+ * Only covers DISCRETE pieces (proteins, nuts, small/medium produce, etc.).
+ * Bulk staples (rice/pasta/herbs/sauces) return null here because "one large
+ * rice" is not a meaningful piece — those stay on the count-path heuristics or
+ * the generic size fallback.
+ */
+export function foodSpecificCountGramsEach(ingredientName: string): number | null {
+  const name = ingredientName.trim().toLowerCase();
+  // Meat cuts — realistic per-piece weights (raw/cooked aware for poultry).
+  if (/(?:chicken|turkey).{0,24}breast|breast.{0,24}(?:chicken|turkey)|chicken breast/.test(name)) {
+    return poultryBreastGramsEach(name);
+  }
+  if (/chicken thigh/.test(name)) return 120;
+  if (/drumstick/.test(name)) return 90;
+  if (/(?:chicken|turkey) wing/.test(name)) return 40;
+  if (/fillet|filet/.test(name)) return 170;
+  if (/steak/.test(name)) return 225;
+  if (/chop/.test(name)) return 150;
+  // Whole produce that comes in pieces — medium reference weight.
+  if (/(?:bell|red|green|yellow|orange|sweet|romano|roasted)\s+peppers?/.test(name)) return 110;
+  if (/\bpeppers\b/.test(name) && !/\b(?:black|white|cayenne|chili|chilli)\b/.test(name)) return 110;
+  if (/\bpepper\b/.test(name) && !/\b(?:black|white|cayenne|chili|chilli|ground|cracked)\b/.test(name)) return 110;
+  if (/carrot|onion|potato|sweet potato|tomato|lemon|lime|apple|banana|avocado|courgette|zucchini|aubergine|eggplant/.test(name)) {
+    return 110;
+  }
+  // Small discrete items (one nut/olive/caper ≈ 5 g).
+  if (/anchov|olive|caper|cornichon|gherkin|cherry tomato|grape tomato|radish|shallot|date|prune|almond|walnut|pecan|cashew|pistachio|hazelnut|macadamia|peanut/.test(name)) {
+    return 5;
+  }
+  if (/mushroom|strawberr|fig|apricot|plum|prawn|shrimp|mussel|clam|scallop|oyster/.test(name)) {
+    return 15;
+  }
+  if (/sausage|biscuit|cookie|cracker|tortilla|wrap|pitta|naan/.test(name)) {
+    return 50;
+  }
+  return null;
+}
+
+/**
  * Per-egg weights by size modifier (USDA / British Egg Industry Council).
  * Used when the ingredient is explicitly an egg and a size unit is given.
  */
@@ -158,13 +207,23 @@ export function measureToGramsDetailed(input: MeasureInput): MeasureResult {
     return { grams: amt * COUNT_WEIGHT_G.slice };
   }
   if (u === "stalk") return { grams: amt * COUNT_WEIGHT_G.stalk };
-  // Egg size modifiers: "2 medium eggs" → 2 × 44g, not 2 × 110g.
-  if ((u === "small" || u === "medium" || u === "large") && /\begg(?:s)?\b/.test(name)) {
-    return { grams: amt * EGG_SIZE_G[u]! };
+  // Size words (large/medium/small): food-specific rules win over the generic
+  // size fallback (ENG-701). Lookup order: food-specific → generic size.
+  if (u === "small" || u === "medium" || u === "large") {
+    // Egg size modifiers: "2 medium eggs" → 2 × 44g, not 2 × 110g.
+    if (/\begg(?:s)?\b/.test(name)) {
+      return { grams: amt * EGG_SIZE_G[u]! };
+    }
+    // Food-specific per-piece weight beats the generic size word.
+    // "2 large chicken breasts" → 2 × 200g = 400g, not 2 × 180g = 360g.
+    // "1 large walnut" → 5g (walnut-specific), not 180g (generic large).
+    const foodSpecific = foodSpecificCountGramsEach(name);
+    if (foodSpecific != null) {
+      return { grams: amt * foodSpecific };
+    }
+    // No food-specific rule — fall back to the generic size weight.
+    return { grams: amt * COUNT_WEIGHT_G[u]! };
   }
-  if (u === "medium") return { grams: amt * COUNT_WEIGHT_G.medium };
-  if (u === "large") return { grams: amt * COUNT_WEIGHT_G.large };
-  if (u === "small") return { grams: amt * COUNT_WEIGHT_G.small };
   if (u === "pinch") return { grams: amt * COUNT_WEIGHT_G.pinch };
   if (u === "leaf") return { grams: amt * 0.35 };
   if (u === "tin" || u === "can") {
@@ -192,38 +251,17 @@ export function measureToGramsDetailed(input: MeasureInput): MeasureResult {
     for (const [word, g] of Object.entries(COUNT_WEIGHT_G)) {
       if (name.includes(word)) return { grams: amt * g };
     }
-    // Meat cuts — use realistic per-piece weights
-    if (/(?:chicken|turkey).{0,24}breast|breast.{0,24}(?:chicken|turkey)|chicken breast/.test(name)) {
-      return { grams: amt * poultryBreastGramsEach(name) };
+    // Eggs by name (no size word) → 50g each. Checked before the shared
+    // discrete-piece resolver because "egg" isn't in that helper's whole-
+    // produce branch (egg size handling lives on the size-word path).
+    if (/egg/.test(name)) {
+      return { grams: amt * COUNT_WEIGHT_G.egg };
     }
-    if (/chicken thigh/.test(name)) return { grams: amt * 120 };
-    if (/drumstick/.test(name)) return { grams: amt * 90 };
-    if (/(?:chicken|turkey) wing/.test(name)) return { grams: amt * 40 };
-    if (/fillet|filet/.test(name)) return { grams: amt * 170 };
-    if (/steak/.test(name)) return { grams: amt * 225 };
-    if (/chop/.test(name)) return { grams: amt * 150 };
-    // Medium-sized whole produce
-    if (/(?:bell|red|green|yellow|orange|sweet|romano|roasted)\s+peppers?/.test(name)) {
-      return { grams: amt * COUNT_WEIGHT_G.medium };
-    }
-    if (/\bpeppers\b/.test(name) && !/\b(?:black|white|cayenne|chili|chilli)\b/.test(name)) {
-      return { grams: amt * COUNT_WEIGHT_G.medium };
-    }
-    if (/\bpepper\b/.test(name) && !/\b(?:black|white|cayenne|chili|chilli|ground|cracked)\b/.test(name) && amt >= 1) {
-      return { grams: amt * COUNT_WEIGHT_G.medium };
-    }
-    if (/carrot|onion|potato|sweet potato|tomato|lemon|lime|egg|apple|banana|avocado|courgette|zucchini|aubergine|eggplant/.test(name)) {
-      const per = /egg/.test(name) ? COUNT_WEIGHT_G.egg : COUNT_WEIGHT_G.medium;
-      return { grams: amt * per };
-    }
-    if (/anchov|olive|caper|cornichon|gherkin|cherry tomato|grape tomato|radish|shallot|date|prune|almond|walnut|pecan|cashew|pistachio|hazelnut|macadamia|peanut/.test(name)) {
-      return { grams: amt * 5 };
-    }
-    if (/mushroom|strawberr|fig|apricot|plum|prawn|shrimp|mussel|clam|scallop|oyster/.test(name)) {
-      return { grams: amt * 15 };
-    }
-    if (/sausage|biscuit|cookie|cracker|tortilla|wrap|pitta|naan/.test(name)) {
-      return { grams: amt * 50 };
+    // Food-specific discrete-piece weights (proteins, nuts, produce, etc.) —
+    // shared with the size-word path so the two never disagree (ENG-701).
+    const foodSpecific = foodSpecificCountGramsEach(name);
+    if (foodSpecific != null) {
+      return { grams: amt * foodSpecific };
     }
     if (/\b(?:salt|pepper|cinnamon|cumin|paprika|turmeric|oregano|thyme|basil|parsley|chili|chilli|nutmeg|cayenne|coriander|mint|dill|tarragon|sage)\b/.test(name)) {
       return { grams: amt * 3 };
