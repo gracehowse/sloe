@@ -73,6 +73,23 @@ import {
 } from "../food-search/FoodSearchPanel";
 import type { MacroConsumed, MacroTargets } from "@/lib/nutrition/remainingMacros";
 import { isPremiumMotionV1Enabled } from "@/lib/preferences/premiumMotionWeb";
+import { isFeatureEnabled } from "@/lib/analytics/track";
+import {
+  buildMealCartTotals,
+  cartItemKcal,
+  resolveMealName,
+  type BuildMealCartItem,
+} from "@/lib/nutrition/buildMealCart";
+
+/** Combined-meal payload the host commits as ONE journal row when the
+ *  build-meal cart (ENG-757) is logged. */
+export interface LogSheetCombinedMeal {
+  title: string;
+  kcal: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
 
 /** Re-exported for hosts that want the inline-search payload type. */
 export type LogSheetInlineSelectedFood = InlineSelectedFood;
@@ -181,6 +198,15 @@ export interface LogSheetProps {
   search?: {
     /** Inline mode — fired when the user picks a portion + quantity. */
     onSelect?: (result: LogSheetInlineSelectedFood) => void;
+    /** Build-meal cart (ENG-757). When wired AND the
+     *  `log-sheet-build-meal-cart` flag is on, the sheet shows the
+     *  multi-item cart: the food-search preview gains "Add & keep
+     *  adding" / "Add & log" buttons, a cart summary renders above the
+     *  search row, and committing fires this callback ONCE with the
+     *  combined totals (host inserts a single journal row). When
+     *  undefined or the flag is off, the sheet behaves exactly as
+     *  today (single "Use this" → `onSelect`). */
+    onLogCombined?: (combined: LogSheetCombinedMeal) => void;
     /** Inline mode — daily targets for fit-this-in projection. */
     macroTargets?: MacroTargets;
     /** Inline mode — today's running totals for fit-this-in projection. */
@@ -298,6 +324,51 @@ export function LogSheet({
   const inManualEntryMode = !!barcode?.manualEntry;
   const premiumMotion = isPremiumMotionV1Enabled();
 
+  // Build-meal cart (ENG-757). Active only when the flag is on AND the
+  // host wired `search.onLogCombined`. When inactive the cart never
+  // gets items and every cart-conditional branch below collapses to
+  // the pre-cart behaviour. The cart lives here (not in
+  // DefaultComposition) so the header title can react to item count.
+  const cartEnabled = isFeatureEnabled("log-sheet-build-meal-cart") && !!search?.onLogCombined;
+  const [cart, setCart] = React.useState<BuildMealCartItem[]>([]);
+  const [mealName, setMealName] = React.useState("");
+  React.useEffect(() => {
+    if (!open) {
+      setCart([]);
+      setMealName("");
+    }
+  }, [open]);
+
+  const cartTotals = React.useMemo(() => buildMealCartTotals(cart), [cart]);
+
+  // Commit the cart as ONE combined journal row. Accepts an optional
+  // `pendingItem` so the "Add & log" path can include the item the user
+  // just added without waiting for the `setCart` state update to flush
+  // (avoids the prototype's fragile `setTimeout(logAll, 0)`).
+  const logCart = React.useCallback(
+    (pendingItem?: BuildMealCartItem) => {
+      const finalCart = pendingItem ? [...cart, pendingItem] : cart;
+      if (finalCart.length === 0 || !search?.onLogCombined) return;
+      const totals = buildMealCartTotals(finalCart);
+      search.onLogCombined({
+        title: resolveMealName(mealName, finalCart),
+        kcal: totals.kcal,
+        protein: totals.protein,
+        carbs: totals.carbs,
+        fat: totals.fat,
+      });
+      setCart([]);
+      setMealName("");
+      onOpenChange(false);
+    },
+    [cart, mealName, search, onOpenChange],
+  );
+
+  const sheetTitle =
+    cartEnabled && cart.length > 0
+      ? `Build meal · ${cart.length} item${cart.length > 1 ? "s" : ""}`
+      : "Log a meal";
+
   return (
     <DrawerPrimitive.Root
       open={open}
@@ -344,8 +415,11 @@ export function LogSheet({
             data-slot="log-sheet-header"
             className="flex items-center justify-between border-b px-4 pb-3 pt-3"
           >
-            <DrawerPrimitive.Title className="text-[18px] font-bold tracking-tight">
-              Log a meal
+            <DrawerPrimitive.Title
+              data-testid="log-sheet-title"
+              className="text-[18px] font-bold tracking-tight"
+            >
+              {sheetTitle}
             </DrawerPrimitive.Title>
             <DrawerPrimitive.Close
               aria-label="Close log sheet"
@@ -377,6 +451,13 @@ export function LogSheet({
               browseTab={browseTab}
               onBrowseTabChange={setBrowseTab}
               onAddManually={onAddManually}
+              cartEnabled={cartEnabled}
+              cart={cart}
+              setCart={setCart}
+              mealName={mealName}
+              setMealName={setMealName}
+              cartTotals={cartTotals}
+              onLogCart={logCart}
             />
           )}
         </DrawerPrimitive.Content>
@@ -399,6 +480,13 @@ function DefaultComposition({
   browseTab,
   onBrowseTabChange,
   onAddManually,
+  cartEnabled,
+  cart,
+  setCart,
+  mealName,
+  setMealName,
+  cartTotals,
+  onLogCart,
 }: {
   open: boolean;
   search: LogSheetProps["search"];
@@ -411,6 +499,13 @@ function DefaultComposition({
   browseTab: BrowseTab;
   onBrowseTabChange: (tab: BrowseTab) => void;
   onAddManually?: () => void;
+  cartEnabled: boolean;
+  cart: BuildMealCartItem[];
+  setCart: React.Dispatch<React.SetStateAction<BuildMealCartItem[]>>;
+  mealName: string;
+  setMealName: (name: string) => void;
+  cartTotals: { kcal: number; protein: number; carbs: number; fat: number };
+  onLogCart: (pendingItem?: BuildMealCartItem) => void;
 }) {
   const showRecent = !!recent;
   const showSaved = !!saved;
@@ -449,8 +544,90 @@ function DefaultComposition({
     if (!open) setQuery("");
   }, [open]);
 
+  // Build-meal cart (ENG-757). `addToCart` stores the food-search
+  // panel's already-scaled macros as a single cart line (servings: 1),
+  // then clears the query so the user lands back on results to add the
+  // next item. Returns the item so the "Add & log" path can commit it
+  // without waiting for `setCart` to flush. Only invoked when `cartEnabled`.
+  const addToCart = React.useCallback(
+    (
+      selection: { name: string },
+      scaledMacros: { kcal: number; protein: number; carbs: number; fat: number },
+    ): BuildMealCartItem => {
+      const item: BuildMealCartItem = {
+        id: "c" + Date.now() + "_" + Math.random().toString(36).slice(2, 7),
+        title: selection.name,
+        kcal: scaledMacros.kcal,
+        protein: scaledMacros.protein,
+        carbs: scaledMacros.carbs,
+        fat: scaledMacros.fat,
+        servings: 1,
+      };
+      setCart((c) => [...c, item]);
+      setQuery("");
+      return item;
+    },
+    [setCart],
+  );
+
+  const showCart = cartEnabled && cart.length > 0;
+
   return (
     <>
+      {/* Build-meal cart summary (ENG-757). Renders above the search
+          row when the cart has items. Editable meal-name input, one
+          row per cart item (title · kcal · remove), and a totals
+          footer. Mobile parity: `apps/mobile/components/today/LogSheet.tsx`. */}
+      {showCart ? (
+        <div className="px-3 pt-3" data-testid="log-sheet-cart-summary">
+          <div className="rounded-xl bg-muted p-3">
+            <Input
+              type="text"
+              value={mealName}
+              onChange={(e) => setMealName(e.target.value)}
+              placeholder={cart.length === 1 ? cart[0].title : "Name this meal (optional)"}
+              aria-label="Meal name"
+              data-testid="log-sheet-cart-meal-name"
+              className={cn(
+                "h-8 w-full border-0 bg-transparent px-0 text-[14px] font-semibold shadow-none",
+                "focus-visible:ring-0 focus-visible:border-0 placeholder:text-muted-foreground",
+              )}
+            />
+            {cart.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-center gap-2.5 border-t border-border py-1.5"
+              >
+                <span className="flex-1 truncate text-[12px] text-foreground">
+                  {item.title}
+                  {item.servings !== 1 ? (
+                    <span className="text-muted-foreground"> · ×{item.servings}</span>
+                  ) : null}
+                </span>
+                <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
+                  {cartItemKcal(item)} kcal
+                </span>
+                <button
+                  type="button"
+                  aria-label={`Remove ${item.title}`}
+                  data-testid="log-sheet-cart-remove"
+                  onClick={() => setCart((c) => c.filter((x) => x.id !== item.id))}
+                  className="shrink-0 text-muted-foreground hover:text-foreground"
+                >
+                  <X width={12} height={12} aria-hidden />
+                </button>
+              </div>
+            ))}
+            <div className="mt-1.5 flex items-center justify-between border-t border-border pt-2.5 text-[12px] font-bold">
+              <span className="text-muted-foreground">Total</span>
+              <span className="tabular-nums" data-testid="log-sheet-cart-total">
+                {cartTotals.kcal} kcal · {Math.round(cartTotals.protein)} P · {Math.round(cartTotals.carbs)} C · {Math.round(cartTotals.fat)} F
+              </span>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {/* Search row — primary input. Right-edge icons (scan / voice /
           photo) ride along when the host wires the corresponding
           callbacks. In inline mode the row is a real `<Input>` (focused
@@ -535,6 +712,21 @@ function DefaultComposition({
               // own `onSelect` handler).
               setQuery("");
             }}
+            // Build-meal cart (ENG-757). Only wired when the flag is on
+            // AND the host provided `onLogCombined`; otherwise the panel
+            // renders its single "Use this" CTA and `onSelect` runs the
+            // pre-cart path unchanged.
+            onAddToCart={
+              cartEnabled
+                ? (selection, scaledMacros, action) => {
+                    const item = addToCart(selection, scaledMacros);
+                    // "Add & log" commits the cart immediately, INCLUDING
+                    // the item just added — passed through so we don't
+                    // read stale `cart` state before setCart flushes.
+                    if (action === "add-and-log") onLogCart(item);
+                  }
+                : undefined
+            }
           />
         </div>
       ) : (
@@ -637,6 +829,29 @@ function DefaultComposition({
               <span className="flex-1">Or add manually</span>
               <ChevronRight width={16} height={16} aria-hidden />
             </button>
+          ) : null}
+
+          {/* Build-meal cart (ENG-757) — full-width commit CTA. Shows
+              in the browse view when the cart has items and no food is
+              selected (matches the prototype's `!selected && cart.length`
+              footer). The panel's own "Add & log" handles the commit
+              while a food IS selected. */}
+          {showCart ? (
+            <div className="border-t px-4 py-3">
+              <button
+                type="button"
+                onClick={() => onLogCart()}
+                aria-label={`Log meal, ${cartTotals.kcal} kcal`}
+                data-testid="log-sheet-cart-log-meal"
+                className={cn(
+                  "h-11 w-full rounded-xl bg-success text-[14px] font-bold text-white",
+                  "hover:bg-success/90 transition-colors",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                )}
+              >
+                Log meal · {cartTotals.kcal} kcal
+              </button>
+            </div>
           ) : null}
         </>
       )}

@@ -3183,6 +3183,28 @@ export const NutritionTracker = memo(function NutritionTracker({
             commitFoodSearchSelection(selection);
             setLogSheetOpen(false);
           },
+          // Build-meal cart (ENG-757). Fires ONCE with the combined
+          // totals when the user logs a multi-item cart. We insert a
+          // single journal row (not N rows) via the same `addLoggedMeal`
+          // path the manual quick-add uses. Only invoked when the
+          // `log-sheet-build-meal-cart` flag is on AND the LogSheet's
+          // cart has items — flag off = this callback is never called.
+          onLogCombined: (combined) => {
+            addLoggedMeal(
+              {
+                name: mealSlot,
+                recipeTitle: combined.title,
+                time: timeLabel,
+                calories: Math.max(0, Math.round(combined.kcal)),
+                protein: Math.max(0, Math.round(combined.protein)),
+                carbs: Math.max(0, Math.round(combined.carbs)),
+                fat: Math.max(0, Math.round(combined.fat)),
+                source: "Manual",
+              },
+              "manual",
+            );
+            setLogSheetOpen(false);
+          },
         }}
         barcode={{
           // Click the scan icon → close LogSheet, open the barcode

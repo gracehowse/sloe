@@ -191,6 +191,25 @@ export type FoodSearchPanelProps = {
   /** Fired when the user confirms a portion / quantity. */
   onSelect: (result: SelectedFood) => void;
   /**
+   * Build-meal cart wiring (ENG-757, flag `log-sheet-build-meal-cart`).
+   * When wired, the preview footer renders TWO buttons instead of the
+   * single "Use this" CTA:
+   *   - "Add & keep adding" → `onAddToCart(selection, scaled, "add-to-cart")`
+   *   - "Add & log"         → `onAddToCart(selection, scaled, "add-and-log")`
+   * `scaled` carries the already-scaled macros for the previewed
+   * portion × quantity so the host never re-derives nutrition. The
+   * panel clears its own preview after either action.
+   *
+   * When `onAddToCart` is undefined (flag off, or any non-cart host),
+   * the footer renders exactly as before — single "Use this" wired to
+   * `onSelect`. Zero behavioural change. Mirror of the web panel prop.
+   */
+  onAddToCart?: (
+    selection: SelectedFood,
+    scaledMacros: { kcal: number; protein: number; carbs: number; fat: number },
+    action: "add-to-cart" | "add-and-log",
+  ) => void;
+  /**
    * `"full"` matches the legacy FoodSearchModal density (separator
    * lines, generous paddings).
    * `"compact"` is tighter — for use inside LogSheet whose vertical
@@ -267,6 +286,7 @@ export default function FoodSearchPanel({
   supabase,
   userId,
   onSelect,
+  onAddToCart,
   mode = "full",
   onScanBarcodePressed,
   inBarcodeMode = false,
@@ -921,6 +941,50 @@ export default function FoodSearchPanel({
     }
   }, [preview, onSelect]);
 
+  // ── Build-meal cart commit (ENG-757) ───────────────────────────────
+  // Builds the same `SelectedFood` payload as `onConfirmPreview`, but
+  // routes it to the host's cart handler along with the already-scaled
+  // macros for the previewed portion × quantity. The host stores those
+  // scaled totals as a single cart line so cart-total math never
+  // re-derives nutrition. Reads `previewMacros` via a ref because the
+  // memo is declared just below (kept next to the other macro memos).
+  const onCartAction = useCallback(
+    (action: "add-to-cart" | "add-and-log") => {
+      if (!preview || !onAddToCart || !previewMacrosRef.current) return;
+      const servingLabel =
+        preview.source === "CUSTOM" &&
+        preview.chosenPortion.label !== "g" &&
+        preview.chosenPortion.label !== "ml"
+          ? preview.chosenPortion.label
+          : undefined;
+      const selection: SelectedFood = {
+        name: preview.name,
+        source: preview.source,
+        macrosPer100g: preview.macrosPer100g,
+        ...(preview.macrosPerServing ? { macrosPerServing: preview.macrosPerServing } : {}),
+        ...(preview.microsPer100g ? { microsPer100g: preview.microsPer100g } : {}),
+        ...(preview.microsPerServing ? { microsPerServing: preview.microsPerServing } : {}),
+        portions: preview.portions,
+        chosenPortion: preview.chosenPortion,
+        quantity: preview.quantity,
+        fdcId: preview.fdcId,
+        barcode: preview.barcode,
+        ...(preview.customFoodId ? { customFoodId: preview.customFoodId } : {}),
+        ...(preview.fatSecretFoodId ? { fatSecretFoodId: preview.fatSecretFoodId } : {}),
+        ...(servingLabel ? { servingLabel } : {}),
+        ...(preview.imageUrl ? { imageUrl: preview.imageUrl } : {}),
+      };
+      const m = previewMacrosRef.current;
+      onAddToCart(
+        selection,
+        { kcal: m.calories, protein: m.protein, carbs: m.carbs, fat: m.fat },
+        action,
+      );
+      setPreview(null);
+    },
+    [preview, onAddToCart],
+  );
+
   const previewMacros = useMemo(() => {
     if (!preview) return null;
     // 2026-05-06: per-serving-only path (FatSecret no-metric foods).
@@ -970,6 +1034,12 @@ export default function FoodSearchPanel({
     const grams = preview.chosenPortion.gramWeight * preview.quantity;
     return scaleMacrosByGrams(preview.macrosPer100g, grams);
   }, [preview]);
+
+  // Mirror `previewMacros` into a ref so the cart-commit callback
+  // (declared above to keep the confirm handlers grouped) reads the
+  // latest scaled macros without depending on `previewMacros` directly.
+  const previewMacrosRef = useRef(previewMacros);
+  previewMacrosRef.current = previewMacros;
 
   const totalGrams = useMemo(() => {
     if (!preview) return 0;
@@ -1373,21 +1443,55 @@ export default function FoodSearchPanel({
             </View>
           ) : null}
 
-          <View style={{ flexDirection: "row", gap: Spacing.md, marginTop: Spacing.sm }}>
-            <Pressable
-              style={{ flex: 1, backgroundColor: Accent.success, borderRadius: Radius.md, paddingVertical: 14, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: Spacing.sm }}
-              onPress={onConfirmPreview}
-            >
-              <Check size={18} color="#fff" />
-              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Use this</Text>
-            </Pressable>
-            <Pressable
-              style={{ flex: 1, borderRadius: Radius.md, paddingVertical: 14, alignItems: "center", borderWidth: 1, borderColor: colors.border }}
-              onPress={() => setPreview(null)}
-            >
-              <Text style={{ color: colors.textSecondary, fontWeight: "600" }}>Back to results</Text>
-            </Pressable>
-          </View>
+          {/* Build-meal cart (ENG-757): when the host wired
+              `onAddToCart` (flag on), the footer becomes a two-button
+              row — "Add & keep adding" (stays in sheet) and "Add & log"
+              (commits the whole cart). Otherwise it's the single "Use
+              this" + "Back to results" row, byte-for-byte unchanged. */}
+          {onAddToCart ? (
+            <>
+              <View style={{ flexDirection: "row", gap: Spacing.md, marginTop: Spacing.sm }}>
+                <Pressable
+                  testID="food-search-add-keep-adding"
+                  style={{ flex: 1, borderRadius: Radius.md, paddingVertical: 14, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: Spacing.sm, borderWidth: 1, borderColor: colors.border }}
+                  onPress={() => onCartAction("add-to-cart")}
+                >
+                  <Plus size={16} color={colors.text} />
+                  <Text style={{ color: colors.text, fontWeight: "700", fontSize: 13 }}>Add &amp; keep adding</Text>
+                </Pressable>
+                <Pressable
+                  testID="food-search-add-and-log"
+                  style={{ flex: 1, backgroundColor: Accent.success, borderRadius: Radius.md, paddingVertical: 14, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: Spacing.sm }}
+                  onPress={() => onCartAction("add-and-log")}
+                >
+                  <Check size={16} color="#fff" />
+                  <Text style={{ color: "#fff", fontWeight: "700", fontSize: 13 }}>Add &amp; log</Text>
+                </Pressable>
+              </View>
+              <Pressable
+                style={{ marginTop: Spacing.sm, paddingVertical: 10, alignItems: "center" }}
+                onPress={() => setPreview(null)}
+              >
+                <Text style={{ color: colors.textSecondary, fontWeight: "600", fontSize: 13 }}>Back to results</Text>
+              </Pressable>
+            </>
+          ) : (
+            <View style={{ flexDirection: "row", gap: Spacing.md, marginTop: Spacing.sm }}>
+              <Pressable
+                style={{ flex: 1, backgroundColor: Accent.success, borderRadius: Radius.md, paddingVertical: 14, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: Spacing.sm }}
+                onPress={onConfirmPreview}
+              >
+                <Check size={18} color="#fff" />
+                <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Use this</Text>
+              </Pressable>
+              <Pressable
+                style={{ flex: 1, borderRadius: Radius.md, paddingVertical: 14, alignItems: "center", borderWidth: 1, borderColor: colors.border }}
+                onPress={() => setPreview(null)}
+              >
+                <Text style={{ color: colors.textSecondary, fontWeight: "600" }}>Back to results</Text>
+              </Pressable>
+            </View>
+          )}
         </View>
       </ScrollView>
     );

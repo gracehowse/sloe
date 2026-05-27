@@ -204,6 +204,25 @@ export type FoodSearchPanelProps = {
    *  UX. */
   onSelect: (selection: FoodSearchSelection) => void;
   /**
+   * Build-meal cart wiring (ENG-757, flag `log-sheet-build-meal-cart`).
+   * When wired, the preview footer renders TWO buttons instead of the
+   * single "Use this" CTA:
+   *   - "Add & keep adding" → fires `onAddToCart(selection, scaled, "add-to-cart")`
+   *   - "Add & log"         → fires `onAddToCart(selection, scaled, "add-and-log")`
+   * `scaled` carries the already-scaled macros for the previewed
+   * portion × quantity so the host never re-derives nutrition. The
+   * panel clears its own preview after either action.
+   *
+   * When `onAddToCart` is undefined (flag off, or any non-cart host),
+   * the footer renders exactly as before — a single "Use this" button
+   * wired to `onSelect`. Zero behavioural change.
+   */
+  onAddToCart?: (
+    selection: FoodSearchSelection,
+    scaledMacros: { kcal: number; protein: number; carbs: number; fat: number },
+    action: "add-to-cart" | "add-and-log",
+  ) => void;
+  /**
    * `"full"`     — current FoodSearch dialog density.
    * `"compact"`  — tighter rows for LogSheet's smaller vertical budget.
    * Same data, same accessibility, same handlers — visual density only.
@@ -703,6 +722,7 @@ export function FoodSearchPanel({
   supabase,
   userId,
   onSelect,
+  onAddToCart,
   mode = "full",
   onScanBarcodePressed,
   inBarcodeMode = false,
@@ -1312,6 +1332,46 @@ export function FoodSearchPanel({
     setPreview(null);
   }, [preview, onSelect]);
 
+  // ── Build-meal cart commit (ENG-757) ───────────────────────────────
+  // Builds the same `FoodSearchSelection` payload as `onConfirm`, but
+  // routes it to the host's cart handler along with the already-scaled
+  // macros for the previewed portion × quantity. The host stores those
+  // scaled totals as a single cart line (servings: 1) so cart-total
+  // math never re-derives nutrition. `action` distinguishes "keep the
+  // sheet open" from "commit the whole cart now". Reads `scaled` via a
+  // ref because that memo is declared just below.
+  const onCartAction = useCallback(
+    (action: "add-to-cart" | "add-and-log") => {
+      if (!preview || !onAddToCart || !scaledRef.current) return;
+      const selection: FoodSearchSelection = {
+        name: preview.name,
+        source: preview.source,
+        macrosPer100g: preview.macrosPer100g,
+        ...(preview.macrosPerServing ? { macrosPerServing: preview.macrosPerServing } : {}),
+        ...(preview.microsPer100g ? { microsPer100g: preview.microsPer100g } : {}),
+        ...(preview.microsPerServing ? { microsPerServing: preview.microsPerServing } : {}),
+        portions: preview.portions,
+        chosenPortion: preview.chosenPortion,
+        quantity: preview.quantity,
+        ...(preview.imageUrl ? { imageUrl: preview.imageUrl } : {}),
+      };
+      if (preview.source === "CUSTOM") {
+        selection.customFoodId = preview.customFoodId;
+        if (preview.chosenPortion.label !== "g") {
+          selection.servingLabel = preview.chosenPortion.label;
+        }
+      }
+      const s = scaledRef.current;
+      onAddToCart(
+        selection,
+        { kcal: s.calories, protein: s.protein, carbs: s.carbs, fat: s.fat },
+        action,
+      );
+      setPreview(null);
+    },
+    [preview, onAddToCart],
+  );
+
   const scaled = useMemo(() => {
     if (!preview) return null;
     // 2026-05-06 audit (D1): per-serving-only path (FatSecret no-
@@ -1350,6 +1410,12 @@ export function FoodSearchPanel({
     if (!preview.macrosPer100g) return null;
     return scaleMacros(preview.macrosPer100g, preview.chosenPortion.gramWeight * preview.quantity);
   }, [preview]);
+
+  // Mirror `scaled` into a ref so the cart-commit callback (declared
+  // before `scaled` to keep the confirm handlers grouped) can read the
+  // latest scaled macros without depending on `scaled` directly.
+  const scaledRef = useRef(scaled);
+  scaledRef.current = scaled;
 
   const totalGrams = preview ? Math.round(preview.chosenPortion.gramWeight * preview.quantity * 10) / 10 : 0;
 
@@ -1566,17 +1632,44 @@ export function FoodSearchPanel({
           )}
         </div>
 
-        {/* Sticky "Use this" CTA — kept on a border-t footer (visual-qa
+        {/* Sticky CTA footer — kept on a border-t footer (visual-qa
             P0 fix from 2026-04-30) so on short viewports the button is
-            always reachable without scrolling. */}
+            always reachable without scrolling.
+
+            Build-meal cart (ENG-757): when the host wires `onAddToCart`
+            (flag `log-sheet-build-meal-cart`), the footer becomes a
+            two-button row — "Add & keep adding" (stays in sheet) and
+            "Add & log" (commits the whole cart). Otherwise it's the
+            single "Use this" CTA, byte-for-byte unchanged. */}
         <div className="border-t border-border bg-card -mx-3 px-3 py-3 shrink-0">
-          <button
-            onClick={onConfirm}
-            className="w-full py-3 rounded-xl bg-success text-white font-semibold hover:bg-success/90 transition-colors flex items-center justify-center gap-2"
-          >
-            <Icons.check className="h-4 w-4" />
-            Use this
-          </button>
+          {onAddToCart ? (
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                data-testid="food-search-add-keep-adding"
+                onClick={() => onCartAction("add-to-cart")}
+                className="w-full py-3 rounded-xl border border-border text-foreground font-semibold hover:bg-muted/60 transition-colors flex items-center justify-center gap-2"
+              >
+                <Icons.add className="h-4 w-4" />
+                Add &amp; keep adding
+              </button>
+              <button
+                data-testid="food-search-add-and-log"
+                onClick={() => onCartAction("add-and-log")}
+                className="w-full py-3 rounded-xl bg-success text-white font-semibold hover:bg-success/90 transition-colors flex items-center justify-center gap-2"
+              >
+                <Icons.check className="h-4 w-4" />
+                Add &amp; log
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={onConfirm}
+              className="w-full py-3 rounded-xl bg-success text-white font-semibold hover:bg-success/90 transition-colors flex items-center justify-center gap-2"
+            >
+              <Icons.check className="h-4 w-4" />
+              Use this
+            </button>
+          )}
         </div>
 
         {/* Edit-custom-food dialog stays mounted in preview mode in case
