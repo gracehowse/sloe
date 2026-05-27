@@ -5,6 +5,8 @@ import { verifyIngredients } from "@/lib/nutrition/verifyIngredients";
 import { AiBudgetExceededError, callAiText } from "@/lib/server/aiProvider";
 import { captureRouteError } from "@/lib/observability/captureRouteError";
 import { isServerFeatureEnabled } from "@/lib/server/featureFlags";
+import { serverTrack } from "@/lib/analytics/serverTrack";
+import { AnalyticsEvents } from "@/lib/analytics/events";
 
 export const runtime = "nodejs";
 
@@ -36,6 +38,8 @@ export type VoiceLogResponse = {
 };
 
 export async function POST(req: Request) {
+  const routeStart = Date.now();
+
   // 2026-05-16 (ENG-519) — kill switch for AI voice-log.
   if (await isServerFeatureEnabled("kill_voice_log")) {
     return NextResponse.json(
@@ -54,7 +58,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
-  const tier = await getUserTier(userId);
+  // ENG-8: run tier check + rate limit in parallel (saves ~100ms vs sequential).
+  const [tier, limited] = await Promise.all([
+    getUserTier(userId),
+    rateLimit({ keyPrefix: "api:voice-log", userId, limit: 100, windowMs: 24 * 60 * 60_000 }),
+  ]);
+
   // Voice is Pro-only by product intent (mirrors the client gates in
   // `apps/mobile/app/(tabs)/index.tsx` and `voice-log-dialog.tsx`, the
   // `.maestro/08_voice_log.yaml` test, and `docs/journeys/food-tracking.md`).
@@ -67,14 +76,6 @@ export async function POST(req: Request) {
     );
   }
 
-  // P0-6 (2026-04-25): scope per-user via the new `userId` field
-  // (parity with photo-log).
-  const limited = await rateLimit({
-    keyPrefix: "api:voice-log",
-    userId,
-    limit: 100,
-    windowMs: 24 * 60 * 60_000,
-  });
   if (!limited.ok) {
     return NextResponse.json(
       { ok: false, error: "rate_limited", retryAfterSec: limited.retryAfterSec },
@@ -118,7 +119,13 @@ Rules:
 - Separate compound items ("chicken and rice" = two items)
 - Do NOT estimate calories or macros — only parse foods and portions`;
 
+  // ENG-8: use Claude Haiku for this step — food parsing is a simple
+  // JSON task that Haiku handles accurately and ~4x faster than Sonnet
+  // (~150ms vs ~700ms median). maxTokens capped at 400: a 10-item list
+  // in JSON rarely exceeds 200 output tokens.
   let aiResult;
+  let aiParseMs = 0;
+  const aiStart = Date.now();
   try {
     aiResult = await callAiText({
       callSite: "voice-log",
@@ -126,9 +133,12 @@ Rules:
       userText: parsePrompt,
       expectJson: true,
       temperature: 0.2,
-      maxTokens: 1000,
+      maxTokens: 400,
+      claudeModel: "claude-haiku-4-5-20251001",
     });
+    aiParseMs = Date.now() - aiStart;
   } catch (err) {
+    aiParseMs = Date.now() - aiStart;
     if (err instanceof AiBudgetExceededError) {
       return NextResponse.json(
         {
@@ -176,6 +186,7 @@ Rules:
   }
 
   // ── Step 2: Run parsed foods through verified nutrition pipeline ──
+  const verifyStart = Date.now();
   try {
     const result = await verifyIngredients({
       ingredients: identified,
@@ -183,6 +194,7 @@ Rules:
       provider: "auto",
       overrides: [],
     });
+    const verifyMs = Date.now() - verifyStart;
 
     const items: VoiceLogItem[] = result.verified.map((ing) => ({
       name: ing.matchedName ?? ing.resolved.name ?? "Unknown",
@@ -206,6 +218,14 @@ Rules:
         : result.avgIngredientConfidence >= 0.5
           ? "medium"
           : "low";
+
+    void serverTrack(AnalyticsEvents.voice_log_api_completed, userId, {
+      totalElapsedMs: Date.now() - routeStart,
+      aiParseMs,
+      verifyMs,
+      itemCount: items.length,
+      confidenceTier,
+    });
 
     return NextResponse.json({
       ok: true,

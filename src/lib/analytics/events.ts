@@ -861,6 +861,11 @@ export const AnalyticsEvents = {
    * ENG-543 (in-flight dedup) actually paid off in production.
    */
   today_journal_loaded_ms: "today_journal_loaded_ms",
+  /** ENG-8 — server-side voice-log route completed. Payload:
+   * `{ totalElapsedMs, aiParseMs, verifyMs, itemCount, confidenceTier }`.
+   * Fires on success only (errors already captured by Sentry). Used to
+   * confirm <3s p95 latency target and track regression. */
+  voice_log_api_completed: "voice_log_api_completed",
 } as const;
 
 export type AnalyticsEventName = (typeof AnalyticsEvents)[keyof typeof AnalyticsEvents];
