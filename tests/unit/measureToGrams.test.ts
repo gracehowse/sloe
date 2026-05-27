@@ -11,6 +11,7 @@ import {
   ML_PER_CUP_METRIC,
   EGG_SIZE_G,
   poultryBreastGramsEach,
+  foodSpecificCountGramsEach,
 } from "@/lib/nutrition/measureToGrams";
 
 describe("measureToGrams", () => {
@@ -83,8 +84,11 @@ describe("measureToGrams", () => {
     expect(measureToGrams({ name: "onion", amount: 1, unit: "medium" })).toBe(110);
   });
 
-  it("large pepper = 180g", () => {
-    expect(measureToGrams({ name: "pepper", amount: 1, unit: "large" })).toBe(180);
+  it("generic large (no food-specific rule) = 180g", () => {
+    // A food with no food-specific count weight still uses the generic
+    // large fallback. (ENG-701: "pepper" now resolves to its food-specific
+    // 110g, so it can no longer stand in for the generic-large case.)
+    expect(measureToGrams({ name: "mystery vegetable", amount: 1, unit: "large" })).toBe(180);
   });
 
   it("breast = 200g (raw)", () => {
@@ -291,5 +295,55 @@ describe("measureToGrams", () => {
   it("size modifier does NOT apply when the item is not an egg", () => {
     // A medium onion must still be 110g.
     expect(measureToGrams({ name: "onion", amount: 1, unit: "medium" })).toBe(110);
+  });
+
+  // ── ENG-701 — food-specific count-weights beat generic large/medium/small ──
+
+  it("2 large chicken breasts = 400g (food-specific 200g each, NOT generic 360g)", () => {
+    // Pre-fix the generic `large` (180g) matched before the food-specific
+    // breast rule (200g), giving 360g. Food-specific must win.
+    expect(measureToGrams({ name: "chicken breast", amount: 2, unit: "large" })).toBe(400);
+  });
+
+  it("1 large walnut = walnut-specific 5g (NOT generic large 180g)", () => {
+    expect(measureToGrams({ name: "walnut", amount: 1, unit: "large" })).toBe(5);
+  });
+
+  it("1 large chicken thigh = food-specific 120g (NOT generic large 180g)", () => {
+    expect(measureToGrams({ name: "chicken thigh", amount: 1, unit: "large" })).toBe(120);
+  });
+
+  it("medium chicken breast = food-specific 200g (NOT generic medium 110g)", () => {
+    expect(measureToGrams({ name: "chicken breast", amount: 1, unit: "medium" })).toBe(200);
+  });
+
+  it("cooked-aware: 2 large cooked chicken breasts = 300g (150g each)", () => {
+    expect(measureToGrams({ name: "cooked chicken breast", amount: 2, unit: "large" })).toBe(300);
+  });
+
+  it("foodSpecificCountGramsEach returns null for bulk staples (falls to generic size)", () => {
+    // "1 large rice" is not a meaningful piece — no food-specific rule, so the
+    // generic large fallback applies.
+    expect(foodSpecificCountGramsEach("rice")).toBeNull();
+    expect(measureToGrams({ name: "rice", amount: 1, unit: "large" })).toBe(180);
+  });
+
+  it("foodSpecificCountGramsEach returns the food-specific weight for discrete pieces", () => {
+    expect(foodSpecificCountGramsEach("chicken breast")).toBe(200);
+    expect(foodSpecificCountGramsEach("walnut")).toBe(5);
+    expect(foodSpecificCountGramsEach("onion")).toBe(110);
+    expect(foodSpecificCountGramsEach("salmon fillet")).toBe(170);
+  });
+
+  it("count path and size-word path agree for a discrete piece (shared resolver)", () => {
+    const countGrams = measureToGrams({ name: "chicken breast", amount: 2, unit: "" });
+    const sizeGrams = measureToGrams({ name: "chicken breast", amount: 2, unit: "large" });
+    expect(countGrams).toBe(sizeGrams);
+    expect(countGrams).toBe(400);
+  });
+
+  it("large egg still uses egg-size table, not the food-specific resolver", () => {
+    // Eggs have their own size table (50g large) — must take precedence.
+    expect(measureToGrams({ name: "egg", amount: 1, unit: "large" })).toBe(EGG_SIZE_G.large);
   });
 });

@@ -31,6 +31,14 @@ export type VerifiedIngredient = {
   confidence: number;
   source: "Suppr" | "USDA" | "Edamam" | "OFF" | "FatSecret" | "Estimated" | "Unverified";
   macros: VerifiedMacros | null;
+  /**
+   * ENG-691 (Decision D-05, 2026-05-25): true when this row's confidence is
+   * below {@link MIN_ACCEPT_CONFIDENCE} (0.70). Its `macros` (if any) are kept
+   * on the row so the UI can show the best estimate behind an "ask to verify"
+   * affordance, but the row is EXCLUDED from `totals`/`perServing` — we never
+   * silently sum a sub-threshold guess into the recipe's headline numbers.
+   */
+  belowAcceptFloor?: boolean;
 };
 
 export type VerifyResult = {
@@ -43,6 +51,13 @@ export type VerifyResult = {
   minIngredientConfidence: number;
   /** Mean per-line confidence among ingredients with macros. */
   avgIngredientConfidence: number;
+  /**
+   * ENG-691: count of lines whose confidence fell below
+   * {@link MIN_ACCEPT_CONFIDENCE} and were therefore excluded from `totals`.
+   * When > 0 the recipe's headline numbers are incomplete by design — callers
+   * should surface an "ask to verify" prompt (see `ingredientVerifyNeedsReview`).
+   */
+  belowAcceptFloorCount: number;
 };
 
 export type IngredientOverride = {
@@ -53,23 +68,48 @@ export type IngredientOverride = {
 };
 
 /**
- * Minimum confidence for USDA / FatSecret name overlap before accepting a match.
- * Raised from 0.25 → 0.42 (nutrition-engine: reject weak overlaps).
+ * Single tunable accept floor for ingredient matches (ENG-691, Decision D-05,
+ * Grace 2026-05-25). The published confidence bands say **reject < 0.70**; the
+ * engine previously accepted down to 0.42 (0.52 for OFF) with only a "needs
+ * review" badge below. This constant is the one knob to turn if a
+ * nutrition-engine impact review shows 0.70 over-rejects common foods.
+ *
+ * NOTE (nutrition-engine impact review REQUIRED before merge): raising the
+ * floor means more verify prompts and risk of over-rejecting common foods that
+ * legitimately score in the 0.42–0.70 band. The change is implemented behind
+ * this single constant precisely so the floor can be re-tuned without touching
+ * pipeline logic once that modeling lands.
  */
-export const MIN_MATCH_CONFIDENCE = 0.42;
+export const MIN_ACCEPT_CONFIDENCE = 0.7;
 
-/** Minimum confidence for Open Food Facts (stricter — noisy product names). */
-export const MIN_OFF_CONFIDENCE = 0.52;
+/**
+ * Minimum confidence for USDA / FatSecret name overlap before accepting a match.
+ * Raised 0.25 → 0.42 → 0.70 (ENG-691): aligns the accept gate with the
+ * published "reject < 0.70" confidence band.
+ */
+export const MIN_MATCH_CONFIDENCE = MIN_ACCEPT_CONFIDENCE;
+
+/**
+ * Minimum confidence for Open Food Facts (stricter — noisy product names).
+ * Held one notch above the general floor so OFF stays the strictest source.
+ */
+export const MIN_OFF_CONFIDENCE = 0.72;
 
 /**
  * Recipe verify UI: lines below this show "needs review" until the user
- * confirms or picks a food. Above {@link MIN_MATCH_CONFIDENCE} so
- * borderline auto-matches stay visually flagged.
+ * confirms or picks a food.
  *
  * P1-8 (2026-04-25): canonical home is now
  * `verifyConfidencePolicy.ts`; re-exported here so existing consumers
  * don't need to switch imports. Same module also exports the
  * recipe-level mean + min nudge thresholds, all unified at 0.50.
+ *
+ * ENG-691 (2026-05-25): the *accept* floor ({@link MIN_ACCEPT_CONFIDENCE} =
+ * 0.70) is now ABOVE this review badge (0.50). A matched row that clears the
+ * accept floor but still wants a human glance does not exist by this gate
+ * anymore — any auto-accepted row is ≥ 0.70 and so above the review badge.
+ * Below-floor rows are flagged `belowAcceptFloor` and excluded from totals
+ * rather than badged-and-summed.
  */
 export { RECIPE_INGREDIENT_REVIEW_CONFIDENCE } from "./verifyConfidencePolicy";
 
@@ -769,9 +809,14 @@ export async function verifyIngredients(opts: {
             if (!checkScaledLogPlausibility(offMacros, grams, per100g).ok) continue;
             // Demote confidence when the upstream reconcile corrected the
             // per-100g basis — the row is real but its label math was suspect.
+            // A basis-corrected row stays below the accept floor on purpose:
+            // ENG-691 then keeps it out of totals and flags it for human
+            // verification. A clean OFF row that cleared the (stricter) OFF
+            // gate must not be demoted below the accept floor by the -0.03
+            // display nudge — clamp so an accepted clean match stays in totals.
             const offConf = hit._basisCorrected
-              ? Math.min(0.60, conf - 0.10)
-              : Math.min(0.90, conf - 0.03);
+              ? Math.min(0.6, conf - 0.1)
+              : Math.max(MIN_ACCEPT_CONFIDENCE, Math.min(0.9, conf - 0.03));
             return {
               input: raw, resolved,
               fatSecretFoodId: hit.code,
@@ -920,18 +965,31 @@ export async function verifyIngredients(opts: {
   }
 
   // Run ingredient verification concurrently with bounded parallelism
-  const verified: VerifiedIngredient[] = [];
+  const rawVerified: VerifiedIngredient[] = [];
   const indices = ingredients.map((_, i) => i);
   for (let i = 0; i < indices.length; i += CONCURRENCY) {
     const batch = indices.slice(i, i + CONCURRENCY);
     const results = await Promise.all(batch.map(verifyOne));
-    verified.push(...results);
+    rawVerified.push(...results);
   }
 
-  // Totals
+  // ENG-691 (Decision D-05): flag every row whose confidence is below the
+  // accept floor. These keep their best-estimate macros on the row (so the UI
+  // can show "estimated — please verify") but are EXCLUDED from `totals` /
+  // `perServing`. A row with no macros at all (Unverified) is left unflagged —
+  // it already contributes nothing and isn't an "ask to verify" estimate.
+  const verified: VerifiedIngredient[] = rawVerified.map((v) =>
+    v.macros != null && v.confidence < MIN_ACCEPT_CONFIDENCE
+      ? { ...v, belowAcceptFloor: true }
+      : v,
+  );
+  const belowAcceptFloorCount = verified.filter((v) => v.belowAcceptFloor).length;
+
+  // Totals — sum only rows at/above the accept floor. Sub-floor rows are
+  // surfaced for verification, never silently summed into the headline.
   const totals = verified.reduce(
     (acc, v) => {
-      if (!v.macros) return acc;
+      if (!v.macros || v.belowAcceptFloor) return acc;
       acc.calories += v.macros.calories;
       acc.protein += v.macros.protein;
       acc.carbs += v.macros.carbs;
@@ -981,6 +1039,7 @@ export async function verifyIngredients(opts: {
     sourceCounts,
     minIngredientConfidence,
     avgIngredientConfidence,
+    belowAcceptFloorCount,
   };
 }
 

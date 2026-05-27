@@ -123,28 +123,35 @@ Ingredient list + servings
       2. Normalise query (strip prep words, extract paren hints)
       3. Search USDA FDC (Foundation/SR Legacy first, then Branded)
       4. Rank by confidenceForMatch() (recall + precision + first-word bonus)
-      5. REJECT matches below MIN_MATCH_CONFIDENCE (0.42) — fall through
+      5. REJECT matches below MIN_MATCH_CONFIDENCE (0.70, ENG-691) — fall through
       6. Skip candidates with preparationStateMismatch (e.g. grilled vs raw-only FDC row)
       7. Fetch top candidate's full food data
       8. Reject scaled macros failing scaledMacrosPlausible (Atwater sanity)
       9. Use USDA food portions for gram weight when available
-      10. Fall back to OFF text search — requires MIN_OFF_CONFIDENCE (0.52)
-      11. Fall back to FatSecret — requires MIN_MATCH_CONFIDENCE (0.42)
+      10. Fall back to OFF text search — requires MIN_OFF_CONFIDENCE (0.72)
+      11. Fall back to FatSecret — requires MIN_MATCH_CONFIDENCE (0.70)
       12. Fall back to local estimation (60+ staples with fiber)
-    → Sum per-ingredient macros for recipe total
+    → Sum per-ingredient macros for recipe total — EXCLUDING rows below the
+      accept floor (those keep their estimate on the row, flagged
+      `belowAcceptFloor`, but are never silently summed). ENG-691.
     → Divide by servings for per-serving values
-  ← Return verified[], totals, perServing, sourceCounts, minIngredientConfidence, avgIngredientConfidence
+  ← Return verified[], totals, perServing, sourceCounts, minIngredientConfidence,
+    avgIngredientConfidence, belowAcceptFloorCount
 ```
 
 #### Confidence Policy
 
-All external nutrition sources must meet a minimum confidence threshold before their match is accepted. Matches below the threshold are silently skipped — the pipeline falls through to the next source or to local estimation.
+All external nutrition sources must meet a minimum confidence threshold before their match is accepted. Matches below the threshold fall through to the next source or to local estimation. Any line that ends up below the accept floor (including local estimates) keeps its best-estimate macros on the row but is **excluded from the recipe totals** and flagged `belowAcceptFloor` — the engine never silently sums a sub-threshold guess into the headline numbers (ENG-691).
+
+The accept floor was raised from 0.42/0.52 to **0.70** (Decision D-05, 2026-05-25) to match the published "reject < 0.70" confidence band. The single tunable knob is `MIN_ACCEPT_CONFIDENCE`.
 
 | Source | Threshold | Rationale |
 |--------|-----------|-----------|
-| USDA FDC | `MIN_MATCH_CONFIDENCE` (0.42) | Stricter overlap bar; weak token matches fall through to OFF / estimate |
-| Open Food Facts | `MIN_OFF_CONFIDENCE` (0.52) | Product names contain brand/variant noise that inflates false positives |
-| FatSecret | `MIN_MATCH_CONFIDENCE` (0.42) | Same name-overlap bar as USDA |
+| USDA FDC | `MIN_MATCH_CONFIDENCE` (= `MIN_ACCEPT_CONFIDENCE`, 0.70) | Accept floor matching the published confidence band |
+| Open Food Facts | `MIN_OFF_CONFIDENCE` (0.72) | One notch stricter — product names contain brand/variant noise that inflates false positives |
+| FatSecret | `MIN_MATCH_CONFIDENCE` (0.70) | Same name-overlap bar as USDA |
+
+> **ENG-691 caveat — nutrition-engine impact review required before merge.** Raising the floor to 0.70 means more verify prompts and risks over-rejecting common foods that legitimately score in the 0.42–0.70 band (e.g. "brown rice", "whole milk", "canned tomatoes" on the current scorer). The change is implemented behind the single `MIN_ACCEPT_CONFIDENCE` constant so the floor can be re-tuned without touching pipeline logic once that modeling lands.
 
 Constants are exported from `src/lib/nutrition/verifyIngredients.ts`. Tests in `tests/unit/confidenceGating.test.ts`.
 

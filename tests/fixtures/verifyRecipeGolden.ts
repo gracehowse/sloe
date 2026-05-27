@@ -73,6 +73,7 @@ export function assertVerifyResultShape(r: VerifyResult): void {
   expect(r.sourceCounts).toEqual(expect.any(Object));
   expect(typeof r.minIngredientConfidence).toBe("number");
   expect(typeof r.avgIngredientConfidence).toBe("number");
+  expect(typeof r.belowAcceptFloorCount).toBe("number");
 }
 
 export function expectPerServingMatchesTotals(r: VerifyResult, servings: number): void {
@@ -81,4 +82,18 @@ export function expectPerServingMatchesTotals(r: VerifyResult, servings: number)
   expect(r.perServing.protein).toBe(Math.max(0, Math.round((r.totals.protein / s) * 10) / 10));
   expect(r.perServing.carbs).toBe(Math.max(0, Math.round((r.totals.carbs / s) * 10) / 10));
   expect(r.perServing.fat).toBe(Math.max(0, Math.round((r.totals.fat / s) * 10) / 10));
+}
+
+/**
+ * Sum of macros from ONLY the rows that contribute to totals (i.e. those at or
+ * above the accept floor). ENG-691: `belowAcceptFloor` rows keep their estimate
+ * on the row but are excluded from `totals`.
+ */
+export function expectTotalsExcludeBelowFloorRows(r: VerifyResult): void {
+  const inFloorCals = r.verified
+    .filter((v) => v.macros != null && !v.belowAcceptFloor)
+    .reduce((a, v) => a + (v.macros?.calories ?? 0), 0);
+  expect(r.totals.calories).toBe(inFloorCals);
+  const flagged = r.verified.filter((v) => v.belowAcceptFloor).length;
+  expect(r.belowAcceptFloorCount).toBe(flagged);
 }

@@ -20,6 +20,7 @@ import {
   GOLDEN_ESTIMATION_CASES,
   assertVerifyResultShape,
   expectPerServingMatchesTotals,
+  expectTotalsExcludeBelowFloorRows,
 } from "../fixtures/verifyRecipeGolden";
 
 describe("verifyIngredients golden (estimation-only, mocked OFF)", () => {
@@ -38,21 +39,28 @@ describe("verifyIngredients golden (estimation-only, mocked OFF)", () => {
         expect(result.verified[0]!.macros).toBeNull();
         expect(result.totals.calories).toBe(0);
         expect(result.primarySource).toBe("Unverified");
+        // Unverified rows carry no estimate, so they aren't "below-floor" rows.
+        expect(result.verified[0]!.belowAcceptFloor).toBeUndefined();
+        expect(result.belowAcceptFloorCount).toBe(0);
         return;
       }
 
       assertVerifyResultShape(result);
+      // Estimation-only rows are sub-floor (0.15–0.35 confidence): the source
+      // is still "Estimated" and the per-row estimate is preserved, but ENG-691
+      // EXCLUDES them from the recipe totals (no silent summing of guesses).
       expect(result.verified.every((v) => v.source === "Estimated")).toBe(true);
-      expect(result.totals.calories).toBeGreaterThan(0);
+      expect(result.verified.every((v) => v.belowAcceptFloor === true)).toBe(true);
+      expect(result.verified.every((v) => (v.macros?.calories ?? 0) > 0)).toBe(true);
+      expect(result.belowAcceptFloorCount).toBe(c.ingredients.length);
+      expect(result.totals.calories).toBe(0);
       expect(result.primarySource).toBe("Estimated");
       expectPerServingMatchesTotals(result, c.servings);
-
-      const sumCals = result.verified.reduce((a, v) => a + (v.macros?.calories ?? 0), 0);
-      expect(result.totals.calories).toBe(sumCals);
+      expectTotalsExcludeBelowFloorRows(result);
     });
   }
 
-  it("parseRawIngredients + verify: free-text range line becomes estimated macros", async () => {
+  it("parseRawIngredients + verify: free-text range line is an excluded estimate", async () => {
     const structured = parseRawIngredients(["2-3 tbsp olive oil"]);
     expect(structured).toHaveLength(1);
     expect(structured[0]!.unit).toMatch(/tbsp/i);
@@ -61,11 +69,15 @@ describe("verifyIngredients golden (estimation-only, mocked OFF)", () => {
       servings: 1,
       provider: "auto",
     });
+    // The estimate is computed and preserved on the row…
     expect(result.verified[0]!.source).toBe("Estimated");
     expect(result.verified[0]!.macros?.calories).toBeGreaterThan(0);
+    // …but flagged sub-floor and kept out of totals.
+    expect(result.verified[0]!.belowAcceptFloor).toBe(true);
+    expect(result.totals.calories).toBe(0);
   });
 
-  it("parseRawIngredients: 3 medium onions from a single line", async () => {
+  it("parseRawIngredients: 3 medium onions estimate is preserved but excluded from totals", async () => {
     const structured = parseRawIngredients(["3 medium onions"]);
     expect(structured[0]!.amount).toBeTruthy();
     expect(structured[0]!.name.toLowerCase()).toContain("onion");
@@ -75,6 +87,9 @@ describe("verifyIngredients golden (estimation-only, mocked OFF)", () => {
       provider: "auto",
     });
     expect(result.verified[0]!.source).toBe("Estimated");
-    expect(result.totals.calories).toBeGreaterThan(0);
+    expect(result.verified[0]!.macros?.calories).toBeGreaterThan(0);
+    expect(result.verified[0]!.belowAcceptFloor).toBe(true);
+    expect(result.totals.calories).toBe(0);
+    expect(result.belowAcceptFloorCount).toBe(1);
   });
 });

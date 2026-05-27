@@ -18,8 +18,10 @@ export const MFP_IMPORT_BYTE_CAP = 5 * 1024 * 1024;
  * raw CSV food string" in any future background-enrichment pass. Set
  * deliberately high — anything softer risks silently overriding
  * user-confirmed MFP totals with weak fuzzy matches, which CLAUDE.md
- * prohibits. Aligned with (and stricter than)
- * `MIN_MATCH_CONFIDENCE = 0.42` in `verifyIngredients`.
+ * prohibits. Now exactly aligned with the verify-pipeline accept floor
+ * `MIN_ACCEPT_CONFIDENCE = MIN_MATCH_CONFIDENCE = 0.70` in
+ * `verifyIngredients` (both raised to the published reject-< 0.70 band
+ * in ENG-691, 2026-05-25).
  *
  * The synchronous import route (`POST /api/imports/mfp-csv`) does NOT
  * currently re-match CSV rows — see the decision doc at
