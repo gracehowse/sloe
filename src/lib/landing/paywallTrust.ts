@@ -144,7 +144,7 @@ export function buildReceiptTrustCopy(args: {
 }): string {
   const { trialEndsLabel, cancelPath } = args;
   return (
-    `Thanks for joining Suppr Pro. ` +
+    `Thanks for joining Pro. ` +
     `Cancel anytime — ${cancelPath}. ` +
     `Your trial ends ${trialEndsLabel}, first charge after that. ` +
     `Refunds within 7 days, no questions asked, ` +

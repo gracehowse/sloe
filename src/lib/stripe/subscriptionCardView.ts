@@ -117,7 +117,7 @@ export type SubscriptionCardView =
 // --- Verbatim copy (legal-reviewer, render EXACTLY) -----------------------
 
 export const IAP_BODY =
-  'You subscribed to Suppr Pro through the App Store, so Apple manages your billing.\n\n' +
+  'You subscribed to Pro through the App Store, so Apple manages your billing.\n\n' +
   'To change or cancel, open Settings → Apple ID → Subscriptions on your iPhone or iPad. ' +
   'For a refund, use Apple\'s "Report a Problem" (reportaproblem.apple.com) — ' +
   "we're not able to process App Store refunds for you.";
@@ -274,7 +274,7 @@ export function resolveSubscriptionCardView(args: {
     return {
       kind: "canceled",
       statusLine:
-        `Suppr Pro — cancelled.\n` +
+        `Pro — cancelled.\n` +
         `You'll keep Pro until ${accessEnd}. ` +
         `Your subscription will not renew and you won't be charged again.`,
       paymentMethodLine,
@@ -299,7 +299,7 @@ export function resolveSubscriptionCardView(args: {
     return {
       kind: "trial",
       statusLine:
-        `Suppr Pro — free trial.\n` +
+        `Pro — free trial.\n` +
         `Your trial ends ${trialEndStr}. ` +
         `We'll charge ${amountWithCurrency} on that date, then ${amountWithCurrency} each ${intervalNoun} until you cancel.`,
       cancelBlock,
@@ -316,7 +316,7 @@ export function resolveSubscriptionCardView(args: {
   return {
     kind: "active",
     statusLine:
-      `Suppr Pro — billed ${billedAdverb}.\n` +
+      `Pro — billed ${billedAdverb}.\n` +
       `Renews automatically on ${nextChargeDate} at ${amountWithCurrency}, ` +
       `and on each ${intervalNoun} after that until you cancel.`,
     cancelBlock,

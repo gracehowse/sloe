@@ -732,9 +732,9 @@ export default function PaywallScreen() {
         ? "Cancel anytime in Settings > Apple ID > Subscriptions."
         : "Cancel anytime in Google Play > Payments & subscriptions.";
     if (trialApplies && currentProPkg) {
-      return `Suppr Pro renews automatically at ${proPriceString} per ${periodNoun}${altLine} until cancelled. Starts your 7-day free trial — first charge after 7 days. ${cancelPath} Prices include any applicable VAT. 7-day refund policy: support@suppr-club.com.`;
+      return `Pro renews automatically at ${proPriceString} per ${periodNoun}${altLine} until cancelled. Starts your 7-day free trial — first charge after 7 days. ${cancelPath} Prices include any applicable VAT. 7-day refund policy: support@suppr-club.com.`;
     }
-    return `Suppr Pro renews automatically at ${proPriceString} per ${periodNoun}${altLine} until cancelled. ${cancelPath} Prices include any applicable VAT. 7-day refund policy: support@suppr-club.com.`;
+    return `Pro renews automatically at ${proPriceString} per ${periodNoun}${altLine} until cancelled. ${cancelPath} Prices include any applicable VAT. 7-day refund policy: support@suppr-club.com.`;
   })();
 
   // ─── Styles ─────────────────────────────────────────────────────

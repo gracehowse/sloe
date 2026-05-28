@@ -167,7 +167,7 @@ export default function CookbookImportScreen() {
         setStep("pick");
         Alert.alert(
           "Pro feature",
-          "Cookbook PDF import is included with Suppr Pro — same as photo recipe import.",
+          "Cookbook PDF import is included with Pro — same as photo recipe import.",
           [
             { text: "Not now", style: "cancel" },
             { text: "View plans", onPress: () => router.push("/paywall?from=recipe_import") },

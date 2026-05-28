@@ -60,8 +60,8 @@ export type DigestSuggestionRule =
  * when the user's tier is below the requirement.
  *
  *   - "free" — no paywall (Maintenance is free; re-log save is free).
- *   - "base" — Suppr Base required (high-protein recipe filter, etc.).
- *   - "pro"  — Suppr Pro required (no Pro-gated suggestions today, but
+ *   - "base" — Base required (high-protein recipe filter, etc.) — retired tier, kept for type compat.
+ *   - "pro"  — Pro required (no Pro-gated suggestions today, but
  *              the type covers future rules without a breaking change).
  */
 export type DigestSuggestionTier = "free" | "base" | "pro";

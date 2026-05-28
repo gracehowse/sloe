@@ -115,7 +115,7 @@ describe("buildReceiptTrustCopy — receipt composition", () => {
     });
     // The first sentence after "Thanks for joining" must be
     // cancel-anytime — anchors trust before any other clause.
-    const afterThanks = copy.replace(/^Thanks for joining Suppr Pro\.\s*/, "");
+    const afterThanks = copy.replace(/^Thanks for joining Pro\.\s*/, "");
     expect(afterThanks).toMatch(/^Cancel anytime/);
   });
 
