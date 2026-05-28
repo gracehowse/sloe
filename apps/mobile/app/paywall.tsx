@@ -72,6 +72,8 @@ function findTier(name: "Pro"): PricingTier {
 
 const PRO_TIER = findTier("Pro");
 
+const PRO_ANNUAL_SAVINGS_BADGE = computeAnnualSavingsBadge(PRO_TIER);
+
 /**
  * PR-01 (audit 2026-04-28) — pricing collapses to Free + Pro per
  * D-2026-04-27-05. The Base tier was removed from the SSOT in
@@ -1161,6 +1163,7 @@ export default function PaywallScreen() {
             priceString={billing === "annual" ? FALLBACK_PRICES.proAnnual : FALLBACK_PRICES.proMonthly}
             periodSuffix={periodSuffix}
             showSavings={billing === "annual"}
+            savingsBadge={PRO_ANNUAL_SAVINGS_BADGE}
             referenceLine={
               billing === "annual"
                 ? computeAnnualReferenceLine(
@@ -1199,6 +1202,7 @@ export default function PaywallScreen() {
             priceString={billing === "annual" ? FALLBACK_PRICES.proAnnual : FALLBACK_PRICES.proMonthly}
             periodSuffix={periodSuffix}
             showSavings={billing === "annual"}
+            savingsBadge={PRO_ANNUAL_SAVINGS_BADGE}
             referenceLine={
               billing === "annual"
                 ? computeAnnualReferenceLine(
@@ -1231,6 +1235,7 @@ export default function PaywallScreen() {
                 priceString={currentProPkg?.product.priceString ?? fallbackProPrice}
                 periodSuffix={periodSuffix}
                 showSavings={billing === "annual"}
+                savingsBadge={PRO_ANNUAL_SAVINGS_BADGE}
                 referenceLine={
                   billing === "annual"
                     ? computeAnnualReferenceLine(
@@ -1463,8 +1468,10 @@ type TierCardProps = {
   priceString: string;
   periodSuffix: string;
   showSavings: boolean;
+  /** Derived from computeAnnualSavingsBadge — e.g. "Save 37%". Null suppresses the badge. */
+  savingsBadge?: string | null;
   /** L1 (2026-04-21): reference-price line shown beneath the annual
-   *  price so "Save 37%" is substantiated. Example:
+   *  price so the savings badge is substantiated. Example:
    *  "£2.50/mo · save 37% vs £3.99/mo". `null` suppresses the line. */
   referenceLine?: string | null;
   featHead: string;
@@ -1493,6 +1500,7 @@ function TierCard({
   priceString,
   periodSuffix,
   showSavings,
+  savingsBadge,
   referenceLine,
   featHead,
   features,
@@ -1525,9 +1533,9 @@ function TierCard({
       <View style={styles.cardPriceRow}>
         <Text style={styles.cardPrice}>{priceString}</Text>
         <Text style={styles.cardPricePeriod}>{periodSuffix}</Text>
-        {showSavings ? (
+        {showSavings && savingsBadge ? (
           <View style={styles.savingsBadgeRight}>
-            <Badge variant="added">Save 37%</Badge>
+            <Badge variant="added">{savingsBadge}</Badge>
           </View>
         ) : null}
       </View>

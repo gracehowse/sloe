@@ -185,7 +185,7 @@ const CHANGELOGS: ChangelogEntry[] = [
       },
       {
         kind: "coming_soon",
-        text: "Creators and coaches will sell recipes and meal plans in Suppr — with free samples so you can try before you buy.",
+        text: "We're exploring ways for creators and coaches to share recipes and meal plans inside Suppr.",
       },
     ],
   },

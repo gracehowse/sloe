@@ -223,8 +223,8 @@ export default function NotificationsPromptScreen() {
         <BulletRow
           colors={colors}
           icon="checkmark-circle-outline"
-          title="Two notifications a week, max"
-          sub="That's the cap. We won't push more, ever."
+          title="Two nudges a week, max"
+          sub="That's the cap for these nudges — no marketing, no surprises."
         />
       </View>
 
