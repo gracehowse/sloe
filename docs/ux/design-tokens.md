@@ -135,7 +135,7 @@ Render `Don't` not `Dont`. The `recipeSearchMatch` helper strips apostrophes for
 
 ### Primary action (submit / save / generate)
 
-Full-width, `Accent.primary` (#4c6ce0) background, white text, `Radius.md` corners, `paddingVertical: 16`, `fontSize: 16`, `fontWeight: 700`.
+Full-width, `Accent.primary` (#588CE4) background, white text, `Radius.md` corners, `paddingVertical: 16`, `fontSize: 16`, `fontWeight: 700`.
 
 **Onboarding exception:** the onboarding flow uses `Accent.success` (green) for "next / continue" actions. This is intentional — green carries a "progress / growth / let's go" emotional valence appropriate to the welcome flow, while the rest of the app's "submit / save / generate" actions are about reliability and pick `Accent.primary`. Don't migrate onboarding to primary without a deliberate emotional-design review.
 
@@ -219,11 +219,11 @@ Brand accents from `Accent` (also exported as named macro colours in `MacroColor
 
 | Token | Hex | Use |
 |---|---|---|
-| `Accent.primary` | `#4c6ce0` | Primary actions, brand highlights, protein |
+| `Accent.primary` | `#588CE4` | Primary actions, brand highlights, protein |
 | `Accent.success` | `#22a860` | Calories, fibre, "On track", confirmation |
 | `Accent.warning` | `#e8a020` | Carbs, escalation, "Activity Bonus earned" |
 | `Accent.destructive` | `#e04848` | Hard destructive actions, sodium accents |
-| `Accent.magenta` | `#e04888` | Fat |
+| `Accent.magenta` | `#DF5EBC` | Fat |
 | `Accent.cyan` | `#06b6d4` | Water, freeze indicators |
 | `Accent.orange` | `#f97316` | Sodium |
 
