@@ -37,6 +37,7 @@ import {
 
 import { useAuth } from "@/context/auth";
 import { useSavedRecipes } from "@/lib/recipes";
+import { setRecipePublishedWithPrompt } from "@/lib/goPublicRecipe";
 import { supabase } from "@/lib/supabase";
 import { dateKeyFromDate, newMealId } from "@/lib/nutritionJournal";
 import { snapshotDailyTargetIfMissing } from "@suppr/shared/nutrition/dailyTargetSnapshot";
@@ -170,6 +171,7 @@ type FullRecipe = {
   author_id: string | null;
   creator_id: string | null;
   author: { display_name: string | null; avatar_url: string | null } | null;
+  published?: boolean | null;
   /** T12 (2026-04-24) — regulated allergens from recipes.allergens. */
   allergens: string[] | null;
 };
@@ -730,7 +732,7 @@ export default function RecipeDetailScreen() {
         let recipeRes = await supabase
           .from("recipes")
           .select(
-            "id, title, description, instructions, image_url, servings, prep_time_min, cook_time_min, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, meal_type, source_url, source_name, author_id, creator_id, allergens",
+            "id, title, description, instructions, image_url, servings, prep_time_min, cook_time_min, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, meal_type, source_url, source_name, author_id, creator_id, published, allergens",
           )
           .eq("id", recipeId)
           .maybeSingle();
@@ -782,6 +784,7 @@ export default function RecipeDetailScreen() {
             author_id: aid,
             creator_id: (r.creator_id as string | null | undefined) ?? null,
             author,
+            published: Boolean(r.published),
             allergens: Array.isArray(r.allergens) ? (r.allergens as string[]) : [],
           } as FullRecipe);
         }
@@ -829,6 +832,38 @@ export default function RecipeDetailScreen() {
   const isRecipeOwner = useMemo(
     () => Boolean(userId && recipe?.author_id && recipe.author_id === userId),
     [userId, recipe?.author_id],
+  );
+
+  const [publishedOverride, setPublishedOverride] = useState<boolean | null>(null);
+  useEffect(() => {
+    setPublishedOverride(null);
+  }, [recipeId]);
+
+  const isPublished = publishedOverride ?? Boolean(recipe?.published);
+
+  const handleSetPublished = useCallback(
+    async (nextPublished: boolean) => {
+      if (!userId || !recipe?.id || !isRecipeOwner) return;
+      const result = await setRecipePublishedWithPrompt({
+        recipeId: recipe.id,
+        authorId: userId,
+        published: nextPublished,
+      });
+      if (!result.ok) {
+        if (result.cancelled) return;
+        Alert.alert("Could not update", result.message);
+        return;
+      }
+      setPublishedOverride(result.published);
+      setRecipe((prev) => (prev ? { ...prev, published: result.published } : prev));
+      Alert.alert(
+        result.published ? "Recipe published" : "Recipe unpublished",
+        result.published
+          ? "Your recipe is now visible in Discover."
+          : "It stays in your library as a private draft.",
+      );
+    },
+    [userId, recipe?.id, isRecipeOwner],
   );
 
   const saveRecipeYield = useCallback(async () => {
@@ -1769,14 +1804,31 @@ export default function RecipeDetailScreen() {
             {isRecipeOwner ? (
               <Pressable
                 onPress={() => {
-                  Alert.alert(
-                    "Recipe options",
-                    undefined,
-                    [
-                      {
-                        text: "Delete recipe",
-                        style: "destructive",
-                        onPress: () => {
+                  const menu: {
+                    text: string;
+                    style?: "default" | "cancel" | "destructive";
+                    onPress?: () => void;
+                  }[] = [];
+                  if (!isPublished) {
+                    menu.push({
+                      text: "Go public",
+                      onPress: () => {
+                        void handleSetPublished(true);
+                      },
+                    });
+                  } else {
+                    menu.push({
+                      text: "Unpublish",
+                      onPress: () => {
+                        void handleSetPublished(false);
+                      },
+                    });
+                  }
+                  menu.push(
+                    {
+                      text: "Delete recipe",
+                      style: "destructive",
+                      onPress: () => {
                           Alert.alert(
                             "Delete recipe?",
                             `Deleting "${recipe.title}" will remove it from your library and any meal plan that references it. This can't be undone.`,
@@ -1823,11 +1875,11 @@ export default function RecipeDetailScreen() {
                               },
                             ],
                           );
-                        },
                       },
-                      { text: "Cancel", style: "cancel" },
-                    ],
+                    },
+                    { text: "Cancel", style: "cancel" },
                   );
+                  Alert.alert("Recipe options", undefined, menu);
                 }}
                 style={styles.topBarIconBtn}
                 accessibilityRole="button"

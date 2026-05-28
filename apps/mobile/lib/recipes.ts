@@ -418,7 +418,7 @@ export function useSavedLibraryRecipes(userId: string | null) {
           await supabase
             .from("recipes")
             .select(
-              "id, title, image_url, servings, calories, protein, carbs, fat, fiber_g, is_verified, author_id, creator_id, meal_type, source_url, source_name, prep_time_min, cook_time_min, created_at, allergens, dietary_flags, author:profiles!author_id(display_name, avatar_url)",
+              "id, title, image_url, servings, calories, protein, carbs, fat, fiber_g, is_verified, published, author_id, creator_id, meal_type, source_url, source_name, prep_time_min, cook_time_min, created_at, allergens, dietary_flags, author:profiles!author_id(display_name, avatar_url)",
             )
             .eq("author_id", userId)
             .order("created_at", { ascending: false }))(),
@@ -461,7 +461,7 @@ export function useSavedLibraryRecipes(userId: string | null) {
           await supabase
             .from("recipes")
             .select(
-              "id, title, image_url, servings, calories, protein, carbs, fat, fiber_g, is_verified, author_id, creator_id, meal_type, source_url, source_name, prep_time_min, cook_time_min, created_at, allergens, dietary_flags, author:profiles!author_id(display_name, avatar_url)",
+              "id, title, image_url, servings, calories, protein, carbs, fat, fiber_g, is_verified, published, author_id, creator_id, meal_type, source_url, source_name, prep_time_min, cook_time_min, created_at, allergens, dietary_flags, author:profiles!author_id(display_name, avatar_url)",
             )
             .in("id", extraIds))(),
         new Promise<typeof libraryRaceTimeout>((resolve) => {
@@ -522,6 +522,7 @@ export function useSavedLibraryRecipes(userId: string | null) {
           fat: r.fat ?? 0,
           fiberG: r.fiber_g ?? 0,
           isVerified: r.is_verified ?? false,
+          isPublished: Boolean(r.published),
           savedCount: 0,
           // F-7: `isSaved` reflects `saves` membership only — author-
           // owned rows unioned in keep `false` so the bookmark icon on

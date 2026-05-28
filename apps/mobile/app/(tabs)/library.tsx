@@ -29,6 +29,7 @@ import { MacroIconRow } from "@/components/nutrition/MacroIconRow";
 import { useAuth } from "@/context/auth";
 import { useLibrarySearchStore } from "@/hooks/useLibrarySearchStore";
 import { useSavedLibraryRecipes, useSavedRecipes } from "@/lib/recipes";
+import { setRecipePublishedWithPrompt } from "@/lib/goPublicRecipe";
 import { RecipeCardImage } from "@/components/library/RecipeCardImage";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
@@ -182,6 +183,25 @@ export default function LibraryScreen() {
     }
     return list;
   }, [savedRecipes, search, sortKey, pill, userId]);
+
+  const handleGoPublic = useCallback(
+    async (item: RecipeCard) => {
+      if (!userId || item.authorId !== userId) return;
+      const result = await setRecipePublishedWithPrompt({
+        recipeId: item.id,
+        authorId: userId,
+        published: true,
+      });
+      if (!result.ok) {
+        if (result.cancelled) return;
+        Alert.alert("Could not publish", result.message);
+        return;
+      }
+      await refresh();
+      Alert.alert("Recipe published", "Your recipe is now visible in Discover.");
+    },
+    [userId, refresh],
+  );
 
   const confirmRemove = useCallback(
     (item: RecipeCard) => {
@@ -501,6 +521,33 @@ export default function LibraryScreen() {
       color: colors.textSecondary,
       fontVariant: ["tabular-nums"],
     },
+    draftBadge: {
+      position: "absolute",
+      top: Spacing.sm,
+      left: Spacing.sm + 52,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: Radius.sm,
+      backgroundColor: colors.text + "CC",
+    },
+    draftBadgeText: {
+      fontSize: 11,
+      fontWeight: "700",
+      color: colors.background,
+    },
+    goPublicBtn: {
+      marginTop: Spacing.sm,
+      alignSelf: "flex-start",
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: Radius.md,
+      backgroundColor: Accent.primary,
+    },
+    goPublicBtnText: {
+      fontSize: 12,
+      fontWeight: "700",
+      color: "#fff",
+    },
     // P2-32 (2026-04-25): the visible remove-from-library trash icon
     // was replaced by a long-press confirm flow on the card itself.
     // The dead `removeBtn` style was removed in P3 dark-mode sweep
@@ -539,6 +586,9 @@ export default function LibraryScreen() {
   const renderRecipe = useCallback(
     ({ item }: { item: RecipeCard }) => {
       const totalTime = formatTotalTime(item);
+      const kind = entryKindForCard(item, userId);
+      const showDraft = kind !== "saved" && item.isPublished === false;
+      const showGoPublic = kind === "created" && item.isPublished === false;
       return (
         <Pressable
           style={styles.card}
@@ -573,6 +623,11 @@ export default function LibraryScreen() {
               recipeTitle={item.title}
             />
             <View style={styles.cardGradient} pointerEvents="none" />
+            {showDraft ? (
+              <View style={styles.draftBadge} pointerEvents="none">
+                <Text style={styles.draftBadgeText}>Draft</Text>
+              </View>
+            ) : null}
             {item.isSaved ? (
               <View style={styles.bookmarkDot} accessibilityLabel="Saved">
                 <Bookmark size={14} color={Accent.primary} fill={Accent.primary} />
@@ -617,6 +672,19 @@ export default function LibraryScreen() {
               style={[styles.metaRow, { flexWrap: "wrap", gap: 10 }]}
               textStyle={styles.metaChunk}
             />
+            {showGoPublic ? (
+              <Pressable
+                style={styles.goPublicBtn}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  void handleGoPublic(item);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={`Publish ${item.title} to Discover`}
+              >
+                <Text style={styles.goPublicBtnText}>Go public</Text>
+              </Pressable>
+            ) : null}
             {/* GW-08 (audit 2026-04-28): TrustChip removed for the same
                 reason as Discover hero — the source label was fabricated
                 from `item.isVerified` (which is itself written by the
@@ -626,7 +694,7 @@ export default function LibraryScreen() {
         </Pressable>
       );
     },
-    [router, confirmRemove, styles],
+    [router, confirmRemove, handleGoPublic, userId, styles],
   );
 
   const isLoading = loading;
