@@ -55,7 +55,12 @@ with `git add -f`.
 
 Shipped fixes tied to TestFlight threads are logged in **[resolved.md](./resolved.md)** so they survive outside gitignored `data/` exports.
 
+## Centercode (beta program)
+
+For cohort management, release notes to testers, and structured in-app feedback (not screenshot/layout QA), see **[`docs/operations/centercode-beta-feedback.md`](../operations/centercode-beta-feedback.md)**. Centercode can sync with TestFlight external groups; ASC API pulls remain the source for screenshot feedback exports above.
+
 ## Related
 
 - [Main App Store Connect API docs](https://developer.apple.com/documentation/appstoreconnectapi)
+- [Visual regression (Playwright / Maestro)](../testing/VISUAL_REGRESSION.md)
 - [Beta feedback endpoints](https://developer.apple.com/documentation/appstoreconnectapi/list_beta_feedback_screenshot_submissions)

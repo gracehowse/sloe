@@ -1,6 +1,6 @@
-import { test } from "@playwright/test";
+import { test, expect } from "@playwright/test";
+import { dismissVisualOverlays, stabilizeForScreenshot } from "./utils/visual";
 
-/** Uses Playwright `baseURL` (PLAYWRIGHT_BASE_URL or http://127.0.0.1:3000) — same as playwright.config.ts / CI on 3100. */
 const screens = [
   { name: "landing", path: "/" },
   { name: "login", path: "/login" },
@@ -12,36 +12,25 @@ const screens = [
   { name: "plan", path: "/plan" },
   { name: "settings", path: "/settings" },
   { name: "shopping", path: "/shopping" },
-];
+] as const;
 
 const viewports = [
-  { name: 'mobile', width: 390, height: 844 },
-  { name: 'desktop', width: 1440, height: 900 },
-];
+  { name: "mobile", width: 390, height: 844 },
+  { name: "desktop", width: 1440, height: 900 },
+] as const;
 
-for (const screen of screens) {
-  for (const vp of viewports) {
-    test(`visual-audit ${screen.name} ${vp.name}`, async ({ page }) => {
-      await page.setViewportSize({ width: vp.width, height: vp.height });
-      await page.goto(screen.path);
-      await page.waitForTimeout(2000);
+test.describe("Visual regression — public shell", () => {
+  test.describe.configure({ mode: "parallel" });
 
-      const acceptBtn = page.locator('button:has-text("Accept all")');
-      if (await acceptBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-        await acceptBtn.click();
-        await page.waitForTimeout(500);
-      }
-
-      const dismissBtn = page.locator('button:has-text("Dismiss checklist")');
-      if (await dismissBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-        await dismissBtn.click();
-        await page.waitForTimeout(500);
-      }
-
-      await page.screenshot({
-        path: `screenshots/visual-audit/${screen.name}-${vp.name}.png`,
-        fullPage: false,
+  for (const screen of screens) {
+    for (const vp of viewports) {
+      test(`${screen.name} ${vp.name}`, async ({ page }) => {
+        await page.setViewportSize({ width: vp.width, height: vp.height });
+        await page.goto(screen.path, { waitUntil: "domcontentloaded" });
+        await dismissVisualOverlays(page);
+        await stabilizeForScreenshot(page, screen.name === "landing" ? 3000 : 2500);
+        await expect(page).toHaveScreenshot(`shell/${screen.name}-${vp.name}.png`);
       });
-    });
+    }
   }
-}
+});

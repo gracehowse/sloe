@@ -126,7 +126,13 @@ Since **web looks better**, treat **`src/styles/theme.css` as canonical** until 
 | **Chromatic / Percy** | Same, hosted |
 | **Figma** | Only if you re-import from prototype HTML once |
 
-No plugin replaces **one chosen master + side-by-side PNGs**.
+| **Storybook** | Component primitives (`npm run storybook`) |
+| **Applitools** | Optional hosted AI diff (`npm run test:e2e:applitools`) |
+| **Centercode** | Beta tester feedback — not layout QA |
+
+See [`docs/testing/VISUAL_REGRESSION.md`](../testing/VISUAL_REGRESSION.md).
+
+No plugin replaces **one chosen master + side-by-side PNGs** for full-route sign-off.
 
 ---
 
