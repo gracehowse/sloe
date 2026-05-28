@@ -30,6 +30,7 @@ import {
   getOfferings,
   isPurchasesApiKeyPresent,
   isProEntitled,
+  pollUntilEntitled,
   purchasePackage,
   restorePurchases,
   syncTierToSupabase,
@@ -511,10 +512,41 @@ export default function PaywallScreen() {
             },
           ]);
         } else {
-          Alert.alert(
-            "Almost there",
-            "Your purchase went through but the subscription hasn't activated yet. Please wait a moment and try Restore.",
-          );
+          // ENG-684: RC confirmed the purchase but entitlement hasn't
+          // propagated yet — poll for up to 10s (5 × 2s) before giving up.
+          const polledInfo = await pollUntilEntitled(tier);
+          if (polledInfo) {
+            // Entitlement arrived during the poll window — treat as success.
+            void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            track(AnalyticsEvents.checkout_completed, {
+              tier,
+              period: billing,
+              surface: "mobile_paywall",
+              platform,
+              from: paywallFrom,
+              trialApplied: trialOnThisPurchase,
+            });
+            const cancelPath =
+              Platform.OS === "ios"
+                ? "Settings > Apple ID > Subscriptions"
+                : "Google Play > Payments & subscriptions";
+            const trialEndsLabel = trialOnThisPurchase ? "in 7 days" : "with your billing period";
+            const message = buildReceiptTrustCopy({ trialEndsLabel, cancelPath });
+            Alert.alert("You're in", message, [
+              { text: "Continue", onPress: () => router.replace("/notifications-prompt") },
+            ]);
+          } else {
+            // Still not entitled after 10s — bounded poll exhausted.
+            // Show a clear recovery message with explicit Restore CTA.
+            Alert.alert(
+              "Almost there",
+              "Your purchase went through but activation is taking a moment. Tap Restore — it usually resolves in under a minute.",
+              [
+                { text: "Restore", onPress: () => { void onRestore(); } },
+                { text: "Later", style: "cancel" },
+              ],
+            );
+          }
         }
       }
     } catch {
