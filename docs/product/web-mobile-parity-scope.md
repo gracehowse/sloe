@@ -2,7 +2,7 @@
 
 **Status:** Active product decisions (engineering follows; do not “fix” as unscoped parity bugs).
 
-**Last confirmed:** 2026-05-25
+**Last confirmed:** 2026-05-27
 
 **D-P1-7 maintenance (2026-04-25):** No new **intentional** divergences were recorded this cycle. Optional product follow-up (tickets, copy spec) for visual / voice-photo parity lives in [`PARITY_PRODUCT_QUEUE.md`](PARITY_PRODUCT_QUEUE.md), not as “open” audit rows. Re-open **exceptions** in this document (or `docs/decisions/`) only when product signs a new intentional divergence.
 
@@ -40,6 +40,10 @@ Any change that **ships, removes, improves, or fixes** a user-visible feature on
 | **Today — colour + macro hues (light)** | **Enforced** | `theme.css` ↔ `Colors.light` parity test (`tests/unit/crossPlatformThemeTokens.test.ts`); over-budget ring + macro captions use amber tokens (ENG-624–625); state-matrix captures in `docs/ux/captures/today-premium-2026-05-19/`. |
 | **Today — dark surfaces** | **Intentional delta (documented)** | Mobile dark bg `#0a0a0f` vs web `#101014` — platform-native depth; not a regression. Revisit in P4 if product wants pixel-match. |
 | **Today — layout / chrome** | **Aligned (P1)** | Calm date header, ≤2 below-meals prompts, desktop week rail, auth cold-open routes — see Premium P1 sign-off checklist. |
+| **Today — hero status pills** | **Aligned (flag-gated)** | "On track" (logged + within ±10% of target) + "Adaptive TDEE learning · N of 7 days" pills below the hero stats. Web `today-hero-stats.tsx` (desktop hero) + mobile `TodayHero.tsx` (below ring). Both behind `today-status-pills`. `tdeeLearnDays` is currently a confidence-bucket proxy (high=6 / medium=4 / low=2) until a real weigh-in count lands (ENG-758). ENG-753; tests `tests/unit/todayStatusPills.test.tsx` (web) + `apps/mobile/tests/unit/todayStatusPills.test.tsx` (mobile). |
+| **Today — weekly insight card** | **Aligned (flag-gated)** | Web `today-weekly-insight-card.tsx` (desktop right-rail) + mobile `WeeklyInsightCard.tsx` (below meals). Shared sparkline maths (`max(target × 1.2, ...daily, 1)`); empty days clamp to 4% baseline; `weekAvgKcal=null` → no faux "0 kcal". Mobile behind `today-weekly-insight-mobile`; `householdSize` is the honest minimum (1) until the Today data layer exposes membership (ENG-758). ENG-754; test `apps/mobile/tests/unit/weeklyInsightCardMobile.test.tsx`. |
+| **Progress — trend summary tiles** | **Aligned (flag-gated)** | Web `TrendSummaryCardWeb` (in `ProgressDashboard.tsx`) + mobile `TrendSummaryCard.tsx` (above `DigestStoryCard`). Rows: days hit calorie target (±10%), days hit protein target, weigh-ins, optional projected goal. Mobile behind `progress-trend-summary-mobile`. ENG-755; test `apps/mobile/tests/unit/trendSummaryCardMobile.test.tsx`. |
+| **Discover — fit-% badge** | **Aligned (NOT rendered, both)** | F-45 (2026-04-22) removed the fit-% pill on both surfaces; `computeRecipeFitPercent` stays imported (`void`) for a future ranking pass. ENG-756 parity audit (2026-05-27) confirmed no drift — no action. Removal pinned by `tests/unit/recipeCardFitBadge.test.ts`. |
 
 ### 2026-05-25 sweep — retired divergences + convergence decisions
 

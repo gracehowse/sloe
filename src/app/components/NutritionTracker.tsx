@@ -2308,6 +2308,22 @@ export const NutritionTracker = memo(function NutritionTracker({
         onToggleExpanded={() => setRingExpanded((v) => !v)}
         displayMode={ringDisplayMode}
         onDisplayModeChange={setRingDisplayMode}
+        isOnTrack={
+          totals.calories > 100 &&
+          effectiveCalorieTarget > 0 &&
+          Math.abs(totals.calories - effectiveCalorieTarget) / effectiveCalorieTarget <= 0.1
+        }
+        // ENG-753: proxy for weigh-in count; replace with real count when
+        // weight_logs query added to AppDataContext.
+        tdeeLearnDays={
+          profileAdaptiveTdeeConfidenceRaw === "high"
+            ? 6
+            : profileAdaptiveTdeeConfidenceRaw === "medium"
+              ? 4
+              : profileAdaptiveTdeeConfidenceRaw === "low"
+                ? 2
+                : 0
+        }
       />
 
       {/* Single context block — priority order: fasting > eat-again >

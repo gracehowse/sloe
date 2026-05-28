@@ -1,7 +1,14 @@
 import React from "react";
-import { View } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
 
 import { TodayHeroRing } from "./TodayHeroRing";
+import { Accent } from "@/constants/theme";
+import { isFeatureEnabled } from "@/lib/analytics";
+
+// Soft fill for the success pill — no `Accent.successSoft` token exists,
+// so derive a 12%-alpha tint from `Accent.success` (#56A775) to match the
+// web `bg-success/10` treatment. Mirror of web's `bg-success/10`.
+const SUCCESS_SOFT = "rgba(86, 167, 117, 0.12)";
 
 /**
  * TodayHero — the canonical Today calorie hero, rendered as a ring.
@@ -53,6 +60,14 @@ export interface TodayHeroProps {
   /** Audit gap #10 (2026-05-01) — when provided, a small "Why this
    *  number?" pill renders below the ring; tap fires this handler. */
   onPressWhy?: () => void;
+
+  /** ENG-753 — true when the user has logged today and calories are
+   *  within ±10% of the daily target. Drives the "On track" pill.
+   *  Gated behind `today-status-pills`. */
+  isOnTrack?: boolean;
+  /** ENG-753 — adaptive-TDEE learning progress, 0-7. Omit or 0 hides
+   *  the "Adaptive TDEE learning · N of 7 days" pill. */
+  tdeeLearnDays?: number;
 }
 
 export function TodayHero(props: TodayHeroProps) {
@@ -74,7 +89,16 @@ export function TodayHero(props: TodayHeroProps) {
     borderColor,
     trackColor,
     onPressWhy,
+    isOnTrack,
+    tdeeLearnDays,
   } = props;
+
+  // ENG-753 — status pills below the ring (prototype screens-web.jsx
+  // :173-177). Flag-gated; render only when at least one pill applies.
+  const showOnTrack = isOnTrack === true;
+  const showTdeeLearning = tdeeLearnDays != null && tdeeLearnDays > 0;
+  const showPills =
+    isFeatureEnabled("today-status-pills") && (showOnTrack || showTdeeLearning);
 
   return (
     <View>
@@ -97,8 +121,54 @@ export function TodayHero(props: TodayHeroProps) {
         textTertiaryColor={textTertiaryColor}
         onPressWhy={onPressWhy}
       />
+
+      {showPills ? (
+        <View style={styles.pillRow} testID="today-status-pills">
+          {showOnTrack ? (
+            <View
+              style={[styles.pill, { backgroundColor: SUCCESS_SOFT }]}
+              testID="today-pill-on-track"
+            >
+              <Text style={[styles.pillText, { color: Accent.success }]}>
+                ✓ On track
+              </Text>
+            </View>
+          ) : null}
+          {showTdeeLearning ? (
+            <View
+              style={[styles.pill, { backgroundColor: Accent.primarySoft }]}
+              testID="today-pill-tdee-learning"
+            >
+              <Text style={[styles.pillText, { color: Accent.primary }]}>
+                Adaptive TDEE learning · {tdeeLearnDays} of 7 days
+              </Text>
+            </View>
+          ) : null}
+        </View>
+      ) : null}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  pillRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    justifyContent: "center",
+    marginTop: 10,
+  },
+  pill: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  pillText: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
+});
 
 export default TodayHero;

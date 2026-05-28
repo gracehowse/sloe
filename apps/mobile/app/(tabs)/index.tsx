@@ -200,6 +200,7 @@ import { WhereThisComesFromSheet } from "@/components/today/WhereThisComesFromSh
 import { loadHealthLastSyncedAt } from "@/lib/healthSyncMeta";
 import { TodayWeekView } from "@/components/today/TodayWeekView";
 import { TodayMealsSection } from "@/components/today/TodayMealsSection";
+import { WeeklyInsightCard } from "@/components/today/WeeklyInsightCard";
 import { TodayFirstMealEmptyState } from "@/components/today/TodayFirstMealEmptyState";
 import { TodayActivityBonusCard } from "@/components/today/TodayActivityBonusCard";
 import { TodayCompleteDayModal } from "@/components/today/TodayCompleteDayModal";
@@ -4567,6 +4568,22 @@ export default function TrackerScreen() {
                   setCalorieDisplayMode((m) => m === "remaining" ? "consumed" : "remaining");
                   setRingExpanded((e) => !e);
                 }}
+                isOnTrack={
+                  totals.calories > 100 &&
+                  effectiveCalorieGoal > 0 &&
+                  Math.abs(totals.calories - effectiveCalorieGoal) / effectiveCalorieGoal <= 0.1
+                }
+                // ENG-753: proxy for weigh-in count; replace with real count
+                // when weight_logs query added to AppDataContext.
+                tdeeLearnDays={
+                  adaptiveTdeeConfidence === "high"
+                    ? 6
+                    : adaptiveTdeeConfidence === "medium"
+                      ? 4
+                      : adaptiveTdeeConfidence === "low"
+                        ? 2
+                        : 0
+                }
               />
             </ReAnimated.View>
 
@@ -4788,6 +4805,33 @@ export default function TrackerScreen() {
             }
           />
           </ReAnimated.View>
+        )}
+
+        {/* ENG-754 — weekly insight card (mobile port of web's
+            `TodayWeeklyInsightCard`). Flag-gated; renders below the
+            meals list on Today (day view). `householdSize={1}` is the
+            honest minimum (the user themselves) — the Today screen does
+            not load household membership, so we show the calm "Planning
+            for you this week" line rather than fabricate a count.
+            ENG-758 tracks wiring a real household size when the Today
+            data layer exposes it. Every other figure is derived from
+            `weekData` (already on screen). */}
+        {viewMode === "day" && (
+          <WeeklyInsightCard
+            householdSize={1}
+            loggedDaysInWeek={weekData.days.filter((d) => d.totals.calories > 0).length}
+            weekAvgKcal={
+              weekData.days.some((d) => d.totals.calories > 0)
+                ? weekData.weekAvg.calories
+                : null
+            }
+            weekDailyKcal={weekData.days.map((d) => d.totals.calories)}
+            dailyKcalTarget={targets.calories}
+            textColor={colors.text}
+            textSecondaryColor={colors.textSecondary}
+            cardBackgroundColor={colors.card}
+            borderColor={colors.cardBorder}
+          />
         )}
 
         {/* 2026-05-23 — NorthStarBlockHost removed from Today's main

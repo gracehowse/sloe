@@ -56,16 +56,21 @@ interface DiscoverFeedProps {
   onViewTracker?: () => void;
 }
 
-// Fit-percent badge history:
+// Fit-percent badge history (current state: NOT rendered, web + mobile):
 //   - F-11 (TestFlight `AA63DQ7xd2gRhdjC3L7gjtE`, 2026-04-19) removed
 //     the "Great / Good / Warn" pill because the underlying `fit`
 //     field was never populated (always rendered "Good").
-//   - 2026-04-20 Grace design prototype port: reinstated as a
-//     primary-tinted `{N}%` pill in the top-right of the hero card
-//     body. The value comes from `computeRecipeFitPercent` so web +
-//     mobile can't drift. Decision rationale: "Grace sent the
-//     prototype with fit % and said 'add this' — overrides F-11".
-//     Pinned by `tests/unit/recipeCardFitBadge.test.ts`.
+//   - 2026-04-20 Grace design prototype port: briefly reinstated as a
+//     primary-tinted `{N}%` pill in the top-right of the hero card.
+//   - F-45 (2026-04-22) removed it again after repeated tester
+//     feedback ("Score means nothing — remove"); the value wasn't
+//     anchored to a target the user had chosen, so it read as
+//     decorative noise. The `computeRecipeFitPercent` helper stays
+//     imported (referenced via `void`) so a future ranking pass can
+//     reuse it without re-plumbing. Web + mobile are in parity: NEITHER
+//     renders the pill. The removal is pinned on both surfaces by
+//     `tests/unit/recipeCardFitBadge.test.ts` (ENG-756 parity audit,
+//     2026-05-27 — confirmed no action needed).
 
 export const DiscoverFeed = memo(function DiscoverFeed({
   userTier,
@@ -531,11 +536,11 @@ export const DiscoverFeed = memo(function DiscoverFeed({
             takes their place. The "From your sources" CTAs still render
             — that's how users bring content in.
 
-            F-11 reversed 2026-04-20 per Grace's prototype: fit-percent
-            badge is back as a primary-tinted `{N}%` pill top-right of
-            the hero card body. Value comes from the shared
-            `computeRecipeFitPercent` helper. Pinned by
-            `tests/unit/recipeCardFitBadge.test.ts`. Mobile parity:
+            Fit-percent pill: removed by F-45 (2026-04-22) and NOT
+            rendered here — see the badge-history note at the top of
+            this file. `computeRecipeFitPercent` stays imported for a
+            future ranking pass. Web + mobile parity confirmed by
+            `tests/unit/recipeCardFitBadge.test.ts`. Mobile equivalent:
             `apps/mobile/app/(tabs)/discover.tsx` Discover sections. */}
 
         {/* 2026-04-20 desktop prototype port

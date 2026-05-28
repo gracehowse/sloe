@@ -4,6 +4,7 @@ import * as React from "react";
 import { DailyRing } from "./daily-ring";
 import { TodayHeroRing, type TodayHeroRingProps } from "./today-hero-ring";
 import { MACRO_RING_TOGGLE, TODAY_STAT_LABELS } from "../../../lib/copy/today";
+import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
 
 /**
  * TodayHeroStats — Today-screen hero block with the calorie ring + 4
@@ -28,6 +29,12 @@ export interface TodayHeroStatsProps extends TodayHeroRingProps {
   targetKcal: number;
   burnedKcal: number;
   aiSourcedCount?: number;
+  /** ENG-753 — true when the user has logged today and calories are
+   *  within ±10% of the daily target. Drives the "On track" pill. */
+  isOnTrack?: boolean;
+  /** ENG-753 — adaptive-TDEE learning progress, 0-7. Omit or 0 hides
+   *  the "Adaptive TDEE learning · N of 7 days" pill. */
+  tdeeLearnDays?: number;
 }
 
 export function TodayHeroStats(props: TodayHeroStatsProps) {
@@ -81,6 +88,8 @@ function DesktopHeroStats({
   onToggleExpanded,
   displayMode,
   onDisplayModeChange,
+  isOnTrack,
+  tdeeLearnDays,
 }: TodayHeroStatsProps) {
   const net = loggedKcal - targetKcal;
   const netStr = loggedKcal === 0 ? "—" : formatNet(net);
@@ -144,6 +153,45 @@ function DesktopHeroStats({
               value={netStr}
               valueTone={net < 0 ? "positive" : net > 0 ? "over" : "neutral"}
             />
+          </div>
+        ) : null}
+
+        {/* ENG-753 — status pills below the stat grid (prototype
+            screens-web.jsx:173-177). Flag-gated; only render when the
+            day has been logged (showStatRow) and at least one pill is
+            applicable. */}
+        {isFeatureEnabled("today-status-pills") &&
+        showStatRow &&
+        (isOnTrack || (tdeeLearnDays != null && tdeeLearnDays > 0)) ? (
+          <div className="flex gap-2" data-testid="today-status-pills">
+            {isOnTrack ? (
+              <span
+                data-testid="today-pill-on-track"
+                className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2.5 py-0.5 text-[11px] font-semibold text-success"
+              >
+                <svg
+                  className="h-3 w-3"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  aria-hidden
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M16.704 5.29a1 1 0 0 1 .006 1.414l-7.5 7.6a1 1 0 0 1-1.42.006l-3.5-3.5a1 1 0 1 1 1.414-1.414l2.79 2.79 6.796-6.886a1 1 0 0 1 1.414-.006Z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                On track
+              </span>
+            ) : null}
+            {tdeeLearnDays != null && tdeeLearnDays > 0 ? (
+              <span
+                data-testid="today-pill-tdee-learning"
+                className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary"
+              >
+                Adaptive TDEE learning · {tdeeLearnDays} of 7 days
+              </span>
+            ) : null}
           </div>
         ) : null}
 
