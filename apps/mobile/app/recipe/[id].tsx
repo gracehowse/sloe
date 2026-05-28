@@ -38,6 +38,8 @@ import {
 import { useAuth } from "@/context/auth";
 import { useSavedRecipes } from "@/lib/recipes";
 import { setRecipePublishedWithPrompt } from "@/lib/goPublicRecipe";
+import RecipeEditSheet, { type RecipeEditSavePayload } from "@/components/recipe/RecipeEditSheet";
+import { canEditRecipe } from "@suppr/shared/recipes/recipeEdit";
 import { supabase } from "@/lib/supabase";
 import { dateKeyFromDate, newMealId } from "@/lib/nutritionJournal";
 import { snapshotDailyTargetIfMissing } from "@suppr/shared/nutrition/dailyTargetSnapshot";
@@ -334,6 +336,7 @@ export default function RecipeDetailScreen() {
   const [recipeYieldDraft, setRecipeYieldDraft] = useState("");
   const [recipeYieldSaving, setRecipeYieldSaving] = useState(false);
   const [yieldEditOpen, setYieldEditOpen] = useState(false);
+  const [recipeEditOpen, setRecipeEditOpen] = useState(false);
   // PR1 (Paprika parity, 2026-05-02): viewing-servings stepper. Defaults
   // to the recipe's authored yield. The multiplier
   // (`viewServings / recipe.servings`) drives ingredient amount
@@ -840,6 +843,50 @@ export default function RecipeDetailScreen() {
   }, [recipeId]);
 
   const isPublished = publishedOverride ?? Boolean(recipe?.published);
+
+  const reloadRecipeIngredients = useCallback(async () => {
+    if (!recipeId || isSeedRecipeId(recipeId)) return;
+    let ingRes = await supabase
+      .from("recipe_ingredients")
+      .select("name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, confidence, source, is_verified")
+      .eq("recipe_id", recipeId);
+    if (ingRes.error?.code === "42703") {
+      ingRes = await supabase
+        .from("recipe_ingredients")
+        .select("name, amount, unit, calories, protein, carbs, fat")
+        .eq("recipe_id", recipeId);
+    }
+    if (ingRes.data) setIngredients(ingRes.data as Ingredient[]);
+  }, [recipeId]);
+
+  const handleRecipeEditSaved = useCallback(
+    async (updated: RecipeEditSavePayload) => {
+      setRecipe((prev) =>
+        prev
+          ? {
+              ...prev,
+              title: updated.title,
+              description: updated.description,
+              instructions: updated.instructions,
+              servings: updated.servings,
+              meal_type: updated.meal_type,
+              prep_time_min: updated.prep_time_min,
+              cook_time_min: updated.cook_time_min,
+              calories: updated.calories,
+              protein: updated.protein,
+              carbs: updated.carbs,
+              fat: updated.fat,
+              fiber_g: updated.fiber_g,
+              sugar_g: updated.sugar_g,
+              sodium_mg: updated.sodium_mg,
+            }
+          : prev,
+      );
+      await reloadRecipeIngredients();
+      Alert.alert("Updated", "Recipe saved.");
+    },
+    [reloadRecipeIngredients],
+  );
 
   const handleSetPublished = useCallback(
     async (nextPublished: boolean) => {
@@ -1795,13 +1842,8 @@ export default function RecipeDetailScreen() {
             >
               <Share2 size={22} color={colors.text} />
             </Pressable>
-            {/* CR-01/CR-02 fix (audit 2026-04-28): mobile recipe
-                detail used to expose only Bookmark + Share. There
-                was no path to delete a recipe on mobile-native at
-                all (P0). The overflow menu now offers Delete to
-                owners with explicit confirmation copy. Edit and
-                Duplicate are queued in a follow-up batch. */}
-            {isRecipeOwner ? (
+            {/* CR-01/CR-02 + ENG-759: owner overflow — edit, publish, delete. */}
+            {isRecipeOwner && !isSeedRecipeId(recipeId) ? (
               <Pressable
                 onPress={() => {
                   const menu: {
@@ -1809,6 +1851,12 @@ export default function RecipeDetailScreen() {
                     style?: "default" | "cancel" | "destructive";
                     onPress?: () => void;
                   }[] = [];
+                  if (canEditRecipe(recipe.author_id, userId)) {
+                    menu.push({
+                      text: "Edit recipe",
+                      onPress: () => setRecipeEditOpen(true),
+                    });
+                  }
                   if (!isPublished) {
                     menu.push({
                       text: "Go public",
@@ -3082,6 +3130,25 @@ export default function RecipeDetailScreen() {
           </View>
         </View>
       </Modal>
+
+      {recipeEditOpen && recipe && canEditRecipe(recipe.author_id, userId) ? (
+        <RecipeEditSheet
+          recipe={{
+            id: recipe.id,
+            title: recipe.title,
+            description: recipe.description,
+            instructions: recipe.instructions,
+            servings: recipe.servings,
+            prep_time_min: recipe.prep_time_min,
+            cook_time_min: recipe.cook_time_min,
+            meal_type: recipe.meal_type,
+            author_id: recipe.author_id,
+          }}
+          userId={userId}
+          onClose={() => setRecipeEditOpen(false)}
+          onSave={handleRecipeEditSaved}
+        />
+      ) : null}
 
       {/* Cook Mode Overlay — Modal so Android hardware-back dismisses
           the overlay instead of navigating the router away from the
