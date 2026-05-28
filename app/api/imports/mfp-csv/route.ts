@@ -117,7 +117,7 @@ function rowToEntry(
     protein: row.protein ?? 0,
     carbs: row.carbs ?? 0,
     fat: row.fat ?? 0,
-    source: "manual",
+    source: `${adapterSource}_import`,
     source_id: sourceId,
   };
 }
