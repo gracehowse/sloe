@@ -24,7 +24,7 @@ Same product, same prices, deliberately different defaults because the job of ea
 | Surface | File | Line | Default |
 |---|---|---|---|
 | Web `/pricing` | `app/pricing/PricingTiersGrid.tsx` | 29 | `monthly` |
-| Mobile paywall | `apps/mobile/app/paywall.tsx` | 191 | `annual` |
+| Mobile paywall | `apps/mobile/app/paywall.tsx` | 235 | `"monthly"` when `paywall-default-monthly` flag on, else `"annual"` |
 
 ## Alternatives considered
 
