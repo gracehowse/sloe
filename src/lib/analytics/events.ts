@@ -82,6 +82,10 @@ export const AnalyticsEvents = {
   pricing_page_viewed: "pricing_page_viewed",
   recipe_page_viewed: "recipe_page_viewed",
   onboarding_completed: "onboarding_completed",
+  /** ENG-1 — fires once when a new user first sees the Welcome step
+   *  (not on refresh-plan flow). Payload: `{ platform: "web" | "mobile" }`.
+   *  Used as the funnel entry event for onboarding completion rate. */
+  onboarding_started: "onboarding_started",
   onboarding_step_completed: "onboarding_step_completed",
   /** 2026-05-12 (premium-bar audit B9 #2): fires when the
    *  `/onboarding-v2` legacy redirect screen mounts. The route was
@@ -861,6 +865,16 @@ export const AnalyticsEvents = {
    * ENG-543 (in-flight dedup) actually paid off in production.
    */
   today_journal_loaded_ms: "today_journal_loaded_ms",
+  /** ENG-8 — server-side voice-log route completed. Payload:
+   * `{ totalElapsedMs, aiParseMs, verifyMs, itemCount, confidenceTier }`.
+   * Fires on success only (errors already captured by Sentry). Used to
+   * confirm <3s p95 latency target and track regression. */
+  voice_log_api_completed: "voice_log_api_completed",
+  /** ENG-6 — server-side photo-log route completed. Payload:
+   * `{ totalElapsedMs, itemCount, confidenceTier, tier }`.
+   * Fires on success only. Used to measure accuracy benchmark coverage
+   * and detect prompt-regression across model versions. */
+  photo_log_api_completed: "photo_log_api_completed",
 } as const;
 
 export type AnalyticsEventName = (typeof AnalyticsEvents)[keyof typeof AnalyticsEvents];

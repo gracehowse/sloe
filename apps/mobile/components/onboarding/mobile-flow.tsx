@@ -126,6 +126,17 @@ export function MobileFlow() {
     }
   }, [isWelcome, isRefreshPlan, go]);
 
+  // ENG-1 — fire onboarding_started once when a new user first sees the
+  // Welcome step. Excluded for refresh-plan flow (isRefreshPlan is null
+  // while loading, true for refresh, false for new users).
+  const startedFired = React.useRef(false);
+  React.useEffect(() => {
+    if (isWelcome && isRefreshPlan === false && !startedFired.current) {
+      startedFired.current = true;
+      track(AnalyticsEvents.onboarding_started, { platform: "mobile" });
+    }
+  }, [isWelcome, isRefreshPlan]);
+
   /**
    * MV-01 fix (audit 2026-04-28) — terminal-step completion handler.
    *
@@ -351,6 +362,15 @@ export function MobileFlow() {
   // The matching `shown` event fires from inside MobilePaceStep on
   // banner mount/reason change.
   const handleContinue = React.useCallback(() => {
+    // ENG-1 — fire step completion for all non-welcome steps. Welcome
+    // fires its own event from its CTA (welcome.tsx) because it calls
+    // go(1) directly rather than routing through this handler.
+    track(AnalyticsEvents.onboarding_step_completed, {
+      step_id: currentStepId,
+      step_index: displayIndex,
+      step_total: displayTotal,
+      platform: "mobile",
+    });
     if (currentStepId === "pace" && warning && targets) {
       track(AnalyticsEvents.onboarding_pace_below_safety_floor, {
         acted: "advanced",
@@ -389,6 +409,8 @@ export function MobileFlow() {
     go(1);
   }, [
     currentStepId,
+    displayIndex,
+    displayTotal,
     warning,
     targets,
     state.sex,

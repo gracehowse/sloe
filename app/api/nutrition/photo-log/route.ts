@@ -13,6 +13,8 @@ import { AiBudgetExceededError, callAiVision } from "@/lib/server/aiProvider";
 import { normalizeImageForAi } from "@/lib/server/normalizeImageForAi";
 import { captureRouteError } from "@/lib/observability/captureRouteError";
 import { isServerFeatureEnabled } from "@/lib/server/featureFlags";
+import { serverTrack } from "@/lib/analytics/serverTrack";
+import { AnalyticsEvents } from "@/lib/analytics/events";
 
 export const runtime = "nodejs";
 
@@ -49,7 +51,7 @@ export type {
   Range as KcalRange,
 } from "@/lib/nutrition/photoLogRanges";
 
-const SYSTEM_PROMPT = `You are a nutrition coach reading a photo of a meal.
+const SYSTEM_PROMPT = `You are a precise nutrition coach reading a photo of a meal.
 
 Return a single JSON object describing the items on the plate. Group items by macro role and give each item a calorie RANGE (not a single number) — wider range when you're less sure.
 
@@ -57,9 +59,9 @@ EXACT JSON SHAPE (no markdown fences, no prose):
 {
   "items": [
     {
-      "name": "string — e.g. 'Pita', 'Hummus', 'Cheese', 'Half egg'",
-      "category": "string — one of 'Bread + dips', 'Protein + fats', 'Extras', 'Drinks', 'Sweets'. Pick the one that fits best, OR supply your own short label if a different role fits the plate (e.g. 'Pasta + sauce', 'Rice + curry').",
-      "quantityHint": "string — verbal portion hint, e.g. '~40-50g', '1 piece', '1/2 cup', 'small handful'. OPTIONAL — omit if you can't tell.",
+      "name": "string — e.g. 'Grilled chicken breast', 'Cooked white rice', 'Pita', 'Half egg'",
+      "category": "string — pick the best label for the macro role this item plays on the plate. Use one of the defaults ('Protein', 'Carbs', 'Fats', 'Vegetables', 'Sauce + dressing', 'Extras', 'Drinks', 'Sweets') OR supply your own when the plate calls for it (e.g. 'Rice + curry', 'Pasta + sauce').",
+      "quantityHint": "string — verbal portion hint, e.g. '~150g', '1 breast', '1/2 cup', '~200ml'. OPTIONAL — omit only if truly impossible to judge.",
       "calories": { "low": number, "high": number },
       "protein": { "low": number, "high": number } | null,
       "carbs": { "low": number, "high": number } | null,
@@ -70,38 +72,79 @@ EXACT JSON SHAPE (no markdown fences, no prose):
   "addons": [
     {
       "name": "string — common pairing NOT in the photo, e.g. 'Glass of wine', 'Bun', 'Butter'",
-      "hint": "string — short reason or condition, e.g. 'if also drinking wine'. OPTIONAL.",
+      "hint": "string — short reason or condition. OPTIONAL.",
       "calories": { "low": number, "high": number }
     }
   ],
-  "notes": "string — short caveats, e.g. 'dressing not visible — likely +30-50 kcal'. OPTIONAL."
+  "notes": "string — short caveats, e.g. 'cooking oil not visible — likely +80-120 kcal', 'sauce portion unclear'. OPTIONAL."
 }
 
-RULES:
-- ONE item per visible food (don't merge "salami + cheese" — break them out).
+MACRO RULES:
+- ONE item per visible food (don't merge "chicken + rice" — break them out).
 - Calorie ranges should be tight when you're sure (within ~15% of midpoint), wider when you're not. NEVER widen ranges to "feel safer" — be honest about uncertainty.
 - "confidence" reflects how sure you are this item is the food you named at the portion you guessed:
    high: I'd bet money on this — clear visual, common food, standard portion.
    medium: probably correct, plausible alternatives exist.
    low: ambiguous — could be one of several things; portion is hard to read.
-- Macros (protein/carbs/fat) are OPTIONAL per item. Return null when you can't reasonably estimate.
-- "addons" are foods NOT visible in the photo that commonly go with what IS visible. Examples: a charcuterie plate -> wine; a burger photo with no bun -> bun; bread with no spread -> butter. SKIP this field (or return []) when nothing obvious applies.
-- "notes" is for short caveats only — "dressing not visible", "olive oil glaze likely +30 kcal". Skip when there's nothing to say.
+- Macro estimates (protein/carbs/fat) are REQUIRED for any food with a clear macro profile:
+   - Any visible meat, fish, egg, legume, or dairy → ALWAYS fill in protein (and fat where relevant).
+   - Any visible grain, bread, pasta, potato, rice, or noodle → ALWAYS fill in carbs.
+   - Any visible oil, butter, cheese, fatty meat, or dressing → ALWAYS fill in fat.
+   - Return null ONLY for genuinely mixed or ambiguous items where macro breakdown is unclear (e.g. a complex curry sauce with unknown ingredients).
+- "addons" are foods NOT visible in the photo that commonly accompany what IS visible. Examples: charcuterie board -> wine; burger with no bun -> bun; salad with no visible dressing -> dressing. SKIP when nothing obvious applies.
+- "notes" is for hidden-calorie caveats ONLY — "dressing not visible", "oil used in stir-fry not visible", "sauce portion unclear". Skip when there's nothing to say.
 - DO NOT return totals — the client computes them from items.
 
-CALIBRATION EXAMPLES (use these as reference points):
-- 1 piece of pita bread: 120-150 kcal
-- 2 tbsp hummus: 70-100 kcal
+HIDDEN CALORIES — flag these in "notes" when visible:
+- Cooking oil: stir-fry, sautéed, or pan-fried food typically uses 1-2 tbsp oil (+120-240 kcal, not visible).
+- Salad dressing: a dressed salad not showing the dressing adds ~30-80 kcal; "lightly dressed" ~30 kcal.
+- Cooking sauces (teriyaki, sweet chilli, oyster, hoisin): 1-2 tbsp = 30-80 kcal each.
+- Butter on toast / vegetables / rice: not always visible, +80-100 kcal per tbsp.
+
+PORTION HEURISTICS (use these to anchor your estimates):
+- A typical dinner plate is ~26cm across. A palm-sized protein is ~100-120g; a fist-sized carb portion is ~150-200g cooked.
+- Restaurant / takeaway rice: usually 200-250g cooked = 260-325 kcal.
+- Restaurant / takeaway pasta: usually 180-220g cooked = 290-350 kcal.
+
+CALIBRATION ANCHORS — anchor every estimate to the nearest reference:
+
+Proteins:
+- 100g skinless grilled chicken breast: 165 kcal | P:31g C:0g F:3.6g
+- 100g grilled salmon fillet: 208 kcal | P:20g C:0g F:13g
+- 100g cooked lean ground beef (mince): 215 kcal | P:26g C:0g F:12g
+- 100g cooked cod / white fish: 105 kcal | P:23g C:0g F:0.9g
+- 1 large egg (50g): 78 kcal | P:6g C:0g F:5g
+- 100g cooked prawns: 100 kcal | P:21g C:0g F:1g
+- 100g firm tofu: 76 kcal | P:8g C:2g F:4g
+- 100g cooked lentils / chickpeas: 120 kcal | P:9g C:20g F:2g
+
+Carbs:
+- 100g cooked white rice: 130 kcal | P:2.4g C:29g F:0.3g
+- 100g cooked brown rice: 120 kcal | P:2.6g C:25g F:0.9g
+- 100g cooked pasta (penne / spaghetti): 160 kcal | P:5.5g C:31g F:0.9g
+- 100g cooked noodles (egg / rice): 140 kcal | P:3g C:29g F:1g
+- 1 slice white bread (35g): 95 kcal | P:3g C:18g F:1g
+- 1 slice wholemeal bread (35g): 85 kcal | P:4g C:15g F:1.2g
+- 1 piece pita bread (~55g): 140 kcal | P:5g C:27g F:1g
+- Medium baked potato (200g): 175 kcal | P:4g C:40g F:0.2g
+- 100g cooked sweet potato: 90 kcal | P:2g C:21g F:0.1g
+- 1 burger bun (50g): 135 kcal | P:4g C:25g F:2g
+
+Fats + dairy:
+- 1 tbsp olive / vegetable oil (14g): 120 kcal | F:14g
+- 1 tbsp butter (14g): 100 kcal | F:11g
+- 30g cheddar cheese: 124 kcal | P:7.5g C:0g F:10g
+- 2 tbsp hummus (30g): 70-90 kcal | P:2g C:4g F:5g
+- 1 tbsp peanut butter (16g): 95 kcal | P:4g C:3g F:8g
+
+Snacks + extras:
+- 4 slices salami (~30g): 120-140 kcal | P:5g C:0g F:11g
+- 1 boiled egg: 78 kcal (half = 39 kcal)
+- 10 green / black olives (~30g): 35-50 kcal | F:3-5g
 - 2 tbsp tzatziki: 40-60 kcal
-- 2 tbsp tapenade: 60-90 kcal
 - 40-50g hard cheese (cheddar / manchego): 160-200 kcal
-- 4 slices salami: 120-150 kcal
-- 1 boiled egg: 70 kcal (so half = 35)
-- 10 olives: 35-50 kcal
-- Small Greek salad (feta + olive oil): 80-150 kcal
 - Glass of red wine (175ml): 120-150 kcal
-- 1 burger bun: 120-160 kcal
-- 1 tbsp butter: 100 kcal
+- 330ml beer (lager / ale): 130-160 kcal
 
 Return ONLY the JSON object.`;
 
@@ -109,6 +152,8 @@ const USER_PROMPT =
   "Identify every food item on this plate. Return the JSON described in the system message.";
 
 export async function POST(req: Request) {
+  const routeStart = Date.now();
+
   // 2026-05-16 (ENG-519) — kill switch for AI photo-log.
   if (await isServerFeatureEnabled("kill_photo_log")) {
     return NextResponse.json(
@@ -297,8 +342,20 @@ export async function POST(req: Request) {
     );
   }
 
-  return NextResponse.json({
-    ...(outcome.response satisfies PhotoLogRangedResponse),
-    freeQuotaRemaining,
+  const resp = outcome.response satisfies PhotoLogRangedResponse;
+  const confidenceTier =
+    resp.items.every((it) => it.confidence === "high")
+      ? "high"
+      : resp.items.some((it) => it.confidence === "low")
+        ? "low"
+        : "medium";
+
+  void serverTrack(AnalyticsEvents.photo_log_api_completed, userId, {
+    totalElapsedMs: Date.now() - routeStart,
+    itemCount: resp.items.length,
+    confidenceTier,
+    tier,
   });
+
+  return NextResponse.json({ ...resp, freeQuotaRemaining });
 }

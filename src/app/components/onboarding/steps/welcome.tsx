@@ -4,6 +4,8 @@ import * as React from "react";
 import { Check, Link2 } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { SupprWordmark } from "@/app/components/ui/suppr-mark";
+import { AnalyticsEvents } from "@/lib/analytics/events";
+import { track } from "@/lib/analytics/track";
 import { useOnboarding } from "../context";
 
 /**
@@ -18,7 +20,7 @@ import { useOnboarding } from "../context";
  */
 
 export function WelcomeStep() {
-  const { go } = useOnboarding();
+  const { go, displayIndex, displayTotal } = useOnboarding();
   return (
     <div className="relative h-full w-full overflow-hidden bg-background text-foreground">
       {/* Gradient washes — the only place product UI shows the
@@ -74,7 +76,14 @@ export function WelcomeStep() {
           <div className="mb-8 md:mb-10 flex flex-col sm:flex-row gap-3 md:gap-3.5">
             <Button
               size="lg"
-              onClick={() => go(1)}
+              onClick={() => {
+                track(AnalyticsEvents.onboarding_step_completed, {
+                  step_id: "welcome",
+                  step_index: displayIndex,
+                  step_total: displayTotal,
+                });
+                go(1);
+              }}
               className="h-12 md:h-14 px-6 md:px-7 text-base font-bold"
             >
               Join the club — free

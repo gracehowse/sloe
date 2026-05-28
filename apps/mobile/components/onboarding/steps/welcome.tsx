@@ -5,6 +5,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { Accent, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { track } from "@/lib/analytics";
+import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { SupprMark } from "@/components/SupprMark";
 import { useOnboarding } from "../context";
 
@@ -17,7 +19,7 @@ import { useOnboarding } from "../context";
  */
 
 export function MobileWelcomeStep() {
-  const { go } = useOnboarding();
+  const { go, displayIndex, displayTotal } = useOnboarding();
   const colors = useThemeColors();
   const router = useRouter();
   // 2026-05-14 (premium-bar audit B1 #2): dampen the brand-gradient
@@ -102,7 +104,15 @@ export function MobileWelcomeStep() {
             (N=1 tester today), and DC12 calm voice rejects
             unsubstantiated growth puffery. */}
         <Pressable
-          onPress={() => go(1)}
+          onPress={() => {
+            track(AnalyticsEvents.onboarding_step_completed, {
+              step_id: "welcome",
+              step_index: displayIndex,
+              step_total: displayTotal,
+              platform: "mobile",
+            });
+            go(1);
+          }}
           accessibilityRole="button"
           accessibilityLabel="Get started"
           style={({ pressed }) => ({
