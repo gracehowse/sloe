@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -34,7 +34,7 @@ import type {
   PlanImportVerifiedRecipe,
 } from "@suppr/shared/planning/planImport/types";
 import { MEAL_PREP_WEEK1_PASTE } from "@suppr/shared/planning/planImport/fixtures/mealPrepWeek1";
-import { track } from "@/lib/analytics";
+import { isFeatureEnabled, track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 
 type PlanImportParseApiResponse = {
@@ -76,6 +76,13 @@ export default function PlanImportScreen() {
   const [userTargetKcal] = useState(2000);
 
   const apiBase = getSupprApiBase();
+
+  // ENG-742 — deep links must respect the same flag as the Plan entry points.
+  useEffect(() => {
+    if (!isFeatureEnabled("plan_import_enabled")) {
+      router.replace("/(tabs)/planner");
+    }
+  }, [router]);
 
   const extractSourceText = useCallback(
     async (file: PickedFile, kind: "pdf" | "image"): Promise<string | null> => {

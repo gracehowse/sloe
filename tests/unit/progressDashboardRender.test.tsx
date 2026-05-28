@@ -1,0 +1,147 @@
+/**
+ * ProgressDashboard — render harness (ENG-762).
+ *
+ * Mocks auth + Supabase profile load so we can assert on the Progress
+ * shell without a live session. Heavy chart/digest children keep their
+ * own unit tests; this file pins the composition root wiring.
+ */
+import * as React from "react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
+
+void React;
+
+const { mockListSavedMeals, profileRow } = vi.hoisted(() => ({
+  mockListSavedMeals: vi.fn().mockResolvedValue([]),
+  profileRow: {
+    weight_kg: 72,
+    goal_weight_kg: 68,
+    plan_pace: "steady",
+    weight_kg_by_day: { "2026-05-27": 72 },
+    steps_by_day: {},
+    daily_steps_goal: 8000,
+    body_fat_pct: null,
+    goal: "lose",
+    sex: "female",
+    height_cm: 165,
+    age: 30,
+    activity_level: "moderate",
+    adaptive_tdee: null,
+    adaptive_tdee_confidence: null,
+    adaptive_tdee_updated_at: null,
+    week_start_day: "monday",
+    streak_freeze_budget_max: 3,
+    streak_freezes_earned_at: [],
+    streak_freezes_used_history: [],
+    weekly_recap_last_seen_week_key: null,
+    milestone_30_shown_at: null,
+  },
+}));
+
+const appDataState = {
+  current: {
+    nutritionTargets: { calories: 1800, protein: 130, carbs: 180, fat: 55, fiber: 30, waterMl: 2000 },
+    nutritionByDay: {
+      "2026-05-27": [{ id: "e1", calories: 450, protein: 30, carbs: 40, fat: 12 }],
+    },
+    profileMeasurementSystem: "metric" as const,
+  },
+};
+
+vi.mock("../../src/context/AppDataContext.tsx", () => ({
+  useAppData: () => appDataState.current,
+}));
+
+vi.mock("../../src/context/AuthSessionContext.tsx", () => ({
+  useAuthSession: () => ({ authedUserId: "user-1", authUserCreatedAt: null }),
+}));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ replace: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+}));
+
+vi.mock("../../src/lib/analytics/track.ts", () => ({
+  track: vi.fn(),
+  isFeatureEnabled: vi.fn(() => false),
+}));
+
+vi.mock("../../src/lib/nutrition/savedMeals.ts", () => ({
+  listSavedMeals: mockListSavedMeals,
+}));
+
+vi.mock("../../src/lib/nutrition/dailyTargetRead.ts", () => ({
+  getDailyTargets: vi.fn().mockResolvedValue({}),
+}));
+
+vi.mock("../../src/lib/nutrition/refreshAdaptiveTdee.ts", () => ({
+  refreshAdaptiveTdeeForUser: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("../../src/hooks/useMilestone30DayOnProgress.ts", () => ({
+  useMilestone30DayOnProgress: () => ({
+    open: false,
+    dismiss: vi.fn(),
+    maybeOpen: vi.fn(),
+  }),
+}));
+
+vi.mock("../../src/app/components/HouseholdBar.tsx", () => ({
+  HouseholdBar: () => null,
+}));
+
+vi.mock("recharts", () => ({
+  ResponsiveContainer: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  LineChart: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  Line: () => null,
+  XAxis: () => null,
+  YAxis: () => null,
+  Tooltip: () => null,
+  ReferenceLine: () => null,
+  BarChart: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  Bar: () => null,
+}));
+
+const profileMaybeSingle = vi.fn().mockResolvedValue({ data: profileRow, error: null });
+
+vi.mock("../../src/lib/supabase/browserClient.ts", () => ({
+  supabase: {
+    from: vi.fn(() => ({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          maybeSingle: profileMaybeSingle,
+          single: profileMaybeSingle,
+        })),
+        in: vi.fn(() => ({
+          maybeSingle: profileMaybeSingle,
+        })),
+      })),
+      update: vi.fn(() => ({
+        eq: vi.fn().mockResolvedValue({ error: null }),
+      })),
+    })),
+  },
+}));
+
+import { ProgressDashboard } from "../../src/app/components/ProgressDashboard";
+
+describe("ProgressDashboard render harness", () => {
+  beforeEach(() => {
+    mockListSavedMeals.mockClear();
+    profileMaybeSingle.mockResolvedValue({ data: profileRow, error: null });
+  });
+
+  it("renders the Progress header after profile load", async () => {
+    render(<ProgressDashboard />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId("progress-header")[0]).toHaveTextContent("Progress");
+    });
+  });
+
+  it("shows the range picker once loaded", async () => {
+    render(<ProgressDashboard />);
+    await waitFor(() => {
+      expect(screen.getByTestId("progress-range-picker")).toBeInTheDocument();
+    });
+  });
+});

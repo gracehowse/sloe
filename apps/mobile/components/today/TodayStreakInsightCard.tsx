@@ -60,7 +60,7 @@ export function TodayStreakInsightCard({
           {streakDays}-day logging streak
         </Text>
         <Text style={{ fontSize: 11, color: textSecondaryColor, marginTop: 1 }}>
-          You&apos;ve logged meals {streakDays} days in a row.
+          You&apos;ve logged {streakDays} day{streakDays !== 1 ? "s" : ""} in a row.
         </Text>
         {freezesAvailableToday > 0 ? (
           <Badge

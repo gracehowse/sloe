@@ -1,3 +1,9 @@
+/**
+ * TDEE edge cases — Atwater reconciliation, clamp floors, budget safety.
+ *
+ * Note: file was historically named `rateLimitFallback.test.ts` but never
+ * contained rate-limit assertions (ENG-689 test-debt cleanup).
+ */
 import { describe, it, expect } from "vitest";
 import { budgetSafety, calculateBMR, calculateMacros, calculateTDEE } from "@/lib/nutrition/tdee";
 

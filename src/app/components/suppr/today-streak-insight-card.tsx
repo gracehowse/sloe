@@ -35,7 +35,7 @@ export function TodayStreakInsightCard({
           {streakDays}-day logging streak
         </p>
         <p className="text-[11px] text-muted-foreground mt-0.5">
-          You&apos;ve logged meals {streakDays} day{streakDays !== 1 ? "s" : ""} in a row.
+          You&apos;ve logged {streakDays} day{streakDays !== 1 ? "s" : ""} in a row.
         </p>
         {freezesAvailableToday > 0 ? (
           <Badge

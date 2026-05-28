@@ -36,6 +36,12 @@ import {
   recipeFitsMealSlot,
   type PlannerMealSlot,
 } from "../../lib/planning/generateMealPlan.ts";
+import {
+  DEFAULT_PLANNER_BANDS,
+  refitDayMealsToTargets,
+  scaleMacros,
+} from "../../lib/nutrition/mealPlanAlgo.ts";
+import { coerceMacrosWhenCaloriesButNoGrams } from "../../lib/nutrition/coerceRecipeMacrosForPlanning.ts";
 import type { DayPlan } from "../../types/recipe.ts";
 
 interface MealPlannerProps {
@@ -399,30 +405,77 @@ export const MealPlanner = memo(function MealPlanner({
 
   const pickSwap = (recipeId: string) => {
     if (!swapFor) return;
-    const next = [...discoverRecipes, ...savedRecipesForLibrary].find((r) => r.id === recipeId);
+    const pool = [...discoverRecipes, ...savedRecipesForLibrary];
+    const next = pool.find((r) => r.id === recipeId);
     if (!next) {
       setSwapFor(null);
       return;
     }
+    const baseFromRecipe = (r: {
+      calories: number;
+      protein: number;
+      carbs: number;
+      fat: number;
+      fiberG?: number;
+    }) => {
+      const c = coerceMacrosWhenCaloriesButNoGrams({
+        calories: r.calories,
+        protein: r.protein,
+        carbs: r.carbs,
+        fat: r.fat,
+        fiberG: r.fiberG,
+      });
+      return {
+        calories: c.calories,
+        protein: c.protein,
+        carbs: c.carbs,
+        fat: c.fat,
+        fiberG: c.fiberG ?? 0,
+      };
+    };
+    const plannerTargets = {
+      calories: nutritionTargets.calories,
+      protein: nutritionTargets.protein,
+      carbs: nutritionTargets.carbs,
+      fat: nutritionTargets.fat,
+      fiber: nutritionTargets.fiber ?? 28,
+      ...DEFAULT_PLANNER_BANDS,
+    };
     setMealPlan((prev) => {
       if (!prev) return prev;
       return prev.map((dp) => {
         if (dp.day !== swapFor.day) return dp;
-        const meals = dp.meals.map((m, idx) =>
-          idx === swapFor.mealIndex
-            ? {
-                ...m,
-                recipeTitle: next.title,
-                recipeId: next.id,
-                calories: next.calories,
-                protein: next.protein,
-                carbs: next.carbs,
-                fat: next.fat,
-                portionMultiplier: 1,
-              }
-            : m,
-        );
-        const totals = meals.reduce(
+        const baseRecipes = dp.meals.map((m, mi) => {
+          if (mi === swapFor.mealIndex) return baseFromRecipe(next);
+          const ref = pool.find((r) => r.id === m.recipeId);
+          if (ref) return baseFromRecipe(ref);
+          return {
+            calories: m.calories,
+            protein: m.protein,
+            carbs: m.carbs,
+            fat: m.fat,
+            fiberG: (m as { fiberG?: number }).fiberG ?? 0,
+          };
+        });
+        const fit = refitDayMealsToTargets({ recipes: baseRecipes, targets: plannerTargets });
+        const newMeals = dp.meals.map((m, mi) => {
+          const scaled = scaleMacros(baseRecipes[mi]!, fit.multipliers[mi] ?? 1);
+          return {
+            ...m,
+            ...(mi === swapFor.mealIndex
+              ? {
+                  recipeTitle: next.title,
+                  recipeId: next.id,
+                }
+              : {}),
+            calories: scaled.calories,
+            protein: scaled.protein,
+            carbs: scaled.carbs,
+            fat: scaled.fat,
+            portionMultiplier: undefined,
+          };
+        });
+        const totals = newMeals.reduce(
           (acc, m) => {
             acc.calories += Math.max(0, Math.round(Number(m.calories) || 0));
             acc.protein += Math.max(0, Math.round(Number(m.protein) || 0));
@@ -432,7 +485,12 @@ export const MealPlanner = memo(function MealPlanner({
           },
           { calories: 0, protein: 0, carbs: 0, fat: 0 },
         );
-        return { ...dp, meals, totals };
+        return {
+          ...dp,
+          meals: newMeals,
+          totals,
+          ...(fit.residualProteinGap < 0 ? { residualProteinGap: fit.residualProteinGap } : {}),
+        };
       });
     });
     toast.success("Swapped meal");
