@@ -19,6 +19,8 @@ export const DIETARY_PREFERENCE_ENTRIES = [
   { id: "pescatarian", label: "Pescatarian" },
   { id: "halal", label: "Halal" },
   { id: "kosher", label: "Kosher" },
+  { id: "jain", label: "Jain" },
+  { id: "hindu-veg", label: "Hindu vegetarian" },
   // Allergen-adjacent / dietary restriction (legacy aliases kept).
   // The `gluten-free` slug stays as an internal filter flag, but the
   // user-facing label uses descriptive ingredient-composition language:

@@ -3555,10 +3555,10 @@ export default function TrackerScreen() {
     const JOURNAL_ENTRIES_TIMEOUT_MS = 45_000;
     const MEAL_PLAN_DAYS_TIMEOUT_MS = 15_000;
     // 2026-05-15 (ENG-542): window to the last 35 days. Covers the
-    // week-strip (7d) + trailing analytics (~28d). Previously this
-    // query pulled up to 20,000 rows on every Today focus — fine at
-    // N=1, breaks at 1k DAU when an MFP-import user lands with 4k+
-    // entries.
+    // week-strip (7d) + trailing analytics (~28d). The .limit(20_000)
+    // guard removed (ENG-705): the 35-day date filter is the correct
+    // bound; the row cap was misleading and would silently truncate a
+    // dense import user within the window.
     const WINDOW_DAYS = 35;
     const windowStart = new Date();
     windowStart.setUTCHours(0, 0, 0, 0);
@@ -3575,8 +3575,7 @@ export default function TrackerScreen() {
         .eq("user_id", userId)
         .gte("date_key", windowStartKey)
         .order("date_key", { ascending: true })
-        .order("created_at", { ascending: true })
-        .limit(20_000))();
+        .order("created_at", { ascending: true }))();
     const planDaysPromise = (async () =>
       await supabase
         .from("meal_plan_days")
