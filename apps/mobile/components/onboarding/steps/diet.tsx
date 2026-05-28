@@ -16,6 +16,8 @@ const DIETS: { id: string; title: string; icon: keyof typeof Ionicons.glyphMap }
   { id: "mediterranean", title: "Mediterranean", icon: "sunny-outline" },
   { id: "halal", title: "Halal", icon: "moon-outline" },
   { id: "kosher", title: "Kosher", icon: "star-outline" },
+  { id: "jain", title: "Jain", icon: "diamond-outline" },
+  { id: "hindu-veg", title: "Hindu vegetarian", icon: "flower-outline" },
 ];
 
 // T12 (2026-04-24) — 14 EU FIC / UK FSA regulated allergens. Mirrors
