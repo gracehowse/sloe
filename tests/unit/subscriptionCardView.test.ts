@@ -156,7 +156,7 @@ describe("resolveSubscriptionCardView — active", () => {
     expect(view.kind).toBe("active");
     if (view.kind !== "active") throw new Error("expected active");
     expect(view.statusLine).toBe(
-      "Suppr Pro — billed monthly.\n" +
+      "Pro — billed monthly.\n" +
         "Renews automatically on 15 June 2026 at 29.99 GBP, " +
         "and on each month after that until you cancel.",
     );
@@ -239,7 +239,7 @@ describe("resolveSubscriptionCardView — trial", () => {
     expect(view.kind).toBe("trial");
     if (view.kind !== "trial") throw new Error("expected trial");
     expect(view.statusLine).toBe(
-      "Suppr Pro — free trial.\n" +
+      "Pro — free trial.\n" +
         "Your trial ends 1 June 2026. " +
         "We'll charge 29.99 GBP on that date, then 29.99 GBP each month until you cancel.",
     );
@@ -259,7 +259,7 @@ describe("resolveSubscriptionCardView — canceled-but-active", () => {
     expect(view.kind).toBe("canceled");
     if (view.kind !== "canceled") throw new Error("expected canceled");
     expect(view.statusLine).toBe(
-      "Suppr Pro — cancelled.\n" +
+      "Pro — cancelled.\n" +
         "You'll keep Pro until 15 June 2026. " +
         "Your subscription will not renew and you won't be charged again.",
     );

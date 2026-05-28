@@ -1164,15 +1164,13 @@ function ProgressDashboardContent() {
         <div className="hidden md:block md:col-span-2">
           <TrendSummaryCardWeb
           daysHitCalorieTarget={(() => {
-            // "Hit calorie target" = within ±10% of day's target
-            // calories (whichever target the week bundle resolved —
-            // snapshot or fallback). Matches the band used by the
-            // daily calories chart.
+            // "Hit" = at or under the day's effective target (snapshot or
+            // fallback). The old ±10% window false-negatives on days you
+            // were well under (e.g. 938 vs 1,100 effective = miss at 14.7%).
             let n = 0;
             for (const d of weekStatsBundle.days) {
-              if (d.targetCalories <= 0) continue;
-              const pct = Math.abs(d.calories - d.targetCalories) / d.targetCalories;
-              if (pct <= 0.1 && d.calories > 0) n += 1;
+              if (d.targetCalories <= 0 || d.calories <= 0) continue;
+              if (d.calories <= d.targetCalories) n += 1;
             }
             return n;
           })()}
@@ -2195,14 +2193,25 @@ function ProgressDashboardContent() {
                 Previously a single sentence read as past observation +
                 future promise; now it's separated into two clauses,
                 conditional. */}
-            {dailyProjection && (
-              <div className="mt-3 pt-3 border-t border-border">
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Last 7 days averaged {avgRecentCals.toLocaleString()} kcal/day. On that trend you&apos;d reach{" "}
-                  <span className="font-bold text-primary ph-mask">{formatWeight(dailyProjection.projectedWeightKg)}</span> in ~{dailyProjection.projectionWeeks} weeks.
-                </p>
-              </div>
-            )}
+            {dailyProjection && maintenanceTdeeKcal != null && (() => {
+              const avgDeficit = Math.round(maintenanceTdeeKcal - avgRecentCals);
+              const deficitLabel =
+                avgDeficit > 0
+                  ? `avg deficit ${avgDeficit.toLocaleString()} kcal/day`
+                  : avgDeficit < 0
+                    ? `avg surplus ${Math.abs(avgDeficit).toLocaleString()} kcal/day`
+                    : "at maintenance";
+              return (
+                <div className="mt-3 pt-3 border-t border-border">
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    {/* Deficit is what drives the projection — show it so the
+                        user can see why the estimate moves at this rate. */}
+                    Last 7 days averaged {avgRecentCals.toLocaleString()} kcal/day — {deficitLabel}. On that trend you&apos;d reach{" "}
+                    <span className="font-bold text-primary ph-mask">{formatWeight(dailyProjection.projectedWeightKg)}</span> in ~{dailyProjection.projectionWeeks} weeks.
+                  </p>
+                </div>
+              );
+            })()}
           </div>
         );
       })()}

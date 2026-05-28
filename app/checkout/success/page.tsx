@@ -33,7 +33,7 @@ import { buildReceiptTrustCopy } from "../../../src/lib/landing/paywallTrust.ts"
  */
 
 export const metadata: Metadata = {
-  title: "Welcome to Suppr Pro",
+  title: "Welcome to Pro",
   description: "Your subscription is active. Cancel anytime, 7-day refund.",
 };
 
@@ -93,7 +93,7 @@ export default async function CheckoutSuccessPage({
             You&rsquo;re in
           </h1>
           <p className="text-base text-muted-foreground">
-            Welcome to Suppr Pro. Here&rsquo;s exactly what happens next.
+            Welcome to Pro. Here&rsquo;s exactly what happens next.
           </p>
         </div>
 

@@ -378,7 +378,7 @@ export function UpgradePaywallDialog({
   // PR-01 (audit 2026-04-28): single Pro pitch. The earlier two-
   // variant logic is gone; if you're seeing this dialog, you're being
   // shown the Pro upsell.
-  const heroPill = "Suppr Pro";
+  const heroPill = "Pro";
   const heroHeadline = "Log faster. Let the AI do the work.";
   const heroSubtitle =
     "Snap a photo or say what you ate. Pro handles the rest — and unlocks the full meal-planning loop.";
@@ -396,7 +396,7 @@ export function UpgradePaywallDialog({
   // commitment to the user. No trial on web upgrade-dialog flow
   // today; if/when added, append the trial-end + first-charge clause
   // from mobile.
-  const productName = "Suppr Pro";
+  const productName = "Pro";
   const periodNoun = isAnnual ? "year" : "month";
   const altLine = isAnnual
     ? ` (or ${proMonthlyPrice} per month on the monthly plan)`

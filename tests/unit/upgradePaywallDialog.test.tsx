@@ -287,7 +287,7 @@ describe("UpgradePaywallDialog (PR-01 post-collapse, 2026-04-28)", () => {
     render(<Harness userTier="free" />);
     const renewal = screen.getByTestId("upsell-renewal-note");
     expect(renewal).toHaveTextContent(
-      /Suppr Pro renews automatically at .* per month until cancelled\./i,
+      /Pro renews automatically at .* per month until cancelled\./i,
     );
     expect(renewal).toHaveTextContent(/Cancel anytime from Account → Billing/i);
     expect(renewal).toHaveTextContent(/Prices include any applicable VAT/i);
