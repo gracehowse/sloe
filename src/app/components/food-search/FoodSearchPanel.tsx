@@ -955,49 +955,70 @@ export function FoodSearchPanel({
             q,
           )
         : Promise.resolve([] as CustomFood[]);
-      let usda: Awaited<ReturnType<typeof searchUsda>> = [];
-      let off: Awaited<ReturnType<typeof searchOff>> = [];
-      let edamam: Awaited<ReturnType<typeof searchEdamam>> = [];
-      let fatsecret: Awaited<ReturnType<typeof searchFatSecret>> = [];
-      let custom: CustomFood[] = [];
-      try {
-        [usda, off, edamam, fatsecret, custom] = await Promise.all([
-          searchUsda(q, 1),
-          searchOff(q, 1),
-          searchEdamam(q, 1),
-          searchFatSecret(q, 1),
-          customPromise,
-        ]);
-      } catch (e) {
-        console.warn("[FoodSearchPanel] initial search failed:", e);
-        // Defaults stay []; merge below is empty + the user sees
-        // the no-result state instead of a stuck spinner.
-      } finally {
-        setLoading(false);
-      }
+      // ENG-686: stream first results as each source resolves instead of
+      // gating on the slowest provider. Mirrors the Promise.race loop in
+      // mobile's searchFoods — users see USDA / FatSecret hits in <1s
+      // without waiting for Edamam / OFF's network round-trip.
+      //
+      // backfillRef is shared with backfillMissingMacros (it increments
+      // the same counter). Capture gen BEFORE any backfill call so the
+      // stale-render guard is stable throughout the streaming loop.
+      const gen = backfillRef.current;
       const generic = buildGenericMatchRow(q);
-      const merged = mergeAndDedup(rankQ, usda, off, edamam, fatsecret, custom, 25, generic ? [generic] : []);
-      setResults(merged);
-      hasMoreRef.current = usda.length + off.length + edamam.length + fatsecret.length > 0;
-      backfillMissingMacros(merged);
-      // No-result loop (audit move-blocker #2, 2026-05-02): when the
-      // merged search returns 0 hits across every source, emit a
-      // single `food_search_no_result` event so backfill
-      // prioritisation sees the dictionary gaps. Dedup'd per
-      // (case-insensitive) query.
-      const dedupKey = q.toLowerCase();
-      if (merged.length === 0 && lastNoResultQueryRef.current !== dedupKey) {
-        lastNoResultQueryRef.current = dedupKey;
-        dictionaryAddRequestedRef.current = null;
-        setDictionaryAddRequested(null);
-        track(AnalyticsEvents.food_search_no_result, {
-          query: q,
-          len: q.length,
-          source: "web",
-        });
-      } else if (merged.length > 0 && lastNoResultQueryRef.current === dedupKey) {
-        lastNoResultQueryRef.current = null;
+
+      let partialUsda: Awaited<ReturnType<typeof searchUsda>> = [];
+      let partialOff: Awaited<ReturnType<typeof searchOff>> = [];
+      let partialEdamam: Awaited<ReturnType<typeof searchEdamam>> = [];
+      let partialFatSecret: Awaited<ReturnType<typeof searchFatSecret>> = [];
+
+      // Re-render with whatever has arrived so far.
+      // `backfillMissingMacros` is called only once after the final render
+      // (it increments backfillRef — calling it mid-loop would break the
+      // gen === backfillRef.current guard below).
+      const renderMerged = (custom: CustomFood[], final: boolean): SearchResult[] => {
+        if (backfillRef.current !== gen) return [];
+        const merged = mergeAndDedup(rankQ, partialUsda, partialOff, partialEdamam, partialFatSecret, custom, 25, generic ? [generic] : []);
+        setResults(merged);
+        if (final) {
+          hasMoreRef.current =
+            partialUsda.length + partialOff.length + partialEdamam.length + partialFatSecret.length > 0;
+          const dedupKey = q.toLowerCase();
+          if (merged.length === 0 && lastNoResultQueryRef.current !== dedupKey) {
+            lastNoResultQueryRef.current = dedupKey;
+            dictionaryAddRequestedRef.current = null;
+            setDictionaryAddRequested(null);
+            track(AnalyticsEvents.food_search_no_result, { query: q, len: q.length, source: "web" });
+          } else if (merged.length > 0 && lastNoResultQueryRef.current === dedupKey) {
+            lastNoResultQueryRef.current = null;
+          }
+        }
+        return merged;
+      };
+
+      // Label each external source so Promise.race can identify the winner.
+      const usdaL = searchUsda(q, 1).catch(() => [] as typeof partialUsda).then(r => { partialUsda = r; return "usda" as const; });
+      const offL = searchOff(q, 1).catch(() => [] as typeof partialOff).then(r => { partialOff = r; return "off" as const; });
+      const edamamL = searchEdamam(q, 1).catch(() => [] as typeof partialEdamam).then(r => { partialEdamam = r; return "edamam" as const; });
+      const fatsecretL = searchFatSecret(q, 1).catch(() => [] as typeof partialFatSecret).then(r => { partialFatSecret = r; return "fatsecret" as const; });
+      const sourceMap = { usda: usdaL, off: offL, edamam: edamamL, fatsecret: fatsecretL } as const;
+      const pending = new Set<Promise<keyof typeof sourceMap>>([usdaL, offL, edamamL, fatsecretL]);
+
+      let firstArrived = false;
+      while (pending.size > 0) {
+        const done = await Promise.race(pending);
+        pending.delete(sourceMap[done]);
+        if (!firstArrived && backfillRef.current === gen) {
+          firstArrived = true;
+          setLoading(false);
+        }
+        renderMerged([], false);
       }
+      if (!firstArrived) setLoading(false);
+
+      // Await custom then do the final re-render with custom merged in.
+      const customResult = await customPromise.catch(() => [] as CustomFood[]);
+      const finalMerged = renderMerged(customResult, true);
+      if (finalMerged.length > 0) backfillMissingMacros(finalMerged);
     }, 400);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);

@@ -491,32 +491,36 @@ describe("FoodSearchPanel — pagination", () => {
 
 describe("FoodSearchPanel — loading + error states", () => {
   it("shows the centered spinner while the first-page search is in flight", async () => {
-    let resolveUsda: ((value: Response) => void) | null = null;
-    const usdaPending = new Promise<Response>((resolve) => {
-      resolveUsda = resolve;
-    });
+    // ENG-686: the panel now streams results as each source resolves — the
+    // spinner goes away as soon as the FIRST source responds. To test that
+    // the spinner is visible while searches are in flight, ALL sources must
+    // be held pending (not just USDA), otherwise OFF / Edamam resolve via
+    // the safety-net branch and trigger setLoading(false) immediately.
+    let releaseAll: (() => void) | null = null;
+    const gate = new Promise<void>((resolve) => { releaseAll = resolve; });
+
     vi.stubGlobal(
       "fetch",
-      makeFetchStub({
-        "/api/usda/search": () => usdaPending,
-        "openfoodfacts.org": () => jsonResponse({ products: [] }),
-        "/api/edamam/search": () => jsonResponse({ ok: true, hits: [] }),
+      vi.fn(async () => {
+        await gate;
+        return new Response(JSON.stringify({ ok: true, hits: [], products: [] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
       }),
     );
 
     const { container } = renderPanel({ query: "tilapia raw" });
 
-    // Past the debounce — search has fired but USDA hasn't resolved.
+    // Past the debounce — search has fired but no source has resolved yet.
     await act(async () => {
       await vi.advanceTimersByTimeAsync(450);
     });
 
     expect(container.querySelector(".animate-spin")).not.toBeNull();
 
-    // Resolve the pending fetch so the test cleans up.
-    resolveUsda?.(
-      jsonResponse({ ok: true, hits: [USDA_HIT_TILAPIA] }),
-    );
+    // Release all sources so the test cleans up.
+    releaseAll?.();
     await act(async () => {
       await vi.advanceTimersByTimeAsync(0);
     });
