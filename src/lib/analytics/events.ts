@@ -11,28 +11,10 @@ export const AnalyticsEvents = {
    *  Payload: `{ user_id, tier, product_id, platform }`. */
   subscription_renewed: "subscription_renewed",
   checkout_started: "checkout_started",
-  // [RENAME-CYCLE 2026-04-18 → retire 2026-05-18] Fires alongside
-  // `checkout_completed`. Drop the `_return` suffix once dashboards have
-  // migrated. See `docs/planning/analytics-dashboards-plan-2026-04-18.md` §4.
-  checkout_completed_return: "checkout_completed_return",
-  /** Canonical checkout success event (rename-cycle target for the legacy
-   *  `checkout_completed_return`). Added 2026-04-18 alongside the 30-day
-   *  dual-emit. Retire the old name 2026-05-18. */
   checkout_completed: "checkout_completed",
   recipe_saved: "recipe_saved",
   food_logged: "food_logged",
   barcode_lookup: "barcode_lookup",
-  // [RENAME-CYCLE 2026-04-18 → retire 2026-05-18] Fires alongside
-  // `recipe_imported { source: "url" }`. Collapsed event lands in the
-  // registry below.
-  recipe_import_url: "recipe_import_url",
-  // [RENAME-CYCLE 2026-04-18 → retire 2026-05-18] Fires alongside
-  // `recipe_imported { source: "image" }`.
-  recipe_import_image: "recipe_import_image",
-  /** Canonical recipe-import event (rename-cycle target for
-   *  `recipe_import_url` / `recipe_import_image`). Payload:
-   *  `{ source: "url" | "image"; ...originalPayload }`. Retire the two
-   *  legacy events on 2026-05-18. */
   recipe_imported: "recipe_imported",
   /**
    * Recipe-wave (2026-05-10) — per-stage telemetry for the recipe-import
@@ -76,18 +58,9 @@ export const AnalyticsEvents = {
   shopping_list_generated: "shopping_list_generated",
   smart_suggestion_saved: "smart_suggestion_saved",
   profile_targets_saved: "profile_targets_saved",
-  // [RENAME-CYCLE 2026-04-18 → retire 2026-05-18] Ambiguous vs
-  // `cook_mode_opened` — fires alongside `cook_mode_first_step_advanced`.
-  cook_mode_started: "cook_mode_started",
-  /** Canonical cook-mode engagement event (rename target for
-   *  `cook_mode_started`). Same payload shape. Retire old name 2026-05-18. */
   cook_mode_first_step_advanced: "cook_mode_first_step_advanced",
   cook_mode_completed: "cook_mode_completed",
   cook_mode_meal_logged: "cook_mode_meal_logged",
-  // [RENAME-CYCLE 2026-04-18 → retire 2026-05-18] Fires alongside
-  // `onboarding_step_completed` — drop the `first_run_` prefix so
-  // onboarding events are consistent.
-  first_run_step_completed: "first_run_step_completed",
   empty_state_cta_clicked: "empty_state_cta_clicked",
   pricing_page_viewed: "pricing_page_viewed",
   recipe_page_viewed: "recipe_page_viewed",
@@ -142,12 +115,6 @@ export const AnalyticsEvents = {
    *  2026-04-19 per analytics-engineer round-1 decision on the
    *  paywall v2 spec §11 events. */
   paywall_period_changed: "paywall_period_changed",
-  // [RENAME-CYCLE 2026-04-18 → retire 2026-05-18] Fires alongside
-  // `onboarding_checklist_completed`.
-  first_run_checklist_completed: "first_run_checklist_completed",
-  /** Canonical onboarding-checklist completion event (rename target for
-   *  `first_run_checklist_completed`). Same payload shape. Retire old
-   *  name 2026-05-18. */
   onboarding_checklist_completed: "onboarding_checklist_completed",
   meal_copied: "meal_copied",
   day_duplicated: "day_duplicated",
@@ -472,26 +439,21 @@ export const AnalyticsEvents = {
    * (Batch 5.12). Payload: `{ kind: "log_water" | "start_fast" | "today_remaining" }`.
    * Mobile-only. */
   siri_action_invoked: "siri_action_invoked",
-  /** User opened the voice-log modal (Batch 5.13). Mic pressed or text
-   * fallback launched. No payload — funnel entry.
-   *
-   * [RENAME-CYCLE 2026-04-18 → retire 2026-05-18] Fires alongside
-   * `ai_voice_log_started` — prefix asymmetry vs `ai_photo_log_*`
-   * (both are Pro AI surfaces). See plan doc §4. */
-  voice_log_started: "voice_log_started",
   /** User tapped "Log all" on the voice-log review sheet (Batch 5.13).
    * Payload: `{ itemCount, avgConfidence }` — avgConfidence is the mean
    * of the committed items' confidence values, 0–1.
    *
-   * [RENAME-CYCLE 2026-04-18 → retire 2026-05-18] Fires alongside
-   * `ai_voice_log_committed`. */
+   * Kept for PostHog dashboard stability — no longer dual-emitted from
+   * call sites (ENG-711, 2026-05-27). Use `ai_voice_log_committed` for
+   * new instrumentation. */
   voice_log_committed: "voice_log_committed",
   /** Free-tier user tapped the voice-log entry point and was shown the
    * Pro paywall instead (Batch 5.13). No payload. Separate event from
    * `paywall_viewed` so we can measure conversion per feature.
    *
-   * [RENAME-CYCLE 2026-04-18 → retire 2026-05-18] Fires alongside
-   * `ai_voice_log_paywalled`. */
+   * Funnel-entry signal kept for dashboard parity — fires from
+   * `AiPaywallSheet` / `AiPaywallDialog` alongside `ai_voice_log_paywalled`
+   * (ENG-711, 2026-05-27). */
   voice_log_paywalled: "voice_log_paywalled",
   /** Canonical voice-log-started event (rename target — prefix
    *  symmetry with `ai_photo_log_started`). Same payload shape. Retire
@@ -980,28 +942,24 @@ export type ConfidenceBucket = "high" | "medium" | "low";
  *  with a `source` property. */
 export type RecipeImportedSource = "url" | "image";
 
-// -- Rename-cycle retirement (target 2026-05-18): legacy event names --------
+// -- Rename-cycle status (ENG-711, retired 2026-05-27) --------
 //
-// The following legacy event names are being dual-emitted alongside
-// their canonical replacements during the 2026-04-18 → 2026-05-18
-// rename cycle (post-ship #1). On 2026-05-18, delete the legacy
-// entries from this registry AND delete every caller's dual-emit
-// line. The grep-friendly marker below is what the retirement PR
-// searches for.
-//
-// RENAME-CYCLE-RETIRE-2026-05-18:
+// The 2026-04-18 → 2026-05-18 dual-emit rename cycle is complete.
+// Retired (removed from registry + callers):
 //   - `checkout_completed_return` → `checkout_completed`
 //   - `recipe_import_url` / `recipe_import_image` → `recipe_imported { source }`
 //   - `cook_mode_started` → `cook_mode_first_step_advanced`
 //   - `first_run_step_completed` → `onboarding_step_completed`
 //   - `first_run_checklist_completed` → `onboarding_checklist_completed`
-//   - `streak_freeze_earned_seen` → `streak_freeze_earned_acknowledged`
 //   - `voice_log_started` → `ai_voice_log_started`
-//   - `voice_log_committed` → `ai_voice_log_committed`
-//   - `voice_log_paywalled` → `ai_voice_log_paywalled`
-//   - `weekly_recap_push_sent` → `weekly_recap_push_scheduled`
-//     (+ `weekly_recap_push_delivered` once a delivery listener lands).
 //
-// See `docs/planning/analytics-dashboards-plan-2026-04-18.md` §4 and
-// `decisions_event_name_rename_cycle_2026_04_18.md` in product-memory
-// for the full retirement checklist.
+// Kept for PostHog dashboard stability (not dual-emitting from new call sites):
+//   - `voice_log_committed` — regression guard in analyticsEvents.test.ts
+//   - `voice_log_paywalled` — funnel-entry guard in analyticsEvents.test.ts
+//
+// Still in dual-emit (active callers remain):
+//   - `streak_freeze_earned_seen` → `streak_freeze_earned_acknowledged`
+//   - `weekly_recap_push_sent` → `weekly_recap_push_scheduled`
+//     (+ `weekly_recap_push_delivered` once a delivery listener lands)
+//
+// See `docs/planning/analytics-dashboards-plan-2026-04-18.md` §4.

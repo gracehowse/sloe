@@ -70,11 +70,6 @@ export function FirstRunChecklist({ onNavigate }: FirstRunChecklistProps) {
   useEffect(() => {
     if (allDone) {
       localStorage.setItem(DISMISSED_KEY, "1");
-      // Dual-emit during rename cycle 2026-04-18 → 2026-05-18.
-      // `first_run_checklist_completed` is retired in favour of
-      // `onboarding_checklist_completed` — aligns with existing
-      // `onboarding_completed`. See plan doc §4.
-      track(AnalyticsEvents.first_run_checklist_completed);
       track(AnalyticsEvents.onboarding_checklist_completed);
 
       // When the flag is on, fire the toast at most once per user.
@@ -97,12 +92,7 @@ export function FirstRunChecklist({ onNavigate }: FirstRunChecklistProps) {
 
   const handleNavigate = useCallback(
     (view: string) => {
-      // Dual-emit during rename cycle 2026-04-18 → 2026-05-18.
-      // `first_run_step_completed` is retired in favour of
-      // `onboarding_step_completed`. Same `{ step }` payload. See plan §4.
-      const stepPayload = { step: view };
-      track(AnalyticsEvents.first_run_step_completed, stepPayload);
-      track(AnalyticsEvents.onboarding_step_completed, stepPayload);
+      track(AnalyticsEvents.onboarding_step_completed, { step: view });
       onNavigate(view);
     },
     [onNavigate],

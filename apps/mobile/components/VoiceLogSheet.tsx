@@ -91,8 +91,6 @@ export default function VoiceLogSheet({
       setItems([]);
       setErrorMsg(null);
       setIsRecording(false);
-      // Dual-emit during rename cycle 2026-04-18 → 2026-05-18. See plan doc §4.
-      track(AnalyticsEvents.voice_log_started);
       track(AnalyticsEvents.ai_voice_log_started);
     } else {
       const stop = stopSpeechRef.current;
