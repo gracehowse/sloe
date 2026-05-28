@@ -42,6 +42,9 @@ export type RevenueCatEvent = {
   entitlement_id?: string;
   entitlement_ids?: string[];
   product_id?: string;
+  /** ENG-681: Unix timestamp (ms) when the event occurred. Used for
+   *  freshness checks in the webhook route handler. */
+  event_timestamp_ms?: number;
   // Anything else carried by the payload — preserved in the persisted
   // payload column for forensic replay.
   [key: string]: unknown;
