@@ -181,7 +181,7 @@ describe("DietStep — Anything-goes exclusivity", () => {
       </>,
       { diet: ["anything"] },
     );
-    fireEvent.click(screen.getByRole("button", { name: /vegetarian/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Vegetarian", exact: true }));
     expect(screen.getByTestId("diet-display").textContent).toBe("vegetarian");
   });
 });
