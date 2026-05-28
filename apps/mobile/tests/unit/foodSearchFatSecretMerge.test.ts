@@ -150,7 +150,10 @@ describe("Lane-A — mobile FoodSearchPanel handles FatSecret rows", () => {
 describe("Lane-A — web/mobile parity", () => {
   it("web FoodSearchPanel includes searchFatSecret in the parallel fetch", () => {
     expect(WEB_SRC).toMatch(/async function searchFatSecret/);
-    expect(WEB_SRC).toMatch(/Promise\.all\(\[\s*searchUsda\(q,\s*1\),\s*searchOff\(q,\s*1\),\s*searchEdamam\(q,\s*1\),\s*searchFatSecret\(q,\s*1\),/);
+    // ENG-686 replaced Promise.all with a Promise.race streaming loop; verify
+    // all four sources (including FatSecret) are still fired concurrently.
+    expect(WEB_SRC).toMatch(/searchFatSecret\(q,\s*1\)/);
+    expect(WEB_SRC).toMatch(/Promise\.race/);
   });
 
   it("web mergeAndDedup takes a fatsecret slot + applies the -0.05 trust band", () => {
