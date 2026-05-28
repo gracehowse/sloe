@@ -1910,9 +1910,47 @@ export async function saveVerifiedIngredients(
     })),
   );
 
-  const { error: recipeErr } = await supabase
-    .from("recipes")
-    .update({
+  // ENG-673: atomic write via RPC — both the recipe-totals update and all
+  // ingredient-row updates happen inside a single PL/pgSQL statement
+  // transaction so a mid-loop failure can no longer leave the DB split.
+  const ingredientUpdates = ingredients
+    .filter((ing) => ing.isDirty)
+    .map((ing) => {
+      // GW-08 (audit 2026-04-28): only mark a row verified when its
+      // confidence clears the review threshold.
+      const rowIsVerified =
+        typeof ing.confidence === "number" &&
+        ing.confidence >= RECIPE_INGREDIENT_REVIEW_CONFIDENCE;
+      return {
+        id: ing.id,
+        name: ing.matchedName ?? ing.name,
+        amount: ing.amount,
+        unit: ing.unit,
+        calories: Math.round(ing.calories),
+        protein: Math.round(ing.protein),
+        carbs: Math.round(ing.carbs),
+        fat: Math.round(ing.fat),
+        fiber_g: Math.round(ing.fiberG * 10) / 10,
+        sugar_g: Math.round(ing.sugarG * 10) / 10,
+        sodium_mg: Math.round(ing.sodiumMg),
+        // F-74 cross-device (2026-05-08): persist scaled caffeine + alcohol
+        // per ingredient so the recipe-level rollup re-computes correctly.
+        caffeine_mg: Math.round((ing.caffeineMg ?? 0) * 10) / 10,
+        alcohol_g: Math.round((ing.alcoholG ?? 0) * 10) / 10,
+        is_verified: rowIsVerified,
+        source: ing.source,
+        confidence:
+          typeof ing.confidence === "number" && Number.isFinite(ing.confidence)
+            ? ing.confidence
+            : null,
+        override_macros: ing.overrideMacros ?? null,
+        added_by_user: ing.addedByUser ?? false,
+      };
+    });
+
+  const { error: rpcErr } = await supabase.rpc("save_verified_ingredients", {
+    p_recipe_id: recipeId,
+    p_recipe_update: {
       calories: perServing.calories,
       protein: perServing.protein,
       carbs: perServing.carbs,
@@ -1924,100 +1962,11 @@ export async function saveVerifiedIngredients(
       alcohol_g: perServing.alcoholG,
       is_verified: allRowsVerified,
       allergens: inferredAllergens,
-    })
-    .eq("id", recipeId);
+    },
+    p_ingredient_updates: ingredientUpdates,
+  });
 
-  if (recipeErr) {
-    // Fallback: if the column doesn't exist yet in this environment
-    // (migration pending in dev), retry without allergens / new
-    // caffeine + alcohol columns so the rest of the save still goes
-    // through. Matches the pattern used on the recipe SELECT in
-    // apps/mobile/app/recipe/[id].tsx.
-    if ((recipeErr as { code?: string }).code === "42703") {
-      const { error: fallbackErr } = await supabase
-        .from("recipes")
-        .update({
-          calories: perServing.calories,
-          protein: perServing.protein,
-          carbs: perServing.carbs,
-          fat: perServing.fat,
-          fiber_g: perServing.fiberG,
-          sugar_g: perServing.sugarG,
-          sodium_mg: perServing.sodiumMg,
-          is_verified: allRowsVerified,
-        })
-        .eq("id", recipeId);
-      if (fallbackErr) return { error: fallbackErr.message };
-    } else {
-      return { error: recipeErr.message };
-    }
-  }
-
-  // 2. Update individual ingredients — collect errors instead of aborting on
-  //    first failure. Preserve `override_macros` and `added_by_user` on every
-  //    dirty row so existing overrides survive a save that only touched other
-  //    fields.
-  const errors: string[] = [];
-  for (const ing of ingredients) {
-    if (!ing.isDirty) continue;
-    // GW-08 (audit 2026-04-28): pre-fix `is_verified: true` was
-    // hardcoded — every dirty row got verified=true regardless of
-    // confidence. VR-01 (Batch 1) gated the recipe-level rollup but
-    // the per-row write was still unconditional. Now mirrors the
-    // recipe-level posture: the row only counts as verified when its
-    // confidence clears the review threshold. Rows below the threshold
-    // are saved (the user's edit persists) but stay flagged for
-    // review on the recipe-detail TrustChip aggregation.
-    const rowIsVerified =
-      typeof ing.confidence === "number" &&
-      ing.confidence >= RECIPE_INGREDIENT_REVIEW_CONFIDENCE;
-    const updates: Record<string, unknown> = {
-      name: ing.matchedName ?? ing.name,
-      amount: ing.amount,
-      unit: ing.unit,
-      calories: Math.round(ing.calories),
-      protein: Math.round(ing.protein),
-      carbs: Math.round(ing.carbs),
-      fat: Math.round(ing.fat),
-      fiber_g: Math.round(ing.fiberG * 10) / 10,
-      sugar_g: Math.round(ing.sugarG * 10) / 10,
-      sodium_mg: Math.round(ing.sodiumMg),
-      // F-74 cross-device (2026-05-08): persist scaled caffeine +
-      // alcohol per ingredient so the recipe-level rollup re-computes
-      // correctly on next save (no need to re-hit USDA / OFF / Edamam).
-      caffeine_mg: Math.round((ing.caffeineMg ?? 0) * 10) / 10,
-      alcohol_g: Math.round((ing.alcoholG ?? 0) * 10) / 10,
-      is_verified: rowIsVerified,
-      source: ing.source,
-      // 2026-05-02 fix — pre-fix `confidence` was NOT written on the
-      // verify save path, so a row that the user re-verified through
-      // the search picker (which sets in-memory `confidence: 1.0`)
-      // landed back in the DB with the original AI score (e.g. 0.69).
-      // The recipe-detail row UI then kept rendering "69% · Partial
-      // match" + a Verify CTA forever. Persisting the live confidence
-      // closes the loop so the row's stored state agrees with the
-      // user's resolution.
-      confidence:
-        typeof ing.confidence === "number" && Number.isFinite(ing.confidence)
-          ? ing.confidence
-          : null,
-      // Allow caller to clear an override by setting `overrideMacros` to
-      // undefined on a dirty row — we pass `null` to wipe the jsonb column.
-      override_macros: ing.overrideMacros ?? null,
-    };
-    if (ing.addedByUser) updates.added_by_user = true;
-
-    const { error } = await supabase
-      .from("recipe_ingredients")
-      .update(updates)
-      .eq("id", ing.id);
-
-    if (error) errors.push(`${ing.matchedName ?? ing.name}: ${error.message}`);
-  }
-
-  if (errors.length > 0) {
-    return { error: `Recipe totals saved but some ingredients failed: ${errors.join("; ")}` };
-  }
+  if (rpcErr) return { error: rpcErr.message };
   return { ok: true };
 }
 
