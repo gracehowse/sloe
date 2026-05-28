@@ -91,11 +91,11 @@ function MacroWheel(props: {
   fatG: number;
   fiberG?: number;
 }) {
-  const fallback = [{ name: "—", value: 1, color: "rgba(16,185,129,0.15)" }];
+  const fallback = [{ name: "—", value: 1, color: "var(--macro-fat-soft)" }];
   const data = [
     { name: "Protein", value: Math.max(0, props.proteinG), color: "var(--macro-protein)" },
-    { name: "Carbs", value: Math.max(0, props.carbsG), color: "#F3C336" }, // amber
-    { name: "Fat", value: Math.max(0, props.fatG), color: "#22c55e" }, // green
+    { name: "Carbs", value: Math.max(0, props.carbsG), color: "var(--macro-carbs)" },
+    { name: "Fat", value: Math.max(0, props.fatG), color: "var(--macro-fat)" },
   ].filter((d) => d.value > 0);
   const chartData = data.length ? data : fallback;
 
@@ -112,14 +112,14 @@ function MacroWheel(props: {
           </PieChart>
         </ResponsiveContainer>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <div className="text-lg font-extrabold text-success/90 leading-none">{Math.round(props.calories)}</div>
-          <div className="text-[10px] font-semibold tracking-wide text-success/70 uppercase">
+          <div className="text-lg font-extrabold text-foreground leading-none">{Math.round(props.calories)}</div>
+          <div className="text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
             kcal
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-success/80">
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
         <div className="flex items-center justify-between gap-2">
           <span className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-[var(--macro-protein)]" />
@@ -129,21 +129,21 @@ function MacroWheel(props: {
         </div>
         <div className="flex items-center justify-between gap-2">
           <span className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: "#F3C336" }} />
+            <span className="h-2 w-2 rounded-full bg-[var(--macro-carbs)]" />
             Carbs
           </span>
           <span className="font-semibold tabular-nums">{Math.round(props.carbsG * 10) / 10}g</span>
         </div>
         <div className="flex items-center justify-between gap-2">
           <span className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: "#22c55e" }} />
+            <span className="h-2 w-2 rounded-full bg-[var(--macro-fat)]" />
             Fat
           </span>
           <span className="font-semibold tabular-nums">{Math.round(props.fatG * 10) / 10}g</span>
         </div>
         <div className="flex items-center justify-between gap-2">
           <span className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-success/70" />
+            <span className="h-2 w-2 rounded-full bg-[var(--macro-fiber)]" />
             Fiber
           </span>
           <span className="font-semibold tabular-nums">{Math.round((props.fiberG ?? 0) * 10) / 10}g</span>

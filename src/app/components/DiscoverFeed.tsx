@@ -780,9 +780,9 @@ export const DiscoverFeed = memo(function DiscoverFeed({
             uploads only when cluster carousels are active above). */}
         {displayRecipes.length > 0 ? (
           <div className="md:hidden">
-            {/* ── Matches your day (hero cards) ── */}
+            {/* ── Recipe ideas (hero cards) ── */}
             <h3 className="text-[13px] font-extrabold uppercase tracking-[0.04em] text-muted-foreground mt-[22px] mb-3 px-4">
-              Matches your day
+              Recipe ideas
             </h3>
             <div className="grid gap-3.5 px-4">
               {displayRecipes.slice(0, 2).map((recipe) => {

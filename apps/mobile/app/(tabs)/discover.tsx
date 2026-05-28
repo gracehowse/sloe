@@ -771,7 +771,7 @@ export default function DiscoverScreen() {
                 marginBottom: Spacing.sm,
               }}
             >
-              Matches your day
+              Recipe ideas
             </Text>
             <DiscoverLoadingSkeleton />
             {slowLoad ? (
@@ -838,7 +838,7 @@ export default function DiscoverScreen() {
                 marginBottom: Spacing.sm,
               }}
             >
-              Matches your day
+              Recipe ideas
             </Text>
             <View style={{ gap: 12 }}>
               {filtered.slice(0, 3).map((r) => renderHeroCard(r))}
