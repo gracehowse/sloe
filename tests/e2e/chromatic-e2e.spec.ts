@@ -3,16 +3,15 @@
  * `chromaui/action` with `playwright: true`. Do not use toHaveScreenshot here;
  * visual baselines live in Chromatic, not in-repo PNGs.
  *
- * @see https://www.chromatic.com/docs/playwright/
+ * landing + pricing only — /login and 404 carry Apple Sign-In CSP that blocks
+ * Chromatic's archive script (inline script-src).
  */
 import { test, expect } from "@chromatic-com/playwright";
 import { dismissVisualOverlays, stabilizeForScreenshot } from "./utils/visual";
 
 const screens = [
   { name: "landing", path: "/" },
-  { name: "login", path: "/login" },
   { name: "pricing", path: "/pricing" },
-  { name: "not-found", path: "/this-route-does-not-exist" },
 ] as const;
 
 test.describe("Chromatic — public shell", () => {
