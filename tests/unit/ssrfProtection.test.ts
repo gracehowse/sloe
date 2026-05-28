@@ -1,10 +1,22 @@
 /**
  * Tests for SSRF protection in recipe import.
- * Verifies that private/reserved IPs are blocked.
+ * Verifies that private/reserved IPs are blocked and that DNS
+ * pre-resolution (ENG-730) catches DNS-rebinding TOCTOU attempts.
  */
 import { describe, it, expect } from "vitest";
 // Import the REAL guard (no re-implementation — the prior copy could drift; ENG-682).
-import { isPrivateHost, isAllowedUrl } from "@/lib/recipe-import/ssrfGuard";
+import { isPrivateHost, isAllowedUrl, resolveDnsAndValidate } from "@/lib/recipe-import/ssrfGuard";
+
+/** Minimal stub for the injectable `_lookupFn` parameter. */
+function stubLookup(records: { address: string; family: number }[]) {
+  return async (_hostname: string, _opts: { all: true }) => records;
+}
+
+function failingLookup(message: string) {
+  return async (_hostname: string, _opts: { all: true }): Promise<never> => {
+    throw new Error(message);
+  };
+}
 
 describe("SSRF isPrivateHost", () => {
   it("blocks localhost", () => {
@@ -87,5 +99,43 @@ describe("SSRF isAllowedUrl", () => {
   it("rejects malformed URLs", () => {
     expect(isAllowedUrl("not a url")).toBe(false);
     expect(isAllowedUrl("")).toBe(false);
+  });
+});
+
+describe("SSRF resolveDnsAndValidate (ENG-730 DNS rebinding mitigation)", () => {
+  it("resolves to a public IP — succeeds without throwing", async () => {
+    await expect(
+      resolveDnsAndValidate("example.com", stubLookup([{ address: "93.184.216.34", family: 4 }])),
+    ).resolves.toBeUndefined();
+  });
+
+  it("throws when hostname resolves to a private IP (DNS rebinding simulation)", async () => {
+    await expect(
+      resolveDnsAndValidate("evil.attacker.com", stubLookup([{ address: "169.254.169.254", family: 4 }])),
+    ).rejects.toThrow(/SSRF.*resolves to blocked address 169\.254\.169\.254/);
+  });
+
+  it("throws when ANY returned address is private (multi-answer rebinding)", async () => {
+    await expect(
+      resolveDnsAndValidate(
+        "multi.attacker.com",
+        stubLookup([
+          { address: "93.184.216.34", family: 4 },
+          { address: "10.0.0.1", family: 4 },
+        ]),
+      ),
+    ).rejects.toThrow(/SSRF.*resolves to blocked address 10\.0\.0\.1/);
+  });
+
+  it("throws when DNS resolution fails (fail-closed behaviour)", async () => {
+    await expect(
+      resolveDnsAndValidate("notexist.example", failingLookup("ENOTFOUND")),
+    ).rejects.toThrow(/SSRF: DNS lookup failed/);
+  });
+
+  it("throws when DNS returns no records", async () => {
+    await expect(
+      resolveDnsAndValidate("empty.example", stubLookup([])),
+    ).rejects.toThrow(/SSRF: DNS returned no records/);
   });
 });
