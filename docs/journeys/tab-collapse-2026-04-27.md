@@ -56,9 +56,9 @@ links (so existing `router.push("/(tabs)/discover")` calls and
   tap Recipes from `/discover` (so the primary tap is predictable —
   always lands on the Library default sub-tab).
 - `planner` → label "Plan", icon `CalendarDays`.
-- `progress` → label "You" (re-labeled), icon `CircleUser`. Same
-  custom listener pattern as Recipes for the Settings + More
-  siblings.
+- `progress` → label "Progress", icon `LineChart`. (Previously labelled
+  "You"; renamed 2026-05-19 IA update. testID stays `tab-you` for
+  Maestro stability.)
 
 The remaining routes (`discover`, `more`, `settings`, `search`,
 `barcode`, `notifications`) are kept as `<Tabs.Screen name="..."

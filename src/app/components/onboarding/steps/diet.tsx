@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Apple, Beef, Fish, Leaf, Salad, Wheat } from "lucide-react";
+import { Apple, Beef, Fish, Leaf, Moon, Salad, Star, Wheat } from "lucide-react";
 import { OptionCard } from "@/app/components/ui/option-card";
 import { useOnboarding } from "../context";
 import { StepBody, StepHeader, useStepOverline } from "../scaffold";
@@ -13,6 +13,8 @@ const DIETS: { id: string; title: string; icon: React.ReactNode }[] = [
   { id: "pescatarian", title: "Pescatarian", icon: <Fish className="size-4" /> },
   { id: "keto", title: "Keto / low-carb", icon: <Beef className="size-4" /> },
   { id: "mediterranean", title: "Mediterranean", icon: <Apple className="size-4" /> },
+  { id: "halal", title: "Halal", icon: <Moon className="size-4" /> },
+  { id: "kosher", title: "Kosher", icon: <Star className="size-4" /> },
 ];
 
 // T12 (2026-04-24) — 14 EU FIC / UK FSA regulated allergens. Split
