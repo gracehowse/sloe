@@ -1,0 +1,14 @@
+import { Meta } from "@storybook/addon-docs/blocks";
+
+<Meta title="Design system/Overview" />
+
+# Suppr design system (Storybook)
+
+Component-level stories for web UI primitives under `src/app/components/ui/`.
+Use this for **isolated component review** — not full-route layout QA.
+
+- **Full pages:** Playwright `toHaveScreenshot` — [`docs/testing/VISUAL_REGRESSION.md`](../../docs/testing/VISUAL_REGRESSION.md)
+- **Mobile:** Maestro deeplink sweep + pixel diff
+- **Beta feedback:** Centercode — qualitative tester notes, not screenshots
+
+Toggle **light / dark** in the toolbar. Mirror mobile variants in `apps/mobile/components/ui/` when changing tokens.

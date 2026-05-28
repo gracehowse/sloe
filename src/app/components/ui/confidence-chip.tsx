@@ -49,7 +49,7 @@ export function ConfidenceChip({
       )}
       style={{
         backgroundColor: "rgba(148, 163, 184, 0.12)",
-        color: "var(--confidence-neutral)",
+        color: "var(--foreground-secondary)",
         ...style,
       }}
       {...props}

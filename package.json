@@ -22,6 +22,17 @@
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "test:e2e": "node scripts/e2e-preflight.mjs && playwright test",
+    "test:e2e:visual": "node scripts/e2e-preflight.mjs && playwright test tests/e2e/visual-audit.spec.ts tests/e2e/visual-audit-authed.spec.ts tests/e2e/visual-regression-subpages.spec.ts tests/e2e/visual-regression-deep.spec.ts",
+    "test:e2e:visual:update": "node scripts/e2e-preflight.mjs && playwright test tests/e2e/visual-audit.spec.ts tests/e2e/visual-audit-authed.spec.ts tests/e2e/visual-regression-subpages.spec.ts tests/e2e/visual-regression-deep.spec.ts --update-snapshots",
+    "test:e2e:applitools": "node scripts/e2e-preflight.mjs && playwright test tests/e2e/visual-applitools.spec.ts",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build",
+    "test:storybook": "vitest run --project storybook",
+    "test:storybook:watch": "vitest --project storybook",
+    "test:storybook:coverage": "vitest run --project storybook --coverage",
+    "test:storybook:runner": "test-storybook",
+    "test:storybook:ci": "npm run build-storybook && concurrently -k -s first -n \"SB,TEST\" \"npx serve storybook-static -l 6006\" \"npx wait-on http://127.0.0.1:6006 && test-storybook --url http://127.0.0.1:6006\"",
+    "centercode:publish-release": "node scripts/centercode/publish-release.mjs",
     "test:e2e:watch": "npm run mobile:test:e2e:watch",
     "test:e2e:headed": "node scripts/e2e-preflight.mjs && playwright test --headed",
     "test:e2e:debug": "node scripts/e2e-preflight.mjs && playwright test --debug",
@@ -76,12 +87,16 @@
     "mobile:ios:xcode": "npm run ios:xcode --prefix apps/mobile",
     "mobile:test:e2e": "npm run test:e2e --prefix apps/mobile",
     "mobile:test:e2e:verify-suite": "npm run test:e2e:verify-suite --prefix apps/mobile",
+    "mobile:test:sweep:deeplinks": "npm run test:sweep:deeplinks --prefix apps/mobile",
+    "mobile:test:sweep:subpages": "npm run mobile:test:sweep:deeplinks",
     "mobile:test:e2e:watch": "npm run test:e2e:watch --prefix apps/mobile",
     "mobile:test:screens:diff": "npm run test:screens:diff --prefix apps/mobile",
     "mobile:test:screens:update-baseline": "npm run test:screens:update-baseline --prefix apps/mobile",
     "mobile:verify": "npm run mobile:lint && npm run mobile:typecheck && npm run mobile:test:coverage && npm run mobile:test:e2e:verify-suite",
     "git:prune-locals": "bash scripts/git-prune-merged-locals.sh",
-    "mobile:test:dark-sweep": "npm run --prefix apps/mobile test:dark-sweep"
+    "mobile:test:dark-sweep": "npm run --prefix apps/mobile test:dark-sweep",
+    "chromatic": "chromatic --playwright --exit-zero-on-changes",
+    "chromatic:storybook": "chromatic --exit-zero-on-changes"
   },
   "dependencies": {
     "@popperjs/core": "2.11.8",
@@ -143,10 +158,20 @@
     "web-push": "^3.6.7"
   },
   "devDependencies": {
+    "@applitools/eyes-playwright": "^1.47.4",
     "@axe-core/playwright": "^4.11.3",
+    "@chromatic-com/playwright": "^0.14.3",
+    "@chromatic-com/storybook": "^5.2.1",
     "@eslint/eslintrc": "^3.3.5",
     "@midscene/web": "^1.8.1",
     "@playwright/test": "^1.60.0",
+    "@storybook/addon-a11y": "^10.4.1",
+    "@storybook/addon-docs": "^10.4.1",
+    "@storybook/addon-themes": "^10.4.1",
+    "@storybook/addon-vitest": "^10.4.1",
+    "@storybook/nextjs-vite": "^10.4.1",
+    "@storybook/react": "^10.4.1",
+    "@storybook/test-runner": "^0.24.4",
     "@tailwindcss/postcss": "^4.3.0",
     "@tailwindcss/vite": "4.3.0",
     "@testing-library/jest-dom": "^6.6.3",
@@ -157,12 +182,21 @@
     "@types/react-dom": "^18.3.0",
     "@types/web-push": "^3.6.4",
     "@vitejs/plugin-react": "4.7.0",
+    "@vitest/browser": "^3.2.4",
     "@vitest/coverage-v8": "^3.2.4",
     "@vitest/ui": "^3.2.4",
+    "chromatic": "^17.1.0",
+    "concurrently": "^10.0.0",
     "eslint": "^9.39.4",
     "eslint-config-next": "^15.5.7",
     "jsdom": "^26.1.0",
+    "mockdate": "^3.0.5",
+    "msw": "^2.14.6",
+    "msw-storybook-addon": "^2.0.7",
+    "playwright": "^1.60.0",
     "postcss": "^8.4.0",
+    "serve": "^14.2.6",
+    "storybook": "^10.4.1",
     "tailwindcss": "4.3.0",
     "tsx": "^4.22.1",
     "typescript": "6.0.3",
@@ -174,5 +208,10 @@
     "overrides": {
       "vite": "6.3.5"
     }
+  },
+  "msw": {
+    "workerDirectory": [
+      "public"
+    ]
   }
 }

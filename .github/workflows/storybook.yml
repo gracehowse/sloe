@@ -1,0 +1,29 @@
+# Component-level Storybook build + interaction/a11y smoke (not full-route visual QA).
+name: Storybook
+
+on:
+  pull_request:
+    paths:
+      - "src/app/components/**"
+      - "src/stories/**"
+      - ".storybook/**"
+      - "src/styles/**"
+
+concurrency:
+  group: storybook-${{ github.head_ref }}
+  cancel-in-progress: true
+
+jobs:
+  storybook:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build-storybook
+      - name: Storybook tests (vitest — plays, a11y, interactions)
+        run: npm run test:storybook

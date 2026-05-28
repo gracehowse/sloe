@@ -47,43 +47,37 @@ interface VariantConfig {
 const config: Record<TrustChipVariant, VariantConfig> = {
   usda: {
     bg: "rgba(98, 179, 90, 0.08)",
-    fg: "var(--success)",
+    fg: "var(--foreground)",
     glyph: "check",
     label: "USDA verified",
   },
   "off-adjusted": {
     bg: "rgba(76, 108, 224, 0.12)",
-    fg: "var(--primary)",
+    fg: "var(--foreground)",
     glyph: "check",
     label: "OFF · adjusted",
   },
   estimated: {
     bg: "rgba(224, 168, 56, 0.10)",
-    fg: "var(--warning)",
+    fg: "var(--foreground)",
     glyph: "sparkles",
     label: "Estimated · verify",
   },
   manual: {
     bg: "rgba(140, 131, 120, 0.12)",
-    fg: "var(--muted-foreground)",
+    fg: "var(--foreground-secondary)",
     glyph: null,
     label: "Manual",
   },
   "gluten-high-conf": {
     bg: "rgba(98, 179, 90, 0.08)",
-    fg: "var(--success)",
-    // ENG-748 (legal-reviewer P0): the gluten chip must NOT read as a
-    // verified safety guarantee on a coeliac surface. The `check` glyph
-    // is the "verified" mark — swapped to `sparkles` (the "estimated"
-    // glyph, shared with `gluten-uncertain`) so the chip reads as an
-    // ingredient-name estimate, paired with the persistent disclaimer
-    // caption rendered beneath it on the recipe-detail heroes.
+    fg: "var(--foreground)",
     glyph: "sparkles",
     label: "No gluten-containing ingredients",
   },
   "gluten-uncertain": {
     bg: "rgba(224, 168, 56, 0.10)",
-    fg: "var(--warning)",
+    fg: "var(--foreground)",
     glyph: "sparkles",
     label: "Contains potential gluten · review",
   },

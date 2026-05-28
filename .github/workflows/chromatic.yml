@@ -1,0 +1,86 @@
+# Chromatic Playwright E2E visual tests — archives from Playwright, reviewed in Chromatic.
+# Requires CHROMATIC_PROJECT_TOKEN and @chromatic-com/playwright specs (chromatic-e2e.spec.ts).
+# Storybook component tests: .github/workflows/storybook.yml + npm run test:storybook
+name: Chromatic
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - "app/**"
+      - "src/**"
+      - "tests/e2e/**"
+      - "playwright.config.ts"
+      - ".github/workflows/chromatic.yml"
+
+concurrency:
+  group: chromatic-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  playwright:
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.60.0-noble
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      VERIFY_STRICT: "0"
+      PLAYWRIGHT_BASE_URL: http://127.0.0.1:3100
+      CI: true
+      GITHUB_ACTIONS: true
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Build app
+        run: npm run build
+      - name: Run Playwright tests
+        run: |
+          npm run start -- --port 3100 &
+          npx wait-on http://127.0.0.1:3100/login
+          npx playwright test tests/e2e/chromatic-e2e.spec.ts --project=chromium
+        env:
+          HOME: /root
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: test-results
+          path: ./test-results
+          retention-days: 30
+
+  chromatic:
+    name: Run Chromatic
+    needs: playwright
+    if: ${{ secrets.CHROMATIC_PROJECT_TOKEN != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Download Playwright test results
+        uses: actions/download-artifact@v4
+        with:
+          name: test-results
+          path: ./test-results
+      - name: Run Chromatic
+        uses: chromaui/action@latest
+        with:
+          playwright: true
+          projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+        env:
+          CHROMATIC_ARCHIVE_LOCATION: ./test-results

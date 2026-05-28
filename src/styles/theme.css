@@ -86,6 +86,7 @@
    *  solid. */
   --accent-primary: #588CE4;
   --accent-primary-foreground: #ffffff;
+  --accent-primary-solid: #3a6ec6;
   --accent-primary-soft: rgba(88, 140, 228, 0.10);
   --accent-primary-ring: rgba(88, 140, 228, 0.22);
 
@@ -93,6 +94,7 @@
    *  callers can be migrated in passes without breaking compile. */
   --primary: var(--accent-primary);
   --primary-foreground: var(--accent-primary-foreground);
+  --primary-solid: var(--accent-primary-solid);
   --primary-soft: var(--accent-primary-soft);
   --secondary: var(--background-secondary);
   --secondary-foreground: var(--foreground);
@@ -108,11 +110,15 @@
   --accent-warning-soft: rgba(247, 138, 50, 0.12);
   --accent-destructive: #F16264;
   --accent-destructive-foreground: #ffffff;
+  --accent-destructive-solid: #ce3f41;
+  --accent-destructive-soft: rgba(241, 98, 100, 0.12);
   --accent-info: #588CE4;
 
   /** Legacy semantic aliases. */
   --destructive: var(--accent-destructive);
   --destructive-foreground: var(--accent-destructive-foreground);
+  --destructive-solid: var(--accent-destructive-solid);
+  --destructive-soft: var(--accent-destructive-soft);
 
   --border: #ebe7dc;
   --border-strong: #ddd6c5;
@@ -279,11 +285,13 @@
   /** Dark mode 8-slot palette — same hues, lifted ~10% for OLED contrast. */
   --accent-primary: #7BA3EA;
   --accent-primary-foreground: #ffffff;
+  --accent-primary-solid: #5a8fd8;
   --accent-primary-soft: rgba(123, 163, 234, 0.16);
   --accent-primary-ring: rgba(123, 163, 234, 0.30);
 
   --primary: var(--accent-primary);
   --primary-foreground: var(--accent-primary-foreground);
+  --primary-solid: var(--accent-primary-solid);
   --primary-soft: var(--accent-primary-soft);
   --secondary: var(--background-secondary);
   --secondary-foreground: var(--foreground);
@@ -298,10 +306,14 @@
   --accent-warning-soft: rgba(250, 164, 95, 0.18);
   --accent-destructive: #F58385;
   --accent-destructive-foreground: #ffffff;
+  --accent-destructive-solid: #d65558;
+  --accent-destructive-soft: rgba(245, 131, 133, 0.18);
   --accent-info: #7BA3EA;
 
   --destructive: var(--accent-destructive);
   --destructive-foreground: var(--accent-destructive-foreground);
+  --destructive-solid: var(--accent-destructive-solid);
+  --destructive-soft: var(--accent-destructive-soft);
 
   --border: #2a2630;
   --border-strong: #3a3640;
@@ -432,6 +444,7 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-solid: var(--primary-solid);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -440,6 +453,7 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-solid: var(--destructive-solid);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-input-background: var(--input-background);
@@ -453,6 +467,7 @@
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
   --color-warning-soft: var(--warning-soft);
+  --color-destructive-soft: var(--destructive-soft);
 
   /* Macros */
   --color-macro-protein: var(--macro-protein);
