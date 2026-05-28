@@ -114,19 +114,30 @@ async function rateLimitMemory(opts: RateLimitOptions, key: string, ip: string):
   return { ok: true, remaining: Math.max(0, opts.limit - existing.count), resetAtMs: existing.resetAtMs };
 }
 
-async function rateLimitUpstash(key: string, ip: string, limiter: Ratelimit): Promise<RateLimitResult> {
-  const result = await limiter.limit(key);
-  if (!result.success) {
-    const retryAfterSec = Math.max(1, Math.ceil((result.reset - Date.now()) / 1000));
-    return {
-      ok: false,
-      remaining: 0,
-      resetAtMs: result.reset,
-      retryAfterSec,
-      ip: ip === "unknown" ? null : ip,
-    };
+// ENG-747: returns null when the Upstash call throws (broken connection,
+// wrong credentials, network timeout) so the caller can fall through to
+// the fail-closed / in-memory path instead of 500ing.
+async function rateLimitUpstash(key: string, ip: string, limiter: Ratelimit): Promise<RateLimitResult | null> {
+  try {
+    const result = await limiter.limit(key);
+    if (!result.success) {
+      const retryAfterSec = Math.max(1, Math.ceil((result.reset - Date.now()) / 1000));
+      return {
+        ok: false,
+        remaining: 0,
+        resetAtMs: result.reset,
+        retryAfterSec,
+        ip: ip === "unknown" ? null : ip,
+      };
+    }
+    return { ok: true, remaining: result.remaining, resetAtMs: result.reset };
+  } catch (err) {
+    console.error(
+      "[rateLimit] Upstash call threw — falling through to fail-closed/memory path:",
+      err instanceof Error ? err.message : String(err),
+    );
+    return null;
   }
-  return { ok: true, remaining: result.remaining, resetAtMs: result.reset };
 }
 
 /**
@@ -152,7 +163,9 @@ export async function rateLimit(opts: RateLimitOptions): Promise<RateLimitResult
   const key = `${opts.keyPrefix}:${userPart}:${ip}`;
   const upstash = getUpstashLimiter(opts.limit, opts.windowMs);
   if (upstash) {
-    return rateLimitUpstash(key, ip, upstash);
+    const result = await rateLimitUpstash(key, ip, upstash);
+    if (result !== null) return result;
+    // Upstash threw — fall through to the same fail-closed/memory logic below.
   }
   // ENG-668: production MUST have Upstash. The per-instance in-memory fallback
   // makes the effective cap `limit × lambda count`, silently bypassing AI/photo

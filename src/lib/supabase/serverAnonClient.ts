@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { projectId, publicAnonKey } from "../../../utils/supabase/info.tsx";
+import * as Sentry from "@sentry/nextjs";
 
 export function supabasePublicUrl(): string {
   const fromEnv = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
@@ -79,7 +80,12 @@ export async function getUserTier(userId: string): Promise<UserTier> {
   }
   const { data, error } = await sb.from("profiles").select("user_tier").eq("id", userId).maybeSingle();
   if (error) {
-    console.warn("[getUserTier] profiles read failed:", error.message);
+    // ENG-688: emit to Sentry so a DB/RLS failure that silently downgrades
+    // a paid user to free is visible in the error dashboard.
+    Sentry.captureException(new Error(`[getUserTier] profiles read failed: ${error.message}`), {
+      extra: { userId, supabaseCode: error.code },
+      fingerprint: ["getUserTier-profiles-read-failed"],
+    });
     return "free";
   }
   const tier = data?.user_tier as string | undefined;

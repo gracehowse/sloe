@@ -111,6 +111,7 @@ async function fdcFetchSingle(
     },
     body: JSON.stringify(body),
     cache: "no-store",
+    signal: AbortSignal.timeout(5_000),
   });
   if (!res.ok) {
     const txt = await res.text().catch(() => "");
@@ -279,6 +280,7 @@ export async function fdcFoodGet(cfg: FdcConfig, fdcId: number): Promise<FdcFood
     method: "GET",
     headers: { Accept: "application/json", "User-Agent": "SupprNutritionVerifier/1.0" },
     cache: "no-store",
+    signal: AbortSignal.timeout(5_000),
   });
   if (!res.ok) {
     const txt = await res.text().catch(() => "");

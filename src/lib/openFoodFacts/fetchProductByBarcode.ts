@@ -53,7 +53,7 @@ export async function fetchProductByBarcode(code: string): Promise<
   try {
     const res = await fetch(
       `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(trimmed)}.json`,
-      { headers: { Accept: "application/json" } },
+      { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(5_000) },
     );
     if (!res.ok) {
       return { ok: false, error: "network", message: String(res.status) };
