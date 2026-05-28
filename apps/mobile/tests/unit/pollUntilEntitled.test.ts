@@ -16,7 +16,7 @@ vi.mock("react-native-purchases", () => ({
 import Purchases from "react-native-purchases";
 import { pollUntilEntitled } from "@/lib/purchases";
 
-function makeCustomerInfo(entitlements: string[]): Parameters<typeof Purchases.getCustomerInfo>[0] extends never ? never : Awaited<ReturnType<typeof Purchases.getCustomerInfo>> {
+function makeCustomerInfo(entitlements: string[]): Awaited<ReturnType<typeof Purchases.getCustomerInfo>> {
   const active: Record<string, object> = {};
   for (const e of entitlements) active[e] = {};
   return {
