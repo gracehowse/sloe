@@ -43,3 +43,22 @@ export const WithoutIcon: Story = {
     body: "Icon slot omitted.",
   },
 };
+
+/** Non-string title — aria-label stays undefined (decorative region). */
+export const RichTitle: Story = {
+  args: {
+    title: (
+      <>
+        No meals yet — <strong>today</strong>
+      </>
+    ),
+    body: "Rich title node without string aria-label.",
+  },
+};
+
+export const PrimaryCtaOnly: Story = {
+  args: {
+    title: "Start logging",
+    primaryCta: <Button>Log a meal</Button>,
+  },
+};
