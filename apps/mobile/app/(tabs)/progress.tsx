@@ -1297,10 +1297,12 @@ export default function ProgressScreen() {
               the screen already holds. The projected-goal row shows only
               when a goal weight + a finite days-to-goal are known. */}
           {(() => {
+            // "Hit" = at or under the day's effective target (snapshot or
+            // fallback). The old ±10% window false-negatives on days you
+            // were well under (e.g. 938 vs 1,100 effective = miss at 14.7%).
             const daysHitCalorieTarget = weekStats.days.reduce((n, d) => {
               if (d.targetCalories <= 0 || d.calories <= 0) return n;
-              const pct = Math.abs(d.calories - d.targetCalories) / d.targetCalories;
-              return pct <= 0.1 ? n + 1 : n;
+              return d.calories <= d.targetCalories ? n + 1 : n;
             }, 0);
             const weighInsThisWeek = weekStats.days.filter(
               (d) => (weightKgByDay[d.key] ?? 0) > 0,
@@ -1616,21 +1618,24 @@ export default function ProgressScreen() {
               );
             })()}
             {/* Legend + target label */}
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 8, flexWrap: "wrap", gap: 6 }}>
+            <View style={{ flexDirection: "column", marginTop: 8, gap: 4 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                   <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: t.green }} />
-                  <Text style={{ fontSize: 10, color: t.dim }}>At or under target</Text>
+                  <Text style={{ fontSize: 10, color: t.dim }}>At or under daily target</Text>
                 </View>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                   <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: t.amber }} />
-                  <Text style={{ fontSize: 10, color: t.dim }}>Over target</Text>
+                  <Text style={{ fontSize: 10, color: t.dim }}>Over daily target</Text>
                 </View>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                   <View style={{ width: 10, height: 1, borderTopWidth: 1, borderStyle: "dashed", borderColor: t.accent }} />
-                  <Text style={{ fontSize: 10, color: t.dim }}>Target {targets.calories.toLocaleString()} kcal</Text>
+                  <Text style={{ fontSize: 10, color: t.dim }}>Base target {targets.calories.toLocaleString()} kcal</Text>
                 </View>
               </View>
+              <Text style={{ fontSize: 10, color: t.dim }}>
+                Each bar compares to your target for that day — higher on days you earned an activity bonus.
+              </Text>
             </View>
           </View>
 
@@ -2352,19 +2357,28 @@ export default function ProgressScreen() {
                   )}
 
                   {/* Daily projection */}
-                  {dailyProjection && (
+                  {dailyProjection && maintenanceTdeeKcal != null && (
                     <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: t.border }}>
-                      <Text style={{ fontSize: 12, color: t.sub, lineHeight: 18 }}>
-                        {/* 2026-05-12 (premium-bar DC12 voice audit): split
-                            past-fact from future-projection per Headspace
-                            voice borrow — "averaging X puts you on track
-                            for Y" mixed an observation with a promise.
-                            Now: stated fact + conditional projection. */}
-                        Last 7 days averaged {avgCals.toLocaleString()} kcal/day vs {targets.calories.toLocaleString()} target. On that trend you&apos;d reach{" "}
-                        <Text style={{ fontWeight: "700", color: t.accent }}>{dailyProjection.projectedWeightKg} kg</Text> in ~{dailyProjection.projectionWeeks} weeks.
-                      </Text>
+                      {(() => {
+                        const avgDeficit = Math.round(maintenanceTdeeKcal - avgCals);
+                        const deficitLabel =
+                          avgDeficit > 0
+                            ? `avg deficit ${avgDeficit.toLocaleString()} kcal/day`
+                            : avgDeficit < 0
+                              ? `avg surplus ${Math.abs(avgDeficit).toLocaleString()} kcal/day`
+                              : "at maintenance";
+                        return (
+                          <Text style={{ fontSize: 12, color: t.sub, lineHeight: 18 }}>
+                            {/* Deficit drives the projection — show it alongside
+                                intake so the user can see both the input (what
+                                you ate) and the mechanism (deficit vs maintenance). */}
+                            Last 7 days averaged {avgCals.toLocaleString()} kcal/day — {deficitLabel}. On that trend you&apos;d reach{" "}
+                            <Text style={{ fontWeight: "700", color: t.accent }}>{dailyProjection.projectedWeightKg} kg</Text> in ~{dailyProjection.projectionWeeks} weeks.
+                          </Text>
+                        );
+                      })()}
                       <Text style={{ fontSize: 10, color: t.dim, marginTop: 4 }}>
-                        Based on 7,700 kcal per kg. This uses your weekly average, so it may differ from single-day projections.
+                        Based on 7,700 kcal ≈ 1 kg. An estimate, not a promise.
                       </Text>
                     </View>
                   )}

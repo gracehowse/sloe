@@ -13,9 +13,7 @@ const config = getSentryExpoConfig(projectRoot);
 // Watch ../../src so the mobile app can import shared nutrition/analytics
 // code via ../../../src/*. Deliberately NOT watching the whole monorepo root
 // — its node_modules is excluded from EAS Build uploads (.easignore) and
-// Metro's implicit root-node_modules check would fail with ENOENT. Keeping
-// default hierarchical module resolution so Metro can find nested deps like
-// react-native/node_modules/@react-native/virtualized-lists.
+// Metro's implicit root-node_modules check would fail with ENOENT.
 config.watchFolders = [
   ...(config.watchFolders ?? []),
   path.resolve(projectRoot, "../../src"),
@@ -29,11 +27,21 @@ config.watchFolders = [
 // and inconsistent with the `@/` alias used everywhere else in
 // mobile. Both resolvers (tsserver + Metro + vitest) must agree on
 // the mapping or builds and editor jump-to-definition diverge.
+// npm sometimes hoists @react-native/* packages to the top-level
+// node_modules but leaves a nested react-native/node_modules/@react-native/
+// directory containing only a subset (codegen, js-polyfills). Metro stops
+// traversal at that nested scope directory and never reaches the top-level
+// copy, causing an intermittent ENOENT on virtualized-lists. Pin it
+// explicitly here so the resolver always wins regardless of hoist state.
 config.resolver = {
   ...(config.resolver ?? {}),
   extraNodeModules: {
     ...((config.resolver && config.resolver.extraNodeModules) || {}),
     "@suppr/shared": path.resolve(projectRoot, "../../src/lib"),
+    "@react-native/virtualized-lists": path.resolve(
+      projectRoot,
+      "node_modules/@react-native/virtualized-lists",
+    ),
   },
 };
 
