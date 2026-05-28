@@ -147,7 +147,6 @@ Do not use:
 | Context | CTA | Do not use |
 |---------|-----|-----------|
 | Free tier signup | "Get Started" | "Sign Up Free" / "Join Now" |
-| Upgrade to Base | "Upgrade to Base" | "Go Pro" / "Unlock Everything" |
 | Upgrade to Pro | "Upgrade to Pro" | "Start Your Journey" |
 | Trial start | "Start Free Trial" | "Try It Free" / "Claim Your Trial" |
 | Continue without paying | "Continue for free" | "No thanks" / "Maybe later" / "Skip" (as a CTA label — "Skip" is acceptable as a navigation action during onboarding) |
@@ -178,13 +177,12 @@ Use plain English. Do not brand individual features.
 ### Tier names
 
 - **Free** — always capitalised, no descriptor needed
-- **Base** — the mid-tier, not "Basic" or "Standard"
-- **Pro** — the top tier, not "Premium" or "Ultimate"
+- **Pro** — the paid tier, not "Premium", "Base", or "Ultimate"
 
 ### Product name
 
 - **Suppr** — always capitalised, never "SUPPR" or "suppr"
-- **Suppr Pro** — when referring to the Pro subscription specifically
+- **Pro** — when referring to the Pro subscription, use "Pro" not "Suppr Pro"
 - In running text, do not italicise or bold the product name unless it's the first mention in a marketing context
 
 ## 9. Visual Direction
@@ -195,13 +193,13 @@ Defined in `docs/ux/brand-tokens.md`. The canonical palette lives in `apps/mobil
 
 | Role | Hex | Usage |
 |------|-----|-------|
-| Primary accent | `#4c6ce0` (blue) | Buttons, selected states, links, brand wordmark |
+| Primary accent | `#588CE4` (blue) | Buttons, selected states, links, brand wordmark |
 | Primary light | `#6c8cff` | Dark mode tint, active tab (dark), protein macro |
-| Marketing gradient | `#4c6ce0` to `#e04888` | Hero sections, paywall headers, onboarding emphasis only |
+| Marketing gradient | `#588CE4` to `#DF5EBC` | Hero sections, paywall headers, onboarding emphasis only |
 | Success | `#22a860` | Confirmations, positive states, calorie tracking |
 | Warning | `#e8a020` | Caution states, over-budget indicator, activity bonus |
 | Destructive | `#e04848` | Errors, dangerous actions only |
-| Magenta | `#e04888` | Fat macro, gradient accent — not for body UI |
+| Magenta | `#DF5EBC` | Fat macro, gradient accent — not for body UI |
 | Cyan | `#06b6d4` | Water tracking, exercise/activity |
 | Orange | `#f97316` | Sodium macro |
 
@@ -210,9 +208,9 @@ Defined in `docs/ux/brand-tokens.md`. The canonical palette lives in `apps/mobil
 | Macro | Hex | Token |
 |-------|-----|-------|
 | Calories | `#22a860` (success) | `MacroColors.calories` |
-| Protein | `#4c6ce0` (primary) | `MacroColors.protein` |
+| Protein | `#588CE4` (primary) | `MacroColors.protein` |
 | Carbs | `#e8a020` (warning) | `MacroColors.carbs` |
-| Fat | `#e04888` (magenta) | `MacroColors.fat` |
+| Fat | `#DF5EBC` (magenta) | `MacroColors.fat` |
 | Fiber | `#22a860` (success) | `MacroColors.fiber` |
 | Water | `#06b6d4` (cyan) | `MacroColors.water` |
 
@@ -223,7 +221,7 @@ Defined in `docs/ux/brand-tokens.md`. The canonical palette lives in `apps/mobil
 - No hardcoded hex values in component files. All colours must come from theme tokens or `useThemeColors()`.
 - **Over-budget states use warning (amber), never destructive (red).** Red implies failure. Amber is adherence-neutral. Transition: 0–100% of goal = success, 100–120% = warning, 120%+ = deep warning. Never use the word "over" — use "above target" or simply show the number.
 
-**Why blue, not violet:** Suppr's primary shifted from violet (#7c3aed) to blue (#4c6ce0) during the design overhaul. Blue reads as precise and trustworthy without being clinical. While violet is unclaimed in the nutrition category, the blue primary harmonises better with the macro colour system and avoids the "lifestyle brand" feel that violet can carry. The violet heritage is preserved in the `Neon` legacy alias and marketing gradients.
+**Why blue, not violet:** Suppr's primary shifted from violet (#7c3aed) to blue (#588CE4) during the design overhaul. Blue reads as precise and trustworthy without being clinical. While violet is unclaimed in the nutrition category, the blue primary harmonises better with the macro colour system and avoids the "lifestyle brand" feel that violet can carry. The violet heritage is preserved in the `Neon` legacy alias and marketing gradients.
 
 ### Typography
 
@@ -257,7 +255,7 @@ Do not use `fontWeight: "900"`. Maximum weight in the product UI is 800.
 - **No stock photography** in the product UI. Recipe images come from imported sources.
 - **No illustrations or mascots.** The product's visual identity comes from its typography, spacing, and colour — not decorative elements.
 - **Empty states:** Use an `IconBox` with a themed icon — never use emoji as illustration (no shopping cart emoji, no sparkle emoji). Match the quality of the Progress empty state everywhere.
-- **Gradients:** Primary-to-magenta (`#4c6ce0` to `#e04888`) for marketing CTAs and hero sections. Do not use gradients in the core product UI — flat colour only.
+- **Gradients:** Primary-to-magenta (`#588CE4` to `#DF5EBC`) for marketing CTAs and hero sections. Do not use gradients in the core product UI — flat colour only.
 
 ## 10. Copy Examples
 

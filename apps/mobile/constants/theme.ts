@@ -2,7 +2,7 @@ import { Platform } from 'react-native';
 
 /**
  * Suppr brand accents (mobile). Aligned with the web design-overhaul palette.
- * Primary: `Accent.primary` (#4c6ce0 blue) — TF49 / premium-sprint baseline.
+ * Primary: `Accent.primary` (#588CE4 blue) — 8-slot lock 2026-05-22 canonical.
  * Body text stays warm ink via `Colors.*.text`. See `docs/ux/brand-tokens.md`.
  */
 /** Accent palette — 8-slot lock (2026-05-22 evening). Every accent hue
@@ -157,8 +157,8 @@ export const SlotColors = {
 /**
  * Brand tokens. The `violet` and `pink` deprecated aliases were
  * deleted 2026-04-28 (Next-10 #15) — zero production code
- * referenced them. Use `Brand.primary` (`#4c6ce0` blue) and
- * `Brand.accent` (`#e04888` magenta) directly. The gradient is
+ * referenced them. Use `Brand.primary` (`#588CE4` blue) and
+ * `Brand.accent` (`#DF5EBC` magenta) directly. The gradient is
  * still exposed for marketing CTAs and hero sections only — never
  * use it inside the product UI per
  * `docs/ux/brand-guidelines.md` Section 9.
