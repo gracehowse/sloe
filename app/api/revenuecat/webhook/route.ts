@@ -1,9 +1,17 @@
 import { NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import {
   processRevenueCatEvent,
   type RevenueCatEvent,
 } from "@/lib/revenuecat/webhookProcess";
 import { captureRouteError } from "@/lib/observability/captureRouteError";
+
+/**
+ * ENG-681: RC events older than 26 hours are stale.  RC retries for up to
+ * 24 h in exponential backoff, so 26 h accommodates the full legitimate
+ * retry window while rejecting captured events replayed days later.
+ */
+const MAX_EVENT_AGE_MS = 26 * 60 * 60 * 1000;
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -81,6 +89,12 @@ export async function POST(req: Request) {
     ? authHeader.slice("Bearer ".length).trim()
     : authHeader.trim();
   if (!presented || !constantTimeEqual(presented, expected)) {
+    // ENG-681: alert on auth failures so a leaked/guessed bearer is visible
+    // in Sentry rather than lost in server logs.
+    Sentry.captureMessage("[RC webhook] auth failure — wrong or missing bearer", {
+      level: "warning",
+      fingerprint: ["rc-webhook-auth-failure"],
+    });
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
@@ -110,6 +124,21 @@ export async function POST(req: Request) {
     );
   }
   const event = candidate as RevenueCatEvent;
+
+  // ENG-681: freshness check. RC events carry `event_timestamp_ms`
+  // (Unix ms). Reject events older than 26 h to prevent replay of a
+  // captured webhook from days ago.  Silently accept if the field is
+  // absent (older RC integrations / test events may omit it).
+  const eventTs =
+    typeof event.event_timestamp_ms === "number" ? event.event_timestamp_ms : null;
+  if (eventTs !== null && Date.now() - eventTs > MAX_EVENT_AGE_MS) {
+    Sentry.captureMessage("[RC webhook] stale event rejected", {
+      level: "warning",
+      fingerprint: ["rc-webhook-stale-event"],
+      extra: { event_id: event.id, event_type: event.type, age_ms: Date.now() - eventTs },
+    });
+    return NextResponse.json({ ok: false, error: "event_too_old" }, { status: 400 });
+  }
 
   try {
     const result = await processRevenueCatEvent(event);
