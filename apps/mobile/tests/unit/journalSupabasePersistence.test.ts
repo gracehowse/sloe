@@ -28,6 +28,8 @@ describe("Today journal — every meal-add path persists to Supabase immediately
     const idx = SRC.indexOf("const persistMealsImmediate");
     const slice = SRC.slice(idx, idx + 4000);
     expect(slice).toMatch(/from\(["']nutrition_entries["']\)\s*\.insert/);
+    expect(slice).toMatch(/canonicalNutritionEntrySource/);
+    expect(slice).toMatch(/recipe_id:\s*m\.recipeId/);
     // Must roll back optimistic UI on error.
     expect(slice).toMatch(/setByDay/);
     expect(slice).toMatch(/Couldn't save/);

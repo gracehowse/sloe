@@ -306,7 +306,7 @@ export default function BarcodeScreen() {
       carbs: Math.round((Number(manualCarbs) || 0) * 10) / 10,
       fat: Math.round((Number(manualFat) || 0) * 10) / 10,
       portion_multiplier: 1,
-      source: "Manual barcode entry",
+      source: "barcode",
     });
     setLogging(false);
     if (dbErr) {

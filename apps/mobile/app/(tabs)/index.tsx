@@ -70,6 +70,11 @@ import PhotoLogSheet from "@/components/PhotoLogSheet";
 import AiPaywallSheet, { type AiPaywallFeature } from "@/components/AiPaywallSheet";
 import { computeLoggingStreak } from "@/lib/trackerStats";
 import { computeActivityBonusKcal } from "@suppr/shared/nutrition/activityBonus";
+import { canonicalNutritionEntrySource } from "@suppr/shared/nutrition/canonicalNutritionEntrySource";
+import {
+  fetchCanonicalRecipeTitle,
+  resolvePlannedMealLogTitles,
+} from "@suppr/shared/nutrition/resolveRecipeLogTitles";
 import { isPerServingPortion } from "@suppr/shared/nutrition/foodSearchCore";
 import { ACTIVITY_BUDGET_DISCOVERABILITY_KEY } from "@suppr/shared/nutrition/activityBudgetDiscoverability";
 import {
@@ -452,7 +457,8 @@ export default function TrackerScreen() {
         portion_multiplier: m.portionMultiplier ?? 1,
         nutrition_micros:
           m.micros && Object.keys(m.micros).length > 0 ? m.micros : {},
-        source: m.source ?? null,
+        source: canonicalNutritionEntrySource(m.source),
+        recipe_id: m.recipeId ?? null,
       }));
       const { error } = await supabase
         .from("nutrition_entries")
@@ -505,7 +511,7 @@ export default function TrackerScreen() {
             updated.micros && Object.keys(updated.micros).length > 0
               ? updated.micros
               : {},
-          source: updated.source ?? null,
+          source: canonicalNutritionEntrySource(updated.source),
         })
         .eq("id", mealId)
         .eq("user_id", userId);
@@ -1813,7 +1819,12 @@ export default function TrackerScreen() {
   /** Log any FoodHistoryItem to the active slot. Shared by Quick add
    * panel + Eat-again card so the persist/event shape stays aligned. */
   const logHistoryItemToSlot = useCallback(
-    (item: FoodHistoryItem, slot: string) => {
+    async (item: FoodHistoryItem, slot: string) => {
+      let recipeTitle = item.recipeTitle;
+      if (item.recipeId) {
+        const fresh = await fetchCanonicalRecipeTitle(supabase, item.recipeId);
+        if (fresh) recipeTitle = fresh;
+      }
       // Tracking-extras autoupdate (2026-05-01) — re-attach caffeine /
       // alcohol micros so re-logging a coffee / wine / beer from
       // Recents / Frequent / Eat-again still bumps the daily totals.
@@ -1824,7 +1835,8 @@ export default function TrackerScreen() {
       const meal: JournalMeal = {
         id: newMealId(),
         name: slot,
-        recipeTitle: item.recipeTitle,
+        recipeTitle,
+        ...(item.recipeId ? { recipeId: item.recipeId } : {}),
         time: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
         calories: item.calories,
         protein: item.protein,
@@ -1871,7 +1883,7 @@ export default function TrackerScreen() {
       const f = grams / 100;
       const source =
         result.source === "CUSTOM"
-          ? "Custom food"
+          ? "custom_food"
           : result.source === "OFF"
           ? "Open Food Facts"
           : result.source === "Edamam"
@@ -1980,13 +1992,22 @@ export default function TrackerScreen() {
   /** ENG-709 — Copy yesterday's meals to today. Called after the user
    *  confirms the Alert prompt. Copies all JournalMeal rows from
    *  yesterday's date key with fresh IDs so they don't collide. */
-  const handleCopyYesterdayConfirmed = useCallback(() => {
+  const handleCopyYesterdayConfirmed = useCallback(async () => {
     const yesterdayMeals = getYesterdayMeals(byDay, dayKey);
     if (yesterdayMeals.length === 0) return;
-    const newMeals: JournalMeal[] = yesterdayMeals.map((m) => ({
-      ...m,
-      id: newMealId(),
-    }));
+    const newMeals: JournalMeal[] = await Promise.all(
+      yesterdayMeals.map(async (m) => {
+        const meal: JournalMeal = {
+          ...cloneMealWithoutId(m),
+          id: newMealId(),
+        };
+        if (meal.recipeId) {
+          const fresh = await fetchCanonicalRecipeTitle(supabase, meal.recipeId);
+          if (fresh) meal.recipeTitle = fresh;
+        }
+        return meal;
+      }),
+    );
     setByDay((prev) => ({
       ...prev,
       [dayKey]: [...(prev[dayKey] ?? []), ...newMeals],
@@ -2610,7 +2631,8 @@ export default function TrackerScreen() {
   // Same hook the Library tab uses so we stay on a single source of
   // truth for the saved set. Refresh handled by the hook's internal
   // useEffect on userId change.
-  const { recipes: savedLibraryRecipes } = useSavedLibraryRecipes(userId ?? null);
+  const { recipes: savedLibraryRecipes, refresh: refreshSavedLibraryRecipes } =
+    useSavedLibraryRecipes(userId ?? null);
   const savedRecipesForLibrary = useMemo(
     () =>
       savedLibraryRecipes.map((r) => ({
@@ -3838,11 +3860,18 @@ export default function TrackerScreen() {
     useCallback(() => {
       void loadJournal();
       void loadProfileTargets();
+      if (userId) void refreshSavedLibraryRecipes();
       AsyncStorage.removeItem(PROFILE_TARGETS_DIRTY_KEY).catch(() => {
         /* non-fatal — targets already re-read above */
       });
-    }, [loadJournal, loadProfileTargets]),
+    }, [loadJournal, loadProfileTargets, userId, refreshSavedLibraryRecipes]),
   );
+
+  // Log sheet Library tab uses `savedLibraryRecipes`; refresh when the
+  // sheet opens so a title edited on Library / recipe detail is current.
+  useEffect(() => {
+    if (fabSheetOpen && userId) void refreshSavedLibraryRecipes();
+  }, [fabSheetOpen, userId, refreshSavedLibraryRecipes]);
 
   // Token rotation (TestFlight build 7 fix —
   // `AOjQg5DGBZqS5qNJ1Rqu960`, `APdpODtJDL8q2JhtGup6DK0`). Expo push
@@ -3884,7 +3913,7 @@ export default function TrackerScreen() {
       protein: Math.round(p),
       carbs: Math.round(cb),
       fat: Math.round(f),
-      source: "Manual",
+      source: "manual",
     };
     setByDay((prev) => ({
       ...prev,
@@ -3983,7 +4012,7 @@ export default function TrackerScreen() {
         water_ml: m.waterMl ?? null,
         portion_multiplier: m.portionMultiplier ?? 1,
         nutrition_micros: m.micros && Object.keys(m.micros).length > 0 ? m.micros : {},
-        source: m.source ?? null,
+        source: canonicalNutritionEntrySource(m.source),
         // Schema refactor Phase 2 (2026-05-11) — propagate the recipe
         // id through copy / duplicate so the cloned journal row keeps
         // the typed FK link to recipes.id.
@@ -4246,14 +4275,22 @@ export default function TrackerScreen() {
         return;
       }
 
+      const fetchedTitle = await fetchCanonicalRecipeTitle(supabase, pm.recipe_id);
+      const { name: logSlotName, recipeTitle: logRecipeTitle } = resolvePlannedMealLogTitles({
+        slotName: pm.name,
+        recipeTitle: pm.recipe_title,
+        fetchedTitle,
+      });
+
       // P1-12 (2026-04-25): optimistic insert into byDay so the journal
       // updates instantly. On server error, roll back the optimistic
       // entry and surface the error. Same shape as
       // `insertClonedRowsIntoDay` (the existing copy/duplicate path).
       const optimisticMeal: JournalMeal = {
         id: entryId,
-        name: pm.name ?? pm.recipe_title ?? "",
-        recipeTitle: pm.recipe_title ?? pm.name ?? "",
+        name: logSlotName,
+        recipeTitle: logRecipeTitle,
+        ...(pm.recipe_id ? { recipeId: pm.recipe_id } : {}),
         time: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
         calories: Math.round((pm.calories ?? 0) * mult),
         protein: Math.round((pm.protein ?? 0) * mult * 10) / 10,
@@ -4263,7 +4300,7 @@ export default function TrackerScreen() {
         waterMl: undefined,
         micros: Object.keys(microsRes.micros).length > 0 ? microsRes.micros : undefined,
         portionMultiplier: mult,
-        source: "Meal plan",
+        source: "Recipe",
       } as JournalMeal;
       setByDay((prev) => ({
         ...prev,
@@ -4274,8 +4311,8 @@ export default function TrackerScreen() {
         id: entryId,
         user_id: userId,
         date_key: dk,
-        name: pm.name ?? pm.recipe_title ?? "",
-        recipe_title: pm.recipe_title ?? pm.name ?? "",
+        name: logSlotName,
+        recipe_title: logRecipeTitle,
         time_label: optimisticMeal.time,
         calories: optimisticMeal.calories,
         protein: optimisticMeal.protein,
@@ -4285,7 +4322,7 @@ export default function TrackerScreen() {
         water_ml: null,
         nutrition_micros: Object.keys(microsRes.micros).length > 0 ? microsRes.micros : {},
         portion_multiplier: mult,
-        source: "Meal plan",
+        source: "Recipe",
         // Schema refactor Phase 2 (2026-05-11) — typed FK to recipes.id.
         // Planner-log path has the recipe id in scope on `pm`. Auto-
         // NULLed by Phase 1's FK if the recipe is later deleted.
@@ -4848,7 +4885,7 @@ export default function TrackerScreen() {
                   activeSlot={activeMealSlot}
                   supabase={supabase}
                   userId={userId ?? ""}
-                  onLog={(item) => logHistoryItemToSlot(item, activeMealSlot)}
+                  onLog={(item) => void logHistoryItemToSlot(item, activeMealSlot)}
                   onLogSavedMeal={(meal, slot) => logSavedMealFromPanel(meal, slot)}
                   onOpenSaveCombo={(slot) => {
                     if (slot) openSaveMealSheetForSlot(slot);
@@ -5308,7 +5345,7 @@ export default function TrackerScreen() {
             // path used currentSlotFromTime instead of the user's choice.
             // Use activeMealSlot (set by the slot-specific FAB tap or
             // reset to time-of-day when the generic FAB opens).
-            logHistoryItemToSlot(found, activeMealSlot);
+            void logHistoryItemToSlot(found, activeMealSlot);
           },
         }}
         saved={{
@@ -5746,7 +5783,7 @@ export default function TrackerScreen() {
             supabase={supabase}
             userId={userId ?? ""}
             onLog={(item) => {
-              logHistoryItemToSlot(item, activeMealSlot);
+              void logHistoryItemToSlot(item, activeMealSlot);
               setShowPrevious(false);
             }}
             onLogSavedMeal={(meal, slot) => logSavedMealFromPanel(meal, slot)}

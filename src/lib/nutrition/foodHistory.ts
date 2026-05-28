@@ -27,6 +27,8 @@ import { isHealthImportFallbackTitle } from "./healthImportLabels";
 export type FoodHistoryMealLike = {
   recipeTitle?: string;
   name?: string;
+  /** When set, re-log paths can refresh `recipeTitle` from `recipes`. */
+  recipeId?: string | null;
   calories: number;
   protein: number;
   carbs: number;
@@ -61,6 +63,7 @@ export type FoodHistoryMealLike = {
 /** Normalised history item used by the Quick Add panel rows. */
 export type FoodHistoryItem = {
   recipeTitle: string;
+  recipeId?: string;
   calories: number;
   protein: number;
   carbs: number;
@@ -197,6 +200,8 @@ type Bucket = {
   alcoholCount: number;
   /** Most recent provenance seen for this bucket. */
   source?: string;
+  /** Latest occurrence with a `recipeId` (for title refresh on re-log). */
+  recipeId?: string;
   /**
    * Premium-bar audit DC3 polish (2026-05-14) — last-seen recipe
    * image URL for the bucket. Updated whenever a later occurrence
@@ -261,6 +266,8 @@ function addToBucket(b: Bucket, m: FoodHistoryMealLike, dayKey: string, indexInD
   if (sortKey > b.lastSortKey) {
     b.lastSortKey = sortKey;
     b.lastLoggedAt = m.createdAt ?? dayKey;
+    const rid = m.recipeId?.trim();
+    if (rid) b.recipeId = rid;
     // Premium-bar audit DC3 polish (2026-05-14) — latest-seen
     // image URL wins, mirroring the lastLoggedAt rule. We only
     // overwrite when the newer row actually carries an image so a
@@ -303,6 +310,7 @@ function finaliseBucket(b: Bucket): FoodHistoryItem {
   }
   if (b.source) item.source = b.source;
   if (b.lastLoggedAt) item.lastLoggedAt = b.lastLoggedAt;
+  if (b.recipeId) item.recipeId = b.recipeId;
   // Premium-bar audit DC3 polish (2026-05-14) — surface the last-seen
   // image URL so the Eat-Again banner / Quick Add rows can render a
   // thumbnail when present. Never invented.

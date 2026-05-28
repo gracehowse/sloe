@@ -9,6 +9,7 @@ import { newId } from "./persistence.ts";
 import { useRetryEnableDbTable } from "./useRetryEnableDbTable.ts";
 import { refreshAdaptiveTdeeForUser } from "../../lib/nutrition/refreshAdaptiveTdee.ts";
 import { cloneMealWithoutId, sanitizeCopyTargets } from "../../lib/nutrition/copyMeals.ts";
+import { canonicalNutritionEntrySource } from "../../lib/nutrition/canonicalNutritionEntrySource.ts";
 import { snapshotDailyTargetIfMissing } from "../../lib/nutrition/dailyTargetSnapshot.ts";
 
 type NutritionEntryRow = {
@@ -156,7 +157,7 @@ export function useNutritionJournalState(opts: {
       water_ml: meal.waterMl ?? null,
       portion_multiplier: meal.portionMultiplier ?? 1,
       nutrition_micros: meal.micros && Object.keys(meal.micros).length > 0 ? meal.micros : {},
-      source: meal.source ?? null,
+      source: canonicalNutritionEntrySource(meal.source),
       // Schema refactor Phase 2 (2026-05-11) — typed FK to recipes.id.
       // When the caller knows the recipe id (recipe-detail log,
       // planner log, etc.) we persist it so the journal row can be

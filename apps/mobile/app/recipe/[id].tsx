@@ -48,6 +48,7 @@ import {
 } from "@suppr/shared/nutrition/fatsecretCacheGuard";
 import { decodeEntities } from "@/lib/decodeEntities";
 import { normaliseRecipeDisplayTitle } from "@suppr/shared/recipe/normaliseDisplayTitle";
+import { normalizeRecipeTitle } from "@suppr/shared/recipes/normalizeRecipeTitle";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { Accent, MacroColors, Spacing, Radius, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -1224,7 +1225,7 @@ export default function RecipeDetailScreen() {
         user_id: userId,
         date_key: dk,
         name: slot,
-        recipe_title: recipe.title,
+        recipe_title: normalizeRecipeTitle(recipe.title),
         time_label: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
         calories: scaledForLog.calories,
         protein: scaledForLog.protein,
