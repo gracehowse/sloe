@@ -1354,6 +1354,14 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
                         onChange={setPickerState}
                         options={pickerOptions}
                         rememberedGrams={rememberedPortion}
+                        macrosPer100g={{
+                          calories: product.calories,
+                          protein: product.protein,
+                          carbs: product.carbs,
+                          fat: product.fat,
+                          fiberG: product.fiberG,
+                        }}
+                        basisCorrected={product.basisCorrected}
                       />
                     ) : null}
                     {rememberedPortion != null && rememberedPortion > 0 ? (

@@ -173,6 +173,47 @@ describe("P0 post-scale plausibility guard — wired at both boundaries", () => 
   });
 });
 
+describe("ENG-702 portion picker — inline plausibility after scale", () => {
+  const MOBILE_PORTION_PICKER = resolve(__dirname, "../../components/PortionPicker.tsx");
+  const WEB_PORTION_PICKER = resolve(
+    __dirname,
+    "../../../../src/app/components/suppr/portion-picker.tsx",
+  );
+  const PORTION_PICKER_SHARED = resolve(
+    __dirname,
+    "../../../../src/lib/nutrition/portionPicker.ts",
+  );
+  const MOBILE_PICKER_SRC = readFileSync(MOBILE_PORTION_PICKER, "utf8");
+  const WEB_PICKER_SRC = readFileSync(WEB_PORTION_PICKER, "utf8");
+  const SHARED_PICKER_SRC = readFileSync(PORTION_PICKER_SHARED, "utf8");
+
+  it("shared module exports evaluatePortionScalePlausibility", () => {
+    expect(SHARED_PICKER_SRC).toMatch(/export function evaluatePortionScalePlausibility/);
+    expect(SHARED_PICKER_SRC).toMatch(/checkScaledLogPlausibility/);
+  });
+
+  it("mobile PortionPicker surfaces inline warning when macrosPer100g is set", () => {
+    expect(MOBILE_PICKER_SRC).toMatch(/evaluatePortionScalePlausibility/);
+    expect(MOBILE_PICKER_SRC).toMatch(/macrosPer100g/);
+    expect(MOBILE_PICKER_SRC).toMatch(/portionPlausibilityWarning/);
+    expect(MOBILE_PICKER_SRC).toMatch(/accessibilityRole="alert"/);
+  });
+
+  it("web PortionPickerWeb mirrors mobile plausibility props", () => {
+    expect(WEB_PICKER_SRC).toMatch(/evaluatePortionScalePlausibility/);
+    expect(WEB_PICKER_SRC).toMatch(/macrosPer100g/);
+    expect(WEB_PICKER_SRC).toMatch(/portionPlausibilityWarning/);
+    expect(WEB_PICKER_SRC).toMatch(/role="alert"/);
+  });
+
+  it("barcode hosts pass per-100g panel + basisCorrected into the pickers", () => {
+    expect(SCANNER_MODAL_SRC).toMatch(/macrosPer100g=\{\{/);
+    expect(SCANNER_MODAL_SRC).toMatch(/basisCorrected=\{product\.basisCorrected\}/);
+    expect(WEB_BARCODE_DIALOG_SRC).toMatch(/macrosPer100g=\{\{/);
+    expect(WEB_BARCODE_DIALOG_SRC).toMatch(/basisCorrected=\{product\.basisCorrected\}/);
+  });
+});
+
 describe("P0 parity footgun — mobile scaleMacrosByGrams", () => {
   it("mobile verifyRecipe exports scaleMacrosByGrams (grams), not a bare scaleMacros", () => {
     expect(VERIFY_SRC).toMatch(/export function scaleMacrosByGrams\(/);

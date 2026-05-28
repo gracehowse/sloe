@@ -118,6 +118,14 @@ function BarcodePicker(props: {
       onChange={setPickerState}
       options={options}
       rememberedGrams={rememberedGrams}
+      macrosPer100g={{
+        calories: product.calories,
+        protein: product.protein,
+        carbs: product.carbs,
+        fat: product.fat,
+        fiberG: product.fiberG,
+      }}
+      basisCorrected={product.basisCorrected}
     />
   );
 }
