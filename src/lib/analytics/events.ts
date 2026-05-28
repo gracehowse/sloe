@@ -1,5 +1,15 @@
 /** Stable event names for PostHog / product analytics. */
 export const AnalyticsEvents = {
+  /** ENG-671: server-side revenue event emitted by the RC webhook on
+   *  INITIAL_PURCHASE and NON_RENEWING_PURCHASE. Distinct from
+   *  `checkout_completed` (client-side Stripe flow) so mobile and web
+   *  revenue can be attributed cleanly.
+   *  Payload: `{ user_id, tier, product_id, event_type, platform }`. */
+  subscription_purchased: "subscription_purchased",
+  /** ENG-671: emitted by the RC webhook on RENEWAL events so
+   *  renewal revenue is separately visible from new subscriptions.
+   *  Payload: `{ user_id, tier, product_id, platform }`. */
+  subscription_renewed: "subscription_renewed",
   checkout_started: "checkout_started",
   // [RENAME-CYCLE 2026-04-18 → retire 2026-05-18] Fires alongside
   // `checkout_completed`. Drop the `_return` suffix once dashboards have

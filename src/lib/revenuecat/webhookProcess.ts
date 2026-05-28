@@ -29,6 +29,8 @@ import {
   tierFromRevenueCatEntitlements,
   userIdFromAppUserId,
 } from "@/lib/revenuecat/tierFromEntitlements";
+import { serverTrack } from "@/lib/analytics/serverTrack";
+import { AnalyticsEvents } from "@/lib/analytics/events";
 
 export type RevenueCatEvent = {
   id: string;
@@ -126,9 +128,25 @@ export async function processRevenueCatEvent(event: RevenueCatEvent): Promise<Pr
     }
     const tier = tierFromRevenueCatEntitlements(entitlements);
     const ok = await updateProfileTierServiceRole(userId, tier);
-    return ok
-      ? { ok: true, outcome: "tier_updated", userId, tier }
-      : { ok: false, reason: "persist_failed", error: "tier_write_failed" };
+    if (!ok) return { ok: false, reason: "persist_failed", error: "tier_write_failed" };
+
+    // ENG-671: server-side revenue event so the purchase is attributed
+    // correctly in PostHog without relying on the client to fire it
+    // (mobile clients can background / close before the client event lands).
+    const isNewPurchase =
+      event.type === "INITIAL_PURCHASE" || event.type === "NON_RENEWING_PURCHASE";
+    const revenueEvent = isNewPurchase
+      ? AnalyticsEvents.subscription_purchased
+      : AnalyticsEvents.subscription_renewed;
+    void serverTrack(revenueEvent, userId, {
+      user_id: userId,
+      tier,
+      product_id: event.product_id ?? null,
+      event_type: event.type,
+      platform: "mobile",
+    });
+
+    return { ok: true, outcome: "tier_updated", userId, tier };
   }
 
   // TRANSFER, SUBSCRIPTION_EXTENDED, REFUND, etc. — log + no-op for v0.
