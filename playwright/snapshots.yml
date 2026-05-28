@@ -1,0 +1,7 @@
+# PostHog Visual Review — Playwright baseline manifest.
+# Hashes are populated by the VR CLI after enabling Visual Review in PostHog.
+# See docs/testing/VISUAL_REGRESSION.md and .github/workflows/visual-review.yml
+team: suppr
+type: playwright
+dir: tests/e2e/__snapshots__
+hashes: {}

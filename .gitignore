@@ -18,6 +18,8 @@ node_modules/
 dist
 node_modules
 test-results
+storybook-static/
+build-storybook.log
 tests/e2e/.auth/
 coverage/
 tsconfig.tsbuildinfo

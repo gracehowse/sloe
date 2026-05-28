@@ -36,6 +36,8 @@ const authedTestMatch = [
   /journeys\/cook-mode\.spec\.ts/,
   /journeys\/core-flows-authed\.spec\.ts/,
   /visual-audit-authed\.spec\.ts/,
+  /visual-regression-subpages\.spec\.ts/,
+  /visual-regression-deep\.spec\.ts/,
   /screenshots\/web-authed-tour\.spec\.ts/,
   /screenshots\/today-premium/,
   /ai\//,
@@ -68,7 +70,16 @@ const reporters = useMidsceneReporter
 export default defineConfig({
   testDir: "./tests/e2e",
   timeout: useMidsceneReporter ? 120_000 : 60_000,
-  expect: { timeout: 15_000 },
+  expect: {
+    timeout: 15_000,
+    toHaveScreenshot: {
+      maxDiffPixelRatio: 0.01,
+      animations: "disabled",
+      caret: "hide",
+      scale: "css",
+    },
+  },
+  snapshotPathTemplate: "{testDir}/__snapshots__/{testFilePath}/{arg}{ext}",
   retries: process.env.CI ? 2 : 0,
   forbidOnly: isCi,
   fullyParallel: isCi,

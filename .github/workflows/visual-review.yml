@@ -1,0 +1,104 @@
+# PostHog Visual Review — PR screenshot review (optional until VR_API_TOKEN is set).
+# Complements in-repo Playwright snapshots (npm run test:e2e:visual).
+name: Visual review
+
+on:
+  pull_request:
+    paths:
+      - "app/**"
+      - "src/**"
+      - "tests/e2e/**"
+      - "playwright.config.ts"
+      - "playwright/snapshots.yml"
+      - ".github/workflows/visual-review.yml"
+
+concurrency:
+  group: visual-review-${{ github.head_ref }}
+  cancel-in-progress: true
+
+jobs:
+  playwright-visual:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      VERIFY_STRICT: "0"
+      E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
+      E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - name: Playwright visual regression (public shell)
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3100
+        run: |
+          npm run start -- --port 3100 &
+          npx wait-on http://127.0.0.1:3100/login
+          npm run test:e2e:visual -- --project=chromium
+      - name: Playwright visual regression (authenticated + deep)
+        if: env.E2E_EMAIL != ''
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3100
+        run: npm run test:e2e:visual -- --project=chromium-authed
+      - name: Upload Playwright snapshot diff artifacts
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-visual-diff
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7
+
+  applitools-eyes:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      VERIFY_STRICT: "0"
+      APPLITOOLS_API_KEY: ${{ secrets.APPLITOOLS_API_KEY }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Skip Applitools when API key is not configured
+        if: env.APPLITOOLS_API_KEY == ''
+        run: echo "APPLITOOLS_API_KEY not set — skipping Eyes job."
+      - name: Install and run Applitools Eyes
+        if: env.APPLITOOLS_API_KEY != ''
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          npm run build
+          npm run start -- --port 3100 &
+          npx wait-on http://127.0.0.1:3100/login
+          npm run test:e2e:applitools -- --project=chromium
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3100
+
+  # Enable after PostHog Visual Review is turned on for the Suppr project:
+  # 1. PostHog → Settings → Visual review → connect GitHub
+  # 2. Add repo secret VR_API_TOKEN
+  # 3. Uncomment the job below and install the VR CLI step from PostHog docs.
+  #
+  # posthog-visual-review:
+  #   needs: playwright-visual
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v6
+  #     - name: Submit snapshots to PostHog Visual Review
+  #       env:
+  #         VR_API_TOKEN: ${{ secrets.VR_API_TOKEN }}
+  #       run: |
+  #         npx @posthog/visual-review-cli submit \
+  #           --dir tests/e2e/__snapshots__ \
+  #           --baseline playwright/snapshots.yml \
+  #           --type playwright

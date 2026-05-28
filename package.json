@@ -96,6 +96,7 @@
     "git:prune-locals": "bash scripts/git-prune-merged-locals.sh",
     "mobile:test:dark-sweep": "npm run --prefix apps/mobile test:dark-sweep",
     "chromatic": "chromatic --playwright --exit-zero-on-changes",
+    "test:chromatic:local": "npm run build && npm run start -- --port 3100 & npx wait-on http://127.0.0.1:3100/login && npx playwright test tests/e2e/chromatic-e2e.spec.ts --project=chromium && npm run chromatic",
     "chromatic:storybook": "chromatic --exit-zero-on-changes"
   },
   "dependencies": {
