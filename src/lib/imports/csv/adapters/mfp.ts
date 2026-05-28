@@ -63,7 +63,9 @@ export const mfpAdapter: CsvImportAdapter = {
    * macro column, with NO separate quantity/units column (those are
    * baked into the food name). The "no separate quantity column"
    * check is what distinguishes MFP from Lose It (which always
-   * exports `Quantity` + `Units` as separate columns).
+   * exports `Quantity` + `Units` as separate columns). The `!has("servings")`
+   * guard distinguishes MFP from MacroFactor, which exports both
+   * `Serving Size` + `Servings` alongside `Food`.
    */
   detect(canonicalHeaders) {
     const has = (k: string) => canonicalHeaders.includes(k);
@@ -72,7 +74,9 @@ export const mfpAdapter: CsvImportAdapter = {
       (has("meal") || has("mealtype")) &&
       has("calories") &&
       !has("quantity") &&
-      !has("units")
+      !has("units") &&
+      !has("servings") &&
+      !has("servingsize")
     );
   },
 };
