@@ -186,6 +186,7 @@ async function getOAuth2Token(cfg: FatSecretConfig): Promise<string | null> {
     },
     body,
     cache: "no-store",
+    signal: AbortSignal.timeout(8_000),
   });
   if (!res.ok) {
     // 2026-05-06 — surface the failure mode so production logs say
@@ -257,6 +258,7 @@ async function fatSecretGet<T>(cfg: FatSecretConfig, params: Record<string, stri
       },
       body,
       cache: "no-store",
+      signal: AbortSignal.timeout(8_000),
     });
     if (!res.ok) {
       const txt = await res.text().catch(() => "");
@@ -295,6 +297,7 @@ async function fatSecretGet<T>(cfg: FatSecretConfig, params: Record<string, stri
     },
     body,
     cache: "no-store",
+    signal: AbortSignal.timeout(8_000),
   });
   if (!res.ok) {
     const txt = await res.text().catch(() => "");
