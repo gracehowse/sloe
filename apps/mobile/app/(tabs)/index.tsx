@@ -4852,16 +4852,31 @@ export default function TrackerScreen() {
           />
         )}
 
-        {/* 2026-05-23 — NorthStarBlockHost removed from Today's main
-            scroll (Grace ask: "this needs to have recently logged /
-            your usuals and suggestions etc"). The "Pick recipes" /
-            "what to eat next" / "library empty" prompts were stacking
-            below the meal slots even when the plan already had
-            recipes, reading as stale discovery clutter on a screen
-            whose job is at-a-glance adherence. Discovery + suggestions
-            now live inside the central + LogSheet (`LogSheet.tsx`)
-            where the user actually goes when they want to log
-            something. */}
+        {/* D-02 (ENG-690): NorthStar block — empty-day-only. Shows
+            "what to eat next" / "log your first meal" prompts only
+            when the user hasn't logged anything yet today. Once the
+            first meal lands, showBelowMealsNorthStar flips false and
+            the block disappears so it never reads as stale clutter on
+            a populated Today screen. */}
+        {showBelowMealsNorthStar && (
+          <NorthStarBlockHost
+            viewMode={viewMode}
+            savedRecipesForLibrary={savedRecipesForLibrary}
+            remainingCalories={Math.max(0, remaining)}
+            remainingProtein={remainingProtein}
+            remainingCarbs={remainingCarbs}
+            remainingFat={remainingFat}
+            onPrimaryCta={(recipeId) => {
+              router.push(`/recipe/${recipeId}` as any);
+            }}
+            onBrowseLibrary={() => {
+              router.push("/(tabs)/library" as any);
+            }}
+            selectedDateKey={dayKey}
+            userCreatedAt={session?.user?.created_at ?? null}
+            hasEverLoggedAnyMeal={hasAnyJournalHistory}
+          />
+        )}
         {showBelowMealsCheckin && (
             <WeeklyCheckinBanner
               textColor={colors.text}
