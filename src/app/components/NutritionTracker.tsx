@@ -7,6 +7,7 @@ import { useAppData } from "../../context/AppDataContext.tsx";
 import { normalizeMacroTargets, DEFAULT_STEPS_GOAL } from "../../types/profile.ts";
 import { resolveMaintenance } from "../../lib/nutrition/resolveMaintenance.ts";
 import { computeActivityBonusKcal } from "../../lib/nutrition/activityBonus.ts";
+import { scaleMacroTargetsForCalorieBudget } from "../../lib/nutrition/scaleMacroTargetsForCalorieBudget.ts";
 import { previousDayKey } from "../../lib/nutrition/copyYesterdayMeals.ts";
 import { isPerServingPortion } from "../../lib/nutrition/foodSearchCore.ts";
 import { ACTIVITY_BUDGET_DISCOVERABILITY_KEY } from "../../lib/nutrition/activityBudgetDiscoverability.ts";
@@ -1983,17 +1984,14 @@ export const NutritionTracker = memo(function NutritionTracker({
   });
   const effectiveCalorieTarget = baseCalorieTarget + activityAdjustment;
 
-  const effectiveMacroTargets = useMemo(() => {
-    if (baseCalorieTarget <= 0 || effectiveCalorieTarget <= baseCalorieTarget) {
-      return { protein: targets.protein, carbs: targets.carbs, fat: targets.fat };
-    }
-    const scale = effectiveCalorieTarget / baseCalorieTarget;
-    return {
-      protein: Math.round(targets.protein * scale),
-      carbs: Math.round(targets.carbs * scale),
-      fat: Math.round(targets.fat * scale),
-    };
-  }, [baseCalorieTarget, effectiveCalorieTarget, targets.protein, targets.carbs, targets.fat]);
+  const effectiveMacroTargets = useMemo(
+    () =>
+      scaleMacroTargetsForCalorieBudget(
+        { protein: targets.protein, carbs: targets.carbs, fat: targets.fat },
+        { baseCalories: baseCalorieTarget, effectiveCalories: effectiveCalorieTarget },
+      ),
+    [baseCalorieTarget, effectiveCalorieTarget, targets.protein, targets.carbs, targets.fat],
+  );
 
   const belowMealsPromptEligibleWeb = useMemo(
     () => ({

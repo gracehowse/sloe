@@ -70,6 +70,7 @@ import PhotoLogSheet from "@/components/PhotoLogSheet";
 import AiPaywallSheet, { type AiPaywallFeature } from "@/components/AiPaywallSheet";
 import { computeLoggingStreak } from "@/lib/trackerStats";
 import { computeActivityBonusKcal } from "@suppr/shared/nutrition/activityBonus";
+import { scaleMacroTargetsForCalorieBudget } from "@suppr/shared/nutrition/scaleMacroTargetsForCalorieBudget";
 import { canonicalNutritionEntrySource } from "@suppr/shared/nutrition/canonicalNutritionEntrySource";
 import {
   fetchCanonicalRecipeTitle,
@@ -2217,17 +2218,25 @@ export default function TrackerScreen() {
   // when a bonus is earned. Without this scaling the macro bars show 100%
   // consumed while the calorie ring still shows budget remaining, which is
   // confusing and incorrect.
-  const effectiveMacroTargets = useMemo(() => {
-    if (targets.calories <= 0 || effectiveCalorieGoal <= targets.calories) {
-      return { protein: targets.protein, carbs: targets.carbs, fat: targets.fat };
-    }
-    const scale = effectiveCalorieGoal / targets.calories;
-    return {
-      protein: Math.round(targets.protein * scale),
-      carbs: Math.round(targets.carbs * scale),
-      fat: Math.round(targets.fat * scale),
-    };
-  }, [targets.calories, targets.protein, targets.carbs, targets.fat, effectiveCalorieGoal]);
+  const effectiveMacroTargets = useMemo(
+    () =>
+      scaleMacroTargetsForCalorieBudget(
+        { protein: targets.protein, carbs: targets.carbs, fat: targets.fat },
+        { baseCalories: targets.calories, effectiveCalories: effectiveCalorieGoal },
+      ),
+    [targets.calories, targets.protein, targets.carbs, targets.fat, effectiveCalorieGoal],
+  );
+
+  /** Macro tiles/bars expect a full targets object; only P/C/F scale with bonus. */
+  const dashboardMacroTargets = useMemo(
+    () => ({
+      ...targets,
+      protein: effectiveMacroTargets.protein,
+      carbs: effectiveMacroTargets.carbs,
+      fat: effectiveMacroTargets.fat,
+    }),
+    [targets, effectiveMacroTargets],
+  );
 
   const todayActivityBudgetAddon = useMemo(
     () =>
@@ -4768,7 +4777,7 @@ export default function TrackerScreen() {
                 <TodayDashboardMacroTiles
                   trackedMacros={trackedMacros}
                   totals={totals}
-                  targets={targets}
+                  targets={dashboardMacroTargets}
                   totalWaterMl={totalWaterMl}
                   waterGoalMl={waterGoalMl}
                   mealsToday={mealsToday}
@@ -4786,7 +4795,7 @@ export default function TrackerScreen() {
                 <TodayDashboardMacroBars
                   trackedMacros={trackedMacros}
                   totals={totals}
-                  targets={targets}
+                  targets={dashboardMacroTargets}
                   totalWaterMl={totalWaterMl}
                   waterGoalMl={waterGoalMl}
                   mealsToday={mealsToday}
