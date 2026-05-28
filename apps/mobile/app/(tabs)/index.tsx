@@ -2153,6 +2153,25 @@ export default function TrackerScreen() {
     ],
   );
 
+  // Scale macro gram targets proportionally when the activity bonus adds
+  // extra calorie budget. The base targets (targets.protein/carbs/fat) are
+  // set from the user's profile split — if those targets collectively sum to
+  // `targets.calories` kcal, they should also sum to `effectiveCalorieGoal`
+  // when a bonus is earned. Without this scaling the macro bars show 100%
+  // consumed while the calorie ring still shows budget remaining, which is
+  // confusing and incorrect.
+  const effectiveMacroTargets = useMemo(() => {
+    if (targets.calories <= 0 || effectiveCalorieGoal <= targets.calories) {
+      return { protein: targets.protein, carbs: targets.carbs, fat: targets.fat };
+    }
+    const scale = effectiveCalorieGoal / targets.calories;
+    return {
+      protein: Math.round(targets.protein * scale),
+      carbs: Math.round(targets.carbs * scale),
+      fat: Math.round(targets.fat * scale),
+    };
+  }, [targets.calories, targets.protein, targets.carbs, targets.fat, effectiveCalorieGoal]);
+
   const todayActivityBudgetAddon = useMemo(
     () =>
       dayActivityBudgetAddon(
@@ -2575,9 +2594,9 @@ export default function TrackerScreen() {
   // Calories are signed (already computed); macros clamp to 0 since
   // "negative remaining protein" isn't a meaningful selector — the
   // scorer treats over-target macros as neutral, not penalised.
-  const remainingProtein = Math.max(0, targets.protein - totals.protein);
-  const remainingCarbs = Math.max(0, targets.carbs - totals.carbs);
-  const remainingFat = Math.max(0, targets.fat - totals.fat);
+  const remainingProtein = Math.max(0, effectiveMacroTargets.protein - totals.protein);
+  const remainingCarbs = Math.max(0, effectiveMacroTargets.carbs - totals.carbs);
+  const remainingFat = Math.max(0, effectiveMacroTargets.fat - totals.fat);
 
   const belowMealsPromptEligible = useMemo(
     () => ({
@@ -2635,9 +2654,9 @@ export default function TrackerScreen() {
       totals.carbs,
       totals.fat,
       effectiveCalorieGoal,
-      targets.protein,
-      targets.carbs,
-      targets.fat,
+      effectiveMacroTargets.protein,
+      effectiveMacroTargets.carbs,
+      effectiveMacroTargets.fat,
     ].join(":");
     const currentFastKey = activeFastStart ?? null;
     const prev = widgetSnapshotSignatureRef.current;
@@ -2659,11 +2678,11 @@ export default function TrackerScreen() {
         const snapshot = buildWidgetSnapshot({
           kcalConsumed: totals.calories,
           kcalTarget: effectiveCalorieGoal,
-          proteinTargetG: targets.protein,
+          proteinTargetG: effectiveMacroTargets.protein,
           proteinConsumedG: totals.protein,
-          carbsTargetG: targets.carbs,
+          carbsTargetG: effectiveMacroTargets.carbs,
           carbsConsumedG: totals.carbs,
-          fatTargetG: targets.fat,
+          fatTargetG: effectiveMacroTargets.fat,
           fatConsumedG: totals.fat,
           fastStartsAt: activeFastStart,
           // Threaded from `profiles.fasting_window` (parsed in
@@ -2697,9 +2716,9 @@ export default function TrackerScreen() {
     totals.carbs,
     totals.fat,
     effectiveCalorieGoal,
-    targets.protein,
-    targets.carbs,
-    targets.fat,
+    effectiveMacroTargets.protein,
+    effectiveMacroTargets.carbs,
+    effectiveMacroTargets.fat,
     activeFastStart,
     fastTargetHours,
   ]);
@@ -4557,9 +4576,9 @@ export default function TrackerScreen() {
                 cardBackgroundColor={colors.card}
                 borderColor={colors.cardBorder}
                 trackColor={colors.ringTrack}
-                proteinPct={targets.protein > 0 ? Math.min(totals.protein / targets.protein, 1) : 0}
-                carbsPct={targets.carbs > 0 ? Math.min(totals.carbs / targets.carbs, 1) : 0}
-                fatPct={targets.fat > 0 ? Math.min(totals.fat / targets.fat, 1) : 0}
+                proteinPct={effectiveMacroTargets.protein > 0 ? Math.min(totals.protein / effectiveMacroTargets.protein, 1) : 0}
+                carbsPct={effectiveMacroTargets.carbs > 0 ? Math.min(totals.carbs / effectiveMacroTargets.carbs, 1) : 0}
+                fatPct={effectiveMacroTargets.fat > 0 ? Math.min(totals.fat / effectiveMacroTargets.fat, 1) : 0}
                 expanded={ringExpanded}
                 onToggleExpanded={() => setRingExpanded((e) => !e)}
                 displayMode={calorieDisplayMode}
@@ -5168,9 +5187,9 @@ export default function TrackerScreen() {
           onSelect: handleFoodSearchSelect,
           macroTargets: {
             calories: effectiveCalorieGoal,
-            protein: targets.protein,
-            carbs: targets.carbs,
-            fat: targets.fat,
+            protein: effectiveMacroTargets.protein,
+            carbs: effectiveMacroTargets.carbs,
+            fat: effectiveMacroTargets.fat,
             fiber: targets.fiber,
           },
           macroConsumed: {
@@ -5481,9 +5500,9 @@ export default function TrackerScreen() {
         userId={userId ?? null}
         macroTargets={{
           calories: effectiveCalorieGoal,
-          protein: targets.protein,
-          carbs: targets.carbs,
-          fat: targets.fat,
+          protein: effectiveMacroTargets.protein,
+          carbs: effectiveMacroTargets.carbs,
+          fat: effectiveMacroTargets.fat,
           fiber: targets.fiber,
         }}
         macroConsumed={{

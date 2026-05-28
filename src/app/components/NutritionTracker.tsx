@@ -1982,6 +1982,18 @@ export const NutritionTracker = memo(function NutritionTracker({
   });
   const effectiveCalorieTarget = baseCalorieTarget + activityAdjustment;
 
+  const effectiveMacroTargets = useMemo(() => {
+    if (baseCalorieTarget <= 0 || effectiveCalorieTarget <= baseCalorieTarget) {
+      return { protein: targets.protein, carbs: targets.carbs, fat: targets.fat };
+    }
+    const scale = effectiveCalorieTarget / baseCalorieTarget;
+    return {
+      protein: Math.round(targets.protein * scale),
+      carbs: Math.round(targets.carbs * scale),
+      fat: Math.round(targets.fat * scale),
+    };
+  }, [baseCalorieTarget, effectiveCalorieTarget, targets.protein, targets.carbs, targets.fat]);
+
   const belowMealsPromptEligibleWeb = useMemo(
     () => ({
       northStar:
@@ -2301,9 +2313,9 @@ export const NutritionTracker = memo(function NutritionTracker({
         aiSourcedCount={mealsForSelectedDate.filter(isAiSourcedFoodHistoryItem).length}
         consumed={totals.calories}
         target={effectiveCalorieTarget}
-        proteinPct={targets.protein > 0 ? Math.min(totals.protein / targets.protein, 1) : 0}
-        carbsPct={targets.carbs > 0 ? Math.min(totals.carbs / targets.carbs, 1) : 0}
-        fatPct={targets.fat > 0 ? Math.min(totals.fat / targets.fat, 1) : 0}
+        proteinPct={effectiveMacroTargets.protein > 0 ? Math.min(totals.protein / effectiveMacroTargets.protein, 1) : 0}
+        carbsPct={effectiveMacroTargets.carbs > 0 ? Math.min(totals.carbs / effectiveMacroTargets.carbs, 1) : 0}
+        fatPct={effectiveMacroTargets.fat > 0 ? Math.min(totals.fat / effectiveMacroTargets.fat, 1) : 0}
         expanded={ringExpanded}
         onToggleExpanded={() => setRingExpanded((v) => !v)}
         displayMode={ringDisplayMode}
@@ -2381,11 +2393,11 @@ export const NutritionTracker = memo(function NutritionTracker({
         <TodayDashboardMacroBars
           trackedMacros={trackedDashboardMacros}
           proteinCurrent={totals.protein}
-          proteinTarget={targets.protein}
+          proteinTarget={effectiveMacroTargets.protein}
           carbsCurrent={totals.carbs}
-          carbsTarget={targets.carbs}
+          carbsTarget={effectiveMacroTargets.carbs}
           fatCurrent={totals.fat}
-          fatTarget={targets.fat}
+          fatTarget={effectiveMacroTargets.fat}
           fiberCurrent={totals.fiber}
           fiberTarget={targets.fiber}
           sugarG={dayMicroSumForTracker.sugarG}
@@ -2398,11 +2410,11 @@ export const NutritionTracker = memo(function NutritionTracker({
         <TodayDashboardMacroTiles
           trackedMacros={trackedDashboardMacros}
           proteinCurrent={totals.protein}
-          proteinTarget={targets.protein}
+          proteinTarget={effectiveMacroTargets.protein}
           carbsCurrent={totals.carbs}
-          carbsTarget={targets.carbs}
+          carbsTarget={effectiveMacroTargets.carbs}
           fatCurrent={totals.fat}
-          fatTarget={targets.fat}
+          fatTarget={effectiveMacroTargets.fat}
           fiberCurrent={totals.fiber}
           fiberTarget={targets.fiber}
           sugarG={dayMicroSumForTracker.sugarG}
@@ -2547,9 +2559,9 @@ export const NutritionTracker = memo(function NutritionTracker({
             viewMode={viewMode}
             savedRecipesForLibrary={savedRecipesForLibrary as Array<NorthStarRecipe>}
             remainingCalories={Math.max(0, effectiveCalorieTarget - totals.calories)}
-            remainingProtein={Math.max(0, targets.protein - totals.protein)}
-            remainingCarbs={Math.max(0, targets.carbs - totals.carbs)}
-            remainingFat={Math.max(0, targets.fat - totals.fat)}
+            remainingProtein={Math.max(0, effectiveMacroTargets.protein - totals.protein)}
+            remainingCarbs={Math.max(0, effectiveMacroTargets.carbs - totals.carbs)}
+            remainingFat={Math.max(0, effectiveMacroTargets.fat - totals.fat)}
             onPrimaryCta={(_recipeId) => {
               setMealSlot(slotForHour(new Date().getHours()));
               setLogSheetOpen(true);
@@ -2839,9 +2851,9 @@ export const NutritionTracker = memo(function NutritionTracker({
         userId={authedUserId ?? null}
         macroTargets={{
           calories: effectiveCalorieTarget,
-          protein: targets.protein,
-          carbs: targets.carbs,
-          fat: targets.fat,
+          protein: effectiveMacroTargets.protein,
+          carbs: effectiveMacroTargets.carbs,
+          fat: effectiveMacroTargets.fat,
           fiber: targets.fiber,
         }}
         macroConsumed={{
@@ -3191,9 +3203,9 @@ export const NutritionTracker = memo(function NutritionTracker({
           // uses) and close the sheet.
           macroTargets: {
             calories: effectiveCalorieTarget,
-            protein: targets.protein,
-            carbs: targets.carbs,
-            fat: targets.fat,
+            protein: effectiveMacroTargets.protein,
+            carbs: effectiveMacroTargets.carbs,
+            fat: effectiveMacroTargets.fat,
             fiber: targets.fiber,
           },
           macroConsumed: {
