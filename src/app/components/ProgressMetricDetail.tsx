@@ -216,7 +216,7 @@ export function ProgressMetricDetail({ metric, weekStartDay, onClose }: Props) {
                         retroactive. */}
                     {d.calories > 0
                       ? `${Math.round((d.calories / Math.max(d.targetCalories, 1)) * 100)}% of goal${!d.isSnapshot && d.key !== todayDk ? " (approx)" : ""}`
-                      : "No meals"}
+                      : "Nothing logged"}
                   </p>
                 </div>
                 <Icons.forward className="w-4 h-4 text-muted-foreground" />
@@ -301,7 +301,7 @@ export function ProgressMetricDetail({ metric, weekStartDay, onClose }: Props) {
                   <div>
                     <p className="text-sm font-bold text-foreground">{formatLongDate(row.key)}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {row.mealCount} meal{row.mealCount !== 1 ? "s" : ""} · {row.calories.toLocaleString()} kcal
+                      {row.mealCount} item{row.mealCount !== 1 ? "s" : ""} · {row.calories.toLocaleString()} kcal
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">

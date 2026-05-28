@@ -28,6 +28,7 @@ import { Accent, Elevation, Radius, Spacing } from "@/constants/theme";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import type { SavedMealItem } from "@suppr/shared/nutrition/savedMeals";
+import type { DigestBlendedExtras } from "@suppr/shared/nutrition/digest";
 import {
   decideWeightSurface,
   DIGEST_HIDDEN_WEIGHT_REPLACEMENT_HINT,
@@ -35,6 +36,7 @@ import {
   formatLoggingConsistencyValue,
   type WeightSurfaceMode,
 } from "@suppr/shared/nutrition/weightSurfaceMode";
+import { DigestBlended } from "@/components/DigestBlended";
 
 export type DigestSlot = "Breakfast" | "Lunch" | "Dinner" | "Snacks";
 
@@ -87,9 +89,38 @@ export interface DigestProps {
    *  defaults to "show" for backward compat. See
    *  `src/lib/nutrition/weightSurfaceMode.ts`. */
   weightSurfaceMode?: WeightSurfaceMode;
+  /**
+   * ENG-740 — when `true`, render the blended premium Week-Digest
+   * (one soft-filled hero + hairline-separated strip / PATTERN /
+   * maintenance row), merging `<Digest>` + `<DigestStoryCard>`. Gated
+   * by `progress_digest_blend` at the host. Default `false` keeps the
+   * legacy layout. Mirrors the web `Digest` prop surface.
+   */
+  blended?: boolean;
+  /** ENG-740 — extra data the blended layout consumes (hero track +
+   *  PATTERN bars). Only read when `blended` is `true`. */
+  blendedExtras?: DigestBlendedExtras;
+  /** ENG-740 — blended maintenance row's optional "Adjust pace →" link.
+   *  When omitted the link is suppressed. Routes to the mobile targets
+   *  editor. */
+  onAdjustPace?: () => void;
 }
 
+/**
+ * `Digest` — thin dispatcher. When `props.blended` is set (the
+ * `progress_digest_blend` flag is on at the host) we render the merged
+ * premium card; otherwise the legacy stacked layout. Keeping the
+ * branch at the component boundary (not an early-return inside one
+ * body) keeps both render paths' hooks unconditional.
+ */
 export function Digest(props: DigestProps) {
+  if (props.blended) {
+    return <DigestBlended {...props} />;
+  }
+  return <DigestLegacy {...props} />;
+}
+
+function DigestLegacy(props: DigestProps) {
   const {
     weekKey,
     weekLabel,
@@ -298,7 +329,7 @@ export function Digest(props: DigestProps) {
       <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 14 }}>
         {isEmpty
           ? "No days logged — that's fine."
-          : `${daysLogged} day${daysLogged === 1 ? "" : "s"} logged · ${mealsLogged} meal${mealsLogged === 1 ? "" : "s"}.`}
+          : `${daysLogged} day${daysLogged === 1 ? "" : "s"} logged · ${mealsLogged} item${mealsLogged === 1 ? "" : "s"}.`}
       </Text>
 
       {/* Stat grid — always 2×2 on mobile */}

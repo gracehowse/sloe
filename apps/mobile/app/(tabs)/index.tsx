@@ -70,6 +70,7 @@ import PhotoLogSheet from "@/components/PhotoLogSheet";
 import AiPaywallSheet, { type AiPaywallFeature } from "@/components/AiPaywallSheet";
 import { computeLoggingStreak } from "@/lib/trackerStats";
 import { computeActivityBonusKcal } from "@suppr/shared/nutrition/activityBonus";
+import { isPerServingPortion } from "@suppr/shared/nutrition/foodSearchCore";
 import { ACTIVITY_BUDGET_DISCOVERABILITY_KEY } from "@suppr/shared/nutrition/activityBudgetDiscoverability";
 import {
   availableFreezes,
@@ -1876,15 +1877,24 @@ export default function TrackerScreen() {
           : result.source === "FatSecret"
           ? "FatSecret"
           : "USDA FoodData Central";
-      // 2026-05-06: per-serving-only path. When FatSecret has no metric
-      // grounding for a food (e.g. McDonald's Big Mac), `macrosPer100g`
-      // is null and `chosenPortion.gramWeight` is 0. Use
-      // `macrosPerServing × quantity` directly — no scaling by grams.
-      // Micros are skipped because there's no per-100g panel to scale.
-      const isPerServingOnly =
-        result.macrosPer100g === null &&
-        Boolean(result.macrosPerServing) &&
-        result.chosenPortion.gramWeight === 0;
+      // Per-serving path: any chosen portion with no gram grounding
+      // (`gramWeight === 0`) that carries per-serving macros — e.g. a
+      // FatSecret "1 large tomato" / "Big Mac" / count serving. Use
+      // `macrosPerServing × quantity` directly, no gram scaling.
+      //
+      // ENG-745 (2026-05-26): this MUST match the preview's condition
+      // (`FoodSearchPanel.previewMacros`, which fires on
+      // `macrosPerServing && gramWeight === 0` regardless of
+      // `macrosPer100g`). The old guard also required
+      // `macrosPer100g === null`, but FatSecret no-metric foods carry a
+      // non-null *zero* per-100g panel — so the guard was false, the
+      // commit fell into the per-100g branch, scaled by `grams = 0`, and
+      // persisted 0 kcal even though the preview showed the real value.
+      // (The preview was fixed 2026-05-14; the commit was missed.)
+      const isPerServingOnly = isPerServingPortion({
+        gramWeight: result.chosenPortion.gramWeight,
+        hasMacrosPerServing: Boolean(result.macrosPerServing),
+      });
       let mealCalories: number;
       let mealProtein: number;
       let mealCarbs: number;
@@ -1892,7 +1902,12 @@ export default function TrackerScreen() {
       let micros: Record<string, number> = {};
       if (isPerServingOnly) {
         const ps = result.macrosPerServing!;
-        const q = result.quantity;
+        // servingFraction scales a derived "1 piece" portion to 1/N of
+        // the per-serving payload (parity with the preview, which applies
+        // the same fraction in `FoodSearchPanel.previewMacros`). Primary
+        // "N pieces" portions keep fraction = 1.
+        const fraction = result.chosenPortion.servingFraction ?? 1;
+        const q = result.quantity * fraction;
         mealCalories = Math.round(ps.calories * q);
         mealProtein = Math.round(ps.protein * q * 10) / 10;
         mealCarbs = Math.round(ps.carbs * q * 10) / 10;

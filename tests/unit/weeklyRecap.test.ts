@@ -334,7 +334,7 @@ describe("formatRecapForShare", () => {
       proteinAdherencePct: 93,
       streakLength: 12,
       freezesAvailable: 1,
-      bestDay: { key: "2026-04-08", label: "Wed", calories: 2000, protein: 180 },
+      bestDay: { key: "2026-04-08", label: "Wed", calories: 2000, protein: 180, targetCalories: 1850 },
       weightDeltaKg: -0.4,
       // Action 13 Item #13 (2026-04-19) — `weightFirstKg` /
       // `weightLastKg` are populated by `buildWeeklyRecap`. Test

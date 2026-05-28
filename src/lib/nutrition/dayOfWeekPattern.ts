@@ -36,6 +36,16 @@ export interface DayOfWeekPattern {
   /** Pre-rounded positive delta (high - low) in kcal. Always > 0 when
    *  the pattern is returned (pattern is null otherwise). */
   deltaKcal: number;
+  /**
+   * ENG-740 — pre-rounded mean kcal for the high day. Surfaced so the
+   * blended Week-Digest PATTERN row can render a two-bar comparison
+   * (Sun vs Fri). These are the same means the delta is derived from —
+   * surfaced, never re-invented. Always > 0 when the pattern is
+   * returned.
+   */
+  highDayAvg: number;
+  /** ENG-740 — pre-rounded mean kcal for the low day (see `highDayAvg`). */
+  lowDayAvg: number;
 }
 
 /** Minimum logged days inside the window before we surface a pattern.
@@ -159,5 +169,7 @@ export function computeDayOfWeekPattern<M extends MealMacros>(
     highDay: FULL_WEEKDAY_LABELS[highIdx]!,
     lowDay: FULL_WEEKDAY_LABELS[lowIdx]!,
     deltaKcal,
+    highDayAvg: Math.round(highMean),
+    lowDayAvg: Math.round(lowMean),
   };
 }

@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ENG-740 — Blended Week Digest (premium v2)</title>
+<style>
+  :root{
+    --cream:#F6F4EE; --card:#FFFFFF; --border:#ECE9E1; --hairline:#EFECE4;
+    --fill:#F8F6F0; --ink:#1C1B19; --sub:#6B665C; --dim:#9A958A; --faint:#B4AFA4;
+    --green:#3E9D74; --greenbg:#E9F5EF; --blue:#4763E4; --amber:#E08A3C;
+    --radius:20px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;background:#ECEAE3;color:var(--ink);padding:32px;-webkit-font-smoothing:antialiased}
+  h1{font-size:20px;margin-bottom:4px}
+  .lede{color:#555;font-size:13px;margin-bottom:28px;max-width:820px;line-height:1.55}
+  .row{display:flex;gap:48px;align-items:flex-start;flex-wrap:wrap}
+  .col-title{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#8a8579;margin-bottom:12px;font-weight:700}
+  .tnum{font-variant-numeric:tabular-nums}
+
+  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:0 1px 2px rgba(0,0,0,.04),0 10px 30px rgba(0,0,0,.05)}
+
+  .eyebrow{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+  .eyebrow .lbl{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:700}
+  .eyebrow .x{color:var(--faint);font-size:15px;line-height:1;cursor:pointer}
+
+  /* HERO — the one soft-filled region */
+  .hero{background:var(--fill);border-radius:14px;padding:16px 16px 14px;margin-bottom:18px}
+  .hero .cap{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim);font-weight:700;margin-bottom:3px}
+  .hero .day{font-size:24px;font-weight:800;letter-spacing:-.4px;margin-bottom:14px}
+  .track{position:relative;height:3px;border-radius:2px;background:#E6E3DB;margin:0 2px 7px}
+  .track .dot{position:absolute;top:50%;left:62%;width:11px;height:11px;border-radius:50%;background:var(--green);border:2px solid #fff;box-shadow:0 0 0 1px rgba(62,157,116,.4);transform:translate(-50%,-50%)}
+  .hero .nums{display:flex;justify-content:space-between;align-items:baseline}
+  .hero .you{font-size:28px;font-weight:800;color:var(--green);line-height:1}
+  .hero .you small{font-size:13px;font-weight:600;color:var(--green);margin-left:2px}
+  .hero .tgt{font-size:14px;color:var(--dim);font-weight:600}
+  .hero .lblrow{display:flex;justify-content:space-between;margin-top:3px}
+  .hero .lblrow span{font-size:10px;color:var(--faint)}
+  .hero .prot{font-size:12px;color:var(--sub);margin-top:10px}
+
+  .hr{height:1px;background:var(--hairline);margin:0 -2px}
+
+  /* metric strip — borderless */
+  .metrics{display:flex;padding:16px 0}
+  .metrics .m{flex:1;text-align:left}
+  .metrics .m + .m{padding-left:14px}
+  .m .v{font-size:17px;font-weight:800;letter-spacing:-.3px}
+  .m .v small{font-size:11px;font-weight:500;color:var(--dim)}
+  .m .v.green{color:var(--green)}
+  .m .k{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);font-weight:700;margin-top:4px}
+  .m .s{font-size:10.5px;color:var(--faint);margin-top:1px}
+
+  /* PATTERN row */
+  .pattern{padding:16px 0}
+  .pattern .cap{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim);font-weight:700;margin-bottom:6px}
+  .pattern .sum{font-size:13.5px;font-weight:600;color:var(--ink);margin-bottom:10px}
+  .pbar{display:flex;align-items:center;gap:10px;margin-bottom:5px}
+  .pbar .pl{font-size:11px;color:var(--sub);width:30px}
+  .pbar .tr{flex:1;height:8px;border-radius:4px;background:#EFEDE6;overflow:hidden}
+  .pbar .tr > i{display:block;height:100%;background:rgba(71,99,228,.24);border-radius:4px}
+  .pbar .pv{font-size:11px;color:var(--dim);width:46px;text-align:right}
+  .pattern .delta{text-align:right;font-size:11px;color:var(--dim);margin-top:2px}
+
+  /* maintenance row */
+  .maint{padding:15px 0 4px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+  .maint .t{font-size:11.5px;color:var(--dim);line-height:1.45}
+  .maint .t b{color:var(--sub);font-weight:700}
+  .maint a{font-size:11.5px;color:var(--blue);font-weight:600;white-space:nowrap;text-decoration:none}
+
+  /* footer */
+  .foot{display:flex;align-items:center;gap:16px;margin-top:14px}
+  .share{display:inline-flex;align-items:center;gap:7px;background:var(--greenbg);color:var(--green);font-weight:700;font-size:14px;border:none;border-radius:12px;padding:11px 16px;cursor:pointer}
+  .gotit{color:var(--sub);font-size:14px;font-weight:600;cursor:pointer;background:none;border:none}
+
+  /* phone */
+  .phone{width:336px;border:10px solid #111;border-radius:46px;background:var(--cream);padding:14px 12px 22px;position:relative;box-shadow:0 22px 54px rgba(0,0,0,.24)}
+  .notch{width:120px;height:24px;background:#111;border-radius:0 0 16px 16px;position:absolute;top:0;left:50%;transform:translateX(-50%)}
+  .statusbar{display:flex;justify-content:space-between;font-size:12px;color:#111;font-weight:600;padding:6px 8px 12px}
+  .ptitle{font-size:26px;font-weight:800;padding:0 6px 14px}
+  .web{width:430px}
+  .ann{max-width:290px;font-size:12.5px;line-height:1.55;color:#444}
+  .ann h3{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#8a8579;margin:16px 0 8px}
+  .ann li{margin:0 0 7px 18px}
+</style>
+</head>
+<body>
+  <h1>ENG-740 — Blended Week Digest · premium v2</h1>
+  <p class="lede">
+    Rebuilt to the design spec: <b>one</b> soft-filled region (the closest-day hero), everything else separated by hairlines + whitespace — no competing boxes.
+    The closest-day insight becomes a hero number on a target-relative track (Oura), the 4 metrics a borderless strip (Whoop), and the day-of-week
+    pattern an elegant <b>PATTERN</b> row with a mini comparison bar instead of a paragraph in a box.
+  </p>
+
+  <div class="row">
+    <!-- MOBILE -->
+    <div>
+      <div class="col-title">Mobile (iPhone)</div>
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="statusbar"><span>15:33</span><span>5G ▰▰▰</span></div>
+        <div class="ptitle">Progress</div>
+
+        <div class="card">
+          <div class="eyebrow"><span class="lbl">Week digest · May 18–24</span><span class="x">✕</span></div>
+
+          <div class="hero">
+            <div class="cap">Closest to target</div>
+            <div class="day">Saturday</div>
+            <div class="track"><span class="dot"></span></div>
+            <div class="nums"><span class="you tnum">680<small> kcal</small></span><span class="tgt tnum">901 target</span></div>
+            <div class="lblrow"><span>your day</span><span>target</span></div>
+            <div class="prot">42g protein · your most on-target day this week</div>
+          </div>
+
+          <div class="hr"></div>
+          <div class="metrics">
+            <div class="m"><div class="v tnum">7<small> d</small></div><div class="k">Streak</div></div>
+            <div class="m"><div class="v tnum">1,017</div><div class="k">Avg cal</div><div class="s">per day</div></div>
+            <div class="m"><div class="v tnum">53g</div><div class="k">Protein</div><div class="s green">52% of target</div></div>
+            <div class="m"><div class="v tnum">0.0<small> kg</small></div><div class="k">Weight</div><div class="s">54.9→54.9</div></div>
+          </div>
+
+          <div class="hr"></div>
+          <div class="pattern">
+            <div class="cap">Pattern</div>
+            <div class="sum">Sundays ran higher than Fridays this week</div>
+            <div class="pbar"><span class="pl">Sun</span><span class="tr"><i style="width:100%"></i></span><span class="pv tnum">~2,400</span></div>
+            <div class="pbar"><span class="pl">Fri</span><span class="tr"><i style="width:31%"></i></span><span class="pv tnum">~743</span></div>
+            <div class="delta tnum">+1,657 kcal</div>
+          </div>
+
+          <div class="hr"></div>
+          <div class="maint">
+            <div class="t">Maintenance landed around <b>1,568 kcal</b> this week — formula said 1,670.</div>
+            <a href="#">Adjust pace →</a>
+          </div>
+
+          <div class="foot">
+            <button class="share">↗ Share week</button>
+            <button class="gotit">Got it</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WEB -->
+    <div>
+      <div class="col-title">Web</div>
+      <div class="card web">
+        <div class="eyebrow"><span class="lbl">Week digest · May 18–24</span><span class="x">✕</span></div>
+        <div class="hero">
+          <div class="cap">Closest to target</div>
+          <div class="day">Saturday</div>
+          <div class="track"><span class="dot"></span></div>
+          <div class="nums"><span class="you tnum">680<small> kcal</small></span><span class="tgt tnum">901 target</span></div>
+          <div class="lblrow"><span>your day</span><span>target</span></div>
+          <div class="prot">42g protein · your most on-target day this week</div>
+        </div>
+        <div class="hr"></div>
+        <div class="metrics">
+          <div class="m"><div class="v tnum">7<small> d</small></div><div class="k">Streak</div></div>
+          <div class="m"><div class="v tnum">1,017</div><div class="k">Avg cal</div><div class="s">per day</div></div>
+          <div class="m"><div class="v tnum">53g</div><div class="k">Protein</div><div class="s green">52% of target</div></div>
+          <div class="m"><div class="v tnum">0.0<small> kg</small></div><div class="k">Weight</div><div class="s">54.9→54.9</div></div>
+        </div>
+        <div class="hr"></div>
+        <div class="pattern">
+          <div class="cap">Pattern</div>
+          <div class="sum">Sundays ran higher than Fridays this week</div>
+          <div class="pbar"><span class="pl">Sun</span><span class="tr"><i style="width:100%"></i></span><span class="pv tnum">~2,400</span></div>
+          <div class="pbar"><span class="pl">Fri</span><span class="tr"><i style="width:31%"></i></span><span class="pv tnum">~743</span></div>
+          <div class="delta tnum">+1,657 kcal</div>
+        </div>
+        <div class="hr"></div>
+        <div class="maint">
+          <div class="t">Maintenance landed around <b>1,568 kcal</b> this week — formula said 1,670.</div>
+          <a href="#">Adjust pace →</a>
+        </div>
+        <div class="foot">
+          <button class="share">↗ Share week</button>
+          <button class="gotit">Got it</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="ann">
+      <div class="col-title">What changed from v1</div>
+      <ul>
+        <li>Killed the boxed 2×2 grid + the gray story box → <b>one</b> filled hero, the rest hairline-separated.</li>
+        <li>Closest day is now a <b>hero number on a target track</b> (680 ● 901), not a sentence.</li>
+        <li>4 metrics → <b>borderless strip</b>; only protein-% carries colour.</li>
+        <li>Day-of-week insight → <b>PATTERN</b> row + mini bars, neutral, no "fix this" CTA.</li>
+        <li>Maintenance line demoted to a quiet row (was a box).</li>
+        <li>"Share week" stays the only filled button.</li>
+      </ul>
+      <h3>Open calls for you</h3>
+      <ul>
+        <li>Always-on card with a per-week ✕ dismiss (recommended), or only Sat→Tue like today's recap?</li>
+        <li>Show goal-pace link on the maintenance row, or drop it for calm?</li>
+        <li>"items" wording in the eyebrow OK, or surface it elsewhere?</li>
+      </ul>
+    </div>
+  </div>
+</body>
+</html>

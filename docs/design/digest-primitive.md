@@ -2,6 +2,15 @@
 
 Status: **implemented 2026-04-21**. `src/app/components/suppr/digest.tsx` (web) + `apps/mobile/components/Digest.tsx` (mobile). Legacy `weekly-recap-card.tsx` / `WeeklyRecapCard.tsx` deleted in the same commit. Headline resolver lives at `src/lib/nutrition/digest.ts`. Analytics event names (`weekly_recap_*`) carried over verbatim — open question #11 still routed to analytics-engineer for possible rename.
 
+> **ENG-740 update (2026-05-26) — blended premium Week-Digest.** A merged
+> variant is shipping behind the `progress_digest_blend` flag. It folds the
+> dismissable `<Digest>` recap AND the always-on `<DigestStoryCard>` into ONE
+> premium card (no duplication, internally consistent day-count). See
+> **§12 — Blended variant (ENG-740)** below. The legacy two-card layout in
+> §2–§10 stays live in the flag-off branch until the flag holds 100% for two
+> weeks, then the legacy `<DigestStoryCard>` + the legacy `<Digest>` body are
+> removed in a cleanup PR.
+
 ## 1. Design intent
 
 Digest is the Sunday-evening "here's your week" surface on Progress. It replaces the current WeeklyRecapCard but is not a redesign of the same card — it is a calmer, narrative-first primitive that can carry a variable number of beats (streak, closest-to-target, usual-meal loop, maintenance recalibration, weight delta) without turning into a stat-board.
@@ -160,3 +169,84 @@ No intentional copy divergence.
 - Analytics event rename: keep `weekly_recap_*` names for continuity, or rename to `weekly_digest_*`? Route to `analytics-engineer`.
 - Share-string rename (`formatRecapForShare` → `formatDigestForShare`) — behaviour-preserving rename or leave as is? Route to `product-memory`.
 - Mid-week peek: should users be able to pull up the prior-week Digest on demand beyond the Sunday window? Out of scope for v1.
+
+## 12. Blended variant (ENG-740, 2026-05-26)
+
+The blended Week-Digest merges the two cards that previously stacked on
+Progress — the dismissable `<Digest>` recap and the always-on
+`<DigestStoryCard>` — into one premium card. Approved design:
+`docs/prototypes/2026-05-26-progress-digest-blend/index.html`; design
+language: `docs/ux/premium-design-language.md` (the 8 principles).
+
+**Files**
+- Web card: `src/app/components/suppr/digest-blended.tsx` (rendered by
+  `<Digest blended>` — the `Digest` function is now a thin dispatcher to
+  `DigestLegacy` / `DigestBlended`).
+- Mobile card: `apps/mobile/components/DigestBlended.tsx` (same dispatcher
+  pattern in `apps/mobile/components/Digest.tsx`).
+- Shared data: `DigestBlendedExtras` + `classifyDigestHeroTone` +
+  `digestHeroTrackFraction` in `src/lib/nutrition/digest.ts`. The closest
+  day's per-day target is surfaced on `WeeklyRecap.bestDay.targetCalories`
+  (`src/lib/nutrition/weeklyRecap.ts`); the high/low day means are surfaced
+  on `DayOfWeekPattern.highDayAvg` / `.lowDayAvg`
+  (`src/lib/nutrition/dayOfWeekPattern.ts`).
+
+**Structure (top → bottom; ONE soft-filled region only, everything else
+hairline + whitespace — no nested boxes):**
+1. Eyebrow `WEEK DIGEST · {weekLabel}` (muted caps) + ✕ dismiss top-right.
+2. HERO (the one soft-fill): eyebrow `CLOSEST TO TARGET`, the day name
+   large/bold, the day's calories as a hero number on a target-relative
+   track (`dayCalories / targetCalories`), `680 kcal` left + `901 target`
+   right, your-day/target micro-labels. Dot + number colour by the
+   calorie-ring 3-state rule (under→success, over→destructive, ±4%→neutral).
+   Supporting line: "{protein}g protein · your most on-target day this week".
+3. Hairline → borderless 4-metric strip: Streak (d) · Avg cal (per day) ·
+   Protein (g + "% of target" in success when on-target, else muted, never
+   red) · Weight (delta + "first→last"). Number-over-label, tabular-nums,
+   no per-cell borders/fills. Respects `weightSurfaceMode`.
+4. Hairline → PATTERN row: eyebrow `PATTERN`, one neutral past-tense
+   sentence ("Sundays ran higher than Fridays this week"), a two-bar
+   comparison (calm primary tint at 24%, NOT red/green), `+N kcal` delta
+   right. No CTA. **Suppressed when < 4 days logged or no pattern.**
+5. Hairline → maintenance row: quiet muted single line + optional inline
+   "Adjust pace →" link (web → `/settings#targets`; mobile → `/targets`).
+   Suppressed when the host passes `maintenanceLine: null`.
+6. Footer: "Share week" is the ONLY filled button (success-soft) + "Got it"
+   muted text; ✕ persists top-right.
+
+**Always-on with a per-week ✕ dismiss** — NOT the Sat→Tue window. Host
+visibility: `flag ON && recap.daysLogged > 0 && not-dismissed-this-week`.
+Dismiss reuses the existing `weekly_recap_last_seen_week_key` seen-state.
+
+**Day-count reconciliation (the 6-vs-2 bug).** The two old cards disagreed
+because they described different weeks, not because they counted differently:
+`<Digest>` fed `recap.daysLogged` (PREVIOUS week, anchored `now − 7`) and
+`<DigestStoryCard>` fed `weekStats.daysWithFood` (CURRENT week). Both use the
+identical definition `days.filter(d => d.calories > 0).length`. A "week
+digest" narrates the **completed** week (past-tense voice rule), so the
+blended card sources **everything from `recap.*`** (previous week) — one
+internally consistent count across the whole card.
+
+**States.** loading / error reuse the legacy minimal tiles. empty renders a
+calm hero ("Quiet week.") with the PATTERN + maintenance rows suppressed.
+partial (< 4 days) suppresses the PATTERN row and annotates "per day (over N
+days)". success / offline render the full card. No element ever shows a
+fabricated number — each suppresses when its backing value is absent.
+
+**Analytics.** No new events — `weekly_recap_shown` / `_shared` / `_dismissed`
+carry over (fired from inside the blended card on mount / share / dismiss).
+
+**Tokens.** All colour via existing semantic tokens (web CSS vars;
+`Accent.*` / `Colors.*` on mobile). The pattern-bar tint is `primary/25` web
+and `Accent.primary + "3D"` mobile (≈24% alpha). Zero new tokens.
+
+**Tests.** `tests/unit/digestBlended.test.tsx` (web) +
+`apps/mobile/tests/unit/digestBlended.test.tsx` (mobile) pin the structure,
+hero tone, suppression gates, empty state, and the dispatcher's flag gating.
+Hero-track math + tone classifier unit-tested in `tests/unit/digest.test.ts`;
+the surfaced data fields in `tests/unit/dayOfWeekPattern.test.ts` +
+`tests/unit/closestToTargetDay.test.ts`.
+
+**Cross-platform deviations** (vs §9): identical structure/copy/colour; only
+the Share mechanism (RN `Share.share` vs `navigator.share`/clipboard) and the
+metric-strip wrap on narrow widths differ — any 2×2 wrap stays BORDERLESS.

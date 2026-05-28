@@ -143,6 +143,9 @@ vi.mock("../../../../src/lib/nutrition/savedMeals", () => ({
 // shared event-name table directly. That's fine — it's a plain module. ---
 vi.mock("@/lib/analytics", () => ({
   track: vi.fn(),
+  // ENG-740 — Progress now reads `isFeatureEnabled("progress_digest_blend")`.
+  // Default false keeps this skeleton-paint pin on the legacy path.
+  isFeatureEnabled: vi.fn(() => false),
 }));
 
 // --- `Digest` — the mobile digest primitive pulls in shared shim paths;

@@ -111,6 +111,10 @@ describe("selectClosestToTargetDay (Item #9)", () => {
       label: "Wed",
       calories: 1950,
       protein: 148,
+      // ENG-740 — the closest day's per-day calorie target is now
+      // surfaced for the blended Week-Digest hero track. The `day()`
+      // helper defaults `targetCalories` to 2000.
+      targetCalories: 2000,
     });
   });
 });

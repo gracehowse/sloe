@@ -46,6 +46,30 @@ export type FoodPortion = {
 };
 
 /**
+ * ENG-745 — the single source of truth for "is this chosen portion a
+ * per-serving (no-gram-grounding) portion?". A portion is per-serving
+ * when it has no gram weight (`gramWeight === 0`, e.g. a FatSecret
+ * "1 large tomato" / "Big Mac" count serving) AND the food carries a
+ * per-serving macro payload to use directly. In that case macros are
+ * `macrosPerServing × quantity`, never scaled by grams.
+ *
+ * The preview (`FoodSearchPanel.previewMacros`) and BOTH commit sites
+ * (`handleFoodSearchSelect` mobile, `NutritionTracker` web) MUST call
+ * this — the 0-kcal bug (ENG-745) was three hand-copied conditions
+ * drifting: the preview dropped an obsolete `macrosPer100g === null`
+ * clause on 2026-05-14, the two commits didn't, so FatSecret foods with
+ * a non-null *zero* per-100g panel fell into the per-100g branch, scaled
+ * by `grams = 0`, and persisted 0 kcal while the preview showed the real
+ * value. One predicate = the three sites cannot disagree again.
+ */
+export function isPerServingPortion(args: {
+  gramWeight: number;
+  hasMacrosPerServing: boolean;
+}): boolean {
+  return args.hasMacrosPerServing && args.gramWeight === 0;
+}
+
+/**
  * Standard unit portions always available in the food-search picker,
  * regardless of the food's API-provided portion set. Provides g/oz/lb
  * conversion + common volumetric units. `gramWeight: 1` for `g` / `ml`

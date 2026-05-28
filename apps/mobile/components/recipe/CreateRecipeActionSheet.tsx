@@ -12,6 +12,7 @@ import { useRouter } from "expo-router";
 
 import { Accent, Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { isFeatureEnabled } from "@/lib/analytics";
 import { safeGetClipboardString } from "@/lib/safeClipboard";
 import { extractUrlFromShareText } from "@/lib/resolveImportUrl";
 import { detectSourcePlatform } from "@/lib/sourcePlatform";
@@ -46,6 +47,13 @@ export function CreateRecipeActionSheet({ visible, onClose }: CreateRecipeAction
   const router = useRouter();
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
+
+  // ENG-742 (2026-05-26) — Cookbook PDF Import is cut from the 2026-07-01
+  // launch build (not launch-ready; superseded by bulk photo import,
+  // ENG-735). Gate the row on `cookbook_import_enabled`, default-off.
+  // Force-enable for testing via PostHog targeting (TestFlight) or
+  // `EXPO_PUBLIC_FLAG_FORCE_COOKBOOK_IMPORT_ENABLED=true` in the sim.
+  const cookbookImportEnabled = isFeatureEnabled("cookbook_import_enabled");
 
   // Clipboard auto-detect: when the sheet opens, peek at the clipboard
   // for a recognised URL (Instagram / TikTok / YouTube / generic web).
@@ -225,15 +233,17 @@ export function CreateRecipeActionSheet({ visible, onClose }: CreateRecipeAction
             onPress={() => go("/create-recipe", { autoPhoto: "1" })}
             colors={colors}
           />
-          <ActionRow
-            testID="create-action-sheet-cookbook"
-            Icon={BookOpen}
-            iconColor={Accent.primary}
-            title="Import cookbook (PDF)"
-            subtitle="One scanned book → many recipes in Library, tagged by book name."
-            onPress={() => go("/cookbook-import")}
-            colors={colors}
-          />
+          {cookbookImportEnabled && (
+            <ActionRow
+              testID="create-action-sheet-cookbook"
+              Icon={BookOpen}
+              iconColor={Accent.primary}
+              title="Import cookbook (PDF)"
+              subtitle="One scanned book → many recipes in Library, tagged by book name."
+              onPress={() => go("/cookbook-import")}
+              colors={colors}
+            />
+          )}
           <ActionRow
             testID="create-action-sheet-manual"
             Icon={Pencil}

@@ -60,6 +60,7 @@ import {
 } from "../../lib/nutrition/pendingUsualMealSave.ts";
 import { Digest } from "./suppr/digest.tsx";
 import { resolveDigestHeadline } from "../../lib/nutrition/digest.ts";
+import { isFeatureEnabled } from "../../lib/analytics/track.ts";
 import { formatRecapForShare } from "../../lib/nutrition/weeklyRecap.ts";
 import {
   formatMaintenanceRecapLine,
@@ -81,6 +82,7 @@ import { ProgressHeadline } from "./suppr/progress-headline.tsx";
 import { ProgressStoryGate } from "./suppr/progress-story-gate.tsx";
 import { hasEnoughDataForStory } from "../../lib/nutrition/progressStoryGate.ts";
 import { DigestStoryCard } from "./suppr/digest-story-card.tsx";
+import { TrajectoryCard } from "./suppr/trajectory-card.tsx";
 import { computeDayOfWeekPattern } from "../../lib/nutrition/dayOfWeekPattern.ts";
 import { generateProgressCommentary } from "../../lib/nutrition/progressCommentary.ts";
 import { useMilestone30DayOnProgress } from "../../hooks/useMilestone30DayOnProgress.ts";
@@ -712,6 +714,33 @@ function ProgressDashboardContent() {
     [recapLastSeenWeekKey, currentWeekKey, weekStartDay, recap.daysLogged],
   );
 
+  // ENG-740 — blended Week-Digest flag. PostHog flags can resolve after
+  // first paint, so we read once on mount + cannot tell "off" from
+  // "not-loaded-yet"; default-false keeps the legacy two-card layout.
+  // The blended card is an always-on card with a per-week dismiss, so we
+  // gate it on `recap.daysLogged > 0` (real data to narrate) rather than
+  // the Sat→Tue recap window.
+  const [digestBlendEnabled, setDigestBlendEnabled] = useState(false);
+  useEffect(() => {
+    setDigestBlendEnabled(isFeatureEnabled("progress_digest_blend"));
+  }, []);
+  // Always-on visibility for the blended card: real data to narrate +
+  // not dismissed this week. NO Sat→Tue window (ENG-740 approved spec).
+  const digestBlendVisible =
+    digestBlendEnabled &&
+    recap.daysLogged > 0 &&
+    recapLastSeenWeekKey !== currentWeekKey;
+
+  // ENG-741 — Trajectory card flag. Same read-once-on-mount,
+  // default-false-until-loaded posture as the blended-digest flag above
+  // (PostHog flags can resolve after first paint). Default-off keeps the
+  // current Progress layout; on → the calm "if you keep this pace you'll
+  // be X" card renders directly under the weight chart.
+  const [trajectoryBoxEnabled, setTrajectoryBoxEnabled] = useState(false);
+  useEffect(() => {
+    setTrajectoryBoxEnabled(isFeatureEnabled("progress_trajectory_box"));
+  }, []);
+
   // Ship M1 — usual-meal growth-loop line on the recap card. Pull the
   // user's saved meals once and match them against the last 7 days of
   // journal history to count re-logs. Journal rows don't carry a
@@ -1160,8 +1189,15 @@ function ProgressDashboardContent() {
       {/* WEEK DIGEST (D3) — replaces the legacy WeeklyRecapCard. Host
           computes headline + flattens usual-meal insight into the
           shared `DigestProps` shape so web + mobile cannot drift. See
-          `docs/design/digest-primitive.md`. */}
-      {recapVisible ? (() => {
+          `docs/design/digest-primitive.md`.
+
+          ENG-740 — when `progress_digest_blend` is on, this single
+          block renders the merged premium card (blended hero + metric
+          strip + PATTERN row) gated on always-on `digestBlendVisible`;
+          the legacy `<DigestStoryCard>` below is suppressed. When the
+          flag is off, the legacy recap renders on the Sat→Tue window
+          and the story card renders below it. */}
+      {(digestBlendEnabled ? digestBlendVisible : recapVisible) ? (() => {
         const digestSeed = (() => {
           if (usualMealInsight?.kind !== "prompt") return null;
           const seed = selectMostFrequentSlotSeed(nutritionByDay, usualMealInsight.suggestedSlot);
@@ -1250,8 +1286,19 @@ function ProgressDashboardContent() {
               adaptiveTdeeConfidence: engineConfidenceForCheckin,
             })
           : null;
+        // ENG-740 — extras the blended layout consumes. The PATTERN row
+        // reuses the same `computeDayOfWeekPattern` the legacy story
+        // card fed; the hero track reads the closest day's per-day
+        // target. Both are real computed values — never fabricated.
+        const blendedExtras: import("../../lib/nutrition/digest").DigestBlendedExtras = {
+          dayOfWeekPattern: computeDayOfWeekPattern(nutritionByDay),
+          closestDayTargetCalories: recap.bestDay?.targetCalories ?? null,
+        };
         return (
           <Digest
+            blended={digestBlendEnabled}
+            blendedExtras={blendedExtras}
+            onAdjustPace={() => router.push("/settings#targets")}
             weekKey={recap.weekKey}
             weekLabel={recap.weekLabel}
             daysLogged={recap.daysLogged}
@@ -1300,28 +1347,34 @@ function ProgressDashboardContent() {
           the visual focus. customer-lens audit 2026-04-30 +
           D-2026-04-27-17.
 
+          ENG-740 — suppressed when `progress_digest_blend` is on; the
+          blended card above absorbs this narrative (closest day +
+          PATTERN row). Left intact for the flag-off path.
+
           `dayOfWeekPattern` is the Lose It "Closer" parity slot
           (audit 2026-04-30). The helper enforces the 14-day +
           200-kcal-delta gates so the line never surfaces on noise. */}
-      <div className="mb-4">
-        <DigestStoryCard
-          weekLabel={recap.weekLabel}
-          daysLogged={weekStatsBundle.daysWithFood}
-          avgCalories={weekStatsBundle.avgCalories}
-          targetCalories={targets.calories}
-          avgProtein={recap.avgProtein}
-          targetProtein={targets.protein}
-          proteinOnTargetDays={weekStatsBundle.proteinOnTarget}
-          closestToTarget={recap.bestDay
-            ? {
-                label: recap.bestDay.label,
-                calories: recap.bestDay.calories,
-                protein: recap.bestDay.protein,
-              }
-            : null}
-          dayOfWeekPattern={computeDayOfWeekPattern(nutritionByDay)}
-        />
-      </div>
+      {digestBlendEnabled ? null : (
+        <div className="mb-4">
+          <DigestStoryCard
+            weekLabel={recap.weekLabel}
+            daysLogged={weekStatsBundle.daysWithFood}
+            avgCalories={weekStatsBundle.avgCalories}
+            targetCalories={targets.calories}
+            avgProtein={recap.avgProtein}
+            targetProtein={targets.protein}
+            proteinOnTargetDays={weekStatsBundle.proteinOnTarget}
+            closestToTarget={recap.bestDay
+              ? {
+                  label: recap.bestDay.label,
+                  calories: recap.bestDay.calories,
+                  protein: recap.bestDay.protein,
+                }
+              : null}
+            dayOfWeekPattern={computeDayOfWeekPattern(nutritionByDay)}
+          />
+        </div>
+      )}
 
       {/* DEMOTED stat chips (D-2026-04-27-17 — tiles demoted, not
           deleted). Was a 4-tile 2x2 grid that anchored the page; now
@@ -1993,6 +2046,24 @@ function ProgressDashboardContent() {
           Every check-in gives us better data for you.
         </p>
       </div>
+      ) : null}
+
+      {/* ENG-741 — Trajectory card. Sits directly under the weight chart.
+          Flag-gated (`progress_trajectory_box`); default-off preserves the
+          current layout. Same `weightSurfaceMode === "show"` gate as the
+          weight chart + Journey card so a single opt-out hides every
+          absolute-weight surface. Reuses the top-level `latestWeightKg` +
+          `goalTimeline` memos and the shared `computeTrajectory` helper —
+          no projection maths is re-derived here. */}
+      {trajectoryBoxEnabled && profileWeightSurfaceMode === "show" ? (
+        <TrajectoryCard
+          byDay={nutritionByDay}
+          latestWeightKg={latestWeightKg}
+          targetCalories={targets.calories}
+          maintenanceTdeeKcal={isAdaptive && adaptiveTdee != null ? adaptiveTdee : staticTdee}
+          goal={userGoal}
+          timeline={goalTimeline}
+        />
       ) : null}
 
       {/* JOURNEY / WEIGHT PROJECTION — also gated on profileWeightSurfaceMode

@@ -86,7 +86,7 @@ export function MobileMfpCsvImportCard({
       });
       setPhase({
         kind: "uploading",
-        fileName: asset.name ?? "MyFitnessPal.csv",
+        fileName: asset.name ?? "import.csv",
       });
 
       try {
@@ -111,7 +111,7 @@ export function MobileMfpCsvImportCard({
         // web `Blob` flavour the API expects.
         form.append("file", {
           uri: asset.uri,
-          name: asset.name ?? "MyFitnessPal.csv",
+          name: asset.name ?? "import.csv",
           type: asset.mimeType ?? "text/csv",
         } as unknown as Blob);
 
@@ -129,7 +129,7 @@ export function MobileMfpCsvImportCard({
               : res.status === 413
                 ? "File is too large. Split your export and try again."
                 : res.status === 401
-                  ? "Sign in to import your MyFitnessPal history."
+                  ? "Sign in to import your history."
                   : "Import failed. Try again or pick a different file.");
           setPhase({ kind: "error", message });
           track(AnalyticsEvents.mfp_csv_import_failed, {
@@ -235,7 +235,7 @@ export function MobileMfpCsvImportCard({
                 letterSpacing: -0.2,
               }}
             >
-              Import from MyFitnessPal
+              Import from another app
             </Text>
             {phase.kind === "success" ? (
               <View
@@ -274,8 +274,9 @@ export function MobileMfpCsvImportCard({
               lineHeight: 18,
             }}
           >
-            Upload your MFP CSV export — we&rsquo;ll bring your meal history
-            into Suppr without changing the macros you already logged.
+            MyFitnessPal, Lose It, or Cronometer — upload the CSV export and
+            we&rsquo;ll bring your meal history into Suppr without changing the
+            macros you already logged.
           </Text>
 
           {phase.kind === "idle" && (
@@ -338,7 +339,7 @@ export function MobileMfpCsvImportCard({
                   }}
                 >
                   Imported {phase.imported} meal
-                  {phase.imported === 1 ? "" : "s"} from MyFitnessPal
+                  {phase.imported === 1 ? "" : "s"}
                 </Text>
               </View>
               {phase.unmatched > 0 ? (

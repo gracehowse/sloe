@@ -67,7 +67,21 @@ export type WeeklyRecap = {
    * formatter and existing analytics events; the user-facing label is
    * "Closest to target" everywhere it surfaces.
    */
-  bestDay: { key: string; label: string; calories: number; protein: number } | null;
+  bestDay: {
+    key: string;
+    label: string;
+    calories: number;
+    protein: number;
+    /**
+     * ENG-740 — the per-day calorie target that was active on the
+     * closest day (the snapshot target, falling back to the current
+     * target when no snapshot exists). Surfaced so the blended
+     * Week-Digest hero can render the day's calories on a
+     * target-relative track (`calories / targetCalories`). `0` when no
+     * calorie target was set — the hero track suppresses in that case.
+     */
+    targetCalories: number;
+  } | null;
   /**
    * Weight change across the week in kg, rounded to 0.1. `null` if we
    * don't have ≥2 weigh-ins inside the window — we never show
@@ -318,6 +332,7 @@ export function selectClosestToTargetDay(
     label: string;
     calories: number;
     protein: number;
+    targetCalories: number;
     score: number;
   };
   const scored: DayScore[] = [];
@@ -348,6 +363,7 @@ export function selectClosestToTargetDay(
       label: d.label,
       calories: d.calories,
       protein: d.protein,
+      targetCalories: d.targetCalories,
       score,
     });
   }
@@ -366,6 +382,7 @@ export function selectClosestToTargetDay(
     label: winner.label,
     calories: Math.round(winner.calories),
     protein: Math.round(winner.protein),
+    targetCalories: Math.round(winner.targetCalories),
   };
 }
 

@@ -7,6 +7,7 @@ import { useAppData } from "../../context/AppDataContext.tsx";
 import { normalizeMacroTargets, DEFAULT_STEPS_GOAL } from "../../types/profile.ts";
 import { resolveMaintenance } from "../../lib/nutrition/resolveMaintenance.ts";
 import { computeActivityBonusKcal } from "../../lib/nutrition/activityBonus.ts";
+import { isPerServingPortion } from "../../lib/nutrition/foodSearchCore.ts";
 import { ACTIVITY_BUDGET_DISCOVERABILITY_KEY } from "../../lib/nutrition/activityBudgetDiscoverability.ts";
 // Weekly TDEE check-in ritual (PR claude/weekly-checkin-ritual-v2,
 // 2026-05-02 — rebuild of #26). Web parity of the mobile modal.
@@ -1543,14 +1544,20 @@ export const NutritionTracker = memo(function NutritionTracker({
           ? "FatSecret"
           : "USDA FoodData Central";
 
-      // 2026-05-06 audit (D1): per-serving-only path (FatSecret no-
-      // metric foods). When `macrosPer100g` is null,
-      // `macrosPerServing` carries the values and gramWeight is 0.
-      // Use `macrosPerServing × quantity` directly. Mirrors mobile.
-      const isPerServingOnly =
-        selection.macrosPer100g === null &&
-        Boolean(selection.macrosPerServing) &&
-        selection.chosenPortion.gramWeight === 0;
+      // Per-serving path (FatSecret no-metric / count servings like
+      // "1 large tomato"). Use `macrosPerServing × quantity` directly.
+      //
+      // ENG-745 (2026-05-26): must match the preview's condition
+      // (`macrosPerServing && gramWeight === 0`, regardless of
+      // `macrosPer100g`). The old guard required `macrosPer100g === null`,
+      // but FatSecret no-metric foods carry a non-null *zero* per-100g
+      // panel — so the guard was false, the commit scaled by `grams = 0`
+      // and persisted 0 kcal while the preview showed the real value.
+      // Mirrors mobile `handleFoodSearchSelect`.
+      const isPerServingOnly = isPerServingPortion({
+        gramWeight: selection.chosenPortion.gramWeight,
+        hasMacrosPerServing: Boolean(selection.macrosPerServing),
+      });
 
       let mealCalories: number;
       let mealProtein: number;
@@ -1561,7 +1568,10 @@ export const NutritionTracker = memo(function NutritionTracker({
 
       if (isPerServingOnly) {
         const ps = selection.macrosPerServing!;
-        const q = selection.quantity;
+        // servingFraction scales a derived "1 piece" portion to 1/N of
+        // the per-serving payload (parity with preview + mobile).
+        const fraction = selection.chosenPortion.servingFraction ?? 1;
+        const q = selection.quantity * fraction;
         mealCalories = Math.max(0, Math.round(ps.calories * q));
         mealProtein = Math.max(0, Math.round(ps.protein * q * 10) / 10);
         mealCarbs = Math.max(0, Math.round(ps.carbs * q * 10) / 10);

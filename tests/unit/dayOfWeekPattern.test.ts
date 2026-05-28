@@ -96,6 +96,12 @@ describe("computeDayOfWeekPattern", () => {
     expect(pattern!.highDay).toBe("Saturday");
     expect(pattern!.lowDay).toBe("Tuesday");
     expect(pattern!.deltaKcal).toBe(700);
+    // ENG-740 — the high/low means are surfaced for the blended
+    // Week-Digest PATTERN bars. They are the same means the delta is
+    // derived from (700 = 2400 - 1700), never re-invented.
+    expect(pattern!.highDayAvg).toBe(2400);
+    expect(pattern!.lowDayAvg).toBe(1700);
+    expect(pattern!.highDayAvg - pattern!.lowDayAvg).toBe(pattern!.deltaKcal);
   });
 
   it("excludes weekdays with zero samples so 'never-logged' weekdays don't fake a low bucket", () => {

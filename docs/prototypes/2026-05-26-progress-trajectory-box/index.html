@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ENG-741 — Weight trajectory box (prototype)</title>
+<style>
+  :root{
+    --cream:#F6F4EE; --card:#FFFFFF; --border:#EBE8E0; --tilebg:#FAF9F5;
+    --ink:#1C1B19; --sub:#6B665C; --dim:#9A958A;
+    --green:#3E9D74; --blue:#4763E4; --radius:18px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;background:#ECEAE3;color:var(--ink);padding:32px;-webkit-font-smoothing:antialiased}
+  h1{font-size:20px;margin-bottom:4px}
+  .lede{color:#555;font-size:13px;margin-bottom:28px;max-width:800px;line-height:1.5}
+  .row{display:flex;gap:48px;align-items:flex-start;flex-wrap:wrap}
+  .col-title{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#8a8579;margin-bottom:12px;font-weight:700}
+
+  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 17px;box-shadow:0 1px 2px rgba(0,0,0,.04),0 8px 24px rgba(0,0,0,.04)}
+  .chart-stub{height:118px;border-radius:14px;background:
+     linear-gradient(180deg,rgba(71,99,228,.05),rgba(71,99,228,0)),var(--card);
+     border:1px dashed #D9D5CC;display:flex;align-items:center;justify-content:center;color:#B8B3A8;font-size:12px;margin-bottom:14px}
+
+  .overline{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim);font-weight:700;display:flex;align-items:center;gap:6px;margin-bottom:9px}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--blue)}
+  .proj{display:flex;align-items:baseline;gap:8px;margin-bottom:4px}
+  .proj .kg{font-size:30px;font-weight:800;letter-spacing:-.5px;color:var(--blue)}
+  .proj .when{font-size:14px;color:var(--sub);font-weight:600}
+  .basis{font-size:12px;color:var(--sub);line-height:1.5}
+  .basis b{color:var(--ink);font-weight:700}
+  .foot{font-size:10.5px;color:var(--dim);margin-top:8px}
+
+  .placeholder .ph-title{font-size:15px;font-weight:700;margin-bottom:4px}
+  .placeholder .ph-sub{font-size:12.5px;color:var(--sub);line-height:1.5}
+  .bar{height:6px;border-radius:3px;background:#ECEAE2;margin-top:12px;overflow:hidden}
+  .bar > span{display:block;height:100%;width:60%;background:var(--blue);border-radius:3px}
+
+  .phone{width:330px;border:10px solid #111;border-radius:44px;background:var(--cream);padding:14px 12px 22px;position:relative;box-shadow:0 20px 50px rgba(0,0,0,.22)}
+  .notch{width:120px;height:24px;background:#111;border-radius:0 0 16px 16px;position:absolute;top:0;left:50%;transform:translateX(-50%)}
+  .statusbar{display:flex;justify-content:space-between;font-size:12px;color:#111;font-weight:600;padding:6px 8px 14px}
+  .stack > *{margin-bottom:12px}
+  .web{width:420px}
+  .ann{max-width:300px;font-size:12.5px;line-height:1.55;color:#444}
+  .ann h3{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#8a8579;margin:18px 0 8px}
+  .ann li{margin:0 0 7px 18px}
+</style>
+</head>
+<body>
+  <h1>ENG-741 — "At this pace you'll be…" trajectory box</h1>
+  <p class="lede">
+    A <b>separate, new card</b> that sits just under the weight chart — the chart itself is untouched. It answers your ask:
+    "if you keep going at this pace you'll be X." Two states shown: enough data (≥5 logged days) and the keep-logging placeholder.
+  </p>
+
+  <div class="row">
+    <!-- MOBILE -->
+    <div>
+      <div class="col-title">Mobile — projection state</div>
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="statusbar"><span>14:33</span><span>5G ▰▰▰</span></div>
+        <div class="stack">
+          <div class="chart-stub">↑ Weight chart (unchanged)</div>
+
+          <div class="card">
+            <div class="overline"><span class="dot"></span>Projected weight</div>
+            <div class="proj"><span class="kg">49.3 kg</span><span class="when">in ~5 weeks</span></div>
+            <div class="basis">If you keep your current pace — last 7 days averaged <b>941 kcal/day</b> vs <b>901</b> target.</div>
+            <div class="foot">Based on 7,700 kcal ≈ 1 kg. An estimate, not a promise.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MOBILE placeholder -->
+    <div>
+      <div class="col-title">Mobile — &lt;5 days placeholder</div>
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="statusbar"><span>14:33</span><span>5G ▰▰▰</span></div>
+        <div class="stack">
+          <div class="chart-stub">↑ Weight chart (unchanged)</div>
+          <div class="card placeholder">
+            <div class="overline"><span class="dot" style="background:var(--dim)"></span>Projected weight</div>
+            <div class="ph-title">Log 2 more days to see your trajectory</div>
+            <div class="ph-sub">We project from your last 7 days. A 3-day average swings too much to forecast honestly.</div>
+            <div class="bar"><span></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WEB -->
+    <div>
+      <div class="col-title">Web — projection state</div>
+      <div class="card web">
+        <div class="overline"><span class="dot"></span>Projected weight</div>
+        <div class="proj"><span class="kg">49.3 kg</span><span class="when">in ~5 weeks</span></div>
+        <div class="basis">If you keep your current pace — last 7 days averaged <b>941 kcal/day</b> vs <b>901</b> target.</div>
+        <div class="foot">Based on 7,700 kcal ≈ 1 kg. An estimate, not a promise.</div>
+      </div>
+    </div>
+
+    <div class="ann">
+      <div class="col-title">Notes</div>
+      <h3>Logic reused</h3>
+      <ul>
+        <li><code>projectWeight()</code> + <code>shouldRenderDailyProjection()</code> already exist (<code>src/lib/weightProjection.ts</code>) — same maths as today's Journey line, just promoted to its own card.</li>
+        <li>Uses the <b>7-day average</b> (so it matches the "Journey" number and differs from the single-day "Day logged!" modal — I'll also soften that modal's copy so it stops over-promising).</li>
+      </ul>
+      <h3>Decisions</h3>
+      <ul>
+        <li>Calm tone, blue (not red/green) — it's a forecast, not a verdict.</li>
+        <li>Hidden entirely if weight tracking is opted out (same as the Journey card).</li>
+        <li>Placeholder shows the exact days remaining, not a vague "keep logging".</li>
+      </ul>
+      <h3>For you</h3>
+      <ul>
+        <li>Sit it directly under the chart, or lower down near the Journey card?</li>
+        <li>Show goal-weight ETA too ("on track to hit your 48 kg goal by Jul 4"), or keep it to the pure trajectory?</li>
+      </ul>
+    </div>
+  </div>
+</body>
+</html>
