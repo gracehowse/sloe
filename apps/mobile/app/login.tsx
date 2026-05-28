@@ -17,6 +17,8 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { useAuth } from "@/context/auth";
 import { hasSupabaseConfig, supabase } from "@/lib/supabase";
+import { track } from "@/lib/analytics";
+import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { Accent, Spacing, Radius, Fonts } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import KeyboardSafeView from "@/components/KeyboardSafeView";
@@ -263,7 +265,11 @@ export default function LoginScreen() {
           email: resolvedEmail,
           password: resolvedPassword,
         });
-        if (error) setMessage(formatAuthError(error));
+        if (error) {
+          setMessage(formatAuthError(error));
+        } else {
+          try { track(AnalyticsEvents.user_signed_up, { method: "email", platform: "mobile" }); } catch { /* ignore */ }
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email: resolvedEmail,
@@ -275,6 +281,8 @@ export default function LoginScreen() {
           } else {
             setMessage(formatAuthError(error));
           }
+        } else {
+          try { track(AnalyticsEvents.user_signed_in, { method: "email", platform: "mobile" }); } catch { /* ignore */ }
         }
       }
     } catch (e) {
@@ -311,7 +319,13 @@ export default function LoginScreen() {
         token: credential.identityToken,
         nonce: rawNonce,
       });
-      if (error) setMessage(formatAuthError(error));
+      if (error) {
+        setMessage(formatAuthError(error));
+      } else {
+        // Login screen Apple button is always sign-in (returning users);
+        // new-user Apple sign-up goes through the onboarding signup step.
+        try { track(AnalyticsEvents.user_signed_in, { method: "apple", platform: "mobile" }); } catch { /* ignore */ }
+      }
     } catch (e: unknown) {
       const code = e && typeof e === "object" && "code" in e ? (e as { code?: string }).code : undefined;
       if (code === "ERR_REQUEST_CANCELED") return;

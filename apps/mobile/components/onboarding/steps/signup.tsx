@@ -6,6 +6,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { Accent, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
+import { track } from "@/lib/analytics";
+import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { useOnboarding } from "../context";
 import { MobileStepBody, MobileStepHeader, useStepOverline } from "../scaffold";
 
@@ -84,6 +86,11 @@ export function MobileSignupStep() {
         setError(authError.message);
         return;
       }
+      // ENG-671: fire signup event — this step is onboarding-only so it's
+      // always a new account creation, not a returning sign-in.
+      try {
+        track(AnalyticsEvents.user_signed_up, { method: "apple", platform: "mobile" });
+      } catch { /* analytics never blocks the user */ }
       // Capture the Apple-provided name into state so the persist call
       // has something to write into `profiles.display_name`. Apple only
       // sends fullName on the FIRST sign-in for the user; subsequent
