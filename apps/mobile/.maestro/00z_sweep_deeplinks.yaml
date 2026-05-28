@@ -1,71 +1,125 @@
+# Deep-route visual baseline — feeds mobile screenshot diff (`screenshots/latest/`).
+# Also writes audit copies under docs/audits/visual-sweep-expanded/ for human review packs.
+#
+# Run: npm run mobile:test:sweep:deeplinks
+# Diff: npm run mobile:test:screens:diff
 appId: com.supprclub.supprapp
-name: "Sweep section 2 — Hidden / deep routes"
+name: "Sweep — deep routes (deeplink baseline)"
 ---
-- launchApp:
-    appId: com.supprclub.supprapp
+- runFlow: shared/login.yaml
+
+- tapOn:
+    id: "tab-today"
+- waitForAnimationToEnd
+
+# Log sheet
+- tapOn:
+    id: "today-log-fab"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: ".*(?:Log a meal|Search foods).*"
+    timeout: 8000
+- takeScreenshot: screenshots/latest/deeplink-log-sheet
+- takeScreenshot: ../../docs/audits/visual-sweep-expanded/51-log-sheet
+- back
+- waitForAnimationToEnd
+
+- openLink: suppr:///targets
+- extendedWaitUntil:
+    visible: ".*Daily targets.*"
+    timeout: 15000
+- takeScreenshot: screenshots/latest/deeplink-targets
+- takeScreenshot: ../../docs/audits/visual-sweep-expanded/52-targets
 
 - openLink: suppr:///profile
 - extendedWaitUntil:
     visible: { id: "screen-profile" }
     timeout: 15000
+- takeScreenshot: screenshots/latest/deeplink-profile
 - takeScreenshot: ../../docs/audits/visual-sweep-expanded/40-profile
 
 - openLink: suppr:///fasting
 - extendedWaitUntil:
     visible: { id: "screen-fasting" }
     timeout: 15000
+- takeScreenshot: screenshots/latest/deeplink-fasting
 - takeScreenshot: ../../docs/audits/visual-sweep-expanded/41-fasting
 
 - openLink: suppr:///barcode
 - extendedWaitUntil:
     visible: { id: "screen-barcode" }
     timeout: 15000
+- takeScreenshot: screenshots/latest/deeplink-barcode
 - takeScreenshot: ../../docs/audits/visual-sweep-expanded/42-barcode
 
 - openLink: suppr:///create-recipe
 - extendedWaitUntil:
     visible: { id: "screen-create-recipe" }
     timeout: 15000
+- takeScreenshot: screenshots/latest/deeplink-create-recipe
 - takeScreenshot: ../../docs/audits/visual-sweep-expanded/43-create-recipe
 
 - openLink: suppr:///burn-detail
 - extendedWaitUntil:
     visible: { id: "screen-burn-detail" }
     timeout: 15000
+- takeScreenshot: screenshots/latest/deeplink-burn-detail
 - takeScreenshot: ../../docs/audits/visual-sweep-expanded/44-burn-detail
 
 - openLink: suppr:///macro-detail?macro=protein
 - extendedWaitUntil:
     visible: { id: "screen-macro-detail" }
     timeout: 15000
+- takeScreenshot: screenshots/latest/deeplink-macro-detail
 - takeScreenshot: ../../docs/audits/visual-sweep-expanded/45-macro-detail
 
 - openLink: suppr:///meal-nutrition
 - extendedWaitUntil:
     visible: { id: "screen-meal-nutrition" }
     timeout: 15000
+- takeScreenshot: screenshots/latest/deeplink-meal-nutrition
 - takeScreenshot: ../../docs/audits/visual-sweep-expanded/46-meal-nutrition
 
 - openLink: suppr:///health-sync
 - extendedWaitUntil:
     visible: { id: "screen-health-sync" }
     timeout: 15000
+- takeScreenshot: screenshots/latest/deeplink-health-sync
 - takeScreenshot: ../../docs/audits/visual-sweep-expanded/47-health-sync
 
 - openLink: suppr:///household-settings
 - extendedWaitUntil:
     visible: { id: "screen-household-settings" }
     timeout: 15000
+- takeScreenshot: screenshots/latest/deeplink-household-settings
 - takeScreenshot: ../../docs/audits/visual-sweep-expanded/48-household-settings
 
 - openLink: suppr:///nutrition-sources
 - extendedWaitUntil:
     visible: { id: "screen-nutrition-sources" }
     timeout: 15000
+- takeScreenshot: screenshots/latest/deeplink-nutrition-sources
 - takeScreenshot: ../../docs/audits/visual-sweep-expanded/49-nutrition-sources
 
 - openLink: suppr:///paywall
 - extendedWaitUntil:
     visible: { id: "screen-paywall" }
     timeout: 15000
+- takeScreenshot: screenshots/latest/deeplink-paywall
 - takeScreenshot: ../../docs/audits/visual-sweep-expanded/50-paywall
+
+# Recipe detail — library grid tap (needs at least one recipe)
+- tapOn:
+    id: "tab-recipes"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: ".*kcal.*"
+    timeout: 30000
+- tapOn:
+    point: "25%,40%"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: ".*(?:Ingredients|Servings).*"
+    timeout: 15000
+- takeScreenshot: screenshots/latest/deeplink-recipe-detail
+- takeScreenshot: ../../docs/audits/visual-sweep-expanded/53-recipe-detail

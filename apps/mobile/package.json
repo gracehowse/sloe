@@ -33,6 +33,8 @@
     "test:e2e:watch": "node ./scripts/maestro-watch.mjs",
     "test:screens:diff": "node ./scripts/maestro-screenshot-diff.mjs",
     "test:screens:update-baseline": "node ./scripts/maestro-screenshot-diff.mjs --update-baseline",
+    "test:sweep:deeplinks": "node ./scripts/run-maestro-e2e.mjs .maestro/00z_sweep_deeplinks.yaml",
+    "test:sweep:subpages": "npm run test:sweep:deeplinks",
     "test:screens:tour": "node ./scripts/maestro-screenshot-tour.mjs",
     "test:detox:build": "detox build --configuration ios.sim.release",
     "test:detox": "detox test --configuration ios.sim.release",

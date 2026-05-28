@@ -9,7 +9,8 @@ Run these in order before a release or large mobile PR:
 1. **`npm run mobile:verify`** (repo root) — **ESLint** (errors fail), **TypeScript**, **Vitest** (`apps/mobile/tests/unit`), and **Maestro suite manifest** (every flow in `config.yaml` exists + `runFlow: shared/*.yaml` resolves). No Simulator required.
 2. **`npm run mobile:test:e2e`** — Full **Maestro** suite against a running dev client + Metro (see [Running](#running)). Requires `E2E_*` and optional silent auth env in `apps/mobile/.env`.
 3. **`npm run mobile:test:screens:diff`** — Visual-regression layer over the suite. Compares `apps/mobile/screenshots/latest/` (produced by step 2) against the committed `screenshots/baseline/`. Catches layout shift, contrast drift, z-index regressions that text-only assertions miss. See [Visual regression — screenshot diff](#visual-regression--screenshot-diff). First-time setup needs `npm run mobile:test:screens:update-baseline` after a clean step-2 run.
-4. **Manual-only flows** (not in `config.yaml`): `09_onboarding`, `19_paywall`, `23_nutrition_sources`, `26_recipe_verify`, `28_notifications_prompt` — run ad hoc when those surfaces change.
+4. **Sub-page visual baseline** (not in `config.yaml`): `00z_sweep_deeplinks.yaml` — deeplinks + log sheet + recipe detail → `screenshots/latest/deeplink-*.png`. Run `npm run test:sweep:deeplinks` then `npm run test:screens:diff`. See [`docs/testing/VISUAL_REGRESSION.md`](../../docs/testing/VISUAL_REGRESSION.md).
+5. **Manual-only flows** (not in `config.yaml`): `09_onboarding`, `19_paywall`, `23_nutrition_sources`, `26_recipe_verify`, `28_notifications_prompt` — run ad hoc when those surfaces change.
 
 GitHub **CI** `mobile` job runs lint, typecheck, import-path guards, Vitest, and **`test:e2e:verify-suite`** so broken or renamed Maestro files fail the build even without Maestro installed on the runner.
 

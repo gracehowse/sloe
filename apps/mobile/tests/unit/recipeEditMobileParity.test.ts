@@ -22,6 +22,12 @@ describe("ENG-759 — Recipe edit on mobile", () => {
     expect(src).toMatch(/buildManualIngredientInsert/);
   });
 
+  it("manual ingredient inserts use zeroed macros via shared helper", () => {
+    const sheet = read("../../components/recipe/RecipeEditSheet.tsx");
+    expect(sheet).toMatch(/buildManualIngredientInsert/);
+    expect(sheet).toMatch(/unverified/);
+  });
+
   it("IngredientEditRow is used for inline ingredient CRUD", () => {
     const sheet = read("../../components/recipe/RecipeEditSheet.tsx");
     expect(sheet).toMatch(/IngredientEditRow/);
