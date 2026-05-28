@@ -485,3 +485,96 @@ describe("parseCsvImport — Cronometer adapter", () => {
     expect(result.rows[2].name).not.toBe("Snacks"); // Group column
   });
 });
+
+describe("parseCsvImport — MacroFactor adapter (ENG-710)", () => {
+  // Realistic MacroFactor food diary export.
+  // Columns: Date, Meal, Food, Serving Size, Servings, Calories,
+  //          Protein (g), Carbohydrates (g), Fat (g), Fiber (g),
+  //          Sugar (g), Sodium (mg).
+  // Date: ISO YYYY-MM-DD (MacroFactor never emits locale formats).
+  // Meal: Breakfast / Lunch / Dinner / Snack (user-renameable; common
+  //       built-ins tested here).
+  // Key distinguisher vs MFP: `Serving Size` + `Servings` columns.
+  const MACROFACTOR_CSV = [
+    "Date,Meal,Food,Serving Size,Servings,Calories,Protein (g),Carbohydrates (g),Fat (g),Fiber (g),Sugar (g),Sodium (mg)",
+    "2024-08-12,Breakfast,Oats with banana,1 cup,1.0,420,14,68,10,8,18,180",
+    "2024-08-12,Lunch,Chicken breast,100 g,1.5,248,46,0,6,0,0,122",
+    "2024-08-12,Dinner,Brown rice,100 g,1.0,216,5,45,2,2,0,10",
+    "2024-08-12,Snack,Almonds,30 g,1.0,170,6,6,15,3,1,0",
+  ].join("\n");
+
+  it("auto-detects MacroFactor and parses 4 rows", () => {
+    const result = parseCsvImport(MACROFACTOR_CSV);
+    expect(result.source).toBe("macrofactor");
+    expect(result.rows).toHaveLength(4);
+  });
+
+  it("parses unit-suffixed macro headers (Protein (g), Carbohydrates (g))", () => {
+    const result = parseCsvImport(MACROFACTOR_CSV);
+    expect(result.rows[0]).toMatchObject({
+      name: "Oats with banana",
+      calories: 420,
+      protein: 14,
+      carbs: 68,
+      fat: 10,
+      fiber: 8,
+      sugar: 18,
+      sodium: 180,
+    });
+  });
+
+  it("parses ISO dates without locale heuristics", () => {
+    const result = parseCsvImport(MACROFACTOR_CSV);
+    expect(result.rows.every((r) => r.date === "2024-08-12")).toBe(true);
+  });
+
+  it("maps Meal column to canonical slot", () => {
+    const result = parseCsvImport(MACROFACTOR_CSV);
+    expect(result.rows[0].slot).toBe("breakfast");
+    expect(result.rows[1].slot).toBe("lunch");
+    expect(result.rows[2].slot).toBe("dinner");
+    expect(result.rows[3].slot).toBe("snack");
+  });
+
+  it("explicit source 'macrofactor' bypasses detection", () => {
+    const result = parseCsvImport(MACROFACTOR_CSV, "macrofactor");
+    expect(result.source).toBe("macrofactor");
+    expect(result.rows).toHaveLength(4);
+  });
+
+  it("detectAdapter recognises a MacroFactor header row", () => {
+    const headers = [
+      "Date", "Meal", "Food", "Serving Size", "Servings", "Calories",
+      "Protein (g)", "Carbohydrates (g)", "Fat (g)", "Fiber (g)", "Sodium (mg)",
+    ];
+    const adapter = detectAdapter(headers);
+    expect(adapter?.source).toBe("macrofactor");
+  });
+
+  it("detectAdapter — MacroFactor is mutually exclusive with MFP, Lose It, Cronometer", () => {
+    const mfpHeaders = ["Date", "Meal", "Food", "Calories", "Carbs", "Fat"];
+    const loseItHeaders = ["Date", "Name", "Type", "Quantity", "Units", "Calories"];
+    const cronometerHeaders = ["Day", "Group", "Food Name", "Amount", "Energy (kcal)"];
+    const macrofactorHeaders = [
+      "Date", "Meal", "Food", "Serving Size", "Servings",
+      "Calories", "Protein (g)", "Carbohydrates (g)", "Fat (g)",
+    ];
+    expect(detectAdapter(mfpHeaders)?.source).toBe("mfp");
+    expect(detectAdapter(loseItHeaders)?.source).toBe("lose-it");
+    expect(detectAdapter(cronometerHeaders)?.source).toBe("cronometer");
+    expect(detectAdapter(macrofactorHeaders)?.source).toBe("macrofactor");
+  });
+
+  it("Serving Size + Servings columns are ignored (macros already pre-multiplied)", () => {
+    // Both rows have 1.5 servings; the calories/macros in the CSV are
+    // already the total for the serving quantity — no multiplication
+    // should be applied by the adapter.
+    const csv = [
+      "Date,Meal,Food,Serving Size,Servings,Calories,Protein (g),Carbohydrates (g),Fat (g)",
+      "2024-08-12,Lunch,Chicken breast,100 g,1.5,248,46,0,6",
+    ].join("\n");
+    const result = parseCsvImport(csv);
+    expect(result.rows[0].calories).toBe(248); // as-exported, not 248 × 1.5
+    expect(result.rows[0].protein).toBe(46);
+  });
+});

@@ -2,6 +2,7 @@ import { canonHeader } from "../csvPrimitives";
 import type { CsvImportAdapter } from "../types";
 import { cronometerAdapter } from "./cronometer";
 import { loseItAdapter } from "./loseIt";
+import { macrofactorAdapter } from "./macrofactor";
 import { mfpAdapter } from "./mfp";
 
 /**
@@ -27,6 +28,11 @@ export const REGISTERED_ADAPTERS: readonly CsvImportAdapter[] = [
   mfpAdapter,
   loseItAdapter,
   cronometerAdapter,
+  macrofactorAdapter,
+  // Cal AI adapter deferred to ENG-710: needs a real sample export file
+  // before the detector can be validated. The current Cal AI export format
+  // isn't publicly documented well enough to write a safe mutually-exclusive
+  // detector without risking false-positives.
 ];
 
 /**
