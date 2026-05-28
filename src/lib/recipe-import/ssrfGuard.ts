@@ -106,10 +106,16 @@ export interface SafeFetchResult {
  */
 export async function followWithSsrfGuard(
   url: string,
-  opts: { headers?: Record<string, string>; maxHops?: number; signal?: AbortSignal } = {},
+  opts: {
+    headers?: Record<string, string>;
+    maxHops?: number;
+    signal?: AbortSignal;
+    /** For testing only — inject a stub DNS lookup to avoid real network calls. */
+    _lookupFn?: LookupFn;
+  } = {},
 ): Promise<SafeFetchResult | null> {
   if (!isAllowedUrl(url)) return null;
-  const { headers, signal } = opts;
+  const { headers, signal, _lookupFn } = opts;
   const maxHops = opts.maxHops ?? 5;
   let currentUrl = url;
   let res: Response | undefined;
@@ -117,7 +123,7 @@ export async function followWithSsrfGuard(
     // ENG-730: pre-resolve DNS for this hop and validate the resolved IP.
     // Runs on every hop so a redirect to a DNS-rebinding hostname is also caught.
     try {
-      await resolveDnsAndValidate(new URL(currentUrl).hostname);
+      await resolveDnsAndValidate(new URL(currentUrl).hostname, _lookupFn);
     } catch {
       return null;
     }
