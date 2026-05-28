@@ -39,7 +39,7 @@ import { classifyPaywallReadiness } from "@/lib/paywallReadiness";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { usePromoCode } from "@/hooks/usePromoCode";
-import { track } from "@/lib/analytics";
+import { track, isFeatureEnabled } from "@/lib/analytics";
 import { AnalyticsEvents, type PaywallViewedFrom } from "@suppr/shared/analytics/events";
 import { PRICING_TIERS, type PricingTier, computeAnnualSavingsBadge } from "@suppr/shared/landing/pricingTiers";
 import { getPaywallTrustChips, buildReceiptTrustCopy, type PaywallTrustChip } from "@suppr/shared/landing/paywallTrust";
@@ -232,7 +232,16 @@ export default function PaywallScreen() {
   const [restoring, setRestoring] = useState(false);
   const [offeringsReady, setOfferingsReady] = useState(false);
   const [earlyRedirected, setEarlyRedirected] = useState(false);
-  const [billing, setBilling] = useState<BillingPeriod>("annual");
+  // ENG-698: unify to monthly default behind a feature flag (PostHog:
+  // `paywall-default-monthly`). Annual remains the fallback so users
+  // on the annual-only SKU still see the 7-day trial by default; the
+  // lock-period effect below overrides this when only one period is
+  // provisioned in RC. Lazy initializer runs synchronously so there
+  // is no flash — PostHog flags are loaded well before the user
+  // reaches the paywall in any normal flow.
+  const [billing, setBilling] = useState<BillingPeriod>(() =>
+    isFeatureEnabled("paywall-default-monthly") ? "monthly" : "annual",
+  );
   // PR-01 (audit 2026-04-28): single Pro card, single focused tier.
   // The state retains the type contract for the analytics emits but
   // never mutates — focusedTier is always `"pro"` after the Base
