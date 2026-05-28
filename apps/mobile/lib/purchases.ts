@@ -115,6 +115,35 @@ export async function getCustomerInfo(): Promise<CustomerInfo> {
   return Purchases.getCustomerInfo();
 }
 
+/**
+ * Poll RevenueCat until the target entitlement is active, or give up
+ * after `maxAttempts` with `intervalMs` between each (ENG-684).
+ *
+ * Returns the entitled `CustomerInfo` on success, or `null` if the
+ * entitlement never appeared within the polling window. The caller
+ * decides what to show in the timeout case — it must be a clear
+ * recovery message with a manual Restore CTA, not an infinite spinner.
+ */
+export async function pollUntilEntitled(
+  tier: "pro" | "base",
+  maxAttempts = 5,
+  intervalMs = 2000,
+): Promise<CustomerInfo | null> {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    if (attempt > 0) {
+      await new Promise<void>((resolve) => setTimeout(resolve, intervalMs));
+    }
+    try {
+      const info = await getCustomerInfo();
+      const entitled = tier === "pro" ? isProEntitled(info) : isBaseEntitled(info);
+      if (entitled) return info;
+    } catch {
+      // RC fetch failure — keep polling until attempts exhausted
+    }
+  }
+  return null;
+}
+
 export function isProEntitled(info: CustomerInfo): boolean {
   return !!info.entitlements.active["pro"];
 }
