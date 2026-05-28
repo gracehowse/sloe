@@ -149,7 +149,16 @@ export function recomputeRecipeAggregate(
   servings: number,
 ): RecipeAggregate {
   const s = Math.max(RECIPE_SERVINGS_MIN, Math.round(servings) || RECIPE_SERVINGS_MIN);
-  const sum = ingredients.reduce(
+  type MacroSum = {
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    fiber_g: number;
+    sugar_g: number;
+    sodium_mg: number;
+  };
+  const sum = ingredients.reduce<MacroSum>(
     (acc, i) => ({
       calories: acc.calories + (i.calories ?? 0),
       protein: acc.protein + (i.protein ?? 0),
