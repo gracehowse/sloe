@@ -7,6 +7,7 @@ import { useAppData } from "../../context/AppDataContext.tsx";
 import { normalizeMacroTargets, DEFAULT_STEPS_GOAL } from "../../types/profile.ts";
 import { resolveMaintenance } from "../../lib/nutrition/resolveMaintenance.ts";
 import { computeActivityBonusKcal } from "../../lib/nutrition/activityBonus.ts";
+import { previousDayKey } from "../../lib/nutrition/copyYesterdayMeals.ts";
 import { isPerServingPortion } from "../../lib/nutrition/foodSearchCore.ts";
 import { ACTIVITY_BUDGET_DISCOVERABILITY_KEY } from "../../lib/nutrition/activityBudgetDiscoverability.ts";
 // Weekly TDEE check-in ritual (PR claude/weekly-checkin-ritual-v2,
@@ -2098,6 +2099,15 @@ export const NutritionTracker = memo(function NutritionTracker({
     : null;
   const hasBurnData = activityBurnForSelectedDay > 0 || basalBurnKcal > 0 || dayWorkouts.length > 0;
 
+  const handleCopyYesterday = useCallback(() => {
+    const yesterdayKey = previousDayKey(selectedDateKey);
+    const count = (nutritionByDay[yesterdayKey] ?? []).length;
+    if (count === 0) return;
+    const label = count === 1 ? "1 meal" : `${count} meals`;
+    if (!window.confirm(`Copy ${label} from yesterday to today? You can delete any you don't want.`)) return;
+    void duplicateDay(yesterdayKey, selectedDateKey);
+  }, [selectedDateKey, nutritionByDay, duplicateDay]);
+
   const handleAddMeal = () => {
     if (addMode === "manual") {
       const name = manualName.trim();
@@ -3414,6 +3424,12 @@ export const NutritionTracker = memo(function NutritionTracker({
           setLogSheetOpen(false);
           setAddOpen(true);
         }}
+        copyYesterday={(() => {
+          if (selectedDateKey !== todayKey() || mealsForSelectedDate.length > 0) return null;
+          const count = (nutritionByDay[previousDayKey(selectedDateKey)] ?? []).length;
+          if (count === 0) return null;
+          return { count, onTap: handleCopyYesterday };
+        })()}
       />
 
     </div>

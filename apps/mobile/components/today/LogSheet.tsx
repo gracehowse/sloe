@@ -17,6 +17,7 @@ import {
   Camera,
   ChevronRight,
   Clock,
+  Copy,
   History,
   Lock,
   Mic,
@@ -284,6 +285,12 @@ export interface LogSheetProps {
    *  open the manual quick-add form. When undefined the footer is
    *  hidden. */
   onAddManually?: () => void;
+  /** "Copy yesterday" quick-log shortcut (ENG-709). When provided,
+   *  a row appears above the browse tabs showing the number of meals
+   *  from yesterday. `onTap` fires when the user confirms; the host
+   *  is responsible for the confirmation alert and the actual copy.
+   *  When undefined (or count === 0) the row is hidden. */
+  copyYesterday?: { count: number; onTap: () => void } | null;
 }
 
 type BrowseTab = "recent" | "library" | "saved";
@@ -299,6 +306,7 @@ export function LogSheet({
   voice,
   photo,
   onAddManually,
+  copyYesterday,
 }: LogSheetProps) {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
@@ -388,6 +396,7 @@ export function LogSheet({
                 browseTab={browseTab}
                 onBrowseTabChange={setBrowseTab}
                 onAddManually={onAddManually}
+                copyYesterday={copyYesterday}
               />
             )}
           </View>
@@ -411,6 +420,7 @@ function DefaultComposition({
   browseTab,
   onBrowseTabChange,
   onAddManually,
+  copyYesterday,
 }: {
   visible: boolean;
   search: LogSheetProps["search"];
@@ -423,6 +433,7 @@ function DefaultComposition({
   browseTab: BrowseTab;
   onBrowseTabChange: (tab: BrowseTab) => void;
   onAddManually?: () => void;
+  copyYesterday?: LogSheetProps["copyYesterday"];
 }) {
   const colors = useThemeColors();
   const showRecent = !!recent;
@@ -546,21 +557,58 @@ function DefaultComposition({
           />
         </View>
       ) : (
-        <BrowseAndFooter
-          showBrowseToggle={showBrowseToggle}
-          visibleTabs={visibleTabs}
-          showRecent={showRecent}
-          showSaved={showSaved}
-          showLibrary={showLibrary}
-          recent={recent}
-          saved={saved}
-          library={library}
-          browseTab={browseTab}
-          onBrowseTabChange={onBrowseTabChange}
-          onAddManually={onAddManually}
-        />
+        <>
+          {copyYesterday && copyYesterday.count > 0 && (
+            <CopyYesterdayRow count={copyYesterday.count} onTap={copyYesterday.onTap} />
+          )}
+          <BrowseAndFooter
+            showBrowseToggle={showBrowseToggle}
+            visibleTabs={visibleTabs}
+            showRecent={showRecent}
+            showSaved={showSaved}
+            showLibrary={showLibrary}
+            recent={recent}
+            saved={saved}
+            library={library}
+            browseTab={browseTab}
+            onBrowseTabChange={onBrowseTabChange}
+            onAddManually={onAddManually}
+          />
+        </>
       )}
     </View>
+  );
+}
+
+/* -------------------------- Copy yesterday row -------------------------- */
+
+function CopyYesterdayRow({ count, onTap }: { count: number; onTap: () => void }) {
+  const colors = useThemeColors();
+  const label = count === 1 ? "1 meal" : `${count} meals`;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Copy yesterday's ${label} to today`}
+      testID="copy-yesterday-row"
+      onPress={() => {
+        void Haptics.selectionAsync();
+        onTap();
+      }}
+      style={({ pressed }) => [
+        styles.copyYesterdayRow,
+        {
+          borderBottomColor: colors.border,
+          opacity: pressed ? 0.7 : 1,
+        },
+      ]}
+    >
+      <Copy size={16} color={colors.tint} strokeWidth={2} />
+      <Text style={[Type.body, { color: colors.text, flex: 1 }]}>
+        Copy yesterday&apos;s meals
+      </Text>
+      <Text style={[Type.caption, { color: colors.textSecondary }]}>{label}</Text>
+      <ChevronRight size={16} color={colors.textTertiary} strokeWidth={2} />
+    </Pressable>
   );
 }
 
@@ -1339,6 +1387,14 @@ const styles = StyleSheet.create({
   browsePillLabel: {
     fontSize: 13,
     fontWeight: "600",
+  },
+  copyYesterdayRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   manualFooter: {
     flexDirection: "row",

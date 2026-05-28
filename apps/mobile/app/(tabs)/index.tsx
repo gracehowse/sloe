@@ -91,6 +91,7 @@ import {
   weekSummaryDateKeys,
   type WeekSummaryMode,
 } from "@suppr/shared/nutrition/weekSummaryWindow";
+import { getYesterdayMeals } from "@suppr/shared/nutrition/copyYesterdayMeals";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { findPlanDayIdForCalendarDate } from "@suppr/shared/mealPlan/planCalendarAnchor";
@@ -1975,6 +1976,41 @@ export default function TrackerScreen() {
     },
     [activeMealSlot, dayKey, userId, supabase, persistMealsImmediate],
   );
+
+  /** ENG-709 — Copy yesterday's meals to today. Called after the user
+   *  confirms the Alert prompt. Copies all JournalMeal rows from
+   *  yesterday's date key with fresh IDs so they don't collide. */
+  const handleCopyYesterdayConfirmed = useCallback(() => {
+    const yesterdayMeals = getYesterdayMeals(byDay, dayKey);
+    if (yesterdayMeals.length === 0) return;
+    const newMeals: JournalMeal[] = yesterdayMeals.map((m) => ({
+      ...m,
+      id: newMealId(),
+    }));
+    setByDay((prev) => ({
+      ...prev,
+      [dayKey]: [...(prev[dayKey] ?? []), ...newMeals],
+    }));
+    void persistMealsImmediate(dayKey, newMeals);
+    track(AnalyticsEvents.food_logged, {
+      source: "copy_yesterday",
+      count: newMeals.length,
+    });
+  }, [byDay, dayKey, persistMealsImmediate]);
+
+  const handleCopyYesterday = useCallback(() => {
+    const count = getYesterdayMeals(byDay, dayKey).length;
+    if (count === 0) return;
+    const label = count === 1 ? "1 meal" : `${count} meals`;
+    Alert.alert(
+      "Copy yesterday's meals?",
+      `This will add ${label} from yesterday to today. You can delete any you don't want.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Copy", onPress: handleCopyYesterdayConfirmed },
+      ],
+    );
+  }, [byDay, dayKey, handleCopyYesterdayConfirmed]);
 
   const trackerWeekSummaryKeys = useMemo(
     () => weekSummaryDateKeys(weekSummaryMode, selectedDate, weekStartDay),
@@ -5401,6 +5437,18 @@ export default function TrackerScreen() {
           setFabSheetOpen(false);
           setAddOpen(true);
         }}
+        copyYesterday={(() => {
+          // ENG-709: only show when viewing today and today has no
+          // meals yet (so the copy is actually useful, not additive
+          // noise on a day already started).
+          if (!isToday || mealsToday.length > 0) return null;
+          const count = getYesterdayMeals(byDay, dayKey).length;
+          if (count === 0) return null;
+          return {
+            count,
+            onTap: handleCopyYesterday,
+          };
+        })()}
       />
 
       {targetCelebration && (

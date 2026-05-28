@@ -273,6 +273,10 @@ export interface LogSheetProps {
    *  drawer. When undefined, falls back to the bottom-sheet
    *  default. */
   desktop?: boolean;
+  /** "Copy yesterday" quick-log shortcut (ENG-709). When provided,
+   *  a row appears above the browse tabs. `onTap` fires when the user
+   *  clicks it; host shows confirmation dialog + performs the copy. */
+  copyYesterday?: { count: number; onTap: () => void } | null;
 }
 
 type BrowseTab = "recent" | "library" | "saved";
@@ -289,6 +293,7 @@ export function LogSheet({
   photo,
   onAddManually,
   desktop,
+  copyYesterday,
 }: LogSheetProps) {
   const [browseTab, setBrowseTab] = React.useState<BrowseTab>("recent");
   React.useEffect(() => {
@@ -377,6 +382,7 @@ export function LogSheet({
               browseTab={browseTab}
               onBrowseTabChange={setBrowseTab}
               onAddManually={onAddManually}
+              copyYesterday={copyYesterday}
             />
           )}
         </DrawerPrimitive.Content>
@@ -399,6 +405,7 @@ function DefaultComposition({
   browseTab,
   onBrowseTabChange,
   onAddManually,
+  copyYesterday,
 }: {
   open: boolean;
   search: LogSheetProps["search"];
@@ -411,6 +418,7 @@ function DefaultComposition({
   browseTab: BrowseTab;
   onBrowseTabChange: (tab: BrowseTab) => void;
   onAddManually?: () => void;
+  copyYesterday?: LogSheetProps["copyYesterday"];
 }) {
   const showRecent = !!recent;
   const showSaved = !!saved;
@@ -539,6 +547,54 @@ function DefaultComposition({
         </div>
       ) : (
         <>
+          {/* Copy yesterday shortcut (ENG-709) — above the browse tabs. */}
+          {copyYesterday && copyYesterday.count > 0 && (
+            <button
+              type="button"
+              data-testid="copy-yesterday-row"
+              onClick={copyYesterday.onTap}
+              className="flex w-full items-center gap-2 border-b border-border px-4 py-3 text-sm hover:bg-muted/60 transition-colors"
+              aria-label={`Copy yesterday's ${copyYesterday.count === 1 ? "1 meal" : `${copyYesterday.count} meals`} to today`}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="shrink-0 text-primary"
+                aria-hidden="true"
+              >
+                <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+                <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+              </svg>
+              <span className="flex-1 text-left font-medium text-foreground">
+                Copy yesterday&apos;s meals
+              </span>
+              <span className="text-muted-foreground">
+                {copyYesterday.count === 1 ? "1 meal" : `${copyYesterday.count} meals`}
+              </span>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="shrink-0 text-muted-foreground/60"
+                aria-hidden="true"
+              >
+                <path d="m9 18 6-6-6-6" />
+              </svg>
+            </button>
+          )}
           {/* Browse pill toggle — Recent / Library / Saved. Hidden
               when only one source is available; the available one
               renders directly.
