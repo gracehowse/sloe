@@ -51,7 +51,7 @@ describe("Discover tab — three-section layout (2026-04-20 prototype port)", ()
       // to a permanent first card above the feed (mirror of mobile).
       // "From your sources" was renamed to "My Library" since Import
       // is no longer in that bottom-rail block.
-      expect(WEB_SRC).toMatch(/>\s*Matches your day\s*</);
+      expect(WEB_SRC).toMatch(/>\s*Recipe ideas\s*</);
       expect(WEB_SRC).toMatch(/>\s*More ideas\s*</);
       expect(WEB_SRC).toMatch(/>\s*My Library\s*</);
     });
@@ -60,13 +60,13 @@ describe("Discover tab — three-section layout (2026-04-20 prototype port)", ()
       // Mobile uses `<Text>…</Text>` so the literal string appears as
       // the child. "From your sources" was renamed to "My Library"
       // when Import moved to a permanent top card.
-      expect(MOBILE_SRC).toMatch(/Matches your day/);
+      expect(MOBILE_SRC).toMatch(/Recipe ideas/);
       expect(MOBILE_SRC).toMatch(/More ideas/);
       expect(MOBILE_SRC).toMatch(/>\s*My Library\s*</);
     });
   });
 
-  describe("hero card slicing (Matches your day)", () => {
+  describe("hero card slicing (Recipe ideas)", () => {
     it("web takes the first 2 recipes for the hero section", () => {
       expect(WEB_SRC).toMatch(/recipes\.slice\(0,\s*2\)/);
     });
@@ -99,7 +99,7 @@ describe("Discover tab — three-section layout (2026-04-20 prototype port)", ()
       // top card so the import affordance is the first thing on
       // Discover, not buried beneath recipe rows.
       const topImportIdx = WEB_SRC.indexOf('discover-import-cta-top');
-      const matchesIdx = WEB_SRC.search(/>\s*Matches your day\s*</);
+      const matchesIdx = WEB_SRC.search(/>\s*Recipe ideas\s*</);
       const moreIdeasIdx = WEB_SRC.search(/>\s*More ideas\s*</);
       const libraryHeadingIdx = WEB_SRC.search(/>\s*My Library\s*</);
       expect(topImportIdx).toBeGreaterThan(0);
@@ -125,7 +125,7 @@ describe("Discover tab — three-section layout (2026-04-20 prototype port)", ()
       // of the file. Section headings render inside a `<Text style=...>`
       // tag so we anchor on the closing `>` from the opening tag.
       const importIdx = MOBILE_SRC.indexOf('testID="discover-import-cta"');
-      const matchesIdx = MOBILE_SRC.search(/>\s*Matches your day\s*</);
+      const matchesIdx = MOBILE_SRC.search(/>\s*Recipe ideas\s*</);
       const moreIdeasIdx = MOBILE_SRC.search(/>\s*More ideas\s*</);
       const libraryHeadingIdx = MOBILE_SRC.search(/>\s*My Library\s*</);
       expect(importIdx).toBeGreaterThan(0);
