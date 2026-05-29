@@ -846,15 +846,17 @@ export default function RecipeDetailScreen() {
 
   const reloadRecipeIngredients = useCallback(async () => {
     if (!recipeId || isSeedRecipeId(recipeId)) return;
-    let ingRes = await supabase
+    const ingRes = await supabase
       .from("recipe_ingredients")
       .select("name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, confidence, source, is_verified")
       .eq("recipe_id", recipeId);
     if (ingRes.error?.code === "42703") {
-      ingRes = await supabase
+      const fallbackRes = await supabase
         .from("recipe_ingredients")
         .select("name, amount, unit, calories, protein, carbs, fat")
         .eq("recipe_id", recipeId);
+      if (fallbackRes.data) setIngredients(fallbackRes.data as Ingredient[]);
+      return;
     }
     if (ingRes.data) setIngredients(ingRes.data as Ingredient[]);
   }, [recipeId]);

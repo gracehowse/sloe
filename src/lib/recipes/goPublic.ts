@@ -25,10 +25,13 @@ export const UNPUBLISH_ALERT_MESSAGE =
   "This removes it from public discovery. It will stay in your library as a private draft.";
 
 export type RecipePublishSupabaseClient = {
-  from(table: "recipes"): {
-    update(payload: { published: boolean }): {
-      eq(column: "id", value: string): {
-        eq(column: "author_id", value: string): Promise<{ error: { message: string } | null }>;
+  from: (table: string) => {
+    update: (payload: { published: boolean }) => {
+      eq: (column: string, value: string) => {
+        eq: (
+          column: string,
+          value: string,
+        ) => PromiseLike<{ error: { message: string } | null }>;
       };
     };
   };

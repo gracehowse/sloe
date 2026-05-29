@@ -73,9 +73,9 @@ import { computeActivityBonusKcal } from "@suppr/shared/nutrition/activityBonus"
 import { scaleMacroTargetsForCalorieBudget } from "@suppr/shared/nutrition/scaleMacroTargetsForCalorieBudget";
 import { canonicalNutritionEntrySource } from "@suppr/shared/nutrition/canonicalNutritionEntrySource";
 import {
-  fetchCanonicalRecipeTitle,
   resolvePlannedMealLogTitles,
 } from "@suppr/shared/nutrition/resolveRecipeLogTitles";
+import { fetchMobileCanonicalRecipeTitle } from "@/lib/recipeTitleLookup";
 import { isPerServingPortion } from "@suppr/shared/nutrition/foodSearchCore";
 import { ACTIVITY_BUDGET_DISCOVERABILITY_KEY } from "@suppr/shared/nutrition/activityBudgetDiscoverability";
 import {
@@ -1823,7 +1823,7 @@ export default function TrackerScreen() {
     async (item: FoodHistoryItem, slot: string) => {
       let recipeTitle = item.recipeTitle;
       if (item.recipeId) {
-        const fresh = await fetchCanonicalRecipeTitle(supabase, item.recipeId);
+        const fresh = await fetchMobileCanonicalRecipeTitle(item.recipeId);
         if (fresh) recipeTitle = fresh;
       }
       // Tracking-extras autoupdate (2026-05-01) — re-attach caffeine /
@@ -2003,7 +2003,7 @@ export default function TrackerScreen() {
           id: newMealId(),
         };
         if (meal.recipeId) {
-          const fresh = await fetchCanonicalRecipeTitle(supabase, meal.recipeId);
+          const fresh = await fetchMobileCanonicalRecipeTitle(meal.recipeId);
           if (fresh) meal.recipeTitle = fresh;
         }
         return meal;
@@ -4284,7 +4284,7 @@ export default function TrackerScreen() {
         return;
       }
 
-      const fetchedTitle = await fetchCanonicalRecipeTitle(supabase, pm.recipe_id);
+      const fetchedTitle = await fetchMobileCanonicalRecipeTitle(pm.recipe_id);
       const { name: logSlotName, recipeTitle: logRecipeTitle } = resolvePlannedMealLogTitles({
         slotName: pm.name,
         recipeTitle: pm.recipe_title,
