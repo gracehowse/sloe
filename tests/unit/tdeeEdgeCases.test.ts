@@ -1,8 +1,11 @@
 /**
  * TDEE edge cases — Atwater reconciliation, clamp floors, budget safety.
  *
- * Note: file was historically named `rateLimitFallback.test.ts` but never
- * contained rate-limit assertions (ENG-689 test-debt cleanup).
+ * Renamed from `rateLimitFallback.test.ts` (ENG-689) — that filename was
+ * misleading; rate-limit behaviour lives in:
+ *   - `rateLimitStrictFail.test.ts` (prod fail-closed without Upstash)
+ *   - `rateLimitKeyComposition.test.ts` (per-user bucket keys)
+ *   - `rateLimitInventory.test.ts` (authenticated routes pass userId)
  */
 import { describe, it, expect } from "vitest";
 import { budgetSafety, calculateBMR, calculateMacros, calculateTDEE } from "@/lib/nutrition/tdee";

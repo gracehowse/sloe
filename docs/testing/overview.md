@@ -69,7 +69,11 @@ HTML report: `coverage/index.html` after `npm run test:coverage`.
 | `parseRecipeFromHtml.test.ts` | 17 | Recipe HTML/JSON-LD extraction |
 | `persistence.test.ts` | 4 | localStorage snapshot read/write |
 | `portionMultiplier.test.ts` | 10 | Portion scaling and day totals |
-| `rateLimitFallback.test.ts` | 9 | In-memory rate limiter |
+| `tdeeEdgeCases.test.ts` | 9 | TDEE clamp floors, macro reconciliation, budget safety |
+| `rateLimitStrictFail.test.ts` | 5 | Rate limiter fails closed in prod without Upstash (ENG-668) |
+| `rateLimitKeyComposition.test.ts` | 4 | Per-user rate-limit bucket key contract |
+| `nutritionEntriesSourceWriteParity.test.ts` | 8 | `nutrition_entries.source` canonical write contract (ENG-674) |
+| `onboardingSessionGateParity.test.ts` | 4 | Signup session gate shell wiring web ↔ mobile (ENG-672) |
 | `shoppingDisplayGroups.test.ts` | 5 | Shopping item category grouping |
 | `shoppingListGeneration.test.ts` | 10 | Shopping list generation from plan |
 | `smartSuggestions.test.ts` | 2 | Recipe suggestion scoring |

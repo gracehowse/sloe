@@ -58,6 +58,7 @@ import {
   MFP_IMPORT_BYTE_CAP,
   MFP_IMPORT_ROW_CAP,
 } from "@/lib/imports/mfpCsvLimits";
+import { canonicalNutritionEntrySource } from "@/lib/nutrition/canonicalNutritionEntrySource";
 
 export const runtime = "nodejs";
 
@@ -117,7 +118,7 @@ function rowToEntry(
     protein: row.protein ?? 0,
     carbs: row.carbs ?? 0,
     fat: row.fat ?? 0,
-    source: `${adapterSource}_import`,
+    source: canonicalNutritionEntrySource(`${adapterSource}_import`) ?? "manual",
     source_id: sourceId,
   };
 }
