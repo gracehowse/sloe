@@ -381,3 +381,27 @@ export function portionPlausibilityWarning(
 ): string {
   return `${Math.round(scaled.calories)} kcal and ${Math.round(scaled.protein)} g protein for ${Math.round(grams)} g looks unusually high — this product's label data may be per serving, not per 100 g. Edit the values or amount if they look wrong.`;
 }
+
+/**
+ * Inline warning for food-search / verify preview panes that scale per-100 g
+ * macros without the shared PortionPicker component (ENG-702 follow-up).
+ */
+export function foodSearchPreviewPlausibilityWarning(
+  macrosPer100g: MacrosPer100gPanel | null | undefined,
+  scaled: { calories: number; protein: number; carbs?: number; fat?: number } | null,
+  totalGrams: number,
+): string | null {
+  if (!macrosPer100g || !scaled || totalGrams <= 0) return null;
+  const plausibility = checkScaledLogPlausibility(
+    {
+      calories: scaled.calories,
+      protein: scaled.protein,
+      carbs: scaled.carbs ?? 0,
+      fat: scaled.fat ?? 0,
+    },
+    totalGrams,
+    macrosPer100g,
+  );
+  if (plausibility.ok) return null;
+  return portionPlausibilityWarning(scaled, totalGrams);
+}

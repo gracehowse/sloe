@@ -105,6 +105,11 @@ import { fetchFatSecretAutocomplete } from "@/lib/nutrition/fatsecretAutocomplet
 import { shouldShowBarcodeFallbackHint } from "@/lib/nutrition/foodSearchLocale";
 import { portionEqualsLabel } from "@/lib/nutrition/portionEqualsLabel";
 import { resolveInitialPortion, buildPortions, customFoodToHit, isPerServingPortion } from "@/lib/nutrition/foodSearchCore";
+import {
+  foodSearchTrustWeight,
+  searchRelevance,
+} from "@/lib/nutrition/foodSearchRanking";
+import { foodSearchPreviewPlausibilityWarning } from "@/lib/nutrition/portionPicker";
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -244,19 +249,8 @@ function titleCase(s: string): string {
   return s;
 }
 
-function searchRelevance(query: string, name: string): number {
-  const q = query.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
-  const n = name.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
-  if (!q || !n) return 0;
-  if (q === n) return 1;
-  const qTokens = q.split(" ").filter(Boolean);
-  const nTokens = new Set(n.split(" ").filter(Boolean));
-  let hits = 0;
-  for (const t of qTokens) if (nTokens.has(t)) hits++;
-  const recall = hits / Math.max(1, qTokens.length);
-  const brevity = Math.min(1, 4 / Math.max(1, nTokens.size));
-  return recall * 0.7 + recall * brevity * 0.3;
-}
+
+// ── Search API calls (carried over verbatim from FoodSearch.tsx) ────
 
 function scaleMacros(per100g: MacrosPer100g, grams: number): MacrosPer100g {
   const f = grams / 100;
@@ -822,20 +816,12 @@ export function FoodSearchPanel({
       const customResults = customs
         .map((c) => ({ ...customFoodToSearchResult(c), _rel: searchRelevance(q, c.name) }))
         .sort((a, b) => (b._rel as number) - (a._rel as number));
-      const trustWeight = (r: SearchResult): number => {
-        if (r._source === "USDA" && r.verified) return 0.10;
-        if (r._source === "USDA") return -0.15;
-        if (r._source === "Edamam") return -0.05;
-        // FatSecret: same trust band as Edamam — both are commercial
-        // sources with high brand coverage but community-edited generic
-        // rows. The merge still defers to verified USDA on tie.
-        if (r._source === "FatSecret") return -0.05;
-        if (r._source === "OFF") {
-          const hasBrand = /·/.test(r.name);
-          return hasBrand ? -0.10 : -0.20;
-        }
-        return 0;
-      };
+      const trustWeight = (r: SearchResult): number =>
+        foodSearchTrustWeight({
+          source: r._source,
+          verified: r.verified,
+          name: r.name,
+        });
       const external = [...usda, ...off, ...edamam, ...fatsecret]
         .map((r) => ({ ...r, _rel: Math.max(0, searchRelevance(q, r.name) + trustWeight(r)) }))
         .sort((a, b) => (b._rel as number) - (a._rel as number))
@@ -1377,6 +1363,16 @@ export function FoodSearchPanel({
 
   const totalGrams = preview ? Math.round(preview.chosenPortion.gramWeight * preview.quantity * 10) / 10 : 0;
 
+  const previewPlausibilityWarning = useMemo(
+    () =>
+      foodSearchPreviewPlausibilityWarning(
+        preview?.macrosPer100g ?? null,
+        scaled,
+        totalGrams,
+      ),
+    [preview?.macrosPer100g, scaled, totalGrams],
+  );
+
   const fitHint = useMemo(() => {
     if (!macroTargets || !macroConsumed || !scaled) return null;
     const projection = projectRemaining(macroTargets, macroConsumed, {
@@ -1549,6 +1545,12 @@ export function FoodSearchPanel({
               ))}
             </div>
           </div>
+
+          {previewPlausibilityWarning ? (
+            <p className="text-xs text-destructive" role="alert">
+              {previewPlausibilityWarning}
+            </p>
+          ) : null}
 
           {fitHint && (
             <div

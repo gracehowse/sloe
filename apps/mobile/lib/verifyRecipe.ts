@@ -48,6 +48,7 @@ import { stripSectionPrefix } from "@suppr/shared/recipe-import/socialUrlHelpers
  * the import path is now stable across web + mobile.
  */
 import { RECIPE_INGREDIENT_REVIEW_CONFIDENCE } from "@suppr/shared/nutrition/verifyConfidencePolicy";
+import { foodSearchRankScore, searchRelevance } from "@suppr/shared/nutrition/foodSearchRanking";
 export { RECIPE_INGREDIENT_REVIEW_CONFIDENCE };
 
 // Consolidation note (M4): shared parsing lives under `src/lib/recipe-ingredients/`
@@ -899,21 +900,6 @@ export async function searchFatSecret(
   }
 }
 
-/** Simple word-overlap relevance score for ranking */
-function searchRelevance(query: string, name: string): number {
-  const q = query.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
-  const n = name.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
-  if (!q || !n) return 0;
-  if (q === n) return 1;
-  const qTokens = q.split(" ").filter(Boolean);
-  const nTokens = new Set(n.split(" ").filter(Boolean));
-  let hits = 0;
-  for (const t of qTokens) if (nTokens.has(t)) hits++;
-  const recall = hits / Math.max(1, qTokens.length);
-  // Shorter names that match well = more relevant
-  const brevity = Math.min(1, 4 / Math.max(1, nTokens.size));
-  return recall * 0.7 + recall * brevity * 0.3;
-}
 
 /** Search all sources in parallel, return unified ranked list.
  *  Sources: USDA FDC (verified generic foods), OpenFoodFacts (branded /
@@ -1176,10 +1162,12 @@ function mergeResults(
       // string). Closes the "1 egg 40g 210 kcal" failure where a
       // 525-kcal/100g branded "EGGS" outranked the verified Foundation
       // "Eggs, Grade A, Large, egg whole" row.
-      _relevance: Math.max(
-        0,
-        searchRelevance(query, item.description) + (isVerified ? 0.10 : -0.15),
-      ),
+      _relevance: foodSearchRankScore({
+        query,
+        name: item.description,
+        source: "USDA",
+        verified: isVerified,
+      }),
     });
   }
 
@@ -1192,10 +1180,7 @@ function mergeResults(
       item.servingSize,
     );
     // F-77 (2026-04-25) — trust-weight: OFF user-uploaded rows lose to
-    // USDA on tie/near-tie. Branded OFF rows (have a brand string) are
-    // intrinsically more trustworthy than generic-name OFF rows because
-    // they map to a real packaged product, so the demotion is smaller.
-    const offTrustPenalty = brand ? 0.10 : 0.20;
+    // USDA on tie/near-tie via shared `foodSearchRankScore`.
     results.push({
       key: `off-${item.code}`,
       name: displayName,
@@ -1219,7 +1204,11 @@ function mergeResults(
       primaryServing,
       _source: "OFF",
       _offCode: item.code,
-      _relevance: Math.max(0, searchRelevance(query, displayName) - offTrustPenalty),
+      _relevance: foodSearchRankScore({
+        query,
+        name: displayName,
+        source: "OFF",
+      }),
     });
   }
 
@@ -1270,7 +1259,11 @@ function mergeResults(
       primaryServing,
       _source: "Edamam",
       _edamamFoodId: item.foodId,
-      _relevance: searchRelevance(query, displayName),
+      _relevance: foodSearchRankScore({
+        query,
+        name: displayName,
+        source: "Edamam",
+      }),
     });
   }
 
@@ -1333,7 +1326,11 @@ function mergeResults(
       primaryServing,
       _source: "FatSecret",
       _fatSecretFoodId: item.foodId,
-      _relevance: Math.max(0, searchRelevance(query, displayName) - 0.05),
+      _relevance: foodSearchRankScore({
+        query,
+        name: displayName,
+        source: "FatSecret",
+      }),
     });
   }
 

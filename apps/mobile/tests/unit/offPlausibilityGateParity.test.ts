@@ -56,13 +56,13 @@ describe("F-77 OFF Atwater plausibility gate — every ingest point", () => {
 });
 
 describe("F-77 trust-weighted ranking — USDA over OFF on tie/near-tie", () => {
-  it("mobile mergeResults applies an offTrustPenalty to OFF rows", () => {
-    expect(VERIFY_SRC).toMatch(/offTrustPenalty/);
-    expect(VERIFY_SRC).toMatch(/searchRelevance\(query,\s*displayName\)\s*-\s*offTrustPenalty/);
+  it("mobile mergeResults applies shared foodSearchRankScore for OFF rows", () => {
+    expect(VERIFY_SRC).toMatch(/foodSearchRankScore/);
+    expect(VERIFY_SRC).toMatch(/source:\s*"OFF"/);
   });
 
   it("web mergeAndDedup applies a trustWeight delta to USDA / OFF / Edamam rows", () => {
-    expect(WEB_SEARCH_SRC).toMatch(/trustWeight\s*=\s*\(r:\s*SearchResult\)/);
+    expect(WEB_SEARCH_SRC).toMatch(/foodSearchTrustWeight/);
     expect(WEB_SEARCH_SRC).toMatch(/searchRelevance\(q,\s*r\.name\)\s*\+\s*trustWeight\(r\)/);
   });
 });
@@ -211,6 +211,18 @@ describe("ENG-702 portion picker — inline plausibility after scale", () => {
     expect(SCANNER_MODAL_SRC).toMatch(/basisCorrected=\{product\.basisCorrected\}/);
     expect(WEB_BARCODE_DIALOG_SRC).toMatch(/macrosPer100g=\{\{/);
     expect(WEB_BARCODE_DIALOG_SRC).toMatch(/basisCorrected=\{product\.basisCorrected\}/);
+  });
+
+  it("food-search preview hosts surface inline plausibility warnings", () => {
+    const MOBILE_FOOD_SEARCH = resolve(
+      __dirname,
+      "../../components/food-search/FoodSearchPanel.tsx",
+    );
+    const mobileFoodSearchSrc = readFileSync(MOBILE_FOOD_SEARCH, "utf8");
+    expect(mobileFoodSearchSrc).toMatch(/foodSearchPreviewPlausibilityWarning/);
+    expect(mobileFoodSearchSrc).toMatch(/accessibilityRole="alert"/);
+    expect(WEB_SEARCH_SRC).toMatch(/foodSearchPreviewPlausibilityWarning/);
+    expect(WEB_SEARCH_SRC).toMatch(/role="alert"/);
   });
 });
 

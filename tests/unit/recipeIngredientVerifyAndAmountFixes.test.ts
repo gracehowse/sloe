@@ -63,6 +63,10 @@ describe("Bug 1 — verified state persists past manual verify", () => {
     );
   });
 
+  it("mobile saveVerifiedIngredients uses atomic save_verified_ingredients RPC", () => {
+    expect(SRC.mobileVerifyLib).toMatch(/supabase\.rpc\("save_verified_ingredients"/);
+  });
+
   it("web recipe-detail row routes through the shared verification-tier helper", () => {
     expect(SRC.webRecipe).toMatch(
       /import\s*\{[\s\S]*?deriveIngredientVerificationTier[\s\S]*?\}\s*from[\s\S]*?recipe-ingredients\/ingredientVerificationStatus/,
