@@ -142,7 +142,7 @@ describe("POST /api/imports/mfp-csv", () => {
   });
 
   // Scenario 5: happy path — success.
-  it("returns 200 with imported count, sample, and source=mfp_import", async () => {
+  it("returns 200 with imported count, sample, and adapter source=mfp", async () => {
     mockUserId.mockResolvedValue("u1");
     const stub = makeServiceRoleStub({ insertedPerBatch: 3 });
     mockServiceRole.mockReturnValue(stub);
@@ -163,14 +163,14 @@ describe("POST /api/imports/mfp-csv", () => {
       calories: 420,
     });
 
-    // Verify `source: "mfp_import"` is set on every row written, and
-    // that `source_id` is the deterministic `<userId>:<date>:<i>` shape
-    // the dedup index relies on.
+    // ENG-674: DB `source` is canonical (`manual` for all CSV imports);
+    // adapter id stays on the JSON `source` field for UI/debugging.
     expect(stub._upsert).toHaveBeenCalledTimes(1);
     const sentBatch = (stub._upsert as ReturnType<typeof vi.fn>).mock.calls[0][0];
     expect(sentBatch).toHaveLength(3);
+    expect(json.source).toBe("mfp");
     expect(
-      sentBatch.every((r: { source: string }) => r.source === "mfp_import"),
+      sentBatch.every((r: { source: string }) => r.source === "manual"),
     ).toBe(true);
     expect(
       sentBatch.every((r: { user_id: string }) => r.user_id === "u1"),
@@ -270,7 +270,7 @@ describe("POST /api/imports/mfp-csv", () => {
   // existing clients, but the route now serves every registered
   // adapter via `parseCsvImport` auto-detect.
   describe("auto-detect — multi-adapter coverage", () => {
-    it("imports a MyFitnessPal CSV and tags rows with source `mfp_import`", async () => {
+    it("imports a MyFitnessPal CSV and canonicalizes DB source to manual", async () => {
       mockUserId.mockResolvedValue("u1");
       const stub = makeServiceRoleStub({ insertedPerBatch: 3 });
       mockServiceRole.mockReturnValue(stub);
@@ -279,16 +279,15 @@ describe("POST /api/imports/mfp-csv", () => {
       const json = await res.json();
       expect(json.source).toBe("mfp");
       expect(json.imported).toBe(3);
-      // First upsert call should have `source: "mfp_import"` on every row.
       const firstBatch = stub._upsert.mock.calls[0]?.[0];
       expect(firstBatch).toBeDefined();
       expect(Array.isArray(firstBatch)).toBe(true);
       for (const row of firstBatch as { source: string }[]) {
-        expect(row.source).toBe("mfp_import");
+        expect(row.source).toBe("manual");
       }
     });
 
-    it("imports a Lose It CSV and tags rows with source `lose-it_import`", async () => {
+    it("imports a Lose It CSV and canonicalizes DB source to manual", async () => {
       mockUserId.mockResolvedValue("u1");
       const LOSEIT_CSV = [
         "Date,Name,Type,Quantity,Units,Calories,Fat (g),Cholesterol (mg),Sodium (mg),Carbohydrates (g),Fiber (g),Sugars (g),Protein (g)",
@@ -306,12 +305,12 @@ describe("POST /api/imports/mfp-csv", () => {
         source: string;
         date_key: string;
       }[];
-      expect(firstBatch[0].source).toBe("lose-it_import");
+      expect(firstBatch[0].source).toBe("manual");
       // Locale-date parsing — `8/12/2024` should canonicalise to ISO.
       expect(firstBatch[0].date_key).toBe("2024-08-12");
     });
 
-    it("imports a Cronometer CSV and tags rows with source `cronometer_import`", async () => {
+    it("imports a Cronometer CSV and canonicalizes DB source to manual", async () => {
       mockUserId.mockResolvedValue("u1");
       const CRONOMETER_CSV = [
         "Day,Time,Group,Food Name,Amount,Energy (kcal),Fat (g),Protein (g),Carbs (g),Sodium (mg),Fiber (g),Sugars (g)",
@@ -330,7 +329,7 @@ describe("POST /api/imports/mfp-csv", () => {
         name: string;
         recipe_title: string;
       }[];
-      expect(firstBatch[0].source).toBe("cronometer_import");
+      expect(firstBatch[0].source).toBe("manual");
       // Slot mapping: `Snacks` (Cronometer Group) → `snack` (canonical).
       expect(firstBatch[1].name).toBe("snack");
       // Two-word `Food Name` header column lands on `recipe_title`, not

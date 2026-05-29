@@ -82,10 +82,10 @@ type EntryInsert = {
  * required for an import (calories — the rest can default to 0 and
  * still be useful).
  *
- * The `source` field encodes which adapter handled the file (e.g.
- * `mfp_import`, `lose-it_import`, `cronometer_import`) so downstream
- * dashboards can split metrics per competitor and debugging knows
- * which export to consult.
+ * The `source` field on each insert is canonicalized via
+ * {@link canonicalNutritionEntrySource} (ENG-674) — CSV imports land as
+ * `"manual"` in the DB. The JSON response `source` field keeps the
+ * adapter id (`mfp`, `lose-it`, `cronometer`) for UI/debugging.
  */
 function rowToEntry(
   userId: string,
