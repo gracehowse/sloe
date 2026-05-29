@@ -69,7 +69,7 @@ Both web and mobile fan FatSecret out in parallel with the other three. Same tru
 
 ## Cross-platform check
 
-Web + mobile fan FatSecret out via the same Next.js API routes with the same envelope. `mergeResults` (mobile) and `mergeAndDedup` (web) apply the same trust band (`-0.05`). Same on-tap detail fetch shape. Selection callback shape extended on both: `source: "FatSecret"` is now a possible value in `FoodSearchSelection` (web) and `SelectedFood` (mobile).
+Web + mobile fan FatSecret out via the same Next.js API routes with the same envelope. `mergeResults` (mobile) and `mergeAndDedup` (web) rank via `src/lib/nutrition/foodSearchRanking.ts` (`foodSearchRankScore` / `foodSearchTrustWeight`) so USDA/OFF/Edamam/FatSecret tie-breaks stay aligned (ENG-706). Same on-tap detail fetch shape. Selection callback shape extended on both: `source: "FatSecret"` is now a possible value in `FoodSearchSelection` (web) and `SelectedFood` (mobile).
 
 ## Tests
 
