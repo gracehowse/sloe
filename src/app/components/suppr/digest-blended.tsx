@@ -305,7 +305,7 @@ export function DigestBlended(props: DigestProps) {
             </p>
             <p
               id="digest-heading"
-              className="text-[20px] font-extrabold tracking-tight text-foreground"
+              className="text-lg font-extrabold tracking-tight text-foreground"
               data-testid="digest-hero-day"
             >
               {headline}
@@ -466,7 +466,7 @@ function Metric({
 }) {
   return (
     <div className="flex-1 first:pl-0 pl-3.5 text-left">
-      <p className="text-[17px] font-extrabold tracking-tight tabular-nums text-foreground">
+      <p className="text-lg font-extrabold tracking-tight tabular-nums text-foreground">
         {value}
         {unit ? <span className="text-[11px] font-medium text-muted-foreground ml-0.5">{unit}</span> : null}
       </p>

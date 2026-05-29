@@ -19,6 +19,9 @@ const viewports = [
   { name: "desktop", width: 1440, height: 900 },
 ] as const;
 
+/** Marketing routes — allow Linux vs macOS font raster drift in CI (see VISUAL_REGRESSION.md). */
+const marketingScreenshotOptions = { maxDiffPixelRatio: 0.06 } as const;
+
 test.describe("Visual regression — public shell", () => {
   test.describe.configure({ mode: "parallel" });
 
@@ -29,7 +32,14 @@ test.describe("Visual regression — public shell", () => {
         await page.goto(screen.path, { waitUntil: "domcontentloaded" });
         await dismissVisualOverlays(page);
         await stabilizeForScreenshot(page, screen.name === "landing" ? 3000 : 2500);
-        await expect(page).toHaveScreenshot(`shell/${screen.name}-${vp.name}.png`);
+        const screenshotOptions =
+          screen.name === "landing" || screen.name === "pricing"
+            ? marketingScreenshotOptions
+            : undefined;
+        await expect(page).toHaveScreenshot(
+          `shell/${screen.name}-${vp.name}.png`,
+          screenshotOptions,
+        );
       });
     }
   }

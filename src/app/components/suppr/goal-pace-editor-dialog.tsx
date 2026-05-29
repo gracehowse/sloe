@@ -141,7 +141,7 @@ export function GoalPaceEditorDialog({
                 <p className={sectionCls}>Pace</p>
                 <div className="bg-background border border-border rounded-xl p-4">
                   <div className="flex items-baseline gap-1.5 mb-2.5">
-                    <span className="text-[30px] font-extrabold tracking-tight tabular-nums leading-none text-foreground">
+                    <span className="text-[28px] font-extrabold tracking-tight tabular-nums leading-none text-foreground">
                       {e.pace.toFixed(e.pace < 0.1 ? 3 : 2)}
                     </span>
                     <span className="text-sm font-semibold text-muted-foreground">
@@ -259,7 +259,7 @@ export function GoalPaceEditorDialog({
                 <p className="text-[22px] font-bold text-foreground tabular-nums leading-none">
                   {e.preview.target_calories.toLocaleString()} kcal
                 </p>
-                <p className="text-[12px] text-muted-foreground tabular-nums mt-1.5">
+                <p className="text-[11px] text-muted-foreground tabular-nums mt-1.5">
                   Protein {e.preview.target_protein}g · Carbs {e.preview.target_carbs}g
                   · Fat {e.preview.target_fat}g · Fibre {e.preview.target_fiber_g}g
                 </p>
@@ -273,7 +273,7 @@ export function GoalPaceEditorDialog({
                 data-testid="goal-pace-editor-safety-warn"
                 className="rounded-xl border border-warning/40 bg-warning/10 px-3.5 py-2.5"
               >
-                <p className="text-[12px] text-foreground leading-snug">
+                <p className="text-[11px] text-foreground leading-snug">
                   This pace lands below the general safety floor for unsupervised
                   dieting. Consider a gentler pace, or check in with a clinician.
                 </p>
