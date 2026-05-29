@@ -29,6 +29,7 @@ import { describe, expect, it } from "vitest";
 import {
   MACRO_COLORS_LIGHT,
   MACRO_COLOR_VARS,
+  macroColorVarFor,
 } from "../../src/lib/theme/macroColors";
 
 const ROOT = resolve(__dirname, "..", "..");
@@ -114,6 +115,16 @@ describe("MACRO_COLORS_LIGHT pins canonical theme.css :root values", () => {
 
   it("calories matches --macro-calories", () => {
     expect(MACRO_COLORS_LIGHT.calories).toBe(readRootVar("macro-calories"));
+  });
+});
+
+describe("macroColorVarFor", () => {
+  it("returns the CSS var for known macro keys", () => {
+    expect(macroColorVarFor("carbs")).toBe(MACRO_COLOR_VARS.carbs);
+  });
+
+  it("falls back to protein for unknown keys", () => {
+    expect(macroColorVarFor("unknown-macro")).toBe(MACRO_COLOR_VARS.protein);
   });
 });
 

@@ -50,6 +50,10 @@ describe("foodSearchTrustWeight", () => {
       foodSearchTrustWeight({ source: "FatSecret", name: "McDonald's · Big Mac" }),
     ).toBe(-0.05);
   });
+
+  it("returns zero for custom or generic sources", () => {
+    expect(foodSearchTrustWeight({ source: "CUSTOM", name: "My food" })).toBe(0);
+  });
 });
 
 describe("foodSearchRankScore", () => {
@@ -80,5 +84,27 @@ describe("foodSearchPreviewPlausibilityWarning", () => {
       500,
     );
     expect(warning).toEqual(expect.stringMatching(/looks unusually high/i));
+  });
+
+  it("returns null when there is no per-100 g basis", async () => {
+    const { foodSearchPreviewPlausibilityWarning } = await import(
+      "@/lib/nutrition/portionPicker"
+    );
+    expect(
+      foodSearchPreviewPlausibilityWarning(null, { calories: 100, protein: 10 }, 100),
+    ).toBeNull();
+  });
+
+  it("returns null when gram weight is zero", async () => {
+    const { foodSearchPreviewPlausibilityWarning } = await import(
+      "@/lib/nutrition/portionPicker"
+    );
+    expect(
+      foodSearchPreviewPlausibilityWarning(
+        { calories: 100, protein: 10, carbs: 0, fat: 0 },
+        { calories: 100, protein: 10 },
+        0,
+      ),
+    ).toBeNull();
   });
 });
