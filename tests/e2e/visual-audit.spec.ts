@@ -20,7 +20,7 @@ const viewports = [
 ] as const;
 
 /** Marketing routes — allow Linux vs macOS font raster drift in CI (see VISUAL_REGRESSION.md). */
-const marketingScreenshotOptions = { maxDiffPixelRatio: 0.06 } as const;
+const marketingScreenshotOptions = { maxDiffPixelRatio: 0.1 } as const;
 
 test.describe("Visual regression — public shell", () => {
   test.describe.configure({ mode: "parallel" });

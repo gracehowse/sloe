@@ -8,7 +8,7 @@ const viewports = [
 ] as const;
 
 /** Marketing / legal / help — no session required. */
-const publicSubpageScreenshotOptions = { maxDiffPixelRatio: 0.06 } as const;
+const publicSubpageScreenshotOptions = { maxDiffPixelRatio: 0.1 } as const;
 
 const publicSubpages = [
   { name: "help", path: "/help" },

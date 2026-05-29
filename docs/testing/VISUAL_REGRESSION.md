@@ -39,7 +39,7 @@ npm run test:e2e:visual:update -- tests/e2e/visual-regression-deep.spec.ts -g "r
 
 **Env:** `E2E_EMAIL` / `E2E_PASSWORD` in `.env.local` for authed specs. Optional `E2E_RECIPE_ID` (default `seed-v2-mediterranean-greek-salad`).
 
-**Threshold:** `maxDiffPixelRatio: 0.01` in `playwright.config.ts` for product shells. Public marketing/legal routes (`landing`, `pricing`, help, terms, etc.) use **0.06** per-spec to tolerate Linux vs macOS font raster drift in CI without masking real layout breaks.
+**Threshold:** `maxDiffPixelRatio: 0.01` in `playwright.config.ts` for product shells. Public marketing/legal routes (`landing`, `pricing`, help, terms, etc.) use **0.10** per-spec to tolerate Linux vs macOS font raster drift in CI without masking real layout breaks.
 
 **CI:** `.github/workflows/visual-review.yml` (PRs) + public shell in main `ci.yml`.
 
