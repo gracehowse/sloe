@@ -6,6 +6,9 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 
 import {
   buildPickerOptions,
+  evaluatePortionScalePlausibility,
+  portionPlausibilityWarning,
+  type MacrosPer100gPanel,
   type PortionState,
   type PortionUnit,
   type ProductInput,
@@ -39,11 +42,15 @@ export interface PortionPickerProps {
   rememberedGrams?: number | null;
   /** Hide the quick-chip row (e.g. on cramped sheets). */
   hideQuickChips?: boolean;
+  /** When set, scale + run post-scale plausibility and surface a warning. */
+  macrosPer100g?: MacrosPer100gPanel | null;
+  /** OFF reconcile flagged per-serving values masquerading as per-100 g. */
+  basisCorrected?: boolean;
   style?: StyleProp<ViewStyle>;
 }
 
 export function PortionPicker(props: PortionPickerProps) {
-  const { product, value, onChange, hideQuickChips = false, style } = props;
+  const { product, value, onChange, hideQuickChips = false, macrosPer100g, basisCorrected = false, style } = props;
   const colors = useThemeColors();
   const [unitPickerOpen, setUnitPickerOpen] = useState(false);
 
@@ -51,6 +58,11 @@ export function PortionPicker(props: PortionPickerProps) {
     props.options ?? buildPickerOptions(product, { rememberedGrams: props.rememberedGrams ?? null });
   const grams = stateToGrams(value);
   const step = stepperStep(value.unit);
+  const scaleCheck =
+    macrosPer100g != null
+      ? evaluatePortionScalePlausibility(macrosPer100g, value, { basisCorrected })
+      : null;
+  const showPlausibilityWarning = scaleCheck != null && !scaleCheck.plausible && scaleCheck.grams > 0;
 
   const bump = (delta: number) => {
     const nextAmount = Math.max(0, value.amount + delta);
@@ -230,6 +242,25 @@ export function PortionPicker(props: PortionPickerProps) {
           </ScrollView>
         </View>
       )}
+
+      {showPlausibilityWarning && scaleCheck ? (
+        <View
+          accessibilityRole="alert"
+          style={{
+            marginTop: Spacing.md,
+            borderRadius: Radius.md,
+            borderWidth: 1,
+            borderColor: `${Accent.warning}55`,
+            backgroundColor: `${Accent.warning}14`,
+            paddingHorizontal: Spacing.md,
+            paddingVertical: Spacing.sm,
+          }}
+        >
+          <Text style={{ fontSize: 12.5, lineHeight: 18, color: colors.text }}>
+            {portionPlausibilityWarning(scaleCheck.scaled, scaleCheck.grams)}
+          </Text>
+        </View>
+      ) : null}
 
       <UnitPickerModal
         visible={unitPickerOpen}

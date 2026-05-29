@@ -221,6 +221,7 @@ export function TodayDashboardMacroTiles({
         return (
           <Pressable
             key={macro}
+            testID={`today-macro-tile-${macro}`}
             onPress={() => onPressMacro(macro)}
             accessibilityRole="button"
             accessibilityLabel={`${def.label}: ${value} of ${def.target} ${def.unit}. Tap for detail.`}

@@ -11,6 +11,7 @@ import {
   shiftDateKey,
   todayKey,
   formatDateLabel,
+  clampDateKey,
 } from "@/app/components/NutritionTracker";
 import { normalizeMacroTargets } from "@/types/profile";
 
@@ -130,6 +131,29 @@ describe("formatDateLabel", () => {
     const label = formatDateLabel(new Date(2026, 3, 14));
     expect(label).not.toBe("Yesterday");
     expect(label).not.toBe("Today");
+  });
+});
+
+describe("clampDateKey", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("clamps dates outside journal navigation bounds", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 3, 16, 12, 0));
+    const farPast = clampDateKey("2010-01-01");
+    const farFuture = clampDateKey("2099-12-31");
+    expect(farPast).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(farFuture).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(farPast).not.toBe("2010-01-01");
+    expect(farFuture).not.toBe("2099-12-31");
+  });
+
+  it("preserves in-range dates", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 3, 16, 12, 0));
+    expect(clampDateKey("2026-04-10")).toBe("2026-04-10");
   });
 });
 

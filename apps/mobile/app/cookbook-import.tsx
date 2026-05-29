@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -21,6 +21,7 @@ import { Accent, Radius, Spacing } from "@/constants/theme";
 import { PushScreenHeader } from "@/components/PushScreenHeader";
 import { getSupprApiBase } from "@/lib/supprWeb";
 import { authedFetch } from "@/lib/authedFetch";
+import { isFeatureEnabled } from "@/lib/analytics";
 import { supabase } from "@/lib/supabase";
 import {
   commitCookbookImport,
@@ -77,6 +78,13 @@ export default function CookbookImportScreen() {
   const [reviewPage, setReviewPage] = useState(0);
   const [committing, setCommitting] = useState(false);
   const [parseWarnings, setParseWarnings] = useState<string[]>([]);
+
+  // ENG-742 — deep links must respect the same flag as CreateRecipeActionSheet.
+  useEffect(() => {
+    if (!isFeatureEnabled("cookbook_import_enabled")) {
+      router.back();
+    }
+  }, [router]);
 
   const apiBase = getSupprApiBase();
 

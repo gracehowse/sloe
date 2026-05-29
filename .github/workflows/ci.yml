@@ -55,6 +55,8 @@ jobs:
         run: npm run test:coverage
       - name: Today premium capture pairs (ENG-629)
         run: npm run check:today-captures
+      - name: Type scale lint (ENG-119)
+        run: npm run check:type-scale
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
       - name: Build

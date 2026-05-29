@@ -25,6 +25,8 @@
  * one place.
  */
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import {
   DEFAULT_PLANNER_BANDS,
   MEAL_PLAN_RECENCY_PENALTY,
@@ -192,6 +194,15 @@ describe("mealPlanWebMobileParity — behavioural (P2-28)", () => {
       const wGap = web[d]!.residualProteinGap ?? 0;
       expect(wGap, `day ${d + 1} protein gap`).toBe(mGap);
     }
+  });
+
+  it("web MealPlanner swap re-fits the whole day via refitDayMealsToTargets (ENG-664)", () => {
+    const src = readFileSync(
+      resolve(__dirname, "../../src/app/components/MealPlanner.tsx"),
+      "utf8",
+    );
+    expect(src).toMatch(/refitDayMealsToTargets/);
+    expect(src).toMatch(/scaleMacros\(baseRecipes\[mi\]/);
   });
 
   it("a third seed agrees web↔mobile too — three-way confidence the dedup isn't seed-specific", () => {

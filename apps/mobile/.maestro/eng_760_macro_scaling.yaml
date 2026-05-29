@@ -1,0 +1,75 @@
+# ENG-760 — activity bonus day scales P/C/F targets on Today macro tiles/bars.
+#
+# Preconditions (manual / Health app on simulator):
+#   1. Signed-in user with prefer_activity_adjusted_calories ON (default post-onboarding).
+#   2. Apple Health connected + active energy for today (Health app → Browse → Activity → Active Energy).
+#   3. Burn detail: "Add bonus to today's budget" ON when bonus > 0.
+#   4. Optional: log any food so the ring shows Goal / Food / Bonus row (Bonus stat hidden when consumed=0).
+#
+# Pass: Fat/Protein/Carb tile denominators ("/ X g") are scaled up vs profile Daily Targets when Bonus > 0.
+appId: com.supprclub.supprapp
+name: "ENG-760 — macro tiles scale with activity bonus"
+---
+- runFlow: shared/login.yaml
+
+- tapOn:
+    id: "tab-today"
+- waitForAnimationToEnd
+
+- assertVisible:
+    text: ".*(?:LOGGED|kcal|Start your day).*"
+
+# Macro tiles (scaled targets when bonus inflates calorie goal).
+# Text scroll works on older bundles; testIDs require a Metro reload after pull.
+- scrollUntilVisible:
+    element:
+      text: ".*(?:Protein|Carbs|Fat).*"
+    direction: DOWN
+    timeout: 15000
+
+- runFlow:
+    when:
+      visible:
+        id: "today-macro-tile-fat"
+    commands:
+      - assertVisible:
+          id: "today-macro-tile-protein"
+      - assertVisible:
+          id: "today-macro-tile-carbs"
+      - assertVisible:
+          id: "today-macro-tile-fat"
+
+- takeScreenshot: screenshots/latest/eng-760-macro-tiles
+
+# When the hero Bonus stat is non-zero, capture ring + tiles together for visual review.
+- runFlow:
+    when:
+      visible:
+        id: "today-ring-bonus"
+    commands:
+      - scrollUntilVisible:
+          element:
+            text: ".*Bonus.*"
+          direction: UP
+          timeout: 8000
+      - takeScreenshot: screenshots/latest/eng-760-bonus-day-ring-and-tiles
+
+# Activity bonus card path (works even before food is logged).
+- scrollUntilVisible:
+    element:
+      id: "today-activity-bonus-summary-row"
+    direction: DOWN
+    optional: true
+    timeout: 12000
+
+- runFlow:
+    when:
+      visible: ".*Bonus earned.*"
+    commands:
+      - takeScreenshot: screenshots/latest/eng-760-activity-bonus-earned
+      - scrollUntilVisible:
+          element:
+            text: ".*(?:Protein|Carbs|Fat).*"
+          direction: DOWN
+          timeout: 10000
+      - takeScreenshot: screenshots/latest/eng-760-macro-tiles-with-bonus-earned

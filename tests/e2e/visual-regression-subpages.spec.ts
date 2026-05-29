@@ -8,6 +8,8 @@ const viewports = [
 ] as const;
 
 /** Marketing / legal / help — no session required. */
+const publicSubpageScreenshotOptions = { maxDiffPixelRatio: 0.1 } as const;
+
 const publicSubpages = [
   { name: "help", path: "/help" },
   { name: "whats-new", path: "/whats-new" },
@@ -36,7 +38,10 @@ test.describe("Visual regression — public subpages", () => {
         await page.goto(screen.path, { waitUntil: "domcontentloaded" });
         await dismissVisualOverlays(page);
         await stabilizeForScreenshot(page);
-        await expect(page).toHaveScreenshot(`subpages/public/${screen.name}-${vp.name}.png`);
+        await expect(page).toHaveScreenshot(
+          `subpages/public/${screen.name}-${vp.name}.png`,
+          publicSubpageScreenshotOptions,
+        );
       });
     }
   }

@@ -58,6 +58,7 @@ import {
   MFP_IMPORT_BYTE_CAP,
   MFP_IMPORT_ROW_CAP,
 } from "@/lib/imports/mfpCsvLimits";
+import { canonicalNutritionEntrySource } from "@/lib/nutrition/canonicalNutritionEntrySource";
 
 export const runtime = "nodejs";
 
@@ -81,10 +82,10 @@ type EntryInsert = {
  * required for an import (calories — the rest can default to 0 and
  * still be useful).
  *
- * The `source` field encodes which adapter handled the file (e.g.
- * `mfp_import`, `lose-it_import`, `cronometer_import`) so downstream
- * dashboards can split metrics per competitor and debugging knows
- * which export to consult.
+ * The `source` field on each insert is canonicalized via
+ * {@link canonicalNutritionEntrySource} (ENG-674) — CSV imports land as
+ * `"manual"` in the DB. The JSON response `source` field keeps the
+ * adapter id (`mfp`, `lose-it`, `cronometer`) for UI/debugging.
  */
 function rowToEntry(
   userId: string,
@@ -117,7 +118,7 @@ function rowToEntry(
     protein: row.protein ?? 0,
     carbs: row.carbs ?? 0,
     fat: row.fat ?? 0,
-    source: "manual",
+    source: canonicalNutritionEntrySource(`${adapterSource}_import`) ?? "manual",
     source_id: sourceId,
   };
 }

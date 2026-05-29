@@ -56,13 +56,13 @@ describe("F-77 OFF Atwater plausibility gate — every ingest point", () => {
 });
 
 describe("F-77 trust-weighted ranking — USDA over OFF on tie/near-tie", () => {
-  it("mobile mergeResults applies an offTrustPenalty to OFF rows", () => {
-    expect(VERIFY_SRC).toMatch(/offTrustPenalty/);
-    expect(VERIFY_SRC).toMatch(/searchRelevance\(query,\s*displayName\)\s*-\s*offTrustPenalty/);
+  it("mobile mergeResults applies shared foodSearchRankScore for OFF rows", () => {
+    expect(VERIFY_SRC).toMatch(/foodSearchRankScore/);
+    expect(VERIFY_SRC).toMatch(/source:\s*"OFF"/);
   });
 
   it("web mergeAndDedup applies a trustWeight delta to USDA / OFF / Edamam rows", () => {
-    expect(WEB_SEARCH_SRC).toMatch(/trustWeight\s*=\s*\(r:\s*SearchResult\)/);
+    expect(WEB_SEARCH_SRC).toMatch(/foodSearchTrustWeight/);
     expect(WEB_SEARCH_SRC).toMatch(/searchRelevance\(q,\s*r\.name\)\s*\+\s*trustWeight\(r\)/);
   });
 });
@@ -170,6 +170,59 @@ describe("P0 post-scale plausibility guard — wired at both boundaries", () => 
   it("web barcode dialog guards before onConfirm (skips manual-override)", () => {
     expect(WEB_BARCODE_DIALOG_SRC).toMatch(/checkScaledLogPlausibility/);
     expect(WEB_BARCODE_DIALOG_SRC).toMatch(/barcodeMacrosManual\s*\|\|/);
+  });
+});
+
+describe("ENG-702 portion picker — inline plausibility after scale", () => {
+  const MOBILE_PORTION_PICKER = resolve(__dirname, "../../components/PortionPicker.tsx");
+  const WEB_PORTION_PICKER = resolve(
+    __dirname,
+    "../../../../src/app/components/suppr/portion-picker.tsx",
+  );
+  const PORTION_PICKER_SHARED = resolve(
+    __dirname,
+    "../../../../src/lib/nutrition/portionPicker.ts",
+  );
+  const MOBILE_PICKER_SRC = readFileSync(MOBILE_PORTION_PICKER, "utf8");
+  const WEB_PICKER_SRC = readFileSync(WEB_PORTION_PICKER, "utf8");
+  const SHARED_PICKER_SRC = readFileSync(PORTION_PICKER_SHARED, "utf8");
+
+  it("shared module exports evaluatePortionScalePlausibility", () => {
+    expect(SHARED_PICKER_SRC).toMatch(/export function evaluatePortionScalePlausibility/);
+    expect(SHARED_PICKER_SRC).toMatch(/checkScaledLogPlausibility/);
+  });
+
+  it("mobile PortionPicker surfaces inline warning when macrosPer100g is set", () => {
+    expect(MOBILE_PICKER_SRC).toMatch(/evaluatePortionScalePlausibility/);
+    expect(MOBILE_PICKER_SRC).toMatch(/macrosPer100g/);
+    expect(MOBILE_PICKER_SRC).toMatch(/portionPlausibilityWarning/);
+    expect(MOBILE_PICKER_SRC).toMatch(/accessibilityRole="alert"/);
+  });
+
+  it("web PortionPickerWeb mirrors mobile plausibility props", () => {
+    expect(WEB_PICKER_SRC).toMatch(/evaluatePortionScalePlausibility/);
+    expect(WEB_PICKER_SRC).toMatch(/macrosPer100g/);
+    expect(WEB_PICKER_SRC).toMatch(/portionPlausibilityWarning/);
+    expect(WEB_PICKER_SRC).toMatch(/role="alert"/);
+  });
+
+  it("barcode hosts pass per-100g panel + basisCorrected into the pickers", () => {
+    expect(SCANNER_MODAL_SRC).toMatch(/macrosPer100g=\{\{/);
+    expect(SCANNER_MODAL_SRC).toMatch(/basisCorrected=\{product\.basisCorrected\}/);
+    expect(WEB_BARCODE_DIALOG_SRC).toMatch(/macrosPer100g=\{\{/);
+    expect(WEB_BARCODE_DIALOG_SRC).toMatch(/basisCorrected=\{product\.basisCorrected\}/);
+  });
+
+  it("food-search preview hosts surface inline plausibility warnings", () => {
+    const MOBILE_FOOD_SEARCH = resolve(
+      __dirname,
+      "../../components/food-search/FoodSearchPanel.tsx",
+    );
+    const mobileFoodSearchSrc = readFileSync(MOBILE_FOOD_SEARCH, "utf8");
+    expect(mobileFoodSearchSrc).toMatch(/foodSearchPreviewPlausibilityWarning/);
+    expect(mobileFoodSearchSrc).toMatch(/accessibilityRole="alert"/);
+    expect(WEB_SEARCH_SRC).toMatch(/foodSearchPreviewPlausibilityWarning/);
+    expect(WEB_SEARCH_SRC).toMatch(/role="alert"/);
   });
 });
 

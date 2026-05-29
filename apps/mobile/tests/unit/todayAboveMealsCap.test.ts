@@ -182,12 +182,12 @@ describe("Today premium sprint (2026-05-19) — below-meals prompts", () => {
     expect(HOST_SRC).toMatch(/showBelowMealsCheckin/);
   });
 
-  it("NorthStarBlockHost is not rendered below meals (discovery moved to Log sheet, 2026-05-23)", () => {
+  it("NorthStarBlockHost below meals is gated by showBelowMealsNorthStar (ENG-690 empty-day-only)", () => {
     const mealsIdx = HOST_SRC.indexOf("<TodayMealsSection");
     const northStarBelowIdx = HOST_SRC.indexOf("<NorthStarBlockHost", mealsIdx);
     expect(mealsIdx).toBeGreaterThan(-1);
-    expect(northStarBelowIdx).toBe(-1);
-    expect(HOST_SRC).toMatch(/showBelowMealsNorthStar/);
+    expect(northStarBelowIdx).toBeGreaterThan(mealsIdx);
+    expect(HOST_SRC).toMatch(/showBelowMealsNorthStar\s*&&[\s\S]*<NorthStarBlockHost/);
   });
 
   it("WeeklyCheckinBanner is in the below-meals block, not above macro tiles", () => {

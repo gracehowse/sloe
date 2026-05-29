@@ -120,6 +120,7 @@ import { shouldShowBarcodeFallbackHint } from "@suppr/shared/nutrition/foodSearc
 import { formatMacroTrailer } from "@suppr/shared/nutrition/macroFormat";
 import { portionEqualsLabel } from "@suppr/shared/nutrition/portionEqualsLabel";
 import { resolveInitialPortion, buildPortions, customFoodToHit, isPerServingPortion } from "@suppr/shared/nutrition/foodSearchCore";
+import { foodSearchPreviewPlausibilityWarning } from "@suppr/shared/nutrition/portionPicker";
 
 // 2026-05-15 (ENG-550 phase 2): `STANDARD_UNITS` and `buildPortionList`
 // extracted to `@/lib/nutrition/foodSearchCore` as `STANDARD_UNITS` and
@@ -979,6 +980,16 @@ export default function FoodSearchPanel({
     return Math.round(preview.chosenPortion.gramWeight * preview.quantity * 10) / 10;
   }, [preview]);
 
+  const previewPlausibilityWarning = useMemo(
+    () =>
+      foodSearchPreviewPlausibilityWarning(
+        preview?.macrosPer100g ?? null,
+        previewMacros,
+        totalGrams,
+      ),
+    [preview?.macrosPer100g, previewMacros, totalGrams],
+  );
+
   const fitHint = useMemo(() => {
     if (!macroTargets || !macroConsumed || !previewMacros) return null;
     return projectRemaining(macroTargets, macroConsumed, {
@@ -1329,6 +1340,14 @@ export default function FoodSearchPanel({
               </View>
             ))}
           </View>
+          {previewPlausibilityWarning ? (
+            <Text
+              accessibilityRole="alert"
+              style={{ fontSize: 12, color: MacroColors.calories, marginTop: Spacing.sm }}
+            >
+              {previewPlausibilityWarning}
+            </Text>
+          ) : null}
           {fitHint ? (
             <View
               accessible

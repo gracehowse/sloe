@@ -16,6 +16,23 @@ describe("chunkTextForCookbookParse", () => {
     expect(chunks.length).toBeGreaterThan(1);
     expect(chunks.join("")).toContain("x");
   });
+
+  it("falls back to overlapping windows when there are no page breaks", () => {
+    const text = "a".repeat(45_000);
+    const chunks = chunkTextForCookbookParse(text);
+    expect(chunks.length).toBeGreaterThan(1);
+    expect(chunks[0]?.length).toBeLessThanOrEqual(40_000);
+    expect(chunks.join("").length).toBeGreaterThan(text.length - 5_000);
+  });
+
+  it("merges small form-feed pages into a single chunk when under the cap", () => {
+    const pageA = "Recipe A\n".repeat(100);
+    const pageB = "Recipe B\n".repeat(100);
+    const chunks = chunkTextForCookbookParse(`${pageA}\f${pageB}`);
+    expect(chunks).toHaveLength(1);
+    expect(chunks[0]).toContain("Recipe A");
+    expect(chunks[0]).toContain("Recipe B");
+  });
 });
 
 describe("mergeCookbookRecipes", () => {

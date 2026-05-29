@@ -175,13 +175,13 @@ describe("ConfidenceChip", () => {
     expect(screen.getByText(label)).toBeInTheDocument();
   });
 
-  it("uses the neutral grey colour token (NOT a warning)", () => {
+  it("uses foreground-secondary on soft grey (NOT warning/destructive)", () => {
     const { container } = render(<ConfidenceChip level="low" />);
     const chip = container.querySelector('[data-slot="confidence-chip"]');
     expect(chip).toHaveAttribute("data-level", "low");
-    // The chip must not pull from --warning / --destructive.
+    // WCAG-safe on soft background — not --warning / --destructive / --confidence-neutral.
     expect((chip as HTMLElement).style.color).toBe(
-      "var(--confidence-neutral)",
+      "var(--foreground-secondary)",
     );
   });
 });

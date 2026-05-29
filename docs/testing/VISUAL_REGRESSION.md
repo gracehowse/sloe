@@ -39,7 +39,7 @@ npm run test:e2e:visual:update -- tests/e2e/visual-regression-deep.spec.ts -g "r
 
 **Env:** `E2E_EMAIL` / `E2E_PASSWORD` in `.env.local` for authed specs. Optional `E2E_RECIPE_ID` (default `seed-v2-mediterranean-greek-salad`).
 
-**Threshold:** `maxDiffPixelRatio: 0.01` in `playwright.config.ts`.
+**Threshold:** `maxDiffPixelRatio: 0.01` in `playwright.config.ts` for product shells. Public marketing/legal routes (`landing`, `pricing`, help, terms, etc.) use **0.10** per-spec to tolerate Linux vs macOS font raster drift in CI without masking real layout breaks.
 
 **CI:** `.github/workflows/visual-review.yml` (PRs) + public shell in main `ci.yml`.
 
@@ -101,9 +101,9 @@ Isolated stories for design-system primitives — **not** full-route layout QA.
 ```bash
 npm run storybook              # http://localhost:6006
 npm run build-storybook        # static → storybook-static/
-npm run test:storybook         # vitest run --project storybook (plays, a11y, interactions)
+npm run test:storybook         # vitest — plays, a11y, interactions
 npm run test:storybook:watch   # same, watch mode locally
-npm run test:storybook:coverage # scoped coverage for storied UI primitives only
+npm run test:storybook:coverage # 100% coverage gate on storied UI primitives (CI)
 ```
 
 **Automating in CI (pick one or both):**
@@ -119,9 +119,11 @@ npm run test:storybook:coverage # scoped coverage for storied UI primitives only
 
 `.github/workflows/chromatic.yml` runs **Playwright → Chromatic**: job `playwright` archives E2E pages (`@chromatic-com/playwright`), job `chromatic` uploads `./test-results` via `chromaui/action` with `playwright: true`. Requires `CHROMATIC_PROJECT_TOKEN` (use the token from your **Playwright** Chromatic project if you created one separately from Storybook).
 
-**Coverage in the Storybook UI:** The “All files” table defaults to the whole `src/` tree (~67k lines), so you will see ~1% until you filter mentally. Storybook only executes components that have stories (currently nine primitives under `src/app/components/ui/`). CLI scoped coverage is configured in `vitest.config.ts` (`storybook` project → `coverage.include` lists those files only). Target **100% on that scoped set**, not on the entire repo — use `npm run test:coverage` for real app coverage.
+**Coverage in the Storybook UI:** Re-run tests with coverage after pulling latest — `vitest.config.ts` scopes Storybook coverage to the nine storied UI primitives only, so **All files** should read **100%** when every story variant is exercised. That is the intended target, not 100% of the whole repo (~73k lines).
 
-**Disk space:** HTML coverage reports are large; this machine should keep ~1GB free or Storybook coverage export can fail with `ENOSPC`. Storybook project uses `json-summary` + `text` reporters only.
+**Whole-app coverage** is a separate track: `npm run test:coverage` (web `src/**`, ~53% lines baseline with CI thresholds in `vitest.unit.config.ts`) and `npm run mobile:test:coverage`. See [testing/overview.md](./overview.md#whole-app-baseline-npm-run-testcoverage).
+
+HTML reports land in `coverage/storybook/` (`npm run test:storybook:coverage`).
 
 **Stories:** `src/app/components/ui/*.stories.tsx`, overview `src/stories/DesignSystem.mdx`. **CI:** `.github/workflows/storybook.yml` on component path changes.
 

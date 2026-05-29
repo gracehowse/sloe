@@ -82,13 +82,13 @@ export function TodayDateHeader({
               aria-label="Choose date"
             >
               <h1
-                className="font-bold text-foreground tracking-tight text-[17px] leading-tight"
+                className="font-bold text-foreground tracking-tight text-lg leading-tight"
                 style={{ letterSpacing: "-0.35px" }}
               >
                 {titleText}
               </h1>
               {dayGreeting && isToday ? (
-                <p data-testid="today-greeting" className="text-[12px] text-muted-foreground mt-0.5 truncate">
+                <p data-testid="today-greeting" className="text-[11px] text-muted-foreground mt-0.5 truncate">
                   {dayGreeting}
                 </p>
               ) : null}
@@ -167,7 +167,7 @@ export function TodayDateHeader({
               {titleText}
             </h1>
             {dayGreeting && viewMode === "day" && isToday ? (
-              <p data-testid="today-greeting" className="text-[12px] text-muted-foreground mt-0.5">
+              <p data-testid="today-greeting" className="text-[11px] text-muted-foreground mt-0.5">
                 {dayGreeting}
               </p>
             ) : null}

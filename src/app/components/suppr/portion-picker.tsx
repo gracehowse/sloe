@@ -4,12 +4,15 @@ import * as React from "react";
 
 import {
   buildPickerOptions,
+  evaluatePortionScalePlausibility,
+  portionPlausibilityWarning,
   formatPortion,
   roundAmount,
   stateToGrams,
   stepperStep,
   switchUnit,
   unitLabel,
+  type MacrosPer100gPanel,
   type PortionState,
   type PortionUnit,
   type ProductInput,
@@ -30,17 +33,26 @@ export interface PortionPickerWebProps {
   onChange: (next: PortionState) => void;
   options?: ReturnType<typeof buildPickerOptions>;
   rememberedGrams?: number | null;
+  /** When set, scale + run post-scale plausibility and surface a warning. */
+  macrosPer100g?: MacrosPer100gPanel | null;
+  /** OFF reconcile flagged per-serving values masquerading as per-100 g. */
+  basisCorrected?: boolean;
   className?: string;
 }
 
 export function PortionPickerWeb(props: PortionPickerWebProps) {
-  const { product, value, onChange, className = "" } = props;
+  const { product, value, onChange, className = "", macrosPer100g, basisCorrected = false } = props;
   const [unitOpen, setUnitOpen] = React.useState(false);
 
   const opts =
     props.options ?? buildPickerOptions(product, { rememberedGrams: props.rememberedGrams ?? null });
   const grams = stateToGrams(value);
   const step = stepperStep(value.unit);
+  const scaleCheck =
+    macrosPer100g != null
+      ? evaluatePortionScalePlausibility(macrosPer100g, value, { basisCorrected })
+      : null;
+  const showPlausibilityWarning = scaleCheck != null && !scaleCheck.plausible && scaleCheck.grams > 0;
 
   const bump = (delta: number) => {
     const next = Math.max(0, value.amount + delta);
@@ -156,6 +168,15 @@ export function PortionPickerWeb(props: PortionPickerWebProps) {
             })}
           </div>
         </div>
+      ) : null}
+
+      {showPlausibilityWarning && scaleCheck ? (
+        <p
+          role="alert"
+          className="mt-3 rounded-xl border border-warning/40 bg-warning/10 px-3 py-2 text-[12.5px] leading-snug text-foreground"
+        >
+          {portionPlausibilityWarning(scaleCheck.scaled, scaleCheck.grams)}
+        </p>
       ) : null}
     </div>
   );

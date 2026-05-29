@@ -1,0 +1,227 @@
+/**
+ * NutritionTracker — render harness.
+ *
+ * Mocks AppData + auth + router so we can assert on the Today shell
+ * without a live Supabase session. Child primitives (LogSheet tabs,
+ * FoodSearchPanel) keep their own unit tests; this file pins the
+ * composition root wiring.
+ */
+import * as React from "react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+
+void React;
+
+const { mockReplace, getSearchParams, setSearchParams } = vi.hoisted(() => {
+  let params = new URLSearchParams();
+  return {
+    mockReplace: vi.fn(),
+    getSearchParams: () => params,
+    setSearchParams: (next: URLSearchParams) => {
+      params = next;
+    },
+  };
+});
+
+const appDataState = {
+  current: {
+    nutritionTargets: { calories: 1800, protein: 130, carbs: 180, fat: 55, fiber: 30, waterMl: 2000 },
+    setNutritionTargets: vi.fn(),
+    selectedDateKey: "2026-05-27",
+    setSelectedDateKey: vi.fn(),
+    mealsForSelectedDate: [] as unknown[],
+    addLoggedMeal: vi.fn(),
+    addLoggedMealForDate: vi.fn(),
+    removeLoggedMeal: vi.fn(),
+    copyMealToDate: vi.fn(),
+    copyMealToDateRange: vi.fn(),
+    duplicateDay: vi.fn(),
+    duplicateDayToDateRange: vi.fn(),
+    mealPlan: { slots: [] },
+    savedRecipesForLibrary: [],
+    preferActivityAdjustedCalories: false,
+    setPreferActivityAdjustedCalories: vi.fn(),
+    activityBurnForSelectedDay: 0,
+    activityBurnByDay: {},
+    addWaterMlForSelectedDay: vi.fn(),
+    extraWaterMlForSelectedDay: 0,
+    addCaffeineMgForSelectedDay: vi.fn(),
+    extraCaffeineMgForSelectedDay: 0,
+    extraCaffeineByDay: {},
+    addAlcoholGForSelectedDay: vi.fn(),
+    extraAlcoholGByDay: {},
+    resetHydrationStimulantsForDay: vi.fn(),
+    targetCaffeineMg: 400,
+    targetAlcoholGWeekly: 140,
+    workoutsByDay: {},
+    basalBurnByDay: {},
+    profileMeasurementSystem: "metric" as const,
+    nutritionByDay: {} as Record<string, unknown[]>,
+    extraWaterByDay: {},
+    notificationPrefs: { mealReminders: false, weeklyCheckin: false },
+    profileDisplayName: "Grace",
+    authEmail: "grace@example.com",
+    netCarbsLensEnabled: false,
+  },
+};
+
+vi.mock("../../src/context/AppDataContext.tsx", () => ({
+  useAppData: () => appDataState.current,
+}));
+
+vi.mock("../../src/context/AuthSessionContext.tsx", () => ({
+  useAuthSession: () => ({ authedUserId: null, authUserCreatedAt: null }),
+}));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ replace: mockReplace }),
+  useSearchParams: () => getSearchParams(),
+}));
+
+vi.mock("../../src/lib/preferences/useMacroDisplayStyle", () => ({
+  useMacroDisplayStyle: () => ["tiles", vi.fn()] as const,
+}));
+
+vi.mock("../../src/app/components/ui/use-mobile", () => ({
+  useIsDesktop: () => false,
+}));
+
+vi.mock("../../src/lib/analytics/track.ts", () => ({
+  track: vi.fn(),
+  isFeatureEnabled: vi.fn(() => false),
+}));
+
+vi.mock("sonner", () => ({
+  toast: { success: vi.fn(), error: vi.fn(), message: vi.fn() },
+}));
+
+vi.mock("../../src/lib/supabase/browserClient.ts", () => ({
+  supabase: {
+    auth: {
+      getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
+    },
+    from: vi.fn(() => ({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+          single: vi.fn().mockResolvedValue({ data: null, error: null }),
+        })),
+      })),
+    })),
+  },
+}));
+
+import { NutritionTracker } from "../../src/app/components/NutritionTracker";
+import { MISSED_YESTERDAY_COPY } from "../../src/lib/nutrition/missedYesterday";
+
+const loggedMeal = {
+  id: "m1",
+  name: "Oats",
+  recipeTitle: "Oats",
+  time: "08:00",
+  calories: 420,
+  protein: 15,
+  carbs: 60,
+  fat: 8,
+};
+
+describe("NutritionTracker render harness", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 4, 27, 12, 0, 0));
+    setSearchParams(new URLSearchParams());
+    vi.clearAllMocks();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(JSON.stringify({ ok: true, hits: [], products: [] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    );
+    appDataState.current = {
+      ...appDataState.current,
+      mealsForSelectedDate: [],
+      nutritionByDay: {},
+      selectedDateKey: "2026-05-27",
+      removeLoggedMeal: vi.fn(),
+    };
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  it("renders the Today shell on a fresh day", () => {
+    render(<NutritionTracker userTier="free" onOpenSettings={() => {}} />);
+    expect(screen.getByTestId("today-meals-empty-cta")).toBeInTheDocument();
+    expect(screen.getByTestId("today-meals-empty-state")).toBeInTheDocument();
+    expect(screen.getByTestId("today-hero-desktop")).toBeInTheDocument();
+  });
+
+  it("shows the today greeting with the user's first name", () => {
+    render(<NutritionTracker userTier="free" />);
+    expect(screen.getByTestId("today-greeting")).toHaveTextContent("Good afternoon, Grace");
+  });
+
+  it("shows hero stat labels once the user has logged kcal", () => {
+    appDataState.current = {
+      ...appDataState.current,
+      mealsForSelectedDate: [loggedMeal],
+      nutritionByDay: { "2026-05-27": [loggedMeal] },
+    };
+    render(<NutritionTracker userTier="free" />);
+    const statRow = screen.getByTestId("today-hero-stat-row");
+    expect(within(statRow).getByText("420")).toBeInTheDocument();
+    expect(screen.queryByTestId("today-meals-empty-cta")).not.toBeInTheDocument();
+  });
+
+  it("opens LogSheet from ?openLog=1 and clears the URL param", async () => {
+    vi.useRealTimers();
+    setSearchParams(new URLSearchParams("openLog=1"));
+    render(<NutritionTracker userTier="free" />);
+    await waitFor(() => {
+      expect(screen.getByTestId("log-sheet-search-input")).toBeInTheDocument();
+    });
+    expect(mockReplace).toHaveBeenCalledWith("/home", { scroll: false });
+  });
+
+  it("opens LogSheet when the empty-state CTA is clicked", async () => {
+    vi.useRealTimers();
+    render(<NutritionTracker userTier="free" />);
+    expect(screen.queryByTestId("log-sheet-search-input")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("today-meals-empty-cta"));
+    await waitFor(() => {
+      expect(screen.getByTestId("log-sheet-search-input")).toBeInTheDocument();
+    });
+  });
+
+  it("shows missed-yesterday copy when prior history exists but yesterday was empty", () => {
+    appDataState.current = {
+      ...appDataState.current,
+      nutritionByDay: {
+        "2026-05-25": [loggedMeal],
+        "2026-05-26": [],
+      },
+    };
+    render(<NutritionTracker userTier="free" />);
+    expect(screen.getByTestId("today-missed-yesterday-copy")).toHaveTextContent(
+      MISSED_YESTERDAY_COPY,
+    );
+  });
+
+  it("shows the offline banner when navigator.onLine is false", () => {
+    Object.defineProperty(window.navigator, "onLine", {
+      configurable: true,
+      value: false,
+    });
+    render(<NutritionTracker userTier="free" />);
+    expect(screen.getByRole("alert")).toHaveTextContent(/offline/i);
+    Object.defineProperty(window.navigator, "onLine", {
+      configurable: true,
+      value: true,
+    });
+  });
+});

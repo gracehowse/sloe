@@ -135,6 +135,15 @@ export default function DiscoverScreen() {
   const userId = session?.user?.id ?? null;
 
   const { recipes, loading, refresh } = useDiscoverRecipes();
+
+  // ENG-700 — after publishing from Library / recipe detail, Discover
+  // must refetch `published=true` rows when the user switches sub-tabs.
+  useFocusEffect(
+    useCallback(() => {
+      void refresh();
+    }, [refresh]),
+  );
+
   // Shared with Library via `useLibrarySearchStore` so the query
   // survives tab switches (ENG-53, 2026-05-16). Variable names kept
   // so all downstream filter/search-debounce logic stays untouched.

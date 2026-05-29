@@ -2,10 +2,10 @@ import { normalizeRecipeTitle } from "../recipes/normalizeRecipeTitle";
 
 /** Minimal Supabase client for a single `recipes.title` lookup. */
 export type RecipeTitleLookupClient = {
-  from(table: "recipes"): {
-    select(columns: string): {
-      eq(column: string, value: string): {
-        maybeSingle(): Promise<{
+  from: (table: string) => {
+    select: (columns: string) => {
+      eq: (column: string, value: string) => {
+        maybeSingle: () => PromiseLike<{
           data: { title?: string | null } | null;
           error: unknown;
         }>;

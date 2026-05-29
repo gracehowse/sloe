@@ -1,0 +1,80 @@
+# @cases TC-ENG-700
+# @screen (tabs)/library, recipe/[id], (tabs)/discover
+# Requires: E2E user with ≥1 owned recipe (unpublished draft ideal for Library "Go public").
+appId: com.supprclub.supprapp
+name: "ENG-700 — publish from Library + detail, recipe in Discover"
+---
+- runFlow: shared/login.yaml
+
+- tapOn:
+    id: "tab-recipes"
+    retryTapIfNoChange: true
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: "RECIPES"
+    timeout: 60000
+
+# --- Library → Created → Go public (when draft exists) ---
+- scrollUntilVisible:
+    element:
+      id: "library-filter-created"
+    direction: RIGHT
+- tapOn:
+    id: "library-filter-created"
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Go public"
+    commands:
+      - takeScreenshot: screenshots/latest/eng700-01-library-draft-go-public
+      - tapOn: "Go public"
+      - tapOn: "Publish"
+      - waitForAnimationToEnd
+      - extendedWaitUntil:
+          notVisible: "Publish to community?"
+          timeout: 15000
+
+# --- Discover should show community feed after publish ---
+- tapOn: "Discover"
+- waitForAnimationToEnd
+- assertVisible:
+    id: "screen-discover"
+- waitForAnimationToEnd
+- assertVisible: ".*kcal.*"
+- takeScreenshot: screenshots/latest/eng700-02-discover-after-publish
+
+# --- Recipe detail: unpublish then re-publish ---
+- tapOn: "Library"
+- waitForAnimationToEnd
+
+- tapOn:
+    text: "Protein Overnight Oats"
+- waitForAnimationToEnd
+
+- tapOn:
+    text: "More recipe actions"
+- runFlow:
+    when:
+      visible: "Unpublish"
+    commands:
+      - tapOn: "Unpublish"
+      - tapOn: "Unpublish"
+      - extendedWaitUntil:
+          visible: "Recipe unpublished"
+          timeout: 15000
+      - takeScreenshot: screenshots/latest/eng700-03-detail-unpublished
+
+- tapOn:
+    text: "More recipe actions"
+- tapOn: "Go public"
+- tapOn: "Publish"
+- extendedWaitUntil:
+    visible: "Recipe published"
+    timeout: 15000
+- takeScreenshot: screenshots/latest/eng700-04-detail-republished
+
+- tapOn: "Discover"
+- waitForAnimationToEnd
+- assertVisible: ".*kcal.*"
+- takeScreenshot: screenshots/latest/eng700-05-discover-after-republish

@@ -83,7 +83,7 @@ export function TrajectoryCard(props: TrajectoryCardProps) {
           <p className="flex items-baseline gap-2 mb-1">
             <span
               data-testid="trajectory-hero-kg"
-              className="text-[30px] font-extrabold tracking-[-0.5px] text-primary tabular-nums ph-mask"
+              className="text-[28px] font-extrabold tracking-[-0.5px] text-primary tabular-nums ph-mask"
             >
               {state.projectedKg} kg
             </span>

@@ -113,10 +113,8 @@ describe("Lane-A — mobile verifyRecipe wires FatSecret into the merge", () => 
     expect(VERIFY_SRC).toMatch(/_fatSecretFoodId:\s*item\.foodId/);
   });
 
-  it("mergeResults applies a -0.05 trust band to FatSecret rows (verified USDA still wins on tie)", () => {
-    expect(VERIFY_SRC).toMatch(
-      /searchRelevance\(query,\s*displayName\)\s*-\s*0\.05/,
-    );
+  it("mergeResults ranks FatSecret via shared foodSearchRankScore (verified USDA still wins on tie)", () => {
+    expect(VERIFY_SRC).toMatch(/foodSearchRankScore\(\{[\s\S]*?source:\s*"FatSecret"/);
   });
 
   it("FatSecretSearchResult shape carries macrosPer100g | macrosPerServing | servingGrams", () => {
@@ -156,9 +154,10 @@ describe("Lane-A — web/mobile parity", () => {
     expect(WEB_SRC).toMatch(/Promise\.race/);
   });
 
-  it("web mergeAndDedup takes a fatsecret slot + applies the -0.05 trust band", () => {
+  it("web mergeAndDedup takes a fatsecret slot + applies shared trust weight", () => {
     expect(WEB_SRC).toMatch(/fatsecret:\s*SearchResult\[\]\s*=\s*\[\]/);
-    expect(WEB_SRC).toMatch(/_source === "FatSecret"\) return -0\.05/);
+    expect(WEB_SRC).toMatch(/foodSearchTrustWeight/);
+    expect(WEB_SRC).toMatch(/source:\s*r\._source/);
   });
 
   it("web on-tap fetches /api/fatsecret/food via fetchFatSecretDetail", () => {

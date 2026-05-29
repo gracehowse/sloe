@@ -5,9 +5,8 @@ import {
   GO_PUBLIC_ALERT_TITLE,
   UNPUBLISH_ALERT_MESSAGE,
   UNPUBLISH_ALERT_TITLE,
-  updateRecipePublishedStatus,
 } from "@suppr/shared/recipes/goPublic";
-import { supabase } from "@/lib/supabase";
+import { updateMobileRecipePublishedStatus } from "@/lib/recipePublishClient";
 
 export function promptGoPublicAttestation(): Promise<boolean> {
   return new Promise((resolve) => {
@@ -43,7 +42,7 @@ export async function setRecipePublishedWithPrompt(params: {
     : await promptUnpublishConfirmation();
   if (!proceed) return { ok: false, cancelled: true };
 
-  const result = await updateRecipePublishedStatus(supabase, {
+  const result = await updateMobileRecipePublishedStatus({
     recipeId: params.recipeId,
     authorId: params.authorId,
     published: params.published,

@@ -12,7 +12,22 @@
  * for rationale.
  */
 
+import { scaleFromPer100gGrams } from "../openFoodFacts/scaleFromPer100g";
+import {
+  checkScaledLogPlausibility,
+  type ScaledLogPlausibilityResult,
+} from "./macroPlausibility";
+
 const GRAMS_PER_OUNCE = 28.3495;
+
+/** Per-100 g label panel used to scale + plausibility-check a portion. */
+export type MacrosPer100gPanel = {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiberG?: number;
+};
 
 /** A unit of measurement for one of the picker's selectable axes. */
 export type PortionUnit =
@@ -329,4 +344,64 @@ export function unitLabel(state: PortionState): string {
     case "ounce":
       return "oz";
   }
+}
+
+export type PortionScalePlausibility = {
+  grams: number;
+  scaled: ReturnType<typeof scaleFromPer100gGrams>;
+  plausibility: ScaledLogPlausibilityResult;
+  /** False when scaled macros fail the guard or OFF basis was reconciled. */
+  plausible: boolean;
+};
+
+/**
+ * Scale a per-100 g panel to the current picker state and run the post-
+ * scale physical plausibility guard. Shared by web + mobile portion pickers
+ * so inline warnings stay in sync with barcode log guards.
+ */
+export function evaluatePortionScalePlausibility(
+  panel: MacrosPer100gPanel,
+  state: PortionState,
+  opts?: { basisCorrected?: boolean },
+): PortionScalePlausibility {
+  const grams = stateToGrams(state);
+  const scaled = scaleFromPer100gGrams(
+    { ...panel, fiberG: panel.fiberG ?? 0 },
+    grams,
+  );
+  const plausibility = checkScaledLogPlausibility(scaled, grams, panel);
+  const plausible = plausibility.ok && !opts?.basisCorrected;
+  return { grams, scaled, plausibility, plausible };
+}
+
+/** User-facing copy when scaled totals look physically implausible. */
+export function portionPlausibilityWarning(
+  scaled: { calories: number; protein: number },
+  grams: number,
+): string {
+  return `${Math.round(scaled.calories)} kcal and ${Math.round(scaled.protein)} g protein for ${Math.round(grams)} g looks unusually high — this product's label data may be per serving, not per 100 g. Edit the values or amount if they look wrong.`;
+}
+
+/**
+ * Inline warning for food-search / verify preview panes that scale per-100 g
+ * macros without the shared PortionPicker component (ENG-702 follow-up).
+ */
+export function foodSearchPreviewPlausibilityWarning(
+  macrosPer100g: MacrosPer100gPanel | null | undefined,
+  scaled: { calories: number; protein: number; carbs?: number; fat?: number } | null,
+  totalGrams: number,
+): string | null {
+  if (!macrosPer100g || !scaled || totalGrams <= 0) return null;
+  const plausibility = checkScaledLogPlausibility(
+    {
+      calories: scaled.calories,
+      protein: scaled.protein,
+      carbs: scaled.carbs ?? 0,
+      fat: scaled.fat ?? 0,
+    },
+    totalGrams,
+    macrosPer100g,
+  );
+  if (plausibility.ok) return null;
+  return portionPlausibilityWarning(scaled, totalGrams);
 }

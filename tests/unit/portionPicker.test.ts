@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildPickerOptions,
+  evaluatePortionScalePlausibility,
   formatPortion,
   parseServingLabel,
+  portionPlausibilityWarning,
   roundAmount,
   stateToGrams,
   stepperStep,
@@ -180,5 +182,40 @@ describe("stepperStep / roundAmount / formatPortion / unitLabel", () => {
     expect(unitLabel({ amount: 2, unit: u })).toBe("slices");
     expect(unitLabel({ amount: 1, unit: { kind: "serving", gramsPerServing: 100 } })).toBe("serving");
     expect(unitLabel({ amount: 2, unit: { kind: "serving", gramsPerServing: 100 } })).toBe("servings");
+  });
+});
+
+describe("evaluatePortionScalePlausibility — post-scale guard in picker", () => {
+  const yogurtPer100g = { calories: 60, protein: 10, carbs: 3.6, fat: 0 };
+
+  it("passes a normal 500 g portion of Greek yogurt", () => {
+    const state = { amount: 500, unit: { kind: "gram" as const } };
+    const v = evaluatePortionScalePlausibility(yogurtPer100g, state);
+    expect(v.plausible).toBe(true);
+    expect(v.scaled.calories).toBe(300);
+    expect(v.scaled.protein).toBe(50);
+  });
+
+  it("fails when scaled totals exceed physical ceilings", () => {
+    const state = { amount: 500, unit: { kind: "gram" as const } };
+    const v = evaluatePortionScalePlausibility(
+      { calories: 500, protein: 400, carbs: 0, fat: 0 },
+      state,
+    );
+    expect(v.plausible).toBe(false);
+    expect(v.scaled.calories).toBe(2500);
+  });
+
+  it("flags basisCorrected even when scaled macros look fine", () => {
+    const state = { amount: 100, unit: { kind: "gram" as const } };
+    const v = evaluatePortionScalePlausibility(yogurtPer100g, state, { basisCorrected: true });
+    expect(v.plausibility.ok).toBe(true);
+    expect(v.plausible).toBe(false);
+  });
+
+  it("portionPlausibilityWarning uses rounded kcal/protein/grams", () => {
+    expect(portionPlausibilityWarning({ calories: 1324.7, protein: 264.8 }, 500.2)).toMatch(
+      /1325 kcal and 265 g protein for 500 g/,
+    );
   });
 });

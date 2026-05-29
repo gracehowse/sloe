@@ -779,6 +779,7 @@ export default function LibraryScreen() {
                   return (
                     <Pressable
                       key={f.id}
+                      testID={`library-filter-${f.id}`}
                       onPress={() => setPill(f.id)}
                       style={[styles.filterPill, active && styles.filterPillActive]}
                       accessibilityRole="button"

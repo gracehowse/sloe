@@ -68,6 +68,7 @@ interface StatProps {
   value: string;
   valueColor: string;
   textSecondaryColor: string;
+  testID?: string;
 }
 
 /**
@@ -77,9 +78,9 @@ interface StatProps {
  * reads as a numeric legend for the ring above (Goal=neutral text,
  * Food=success green, Bonus=warm orange).
  */
-function Stat({ label, value, valueColor, textSecondaryColor }: StatProps) {
+function Stat({ label, value, valueColor, textSecondaryColor, testID }: StatProps) {
   return (
-    <View style={{ flex: 1, alignItems: "center", gap: 3 }}>
+    <View testID={testID} style={{ flex: 1, alignItems: "center", gap: 3 }}>
       <Text
         style={{
           fontSize: 9,
@@ -185,6 +186,7 @@ export function TodayHeroRing({
           />
           <Stat
             label="Bonus"
+            testID="today-ring-bonus"
             value={
               baseGoal && baseGoal < goal
                 ? Math.round(goal - baseGoal).toLocaleString()

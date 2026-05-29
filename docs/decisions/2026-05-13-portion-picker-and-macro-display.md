@@ -125,6 +125,12 @@ ingredient picker, photo-log review), use the shared
 `buildPickerOptions` / `stateToGrams` helpers. Don't reintroduce a
 basis toggle or a free-text grams input that mixes units.
 
+When the host has a per-100 g macro panel (barcode, search hit, custom
+food), pass it as `macrosPer100g` so the picker runs
+`evaluatePortionScalePlausibility` and surfaces an inline warning as the
+user adjusts amount — same guard as the log-time `checkScaledLogPlausibility`
+soft-flag, but visible before confirm.
+
 For any new macro display site: import from
 `src/lib/nutrition/formatMacro` (`formatMacro` for strings,
 `formatMacroValue` for numeric math). Never `Math.round(macroG)` for

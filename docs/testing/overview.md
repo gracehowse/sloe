@@ -14,7 +14,38 @@
 
 ## Test Coverage
 
-### Unit Tests (36+ files; run `npm test` for current counts)
+Two separate coverage tracks — do not mix them:
+
+| Command | Scope | Target |
+|---------|--------|--------|
+| `npm run test:storybook:coverage` | 10 UI primitives with stories (`vitest.storybook.config.ts`) | **100%** on scoped files |
+| `npm run test:coverage` | All of `src/**` (web + shared lib) | **Baseline gate** in CI (see below) |
+| `npm run mobile:test:coverage` | `apps/mobile/app/**` + `lib/**` | Mobile workspace gate |
+
+### Whole-app baseline (`npm run test:coverage`)
+
+As of 2026-05-28 (plan-import lib tests, `normalizeImageForAi`, shared `weightTrend`, CSV import fix):
+
+| Metric | `src/**` | `src/lib/**` only |
+|--------|----------|-------------------|
+| Lines / statements | ~57% | ~84% |
+| Branches | ~82% | ~84% |
+| Functions | ~76% | ~86% |
+
+CI enforces minimum thresholds in `vitest.unit.config.ts` (lines/statements 56%, branches 80%, functions 74%). **Ratchet these up** as coverage improves — never lower without explicit decision.
+
+**Why headline % looks low:** ~45k lines live in React components (`NutritionTracker`, `ProgressDashboard`, `AppDataContext`, …) with little or no render coverage. Shared business logic under `src/lib/**` is already strong; closing the gap means component/integration tests on critical surfaces, not more parser unit tests.
+
+**Phased backlog (whole-app):**
+
+1. **Shared lib parity** — port existing mobile unit tests for code under `src/lib/**` that web imports but doesn't exercise (e.g. `weightTrend.ts` ✅, plan-import parsers ✅ partial, `normalizeImageForAi` ✅ partial).
+2. **API route integration** — extend `tests/integration/*` for routes still at 0% (auth-adjacent, imports, webhooks).
+3. **Critical components** — RNTL/Playwright component tests for Today, food search, paywall, onboarding (highest user-impact, largest uncovered line count).
+4. **Mobile** — `npm run mobile:test:coverage` separately; keep web/mobile parity tests aligned via `@suppr/shared` → `src/lib`.
+
+HTML report: `coverage/index.html` after `npm run test:coverage`.
+
+### Unit Tests (510+ files; run `npm test` for current counts)
 
 | File | Tests | Covers |
 |------|-------|--------|
@@ -38,7 +69,11 @@
 | `parseRecipeFromHtml.test.ts` | 17 | Recipe HTML/JSON-LD extraction |
 | `persistence.test.ts` | 4 | localStorage snapshot read/write |
 | `portionMultiplier.test.ts` | 10 | Portion scaling and day totals |
-| `rateLimitFallback.test.ts` | 9 | In-memory rate limiter |
+| `tdeeEdgeCases.test.ts` | 9 | TDEE clamp floors, macro reconciliation, budget safety |
+| `rateLimitStrictFail.test.ts` | 5 | Rate limiter fails closed in prod without Upstash (ENG-668) |
+| `rateLimitKeyComposition.test.ts` | 4 | Per-user rate-limit bucket key contract |
+| `nutritionEntriesSourceWriteParity.test.ts` | 8 | `nutrition_entries.source` canonical write contract (ENG-674) |
+| `onboardingSessionGateParity.test.ts` | 4 | Signup session gate shell wiring web ↔ mobile (ENG-672) |
 | `shoppingDisplayGroups.test.ts` | 5 | Shopping item category grouping |
 | `shoppingListGeneration.test.ts` | 10 | Shopping list generation from plan |
 | `smartSuggestions.test.ts` | 2 | Recipe suggestion scoring |

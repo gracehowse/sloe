@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icons } from "./ui/icons";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
 import {
   formatContainsLine,
   normaliseAllergenIds,
@@ -10,6 +9,10 @@ import { supabase } from "../../lib/supabase/browserClient.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import type { IngredientOverride, IngredientRow, RecipeCard, UserTier } from "../../types/recipe.ts";
 import { GoPublicDialog } from "./GoPublicDialog.tsx";
+import {
+  RecipeEditDialog,
+  type RecipeEditDialogSavePayload,
+} from "./suppr/recipe-edit-dialog.tsx";
 import { CookMode } from "./CookMode.tsx";
 import { carbsLabel, netCarbsForRow } from "../../lib/nutrition/netCarbs.ts";
 import { FoodSearch, type FoodSearchSelection } from "./FoodSearch.tsx";
@@ -259,7 +262,6 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
     nutritionTargets,
     netCarbsLensEnabled,
   } = useAppData();
-  const router = useRouter();
   const saved = isRecipeSaved(recipe.id);
   // PR1 (Paprika parity, 2026-05-02): the viewing-servings stepper
   // is the canonical "how many portions am I looking at" state.
@@ -334,6 +336,8 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
   } | null>(null);
   const [dbPrepMin, setDbPrepMin] = useState<number | null>(null);
   const [dbCookMin, setDbCookMin] = useState<number | null>(null);
+  const [dbMealType, setDbMealType] = useState<string[] | null>(null);
+  const [recipeEditOpen, setRecipeEditOpen] = useState(false);
   const [recipeYieldDraft, setRecipeYieldDraft] = useState("");
   const [recipeYieldSaving, setRecipeYieldSaving] = useState(false);
   const [recipeYieldEditing, setRecipeYieldEditing] = useState(false);
@@ -611,7 +615,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
       const { data: row, error: recipeError } = await supabase
         .from("recipes")
         .select(
-          "description, instructions, servings, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, is_verified, prep_time_min, cook_time_min",
+          "description, instructions, servings, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, is_verified, meal_type, prep_time_min, cook_time_min",
         )
         .eq("id", recipe.id)
         .maybeSingle();
@@ -631,6 +635,10 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
       setDbDescription((row.description as string | null) ?? null);
       setDbInstructionsText((row.instructions as string | null) ?? null);
       setDbServings((row.servings as number) ?? recipe.servings);
+      const mt = (row as { meal_type?: string[] | string | null }).meal_type;
+      setDbMealType(
+        Array.isArray(mt) ? mt : mt != null && mt !== "" ? [String(mt)] : null,
+      );
       setDbMacros({
         calories: (row.calories as number) ?? 0,
         protein: (row.protein as number) ?? 0,
@@ -989,6 +997,29 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
 
   // macroAccuracy available if needed: Math.abs(ingredientTotal.calories - displayRecipe.calories)
 
+  const handleRecipeEditSaved = useCallback(
+    async (updated: RecipeEditDialogSavePayload) => {
+      setDbDescription(updated.description);
+      setDbInstructionsText(updated.instructions);
+      setDbServings(updated.servings);
+      setDbMealType(updated.meal_type);
+      setDbPrepMin(updated.prep_time_min);
+      setDbCookMin(updated.cook_time_min);
+      setDbMacros({
+        calories: updated.calories,
+        protein: updated.protein,
+        carbs: updated.carbs,
+        fat: updated.fat,
+        fiberG: updated.fiber_g,
+        sugarG: updated.sugar_g,
+        sodiumMg: updated.sodium_mg,
+      });
+      setRecipeYieldDraft(String(updated.servings));
+      await refreshMyLibraryRecipes();
+    },
+    [refreshMyLibraryRecipes],
+  );
+
   const persistRecipeYield = useCallback(async (opts?: { explicitServings?: number; silentNoop?: boolean }) => {
     if (!authUserId || !isMyRecipe || !dbMacros) return;
     const raw = opts?.explicitServings ?? Number(recipeYieldDraft);
@@ -1298,13 +1329,10 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             Truncated with ellipsis if overflowing. */}
         {/* F-85 (2026-04-25) — web parity for de-CAPS recipe title. */}
         <h2 className="flex-1 min-w-0 text-center font-semibold text-foreground truncate">{normaliseRecipeDisplayTitle(recipe.title)}</h2>
-        {isMyRecipe ? (
+        {isMyRecipe && !isCatalogRecipe ? (
           <button
             type="button"
-            onClick={() => {
-              const q = new URLSearchParams({ view: "create", editRecipe: recipe.id }).toString();
-              router.replace(`/home?${q}`, { scroll: false });
-            }}
+            onClick={() => setRecipeEditOpen(true)}
             className="hidden md:inline-flex px-4 py-2 rounded-xl border border-border text-foreground hover:bg-muted/60 font-semibold shrink-0"
           >
             Edit
@@ -1403,14 +1431,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onSelect={() => {
-                  const q = new URLSearchParams({ view: "create", editRecipe: recipe.id }).toString();
-                  router.replace(`/home?${q}`, { scroll: false });
-                }}
-              >
-                Edit
-              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setRecipeEditOpen(true)}>Edit</DropdownMenuItem>
               {isPublished === false ? (
                 <DropdownMenuItem
                   disabled={dbLoading}
@@ -1469,6 +1490,25 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           triggerLabel="Go public"
           autoOpen
           onAutoOpenClose={() => setGoPublicMobileOpen(false)}
+        />
+      ) : null}
+      {isMyRecipe && authUserId && !isCatalogRecipe ? (
+        <RecipeEditDialog
+          open={recipeEditOpen}
+          onOpenChange={setRecipeEditOpen}
+          recipeId={recipe.id}
+          authorId={authUserId}
+          initial={{
+            title: recipe.title,
+            description: dbDescription,
+            instructions: dbInstructionsText,
+            servings: dbServings ?? recipe.servings,
+            meal_type: dbMealType,
+            prep_time_min: dbPrepMin,
+            cook_time_min: dbCookMin,
+          }}
+          ingredients={ingredients}
+          onSaved={handleRecipeEditSaved}
         />
       ) : null}
 

@@ -358,7 +358,7 @@ function DailyRing({
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         {isEmpty ? (
           <div className="flex flex-col items-center justify-center gap-1 px-2">
-            <span className="text-[17px] font-bold leading-none text-center text-foreground tracking-tight">
+            <span className="text-lg font-bold leading-none text-center text-foreground tracking-tight">
               Start your day
             </span>
             {target > 0 ? (

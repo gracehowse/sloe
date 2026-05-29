@@ -41,7 +41,6 @@ function OptionCard({
   className,
   ...props
 }: OptionCardProps) {
-  const showCheckbox = trailing === undefined;
   return (
     <button
       type="button"
@@ -93,7 +92,7 @@ function OptionCard({
       </span>
       {trailing !== undefined ? (
         trailing
-      ) : showCheckbox ? (
+      ) : (
         <span
           aria-hidden
           className={cn(
@@ -105,7 +104,7 @@ function OptionCard({
         >
           {selected && <Check className="size-3" strokeWidth={3} />}
         </span>
-      ) : null}
+      )}
     </button>
   );
 }

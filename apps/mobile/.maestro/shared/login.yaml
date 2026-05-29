@@ -29,6 +29,15 @@ name: "Ensure authenticated + app on canonical tab shell"
 - launchApp:
     appId: com.supprclub.supprapp
 
+# iOS universal-link handoff can block the tab shell behind
+# `Open in "Suppr"?` — dismiss before login / Today assertions.
+- runFlow:
+    when:
+      visible: "Cancel"
+    commands:
+      - tapOn: "Open"
+      - waitForAnimationToEnd
+
 - runFlow:
     when:
       visible:

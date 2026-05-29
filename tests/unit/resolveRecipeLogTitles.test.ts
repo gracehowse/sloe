@@ -50,4 +50,17 @@ describe("fetchCanonicalRecipeTitle", () => {
     await expect(fetchCanonicalRecipeTitle(supabase as never, null)).resolves.toBeNull();
     expect(supabase.from).not.toHaveBeenCalled();
   });
+
+  it("returns null when Supabase errors or title is blank", async () => {
+    const supabase = {
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            maybeSingle: async () => ({ data: { title: "   " }, error: null }),
+          }),
+        }),
+      }),
+    };
+    await expect(fetchCanonicalRecipeTitle(supabase as never, "r2")).resolves.toBeNull();
+  });
 });

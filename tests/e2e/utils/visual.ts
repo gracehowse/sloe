@@ -24,5 +24,6 @@ export async function dismissVisualOverlays(page: Page): Promise<void> {
 /** Let fonts, charts, and client hydration settle before snapshot assertions. */
 export async function stabilizeForScreenshot(page: Page, ms = 2500): Promise<void> {
   await page.waitForLoadState("domcontentloaded");
+  await page.evaluate(() => document.fonts?.ready);
   await page.waitForTimeout(ms);
 }

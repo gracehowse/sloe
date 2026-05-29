@@ -80,6 +80,9 @@ jobs:
         uses: chromaui/action@latest
         with:
           playwright: true
+          # Playwright archives have no Storybook preview-stats.json; TurboSnap
+          # (onlyChanged in chromatic.config.json) must be off for this job.
+          onlyChanged: false
           projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
         env:
           CHROMATIC_ARCHIVE_LOCATION: ./test-results

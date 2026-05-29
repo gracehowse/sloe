@@ -1,5 +1,16 @@
-import { describe, expect, it, beforeEach, afterEach } from "vitest";
+import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
 import { tierFromStripePriceId, tierFromStripePriceIds } from "../../src/lib/stripe/tierFromPrice";
+import { updateProfileTierServiceRole } from "../../src/lib/stripe/updateProfileTier";
+
+vi.mock("@supabase/supabase-js", () => ({
+  createClient: vi.fn(() => ({
+    from: () => ({
+      update: () => ({
+        eq: async () => ({ error: null }),
+      }),
+    }),
+  })),
+}));
 
 type EnvBackup = {
   baseMonthly: string | undefined;
@@ -85,5 +96,34 @@ describe("tierFromStripePriceIds", () => {
 
   it("resolves to base when only base ids present (mixed frequency)", () => {
     expect(tierFromStripePriceIds(["price_base_m_test", "price_base_a_test"])).toBe("base");
+  });
+});
+
+describe("updateProfileTierServiceRole", () => {
+  it("returns false when service role key is missing", async () => {
+    const prev = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    await expect(updateProfileTierServiceRole("user-1", "pro")).resolves.toBe(false);
+    process.env.SUPABASE_SERVICE_ROLE_KEY = prev;
+  });
+
+  it("updates profiles.user_tier when service role key is set", async () => {
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "test-service-role";
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
+    await expect(updateProfileTierServiceRole("user-1", "base")).resolves.toBe(true);
+  });
+
+  it("returns false when Supabase update fails", async () => {
+    const { createClient } = await import("@supabase/supabase-js");
+    vi.mocked(createClient).mockReturnValueOnce({
+      from: () => ({
+        update: () => ({
+          eq: async () => ({ error: { message: "fail" } }),
+        }),
+      }),
+    } as never);
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "test-service-role";
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
+    await expect(updateProfileTierServiceRole("user-1", "pro")).resolves.toBe(false);
   });
 });
