@@ -18,18 +18,26 @@ on:
 
 jobs:
   publish:
-    if: ${{ secrets.CENTERCODE_API_KEY != '' }}
     runs-on: ubuntu-latest
+    # `secrets` can't be used in a job-level `if:` — gate at the step level
+    # via job env instead (same pattern as visual-review.yml).
+    env:
+      CENTERCODE_API_KEY: ${{ secrets.CENTERCODE_API_KEY }}
     steps:
+      - name: Skip when Centercode API key is not configured
+        if: env.CENTERCODE_API_KEY == ''
+        run: echo "CENTERCODE_API_KEY not set — skipping Centercode publish."
       - uses: actions/checkout@v6
+        if: env.CENTERCODE_API_KEY != ''
       - uses: actions/setup-node@v4
+        if: env.CENTERCODE_API_KEY != ''
         with:
           node-version: 20
           cache: npm
       - name: Publish Centercode release
+        if: env.CENTERCODE_API_KEY != ''
         env:
           CENTERCODE_BASE_URL: ${{ secrets.CENTERCODE_BASE_URL }}
-          CENTERCODE_API_KEY: ${{ secrets.CENTERCODE_API_KEY }}
           CENTERCODE_PROJECT_KEY: ${{ secrets.CENTERCODE_PROJECT_KEY }}
           CENTERCODE_RELEASE_TYPE_KEY: ${{ secrets.CENTERCODE_RELEASE_TYPE_KEY }}
           CENTERCODE_RELEASE_TITLE: ${{ inputs.release_title }}
