@@ -67,6 +67,15 @@ describe("Bug 1 — verified state persists past manual verify", () => {
     expect(SRC.mobileVerifyLib).toMatch(/supabase\.rpc\("save_verified_ingredients"/);
   });
 
+  it("save_verified_ingredients migration exists for atomic verify writes (ENG-662)", () => {
+    const migration = readFileSync(
+      resolve(__dirname, "../../supabase/migrations/20260527100000_save_verified_ingredients_rpc.sql"),
+      "utf8",
+    );
+    expect(migration).toMatch(/create or replace function public\.save_verified_ingredients/);
+    expect(migration).toMatch(/p_ingredient_updates/);
+  });
+
   it("web recipe-detail row routes through the shared verification-tier helper", () => {
     expect(SRC.webRecipe).toMatch(
       /import\s*\{[\s\S]*?deriveIngredientVerificationTier[\s\S]*?\}\s*from[\s\S]*?recipe-ingredients\/ingredientVerificationStatus/,
