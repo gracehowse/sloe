@@ -6,9 +6,16 @@
  * Customer-lens shrink (2026-04-30): `permissions`, `import`, and
  * `recipes` are no longer part of the linear flow — see comments in
  * `src/lib/onboarding/state.ts` for the rationale and the organic
- * discovery surfaces that absorb their affordances. The component
- * files are kept on disk — re-export them so the post-launch nudge
- * queue (follow-up PR) can mount them out of the linear shell.
+ * discovery surfaces that absorb their affordances. `permissions` and
+ * `import` are kept on disk and re-exported so a post-launch nudge
+ * surface can mount them out of the linear shell.
+ *
+ * Picker cut (2026-05-30): the `recipes` picker step was deleted. The
+ * library is seeded with curated defaults at onboarding completion
+ * (see `web-flow.tsx`), and the only post-onboarding "add recipes"
+ * prompt — the mobile nudge queue's `recipes` nudge — deep-links to
+ * the Library tab, not this component. The picker had no live mount
+ * point on either platform, so it was removed rather than left dormant.
  *
  * Build-40 (2026-05-01): the new `data-bridges` step replaces those
  * affordances with a single optional terminal step that bundles the
@@ -32,7 +39,6 @@ import { RevealStep } from "./reveal";
 import { DataBridgesStep } from "./data-bridges";
 import { PermissionsStep } from "./permissions";
 import { ImportStep } from "./import";
-import { RecipePickerStep } from "./recipes";
 
 /** Step components MAY accept a `compact` prop (used by mobile); the
  *  shell passes it via spread so platform-specific layouts can still
@@ -71,8 +77,7 @@ export {
   StrategyStep,
   RevealStep,
   DataBridgesStep,
-  // Out-of-flow components — kept for the post-launch nudge queue.
+  // Out-of-flow components — kept for a post-launch nudge surface.
   PermissionsStep,
   ImportStep,
-  RecipePickerStep,
 };

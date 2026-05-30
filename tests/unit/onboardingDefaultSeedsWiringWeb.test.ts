@@ -1,16 +1,16 @@
 /**
- * onboardingDefaultSeedsWiring — pins the activation-hook seeding on the
- * MOBILE flow at the source level.
+ * onboardingDefaultSeedsWiringWeb — pins the activation-hook seeding on
+ * the WEB flow at the source level.
  *
- * Parity (2026-05-30): the seed-selection logic moved out of an inline
- * mobile-flow ternary into the shared `selectOnboardingSeeds`
- * (@suppr/shared/onboarding/onboardingSeeds) when the Recipes picker was
+ * Web parity (2026-05-30): the seed-selection logic moved out of an
+ * inline web-flow ternary into the shared `selectOnboardingSeeds`
+ * (src/lib/onboarding/onboardingSeeds.ts) when the Recipes picker was
  * cut, so web + mobile resolve identical seeds from identical inputs.
- * The selector's own behaviour is covered by execution in the web
- * `selectOnboardingSeeds.test.ts`; this test guards that mobile-flow.tsx
+ * The selector's own behaviour is covered by execution in
+ * `selectOnboardingSeeds.test.ts`; this test guards that web-flow.tsx
  * actually *wires* it (and the flag gate) rather than reverting to the
- * pre-audit empty-library path. Mirror of
- * `tests/unit/onboardingDefaultSeedsWiringWeb.test.ts`.
+ * pre-parity empty-library path. Mirror of
+ * `apps/mobile/tests/unit/onboardingDefaultSeedsWiring.test.ts`.
  *
  * Pins:
  *   - the shared selector is imported + called with the user's
@@ -20,7 +20,7 @@
  *     NOT skip seeding)
  *   - the resolver / saver flow still runs against the selected seeds
  *   - the `used_default_seeds` analytics flag is exposed
- *   - the post-onboarding land hands Today the firstRun=1 signal
+ *   - the completed user lands on /home
  */
 
 import { readFileSync } from "node:fs";
@@ -30,19 +30,22 @@ import { describe, expect, it } from "vitest";
 
 const FLOW_PATH = resolve(
   __dirname,
-  "../../components/onboarding/mobile-flow.tsx",
+  "../../src/app/components/onboarding/web-flow.tsx",
 );
 const SOURCE = readFileSync(FLOW_PATH, "utf8");
 
-describe("mobile onboarding flow — default-seed fallback wiring", () => {
-  it("imports the shared selectOnboardingSeeds from @suppr/shared onboardingSeeds", () => {
+describe("web onboarding flow — default-seed fallback wiring", () => {
+  it("imports the shared selectOnboardingSeeds from @/lib/onboarding/onboardingSeeds", () => {
     expect(SOURCE).toMatch(/selectOnboardingSeeds/);
     expect(SOURCE).toMatch(
-      /import\s*\{[^}]*selectOnboardingSeeds[^}]*\}\s*from\s+["'][^"']*@suppr\/shared\/onboarding\/onboardingSeeds["']/,
+      /import\s*\{[^}]*selectOnboardingSeeds[^}]*\}\s*from\s+["'][^"']*@\/lib\/onboarding\/onboardingSeeds["']/,
     );
   });
 
   it("calls selectOnboardingSeeds with the user's picks, diet + allergens", () => {
+    // The selector decides picks-vs-defaults; web-flow must hand it the
+    // real onboarding state so a vegan completing without picking still
+    // gets vegan-safe defaults.
     expect(SOURCE).toMatch(/selectOnboardingSeeds\(\s*\{/);
     expect(SOURCE).toMatch(/pickedRecipeSlugs:\s*state\.pickedRecipeSlugs/);
     expect(SOURCE).toMatch(/diet:\s*state\.diet/);
@@ -54,7 +57,7 @@ describe("mobile onboarding flow — default-seed fallback wiring", () => {
     // `!isFeatureEnabled` — a cold PostHog during onboarding completion
     // would otherwise skip seeding and empty the library.
     expect(SOURCE).toMatch(
-      /import\s*\{[^}]*isFeatureDisabled[^}]*\}\s*from\s+["']@\/lib\/analytics["']/,
+      /import\s*\{[^}]*isFeatureDisabled[^}]*\}\s*from\s+["'][^"']*@\/lib\/analytics\/track["']/,
     );
     expect(SOURCE).toMatch(
       /seedingDisabled:\s*isFeatureDisabled\(\s*["']onboarding_default_seeds["']\s*\)/,
@@ -62,6 +65,8 @@ describe("mobile onboarding flow — default-seed fallback wiring", () => {
   });
 
   it("still runs the resolver + saver path on the selected seeds", () => {
+    // Pin: the resolve → save → plan pipeline runs on whatever
+    // `pickedSeeds` the selector returns — picks or curated defaults.
     expect(SOURCE).toMatch(
       /resolveSeedsToRecipeIds\(\s*supabase\s*,\s*pickedSeeds/,
     );
@@ -69,13 +74,16 @@ describe("mobile onboarding flow — default-seed fallback wiring", () => {
   });
 
   it("exposes a used_default_seeds analytics flag for activation tracking", () => {
+    // Pin: we track which users hit the fallback so the activation-lift
+    // dashboards read the same on web + mobile. Removing the flag
+    // silently kills the web side of that dashboard.
     expect(SOURCE).toMatch(/used_default_seeds:\s*usedDefaults/);
   });
 
-  it("routes post-onboarding to Today with firstRun=1 (parity with notifications-prompt)", () => {
-    // Activation hook (leak fix #1) — the post-onboarding land must hand
-    // Today the same first-run signal the notifications-prompt does.
-    expect(SOURCE).toMatch(/firstRun=1/);
-    expect(SOURCE).toMatch(/router\.replace\(`?\/?\(tabs\)/);
+  it("lands the completed user on /home (web parity of the Today first-run hand-off)", () => {
+    // Web routes to /home on completion; mobile routes to (tabs) with
+    // firstRun=1. Different surface, same intent — pin the web land so a
+    // refactor can't silently drop the post-completion navigation.
+    expect(SOURCE).toMatch(/\/home/);
   });
 });

@@ -14,14 +14,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { Accent, Spacing } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { track } from "@/lib/analytics";
+import { isFeatureDisabled, track } from "@/lib/analytics";
 import { supabase } from "@/lib/supabase";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
-import {
-  ONBOARDING_SEEDS,
-  defaultOnboardingSeeds,
-  type OnboardingSeed,
-} from "@suppr/shared/onboarding/onboardingSeeds";
+import { selectOnboardingSeeds } from "@suppr/shared/onboarding/onboardingSeeds";
 import { buildFirstWeekFromSeeds } from "@suppr/shared/onboarding/onboardingFirstWeek";
 import {
   resolveSeedsToRecipeIds,
@@ -208,24 +204,19 @@ export function MobileFlow() {
       // completion `pickedRecipeSlugs` is empty. Without seeded recipes
       // the user lands on Today with an empty library and the
       // north-star block is permanently stuck in its empty-state — the
-      // "What to eat next" promise evaporates. When the user hasn't
-      // picked any recipes we fall back to a curated 5-seed default
-      // (`defaultOnboardingSeeds`) so the library hits the
-      // `NORTH_STAR_LIBRARY_MIN` threshold immediately. The default
-      // honours the user's diet/allergens — see `defaultOnboardingSeeds`
-      // in `src/lib/onboarding/onboardingSeeds.ts`.
-      const pickedSeeds: OnboardingSeed[] =
-        state.pickedRecipeSlugs.length > 0
-          ? ONBOARDING_SEEDS.filter((s) =>
-              state.pickedRecipeSlugs.includes(s.slug),
-            )
-          : Array.from(
-              defaultOnboardingSeeds({
-                diet: state.diet,
-                allergies: state.allergies,
-              }),
-            );
-      const usedDefaults = state.pickedRecipeSlugs.length === 0;
+      // "What to eat next" promise evaporates. Seed selection is shared
+      // with web-flow via `selectOnboardingSeeds`: no picks falls back to
+      // a curated 5-seed default (diet/allergen-filtered) so the library
+      // hits `NORTH_STAR_LIBRARY_MIN` immediately. The
+      // `onboarding_default_seeds` kill switch (default-ON; read via
+      // `isFeatureDisabled` so a cold PostHog doesn't skip seeding) lets
+      // that fallback be rolled back on both platforms at once.
+      const { seeds: pickedSeeds, usedDefaults } = selectOnboardingSeeds({
+        pickedRecipeSlugs: state.pickedRecipeSlugs,
+        diet: state.diet,
+        allergies: state.allergies,
+        seedingDisabled: isFeatureDisabled("onboarding_default_seeds"),
+      });
       let planFailed = false;
       let missingCount = 0;
       if (pickedSeeds.length > 0) {

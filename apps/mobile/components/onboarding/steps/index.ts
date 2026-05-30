@@ -3,9 +3,16 @@
  * `src/app/components/onboarding/steps/index.ts` (web).
  *
  * Customer-lens shrink (2026-04-30): `permissions`, `import`, and
- * `recipes` are no longer in the linear flow — components kept and
- * re-exported for the post-launch nudge queue (follow-up). See
+ * `recipes` are no longer in the linear flow. `permissions` + `import`
+ * are kept and re-exported for a post-launch nudge surface. See
  * `src/lib/onboarding/state.ts` for rationale.
+ *
+ * Picker cut (2026-05-30): the `recipes` picker step + its
+ * `RecipePickerGrid` were deleted for parity with web. The library is
+ * seeded with curated defaults at onboarding completion (see
+ * `mobile-flow.tsx`), and the Today nudge queue's `recipes` nudge
+ * deep-links to the Library tab rather than mounting this picker — so
+ * it had no live call site and was removed rather than left dormant.
  *
  * Build-40 (2026-05-01): the new `data-bridges` step is the linear-flow
  * terminal step. It is the canonical bridge re-introduction (manual
@@ -30,7 +37,6 @@ import { MobileRevealStep } from "./reveal";
 import { MobileDataBridgesStep } from "./data-bridges";
 import { MobilePermissionsStep } from "./permissions";
 import { MobileImportStep } from "./import";
-import { MobileRecipePickerStep } from "./recipes";
 
 export interface MobileStepComponentProps {
   compact?: boolean;
@@ -69,8 +75,7 @@ export {
   MobileStrategyStep,
   MobileRevealStep,
   MobileDataBridgesStep,
-  // Out-of-flow components — kept for the post-launch nudge queue.
+  // Out-of-flow components — kept for a post-launch nudge surface.
   MobilePermissionsStep,
   MobileImportStep,
-  MobileRecipePickerStep,
 };

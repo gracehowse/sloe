@@ -137,7 +137,7 @@ source-compatible.
 | Fix | Mobile | Web |
 | --- | --- | --- |
 | 1. Routes to Today | Shipped | N/A — web onboarding already routes to `/home` |
-| 2. Seed defaults | Shipped (`mobile-flow.tsx`) | Web `web-flow.tsx` already had the same `pickedSeeds.length > 0` guard — same fallback should land in a follow-up commit; logged with sync-enforcer |
+| 2. Seed defaults | Shipped (`mobile-flow.tsx`) | Shipped (`web-flow.tsx`, 2026-05-30) — same `defaultOnboardingSeeds` fallback + `used_default_seeds` flag, wired when the Recipes picker step was cut |
 | 3. First-log toast | Shipped | Follow-up — web has no equivalent surface today |
 | 4. Push explainer | Shipped (iOS-only) | N/A — web push routes through Web Push API; out-of-scope |
 | 5. WhyLine | Shipped | Shipped (mirror in `north-star-block.tsx` + host) |
@@ -171,9 +171,16 @@ source-compatible.
 
 ## Follow-ups
 
-- Sync-enforcer route: Web web-flow.tsx + NutritionTracker.tsx +
-  TodayHero web-side toast equivalent. Three follow-up tasks logged
-  on the parity-tracker.
+- Sync-enforcer route: Web `web-flow.tsx` default-seed fallback —
+  **shipped 2026-05-30** (alongside the Recipes picker cut). The
+  picks-vs-defaults decision now lives once in the shared
+  `selectOnboardingSeeds` selector, and seeding on BOTH platforms is
+  gated behind a single fail-safe default-ON kill switch
+  (`onboarding_default_seeds`, read via `isFeatureDisabled`) — see
+  `docs/decisions/2026-05-30-cut-onboarding-recipe-picker.md`.
+  `NutritionTracker.tsx` WhyLine already shipped (row 5). Remaining
+  parity follow-up: the TodayHero web-side first-log toast equivalent
+  (fix #3) — web has no equivalent surface today.
 - `analytics-engineer`: confirm `used_default_seeds` event property
   is registered on the dashboard.
 - `release-gate`: bundle into the next TestFlight build —

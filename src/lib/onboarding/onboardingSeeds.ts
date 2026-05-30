@@ -449,3 +449,66 @@ export function defaultOnboardingSeeds(
   // contract from `filterOnboardingSeeds`.
   return ONBOARDING_SEEDS.filter(passesDietAndAllergens).slice(0, 5);
 }
+
+export interface SelectOnboardingSeedsInput {
+  /** `OnboardingState.pickedRecipeSlugs` — non-empty only if a future
+   *  in-flow picker is revived; empty for every default completion. */
+  pickedRecipeSlugs: readonly string[];
+  /** `OnboardingState.diet` — passed through to the default filter. */
+  diet: readonly string[];
+  /** `OnboardingState.allergies` — passed through to the default filter. */
+  allergies?: readonly string[];
+  /** Kill switch for the curated-default fallback. Read from the
+   *  `onboarding_default_seeds` PostHog flag via `isFeatureDisabled`
+   *  at the call site (fail-safe default-ON: only `true` when the flag
+   *  resolves explicitly off). When `true` we reproduce the pre-2026-04-30
+   *  behaviour — no picks means an empty library — so the unified
+   *  web+mobile seeding can be rolled back instantly without a deploy. */
+  seedingDisabled?: boolean;
+}
+
+export interface SelectedOnboardingSeeds {
+  /** The seeds to hand to `resolveSeedsToRecipeIds`. May be empty (user
+   *  picked nothing AND the default-seed kill switch is thrown). */
+  seeds: OnboardingSeed[];
+  /** True when the library was seeded from curated defaults (no picks,
+   *  switch on). Drives the `used_default_seeds` activation flag. */
+  usedDefaults: boolean;
+}
+
+/**
+ * Single source of truth for which recipes seed a new user's library at
+ * onboarding completion. Shared by `web-flow.tsx` + `mobile-flow.tsx` so
+ * both platforms resolve identical seeds from identical inputs — the
+ * seed-selection logic lived as a duplicated inline ternary in both
+ * flows before 2026-05-30, which is exactly the kind of place web/mobile
+ * silently drift. Pure + synchronous so it can be unit-tested executing
+ * (no PostHog / Supabase mocking): the caller resolves the flag to a
+ * boolean and passes it in.
+ *
+ * Precedence:
+ *   1. User picked recipes → use those (a revived in-flow picker).
+ *   2. No picks, kill switch thrown → `[]` (old empty-library behaviour).
+ *   3. No picks, switch on (default) → curated `defaultOnboardingSeeds`,
+ *      diet/allergen-filtered.
+ */
+export function selectOnboardingSeeds(
+  input: SelectOnboardingSeedsInput,
+): SelectedOnboardingSeeds {
+  const picked = input.pickedRecipeSlugs ?? [];
+  if (picked.length > 0) {
+    return {
+      seeds: ONBOARDING_SEEDS.filter((s) => picked.includes(s.slug)),
+      usedDefaults: false,
+    };
+  }
+  if (input.seedingDisabled) {
+    return { seeds: [], usedDefaults: false };
+  }
+  return {
+    seeds: Array.from(
+      defaultOnboardingSeeds({ diet: input.diet, allergies: input.allergies }),
+    ),
+    usedDefaults: true,
+  };
+}
