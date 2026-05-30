@@ -59,13 +59,6 @@ import { CopyMealDialog } from "./suppr/copy-meal-dialog";
 import { DuplicateDayDialog } from "./suppr/duplicate-day-dialog";
 import { HydrationStimulantsCard } from "./suppr/hydration-stimulants-card";
 import { StreakPip } from "./suppr/streak-pip";
-// `<LogFab>` (./suppr/log-fab) is no longer rendered on mobile-web.
-// The canonical Log entry point is now the centered raised Plus
-// button in the mobile-web `<nav>` (App.tsx), mirroring the mobile
-// `<SupprTabBar>` + `<LogTabBarButton>` pattern from commit
-// `6633d2d`. The component file is preserved for now (deferred
-// deletion) so any external reference (tests, type imports) keeps
-// resolving until a follow-up sweep.
 import { LogSheet } from "./suppr/log-sheet";
 // Phase 4 / B3.Y — desktop modal mode for the LogSheet.
 import { useIsDesktop } from "./ui/use-mobile";
@@ -3165,8 +3158,8 @@ export const NutritionTracker = memo(function NutritionTracker({
       />
 
       {/* 2026-04-30 (web mobile-web parity with mobile commit
-          `6633d2d`): the side `<LogFab>` (right:18 / bottom:100,
-          `md:hidden`) is no longer rendered. The canonical Log entry
+          `6633d2d`): the side FAB (formerly a `LogFab` at right:18 /
+          bottom:100, `md:hidden`) was removed. The canonical Log entry
           point on mobile-web is now the centered raised Plus button
           in the bottom `<nav>` (App.tsx), mirroring the mobile
           `<SupprTabBar>` raised-button slot. Desktop web (≥ md) has
