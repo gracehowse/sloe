@@ -357,8 +357,8 @@ export default function FastingScreen() {
               paddingHorizontal: Spacing.sm,
             }}
           >
-            Intermittent fasting can help with weight management and metabolic
-            health. Start a fast whenever you like.
+            A fasting window is just a way to structure when you eat. Start
+            one whenever you like.
           </Text>
           {/* Ready-when-you-are sub-label retained so the existing
               Maestro 13_fasting flow regex

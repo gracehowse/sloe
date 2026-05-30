@@ -22,8 +22,9 @@
  * Cross-platform note: this is a web-side-only divergence (mobile
  * has the rich Plan tab at `apps/mobile/app/(tabs)/planner.tsx`).
  * Logged alongside the documented `/planner`-vs-`/plan` parity
- * carve-out — see `docs/decisions/2026-04-19-pricing-default-
- * billing-period-divergence.md` for the carve-out pattern.
+ * carve-out — see `docs/decisions/2026-05-25-sweep-parity-ia-pricing-
+ * resolutions.md` for the current parity resolutions. The web move-meal
+ * parity build is tracked in ENG-699.
  */
 import type { Metadata } from "next";
 import Link from "next/link";
