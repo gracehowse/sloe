@@ -1,0 +1,37 @@
+{
+  "date": "2026-05-29",
+  "fixtureCount": 3,
+  "offlinePassRatePct": 100,
+  "livePassRatePct": null,
+  "minCaptionChars": 40,
+  "results": [
+    {
+      "id": "01-garlic-pasta",
+      "platform": "tiktok",
+      "captionChars": 200,
+      "offlinePass": true,
+      "expectParse": true,
+      "live": null
+    },
+    {
+      "id": "02-chicken-bowl",
+      "platform": "tiktok",
+      "captionChars": 191,
+      "offlinePass": true,
+      "expectParse": true,
+      "live": null
+    },
+    {
+      "id": "03-too-short",
+      "platform": "tiktok",
+      "captionChars": 3,
+      "offlinePass": false,
+      "expectParse": false,
+      "live": null
+    }
+  ],
+  "blockers": [
+    "Live LLM parse rate not measured — run with --live against `npm run dev` and a valid token.",
+    "Target sample set is 100 Reels (ENG-670); current fixtures are a smoke subset only."
+  ]
+}

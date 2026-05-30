@@ -1,0 +1,46 @@
+# Optional: notify Centercode beta cohort when a TestFlight/EAS build is ready.
+# Qualitative feedback only — not layout QA.
+name: Centercode release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_title:
+        description: Release title shown to testers
+        required: true
+        default: Suppr iOS beta
+      release_value:
+        description: Version string (e.g. 1.2.0)
+        required: true
+      download_url:
+        description: TestFlight or install URL
+        required: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    # `secrets` can't be used in a job-level `if:` — gate at the step level
+    # via job env instead (same pattern as visual-review.yml).
+    env:
+      CENTERCODE_API_KEY: ${{ secrets.CENTERCODE_API_KEY }}
+    steps:
+      - name: Skip when Centercode API key is not configured
+        if: env.CENTERCODE_API_KEY == ''
+        run: echo "CENTERCODE_API_KEY not set — skipping Centercode publish."
+      - uses: actions/checkout@v6
+        if: env.CENTERCODE_API_KEY != ''
+      - uses: actions/setup-node@v4
+        if: env.CENTERCODE_API_KEY != ''
+        with:
+          node-version: 20
+          cache: npm
+      - name: Publish Centercode release
+        if: env.CENTERCODE_API_KEY != ''
+        env:
+          CENTERCODE_BASE_URL: ${{ secrets.CENTERCODE_BASE_URL }}
+          CENTERCODE_PROJECT_KEY: ${{ secrets.CENTERCODE_PROJECT_KEY }}
+          CENTERCODE_RELEASE_TYPE_KEY: ${{ secrets.CENTERCODE_RELEASE_TYPE_KEY }}
+          CENTERCODE_RELEASE_TITLE: ${{ inputs.release_title }}
+          CENTERCODE_RELEASE_VALUE: ${{ inputs.release_value }}
+          CENTERCODE_DOWNLOAD_URL: ${{ inputs.download_url }}
+        run: node scripts/centercode/publish-release.mjs

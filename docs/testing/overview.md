@@ -72,7 +72,7 @@ HTML report: `coverage/index.html` after `npm run test:coverage`.
 | `tdeeEdgeCases.test.ts` | 9 | TDEE clamp floors, macro reconciliation, budget safety |
 | `rateLimitStrictFail.test.ts` | 5 | Rate limiter fails closed in prod without Upstash (ENG-668) |
 | `rateLimitKeyComposition.test.ts` | 4 | Per-user rate-limit bucket key contract |
-| `nutritionEntriesSourceWriteParity.test.ts` | 8 | `nutrition_entries.source` canonical write contract (ENG-674) |
+| `nutritionEntriesSourceWriteParity.test.ts` | 10 | `nutrition_entries.source` canonical write contract (ENG-674) |
 | `onboardingSessionGateParity.test.ts` | 4 | Signup session gate shell wiring web ↔ mobile (ENG-672) |
 | `shoppingDisplayGroups.test.ts` | 5 | Shopping item category grouping |
 | `shoppingListGeneration.test.ts` | 10 | Shopping list generation from plan |
