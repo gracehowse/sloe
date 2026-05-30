@@ -44,6 +44,7 @@ export function SourceDot({
     return (
       <View
         testID={testID}
+        accessibilityRole="image"
         accessibilityLabel="AI estimated"
         style={[styles.row, style]}
       >
@@ -61,6 +62,7 @@ export function SourceDot({
   return (
     <View
       testID={testID}
+      accessibilityRole="image"
       accessibilityLabel={ariaLabel(source)}
       style={[
         styles.dot,

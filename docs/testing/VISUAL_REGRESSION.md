@@ -119,7 +119,7 @@ npm run test:storybook:coverage # 100% coverage gate on storied UI primitives (C
 
 `.github/workflows/chromatic.yml` runs **Playwright → Chromatic**: job `playwright` archives E2E pages (`@chromatic-com/playwright`), job `chromatic` uploads `./test-results` via `chromaui/action` with `playwright: true`. Requires `CHROMATIC_PROJECT_TOKEN` (use the token from your **Playwright** Chromatic project if you created one separately from Storybook).
 
-**Coverage in the Storybook UI:** Re-run tests with coverage after pulling latest — `vitest.config.ts` scopes Storybook coverage to the nine storied UI primitives only, so **All files** should read **100%** when every story variant is exercised. That is the intended target, not 100% of the whole repo (~73k lines).
+**Coverage in the Storybook UI:** Re-run tests with coverage after pulling latest — coverage is scoped to the storied UI primitives enumerated in `STORYBOOK_UI_COVERAGE` (`vitest.storybook.config.ts`, re-exported by `vitest.config.ts`) — currently 24 — so **All files** should read **100%** when every story variant is exercised. That is the intended target, not 100% of the whole repo (~73k lines). Adding a storied component means adding its source path to that list; the 100% gate then forces full branch/line coverage on it.
 
 **Whole-app coverage** is a separate track: `npm run test:coverage` (web `src/**`, ~53% lines baseline with CI thresholds in `vitest.unit.config.ts`) and `npm run mobile:test:coverage`. See [testing/overview.md](./overview.md#whole-app-baseline-npm-run-testcoverage).
 
