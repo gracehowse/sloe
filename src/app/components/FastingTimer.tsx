@@ -433,8 +433,8 @@ export function FastingTimer() {
             Fast when you&apos;re ready
           </h4>
           <p className="text-sm text-muted-foreground leading-relaxed mb-4 max-w-sm">
-            Intermittent fasting can help with weight management and metabolic
-            health. Start a fast whenever you like.
+            A fasting window is just a way to structure when you eat. Start one
+            whenever you like.
           </p>
           <p className="text-xs text-muted-foreground mb-4 tabular-nums">
             {fastHours}:{eatHours} — {fastHours}h fast, {eatHours}h eat
