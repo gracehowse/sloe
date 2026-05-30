@@ -68,6 +68,7 @@ export function SourceDot({
       <span
         data-slot="source-dot"
         data-source={source}
+        role="img"
         className={cn("inline-flex items-center gap-1", className)}
         style={style}
         aria-label={sourceLabel[source]}
@@ -89,6 +90,7 @@ export function SourceDot({
     <span
       data-slot="source-dot"
       data-source={source}
+      role="img"
       className={cn("inline-flex items-center", className)}
       style={style}
       aria-label={sourceLabel[source]}

@@ -11,6 +11,10 @@
  * each call site. Web has no haptics, so the `haptic` prop is accepted
  * but ignored (kept for API parity with mobile).
  *
+ * Plain function component (no `forwardRef`) — matches the mobile sibling,
+ * which is also a plain function, and the `OptionCard` button primitive.
+ * The `<button>` forwards arbitrary button props but not a `ref`.
+ *
  * Per spec §1.8: includes the focus-visible ring by default.
  */
 import * as React from "react";
@@ -36,19 +40,19 @@ const SCALE_CLASS_MAP: Record<string, string> = {
   "0.98": "active:scale-[0.98]",
 };
 
-export const PressableScale = React.forwardRef<
-  HTMLButtonElement,
-  PressableScaleProps
->(function PressableScale(
-  { scaleTo = 0.97, haptic: _haptic, className, children, type = "button", ...rest },
-  ref,
-) {
+export function PressableScale({
+  scaleTo = 0.97,
+  haptic: _haptic,
+  className,
+  children,
+  type = "button",
+  ...rest
+}: PressableScaleProps) {
   void _haptic;
   const scaleClass =
     SCALE_CLASS_MAP[scaleTo.toFixed(2)] ?? "active:scale-[0.97]";
   return (
     <button
-      ref={ref}
       type={type}
       {...rest}
       className={cn(
@@ -62,6 +66,6 @@ export const PressableScale = React.forwardRef<
       {children}
     </button>
   );
-});
+}
 
 export default PressableScale;

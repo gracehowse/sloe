@@ -14,9 +14,13 @@ import { cn } from "./utils";
  * is a small inline pill used during onboarding. This one is a
  * 48px-tall row that fills its container.
  *
- * Active state: `border-primary bg-primary/10 text-primary`. Inactive:
- * `border-border text-foreground hover:border-primary/30`. Each option
- * may carry an optional `hint` rendered beneath the main label.
+ * Active state: `border-primary bg-primary/10 text-foreground` — selection
+ * is carried by the border + tint, not by recolouring the label, so the
+ * selected segment keeps full text contrast (matches the OptionCard
+ * precedent; `text-primary` on its own `bg-primary/10` tint fails WCAG AA
+ * for normal-weight text). Inactive: `border-border text-foreground
+ * hover:border-primary/30`. Each option may carry an optional `hint`
+ * rendered beneath the main label.
  *
  * Renders as a `radiogroup` so screen readers and keyboard users behave
  * correctly. Arrow keys move the selection (matches the onboarding
@@ -95,18 +99,13 @@ export function SettingsSegmented<T extends string>({
               "px-4 py-3 rounded-xl border-2 transition-all text-left",
               layout === "row" && "flex-1",
               selected
-                ? "border-primary bg-primary/10 text-primary"
+                ? "border-primary bg-primary/10 text-foreground"
                 : "border-border hover:border-primary/30 text-foreground",
             )}
           >
             <div className="text-sm font-semibold">{opt.label}</div>
             {opt.hint ? (
-              <div
-                className={cn(
-                  "text-[11px] mt-0.5",
-                  selected ? "text-primary/70" : "text-muted-foreground",
-                )}
-              >
+              <div className="text-[11px] mt-0.5 text-muted-foreground">
                 {opt.hint}
               </div>
             ) : null}
