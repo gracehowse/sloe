@@ -122,3 +122,45 @@ describe("isFeatureDisabled (mobile) — PostHog client path", () => {
     expect(isFeatureDisabled(FLAG)).toBe(false);
   });
 });
+
+// Regression guard for the 2026-05-30 hyphen-normalisation fix. The override
+// builds the env key from the flag, but env-var names can't contain hyphens,
+// so the key must normalise hyphen→underscore. Pre-fix, the hyphenated flag
+// `log-sheet-slot-selector` (ENG-773) looked up the un-settable key
+// `EXPO_PUBLIC_FLAG_FORCE_LOG-SHEET-SLOT-SELECTOR`, so its override was
+// silently dead and the PostHog client decided instead — exactly what broke
+// the Maestro E2E path for every hyphenated flag.
+describe("isFeatureEnabled/Disabled (mobile) — hyphenated flag env-key normalisation", () => {
+  const HYPHEN_FLAG = "log-sheet-slot-selector";
+  const NORMALISED_ENV = "EXPO_PUBLIC_FLAG_FORCE_LOG_SHEET_SLOT_SELECTOR";
+
+  beforeEach(() => {
+    isEnabledMock.mockReset();
+    vi.stubGlobal("__DEV__", true);
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  });
+
+  it("isFeatureEnabled honours the underscored force env for a hyphenated flag", () => {
+    vi.stubEnv(NORMALISED_ENV, "true");
+    expect(isFeatureEnabled(HYPHEN_FLAG)).toBe(true);
+    expect(isEnabledMock).not.toHaveBeenCalled();
+    vi.stubEnv(NORMALISED_ENV, "false");
+    expect(isFeatureEnabled(HYPHEN_FLAG)).toBe(false);
+  });
+
+  it("isFeatureDisabled honours the underscored force env for a hyphenated flag", () => {
+    vi.stubEnv(NORMALISED_ENV, "false");
+    expect(isFeatureDisabled(HYPHEN_FLAG)).toBe(true);
+    expect(isEnabledMock).not.toHaveBeenCalled();
+  });
+
+  it("ignores a raw hyphenated env key (proves normalisation, not a literal lookup)", () => {
+    // The old, un-settable key shape must have no effect post-fix.
+    vi.stubEnv("EXPO_PUBLIC_FLAG_FORCE_LOG-SHEET-SLOT-SELECTOR", "true");
+    isEnabledMock.mockReturnValue(undefined); // cold client
+    expect(isFeatureEnabled(HYPHEN_FLAG)).toBe(false);
+  });
+});

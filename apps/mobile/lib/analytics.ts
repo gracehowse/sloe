@@ -187,8 +187,11 @@ export function reset(): void {
  *  override completely (the `__DEV__` guard inlines to `false` and
  *  the whole branch is dropped by Hermes' DCE).
  *
- *  Mapping: `today_log_usual_row_v2` →
- *  `EXPO_PUBLIC_FLAG_FORCE_TODAY_LOG_USUAL_ROW_V2`.
+ *  Mapping: uppercase the flag and replace hyphens with underscores
+ *  (env-var names can't contain hyphens). So `today_log_usual_row_v2`
+ *  → `EXPO_PUBLIC_FLAG_FORCE_TODAY_LOG_USUAL_ROW_V2`, and the
+ *  hyphenated `log-sheet-slot-selector` →
+ *  `EXPO_PUBLIC_FLAG_FORCE_LOG_SHEET_SLOT_SELECTOR`.
  */
 export function isFeatureEnabled(flag: string): boolean {
   // `__DEV__` is a React Native runtime global, not defined in the
@@ -196,7 +199,8 @@ export function isFeatureEnabled(flag: string): boolean {
   // that render this module under jsdom don't blow up with
   // ReferenceError.
   if (typeof __DEV__ !== "undefined" && __DEV__) {
-    const envKey = `EXPO_PUBLIC_FLAG_FORCE_${flag.toUpperCase()}`;
+    // hyphen→underscore: env-var names can't contain hyphens (see docstring).
+    const envKey = `EXPO_PUBLIC_FLAG_FORCE_${flag.toUpperCase().replace(/-/g, "_")}`;
     const override = process.env[envKey];
     if (override === "true") return true;
     if (override === "false") return false;
@@ -227,7 +231,8 @@ export function isFeatureEnabled(flag: string): boolean {
  *  disabled `true`; "true" forces ON → disabled `false`. */
 export function isFeatureDisabled(flag: string): boolean {
   if (typeof __DEV__ !== "undefined" && __DEV__) {
-    const envKey = `EXPO_PUBLIC_FLAG_FORCE_${flag.toUpperCase()}`;
+    // hyphen→underscore: env-var names can't contain hyphens (see docstring).
+    const envKey = `EXPO_PUBLIC_FLAG_FORCE_${flag.toUpperCase().replace(/-/g, "_")}`;
     const override = process.env[envKey];
     if (override === "false") return true;
     if (override === "true") return false;
