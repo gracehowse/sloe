@@ -343,9 +343,7 @@ export function WebFlow() {
           counter (formerly "n/15") is removed at all widths because
           N-of-15 anchored testers on remaining work. The narrative
           column's eyebrow still carries the per-step label on
-          desktop; the bar carries the partway feel on phone widths.
-          The Save & Exit stub is hidden until the wired-up confirm
-          flow lands (tracked in TODO.md OB2 follow-ups). */}
+          desktop; the bar carries the partway feel on phone widths. */}
       <header className="h-14 md:h-16 flex-shrink-0 border-b border-border bg-card/80 backdrop-blur-md grid grid-cols-[1fr_auto_1fr] items-center px-4 md:px-9">
         <div className="justify-self-start">
           <SupprWordmark size={24} />

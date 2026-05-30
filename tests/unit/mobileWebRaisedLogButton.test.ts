@@ -110,12 +110,11 @@ describe("mobile-web raised Log button — App.tsx", () => {
   });
 
   it("does not render the legacy side <LogFab> from App.tsx", () => {
-    // The side FAB is removed from the mobile-web layout. Even
-    // though the `<LogFab>` component file is preserved (deferred
-    // deletion), App.tsx must not import or render it. The JSX
-    // signature we forbid is `<LogFab` followed by whitespace or a
-    // newline (a self-closing JSX render); explanatory comments
-    // referring to `<LogFab>` are fine.
+    // The side FAB was removed from the mobile-web layout and the
+    // LogFab component has since been deleted (ENG-752). App.tsx
+    // must not import or render it. The JSX signature we forbid is
+    // `<LogFab` followed by whitespace or a newline (a self-closing
+    // JSX render); explanatory comments referring to it are fine.
     expect(APP).not.toMatch(/import \{ LogFab \}/);
     expect(APP).not.toMatch(/<LogFab[\s\n]/);
   });

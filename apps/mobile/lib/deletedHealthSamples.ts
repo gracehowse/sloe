@@ -231,7 +231,7 @@ export async function loadDeletedHealthSampleIds(): Promise<ReadonlySet<string>>
 
 /**
  * Clear the tombstone (both L1 + L2). Exposed for a future "Re-import
- * all from Apple Health" affordance — not wired today.
+ * all from Apple Health" affordance — not wired today (tracked: ENG-752).
  */
 export async function clearDeletedHealthSampleIds(): Promise<void> {
   memoCache = new Set();
