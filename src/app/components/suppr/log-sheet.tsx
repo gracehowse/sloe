@@ -277,6 +277,18 @@ export interface LogSheetProps {
    *  a row appears above the browse tabs. `onTap` fires when the user
    *  clicks it; host shows confirmation dialog + performs the copy. */
   copyYesterday?: { count: number; onTap: () => void } | null;
+  /** Log-time meal-slot selector (ENG-773). When provided, a 4-segment
+   *  Breakfast/Lunch/Dinner/Snacks control renders under the header so
+   *  the user can see AND choose which meal the item lands in, instead
+   *  of it being a hidden clock-inferred guess. `current` is the active
+   *  slot (host seeds it from time-of-day); `onChange` updates the
+   *  host's active slot, which every commit path already reads. Mirror
+   *  of the mobile `LogSheet` `slot` prop. */
+  slot?: {
+    current: string;
+    options: readonly string[];
+    onChange: (slot: string) => void;
+  };
 }
 
 type BrowseTab = "recent" | "library" | "saved";
@@ -294,6 +306,7 @@ export function LogSheet({
   onAddManually,
   desktop,
   copyYesterday,
+  slot,
 }: LogSheetProps) {
   const [browseTab, setBrowseTab] = React.useState<BrowseTab>("recent");
   React.useEffect(() => {
@@ -363,6 +376,44 @@ export function LogSheet({
               <X className="h-5 w-5" aria-hidden />
             </DrawerPrimitive.Close>
           </div>
+
+          {/* ENG-773 — log-time meal-slot selector. Mirrors the mobile
+              LogSheet `slot` row: the slot the item will land in is
+              visible + tappable here, not a hidden clock guess. Selected
+              state uses the canonical soft-tint + primary-border language
+              (NOT solid primary) so the `text-foreground` label clears
+              WCAG AA — primary text on the tint is only ~3.34:1. */}
+          {slot ? (
+            <div
+              role="radiogroup"
+              aria-label="Meal to log to"
+              data-slot="log-sheet-slot-row"
+              className="flex gap-2 border-b px-4 py-2.5"
+            >
+              {slot.options.map((s) => {
+                const active = slot.current === s;
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    data-testid={`log-sheet-slot-${s.toLowerCase()}`}
+                    onClick={() => slot.onChange(s)}
+                    className={cn(
+                      "flex-1 rounded-lg border px-2 py-1.5 text-[13px] font-semibold transition-colors",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1",
+                      active
+                        ? "border-primary bg-primary/10 text-foreground"
+                        : "border-border text-muted-foreground hover:border-primary/30",
+                    )}
+                  >
+                    {s}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
 
           {inManualEntryMode ? (
             <BarcodeManualEntry

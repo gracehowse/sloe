@@ -31,12 +31,23 @@ import { normaliseMealSlot } from "./mealSlots";
  * on a 4pm log. Local device time on purpose: a US user logging at
  * 8am EST should see Breakfast, regardless of UTC.
  */
-export function fallbackSlotFromTimeOfDay(now: Date = new Date()): string {
-  const hour = now.getHours();
+export function slotForHour(
+  hour: number,
+): "Breakfast" | "Lunch" | "Snacks" | "Dinner" {
   if (hour < 11) return "Breakfast";
   if (hour < 15) return "Lunch";
   if (hour < 17) return "Snacks";
   return "Dinner";
+}
+
+export function fallbackSlotFromTimeOfDay(now: Date = new Date()): string {
+  // ENG-773 (2026-05-30): single source of truth for the time-of-day
+  // → slot ladder. The mobile Today quick-log path previously carried
+  // its own `slotForHour` (cutoffs 10/14/17) that disagreed with this
+  // (11/15/17), so the same clock time bucketed a 10–11am / 2–3pm log
+  // into different meals depending on entry path. Both now call
+  // `slotForHour` here.
+  return slotForHour(now.getHours());
 }
 
 /**

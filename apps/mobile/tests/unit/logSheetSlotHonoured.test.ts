@@ -18,6 +18,13 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+// ENG-773 (2026-05-30): slotForHour now lives in the shared lib (single
+// source of truth) — import it for real rather than regex-pinning a
+// local copy in index.tsx.
+import {
+  slotForHour,
+  fallbackSlotFromTimeOfDay,
+} from "../../../../src/lib/nutrition/recipeJournalSlot";
 
 const REPO = resolve(__dirname, "..", "..", "..", "..");
 const SRC = readFileSync(
@@ -64,21 +71,14 @@ describe("build-47 — LogSheet pick-handlers honour activeMealSlot", () => {
 });
 
 describe("build-47 — generic FAB-open paths reset activeMealSlot to time-of-day", () => {
-  it("module-level slotForHour helper exists and covers the 4 buckets", () => {
-    expect(SRC).toMatch(/function\s+slotForHour\(/);
-    // Each bucket boundary appears at least once in the helper body.
-    const fnMatch = SRC.match(/function\s+slotForHour\([\s\S]+?return\s+["']Dinner["'];?\s*\}/);
-    expect(fnMatch, "slotForHour body must be findable").not.toBeNull();
-    if (fnMatch) {
-      const body = fnMatch[0];
-      expect(body).toContain("Breakfast");
-      expect(body).toContain("Lunch");
-      expect(body).toContain("Snacks");
-      expect(body).toContain("Dinner");
-      expect(body).toMatch(/h\s*<\s*10/);
-      expect(body).toMatch(/h\s*<\s*14/);
-      expect(body).toMatch(/h\s*<\s*17/);
-    }
+  it("imports the shared slotForHour helper (single source of truth)", () => {
+    // ENG-773: the quick-log path now uses the shared ladder so it can
+    // never drift from the recipe-log path again.
+    expect(SRC).toMatch(
+      /import\s*\{[^}]*\bslotForHour\b[^}]*\}\s*from\s*["']@suppr\/shared\/nutrition\/recipeJournalSlot["']/,
+    );
+    // The old local copy (its own 10/14/17 cutoffs) must be gone.
+    expect(SRC).not.toMatch(/function\s+slotForHour\(/);
   });
 
   it("deep-link FAB (params.openLog === '1') resets activeMealSlot before opening", () => {
@@ -118,25 +118,45 @@ describe("build-47 — generic FAB-open paths reset activeMealSlot to time-of-da
   });
 });
 
-describe("build-47 — slotForHour bucket boundaries (pure)", () => {
-  // Mirror the helper's logic so the buckets stay matchable. The
-  // file isn't importable as a module from this test (it's a
-  // React Native screen with side-effect imports), so we re-implement
-  // and pin the boundaries against the source.
-  function expectedSlot(h: number): string {
-    if (h < 10) return "Breakfast";
-    if (h < 14) return "Lunch";
-    if (h < 17) return "Snacks";
-    return "Dinner";
-  }
-
-  it("breakfast covers 0-9, lunch 10-13, snacks 14-16, dinner 17-23", () => {
+describe("ENG-773 — unified canonical slot ladder (11/15/17)", () => {
+  it("slotForHour buckets: breakfast <11, lunch <15, snacks <17, dinner ≥17", () => {
     for (let h = 0; h < 24; h++) {
-      const slot = expectedSlot(h);
-      if (h < 10) expect(slot).toBe("Breakfast");
-      else if (h < 14) expect(slot).toBe("Lunch");
+      const slot = slotForHour(h);
+      if (h < 11) expect(slot).toBe("Breakfast");
+      else if (h < 15) expect(slot).toBe("Lunch");
       else if (h < 17) expect(slot).toBe("Snacks");
       else expect(slot).toBe("Dinner");
     }
+  });
+
+  it("fallbackSlotFromTimeOfDay delegates to slotForHour (no divergent ladder)", () => {
+    // The pre-ENG-773 bug: index.tsx used 10/14/17 while the shared
+    // recipe-log path used 11/15/17, so the same clock time bucketed
+    // a 10–11am / 2–3pm log into different meals by entry path.
+    for (let h = 0; h < 24; h++) {
+      const d = new Date(2026, 0, 1, h, 30, 0);
+      expect(fallbackSlotFromTimeOfDay(d)).toBe(slotForHour(h));
+    }
+  });
+});
+
+describe("ENG-773 — mobile LogSheet slot selector is flag-gated", () => {
+  it("wraps the LogSheet `slot` prop in isFeatureEnabled('log-sheet-slot-selector')", () => {
+    // The visible picker is new structure, so per CLAUDE.md it ships
+    // behind a flag. `activeMealSlot` is still threaded through every
+    // commit path regardless — only the picker UI is gated.
+    expect(SRC).toMatch(
+      /slot=\{[\s\S]{0,200}isFeatureEnabled\(\s*["']log-sheet-slot-selector["']\s*\)[\s\S]{0,160}current:\s*activeMealSlot/,
+    );
+  });
+
+  it("passes the canonical MEAL_SLOTS as the selector options (no local list)", () => {
+    expect(SRC).toMatch(/options:\s*MEAL_SLOTS/);
+  });
+
+  it("imports isFeatureEnabled from the analytics module", () => {
+    expect(SRC).toMatch(
+      /import\s*\{[^}]*\bisFeatureEnabled\b[^}]*\}\s*from\s*["']@\/lib\/analytics["']/,
+    );
   });
 });

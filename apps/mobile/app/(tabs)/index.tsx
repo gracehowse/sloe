@@ -98,7 +98,7 @@ import {
   type WeekSummaryMode,
 } from "@suppr/shared/nutrition/weekSummaryWindow";
 import { getYesterdayMeals } from "@suppr/shared/nutrition/copyYesterdayMeals";
-import { track } from "@/lib/analytics";
+import { track, isFeatureEnabled } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { findPlanDayIdForCalendarDate } from "@suppr/shared/mealPlan/planCalendarAnchor";
 import { coerceMacrosWhenCaloriesButNoGrams } from "@suppr/shared/nutrition/coerceRecipeMacrosForPlanning";
@@ -128,7 +128,7 @@ import {
 import { isHealthImportFallbackTitle } from "@suppr/shared/nutrition/healthImportLabels";
 import { mapMealSourceToDot } from "@suppr/shared/nutrition/sourceMap";
 import { isMealSlot } from "@suppr/shared/nutrition/mealSlots";
-import { journalSlotFromMealTypes } from "@suppr/shared/nutrition/recipeJournalSlot";
+import { journalSlotFromMealTypes, slotForHour } from "@suppr/shared/nutrition/recipeJournalSlot";
 import {
   LEGACY_STORAGE_KEY_V1 as EAT_AGAIN_LEGACY_KEY_V1,
   STORAGE_KEY as EAT_AGAIN_STORAGE_KEY,
@@ -373,15 +373,14 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 // the afternoon was logging picks as Snacks. Two reasons: (1) the
 // pick-handlers used `currentSlotFromTime` instead of `activeMealSlot`,
 // and (2) generic FAB-open paths (deep-link, empty-state) didn't reset
-// `activeMealSlot` to a fresh time-of-day default. Shared helper so
-// the useMemo + the two reset call-sites all use the same buckets.
-function slotForHour(h: number): "Breakfast" | "Lunch" | "Snacks" | "Dinner" {
-  if (h < 10) return "Breakfast";
-  if (h < 14) return "Lunch";
-  if (h < 17) return "Snacks";
-  return "Dinner";
-}
-
+// `activeMealSlot` to a fresh time-of-day default.
+//
+// ENG-773 (2026-05-30): the time-of-day bucketing now comes from
+// `slotForHour` in the shared `recipeJournalSlot` lib (imported above),
+// not a local copy. The useMemo + the two reset call-sites all call
+// that one helper, so web and mobile seed the same slot for the same
+// clock time (was 10/14/17 locally vs 11/15/17 shared — now 11/15/17
+// everywhere).
 export default function TrackerScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{
@@ -5274,6 +5273,22 @@ export default function TrackerScreen() {
       <LogSheet
         visible={fabSheetOpen}
         onClose={() => setFabSheetOpen(false)}
+        // ENG-773 — log-time meal-slot selector (web parity with
+        // `src/app/components/NutritionTracker.tsx`). Flag-gated visual
+        // element (CLAUDE.md): the picker row is new structure so it
+        // ships behind `log-sheet-slot-selector`. `activeMealSlot` is
+        // still threaded through every commit path regardless of the
+        // flag — flag-off is identical to pre-ENG-773 (slot stays a
+        // hidden clock guess, seeded from time-of-day via slotForHour).
+        slot={
+          isFeatureEnabled("log-sheet-slot-selector")
+            ? {
+                current: activeMealSlot,
+                options: MEAL_SLOTS,
+                onChange: setActiveMealSlot,
+              }
+            : undefined
+        }
         search={{
           // INLINE-SEARCH MODE (2026-04-30): the search row is a real
           // `<TextInput>` with autoFocus, and results render INSIDE the

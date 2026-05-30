@@ -25,7 +25,7 @@ import { supabase } from "../../lib/supabase/browserClient.ts";
 import { fetchPlannedMealMicros, type SupabaseLike } from "../../lib/planning/plannedMealMicros.ts";
 import { useAuthSession } from "../../context/AuthSessionContext.tsx";
 import { AnalyticsEvents, type FoodLoggedSource } from "../../lib/analytics/events.ts";
-import { track } from "../../lib/analytics/track.ts";
+import { track, isFeatureEnabled } from "../../lib/analytics/track.ts";
 import { type OffProductMacros } from "../../lib/openFoodFacts/fetchProductByBarcode.ts";
 import { computeLoggingStreak } from "../../lib/nutrition/trackerStats.ts";
 import {
@@ -122,8 +122,11 @@ import {
   type SavedMeal,
   type SavedMealItem,
 } from "../../lib/nutrition/savedMeals";
-import { isMealSlot, type MealSlot } from "../../lib/nutrition/mealSlots";
-import { journalSlotFromMealTypes } from "../../lib/nutrition/recipeJournalSlot";
+import { isMealSlot, MEAL_SLOTS, type MealSlot } from "../../lib/nutrition/mealSlots";
+import {
+  journalSlotFromMealTypes,
+  slotForHour,
+} from "../../lib/nutrition/recipeJournalSlot";
 import {
   parseDismissedSlots,
   serializeDismissedSlots,
@@ -173,14 +176,16 @@ const RECENT_BARCODE_KEY = "suppr-recent-foods-v1";
 // 2026-05-08 build-47 follow-up — Grace TF: tapping "+ Breakfast" in
 // the afternoon was logging picks as Snacks. Pick-handlers must use
 // `mealSlot` (the user's choice), and the generic LogSheet-open paths
-// must reset `mealSlot` to a fresh time-of-day default. Mobile parity:
-// `apps/mobile/app/(tabs)/index.tsx` slotForHour.
-function slotForHour(h: number): "Breakfast" | "Lunch" | "Snacks" | "Dinner" {
-  if (h < 10) return "Breakfast";
-  if (h < 14) return "Lunch";
-  if (h < 17) return "Snacks";
-  return "Dinner";
-}
+// must reset `mealSlot` to a fresh time-of-day default.
+//
+// ENG-773 (2026-05-30): `slotForHour` is now imported from the shared
+// `recipeJournalSlot` lib (single source of truth) instead of a local
+// copy. The old local copy used 10/14/17 cutoffs while the shared
+// helper (and mobile) used 11/15/17, so the same clock time seeded a
+// different default slot depending on platform — a 10–11am / 2–3pm
+// open bucketed differently on web vs mobile. Both now agree via the
+// shared ladder. Net behaviour change: a 10:30am open now seeds
+// Breakfast (was Lunch); a 2:30pm open now seeds Lunch (was Snacks).
 
 const MEAL_SECTION_ORDER = ["Breakfast", "Lunch", "Dinner", "Snacks", "Planned"];
 
@@ -3185,6 +3190,21 @@ export const NutritionTracker = memo(function NutritionTracker({
       <LogSheet
         open={logSheetOpen}
         onOpenChange={setLogSheetOpen}
+        // ENG-773 — log-time meal-slot selector (web parity with mobile
+        // `apps/mobile/app/(tabs)/index.tsx`). Flag-gated visual element
+        // (CLAUDE.md): the picker row is new structure so it ships behind
+        // `log-sheet-slot-selector`. `mealSlot` is still threaded through
+        // every commit path regardless of the flag — flag-off is
+        // identical to pre-ENG-773 (slot stays a hidden clock guess).
+        slot={
+          isFeatureEnabled("log-sheet-slot-selector")
+            ? {
+                current: mealSlot,
+                options: MEAL_SLOTS,
+                onChange: setMealSlot,
+              }
+            : undefined
+        }
         // Phase 4 / B3.Y — desktop modal mode kicks in at ≥1024px.
         desktop={isDesktop}
         search={{
