@@ -6,7 +6,7 @@ import { useFeatureFlagEnabled } from "posthog-js/react";
 import { Button } from "@/app/components/ui/button";
 import { SupprWordmark } from "@/app/components/ui/suppr-mark";
 import { AnalyticsEvents } from "@/lib/analytics/events";
-import { track } from "@/lib/analytics/track";
+import { isFeatureDisabled, track } from "@/lib/analytics/track";
 import { useAuthSession } from "@/context/AuthSessionContext";
 import { supabase } from "@/lib/supabase/browserClient";
 import { saveLocalProfile } from "@/lib/profile/profileStorage";
@@ -20,10 +20,7 @@ import {
   mapV2GoalToLegacy,
   persistOnboarding,
 } from "@/lib/onboarding/persist";
-import {
-  ONBOARDING_SEEDS,
-  type OnboardingSeed,
-} from "@/lib/onboarding/onboardingSeeds";
+import { selectOnboardingSeeds } from "@/lib/onboarding/onboardingSeeds";
 import {
   resolveSeedsToRecipeIds,
   saveResolvedSeeds,
@@ -182,9 +179,23 @@ export function WebFlow() {
         // Best-effort: each step is independently observable so a
         // partial failure (resolve miss / plan-build fail) still
         // bounces the user to /home with a clear toast caller.
-        const pickedSeeds: OnboardingSeed[] = ONBOARDING_SEEDS.filter((s) =>
-          state.pickedRecipeSlugs.includes(s.slug),
-        );
+        //
+        // Web parity (2026-05-30): seed selection is shared with
+        // mobile-flow via `selectOnboardingSeeds`. The Recipes picker was
+        // pulled from the linear flow in the 15→12 shrink, so
+        // `pickedRecipeSlugs` is empty for every default completion — the
+        // selector then falls back to curated defaults (diet/allergen-
+        // filtered) so the library starts with content and the
+        // "what to eat next" north-star can render. The
+        // `onboarding_default_seeds` kill switch (default-ON; read via
+        // `isFeatureDisabled` so a cold PostHog doesn't skip seeding)
+        // lets that fallback be rolled back on both platforms at once.
+        const { seeds: pickedSeeds, usedDefaults } = selectOnboardingSeeds({
+          pickedRecipeSlugs: state.pickedRecipeSlugs,
+          diet: state.diet,
+          allergies: state.allergies,
+          seedingDisabled: isFeatureDisabled("onboarding_default_seeds"),
+        });
         let planFailed = false;
         let missingCount = 0;
         if (pickedSeeds.length > 0) {
@@ -221,6 +232,11 @@ export function WebFlow() {
           recipes_picked: pickedSeeds.length,
           recipes_resolved: pickedSeeds.length - missingCount,
           plan_built: !planFailed,
+          // Web parity (2026-05-30) — true when the library was seeded
+          // from curated defaults (no picker in the linear flow). Mirrors
+          // mobile-flow's `used_default_seeds` so the activation-lift
+          // dashboards read the same on both platforms.
+          used_default_seeds: usedDefaults,
           // Build-40 (2026-05-01) — which data-bridge the user
           // actioned on the terminal step. `null` = never touched
           // a card; "skip" = explicitly tapped Maybe later.

@@ -210,6 +210,37 @@ export function isFeatureEnabled(flag: string): boolean {
   }
 }
 
+/** Fail-safe kill switch over already-shipped, default-ON behaviour.
+ *  Mirror of `src/lib/analytics/track.ts#isFeatureDisabled` (web).
+ *  Returns `true` ONLY when PostHog is initialised AND the flag resolves
+ *  explicitly to `false`; a cold / missing client or an unloaded flag
+ *  returns `false` ("not disabled") so the gated behaviour proceeds.
+ *
+ *  NOT `!isFeatureEnabled(flag)` — that collapses "off" and "not loaded
+ *  yet" into one `false`, which would skip the behaviour whenever flags
+ *  are cold (the common case during onboarding completion). Use this for
+ *  kill switches where the safe cold default is ON (e.g.
+ *  `onboarding_default_seeds`, live since 2026-04-30).
+ *
+ *  Dev / E2E override mirrors `isFeatureEnabled`:
+ *  `EXPO_PUBLIC_FLAG_FORCE_<FLAG>` = "false" forces the flag OFF →
+ *  disabled `true`; "true" forces ON → disabled `false`. */
+export function isFeatureDisabled(flag: string): boolean {
+  if (typeof __DEV__ !== "undefined" && __DEV__) {
+    const envKey = `EXPO_PUBLIC_FLAG_FORCE_${flag.toUpperCase()}`;
+    const override = process.env[envKey];
+    if (override === "false") return true;
+    if (override === "true") return false;
+  }
+  const c = getPostHogClient();
+  if (!c) return false;
+  try {
+    return c.isFeatureEnabled(flag) === false;
+  } catch {
+    return false;
+  }
+}
+
 // `isOnboardingV2Enabled` + `subscribeToFlags` were removed 2026-04-30
 // once the onboarding_v2 flag hit 100% and the legacy
 // /onboarding redirect was replaced by the canonical route. The

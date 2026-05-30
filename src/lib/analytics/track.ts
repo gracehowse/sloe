@@ -36,6 +36,28 @@ export function isFeatureEnabled(flag: string): boolean {
   }
 }
 
+/** Fail-safe kill switch over already-shipped, default-ON behaviour.
+ *  Returns `true` ONLY when PostHog is initialised AND the flag resolves
+ *  explicitly to `false`. When PostHog is missing, the flag is unloaded,
+ *  or the flag doesn't exist, returns `false` ("not disabled") so the
+ *  gated behaviour proceeds.
+ *
+ *  This is deliberately NOT `!isFeatureEnabled(flag)`: the plain
+ *  `isFeatureEnabled` collapses "off" and "not loaded yet" into the same
+ *  `false`, so negating it would skip the behaviour whenever PostHog is
+ *  cold — which, during onboarding completion, is the common case. Use
+ *  `isFeatureDisabled` for kill switches where the safe cold default is
+ *  ON (e.g. `onboarding_default_seeds`, live on mobile since 2026-04-30
+ *  — a stale skip would leave the user's library empty). */
+export function isFeatureDisabled(flag: string): boolean {
+  if (!process.env.NEXT_PUBLIC_POSTHOG_KEY) return false;
+  try {
+    return posthog.isFeatureEnabled(flag) === false;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * 2026-04-27: removed the web `isOnboardingV2Enabled` + `subscribeToFlags`
  * helpers — the only consumer was `app/onboarding/legacy-form.tsx` which

@@ -7,8 +7,10 @@
  * Authority: D-2026-04-27-14 + the candidate-source decision.
  *
  * The flow:
- *   1. Caller passes a Set of picked seed slugs from the
- *      RecipePickerGrid + the authed userId + a Supabase client.
+ *   1. Caller passes the onboarding seeds + the authed userId + a
+ *      Supabase client. Since the picker step was cut (2026-05-30),
+ *      seeds come from `defaultOnboardingSeeds` (curated defaults,
+ *      diet/allergen-filtered) at completion in web-flow / mobile-flow.
  *   2. We resolve each slug to a `recipes.id` via case-insensitive
  *      title match against `recipes.matchTitle`. Misses are reported
  *      back so the UI can decide whether to retry / surface a partial
