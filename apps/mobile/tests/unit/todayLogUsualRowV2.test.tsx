@@ -60,9 +60,25 @@ const PEANUT_BUTTER_SMOOTHIE: SavedMeal = {
   logCount: 3,
 };
 
+// Second Snacks usual — present only in the ENG-783 picker test so the
+// pill resolves to ≥2 options and opens the usual-picker Modal instead
+// of logging the single primary directly.
+const TRAIL_MIX_SNACK: SavedMeal = {
+  id: "saved-2",
+  name: "Trail Mix",
+  defaultMealSlot: "Snacks",
+  items: [],
+  createdAt: "2026-05-02T00:00:00.000Z",
+  lastLoggedAt: "2026-05-05T00:00:00.000Z",
+  logCount: 1,
+};
+
 function renderSection(overrides: {
   collapsedSlots?: Set<string>;
   onLogSavedMeal?: (meal: SavedMeal, slot: string) => void;
+  /** ENG-783 — host passes this only when `today-edit-entry-v2` is on. */
+  onRequestPortion?: (meal: SavedMeal, slot: string) => void;
+  savedMeals?: readonly SavedMeal[];
 }) {
   const onLogSavedMeal = overrides.onLogSavedMeal ?? vi.fn();
   const utils = render(
@@ -93,8 +109,9 @@ function renderSection(overrides: {
       textTertiaryColor="#64748b"
       cardColor="#16161e"
       cardBorderColor="#2a2a3a"
-      savedMeals={[PEANUT_BUTTER_SMOOTHIE]}
+      savedMeals={overrides.savedMeals ?? [PEANUT_BUTTER_SMOOTHIE]}
       onLogSavedMeal={onLogSavedMeal}
+      onRequestPortion={overrides.onRequestPortion}
       hintVisibleForSlot={() => false}
       onDismissUsualMealHint={() => undefined}
       onAcceptUsualMealHint={() => undefined}
@@ -216,5 +233,130 @@ describe("TodayMealsSection — today_log_usual_row_v2 flag", () => {
     expect(getByTestId("today-log-usual-pill-in-header-Snacks")).toBeTruthy();
     expect(queryByTestId("today-log-usual-row-Snacks")).toBeNull();
     expect(queryByTestId("today-log-usual-pill-Snacks")).toBeNull();
+  });
+});
+
+/**
+ * ENG-783 — saved-meal portion editor wiring (today-edit-entry-v2).
+ *
+ * The host passes `onRequestPortion` ONLY when `today-edit-entry-v2` is on
+ * (see `app/(tabs)/index.tsx` → `onRequestPortion={isFeatureEnabled(...) ?
+ * openPortionConfirm : undefined}`). The component itself doesn't read that
+ * flag — it just routes saved-meal taps through `onRequestPortion ??
+ * onLogSavedMeal`. So these tests don't mock `today-edit-entry-v2`; they
+ * simulate the host by passing / omitting `onRequestPortion`.
+ *
+ * Coverage — all three saved-meal tap sites:
+ *   1. v2 dedicated-row pill   (today_log_usual_row_v2 ON, 1 saved meal)
+ *   2. in-header pill          (today_log_usual_row_v2 OFF, 1 saved meal)
+ *   3. usual-picker Modal row  (≥2 saved meals → picker opens first)
+ * Each tested with the prop wired (portion editor) AND omitted (instant-log
+ * fallback) so the flag-off path can never silently regress.
+ */
+describe("TodayMealsSection — ENG-783 saved-meal portion editor", () => {
+  beforeEach(() => {
+    flagFn.mockImplementation(() => false);
+  });
+
+  it("v2 row, prop wired: tapping the pill opens the portion editor and does NOT instant-log", () => {
+    flagFn.mockImplementation(
+      (flag: string) => flag === "today_log_usual_row_v2",
+    );
+    const onRequestPortion = vi.fn();
+    const onLogSavedMeal = vi.fn();
+    const { getByLabelText } = renderSection({
+      onRequestPortion,
+      onLogSavedMeal,
+    });
+    fireEvent.press(
+      getByLabelText("Log usual Snacks: Peanut Butter Smoothie"),
+    );
+    expect(onRequestPortion).toHaveBeenCalledTimes(1);
+    expect(onRequestPortion).toHaveBeenCalledWith(
+      PEANUT_BUTTER_SMOOTHIE,
+      "Snacks",
+    );
+    expect(onLogSavedMeal).not.toHaveBeenCalled();
+  });
+
+  it("v2 row, prop omitted: tapping falls back to the instant onLogSavedMeal log", () => {
+    flagFn.mockImplementation(
+      (flag: string) => flag === "today_log_usual_row_v2",
+    );
+    const onLogSavedMeal = vi.fn();
+    const { getByLabelText } = renderSection({ onLogSavedMeal });
+    fireEvent.press(
+      getByLabelText("Log usual Snacks: Peanut Butter Smoothie"),
+    );
+    expect(onLogSavedMeal).toHaveBeenCalledTimes(1);
+    expect(onLogSavedMeal).toHaveBeenCalledWith(
+      PEANUT_BUTTER_SMOOTHIE,
+      "Snacks",
+    );
+  });
+
+  it("in-header pill (flag off), prop wired: tapping opens the portion editor", () => {
+    flagFn.mockImplementation(() => false);
+    const onRequestPortion = vi.fn();
+    const onLogSavedMeal = vi.fn();
+    const { getByLabelText } = renderSection({
+      onRequestPortion,
+      onLogSavedMeal,
+    });
+    // The in-header variant calls `e.stopPropagation?.()` (it sits inside the
+    // tappable slot header), so hand it a synthetic event — RN always
+    // supplies a GestureResponderEvent in production; fireEvent does not.
+    fireEvent.press(
+      getByLabelText("Log usual Snacks: Peanut Butter Smoothie"),
+      { stopPropagation: () => undefined },
+    );
+    expect(onRequestPortion).toHaveBeenCalledTimes(1);
+    expect(onRequestPortion).toHaveBeenCalledWith(
+      PEANUT_BUTTER_SMOOTHIE,
+      "Snacks",
+    );
+    expect(onLogSavedMeal).not.toHaveBeenCalled();
+  });
+
+  it("usual-picker (≥2 saved), prop wired: picking a row opens the portion editor for that meal", () => {
+    flagFn.mockImplementation(
+      (flag: string) => flag === "today_log_usual_row_v2",
+    );
+    const onRequestPortion = vi.fn();
+    const onLogSavedMeal = vi.fn();
+    const { getByLabelText } = renderSection({
+      savedMeals: [PEANUT_BUTTER_SMOOTHIE, TRAIL_MIX_SNACK],
+      onRequestPortion,
+      onLogSavedMeal,
+    });
+    // With two Snacks usuals the pill opens the chooser instead of logging.
+    fireEvent.press(
+      getByLabelText("Log a usual Snacks — choose from 2 saved meals"),
+    );
+    // Pick the second option from the now-open Modal.
+    fireEvent.press(getByLabelText(/^Log Trail Mix —/));
+    expect(onRequestPortion).toHaveBeenCalledTimes(1);
+    expect(onRequestPortion).toHaveBeenCalledWith(TRAIL_MIX_SNACK, "Snacks");
+    expect(onLogSavedMeal).not.toHaveBeenCalled();
+  });
+
+  it("usual-picker (≥2 saved), prop omitted: picking a row falls back to instant log", () => {
+    flagFn.mockImplementation(
+      (flag: string) => flag === "today_log_usual_row_v2",
+    );
+    const onLogSavedMeal = vi.fn();
+    const { getByLabelText } = renderSection({
+      savedMeals: [PEANUT_BUTTER_SMOOTHIE, TRAIL_MIX_SNACK],
+      onLogSavedMeal,
+    });
+    fireEvent.press(
+      getByLabelText("Log a usual Snacks — choose from 2 saved meals"),
+    );
+    fireEvent.press(getByLabelText(/^Log Peanut Butter Smoothie —/));
+    expect(onLogSavedMeal).toHaveBeenCalledTimes(1);
+    expect(onLogSavedMeal).toHaveBeenCalledWith(
+      PEANUT_BUTTER_SMOOTHIE,
+      "Snacks",
+    );
   });
 });

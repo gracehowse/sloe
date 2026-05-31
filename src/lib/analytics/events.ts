@@ -869,6 +869,7 @@ export type FoodLoggedSource =
   | "manual"         // FoodSearch text/inline search confirm
   | "quick_add"      // QuickAddPanel tap (Favourite/Frequent/Recent/Eat-again)
   | "saved_meal"     // Re-log from My meals tab
+  | "log_again"      // ENG-786 — one-tap "Log this/these again" on a Today slot
   | "custom_food"    // Logged from custom food entry
   | "copy_meal"      // Per-meal copy flow
   | "duplicate_day"  // Day-level duplicate flow

@@ -96,6 +96,15 @@ export interface TodayMealsSectionProps {
   savedMeals: SavedMeal[];
   /** Ship M1 — log a saved meal into a specific slot. */
   onLogSavedMeal: (meal: SavedMeal, slot: string) => void;
+  /**
+   * ENG-786 — when set (flag `today_log_again` on), a "Log this/these
+   * again" row renders under each populated slot. Tapping it re-inserts
+   * that slot's current entries as fresh entries on the viewed day, with
+   * the same baked macros. Undefined (flag off) → no row, layout
+   * byte-identical to pre-ENG-786. Mirror:
+   * `apps/mobile/components/today/TodayMealsSection.tsx`.
+   */
+  onLogAgain?: (slot: string) => void;
   /** Ship M1 — whether the first-run hint is allowed to render in `slot`.
    * Computed in the host via `shouldShowUsualMealHint`. */
   hintVisibleForSlot: (slot: string) => boolean;
@@ -219,6 +228,7 @@ export function TodayMealsSection({
   onOpenLogSheet,
   savedMeals,
   onLogSavedMeal,
+  onLogAgain,
   hintVisibleForSlot,
   onDismissUsualMealHint,
   onAcceptUsualMealHint,
@@ -579,6 +589,27 @@ export function TodayMealsSection({
                         </button>
                       </div>
                     </div>
+                  )}
+
+                  {/* ENG-786 — "Log this/these again". Re-inserts this
+                      slot's current entries as fresh entries on the viewed
+                      day with the same baked macros. Flag-gated via the
+                      `onLogAgain` prop (undefined when `today_log_again` is
+                      off → row absent, layout byte-identical). Mirror:
+                      `apps/mobile/components/today/TodayMealsSection.tsx`. */}
+                  {onLogAgain && (
+                    <button
+                      type="button"
+                      data-testid={`today-log-again-${sectionName}`}
+                      onClick={() => onLogAgain(sectionName)}
+                      className="w-full flex items-center justify-center gap-2 px-3.5 py-2.5 border-t border-border/40 text-[13px] font-semibold text-foreground hover:bg-muted/40 transition-colors"
+                      aria-label={`Log ${sectionName} again — re-add ${
+                        sectionMeals.length > 1 ? "these items" : "this item"
+                      } to the day`}
+                    >
+                      <Icons.refresh className="w-4 h-4" aria-hidden />
+                      {sectionMeals.length > 1 ? "Log these again" : "Log this again"}
+                    </button>
                   )}
 
                   {/* Ship M1 — full-width "Save {Slot} as a meal" row. Only

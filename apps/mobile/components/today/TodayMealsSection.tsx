@@ -80,6 +80,21 @@ export interface TodayMealsSectionProps {
   savedMeals: readonly SavedMeal[];
   /** Ship M1 — log a saved meal into a specific slot. */
   onLogSavedMeal: (meal: SavedMeal, slot: string) => void;
+  /**
+   * ENG-783 — when set (flag `today-edit-entry-v2` on), tapping a saved
+   * meal (slot-header pill or usual-picker row) opens the portion editor
+   * first instead of logging 1× instantly. Falls back to `onLogSavedMeal`
+   * when undefined (flag off → instant one-tap log preserved).
+   */
+  onRequestPortion?: (meal: SavedMeal, slot: string) => void;
+  /**
+   * ENG-786 — when set (flag `today_log_again` on), a "Log this/these
+   * again" row renders under each populated slot. Tapping it re-inserts
+   * that slot's current entries as fresh entries on the viewed day, with
+   * the same baked macros. Undefined (flag off) → no row, layout
+   * byte-identical to pre-ENG-786.
+   */
+  onLogAgain?: (slot: string) => void;
   /** Ship M1 — whether the first-run hint is allowed to render in `slot`. */
   hintVisibleForSlot: (slot: string) => boolean;
   /** Ship M1 — user tapped "Not now" on the hint for `slot`. */
@@ -207,6 +222,8 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
     cardBorderColor,
     savedMeals,
     onLogSavedMeal,
+    onRequestPortion,
+    onLogAgain,
     hintVisibleForSlot,
     onDismissUsualMealHint,
     onAcceptUsualMealHint,
@@ -525,7 +542,8 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                             if (slotSaved.length >= 2) {
                               setUsualPicker({ slot, options: slotSaved });
                             } else {
-                              onLogSavedMeal(primarySaved, slot);
+                              // ENG-783 — flag on: tap opens portion editor.
+                              (onRequestPortion ?? onLogSavedMeal)(primarySaved, slot);
                             }
                           }}
                           hitSlop={6}
@@ -611,7 +629,8 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                         if (slotSaved.length >= 2) {
                           setUsualPicker({ slot, options: slotSaved });
                         } else {
-                          onLogSavedMeal(primarySaved, slot);
+                          // ENG-783 — flag on: tap opens portion editor.
+                          (onRequestPortion ?? onLogSavedMeal)(primarySaved, slot);
                         }
                       }}
                       hitSlop={6}
@@ -884,6 +903,38 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                 </View>
               )}
 
+              {/* ENG-786 — full-width "Log this/these again" row. Re-logs
+                  the slot's current entries as fresh entries on the viewed
+                  day (baked macros preserved). Sits above the Save-as-usual
+                  row: repeat-now is the action Grace asked for; saving a
+                  durable template is the quieter secondary. Flag
+                  `today_log_again` gates the prop at the host. */}
+              {hasMeals && isOpen && onLogAgain && (
+                <Pressable
+                  testID={`today-log-again-${slot}`}
+                  onPress={() => onLogAgain(slot)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Log ${slot} again — re-add ${
+                    meals.length > 1 ? "these items" : "this item"
+                  } to the day`}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                    paddingVertical: 12,
+                    paddingHorizontal: 14,
+                    borderTopWidth: 1,
+                    borderTopColor: cardBorderColor + "30",
+                  }}
+                >
+                  <RefreshCw size={14} color={col} />
+                  <Text style={{ ...Type.body, color: textColor }}>
+                    {meals.length > 1 ? "Log these again" : "Log this again"}
+                  </Text>
+                </Pressable>
+              )}
+
               {/* Ship M1 — full-width "Save {Slot} as a meal" row. */}
               {hasMeals && isOpen && showSaveRow && (
                 <Pressable
@@ -970,11 +1021,16 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                       <Pressable
                         key={m.id}
                         onPress={() => {
-                          if (usualPicker) {
-                            onLogSavedMeal(m, usualPicker.slot);
-                          }
+                          // ENG-783 — capture the slot, close the picker,
+                          // THEN open the portion editor (flag on) or log
+                          // instantly (flag off). Closing first avoids
+                          // modal-over-modal stacking on iOS.
+                          const pickedSlot = usualPicker?.slot;
                           setUsualPicker(null);
                           setUsualPickerShowAll(false);
+                          if (pickedSlot) {
+                            (onRequestPortion ?? onLogSavedMeal)(m, pickedSlot);
+                          }
                         }}
                         accessibilityRole="button"
                         accessibilityLabel={`Log ${m.name} — ${itemsLabel}, ${summary.totalCalories} kcal`}
