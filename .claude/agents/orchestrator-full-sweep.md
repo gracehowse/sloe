@@ -54,6 +54,7 @@ Run agents in this order. Group within phases can run in parallel.
 7. `visual-qa`
 8. `ui-critic`
 9. `premium-auditor` — end-to-end premium-bar sweep, every surface, with a named best-in-class comparable per feature (Withings, MFP, Recime, Cal AI, Linear, etc.); refuse-to-pass list gates phase exit
+9b. `design-director` — whole-product design-identity pass: assembles every surface on one wall and judges system-level palette coherence, cross-surface consistency, material depth (flat/cheap vs crafted), motion personality, and sensory delight (haptics + win moments); pixel-grounded; outputs one unifying design direction. Run after the per-surface lenses so it can synthesise their drift maps into a single spine.
 10. `brand-manager` — brand identity, tone, visual direction, naming consistency
 11. `copy-reviewer` — all product and website copy against brand tone, clarity, persuasion
 12. `ui-product-designer` — for screens flagged by `design-system-enforcer`, `ui-critic`, `visual-qa`, or `premium-auditor`, assess whether a credible design direction exists or is missing

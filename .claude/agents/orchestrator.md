@@ -128,6 +128,13 @@ Pick the smallest strong set. Do not run every agent by default.
 - broader than `ui-critic` (single-surface tier judgement) and `visual-qa` (cleanup pass); downstream of `design-system-enforcer` (prototype conformance) — this agent asks whether the product is at the bar of the best apps in the world, not whether it matches the prototype
 - pair with `ui-product-designer` for redesign briefs surfaced by the audit
 
+### Always use `design-director` when
+- the question is about the **whole product as one canvas**, not any single surface — "does this feel like one coherent, cutting-edge designed thing, or a pile of screens?"
+- palette drifts across tabs/sub-pages, the depth model is inconsistent (flat/cheap here, crafted there), or the product lacks a recognisable design signature
+- the delight layer needs a sweep — haptics (mobile `PressableScale`), motion personality, and colour-as-emotion on the win moments, on both platforms
+- distinct from `premium-auditor` (which benchmarks each *feature* vs a named comparable): this agent judges system-level *identity, palette, consistency, depth, and delight* across everything; pixel-grounded (requires captures, never code-only)
+- pair with `ui-product-designer` to produce the designs and `design-system-enforcer` to encode the unifying rules as tokens
+
 ### Always use `journey-architect` when
 - the user journey is too long, friction-heavy, or diverges between web and mobile
 - activation, time-to-value, or core-loop shape needs restructuring
