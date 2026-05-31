@@ -126,6 +126,7 @@ import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { isFeatureEnabled, track } from "@/lib/analytics";
 import * as Haptics from "expo-haptics";
 import { HouseholdSummaryRow } from "@/components/HouseholdSummaryRow";
+import { PlanEmptyState } from "@/components/PlanEmptyState";
 import { MoveMealSheet } from "@/components/MoveMealSheet";
 import { PlanTemplatesSheet } from "@/components/PlanTemplatesSheet";
 import { useMealPlanSlots } from "@/hooks/use-meal-plan-slots";
@@ -421,6 +422,18 @@ export default function PlannerScreen() {
   // via PostHog targeting (TestFlight) or `EXPO_PUBLIC_FLAG_FORCE_PLAN_IMPORT_ENABLED=true`
   // in the sim. The screen + API routes stay alive behind the flag.
   const planImportEnabled = isFeatureEnabled("plan_import_enabled");
+
+  // ENG-788 (2026-05-30) — Grace: "I dont know what happened here but it
+  // looks terrible." At 0 saved recipes the old empty state rendered the
+  // full day/start/meal config form ending in a permanently-disabled
+  // 40%-opacity Generate button — a dead end. Behind `plan_empty_state_v2`:
+  // at 0 recipes show the calm `<PlanEmptyState>` with a solid ENABLED
+  // "Browse recipe library" CTA (the config form is meaningless with
+  // nothing to plan); at ≥1 recipe keep the form but lift the pills to the
+  // primary accent (web parity — `MealPlanner.tsx` uses `border-primary
+  // bg-primary/10 text-primary`). Flag OFF → legacy path unchanged below.
+  // Override in sim via `EXPO_PUBLIC_FLAG_FORCE_PLAN_EMPTY_STATE_V2=true`.
+  const planEmptyStateV2 = isFeatureEnabled("plan_empty_state_v2");
 
   const openPlanImport = useCallback(() => {
     router.push("/plan-import");
@@ -1365,6 +1378,16 @@ export default function PlannerScreen() {
         },
         dayBtnText: { color: colors.textTertiary, fontWeight: "600", fontSize: 14 },
         dayBtnTextActive: { color: colors.text, fontWeight: "700" },
+        // ENG-788 (2026-05-30) — primary-accent selected pill for the
+        // `plan_empty_state_v2` config form. Web parity: `MealPlanner.tsx`
+        // selected segments use `border-primary bg-primary/10 text-primary`.
+        // `colors.tint` is the theme-correct primary (Accent.primary light /
+        // primaryLight dark); `+ "1A"` ≈ 10% alpha = web `bg-primary/10`.
+        dayBtnActivePrimary: {
+          borderColor: colors.tint,
+          backgroundColor: colors.tint + "1A",
+        },
+        dayBtnTextActivePrimary: { color: colors.tint, fontWeight: "700" },
 
         generateBtn: {
           backgroundColor: Accent.primary,
@@ -2555,7 +2578,17 @@ export default function PlannerScreen() {
         })() : null}
 
         {/* Generate controls */}
-        {!plan && (
+        {!plan && (planEmptyStateV2 && savedRecipes.length === 0 ? (
+          /* ENG-788 — calm empty state. With nothing saved there is
+             nothing to plan, so the day/start/meal config form was just
+             noise ending in a dead disabled button. Send the user to the
+             one action that unblocks them: build a library. */
+          <PlanEmptyState
+            onBrowseLibrary={() => router.push("/(tabs)/library" as Href)}
+            planImportEnabled={planImportEnabled}
+            onImport={openPlanImport}
+          />
+        ) : (
           <View style={styles.card}>
             {/* DC12 (2026-05-14, premium-bar audit) — low-emotion
                 empty state. Linear/direct copy: tells the user what
@@ -2564,21 +2597,33 @@ export default function PlannerScreen() {
                 a returning MFP/Lose It refugee will instantly read
                 as "this won't be a 10-minute chore". Web parity:
                 `src/app/components/PlannerScreen.tsx`. */}
-            <Text style={styles.cardTitle}>No plan yet</Text>
-            <Text style={styles.cardDesc}>
-              Generate one in 30 seconds. {savedRecipes.length} recipe{savedRecipes.length !== 1 ? "s" : ""} in your library.
-              {savedRecipes.length === 0 ? " Save some from Discover first." : ""}
+            <Text style={styles.cardTitle}>
+              {planEmptyStateV2 ? "Plan your week" : "No plan yet"}
             </Text>
-            <Pressable
-              onPress={() => router.push("/(tabs)/library" as Href)}
-              accessibilityRole="button"
-              accessibilityLabel="Open recipe library"
-              style={{ alignSelf: "flex-start", marginTop: Spacing.sm, marginBottom: Spacing.xs }}
-            >
-              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.textSecondary }}>
-                Open recipe library
-              </Text>
-            </Pressable>
+            <Text style={styles.cardDesc}>
+              {planEmptyStateV2 ? (
+                <>
+                  {savedRecipes.length} recipe{savedRecipes.length !== 1 ? "s" : ""} in your library — Suppr balances them to your targets.
+                </>
+              ) : (
+                <>
+                  Generate one in 30 seconds. {savedRecipes.length} recipe{savedRecipes.length !== 1 ? "s" : ""} in your library.
+                  {savedRecipes.length === 0 ? " Save some from Discover first." : ""}
+                </>
+              )}
+            </Text>
+            {!planEmptyStateV2 && (
+              <Pressable
+                onPress={() => router.push("/(tabs)/library" as Href)}
+                accessibilityRole="button"
+                accessibilityLabel="Open recipe library"
+                style={{ alignSelf: "flex-start", marginTop: Spacing.sm, marginBottom: Spacing.xs }}
+              >
+                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.textSecondary }}>
+                  Open recipe library
+                </Text>
+              </Pressable>
+            )}
 
             <View style={styles.daysRow}>
               {([1, 3, 7] as const).map((d) => {
@@ -2586,7 +2631,7 @@ export default function PlannerScreen() {
                 return (
                   <Pressable
                     key={d}
-                    style={[styles.dayBtn, days === d && styles.dayBtnActive, locked && { opacity: 0.5 }]}
+                    style={[styles.dayBtn, days === d && (planEmptyStateV2 ? styles.dayBtnActivePrimary : styles.dayBtnActive), locked && { opacity: 0.5 }]}
                     onPress={() => {
                       if (locked) {
                         Alert.alert("Upgrade required", "Plan your full week and generate a ready-to-shop list. Available with Pro.", [
@@ -2600,7 +2645,7 @@ export default function PlannerScreen() {
                     }}
                   >
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                      <Text style={[styles.dayBtnText, days === d && styles.dayBtnTextActive]}>
+                      <Text style={[styles.dayBtnText, days === d && (planEmptyStateV2 ? styles.dayBtnTextActivePrimary : styles.dayBtnTextActive)]}>
                         {d} day{d > 1 ? "s" : ""}
                       </Text>
                       {locked ? (
@@ -2627,10 +2672,10 @@ export default function PlannerScreen() {
               ]).map((o) => (
                 <Pressable
                   key={o.val}
-                  style={[styles.dayBtn, startOffset === o.val && styles.dayBtnActive]}
+                  style={[styles.dayBtn, startOffset === o.val && (planEmptyStateV2 ? styles.dayBtnActivePrimary : styles.dayBtnActive)]}
                   onPress={() => setStartOffset(o.val)}
                 >
-                  <Text style={[styles.dayBtnText, startOffset === o.val && styles.dayBtnTextActive]}>
+                  <Text style={[styles.dayBtnText, startOffset === o.val && (planEmptyStateV2 ? styles.dayBtnTextActivePrimary : styles.dayBtnTextActive)]}>
                     {o.label}
                   </Text>
                 </Pressable>
@@ -2645,13 +2690,13 @@ export default function PlannerScreen() {
                 return (
                   <Pressable
                     key={slot}
-                    style={[styles.dayBtn, active && styles.dayBtnActive]}
+                    style={[styles.dayBtn, active && (planEmptyStateV2 ? styles.dayBtnActivePrimary : styles.dayBtnActive)]}
                     onPress={() => toggleSlot(slot)}
                   >
                     {active ? (
                       <CheckCircle2
                         size={14}
-                        color="#fff"
+                        color={planEmptyStateV2 ? colors.tint : "#fff"}
                         strokeWidth={1.75}
                         style={{ marginRight: 4 }}
                       />
@@ -2663,7 +2708,7 @@ export default function PlannerScreen() {
                         style={{ marginRight: 4 }}
                       />
                     )}
-                    <Text style={[styles.dayBtnText, active && styles.dayBtnTextActive]}>
+                    <Text style={[styles.dayBtnText, active && (planEmptyStateV2 ? styles.dayBtnTextActivePrimary : styles.dayBtnTextActive)]}>
                       {slot}
                     </Text>
                   </Pressable>
@@ -2727,7 +2772,7 @@ export default function PlannerScreen() {
               </Pressable>
             )}
           </View>
-        )}
+        ))}
 
         {/* 2026-05-23 — removed "YOUR 7-DAY PLAN" uppercase overline +
             "Browse library" outline pill. The "This week" sub-tab
@@ -3611,7 +3656,7 @@ export default function PlannerScreen() {
                 return (
                   <Pressable
                     key={d}
-                    style={[styles.dayBtn, days === d && styles.dayBtnActive, locked && { opacity: 0.5 }]}
+                    style={[styles.dayBtn, days === d && (planEmptyStateV2 ? styles.dayBtnActivePrimary : styles.dayBtnActive), locked && { opacity: 0.5 }]}
                     onPress={() => {
                       if (locked) {
                         Alert.alert("Upgrade required", "Plan your full week and generate a ready-to-shop list. Available with Pro.", [
@@ -3625,7 +3670,7 @@ export default function PlannerScreen() {
                     }}
                   >
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                      <Text style={[styles.dayBtnText, days === d && styles.dayBtnTextActive]}>
+                      <Text style={[styles.dayBtnText, days === d && (planEmptyStateV2 ? styles.dayBtnTextActivePrimary : styles.dayBtnTextActive)]}>
                         {d} day{d > 1 ? "s" : ""}
                       </Text>
                       {locked ? (
@@ -3646,10 +3691,10 @@ export default function PlannerScreen() {
               ]).map((o) => (
                 <Pressable
                   key={o.val}
-                  style={[styles.dayBtn, startOffset === o.val && styles.dayBtnActive]}
+                  style={[styles.dayBtn, startOffset === o.val && (planEmptyStateV2 ? styles.dayBtnActivePrimary : styles.dayBtnActive)]}
                   onPress={() => setStartOffset(o.val)}
                 >
-                  <Text style={[styles.dayBtnText, startOffset === o.val && styles.dayBtnTextActive]}>{o.label}</Text>
+                  <Text style={[styles.dayBtnText, startOffset === o.val && (planEmptyStateV2 ? styles.dayBtnTextActivePrimary : styles.dayBtnTextActive)]}>{o.label}</Text>
                 </Pressable>
               ))}
             </View>
@@ -3707,15 +3752,15 @@ export default function PlannerScreen() {
                 return (
                   <Pressable
                     key={slot}
-                    style={[styles.dayBtn, active && styles.dayBtnActive]}
+                    style={[styles.dayBtn, active && (planEmptyStateV2 ? styles.dayBtnActivePrimary : styles.dayBtnActive)]}
                     onPress={() => toggleSlot(slot)}
                   >
                     {active ? (
-                      <CheckCircle2 size={14} color={Accent.primary} strokeWidth={2} style={{ marginRight: 4 }} />
+                      <CheckCircle2 size={14} color={planEmptyStateV2 ? colors.tint : Accent.primary} strokeWidth={2} style={{ marginRight: 4 }} />
                     ) : (
                       <Circle size={14} color={colors.textSecondary} strokeWidth={1.75} style={{ marginRight: 4 }} />
                     )}
-                    <Text style={[styles.dayBtnText, active && styles.dayBtnTextActive]}>{slot}</Text>
+                    <Text style={[styles.dayBtnText, active && (planEmptyStateV2 ? styles.dayBtnTextActivePrimary : styles.dayBtnTextActive)]}>{slot}</Text>
                   </Pressable>
                 );
               })}
