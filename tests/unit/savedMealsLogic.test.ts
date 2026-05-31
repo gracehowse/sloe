@@ -302,6 +302,67 @@ describe("buildMealEntriesFromSavedMeal", () => {
     expect(entries).toEqual([]);
     expect(calls).toBe(0);
   });
+
+  // ENG-783 — meal-level portion (the saved-meal portion-confirm sheet).
+  describe("mealPortionMultiplier (ENG-783)", () => {
+    const baseMeal = () =>
+      mkMeal({
+        items: [
+          mkItem({ calories: 300, protein: 10, carbs: 50, fat: 6, fiber: 8, waterMl: 200 }),
+          mkItem({ position: 1, recipeTitle: "Berries", calories: 50, protein: 1, carbs: 12, fat: 0 }),
+        ],
+      });
+
+    it("defaults to 1x — omitting the param is byte-identical to the 4-arg call (one-tap hot path)", () => {
+      const fourArg = buildMealEntriesFromSavedMeal(baseMeal(), "Breakfast", "8:00", makeCounterId());
+      const explicitOne = buildMealEntriesFromSavedMeal(baseMeal(), "Breakfast", "8:00", makeCounterId(), 1);
+      expect(explicitOne).toEqual(fourArg);
+      expect(fourArg[0]!.calories).toBe(300);
+      expect(fourArg[1]!.calories).toBe(50);
+    });
+
+    it("scales the whole combo's macros (and fiber/water) by the meal multiplier", () => {
+      const entries = buildMealEntriesFromSavedMeal(baseMeal(), "Breakfast", "8:00", makeCounterId(), 2);
+      // Item 1: 300/10/50/6 *2 → 600/20/100/12; fiber 8*2=16, water 200*2=400
+      expect(entries[0]!.calories).toBe(600);
+      expect(entries[0]!.protein).toBe(20);
+      expect(entries[0]!.carbs).toBe(100);
+      expect(entries[0]!.fat).toBe(12);
+      expect(entries[0]!.fiberG).toBe(16);
+      expect(entries[0]!.waterMl).toBe(400);
+      // Item 2: 50/1/12/0 *2 → 100/2/24/0
+      expect(entries[1]!.calories).toBe(100);
+      expect(entries[1]!.carbs).toBe(24);
+      // Output portionMultiplier stays 1 — macros already baked, no double-count.
+      expect(entries[0]!.portionMultiplier).toBe(1);
+      expect(entries[1]!.portionMultiplier).toBe(1);
+    });
+
+    it("stacks on top of each item's own portionMultiplier (does not replace it)", () => {
+      const meal = mkMeal({
+        items: [mkItem({ calories: 300, protein: 10, carbs: 50, fat: 6, portionMultiplier: 0.5 })],
+      });
+      // item pm 0.5 * meal 2 = 1.0 → 300/10/50/6 unchanged
+      const entries = buildMealEntriesFromSavedMeal(meal, "Lunch", "12:00", makeCounterId(), 2);
+      expect(entries[0]!.calories).toBe(300);
+      expect(entries[0]!.protein).toBe(10);
+    });
+
+    it("treats zero / negative / non-finite meal multipliers as 1 (never zero out a log)", () => {
+      const at = (mult: number) =>
+        buildMealEntriesFromSavedMeal(baseMeal(), "Breakfast", "8:00", makeCounterId(), mult)[0]!.calories;
+      expect(at(0)).toBe(300);
+      expect(at(-3)).toBe(300);
+      expect(at(Number.NaN)).toBe(300);
+      expect(at(Number.POSITIVE_INFINITY)).toBe(300);
+    });
+
+    it("supports a fractional meal portion (half a saved meal)", () => {
+      const entries = buildMealEntriesFromSavedMeal(baseMeal(), "Dinner", "7:00 PM", makeCounterId(), 0.5);
+      expect(entries[0]!.calories).toBe(150);
+      expect(entries[1]!.calories).toBe(25);
+    });
+  });
 });
 
 describe("dominantSavedMealSource (audit 2026-04-30 fix #B7)", () => {

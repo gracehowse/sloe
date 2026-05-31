@@ -1743,6 +1743,33 @@ export const NutritionTracker = memo(function NutritionTracker({
     return keys.map((name) => ({ name, meals: map.get(name)! }));
   }, [mealsForSelectedDate]);
 
+  // ENG-786 — "Log this/these again". Re-inserts the viewed day's
+  // current entries for `slot` as fresh entries on the same day,
+  // preserving each entry's baked macros (kcal/P/C/F + fibre + micros
+  // + portionMultiplier) and data provenance (`source`). Uses the same
+  // per-entry `addLoggedMealForDate` insert path as `logSavedMeal`, so
+  // each re-logged row persists identically (and never re-scales) and
+  // emits one `food_logged { source: "log_again" }`. Placed after the
+  // `mealsGrouped` memo it reads (TDZ). Flag-gated at the section
+  // invocation via `today_log_again`. Mirror of mobile `logAgainSlot`
+  // in `apps/mobile/app/(tabs)/index.tsx`.
+  const logAgainSlot = useCallback(
+    (slot: string) => {
+      const source = mealsGrouped.find((g) => g.name === slot)?.meals ?? [];
+      if (source.length === 0) return;
+      const timeLabel = new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+      for (const m of source) {
+        const { id: _id, ...rest } = m;
+        void _id;
+        addLoggedMealForDate(selectedDateKey, { ...rest, time: timeLabel }, "log_again");
+      }
+      toast.success(
+        source.length > 1 ? `Re-logged ${source.length} items to ${slot}.` : `Re-logged to ${slot}.`,
+      );
+    },
+    [mealsGrouped, addLoggedMealForDate, selectedDateKey],
+  );
+
   const targets = normalizeMacroTargets(nutritionTargets);
   const baseCalorieTarget = targets.calories;
 
@@ -2540,6 +2567,7 @@ export const NutritionTracker = memo(function NutritionTracker({
         }}
         savedMeals={hostSavedMeals}
         onLogSavedMeal={logSavedMealFromSlotHeader}
+        onLogAgain={isFeatureEnabled("today_log_again") ? logAgainSlot : undefined}
         hintVisibleForSlot={hintVisibleForSlot}
         onDismissUsualMealHint={dismissUsualMealHint}
         onAcceptUsualMealHint={acceptUsualMealHint}

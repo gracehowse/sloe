@@ -172,17 +172,30 @@ export type BuiltMealEntry = {
  * Generic `T` lets the caller type-narrow to their platform's shape
  * (`Omit<LoggedMeal, "id">` on web, `JournalMeal` on mobile) — the
  * function body itself deals only with the common fields.
+ *
+ * `mealPortionMultiplier` (ENG-783, default 1) scales the WHOLE combo on
+ * top of each item's own `portionMultiplier`, so a user can log "half a
+ * portion" / "double" of a saved meal from the portion-confirm sheet
+ * without editing the saved meal itself. Default 1 keeps every existing
+ * one-tap caller byte-identical — the macros are still baked into each
+ * entry (output `portionMultiplier` stays 1 so downstream code never
+ * double-counts). Non-finite / non-positive values fall back to 1.
  */
 export function buildMealEntriesFromSavedMeal<T extends BuiltMealEntry = BuiltMealEntry>(
   meal: SavedMeal,
   slot: string,
   timeLabel: string,
   makeId: () => string,
+  mealPortionMultiplier = 1,
 ): T[] {
   const items = Array.isArray(meal?.items) ? meal.items : [];
+  const mealMul =
+    Number.isFinite(mealPortionMultiplier) && mealPortionMultiplier > 0
+      ? mealPortionMultiplier
+      : 1;
   const out: BuiltMealEntry[] = [];
   for (const it of items) {
-    const pm = effectivePortionMultiplier(it);
+    const pm = effectivePortionMultiplier(it) * mealMul;
     const kcal = Math.round(safeNonNegative(it.calories) * pm);
     const protein = Math.round(safeNonNegative(it.protein) * pm * 10) / 10;
     const carbs = Math.round(safeNonNegative(it.carbs) * pm * 10) / 10;

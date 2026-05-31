@@ -155,6 +155,7 @@ import {
 import { aiLoggingSourceLabel } from "@suppr/shared/nutrition/aiLogging";
 import { scaleCaffeineAlcohol } from "@suppr/shared/nutrition/scaleCaffeineAlcoholForGrams";
 import { scaleMicrosPerServing } from "@suppr/shared/nutrition/scaleMicrosPerServing";
+import { scaleLoggedMealFiberAndMicros } from "@suppr/shared/nutrition/scaleLoggedMealPortion";
 import { scaleMicrosForGrams } from "@suppr/shared/openFoodFacts/parseOffMicros";
 import { HydrationStimulantsCard } from "@/components/HydrationStimulantsCard";
 import SaveMealSheet from "@/components/SaveMealSheet";
@@ -225,6 +226,7 @@ import {
 // The component file remains for any deep test references (sweep
 // docs/journeys/log-sheet-2026-04-27.md for migration notes).
 import { TodayEditMealModal } from "@/components/today/TodayEditMealModal";
+import { SavedMealPortionSheet } from "@/components/today/SavedMealPortionSheet";
 // TodayNutrientsModal replaced by FullNutrientPanelSheet on 2026-05-02
 // (revert of PR #30). The Nutrients link in TodayDashboardMacroTiles
 // now opens the richer Cronometer-parity panel from PR #47.
@@ -668,6 +670,10 @@ export default function TrackerScreen() {
   const [editSlot, setEditSlot] = useState("Snacks");
   /** Portion multiplier (×); macros = canonical × portion. Synced from fields before changing portion via chips. */
   const [editPortion, setEditPortion] = useState("1");
+  // ENG-783 — saved-meal portion-confirm sheet (opened from QuickAdd ⋮
+  // "Log with portion…"). Null meal = closed.
+  const [portionMeal, setPortionMeal] = useState<SavedMeal | null>(null);
+  const [portionSlot, setPortionSlot] = useState("Snacks");
   const waterActivityInitialLoadDone = useRef(false);
   const editCanonicalRef = useRef({ cal: 0, p: 0, cb: 0, f: 0 });
   // 2026-05-15 (ENG-543): dedup parallel `loadJournal` calls — see fn.
@@ -1369,13 +1375,16 @@ export default function TrackerScreen() {
    *  per tap. Invoked by `QuickAddPanel` via `onLogSavedMeal`; the panel
    *  owns its own optimistic reorder of the "Usual meals" list. */
   const logSavedMealFromPanel = useCallback(
-    (meal: SavedMeal, slot: string) => {
+    (meal: SavedMeal, slot: string, mealPortionMultiplier = 1) => {
       if (!userId) return;
       const timeLabel = new Date().toLocaleTimeString(undefined, {
         hour: "numeric",
         minute: "2-digit",
       });
-      const entries = buildMealEntriesFromSavedMeal(meal, slot, timeLabel, () => newMealId());
+      // ENG-783 — `mealPortionMultiplier` scales the whole combo (default
+      // 1 keeps the instant one-tap log byte-identical). Macros are baked
+      // into each entry so downstream never double-counts.
+      const entries = buildMealEntriesFromSavedMeal(meal, slot, timeLabel, () => newMealId(), mealPortionMultiplier);
       if (entries.length === 0) return;
       const newMeals: JournalMeal[] = entries.map((e) => {
         const jm: JournalMeal = {
@@ -1423,6 +1432,47 @@ export default function TrackerScreen() {
       setShowPrevious(false);
     },
     [userId, selectedDate, persistMealsImmediate],
+  );
+
+  /** ENG-783 — open the saved-meal portion-confirm sheet. Seeds the slot
+   *  from the caller's explicit choice first (the tapped slot-header pill,
+   *  or the LogSheet's active FAB slot), then the meal's saved default,
+   *  then the time-of-day active slot. The explicit slot must win so a
+   *  user tapping "Log usual" on the Lunch header opens the editor on
+   *  Lunch even when the meal was saved as a Breakfast default. */
+  const openPortionConfirm = useCallback(
+    (meal: SavedMeal, slot: string) => {
+      setPortionSlot(slot || meal.defaultMealSlot || activeMealSlot);
+      setPortionMeal(meal);
+    },
+    [activeMealSlot],
+  );
+
+  /** ENG-783 — commit the portion-confirm sheet. Reuses the same
+   *  build/persist/analytics path as the instant tap, passing the chosen
+   *  multiplier, then bumps the refresh token so the panel re-sorts. */
+  const confirmPortionLog = useCallback(
+    (mult: number) => {
+      if (!portionMeal) return;
+      logSavedMealFromPanel(portionMeal, portionSlot, mult);
+      // ENG-783 — fire `saved_meal_logged` on the portion-editor commit so
+      // this entry path stays countable in the F1/F3 funnels. The instant
+      // slot-header path fires this itself; `logSavedMealFromPanel` only
+      // emits per-item `food_logged`, so without this the portion-editor
+      // logs would be invisible to saved-meal funnels. One event per
+      // confirmed portion log; `portionMultiplier` surfaces adjust-rate.
+      try {
+        track(AnalyticsEvents.saved_meal_logged, {
+          itemCount: portionMeal.items.length,
+          slot: portionSlot,
+          savedMealId: portionMeal.id,
+          portionMultiplier: mult,
+        });
+      } catch { /* analytics fire-and-forget */ }
+      setPortionMeal(null);
+      setSavedMealsRefreshToken((n) => n + 1);
+    },
+    [portionMeal, portionSlot, logSavedMealFromPanel],
   );
 
   /** Ship M1 — slot-header "Log usual" pill handler. Logs the saved meal
@@ -4232,6 +4282,12 @@ export default function TrackerScreen() {
   const saveEditMeal = useCallback(() => {
     if (!editingMeal) return;
     const portionMul = Math.max(0.125, Math.min(24, parseFloat(editPortion.replace(",", ".")) || 1));
+    // The edit sheet only exposes kcal/P/C/F fields, so fibre + every micro
+    // (sugar, sodium, vitamins…) must scale with the portion delta — the ratio
+    // of the new portion to the portion the entry was opened at. Without this
+    // they rode through the `...editingMeal` spread unchanged, so a 0.5× portion
+    // edit halved the four macros but left fibre/sugar/sodium at the old amount.
+    const p0 = editingMeal.portionMultiplier && editingMeal.portionMultiplier > 0 ? editingMeal.portionMultiplier : 1;
     const updated: JournalMeal = {
       ...editingMeal,
       recipeTitle: editTitle.trim() || editingMeal.recipeTitle,
@@ -4241,6 +4297,11 @@ export default function TrackerScreen() {
       carbs: Math.round((Number(editCarbs) || 0) * 10) / 10,
       fat: Math.round((Number(editFat) || 0) * 10) / 10,
       portionMultiplier: portionMul,
+      ...scaleLoggedMealFiberAndMicros({
+        fiberG: editingMeal.fiberG,
+        micros: editingMeal.micros,
+        ratio: portionMul / p0,
+      }),
     };
     setByDay((prev) => ({
       ...prev,
@@ -4384,6 +4445,46 @@ export default function TrackerScreen() {
     }
     return groups;
   }, [mealsToday]);
+
+  /** ENG-786 — "Log again": re-insert a slot's current entries as fresh
+   *  entries on the viewed day. Clones each `JournalMeal` with a new id +
+   *  the current time, preserving the baked macros (kcal/P/C/F + fibre +
+   *  micros + portionMultiplier), then appends + persists immediately.
+   *  Source = `mealGroups[slot]`, so it re-logs exactly what the user sees
+   *  in that slot. `createdAt` is dropped so the clone reads as a fresh
+   *  log, not a copy of the original's timestamp. The new rows are
+   *  individually swipe-removable (the v1 undo; ENG-786 P2 = a dedicated
+   *  undo toast). Gated at the call site by `today_log_again`. */
+  const logAgainSlot = useCallback(
+    (slot: string) => {
+      if (!userId) return;
+      const source = mealGroups[slot] ?? [];
+      if (source.length === 0) return;
+      const timeLabel = new Date().toLocaleTimeString(undefined, {
+        hour: "numeric",
+        minute: "2-digit",
+      });
+      const clones: JournalMeal[] = source.map((m) => ({
+        ...m,
+        id: newMealId(),
+        time: timeLabel,
+        createdAt: undefined,
+      }));
+      setByDay((prev) => ({ ...prev, [dayKey]: [...(prev[dayKey] ?? []), ...clones] }));
+      void persistMealsImmediate(dayKey, clones);
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      try {
+        for (const m of clones) {
+          track(AnalyticsEvents.food_logged, {
+            source: "log_again",
+            calories: m.calories,
+            slot,
+          });
+        }
+      } catch { /* analytics fire-and-forget */ }
+    },
+    [userId, mealGroups, dayKey, persistMealsImmediate],
+  );
 
   const toggleSlotCollapse = useCallback((slot: string) => {
     setCollapsedSlots((prev) => {
@@ -4879,6 +4980,12 @@ export default function TrackerScreen() {
             cardBorderColor={colors.cardBorder}
             savedMeals={hostSavedMeals}
             onLogSavedMeal={logSavedMealFromSlotHeader}
+            onRequestPortion={
+              isFeatureEnabled("today-edit-entry-v2") ? openPortionConfirm : undefined
+            }
+            onLogAgain={
+              isFeatureEnabled("today_log_again") ? logAgainSlot : undefined
+            }
             hintVisibleForSlot={hintVisibleForSlot}
             onDismissUsualMealHint={dismissUsualMealHint}
             onAcceptUsualMealHint={acceptUsualMealHint}
@@ -4895,6 +5002,9 @@ export default function TrackerScreen() {
                   userId={userId ?? ""}
                   onLog={(item) => void logHistoryItemToSlot(item, activeMealSlot)}
                   onLogSavedMeal={(meal, slot) => logSavedMealFromPanel(meal, slot)}
+                  onRequestPortion={
+                    isFeatureEnabled("today-edit-entry-v2") ? openPortionConfirm : undefined
+                  }
                   onOpenSaveCombo={(slot) => {
                     if (slot) openSaveMealSheetForSlot(slot);
                   }}
@@ -5399,6 +5509,19 @@ export default function TrackerScreen() {
             // time; the user has now explicitly picked a slot to log into.
             logSavedMealFromPanel(meal, activeMealSlot);
           },
+          // ENG-783 — when the edit-entry-v2 flag is on, tapping a saved
+          // meal opens the portion editor (seeded to the active FAB slot)
+          // instead of logging 1× instantly. Flag off → onPick (instant
+          // one-tap log preserved). LogSheetSavedMeal is a light row shape,
+          // so resolve back to the full SavedMeal before opening the sheet.
+          onRequestPortion: isFeatureEnabled("today-edit-entry-v2")
+            ? (picked) => {
+                setFabSheetOpen(false);
+                const meal = hostSavedMeals.find((m) => m.id === picked.id);
+                if (!meal) return;
+                openPortionConfirm(meal, activeMealSlot);
+              }
+            : undefined,
         }}
         library={{
           // 2026-05-01 (TestFlight Build 40 feedback `AECfotBlQgwfgxYHr4dDaM8`
@@ -5582,6 +5705,7 @@ export default function TrackerScreen() {
 
       {/* Edit meal modal */}
       <TodayEditMealModal
+        enabled={isFeatureEnabled("today-edit-entry-v2")}
         editingMeal={editingMeal}
         slots={MEAL_SLOTS}
         editSlot={editSlot}
@@ -5615,6 +5739,18 @@ export default function TrackerScreen() {
         textSecondaryColor={colors.textSecondary}
         textTertiaryColor={colors.textTertiary}
       />
+
+      {/* ENG-783 — saved-meal portion-confirm sheet (flag-gated). */}
+      {isFeatureEnabled("today-edit-entry-v2") ? (
+        <SavedMealPortionSheet
+          meal={portionMeal}
+          slot={portionSlot}
+          slots={MEAL_SLOTS}
+          onChangeSlot={setPortionSlot}
+          onConfirm={confirmPortionLog}
+          onClose={() => setPortionMeal(null)}
+        />
+      ) : null}
 
       {/* Food search modal for logging */}
       <FoodSearchModal
@@ -5811,6 +5947,9 @@ export default function TrackerScreen() {
               setShowPrevious(false);
             }}
             onLogSavedMeal={(meal, slot) => logSavedMealFromPanel(meal, slot)}
+            onRequestPortion={
+              isFeatureEnabled("today-edit-entry-v2") ? openPortionConfirm : undefined
+            }
             onOpenSaveCombo={(slot) => {
               if (slot) openSaveMealSheetForSlot(slot);
             }}

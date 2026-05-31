@@ -241,6 +241,10 @@ export interface LogSheetProps {
   saved?: {
     meals: LogSheetSavedMeal[];
     onPick: (meal: LogSheetSavedMeal) => void;
+    /** ENG-783 — when set (flag `today-edit-entry-v2` on), tapping a saved
+     *  meal opens the portion editor first instead of logging 1× instantly.
+     *  Falls back to `onPick` when undefined (flag off → instant one-tap). */
+    onRequestPortion?: (meal: LogSheetSavedMeal) => void;
     state?: LogSheetTabState;
   };
   /** Library tab -- user's saved recipes, surfaced inline so one-tap
@@ -979,7 +983,7 @@ function RecentList({ recent }: { recent: NonNullable<LogSheetProps["recent"]> }
 
 function SavedList({ saved }: { saved: NonNullable<LogSheetProps["saved"]> }) {
   const colors = useThemeColors();
-  const { meals, onPick, state } = saved;
+  const { meals, onPick, onRequestPortion, state } = saved;
 
   if (state?.loading) {
     return <SkeletonList colors={colors} />;
@@ -1007,7 +1011,12 @@ function SavedList({ saved }: { saved: NonNullable<LogSheetProps["saved"]> }) {
           title={m.title}
           kcal={m.kcal}
           source={m.source}
-          onPick={() => onPick(m)}
+          // ENG-783 — flag on: tap opens the portion editor; flag off:
+          // instant one-tap log (onPick).
+          onPick={() => (onRequestPortion ?? onPick)(m)}
+          accessibilityLabel={
+            onRequestPortion ? `Edit portion for ${m.title}` : undefined
+          }
         />
       ))}
     </ScrollView>
@@ -1141,17 +1150,21 @@ function BrowseRow({
   kcal,
   source,
   onPick,
+  accessibilityLabel,
 }: {
   title: string;
   kcal: number;
   source: SourceDotSource;
   onPick: () => void;
+  /** ENG-783 — optional override (e.g. "Edit portion for X" when the
+   *  tap opens the portion editor rather than logging instantly). */
+  accessibilityLabel?: string;
 }) {
   const colors = useThemeColors();
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Log ${title}`}
+      accessibilityLabel={accessibilityLabel ?? `Log ${title}`}
       onPress={() => {
         if (process.env.EXPO_OS === "ios") {
           void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);

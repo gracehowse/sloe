@@ -100,6 +100,11 @@ export interface QuickAddPanelProps {
   /** Fires when the user taps a saved-meal row — receives the whole
    *  saved meal + the slot to log to. */
   onLogSavedMeal?: (meal: SavedMeal, slot: string) => void;
+  /** Fires from the saved-meal ⋮ actions menu ("Log with portion…") when
+   *  the user wants to pick a portion before logging (ENG-783). The host
+   *  opens `SavedMealPortionSheet`. When omitted, the menu item is hidden
+   *  so the legacy tap-to-log-1× path is the only behaviour. */
+  onRequestPortion?: (meal: SavedMeal, slot: string) => void;
   /** Request that the host open the `SaveMealSheet` pre-filled with
    *  `seedItems` for `slot`. Part of the public API for parity with web;
    *  not used internally today. */
@@ -176,6 +181,7 @@ export function QuickAddPanel({
   userId,
   onLog,
   onLogSavedMeal,
+  onRequestPortion,
   onOpenSaveCombo: _onOpenSaveCombo,
   savedMealsRefreshToken,
   defaultTab,
@@ -489,17 +495,29 @@ export function QuickAddPanel({
 
   const openActions = useCallback(
     (meal: SavedMeal) => {
+      // "Log with portion…" is the deliberate path for logging a saved meal
+      // at a multiplier other than 1× (ENG-783). It sits above Rename/Delete
+      // so it reads as the primary action, and is only offered when the host
+      // wired `onRequestPortion` — the plain row tap stays an instant 1× log.
+      const buttons: Parameters<typeof Alert.alert>[2] = [];
+      if (onRequestPortion) {
+        buttons.push({
+          text: "Log with portion…",
+          onPress: () => onRequestPortion(meal, meal.defaultMealSlot ?? activeSlot),
+        });
+      }
+      buttons.push(
+        { text: "Rename", onPress: () => promptRename(meal) },
+        { text: "Delete", style: "destructive", onPress: () => confirmDelete(meal) },
+        { text: "Cancel", style: "cancel" },
+      );
       Alert.alert(
         meal.name,
         `${meal.items.length} item${meal.items.length === 1 ? "" : "s"}`,
-        [
-          { text: "Rename", onPress: () => promptRename(meal) },
-          { text: "Delete", style: "destructive", onPress: () => confirmDelete(meal) },
-          { text: "Cancel", style: "cancel" },
-        ],
+        buttons,
       );
     },
-    [promptRename, confirmDelete],
+    [promptRename, confirmDelete, onRequestPortion, activeSlot],
   );
 
   // --- Render ---

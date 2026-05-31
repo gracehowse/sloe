@@ -416,6 +416,47 @@ describe("LogSheet (mobile) — Recent / Saved browse pills (Phase 4 / Next-10 #
   });
 });
 
+describe("LogSheet (mobile) — saved-meal portion editor (ENG-783, today-edit-entry-v2)", () => {
+  // Surface (b) of ENG-783: the LogSheet "Saved meals" rows. The host
+  // passes `saved.onRequestPortion` only when `today-edit-entry-v2` is on
+  // (see `app/(tabs)/index.tsx`). When wired, a saved-meal tap routes to
+  // the portion editor instead of logging 1× instantly; when omitted, the
+  // old instant-log path (`onPick`) is preserved by the `??` fallback.
+  const meal: LogSheetSavedMeal = {
+    id: "m1",
+    title: "My usual oatmeal",
+    kcal: 380,
+    source: "manual",
+  };
+
+  it("prop wired: the row is labelled 'Edit portion for …' and tapping calls onRequestPortion (not onPick)", () => {
+    const onPick = vi.fn();
+    const onRequestPortion = vi.fn();
+    const { getByLabelText, queryByLabelText } = open({
+      recent: undefined,
+      saved: { meals: [meal], onPick, onRequestPortion },
+    });
+    // The portion-editor affordance relabels the row.
+    expect(queryByLabelText("Log My usual oatmeal")).toBeNull();
+    fireEvent.press(getByLabelText("Edit portion for My usual oatmeal"));
+    expect(onRequestPortion).toHaveBeenCalledTimes(1);
+    expect(onRequestPortion).toHaveBeenCalledWith(meal);
+    expect(onPick).not.toHaveBeenCalled();
+  });
+
+  it("prop omitted: the row keeps the 'Log …' label and tapping falls back to onPick", () => {
+    const onPick = vi.fn();
+    const { getByLabelText, queryByLabelText } = open({
+      recent: undefined,
+      saved: { meals: [meal], onPick },
+    });
+    expect(queryByLabelText("Edit portion for My usual oatmeal")).toBeNull();
+    fireEvent.press(getByLabelText("Log My usual oatmeal"));
+    expect(onPick).toHaveBeenCalledTimes(1);
+    expect(onPick).toHaveBeenCalledWith(meal);
+  });
+});
+
 describe("LogSheet (mobile) — saved-tab discoverability dot (2026-05-01, journey-architect P1)", () => {
   // Discoverability nudge: when the user has 3+ saved meals we render
   // a small dot on the Saved tab so first-time-openers learn the tab
