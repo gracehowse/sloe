@@ -35,12 +35,13 @@ const WEB_SRC = readFileSync(WEB_PLANNER_PATH, "utf8");
 
 describe("Plan tab microcopy (DC12)", () => {
   it("mobile empty state card title keeps the calm direct copy on both flag arms", () => {
-    // ENG-788 (2026-05-30) turned the single title into a flag ternary:
-    // `plan_empty_state_v2` on → "Plan your week" (the ≥1-recipe config
-    // card); off → the legacy "No plan yet". Pin both arms so neither
-    // copy can silently drift.
+    // ENG-788 (2026-05-30) turned the single title into a flag ternary;
+    // ENG-790 (2026-05-31) widened the "on" arm to `primaryPills`
+    // (`plan_source_selector || plan_empty_state_v2`) so the source-
+    // selector path also gets the "Plan your week" framing. Off → the
+    // legacy "No plan yet". Pin both arms so neither copy can drift.
     expect(MOBILE_SRC).toContain(
-      '{planEmptyStateV2 ? "Plan your week" : "No plan yet"}',
+      '{primaryPills ? "Plan your week" : "No plan yet"}',
     );
   });
 

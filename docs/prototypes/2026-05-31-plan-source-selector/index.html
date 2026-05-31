@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Plan source selector — library / both / discovery (mobile + web)</title>
+<style>
+  :root{
+    --ink:#1a1714; --sub:#6b665c; --dim:#9a958a; --faint:#b4afa4;
+    --card:#ffffff; --border:#ebe7dc; --hairline:#ebe7dc;
+    --page:#fbfaf6;
+    --primary:#588CE4; --primary-soft:rgba(88,140,228,.10); --primary-line:rgba(88,140,228,.45);
+    --green:#56A775; --amber:#F78A32;
+    --grey-sel:rgba(107,102,92,.094); --grey-line:#6b665c;
+    --radius:18px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;background:#e9e7e0;color:var(--ink);padding:36px 28px 80px;-webkit-font-smoothing:antialiased}
+  h1{font-size:21px;margin-bottom:6px;letter-spacing:-.2px}
+  .lede{color:#56514a;font-size:13px;margin-bottom:6px;max-width:980px;line-height:1.6}
+  .lede b{color:#2c2823}
+  .quote{color:#3b5a8a;font-style:italic}
+  .meta{color:#8a8579;font-size:11.5px;margin-bottom:30px}
+  code{background:#dedbd2;border-radius:4px;padding:1px 5px;font-size:11.5px;font-family:"SF Mono",ui-monospace,Menlo,monospace}
+
+  section{margin-bottom:46px}
+  .h2{font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:#7c776c;font-weight:700;margin-bottom:4px}
+  .h2sub{font-size:12.5px;color:#6f6a60;margin-bottom:20px;max-width:920px;line-height:1.55}
+
+  .row{display:flex;gap:40px;align-items:flex-start;flex-wrap:wrap}
+  .stack{display:flex;flex-direction:column;align-items:center;gap:13px}
+  .col-note{font-size:11px;color:#9a958a;text-align:center;max-width:300px;line-height:1.5}
+  .pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 9px;border-radius:999px}
+  .pill.now{background:#f3dada;color:#9a3b3b}
+  .pill.rec{background:#d8ecdf;color:#2f7c54}
+  .pill.held{background:#e6e2d6;color:#7c776c}
+
+  /* iPhone frame */
+  .phone{width:334px;border-radius:46px;background:#0d0d10;padding:11px;box-shadow:0 20px 50px rgba(0,0,0,.22),0 2px 6px rgba(0,0,0,.18)}
+  .phone .screen{position:relative;border-radius:36px;overflow:hidden;background:var(--page);min-height:600px}
+  .phone .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:118px;height:26px;background:#0d0d10;border-bottom-left-radius:16px;border-bottom-right-radius:16px;z-index:5}
+  .phone .status{display:flex;justify-content:space-between;align-items:center;padding:11px 26px 0;font-size:12px;font-weight:600;color:var(--ink)}
+  .phone .body{padding:20px 16px}
+  .scr-title{font-size:24px;font-weight:800;letter-spacing:-.5px;margin-bottom:4px}
+  .scr-sub{font-size:13px;color:var(--sub);margin-bottom:16px}
+
+  /* web frame */
+  .webframe{width:460px;border-radius:14px;border:1px solid #d7d3ca;overflow:hidden;background:var(--page);box-shadow:0 12px 34px rgba(0,0,0,.10)}
+  .webbar{display:flex;align-items:center;gap:7px;padding:9px 14px;background:#f2efe8;border-bottom:1px solid #e4e0d6}
+  .webbar i{width:10px;height:10px;border-radius:50%;display:inline-block}
+  .webbar .u{margin-left:10px;font-size:11px;color:#9a958a}
+  .webbody{padding:22px 18px}
+
+  /* the planner card */
+  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.03)}
+  .card-title{font-size:18px;font-weight:700;color:var(--ink);margin-bottom:7px}
+  .card-desc{font-size:13.5px;color:var(--sub);line-height:1.5;margin-bottom:4px}
+
+  .seclabel{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--sub);font-weight:700;margin:14px 0 7px}
+  .pills-row{display:flex;gap:8px}
+  .seg{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:11px 6px;border-radius:11px;border:1px solid var(--border);font-size:13.5px;font-weight:600;color:var(--dim)}
+  .seg.sel-pri{border-color:var(--primary);background:var(--primary-soft);color:var(--primary);font-weight:700}
+  .seg .dot{width:13px;height:13px;border-radius:50%;border:1.6px solid var(--dim)}
+  .seg.sel-pri .dot{border-color:var(--primary);background:var(--primary);box-shadow:inset 0 0 0 2px #fff}
+
+  /* SOURCE selector — vertical radio rows (the new ENG-790 control) */
+  .src{display:flex;flex-direction:column;gap:8px}
+  .srow{display:flex;align-items:center;gap:11px;padding:12px 13px;border-radius:13px;border:1px solid var(--border);background:#fff}
+  .srow.sel{border-color:var(--primary);background:var(--primary-soft)}
+  .srow.disabled{opacity:.5}
+  .srad{width:18px;height:18px;border-radius:50%;border:1.8px solid var(--dim);flex:none;position:relative}
+  .srow.sel .srad{border-color:var(--primary)}
+  .srow.sel .srad:after{content:"";position:absolute;inset:3px;border-radius:50%;background:var(--primary)}
+  .stext{flex:1;min-width:0}
+  .stitle{font-size:14px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:7px}
+  .srow.sel .stitle{color:var(--primary)}
+  .scount{font-size:11px;font-weight:700;color:var(--dim);background:#f1eee6;border-radius:999px;padding:1px 7px}
+  .srow.sel .scount{background:#fff;color:var(--primary)}
+  .ssub{font-size:11.5px;color:var(--sub);margin-top:2px;line-height:1.4}
+
+  .gen{margin-top:15px;width:100%;padding:15px;border-radius:12px;background:var(--primary);color:#fff;font-size:16px;font-weight:700;text-align:center}
+  .gen.dead{opacity:.4}
+  .genhint{font-size:11.5px;color:var(--sub);text-align:center;margin-top:8px;line-height:1.4}
+
+  /* held empty state (ENG-788) */
+  .empty{display:flex;flex-direction:column;align-items:center;text-align:center;padding:14px 8px 6px}
+  .empty .icon{width:60px;height:60px;border-radius:16px;background:var(--primary-soft);display:flex;align-items:center;justify-content:center;margin-bottom:16px}
+  .empty .h{font-size:18px;font-weight:700;color:var(--ink);margin-bottom:7px}
+  .empty .p{font-size:13px;color:var(--sub);line-height:1.5;max-width:280px;margin-bottom:18px}
+  .empty .cta{width:100%;padding:14px;border-radius:12px;background:var(--primary);color:#fff;font-size:15px;font-weight:700;text-align:center;margin-bottom:9px}
+  .empty .cta2{font-size:13px;font-weight:600;color:var(--sub)}
+  .linkweak{display:inline-block;font-size:13px;font-weight:600;color:var(--sub);margin-top:12px}
+
+  .goodtag{position:absolute;top:-9px;right:-9px;z-index:3;background:#2f7c54;color:#fff;font-size:9.5px;font-weight:700;letter-spacing:.03em;padding:3px 8px;border-radius:999px;box-shadow:0 2px 6px rgba(0,0,0,.2)}
+  .badwrap{position:relative}
+
+  .rec{margin-top:10px;background:#fff;border:1px solid var(--border);border-left:3px solid var(--green);border-radius:10px;padding:15px 17px;max-width:980px}
+  .rec h3{font-size:12.5px;text-transform:uppercase;letter-spacing:.05em;color:#2f7c54;margin-bottom:8px}
+  .rec p{font-size:12.5px;color:#4a4640;line-height:1.6;margin-bottom:7px}
+  .rec p:last-child{margin-bottom:0}
+  .rec b{color:#2c2823}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:16px;font-size:11.5px;color:#6f6a60;max-width:980px}
+  .legend b{color:#2c2823}
+  .divider{height:1px;background:#d7d3ca;margin:34px 0;max-width:1040px}
+</style>
+</head>
+<body>
+  <h1>Plan tab — "Plan from" source selector (ENG-790)</h1>
+  <p class="lede">Grace's call (verbatim): <span class="quote">"i guess we can and should give them options, so give them the option to generate from the discovery pool. we should probably always give these options — plan from library only, library & discovery, only discovery."</span></p>
+  <p class="lede">So instead of picking mobile's library-first gate or web's broader pool, we expose the choice. A <b>"Plan from"</b> control with three modes sits at the top of the generate form: <b>My library</b> · <b>Library &amp; discovery</b> (default) · <b>Discovery only</b>. The generate button enables whenever the chosen source has ≥1 recipe — so <b>"0 saved" stops being a dead end</b>, because Discovery always has recipes.</p>
+  <p class="meta">2026-05-31 · ENG-790 · iPhone + web frames, canonical light tokens · flag <code>plan_source_selector</code> · shared helper <code>src/lib/planning/planSource.ts</code> · mobile <code>app/(tabs)/planner.tsx</code> · web <code>MealPlanner.tsx</code> + <code>AppDataContext.tsx</code></p>
+
+  <!-- ── SECTION 1: the reconciliation at 0 saved ── -->
+  <section>
+    <div class="h2">1 · 0 saved recipes — held ENG-788 dead-end vs. ENG-790 "you can still plan"</div>
+    <div class="h2sub">ENG-788 (held, left) treats 0 saved as "nothing to plan with" → one CTA to go build a library. But once Discovery is a legitimate source, that's no longer true: at 0 saved you can still generate a great plan from Suppr's recipes. Proposed (right): show the source selector, default to <b>Library &amp; discovery</b>, and the generate button is live — with "Browse library" kept as a quiet secondary for people who'd rather build their own first.</div>
+    <div class="row">
+
+      <!-- HELD ENG-788 -->
+      <div class="stack">
+        <span class="pill held">ENG-788 held (for context)</span>
+        <div class="phone">
+          <div class="notch"></div>
+          <div class="screen">
+            <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+            <div class="body">
+              <div class="scr-title">Plan</div>
+              <div class="scr-sub">This week</div>
+              <div class="card">
+                <div class="empty">
+                  <div class="icon">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#588CE4" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.5A2.5 2.5 0 0 1 4.5 4H11v15H4.5A2.5 2.5 0 0 0 2 21.5z"/><path d="M22 6.5A2.5 2.5 0 0 0 19.5 4H13v15h6.5a2.5 2.5 0 0 1 2.5 2.5z"/></svg>
+                  </div>
+                  <div class="h">Add a few recipes first</div>
+                  <div class="p">Save recipes you like and Suppr builds a balanced plan from them in seconds.</div>
+                  <div class="cta">Browse recipe library</div>
+                  <div class="cta2">Or import a plan you already have</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-note">Calm + honest under Model A (library-first). But it <b>blocks</b> a user who'd happily plan from Suppr's recipes — which is exactly the option you asked to add.</div>
+      </div>
+
+      <!-- ENG-790 proposed, 0 saved -->
+      <div class="stack">
+        <span class="pill rec">ENG-790 proposed · 0 saved</span>
+        <div class="phone badwrap">
+          <span class="goodtag">NOT A DEAD END</span>
+          <div class="notch"></div>
+          <div class="screen">
+            <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+            <div class="body">
+              <div class="scr-title">Plan</div>
+              <div class="scr-sub">This week</div>
+              <div class="card">
+                <div class="card-title">Plan your week</div>
+                <div class="card-desc">Pick where your recipes come from — Suppr balances them to your targets.</div>
+                <div class="seclabel">Plan from</div>
+                <div class="src">
+                  <div class="srow disabled">
+                    <div class="srad"></div>
+                    <div class="stext"><div class="stitle">My library <span class="scount">0</span></div><div class="ssub">Save a recipe to use this</div></div>
+                  </div>
+                  <div class="srow sel">
+                    <div class="srad"></div>
+                    <div class="stext"><div class="stitle">Library &amp; discovery <span class="scount">120+</span></div><div class="ssub">Your saves plus Suppr's recipe picks</div></div>
+                  </div>
+                  <div class="srow">
+                    <div class="srad"></div>
+                    <div class="stext"><div class="stitle">Discovery only <span class="scount">120+</span></div><div class="ssub">Just Suppr's recipes</div></div>
+                  </div>
+                </div>
+                <div class="gen">Generate my plan</div>
+                <div class="linkweak">Browse recipe library →</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-note">"My library" is the only disabled row (0 saved); default lands on <b>Library &amp; discovery</b> so generate is live. Library-builders still have a quiet link.</div>
+      </div>
+
+      <!-- ENG-790 proposed, "My library" selected at 0 saved -->
+      <div class="stack">
+        <span class="pill rec">ENG-790 · "My library" chosen, 0 saved</span>
+        <div class="phone">
+          <div class="notch"></div>
+          <div class="screen">
+            <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+            <div class="body">
+              <div class="scr-title">Plan</div>
+              <div class="scr-sub">This week</div>
+              <div class="card">
+                <div class="card-title">Plan your week</div>
+                <div class="card-desc">Pick where your recipes come from — Suppr balances them to your targets.</div>
+                <div class="seclabel">Plan from</div>
+                <div class="src">
+                  <div class="srow sel">
+                    <div class="srad"></div>
+                    <div class="stext"><div class="stitle">My library <span class="scount">0</span></div><div class="ssub">Only recipes you've saved</div></div>
+                  </div>
+                  <div class="srow">
+                    <div class="srad"></div>
+                    <div class="stext"><div class="stitle">Library &amp; discovery <span class="scount">120+</span></div><div class="ssub">Your saves plus Suppr's recipe picks</div></div>
+                  </div>
+                  <div class="srow">
+                    <div class="srad"></div>
+                    <div class="stext"><div class="stitle">Discovery only <span class="scount">120+</span></div><div class="ssub">Just Suppr's recipes</div></div>
+                  </div>
+                </div>
+                <div class="gen dead">Generate my plan</div>
+                <div class="genhint">Your library is empty. Save a recipe, or switch source to include Suppr's picks.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-note">If the user deliberately narrows to an empty source, the button disables with a hint that names the fix — honest, not a silent dead button.</div>
+      </div>
+
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ── SECTION 2: populated form with selector ── -->
+  <section>
+    <div class="h2">2 · ≥1 saved recipe — selector at the top of the populated form</div>
+    <div class="h2sub">With saves present, the selector defaults to <b>Library &amp; discovery</b> and sits above Days / Start / Meals. Selected pills are primary-accent (the ENG-788 colour fix carries straight over). Choosing "My library" here narrows to the user's own saves.</div>
+    <div class="row">
+
+      <!-- mobile populated -->
+      <div class="stack">
+        <span class="pill rec">ENG-790 · 12 saved</span>
+        <div class="phone">
+          <div class="notch"></div>
+          <div class="screen">
+            <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+            <div class="body">
+              <div class="scr-title">Plan</div>
+              <div class="scr-sub">This week</div>
+              <div class="card">
+                <div class="card-title">Plan your week</div>
+                <div class="card-desc">12 recipes saved — choose your source and Suppr balances to your targets.</div>
+                <div class="seclabel">Plan from</div>
+                <div class="src">
+                  <div class="srow">
+                    <div class="srad"></div>
+                    <div class="stext"><div class="stitle">My library <span class="scount">12</span></div><div class="ssub">Only recipes you've saved</div></div>
+                  </div>
+                  <div class="srow sel">
+                    <div class="srad"></div>
+                    <div class="stext"><div class="stitle">Library &amp; discovery <span class="scount">130+</span></div><div class="ssub">Your saves plus Suppr's recipe picks</div></div>
+                  </div>
+                  <div class="srow">
+                    <div class="srad"></div>
+                    <div class="stext"><div class="stitle">Discovery only <span class="scount">120+</span></div><div class="ssub">Just Suppr's recipes</div></div>
+                  </div>
+                </div>
+                <div class="seclabel">Days</div>
+                <div class="pills-row">
+                  <div class="seg sel-pri">1 day</div>
+                  <div class="seg">3 days</div>
+                  <div class="seg">7 days</div>
+                </div>
+                <div class="seclabel">Include meals</div>
+                <div class="pills-row">
+                  <div class="seg sel-pri"><span class="dot"></span>Lunch</div>
+                  <div class="seg sel-pri"><span class="dot"></span>Dinner</div>
+                </div>
+                <div class="gen">Generate my plan</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-note">Source selector is the first decision; days/meals follow. Primary-accent selected pills (ENG-788 colour fix carries over).</div>
+      </div>
+
+      <!-- web populated -->
+      <div class="stack">
+        <span class="pill rec">Web parity</span>
+        <div class="webframe">
+          <div class="webbar"><i style="background:#f0625a"></i><i style="background:#f6b938"></i><i style="background:#54c02c"></i><span class="u">suppr.app/plan</span></div>
+          <div class="webbody">
+            <div class="card">
+              <div class="card-title">Plan your week</div>
+              <div class="card-desc">12 recipes saved — choose your source and Suppr balances to your targets.</div>
+              <div class="seclabel">Plan from</div>
+              <div class="src">
+                <div class="srow">
+                  <div class="srad"></div>
+                  <div class="stext"><div class="stitle">My library <span class="scount">12</span></div><div class="ssub">Only recipes you've saved</div></div>
+                </div>
+                <div class="srow sel">
+                  <div class="srad"></div>
+                  <div class="stext"><div class="stitle">Library &amp; discovery <span class="scount">130+</span></div><div class="ssub">Your saves plus Suppr's recipe picks</div></div>
+                </div>
+                <div class="srow">
+                  <div class="srad"></div>
+                  <div class="stext"><div class="stitle">Discovery only <span class="scount">120+</span></div><div class="ssub">Just Suppr's recipes</div></div>
+                </div>
+              </div>
+              <div class="gen" style="border-radius:999px;width:auto;display:inline-block;padding:11px 28px;margin-left:50%;transform:translateX(-50%)">Generate meal plan</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-note">Same control + same shared helper on web. Fixes the silent gap where web pooled saved-only and mobile pooled saved+discover — now it's an explicit, matching choice.</div>
+      </div>
+
+    </div>
+  </section>
+
+  <div class="rec">
+    <h3>What this changes</h3>
+    <p><b>One shared control, two platforms.</b> A "Plan from" selector (My library / Library &amp; discovery / Discovery only) on both the mobile and web Plan tabs, defaulting to <b>Library &amp; discovery</b>. Pool-building runs through one shared helper (<code>selectPlanPool</code>) so the two platforms can't silently diverge again.</p>
+    <p><b>It folds in the ENG-788 empty state.</b> Since 0 saved is no longer a dead end, the held PlanEmptyState becomes the "My library is empty" sub-case, not the whole screen. The selector defaults to a source that works, generate stays live, and "Browse recipe library" survives as a quiet secondary link. ENG-788's primary-accent pill fix carries over unchanged.</p>
+    <p><b>It closes the real divergence.</b> Today web pools saved-only and mobile pools saved+discover — invisible drift. The selector makes the pool an explicit, identical choice on both.</p>
+    <p><b>Two red-lines for you:</b> (1) Is <b>Library &amp; discovery</b> the right default, or should a brand-new user default to <b>Discovery only</b> until they've saved anything? (2) Happy folding ENG-788's empty state into this (one combined sim review), or keep them as two separate ramps?</p>
+  </div>
+
+  <div class="legend">
+    <span><b>Default</b> — <code>library_and_discovery</code> (broadest, always has recipes)</span>
+    <span><b>Disabled row</b> — source with 0 recipes (e.g. "My library" at 0 saves)</span>
+    <span><b>Gate</b> — generate enabled iff the chosen source has ≥1 recipe (<code>canGenerateFromSource</code>)</span>
+    <span><b>De-dupe</b> — combined mode drops discover recipes already saved (<code>selectPlanPool</code>)</span>
+  </div>
+</body>
+</html>

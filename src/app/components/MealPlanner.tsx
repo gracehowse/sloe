@@ -36,6 +36,13 @@ import {
   recipeFitsMealSlot,
   type PlannerMealSlot,
 } from "../../lib/planning/generateMealPlan.ts";
+import { isFeatureEnabled } from "../../lib/analytics/track.ts";
+import {
+  type PlanSourceMode,
+  DEFAULT_PLAN_SOURCE_MODE,
+  canGenerateFromSource,
+} from "../../lib/planning/planSource.ts";
+import { PlanSourceSelector } from "./PlanSourceSelector.tsx";
 import {
   DEFAULT_PLANNER_BANDS,
   refitDayMealsToTargets,
@@ -172,6 +179,16 @@ export const MealPlanner = memo(function MealPlanner({
   } = useAppData();
 
   const [isGenerating, setIsGenerating] = useState(false);
+  // ENG-790 (2026-05-31) — "Plan from" source selector. When the flag is
+  // on, the user chooses whether a generated plan draws from their saved
+  // library, library + Suppr's discover pool (default), or discovery only;
+  // the choice threads into `generateMealPlan({ source })`. Off → the legacy
+  // saved-only path with the hard 0-saved gate. Mobile twin:
+  // `apps/mobile/app/(tabs)/planner.tsx`.
+  const planSourceSelector = isFeatureEnabled("plan_source_selector");
+  const [planSource, setPlanSource] = useState<PlanSourceMode>(
+    DEFAULT_PLAN_SOURCE_MODE,
+  );
   const [swapFor, setSwapFor] = useState<SwapTarget | null>(null);
   // Audit 2026-04-30 — themed-dialog migration. Replaces the prior
   // `window.prompt` (rename + new plan) and `window.confirm` (delete
@@ -212,6 +229,18 @@ export const MealPlanner = memo(function MealPlanner({
   );
 
   const targetCalories = nutritionTargets.calories;
+
+  // ENG-790 — discover-pool size for the "Plan from" count badge, de-duped
+  // against the saved library so the combined total can't double-count a
+  // recipe that's both saved and discoverable (mirrors `selectPlanPool`).
+  const discoverCount = useMemo(() => {
+    const savedIds = new Set(savedRecipesForLibrary.map((r) => r.id));
+    return discoverRecipes.filter((r) => !savedIds.has(r.id)).length;
+  }, [discoverRecipes, savedRecipesForLibrary]);
+  const libraryCount = savedRecipesForLibrary.length;
+  const sourceCanGenerate = planSourceSelector
+    ? canGenerateFromSource(planSource, { libraryCount, discoverCount })
+    : true;
 
   const summary = useMemo(
     () => computePlanWeekSummaryScore(mealPlan ?? [], targetCalories),
@@ -274,6 +303,7 @@ export const MealPlanner = memo(function MealPlanner({
       await generateMealPlan({
         days,
         ...(useSlotOverride ? { slots: slotsList } : {}),
+        ...(planSourceSelector ? { source: planSource } : {}),
       });
       await generateShoppingListFromPlan();
       toast.success("Plan regenerated");
@@ -671,7 +701,7 @@ export const MealPlanner = memo(function MealPlanner({
                 className={[
                   "inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all",
                   active
-                    ? "border-primary bg-primary/10 text-primary"
+                    ? "border-primary bg-primary/10 text-foreground"
                     : "border-border text-foreground hover:bg-muted/60",
                 ].join(" ")}
               >
@@ -712,6 +742,22 @@ export const MealPlanner = memo(function MealPlanner({
         </div>
       ) : null}
 
+      {/* ENG-790 (2026-05-31): "Plan from" source selector sits above
+          Days / Slots / Start so the user picks where the plan draws
+          recipes from before tuning length. Flag-gated; off → the
+          legacy controls only. Mobile parity: the same control at the
+          top of the generate form in `app/(tabs)/planner.tsx`. */}
+      {planSourceSelector ? (
+        <div className="mb-3">
+          <PlanSourceSelector
+            mode={planSource}
+            onChange={setPlanSource}
+            libraryCount={libraryCount}
+            discoverCount={discoverCount}
+          />
+        </div>
+      ) : null}
+
       {/* F2-B (2026-04-28): day-count picker. Mobile parity at
           `apps/mobile/app/(tabs)/planner.tsx:1734-1757`. F2-C: Free
           tier sees a lock glyph on 3-day and 7-day chips and tapping
@@ -739,7 +785,7 @@ export const MealPlanner = memo(function MealPlanner({
               className={[
                 "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-semibold border transition-all",
                 active
-                  ? "border-primary bg-primary/10 text-primary"
+                  ? "border-primary bg-primary/10 text-foreground"
                   : "border-border text-foreground hover:bg-muted/60",
                 locked ? "opacity-60" : "",
               ].join(" ")}
@@ -781,7 +827,7 @@ export const MealPlanner = memo(function MealPlanner({
               className={[
                 "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all capitalize",
                 enabled
-                  ? "border-primary bg-primary/10 text-primary"
+                  ? "border-primary bg-primary/10 text-foreground"
                   : "border-border text-muted-foreground hover:bg-muted/60",
                 isLast ? "cursor-not-allowed opacity-80" : "",
               ].join(" ")}
@@ -822,7 +868,7 @@ export const MealPlanner = memo(function MealPlanner({
               className={[
                 "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-semibold border transition-all",
                 active
-                  ? "border-primary bg-primary/10 text-primary"
+                  ? "border-primary bg-primary/10 text-foreground"
                   : "border-border text-foreground hover:bg-muted/60",
               ].join(" ")}
             >
@@ -851,17 +897,33 @@ export const MealPlanner = memo(function MealPlanner({
             className="text-muted-foreground text-center"
             style={{ fontSize: 13, lineHeight: "1.5", maxWidth: 340, marginBottom: 24 }}
           >
-            Hit generate and we&apos;ll build a {planDays}-day meal plan from your saved recipes, balanced to your calorie and macro targets.
+            {planSourceSelector
+              ? `Pick where your recipes come from above, then hit generate — Suppr balances a ${planDays}-day plan to your calorie and macro targets.`
+              : `Hit generate and we'll build a ${planDays}-day meal plan from your saved recipes, balanced to your calorie and macro targets.`}
           </p>
           <button
             data-testid="planner-empty-generate-btn"
-            className="rounded-full bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
+            className="rounded-full bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
             style={{ fontSize: 14, fontWeight: 600, padding: "10px 28px" }}
             onClick={handleRegenerate}
-            disabled={isGenerating}
+            disabled={isGenerating || !sourceCanGenerate}
           >
             {isGenerating ? "Generating…" : "Generate meal plan"}
           </button>
+          {/* ENG-790: the only way generate is blocked under the flag is
+              "My library" picked at 0 saves — point the user back at the
+              selector (Discovery always has recipes) so 0 saved isn't a
+              dead end. Mobile parity: the `libraryEmptySubcase` hint. */}
+          {planSourceSelector && !sourceCanGenerate ? (
+            <p
+              data-testid="planner-empty-source-hint"
+              className="text-muted-foreground text-center"
+              style={{ fontSize: 12, lineHeight: "1.4", maxWidth: 320, marginTop: 12 }}
+            >
+              Save a recipe to plan from your library — or pick{" "}
+              <span className="font-semibold text-foreground">Library &amp; discovery</span> above to use Suppr&apos;s recipes.
+            </p>
+          ) : null}
         </div>
       ) : (
       <div
@@ -1315,7 +1377,7 @@ export const MealPlanner = memo(function MealPlanner({
         <button
           type="button"
           onClick={handleRegenerate}
-          disabled={isGenerating}
+          disabled={isGenerating || !sourceCanGenerate}
           className="inline-flex items-center gap-1.5 rounded-xl bg-card border border-border text-foreground font-semibold hover:bg-muted/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           style={{ padding: "8px 16px", fontSize: 13 }}
         >
