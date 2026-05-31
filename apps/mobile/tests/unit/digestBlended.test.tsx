@@ -10,7 +10,7 @@
  * blended and legacy layouts on the `blended` prop.
  */
 
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react-native";
 
 vi.mock("@/hooks/use-theme-colors", () => ({
@@ -28,6 +28,12 @@ vi.mock("@/hooks/use-theme-colors", () => ({
   }),
 }));
 
+vi.mock("@/lib/analytics", () => ({
+  track: vi.fn(),
+  isFeatureEnabled: vi.fn(() => false),
+}));
+
+import { isFeatureEnabled } from "@/lib/analytics";
 import { Digest, type DigestProps } from "../../components/Digest";
 import type { DigestBlendedExtras } from "@suppr/shared/nutrition/digest";
 
@@ -177,5 +183,30 @@ describe("Digest dispatcher — flag gating (mobile)", () => {
     );
     expect(getByTestId("digest-hero-day")).toBeTruthy();
     expect(queryByTestId("digest-closest-to-target")).toBeNull();
+  });
+});
+
+describe("DigestBlended — hero fill gate (progress_digest_beige_v2, mobile)", () => {
+  afterEach(() => {
+    vi.mocked(isFeatureEnabled).mockReturnValue(false);
+  });
+
+  it("keeps the opaque legacy beige when the flag is OFF", () => {
+    vi.mocked(isFeatureEnabled).mockReturnValue(false);
+    const { getByTestId } = render(
+      <Digest blended blendedExtras={extras} {...baseProps} />,
+    );
+    expect(getByTestId("digest-hero").props.style.backgroundColor).toBe("#f5f3ec");
+  });
+
+  it("pulls the hero to web's muted/40 tint when the flag is ON", () => {
+    // #f5f3ec + 40% alpha composites to #fbfaf7 over the white card — web parity.
+    vi.mocked(isFeatureEnabled).mockImplementation(
+      (flag: string) => flag === "progress_digest_beige_v2",
+    );
+    const { getByTestId } = render(
+      <Digest blended blendedExtras={extras} {...baseProps} />,
+    );
+    expect(getByTestId("digest-hero").props.style.backgroundColor).toBe("#f5f3ec66");
   });
 });

@@ -63,7 +63,7 @@ import {
 } from "@suppr/shared/nutrition/weightSurfaceMode";
 import { computeWeightTrendCopy } from "@suppr/shared/nutrition/weightTrendTile";
 import { syncHealthDataThrottled, isHealthSyncAvailable } from "@/lib/healthSync";
-import { buildWeekStats, formatAvgCaloriesLabel, formatMacroAdherenceBar } from "@/lib/progressWeekReport";
+import { buildWeekStats, formatAvgCaloriesLabel, formatMacroAdherenceBar, type WeekActivityAdjustment } from "@/lib/progressWeekReport";
 import {
   buildCaloriesRangeStats,
   buildWeightRangeStats,
@@ -185,6 +185,15 @@ export default function ProgressScreen() {
   // *on that day*. Days with no snapshot (pre-migration) fall back to
   // the current target and the UI marks that row as approximate.
   const [dailyTargetsByDay, setDailyTargetsByDay] = useState<Record<string, DailyTarget | null>>({});
+  // ENG-787 (2026-05-30) — per-day burn + workout + preference maps so the
+  // Daily Calories chart can judge each bar against that day's *effective*
+  // calorie budget (base target + earned activity bonus), reconciling
+  // exactly with the Today ring. `AppleHealthCardHost` loads its own copy
+  // for the HK card; this host-level copy feeds `buildWeekStats`.
+  const [activityBurnByDay, setActivityBurnByDay] = useState<Record<string, number>>({});
+  const [basalBurnByDay, setBasalBurnByDay] = useState<Record<string, number>>({});
+  const [workoutsByDay, setWorkoutsByDay] = useState<Record<string, { calories?: number }[]>>({});
+  const [preferActivityAdjusted, setPreferActivityAdjusted] = useState(false);
   const [milestone30ShownAt, setMilestone30ShownAt] = useState<string | null>(null);
   const [progressTabFocused, setProgressTabFocused] = useState(false);
 
@@ -409,7 +418,7 @@ export default function ProgressScreen() {
     const profilePromise = (async () =>
       await supabase
         .from("profiles")
-        .select("target_calories, target_protein, target_carbs, target_fat, weight_kg, goal_weight_kg, weight_kg_by_day, steps_by_day, daily_steps_goal, week_start_day, goal, plan_pace, sex, height_cm, age, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, weekly_recap_last_seen_week_key, weekly_recap_push_enabled, measurement_system, weight_surface_mode, milestone_30_shown_at")
+        .select("target_calories, target_protein, target_carbs, target_fat, weight_kg, goal_weight_kg, weight_kg_by_day, steps_by_day, daily_steps_goal, week_start_day, goal, plan_pace, sex, height_cm, age, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, weekly_recap_last_seen_week_key, weekly_recap_push_enabled, measurement_system, weight_surface_mode, milestone_30_shown_at, activity_burn_by_day, basal_burn_by_day, workouts_by_day, prefer_activity_adjusted_calories")
         .eq("id", userId)
         .maybeSingle())();
     const [entriesResult, profileResult] = await Promise.all([
@@ -465,6 +474,13 @@ export default function ProgressScreen() {
       setGoalWeightKg(Number.isFinite(gw) ? gw : null);
       setWeightKgByDay(parseNumMap(profile.weight_kg_by_day));
       setStepsByDay(parseNumMap(profile.steps_by_day));
+      // ENG-787 — burn + workout + preference for the effective-target chart.
+      setActivityBurnByDay(parseNumMap((profile as any).activity_burn_by_day));
+      setBasalBurnByDay(parseNumMap((profile as any).basal_burn_by_day));
+      setWorkoutsByDay(
+        ((profile as any).workouts_by_day ?? {}) as Record<string, { calories?: number }[]>,
+      );
+      setPreferActivityAdjusted(Boolean((profile as any).prefer_activity_adjusted_calories));
       const sg = profile.daily_steps_goal != null ? Number(profile.daily_steps_goal) : NUTRITION_DEFAULTS.steps;
       setDailyStepsGoal(Number.isFinite(sg) && sg > 0 ? Math.round(sg) : NUTRITION_DEFAULTS.steps);
       if (profile.week_start_day === "sunday" || profile.week_start_day === "monday") {
@@ -633,28 +649,13 @@ export default function ProgressScreen() {
     }
     return out;
   }, [dailyTargetsByDay]);
-  const weekStats = useMemo(
-    () => buildWeekStats(byDay, targets, weekStartDay, new Date(), weekTargetsByDay),
-    [byDay, targets, weekStartDay, weekTargetsByDay],
-  );
-
-  // Raw streak retained so the "Raw streak" disclosure row can surface it
-  // alongside the protected value — never misrepresented.
-  const rawStreakDays = useMemo(() => computeLoggingStreak(byDay as any), [byDay]);
-  const protectedStreakInfo = useMemo(
-    () => computeProtectedStreak(byDay as any, freezeLedger, freezeBudgetMax),
-    [byDay, freezeLedger, freezeBudgetMax],
-  );
-  const streakDays = protectedStreakInfo.streakLength;
-  const freezesAvailable = useMemo(
-    () => availableFreezes(freezeLedger, freezeBudgetMax),
-    [freezeLedger, freezeBudgetMax],
-  );
-
   // Action 5 Item 7 (2026-04-19) — resolved maintenance for the recap
   // card's adaptive-vs-formula one-liner. Computed at host level so the
   // card stays presentational and the shared `formatMaintenanceRecapLine`
   // helper drives identical render conditions on web + mobile.
+  //
+  // ENG-787 — hoisted above `weekStats` so the effective-target activity
+  // bundle can reuse its resolved kcal as the maintenance fallback.
   const recapMaintenance = useMemo(
     () =>
       resolveMaintenance({
@@ -677,6 +678,57 @@ export default function ProgressScreen() {
       profileAgeState,
       profileActivityLevelState,
     ],
+  );
+
+  // ENG-787 — per-day activity bundle for the Daily Calories chart. Mirrors
+  // the Today ring's `dayActivityBudgetAddon`: each bar is judged against
+  // base target + that day's earned bonus, not the bare base target.
+  // Maintenance prefers the day's frozen snapshot, falling back to the
+  // resolved value. Returns undefined when the preference is off → the
+  // chart collapses to plain base-target colouring (no behaviour change).
+  const weekActivity = useMemo<WeekActivityAdjustment | undefined>(() => {
+    if (!preferActivityAdjusted) return undefined;
+    const maintenanceByDay: Record<string, number> = {};
+    for (const [k, v] of Object.entries(dailyTargetsByDay)) {
+      if (v?.maintenanceTdee != null) maintenanceByDay[k] = v.maintenanceTdee;
+    }
+    const workoutKcalByDay: Record<string, number> = {};
+    for (const [k, list] of Object.entries(workoutsByDay)) {
+      workoutKcalByDay[k] = (list ?? []).reduce((s, w) => s + (w.calories ?? 0), 0);
+    }
+    return {
+      prefer: true,
+      restingByDay: basalBurnByDay,
+      activeByDay: activityBurnByDay,
+      workoutKcalByDay,
+      maintenanceByDay,
+      maintenanceFallback: recapMaintenance?.kcal ?? 0,
+    };
+  }, [
+    preferActivityAdjusted,
+    dailyTargetsByDay,
+    workoutsByDay,
+    basalBurnByDay,
+    activityBurnByDay,
+    recapMaintenance,
+  ]);
+
+  const weekStats = useMemo(
+    () => buildWeekStats(byDay, targets, weekStartDay, new Date(), weekTargetsByDay, weekActivity),
+    [byDay, targets, weekStartDay, weekTargetsByDay, weekActivity],
+  );
+
+  // Raw streak retained so the "Raw streak" disclosure row can surface it
+  // alongside the protected value — never misrepresented.
+  const rawStreakDays = useMemo(() => computeLoggingStreak(byDay as any), [byDay]);
+  const protectedStreakInfo = useMemo(
+    () => computeProtectedStreak(byDay as any, freezeLedger, freezeBudgetMax),
+    [byDay, freezeLedger, freezeBudgetMax],
+  );
+  const streakDays = protectedStreakInfo.streakLength;
+  const freezesAvailable = useMemo(
+    () => availableFreezes(freezeLedger, freezeBudgetMax),
+    [freezeLedger, freezeBudgetMax],
   );
 
   // Batch 4.11 — weekly recap derivation + visibility gating.
@@ -1302,7 +1354,7 @@ export default function ProgressScreen() {
             // were well under (e.g. 938 vs 1,100 effective = miss at 14.7%).
             const daysHitCalorieTarget = weekStats.days.reduce((n, d) => {
               if (d.targetCalories <= 0 || d.calories <= 0) return n;
-              return d.calories <= d.targetCalories ? n + 1 : n;
+              return d.calories <= d.effectiveTargetCalories ? n + 1 : n;
             }, 0);
             const weighInsThisWeek = weekStats.days.filter(
               (d) => (weightKgByDay[d.key] ?? 0) > 0,
@@ -1539,11 +1591,16 @@ export default function ProgressScreen() {
                   <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8, height: chartHeight, position: "relative" }}>
                     {weekStats.days.map((d) => {
                       const barH = maxCal > 0 ? Math.max(4, (d.calories / (maxCal * 1.15)) * barMax) : 4;
-                      // F-2 — colour each bar against the target that
-                      // was active *on that day*. `d.targetCalories`
-                      // resolves to the snapshot when one exists, else
-                      // the current profile target (pre-migration).
-                      const overTarget = d.calories > d.targetCalories;
+                      // F-2 + ENG-787 — colour each bar against the
+                      // budget that was actually in force on that day:
+                      // the snapshot/current base target PLUS the earned
+                      // activity bonus (`effectiveTargetCalories`). Using
+                      // the bare base target painted bars amber on days the
+                      // user ate into a bonus they'd earned — the bug Grace
+                      // reported ("hasn't taken into account the fact i
+                      // earned bonus cals"). Collapses to base when the
+                      // activity-adjusted preference is off.
+                      const overTarget = d.calories > d.effectiveTargetCalories;
                       const isDayToday = d.key === todayKey;
                       // Action 13 Item #11 (2026-04-19) — past days
                       // without a snapshot render with a dashed border

@@ -1,4 +1,5 @@
 import { dateKeyFromDate } from "./trackerStats";
+import { computeActivityBonusKcal } from "./activityBonus";
 
 export type WeekDayTotals = {
   key: string;
@@ -21,7 +22,46 @@ export type WeekDayTotals = {
   targetProtein: number;
   targetCarbs: number;
   targetFat: number;
+  /**
+   * ENG-787 (2026-05-30) — the calorie budget a day was actually judged
+   * against: `targetCalories` + that day's earned activity bonus (when
+   * `prefer_activity_adjusted_calories` is on). When no `activity` bundle
+   * is passed to `buildWeekStats`, this equals `targetCalories` exactly,
+   * so existing callers see no change.
+   *
+   * The Daily Calories chart MUST colour a bar over/under against THIS
+   * value, not `targetCalories`. Otherwise a day where the user ate into
+   * an earned activity bonus reads as "over budget" when it wasn't — the
+   * exact bug Grace reported ("hasn't taken into account the fact i
+   * earned bonus cals these days").
+   */
+  effectiveTargetCalories: number;
   isSnapshot: boolean;
+};
+
+/**
+ * ENG-787 (2026-05-30) — optional per-day activity inputs so the week
+ * report can resolve each day's *effective* calorie target (base + earned
+ * activity bonus). Mirrors the per-day budget add-on that Today already
+ * applies (`dayActivityBudgetAddon` mobile / `dayActivityBudgetAddonWeb`),
+ * so the Progress chart reconciles exactly with the Today ring.
+ *
+ * All maps are keyed by `YYYY-MM-DD`. When `prefer` is false the bonus is
+ * always 0 and `effectiveTargetCalories` collapses to `targetCalories`.
+ */
+export type WeekActivityAdjustment = {
+  /** Profile flag `prefer_activity_adjusted_calories`. */
+  prefer: boolean;
+  /** Resting (basal) kcal burned, per day key. */
+  restingByDay: Record<string, number | undefined>;
+  /** Active kcal burned, per day key. */
+  activeByDay: Record<string, number | undefined>;
+  /** Logged workout kcal, per day key — fallback when no resting data. */
+  workoutKcalByDay?: Record<string, number | undefined>;
+  /** Per-day maintenance TDEE (from the `daily_targets` snapshot). */
+  maintenanceByDay?: Record<string, number | undefined>;
+  /** Maintenance to use on days without a snapshot value. */
+  maintenanceFallback: number;
 };
 
 export type WeekStatsBundle = {
@@ -85,6 +125,7 @@ export function buildWeekStats<M extends MealMacros>(
   weekStartDay: "monday" | "sunday",
   now: Date = new Date(),
   targetsByDay?: Record<string, DayTargetOverride | null | undefined>,
+  activity?: WeekActivityAdjustment,
 ): WeekStatsBundle {
   const days: WeekDayTotals[] = [];
   const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -92,6 +133,7 @@ export function buildWeekStats<M extends MealMacros>(
   const startOffset = weekStartDay === "monday" ? (dow === 0 ? -6 : 1 - dow) : -dow;
   const weekFirst = new Date(now);
   weekFirst.setDate(now.getDate() + startOffset);
+  const todayDateKey = dateKeyFromDate(now);
 
   for (let i = 0; i < 7; i++) {
     const d = new Date(weekFirst);
@@ -104,14 +146,32 @@ export function buildWeekStats<M extends MealMacros>(
     // calorie field falls back to the current target — identical
     // behaviour to "no snapshot", so `isSnapshot = false`.
     const hasSnapshot = !!snap && snap.targetCalories != null;
+    const targetCalories = snap?.targetCalories ?? targets.calories;
+    // ENG-787 — add the day's earned activity bonus to get the budget the
+    // day was actually judged against. `computeActivityBonusKcal` returns
+    // 0 when `prefer` is off or there was no active burn, so this collapses
+    // to `targetCalories` whenever no `activity` bundle is supplied.
+    const activityBonus = activity
+      ? computeActivityBonusKcal({
+          prefer: activity.prefer,
+          dateKey: key,
+          todayDateKey,
+          restingKcal: activity.restingByDay[key] ?? 0,
+          activeKcal: activity.activeByDay[key] ?? 0,
+          maintenanceKcal: activity.maintenanceByDay?.[key] ?? activity.maintenanceFallback,
+          workoutKcal: activity.workoutKcalByDay?.[key] ?? 0,
+          now,
+        })
+      : 0;
     days.push({
       key,
       label: dayLabels[d.getDay()]!,
       ...totals,
-      targetCalories: snap?.targetCalories ?? targets.calories,
+      targetCalories,
       targetProtein: snap?.targetProtein ?? targets.protein,
       targetCarbs: snap?.targetCarbs ?? targets.carbs,
       targetFat: snap?.targetFat ?? targets.fat,
+      effectiveTargetCalories: targetCalories + activityBonus,
       isSnapshot: hasSnapshot,
     });
   }

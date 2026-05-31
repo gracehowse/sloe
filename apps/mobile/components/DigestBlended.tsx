@@ -32,7 +32,7 @@ import * as Haptics from "expo-haptics";
 
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { Accent, Elevation, Radius, Spacing } from "@/constants/theme";
-import { track } from "@/lib/analytics";
+import { isFeatureEnabled, track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import {
   classifyDigestHeroTone,
@@ -167,6 +167,12 @@ export function DigestBlended(props: DigestProps) {
         ? Accent.destructive
         : colors.text;
 
+  // progress_digest_beige_v2 (Option A): pull mobile's hero off the opaque slab to
+  // web's muted/40 tint (over the white card → #fbfaf7). Alpha keeps it dark-mode-safe.
+  const heroFill = isFeatureEnabled("progress_digest_beige_v2")
+    ? colors.backgroundSecondary + "66"
+    : colors.backgroundSecondary;
+
   // ── Metric strip.
   const hasWeight = stats.weightDeltaKg != null;
   const weightDecision = decideWeightSurface(weightSurfaceMode, stats.weightDeltaKg);
@@ -223,7 +229,7 @@ export function DigestBlended(props: DigestProps) {
       <View
         testID="digest-hero"
         style={{
-          backgroundColor: colors.backgroundSecondary,
+          backgroundColor: heroFill,
           borderRadius: 14,
           paddingHorizontal: 16,
           paddingTop: 16,

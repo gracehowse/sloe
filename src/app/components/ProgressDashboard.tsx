@@ -26,7 +26,7 @@ import { useAppData } from "../../context/AppDataContext.tsx";
 import { normalizeMacroTargets, DEFAULT_STEPS_GOAL } from "../../types/profile.ts";
 import { computeLoggingStreak } from "../../lib/nutrition/trackerStats.ts";
 import { todayKey } from "../../lib/nutrition/trackerDate.ts";
-import { buildWeekStats, formatAvgCaloriesLabel, formatMacroAdherenceBar } from "../../lib/nutrition/progressWeekReport.ts";
+import { buildWeekStats, formatAvgCaloriesLabel, formatMacroAdherenceBar, type WeekActivityAdjustment } from "../../lib/nutrition/progressWeekReport.ts";
 import {
   buildCaloriesRangeStats,
   buildWeightRangeStats,
@@ -149,6 +149,13 @@ function ProgressDashboardContent() {
     nutritionByDay,
     nutritionTargets,
     profileWeightSurfaceMode,
+    // ENG-787 — per-day burn + preference so the Daily Calories chart
+    // judges each bar against the day's effective budget (base + earned
+    // activity bonus), reconciling with the Today ring.
+    preferActivityAdjustedCalories,
+    activityBurnByDay,
+    basalBurnByDay,
+    workoutsByDay,
   } = useAppData();
 
   const [loading, setLoading] = useState(true);
@@ -590,9 +597,73 @@ function ProgressDashboardContent() {
     }
     return out;
   }, [dailyTargetsByDay]);
+  // Action 5 Item 7 (2026-04-19) — resolved maintenance for the recap
+  // card's adaptive-vs-formula one-liner. Computed at the host level
+  // (not inside the WeeklyRecapCard) so we can pass it as a plain prop;
+  // the card stays presentational and the resolver stays a pure call.
+  //
+  // ENG-787 — hoisted above `weekStatsBundle` so the effective-target
+  // activity bundle can reuse its resolved kcal as the maintenance fallback.
+  const recapMaintenance = useMemo(
+    () =>
+      resolveMaintenance({
+        adaptive_tdee: adaptiveTdee,
+        adaptive_tdee_confidence: adaptiveConfidence,
+        adaptive_tdee_updated_at: adaptiveUpdatedAt,
+        sex: profileSexCached,
+        weight_kg: weightKg ?? 70,
+        height_cm: profileHeightCmCached,
+        age: profileAgeCached,
+        activity_level: profileActivityLevelCached,
+      }),
+    [
+      adaptiveTdee,
+      adaptiveConfidence,
+      adaptiveUpdatedAt,
+      profileSexCached,
+      weightKg,
+      profileHeightCmCached,
+      profileAgeCached,
+      profileActivityLevelCached,
+    ],
+  );
+
+  // ENG-787 — per-day activity bundle for the Daily Calories chart. Mirrors
+  // the Today ring's `dayActivityBudgetAddonWeb`: each bar is judged against
+  // base target + that day's earned bonus, not the bare base target.
+  // Maintenance prefers the day's frozen snapshot, falling back to the
+  // resolved value. Undefined when the preference is off → the chart
+  // collapses to plain base-target colouring (no behaviour change).
+  const weekActivity = useMemo<WeekActivityAdjustment | undefined>(() => {
+    if (!preferActivityAdjustedCalories) return undefined;
+    const maintenanceByDay: Record<string, number> = {};
+    for (const [k, v] of Object.entries(dailyTargetsByDay)) {
+      if (v?.maintenanceTdee != null) maintenanceByDay[k] = v.maintenanceTdee;
+    }
+    const workoutKcalByDay: Record<string, number> = {};
+    for (const [k, list] of Object.entries(workoutsByDay)) {
+      workoutKcalByDay[k] = (list ?? []).reduce((s, w) => s + (w.calories ?? 0), 0);
+    }
+    return {
+      prefer: true,
+      restingByDay: basalBurnByDay,
+      activeByDay: activityBurnByDay,
+      workoutKcalByDay,
+      maintenanceByDay,
+      maintenanceFallback: recapMaintenance?.kcal ?? 0,
+    };
+  }, [
+    preferActivityAdjustedCalories,
+    dailyTargetsByDay,
+    workoutsByDay,
+    basalBurnByDay,
+    activityBurnByDay,
+    recapMaintenance,
+  ]);
+
   const weekStatsBundle = useMemo(
-    () => buildWeekStats(nutritionByDay, targets, weekStartDay, new Date(), weekTargetsByDay),
-    [nutritionByDay, targets, weekStartDay, weekTargetsByDay],
+    () => buildWeekStats(nutritionByDay, targets, weekStartDay, new Date(), weekTargetsByDay, weekActivity),
+    [nutritionByDay, targets, weekStartDay, weekTargetsByDay, weekActivity],
   );
 
   // F-2 — each row carries its own target so the "over/under" colour
@@ -606,6 +677,11 @@ function ProgressDashboardContent() {
     day: d.label,
     calories: Math.round(d.calories),
     target: d.targetCalories,
+    // ENG-787 — the budget the day was actually judged against (base +
+    // earned activity bonus). The chart colours over/under against THIS,
+    // not the bare base target. Equals `target` when activity adjustment
+    // is off.
+    effectiveTarget: d.effectiveTargetCalories,
     // Action 13 Item #11 (2026-04-19) — surface whether this day's
     // target is a real `daily_targets` snapshot or the current-target
     // fallback. The chart uses this to add a subtle striped border on
@@ -636,34 +712,6 @@ function ProgressDashboardContent() {
   const freezesAvailable = useMemo(
     () => availableFreezes(freezeLedger, freezeBudgetMax),
     [freezeLedger, freezeBudgetMax],
-  );
-
-  // Action 5 Item 7 (2026-04-19) — resolved maintenance for the recap
-  // card's adaptive-vs-formula one-liner. Computed at the host level
-  // (not inside the WeeklyRecapCard) so we can pass it as a plain prop;
-  // the card stays presentational and the resolver stays a pure call.
-  const recapMaintenance = useMemo(
-    () =>
-      resolveMaintenance({
-        adaptive_tdee: adaptiveTdee,
-        adaptive_tdee_confidence: adaptiveConfidence,
-        adaptive_tdee_updated_at: adaptiveUpdatedAt,
-        sex: profileSexCached,
-        weight_kg: weightKg ?? 70,
-        height_cm: profileHeightCmCached,
-        age: profileAgeCached,
-        activity_level: profileActivityLevelCached,
-      }),
-    [
-      adaptiveTdee,
-      adaptiveConfidence,
-      adaptiveUpdatedAt,
-      profileSexCached,
-      weightKg,
-      profileHeightCmCached,
-      profileAgeCached,
-      profileActivityLevelCached,
-    ],
   );
 
   // Batch 4.11 — build recap for the *previous* week and gate visibility.
@@ -1170,7 +1218,7 @@ function ProgressDashboardContent() {
             let n = 0;
             for (const d of weekStatsBundle.days) {
               if (d.targetCalories <= 0 || d.calories <= 0) continue;
-              if (d.calories <= d.targetCalories) n += 1;
+              if (d.calories <= d.effectiveTargetCalories) n += 1;
             }
             return n;
           })()}
@@ -1578,7 +1626,12 @@ function ProgressDashboardContent() {
           ) : null}
           <div className="flex items-end gap-2 h-full">
             {dailyCaloriesData.map((d) => {
-              const overTarget = d.calories > d.target;
+              // ENG-787 — colour over/under against the day's *effective*
+              // budget (base + earned activity bonus), not the bare base
+              // target. The bare target painted bars amber on days the user
+              // ate into a bonus they'd earned. `effectiveTarget` equals
+              // `target` when the activity-adjusted preference is off.
+              const overTarget = d.calories > d.effectiveTarget;
               const barH =
                 maxCal > 0
                   ? Math.max(4, (d.calories / scaleMax) * barMax)
@@ -1633,21 +1686,29 @@ function ProgressDashboardContent() {
             })}
           </div>
         </div>
-        <div className="flex items-center gap-3 mt-2 text-[10px] text-muted-foreground flex-wrap">
-          <span className="flex items-center gap-1">
-            <span className="inline-block w-2 h-2 rounded-sm" style={{ background: "var(--success)" }} />
-            At or under target
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="inline-block w-2 h-2 rounded-sm" style={{ background: "var(--over-budget-fg)" }} />
-            Over target
-          </span>
-          {targets.calories > 0 ? (
+        <div className="flex flex-col gap-1 mt-2">
+          <div className="flex items-center gap-3 text-[10px] text-muted-foreground flex-wrap">
             <span className="flex items-center gap-1">
-              <span className="inline-block w-2.5 h-px border-t border-dashed border-primary" />
-              Target {targets.calories.toLocaleString()} kcal
+              <span className="inline-block w-2 h-2 rounded-sm" style={{ background: "var(--success)" }} />
+              At or under daily target
             </span>
-          ) : null}
+            <span className="flex items-center gap-1">
+              <span className="inline-block w-2 h-2 rounded-sm" style={{ background: "var(--over-budget-fg)" }} />
+              Over daily target
+            </span>
+            {targets.calories > 0 ? (
+              <span className="flex items-center gap-1">
+                <span className="inline-block w-2.5 h-px border-t border-dashed border-primary" />
+                Base target {targets.calories.toLocaleString()} kcal
+              </span>
+            ) : null}
+          </div>
+          {/* ENG-787 — the dashed line marks the BASE target; a bar can sit
+              above it and stay green on days an activity bonus was earned
+              and eaten into. This caption (mobile parity) disambiguates. */}
+          <p className="text-[10px] text-muted-foreground">
+            Each bar compares to your target for that day — higher on days you earned an activity bonus.
+          </p>
         </div>
             </>
           );

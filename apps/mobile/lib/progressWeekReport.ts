@@ -14,6 +14,7 @@ export {
   type ByDayOf,
   type MacroAdherenceBar,
   type MealMacros,
+  type WeekActivityAdjustment,
   type WeekDayTotals,
   type WeekStatsBundle,
 } from "@suppr/shared/nutrition/progressWeekReport";
