@@ -1666,7 +1666,7 @@ export function FoodSearchPanel({
             </div>
             {headline.mode === "per-serving" ? (
               <>
-                <div className="flex gap-2 mt-1 text-[12px] font-semibold text-muted-foreground">
+                <div className="flex gap-2 mt-1 text-[11px] font-semibold text-muted-foreground">
                   <span className="text-destructive">P {headline.macros.protein}g</span>
                   <span className="text-primary">C {headline.macros.carbs}g</span>
                   <span className="text-warning">F {headline.macros.fat}g</span>
@@ -1678,7 +1678,7 @@ export function FoodSearchPanel({
               </>
             ) : headline.mode === "per-100g" && headline.macros ? (
               <>
-                <div className="flex gap-2 mt-1 text-[12px] font-semibold text-muted-foreground">
+                <div className="flex gap-2 mt-1 text-[11px] font-semibold text-muted-foreground">
                   <span className="text-destructive">P {headline.macros.protein}g</span>
                   <span className="text-primary">C {headline.macros.carbs}g</span>
                   <span className="text-warning">F {headline.macros.fat}g</span>

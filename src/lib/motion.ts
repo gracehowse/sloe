@@ -125,91 +125,12 @@ export function odometerProgress(
   return t <= 0 ? 0 : t >= 1 ? 1 : t;
 }
 
-// ── Web odometer hook (RAF-driven) ──────────────────────────────────────────
-
-import { useEffect, useRef, useState } from "react";
-
-export interface UseOdometerOptions {
-  /** Tween duration in ms. Default `ODOMETER_MS` (900). */
-  duration?: number;
-  /**
-   * When this value changes identity, the displayed number SNAPS to the new
-   * target instead of tweening. Used to suppress count-up across a display-mode
-   * switch (e.g. remaining ↔ consumed) where rolling between two different
-   * metrics is confusing rather than delightful.
-   */
-  snapOn?: unknown;
-  /** Start from 0 on first paint and count up to `target`. Default false. */
-  animateFromZeroOnMount?: boolean;
-  /**
-   * Force-snap (no tween) regardless of progress. Pass the result of a
-   * reduced-motion check here. Default false. When omitted the hook also
-   * honours the `prefers-reduced-motion: reduce` media query itself.
-   */
-  reduceMotion?: boolean;
-}
-
-/**
- * `useOdometer(target)` — tweens the displayed number toward `target` over
- * `duration` with the shared cubic-out odometer curve, via a single RAF loop
- * on one React state value.
- *
- * Mirrors (and is intended to replace) the bespoke `useAnimatedNumber` RAF
- * loops currently inlined in `daily-ring.tsx` and `CalorieRing.tsx`, so the
- * calorie + macro counters all share one curve. Honours reduced-motion (snap),
- * snaps on `snapOn` identity change, and optionally counts up from zero on
- * mount.
- */
-export function useOdometer(
-  target: number,
-  options?: UseOdometerOptions,
-): number {
-  const duration = options?.duration ?? ODOMETER_MS;
-  const snapOn = options?.snapOn;
-  const animateFromZeroOnMount = options?.animateFromZeroOnMount ?? false;
-  const forcedReduce = options?.reduceMotion ?? false;
-
-  const [value, setValue] = useState(animateFromZeroOnMount ? 0 : target);
-  const valueRef = useRef(target);
-  const lastSnapRef = useRef(snapOn);
-
-  useEffect(() => {
-    valueRef.current = value;
-  }, [value]);
-
-  useEffect(() => {
-    // Mode toggle (snapOn identity change) — jump to target, never tween.
-    if (snapOn !== lastSnapRef.current) {
-      lastSnapRef.current = snapOn;
-      setValue(target);
-      return;
-    }
-    if (valueRef.current === target) return;
-
-    const reduce =
-      forcedReduce ||
-      (typeof window !== "undefined" &&
-        typeof window.matchMedia === "function" &&
-        window.matchMedia("(prefers-reduced-motion: reduce)").matches);
-    if (reduce) {
-      setValue(target);
-      return;
-    }
-
-    const from = valueRef.current;
-    const start = Date.now();
-    let raf = 0;
-    const tick = () => {
-      const t = odometerProgress(start, Date.now(), duration);
-      setValue(odometerValue(from, target, t));
-      if (t < 1) raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [target, duration, snapOn, forcedReduce]);
-
-  return value;
-}
+// The web odometer hook (`useOdometer`) lives in `./useOdometer.ts`, NOT here —
+// it imports `react`, and this module must stay framework-free so mobile can
+// import the numeric constants via `@suppr/shared/motion` without pulling in
+// `react` (which the mobile-only CI typecheck can't resolve from src/lib). The
+// hook imports the curve helpers (ODOMETER_MS / odometerProgress / odometerValue)
+// back from here. ENG-812.
 
 // ── Web sheet transition helpers ────────────────────────────────────────────
 

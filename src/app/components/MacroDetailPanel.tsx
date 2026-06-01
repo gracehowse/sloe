@@ -177,7 +177,7 @@ export function MacroDetailPanel({
                 <div className="mb-1 flex h-14 w-14 items-center justify-center rounded-full bg-muted">
                   <Salad className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
                 </div>
-                <p className="text-[17px] font-bold text-foreground">
+                <p className="text-[18px] font-bold text-foreground">
                   No meals logged yet
                 </p>
                 <p className="max-w-[280px] text-sm leading-5 text-muted-foreground">

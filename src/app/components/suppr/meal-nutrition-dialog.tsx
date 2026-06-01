@@ -182,7 +182,7 @@ export function MealNutritionDialog({ meal, open, onClose, onEdit }: MealNutriti
               <span className="mb-1 grid h-14 w-14 place-items-center rounded-full bg-muted">
                 <CircleAlert className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} aria-hidden />
               </span>
-              <p className="text-[17px] font-bold text-foreground">Meal not found</p>
+              <p className="text-[18px] font-bold text-foreground">Meal not found</p>
               <p className="max-w-[280px] text-sm leading-5 text-muted-foreground">
                 It may have been deleted. Close this and open the meal again from Today.
               </p>
