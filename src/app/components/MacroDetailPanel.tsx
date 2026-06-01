@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Plus, Salad } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -14,6 +16,7 @@ import {
   type BreakdownIngredientRow,
   type BreakdownMacro,
 } from "@/lib/nutrition/macroIngredientBreakdown";
+import { isFeatureEnabled } from "../../lib/analytics/track.ts";
 
 export type MacroKey = "protein" | "carbs" | "fat" | "fiber" | "calories";
 
@@ -91,7 +94,30 @@ export function MacroDetailPanel({
   ingredientRows,
 }: MacroDetailPanelProps) {
   const config = MACRO_CONFIG[macro];
+  const router = useRouter();
   const [mode, setMode] = useState<BreakdownMode>("meal");
+  // ENG-825 (2026-05-31 design-direction macro/meal lane). Web mirror of the
+  // mobile `NutritionDetailEmptyState`: when `design_system_elevation` is ON
+  // the empty state becomes an iconified, elevated card (modern radius +
+  // ambient shadow) instead of a single line of text in a sea of whitespace.
+  // Flag OFF keeps the legacy one-line empty state alive in the else.
+  const redesignElevation = isFeatureEnabled("design_system_elevation");
+  // P5 parity gap #9 (2026-05-31). Mirror of the mobile macro-detail empty
+  // state's "Log a meal" commit CTA (NutritionDetailEmptyState +
+  // apps/mobile/app/macro-detail.tsx): the CTA recolours its fill to the blue
+  // commit colour when `design_system_colours` is ON, and falls back to the
+  // saturated macro hue (mobile's `ctaColorLegacy={config.color}`) when OFF.
+  // The button itself only renders inside the elevated empty card, matching
+  // mobile; the old flag-OFF (legacy macro-hue) fill stays alive in the else.
+  const redesignColours = isFeatureEnabled("design_system_colours");
+
+  // Web macro-detail is a Dialog (mobile's is a full screen routing to Today).
+  // Mirror the mobile CTA action — open the Today log flow — by closing the
+  // dialog first, then navigating to the canonical web Today route.
+  const handleLogMeal = () => {
+    onClose();
+    router.push("/today");
+  };
 
   const { total, mealValues } = useMemo(() => {
     const values = meals.map((meal) => ({
@@ -143,9 +169,43 @@ export function MacroDetailPanel({
 
         <div className="pt-2">
           {meals.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              No meals logged for this day.
-            </p>
+            redesignElevation ? (
+              <div
+                data-testid="macro-detail-empty"
+                className="my-4 flex flex-col items-center gap-2 rounded-xl border border-border bg-card px-5 py-8 text-center shadow-[0_4px_12px_rgba(28,25,22,0.08)]"
+              >
+                <div className="mb-1 flex h-14 w-14 items-center justify-center rounded-full bg-muted">
+                  <Salad className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
+                </div>
+                <p className="text-[17px] font-bold text-foreground">
+                  No meals logged yet
+                </p>
+                <p className="max-w-[280px] text-sm leading-5 text-muted-foreground">
+                  Log a meal to see your {config.label.toLowerCase()} broken down here.
+                </p>
+                {/* Blue commit CTA (parity gap #9): mirrors the mobile
+                    macro-detail empty-state "Log a meal" button. Fill recolours
+                    to the blue commit colour under `design_system_colours`;
+                    flag-OFF keeps the saturated macro hue (mobile's
+                    `ctaColorLegacy={config.color}`). */}
+                <button
+                  type="button"
+                  onClick={handleLogMeal}
+                  aria-label="Log a meal on Today"
+                  className={`mt-3 inline-flex items-center gap-2 rounded-md px-6 py-2.5 text-sm font-bold ${
+                    redesignColours ? "bg-primary text-primary-foreground" : "text-white"
+                  }`}
+                  style={!redesignColours ? { backgroundColor: config.cssVar } : undefined}
+                >
+                  <Plus className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+                  Log a meal
+                </button>
+              </div>
+            ) : (
+              <p data-testid="macro-detail-empty" className="py-8 text-center text-sm text-muted-foreground">
+                No meals logged for this day.
+              </p>
+            )
           ) : (
             <>
               {/* Segmented toggle: By meal / By ingredient. Mirrors the mobile

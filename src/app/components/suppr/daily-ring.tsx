@@ -103,6 +103,18 @@ interface DailyRingProps extends React.ComponentProps<"div"> {
   onToggle?: () => void;
   /** Center: remaining kcal vs consumed kcal (mobile CalorieRing parity). */
   displayMode?: CalorieRingDisplayMode;
+  /**
+   * ENG-798 (Redesign — Design Direction 2026) win-moment ring pulse.
+   * `true` for ~200ms (`WEB_WIN_PULSE_MS`) right after a Today landmark
+   * fires — the web colour/motion analog of mobile's success haptic (web
+   * has no haptics). While true the success-band stroke briefly thickens
+   * and glows green so the ring "celebrates" the target-hit. The
+   * `useWebWinMoment` hook already suppresses this under
+   * `prefers-reduced-motion`, so no extra reduced-motion guard is needed
+   * here. Inert (no-op) when the redesign_winmoment flag is off because
+   * the hook only ever emits `pulse=true` behind that gate.
+   */
+  pulse?: boolean;
 }
 
 function DailyRing({
@@ -117,6 +129,7 @@ function DailyRing({
   expanded = false,
   onToggle,
   displayMode = "remaining",
+  pulse = false,
   ...props
 }: DailyRingProps) {
   const cx = size / 2;
@@ -257,6 +270,8 @@ function DailyRing({
           opacity={isEmpty ? 0.35 : 1}
         />
         <circle
+          data-testid="daily-ring-progress"
+          data-pulse={pulse ? "true" : undefined}
           cx={cx}
           cy={cx}
           r={radius}
@@ -268,18 +283,27 @@ function DailyRing({
                 ? "var(--destructive)"
                 : "var(--success)"
           }
-          strokeWidth={strokeWidth}
+          // ENG-798 win-pulse: a target-hit is by definition the green,
+          // at/under-budget state — so the pulse only ever intensifies
+          // the success stroke (never over-budget red / empty). For
+          // ~200ms the green arc thickens slightly and gains a soft glow,
+          // the web colour/motion analog of mobile's success haptic.
+          strokeWidth={pulse && !isEmpty && !isOverBudget ? strokeWidth + 3 : strokeWidth}
           strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={offset}
           className={cn(
-            "transition-[stroke-dashoffset]",
+            "transition-[stroke-dashoffset,stroke-width,filter]",
             premiumMotion ? "duration-500" : "duration-700",
           )}
           style={{
             transitionTimingFunction: premiumMotion
               ? "cubic-bezier(0.32, 0.72, 0, 1)"
               : "var(--pm-ease)",
+            filter:
+              pulse && !isEmpty && !isOverBudget
+                ? "drop-shadow(0 0 6px var(--success))"
+                : undefined,
           }}
         />
         {/* Hashed overage segment — only when over budget. Starts at

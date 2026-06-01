@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from "react";
-import { track } from "@/lib/analytics";
+import { track, isFeatureEnabled } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import {
   ActivityIndicator,
@@ -21,6 +21,20 @@ import * as ImagePicker from "expo-image-picker";
 import Constants from "expo-constants";
 import { BarcodeCameraView } from "@/components/BarcodeCameraView";
 import { Ionicons } from "@expo/vector-icons";
+// ENG-816 — lucide-react-native glyphs replace Ionicons behind the
+// `design_system_icons` flag. Per-icon named imports (the established
+// pattern across the mobile components dir). The old Ionicons path
+// stays alive in the `else` of each site until the flag holds 100%.
+import {
+  Camera,
+  Check,
+  CircleAlert,
+  CircleCheck,
+  CirclePlus,
+  RefreshCw,
+  Search,
+  X,
+} from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -80,6 +94,10 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
   const colors = useThemeColors();
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
+  // ENG-816 — gate the lucide-react-native glyph swap behind
+  // `design_system_icons`. When off (default / cold flag), the
+  // Ionicons path below renders exactly as before.
+  const useLucideIcons = isFeatureEnabled("design_system_icons");
   const [permission, requestPermission] = useCameraPermissions();
   const [loading, setLoading] = useState(false);
   const [scanned, setScanned] = useState<string | null>(null);
@@ -1030,13 +1048,21 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
         <View style={styles.header}>
           <Text style={styles.title}>Scan Barcode</Text>
           <Pressable onPress={handleClose} hitSlop={12}>
-            <Ionicons name="close" size={24} color={colors.text} />
+            {useLucideIcons ? (
+              <X size={24} color={colors.text} />
+            ) : (
+              <Ionicons name="close" size={24} color={colors.text} />
+            )}
           </Pressable>
         </View>
 
         {!permission?.granted ? (
           <View style={styles.centered}>
-            <Ionicons name="camera-outline" size={48} color={colors.textSecondary} />
+            {useLucideIcons ? (
+              <Camera size={48} color={colors.textSecondary} />
+            ) : (
+              <Ionicons name="camera-outline" size={48} color={colors.textSecondary} />
+            )}
             <Text style={styles.permText}>Camera access needed to scan barcodes</Text>
             <Pressable style={styles.permBtn} onPress={() => requestPermission()}>
               <Text style={styles.permBtnText}>Grant Permission</Text>
@@ -1102,7 +1128,13 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
                       errors (network, etc.) where the raw `error`
                       string is shown. */}
                   {error === "Product not found in database." ? (
-                    <Ionicons name="search-outline" size={32} color={Accent.primary} />
+                    useLucideIcons ? (
+                      <Search size={32} color={Accent.primary} />
+                    ) : (
+                      <Ionicons name="search-outline" size={32} color={Accent.primary} />
+                    )
+                  ) : useLucideIcons ? (
+                    <CircleAlert size={32} color={Accent.destructive} />
                   ) : (
                     <Ionicons name="alert-circle" size={32} color={Accent.destructive} />
                   )}
@@ -1160,7 +1192,11 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
                       testID="barcode-not-found-add-custom-food"
                       style={styles.photoFallbackBtn}
                     >
-                      <Ionicons name="add-circle-outline" size={18} color="#fff" />
+                      {useLucideIcons ? (
+                        <CirclePlus size={18} color="#fff" />
+                      ) : (
+                        <Ionicons name="add-circle-outline" size={18} color="#fff" />
+                      )}
                       <Text style={styles.photoFallbackBtnText}>Add this product</Text>
                     </Pressable>
                   )}
@@ -1200,6 +1236,8 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
                   >
                     {scanLabelLoading ? (
                       <ActivityIndicator color={Accent.primary} size="small" />
+                    ) : useLucideIcons ? (
+                      <Camera size={18} color={Accent.primary} />
                     ) : (
                       <Ionicons name="camera-outline" size={18} color={Accent.primary} />
                     )}
@@ -1371,13 +1409,21 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
                     ) : null}
                     <View style={[styles.btnRow, { marginTop: Spacing.md }]}>
                       <Pressable style={styles.useBtn} onPress={onConfirm} accessibilityRole="button" accessibilityLabel="Log this portion">
-                        <Ionicons name="checkmark" size={16} color="#fff" />
+                        {useLucideIcons ? (
+                          <Check size={16} color="#fff" />
+                        ) : (
+                          <Ionicons name="checkmark" size={16} color="#fff" />
+                        )}
                         <Text style={styles.useBtnText} numberOfLines={1} ellipsizeMode="tail">
                           Log · {pickerState ? formatPortion(pickerState) : portionSummary.replace(/\s*\(~?[\d.]+\s*g\)\s*$/, "")}
                         </Text>
                       </Pressable>
                       <Pressable style={styles.scanAgainBtn} onPress={onReset} accessibilityRole="button" accessibilityLabel="Scan again">
-                        <Ionicons name="refresh" size={20} color={colors.textSecondary} />
+                        {useLucideIcons ? (
+                          <RefreshCw size={20} color={colors.textSecondary} />
+                        ) : (
+                          <Ionicons name="refresh" size={20} color={colors.textSecondary} />
+                        )}
                       </Pressable>
                     </View>
                     <Pressable onPress={openCorrectionMode} style={{ alignItems: "center", paddingTop: Spacing.md }}>
@@ -1393,7 +1439,11 @@ export default function BarcodeScannerModal({ visible, onScan, onClose, onPhotoF
                   <ScrollView keyboardShouldPersistTaps="handled">
                     <View style={styles.correctionSuccessCard}>
                       <View style={styles.correctionSuccessIconRing}>
-                        <Ionicons name="checkmark-circle" size={48} color={Accent.success} />
+                        {useLucideIcons ? (
+                          <CircleCheck size={48} color={Accent.success} />
+                        ) : (
+                          <Ionicons name="checkmark-circle" size={48} color={Accent.success} />
+                        )}
                       </View>
                       <Text style={styles.correctionSuccessTitle}>Correction saved</Text>
                       <Text style={styles.correctionSuccessBody}>

@@ -641,6 +641,22 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       ? profileDisplayName
       : authEmail?.split("@")[0] ?? "Your profile";
 
+  // ENG-823 (Redesign — Design Direction 2026, soft elevation in Settings).
+  // The 5-spine direction wants one elevation model: a soft ambient shadow with
+  // NO border on every resting card. Web parity with the mobile `useCardElevation`
+  // hook + the `cardElevationClass` pattern already used in RecipeDetail/dialogs:
+  //   - flag ON  → `--elev-card-soft` shadow, border dropped (no double edge).
+  //   - flag OFF → today's `card-elevated` (static `--shadow`) + `border-border`.
+  // Mirrors the mobile `SettingsCard` wrapper exactly so the two platforms read
+  // as one paint system once `design_system_elevation` ramps.
+  const elevation = isFeatureEnabled("design_system_elevation");
+  const settingsCardClass = elevation
+    ? "bg-card rounded-2xl border-0 shadow-[var(--elev-card-soft)]"
+    : "bg-card border border-border rounded-2xl card-elevated";
+  const settingsHeroCardClass = elevation
+    ? "bg-card rounded-2xl border-0 shadow-[var(--elev-card-soft)]"
+    : "bg-card border border-border rounded-2xl card-elevated-hero";
+
   return (
     <div className="product-shell py-8">
       {/* Header.
@@ -666,7 +682,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           profile" link to /profile (the full editor). */}
       <div
         data-testid="settings-profile-header-card"
-        className="bg-card border border-border rounded-2xl p-5 mb-6 card-elevated-hero flex items-center gap-4"
+        className={`${settingsHeroCardClass} p-5 mb-6 flex items-center gap-4`}
       >
         <div
           aria-hidden
@@ -713,7 +729,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       </div>
 
       {/* Current plan */}
-      <div className="bg-card border border-border rounded-2xl p-6 mb-6 card-elevated">
+      <div className={`${settingsCardClass} p-6 mb-6`}>
         <div className="flex items-center gap-2 mb-4">
           <Icons.sparkles className="w-5 h-5 text-muted-foreground" />
           <h3 className="text-foreground">Your plan</h3>
@@ -746,7 +762,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       </div>
 
       {/* Account Section */}
-      <div className="bg-card border border-border rounded-2xl p-6 mb-6 card-elevated">
+      <div className={`${settingsCardClass} p-6 mb-6`}>
         <div className="flex items-center gap-2 mb-6">
           <Icons.user className="w-5 h-5 text-muted-foreground" />
           <h3 className="text-foreground">Account</h3>
@@ -790,7 +806,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       </div>
 
       {/* Preferences */}
-      <div className="bg-card border border-border rounded-2xl p-6 mb-6 card-elevated">
+      <div className={`${settingsCardClass} p-6 mb-6`}>
         <div className="flex items-center gap-2 mb-6">
           <Icons.settings className="w-5 h-5 text-muted-foreground" />
           <h3 className="text-foreground">Preferences</h3>
@@ -1071,7 +1087,11 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             {/* Audit 2026-04-30 round-2 fix #3 — each toggle now
                 carries a one-line helper so the user knows what
                 enabling it does. Mirror of mobile settings. */}
-            <div className="rounded-xl border border-border bg-card divide-y divide-border card-elevated">
+            {/* Nested list-card inside the Preferences card. ENG-823: when soft
+                elevation is on, the parent card already carries the ambient
+                shadow — this inner group keeps only its border (no shadow-on-
+                shadow). Flag OFF → today's `card-elevated`. */}
+            <div className={`rounded-xl border border-border bg-card divide-y divide-border ${elevation ? "" : "card-elevated"}`}>
               <label className="flex items-center justify-between gap-3 px-4 py-3 cursor-pointer">
                 <span className="flex-1 min-w-0">
                   <span className="block text-sm text-foreground">Track caffeine</span>
@@ -1256,7 +1276,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       </div>
 
       {/* Notifications */}
-      <div className="bg-card border border-border rounded-2xl p-6 mb-6 card-elevated">
+      <div className={`${settingsCardClass} p-6 mb-6`}>
         <div className="flex items-center gap-2 mb-6">
           <Icons.notifications className="w-5 h-5 text-muted-foreground" />
           <h3 className="text-foreground">Notifications</h3>
@@ -1375,7 +1395,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           (2026-04-19): single reliable entry point for testers to see
           which of their feedback items shipped in the latest build.
           Mirrors the mobile Settings "About" section. */}
-      <div className="bg-card border border-border rounded-2xl p-6 mb-6 card-elevated">
+      <div className={`${settingsCardClass} p-6 mb-6`}>
         <div className="flex items-center gap-2 mb-6">
           <Icons.sparkles className="w-5 h-5 text-muted-foreground" />
           <h3 className="text-foreground">About</h3>
@@ -1394,7 +1414,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       {/* Promo code — de-emphasised; most users won't need this */}
       <div
         ref={promoSectionRef}
-        className="bg-card border border-border rounded-2xl p-6 mb-6 scroll-mt-8 card-elevated"
+        className={`${settingsCardClass} p-6 mb-6 scroll-mt-8`}
       >
         <div className="flex items-center gap-2 mb-4">
           <Icons.ticket className="w-5 h-5 text-muted-foreground" />
@@ -1449,7 +1469,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       </div>
 
       {/* Privacy */}
-      <div className="bg-card border border-border rounded-2xl p-6 card-elevated">
+      <div className={`${settingsCardClass} p-6`}>
         <div className="flex items-center gap-2 mb-6">
           <Icons.shield className="w-5 h-5 text-muted-foreground" />
           <h3 className="text-foreground">Privacy & Security</h3>

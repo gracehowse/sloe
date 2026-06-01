@@ -1,6 +1,5 @@
 import * as React from "react";
 import {
-  Platform,
   StyleSheet,
   View,
   type StyleProp,
@@ -8,6 +7,8 @@ import {
 } from "react-native";
 import { Elevation, Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useTheme } from "@/context/theme";
+import { isFeatureEnabled } from "@/lib/analytics";
 
 /**
  * Mobile `<SupprCard>` — single card primitive.
@@ -92,23 +93,65 @@ export function SupprCard({
   children,
 }: SupprCardProps) {
   const colors = useThemeColors();
+  const { resolved } = useTheme();
+  const isDark = resolved === "dark";
 
-  const toneStyle = computeToneStyle(tone, gradient, border, colors);
-  const elev = elevationStyle[elevation];
+  // ENG-795 (Redesign): flag-gated soft elevation on resting cards.
+  // Flag OFF → unchanged flat/hairline (2026-05-22 lock). Flag ON:
+  //  - light → soft shadow, drawn on an OUTER wrapper because RN
+  //    `overflow: hidden` (styles.base) clips iOS shadows; hairline dropped.
+  //  - dark  → tonal lift (`cardElevated`) + a subtle hairline, no shadow
+  //    (RN renders shadows poorly on dark surfaces).
+  const softElevation =
+    elevation === "card" && isFeatureEnabled("design_system_elevation");
+  const effectiveBorder = softElevation ? isDark : border;
+  const toneStyle = computeToneStyle(tone, gradient, effectiveBorder, colors);
+
+  if (softElevation && !isDark) {
+    return (
+      <View
+        testID={testID}
+        style={[
+          {
+            borderRadius: radiusValues[radius],
+            backgroundColor: toneStyle.backgroundColor,
+          },
+          Elevation.cardSoft,
+          style,
+        ]}
+      >
+        <View
+          style={[
+            styles.base,
+            { padding: paddingValues[padding], borderRadius: radiusValues[radius] },
+            toneStyle,
+          ]}
+        >
+          {children}
+        </View>
+      </View>
+    );
+  }
+
+  // Flag-off (flat/hairline) OR dark soft-elevation (tonal lift, no shadow).
+  const neutralLift =
+    softElevation && isDark && tone === "neutral"
+      ? { backgroundColor: colors.cardElevated }
+      : undefined;
 
   return (
     <View
       testID={testID}
-      accessibilityRole={Platform.OS === "web" ? undefined : undefined}
       style={[
         styles.base,
         {
           padding: paddingValues[padding],
           borderRadius: radiusValues[radius],
-          borderWidth: border ? StyleSheet.hairlineWidth : 0,
+          borderWidth: effectiveBorder ? StyleSheet.hairlineWidth : 0,
         },
         toneStyle,
-        elev,
+        neutralLift,
+        softElevation ? undefined : elevationStyle[elevation],
         style,
       ]}
     >

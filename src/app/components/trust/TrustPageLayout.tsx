@@ -68,7 +68,7 @@ export function TrustPageLayout({
                   <li key={s.id}>
                     <a
                       href={`#${s.id}`}
-                      className="text-slate-600 dark:text-slate-300 hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
+                      className="text-slate-600 dark:text-slate-300 hover:text-primary transition-colors"
                     >
                       {s.title}
                     </a>

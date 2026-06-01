@@ -73,6 +73,8 @@ import {
 } from "../food-search/FoodSearchPanel";
 import type { MacroConsumed, MacroTargets } from "@/lib/nutrition/remainingMacros";
 import { isPremiumMotionV1Enabled } from "@/lib/preferences/premiumMotionWeb";
+import { isFeatureEnabled } from "@/lib/analytics/track";
+import { sheetTransition } from "@/lib/motion";
 
 /** Re-exported for hosts that want the inline-search payload type. */
 export type LogSheetInlineSelectedFood = InlineSelectedFood;
@@ -316,6 +318,37 @@ export function LogSheet({
   const inManualEntryMode = !!barcode?.manualEntry;
   const premiumMotion = isPremiumMotionV1Enabled();
 
+  // ENG-821 parity gap #19 — the sheet shadow was a hardcoded light-only
+  // literal (`0 -8px 32px rgba(0,0,0,0.12)`) that under-renders the sheet in
+  // dark mode (mobile's `Elevation.sheet` reads the `--elev-sheet` token whose
+  // dark variant is alpha 0.5, not 0.12). Under `design_system_elevation` we
+  // read the canonical token instead — a no-op in light (byte-identical value)
+  // and the correct deeper shadow in dark. The hardcoded literal stays alive in
+  // the flag-OFF else, consistent with the sibling dialog gating (CLAUDE.md
+  // feature-flag non-negotiable).
+  const elevated = isFeatureEnabled("design_system_elevation");
+  const sheetShadowCls = elevated
+    ? "shadow-[var(--elev-sheet)]"
+    : "shadow-[0_-8px_32px_rgba(0,0,0,0.12)]";
+
+  // ENG-812 parity gap #21 — the redesign_motion element→sheet open morph. The
+  // shared web analog (`sheetTransition(open)` from src/lib/motion.ts) springs
+  // the panel up with the one product spring (SPRING_EASE) and fades the
+  // backdrop, matching mobile's `useSheetMorph` on TodayEditMealModal /
+  // SavedMealPortionSheet. When ON, the spring drives the entry so the vaul
+  // slide must NOT also animate (double-motion jank) — same rule mobile applies
+  // via `animationType="none"`. When OFF, the existing premiumMotion slide stays
+  // the live path (feature-flag non-negotiable).
+  //
+  // Scope: the translateY morph only models the BOTTOM-SHEET layout (panel
+  // rises from off-screen). In `desktop` mode the panel is a centred modal
+  // positioned via `md:-translate-x-1/2 md:-translate-y-1/2`, so an inline
+  // translateY would fight that centring — mirroring mobile (which is
+  // bottom-sheet-only), the morph is bottom-sheet-only and desktop keeps its
+  // existing entry.
+  const motionEnabled = isFeatureEnabled("redesign_motion") && !desktop;
+  const morph = sheetTransition(open);
+
   return (
     <DrawerPrimitive.Root
       open={open}
@@ -327,10 +360,15 @@ export function LogSheet({
         <DrawerPrimitive.Overlay
           data-slot="log-sheet-overlay"
           className={cn(
-            "data-[state=open]:animate-in data-[state=closed]:animate-out",
-            "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+            !motionEnabled && "data-[state=open]:animate-in data-[state=closed]:animate-out",
+            !motionEnabled && "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
             "fixed inset-0 z-50 bg-black/40 backdrop-blur-md",
           )}
+          style={
+            motionEnabled
+              ? { opacity: morph.backdropOpacity, transition: morph.backdropTransition }
+              : undefined
+          }
         />
         <DrawerPrimitive.Content
           data-slot="log-sheet-content"
@@ -342,11 +380,16 @@ export function LogSheet({
             desktop
               ? "md:inset-auto md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:h-[640px] md:w-[480px] md:max-h-[640px] md:rounded-2xl md:border"
               : "",
-            "shadow-[0_-8px_32px_rgba(0,0,0,0.12)]",
-            premiumMotion
+            sheetShadowCls,
+            !motionEnabled && premiumMotion
               ? "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]"
               : "",
           )}
+          style={
+            motionEnabled
+              ? { transform: morph.transform, transition: morph.transition }
+              : undefined
+          }
         >
           {/* Drag handle (mobile) — drops on desktop. */}
           <div

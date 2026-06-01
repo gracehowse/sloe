@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Suppr — Meal long-press action sheet (BEFORE / AFTER)</title>
+<style>
+/* ─────────────────────────────────────────────────────────────────────────
+   Suppr design-direction prototype KIT — shared tokens + components.
+   Inline this whole block inside <style> in every surface prototype so they cohere.
+   Body gets class "before" or "after" to drive the toggle. */
+:root{
+  --cream:#FBFAF6; --card:#FFFFFF; --ink:#1A181F; --muted:#6E6A64; --hair:#ECEAE4;
+  --blue:#588CE4; --blue-press:#3F73CC;
+  --green:#56A775;            /* RESERVED: calorie-ring under-target + success ONLY */
+  --red:#E5604D;             /* over-target / destructive */
+  --win:#F2A93B;             /* dedicated win-colour, distinct from success green */
+  --protein:#6C8CFF; --carbs:#E8913A; --fat:#E36FA8; --fiber:#56A775;
+  --elev:0 4px 18px rgba(20,18,24,.07), 0 1px 3px rgba(20,18,24,.04);
+  --radius:18px;
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);color:var(--ink);background:#E9E7E2;
+  background-image:radial-gradient(circle at 20% 0%,#f1efe9,#e3e1db);min-height:100vh;padding:28px 20px 60px}
+.wrap{max-width:1180px;margin:0 auto}
+h1{font-size:22px;font-weight:800;letter-spacing:-.4px}
+.sub{color:#6b6760;font-size:13px;margin-top:4px;max-width:760px;line-height:1.5}
+.controls{display:flex;gap:10px;align-items:center;margin:18px 0 26px;flex-wrap:wrap}
+.seg{display:inline-flex;background:#fff;border-radius:12px;padding:4px;box-shadow:var(--elev)}
+.seg button{border:0;background:transparent;font:inherit;font-weight:700;font-size:13px;color:#8a857e;padding:9px 18px;border-radius:9px;cursor:pointer;transition:.18s}
+.seg button.on{background:var(--ink);color:#fff}
+.seg.after button.on{background:var(--blue)}
+.btn{border:0;font:inherit;font-weight:700;font-size:13px;padding:11px 18px;border-radius:11px;cursor:pointer;background:var(--blue);color:#fff;box-shadow:var(--elev);transition:transform .12s,background .2s}
+.btn:active{transform:scale(.96)} .btn.ghost{background:#fff;color:var(--ink)}
+.tag{font-size:12px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:#8a857e}
+.stage{display:flex;gap:48px;align-items:flex-start;flex-wrap:wrap}
+.phone-col{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:12px}
+
+/* iPhone frame */
+.phone{width:392px;height:812px;background:#000;border-radius:54px;padding:11px;box-shadow:0 30px 70px -20px rgba(20,18,24,.45),0 0 0 2px #0a0a0a;position:relative}
+.screen{width:100%;height:100%;background:var(--cream);border-radius:44px;overflow:hidden;position:relative}
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:118px;height:33px;background:#000;border-radius:20px;z-index:40}
+.statusbar{height:54px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 7px;font-size:14px;font-weight:700}
+.scr{height:calc(100% - 54px);overflow-y:auto;padding:4px 16px 96px;scrollbar-width:none}
+.scr::-webkit-scrollbar{display:none}
+
+/* cards — depth is the toggle */
+.card{background:var(--card);border-radius:var(--radius);padding:18px;margin-bottom:14px}
+.before .card{border:1px solid var(--hair);box-shadow:none}
+.after  .card{border:1px solid transparent;box-shadow:var(--elev)}
+
+/* commit CTA — colour is the toggle (before=green drift, after=blue) */
+.cta{display:block;width:100%;border:0;font:inherit;font-weight:800;font-size:16px;color:#fff;padding:15px;border-radius:14px;cursor:pointer;text-align:center}
+.cta.commit{background:var(--blue)} .before .cta.commit{background:var(--green)}
+.cta.secondary{background:#fff;color:var(--ink);border:1px solid var(--hair)}
+
+/* chips */
+.chip{display:inline-block;height:22px;border-radius:7px;padding:0 10px;line-height:22px;color:#fff;font-size:11px;font-weight:800}
+.chip.win{background:var(--win)} .chip.blue{background:var(--blue)} .chip.green{background:var(--green)}
+.chip.soft{background:#eef3fb;color:var(--blue)}
+
+/* bottom sheet (branded) */
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--cream);border-radius:24px 24px 0 0;padding:10px 18px 26px;z-index:55;box-shadow:0 -10px 40px rgba(20,18,24,.18)}
+.sheet .grab{width:38px;height:5px;border-radius:3px;background:#d9d5cd;margin:6px auto 14px}
+.scrim{position:absolute;inset:0;background:rgba(20,18,24,.35);z-index:50}
+
+/* tab bar + FAB */
+.tabbar{position:absolute;bottom:0;left:0;right:0;height:84px;background:rgba(251,250,246,.92);backdrop-filter:blur(12px);border-top:1px solid var(--hair);display:flex;justify-content:space-around;align-items:flex-start;padding:11px 22px 0;z-index:30}
+.tab{font-size:10px;font-weight:600;color:#b7b2a8;display:flex;flex-direction:column;align-items:center;gap:4px}
+.tab.on{color:var(--blue)} .tab .gl{font-size:19px}
+
+/* spec column (right side) */
+.spec{flex:1;min-width:300px;max-width:430px}
+.rule{background:#fff;border-radius:16px;padding:16px 18px;margin-bottom:12px;box-shadow:var(--elev)}
+.rule h3{font-size:14px;font-weight:800;display:flex;gap:8px;align-items:center}
+.rule .badge{font-size:10px;font-weight:800;color:#fff;background:var(--blue);border-radius:6px;padding:2px 6px}
+.rule p{font-size:12.5px;color:#6b6760;line-height:1.55;margin-top:7px}
+.note{font-size:11px;color:#9a958d;margin-top:8px;line-height:1.5}
+.kbd{font-family:ui-monospace,monospace;background:#fff;border:1px solid var(--hair);border-radius:5px;padding:1px 6px;font-size:11px}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   SURFACE-SCOPED CSS — meal long-press action sheet only.
+   Everything below is minimal and namespaced; tokens/components above are shared. */
+
+/* Today canvas behind the scrim (recreated faintly so the sheet-on-Today
+   contrast reads). Slightly desaturated/dimmed to sit under the dim. */
+.today-bg{position:absolute;inset:0;overflow:hidden}
+.today-bg .scr{padding-top:6px}
+
+/* a compact ring card */
+.ringcard{display:flex;gap:16px;align-items:center}
+.ring{position:relative;width:96px;height:96px;flex:0 0 auto}
+.ring svg{transform:rotate(-90deg)}
+.ring .rnum{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring .rnum b{font-size:22px;font-weight:800;line-height:1}
+.ring .rnum span{font-size:10px;color:var(--muted);margin-top:2px;font-weight:600}
+.macrorow{display:flex;gap:10px;margin-top:2px}
+.macro{flex:1}
+.macro .mtop{display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:var(--muted)}
+.macro .bar{height:6px;border-radius:4px;background:var(--hair);margin-top:5px;overflow:hidden}
+.macro .bar i{display:block;height:100%;border-radius:4px}
+
+/* a logged-meal row in the Today list */
+.mealrow{display:flex;align-items:center;gap:12px;padding:11px 4px;border-top:1px solid var(--hair)}
+.mealrow:first-of-type{border-top:0}
+.thumb{width:42px;height:42px;border-radius:12px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:21px;background:#f3efe6}
+.mealrow .mmeta{flex:1;min-width:0}
+.mealrow .mmeta b{font-size:14px;font-weight:700;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mealrow .mmeta span{font-size:11.5px;color:var(--muted)}
+.mealrow .kcal{font-size:13px;font-weight:700;color:var(--muted);flex:0 0 auto}
+.mealrow.pressed{background:#fff;border-radius:14px;box-shadow:var(--elev);padding-left:10px;padding-right:10px}
+
+.sectionhdr{display:flex;align-items:center;gap:10px;margin:6px 4px 8px}
+.sectionhdr .ico{width:30px;height:30px;border-radius:10px;background:#eef3fb;display:flex;align-items:center;justify-content:center;font-size:15px}
+.sectionhdr b{font-size:16px;font-weight:800}
+.sectionhdr .add{margin-left:auto;color:var(--muted);font-size:22px;font-weight:300}
+
+/* ── BEFORE: raw iOS system action sheet (the stock-component tell) ── */
+.ios-sheet-wrap{position:absolute;inset:0;z-index:60;display:flex;flex-direction:column;justify-content:flex-end;padding:0 8px 10px;
+  font-family:-apple-system,"SF Pro Text",system-ui,sans-serif}
+.ios-card{background:#F7F7F7;border-radius:14px;overflow:hidden;backdrop-filter:saturate(180%) blur(4px);
+  box-shadow:0 1px 0 rgba(0,0,0,.04)}
+.ios-title{background:rgba(247,247,247,.96);padding:17px 16px 14px;text-align:center;border-bottom:.5px solid rgba(60,60,67,.18)}
+.ios-title b{display:block;font-size:13px;font-weight:600;color:#000;letter-spacing:-.1px}
+.ios-title .meta{font-size:12px;color:#8a8a8e;margin-top:4px;line-height:1.45;font-weight:400}
+.ios-row{background:rgba(247,247,247,.96);text-align:center;font-size:20px;color:#007AFF;
+  padding:18px 12px;border-bottom:.5px solid rgba(60,60,67,.18);font-weight:400;cursor:pointer}
+.ios-row:last-child{border-bottom:0}
+.ios-row.destructive{color:#FF3B30}
+.ios-cancel{margin-top:8px;background:#FCFCFC;border-radius:14px;text-align:center;font-size:20px;
+  color:#007AFF;font-weight:600;padding:18px 12px;cursor:pointer}
+
+/* ── AFTER: branded cream action sheet (matches Edit-entry language) ── */
+.act-head{display:flex;gap:13px;align-items:center;padding:2px 2px 14px;border-bottom:1px solid var(--hair);margin-bottom:8px}
+.act-head .thumb{width:52px;height:52px;border-radius:14px;font-size:25px}
+.act-head .h-meta{flex:1;min-width:0}
+.act-head .h-meta b{font-size:17px;font-weight:800;display:block;letter-spacing:-.2px}
+.act-head .h-meta .macros{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;align-items:center}
+.act-head .kcal-chip{font-size:12px;font-weight:800;color:var(--ink)}
+.dot{font-size:11px;color:#cfc9be}
+.mtag{font-size:11.5px;font-weight:700;color:var(--muted);display:inline-flex;align-items:center;gap:4px}
+.mtag i{width:7px;height:7px;border-radius:50%;display:inline-block}
+
+.act-list{padding:4px 0 2px}
+.act-row{display:flex;align-items:center;gap:13px;width:100%;background:#fff;border:1px solid transparent;
+  border-radius:14px;padding:13px 14px;margin-bottom:9px;cursor:pointer;text-align:left;
+  box-shadow:var(--elev);transition:transform .1s,background .15s}
+.act-row:active{transform:scale(.985)}
+.act-row .ar-ic{width:34px;height:34px;border-radius:11px;background:#eef3fb;color:var(--blue);
+  display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.act-row b{font-size:15px;font-weight:700;color:var(--ink);display:block}
+.act-row span{font-size:11.5px;color:var(--muted)}
+.act-row .chev{margin-left:auto;color:#cfc9be}
+.act-row.danger{background:#fdf3f1}
+.act-row.danger .ar-ic{background:#fbe2dd;color:var(--red)}
+.act-row.danger b{color:var(--red)}
+.act-cancel{display:block;width:100%;border:0;background:transparent;font:inherit;font-weight:800;
+  font-size:15px;color:var(--muted);padding:13px;margin-top:2px;cursor:pointer;text-align:center}
+
+/* the brand mark on the AFTER sheet (one quiet mark — ENG-797) */
+.brandmark{position:absolute;top:14px;right:18px;display:flex;align-items:center;gap:5px;color:#bdb8ad;font-size:11px;font-weight:800;letter-spacing:.4px}
+.brandmark svg{display:block}
+
+/* toggle visibility */
+.before .show-after{display:none!important}
+.after  .show-before{display:none!important}
+</style>
+</head>
+<body class="after">
+<div class="wrap">
+  <span class="tag">Suppr · design direction · 2026-05-31</span>
+  <h1>Today — long-press a logged meal</h1>
+  <p class="sub">The highest-traffic meal-management gesture. BEFORE it pops a raw iOS system action sheet — the single biggest stock-component tell in an otherwise fully-custom cream world. AFTER it presents a branded cream sheet that speaks the Edit-entry language and can show what the native sheet never could: the meal thumbnail, name, and a kcal · P/C/F preview.</p>
+
+  <div class="controls">
+    <div class="seg" id="seg">
+      <button data-mode="before">Before</button>
+      <button data-mode="after" class="on">After</button>
+    </div>
+    <span class="note">Toggle with the segmented control or press <span class="kbd">B</span> / <span class="kbd">A</span>.</span>
+  </div>
+
+  <div class="stage">
+    <!-- ───────────────── PHONE ───────────────── -->
+    <div class="phone-col">
+      <div class="phone">
+        <div class="island"></div>
+        <div class="screen">
+
+          <!-- TODAY CANVAS (always rendered, sits behind the scrim) -->
+          <div class="today-bg" aria-hidden="true">
+            <div class="statusbar"><span>9:41</span><span>&#128246; &#128267;</span></div>
+            <div class="scr">
+
+              <!-- ring + macros card -->
+              <div class="card">
+                <div class="ringcard">
+                  <div class="ring">
+                    <svg width="96" height="96" viewBox="0 0 96 96">
+                      <circle cx="48" cy="48" r="42" fill="none" stroke="#ECEAE4" stroke-width="9"/>
+                      <circle cx="48" cy="48" r="42" fill="none" stroke="#56A775" stroke-width="9"
+                              stroke-linecap="round" stroke-dasharray="264" stroke-dashoffset="86"/>
+                    </svg>
+                    <div class="rnum"><b>1,420</b><span>kcal left</span></div>
+                  </div>
+                  <div style="flex:1">
+                    <div class="macrorow">
+                      <div class="macro"><div class="mtop"><span>Protein</span><span>72g</span></div><div class="bar"><i style="width:62%;background:var(--protein)"></i></div></div>
+                      <div class="macro"><div class="mtop"><span>Carbs</span><span>118g</span></div><div class="bar"><i style="width:54%;background:var(--carbs)"></i></div></div>
+                    </div>
+                    <div class="macrorow" style="margin-top:10px">
+                      <div class="macro"><div class="mtop"><span>Fat</span><span>41g</span></div><div class="bar"><i style="width:48%;background:var(--fat)"></i></div></div>
+                      <div class="macro"><div class="mtop"><span>Fiber</span><span>11g</span></div><div class="bar"><i style="width:30%;background:var(--fiber)"></i></div></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Breakfast section with logged rows -->
+              <div class="sectionhdr">
+                <div class="ico">&#9749;</div><b>Breakfast</b><span style="font-size:12px;color:var(--muted);font-weight:700;margin-left:8px">312 kcal</span><span class="add">+</span>
+              </div>
+              <div class="card" style="padding:6px 14px">
+                <!-- this is the row being long-pressed -->
+                <div class="mealrow pressed">
+                  <div class="thumb">&#127813;</div>
+                  <div class="mmeta"><b>Sunset · Angel Sweet Tomatoes</b><span>1 cup · Breakfast</span></div>
+                  <div class="kcal">34 kcal</div>
+                </div>
+                <div class="mealrow">
+                  <div class="thumb">&#129368;</div>
+                  <div class="mmeta"><b>Greek yogurt &amp; berries</b><span>1 bowl · Breakfast</span></div>
+                  <div class="kcal">180 kcal</div>
+                </div>
+                <div class="mealrow">
+                  <div class="thumb">&#129371;</div>
+                  <div class="mmeta"><b>Almond butter protein cookie</b><span>1 cookie · Breakfast</span></div>
+                  <div class="kcal">98 kcal</div>
+                </div>
+              </div>
+
+              <div class="sectionhdr">
+                <div class="ico">&#127869;&#65039;</div><b>Lunch</b><span style="font-size:12px;color:var(--muted);font-weight:700;margin-left:8px">540 kcal</span><span class="add">+</span>
+              </div>
+              <div class="card" style="padding:6px 14px;opacity:.96">
+                <div class="mealrow">
+                  <div class="thumb">&#129385;</div>
+                  <div class="mmeta"><b>Chicken &amp; quinoa bowl</b><span>1 serving · Lunch</span></div>
+                  <div class="kcal">540 kcal</div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- tab bar -->
+            <div class="tabbar">
+              <div class="tab on"><span class="gl">&#9728;&#65039;</span>Today</div>
+              <div class="tab"><span class="gl">&#128197;</span>Plan</div>
+              <div class="tab"><span class="gl" style="font-size:0">·</span>
+                <div style="width:46px;height:46px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:26px;margin-top:-12px;box-shadow:var(--elev)">+</div></div>
+              <div class="tab"><span class="gl">&#128214;</span>Recipes</div>
+              <div class="tab"><span class="gl">&#128200;</span>Progress</div>
+            </div>
+          </div>
+
+          <!-- DIM SCRIM (shared kit class) -->
+          <div class="scrim"></div>
+
+          <!-- ════════════ BEFORE: raw iOS system action sheet ════════════ -->
+          <div class="ios-sheet-wrap show-before">
+            <div class="ios-card">
+              <div class="ios-title">
+                <b>Sunset · Angel Sweet Tomatoes</b>
+                <div class="meta">34 kcal · P 1g · C 7g · F 0g · Fiber 2g</div>
+              </div>
+              <div class="ios-row">Edit</div>
+              <div class="ios-row">Copy to another day</div>
+              <div class="ios-row">Share meal</div>
+              <div class="ios-row destructive">Delete</div>
+            </div>
+            <div class="ios-cancel">Cancel</div>
+          </div>
+
+          <!-- ════════════ AFTER: branded cream action sheet ════════════ -->
+          <div class="sheet show-after">
+            <div class="grab"></div>
+
+            <!-- one quiet brand mark -->
+            <div class="brandmark">
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                <circle cx="6.5" cy="6.5" r="5.4" stroke="#bdb8ad" stroke-width="1.4"/>
+                <circle cx="6.5" cy="6.5" r="1.9" fill="#bdb8ad"/>
+              </svg>
+              SUPPR
+            </div>
+
+            <!-- header the native sheet cannot render: thumbnail + name + macro preview -->
+            <div class="act-head">
+              <div class="thumb">&#127813;</div>
+              <div class="h-meta">
+                <b>Sunset · Angel Sweet Tomatoes</b>
+                <div class="macros">
+                  <span class="kcal-chip">34 kcal</span>
+                  <span class="dot">·</span>
+                  <span class="mtag"><i style="background:var(--protein)"></i>P 1g</span>
+                  <span class="mtag"><i style="background:var(--carbs)"></i>C 7g</span>
+                  <span class="mtag"><i style="background:var(--fat)"></i>F 0g</span>
+                  <span class="mtag"><i style="background:var(--fiber)"></i>Fiber 2g</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="act-list">
+              <!-- normal actions: brand blue accent -->
+              <button class="act-row">
+                <span class="ar-ic">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                </span>
+                <span><b>Edit entry</b><span>Portion, meal slot &amp; macros</span></span>
+                <span class="chev">&#8250;</span>
+              </button>
+
+              <button class="act-row">
+                <span class="ar-ic">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="13" height="17" rx="2"/><path d="M8 4V2.5"/><path d="M12 4V2.5"/><path d="M19 8v11a2 2 0 0 1-2 2H8"/></svg>
+                </span>
+                <span><b>Copy to another day</b><span>Re-log this on any date</span></span>
+                <span class="chev">&#8250;</span>
+              </button>
+
+              <button class="act-row">
+                <span class="ar-ic">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5 15.4 17.5"/><path d="M15.4 6.5 8.6 10.5"/></svg>
+                </span>
+                <span><b>Share meal</b><span>Send as a Suppr recipe card</span></span>
+                <span class="chev">&#8250;</span>
+              </button>
+
+              <!-- destructive: reserved red, not the win-green / not iOS system-red -->
+              <button class="act-row danger">
+                <span class="ar-ic">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14"/><path d="M10 11v6M14 11v6"/></svg>
+                </span>
+                <span><b>Delete entry</b><span>Removes 34 kcal from today</span></span>
+              </button>
+            </div>
+
+            <button class="act-cancel">Cancel</button>
+          </div>
+
+        </div>
+      </div>
+      <span class="note show-before">BEFORE — raw <code>ActionSheetIOS</code>: system-blue / system-red, white-on-grey stack, no thumbnail, no macros.</span>
+      <span class="note show-after">AFTER — branded cream sheet: grabber, one elevation, blue commit accent, reserved red, thumbnail + kcal·P/C/F header, quiet brand mark.</span>
+    </div>
+
+    <!-- ───────────────── SPEC PANEL ───────────────── -->
+    <div class="spec">
+      <div class="rule">
+        <h3><span class="badge">ENG-799</span> Branded action-sheet</h3>
+        <p>Replace the stock <code>ActionSheetIOS</code> with a custom cream sheet that speaks the Edit-entry language (<code>.sheet</code> + <code>.grab</code>, kit corner radius &amp; spacing). Kills the single biggest stock-component tell in the app and unlocks a header — thumbnail + name + <b>kcal · P/C/F</b> — that the native sheet physically cannot render.</p>
+      </div>
+      <div class="rule">
+        <h3><span class="badge">ENG-795</span> One soft elevation</h3>
+        <p>BEFORE leans on the iOS sheet's hard system shadow + grey stacked buttons. AFTER uses the single kit <code>--elev</code> on the sheet and each action row, with the shared <code>.scrim</code> dim — one elevation language across the whole product.</p>
+      </div>
+      <div class="rule">
+        <h3><span class="badge">ENG-796</span> One blue commit colour</h3>
+        <p>Normal actions (Edit / Copy / Share) carry the brand <code>--blue</code> accent in their leading icon, not iOS system-blue <code>#007AFF</code>. Destructive uses the reserved <code>--red</code> — never the win-green, never the iOS system-red.</p>
+      </div>
+      <div class="rule">
+        <h3><span class="badge">ENG-797</span> One brand mark</h3>
+        <p>A single quiet <b>SUPPR</b> mark on the sheet corner so the most-used management surface no longer reads as a borrowed OS chrome. One mark, low contrast — present, not shouting.</p>
+      </div>
+      <div class="rule">
+        <h3><span class="badge">ENG-798</span> Win-moment / motion</h3>
+        <p>The sheet slides up from the row with a spring; rows respond to press (<code>:active</code> scale). The win-colour <code>--win</code> stays reserved for genuine wins elsewhere — it never appears in this management menu.</p>
+        <p class="note">Press <span class="kbd">B</span> / <span class="kbd">A</span> to red-line the before/after in place.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var body = document.body;
+  var seg  = document.getElementById('seg');
+  var segEl = seg;
+  function setMode(mode){
+    body.className = mode; // "before" | "after"
+    seg.querySelectorAll('button').forEach(function(b){
+      b.classList.toggle('on', b.dataset.mode === mode);
+    });
+    segEl.classList.toggle('after', mode === 'after');
+  }
+  seg.addEventListener('click', function(e){
+    var b = e.target.closest('button'); if(!b) return;
+    setMode(b.dataset.mode);
+  });
+  document.addEventListener('keydown', function(e){
+    var k = e.key.toLowerCase();
+    if(k === 'b') setMode('before');
+    if(k === 'a') setMode('after');
+  });
+  setMode('after'); // body starts in AFTER
+})();
+</script>
+</body>
+</html>

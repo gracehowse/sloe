@@ -33,8 +33,9 @@ import {
 } from "react-native";
 import { Minus, Plus, PlusCircle, X } from "lucide-react-native";
 
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Accent, Elevation, Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useCardElevation } from "@/hooks/useCardElevation";
 import { supabase } from "@/lib/supabase";
 import {
   RECIPE_MEAL_TYPES,
@@ -110,6 +111,15 @@ export default function RecipeEditSheet({
   onClose: () => void;
 }) {
   const colors = useThemeColors();
+  // ENG-821 (Redesign — Design Direction 2026): the edit sheet + ingredient
+  // editor read as "imported from a different design system" — a hardcoded
+  // backdrop hex, a border-as-depth sheet panel, an off-token dashed add-button
+  // outline. Under `design_system_elevation` the sheet panel takes the real
+  // `Elevation.sheet` shadow and drops the redundant border-as-depth (tonal
+  // lift on dark, via `card.liftBg` + `card.useBorder`). The flag-OFF path
+  // keeps today's flat/hairline panel alive (`useCardElevation`'s default
+  // branch). Mirrors `SavedMealPortionSheet`.
+  const card = useCardElevation();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const isOwner = canEditRecipe(recipe.author_id, userId);
 
@@ -315,7 +325,22 @@ export default function RecipeEditSheet({
         style={styles.backdrop}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <View style={styles.sheet}>
+        {/* Sheet panel — overlays content, so it always takes the real
+            `Elevation.sheet` shadow (sheets keep their shadow in both flag
+            states, per the depth-ladder token comment). Under
+            `design_system_elevation` the redundant border-as-depth drops so the
+            shadow alone carries separation; the flag-OFF path keeps the hairline
+            (card.useBorder === true). Dark soft-elevation uses tonal lift. */}
+        <View
+          style={[
+            styles.sheet,
+            Elevation.sheet,
+            {
+              backgroundColor: card.liftBg ?? colors.background,
+              borderWidth: card.useBorder ? 1 : 0,
+            },
+          ]}
+        >
           <View style={styles.header}>
             <Text style={styles.headerTitle}>Edit recipe</Text>
             <Pressable onPress={() => !saving && onClose()} hitSlop={8} accessibilityLabel="Close editor">
@@ -504,13 +529,13 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 const makeStyles = (colors: ReturnType<typeof useThemeColors>) =>
   StyleSheet.create({
-    backdrop: { flex: 1, backgroundColor: "#00000066", justifyContent: "flex-end" },
+    backdrop: { flex: 1, backgroundColor: colors.overlay, justifyContent: "flex-end" },
     sheet: {
       maxHeight: "92%",
-      backgroundColor: colors.background,
       borderTopLeftRadius: Radius.lg,
       borderTopRightRadius: Radius.lg,
-      borderWidth: 1,
+      // backgroundColor + borderWidth driven inline by `useCardElevation`
+      // (ENG-821) so the flag-OFF hairline and flag-ON shadow paths coexist.
       borderColor: colors.border,
     },
     header: {
@@ -583,9 +608,13 @@ const makeStyles = (colors: ReturnType<typeof useThemeColors>) =>
       gap: Spacing.sm,
       paddingVertical: 12,
       borderRadius: Radius.md,
-      borderWidth: 1.5,
-      borderStyle: "dashed",
-      borderColor: Accent.primary + "50",
+      // ENG-821: soft-tinted primary affordance — same chip language as the
+      // meal-type chips above (Accent.primarySoft fill + Accent.primary edge),
+      // replacing the off-token dashed `Accent.primary + "50"` outline so the
+      // editor stops looking like a different design system.
+      borderWidth: 1,
+      borderColor: Accent.primary,
+      backgroundColor: Accent.primarySoft,
       marginTop: Spacing.xs,
     },
     addBtnText: { color: Accent.primary, fontWeight: "600", fontSize: 14 },

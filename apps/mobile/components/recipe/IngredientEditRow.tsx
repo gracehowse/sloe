@@ -6,7 +6,7 @@
  * verify flow) so this surface never invents nutrition.
  */
 import { memo } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, TextInput, View } from "react-native";
 import { Trash2 } from "lucide-react-native";
 
 import { Accent, Radius, Spacing } from "@/constants/theme";

@@ -48,6 +48,10 @@ void React;
 const { trackSpy } = vi.hoisted(() => ({ trackSpy: vi.fn() }));
 vi.mock("../../src/lib/analytics/track", () => ({
   track: trackSpy,
+  // The panel reads `isFeatureEnabled("design_system_colours")` for the commit
+  // CTA colour. Default false → exercises the legacy (green) CTA path, matching
+  // this suite's intent (it tests the no-result loop, not the CTA colour).
+  isFeatureEnabled: vi.fn(() => false),
 }));
 
 // Custom-foods client mocked to empty so the merged result really is

@@ -1,86 +1,37 @@
 /**
- * /planner — web stub directing users to the iOS Plan tab.
+ * /planner — permanent redirect to the canonical web plan route `/plan`.
  *
- * Group E Card 5 (premium-bar audit 2026-05-14): the canonical web
- * meal-plan route is `/plan` (mounts `HomePageClient` → the
- * `MealPlanner` view in the shared App shell). `/planner` was
- * previously a 404 — testers who typed the URL or followed an old
- * "go to your planner" copy hit a dead end instead of either
- * (a) the working web plan, or (b) clear instructions to use the
- * iOS app where the planner has its richer surface.
+ * ENG-806 (Redesign — Design Direction 2026, 2026-05-31 design-director
+ * review). Background: the web product has a fully-built plan surface at
+ * `/plan` (the `(product)` route group mounts `HomePageClient` → the
+ * `MealPlanner` view; the App shell derives the "plan" view from the
+ * pathname — see `src/app/App.tsx`). `/planner` used to be a *separate*
+ * stub page that dead-ended to a "your plan lives in the iOS app — get the
+ * app" wall, even though `/plan` rendered the real, working web plan. Two
+ * URLs, one working and one a dead-end, for the same surface.
  *
- * This stub renders an empty-state surface that:
- *   - Explains that the meal plan lives in the iOS app today.
- *   - Cross-links to the App Store so users can install Suppr.
- *   - Points to `/plan` for the lighter web equivalent so the page
- *     isn't a dead end (no orphan URL).
+ * The earlier stub existed when web had no Plan surface at all (premium-bar
+ * audit 2026-05-12). That gap is closed: `/plan` is the real thing. So the
+ * fix is to collapse to ONE canonical web plan route — `/plan` — and make
+ * `/planner` a permanent redirect to it. Any old link (push notification,
+ * web share, marketing copy, bookmark) that used `/planner` now lands on the
+ * real plan instead of a "get the app" wall.
  *
- * The page still mounts inside the shared product layout so the
- * nav chrome (header, footer) is visible — this is a content stub,
- * not a 404 shell.
+ * This is a pure routing fix with no visual surface of its own (the user
+ * never sees the stub again — they land on `/plan`), so per CLAUDE.md it
+ * needs no feature flag.
  *
- * Cross-platform note: this is a web-side-only divergence (mobile
- * has the rich Plan tab at `apps/mobile/app/(tabs)/planner.tsx`).
- * Logged alongside the documented `/planner`-vs-`/plan` parity
- * carve-out — see `docs/decisions/2026-05-25-sweep-parity-ia-pricing-
- * resolutions.md` for the current parity resolutions. The web move-meal
- * parity build is tracked in ENG-699.
+ * Auth: both `/planner` and `/plan` are outside `PUBLIC_ROUTES`, so an
+ * unauthed visit to `/planner` is 307'd to `/login` by middleware BEFORE
+ * this redirect runs; an authed visit redirects here to `/plan` and the
+ * shared shell gates from there. The redirect therefore can't leak the
+ * plan surface to logged-out users.
+ *
+ * `permanentRedirect` emits an HTTP 308 (method-preserving permanent
+ * redirect) so crawlers and clients update the canonical URL.
  */
-import type { Metadata } from "next";
-import Link from "next/link";
-import { CalendarDays, Smartphone } from "lucide-react";
+import { permanentRedirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: "Plan — Suppr",
-  description:
-    "Your weekly meal plan lives in the Suppr iOS app. Generate, adjust, and shop from your phone.",
-};
-
-/**
- * Public TestFlight URL — when public testing opens we swap this
- * for the apps.apple.com / testflight.apple.com link. Today
- * (2026-05-14) Suppr is in private TestFlight with N=1 testers, so
- * the link resolves to a placeholder until the public app store
- * surface goes live.
- */
-const APP_STORE_URL = "#";
-
-export default function WebPlannerStubPage() {
-  return (
-    <main className="min-h-screen bg-background flex items-center justify-center px-6 py-16">
-      <div className="max-w-md w-full text-center">
-        <div
-          className="mx-auto mb-6 w-16 h-16 rounded-full flex items-center justify-center"
-          style={{ backgroundColor: "rgba(88, 140, 228, 0.10)" }}
-          aria-hidden="true"
-        >
-          <CalendarDays className="w-12 h-12" style={{ color: "#7a8fff" }} strokeWidth={1.75} />
-        </div>
-        <h1 className="text-2xl font-bold text-foreground mb-3 leading-tight">
-          Your meal plan lives in the iOS app
-        </h1>
-        <p className="text-sm text-muted-foreground leading-relaxed mb-8">
-          Open Suppr on iPhone to view, generate, and adjust your weekly meal plan.
-          Your shopping list syncs here.
-        </p>
-        <div className="flex flex-col items-center gap-3">
-          <a
-            href={APP_STORE_URL}
-            className="inline-flex items-center justify-center gap-2 w-full max-w-xs px-5 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm shadow-sm hover:opacity-90 transition-opacity"
-            data-testid="planner-stub-get-app"
-          >
-            <Smartphone className="w-4 h-4" aria-hidden="true" />
-            Get the app
-          </a>
-          <Link
-            href="/plan"
-            className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
-            data-testid="planner-stub-go-to-plan"
-          >
-            Or open the web plan view
-          </Link>
-        </div>
-      </div>
-    </main>
-  );
+export default function WebPlannerRedirectPage(): never {
+  permanentRedirect("/plan");
 }

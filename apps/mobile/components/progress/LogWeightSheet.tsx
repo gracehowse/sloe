@@ -11,13 +11,16 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as Haptics from "expo-haptics";
 import { X } from "lucide-react-native";
 
 import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { isFeatureEnabled } from "@/lib/analytics";
 import { supabase } from "@/lib/supabase";
 import { refreshAdaptiveTdeeForUser } from "@/lib/refreshAdaptiveTdee";
 import { kgToLb, lbToKg } from "@suppr/shared/units/imperial";
+import { isNewWeightLow } from "@suppr/shared/nutrition/weightWinMoment";
 
 /**
  * Weight chart consolidation Phase 1 (2026-05-11, B6 / F-132).
@@ -93,6 +96,13 @@ export interface LogWeightSheetProps {
   onSaved: (next: {
     weightKgByDay: Record<string, number>;
     weightKg: number;
+    /**
+     * ENG-824 (Redesign — Design Direction 2026) — the just-saved weigh-in was
+     * a new all-time low (strictly below the prior minimum). The parent uses
+     * this to mount the reserved win-moment celebration. Always `false` when
+     * `redesign_winmoment` is off, so the flag-off path stays inert.
+     */
+    isNewLow: boolean;
   }) => void;
 }
 
@@ -141,6 +151,14 @@ export function LogWeightSheet({
     const kg = isImperial ? lbToKg(v) : v;
     // ENG-748 #9 — write to the edited date when editing, else today's key.
     const targetKey = editDate ?? isoTodayKey();
+    // ENG-824 (Redesign — Design Direction 2026): detect the new-all-time-low
+    // landmark BEFORE the write, judging the saved kg against the prior map
+    // (excluding the date being written so an edit isn't compared to itself).
+    // Gated behind `redesign_winmoment`; flag-off keeps the silent save.
+    const winMomentEnabled = isFeatureEnabled("redesign_winmoment");
+    const newLow =
+      winMomentEnabled &&
+      isNewWeightLow({ savedKg: kg, priorByDay: weightKgByDay, targetDateKey: targetKey });
     const next = pruneByDay({ ...weightKgByDay, [targetKey]: kg });
     // The scalar `weight_kg` represents the latest weight. Only update it
     // when the edited/logged entry IS (or becomes) the newest dated entry —
@@ -166,12 +184,24 @@ export function LogWeightSheet({
     }
     // Fire-and-forget — TDEE re-learn pulls from the fresh log.
     void refreshAdaptiveTdeeForUser(supabase, userId);
+    // ENG-824 — quiet <100ms confirm on every save; a loud success
+    // notification is RESERVED for the new-low landmark (the parent plays the
+    // WinMomentPlayer on the same beat). Both behind `redesign_winmoment`;
+    // flag-off fires neither, preserving today's silent weigh-in.
+    if (winMomentEnabled) {
+      if (newLow) {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else {
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+    }
     onSaved({
       weightKgByDay: next,
       // Report the scalar the parent should show: the latest weight after the
       // write. If we edited the latest entry that's `kg`; otherwise it's the
       // existing newest value (unchanged).
       weightKg: touchesLatest ? kg : (newest ? next[newest] : kg),
+      isNewLow: newLow,
     });
     onClose();
   }, [input, isImperial, userId, weightKgByDay, editDate, isEditing, onSaved, onClose]);

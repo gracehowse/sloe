@@ -103,3 +103,32 @@ export function isLowRelevanceNonVerifiedRow(
   if (isVerified) return false;
   return relevance < 0.30;
 }
+
+/**
+ * ENG-807 — honest low-confidence demotion. A row is dropped from the
+ * results list when it is BOTH:
+ *   - "estimated" tier (not authoritative provenance with a strong match —
+ *     see `searchRowConfidenceTier`), AND
+ *   - below {@link LOW_CONFIDENCE_DEMOTE_SCORE} on its combined rank score.
+ *
+ * This extends `isLowRelevanceNonVerifiedRow` (which keys off the raw
+ * `verified` flag) to key off the REAL confidence tier instead, so a USDA
+ * Branded "EGGS" row — which carries `verified: false` but a high token
+ * overlap — is judged by whether it actually earned a confident match, not by
+ * its source label. We never silently sum or surface a sub-threshold guess as
+ * if it were a real answer (CLAUDE.md: reject/deprioritise low confidence).
+ *
+ * Verified-tier rows are always kept. The threshold is held at the F-90 value
+ * (0.30) so this is a strict superset of the existing gate, not a behaviour
+ * change for already-filtered rows — it additionally catches estimated-tier
+ * rows that the raw-`verified` gate let through.
+ */
+export const LOW_CONFIDENCE_DEMOTE_SCORE = 0.30;
+
+export function isLowConfidenceDemotedRow(input: {
+  tier: "verified" | "estimated";
+  score: number;
+}): boolean {
+  if (input.tier === "verified") return false;
+  return input.score < LOW_CONFIDENCE_DEMOTE_SCORE;
+}

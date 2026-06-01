@@ -135,6 +135,70 @@ describe("decideDeepLinkAction — share-sheet handoffs must forward", () => {
   });
 });
 
+describe("decideDeepLinkAction — well-known path aliases (ENG-800)", () => {
+  // The Plan tab's route file is `app/(tabs)/planner.tsx`, so its
+  // canonical path is `/planner`. External surfaces address it by the
+  // user-facing label `plan` (`suppr:///plan`). Before the fix that
+  // path had no registered route and Expo Router fell through to
+  // `+not-found.tsx` — the "recipe may have been deleted" 404. These
+  // tests lock the alias → Plan-tab resolution.
+  it("navigates suppr:///plan to the Plan tab (three-slash form)", () => {
+    expect(decideDeepLinkAction("suppr:///plan")).toEqual({
+      kind: "navigate",
+      pathname: "/(tabs)/planner",
+    });
+  });
+
+  it("navigates suppr://plan to the Plan tab (two-slash / host form)", () => {
+    expect(decideDeepLinkAction("suppr://plan")).toEqual({
+      kind: "navigate",
+      pathname: "/(tabs)/planner",
+    });
+  });
+
+  it("navigates suppr:///plan even with a trailing slash", () => {
+    expect(decideDeepLinkAction("suppr:///plan/")).toEqual({
+      kind: "navigate",
+      pathname: "/(tabs)/planner",
+    });
+  });
+
+  it("navigates suppr:///plan with a query string (e.g. push attribution)", () => {
+    expect(decideDeepLinkAction("suppr:///plan?ref=push")).toEqual({
+      kind: "navigate",
+      pathname: "/(tabs)/planner",
+    });
+  });
+
+  it("is case-insensitive on the alias path (suppr:///Plan)", () => {
+    expect(decideDeepLinkAction("suppr:///Plan")).toEqual({
+      kind: "navigate",
+      pathname: "/(tabs)/planner",
+    });
+  });
+
+  it("does NOT alias suppr:///planner (already a real route → ignore)", () => {
+    expect(decideDeepLinkAction("suppr:///planner")).toEqual({ kind: "ignore" });
+  });
+
+  it("does NOT alias an unrelated path that merely starts with 'plan'", () => {
+    expect(decideDeepLinkAction("suppr:///plant-based")).toEqual({ kind: "ignore" });
+  });
+
+  it("still ignores a recipe-carrying plan link is impossible — recipe URL wins", () => {
+    // A `suppr://` link that embeds a recipe URL must still forward to
+    // import, never get swallowed by the alias map.
+    expect(
+      decideDeepLinkAction(
+        "suppr:///plan?url=https%3A%2F%2Fwww.tiktok.com%2F%40chef%2Fvideo%2F9",
+      ),
+    ).toEqual({
+      kind: "forward-to-import",
+      url: "https://www.tiktok.com/@chef/video/9",
+    });
+  });
+});
+
 describe("decideDeepLinkAction — defers to Siri handler", () => {
   it("returns siri for log_water shortcut", () => {
     expect(decideDeepLinkAction("suppr://log/water?ml=500")).toEqual({ kind: "siri" });

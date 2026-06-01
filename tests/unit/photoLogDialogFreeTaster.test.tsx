@@ -18,6 +18,9 @@ void React;
 
 vi.mock("../../src/lib/analytics/track.ts", () => ({
   track: vi.fn(),
+  // ENG-816 — the dialog reads `design_system_icons` for the "Plate total"
+  // glyph swap; default OFF keeps the free-taster assertions unchanged.
+  isFeatureEnabled: vi.fn(() => false),
 }));
 
 vi.mock("../../src/lib/supabase/browserClient", () => ({

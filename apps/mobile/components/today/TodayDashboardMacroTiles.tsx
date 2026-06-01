@@ -38,11 +38,13 @@ import { formatMacro } from "@suppr/shared/nutrition/formatMacro";
  * to match the 2026-04-19 Claude Design prototype's 2-column bigger
  * tile treatment (see
  * `docs/prototypes/2026-04-19-whole-app-experience/project/screens-mobile.jsx`
- *  → `MacroTile`). Each tile now has: uppercase name + emoji icon →
+ *  → `MacroTile`). Each tile now has: uppercase name + lucide glyph →
  * big value + unit → progress bar → "X g remaining" or "X g over"
- * caption. Emoji per macro matches the prototype's lucide icon
- * choice (beef / wheat / droplets / leaf + equivalents for
- * sugar/sodium/water).
+ * caption. The per-macro glyph is a `lucide-react-native` icon
+ * (beef / wheat / droplets / leaf + equivalents for sugar/sodium/water)
+ * — never a functional emoji. The icon strategy
+ * (`docs/decisions/2026-05-31-icon-strategy.md`, ENG-808) forbids
+ * functional emoji as UI; these tiles are already compliant.
  */
 export interface TodayDashboardMacroTilesProps {
   trackedMacros: string[];

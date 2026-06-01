@@ -9,7 +9,11 @@ import {
   Text,
   TextInput,
   View,
+  type StyleProp,
+  type ViewStyle,
 } from "react-native";
+import * as Haptics from "expo-haptics";
+import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X } from "lucide-react-native";
 import {
@@ -22,7 +26,11 @@ import {
   Type,
 } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useCardElevation } from "@/hooks/useCardElevation";
+import { isFeatureEnabled } from "@/lib/analytics";
+import { useSheetMorph } from "@/lib/motion";
 import type { JournalMeal } from "@/lib/nutritionJournal";
+import { PressableScale } from "../ui/PressableScale";
 import { PortionStepper, clampPortion, formatMultiplier } from "./PortionStepper";
 
 /**
@@ -100,6 +108,7 @@ function parsePortion(raw: string): number {
 function EditEntryV2(props: TodayEditMealModalProps) {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
+  const card = useCardElevation();
   const {
     editingMeal,
     slots,
@@ -122,8 +131,29 @@ function EditEntryV2(props: TodayEditMealModalProps) {
     onClose,
   } = props;
 
+  // ENG-813 (Redesign — Design Direction 2026): element→sheet morph on open
+  // + soft-elevation resting cards + quiet log-confirm haptic, all gated by
+  // the redesign flags. The OLD `animationType="slide"` + flat inline-border
+  // inputs both stay alive in the flag-off path.
+  const open = !!editingMeal;
+  const motionEnabled = isFeatureEnabled("redesign_motion");
+  const { sheetStyle } = useSheetMorph(open && motionEnabled);
+
   const portionNum = parsePortion(editPortion);
   const portionLabel = formatMultiplier(portionNum);
+
+  // Quiet log-confirm haptic on portion recalc (the ±/chip-committed value,
+  // never raw keystrokes) — same Light-impact "confirm" feel as the Save CTA.
+  const onPortionChange = (next: number) => {
+    if (motionEnabled) {
+      try {
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      } catch {
+        /* haptics unavailable (e.g. Expo Go) — silent */
+      }
+    }
+    onApplyPortionMultiplier(next);
+  };
 
   const macroFields = [
     { key: "calories", label: "Calories", unit: "kcal", color: MacroColors.calories, value: editKcal, onChange: onEditKcalChange },
@@ -134,7 +164,14 @@ function EditEntryV2(props: TodayEditMealModalProps) {
   const macroRows = [macroFields.slice(0, 2), macroFields.slice(2, 4)];
 
   return (
-    <Modal visible={!!editingMeal} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal
+      visible={open}
+      transparent
+      // Motion ON → the spring drives the entry, so the Modal must NOT also
+      // slide (double-animation jank). Motion OFF → keep the native slide.
+      animationType={motionEnabled ? "none" : "slide"}
+      onRequestClose={onClose}
+    >
       <View style={v2.modalRoot}>
         <Pressable
           accessibilityRole="button"
@@ -147,13 +184,18 @@ function EditEntryV2(props: TodayEditMealModalProps) {
           style={v2.keyboardAvoid}
           pointerEvents="box-none"
         >
-          <View
-            accessibilityViewIsModal
-            accessibilityLabel="Edit entry"
-            style={[v2.sheet, Elevation.sheet, { backgroundColor: colors.background, paddingBottom: insets.bottom }]}
-          >
-            {/* Drag handle */}
-            <View style={[v2.handle, { backgroundColor: colors.border }]} accessible={false} />
+          {/* Outer wrapper carries ONLY the morph transform (animated style)
+              — the static panel styling lives on the inner View so the
+              animated + static styles never share one array (the proven
+              `NorthStarBlock` split). Motion OFF → no transform. */}
+          <Animated.View style={(motionEnabled ? sheetStyle : undefined) as StyleProp<ViewStyle>}>
+            <View
+              accessibilityViewIsModal
+              accessibilityLabel="Edit entry"
+              style={[v2.sheet, Elevation.sheet, { backgroundColor: colors.background, paddingBottom: insets.bottom }]}
+            >
+              {/* Drag handle */}
+              <View style={[v2.handle, { backgroundColor: colors.border }]} accessible={false} />
 
             {/* Header */}
             <View style={[v2.header, { borderBottomColor: colors.border }]}>
@@ -175,10 +217,22 @@ function EditEntryV2(props: TodayEditMealModalProps) {
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             >
-              {/* NAME */}
+              {/* NAME — a recessed input field. Under
+                  `design_system_elevation` it loses its hairline and takes
+                  the tonal lift bg (the soft drop-shadow stays reserved for
+                  the lifted *card* surfaces, not recessed inputs); flat
+                  hairline otherwise. */}
               <Text style={[Type.label, v2.sectionLabel, { color: colors.textTertiary }]}>Name</Text>
               <TextInput
-                style={[v2.nameInput, { backgroundColor: colors.inputBg, color: colors.text, borderColor: colors.border }]}
+                style={[
+                  v2.nameInput,
+                  {
+                    backgroundColor: card.liftBg ?? colors.inputBg,
+                    color: colors.text,
+                    borderColor: colors.border,
+                    borderWidth: card.useBorder ? 1 : 0,
+                  },
+                ]}
                 placeholder="Food name"
                 placeholderTextColor={colors.textTertiary}
                 value={editTitle}
@@ -232,7 +286,7 @@ function EditEntryV2(props: TodayEditMealModalProps) {
               </View>
               <PortionStepper
                 value={portionNum}
-                onChange={onApplyPortionMultiplier}
+                onChange={onPortionChange}
                 colors={colors}
                 testIDPrefix="edit-entry-portion"
               />
@@ -248,7 +302,16 @@ function EditEntryV2(props: TodayEditMealModalProps) {
                           <View style={[v2.macroDot, { backgroundColor: m.color }]} />
                           <Text style={[Type.caption, { color: colors.textSecondary }]}>{m.label}</Text>
                         </View>
-                        <View style={[v2.macroInputWrap, { backgroundColor: colors.inputBg, borderColor: colors.border }]}>
+                        <View
+                          style={[
+                            v2.macroInputWrap,
+                            {
+                              backgroundColor: card.liftBg ?? colors.inputBg,
+                              borderColor: colors.border,
+                              borderWidth: card.useBorder ? 1 : 0,
+                            },
+                          ]}
+                        >
                           <TextInput
                             style={[v2.macroInput, { color: colors.text }]}
                             keyboardType="numeric"
@@ -268,7 +331,8 @@ function EditEntryV2(props: TodayEditMealModalProps) {
               </Text>
             </ScrollView>
 
-            {/* Sticky footer — destructive-left / primary-right. */}
+            {/* Sticky footer — destructive-left / primary-right (blue per
+                Phase 0). Quiet log-confirm haptic on Save when motion is on. */}
             <View style={[v2.footer, { borderTopColor: colors.border }]}>
               <Pressable
                 onPress={onDelete}
@@ -278,11 +342,18 @@ function EditEntryV2(props: TodayEditMealModalProps) {
               >
                 <Text style={{ color: Accent.destructive, fontWeight: "700", fontSize: 14 }}>Delete</Text>
               </Pressable>
-              <Pressable onPress={onSave} accessibilityRole="button" accessibilityLabel="Save changes" style={v2.saveBtn}>
+              <PressableScale
+                onPress={onSave}
+                haptic={motionEnabled ? "confirm" : "none"}
+                accessibilityRole="button"
+                accessibilityLabel="Save changes"
+                style={v2.saveBtn}
+              >
                 <Text style={{ color: Accent.primaryForeground, ...Type.headline }}>Save changes</Text>
-              </Pressable>
+              </PressableScale>
             </View>
-          </View>
+            </View>
+          </Animated.View>
         </KeyboardAvoidingView>
       </View>
     </Modal>
@@ -322,7 +393,7 @@ const v2 = StyleSheet.create({
   sectionSpaced: { marginTop: Spacing.lg },
   sectionRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: Spacing.sm },
   nameInput: {
-    borderWidth: 1,
+    // borderWidth driven by `useCardElevation().useBorder` inline (ENG-813).
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.md,
@@ -339,7 +410,7 @@ const v2 = StyleSheet.create({
   macroInputWrap: {
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: 1,
+    // borderWidth driven by `useCardElevation().useBorder` inline (ENG-813).
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.md,
     height: 48,

@@ -114,6 +114,28 @@
   --accent-destructive-soft: rgba(241, 98, 100, 0.12);
   --accent-info: #588CE4;
 
+  /** Win / celebration warm-amber — ENG-795 (Redesign — Design Direction
+   *  2026, 2026-05-31). A NEW landmark-only role, intentionally OUTSIDE
+   *  the 8-slot action palette. Gated behind `design_system_colours` at the
+   *  call site — never used in the flag-off path. Three-role colour split:
+   *  PRIMARY (blue) = commit CTA; SUCCESS (green) = calorie ring + macro
+   *  identity; WIN (this amber) = landmark celebration ONLY (goal hit, streak
+   *  milestone, win-moment). Mirrors mobile `Accent.win` / `Accent.winSoft`
+   *  in `apps/mobile/constants/theme.ts`. */
+  --accent-win: #F2A93B;
+  --accent-win-soft: rgba(242, 169, 59, 0.12);
+
+  /** Estimated-confidence chip — warm-amber. ENG P5 parity (gap #11,
+   *  2026-05-31). Mirrors the mobile chip exactly
+   *  (apps/mobile/components/ui/SearchResultConfidenceChip.tsx:60:
+   *  fg `#BF8324` on `rgba(191,131,36,0.14)`). Intentionally NOT the
+   *  orange `--warning` slot (which reads as "over-budget" and already
+   *  paints the over-budget fat macro in the same search row), and NOT
+   *  `--accent-win` (a celebration-landmark-only role, `design_system_colours`
+   *  gated). Gated at the call site behind `redesign_search_results`. */
+  --chip-estimated: #BF8324;
+  --chip-estimated-soft: rgba(191, 131, 36, 0.14);
+
   /** Legacy semantic aliases. */
   --destructive: var(--accent-destructive);
   --destructive-foreground: var(--accent-destructive-foreground);
@@ -221,6 +243,11 @@
    *  Card = list rows on a card. Sheet = bottom-sheets. Float = popovers.
    *  FloatPrimary = FAB (primary tint underneath). */
   --elev-card: 0 1px 3px rgba(28, 25, 22, 0.06);
+  /** Soft resting-card shadow — ENG-795 (Redesign — Design Direction 2026,
+   *  2026-05-31). Applied only when `design_system_elevation` is on; the flat
+   *  `--elev-card` above stays as the flag-OFF fallback. Mirrors mobile
+   *  `Elevation.cardSoft` in `apps/mobile/constants/theme.ts`. */
+  --elev-card-soft: 0 4px 12px rgba(28, 25, 22, 0.07);
   --elev-sheet: 0 -8px 32px rgba(0, 0, 0, 0.12);
   --elev-float: 0 4px 16px rgba(0, 0, 0, 0.12);
   --elev-float-primary: 0 4px 16px rgba(88, 140, 228, 0.45);
@@ -309,6 +336,20 @@
   --accent-destructive-solid: #d65558;
   --accent-destructive-soft: rgba(245, 131, 133, 0.18);
   --accent-info: #7BA3EA;
+
+  /** Win / celebration warm-amber — dark. ENG-795. Same hue as light (the
+   *  amber reads well on OLED at this saturation); soft fill unchanged.
+   *  Landmark-only role, gated behind `design_system_colours`. Mirrors mobile
+   *  `Accent.win` / `Accent.winSoft`. */
+  --accent-win: #F2A93B;
+  --accent-win-soft: rgba(242, 169, 59, 0.12);
+
+  /** Estimated-confidence chip — dark. ENG P5 parity (gap #11). Same
+   *  `#BF8324` hue as light, matching the mobile chip (single value for
+   *  both themes); it clears AA on the dark card surface (~5.2:1).
+   *  Gated at the call site behind `redesign_search_results`. */
+  --chip-estimated: #BF8324;
+  --chip-estimated-soft: rgba(191, 131, 36, 0.14);
 
   --destructive: var(--accent-destructive);
   --destructive-foreground: var(--accent-destructive-foreground);
@@ -399,6 +440,12 @@
    *  highlight via the SupprCard primitive. Sheet drops box-shadow,
    *  keeps backdrop blur. */
   --elev-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+  /** Soft resting-card shadow — dark. ENG-795. Applied only when
+   *  `design_system_elevation` is on; `--elev-card` above stays the flag-OFF
+   *  fallback. Dark cards lean on tonal lift (`--card-elevated`) more than
+   *  shadow, but this gives a slightly deeper drop for the elevated tier.
+   *  Mirrors mobile `Elevation.cardSoft`. */
+  --elev-card-soft: 0 4px 12px rgba(0, 0, 0, 0.45);
   --elev-sheet: 0 -8px 32px rgba(0, 0, 0, 0.5);
   --elev-float: 0 4px 16px rgba(0, 0, 0, 0.4);
   --elev-float-primary: 0 4px 16px rgba(123, 163, 234, 0.45);

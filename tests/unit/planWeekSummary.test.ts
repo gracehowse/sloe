@@ -3,6 +3,7 @@ import {
   PLAN_SUMMARY_HIT_BAND,
   buildPlanWeekSummarySubtitle,
   computePlanWeekSummaryScore,
+  planWeekHeadlineTone,
   type PlanSummaryDay,
 } from "../../src/lib/planning/planWeekSummary.ts";
 
@@ -143,5 +144,47 @@ describe("buildPlanWeekSummarySubtitle", () => {
         null,
       ),
     ).toBe("Some days run over target. Tap a meal to swap or adjust the portion.");
+  });
+});
+
+/**
+ * ENG-820 (Plan win-moment) — the headline-tone classifier is the single
+ * source of truth that web (`MealPlanner.tsx`) and mobile
+ * (`apps/mobile/app/(tabs)/planner.tsx`) both read to colour the
+ * "Hits your targets N of 7" headline. Pinning it here guarantees the two
+ * platforms can never disagree on which weeks read as a win vs progress vs
+ * calm. The colour mapping itself (win → win token, progress → amber, calm →
+ * muted) lives per-platform but keys off these exact tones.
+ */
+describe("planWeekHeadlineTone", () => {
+  it("returns 'win' when every day lands on target (hits === total)", () => {
+    expect(planWeekHeadlineTone({ hits: 7, total: 7, worstShort: null })).toBe("win");
+    expect(planWeekHeadlineTone({ hits: 1, total: 1, worstShort: null })).toBe("win");
+    expect(planWeekHeadlineTone({ hits: 3, total: 3, worstShort: null })).toBe("win");
+  });
+
+  it("returns 'calm' when no day lands on target yet (hits === 0)", () => {
+    expect(
+      planWeekHeadlineTone({ hits: 0, total: 7, worstShort: { dayIndex: 0, shortBy: 800 } }),
+    ).toBe("calm");
+  });
+
+  it("returns 'progress' when some-but-not-all days land", () => {
+    expect(
+      planWeekHeadlineTone({ hits: 4, total: 7, worstShort: { dayIndex: 2, shortBy: 300 } }),
+    ).toBe("progress");
+    expect(
+      planWeekHeadlineTone({ hits: 6, total: 7, worstShort: { dayIndex: 6, shortBy: 120 } }),
+    ).toBe("progress");
+  });
+
+  it("returns 'calm' defensively for null / empty / non-positive totals", () => {
+    expect(planWeekHeadlineTone(null)).toBe("calm");
+    expect(planWeekHeadlineTone(undefined)).toBe("calm");
+    expect(planWeekHeadlineTone({ hits: 0, total: 0, worstShort: null })).toBe("calm");
+  });
+
+  it("never returns 'win' unless the whole plan lands (guards a 6/7 false-win)", () => {
+    expect(planWeekHeadlineTone({ hits: 6, total: 7, worstShort: null })).not.toBe("win");
   });
 });

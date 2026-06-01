@@ -60,7 +60,10 @@ import {
 } from "../../lib/nutrition/pendingUsualMealSave.ts";
 import { Digest } from "./suppr/digest.tsx";
 import { resolveDigestHeadline } from "../../lib/nutrition/digest.ts";
-import { isFeatureEnabled } from "../../lib/analytics/track.ts";
+import { isFeatureEnabled, track } from "../../lib/analytics/track.ts";
+import { AnalyticsEvents } from "../../lib/analytics/events.ts";
+import { WinMomentPlayer } from "./ui/win-moment-player.tsx";
+import { isNewWeightLow } from "../../lib/nutrition/weightWinMoment.ts";
 import { formatRecapForShare } from "../../lib/nutrition/weeklyRecap.ts";
 import {
   formatMaintenanceRecapLine,
@@ -199,6 +202,15 @@ function ProgressDashboardContent() {
   const [weightInput, setWeightInput] = useState("");
   const [stepsInput, setStepsInput] = useState("");
   const [bodyFatInput, setBodyFatInput] = useState("");
+  // ENG-824 (Redesign — Design Direction 2026, 2026-05-31 design-director
+  // review): the reserved weight win-moment, web analog of the mobile
+  // success-haptic. Web has no haptics, so the landmark surfaces as a brief
+  // green ring-stroke colour pulse on the weight number plus the reserved
+  // `WinMomentPlayer`. `weightWinActive` mounts the player; `weightPulse`
+  // tints the latest-weight figure for ~200ms. Both gated behind
+  // `redesign_winmoment`; flag-off keeps the silent save.
+  const [weightWinActive, setWeightWinActive] = useState(false);
+  const [weightPulse, setWeightPulse] = useState(false);
   // 2026-04-20 Claude Design prototype port — range picker pills.
   // Prior shape was `1W / 1M / 3M / 6M / All`, default `3M`, with no
   // UI to switch. Mirrors the mobile ProgressScreen prototype
@@ -531,10 +543,36 @@ function ProgressDashboardContent() {
     if (!Number.isFinite(v) || v <= 0) return;
     const kg = profileMeasurementSystem === "imperial" ? v / 2.20462 : v;
     const tk = todayKey();
+    // ENG-824 — detect the new-all-time-low landmark against the PRE-save map
+    // (excluding today's key so re-saving today doesn't compare to itself).
+    // Gated behind `redesign_winmoment`; flag-off keeps the silent save.
+    const winMomentEnabled = isFeatureEnabled("redesign_winmoment");
+    const newLow =
+      winMomentEnabled &&
+      isNewWeightLow({ savedKg: kg, priorByDay: weightKgByDay, targetDateKey: tk });
     const nextMap = { ...weightKgByDay, [tk]: kg };
     setWeightKgByDay(nextMap);
     setWeightKg(kg);
     setWeightInput("");
+    if (newLow) {
+      // Web analog of the mobile success haptic: the reserved celebration +
+      // a brief green colour pulse on the latest-weight figure. Reduced-motion
+      // users still get the player (it is its own loud beat) but no pulse.
+      setWeightWinActive(true);
+      const prefersReducedMotion =
+        typeof window !== "undefined" &&
+        typeof window.matchMedia === "function" &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (!prefersReducedMotion) {
+        setWeightPulse(true);
+        window.setTimeout(() => setWeightPulse(false), 200);
+      }
+      try {
+        track(AnalyticsEvents.weight_new_low_win_moment_shown, { platform: "web" });
+      } catch {
+        /* analytics fire-and-forget */
+      }
+    }
     await persistProfilePatch({ weight_kg: kg, weight_kg_by_day: nextMap });
   }, [weightInput, profileMeasurementSystem, weightKgByDay, persistProfilePatch]);
 
@@ -928,6 +966,19 @@ function ProgressDashboardContent() {
     onShownAtPersisted: setMilestone30ShownAt,
   });
 
+  // ENG-822 — flag-gated resting-card elevation (web parity with the mobile
+  // `useCardElevation` hook + the Settings.tsx `settingsCardClass` pattern).
+  // flag ON  → soft `--elev-card-soft` ambient shadow, border dropped (no
+  //            double edge), matching the single 5-spine elevation model.
+  // flag OFF → today's static `card-elevated` (`--shadow`) + `border-border`,
+  //            preserved byte-for-byte so the cold path is unchanged.
+  // Computed before the `loading` early return so the skeleton tile (which
+  // lives in that branch) shares the same paint as the populated cards.
+  const progressCardsElevated = isFeatureEnabled("design_system_elevation");
+  const progressCardClass = progressCardsElevated
+    ? "rounded-xl bg-card border-0 shadow-[var(--elev-card-soft)]"
+    : "rounded-xl bg-card border border-border card-elevated";
+
   const progressCalendarButton = (
     <button
       type="button"
@@ -1011,7 +1062,7 @@ function ProgressDashboardContent() {
             <div
               key={i}
               data-testid={`progress-skeleton-tile-${i}`}
-              className="rounded-xl bg-card border border-border p-3 min-h-[86px] card-elevated"
+              className={`${progressCardClass} p-3 min-h-[86px]`}
             >
               <div className="h-3 w-16 rounded bg-border mb-2" />
               <div className="h-5 w-20 rounded bg-border mb-1.5" />
@@ -1545,7 +1596,7 @@ function ProgressDashboardContent() {
       {/* STREAK FREEZES (Batch 4.11) — visible when the user can earn or has
           freezes, or has consumed any. Hidden entirely when budget = 0. */}
       {freezeBudgetMax > 0 ? (
-        <div className="rounded-xl bg-card border border-border p-4 mb-6 card-elevated">
+        <div className={`${progressCardClass} p-4 mb-6`}>
           <div className="flex items-center gap-2 mb-2">
             <IconBox size="sm" tone="primary"><Icons.streakFreeze /></IconBox>
             <p className="text-sm font-semibold text-foreground">Streak freezes</p>
@@ -1598,7 +1649,7 @@ function ProgressDashboardContent() {
         data-testid="progress-week-charts-grid"
         className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6"
       >
-      <div className="rounded-xl bg-card border border-border p-4 card-elevated">
+      <div className={`${progressCardClass} p-4`}>
         <p className="text-sm font-semibold text-foreground mb-3">Daily Calories</p>
         {(() => {
           const chartHeight = 90;
@@ -1721,7 +1772,7 @@ function ProgressDashboardContent() {
           the row reads "over budget" without feeling like an error.
           Per brand-tokens.md + project memory ("over-budget is amber,
           never red"). */}
-      <div className="rounded-xl bg-card border border-border p-4 card-elevated">
+      <div className={`${progressCardClass} p-4`}>
         <p className="text-sm font-semibold text-foreground mb-3">Macro Adherence</p>
         <p className="text-[10px] text-muted-foreground mb-2">
           Based on {weekStatsBundle.daysWithFood}{" "}
@@ -1789,7 +1840,7 @@ function ProgressDashboardContent() {
         if (!resolved) return null;
         const showAdaptiveExtras = resolved.source === "adaptive";
         return (
-        <div className="rounded-xl bg-card border border-border p-4 mb-6 mt-6 card-elevated" data-testid="progress-maintenance-card">
+        <div className={`${progressCardClass} p-4 mb-6 mt-6`} data-testid="progress-maintenance-card">
           <div className="flex items-center gap-2 mb-3">
             <IconBox size="sm" tone="primary"><Icons.calories /></IconBox>
             <p className="text-sm font-semibold text-foreground">Maintenance</p>
@@ -1992,7 +2043,18 @@ function ProgressDashboardContent() {
           mode flip back to "show" in Settings — that's the explicit
           opt-in we want, not a secondary side-channel here. */}
       {profileWeightSurfaceMode === "show" ? (
-      <div className="rounded-xl bg-card border border-border p-4 mb-6 mt-6 card-elevated">
+      <div className="relative rounded-xl bg-card border border-border p-4 mb-6 mt-6 card-elevated">
+        {/* ENG-824 — reserved weight win-moment overlay. Mounted only while a
+            new-all-time-low celebration is active; plays once then unmounts.
+            Absolute + pointer-events-none so it never blocks the card. */}
+        {weightWinActive ? (
+          <WinMomentPlayer
+            celebration="goal-hit"
+            fullBleed
+            onComplete={() => setWeightWinActive(false)}
+            testID="progress-weight-win-moment"
+          />
+        ) : null}
         <p className="text-sm font-semibold text-foreground mb-3">Weight</p>
         {/* ENG-534 (2026-05-16): current + goal weight are HIGH-class
             body-stats. `ph-mask` makes PostHog session-replay render
@@ -2000,7 +2062,13 @@ function ProgressDashboardContent() {
             `docs/operations/session-replay-masking-audit.md`. */}
         <div className="flex gap-6 mb-3">
           <div className="text-center">
-            <p className="text-[22px] font-bold text-foreground tabular-nums ph-mask">{weightKg != null ? formatWeight(weightKg) : "—"}</p>
+            {/* ENG-824 — the green win-colour pulse on a new all-time low. */}
+            <p
+              className={`text-[22px] font-bold tabular-nums ph-mask transition-colors duration-200 ${weightPulse ? "text-success" : "text-foreground"}`}
+              data-testid="progress-current-weight"
+            >
+              {weightKg != null ? formatWeight(weightKg) : "—"}
+            </p>
             <p className="text-[10px] text-muted-foreground mt-0.5">Current</p>
           </div>
           <div className="text-center">

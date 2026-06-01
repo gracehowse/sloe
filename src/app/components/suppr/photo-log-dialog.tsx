@@ -41,6 +41,13 @@ import {
 } from "../ui/dialog";
 import { Button } from "../ui/button";
 import { Icons } from "../ui/icons";
+// ENG-816 / icon-strategy 2026-05-31 — the "Plate total" banner's leading
+// icon is a lucide-react ArrowRight, matching mobile PhotoLogSheet which has
+// rendered `<ArrowRight size={16} .../>` UNCONDITIONALLY since the 2026-05-06
+// F-107 audit. Ungated for day-one web↔mobile parity (ENG-816 #24): an
+// identical-meaning icon swap needs no flag per the icon-strategy decision,
+// and gating only web left web showing 👉 while mobile showed the glyph.
+import { ArrowRight } from "lucide-react";
 import { Badge } from "./badge";
 import { toast } from "sonner";
 import {
@@ -538,7 +545,7 @@ export function PhotoLogDialog({
               className="rounded-lg bg-primary/10 px-3 py-2.5 text-sm font-medium text-foreground flex items-center justify-between"
               data-testid="photo-log-plate-total"
             >
-              <span aria-hidden className="text-base">👉</span>
+              <ArrowRight size={16} aria-hidden className="text-foreground shrink-0" />
               <span className="flex-1 ml-2">Plate total</span>
               <span className="font-mono tabular-nums">{formatRangeKcal(totalKcal)}</span>
             </div>

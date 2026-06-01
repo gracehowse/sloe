@@ -33,6 +33,7 @@ import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets, calculateTDEE } from "@/lib/calcTargets";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
+import { useSettingsWinMoment } from "@/hooks/useSettingsWinMoment";
 import { dateKeyFromDate } from "@suppr/shared/nutrition/trackerStats";
 import { resolveLatestWeightKg } from "@suppr/shared/weightProjection";
 import {
@@ -123,6 +124,10 @@ export default function TargetsScreen() {
   // logic itself is unconditional.
   const goalEditorEnabled = isFeatureEnabled("goal_editor");
   const [goalEditorOpen, setGoalEditorOpen] = useState(false);
+  // ENG-824 — quiet win-moment (success haptic + win-colour wash on the calorie
+  // card) when targets are saved (goal/pace edit) or recalculated. Gated behind
+  // `redesign_winmoment`; inert when off.
+  const winMoment = useSettingsWinMoment();
 
   const loadTargets = useCallback(async (signal?: { cancelled: boolean }) => {
     if (!userId) return;
@@ -263,10 +268,12 @@ export default function TargetsScreen() {
       await loadTargets();
       setRecalcToast(true);
       setTimeout(() => setRecalcToast(false), 1800);
+      // ENG-824 — a fresh recalculation lands new numbers; celebrate the save.
+      winMoment.celebrate();
     } finally {
       setRecalculating(false);
     }
-  }, [userId, recalculating, loadTargets]);
+  }, [userId, recalculating, loadTargets, winMoment]);
 
   // 2026-05-02 (net-carbs toggle fix) — refresh the lens flag on every
   // screen focus so toggling "Show net carbs" in Settings flips the
@@ -591,7 +598,10 @@ export default function TargetsScreen() {
             ring renders at 100% (full sweep) since this is a
             target display, not a progress display — Today owns
             the "how am I doing" view. */}
-        <View style={[styles.card, { alignItems: "center" }]}>
+        <View
+          testID="targets-calorie-card"
+          style={[styles.card, { alignItems: "center" }, winMoment.flashStyle]}
+        >
           <Text style={styles.overline}>DAILY CALORIE TARGET</Text>
           <View
             style={{
@@ -954,6 +964,8 @@ export default function TargetsScreen() {
           userId={userId}
           onSaved={() => {
             void loadTargets();
+            // ENG-824 — goal/pace saved → quiet win-moment on the calorie card.
+            winMoment.celebrate();
           }}
         />
       ) : null}

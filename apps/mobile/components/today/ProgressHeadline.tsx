@@ -1,6 +1,7 @@
 import * as React from "react";
 import { StyleSheet, Text, View, type ViewStyle } from "react-native";
-import { Accent, Elevation, Radius, Spacing, Type } from "@/constants/theme";
+import { Accent, Radius, Spacing, Type } from "@/constants/theme";
+import { useCardElevation } from "@/hooks/useCardElevation";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { ConfidenceChip } from "@/components/ui/ConfidenceChip";
 import {
@@ -34,6 +35,7 @@ export function ProgressHeadline({
   testID,
 }: ProgressHeadlineProps) {
   const colors = useThemeColors();
+  const cardElevation = useCardElevation();
   const segments = splitBodyIntoSegments(commentary.body, commentary.numerals);
 
   return (
@@ -43,10 +45,11 @@ export function ProgressHeadline({
       accessibilityLabel={`This week: ${commentary.headline}`}
       style={[
         styles.card,
-        Elevation.card,
+        cardElevation.shadowStyle,
         {
-          backgroundColor: colors.card,
+          backgroundColor: cardElevation.liftBg ?? colors.card,
           borderColor: colors.cardBorder,
+          borderWidth: cardElevation.useBorder ? 1 : 0,
         },
         style,
       ]}

@@ -46,6 +46,11 @@ export interface TodayHeroRingProps {
    *  explainer is now reached from the Targets sub-tab inside More
    *  (mirrors mobile). */
   onPressWhy?: () => void;
+
+  /** ENG-798 win-moment ring pulse — forwarded to `DailyRing`. True for
+   *  ~200ms after a Today landmark fires (the web analog of mobile's
+   *  success haptic). */
+  pulse?: boolean;
 }
 
 export function TodayHeroRing({
@@ -59,6 +64,7 @@ export function TodayHeroRing({
   displayMode,
   onDisplayModeChange: _onDisplayModeChange,
   onPressWhy: _onPressWhy,
+  pulse = false,
 }: TodayHeroRingProps) {
   // 2026-05-12 round 4 (Grace TF, web parity with mobile): the
   // "Why this number?" pill was dropped. Audit: pill signalled low
@@ -79,6 +85,7 @@ export function TodayHeroRing({
         fatPct={fatPct}
         expanded={expanded}
         displayMode={displayMode}
+        pulse={pulse}
       />
       <button
         type="button"

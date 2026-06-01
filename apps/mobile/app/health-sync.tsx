@@ -8,6 +8,7 @@ import { Footprints, Flame, HeartPulse, Dumbbell, Scale } from "lucide-react-nat
 import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useSettingsWinMoment } from "@/hooks/useSettingsWinMoment";
 import {
   isExpoGoRuntime,
   isHealthSyncAvailable,
@@ -62,6 +63,10 @@ export default function HealthSyncScreen() {
   const { session } = useAuth();
   const userId = session?.user?.id;
   const colors = useThemeColors();
+  // ENG-824 — quiet win-moment (success haptic + win-colour wash on the Apple
+  // Health card) the first time a connect succeeds. Gated behind
+  // `redesign_winmoment`; inert when off.
+  const winMoment = useSettingsWinMoment();
 
   const [connected, setConnected] = useState(false);
   const [connecting, setConnecting] = useState(false);
@@ -245,6 +250,10 @@ export default function HealthSyncScreen() {
       const outcome = await requestHealthPermissions();
       if (outcome.ok) {
         setConnected(true);
+        // ENG-824 — landmark: a fresh successful Health connect. Quiet success
+        // haptic + win-colour wash on the card (no full-screen win-moment;
+        // that's reserved for Today landmarks). No-op when the flag is off.
+        winMoment.celebrate();
         try {
           const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
           await AsyncStorage.setItem(HEALTH_APPLE_CONNECTED_KEY, "true");
@@ -312,7 +321,7 @@ export default function HealthSyncScreen() {
     } finally {
       setConnecting(false);
     }
-  }, [available]);
+  }, [available, winMoment]);
 
   // Debug audit 2026-05-04 (code-quality #9): the HealthKit calls had
   // no timeout. A native-bridge hang (HealthKit deadlock on a flaky
@@ -555,7 +564,10 @@ export default function HealthSyncScreen() {
         <View style={{ width: 32 }} />
       </View>
 
-      <View style={styles.card}>
+      <View
+        testID="health-sync-apple-card"
+        style={[styles.card, winMoment.flashStyle]}
+      >
         <CardTitle styles={styles} icon="heart" text="Apple Health / Health Connect" />
         <Text style={styles.desc}>
           Automatically sync your steps, weight, and active energy from Apple Health (iOS) or Google Health Connect (Android). Steps and active energy appear on the Today tab for whichever day you select; water there is from quick-adds plus water logged on foods.

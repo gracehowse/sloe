@@ -82,3 +82,10 @@ docs/audits/*-sweep-screenshots/
 .maestro/.metro.log
 .maestro/artifacts/
 scripts/out/
+
+# Redesign flag-ON/OFF review captures (regenerable via `npm run capture:redesign:*`
+# + tests/e2e/screenshots/redesign-flags-capture.spec.ts). The spec + scripts are
+# versioned; the PNGs are not. Committed CI goldens tracked under ENG-838.
+docs/audits/2026-05-31-redesign-web-capture/
+# Maestro ad-hoc capture output (screenshots from manual capture runs).
+apps/mobile/.maestro/capture/

@@ -50,7 +50,7 @@ export function TrustPageHeader({
       <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
         <Link
           href="/"
-          className="text-violet-600 dark:text-violet-400 hover:underline"
+          className="text-primary hover:underline"
         >
           ← Back to app
         </Link>
@@ -87,7 +87,7 @@ export function TrustPageHeader({
               window.print();
             }
           }}
-          className="text-[10px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:text-violet-600 dark:hover:text-violet-400 transition-colors print:hidden"
+          className="text-[10px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:text-primary transition-colors print:hidden"
         >
           Print / save PDF
         </button>
@@ -104,7 +104,7 @@ export function TrustPageHeader({
             href={`https://github.com/gracehowse/Suppr/commits/main/${revisionPath}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-[10px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:text-violet-600 dark:hover:text-violet-400 transition-colors print:hidden"
+            className="text-[10px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:text-primary transition-colors print:hidden"
           >
             Revision history ↗
           </a>
@@ -117,35 +117,35 @@ export function TrustPageHeader({
         >
           <Link
             href="/privacy"
-            className="hover:text-violet-600 dark:hover:text-violet-400"
+            className="hover:text-primary"
           >
             Privacy
           </Link>
           <span aria-hidden>·</span>
           <Link
             href="/terms"
-            className="hover:text-violet-600 dark:hover:text-violet-400"
+            className="hover:text-primary"
           >
             Terms
           </Link>
           <span aria-hidden>·</span>
           <Link
             href="/dmca"
-            className="hover:text-violet-600 dark:hover:text-violet-400"
+            className="hover:text-primary"
           >
             DMCA
           </Link>
           <span aria-hidden>·</span>
           <Link
             href="/licences"
-            className="hover:text-violet-600 dark:hover:text-violet-400"
+            className="hover:text-primary"
           >
             Licences
           </Link>
           <span aria-hidden>·</span>
           <Link
             href="/help"
-            className="hover:text-violet-600 dark:hover:text-violet-400"
+            className="hover:text-primary"
           >
             Help
           </Link>

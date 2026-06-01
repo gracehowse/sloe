@@ -7,6 +7,7 @@ import { formatMacro } from "@suppr/shared/nutrition/formatMacro";
 
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useCardElevation } from "@/hooks/useCardElevation";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { supabase } from "@/lib/supabase";
 import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
@@ -41,6 +42,21 @@ export default function ProgressMetricDetailScreen() {
   const router = useRouter();
   const goBack = useSafeBack("/(tabs)/progress");
   const colors = useThemeColors();
+  const cardElevation = useCardElevation();
+
+  // ENG-822 (2026-05-31 design-director review) — this screen only renders the
+  // calories / protein / streak drill-downs. Weight has its own surface (the
+  // Progress tab chart + LogWeightSheet), so a `metric=weight` deep-link was
+  // silently falling through to the calories default and rendering a "CALORIES
+  // THIS WEEK" screen mislabelled as weight (deep-link capture proof:
+  // `metric-calories-s00.png` === `metric-weight-s00.png` byte-for-byte).
+  // Redirect weight to the Progress tab instead of rendering a wrong chart.
+  const isWeightMetric = metricRaw === "weight";
+  useEffect(() => {
+    if (isWeightMetric) {
+      router.replace("/(tabs)/progress" as never);
+    }
+  }, [isWeightMetric, router]);
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
 
@@ -202,6 +218,22 @@ export default function ProgressMetricDetailScreen() {
     [colors],
   );
 
+  // ENG-822 — soft resting-card elevation (or the flag-off flat/hairline
+  // fallback) applied to every card on the detail screen. Mirrors the parent
+  // Progress tab so the detail screen stops reading as a flatter, less-finished
+  // surface than the tab it drilled in from. `bg` lets dark soft-elevation use
+  // the tonal lift; `border`/`borderWidth` collapse the hairline when the soft
+  // shadow carries separation. Spread `...cardSurface` onto each card View.
+  const cardSurface = useMemo(
+    () => ({
+      ...(cardElevation.shadowStyle ?? {}),
+      backgroundColor: cardElevation.liftBg ?? t.elevated,
+      borderColor: t.border,
+      borderWidth: cardElevation.useBorder ? 1 : 0,
+    }),
+    [cardElevation, t.elevated, t.border],
+  );
+
   const title = metric === "calories" ? "Calories this week" : metric === "protein" ? "Protein consistency" : "Logging streak";
 
   const subtitle =
@@ -211,7 +243,9 @@ export default function ProgressMetricDetailScreen() {
         ? `A day counts as “on target” when protein is at least 90% of your ${formatMacro(targets.protein, "protein", "g")} goal.`
         : "Consecutive days (ending today or yesterday) where you logged at least one meal.";
 
-  if (loading) {
+  // While redirecting a `metric=weight` deep-link, render a neutral spinner —
+  // never the calories chart — so the wrong surface never flashes.
+  if (loading || isWeightMetric) {
     return (
       <View
         style={{
@@ -251,24 +285,30 @@ export default function ProgressMetricDetailScreen() {
         <Pressable onPress={goBack} hitSlop={12}>
           <ArrowLeft size={22} color={t.text} strokeWidth={1.75} />
         </Pressable>
+        {/* ENG-822 (2026-05-31 design-director review): calmed the header.
+            Was a shouty saturated-blue, ALL-CAPS, letter-spaced (2px) banner
+            ("CALORIES THIS WEEK") that the review flagged as the loudest,
+            least-calm element on the detail screens. Now a normal-case,
+            text-coloured, lightly-tracked title — the page subtitle below
+            already carries the context, so the title doesn't need to shout. */}
         <Text
           style={{
             flex: 1,
-            fontSize: 18,
-            fontWeight: "800",
-            color: Accent.primary,
-            letterSpacing: 2,
+            fontSize: 20,
+            fontWeight: "700",
+            color: t.text,
+            letterSpacing: -0.2,
           }}
           numberOfLines={1}
         >
-          {title.toUpperCase()}
+          {title}
         </Text>
       </View>
       <Text style={{ fontSize: 14, color: t.sub, lineHeight: 20 }}>{subtitle}</Text>
 
       {metric === "calories" && (
         <>
-          <View style={{ marginTop: Spacing.lg, backgroundColor: t.elevated, borderRadius: Radius.lg, borderWidth: 1, borderColor: t.border, padding: Spacing.lg }}>
+          <View style={{ marginTop: Spacing.lg, borderRadius: Radius.lg, padding: Spacing.lg, ...cardSurface }}>
             <Text style={{ fontSize: 13, fontWeight: "600", color: t.text, marginBottom: Spacing.md }}>Daily intake</Text>
             <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8, height: 120 }}>
               {weekStats.days.map((d) => {
@@ -319,10 +359,8 @@ export default function ProgressMetricDetailScreen() {
                 justifyContent: "space-between",
                 paddingVertical: 14,
                 paddingHorizontal: Spacing.md,
-                backgroundColor: t.elevated,
                 borderRadius: Radius.md,
-                borderWidth: 1,
-                borderColor: t.border,
+                ...cardSurface,
               }}
             >
               <View>
@@ -352,11 +390,11 @@ export default function ProgressMetricDetailScreen() {
       {metric === "protein" && (
         <>
           <View style={{ marginTop: Spacing.lg, flexDirection: "row", gap: Spacing.md }}>
-            <View style={{ flex: 1, padding: Spacing.md, backgroundColor: t.elevated, borderRadius: Radius.md, borderWidth: 1, borderColor: t.border }}>
+            <View style={{ flex: 1, padding: Spacing.md, borderRadius: Radius.md, ...cardSurface }}>
               <Text style={{ fontSize: 11, color: t.dim, fontWeight: "600" }}>AVG / DAY</Text>
               <Text style={{ fontSize: 22, fontWeight: "800", color: t.protein, marginTop: 4, fontVariant: ["tabular-nums"] }}>{weekStats.avgProtein}g</Text>
             </View>
-            <View style={{ flex: 1, padding: Spacing.md, backgroundColor: t.elevated, borderRadius: Radius.md, borderWidth: 1, borderColor: t.border }}>
+            <View style={{ flex: 1, padding: Spacing.md, borderRadius: Radius.md, ...cardSurface }}>
               <Text style={{ fontSize: 11, color: t.dim, fontWeight: "600" }}>ON TARGET</Text>
               <Text style={{ fontSize: 22, fontWeight: "800", color: t.accent, marginTop: 4, fontVariant: ["tabular-nums"] }}>
                 {weekStats.proteinOnTarget}/7
@@ -383,10 +421,8 @@ export default function ProgressMetricDetailScreen() {
                   justifyContent: "space-between",
                   paddingVertical: 14,
                   paddingHorizontal: Spacing.md,
-                  backgroundColor: t.elevated,
                   borderRadius: Radius.md,
-                  borderWidth: 1,
-                  borderColor: t.border,
+                  ...cardSurface,
                 }}
               >
                 <View style={{ flex: 1 }}>
@@ -413,7 +449,7 @@ export default function ProgressMetricDetailScreen() {
               the message on its own. A 36/900 zero with "consecutive
               logging days" reads as a placeholder, not a stat. */}
           {streakDays > 0 ? (
-            <View style={{ marginTop: Spacing.lg, padding: Spacing.lg, backgroundColor: t.elevated, borderRadius: Radius.lg, borderWidth: 1, borderColor: t.border }}>
+            <View style={{ marginTop: Spacing.lg, padding: Spacing.lg, borderRadius: Radius.lg, ...cardSurface }}>
               <Text style={{ fontSize: 36, fontWeight: "900", color: t.accent, fontVariant: ["tabular-nums"] }}>{streakDays}</Text>
               <Text style={{ fontSize: 14, fontWeight: "600", color: t.text, marginTop: 4 }}>consecutive logging day{streakDays !== 1 ? "s" : ""}</Text>
             </View>
@@ -435,10 +471,8 @@ export default function ProgressMetricDetailScreen() {
                     justifyContent: "space-between",
                     paddingVertical: 12,
                     paddingHorizontal: Spacing.md,
-                    backgroundColor: t.elevated,
                     borderRadius: Radius.md,
-                    borderWidth: 1,
-                    borderColor: t.border,
+                    ...cardSurface,
                   }}
                 >
                   <View>

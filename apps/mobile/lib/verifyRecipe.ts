@@ -36,6 +36,7 @@ import { isPlausibleMacrosPer100g } from "@suppr/shared/nutrition/macroPlausibil
 import {
   isBareGenericNounRow,
   isLowRelevanceNonVerifiedRow,
+  isLowConfidenceDemotedRow,
 } from "@suppr/shared/nutrition/searchRowTrust";
 import { parseOffMicrosPer100g } from "@suppr/shared/openFoodFacts/parseOffMicros";
 import { reconcileOffPer100g } from "@suppr/shared/openFoodFacts/reconcilePer100g";
@@ -48,7 +49,14 @@ import { stripSectionPrefix } from "@suppr/shared/recipe-import/socialUrlHelpers
  * the import path is now stable across web + mobile.
  */
 import { RECIPE_INGREDIENT_REVIEW_CONFIDENCE } from "@suppr/shared/nutrition/verifyConfidencePolicy";
-import { foodSearchRankScore, searchRelevance } from "@suppr/shared/nutrition/foodSearchRanking";
+import {
+  foodSearchRankScore,
+  searchMatchScore,
+  searchRowConfidenceTier,
+  splitBestMatches,
+  type SearchRowConfidenceTier,
+  type SectionedSearchRows,
+} from "@suppr/shared/nutrition/foodSearchRanking";
 export { RECIPE_INGREDIENT_REVIEW_CONFIDENCE };
 
 // Consolidation note (M4): shared parsing lives under `src/lib/recipe-ingredients/`
@@ -302,6 +310,12 @@ export function parseIngredientForSearch(raw: string): {
 
   return { searchTerm: text || raw.trim(), amount, sizeHint };
 }
+
+// Honest Verified / Estimated tier for a scanned barcode product. Defined in
+// the side-effect-free `./barcodeConfidence` module (no Supabase import) so it
+// is unit-testable without the data layer; re-exported here for screen call
+// sites that already import from verifyRecipe.
+export { barcodeConfidenceTier, type BarcodeConfidenceTier } from "./barcodeConfidence";
 
 /** Format source label for display. */
 export function sourceLabel(source: string | null): string {
@@ -696,6 +710,15 @@ export type UnifiedSearchResult = {
    * `APo0qS9vcFvmBJEJJ_-61YA`, 2026-04-19).
    */
   primaryServing?: PrimaryServing | null;
+  /**
+   * ENG-807 — honest confidence tier derived from BOTH provenance AND the
+   * computed match score (never source alone). `"verified"` only for an
+   * authoritative corpus (verified USDA / Suppr generic) WITH a strong name
+   * match; everything else is `"estimated"`. The UI renders the legible
+   * confidence chip from this (soft-blue Verified / amber Estimated — see the
+   * ENG-798 prototype). Present on every merged row.
+   */
+  confidenceTier?: SearchRowConfidenceTier;
   /** Internal: source type for fetching full data on tap.
    *  F-73 (2026-04-27): "GenericBeverage" + "GenericFood" rows are seeded
    *  in-memory from `src/lib/nutrition/genericBeverages.ts` /
@@ -951,11 +974,23 @@ export async function searchFoods(
   // F-73: when a generic match landed, surface it synchronously (no
   // async wait) so the user sees the right answer instantly. Other
   // sources still load and append below.
-  const genericRows: UnifiedSearchResult[] = genericBeverage
+  // ENG-807 — stamp the honest confidence tier on the seeded generic row too
+  // (it bypasses `mergeResults`). Curated generic foods/beverages have
+  // verifiable provenance; the tier still gates on the name match vs the query
+  // so a weak alias hit doesn't claim "Verified". Query is in scope here.
+  const genericRowsRaw: UnifiedSearchResult[] = genericBeverage
     ? [genericBeverageToUnifiedResult(genericBeverage)]
     : genericFood
       ? [genericFoodToUnifiedResult(genericFood)]
       : [];
+  const genericRows: UnifiedSearchResult[] = genericRowsRaw.map((r) => ({
+    ...r,
+    confidenceTier: searchRowConfidenceTier({
+      source: r._source,
+      verified: Boolean(r.verified),
+      matchScore: searchMatchScore(qRank, r.name),
+    }),
+  }));
   if (genericRows.length > 0 && onPartial) onPartial(genericRows);
 
   if (onPartial) {
@@ -1351,6 +1386,18 @@ function mergeResults(
     const isVerified = Boolean(r.verified);
     if (isBareGenericNounRow(r.name, isVerified)) return false;
     if (isLowRelevanceNonVerifiedRow(r._relevance, isVerified)) return false;
+    // ENG-807 — honest low-confidence demotion keyed off the REAL tier, not
+    // the raw `verified` flag. Catches estimated-tier rows (e.g. USDA Branded
+    // "EGGS" with high token overlap but no authoritative provenance) that the
+    // raw-flag gate above let through. `matchScore` uses the name-only match
+    // (trust weight is already baked into `_relevance` and into the tier
+    // provenance check — we don't double-count it here).
+    const tier = searchRowConfidenceTier({
+      source: r._source,
+      verified: isVerified,
+      matchScore: searchMatchScore(query, r.name),
+    });
+    if (isLowConfidenceDemotedRow({ tier, score: r._relevance })) return false;
     return true;
   });
 
@@ -1377,11 +1424,53 @@ function mergeResults(
     const key = `${r._source}|${norm}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    deduped.push(r);
+    // ENG-807 — stamp the honest confidence tier on every surviving row so the
+    // UI can render the Verified / Estimated chip without recomputing the
+    // match. Derived from BOTH provenance and the name match (never source
+    // alone). `_relevance` carries the trust-weighted rank score we keep for
+    // the Best/More split.
+    deduped.push({
+      ...r,
+      confidenceTier: searchRowConfidenceTier({
+        source: r._source,
+        verified: Boolean(r.verified),
+        matchScore: searchMatchScore(query, r.name),
+      }),
+    });
     if (deduped.length >= limit) break;
   }
 
   return deduped;
+}
+
+/**
+ * ENG-807 — split a ranked, merged search-result list into the prototype's
+ * "Best matches" / "More results" sections by the shared score threshold.
+ *
+ * Pure + shared with web (both platforms call `splitBestMatches` from
+ * `foodSearchRanking.ts`) so the two surfaces section identically. Rows from
+ * `searchFoods` carry `_relevance` (the combined rank score) when they came
+ * through `mergeResults`; generic seeded rows that bypass the merge default to
+ * a best-match score so curated foods lead. The UI consumes this; the JSX is
+ * the next stage's lane.
+ */
+export function splitFoodSearchResults(
+  query: string,
+  rows: UnifiedSearchResult[],
+): SectionedSearchRows<UnifiedSearchResult> {
+  return splitBestMatches(rows, (r) => {
+    const rel = (r as UnifiedSearchResult & { _relevance?: number })._relevance;
+    if (typeof rel === "number") return rel;
+    // Rows that didn't carry a precomputed rank score (e.g. seeded generic
+    // rows prepended ahead of the merge) — recompute from the shared scorer so
+    // the split stays honest rather than defaulting them blindly into Best.
+    return foodSearchRankScore({
+      query,
+      name: r.name,
+      source: r._source,
+      verified: Boolean(r.verified),
+    });
+  });
 }
 
 /** Get full macros for a specific USDA food (per 100g) plus available portions. */

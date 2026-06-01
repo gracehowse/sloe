@@ -10,6 +10,14 @@ import {
   nextPageRange,
   pageHasMore,
 } from "../../../lib/recipes/creatorRecipePagination";
+// ENG-816 / icon-strategy 2026-05-31 — the no-image branch used a bare 🍳
+// emoji instead of the canonical cross-platform fallback. Behind
+// `design_system_icons` it renders the product-wide `RecipeHeroFallback`
+// (Lucide gradient + glyph — the same treatment Library/RecipeDetail/Discover
+// use, mirrored on mobile via `@suppr/shared/recipe/recipeHeroFallback`),
+// with the emoji kept alive in the `else` per the CLAUDE.md feature-flag rule.
+import { RecipeHeroFallback } from "../suppr/RecipeHeroFallback";
+import { isFeatureEnabled } from "../../../lib/analytics/track";
 
 /**
  * ENG-748 #14 (2026-05-27) — Creator profile recipe list with pagination.
@@ -62,6 +70,9 @@ export function CreatorRecipeList({
 }: CreatorRecipeListProps) {
   const [recipes, setRecipes] = useState<CreatorRecipeRow[]>(initialRecipes);
   const [hasMore, setHasMore] = useState<boolean>(initialHasMore);
+  // ENG-816 — canonical RecipeHeroFallback replaces the 🍳 emoji
+  // placeholder when `design_system_icons` is on; emoji stays in the `else`.
+  const useLucideIcons = isFeatureEnabled("design_system_icons");
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<boolean>(false);
   // Guard against double-fires (rapid taps) and keep the offset stable
@@ -123,6 +134,13 @@ export function CreatorRecipeList({
                     alt=""
                     className="w-14 h-14 rounded-lg object-cover bg-muted"
                   />
+                ) : useLucideIcons ? (
+                  // RecipeHeroFallback is a fill overlay (position:absolute;
+                  // inset:0), so it must live inside a relatively-positioned
+                  // 56px box — same wrapper shape as Library.tsx call sites.
+                  <div className="relative w-14 h-14 rounded-lg overflow-hidden shrink-0">
+                    <RecipeHeroFallback id={r.id} title={r.title} iconSize={20} />
+                  </div>
                 ) : (
                   <div className="w-14 h-14 rounded-lg bg-muted flex items-center justify-center text-muted-foreground text-xs">
                     🍳

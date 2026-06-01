@@ -27,3 +27,35 @@ export async function stabilizeForScreenshot(page: Page, ms = 2500): Promise<voi
   await page.evaluate(() => document.fonts?.ready);
   await page.waitForTimeout(ms);
 }
+
+/**
+ * Force PostHog feature flags on/off for a page, CLIENT-side, before any app
+ * code runs. Seeds `window.__SUPPR_FORCE_FLAGS__`, which
+ * `src/lib/analytics/track.ts#flagForceOverride` honours in non-production
+ * builds. This is the only reliable way to capture flag-ON web goldens:
+ * Next.js can't inline the computed `process.env["NEXT_PUBLIC_FLAG_FORCE_"+k]`
+ * read into the client bundle, and the committed auth fixture seeds an empty
+ * PostHog flag set — so without this, the browser only ever renders the
+ * flag-OFF path (P5 parity worklist gaps #12/#13/#14/#16).
+ *
+ * Pair with the server-side `NEXT_PUBLIC_FLAG_FORCE_*` env (see the
+ * `capture:redesign:*` npm scripts) so SSR and client agree and there is no
+ * hydration flash. Call BEFORE `page.goto` — addInitScript applies to every
+ * subsequent navigation in the page.
+ */
+export async function forceFlagsOn(
+  page: Page,
+  flags: string[],
+  on = true,
+): Promise<void> {
+  await page.addInitScript(
+    ([flagList, value]) => {
+      const w = window as { __SUPPR_FORCE_FLAGS__?: Record<string, boolean> };
+      w.__SUPPR_FORCE_FLAGS__ = w.__SUPPR_FORCE_FLAGS__ ?? {};
+      for (const f of flagList as string[]) {
+        w.__SUPPR_FORCE_FLAGS__[f] = value as boolean;
+      }
+    },
+    [flags, on] as const,
+  );
+}

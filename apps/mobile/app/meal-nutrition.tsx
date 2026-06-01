@@ -1,21 +1,24 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, type ViewStyle } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { CircleAlert, Salad } from "lucide-react-native";
 
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
+import { useCardElevation } from "@/hooks/useCardElevation";
 import { listMicroNutrientsCompleteDisplay, mealContributedFiberG, sumDayFiberFromMeals, sumMicrosFromLoggedMeals } from "@/lib/healthDietaryNutrients";
 import { parseNutritionMicrosJson, type JournalMeal, normalizeJournalSlotName, dateKeyFromDate } from "@/lib/nutritionJournal";
 import { supabase } from "@/lib/supabase";
-import { Accent, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
+import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
 import { PushScreenHeader } from "@/components/PushScreenHeader";
+import { NutritionDetailEmptyState } from "@/components/nutrition/NutritionDetailEmptyState";
 import {
   macroSplitConfidence,
   macroSplitIncompleteCopy,
 } from "@suppr/shared/nutrition/macroSplitConfidence";
+import { macroCalorieSplit } from "@suppr/shared/nutrition/macroCalorieSplit";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -34,54 +37,10 @@ function formatDateLabel(dateKey: string): string {
   }
 }
 
-function macroCalorieSplit(m: Pick<JournalMeal, "protein" | "carbs" | "fat">): {
-  proteinPct: number;
-  carbsPct: number;
-  fatPct: number;
-  proteinKcal: number;
-  carbsKcal: number;
-  fatKcal: number;
-} {
-  const proteinKcal = m.protein * 4;
-  const carbsKcal = m.carbs * 4;
-  const fatKcal = m.fat * 9;
-  const sum = proteinKcal + carbsKcal + fatKcal;
-  if (sum <= 0) {
-    return { proteinPct: 0, carbsPct: 0, fatPct: 0, proteinKcal: 0, carbsKcal: 0, fatKcal: 0 };
-  }
-  // Audit M01 (2026-05-05) — largest-remainder (Hamilton) rounding so
-  // the three displayed percentages always sum to exactly 100. Plain
-  // `Math.round` per macro produced sums of 99 / 101 on near-equal
-  // splits (e.g. 33.4 / 33.4 / 33.3 → 33+33+33=99; 33.5 / 33.5 / 33.0 →
-  // 34+34+33=101). This method floors each, then adds 1 to the macros
-  // with the largest fractional remainders until the sum hits 100.
-  const exact = [
-    { key: "protein", value: (proteinKcal / sum) * 100 },
-    { key: "carbs", value: (carbsKcal / sum) * 100 },
-    { key: "fat", value: (fatKcal / sum) * 100 },
-  ] as const;
-  const floored = exact.map((e) => ({ key: e.key, floor: Math.floor(e.value), remainder: e.value - Math.floor(e.value) }));
-  let residual = 100 - floored.reduce((acc, e) => acc + e.floor, 0);
-  // Sort indices by remainder descending, ties go to original macro
-  // order (protein → carbs → fat) so output is deterministic.
-  const indicesByRemainder = floored
-    .map((e, i) => ({ i, remainder: e.remainder }))
-    .sort((a, b) => b.remainder - a.remainder)
-    .map((x) => x.i);
-  const allocated = floored.map((e) => e.floor);
-  for (let n = 0; n < indicesByRemainder.length && residual > 0; n++) {
-    allocated[indicesByRemainder[n]!] += 1;
-    residual -= 1;
-  }
-  return {
-    proteinPct: allocated[0]!,
-    carbsPct: allocated[1]!,
-    fatPct: allocated[2]!,
-    proteinKcal,
-    carbsKcal,
-    fatKcal,
-  };
-}
+// Audit M01 (2026-05-05) — the macro kcal-split + largest-remainder (Hamilton)
+// rounding (so the three displayed percentages always sum to exactly 100) now
+// lives in the shared `@suppr/shared/nutrition/macroCalorieSplit` module, imported
+// above and shared with the web meal-nutrition dialog (P5 parity gap #15).
 
 function nutritionRowToJournalMeal(data: Record<string, unknown>): JournalMeal {
   return {
@@ -117,8 +76,8 @@ export default function MealNutritionScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const goBack = useSafeBack("/(tabs)");
-  const navigation = useNavigation();
   const colors = useThemeColors();
+  const cardElevation = useCardElevation();
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
 
@@ -282,41 +241,7 @@ export default function MealNutritionScreen() {
   }, [router, meal, dateKey]);
 
   const isSlotAggregate = meal?.id === "__slot_aggregate__";
-
-  useLayoutEffect(() => {
-    if (isSlotAggregate) {
-      navigation.setOptions({ headerShown: false });
-      return;
-    }
-    navigation.setOptions({
-      headerShown: true,
-      title: meal?.recipeTitle?.trim() || "Meal nutrition",
-      // F-19 (2026-04-19) — the default native-header back was silently
-      // no-op'ing in some cold-start / deep-link entry flows where the
-      // stack held no history. Force a custom `headerLeft` wired to
-      // `safeBack`, which falls back to `replace("/(tabs)")` so the
-      // chevron always resolves. Matches the 20px hit-slop of the
-      // default back button and styles the chevron to the current
-      // text colour so it reads in both light + dark.
-      headerLeft: () => (
-        <Pressable
-          onPress={goBack}
-          hitSlop={20}
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-          style={{ paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs }}
-        >
-          <Ionicons name="chevron-back" size={26} color={colors.text} />
-        </Pressable>
-      ),
-      headerRight: () =>
-        meal && !isSlotAggregate && UUID_RE.test(meal.id) ? (
-          <Pressable onPress={openEditOnToday} hitSlop={12} style={{ paddingHorizontal: Spacing.md }}>
-            <Text style={{ fontSize: 16, fontWeight: "600", color: Accent.primary }}>Edit</Text>
-          </Pressable>
-        ) : null,
-    });
-  }, [navigation, meal, isSlotAggregate, openEditOnToday, goBack, colors.text]);
+  const canEdit = !!meal && !isSlotAggregate && UUID_RE.test(meal.id);
 
   if (loading) {
     return (
@@ -326,41 +251,39 @@ export default function MealNutritionScreen() {
     );
   }
 
+  // ENG-825 (2026-05-31 design-direction macro/meal lane): the slot-empty
+  // and load-error states previously hand-rolled their own centred Ionicon +
+  // heading + plain `Go back` Pressable — a SECOND header/icon/CTA system
+  // distinct from the macro-detail sibling. Both now share `PushScreenHeader`
+  // (lucide chrome, back always present) + the elevated `NutritionDetailEmptyState`
+  // card with a blue scale-press CTA. Visual changes stay gated inside the
+  // shared component; the OLD flat / blue-CTA path lives in its flag-OFF branch.
   if (error === "NO_SLOT_ITEMS" && slotFromParams) {
     return (
-      <View style={[styles.center, { backgroundColor: colors.background, padding: Spacing.lg }]}>
-        <Ionicons name="nutrition-outline" size={44} color={colors.textTertiary} style={{ marginBottom: Spacing.md }} />
-        <Text style={{ color: colors.text, fontSize: 20, fontWeight: "700", textAlign: "center", marginBottom: Spacing.sm }}>
-          Nothing in {slotFromParams}
-        </Text>
-        <Text style={{ color: colors.textSecondary, fontSize: 14, lineHeight: 20, textAlign: "center", maxWidth: 320 }}>
-          {dateFromParams
-            ? `There are no logged items for this meal slot on ${dateFromParams}. Add food from Today, then open this summary again.`
-            : "There are no logged items for this meal slot on that day."}
-        </Text>
-        <Pressable
-          onPress={goBack}
-          style={{
-            marginTop: Spacing.lg,
-            paddingHorizontal: 22,
-            paddingVertical: 12,
-            borderRadius: Radius.md,
-            backgroundColor: Accent.primary,
-          }}
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-        >
-          <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Go back</Text>
-        </Pressable>
+      <View style={[styles.errorScreen, { backgroundColor: colors.background }]}>
+        <PushScreenHeader title="Nutrition" onBack={goBack} />
+        <View style={{ paddingHorizontal: Spacing.lg }}>
+          <NutritionDetailEmptyState
+            testID="meal-nutrition-empty"
+            icon={Salad}
+            title={`Nothing in ${slotFromParams}`}
+            subtitle={
+              dateFromParams
+                ? `There are no logged items for this meal slot on ${dateFromParams}. Add food from Today, then open this summary again.`
+                : "There are no logged items for this meal slot on that day."
+            }
+            ctaLabel="Go back"
+            onPress={goBack}
+          />
+        </View>
       </View>
     );
   }
 
   if (error || !meal) {
     // Audit 2026-05-04 #6: previously this was bare "Missing meal" + bare
-    // "Go back" link with no chrome — read as a crashed route. Mirror the
-    // cook-mode empty-state pattern (heading + subtitle + styled CTA) so
-    // the user has a clear recovery path that looks like a designed surface.
+    // "Go back" link with no chrome — read as a crashed route. Now mirrors the
+    // shared elevated empty-state card so the recovery path looks designed.
     const heading = error === "Missing meal" || error === "Invalid meal id" ? "Meal not found" : "Couldn't load meal";
     const subtitle =
       error === "Missing meal"
@@ -369,28 +292,18 @@ export default function MealNutritionScreen() {
           ? "That meal link doesn't look right. Open the meal again from Today."
           : "Something went wrong loading this meal. Check your connection and try again.";
     return (
-      <View style={[styles.center, { backgroundColor: colors.background, padding: Spacing.lg }]}>
-        <Ionicons name="alert-circle-outline" size={44} color={colors.textTertiary} style={{ marginBottom: Spacing.md }} />
-        <Text style={{ color: colors.text, fontSize: 20, fontWeight: "700", textAlign: "center", marginBottom: Spacing.sm }}>
-          {heading}
-        </Text>
-        <Text style={{ color: colors.textSecondary, fontSize: 14, lineHeight: 20, textAlign: "center", maxWidth: 320 }}>
-          {subtitle}
-        </Text>
-        <Pressable
-          onPress={goBack}
-          style={{
-            marginTop: Spacing.lg,
-            paddingHorizontal: 22,
-            paddingVertical: 12,
-            borderRadius: Radius.md,
-            backgroundColor: Accent.primary,
-          }}
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-        >
-          <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Go back</Text>
-        </Pressable>
+      <View style={[styles.errorScreen, { backgroundColor: colors.background }]}>
+        <PushScreenHeader title="Nutrition" onBack={goBack} />
+        <View style={{ paddingHorizontal: Spacing.lg }}>
+          <NutritionDetailEmptyState
+            testID="meal-nutrition-error"
+            icon={CircleAlert}
+            title={heading}
+            subtitle={subtitle}
+            ctaLabel="Go back"
+            onPress={goBack}
+          />
+        </View>
       </View>
     );
   }
@@ -406,8 +319,28 @@ export default function MealNutritionScreen() {
 
   const slotDateLabel = formatDateLabel(dateKey ?? dateFromParams ?? "");
 
+  // ENG-825 — resting-card treatment via the shared `useCardElevation`
+  // hook (replaces the two hand-rolled `borderWidth: 1` cards below).
+  // Flag OFF → flat + hairline (unchanged). `design_system_elevation` ON →
+  // soft ambient shadow (light) / tonal lift + hairline (dark). These cards
+  // don't `overflow: hidden`, so the shadow can sit directly on the card.
+  const cardSurfaceStyle: ViewStyle = {
+    backgroundColor: cardElevation.liftBg ?? colors.card,
+    borderWidth: cardElevation.useBorder ? 1 : 0,
+    borderColor: colors.cardBorder,
+    ...(cardElevation.shadowStyle ?? {}),
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: isSlotAggregate ? colors.background : colors.backgroundSecondary }}>
+      {/* ENG-825 (2026-05-31 design-direction macro/meal lane): single
+          unified header system across BOTH the slot-aggregate and the
+          single-meal modes — `PushScreenHeader` (lucide back chevron),
+          matching the macro-detail sibling. The single-meal mode used to
+          render the NATIVE stack header with an Ionicons back chevron + a
+          header-right "Edit" link; that second header/icon system is gone.
+          Slot-aggregate keeps its calorie value pill; single-meal carries
+          the "Edit" action in the right slot. */}
       {isSlotAggregate ? (
         <PushScreenHeader
           title={meal.name}
@@ -435,7 +368,27 @@ export default function MealNutritionScreen() {
             </View>
           }
         />
-      ) : null}
+      ) : (
+        <PushScreenHeader
+          title={meal.recipeTitle?.trim() || "Meal nutrition"}
+          caption={[meal.name, slotDateLabel].filter(Boolean).join(" · ") || undefined}
+          onBack={goBack}
+          rightSlot={
+            canEdit ? (
+              <Pressable
+                onPress={openEditOnToday}
+                hitSlop={12}
+                accessibilityRole="button"
+                accessibilityLabel="Edit this meal"
+              >
+                <Text style={{ fontSize: 16, fontWeight: "600", color: Accent.primary }}>
+                  Edit
+                </Text>
+              </Pressable>
+            ) : undefined
+          }
+        />
+      )}
       <ScrollView
         testID="screen-meal-nutrition"
         style={{ flex: 1, backgroundColor: isSlotAggregate ? colors.background : colors.backgroundSecondary }}
@@ -555,7 +508,7 @@ export default function MealNutritionScreen() {
             </View>
           </View>
         ) : null}
-      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+      <View style={[styles.card, cardSurfaceStyle]}>
         {!isSlotAggregate ? (
           <>
             <Text style={[styles.meta, { color: colors.textTertiary }]}>
@@ -614,7 +567,7 @@ export default function MealNutritionScreen() {
             relevant to the per-entry meal nutrition view). */}
       </View>
 
-      <View style={[styles.card, { marginTop: Spacing.md, backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+      <View style={[styles.card, { marginTop: Spacing.md }, cardSurfaceStyle]}>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>Vitamins, minerals & more</Text>
         {/* F-86 (2026-04-25) — when every micro row is "—" the panel reads
             as a debug surface (ui-critic 2026-04-25: "the database talking
@@ -708,9 +661,12 @@ function MacroStat({
 
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
+  // Error / empty screens: the in-screen `PushScreenHeader` sits at the top,
+  // the centred empty-state card below it (not vertically centred over the
+  // whole screen — the header anchors the top).
+  errorScreen: { flex: 1 },
   card: {
     borderRadius: Radius.lg,
-    borderWidth: 1,
     padding: Spacing.md,
   },
   meta: { fontSize: 12, marginBottom: 4 },

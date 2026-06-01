@@ -21,9 +21,11 @@ import { MACRO_COLOR_VARS } from "../../../lib/theme/macroColors";
  * Rewritten 2026-04-20 to match the 2026-04-19 Claude Design
  * prototype's 2-column bigger tile treatment
  * (`docs/prototypes/2026-04-19-whole-app-experience/project/screens-mobile.jsx`
- *  → `MacroTile`). Each tile: uppercase name + emoji icon → big
+ *  → `MacroTile`). Each tile: uppercase name + lucide glyph → big
  * value + unit → progress bar → "X g remaining" or "X g over"
- * caption. Mirrors `apps/mobile/components/today/TodayDashboardMacroTiles.tsx`.
+ * caption. The per-macro glyph is a `lucide-react` icon (never a
+ * functional emoji — see `docs/decisions/2026-05-31-icon-strategy.md`,
+ * ENG-808). Mirrors `apps/mobile/components/today/TodayDashboardMacroTiles.tsx`.
  */
 
 export const TODAY_REF_SUGAR_G = 50;

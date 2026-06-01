@@ -76,6 +76,8 @@ import { VoiceLogDialog } from "./suppr/voice-log-dialog";
 import { PhotoLogDialog } from "./suppr/photo-log-dialog";
 import { AiPaywallDialog, type AiPaywallFeature } from "./suppr/ai-paywall-dialog";
 import { TodayHeroStats } from "./suppr/today-hero-stats";
+import { useWebWinMoment } from "../../lib/preferences/useWebWinMoment.ts";
+import { WinMomentPlayer } from "./ui/win-moment-player.tsx";
 import { TodayWeekSidebar } from "./suppr/today-week-sidebar";
 import { TodayDesktopRightRail } from "./suppr/today-desktop-right-rail";
 import { TodayPlannedMealsCard } from "./suppr/today-planned-meals-card";
@@ -91,6 +93,7 @@ import { FullNutrientPanelSheet } from "./suppr/full-nutrient-panel-sheet";
 import { FULL_NUTRIENT_PANEL_ROW_COUNT } from "../../lib/nutrition/fullNutrientPanel";
 import { TodaySnapShortcut } from "./suppr/today-snap-shortcut";
 import { TodayMealsSection } from "./suppr/today-meals-section";
+import { MealNutritionDialog } from "./suppr/meal-nutrition-dialog";
 import { TodayFirstMealEmptyState } from "./suppr/today-first-meal-empty-state";
 import { TodayCompleteDayDialog } from "./suppr/today-complete-day-dialog";
 import { TodayAddMealDialog } from "./suppr/today-add-meal-dialog";
@@ -501,6 +504,16 @@ export const NutritionTracker = memo(function NutritionTracker({
   // today's number; weekly caffeine view is a separate roadmap item).
   void _extraCaffeineByDay;
 
+  // ENG-798 (Redesign — Design Direction 2026) — gate the Today win-moment
+  // detection until after first paint so the initial snapshot is captured
+  // as the baseline (the hook treats the first snapshot as `prev` and never
+  // fires on it). Web's AppData context is already hydrated on mount, so a
+  // simple post-mount flip is the analog of mobile's `hydrated` journal flag.
+  const [winReady, setWinReady] = useState(false);
+  useEffect(() => {
+    setWinReady(true);
+  }, []);
+
   const useImperialWater = profileMeasurementSystem === "imperial";
   const formatWaterLine = (ml: number) =>
     useImperialWater ? formatWaterMl(ml, true) : ml >= 1000 ? `${(ml / 1000).toFixed(1).replace(/\.0$/, "")}L` : `${ml}ml`;
@@ -517,6 +530,10 @@ export const NutritionTracker = memo(function NutritionTracker({
   const [addOpen, setAddOpen] = useState(false);
   /** Batch 1.4 — meal row context menu: target meal id for the Copy dialog. */
   const [copyMealTargetId, setCopyMealTargetId] = useState<string | null>(null);
+  // P5 parity gap #15 — per-meal nutrition-detail dialog target. Holds the id
+  // of the meal whose breakdown is open; the dialog resolves the full LoggedMeal
+  // (with micros) from `mealsForSelectedDate`, mirroring the copy-meal pattern.
+  const [mealNutritionTargetId, setMealNutritionTargetId] = useState<string | null>(null);
   /** Batch 1.4 — Duplicate day dialog visibility. */
   const [duplicateDayOpen, setDuplicateDayOpen] = useState(false);
   const [mealSlot, setMealSlot] = useState("Breakfast");
@@ -2018,6 +2035,50 @@ export const NutritionTracker = memo(function NutritionTracker({
     [baseCalorieTarget, effectiveCalorieTarget, targets.protein, targets.carbs, targets.fat],
   );
 
+  // ENG-798 (Redesign — Design Direction 2026) — reserved Today win-moment.
+  // Mirror of mobile `apps/mobile/app/(tabs)/index.tsx` (snapshot 2965-2997,
+  // overlay 5382-5389). The shared `detectWinMoment` landmark math, the
+  // once-per-calendar-day reservation, and the `redesign_winmoment` flag gate
+  // all live inside `useWebWinMoment` — Today just feeds it a live snapshot,
+  // renders the returned `<WinMomentPlayer>` overlay, and threads the `pulse`
+  // boolean into the calorie ring stroke (the web colour/motion analog of
+  // mobile's success haptic). Everything is inert when the flag is off, so the
+  // pre-redesign static behaviour is preserved with no extra branch. Note the
+  // web var is `effectiveCalorieTarget` (mobile's is `effectiveCalorieGoal`).
+  const winSnapshot = useMemo(
+    () => ({
+      consumed: totals.calories,
+      goal: effectiveCalorieTarget,
+      streak: protectedStreakLength,
+      macros: {
+        protein: { current: totals.protein, target: effectiveMacroTargets.protein },
+        carbs: { current: totals.carbs, target: effectiveMacroTargets.carbs },
+        fat: { current: totals.fat, target: effectiveMacroTargets.fat },
+      },
+    }),
+    [
+      totals.calories,
+      totals.protein,
+      totals.carbs,
+      totals.fat,
+      effectiveCalorieTarget,
+      effectiveMacroTargets.protein,
+      effectiveMacroTargets.carbs,
+      effectiveMacroTargets.fat,
+      protectedStreakLength,
+    ],
+  );
+  const {
+    activeCelebration: winCelebration,
+    onCelebrationComplete: onWinComplete,
+    pulse: winPulse,
+  } = useWebWinMoment({
+    snapshot: winSnapshot,
+    dayKey: selectedDateKey,
+    isToday: selectedDateKey === todayKey(),
+    ready: winReady,
+  });
+
   const belowMealsPromptEligibleWeb = useMemo(
     () => ({
       northStar:
@@ -2199,7 +2260,22 @@ export const NutritionTracker = memo(function NutritionTracker({
   const timeGreeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
   return (
-    <div className="product-shell py-pm-5 space-y-4">
+    <div className="product-shell py-pm-5 space-y-4 relative">
+      {/* ENG-798 win-moment overlay — mirrors mobile index.tsx:5382-5389.
+          Plays its Lottie once full-bleed over the Today surface, then fires
+          `onWinComplete` to unmount. `pointer-events: none` (set inside
+          WinMomentPlayer) keeps it from blocking taps. The flag gate +
+          once-per-day reservation live in `useWebWinMoment`; this is a pure
+          render of its output (only mounts while a celebration is active). */}
+      {winCelebration ? (
+        <WinMomentPlayer
+          celebration={winCelebration}
+          onComplete={onWinComplete}
+          fullBleed
+          testID="today-win-moment"
+        />
+      ) : null}
+
       {!isOnline ? (
         <div
           role="alert"
@@ -2353,6 +2429,7 @@ export const NutritionTracker = memo(function NutritionTracker({
         onToggleExpanded={() => setRingExpanded((v) => !v)}
         displayMode={ringDisplayMode}
         onDisplayModeChange={setRingDisplayMode}
+        pulse={winPulse}
         isOnTrack={
           totals.calories > 100 &&
           effectiveCalorieTarget > 0 &&
@@ -2552,6 +2629,15 @@ export const NutritionTracker = memo(function NutritionTracker({
         onOpenDuplicateDay={() => setDuplicateDayOpen(true)}
         onRequestCopyMeal={setCopyMealTargetId}
         onDeleteMeal={(mealId) => removeLoggedMeal(mealId)}
+        // P5 parity gap #15 — "View nutrition" kebab item + per-meal dialog,
+        // gated behind `web_meal_nutrition_detail`. Flag OFF → prop undefined →
+        // no kebab item, meal row byte-identical to today. Mirror:
+        // apps/mobile/app/meal-nutrition.tsx.
+        onOpenMealNutrition={
+          isFeatureEnabled("web_meal_nutrition_detail")
+            ? setMealNutritionTargetId
+            : undefined
+        }
         // 2026-05-02 parity sweep — empty-state collage (Add custom /
         // Photo / Voice / "Log from today's plan" rows) replaced by a
         // single primary CTA that routes into the unified `<LogSheet>`.
@@ -3156,6 +3242,26 @@ export const NutritionTracker = memo(function NutritionTracker({
           />
         );
       })()}
+
+      {/* P5 parity gap #15 — per-meal nutrition-detail dialog (web mirror of
+          apps/mobile/app/meal-nutrition.tsx). Gated behind
+          `web_meal_nutrition_detail`; resolves the full LoggedMeal (with micros)
+          from `mealsForSelectedDate` by id — no Supabase fetch (the data is
+          already in memory; mobile only fetches because it's a deep-linkable
+          route). Read-only on web: there is no web per-meal edit modal to route
+          to (mobile's header Edit is a platform-native deviation), so `onEdit`
+          is intentionally omitted. */}
+      {isFeatureEnabled("web_meal_nutrition_detail") && (
+        <MealNutritionDialog
+          meal={
+            mealNutritionTargetId
+              ? mealsForSelectedDate.find((m) => m.id === mealNutritionTargetId) ?? null
+              : null
+          }
+          open={mealNutritionTargetId != null}
+          onClose={() => setMealNutritionTargetId(null)}
+        />
+      )}
 
       {/* Batch 1.4 — Duplicate the whole day */}
       <DuplicateDayDialog

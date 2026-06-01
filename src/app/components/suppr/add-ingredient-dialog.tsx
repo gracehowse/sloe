@@ -34,7 +34,7 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import type { IngredientOverride } from "../../../types/recipe";
 import { AnalyticsEvents } from "../../../lib/analytics/events";
-import { track } from "../../../lib/analytics/track";
+import { track, isFeatureEnabled } from "../../../lib/analytics/track";
 import { sanitizeOverrideInput } from "../../../lib/nutrition/ingredientOverrides";
 import { ingredientVerifyNeedsReview } from "../../../lib/nutrition/verifyConfidencePolicy";
 
@@ -245,9 +245,22 @@ export function AddIngredientDialog({ open, onOpenChange, onAdd, recipeId }: Add
     }
   };
 
+  // ENG-821 (Redesign — Design Direction 2026): align the add-ingredient editor
+  // to the one design language — warm-cream `bg-background` surface + real soft
+  // `--elev-card-soft` shadow (no border-as-depth) under
+  // `design_system_elevation`, matching the recipe-edit + override dialogs. The
+  // inner "Manual macros" `<details>` keeps its white `bg-card` as a legitimate
+  // elevated sub-surface. Flag OFF keeps today's white/hairline dialog. Inputs
+  // already use `border-input`; the Add CTA already uses the blue default
+  // Button — no colour repaint.
+  const elevated = isFeatureEnabled("design_system_elevation");
+  const surfaceCls = elevated
+    ? "bg-background border-transparent shadow-[var(--elev-card-soft)] max-w-md"
+    : "bg-card border-border max-w-md";
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-card border-border max-w-md">
+      <DialogContent className={surfaceCls}>
         <DialogHeader>
           <DialogTitle className="text-foreground">Add ingredient</DialogTitle>
           <DialogDescription className="text-muted-foreground">

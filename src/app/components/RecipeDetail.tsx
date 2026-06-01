@@ -55,7 +55,7 @@ import {
 } from "../../lib/nutrition/fatsecretCacheGuard.ts";
 import { isStructuredSource } from "../../lib/nutrition/structuredSourceGate.ts";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
-import { track } from "../../lib/analytics/track.ts";
+import { track, isFeatureEnabled } from "../../lib/analytics/track.ts";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -308,6 +308,31 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
   }, []);
   const [activeTab, setActiveTab] = useState<"ingredients" | "steps" | "nutrition">("ingredients");
   const [cookModeOpen, setCookModeOpen] = useState(Boolean(autoOpenCookMode));
+
+  // ENG-818/819 (Redesign — Design Direction 2026) — flag-gated web mirrors of
+  // the mobile recipe-detail redesign.
+  //   - `redesignColours`  → the "Fits your day" payoff chip (win-amber when it
+  //     fits well) + the elevated detail cards both ride the colour/elevation
+  //     spine. Flag-off keeps the flat coloured-text line + bordered cards.
+  //   - `redesignElevation` → soft `--elev-card-soft` shadow + no border on the
+  //     resting detail cards (mobile parity via `useCardElevation`).
+  //   - `winFeedback` → the web analog of the mobile confirm haptic: a brief
+  //     press payoff (scale + ring) on the commit CTAs (web has no Haptics API).
+  const redesignColours = isFeatureEnabled("design_system_colours");
+  const redesignElevation = isFeatureEnabled("design_system_elevation");
+  const winFeedback = isFeatureEnabled("redesign_winmoment");
+  // Soft-elevation card classes, mirroring mobile `useCardElevation`: flag-on →
+  // drop the hairline border, ride `--elev-card-soft`; flag-off → today's
+  // `border border-border`. Spread where the resting detail cards are built.
+  const cardElevationClass = redesignElevation
+    ? "border-0 shadow-[var(--elev-card-soft)]"
+    : "border border-border";
+  // Commit-CTA press payoff (web analog of the mobile confirm haptic). A subtle
+  // active-state scale + a brief brightness lift on press, gated on
+  // `redesign_winmoment`. Flag-off keeps the existing hover-only transition.
+  const commitCtaPayoffClass = winFeedback
+    ? "transition-all duration-200 active:scale-[0.97] active:brightness-110"
+    : "";
 
   // Audit gap #3 (Wave 4, 2026-05-02) — static seed recipes have no
   // Supabase backing row; treat them like a catalogue entry so the
@@ -1379,7 +1404,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           <button
             type="button"
             onClick={() => setCookModeOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:shadow-lg hover:shadow-primary/25 transition-all shrink-0"
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:shadow-lg hover:shadow-primary/25 transition-all shrink-0 ${commitCtaPayoffClass}`}
           >
             <Icons.cook className="w-4 h-4" />
             Cook
@@ -2068,6 +2093,46 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             targetCals: nutritionTargets.calories,
           });
           if (!verdict) return null;
+
+          // ENG-818 — promote the fit verdict from flat metadata to a real
+          // tinted payoff chip. When it fits well (`verdict.fits`, ≤50% of the
+          // day) it earns the dedicated landmark WIN amber (`--accent-win` /
+          // `--accent-win-soft`) — the reserved "genuine win" colour, not
+          // generic success-green. Over-half → warning amber; over a day →
+          // destructive red. Flag-off keeps the flat coloured-text line.
+          if (redesignColours) {
+            const chip =
+              verdict.tone === "success"
+                ? {
+                    fg: "var(--accent-win)",
+                    bg: "var(--accent-win-soft)",
+                  }
+                : verdict.tone === "destructive"
+                  ? {
+                      fg: "var(--destructive)",
+                      bg: "color-mix(in srgb, var(--destructive) 12%, transparent)",
+                    }
+                  : {
+                      fg: "var(--warning)",
+                      bg: "color-mix(in srgb, var(--warning) 12%, transparent)",
+                    };
+            return (
+              <div
+                data-testid="recipe-fits-your-day"
+                role="status"
+                aria-label={verdict.a11y}
+                className="mb-4 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-all duration-150"
+                style={{ color: chip.fg, backgroundColor: chip.bg }}
+              >
+                {verdict.fits ? (
+                  <Icons.check className="w-3 h-3" strokeWidth={3} aria-hidden />
+                ) : null}
+                <span>{verdict.label}</span>
+              </div>
+            );
+          }
+
+          // Flag-off legacy path — flat coloured glyph + text line.
           const toneVar =
             verdict.tone === "success"
               ? "var(--success)"
@@ -2132,7 +2197,10 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
               Matching each line against the food database (USDA / Open Food Facts / FatSecret / Edamam when configured)…
             </p>
           ) : null}
-          <div className="bg-card border border-border rounded-2xl overflow-hidden">
+          {/* ENG-818/819 — resting detail card. Soft `--elev-card-soft` shadow,
+              no border, when `design_system_elevation` is on; today's
+              `border border-border` when off (`cardElevationClass`). */}
+          <div className={`bg-card rounded-2xl overflow-hidden ${cardElevationClass}`}>
             {ingredients.length === 0 ? (
               <div className="px-6 py-8 text-center text-muted-foreground text-sm">No ingredients listed yet.</div>
             ) : (
@@ -2307,7 +2375,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
 
         {/* Steps Tab */}
         {activeTab === "steps" && (
-          <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+          <div className={`bg-card rounded-2xl p-5 space-y-4 ${cardElevationClass}`}>
             {instructionSteps.length === 0 ? (
               <p className="text-muted-foreground text-sm">No instructions yet.</p>
             ) : (
@@ -2360,7 +2428,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
               ].filter((row) => row.raw > 0);
               if (microRows.length === 0) return null;
               return (
-                <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
+                <div className={`bg-card rounded-2xl p-4 space-y-3 ${cardElevationClass}`}>
                   <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Micronutrients</h4>
                   {microRows.map((micro) => (
                     <div key={micro.name} className="flex items-center gap-3">
@@ -2381,12 +2449,17 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
         )}
 
         {/* Action Buttons — Start Cooking + I Made This (matches mobile) */}
+        {/* ENG-819 — web analog of the mobile confirm haptic on the recipe-detail
+            commit CTAs: a brief press payoff (scale + brightness lift) via
+            `commitCtaPayoffClass`, gated on `redesign_winmoment`. Web has no
+            Haptics API, so the press motion is the tactile substitute. Start
+            Cooking stays the blue `bg-primary` commit colour. */}
         <div className="flex gap-3">
           {instructionSteps.length > 0 && (
             <button
               type="button"
               onClick={() => setCookModeOpen(true)}
-              className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:shadow-lg hover:shadow-primary/25 transition-all"
+              className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:shadow-lg hover:shadow-primary/25 transition-all ${commitCtaPayoffClass}`}
             >
               <Icons.cook className="w-4 h-4" />
               Start Cooking
@@ -2395,7 +2468,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           <button
             type="button"
             onClick={() => toast.success("Marked as made!")}
-            className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-card border border-border text-foreground font-bold text-sm hover:bg-muted transition-all"
+            className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-card border border-border text-foreground font-bold text-sm hover:bg-muted transition-all ${commitCtaPayoffClass}`}
           >
             <Icons.check className="w-4 h-4" />
             I Made This

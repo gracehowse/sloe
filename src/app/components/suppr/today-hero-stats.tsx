@@ -35,6 +35,10 @@ export interface TodayHeroStatsProps extends TodayHeroRingProps {
   /** ENG-753 — adaptive-TDEE learning progress, 0-7. Omit or 0 hides
    *  the "Adaptive TDEE learning · N of 7 days" pill. */
   tdeeLearnDays?: number;
+  /** ENG-798 — win-moment ring pulse. True for ~200ms after a Today
+   *  landmark fires; forwarded to the calorie ring on both breakpoints.
+   *  The web colour/motion analog of mobile's success haptic. */
+  pulse?: boolean;
 }
 
 export function TodayHeroStats(props: TodayHeroStatsProps) {
@@ -60,6 +64,7 @@ function extractRingProps(props: TodayHeroStatsProps): TodayHeroRingProps {
     displayMode,
     onDisplayModeChange,
     onPressWhy,
+    pulse,
   } = props;
   return {
     consumed,
@@ -72,6 +77,7 @@ function extractRingProps(props: TodayHeroStatsProps): TodayHeroRingProps {
     displayMode,
     onDisplayModeChange,
     onPressWhy,
+    pulse,
   };
 }
 
@@ -90,6 +96,7 @@ function DesktopHeroStats({
   onDisplayModeChange,
   isOnTrack,
   tdeeLearnDays,
+  pulse,
 }: TodayHeroStatsProps) {
   const net = loggedKcal - targetKcal;
   const netStr = loggedKcal === 0 ? "—" : formatNet(net);
@@ -135,6 +142,7 @@ function DesktopHeroStats({
           fatPct={fatPct}
           expanded={expanded}
           displayMode={displayMode}
+          pulse={pulse}
         />
 
         {showStatRow ? (

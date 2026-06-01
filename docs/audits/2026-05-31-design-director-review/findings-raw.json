@@ -1,0 +1,951 @@
+{
+  "summary": "Whole-product design-director review over ~188 captured screenshots: parallel forensic readers per surface group + 2026 external-bar research, for synthesis into one design direction + scorecard",
+  "agentCount": 13,
+  "logs": [],
+  "result": {
+    "reviews": [
+      {
+        "group": "Today + logging (multi-day, log sheet, slots, search, portion, edit-entry)",
+        "signature": "There IS a recognisable Suppr identity here and it is a genuine asset: a calm, cream-paper canvas (#F7F6F2-ish), a single dominant brand blue (#588CE4), a tri-state calorie ring as the emotional anchor, and dense-but-legible macro rows with tabular numerals. Cropping the logo, the multi-day Today screens (today-2026-05-15/27/28/29) would still read as one product — the ring + green/red state + 8-slot accent palette is a real point of view that already beats MyFitnessPal's cluttered dashboard and Cal AI's generic cards. The problem is the signature DOES NOT survive the tap into the logging flow. The moment you open Log a meal (ix-30) the canvas language holds, but the search-results screen (ix-33) drops to a flat list of hairline-separated rows that looks like a different, more generic app; the portion sheet commit button (ix-34) goes GREEN while every other commit in the flow is BLUE; and the long-press menu (ix-50-alert) is a raw iOS system action sheet bolted onto an otherwise custom bottom-sheet world. So: a strong signature on the home surface, diluted to \"competent tracker\" the deeper you log. The destination is carrying the ring/blue/cream identity unbroken from Today through every sheet of the logging flow.",
+        "tiers": {
+          "identity": "Good",
+          "palette": "Good",
+          "consistency": "Generic",
+          "depth": "Generic",
+          "motion": "Prototype",
+          "delight": "Generic"
+        },
+        "topIssues": [
+          {
+            "title": "Commit CTA colour is not unified across the logging flow — green in PortionSheet, blue everywhere else",
+            "surface": "ix-34-portion-sheet / ix-35-portion-sheet-scrolled vs ix-51-edit-entry-sheet",
+            "severity": "P1",
+            "why": "Verified against HEAD: FoodSearchPanel.tsx:1402 hardcodes the 'Use this' CTA background to Accent.success (#56A775 green), while TodayEditMealModal 'Save changes' (line 282) and the LogSheet/slot selectors all use the canonical primary Accent.primary (#588CE4 blue, 8-slot lock 2026-05-22). Inside ONE logging session a user sees a green commit button on the portion step and a blue commit button on the edit step. Worse, green is ALSO the calorie-ring 'under budget' state and the macro/fiber colour — so green is doing triple duty (primary action + success state + macro hue), which erodes the one thing the ring's green is supposed to mean. This is the single clearest 'two teams' tell in the group.",
+            "fix": "Repaint the PortionSheet 'Use this' CTA to Accent.primary (blue) to match Save changes and the slot selectors. Reserve Accent.success strictly for the calorie-ring state and macro hues. One primary colour for every commit action in the flow. Ship behind isFeatureEnabled per CLAUDE.md. Owner: design-system-enforcer (encode 'commit CTA = Accent.primary' as the rule) + executor (the one-line repaint)."
+          },
+          {
+            "title": "Long-press meal menu is a raw iOS system action sheet inside an otherwise fully-custom sheet world",
+            "surface": "ix-50-entry-longpress-alert",
+            "severity": "P1",
+            "why": "Verified: TodayMealsSection.tsx:716 builds this via a native Alert/action-sheet (Edit / Copy to another day / Share meal / Delete / Cancel) with iOS's default grey stacked buttons and system blue/red. Every other surface in this group — LogSheet (ix-30), PortionSheet (ix-34), Edit-entry (ix-51) — is a branded bottom sheet on cream paper with the blue accent. The system sheet renders the meal header in default SF styling, uses iOS system-red for Delete (not Accent.destructive token), and breaks the cream canvas with a pure-white floating card + dark scrim. It's the most 'stock-component tell' moment in the flow and it sits on the highest-traffic gesture (managing a logged meal).",
+            "fix": "Replace the native action sheet with a branded bottom sheet matching the Edit-entry sheet language (cream surface, blue accent, Accent.destructive for Delete, the same grabber + corner radius). This also unlocks a tappable meal thumbnail/macro preview the native sheet can't render. Owner: ui-product-designer (design the branded meal-actions sheet) → executor."
+          },
+          {
+            "title": "Search-results screen drops the card/elevation language to a flat hairline list — reads as a generic tracker",
+            "surface": "ix-33-search-results",
+            "severity": "P2",
+            "why": "On entry to Log a meal (ix-30) the rows sit in the calm cream world with thumbnail placeholders and a tabbed (Recent/Library/Saved) header. The instant you type, ix-33 becomes a flat list of 1px-divider rows — no card, no elevation, tiny grey 'per 100g', and a row of pill filters (All/Recents/Custom/Branded/Generic) that is a SECOND segmented-control language different from the 'Recent | Library | Saved meals' tabs one screen earlier. The verified confidence glyph is a small green CheckCircle2 (FoodSearchPanel.tsx:1085) that is nearly invisible at this scale and competes with the green macro 'P' letters. The whole screen is the weakest-crafted surface in the group and it's the one users hit on every single manual log. MacroFactor and Cronometer both give search rows more structure and a clearer confidence signal.",
+            "fix": "Unify the two filter/tab languages into one segmented-control component, give search rows the same soft-elevation card treatment as the rest of the flow (see depth fix below), and make the confidence/verified signal legible (larger glyph or a tinted chip, not a 14px green tick fighting green macro letters). Owner: ui-product-designer + design-system-enforcer."
+          },
+          {
+            "title": "No depth model — every card on Today and in the logging flow is a flat fill with a hairline border doing a shadow's job",
+            "surface": "today-2026-05-15-s00 through s02, ix-30, ix-33",
+            "severity": "P2",
+            "why": "Verified in theme/components: the ring card, macro card, meals card, Weekly Insight, Steps & activity, and Activity Bonus blocks (today-2026-05-15-s00/s01/s02) are all white fills separated from the cream background by a single hairline border with NO elevation — shadow tokens exist only on toasts/modals (FirstLogAcknowledgment, Milestone30DayModal), not on the resting cards. Against the 2026 bar (Copilot Money, Oura, MacroFactor all use one soft 6-10% ambient shadow and zero decorative borders), Suppr's surfaces read flat/cheap even though the content is strong. The cream-on-white contrast is so low that on some captures (today-2026-05-31-s02..s05) the card edges nearly vanish. This is a single-root issue: there is no resting-card elevation token.",
+            "fix": "Introduce ONE soft elevation token (e.g. shadowOpacity ~0.06, radius ~12, y-offset ~4, no border) and apply it to every resting card across Today + the logging sheets; delete the hairline borders that are standing in for shadow. This is the highest-leverage depth move and it unifies ~6 card types on Today alone. Owner: design-system-enforcer (the token) → executor (apply + strip borders), flag-gated."
+          },
+          {
+            "title": "The win-moment is dead — hitting target / logging produces no celebration, and over-budget red has no motion",
+            "surface": "today-2026-05-28-s00 (red ring), today-2026-05-27-s00 (green ring), ix-34 portion 'If you log this'",
+            "severity": "P2",
+            "why": "The calorie ring crossing into green-under-budget (today-2026-05-27) or red-over (today-2026-05-28/29) is the single biggest emotional event in the product and from the captures it appears to be a static colour swap with no transition, no number tween, no haptic cue in the frame. The PortionSheet's 'If you log this … 968 kcal left' preview (ix-34) is the perfect pre-commit reinforcement moment and it's rendered as muted grey micro-text in a flat box — it should be the hero of that sheet. On mobile the canonical PressableScale haptic prop ('success'/'confirm') is the obvious lever for the commit + target-hit moments and there's no evidence it's wired on these CTAs. This is engagement design left on the table on the exact surface that drives daily-return.",
+            "fix": "(1) Animate the ring fill + a number count-up on log; (2) fire a PressableScale 'confirm' haptic on every commit CTA (Use this / Save changes / Log usual) and a 'success' haptic + colour pulse the first time the ring tips under-budget for the day; (3) elevate the 'If you log this' delta to a confident, coloured line. Mirror each on web with a 200ms confirming micro-animation + colour pulse (no haptics on web). Owner: ui-product-designer (the moment design) → executor, with sync-enforcer ensuring web parity."
+          },
+          {
+            "title": "Inline 'Log usual' / 'Save as a meal' affordances use three different visual treatments on one screen",
+            "surface": "today-2026-05-15-s00 (amber 'Log usual' banner), today-2026-05-15-s01 (lilac 'Log usual Snacks' pill), today-2026-05-29-s01 ('Save Lunch as a meal' plain link)",
+            "severity": "P3",
+            "why": "Within the Today meals list three sibling quick-actions render in three styles: the Breakfast 'Log usual: Chilli Feta Eggs' is a full-width amber-tinted banner with an X; the Snacks 'Log usual Snacks' is a small lilac rounded pill with an X; and 'Save Lunch as a meal' (today-2026-05-29-s01) is an underline-free centred text link with a bookmark glyph and no container at all. They're the same class of action (a one-tap shortcut on a meal slot) but a user can't learn one pattern. The amber tint also flirts with the over-budget semantic, adding noise.",
+            "fix": "Define ONE quick-action chip component (single tint = primarySoft blue, consistent radius, consistent dismiss affordance) and use it for every inline meal shortcut. Owner: design-system-enforcer + ui-product-designer."
+          }
+        ],
+        "palette": [
+          "Single dominant brand blue is well-held on Today and Edit-entry (Accent.primary #588CE4) — this is a genuine strength vs the muddy palettes of MFP/Lose It; keep it. The drift is the COMMIT colour: PortionSheet 'Use this' (ix-34) is green #56A775 while Edit-entry 'Save changes' (ix-51) and the slot selectors are blue — green is overloaded as primary-action + ring-success + macro/fiber hue all at once, diluting the ring's meaning (see top issue P1).",
+          "Calorie-ring tri-state is CORRECT per carve-out and is a real differentiator — green under (today-2026-05-27-s00), red over (today-2026-05-28/29-s00), brand gradient on 'Start your day' (today-2026-05-30-s00, today-2026-05-31-s01). Do NOT touch. Macro over-budget bars staying amber/orange (today-2026-05-27 carbs/fat) while the ring is green is the carve-out working exactly as designed.",
+          "Inline meal-shortcut tints are inconsistent: amber 'Log usual' banner (today-2026-05-15-s00) vs lilac 'Log usual Snacks' pill (s01) vs untinted 'Save as a meal' link (today-2026-05-29-s01) — three colours for one action class. The amber also risks reading as an over-budget warning.",
+          "Colour-as-emotion gap: the cream/white surface relationship is so low-contrast that on the Apple-Health-disconnected empty states (today-2026-05-31-s02..s05) and 'Start your day' (today-2026-05-30-s00) the screen reads washed-out and lifeless — the empty/loading states are where a warmer accent or a clearer card edge would carry the brand, and right now they're the palest, most generic frames in the set.",
+          "Search-results confidence signal (ix-33) leans on a 14px green CheckCircle2 that competes visually with the green protein 'P' macro letters in the same row — two greens, two meanings, both tiny. Confidence deserves its own legible treatment, not a green that collides with a macro hue."
+        ],
+        "consistency": [
+          "Commit-CTA colour drift: green (PortionSheet ix-34) vs blue (Edit-entry ix-51) for the same 'confirm this log' action — verified at FoodSearchPanel.tsx:1402 vs TodayEditMealModal.tsx:282. Root cause: no shared 'primary commit button' component; each sheet styles its own.",
+          "Modal language drift: LogSheet (ix-30), PortionSheet (ix-34) and Edit-entry (ix-51) are custom branded bottom sheets, but the meal long-press (ix-50-alert) is a NATIVE iOS action sheet (TodayMealsSection.tsx:716) — two modal grammars, with system-red Delete instead of Accent.destructive.",
+          "Segmented-control drift inside ONE flow: 'Recent | Library | Saved meals' underline tabs (ix-30) vs 'All / Recents / Custom / Branded / Generic' rounded filter pills (ix-33) — two different selection components one tap apart. Slot selectors (Breakfast/Lunch/Dinner/Snacks) are consistent blue across LogSheet and Edit-entry — that part is correct, keep it.",
+          "Card/elevation drift between surfaces: Today cards and the logging sheets are flat hairline-bordered fills, while the search results (ix-33) drop even the card and become a bare divided list — the depth language is not the same screen-to-screen.",
+          "Inline quick-action drift: amber banner vs lilac pill vs plain text link for 'Log usual'/'Save as meal' (today-2026-05-15-s00/s01, today-2026-05-29-s01). NOTE — the 9:41 + notch status bar and tab bar are consistent across every capture; that base chrome is solid and should not be flagged."
+        ],
+        "depth": [
+          "No resting-card elevation anywhere — every Today card (ring, macros, meals, Weekly Insight, Steps & activity, Activity Bonus in today-2026-05-15-s00/s01/s02) is a flat white fill separated from cream by a single hairline border; shadow tokens exist only on toasts/modals (FirstLogAcknowledgment, Milestone30DayModal), not resting cards. This is the root 'flat/cheap' tell across the group.",
+          "Cream-on-white contrast is so low that card edges nearly disappear on several frames (today-2026-05-31-s02..s05, today-2026-05-30-s00) — the hairline-border-as-shadow approach fails exactly where a soft ambient shadow would still read.",
+          "Search-results list (ix-33) is the flattest surface in the group: bare rows, 1px dividers, grey 'per 100g' micro-text, empty grey thumbnail placeholders — pure wireframe-coloured-in, no tactility. This is the most-used manual-log surface and it's the least crafted.",
+          "The portion-sheet 'If you log this' preview box (ix-34/ix-35) is a flat tinted rectangle of grey micro-text — the most decision-relevant element on the sheet rendered with the least visual weight. Tier read: Today cards = Generic (flat but clean); search results = Prototype; Edit-entry sheet = Good (best-crafted surface, proper grabber + structured inputs). The whole group should be pulled up to the Edit-entry sheet's level with one shared soft-elevation token."
+        ],
+        "delight": [
+          "Dead win-moment: the calorie ring tipping into green-under (today-2026-05-27-s00) or red-over (today-2026-05-28/29-s00) is the product's biggest emotional event and appears to be a static colour swap — no ring-fill animation, no number tween, no celebratory pulse. This is the #1 missing delight moment and it's on the retention-critical surface.",
+          "Commit actions likely fire no haptic: 'Use this' (ix-34), 'Save changes' (ix-51), and the 'Log usual' shortcuts are all prime PressableScale 'confirm'/'success' haptic moments and there's no evidence in the flow they're wired — a meal log should feel like it landed.",
+          "'If you log this … kcal left' (ix-34) is a perfect pre-commit reinforcement and it's buried as muted grey text — it should brighten/animate as the user changes servings to make the consequence felt before they tap.",
+          "Over-buzzing risk is low here (the flow is under-celebrated, not over-celebrated) — the fix is additive: confirm-haptic on every commit, success-haptic + colour pulse the first time the ring goes under-budget each day, and a count-up on the ring's LOGGED number. Web has no haptics — mirror each with a 200ms confirming micro-animation + ring colour pulse so the win lands on both platforms (mobile-decisions-apply-to-web).",
+          "Empty/first-log states (today-2026-05-30-s00 'Start your day', today-2026-05-31-s01) are correct in copy but emotionally flat — the 'Start your day' gradient ring is the one bright moment and it's static; a subtle breathing/shimmer on the empty ring would invite the first tap without adding noise."
+        ]
+      },
+      {
+        "group": "Recipes (Library, Discover, recipe detail, ingredients, edit-recipe, yield editor, recipe-actions menu, cook mode)",
+        "tiers": {
+          "identity": "Good",
+          "palette": "Premium",
+          "consistency": "Generic",
+          "depth": "Generic",
+          "motion": "Prototype",
+          "delight": "Generic"
+        },
+        "signature": "There IS a signature trying to emerge — a warm off-white canvas (#F7F6F1-ish), photo-forward recipe cards, and a consistent macro-icon row (blue protein / amber-orange carbs / magenta fat / green fibre with the leaf glyph) that reads as \"Suppr\" across Library, Discover and recipe detail. Crop the logo off Library (library-s00) and the macro-icon row + warm canvas would still identify it. BUT the signature dies at the recipe-detail body: ix-41/42 swap the warm photo-led world for clinical pure-white cards, a generic iOS −/+ servings stepper, plain hairline-divided ingredient rows (ix-43) and a flat \"Fits your day · ≈50%\" line that should be the emotional peak. The result reads as two designers: a confident photo/macro front-of-house (Library + Discover photo cards) and a stock-component back-office (detail body, edit sheet, yield dialog). The detail screen — the surface a viral recipe-import link lands on — is the weakest-signature surface in the whole group, which is backwards for a launch whose viral hook is recipe landing.",
+        "palette": [
+          "One primary is genuinely unified — #588CE4 blue carries every CTA (Log all, Log, Start Cooking, Create, Try again on the error boundary in create-recipe-s00), and the macro-icon row (protein blue / carbs amber-orange #E8721E / fat magenta #DF5EBC / fibre green #56A775) is token-correct and consistent across library-s00, recipe-detail ix-41, and Discover discover-s00. This is the group's strongest lens — do not sand it.",
+          "Bookmark glyph means two colours for the same state: on recipe-detail header (ix-41/42) the saved bookmark is success-GREEN (#56A775, confirmed Accent.success at [id].tsx:1835), but on Library cards (library-s00, library-s02) the bookmark badge renders as a blue/dark filled glyph in a white circle. Same 'saved' concept, two palette readings across one tap-depth — the green should not appear only on detail.",
+          "The 'Fits your day · ≈50%' verdict on recipe detail (ix-41) is rendered as muted green body text with a hairline check — colour-as-emotion is absent at the single highest-intent moment of the surface (does this recipe fit my macros today). A best-in-class tracker (MacroFactor's fit cues, Cron's target glow) makes the fit % a tinted, weighted moment; here it's the same green as a passive 'verified' tag, so the win reads as metadata, not a payoff.",
+          "Macro 'of 101 / of 68 / of 25 / of 15' sub-labels under each tile (ix-41) are a very low-contrast grey on white — sits near or below 4.5:1 for this small a size; this is the same low-contrast secondary-grey class seen across the detail body (the 'breakfast' meal-type label, 'You' author label on cards). Root-cause the secondary-text token, don't patch per line.",
+          "Discover dense-list rows (discover-s03..s06) print macros as monochrome grey '480 · 14P · 50C' with NO macro colour at all — the colour language that defines Library/photo-Discover evaporates the moment the layout switches to a list, so the same data wears two completely different palettes inside one tab."
+        ],
+        "consistency": [
+          "DEPTH MODEL SPLIT (root cause, two surfaces): Library photo cards use a hairline border (library.tsx:309 borderWidth:1 / borderColor:colors.border, no shadow) while recipe-detail cards use a real drop shadow (recipe/[id].tsx:1538 shadowColor #000 / shadowOpacity 0.22 / shadowRadius 10). Within one feature group, cards are bordered in one place and shadowed in another — the classic 'two teams' tell. Pick ONE elevation model.",
+          "DISCOVER HAS TWO CARD LAYOUTS in one tab: discover-s00..s02 are large photo cards with coloured macros; discover-s03..s06 are dense thumbnail list rows with monochrome macros and a different divider. There is no visible toggle explaining the switch — it reads as an unfinished migration, not an intentional density control.",
+          "BOOKMARK BADGE drifts: white-circle-with-blue-bookmark on most Library cards (library-s00) vs a filled-blue-circle bookmark on the Pear/Shrimp cards (library-s02) vs green bookmark in the detail header (ix-41). Three treatments of one control.",
+          "SERVINGS CONTROL drifts three ways for the same action: recipe-detail inline 'Servings − 5 +' uses bordered square steppers + a pencil (ix-41); the yield-editor dialog (ix-65) uses a plain text field '5' with Cancel/Save; the edit-recipe sheet (ix-54) uses circular −/+ buttons. Same concept, three component vocabularies.",
+          "MACRO PILL ICONS differ between Library cards and Discover photo cards: Library (library-s00) shows flame+drumstick+chilli+leaf glyphs; Discover (discover-s00) shows a different P/C/F/g letter-suffix treatment ('13g P / 18g C'). The macro chip is a core Suppr primitive and it is not the same component across the two sub-tabs of the same screen.",
+          "EDIT-RECIPE SHEET (ix-54) and YIELD DIALOG (ix-65) use grey/beige inset input fields (#ECEAE3-ish) that appear NOWHERE else in the group — the rest of the surface is white cards on warm canvas. These two modals look imported from a different design system (stock form styling), with red trash icons that are the only destructive-red in the flow.",
+          "The header action row drifts: recipe detail (ix-41) shows back / title / bookmark / share / overflow as four separate top-bar glyphs, while Library (library-s00) cards carry overflow+bookmark INSIDE the card. Acceptable per-context, but the share glyph uses a different (Android-style node) icon than the rest of the lucide set — verify it's the exact prototype glyph."
+        ],
+        "depth": [
+          "Recipe-detail elevation is a HARD default-ish shadow, not a crafted one: shadowColor #000 at 0.22 opacity, radius 10, offset y2 (recipe/[id].tsx:1538-1541). At 22% black this reads heavier and greyer than the soft ~8% ambient elevation premium apps use — it's the 'I added a shadow' look, not a considered light source. Surfaces affected: the macro-tile card, the 'Log to journal' card (ix-42), and 'Your notes' card all carry this same heavy shadow.",
+          "Library + Discover photo cards are FLAT — they lean on a 1px hairline border (library.tsx borderColor:colors.border) to fake separation. Border-as-shadow is the cheap tell; on the warm canvas these cards have no lift at all, so the beautiful food photography sits in a flat document rather than on tactile cards.",
+          "Net result is an inverted depth hierarchy: the photo cards (the things you most want to feel touchable, the viral hook) are flat-bordered, while the clinical detail-body cards (data) carry the only real shadow. Depth is applied to the least emotional content.",
+          "Edit sheet (ix-54) and yield dialog (ix-65) inputs are flat beige fills with no inner shadow or focus elevation — they read as wireframe-coloured-in, the lowest-craft surfaces in the group. The yield dialog also dims the background to a flat grey with no blur/scrim gradient, so the modal floats on a muddy backdrop rather than a crafted scrim.",
+          "Macro tiles (ix-41) have a thin coloured underline bar under each tile — a nice touch — but the tiles themselves are bordered AND shadowed, double-encoding separation, which makes them feel busier/cheaper than a single clean elevation would.",
+          "The 'Shrimp Rice Paper Rolls' fallback (library-s02) renders a brown gradient block with a centered wheat glyph — the empty-image state is a flat muddy brown that looks like a loading error, not a designed placeholder; it cheapens the otherwise photo-rich grid."
+        ],
+        "delight": [
+          "DEAD WIN MOMENT (highest-severity delight gap): recipe-detail 'Log all · 458 kcal' and 'Log' fire ZERO haptic — recipe/[id].tsx imports no haptics at all (confirmed: no expo-haptics import in the 3,284-line file). Logging a whole recipe to your day is a top-3 commit-action in the product and it lands silently. Meanwhile cook.tsx is richly hapticised (Haptics.notificationAsync Success on step-complete at cook.tsx:464/542/709/815, selectionAsync on step nav). So the app KNOWS how to celebrate — it just doesn't on the recipe surface. Add a 'confirm' (or 'success' on a full Log all) haptic; web analog = a 200ms colour-pulse / check-morph on the button.",
+          "The 'Fits your day · ≈50%' verdict (ix-41) is the surface's signature moment and it's inert — no motion, no tint weight, no haptic when it resolves to a strong fit. A 90%+ fit should feel like a small reward (success haptic + brief green glow on the chip) to reinforce 'pick recipes that fit my macros'. As-is it reinforces nothing.",
+          "'Start Cooking' (ix-42) hands off to a cook mode that IS delightful (Success haptic on finishing the last step) — but the transition INTO it fires nothing, so the most satisfying flow in the group has a flat on-ramp. A 'confirm' haptic + a forward push-transition would set up the payoff.",
+          "Library/Discover card taps and the bookmark/save toggle use no haptic (library.tsx + recipe card components have no PressableScale/Haptics) — saving a recipe is a collect/dopamine action competing with Paprika/Recime; a light 'selection' tick on save would make the library feel alive. Web analog = the bookmark fills with a quick scale-bounce.",
+          "Servings stepper (ix-41) and the 0.5×/1×/1.5×/2× portion chips (ix-42) change real macro numbers on tap with no number-tween and (on mobile) no selection haptic — the macros just snap. Premium trackers tween the number; here the most interactive control updates silently.",
+          "The error boundary (create-recipe-s00, 'Something went wrong') and the muddy image-fallback (library-s02) are the un-delighted edges — neither has any warmth or recovery motion; the error screen is a stark near-black void that breaks the warm-canvas identity entirely (it's the only true-dark surface in the group and it doesn't match either the mobile #0a0a0f or web #101014 documented dark tones)."
+        ],
+        "topIssues": [
+          {
+            "title": "Recipe-detail commit actions fire no haptic — silent Log all / Log / Start Cooking",
+            "surface": "Recipe detail (ix-41, ix-42) — recipe/[id].tsx",
+            "severity": "P1",
+            "why": "Logging a recipe to the journal is a top-tier commit-action and the recipe-detail file imports zero haptics, while cook.tsx is fully hapticised. The single most-used button on the viral-landing surface lands dead, on the exact screen a shared recipe link opens to. This is a whole-group engagement leak, not a one-screen nit — same dead-moment pattern as Library save taps.",
+            "fix": "Wire PressableScale's haptic prop into the recipe-detail CTAs: 'confirm' on Log / portion-chip / servings steps, 'success' on Log all (whole-recipe commit). Web analog: 200ms colour-pulse + check-morph on the button. Owner: ui-product-designer to spec the moment, design-system-enforcer to make 'every commit-action confirms' a token-level rule, sync-enforcer for web parity. Ship behind isFeatureEnabled."
+          },
+          {
+            "title": "Two depth models inside one feature group (bordered cards vs shadowed cards)",
+            "surface": "Library cards (library-s00) vs recipe-detail cards (ix-41/42)",
+            "severity": "P1",
+            "why": "Library/Discover photo cards use a 1px hairline border with no shadow (library.tsx:309); recipe-detail cards use a heavy #000@0.22 drop shadow (recipe/[id].tsx:1538). One feature reads as two teams, and the inversion is wrong-way-round: the emotional photo cards are flat while the clinical data cards get the lift. This is the clearest 'pile of screens that share a logo' tell in the group.",
+            "fix": "Adopt ONE soft elevation token (~6-8% black, larger radius, no border) and apply it to both the photo cards and the detail cards; delete the hairline borders and drop the 0.22 shadow to the soft token. Owner: design-system-enforcer encodes a single `Shadow.card`; executor sweeps both surfaces. Flag-gated."
+          },
+          {
+            "title": "'Fits your day' win-moment is rendered as flat metadata, not a payoff",
+            "surface": "Recipe detail (ix-41)",
+            "severity": "P1",
+            "why": "The macro-fit verdict is the north-star 'does this fit me today' moment and the differentiator vs Paprika/Recime — but it's the same muted green as a passive 'Verified' tag, with no weight, tint, motion or haptic. The product's best idea is dressed as the least important text on the screen. (Calorie-ring red carve-out respected — this is the fit chip, not the ring.)",
+            "fix": "Promote the fit verdict to a tinted, weighted chip; scale tint/colour with fit quality (strong fit = saturated success green + brief glow + success haptic on resolve). Mirror on web with a colour-pulse. Owner: ui-product-designer; sync-enforcer for parity."
+          },
+          {
+            "title": "Edit-recipe sheet + yield dialog look imported from a different design system",
+            "surface": "Edit recipe (ix-54), Yield editor (ix-65)",
+            "severity": "P2",
+            "why": "Both modals use flat beige inset inputs (#ECEAE3-ish), a stock −/+ vocabulary, and red trash icons that appear nowhere else in the group, on a muddy un-blurred scrim. Against the warm photo-led identity these are the lowest-craft surfaces and break the signature the moment a user edits anything. Two surfaces share the cause (no shared form/modal primitive).",
+            "fix": "Build one tokenised form-field + modal primitive (warm card surface, soft elevation, blurred scrim) and reuse it for edit sheet, yield dialog and the create-recipe wizard. Owner: ui-product-designer + design-system-enforcer."
+          },
+          {
+            "title": "Discover renders the same data in two unreconciled layouts with two palettes",
+            "surface": "Discover (discover-s00..s02 photo cards vs discover-s03..s06 list rows)",
+            "severity": "P2",
+            "why": "Within one tab, recipes appear as coloured-macro photo cards AND as monochrome-macro dense list rows, with no visible density toggle. The macro colour language — a core Suppr primitive — vanishes in the list view, so one screen wears two palettes. Reads as an unfinished migration.",
+            "fix": "Pick one Discover layout (or add an explicit, designed density toggle) and carry the coloured macro chip into both. Owner: ui-product-designer; design-system-enforcer to make the macro chip a single shared component used in every layout."
+          },
+          {
+            "title": "'Saved' bookmark uses three different colours/treatments across one tap-depth",
+            "surface": "Library cards (library-s00, library-s02), recipe-detail header (ix-41)",
+            "severity": "P2",
+            "why": "The saved bookmark is green on detail, blue-in-white-circle on most Library cards, and filled-blue-circle on others. Same state, three readings — colour stops meaning one thing, which undercuts the otherwise-strong unified palette.",
+            "fix": "One saved-state token + one badge component everywhere (recommend the success-green saved fill, with a light selection haptic + scale-bounce on toggle). Owner: design-system-enforcer; executor sweep."
+          },
+          {
+            "title": "Secondary-text token sits at/below 4.5:1 across the detail body",
+            "surface": "Recipe detail macro sub-labels 'of 101/68/25/15' + 'breakfast' + card 'You' author labels (ix-41, library-s00)",
+            "severity": "P2",
+            "why": "The same low-contrast grey-on-warm-white appears on multiple secondary labels group-wide — a token-level contrast class, not isolated. Forensically these read borderline for their small size; this is exactly the 4.0-vs-4.5 class that thumbnail-eyeballing misses.",
+            "fix": "Darken the secondary-text token to clear 4.5:1 on the warm canvas and re-run the contrast audit (tests/e2e/verify/contrast-audit.spec.ts model) across every recipe surface. Owner: design-system-enforcer; verify via executor."
+          },
+          {
+            "title": "Image-fallback + error states break the warm identity",
+            "surface": "Shrimp Rice Paper Rolls fallback (library-s02), create-recipe error boundary (create-recipe-s00)",
+            "severity": "P3",
+            "why": "The no-photo fallback is a muddy brown gradient that looks like a load failure, and the error boundary is a stark near-black void that matches neither the warm canvas nor the documented dark tones — the only true-dark surface in the group. Both are un-designed edges that cheapen an otherwise photo-rich, warm surface.",
+            "fix": "Design a branded no-image placeholder (warm canvas + tinted macro-coloured glyph, not muddy brown) and bring the error boundary onto the warm-canvas identity with a recovery illustration. Owner: ui-product-designer."
+          },
+          {
+            "title": "COVERAGE GAP — cook mode, create-recipe, individual ingredient + ingredient-info-alert never rendered",
+            "surface": "ix-75/ix-76 (cook mode), create-recipe-s00, ix-44 (ingredient), ix-52 (ingredient-info-alert)",
+            "severity": "P2",
+            "why": "ix-75/ix-76 both captured the recipe-detail 'Start Cooking' scroll position, not cook mode; create-recipe-s00 captured the global error boundary, not the form; ix-44 and ix-52 both captured the ingredients LIST, not an ingredient detail or an alert. So four named surfaces in this group are UNCOVERED. cook.tsx and create-recipe.tsx exist in code (verified at HEAD cda3c925) and cook.tsx is the most hapticised file in the group — it must not be judged blind. Declaring this wall 'complete' would be a silent cap.",
+            "fix": "Re-run the tour with deterministic navigation into cook mode, the create-recipe wizard, an individual ingredient row, and the ingredient-info alert, then re-review those four surfaces before the whole-product synthesis treats this group as fully covered. Owner: executor to fix the tour script; re-route to design-director after capture."
+          }
+        ]
+      },
+      {
+        "group": "Plan + meal-plan + move-meal sheet (mobile)",
+        "tiers": {
+          "identity": "Good",
+          "palette": "Good",
+          "consistency": "Good",
+          "depth": "Generic",
+          "motion": "Good",
+          "delight": "Generic"
+        },
+        "signature": "The Plan group reads as the same calm, data-forward Suppr you meet on Today — same cream-white surface (#fdfdf7-ish), same macro token map (protein #588CE4 / carbs #E8721E / fat #DF5EBC / fibre #56A775), same slot-tint glyph language carried faithfully into the Move-meal sheet, same Accent.primary blue on the one primary action per screen. The signature IS present and it IS carried: long-press the meal, the slot tints follow you into the sheet; the macro pill is the same compact P/C/F/Fi delta strip you see app-wide. Cropping the logo, you'd say 'Suppr'. What stops it short of Premium is that the signature is expressed almost entirely in COLOUR and almost not at all in MATERIAL — every surface in this group is a flat fill with a 1px hairline border doing a shadow's job, so the screen reads like a well-coloured wireframe rather than a crafted, layered object. The identity is consistent; the craft is one generation behind the depth model the rest of the product is already moving toward (the Move-meal sheet, notably, has the right soft-shadow elevation — proof the better model already exists in-house and just isn't applied to the tab body).",
+        "palette": [
+          "ix-70-plan-tab.png: macro pill uses the canonical token map correctly — protein #588CE4, carbs #E8721E, fat #DF5EBC, fibre #56A775 — same as Today, so colour-as-meaning holds across surfaces. No drift here; this is a strength to preserve, not sand off.",
+          "ix-70-plan-tab.png + planner-s00.png: the over/under delta colours on the pill are inconsistent emotionally. Populated day shows 'Fi 0g +13' in green (good = surplus) while empty days show '-101 -68 -25 -15' where each macro number renders in its own macro hue, not in a deficit colour. The reader can't tell at a glance 'am I short?' — the minus sign is the only signal and it's tiny grey. A premium tracker (MacroFactor) tints the whole delta amber when you're materially short. Colour is decorative here, not diagnostic.",
+          "ix-70-plan-tab.png: the header summary 'Hits your targets 0 of 7 days' is the emotional core of the Plan tab and it is rendered in flat near-black body text with zero colour weight. 0/7 is a bad number; it should carry a calm amber or a subtle progress treatment so the user feels the gap and the 'Generate'/'Adjust constraints' CTAs feel like the answer. Right now the headline that should pull the user to act is the least coloured thing on the card.",
+          "planner-s00.png / s01.png / s02.png: the empty-week 'No slots yet — add one or regenerate' rows are entirely greyscale (grey text, grey-bordered chips). This is the cold-open state for a user who hasn't built a plan, and it has zero emotional pull or brand colour — it reads as a disabled/loading state rather than an invitation. The only colour on the whole screen is the macro pill numbers, which are deltas against an empty plan (so they're alarmingly negative). First impression of an empty plan is 'broken', not 'let's build this'.",
+          "ix-73-move-day-picker.png: the FROM source card is tinted with Accent.primary soft (light blue wash) and a blue border — correct, this is the one place a selection-state colour earns its keep and it's done well.",
+          "CROSS-SURFACE: the recipe-404 page that 5 of the tour captures landed on (ix-70-plan.png etc.) uses a more lavender/desaturated primary on its 'Back to Today' button than the Plan tab's saturated #588CE4 'Generate' button — but that is a different surface (recipe deep-link 404), route to ui-critic, not a Plan finding."
+        ],
+        "consistency": [
+          "DEPTH MODEL DRIFT (the root finding): within this ONE group there are two elevation languages. The Move-meal sheet (ix-73, ix-72) uses a real soft shadow (shadowOpacity 0.18, radius 24, offset y-8) — crafted. The Plan tab body (ix-70-plan-tab, planner-s00/01/02) uses borderWidth:1 hairline borders on every card, chip, and row with effectively no shadow (the header card's only shadow is opacity 0.06 — invisible). So the modal layer is premium and the tab layer is flat, in the same flow. Same team, two depth models.",
+          "Radius is consistent within the group (Radius.lg ~12-16 on cards/rows, Radius.md on chips, Radius.xl on the sheet top corners) — no drift to flag.",
+          "Button shape consistency: 'Generate' is a filled primary pill, 'Adjust constraints' is a bordered secondary with a dotted/sliders glyph — this two-button pattern is clean and matches the Today CTA grammar. Good.",
+          "Icon set: the slot glyphs (breakfast/lunch/dinner/snack tints + lucide-style glyphs) carry correctly from the action sheet into the Move-meal sheet — exact-icon rule respected.",
+          "The filter row '7 days · Today' / 'All meals' / 'Generate' uses three different control treatments side by side (two grey dropdown chips + a blue text-button with a caret). The blue inline 'Generate' next to the big filled 'Generate' button in the header card above it is a duplicated affordance with two different visual weights for the same word — mild confusion, worth unifying.",
+          "Action sheet (ix-71-plan-meal-longpress / ix-72): custom on-brand bottom sheet (ActionRow list) rather than native iOS ActionSheet — correct and consistent with Suppr's sheet language. 'Remove from plan' in destructive red is correct usage (not the calorie-ring carve-out, a genuine destructive action)."
+        ],
+        "depth": [
+          "ROOT: hairline-border-as-shadow across the entire Plan tab body. ix-70-plan-tab.png — the header 'meal plan' summary card, every meal row (Chicken Frittata, Chicken Meatballs, etc.), the '0.5x portion' chips, and the three filter dropdowns are all flat fills outlined by a 1px border. There is no light source, no layering, no tactility. This is the single biggest thing standing between this group and Premium. The fix is one elevation model applied at the card/row component: replace the 1px border with a soft 6-8% shadow (the header card already has shadowOpacity:0.06 — push it to the Move-meal sheet's calibre and drop the borders).",
+          "planner-s00/s01/s02.png — the empty-state 'No slots yet' rows and the '+ Bfast / + Lunch / + Dinner / + Snack' chips are flat grey-bordered rectangles. They read as disabled. With no depth and no colour, the entire empty week looks like a skeleton loader that never finished, not an interactive surface inviting a tap.",
+          "ix-73-move-day-picker.png — this sheet is the crafted reference within the group: real soft shadow on the sheet, the FROM card lifted with a tinted fill + blue border, list rows with slot-tinted glyph chips. This is the depth bar the Plan tab body should be held to. It proves the better model is already in the codebase (MoveMealSheet.tsx, shadowOpacity 0.18) and simply isn't applied to the tab.",
+          "The meal-row thumbnails in ix-70-plan-tab.png are small rounded photos but two rows (Homemade Cream Cheese, and the empty/placeholder) show a flat pale-blue placeholder block with no image — a real-data gap that makes the list look half-loaded. The placeholder needs a branded fallback (slot-tinted icon tile), not a blank pale-blue square, or the list reads as broken.",
+          "No hover/press affordance visible in the static captures, but combined with flat borders the rows give no sense they are tappable objects — depth would do double duty as the tappability cue."
+        ],
+        "motion": "[\"Long-press to open the meal action sheet fires a Medium impact haptic (planner.tsx:3008) — correct weight for a context-menu invocation, and it's the right primitive. Good.\",\"A Light impact haptic fires on a secondary plan interaction (planner.tsx:3268). Reasonable.\",\"The action sheet (ix-72) and Move-meal sheet (ix-73) are standard bottom-sheet slide-ups — motion is present and conventional; can't assess easing/spring from stills, but no jank tells in the captures.\",\"GAP — no haptic or motion confirmation on the actual move-completion. The whole point of the Move-meal sheet is committing a meal to a new day/slot; that commit-action is the win moment and there's no evidence of a success/confirm haptic or a settle animation when the meal lands in its new slot. A move that just silently dismisses the sheet reads as a 'refresh', not a confirmation. This is the same class of dead-win-moment the director-level synthesis should root-cause across commit actions.\",\"GAP — 'Generate' (building the whole week's plan) is the single highest-value action on this tab and there is no celebratory motion/haptic payoff when a plan materialises. Plan-generation filling an empty week is a genuine win that should land with a success haptic + a staggered row reveal, not a static re-render.\"]",
+        "delight": [
+          "The win-moment ledger for this group is mostly empty. Move-meal commit: no success haptic, no settle animation (the sheet's slot tints are a nice touch but the payoff is missing). Plan-generate from empty week: no celebration, no staggered reveal — the screen just blinks from grey skeleton-looking rows to populated. Hitting '7 of 7 days on target' would be the emotional peak of this tab and there is no evidence it's marked at all (the captures show 0/7, but the success path appears unstyled).",
+          "The 'Hits your targets N of 7 days' headline is the built-in delight hook and it's rendered as flat text. On a good day it should glow/colour-pulse; on a 0/7 day it should calmly point at the fix. Right now it's emotionally inert in both directions.",
+          "Empty-state delight gap: planner-s00 is a user's first meeting with the Plan tab. A premium app turns the empty week into an invitation (warm illustration, a single confident 'Generate my week' CTA with a colour pull). Suppr shows seven identical grey 'No slots yet' rows with negative macro deltas — the opposite of inviting. This is the highest-leverage delight fix in the group because it's a cold-open surface.",
+          "Web analog owed: per the project's mobile-decisions-apply-to-web rule and the ENG-699 move-meal-to-web convergence, every haptic win recommended here needs a motion/colour analog on web /planner (a confirming micro-animation on move-commit, a colour pulse on target-hit). Web /planner was not captured in this group, so parity is unverified — flag as uncovered."
+        ],
+        "topIssues": [
+          {
+            "title": "Plan tab body uses hairline-border-as-shadow while its own modals use real elevation — two depth models in one flow",
+            "surface": "ix-70-plan-tab.png (tab body) vs ix-73-move-day-picker.png (Move-meal sheet)",
+            "severity": "P1",
+            "why": "Every card, row and chip on the Plan tab is a flat fill outlined by a 1px border (header card shadow is only 0.06 opacity = invisible), so the tab reads as a coloured wireframe. The Move-meal sheet in the same flow uses a proper soft shadow (0.18 / radius 24). The product looks like two teams built one feature. This is the single biggest gap to Premium and it's a class-of-bug, not one card.",
+            "fix": "Adopt one elevation model at the card/row component level: replace borderWidth:1 with a soft ~6-8% shadow matching the Move-meal sheet's calibre, drop the decorative borders. The better model already exists in MoveMealSheet.tsx — apply it to the tab. Ship behind a feature flag. Owner: ui-product-designer to spec, design-system-enforcer to encode as the shared card token."
+          },
+          {
+            "title": "Empty-week state reads as a broken skeleton, not an invitation",
+            "surface": "planner-s00.png / planner-s01.png / planner-s02.png",
+            "severity": "P1",
+            "why": "A user's first Plan tab is seven identical greyscale 'No slots yet — add one or regenerate' rows, each topped by an alarming negative macro pill (-101 -68 -25 -15). Zero brand colour, zero depth, zero warmth. This cold-open surface looks like a loading state that never finished — the opposite of the confident 'let's build your week' moment a premium planner earns.",
+            "fix": "Redesign the empty week as an invitation: one confident primary 'Generate my week' moment with colour pull, suppress the negative-delta pills when the plan is empty (a deficit against nothing is noise, not signal), and give the slot-add chips real surface depth. Owner: ui-product-designer."
+          },
+          {
+            "title": "The 'Hits your targets 0 of 7' headline — the tab's emotional core — is rendered as inert flat text",
+            "surface": "ix-70-plan-tab.png",
+            "severity": "P2",
+            "why": "This summary line is the Plan tab's built-in win/diagnostic hook and it carries no colour weight in either direction. On a good day it should celebrate; on a 0/7 day it should calmly steer the user to Generate/Adjust. As flat near-black text it does neither — the least-coloured element is the one that should drive the user's next action.",
+            "fix": "Give the headline a state-aware treatment: calm amber/progress framing when off-target, a success-green colour pulse + (mobile) success haptic when the week hits 7/7. Mirror the colour pulse on web /planner. Owner: ui-product-designer."
+          },
+          {
+            "title": "Move-meal commit and Plan-generate have no win-moment payoff (no success haptic, no settle/reveal motion)",
+            "surface": "ix-73-move-day-picker.png (move commit) and ix-70-plan-tab.png (Generate)",
+            "severity": "P2",
+            "why": "The two highest-value actions on this tab — committing a meal to a new day, and generating a whole week — both appear to complete silently. Long-press correctly fires a Medium haptic, but the actual commit fires nothing, so a successful move reads as a 'refresh' rather than a confirmation (trust erosion), and a generated plan blinks in with no celebration. Dead win-moments on the exact actions that build the planning habit.",
+            "fix": "Add a success/confirm haptic on move-commit and on plan-generate, plus a settle animation (meal lands in its new slot) and a staggered row reveal on generate. Provide the web motion/colour analog on /planner. Owner: ui-product-designer + sync-enforcer for parity."
+          },
+          {
+            "title": "Empty meal-row thumbnail renders as a blank pale-blue square",
+            "surface": "ix-70-plan-tab.png (Homemade Cream Cheese row / placeholder rows)",
+            "severity": "P3",
+            "why": "Rows without a recipe photo show a flat pale-blue block, making the populated list look half-loaded against the rows that do have thumbnails. A blank coloured square is a wireframe tell.",
+            "fix": "Use a branded fallback tile (slot-tinted glyph on a tinted ground, reusing the existing slot-tint system) instead of an empty colour block. Owner: executor / visual-qa."
+          },
+          {
+            "title": "Capture-tour failure: 5 of 13 Plan-group captures are the recipe-404 page, and web /planner is uncovered",
+            "surface": "ix-70-plan.png, ix-71-move-after-longpress.png, ix-71-move-meal-menu.png, plan-s00.png, plan-s01.png (all render the 404 'We couldn''t find that' page); web /planner (no capture)",
+            "severity": "P2",
+            "why": "The Maestro move-meal deep-link navigation failed and dumped 5 captures onto the recipe-404 screen, so a third of this group's 'evidence' is a dead surface. The real move-meal flow was salvaged by ix-72/ix-73, but any synthesis reading filenames (e.g. 'move-meal-menu') would mistake a 404 for the menu. Web /planner has zero captures in this group, so the ENG-699 move-meal-to-web convergence and all web depth/motion parity is unverified.",
+            "fix": "Fix the tour's move-meal navigation step (it's hitting a stale/invalid recipe deep-link → 404) and add a web /planner pass to the visual sweep so cross-platform parity can actually be judged. Mark web /planner UNCOVERED in the coverage ledger this run. Owner: executor (tour script) + sync-enforcer (web parity capture)."
+          }
+        ]
+      },
+      {
+        "group": "Progress + weight tracker + metric details (mobile / iOS)",
+        "signature": "There IS a recognisable Suppr signature on the Progress tab itself (progress-s00–s04): calm cream canvas #F7F6F2, a confident point-of-view that treats progress as a narrative not a dashboard (\"Maintenance held steady this week\", \"Sundays ran higher than Fridays\"), the adaptive-maintenance card, the sparse weight chart with the floating \"54.7 kg · Thu\" callout, and named win-language. Crop the logo from progress-s00/s03 and a designer would recognise a distinct, mature product — this is genuinely a differentiator and the project context is right to defend it. BUT the signature COLLAPSES the moment you leave the tab. The metric-detail screens (metric-calories-s00, metric-protein-s00) and burn-detail (burn-detail-s00) read as a different, blunter app: a shouty saturated-blue ALL-CAPS letter-spaced-2 header, flat hairline-bordered cards instead of the soft-shadow cards of the parent tab, and a near-empty burn screen. The weight-tracker stack (weight-tracker-s00/s01, ix-55/56/57) introduces a THIRD visual register — a solid #588CE4 primary-button \"Save\", segmented chips with blue selected fill, a brighter chart blue — that doesn't match the muted, restrained Progress hero one tap behind it. So the read is: one obsessive designer built the Progress hero; the detail/sub-screens were built by someone working from a wireframe. The signature exists but is not carried past the first scroll.",
+        "tiers": {
+          "identity": "Good",
+          "palette": "Good",
+          "consistency": "Generic",
+          "depth": "Generic",
+          "motion": "Prototype",
+          "delight": "Prototype"
+        },
+        "topIssues": [
+          {
+            "title": "Detail-screen cards are flat hairline-bordered while the parent Progress tab cards have real soft elevation — depth model breaks on tap-through",
+            "surface": "metric-calories-s00/s01, metric-protein-s00, burn-detail-s00 vs progress-s00–s04",
+            "severity": "P1",
+            "why": "Confirmed in source against HEAD: Progress tab cards (progress.tsx) use shadowColor #000 / shadowOpacity 0.1 / elevation, but progress-metric.tsx and burn-detail.tsx use only borderWidth:1 + borderColor (cardBorder) with NO shadow. Visually, tapping the Calories card on progress-s00 drops the user from soft-floating cards into flat bordered boxes — the classic 'border doing a shadow's job' cheap tell, and it reads as two different teams within one flow. The list rows on metric-calories-s00 are especially flat: stacked white rectangles separated by faint borders, no layering, wireframe-coloured-in.",
+            "fix": "Apply ONE elevation model across the whole group: the Progress tab's soft 8–10% shadow (no hairline border) on every card in progress-metric.tsx and burn-detail.tsx. Delete the borderWidth:1 borders that are standing in for depth. This is a token-level fix in the two detail files, not 15 call-sites."
+          },
+          {
+            "title": "Metric-detail header is a shouty saturated-blue ALL-CAPS letter-spaced banner that exists nowhere else in Suppr",
+            "surface": "metric-calories-s00 ('CALORIES THIS WEEK'), metric-protein-s00 ('PROTEIN CONSISTENCY')",
+            "severity": "P1",
+            "why": "Confirmed from source: progress-metric.tsx renders title.toUpperCase() at fontSize 18, fontWeight 800, letterSpacing 2, color Accent.primary (#588CE4). The Progress tab itself uses a calm near-black 'Progress' title and sentence-case card headers ('Maintenance held steady this week'). This big blue all-caps header is a different typographic voice — it reads like a 2018 dashboard section-label, not the 2026 calm-narrative voice of the parent. It also fights the back-chevron and gives the screen a loud, generic feel the rest of the surface group earns its way out of.",
+            "fix": "Replace with Suppr's actual title voice: near-black (colors.text) sentence-case at the Progress-tab title weight, left-aligned under the back chevron — e.g. 'Calories this week' / 'Protein consistency' as a real H1, not a colour-shouted label. Keep blue strictly for the data/accent, not the chrome."
+          },
+          {
+            "title": "Weight-tracker stack is a third visual register — brighter blue, solid primary button, chip fills — that doesn't match the muted Progress hero",
+            "surface": "weight-tracker-s00/s01, ix-55-weight-tracker, ix-56-weight-input-focused",
+            "severity": "P2",
+            "why": "The Weight & Trends screen uses a noticeably brighter/more-saturated blue than the Progress hero: the selected segmented chip ('3M'), the selected '12 mo' import-depth chip, the chart line, and a solid blue 'Save' button. Set this beside progress-s03's weight card (same data, muted blue line, no chrome) and they look like two different products' weight features. The 'Save' input pill is a flat grey field with a blue button — a stock form pattern with no relationship to the crafted callout-on-chart treatment one tab away. The two screens answer the same question (weight trend) with two different design languages.",
+            "fix": "Reconcile to one blue and one chart language: use the Progress-hero muted chart blue and callout style on Weight & Trends; make the segmented control + import-depth chips match whatever chip pattern Progress/Today use; restyle the Save row to the product's elevated-card input pattern rather than a stock grey-field+blue-button."
+          },
+          {
+            "title": "Win moments across the entire group are dead — no haptic, no celebratory colour/motion on the app's biggest progress payoffs",
+            "surface": "ix-57-log-weight-sheet (Save weight), metric-protein-s00 (4/7 on target, 116g best day), progress-s00 (11-day streak), progress-s01 (Share week)",
+            "severity": "P1",
+            "why": "This surface group is where the product should FEEL its wins, and every one is silent. Logging a weight (ix-57) re-learns your TDEE — a genuine moment — yet the Save flow shows no success state, no haptic implied, no number tween. The protein detail (metric-protein-s00) proudly says '4/7 on target' and shows a 116g best day, but renders it as plain bold text with no warmth or celebration. The 11-day streak on progress-s00 is buried as grey dot-separated metadata next to '154% Over target', so the win is overshadowed by the over-target frame. None of these fire the PressableScale success haptic that the product already has as a primitive. The web has no motion analog either.",
+            "fix": "Wire the existing PressableScale 'success' haptic + a 200ms number/colour pulse to: weight Save (ix-57), hitting a streak milestone, and a day crossing 'on target' on the protein detail. On web, mirror with a confirming micro-animation/colour pulse. Promote the streak out of grey metadata into its own warm chip on progress-s00. Tie each to repeat behaviour: the weight-Save celebration reinforces the daily weigh-in habit that powers the adaptive TDEE."
+          },
+          {
+            "title": "Two captures are mislabeled and there is NO weight metric-detail screen — coverage gap, not a render bug",
+            "surface": "metric-weight-s00, metric-weight-s01 (both render the CALORIES detail, not a weight detail)",
+            "severity": "P3",
+            "why": "Forensic + source check: metric-weight-s00 and metric-weight-s01 render identical pixels to metric-calories-s00/s01 ('CALORIES THIS WEEK'). progress-metric.tsx only branches title on metric==='calories' | 'protein' | else→'Logging streak' — there is no 'weight' metric route. So the weight metric-detail surface is uncovered; the tour captured calories twice under a weight filename. Not a phantom and not a P0, but it means any 'weight detail' on the wall is unverified.",
+            "fix": "No code fix required for the mislabel itself — flag to the harness owner that the tour manifest names a weight metric-detail that doesn't exist. Separately, decide intentionally: should tapping the weight card open a weight-specific detail (parallel to calories/protein) or continue deep-linking to Weight & Trends? Today it's the latter; if so, retire the metric-weight tour entry so the wall isn't reviewed against a phantom surface."
+          },
+          {
+            "title": "Protein's identity colour is the same hex as the app's primary blue, so the protein detail has no colour of its own",
+            "surface": "metric-protein-s00 (97g avg, 116g/104g day values all in #588CE4)",
+            "severity": "P2",
+            "why": "Confirmed in theme.ts: MacroColors.protein = '#588CE4' = Accent.primary. On metric-protein-s00 the header 'PROTEIN CONSISTENCY', the AVG/DAY number, the ON TARGET '4/7', AND every day's gram value all render in the identical primary blue. There's no way to read 'this screen is about protein' from colour — it looks like a generic blue-accented list. By contrast carbs (#E8721E) and fat (#DF5EBC magenta) have distinct slots. The single most colour-identifiable macro detail is the one whose macro colour is invisible against the chrome.",
+            "fix": "This is a deliberate 8-slot collapse so may be defended — but on the protein DETAIL screen specifically, differentiate the data from the chrome: keep the header in the new calm near-black voice (per the header fix) so the blue is freed to mean 'protein data' rather than 'every accent', or give the protein number a tinted-background chip treatment so the macro reads as protein, not as generic accent."
+          },
+          {
+            "title": "The over-target frame leads the whole tab with red while the actual story is positive maintenance — emotional-pull mismatch",
+            "surface": "progress-s00 (red 154% ring + 'Over target' as the first thing) vs progress-s00 card ('Maintenance held steady this week')",
+            "severity": "P2",
+            "why": "The first thing the eye hits on the Progress tab is a red 154% ring and 'Over target' in the header position — the destructive-red ring is the documented correct mapping (NOT flagged here), but the surrounding framing leans the cold/alarming read, then the card immediately below says the opposite: 'Maintenance held steady this week… high confidence — keep going.' The data event is a positive (maintenance held, adaptive TDEE working) but the hero composition makes the user feel they failed. This is colour-as-emotion working against the product's own calm, supportive voice rule.",
+            "fix": "Keep the ring colour (carve-out). But rebalance the hero so the positive narrative leads and the over-target is contextual, not the headline — e.g. lead with the maintenance/confidence story and demote the bare '154% Over target' to a supporting stat, so warmth lands on the win the data actually represents. Body-neutral voice rule already mandates this."
+          }
+        ]
+      },
+      {
+        "group": "Macro / nutrition detail screens (mobile)",
+        "signature": "Cropped of the logo, this group does NOT confidently say \"Suppr\" — and worse, it doesn't even say one product. Two sibling detail screens reached by one tap from Today (macro-detail and meal-nutrition) run on two different header systems, two different icon sets, two different title treatments, and two different button-shape languages. The one genuinely strong Suppr idea present — the macro colour as the page's identity colour (carbs=amber, fat=magenta, fiber/protein each their token, applied to the value pill) — is the right instinct but it's executed by also tinting the primary CTA the full saturated macro colour, which turns a calm data screen into a loud one-colour wash and breaks the project-wide \"Accent.primary is the action colour\" rule. The empty/error states are clean and have a recovery CTA (good — these were dead ends before), but they read as generic centered-flat layouts any starter template would ship: no depth, no motion, no warmth, default Ionicons alert-circle. The captures available are all empty/error/not-found — the populated states (where this screen earns its keep) are uncovered, so the identity read is necessarily anchored on the chrome + empty layer, which is exactly the layer that drifts.",
+        "tiers": {
+          "identity": "Generic",
+          "palette": "Good",
+          "consistency": "Prototype",
+          "depth": "Generic",
+          "motion": "Cheap",
+          "delight": "Cheap"
+        },
+        "palette": [
+          "macro-carbs-s00 / macro-fat-s00 / macro-fiber-s00 / macro-protein-s00: the primary CTA 'Log a meal' is filled with the FULL saturated macro colour (carbs #E8721E orange, fat #DF5EBC magenta, fiber #56A775 green, protein #588CE4 blue). Everywhere else in Suppr the primary action is Accent.primary (#588CE4). So on the Fat screen the main CTA is a loud magenta button, on Carbs it's a pumpkin-orange button — the same 'Log a meal' action wears 4 different brand colours across 4 sibling screens. The value pill (config.color + '20' tint with the macro colour as the number) is the correct, restrained use of the macro colour; the solid CTA is the over-reach. Root cause: macro-detail.tsx empty-state Pressable uses backgroundColor: config.color instead of Accent.primary.",
+          "macro-fat-s00: the magenta CTA (#DF5EBC) is the most emotionally loud element on an otherwise calm, near-empty screen — colour is pulling the eye to a button on a page whose job is to teach you about a nutrient. Colour-as-emotion is inverted here: the energy is on the wrong object.",
+          "meal-nutrition-s00 / s01: the 'Go back' CTA is Accent.primary blue (#588CE4) — correct and calm. This is the bar the macro-detail CTA should match. The drift is one-directional: meal-nutrition got it right, macro-detail did not.",
+          "Cross-surface note: carbs macro is #E8721E (amber-orange) and sodium elsewhere is orange too — the project context flags sodium=orange as intentional, but on the macro-detail CARBS screen the orange now reads as the page identity colour; fine in isolation, but worth confirming carbs-orange vs sodium-orange don't collide when both appear (not visible in these captures — populated state uncovered)."
+        ],
+        "consistency": [
+          "HEADER SYSTEM (root cause): macro-detail.tsx uses the canonical PushScreenHeader (lucide ChevronLeft 24px strokeWidth 1.75, left-aligned bold title, caption underneath, transparent over the page background, NO divider) — visible in all 4 macro-*-s00 captures. meal-nutrition.tsx uses the NATIVE React Navigation stack header (Ionicons chevron-back 26px, CENTERED title 'Meal nutrition', a visible rounded-rect grey fill behind the back chevron, and a hairline divider line under the bar) — visible in both meal-nutrition-s00/s01 captures. Two sibling nutrition-detail screens, one tap apart, on two different header primitives. This is the single biggest 'two teams' tell in the group.",
+          "ICON SET: macro-detail uses lucide ChevronLeft (via PushScreenHeader); meal-nutrition uses Ionicons chevron-back AND Ionicons alert-circle-outline for the error glyph. Project rule is exact lucide glyphs on mobile. The 'Meal not found' alert-circle in meal-nutrition-s00/s01 is an Ionicons default, not a lucide AlertCircle — drifts from the icon language and reads stock.",
+          "TITLE TREATMENT: macro-detail title ('Carbs'/'Fat'/'Fiber'/'Protein') renders large, bold, LEFT-aligned with a small 'Today' caption beneath. meal-nutrition title ('Meal nutrition') renders smaller, CENTERED, no caption. Same screen-class, opposite title alignment + scale.",
+          "BACK-CHEVRON HIT TARGET: macro-detail chevron sits flush at the leading edge with no chip; meal-nutrition chevron sits inside a visible pale rounded-rect background (the native header button surface). Inconsistent affordance for the identical 'go back' action.",
+          "CTA SHAPE/COLOUR: macro-detail 'Log a meal' = Radius.md (6px) corner, macro-colour fill, '#fff' text. meal-nutrition 'Go back' = Radius.md (6px) corner, Accent.primary fill, '#fff' text. Same radius (good) but colour token differs (drift, see palette).",
+          "DEPTH MODEL: both empty/error states are flat — no card, no shadow, centered text + button on bare background. Consistent with each other but flat vs the populated meal-nutrition state which DOES use bordered cards (styles.card: Radius.lg + borderWidth 1). So within meal-nutrition alone the error state and the data state use different surface languages."
+        ],
+        "depth": [
+          "macro-carbs/fat/fiber/protein-s00: the empty state is a flat centered text + a flat solid button on the bare page background — zero elevation, zero card, no light source. It reads as a wireframe that got a colour fill on the button. A premium tracker (MacroFactor, Cronometer) anchors an empty macro screen with at least a soft-elevated illustrative tile or a ghosted ring so the page has a centre of gravity; here the only object with any weight is the loud CTA.",
+          "meal-nutrition-s00/s01 'Meal not found': flat Ionicons alert-circle outline (thin grey stroke, no fill, no container) floating above centered text. No depth, no tint, no branded error treatment. The populated meal-nutrition screen uses bordered cards (Radius.lg + 1px border) — but a 1px hairline border doing a card's job is itself the cheaper end of the depth spectrum vs a soft shadow. The depth model across the group is 'hairline border or nothing'.",
+          "The value pill on macro-detail (config.color + '20' tint, Radius.sm=4) is the one crafted micro-surface in the group — tinted background, coloured tabular number. It's the right instinct and should set the tone for the rest of the page's surfaces.",
+          "Radius incoherence at token level: Radius.sm=4, md=6, lg=8 — these are unusually TIGHT for 2026. The value pill at 4px and the CTA at 6px read almost square-cornered next to the generous rounding (16px+) that leading trackers use on cards and pills. The whole group inherits a corner language that feels a generation behind."
+        ],
+        "motion": "[\"No motion is observable in any capture (static PNGs), but from source: macro-detail empty-state CTA and meal-nutrition 'Go back' CTA are plain Pressables with only an opacity/scale-free press (opacity: pressed ? 0.85 : 1). They do NOT use the canonical PressableScale primitive, so they miss the 1→0.97 scale + spring-back that the rest of the app's buttons get. Two of the most-tapped recovery buttons in the group have the cheap opacity-only press the PressableScale primitive exists specifically to kill.\",\"No transition language tying the macro tap on Today to the macro-detail screen — the macro colour is the obvious shared element that could drive a colour-matched shared-element or hero transition (tap the magenta Fat tile → magenta carries into the Fat detail header). Currently it's a plain stack push. The macro colour is sitting right there as a ready-made motion hook and is unused.\",\"Loading state is a bare 'Loading...' text (macro-detail) / centered ActivityIndicator (meal-nutrition) — two different loading idioms for sibling screens, and neither has a skeleton that previews the page shape, so the populated content will 'pop' in rather than resolve.\"]",
+        "delight": [
+          "macro-detail empty-state CTA: plain Pressable, haptic ABSENT. Tapping 'Log a meal' (an intent-to-engage moment) should fire a 'selection' or 'confirm' haptic via PressableScale. It fires nothing.",
+          "meal-nutrition 'Go back' / 'Nothing in slot' / 'Meal not found' CTAs: plain Pressables, haptic ABSENT. Recovery taps are low-stakes but the canonical primitive would give them the same tactile feedback as the rest of the app; right now they feel dead under the thumb.",
+          "No win-moment anywhere in this group, and that's a missed opportunity rather than a bug: the populated macro-detail page is where a user sees 'protein 142g across 4 meals' — hitting a macro target is a natural success moment that currently has no colour pulse, no haptic, no celebration. (Populated state uncovered in captures — flag for the populated-state review.)",
+          "Web parity note: macro-detail + meal-nutrition equivalents on web get no haptic (correct — web has none) but should get the motion/colour analog for the same CTAs (a 150-200ms confirming micro-animation on the primary button) so the press lands on both platforms; neither the mobile haptic nor a web analog exists today.",
+          "The error/empty copy is genuinely good and on-voice ('We couldn't find that meal. It may have been deleted or the link is missing an id.' / 'No meals logged for this day') — calm, plain English, no shaming. This is a real Suppr strength; keep it. The delight gap is tactile/visual, not verbal."
+        ],
+        "topIssues": [
+          {
+            "title": "Two sibling nutrition-detail screens run on two different header systems + icon sets",
+            "surface": "macro-detail (PushScreenHeader / lucide ChevronLeft, left-aligned title) vs meal-nutrition (native stack header / Ionicons chevron-back, centered title, divider) — macro-carbs-s00 & meal-nutrition-s00",
+            "severity": "P1",
+            "why": "These two screens are one tap apart off Today and are the same screen-class (a nutrition drill-down). Cropping the logo, the header chrome alone reads as two different apps: left-aligned bold lucide header vs centered native Ionicons header with a chevron-in-a-chip and a hairline divider. This is the group's single clearest 'pile of screens that share a logo' tell.",
+            "fix": "Migrate meal-nutrition.tsx onto PushScreenHeader (it already exists and macro-detail already uses it). Drop the native stack header for the non-slot-aggregate branch, set headerShown:false, render PushScreenHeader with title=meal name, caption=date, lucide ChevronLeft, and the value pill in rightSlot — exactly as the isSlotAggregate branch already does. Owner: ui-product-designer to spec, executor to apply, behind isFeatureEnabled. Also swap the Ionicons alert-circle-outline error glyph to lucide AlertCircle per the exact-icon rule."
+          },
+          {
+            "title": "Primary CTA is tinted the full saturated macro colour, breaking the app-wide action-colour rule",
+            "surface": "macro-detail empty state — macro-fat-s00 (magenta), macro-carbs-s00 (orange), macro-fiber-s00 (green), macro-protein-s00 (blue)",
+            "severity": "P1",
+            "why": "Suppr's action colour is Accent.primary (#588CE4) everywhere. Here the 'Log a meal' button is filled with the page's macro colour, so the identical action wears 4 different brand colours across 4 sibling screens and the loudest object on a calm data page is a magenta/orange button. The sibling meal-nutrition 'Go back' CTA correctly uses Accent.primary — so this is one-directional drift, not a deliberate language.",
+            "fix": "In macro-detail.tsx change the empty-state Pressable backgroundColor from config.color to Accent.primary. Keep the macro colour where it belongs and reads premium: the value pill (config.color + '20' tint + coloured number) and the breakdown bar. One token swap; moves the whole group toward one action colour. Owner: design-system-enforcer / executor, behind flag."
+          },
+          {
+            "title": "Most-tapped recovery CTAs use plain Pressables — no PressableScale, no haptic, opacity-only press",
+            "surface": "macro-detail 'Log a meal' + meal-nutrition 'Go back'/'Nothing in slot' — all four macro-*-s00 and meal-nutrition-s00/s01",
+            "severity": "P2",
+            "why": "The PressableScale primitive exists specifically to kill opacity-only press and give every button the 1→0.97 spring + haptic. These CTAs bypass it (opacity: pressed?0.85:1, no haptic prop), so the buttons feel dead under the thumb and inconsistent with the rest of the app's tactile language. On the empty-state 'Log a meal' (an engage-intent tap) the missing 'selection'/'confirm' haptic is a real lost micro-moment.",
+            "fix": "Replace these raw Pressables with PressableScale haptic=\"confirm\" (CTA) / haptic=\"selection\" (recovery). On web, wire the equivalent 150-200ms confirming micro-animation on the same buttons so the press lands on both platforms. Owner: ui-product-designer + executor."
+          },
+          {
+            "title": "Flat, stock empty/error states with no depth, default icon, and a generation-old corner radius",
+            "surface": "all four macro-*-s00 empty states + meal-nutrition-s00/s01 'Meal not found'",
+            "severity": "P2",
+            "why": "Centered text + flat button + thin default Ionicons alert glyph on a bare background reads as a starter template, not a crafted product. The token radii (sm=4 / md=6 / lg=8) are unusually tight for 2026 and make the CTA + value pill read near-square next to the 16px+ rounding leading trackers use. No card, no soft elevation, no tint anchor — the page has no centre of gravity except the (mis-coloured) button.",
+            "fix": "Give the empty/error states a soft-elevated anchor tile (the macro colour at low alpha as a tint, a lucide glyph, generous rounding) instead of floating centered text. Revisit the radius scale toward 12-16px on pills/cards as a system token bump (affects far more than this group — route as a design-system token decision, not a per-screen patch). Owner: ui-product-designer to design the empty/error template; design-system-enforcer for the radius token call; both flag-gated."
+          },
+          {
+            "title": "Loading and surface idioms diverge within and across the two screens",
+            "surface": "macro-detail ('Loading...' text) vs meal-nutrition (centered ActivityIndicator); meal-nutrition error (flat) vs data (bordered cards)",
+            "severity": "P3",
+            "why": "Sibling screens use two different loading idioms (bare text vs spinner) and neither previews the page shape, so populated content pops in. Within meal-nutrition, the error state is flat while the data state uses 1px-bordered cards — two surface languages on one screen. Minor individually but it compounds the 'assembled, not designed' read.",
+            "fix": "Standardise on one loading idiom (skeleton that previews the macro-detail list / meal card shape) shared by both screens, and align the error surface to the same card/tint language as the data state. Owner: ui-product-designer; executor to apply. NOTE: populated states for both screens are UNCOVERED in this capture set — request a populated-state pass before finalising the depth/win-moment direction."
+          }
+        ]
+      },
+      {
+        "group": "Settings hub + every sub-page (mobile / iOS)",
+        "signature": "There IS a recognisable Suppr signature here and it carries cleanly across most of the group: a warm off-white paper background (#fbfaf6-ish), soft-blue tinted icon tiles in rounded squares, a calm centred type voice, periwinkle primary, and the macro colour quartet (protein blue / carbs orange / fat pink / fibre green) showing up consistently on Profile, Targets and Household member rows. Crop the logo off the Settings hub, Targets ring page or Household and you'd still guess \"Suppr\". The identity weakens in two places: (1) the depth model is intentionally flat — Elevation.card is zeroed to a no-op in theme.ts, so every card across the whole group reads as a flat fill with a hairline edge, which is a generation behind the soft-elevation language leading settings surfaces (Things, Copilot Money, Oura) use today; and (2) two surfaces break the spell entirely — Notifications renders a crash/error boundary instead of a screen, and the Settings hub leaks a dev marker (\"build ?\", \"MARKER F50-2026-04-22\") into a user-facing row. So: a real, coherent signature undermined by one dead screen, one dev-chrome leak, and a flat depth ceiling.",
+        "tiers": {
+          "identity": "Good",
+          "palette": "Good",
+          "consistency": "Good",
+          "depth": "Generic",
+          "motion": "Generic",
+          "delight": "Generic"
+        },
+        "palette": [
+          "Macro colour quartet is used with meaning and restraint across the group — Profile 'Daily Targets' (profile-s00) shows protein blue / carbs orange / fat pink correctly, and the same colours reappear on the Targets macro tiles (targets-s00/s01) and the Household member row '901 kcal · 101g protein' (household-s00). This is a genuine differentiator; do NOT sand it flat. Hold it up as the bar.",
+          "BANNED HARDCODED HEX: notifications.tsx:83 sets the error-text colour to raw '#f87171' (Tailwind red-400) — the exact hex the project context forbids ('No hardcoded Tailwind hexes #ef4444/#f87171 — use semantic tokens'). This is the only hardcoded-hex offender in the whole group (every other settings screen is clean), so it's a one-line root fix: swap to the --destructive / colors token. Cite: notifications-s00 (the red 'Render Error' chrome is the RN redbox, but the in-app error styling that ships uses this hex).",
+          "Destructive red appears correctly on the safety-floor warning ('Below 1,200 kcal' amber-orange callout, profile-s00) and the Danger zone (settings-s03/s04, more-s02) — these are legitimate destructive/warning uses, not the calorie-ring carve-out, and they're handled well (tinted background, not raw red text).",
+          "Colour-as-emotion GAP: the Health Sync and Household screens are the most emotionally inert in the group — Health Sync (health-sync-s00) is an all-grey list of empty connection toggles ('Connect to enable' x5) with no warmth on the value moment; the 'Connected' state on the Settings hub Apple Health row (settings-s02) gets a soft green tick tile, but the Health Sync page itself never rewards a successful connection with that same green. The win-moment colour exists in the system (success green) but isn't carried to where the win actually happens."
+        ],
+        "consistency": [
+          "CORNER RADIUS DRIFT past the token ceiling: the Radius scale in theme.ts tops out at xl:12, but the Settings hub cards use raw borderRadius:14 (settings.tsx:216,244), Targets uses raw 14, Household uses raw 11/16/18/24, and Notifications uses raw 999. Several of these exceed the largest token. Root cause: card radius was hand-tuned per screen instead of adding a token (e.g. Radius.card:14/16) and using it everywhere. Visible as subtly different card roundness between the hub (settings-s00) and the Household invite card (household-s00).",
+          "ICON TILE TREATMENT is consistent and good — soft-blue rounded-square tiles with lucide glyphs appear identically on Settings hub (settings-s00/s01/s02), More (more-s00/s01), and Nutrition Sources (more-s00). This is a strength; the exact-icon rule is being honoured (lucide set, not SF Symbols).",
+          "HEADER PATTERN DRIFT: most sub-pages use a left chevron + bold title in the nav bar (Profile 'Profile' profile-s00, Household 'Household' household-s00, Health Sync 'Health Sync' health-sync-s00, Targets 'Daily targets' targets-s00). But Nutrition Sources (more-s00) uses a DIFFERENT header — '< Back' text label + a centred small-caps blue 'INFO' eyebrow — which matches no other screen in the group. That's a one-off header language that reads as a different app.",
+          "SECTION-LABEL CASE DRIFT: the Settings hub and More use Title Case section headers ('Membership', 'People', 'Connections', 'Display & extras'), while Household uses ALL-CAPS small grey labels ('MEMBERS', 'PRIVACY', 'WHICH MEALS ARE SHARED?', 'WEEKLY PLAN') and Health Sync/Targets use Title Case. Two section-label systems in one group. Pick one (Title Case is the dominant, calmer choice) and apply it.",
+          "PRIMARY BUTTON SHAPE is consistent (full-width periwinkle, white bold label) — Household 'Save changes' (household-s00/s01), Health Sync 'Connect Health Data' (health-sync-s01), Profile 'Save Targets' (profile-s01). Good. But the Targets 'Recalculate' button (targets-s00) is a small white outlined pill — a secondary style that's fine, just note it's the only secondary button in the group so its weight reads slightly orphaned."
+        ],
+        "depth": [
+          "ROOT DEPTH PROBLEM (system-level): Elevation.card in apps/mobile/constants/theme.ts is deliberately neutralised to a no-op — shadowColor:'transparent', shadowOpacity:0, shadowRadius:0, elevation:0. So EVERY card across the entire settings group is a flat fill distinguished from the paper background only by a hairline edge / slight tone shift. This is the single biggest 'Generic, not Premium' tell for the whole group and it's one token. Visible everywhere: Settings hub cards (settings-s00/s01), Household cards (household-s00), Health Sync cards (health-sync-s00), Targets cards (targets-s00). Leading settings surfaces today (Things, Copilot Money, Oura, Family) use a single soft ~6-8% shadow elevation with no hairline borders — Suppr is one generation behind here.",
+          "The Targets calorie-ring card (targets-s00) is the most crafted surface in the group — the periwinkle ring around '901 kcal/day' with the 'MAINTENANCE 1,494' detail has real hierarchy and is the closest to Flagship. It proves the team CAN do depth; it just isn't carried. Use this card's treatment as the depth bar for the rest.",
+          "STOCK-COMPONENT TELL: the toggles on Settings hub (settings-s01 'Track caffeine/alcohol/net carbs'), Household ('Share my nutrition targets', household-s00), and Health Sync (health-sync-s01 'Import meals from Health' etc.) render as default iOS grey pill switches with no brand tint in the OFF state and no custom ON colour shown. On a product with a defined periwinkle primary, the default-system switch is a wireframe-coloured-in tell. A custom switch (periwinkle ON track) would lift every settings row at once.",
+          "Household empty-state card 'Household is solo' (household-s00) is well-crafted — centred blue '+' tile, clear hierarchy, primary Invite CTA. Good empty-state model; it's the depth exception that the flat list rows below it don't match."
+        ],
+        "delight": [
+          "NO WIN-MOMENT FEEDBACK on the highest-value settings actions. Connecting Apple Health (health-sync-s00) is the single biggest 'win' in this whole group — it's the moment a user's data comes alive — and there's no evidence of a success haptic + green-confirm celebration on it. The system has success green (used as a tick on the hub's 'Connected' row, settings-s02) but the connect action itself on the Health Sync page should fire PressableScale haptic='success' + animate the row to the green Connected state. Right now it's a silent grey toggle flip. This reinforces the connect-and-trust behaviour and is the best delight ROI in the group.",
+          "Saving (Household 'Save changes', Profile 'Save Targets', Health Sync 'Connect Health Data') are all commit-actions that should each get a haptic='confirm' on press. No evidence any of them do. These are the moments that make settings feel responsive vs inert.",
+          "OVER-DONE/INERT: the Household weekly-plan grid (household-s01) with the 'All' pills is the most interaction-rich surface in the group and is a genuine micro-delight opportunity — toggling a cell between solo/everyone is exactly where a 'selection' haptic + a colour fill animation would make it feel tactile. Currently reads as a static grid.",
+          "WEB ANALOG NOTE: web settings have no haptics; for each win-moment above (Health connect, save commit, grid toggle) the web equivalent should mirror with a 200ms confirming micro-animation + a success-green colour pulse so the win lands on both platforms (per the mobile-decisions-apply-to-web rule). The web settings sub-pages were not in this capture set — flag as uncovered for the synthesis.",
+          "No motion personality is observable across the static captures — sub-page entry, card mount, and toggle state changes appear to use no shared transition. The group reads as instant-swap navigation rather than a product with a motion signature. This is a whole-app direction item, not settings-specific."
+        ],
+        "topIssues": [
+          {
+            "title": "Notifications sub-page crashes — renders an error boundary, not the screen",
+            "surface": "Notifications (notifications-s00 redbox + notifications-s01 'Something went wrong' boundary)",
+            "severity": "P0",
+            "why": "VERIFIED AGAINST HEAD (cda3c92, capture 08:41 > commit 08:27 — not a stale-bundle phantom). The redbox cites notifications.tsx:226 and the channel name 'mobile:notif:e9f85055-...' matches source exactly. Root cause: the realtime effect depends on [userId, loadInbox]; loadInbox is a useCallback whose identity changes, re-running the effect. On re-run, supabase.channel('mobile:notif:${userId}') reuses the already-subscribed channel instance and the second .on('postgres_changes') is added after subscribe() — Supabase throws 'cannot add postgres_changes callbacks after subscribe()'. The entire Notifications surface (a settings sub-page reachable from the hub and More) is dead. This is a hard cohesion break: one tab of the wall is a stack trace.",
+            "fix": "Stabilise the realtime subscription: either remove loadInbox from the effect deps and call the latest via a ref, or build+subscribe the channel exactly once per userId (deps [userId] only) so .on() is never chained onto an already-subscribed channel. Owner: executor (bug) with sync-enforcer checking the web notifications inbox for the same pattern. Ships behind no flag — it's a crash fix, not a visual change."
+          },
+          {
+            "title": "Depth model is flat across the entire group — Elevation.card is a zeroed no-op",
+            "surface": "Every card on Settings hub, Profile, Targets, Household, Health Sync (settings-s00/s01, household-s00, health-sync-s00)",
+            "severity": "P1",
+            "why": "One token (Elevation.card in theme.ts) is set to shadowOpacity:0/elevation:0, so all settings cards are flat fills separated from the paper background only by a hairline edge. This is the dominant 'Generic not Premium' read for the group and it's a single root, not 15 symptoms. Leading settings surfaces (Things, Copilot Money, Oura) use one soft ~6-8% shadow with no hairline borders; Suppr's own Targets ring card proves the team can do depth — it just isn't applied.",
+            "fix": "Introduce a single soft-elevation token (e.g. shadowOpacity ~0.06-0.08, radius ~12, offset y4, no border) and apply it to the card primitive used across the group; delete hairline borders that were standing in for shadow. Owner: ui-product-designer to define the elevation, design-system-enforcer to encode it as the one card token. Ship behind isFeatureEnabled flag."
+          },
+          {
+            "title": "Dev marker leaks into a user-facing Settings row",
+            "surface": "Settings hub Build section (settings-s03/s04, more-s02): 'v1.0.7 · build ? · MARKER F50-2026-04-22'",
+            "severity": "P1",
+            "why": "A user-facing surface shows a literal '?' for build number and an internal dev marker string ('MARKER F50-2026-04-22'). This is exactly the dev-chrome-bleeds-into-frame failure the pixel-audit memory warns about. On a settings screen — the one place users check 'what version am I on' — it reads as unfinished/broken and undercuts the otherwise-calm signature.",
+            "fix": "Resolve the build number at build time (real number, not '?') and strip the MARKER token from any release build's version string. Owner: executor. Pure string fix, no flag needed."
+          },
+          {
+            "title": "Hardcoded Tailwind red breaks the token system",
+            "surface": "Notifications error text (notifications.tsx:83, color:'#f87171')",
+            "severity": "P2",
+            "why": "The only hardcoded hex in the entire group, and it's a specifically-banned Tailwind hex per project context. Means the error state won't follow theme/dark-mode token shifts and drifts from the semantic --destructive used elsewhere. Low blast radius (one screen, one state) but it's a clean root fix that keeps the palette census at zero hardcoded hexes for the group.",
+            "fix": "Replace '#f87171' with the semantic destructive token (colors.destructive / Accent equivalent). Owner: design-system-enforcer / executor. No flag."
+          },
+          {
+            "title": "Header + section-label languages drift within one group",
+            "surface": "Nutrition Sources one-off header (more-s00: '< Back' + small-caps 'INFO' eyebrow) vs chevron+bold-title elsewhere; Household ALL-CAPS labels (household-s00) vs Title Case on hub/More",
+            "severity": "P2",
+            "why": "Two header patterns and two section-label-case systems inside the same settings group make it read as assembled by different people. Nutrition Sources in particular uses a header that matches no other Suppr screen. This is the classic 'pile of screens that share a logo' tell — small individually, corrosive in aggregate.",
+            "fix": "Standardise on one header (left chevron + bold screen title) and one section-label style (Title Case grey caption — the dominant, calmer choice). Retire the 'INFO' eyebrow + '< Back' text on Nutrition Sources; convert Household's ALL-CAPS labels to Title Case. Owner: ui-product-designer to spec, executor to apply. Ship behind flag (copy/layout meaning)."
+          },
+          {
+            "title": "Win-moments are silent — no haptic/colour celebration on connect or save",
+            "surface": "Health Sync connect (health-sync-s00/s01), Household/Profile save commits (household-s00, profile-s01), Household weekly-plan grid toggles (household-s01)",
+            "severity": "P2",
+            "why": "The most rewarding settings actions — connecting Apple Health (data comes alive), saving targets/household, toggling shared meals — fire as silent default-iOS toggle flips with no success haptic, no green-confirm animation, and stock grey switches with no brand tint. The success-green and PressableScale haptic primitives already exist in the system; they just aren't wired to where the wins happen. This is the group's biggest engagement/delight gap.",
+            "fix": "Wire PressableScale haptic='success' + animate the row to the green 'Connected' state on Health connect; haptic='confirm' on every save commit; haptic='selection' + colour-fill on weekly-plan cell toggles. Replace the default switch with a periwinkle-tinted custom switch. Mirror each as a 200ms confirm animation + green pulse on web. Owner: ui-product-designer + sync-enforcer for web parity. Ship behind flag."
+          }
+        ]
+      },
+      {
+        "group": "Fasting, paywall, error/modal states, what's-new",
+        "signature": "Partial. With the logo cropped, the FASTING and WHAT'S-NEW screens read unmistakably as Suppr: warm cream backgrounds (#fbfaf6/#f5f3ec), warm-ink text tokens (#5b554b / #8a8377), the #588ce4 periwinkle primary, the success-green (#56A775) celebratory state, calm adult copy (\"Fast when you're ready\", \"A fasting window is just a way to structure when you eat\"). That is a real, defensible point of view and it is carried consistently across fasting + paywall + what's-new. The signature BREAKS hard on one surface: the ERROR BOUNDARY is a different product entirely — a cool slate-on-near-black world (#94a3b8 / #64748b body text on #0a0a0f) with no warm tone, no token system, a system-default-looking blue button. It is the only dark screen in an otherwise light, warm group, and it is built from hardcoded hexes that exist nowhere else in the palette. So: a strong identity on the happy-path surfaces, abandoned on the one screen a user sees at their most fragile moment.",
+        "tiers": {
+          "identity": "Good",
+          "palette": "Good",
+          "consistency": "Generic",
+          "depth": "Generic",
+          "motion": "Generic",
+          "delight": "Good"
+        },
+        "palette": [
+          "GROUNDED PIXEL FACT: all three primary CTAs sample to EXACTLY #588ce4 (error-boundary 'Try again', fasting 'Start Fast', paywall 'Open App Store') — the canonical Accent.primary 8-slot-lock blue. No blue-drift in this group; that is a strength, hold it up as the bar.",
+          "ROOT CAUSE — error boundary is off-palette (STATE-error-boundary.png, verified RootErrorBoundary.tsx): every text colour is a hardcoded COOL-SLATE hex (#e4e4e8 title, #94a3b8 body, #64748b footer) on a hardcoded #0a0a0f. The rest of the app uses WARM-INK tokens (#5b554b textSecondary, #8a8377 textTertiary). The error screen is literally a different colour temperature from every other Suppr surface — it reads as a stock RN template, not Suppr.",
+          "CONTRAST FAIL (STATE-error-boundary.png): the 'Still not working? Force-quit…' footer #64748b on #0a0a0f computes to 4.15:1 — below the 4.5:1 AA body threshold. The reassurance line a panicking user most needs is the hardest to read.",
+          "EMOTIONAL-PULL GAP (paywall, dl-paywall.png): the 'SAVE 37%' badge is the only warm/positive colour pull on the screen and it is a small muted-green pill in the top-right corner. The price (£59.99/year) sits in plain ink with no emotional framing. A money-app at the world bar (Copilot, MacroFactor) makes the saving the hero — e.g. the effective '/mo' number in success-green at display size — so the value, not the sticker price, is what the eye lands on first.",
+          "EMOTIONAL-PULL GAP (fasting complete state, code-verified): on fast completion the ring + 'Complete Fast' button flip to success-green (#56A775) — correct and on-brand — but the rest of the screen stays neutral. The single biggest win-moment in this feature gets one colour change and no warm accent or gradient to mark the achievement."
+        ],
+        "consistency": [
+          "RADIUS DRIFT — three different card corner radii across four surfaces in ONE group (all HEAD-verified): paywall card borderRadius:18 (paywall.tsx:750), fasting + what's-new cards Radius.lg = 8 (fasting.tsx:239, whats-new.tsx:110), error-boundary button hardcoded borderRadius:12 (RootErrorBoundary.tsx:94). The radius scale only defines up to xl:12, so paywall's 18 is an off-token value with no home in the system.",
+          "DEPTH PRIMITIVE DRIFT — every card in the group uses borderWidth:1 + colors.border as its ONLY separation (fasting.tsx:240, whats-new.tsx:111, paywall.tsx:752 hairlineWidth). Zero shadow/elevation anywhere. This is the hairline-border-as-shadow tell repeated 4×; it is a single root primitive (the card surface) that needs one elevation model, not four flat outlines.",
+          "TOKEN-BYPASS — error boundary hardcodes 5 hexes + a radius instead of consuming the theme (Colors.dark.*, Radius.*). It is the one surface in the group that doesn't route through the token system, which is exactly why it drifts off-palette and off-radius.",
+          "LIGHT-VS-DARK SURFACE — fasting, paywall, what's-new all render light/warm (#fbfaf6, #f5f3ec, #ffffff cards); the error boundary is the lone #0a0a0f dark screen. The documented carve-out (mobile Today #0a0a0f) is about the TODAY surface tone, not a licence for an error screen to be the only dark surface in a light flow.",
+          "FASTING SAVE-CHIP vs PAYWALL SAVE-CHIP — both surface a savings idea but with different treatments: fasting uses plain bold text, paywall uses a pill 'SAVE 37%'. Minor, but the 'saving' concept should have one chip treatment product-wide.",
+          "NOTE — paywall defaults to annual (£59.99/year, the only 7-day-trial path; paywall.tsx:58) which appears to conflict with the project-context 'unified monthly default ENG-698'. Routing this to sync-enforcer as a parity/product question, NOT filing it as a design defect."
+        ],
+        "depth": [
+          "FLAT-CARD CLASS (the root depth issue) — fasting cards (ix-60/61/62), what's-new cards (dl-whats-new), and paywall card (dl-paywall) are ALL flat fills bounded by a 1px hairline with no shadow. Tier: Generic. They look like a wireframe coloured in, not a crafted surface. Best-in-class (Things, Oura, Cron, MacroFactor 2026) use a single soft low-opacity drop shadow and NO border; Suppr is one generation behind on its card material across this whole group.",
+          "ERROR BOUNDARY (STATE-error-boundary.png) — Tier: Cheap. Centered text + a single rounded button floating on flat near-black, cool-slate type, no Suppr mark, no warmth, no illustration or texture. It is indistinguishable from a default React error screen. This is the lowest-craft surface in the group and it is the one shown at the user's most anxious moment.",
+          "PAYWALL (dl-paywall.png) — Tier: Good, the best-built surface here. The Pro card has a clear blue emphasis border, the trust pills ('Cancel anytime in App Store', '7-day refund, no email needed', 'Price never changes mid-trial') are a genuine premium move and a real differentiator — keep them. But it still sits on the flat-hairline card material, so it stops short of Premium. A soft shadow + the value reframed as the hero would push it over.",
+          "FASTING IDLE ICON HALO (ix-60) — the stopwatch sits in a soft #f1f6fd blue circle; this is the ONE bit of crafted depth/tint in the group and it's nice. It proves the team can do tactility — it just isn't applied to the cards.",
+          "WHAT'S-NEW (dl-whats-new) — Tier: Generic. A plain bulleted list inside a flat outlined card. Functional, but it's the changelog of a product whose changelog brags about 'haptic confirmation' and 'anticipation beats' — the screen itself has none of that polish, which undercuts the message."
+        ],
+        "delight": [
+          "FASTING is the delight high-point and it's genuinely good (code-verified, fasting.tsx): haptics.select() on Start, Haptics.notificationAsync(Warning) on a tap-to-end mis-tap, Haptics.notificationAsync(Success) on a real end, ring + button flip to success-green on completion. This is thoughtful, weight-appropriate haptic design — hold it up as the in-house bar for the rest of the app.",
+          "MISSING WIN-MOMENT (fasting complete) — completing a fast fires a Success haptic + green flip but NO motion celebration (no ring fill flourish, no confetti, no number count-up). The captured ix-62 even shows a degenerate '0h 0m' recent fast with zero acknowledgement. Reinforces the streak/habit loop — at the world bar (Oura/Whoop close-out) this moment gets a short, earned motion beat. Add a 1-shot ring-completion animation + count-up of the achieved duration.",
+          "PAYWALL delight is present and correct (code-verified): Haptics.selectionAsync() on plan tap, Haptics.notificationAsync(Success) on a completed purchase. Good. Opportunity: the purchase-success moment has a haptic but (from source) no visual celebration before the confirm Alert — the single highest-value conversion event in the app deserves a brief success motion, not just a buzz then a system alert.",
+          "WHAT'S-NEW is the dead surface (code-verified, whats-new.tsx) — useLayoutEffect only, NO haptics, NO entrance animation; the bullet list just snaps in. This is the changelog literally advertising new haptics and 'anticipation beats' while having none itself. Add a staggered fade/slide-in on the section list (reinforces 'this product is alive and improving' — the exact emotion a what's-new screen exists to create).",
+          "ERROR BOUNDARY — no haptic on appearance. A single light Haptics.notificationAsync(Error) when the boundary catches would give the user a felt signal that something happened and was handled, not just a silent screen-swap. Pair with a calmer, warmer visual so the felt signal isn't alarming.",
+          "WEB ANALOGS (mobile decisions must land on web): fasting-complete celebration → a CSS ring-fill + count-up on web; paywall purchase-success → a confirming micro-animation before redirect; what's-new entrance → the web changelog (web-desktop-whats-new.png is currently a plain static list too) gets the same staggered reveal. None of these win-moments currently have a web equivalent."
+        ],
+        "topIssues": [
+          {
+            "title": "Error boundary is off-palette, off-token, and off-brand — the lowest-craft surface in the product",
+            "surface": "Mobile error boundary (STATE-error-boundary.png / RootErrorBoundary.tsx)",
+            "severity": "P1",
+            "why": "It is the only screen in this group built from hardcoded COOL-slate hexes (#94a3b8/#64748b/#e4e4e8) on #0a0a0f instead of the warm-ink token system, the only lone dark screen in a light/warm flow, and visually indistinguishable from a default RN error template. Plus its footer text (#64748b on #0a0a0f) is 4.15:1 — sub-AA. A user hits this at their most fragile moment and the product abandons its identity there.",
+            "fix": "Rebuild on the token system: warm Suppr surface (Colors.dark.* or, better, match the light warm-ink world the rest of the flow uses), warm-ink text tokens, Radius.* not hardcoded 12, the Suppr mark, and a body/footer colour that clears 4.5:1. Add a single Error haptic on catch. Ship behind isFeatureEnabled per CLAUDE.md."
+          },
+          {
+            "title": "One card material — replace hairline-border-as-shadow with a single soft elevation model",
+            "surface": "Fasting, what's-new, paywall cards (ix-60/61/62, dl-whats-new, dl-paywall)",
+            "severity": "P1",
+            "why": "Every card in the group uses borderWidth:1 + colors.border as its only depth (4 instances, HEAD-verified). They read flat/Generic — wireframes coloured in — against a 2026 best-in-class bar (Things/Oura/Cron) that uses one soft low-opacity drop shadow and no border. This is one root primitive, not 4 separate fixes.",
+            "fix": "Define one card elevation token (soft ~8% shadow, no border) and apply it to the shared card surface so all three screens inherit it. design-system-enforcer encodes; flag-gate the rollout."
+          },
+          {
+            "title": "Three corner radii across four surfaces, one of them off-token",
+            "surface": "Paywall card r:18, fasting/whats-new cards r:8, error button r:12 (paywall.tsx:750, fasting.tsx:239, whats-new.tsx:110, RootErrorBoundary.tsx:94)",
+            "severity": "P2",
+            "why": "Card corner radius is 18 vs 8 vs 12 within a single feature group, and 18 has no home in the Radius scale (which tops out at xl:12). The corner language reads as built by different hands.",
+            "fix": "Pick one card radius token (extend the scale if 16/18 is the intended card value) and route all four call-sites through it. No hardcoded radii."
+          },
+          {
+            "title": "What's-new is the dead delight surface — a changelog advertising polish it doesn't have",
+            "surface": "What's-new (dl-whats-new / tour-16-whats-new / whats-new.tsx)",
+            "severity": "P2",
+            "why": "The screen literally lists 'haptic confirmation' and 'anticipation beats' as wins while having zero haptics and zero entrance motion itself (useLayoutEffect only, verified). It snaps in as a flat outlined list. A what's-new screen exists to make the product feel alive and improving; this one undercuts its own message.",
+            "fix": "Add a staggered fade/slide-in to the section list on appearance; mirror the same reveal on the web changelog (web-desktop-whats-new.png is also a static list). Owner: ui-product-designer, with sync-enforcer for web parity."
+          },
+          {
+            "title": "Win-moments land via haptic+colour but have no motion celebration",
+            "surface": "Fasting complete + paywall purchase-success (fasting.tsx, paywall.tsx)",
+            "severity": "P2",
+            "why": "The two biggest emotional peaks in this group — finishing a fast and buying Pro — fire the right haptic and flip to green, but get no visual celebration before falling through to a neutral state / system Alert. At the world bar these moments earn a short motion beat (ring-fill, count-up, brief confetti) that drives the repeat/convert behaviour.",
+            "fix": "Add a one-shot completion animation: ring-fill + duration count-up on fast complete; a brief success flourish before the purchase-confirm Alert. Provide CSS analogs on web (mobile decisions apply to web). Tie each to the behaviour (habit loop / conversion)."
+          },
+          {
+            "title": "Capture harness produced 3 phantom error-boundary fall-throughs",
+            "surface": "fasting-s00.png, paywall-s00.png, whats-new-s00.png (all MD5-identical to STATE-error-boundary.png)",
+            "severity": "P3",
+            "why": "The s00 captures for fasting/paywall/what's-new are byte-for-byte the error boundary (MD5 5548ed60…) — the harness crashed/failed to navigate and fell through. Reviewing those as the real surfaces would have produced phantom findings (the exact ENG-769 stale-bundle trap). The real surfaces were recovered from latest/ (dl-* and tour-* captures) and reviewed instead.",
+            "fix": "Hard-fail the screenshot tour when a captured frame matches the error-boundary hash, so s00 phantoms never enter a review set. Owner: executor (harness). Not a product-design defect."
+          }
+        ]
+      },
+      {
+        "group": "Web app — desktop viewport (public + authed)",
+        "signature": "Cropping the logo, this would NOT reliably say \"Suppr\" — and worse, the logo itself doesn't say one thing. The authed product (Today / Plan / Progress / Shopping / Import) is a genuinely coherent, calm, blue-primary, soft-pastel macro-tracker with a real point of view: warm off-white canvas (#fbfaf6), one tokenised blue primary (#588CE4 / dark #7BA3EA), tinted-pastel macro bars, soft-shadow white cards, lucide glyphs, the empty-state gradient calorie ring. That product world is Premium-adjacent and on-token. But it is wrapped in a public/marketing/legal shell that drifts to TWO other accent worlds — violet (text-violet-600/400 ×99 across all trust/legal/recipe/pricing surfaces) and a pink brand-gradient (#588CE4→#DF5EBC) — AND the single most identity-load-bearing element, the brand mark, renders as three different objects depending on surface: a grey ring \"plate\" in-app (SupprPlateMark), a bare black \"S\" at auth (SupprLogoMark), and a blue-square-white-S in the design-system reference (SupprMark / dev-primitives). The signature exists inside the app; it dissolves the moment you cross into auth, pricing, or legal. The product reads as one obsessive designer's work in the authed core and a different team's work everywhere a new user first lands.",
+        "tiers": {
+          "identity": "Generic",
+          "palette": "Good",
+          "consistency": "Generic",
+          "depth": "Good",
+          "motion": "Prototype",
+          "delight": "Prototype"
+        },
+        "palette": [
+          "ROOT — Three competing accent worlds, all in HEAD: (1) product = blue, tokenised correctly (--accent-primary #588CE4 → dark #7BA3EA); (2) marketing/legal/recipe = violet, RAW Tailwind text-violet-600/dark:text-violet-400 (×99 occurrences) in TrustPageHeader.tsx, pricing, recipe/[id], privacy/terms/dmca/licences/whats-new — NOT routed through --primary; (3) pricing = pink brand-gradient #588CE4→#DF5EBC. A user clicking from the blue authed app into Privacy/Terms sees every link flip to violet. The product primary is solid; the fix is to make the trust/legal/recipe surfaces consume --primary instead of hardcoding violet. Cite: web-desktop-roadmap (green/black), web-desktop-pricing (purple/pink), web-desktop-login (blue), web-desktop-privacy/terms (violet links).",
+          "BRAND-GRADIENT SELF-CONFLICT on Pricing (web-desktop-pricing): the declared 'fixed brand gradient' is #588CE4→#DF5EBC (PricingHero.tsx, marked 'do not replace with a token'), but the SAME page renders the Pro ribbon + CheckoutButton with a DIFFERENT gradient, from-violet-600 to-indigo-600. Two unrelated 'brand' gradients on one screen — the hero is blue→pink, the Pro card is violet→indigo. Not the gradient's existence (intentional) but the fact that pricing carries two of them.",
+          "Roadmap accent is GREEN, not blue (web-desktop-roadmap): 'Shipped' pills, status dots, and the left rail are emerald — yet the product primary is blue and pricing is pink/violet. The changelog (web-desktop-whats-new) repeats the green 'NEW' pills. Green is doing brand-accent duty on two public surfaces while meaning 'success/shipped' elsewhere — the same green now reads as both 'brand' and 'shipped/under-budget', diluting both. Decide: is green a brand accent or strictly the success token? Right now it's both.",
+          "TWO blues in the token layer: product primary #588CE4 vs the macro-protein token #6C8CFF (×4) — close enough to look like a mistake when adjacent (protein bar on Today vs the Log-a-meal button on the same screen, web-desktop-authed-today). Premium apps pick one blue family; these are two.",
+          "Colour-as-emotion gap on the win moment (web-desktop-authed-today): the empty calorie ring correctly uses the pale brand gradient (carve-out, correct). But there is no emotional escalation designed for the 'hit your target' state on web — the ring just turns success-green, the same green that already means 'roadmap shipped' and 'under budget'. The single highest-emotion moment in a tracker (closing the ring) has no dedicated warm/celebratory colour; it shares green with passive states.",
+          "NOTE — NOT a finding (phantom guard): the all-orange 'This week' and 'Daily breakdown' bars on the captured web-desktop-authed-today/progress are a STALE-CAPTURE artifact. ENG-787 (landed 08:26, after the 22:37 capture) recolours bars by effective target — amber only on over-target days (ProgressDashboard.tsx). Current code is correct per the over-budget=amber carve-out. Do not file the uniform-orange bars."
+        ],
+        "consistency": [
+          "ROOT — Brand mark is THREE different components rendering THREE different objects (highest-leverage drift): SupprPlateMark (grey ring 'plate', size 32) in the in-app sidebar + today-brand-bar; SupprLogoMark (bare black 'S') on the auth/login card (web-desktop-login/signin/signup/reset-password); and SupprMark (declared 'always blue background + white S regardless of theme') on the dev-primitives reference (web-desktop-dev-primitives). The design-system page literally documents the blue-square mark as law, while no first-impression surface uses it. Worse, the token --brand-mark-bg is #fbfaf6 (near-white) with a dark ring — which matches the sidebar ring but CONTRADICTS the dev-primitives 'always blue + white S' copy. Pick one mark, one token, one component.",
+          "Wordmark colour drifts per surface: black 'Suppr' (roadmap), purple 'Suppr' (pricing), black 'S' (auth), grey-ring + black 'Suppr' (in-app sidebar). Cite web-desktop-roadmap vs web-desktop-pricing vs web-desktop-login vs web-desktop-authed-today.",
+          "Button shape consistent and good: the blue primary (#588CE4, ~rounded-xl, white text) is the same on Sign in, Create account, Log a meal, Generate meal plan, Shopping list, Import, Get the app, Back to Today (404). This is the ONE primitive carried everywhere — keep it; it's the spine of the product's cohesion. Cite web-desktop-login, web-desktop-authed-plan, web-desktop-authed-import, web-desktop-authed-settings(404).",
+          "Card elevation consistent across authed product: white cards on warm canvas with a soft low shadow, ~16px radius, on Today / Plan / Shopping / Progress. Internally cohesive — this is Good-tier and should be the documented model. Cite web-desktop-authed-today, web-desktop-authed-shopping, web-desktop-authed-plan.",
+          "Empty-state icon treatment is consistent (soft blue rounded-square tile with a lucide glyph): Plan empty calendar, Planner gateway calendar, Today 'no meals' utensil. Good cross-surface primitive. Cite web-desktop-authed-plan, web-desktop-authed-planner, web-desktop-authed-today.",
+          "Input-field styling consistent (beige/taupe filled fields, ~rounded-lg) across auth, DMCA form, and search bars — but they are notably low-contrast placeholder text on beige (you@domain.com, Your password). Same field primitive everywhere (good), but the contrast of placeholder-on-beige should be checked against 4.5:1 (forensic concern, not confirmable at this zoom). Cite web-desktop-login, web-desktop-dmca.",
+          "Documented divergences correctly present — NOT flagged: onboarding 'Join the Suppr Club' copy (web-desktop-onboarding); Planner 'lives in the iOS app' gateway (web-desktop-authed-planner) is the web/mobile move-meal carve-out; calorie-ring empty=gradient (web-desktop-authed-today)."
+        ],
+        "depth": [
+          "Authed product depth is Good, not flat/cheap: white cards float on the warm #fbfaf6 canvas with a soft, low-opacity shadow and consistent radius — no hairline-border-as-shadow tell in the core app. Today, Shopping, Plan, Progress all share this one elevation model. This is the strongest part of the surface group. Cite web-desktop-authed-today, web-desktop-authed-shopping.",
+          "Auth/legal cards sit at the same elevation tier (single soft-shadow white card centred on canvas) — consistent. Cite web-desktop-login, web-desktop-reset-password, web-desktop-dmca.",
+          "Depth opportunity — the calorie ring is the hero object and renders FLAT in the empty state (web-desktop-authed-today): a thin pale-lavender stroke with no inner glow, no gradient weight, no tactility. Best-in-class trackers (Oura, the macro-ring apps Suppr already beats on multi-ring concept) give the ring a sense of material — a subtle inner shadow or gradient stroke so it reads as a dial, not an SVG outline. Right now the single most-looked-at element on the home screen is the least crafted.",
+          "The 'This week' / 'Daily breakdown' bars (web-desktop-authed-today) are flat single-fill rounded bars with no depth or gradient — fine as data, but combined with the (stale) uniform colour they read wireframe-ish. Once ENG-787 colours them by target, a faint gradient or rounded-cap polish would lift them from 'charted' to 'crafted'.",
+          "Source-platform icon tiles on Import (web-desktop-authed-import) are flat soft-blue squares with generic glyphs (TikTok/Instagram/YouTube/Website) — all the same tint, no brand recognition, no depth. A premium import surface uses recognisable platform marks; these read as placeholder chips."
+        ],
+        "delight": [
+          "Web has NO win-moment design at all on the surfaces captured — this is the biggest delight gap. Closing the calorie ring, hitting macro targets, completing the first-run checklist, finishing a shopping list (0/31 → 31/31) — none of these have a designed motion or colour-pulse moment in the captures. On web (no haptics) the canonical analog is a confirming micro-animation + colour pulse, and it is absent. The product's single best habit-forming moment (ring close) lands with nothing. Cite web-desktop-authed-today (ring), web-desktop-authed-shopping (0/31 progress bar — a perfect completion-celebration candidate that's currently a static hairline).",
+          "First-run success is delivered as a plain toast.success() (web-desktop-authed-today/progress/plan/shopping all show the green 'You're all set!' toast floating mid-canvas). It's a stock toast, not a designed onboarding-complete moment — and because it fires on every authed capture it visually collides with the date header and page titles. The completion of onboarding deserves a real moment (ring fill, confetti-equivalent, a warm colour wash), not a 5-second grey-green pill. NOTE: the mid-canvas position is a capture-timing artifact (toast fires on first-run), not a layout bug — but the LACK of a designed completion moment is the real finding.",
+          "No motion personality is observable across the static captures, and nothing in the surfaces suggests a shared transition language (no skeleton-to-content choreography, no number tweens on the macro counts which sit at 0/101g etc.). On web the macro numbers and the calorie total are the obvious places for a 200ms count-up tween on log — currently they appear to snap. Cite web-desktop-authed-today.",
+          "Mobile-parity reminder: any web win-moment designed here (ring-close colour pulse, count-up tween, shopping-list completion) must mirror the mobile confirm/success haptic moments per the cross-platform rule — the web motion analog and the mobile haptic should be designed as one decision, not two.",
+          "Positive: the empty/zero states are calm and on-voice ('No meals logged on this day — Tap below to search, scan, snap a photo, or use your voice') — supportive, body-neutral, no diet-shaming. The 404 (web-desktop-authed-settings) is genuinely well-handled (clean card, 'Back to Today' + 'Browse recipes'). These don't need delight added; they need the POSITIVE peaks (target hit, list done) given the same care the empty states already have."
+        ],
+        "topIssues": [
+          {
+            "title": "Three different brand marks across the product — grey ring (in-app), black S (auth), blue square (design-system law)",
+            "surface": "web-desktop-authed-today (sidebar), web-desktop-login (auth card), web-desktop-dev-primitives (reference)",
+            "severity": "P0",
+            "why": "The most identity-load-bearing element renders as three different objects via three components (SupprPlateMark / SupprLogoMark / SupprMark), and the --brand-mark-bg token (#fbfaf6 ring) directly contradicts the dev-primitives 'always blue + white S' declaration. A new user's first three screens (login → onboarding → Today) show three different logos. No flagship product does this.",
+            "fix": "Pick ONE canonical mark and one token. Resolve the dev-primitives contradiction (blue-square vs ring) with a decision, collapse SupprPlateMark/SupprLogoMark/SupprMark to a single component, and use it on auth, sidebar, pricing, and legal. Hand to ui-product-designer to choose the mark; design-system-enforcer to encode it as the one component + token; gate behind a flag per CLAUDE.md."
+          },
+          {
+            "title": "Marketing/legal/recipe surfaces hardcode violet (×99) instead of the blue --primary",
+            "surface": "web-desktop-privacy, web-desktop-terms, web-desktop-dmca, web-desktop-licences, web-desktop-roadmap, web-desktop-pricing",
+            "severity": "P1",
+            "why": "text-violet-600/dark:text-violet-400 appears 99× across TrustPageHeader and the trust/legal/recipe/pricing surfaces as raw Tailwind, never routed through --primary (#588CE4). A user crossing from the blue authed app into Privacy/Terms sees every link and accent flip to violet — the accent identity changes mid-session. Root cause is one shared component (TrustPageLayout/Header) plus pricing, not 15 pages.",
+            "fix": "Replace the raw text-violet-* utilities in TrustPageLayout/TrustPageHeader (and pricing's non-gradient violet) with the --primary token. One component change moves all six legal/trust pages. Owner: design-system-enforcer. Keep the intentional #588CE4→#DF5EBC brand gradient (PricingHero) untouched."
+          },
+          {
+            "title": "Pricing carries two unrelated 'brand' gradients on one page",
+            "surface": "web-desktop-pricing",
+            "severity": "P2",
+            "why": "The declared fixed brand gradient is blue→pink (#588CE4→#DF5EBC, PricingHero, marked do-not-tokenise), but the Pro ribbon and CheckoutButton render a different from-violet-600 to-indigo-600 gradient. The hero is blue→pink; the most-popular Pro card is violet→indigo. The emotional peak of the monetisation surface uses an accent that matches neither the brand gradient nor the product primary.",
+            "fix": "Align the Pro ribbon + CheckoutButton gradient to the canonical #588CE4→#DF5EBC brand gradient (or to --primary), removing the violet→indigo one-off. Owner: design-system-enforcer / ui-product-designer."
+          },
+          {
+            "title": "No designed win-moment on web — ring close, target hit, list completion all land flat",
+            "surface": "web-desktop-authed-today (calorie ring + macro counts), web-desktop-authed-shopping (0/31 progress)",
+            "severity": "P1",
+            "why": "The product's core habit loop has no celebratory motion or colour-pulse on web. Closing the calorie ring just swaps to success-green (a colour already overloaded with 'shipped' and 'under budget'); macro numbers appear to snap rather than tween; finishing a shopping list (0/31→31/31) updates a static hairline bar. The web analog of the mobile success-haptic is simply missing, so the moments that drive repeat behaviour fall flat.",
+            "fix": "Design one web win-moment system: ring-close colour pulse + 200ms count-up tween on macro/calorie numbers on log; a completion celebration on shopping-list 100%. Mirror the mobile success-haptic decision so web motion + mobile haptic are one spec. Owner: ui-product-designer; sync-enforcer for parity."
+          },
+          {
+            "title": "Brand mark + auth wordmark render at low fidelity / bare 'S' on first-impression surfaces",
+            "surface": "web-desktop-login, web-desktop-signup, web-desktop-reset-password",
+            "severity": "P2",
+            "why": "The auth card — the literal first screen for an MFP refugee landing on suppr.app — shows a bare black 'S' floating above a white card, with the only colour being the periwinkle Sign-in button. There's no brand world, no warmth, no recognisable mark. For the priority MFP-capture cohort, the cold-open is generic-SaaS, not 'a product people screenshot'.",
+            "fix": "Bring the canonical mark (once resolved in P0) and a hint of the brand world (the warm canvas is already there; add the resolved mark + a touch of the brand gradient or a recipe-photo motif) to the auth card. Owner: ui-product-designer."
+          },
+          {
+            "title": "Calorie ring — the home-screen hero — renders as a flat thin stroke",
+            "surface": "web-desktop-authed-today",
+            "severity": "P2",
+            "why": "The most-looked-at object on the daily-use home screen is a single pale-lavender SVG outline with no material: no inner shadow, no gradient stroke weight, no dial tactility. Suppr's multi-ring concept already beats competitors conceptually; the execution of the ring itself is the least-crafted element on the screen.",
+            "fix": "Give the ring material: a subtle gradient stroke or inner shadow so it reads as a dial, and carry the 3-state colour mapping (gradient/green/red, per carve-out) onto a crafted surface rather than a hairline. Owner: ui-product-designer. (Single-surface execution detail — could also route to ui-critic, but it ties to the system-wide depth model so noted here.)"
+          }
+        ]
+      },
+      {
+        "group": "Web app — mobile-web viewport (public + authed)",
+        "signature": "PROVENANCE FIRST — this wall is mostly holes. Of 29 captures, the entire authed product (Today, Recipes, Plan, Progress, Discover, Profile, Settings, Shopping, account-billing) did NOT render: every authed-* route fell through to either the public landing page (authed-recipes/library/discover/planner/shopping/billing) or a 404 \"We couldn't find that page\" card (authed-today/progress/profile/settings), and home/signin/login/fasting all redirected to the sign-in screen. The authed session never carried into the Playwright run. So I can only review the public + auth + legal shell. On THAT shell, the signature is real and decent: a calm, editorial, cream-paper aesthetic (#fbfaf6 ground), heavy Inter display headings with tight tracking, soft 16-22px-radius cards on subtle elevation, a restrained green/pink ambient wash on hero surfaces. Crop the logo and the landing + legal pages would still read as one calm, trustworthy nutrition product. BUT the brand mark itself is split-brained: the 2026-05-19 decision moved the SupprMark to black-on-cream (--brand-mark-bg #fbfaf6 / --brand-mark-ring #1a1714), and auth/legal/roadmap correctly render that dark \"S\"; the LANDING header still hardcodes a blue rounded-square tile (.lp-mk { background: var(--primary); color:#fff }) and the dev-primitives brand-spec page still SAYS \"Always blue background + white S\" — so the product's own brand-reference page now contradicts the product's own shipped mark. That is the cropped-logo test failing at the logo. Tier on the reviewable shell: Good — calm and credible, a notch below the cold-open polish of MacroFactor/Cronometer's marketing because of the mark drift, three competing gradients, and a cookie strip cropping the hero CTA.",
+        "tiers": {
+          "identity": "Good",
+          "palette": "Generic",
+          "consistency": "Generic",
+          "depth": "Good",
+          "motion": "Prototype",
+          "delight": "Generic"
+        },
+        "palette": [
+          "BRAND-MARK COLOUR IS SPLIT ACROSS THE PRODUCT (root cause, source-verified). The 2026-05-19 mark decision = black-on-cream square (tokens --brand-mark-bg #fbfaf6 / --brand-mark-ring #1a1714 light, #0f0e12/#fff dark). web-mobile-signin/signup/reset-password/roadmap/terms/privacy all correctly render the dark 'S'. But web-mobile-landing.png renders a BLUE rounded-square 'S' tile because app/(landing)/landing.css .lp-mk hardcodes background:var(--primary), and web-mobile-dev-primitives.png's spec copy literally states 'Always blue background + white S regardless of theme.' So the same wordmark is two different colours one tap apart, and the brand-reference page documents the wrong one. Fix at the root: point .lp-mk at --brand-mark-bg/--brand-mark-ring and rewrite the dev-primitives caption — do not patch per-page.",
+          "THREE COMPETING 'PREMIUM' GRADIENTS ON ONE SURFACE (web-mobile-pricing.png + source). PricingHero declares a 'fixed brand gradient' #588CE4->#DF5EBC (blue->pink, matching the wordmark per its own comment), yet on the same page PricingTiersGrid's 'most popular' ribbon and CheckoutButton use raw Tailwind from-violet-600 to-indigo-600 (a different violet->indigo pair, hardcoded, no token). The cold-open paywall therefore shows two unrelated brand gradients. Collapse to the one declared brand pair as a token.",
+          "ONBOARDING vs PRICING HERO WASH DRIFT. web-mobile-onboarding.png uses a soft green->pink ambient wash behind 'Join the Suppr Club' with a FLAT solid-blue primary CTA, while web-mobile-pricing.png uses the saturated blue->purple->pink gradient block. Two different 'this is our brand colour moment' treatments on the two highest-intent surfaces. Pick one hero-gradient language and carry it across onboarding + pricing.",
+          "AUTH PRIMARY BUTTON READS AS DISABLED ON SIGN-UP. web-mobile-signup.png 'Create account' is rendered in pale washed-out blue (pre-checkbox disabled state) while web-mobile-signin.png 'Sign in' is full-saturation blue — a new user landing on sign-up first sees the primary CTA looking dead. The disabled state is too low-contrast against the enabled state to read as 'tick the box to enable' rather than 'broken'.",
+          "EMOTIONAL-PULL GAP: the public shell never uses warmth on a win. Every accent is the same cool blue/green; there is no warm colour reserved for an achievement or activation moment. On the marketing side this is fine, but the onboarding 'Join the club' moment and the post-signup confirmation toast (web-mobile-home capture shows the green 'You're all set!' strip on the real Today) are the only warm/positive beats and they use plain success-green — consider a single reserved celebratory accent so the activation moment feels different from a passive 'under budget' green."
+        ],
+        "consistency": [
+          "LOGO/MARK TREATMENT (root): blue tile (landing) vs dark 'S' tile (auth/legal/roadmap) vs no mark at all (help, which only shows '<- Back to app'). Three header treatments. Drift, source-confirmed — collapse to the one --brand-mark token.",
+          "AUTH SHELL is internally consistent and good: signin/signup/login/reset-password share one card (rounded ~16px, soft shadow, cream ground), one 'Continue with Apple' black pill, one input style (filled #ECE9E2 fields, ~10px radius), one 'OR' divider. This is the most coherent cluster on the wall — hold it up as the bar.",
+          "LEGAL/INFO PAGES (privacy/terms/dmca/licences/help/whats-new/roadmap) share one strong template: '<- Back to app', display heading, 'Last updated April 2026' + V1.0 badge + PRINT/SAVE PDF + REVISION HISTORY row, Privacy/Terms/DMCA/Licences/Help sub-nav. Consistent — but roadmap and landing carry a top brand header while privacy/terms/help do NOT, so the legal cluster is itself split on whether it shows a logo.",
+          "BADGE/PILL LANGUAGE drifts: landing 'NEW' = blue solid rounded pill; whats-new 'LATEST' = mint-green pill and 'NEW' = lime pill; roadmap 'Shipped' = pale-green pill; pricing trust chips = grey outline pills with green shield icons. Several pill shapes/fills doing similar 'status' jobs with no shared token.",
+          "CTA SHAPE: landing 'Get started' = small pill (top-right); onboarding 'Join the club' = full-width rounded-rect; auth 'Sign in' = full-width rounded-rect; pricing 'Get started' top-right = outline 'Sign in' pill. Button radius is consistent-ish (~10-12px) but the primary-CTA SHAPE (pill vs full-width block) is decided per surface, not by one rule.",
+          "COOKIE-CONSENT STRIP overlaps the bottom of EVERY public capture (landing/pricing/onboarding/legal), cropping the hero CTA on landing ('Get started — it's free' is partially under the strip) and the BILLING toggle on pricing. Known component (ENG-633 lifts FAB above it on Today) but on cold-open marketing it covers the single most important first-impression button.",
+          "DEV-PRIMITIVES brand-spec copy is STALE and contradicts shipped tokens — not a parity carve-out, a documentation drift that will keep re-seeding the blue-mark mistake."
+        ],
+        "depth": [
+          "Material on the reviewable shell is genuinely Good, not flat: the 404 card, auth card, pricing trust-chip rows, and legal cards all sit on real soft elevation (low-opacity shadow, no hairline-border-as-shadow tell) over the cream ground — this is crafted, not wireframe-coloured-in. Hold it as the depth bar for the rest of the product.",
+          "Pricing hero gradient block (web-mobile-pricing.png) has real depth and saturation and reads premium. The onboarding hero by contrast is a flat soft wash with a flat solid-blue button — slightly cheaper/flatter than the pricing hero for an equally important moment. Bring the onboarding CTA up to the same elevated/gradient treatment.",
+          "Input fields on auth (web-mobile-signin/signup) are filled flat #ECE9E2 boxes with placeholder text at borderline contrast — they read slightly 'form-template' next to the crafted cards around them. A subtle inner-shadow or 1px focus-ring token would lift them from generic-form to crafted.",
+          "CANNOT JUDGE the authed product's depth (Today rings, recipe cards, progress charts, planner) — every authed capture is a landing-fallback or 404. This is the biggest depth blind spot and must be re-captured before a real verdict."
+        ],
+        "delight": [
+          "No motion or win-moment is observable on this shell because these are static public/marketing pages — but the structural absence to flag is that the cold-open hero CTA is covered by a cookie strip, which kills the one moment ('Get started — it's free') that should feel inviting and tappable on first load.",
+          "WEB HAS NO HAPTICS (correct — web). The web analog for win moments is motion/colour. The post-signup 'You're all set!' green strip visible in web-mobile-home.png is the right instinct but it's a static success-green toast with no entrance animation or reserved celebratory colour — on web this activation beat should land with a brief confirming micro-animation + a warmer celebratory accent, distinct from passive success-green, to reinforce the first-log/activation behaviour.",
+          "The pricing 'Save 37%' annual badge is the one place a colour nudge toward a conversion behaviour exists — it's a small green tag. This is fine but under-leveraged: the highest-value behaviour (choosing annual) gets the same green as everything else. A reserved emphasis colour/motion on the recommended plan would pull the eye to the conversion path.",
+          "CANNOT assess the real engagement layer — meal-log confirmation, target-hit celebration, streak/win moments — because the authed surfaces did not render. Flag as uncovered; the delight verdict on the actual product is pending a working authed capture run."
+        ],
+        "topIssues": [
+          {
+            "title": "Authed mobile-web product never rendered — wall is ~40% holes",
+            "surface": "web-mobile-authed-{today,progress,profile,settings,recipes,library,discover,planner,shopping,billing}, account-billing, home, fasting",
+            "severity": "P0",
+            "why": "Every authed-* capture resolved to either the public landing page (recipes/library/discover/planner/shopping/billing) or a 404 'We couldn't find that page' card (today/progress/profile/settings); home/signin/login/fasting/account-billing all redirected to sign-in. The Playwright authed session did not carry, so the entire core product (Today rings, recipe cards, progress charts, planner, shopping, settings) is UNREVIEWED on mobile-web. Any identity/depth/delight verdict on the product proper would be inferred, not seen — exactly the silent-partial-wall failure the brief bans.",
+            "fix": "Fix the visual-audit-authed Playwright fixture so the storageState/auth cookie actually authenticates before navigating, then re-run npm run test:e2e:visual and re-capture all authed-* mobile-web routes. Until then mark the authed product UNCOVERED on this platform — do not synthesise its design from code."
+          },
+          {
+            "title": "Brand mark is two different colours one tap apart (and the brand-spec page documents the wrong one)",
+            "surface": "web-mobile-landing.png (blue tile) vs web-mobile-signin/signup/roadmap/terms/privacy (dark 'S') vs web-mobile-dev-primitives.png (spec says 'always blue')",
+            "severity": "P1",
+            "why": "Source-confirmed: the 2026-05-19 decision moved SupprMark to black-on-cream via --brand-mark-bg/--brand-mark-ring (suppr-mark.tsx, SupprLogoMark.tsx both migrated). Auth/legal/roadmap render the correct dark mark. But app/(landing)/landing.css .lp-mk still hardcodes background:var(--primary) (blue) + color:#fff, and the dev/primitives brand-reference page caption still reads 'Always blue background + white S regardless of theme.' So the company's own brand-spec page contradicts the company's own shipped logo, and the highest-traffic surface (landing) carries the OLD mark. Fails the cropped-logo identity test at the actual logo.",
+            "fix": "Repoint .lp-brand .lp-mk and .lp-ws-brand .lp-mk to var(--brand-mark-bg)/var(--brand-mark-ring) (or use the SupprLogoMark component), and rewrite the dev-primitives caption to the black-on-cream / white-on-black spec. One token + one copy fix moves every landing surface. Gate behind isFeatureEnabled per CLAUDE.md. Owner: design-system-enforcer (token) + executor (copy)."
+          },
+          {
+            "title": "Three competing brand gradients on the cold-open paywall",
+            "surface": "web-mobile-pricing.png",
+            "severity": "P1",
+            "why": "PricingHero declares #588CE4->#DF5EBC the 'fixed brand gradient' (and its comment says it matches the wordmark one-to-one), yet on the same page the 'most popular' ribbon and the CheckoutButton both use raw Tailwind from-violet-600 to-indigo-600 — a different violet->indigo gradient, hardcoded, no token. The pricing page is a primary cold-open conversion surface and it shows two unrelated 'brand' gradients within one viewport, reading as two design systems.",
+            "fix": "Define ONE brand-gradient token (the declared #588CE4->#DF5EBC pair) and apply it to the hero, the popular-tier ribbon, and the primary checkout button. Delete the from-violet-600/to-indigo-600 hardcodes. Owner: design-system-enforcer."
+          },
+          {
+            "title": "Sign-up primary CTA reads as broken/disabled on first load",
+            "surface": "web-mobile-signup.png",
+            "severity": "P2",
+            "why": "'Create account' renders in pale washed-out blue (the pre-checkbox disabled state) while the adjacent flow's 'Sign in' is full-saturation blue. A new user — the priority MFP-refugee cohort — lands on sign-up first and sees the primary action looking dead, with no obvious cue that ticking the ToS box enables it. The disabled-vs-enabled delta is too subtle to read as intentional.",
+            "fix": "Make the disabled state read as clearly-waiting (e.g. neutral/ghost with a 'Tick to agree' helper) rather than a faded version of the brand blue, so the enabled transition is a visible reward. Owner: ui-product-designer."
+          },
+          {
+            "title": "Cookie-consent strip crops the hero CTA on cold-open marketing",
+            "surface": "web-mobile-landing.png, web-mobile-pricing.png, web-mobile-onboarding.png",
+            "severity": "P2",
+            "why": "The fixed consent strip sits at the bottom of every public capture and partially covers the single most important first-impression button — landing's 'Get started — it's free' is half under the strip, pricing's billing toggle is grazed. ENG-633 already lifts the FAB above it on Today, proving the team knows it occludes CTAs; the marketing hero has the same problem and it's the literal first thing a refugee sees.",
+            "fix": "Apply the same lift-above logic to the public hero CTA, or render the consent strip as a slimmer top-anchored or corner toast on marketing routes so it never overlaps the primary CTA. Owner: ui-product-designer + executor."
+          },
+          {
+            "title": "Onboarding hero is flatter and uses a different brand-colour treatment than the pricing hero",
+            "surface": "web-mobile-onboarding.png vs web-mobile-pricing.png",
+            "severity": "P3",
+            "why": "Onboarding 'Join the Suppr Club' uses a soft flat green->pink wash + a flat solid-blue button; pricing uses a saturated blue->purple->pink gradient block with real depth. Two of the highest-intent surfaces present the brand-colour moment two different ways, and the activation surface (onboarding) is the flatter, cheaper-looking of the two.",
+            "fix": "Unify on one hero-gradient language and bring the onboarding CTA up to the elevated/gradient treatment of pricing. Owner: ui-product-designer. (Onboarding Welcome COPY divergence stays an intentional carve-out — this is about the colour/depth treatment, not the words.)"
+          }
+        ]
+      }
+    ],
+    "externalBar": [
+      {
+        "axis": "Palette & colour-as-emotion — restraint plus emotional pull on win/streak moments",
+        "currentBar": "The 2026 bar is \"calm canvas, semantic colour, earned saturation.\" Three rules the best apps now share:\n\n1. A NEUTRAL, SLIGHTLY-WARM, DESATURATED CANVAS carries ~90% of every screen. Linear's late-2025/2026 refresh explicitly moved \"toward a warmer gray that still feels crisp, but less saturated,\" away from its old cool blue-ish hue, and collapsed theming to three variables only — base, accent, contrast (linear.app/now/behind-the-latest-design-refresh, 2026). Things 3 (v3.22, iOS 26, 2026) and Notion sit on near-white warm greys (#fafafa / #f7f6f3). The canvas is deliberately quiet so colour means something when it appears.\n\n2. ONE ACCENT, USED SPARINGLY, IS THE PREMIUM SIGNAL. Arc has the user pick a single accent at first launch and themes the whole browser off it; Linear runs a single desaturated violet/blue. The 60-30-10 discipline holds — accent is the 10%, never the 30% (IxDF \"UI Color Palette 2026\"). Saturation is a scarce resource spent on the thing that matters, not sprayed across the chrome.\n\n3. COLOUR IS SEMANTIC AND STATE-DRIVEN, NOT DECORATIVE — and this is where emotion lives. Oura's 2025/26 redesign built a \"unified semantic color language\" where \"the new design system uses color to signal your body's different states according to your biometrics, giving you an immediate visual signal of how you're doing each day\" (ouraring.com/blog/new-app-design, 2026). Copilot Money's palette \"adapts to your spending patterns\" — green on-track / yellow approaching / red over — making status readable \"in under three seconds\" (StackSwitch, SaaSweep reviews 2026). The emotional pull comes from the green/positive state being legible and slightly rewarding, not from confetti.\n\nOn WIN/STREAK moments specifically, 2026 has firmly turned AGAINST gaudy celebration. The trend consensus: \"Gamification will be replaced with calmer micro-interactions... Hover states that sparkle like confetti are being replaced with animation that communicates state, structure, and system intent\" (Tubik, Envato Elements 2026). Celebrations are \"the product's punctuation marks that confirm, nudge, and celebrate without interrupting the sentence — timing, threshold, and context matter more than fancy trajectories.\" The bar for a win moment: a brief, restrained colour-and-motion beat (a fill completing, an accent/success colour blooming for ~300-600ms, a single haptic), thresholded so it only fires on a genuine milestone — never on every log. Cal AI does milestone celebrations + animated badges but reserves them for streak milestones, not routine actions (Cal AI reviews, 2026).",
+        "examples": [
+          {
+            "app": "Linear",
+            "what": "2026 refresh moved to a warmer, less-saturated grey and collapsed the theme system to three variables (base, accent, contrast). Proof that 'restraint' in 2026 means a quiet warm-neutral canvas with ONE accent — colour is reserved, not decorative. (linear.app/now/behind-the-latest-design-refresh)"
+          },
+          {
+            "app": "Oura",
+            "what": "2025/26 redesign introduced a 'unified semantic color language' that 'uses color to signal your body's different states' for an immediate daily read. The win/positive state is a colour cue at the at-a-glance layer, not a separate celebration screen. (ouraring.com/blog/new-app-design)"
+          },
+          {
+            "app": "Copilot Money",
+            "what": "Palette 'adapts to your spending patterns'; green on-track / yellow approaching / red over makes status scannable in under three seconds — and v4.3 added colourblind-safe chart colours. Emotional pull comes from the positive (green) state being legible and calm. The prettier app got opened 1.4x/day vs YNAB 0.6x. (StackSwitch & SaaSweep reviews 2026)"
+          },
+          {
+            "app": "Things 3 / Notion / Cron",
+            "what": "Warm near-white canvases (#fafafa, #f7f6f3) — the exact references Suppr already pins its #fbfaf6 background to. Confirms Suppr's canvas is already at the 2026 bar."
+          },
+          {
+            "app": "Arc",
+            "what": "User picks a single accent at first launch; the whole browser themes off it, with 'micro-delight' reserved for moments, not chrome. Model for one-accent identity + thresholded delight. (popsci, efficient.app 2026)"
+          },
+          {
+            "app": "Cal AI",
+            "what": "Milestone celebrations and animated badges, but gated to streak milestones and consistent behaviour — not every log. The calibrated version of nutrition-app gamification. (Cal AI reviews 2026)"
+          },
+          {
+            "app": "2026 trend consensus (Tubik / Envato Elements)",
+            "what": "'Gamification replaced with calmer micro-interactions'; confetti-sparkle replaced by 'animation that communicates state'; celebrations as 'punctuation marks' gated by timing/threshold/context. The explicit anti-confetti bar for win moments."
+          }
+        ],
+        "suprMoves": [
+          "KEEP the canvas — don't touch it. Suppr's #fbfaf6 warm-cream base, single blue accent (#588CE4), and one-of-eight-hue Photos-anchored token system already sit exactly at the Linear/Things/Cron 2026 bar. The CSS comment even cites Notion/Things/Cron as references. This axis is a polish-the-win-moment job, not a repalette.",
+          "Define a dedicated 'win' state colour beat distinct from the static success token. Today, success-green (#56A775) does double duty as both the calories macro and the under-budget state — so a completed day looks the same as a half-logged one. For the moment a day closes on-target (or a streak milestone), let the success-soft fill (rgba(86,167,117,0.12)) bloom up to a richer success fill for ~400-500ms then settle back — the desaturated-to-saturated-to-rest beat Copilot/Oura use. Restraint preserved because it fires once, on threshold, then returns to calm.",
+          "Threshold celebrations hard — fire ONLY on genuine milestones (first log of the day, target hit, 3/7/30-day streak), never on every meal log. This is the explicit 2026 line (Tubik: celebrations are 'punctuation marks', not every word; Cal AI gates badges to streak milestones). Wire the threshold logic into the existing analytics/streak state rather than the log handler.",
+          "Pair the colour beat with ONE haptic and a sub-second spring, not confetti. The theme already references a 'spring used for sheet present + confirm-success' (theme.css line 15) and mobile has a success spring — reuse it. A single notification-success haptic + the success-colour bloom is the 2026-correct win moment; a particle burst would read as 2021.",
+          "Make the positive/under-budget state quietly legible at a glance, Copilot-style — the emotional pull is mostly the green 'you're on track' read being calm and instant, not the animation. Audit the Today ring + macro tiles so the on-track state is unmistakably the success hue and the over-budget state is unmistakably amber (#F78A32) — Suppr already has the calorie-ring 3-state mapping (gradient / success-green / destructive-red) and amber-over-budget; verify it renders with enough chroma separation to be read in under three seconds without reading numbers.",
+          "Reserve saturation for the win — keep everything else desaturated. Because the canvas and chrome are already low-saturation warm neutrals, a single saturated success bloom will carry disproportionate emotional weight (the Linear/Arc principle: scarce saturation = premium signal). Resist adding accent colour anywhere in the chrome 'to balance it' — that would dilute the one moment that should pop.",
+          "Gate the new win-moment treatment behind a feature flag per the CLAUDE.md non-negotiable (isFeatureEnabled web / mobile equivalent), keep the old path in the else, and capture before/after on web + mobile + a Storybook proof — animation timing changes and colour-meaning changes are exactly the in-scope category for flag-gated visual rollout."
+        ]
+      },
+      {
+        "axis": "Material depth & elevation (flat-vs-crafted: shadow systems, layering, tactility)",
+        "currentBar": "The 2026 bar is \"purposeful depth, not decorative depth\" — depth as information about the z-axis, executed with restraint. Five concrete sub-bars define best-in-class right now: (1) ELEVATION IS A TOKENISED LADDER, NOT AD-HOC. Best apps run a 4-6 tier system (base/card/dropdown/sheet/modal) where every raised surface pulls from a named token; no component invents its own shadow. (2) DARK MODE USES TONAL LIFT, NOT SHADOWS. The hard rule of 2026: black drop-shadows are invisible on dark canvases, so separation comes from luminance — each elevation step is +5-8% surface lightness (Material 3 surface-container ladder; Linear's LCH opacity-of-black/white system), reinforced by a 1px top hairline highlight to fake a lit edge. Shadows are a light-mode-only tool. (3) THE FLAT-VS-CRAFTED ANSWER IS 'FLAT SURFACES, CRAFTED EDGES + MOTION'. The winning grammar (Linear, Things, Notion) separates content surfaces with hairline borders + subtle luminance, NOT diffuse shadows; reserves real shadow for things that genuinely float (FAB, sheets, popovers, dragged items); and puts the 'tactility' into interaction physics — press-down scale (0.96-0.98), lift-on-touch, edge-distortion on overscroll — rather than into static skeuomorphic relief. (4) SHADOWS, WHEN USED, ARE SOFT + DIRECTIONAL + LAYERED. One consistent top-down light source; soft low-opacity ambient (~0.06-0.12 in light mode) rather than one hard dark drop; often two stacked shadows (tight contact + wide ambient); larger blur = higher in the z-stack. (5) GLASS IS A FUNCTIONAL LAYER WITH A LEGIBILITY FLOOR. iOS 26 Liquid Glass / Linear's disciplined take: translucency is reserved for the floating control/chrome layer that sits ABOVE content (nav bars, toolbars, sheets), always with a scrim behind text and an automatic swap to a solid high-contrast surface under Increase Contrast / Reduce Transparency. Refraction is dropped where it hurts dense reading. The meta-bar: depth must survive accessibility settings and never cost legibility — every effect has a graceful solid fallback.",
+        "examples": [
+          {
+            "app": "Linear (Liquid Glass + UI redesign posts, 2026)",
+            "what": "Disciplined 'ProKit' depth: keeps Apple's translucency/physicality but DROPS refraction because it 'makes dense professional interfaces harder to read.' Surface separation comes from luminance — opacities of black/white in LCH space across a base→foreground→panel→dialog→modal ladder — not drop shadows. Tactility is physics: elements lift slightly on touch, distort on overscroll, with a real-time GPU-lit highlight (SDF specular) that shifts as you scroll. Avoids strong diffuse shadows; uses tight contained ones (e.g. rgba(0,0,0,0.4) 0 2px 4px). Auto-adds solid outlines under Increase Contrast. This is the canonical 'crafted-but-flat' reference."
+          },
+          {
+            "app": "Apple iOS 26 (Liquid Glass, Apple Newsroom + Developer design gallery, 2026)",
+            "what": "Establishes the floating-control-layer model: chrome (nav/tab/toolbar) is a distinct translucent Liquid Glass layer ABOVE content that morphs and gives way to content; the 'Solid Layer' (critical text/icons/buttons) must stay opaque and readable. Metal-4-accelerated real-time blur/specular at 60fps. Sets the system expectation users now bring to every iOS app — and the requirement to degrade to solid under Reduce Transparency."
+          },
+          {
+            "app": "Material Design 3 (m3.material.io elevation + tone-based surfaces, 2026)",
+            "what": "The concrete dark-mode spec: tonal elevation via surface-container ladder (surface, -low, -high, -highest) where each step is ~+5-8% luminance / a stronger primary-tint overlay — depth WITHOUT relying on shadows. Numeric token roles (elevation-0 base → 1 card → 2 dropdown → 3 modal). This is the citable source for 'step up luminance, not shadow' in dark mode."
+          },
+          {
+            "app": "Copilot Money (2026 design refresh)",
+            "what": "Widely held 'best-designed iOS finance app' — adopted the iOS 26 style in its first refresh since launch; every chart/card/animation reads as intentional, with a card-based dashboard whose visual hierarchy guides the eye. Proof that in a data-dense personal-tracking app (closest genre to Suppr), the premium signal is restraint + motion polish, not heavy material relief."
+          },
+          {
+            "app": "Things 3 (Cultured Code, 2x Apple Design Award)",
+            "what": "The tactility benchmark: 'one of the most tactile, fast-as-you-can-move apps around,' where depth lives in purposeful micro-interactions and animation rather than skeuomorphic shadow. Surfaces are near-flat with hairline separation; the craft is in the motion and timing. Suppr's own theme comments already cite 'Notion / Linear / Things 3 grammar' as the target."
+          },
+          {
+            "app": "Oura (late-2025/2026 app redesign)",
+            "what": "Health-tracking peer: redesign cut clutter to surface 'one big thing' per day on a calm canvas — depth is used sparingly to elevate the single most important card, not to decorate every tile. Direct analog for how Suppr's Today hero should use elevation to rank one moment, matching the 'higher elevation = primary/urgent' rule."
+          },
+          {
+            "app": "MacroFactor / Cronometer / Cal AI (named competitor set, 2026 reviews)",
+            "what": "The nutrition-tracker baseline Suppr must beat: MacroFactor wins on speed/data rigor with a clean flat data UI; Cal AI optimises snap-and-go; Cronometer is dense and utilitarian. None are cited for material/depth craft — depth+motion polish is an open differentiator lane for Suppr (matches the 'multi-ring + calm voice already exceeds comps' defended-choices note)."
+          }
+        ],
+        "suprMoves": [
+          "Tokenise the ladder and kill the drift. Suppr already has the right PHILOSOPHY in apps/mobile/constants/theme.ts (Elevation.card = hairline-only 'Notion/Linear/Things 3 grammar'; shadow reserved for FAB + sheets; cardElevated for premium tier) — but a component sweep found 12+ distinct ad-hoc shadow combos (shadowOpacity 0.06/0.08/0.12/0.15/0.18/0.22/0.45/0.6, radius 2-24) hardcoded across components. Promote a named 4-tier token set (elevation.flat → card → raised/popover → sheet → modal) and route EVERY surface through it. This is the single highest-leverage move: best-in-class = one ladder, zero one-off shadows. Mirror identical tier semantics to the web side (NutritionTracker / today-meals-section) so platforms can't drift.",
+          "Codify the dark-mode rule explicitly: shadows OFF, tonal lift ON. Suppr's dark tokens (card #1a181f → cardElevated #221f29 ≈ +8% luminance) already nail the M3 5-8%-per-step guidance — lock it in as the documented rule and extend to a full ladder (add a -low and -highest step) so dialogs/sheets/nested cards each get a distinct luminance, never a black drop-shadow. Pair every dark raised surface with a 1px top hairline highlight (the theme note already mentions layering one on the card primitive) to fake a lit edge — that's the Linear/M3 move for separation without shadow.",
+          "Move 'tactility' from static relief into interaction physics. Don't chase neumorphism/claymorphism (the 2026 verdict: a contrast/legibility trap, and off-brand for the calm voice). Instead adopt the Linear/Things grammar: press-down scale 0.96-0.98 + subtle opacity on every tappable card/row, lift-on-touch for draggable meal rows, and edge-resistance on overscroll. This buys the 'crafted/premium feel' the competitor set lacks, with zero legibility cost — and it's an open lane vs MacroFactor/Cal AI which read as flat-and-static.",
+          "Soften and standardise the light-mode shadows that remain. The FAB/sheet shadows are the only legit floaters — make them soft + directional + ideally two-layer (a tight contact shadow + a wider ambient one, single top-down light source), and cap ambient opacity around 0.06-0.12 so nothing reads as a hard 2010s drop-shadow. The current FAB accent shadow (shadowOpacity 0.45 on Accent.primary) is fine as a deliberate 'this glows' signal — keep it as the ONE chromatic shadow, document it as intentional so it doesn't read as drift.",
+          "Adopt the iOS-26 floating-chrome model only where it's a control layer, with a hard legibility floor. Suppr's LogSheet and bottom sheets are the right candidates for a translucent Liquid-Glass treatment (they overlay content) — but ONLY with a scrim behind any text and an automatic swap to a solid high-contrast surface under Reduce Transparency / Increase Contrast. Do NOT glassify content cards (macro tiles, meal rows) — that's the legibility mistake. Gate the glass treatment behind a feature flag per CLAUDE.md visual-change rule, ship behind isFeatureEnabled, validate in sim + capture before/after.",
+          "Use elevation to rank ONE moment, Oura-style. On the Today hero, let the single 'what to eat next' / primary card sit one tier higher than the surrounding tiles (luminance lift in dark, hairline+subtle shadow in light) so depth encodes priority, matching the 2026 rule 'higher elevation = primary/urgent action.' Keep the 2x2 macro tiles deliberately flat so the hero reads as the one elevated thing — reinforces the existing 'don't duplicate Today hero content' direction."
+        ]
+      },
+      {
+        "axis": "Motion & transitions — motion personality, meaningful transitions, number tweens, sheet choreography",
+        "currentBar": "In 2026 the bar is \"physics, not duration.\" Best-in-class apps abandoned fixed ease curves for spring systems with a deliberate, consistent personality, and every animation either communicates spatial origin or confirms an action — decorative motion now reads as amateur. Six concrete sub-bars: (1) MOTION PERSONALITY — one tuned spring family used app-wide, not per-screen one-offs. Apple's iOS 26 \"Liquid Glass\" is the reference: elements morph and flow with \"fluid tension — deliberate, not exaggerated,\" and iOS 26.2 (early 2026) explicitly re-tuned system springs smoother. SwiftUI's 2026 default vocabulary: .snappy (~0.25s, response 0.3 / damping ~0.85) for taps/toggles, .smooth (~0.35s, ~response 0.32 / damping 0.72, \"feels like Apple Music\") for content, .bouncy reserved for celebratory moments only. The discipline is picking ONE and applying it everywhere. (2) SPEED & RESTRAINT — Linear's 2026 refresh (Mar 12 2026) is the craft benchmark: animate only GPU-composited properties (transform/opacity, sometimes color), never layout; durations below industry norm (quick 0.1s, regular 0.25s, slow 0.35s); list items get NO transition so scrolling stays instant; timing is asymmetric (appear 0s, fade out 0.15s, mirroring macOS). Speed itself is the personality. (3) MEANINGFUL/SPATIAL TRANSITIONS — motion references its origin. Linear scales popovers from the pill that spawned them, slides panels from their toggle. iOS 18+/26 made this first-class: zoom transitions (matchedTransitionSource + navigationTransition) and matchedGeometryEffect morph a tapped cell continuously into the detail it opens, across pushes AND sheets. A cross-fade where a morph is possible now reads cheap. (4) NUMBER TWEENS — the single most-copied 2026 detail. NumberFlow (6.3k stars, used by X and Dub, explicitly inspired by the Family iOS app) made digit-by-digit odometer rolls — each digit spins/fades/transforms independently, Intl.NumberFormat-aware — the default for any stat/balance/counter that changes. Static numbers that snap feel broken when surrounding craft is high. (5) SHEET CHOREOGRAPHY — sheets are interruptible spring-driven objects, not timed slides: native detents (iOS 16+) with custom heights, drag tracks the finger 1:1, snap decided by velocity+position, open animation redirectable mid-flight (interactive spring ~response 0.35 / damping 0.8). (6) HAPTIC-MOTION FUSION — 2026 users expect a synchronized haptic at the motion's key moment (slider \"stick,\" completed-swipe \"thrum,\" success on a confirmed log). Motion without a paired haptic on consequential actions reads incomplete. All of it must collapse cleanly to cross-fades under Reduce Motion — iOS 26.4 (Apr 2026) added finer Liquid Glass motion controls precisely because honoring accessibility is table stakes.",
+        "examples": [
+          {
+            "app": "Apple iOS 26 Liquid Glass (2026)",
+            "what": "System-wide elastic morphing material: UI elements glide/morph beneath curved glass with 'fluid tension, deliberate not exaggerated.' iOS 26.2 re-tuned springs smoother for app-launch/page-slide/menu; iOS 26.4 (Apr 2026) added finer Reduce-Motion controls. Reference for one coherent motion personality across an OS, with accessibility fallbacks built in."
+          },
+          {
+            "app": "Linear 2026 refresh (Mar 12 2026)",
+            "what": "Speed/restraint benchmark. Animates only composited props (transform/opacity/color), never layout; tokens quick 0.1s / regular 0.25s / slow 0.35s, below norm; list items get zero transition; asymmetric timing (fade-in 0s, fade-out 0.15s); popovers scale from origin pill, panels slide from toggle. Speed is the personality."
+          },
+          {
+            "app": "Family (iOS) + NumberFlow (2026)",
+            "what": "Family's number animations inspired NumberFlow, the digit-roll component (6.3k stars; used by X and Dub). Sets the value-tween bar: per-digit odometer roll with spin/fade/transform, Intl.NumberFormat-aware, 'Apple-like smoothness.' A React Native port (number-flow-react-native, Skia+View renderers) exists — directly reachable on Suppr's stack."
+          },
+          {
+            "app": "iOS 18/26 zoom transitions in SwiftUI (2026)",
+            "what": "matchedTransitionSource + navigationTransition(.zoom) and matchedGeometryEffect: a tapped cell continuously morphs into the detail view it opens, across navigation pushes AND sheet presentations. Current premium standard for meaningful, spatially-grounded transitions — replaces generic push/cross-fade."
+          },
+          {
+            "app": "Copilot Money (2026)",
+            "what": "Credited with resetting 'what a budget app could look like' via smooth native animations, clean typography, native iOS components. Closest-domain (number-heavy finance dashboard) example of motion as a premium signal — relevant because Suppr's Today surface is structurally a number dashboard."
+          },
+          {
+            "app": "Oura redesign (late 2025 to 2026) / Whoop",
+            "what": "Health-data peers. Oura's redesign surfaces the one metric 'your body most needs now' with score-reveal motion + charts; the 2026 wearable shift is from raw data-viz to motion-supported guidance. Calibrates Suppr's ring/score reveals against the closest behavioural-data category."
+          },
+          {
+            "app": "Cal AI vs MacroFactor (2026, direct competitors)",
+            "what": "Cal AI optimises the log loop to 'under five seconds' (photo to estimate) — motion must never sit in that critical path. MacroFactor optimises rigor + adaptive coaching. Competitor read: Suppr's log confirmation must feel instant and rewarding (snappy + success haptic), differentiating on a calmer, more confident confirmation."
+          },
+          {
+            "app": "Things 3 (rebuilt) + Notion Calendar/ex-Cron (2026)",
+            "what": "Craft references outside the data domain. Things' rebuild praised for 'craft most task managers never approach' in its animations; Notion Calendar 'obsessed over micro-interactions' in a category that ships none. Both show motion as category-differentiator, the posture Suppr should take in calorie tracking."
+          }
+        ],
+        "suprMoves": [
+          "Adopt ONE spring vocabulary app-wide and delete per-screen one-offs. Suppr has the right primitives but they disagree: CalorieRing ring uses spring damping 22 / stiffness 120, its number tween a hand-rolled 400ms cubic-out, PressableScale 0.97/100ms + spring release, macro bars 300ms cubic-out. Define a small motion-token module (snappy ~response 0.3/damping 0.85 for taps/toggles; smooth ~0.32/0.72 for content/bars; bouncy for celebratory only) and route every withSpring/withTiming through it. This is the Linear/iOS-26 'single personality' move, mostly a refactor of motion that already exists.",
+          "Make number tweens odometer-style, not snap-to-value — highest-leverage, most-visible 2026 detail and Suppr's biggest gap. Today's calories-remaining, net, and the four macro grams should roll digit-by-digit (NumberFlow / number-flow-react-native, Skia or View renderer, Reanimated-compatible) instead of the current single-value cubic-out interpolation. Family/Copilot Money are the calibration: Suppr's calmer brand means slightly slower, less-bouncy rolls than a finance ticker — confident, not flashy.",
+          "Replace the LogSheet open with a meaningful spatial transition. The meal / quick-add element the user taps should morph into the sheet (iOS-26 zoom / matchedTransitionSource on native; FLIP / layoutId on web) instead of sliding up generically, so the thing touched becomes the sheet. Gate behind a feature flag per CLAUDE.md (keep the current slide in the else), ramp via PostHog. This is the origin-referenced-motion bar from Linear and iOS 26.",
+          "Make every sheet (LogSheet, SavedMealPortionSheet, AiPaywallSheet, MoveMealSheet) interruptible and velocity-aware: detents with 1:1 finger tracking, snap decided by velocity+position (not position alone), open spring redirectable mid-flight to dismiss (interactive spring ~response 0.35 / damping 0.8). Audit Suppr's sheets for timed slides that can't be grabbed mid-animation.",
+          "Pair a haptic with every consequential motion, not just press-in. PressableScale already fires selection/confirm/success on press — extend so the haptic lands at the motion's payoff: success haptic the moment a logged meal lands and the calorie number finishes its roll; a light tick as a portion stepper / ruler slider 'sticks' to a value; a confirm thrum when a sheet snaps to a detent. This is 2026 haptic-motion fusion and Suppr is halfway there.",
+          "Borrow Linear's restraint explicitly. Audit for animations on layout props (width/height/margin) and move them to transform/opacity; ensure TodayMealsSection list rows have NO per-item entry transition (keep scroll instant); adopt asymmetric timing (content appears fast ~0–0.1s, fades out slower ~0.15s). Suppr's 300ms macro bars are near-norm — pull the system toward Linear's quicker 0.1/0.25/0.35 band so the whole app reads faster.",
+          "Make the calorie-ring + score reveal a deliberate once-per-load choreography (Oura-style) instead of continuous re-animation. Ring sweep, number roll, and macro bars should stagger ~40–80ms on first paint of the day's data so the reveal feels composed (priority/ordering), then settle — not re-tween on every minor re-render. Reserve the bouncy spring exclusively for hitting a goal (ring closes / target reached), so bounce means something.",
+          "Verify the whole motion system collapses to cross-fades under Reduce Motion before shipping. CalorieRing already reads reduceMotion — make that a system-wide guarantee (every spring to instant/cross-fade, every odometer roll to instant set) and capture a Reduce-Motion pass in the visual-validation screenshots, since iOS 26.4 raised expectations here and Suppr's premium-bar audits require captured pixels."
+        ]
+      },
+      {
+        "axis": "Micro-delight & haptic-equivalent feedback (iOS haptics + the web motion/colour analog; making logging and win-moments feel rewarding)",
+        "currentBar": "In 2026 the bar is a TIERED feedback system, not \"vibrate on tap.\" Best-in-class apps spend a deliberate vocabulary of haptics + motion that scales with event importance, and they ruthlessly RESERVE the loud moments. The concrete shape:\n\n1) A graded haptic vocabulary mapped to event weight. iOS gives three impact intensities (light/medium/heavy via UIImpactFeedbackGenerator), a selection tick (selectionAsync), and three semantic notifications (success/warning/error). The 2026 expectation (per Apple HIG \"Playing haptics\" and the May-2026 micro-interaction rules) is that intensity tracks importance: a row-select gets a light selection tick; committing a log gets a success notification; a destructive delete gets a heavier hit. Telegram is the canonical reference — every gesture (swipe-reply, swipe-read, long-press-react) has a DISTINCT haptic so the thumb knows what fired before the eyes confirm. SwiftUI codified this with declarative .sensoryFeedback(). The anti-pattern, explicitly called out by NN/g and Dan Saffer (\"microinteractions are an exercise in restraint\") in 2026 writeups, is firing the SAME haptic on everything — that produces fatigue and the signal goes to noise.\n\n2) Sub-perceptual latency + duration budgets. The May-2026 micro-interaction rules put hard numbers on it: visible feedback must land within ~100ms of the action (or it reads as broken), and a CELEBRATORY flourish must finish under ~300ms (or it becomes an obstacle to the next action). Cal AI's log-confirm card eases in over ~200ms as a \"deliberate moment, not a pop-in\" — Suppr already cites this internally on NorthStarBlock (220ms fade-up). That timing band is the table-stakes envelope.\n\n3) A reserved \"win moment\" — landmark-gated, not per-action. This is the single biggest 2026 differentiator and the one Suppr is missing. The leaders explicitly DON'T celebrate every action with the same animation; they save the loud moment for landmarks, and the data backs it: Duolingo's redesigned streak/phoenix celebration alone moved day-7 retention +1.7%, and they reserve full custom reveals for landmark days (7/30/100/365), pairing visual + functional + social rewards with confetti + a distinct sound + success haptic. MacroFactor (May 2026) goes further — hitting your nutrition goal launches an actual interactive mini-game (\"clear the meteor storm, stay in orbit\"), treating goal-completion as a moment worth interrupting for. The principle: ordinary logging = quiet tick; closing the day / hitting target / streak landmark = the ONE loud, multi-sensory moment.\n\n4) The web motion/colour analog is a real, owned layer — not \"haptics minus the buzz.\" Web has no Taptic Engine, so 2026 leaders substitute: a snappy spring/scale confirm (GPU transform only — Motion.dev/Framer useSpring), a colour-state flip (the calorie ring going success-green, a row flashing then settling), and canvas-confetti for landmark wins (<100 particles for 60fps). The non-negotiable: every motion path must honour prefers-reduced-motion — canvas-confetti's disableForReducedMotion, and @media (prefers-reduced-motion: reduce) collapsing transitions to ~0.01ms with a static success state substituted. On mobile the parallel gate is AccessibilityInfo / isReduceMotionEnabled, which Suppr already wires (NorthStarBlock reduceMotion guard).\n\n5) Multi-sensory but layered & optional. Copilot Money is the 2026 benchmark for \"every interaction feels premium\" — haptics + whimsy on routine actions, described as the most beautifully designed finance app where regular use is \"a joy.\" The layering rule (HIG Feedback, 2026): haptic + visual + (optional) sound should REINFORCE one event, never substitute for each other, and the loud channels (sound, confetti) stay opt-in / landmark-only so they never hijack attention.",
+        "examples": [
+          {
+            "app": "Duolingo (2026)",
+            "what": "Reserves loud celebration for landmark streak days (7/30/100/365) with confetti + distinct sound + haptic + a custom animated reveal; redesigning the phoenix streak animation alone moved day-7 retention +1.7%. The lesson is restraint: most apps celebrate every action identically, which dilutes the signal — Duolingo saves the big moment for landmarks."
+          },
+          {
+            "app": "MacroFactor (May 2026)",
+            "what": "Treats goal-completion as interrupt-worthy: hitting your nutrition goal launches an interactive mini-game (head into space, clear the meteor storm, stay in orbit). Watch app ships voice logging + haptics + complications. The 'win moment' is a genuine, reserved reward, not a toast."
+          },
+          {
+            "app": "Cal AI (cited internally, 2026)",
+            "what": "Log-confirmation/suggestion card eases in over ~200ms with a small upward translate so the result lands as a 'deliberate moment, not a pop-in' — the canonical sub-300ms confirm-flourish envelope. Suppr already mirrors this at 220ms on NorthStarBlock."
+          },
+          {
+            "app": "Copilot Money (2026)",
+            "what": "Benchmark for 'every interaction feels premium' — nice haptic feedback plus a level of whimsy that makes routine budgeting 'a joy'; reviewers call it the most beautifully designed finance app, every screen and interaction premium. Proof that micro-delight on ordinary actions (not just wins) is a retention lever."
+          },
+          {
+            "app": "Telegram (cited in 2026 haptic guides)",
+            "what": "Distinct haptic per gesture (swipe-reply vs swipe-read vs long-press-react) so the thumb identifies the action before the eyes confirm — the reference for a GRADED haptic vocabulary rather than one buzz for everything."
+          },
+          {
+            "app": "Apple HIG 'Playing haptics' / SwiftUI .sensoryFeedback (2026)",
+            "what": "Codifies the vocabulary: light/medium/heavy impact, selection tick, success/warning/error notification — intensity should scale with action importance; system apps play success/failure haptics consistently and many users rely on them non-visually (accessibility). .sensoryFeedback() made graded haptics declarative."
+          },
+          {
+            "app": "iOS 26 Liquid Glass (2025-26)",
+            "what": "Haptics reinforce the 'glassy' physical feel; specular highlights move with device motion. Raises the ambient bar — feedback is expected to feel material and motion-responsive, but NN/g (2026) cautions Liquid Glass overuse hurts usability, reinforcing restraint."
+          },
+          {
+            "app": "Whoop (Apr 2026)",
+            "what": "Refreshed profile puts achievements/badges and streak counters (sleep quality, green-recovery days, double-digit strain) front and centre — landmark/streak recognition as a first-class, visible reward surface, not a buried stat."
+          },
+          {
+            "app": "canvas-confetti / Motion.dev (web, 2026)",
+            "what": "The web win-moment toolkit: <100 particles for 60fps, GPU transforms only, and disableForReducedMotion / prefers-reduced-motion gating with a static success state substituted — the accessible web analog to a success haptic."
+          }
+        ],
+        "suprMoves": [
+          "Build ONE reserved win-moment for the daily loop and gate it to landmarks only — closing the day at/under target, hitting a macro target, and streak landmarks (7/30/100). Right now Suppr fires Haptics.notificationAsync(Success) on cook-completion and one LogSheet path but has NO celebratory moment for the core 'I hit my day' win and no confetti anywhere (grep found celebration/confetti only in skeletons and paywall, not the Today loop). This is the biggest gap vs Duolingo/MacroFactor. Mobile: success haptic + a sub-300ms ring-fill-to-green spring + a one-shot lightweight confetti burst, gated behind the existing reduceMotion flag. Web: calorie ring flips success-green + canvas-confetti with disableForReducedMotion. Reserve it — do NOT fire it on every food log.",
+          "Grade the haptic vocabulary instead of the current flat usage. Audit shows Suppr leans heavily on selectionAsync + ImpactFeedbackStyle.Light/Medium fairly interchangeably across LogSheet/NorthStarBlock/cook. Map deliberately: row-select/tab = selectionAsync (tick); committing a log entry = ImpactFeedbackStyle.Light + a visual row settle; closing the day / hitting target = notificationAsync(Success) (currently underused for the headline win); destructive delete = ImpactFeedbackStyle.Heavy or notificationAsync(Warning). One weight per importance tier, consistently, so the thumb learns the language (Telegram/HIG bar).",
+          "Add a quiet 'log committed' confirm that is NOT the win moment. Every food log should get an instant (<100ms) light haptic + a brief row flash/settle + the macro tile ticking up — the Copilot-Money 'every interaction feels premium' standard for the routine action — while keeping the loud channel (confetti/sound) strictly for landmarks. This is the restraint axis: make the common case feel crisp, make the rare case feel special.",
+          "Centralise a tiny feedback helper (e.g. lib/feedback.ts) shared by web + mobile so the vocabulary can't drift between platforms — a semantic API like feedback.commit(), feedback.select(), feedback.win() that internally maps to expo-haptics on mobile and to spring+colour(+confetti) on web, each already wrapped in the reduce-motion / EXPO_OS==='ios' guards Suppr uses today. This also satisfies the CLAUDE.md web/mobile-parity rule, which a per-call-site haptic approach currently risks violating.",
+          "Hold every loud path to the 100ms / 300ms budget and make it opt-out-able. Confirm feedback must land <100ms; the win flourish must finish <300ms (MacroFactor's mini-game is the deliberate exception — an interrupt the user can dismiss, not a blocking animation). Add a Settings toggle for celebration/sound (sound and confetti opt-in per the 2026 restraint guidance), and verify the prefers-reduced-motion / AccessibilityInfo path substitutes a STATIC success state (green ring + 'Day complete' copy) rather than just removing motion — Suppr already has the reduceMotion plumbing in NorthStarBlock to extend.",
+          "Gate it behind a feature flag and prove it on pixels before ramp. Per CLAUDE.md, a win-moment is a visual/structural change — ship behind isFeatureEnabled, leave the quiet-confirm path alive in the else, and validate in sim + on web with captured frames (the 100ms/300ms timings and the green-ring success state) before ramping via PostHog. Instrument a 'day_closed_celebration_shown' event so the retention lift (Duolingo's +1.7% precedent) is measurable, not assumed."
+        ]
+      }
+    ]
+  }
+}

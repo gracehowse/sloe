@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
-import { Accent, Elevation, Spacing, Radius } from "@/constants/theme";
+import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useCardElevation } from "@/hooks/useCardElevation";
 
 const STORAGE_KEY = "suppr-checklist-dismissed";
 
@@ -18,6 +19,7 @@ type Props = {
 
 export default function FirstRunChecklist({ savedCount, hasPlan, hasLoggedMeal, onGoDiscover, onGoPlanner, onGoTracker }: Props) {
   const colors = useThemeColors();
+  const cardElevation = useCardElevation();
   const [dismissed, setDismissed] = useState(true); // Hidden by default until loaded
 
   useEffect(() => {
@@ -42,10 +44,10 @@ export default function FirstRunChecklist({ savedCount, hasPlan, hasLoggedMeal, 
 
   const styles = useMemo(() => StyleSheet.create({
     card: {
-      backgroundColor: colors.card, borderRadius: Radius.lg,
-      borderWidth: 1, borderColor: Accent.success + "30",
+      backgroundColor: cardElevation.liftBg ?? colors.card, borderRadius: Radius.lg,
+      borderWidth: cardElevation.useBorder ? 1 : 0, borderColor: Accent.success + "30",
       padding: Spacing.lg, gap: Spacing.md,
-      ...Elevation.card,
+      ...(cardElevation.shadowStyle ?? {}),
     },
     header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
     title: { fontSize: 15, fontWeight: "700", color: colors.text },
@@ -55,7 +57,7 @@ export default function FirstRunChecklist({ savedCount, hasPlan, hasLoggedMeal, 
     step: { flexDirection: "row", alignItems: "center", gap: Spacing.sm, paddingVertical: 4 },
     stepText: { fontSize: 14, color: colors.text, flex: 1 },
     stepDone: { textDecorationLine: "line-through" as const, color: colors.textTertiary },
-  }), [colors, doneCount]);
+  }), [colors, doneCount, cardElevation]);
 
   if (dismissed) return null;
 

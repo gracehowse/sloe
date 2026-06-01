@@ -24,6 +24,10 @@ void React;
 
 vi.mock("../../src/lib/analytics/track.ts", () => ({
   track: vi.fn(),
+  // ENG-816 — the dialog now reads `design_system_icons` to gate the
+  // "Plate total" glyph (👉 → lucide ArrowRight). Default OFF keeps the
+  // emoji path these grouping assertions were written against.
+  isFeatureEnabled: vi.fn(() => false),
 }));
 
 vi.mock("../../src/lib/supabase/browserClient", () => ({

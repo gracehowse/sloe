@@ -93,7 +93,9 @@ import {
 import { formatRecapForShare } from "@/lib/weeklyRecap";
 import { resolveDigestHeadline } from "@suppr/shared/nutrition/digest";
 import type { DigestBlendedExtras } from "@suppr/shared/nutrition/digest";
-import { isFeatureEnabled } from "@/lib/analytics";
+import { isFeatureEnabled, track } from "@/lib/analytics";
+import { AnalyticsEvents } from "@suppr/shared/analytics/events";
+import { WinMomentPlayer, type WinMomentCelebration } from "@/components/ui/WinMomentPlayer";
 import { Digest, type DigestUsualMeal } from "@/components/Digest";
 import { HouseholdBar } from "@/components/HouseholdBar";
 // Phase 4 (B3.1, 2026-04-27) — Surface E "Progress hero (story-led)".
@@ -256,6 +258,14 @@ export default function ProgressScreen() {
   // for weigh-ins. Opens from the list icon next to the Weight chart
   // header. Long-press a row to edit or delete that entry.
   const [allWeightDataOpen, setAllWeightDataOpen] = useState(false);
+
+  // ENG-824 (Redesign — Design Direction 2026): the reserved weight
+  // win-moment. Set to a celebration when a saved weigh-in is a new
+  // all-time low; the WinMomentPlayer overlay plays it once then clears.
+  // The LogWeightSheet owns the `redesign_winmoment` gate + the success
+  // haptic; this only mounts the (lazy) Lottie celebration.
+  const [weightWinCelebration, setWeightWinCelebration] =
+    useState<WinMomentCelebration | null>(null);
 
   // H-4 (build 12, 2026-04-19, TestFlight `AEb7NcjnvK`): defer the
   // heavy below-the-fold blocks (daily-calories chart, maintenance
@@ -2484,9 +2494,21 @@ export default function ProgressScreen() {
       weightKgByDay={weightKgByDay}
       weightKg={weightKg}
       editDate={editWeightDate}
-      onSaved={({ weightKgByDay: next, weightKg: kg }) => {
+      onSaved={({ weightKgByDay: next, weightKg: kg, isNewLow }) => {
         setWeightKgByDay(next);
         setWeightKg(kg);
+        // ENG-824 — a new all-time low is the single weight landmark worth
+        // the reserved celebration. The sheet already fired the loud success
+        // haptic (gated on `redesign_winmoment`); mount the Lottie + emit the
+        // shown event. `isNewLow` is only ever true when the flag is on.
+        if (isNewLow) {
+          setWeightWinCelebration("goal-hit");
+          try {
+            track(AnalyticsEvents.weight_new_low_win_moment_shown, { platform: "ios" });
+          } catch {
+            /* analytics fire-and-forget */
+          }
+        }
       }}
     />
     <AllWeightDataSheet
@@ -2520,6 +2542,17 @@ export default function ProgressScreen() {
       textSecondaryColor={colors.textSecondary}
       borderColor={colors.border}
     />
+    {/* ENG-824 — reserved weight win-moment overlay. Mounted only while a
+        celebration is active (new all-time low); plays once then unmounts.
+        Full-bleed + pointerEvents none so it never blocks the Progress UI. */}
+    {weightWinCelebration ? (
+      <WinMomentPlayer
+        celebration={weightWinCelebration}
+        fullBleed
+        onComplete={() => setWeightWinCelebration(null)}
+        testID="progress-weight-win-moment"
+      />
+    ) : null}
     </View>
   );
 }

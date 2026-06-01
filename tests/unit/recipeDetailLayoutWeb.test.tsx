@@ -179,17 +179,6 @@ describe("web recipe-detail v3 — Fix 5 (Fits your day softened)", () => {
     expect(SRC).toMatch(/computeFitsYourDayVerdict\(\{/);
   });
 
-  it("fits-your-day testID still exists, but rendered as a plain inline-flex line (no pill bg)", () => {
-    expect(SRC).toMatch(/data-testid="recipe-fits-your-day"/);
-    // No pill background-color — the pre-v3 pill used a
-    // `color-mix(... 10%)` background. v3 drops that for a clean
-    // text line in the tone colour.
-    const fitsIdx = SRC.indexOf('data-testid="recipe-fits-your-day"');
-    expect(fitsIdx).toBeGreaterThan(0);
-    const block = SRC.slice(fitsIdx, fitsIdx + 600);
-    expect(block).not.toMatch(/backgroundColor:\s*`color-mix\(in srgb, \$\{toneVar\}/);
-  });
-
   it("the verdict line is OUTSIDE the (now gone) kcal hero — the old IIFE is removed", () => {
     // Pre-v3 the verdict was a child of `recipe-calorie-hero`. With
     // the hero gone, the verdict must NOT appear inside any element
@@ -197,6 +186,90 @@ describe("web recipe-detail v3 — Fix 5 (Fits your day softened)", () => {
     expect(SRC).not.toMatch(
       /data-testid="recipe-calorie-hero"[^]*?data-testid="recipe-fits-your-day"/,
     );
+  });
+});
+
+/**
+ * ENG-818 (Redesign — Design Direction 2026) — the "Fits your day" verdict is
+ * promoted from a flat coloured-text line to a real tinted payoff CHIP behind
+ * `design_system_colours`. When it fits well (`verdict.fits`) the chip uses the
+ * dedicated landmark WIN amber (`--accent-win` / `--accent-win-soft`), NOT
+ * generic success-green. The legacy flat line stays alive in the `else` so the
+ * flag-off path is unchanged. Source-string pins (the production component is a
+ * ~2.5k-line AppData/Supabase/router tangle; the existing idiom here is regex
+ * pins + a minimal RTL harness — see the v4 helper-render block below).
+ */
+describe("web recipe-detail — ENG-818 'Fits your day' payoff chip", () => {
+  it("gates the chip on the `design_system_colours` flag (old flat line in the else)", () => {
+    expect(SRC).toMatch(/isFeatureEnabled\("design_system_colours"\)/);
+    // The flag-on branch builds a chip; the flag-off branch keeps the
+    // legacy `toneVar` flat-text line. Both must be present.
+    expect(SRC).toMatch(/if \(redesignColours\) \{/);
+    expect(SRC).toMatch(/Flag-off legacy path — flat coloured glyph \+ text line/);
+  });
+
+  it("the fits-well chip uses the dedicated WIN amber token, not success-green", () => {
+    const fitsIdx = SRC.indexOf("ENG-818 — promote the fit verdict");
+    expect(fitsIdx).toBeGreaterThan(0);
+    const block = SRC.slice(fitsIdx, fitsIdx + 900);
+    // success tone → win amber (the reserved landmark colour).
+    expect(block).toMatch(/var\(--accent-win\)/);
+    expect(block).toMatch(/var\(--accent-win-soft\)/);
+    // It must NOT reach for success-green for the fit-well chip fill.
+    expect(block).not.toMatch(/var\(--success\)/);
+  });
+
+  it("over-half → warning tint; over-a-day → destructive tint (semantic tones preserved)", () => {
+    const fitsIdx = SRC.indexOf("ENG-818 — promote the fit verdict");
+    const block = SRC.slice(fitsIdx, fitsIdx + 1800);
+    expect(block).toMatch(/var\(--destructive\)/);
+    expect(block).toMatch(/var\(--warning\)/);
+  });
+
+  it("the chip is a rounded-full pill with a real background fill (vs the flat line)", () => {
+    const fitsIdx = SRC.indexOf("ENG-818 — promote the fit verdict");
+    const block = SRC.slice(fitsIdx, fitsIdx + 1800);
+    expect(block).toMatch(/rounded-full/);
+    expect(block).toMatch(/backgroundColor:\s*chip\.bg/);
+  });
+
+  it("a11y contract preserved — role='status' + aria-label on BOTH paths", () => {
+    // Both the chip and the legacy line must keep the status role + a11y label.
+    const matches = SRC.match(/data-testid="recipe-fits-your-day"/g) ?? [];
+    expect(matches.length).toBe(2); // chip path + legacy path
+    expect(SRC).toMatch(/role="status"[\s\S]{0,120}aria-label=\{verdict\.a11y\}/);
+  });
+});
+
+/**
+ * ENG-818/819 — soft elevation on the resting detail cards + the commit-CTA
+ * press payoff (web analog of the mobile confirm haptic). Both flag-gated.
+ */
+describe("web recipe-detail — ENG-818/819 elevation + commit-CTA payoff", () => {
+  it("resting detail cards ride `cardElevationClass` (soft shadow flag-on, border flag-off)", () => {
+    expect(SRC).toMatch(/isFeatureEnabled\("design_system_elevation"\)/);
+    // The class derivation: flag-on → no border + --elev-card-soft shadow.
+    expect(SRC).toMatch(/shadow-\[var\(--elev-card-soft\)\]/);
+    expect(SRC).toMatch(/const cardElevationClass = redesignElevation/);
+    // Applied to the resting section cards (ingredients / steps / micronutrients).
+    expect(SRC).toMatch(/bg-card rounded-2xl overflow-hidden \$\{cardElevationClass\}/);
+    expect(SRC).toMatch(/bg-card rounded-2xl p-5 space-y-4 \$\{cardElevationClass\}/);
+  });
+
+  it("commit CTAs carry the `redesign_winmoment`-gated press payoff class", () => {
+    expect(SRC).toMatch(/isFeatureEnabled\("redesign_winmoment"\)/);
+    expect(SRC).toMatch(/const commitCtaPayoffClass = winFeedback/);
+    // Active-state scale + brightness lift — the haptic substitute on web.
+    expect(SRC).toMatch(/active:scale-\[0\.97\] active:brightness-110/);
+    // Wired onto the commit CTAs — the top-bar Cook, Start Cooking, and
+    // I Made This buttons all spread the payoff class (3 button call-sites).
+    const payoffUses = SRC.match(/\$\{commitCtaPayoffClass\}/g) ?? [];
+    expect(payoffUses.length).toBeGreaterThanOrEqual(3);
+    // The Start Cooking button (its className line) carries it.
+    const startBtnIdx = SRC.indexOf(
+      "bg-primary text-primary-foreground font-bold text-sm hover:shadow-lg hover:shadow-primary/25 transition-all ${commitCtaPayoffClass}",
+    );
+    expect(startBtnIdx).toBeGreaterThan(0);
   });
 });
 

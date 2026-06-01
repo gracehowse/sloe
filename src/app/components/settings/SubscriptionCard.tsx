@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { Icons } from "../ui/icons";
+import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
 import { detectRegion, type RegionInfo } from "../../../lib/region/detectRegion";
 import { useSubscriptionStatus } from "../../../lib/stripe/useSubscriptionStatus";
 import {
@@ -79,6 +80,14 @@ export function SubscriptionCard({ userTier, onManageSubscription }: Subscriptio
 
   const region = useMemo(() => detectRegionClient(), []);
 
+  // ENG-823 — flag-aware resting-card elevation, parity with the rest of web
+  // Settings + the mobile `SettingsCard`. Flag ON → soft `--elev-card-soft`
+  // shadow, no border. Flag OFF → today's static `card-elevated` + border.
+  const elevation = isFeatureEnabled("design_system_elevation");
+  const cardClass = elevation
+    ? "bg-card rounded-2xl border-0 shadow-[var(--elev-card-soft)]"
+    : "bg-card border border-border rounded-2xl card-elevated";
+
   const view: SubscriptionCardView = useMemo(
     () =>
       resolveSubscriptionCardView({
@@ -93,7 +102,7 @@ export function SubscriptionCard({ userTier, onManageSubscription }: Subscriptio
   return (
     <div
       data-testid="subscription-card"
-      className="bg-card border border-border rounded-2xl p-6 mb-6 card-elevated"
+      className={`${cardClass} p-6 mb-6`}
     >
       <div className="flex items-center gap-2 mb-4">
         <Icons.sparkles className="w-5 h-5 text-muted-foreground" />

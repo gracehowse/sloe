@@ -1,4 +1,4 @@
-import { memo, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarRange,
   Coffee,
@@ -23,6 +23,8 @@ import {
 import {
   buildPlanWeekSummarySubtitle,
   computePlanWeekSummaryScore,
+  planWeekHeadlineTone,
+  type PlanWeekHeadlineTone,
 } from "../../lib/planning/planWeekSummary.ts";
 import { Dialog, DialogContent, DialogTitle } from "./ui/dialog";
 import { DestructiveConfirmDialog } from "./suppr/destructive-confirm-dialog";
@@ -280,6 +282,64 @@ export const MealPlanner = memo(function MealPlanner({
     ? buildPlanWeekSummarySubtitle(summary, worstShortDayLabel)
     : null;
   const showSummaryCard = summary !== null && (mealPlan?.length ?? 0) > 0;
+
+  // ENG-820 (Plan win-moment, Redesign — Design Direction 2026) — make the
+  // "Hits your targets N of 7" headline state-aware, mirroring mobile
+  // `apps/mobile/app/(tabs)/planner.tsx`. Behind `redesign_winmoment` the
+  // headline colours by tone, kept distinct so the landmark reads as a win:
+  //   - win (every day lands)    → `--accent-win` (the reserved win gold)
+  //   - progress (some days land) → `--warning` (amber, never red)
+  //   - calm (no day lands yet)   → `--muted-foreground` (informative)
+  // Flag OFF keeps today's `text-foreground`. There is no haptic analog on web
+  // (no Haptics API); the colour shift + the subtitle carry the payoff.
+  const winMomentsEnabled = isFeatureEnabled("redesign_winmoment");
+  const summaryTone = planWeekHeadlineTone(summary);
+  const summaryHeadlineColor = !winMomentsEnabled
+    ? undefined
+    : summaryTone === "win"
+      ? "var(--accent-win)"
+      : summaryTone === "progress"
+        ? "var(--warning)"
+        : "var(--muted-foreground)";
+
+  // ENG-822 (design_system_elevation, Redesign — Design Direction 2026) —
+  // join the plan cards (summary, empty-state, per-day) to the elevation ramp,
+  // mirroring `Settings.tsx` (~L652-655) and the mobile `useCardElevation`
+  // hook the planner twin uses (`apps/mobile/app/(tabs)/planner.tsx`).
+  //   - flag ON  → drop the hairline border, ride the soft `--elev-card-soft`
+  //                shadow (no double edge; web's token is tuned per-theme so a
+  //                single class covers light + dark, unlike RN's dark-only lift).
+  //   - flag OFF → today's `border border-border card-elevated` (static
+  //                `--shadow`), byte-identical to the pre-fix render.
+  const elevation = isFeatureEnabled("design_system_elevation");
+  const cardElevationClass = elevation
+    ? "border-0 shadow-[var(--elev-card-soft)]"
+    : "border border-border card-elevated";
+
+  // ENG-820 (Plan win-moment) — rising-edge scale pulse when the week first
+  // crosses into a 7/7 win, mirroring the mobile one-shot spring at
+  // `apps/mobile/app/(tabs)/planner.tsx` (`summaryPulse` + `prevSummaryToneRef`).
+  // Web has no haptic, so the payoff is the brief scale pulse on the headline
+  // (plus the steady-state colour shift already wired above). Gated behind
+  // `redesign_winmoment`; the static-colour path is the flag-off else.
+  const prevSummaryToneRef = useRef<PlanWeekHeadlineTone | null>(null);
+  const [winPulse, setWinPulse] = useState(false);
+  useEffect(() => {
+    const prev = prevSummaryToneRef.current;
+    prevSummaryToneRef.current = summaryTone;
+    if (!winMomentsEnabled) return;
+    // Only celebrate the rising edge INTO win (prev was a real non-win tone),
+    // so re-mounting an already-7/7 plan never replays the pulse — matching the
+    // mobile rising-edge guard exactly.
+    if (summaryTone === "win" && prev !== null && prev !== "win") {
+      setWinPulse(true);
+      // One-shot — clear after the keyframe duration so a later regenerate that
+      // re-enters win can replay it. `@media (prefers-reduced-motion)` disables
+      // the transform in CSS, so this stays inert for reduced-motion users.
+      const t = setTimeout(() => setWinPulse(false), 320);
+      return () => clearTimeout(t);
+    }
+  }, [winMomentsEnabled, summaryTone]);
 
   const handleRegenerate = async () => {
     setIsGenerating(true);
@@ -622,14 +682,48 @@ export const MealPlanner = memo(function MealPlanner({
       {showSummaryCard && summary ? (
         <div
           data-testid="planner-week-summary-card"
-          className="rounded-2xl border border-border bg-card mb-4 card-elevated"
+          className={`rounded-2xl bg-card mb-4 ${cardElevationClass}`}
           style={{ padding: 16 }}
         >
+          {/* ENG-820 — one-shot scale-pulse keyframe for the win rising edge.
+              Scoped inline (mirrors `AppLoadingSkeleton`) so no theme.css edit
+              is needed; the `prefers-reduced-motion` guard disables the
+              transform for motion-sensitive users, matching the hook's intent. */}
+          <style>{`
+            @keyframes planner-win-pulse {
+              0% { transform: scale(1); }
+              40% { transform: scale(1.06); }
+              100% { transform: scale(1); }
+            }
+            .planner-win-pulse {
+              animation: planner-win-pulse 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+              transform-origin: left center;
+            }
+            @media (prefers-reduced-motion: reduce) {
+              .planner-win-pulse { animation: none; }
+            }
+          `}</style>
           <div className="flex items-start justify-between gap-3 mb-3">
             <div className="min-w-0">
+              {/* ENG-820 — state-aware headline. Inline `color` (when the win
+                  flag is on) wins over `text-foreground`; flag-off leaves the
+                  class colour. `data-tone` + testid let the parity test pin the
+                  tone without reading a computed colour. The colour-only change
+                  animates via `transition-colors` so a regenerate that flips
+                  the tone eases rather than snaps. The `planner-win-pulse` class
+                  is applied only on the rising edge into a 7/7 win (the web
+                  analog of the mobile scale spring + success haptic). */}
               <p
-                className="text-foreground font-bold -tracking-[0.01em]"
-                style={{ fontSize: 15 }}
+                data-testid="planner-week-summary-headline"
+                data-tone={winMomentsEnabled ? summaryTone : "off"}
+                data-pulse={winMomentsEnabled && winPulse ? "win" : undefined}
+                className={`text-foreground font-bold -tracking-[0.01em] transition-colors${
+                  winMomentsEnabled && winPulse ? " planner-win-pulse" : ""
+                }`}
+                style={{
+                  fontSize: 15,
+                  ...(summaryHeadlineColor ? { color: summaryHeadlineColor } : {}),
+                }}
               >
                 Hits your targets {summary.hits} of {`${summary.total} day${summary.total === 1 ? "" : "s"}`}
               </p>
@@ -881,7 +975,7 @@ export const MealPlanner = memo(function MealPlanner({
       {isPlanEmpty ? (
         <div
           data-testid="planner-empty-state"
-          className="flex flex-col items-center justify-center rounded-2xl border border-border bg-card card-elevated"
+          className={`flex flex-col items-center justify-center rounded-2xl bg-card ${cardElevationClass}`}
           style={{ padding: "48px 24px", minHeight: 320 }}
         >
           <div
@@ -973,10 +1067,25 @@ export const MealPlanner = memo(function MealPlanner({
               // to Tailwind utilities (`p-3.5`, `gap-2.5`) so spacing
               // is consistent with the rest of the system and easier
               // to track via the design tokens.
-              className={`rounded-2xl border flex flex-col p-3.5 gap-2.5 card-elevated ${
-                isTodayCol
-                  ? "bg-primary/10 border-primary/30"
-                  : "bg-card border-border"
+              // ENG-822 — under `design_system_elevation` the soft shadow
+              // carries the card separation and the hairline border is dropped
+              // (`border-0` + `shadow-[var(--elev-card-soft)]`). The today-column
+              // distinction then rests on the existing `bg-primary/10` tint (the
+              // `border-primary/30` accent becomes a no-op under `border-0`,
+              // which is acceptable — the tint already reads as "today"). Flag
+              // OFF keeps the prior `border + card-elevated` + per-state border
+              // colour byte-for-byte (the per-day card supplies its own single
+              // border-colour class, so it can't use `cardElevationClass`'s
+              // bundled `border-border` without a colour conflict on the today
+              // column).
+              className={`rounded-2xl flex flex-col p-3.5 gap-2.5 ${
+                elevation
+                  ? isTodayCol
+                    ? "border-0 shadow-[var(--elev-card-soft)] bg-primary/10"
+                    : "border-0 shadow-[var(--elev-card-soft)] bg-card"
+                  : isTodayCol
+                    ? "border border-primary/30 card-elevated bg-primary/10"
+                    : "border border-border card-elevated bg-card"
               }`}
             >
               <div className="flex items-center justify-between">

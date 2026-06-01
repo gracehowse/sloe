@@ -7,9 +7,11 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
-import NutritionSourceBadge from "../../../components/NutritionSourceBadge";
+import { SupprMark } from "../ui/suppr-mark";
 import { SourceDot } from "../ui/source-dot";
 import { mapMealSourceToDot } from "../../../lib/nutrition/sourceMap";
 import { formatMacroTrailer } from "../../../lib/nutrition/macroFormat";
@@ -29,6 +31,7 @@ import type { SavedMeal } from "../../../lib/nutrition/savedMeals";
 import { summariseSavedMeal } from "../../../lib/nutrition/savedMealsLogic";
 import { buildMealShareText } from "../../../lib/share/buildMealShareText";
 import { track, isFeatureEnabled } from "../../../lib/analytics/track";
+import { sheetTransition } from "../../../lib/motion";
 import { mealRowImageUrl } from "../../../lib/nutrition/foodHistory";
 import { toast } from "sonner";
 
@@ -74,6 +77,14 @@ export interface TodayMealsSectionProps {
   onOpenDuplicateDay: () => void;
   onRequestCopyMeal: (mealId: string) => void;
   onDeleteMeal: (mealId: string, recipeTitle: string) => void;
+  /**
+   * P5 parity gap #15 — open the per-meal nutrition-detail dialog
+   * (`<MealNutritionDialog>`). When set (flag `web_meal_nutrition_detail` on),
+   * a "View nutrition" item renders in each meal row's kebab menu. Undefined
+   * (flag off) → no item, the kebab + row layout is byte-identical to before.
+   * Mirror: the mobile meal row routes to `apps/mobile/app/meal-nutrition.tsx`.
+   */
+  onOpenMealNutrition?: (mealId: string) => void;
   /**
    * Empty-state primary CTA — opens the unified `<LogSheet>`.
    *
@@ -225,6 +236,7 @@ export function TodayMealsSection({
   onOpenDuplicateDay,
   onRequestCopyMeal,
   onDeleteMeal,
+  onOpenMealNutrition,
   onOpenLogSheet,
   savedMeals,
   onLogSavedMeal,
@@ -258,6 +270,22 @@ export function TodayMealsSection({
   // Mirrors the mobile change. See
   // `docs/decisions/2026-05-15-today-log-usual-row-v2.md`.
   const usualRowV2 = isFeatureEnabled("today_log_usual_row_v2");
+
+  // ENG-797 / P5 parity (#6, #7, #27) — branded meal-management chrome.
+  // When ON, the kebab dropdown gains a quiet SupprMark + thumbnail/title/
+  // macro header (mirroring mobile's MealActionSheet), and the usual-meal
+  // picker gains the same brand mark. The desktop dropdown interaction is
+  // preserved — we add a header band, never a grabber bottom sheet. The
+  // copy-meal dialog inherits the same chrome via its own flag read.
+  // Legacy bare dropdown/dialog stays alive in the flag-off `else`.
+  // Mirror: apps/mobile/components/today/TodayMealsSection.tsx (MealActionSheet).
+  const brandedSheets = isFeatureEnabled("redesign_branded_sheets");
+
+  // P5 parity (#22) — route the usual-meal picker open through the shared
+  // motion vocabulary (`sheetTransition`) instead of Radix's default
+  // fade/zoom. Mirrors mobile's slide-up sheet feel. Legacy Radix
+  // animation stays alive when the flag is off. See src/lib/motion.ts.
+  const redesignMotion = isFeatureEnabled("redesign_motion");
 
   return (
     <div className="mb-6">
@@ -478,7 +506,13 @@ export function TodayMealsSection({
                           );
                         })()}
                         <span className="text-xs text-foreground truncate">{meal.recipeTitle}</span>
-                        {meal.source && <NutritionSourceBadge source={meal.source} />}
+                        {/* 2026-05-22 (Grace, mirrored to web 2026-05-31): the
+                            per-meal source badge (`✓ Verified` / `✎ Manual`
+                            dingbats) was deliberately removed from the meal row
+                            on mobile — provenance lives on the meal detail page,
+                            and the badge cluttered the scannable row. Web now
+                            matches by not rendering NutritionSourceBadge here.
+                            The component is still exported for other surfaces. */}
                       </div>
                       <div className="flex items-center gap-2 shrink-0 ml-2">
                         <span className="text-xs text-muted-foreground tabular-nums">{Math.round(meal.calories)}</span>
@@ -492,11 +526,88 @@ export function TodayMealsSection({
                               <Icons.more className="w-3.5 h-3.5" />
                             </button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onSelect={() => onRequestCopyMeal(meal.id)}>
+                          <DropdownMenuContent
+                            align="end"
+                            className={brandedSheets ? "min-w-[244px] p-0" : undefined}
+                          >
+                            {/* P5 parity (#6, #27) — branded header band: a
+                                quiet SupprMark + thumbnail + title + macro
+                                line, matching mobile's MealActionSheet header
+                                (apps/mobile/.../TodayMealsSection.tsx:308-335).
+                                Desktop dropdown interaction is unchanged; this
+                                only adds brand identity above the actions. */}
+                            {brandedSheets && (
+                              <>
+                                <DropdownMenuLabel
+                                  data-testid={`today-meal-action-branded-header-${meal.id}`}
+                                  className="flex items-center gap-2.5 px-3 py-2.5 font-normal"
+                                >
+                                  {(() => {
+                                    const thumbUrl = mealRowImageUrl(meal);
+                                    if (thumbUrl) {
+                                      return (
+                                        // eslint-disable-next-line @next/next/no-img-element
+                                        <img
+                                          src={thumbUrl}
+                                          alt=""
+                                          className="h-9 w-9 rounded-lg object-cover shrink-0"
+                                        />
+                                      );
+                                    }
+                                    return (
+                                      <span className="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 shrink-0">
+                                        <Icons.dinner className="h-4 w-4 text-primary" aria-hidden />
+                                      </span>
+                                    );
+                                  })()}
+                                  <span className="min-w-0 flex-1">
+                                    <span className="flex items-center gap-1.5">
+                                      <SupprMark
+                                        size={14}
+                                        className="opacity-50 shrink-0"
+                                        aria-hidden
+                                      />
+                                      <span className="truncate text-[13px] font-semibold text-foreground">
+                                        {meal.recipeTitle}
+                                      </span>
+                                    </span>
+                                    <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
+                                      {formatMacroTrailer({
+                                        calories: meal.calories,
+                                        protein: meal.protein,
+                                        carbs: meal.carbs,
+                                        fat: meal.fat,
+                                      })}
+                                    </span>
+                                  </span>
+                                </DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                              </>
+                            )}
+                            {/* P5 parity gap #15 — "View nutrition" opens the
+                                per-meal nutrition-detail dialog. Only renders when
+                                the host wired `onOpenMealNutrition` (flag
+                                `web_meal_nutrition_detail` on); flag-OFF → absent,
+                                kebab byte-identical to before. Mirror: the mobile
+                                meal row routes to `meal-nutrition.tsx`. */}
+                            {onOpenMealNutrition && (
+                              <DropdownMenuItem
+                                data-testid={`today-meal-view-nutrition-${meal.id}`}
+                                className={brandedSheets ? "mx-1" : undefined}
+                                onSelect={() => onOpenMealNutrition(meal.id)}
+                              >
+                                <Icons.pieChart className="w-3.5 h-3.5" aria-hidden />
+                                View nutrition
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem
+                              className={brandedSheets ? "mx-1" : undefined}
+                              onSelect={() => onRequestCopyMeal(meal.id)}
+                            >
                               Copy to another day…
                             </DropdownMenuItem>
                             <DropdownMenuItem
+                              className={brandedSheets ? "mx-1" : undefined}
                               onSelect={async () => {
                                 const message = buildMealShareText({
                                   recipeTitle: meal.recipeTitle,
@@ -543,7 +654,7 @@ export function TodayMealsSection({
                               onSelect={() => {
                                 setDeleteCandidate({ id: meal.id, recipeTitle: meal.recipeTitle });
                               }}
-                              className="text-destructive focus:text-destructive"
+                              className={`text-destructive focus:text-destructive${brandedSheets ? " mx-1 mb-1" : ""}`}
                             >
                               Delete
                             </DropdownMenuItem>
@@ -707,8 +818,28 @@ export function TodayMealsSection({
           if (!o) setUsualPicker(null);
         }}
       >
-        <DialogContent className="bg-card border-border max-w-md">
+        <DialogContent
+          className="bg-card border-border max-w-md"
+          style={
+            redesignMotion
+              ? (() => {
+                  const t = sheetTransition(usualPicker != null);
+                  return { transform: t.transform, transition: t.transition };
+                })()
+              : undefined
+          }
+        >
           <DialogHeader>
+            {/* P5 parity (#6, #27) — quiet brand mark above the title under
+                redesign_branded_sheets, matching mobile's branded sheets. */}
+            {brandedSheets && (
+              <span
+                data-testid="usual-picker-branded-mark"
+                className="mb-1 inline-flex"
+              >
+                <SupprMark size={16} className="opacity-50" aria-hidden />
+              </span>
+            )}
             <DialogTitle className="text-foreground">
               {usualPicker ? `Log a usual ${usualPicker.slot}` : "Log a usual meal"}
             </DialogTitle>

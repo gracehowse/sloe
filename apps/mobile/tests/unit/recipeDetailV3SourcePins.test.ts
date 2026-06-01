@@ -159,14 +159,93 @@ describe("mobile recipe-detail v3 — Fix 5 (Fits your day softened)", () => {
     expect(SRC).toMatch(/computeFitsYourDayVerdict\(\{/);
   });
 
-  it("fits-your-day testID still exists, rendered as a plain text line (no pill bg)", () => {
-    expect(SRC).toMatch(/testID="recipe-fits-your-day"/);
-    // No background-color rounded-pill — the pre-v3 mobile pill used
-    // a `verdictTone.bg` `+"1A"` alpha background. v3 drops that.
-    const fitsIdx = SRC.indexOf('testID="recipe-fits-your-day"');
-    expect(fitsIdx).toBeGreaterThan(0);
-    const block = SRC.slice(fitsIdx, fitsIdx + 1200);
-    expect(block).not.toMatch(/borderRadius:\s*Radius\.full,\s*backgroundColor:/);
+  it("the flag-OFF legacy path is still a plain text line (no pill bg)", () => {
+    // ENG-818 keeps the legacy flat coloured-text line alive in the
+    // `else` of the `winFitsChip` gate. Pin THAT path (the second
+    // `testID="recipe-fits-your-day"` occurrence) to make sure the
+    // flag-off render is unchanged.
+    const first = SRC.indexOf('testID="recipe-fits-your-day"');
+    const second = SRC.indexOf('testID="recipe-fits-your-day"', first + 1);
+    expect(second).toBeGreaterThan(first);
+    const legacyBlock = SRC.slice(second, second + 600);
+    expect(legacyBlock).not.toMatch(/borderRadius:\s*Radius\.full,\s*backgroundColor:/);
+  });
+});
+
+/**
+ * ENG-818 (Redesign — Design Direction 2026) — the "Fits your day" verdict is
+ * promoted to a tinted payoff CHIP behind `design_system_colours`. When it fits
+ * well it uses the dedicated landmark WIN amber (`Accent.win` / `Accent.winSoft`)
+ * — the reserved "genuine win" colour, NOT generic success-green. The legacy
+ * flat line stays alive in the `else` (the flag-off path).
+ */
+describe("mobile recipe-detail — ENG-818 'Fits your day' payoff chip", () => {
+  it("gates the chip on the colour-system flag (old flat line in the else)", () => {
+    expect(SRC).toMatch(/isFeatureEnabled\("design_system_colours"\)/);
+    expect(SRC).toMatch(/const winFitsChip = commitColours/);
+    expect(SRC).toMatch(/if \(winFitsChip\) \{/);
+    expect(SRC).toMatch(/Flag-off legacy path — flat coloured glyph \+ text line/);
+  });
+
+  it("the fits-well chip uses the WIN amber token, not success-green", () => {
+    const chipIdx = SRC.indexOf("ENG-818 (Redesign — Design Direction 2026)");
+    expect(chipIdx).toBeGreaterThan(0);
+    const block = SRC.slice(chipIdx, chipIdx + 1400);
+    // success tone → win amber + winSoft tint (the landmark colour).
+    expect(block).toMatch(/success:\s*\{\s*fg:\s*Accent\.win,\s*bg:\s*Accent\.winSoft\s*\}/);
+  });
+
+  it("over-half → warning tint; over-a-day → destructive tint (semantic tones)", () => {
+    const chipIdx = SRC.indexOf("ENG-818 (Redesign — Design Direction 2026)");
+    const block = SRC.slice(chipIdx, chipIdx + 1400);
+    expect(block).toMatch(/warning:\s*\{\s*fg:\s*Accent\.warning/);
+    expect(block).toMatch(/destructive:\s*\{[\s\S]{0,80}fg:\s*Accent\.destructive/);
+  });
+
+  it("the chip is a Radius.full pill with a real background fill", () => {
+    const chipIdx = SRC.indexOf("ENG-818 (Redesign — Design Direction 2026)");
+    const block = SRC.slice(chipIdx, chipIdx + 2200);
+    expect(block).toMatch(/borderRadius:\s*Radius\.full,\s*\n\s*backgroundColor:\s*bg/);
+  });
+
+  it("a11y contract preserved — accessibilityLabel on BOTH paths", () => {
+    const matches = SRC.match(/testID="recipe-fits-your-day"/g) ?? [];
+    expect(matches.length).toBe(2); // chip path + legacy path
+    expect(SRC).toMatch(/accessibilityLabel=\{verdict\.a11y\}/);
+  });
+});
+
+/**
+ * ENG-818/819 — soft elevation on the resting detail cards (via
+ * `useCardElevation`) + the quiet confirm haptic on the commit CTAs (Log all /
+ * Log / Start Cooking). Both flag-gated; flag-off keeps today's flat/hairline
+ * card + silent commit.
+ */
+describe("mobile recipe-detail — ENG-818/819 elevation + commit haptics", () => {
+  it("resting detail card consumes `useCardElevation` (shadow/border/lift branch)", () => {
+    expect(SRC).toMatch(/import \{ useCardElevation \} from "@\/hooks\/useCardElevation"/);
+    expect(SRC).toMatch(/const cardElevation = useCardElevation\(\);/);
+    // The card style threads the hook output: lift bg, flag-driven border,
+    // and the soft shadow spread.
+    expect(SRC).toMatch(/backgroundColor:\s*cardElevation\.liftBg\s*\?\?\s*colors\.card/);
+    expect(SRC).toMatch(/borderWidth:\s*cardElevation\.useBorder\s*\?\s*1\s*:\s*0/);
+    expect(SRC).toMatch(/\.\.\.\(cardElevation\.shadowStyle\s*\?\?\s*\{\}\)/);
+    // And the StyleSheet useMemo depends on it so it re-derives on flag flip.
+    expect(SRC).toMatch(/\}\), \[colors, insets\.top, cardElevation\]\)/);
+  });
+
+  it("commit CTAs are PressableScale with a flag-gated confirm/success haptic", () => {
+    expect(SRC).toMatch(/import \{ PressableScale \} from "@\/components\/ui\/PressableScale"/);
+    expect(SRC).toMatch(/const winMomentFeedback = isFeatureEnabled\("redesign_winmoment"\)/);
+    // In-body Log + Start Cooking → quiet `confirm`; flag-off → `none`.
+    const confirmUses = SRC.match(/haptic=\{winMomentFeedback \? "confirm" : "none"\}/g) ?? [];
+    expect(confirmUses.length).toBeGreaterThanOrEqual(2);
+    // Sticky "Log all" (whole-recipe landmark commit) → heavier `success`.
+    expect(SRC).toMatch(/haptic=\{winMomentFeedback \? "success" : "none"\}/);
+    // The sticky CTA is the PressableScale (not a bare Pressable any more).
+    expect(SRC).toMatch(
+      /<PressableScale[\s\S]{0,600}testID="recipe-detail-sticky-log-cta"/,
+    );
   });
 });
 

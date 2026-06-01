@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "../ui/dialog";
 import { Button } from "../ui/button";
+import { isFeatureEnabled } from "../../../lib/analytics/track";
 import { clampPortionMultiplier } from "../../../lib/nutrition/portionMultiplier";
 import type { RecipeCard } from "../../../types/recipe";
 
@@ -114,9 +115,26 @@ export function TodayAddMealDialog(props: TodayAddMealDialogProps) {
   // of reach. Now the DialogContent is a flex column with a fixed
   // header, a `flex-1 overflow-y-auto` body, and a sticky `border-t`
   // footer that holds Cancel + Add meal. Mirrors P0 #1 (FoodSearch).
+
+  // ENG-821 (Redesign — Design Direction 2026) parity gap #20: this was the
+  // ONLY suppr dialog never swept onto `design_system_elevation` — its three
+  // direct siblings (recipe-edit / add-ingredient / override-ingredient) all
+  // move from the pure-white `bg-card` + hairline border onto the warm-cream
+  // `bg-background` surface and let the real soft `--elev-card-soft` shadow
+  // carry separation (no border-as-depth) under the flag. Mirror them exactly;
+  // the flag-OFF path keeps today's white/hairline dialog alive (CLAUDE.md
+  // feature-flag non-negotiable). Inputs already use semantic borders and the
+  // Add CTA already uses the blue default Button — no colour repaint here.
+  const elevated = isFeatureEnabled("design_system_elevation");
+  const surfaceCls = elevated
+    ? "bg-background border-transparent shadow-[var(--elev-card-soft)]"
+    : "bg-card border-border";
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-card border-border max-h-[90vh] min-h-[28rem] flex flex-col p-0 gap-0">
+      <DialogContent
+        className={`${surfaceCls} max-h-[90vh] min-h-[28rem] flex flex-col p-0 gap-0`}
+        data-testid="today-add-meal-dialog"
+      >
         <DialogHeader className="px-6 pt-6 pb-3 shrink-0">
           <DialogTitle className="text-foreground">Log a meal</DialogTitle>
           <DialogDescription className="text-muted-foreground">

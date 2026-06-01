@@ -1,6 +1,7 @@
 import * as React from "react";
 import { StyleSheet, Text, View, type ViewStyle } from "react-native";
-import { Accent, Elevation, MacroColors, Radius, Spacing } from "@/constants/theme";
+import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
+import { useCardElevation } from "@/hooks/useCardElevation";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
   computeRemaining,
@@ -91,6 +92,7 @@ export function RemainingMacrosBar({
   style,
 }: RemainingMacrosBarProps) {
   const colors = useThemeColors();
+  const cardElevation = useCardElevation();
   const current = React.useMemo(() => computeRemaining(targets, consumed), [targets, consumed]);
   const projected = React.useMemo(
     () => (candidate ? projectRemaining(targets, consumed, candidate) : null),
@@ -106,7 +108,12 @@ export function RemainingMacrosBar({
       accessibilityLabel="Remaining daily macros"
       style={[
         styles.container,
-        { backgroundColor: colors.card, borderColor: colors.cardBorder },
+        {
+          backgroundColor: cardElevation.liftBg ?? colors.card,
+          borderColor: colors.cardBorder,
+          borderWidth: cardElevation.useBorder ? 1 : 0,
+        },
+        cardElevation.shadowStyle,
         style,
       ]}
     >
@@ -192,9 +199,9 @@ const styles = StyleSheet.create({
     padding: Spacing.sm,
     // Audit M6 (2026-04-18): card-shell uses Radius.lg to match the rest
     // of the Today cards (mobile convention, matches web `rounded-card`).
+    // Border + elevation are applied at render via `useCardElevation()`
+    // (ENG-795 flag-gated soft elevation) so they react to the flag/theme.
     borderRadius: Radius.lg,
-    borderWidth: 1,
-    ...Elevation.card,
   },
   col: {
     flex: 1,

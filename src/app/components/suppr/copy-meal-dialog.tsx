@@ -10,7 +10,10 @@ import {
   DialogTitle,
 } from "../ui/dialog";
 import { Button } from "../ui/button";
+import { SupprMark } from "../ui/suppr-mark";
 import { addDays, sanitizeCopyTargets } from "../../../lib/nutrition/copyMeals";
+import { formatMacroTrailer } from "../../../lib/nutrition/macroFormat";
+import { isFeatureEnabled } from "../../../lib/analytics/track";
 
 type Props = {
   open: boolean;
@@ -19,6 +22,21 @@ type Props = {
   sourceDayKey: string;
   /** Human label for the meal (shown in the title and toast). */
   mealLabel: string;
+  /**
+   * P5 parity (#7) — optional meal-identity inputs for the branded
+   * header chrome (SupprMark + thumbnail + macro line) shown under
+   * `redesign_branded_sheets`. All optional: when omitted, the branded
+   * header degrades to the SupprMark + title only, and the flag-off path
+   * keeps the original plain header. Mirrors mobile's MealActionSheet
+   * copy chrome (apps/mobile/.../TodayMealsSection.tsx:308-353).
+   */
+  mealThumbUrl?: string | null;
+  mealMacros?: {
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+  } | null;
   /** Called with the target days and a human-readable summary for the toast. */
   onConfirm: (targetDayKeys: string[], summary: string) => void;
 };
@@ -47,7 +65,19 @@ function formatHumanDate(key: string): string {
  *  - Source day is excluded automatically by the shared `sanitizeCopyTargets`.
  *  - Confirm is disabled when no valid target remains (e.g. user picked the source day).
  */
-export function CopyMealDialog({ open, onOpenChange, sourceDayKey, mealLabel, onConfirm }: Props) {
+export function CopyMealDialog({
+  open,
+  onOpenChange,
+  sourceDayKey,
+  mealLabel,
+  mealThumbUrl,
+  mealMacros,
+  onConfirm,
+}: Props) {
+  // P5 parity (#7) — branded chrome on the copy flow under
+  // redesign_branded_sheets. Legacy plain header stays alive in the
+  // flag-off path. See src/app/components/suppr/today-meals-section.tsx.
+  const brandedSheets = isFeatureEnabled("redesign_branded_sheets");
   const defaultTarget = useMemo(() => addDays(sourceDayKey, 1), [sourceDayKey]);
   const [targetDateKey, setTargetDateKey] = useState(defaultTarget);
   const [quickRange, setQuickRange] = useState<QuickRange>("none");
@@ -95,10 +125,56 @@ export function CopyMealDialog({ open, onOpenChange, sourceDayKey, mealLabel, on
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-card border-border max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-foreground">Copy meal to another day</DialogTitle>
-          <DialogDescription className="text-muted-foreground">
-            {`"${mealLabel}" — pick a day and, optionally, a short range.`}
-          </DialogDescription>
+          {brandedSheets ? (
+            <>
+              {/* P5 parity (#7) — branded header: quiet SupprMark +
+                  thumbnail + title + macro line, matching mobile's
+                  MealActionSheet copy chrome. Thumbnail/macros render only
+                  when the host passes them; the mark + title always show. */}
+              <div
+                data-testid="copy-meal-branded-header"
+                className="flex items-center gap-2.5"
+              >
+                {mealThumbUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={mealThumbUrl}
+                    alt=""
+                    className="h-10 w-10 rounded-lg object-cover shrink-0"
+                  />
+                ) : (
+                  <span className="grid h-10 w-10 place-items-center rounded-lg bg-primary/10 shrink-0">
+                    <SupprMark size={20} className="opacity-60" aria-hidden />
+                  </span>
+                )}
+                <span className="min-w-0 flex-1 text-left">
+                  <span className="flex items-center gap-1.5">
+                    {mealThumbUrl ? (
+                      <SupprMark size={14} className="opacity-50 shrink-0" aria-hidden />
+                    ) : null}
+                    <DialogTitle className="truncate text-foreground">
+                      {mealLabel}
+                    </DialogTitle>
+                  </span>
+                  {mealMacros ? (
+                    <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
+                      {formatMacroTrailer(mealMacros)}
+                    </span>
+                  ) : null}
+                </span>
+              </div>
+              <DialogDescription className="text-muted-foreground">
+                Copy to another day — pick a day and, optionally, a short range.
+              </DialogDescription>
+            </>
+          ) : (
+            <>
+              <DialogTitle className="text-foreground">Copy meal to another day</DialogTitle>
+              <DialogDescription className="text-muted-foreground">
+                {`"${mealLabel}" — pick a day and, optionally, a short range.`}
+              </DialogDescription>
+            </>
+          )}
         </DialogHeader>
         <div className="grid gap-4 py-2">
           <label className="grid gap-1.5">

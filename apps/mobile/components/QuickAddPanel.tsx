@@ -18,7 +18,8 @@ import {
   PlusCircle,
   Star as StarIcon,
 } from "lucide-react-native";
-import { Accent, Elevation, IconSize, Radius, Spacing } from "@/constants/theme";
+import { Accent, IconSize, Radius, Spacing } from "@/constants/theme";
+import { useCardElevation } from "@/hooks/useCardElevation";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import Badge from "@/components/Badge";
 import { SourceDot } from "@/components/ui/SourceDot";
@@ -192,6 +193,7 @@ export function QuickAddPanel({
   void _onOpenSaveCombo;
 
   const colors = useThemeColors();
+  const cardElevation = useCardElevation();
 
   // Ship M1 — when the caller leaves `defaultTab` unset, the first saved
   // meals load decides whether to land on "Usual meals" or "Recent" via
@@ -621,17 +623,17 @@ export function QuickAddPanel({
                   accessibilityRole="button"
                   accessibilityLabel={`Log ${meal.name} to ${slotLabel}. ${summaryLabel}. Long-press for more actions.`}
                   style={{
-                    backgroundColor: colors.card,
+                    backgroundColor: cardElevation.liftBg ?? colors.card,
                     // Audit M6 (2026-04-18): card-shell list rows align to
                     // Radius.lg (mobile convention, matches web rounded-card).
                     borderRadius: Radius.lg,
                     padding: Spacing.md,
                     flexDirection: "row",
                     alignItems: "center",
-                    borderWidth: 1,
+                    borderWidth: cardElevation.useBorder ? 1 : 0,
                     borderColor: colors.border,
                     opacity: pending ? 0.6 : 1,
-                    ...Elevation.card,
+                    ...(cardElevation.shadowStyle ?? {}),
                   }}
                 >
                   <SourceDot
@@ -715,16 +717,16 @@ export function QuickAddPanel({
               <Pressable
                 key={`${row.recipeTitle}-${row.calories}-${idx}`}
                 style={{
-                  backgroundColor: colors.card,
+                  backgroundColor: cardElevation.liftBg ?? colors.card,
                   // Audit M6 (2026-04-18): card-shell list rows align to
                   // Radius.lg (mobile convention, matches web rounded-card).
                   borderRadius: Radius.lg,
                   padding: Spacing.md,
                   flexDirection: "row",
                   alignItems: "center",
-                  borderWidth: 1,
+                  borderWidth: cardElevation.useBorder ? 1 : 0,
                   borderColor: colors.border,
-                  ...Elevation.card,
+                  ...(cardElevation.shadowStyle ?? {}),
                 }}
                 accessibilityRole="button"
                 accessibilityLabel={`Log ${row.recipeTitle} to ${activeSlot}`}

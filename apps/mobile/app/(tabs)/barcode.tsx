@@ -24,8 +24,10 @@ import { AlertCircle, Camera, Check, PlusCircle, X } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, type Href } from "expo-router";
 
-import { lookupBarcode, scaleMacrosByGrams, submitFoodCorrection, type BarcodeProduct } from "@/lib/verifyRecipe";
+import { barcodeConfidenceTier, lookupBarcode, scaleMacrosByGrams, submitFoodCorrection, type BarcodeProduct } from "@/lib/verifyRecipe";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { isFeatureEnabled } from "@/lib/analytics";
+import { SearchResultConfidenceChip } from "@/components/ui/SearchResultConfidenceChip";
 import { Accent, Spacing, Radius, Colors } from "@/constants/theme";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/auth";
@@ -44,6 +46,12 @@ export default function BarcodeScreen() {
   const colors = useThemeColors();
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
+
+  // Search-results redesign (2026-05-31): when on, the barcode result
+  // adopts the same logging language as the food-search redesign — a
+  // legible Verified/Estimated confidence chip + a blue commit CTA.
+  // Old path (binary green tick + green CTA) stays alive in the else.
+  const searchRedesign = isFeatureEnabled("redesign_search_results");
 
   const [permission, requestPermission] = useCameraPermissions();
   const [last, setLast] = useState<string | null>(null);
@@ -704,7 +712,23 @@ export default function BarcodeScreen() {
                   );
                 })}
             </View>
-            {product.verified ? (
+            {searchRedesign ? (
+              // Redesign: legible Verified/Estimated chip (search-results
+              // language) + the source line beneath it for provenance.
+              <View style={{ alignItems: "center", gap: 4 }}>
+                <SearchResultConfidenceChip
+                  tier={barcodeConfidenceTier(product)}
+                  testID="barcode-confidence-chip"
+                />
+                <Text style={styles.source}>
+                  {product.verified
+                    ? "Verified entry"
+                    : product.source === "user"
+                      ? "Community submitted"
+                      : "via Open Food Facts"}
+                </Text>
+              </View>
+            ) : product.verified ? (
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4 }}>
                 <Check size={11} color={Colors.dark.textTertiary} strokeWidth={3} />
                 <Text style={styles.source}>Verified</Text>
@@ -716,7 +740,7 @@ export default function BarcodeScreen() {
             )}
             <View style={styles.btnRow}>
               <Pressable
-                style={styles.logBtn}
+                style={[styles.logBtn, searchRedesign && { backgroundColor: Accent.primary }]}
                 onPress={handleLog}
                 disabled={logging}
                 accessibilityLabel={`Log ${product.name} to tracker`}
@@ -816,7 +840,11 @@ export default function BarcodeScreen() {
               />
             </View>
             <Pressable
-              style={[styles.logBtn, { opacity: manualName.trim() && Number(manualCalories) > 0 ? 1 : 0.4 }]}
+              style={[
+                styles.logBtn,
+                searchRedesign && { backgroundColor: Accent.primary },
+                { opacity: manualName.trim() && Number(manualCalories) > 0 ? 1 : 0.4 },
+              ]}
               onPress={handleManualLog}
               disabled={!manualName.trim() || !(Number(manualCalories) > 0) || logging}
             >

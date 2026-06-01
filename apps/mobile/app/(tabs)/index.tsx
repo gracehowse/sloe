@@ -182,6 +182,8 @@ import {
 } from "@suppr/shared/nutrition/pendingUsualMealSave";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { PROFILE_TARGETS_DIRTY_KEY } from "@/lib/profileTargetsDirtyFlag";
+import { useWinMoment } from "@/hooks/use-win-moment";
+import { WinMomentPlayer } from "@/components/ui/WinMomentPlayer";
 import { TodayHero } from "@/components/today/TodayHero";
 import { TodayFastingPill } from "@/components/today/TodayFastingPill";
 // `LogFab` is retired on mobile (2026-04-30) — the centered raised
@@ -717,6 +719,12 @@ export default function TrackerScreen() {
   const [weeklyCheckinOpen, setWeeklyCheckinOpen] = useState(false);
   const [weeklyCheckinContent, setWeeklyCheckinContent] =
     useState<WeeklyCheckinContent | null>(null);
+  // ENG-805 (Redesign — Design Direction 2026): when `redesign_winmoment` is
+  // ON the weekly check-in is NOT auto-opened as a cold-open blocking modal —
+  // the in-feed `WeeklyCheckinBanner` (→ /weekly-recap) is the non-blocking
+  // entry point. Flag-OFF preserves the auto-opening modal (both the gate at
+  // the eligibility effect and the modal render below are guarded by this).
+  const checkinAsCard = isFeatureEnabled("redesign_winmoment");
   const weeklyCheckinHandledRef = useRef(false);
   const [profileWeightKgByDay, setProfileWeightKgByDay] = useState<Record<string, number>>({});
   const targetHitPrevByDayRef = useRef<Record<string, boolean>>({});
@@ -2514,7 +2522,8 @@ export default function TrackerScreen() {
       weightDeltaKg: null,
     });
     setWeeklyCheckinContent(content);
-    setWeeklyCheckinOpen(true);
+    // ENG-805: flag-ON skips the cold-open modal (banner is the entry instead).
+    if (!isFeatureEnabled("redesign_winmoment")) setWeeklyCheckinOpen(true);
 
     // Optimistically stamp the shown-at on the row so we don't re-fire
     // on a hot reload, even if the analytics emit fails. Server is
@@ -2944,6 +2953,49 @@ export default function TrackerScreen() {
     [protectedStreakInfo],
   );
   const protectedStreakLength = protectedStreakInfo.streakLength;
+
+  // ENG-798 (Redesign — Design Direction 2026) — reserved win-moment.
+  // The shared landmark math + the once-per-day / flag gate live in
+  // `useWinMoment`; Today just feeds it a live snapshot and renders the
+  // returned `<WinMomentPlayer>` overlay (see below in the JSX). All
+  // detection is inert when `redesign_winmoment` is off, so the
+  // pre-redesign static behaviour is preserved. `confirmLog` is the quiet
+  // <100ms confirm haptic for ordinary logs (gated behind
+  // `redesign_motion`) — wired into the ordinary-log path.
+  const winSnapshot = useMemo(
+    () => ({
+      consumed: totals.calories,
+      goal: effectiveCalorieGoal,
+      streak: protectedStreakLength,
+      macros: {
+        protein: { current: totals.protein, target: effectiveMacroTargets.protein },
+        carbs: { current: totals.carbs, target: effectiveMacroTargets.carbs },
+        fat: { current: totals.fat, target: effectiveMacroTargets.fat },
+      },
+    }),
+    [
+      totals.calories,
+      totals.protein,
+      totals.carbs,
+      totals.fat,
+      effectiveCalorieGoal,
+      effectiveMacroTargets.protein,
+      effectiveMacroTargets.carbs,
+      effectiveMacroTargets.fat,
+      protectedStreakLength,
+    ],
+  );
+  const {
+    activeCelebration: winCelebration,
+    onCelebrationComplete: onWinComplete,
+    confirmLog: confirmLogHaptic,
+  } = useWinMoment({
+    snapshot: winSnapshot,
+    dayKey,
+    isToday,
+    ready: hydrated,
+  });
+
   // L6 G8 (2026-04-18) — fire `streak_reset` exactly once when the
   // protected streak transitions from >=1 to 0. Ref starts at `null`
   // so a user with a zero streak on first render never fires.
@@ -5320,22 +5372,51 @@ export default function TrackerScreen() {
 
       </ScrollView>
 
+      {/* ENG-798 — reserved landmark win-moment overlay. Mounts only
+          while `useWinMoment` reports an active celebration (calorie
+          ring closed at/under target, macro hit, or streak milestone),
+          plays its Lottie once full-bleed, fires `onWinComplete` to
+          unmount. `pointerEvents: none` (set inside WinMomentPlayer)
+          keeps it from blocking taps. Gating + once-per-day logic live
+          in the hook — this is a pure render of its output. */}
+      {winCelebration ? (
+        <WinMomentPlayer
+          celebration={winCelebration}
+          onComplete={onWinComplete}
+          fullBleed
+          testID="today-win-moment"
+        />
+      ) : null}
+
       {/* Weekly TDEE check-in ritual (PR claude/weekly-checkin-ritual-v2,
           2026-05-02 — rebuild of #26). MacroFactor-style soft prompt
           that surfaces the adaptive-vs-formula TDEE delta + a suggested
           new daily target. Soft prompt — every dismiss path persists
-          the decision. */}
-      <WeeklyCheckinModal
-        visible={weeklyCheckinOpen}
-        content={weeklyCheckinContent}
-        currentTargetKcal={targets.calories}
-        onAccept={handleWeeklyCheckinAccept}
-        onDismiss={handleWeeklyCheckinDismiss}
-        cardColor={colors.card}
-        textColor={colors.text}
-        textSecondaryColor={colors.textSecondary}
-        borderColor={colors.border}
-      />
+          the decision.
+
+          ENG-805 (Redesign — Design Direction 2026): when
+          `redesign_winmoment` is ON the check-in is demoted from this
+          cold-open blocking MODAL to a dismissible inline CARD rendered
+          in the Today feed (below the hero, above meals — see
+          `<WeeklyCheckinCard>` in the scroll content). The modal stays
+          alive here as the flag-OFF path so the old behaviour is fully
+          preserved. The card and the modal share the exact same
+          `weeklyCheckinOpen` state + accept/dismiss handlers, so the
+          weekly cadence and persistence are unchanged — only the
+          presentation differs. */}
+      {!checkinAsCard ? (
+        <WeeklyCheckinModal
+          visible={weeklyCheckinOpen}
+          content={weeklyCheckinContent}
+          currentTargetKcal={targets.calories}
+          onAccept={handleWeeklyCheckinAccept}
+          onDismiss={handleWeeklyCheckinDismiss}
+          cardColor={colors.card}
+          textColor={colors.text}
+          textSecondaryColor={colors.textSecondary}
+          borderColor={colors.border}
+        />
+      ) : null}
 
       {/* Complete Day Modal */}
       <TodayCompleteDayModal

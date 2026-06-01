@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Suppr — Design Direction Prototype (2026-05-31)</title>
+<style>
+  :root{
+    /* canvas + ink */
+    --cream:#FBFAF6; --card:#FFFFFF; --ink:#1A181F; --muted:#6E6A64; --hair:#ECEAE4;
+    /* one accent, semantic colours */
+    --blue:#588CE4; --blue-press:#3F73CC;
+    --green:#56A775;          /* RESERVED: calorie-ring under-target + success only */
+    --red:#E5604D;            /* over-target */
+    --win:#F2A93B;            /* dedicated win-colour — distinct from success green */
+    /* macros */
+    --protein:#6C8CFF; --carbs:#E8913A; --fat:#E36FA8; --fiber:#56A775;
+    /* the one elevation token */
+    --elev:0 4px 18px rgba(20,18,24,.07), 0 1px 3px rgba(20,18,24,.04);
+    --radius:18px;
+    --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--font);background:#E9E7E2;color:var(--ink);
+    background-image:radial-gradient(circle at 20% 0%,#f1efe9,#e3e1db);min-height:100vh;padding:28px 20px 60px}
+  .wrap{max-width:1180px;margin:0 auto}
+  h1{font-size:22px;font-weight:800;letter-spacing:-.4px}
+  .sub{color:#6b6760;font-size:13px;margin-top:4px;max-width:720px;line-height:1.5}
+  .controls{display:flex;gap:10px;align-items:center;margin:18px 0 26px;flex-wrap:wrap}
+  .seg{display:inline-flex;background:#fff;border-radius:12px;padding:4px;box-shadow:var(--elev)}
+  .seg button{border:0;background:transparent;font:inherit;font-weight:700;font-size:13px;color:#8a857e;
+    padding:9px 18px;border-radius:9px;cursor:pointer;transition:.18s}
+  .seg button.on{background:var(--ink);color:#fff}
+  .seg.after button.on{background:var(--blue)}
+  .btn{border:0;font:inherit;font-weight:700;font-size:13px;padding:11px 18px;border-radius:11px;cursor:pointer;
+    background:var(--blue);color:#fff;box-shadow:var(--elev);transition:transform .12s,background .2s}
+  .btn:active{transform:scale(.96)}
+  .btn.ghost{background:#fff;color:var(--ink)}
+  .stage{display:flex;gap:48px;align-items:flex-start;flex-wrap:wrap}
+  .phone-col{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:12px}
+  .tag{font-size:12px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:#8a857e}
+
+  /* iPhone frame */
+  .phone{width:392px;height:812px;background:#000;border-radius:54px;padding:11px;
+    box-shadow:0 30px 70px -20px rgba(20,18,24,.45), 0 0 0 2px #0a0a0a;position:relative}
+  .screen{width:100%;height:100%;background:var(--cream);border-radius:44px;overflow:hidden;position:relative}
+  .island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:118px;height:33px;background:#000;border-radius:20px;z-index:40}
+  .statusbar{height:54px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 7px;font-size:14px;font-weight:700}
+  .scr{height:calc(100% - 54px);overflow-y:auto;padding:4px 16px 96px;scrollbar-width:none}
+  .scr::-webkit-scrollbar{display:none}
+
+  /* header */
+  .appbar{display:flex;align-items:center;justify-content:space-between;padding:6px 2px 12px}
+  .daynav{display:flex;align-items:center;gap:10px}
+  .daynav .chev{width:30px;height:30px;border-radius:9px;background:#fff;display:grid;place-items:center;font-size:15px;color:#555;border:1px solid var(--hair)}
+  .daynav b{font-size:19px;font-weight:800}
+  .brandmark{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:15px}
+  /* BEFORE: grey ring mark / AFTER: unified blue */
+  .before .brandmark{background:#e7e4de;color:#9a958d;box-shadow:inset 0 0 0 2px #cfcbc3}
+  .after  .brandmark{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(88,140,228,.45)}
+
+  .weekstrip{display:flex;justify-content:space-between;padding:2px 2px 14px}
+  .wd{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:11px;color:#9a958d;font-weight:600}
+  .wd .dot{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:#e8f2ec;color:#56a775;font-size:12px}
+  .wd.sel .dot{background:var(--blue);color:#fff}
+  .wd.sel{color:var(--blue)}
+
+  /* cards — depth is the toggle */
+  .card{background:var(--card);border-radius:var(--radius);padding:18px;margin-bottom:14px}
+  .before .card{border:1px solid var(--hair);box-shadow:none}
+  .after  .card{border:1px solid transparent;box-shadow:var(--elev)}
+
+  /* ring */
+  .ringwrap{display:flex;flex-direction:column;align-items:center;padding:6px 0 2px}
+  .ring{position:relative;width:188px;height:188px}
+  .ring svg{transform:rotate(-90deg)}
+  .ring .track{fill:none;stroke:#EEEBE4;stroke-width:14}
+  .ring .prog{fill:none;stroke-width:14;stroke-linecap:round;stroke:var(--green);
+    transition:stroke-dashoffset .25s linear, stroke .3s}
+  .after .ring .prog{transition:stroke-dashoffset .9s cubic-bezier(.22,1,.36,1), stroke .4s}
+  .ring .mid{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .ring .num{font-size:34px;font-weight:800;letter-spacing:-1px;font-variant-numeric:tabular-nums}
+  .ring .lbl{font-size:11px;font-weight:700;letter-spacing:1px;color:#9a958d;margin-top:2px}
+  .ring .goal{font-size:12px;color:#9a958d;margin-top:1px}
+  .statrow{display:flex;justify-content:space-around;border-top:1px solid var(--hair);margin-top:14px;padding-top:12px}
+  .statrow .s{text-align:center}
+  .statrow .s .k{font-size:11px;color:#9a958d;font-weight:600;letter-spacing:.3px}
+  .statrow .s .v{font-size:16px;font-weight:800;margin-top:2px;font-variant-numeric:tabular-nums}
+  .statrow .s.food .v{color:var(--green)} .statrow .s.bonus .v{color:var(--carbs)}
+
+  /* macros */
+  .macro{display:flex;align-items:center;gap:12px;padding:9px 0}
+  .macro+.macro{border-top:1px solid #f3f1ec}
+  .macro .name{width:62px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#5a564f}
+  .macro .bar{flex:1;height:8px;background:#f0ede7;border-radius:6px;overflow:hidden}
+  .macro .bar i{display:block;height:100%;border-radius:6px}
+  .macro .val{font-size:12px;color:#8a857e;width:88px;text-align:right;font-variant-numeric:tabular-nums}
+  .macro .val b{color:var(--ink);font-size:13px}
+
+  /* meal slot */
+  .slot{display:flex;align-items:center;gap:12px;padding:13px 2px}
+  .slot+.slot{border-top:1px solid #f3f1ec}
+  .slot .ic{width:30px;height:30px;border-radius:9px;background:#f4f1ea;display:grid;place-items:center;font-size:15px}
+  .slot .t{flex:1;font-size:15px;font-weight:600;color:#7d786f}
+  .slot .add{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:18px;color:#b7b2a8}
+  .slot.logged .t{color:var(--ink)} .slot.logged .sub{font-size:12px;color:#9a958d;font-weight:500}
+
+  /* tab bar + FAB */
+  .tabbar{position:absolute;bottom:0;left:0;right:0;height:84px;background:rgba(251,250,246,.92);
+    backdrop-filter:blur(12px);border-top:1px solid var(--hair);display:flex;justify-content:space-around;
+    align-items:flex-start;padding:11px 22px 0;z-index:30}
+  .tab{font-size:10px;font-weight:600;color:#b7b2a8;display:flex;flex-direction:column;align-items:center;gap:4px}
+  .tab.on{color:var(--blue)} .tab .gl{font-size:19px}
+  .fab{position:absolute;bottom:30px;left:50%;transform:translateX(-50%);width:60px;height:60px;border-radius:50%;
+    background:var(--blue);color:#fff;border:0;font-size:30px;display:grid;place-items:center;cursor:pointer;z-index:35;
+    box-shadow:0 10px 24px -6px rgba(88,140,228,.7);transition:transform .14s}
+  .fab:active{transform:translateX(-50%) scale(.92)}
+
+  /* portion sheet mini (commit-colour demo) */
+  .sheet{margin-top:4px}
+  .cta{display:block;width:100%;border:0;font:inherit;font-weight:800;font-size:16px;color:#fff;
+    padding:15px;border-radius:14px;cursor:pointer;text-align:center}
+  /* THE drift the review caught: before=green commit, after=blue commit */
+  .before .cta.commit{background:var(--green)}
+  .after  .cta.commit{background:var(--blue)}
+
+  /* win-moment fx */
+  .screen.celebrate::after{content:"";position:absolute;inset:0;border-radius:44px;
+    box-shadow:inset 0 0 0 3px var(--win);animation:flash .6s ease-out;pointer-events:none;z-index:50}
+  @keyframes flash{0%{opacity:0}25%{opacity:1}100%{opacity:0}}
+  .toast{position:absolute;left:50%;top:120px;transform:translateX(-50%) translateY(-8px);
+    background:var(--ink);color:#fff;padding:11px 18px;border-radius:14px;font-size:14px;font-weight:700;
+    display:flex;gap:8px;align-items:center;opacity:0;z-index:60;box-shadow:0 12px 30px rgba(0,0,0,.3);transition:.3s}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast .dot{width:9px;height:9px;border-radius:50%;background:var(--win)}
+  .burst{position:absolute;left:50%;top:148px;width:0;height:0;z-index:55;pointer-events:none}
+  .burst span{position:absolute;width:8px;height:8px;border-radius:2px;opacity:0}
+  .burst.go span{animation:pop .8s ease-out forwards}
+  @keyframes pop{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(var(--tx),var(--ty)) scale(.3) rotate(180deg)}}
+
+  /* shake = haptic analog */
+  .shake{animation:shk .4s}
+  @keyframes shk{0%,100%{transform:translateX(0)}20%{transform:translateX(-2px)}40%{transform:translateX(3px)}60%{transform:translateX(-2px)}80%{transform:translateX(2px)}}
+
+  /* spec column */
+  .spec{flex:1;min-width:320px;max-width:430px}
+  .rule{background:#fff;border-radius:16px;padding:16px 18px;margin-bottom:12px;box-shadow:var(--elev)}
+  .rule h3{font-size:14px;font-weight:800;display:flex;gap:8px;align-items:center}
+  .rule .badge{font-size:10px;font-weight:800;color:#fff;background:var(--blue);border-radius:6px;padding:2px 6px}
+  .rule p{font-size:12.5px;color:#6b6760;line-height:1.55;margin-top:7px}
+  .swatches{display:flex;gap:8px;margin-top:11px}
+  .sw{flex:1;border-radius:10px;padding:10px;font-size:10px;font-weight:700;text-align:center;color:#8a857e}
+  .sw.b{background:#fff;border:1px solid var(--hair)}
+  .sw.a{background:#fff;box-shadow:var(--elev)}
+  .sw .lab{display:block;margin-bottom:7px;letter-spacing:.4px}
+  .chip{display:inline-block;height:22px;border-radius:7px;padding:0 10px;line-height:22px;color:#fff;font-size:11px;font-weight:800}
+  .note{font-size:11px;color:#9a958d;margin-top:8px;line-height:1.5}
+  .legend{font-size:12px;color:#6b6760;margin-top:8px;max-width:760px;line-height:1.6}
+  .kbd{font-family:ui-monospace,monospace;background:#fff;border:1px solid var(--hair);border-radius:5px;padding:1px 6px;font-size:11px}
+</style>
+</head>
+<body class="after">
+<div class="wrap">
+  <h1>Suppr — Design Direction Prototype</h1>
+  <div class="sub">The 5-rule “after” state, rendered for red-lining. Toggle <b>Before/After</b> to see depth, commit-colour, and brand-mark unify. Tap the blue <b>+</b> (or “Replay win-moment”) to see the reserved win-moment: odometer count-up → ring fills to target → win-colour celebration + haptic-analog. <i>This is the motion/delight layer that can’t be judged from a static mockup.</i></div>
+
+  <div class="controls">
+    <div class="seg after" id="seg">
+      <button data-mode="before">Before</button>
+      <button data-mode="after" class="on">After</button>
+    </div>
+    <button class="btn" id="replay">▶ Replay win-moment</button>
+    <button class="btn ghost" id="reset">Reset day</button>
+    <span class="note" id="hint">Tip: in “Before”, logging just snaps the number — no depth, green commit button, no celebration.</span>
+  </div>
+
+  <div class="stage">
+    <div class="phone-col">
+      <span class="tag" id="phonetag">After — premium</span>
+      <div class="phone"><div class="screen" id="screen">
+        <div class="island"></div>
+        <div class="statusbar"><span>9:41</span><span>􀙇 􀛨 􀋦</span></div>
+        <div class="scr">
+          <div class="appbar">
+            <div class="daynav"><span class="chev">‹</span><b>Today</b><span class="chev">›</span></div>
+            <div class="brandmark">S</div>
+          </div>
+          <div class="weekstrip">
+            <div class="wd"><span class="dot">✓</span>Mon</div>
+            <div class="wd"><span class="dot">✓</span>Tue</div>
+            <div class="wd"><span class="dot">✓</span>Wed</div>
+            <div class="wd"><span class="dot">✓</span>Thu</div>
+            <div class="wd"><span class="dot">✓</span>Fri</div>
+            <div class="wd sel"><span class="dot">30</span>Sat</div>
+            <div class="wd"><span class="dot">31</span>Sun</div>
+          </div>
+
+          <div class="card">
+            <div class="ringwrap">
+              <div class="ring">
+                <svg width="188" height="188" viewBox="0 0 188 188">
+                  <circle class="track" cx="94" cy="94" r="80"></circle>
+                  <circle class="prog" id="ring" cx="94" cy="94" r="80" stroke-dasharray="502.65" stroke-dashoffset="502.65"></circle>
+                </svg>
+                <div class="mid">
+                  <div class="num" id="kcal">1,450</div>
+                  <div class="lbl">LOGGED</div>
+                  <div class="goal">of 1,800 kcal</div>
+                </div>
+              </div>
+            </div>
+            <div class="statrow">
+              <div class="s"><div class="k">GOAL</div><div class="v">1,800</div></div>
+              <div class="s food"><div class="k">FOOD</div><div class="v" id="food">1,450</div></div>
+              <div class="s bonus"><div class="k">BONUS</div><div class="v">320</div></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="macro"><span class="name">Protein</span><div class="bar"><i id="mp" style="width:62%;background:var(--protein)"></i></div><div class="val"><b id="mpv">92</b> / 146 g</div></div>
+            <div class="macro"><span class="name">Carbs</span><div class="bar"><i style="width:54%;background:var(--carbs)"></i></div><div class="val"><b>110</b> / 205 g</div></div>
+            <div class="macro"><span class="name">Fat</span><div class="bar"><i style="width:48%;background:var(--fat)"></i></div><div class="val"><b>34</b> / 60 g</div></div>
+            <div class="macro"><span class="name">Fiber</span><div class="bar"><i style="width:40%;background:var(--fiber)"></i></div><div class="val"><b>12</b> / 30 g</div></div>
+          </div>
+
+          <div class="card" style="padding:6px 16px">
+            <div class="slot logged"><span class="ic">🥣</span><div class="t">Breakfast<div class="sub">Protein Overnight Oats · 458</div></div><span class="add">›</span></div>
+            <div class="slot logged" id="lunchrow"><span class="ic">🥗</span><div class="t">Lunch<div class="sub" id="lunchsub">Chicken & Orzo · 540</div></div><span class="add">›</span></div>
+            <div class="slot"><span class="ic">🍽️</span><div class="t">Dinner — add food</div><span class="add">+</span></div>
+            <div class="slot"><span class="ic">🍫</span><div class="t">Snacks — add food</div><span class="add">+</span></div>
+          </div>
+
+          <!-- commit-colour demo -->
+          <div class="card sheet">
+            <div style="font-size:13px;font-weight:800;margin-bottom:4px">Portion · commit action</div>
+            <div style="font-size:12px;color:#8a857e;margin-bottom:12px">The review caught this button going <b>green</b> here while every other commit is blue. After = one primary colour.</div>
+            <button class="cta commit">Use this · 350 kcal</button>
+          </div>
+        </div>
+
+        <div class="toast" id="toast"><span class="dot"></span><span id="toasttxt">Target hit — nice 🎯</span></div>
+        <div class="burst" id="burst"></div>
+        <div class="tabbar">
+          <div class="tab on"><span class="gl">☀️</span>Today</div>
+          <div class="tab"><span class="gl">🗓️</span>Plan</div>
+          <div class="tab" style="opacity:0"><span>·</span></div>
+          <div class="tab"><span class="gl">📖</span>Recipes</div>
+          <div class="tab"><span class="gl">📈</span>Progress</div>
+        </div>
+        <button class="fab" id="fab">+</button>
+      </div></div>
+    </div>
+
+    <div class="spec">
+      <div class="rule"><h3><span class="badge">1</span> One elevation model <span style="margin-left:auto;font-size:10px;color:#b7b2a8">ENG-795</span></h3>
+        <p>Every resting card gets one soft ambient shadow (≈6% opacity, no border). Kills the flat hairline-as-shadow tell across ~7 surface groups. <code>Elevation.card</code> exists but is zeroed — turn it on.</p>
+        <div class="swatches"><div class="sw b"><span class="lab">BEFORE · hairline</span>flat card</div><div class="sw a"><span class="lab">AFTER · soft shadow</span>lifted card</div></div>
+      </div>
+      <div class="rule"><h3><span class="badge">2</span> One commit colour <span style="margin-left:auto;font-size:10px;color:#b7b2a8">ENG-796</span></h3>
+        <p>Blue for every commit CTA. Reserve green strictly for the calorie-ring state (today it’s overloaded as action + ring + macro hue).</p>
+        <div class="swatches"><div class="sw b"><span class="lab">BEFORE</span><span class="chip" style="background:var(--green)">Use this</span></div><div class="sw a"><span class="lab">AFTER</span><span class="chip" style="background:var(--blue)">Use this</span></div></div>
+      </div>
+      <div class="rule"><h3><span class="badge">3</span> Win-colour + reserved win-moment <span style="margin-left:auto;font-size:10px;color:#b7b2a8">ENG-798</span></h3>
+        <p>A dedicated celebration hue (<span class="chip" style="background:var(--win)">win</span>) distinct from success green, fired <b>only</b> at landmarks (target hit, macro hit, streak). Tap <span class="kbd">+</span> to see it.</p>
+      </div>
+      <div class="rule"><h3><span class="badge">4</span> One motion vocabulary <span style="margin-left:auto;font-size:10px;color:#b7b2a8">ENG-798</span></h3>
+        <p>Odometer number tweens (the biggest 2026 gap), a single spring for the ring fill, element→sheet morph. In “Before” the number snaps; in “After” it counts.</p>
+      </div>
+      <div class="rule"><h3><span class="badge">5</span> One brand mark + accent <span style="margin-left:auto;font-size:10px;color:#b7b2a8">ENG-797</span></h3>
+        <p>One mark + one accent everywhere (currently grey ring / black S / blue, 3 ways). See the avatar top-right change on toggle.</p>
+        <div class="swatches"><div class="sw b"><span class="lab">BEFORE</span><span class="chip" style="background:#bbb6ad">grey ring</span></div><div class="sw a"><span class="lab">AFTER</span><span class="chip" style="background:var(--blue)">unified</span></div></div>
+      </div>
+      <div class="note">Prototype for red-lining only — not production. Source: design-director review 2026-05-31. Real screens captured at <code>apps/mobile/screenshots/full/</code>.</div>
+    </div>
+  </div>
+
+  <div class="legend">Calibrated against the 2026 external bar (Linear, Copilot Money, Oura, MacroFactor). The signature (cream canvas + single blue + tri-state ring) is <b>kept</b> — these rules carry it unbroken into the depth where it currently dilutes. Toggle: <span class="kbd">B</span> / <span class="kbd">A</span>.</div>
+</div>
+
+<script>
+  const GOAL=1800, START=1450, STEP=350, WINBANNER="Target hit — nice 🎯", QUIET="Logged · 350 kcal";
+  const C=502.65;
+  let cur=START, logged=false;
+  const $=id=>document.getElementById(id);
+  const ring=$('ring'), kcal=$('kcal'), food=$('food'), mp=$('mp'), mpv=$('mpv');
+  const screen=$('screen'), toast=$('toast'), toasttxt=$('toasttxt'), burst=$('burst');
+
+  function setRing(v,animate){
+    const pct=Math.min(v/GOAL,1);
+    ring.style.strokeDashoffset = C*(1-pct);
+    // colour: under=green, at/over target band=win flash handled separately, over=red
+    ring.style.stroke = v>GOAL*1.04 ? 'var(--red)' : 'var(--green)';
+  }
+  function fmt(n){return n.toLocaleString('en-US')}
+  function odometer(from,to,ms){
+    const after=document.body.classList.contains('after');
+    if(!after){ cur=to; kcal.textContent=fmt(to); food.textContent=fmt(to); setRing(to,false); return done(to);}
+    const t0=performance.now();
+    function tick(t){
+      const p=Math.min((t-t0)/ms,1), e=1-Math.pow(1-p,3), v=Math.round(from+(to-from)*e);
+      kcal.textContent=fmt(v); food.textContent=fmt(v); setRing(v,true);
+      if(p<1) requestAnimationFrame(tick); else done(to);
+    }
+    requestAnimationFrame(tick);
+  }
+  function done(v){
+    cur=v;
+    // bump protein macro a touch on log
+    mp.style.width='78%'; mpv.textContent='124';
+    if(v>=GOAL && v<=GOAL*1.06){ celebrate(); } else { quiet(); }
+  }
+  function quiet(){ // every log: light confirm, NOT the win moment
+    const row=$('lunchrow'); row.style.transition='background .3s'; row.style.background='#eef4ec';
+    setTimeout(()=>row.style.background='',420);
+    showToast(QUIET, false);
+  }
+  function celebrate(){ // reserved landmark win-moment
+    if(!document.body.classList.contains('after')) return;
+    ring.style.stroke='var(--win)';
+    screen.classList.add('celebrate'); screen.classList.add('shake');
+    setTimeout(()=>{screen.classList.remove('celebrate');screen.classList.remove('shake');ring.style.stroke='var(--green)';},650);
+    makeBurst(); showToast(WINBANNER, true);
+  }
+  function makeBurst(){
+    burst.innerHTML=''; burst.classList.remove('go');
+    const cols=['var(--win)','var(--blue)','var(--green)','#E8913A'];
+    for(let i=0;i<14;i++){const s=document.createElement('span');const a=(i/14)*6.283;
+      s.style.setProperty('--tx',Math.cos(a)*70+'px');s.style.setProperty('--ty',Math.sin(a)*70+'px');
+      s.style.background=cols[i%4];s.style.left='0';s.style.top='0';burst.appendChild(s);}
+    requestAnimationFrame(()=>burst.classList.add('go'));
+  }
+  function showToast(txt,win){ toasttxt.textContent=txt;
+    toast.querySelector('.dot').style.background=win?'var(--win)':'var(--green)';
+    toast.classList.add('show'); clearTimeout(showToast._t);
+    showToast._t=setTimeout(()=>toast.classList.remove('show'),1900);}
+
+  function doLog(){
+    if(logged){ // second tap overshoots → over-budget red, no celebration
+      odometer(cur, cur+260, 700);
+      $('lunchsub').textContent='Chicken & Orzo · 540'; return;
+    }
+    logged=true; odometer(START, GOAL, 950);
+  }
+  function reset(){ logged=false; cur=START; kcal.textContent=fmt(START); food.textContent=fmt(START);
+    mp.style.width='62%'; mpv.textContent='92'; ring.style.stroke='var(--green)';
+    requestAnimationFrame(()=>setRing(START,false)); toast.classList.remove('show');}
+
+  // mode toggle
+  $('seg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+    const mode=b.dataset.mode; document.body.className=mode;
+    $('seg').className='seg '+mode;
+    [...$('seg').children].forEach(x=>x.classList.toggle('on',x.dataset.mode===mode));
+    $('phonetag').textContent = mode==='after'?'After — premium':'Before — current build';
+    reset();
+  });
+  $('fab').addEventListener('click',doLog);
+  $('replay').addEventListener('click',()=>{reset();setTimeout(doLog,120)});
+  $('reset').addEventListener('click',reset);
+  document.addEventListener('keydown',e=>{if(e.key==='b'||e.key==='B'){document.querySelector('[data-mode=before]').click()}
+    if(e.key==='a'||e.key==='A'){document.querySelector('[data-mode=after]').click()}});
+  // init
+  requestAnimationFrame(()=>setRing(START,false));
+</script>
+</body>
+</html>

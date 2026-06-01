@@ -63,6 +63,29 @@ export const Accent = {
   purpleLight: '#AC93E2',
   /** Lime slot — reserved for fresh / produce / match-your-day pill. */
   lime: '#81BE38',
+  /**
+   * Win / celebration warm-amber — ENG-795 (Redesign — Design Direction
+   * 2026, 2026-05-31 design-director review). A NEW landmark-only role,
+   * intentionally OUTSIDE the 8-slot action palette above. Gated behind the
+   * `design_system_colours` flag at the call site — never applied in the
+   * flag-off path.
+   *
+   * Three-role colour split (do not blur these — each owns one job):
+   *   - PRIMARY (`Accent.primary`, Blue) = the commit CTA / one primary
+   *     action per screen. The "do it" colour.
+   *   - SUCCESS (`Accent.success`, Green) = calorie-ring under-target +
+   *     macro identity (state + data colour). The "you're on track" colour.
+   *   - WIN (`Accent.win`, this amber) = landmark celebration ONLY —
+   *     hitting a goal, a streak milestone, a win-moment landmark. The
+   *     "you did something special" colour. NOT a CTA, NOT a state, NOT a
+   *     macro. Reaching for it anywhere routine dilutes the landmark.
+   *
+   * Mirrors web `--accent-win` / `--accent-win-soft` in
+   * `src/styles/theme.css` (light + dark).
+   */
+  win: '#F2A93B',
+  /** Win at ~12% alpha — soft fill behind a win-moment landmark / badge. */
+  winSoft: 'rgba(242, 169, 59, 0.12)',
 };
 
 /**
@@ -375,6 +398,21 @@ export const Elevation = {
     shadowRadius: 0,
     shadowOffset: { width: 0, height: 0 },
     elevation: 0,
+  },
+  // ENG-795 (Redesign — Design Direction 2026): the soft-elevation variant
+  // that SUPERSEDES the 2026-05-22 flat lock above, per the 2026-05-31
+  // design-director review + approved prototypes. Applied only when the
+  // `design_system_elevation` flag is on (LIGHT mode) — see SupprCard, which
+  // renders it on an outer wrapper because RN `overflow: hidden` clips iOS
+  // shadows. Dark mode uses tonal lift (`cardElevated`), not this shadow.
+  // ↔ web `--elev-card` (src/styles/theme.css). The flat `card` above stays
+  // as the flag-OFF fallback.
+  cardSoft: {
+    shadowColor: '#1c1916',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   sheet: {
     shadowColor: '#000',

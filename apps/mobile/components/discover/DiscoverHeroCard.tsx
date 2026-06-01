@@ -1,5 +1,6 @@
 import { View, Text, Pressable, Image, StyleSheet } from "react-native";
-import { Elevation, Radius, Type } from "@/constants/theme";
+import { Radius, Type } from "@/constants/theme";
+import { useCardElevation } from "@/hooks/useCardElevation";
 
 interface DiscoverHeroCardProps {
   recipe: {
@@ -20,16 +21,21 @@ interface DiscoverHeroCardProps {
 export function DiscoverHeroCard({ recipe, onPress }: DiscoverHeroCardProps) {
   const trimmed = (recipe.imageUrl ?? "").trim();
   const hasImage = trimmed.length > 0;
+  const cardElevation = useCardElevation();
 
+  // The card itself clips its image children (`overflow: 'hidden'`), which
+  // would clip an iOS shadow — so the soft elevation rides on an OUTER
+  // wrapper (per `useCardElevation` JSDoc). This is an image-backed dark
+  // hero, so `liftBg`/`useBorder` don't apply; only `shadowStyle` is used.
   return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.card,
-        Elevation.card,
-        { opacity: pressed ? 0.95 : 1 },
-      ]}
-    >
+    <View style={[styles.shadowWrap, cardElevation.shadowStyle]}>
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.card,
+          { opacity: pressed ? 0.95 : 1 },
+        ]}
+      >
       {hasImage ? (
         <Image
           source={{ uri: trimmed }}
@@ -65,11 +71,17 @@ export function DiscoverHeroCard({ recipe, onPress }: DiscoverHeroCardProps) {
           </Text>
         </View>
       </View>
-    </Pressable>
+      </Pressable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  // Outer wrapper carries the soft elevation so the inner card's
+  // `overflow: 'hidden'` (which clips the image) doesn't clip the shadow.
+  shadowWrap: {
+    borderRadius: Radius.xl,
+  },
   card: {
     borderRadius: Radius.xl,
     overflow: "hidden",

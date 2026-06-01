@@ -8,13 +8,21 @@ import {
   StyleSheet,
   Text,
   View,
+  type StyleProp,
+  type ViewStyle,
 } from "react-native";
+import * as Haptics from "expo-haptics";
+import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X } from "lucide-react-native";
 import { Accent, Elevation, IconSize, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useCardElevation } from "@/hooks/useCardElevation";
+import { isFeatureEnabled } from "@/lib/analytics";
+import { useSheetMorph } from "@/lib/motion";
 import type { SavedMeal } from "@suppr/shared/nutrition/savedMeals";
 import { summariseSavedMeal } from "@suppr/shared/nutrition/savedMealsLogic";
+import { PressableScale } from "../ui/PressableScale";
 import { PortionStepper, formatMultiplier } from "./PortionStepper";
 
 /**
@@ -58,12 +66,36 @@ export function SavedMealPortionSheet({
 }: SavedMealPortionSheetProps) {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
+  const card = useCardElevation();
   const [mult, setMult] = useState(1);
+
+  // ENG-813 (Redesign — Design Direction 2026): the element→sheet morph on
+  // open + the resting-card soft-elevation token, gated by the redesign
+  // flags. The OLD `animationType="slide"` + flat read-out card both stay
+  // alive in the flag-off path.
+  const open = !!meal;
+  const motionEnabled = isFeatureEnabled("redesign_motion");
+  const { sheetStyle } = useSheetMorph(open && motionEnabled);
 
   // Reset to 1× whenever a different saved meal opens the sheet.
   useEffect(() => {
     setMult(1);
   }, [meal?.id]);
+
+  // Quiet log-confirm haptic on portion recalc (the ±/chip-committed value),
+  // never on raw keystrokes — the stepper only calls `onChange` with a
+  // settled multiplier. Same Light-impact "confirm" feel as the commit CTA's
+  // `PressableScale haptic="confirm"`.
+  const onPortionChange = (next: number) => {
+    if (motionEnabled) {
+      try {
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      } catch {
+        /* haptics unavailable (e.g. Expo Go) — silent */
+      }
+    }
+    setMult(next);
+  };
 
   const base = meal ? summariseSavedMeal(meal) : null;
   const itemsLabel = base ? (base.itemCount === 1 ? "1 item" : `${base.itemCount} items`) : "";
@@ -85,7 +117,14 @@ export function SavedMealPortionSheet({
   ] as const;
 
   return (
-    <Modal visible={!!meal} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal
+      visible={open}
+      transparent
+      // Motion ON → the spring drives the entry, so the Modal must NOT also
+      // slide (double-animation jank). Motion OFF → keep the native slide.
+      animationType={motionEnabled ? "none" : "slide"}
+      onRequestClose={onClose}
+    >
       <View style={s.modalRoot}>
         <Pressable
           accessibilityRole="button"
@@ -98,12 +137,17 @@ export function SavedMealPortionSheet({
           style={s.keyboardAvoid}
           pointerEvents="box-none"
         >
-          <View
-            accessibilityViewIsModal
-            accessibilityLabel="Log saved meal with portion"
-            style={[s.sheet, Elevation.sheet, { backgroundColor: colors.background, paddingBottom: insets.bottom }]}
-          >
-            <View style={[s.handle, { backgroundColor: colors.border }]} accessible={false} />
+          {/* Outer wrapper carries ONLY the morph transform (animated style)
+              — the static panel styling lives on the inner View so the
+              animated + static styles never share one array (the proven
+              `NorthStarBlock` split). Motion OFF → no transform. */}
+          <Animated.View style={(motionEnabled ? sheetStyle : undefined) as StyleProp<ViewStyle>}>
+            <View
+              accessibilityViewIsModal
+              accessibilityLabel="Log saved meal with portion"
+              style={[s.sheet, Elevation.sheet, { backgroundColor: colors.background, paddingBottom: insets.bottom }]}
+            >
+              <View style={[s.handle, { backgroundColor: colors.border }]} accessible={false} />
 
             <View style={[s.header, { borderBottomColor: colors.border }]}>
               <Text style={[Type.headline, { color: colors.text }]} numberOfLines={1}>
@@ -174,10 +218,22 @@ export function SavedMealPortionSheet({
                   {formatMultiplier(mult)}×
                 </Text>
               </View>
-              <PortionStepper value={mult} onChange={setMult} colors={colors} testIDPrefix="saved-portion" />
+              <PortionStepper value={mult} onChange={onPortionChange} colors={colors} testIDPrefix="saved-portion" />
 
-              {/* Live scaled macro read-out. */}
-              <View style={[s.macroRow, { borderColor: colors.border, backgroundColor: colors.inputBg }]}>
+              {/* Live scaled macro read-out — a resting card; takes the soft
+                  elevation token (no border) under `design_system_elevation`,
+                  the flat hairline otherwise. */}
+              <View
+                style={[
+                  s.macroRow,
+                  card.shadowStyle,
+                  {
+                    borderColor: colors.border,
+                    borderWidth: card.useBorder ? StyleSheet.hairlineWidth : 0,
+                    backgroundColor: card.liftBg ?? colors.inputBg,
+                  },
+                ]}
+              >
                 {macroSummary.map((m) => (
                   <View key={m.key} style={s.macroCell}>
                     <View style={s.macroLabelRow}>
@@ -190,10 +246,12 @@ export function SavedMealPortionSheet({
               </View>
             </ScrollView>
 
-            {/* Footer — single primary commit. */}
+            {/* Footer — single primary commit (blue per Phase 0). Quiet
+                log-confirm haptic on tap when motion is on. */}
             <View style={[s.footer, { borderTopColor: colors.border }]}>
-              <Pressable
+              <PressableScale
                 onPress={() => onConfirm(mult)}
+                haptic={motionEnabled ? "confirm" : "none"}
                 accessibilityRole="button"
                 accessibilityLabel={`Log ${formatMultiplier(mult)} times to ${slot}`}
                 testID="saved-portion-confirm"
@@ -202,9 +260,10 @@ export function SavedMealPortionSheet({
                 <Text style={{ color: Accent.primaryForeground, ...Type.headline }}>
                   {`Log ${formatMultiplier(mult)}× to ${slot}`}
                 </Text>
-              </Pressable>
+              </PressableScale>
             </View>
-          </View>
+            </View>
+          </Animated.View>
         </KeyboardAvoidingView>
       </View>
     </Modal>
@@ -236,7 +295,7 @@ const s = StyleSheet.create({
   macroRow: {
     flexDirection: "row",
     marginTop: Spacing.lg,
-    borderWidth: 1,
+    // borderWidth driven by `useCardElevation().useBorder` inline (ENG-813).
     borderRadius: Radius.md,
     paddingVertical: Spacing.md,
   },

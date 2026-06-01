@@ -16,12 +16,14 @@
 import { Pressable, Text, TextInput, View } from "react-native";
 import { CircleX, Sparkles } from "lucide-react-native";
 
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Accent, Elevation, Radius, Spacing } from "@/constants/theme";
 import {
   classifyConfidence,
   isLowConfidence,
   type AiLoggedItem,
 } from "@suppr/shared/nutrition/aiLogging";
+import { isFeatureEnabled } from "@/lib/analytics";
+import { SearchResultConfidenceChip } from "@/components/ui/SearchResultConfidenceChip";
 import Badge from "./Badge";
 
 type Theme = {
@@ -80,6 +82,13 @@ export default function AiLogReviewItem({
   const cLabel = confidenceLabel(item.confidence);
   const cPercent = confidencePercentLabel(item.confidence);
 
+  // Search-results redesign (2026-05-31): adopt the same Verified/Estimated
+  // chip language used by the food-search + barcode result surfaces, so a
+  // voice-logged result reads as the same product. AI-parsed items are
+  // ALWAYS an estimate — never "Verified" (CLAUDE.md trust posture). The
+  // granular High/Med/Low confidence pill below stays as the model signal.
+  const searchRedesign = isFeatureEnabled("redesign_search_results");
+
   const numField = (
     label: string,
     value: number,
@@ -120,14 +129,22 @@ export default function AiLogReviewItem({
 
   return (
     <View
-      style={{
-        borderWidth: 1,
-        borderColor: low ? "#F59E0B55" : colors.cardBorder,
-        backgroundColor: low ? "#F59E0B0F" : colors.background,
-        borderRadius: Radius.md,
-        padding: Spacing.md,
-        marginBottom: Spacing.sm,
-      }}
+      style={[
+        {
+          borderWidth: 1,
+          borderColor: low ? "#F59E0B55" : colors.cardBorder,
+          backgroundColor: low ? "#F59E0B0F" : colors.background,
+          borderRadius: Radius.md,
+          padding: Spacing.md,
+          marginBottom: Spacing.sm,
+        },
+        // Redesign: elevated result-card grammar (soft shadow, no hairline)
+        // for non-low-confidence rows. The low-confidence amber border is a
+        // load-bearing trust signal and is always kept.
+        searchRedesign && !low
+          ? { borderWidth: 0, borderColor: "transparent", ...Elevation.cardSoft }
+          : null,
+      ]}
     >
       <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
         <View style={{ flex: 1 }}>
@@ -154,6 +171,9 @@ export default function AiLogReviewItem({
           )}
         </View>
         <View style={{ alignItems: "flex-end", gap: 4 }}>
+          {searchRedesign && (
+            <SearchResultConfidenceChip tier="estimated" testID="voice-confidence-chip" />
+          )}
           <View
             accessibilityLabel={`${cPercent} confidence`}
             style={{

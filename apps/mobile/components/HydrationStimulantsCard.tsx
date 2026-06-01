@@ -8,7 +8,8 @@ import {
   type ViewStyle,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Accent, Elevation, MacroColors, Radius, Spacing, StimulantColors } from "@/constants/theme";
+import { Accent, MacroColors, Radius, Spacing, StimulantColors } from "@/constants/theme";
+import { useCardElevation } from "@/hooks/useCardElevation";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
   ALCOHOL_QUICK_ADDS,
@@ -261,6 +262,7 @@ export function HydrationStimulantsCard({
   style,
 }: HydrationStimulantsCardProps) {
   const colors = useThemeColors();
+  const cardElevation = useCardElevation();
   const showCaffeine = targets.caffeineMg > 0;
   const showAlcohol = targets.alcoholGWeekly > 0;
   const waterChips = useMemo(
@@ -300,13 +302,13 @@ export function HydrationStimulantsCard({
       accessibilityLabel="Hydration and stimulants"
       style={[
         {
-          backgroundColor: colors.card,
-          borderWidth: 1,
+          backgroundColor: cardElevation.liftBg ?? colors.card,
+          borderWidth: cardElevation.useBorder ? 1 : 0,
           borderColor: colors.border,
           borderRadius: Radius.lg,
           paddingHorizontal: Spacing.xl,
           paddingVertical: Spacing.md,
-          ...Elevation.card,
+          ...(cardElevation.shadowStyle ?? {}),
         },
         style,
       ]}

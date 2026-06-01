@@ -51,6 +51,7 @@ import { WhyThisNumberDialog } from "./suppr/why-this-number-dialog.tsx";
 import { GoalPaceEditorDialog } from "./suppr/goal-pace-editor-dialog.tsx";
 import { paceKgPerWeekFromPreset } from "../../lib/nutrition/whyThisNumber.ts";
 import { isFeatureEnabled } from "../../lib/analytics/track.ts";
+import { useSettingsWinMoment } from "../../lib/preferences/useSettingsWinMoment.ts";
 
 export interface TargetsProps {
   /**
@@ -112,6 +113,10 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
   // UI entry; the recompute logic itself is unconditional.
   const goalEditorEnabled = isFeatureEnabled("goal_editor");
   const [goalEditorOpen, setGoalEditorOpen] = useState(false);
+  // ENG-824 — quiet win-moment (win-colour wash on the calorie card) when
+  // targets are saved via the goal/pace editor. Gated behind
+  // `redesign_winmoment`; inert when off. Web parity with the mobile hook.
+  const winMoment = useSettingsWinMoment();
   // Goal / pace edit affordance (Goal card, "Set a goal", "Why this
   // number" → Adjust). Opens the in-place editor when the flag is on,
   // else deep-links to the Profile screen.
@@ -369,7 +374,10 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
             view. Gradient id (`targets-ring-gradient`) is distinct from
             the daily-ring gradient to avoid SVG id collision when both
             mount together. */}
-        <div className="bg-card border border-border rounded-2xl p-5 shadow-sm flex flex-col items-center">
+        <div
+          data-testid="targets-calorie-card"
+          className={`bg-card border rounded-2xl p-5 shadow-sm flex flex-col items-center transition-colors duration-500 ${winMoment.flashClass || "border-border"}`}
+        >
           <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground self-start">
             Daily calorie target
           </p>
@@ -640,6 +648,8 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
         onSaved={() => {
           void refreshProfileBasics();
           void loadGoalProfile();
+          // ENG-824 — goal/pace saved → quiet win-moment on the calorie card.
+          winMoment.celebrate();
         }}
         // Fibre + per-macro overrides live on the manual /profile editor;
         // the goal editor only recomputes macros from the goal/pace. This

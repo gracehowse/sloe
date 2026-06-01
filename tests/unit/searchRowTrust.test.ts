@@ -17,6 +17,8 @@ import { describe, expect, it } from "vitest";
 import {
   isBareGenericNounRow,
   isLowRelevanceNonVerifiedRow,
+  isLowConfidenceDemotedRow,
+  LOW_CONFIDENCE_DEMOTE_SCORE,
 } from "@/lib/nutrition/searchRowTrust";
 
 describe("F-89 — bare generic-noun unverified filter", () => {
@@ -86,5 +88,33 @@ describe("F-90 — low-relevance non-verified filter", () => {
   it("never drops verified rows regardless of relevance", () => {
     expect(isLowRelevanceNonVerifiedRow(0.0, true)).toBe(false);
     expect(isLowRelevanceNonVerifiedRow(0.15, true)).toBe(false);
+  });
+});
+
+describe("ENG-807 — honest low-confidence demotion (tier-keyed)", () => {
+  it("drops estimated-tier rows below the demote score", () => {
+    expect(isLowConfidenceDemotedRow({ tier: "estimated", score: 0.15 })).toBe(true);
+    expect(isLowConfidenceDemotedRow({ tier: "estimated", score: 0.0 })).toBe(true);
+    expect(
+      isLowConfidenceDemotedRow({ tier: "estimated", score: LOW_CONFIDENCE_DEMOTE_SCORE - 0.01 }),
+    ).toBe(true);
+  });
+
+  it("keeps estimated-tier rows at/above the demote score", () => {
+    expect(
+      isLowConfidenceDemotedRow({ tier: "estimated", score: LOW_CONFIDENCE_DEMOTE_SCORE }),
+    ).toBe(false);
+    expect(isLowConfidenceDemotedRow({ tier: "estimated", score: 0.7 })).toBe(false);
+  });
+
+  it("never drops verified-tier rows regardless of score", () => {
+    expect(isLowConfidenceDemotedRow({ tier: "verified", score: 0.0 })).toBe(false);
+    expect(isLowConfidenceDemotedRow({ tier: "verified", score: 0.1 })).toBe(false);
+  });
+
+  it("is a strict superset of the raw-flag gate at the same threshold", () => {
+    // Same boundary as F-90 so already-filtered rows are unaffected; the gate
+    // adds coverage for estimated-tier rows the raw `verified` flag let through.
+    expect(LOW_CONFIDENCE_DEMOTE_SCORE).toBe(0.3);
   });
 });
