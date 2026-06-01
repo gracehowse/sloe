@@ -13,6 +13,20 @@ import { ProgressHeadline } from "../../components/today/ProgressHeadline";
 import { generateProgressCommentary } from "@/lib/progressCommentary";
 import type { AdaptiveTdeeResult } from "@suppr/shared/nutrition/adaptiveTdee";
 
+// Render unit tests must neutralise analytics: ProgressHeadline's flag-aware
+// subtree otherwise calls the real `isFeatureEnabled`, which fires a floating
+// PostHog/AsyncStorage read that rejects *after* the test completes — Vitest
+// reports it as an "unhandled rejection" and exits non-zero even though every
+// assertion passes. Canonical mobile-test pattern (matches mealActionSheetBranded,
+// todayLogAgainRow, digestBlended, …). Root-cause robustness of isFeatureEnabled
+// (floating promise) tracked in ENG-841.
+vi.mock("@/lib/analytics", () => ({
+  track: vi.fn(),
+  identify: vi.fn(),
+  reset: vi.fn(),
+  isFeatureEnabled: vi.fn(() => false),
+}));
+
 vi.mock("@/hooks/use-theme-colors", () => ({
   useThemeColors: () => ({
     text: "#000",
