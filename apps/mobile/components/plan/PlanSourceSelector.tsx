@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
   radioDot: { width: 8, height: 8, borderRadius: 4 },
   textWrap: { flex: 1, minWidth: 0 },
   titleRow: { flexDirection: "row", alignItems: "center", gap: 7 },
-  title: { fontSize: 14, fontWeight: "700" },
+  title: { fontSize: 13, fontWeight: "700" },
   countBadge: { borderRadius: 999, paddingHorizontal: 7, paddingVertical: 1 },
   countText: { fontSize: 11, fontWeight: "700", fontVariant: ["tabular-nums"] },
   subtitle: { fontSize: 11.5, marginTop: 2, lineHeight: 16 },

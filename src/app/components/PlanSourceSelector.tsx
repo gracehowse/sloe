@@ -84,7 +84,7 @@ export function PlanSourceSelector({
               </span>
               <span className="flex-1 min-w-0">
                 <span className="flex items-center gap-2">
-                  <span className="text-[14px] font-bold text-foreground">
+                  <span className="text-[13px] font-bold text-foreground">
                     {meta.title}
                   </span>
                   <span
