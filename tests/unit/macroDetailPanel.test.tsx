@@ -58,6 +58,27 @@ describe("MacroDetailPanel — getMacroValue", () => {
     expect(getMacroValue(meal, "fiber")).toBe(3);
   });
 
+  it("ENG-732 — falls back to micros.fiberG when there's no top-level fibre", () => {
+    // Health / dense-log entries store fibre only in the micros map. Without
+    // the fallback the breakdown under-reports vs the day total + mobile.
+    const meal = {
+      name: "Beans",
+      recipeTitle: "Black beans",
+      micros: { fiberG: 7 },
+    } as unknown as MacroMeal;
+    expect(getMacroValue(meal, "fiber")).toBe(7);
+  });
+
+  it("ENG-732 — prefers a positive top-level fibre over micros.fiberG", () => {
+    const meal = {
+      name: "x",
+      recipeTitle: "y",
+      fiberG: 4,
+      micros: { fiberG: 7 },
+    } as unknown as MacroMeal;
+    expect(getMacroValue(meal, "fiber")).toBe(4);
+  });
+
   it("returns 0 when macro key is missing", () => {
     const meal: MacroMeal = { name: "Snack", recipeTitle: "Water" };
     expect(getMacroValue(meal, "protein")).toBe(0);
