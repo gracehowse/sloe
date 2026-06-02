@@ -82,6 +82,7 @@ import {
   type PlannerTargets,
 } from "@/lib/mealPlanAlgo";
 import { isMealPlanPlaceholderLikeTitle } from "@suppr/shared/nutrition/portionMultiplier";
+import { shouldShowRecipeRemovedBadge } from "@suppr/shared/nutrition/recipeRemovedBadge";
 import { coerceMacrosWhenCaloriesButNoGrams } from "@suppr/shared/nutrition/coerceRecipeMacrosForPlanning";
 import {
   findPlanDayIdForCalendarDate,
@@ -376,8 +377,12 @@ export default function PlannerScreen() {
   const userId = session?.user?.id ?? null;
   const colors = useThemeColors();
 
-  const { recipes: discoverRecipes } = useDiscoverRecipes();
-  const { recipes: savedRecipes } = useSavedLibraryRecipes(userId);
+  const { recipes: discoverRecipes, loading: discoverLoading } = useDiscoverRecipes();
+  const { recipes: savedRecipes, loading: savedLoading } = useSavedLibraryRecipes(userId);
+  // ENG-766 — the recipe library hydrates AFTER the plan; gate the
+  // "Recipe removed" badge on it being loaded so rows don't flash the
+  // removed state (+ imageless cards) during that window.
+  const recipeLibraryLoaded = !discoverLoading && !savedLoading;
 
   const planRecipePool = useMemo<PlanRecipeRef[]>(
     () =>
@@ -3388,9 +3393,12 @@ export default function PlannerScreen() {
                       explained so the user can swap or remove the
                       slot. Placeholder rows (no recipeId) intentionally
                       stay silent. */}
-                  {planMealHasRecipe(meal) &&
-                  meal.recipeId &&
-                  !knownRecipeIds.has(meal.recipeId) ? (
+                  {shouldShowRecipeRemovedBadge({
+                    hasRecipe: planMealHasRecipe(meal),
+                    recipeId: meal.recipeId,
+                    knownRecipeIds,
+                    libraryLoaded: recipeLibraryLoaded,
+                  }) ? (
                     <View
                       testID="planner-recipe-removed-badge"
                       style={{
