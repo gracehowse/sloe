@@ -59,7 +59,10 @@ describe("DailyRing counting-hero odometer (redesign_motion)", () => {
 
   it("flag ON renders the centre value at display size; flag OFF keeps the prior 22px treatment", () => {
     expect(SRC).toContain('motionEnabled');
-    expect(SRC).toContain('"text-[34px] font-extrabold"');
+    // 36px (top of the ENG-119 type scale: 11|13|15|18|22|24|28|36) — the
+    // counting-hero display size. Was 34px, which the type-scale lint rejects
+    // as off-scale (check-type-scale.mjs); 36 is the nearest on-scale value.
+    expect(SRC).toContain('"text-[36px] font-extrabold"');
     expect(SRC).toContain('"text-[22px] font-bold"');
   });
 });
