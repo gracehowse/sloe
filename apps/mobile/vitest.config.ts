@@ -163,6 +163,14 @@ export default defineConfig({
       // `posthog-react-native` and `react-native-svg`) so tests never
       // touch the PostHog client or load SVG's native Touchable mixin.
       { find: /^@\/lib\/analytics$/, replacement: path.resolve(__dirname, "./tests/shims/analytics.ts") },
+      // Shim the PostHog SDK itself (not just the `@/lib/analytics` wrapper):
+      // a component importing the REAL analytics via a relative/extensioned
+      // path bypasses the wrapper alias and loads `posthog-react-native`, whose
+      // storage dereferences `window` in an async path and leaks an unhandled
+      // rejection in the node test env (CI failure, 2026-06-01). The fake has
+      // no native/window deps. `isFeatureDisabled.test.ts` keeps its own
+      // `vi.mock` to drive flag values; that takes precedence for that file.
+      { find: /^posthog-react-native$/, replacement: path.resolve(__dirname, "./tests/shims/posthog-react-native.tsx") },
       { find: /^react-native-svg$/, replacement: path.resolve(__dirname, "./tests/shims/react-native-svg.cjs") },
       // F-17 (2026-04-19) — `TodayMealsSection` mounts `Swipeable` from
       // `react-native-gesture-handler`. The real package loads a native

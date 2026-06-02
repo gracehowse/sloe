@@ -454,7 +454,7 @@ function DailyRing({
                 // heavy. Flag OFF keeps the prior 22px / font-bold treatment
                 // byte-for-byte.
                 motionEnabled
-                  ? "text-[34px] font-extrabold"
+                  ? "text-[36px] font-extrabold"
                   : "text-[22px] font-bold",
               )}
               style={{ color: centerValueColor ?? undefined }}
