@@ -17,6 +17,7 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { isFeatureDisabled, track } from "@/lib/analytics";
 import { supabase } from "@/lib/supabase";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
+import { seedSaveTelemetry } from "@suppr/shared/onboarding/seedSaveTelemetry";
 import { selectOnboardingSeeds } from "@suppr/shared/onboarding/onboardingSeeds";
 import { buildFirstWeekFromSeeds } from "@suppr/shared/onboarding/onboardingFirstWeek";
 import {
@@ -219,14 +220,29 @@ export function MobileFlow() {
       });
       let planFailed = false;
       let missingCount = 0;
+      let recipesSaved = 0;
       if (pickedSeeds.length > 0) {
         const resolution = await resolveSeedsToRecipeIds(supabase, pickedSeeds);
         missingCount = resolution.missing.length;
         if (resolution.resolved.length > 0) {
-          await saveResolvedSeeds(supabase, {
+          // ENG-792 — capture the save result instead of discarding it. A
+          // seed-save upsert failure used to be invisible (console.warn-only),
+          // so a user stranded at 0 saved recipes looked identical to success.
+          const saveResult = await saveResolvedSeeds(supabase, {
             userId,
             resolved: resolution.resolved,
           });
+          const seedTelemetry = seedSaveTelemetry(
+            saveResult,
+            resolution.resolved.length,
+          );
+          recipesSaved = seedTelemetry.recipesSaved;
+          if (seedTelemetry.failure) {
+            track(AnalyticsEvents.onboarding_seed_save_failed, {
+              flow: "v2",
+              ...seedTelemetry.failure,
+            });
+          }
           if (targets) {
             const planResult = await buildFirstWeekFromSeeds(supabase, {
               userId,
@@ -260,6 +276,9 @@ export function MobileFlow() {
           goal: state.goal,
           recipes_picked: pickedSeeds.length,
           recipes_resolved: pickedSeeds.length - missingCount,
+          // ENG-792 — actually-saved count (distinct from recipes_resolved).
+          // A shortfall vs recipes_resolved means the seed-save upsert failed.
+          recipes_saved: recipesSaved,
           plan_built: !planFailed,
           // Activation hook (audit 2026-04-30): tracks how many users
           // hit the curated-default fallback vs hand-picked. Used to
