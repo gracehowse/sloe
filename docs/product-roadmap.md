@@ -258,6 +258,9 @@ We've **jumped around and ahead** of the original phase order. Several Phase A i
 - **Feed depth** — filters (macros, diet), creator profile pages, saves → library → plan → shopping loop completion.
 - **Creator loop** — saves / plan-adds analytics to creators, follower notifications on new recipe publish.
 - **Honest timestamps + sample vs community** badges throughout discover.
+- **Recipe reviews / ratings** (Phase D, 2026-06-02 — competitor-scan capture). Star rating + short text review on community/published recipes, surfaced on recipe detail + Discover cards as social proof. Feeds Discover ranking (currently save-count only, `DISCOVER_POPULAR_MIN_SAVES`). Needs moderation reuse from the publish pipeline. Owner: product-lead + nutrition-engine (rating must not be confused with nutrition confidence). Linear: ENG (Recipes tab).
+- **Share recipe to Instagram Stories** (Phase D / viral push, 2026-06-02 capture). Outbound share of a recipe (and "fits your day" chip) as a Story-sized card → IG Stories share sheet. Distinct from the existing per-meal share (ENG-25, nutrition-only). This is a viral-loop surface, so it lands in the 2026-07 push; privacy posture must mirror ENG-25 (recipe only, never the user's targets/day budget). Owner: growth-strategist + ui-product-designer + legal-reviewer.
+- **Collaborative collections** (later, Phase D/F overlap). Multi-user curated recipe collections (one household/friends group co-curates a shared collection). Overlaps household + friends-graph primitives (Phase F.2). Exploratory until friends graph lands.
 - **Creator publishing — LTK-style multi-format** (later). Many creators won't want a **recipe-only** upload that feels disconnected from how they work on **Instagram, TikTok, and similar**. They will expect to attach the **same kind of content** they already ship elsewhere — reels, short video, carousel-style posts, captions — alongside (or wrapped around) the structured recipe so the feed feels native and shoppable.
 - **Create once, share everywhere** (later). Investigate a single authoring or syndication path analogous to how **LTK** lets creators produce once and fan out to every channel that matters. Suppr as a first-class destination in that mix — creators publish once (or connect an existing source) and reach Suppr plus other platforms without a separate "recipe-only" production line. Implications: media pipeline, rights + attribution, moderation, how structured recipe data maps to rich posts.
 
@@ -339,7 +342,11 @@ We've **jumped around and ahead** of the original phase order. Several Phase A i
   Instacart's [Developer Platform recipe / shopping list API](https://docs.instacart.com/developer_platform_api/api/products/shopping_list/)
   so users can one-tap-buy a generated list. Affiliate revenue + reduces
   friction Plan → Pantry. Owners: integration-manager + monetisation-architect.
-  (Captured 2026-05-12; not in 2026-05-12 audit.)
+  (Captured 2026-05-12; not in 2026-05-12 audit.) **Broaden providers later**
+  (2026-06-02 competitor scan): Julienne lists Whole Foods / Kroger / Walmart /
+  Amazon Fresh pickup+delivery — all **US-only**, wrong geography for our UK/EU-first
+  market. Instacart is the right first integration; revisit a UK grocer (Tesco /
+  Ocado / Sainsbury's) before any US chain.
 - **MCP / Claude connector — Suppr as MCP server for fitness + food data**
   (long-term) — expose the user's fitness/food data over the
   Model Context Protocol so Claude users can ask their Suppr data
