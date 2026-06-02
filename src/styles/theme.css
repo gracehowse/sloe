@@ -122,16 +122,17 @@
    *  identity; WIN (this gold) = landmark celebration ONLY (goal hit, streak
    *  milestone, win-moment).
    *
-   *  GOLD (not the interim amber #F2A93B): gold carries universal achievement
-   *  semantics and separates celebration from the warm-orange carbs/sodium/
-   *  over-budget family (#E8721E / #F78A32). Executed as a GRADIENT for
-   *  rings/glows/celebration fills (flat deep gold reads mustard); `--accent-win`
-   *  stays a solid deep gold for legible text/numbers on the warm-paper light
-   *  surface. Mirrors mobile `Accent.win` / `Accent.winSoft` / `Accent.winGradient`
+   *  BRAND SPECTRUM (chosen 2026-06-01, superseding the interim gold/amber):
+   *  the celebration lights up in Suppr's own colours — most ownable, ties to
+   *  the brandmark + empty-ring gradient, collision-free with the macro/warning
+   *  hues. `--accent-win` is a single calm brand-purple for PERSISTENT
+   *  achievement bits (streak chip, milestone badge); `--accent-win-gradient`
+   *  is the celebration MOMENT fill (ring sweep / glow / pulse). Mirrors mobile
+   *  `Accent.win` / `Accent.winSoft` / `AccentWinGradient`
    *  in `apps/mobile/constants/theme.ts`. */
-  --accent-win: #C99A22;
-  --accent-win-soft: rgba(201, 154, 34, 0.12);
-  --accent-win-gradient: linear-gradient(150deg, #F8E08A 0%, #E7C25C 45%, #C99A22 100%);
+  --accent-win: #9679D9;
+  --accent-win-soft: rgba(150, 121, 217, 0.12);
+  --accent-win-gradient: linear-gradient(120deg, #588CE4 0%, #9679D9 50%, #DF5EBC 100%);
 
   /** Estimated-confidence chip — warm-amber. ENG P5 parity (gap #11,
    *  2026-05-31). Mirrors the mobile chip exactly
@@ -345,15 +346,14 @@
   --accent-destructive-soft: rgba(245, 131, 133, 0.18);
   --accent-info: #7BA3EA;
 
-  /** Win / celebration GOLD — dark. ENG-795 (2026-06-01). Same gold family as
-   *  light. On the dark OLED hero the solid deep gold can read low-contrast, so
-   *  the solid token is lifted to a lighter gold while the gradient stays the
-   *  shared celebration fill (its mid/top stops carry on dark). Landmark-only
-   *  role, gated behind `design_system_colours`. Mirrors mobile `Accent.win` /
-   *  `Accent.winSoft` / `Accent.winGradient`. */
-  --accent-win: #E7C25C;
-  --accent-win-soft: rgba(231, 194, 92, 0.16);
-  --accent-win-gradient: linear-gradient(150deg, #F8E08A 0%, #E7C25C 45%, #C99A22 100%);
+  /** Win / celebration BRAND SPECTRUM — dark (2026-06-01). Same brand-spectrum
+   *  as light; the persistent solid lifts to brand-purple-light for legible
+   *  contrast on the dark OLED hero, while the gradient (celebration fill) lifts
+   *  its stops to match. Landmark-only role, gated behind `design_system_colours`.
+   *  Mirrors mobile `Accent.win` / `Accent.winSoft` / `AccentWinGradient`. */
+  --accent-win: #AC93E2;
+  --accent-win-soft: rgba(172, 147, 226, 0.16);
+  --accent-win-gradient: linear-gradient(120deg, #7BA3EA 0%, #AC93E2 50%, #E689CB 100%);
 
   /** Estimated-confidence chip — dark. ENG P5 parity (gap #11). Same
    *  `#BF8324` hue as light, matching the mobile chip (single value for

@@ -4,11 +4,11 @@
  * 2026-06-01; `docs/decisions/2026-06-01-design-direction-2026.md`).
  *
  * The placeholder used to be a 1-frame TRANSPARENT Lottie that rendered
- * nothing. It is now a code-driven gold celebration (Reanimated + SVG, no art
- * asset). These pins protect the user-observable contract:
+ * nothing. It is now a code-driven brand-spectrum celebration (Reanimated +
+ * SVG, no art asset). These pins protect the user-observable contract:
  *   - the player mounts and renders a visible centre hero (% + landmark label)
- *     in the dedicated win GOLD token — NOT a transparent no-op,
- *   - it draws the gold-gradient ring (the calorie ring "closing"),
+ *     in the dedicated win token (brand purple) — NOT a transparent no-op,
+ *   - it draws the brand-spectrum gradient ring (the calorie ring "closing"),
  *   - it fires `onComplete` exactly once, after the ~700ms celebration window,
  *     so the caller can unmount it,
  *   - per-celebration label copy is correct (goal-hit / streak / log-confirm).
@@ -47,7 +47,7 @@ describe("WinMomentPlayer (mobile code celebration)", () => {
       ? Object.assign({}, ...pct.props.style)
       : pct.props.style;
     expect(style.color).toBe(Accent.win);
-    expect(Accent.win).toBe("#C99A22"); // gold, not the retired amber
+    expect(Accent.win).toBe("#9679D9"); // brand purple (spectrum win), not gold/amber
   });
 
   it("fires onComplete exactly once after the celebration window", () => {

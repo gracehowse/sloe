@@ -1,6 +1,6 @@
 /**
- * DailyRing — counting-hero odometer (`redesign_motion`) + gold goal-hit
- * celebration (`redesign_winmoment`) (Design Direction 2026, ENG-798/812).
+ * DailyRing — counting-hero odometer (`redesign_motion`) + brand-spectrum
+ * goal-hit celebration (`redesign_winmoment`) (Design Direction 2026, ENG-798/812).
  *
  * Web↔mobile parity targets for the Today cold-open / first deliverable:
  *
@@ -11,18 +11,19 @@
  *    `useAnimatedNumber` lineage (incl. the premium-motion variant) and the
  *    prior 22px / font-bold treatment byte-for-byte.
  *
- *  - `redesign_winmoment`: a goal-hit lights the ring with the GOLD celebration
- *    gradient (`--accent-win-gradient`, ported to the inline `#winGold` SVG
- *    `<linearGradient>`) + a gold glow (`--accent-win`) + the extra stroke
- *    width — the web colour/motion analog of mobile's success haptic. The
- *    steady three-state ring (empty track / under green / over red) is
- *    unchanged: the gold only paints while `celebrating`.
+ *  - `redesign_winmoment`: a goal-hit lights the ring with the BRAND-SPECTRUM
+ *    celebration gradient (`--accent-win-gradient`, ported to the inline
+ *    `#winSpectrum` SVG `<linearGradient>`) + a brand-purple glow
+ *    (`--accent-win`) + the extra stroke width — the web colour/motion analog
+ *    of mobile's success haptic. The steady three-state ring (idle gradient /
+ *    under green / over red) is unchanged: the spectrum only paints while
+ *    `celebrating`.
  *
  * Source-text assertions — the established convention for this heavily
  * context-dependent component (mirrors `mealPlannerElevationAndWinPulse.test.ts`
  * and `calorieRingSolidGreenAtTarget.test.ts`). They break if either gate is
  * dropped, the flag-off fallback is lost, or the celebration crosses the
- * three-role colour law (gold only on a goal-hit, never the steady state).
+ * three-role colour law (the win spectrum only on a goal-hit, never steady).
  * The pure odometer math itself is unit-tested in `motion.test.ts`.
  */
 import { readFileSync } from "node:fs";
@@ -67,34 +68,35 @@ describe("DailyRing counting-hero odometer (redesign_motion)", () => {
   });
 });
 
-describe("DailyRing gold goal-hit celebration (redesign_winmoment)", () => {
+describe("DailyRing brand-spectrum goal-hit celebration (redesign_winmoment)", () => {
   it("reads the redesign_winmoment flag and only celebrates a green (at/under) goal-hit", () => {
     expect(SRC).toContain('const winEnabled = isFeatureEnabled("redesign_winmoment")');
-    // Gold never paints an over-budget or empty ring (three-role colour law).
+    // The win spectrum never paints an over-budget or empty ring (three-role law).
     expect(SRC).toContain(
       "const celebrating = pulse && winEnabled && !isEmpty && !isOverBudget",
     );
   });
 
-  it("ships the gold gradient def mirroring --accent-win-gradient (#F8E08A → #E7C25C → #C99A22)", () => {
-    expect(SRC).toContain('<linearGradient id="winGold"');
-    expect(SRC).toContain('stopColor="#F8E08A"');
-    expect(SRC).toContain('stopColor="#E7C25C"');
-    expect(SRC).toContain('stopColor="#C99A22"');
+  it("ships the brand-spectrum gradient def mirroring --accent-win-gradient (#588CE4 → #9679D9 → #DF5EBC)", () => {
+    expect(SRC).toContain('<linearGradient id="winSpectrum"');
+    expect(SRC).toContain('stopColor="#588CE4"');
+    expect(SRC).toContain('stopColor="#9679D9"');
+    expect(SRC).toContain('stopColor="#DF5EBC"');
   });
 
-  it("paints the progress arc with the gold gradient + gold glow + thicker stroke ONLY while celebrating", () => {
-    expect(SRC).toContain('celebrating\n              ? "url(#winGold)"');
+  it("paints the progress arc with the win-spectrum gradient + glow + thicker stroke ONLY while celebrating", () => {
+    expect(SRC).toContain('celebrating\n              ? "url(#winSpectrum)"');
     expect(SRC).toContain("strokeWidth={celebrating ? strokeWidth + 3 : strokeWidth}");
     expect(SRC).toContain('filter: celebrating');
     expect(SRC).toContain('"drop-shadow(0 0 8px var(--accent-win))"');
   });
 
-  it("leaves the steady three-state ring (empty/under-green/over-red) intact below the celebration", () => {
+  it("leaves the steady ring (idle gradient / under-green / over-red) intact below the celebration", () => {
     // The under-budget steady stroke stays --success; the celebration is
-    // additive (a gold OVERRIDE while pulsing), not a swap of the resting hue.
+    // additive (a spectrum OVERRIDE while pulsing), not a swap of the resting hue.
+    // ENG-826: the empty ring now paints the calm idle gradient, not flat grey.
     expect(SRC).toContain('"var(--success)"');
     expect(SRC).toContain('"var(--destructive)"');
-    expect(SRC).toContain('"var(--ring-bg)"');
+    expect(SRC).toContain('"url(#ringIdle)"');
   });
 });

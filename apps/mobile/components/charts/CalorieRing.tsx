@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Pressable, Text, useColorScheme, View } from "react-native";
 import * as Haptics from "expo-haptics";
 import { PostHogMaskView } from "posthog-react-native";
-import Svg, { Circle, G, Defs, Pattern, Line } from "react-native-svg";
+import Svg, { Circle, G, Defs, Pattern, Line, LinearGradient, Stop } from "react-native-svg";
 import Animated, {
   useSharedValue,
   useAnimatedProps,
@@ -369,16 +369,24 @@ export default function CalorieRing({
                 strokeWidth={3}
               />
             </Pattern>
+            {/* ENG-826 — calm idle/"calibrating" gradient for the empty ring:
+                a soft brand-blue tonal arc instead of a flat grey track (web
+                parity: daily-ring.tsx #ringIdle). Not the win spectrum. */}
+            <LinearGradient id="ringIdle" x1="0%" y1="0%" x2="100%" y2="100%">
+              <Stop offset="0%" stopColor="#588CE4" stopOpacity={0.5} />
+              <Stop offset="100%" stopColor="#7BA3EA" stopOpacity={0.22} />
+            </LinearGradient>
           </Defs>
-          {/* Outer calorie ring track — neutral when empty. */}
+          {/* Outer calorie ring track — calm idle gradient when empty
+              ("calibrating"), neutral track once logging starts. ENG-826. */}
           <Circle
             cx={CX}
             cy={CX}
             r={R}
             fill="none"
-            stroke={trackColor}
+            stroke={isEmpty ? "url(#ringIdle)" : trackColor}
             strokeWidth={STROKE}
-            opacity={isEmpty ? 0.55 : 1}
+            opacity={1}
           />
           {/* Bonus calorie segment (orange). Canonical 2026-05-22 v4
               multi-ring revival: when exercise has bumped the daily
