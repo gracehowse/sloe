@@ -132,6 +132,14 @@ export type PersistRecomputedTargetsInput = {
    * (a goal/pace change) — a goal-weight-only edit doesn't touch pace.
    */
   paceKgPerWeek?: number | null;
+  /**
+   * ENG-779 — explicit fibre target from the goal-pace editor's fibre
+   * input. When finite & positive it's written verbatim (an explicit edit
+   * this session is the freshest intent), overriding both the formula
+   * fibre and the sticky-user carry-forward. Omit / null when the user
+   * didn't touch fibre in the editor.
+   */
+  fiberOverrideG?: number | null;
 };
 
 export type PersistRecomputedTargetsResult = {
@@ -155,24 +163,27 @@ export async function persistRecomputedTargets(
   const { profileUpdate, recomputed } = input;
   const wroteTargets = recomputed != null;
 
-  // Step 1 — backfill past-day snapshots from the OLD profile, ONLY when
-  // the calorie target is about to move. Best-effort; never blocks.
+  // Step 1 — read the about-to-be-OLD profile once when the calorie target
+  // is moving. Used for the past-day backfill below AND the ENG-779
+  // sticky-fibre guard in Step 2. Best-effort; never blocks.
+  let oldProfile: Record<string, unknown> | null = null;
   if (wroteTargets) {
     try {
-      const { data: oldProfile } = await supabase
+      const { data } = await supabase
         .from("profiles")
         .select(
-          "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, activity_level, plan_pace, goal, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, sex, weight_kg, height_cm, age",
+          "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_calories_source, activity_level, plan_pace, goal, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, sex, weight_kg, height_cm, age",
         )
         .eq("id", userId)
         .maybeSingle();
+      oldProfile = (data as Record<string, unknown> | null) ?? null;
       if (oldProfile) {
         await backfillDailyTargetsFromProfile(supabase, userId, oldProfile, {
           now,
         });
       }
     } catch {
-      // Backfill never blocks the user's goal edit.
+      // Backfill / read never blocks the user's goal edit.
     }
   }
 
@@ -182,6 +193,37 @@ export async function persistRecomputedTargets(
   if (recomputed) {
     const { maintenanceTdee: _maintenance, ...writeableTargets } = recomputed;
     Object.assign(update, writeableTargets);
+
+    // ENG-779 — resolve the fibre to actually write. Fibre is a health-floor
+    // preference, not goal-derived like calories, so a recompute must not
+    // silently clobber a fibre the user chose. Precedence:
+    //   1. An explicit edit this session from the goal-pace editor's fibre
+    //      input (`fiberOverrideG`) — the freshest intent.
+    //   2. A sticky user-set fibre: when the user hand-set their macro block
+    //      in the /profile editor (`target_calories_source === "user"`),
+    //      carry their `target_fiber_g` forward instead of the formula value.
+    //   3. Otherwise the formula fibre from `writeableTargets` stands.
+    // We deliberately keep `target_calories_source = "recompute"` (set just
+    // below) — preserving fibre is independent of calorie provenance, and a
+    // "user" stamp would wrongly trip the digest-suppression cooldown.
+    // v1 limitation (tracked — see the ENG-779 follow-up for a dedicated
+    // `target_fiber_source` column): a fibre set via the goal-pace editor is
+    // honoured on THIS write but a LATER recompute re-derives it unless the
+    // profile is also calorie-"user".
+    const fiberOverride = input.fiberOverrideG;
+    if (
+      typeof fiberOverride === "number" &&
+      Number.isFinite(fiberOverride) &&
+      fiberOverride > 0
+    ) {
+      update.target_fiber_g = Math.round(fiberOverride);
+    } else if (oldProfile?.target_calories_source === "user") {
+      const userFiber = Number(oldProfile.target_fiber_g);
+      if (Number.isFinite(userFiber) && userFiber > 0) {
+        update.target_fiber_g = userFiber;
+      }
+    }
+
     update.target_calories_source = input.source ?? "recompute";
     update.target_calories_set_at = now.toISOString();
 
@@ -265,7 +307,13 @@ export async function persistRecomputedTargets(
         target_protein_g: recomputed.target_protein,
         target_carbs_g: recomputed.target_carbs,
         target_fat_g: recomputed.target_fat,
-        target_fiber_g: recomputed.target_fiber_g,
+        // ENG-779 — record the fibre actually written (may be the preserved
+        // user value), not the formula value, so past-day reads resolve to
+        // what was truly in force.
+        target_fiber_g:
+          typeof update.target_fiber_g === "number"
+            ? update.target_fiber_g
+            : recomputed.target_fiber_g,
         maintenance_tdee: recomputed.maintenanceTdee,
       },
       input.historySource ?? "goal_retune",

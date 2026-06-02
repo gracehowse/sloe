@@ -504,3 +504,102 @@ describe("goal-change recompute — persistence contract", () => {
     expect(row.target_calories).toBe(recomputed.target_calories);
   });
 });
+
+describe("ENG-779 — fibre is a sticky user preference, not clobbered by recompute", () => {
+  // Fixture cut-goal formula fibre = round(1496 / 55) = 27g. The tests use
+  // distinct values (42 user-set, 50 override) so a preserved value can't be
+  // confused with the formula one.
+  it("preserves a user-set fibre (source='user') through a goal recompute", async () => {
+    const supabase = makeMockSupabase({
+      target_calories: 1700,
+      target_calories_source: "user",
+      target_fiber_g: 42,
+      sex: "female",
+      weight_kg: 60,
+      height_cm: 165,
+      age: 30,
+      activity_level: "moderate",
+      goal: "maintain",
+    });
+    const recomputed = recomputeTargetsFromProfile({ ...FIXTURE, goal: "cut" })!;
+    await persistRecomputedTargets(supabase, "user-1", {
+      profileUpdate: { goal: "cut", plan_pace: "steady" },
+      recomputed,
+      source: "recompute",
+    });
+    const written = supabase.updates.at(-1)!;
+    // Calories still recompute — the goal IS the newer intent for calories…
+    expect(written.target_calories).toBe(recomputed.target_calories);
+    // …but the user's chosen fibre is carried forward, not the formula value.
+    expect(written.target_fiber_g).toBe(42);
+    expect(written.target_fiber_g).not.toBe(recomputed.target_fiber_g);
+    // Calorie provenance stays "recompute" (protects the digest cooldown).
+    expect(written.target_calories_source).toBe("recompute");
+  });
+
+  it("uses the formula fibre when the profile is NOT user-set", async () => {
+    const supabase = makeMockSupabase({
+      target_calories: 2046,
+      target_fiber_g: 42, // a stale fibre, but source isn't "user"
+      sex: "female",
+      weight_kg: 60,
+      height_cm: 165,
+      age: 30,
+      activity_level: "moderate",
+      goal: "maintain",
+      // no target_calories_source → treated as formula-derived
+    });
+    const recomputed = recomputeTargetsFromProfile({ ...FIXTURE, goal: "cut" })!;
+    await persistRecomputedTargets(supabase, "user-1", {
+      profileUpdate: { goal: "cut", plan_pace: "steady" },
+      recomputed,
+      source: "recompute",
+    });
+    const written = supabase.updates.at(-1)!;
+    expect(written.target_fiber_g).toBe(recomputed.target_fiber_g);
+  });
+
+  it("an explicit fiberOverrideG wins over both formula and sticky-user fibre", async () => {
+    const supabase = makeMockSupabase({
+      target_calories: 1700,
+      target_calories_source: "user",
+      target_fiber_g: 42,
+      sex: "female",
+      weight_kg: 60,
+      height_cm: 165,
+      age: 30,
+      activity_level: "moderate",
+      goal: "maintain",
+    });
+    const recomputed = recomputeTargetsFromProfile({ ...FIXTURE, goal: "cut" })!;
+    await persistRecomputedTargets(supabase, "user-1", {
+      profileUpdate: { goal: "cut", plan_pace: "steady" },
+      recomputed,
+      source: "recompute",
+      fiberOverrideG: 50,
+    });
+    expect(supabase.updates.at(-1)!.target_fiber_g).toBe(50);
+  });
+
+  it("records the preserved (not formula) fibre in goal_history", async () => {
+    const supabase = makeMockSupabase({
+      target_calories: 1700,
+      target_calories_source: "user",
+      target_fiber_g: 42,
+      sex: "female",
+      weight_kg: 60,
+      height_cm: 165,
+      age: 30,
+      activity_level: "moderate",
+      goal: "maintain",
+    });
+    const recomputed = recomputeTargetsFromProfile({ ...FIXTURE, goal: "cut" })!;
+    await persistRecomputedTargets(supabase, "user-1", {
+      profileUpdate: { goal: "cut", plan_pace: "steady" },
+      recomputed,
+      source: "recompute",
+    });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(supabase.inserts[0].target_fiber_g).toBe(42);
+  });
+});
