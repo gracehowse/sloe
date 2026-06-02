@@ -33,9 +33,15 @@ vi.mock("posthog-js", () => ({
 
 import { isFeatureEnabled, isFeatureDisabled } from "@/lib/analytics/track";
 
-// hyphenated key proves the hyphen→underscore mapping
-const SNAKE_FLAG = "redesign_branded_sheets";
-const SNAKE_ENV = "NEXT_PUBLIC_FLAG_FORCE_REDESIGN_BRANDED_SHEETS";
+// A NON-redesign flag. `redesign_branded_sheets` is now in `REDESIGN_DEFAULT_ON`
+// (852c8df1 un-gate), so `isFeatureEnabled` short-circuits it to `true` BEFORE the
+// override / PostHog layer this file exercises — which would mask the mechanism
+// under test. `today_log_again` is a normal flag (default-OFF, PostHog-resolved),
+// so the override precedence + fallthrough stay observable. Redesign flags' new
+// default-ON behaviour is covered by `redesignFlagsUngated.test.ts`. The
+// hyphenated `HYPHEN_FLAG` below still proves the hyphen→underscore env mapping.
+const SNAKE_FLAG = "today_log_again";
+const SNAKE_ENV = "NEXT_PUBLIC_FLAG_FORCE_TODAY_LOG_AGAIN";
 const HYPHEN_FLAG = "log-sheet-slot-selector";
 const HYPHEN_ENV = "NEXT_PUBLIC_FLAG_FORCE_LOG_SHEET_SLOT_SELECTOR";
 
@@ -126,9 +132,12 @@ describe("web flag-force override (NEXT_PUBLIC_FLAG_FORCE_*)", () => {
     });
   });
 
-  describe("redesign_branded_sheets defaults OFF", () => {
+  describe("a non-redesign flag defaults OFF", () => {
     it("reads false with no PostHog flag and no override (default-OFF registration)", () => {
-      // No override env, PostHog returns undefined (flag not provisioned/unloaded)
+      // No override env, PostHog returns undefined (flag not provisioned/unloaded).
+      // Non-redesign flags are NOT in REDESIGN_DEFAULT_ON, so they fall through to
+      // the (cold) PostHog client and resolve false. (Redesign flags default ON —
+      // see `redesignFlagsUngated.test.ts`.)
       isEnabledMock.mockReturnValue(undefined);
       expect(isFeatureEnabled(SNAKE_FLAG)).toBe(false);
     });
