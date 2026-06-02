@@ -15,9 +15,22 @@
  * Phase 2 work (sweeping callers) does not change this surface.
  */
 import * as React from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react-native";
 import { Text, View } from "react-native";
+
+// Redesign 2026 ships default-ON (`REDESIGN_DEFAULT_ON` in `lib/analytics.ts`).
+// This file pins the pre-redesign FLAT primitive treatment, so neutralise
+// analytics → all flags read OFF (RN tests have no `window.__SUPPR_FORCE_FLAGS__`
+// hook; canonical mobile force-off, mirrors the web parity test). On-state is
+// covered by Storybook + Chromatic.
+vi.mock("@/lib/analytics", () => ({
+  track: vi.fn(),
+  identify: vi.fn(),
+  reset: vi.fn(),
+  isFeatureEnabled: vi.fn(() => false),
+  isFeatureDisabled: vi.fn(() => false),
+}));
 
 import { SupprCard } from "../../components/ui/SupprCard";
 import { TrustChip } from "../../components/ui/TrustChip";

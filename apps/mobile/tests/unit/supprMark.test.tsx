@@ -10,8 +10,21 @@
  * screens reads identically.
  */
 import * as React from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react-native";
+
+// Redesign 2026 ships default-ON (`REDESIGN_DEFAULT_ON` in `lib/analytics.ts`);
+// the `design_system_brandmark` on-state swaps the plate mark and drops the
+// legacy 'S'. This file pins the pre-redesign monochrome mark, so neutralise
+// analytics → all flags read OFF (RN tests have no `window.__SUPPR_FORCE_FLAGS__`
+// hook; this is the canonical mobile force-off, matching the web parity test).
+vi.mock("@/lib/analytics", () => ({
+  track: vi.fn(),
+  identify: vi.fn(),
+  reset: vi.fn(),
+  isFeatureEnabled: vi.fn(() => false),
+  isFeatureDisabled: vi.fn(() => false),
+}));
 
 import { SupprMark, SupprPlateMark, SupprPlateWordmark, SupprWordmark } from "../../components/SupprMark";
 

@@ -151,3 +151,27 @@ export const CardSoftElevation: Story = {
     };
   },
 };
+
+/**
+ * The four accent tones (plus the primary-gradient variant) rendered WITH their
+ * hairline border. Uses a non-`card` elevation so `softElevation` is false and
+ * the border is kept (soft elevation drops it). Covers the
+ * `border ? token : "transparent"` TRUE branch for primary / success / warning /
+ * magenta (`suppr-card.tsx` 111/116/121/126) AND the primary-gradient border
+ * branch (line 103) — all uncovered since Redesign 2026 defaults card elevation
+ * to soft (borderless). One story, no flag-forcing needed.
+ */
+export const TonesBordered: Story = {
+  render: () => (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {(["primary", "success", "warning", "magenta"] as const).map((tone) => (
+        <SupprCard key={tone} tone={tone} elevation="sheet">
+          <span className="text-sm text-foreground">{tone} tone, bordered</span>
+        </SupprCard>
+      ))}
+      <SupprCard tone="primary" gradient elevation="sheet">
+        <span className="text-sm text-foreground">primary gradient, bordered</span>
+      </SupprCard>
+    </div>
+  ),
+};

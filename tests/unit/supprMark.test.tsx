@@ -1,5 +1,5 @@
 import * as React from "react";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import {
   SupprMark,
@@ -9,6 +9,23 @@ import {
 } from "../../src/app/components/ui/suppr-mark";
 
 void React;
+
+// Redesign 2026 ships default-ON (`REDESIGN_DEFAULT_ON` in `track.ts`); the
+// `design_system_brandmark` on-state swaps the plate mark. This file pins the
+// pre-redesign monochrome plate mark, so force the design-system flags OFF via
+// the `window.__SUPPR_FORCE_FLAGS__` hook `track.ts` honours (explicit `false`
+// wins over default-on). On-state is covered by `MarkBrandmarkOn` in the story.
+beforeEach(() => {
+  (window as { __SUPPR_FORCE_FLAGS__?: Record<string, boolean> }).__SUPPR_FORCE_FLAGS__ = {
+    design_system_elevation: false,
+    design_system_colours: false,
+    design_system_brandmark: false,
+    design_system_icons: false,
+  };
+});
+afterEach(() => {
+  delete (window as { __SUPPR_FORCE_FLAGS__?: Record<string, boolean> }).__SUPPR_FORCE_FLAGS__;
+});
 
 /**
  * Tests for the `SupprMark` brand-mark primitive (Phase 1 of the
