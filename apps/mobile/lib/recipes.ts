@@ -2,7 +2,12 @@ import { useCallback, useEffect, useState } from "react";
 import { Alert } from "react-native";
 import { formatRecipeMinutes } from "./formatRecipeMinutes";
 import { supabase } from "./supabase";
-import { cacheDiscoverRecipes, getCachedDiscoverRecipes } from "./offlineCache";
+import {
+  cacheDiscoverRecipes,
+  getCachedDiscoverRecipes,
+  cacheSavedRecipes,
+  getCachedSavedRecipes,
+} from "./offlineCache";
 import type { RecipeCard } from "./types";
 import { NEUTRAL_AVATAR_DATA_URI } from "@suppr/shared/ui/neutralAvatar";
 import { fetchPublicRecipeSaveCounts } from "@suppr/shared/recipes/fetchPublicRecipeSaveCounts";
@@ -388,6 +393,19 @@ export function useSavedLibraryRecipes(userId: string | null) {
     }
     setLoading(true);
 
+    // Warm-start from the per-user cache BEFORE the network call so a slow
+    // or hanging saves+recipes fetch never shows a BARE full-screen spinner
+    // when we have prior data — mirrors Discover's offline-cache resilience.
+    // A genuine cold first load (no cache) still shows the spinner via
+    // library.tsx's `isLoading && savedRecipes.length === 0`, which is
+    // correct. getCachedSavedRecipes swallows its own errors (returns null).
+    const warmCache = (await getCachedSavedRecipes(userId)) as
+      | RecipeCard[]
+      | null;
+    if (warmCache && warmCache.length > 0) {
+      setRecipes(warmCache);
+    }
+
     // Wrap the whole fetch+hydrate path in try/finally so `loading`
     // ALWAYS flips false, even if a supabase call throws (network
     // failure, RLS denial, request abort). Without this guarantee the
@@ -430,7 +448,11 @@ export function useSavedLibraryRecipes(userId: string | null) {
 
     if (initialOut === libraryRaceTimeout) {
       console.warn("[useSavedLibraryRecipes] saves+recipes batch timed out");
-      setRecipes([]);
+      // Do NOT wipe to empty. Leave the cache-hydrated recipes (set at the
+      // top of refresh) in place so a flaky network shows the last-known
+      // library instead of an alarming blank screen. If there was no cache
+      // (true cold load), `recipes` is still [] and the empty state shows,
+      // which is correct. `finally` clears `loading`.
       return;
     }
 
@@ -572,6 +594,9 @@ export function useSavedLibraryRecipes(userId: string | null) {
     }
 
     setRecipes(ordered);
+    // Persist for the next warm-start. cacheSavedRecipes skips empty arrays,
+    // so a genuine-empty or timed-out fetch never poisons a populated cache.
+    void cacheSavedRecipes(userId, ordered);
 
     } finally {
       setLoading(false);
