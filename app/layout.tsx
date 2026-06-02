@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Inter } from "next/font/google";
 import "../src/styles/index.css";
 import { Providers } from "./providers";
+import { DrOutageBanner } from "../src/app/components/ops/DrOutageBanner";
 import { Analytics } from "@vercel/analytics/next";
 
 const inter = Inter({
@@ -59,6 +60,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={inter.variable} suppressHydrationWarning>
       <body className={inter.className}>
+        <DrOutageBanner />
         <Providers>{children}</Providers>
         <Analytics />
       </body>

@@ -272,6 +272,25 @@ export function isFeatureDisabled(flag: string): boolean {
   }
 }
 
+/** Returns the PostHog payload JSON attached to `flag`, or null when the
+ *  client is cold / the flag has no payload. Lets a kill-switch banner's
+ *  copy change without an app release — e.g. the `dr-full-outage-banner`
+ *  DR kill switch (disaster-recovery runbook row 7). Mirror of
+ *  `src/lib/analytics/track.ts#getFeatureFlagPayload` (web). */
+export function getFeatureFlagPayload(flag: string): unknown {
+  const c = getPostHogClient();
+  if (!c) return null;
+  try {
+    return (
+      (c as { getFeatureFlagPayload?: (f: string) => unknown }).getFeatureFlagPayload?.(
+        flag,
+      ) ?? null
+    );
+  } catch {
+    return null;
+  }
+}
+
 // `isOnboardingV2Enabled` + `subscribeToFlags` were removed 2026-04-30
 // once the onboarding_v2 flag hit 100% and the legacy
 // /onboarding redirect was replaced by the canonical route. The
