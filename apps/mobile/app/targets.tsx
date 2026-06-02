@@ -32,6 +32,7 @@ import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets, calculateTDEE } from "@/lib/calcTargets";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useCardElevation } from "@/hooks/useCardElevation";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { useSettingsWinMoment } from "@/hooks/useSettingsWinMoment";
 import { dateKeyFromDate } from "@suppr/shared/nutrition/trackerStats";
@@ -57,6 +58,7 @@ import { isFeatureEnabled } from "@/lib/analytics";
  */
 export default function TargetsScreen() {
   const colors = useThemeColors();
+  const cardElevation = useCardElevation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const goBack = useSafeBack("/(tabs)");
@@ -403,9 +405,10 @@ export default function TargetsScreen() {
           paddingHorizontal: Spacing.md,
           paddingVertical: 6,
           borderRadius: Radius.sm,
-          borderWidth: 1,
+          borderWidth: cardElevation.useBorder ? 1 : 0,
           borderColor: colors.border,
-          backgroundColor: colors.card,
+          backgroundColor: cardElevation.liftBg ?? colors.card,
+          ...(cardElevation.shadowStyle ?? {}),
         },
         editText: { fontSize: 12, fontWeight: "600", color: colors.textSecondary },
         scroll: {
@@ -414,11 +417,12 @@ export default function TargetsScreen() {
           gap: Spacing.xxl,
         },
         card: {
-          backgroundColor: colors.card,
+          backgroundColor: cardElevation.liftBg ?? colors.card,
           borderRadius: Radius.lg,
-          borderWidth: 1,
+          borderWidth: cardElevation.useBorder ? 1 : 0,
           borderColor: colors.border,
           padding: Spacing.xl,
+          ...(cardElevation.shadowStyle ?? {}),
         },
         overline: {
           fontSize: 11,
@@ -460,12 +464,13 @@ export default function TargetsScreen() {
         },
         macroTile: {
           width: "47%",
-          backgroundColor: colors.card,
+          backgroundColor: cardElevation.liftBg ?? colors.card,
           borderRadius: Radius.lg,
-          borderWidth: 1,
+          borderWidth: cardElevation.useBorder ? 1 : 0,
           borderColor: colors.border,
           padding: Spacing.lg,
           gap: 8,
+          ...(cardElevation.shadowStyle ?? {}),
         },
         macroHead: {
           flexDirection: "row",
@@ -541,7 +546,7 @@ export default function TargetsScreen() {
         },
         center: { flex: 1, justifyContent: "center", alignItems: "center" },
       }),
-    [colors],
+    [colors, cardElevation],
   );
 
   const statusPillStyle = (status: string | undefined) => {
@@ -716,13 +721,14 @@ export default function TargetsScreen() {
               paddingHorizontal: Spacing.lg,
               paddingVertical: 8,
               borderRadius: Radius.sm,
-              borderWidth: 1,
+              borderWidth: cardElevation.useBorder ? 1 : 0,
               borderColor: colors.border,
-              backgroundColor: colors.card,
+              backgroundColor: cardElevation.liftBg ?? colors.card,
               opacity: pressed || recalculating ? 0.6 : 1,
               flexDirection: "row",
               alignItems: "center",
               gap: 6,
+              ...(cardElevation.shadowStyle ?? {}),
             })}
           >
             {recalculating ? (
@@ -843,8 +849,8 @@ export default function TargetsScreen() {
           accessibilityRole="button"
           accessibilityLabel="How is this calculated? Open calorie target explanation"
           style={({ pressed }) => ({
-            backgroundColor: colors.card,
-            borderWidth: 1,
+            backgroundColor: cardElevation.liftBg ?? colors.card,
+            borderWidth: cardElevation.useBorder ? 1 : 0,
             borderColor: colors.cardBorder,
             borderRadius: Radius.lg,
             paddingVertical: 14,
@@ -854,6 +860,7 @@ export default function TargetsScreen() {
             alignItems: "center",
             gap: 12,
             opacity: pressed ? 0.7 : 1,
+            ...(cardElevation.shadowStyle ?? {}),
           })}
         >
           <View

@@ -93,6 +93,7 @@ import { formatMacroValue } from "../../lib/nutrition/formatMacro.ts";
 // list below.
 import { TrustChip } from "./ui/trust-chip";
 import { SourceDot } from "./ui/source-dot";
+import { SupprCard } from "./ui/suppr-card";
 // GW-08 (audit 2026-04-28): `aggregateRecipeTrust` import dropped
 // when the source TrustChip was removed from this screen. Gluten
 // classifier stays — it's a real ingredient-keyword scan, not a
@@ -1780,9 +1781,12 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             : [];
           const normalised = normaliseAllergenIds(allergensFromRecipe);
           const containsLine = formatContainsLine(normalised);
+          // Design Direction 2026 — allergen callout routed through SupprCard.
           return (
-            <div
-              className="rounded-xl border border-border bg-card/60 p-3 text-xs"
+            <SupprCard
+              padding="md"
+              radius="md"
+              className="text-xs"
               role="note"
               aria-label="Regulated-allergen information"
               data-testid="recipe-allergen-callout"
@@ -1795,7 +1799,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
               <p className="text-muted-foreground leading-snug">
                 We tag recipes from matched ingredients at import and verify time. Always verify ingredients against the original source if an allergen is a safety concern.
               </p>
-            </div>
+            </SupprCard>
           );
         })()}
 
@@ -1917,8 +1921,11 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             aligned with mobile to "Servings to view" so the
             cross-platform copy stays in sync. PR1 (Paprika parity,
             2026-05-02). */}
-        <div
-          className="bg-card rounded-2xl p-4 flex items-center justify-between border border-border"
+        {/* Design Direction 2026 — servings stepper routed through SupprCard. */}
+        <SupprCard
+          padding="lg"
+          radius="xl"
+          className="flex items-center justify-between"
           data-testid="recipe-view-servings-stepper"
         >
           <span className="font-semibold text-foreground text-sm">Servings to view</span>
@@ -1953,7 +1960,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
               +
             </button>
           </div>
-        </div>
+        </SupprCard>
 
         {/* 2026-05-01 v3 redesign — the bordered "Calories per portion"
             hero card that lived here is gone. kcal moved to the
@@ -2052,10 +2059,12 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             // (no more "105.80000000000001g"), calories+sodium stay integer.
             const displayAmount = formatMacroValue(m.cur, macro);
             return (
-              <div
+              // Design Direction 2026 — macro tile routed through SupprCard.
+              <SupprCard
                 key={macro}
                 data-testid={`recipe-macro-tile-${macro}`}
-                className="rounded-2xl border border-border bg-card p-3"
+                padding="md"
+                radius="xl"
               >
                 <div className="mb-1.5 flex items-center gap-1.5">
                   <div className="h-2 w-2 rounded-sm" style={{ background: m.color }} />
@@ -2078,7 +2087,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                     }}
                   />
                 </div>
-              </div>
+              </SupprCard>
             );
           })}
         </div>
@@ -2407,11 +2416,12 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                 },
                 { label: "Fat", value: `${Math.round(scaledMacros.fat)}`, unit: "g" },
               ].map((stat) => (
-                <div key={stat.label} className="bg-card border border-border rounded-xl p-3 text-center">
+                // Design Direction 2026 — nutrition stat tile routed through SupprCard.
+                <SupprCard key={stat.label} padding="md" radius="md" className="text-center">
                   <span className="text-lg font-bold text-foreground tabular-nums">{stat.value}</span>
                   <span className="text-xs text-muted-foreground ml-0.5">{stat.unit}</span>
                   <p className="text-[10px] text-muted-foreground mt-0.5">{stat.label}</p>
-                </div>
+                </SupprCard>
               ))}
             </div>
 

@@ -21,6 +21,30 @@ export async function dismissVisualOverlays(page: Page): Promise<void> {
   }
 }
 
+/**
+ * Hide DEV-ONLY chrome that pollutes design captures but never ships to users:
+ * the Next.js dev error/build overlay (the red "N Issue(s)" badge — rendered in
+ * the `nextjs-portal` web component) and the build-activity watcher. Uses
+ * addInitScript so it re-applies on every navigation. Capture-only — do NOT fold
+ * into dismissVisualOverlays (other visual tests must still see real overlays).
+ * Call once BEFORE the first page.goto, like forceFlagsOn.
+ */
+export async function hideDevChrome(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const STYLE_ID = "__suppr_hide_dev_chrome__";
+    const apply = () => {
+      if (document.getElementById(STYLE_ID)) return;
+      const s = document.createElement("style");
+      s.id = STYLE_ID;
+      s.textContent =
+        "nextjs-portal,#__next-build-watcher,[data-nextjs-toast],[data-nextjs-dialog-overlay]{display:none !important}";
+      document.head?.appendChild(s);
+    };
+    if (document.head) apply();
+    else document.addEventListener("DOMContentLoaded", apply);
+  });
+}
+
 /** Let fonts, charts, and client hydration settle before snapshot assertions. */
 export async function stabilizeForScreenshot(page: Page, ms = 2500): Promise<void> {
   await page.waitForLoadState("domcontentloaded");

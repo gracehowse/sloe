@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 import { SupprMark } from "../ui/suppr-mark";
+import { SupprCard } from "../ui/suppr-card.tsx";
 import { SourceDot } from "../ui/source-dot";
 import { mapMealSourceToDot } from "../../../lib/nutrition/sourceMap";
 import { formatMacroTrailer } from "../../../lib/nutrition/macroFormat";
@@ -304,7 +305,14 @@ export function TodayMealsSection({
         )}
       </div>
       {showQuickAdd && (
-        <div className="mb-3 rounded-card bg-card border border-border overflow-hidden">
+        // Design Direction 2026 (ENG-795): canonical SupprCard — soft elevation
+        // under `design_system_elevation`, flat byte-for-byte when OFF.
+        // `padding="none"` keeps the child-padded `overflow-hidden` layout.
+        <SupprCard
+          radius="lg"
+          padding="none"
+          className="mb-3 overflow-hidden"
+        >
           <button
             type="button"
             onClick={onToggleQuickAddCollapsed}
@@ -327,9 +335,9 @@ export function TodayMealsSection({
               {quickAddPanel}
             </div>
           ) : null}
-        </div>
+        </SupprCard>
       )}
-      <div className="rounded-card bg-card border border-border overflow-hidden">
+      <SupprCard radius="lg" padding="none" className="overflow-hidden">
         {mealsGrouped.map(({ name: sectionName, meals: sectionMeals }) => {
           // Preserve the distributeMealBudget call so any downstream
           // analytics side-effects remain identical. Result is unused
@@ -795,7 +803,7 @@ export function TodayMealsSection({
             </button>
           </div>
         )}
-      </div>
+      </SupprCard>
       <DestructiveConfirmDialog
         open={deleteCandidate != null}
         onOpenChange={(o) => {

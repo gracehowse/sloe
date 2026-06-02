@@ -8,6 +8,7 @@ import { Footprints, Flame, HeartPulse, Dumbbell, Scale } from "lucide-react-nat
 import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useCardElevation } from "@/hooks/useCardElevation";
 import { useSettingsWinMoment } from "@/hooks/useSettingsWinMoment";
 import {
   isExpoGoRuntime,
@@ -63,6 +64,7 @@ export default function HealthSyncScreen() {
   const { session } = useAuth();
   const userId = session?.user?.id;
   const colors = useThemeColors();
+  const cardElevation = useCardElevation();
   // ENG-824 — quiet win-moment (success haptic + win-colour wash on the Apple
   // Health card) the first time a connect succeeds. Gated behind
   // `redesign_winmoment`; inert when off.
@@ -531,12 +533,13 @@ export default function HealthSyncScreen() {
         title: { flex: 1, fontSize: 20, fontWeight: "800", color: colors.text, textAlign: "center" },
         card: {
           marginHorizontal: Spacing.xl,
-          backgroundColor: colors.card,
+          backgroundColor: cardElevation.liftBg ?? colors.card,
           borderRadius: Radius.lg,
-          borderWidth: 1,
+          borderWidth: cardElevation.useBorder ? 1 : 0,
           borderColor: colors.border,
           padding: Spacing.xl,
           marginBottom: Spacing.lg,
+          ...(cardElevation.shadowStyle ?? {}),
         },
         cardTitle: { fontSize: 16, fontWeight: "700", color: colors.text, marginBottom: Spacing.sm },
         desc: { fontSize: 14, color: colors.textSecondary, lineHeight: 20 },
@@ -551,7 +554,7 @@ export default function HealthSyncScreen() {
         feature: { flexDirection: "row", alignItems: "center", gap: Spacing.md, paddingVertical: Spacing.sm },
         featureText: { fontSize: 14, color: colors.text, flex: 1 },
       }),
-    [colors],
+    [colors, cardElevation],
   );
 
   return (
@@ -765,9 +768,10 @@ export default function HealthSyncScreen() {
             padding: Spacing.lg,
             backgroundColor: Accent.destructive + "12",
             borderColor: Accent.destructive + "40",
-            borderWidth: 1,
+            borderWidth: cardElevation.useBorder ? 1 : 0,
             borderRadius: Radius.md,
             gap: Spacing.sm,
+            ...(cardElevation.shadowStyle ?? {}),
           }}
         >
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>

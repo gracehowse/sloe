@@ -33,6 +33,7 @@ import * as React from "react";
 import { Check, FileSpreadsheet, Loader2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/app/components/ui/button";
+import { SupprCard } from "@/app/components/ui/suppr-card";
 import { supabase } from "@/lib/supabase/browserClient";
 import { AnalyticsEvents } from "@/lib/analytics/events";
 import { track } from "@/lib/analytics/track";
@@ -160,10 +161,10 @@ export function MfpCsvImportCard({
   );
 
   return (
-    <div
-      className={`rounded-2xl border bg-card p-4 ${
-        phase.kind === "success" ? "border-emerald-500/40" : "border-border"
-      }`}
+    <SupprCard
+      padding="lg"
+      radius="xl"
+      tone={phase.kind === "success" ? "success" : "neutral"}
     >
       <input
         ref={inputRef}
@@ -190,7 +191,7 @@ export function MfpCsvImportCard({
               Import from another app
             </h3>
             {phase.kind === "success" ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-500">
+              <span className="inline-flex items-center gap-1 rounded-full bg-[var(--accent-success-soft)] px-2 py-0.5 text-[10px] font-bold text-success">
                 <Check className="size-2.5" />
                 Imported
               </span>
@@ -223,7 +224,7 @@ export function MfpCsvImportCard({
           )}
 
           {phase.kind === "success" && (
-            <div className="mt-3 flex items-start gap-2 text-xs text-emerald-500">
+            <div className="mt-3 flex items-start gap-2 text-xs text-success">
               <Check
                 className="size-3.5 mt-px shrink-0"
                 strokeWidth={2.5}
@@ -268,6 +269,6 @@ export function MfpCsvImportCard({
           )}
         </div>
       </div>
-    </div>
+    </SupprCard>
   );
 }

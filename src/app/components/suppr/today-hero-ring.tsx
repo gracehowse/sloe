@@ -3,6 +3,7 @@
 import * as React from "react";
 import { DailyRing, type CalorieRingDisplayMode } from "./daily-ring";
 import { MACRO_RING_TOGGLE } from "../../../lib/copy/today";
+import { SupprCard } from "../ui/suppr-card.tsx";
 
 /**
  * TodayHeroRing — Today-screen calorie ring wrapper.
@@ -74,7 +75,16 @@ export function TodayHeroRing({
   // is reachable from the Targets sub-tab (inside More) on web too,
   // not from Today's hero. Today stays clean.
   return (
-    <div className="flex flex-col items-center mb-3 rounded-card border border-border bg-card px-4 py-3 gap-2">
+    // Design Direction 2026 (ENG-795): routed through the canonical SupprCard
+    // so the resting hero card adopts the soft ambient elevation when
+    // `design_system_elevation` is ON (and drops its hairline border). Flag
+    // OFF keeps the prior flat `bg-card` + hairline treatment. `padding="none"`
+    // preserves the exact asymmetric `px-4 py-3` geometry.
+    <SupprCard
+      radius="lg"
+      padding="none"
+      className="flex flex-col items-center mb-3 px-4 py-3 gap-2"
+    >
       <DailyRing
         consumed={consumed}
         target={target}
@@ -95,6 +105,6 @@ export function TodayHeroRing({
       >
         {expanded ? MACRO_RING_TOGGLE.hide : MACRO_RING_TOGGLE.show}
       </button>
-    </div>
+    </SupprCard>
   );
 }

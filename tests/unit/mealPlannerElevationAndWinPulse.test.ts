@@ -29,45 +29,22 @@ const SRC = readFileSync(
 );
 
 describe("MealPlanner design_system_elevation card ramp (gap #8)", () => {
-  it("reads the elevation flag and derives a flag-gated card class", () => {
-    expect(SRC).toContain('isFeatureEnabled("design_system_elevation")');
-    expect(SRC).toContain("const cardElevationClass = elevation");
+  // ENG-822 (Design Direction 2026): the summary, empty-state and per-day
+  // cards no longer hand-roll a `cardElevationClass` ternary — they now route
+  // through the canonical <SupprCard> primitive, which owns the
+  // design_system_elevation flag-gate INTERNALLY (flag ON → soft
+  // --elev-card-soft shadow + border dropped; flag OFF → flat border, byte-
+  // for-byte). Source-match convention shared with
+  // `todayCardElevationSweep.test.ts`; the rendered flag behaviour is covered
+  // end-to-end by `progressDashboardElevation.test.tsx`.
+  it("routes its resting cards through the canonical SupprCard primitive", () => {
+    expect(SRC).toContain("SupprCard");
+    expect(SRC).toContain("<SupprCard");
   });
 
-  it("flag ON drops the hairline border and rides the soft --elev-card-soft shadow", () => {
-    expect(SRC).toContain("border-0 shadow-[var(--elev-card-soft)]");
-  });
-
-  it("flag OFF keeps the legacy `border border-border card-elevated` fallback alive", () => {
-    expect(SRC).toContain("border border-border card-elevated");
-  });
-
-  it("the summary card consumes the elevation class (no hardcoded card-elevated)", () => {
-    expect(SRC).toContain(
-      "className={`rounded-2xl bg-card mb-4 ${cardElevationClass}`}",
-    );
-    // The old always-on summary-card class must be gone.
-    expect(SRC).not.toContain(
-      'className="rounded-2xl border border-border bg-card mb-4 card-elevated"',
-    );
-  });
-
-  it("the empty-state card consumes the elevation class (no hardcoded card-elevated)", () => {
-    expect(SRC).toContain(
-      "className={`flex flex-col items-center justify-center rounded-2xl bg-card ${cardElevationClass}`}",
-    );
-    expect(SRC).not.toContain(
-      'className="flex flex-col items-center justify-center rounded-2xl border border-border bg-card card-elevated"',
-    );
-  });
-
-  it("the per-day card branches on the elevation flag and keeps the today-column tint in both states", () => {
-    // Flag ON: border-0 + soft shadow, today distinction rests on bg tint.
-    expect(SRC).toContain("border-0 shadow-[var(--elev-card-soft)] bg-primary/10");
-    expect(SRC).toContain("border-0 shadow-[var(--elev-card-soft)] bg-card");
-    // Flag OFF: the prior per-state border colour + card-elevated, byte-for-byte.
-    expect(SRC).toContain("border border-primary/30 card-elevated bg-primary/10");
-    expect(SRC).toContain("border border-border card-elevated bg-card");
+  it("no longer hand-rolls the legacy always-on card-elevated or a manual elevation class", () => {
+    expect(SRC).not.toContain("card-elevated");
+    expect(SRC).not.toContain("const cardElevationClass = elevation");
   });
 });
 

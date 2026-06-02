@@ -35,7 +35,7 @@ import { Minus, Plus, PlusCircle, X } from "lucide-react-native";
 
 import { Accent, Elevation, Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { useCardElevation } from "@/hooks/useCardElevation";
+import { useCardElevation, type CardElevation } from "@/hooks/useCardElevation";
 import { supabase } from "@/lib/supabase";
 import {
   RECIPE_MEAL_TYPES,
@@ -120,7 +120,7 @@ export default function RecipeEditSheet({
   // keeps today's flat/hairline panel alive (`useCardElevation`'s default
   // branch). Mirrors `SavedMealPortionSheet`.
   const card = useCardElevation();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const styles = useMemo(() => makeStyles(colors, card), [colors, card]);
   const isOwner = canEditRecipe(recipe.author_id, userId);
 
   const [title, setTitle] = useState(recipe.title ?? "");
@@ -518,7 +518,8 @@ export default function RecipeEditSheet({
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   const colors = useThemeColors();
-  const styles = makeStyles(colors);
+  const ce = useCardElevation();
+  const styles = makeStyles(colors, ce);
   return (
     <View style={{ gap: Spacing.xs }}>
       <Text style={styles.label}>{label}</Text>
@@ -527,7 +528,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-const makeStyles = (colors: ReturnType<typeof useThemeColors>) =>
+const makeStyles = (colors: ReturnType<typeof useThemeColors>, ce: CardElevation) =>
   StyleSheet.create({
     backdrop: { flex: 1, backgroundColor: colors.overlay, justifyContent: "flex-end" },
     sheet: {
@@ -573,11 +574,12 @@ const makeStyles = (colors: ReturnType<typeof useThemeColors>) =>
       width: 40,
       height: 40,
       borderRadius: 20,
-      borderWidth: 1,
+      borderWidth: ce.useBorder ? 1 : 0,
       borderColor: colors.border,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: colors.card,
+      backgroundColor: ce.liftBg ?? colors.card,
+      ...(ce.shadowStyle ?? {}),
     },
     servingsValue: {
       minWidth: 48,
@@ -592,9 +594,10 @@ const makeStyles = (colors: ReturnType<typeof useThemeColors>) =>
       paddingVertical: 8,
       paddingHorizontal: 14,
       borderRadius: 999,
-      borderWidth: 1,
+      borderWidth: ce.useBorder ? 1 : 0,
       borderColor: colors.border,
-      backgroundColor: colors.card,
+      backgroundColor: ce.liftBg ?? colors.card,
+      ...(ce.shadowStyle ?? {}),
     },
     chipActive: { backgroundColor: Accent.primarySoft, borderColor: Accent.primary },
     chipText: { fontSize: 14, fontWeight: "600", color: colors.text },

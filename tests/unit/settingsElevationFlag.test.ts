@@ -30,21 +30,14 @@ const subCard = readFileSync(SUBCARD_PATH, "utf8");
 const themeCss = readFileSync(THEME_PATH, "utf8");
 
 describe("web Settings elevation flag (ENG-823)", () => {
-  it("derives the resting-card class from design_system_elevation", () => {
+  it("routes its resting cards through the canonical SupprCard primitive", () => {
+    // ENG-823 → ENG-822 (Design Direction 2026): resting cards no longer
+    // hand-roll a `settingsCardClass` / `settingsHeroCardClass` ternary — they
+    // go through <SupprCard>, which owns the design_system_elevation flag-gate
+    // internally. The inner divide-y settings *groups* (not resting cards) are
+    // not SupprCards and keep their own inline gate.
+    expect(settings).toContain("<SupprCard");
     expect(settings).toMatch(/isFeatureEnabled\("design_system_elevation"\)/);
-    expect(settings).toContain("settingsCardClass");
-    expect(settings).toContain("settingsHeroCardClass");
-  });
-
-  it("flag-ON path uses the soft-elevation token and drops the border", () => {
-    expect(settings).toContain("shadow-[var(--elev-card-soft)]");
-    expect(settings).toMatch(/elevation\s*\n?\s*\?\s*"bg-card rounded-2xl border-0 shadow-\[var\(--elev-card-soft\)\]"/);
-  });
-
-  it("flag-OFF path preserves today's static card-elevated + border", () => {
-    expect(settings).toContain(
-      "bg-card border border-border rounded-2xl card-elevated",
-    );
   });
 
   it("no resting card hardcodes the old always-on card-elevated string anymore", () => {
@@ -56,9 +49,11 @@ describe("web Settings elevation flag (ENG-823)", () => {
     expect(settings).not.toMatch(/className="[^"]*card-elevated-hero[^"]*"/);
   });
 
-  it("SubscriptionCard is flag-aware too (web billing parity surface)", () => {
-    expect(subCard).toMatch(/isFeatureEnabled\("design_system_elevation"\)/);
-    expect(subCard).toContain("shadow-[var(--elev-card-soft)]");
+  it("SubscriptionCard is routed through SupprCard too (web billing parity surface)", () => {
+    // The billing card was migrated from a hand-rolled cardClass div to
+    // <SupprCard padding="lg" radius="xl"> — elevation now comes from the
+    // primitive, so no inline flag read or card-elevated literal remains.
+    expect(subCard).toContain("<SupprCard");
     expect(subCard).not.toMatch(/className="[^"]*card-elevated"/);
   });
 

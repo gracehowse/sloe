@@ -90,6 +90,7 @@ import { computeDayOfWeekPattern } from "../../lib/nutrition/dayOfWeekPattern.ts
 import { generateProgressCommentary } from "../../lib/nutrition/progressCommentary.ts";
 import { useMilestone30DayOnProgress } from "../../hooks/useMilestone30DayOnProgress.ts";
 import { Milestone30DayDialog } from "./suppr/milestone-30-day-dialog.tsx";
+import { SupprCard } from "./ui/suppr-card.tsx";
 
 const PACES: PlanPace[] = ["relaxed", "steady", "accelerated", "vigorous"];
 
@@ -966,18 +967,10 @@ function ProgressDashboardContent() {
     onShownAtPersisted: setMilestone30ShownAt,
   });
 
-  // ENG-822 — flag-gated resting-card elevation (web parity with the mobile
-  // `useCardElevation` hook + the Settings.tsx `settingsCardClass` pattern).
-  // flag ON  → soft `--elev-card-soft` ambient shadow, border dropped (no
-  //            double edge), matching the single 5-spine elevation model.
-  // flag OFF → today's static `card-elevated` (`--shadow`) + `border-border`,
-  //            preserved byte-for-byte so the cold path is unchanged.
-  // Computed before the `loading` early return so the skeleton tile (which
-  // lives in that branch) shares the same paint as the populated cards.
-  const progressCardsElevated = isFeatureEnabled("design_system_elevation");
-  const progressCardClass = progressCardsElevated
-    ? "rounded-xl bg-card border-0 shadow-[var(--elev-card-soft)]"
-    : "rounded-xl bg-card border border-border card-elevated";
+  // ENG-822 — card elevation is now delegated to the canonical SupprCard
+  // primitive, which reads `design_system_elevation` internally and applies
+  // the soft shadow + border-drop on flag-ON, or the flat border on flag-OFF.
+  // The manual progressCardClass / progressCardsElevated vars are removed.
 
   const progressCalendarButton = (
     <button
@@ -1059,15 +1052,17 @@ function ProgressDashboardContent() {
         </div>
         <div className="grid grid-cols-2 gap-2 mb-6">
           {[0, 1, 2, 3].map((i) => (
-            <div
+            <SupprCard
               key={i}
               data-testid={`progress-skeleton-tile-${i}`}
-              className={`${progressCardClass} p-3 min-h-[86px]`}
+              padding="md"
+              radius="lg"
+              className="min-h-[86px]"
             >
               <div className="h-3 w-16 rounded bg-border mb-2" />
               <div className="h-5 w-20 rounded bg-border mb-1.5" />
               <div className="h-3 w-24 rounded bg-border" />
-            </div>
+            </SupprCard>
           ))}
         </div>
       </div>
@@ -1596,7 +1591,7 @@ function ProgressDashboardContent() {
       {/* STREAK FREEZES (Batch 4.11) — visible when the user can earn or has
           freezes, or has consumed any. Hidden entirely when budget = 0. */}
       {freezeBudgetMax > 0 ? (
-        <div className={`${progressCardClass} p-4 mb-6`}>
+        <SupprCard padding="lg" radius="lg" className="mb-6">
           <div className="flex items-center gap-2 mb-2">
             <IconBox size="sm" tone="primary"><Icons.streakFreeze /></IconBox>
             <p className="text-sm font-semibold text-foreground">Streak freezes</p>
@@ -1628,7 +1623,7 @@ function ProgressDashboardContent() {
               {`Raw streak (without freezes): ${rawStreakDays} day${rawStreakDays === 1 ? "" : "s"}.`}
             </p>
           ) : null}
-        </div>
+        </SupprCard>
       ) : null}
 
       {/* DAILY CALORIES CHART
@@ -1649,7 +1644,7 @@ function ProgressDashboardContent() {
         data-testid="progress-week-charts-grid"
         className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6"
       >
-      <div className={`${progressCardClass} p-4`}>
+      <SupprCard padding="lg" radius="lg">
         <p className="text-sm font-semibold text-foreground mb-3">Daily Calories</p>
         {(() => {
           const chartHeight = 90;
@@ -1764,7 +1759,7 @@ function ProgressDashboardContent() {
             </>
           );
         })()}
-      </div>
+      </SupprCard>
 
       {/* MACRO ADHERENCE — F-117 v2 (Grace, 2026-05-07): bar fill
           clamps to 100% via `formatMacroAdherenceBar`; over-target
@@ -1772,7 +1767,7 @@ function ProgressDashboardContent() {
           the row reads "over budget" without feeling like an error.
           Per brand-tokens.md + project memory ("over-budget is amber,
           never red"). */}
-      <div className={`${progressCardClass} p-4`}>
+      <SupprCard padding="lg" radius="lg">
         <p className="text-sm font-semibold text-foreground mb-3">Macro Adherence</p>
         <p className="text-[10px] text-muted-foreground mb-2">
           Based on {weekStatsBundle.daysWithFood}{" "}
@@ -1808,7 +1803,7 @@ function ProgressDashboardContent() {
             );
           })}
         </div>
-      </div>
+      </SupprCard>
       </div>
 
       {/* WEEKLY INSIGHT — removed (Action 5 Item 1, 2026-04-19).
@@ -1840,7 +1835,7 @@ function ProgressDashboardContent() {
         if (!resolved) return null;
         const showAdaptiveExtras = resolved.source === "adaptive";
         return (
-        <div className={`${progressCardClass} p-4 mb-6 mt-6`} data-testid="progress-maintenance-card">
+        <SupprCard padding="lg" radius="lg" className="mb-6 mt-6" data-testid="progress-maintenance-card">
           <div className="flex items-center gap-2 mb-3">
             <IconBox size="sm" tone="primary"><Icons.calories /></IconBox>
             <p className="text-sm font-semibold text-foreground">Maintenance</p>
@@ -2030,7 +2025,7 @@ function ProgressDashboardContent() {
               </div>
             </div>
           )}
-        </div>
+        </SupprCard>
         );
       })()}
 
@@ -2043,7 +2038,7 @@ function ProgressDashboardContent() {
           mode flip back to "show" in Settings — that's the explicit
           opt-in we want, not a secondary side-channel here. */}
       {profileWeightSurfaceMode === "show" ? (
-      <div className="relative rounded-xl bg-card border border-border p-4 mb-6 mt-6 card-elevated">
+      <SupprCard padding="lg" radius="lg" className="relative mb-6 mt-6">
         {/* ENG-824 — reserved weight win-moment overlay. Mounted only while a
             new-all-time-low celebration is active; plays once then unmounts.
             Absolute + pointer-events-none so it never blocks the card. */}
@@ -2172,7 +2167,7 @@ function ProgressDashboardContent() {
         >
           Every check-in gives us better data for you.
         </p>
-      </div>
+      </SupprCard>
       ) : null}
 
       {/* ENG-741 — Trajectory card. Sits directly under the weight chart.
@@ -2259,7 +2254,7 @@ function ProgressDashboardContent() {
           : null;
 
         return (
-          <div className="rounded-xl bg-card border border-border p-4 mb-6 card-elevated">
+          <SupprCard padding="lg" radius="lg" className="mb-6">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <IconBox size="sm" tone="success"><Icons.check /></IconBox>
@@ -2341,12 +2336,12 @@ function ProgressDashboardContent() {
                 </div>
               );
             })()}
-          </div>
+          </SupprCard>
         );
       })()}
 
       {/* STEPS */}
-      <div className="rounded-xl bg-card border border-border p-4 mb-6 card-elevated">
+      <SupprCard padding="lg" radius="lg" className="mb-6">
         <p className="text-sm font-semibold text-foreground mb-3">Steps</p>
         <div className="flex gap-6 mb-3">
           <div className="text-center">
@@ -2380,10 +2375,10 @@ function ProgressDashboardContent() {
           />
           <button onClick={() => void saveTodaySteps()} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity">Save</button>
         </div>
-      </div>
+      </SupprCard>
 
       {/* BODY FAT */}
-      <div className="rounded-xl bg-card border border-border p-4 card-elevated">
+      <SupprCard padding="lg" radius="lg">
         <p className="text-sm font-semibold text-foreground mb-3">Body Fat</p>
         {/* ENG-534 (2026-05-16): body-fat % is HIGH-class. `ph-mask`
             makes PostHog session-replay render this as a grey block. */}
@@ -2399,7 +2394,7 @@ function ProgressDashboardContent() {
           />
           <button onClick={() => void saveBodyFat()} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity">Save</button>
         </div>
-      </div>
+      </SupprCard>
       <p
         data-testid="progress-nutrition-estimate-footer"
         className="mt-6 text-[11px] text-muted-foreground text-center leading-snug"
@@ -2508,9 +2503,11 @@ function WeightTrendOnlyCardWeb({
           ? "last 90 days"
           : "all time";
   return (
-    <div
+    <SupprCard
       data-testid="progress-weight-trend-only-card"
-      className="rounded-xl bg-card border border-border p-4 mb-4 card-elevated"
+      padding="lg"
+      radius="lg"
+      className="mb-4"
     >
       <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
         Weight trend
@@ -2524,7 +2521,7 @@ function WeightTrendOnlyCardWeb({
       <p className="text-xs text-muted-foreground mt-1">
         Showing direction only · {windowLabel}. Switch to numbers in Settings if you want them back.
       </p>
-    </div>
+    </SupprCard>
   );
 }
 
@@ -2556,9 +2553,11 @@ function WeightRangeCardWeb({
   };
   if (latestKg == null) {
     return (
-      <div
+      <SupprCard
         data-testid="progress-weight-range-card-empty"
-        className="rounded-xl bg-card border border-border p-5 mb-4 card-elevated"
+        padding="xl"
+        radius="lg"
+        className="mb-4"
       >
         <div className="flex items-center gap-2 mb-3">
           <div className="w-8 h-8 rounded-lg bg-primary/8 flex items-center justify-center">
@@ -2572,7 +2571,7 @@ function WeightRangeCardWeb({
         <p className="text-[13px] text-muted-foreground mt-1">
           Log a weight and we&apos;ll chart your trajectory over time.
         </p>
-      </div>
+      </SupprCard>
     );
   }
   const weekDelta = weekDeltaKg ?? deltaKg;
@@ -2587,9 +2586,11 @@ function WeightRangeCardWeb({
   const weekDeltaDisplay =
     weekDelta != null && Math.abs(weekDelta) >= 0.05 ? formatWeight(weekDelta, true) : null;
   return (
-    <div
+    <SupprCard
       data-testid="progress-weight-range-card"
-      className="rounded-xl bg-card border border-border p-4 card-elevated h-full"
+      padding="lg"
+      radius="lg"
+      className="h-full"
     >
       <div className="flex items-start justify-between mb-1">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Weight</p>
@@ -2639,7 +2640,7 @@ function WeightRangeCardWeb({
       <p className="text-[11px] text-muted-foreground mt-2 leading-snug">
         Trend across the {windowLabel}. Projection appears in the Journey card below once you have enough data.
       </p>
-    </div>
+    </SupprCard>
   );
 }
 
@@ -2661,9 +2662,11 @@ function CaloriesRangeCardWeb({
 }) {
   return (
     <div data-testid="progress-calories-range-wrapper" className="h-full">
-      <div
+      <SupprCard
         data-testid="progress-calories-range-card"
-        className="rounded-xl bg-card border border-border p-4 card-elevated h-full"
+        padding="lg"
+        radius="lg"
+        className="h-full"
       >
         <p data-testid="progress-calories-range-header" className={PROGRESS_RANGE_OVERLINE}>
           Calories (avg/day)
@@ -2716,7 +2719,7 @@ function CaloriesRangeCardWeb({
             </p>
           </>
         )}
-      </div>
+      </SupprCard>
     </div>
   );
 }
@@ -2743,9 +2746,11 @@ function ProteinRangeCardWeb({
   const max = Math.max(1, targetProteinG, ...series);
   return (
     <div data-testid="progress-protein-range-wrapper" className="h-full">
-      <div
+      <SupprCard
         data-testid="progress-protein-range-card"
-        className="rounded-xl bg-card border border-border p-4 card-elevated h-full"
+        padding="lg"
+        radius="lg"
+        className="h-full"
       >
         <p data-testid="progress-protein-range-header" className={PROGRESS_RANGE_OVERLINE}>
           Protein (avg/day)
@@ -2779,7 +2784,7 @@ function ProteinRangeCardWeb({
             })}
           </div>
         ) : null}
-      </div>
+      </SupprCard>
     </div>
   );
 }
@@ -2815,9 +2820,10 @@ function TrendSummaryCardWeb({
         : `${Math.round(goalWeightKg * 10) / 10} kg`;
   return (
     <div data-testid="progress-trend-summary-wrapper">
-      <div
+      <SupprCard
         data-testid="progress-trend-summary-card"
-        className="rounded-xl bg-card border border-border p-4 card-elevated"
+        padding="lg"
+        radius="lg"
       >
         <p data-testid="progress-trend-summary-header" className={PROGRESS_RANGE_OVERLINE}>
           Trend summary
@@ -2852,7 +2858,7 @@ function TrendSummaryCardWeb({
             </div>
           ) : null}
         </dl>
-      </div>
+      </SupprCard>
     </div>
   );
 }

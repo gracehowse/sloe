@@ -64,29 +64,52 @@ export const Accent = {
   /** Lime slot — reserved for fresh / produce / match-your-day pill. */
   lime: '#81BE38',
   /**
-   * Win / celebration warm-amber — ENG-795 (Redesign — Design Direction
-   * 2026, 2026-05-31 design-director review). A NEW landmark-only role,
-   * intentionally OUTSIDE the 8-slot action palette above. Gated behind the
-   * `design_system_colours` flag at the call site — never applied in the
-   * flag-off path.
+   * Win / achievement GOLD — Design Direction 2026 (`docs/decisions/
+   * 2026-06-01-design-direction-2026.md`; supersedes the interim amber
+   * `#F2A93B` from the 2026-05-31 design-director review). A NEW
+   * landmark-only role, intentionally OUTSIDE the 8-slot action palette
+   * above. Gated behind the `design_system_colours` / `redesign_winmoment`
+   * flag at the call site — never applied in the flag-off path.
+   *
+   * Why gold (not amber): gold carries universal *achievement* semantics and
+   * separates celebration from the warm-orange family already owned by carbs
+   * (`#E8721E`), sodium, and over-budget warnings. The solid deep gold below
+   * is the legible text/number value on the warm-paper light + dark surfaces;
+   * the gradient is the ring / glow / celebration fill (a flat gold reads
+   * mustard, so fills always use the gradient).
    *
    * Three-role colour split (do not blur these — each owns one job):
    *   - PRIMARY (`Accent.primary`, Blue) = the commit CTA / one primary
    *     action per screen. The "do it" colour.
    *   - SUCCESS (`Accent.success`, Green) = calorie-ring under-target +
    *     macro identity (state + data colour). The "you're on track" colour.
-   *   - WIN (`Accent.win`, this amber) = landmark celebration ONLY —
+   *   - WIN (`Accent.win`, this gold) = landmark celebration ONLY —
    *     hitting a goal, a streak milestone, a win-moment landmark. The
    *     "you did something special" colour. NOT a CTA, NOT a state, NOT a
    *     macro. Reaching for it anywhere routine dilutes the landmark.
    *
-   * Mirrors web `--accent-win` / `--accent-win-soft` in
-   * `src/styles/theme.css` (light + dark).
+   * Mirrors web `--accent-win` / `--accent-win-gradient` in
+   * `src/styles/theme.css` (light + dark) — kept in lockstep.
    */
-  win: '#F2A93B',
+  win: '#C99A22',
   /** Win at ~12% alpha — soft fill behind a win-moment landmark / badge. */
-  winSoft: 'rgba(242, 169, 59, 0.12)',
+  winSoft: 'rgba(201, 154, 34, 0.12)',
 };
+
+/**
+ * Win / achievement GOLD gradient stops — Design Direction 2026. The
+ * celebration FILL (ring sweep / glow / pulse), never the flat solid: a flat
+ * gold reads mustard. Use with `react-native-svg` `<LinearGradient>` (3 stops
+ * at 0% / 45% / 100%) or any consumer that takes an ordered stop list.
+ * Mirrors web `--accent-win-gradient`
+ * (`linear-gradient(150deg, #F8E08A 0%, #E7C25C 45%, #C99A22 100%)`).
+ */
+export const AccentWinGradient = {
+  /** Light → mid → deep gold, in paint order. */
+  stops: ['#F8E08A', '#E7C25C', '#C99A22'] as const,
+  /** Matching stop offsets (`0..1`) for SVG `<Stop offset>`. */
+  offsets: [0, 0.45, 1] as const,
+} as const;
 
 /**
  * Stimulant tracker colours (Batch 2.5 hydration & stimulants).
@@ -223,9 +246,9 @@ export const Colors = {
     textSecondary: '#5b554b',
     textTertiary: '#8a8377',
     background: '#fbfaf6',          // warm white (was #faf7f1 — too chromatic)
-    backgroundSecondary: '#f5f3ec', // barely-warmer-than-card (was #f2ede2)
+    backgroundSecondary: '#f7f6f3', // neutral warm grey (was #f5f3ec — too beige)
     card: '#ffffff',                // pure white — primary content surface
-    cardElevated: '#fbf8f0',        // premium tier — slight warm lift
+    cardElevated: '#fafaf8',        // subtle lift — nearly white, no beige (was #fbf8f0)
     cardBorder: '#ebe7dc',          // hairline (was #e6dfd0 — less yellow)
     border: '#ebe7dc',
     borderStrong: '#ddd6c5',
@@ -233,7 +256,7 @@ export const Colors = {
     icon: '#5b554b',
     tabIconDefault: '#a39a8f',
     tabIconSelected: Accent.primary,
-    inputBg: '#f0ece4',             // input fields ONLY (was #efe9dc — less yellow)
+    inputBg: '#f5f4f1',             // input fields (was #f0ece4 — too beige)
     overlay: '#00000088',
     /** Source / provenance dots — 8-slot palette. Mirrors web --source-*. */
     sourceUsda: '#56A775',          // Green

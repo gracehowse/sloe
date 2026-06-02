@@ -41,6 +41,10 @@ beforeEach(() => {
 
 vi.mock("@/lib/analytics/track", () => ({
   track: vi.fn(),
+  // SupprCard (used transitively by the rendered cards) reads this at render
+  // time — flag OFF keeps the legacy resting-card paint these structural
+  // assertions were written against.
+  isFeatureEnabled: () => false,
 }));
 
 function withProvider(

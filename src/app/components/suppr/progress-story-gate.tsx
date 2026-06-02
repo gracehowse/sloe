@@ -21,6 +21,7 @@ import {
   buildProgressStoryPlaceholder,
   STORY_DATA_FLOOR_DAYS,
 } from "../../../lib/nutrition/progressStoryGate";
+import { SupprCard } from "../ui/suppr-card";
 
 export interface ProgressStoryGateProps {
   /** Days with ≥1 logged meal in the rolling window. */
@@ -45,16 +46,12 @@ export function ProgressStoryGate({
   const dashOffset = circumference * (1 - placeholder.ringFraction);
 
   return (
-    <section
+    <SupprCard
       data-slot="progress-story-gate"
       data-testid="progress-story-gate"
-      className={[
-        "rounded-2xl border border-border bg-card p-5",
-        "shadow-[var(--elev-card,0_1px_2px_rgba(0,0,0,0.04))]",
-        className ?? "",
-      ]
-        .filter(Boolean)
-        .join(" ")}
+      padding="xl"
+      radius="xl"
+      className={className}
       aria-label={`This week: ${placeholder.headline}. ${placeholder.body} ${placeholder.ringLabel} days logged.`}
     >
       <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-primary">
@@ -108,7 +105,7 @@ export function ProgressStoryGate({
         {/* V17 (2026-05-11 visual sweep) — see mobile ProgressStoryGate. */}
         {placeholder.ringLabel} days logged · {STORY_DATA_FLOOR_DAYS} needed to unlock
       </p>
-    </section>
+    </SupprCard>
   );
 }
 

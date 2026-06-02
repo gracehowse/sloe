@@ -26,6 +26,7 @@ import {
 } from "lucide-react-native";
 import { Layout } from "@/constants/layout";
 import { Accent, Colors, Radius, Spacing, Type } from "@/constants/theme";
+import { useCardElevation } from "@/hooks/useCardElevation";
 import { macroColorFor } from "@/lib/macroColors";
 import type { JournalMeal } from "@/lib/nutritionJournal";
 import { carbsLabel, netCarbsForRow } from "@suppr/shared/nutrition/netCarbs";
@@ -108,6 +109,7 @@ export function TodayDashboardMacroTiles({
   onPressNutrients,
 }: TodayDashboardMacroTilesProps) {
   const colorScheme = useColorScheme();
+  const cardElevation = useCardElevation();
   // 2026-05-21: over-budget is amber, never red. Per brand-tokens.md +
   // project memory ("over-budget is amber, never red"). Red was
   // alarming/clinical; amber is the calm wellness nudge.
@@ -227,20 +229,20 @@ export function TodayDashboardMacroTiles({
             onPress={() => onPressMacro(macro)}
             accessibilityRole="button"
             accessibilityLabel={`${def.label}: ${value} of ${def.target} ${def.unit}. Tap for detail.`}
-            style={{
-              // 2×2 grid: fixed half-width cells. `flexGrow: 0` stops a
+            style={[{
+              // 2x2 grid: fixed half-width cells. `flexGrow: 0` stops a
               // lone tile on the last row stretching full width (was
               // reading as one "wide screen" card).
               width: "48%",
               maxWidth: "48%",
               flexGrow: 0,
               flexShrink: 0,
-              backgroundColor: cardColor,
-              borderWidth: 1,
+              backgroundColor: cardElevation.liftBg ?? cardColor,
+              borderWidth: cardElevation.useBorder ? 1 : 0,
               borderColor: cardBorderColor,
               borderRadius: Radius.md,
               padding: Spacing.sm + 2,
-            }}
+            }, cardElevation.shadowStyle]}
           >
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.sm }}>
                 <Text

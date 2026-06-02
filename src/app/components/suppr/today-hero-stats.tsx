@@ -5,6 +5,7 @@ import { DailyRing } from "./daily-ring";
 import { TodayHeroRing, type TodayHeroRingProps } from "./today-hero-ring";
 import { MACRO_RING_TOGGLE, TODAY_STAT_LABELS } from "../../../lib/copy/today";
 import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
+import { SupprCard } from "../ui/suppr-card.tsx";
 
 /**
  * TodayHeroStats — Today-screen hero block with the calorie ring + 4
@@ -103,8 +104,15 @@ function DesktopHeroStats({
   const showStatRow = loggedKcal > 0;
 
   return (
-    <div
-      className="hidden md:block mb-3 rounded-card border border-border bg-card px-4 py-4"
+    // Design Direction 2026 (ENG-795): canonical SupprCard so the desktop hero
+    // adopts soft elevation (and drops its border) under
+    // `design_system_elevation`; flag OFF stays flat. `padding="none"` keeps
+    // the exact `px-4 py-4` geometry; `hidden md:block` display utility and
+    // the `data-testid` are preserved.
+    <SupprCard
+      radius="lg"
+      padding="none"
+      className="hidden md:block mb-3 px-4 py-4"
       data-testid="today-hero-desktop"
     >
       <div className="flex flex-col items-center gap-3">
@@ -212,7 +220,7 @@ function DesktopHeroStats({
           {expanded ? MACRO_RING_TOGGLE.hide : MACRO_RING_TOGGLE.show}
         </button>
       </div>
-    </div>
+    </SupprCard>
   );
 }
 

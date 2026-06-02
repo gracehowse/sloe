@@ -199,6 +199,25 @@ export function isFeatureEnabled(flag: string): boolean {
   // that render this module under jsdom don't blow up with
   // ReferenceError.
   if (typeof __DEV__ !== "undefined" && __DEV__) {
+    // ENG-840 — STATIC dev-force map. The computed `process.env[envKey]` read
+    // below is DEAD in a bundled RN app: Metro only inlines static
+    // `process.env.X`, never a computed key, so EXPO_PUBLIC_FLAG_FORCE_* is
+    // `undefined` on device/sim (proven 2026-06-01 — forcing all 8 redesign
+    // flags via env still rendered flag-OFF). A literal-object read works at
+    // runtime. `__DEV__`-gated → the whole branch is DCE'd out of production by
+    // Hermes. Currently forces the Redesign 2026 set ON so the design pass can
+    // see + iterate the new UI on the simulator. Flip an entry to compare on/off.
+    const DEV_FORCE: Record<string, boolean> = {
+      design_system_elevation: true,
+      design_system_colours: true,
+      design_system_brandmark: true,
+      design_system_icons: true,
+      redesign_winmoment: true,
+      redesign_motion: true,
+      redesign_branded_sheets: true,
+      redesign_search_results: true,
+    };
+    if (flag in DEV_FORCE) return DEV_FORCE[flag];
     // hyphen→underscore: env-var names can't contain hyphens (see docstring).
     const envKey = `EXPO_PUBLIC_FLAG_FORCE_${flag.toUpperCase().replace(/-/g, "_")}`;
     const override = process.env[envKey];

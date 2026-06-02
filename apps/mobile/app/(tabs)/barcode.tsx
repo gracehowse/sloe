@@ -26,6 +26,7 @@ import { useRouter, type Href } from "expo-router";
 
 import { barcodeConfidenceTier, lookupBarcode, scaleMacrosByGrams, submitFoodCorrection, type BarcodeProduct } from "@/lib/verifyRecipe";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useCardElevation } from "@/hooks/useCardElevation";
 import { isFeatureEnabled } from "@/lib/analytics";
 import { SearchResultConfidenceChip } from "@/components/ui/SearchResultConfidenceChip";
 import { Accent, Spacing, Radius, Colors } from "@/constants/theme";
@@ -44,6 +45,7 @@ export default function BarcodeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const colors = useThemeColors();
+  const cardElevation = useCardElevation();
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
 
@@ -471,8 +473,9 @@ export default function BarcodeScreen() {
           paddingHorizontal: 10,
           paddingVertical: 5,
           borderRadius: Radius.sm,
-          borderWidth: 1,
+          borderWidth: cardElevation.useBorder ? 1 : 0,
           borderColor: Accent.primary + "55",
+          ...(cardElevation.shadowStyle ?? {}),
         },
         presetChipSelected: { backgroundColor: Accent.primary + "22", borderColor: Accent.primary },
         presetChipText: { fontSize: 11, fontWeight: "600" as const, color: Accent.primary },
@@ -493,29 +496,32 @@ export default function BarcodeScreen() {
           alignItems: "center",
           justifyContent: "center",
           borderRadius: Radius.md,
-          borderWidth: 1,
+          borderWidth: cardElevation.useBorder ? 1 : 0,
           borderColor: "rgba(255,255,255,0.2)",
           paddingVertical: 14,
+          ...(cardElevation.shadowStyle ?? {}),
         },
         secondaryBtnText: { color: "#fff", fontWeight: "600", fontSize: 14 },
         errorIcon: { marginBottom: Spacing.xs },
         errorText: { color: Colors.dark.textSecondary, fontSize: 14, textAlign: "center", maxWidth: 260 },
         retryBtn: {
-          borderWidth: 1,
+          borderWidth: cardElevation.useBorder ? 1 : 0,
           borderColor: Accent.primary + "55",
           borderRadius: Radius.md,
           paddingHorizontal: Spacing.xl,
           paddingVertical: 12,
           marginTop: Spacing.sm,
+          ...(cardElevation.shadowStyle ?? {}),
         },
         retryBtnText: { color: Accent.primary, fontWeight: "600" },
         manualEntryBtn: {
-          borderWidth: 1,
+          borderWidth: cardElevation.useBorder ? 1 : 0,
           borderColor: Accent.primary + "55",
           borderRadius: Radius.md,
           paddingHorizontal: Spacing.xl,
           paddingVertical: 12,
           marginTop: Spacing.xs,
+          ...(cardElevation.shadowStyle ?? {}),
         },
         manualEntryBtnText: { color: Accent.primary, fontWeight: "600" },
         manualOverlay: {
@@ -555,7 +561,7 @@ export default function BarcodeScreen() {
         corrTitle: { color: "#fff", fontWeight: "700" as const, fontSize: 18 },
         corrSub: { color: Colors.dark.textSecondary, fontSize: 13, marginTop: -4 },
       }),
-    [colors, insets.bottom],
+    [colors, insets.bottom, cardElevation],
   );
 
   if (!permission) {

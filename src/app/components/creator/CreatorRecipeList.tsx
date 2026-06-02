@@ -18,6 +18,7 @@ import {
 // with the emoji kept alive in the `else` per the CLAUDE.md feature-flag rule.
 import { RecipeHeroFallback } from "../suppr/RecipeHeroFallback";
 import { isFeatureEnabled } from "../../../lib/analytics/track";
+import { SupprCard } from "../ui/suppr-card";
 
 /**
  * ENG-748 #14 (2026-05-27) — Creator profile recipe list with pagination.
@@ -117,7 +118,10 @@ export function CreatorRecipeList({
 
   return (
     <>
-      <ul className="rounded-card border border-border bg-card overflow-hidden">
+      {/* Design Direction 2026 — creator recipe list card routed through SupprCard.
+          The <ul> wrapper inside preserves list semantics (SupprCard renders a div). */}
+      <SupprCard padding="none" radius="lg" className="overflow-hidden">
+        <ul>
         {recipes.map((r, idx) => {
           const kcal = Math.round(r.calories ?? 0);
           const protein = Math.round(r.protein ?? 0);
@@ -159,7 +163,8 @@ export function CreatorRecipeList({
             </li>
           );
         })}
-      </ul>
+        </ul>
+      </SupprCard>
 
       {hasMore ? (
         <div className="mt-3 flex flex-col items-center gap-1.5">

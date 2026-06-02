@@ -97,6 +97,7 @@ function Row({
   onReset: () => void;
 }) {
   const colors = useThemeColors();
+  const cardElevation = useCardElevation();
   const [menuOpen, setMenuOpen] = useState(false);
   const barColor = overTarget ? Accent.warning : COLORS[tone];
   return (
@@ -177,14 +178,14 @@ function Row({
           style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "center", alignItems: "center" }}
         >
           <View
-            style={{
+            style={[{
               minWidth: 220,
-              backgroundColor: colors.card,
+              backgroundColor: cardElevation.liftBg ?? colors.card,
               borderRadius: Radius.md,
               padding: Spacing.md,
-              borderWidth: 1,
+              borderWidth: cardElevation.useBorder ? 1 : 0,
               borderColor: colors.cardBorder,
-            }}
+            }, cardElevation.shadowStyle]}
           >
             <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text, marginBottom: Spacing.sm }}>
               {label} — more

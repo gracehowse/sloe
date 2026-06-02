@@ -18,6 +18,7 @@ import {
   type SeedCuisineCluster,
 } from "../../lib/recipes/seedRecipesV2.ts";
 import { DiscoverRecipeImage } from "./suppr/discover-recipe-image";
+import { SupprCard } from "./ui/suppr-card";
 // Phase 4 / B3.X — trust posture sweep (D-2026-04-27-16).
 // GW-08 (audit 2026-04-28): `TrustChip` + `recipeLevelTrust` dropped
 // from the Discover hero card — see the comment on the card body.
@@ -494,11 +495,17 @@ export const DiscoverFeed = memo(function DiscoverFeed({
             </div>
             <div className="flex gap-2 overflow-x-auto pb-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
               {eatingOut.map((m) => (
-                <button
+                // Design Direction 2026 — eating-out mini card routed through SupprCard.
+                // flag-gated: elevation ON → soft shadow + no border; OFF → flat border.
+                <SupprCard
                   key={m.foodId}
-                  type="button"
+                  role="button"
+                  tabIndex={0}
                   onClick={() => onViewTracker?.()}
-                  className="shrink-0 w-44 p-3 rounded-xl border border-border bg-card text-left hover:bg-muted transition-colors card-elevated"
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onViewTracker?.(); }}
+                  padding="md"
+                  radius="lg"
+                  className="shrink-0 w-44 text-left hover:bg-muted transition-colors cursor-pointer"
                   title={m.label}
                 >
                   {m.brand ? (
@@ -513,7 +520,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                     {Math.round(m.calories)} kcal · {Math.round(m.protein)}p
                   </p>
                   <p className="text-[9px] text-muted-foreground/70 mt-0.5">per 100 g</p>
-                </button>
+                </SupprCard>
               ))}
             </div>
           </div>
@@ -863,7 +870,8 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                 <h3 className="text-[13px] font-extrabold uppercase tracking-[0.04em] text-muted-foreground mt-[28px] mb-3 px-4">
                   More ideas
                 </h3>
-                <div className="mx-4 rounded-xl border border-border bg-card overflow-hidden card-elevated">
+                {/* Design Direction 2026 — "More ideas" list container routed through SupprCard. */}
+                <SupprCard padding="none" radius="lg" className="mx-4 overflow-hidden">
                   {displayRecipes.slice(2).map((recipe, idx) => {
                     const kcal = Math.round(recipe.calories);
                     const protein = Math.round(recipe.protein);
@@ -912,7 +920,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                       </button>
                     );
                   })}
-                </div>
+                </SupprCard>
               </>
             ) : null}
           </div>

@@ -4,6 +4,7 @@ import * as React from "react";
 import { carbsLabel, netCarbsForRow } from "../../../lib/nutrition/netCarbs";
 import { formatMacro } from "../../../lib/nutrition/formatMacro";
 import { MACRO_COLOR_VARS } from "../../../lib/theme/macroColors";
+import { SupprCard } from "../ui/suppr-card.tsx";
 
 /**
  * TodayDashboardMacroBars — alternative macro display: a vertical
@@ -128,8 +129,13 @@ export function TodayDashboardMacroBars({
   };
 
   return (
-    <div
-      className="bg-card border border-border rounded-2xl p-3 mb-2 flex flex-col gap-3"
+    // Design Direction 2026 (ENG-795): canonical SupprCard — soft elevation +
+    // border-drop under `design_system_elevation`, flat byte-for-byte when OFF.
+    // `rounded-2xl` → radius="xl"; `p-3` → padding="md".
+    <SupprCard
+      radius="xl"
+      padding="md"
+      className="mb-2 flex flex-col gap-3"
       data-testid="today-macro-bars"
     >
       {trackedMacros.map((macro) => {
@@ -189,6 +195,6 @@ export function TodayDashboardMacroBars({
           </div>
         );
       })}
-    </div>
+    </SupprCard>
   );
 }

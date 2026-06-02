@@ -1,15 +1,18 @@
 /**
  * ProgressDashboard — resting-card elevation flag gate (ENG-822, gap #7).
  *
- * Web parity with the mobile `useCardElevation` hook + the Settings.tsx
- * `settingsCardClass` pattern. The Progress dashboard's resting cards must:
- *   - flag ON  (`design_system_elevation`) → soft `--elev-card-soft` ambient
- *     shadow with the hairline border dropped (`border-0`, no double edge).
- *   - flag OFF → today's static `card-elevated` paint + `border border-border`,
- *     preserved byte-for-byte so the cold path is unchanged.
+ * Web parity with the mobile `useCardElevation` hook. The Progress dashboard's
+ * resting cards are now routed through the canonical <SupprCard> primitive,
+ * which owns the `design_system_elevation` flag-gate internally:
+ *   - flag ON  → soft `--elev-card-soft` ambient shadow (inline boxShadow) with
+ *     the hairline border dropped — surfaced as `data-soft-elevation="true"`
+ *     and no `border` utility class (one edge, no double line).
+ *   - flag OFF → flat `card` tier: no soft-elevation marker, hairline border
+ *     class kept, byte-for-byte cold path.
  *
- * Asserts the elevated class appears ONLY when the flag is on, so a regression
- * that ungates (or hardcodes) the elevation breaks this test.
+ * This is the end-to-end render check for the elevation behaviour (component →
+ * SupprCard → DOM); the source-match siblings (settings/mealPlanner/today
+ * sweeps) only assert the call sites use the primitive.
  */
 import * as React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -145,28 +148,26 @@ describe("ProgressDashboard resting-card elevation gate (design_system_elevation
     cleanup();
   });
 
-  it("flag OFF → maintenance card keeps the legacy card-elevated + border-border paint", async () => {
+  it("flag OFF → maintenance card renders the flat SupprCard tier (border kept, no soft elevation)", async () => {
     mockIsFeatureEnabled.mockImplementation(() => false);
     render(<ProgressDashboard />);
     const card = await screen.findByTestId("progress-maintenance-card");
-    expect(card.className).toContain("card-elevated");
-    expect(card.className).toContain("border border-border");
-    // The soft-elevation paint must NOT leak into the cold path.
-    expect(card.className).not.toContain("shadow-[var(--elev-card-soft)]");
-    expect(card.className).not.toContain("border-0");
+    // ENG-822: the card is a <SupprCard>. Flag OFF → flat `card` tier.
+    expect(card.getAttribute("data-slot")).toBe("suppr-card");
+    expect(card.getAttribute("data-soft-elevation")).toBeNull();
+    expect(card.className.split(/\s+/)).toContain("border");
   });
 
-  it("flag ON → maintenance card uses the soft --elev-card-soft shadow with border dropped", async () => {
+  it("flag ON → maintenance card adopts the SupprCard soft elevation with the border dropped", async () => {
     mockIsFeatureEnabled.mockImplementation(
       (flag: string) => flag === "design_system_elevation",
     );
     render(<ProgressDashboard />);
     const card = await screen.findByTestId("progress-maintenance-card");
-    expect(card.className).toContain("shadow-[var(--elev-card-soft)]");
-    expect(card.className).toContain("border-0");
-    // No double edge: the legacy flat paint + hairline border are gone.
-    expect(card.className).not.toContain("card-elevated");
-    expect(card.className).not.toContain("border border-border");
+    // Soft tier: data-soft-elevation marker set, hairline border class dropped
+    // (the --elev-card-soft shadow itself is an inline boxShadow on SupprCard).
+    expect(card.getAttribute("data-soft-elevation")).toBe("true");
+    expect(card.className.split(/\s+/)).not.toContain("border");
   });
 
   it("flag ON preserves each card's own spacing/testid (maintenance keeps mb-6 mt-6)", async () => {
@@ -193,9 +194,8 @@ describe("ProgressDashboard resting-card elevation gate (design_system_elevation
     );
     render(<ProgressDashboard />);
     const tile = await screen.findByTestId("progress-skeleton-tile-0");
-    expect(tile.className).toContain("shadow-[var(--elev-card-soft)]");
-    expect(tile.className).toContain("border-0");
-    expect(tile.className).not.toContain("card-elevated");
+    expect(tile.getAttribute("data-soft-elevation")).toBe("true");
+    expect(tile.className.split(/\s+/)).not.toContain("border");
     // Skeleton-specific geometry preserved.
     expect(tile.className).toContain("min-h-[86px]");
     // Let the pending load settle so React doesn't warn on unmount.

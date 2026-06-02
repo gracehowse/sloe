@@ -47,6 +47,15 @@ function withDelay(_delay, target) {
   return target;
 }
 
+// `cancelAnimation(sharedValue)` — real Reanimated stops an in-flight
+// animation on a shared value. In tests there is no running worklet timeline,
+// so this is a no-op; provided so components that defensively cancel on
+// unmount (e.g. `WinMomentPlayer`, `ConfettiDot`) import a real function
+// rather than `undefined`.
+function cancelAnimation(_sharedValue) {
+  /* no-op in the test shim */
+}
+
 function useAnimatedStyle(factory, _deps) {
   try {
     return factory();
@@ -159,6 +168,7 @@ module.exports.withSpring = withSpring;
 module.exports.withSequence = withSequence;
 module.exports.withRepeat = withRepeat;
 module.exports.withDelay = withDelay;
+module.exports.cancelAnimation = cancelAnimation;
 module.exports.runOnJS = runOnJS;
 module.exports.runOnUI = runOnUI;
 module.exports.Easing = Easing;

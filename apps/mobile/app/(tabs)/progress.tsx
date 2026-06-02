@@ -27,6 +27,8 @@ import Svg, { Polyline, Circle } from "react-native-svg";
 
 import { AppleHealthCard, type AppleHealthCardStatus } from "@/components/AppleHealthCard";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useHaptics } from "@/hooks/useHaptics";
+import { useCardElevation } from "@/hooks/useCardElevation";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { Layout } from "@/constants/layout";
@@ -159,6 +161,8 @@ export default function ProgressScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const colors = useThemeColors();
+  const haptics = useHaptics();
+  const cardElevation = useCardElevation();
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
 
@@ -796,6 +800,16 @@ export default function ProgressScreen() {
     setTrajectoryBoxEnabled(isFeatureEnabled("progress_trajectory_box"));
   }, []);
 
+  // ENG-773 — Progress layout restructure flag. When on, the render order
+  // matches the approved prototype: insight card (lead) → weight chart →
+  // 3-stat row → segment picker → daily calories → macro adherence →
+  // apple health → maintenance → projected weight → week digest.
+  // Flag off preserves byte-for-byte the current layout.
+  const [progressLayoutV2, setProgressLayoutV2] = useState(false);
+  useEffect(() => {
+    setProgressLayoutV2(isFeatureEnabled("design_system_elevation"));
+  }, []);
+
   // Ship M1 — saved meals + usual-meal insight for the recap card.
   const [hostSavedMealsForRecap, setHostSavedMealsForRecap] = useState<SavedMeal[]>([]);
   useEffect(() => {
@@ -969,7 +983,7 @@ export default function ProgressScreen() {
     paddingTop: Spacing.md,
     paddingHorizontal: Layout.screenPaddingX,
     paddingBottom: insets.bottom + Spacing.xl,
-    gap: Spacing.lg,
+    gap: Spacing.lg,  // 20px — consistent card rhythm (matches the entrance-wrapper gaps)
   };
 
   const heroEntrance = useEntranceAnimation({ delay: 0 });
@@ -1040,15 +1054,15 @@ export default function ProgressScreen() {
             <View
               key={i}
               testID={`progress-skeleton-tile-${i}`}
-              style={{
+              style={[{
                 width: "47%",
                 padding: 14,
                 borderRadius: Radius.lg,
-                backgroundColor: t.elevated,
-                borderWidth: 1,
+                backgroundColor: cardElevation.liftBg ?? t.elevated,
+                borderWidth: cardElevation.useBorder ? 1 : 0,
                 borderColor: t.border,
                 minHeight: 86,
-              }}
+              }, cardElevation.shadowStyle]}
             >
               <View style={{ width: 60, height: 10, borderRadius: 3, backgroundColor: t.border, marginBottom: 10 }} />
               <View style={{ width: 80, height: 18, borderRadius: 3, backgroundColor: t.border, marginBottom: 6 }} />
@@ -1081,6 +1095,947 @@ export default function ProgressScreen() {
           hidden otherwise (mirror of `screens-mobile.jsx` L580). */}
       <HouseholdBar />
 
+      {/* ── ENG-773: v2 layout (flag-gated) ──────────────────────────
+          Approved prototype order: insight → weight chart → 3-stat →
+          segment picker → daily calories → macro → apple health →
+          maintenance → projected weight → week digest.
+          TrendSummaryCard + Streak/Trend chips removed from render.
+          Flag off → byte-for-byte existing layout below. */}
+      {progressLayoutV2 ? (
+        <>
+        {/* 1. INSIGHT CARD (the lead) — ProgressHeadline / StoryGate */}
+        <ReAnimated.View style={heroEntrance.style}>
+        <View>
+          {hasEnoughDataForStory(weekStats.daysWithFood) ? (
+            <ProgressHeadline
+              commentary={generateProgressCommentary({
+                current:
+                  adaptiveTdee != null && adaptiveConfidence != null
+                    ? {
+                        tdee: adaptiveTdee,
+                        confidence:
+                          adaptiveConfidence === "high" ||
+                          adaptiveConfidence === "medium" ||
+                          adaptiveConfidence === "low"
+                            ? adaptiveConfidence
+                            : "low",
+                        loggingDays: Object.keys(byDay ?? {}).length,
+                        weighInCount: Object.keys(weightKgByDay ?? {}).length,
+                        avgDailyIntake: 0,
+                        smoothedWeightChangeKgPerDay: 0,
+                        windowDays: 28,
+                      }
+                    : null,
+                loggingDays: weekStats.daysWithFood,
+              })}
+            />
+          ) : (
+            <ProgressStoryGate daysLogged={weekStats.daysWithFood} />
+          )}
+        </View>
+        </ReAnimated.View>
+
+        {/* 2. WEIGHT TREND CARD — promoted to position 2 */}
+        <ReAnimated.View style={[chartsEntrance.style, { gap: Spacing.lg }]}>
+        {weightSurfaceMode === "trends_only" && (
+          <WeightTrendOnlyCard
+            weekDeltaKg={weightRange.weekDeltaKg}
+            rangeKey={rangeKey}
+            theme={t}
+          />
+        )}
+        {weightSurfaceMode === "show" && chartsReady ? (
+          <View
+            style={[{
+              backgroundColor: cardElevation.liftBg ?? t.elevated,
+              borderRadius: Radius.lg,
+              borderWidth: cardElevation.useBorder ? 1 : 0,
+              borderColor: t.border,
+              padding: 20,
+            }, cardElevation.shadowStyle]}
+          >
+            {weightChartTrend.daysSinceLatest != null && weightChartTrend.daysSinceLatest > 10 && (
+              <View style={{ alignSelf: "flex-end", backgroundColor: colors.inputBg, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3, marginBottom: 6 }}>
+                <Text style={{ fontSize: 11, color: t.sub }}>{weightChartTrend.daysSinceLatest}d since last log</Text>
+              </View>
+            )}
+            {weightChartTrend.points.length >= 1 && (
+              <View style={{ marginTop: 12 }}>
+                <WeightTrendHeader
+                  trend={weightChartTrend}
+                  isImperial={measurementSystem === "imperial"}
+                  periodLabel={
+                    weightChartTrend.periodRangeLabel ?? weightChartTrend.sinceLabel
+                  }
+                />
+              </View>
+            )}
+            <View style={{ marginTop: 4 }}>
+              {weightChartTrend.points.length >= 1 ? (
+                <WeightChart
+                  trend={weightChartTrend}
+                  goalKg={goalWeightKg}
+                  isImperial={measurementSystem === "imperial"}
+                  range={weightChartRange}
+                />
+              ) : (
+                <WeightSparseState
+                  points={weightChartTrend.points}
+                  onLogWeight={() => setLogWeightOpen(true)}
+                />
+              )}
+            </View>
+            {Object.keys(weightKgByDay).length > 0 && (
+              <Pressable
+                onPress={() => setAllWeightDataOpen(true)}
+                accessibilityRole="button"
+                accessibilityLabel="View all measurements"
+                hitSlop={8}
+                testID="progress-view-all-measurements"
+                style={({ pressed }) => ({
+                  flexDirection: "row",
+                  alignItems: "center",
+                  alignSelf: "flex-start",
+                  gap: 4,
+                  marginTop: 10,
+                  opacity: pressed ? 0.7 : 1,
+                })}
+              >
+                <Text style={{ fontSize: 12, color: t.accent, fontWeight: "600" }}>
+                  View all measurements
+                </Text>
+                <ArrowRight size={12} color={t.accent} strokeWidth={2} />
+              </Pressable>
+            )}
+          </View>
+        ) : weightSurfaceMode === "show" ? (
+          <View
+            testID="progress-weight-chart-pending"
+            style={[{
+              backgroundColor: cardElevation.liftBg ?? t.elevated,
+              borderRadius: Radius.lg,
+              borderWidth: cardElevation.useBorder ? 1 : 0,
+              borderColor: t.border,
+              padding: 20,
+              minHeight: 140,
+            }, cardElevation.shadowStyle]}
+          >
+            <View style={{ width: 110, height: 12, borderRadius: 3, backgroundColor: t.border, marginBottom: 16 }} />
+            <ActivityIndicator size="small" color={colors.tint} />
+          </View>
+        ) : null}
+
+        {/* 3. 3-STAT ENGINEERED ROW — avg intake | maintenance | deficit */}
+        {hasData && (() => {
+          const avgCal = caloriesRange.avgCaloriesPerDay;
+          const maintenanceKcal = adaptiveTdee ?? targets.calories;
+          const deficitKcal = avgCal != null && maintenanceKcal > 0
+            ? Math.round(maintenanceKcal - avgCal)
+            : null;
+          return (
+            <>
+            <Text style={{ fontSize: 11, fontWeight: "600", color: t.dim, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8, marginLeft: 2 }}>
+              Calories vs target
+            </Text>
+            <View
+              testID="progress-3-stat-row"
+              style={[{
+                flexDirection: "row",
+                backgroundColor: cardElevation.liftBg ?? t.elevated,
+                borderRadius: Radius.lg,
+                borderWidth: cardElevation.useBorder ? 1 : 0,
+                borderColor: t.border,
+                overflow: "hidden",
+              }, cardElevation.shadowStyle]}
+            >
+              {/* Cell: Avg Intake */}
+              <View style={{ flex: 1, paddingVertical: 18, paddingHorizontal: 14, alignItems: "center" }}>
+                <Text style={{ fontSize: 10, fontWeight: "600", color: t.dim, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>
+                  Avg intake
+                </Text>
+                <Text style={{ fontSize: 20, fontWeight: "700", color: t.text, fontVariant: ["tabular-nums"] }}>
+                  {avgCal != null ? avgCal.toLocaleString() : "—"}
+                </Text>
+              </View>
+              {/* Divider */}
+              <View style={{ width: 1, backgroundColor: t.border, marginVertical: 10 }} />
+              {/* Cell: Maintenance */}
+              <View style={{ flex: 1, paddingVertical: 18, paddingHorizontal: 14, alignItems: "center" }}>
+                <Text style={{ fontSize: 10, fontWeight: "600", color: t.dim, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>
+                  Maintenance
+                </Text>
+                <Text style={{ fontSize: 20, fontWeight: "700", color: t.text, fontVariant: ["tabular-nums"] }}>
+                  {maintenanceKcal > 0 ? maintenanceKcal.toLocaleString() : "—"}
+                </Text>
+              </View>
+              {/* Divider */}
+              <View style={{ width: 1, backgroundColor: t.border, marginVertical: 10 }} />
+              {/* Cell: Deficit — shown in GREEN (progress, not alarm) */}
+              <View style={{ flex: 1, paddingVertical: 18, paddingHorizontal: 14, alignItems: "center" }}>
+                <Text style={{ fontSize: 10, fontWeight: "600", color: t.dim, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>
+                  Deficit
+                </Text>
+                <Text style={{ fontSize: 20, fontWeight: "700", color: deficitKcal != null && deficitKcal > 0 ? t.green : deficitKcal != null && deficitKcal < 0 ? t.amber : t.text, fontVariant: ["tabular-nums"] }}>
+                  {deficitKcal != null ? (deficitKcal > 0 ? `${deficitKcal.toLocaleString()}` : deficitKcal === 0 ? "0" : `${Math.abs(deficitKcal).toLocaleString()}`) : "—"}
+                </Text>
+                {deficitKcal != null && deficitKcal < 0 && (
+                  <Text style={{ fontSize: 9, color: t.amber, fontWeight: "500", marginTop: 2 }}>surplus</Text>
+                )}
+              </View>
+            </View>
+            </>
+          );
+        })()}
+
+        {/* 4. SEGMENT PICKER (7d/30d/90d/All) */}
+        <View
+          testID="progress-range-picker"
+          accessibilityRole="tablist"
+          style={{
+            flexDirection: "row",
+            gap: 6,
+            backgroundColor: colors.backgroundSecondary,
+            borderRadius: 10,
+            padding: 4,
+          }}
+        >
+          {(["7d", "30d", "90d", "all"] as const).map((k) => {
+            const active = rangeKey === k;
+            const label = k === "all" ? "All" : k;
+            return (
+              <Pressable
+                key={k}
+                testID={`progress-range-pill-${k}`}
+                accessibilityRole="tab"
+                accessibilityLabel={`Range ${label}`}
+                accessibilityState={{ selected: active }}
+                onPress={() => {
+                  if (!active) haptics.select();
+                  setRangeKey(k);
+                }}
+                hitSlop={{ top: 8, bottom: 8, left: 2, right: 2 }}
+                style={({ pressed }) => [{
+                  flex: 1,
+                  paddingVertical: 8,
+                  paddingHorizontal: 4,
+                  alignItems: "center",
+                  borderRadius: 7,
+                  backgroundColor: active ? t.elevated : "transparent",
+                  shadowColor: "#000",
+                  shadowOpacity: active ? 0.1 : 0,
+                  shadowRadius: active ? 2 : 0,
+                  shadowOffset: { width: 0, height: 1 },
+                  elevation: active ? 1 : 0,
+                  opacity: pressed ? 0.8 : 1,
+                }]}
+              >
+                <Text style={{ fontSize: 12, fontWeight: "600", color: active ? t.text : t.sub }}>{label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        </ReAnimated.View>
+
+        <ReAnimated.View style={[detailsEntrance.style, { gap: Spacing.lg }]}>
+        {!hasData ? (
+          <View style={[{ padding: 24, borderRadius: Radius.lg, backgroundColor: cardElevation.liftBg ?? t.elevated, borderWidth: cardElevation.useBorder ? 1 : 0, borderColor: t.border, alignItems: "center", gap: Spacing.md }, cardElevation.shadowStyle]}>
+            <IconBox color={t.accent} size={40}>
+              <BarChart3 size={20} color={t.accent} strokeWidth={1.75} />
+            </IconBox>
+            <Text style={{ ...Type.headline, color: t.text, textAlign: "center" }}>Your progress will appear here</Text>
+            <Text style={{ ...Type.body, color: t.sub, textAlign: "center", maxWidth: 260, lineHeight: 18 }}>
+              Log meals on the Today tab and your weekly trends, macro adherence, and charts will populate.
+            </Text>
+          </View>
+        ) : (
+          <>
+          {/* 5. DAILY CALORIES chart card */}
+          {!chartsReady ? (
+            <View
+              testID="progress-charts-pending"
+              style={[{
+                backgroundColor: cardElevation.liftBg ?? t.elevated,
+                borderRadius: Radius.lg,
+                borderWidth: cardElevation.useBorder ? 1 : 0,
+                borderColor: t.border,
+                padding: 20,
+                minHeight: 140,
+              }, cardElevation.shadowStyle]}
+            >
+              <View style={{ width: 110, height: 12, borderRadius: 3, backgroundColor: t.border, marginBottom: 16 }} />
+              <ActivityIndicator size="small" color={colors.tint} />
+            </View>
+          ) : (
+          <>
+          <View style={[{ backgroundColor: cardElevation.liftBg ?? t.elevated, borderRadius: Radius.lg, borderWidth: cardElevation.useBorder ? 1 : 0, borderColor: t.border, padding: 20 }, cardElevation.shadowStyle]}>
+            <Text style={{ ...Type.headline, color: t.text, marginBottom: 16 }}>Daily Calories</Text>
+            {(() => {
+              const chartHeight = 90;
+              const maxCal = Math.max(targets.calories, ...weekStats.days.map((dd) => dd.calories));
+              const barMax = chartHeight * 0.78;
+              const targetY = maxCal > 0 ? (targets.calories / (maxCal * 1.15)) * barMax : 0;
+              return (
+                <View style={{ height: chartHeight, marginTop: 8 }}>
+                  <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8, height: chartHeight, position: "relative" }}>
+                    {weekStats.days.map((d) => {
+                      const barH = maxCal > 0 ? Math.max(4, (d.calories / (maxCal * 1.15)) * barMax) : 4;
+                      const overTarget = d.calories > d.effectiveTargetCalories;
+                      const isDayToday = d.key === todayKey;
+                      const isPast = d.key < todayKey;
+                      const showApproxCue = isPast && !d.isSnapshot && d.calories > 0;
+                      return (
+                        <Pressable
+                          key={d.key}
+                          onPress={() => {
+                            router.navigate({ pathname: "/(tabs)" as any, params: { date: d.key, _t: String(Date.now()) } });
+                          }}
+                          accessibilityHint={showApproxCue ? "Compared against today's target. No saved target for that day." : undefined}
+                          style={{ flex: 1, alignItems: "center", gap: 4 }}
+                        >
+                          <Text style={{ fontSize: 11, color: t.dim, fontVariant: ["tabular-nums"] }}>
+                            {d.calories > 0 ? (d.calories >= 1000 ? `${(d.calories / 1000).toFixed(1)}k` : String(d.calories)) : ""}
+                          </Text>
+                          <View
+                            testID={`progress-day-bar-${d.key}`}
+                            style={{
+                              width: "100%",
+                              height: barH,
+                              borderRadius: 5,
+                              backgroundColor: d.calories === 0 ? t.border : overTarget ? t.amber : t.green,
+                              opacity: isDayToday ? 1 : 0.75,
+                              ...(showApproxCue
+                                ? {
+                                    borderWidth: 1,
+                                    borderStyle: "dashed",
+                                    borderColor: t.dim,
+                                  }
+                                : {}),
+                            }}
+                          />
+                          <Text style={{ fontSize: 10, color: isDayToday ? t.accent : t.dim, fontWeight: isDayToday ? "700" : "500" }}>{d.label}</Text>
+                        </Pressable>
+                      );
+                    })}
+                    {targets.calories > 0 && maxCal > 0 && (
+                      <View
+                        pointerEvents="none"
+                        style={{
+                          position: "absolute",
+                          left: 0,
+                          right: 0,
+                          bottom: 16 + targetY,
+                          height: 1,
+                          borderTopWidth: 1,
+                          borderStyle: "dashed",
+                          borderColor: t.accent,
+                          opacity: 0.7,
+                        }}
+                      />
+                    )}
+                  </View>
+                </View>
+              );
+            })()}
+            <View style={{ flexDirection: "column", marginTop: 8, gap: 4 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                  <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: t.green }} />
+                  <Text style={{ fontSize: 10, color: t.dim }}>At or under daily target</Text>
+                </View>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                  <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: t.amber }} />
+                  <Text style={{ fontSize: 10, color: t.dim }}>Over daily target</Text>
+                </View>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                  <View style={{ width: 10, height: 1, borderTopWidth: 1, borderStyle: "dashed", borderColor: t.accent }} />
+                  <Text style={{ fontSize: 10, color: t.dim }}>Base target {targets.calories.toLocaleString()} kcal</Text>
+                </View>
+              </View>
+              <Text style={{ fontSize: 10, color: t.dim }}>
+                Each bar compares to your target for that day — higher on days you earned an activity bonus.
+              </Text>
+            </View>
+          </View>
+
+          {/* 6. MACRO ADHERENCE */}
+          <View style={[{ backgroundColor: cardElevation.liftBg ?? t.elevated, borderRadius: Radius.lg, borderWidth: cardElevation.useBorder ? 1 : 0, borderColor: t.border, padding: 20 }, cardElevation.shadowStyle]}>
+            <Text style={{ ...Type.headline, color: t.text, marginBottom: 16 }}>Macro Adherence</Text>
+            <Text style={{ fontSize: 10, color: t.dim, marginBottom: 8 }}>
+              Based on {weekStats.daysWithFood} day{weekStats.daysWithFood !== 1 ? "s" : ""} with logged food
+            </Text>
+            {([
+              ["Protein", weekStats.proteinAdherence, t.protein],
+              ["Carbs", weekStats.carbsAdherence, t.carbs],
+              ["Fat", weekStats.fatAdherence, t.fat],
+            ] as const).map(([name, pct, color]) => {
+              const bar = formatMacroAdherenceBar({ adherencePct: pct });
+              return (
+                <View key={name} style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                  <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: color }} />
+                  <Text style={{ fontSize: 12, color: t.sub, width: 50 }}>{name}</Text>
+                  <View
+                    style={{
+                      flex: 1,
+                      height: 6,
+                      borderRadius: 3,
+                      backgroundColor: t.border,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <View
+                      testID={`macro-adherence-bar-${name.toLowerCase()}`}
+                      style={{
+                        width: `${bar.barFillPct}%`,
+                        height: "100%",
+                        borderRadius: 3,
+                        backgroundColor: bar.isOver ? Accent.warning : color,
+                      }}
+                    />
+                  </View>
+                  <Text
+                    testID={`macro-adherence-label-${name.toLowerCase()}`}
+                    style={{
+                      fontSize: 12,
+                      fontWeight: "600",
+                      color: bar.isOver ? Accent.warning : color,
+                      minWidth: 56,
+                      textAlign: "right",
+                      fontVariant: ["tabular-nums"],
+                    }}
+                  >
+                    {bar.label}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+
+          {/* 7. APPLE HEALTH */}
+          {userId ? (
+            <AppleHealthCardHost
+              userId={userId}
+              stepsToday={stepsByDay[todayKey] ?? null}
+              latestWeightKg={latestWeightKg}
+              useImperial={measurementSystem === "imperial"}
+            />
+          ) : null}
+
+          {/* 8. MAINTENANCE card */}
+          {staticTdee != null && (() => {
+            const resolved = resolveMaintenance({
+              adaptive_tdee: adaptiveTdee,
+              adaptive_tdee_confidence: adaptiveConfidence,
+              adaptive_tdee_updated_at: adaptiveUpdatedAt,
+              sex: profileSexState as any,
+              weight_kg: latestWeightKg ?? 70,
+              height_cm: profileHeightCmState,
+              age: profileAgeState,
+              activity_level: profileActivityLevelState as any,
+            });
+            if (!resolved) return null;
+            const showAdaptiveExtras = resolved.source === "adaptive";
+            return (
+            <View
+              testID="progress-maintenance-card"
+              style={[{ backgroundColor: cardElevation.liftBg ?? t.elevated, borderRadius: Radius.lg, borderWidth: cardElevation.useBorder ? 1 : 0, borderColor: t.border, padding: 20 }, cardElevation.shadowStyle]}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <IconBox color={t.accent} size={28}>
+                    <Zap size={14} color={t.accent} strokeWidth={1.75} />
+                  </IconBox>
+                  <Text style={{ ...Type.headline, color: t.text }}>Maintenance</Text>
+                </View>
+                {showAdaptiveExtras ? (
+                  <View
+                    testID="maintenance-source-pill"
+                    accessibilityLabel="Maintenance source: adaptive"
+                    style={{ backgroundColor: t.green + "18", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}
+                  >
+                    <Text style={{ fontSize: 10, fontWeight: "700", color: t.green, textTransform: "uppercase", letterSpacing: 0.5 }}>Adaptive</Text>
+                  </View>
+                ) : (
+                  <View
+                    testID="maintenance-source-pill"
+                    accessibilityLabel="Maintenance source: formula estimate"
+                    style={{ backgroundColor: t.border, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}
+                  >
+                    <Text style={{ fontSize: 10, fontWeight: "700", color: t.dim, textTransform: "uppercase", letterSpacing: 0.5 }}>Formula estimate</Text>
+                  </View>
+                )}
+              </View>
+
+              <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6, marginBottom: 6 }}>
+                <Text style={{ fontSize: 32, fontWeight: "700", color: showAdaptiveExtras ? t.green : t.text, fontVariant: ["tabular-nums"] }}>
+                  {resolved.kcal.toLocaleString()}
+                </Text>
+                <Text style={{ fontSize: 13, color: t.sub }}>kcal/day</Text>
+              </View>
+
+              {showAdaptiveExtras && resolved.formulaKcal != null && (
+                <Text style={{ fontSize: 12, color: t.sub, marginBottom: 6 }}>
+                  Formula estimate: {resolved.formulaKcal.toLocaleString()} kcal
+                  {Math.abs(resolved.kcal - resolved.formulaKcal) >= 50 && (
+                    <Text style={{ fontWeight: "600", color: t.text }}>
+                      {" "}({resolved.kcal > resolved.formulaKcal ? "+" : ""}{resolved.kcal - resolved.formulaKcal} actual)
+                    </Text>
+                  )}
+                </Text>
+              )}
+
+              {showAdaptiveExtras && adaptiveConfidence && (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                  <Text style={{ fontSize: 11, color: t.dim }}>Confidence:</Text>
+                  <View style={{ flexDirection: "row", gap: 3 }}>
+                    {(["low", "medium", "high"] as const).map((level) => {
+                      const filled =
+                        (level === "low" && ["low", "medium", "high"].includes(adaptiveConfidence ?? "")) ||
+                        (level === "medium" && ["medium", "high"].includes(adaptiveConfidence ?? "")) ||
+                        (level === "high" && adaptiveConfidence === "high");
+                      return (
+                        <View key={level} style={{ width: 20, height: 4, borderRadius: 2, backgroundColor: filled ? t.green : t.border }} />
+                      );
+                    })}
+                  </View>
+                  <Text style={{ fontSize: 11, fontWeight: "600", color: adaptiveConfidence === "high" ? t.green : adaptiveConfidence === "medium" ? t.amber : t.dim, textTransform: "capitalize" }}>
+                    {adaptiveConfidence}
+                  </Text>
+                </View>
+              )}
+
+              <Text style={{ fontSize: 12, color: t.sub, lineHeight: 17 }}>
+                {showAdaptiveExtras
+                  ? `Maintenance is the calories you'd burn in a normal day. Based on your actual intake and weight changes (${adaptiveConfidence ?? "medium"} confidence).`
+                  : "Maintenance is the calories you'd burn in a normal day. Formula estimate from your stats and activity level."
+                }
+              </Text>
+
+              {!showAdaptiveExtras && (
+                <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: t.border }}>
+                  <View style={{ flexDirection: "row", gap: 12 }}>
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
+                        <Text style={{ fontSize: 10, color: t.dim }}>Weigh-ins</Text>
+                        <Text style={{ fontSize: 10, fontWeight: "600", color: t.text, fontVariant: ["tabular-nums"] }}>{Object.keys(weightKgByDay).length}/7</Text>
+                      </View>
+                      <View style={{ height: 4, borderRadius: 2, backgroundColor: t.border }}>
+                        <View style={{ width: `${Math.min(100, (Object.keys(weightKgByDay).length / 7) * 100)}%` as any, height: "100%", borderRadius: 2, backgroundColor: t.accent }} />
+                      </View>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
+                        <Text style={{ fontSize: 10, color: t.dim }}>Log days</Text>
+                        <Text style={{ fontSize: 10, fontWeight: "600", color: t.text, fontVariant: ["tabular-nums"] }}>{Object.keys(byDay).filter((k) => (byDay[k] ?? []).length > 0).length}/21</Text>
+                      </View>
+                      <View style={{ height: 4, borderRadius: 2, backgroundColor: t.border }}>
+                        <View style={{ width: `${Math.min(100, (Object.keys(byDay).filter((k) => (byDay[k] ?? []).length > 0).length / 21) * 100)}%` as any, height: "100%", borderRadius: 2, backgroundColor: t.accent }} />
+                      </View>
+                    </View>
+                  </View>
+                </View>
+              )}
+
+              {(() => {
+                const chain = buildMaintenanceChain(
+                  {
+                    sex: profileSexState as any,
+                    weight_kg: latestWeightKg ?? 70,
+                    height_cm: profileHeightCmState,
+                    age: profileAgeState,
+                    activity_level: profileActivityLevelState as any,
+                  },
+                  resolved,
+                  planPace,
+                  userGoal,
+                );
+                if (!chain) return null;
+                return (
+                  <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: t.border }}>
+                    <Pressable
+                      onPress={() => setMaintenanceExplainerOpen((v) => !v)}
+                      accessibilityRole="button"
+                      accessibilityLabel={maintenanceExplainerOpen ? "Hide explanation" : "Show how this works"}
+                      accessibilityState={{ expanded: maintenanceExplainerOpen }}
+                      hitSlop={8}
+                      style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
+                    >
+                      <Text style={{ fontSize: 12, fontWeight: "600", color: t.accent }}>
+                        {maintenanceExplainerOpen ? "Hide" : "How this works"}
+                      </Text>
+                      {maintenanceExplainerOpen ? (
+                        <ChevronUp size={14} color={t.accent} strokeWidth={1.75} />
+                      ) : (
+                        <ChevronDown size={14} color={t.accent} strokeWidth={1.75} />
+                      )}
+                    </Pressable>
+                    {maintenanceExplainerOpen && (
+                      <View style={{ marginTop: 10, gap: 6 }}>
+                        {chain.steps.map((step, i) => {
+                          const isSummary = step.kind === "summary" || step.kind === "weeklyLoss";
+                          return (
+                            <View
+                              key={`${step.kind}-${i}`}
+                              style={{
+                                flexDirection: "row",
+                                justifyContent: "space-between",
+                                alignItems: "flex-start",
+                                gap: 12,
+                              }}
+                            >
+                              <Text
+                                style={{
+                                  flex: 1,
+                                  fontSize: 12,
+                                  lineHeight: 17,
+                                  color: isSummary ? t.sub : t.text,
+                                  fontWeight: step.emphasis ? "700" : "500",
+                                }}
+                              >
+                                {step.label}
+                              </Text>
+                              {step.value ? (
+                                <Text
+                                  style={{
+                                    fontSize: 12,
+                                    color: step.emphasis ? t.text : t.sub,
+                                    fontWeight: step.emphasis ? "700" : "500",
+                                    fontVariant: ["tabular-nums"],
+                                  }}
+                                >
+                                  {step.value}
+                                </Text>
+                              ) : null}
+                            </View>
+                          );
+                        })}
+                      </View>
+                    )}
+                  </View>
+                );
+              })()}
+            </View>
+            );
+          })()}
+
+          {/* 9. PROJECTED WEIGHT card */}
+          {trajectoryBoxEnabled && weightSurfaceMode === "show" ? (
+            <TrajectoryCard
+              byDay={byDay}
+              latestWeightKg={latestWeightKg}
+              targetCalories={targets.calories}
+              maintenanceTdeeKcal={
+                isAdaptiveTdee && adaptiveTdee != null ? adaptiveTdee : staticTdee
+              }
+              goal={userGoal}
+              timeline={
+                latestWeightKg != null && goalWeightKg != null
+                  ? calcGoalTimeline({
+                      currentWeightKg: latestWeightKg,
+                      goalWeightKg,
+                      weightKgByDay,
+                    })
+                  : null
+              }
+            />
+          ) : null}
+
+          {weightSurfaceMode === "show" &&
+            latestWeightKg != null &&
+            goalWeightKg != null &&
+            Math.abs(goalWeightKg - latestWeightKg) > 0.05 && (
+            (() => {
+              const timeline = calcGoalTimeline({
+                currentWeightKg: latestWeightKg,
+                goalWeightKg: goalWeightKg,
+                weightKgByDay,
+              });
+              const journeyProg = weightJourneyProgress({
+                goalKg: goalWeightKg,
+                latestKg: latestWeightKg,
+                weightKgByDay,
+              });
+              const pctFrac = journeyProg
+                ? computeWeightJourneyProgressPct({
+                    startKg: journeyProg.baselineKg,
+                    currentKg: latestWeightKg,
+                    goalKg: goalWeightKg,
+                  })
+                : null;
+              const progressPct = pctFrac != null ? Math.round(pctFrac * 100) : 0;
+              const progressCopy = formatWeightJourneyProgressCopy(pctFrac);
+              const daysWithFood = Object.keys(byDay).filter((k) => (byDay[k] ?? []).length > 0);
+              const recentDays = daysWithFood.slice(-7);
+              const avgCals = recentDays.length > 0
+                ? Math.round(recentDays.reduce((s, k) => s + (byDay[k] ?? []).reduce((a, m) => a + Math.max(0, (m as any).calories ?? 0), 0), 0) / recentDays.length)
+                : 0;
+              const maintenanceTdeeKcal = isAdaptiveTdee && adaptiveTdee != null ? adaptiveTdee : staticTdee;
+              const projectionEligible = shouldRenderDailyProjection(daysWithFood.length);
+              const observedKgPerWeek =
+                typeof timeline.weeklyRateKg === "number"
+                  ? timeline.trendDirection === "losing"
+                    ? -Math.abs(timeline.weeklyRateKg)
+                    : timeline.trendDirection === "gaining"
+                      ? Math.abs(timeline.weeklyRateKg)
+                      : 0
+                  : 0;
+              const dailyProjection =
+                projectionEligible && avgCals > 0 && latestWeightKg != null
+                  ? projectWeight({
+                      currentWeightKg: latestWeightKg,
+                      todayCalories: avgCals,
+                      targetCalories: targets.calories,
+                      maintenanceTdeeKcal,
+                      goal: userGoal,
+                      observedKgPerWeek,
+                    })
+                  : null;
+
+              return (
+                <Pressable
+                  onPress={() => setLogWeightOpen(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Weight journey and charts"
+                  accessibilityHint="Opens detailed weight progress"
+                  style={({ pressed }) => [{
+                    backgroundColor: cardElevation.liftBg ?? t.elevated,
+                    borderRadius: Radius.lg,
+                    borderWidth: cardElevation.useBorder ? 1 : 0,
+                    borderColor: t.border,
+                    padding: 20,
+                    opacity: pressed ? 0.94 : 1,
+                  }, cardElevation.shadowStyle]}
+                >
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                      <IconBox color={t.green} size={28}>
+                        <Flag size={14} color={t.green} strokeWidth={1.75} />
+                      </IconBox>
+                      <Text style={{ ...Type.headline, color: t.text }}>Journey</Text>
+                    </View>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                      {timeline.daysToGoal != null ? (
+                        <Text style={{ fontSize: 22, fontWeight: "700", color: t.accent, fontVariant: ["tabular-nums"] }}>
+                          {timeline.daysToGoal}<Text style={{ fontSize: 12, fontWeight: "500", color: t.sub }}> days to goal</Text>
+                        </Text>
+                      ) : timeline.cappedAtMaxDays ? (
+                        <Text
+                          testID="progress-journey-capped"
+                          style={{ fontSize: 12, fontWeight: "600", color: t.sub }}
+                        >
+                          More than 1 year at current rate
+                        </Text>
+                      ) : null}
+                      <ChevronRight size={18} color={t.dim} strokeWidth={1.75} />
+                    </View>
+                  </View>
+
+                  <Text style={{ fontSize: 13, color: t.sub, marginBottom: 10, lineHeight: 18 }}>
+                    {timeline.remainingKg > 0.1
+                      ? `${timeline.remainingKg} kg left to reach ${goalWeightKg} kg.`
+                      : "You've reached your goal weight."}
+                    {timeline.weeklyRateKg !== 0 && ` Currently ${timeline.trendDirection === "losing" ? "losing" : timeline.trendDirection === "gaining" ? "gaining" : "maintaining"} ~${Math.abs(timeline.weeklyRateKg)} kg/week.`}
+                  </Text>
+
+                  {journeyProg && (
+                    <View style={{ marginBottom: 4 }}>
+                      <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
+                        <Text style={{ fontSize: 10, color: t.dim }}>Start: {journeyProg.baselineKg} kg</Text>
+                        <Text style={{ fontSize: 10, color: t.dim }}>Goal: {goalWeightKg} kg</Text>
+                      </View>
+                      <View style={{ height: 6, borderRadius: 3, backgroundColor: t.border }}>
+                        <View style={{
+                          width: `${progressPct}%` as any,
+                          height: "100%",
+                          borderRadius: 3,
+                          backgroundColor: progressPct >= 100 ? t.green : t.accent,
+                        }} />
+                      </View>
+                      <Text
+                        testID="progress-journey-copy"
+                        style={{ fontSize: 10, color: t.dim, marginTop: 4, textAlign: "center" }}
+                      >
+                        {progressCopy
+                          ? `Now: ${latestWeightKg} kg · ${progressCopy}`
+                          : `Now: ${latestWeightKg} kg`}
+                      </Text>
+                    </View>
+                  )}
+
+                  {dailyProjection && maintenanceTdeeKcal != null && (
+                    <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: t.border }}>
+                      {(() => {
+                        const avgDeficit = Math.round(maintenanceTdeeKcal - avgCals);
+                        const deficitLabel =
+                          avgDeficit > 0
+                            ? `avg deficit ${avgDeficit.toLocaleString()} kcal/day`
+                            : avgDeficit < 0
+                              ? `avg surplus ${Math.abs(avgDeficit).toLocaleString()} kcal/day`
+                              : "at maintenance";
+                        return (
+                          <Text style={{ fontSize: 12, color: t.sub, lineHeight: 18 }}>
+                            Last 7 days averaged {avgCals.toLocaleString()} kcal/day — {deficitLabel}. On that trend you&apos;d reach{" "}
+                            <Text style={{ fontWeight: "700", color: t.accent }}>{dailyProjection.projectedWeightKg} kg</Text> in ~{dailyProjection.projectionWeeks} weeks.
+                          </Text>
+                        );
+                      })()}
+                      <Text style={{ fontSize: 10, color: t.dim, marginTop: 4 }}>
+                        Based on 7,700 kcal ≈ 1 kg. An estimate, not a promise.
+                      </Text>
+                    </View>
+                  )}
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 10 }}>
+                    <Text style={{ fontSize: 12, fontWeight: "600", color: t.accent }}>View weight trends</Text>
+                    <ChevronRight size={12} color={t.accent} strokeWidth={1.75} />
+                  </View>
+                </Pressable>
+              );
+            })()
+          )}
+
+          {/* 10. WEEK DIGEST — moved after main data cards */}
+          {(digestBlendEnabled ? digestBlendVisible : recapVisible) ? (() => {
+            const digestSeed = (() => {
+              if (usualMealInsight?.kind !== "prompt") return null;
+              const seed = selectMostFrequentSlotSeed(byDay as any, usualMealInsight.suggestedSlot);
+              if (!seed || seed.seedItems.length < 2) return null;
+              return seed;
+            })();
+            const digestSeedItems = digestSeed
+              ? digestSeed.seedItems.map((it) => {
+                  const row: Omit<SavedMealItem, "id" | "position"> = {
+                    recipeTitle: it.recipeTitle,
+                    calories: it.calories,
+                    protein: it.protein,
+                    carbs: it.carbs,
+                    fat: it.fat,
+                    portionMultiplier: 1,
+                  };
+                  if (it.fiber != null) row.fiber = it.fiber;
+                  if (it.source) row.source = it.source;
+                  return row;
+                })
+              : undefined;
+            const usualMeal: DigestUsualMeal | null =
+              usualMealInsight?.kind === "celebration"
+                ? { kind: "celebration", name: usualMealInsight.name, count: usualMealInsight.count }
+                : usualMealInsight?.kind === "prompt"
+                  ? {
+                      kind: "prompt",
+                      suggestedSlot: digestSeed?.slot ?? usualMealInsight.suggestedSlot,
+                      ...(usualMealInsight.repeats != null ? { repeats: usualMealInsight.repeats } : {}),
+                      ...(digestSeedItems ? { seedItems: digestSeedItems } : {}),
+                    }
+                  : null;
+            const closestToTarget = recap.bestDay
+              ? {
+                  label: recap.bestDay.label,
+                  protein: recap.bestDay.protein,
+                  calories: recap.bestDay.calories,
+                }
+              : null;
+            const maintenanceLine = formatMaintenanceRecapLine(recapMaintenance);
+            const mealsLogged = Object.values(byDay).reduce(
+              (total: number, day: any) => total + (Array.isArray(day) ? day.length : 0),
+              0,
+            );
+            const headline = resolveDigestHeadline({
+              weightDeltaKg: recap.weightDeltaKg,
+              closestToTargetLabel: closestToTarget?.label ?? null,
+              streakDays: recap.streakLength,
+              daysLogged: recap.daysLogged,
+            });
+            const digestState: "success" | "empty" | "partial" =
+              recap.daysLogged === 0 ? "empty" : recap.daysLogged < 4 ? "partial" : "success";
+            const blendedExtras: DigestBlendedExtras = {
+              dayOfWeekPattern: computeDayOfWeekPattern(byDay as any),
+              closestDayTargetCalories: recap.bestDay?.targetCalories ?? null,
+            };
+            return (
+              <Digest
+                blended={digestBlendEnabled}
+                blendedExtras={blendedExtras}
+                onAdjustPace={() => router.push("/targets" as any)}
+                weekKey={recap.weekKey}
+                weekLabel={recap.weekLabel}
+                daysLogged={recap.daysLogged}
+                mealsLogged={mealsLogged}
+                headline={headline}
+                stats={{
+                  streakDays: recap.streakLength,
+                  streakFreezesAvailable: recap.freezesAvailable,
+                  avgCalories: recap.avgCalories,
+                  avgProtein: recap.avgProtein,
+                  proteinAdherencePct: recap.proteinAdherencePct > 0 ? recap.proteinAdherencePct : null,
+                  weightDeltaKg: recap.weightDeltaKg,
+                  weightFirstKg: recap.weightFirstKg,
+                  weightLastKg: recap.weightLastKg,
+                }}
+                narrative={{ closestToTarget, maintenanceLine, usualMeal }}
+                shareText={formatRecapForShare(recap)}
+                state={digestState}
+                weightSurfaceMode={weightSurfaceMode}
+                onShare={() => { /* Digest owns share sheet + analytics */ }}
+                onDismiss={dismissRecap}
+                onOpenSaveCombo={(slot, items) => {
+                  const serialized = serializePendingUsualMealSave(slot, items);
+                  if (serialized) {
+                    AsyncStorage.setItem(PENDING_USUAL_MEAL_SAVE_KEY, serialized).catch(() => {});
+                  }
+                  router.navigate({ pathname: "/(tabs)" as any });
+                }}
+                onStartUsualMealSave={() => {
+                  router.navigate({ pathname: "/(tabs)" as any });
+                }}
+              />
+            );
+          })() : null}
+
+          {digestBlendEnabled ? null : (
+            <DigestStoryCard
+              weekLabel={recap.weekLabel}
+              daysLogged={weekStats.daysWithFood}
+              avgCalories={weekStats.avgCalories}
+              targetCalories={targets.calories}
+              avgProtein={recap.avgProtein}
+              targetProtein={targets.protein}
+              proteinOnTargetDays={weekStats.proteinOnTarget}
+              closestToTarget={recap.bestDay
+                ? {
+                    label: recap.bestDay.label,
+                    calories: recap.bestDay.calories,
+                    protein: recap.bestDay.protein,
+                  }
+                : null}
+              dayOfWeekPattern={computeDayOfWeekPattern(byDay as any)}
+            />
+          )}
+
+          {/* 11. TrendSummaryCard + Streak/Trend chips — REMOVED in v2.
+              The 3-stat row replaces them. Components still imported but
+              not rendered on this path. */}
+          </>
+          )}
+          </>
+        )}
+        <Text
+          testID="progress-nutrition-estimate-footer"
+          style={{
+            fontSize: 11,
+            color: colors.textTertiary,
+            textAlign: "center",
+            lineHeight: 16,
+            marginTop: 16,
+            marginBottom: 8,
+            paddingHorizontal: 16,
+          }}
+        >
+          Nutrition data are estimates. Not medical or dietetic advice.
+        </Text>
+        </ReAnimated.View>
+        </>
+      ) : (
+      <>
+      {/* ── EXISTING LAYOUT (flag off — byte-for-byte preserved) ── */}
       {/* ENG-616: Oura-style hero metric — one big number at the top. */}
       <ReAnimated.View style={heroEntrance.style}>
       <ProgressHeroMetric
@@ -1152,7 +2107,15 @@ export default function ProgressScreen() {
               accessibilityRole="tab"
               accessibilityLabel={`Range ${label}`}
               accessibilityState={{ selected: active }}
-              onPress={() => setRangeKey(k)}
+              onPress={() => {
+                // Selection haptic on an actual range change — matches the
+                // canonical `MobileSegmented` control (`haptics.select()` on
+                // change). Always-on selection feedback (not a visual change,
+                // so not flag-gated); guarded so re-tapping the active pill
+                // doesn't buzz.
+                if (!active) haptics.select();
+                setRangeKey(k);
+              }}
               // 2026-05-13 (premium-bar audit Group H weight chart #7):
               // visible pill is ~28pt tall; hitSlop extends the touch
               // target above + below to ≥40pt without changing visual
@@ -1230,7 +2193,7 @@ export default function ProgressScreen() {
 
       <ReAnimated.View style={detailsEntrance.style}>
       {!hasData ? (
-        <View style={{ padding: 24, borderRadius: Radius.lg, backgroundColor: t.elevated, borderWidth: 1, borderColor: t.border, alignItems: "center", gap: Spacing.md }}>
+        <View style={[{ padding: 24, borderRadius: Radius.lg, backgroundColor: cardElevation.liftBg ?? t.elevated, borderWidth: cardElevation.useBorder ? 1 : 0, borderColor: t.border, alignItems: "center", gap: Spacing.md }, cardElevation.shadowStyle]}>
           <IconBox color={t.accent} size={40}>
             <BarChart3 size={20} color={t.accent} strokeWidth={1.75} />
           </IconBox>
@@ -1565,15 +2528,15 @@ export default function ProgressScreen() {
           {!chartsReady ? (
             <View
               testID="progress-charts-pending"
-              style={{
-                backgroundColor: t.elevated,
+              style={[{
+                backgroundColor: cardElevation.liftBg ?? t.elevated,
                 borderRadius: Radius.lg,
-                borderWidth: 1,
+                borderWidth: cardElevation.useBorder ? 1 : 0,
                 borderColor: t.border,
                 padding: 16,
                 marginBottom: Spacing.md,
                 minHeight: 140,
-              }}
+              }, cardElevation.shadowStyle]}
             >
               <View style={{ width: 110, height: 12, borderRadius: 3, backgroundColor: t.border, marginBottom: 16 }} />
               {/* P3 dark-mode fix — see note above the loading spinner. */}
@@ -1589,7 +2552,7 @@ export default function ProgressScreen() {
               full chart at `targets.calories`, with its value labelled
               at the right edge; (b) a one-line legend under the chart
               stating exactly what each colour means. */}
-          <View style={{ backgroundColor: t.elevated, borderRadius: Radius.lg, borderWidth: 1, borderColor: t.border, padding: 16, marginBottom: Spacing.md }}>
+          <View style={[{ backgroundColor: cardElevation.liftBg ?? t.elevated, borderRadius: Radius.lg, borderWidth: cardElevation.useBorder ? 1 : 0, borderColor: t.border, padding: 16, marginBottom: Spacing.md }, cardElevation.shadowStyle]}>
             <Text style={{ ...Type.headline, color: t.text, marginBottom: 12 }}>Daily Calories</Text>
             {(() => {
               const chartHeight = 90;
@@ -1707,7 +2670,7 @@ export default function ProgressScreen() {
           </View>
 
           {/* Macro Adherence */}
-          <View style={{ backgroundColor: t.elevated, borderRadius: Radius.lg, borderWidth: 1, borderColor: t.border, padding: 16, marginBottom: Spacing.md }}>
+          <View style={[{ backgroundColor: cardElevation.liftBg ?? t.elevated, borderRadius: Radius.lg, borderWidth: cardElevation.useBorder ? 1 : 0, borderColor: t.border, padding: 16, marginBottom: Spacing.md }, cardElevation.shadowStyle]}>
             <Text style={{ ...Type.headline, color: t.text, marginBottom: 12 }}>Macro Adherence</Text>
             <Text style={{ fontSize: 10, color: t.dim, marginBottom: 8 }}>
               Based on {weekStats.daysWithFood} day{weekStats.daysWithFood !== 1 ? "s" : ""} with logged food
@@ -1807,7 +2770,7 @@ export default function ProgressScreen() {
             return (
             <View
               testID="progress-maintenance-card"
-              style={{ backgroundColor: t.elevated, borderRadius: Radius.lg, borderWidth: 1, borderColor: t.border, padding: 16, marginBottom: Spacing.md }}
+              style={[{ backgroundColor: cardElevation.liftBg ?? t.elevated, borderRadius: Radius.lg, borderWidth: cardElevation.useBorder ? 1 : 0, borderColor: t.border, padding: 16, marginBottom: Spacing.md }, cardElevation.shadowStyle]}
             >
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
@@ -2019,7 +2982,7 @@ export default function ProgressScreen() {
               normal "you haven't walked yet". */}
           <View
             testID="progress-steps-card"
-            style={{ backgroundColor: t.elevated, borderRadius: Radius.lg, borderWidth: 1, borderColor: t.border, padding: 16, marginBottom: Spacing.md }}
+            style={[{ backgroundColor: cardElevation.liftBg ?? t.elevated, borderRadius: Radius.lg, borderWidth: cardElevation.useBorder ? 1 : 0, borderColor: t.border, padding: 16, marginBottom: Spacing.md }, cardElevation.shadowStyle]}
           >
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
               <IconBox color={t.green} size={28}>
@@ -2097,14 +3060,14 @@ export default function ProgressScreen() {
               exactly what trends_only / hide users opted out of. */}
           {weightSurfaceMode === "show" ? (
           <View
-            style={{
-              backgroundColor: t.elevated,
+            style={[{
+              backgroundColor: cardElevation.liftBg ?? t.elevated,
               borderRadius: Radius.lg,
-              borderWidth: 1,
+              borderWidth: cardElevation.useBorder ? 1 : 0,
               borderColor: t.border,
               padding: 16,
               marginBottom: Spacing.md,
-            }}
+            }, cardElevation.shadowStyle]}
           >
             {/* 2026-05-11 (Grace TF feedback — mockup signed off):
                 tabs + list button on ONE row (was an orphan row above
@@ -2350,15 +3313,15 @@ export default function ProgressScreen() {
                   accessibilityRole="button"
                   accessibilityLabel="Weight journey and charts"
                   accessibilityHint="Opens detailed weight progress"
-                  style={({ pressed }) => ({
-                    backgroundColor: t.elevated,
+                  style={({ pressed }) => [{
+                    backgroundColor: cardElevation.liftBg ?? t.elevated,
                     borderRadius: Radius.lg,
-                    borderWidth: 1,
+                    borderWidth: cardElevation.useBorder ? 1 : 0,
                     borderColor: t.border,
                     padding: 16,
                     marginBottom: Spacing.md,
                     opacity: pressed ? 0.94 : 1,
-                  })}
+                  }, cardElevation.shadowStyle]}
                 >
                   <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
@@ -2482,6 +3445,8 @@ export default function ProgressScreen() {
         Nutrition data are estimates. Not medical or dietetic advice.
       </Text>
       </ReAnimated.View>
+      </>
+      )}
     </ScrollView>
     <LogWeightSheet
       visible={logWeightOpen}
@@ -2675,6 +3640,7 @@ function WeightTrendOnlyCard({
   rangeKey: "7d" | "30d" | "90d" | "all";
   theme: CardTheme;
 }) {
+  const cardElev = useCardElevation();
   const direction =
     weekDeltaKg == null || !Number.isFinite(weekDeltaKg)
       ? null
@@ -2703,14 +3669,14 @@ function WeightTrendOnlyCard({
   return (
     <View
       testID="progress-weight-trend-only-card"
-      style={{
-        backgroundColor: theme.elevated,
+      style={[{
+        backgroundColor: cardElev.liftBg ?? theme.elevated,
         borderRadius: Radius.lg,
-        borderWidth: 1,
+        borderWidth: cardElev.useBorder ? 1 : 0,
         borderColor: theme.border,
         padding: 16,
         marginBottom: Spacing.md,
-      }}
+      }, cardElev.shadowStyle]}
     >
       <Text style={{ fontSize: 11, fontWeight: "700", color: theme.dim, textTransform: "uppercase", letterSpacing: 1.1 }}>
         Weight trend
@@ -2747,6 +3713,7 @@ function WeightRangeCard({
   measurementSystem: MeasurementSystem;
   theme: CardTheme;
 }) {
+  const cardElev = useCardElevation();
   // Do not render the card at all until we know the user has logged a
   // weight — otherwise we'd surface "— kg" which invents no value but
   // looks broken.
@@ -2754,14 +3721,14 @@ function WeightRangeCard({
     return (
       <View
         testID="progress-weight-range-card-empty"
-        style={{
-          backgroundColor: theme.elevated,
+        style={[{
+          backgroundColor: cardElev.liftBg ?? theme.elevated,
           borderRadius: Radius.lg,
-          borderWidth: 1,
+          borderWidth: cardElev.useBorder ? 1 : 0,
           borderColor: theme.border,
           padding: 20,
           marginBottom: Spacing.md,
-        }}
+        }, cardElev.shadowStyle]}
       >
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
           <View style={{
@@ -2809,14 +3776,14 @@ function WeightRangeCard({
   return (
     <View
       testID="progress-weight-range-card"
-      style={{
-        backgroundColor: theme.elevated,
+      style={[{
+        backgroundColor: cardElev.liftBg ?? theme.elevated,
         borderRadius: Radius.lg,
-        borderWidth: 1,
+        borderWidth: cardElev.useBorder ? 1 : 0,
         borderColor: theme.border,
         padding: 16,
         marginBottom: Spacing.md,
-      }}
+      }, cardElev.shadowStyle]}
     >
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
         <Text style={{ fontSize: 11, fontWeight: "700", color: theme.dim, textTransform: "uppercase", letterSpacing: 1.1 }}>
@@ -2886,6 +3853,7 @@ function CaloriesRangeCard({
   targetCalories: number;
   theme: CardTheme;
 }) {
+  const cardElev = useCardElevation();
   return (
     <View testID="progress-calories-range-wrapper" style={{ marginBottom: Spacing.md }}>
       {/* 17pt bold header sits OUTSIDE the card per the prototype. */}
@@ -2897,13 +3865,13 @@ function CaloriesRangeCard({
       </Text>
       <View
         testID="progress-calories-range-card"
-        style={{
-          backgroundColor: theme.elevated,
+        style={[{
+          backgroundColor: cardElev.liftBg ?? theme.elevated,
           borderRadius: Radius.lg,
-          borderWidth: 1,
+          borderWidth: cardElev.useBorder ? 1 : 0,
           borderColor: theme.border,
           padding: 16,
-        }}
+        }, cardElev.shadowStyle]}
       >
         {avgCaloriesPerDay == null ? (
           <View style={{ paddingVertical: 8 }}>

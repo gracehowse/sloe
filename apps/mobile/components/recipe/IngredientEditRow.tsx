@@ -11,6 +11,7 @@ import { Trash2 } from "lucide-react-native";
 
 import { Accent, Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useCardElevation, type CardElevation } from "@/hooks/useCardElevation";
 
 export type EditableIngredient = {
   /** Stable key for React + DB row id when persisted. Null = not yet saved. */
@@ -33,7 +34,8 @@ function IngredientEditRowImpl({
   onDelete: () => void;
 }) {
   const colors = useThemeColors();
-  const styles = makeStyles(colors);
+  const cardElevation = useCardElevation();
+  const styles = makeStyles(colors, cardElevation);
   return (
     <View style={styles.row}>
       <TextInput
@@ -74,7 +76,7 @@ function IngredientEditRowImpl({
   );
 }
 
-const makeStyles = (colors: ReturnType<typeof useThemeColors>) =>
+const makeStyles = (colors: ReturnType<typeof useThemeColors>, ce: CardElevation) =>
   StyleSheet.create({
     row: {
       flexDirection: "row",
@@ -82,14 +84,14 @@ const makeStyles = (colors: ReturnType<typeof useThemeColors>) =>
       gap: Spacing.xs,
     },
     input: {
-      borderWidth: 1,
+      borderWidth: ce.useBorder ? 1 : 0,
       borderColor: colors.border,
       borderRadius: Radius.sm,
       paddingVertical: 8,
       paddingHorizontal: 10,
       fontSize: 14,
       color: colors.text,
-      backgroundColor: colors.inputBg,
+      backgroundColor: ce.liftBg ?? colors.inputBg,
     },
     nameInput: { flex: 1 },
     amountInput: { width: 56, textAlign: "center" },

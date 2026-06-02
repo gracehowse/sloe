@@ -63,6 +63,7 @@ import {
 
 import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useCardElevation } from "@/hooks/useCardElevation";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { track } from "@/lib/analytics";
@@ -125,6 +126,7 @@ export default function CreateRecipeWizard() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const colors = useThemeColors();
+  const cardElevation = useCardElevation();
   const { session } = useAuth();
   const userId = session?.user?.id;
 
@@ -695,9 +697,9 @@ export default function CreateRecipeWizard() {
           marginTop: 4,
         },
         input: {
-          backgroundColor: colors.card,
+          backgroundColor: cardElevation.liftBg ?? colors.card,
           borderRadius: Radius.md,
-          borderWidth: 1,
+          borderWidth: cardElevation.useBorder ? 1 : 0,
           borderColor: colors.border,
           paddingHorizontal: Spacing.lg,
           paddingVertical: 14,
@@ -719,13 +721,14 @@ export default function CreateRecipeWizard() {
           width: "100%",
           height: 180,
           borderRadius: Radius.lg,
-          borderWidth: 1.5,
+          borderWidth: cardElevation.useBorder ? 1.5 : 0,
           borderColor: colors.border,
           borderStyle: "dashed",
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: colors.card,
+          backgroundColor: cardElevation.liftBg ?? colors.card,
           gap: Spacing.xs,
+          ...(cardElevation.shadowStyle ?? {}),
         },
         servingsRow: {
           flexDirection: "row",
@@ -736,11 +739,12 @@ export default function CreateRecipeWizard() {
           width: 40,
           height: 40,
           borderRadius: 20,
-          borderWidth: 1,
+          borderWidth: cardElevation.useBorder ? 1 : 0,
           borderColor: colors.border,
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: colors.card,
+          backgroundColor: cardElevation.liftBg ?? colors.card,
+          ...(cardElevation.shadowStyle ?? {}),
         },
         servingsValue: {
           minWidth: 56,
@@ -752,14 +756,15 @@ export default function CreateRecipeWizard() {
         },
         // Step 2 — ingredients
         ingCard: {
-          backgroundColor: colors.card,
+          backgroundColor: cardElevation.liftBg ?? colors.card,
           borderRadius: Radius.md,
-          borderWidth: 1,
+          borderWidth: cardElevation.useBorder ? 1 : 0,
           borderColor: colors.border,
           padding: Spacing.md,
           flexDirection: "row",
           alignItems: "center",
           gap: Spacing.sm,
+          ...(cardElevation.shadowStyle ?? {}),
         },
         ingName: {
           flex: 1,
@@ -775,9 +780,10 @@ export default function CreateRecipeWizard() {
           gap: Spacing.sm,
           paddingVertical: 14,
           borderRadius: Radius.md,
-          borderWidth: 1.5,
+          borderWidth: cardElevation.useBorder ? 1.5 : 0,
           borderColor: Accent.primary + "50",
           borderStyle: "dashed",
+          ...(cardElevation.shadowStyle ?? {}),
         },
         addBtnText: {
           color: Accent.primary,
@@ -786,12 +792,13 @@ export default function CreateRecipeWizard() {
         },
         // Step 3 — instructions
         stepRow: {
-          backgroundColor: colors.card,
+          backgroundColor: cardElevation.liftBg ?? colors.card,
           borderRadius: Radius.md,
-          borderWidth: 1,
+          borderWidth: cardElevation.useBorder ? 1 : 0,
           borderColor: colors.border,
           padding: Spacing.md,
           gap: Spacing.sm,
+          ...(cardElevation.shadowStyle ?? {}),
         },
         stepHeader: {
           flexDirection: "row",
@@ -808,7 +815,7 @@ export default function CreateRecipeWizard() {
         stepInput: {
           backgroundColor: colors.background,
           borderRadius: Radius.sm,
-          borderWidth: 1,
+          borderWidth: cardElevation.useBorder ? 1 : 0,
           borderColor: colors.border,
           padding: Spacing.md,
           color: colors.text,
@@ -819,11 +826,12 @@ export default function CreateRecipeWizard() {
         stepIconBtn: { padding: 6 },
         // Step 4 — macros
         totalsCard: {
-          backgroundColor: colors.card,
+          backgroundColor: cardElevation.liftBg ?? colors.card,
           borderRadius: Radius.lg,
-          borderWidth: 1,
+          borderWidth: cardElevation.useBorder ? 1 : 0,
           borderColor: Accent.primary + "30",
           padding: Spacing.lg,
+          ...(cardElevation.shadowStyle ?? {}),
         },
         macroFieldRow: {
           flexDirection: "row",
@@ -844,7 +852,7 @@ export default function CreateRecipeWizard() {
           textAlign: "right",
           backgroundColor: colors.background,
           borderRadius: Radius.sm,
-          borderWidth: 1,
+          borderWidth: cardElevation.useBorder ? 1 : 0,
           borderColor: colors.border,
           padding: 10,
           color: colors.text,
@@ -853,12 +861,13 @@ export default function CreateRecipeWizard() {
         },
         // Save step
         saveCard: {
-          backgroundColor: colors.card,
+          backgroundColor: cardElevation.liftBg ?? colors.card,
           borderRadius: Radius.lg,
-          borderWidth: 1,
+          borderWidth: cardElevation.useBorder ? 1 : 0,
           borderColor: colors.border,
           padding: Spacing.lg,
           gap: Spacing.md,
+          ...(cardElevation.shadowStyle ?? {}),
         },
         // Footer (Continue / Save)
         footer: {
@@ -894,8 +903,9 @@ export default function CreateRecipeWizard() {
           backgroundColor: "transparent",
           borderRadius: Radius.md,
           paddingVertical: 14,
-          borderWidth: 1.5,
+          borderWidth: cardElevation.useBorder ? 1.5 : 0,
           borderColor: Accent.primary,
+          ...(cardElevation.shadowStyle ?? {}),
         },
         secondaryBtnText: {
           color: Accent.primary,
@@ -903,7 +913,7 @@ export default function CreateRecipeWizard() {
           fontSize: 15,
         },
       }),
-    [colors],
+    [colors, cardElevation],
   );
 
   // ---- Render ----------------------------------------------------------

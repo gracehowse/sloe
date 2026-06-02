@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Icons } from "../ui/icons";
+import { SupprCard } from "../ui/suppr-card";
 import type { DayPlanMeal } from "../../../types/recipe.ts";
 
 /**
@@ -33,8 +34,10 @@ export function TodayPlannedMealsCard({
   onLogPlannedMealWithPortion,
 }: TodayPlannedMealsCardProps) {
   return (
-    <section
-      className="rounded-card border border-border bg-card mb-6 card-elevated"
+    <SupprCard
+      padding="none"
+      radius="lg"
+      className="mb-6"
       aria-label="Planned meals for today"
     >
       <header className="flex items-center justify-between px-4 pt-4 pb-3">
@@ -52,7 +55,7 @@ export function TodayPlannedMealsCard({
           />
         ))}
       </ul>
-    </section>
+    </SupprCard>
   );
 }
 

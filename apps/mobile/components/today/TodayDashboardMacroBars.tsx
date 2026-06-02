@@ -1,7 +1,8 @@
 import React from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, Text, View, type ViewStyle } from "react-native";
 import { Layout } from "@/constants/layout";
 import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
+import { useCardElevation } from "@/hooks/useCardElevation";
 import type { JournalMeal } from "@/lib/nutritionJournal";
 import { carbsLabel, netCarbsForRow } from "@suppr/shared/nutrition/netCarbs";
 import { formatMacro } from "@suppr/shared/nutrition/formatMacro";
@@ -58,6 +59,7 @@ export function TodayDashboardMacroBars({
   textSecondaryColor,
   netCarbsLensEnabled,
 }: TodayDashboardMacroBarsProps) {
+  const cardElevation = useCardElevation();
   const microSum = mealsToday.reduce(
     (a, m) => ({
       sugarG:
@@ -132,15 +134,18 @@ export function TodayDashboardMacroBars({
 
   return (
     <View
-      style={{
-        backgroundColor: cardColor,
-        borderColor: cardBorderColor,
-        borderWidth: 1,
-        borderRadius: Radius.lg,
-        padding: Spacing.sm + 2,
-        marginBottom: Spacing.sm,
-        gap: Layout.todayScrollGap,
-      }}
+      style={[
+        {
+          backgroundColor: cardElevation.liftBg ?? cardColor,
+          borderColor: cardBorderColor,
+          borderWidth: cardElevation.useBorder ? 1 : 0,
+          borderRadius: Radius.lg,
+          padding: Spacing.sm + 2,
+          marginBottom: Spacing.sm,
+          gap: Layout.todayScrollGap,
+        } as ViewStyle,
+        cardElevation.shadowStyle,
+      ]}
       testID="today-macro-bars"
     >
       {/* Canonical 2026-05-22 C1: each macro is a single row —

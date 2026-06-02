@@ -1,6 +1,7 @@
 import React from "react";
 import { Text, View } from "react-native";
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
+import { useCardElevation } from "@/hooks/useCardElevation";
 import {
   weekSummaryDateKeys,
   type WeekSummaryMode,
@@ -67,6 +68,7 @@ export function TodayDeficitInsight({
   surfaceBorderColor,
   labelColor,
 }: TodayDeficitInsightProps) {
+  const cardElevation = useCardElevation();
   const keys = weekSummaryDateKeys(weekSummaryMode, selectedDate, weekStartDay);
   // F-25 (2026-04-21): hide the deficit banner on an empty day. Before,
   // a user with nothing logged saw "~1667 kcal deficit so far today" —
@@ -133,13 +135,13 @@ export function TodayDeficitInsight({
 
   return (
     <View
-      style={{
+      style={[{
         backgroundColor: resolvedBg,
         borderRadius: Radius.md,
         padding: Spacing.md,
-        borderWidth: 1,
+        borderWidth: cardElevation.useBorder ? 1 : 0,
         borderColor: resolvedBorder,
-      }}
+      }, cardElevation.shadowStyle]}
     >
       <Text style={{ ...Type.body, color: resolvedLabel }}>
         ~{todayNetDeficit.toLocaleString()} kcal {NET_DEFICIT_LABEL} so far today

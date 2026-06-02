@@ -63,8 +63,9 @@ describe("Progress prototype port — header + range picker", () => {
     expect(mobileSrc).toContain('testID={`progress-range-pill-${k}`}');
     // The pill list maps over the full 4-range tuple.
     expect(mobileSrc).toMatch(/\["7d", "30d", "90d", "all"\] as const\)\.map/);
-    // Pressing a pill calls setRangeKey(k).
-    expect(mobileSrc).toContain("onPress={() => setRangeKey(k)}");
+    // Pressing a pill calls setRangeKey(k) — may be inline or inside
+    // a multi-line handler that also fires a haptic.
+    expect(mobileSrc).toContain("setRangeKey(k)");
   });
 
   it("mobile skeleton-gate fix — loadData wraps fetch+hydrate in try/finally", () => {

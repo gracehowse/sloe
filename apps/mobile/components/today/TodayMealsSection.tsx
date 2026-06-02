@@ -37,6 +37,7 @@ import {
 import * as Haptics from "expo-haptics";
 import { Accent, Elevation, MacroColors, Radius, SlotColors, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useCardElevation } from "@/hooks/useCardElevation";
 import { SupprMark } from "@/components/SupprMark";
 import { SourceDot } from "@/components/ui/SourceDot";
 import { MacroIconRow } from "@/components/nutrition/MacroIconRow";
@@ -541,6 +542,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
   // (cream surface, grabber, thumbnail + macro header, blue accent rows,
   // red Delete). Flag OFF → the prior raw `Alert.alert` path stays alive
   // verbatim. State holds the meal whose row was long-pressed.
+  const cardElevation = useCardElevation();
   const brandedSheets = isFeatureEnabled("redesign_branded_sheets");
   const [actionSheetMeal, setActionSheetMeal] = useState<JournalMeal | null>(null);
 
@@ -576,14 +578,17 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
           it acts on, with a thin bottom border so it reads as a
           section header, not a floating button. */}
       <View
-        style={{
-          backgroundColor: cardColor,
-          borderRadius: Radius.lg,
-          borderWidth: 1,
-          borderColor: cardBorderColor,
-          overflow: "hidden",
-          marginBottom: Spacing.sm,
-        }}
+        style={[
+          {
+            backgroundColor: cardElevation.liftBg ?? cardColor,
+            borderRadius: Radius.lg,
+            borderWidth: cardElevation.useBorder ? 1 : 0,
+            borderColor: cardBorderColor,
+            overflow: "hidden",
+            marginBottom: Spacing.sm,
+          },
+          cardElevation.shadowStyle,
+        ]}
       >
         {showQuickAdd && (
           <View

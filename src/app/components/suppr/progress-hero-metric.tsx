@@ -41,6 +41,8 @@ function adherenceTone(pct: number): {
   return { ring: "var(--warning)", gradientId: "url(#prog-grad-over)", text: "text-warning", label: "Over target" };
 }
 
+import { SupprCard } from "../ui/suppr-card";
+
 export function ProgressHeroMetric({
   adherencePct,
   avgCaloriesPerDay,
@@ -50,9 +52,11 @@ export function ProgressHeroMetric({
 }: ProgressHeroMetricProps) {
   if (adherencePct == null || daysLogged === 0) {
     return (
-      <div
+      <SupprCard
         data-testid="progress-hero-metric"
-        className="flex flex-col items-center py-8 mb-4 rounded-2xl border border-border bg-card"
+        padding="none"
+        radius="xl"
+        className="flex flex-col items-center py-8 mb-4"
       >
         <div
           className="flex items-center justify-center rounded-2xl bg-primary/10"
@@ -66,7 +70,7 @@ export function ProgressHeroMetric({
         <p className="text-sm text-muted-foreground mt-1 text-center" style={{ maxWidth: 280 }}>
           Log meals on Today and we&apos;ll show how closely you&apos;re hitting your targets.
         </p>
-      </div>
+      </SupprCard>
     );
   }
 
@@ -76,9 +80,11 @@ export function ProgressHeroMetric({
   const tone = adherenceTone(adherencePct);
 
   return (
-    <div
+    <SupprCard
       data-testid="progress-hero-metric"
-      className="flex flex-col items-center py-6 mb-3 rounded-2xl border border-border bg-card"
+      padding="none"
+      radius="xl"
+      className="flex flex-col items-center py-6 mb-3"
     >
       <div className="relative" style={{ width: RING_SIZE, height: RING_SIZE }}>
         <svg
@@ -144,6 +150,6 @@ export function ProgressHeroMetric({
         <span>Target {targetCalories.toLocaleString()}</span>
         {streak > 0 && <span>{streak}-day streak</span>}
       </div>
-    </div>
+    </SupprCard>
   );
 }

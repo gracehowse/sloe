@@ -191,6 +191,13 @@ _Web:_
 - When it fires: run a 200ms colour pulse on the calorie ring SVG stroke (green → bright green → green via CSS `@keyframes winPulse`), then a 300ms count-up tween on the centre calorie label using `requestAnimationFrame` (mirror of the `useAnimatedNumber` pattern in `CalorieRing.tsx`).
 - `NutritionTracker.tsx` wires the hook and applies the pulse class via a state bool.
 
+**Landed (web Today, 2026-06-01 — supersedes the green-pulse spec above per `docs/decisions/2026-06-01-design-direction-2026.md`):**
+- Flags are `redesign_motion` (counting hero / odometer) and `redesign_winmoment` (celebration), not the older `design-system-motion-v1` umbrella.
+- `useWebWinMoment` + `<WinMomentPlayer testID="today-win-moment">` are wired in `NutritionTracker.tsx`; the hook's `pulse` threads `NutritionTracker → TodayHeroStats → TodayHeroRing/DesktopHeroStats → DailyRing`.
+- **Counting hero** (`redesign_motion`): `daily-ring.tsx` drives the centre calorie value with the CANONICAL `useOdometer` (`src/lib/useOdometer.ts`, shared 900ms cubic-out curve mobile reads) and renders it at display size (`text-[34px] font-extrabold`). Flag OFF keeps the bespoke `useAnimatedNumber` path + 22px/`font-bold` byte-for-byte.
+- **Gold goal-hit celebration** (`redesign_winmoment`): the ring's progress arc fills with the GOLD gradient (`--accent-win-gradient` → inline `#winGold` SVG `<linearGradient>`: `#F8E08A → #E7C25C → #C99A22`) + a gold glow (`drop-shadow … var(--accent-win)`) + +3 stroke width, ONLY while `celebrating` (`pulse && winEnabled && !isEmpty && !isOverBudget`). The steady three-state ring (empty track / under green / over red) is untouched — the gold is the win-moment override, not a steady-state recolour, keeping the three-role colour law intact.
+- Tests: `tests/unit/dailyRingMotionWinMoment.test.ts` (new) pins both gates + both flag-off fallbacks; `tests/unit/todayWinMomentWiring.test.tsx` pins the composition-root wiring + `data-pulse` thread.
+
 **Feature flag:** `design-system-motion-v1` gates the whole system on both platforms.
 
 **Lottie dependency note:** add `lottie-react-native` to `apps/mobile/package.json` — verify it is already absent before adding; if already present, just import. Confirm Lordicon licence allows commercial use without attribution before committing any pre-made Lottie file.

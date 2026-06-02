@@ -21,6 +21,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useCardElevation } from "@/hooks/useCardElevation";
 import { useHealthSyncOnFocus } from "@/hooks/useHealthSyncOnFocus";
 import { useEntranceAnimation } from "@/hooks/useEntranceAnimation";
 import ReAnimated from "react-native-reanimated";
@@ -404,6 +405,7 @@ export default function TrackerScreen() {
   const { session } = useAuth();
   const userId = session?.user.id;
   const colors = useThemeColors();
+  const cardElevation = useCardElevation();
   // User-configurable macro display variant (Settings → Display →
   // Macro display). `tiles` (default) keeps the 2×2 grid; `bars`
   // renders a vertical list of name + value/target + colored bar.
@@ -413,6 +415,15 @@ export default function TrackerScreen() {
   const [byDay, setByDay] = useState<ByDay>({});
   const [hydrated, setHydrated] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  // ENG-798 (Design Direction 2026) — the quiet daily-commit confirm haptic.
+  // Provided by `useWinMoment` (defined far below in this component, after the
+  // snapshot it needs is computed), so we reach it through a ref: every
+  // log-meal entry point funnels through `persistMealsImmediate`, and firing
+  // the haptic there gives ONE confirm beat per durable commit (no per-call-
+  // site duplication, no double-buzz). The haptic itself is gated behind
+  // `redesign_motion` inside the hook — flag-off keeps today's silent log.
+  const confirmLogHapticRef = useRef<() => void>(() => {});
 
   /**
    * 2026-05-08 data-loss hotfix — fire-and-forget immediate persist of
@@ -484,6 +495,11 @@ export default function TrackerScreen() {
         );
         return false;
       }
+      // ENG-798 — the meal is durably saved: fire ONE quiet confirm haptic for
+      // the commit (gated behind `redesign_motion` in the hook). The loud
+      // SUCCESS notification stays reserved for the win-moment landmark, which
+      // `useWinMoment` fires on its own beat when the calorie/macro goal is hit.
+      confirmLogHapticRef.current();
       return true;
     },
     [userId],
@@ -2995,6 +3011,10 @@ export default function TrackerScreen() {
     isToday,
     ready: hydrated,
   });
+  // Keep the persist-path ref pointed at the latest `confirmLog` so the
+  // commit haptic always reflects the current flag state (the hook returns a
+  // stable callback, but the assignment is cheap + future-proofs a re-bind).
+  confirmLogHapticRef.current = confirmLogHaptic;
 
   // L6 G8 (2026-04-18) — fire `streak_reset` exactly once when the
   // protected streak transitions from >=1 to 0. Ref starts at `null`
@@ -3573,12 +3593,13 @@ export default function TrackerScreen() {
         dateNavLabel: { color: colors.text, ...Type.headline },
 
         card: {
-          backgroundColor: colors.card,
+          backgroundColor: cardElevation.liftBg ?? colors.card,
           borderRadius: Radius.lg,
-          borderWidth: 1,
+          borderWidth: cardElevation.useBorder ? 1 : 0,
           borderColor: colors.border,
           padding: Spacing.lg,
           gap: Spacing.md,
+          ...(cardElevation.shadowStyle ?? {}),
         },
         cardTitle: { color: colors.text, ...Type.headline },
 
@@ -3675,7 +3696,7 @@ export default function TrackerScreen() {
         offlineBannerText: { ...Type.caption, fontWeight: "600", color: colors.text },
 
       }),
-    [colors],
+    [colors, cardElevation],
   );
 
   const loadJournal = useCallback(async () => {
@@ -5375,10 +5396,13 @@ export default function TrackerScreen() {
       {/* ENG-798 — reserved landmark win-moment overlay. Mounts only
           while `useWinMoment` reports an active celebration (calorie
           ring closed at/under target, macro hit, or streak milestone),
-          plays its Lottie once full-bleed, fires `onWinComplete` to
-          unmount. `pointerEvents: none` (set inside WinMomentPlayer)
-          keeps it from blocking taps. Gating + once-per-day logic live
-          in the hook — this is a pure render of its output. */}
+          plays the code-driven gold celebration once full-bleed (gold
+          ring sweep + colour-pulse + odometer + confetti, ~700ms — no
+          Lottie asset; that's ENG-798's content pass), then fires
+          `onWinComplete` to unmount. `pointerEvents: none` (set inside
+          WinMomentPlayer) keeps it from blocking taps. Gating +
+          once-per-day logic + the success haptic live in the hook —
+          this is a pure render of its output. */}
       {winCelebration ? (
         <WinMomentPlayer
           celebration={winCelebration}

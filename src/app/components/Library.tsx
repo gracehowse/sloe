@@ -4,6 +4,7 @@ import { useAppData } from "../../context/AppDataContext.tsx";
 import type { LibraryEntryKind, RecipeCard, UserTier } from "../../types/recipe.ts";
 import { RecipeDetail } from "./RecipeDetail";
 import { RecipeHeroFallback } from "./suppr/RecipeHeroFallback";
+import { SupprCard } from "./ui/suppr-card";
 import { useRouter } from "next/navigation";
 import {
   LIBRARY_FILTER_PILLS,
@@ -386,12 +387,19 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                     }
                   : null,
               ).percent;
+              // Design Direction 2026: flat bg-card border card → SupprCard (flag-gated internally).
               return (
-                <button
+                <SupprCard
                   key={`desktop-${recipe.id}`}
-                  type="button"
+                  role="button"
+                  tabIndex={0}
                   onClick={() => setSelectedRecipe(recipe)}
-                  className="group text-left rounded-2xl bg-card border border-border overflow-hidden cursor-pointer w-full card-elevated hover:shadow-xl hover:shadow-foreground/5 hover:-translate-y-0.5 transition-all"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") setSelectedRecipe(recipe);
+                  }}
+                  padding="none"
+                  radius="xl"
+                  className="group text-left overflow-hidden cursor-pointer w-full hover:shadow-xl hover:shadow-foreground/5 hover:-translate-y-0.5 transition-all"
                 >
                   <div className="relative overflow-hidden" style={{ aspectRatio: "4 / 3" }}>
                     {/* Phase 5 / B5 (2026-04-27) — view-transition-name
@@ -528,7 +536,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                       </button>
                     ) : null}
                   </div>
-                </button>
+                </SupprCard>
               );
             })}
           </div>
@@ -536,10 +544,19 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
           {/* Mobile-web (< md) — legacy layout preserved */}
           <div className="grid grid-cols-1 gap-6 md:hidden">
             {filteredRecipes.map((recipe) => (
-              <div
+              // Design Direction 2026 — mobile-web card routed through SupprCard.
+              // flag-gated internally: elevation ON → soft shadow + no border; OFF → flat border.
+              <SupprCard
                 key={recipe.id}
-                className="group bg-card border border-border rounded-2xl overflow-hidden hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 text-left shadow-lg cursor-pointer"
+                role="button"
+                tabIndex={0}
                 onClick={() => setSelectedRecipe(recipe)}
+                onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") setSelectedRecipe(recipe);
+                  }}
+                padding="none"
+                radius="xl"
+                className="group overflow-hidden hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 text-left cursor-pointer"
               >
                 <div className="relative overflow-hidden">
                   {recipe.image ? (
@@ -635,7 +652,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                   {/* GW-08 (audit 2026-04-28): TrustChip removed; see
                       desktop grid path above for the full rationale. */}
                 </div>
-              </div>
+              </SupprCard>
             ))}
           </div>
         </>

@@ -256,8 +256,8 @@ describe("Today win-moment wiring (gaps #1 + #2)", () => {
     expect(player).toBeInTheDocument();
     expect(player.getAttribute("data-celebration")).toBe("goal-hit");
 
-    // #2 — the calorie ring receives the pulse (green stroke pulse, the
-    //      web analog of mobile's success haptic).
+    // #2 — the calorie ring receives the pulse (gold-gradient celebration
+    //      stroke, the web colour/motion analog of mobile's success haptic).
     expect(ringPulse(getAllByTestId)).toBe("true");
   });
 

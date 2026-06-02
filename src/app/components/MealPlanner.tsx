@@ -26,6 +26,7 @@ import {
   planWeekHeadlineTone,
   type PlanWeekHeadlineTone,
 } from "../../lib/planning/planWeekSummary.ts";
+import { SupprCard } from "./ui/suppr-card";
 import { Dialog, DialogContent, DialogTitle } from "./ui/dialog";
 import { DestructiveConfirmDialog } from "./suppr/destructive-confirm-dialog";
 import { TextPromptDialog } from "./suppr/text-prompt-dialog";
@@ -303,18 +304,12 @@ export const MealPlanner = memo(function MealPlanner({
         : "var(--muted-foreground)";
 
   // ENG-822 (design_system_elevation, Redesign — Design Direction 2026) —
-  // join the plan cards (summary, empty-state, per-day) to the elevation ramp,
-  // mirroring `Settings.tsx` (~L652-655) and the mobile `useCardElevation`
-  // hook the planner twin uses (`apps/mobile/app/(tabs)/planner.tsx`).
-  //   - flag ON  → drop the hairline border, ride the soft `--elev-card-soft`
-  //                shadow (no double edge; web's token is tuned per-theme so a
-  //                single class covers light + dark, unlike RN's dark-only lift).
-  //   - flag OFF → today's `border border-border card-elevated` (static
-  //                `--shadow`), byte-identical to the pre-fix render.
-  const elevation = isFeatureEnabled("design_system_elevation");
-  const cardElevationClass = elevation
-    ? "border-0 shadow-[var(--elev-card-soft)]"
-    : "border border-border card-elevated";
+  // Summary card, empty-state, and per-day kanban cards are now routed
+  // through the canonical SupprCard primitive, which owns the elevation
+  // flag-gate internally (flag ON → soft shadow, border dropped;
+  // flag OFF → prior flat `--elev-card` + hairline, byte-for-byte).
+  // Today-column distinction: tone="primary" on SupprCard gives the tinted bg
+  // + primary border accent in flag-off; flag-on drops the border, tint carries.
 
   // ENG-820 (Plan win-moment) — rising-edge scale pulse when the week first
   // crosses into a 7/7 win, mirroring the mobile one-shot spring at
@@ -680,10 +675,11 @@ export const MealPlanner = memo(function MealPlanner({
           diagnosis + Shopping list / Regenerate CTAs. Hidden when no
           plan exists; the bottom CTA row takes over. */}
       {showSummaryCard && summary ? (
-        <div
+        <SupprCard
           data-testid="planner-week-summary-card"
-          className={`rounded-2xl bg-card mb-4 ${cardElevationClass}`}
-          style={{ padding: 16 }}
+          padding="lg"
+          radius="xl"
+          className="mb-4"
         >
           {/* ENG-820 — one-shot scale-pulse keyframe for the win rising edge.
               Scoped inline (mirrors `AppLoadingSkeleton`) so no theme.css edit
@@ -762,7 +758,7 @@ export const MealPlanner = memo(function MealPlanner({
               Regenerate
             </button>
           </div>
-        </div>
+        </SupprCard>
       ) : null}
 
       {/* F2-G (2026-04-28): named-slot switcher. Mobile parity at
@@ -973,9 +969,11 @@ export const MealPlanner = memo(function MealPlanner({
       </div>
 
       {isPlanEmpty ? (
-        <div
+        <SupprCard
           data-testid="planner-empty-state"
-          className={`flex flex-col items-center justify-center rounded-2xl bg-card ${cardElevationClass}`}
+          padding="none"
+          radius="xl"
+          className="flex flex-col items-center justify-center"
           style={{ padding: "48px 24px", minHeight: 320 }}
         >
           <div
@@ -1018,7 +1016,7 @@ export const MealPlanner = memo(function MealPlanner({
               <span className="font-semibold text-foreground">Library &amp; discovery</span> above to use Suppr&apos;s recipes.
             </p>
           ) : null}
-        </div>
+        </SupprCard>
       ) : (
       <div
         data-testid="planner-desktop-kanban"
@@ -1060,33 +1058,20 @@ export const MealPlanner = memo(function MealPlanner({
             }
           });
           return (
-            <div
+            // ENG-822 — routed through the canonical SupprCard so the
+            // elevation flag is owned by the primitive (flag ON → soft
+            // shadow + border dropped; flag OFF → `--elev-card` + hairline,
+            // byte-for-byte). Today-column: tone="primary" gives the
+            // `bg-primary/[0.08]` tint; flag-OFF also surfaces a primary
+            // border accent via SupprCard's primary-tone borderColor
+            // (`--north-star-border`), replacing the prior `border-primary/30`.
+            // Normal columns stay tone="neutral" (default bg-card + border-border).
+            <SupprCard
               key={`day-${dp.day}`}
-              // Audit 2026-04-30 visual-qa P1 #13 — moved spacing
-              // tokens from inline style (`padding: 14`, `gap: 10`)
-              // to Tailwind utilities (`p-3.5`, `gap-2.5`) so spacing
-              // is consistent with the rest of the system and easier
-              // to track via the design tokens.
-              // ENG-822 — under `design_system_elevation` the soft shadow
-              // carries the card separation and the hairline border is dropped
-              // (`border-0` + `shadow-[var(--elev-card-soft)]`). The today-column
-              // distinction then rests on the existing `bg-primary/10` tint (the
-              // `border-primary/30` accent becomes a no-op under `border-0`,
-              // which is acceptable — the tint already reads as "today"). Flag
-              // OFF keeps the prior `border + card-elevated` + per-state border
-              // colour byte-for-byte (the per-day card supplies its own single
-              // border-colour class, so it can't use `cardElevationClass`'s
-              // bundled `border-border` without a colour conflict on the today
-              // column).
-              className={`rounded-2xl flex flex-col p-3.5 gap-2.5 ${
-                elevation
-                  ? isTodayCol
-                    ? "border-0 shadow-[var(--elev-card-soft)] bg-primary/10"
-                    : "border-0 shadow-[var(--elev-card-soft)] bg-card"
-                  : isTodayCol
-                    ? "border border-primary/30 card-elevated bg-primary/10"
-                    : "border border-border card-elevated bg-card"
-              }`}
+              padding="none"
+              radius="xl"
+              tone={isTodayCol ? "primary" : "neutral"}
+              className="flex flex-col p-3.5 gap-2.5"
             >
               <div className="flex items-center justify-between">
                 <p className="text-foreground" style={{ fontSize: 13, fontWeight: 700 }}>
@@ -1453,7 +1438,7 @@ export const MealPlanner = memo(function MealPlanner({
                   </div>
                 );
               })()}
-            </div>
+            </SupprCard>
           );
         })}
       </div>
