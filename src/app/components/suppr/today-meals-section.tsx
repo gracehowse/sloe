@@ -17,7 +17,6 @@ import { SourceDot } from "../ui/source-dot";
 import { mapMealSourceToDot } from "../../../lib/nutrition/sourceMap";
 import { formatMacroTrailer } from "../../../lib/nutrition/macroFormat";
 import { distributeMealBudget } from "../../../lib/nutrition/mealBudget";
-import { scaledMacro } from "../../../lib/nutrition/portionMultiplier";
 import { DestructiveConfirmDialog } from "./destructive-confirm-dialog";
 import {
   Dialog,
@@ -344,7 +343,11 @@ export function TodayMealsSection({
           // today but this mirrors the pre-H3 source exactly.
           const consumed: Record<string, number> = {};
           for (const gm of mealsGrouped) {
-            const cals = gm.meals.reduce((a, m) => a + scaledMacro(m.calories, m.portionMultiplier ?? 1), 0);
+            // ENG-785: sum RAW m.calories — storage is already baked at
+            // the entry's portion (F-70 convention), so re-applying the
+            // portion multiplier here double-counts. The per-row display
+            // (line ~526) and the day total both sum raw; match them.
+            const cals = gm.meals.reduce((a, m) => a + m.calories, 0);
             if (cals > 0) consumed[gm.name] = cals;
           }
           distributeMealBudget(effectiveCalorieTarget, fiberTarget, consumed);
@@ -387,7 +390,9 @@ export function TodayMealsSection({
                   <p className="text-[11px] text-muted-foreground">{sectionMeals.length} item{sectionMeals.length !== 1 ? "s" : ""}</p>
                 </div>
                 <span className="text-sm font-semibold text-muted-foreground tabular-nums">
-                  {Math.round(sectionMeals.reduce((sum, m) => sum + scaledMacro(m.calories, m.portionMultiplier ?? 1), 0))}
+                  {/* ENG-785: raw sum — storage is baked at portion (F-70);
+                      re-scaling here double-counts vs the per-row + day total. */}
+                  {Math.round(sectionMeals.reduce((sum, m) => sum + m.calories, 0))}
                 </span>
                 <span className="text-[10px] text-muted-foreground mr-1">kcal</span>
                 {/* Ship M1 — `Log usual: {name}` pill on slot headers with
