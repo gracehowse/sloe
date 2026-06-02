@@ -65,6 +65,12 @@ export const AnalyticsEvents = {
   pricing_page_viewed: "pricing_page_viewed",
   recipe_page_viewed: "recipe_page_viewed",
   onboarding_completed: "onboarding_completed",
+  /** ENG-792 — fires when the onboarding seed-save upsert fails, so a user
+   *  stranded at 0 saved recipes is queryable instead of console.warn-only
+   *  (the result used to be discarded at both call sites). Payload:
+   *  `{ flow, error, attempted }`. Pairs with `recipes_saved` on
+   *  `onboarding_completed` (resolved vs actually-saved). Web + mobile. */
+  onboarding_seed_save_failed: "onboarding_seed_save_failed",
   /** ENG-1 — fires once when a new user first sees the Welcome step
    *  (not on refresh-plan flow). Payload: `{ platform: "web" | "mobile" }`.
    *  Used as the funnel entry event for onboarding completion rate. */
