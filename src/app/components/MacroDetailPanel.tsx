@@ -70,8 +70,19 @@ type BreakdownMode = "meal" | "ingredient";
  */
 export function getMacroValue(meal: MacroMeal, macro: MacroKey): number {
   if (macro === "fiber") {
-    const v = meal.fiberG ?? meal.fiber ?? 0;
-    return typeof v === "number" ? v : Number(v) || 0;
+    const raw = meal.fiberG ?? meal.fiber ?? 0;
+    const direct = typeof raw === "number" ? raw : Number(raw) || 0;
+    if (direct > 0) return direct;
+    // ENG-732 — fall back to micros.fiberG. Health / dense-log entries store
+    // fibre only in the micros map, not as a top-level column; without this
+    // the breakdown under-reports vs the day total + mobile, which both use
+    // the shared `mealContributedFiberG`. `micros` isn't part of MacroMeal's
+    // index signature, so read it defensively.
+    const micros = (meal as { micros?: Record<string, number> | null }).micros;
+    const fromMicro = micros?.fiberG;
+    return typeof fromMicro === "number" && Number.isFinite(fromMicro)
+      ? Math.max(0, fromMicro)
+      : 0;
   }
   const v = meal[macro] ?? 0;
   return typeof v === "number" ? v : Number(v) || 0;
