@@ -35,10 +35,19 @@ describe("Meal plan 'Recipe removed' badge — web/mobile parity", () => {
   });
 
   it("both surfaces detect a stale recipeId per meal-card render", () => {
-    // Web uses `recipeMissing`; mobile inlines the check inside the JSX.
+    // ENG-766: the stale-recipeId check (plus placeholder + hydration
+    // gating) is now single-sourced in `shouldShowRecipeRemovedBadge`
+    // (src/lib/nutrition/recipeRemovedBadge.ts) so web + mobile can't drift.
+    for (const src of [WEB_SRC, MOBILE_SRC]) {
+      expect(src).toMatch(/shouldShowRecipeRemovedBadge\(/);
+      expect(src).toMatch(/knownRecipeIds/);
+    }
     expect(WEB_SRC).toMatch(/recipeMissing/);
-    expect(WEB_SRC).toMatch(/!knownRecipeIds\.has\(recipeId/);
-    expect(MOBILE_SRC).toMatch(/!knownRecipeIds\.has\(meal\.recipeId\)/);
+    const HELPER = readFileSync(
+      resolve(__dirname, "../../src/lib/nutrition/recipeRemovedBadge.ts"),
+      "utf8",
+    );
+    expect(HELPER).toMatch(/!knownRecipeIds\.has\(recipeId\)/);
   });
 
   it("both surfaces render a 'Recipe removed' badge with a matching test id", () => {
@@ -58,10 +67,17 @@ describe("Meal plan 'Recipe removed' badge — web/mobile parity", () => {
     expect(MOBILE_SRC).toMatch(/accessibilityLabel="Recipe no longer in your library"/);
   });
 
-  it("the badge does not render for empty/placeholder slots (no recipeId at all)", () => {
-    // Both surfaces gate the badge behind a truthy recipeId — the
-    // condition must include `recipeId` (web) / `meal.recipeId` (mobile).
-    expect(WEB_SRC).toMatch(/Boolean\(recipeId\)\s*&&\s*!knownRecipeIds\.has/);
-    expect(MOBILE_SRC).toMatch(/meal\.recipeId\s*&&\s*!knownRecipeIds\.has/);
+  it("the badge is gated on a real recipe + a hydrated library (placeholder/loading stay silent)", () => {
+    // Both surfaces pass hasRecipe + recipeId into the shared helper, which
+    // returns false for placeholder rows (no recipe / no id) AND during
+    // hydration (libraryLoaded false — the ENG-766 flash fix).
+    expect(WEB_SRC).toMatch(/hasRecipe:\s*Boolean\(recipeId\)/);
+    expect(MOBILE_SRC).toMatch(/hasRecipe:\s*planMealHasRecipe\(meal\)/);
+    const HELPER = readFileSync(
+      resolve(__dirname, "../../src/lib/nutrition/recipeRemovedBadge.ts"),
+      "utf8",
+    );
+    expect(HELPER).toMatch(/if \(!libraryLoaded\) return false/);
+    expect(HELPER).toMatch(/if \(!hasRecipe \|\| !recipeId\) return false/);
   });
 });

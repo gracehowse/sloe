@@ -15,6 +15,7 @@ import {
 import { toast } from "sonner";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { isMealPlanPlaceholderLikeTitle } from "../../lib/nutrition/portionMultiplier.ts";
+import { shouldShowRecipeRemovedBadge } from "../../lib/nutrition/recipeRemovedBadge.ts";
 import {
   isSameCalendarDay,
   planCalendarDateForIndex,
@@ -1208,8 +1209,16 @@ export const MealPlanner = memo(function MealPlanner({
                 // half-rendering. Placeholder rows (`isPlaceholder`)
                 // intentionally have no recipeId; that case stays
                 // silent.
-                const recipeMissing =
-                  Boolean(recipeId) && !knownRecipeIds.has(recipeId as string);
+                // ENG-766 — gate on the library being hydrated (a non-empty
+                // known-id set) so a row never flashes "Recipe removed"
+                // before the recipe pool loads. AppDataContext exposes no
+                // loading flag, so `size > 0` is the hydrated proxy.
+                const recipeMissing = shouldShowRecipeRemovedBadge({
+                  hasRecipe: Boolean(recipeId),
+                  recipeId,
+                  knownRecipeIds,
+                  libraryLoaded: knownRecipeIds.size > 0,
+                });
                 // F2-E (2026-04-28): per-meal portion-multiplier
                 // badge. Hidden at 1× (the silent default) so cards
                 // stay clean when no portion adjustment was made.
