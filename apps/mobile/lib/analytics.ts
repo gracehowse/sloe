@@ -131,6 +131,18 @@ export function getPostHogClient(): PostHog | null {
     },
   });
 
+  // ENG-841 — `new PostHog(...)` kicks off an async bootstrap that reads
+  // persisted flags / distinct-id from AsyncStorage. If that read rejects
+  // (storage unavailable, or a node/jsdom test env where the RN globals are
+  // absent) the floating promise surfaces as an UNHANDLED rejection — Sentry
+  // noise in production, and a post-test rejection that fails the mobile CI
+  // job under vitest even when every test passes. Attach a catch to the
+  // readiness promise so the bootstrap can never leak; `isFeatureEnabled`
+  // simply falls back to its defaults until flags load.
+  void client.ready?.().catch(() => {
+    /* bootstrap failed — flags fall back to defaults, never an unhandled rejection */
+  });
+
   return client;
 }
 
