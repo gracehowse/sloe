@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/>
+<style>
+  :root{
+    --bg:#fbfaf6; --card:#ffffff; --text:#1a1714; --text2:#5b554b; --text3:#8a8377;
+    --line:#ebe7dc;
+    --blue:#588CE4; --green:#56A775; --amber:#F78A32; --magenta:#DF5EBC; --carbs:#E8721E; --gold:#C99A22;
+    --shadow:0 4px 14px rgba(28,25,22,.07);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{background:#000;height:100%;}
+  body{display:flex;align-items:center;justify-content:center;padding:24px;
+    font-family:-apple-system,"SF Pro Text","Inter",system-ui,sans-serif;-webkit-font-smoothing:antialiased;font-feature-settings:"tnum" 1;}
+  .phone{width:390px;height:844px;border-radius:54px;background:#000;padding:11px;box-shadow:0 30px 80px rgba(0,0,0,.6),0 0 0 2px #1c1c1f;position:relative;}
+  .screen{width:100%;height:100%;border-radius:43px;overflow:hidden;background:var(--bg);position:relative;color:var(--text);display:flex;flex-direction:column;}
+  .island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:118px;height:33px;background:#000;border-radius:20px;z-index:30;}
+  .status{height:54px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 28px 6px;font-size:15px;font-weight:600;}
+  .status .icons{display:flex;align-items:center;gap:6px;}
+  .bar{width:17px;height:11px;border:1.6px solid var(--text);border-radius:3px;position:relative;}
+  .bar::after{content:"";position:absolute;inset:1.5px;right:5px;background:var(--green);border-radius:1px;}
+  .content{flex:1;overflow:hidden;padding:4px 20px 0;}
+  .head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .nav{display:flex;align-items:center;gap:10px;}
+  .chev{width:36px;height:36px;border-radius:11px;background:var(--card);box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;}
+  .title{font-size:23px;font-weight:700;letter-spacing:-.5px;}
+  .avatar{width:36px;height:36px;border-radius:50%;background:#4a443c;color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;}
+  .week{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+  .day{display:flex;flex-direction:column;align-items:center;gap:7px;flex:1;}
+  .dow{font-size:11px;font-weight:600;color:var(--text3);}
+  .dom{font-size:16px;font-weight:600;color:var(--text);width:30px;height:30px;display:flex;align-items:center;justify-content:center;}
+  .day.sel .dow{color:var(--blue);}
+  .day.sel .dom{background:var(--blue);color:#fff;border-radius:50%;font-weight:700;}
+  .cal{width:30px;height:30px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;margin-left:4px;}
+  .card{background:var(--card);border-radius:20px;box-shadow:var(--shadow);}
+  .hero{padding:24px 20px 18px;margin-bottom:14px;display:flex;flex-direction:column;align-items:center;}
+  .ringwrap{position:relative;width:188px;height:188px;margin-bottom:6px;}
+  .ringcenter{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+  .kcal{font-size:42px;font-weight:800;letter-spacing:-1.4px;line-height:40px;}
+  .kclbl{font-size:11px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--text3);margin-top:7px;}
+  .kcsub{font-size:13px;color:var(--text2);margin-top:4px;}
+  .over{display:inline-block;margin-top:12px;font-size:13px;font-weight:700;color:var(--amber);background:rgba(247,138,50,.10);padding:5px 12px;border-radius:99px;}
+  .stats{display:flex;justify-content:space-around;width:100%;border-top:1px solid var(--line);padding-top:16px;margin-top:18px;}
+  .stat{display:flex;flex-direction:column;align-items:center;gap:4px;}
+  .stat .l{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--text3);}
+  .stat .v{font-size:19px;font-weight:700;}
+  .tdee{align-self:center;font-size:12.5px;font-weight:600;color:var(--blue);background:rgba(88,140,228,.10);padding:7px 14px;border-radius:99px;margin:0 auto 16px;display:block;width:max-content;}
+  .macros{padding:18px;margin-bottom:14px;}
+  .mrow{margin-bottom:15px;}
+  .mrow:last-child{margin-bottom:0;}
+  .mtop{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;}
+  .mname{font-size:12px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--text2);}
+  .mval{font-size:15px;font-weight:700;color:var(--text);}
+  .mval .g{color:var(--text3);font-weight:500;font-size:13.5px;}
+  .mval .tag{font-size:12.5px;font-weight:600;margin-left:3px;}
+  .track{height:7px;border-radius:99px;background:#efece4;overflow:hidden;}
+  .fill{height:100%;border-radius:99px;}
+  .meal{padding:15px 16px;display:flex;align-items:center;gap:13px;}
+  .micon{width:42px;height:42px;border-radius:12px;background:rgba(243,195,54,.16);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+  .mbody{flex:1;}
+  .mt{font-size:16px;font-weight:700;}
+  .mmeta{font-size:12.5px;color:var(--text2);margin-top:3px;}
+  .tabs{height:84px;border-top:1px solid var(--line);display:flex;align-items:flex-start;justify-content:space-around;padding:11px 14px 0;position:relative;background:var(--bg);}
+  .tab{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10px;color:var(--text3);flex:1;}
+  .tab.active{color:var(--blue);}
+  .fab{position:absolute;top:-16px;left:50%;transform:translateX(-50%);width:56px;height:56px;border-radius:50%;background:var(--blue);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px rgba(88,140,228,.45);}
+  svg{display:block;}
+</style></head>
+<body>
+<div class="phone"><div class="island"></div><div class="screen">
+  <div class="status"><span>9:41</span><span class="icons">
+    <svg width="18" height="12" viewBox="0 0 18 12"><g fill="#1a1714"><rect x="0" y="7" width="3" height="5" rx="1"/><rect x="5" y="4.5" width="3" height="7.5" rx="1"/><rect x="10" y="2" width="3" height="10" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></g></svg>
+    <svg width="17" height="12" viewBox="0 0 17 12" fill="none"><path d="M1 4.2C4.5 1 12.5 1 16 4.2M3.4 6.8C6 4.6 11 4.6 13.6 6.8M5.8 9.3C7.2 8.2 9.8 8.2 11.2 9.3" stroke="#1a1714" stroke-width="1.5" stroke-linecap="round"/></svg>
+    <span class="bar"></span></span></div>
+
+  <div class="content">
+    <div class="head">
+      <div class="nav">
+        <div class="chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a1714" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></div>
+        <span class="title">Today</span>
+        <div class="chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a1714" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></div>
+      </div>
+      <div class="avatar">G</div>
+    </div>
+
+    <div class="week">
+      <div class="day sel"><span class="dow">Mon</span><span class="dom">1</span></div>
+      <div class="day"><span class="dow">Tue</span><span class="dom">2</span></div>
+      <div class="day"><span class="dow">Wed</span><span class="dom">3</span></div>
+      <div class="day"><span class="dow">Thu</span><span class="dom">4</span></div>
+      <div class="day"><span class="dow">Fri</span><span class="dom">5</span></div>
+      <div class="day"><span class="dow">Sat</span><span class="dom">6</span></div>
+      <div class="day"><span class="dow">Sun</span><span class="dom">7</span></div>
+      <div class="cal"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#588CE4" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M3 9h18M8 2v4M16 2v4"/></svg></div>
+    </div>
+
+    <!-- hero -->
+    <div class="card hero">
+      <div class="ringwrap">
+        <svg width="188" height="188" viewBox="0 0 200 200">
+          <circle cx="100" cy="100" r="86" fill="none" stroke="#f0ede5" stroke-width="15"/>
+          <circle cx="100" cy="100" r="86" fill="none" stroke="#F78A32" stroke-width="15" stroke-linecap="round" stroke-dasharray="540 0" transform="rotate(-90 100 100)"/>
+        </svg>
+        <div class="ringcenter">
+          <div class="kcal">1,292</div>
+          <div class="kclbl">logged</div>
+          <div class="kcsub">of 901 kcal</div>
+        </div>
+      </div>
+      <span class="over">391 over today</span>
+      <div class="stats">
+        <div class="stat"><span class="l">Goal</span><span class="v">901</span></div>
+        <div class="stat"><span class="l">Food</span><span class="v" style="color:#56A775">1,292</span></div>
+        <div class="stat"><span class="l">Bonus</span><span class="v" style="color:#C99A22">0</span></div>
+      </div>
+    </div>
+
+    <span class="tdee">Adaptive TDEE learning · 6 of 7 days</span>
+
+    <!-- macros -->
+    <div class="card macros">
+      <div class="mrow">
+        <div class="mtop"><span class="mname">Protein</span><span class="mval">52<span class="g"> / 101 g</span><span class="tag" style="color:#8a8377">· 49 left</span></span></div>
+        <div class="track"><div class="fill" style="width:51%;background:#588CE4"></div></div>
+      </div>
+      <div class="mrow">
+        <div class="mtop"><span class="mname">Carbs</span><span class="mval">122<span class="g"> / 68 g</span><span class="tag" style="color:#F78A32">· 54 over</span></span></div>
+        <div class="track"><div class="fill" style="width:100%;background:#E8721E"></div></div>
+      </div>
+      <div class="mrow">
+        <div class="mtop"><span class="mname">Fat</span><span class="mval">36<span class="g"> / 25 g</span><span class="tag" style="color:#F78A32">· 11 over</span></span></div>
+        <div class="track"><div class="fill" style="width:100%;background:#DF5EBC"></div></div>
+      </div>
+      <div class="mrow">
+        <div class="mtop"><span class="mname">Fibre</span><span class="mval">6<span class="g"> / 15 g</span><span class="tag" style="color:#8a8377">· 9 left</span></span></div>
+        <div class="track"><div class="fill" style="width:40%;background:#56A775"></div></div>
+      </div>
+    </div>
+
+    <!-- meal -->
+    <div class="card meal">
+      <div class="micon">☕</div>
+      <div class="mbody">
+        <div class="mt">Breakfast</div>
+        <div class="mmeta">217 kcal · 12g P · 20g C · 9g F</div>
+      </div>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8a8377" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#588CE4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/></svg>Today</div>
+    <div class="tab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8a8377" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>Plan</div>
+    <div class="tab" style="flex:0 0 56px;"></div>
+    <div class="tab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8a8377" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h13a3 3 0 0 1 3 3v13H7a3 3 0 0 1-3-3z"/><path d="M4 4v13a3 3 0 0 0 3 3"/></svg>Recipes</div>
+    <div class="tab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8a8377" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5M4 19h16M8 15v-3M12 15V8M16 15v-5"/></svg>Progress</div>
+    <div class="fab"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div>
+  </div>
+</div></div>
+</body></html>

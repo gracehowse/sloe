@@ -72,9 +72,27 @@ function flagForceOverride(flag: string): boolean | null {
  *
  *  Stage E (onboarding v2) uses this to decide whether to redirect
  *  /onboarding → /onboarding/v2. */
+/** Redesign 2026 flag set — the new design is the DEFAULT in every build
+ *  (Grace 2026-06-01: "turn everything on; never flag-gate again"). These
+ *  resolve ON regardless of PostHog rollout state; the PostHog rows survive
+ *  only as emergency kill switches via `isFeatureDisabled`. An explicit
+ *  dev/test force (above) still wins, so pre-redesign captures keep working.
+ *  Keep in sync with the same set in `apps/mobile/lib/analytics.ts`. */
+const REDESIGN_DEFAULT_ON = new Set<string>([
+  "design_system_elevation",
+  "design_system_colours",
+  "design_system_brandmark",
+  "design_system_icons",
+  "redesign_winmoment",
+  "redesign_motion",
+  "redesign_branded_sheets",
+  "redesign_search_results",
+]);
+
 export function isFeatureEnabled(flag: string): boolean {
   const forced = flagForceOverride(flag);
   if (forced !== null) return forced;
+  if (REDESIGN_DEFAULT_ON.has(flag)) return true;
   if (!process.env.NEXT_PUBLIC_POSTHOG_KEY) return false;
   try {
     return posthog.isFeatureEnabled(flag) === true;

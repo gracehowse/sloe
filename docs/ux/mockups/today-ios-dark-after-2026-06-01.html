@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root{
+    --bg:#0f0e12; --card:#1a181f; --cardEl:#221f29; --border:#2a2630; --borderStrong:#3a3640;
+    --text:#ece8df; --text2:#a39d92; --text3:#6e695f;
+    --blue:#588CE4; --blueLt:#7BA3EA; --green:#56A775; --amber:#E8721E; --magenta:#DF5EBC; --orange:#F78A32;
+    --purple:#9679D9;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{background:#000; height:100%;}
+  body{
+    display:flex; align-items:center; justify-content:center; padding:24px;
+    font-family:-apple-system,"SF Pro Text","Inter",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased; font-feature-settings:"tnum" 1;
+  }
+  .phone{
+    width:390px; height:844px; border-radius:54px; background:#000;
+    padding:11px; box-shadow:0 30px 80px rgba(0,0,0,.6), 0 0 0 2px #1c1c1f;
+    position:relative;
+  }
+  .screen{
+    width:100%; height:100%; border-radius:43px; overflow:hidden;
+    background:var(--bg); position:relative; color:var(--text);
+    display:flex; flex-direction:column;
+  }
+  .island{position:absolute; top:11px; left:50%; transform:translateX(-50%); width:118px; height:33px; background:#000; border-radius:20px; z-index:30;}
+  /* status bar */
+  .status{height:54px; display:flex; align-items:flex-end; justify-content:space-between; padding:0 28px 6px; font-size:15px; font-weight:600; letter-spacing:.3px;}
+  .status .icons{display:flex; align-items:center; gap:6px;}
+  .bar{width:17px; height:11px; border:1.6px solid var(--text); border-radius:3px; position:relative;}
+  .bar::after{content:""; position:absolute; inset:1.5px; right:4px; background:var(--text); border-radius:1px;}
+  /* content */
+  .content{flex:1; overflow:hidden; padding:6px 20px 0;}
+  /* header */
+  .head{display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;}
+  .brand{display:flex; align-items:center; gap:9px;}
+  .brand .wm{font-size:16px; font-weight:700; letter-spacing:-.2px;}
+  .head .right{display:flex; align-items:center; gap:12px;}
+  .iconbtn{width:34px; height:34px; border-radius:10px; background:var(--card); border:1px solid var(--border); display:flex; align-items:center; justify-content:center;}
+  .avatar{width:34px; height:34px; border-radius:50%; background:linear-gradient(135deg,#588CE4,#9679D9); display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700; color:#fff;}
+  .title{font-size:24px; font-weight:700; letter-spacing:-.5px; line-height:28px;}
+  .sub{font-size:13px; color:var(--text2); margin-top:2px;}
+  /* hero card */
+  .card{background:var(--cardEl); border:1px solid var(--border); border-radius:18px;}
+  .hero{padding:18px 20px 20px; margin-bottom:13px; display:flex; flex-direction:column; align-items:center;}
+  .ringwrap{position:relative; width:200px; height:200px;}
+  .ringcenter{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;}
+  .kcal{font-size:48px; font-weight:800; letter-spacing:-1.6px; line-height:46px;}
+  .kcalsub{font-size:10px; font-weight:700; letter-spacing:.4px; text-transform:uppercase; color:var(--text3); margin-top:7px;}
+  .leftpill{margin-top:14px; display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text2);}
+  .dot{width:5px; height:5px; border-radius:50%; background:var(--text3);}
+  /* up next */
+  .upnext{padding:13px 14px; margin-bottom:13px; display:flex; align-items:center; gap:11px;}
+  .lbl{font-size:11px; font-weight:700; letter-spacing:.9px; text-transform:uppercase; color:var(--text3);}
+  .thumb{width:46px; height:46px; border-radius:11px; background:linear-gradient(135deg,#2a3a2f,#1f2a24); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:21px;}
+  .un-body{flex:1; min-width:0;}
+  .un-title{font-size:14.5px; font-weight:600; letter-spacing:-.2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .un-meta{font-size:12px; color:var(--text2); margin-top:3px; display:flex; align-items:center; gap:6px; white-space:nowrap;}
+  .fit{display:inline-flex; align-items:center; gap:4px; color:var(--green); font-weight:700;}
+  .logbtn{background:var(--blue); color:#fff; font-size:12.5px; font-weight:700; padding:8px 14px; border-radius:10px; flex-shrink:0;}
+  /* macros */
+  .macros{padding:14px 18px 16px;}
+  .mrow{margin-bottom:12px;}
+  .mrow:last-child{margin-bottom:0;}
+  .mtop{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:8px;}
+  .mname{font-size:14px; font-weight:600;}
+  .mval{font-size:14px; font-weight:700;}
+  .mval span{color:var(--text3); font-weight:500;}
+  .track{height:6px; border-radius:99px; background:rgba(255,255,255,.06); overflow:hidden;}
+  .fill{height:100%; border-radius:99px;}
+  /* tab bar */
+  .tabs{height:84px; border-top:1px solid var(--border); display:flex; align-items:flex-start; justify-content:space-around; padding:11px 14px 0; position:relative; background:var(--bg);}
+  .tab{display:flex; flex-direction:column; align-items:center; gap:4px; font-size:10px; color:var(--text3); flex:1;}
+  .tab.active{color:var(--blueLt);}
+  .fab{position:absolute; top:-16px; left:50%; transform:translateX(-50%); width:56px; height:56px; border-radius:50%; background:var(--blue); display:flex; align-items:center; justify-content:center; box-shadow:0 8px 20px rgba(88,140,228,.5);}
+  svg{display:block;}
+</style>
+</head>
+<body>
+  <div class="phone">
+    <div class="island"></div>
+    <div class="screen">
+      <div class="status">
+        <span>9:41</span>
+        <span class="icons">
+          <svg width="18" height="12" viewBox="0 0 18 12"><g fill="#ece8df"><rect x="0" y="7" width="3" height="5" rx="1"/><rect x="5" y="4.5" width="3" height="7.5" rx="1"/><rect x="10" y="2" width="3" height="10" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></g></svg>
+          <svg width="17" height="12" viewBox="0 0 17 12" fill="none"><path d="M1 4.2C4.5 1 12.5 1 16 4.2M3.4 6.8C6 4.6 11 4.6 13.6 6.8M5.8 9.3C7.2 8.2 9.8 8.2 11.2 9.3" stroke="#ece8df" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <span class="bar"></span>
+        </span>
+      </div>
+
+      <div class="content">
+        <div class="head">
+          <div class="brand">
+            <svg width="20" height="20" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8" fill="none" stroke="#ece8df" stroke-width="2.2" stroke-dasharray="38 12" stroke-linecap="round" transform="rotate(-90 10 10)"/><circle cx="10" cy="10" r="3.4" fill="none" stroke="#ece8df" stroke-width="2.2"/></svg>
+            <span class="wm">Suppr</span>
+          </div>
+          <div class="right">
+            <div class="iconbtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a39d92" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M3 9h18M8 2v4M16 2v4"/></svg></div>
+            <div class="avatar">G</div>
+          </div>
+        </div>
+
+        <div style="margin-bottom:18px;">
+          <div class="title">Today</div>
+          <div class="sub">Tuesday, 2 June · Good evening</div>
+        </div>
+
+        <!-- hero -->
+        <div class="card hero">
+          <div class="ringwrap">
+            <svg width="200" height="200" viewBox="0 0 260 260">
+              <g transform="rotate(-90 130 130)">
+                <!-- tracks -->
+                <circle cx="130" cy="130" r="104" fill="none" stroke="rgba(255,255,255,.05)" stroke-width="13"/>
+                <circle cx="130" cy="130" r="86"  fill="none" stroke="rgba(255,255,255,.05)" stroke-width="9"/>
+                <circle cx="130" cy="130" r="70"  fill="none" stroke="rgba(255,255,255,.05)" stroke-width="9"/>
+                <circle cx="130" cy="130" r="54"  fill="none" stroke="rgba(255,255,255,.05)" stroke-width="9"/>
+                <!-- arcs -->
+                <circle cx="130" cy="130" r="104" fill="none" stroke="#56A775" stroke-width="13" stroke-linecap="round" stroke-dasharray="431 223"/>
+                <circle cx="130" cy="130" r="86"  fill="none" stroke="#588CE4" stroke-width="9"  stroke-linecap="round" stroke-dasharray="384 157"/>
+                <circle cx="130" cy="130" r="70"  fill="none" stroke="#E8721E" stroke-width="9"  stroke-linecap="round" stroke-dasharray="242 198"/>
+                <circle cx="130" cy="130" r="54"  fill="none" stroke="#DF5EBC" stroke-width="9"  stroke-linecap="round" stroke-dasharray="149 190"/>
+              </g>
+            </svg>
+            <div class="ringcenter">
+              <div class="kcal">730</div>
+              <div class="kcalsub">left</div>
+            </div>
+          </div>
+          <div class="leftpill"><b style="color:var(--text); font-weight:700">1,420</b><span>of 2,150 logged</span><span class="dot"></span><span style="color:var(--green); font-weight:700">on track</span></div>
+        </div>
+
+        <!-- up next / fit chip -->
+        <div class="card upnext">
+          <div class="thumb">🥗</div>
+          <div class="un-body">
+            <div class="lbl" style="margin-bottom:4px;">Up next · dinner</div>
+            <div class="un-title">Salmon &amp; spring greens</div>
+            <div class="un-meta"><span class="fit">✓ 96% fit</span><span class="dot"></span>540 kcal · 41g P</div>
+            <!-- meta one line -->
+          </div>
+          <div class="logbtn">Log</div>
+        </div>
+
+        <!-- macros -->
+        <div class="card macros">
+          <div class="mrow">
+            <div class="mtop"><span class="mname">Protein</span><span class="mval" style="color:#588CE4">70<span> / 98 g</span></span></div>
+            <div class="track"><div class="fill" style="width:71%; background:#588CE4"></div></div>
+          </div>
+          <div class="mrow">
+            <div class="mtop"><span class="mname">Carbs</span><span class="mval" style="color:#E8721E">64<span> / 116 g</span></span></div>
+            <div class="track"><div class="fill" style="width:55%; background:#E8721E"></div></div>
+          </div>
+          <div class="mrow">
+            <div class="mtop"><span class="mname">Fat</span><span class="mval" style="color:#DF5EBC">18<span> / 41 g</span></span></div>
+            <div class="track"><div class="fill" style="width:44%; background:#DF5EBC"></div></div>
+          </div>
+          <div class="mrow">
+            <div class="mtop"><span class="mname">Fibre</span><span class="mval" style="color:#56A775">9<span> / 27 g</span></span></div>
+            <div class="track"><div class="fill" style="width:33%; background:#56A775"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- tab bar -->
+      <div class="tabs">
+        <div class="tab active">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#7BA3EA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>
+          Today
+        </div>
+        <div class="tab">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6e695f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>
+          Plan
+        </div>
+        <div class="tab" style="flex:0 0 56px;"></div>
+        <div class="tab">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6e695f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h13a3 3 0 0 1 3 3v13H7a3 3 0 0 1-3-3z"/><path d="M4 4v13a3 3 0 0 0 3 3"/></svg>
+          Recipes
+        </div>
+        <div class="tab">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6e695f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5M4 19h16M8 15v-3M12 15V8M16 15v-5"/></svg>
+          Progress
+        </div>
+        <div class="fab"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

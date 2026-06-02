@@ -107,3 +107,26 @@ weight chart; the brandmark-as-glyph.
 - Flags: `design_system_elevation`, `design_system_colours`,
   `design_system_brandmark`, `design_system_icons`, `redesign_winmoment`,
   `redesign_motion`, `redesign_branded_sheets`, `redesign_search_results`.
+
+## Update 2026-06-01 (evening) — redesign UN-GATED, flag-gating retired
+
+Grace: *"turn everything on so I can see everything, never build in this
+flag-gated way again, it's a mess."* The flag-gated rollout (step 7 above)
+backfired: the redesign was built, gated, and then **invisible** — the flags
+didn't resolve on the iOS build (ENG-840: the env-force is dead in RN bundles,
+sim PostHog unreachable, and a ramp was mis-targeted to the wrong email). For a
+solo founder pre-launch (N=1), the safe-rollback benefit was worth less than the
+cost of not being able to see her own work.
+
+Decision: the 8 redesign flags are now **default-ON in every build**, un-gated,
+via `REDESIGN_DEFAULT_ON` in `apps/mobile/lib/analytics.ts` +
+`src/lib/analytics/track.ts`. No PostHog/env dependency; an explicit dev/test
+force can still turn one OFF (so pre-redesign captures work). The PostHog rows
+survive only as emergency kill switches. Verified on the real iOS Today (cards
+render soft elevation): `docs/ux/captures/today-elevation-2026-06-01/`.
+
+ENG-840 is resolved-by-elimination for the redesign (the residual non-redesign
+dev-force is still open on that ticket). Forward policy: **no new
+`isFeatureEnabled` gates for visual/redesign work** — the new design is the
+default path. Still owed (tracked): web Today card-elevation sweep (278
+hand-rolled divs); win-moment asset (ENG-798).
